@@ -49,11 +49,13 @@ type RegistrationParams struct {
 
 	// KeyManagerFactories are the registered key manager factories that can be used to create
 	// key managers for the service to use.
-	// Deprecated: Use KeyManagerCtxFactories
+	// Prefer KeyManagerCtxFactories
+	// EXPERIMENTAL
 	KeyManagerFactories []trust.NamedKeyManagerFactory
 
 	// KeyManagerCtxFactories are the registered key manager context factories that can be used to create
 	// key managers for the service to use.
+	// EXPERIMENTAL
 	KeyManagerCtxFactories []trust.NamedKeyManagerCtxFactory
 
 	////// The following functions are optional and intended to be called by the service //////

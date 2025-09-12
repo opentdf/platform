@@ -63,6 +63,7 @@ type KeyService interface {
 }
 
 // NamedKeyManagerFactory pairs a KeyManagerFactory with its intended registration name.
+// Use NamedKeyManagerCtxFactory instead.
 type NamedKeyManagerFactory struct {
 	Name    string
 	Factory KeyManagerFactory

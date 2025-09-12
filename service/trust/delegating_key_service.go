@@ -18,6 +18,7 @@ type KeyManagerFactoryOptions struct {
 }
 
 // KeyManagerFactory defines the signature for functions that can create KeyManager instances.
+// KeyManagerFactoryCtx is preferred.
 type KeyManagerFactory func(opts *KeyManagerFactoryOptions) (KeyManager, error)
 
 // KeyManagerFactoryCtx defines the signature for functions that can create KeyManager instances.

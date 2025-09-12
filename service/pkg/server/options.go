@@ -139,7 +139,8 @@ func WithConfigLoaderOrder(loaderOrder []string) StartOptions {
 }
 
 // WithTrustKeyManagerFactories option provides factories for creating trust key managers.
-// Deprecated: Use WithTrustKeyManagerCtxFactories
+// Use WithTrustKeyManagerCtxFactories instead.
+// EXPERIMENTAL 
 func WithTrustKeyManagerFactories(factories ...trust.NamedKeyManagerFactory) StartOptions {
 	return func(c StartConfig) StartConfig {
 		for _, factory := range factories {

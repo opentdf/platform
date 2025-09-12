@@ -12,26 +12,27 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 )
 
-// DefaultSigningProvider implements the existing key-based signing logic.
+// PublicKeySigningProvider implements key-based signing logic.
 // This preserves backward compatibility with the current SDK behavior.
-type DefaultSigningProvider struct {
+// Implements AssertionProvider, AssertionSigningProvider, AssertionValidationProvider
+type PublicKeySigningProvider struct {
 	key AssertionKey
 }
 
-// NewDefaultSigningProvider creates a signing provider using the existing AssertionKey structure
-func NewDefaultSigningProvider(key AssertionKey) *DefaultSigningProvider {
-	return &DefaultSigningProvider{
+// NewPublicKeySigningProvider creates a signing provider using the existing AssertionKey structure
+func NewPublicKeySigningProvider(key AssertionKey) *PublicKeySigningProvider {
+	return &PublicKeySigningProvider{
 		key: key,
 	}
 }
 
-func (p *DefaultSigningProvider) CreateAssertionConfig() AssertionConfig {
+func (p *PublicKeySigningProvider) CreateAssertionConfig() AssertionConfig {
 	// TODO implement
 	panic("implement me")
 }
 
 // Sign creates a JWS signature using the configured key
-func (p *DefaultSigningProvider) Sign(_ context.Context, _ *Assertion, assertionHash, assertionSig string) (string, error) {
+func (p *PublicKeySigningProvider) Sign(_ context.Context, _ *Assertion, assertionHash, assertionSig string) (string, error) {
 	if p.key.IsEmpty() {
 		return "", errors.New("signing key not configured")
 	}
@@ -55,7 +56,7 @@ func (p *DefaultSigningProvider) Sign(_ context.Context, _ *Assertion, assertion
 }
 
 // GetSigningKeyReference returns a reference to the signing key
-func (p *DefaultSigningProvider) GetSigningKeyReference() string {
+func (p *PublicKeySigningProvider) GetSigningKeyReference() string {
 	if p.key.IsEmpty() {
 		return "no-key"
 	}
@@ -63,7 +64,7 @@ func (p *DefaultSigningProvider) GetSigningKeyReference() string {
 }
 
 // GetAlgorithm returns the signing algorithm
-func (p *DefaultSigningProvider) GetAlgorithm() string {
+func (p *PublicKeySigningProvider) GetAlgorithm() string {
 	if p.key.IsEmpty() {
 		return ""
 	}

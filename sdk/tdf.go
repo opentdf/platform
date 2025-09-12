@@ -11,6 +11,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -181,6 +182,7 @@ func (t *TDFObject) AppendAssertion(ctx context.Context, assertionConfig Asserti
 	return nil
 }
 
+// FIXME not right calculation
 // calculateAggregateHash reconstructs the aggregate hash from the TDF's segments
 func (t *TDFObject) calculateAggregateHash() ([]byte, error) {
 	var aggregateHashBuilder strings.Builder
@@ -361,75 +363,28 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	tdfObject.manifest.URL = archive.TDFPayloadFileName
 	tdfObject.manifest.IsEncrypted = true
 
-	var signedAssertion []Assertion
-	if tdfConfig.addDefaultAssertion {
-		systemMeta, err := GetSystemMetadataAssertionConfig()
-		if err != nil {
-			return nil, err
-		}
-		tdfConfig.assertions = append(tdfConfig.assertions, systemMeta)
+	// if addSystemMetadataAssertion is true, register a system metadata assertion provider
+	if tdfConfig.addSystemMetadataAssertion {
+		systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(tdfConfig.useHex, tdfObject.payloadKey[:], aggregateHash)
+		systemMetadataPattern, _ := regexp.Compile("^" + SystemMetadataAssertionID + "$")
+		// if already registered, ignore
+		_ = tdfConfig.AssertionProviderFactory.RegisterAssertionProvider(systemMetadataPattern, systemMetadataAssertionProvider)
 	}
 
-	for _, assertion := range tdfConfig.assertions {
-		// Store a temporary assertion
-		tmpAssertion := Assertion{}
-
-		tmpAssertion.ID = assertion.ID
-		tmpAssertion.Type = assertion.Type
-		tmpAssertion.Scope = assertion.Scope
-		tmpAssertion.Statement = assertion.Statement
-		tmpAssertion.AppliesToState = assertion.AppliesToState
-
-		hashOfAssertionAsHex, err := tmpAssertion.GetHash()
-		if err != nil {
-			return nil, err
+	var boundAssertions []Assertion
+	// Bind Assertions
+	for _, registered := range tdfConfig.AssertionProviderFactory.registeredProviders {
+		assertionConfig, er := registered.provider.Configure(ctx)
+		if er != nil {
+			return nil, fmt.Errorf("failed to configure assertion provider: %w", er)
 		}
-
-		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
-		if err != nil {
-			return nil, fmt.Errorf("error decoding hex string: %w", err)
+		boundAssertion, er := registered.provider.Bind(ctx, assertionConfig, tdfObject.manifest)
+		if er != nil {
+			return nil, er
 		}
-
-		var completeHashBuilder strings.Builder
-		completeHashBuilder.WriteString(aggregateHash)
-		if tdfConfig.useHex {
-			completeHashBuilder.Write(hashOfAssertionAsHex)
-		} else {
-			completeHashBuilder.Write(hashOfAssertion)
-		}
-
-		encoded := ocrypto.Base64Encode([]byte(completeHashBuilder.String()))
-
-		// Determine which signing provider to use
-		var signingProvider AssertionSigningProvider
-
-		switch {
-		case tdfConfig.AssertionSigningProvider != nil:
-			// Use the config-level provider
-			signingProvider = tdfConfig.AssertionSigningProvider
-		default:
-			// Fall back to default provider
-			assertionSigningKey := AssertionKey{}
-			// Set default to HS256 and payload key
-			assertionSigningKey.Alg = AssertionKeyAlgHS256
-			assertionSigningKey.Key = tdfObject.payloadKey[:]
-
-			if !assertion.SigningKey.IsEmpty() {
-				assertionSigningKey = assertion.SigningKey
-			}
-
-			signingProvider = NewDefaultSigningProvider(assertionSigningKey)
-		}
-
-		if err := tmpAssertion.SignWithProvider(ctx, string(hashOfAssertionAsHex), string(encoded), signingProvider); err != nil {
-			return nil, fmt.Errorf("failed to sign assertion: %w", err)
-		}
-
-		signedAssertion = append(signedAssertion, tmpAssertion)
+		boundAssertions = append(boundAssertions, boundAssertion)
 	}
-
-	tdfObject.manifest.Assertions = signedAssertion
+	tdfObject.manifest.Assertions = boundAssertions
 
 	manifestAsStr, err := json.Marshal(tdfObject.manifest)
 	if err != nil {
@@ -1426,15 +1381,13 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		return ErrSegSizeMismatch
 	}
 
-	// Register DEK default system assertion provider
+	// Register DEK default system metadata assertion provider
 	if !r.config.disableAssertionVerification {
-		// Use the default DEK-based provider
-		assertionKey := AssertionKey{
-			Alg: AssertionKeyAlgHS256,
-			Key: payloadKey,
-		}
-		// FIXME register with Factory r.config.AssertionValidationProvider
-		NewDefaultValidationProviderWithKey(assertionKey, aggregateHash.Bytes())
+		systemMetadataPattern, _ := regexp.Compile("^" + SystemMetadataAssertionID + "$")
+		// TODO ??? useHex == !r.config.disableAssertionVerification
+		systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(!r.config.disableAssertionVerification, payloadKey[:], aggregateHash.String())
+		// if already registered, ignore
+		_ = r.config.AssertionProviderFactory.RegisterAssertionProvider(systemMetadataPattern, systemMetadataAssertionProvider)
 	}
 
 	// Validate assertions

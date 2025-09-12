@@ -190,16 +190,12 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	}
 
 	encryptedSegmentSize := segmentSize + gcmIvSize + aesBlockSize
-	payloadSize := inputSize + (totalSegments * (gcmIvSize + aesBlockSize))
-	tdfWriter := archive.NewTDFWriter(writer)
-
-	err = tdfWriter.SetPayloadSize(payloadSize)
-	if err != nil {
-		return nil, fmt.Errorf("archive.SetPayloadSize failed: %w", err)
-	}
+	tdfWriter := archive.NewSegmentTDFWriter(int(totalSegments))
 
 	var readPos int64
 	var aggregateHash string
+	var totalBytesWritten int64
+	segmentIndex := 0
 	readBuf := bytes.NewBuffer(make([]byte, 0, tdfConfig.defaultSegmentSize))
 	for totalSegments != 0 { // adjust read size
 		readSize := segmentSize
@@ -221,10 +217,17 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
 		}
 
-		err = tdfWriter.AppendPayload(cipherData)
+		segmentBytes, err := tdfWriter.WriteSegment(ctx, segmentIndex, cipherData)
 		if err != nil {
-			return nil, fmt.Errorf("io.writer.Write failed: %w", err)
+			return nil, fmt.Errorf("WriteSegment failed: %w", err)
 		}
+
+		// Immediately write the returned bytes to maintain streaming behavior
+		bytesWritten, err := writer.Write(segmentBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to write segment bytes: %w", err)
+		}
+		totalBytesWritten += int64(bytesWritten)
 
 		segmentSig, err := calculateSignature(cipherData, tdfObject.payloadKey[:],
 			tdfConfig.segmentIntegrityAlgorithm, tdfConfig.useHex)
@@ -241,6 +244,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 		tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments = append(tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments, segmentInfo)
 
+		segmentIndex++
 		totalSegments--
 		readPos += readSize
 	}
@@ -346,15 +350,19 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		return nil, fmt.Errorf("json.Marshal failed:%w", err)
 	}
 
-	err = tdfWriter.AppendManifest(string(manifestAsStr))
+	finalBytes, err := tdfWriter.Finalize(ctx, manifestAsStr)
 	if err != nil {
-		return nil, fmt.Errorf("TDFWriter.AppendManifest failed:%w", err)
+		return nil, fmt.Errorf("tdfWriter.Finalize failed: %w", err)
 	}
 
-	tdfObject.size, err = tdfWriter.Finish()
+	// Write final bytes (manifest + ZIP central directory) to output
+	finalBytesWritten, err := writer.Write(finalBytes)
 	if err != nil {
-		return nil, fmt.Errorf("TDFWriter.Finish failed:%w", err)
+		return nil, fmt.Errorf("failed to write final bytes: %w", err)
 	}
+
+	// Track total size written (segments + final bytes)
+	tdfObject.size = totalBytesWritten + int64(finalBytesWritten)
 
 	return tdfObject, nil
 }

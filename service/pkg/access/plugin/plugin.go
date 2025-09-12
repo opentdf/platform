@@ -6,16 +6,16 @@ import (
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	ersV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	policy "github.com/opentdf/platform/protocol/go/policy"
-	policyStore "github.com/opentdf/platform/service/internal/access/v2/store"
-	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
+	policyStore "github.com/opentdf/platform/service/pkg/access/store"
+	subjectmappingresolution "github.com/opentdf/platform/service/pkg/access/subject-mapping-resolution"
 )
 
 type PolicyDecisionPoint interface {
 	// Initialize a plugin PDP with a dedicated logger and access to policy
 	New(ctx context.Context, l *logger.Logger, store policyStore.EntitlementPolicyStore, attributeFQNPrefixes []string) error
 	// Make a decision based on an entity representation, platform policy entitlements, a requested action, and a relevant resource
-	GetDecision(ctx context.Context, entityRepresentation *ersV2.EntityRepresentation, entitlements *subjectmappingbuiltin.AttributeValueFQNsToActions, action *policy.Action, resource *authzV2.Resource) (bool, error)
+	GetDecision(ctx context.Context, entityRepresentation *ersV2.EntityRepresentation, entitlements *subjectmappingresolution.AttributeValueFQNsToActions, action *policy.Action, resource *authzV2.Resource) (bool, error)
 	// Determine if a given resource is able to be decisioned upon by this PDP implementation
 	IsValidDecisionableResource(resource *authzV2.Resource) bool
 	// Determine if a given action is able to be decisioned upon by this PDP implementation

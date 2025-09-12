@@ -14,9 +14,9 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
-	"github.com/opentdf/platform/service/internal/access/v2/plugin"
-	policyStore "github.com/opentdf/platform/service/internal/access/v2/store"
-	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
+	"github.com/opentdf/platform/service/pkg/access/plugin"
+	policyStore "github.com/opentdf/platform/service/pkg/access/store"
+	subjectmappingresolution "github.com/opentdf/platform/service/pkg/access/subject-mapping-resolution"
 
 	"github.com/opentdf/platform/service/logger"
 )
@@ -153,7 +153,7 @@ func (p *JustInTimeAuthorizer) GetDecision(
 				}
 
 				// Resolve them to their entitled FQNs and the actions available on each
-				entitledFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(decisionableAttributes, entityRep)
+				entitledFQNsToActions, err := subjectmappingresolution.EvaluateSubjectMappingsWithActions(decisionableAttributes, entityRep)
 				if err != nil {
 					return nil, false, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
 				}

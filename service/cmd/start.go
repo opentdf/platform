@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/opentdf/platform/service/internal/access/v2/plugin"
+	"github.com/opentdf/platform/service/pkg/access/plugin"
 	"github.com/opentdf/platform/service/pkg/server"
 	"github.com/spf13/cobra"
 )

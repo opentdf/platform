@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/opentdf/platform/service/internal/access/v2/plugin"
+	"github.com/opentdf/platform/service/pkg/access/plugin"
 )
 
 // Manage config for EntitlementPolicyCache: attributes, subject mappings, and registered resources

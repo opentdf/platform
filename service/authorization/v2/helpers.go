@@ -7,8 +7,8 @@ import (
 
 	"connectrpc.com/connect"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
-	"github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/access"
 )
 
 // rollupMultiResourceDecisions creates a standardized response for multi-resource decisions

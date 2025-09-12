@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/casbin/casbin/v2/persist"
-	"github.com/opentdf/platform/service/internal/access/v2/plugin"
+	"github.com/opentdf/platform/service/pkg/access/plugin"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/trust"

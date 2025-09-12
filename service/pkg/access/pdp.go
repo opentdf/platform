@@ -13,9 +13,9 @@ import (
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
+	subjectmappingresolution "github.com/opentdf/platform/service/pkg/access/subject-mapping-resolution"
 )
 
 // Decision represents the overall access decision for an entity.
@@ -184,7 +184,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 	l.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionable_attribute_values_count", len(decisionableAttributes)))
 
 	// Resolve them to their entitled FQNs and the actions available on each
-	entitledFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(decisionableAttributes, entityRepresentation)
+	entitledFQNsToActions, err := subjectmappingresolution.EvaluateSubjectMappingsWithActions(decisionableAttributes, entityRepresentation)
 	if err != nil {
 		return nil, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
 	}
@@ -338,7 +338,7 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 	}
 
 	// Resolve them to their entitled FQNs and the actions available on each
-	entityIDsToFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(entitleableAttributes, entityRepresentations)
+	entityIDsToFQNsToActions, err := subjectmappingresolution.EvaluateSubjectMappingMultipleEntitiesWithActions(entitleableAttributes, entityRepresentations)
 	if err != nil {
 		return nil, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
 	}

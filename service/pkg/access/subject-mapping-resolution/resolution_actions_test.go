@@ -1,4 +1,4 @@
-package subjectmappingbuiltin_test
+package subjectmappingresolution
 
 import (
 	"testing"
@@ -6,8 +6,6 @@ import (
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
-	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -17,6 +15,10 @@ var (
 	classIntFQN        = "https://example.com/attr/class/value/internal"
 	classConfFQN       = "https://example.com/attr/class/value/conf"
 	classRestrictedFQN = "https://example.com/attr/class/value/restricted"
+
+	actionNameRead   = "read"
+	actionNameCreate = "create"
+	actionNameDelete = "delete"
 
 	departmentEngineeringSM = &policy.SubjectMapping{
 		SubjectConditionSet: &policy.SubjectConditionSet{
@@ -39,10 +41,10 @@ var (
 		},
 		Actions: []*policy.Action{
 			{
-				Name: actions.ActionNameRead,
+				Name: actionNameRead,
 			},
 			{
-				Name: actions.ActionNameCreate,
+				Name: actionNameCreate,
 			},
 		},
 	}
@@ -68,7 +70,7 @@ var (
 		},
 		Actions: []*policy.Action{
 			{
-				Name: actions.ActionNameRead,
+				Name: actionNameRead,
 			},
 		},
 	}
@@ -99,7 +101,7 @@ var (
 		},
 		Actions: []*policy.Action{
 			{
-				Name: actions.ActionNameRead,
+				Name: actionNameRead,
 			},
 		},
 	}
@@ -143,7 +145,7 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_SingleEntity(t *testi
 		),
 	}
 
-	result, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings, []*entityresolutionV2.EntityRepresentation{engineeringEntity})
+	result, err := EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings, []*entityresolutionV2.EntityRepresentation{engineeringEntity})
 	require.NoError(t, err)
 	assert.Len(t, result, 1)
 
@@ -161,8 +163,8 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_SingleEntity(t *testi
 	for _, action := range actionsList {
 		actionNames = append(actionNames, action.GetName())
 	}
-	assert.Contains(t, actionNames, actions.ActionNameRead)
-	assert.Contains(t, actionNames, actions.ActionNameCreate)
+	assert.Contains(t, actionNames, actionNameRead)
+	assert.Contains(t, actionNames, actionNameCreate)
 }
 
 func TestEvaluateSubjectMappingMultipleEntitiesWithActions_MultipleEntities(t *testing.T) {
@@ -184,7 +186,7 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_MultipleEntities(t *t
 	}
 
 	// Execute function
-	result, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(
+	result, err := EvaluateSubjectMappingMultipleEntitiesWithActions(
 		attributeMappings,
 		[]*entityresolutionV2.EntityRepresentation{engineeringEntity, salesEntity},
 	)
@@ -204,8 +206,8 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_MultipleEntities(t *t
 	for _, action := range engActions {
 		engActionNames = append(engActionNames, action.GetName())
 	}
-	assert.Contains(t, engActionNames, actions.ActionNameRead)
-	assert.Contains(t, engActionNames, actions.ActionNameCreate)
+	assert.Contains(t, engActionNames, actionNameRead)
+	assert.Contains(t, engActionNames, actionNameCreate)
 
 	// Check sales entity entitlements
 	salesEntitlements, exists := result["sales-entity"]
@@ -214,7 +216,7 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_MultipleEntities(t *t
 	assert.True(t, exists)
 	// Sales entity should only have read access
 	assert.Len(t, salesActions, 1)
-	assert.Equal(t, actions.ActionNameRead, salesActions[0].GetName())
+	assert.Equal(t, actionNameRead, salesActions[0].GetName())
 }
 
 func TestEvaluateSubjectMappingMultipleEntitiesWithActions_NoMatchingEntities(t *testing.T) {
@@ -232,7 +234,7 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_NoMatchingEntities(t 
 	}
 
 	// Execute function
-	result, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(
+	result, err := EvaluateSubjectMappingMultipleEntitiesWithActions(
 		attributeMappings,
 		[]*entityresolutionV2.EntityRepresentation{marketingEntity},
 	)
@@ -266,7 +268,7 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_MultipleAttributes(t 
 	}
 
 	// Execute function
-	result, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(
+	result, err := EvaluateSubjectMappingMultipleEntitiesWithActions(
 		attributeMappings,
 		[]*entityresolutionV2.EntityRepresentation{engineeringEntity},
 	)
@@ -288,15 +290,15 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_MultipleAttributes(t 
 	for _, action := range confActions {
 		actionNames = append(actionNames, action.GetName())
 	}
-	assert.Contains(t, actionNames, actions.ActionNameRead)
-	assert.Contains(t, actionNames, actions.ActionNameCreate)
+	assert.Contains(t, actionNames, actionNameRead)
+	assert.Contains(t, actionNames, actionNameCreate)
 
 	// Check group-based entitlements (Internal)
 	internalActions, exists := entitlements[classIntFQN]
 	assert.True(t, exists)
 	assert.NotEmpty(t, internalActions)
 	assert.Len(t, internalActions, 1)
-	assert.Equal(t, actions.ActionNameRead, internalActions[0].GetName())
+	assert.Equal(t, actionNameRead, internalActions[0].GetName())
 }
 
 func TestEvaluateSubjectMappingsWithActions_OneGoodResolution(t *testing.T) {
@@ -356,7 +358,7 @@ func TestEvaluateSubjectMappingsWithActions_OneGoodResolution(t *testing.T) {
 				),
 			}
 			// Execute function
-			entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, entity)
+			entitlements, err := EvaluateSubjectMappingsWithActions(attributeMappings, entity)
 			require.NoError(t, err)
 			assert.Len(t, entitlements, 1)
 
@@ -422,7 +424,7 @@ func TestEvaluateSubjectMappingsWithActions_MultipleMatchingSubjectMappings(t *t
 	}
 
 	// Execute function
-	entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, multiMatchEntity)
+	entitlements, err := EvaluateSubjectMappingsWithActions(attributeMappings, multiMatchEntity)
 
 	// Validate results
 	require.NoError(t, err)
@@ -438,8 +440,8 @@ func TestEvaluateSubjectMappingsWithActions_MultipleMatchingSubjectMappings(t *t
 		actionNameSet[action.GetName()] = true
 	}
 	assert.Len(t, actionNameSet, 3)
-	assert.True(t, actionNameSet[actions.ActionNameRead])
-	assert.True(t, actionNameSet[actions.ActionNameCreate])
+	assert.True(t, actionNameSet[actionNameRead])
+	assert.True(t, actionNameSet[actionNameCreate])
 	assert.True(t, actionNameSet["custom_action"])
 
 	// Check internal actions
@@ -447,7 +449,7 @@ func TestEvaluateSubjectMappingsWithActions_MultipleMatchingSubjectMappings(t *t
 	assert.True(t, exists)
 
 	assert.Len(t, internalActions, 1)
-	assert.Equal(t, actions.ActionNameRead, internalActions[0].GetName())
+	assert.Equal(t, actionNameRead, internalActions[0].GetName())
 }
 
 func TestEvaluateSubjectMappingsWithActions_NoMatchingSubjectMappings(t *testing.T) {
@@ -470,7 +472,7 @@ func TestEvaluateSubjectMappingsWithActions_NoMatchingSubjectMappings(t *testing
 	}
 
 	// Execute function
-	entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, marketingEntity)
+	entitlements, err := EvaluateSubjectMappingsWithActions(attributeMappings, marketingEntity)
 
 	// Validate results
 	require.NoError(t, err)
@@ -515,10 +517,10 @@ func TestEvaluateSubjectMappingsWithActions_ComplexCondition_MultipleConditionGr
 		},
 		Actions: []*policy.Action{
 			{
-				Name: actions.ActionNameRead,
+				Name: actionNameRead,
 			},
 			{
-				Name: actions.ActionNameDelete,
+				Name: actionNameDelete,
 			},
 		},
 	}
@@ -556,7 +558,7 @@ func TestEvaluateSubjectMappingsWithActions_ComplexCondition_MultipleConditionGr
 	}
 
 	// Test senior engineer
-	seniorEntitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, seniorEngEntity)
+	seniorEntitlements, err := EvaluateSubjectMappingsWithActions(attributeMappings, seniorEngEntity)
 	require.NoError(t, err)
 	assert.Empty(t, seniorEntitlements)
 	seniorActions, exists := seniorEntitlements[classRestrictedFQN]
@@ -564,7 +566,7 @@ func TestEvaluateSubjectMappingsWithActions_ComplexCondition_MultipleConditionGr
 	assert.Empty(t, seniorActions)
 
 	// Test principal engineer with admin
-	adminEntitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, principalEngWithAdmin)
+	adminEntitlements, err := EvaluateSubjectMappingsWithActions(attributeMappings, principalEngWithAdmin)
 	require.NoError(t, err)
 	assert.Len(t, adminEntitlements, 1)
 	seniorWithAdminActions, exists := adminEntitlements[classRestrictedFQN]
@@ -574,11 +576,11 @@ func TestEvaluateSubjectMappingsWithActions_ComplexCondition_MultipleConditionGr
 	for _, action := range seniorWithAdminActions {
 		actionNames = append(actionNames, action.GetName())
 	}
-	assert.Contains(t, actionNames, actions.ActionNameRead)
-	assert.Contains(t, actionNames, actions.ActionNameDelete)
+	assert.Contains(t, actionNames, actionNameRead)
+	assert.Contains(t, actionNames, actionNameDelete)
 
 	// Test senior engineer with admin in a different index
-	adminEntitlementsBadIndex, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, seniorEngWithAdminEntityInBadIndex)
+	adminEntitlementsBadIndex, err := EvaluateSubjectMappingsWithActions(attributeMappings, seniorEngWithAdminEntityInBadIndex)
 	require.NoError(t, err)
 	assert.Empty(t, adminEntitlementsBadIndex)
 	adminActionsBadIndex, exists := adminEntitlementsBadIndex[classRestrictedFQN]
@@ -586,7 +588,7 @@ func TestEvaluateSubjectMappingsWithActions_ComplexCondition_MultipleConditionGr
 	assert.Empty(t, adminActionsBadIndex)
 
 	// Test non-engineering admin
-	nonEngAdminEntitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, nonEngAdminEntity)
+	nonEngAdminEntitlements, err := EvaluateSubjectMappingsWithActions(attributeMappings, nonEngAdminEntity)
 	require.NoError(t, err)
 	assert.Empty(t, nonEngAdminEntitlements)
 	nonEngAdminActions, exists := nonEngAdminEntitlements[classRestrictedFQN]

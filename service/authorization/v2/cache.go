@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/opentdf/platform/protocol/go/policy"
-	policyStore "github.com/opentdf/platform/service/internal/access/v2/store"
 	"github.com/opentdf/platform/service/logger"
+	policyStore "github.com/opentdf/platform/service/pkg/access/store"
 	"github.com/opentdf/platform/service/pkg/cache"
 )
 

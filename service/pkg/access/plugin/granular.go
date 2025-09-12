@@ -12,9 +12,9 @@ import (
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	ersV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	policy "github.com/opentdf/platform/protocol/go/policy"
-	policyStore "github.com/opentdf/platform/service/internal/access/v2/store"
-	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
+	policyStore "github.com/opentdf/platform/service/pkg/access/store"
+	subjectmappingresolution "github.com/opentdf/platform/service/pkg/access/subject-mapping-resolution"
 )
 
 // Map of resources to ACL (mock database)
@@ -55,7 +55,7 @@ func (p *GranularCustomPdp) IsReady(_ context.Context) bool {
 func (p *GranularCustomPdp) GetDecision(
 	ctx context.Context,
 	entityRepresentation *ersV2.EntityRepresentation,
-	_ *subjectmappingbuiltin.AttributeValueFQNsToActions,
+	_ *subjectmappingresolution.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resource *authzV2.Resource,
 ) (bool, error) {

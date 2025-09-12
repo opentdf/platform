@@ -1,6 +1,7 @@
 package archive
 
 import (
+	"math/rand"
 	"testing"
 )
 
@@ -352,27 +353,13 @@ func generateWriteOrder(count int, pattern string) []int {
 			}
 		}
 	case "random", "mixed":
-		// Generate pseudo-random but deterministic pattern for consistent benchmarks
+		// Deterministic shuffle using a fixed seed for reproducible benchmarks
 		for i := 0; i < count; i++ {
-			// Simple deterministic pseudo-random: use modular arithmetic
-			order[i] = (i*17 + 7) % count
+			order[i] = i
 		}
-		// Ensure all indices are covered
-		used := make(map[int]bool)
-		result := make([]int, 0, count)
-		for _, idx := range order {
-			if !used[idx] {
-				result = append(result, idx)
-				used[idx] = true
-			}
-		}
-		// Fill in any missing indices
-		for i := 0; i < count; i++ {
-			if !used[i] {
-				result = append(result, i)
-			}
-		}
-		return result
+		r := rand.New(rand.NewSource(42))
+		r.Shuffle(len(order), func(i, j int) { order[i], order[j] = order[j], order[i] })
+		return order
 	default:
 		// Default to sequential
 		for i := 0; i < count; i++ {

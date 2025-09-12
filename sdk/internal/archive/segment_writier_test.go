@@ -254,6 +254,76 @@ func TestSegmentWriter_CleanupSegment(t *testing.T) {
 	writer.Close()
 }
 
+func TestSegmentWriter_CleanupThenRewrite_SizesAndZipValid(t *testing.T) {
+	// Verify that cleaning up a segment allows rewriting the same index
+	// without double-counting sizes and that the final ZIP opens and matches
+	// the expected payload content.
+	writer := NewSegmentTDFWriter(3)
+	ctx := t.Context()
+
+	// Prepare test data with differing lengths to catch size inconsistencies
+	seg0 := []byte("A")       // 1 byte
+	seg1v1 := []byte("BBBBB") // 5 bytes (will be cleaned)
+	seg1v2 := []byte("BB")    // 2 bytes (final value)
+	seg2 := []byte("CC")      // 2 bytes
+
+	// Write segments 0,1,2
+	b0, err := writer.WriteSegment(ctx, 0, seg0)
+	require.NoError(t, err)
+	_, err = writer.WriteSegment(ctx, 1, seg1v1)
+	require.NoError(t, err)
+	b2, err := writer.WriteSegment(ctx, 2, seg2)
+	require.NoError(t, err)
+
+	// Cleanup segment 1 and rewrite with a different size
+	err = writer.CleanupSegment(1)
+	require.NoError(t, err)
+	b1, err := writer.WriteSegment(ctx, 1, seg1v2)
+	require.NoError(t, err)
+
+	// Assemble payload bytes in logical order using the latest bytes per index
+	var allBytes []byte
+	allBytes = append(allBytes, b0...)
+	allBytes = append(allBytes, b1...)
+	allBytes = append(allBytes, b2...)
+
+	// Finalize and append trailing ZIP structures
+	fin, err := writer.Finalize(ctx, []byte(`{"cleanup_rewrite_test": true}`))
+	require.NoError(t, err)
+	allBytes = append(allBytes, fin...)
+
+	writer.Close()
+
+	// Validate ZIP opens and payload content matches expected concatenation
+	zr, err := zip.NewReader(bytes.NewReader(allBytes), int64(len(allBytes)))
+	require.NoError(t, err)
+	assert.Len(t, zr.File, 2)
+	payload := findFileByName(zr, TDFPayloadFileName)
+	require.NotNil(t, payload)
+	rc, err := payload.Open()
+	require.NoError(t, err)
+	defer rc.Close()
+	got, err := io.ReadAll(rc)
+	require.NoError(t, err)
+	expected := append(append([]byte{}, seg0...), append(seg1v2, seg2...)...)
+	assert.Equal(t, expected, got)
+}
+
+func TestSegmentWriter_CleanupAfterFinalize_ReturnsError(t *testing.T) {
+	writer := NewSegmentTDFWriter(1)
+	ctx := t.Context()
+
+	// Write single segment and finalize
+	_, err := writer.WriteSegment(ctx, 0, []byte("x"))
+	require.NoError(t, err)
+	_, err = writer.Finalize(ctx, []byte(`{"post_finalize_cleanup": true}`))
+	require.NoError(t, err)
+
+	// Attempt cleanup after finalize should error
+	err = writer.CleanupSegment(0)
+	require.Error(t, err)
+}
+
 func TestSegmentWriter_ContextCancellation(t *testing.T) {
 	// Test context cancellation handling
 	writer := NewSegmentTDFWriter(3)
@@ -282,33 +352,44 @@ func TestSegmentWriter_LargeNumberOfSegments(t *testing.T) {
 		testSegments[i] = []byte(fmt.Sprintf("Segment %d data", i))
 	}
 
-	var allBytes []byte
+	// Collect segment bytes by index, then assemble in logical order
+	segmentBytes := make([][]byte, segmentCount)
 
 	// Write all segments in reverse order
 	for i := segmentCount - 1; i >= 0; i-- {
-		bytes, err := writer.WriteSegment(ctx, i, testSegments[i])
+		bts, err := writer.WriteSegment(ctx, i, testSegments[i])
 		require.NoError(t, err, "Failed to write segment %d", i)
-
-		// Store in logical order for final assembly
-		if i == 0 {
-			allBytes = append([]byte{}, bytes...) // Segment 0 goes first
-			for j := 1; j < segmentCount; j++ {
-				allBytes = append(allBytes, make([]byte, 0)...) // Placeholder
-			}
-		} else {
-			// This is simplified - in practice you'd need proper ordering
-			allBytes = append(allBytes, bytes...)
-		}
+		segmentBytes[i] = bts
 	}
 
-	// Finalize
+	// Assemble payload bytes in logical order (0..segmentCount-1)
+	var allBytes []byte
+	for i := 0; i < segmentCount; i++ {
+		allBytes = append(allBytes, segmentBytes[i]...)
+	}
+
+	// Finalize and append trailing ZIP structures
 	finalBytes, err := writer.Finalize(ctx, []byte(`{"large_segment_test": true}`))
 	require.NoError(t, err, "Should finalize large number of segments")
+	allBytes = append(allBytes, finalBytes...)
 
 	writer.Close()
 
-	// Basic validation - don't parse ZIP for performance in large test
-	assert.Greater(t, len(finalBytes), 100, "Final bytes should be substantial")
+	// Validate ZIP structure opens and payload content matches
+	zr, err := zip.NewReader(bytes.NewReader(allBytes), int64(len(allBytes)))
+	require.NoError(t, err, "Should create valid ZIP for large segments")
+	assert.Len(t, zr.File, 2, "Should have 2 files: payload and manifest")
+
+	payload := findFileByName(zr, TDFPayloadFileName)
+	require.NotNil(t, payload, "Should have payload file")
+	rc, err := payload.Open()
+	require.NoError(t, err)
+	defer rc.Close()
+
+	got, err := io.ReadAll(rc)
+	require.NoError(t, err)
+	expected := bytes.Join(testSegments, nil)
+	assert.Equal(t, expected, got, "Payload should match concatenated test segments")
 }
 
 func TestSegmentWriter_EmptySegments(t *testing.T) {
@@ -335,7 +416,7 @@ func TestSegmentWriter_EmptySegments(t *testing.T) {
 }
 
 // Helper function to find a file by name in ZIP reader
-func findFileByName(zipReader *zip.Reader, name string) *zip.File {
+func findFileByName(zipReader *zip.Reader, name string) *zip.File { //nolint:unparam // utility used in several tests
 	for _, file := range zipReader.File {
 		if file.Name == name {
 			return file

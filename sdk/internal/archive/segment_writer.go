@@ -19,6 +19,15 @@ type segmentWriter struct {
 	mu           sync.RWMutex
 }
 
+// subClampU64 subtracts delta from *p, clamping at zero to avoid underflow.
+func subClampU64(p *uint64, delta uint64) {
+	if *p > delta {
+		*p -= delta
+	} else {
+		*p = 0
+	}
+}
+
 // NewSegmentTDFWriter creates a new SegmentWriter for out-of-order segment writing
 func NewSegmentTDFWriter(expectedSegments int, opts ...Option) SegmentWriter {
 	cfg := applyOptions(opts)
@@ -224,12 +233,35 @@ func (sw *segmentWriter) CleanupSegment(index int) error {
 	sw.mu.Lock()
 	defer sw.mu.Unlock()
 
-	// Remove segment from unprocessed map (no-op if already processed or not found)
-	if _, ok := sw.metadata.Segments[index]; ok {
-		delete(sw.metadata.Segments, index)
-		if sw.metadata.presentCount > 0 {
-			sw.metadata.presentCount--
-		}
+	// Disallow cleanup when writer is closed or already finalized
+	if err := sw.checkClosed(); err != nil {
+		return &Error{Op: "cleanup-segment", Type: "segment", Err: err}
+	}
+	if sw.finalized {
+		return &Error{Op: "cleanup-segment", Type: "segment", Err: ErrWriterClosed}
+	}
+
+	// Negative indices are invalid
+	if index < 0 {
+		return &Error{Op: "cleanup-segment", Type: "segment", Err: ErrInvalidSegment}
+	}
+
+	// If the segment exists, adjust bookkeeping and remove it
+	seg, exists := sw.metadata.Segments[index]
+	if !exists {
+		return nil
+	}
+
+	// Update payload entry sizes to reflect the removal of this segment's data
+	subClampU64(&sw.payloadEntry.Size, seg.Size)
+	subClampU64(&sw.payloadEntry.CompressedSize, seg.Size)
+
+	// Keep metadata totals consistent
+	subClampU64(&sw.metadata.TotalSize, seg.Size)
+
+	delete(sw.metadata.Segments, index)
+	if sw.metadata.presentCount > 0 {
+		sw.metadata.presentCount--
 	}
 
 	return nil

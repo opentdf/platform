@@ -4,11 +4,10 @@ import (
 	"hash/crc32"
 	"math/rand"
 	"testing"
-	"time"
 )
 
 func TestCRC32CombineIEEE_Basic(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
+	rand.Seed(42)
 	a := make([]byte, 1024)
 	b := make([]byte, 2048)
 	rand.Read(a)

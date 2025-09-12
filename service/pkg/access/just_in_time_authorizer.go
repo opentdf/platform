@@ -159,7 +159,7 @@ func (p *JustInTimeAuthorizer) GetDecision(
 				}
 				isAllowed, err := pluginPDP.GetDecision(ctx, entityRep, &entitledFQNsToActions, action, resources[0])
 				if err != nil {
-					return nil, false, fmt.Errorf("error evaluating plugin PDP %s", pluginPDP.Name())
+					return nil, false, fmt.Errorf("error evaluating plugin PDP %s: %w", pluginPDP.Name(), err)
 				}
 				d = &Decision{
 					Access: isAllowed,

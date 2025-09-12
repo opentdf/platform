@@ -157,7 +157,14 @@ func (p *JustInTimeAuthorizer) GetDecision(
 				if err != nil {
 					return nil, false, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
 				}
-				isAllowed, err := pluginPDP.GetDecision(ctx, entityRep, &entitledFQNsToActions, action, resources[0])
+
+				resolvedEntity := plugin.NewEntity(
+					entityRep,
+					&entitledFQNsToActions,
+					entityIdentifier,
+				)
+
+				isAllowed, err := pluginPDP.GetDecision(ctx, resolvedEntity, action, resources[0])
 				if err != nil {
 					return nil, false, fmt.Errorf("error evaluating plugin PDP %s: %w", pluginPDP.Name(), err)
 				}

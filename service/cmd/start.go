@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"github.com/opentdf/platform/service/pkg/access/plugin"
 	"github.com/opentdf/platform/service/pkg/server"
 	"github.com/spf13/cobra"
 )
@@ -21,12 +20,9 @@ func start(cmd *cobra.Command, _ []string) error {
 	configFile, _ := cmd.Flags().GetString(configFileFlag)
 	configKey, _ := cmd.Flags().GetString(configKeyFlag)
 
-	pluginPDPs := []plugin.PolicyDecisionPoint{&plugin.GranularCustomPdp{}}
-
 	return server.Start(
 		server.WithWaitForShutdownSignal(),
 		server.WithConfigFile(configFile),
 		server.WithConfigKey(configKey),
-		server.WithPluginPDPs(pluginPDPs...),
 	)
 }

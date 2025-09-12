@@ -13,15 +13,16 @@ message SimpleKasPublicKey {
 }
 
 message SimpleKasKey {
-    string kas_uri = 1; // The URL of the Key Access Server
-    SimpleKasPublicKey public_key = 2; // The public key of the Key that belongs to the KAS
-    string kas_id = 3; // The ID of the Key Access Server
-};
+  string kas_uri = 1; // The URL of the Key Access Server
+  SimpleKasPublicKey public_key = 2; // The public key of the Key that belongs to the KAS
+  string kas_id = 3; // The ID of the Key Access Server
+}
 
 message KeyProviderConfig {
   string id = 1;
   string name = 2;
   bytes config_json = 3;
+  string manager = 4;
 
   // Common metadata
   common.Metadata metadata = 100;

@@ -253,6 +253,7 @@ func getResourceDecisionableAttributes(
 				"resource attribute value FQN not found in memory - possible custom PDP resource",
 				slog.String("attribute_value_fqn", attrValueFQN),
 			)
+			continue
 			// return nil, fmt.Errorf("resource attribute value FQN not found in memory [%s]: %w", attrValueFQN, ErrInvalidResource)
 		}
 

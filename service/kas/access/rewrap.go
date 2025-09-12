@@ -66,7 +66,7 @@ type entityInfo struct {
 
 type kaoResult struct {
 	ID       string
-	DEK      trust.ProtectedKey
+	DEK      ocrypto.ProtectedKey
 	Encapped []byte
 	Error    error
 
@@ -482,7 +482,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			continue
 		}
 
-		var dek trust.ProtectedKey
+		var dek ocrypto.ProtectedKey
 		var err error
 		switch kao.GetKeyAccessObject().GetKeyType() {
 		case "ec-wrapped":
@@ -827,7 +827,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 		failAllKaos(requests, results, err400("keypair mismatch"))
 		return "", results
 	}
-	sessionKeyPEM, err := sessionKey.PublicKeyInPemFormat()
+	sessionKeyPEM, err := sessionKey.PublicKeyAsPEM()
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failure in PublicKeyToPem", slog.Any("error", err))
 		failAllKaos(requests, results, err500(""))
@@ -955,7 +955,7 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 	return nil, results
 }
 
-func extractNanoPolicy(symmetricKey trust.ProtectedKey, header sdk.NanoTDFHeader) (*Policy, error) {
+func extractNanoPolicy(symmetricKey ocrypto.ProtectedKey, header sdk.NanoTDFHeader) (*Policy, error) {
 	const (
 		kIvLen = 12
 	)

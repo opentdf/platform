@@ -11,6 +11,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -115,6 +116,80 @@ func (s SDK) createTDF3DecryptHandler(writer io.Writer, reader io.ReadSeeker, op
 
 func (t TDFObject) Size() int64 {
 	return t.size
+}
+
+// AppendAssertion adds a new assertion to the TDF object after creation.
+// This method handles the cryptographic binding of the assertion to the TDF's payload.
+// The assertion will be signed using the provided signing provider.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout
+//   - assertionConfig: Configuration for the new assertion to add
+//   - signingProvider: Provider to handle the cryptographic signing of the assertion
+//
+// Returns:
+//   - error: Any error that occurred during the append operation
+//
+// Note: This method modifies the TDF's manifest in place. The assertion will be
+// cryptographically bound to the TDF's payload using the aggregate hash.
+func (t *TDFObject) AppendAssertion(ctx context.Context, assertionConfig AssertionConfig, signingProvider AssertionSigningProvider) error {
+	if signingProvider == nil {
+		return errors.New("signing provider is required for assertion appending")
+	}
+
+	// Calculate the aggregate hash from existing segments
+	aggregateHash, err := t.calculateAggregateHash()
+	if err != nil {
+		return fmt.Errorf("failed to calculate aggregate hash: %w", err)
+	}
+
+	// Configure the assertion from config
+	assertion := Assertion{
+		ID:             assertionConfig.ID,
+		Type:           assertionConfig.Type,
+		Scope:          assertionConfig.Scope,
+		AppliesToState: assertionConfig.AppliesToState,
+		Statement:      assertionConfig.Statement,
+	}
+
+	// Get the hash of the assertion
+	assertionHashBytes, err := assertion.GetHash()
+	if err != nil {
+		return fmt.Errorf("failed to get assertion hash: %w", err)
+	}
+	assertionHash := string(assertionHashBytes)
+
+	// Combine aggregate hash with assertion hash for binding
+	combinedHash := make([]byte, 0, len(aggregateHash)+len(assertionHashBytes))
+	combinedHash = append(combinedHash, aggregateHash...)
+	combinedHash = append(combinedHash, assertionHashBytes...)
+	assertionSig := ocrypto.Base64Encode(combinedHash)
+
+	// Sign the assertion using the provided signing provider
+	if err := assertion.SignWithProvider(ctx, assertionHash, string(assertionSig), signingProvider); err != nil {
+		return fmt.Errorf("failed to sign assertion: %w", err)
+	}
+
+	// Add the signed assertion to the manifest
+	t.manifest.Assertions = append(t.manifest.Assertions, assertion)
+
+	return nil
+}
+
+// FIXME not right calculation
+// calculateAggregateHash reconstructs the aggregate hash from the TDF's segments
+func (t *TDFObject) calculateAggregateHash() ([]byte, error) {
+	var aggregateHashBuilder strings.Builder
+
+	for _, segment := range t.manifest.EncryptionInformation.IntegrityInformation.Segments {
+		decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode segment hash: %w", err)
+		}
+		aggregateHashBuilder.Write(decodedHash)
+	}
+
+	return []byte(aggregateHashBuilder.String()), nil
 }
 
 func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) {
@@ -282,64 +357,28 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	tdfObject.manifest.Payload.URL = archive.TDFPayloadFileName
 	tdfObject.manifest.Payload.IsEncrypted = true
 
-	var signedAssertion []Assertion
-	if tdfConfig.addDefaultAssertion {
-		systemMeta, err := GetSystemMetadataAssertionConfig()
-		if err != nil {
-			return nil, err
-		}
-		tdfConfig.assertions = append(tdfConfig.assertions, systemMeta)
+	// if addSystemMetadataAssertion is true, register a system metadata assertion provider
+	if tdfConfig.addSystemMetadataAssertion {
+		systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(tdfConfig.useHex, tdfObject.payloadKey[:], aggregateHash)
+		systemMetadataPattern, _ := regexp.Compile("^" + SystemMetadataAssertionID + "$")
+		// if already registered, ignore
+		_ = tdfConfig.AssertionProviderFactory.RegisterAssertionProvider(systemMetadataPattern, systemMetadataAssertionProvider)
 	}
 
-	for _, assertion := range tdfConfig.assertions {
-		// Store a temporary assertion
-		tmpAssertion := Assertion{}
-
-		tmpAssertion.ID = assertion.ID
-		tmpAssertion.Type = assertion.Type
-		tmpAssertion.Scope = assertion.Scope
-		tmpAssertion.Statement = assertion.Statement
-		tmpAssertion.AppliesToState = assertion.AppliesToState
-
-		hashOfAssertionAsHex, err := tmpAssertion.GetHash()
-		if err != nil {
-			return nil, err
+	var boundAssertions []Assertion
+	// Bind Assertions
+	for _, registered := range tdfConfig.AssertionProviderFactory.registeredProviders {
+		assertionConfig, er := registered.provider.Configure(ctx)
+		if er != nil {
+			return nil, fmt.Errorf("failed to configure assertion provider: %w", er)
 		}
-
-		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
-		if err != nil {
-			return nil, fmt.Errorf("error decoding hex string: %w", err)
+		boundAssertion, er := registered.provider.Bind(ctx, assertionConfig, tdfObject.manifest)
+		if er != nil {
+			return nil, er
 		}
-
-		var completeHashBuilder strings.Builder
-		completeHashBuilder.WriteString(aggregateHash)
-		if tdfConfig.useHex {
-			completeHashBuilder.Write(hashOfAssertionAsHex)
-		} else {
-			completeHashBuilder.Write(hashOfAssertion)
-		}
-
-		encoded := ocrypto.Base64Encode([]byte(completeHashBuilder.String()))
-
-		assertionSigningKey := AssertionKey{}
-
-		// Set default to HS256 and payload key
-		assertionSigningKey.Alg = AssertionKeyAlgHS256
-		assertionSigningKey.Key = tdfObject.payloadKey[:]
-
-		if !assertion.SigningKey.IsEmpty() {
-			assertionSigningKey = assertion.SigningKey
-		}
-
-		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), string(encoded), assertionSigningKey); err != nil {
-			return nil, fmt.Errorf("failed to sign assertion: %w", err)
-		}
-
-		signedAssertion = append(signedAssertion, tmpAssertion)
+		boundAssertions = append(boundAssertions, boundAssertion)
 	}
-
-	tdfObject.manifest.Assertions = signedAssertion
+	tdfObject.manifest.Assertions = boundAssertions
 
 	manifestAsStr, err := json.Marshal(tdfObject.manifest)
 	if err != nil {
@@ -1111,6 +1150,53 @@ func (r *Reader) UnsafePayloadKeyRetrieval() ([]byte, error) {
 	return r.payloadKey, nil
 }
 
+// AppendAssertion adds a new assertion to the loaded TDF reader after creation.
+// This method handles the cryptographic binding of the assertion to the TDF's payload.
+// The assertion will be signed using the provided signing provider.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout
+//   - assertion: the assertion
+//
+// Returns:
+//   - error: Any error that occurred during the append operation
+//
+// Note: This method modifies the TDF's manifest in place. The assertion should be
+// cryptographically bound to the TDF.
+func (r *Reader) AppendAssertion(_ context.Context, assertion Assertion) error {
+	// pre-check - can marshal
+	manifestBytes, err := json.Marshal(r.manifest)
+	if err != nil {
+		return fmt.Errorf("failed to marshal manifest: %w", err)
+	}
+	// pre-check - can unmarshal
+	_ = json.Unmarshal(manifestBytes, &Manifest{})
+	// Add the assertion to the manifest
+	r.manifest.Assertions = append(r.manifest.Assertions, assertion)
+	// post-check - can marshal
+	manifestBytes, err = json.Marshal(r.manifest)
+	if err != nil {
+		return fmt.Errorf("failed to marshal manifest: %w", err)
+	}
+	// post-check - can unmarshal
+	return json.Unmarshal(manifestBytes, &Manifest{})
+}
+
+// calculateAggregateHash reconstructs the aggregate hash from the TDF's segments
+func (r *Reader) calculateAggregateHash() ([]byte, error) {
+	var aggregateHashBuilder strings.Builder
+
+	for _, segment := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
+		decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode segment hash: %w", err)
+		}
+		aggregateHashBuilder.Write(decodedHash)
+	}
+
+	return []byte(aggregateHashBuilder.String()), nil
+}
+
 func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
 	kasReqs := make(map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest)
 	for i, kao := range r.manifest.EncryptionInformation.KeyAccessObjs {
@@ -1179,7 +1265,7 @@ func getIdx(kaoID string) int {
 	return idx
 }
 
-func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
+func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 	var unencryptedMetadata []byte
 	var payloadKey [kKeySize]byte
 	knownSplits := make(map[string]bool)
@@ -1279,68 +1365,18 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 		return ErrSegSizeMismatch
 	}
 
+	// Register DEK default system metadata assertion provider
+	if !r.config.disableAssertionVerification {
+		systemMetadataPattern, _ := regexp.Compile("^" + SystemMetadataAssertionID + "$")
+		// TODO ??? useHex == !r.config.disableAssertionVerification
+		systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(!r.config.disableAssertionVerification, payloadKey[:], aggregateHash.String())
+		// if already registered, ignore
+		_ = r.config.AssertionProviderFactory.RegisterAssertionProvider(systemMetadataPattern, systemMetadataAssertionProvider)
+	}
+
 	// Validate assertions
-	for _, assertion := range r.manifest.Assertions {
-		// Skip assertion verification if disabled
-		if r.config.disableAssertionVerification {
-			continue
-		}
-
-		assertionKey := AssertionKey{}
-		// Set default to HS256
-		assertionKey.Alg = AssertionKeyAlgHS256
-		assertionKey.Key = payloadKey[:]
-
-		if !r.config.verifiers.IsEmpty() {
-			// Look up the key for the assertion
-			foundKey, err := r.config.verifiers.Get(assertion.ID)
-
-			if err != nil {
-				return fmt.Errorf("%w: %w", ErrAssertionFailure{ID: assertion.ID}, err)
-			} else if !foundKey.IsEmpty() {
-				assertionKey.Alg = foundKey.Alg
-				assertionKey.Key = foundKey.Key
-			}
-		}
-
-		assertionHash, assertionSig, err := assertion.Verify(assertionKey)
-		if err != nil {
-			if errors.Is(err, errAssertionVerifyKeyFailure) {
-				return fmt.Errorf("assertion verification failed: %w", err)
-			}
-			return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: assertion.ID}, err)
-		}
-
-		// Get the hash of the assertion
-		hashOfAssertionAsHex, err := assertion.GetHash()
-		if err != nil {
-			return fmt.Errorf("%w: failed to get hash of assertion: %w", ErrAssertionFailure{ID: assertion.ID}, err)
-		}
-
-		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
-		if err != nil {
-			return fmt.Errorf("error decoding hex string: %w", err)
-		}
-
-		isLegacyTDF := r.manifest.TDFVersion == ""
-		if isLegacyTDF {
-			hashOfAssertion = hashOfAssertionAsHex
-		}
-
-		var completeHashBuilder bytes.Buffer
-		completeHashBuilder.Write(aggregateHash.Bytes())
-		completeHashBuilder.Write(hashOfAssertion)
-
-		base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
-
-		if string(hashOfAssertionAsHex) != assertionHash {
-			return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: assertion.ID})
-		}
-
-		if assertionSig != string(base64Hash) {
-			return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: assertion.ID})
-		}
+	if err := r.validateAssertions(ctx); err != nil {
+		return err
 	}
 
 	gcm, err := ocrypto.NewAESGcm(payloadKey[:])
@@ -1353,6 +1389,31 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 	r.aesGcm = gcm
 
 	return nil
+}
+
+// validateAssertions handles assertion validation with appropriate provider selection
+func (r *Reader) validateAssertions(ctx context.Context) error {
+	for _, assertion := range r.manifest.Assertions {
+		validator, err := r.config.AssertionProviderFactory.GetValidationProvider(assertion.ID)
+		if err != nil {
+			// TODO ??? ignore unknown assertions
+		}
+
+		// Verify with the selected provider
+		err = validator.Validate(ctx, assertion)
+		if err != nil {
+			return r.handleAssertionVerificationError(assertion.ID, err)
+		}
+	}
+	return nil
+}
+
+// handleAssertionVerificationError handles errors from assertion verification
+func (r *Reader) handleAssertionVerificationError(assertionID string, err error) error {
+	if errors.Is(err, errAssertionVerifyKeyFailure) {
+		return fmt.Errorf("assertion verification failed: %w", err)
+	}
+	return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: assertionID}, err)
 }
 
 // Unwraps the payload key, if possible, using the access service

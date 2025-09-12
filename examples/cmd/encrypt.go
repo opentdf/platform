@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -31,11 +32,11 @@ var (
 func init() {
 	encryptCmd := cobra.Command{
 		Use:   "encrypt",
-		Short: "Create encrypted TDF",
+		Short: "Configure encrypted TDF",
 		RunE:  encrypt,
 		Args:  cobra.MinimumNArgs(1),
 	}
-	encryptCmd.Flags().StringSliceVarP(&dataAttributes, "data-attributes", "a", []string{"https://example.com/attr/attr1/value/value1"}, "space separated list of data attributes")
+	encryptCmd.Flags().StringSliceVarP(&dataAttributes, "data-attributes", "a", []string{}, "space separated list of data attributes")
 	encryptCmd.Flags().BoolVar(&nanoFormat, "nano", false, "Output in nanoTDF format")
 	encryptCmd.Flags().BoolVar(&autoconfigure, "autoconfigure", true, "Use attribute grants to select kases")
 	encryptCmd.Flags().BoolVar(&noKIDInKAO, "no-kid-in-kao", false, "[deprecated] Disable storing key identifiers in TDF KAOs")
@@ -44,7 +45,7 @@ func init() {
 	encryptCmd.Flags().StringVarP(&alg, "key-encapsulation-algorithm", "A", "rsa:2048", "Key wrap algorithm algorithm:parameters")
 	encryptCmd.Flags().IntVarP(&collection, "collection", "c", 0, "number of nano's to create for collection. If collection >0 (default) then output will be <iteration>_<output>")
 	encryptCmd.Flags().StringVar(&policyMode, "policy-mode", "", "Store policy as encrypted instead of plaintext (nanoTDF only) [plaintext|encrypted]")
-
+	encryptCmd.Flags().StringVar(&magicWord, "magic-word", "", "Use a 'magic word' as a shared secret.")
 	ExamplesCmd.AddCommand(&encryptCmd)
 }
 
@@ -56,7 +57,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	plainText := args[0]
 	in := strings.NewReader(plainText)
 
-	// Create new offline client
+	// Configure new offline client
 	client, err := newSDK()
 	if err != nil {
 		return err
@@ -97,6 +98,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	if !nanoFormat {
 		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
+		autoconfigure = false
 		if !autoconfigure {
 			opts = append(opts, sdk.WithAutoconfigure(autoconfigure))
 			opts = append(opts, sdk.WithKasInformation(
@@ -105,6 +107,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 					PublicKey: "",
 				}))
 		}
+		// Deprecated: WithWrappingKeyAlg sets the key type for the TDF wrapping key for both storage and transit.
 		if alg != "" {
 			kt, err := keyTypeForKeyType(alg)
 			if err != nil {
@@ -112,7 +115,23 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			}
 			opts = append(opts, sdk.WithWrappingKeyAlg(kt))
 		}
-		tdf, err := client.CreateTDF(out, in, opts...)
+		// Assertion
+		// Create an assertion provider factory
+		factory := sdk.NewAssertionProviderFactory()
+		// Provider with state, this works in a simple CLI
+		magicWordProvider := NewMagicWordAssertionProvider(magicWord)
+		// Register the provider to handle the exact assertion ID.
+		magicWordPattern, _ := regexp.Compile("^" + MagicWordAssertionID + "$")
+		factory.RegisterAssertionProvider(magicWordPattern, magicWordProvider)
+		// Provider without state that provides system information
+		// FIXME since a DEK is needed, do not setup here
+		// systemMetadataAssertionProvider := sdk.NewSystemMetadataAssertionProvider()
+		// systemMetadataPattern, _ := regexp.Compile("^" + sdk.SystemMetadataAssertionID + "$")
+		// factory.RegisterAssertionProvider(systemMetadataPattern, systemMetadataAssertionProvider)
+		opts = append(opts, sdk.WithSystemMetadataAssertion())
+		// Register the factory with the SDK client
+		opts = append(opts, sdk.WithCreateTDFAssertionProviderFactory(factory))
+		tdf, err := client.CreateTDFContext(cmd.Context(), out, in, opts...)
 		if err != nil {
 			return err
 		}

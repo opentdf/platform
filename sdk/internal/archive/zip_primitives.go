@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Note: CRC32 calculation for the payload is performed using a combine
+// Note: CRC32 calculation for the payload is performed using a CRC32-Combine
 // approach over per-segment CRCs and sizes to avoid buffering segments.
 
 // FileEntry represents a file in the ZIP archive with metadata
@@ -29,8 +29,9 @@ type SegmentEntry struct {
 }
 
 // SegmentMetadata tracks per-segment metadata for out-of-order writing.
-// It stores only plaintext size and CRC for each index and computes the
-// final CRC via CRC32-combine at finalize time (no payload buffering).
+// It stores only the stored segment size (ciphertext; no compression) and CRC
+// for each index and computes the final CRC via CRC32-Combine at finalize time
+// (no payload buffering).
 type SegmentMetadata struct {
 	ExpectedCount int                   // Total number of expected segments
 	Segments      map[int]*SegmentEntry // Map of segments by index

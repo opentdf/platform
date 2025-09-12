@@ -91,7 +91,9 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byt
 	// Create segment buffer for this segment's output
 	buffer := &bytes.Buffer{}
 
-	// Deterministic behavior: segment 0 gets ZIP header, others get raw data
+	// Deterministic behavior: segment 0 includes the local file header; subsequent
+	// segments contain only stored data bytes. The payload entry uses a data
+	// descriptor, so sizes and CRC are finalized later.
 	if index == 0 {
 		// Segment 0: Write local file header + encrypted data
 		if err := sw.writeLocalFileHeader(buffer); err != nil {

@@ -17,7 +17,9 @@ type Writer interface {
 	io.Closer
 }
 
-// SegmentWriter handles out-of-order segments with deterministic output
+// SegmentWriter handles out-of-order segments with deterministic output.
+// The implementation returns per-segment bytes to the caller and does not
+// retain payload data in memory. Finalize emits the trailing ZIP structures.
 type SegmentWriter interface {
 	Writer
 	WriteSegment(ctx context.Context, index int, data []byte) ([]byte, error)

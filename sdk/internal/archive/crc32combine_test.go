@@ -31,7 +31,7 @@ func TestCRC32CombineIEEE_MultiChunks(t *testing.T) {
 	for i := range chunks {
 		n := 1 + r.Intn(8192)
 		chunks[i] = make([]byte, n)
-		rand.Read(chunks[i])
+		_, _ = r.Read(chunks[i])
 	}
 
 	// Combine sequentially

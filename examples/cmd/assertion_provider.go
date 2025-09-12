@@ -18,7 +18,6 @@ const MagicWordAssertionID = "magic-word"
 // MagicWordAssertionProvider "signs" an assertion by appending a secret word.
 // implements sdk.AssertionSigningProvider
 type MagicWordAssertionProvider struct {
-	sdk.AssertionProvider
 	MagicWord string
 }
 

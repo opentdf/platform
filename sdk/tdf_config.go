@@ -283,7 +283,7 @@ type TDFReaderConfig struct {
 	// TODO only disable DEK?
 	disableAssertionVerification bool
 	// AssertionProviderFactory allows custom validation implementation
-	AssertionProviderFactory AssertionProviderFactory
+	AssertionProviderFactory *AssertionProviderFactory
 
 	schemaValidationIntensity SchemaValidationIntensity
 	kasSessionKey             ocrypto.KeyPair
@@ -391,7 +391,7 @@ func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOpti
 
 // WithAssertionProviderFactory sets a custom assertion validation provider for reading.
 // If not set, the default key-based provider will be used.
-func WithAssertionProviderFactory(factory AssertionProviderFactory) TDFReaderOption {
+func WithAssertionProviderFactory(factory *AssertionProviderFactory) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.AssertionProviderFactory = factory
 		return nil

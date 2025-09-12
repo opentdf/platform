@@ -99,20 +99,18 @@ func decrypt(cmd *cobra.Command, args []string) error {
 			opts = append(opts, sdk.WithSessionKeyType(kt))
 		}
 
-		// If the user specifies --magic-word, use the factory with the simple provider.
-		if magicWord != "" {
-			// Create an assertion provider factory
-			factory := sdk.NewAssertionProviderFactory()
-			// No validation of unknown assertions
-			factory.SetDefaultValidationProvider(sdk.NoopAssertionValidationProvider{})
-			// Register the provider to handle the exact assertion ID.
-			pattern, _ := regexp.Compile(MagicWordAssertionID)
-			// Provider with state, this works in a simple CLI
-			simpleProvider := &MagicWordAssertionProvider{MagicWord: magicWord}
-			factory.RegisterAssertionProvider(pattern, simpleProvider)
-			// Register the factory with the SDK client
-			opts = append(opts, sdk.WithAssertionProviderFactory(*factory))
-		}
+		// Assertion
+		// Create an assertion provider factory
+		factory := sdk.NewAssertionProviderFactory()
+		// No validation of unknown assertions (non-matching regex)
+		factory.SetDefaultValidationProvider(sdk.NoopAssertionValidationProvider{})
+		// Register the provider to handle the exact assertion ID.
+		pattern, _ := regexp.Compile("^" + MagicWordAssertionID + "$")
+		// Provider with state, this works in a simple CLI
+		simpleProvider := NewMagicWordAssertionProvider(magicWord)
+		factory.RegisterAssertionProvider(pattern, simpleProvider)
+		// Register the factory with the SDK client
+		opts = append(opts, sdk.WithAssertionProviderFactory(factory))
 
 		tdfreader, err := client.LoadTDF(file, opts...)
 		if err != nil {

@@ -249,7 +249,11 @@ func getResourceDecisionableAttributes(
 
 		attributeAndValue, ok := entitleableAttributesByValueFQN[attrValueFQN]
 		if !ok {
-			return nil, fmt.Errorf("resource attribute value FQN not found in memory [%s]: %w", attrValueFQN, ErrInvalidResource)
+			l.DebugContext(ctx,
+				"resource attribute value FQN not found in memory - possible custom PDP resource",
+				slog.String("attribute_value_fqn", attrValueFQN),
+			)
+			// return nil, fmt.Errorf("resource attribute value FQN not found in memory [%s]: %w", attrValueFQN, ErrInvalidResource)
 		}
 
 		decisionableAttributes[attrValueFQN] = attributeAndValue

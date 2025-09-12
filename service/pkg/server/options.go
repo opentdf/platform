@@ -154,7 +154,7 @@ func WithTrustKeyManagerFactories(factories ...trust.NamedKeyManagerFactory) Sta
 	}
 }
 
-// WithTrustKeyManagerFactories option provides factories for creating trust key managers.
+// WithTrustKeyManagerCtxFactories option provides factories for creating trust key managers.
 func WithTrustKeyManagerCtxFactories(factories ...trust.NamedKeyManagerCtxFactory) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.trustKeyManagerCtxs = append(c.trustKeyManagerCtxs, factories...)

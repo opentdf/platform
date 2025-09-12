@@ -9,9 +9,7 @@ type TDFReader struct {
 }
 
 const (
-	TDFManifestFileName = "0.manifest.json"
-	TDFPayloadFileName  = "0.payload"
-	manifestMaxSize     = 1024 * 1024 * 10 // 10 MB
+	manifestMaxSize = 1024 * 1024 * 10 // 10 MB
 )
 
 // NewTDFReader Create tdf reader instance.

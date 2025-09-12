@@ -191,7 +191,7 @@ func mergeDeduplicatedActions(actionsSet map[string]*policy.Action, actionsToMer
 
 func getResourceDecisionableAttributes(
 	ctx context.Context,
-	logger *logger.Logger,
+	l *logger.Logger,
 	accessibleRegisteredResourceValues map[string]*policy.RegisteredResourceValue,
 	entitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 	// action *policy.Action,
@@ -214,7 +214,11 @@ func getResourceDecisionableAttributes(
 			regResValueFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
 			regResValue, found := accessibleRegisteredResourceValues[regResValueFQN]
 			if !found {
-				return nil, fmt.Errorf("resource registered resource value FQN not found in memory [%s]: %w", regResValueFQN, ErrInvalidResource)
+				l.DebugContext(ctx,
+					"resource registered resource value FQN not found in memory - possible custom PDP resource",
+					slog.String("registered_resource_value_fqn", regResValueFQN),
+				)
+				// return nil, fmt.Errorf("resource registered resource value FQN not found in memory [%s]: %w", regResValueFQN, ErrInvalidResource)
 			}
 
 			for _, aav := range regResValue.GetActionAttributeValues() {
@@ -249,7 +253,7 @@ func getResourceDecisionableAttributes(
 		}
 
 		decisionableAttributes[attrValueFQN] = attributeAndValue
-		err := populateHigherValuesIfHierarchy(ctx, logger, attrValueFQN, attributeAndValue.GetAttribute(), entitleableAttributesByValueFQN, decisionableAttributes)
+		err := populateHigherValuesIfHierarchy(ctx, l, attrValueFQN, attributeAndValue.GetAttribute(), entitleableAttributesByValueFQN, decisionableAttributes)
 		if err != nil {
 			return nil, fmt.Errorf("error populating higher hierarchy attribute values: %w", err)
 		}

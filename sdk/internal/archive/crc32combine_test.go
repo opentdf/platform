@@ -7,11 +7,11 @@ import (
 )
 
 func TestCRC32CombineIEEE_Basic(t *testing.T) {
-	rand.Seed(42)
+	r := rand.New(rand.NewSource(42))
 	a := make([]byte, 1024)
 	b := make([]byte, 2048)
-	rand.Read(a)
-	rand.Read(b)
+	r.Read(a)
+	r.Read(b)
 
 	crcA := crc32.ChecksumIEEE(a)
 	crcB := crc32.ChecksumIEEE(b)
@@ -26,10 +26,10 @@ func TestCRC32CombineIEEE_Basic(t *testing.T) {
 }
 
 func TestCRC32CombineIEEE_MultiChunks(t *testing.T) {
-	rand.Seed(42)
+	r := rand.New(rand.NewSource(42))
 	chunks := make([][]byte, 10)
 	for i := range chunks {
-		n := 1 + rand.Intn(8192)
+		n := 1 + r.Intn(8192)
 		chunks[i] = make([]byte, n)
 		rand.Read(chunks[i])
 	}

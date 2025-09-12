@@ -297,7 +297,7 @@ func BenchmarkSegmentWriter_ZIPGeneration(b *testing.B) {
 //   - "reverse": Backward order (...3,2,1,0)
 //   - "interleaved": Even indices first (0,2,4...), then odd (1,3,5...) - moderate out-of-order
 //   - "worst_case": Middle-out pattern starting from center, alternating left/right - maximizes buffering
-//   - "random"/"mixed": Pseudo-random using modular arithmetic (i*17+7)%count for deterministic chaos
+//   - "random"/"mixed": Deterministic shuffle using rand.Shuffle with a fixed seed
 //
 // The patterns are designed to stress different aspects:
 //   - Memory usage patterns

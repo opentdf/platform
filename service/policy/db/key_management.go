@@ -16,6 +16,7 @@ import (
 func (c PolicyDBClient) CreateProviderConfig(ctx context.Context, r *keymanagement.CreateProviderConfigRequest) (*policy.KeyProviderConfig, error) {
 	name := strings.ToLower(r.GetName())
 	config := r.GetConfigJson()
+	manager := r.GetManager()
 
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
@@ -24,6 +25,7 @@ func (c PolicyDBClient) CreateProviderConfig(ctx context.Context, r *keymanageme
 
 	providerConfig, err := c.Queries.createProviderConfig(ctx, createProviderConfigParams{
 		ProviderName: name,
+		Manager:      manager,
 		Config:       config,
 		Metadata:     metadataJSON,
 	})
@@ -39,6 +41,7 @@ func (c PolicyDBClient) CreateProviderConfig(ctx context.Context, r *keymanageme
 	return &policy.KeyProviderConfig{
 		Id:         providerConfig.ID,
 		Name:       providerConfig.ProviderName,
+		Manager:    providerConfig.Manager,
 		ConfigJson: providerConfig.Config,
 		Metadata:   metadata,
 	}, nil
@@ -78,6 +81,7 @@ func (c PolicyDBClient) GetProviderConfig(ctx context.Context, identifier any) (
 	return &policy.KeyProviderConfig{
 		Id:         pcRow.ID,
 		Name:       pcRow.ProviderName,
+		Manager:    pcRow.Manager,
 		ConfigJson: pcRow.Config,
 		Metadata:   metadata,
 	}, nil
@@ -109,6 +113,7 @@ func (c PolicyDBClient) ListProviderConfigs(ctx context.Context, page *policy.Pa
 		pcs = append(pcs, &policy.KeyProviderConfig{
 			Id:         pcRow.ID,
 			Name:       pcRow.ProviderName,
+			Manager:    pcRow.Manager,
 			ConfigJson: pcRow.Config,
 			Metadata:   metadata,
 		})
@@ -134,6 +139,7 @@ func (c PolicyDBClient) ListProviderConfigs(ctx context.Context, page *policy.Pa
 func (c PolicyDBClient) UpdateProviderConfig(ctx context.Context, r *keymanagement.UpdateProviderConfigRequest) (*policy.KeyProviderConfig, error) {
 	name := strings.ToLower(r.GetName())
 	config := r.GetConfigJson()
+	manager := r.GetManager()
 	id := r.GetId()
 
 	// if extend we need to merge the metadata
@@ -153,6 +159,7 @@ func (c PolicyDBClient) UpdateProviderConfig(ctx context.Context, r *keymanageme
 	count, err := c.Queries.updateProviderConfig(ctx, updateProviderConfigParams{
 		ID:           id,
 		ProviderName: pgtypeText(name),
+		Manager:      pgtypeText(manager),
 		Config:       config,
 		Metadata:     metadataJSON,
 	})

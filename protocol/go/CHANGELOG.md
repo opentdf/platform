@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.6.3](https://github.com/opentdf/platform/compare/protocol/go/v0.6.2...protocol/go/v0.6.3) (2025-09-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** Add manager column to provider configuration for multi-instance support ([#2722](https://github.com/opentdf/platform/issues/2722))
+
+### Features
+
+* **policy:** Add manager column to provider configuration for multi-instance support ([#2722](https://github.com/opentdf/platform/issues/2722)) ([83fc505](https://github.com/opentdf/platform/commit/83fc505ed16cb1ad150372a9b1ab1c7e9ad5e347))
+
 ## [0.6.2](https://github.com/opentdf/platform/compare/protocol/go/v0.6.1...protocol/go/v0.6.2) (2025-07-22)
 
 

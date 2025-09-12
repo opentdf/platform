@@ -1,4 +1,4 @@
-package subjectmappingbuiltin
+package subjectmappingresolution
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 )
 
 type AttributeValueFQNsToActions map[string][]*policy.Action
@@ -51,7 +52,7 @@ func EvaluateSubjectMappingsWithActions(
 			for _, subjectMapping := range attributeAndValue.GetValue().GetSubjectMappings() {
 				subjectMappingResult := true
 				for _, subjectSet := range subjectMapping.GetSubjectConditionSet().GetSubjectSets() {
-					subjectSetConditionResult, err := EvaluateSubjectSet(subjectSet, flattenedEntity)
+					subjectSetConditionResult, err := subjectmappingbuiltin.EvaluateSubjectSet(subjectSet, flattenedEntity)
 					if err != nil {
 						return nil, err
 					}

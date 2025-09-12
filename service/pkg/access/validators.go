@@ -10,7 +10,7 @@ import (
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
+	subjectmappingresolution "github.com/opentdf/platform/service/pkg/access/subject-mapping-resolution"
 )
 
 var (
@@ -176,7 +176,7 @@ func validateEntityRepresentations(entityRepresentations []*entityresolutionV2.E
 //   - resource: must not be nil
 func validateGetResourceDecision(
 	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
-	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
+	entitlements subjectmappingresolution.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resource *authzV2.Resource,
 ) error {

@@ -10,7 +10,7 @@ import (
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/protocol/go/policy"
-	access "github.com/opentdf/platform/service/internal/access/v2"
+	access "github.com/opentdf/platform/service/pkg/access"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"

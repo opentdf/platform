@@ -13,8 +13,10 @@ import (
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	authzV2Connect "github.com/opentdf/platform/protocol/go/authorization/v2/authorizationv2connect"
 	otdf "github.com/opentdf/platform/sdk"
-	"github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/access"
+	"github.com/opentdf/platform/service/pkg/access/plugin"
+	policyStore "github.com/opentdf/platform/service/pkg/access/store"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel"
@@ -29,6 +31,9 @@ type Service struct {
 	logger *logger.Logger
 	trace.Tracer
 	cache *EntitlementPolicyCache
+	// Config drives names and attribute prefixes of the enabled plugin PDPs.
+	// Any pluginPDPs available but not specified within config are disabled.
+	configuredPluginPDPs []plugin.PolicyDecisionPointConfig
 }
 
 func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler] {
@@ -73,6 +78,24 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				}
 				l.Debug("authorization service config", slog.Any("config", authZCfg.LogValue()))
 
+				// If supportedregistered plugin PDPs have a name matching auth service config,
+				// mount the interface along with its config to the auth service struct.
+				for _, pluginPDP := range srp.RegisteredPluginPDPs {
+					for _, configuredPDP := range authZCfg.PluginPDPs {
+						l.Debug("plugin name", slog.String("name", pluginPDP.Name()), slog.String("configured name", configuredPDP.Name))
+						if configuredPDP.Name == pluginPDP.Name() {
+							l.Debug("registering plugin PDP",
+								slog.String("name", pluginPDP.Name()),
+							)
+							as.configuredPluginPDPs = append(as.configuredPluginPDPs, plugin.PolicyDecisionPointConfig{
+								PolicyDecisionPointI: pluginPDP,
+								AttributePrefixes:    configuredPDP.AttributePrefixes,
+								Name:                 configuredPDP.Name,
+							})
+						}
+					}
+				}
+
 				if !authZCfg.Cache.Enabled {
 					l.Debug("entitlement policy cache is disabled")
 					return as, nil
@@ -90,7 +113,7 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 					panic(fmt.Errorf("failed to parse entitlement policy cache refresh interval [%s]: %w", authZCfg.Cache.RefreshInterval, err))
 				}
 
-				retriever := access.NewEntitlementPolicyRetriever(as.sdk)
+				retriever := policyStore.NewEntitlementPolicyRetriever(as.sdk)
 				as.cache, err = NewEntitlementPolicyCache(context.Background(), l, retriever, cacheClient, refreshInterval)
 				if err != nil {
 					l.Error("failed to create entitlement policy cache", slog.Any("error", err))
@@ -136,7 +159,7 @@ func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[aut
 	withComprehensiveHierarchy := req.Msg.GetWithComprehensiveHierarchy()
 
 	// When authorization service can consume cached policy, switch to the other PDP (process based on policy passed in)
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache)
+	pdp, err := access.NewJustInTimeAuthorizer(ctx, as.logger, as.sdk, as.cache, nil)
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -166,7 +189,7 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	propagator := otel.GetTextMapPropagator()
 	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
 
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache)
+	pdp, err := access.NewJustInTimeAuthorizer(ctx, as.logger, as.sdk, as.cache, as.configuredPluginPDPs)
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -204,7 +227,7 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 	propagator := otel.GetTextMapPropagator()
 	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
 
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache)
+	pdp, err := access.NewJustInTimeAuthorizer(ctx, as.logger, as.sdk, as.cache, as.configuredPluginPDPs)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, errors.Join(errors.New("failed to create JIT PDP"), err))
 	}
@@ -244,7 +267,7 @@ func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[aut
 	propagator := otel.GetTextMapPropagator()
 	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
 
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache)
+	pdp, err := access.NewJustInTimeAuthorizer(ctx, as.logger, as.sdk, as.cache, as.configuredPluginPDPs)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, errors.Join(errors.New("failed to create JIT PDP"), err))
 	}

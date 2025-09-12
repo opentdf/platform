@@ -11,8 +11,8 @@ import (
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
+	subjectmappingresolution "github.com/opentdf/platform/service/pkg/access/subject-mapping-resolution"
 )
 
 var (
@@ -31,7 +31,7 @@ func getResourceDecision(
 	l *logger.Logger,
 	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 	accessibleRegisteredResourceValues map[string]*policy.RegisteredResourceValue,
-	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
+	entitlements subjectmappingresolution.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resource *authz.Resource,
 ) (*ResourceDecision, error) {
@@ -111,7 +111,7 @@ func evaluateResourceAttributeValues(
 	resourceID string,
 	resourceName string,
 	action *policy.Action,
-	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
+	entitlements subjectmappingresolution.AttributeValueFQNsToActions,
 	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 ) (*ResourceDecision, error) {
 	// Group value FQNs by parent definition
@@ -164,7 +164,7 @@ func evaluateResourceAttributeValues(
 func evaluateDefinition(
 	ctx context.Context,
 	l *logger.Logger,
-	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
+	entitlements subjectmappingresolution.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resourceValueFQNs []string,
 	attrDefinition *policy.Attribute,
@@ -220,7 +220,7 @@ func evaluateDefinition(
 func allOfRule(
 	_ context.Context,
 	_ *logger.Logger,
-	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
+	entitlements subjectmappingresolution.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resourceValueFQNs []string,
 ) []EntitlementFailure {
@@ -260,7 +260,7 @@ func allOfRule(
 func anyOfRule(
 	_ context.Context,
 	_ *logger.Logger,
-	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
+	entitlements subjectmappingresolution.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resourceValueFQNs []string,
 ) []EntitlementFailure {
@@ -311,7 +311,7 @@ func anyOfRule(
 func hierarchyRule(
 	ctx context.Context,
 	l *logger.Logger,
-	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
+	entitlements subjectmappingresolution.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resourceValueFQNs []string,
 	attrDefinition *policy.Attribute,

@@ -16,6 +16,7 @@ import (
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/kas"
 	logging "github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/access/plugin"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -102,13 +103,14 @@ func (s ServiceName) String() string {
 }
 
 type startServicesParams struct {
-	cfg                 *config.Config
-	otdf                *server.OpenTDFServer
-	client              *sdk.SDK
-	logger              *logging.Logger
-	reg                 *serviceregistry.Registry
-	cacheManager        *cache.Manager
-	keyManagerFactories []trust.NamedKeyManagerFactory
+	cfg                  *config.Config
+	otdf                 *server.OpenTDFServer
+	client               *sdk.SDK
+	logger               *logging.Logger
+	reg                  *serviceregistry.Registry
+	cacheManager         *cache.Manager
+	keyManagerFactories  []trust.NamedKeyManagerFactory
+	registeredPluginPDPs []plugin.PolicyDecisionPoint
 }
 
 // startServices iterates through the registered namespaces and starts the services
@@ -125,6 +127,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 	reg := params.reg
 	cacheManager := params.cacheManager
 	keyManagerFactories := params.keyManagerFactories
+	pluginPDPs := params.registeredPluginPDPs
 
 	// Iterate through the registered namespaces
 	for ns, namespace := range reg.GetNamespaces() {
@@ -198,6 +201,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				Tracer:                 tracer,
 				NewCacheClient:         createCacheClient,
 				KeyManagerFactories:    keyManagerFactories,
+				RegisteredPluginPDPs:   pluginPDPs,
 			})
 			if err != nil {
 				return func() {}, err

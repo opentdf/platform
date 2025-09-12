@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.10.0](https://github.com/opentdf/platform/compare/service/v0.9.0...service/v0.10.0) (2025-09-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** Add manager column to provider configuration for  multi-instance support ([#2601](https://github.com/opentdf/platform/issues/2601))
+
+### Features
+
+* **core:** add service negation for op mode ([#2680](https://github.com/opentdf/platform/issues/2680)) ([029db8c](https://github.com/opentdf/platform/commit/029db8c10af1cb8f50c2bb925d08ca0f5ddf7916))
+* **core:** Bump default write timeout. ([#2671](https://github.com/opentdf/platform/issues/2671)) ([6a233c1](https://github.com/opentdf/platform/commit/6a233c1f16c1a7ea3b059906eb0a489e06544134))
+* **core:** Encapsulate&gt;Encrypt ([#2676](https://github.com/opentdf/platform/issues/2676)) ([3c5a614](https://github.com/opentdf/platform/commit/3c5a6145c9bcac47001639bdcf2576a444493dd5))
+* **policy:** add FQN of obligation definitions/values to protos ([#2703](https://github.com/opentdf/platform/issues/2703)) ([45ded0e](https://github.com/opentdf/platform/commit/45ded0e2717cca7ca8465e642c05e02ca4acd6c5))
+* **policy:** Add manager column to provider configuration for  multi-instance support ([#2601](https://github.com/opentdf/platform/issues/2601)) ([a5fc994](https://github.com/opentdf/platform/commit/a5fc994acc5491bf8cbf751b675302b459e1f3b0))
+* **policy:** Add obligation triggers ([#2675](https://github.com/opentdf/platform/issues/2675)) ([22d0837](https://github.com/opentdf/platform/commit/22d08378c06eef1ec5d59250d3e22f81d230c49d))
+* **policy:** Allow creation and update of triggers on Obligation Values ([#2691](https://github.com/opentdf/platform/issues/2691)) ([b1e7ba1](https://github.com/opentdf/platform/commit/b1e7ba14a34c719d711db45cc9401c332c1175a5))
+* **policy:** Allow for additional context to be added to obligation triggers ([#2705](https://github.com/opentdf/platform/issues/2705)) ([7025599](https://github.com/opentdf/platform/commit/7025599b30e76bb5b546f5d68f5fee9405f8a0b5))
+* **policy:** Include Triggers in GET/LISTable reqs ([#2704](https://github.com/opentdf/platform/issues/2704)) ([b4381d1](https://github.com/opentdf/platform/commit/b4381d1f6f9777ad9041196548d52bc6f769e779))
+* **policy:** obligations + values CRUD ([#2545](https://github.com/opentdf/platform/issues/2545)) ([c194e35](https://github.com/opentdf/platform/commit/c194e3522b9dfab74a5a21747d012f88a188f989))
+* use public AES protected key from lib/ocrypto ([#2600](https://github.com/opentdf/platform/issues/2600)) ([75d7590](https://github.com/opentdf/platform/commit/75d7590ec062f822045027d4eb0b59a48bdea465))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.3.0 to 0.6.0 in /service ([#2714](https://github.com/opentdf/platform/issues/2714)) ([00354b3](https://github.com/opentdf/platform/commit/00354b3b37ea181fb007a9df390462989ef44b9c))
+* **deps:** update protovalidate to v0.14.2 to use new buf validate MessageOneofRule ([#2698](https://github.com/opentdf/platform/issues/2698)) ([1cae18e](https://github.com/opentdf/platform/commit/1cae18e6b6f4a72869b0cdb65d775e108da07872))
+* **policy:** Registered Resources should consider actions correctly within Decision Requests ([#2681](https://github.com/opentdf/platform/issues/2681)) ([cf264a2](https://github.com/opentdf/platform/commit/cf264a2701aa529a188548c5288f55ae3c95d338))
+* sanitize db schema identifiers ([#2682](https://github.com/opentdf/platform/issues/2682)) ([0d3dd94](https://github.com/opentdf/platform/commit/0d3dd945078fd3b9696a3ab258d8e35c0f272345))
+
 ## [0.9.0](https://github.com/opentdf/platform/compare/service/v0.8.0...service/v0.9.0) (2025-08-27)
 
 

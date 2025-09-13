@@ -19,7 +19,11 @@ type KeyManagerFactoryOptions struct {
 }
 
 // KeyManagerFactory defines the signature for functions that can create KeyManager instances.
+// KeyManagerFactoryCtx is preferred.
 type KeyManagerFactory func(opts *KeyManagerFactoryOptions) (KeyManager, error)
+
+// KeyManagerFactoryCtx defines the signature for functions that can create KeyManager instances.
+type KeyManagerFactoryCtx func(ctx context.Context, opts *KeyManagerFactoryOptions) (KeyManager, error)
 
 // DelegatingKeyService is a key service that multiplexes between key managers based on the key's mode.
 type DelegatingKeyService struct {
@@ -27,7 +31,7 @@ type DelegatingKeyService struct {
 	index KeyIndex
 
 	// Lazily create key managers based on their mode
-	managerFactories map[string]KeyManagerFactory
+	managerFactories map[string]KeyManagerFactoryCtx
 
 	// Cache of key managers to avoid creating them multiple times
 	managers map[string]KeyManager
@@ -47,7 +51,7 @@ type DelegatingKeyService struct {
 func NewDelegatingKeyService(index KeyIndex, l *logger.Logger, c *cache.Cache) *DelegatingKeyService {
 	return &DelegatingKeyService{
 		index:            index,
-		managerFactories: make(map[string]KeyManagerFactory),
+		managerFactories: make(map[string]KeyManagerFactoryCtx),
 		managers:         make(map[string]KeyManager),
 		l:                l,
 		c:                c,
@@ -55,6 +59,14 @@ func NewDelegatingKeyService(index KeyIndex, l *logger.Logger, c *cache.Cache) *
 }
 
 func (d *DelegatingKeyService) RegisterKeyManager(name string, factory KeyManagerFactory) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+	d.managerFactories[name] = func(_ context.Context, opts *KeyManagerFactoryOptions) (KeyManager, error) {
+		return factory(opts)
+	}
+}
+
+func (d *DelegatingKeyService) RegisterKeyManagerCtx(name string, factory KeyManagerFactoryCtx) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	d.managerFactories[name] = factory
@@ -94,7 +106,7 @@ func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier,
 		return nil, fmt.Errorf("unable to find key by ID '%s' within index %s: %w", keyID, d.index, err)
 	}
 
-	manager, err := d.getKeyManager(keyDetails.System())
+	manager, err := d.getKeyManager(ctx, keyDetails.System())
 	if err != nil {
 		return nil, fmt.Errorf("unable to get key manager for system '%s': %w", keyDetails.System(), err)
 	}
@@ -108,7 +120,7 @@ func (d *DelegatingKeyService) DeriveKey(ctx context.Context, keyID KeyIdentifie
 		return nil, fmt.Errorf("unable to find key by ID '%s' in index %s: %w", keyID, d.index, err)
 	}
 
-	manager, err := d.getKeyManager(keyDetails.System())
+	manager, err := d.getKeyManager(ctx, keyDetails.System())
 	if err != nil {
 		return nil, fmt.Errorf("unable to get key manager for system '%s': %w", keyDetails.System(), err)
 	}
@@ -118,7 +130,7 @@ func (d *DelegatingKeyService) DeriveKey(ctx context.Context, keyID KeyIdentifie
 
 func (d *DelegatingKeyService) GenerateECSessionKey(ctx context.Context, ephemeralPublicKey string) (Encapsulator, error) {
 	// Assuming a default manager for session key generation
-	manager, err := d._defKM()
+	manager, err := d._defKM(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get default key manager: %w", err)
 	}
@@ -138,7 +150,7 @@ func (d *DelegatingKeyService) Close() {
 
 // _defKM retrieves or initializes the default KeyManager.
 // It uses the `defaultMode` field to determine which manager is the default.
-func (d *DelegatingKeyService) _defKM() (KeyManager, error) {
+func (d *DelegatingKeyService) _defKM(ctx context.Context) (KeyManager, error) {
 	d.mutex.Lock()
 	// Check if defaultKeyManager is already cached
 	if d.defaultKeyManager == nil {
@@ -155,7 +167,7 @@ func (d *DelegatingKeyService) _defKM() (KeyManager, error) {
 		// This call to getKeyManager will handle its own locking and,
 		// due to the check `if name == currentDefaultMode` in getKeyManager,
 		// will error out if `defaultModeName` itself is not found, preventing recursion.
-		manager, err := d.getKeyManager(defaultModeName)
+		manager, err := d.getKeyManager(ctx, defaultModeName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get default key manager for mode '%s': %w", defaultModeName, err)
 		}
@@ -173,7 +185,7 @@ func (d *DelegatingKeyService) _defKM() (KeyManager, error) {
 	return managerToReturn, nil
 }
 
-func (d *DelegatingKeyService) getKeyManager(name string) (KeyManager, error) {
+func (d *DelegatingKeyService) getKeyManager(ctx context.Context, name string) (KeyManager, error) {
 	d.mutex.Lock()
 
 	// Check For Manager First
@@ -190,7 +202,7 @@ func (d *DelegatingKeyService) getKeyManager(name string) (KeyManager, error) {
 
 	if factoryExists {
 		options := &KeyManagerFactoryOptions{Logger: d.l.With("key-manager", name), Cache: d.c}
-		managerFromFactory, err := factory(options)
+		managerFromFactory, err := factory(ctx, options)
 		if err != nil {
 			return nil, fmt.Errorf("factory for key manager '%s' failed: %w", name, err)
 		}
@@ -212,5 +224,5 @@ func (d *DelegatingKeyService) getKeyManager(name string) (KeyManager, error) {
 		slog.String("requested_name", name),
 		slog.String("configured_default_mode", currentDefaultMode),
 	)
-	return d._defKM() // _defKM handles erroring if the default manager itself cannot be loaded.
+	return d._defKM(ctx) // _defKM handles erroring if the default manager itself cannot be loaded.
 }

@@ -1,6 +1,8 @@
 package server
 
 import (
+	"context"
+
 	"github.com/casbin/casbin/v2/persist"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -22,7 +24,7 @@ type StartConfig struct {
 	configLoaders         []config.Loader
 	configLoaderOrder     []string
 
-	trustKeyManagers []trust.NamedKeyManagerFactory
+	trustKeyManagerCtxs []trust.NamedKeyManagerCtxFactory
 }
 
 // Deprecated: Use WithConfigKey
@@ -137,9 +139,26 @@ func WithConfigLoaderOrder(loaderOrder []string) StartOptions {
 }
 
 // WithTrustKeyManagerFactories option provides factories for creating trust key managers.
+// Use WithTrustKeyManagerCtxFactories instead.
+// EXPERIMENTAL
 func WithTrustKeyManagerFactories(factories ...trust.NamedKeyManagerFactory) StartOptions {
 	return func(c StartConfig) StartConfig {
-		c.trustKeyManagers = append(c.trustKeyManagers, factories...)
+		for _, factory := range factories {
+			c.trustKeyManagerCtxs = append(c.trustKeyManagerCtxs, trust.NamedKeyManagerCtxFactory{
+				Name: factory.Name,
+				Factory: func(_ context.Context, opts *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+					return factory.Factory(opts)
+				},
+			})
+		}
+		return c
+	}
+}
+
+// WithTrustKeyManagerCtxFactories option provides factories for creating trust key managers.
+func WithTrustKeyManagerCtxFactories(factories ...trust.NamedKeyManagerCtxFactory) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.trustKeyManagerCtxs = append(c.trustKeyManagerCtxs, factories...)
 		return c
 	}
 }

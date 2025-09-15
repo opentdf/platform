@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/casbin/casbin/v2/persist"
+	"github.com/opentdf/platform/service/pkg/access/plugin"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/trust"
@@ -23,6 +24,7 @@ type StartConfig struct {
 	configLoaderOrder     []string
 
 	trustKeyManagers []trust.NamedKeyManagerFactory
+	pluginPDPs       []plugin.PolicyDecisionPoint
 }
 
 // Deprecated: Use WithConfigKey
@@ -140,6 +142,14 @@ func WithConfigLoaderOrder(loaderOrder []string) StartOptions {
 func WithTrustKeyManagerFactories(factories ...trust.NamedKeyManagerFactory) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.trustKeyManagers = append(c.trustKeyManagers, factories...)
+		return c
+	}
+}
+
+// WithPluginPDPs option allows invocation of plugin Policy Decision Points during an Access Decision.
+func WithPluginPDPs(plugins ...plugin.PolicyDecisionPoint) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.pluginPDPs = append(c.pluginPDPs, plugins...)
 		return c
 	}
 }

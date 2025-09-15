@@ -19,6 +19,7 @@ import (
 
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/access/plugin"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -49,7 +50,8 @@ type RegistrationParams struct {
 	// NewCacheClient is a function that can be used to create a new cache instance for the service
 	NewCacheClient func(cache.Options) (*cache.Cache, error)
 
-	KeyManagerFactories []trust.NamedKeyManagerFactory
+	KeyManagerFactories  []trust.NamedKeyManagerFactory
+	RegisteredPluginPDPs []plugin.PolicyDecisionPoint
 
 	////// The following functions are optional and intended to be called by the service //////
 

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
+	subjectmappingresolution "github.com/opentdf/platform/service/pkg/access/subject-mapping-resolution"
 )
 
 type DecisionResult int
@@ -47,7 +47,7 @@ type GetDecisionV2EventParams struct {
 	EntityID     string
 	ActionName   string
 	Decision     DecisionResult
-	Entitlements subjectmappingbuiltin.AttributeValueFQNsToActions
+	Entitlements subjectmappingresolution.AttributeValueFQNsToActions
 	// Allow ResourceDecisions to be typed by the caller as structure is in-flight
 	ResourceDecisions interface{}
 }
@@ -99,7 +99,7 @@ func CreateV2GetDecisionEvent(ctx context.Context, params GetDecisionV2EventPara
 
 	actorAttributes := []interface{}{
 		struct {
-			Entitlements subjectmappingbuiltin.AttributeValueFQNsToActions `json:"entitlements"`
+			Entitlements subjectmappingresolution.AttributeValueFQNsToActions `json:"entitlements"`
 		}{
 			Entitlements: params.Entitlements,
 		},

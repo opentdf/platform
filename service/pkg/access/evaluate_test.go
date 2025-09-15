@@ -9,8 +9,8 @@ import (
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
+	subjectmappingresolution "github.com/opentdf/platform/service/pkg/access/subject-mapping-resolution"
 	"github.com/opentdf/platform/service/policy/actions"
 )
 
@@ -217,7 +217,7 @@ func (s *EvaluateTestSuite) TestAllOfRule() {
 	tests := []struct {
 		name              string
 		resourceValueFQNs []string
-		entitlements      subjectmappingbuiltin.AttributeValueFQNsToActions
+		entitlements      subjectmappingresolution.AttributeValueFQNsToActions
 		expectedFailures  int
 	}{
 		{
@@ -226,7 +226,7 @@ func (s *EvaluateTestSuite) TestAllOfRule() {
 				projectAvengersFQN,
 				projectJusticeLeagueFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				projectAvengersFQN:      []*policy.Action{actionRead},
 				projectJusticeLeagueFQN: []*policy.Action{actionRead},
 			},
@@ -238,7 +238,7 @@ func (s *EvaluateTestSuite) TestAllOfRule() {
 				projectJusticeLeagueFQN,
 				projectFantasicFourFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				projectJusticeLeagueFQN: []*policy.Action{actionRead},
 				projectFantasicFourFQN:  []*policy.Action{actionCreate}, // Wrong action
 			},
@@ -250,7 +250,7 @@ func (s *EvaluateTestSuite) TestAllOfRule() {
 				projectXmenFQN,
 				projectJusticeLeagueFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				projectXmenFQN:          []*policy.Action{actionCreate}, // Wrong action
 				projectJusticeLeagueFQN: []*policy.Action{actionCreate}, // Wrong action
 			},
@@ -262,7 +262,7 @@ func (s *EvaluateTestSuite) TestAllOfRule() {
 				projectAvengersFQN,
 				projectFantasicFourFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				projectAvengersFQN: []*policy.Action{actionRead},
 				// Missing levelLowerMidFQN entirely
 			},
@@ -275,7 +275,7 @@ func (s *EvaluateTestSuite) TestAllOfRule() {
 				projectJusticeLeagueFQN,
 				projectXmenFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				projectAvengersFQN:      []*policy.Action{actionRead, actionCreate},
 				projectJusticeLeagueFQN: []*policy.Action{actionRead},
 				projectXmenFQN:          []*policy.Action{actionRead, actionCreate},
@@ -285,7 +285,7 @@ func (s *EvaluateTestSuite) TestAllOfRule() {
 		{
 			name:              "empty resource list",
 			resourceValueFQNs: []string{},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				projectAvengersFQN:      []*policy.Action{actionRead},
 				projectJusticeLeagueFQN: []*policy.Action{actionRead},
 			},
@@ -297,7 +297,7 @@ func (s *EvaluateTestSuite) TestAllOfRule() {
 				projectAvengersFQN,
 				projectJusticeLeagueFQN,
 			},
-			entitlements:     subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			entitlements:     subjectmappingresolution.AttributeValueFQNsToActions{},
 			expectedFailures: 2, // All resources should fail
 		},
 	}
@@ -344,7 +344,7 @@ func (s *EvaluateTestSuite) TestAnyOfRule() {
 	tests := []struct {
 		name              string
 		resourceValueFQNs []string
-		entitlements      subjectmappingbuiltin.AttributeValueFQNsToActions
+		entitlements      subjectmappingresolution.AttributeValueFQNsToActions
 		expectedFailCount int
 	}{
 		{
@@ -353,7 +353,7 @@ func (s *EvaluateTestSuite) TestAnyOfRule() {
 				deptFinanceFQN,
 				deptMarketingFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				deptFinanceFQN:   []*policy.Action{actionRead},
 				deptMarketingFQN: []*policy.Action{actionRead},
 			},
@@ -365,7 +365,7 @@ func (s *EvaluateTestSuite) TestAnyOfRule() {
 				deptFinanceFQN,
 				deptMarketingFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				deptFinanceFQN:   []*policy.Action{actionRead},
 				deptMarketingFQN: []*policy.Action{actionCreate}, // Wrong action
 			},
@@ -377,7 +377,7 @@ func (s *EvaluateTestSuite) TestAnyOfRule() {
 				deptFinanceFQN,
 				deptMarketingFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				deptFinanceFQN:   []*policy.Action{actionCreate}, // Wrong action
 				deptMarketingFQN: []*policy.Action{actionCreate}, // Wrong action
 			},
@@ -389,7 +389,7 @@ func (s *EvaluateTestSuite) TestAnyOfRule() {
 				deptFinanceFQN,
 				deptMarketingFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				deptLegalFQN: []*policy.Action{actionRead}, // Wrong FQN
 			},
 			expectedFailCount: 2, // Both failed so rule fails
@@ -400,7 +400,7 @@ func (s *EvaluateTestSuite) TestAnyOfRule() {
 				deptFinanceFQN,
 				deptMarketingFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				deptFinanceFQN: []*policy.Action{actionCreate, actionRead}, // Has multiple actions including the required one
 			},
 			expectedFailCount: 0, // Should pass as at least one FQN has the required action
@@ -410,7 +410,7 @@ func (s *EvaluateTestSuite) TestAnyOfRule() {
 			resourceValueFQNs: []string{
 				deptFinanceFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				deptFinanceFQN: []*policy.Action{actionRead},
 			},
 			expectedFailCount: 0,
@@ -418,7 +418,7 @@ func (s *EvaluateTestSuite) TestAnyOfRule() {
 		{
 			name:              "empty resource list",
 			resourceValueFQNs: []string{},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				deptFinanceFQN:   []*policy.Action{actionRead},
 				deptMarketingFQN: []*policy.Action{actionRead},
 			},
@@ -430,7 +430,7 @@ func (s *EvaluateTestSuite) TestAnyOfRule() {
 				deptFinanceFQN,
 				deptMarketingFQN,
 			},
-			entitlements:      subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			entitlements:      subjectmappingresolution.AttributeValueFQNsToActions{},
 			expectedFailCount: 2, // Should fail as there are no entitlements
 		},
 	}
@@ -480,7 +480,7 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 	tests := []struct {
 		name              string
 		resourceValueFQNs []string
-		entitlements      subjectmappingbuiltin.AttributeValueFQNsToActions
+		entitlements      subjectmappingresolution.AttributeValueFQNsToActions
 		expectedFailures  bool
 	}{
 		{
@@ -489,7 +489,7 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 				levelUpperMidFQN,
 				levelMidFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelUpperMidFQN: []*policy.Action{actionRead}, // Entitled to highest value
 			},
 			expectedFailures: false,
@@ -499,7 +499,7 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 			resourceValueFQNs: []string{
 				levelLowerMidFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelHighestFQN: []*policy.Action{actionRead}, // Entitled to highest value
 			},
 			expectedFailures: false,
@@ -509,7 +509,7 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 			resourceValueFQNs: []string{
 				levelLowerMidFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelUpperMidFQN: []*policy.Action{actionRead}, // Entitled to higher value
 			},
 			expectedFailures: false,
@@ -519,7 +519,7 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 			resourceValueFQNs: []string{
 				levelLowestFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelUpperMidFQN: []*policy.Action{actionRead}, // higher
 				levelMidFQN:      []*policy.Action{actionRead}, // higher
 			},
@@ -530,7 +530,7 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 			resourceValueFQNs: []string{
 				levelLowerMidFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelLowestFQN:   []*policy.Action{actionRead}, // lower
 				levelUpperMidFQN: []*policy.Action{actionRead}, // higher
 			},
@@ -542,7 +542,7 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 				levelUpperMidFQN,
 				levelMidFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelMidFQN: []*policy.Action{actionRead}, // Only entitled to lower value
 			},
 			expectedFailures: true,
@@ -553,7 +553,7 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 				levelUpperMidFQN,
 				levelMidFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelUpperMidFQN: []*policy.Action{actionCreate}, // Wrong action
 			},
 			expectedFailures: true,
@@ -565,7 +565,7 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 				levelHighestFQN, // This is highest
 				levelLowerMidFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelHighestFQN: []*policy.Action{actionRead},
 			},
 			expectedFailures: false,
@@ -575,7 +575,7 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 			resourceValueFQNs: []string{
 				levelLowestFQN, // Lowest in hierarchy (index 4)
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelHighestFQN: []*policy.Action{actionRead}, // Highest in hierarchy (index 0)
 			},
 			expectedFailures: false, // Should pass with the fix
@@ -586,7 +586,7 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 				levelLowerMidFQN, // Lower in hierarchy (index 3)
 				levelLowestFQN,   // Lowest in hierarchy (index 4)
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				// No entitlement for exact matches
 				levelHighestFQN:  []*policy.Action{actionRead}, // Much higher in hierarchy (index 0)
 				levelUpperMidFQN: []*policy.Action{actionRead}, // Higher in hierarchy (index 1)
@@ -599,7 +599,7 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 				levelMidFQN,      // Middle in hierarchy (index 2)
 				levelLowerMidFQN, // Lower in hierarchy (index 3)
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelUpperMidFQN: []*policy.Action{actionCreate}, // Higher but wrong action
 				levelHighestFQN:  []*policy.Action{actionCreate}, // Highest but wrong action
 			},
@@ -608,7 +608,7 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 		{
 			name:              "empty resource list",
 			resourceValueFQNs: []string{},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelUpperMidFQN: []*policy.Action{actionRead},
 			},
 			expectedFailures: false, // No resources to check, should pass
@@ -636,7 +636,7 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition() {
 		name           string
 		definition     *policy.Attribute
 		resourceValues []string
-		entitlements   subjectmappingbuiltin.AttributeValueFQNsToActions
+		entitlements   subjectmappingresolution.AttributeValueFQNsToActions
 		expectPass     bool
 		expectError    bool
 	}{
@@ -647,7 +647,7 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition() {
 				levelMidFQN,
 				levelLowerMidFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelMidFQN:      []*policy.Action{actionRead},
 				levelLowerMidFQN: []*policy.Action{actionRead},
 			},
@@ -661,7 +661,7 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition() {
 				deptFinanceFQN,
 				deptMarketingFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				deptFinanceFQN: []*policy.Action{actionRead},
 			},
 			expectPass:  true,
@@ -674,7 +674,7 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition() {
 				levelUpperMidFQN,
 				levelMidFQN,
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelUpperMidFQN: []*policy.Action{actionRead},
 			},
 			expectPass:  true,
@@ -690,7 +690,7 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition() {
 				},
 			},
 			resourceValues: []string{levelMidFQN},
-			entitlements:   subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			entitlements:   subjectmappingresolution.AttributeValueFQNsToActions{},
 			expectPass:     false,
 			expectError:    true,
 		},
@@ -716,7 +716,7 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 	tests := []struct {
 		name             string
 		resourceAttrs    *authz.Resource_AttributeValues
-		entitlements     subjectmappingbuiltin.AttributeValueFQNsToActions
+		entitlements     subjectmappingresolution.AttributeValueFQNsToActions
 		expectAccessible bool
 		expectError      bool
 	}{
@@ -728,7 +728,7 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 					deptFinanceFQN,
 				},
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelMidFQN:    []*policy.Action{actionRead},
 				deptFinanceFQN: []*policy.Action{actionRead},
 			},
@@ -743,7 +743,7 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 					deptFinanceFQN,
 				},
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelMidFQN:    []*policy.Action{actionRead},
 				deptFinanceFQN: []*policy.Action{actionCreate}, // Wrong action
 			},
@@ -758,7 +758,7 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 					"https://namespace.com/attr/department/value/unknown", // This FQN doesn't exist in accessibleAttributeValues
 				},
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelMidFQN: []*policy.Action{actionRead},
 			},
 			expectAccessible: false,
@@ -807,7 +807,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 	tests := []struct {
 		name         string
 		resource     *authz.Resource
-		entitlements subjectmappingbuiltin.AttributeValueFQNsToActions
+		entitlements subjectmappingresolution.AttributeValueFQNsToActions
 		expectError  bool
 		expectPass   bool
 	}{
@@ -821,7 +821,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				},
 				EphemeralId: "test-attr-values-id-1",
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelMidFQN: []*policy.Action{actionRead},
 			},
 			expectError: false,
@@ -835,7 +835,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				},
 				EphemeralId: "test-reg-res-id-1",
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelHighestFQN: []*policy.Action{actionRead},
 			},
 			expectError: false,
@@ -849,7 +849,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				},
 				EphemeralId: "test-reg-res-id-2",
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				projectAvengersFQN:      []*policy.Action{actionRead},
 				projectJusticeLeagueFQN: []*policy.Action{actionRead},
 			},
@@ -864,7 +864,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				},
 				EphemeralId: "test-reg-res-id-3",
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				// Missing projectJusticeLeagueFQN
 				projectAvengersFQN: []*policy.Action{actionRead},
 			},
@@ -879,7 +879,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				},
 				EphemeralId: "test-reg-res-id-4",
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				// Wrong action
 				levelHighestFQN: []*policy.Action{actionCreate},
 			},
@@ -894,14 +894,14 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				},
 				EphemeralId: "test-reg-res-id-5",
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{},
 			expectError:  true,
 			expectPass:   false,
 		},
 		{
 			name:         "invalid nil resource",
 			resource:     nil,
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{},
 			expectError:  true,
 		},
 		{
@@ -912,7 +912,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				},
 				EphemeralId: "test-reg-res-id-6",
 			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+			entitlements: subjectmappingresolution.AttributeValueFQNsToActions{
 				levelHighestFQN: []*policy.Action{actionRead},
 			},
 			expectError: false,

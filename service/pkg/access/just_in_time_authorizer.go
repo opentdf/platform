@@ -14,6 +14,9 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/service/pkg/access/plugin"
+	policyStore "github.com/opentdf/platform/service/pkg/access/store"
+	subjectmappingresolution "github.com/opentdf/platform/service/pkg/access/subject-mapping-resolution"
 
 	"github.com/opentdf/platform/service/logger"
 )
@@ -23,21 +26,24 @@ var (
 	ErrInvalidEntityType  = errors.New("access: invalid entity type")
 )
 
-type JustInTimePDP struct {
+type JustInTimeAuthorizer struct {
 	logger *logger.Logger
 	sdk    *otdfSDK.SDK
 	// embedded PDP
 	pdp *PolicyDecisionPoint
+	// plugin PDPs
+	pluginPDPs []plugin.PolicyDecisionPoint
 }
 
-// JustInTimePDP creates a new Policy Decision Point instance with no in-memory policy and a remote connection
+// JustInTimeAuthorizer creates a new Policy Decision Point instance with no in-memory policy and a remote connection
 // via authenticated SDK, then fetches all entitlement policy from provided store interface or policy services directly.
-func NewJustInTimePDP(
+func NewJustInTimeAuthorizer(
 	ctx context.Context,
 	l *logger.Logger,
 	sdk *otdfSDK.SDK,
-	store EntitlementPolicyStore,
-) (*JustInTimePDP, error) {
+	store policyStore.EntitlementPolicyStore,
+	pluginPDPs []plugin.PolicyDecisionPointConfig,
+) (*JustInTimeAuthorizer, error) {
 	var err error
 
 	if sdk == nil {
@@ -50,7 +56,7 @@ func NewJustInTimePDP(
 		}
 	}
 
-	p := &JustInTimePDP{
+	p := &JustInTimeAuthorizer{
 		sdk:    sdk,
 		logger: l,
 	}
@@ -58,7 +64,7 @@ func NewJustInTimePDP(
 	// If no store is provided, have EntitlementPolicyRetriever fetch from policy services
 	if !store.IsEnabled() || !store.IsReady(ctx) {
 		l.DebugContext(ctx, "no EntitlementPolicyStore provided or not yet ready, will retrieve directly from policy services")
-		store = NewEntitlementPolicyRetriever(sdk)
+		store = policyStore.NewEntitlementPolicyRetriever(sdk)
 	}
 
 	allAttributes, err := store.ListAllAttributes(ctx)
@@ -79,6 +85,14 @@ func NewJustInTimePDP(
 		return nil, fmt.Errorf("failed to create new policy decision point: %w", err)
 	}
 	p.pdp = pdp
+
+	for _, pluginPDPConfig := range pluginPDPs {
+		err := pluginPDPConfig.PolicyDecisionPointI.New(ctx, l, store, pluginPDPConfig.AttributePrefixes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize plugin PDP: %w", err)
+		}
+		p.pluginPDPs = append(p.pluginPDPs, pluginPDPConfig.PolicyDecisionPointI)
+	}
 	return p, nil
 }
 
@@ -86,7 +100,7 @@ func NewJustInTimePDP(
 // It resolves the entity chain to get the entity representations and then calls the embedded PDP to get the decision.
 // The decision is returned as a slice of Decision objects, along with a global boolean indicating whether or not all
 // decisions are allowed.
-func (p *JustInTimePDP) GetDecision(
+func (p *JustInTimeAuthorizer) GetDecision(
 	ctx context.Context,
 	entityIdentifier *authzV2.EntityIdentifier,
 	action *policy.Action,
@@ -127,9 +141,53 @@ func (p *JustInTimePDP) GetDecision(
 	var decisions []*Decision
 	allPermitted := true
 	for _, entityRep := range entityRepresentations {
-		d, err := p.pdp.GetDecision(ctx, entityRep, action, resources)
-		if err != nil {
-			return nil, false, fmt.Errorf("failed to get decision for entityRepresentation with original id [%s]: %w", entityRep.GetOriginalId(), err)
+		var d *Decision
+		for _, pluginPDP := range p.pluginPDPs {
+			// TODO: figure out API with multiple resources in one decision, but just strip off the first for POC
+			// TODO: remove duplicate entitlement resolution logic and refactor the regular PDP to take in entitlements instead of doing this work twice
+			if pluginPDP.IsValidDecisionableAction(action) && pluginPDP.IsValidDecisionableResource(resources[0]) {
+				// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
+				decisionableAttributes, err := getResourceDecisionableAttributes(ctx, p.pdp.logger, p.pdp.allRegisteredResourceValuesByFQN, p.pdp.allEntitleableAttributesByValueFQN /* action, */, resources)
+				if err != nil {
+					return nil, false, fmt.Errorf("error getting decisionable attributes: %w", err)
+				}
+
+				// Resolve them to their entitled FQNs and the actions available on each
+				entitledFQNsToActions, err := subjectmappingresolution.EvaluateSubjectMappingsWithActions(decisionableAttributes, entityRep)
+				if err != nil {
+					return nil, false, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
+				}
+
+				resolvedEntity := plugin.NewEntity(
+					entityRep,
+					&entitledFQNsToActions,
+					entityIdentifier,
+				)
+
+				isAllowed, err := pluginPDP.GetDecision(ctx, resolvedEntity, action, resources[0])
+				if err != nil {
+					return nil, false, fmt.Errorf("error evaluating plugin PDP %s: %w", pluginPDP.Name(), err)
+				}
+				d = &Decision{
+					Access: isAllowed,
+					Results: []ResourceDecision{
+						{
+							Passed:          isAllowed,
+							ResourceID:      resources[0].GetEphemeralId(),
+							ResourceName:    resources[0].GetRegisteredResourceValueFqn(),
+							DataRuleResults: nil,
+						},
+					},
+				}
+				break
+			}
+		}
+
+		if d == nil {
+			d, err = p.pdp.GetDecision(ctx, entityRep, action, resources)
+			if err != nil {
+				return nil, false, fmt.Errorf("failed to get decision for entityRepresentation with original id [%s]: %w", entityRep.GetOriginalId(), err)
+			}
 		}
 		if d == nil {
 			return nil, false, fmt.Errorf("decision is nil: %w", err)
@@ -146,7 +204,7 @@ func (p *JustInTimePDP) GetDecision(
 
 // GetEntitlements retrieves the entitlements for the provided entity chain.
 // It resolves the entity chain to get the entity representations and then calls the embedded PDP to get the entitlements.
-func (p *JustInTimePDP) GetEntitlements(
+func (p *JustInTimeAuthorizer) GetEntitlements(
 	ctx context.Context,
 	entityIdentifier *authzV2.EntityIdentifier,
 	withComprehensiveHierarchy bool,
@@ -198,7 +256,7 @@ func (p *JustInTimePDP) GetEntitlements(
 }
 
 // getMatchedSubjectMappings retrieves the subject mappings for the provided entity representations
-func (p *JustInTimePDP) getMatchedSubjectMappings(
+func (p *JustInTimeAuthorizer) getMatchedSubjectMappings(
 	ctx context.Context,
 	entityRepresentations []*entityresolutionV2.EntityRepresentation,
 	// updated with the results, attrValue FQN to attribute and value with subject mappings
@@ -236,7 +294,7 @@ func (p *JustInTimePDP) getMatchedSubjectMappings(
 
 // resolveEntitiesFromEntityChain roundtrips to ERS to resolve the provided entity chain
 // and optionally skips environment entities (which is expected behavior in decision flow)
-func (p *JustInTimePDP) resolveEntitiesFromEntityChain(
+func (p *JustInTimeAuthorizer) resolveEntitiesFromEntityChain(
 	ctx context.Context,
 	entityChain *entity.EntityChain,
 	skipEnvironmentEntities bool,
@@ -275,7 +333,7 @@ func (p *JustInTimePDP) resolveEntitiesFromEntityChain(
 
 // resolveEntitiesFromToken roundtrips to ERS to resolve the provided token
 // and optionally skips environment entities (which is expected behavior in decision flow)
-func (p *JustInTimePDP) resolveEntitiesFromToken(
+func (p *JustInTimeAuthorizer) resolveEntitiesFromToken(
 	ctx context.Context,
 	token *entity.Token,
 	skipEnvironmentEntities bool,

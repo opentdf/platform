@@ -49,7 +49,7 @@ func (b *BasicManager) Name() string {
 	return BasicManagerName
 }
 
-func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
+func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ocrypto.ProtectedKey, error) {
 	// Implementation of Decrypt method
 
 	// Get Private Key
@@ -74,7 +74,11 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with RSA: %w", err)
 		}
-		return NewInProcessAESKey(plaintext), nil
+		protectedKey, err := ocrypto.NewAESProtectedKey(plaintext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create protected key: %w", err)
+		}
+		return protectedKey, nil
 	case ocrypto.EC256Key, ocrypto.EC384Key, ocrypto.EC521Key:
 		ecPrivKey, err := ocrypto.ECPrivateKeyFromPem(privKey)
 		if err != nil {
@@ -88,13 +92,17 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with ephemeral key: %w", err)
 		}
-		return NewInProcessAESKey(plaintext), nil
+		protectedKey, err := ocrypto.NewAESProtectedKey(plaintext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create protected key: %w", err)
+		}
+		return protectedKey, nil
 	}
 
 	return nil, fmt.Errorf("unsupported algorithm: %s", keyDetails.Algorithm())
 }
 
-func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
+func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ocrypto.ProtectedKey, error) {
 	// Implementation of DeriveKey method
 	privateKeyCtx, err := keyDetails.ExportPrivateKey(ctx)
 	if err != nil {
@@ -130,22 +138,27 @@ func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetail
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate HKDF: %w", err)
 	}
-	return NewInProcessAESKey(key), nil
+	protectedKey, err := ocrypto.NewAESProtectedKey(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create protected key: %w", err)
+	}
+	return protectedKey, nil
 }
 
 type OCEncapsulator struct {
 	ocrypto.PublicKeyEncryptor
 }
 
-func (e *OCEncapsulator) Encapsulate(dek trust.ProtectedKey) ([]byte, error) {
-	ipk, ok := dek.(*InProcessAESKey)
-	if !ok {
-		return nil, errors.New("invalid DEK type for encapsulation")
-	}
-	return e.Encrypt(ipk.rawKey)
+func (e *OCEncapsulator) Encapsulate(dek ocrypto.ProtectedKey) ([]byte, error) {
+	// Delegate to the ProtectedKey to avoid exposing raw key material
+	return dek.Export(e)
 }
 
-func (b *BasicManager) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
+func (e *OCEncapsulator) PublicKeyAsPEM() (string, error) {
+	return e.PublicKeyEncryptor.PublicKeyInPemFormat()
+}
+
+func (b *BasicManager) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (ocrypto.Encapsulator, error) {
 	pke, err := ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create public key encryptor: %w", err)

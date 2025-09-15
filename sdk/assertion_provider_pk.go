@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -11,6 +12,85 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 )
+
+// TODO ??? prefix in name
+const KeyAssertionID = "assertion-key"
+
+type PublicKeyStatement struct {
+	Algorithm string `json:"algorithm"`
+	Key       any    `json:"key"`
+}
+
+type KeyAssertionProvider struct {
+	privateKey AssertionKey
+	publicKey  AssertionKey
+}
+
+func NewKeyAssertionProvider(privateKey AssertionKey, publicKey AssertionKey) *KeyAssertionProvider {
+	return &KeyAssertionProvider{
+		privateKey: privateKey,
+		publicKey:  publicKey,
+	}
+}
+
+func (p KeyAssertionProvider) Configure(ctx context.Context) (AssertionConfig, error) {
+	statement := PublicKeyStatement{
+		Algorithm: p.publicKey.Alg.String(),
+		Key:       p.publicKey.Key,
+	}
+
+	jsonBytes, err := json.Marshal(statement)
+	if err != nil {
+		return AssertionConfig{}, fmt.Errorf("failed to marshal public key statement: %w", err)
+	}
+	statementValue := string(jsonBytes)
+
+	return AssertionConfig{
+		ID:             KeyAssertionID,
+		Type:           BaseAssertion,
+		Scope:          PayloadScope,
+		AppliesToState: Unencrypted,
+		Statement: Statement{
+			Format: StatementFormatJSON,
+			Schema: SystemMetadataSchemaV1,
+			Value:  statementValue,
+		},
+	}, nil
+}
+
+func (p KeyAssertionProvider) Bind(ctx context.Context, ac AssertionConfig, m Manifest) (Assertion, error) {
+	assertion := Assertion{
+		ID:             ac.ID,
+		Type:           ac.Type,
+		Scope:          ac.Scope,
+		Statement:      ac.Statement,
+		AppliesToState: ac.AppliesToState,
+	}
+
+	signingProvider := NewPublicKeySigningProvider(p.privateKey)
+	// FIXME aggregation hash replaced with manifest root signature
+	if err := assertion.SignWithProvider(ctx, m.RootSignature.Signature, signingProvider); err != nil {
+		return assertion, fmt.Errorf("failed to sign assertion: %w", err)
+	}
+	return assertion, nil
+}
+
+func (p KeyAssertionProvider) Verify(ctx context.Context, a Assertion, r Reader) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (p KeyAssertionProvider) Validate(ctx context.Context, a Assertion, r Reader) error {
+	verifier, err := r.config.verifiers.Get(a.ID)
+	if err != nil {
+		return err
+	}
+	if verifier.IsEmpty() {
+		return errors.New("no verification key configured")
+	}
+	//TODO implement me, read trusted keys
+	panic("implement me")
+}
 
 // PublicKeySigningProvider implements key-based signing logic.
 // This preserves backward compatibility with the current SDK behavior.
@@ -32,7 +112,7 @@ func (p *PublicKeySigningProvider) CreateAssertionConfig() AssertionConfig {
 }
 
 // Sign creates a JWS signature using the configured key
-func (p *PublicKeySigningProvider) Sign(_ context.Context, _ *Assertion, assertionHash, assertionSig string) (string, error) {
+func (p *PublicKeySigningProvider) Sign(_ context.Context, _ *Assertion, assertionHash string) (string, error) {
 	if p.key.IsEmpty() {
 		return "", errors.New("signing key not configured")
 	}
@@ -42,6 +122,7 @@ func (p *PublicKeySigningProvider) Sign(_ context.Context, _ *Assertion, asserti
 	if err := tok.Set(kAssertionHash, assertionHash); err != nil {
 		return "", fmt.Errorf("failed to set assertion hash: %w", err)
 	}
+	assertionSig := ocrypto.Base64Encode([]byte(assertionHash))
 	if err := tok.Set(kAssertionSignature, assertionSig); err != nil {
 		return "", fmt.Errorf("failed to set assertion signature: %w", err)
 	}
@@ -71,30 +152,20 @@ func (p *PublicKeySigningProvider) GetAlgorithm() string {
 	return p.key.Alg.String()
 }
 
-// DefaultValidationProvider implements the existing key-based validation logic.
+// PublicKeyValidationProvider implements the existing key-based validation logic.
 // This preserves backward compatibility with the current SDK behavior.
-type DefaultValidationProvider struct {
+type PublicKeyValidationProvider struct {
 	keys          AssertionVerificationKeys
 	aggregateHash []byte
 }
 
-// NewDefaultValidationProvider creates a validation provider using the existing verification keys
-func NewDefaultValidationProvider() *DefaultValidationProvider {
-	return &DefaultValidationProvider{}
-}
-
-// NewDefaultValidationProviderWithKey creates a validation provider with a single key
-func NewDefaultValidationProviderWithKey(key AssertionKey, bytes []byte) *DefaultValidationProvider {
-	return &DefaultValidationProvider{
-		keys: AssertionVerificationKeys{
-			DefaultKey: key,
-		},
-		aggregateHash: bytes,
-	}
+// NewPublicKeyValidationProvider creates a validation provider using the existing verification keys
+func NewPublicKeyValidationProvider() *PublicKeyValidationProvider {
+	return &PublicKeyValidationProvider{}
 }
 
 // Verify verifies the assertion signature using the configured keys
-func (p *DefaultValidationProvider) Verify(_ context.Context, assertion Assertion, t TDFObject) error {
+func (p *PublicKeyValidationProvider) Verify(_ context.Context, assertion Assertion, t TDFObject) error {
 	//if !r.config.verifiers.IsEmpty() {
 	//	foundKey, err := r.config.verifiers.Get(assertion.ID)
 	//	if err != nil {
@@ -152,7 +223,7 @@ func (p *DefaultValidationProvider) Verify(_ context.Context, assertion Assertio
 }
 
 // IsTrusted always returns nil for the default provider (key-based trust)
-func (p *DefaultValidationProvider) IsTrusted(_ context.Context, assertion Assertion) error {
+func (p *PublicKeyValidationProvider) IsTrusted(_ context.Context, assertion Assertion) error {
 	// In the default implementation, trust is implicit if we have the key
 	key, err := p.keys.Get(assertion.ID)
 	if err != nil {
@@ -165,7 +236,7 @@ func (p *DefaultValidationProvider) IsTrusted(_ context.Context, assertion Asser
 }
 
 // GetTrustedAuthorities returns the list of configured verification keys
-func (p *DefaultValidationProvider) GetTrustedAuthorities() []string {
+func (p *PublicKeyValidationProvider) GetTrustedAuthorities() []string {
 	var authorities []string
 
 	if !p.keys.DefaultKey.IsEmpty() {
@@ -179,112 +250,6 @@ func (p *DefaultValidationProvider) GetTrustedAuthorities() []string {
 	}
 
 	return authorities
-}
-
-// PayloadKeyProvider is a special provider for using the payload key as the signing key.
-// This is used for HMAC-based assertions where the payload key itself signs the assertion.
-type PayloadKeyProvider struct {
-	payloadKey []byte
-}
-
-// NewPayloadKeyProvider creates a provider that uses the payload key for signing
-func NewPayloadKeyProvider(payloadKey []byte) *PayloadKeyProvider {
-	return &PayloadKeyProvider{
-		payloadKey: payloadKey,
-	}
-}
-
-// Sign creates a JWS signature using the payload key (HMAC-SHA256)
-func (p *PayloadKeyProvider) Sign(_ context.Context, _ *Assertion, assertionHash, assertionSig string) (string, error) {
-	if len(p.payloadKey) == 0 {
-		return "", errors.New("payload key not configured")
-	}
-
-	// Configure JWT with assertion hash and signature claims
-	tok := jwt.New()
-	if err := tok.Set(kAssertionHash, assertionHash); err != nil {
-		return "", fmt.Errorf("failed to set assertion hash: %w", err)
-	}
-	if err := tok.Set(kAssertionSignature, assertionSig); err != nil {
-		return "", fmt.Errorf("failed to set assertion signature: %w", err)
-	}
-
-	// Sign with HMAC using the payload key
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.HS256, p.payloadKey))
-	if err != nil {
-		return "", fmt.Errorf("signing assertion failed: %w", err)
-	}
-
-	return string(signedTok), nil
-}
-
-// GetSigningKeyReference returns a reference to the signing method
-func (p *PayloadKeyProvider) GetSigningKeyReference() string {
-	return "payload-key:HS256"
-}
-
-// GetAlgorithm returns the signing algorithm
-func (p *PayloadKeyProvider) GetAlgorithm() string {
-	return "HS256"
-}
-
-// PayloadKeyValidationProvider validates assertions signed with the payload key
-type PayloadKeyValidationProvider struct {
-	payloadKey []byte
-}
-
-// NewPayloadKeyValidationProvider creates a validation provider for payload key signatures
-func NewPayloadKeyValidationProvider(payloadKey []byte) *PayloadKeyValidationProvider {
-	return &PayloadKeyValidationProvider{
-		payloadKey: payloadKey,
-	}
-}
-
-// Validate verifies the assertion using the payload key
-func (p *PayloadKeyValidationProvider) Validate(_ context.Context, assertion Assertion) (string, string, error) {
-	if len(p.payloadKey) == 0 {
-		return "", "", errors.New("payload key not configured")
-	}
-
-	// Parse and verify the JWS with HMAC
-	tok, err := jwt.Parse([]byte(assertion.Binding.Signature),
-		jwt.WithKey(jwa.HS256, p.payloadKey),
-	)
-	if err != nil {
-		return "", "", fmt.Errorf("assertion verification failed: %w", err)
-	}
-
-	// Extract the hash claim
-	hashClaim, found := tok.Get(kAssertionHash)
-	if !found {
-		return "", "", errors.New("hash claim not found")
-	}
-	hash, ok := hashClaim.(string)
-	if !ok {
-		return "", "", errors.New("hash claim is not a string")
-	}
-
-	// Extract the signature claim
-	sigClaim, found := tok.Get(kAssertionSignature)
-	if !found {
-		return "", "", errors.New("signature claim not found")
-	}
-	sig, ok := sigClaim.(string)
-	if !ok {
-		return "", "", errors.New("signature claim is not a string")
-	}
-
-	return hash, sig, nil
-}
-
-// IsTrusted always returns nil for payload key validation
-func (p *PayloadKeyValidationProvider) IsTrusted(_ context.Context, _ Assertion) error {
-	return nil
-}
-
-// GetTrustedAuthorities returns payload key as the trusted authority
-func (p *PayloadKeyValidationProvider) GetTrustedAuthorities() []string {
-	return []string{"payload-key:HS256"}
 }
 
 // performStandardAssertionChecks performs the standard DEK-based assertion validation checks

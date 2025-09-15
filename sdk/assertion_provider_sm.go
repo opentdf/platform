@@ -37,12 +37,12 @@ func NewSystemMetadataAssertionProvider(useHex bool, payloadKey []byte, aggregat
 	}
 }
 
-func (s SystemMetadataAssertionProvider) Configure(_ context.Context) (AssertionConfig, error) {
+func (p SystemMetadataAssertionProvider) Configure(_ context.Context) (AssertionConfig, error) {
 	return GetSystemMetadataAssertionConfig()
 }
 
-func (s SystemMetadataAssertionProvider) Bind(ctx context.Context, ac AssertionConfig, m Manifest) (Assertion, error) {
-	tmpAssertion := Assertion{
+func (p SystemMetadataAssertionProvider) Bind(ctx context.Context, ac AssertionConfig, m Manifest) (Assertion, error) {
+	assertion := Assertion{
 		ID:             ac.ID,
 		Type:           ac.Type,
 		Scope:          ac.Scope,
@@ -50,49 +50,47 @@ func (s SystemMetadataAssertionProvider) Bind(ctx context.Context, ac AssertionC
 		AppliesToState: ac.AppliesToState,
 	}
 
-	hashOfAssertionAsHex, err := tmpAssertion.GetHash()
+	hashOfAssertionAsHex, err := assertion.GetHash()
 	if err != nil {
-		return tmpAssertion, err
+		return assertion, err
 	}
 
 	hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
 	_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
 	if err != nil {
-		return tmpAssertion, fmt.Errorf("error decoding hex string: %w", err)
+		return assertion, fmt.Errorf("error decoding hex string: %w", err)
 	}
 
 	var completeHashBuilder strings.Builder
-	completeHashBuilder.WriteString(s.aggregateHash)
-	if s.useHex {
+	completeHashBuilder.WriteString(p.aggregateHash)
+	if p.useHex {
 		completeHashBuilder.Write(hashOfAssertionAsHex)
 	} else {
 		completeHashBuilder.Write(hashOfAssertion)
 	}
 
-	encoded := ocrypto.Base64Encode([]byte(completeHashBuilder.String()))
-
 	// Fall back to default provider
 	assertionSigningKey := AssertionKey{}
 	// Set default to HS256 and payload key
 	assertionSigningKey.Alg = AssertionKeyAlgHS256
-	assertionSigningKey.Key = s.payloadKey[:]
+	assertionSigningKey.Key = p.payloadKey[:]
 	if !ac.SigningKey.IsEmpty() {
 		assertionSigningKey = ac.SigningKey
 	}
 
 	signingProvider := NewPublicKeySigningProvider(assertionSigningKey)
-
-	if err := tmpAssertion.SignWithProvider(ctx, string(hashOfAssertionAsHex), string(encoded), signingProvider); err != nil {
-		return tmpAssertion, fmt.Errorf("failed to sign assertion: %w", err)
+	// FIXME aggregation hash replaced with manifest root signature
+	if err := assertion.SignWithProvider(ctx, string(hashOfAssertionAsHex), signingProvider); err != nil {
+		return assertion, fmt.Errorf("failed to sign assertion: %w", err)
 	}
-	return tmpAssertion, nil
+	return assertion, nil
 }
 
-func (s SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, r Reader) error {
+func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, r Reader) error {
 	assertionKey := AssertionKey{}
 	// Set default to HS256
 	assertionKey.Alg = AssertionKeyAlgHS256
-	assertionKey.Key = s.payloadKey[:]
+	assertionKey.Key = p.payloadKey[:]
 
 	if !r.config.verifiers.IsEmpty() {
 		// Look up the key for the assertion
@@ -132,7 +130,7 @@ func (s SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion
 	}
 
 	var completeHashBuilder bytes.Buffer
-	completeHashBuilder.Write([]byte(s.aggregateHash))
+	completeHashBuilder.Write([]byte(p.aggregateHash))
 	completeHashBuilder.Write(hashOfAssertion)
 
 	base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
@@ -148,7 +146,7 @@ func (s SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion
 }
 
 // Validate does nothing.
-func (s SystemMetadataAssertionProvider) Validate(_ context.Context, _ Assertion, _ Reader) error {
+func (p SystemMetadataAssertionProvider) Validate(_ context.Context, _ Assertion, _ Reader) error {
 	return nil
 }
 

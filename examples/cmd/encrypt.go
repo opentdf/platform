@@ -3,7 +3,10 @@ package cmd
 
 import (
 	"bytes"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -27,6 +30,8 @@ var (
 	collection     int
 	alg            string
 	policyMode     string
+	magicWord      string
+	privateKeyPath string
 )
 
 func init() {
@@ -46,6 +51,7 @@ func init() {
 	encryptCmd.Flags().IntVarP(&collection, "collection", "c", 0, "number of nano's to create for collection. If collection >0 (default) then output will be <iteration>_<output>")
 	encryptCmd.Flags().StringVar(&policyMode, "policy-mode", "", "Store policy as encrypted instead of plaintext (nanoTDF only) [plaintext|encrypted]")
 	encryptCmd.Flags().StringVar(&magicWord, "magic-word", "", "Use a 'magic word' as a shared secret.")
+	encryptCmd.Flags().StringVar(&privateKeyPath, "private-key-path", "", "Private key for signing assertions")
 	ExamplesCmd.AddCommand(&encryptCmd)
 }
 
@@ -57,7 +63,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	plainText := args[0]
 	in := strings.NewReader(plainText)
 
-	// Configure new offline client
+	// Create new offline client
 	client, err := newSDK()
 	if err != nil {
 		return err
@@ -118,16 +124,24 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		// Assertion
 		// Create an assertion provider factory
 		factory := sdk.NewAssertionProviderFactory()
-		// Provider with state, this works in a simple CLI
-		magicWordProvider := NewMagicWordAssertionProvider(magicWord)
-		// Register the provider to handle the exact assertion ID.
-		magicWordPattern, _ := regexp.Compile("^" + MagicWordAssertionID + "$")
-		factory.RegisterAssertionProvider(magicWordPattern, magicWordProvider)
-		// Provider without state that provides system information
-		// FIXME since a DEK is needed, do not setup here
-		// systemMetadataAssertionProvider := sdk.NewSystemMetadataAssertionProvider()
-		// systemMetadataPattern, _ := regexp.Compile("^" + sdk.SystemMetadataAssertionID + "$")
-		// factory.RegisterAssertionProvider(systemMetadataPattern, systemMetadataAssertionProvider)
+		// Magic word provider
+		if magicWord != "" {
+			// constructor with word works in a simple CLI
+			magicWordProvider := NewMagicWordAssertionProvider(magicWord)
+			// Register the providers to handle the exact assertion ID.
+			magicWordPattern, _ := regexp.Compile("^" + MagicWordAssertionID + "$")
+			factory.RegisterAssertionProvider(magicWordPattern, magicWordProvider)
+		}
+
+		// Key provider
+		if privateKeyPath != "" {
+			privateKey, publicKey := getAssertionKeys(privateKeyPath)
+			publicKeyProvider := sdk.NewKeyAssertionProvider(privateKey, publicKey)
+			publicKeyPattern, _ := regexp.Compile("^public-key$")
+			factory.RegisterAssertionProvider(publicKeyPattern, publicKeyProvider)
+		}
+
+		// Add system metadata assertion (uses DEK)
 		opts = append(opts, sdk.WithSystemMetadataAssertion())
 		// Register the factory with the SDK client
 		opts = append(opts, sdk.WithCreateTDFAssertionProviderFactory(factory))
@@ -193,6 +207,53 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return nil
+}
+
+func getAssertionKeys(path string) (sdk.AssertionKey, sdk.AssertionKey) {
+	privPEM, err := os.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+	block, _ := pem.Decode(privPEM)
+	if block == nil {
+		panic("no PEM block found")
+	}
+
+	// If the private key is encrypted, you'll need the passphrase and to decrypt first.
+	// This snippet expects an unencrypted PKCS#1 or PKCS#8 key.
+	var rsaPriv *rsa.PrivateKey
+	switch block.Type {
+	case "RSA PRIVATE KEY":
+		rsaPriv, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			panic(err)
+		}
+	case "PRIVATE KEY":
+		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+		if err != nil {
+			panic(err)
+		}
+		var ok bool
+		rsaPriv, ok = key.(*rsa.PrivateKey)
+		if !ok {
+			panic(errors.New("not an RSA private key"))
+		}
+	default:
+		panic(fmt.Errorf("unsupported key type: %s", block.Type))
+	}
+
+	// Extract RSA public key
+	rsaPub := &rsaPriv.PublicKey
+
+	privateKey := sdk.AssertionKey{
+		Alg: sdk.AssertionKeyAlgRS256,
+		Key: rsaPriv,
+	}
+	publicKey := sdk.AssertionKey{
+		Alg: sdk.AssertionKeyAlgRS256,
+		Key: rsaPub,
+	}
+	return privateKey, publicKey
 }
 
 func keyTypeForKeyType(alg string) (ocrypto.KeyType, error) {

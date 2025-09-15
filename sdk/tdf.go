@@ -164,10 +164,9 @@ func (t *TDFObject) AppendAssertion(ctx context.Context, assertionConfig Asserti
 	combinedHash := make([]byte, 0, len(rootSignature)+len(assertionHashBytes))
 	combinedHash = append(combinedHash, rootSignature...)
 	combinedHash = append(combinedHash, assertionHashBytes...)
-	assertionSig := ocrypto.Base64Encode(combinedHash)
 
 	// Sign the assertion using the provided signing provider
-	if err := assertion.SignWithProvider(ctx, assertionHash, string(assertionSig), signingProvider); err != nil {
+	if err := assertion.SignWithProvider(ctx, assertionHash, signingProvider); err != nil {
 		return fmt.Errorf("failed to sign assertion: %w", err)
 	}
 

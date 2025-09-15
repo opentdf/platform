@@ -123,12 +123,12 @@ func (f *AssertionProviderFactory) GetValidationProvider(assertionID string) (As
 // --- AssertionSigningProvider Implementation ---
 
 // Sign finds the correct provider for the assertion and delegates the signing call.
-func (f *AssertionProviderFactory) Sign(ctx context.Context, assertion *Assertion, hash, sig string) (string, error) {
+func (f *AssertionProviderFactory) Sign(ctx context.Context, assertion *Assertion, hash string) (string, error) {
 	provider, err := f.GetSigningProvider(assertion.ID)
 	if err != nil {
 		return "", err
 	}
-	return provider.Sign(ctx, assertion, hash, sig)
+	return provider.Sign(ctx, assertion, hash)
 }
 
 // GetSigningKeyReference returns a placeholder as this is a factory for multiple providers.

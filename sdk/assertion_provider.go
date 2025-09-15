@@ -33,7 +33,7 @@ type AssertionSigningProvider interface {
 	// Returns:
 	//   - signature: The complete JWS compact serialization (header.payload.signature)
 	//   - err: Any error that occurred during signing
-	Sign(ctx context.Context, assertion *Assertion, assertionHash, assertionSig string) (signature string, err error)
+	Sign(ctx context.Context, assertion *Assertion, assertionHash string) (signature string, err error)
 
 	// GetSigningKeyReference returns a reference or identifier for the signing key.
 	// This is used for audit logging and debugging purposes.

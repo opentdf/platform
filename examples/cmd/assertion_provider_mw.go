@@ -1,6 +1,7 @@
 package cmd
 
 // Simple Magic Word Assertion Provider Example
+// TODO ??? passphrase
 
 import (
 	"context"

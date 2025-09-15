@@ -13,10 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	decryptAlg string
-	magicWord  string
-)
+var decryptAlg string
 
 func init() {
 	decryptCmd := &cobra.Command{
@@ -106,12 +103,14 @@ func decrypt(cmd *cobra.Command, args []string) error {
 		factory.SetDefaultValidationProvider(sdk.NoopAssertionValidationProvider{})
 		// Register the provider to handle the exact assertion ID.
 		pattern, _ := regexp.Compile("^" + MagicWordAssertionID + "$")
-		// Provider with state, this works in a simple CLI
+		// Magic word provider with state, this works in a simple CLI
 		magicWordProvider := NewMagicWordAssertionProvider(magicWord)
 		factory.RegisterAssertionProvider(pattern, magicWordProvider)
+		// Public key provider
+		//sdk.NewKeyAssertionProvider()
 		// Register the factory with the SDK client
 		opts = append(opts, sdk.WithAssertionProviderFactory(factory))
-		// Disable assertion verification
+		// Enable assertion verification
 		opts = append(opts, sdk.WithDisableAssertionVerification(false))
 		tdfreader, err := client.LoadTDF(file, opts...)
 		if err != nil {

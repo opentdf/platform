@@ -701,7 +701,7 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition() {
 			result, err := evaluateDefinition(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValues, tc.definition)
 
 			if tc.expectError {
-				s.Error(err)
+				s.Require().Error(err)
 			} else {
 				s.Require().NoError(err)
 				s.NotNil(result)
@@ -933,7 +933,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			)
 
 			if tc.expectError {
-				s.Error(err)
+				s.Require().Error(err)
 			} else {
 				s.Require().NoError(err)
 				s.NotNil(decision)

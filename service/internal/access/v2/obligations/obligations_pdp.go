@@ -2,6 +2,7 @@ package obligations
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -11,6 +12,8 @@ import (
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/logger"
 )
+
+// TODO: named errors
 
 // A graph of action names to attribute value FQNs to lists of obligation value FQNs
 // i.e. read : https://example.org/attr/attr1/value/val1 : [https://example.org/obl/some_obligation/value/some_value]
@@ -73,7 +76,7 @@ func NewObligationsPolicyDecisionPoint(
 					requiredPEPClientID := optionalRequestContext.GetPep().GetClientId()
 
 					if requiredPEPClientID == "" {
-						return nil, fmt.Errorf("trigger request context is optional but must contain PEP client ID")
+						return nil, errors.New("trigger request context is optional but must contain PEP client ID")
 					}
 					if _, ok := clientScopedTriggered[requiredPEPClientID]; !ok {
 						clientScopedTriggered[requiredPEPClientID] = make(obligationValuesByActionOnAnAttributeValue)
@@ -156,9 +159,9 @@ func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
 
 			// Check the action-attribute-values associated with a Registered Resource Value for a match to the request action
 			for _, aav := range regResValue.GetActionAttributeValues() {
-				actionName := aav.GetAction().GetName()
+				aavActionName := aav.GetAction().GetName()
 				attrValFQN := aav.GetAttributeValue().GetFqn()
-				if actionName != action.GetName() {
+				if aavActionName != actionName {
 					continue
 				}
 				attrValueFQNs = append(attrValueFQNs, attrValFQN)
@@ -175,9 +178,9 @@ func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
 		seenThisResource := make(map[string]struct{})
 		resourceRequiredOblValueFQNsSet := make([]string, 0)
 		for _, attrValFQN := range attrValueFQNs {
-			if triggered, ok := attrValueFQNsToObligations[attrValFQN]; ok {
-				for _, oblValFQN := range triggered {
-					if _, ok := seenThisResource[oblValFQN]; ok {
+			if triggeredObligations, someTriggered := attrValueFQNsToObligations[attrValFQN]; someTriggered {
+				for _, oblValFQN := range triggeredObligations {
+					if _, seen := seenThisResource[oblValFQN]; seen {
 						continue
 					}
 					// Update set of obligations triggered for this specific resource
@@ -192,9 +195,9 @@ func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
 				}
 			}
 
-			if triggered, ok := p.clientIDScopedTriggerActionsToAttributes[pepClientID][action.GetName()][attrValFQN]; ok {
-				for _, oblValFQN := range triggered {
-					if _, ok := seenThisResource[oblValFQN]; ok {
+			if triggeredObligations, someTriggered := p.clientIDScopedTriggerActionsToAttributes[pepClientID][actionName][attrValFQN]; someTriggered {
+				for _, oblValFQN := range triggeredObligations {
+					if _, seen := seenThisResource[oblValFQN]; seen {
 						continue
 					}
 					// Update set of obligations triggered for this specific resource

@@ -141,7 +141,7 @@ func (s *ObligationsPDPSuite) Test_NoObligationsTriggered() {
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			perResource, all, err := s.pdp.GetRequiredObligations(t.Context(), tt.args.action, tt.args.resources, tt.args.decisionRequestContext)
-			s.NoError(err)
+			s.Require().NoError(err)
 			s.Len(perResource, len(tt.args.resources))
 
 			for _, r := range perResource {
@@ -166,7 +166,7 @@ func (s *ObligationsPDPSuite) Test_SimpleObligation_NoRequestContextPEP_Triggere
 
 	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), mockAction, resources, decisionRequestContext)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal([][]string{{mockObligationFQN1}}, perResource)
 	s.Equal([]string{mockObligationFQN1}, all)
 }
@@ -189,7 +189,7 @@ func (s *ObligationsPDPSuite) Test_ClientScopedObligation_Triggered() {
 
 	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), mockAction, resources, decisionRequestContext)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal([][]string{{mockObligationFQN2}}, perResource)
 	s.Equal([]string{mockObligationFQN2}, all)
 }
@@ -225,7 +225,7 @@ func (s *ObligationsPDPSuite) Test_MixedObligations_Triggered() {
 	}
 
 	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), mockAction, resources, decisionRequestContext)
-	s.NoError(err)
+	s.Require().NoError(err)
 	// Obligations in order of resources: unscoped, scoped, both
 	s.Equal([][]string{{mockObligationFQN1}, {mockObligationFQN2}, {mockObligationFQN1, mockObligationFQN2}}, perResource)
 	// Deduplicated obligations
@@ -244,7 +244,7 @@ func (s *ObligationsPDPSuite) Test_UnknownRegisteredResourceValue_Fails() {
 	decisionRequestContext := &policy.RequestContext{}
 
 	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), mockAction, resources, decisionRequestContext)
-	s.Error(err)
+	s.Require().Error(err)
 	s.Empty(perResource)
 	s.Empty(all)
 	s.Contains(err.Error(), badRegResValFQN)

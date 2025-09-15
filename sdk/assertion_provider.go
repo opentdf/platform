@@ -12,9 +12,9 @@ var ErrProviderNotImplemented = errors.New("provider method not implemented")
 type AssertionProvider interface {
 	Configure(ctx context.Context) (AssertionConfig, error)
 	Bind(ctx context.Context, ac AssertionConfig, m Manifest) (Assertion, error)
-	Verify(ctx context.Context, a Assertion, t TDFObject) error
+	Verify(ctx context.Context, a Assertion, r Reader) error
 	// TODO add obligationStatus and more
-	Validate(ctx context.Context, a Assertion) error
+	Validate(ctx context.Context, a Assertion, r Reader) error
 }
 
 // AssertionSigningProvider defines the interface for custom assertion signing implementations.
@@ -60,7 +60,7 @@ type AssertionValidationProvider interface {
 	//   - hash: The assertion hash from the validated signature
 	//   - sig: The assertion signature from the validated signature
 	//   - err: Any validation error
-	Validate(ctx context.Context, assertion Assertion) error
+	Validate(ctx context.Context, assertion Assertion, r Reader) error
 
 	// IsTrusted checks if the signing entity is trusted according to this provider's policy.
 	// This can involve certificate chain validation, revocation checking, or custom trust logic.
@@ -74,7 +74,7 @@ type AssertionValidationProvider interface {
 // NoopAssertionValidationProvider No operation performed, set this as default in non-strict strategy
 type NoopAssertionValidationProvider struct{}
 
-func (NoopAssertionValidationProvider) Validate(_ context.Context, _ Assertion) error {
+func (NoopAssertionValidationProvider) Validate(_ context.Context, _ Assertion, _ Reader) error {
 	return nil
 }
 func (NoopAssertionValidationProvider) IsTrusted(_ context.Context, _ Assertion) error {
@@ -89,10 +89,9 @@ type bridgeAssertionValidationProvider struct {
 }
 
 // Validate does Verify and Validate, so we call both here
-func (b bridgeAssertionValidationProvider) Validate(ctx context.Context, assertion Assertion) error {
-	t := TDFObject{}
-	b.p.Verify(ctx, assertion, t)
-	return b.p.Validate(ctx, assertion)
+func (b bridgeAssertionValidationProvider) Validate(ctx context.Context, assertion Assertion, r Reader) error {
+	b.p.Verify(ctx, assertion, r)
+	return b.p.Validate(ctx, assertion, r)
 }
 func (b bridgeAssertionValidationProvider) IsTrusted(ctx context.Context, assertion Assertion) error {
 	//TODO implement me

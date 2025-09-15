@@ -144,12 +144,12 @@ func (f *AssertionProviderFactory) GetAlgorithm() string {
 // --- AssertionValidationProvider Implementation ---
 
 // Validate finds the correct provider for the assertion and delegates the validation call.
-func (f *AssertionProviderFactory) Validate(ctx context.Context, assertion Assertion) error {
+func (f *AssertionProviderFactory) Validate(ctx context.Context, assertion Assertion, r Reader) error {
 	provider, err := f.GetValidationProvider(assertion.ID)
 	if err != nil {
 		return err
 	}
-	return provider.Validate(ctx, assertion)
+	return provider.Validate(ctx, assertion, r)
 }
 
 // IsTrusted finds the correct provider and delegates the trust check.

@@ -16,6 +16,7 @@ import (
 // i.e. read : https://example.org/attr/attr1/value/val1 : [https://example.org/obl/some_obligation/value/some_value]
 type obligationValuesByActionOnAnAttributeValue map[string]map[string][]string
 
+//nolint:revive // There are a growing number of PDP types, so keep the naming verbose
 type ObligationsPolicyDecisionPoint struct {
 	logger                        *logger.Logger
 	attributesByValueFQN          map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue

@@ -140,7 +140,7 @@ func (s *ObligationsPDPSuite) Test_NoObligationsTriggered() {
 	}
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), tt.args.action, tt.args.resources, tt.args.decisionRequestContext)
+			perResource, all, err := s.pdp.GetRequiredObligations(t.Context(), tt.args.action, tt.args.resources, tt.args.decisionRequestContext)
 			s.NoError(err)
 			s.Len(perResource, len(tt.args.resources))
 

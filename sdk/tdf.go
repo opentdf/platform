@@ -455,6 +455,9 @@ func (s SDK) newGranter(ctx context.Context, tdfConfig *TDFConfig, err error) (g
 	} else if len(tdfConfig.attributes) > 0 {
 		g, err = newGranterFromService(ctx, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
 	}
+	if err != nil {
+		return g, err
+	}
 	g.keyInfoFetcher = s
 	return g, err
 }

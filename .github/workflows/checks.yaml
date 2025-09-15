@@ -468,7 +468,7 @@ jobs:
       - uses: opentdf/platform/test/start-up-with-containers@main
         with:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: opentdf/otdfctl/e2e@chore/ci-parallel
+      - uses: opentdf/otdfctl/e2e@main
         with:
           otdfctl-ref: "main"
 

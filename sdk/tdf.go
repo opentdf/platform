@@ -149,12 +149,6 @@ func (t *TDFObject) AppendAssertion(ctx context.Context, assertionConfig Asserti
 		return errors.New("signing provider is required for assertion appending")
 	}
 
-	// Calculate the aggregate hash from existing segments
-	aggregateHash, err := t.calculateAggregateHash()
-	if err != nil {
-		return fmt.Errorf("failed to calculate aggregate hash: %w", err)
-	}
-
 	// Configure the assertion from config
 	assertion := Assertion{
 		ID:             assertionConfig.ID,
@@ -170,10 +164,11 @@ func (t *TDFObject) AppendAssertion(ctx context.Context, assertionConfig Asserti
 		return fmt.Errorf("failed to get assertion hash: %w", err)
 	}
 	assertionHash := string(assertionHashBytes)
-
-	// Combine aggregate hash with assertion hash for binding
-	combinedHash := make([]byte, 0, len(aggregateHash)+len(assertionHashBytes))
-	combinedHash = append(combinedHash, aggregateHash...)
+	// TODO review root signature usage
+	// Combine rootSignature (signed and encoded aggregate hash) with assertion hash for binding
+	rootSignature := t.manifest.RootSignature.Signature
+	combinedHash := make([]byte, 0, len(rootSignature)+len(assertionHashBytes))
+	combinedHash = append(combinedHash, rootSignature...)
 	combinedHash = append(combinedHash, assertionHashBytes...)
 	assertionSig := ocrypto.Base64Encode(combinedHash)
 
@@ -186,22 +181,6 @@ func (t *TDFObject) AppendAssertion(ctx context.Context, assertionConfig Asserti
 	t.manifest.Assertions = append(t.manifest.Assertions, assertion)
 
 	return nil
-}
-
-// FIXME not right calculation
-// calculateAggregateHash reconstructs the aggregate hash from the TDF's segments
-func (t *TDFObject) calculateAggregateHash() ([]byte, error) {
-	var aggregateHashBuilder strings.Builder
-
-	for _, segment := range t.manifest.EncryptionInformation.IntegrityInformation.Segments {
-		decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode segment hash: %w", err)
-		}
-		aggregateHashBuilder.Write(decodedHash)
-	}
-
-	return []byte(aggregateHashBuilder.String()), nil
 }
 
 func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) {
@@ -1387,8 +1366,18 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 	}
 
 	// Validate assertions
-	if err := r.validateAssertions(ctx); err != nil {
-		return err
+	for _, assertion := range r.manifest.Assertions {
+		validator, err := r.config.AssertionProviderFactory.GetValidationProvider(assertion.ID)
+		if err != nil {
+			// TODO ??? ignore unknown assertions
+			continue
+		}
+
+		// Verify with the selected provider
+		err = validator.Validate(ctx, assertion, *r)
+		if err != nil {
+			return r.handleAssertionVerificationError(assertion.ID, err)
+		}
 	}
 
 	gcm, err := ocrypto.NewAESGcm(payloadKey[:])
@@ -1400,23 +1389,6 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 	r.payloadKey = payloadKey[:]
 	r.aesGcm = gcm
 
-	return nil
-}
-
-// validateAssertions handles assertion validation with appropriate provider selection
-func (r *Reader) validateAssertions(ctx context.Context) error {
-	for _, assertion := range r.manifest.Assertions {
-		validator, err := r.config.AssertionProviderFactory.GetValidationProvider(assertion.ID)
-		if err != nil {
-			// TODO ??? ignore unknown assertions
-		}
-
-		// Verify with the selected provider
-		err = validator.Validate(ctx, assertion)
-		if err != nil {
-			return r.handleAssertionVerificationError(assertion.ID, err)
-		}
-	}
 	return nil
 }
 

@@ -3,9 +3,11 @@ package sdk
 // System Metadata Assertion Provider
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
@@ -86,13 +88,67 @@ func (s SystemMetadataAssertionProvider) Bind(ctx context.Context, ac AssertionC
 	return tmpAssertion, nil
 }
 
-func (s SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, t TDFObject) error {
-	// TODO implement me
-	panic("implement me")
+func (s SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, r Reader) error {
+	assertionKey := AssertionKey{}
+	// Set default to HS256
+	assertionKey.Alg = AssertionKeyAlgHS256
+	assertionKey.Key = s.payloadKey[:]
+
+	if !r.config.verifiers.IsEmpty() {
+		// Look up the key for the assertion
+		foundKey, err := r.config.verifiers.Get(a.ID)
+
+		if err != nil {
+			return fmt.Errorf("%w: %w", ErrAssertionFailure{ID: a.ID}, err)
+		} else if !foundKey.IsEmpty() {
+			assertionKey.Alg = foundKey.Alg
+			assertionKey.Key = foundKey.Key
+		}
+	}
+
+	assertionHash, assertionSig, err := a.Verify(assertionKey)
+	if err != nil {
+		if errors.Is(err, errAssertionVerifyKeyFailure) {
+			return fmt.Errorf("assertion verification failed: %w", err)
+		}
+		return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: a.ID}, err)
+	}
+
+	// Get the hash of the assertion
+	hashOfAssertionAsHex, err := a.GetHash()
+	if err != nil {
+		return fmt.Errorf("%w: failed to get hash of assertion: %w", ErrAssertionFailure{ID: a.ID}, err)
+	}
+
+	hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
+	_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
+	if err != nil {
+		return fmt.Errorf("error decoding hex string: %w", err)
+	}
+
+	isLegacyTDF := r.manifest.TDFVersion == ""
+	if isLegacyTDF {
+		hashOfAssertion = hashOfAssertionAsHex
+	}
+
+	var completeHashBuilder bytes.Buffer
+	completeHashBuilder.Write([]byte(s.aggregateHash))
+	completeHashBuilder.Write(hashOfAssertion)
+
+	base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
+
+	if string(hashOfAssertionAsHex) != assertionHash {
+		return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: a.ID})
+	}
+
+	if assertionSig != string(base64Hash) {
+		return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: a.ID})
+	}
+	return nil
 }
 
 // Validate does nothing.
-func (s SystemMetadataAssertionProvider) Validate(_ context.Context, _ Assertion) error {
+func (s SystemMetadataAssertionProvider) Validate(_ context.Context, _ Assertion, _ Reader) error {
 	return nil
 }
 

@@ -7,6 +7,8 @@ import (
 	"fmt"
 
 	"github.com/gowebpki/jcs"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 )
 
@@ -59,6 +61,35 @@ func (a *Assertion) SignWithProvider(ctx context.Context, hash, sig string, prov
 	a.Binding.Signature = signature
 
 	return nil
+}
+
+// Verify checks the binding signature of the assertion and
+// returns the hash and the signature. It returns an error if the verification fails.
+func (a Assertion) Verify(key AssertionKey) (string, string, error) {
+	tok, err := jwt.Parse([]byte(a.Binding.Signature),
+		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key),
+	)
+	if err != nil {
+		return "", "", fmt.Errorf("%w: %w", errAssertionVerifyKeyFailure, err)
+	}
+	hashClaim, found := tok.Get(kAssertionHash)
+	if !found {
+		return "", "", errors.New("hash claim not found")
+	}
+	hash, ok := hashClaim.(string)
+	if !ok {
+		return "", "", errors.New("hash claim is not a string")
+	}
+
+	sigClaim, found := tok.Get(kAssertionSignature)
+	if !found {
+		return "", "", errors.New("signature claim not found")
+	}
+	sig, ok := sigClaim.(string)
+	if !ok {
+		return "", "", errors.New("signature claim is not a string")
+	}
+	return hash, sig, nil
 }
 
 // GetHash returns the hash of the assertion in hex format.

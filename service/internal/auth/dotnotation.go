@@ -1,8 +1,9 @@
-package util
+package auth
 
 import "strings"
 
-func Dotnotation(m map[string]interface{}, key string) interface{} {
+// dotNotation retrieves a value from a nested map using dot notation keys.
+func dotNotation(m map[string]any, key string) any {
 	keys := strings.Split(key, ".")
 	for i, k := range keys {
 		if i == len(keys)-1 {
@@ -12,7 +13,7 @@ func Dotnotation(m map[string]interface{}, key string) interface{} {
 			return nil
 		}
 		var ok bool
-		m, ok = m[k].(map[string]interface{})
+		m, ok = m[k].(map[string]any)
 		if !ok {
 			return nil
 		}

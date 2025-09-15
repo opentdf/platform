@@ -1,7 +1,5 @@
 package cache
 
-import "github.com/opentdf/platform/service/pkg/util"
-
 const defaultCacheMaxCostBytes int64 = 1 * 1024 * 1024 * 1024 // 1GB
 
 type Config struct {
@@ -18,5 +16,5 @@ type RistrettoConfig struct {
 // MaxCostBytes parses MaxCost and returns the value in bytes.
 // Supports suffixes: b, kb, mb, gb, tb (case-insensitive).
 func (c RistrettoConfig) MaxCostBytes() int64 {
-	return util.RelativeFileSizeToBytes(c.MaxCost, defaultCacheMaxCostBytes) // Default to 1GB if parsing fails
+	return relativeFileSizeToBytes(c.MaxCost, defaultCacheMaxCostBytes) // Default to 1GB if parsing fails
 }

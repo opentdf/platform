@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
 )
@@ -87,10 +88,10 @@ func (d *DelegatingKeyService) Name() string {
 	return "DelegatingKeyService"
 }
 
-func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error) {
+func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ocrypto.ProtectedKey, error) {
 	keyDetails, err := d.index.FindKeyByID(ctx, keyID)
 	if err != nil {
-		return nil, fmt.Errorf("unable to find key by ID '%s': %w", keyID, err)
+		return nil, fmt.Errorf("unable to find key by ID '%s' within index %s: %w", keyID, d.index, err)
 	}
 
 	manager, err := d.getKeyManager(keyDetails.System())
@@ -104,7 +105,7 @@ func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier,
 func (d *DelegatingKeyService) DeriveKey(ctx context.Context, keyID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error) {
 	keyDetails, err := d.index.FindKeyByID(ctx, keyID)
 	if err != nil {
-		return nil, fmt.Errorf("unable to find key by ID '%s': %w", keyID, err)
+		return nil, fmt.Errorf("unable to find key by ID '%s' in index %s: %w", keyID, d.index, err)
 	}
 
 	manager, err := d.getKeyManager(keyDetails.System())

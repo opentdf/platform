@@ -302,7 +302,7 @@ func convertStringToAlgorithm(alg string) policy.Algorithm {
 		return policy.Algorithm_ALGORITHM_EC_P521
 	case ocrypto.RSA2048Key:
 		return policy.Algorithm_ALGORITHM_RSA_2048
-	case RSA4096Key:
+	case ocrypto.RSA4096Key:
 		return policy.Algorithm_ALGORITHM_RSA_4096
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED
@@ -489,7 +489,7 @@ func algProto2String(e policy.KasPublicKeyAlgEnum) string {
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048:
 		return string(ocrypto.RSA2048Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
-		return string(RSA4096Key)
+		return string(ocrypto.RSA4096Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
 		return ""
 	}
@@ -507,7 +507,7 @@ func algProto2OcryptoKeyType(e policy.Algorithm) ocrypto.KeyType {
 	case policy.Algorithm_ALGORITHM_RSA_2048:
 		return ocrypto.RSA2048Key
 	case policy.Algorithm_ALGORITHM_RSA_4096:
-		return RSA4096Key
+		return ocrypto.RSA4096Key
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		return ocrypto.KeyType("")
 	default:

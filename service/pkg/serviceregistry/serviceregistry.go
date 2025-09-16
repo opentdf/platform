@@ -289,16 +289,21 @@ func NewServiceRegistry() *Registry {
 	}
 }
 
+type NamespaceInfo struct {
+	Name      string
+	Namespace *Namespace
+}
+
 // GetNamespaces returns all namespaces in the registry
-func (reg *Registry) GetNamespaces() map[string]*Namespace {
+func (reg *Registry) GetNamespaces() []NamespaceInfo {
 	reg.mu.RLock()
 	defer reg.mu.RUnlock()
 
-	result := make(map[string]*Namespace, len(reg.namespaces))
-	for k, v := range reg.namespaces {
-		result[k] = v
+	namespaceInfo := make([]NamespaceInfo, len(reg.order))
+	for i, name := range reg.order {
+		namespaceInfo[i] = NamespaceInfo{Name: name, Namespace: reg.namespaces[name]}
 	}
-	return result
+	return namespaceInfo
 }
 
 // RegisterService registers a service in the service registry.

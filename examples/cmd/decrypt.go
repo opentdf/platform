@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"bytes"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -97,19 +100,16 @@ func decrypt(cmd *cobra.Command, args []string) error {
 		}
 
 		// Assertion
-		// Create an assertion provider factory
-		factory := sdk.NewAssertionProviderFactory()
-		// No validation of unknown assertions (non-matching regex)
-		factory.SetDefaultValidationProvider(sdk.NoopAssertionValidationProvider{})
+		registry := sdk.NewAssertionRegistry()
 		// Register the provider to handle the exact assertion ID.
 		pattern, _ := regexp.Compile("^" + MagicWordAssertionID + "$")
 		// Magic word provider with state, this works in a simple CLI
 		magicWordProvider := NewMagicWordAssertionProvider(magicWord)
-		factory.RegisterAssertionProvider(pattern, magicWordProvider)
+		registry.RegisterValidator(pattern, magicWordProvider)
 		// Public key provider
-		//sdk.NewKeyAssertionProvider()
-		// Register the factory with the SDK client
-		opts = append(opts, sdk.WithAssertionProviderFactory(factory))
+		//sdk.NewKeyAssertionValidator()
+		// Register the registry with the SDK client
+		opts = append(opts, sdk.WithAssertionProviderFactory(registry))
 		// Enable assertion verification
 		opts = append(opts, sdk.WithDisableAssertionVerification(false))
 		tdfreader, err := client.LoadTDF(file, opts...)
@@ -129,4 +129,45 @@ func decrypt(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return nil
+}
+
+func getAssertionKeyPublic(path string) sdk.AssertionKey {
+	privPEM, err := os.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+	block, _ := pem.Decode(privPEM)
+	if block == nil {
+		panic("no PEM block found")
+	}
+
+	// If the private key is encrypted, you'll need the passphrase and to decrypt first.
+	// This snippet expects an unencrypted PKCS#1 or PKCS#8 key.
+	var rsaPriv *rsa.PrivateKey
+	switch block.Type {
+	case "RSA PRIVATE KEY":
+		rsaPriv, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			panic(err)
+		}
+	case "PRIVATE KEY":
+		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+		if err != nil {
+			panic(err)
+		}
+		var ok bool
+		rsaPriv, ok = key.(*rsa.PrivateKey)
+		if !ok {
+			panic(errors.New("not an RSA private key"))
+		}
+	default:
+		panic(fmt.Errorf("unsupported key type: %s", block.Type))
+	}
+
+	// Extract RSA public key
+	rsaPub := &rsaPriv.PublicKey
+	return sdk.AssertionKey{
+		Alg: sdk.AssertionKeyAlgRS256,
+		Key: rsaPub,
+	}
 }

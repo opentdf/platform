@@ -38,22 +38,22 @@ var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with 
 // It returns an error if the signing fails.
 // The assertion binding is updated with the method and the signature.
 func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
-	// Use default provider with the provided key
+	// Use default builder with the provided key
 	provider := NewPublicKeySigningProvider(key)
 	return a.SignWithProvider(context.Background(), hash, provider)
 }
 
-// SignWithProvider signs the assertion using a custom provider.
+// SignWithProvider signs the assertion using a custom builder.
 // This method allows for flexible signing implementations including hardware tokens.
 func (a *Assertion) SignWithProvider(ctx context.Context, hash string, provider AssertionSigningProvider) error {
 	if provider == nil {
-		return errors.New("signing provider is required")
+		return errors.New("signing builder is required")
 	}
 
-	// Use the provider to sign
+	// Use the builder to sign
 	signature, err := provider.Sign(ctx, a, hash)
 	if err != nil {
-		return fmt.Errorf("provider signing failed: %w", err)
+		return fmt.Errorf("builder signing failed: %w", err)
 	}
 
 	// set the binding

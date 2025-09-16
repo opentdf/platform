@@ -12,7 +12,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -122,29 +121,23 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			opts = append(opts, sdk.WithWrappingKeyAlg(kt))
 		}
 		// Assertion
-		// Create an assertion provider factory
-		factory := sdk.NewAssertionProviderFactory()
+		registry := sdk.NewAssertionRegistry()
 		// Magic word provider
 		if magicWord != "" {
 			// constructor with word works in a simple CLI
 			magicWordProvider := NewMagicWordAssertionProvider(magicWord)
-			// Register the providers to handle the exact assertion ID.
-			magicWordPattern, _ := regexp.Compile("^" + MagicWordAssertionID + "$")
-			factory.RegisterAssertionProvider(magicWordPattern, magicWordProvider)
+			registry.RegisterBuilder(magicWordProvider)
 		}
-
 		// Key provider
 		if privateKeyPath != "" {
-			privateKey, publicKey := getAssertionKeys(privateKeyPath)
-			publicKeyProvider := sdk.NewKeyAssertionProvider(privateKey, publicKey)
-			publicKeyPattern, _ := regexp.Compile("^public-key$")
-			factory.RegisterAssertionProvider(publicKeyPattern, publicKeyProvider)
+			privateKey := getAssertionKeys(privateKeyPath)
+			publicKeyProvider := sdk.NewKeyAssertionBuilder(privateKey)
+			registry.RegisterBuilder(publicKeyProvider)
 		}
-
 		// Add system metadata assertion (uses DEK)
 		opts = append(opts, sdk.WithSystemMetadataAssertion())
-		// Register the factory with the SDK client
-		opts = append(opts, sdk.WithCreateTDFAssertionProviderFactory(factory))
+		// Add assertion registry
+		opts = append(opts, sdk.WithAssertionRegistryBuilder(registry))
 		tdf, err := client.CreateTDFContext(cmd.Context(), out, in, opts...)
 		if err != nil {
 			return err
@@ -209,7 +202,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getAssertionKeys(path string) (sdk.AssertionKey, sdk.AssertionKey) {
+func getAssertionKeys(path string) sdk.AssertionKey {
 	privPEM, err := os.ReadFile(path)
 	if err != nil {
 		panic(err)
@@ -241,19 +234,10 @@ func getAssertionKeys(path string) (sdk.AssertionKey, sdk.AssertionKey) {
 	default:
 		panic(fmt.Errorf("unsupported key type: %s", block.Type))
 	}
-
-	// Extract RSA public key
-	rsaPub := &rsaPriv.PublicKey
-
-	privateKey := sdk.AssertionKey{
+	return sdk.AssertionKey{
 		Alg: sdk.AssertionKeyAlgRS256,
 		Key: rsaPriv,
 	}
-	publicKey := sdk.AssertionKey{
-		Alg: sdk.AssertionKeyAlgRS256,
-		Key: rsaPub,
-	}
-	return privateKey, publicKey
 }
 
 func keyTypeForKeyType(alg string) (ocrypto.KeyType, error) {

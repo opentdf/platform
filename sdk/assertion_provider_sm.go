@@ -69,7 +69,7 @@ func (p SystemMetadataAssertionProvider) Bind(ctx context.Context, ac AssertionC
 		completeHashBuilder.Write(hashOfAssertion)
 	}
 
-	// Fall back to default provider
+	// Fall back to default builder
 	assertionSigningKey := AssertionKey{}
 	// Set default to HS256 and payload key
 	assertionSigningKey.Alg = AssertionKeyAlgHS256

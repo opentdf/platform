@@ -22,7 +22,7 @@ var (
 var assertionCmd = &cobra.Command{
 	Use:   "assertion",
 	Short: "Demonstrates custom assertion providers",
-	Long: `Examples for using custom assertion providers with the AssertionProviderFactory.
+	Long: `Examples for using custom assertion providers with the assertionManager.
 
 The "Magic Word" provider is a basic implementation used for demonstration purposes.
 It "signs" assertions by appending a secret word and validates them by checking for it.`,

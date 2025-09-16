@@ -79,8 +79,8 @@ type TDFConfig struct {
 	useHex                     bool
 	excludeVersionFromManifest bool
 	addSystemMetadataAssertion bool
-	// AssertionProviderFactory allows custom assertions (optional)
-	AssertionProviderFactory *AssertionProviderFactory
+	// assertionRegistry allows custom assertions
+	assertionRegistry *AssertionRegistry
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -253,10 +253,10 @@ func WithTargetMode(mode string) TDFOption {
 	}
 }
 
-// WithCreateTDFAssertionProviderFactory enables custom assertion signing
-func WithCreateTDFAssertionProviderFactory(factory *AssertionProviderFactory) TDFOption {
+// WithAssertionRegistryBuilder enables custom assertion signing
+func WithAssertionRegistryBuilder(registry *AssertionRegistry) TDFOption {
 	return func(c *TDFConfig) error {
-		c.AssertionProviderFactory = factory
+		c.assertionRegistry = registry
 		return nil
 	}
 }
@@ -276,10 +276,10 @@ type TDFReaderOption func(*TDFReaderConfig) error
 type TDFReaderConfig struct {
 	// verifiers verification public keys
 	verifiers AssertionVerificationKeys
-	// TODO only disable DEK?
+	// TODO ??? disable all assertion verification?
 	disableAssertionVerification bool
-	// AssertionProviderFactory allows custom validation implementation
-	AssertionProviderFactory *AssertionProviderFactory
+	// assertionRegistry allows custom verification and validation implementation
+	assertionRegistry *AssertionRegistry
 
 	schemaValidationIntensity SchemaValidationIntensity
 	kasSessionKey             ocrypto.KeyPair
@@ -403,11 +403,11 @@ func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOpti
 	}
 }
 
-// WithAssertionProviderFactory sets a custom assertion validation provider for reading.
-// If not set, the default key-based provider will be used.
-func WithAssertionProviderFactory(factory *AssertionProviderFactory) TDFReaderOption {
+// WithAssertionProviderFactory sets a custom assertion validation builder for reading.
+// If not set, the default key-based builder will be used.
+func WithAssertionProviderFactory(factory *AssertionRegistry) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
-		c.AssertionProviderFactory = factory
+		c.assertionRegistry = factory
 		return nil
 	}
 }

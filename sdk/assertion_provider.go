@@ -3,19 +3,26 @@ package sdk
 import (
 	"context"
 	"crypto/x509"
-	"errors"
 )
 
-// ErrProviderNotImplemented is returned when a method is not implemented by a provider
-var ErrProviderNotImplemented = errors.New("provider method not implemented")
-
 type AssertionProvider interface {
+	AssertionBuilder
+	AssertionValidator
+}
+
+type AssertionBuilder interface {
+	// FIXME ??? remove only needed during Bind
 	Configure(ctx context.Context) (AssertionConfig, error)
 	Bind(ctx context.Context, ac AssertionConfig, m Manifest) (Assertion, error)
+}
+
+type AssertionValidator interface {
 	Verify(ctx context.Context, a Assertion, r Reader) error
 	// TODO add obligationStatus and more
 	Validate(ctx context.Context, a Assertion, r Reader) error
 }
+
+// ------ Deprecate in favor of AssertionBuilder and AssertionValidator  ------
 
 // AssertionSigningProvider defines the interface for custom assertion signing implementations.
 // This allows integration with external signing mechanisms like hardware security modules,
@@ -39,10 +46,10 @@ type AssertionSigningProvider interface {
 	// This is used for audit logging and debugging purposes.
 	GetSigningKeyReference() string
 
-	// GetAlgorithm returns the signing algorithm used by this provider (e.g., "RS256", "ES256")
+	// GetAlgorithm returns the signing algorithm used by this builder (e.g., "RS256", "ES256")
 	GetAlgorithm() string
 
-	// CreateAssertionConfig the signing provider creates the specific AssertionConfig
+	// CreateAssertionConfig the signing builder creates the specific AssertionConfig
 	CreateAssertionConfig() AssertionConfig
 }
 
@@ -62,7 +69,7 @@ type AssertionValidationProvider interface {
 	//   - err: Any validation error
 	Validate(ctx context.Context, assertion Assertion, r Reader) error
 
-	// IsTrusted checks if the signing entity is trusted according to this provider's policy.
+	// IsTrusted checks if the signing entity is trusted according to this builder's policy.
 	// This can involve certificate chain validation, revocation checking, or custom trust logic.
 	IsTrusted(ctx context.Context, assertion Assertion) error
 
@@ -141,7 +148,7 @@ type HardwareSigningOptions struct {
 	Algorithm string
 }
 
-// ProviderCapabilities describes what a provider supports
+// ProviderCapabilities describes what a builder supports
 type ProviderCapabilities struct {
 	// SupportsHardware indicates hardware token support
 	SupportsHardware bool
@@ -152,14 +159,14 @@ type ProviderCapabilities struct {
 	// SupportsX5C indicates support for X.509 certificate chains
 	SupportsX5C bool
 
-	// SupportsBatching indicates if the provider can handle batch operations
+	// SupportsBatching indicates if the builder can handle batch operations
 	SupportsBatching bool
 
 	// MaxSignatureRate is the maximum signatures per second (0 = unlimited)
 	MaxSignatureRate int
 }
 
-// ProviderMetrics tracks provider performance and usage
+// ProviderMetrics tracks builder performance and usage
 type ProviderMetrics struct {
 	// TotalSignatures is the total number of signatures created
 	TotalSignatures int64

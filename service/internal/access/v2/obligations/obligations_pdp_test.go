@@ -1,7 +1,6 @@
 package obligations
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -253,7 +252,7 @@ func (s *ObligationsPDPSuite) Test_NewObligationsPolicyDecisionPoint_EmptyClient
 	)
 
 	s.Require().Error(err)
-	s.True(errors.Is(err, ErrEmptyPEPClientID), "error should be ErrEmptyPEPClientID")
+	s.ErrorIs(err, ErrEmptyPEPClientID)
 	s.Nil(pdp)
 }
 
@@ -433,7 +432,7 @@ func (s *ObligationsPDPSuite) Test_GetRequiredObligations_UnknownRegisteredResou
 
 	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
 	s.Require().Error(err)
-	s.True(errors.Is(err, ErrUnknownRegisteredResourceValue))
+	s.ErrorIs(err, ErrUnknownRegisteredResourceValue)
 	s.Contains(err.Error(), badRegResValFQN, "error should contain the FQN that was not found")
 	s.Empty(perResource)
 	s.Empty(all)

@@ -14,9 +14,9 @@ import (
 )
 
 var (
-	ErrEmptyPEPClientID = errors.New("trigger request context is optional but must contain PEP client ID")
+	ErrEmptyPEPClientID               = errors.New("trigger request context is optional but must contain PEP client ID")
 	ErrUnknownRegisteredResourceValue = errors.New("unknown registered resource value")
-	ErrUnsupportedResourceType = errors.New("unsupported resource type")
+	ErrUnsupportedResourceType        = errors.New("unsupported resource type")
 )
 
 // A graph of action names to attribute value FQNs to lists of obligation value FQNs

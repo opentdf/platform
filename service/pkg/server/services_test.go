@@ -8,7 +8,6 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
-	"github.com/opentdf/platform/service/trust"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 )
@@ -276,11 +275,10 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 				"foobar":       {},
 			},
 		},
-		otdf:                otdf,
-		client:              nil,
-		keyManagerFactories: []trust.NamedKeyManagerFactory{},
-		logger:              newLogger,
-		reg:                 registry,
+		otdf:   otdf,
+		client: nil,
+		logger: newLogger,
+		reg:    registry,
 	})
 
 	// call cleanup function

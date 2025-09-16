@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
-	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -104,10 +104,8 @@ func (s *ObligationsSuite) Test_CreateObligation_Succeeds() {
 func (s *ObligationsSuite) Test_CreateObligation_Fails() {
 	// Invalid namespace ID
 	obl, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
-		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
-			Id: invalidUUID,
-		},
-		Name: oblName,
+		NamespaceId: invalidUUID,
+		Name:        oblName,
 	})
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 	s.Nil(obl)
@@ -117,10 +115,8 @@ func (s *ObligationsSuite) Test_CreateObligation_Fails() {
 	obl = s.createObligation(namespaceID, oblName, nil)
 
 	pending, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
-		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
-			Id: namespaceID,
-		},
-		Name: oblName,
+		NamespaceId: namespaceID,
+		Name:        oblName,
 	})
 	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
 	s.Nil(pending)
@@ -136,9 +132,7 @@ func (s *ObligationsSuite) Test_GetObligation_Succeeds() {
 
 	// Valid ID
 	obl, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
-		Identifier: &obligations.GetObligationRequest_Id{
-			Id: createdObl.GetId(),
-		},
+		Id: createdObl.GetId(),
 	})
 	s.Require().NoError(err)
 	s.assertObligationBasics(obl, oblName, namespaceID, namespace.Name, namespaceFQN)
@@ -146,9 +140,7 @@ func (s *ObligationsSuite) Test_GetObligation_Succeeds() {
 
 	// Valid FQN
 	obl, err = s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
-		Identifier: &obligations.GetObligationRequest_Fqn{
-			Fqn: namespaceFQN + "/obl/" + oblName,
-		},
+		Fqn: namespaceFQN + "/obl/" + oblName,
 	})
 	s.Require().NoError(err)
 	s.assertObligationBasics(obl, oblName, namespaceID, namespace.Name, namespaceFQN)
@@ -169,9 +161,7 @@ func (s *ObligationsSuite) Test_GetObligation_WithTriggers_Succeeds() {
 
 	// Get obligation by ID and verify triggers are returned
 	obl, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
-		Identifier: &obligations.GetObligationRequest_Id{
-			Id: createdObl.GetId(),
-		},
+		Id: createdObl.GetId(),
 	})
 	s.Require().NoError(err)
 	s.assertObligationBasics(obl, oblName+"-with-triggers", namespaceID, namespace.Name, namespaceFQN)
@@ -186,18 +176,14 @@ func (s *ObligationsSuite) Test_GetObligation_WithTriggers_Succeeds() {
 func (s *ObligationsSuite) Test_GetObligation_Fails() {
 	// Invalid ID
 	obl, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
-		Identifier: &obligations.GetObligationRequest_Id{
-			Id: invalidUUID,
-		},
+		Id: invalidUUID,
 	})
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 	s.Nil(obl)
 
 	// Invalid FQN
 	obl, err = s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
-		Identifier: &obligations.GetObligationRequest_Fqn{
-			Fqn: invalidFQN,
-		},
+		Fqn: invalidFQN,
 	})
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(obl)
@@ -436,9 +422,7 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 
 	// Test 2: List obligations by namespace ID
 	oblList, _, err = s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
-		NamespaceIdentifier: &obligations.ListObligationsRequest_Id{
-			Id: namespaceID,
-		},
+		NamespaceId: namespaceID,
 	})
 	s.Require().NoError(err)
 	s.NotNil(oblList)
@@ -451,9 +435,7 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 
 	// Test 3: List obligations by namespace FQN
 	oblList, _, err = s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
-		NamespaceIdentifier: &obligations.ListObligationsRequest_Fqn{
-			Fqn: namespaceFQN,
-		},
+		NamespaceFqn: namespaceFQN,
 	})
 	s.Require().NoError(err)
 	s.NotNil(oblList)
@@ -466,9 +448,7 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 
 	// Test 4: List obligations with invalid namespace FQN (should return empty)
 	oblList, _, err = s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
-		NamespaceIdentifier: &obligations.ListObligationsRequest_Fqn{
-			Fqn: invalidFQN,
-		},
+		NamespaceFqn: invalidFQN,
 	})
 	s.Require().NoError(err)
 	s.NotNil(oblList)
@@ -481,9 +461,7 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 func (s *ObligationsSuite) Test_ListObligations_Fails() {
 	// Attempt to list obligations with an invalid namespace ID
 	oblList, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
-		NamespaceIdentifier: &obligations.ListObligationsRequest_Id{
-			Id: invalidUUID,
-		},
+		NamespaceId: invalidUUID,
 	})
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 	s.Nil(oblList)
@@ -571,9 +549,7 @@ func (s *ObligationsSuite) Test_ListObligations_WithTriggers_Succeeds() {
 
 	// Test 2: List obligations by namespace ID and verify triggers
 	oblList, _, err = s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
-		NamespaceIdentifier: &obligations.ListObligationsRequest_Id{
-			Id: namespaceID,
-		},
+		NamespaceId: namespaceID,
 	})
 	s.Require().NoError(err)
 	s.NotNil(oblList)
@@ -585,9 +561,7 @@ func (s *ObligationsSuite) Test_ListObligations_WithTriggers_Succeeds() {
 
 	// Test 3: List obligations by namespace FQN and verify triggers
 	oblList, _, err = s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
-		NamespaceIdentifier: &obligations.ListObligationsRequest_Fqn{
-			Fqn: namespaceFQN,
-		},
+		NamespaceFqn: namespaceFQN,
 	})
 	s.Require().NoError(err)
 	s.NotNil(oblList)
@@ -692,18 +666,14 @@ func (s *ObligationsSuite) Test_DeleteObligation_Succeeds() {
 
 	// Get the obligation to ensure it exists
 	obl, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
-		Identifier: &obligations.GetObligationRequest_Id{
-			Id: createdObl.GetId(),
-		},
+		Id: createdObl.GetId(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(obl)
 
 	// Delete the obligation by ID
 	obl, err = s.db.PolicyClient.DeleteObligation(s.ctx, &obligations.DeleteObligationRequest{
-		Identifier: &obligations.DeleteObligationRequest_Id{
-			Id: createdObl.GetId(),
-		},
+		Id: createdObl.GetId(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(obl)
@@ -711,9 +681,7 @@ func (s *ObligationsSuite) Test_DeleteObligation_Succeeds() {
 
 	// Attempt to get the obligation again to ensure it has been deleted
 	obl, err = s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
-		Identifier: &obligations.GetObligationRequest_Id{
-			Id: createdObl.GetId(),
-		},
+		Id: createdObl.GetId(),
 	})
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(obl)
@@ -721,11 +689,9 @@ func (s *ObligationsSuite) Test_DeleteObligation_Succeeds() {
 	createdObl = s.createObligation(namespaceID, oblName, oblVals)
 
 	// Delete the obligation by FQN
-	fqn := policydb.BuildOblFQN(namespaceFQN, oblName)
+	fqn := identifier.BuildOblFQN(namespaceFQN, oblName)
 	obl, err = s.db.PolicyClient.DeleteObligation(s.ctx, &obligations.DeleteObligationRequest{
-		Identifier: &obligations.DeleteObligationRequest_Fqn{
-			Fqn: fqn,
-		},
+		Fqn: fqn,
 	})
 	s.Require().NoError(err)
 	s.NotNil(obl)
@@ -735,9 +701,7 @@ func (s *ObligationsSuite) Test_DeleteObligation_Succeeds() {
 func (s *ObligationsSuite) Test_DeleteObligation_Fails() {
 	// Attempt to delete an obligation with an invalid ID
 	obl, err := s.db.PolicyClient.DeleteObligation(s.ctx, &obligations.DeleteObligationRequest{
-		Identifier: &obligations.DeleteObligationRequest_Id{
-			Id: invalidUUID,
-		},
+		Id: invalidUUID,
 	})
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 	s.Nil(obl)
@@ -755,10 +719,8 @@ func (s *ObligationsSuite) Test_CreateObligationValue_Succeeds() {
 
 	// Test 1: Create obligation value by obligation ID
 	oblValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
-			Id: createdObl.GetId(),
-		},
-		Value: oblValPrefix + "test-1",
+		ObligationId: createdObl.GetId(),
+		Value:        oblValPrefix + "test-1",
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{"test": "value"},
 		},
@@ -769,12 +731,10 @@ func (s *ObligationsSuite) Test_CreateObligationValue_Succeeds() {
 	s.assertObligationValueBasics(oblValue, oblValPrefix+"test-1", namespaceID, namespace.Name, namespaceFQN)
 
 	// Test 2: Create obligation value by obligation FQN
-	oblFQN := policydb.BuildOblFQN(namespaceFQN, oblName)
+	oblFQN := identifier.BuildOblFQN(namespaceFQN, oblName)
 	oblValue2, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationIdentifier: &obligations.CreateObligationValueRequest_Fqn{
-			Fqn: oblFQN,
-		},
-		Value: oblValPrefix + "test-2",
+		ObligationFqn: oblFQN,
+		Value:         oblValPrefix + "test-2",
 	})
 	s.Require().NoError(err)
 	s.NotNil(oblValue2)
@@ -791,10 +751,8 @@ func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_IDs_Succeeds(
 
 	// Create the obligation value with a trigger
 	oblValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
-			Id: triggerSetup.createdObl.GetId(),
-		},
-		Value: oblValPrefix + "test-1",
+		ObligationId: triggerSetup.createdObl.GetId(),
+		Value:        oblValPrefix + "test-1",
 		Triggers: []*obligations.ValueTriggerRequest{
 			{
 				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
@@ -842,10 +800,8 @@ func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_FQNsNames_Suc
 
 	// Create the obligation value with a trigger
 	oblValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
-			Id: triggerSetup.createdObl.GetId(),
-		},
-		Value: oblValPrefix + "test-1",
+		ObligationId: triggerSetup.createdObl.GetId(),
+		Value:        oblValPrefix + "test-1",
 		Triggers: []*obligations.ValueTriggerRequest{
 			{
 				Action:         &common.IdNameIdentifier{Name: triggerSetup.action.GetName()},
@@ -889,30 +845,24 @@ func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_FQNsNames_Suc
 func (s *ObligationsSuite) Test_CreateObligationValue_Fails() {
 	// Test 1: Invalid obligation ID
 	oblValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
-			Id: invalidUUID,
-		},
-		Value: oblValPrefix + "test",
+		ObligationId: invalidUUID,
+		Value:        oblValPrefix + "test",
 	})
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 	s.Nil(oblValue)
 
 	// Test 2: Non-existent obligation ID
 	oblValue, err = s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
-			Id: invalidID,
-		},
-		Value: oblValPrefix + "test",
+		ObligationId: invalidID,
+		Value:        oblValPrefix + "test",
 	})
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(oblValue)
 
 	// Test 3: Invalid obligation FQN
 	oblValue, err = s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationIdentifier: &obligations.CreateObligationValueRequest_Fqn{
-			Fqn: invalidFQN,
-		},
-		Value: oblValPrefix + "test",
+		ObligationFqn: invalidFQN,
+		Value:         oblValPrefix + "test",
 	})
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(oblValue)
@@ -920,13 +870,11 @@ func (s *ObligationsSuite) Test_CreateObligationValue_Fails() {
 	// Test 4: Non-existent obligation name in valid namespace
 	namespaceID, namespaceFQN, _ := s.getNamespaceData(nsExampleCom)
 	createdObl := s.createObligation(namespaceID, oblName, nil)
-	nonExistentFQN := policydb.BuildOblFQN(namespaceFQN, "non-existent-obligation")
+	nonExistentFQN := identifier.BuildOblFQN(namespaceFQN, "non-existent-obligation")
 
 	oblValue, err = s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationIdentifier: &obligations.CreateObligationValueRequest_Fqn{
-			Fqn: nonExistentFQN,
-		},
-		Value: oblValPrefix + "test",
+		ObligationFqn: nonExistentFQN,
+		Value:         oblValPrefix + "test",
 	})
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(oblValue)
@@ -945,9 +893,7 @@ func (s *ObligationsSuite) Test_GetObligationValue_Succeeds() {
 
 	// Test 1: Get obligation value by ID
 	retrievedValue, err := s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
-		Identifier: &obligations.GetObligationValueRequest_Id{
-			Id: oblValue.GetId(),
-		},
+		Id: oblValue.GetId(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(retrievedValue)
@@ -955,11 +901,9 @@ func (s *ObligationsSuite) Test_GetObligationValue_Succeeds() {
 	s.assertObligationValueBasics(retrievedValue, oblValPrefix+"get-test", namespaceID, namespace.Name, namespaceFQN)
 
 	// Test 2: Get obligation value by FQN
-	oblValFQN := policydb.BuildOblValFQN(namespaceFQN, oblName, oblValPrefix+"get-test")
+	oblValFQN := identifier.BuildOblValFQN(namespaceFQN, oblName, oblValPrefix+"get-test")
 	retrievedValue2, err := s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
-		Identifier: &obligations.GetObligationValueRequest_Fqn{
-			Fqn: oblValFQN,
-		},
+		Fqn: oblValFQN,
 	})
 	s.Require().NoError(err)
 	s.NotNil(retrievedValue2)
@@ -980,9 +924,7 @@ func (s *ObligationsSuite) Test_GetObligationValue_WithTriggers_Succeeds() {
 
 	// Test 1: Get obligation value by ID and verify triggers are returned
 	retrievedValue, err := s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
-		Identifier: &obligations.GetObligationValueRequest_Id{
-			Id: oblValue.GetId(),
-		},
+		Id: oblValue.GetId(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(retrievedValue)
@@ -998,11 +940,9 @@ func (s *ObligationsSuite) Test_GetObligationValue_WithTriggers_Succeeds() {
 	})
 
 	// Test 2: Get obligation value by FQN and verify triggers are returned
-	oblValFQN := policydb.BuildOblValFQN(namespaceFQN, oblName+"-val-triggers", oblValPrefix+"get-trigger-test")
+	oblValFQN := identifier.BuildOblValFQN(namespaceFQN, oblName+"-val-triggers", oblValPrefix+"get-trigger-test")
 	retrievedValue2, err := s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
-		Identifier: &obligations.GetObligationValueRequest_Fqn{
-			Fqn: oblValFQN,
-		},
+		Fqn: oblValFQN,
 	})
 	s.Require().NoError(err)
 	s.NotNil(retrievedValue2)
@@ -1021,27 +961,21 @@ func (s *ObligationsSuite) Test_GetObligationValue_WithTriggers_Succeeds() {
 func (s *ObligationsSuite) Test_GetObligationValue_Fails() {
 	// Test 1: Invalid value ID
 	retrievedValue, err := s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
-		Identifier: &obligations.GetObligationValueRequest_Id{
-			Id: invalidUUID,
-		},
+		Id: invalidUUID,
 	})
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 	s.Nil(retrievedValue)
 
 	// Test 2: Non-existent value ID
 	retrievedValue, err = s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
-		Identifier: &obligations.GetObligationValueRequest_Id{
-			Id: invalidID,
-		},
+		Id: invalidID,
 	})
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(retrievedValue)
 
 	// Test 3: Invalid value FQN
 	retrievedValue, err = s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
-		Identifier: &obligations.GetObligationValueRequest_Fqn{
-			Fqn: invalidFQN,
-		},
+		Fqn: invalidFQN,
 	})
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(retrievedValue)
@@ -1049,22 +983,18 @@ func (s *ObligationsSuite) Test_GetObligationValue_Fails() {
 	// Test 4: Non-existent value name in valid obligation
 	namespaceID, namespaceFQN, _ := s.getNamespaceData(nsExampleCom)
 	createdObl := s.createObligation(namespaceID, oblName, nil)
-	nonExistentValFQN := policydb.BuildOblValFQN(namespaceFQN, oblName, "non-existent-value")
+	nonExistentValFQN := identifier.BuildOblValFQN(namespaceFQN, oblName, "non-existent-value")
 
 	retrievedValue, err = s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
-		Identifier: &obligations.GetObligationValueRequest_Fqn{
-			Fqn: nonExistentValFQN,
-		},
+		Fqn: nonExistentValFQN,
 	})
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(retrievedValue)
 
 	// Test 5: Non-existent obligation name in valid namespace
-	nonExistentOblFQN := policydb.BuildOblValFQN(namespaceFQN, "non-existent-obligation", oblValPrefix+"test")
+	nonExistentOblFQN := identifier.BuildOblValFQN(namespaceFQN, "non-existent-obligation", oblValPrefix+"test")
 	retrievedValue, err = s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
-		Identifier: &obligations.GetObligationValueRequest_Fqn{
-			Fqn: nonExistentOblFQN,
-		},
+		Fqn: nonExistentOblFQN,
 	})
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(retrievedValue)
@@ -1088,9 +1018,9 @@ func (s *ObligationsSuite) Test_GetObligationValuesByFQNs_Succeeds() {
 
 	// Test 1: Get multiple obligation values by FQNs
 	fqns := []string{
-		policydb.BuildOblValFQN(namespaceFQN1, oblName+"-1", oblValPrefix+"val1"),
-		policydb.BuildOblValFQN(namespaceFQN1, oblName+"-1", oblValPrefix+"val2"),
-		policydb.BuildOblValFQN(namespaceFQN2, oblName+"-2", oblValPrefix+"val3"),
+		identifier.BuildOblValFQN(namespaceFQN1, oblName+"-1", oblValPrefix+"val1"),
+		identifier.BuildOblValFQN(namespaceFQN1, oblName+"-1", oblValPrefix+"val2"),
+		identifier.BuildOblValFQN(namespaceFQN2, oblName+"-2", oblValPrefix+"val3"),
 	}
 
 	oblValueList, err := s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{
@@ -1128,7 +1058,7 @@ func (s *ObligationsSuite) Test_GetObligationValuesByFQNs_Succeeds() {
 	s.Equal(oblName+"-2", val3.GetObligation().GetName())
 
 	// Test 2: Get single obligation value by FQN
-	singleFQN := []string{policydb.BuildOblValFQN(namespaceFQN2, oblName+"-2", oblValPrefix+"val4")}
+	singleFQN := []string{identifier.BuildOblValFQN(namespaceFQN2, oblName+"-2", oblValPrefix+"val4")}
 	oblValueList, err = s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{
 		Fqns: singleFQN,
 	})
@@ -1148,8 +1078,8 @@ func (s *ObligationsSuite) Test_GetObligationValuesByFQNs_Succeeds() {
 
 	// Test 4: Get all values from a single obligation
 	allValuesFromObl1 := []string{
-		policydb.BuildOblValFQN(namespaceFQN1, oblName+"-1", oblValPrefix+"val1"),
-		policydb.BuildOblValFQN(namespaceFQN1, oblName+"-1", oblValPrefix+"val2"),
+		identifier.BuildOblValFQN(namespaceFQN1, oblName+"-1", oblValPrefix+"val1"),
+		identifier.BuildOblValFQN(namespaceFQN1, oblName+"-1", oblValPrefix+"val2"),
 	}
 	oblValueList, err = s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{
 		Fqns: allValuesFromObl1,
@@ -1209,9 +1139,9 @@ func (s *ObligationsSuite) Test_GetObligationValuesByFQNs_WithTriggers_Succeeds(
 	}
 	oblVal2 := s.createObligationValueWithTriggers(obl2.GetId(), oblValPrefix+"trigger-val3", obl2Triggers) // Test 1: Get multiple obligation values by FQNs and verify triggers are returned
 	fqns := []string{
-		policydb.BuildOblValFQN(namespaceFQN1, oblName+"-vals-triggers-1", oblValPrefix+"trigger-val1"),
-		policydb.BuildOblValFQN(namespaceFQN1, oblName+"-vals-triggers-1", oblValPrefix+"trigger-val2"),
-		policydb.BuildOblValFQN(namespaceFQN2, oblName+"-vals-triggers-2", oblValPrefix+"trigger-val3"),
+		identifier.BuildOblValFQN(namespaceFQN1, oblName+"-vals-triggers-1", oblValPrefix+"trigger-val1"),
+		identifier.BuildOblValFQN(namespaceFQN1, oblName+"-vals-triggers-1", oblValPrefix+"trigger-val2"),
+		identifier.BuildOblValFQN(namespaceFQN2, oblName+"-vals-triggers-2", oblValPrefix+"trigger-val3"),
 	}
 
 	defer s.deleteObligations([]string{obl1.GetId(), obl2.GetId()})
@@ -1259,7 +1189,7 @@ func (s *ObligationsSuite) Test_GetObligationValuesByFQNs_WithTriggers_Succeeds(
 	s.Equal(oblName+"-vals-triggers-2", val3.GetObligation().GetName())
 
 	// Test 2: Get single obligation value by FQN and verify triggers
-	singleFQN := []string{policydb.BuildOblValFQN(namespaceFQN1, oblName+"-vals-triggers-1", oblValPrefix+"trigger-val1")}
+	singleFQN := []string{identifier.BuildOblValFQN(namespaceFQN1, oblName+"-vals-triggers-1", oblValPrefix+"trigger-val1")}
 	oblValueList, err = s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{
 		Fqns: singleFQN,
 	})
@@ -1297,7 +1227,7 @@ func (s *ObligationsSuite) Test_GetObligationValuesByFQNs_Fails() {
 	s.Empty(oblValueList)
 
 	// Test 2: Mix of valid and invalid FQNs should return only valid ones
-	validFQN := policydb.BuildOblValFQN(namespaceFQN, oblName, oblValPrefix+"test-value")
+	validFQN := identifier.BuildOblValFQN(namespaceFQN, oblName, oblValPrefix+"test-value")
 	mixedFQNs := []string{
 		validFQN,
 		invalidFQN,
@@ -1313,7 +1243,7 @@ func (s *ObligationsSuite) Test_GetObligationValuesByFQNs_Fails() {
 
 	// Test 3: Non-existent obligation value names should return empty result
 	nonExistentFQNs := []string{
-		policydb.BuildOblValFQN(namespaceFQN, oblName, "nonexistent-value"),
+		identifier.BuildOblValFQN(namespaceFQN, oblName, "nonexistent-value"),
 	}
 	oblValueList, err = s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{
 		Fqns: nonExistentFQNs,
@@ -1324,7 +1254,7 @@ func (s *ObligationsSuite) Test_GetObligationValuesByFQNs_Fails() {
 
 	// Test 4: Non-existent obligation names should return empty result
 	nonExistentOblFQNs := []string{
-		policydb.BuildOblValFQN(namespaceFQN, "nonexistent-obligation", oblValPrefix+"test-value"),
+		identifier.BuildOblValFQN(namespaceFQN, "nonexistent-obligation", oblValPrefix+"test-value"),
 	}
 	oblValueList, err = s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{
 		Fqns: nonExistentOblFQNs,
@@ -1335,7 +1265,7 @@ func (s *ObligationsSuite) Test_GetObligationValuesByFQNs_Fails() {
 
 	// Test 5: Non-existent namespace should return empty result
 	nonExistentNsFQNs := []string{
-		policydb.BuildOblValFQN("https://nonexistent.com", oblName, oblValPrefix+"test-value"),
+		identifier.BuildOblValFQN("https://nonexistent.com", oblName, oblValPrefix+"test-value"),
 	}
 	oblValueList, err = s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{
 		Fqns: nonExistentNsFQNs,
@@ -1425,10 +1355,8 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 	defer s.deleteObligations([]string{triggerSetup.createdObl.GetId()})
 
 	oblValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
-			Id: triggerSetup.createdObl.GetId(),
-		},
-		Value: oblValPrefix + "test-1",
+		ObligationId: triggerSetup.createdObl.GetId(),
+		Value:        oblValPrefix + "test-1",
 		Triggers: []*obligations.ValueTriggerRequest{
 			{
 				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
@@ -1507,9 +1435,7 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 
 	// Ensure oblValue has new triggers after update
 	oblValueAfterUpdate, err := s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
-		Identifier: &obligations.GetObligationValueRequest_Id{
-			Id: oblValue.GetId(),
-		},
+		Id: oblValue.GetId(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(oblValueAfterUpdate)
@@ -1548,9 +1474,7 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 	s.Require().Equal(oblValue.GetTriggers()[1].GetAttributeValue().GetFqn(), updatedOblValue.GetTriggers()[0].GetAttributeValue().GetFqn())
 
 	oblValueAfterUpdate, err = s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
-		Identifier: &obligations.GetObligationValueRequest_Id{
-			Id: oblValue.GetId(),
-		},
+		Id: oblValue.GetId(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(oblValueAfterUpdate)
@@ -1610,20 +1534,16 @@ func (s *ObligationsSuite) Test_DeleteObligationValue_Succeeds() {
 
 	// Delete by value ID
 	deleted, err := s.db.PolicyClient.DeleteObligationValue(s.ctx, &obligations.DeleteObligationValueRequest{
-		Identifier: &obligations.DeleteObligationValueRequest_Id{
-			Id: oblValues[0].GetId(),
-		},
+		Id: oblValues[0].GetId(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(deleted)
 	s.Equal(oblValues[0].GetId(), deleted.GetId())
 
 	// Delete by FQN + value name
-	oblValFQN := policydb.BuildOblValFQN(namespaceFQN, oblName, values[1])
+	oblValFQN := identifier.BuildOblValFQN(namespaceFQN, oblName, values[1])
 	deleted2, err := s.db.PolicyClient.DeleteObligationValue(s.ctx, &obligations.DeleteObligationValueRequest{
-		Identifier: &obligations.DeleteObligationValueRequest_Fqn{
-			Fqn: oblValFQN,
-		},
+		Fqn: oblValFQN,
 	})
 	s.Require().NoError(err)
 	s.NotNil(deleted2)
@@ -1636,27 +1556,21 @@ func (s *ObligationsSuite) Test_DeleteObligationValue_Succeeds() {
 func (s *ObligationsSuite) Test_DeleteObligationValue_Fails() {
 	// Invalid value ID
 	deleted, err := s.db.PolicyClient.DeleteObligationValue(s.ctx, &obligations.DeleteObligationValueRequest{
-		Identifier: &obligations.DeleteObligationValueRequest_Id{
-			Id: invalidUUID,
-		},
+		Id: invalidUUID,
 	})
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 	s.Nil(deleted)
 
 	// Non-existent value ID
 	deleted, err = s.db.PolicyClient.DeleteObligationValue(s.ctx, &obligations.DeleteObligationValueRequest{
-		Identifier: &obligations.DeleteObligationValueRequest_Id{
-			Id: invalidID,
-		},
+		Id: invalidID,
 	})
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(deleted)
 
 	// Invalid value FQN
 	deleted, err = s.db.PolicyClient.DeleteObligationValue(s.ctx, &obligations.DeleteObligationValueRequest{
-		Identifier: &obligations.DeleteObligationValueRequest_Fqn{
-			Fqn: invalidFQN,
-		},
+		Fqn: invalidFQN,
 	})
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(deleted)
@@ -1664,11 +1578,9 @@ func (s *ObligationsSuite) Test_DeleteObligationValue_Fails() {
 	// Non-existent value name in valid obligation
 	namespaceID, namespaceFQN, _ := s.getNamespaceData(nsExampleCom)
 	createdObl := s.createObligation(namespaceID, oblName, nil)
-	nonExistentValFQN := policydb.BuildOblValFQN(namespaceFQN, oblName, "non-existent-value")
+	nonExistentValFQN := identifier.BuildOblValFQN(namespaceFQN, oblName, "non-existent-value")
 	deleted, err = s.db.PolicyClient.DeleteObligationValue(s.ctx, &obligations.DeleteObligationValueRequest{
-		Identifier: &obligations.DeleteObligationValueRequest_Fqn{
-			Fqn: nonExistentValFQN,
-		},
+		Fqn: nonExistentValFQN,
 	})
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(deleted)
@@ -1772,11 +1684,9 @@ func (s *ObligationsSuite) assertTriggers(oblVal *policy.ObligationValue, expect
 
 func (s *ObligationsSuite) createObligation(namespaceID, name string, values []string) *policy.Obligation {
 	obl, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
-		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
-			Id: namespaceID,
-		},
-		Name:   name,
-		Values: values,
+		NamespaceId: namespaceID,
+		Name:        name,
+		Values:      values,
 	})
 	s.Require().NoError(err)
 	return obl
@@ -1784,11 +1694,9 @@ func (s *ObligationsSuite) createObligation(namespaceID, name string, values []s
 
 func (s *ObligationsSuite) createObligationByFQN(namespaceFQN, name string, values []string) *policy.Obligation {
 	obl, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
-		NamespaceIdentifier: &obligations.CreateObligationRequest_Fqn{
-			Fqn: namespaceFQN,
-		},
-		Name:   name,
-		Values: values,
+		NamespaceFqn: namespaceFQN,
+		Name:         name,
+		Values:       values,
 	})
 	s.Require().NoError(err)
 	return obl
@@ -1796,9 +1704,7 @@ func (s *ObligationsSuite) createObligationByFQN(namespaceFQN, name string, valu
 
 func (s *ObligationsSuite) deleteObligation(oblID string) {
 	_, err := s.db.PolicyClient.DeleteObligation(s.ctx, &obligations.DeleteObligationRequest{
-		Identifier: &obligations.DeleteObligationRequest_Id{
-			Id: oblID,
-		},
+		Id: oblID,
 	})
 	s.Require().NoError(err)
 }
@@ -1844,11 +1750,9 @@ func (s *ObligationsSuite) createObligationValueWithTriggers(obligationID string
 	}
 
 	oblValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
-			Id: obligationID,
-		},
-		Value:    value,
-		Triggers: triggers,
+		ObligationId: obligationID,
+		Value:        value,
+		Triggers:     triggers,
 	})
 	s.Require().NoError(err)
 	return oblValue

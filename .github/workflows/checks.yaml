@@ -461,6 +461,10 @@ jobs:
     name: otdfctl e2e tests
     runs-on: ubuntu-latest
     steps:
+      - name: Install GNU parallel
+        run: |
+          sudo apt update
+          sudo apt install -y parallel
       - uses: opentdf/platform/test/start-up-with-containers@main
         with:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}

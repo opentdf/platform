@@ -127,7 +127,11 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 	keyManagerFactories := params.keyManagerFactories
 
 	// Iterate through the registered namespaces
-	for ns, namespace := range reg.GetNamespaces() {
+	for _, ns := range reg.GetNamespaces() {
+		namespace, err := reg.GetNamespace(ns)
+		if err != nil {
+			return nil, err
+		}
 		// Check if this namespace should be enabled based on configured modes
 		modeEnabled := namespace.IsEnabled(cfg.Mode)
 

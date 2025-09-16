@@ -281,15 +281,14 @@ func NewServiceRegistry() *Registry {
 }
 
 // GetNamespaces returns all namespaces in the registry
-func (reg *Registry) GetNamespaces() map[string]*Namespace {
+func (reg *Registry) GetNamespaces() []string {
 	reg.mu.RLock()
 	defer reg.mu.RUnlock()
 
-	result := make(map[string]*Namespace, len(reg.namespaces))
-	for k, v := range reg.namespaces {
-		result[k] = v
-	}
-	return result
+	// Return a copy to prevent modification of the internal order slice.
+	orderCopy := make([]string, len(reg.order))
+	copy(orderCopy, reg.order)
+	return orderCopy
 }
 
 // RegisterService registers a service in the service registry.

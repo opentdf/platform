@@ -1,9 +1,9 @@
 package archive
 
 import (
-    "bytes"
-    "encoding/binary"
-    "time"
+	"bytes"
+	"encoding/binary"
+	"time"
 )
 
 // Note: CRC32 calculation for the payload is performed using a combine
@@ -22,94 +22,94 @@ type FileEntry struct {
 
 // SegmentEntry represents a single segment in out-of-order writing
 type SegmentEntry struct {
-    Index   int       // Segment index (0-based)
-    Size    uint64    // Size of stored segment bytes (no compression)
-    CRC32   uint32    // CRC32 of stored segment bytes
-    Written time.Time // When this segment was written
+	Index   int       // Segment index (0-based)
+	Size    uint64    // Size of stored segment bytes (no compression)
+	CRC32   uint32    // CRC32 of stored segment bytes
+	Written time.Time // When this segment was written
 }
 
 // SegmentMetadata tracks per-segment metadata for out-of-order writing.
 // It stores only plaintext size and CRC for each index and computes the
 // final CRC via CRC32-combine at finalize time (no payload buffering).
 type SegmentMetadata struct {
-    ExpectedCount int                   // Total number of expected segments (unused when Order set)
-    Segments      map[int]*SegmentEntry // Map of segments by index
-    TotalSize     uint64                // Cumulative size of all segments
-    presentCount  int                   // Number of segments recorded
-    TotalCRC32    uint32                // Final CRC32 when all segments are processed
-    // Order, when set, defines the exact logical order of segments for
-    // completeness checks and CRC computation. Indices may be sparse.
-    Order []int
+	ExpectedCount int                   // Total number of expected segments (unused when Order set)
+	Segments      map[int]*SegmentEntry // Map of segments by index
+	TotalSize     uint64                // Cumulative size of all segments
+	presentCount  int                   // Number of segments recorded
+	TotalCRC32    uint32                // Final CRC32 when all segments are processed
+	// Order, when set, defines the exact logical order of segments for
+	// completeness checks and CRC computation. Indices may be sparse.
+	Order []int
 }
 
 // NewSegmentMetadata creates metadata for tracking segments using combine-based CRC.
 func NewSegmentMetadata(expectedCount int) *SegmentMetadata {
-    return &SegmentMetadata{
-        ExpectedCount: expectedCount,
-        Segments:      make(map[int]*SegmentEntry),
-        presentCount:  0,
-        TotalCRC32:    0,
-    }
+	return &SegmentMetadata{
+		ExpectedCount: expectedCount,
+		Segments:      make(map[int]*SegmentEntry),
+		presentCount:  0,
+		TotalCRC32:    0,
+	}
 }
 
 // AddSegment records metadata for a segment (size + CRC) without retaining payload bytes.
 func (sm *SegmentMetadata) AddSegment(index int, _ []byte, originalSize uint64, originalCRC32 uint32) error {
-    if index < 0 {
-        return ErrInvalidSegment
-    }
+	if index < 0 {
+		return ErrInvalidSegment
+	}
 
-    if _, exists := sm.Segments[index]; exists {
-        return ErrDuplicateSegment
-    }
+	if _, exists := sm.Segments[index]; exists {
+		return ErrDuplicateSegment
+	}
 
-    // Record per-segment metadata only (no buffering of data)
-    sm.Segments[index] = &SegmentEntry{
-        Index:   index,
-        Size:    originalSize,
-        CRC32:   originalCRC32,
-        Written: time.Now(),
-    }
+	// Record per-segment metadata only (no buffering of data)
+	sm.Segments[index] = &SegmentEntry{
+		Index:   index,
+		Size:    originalSize,
+		CRC32:   originalCRC32,
+		Written: time.Now(),
+	}
 
-    sm.TotalSize += originalSize
-    sm.presentCount++
+	sm.TotalSize += originalSize
+	sm.presentCount++
 
-    return nil
+	return nil
 }
 
 // IsComplete returns true if all expected segments have been processed
 func (sm *SegmentMetadata) IsComplete() bool {
-    // If an explicit order is set, require that every index in Order exists.
-    if len(sm.Order) > 0 {
-        for _, idx := range sm.Order {
-            if _, ok := sm.Segments[idx]; !ok {
-                return false
-            }
-        }
-        return true
-    }
-    if sm.ExpectedCount <= 0 {
-        return false
-    }
-    return sm.presentCount == sm.ExpectedCount
+	// If an explicit order is set, require that every index in Order exists.
+	if len(sm.Order) > 0 {
+		for _, idx := range sm.Order {
+			if _, ok := sm.Segments[idx]; !ok {
+				return false
+			}
+		}
+		return true
+	}
+	if sm.ExpectedCount <= 0 {
+		return false
+	}
+	return sm.presentCount == sm.ExpectedCount
 }
 
 // GetMissingSegments returns a list of missing segment indices
 func (sm *SegmentMetadata) GetMissingSegments() []int {
-    missing := make([]int, 0)
-    if len(sm.Order) > 0 {
-        for _, idx := range sm.Order {
-            if _, exists := sm.Segments[idx]; !exists {
-                missing = append(missing, idx)
-            }
-        }
-        return missing
-    }
-    for i := 0; i < sm.ExpectedCount; i++ {
-        if _, exists := sm.Segments[i]; !exists {
-            missing = append(missing, i)
-        }
-    }
-    return missing
+	missing := make([]int, 0)
+	if len(sm.Order) > 0 {
+		for _, idx := range sm.Order {
+			if _, exists := sm.Segments[idx]; !exists {
+				missing = append(missing, idx)
+			}
+		}
+		return missing
+	}
+	for i := 0; i < sm.ExpectedCount; i++ {
+		if _, exists := sm.Segments[i]; !exists {
+			missing = append(missing, i)
+		}
+	}
+	return missing
 }
 
 // GetTotalCRC32 returns the final CRC32 value (only valid when IsComplete() is true)
@@ -117,68 +117,68 @@ func (sm *SegmentMetadata) GetTotalCRC32() uint32 { return sm.TotalCRC32 }
 
 // FinalizeCRC computes the total CRC32 by combining per-segment CRCs in index order.
 func (sm *SegmentMetadata) FinalizeCRC() {
-    // If an explicit order is set, use it for CRC combine.
-    if len(sm.Order) > 0 {
-        var total uint32
-        var initialized bool
-        for _, idx := range sm.Order {
-            seg, ok := sm.Segments[idx]
-            if !ok {
-                // Incomplete; leave TotalCRC32 as zero
-                sm.TotalCRC32 = 0
-                return
-            }
-            if !initialized {
-                total = seg.CRC32
-                initialized = true
-            } else {
-                total = CRC32CombineIEEE(total, seg.CRC32, int64(seg.Size))
-            }
-        }
-        sm.TotalCRC32 = total
-        return
-    }
-    if sm.ExpectedCount <= 0 {
-        sm.TotalCRC32 = 0
-        return
-    }
-    var total uint32 = 0
-    var initialized bool
-    for i := 0; i < sm.ExpectedCount; i++ {
-        seg, ok := sm.Segments[i]
-        if !ok {
-            // Incomplete; leave TotalCRC32 as zero
-            return
-        }
-        if !initialized {
-            total = seg.CRC32
-            initialized = true
-        } else {
-            total = CRC32CombineIEEE(total, seg.CRC32, int64(seg.Size))
-        }
-    }
-    sm.TotalCRC32 = total
+	// If an explicit order is set, use it for CRC combine.
+	if len(sm.Order) > 0 {
+		var total uint32
+		var initialized bool
+		for _, idx := range sm.Order {
+			seg, ok := sm.Segments[idx]
+			if !ok {
+				// Incomplete; leave TotalCRC32 as zero
+				sm.TotalCRC32 = 0
+				return
+			}
+			if !initialized {
+				total = seg.CRC32
+				initialized = true
+			} else {
+				total = CRC32CombineIEEE(total, seg.CRC32, int64(seg.Size))
+			}
+		}
+		sm.TotalCRC32 = total
+		return
+	}
+	if sm.ExpectedCount <= 0 {
+		sm.TotalCRC32 = 0
+		return
+	}
+	var total uint32
+	var initialized bool
+	for i := 0; i < sm.ExpectedCount; i++ {
+		seg, ok := sm.Segments[i]
+		if !ok {
+			// Incomplete; leave TotalCRC32 as zero
+			return
+		}
+		if !initialized {
+			total = seg.CRC32
+			initialized = true
+		} else {
+			total = CRC32CombineIEEE(total, seg.CRC32, int64(seg.Size))
+		}
+	}
+	sm.TotalCRC32 = total
 }
 
 // SetOrder defines the exact logical order of segments. Duplicates are not allowed.
 // When set, completeness/CRC use this order; ExpectedCount is ignored.
 func (sm *SegmentMetadata) SetOrder(order []int) error {
-    if len(order) == 0 {
-        sm.Order = nil
-        return nil
-    }
-    seen := make(map[int]struct{}, len(order))
-    for _, idx := range order {
-        if idx < 0 {
-            return ErrInvalidSegment
-        }
-        if _, dup := seen[idx]; dup {
-            return ErrDuplicateSegment
-        }
-        seen[idx] = struct{}{}
-    }
-    sm.Order = append([]int(nil), order...)
-    return nil
+	if len(order) == 0 {
+		sm.Order = nil
+		return nil
+	}
+	seen := make(map[int]struct{}, len(order))
+	for _, idx := range order {
+		if idx < 0 {
+			return ErrInvalidSegment
+		}
+		if _, dup := seen[idx]; dup {
+			return ErrDuplicateSegment
+		}
+		seen[idx] = struct{}{}
+	}
+	sm.Order = append([]int(nil), order...)
+	return nil
 }
 
 // CentralDirectory manages the ZIP central directory structure

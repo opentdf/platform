@@ -239,18 +239,18 @@ func BenchmarkSegmentWriter_ZIPGeneration(b *testing.B) {
 		name         string
 		segmentCount int
 		segmentSize  int
-        zip64Mode    Zip64Mode
+		zip64Mode    Zip64Mode
 	}{
-        {"zip32_small", 10, 1024, Zip64Never},
-        {"zip32_large", 100, 1024, Zip64Never},
-        {"zip64_small", 10, 1024, Zip64Always},
-        {"zip64_large", 100, 1024, Zip64Always},
-        {"zip64_huge_segments", 5, 65536, Zip64Auto}, // Auto triggers ZIP64 by size
+		{"zip32_small", 10, 1024, Zip64Never},
+		{"zip32_large", 100, 1024, Zip64Never},
+		{"zip64_small", 10, 1024, Zip64Always},
+		{"zip64_large", 100, 1024, Zip64Always},
+		{"zip64_huge_segments", 5, 65536, Zip64Auto}, // Auto triggers ZIP64 by size
 	}
 
 	for _, tc := range testCases {
 		b.Run(tc.name, func(b *testing.B) {
-            options := []Option{WithZip64Mode(tc.zip64Mode)}
+			options := []Option{WithZip64Mode(tc.zip64Mode)}
 
 			b.ResetTimer()
 			b.ReportAllocs()
@@ -332,7 +332,7 @@ func generateWriteOrder(count int, pattern string) []int {
 			}
 		}
 	case "worst_case":
-    // A scattered pattern that stresses segment bookkeeping
+		// A scattered pattern that stresses segment bookkeeping
 		mid := count / 2
 		order[0] = mid
 		left, right := mid-1, mid+1

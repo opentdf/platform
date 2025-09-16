@@ -19,12 +19,12 @@ type Writer interface {
 
 // SegmentWriter handles out-of-order segments with deterministic output
 type SegmentWriter interface {
-    Writer
-    WriteSegment(ctx context.Context, index int, data []byte) ([]byte, error)
-    Finalize(ctx context.Context, manifest []byte) ([]byte, error)
-    // CleanupSegment removes the presence marker for a segment index.
-    // Calling this before Finalize will cause IsComplete() to fail for that index.
-    CleanupSegment(index int) error
+	Writer
+	WriteSegment(ctx context.Context, index int, data []byte) ([]byte, error)
+	Finalize(ctx context.Context, manifest []byte) ([]byte, error)
+	// CleanupSegment removes the presence marker for a segment index.
+	// Calling this before Finalize will cause IsComplete() to fail for that index.
+	CleanupSegment(index int) error
 }
 
 // Error provides detailed error information for archive operations
@@ -44,20 +44,20 @@ func (e *Error) Unwrap() error {
 
 // Common errors
 var (
-    ErrWriterClosed      = errors.New("archive writer closed")
-    ErrInvalidSegment    = errors.New("invalid segment index")
-    ErrOutOfOrder        = errors.New("segment out of order")
-    ErrDuplicateSegment  = errors.New("duplicate segment already written")
-    ErrSegmentMissing    = errors.New("segment missing")
-    ErrInvalidSize       = errors.New("invalid size")
-    ErrZip64Required     = errors.New("ZIP64 required but disabled (Zip64Never)")
+	ErrWriterClosed     = errors.New("archive writer closed")
+	ErrInvalidSegment   = errors.New("invalid segment index")
+	ErrOutOfOrder       = errors.New("segment out of order")
+	ErrDuplicateSegment = errors.New("duplicate segment already written")
+	ErrSegmentMissing   = errors.New("segment missing")
+	ErrInvalidSize      = errors.New("invalid size")
+	ErrZip64Required    = errors.New("ZIP64 required but disabled (Zip64Never)")
 )
 
 // Config holds configuration options for writers
 type Config struct {
-    Zip64 Zip64Mode
-    MaxSegments   int
-    EnableLogging bool
+	Zip64         Zip64Mode
+	MaxSegments   int
+	EnableLogging bool
 }
 
 // Option is a functional option for configuring writers
@@ -67,9 +67,9 @@ type Option func(*Config)
 type Zip64Mode int
 
 const (
-    Zip64Auto Zip64Mode = iota // Use ZIP64 only when needed
-    Zip64Always                // Force ZIP64 even for small archives
-    Zip64Never                 // Forbid ZIP64; error if limits exceeded
+	Zip64Auto   Zip64Mode = iota // Use ZIP64 only when needed
+	Zip64Always                  // Force ZIP64 even for small archives
+	Zip64Never                   // Forbid ZIP64; error if limits exceeded
 )
 
 // WithZip64 enables ZIP64 format support for large files
@@ -79,7 +79,7 @@ func WithZip64() Option { return WithZip64Mode(Zip64Always) }
 
 // WithZip64Mode sets the ZIP64 mode (Auto/Always/Never).
 func WithZip64Mode(mode Zip64Mode) Option {
-    return func(c *Config) { c.Zip64 = mode }
+	return func(c *Config) { c.Zip64 = mode }
 }
 
 // WithMaxSegments sets the maximum number of segments for SegmentWriter
@@ -100,11 +100,11 @@ func WithLogging() Option {
 
 // defaultConfig returns default configuration
 func defaultConfig() *Config {
-    return &Config{
-        Zip64:         Zip64Auto,
-        MaxSegments:   defaultMaxSegments,
-        EnableLogging: false,
-    }
+	return &Config{
+		Zip64:         Zip64Auto,
+		MaxSegments:   defaultMaxSegments,
+		EnableLogging: false,
+	}
 }
 
 // applyOptions applies functional options to config

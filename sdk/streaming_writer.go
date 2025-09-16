@@ -18,13 +18,13 @@ var (
 
 // FinalizeConfig holds configuration options for finalizing a streaming TDF.
 type FinalizeConfig struct {
-    defaultKAS                 *policy.SimpleKasKey
-    assertions                 []tdf.AssertionConfig
-    excludeVersionFromManifest bool
-    addDefaultAssertion        bool
-    encryptedMetadata          string
-    payloadMimeType            string
-    keepSegments               []int
+	defaultKAS                 *policy.SimpleKasKey
+	assertions                 []tdf.AssertionConfig
+	excludeVersionFromManifest bool
+	addDefaultAssertion        bool
+	encryptedMetadata          string
+	payloadMimeType            string
+	keepSegments               []int
 }
 
 // FinalizeOption is a functional option for configuring TDF finalization.
@@ -66,10 +66,10 @@ func WithExcludeVersionFromManifest(exclude bool) FinalizeOption {
 // Indices must form [0..K] with no gaps or duplicates, and no later segments
 // may have been written.
 func WithSegments(indices []int) FinalizeOption {
-    return func(c *FinalizeConfig) error {
-        c.keepSegments = indices
-        return nil
-    }
+	return func(c *FinalizeConfig) error {
+		c.keepSegments = indices
+		return nil
+	}
 }
 
 // WithDefaultAssertion adds a default assertion to the TDF.
@@ -155,23 +155,23 @@ type StreamingWriterOption func(*[]tdf.Option[*tdf.WriterConfig]) error
 // WithInitialAttributeFQNs resolves attribute FQNs and sets them as initial
 // attributes on the underlying tdf.Writer at creation time.
 func (s *SDK) WithInitialAttributeFQNs(ctx context.Context, fqns []string) StreamingWriterOption {
-    return func(opts *[]tdf.Option[*tdf.WriterConfig]) error {
-        values, err := (&StreamingWriter{sdk: s}).fetchAttributesByFQNs(ctx, fqns)
-        if err != nil {
-            return err
-        }
-        *opts = append(*opts, tdf.WithInitialAttributes(values))
-        return nil
-    }
+	return func(opts *[]tdf.Option[*tdf.WriterConfig]) error {
+		values, err := (&StreamingWriter{sdk: s}).fetchAttributesByFQNs(ctx, fqns)
+		if err != nil {
+			return err
+		}
+		*opts = append(*opts, tdf.WithInitialAttributes(values))
+		return nil
+	}
 }
 
 // WithDefaultKASForWriter sets the default KAS on the underlying tdf.Writer
 // at creation time.
 func WithDefaultKASForWriter(kas *policy.SimpleKasKey) StreamingWriterOption {
-    return func(opts *[]tdf.Option[*tdf.WriterConfig]) error {
-        *opts = append(*opts, tdf.WithDefaultKASForWriter(kas))
-        return nil
-    }
+	return func(opts *[]tdf.Option[*tdf.WriterConfig]) error {
+		*opts = append(*opts, tdf.WithDefaultKASForWriter(kas))
+		return nil
+	}
 }
 
 // NewStreamingWriterWithOptions creates a new StreamingWriter with writer-level
@@ -179,27 +179,26 @@ func WithDefaultKASForWriter(kas *policy.SimpleKasKey) StreamingWriterOption {
 //
 // Example:
 //
-//  sw, err := sdk.NewStreamingWriterWithOptions(ctx,
-//      sdk.WithInitialAttributeFQNs(ctx, []string{
-//          "https://example.com/attr/Basic/value/Test",
-//      }),
-//      sdk.WithDefaultKASForWriter(&policy.SimpleKasKey{KasUri: "https://kas.example.com"}),
-//  )
-//  if err != nil { /* handle */ }
-//  // Write segments, then finalize (wrapper also supports sdk.WithSegments for prefix selection).
-//
+//	sw, err := sdk.NewStreamingWriterWithOptions(ctx,
+//	    sdk.WithInitialAttributeFQNs(ctx, []string{
+//	        "https://example.com/attr/Basic/value/Test",
+//	    }),
+//	    sdk.WithDefaultKASForWriter(&policy.SimpleKasKey{KasUri: "https://kas.example.com"}),
+//	)
+//	if err != nil { /* handle */ }
+//	// Write segments, then finalize (wrapper also supports sdk.WithSegments for prefix selection).
 func (s *SDK) NewStreamingWriterWithOptions(ctx context.Context, swOpts ...StreamingWriterOption) (*StreamingWriter, error) {
-    var writerOpts []tdf.Option[*tdf.WriterConfig]
-    for _, o := range swOpts {
-        if err := o(&writerOpts); err != nil {
-            return nil, fmt.Errorf("failed to apply streaming writer option: %w", err)
-        }
-    }
-    writer, err := tdf.NewWriter(ctx, writerOpts...)
-    if err != nil {
-        return nil, err
-    }
-    return &StreamingWriter{writer: writer, sdk: s}, nil
+	var writerOpts []tdf.Option[*tdf.WriterConfig]
+	for _, o := range swOpts {
+		if err := o(&writerOpts); err != nil {
+			return nil, fmt.Errorf("failed to apply streaming writer option: %w", err)
+		}
+	}
+	writer, err := tdf.NewWriter(ctx, writerOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return &StreamingWriter{writer: writer, sdk: s}, nil
 }
 
 // WriteSegment encrypts and writes a segment for the given index.
@@ -260,10 +259,10 @@ func (w *StreamingWriter) Finalize(ctx context.Context, attributeFQNs []string, 
 	// Set payload MIME type
 	tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithPayloadMimeType(cfg.payloadMimeType))
 
-    // Set encrypted metadata if provided
-    if cfg.encryptedMetadata != "" {
-        tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithEncryptedMetadata(cfg.encryptedMetadata))
-    }
+	// Set encrypted metadata if provided
+	if cfg.encryptedMetadata != "" {
+		tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithEncryptedMetadata(cfg.encryptedMetadata))
+	}
 
 	// Set version exclusion option
 	if cfg.excludeVersionFromManifest {
@@ -280,23 +279,23 @@ func (w *StreamingWriter) Finalize(ctx context.Context, attributeFQNs []string, 
 	}
 
 	// Set custom assertions if provided
-    if len(cfg.assertions) > 0 {
-        tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithAssertions(cfg.assertions...))
-    }
+	if len(cfg.assertions) > 0 {
+		tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithAssertions(cfg.assertions...))
+	}
 
-    // Apply segment restriction if provided
-    if len(cfg.keepSegments) > 0 {
-        tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithSegments(cfg.keepSegments))
-    }
+	// Apply segment restriction if provided
+	if len(cfg.keepSegments) > 0 {
+		tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithSegments(cfg.keepSegments))
+	}
 
-    return w.writer.Finalize(ctx, tdfFinalizeOpts...)
+	return w.writer.Finalize(ctx, tdfFinalizeOpts...)
 }
 
 // GetManifest returns the current manifest snapshot from the underlying writer.
 // Before finalize, this is a provisional manifest (informational only). After
 // finalize, it is the final manifest.
 func (w *StreamingWriter) GetManifest() *tdf.Manifest {
-    return w.writer.GetManifest()
+	return w.writer.GetManifest()
 }
 
 // fetchAttributesByFQNs retrieves attribute values from the platform by their FQNs.

@@ -374,9 +374,7 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
 
 	// * Get base key before autoconfigure to condition off of.
 	if tdfConfig.autoconfigure {
-		var g granter
-		var err error
-		g, err = s.newGranter(ctx, tdfConfig)
+		g, err := s.newGranter(ctx, tdfConfig)
 		if err != nil {
 			return err
 		}

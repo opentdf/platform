@@ -49,7 +49,16 @@ type RegistrationParams struct {
 	// NewCacheClient is a function that can be used to create a new cache instance for the service
 	NewCacheClient func(cache.Options) (*cache.Cache, error)
 
+	// KeyManagerFactories are the registered key manager factories that can be used to create
+	// key managers for the service to use.
+	// Prefer KeyManagerCtxFactories
+	// EXPERIMENTAL
 	KeyManagerFactories []trust.NamedKeyManagerFactory
+
+	// KeyManagerCtxFactories are the registered key manager context factories that can be used to create
+	// key managers for the service to use.
+	// EXPERIMENTAL
+	KeyManagerCtxFactories []trust.NamedKeyManagerCtxFactory
 
 	////// The following functions are optional and intended to be called by the service //////
 

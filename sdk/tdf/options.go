@@ -225,10 +225,10 @@ func WithPayloadMimeType(mimeType string) Option[*WriterFinalizeConfig] {
     }
 }
 
-// WithSegments restricts finalization to the provided segment indices.
-// The indices must form a contiguous prefix [0..K] with no gaps or duplicates.
-// If any segments were written beyond K, finalization will fail to avoid
-// mismatches between payload and manifest.
+// WithSegments restricts finalization to the provided segment indices and order.
+// The order provided is used as the logical payload order. Indices may be sparse
+// but must refer to segments that were written. When omitted, all present indices
+// are used in ascending order.
 func WithSegments(indices []int) Option[*WriterFinalizeConfig] {
     return func(c *WriterFinalizeConfig) {
         c.keepSegments = indices

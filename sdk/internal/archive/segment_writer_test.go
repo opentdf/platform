@@ -157,6 +157,126 @@ func TestSegmentWriter_OutOfOrder(t *testing.T) {
 	writer.Close()
 }
 
+func TestSegmentWriter_SparseIndices_InOrder(t *testing.T) {
+    // Write sparse indices in order: 0,1,2,5000,5001,5002
+    writer := NewSegmentTDFWriter(1)
+    ctx := t.Context()
+
+    testSegments := map[int][]byte{
+        0:    []byte("A"),
+        1:    []byte("BB"),
+        2:    []byte("CCC"),
+        5000: []byte("DDDD"),
+        5001: []byte("EEEEE"),
+        5002: []byte("FFFFFF"),
+    }
+
+    manifest := []byte(`{"segments": 6, "sparse": true}`)
+
+    // Write in-order sparse indices
+    order := []int{0, 1, 2, 5000, 5001, 5002}
+    segmentBytes := make(map[int][]byte)
+    for _, index := range order {
+        data := testSegments[index]
+        bytes, err := writer.WriteSegment(ctx, index, data)
+        require.NoError(t, err, "write segment %d failed", index)
+        assert.NotEmpty(t, bytes, "segment %d should yield bytes", index)
+        if index == 0 {
+            assert.Greater(t, len(bytes), len(data), "segment 0 should include ZIP header")
+        } else {
+            assert.Equal(t, len(data), len(bytes), "non-zero segments are raw payload bytes")
+        }
+        segmentBytes[index] = bytes
+    }
+
+    // Assemble full file: concatenate segment bytes in ascending index order
+    var allBytes []byte
+    for _, index := range order {
+        allBytes = append(allBytes, segmentBytes[index]...)
+    }
+
+    // Finalize and append trailer bytes
+    finalBytes, err := writer.Finalize(ctx, manifest)
+    require.NoError(t, err, "finalize failed")
+    allBytes = append(allBytes, finalBytes...)
+
+    // Validate resulting ZIP
+    zipReader, err := zip.NewReader(bytes.NewReader(allBytes), int64(len(allBytes)))
+    require.NoError(t, err, "zip should open")
+    assert.Len(t, zipReader.File, 2, "two entries: payload and manifest")
+
+    payloadFile := findFileByName(zipReader, "0.payload")
+    require.NotNil(t, payloadFile, "payload entry present")
+    r, err := payloadFile.Open()
+    require.NoError(t, err)
+    defer r.Close()
+    payloadContent, err := io.ReadAll(r)
+    require.NoError(t, err)
+
+    // Expected payload is dense concatenation in ascending index order
+    expected := []byte{}
+    for _, index := range order {
+        expected = append(expected, testSegments[index]...)
+    }
+    assert.Equal(t, expected, payloadContent)
+}
+
+func TestSegmentWriter_SparseIndices_OutOfOrder(t *testing.T) {
+    // Write sparse indices out of order, ensure finalization builds correct content
+    writer := NewSegmentTDFWriter(1)
+    ctx := t.Context()
+
+    testSegments := map[int][]byte{
+        0:    []byte("first"),
+        1:    []byte("second"),
+        2:    []byte("third"),
+        5000: []byte("fourth"),
+        5001: []byte("fifth"),
+        5002: []byte("sixth"),
+    }
+    writeOrder := []int{5000, 0, 5002, 2, 5001, 1}
+    finalOrder := []int{0, 1, 2, 5000, 5001, 5002}
+
+    manifest := []byte(`{"segments": 6, "sparse": true, "out_of_order": true}`)
+
+    segmentBytes := make(map[int][]byte)
+    for _, index := range writeOrder {
+        data := testSegments[index]
+        bytes, err := writer.WriteSegment(ctx, index, data)
+        require.NoError(t, err, "write segment %d failed", index)
+        assert.NotEmpty(t, bytes, "segment %d should yield bytes", index)
+        segmentBytes[index] = bytes
+    }
+
+    // Assemble full file in final (ascending) order regardless of write order
+    var allBytes []byte
+    for _, index := range finalOrder {
+        allBytes = append(allBytes, segmentBytes[index]...)
+    }
+
+    finalBytes, err := writer.Finalize(ctx, manifest)
+    require.NoError(t, err, "finalize failed")
+    allBytes = append(allBytes, finalBytes...)
+
+    zipReader, err := zip.NewReader(bytes.NewReader(allBytes), int64(len(allBytes)))
+    require.NoError(t, err, "zip should open")
+    assert.Len(t, zipReader.File, 2)
+
+    payloadFile := findFileByName(zipReader, "0.payload")
+    require.NotNil(t, payloadFile)
+    r, err := payloadFile.Open()
+    require.NoError(t, err)
+    defer r.Close()
+    payloadContent, err := io.ReadAll(r)
+    require.NoError(t, err)
+
+    expected := []byte{}
+    for _, index := range finalOrder {
+        expected = append(expected, testSegments[index]...)
+    }
+    assert.Equal(t, expected, payloadContent)
+}
+
 func TestSegmentWriter_DuplicateSegments(t *testing.T) {
 	// Test error handling for duplicate segments
 	writer := NewSegmentTDFWriter(3)
@@ -203,27 +323,27 @@ func TestSegmentWriter_InvalidSegmentIndex(t *testing.T) {
 	writer.Close()
 }
 
-func TestSegmentWriter_IncompleteSegments(t *testing.T) {
-	// Test error handling when trying to finalize with missing segments
-	writer := NewSegmentTDFWriter(1)
-	ctx := t.Context()
+func TestSegmentWriter_AllowsGapsOnFinalize(t *testing.T) {
+    // Finalize should succeed with gaps; order is inferred by sorting present indices
+    writer := NewSegmentTDFWriter(1)
+    ctx := t.Context()
 
-	// Write only segments 0, 1, 3 (missing 2 and 4)
-	_, err := writer.WriteSegment(ctx, 0, []byte("first"))
-	require.NoError(t, err)
+    // Write only segments 0, 1, 3 (2 is missing)
+    _, err := writer.WriteSegment(ctx, 0, []byte("first"))
+    require.NoError(t, err)
 
-	_, err = writer.WriteSegment(ctx, 1, []byte("second"))
-	require.NoError(t, err)
+    _, err = writer.WriteSegment(ctx, 1, []byte("second"))
+    require.NoError(t, err)
 
-	_, err = writer.WriteSegment(ctx, 3, []byte("fourth"))
-	require.NoError(t, err)
+    _, err = writer.WriteSegment(ctx, 3, []byte("fourth"))
+    require.NoError(t, err)
 
-	// Try to finalize - should fail
-	_, err = writer.Finalize(ctx, []byte("manifest"))
-	require.Error(t, err, "Finalize should fail with missing segments")
-	assert.Contains(t, err.Error(), "missing", "Error should mention missing segments")
+    // Finalize should succeed (auto-dense behavior)
+    finalBytes, err := writer.Finalize(ctx, []byte("manifest"))
+    require.NoError(t, err, "Finalize should succeed with sparse indices")
+    assert.NotEmpty(t, finalBytes, "Finalize should return trailer bytes")
 
-	writer.Close()
+    writer.Close()
 }
 
 func TestSegmentWriter_CleanupSegment(t *testing.T) {

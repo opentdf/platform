@@ -1,22 +1,23 @@
 package archive
 
 import (
-	"bytes"
-	"context"
-	"encoding/binary"
-	"hash/crc32"
-	"sync"
-	"time"
+    "bytes"
+    "context"
+    "encoding/binary"
+    "hash/crc32"
+    "sort"
+    "sync"
+    "time"
 )
 
 // segmentWriter implements the SegmentWriter interface for out-of-order segment writing
 type segmentWriter struct {
-	*baseWriter
-	metadata     *SegmentMetadata
-	centralDir   *CentralDirectory
-	payloadEntry *FileEntry
-	finalized    bool
-	mu           sync.RWMutex
+    *baseWriter
+    metadata     *SegmentMetadata
+    centralDir   *CentralDirectory
+    payloadEntry *FileEntry
+    finalized    bool
+    mu           sync.RWMutex
 }
 
 // NewSegmentTDFWriter creates a new SegmentWriter for out-of-order segment writing
@@ -30,18 +31,18 @@ func NewSegmentTDFWriter(expectedSegments int, opts ...Option) SegmentWriter {
 
 	base := newBaseWriter(cfg)
 
-	return &segmentWriter{
-		baseWriter: base,
-		metadata:   NewSegmentMetadata(expectedSegments),
-		centralDir: NewCentralDirectory(),
-		payloadEntry: &FileEntry{
-			Name:        TDFPayloadFileName,
-			Offset:      0,
-			ModTime:     time.Now(),
-			IsStreaming: true, // Use data descriptor pattern
-		},
-		finalized: false,
-	}
+    return &segmentWriter{
+        baseWriter: base,
+        metadata:   NewSegmentMetadata(expectedSegments),
+        centralDir: NewCentralDirectory(),
+        payloadEntry: &FileEntry{
+            Name:        TDFPayloadFileName,
+            Offset:      0,
+            ModTime:     time.Now(),
+            IsStreaming: true, // Use data descriptor pattern
+        },
+        finalized: false,
+    }
 }
 
 // WriteSegment writes a segment with deterministic output based on segment index
@@ -111,8 +112,8 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byt
 
 // Finalize completes the TDF creation with manifest and ZIP structures
 func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte, error) {
-	sw.mu.Lock()
-	defer sw.mu.Unlock()
+    sw.mu.Lock()
+    defer sw.mu.Unlock()
 
 	// Check if writer is closed or already finalized
 	if err := sw.checkClosed(); err != nil {
@@ -130,10 +131,20 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	default:
 	}
 
-	// Verify all segments are present
-	if !sw.metadata.IsComplete() {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrSegmentMissing}
-	}
+    // If no explicit order was provided, derive order from present indices (sorted).
+    if len(sw.metadata.Order) == 0 {
+        order := make([]int, 0, len(sw.metadata.Segments))
+        for idx := range sw.metadata.Segments {
+            order = append(order, idx)
+        }
+        sort.Ints(order)
+        _ = sw.metadata.SetOrder(order)
+    }
+
+    // Verify all segments are present
+    if !sw.metadata.IsComplete() {
+        return nil, &Error{Op: "finalize", Type: "segment", Err: ErrSegmentMissing}
+    }
 
     // Compute final CRC32 by combining per-segment CRCs now that all are present
     sw.metadata.FinalizeCRC()
@@ -234,6 +245,10 @@ func (sw *segmentWriter) CleanupSegment(index int) error {
 
     return nil
 }
+
+// SetFinalizeOrder sets the order of segments for finalize and CRC computation.
+// Indices may be sparse but must correspond to written segments before finalize.
+// No explicit finalize order setter required for current use-cases.
 
 // writeDataDescriptor writes the data descriptor for the payload
 func (sw *segmentWriter) writeDataDescriptor(buf *bytes.Buffer, zip64 bool) error {

@@ -1,6 +1,7 @@
 package tdf
 
 import (
+    "bytes"
     "fmt"
 	"crypto/rand"
 	"encoding/json"
@@ -37,10 +38,10 @@ SQIDAQAB
 
 // TestWriterEndToEnd contains all the end-to-end test scenarios
 func TestWriterEndToEnd(t *testing.T) {
-	testCases := []struct {
-		name string
-		test func(t *testing.T)
-	}{
+    testCases := []struct {
+        name string
+        test func(t *testing.T)
+    }{
 		{"BasicFlow", testBasicTDFCreationFlow},
 		{"SingleSegmentWithAttributes", testSingleSegmentWithAttributes},
 		{"MultiSegmentFlow", testMultiSegmentFlow},
@@ -53,10 +54,10 @@ func TestWriterEndToEnd(t *testing.T) {
 		{"DifferentAttributeRules", testDifferentAttributeRules},
 		{"OutOfOrderSegments", testOutOfOrderSegments},
 		{"InitialAttributesOnWriter", testInitialAttributesOnWriter},
-		{"GetManifestIncludesInitialPolicy", testGetManifestIncludesInitialPolicy},
-		{"FinalizeWithSegmentsContiguousPrefix", testFinalizeWithSegmentsContiguousPrefix},
-		{"FinalizeWithSegmentsInvalidCases", testFinalizeWithSegmentsInvalidCases},
-	}
+        {"GetManifestIncludesInitialPolicy", testGetManifestIncludesInitialPolicy},
+        {"SparseIndicesInOrder", testSparseIndicesInOrder},
+        {"SparseIndicesOutOfOrder", testSparseIndicesOutOfOrder},
+    }
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -161,6 +162,85 @@ func testGetManifestIncludesInitialPolicy(t *testing.T) {
     // Also ensure no key access objects or root signature present pre-finalize
     assert.Len(t, m.EncryptionInformation.KeyAccessObjs, 0)
     assert.Empty(t, m.EncryptionInformation.RootSignature.Signature)
+}
+
+// Sparse indices end-to-end: write 0,1,2,5000,5001,5002 and verify manifest and totals.
+func testSparseIndicesInOrder(t *testing.T) {
+    ctx := t.Context()
+
+    writer, err := NewWriter(ctx)
+    require.NoError(t, err)
+
+    sizes := map[int]int{
+        0: 1,
+        1: 2,
+        2: 3,
+        5000: 4,
+        5001: 5,
+        5002: 6,
+    }
+    // Write in order
+    order := []int{0, 1, 2, 5000, 5001, 5002}
+    for _, idx := range order {
+        payload := bytes.Repeat([]byte{'x'}, sizes[idx])
+        _, err := writer.WriteSegment(ctx, idx, payload)
+        require.NoError(t, err)
+    }
+
+    attrs := []*policy.Value{createTestAttribute("https://example.com/attr/Sparse/value/Test", testKAS1, "kid1")}
+    fin, err := writer.Finalize(ctx, WithAttributeValues(attrs))
+    require.NoError(t, err)
+    require.NotNil(t, fin.Manifest)
+    assert.Equal(t, len(order), fin.TotalSegments)
+
+    segs := fin.Manifest.EncryptionInformation.IntegrityInformation.Segments
+    require.Len(t, segs, len(order))
+    // Ensure manifest segments are densely packed and sizes match our inputs in order
+    expectedPlain := 0
+    for i, idx := range order {
+        assert.Equal(t, int64(sizes[idx]), segs[i].Size)
+        expectedPlain += sizes[idx]
+    }
+    assert.Equal(t, int64(expectedPlain), fin.TotalSize)
+}
+
+func testSparseIndicesOutOfOrder(t *testing.T) {
+    ctx := t.Context()
+
+    writer, err := NewWriter(ctx)
+    require.NoError(t, err)
+
+    sizes := map[int]int{
+        0: 7,
+        1: 8,
+        2: 9,
+        5000: 10,
+        5001: 11,
+        5002: 12,
+    }
+    writeOrder := []int{5001, 2, 0, 5000, 1, 5002}
+    finalOrder := []int{0, 1, 2, 5000, 5001, 5002}
+
+    for _, idx := range writeOrder {
+        payload := bytes.Repeat([]byte{'y'}, sizes[idx])
+        _, err := writer.WriteSegment(ctx, idx, payload)
+        require.NoError(t, err)
+    }
+
+    attrs := []*policy.Value{createTestAttribute("https://example.com/attr/Sparse/value/Test", testKAS1, "kid1")}
+    fin, err := writer.Finalize(ctx, WithAttributeValues(attrs))
+    require.NoError(t, err)
+    require.NotNil(t, fin.Manifest)
+    assert.Equal(t, len(finalOrder), fin.TotalSegments)
+
+    segs := fin.Manifest.EncryptionInformation.IntegrityInformation.Segments
+    require.Len(t, segs, len(finalOrder))
+    expectedPlain := 0
+    for i, idx := range finalOrder {
+        assert.Equal(t, int64(sizes[idx]), segs[i].Size)
+        expectedPlain += sizes[idx]
+    }
+    assert.Equal(t, int64(expectedPlain), fin.TotalSize)
 }
 
 // testInitialAttributesOnWriter verifies that attributes/KAS supplied at

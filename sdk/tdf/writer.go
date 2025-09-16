@@ -1,15 +1,16 @@
 package tdf
 
 import (
-	"bytes"
-	"context"
-	"encoding/hex"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"hash/crc32"
-	"strings"
-	"sync"
+    "bytes"
+    "context"
+    "encoding/hex"
+    "encoding/json"
+    "errors"
+    "fmt"
+    "hash/crc32"
+    "sort"
+    "strings"
+    "sync"
 
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -365,39 +366,47 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
         cfg.defaultKas = w.initialDefaultKAS
     }
 
-    // Determine if caller requested a restricted contiguous prefix of segments
-    maxIndexToUse := w.maxSegmentIndex
+    // Determine finalize order by collecting all present segment indices and sorting.
+    // This densifies sparse indices automatically and ignores any gaps.
+    order := make([]int, 0, len(w.segments))
+    if len(w.segments) == 0 {
+        return nil, errors.New("no segments written")
+    }
+    for idx := range w.segments {
+        order = append(order, idx)
+    }
+    sort.Ints(order)
+    // If caller provided keepSegments, restrict to that subset and order.
     if len(cfg.keepSegments) > 0 {
-        // Validate keepSegments form a contiguous prefix [0..K]
+        subset := make([]int, 0, len(cfg.keepSegments))
         seen := make(map[int]struct{}, len(cfg.keepSegments))
-        K := -1
         for _, idx := range cfg.keepSegments {
             if idx < 0 {
                 return nil, fmt.Errorf("WithSegments contains invalid index %d (must be >= 0)", idx)
+            }
+            if _, ok := w.segments[idx]; !ok {
+                return nil, fmt.Errorf("WithSegments references segment %d which was not written", idx)
             }
             if _, dup := seen[idx]; dup {
                 return nil, fmt.Errorf("WithSegments contains duplicate index %d", idx)
             }
             seen[idx] = struct{}{}
-            if idx > K {
-                K = idx
-            }
+            subset = append(subset, idx)
         }
-        // Must contain exactly all indices 0..K
-        if len(seen) != K+1 {
-            return nil, fmt.Errorf("WithSegments must include every index from 0 to %d (contiguous prefix)", K)
-        }
-        for i := 0; i <= K; i++ {
-            if _, ok := seen[i]; !ok {
-                return nil, fmt.Errorf("WithSegments missing index %d; indices must form contiguous prefix [0..%d]", i, K)
-            }
-        }
-        // Ensure no segments were written beyond K
-        if w.maxSegmentIndex > K {
-            return nil, fmt.Errorf("cannot finalize with WithSegments up to %d: writer has data for later segments (max index %d). Only a contiguous prefix can be kept; write only desired segments or create a new writer", K, w.maxSegmentIndex)
-        }
-        maxIndexToUse = K
+        order = subset
     }
+    // Require index 0 for now (header emission on segment 0)
+    hasZero := false
+    for _, v := range order {
+        if v == 0 {
+            hasZero = true
+            break
+        }
+    }
+    if !hasZero {
+        return nil, fmt.Errorf("segment 0 is required for header emission; got order without 0: %v", order)
+    }
+    // Archive layer will infer the same order by sorting present indices.
 
     manifest := &Manifest{
         TDFVersion: TDFSpecVersion,
@@ -431,15 +440,15 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
             IsStreamable: true,
         },
         IntegrityInformation: IntegrityInformation{
-            // Copy segments to manifest for integrity verification
-            Segments:      make([]Segment, maxIndexToUse+1),
+            // Copy segments to manifest for integrity verification in finalize order
+            Segments:      make([]Segment, len(order)),
             RootSignature: RootSignature{},
         },
     }
 
-    // Copy segments to manifest in proper order (map -> slice)
-    for i := 0; i <= maxIndexToUse; i++ {
-        if segment, exists := w.segments[i]; exists {
+    // Copy segments to manifest in finalize order (pack densely)
+    for i, idx := range order {
+        if segment, exists := w.segments[idx]; exists {
             encryptInfo.IntegrityInformation.Segments[i] = segment
         }
     }
@@ -455,17 +464,17 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 	encryptInfo.IntegrityInformation.SegmentHashAlgorithm = w.segmentIntegrityAlgorithm.String()
 
 	var aggregateHash bytes.Buffer
-    // Calculate totals and iterate through segments in order (0 to maxIndexToUse)
+    // Calculate totals and iterate through segments in finalize order
     var totalPlaintextSize, totalEncryptedSize int64
-    for i := 0; i <= maxIndexToUse; i++ {
+    for _, i := range order {
         segment, exists := w.segments[i]
         if !exists {
-            return nil, fmt.Errorf("segment %d not written; cannot finalize a contiguous prefix with gaps", i)
+            return nil, fmt.Errorf("segment %d not written; cannot finalize", i)
         }
         if segment.Hash != "" {
-			// Accumulate sizes for result
-			totalPlaintextSize += segment.Size
-			totalEncryptedSize += segment.EncryptedSize
+            // Accumulate sizes for result
+            totalPlaintextSize += segment.Size
+            totalEncryptedSize += segment.EncryptedSize
 
 			// Decode the base64-encoded segment hash to match reader validation
 			decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
@@ -522,7 +531,7 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
     return &FinalizeResult{
         Data:          finalBytes,
         Manifest:      manifest,
-        TotalSegments: maxIndexToUse + 1,
+        TotalSegments: len(order),
         TotalSize:     totalPlaintextSize,
         EncryptedSize: totalEncryptedSize,
     }, nil

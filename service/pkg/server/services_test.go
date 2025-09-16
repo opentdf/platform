@@ -2,9 +2,11 @@ package server
 
 import (
 	"context"
+	"embed"
 	"testing"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -469,4 +471,103 @@ func (suite *ServiceTestSuite) TestIsNamespaceEnabled() {
 				tc.expectedResult, tc.configModes, tc.namespaceMode, result)
 		})
 	}
+}
+
+// mockOrderTrackingService is a mock implementation of IService for testing start order.
+type mockOrderTrackingService struct {
+	namespace         string
+	serviceName       string
+	startOrderTracker *[]string
+}
+
+func (m *mockOrderTrackingService) GetNamespace() string { return m.namespace }
+func (m *mockOrderTrackingService) GetVersion() string   { return "v1" }
+func (m *mockOrderTrackingService) GetServiceDesc() *grpc.ServiceDesc {
+	return &grpc.ServiceDesc{ServiceName: m.serviceName}
+}
+func (m *mockOrderTrackingService) IsDBRequired() bool      { return false }
+func (m *mockOrderTrackingService) DBMigrations() *embed.FS { return nil }
+func (m *mockOrderTrackingService) IsStarted() bool         { return true }
+func (m *mockOrderTrackingService) Shutdown() error         { return nil }
+func (m *mockOrderTrackingService) Start(_ context.Context, _ serviceregistry.RegistrationParams) error {
+	*m.startOrderTracker = append(*m.startOrderTracker, m.serviceName)
+	return nil
+}
+func (m *mockOrderTrackingService) RegisterConfigUpdateHook(context.Context, func(config.ChangeHook)) error {
+	return nil
+}
+func (m *mockOrderTrackingService) RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error {
+	return nil
+}
+func (m *mockOrderTrackingService) RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, *grpc.ClientConn) error {
+	return nil
+}
+func (m *mockOrderTrackingService) RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error {
+	return nil
+}
+
+func (suite *ServiceTestSuite) TestStartServices_StartsInRegistrationOrder() {
+	ctx := context.Background()
+	startOrderTracker := make([]string, 0)
+	registry := serviceregistry.NewServiceRegistry()
+
+	// Define the services and their registration order
+	servicesToRegister := []struct {
+		name      string
+		namespace string
+		mode      serviceregistry.ModeName
+	}{
+		{"ServiceA", "namespace1", "test"},
+		{"ServiceB", "namespace2", "test"},
+		{"ServiceC", "namespace1", "test"},
+		{"ServiceD", "namespace3", "test"},
+		{"ServiceE", "namespace2", "test"},
+	}
+
+	for _, s := range servicesToRegister {
+		mockSvc := &mockOrderTrackingService{
+			namespace:         s.namespace,
+			serviceName:       s.name,
+			startOrderTracker: &startOrderTracker,
+		}
+		err := registry.RegisterService(mockSvc, s.mode)
+		suite.Require().NoError(err)
+	}
+
+	// Prepare to call startServices
+	otdf, err := mockOpenTDFServer()
+	suite.Require().NoError(err)
+	defer otdf.Stop()
+
+	newLogger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
+	suite.Require().NoError(err)
+
+	cleanup, err := startServices(ctx, startServicesParams{
+		cfg: &config.Config{
+			Mode: []string{"test"}, // Enable the mode for our test services
+			Services: map[string]config.ServiceConfig{
+				"namespace1": {},
+				"namespace2": {},
+				"namespace3": {},
+			},
+		},
+		otdf:   otdf,
+		logger: newLogger,
+		reg:    registry,
+	})
+	suite.Require().NoError(err)
+	defer cleanup()
+
+	// The startServices function iterates through namespaces in the order they were first registered,
+	// and then through the services within that namespace in their registration order.
+	// Namespace registration order: namespace1, namespace2, namespace3
+	// Services in namespace1: ServiceA, ServiceC
+	// Services in namespace2: ServiceB, ServiceE
+	// Services in namespace3: ServiceD
+	expectedStartOrder := []string{"ServiceA", "ServiceC", "ServiceB", "ServiceE", "ServiceD"}
+
+	suite.Require().Equal(expectedStartOrder, startOrderTracker, "Services should start in the order they were registered, grouped by namespace")
+
+	// call close function
+	registry.Shutdown()
 }

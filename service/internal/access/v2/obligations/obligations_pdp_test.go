@@ -36,9 +36,9 @@ var (
 	actionRead   = &policy.Action{Name: actionNameRead}
 	actionCreate = &policy.Action{Name: actionNameCreate}
 	actionCustom = &policy.Action{Name: actionNameCustom}
-)
 
-// TODO: registered resources
+	emptyDecisionRequestContext = &policy.RequestContext{}
+)
 
 type ObligationsPDPSuite struct {
 	suite.Suite
@@ -171,13 +171,14 @@ func (s *ObligationsPDPSuite) SetupSuite() {
 func (s *ObligationsPDPSuite) Test_NewObligationsPolicyDecisionPoint_Success() {
 	attributesByValueFQN := s.createAttributesByValueFQN(mockAttrValFQN1, "attr1")
 	var noClientID string
+	var noRegisteredResources map[string]*policy.RegisteredResourceValue
 	allObligations := []*policy.Obligation{s.createObligation(mockObligationFQN1, mockAttrValFQN1, noClientID, actionRead)}
 
 	pdp, err := NewObligationsPolicyDecisionPoint(
 		s.T().Context(),
 		logger.CreateTestLogger(),
 		attributesByValueFQN,
-		nil,
+		noRegisteredResources,
 		allObligations,
 	)
 
@@ -195,12 +196,13 @@ func (s *ObligationsPDPSuite) Test_NewObligationsPolicyDecisionPoint_Success() {
 func (s *ObligationsPDPSuite) Test_NewObligationsPolicyDecisionPoint_WithClientScoped() {
 	attributesByValueFQN := s.createAttributesByValueFQN(mockAttrValFQN2, "attr2")
 	allObligations := []*policy.Obligation{s.createObligation(mockObligationFQN2, mockAttrValFQN2, mockClientID, actionRead)}
+	var noRegisteredResources map[string]*policy.RegisteredResourceValue
 
 	pdp, err := NewObligationsPolicyDecisionPoint(
 		s.T().Context(),
 		logger.CreateTestLogger(),
 		attributesByValueFQN,
-		nil,
+		noRegisteredResources,
 		allObligations,
 	)
 
@@ -215,6 +217,7 @@ func (s *ObligationsPDPSuite) Test_NewObligationsPolicyDecisionPoint_WithClientS
 
 func (s *ObligationsPDPSuite) Test_NewObligationsPolicyDecisionPoint_EmptyClientID_Fails() {
 	attributesByValueFQN := s.createAttributesByValueFQN(mockAttrValFQN1, "attr1")
+	var noRegisteredResources map[string]*policy.RegisteredResourceValue
 
 	// Create obligation with empty client ID using special case
 	allObligations := []*policy.Obligation{
@@ -244,7 +247,7 @@ func (s *ObligationsPDPSuite) Test_NewObligationsPolicyDecisionPoint_EmptyClient
 		s.T().Context(),
 		logger.CreateTestLogger(),
 		attributesByValueFQN,
-		nil,
+		noRegisteredResources,
 		allObligations,
 	)
 
@@ -254,12 +257,13 @@ func (s *ObligationsPDPSuite) Test_NewObligationsPolicyDecisionPoint_EmptyClient
 
 func (s *ObligationsPDPSuite) Test_NewObligationsPolicyDecisionPoint_EmptyObligations() {
 	attributesByValueFQN := s.createAttributesByValueFQN(mockAttrValFQN1, "attr1")
+	var noRegisteredResources map[string]*policy.RegisteredResourceValue
 
 	pdp, err := NewObligationsPolicyDecisionPoint(
 		s.T().Context(),
 		logger.CreateTestLogger(),
 		attributesByValueFQN,
-		nil,
+		noRegisteredResources,
 		[]*policy.Obligation{},
 	)
 
@@ -335,7 +339,7 @@ func (s *ObligationsPDPSuite) Test_GetRequiredObligations_SimpleObligation_NoReq
 			},
 		},
 	}
-	decisionRequestContext := &policy.RequestContext{}
+	decisionRequestContext := emptyDecisionRequestContext
 
 	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
 
@@ -360,11 +364,20 @@ func (s *ObligationsPDPSuite) Test_GetRequiredObligations_ClientScopedObligation
 		},
 	}
 
+	// Found when client provided and matching
 	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
-
 	s.Require().NoError(err)
 	s.Equal([][]string{{mockObligationFQN2}}, perResource)
 	s.Equal([]string{mockObligationFQN2}, all)
+
+	// Not found when client not provided
+	decisionRequestContext.Pep.ClientId = ""
+	perResource, all, err = s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+	s.Require().NoError(err)
+	for _, r := range perResource {
+		s.Empty(r)
+	}
+	s.Empty(all)
 }
 
 func (s *ObligationsPDPSuite) Test_GetRequiredObligations_MixedObligations_Triggered() {
@@ -414,7 +427,7 @@ func (s *ObligationsPDPSuite) Test_GetRequiredObligations_UnknownRegisteredResou
 			},
 		},
 	}
-	decisionRequestContext := &policy.RequestContext{}
+	decisionRequestContext := emptyDecisionRequestContext
 
 	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
 	s.Require().Error(err)
@@ -433,7 +446,7 @@ func (s *ObligationsPDPSuite) Test_GetRequiredObligations_CreateAction_SimpleObl
 			},
 		},
 	}
-	decisionRequestContext := &policy.RequestContext{}
+	decisionRequestContext := emptyDecisionRequestContext
 
 	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionCreate, resources, decisionRequestContext)
 
@@ -481,7 +494,7 @@ func (s *ObligationsPDPSuite) Test_GetRequiredObligations_ReadVsCreateAction_Dif
 			},
 		},
 	}
-	decisionRequestContext := &policy.RequestContext{}
+	decisionRequestContext := emptyDecisionRequestContext
 
 	// Test with 'read' action - should trigger read obligation
 	perResourceRead, allRead, err := s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
@@ -507,7 +520,7 @@ func (s *ObligationsPDPSuite) Test_GetRequiredObligations_RegisteredResource_Rea
 			},
 		},
 	}
-	decisionRequestContext := &policy.RequestContext{}
+	decisionRequestContext := emptyDecisionRequestContext
 
 	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
 
@@ -527,7 +540,7 @@ func (s *ObligationsPDPSuite) Test_GetRequiredObligations_RegisteredResource_Cre
 			},
 		},
 	}
-	decisionRequestContext := &policy.RequestContext{}
+	decisionRequestContext := emptyDecisionRequestContext
 
 	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionCreate, resources, decisionRequestContext)
 
@@ -587,6 +600,16 @@ func (s *ObligationsPDPSuite) Test_GetRequiredObligations_RegisteredResource_Cli
 	s.Equal(mockObligationFQN2, perResource[0][0])
 	s.Require().Len(all, 1, "should have exactly one obligation total")
 	s.Contains(all, mockObligationFQN2)
+
+	// Nothing should be triggered if no client
+	decisionRequestContext.Pep.ClientId = ""
+	perResource, all, err = s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+	s.Require().NoError(err)
+	s.Len(perResource, len(resources))
+	for _, r := range perResource {
+		s.Empty(r, "no obligations should be triggered for create action on read-only registered resource")
+	}
+	s.Empty(all)
 }
 
 func (s *ObligationsPDPSuite) Test_GetRequiredObligations_MixedResources_RegisteredAndDirect_Triggered() {
@@ -638,9 +661,24 @@ func (s *ObligationsPDPSuite) Test_GetRequiredObligations_RegisteredResource_Cus
 			},
 		},
 	}
-	decisionRequestContext := &policy.RequestContext{}
+	decisionRequestContext := emptyDecisionRequestContext
 
 	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionCustom, resources, decisionRequestContext)
+
+	s.Require().NoError(err)
+	s.Require().Len(perResource, 1, "should have obligations for exactly one resource")
+	s.Require().Len(perResource[0], 1, "should have exactly one obligation for the resource")
+	s.Equal(mockObligationFQN4, perResource[0][0])
+	s.Require().Len(all, 1, "should have exactly one obligation total")
+	s.Contains(all, mockObligationFQN4)
+
+	// Same result even if a client is provided
+	decisionRequestContext = &policy.RequestContext{
+		Pep: &policy.PolicyEnforcementPoint{
+			ClientId: mockClientID,
+		},
+	}
+	perResource, all, err = s.pdp.GetRequiredObligations(s.T().Context(), actionCustom, resources, decisionRequestContext)
 
 	s.Require().NoError(err)
 	s.Require().Len(perResource, 1, "should have obligations for exactly one resource")
@@ -659,7 +697,7 @@ func (s *ObligationsPDPSuite) Test_GetRequiredObligations_RegisteredResource_Cus
 			},
 		},
 	}
-	decisionRequestContext := &policy.RequestContext{}
+	decisionRequestContext := emptyDecisionRequestContext
 
 	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
 
@@ -678,7 +716,7 @@ func (s *ObligationsPDPSuite) Test_GetRequiredObligations_CustomAction_Registere
 			},
 		},
 	}
-	decisionRequestContext := &policy.RequestContext{}
+	decisionRequestContext := emptyDecisionRequestContext
 
 	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionCustom, resources, decisionRequestContext)
 
@@ -714,7 +752,7 @@ func (s *ObligationsPDPSuite) Test_GetRequiredObligations_CustomAction_MixedReso
 			},
 		},
 	}
-	decisionRequestContext := &policy.RequestContext{}
+	decisionRequestContext := emptyDecisionRequestContext
 
 	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionCustom, resources, decisionRequestContext)
 

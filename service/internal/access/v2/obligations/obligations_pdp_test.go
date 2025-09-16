@@ -20,7 +20,10 @@ const (
 	mockClientID       = "mock-client-id"
 )
 
-var mockAction = &policy.Action{Name: "read"}
+var (
+	actionNameRead = "read"
+	actionRead     = &policy.Action{Name: actionNameRead}
+)
 
 // TODO: registered resources
 
@@ -59,7 +62,7 @@ func (s *ObligationsPDPSuite) SetupSuite() {
 					Fqn: mockObligationFQN1,
 					Triggers: []*policy.ObligationTrigger{
 						{
-							Action:         mockAction,
+							Action:         actionRead,
 							AttributeValue: &policy.Value{Fqn: mockAttrValFQN1},
 						},
 					},
@@ -69,7 +72,7 @@ func (s *ObligationsPDPSuite) SetupSuite() {
 					Fqn: mockObligationFQN2,
 					Triggers: []*policy.ObligationTrigger{
 						{
-							Action:         mockAction,
+							Action:         actionRead,
 							AttributeValue: &policy.Value{Fqn: mockAttrValFQN2},
 							Context: []*policy.RequestContext{
 								{
@@ -97,7 +100,109 @@ func (s *ObligationsPDPSuite) SetupSuite() {
 	s.Require().NoError(err)
 }
 
-func (s *ObligationsPDPSuite) Test_NoObligationsTriggered() {
+func (s *ObligationsPDPSuite) Test_NewObligationsPolicyDecisionPoint_Success() {
+	attributesByValueFQN := s.createAttributesByValueFQN(mockAttrValFQN1, "attr1")
+	var noClientID string
+	allObligations := []*policy.Obligation{s.createObligation(mockObligationFQN1, mockAttrValFQN1, noClientID, actionRead)}
+
+	pdp, err := NewObligationsPolicyDecisionPoint(
+		s.T().Context(),
+		logger.CreateTestLogger(),
+		attributesByValueFQN,
+		nil,
+		allObligations,
+	)
+
+	s.Require().NoError(err)
+	s.NotNil(pdp)
+	s.NotNil(pdp.logger)
+	s.Equal(attributesByValueFQN, pdp.attributesByValueFQN)
+	s.Empty(pdp.registeredResourceValuesByFQN)
+	s.Len(pdp.obligationValuesByFQN, 1)
+	s.Contains(pdp.obligationValuesByFQN, mockObligationFQN1)
+	s.NotNil(pdp.simpleTriggerActionsToAttributes)
+	s.NotNil(pdp.clientIDScopedTriggerActionsToAttributes)
+}
+
+func (s *ObligationsPDPSuite) Test_NewObligationsPolicyDecisionPoint_WithClientScoped() {
+	attributesByValueFQN := s.createAttributesByValueFQN(mockAttrValFQN2, "attr2")
+	allObligations := []*policy.Obligation{s.createObligation(mockObligationFQN2, mockAttrValFQN2, mockClientID, actionRead)}
+
+	pdp, err := NewObligationsPolicyDecisionPoint(
+		s.T().Context(),
+		logger.CreateTestLogger(),
+		attributesByValueFQN,
+		nil,
+		allObligations,
+	)
+
+	s.Require().NoError(err)
+	s.NotNil(pdp)
+	s.Len(pdp.obligationValuesByFQN, 1)
+	s.Contains(pdp.obligationValuesByFQN, mockObligationFQN2)
+	s.Contains(pdp.clientIDScopedTriggerActionsToAttributes, mockClientID)
+	s.Contains(pdp.clientIDScopedTriggerActionsToAttributes[mockClientID], actionNameRead)
+	s.Contains(pdp.clientIDScopedTriggerActionsToAttributes[mockClientID][actionNameRead], mockAttrValFQN2)
+}
+
+func (s *ObligationsPDPSuite) Test_NewObligationsPolicyDecisionPoint_EmptyClientID_Fails() {
+	attributesByValueFQN := s.createAttributesByValueFQN(mockAttrValFQN1, "attr1")
+
+	// Create obligation with empty client ID using special case
+	allObligations := []*policy.Obligation{
+		{
+			Values: []*policy.ObligationValue{
+				{
+					Fqn: mockObligationFQN1,
+					Triggers: []*policy.ObligationTrigger{
+						{
+							Action:         actionRead,
+							AttributeValue: &policy.Value{Fqn: mockAttrValFQN1},
+							Context: []*policy.RequestContext{
+								{
+									Pep: &policy.PolicyEnforcementPoint{
+										ClientId: "",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pdp, err := NewObligationsPolicyDecisionPoint(
+		s.T().Context(),
+		logger.CreateTestLogger(),
+		attributesByValueFQN,
+		nil,
+		allObligations,
+	)
+
+	s.Require().Error(err)
+	s.Nil(pdp)
+}
+
+func (s *ObligationsPDPSuite) Test_NewObligationsPolicyDecisionPoint_EmptyObligations() {
+	attributesByValueFQN := s.createAttributesByValueFQN(mockAttrValFQN1, "attr1")
+
+	pdp, err := NewObligationsPolicyDecisionPoint(
+		s.T().Context(),
+		logger.CreateTestLogger(),
+		attributesByValueFQN,
+		nil,
+		[]*policy.Obligation{},
+	)
+
+	s.Require().NoError(err)
+	s.NotNil(pdp)
+	s.Empty(pdp.obligationValuesByFQN)
+	s.Empty(pdp.simpleTriggerActionsToAttributes)
+	s.Empty(pdp.clientIDScopedTriggerActionsToAttributes)
+}
+
+func (s *ObligationsPDPSuite) Test_GetRequiredObligations_NoObligationsTriggered() {
 	type args struct {
 		action                 *policy.Action
 		resources              []*authz.Resource
@@ -110,7 +215,7 @@ func (s *ObligationsPDPSuite) Test_NoObligationsTriggered() {
 		{
 			name: "no obligation triggered by known but unobligated attribute value",
 			args: args{
-				action: mockAction,
+				action: actionRead,
 				resources: []*authz.Resource{
 					{
 						Resource: &authz.Resource_AttributeValues_{
@@ -152,7 +257,7 @@ func (s *ObligationsPDPSuite) Test_NoObligationsTriggered() {
 	}
 }
 
-func (s *ObligationsPDPSuite) Test_SimpleObligation_NoRequestContextPEP_Triggered() {
+func (s *ObligationsPDPSuite) Test_GetRequiredObligations_SimpleObligation_NoRequestContextPEP_Triggered() {
 	resources := []*authz.Resource{
 		{
 			Resource: &authz.Resource_AttributeValues_{
@@ -164,14 +269,14 @@ func (s *ObligationsPDPSuite) Test_SimpleObligation_NoRequestContextPEP_Triggere
 	}
 	decisionRequestContext := &policy.RequestContext{}
 
-	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), mockAction, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
 
 	s.Require().NoError(err)
 	s.Equal([][]string{{mockObligationFQN1}}, perResource)
 	s.Equal([]string{mockObligationFQN1}, all)
 }
 
-func (s *ObligationsPDPSuite) Test_ClientScopedObligation_Triggered() {
+func (s *ObligationsPDPSuite) Test_GetRequiredObligations_ClientScopedObligation_Triggered() {
 	resources := []*authz.Resource{
 		{
 			Resource: &authz.Resource_AttributeValues_{
@@ -187,14 +292,14 @@ func (s *ObligationsPDPSuite) Test_ClientScopedObligation_Triggered() {
 		},
 	}
 
-	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), mockAction, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
 
 	s.Require().NoError(err)
 	s.Equal([][]string{{mockObligationFQN2}}, perResource)
 	s.Equal([]string{mockObligationFQN2}, all)
 }
 
-func (s *ObligationsPDPSuite) Test_MixedObligations_Triggered() {
+func (s *ObligationsPDPSuite) Test_GetRequiredObligations_MixedObligations_Triggered() {
 	resources := []*authz.Resource{
 		{
 			Resource: &authz.Resource_AttributeValues_{
@@ -224,7 +329,7 @@ func (s *ObligationsPDPSuite) Test_MixedObligations_Triggered() {
 		},
 	}
 
-	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), mockAction, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
 	s.Require().NoError(err)
 	// Obligations in order of resources: unscoped, scoped, both
 	s.Equal([][]string{{mockObligationFQN1}, {mockObligationFQN2}, {mockObligationFQN1, mockObligationFQN2}}, perResource)
@@ -232,7 +337,7 @@ func (s *ObligationsPDPSuite) Test_MixedObligations_Triggered() {
 	s.ElementsMatch([]string{mockObligationFQN1, mockObligationFQN2}, all)
 }
 
-func (s *ObligationsPDPSuite) Test_UnknownRegisteredResourceValue_Fails() {
+func (s *ObligationsPDPSuite) Test_GetRequiredObligations_UnknownRegisteredResourceValue_Fails() {
 	badRegResValFQN := "https://reg_res/not_found_reg_res"
 	resources := []*authz.Resource{
 		{
@@ -243,9 +348,44 @@ func (s *ObligationsPDPSuite) Test_UnknownRegisteredResourceValue_Fails() {
 	}
 	decisionRequestContext := &policy.RequestContext{}
 
-	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), mockAction, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
 	s.Require().Error(err)
 	s.Empty(perResource)
 	s.Empty(all)
 	s.Contains(err.Error(), badRegResValFQN)
+}
+
+func (s *ObligationsPDPSuite) createAttributesByValueFQN(attrValFQN, attrName string) map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue {
+	return map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+		attrValFQN: {
+			Attribute: &policy.Attribute{Name: attrName},
+			Value:     &policy.Value{Fqn: attrValFQN},
+		},
+	}
+}
+
+func (s *ObligationsPDPSuite) createObligation(oblFQN, attrValFQN, clientID string, action *policy.Action) *policy.Obligation {
+	trigger := &policy.ObligationTrigger{
+		Action:         action,
+		AttributeValue: &policy.Value{Fqn: attrValFQN},
+	}
+
+	if clientID != "" {
+		trigger.Context = []*policy.RequestContext{
+			{
+				Pep: &policy.PolicyEnforcementPoint{
+					ClientId: clientID,
+				},
+			},
+		}
+	}
+
+	return &policy.Obligation{
+		Values: []*policy.ObligationValue{
+			{
+				Fqn:      oblFQN,
+				Triggers: []*policy.ObligationTrigger{trigger},
+			},
+		},
+	}
 }

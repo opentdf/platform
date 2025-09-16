@@ -61,7 +61,8 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					}
 				}
 
-				if kasCfg.Preview.KeyManagement {
+				useKeyManagement := kasCfg.Preview.KeyManagement
+				if useKeyManagement {
 					srp.Logger.Info("preview feature: key management is enabled")
 
 					kasURL, err := determineKASURL(srp, kasCfg)
@@ -89,7 +90,8 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					// Explicitly set the default manager for session key generation.
 					// This should be configurable, e.g., defaulting to BasicManager or an HSM if available.
 					p.KeyDelegator.SetDefaultMode(security.BasicManagerName) // Example: default to BasicManager
-				} else {
+				}
+				if !useKeyManagement || len(kasCfg.Keyring) > 0 || kasCfg.ECCertID != "" || kasCfg.RSACertID != "" {
 					// Set up both the legacy CryptoProvider and the new SecurityProvider
 					kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)
 					p.CryptoProvider = srp.OTDF.CryptoProvider

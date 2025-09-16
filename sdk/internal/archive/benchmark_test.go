@@ -72,6 +72,42 @@ func BenchmarkSegmentWriter_CRC32ContiguousProcessing(b *testing.B) {
 	}
 }
 
+// BenchmarkSegmentWriter_SparseIndices measures performance when segment indices are sparse
+// but the number of segments (n) is moderate. Indices use a fixed stride to simulate gaps.
+func BenchmarkSegmentWriter_SparseIndices(b *testing.B) {
+	const (
+		n       = 1000 // number of segments actually written
+		stride  = 5000 // gap between logical indices
+		segSize = 512  // bytes per segment
+	)
+
+	// Prebuild segment data
+	data := make([]byte, segSize)
+	for i := range data {
+		data[i] = byte(i)
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		w := NewSegmentTDFWriter(1)
+		ctx := b.Context()
+
+		// Write sparse indices in order
+		for k := 0; k < n; k++ {
+			idx := k * stride
+			if _, err := w.WriteSegment(ctx, idx, data); err != nil {
+				b.Fatal(err)
+			}
+		}
+		if _, err := w.Finalize(ctx, []byte(`{"sparse":true}`)); err != nil {
+			b.Fatal(err)
+		}
+		_ = w.Close()
+	}
+}
+
 // BenchmarkSegmentWriter_VariableSegmentSizes benchmarks performance impact of variable segment sizes
 // on memory allocation and CRC32 processing efficiency.
 //

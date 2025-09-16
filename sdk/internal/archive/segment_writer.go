@@ -246,10 +246,6 @@ func (sw *segmentWriter) CleanupSegment(index int) error {
 	return nil
 }
 
-// SetFinalizeOrder sets the order of segments for finalize and CRC computation.
-// Indices may be sparse but must correspond to written segments before finalize.
-// No explicit finalize order setter required for current use-cases.
-
 // writeDataDescriptor writes the data descriptor for the payload
 func (sw *segmentWriter) writeDataDescriptor(buf *bytes.Buffer, zip64 bool) error {
 	if zip64 {

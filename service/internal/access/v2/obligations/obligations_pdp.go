@@ -13,7 +13,11 @@ import (
 	"github.com/opentdf/platform/service/logger"
 )
 
-// TODO: named errors
+var (
+	ErrEmptyPEPClientID = errors.New("trigger request context is optional but must contain PEP client ID")
+	ErrUnknownRegisteredResourceValue = errors.New("unknown registered resource value")
+	ErrUnsupportedResourceType = errors.New("unsupported resource type")
+)
 
 // A graph of action names to attribute value FQNs to lists of obligation value FQNs
 // i.e. read : https://example.org/attr/attr1/value/val1 : [https://example.org/obl/some_obligation/value/some_value]
@@ -76,7 +80,7 @@ func NewObligationsPolicyDecisionPoint(
 					requiredPEPClientID := optionalRequestContext.GetPep().GetClientId()
 
 					if requiredPEPClientID == "" {
-						return nil, errors.New("trigger request context is optional but must contain PEP client ID")
+						return nil, ErrEmptyPEPClientID
 					}
 					if _, ok := clientScopedTriggered[requiredPEPClientID]; !ok {
 						clientScopedTriggered[requiredPEPClientID] = make(obligationValuesByActionOnAnAttributeValue)
@@ -154,7 +158,7 @@ func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
 			regResValFQN := resource.GetRegisteredResourceValueFqn()
 			regResValue, ok := p.registeredResourceValuesByFQN[regResValFQN]
 			if !ok {
-				return nil, nil, fmt.Errorf("unknown registered resource value: %s", regResValFQN)
+				return nil, nil, fmt.Errorf("%w: %s", ErrUnknownRegisteredResourceValue, regResValFQN)
 			}
 
 			// Check the action-attribute-values associated with a Registered Resource Value for a match to the request action
@@ -171,7 +175,7 @@ func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
 			attrValueFQNs = append(attrValueFQNs, resource.GetAttributeValues().GetFqns()...)
 
 		default:
-			return nil, nil, fmt.Errorf("unsupported resource type: %T", resource)
+			return nil, nil, fmt.Errorf("%w: %T", ErrUnsupportedResourceType, resource)
 		}
 
 		// With list of attribute values for the resource, traverse each lookup graph to resolve the Set of required obligations

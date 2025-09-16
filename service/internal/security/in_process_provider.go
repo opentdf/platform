@@ -157,7 +157,7 @@ func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm stri
 // FindKeyByID finds a key by ID
 func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
 	if k, err := a.cryptoProvider.RSAPublicKey(string(id)); err == nil {
-		e, err := ocrypto.NewAsymEncryption(k)
+		e, err := ocrypto.FromPublicPEM(k)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create asym encryption from rsa public key: %w", err)
 		}
@@ -169,7 +169,7 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 		}, nil
 	}
 	if k, err := a.cryptoProvider.ECPublicKey(string(id)); err == nil {
-		e, err := ocrypto.NewAsymEncryption(k)
+		e, err := ocrypto.FromPublicPEM(k)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create asym encryption from ec public key: %w", err)
 		}

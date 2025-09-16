@@ -143,11 +143,7 @@ func (t TDFObject) Size() int64 {
 //
 // Note: This method modifies the TDF's manifest in place. The assertion will be
 // cryptographically bound to the TDF's payload using the aggregate hash.
-func (t *TDFObject) AppendAssertion(ctx context.Context, assertionConfig AssertionConfig, signingProvider AssertionSigningProvider) error {
-	if signingProvider == nil {
-		return errors.New("signing builder is required for assertion appending")
-	}
-
+func (t *TDFObject) AppendAssertion(ctx context.Context, assertionConfig AssertionConfig, key AssertionKey) error {
 	// Configure the assertion from config
 	assertion := Assertion{
 		ID:             assertionConfig.ID,
@@ -171,7 +167,7 @@ func (t *TDFObject) AppendAssertion(ctx context.Context, assertionConfig Asserti
 	combinedHash = append(combinedHash, assertionHashBytes...)
 
 	// Sign the assertion using the provided signing builder
-	if err := assertion.SignWithProvider(ctx, assertionHash, signingProvider); err != nil {
+	if err := assertion.Sign(assertionHash, rootSignature, key); err != nil {
 		return fmt.Errorf("failed to sign assertion: %w", err)
 	}
 

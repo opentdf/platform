@@ -1,7 +1,6 @@
 package sdk
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -38,34 +37,35 @@ var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with 
 // It returns an error if the signing fails.
 // The assertion binding is updated with the method and the signature.
 func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
-	// Use default builder with the provided key
-	provider := NewPublicKeySigningProvider(key)
-	return a.SignWithProvider(context.Background(), hash, provider)
-}
-
-// SignWithProvider signs the assertion using a custom builder.
-// This method allows for flexible signing implementations including hardware tokens.
-func (a *Assertion) SignWithProvider(ctx context.Context, hash string, provider AssertionSigningProvider) error {
-	if provider == nil {
-		return errors.New("signing builder is required")
+	if key.IsEmpty() {
+		return errors.New("signing key not configured")
+	}
+	// Configure JWT with assertion hash and signature claims
+	tok := jwt.New()
+	if err := tok.Set(kAssertionHash, hash); err != nil {
+		return fmt.Errorf("failed to set assertion hash: %w", err)
+	}
+	assertionSig := ocrypto.Base64Encode([]byte(sig))
+	if err := tok.Set(kAssertionSignature, assertionSig); err != nil {
+		return fmt.Errorf("failed to set assertion signature: %w", err)
 	}
 
-	// Use the builder to sign
-	signature, err := provider.Sign(ctx, a, hash)
+	// Sign the token with the configured key
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key))
 	if err != nil {
-		return fmt.Errorf("builder signing failed: %w", err)
+		return fmt.Errorf("signing assertion failed: %w", err)
 	}
 
 	// set the binding
 	a.Binding.Method = JWS.String()
-	a.Binding.Signature = signature
+	a.Binding.Signature = string(signedTok)
 
 	return nil
 }
 
 // Verify checks the binding signature of the assertion and
 // returns the hash and the signature. It returns an error if the verification fails.
-func (a Assertion) Verify(key AssertionKey) (string, string, error) {
+func (a *Assertion) Verify(key AssertionKey) (string, string, error) {
 	tok, err := jwt.Parse([]byte(a.Binding.Signature),
 		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key),
 	)
@@ -93,7 +93,7 @@ func (a Assertion) Verify(key AssertionKey) (string, string, error) {
 }
 
 // GetHash returns the hash of the assertion in hex format.
-func (a Assertion) GetHash() ([]byte, error) {
+func (a *Assertion) GetHash() ([]byte, error) {
 	// Clear out the binding
 	a.Binding = Binding{}
 

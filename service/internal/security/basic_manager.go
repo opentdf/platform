@@ -26,6 +26,7 @@ const (
 	ristrettoCacheTTL    = 30
 )
 
+// BasicManager is a simple implements the SecurityProvider for wrapped keys stored internally (provider mode).
 type BasicManager struct {
 	l       *logger.Logger
 	rootKey []byte

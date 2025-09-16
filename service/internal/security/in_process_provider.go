@@ -156,28 +156,29 @@ func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm stri
 
 // FindKeyByID finds a key by ID
 func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
-	// Try to determine the algorithm by checking if the key works with known algorithms
-	for _, alg := range []string{AlgorithmECP256R1, AlgorithmRSA2048} {
-		// This is a hack since the original provider doesn't have a way to check if a key exists
-		if alg == AlgorithmECP256R1 {
-			if _, err := a.cryptoProvider.ECPublicKey(string(id)); err == nil {
-				return &KeyDetailsAdapter{
-					id:             id,
-					algorithm:      ocrypto.KeyType(alg),
-					legacy:         a.legacyKeys[string(id)],
-					cryptoProvider: a.cryptoProvider,
-				}, nil
-			}
-		} else if alg == AlgorithmRSA2048 {
-			if _, err := a.cryptoProvider.RSAPublicKey(string(id)); err == nil {
-				return &KeyDetailsAdapter{
-					id:             id,
-					algorithm:      ocrypto.KeyType(alg),
-					legacy:         a.legacyKeys[string(id)],
-					cryptoProvider: a.cryptoProvider,
-				}, nil
-			}
+	if k, err := a.cryptoProvider.RSAPublicKey(string(id)); err == nil {
+		e, err := ocrypto.NewAsymEncryption(k)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create asym encryption from rsa public key: %w", err)
 		}
+		return &KeyDetailsAdapter{
+			id:             id,
+			algorithm:      e.KeyType(),
+			legacy:         a.legacyKeys[string(id)],
+			cryptoProvider: a.cryptoProvider,
+		}, nil
+	}
+	if k, err := a.cryptoProvider.ECPublicKey(string(id)); err == nil {
+		e, err := ocrypto.NewAsymEncryption(k)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create asym encryption from ec public key: %w", err)
+		}
+		return &KeyDetailsAdapter{
+			id:             id,
+			algorithm:      e.KeyType(),
+			legacy:         a.legacyKeys[string(id)],
+			cryptoProvider: a.cryptoProvider,
+		}, nil
 	}
 	return nil, ErrCertNotFound
 }

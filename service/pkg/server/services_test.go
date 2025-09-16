@@ -493,15 +493,19 @@ func (m *mockOrderTrackingService) Start(_ context.Context, _ serviceregistry.Re
 	*m.startOrderTracker = append(*m.startOrderTracker, m.serviceName)
 	return nil
 }
+
 func (m *mockOrderTrackingService) RegisterConfigUpdateHook(context.Context, func(config.ChangeHook)) error {
 	return nil
 }
+
 func (m *mockOrderTrackingService) RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error {
 	return nil
 }
+
 func (m *mockOrderTrackingService) RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, *grpc.ClientConn) error {
 	return nil
 }
+
 func (m *mockOrderTrackingService) RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error {
 	return nil
 }

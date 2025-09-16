@@ -71,16 +71,29 @@ func (p KeyAssertionProvider) Bind(ctx context.Context, ac AssertionConfig, m Ma
 		Statement:      ac.Statement,
 		AppliesToState: ac.AppliesToState,
 	}
-
-	signingProvider := NewPublicKeySigningProvider(p.privateKey)
+	assertionHash, err := assertion.GetHash()
+	if err != nil {
+		return assertion, fmt.Errorf("failed to get hash of assertion: %w", err)
+	}
 	// FIXME aggregation hash replaced with manifest root signature
-	if err := assertion.SignWithProvider(ctx, m.RootSignature.Signature, signingProvider); err != nil {
+	if err := assertion.Sign(string(assertionHash), m.RootSignature.Signature, p.privateKey); err != nil {
 		return assertion, fmt.Errorf("failed to sign assertion: %w", err)
 	}
 	return assertion, nil
 }
 
 func (p KeyAssertionProvider) Verify(ctx context.Context, a Assertion, r Reader) error {
+	//if !r.config.verifiers.IsEmpty() {
+	//	// Look up the key for the assertion
+	//	foundKey, err := r.config.verifiers.Get(a.ID)
+	//
+	//	if err != nil {
+	//		return fmt.Errorf("%w: %w", ErrAssertionFailure{ID: a.ID}, err)
+	//	} else if !foundKey.IsEmpty() {
+	//		assertionKey.Alg = foundKey.Alg
+	//		assertionKey.Key = foundKey.Key
+	//	}
+	//}
 	//TODO implement me
 	panic("implement me")
 }
@@ -118,27 +131,8 @@ func (p *PublicKeySigningProvider) CreateAssertionConfig() AssertionConfig {
 
 // Sign creates a JWS signature using the configured key
 func (p *PublicKeySigningProvider) Sign(_ context.Context, _ *Assertion, assertionHash string) (string, error) {
-	if p.key.IsEmpty() {
-		return "", errors.New("signing key not configured")
-	}
-
-	// Configure JWT with assertion hash and signature claims
-	tok := jwt.New()
-	if err := tok.Set(kAssertionHash, assertionHash); err != nil {
-		return "", fmt.Errorf("failed to set assertion hash: %w", err)
-	}
-	assertionSig := ocrypto.Base64Encode([]byte(assertionHash))
-	if err := tok.Set(kAssertionSignature, assertionSig); err != nil {
-		return "", fmt.Errorf("failed to set assertion signature: %w", err)
-	}
-
-	// Sign the token with the configured key
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(p.key.Alg.String()), p.key.Key))
-	if err != nil {
-		return "", fmt.Errorf("signing assertion failed: %w", err)
-	}
-
-	return string(signedTok), nil
+	panic("implement me")
+	return "", nil
 }
 
 // GetSigningKeyReference returns a reference to the signing key

@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -19,6 +18,8 @@ import (
 const (
 	SystemMetadataAssertionID = "system-metadata"
 	SystemMetadataSchemaV1    = "system-metadata-v1"
+	// SystemMetadataSchemaV2 use root signature instead of aggregateHash
+	SystemMetadataSchemaV2 = "system-metadata-v2"
 )
 
 // SystemMetadataAssertionProvider provides information about the system that is running the application.
@@ -55,53 +56,36 @@ func (p SystemMetadataAssertionProvider) Bind(ctx context.Context, ac AssertionC
 		return assertion, err
 	}
 
-	hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-	_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
-	if err != nil {
-		return assertion, fmt.Errorf("error decoding hex string: %w", err)
+	//hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
+	//_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
+	//if err != nil {
+	//	return assertion, fmt.Errorf("error decoding hex string: %w", err)
+	//}
+	//
+	//var completeHashBuilder strings.Builder
+	//completeHashBuilder.WriteString(p.aggregateHash)
+	//if p.useHex {
+	//	completeHashBuilder.Write(hashOfAssertionAsHex)
+	//} else {
+	//	completeHashBuilder.Write(hashOfAssertion)
+	//}
+
+	assertionSigningKey := AssertionKey{
+		Alg: AssertionKeyAlgHS256,
+		Key: p.payloadKey[:],
 	}
 
-	var completeHashBuilder strings.Builder
-	completeHashBuilder.WriteString(p.aggregateHash)
-	if p.useHex {
-		completeHashBuilder.Write(hashOfAssertionAsHex)
-	} else {
-		completeHashBuilder.Write(hashOfAssertion)
-	}
-
-	// Fall back to default builder
-	assertionSigningKey := AssertionKey{}
-	// Set default to HS256 and payload key
-	assertionSigningKey.Alg = AssertionKeyAlgHS256
-	assertionSigningKey.Key = p.payloadKey[:]
-	if !ac.SigningKey.IsEmpty() {
-		assertionSigningKey = ac.SigningKey
-	}
-
-	signingProvider := NewPublicKeySigningProvider(assertionSigningKey)
-	// FIXME aggregation hash replaced with manifest root signature
-	if err := assertion.SignWithProvider(ctx, string(hashOfAssertionAsHex), signingProvider); err != nil {
+	// aggregation hash replaced with manifest root signature
+	if err := assertion.Sign(string(hashOfAssertionAsHex), m.RootSignature.Signature, assertionSigningKey); err != nil {
 		return assertion, fmt.Errorf("failed to sign assertion: %w", err)
 	}
 	return assertion, nil
 }
 
 func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, r Reader) error {
-	assertionKey := AssertionKey{}
-	// Set default to HS256
-	assertionKey.Alg = AssertionKeyAlgHS256
-	assertionKey.Key = p.payloadKey[:]
-
-	if !r.config.verifiers.IsEmpty() {
-		// Look up the key for the assertion
-		foundKey, err := r.config.verifiers.Get(a.ID)
-
-		if err != nil {
-			return fmt.Errorf("%w: %w", ErrAssertionFailure{ID: a.ID}, err)
-		} else if !foundKey.IsEmpty() {
-			assertionKey.Alg = foundKey.Alg
-			assertionKey.Key = foundKey.Key
-		}
+	assertionKey := AssertionKey{
+		Alg: AssertionKeyAlgHS256,
+		Key: p.payloadKey[:],
 	}
 
 	assertionHash, assertionSig, err := a.Verify(assertionKey)
@@ -117,6 +101,9 @@ func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion
 	if err != nil {
 		return fmt.Errorf("%w: failed to get hash of assertion: %w", ErrAssertionFailure{ID: a.ID}, err)
 	}
+	if string(hashOfAssertionAsHex) != assertionHash {
+		return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: a.ID})
+	}
 
 	hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
 	_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
@@ -130,16 +117,12 @@ func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion
 	}
 
 	var completeHashBuilder bytes.Buffer
-	completeHashBuilder.Write([]byte(p.aggregateHash))
-	completeHashBuilder.Write(hashOfAssertion)
+	completeHashBuilder.Write(hashOfAssertionAsHex)
 
-	base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
-
-	if string(hashOfAssertionAsHex) != assertionHash {
-		return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: a.ID})
-	}
-
-	if assertionSig != string(base64Hash) {
+	decodedSig, _ := ocrypto.Base64Decode([]byte(assertionSig))
+	decodedSig2, _ := ocrypto.Base64Decode(decodedSig)
+	decodedSigString := string(decodedSig2)
+	if decodedSigString != r.manifest.RootSignature.Signature {
 		return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: a.ID})
 	}
 	return nil
@@ -185,7 +168,7 @@ func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
 		AppliesToState: Unencrypted,
 		Statement: Statement{
 			Format: StatementFormatJSON,
-			Schema: SystemMetadataSchemaV1,
+			Schema: SystemMetadataSchemaV2,
 			Value:  string(metadataJSON),
 		},
 	}, nil

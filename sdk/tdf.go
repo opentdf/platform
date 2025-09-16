@@ -17,12 +17,11 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/Masterminds/semver/v3"
+	"github.com/google/uuid"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
-
-	"github.com/google/uuid"
-	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/archive"
 	"github.com/opentdf/platform/sdk/sdkconnect"
@@ -132,7 +131,7 @@ func (t TDFObject) Size() int64 {
 
 // AppendAssertion adds a new assertion to the TDF object after creation.
 // This method handles the cryptographic binding of the assertion to the TDF's payload.
-// The assertion will be signed using the provided signing provider.
+// The assertion will be signed using the provided signing builder.
 //
 // Parameters:
 //   - ctx: Context for cancellation and timeout
@@ -146,7 +145,7 @@ func (t TDFObject) Size() int64 {
 // cryptographically bound to the TDF's payload using the aggregate hash.
 func (t *TDFObject) AppendAssertion(ctx context.Context, assertionConfig AssertionConfig, signingProvider AssertionSigningProvider) error {
 	if signingProvider == nil {
-		return errors.New("signing provider is required for assertion appending")
+		return errors.New("signing builder is required for assertion appending")
 	}
 
 	// Configure the assertion from config
@@ -171,7 +170,7 @@ func (t *TDFObject) AppendAssertion(ctx context.Context, assertionConfig Asserti
 	combinedHash = append(combinedHash, rootSignature...)
 	combinedHash = append(combinedHash, assertionHashBytes...)
 
-	// Sign the assertion using the provided signing provider
+	// Sign the assertion using the provided signing builder
 	if err := assertion.SignWithProvider(ctx, assertionHash, signingProvider); err != nil {
 		return fmt.Errorf("failed to sign assertion: %w", err)
 	}
@@ -347,22 +346,20 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	tdfObject.manifest.Payload.URL = archive.TDFPayloadFileName
 	tdfObject.manifest.Payload.IsEncrypted = true
 
-	// if addSystemMetadataAssertion is true, register a system metadata assertion provider
+	// if addSystemMetadataAssertion is true, register a system metadata assertion builder
 	if tdfConfig.addSystemMetadataAssertion {
 		systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(tdfConfig.useHex, tdfObject.payloadKey[:], aggregateHash)
-		systemMetadataPattern, _ := regexp.Compile("^" + SystemMetadataAssertionID + "$")
-		// if already registered, ignore
-		_ = tdfConfig.AssertionProviderFactory.RegisterAssertionProvider(systemMetadataPattern, systemMetadataAssertionProvider)
+		tdfConfig.assertionRegistry.RegisterBuilder(systemMetadataAssertionProvider)
 	}
 
 	var boundAssertions []Assertion
 	// Bind Assertions
-	for _, registered := range tdfConfig.AssertionProviderFactory.registeredProviders {
-		assertionConfig, er := registered.provider.Configure(ctx)
+	for _, registered := range tdfConfig.assertionRegistry.builders {
+		assertionConfig, er := registered.Configure(ctx)
 		if er != nil {
-			return nil, fmt.Errorf("failed to configure assertion provider: %w", er)
+			return nil, fmt.Errorf("failed to configure assertion builder: %w", er)
 		}
-		boundAssertion, er := registered.provider.Bind(ctx, assertionConfig, tdfObject.manifest)
+		boundAssertion, er := registered.Bind(ctx, assertionConfig, tdfObject.manifest)
 		if er != nil {
 			return nil, er
 		}
@@ -1142,7 +1139,7 @@ func (r *Reader) UnsafePayloadKeyRetrieval() ([]byte, error) {
 
 // AppendAssertion adds a new assertion to the loaded TDF reader after creation.
 // This method handles the cryptographic binding of the assertion to the TDF's payload.
-// The assertion will be signed using the provided signing provider.
+// The assertion will be signed using the provided signing builder.
 //
 // Parameters:
 //   - ctx: Context for cancellation and timeout
@@ -1355,26 +1352,33 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		return ErrSegSizeMismatch
 	}
 
-	// Register DEK default system metadata assertion provider
+	// Register DEK default system metadata assertion builder
 	if !r.config.disableAssertionVerification {
 		systemMetadataPattern, _ := regexp.Compile("^" + SystemMetadataAssertionID + "$")
 		// TODO ??? useHex == !r.config.disableAssertionVerification
 		systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(!r.config.disableAssertionVerification, payloadKey[:], aggregateHash.String())
 		// if already registered, ignore
-		_ = r.config.AssertionProviderFactory.RegisterAssertionProvider(systemMetadataPattern, systemMetadataAssertionProvider)
+		_ = r.config.assertionRegistry.RegisterValidator(systemMetadataPattern, systemMetadataAssertionProvider)
 	}
 
 	// Validate assertions
 	for _, assertion := range r.manifest.Assertions {
-		validator, err := r.config.AssertionProviderFactory.GetValidationProvider(assertion.ID)
+		// TODO ??? check all or fail-fast
+		validator, err := r.config.assertionRegistry.GetValidationProvider(assertion.ID)
 		if err != nil {
 			// TODO ??? ignore unknown assertions
 			continue
 		}
-
-		// Verify with the selected provider
+		// Verify integrity and binding
+		err = validator.Verify(ctx, assertion, *r)
+		if err != nil {
+			// TODO ??? fail always
+			return r.handleAssertionVerificationError(assertion.ID, err)
+		}
+		// Validate trust
 		err = validator.Validate(ctx, assertion, *r)
 		if err != nil {
+			// TODO ??? report validation error and allow to continue
 			return r.handleAssertionVerificationError(assertion.ID, err)
 		}
 	}

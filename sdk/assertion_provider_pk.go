@@ -26,10 +26,15 @@ type KeyAssertionProvider struct {
 	publicKey  AssertionKey
 }
 
-func NewKeyAssertionProvider(privateKey AssertionKey, publicKey AssertionKey) *KeyAssertionProvider {
+func NewKeyAssertionBuilder(privateKey AssertionKey) *KeyAssertionProvider {
 	return &KeyAssertionProvider{
 		privateKey: privateKey,
-		publicKey:  publicKey,
+	}
+}
+
+func NewKeyAssertionValidator(publicKey AssertionKey) *KeyAssertionProvider {
+	return &KeyAssertionProvider{
+		publicKey: publicKey,
 	}
 }
 
@@ -99,7 +104,7 @@ type PublicKeySigningProvider struct {
 	key AssertionKey
 }
 
-// NewPublicKeySigningProvider creates a signing provider using the existing AssertionKey structure
+// NewPublicKeySigningProvider creates a signing builder using the existing AssertionKey structure
 func NewPublicKeySigningProvider(key AssertionKey) *PublicKeySigningProvider {
 	return &PublicKeySigningProvider{
 		key: key,
@@ -159,7 +164,7 @@ type PublicKeyValidationProvider struct {
 	aggregateHash []byte
 }
 
-// NewPublicKeyValidationProvider creates a validation provider using the existing verification keys
+// NewPublicKeyValidationProvider creates a validation builder using the existing verification keys
 func NewPublicKeyValidationProvider() *PublicKeyValidationProvider {
 	return &PublicKeyValidationProvider{}
 }
@@ -222,7 +227,7 @@ func (p *PublicKeyValidationProvider) Verify(_ context.Context, assertion Assert
 	return nil
 }
 
-// IsTrusted always returns nil for the default provider (key-based trust)
+// IsTrusted always returns nil for the default builder (key-based trust)
 func (p *PublicKeyValidationProvider) IsTrusted(_ context.Context, assertion Assertion) error {
 	// In the default implementation, trust is implicit if we have the key
 	key, err := p.keys.Get(assertion.ID)

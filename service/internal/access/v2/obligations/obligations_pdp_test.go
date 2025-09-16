@@ -17,12 +17,15 @@ const (
 	mockAttrValFQN3    = "https://example.org/attr/attr2/value/val3"
 	mockObligationFQN1 = "https://example.org/obl/some_obligation/value/some_value"
 	mockObligationFQN2 = "https://example.org/obl/another_obligation/value/another_value"
+	mockObligationFQN3 = "https://example.org/obl/create_obligation/value/create_value"
 	mockClientID       = "mock-client-id"
+	actionNameRead     = "read"
+	actionNameCreate   = "create"
 )
 
 var (
-	actionNameRead = "read"
-	actionRead     = &policy.Action{Name: actionNameRead}
+	actionRead   = &policy.Action{Name: actionNameRead}
+	actionCreate = &policy.Action{Name: actionNameCreate}
 )
 
 // TODO: registered resources
@@ -57,7 +60,7 @@ func (s *ObligationsPDPSuite) SetupSuite() {
 	allObligations := []*policy.Obligation{
 		{
 			Values: []*policy.ObligationValue{
-				// No client PEP scope
+				// No client PEP scope - triggered by 'read' action
 				{
 					Fqn: mockObligationFQN1,
 					Triggers: []*policy.ObligationTrigger{
@@ -67,7 +70,7 @@ func (s *ObligationsPDPSuite) SetupSuite() {
 						},
 					},
 				},
-				// Scoped to the mockClientID PEP
+				// Scoped to the mockClientID PEP - triggered by 'read' action
 				{
 					Fqn: mockObligationFQN2,
 					Triggers: []*policy.ObligationTrigger{
@@ -81,6 +84,16 @@ func (s *ObligationsPDPSuite) SetupSuite() {
 									},
 								},
 							},
+						},
+					},
+				},
+				// No client PEP scope - triggered by 'create' action
+				{
+					Fqn: mockObligationFQN3,
+					Triggers: []*policy.ObligationTrigger{
+						{
+							Action:         actionCreate,
+							AttributeValue: &policy.Value{Fqn: mockAttrValFQN1},
 						},
 					},
 				},
@@ -353,6 +366,82 @@ func (s *ObligationsPDPSuite) Test_GetRequiredObligations_UnknownRegisteredResou
 	s.Empty(perResource)
 	s.Empty(all)
 	s.Contains(err.Error(), badRegResValFQN)
+}
+
+func (s *ObligationsPDPSuite) Test_GetRequiredObligations_CreateAction_SimpleObligation_Triggered() {
+	resources := []*authz.Resource{
+		{
+			Resource: &authz.Resource_AttributeValues_{
+				AttributeValues: &authz.Resource_AttributeValues{
+					Fqns: []string{mockAttrValFQN1},
+				},
+			},
+		},
+	}
+	decisionRequestContext := &policy.RequestContext{}
+
+	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionCreate, resources, decisionRequestContext)
+
+	s.Require().NoError(err)
+	s.Equal([][]string{{mockObligationFQN3}}, perResource)
+	s.Equal([]string{mockObligationFQN3}, all)
+}
+
+func (s *ObligationsPDPSuite) Test_GetRequiredObligations_CreateAction_NoObligationsTriggered() {
+	// Test that 'create' action doesn't trigger 'read' obligations
+	resources := []*authz.Resource{
+		{
+			Resource: &authz.Resource_AttributeValues_{
+				AttributeValues: &authz.Resource_AttributeValues{
+					Fqns: []string{mockAttrValFQN2},
+				},
+			},
+		},
+	}
+	decisionRequestContext := &policy.RequestContext{
+		Pep: &policy.PolicyEnforcementPoint{
+			ClientId: mockClientID,
+		},
+	}
+
+	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionCreate, resources, decisionRequestContext)
+
+	s.Require().NoError(err)
+	// No create obligations exist for mockAttrValFQN2, so nothing should be triggered
+	s.Len(perResource, len(resources))
+	for _, r := range perResource {
+		s.Empty(r)
+	}
+	s.Empty(all)
+}
+
+func (s *ObligationsPDPSuite) Test_GetRequiredObligations_ReadVsCreateAction_DifferentObligationsTriggered() {
+	// Test the same resource with both actions to verify action-specific filtering
+	resources := []*authz.Resource{
+		{
+			Resource: &authz.Resource_AttributeValues_{
+				AttributeValues: &authz.Resource_AttributeValues{
+					Fqns: []string{mockAttrValFQN1},
+				},
+			},
+		},
+	}
+	decisionRequestContext := &policy.RequestContext{}
+
+	// Test with 'read' action - should trigger read obligation
+	perResourceRead, allRead, err := s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+	s.Require().NoError(err)
+	s.Equal([][]string{{mockObligationFQN1}}, perResourceRead)
+	s.Equal([]string{mockObligationFQN1}, allRead)
+
+	// Test with 'create' action - should trigger create obligation
+	perResourceCreate, allCreate, err := s.pdp.GetRequiredObligations(s.T().Context(), actionCreate, resources, decisionRequestContext)
+	s.Require().NoError(err)
+	s.Equal([][]string{{mockObligationFQN3}}, perResourceCreate)
+	s.Equal([]string{mockObligationFQN3}, allCreate)
+
+	// Verify the obligations are different
+	s.NotEqual(allRead, allCreate)
 }
 
 func (s *ObligationsPDPSuite) createAttributesByValueFQN(attrValFQN, attrName string) map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue {

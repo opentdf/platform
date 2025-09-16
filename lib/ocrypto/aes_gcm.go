@@ -80,7 +80,7 @@ func (aesGcm AesGcm) EncryptWithIVAndTagSize(iv, data []byte, authTagSize int) (
 // NOTE: This method use nonce of 12 bytes and auth tag as aes block size(16 bytes)
 // also expects IV as preamble of data.
 func (aesGcm AesGcm) Decrypt(data []byte) ([]byte, error) { // extract nonce and cipherText
-	if len(data) < GcmStandardNonceSize + aes.BlockSize {
+	if len(data) < GcmStandardNonceSize+aes.BlockSize {
 		return nil, errors.New("ciphertext too short")
 	}
 	nonce, cipherText := data[:GcmStandardNonceSize], data[GcmStandardNonceSize:]

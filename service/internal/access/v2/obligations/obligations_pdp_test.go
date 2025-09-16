@@ -12,20 +12,30 @@ import (
 )
 
 const (
-	mockAttrValFQN1    = "https://example.org/attr/attr1/value/val1"
-	mockAttrValFQN2    = "https://example.org/attr/attr2/value/val2"
-	mockAttrValFQN3    = "https://example.org/attr/attr2/value/val3"
+	mockAttrValFQN1 = "https://example.org/attr/attr1/value/val1"
+	mockAttrValFQN2 = "https://example.org/attr/attr2/value/val2"
+	mockAttrValFQN3 = "https://example.org/attr/attr2/value/val3"
+
 	mockObligationFQN1 = "https://example.org/obl/some_obligation/value/some_value"
 	mockObligationFQN2 = "https://example.org/obl/another_obligation/value/another_value"
 	mockObligationFQN3 = "https://example.org/obl/create_obligation/value/create_value"
-	mockClientID       = "mock-client-id"
-	actionNameRead     = "read"
-	actionNameCreate   = "create"
+	mockObligationFQN4 = "https://example.org/obl/custom_obligation/value/custom_value"
+
+	mockRegResValFQN1 = "https://example.org/reg_res/resource1/value/val1"
+	mockRegResValFQN2 = "https://example.org/reg_res/resource2/value/val2"
+	mockRegResValFQN3 = "https://example.org/reg_res/resource2/value/val3"
+
+	mockClientID = "mock-client-id"
+
+	actionNameRead   = "read"
+	actionNameCreate = "create"
+	actionNameCustom = "custom_action"
 )
 
 var (
 	actionRead   = &policy.Action{Name: actionNameRead}
 	actionCreate = &policy.Action{Name: actionNameCreate}
+	actionCustom = &policy.Action{Name: actionNameCustom}
 )
 
 // TODO: registered resources
@@ -53,6 +63,41 @@ func (s *ObligationsPDPSuite) SetupSuite() {
 		mockAttrValFQN3: {
 			Attribute: &policy.Attribute{Name: "attr2"},
 			Value:     &policy.Value{Fqn: mockAttrValFQN3},
+		},
+	}
+
+	// Mock registered resources
+	registeredResourceValuesByFQN := map[string]*policy.RegisteredResourceValue{
+		mockRegResValFQN1: {
+			Value: "val1",
+			ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+				{
+					Action:         actionRead,
+					AttributeValue: &policy.Value{Fqn: mockAttrValFQN1},
+				},
+				{
+					Action:         actionCreate,
+					AttributeValue: &policy.Value{Fqn: mockAttrValFQN1},
+				},
+			},
+		},
+		mockRegResValFQN2: {
+			Value: "val2",
+			ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+				{
+					Action:         actionRead,
+					AttributeValue: &policy.Value{Fqn: mockAttrValFQN2},
+				},
+			},
+		},
+		mockRegResValFQN3: {
+			Value: "val3",
+			ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+				{
+					Action:         actionCustom,
+					AttributeValue: &policy.Value{Fqn: mockAttrValFQN3},
+				},
+			},
 		},
 	}
 
@@ -97,6 +142,16 @@ func (s *ObligationsPDPSuite) SetupSuite() {
 						},
 					},
 				},
+				// No client PEP scope - triggered by 'custom' action
+				{
+					Fqn: mockObligationFQN4,
+					Triggers: []*policy.ObligationTrigger{
+						{
+							Action:         actionCustom,
+							AttributeValue: &policy.Value{Fqn: mockAttrValFQN3},
+						},
+					},
+				},
 			},
 		},
 	}
@@ -107,7 +162,7 @@ func (s *ObligationsPDPSuite) SetupSuite() {
 		s.T().Context(),
 		logger.CreateTestLogger(),
 		attributesByValueFQN,
-		nil,
+		registeredResourceValuesByFQN,
 		allObligations,
 	)
 	s.Require().NoError(err)
@@ -442,6 +497,244 @@ func (s *ObligationsPDPSuite) Test_GetRequiredObligations_ReadVsCreateAction_Dif
 
 	// Verify the obligations are different
 	s.NotEqual(allRead, allCreate)
+}
+
+func (s *ObligationsPDPSuite) Test_GetRequiredObligations_RegisteredResource_ReadAction_Triggered() {
+	resources := []*authz.Resource{
+		{
+			Resource: &authz.Resource_RegisteredResourceValueFqn{
+				RegisteredResourceValueFqn: mockRegResValFQN1,
+			},
+		},
+	}
+	decisionRequestContext := &policy.RequestContext{}
+
+	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+
+	s.Require().NoError(err)
+	s.Require().Len(perResource, 1, "should have obligations for exactly one resource")
+	s.Require().Len(perResource[0], 1, "should have exactly one obligation for the resource")
+	s.Equal(mockObligationFQN1, perResource[0][0])
+	s.Require().Len(all, 1, "should have exactly one obligation total")
+	s.Contains(all, mockObligationFQN1)
+}
+
+func (s *ObligationsPDPSuite) Test_GetRequiredObligations_RegisteredResource_CreateAction_Triggered() {
+	resources := []*authz.Resource{
+		{
+			Resource: &authz.Resource_RegisteredResourceValueFqn{
+				RegisteredResourceValueFqn: mockRegResValFQN1,
+			},
+		},
+	}
+	decisionRequestContext := &policy.RequestContext{}
+
+	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionCreate, resources, decisionRequestContext)
+
+	s.Require().NoError(err)
+	s.Require().Len(perResource, 1, "should have obligations for exactly one resource")
+	s.Require().Len(perResource[0], 1, "should have exactly one obligation for the resource")
+	s.Equal(mockObligationFQN3, perResource[0][0])
+	s.Require().Len(all, 1, "should have exactly one obligation total")
+	s.Contains(all, mockObligationFQN3)
+}
+
+func (s *ObligationsPDPSuite) Test_GetRequiredObligations_RegisteredResource_NoCreateAction_NoObligationsTriggered() {
+	// Use mockRegResValFQN2 which only has read action, not create
+	resources := []*authz.Resource{
+		{
+			Resource: &authz.Resource_RegisteredResourceValueFqn{
+				RegisteredResourceValueFqn: mockRegResValFQN2,
+			},
+		},
+	}
+	decisionRequestContext := &policy.RequestContext{
+		Pep: &policy.PolicyEnforcementPoint{
+			ClientId: mockClientID,
+		},
+	}
+
+	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionCreate, resources, decisionRequestContext)
+
+	s.Require().NoError(err)
+	s.Len(perResource, len(resources))
+	for _, r := range perResource {
+		s.Empty(r, "no obligations should be triggered for create action on read-only registered resource")
+	}
+	s.Empty(all)
+}
+
+func (s *ObligationsPDPSuite) Test_GetRequiredObligations_RegisteredResource_ClientScoped_Triggered() {
+	// Use mockRegResValFQN2 which maps to mockAttrValFQN2 (has client-scoped read obligation)
+	resources := []*authz.Resource{
+		{
+			Resource: &authz.Resource_RegisteredResourceValueFqn{
+				RegisteredResourceValueFqn: mockRegResValFQN2,
+			},
+		},
+	}
+	decisionRequestContext := &policy.RequestContext{
+		Pep: &policy.PolicyEnforcementPoint{
+			ClientId: mockClientID,
+		},
+	}
+
+	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+
+	s.Require().NoError(err)
+	s.Require().Len(perResource, 1, "should have obligations for exactly one resource")
+	s.Require().Len(perResource[0], 1, "should have exactly one obligation for the resource")
+	s.Equal(mockObligationFQN2, perResource[0][0])
+	s.Require().Len(all, 1, "should have exactly one obligation total")
+	s.Contains(all, mockObligationFQN2)
+}
+
+func (s *ObligationsPDPSuite) Test_GetRequiredObligations_MixedResources_RegisteredAndDirect_Triggered() {
+	// Mix registered resource and direct attribute values
+	resources := []*authz.Resource{
+		{
+			Resource: &authz.Resource_RegisteredResourceValueFqn{
+				RegisteredResourceValueFqn: mockRegResValFQN1,
+			},
+		},
+		{
+			Resource: &authz.Resource_AttributeValues_{
+				AttributeValues: &authz.Resource_AttributeValues{
+					Fqns: []string{mockAttrValFQN2},
+				},
+			},
+		},
+	}
+	decisionRequestContext := &policy.RequestContext{
+		Pep: &policy.PolicyEnforcementPoint{
+			ClientId: mockClientID,
+		},
+	}
+
+	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+
+	s.Require().NoError(err)
+	s.Require().Len(perResource, 2, "should have obligations for exactly two resources")
+
+	// First resource (registered resource mapping to mockAttrValFQN1) -> mockObligationFQN1
+	s.Require().Len(perResource[0], 1, "first resource should have exactly one obligation")
+	s.Equal(mockObligationFQN1, perResource[0][0])
+
+	// Second resource (direct attribute mockAttrValFQN2 with client scoping) -> mockObligationFQN2
+	s.Require().Len(perResource[1], 1, "second resource should have exactly one obligation")
+	s.Equal(mockObligationFQN2, perResource[1][0])
+
+	// Should have both obligations in total
+	s.Require().Len(all, 2, "should have exactly two obligations total")
+	s.ElementsMatch([]string{mockObligationFQN1, mockObligationFQN2}, all)
+}
+
+func (s *ObligationsPDPSuite) Test_GetRequiredObligations_RegisteredResource_CustomAction_Triggered() {
+	// Use mockRegResValFQN3 which has custom action and should trigger mockObligationFQN4
+	resources := []*authz.Resource{
+		{
+			Resource: &authz.Resource_RegisteredResourceValueFqn{
+				RegisteredResourceValueFqn: mockRegResValFQN3,
+			},
+		},
+	}
+	decisionRequestContext := &policy.RequestContext{}
+
+	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionCustom, resources, decisionRequestContext)
+
+	s.Require().NoError(err)
+	s.Require().Len(perResource, 1, "should have obligations for exactly one resource")
+	s.Require().Len(perResource[0], 1, "should have exactly one obligation for the resource")
+	s.Equal(mockObligationFQN4, perResource[0][0])
+	s.Require().Len(all, 1, "should have exactly one obligation total")
+	s.Contains(all, mockObligationFQN4)
+}
+
+func (s *ObligationsPDPSuite) Test_GetRequiredObligations_RegisteredResource_CustomAction_WrongAction_NoObligationsTriggered() {
+	// Use mockRegResValFQN3 (has custom action) but call with read action - should trigger nothing
+	resources := []*authz.Resource{
+		{
+			Resource: &authz.Resource_RegisteredResourceValueFqn{
+				RegisteredResourceValueFqn: mockRegResValFQN3,
+			},
+		},
+	}
+	decisionRequestContext := &policy.RequestContext{}
+
+	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+
+	s.Require().NoError(err)
+	s.Require().Len(perResource, 1, "should have results for exactly one resource")
+	s.Empty(perResource[0], "no obligations should be triggered for read action on resource that only has custom action mapping")
+	s.Empty(all, "no obligations should be triggered globally")
+}
+
+func (s *ObligationsPDPSuite) Test_GetRequiredObligations_CustomAction_RegisteredResource_Triggered() {
+	// Test custom action with registered resource
+	resources := []*authz.Resource{
+		{
+			Resource: &authz.Resource_RegisteredResourceValueFqn{
+				RegisteredResourceValueFqn: mockRegResValFQN3,
+			},
+		},
+	}
+	decisionRequestContext := &policy.RequestContext{}
+
+	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionCustom, resources, decisionRequestContext)
+
+	s.Require().NoError(err)
+	s.Require().Len(perResource, 1, "should have obligations for exactly one resource")
+	s.Require().Len(perResource[0], 1, "should have exactly one obligation for the resource")
+	s.Equal(mockObligationFQN4, perResource[0][0])
+	s.Require().Len(all, 1, "should have exactly one obligation total")
+	s.Contains(all, mockObligationFQN4)
+}
+
+func (s *ObligationsPDPSuite) Test_GetRequiredObligations_CustomAction_MixedResources_Triggered() {
+	// Test custom action with mixed resource types
+	resources := []*authz.Resource{
+		// Direct attribute that triggers custom obligation
+		{
+			Resource: &authz.Resource_AttributeValues_{
+				AttributeValues: &authz.Resource_AttributeValues{
+					Fqns: []string{mockAttrValFQN3},
+				},
+			},
+		},
+		// Registered resource that also triggers custom obligation
+		{
+			Resource: &authz.Resource_RegisteredResourceValueFqn{
+				RegisteredResourceValueFqn: mockRegResValFQN3,
+			},
+		},
+		// Registered resource that doesn't trigger custom obligation (only has read action)
+		{
+			Resource: &authz.Resource_RegisteredResourceValueFqn{
+				RegisteredResourceValueFqn: mockRegResValFQN2,
+			},
+		},
+	}
+	decisionRequestContext := &policy.RequestContext{}
+
+	perResource, all, err := s.pdp.GetRequiredObligations(s.T().Context(), actionCustom, resources, decisionRequestContext)
+
+	s.Require().NoError(err)
+	s.Require().Len(perResource, 3, "should have results for exactly three resources")
+
+	// First resource (direct attribute) should trigger custom obligation
+	s.Require().Len(perResource[0], 1, "first resource should have exactly one obligation")
+	s.Equal(mockObligationFQN4, perResource[0][0])
+
+	// Second resource (registered resource with custom action) should trigger custom obligation
+	s.Require().Len(perResource[1], 1, "second resource should have exactly one obligation")
+	s.Equal(mockObligationFQN4, perResource[1][0])
+
+	// Third resource (registered resource without custom action) should trigger no obligations
+	s.Empty(perResource[2], "third resource should have no obligations for custom action")
+
+	// Should have exactly one unique obligation in total (deduplicated)
+	s.Require().Len(all, 1, "should have exactly one unique obligation total")
+	s.Contains(all, mockObligationFQN4)
 }
 
 func (s *ObligationsPDPSuite) createAttributesByValueFQN(attrValFQN, attrName string) map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue {

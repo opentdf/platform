@@ -446,9 +446,6 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 	// Determine finalize order by collecting all present segment indices and sorting.
 	// This densifies sparse indices automatically and ignores any gaps.
 	order := make([]int, 0, len(w.segments))
-	if len(w.segments) == 0 {
-		return nil, 0, 0, errors.New("no segments written")
-	}
 	for idx := range w.segments {
 		order = append(order, idx)
 	}
@@ -471,17 +468,6 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 			subset = append(subset, idx)
 		}
 		order = subset
-	}
-	// Require index 0 for now (header emission on segment 0)
-	hasZero := false
-	for _, v := range order {
-		if v == 0 {
-			hasZero = true
-			break
-		}
-	}
-	if !hasZero {
-		return nil, 0, 0, fmt.Errorf("segment 0 is required for header emission; got order without 0: %v", order)
 	}
 
 	// Generate splits using the splitter

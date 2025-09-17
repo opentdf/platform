@@ -9,38 +9,32 @@ cd "$(dirname "$0")"
 
 echo "Generating test keys..."
 
+# Define EC curves: openssl_name:output_name
+ec_curves=(
+    "prime256v1:secp256r1"
+    "secp384r1:secp384r1"
+    "secp521r1:secp521r1"
+    "secp256k1:secp256k1"
+    "brainpoolP160r1:brainpoolP160r1"
+)
+
 # Generate EC keys
-echo "Generating EC secp256r1 keys..."
-openssl ecparam -name prime256v1 -genkey -noout -out sample-ec-secp256r1-01-private.pem
-openssl ec -in sample-ec-secp256r1-01-private.pem -pubout -out sample-ec-secp256r1-01-public.pem
+for curve_pair in "${ec_curves[@]}"; do
+    IFS=':' read -r openssl_name output_name <<<"$curve_pair"
+    echo "Generating EC $output_name keys..."
+    openssl ecparam -name "$openssl_name" -genkey -noout -out "sample-ec-$output_name-01-private.pem"
+    openssl ec -in "sample-ec-$output_name-01-private.pem" -pubout -out "sample-ec-$output_name-01-public.pem"
+done
 
-echo "Generating EC secp384r1 keys..."
-openssl ecparam -name secp384r1 -genkey -noout -out sample-ec-secp384r1-01-private.pem
-openssl ec -in sample-ec-secp384r1-01-private.pem -pubout -out sample-ec-secp384r1-01-public.pem
-
-echo "Generating EC secp521r1 keys..."
-openssl ecparam -name secp521r1 -genkey -noout -out sample-ec-secp521r1-01-private.pem
-openssl ec -in sample-ec-secp521r1-01-private.pem -pubout -out sample-ec-secp521r1-01-public.pem
-
-echo "Generating EC secp256k1 keys..."
-openssl ecparam -name secp256k1 -genkey -noout -out sample-ec-secp256k1-01-private.pem
-openssl ec -in sample-ec-secp256k1-01-private.pem -pubout -out sample-ec-secp256k1-01-public.pem
-
-openssl ecparam -name brainpoolP160r1 -genkey -noout -out sample-ec-brainpoolP160r1-01-private.pem
-openssl ec -in sample-ec-brainpoolP160r1-01-private.pem -pubout -out sample-ec-brainpoolP160r1-01-public.pem
+# Define RSA bit lengths
+rsa_bits=(2048 4096 1024)
 
 # Generate RSA keys
-echo "Generating RSA 2048 keys..."
-openssl genpkey -algorithm RSA -out sample-rsa-2048-01-private.pem -pkeyopt rsa_keygen_bits:2048
-openssl rsa -in sample-rsa-2048-01-private.pem -pubout -out sample-rsa-2048-01-public.pem
-
-echo "Generating RSA 4096 keys..."
-openssl genpkey -algorithm RSA -out sample-rsa-4096-01-private.pem -pkeyopt rsa_keygen_bits:4096
-openssl rsa -in sample-rsa-4096-01-private.pem -pubout -out sample-rsa-4096-01-public.pem
-
-echo "Generating too short RSA 1024 keys..."
-openssl genpkey -algorithm RSA -out sample-rsa-1024-01-private.pem -pkeyopt rsa_keygen_bits:1024
-openssl rsa -in sample-rsa-1024-01-private.pem -pubout -out sample-rsa-1024-01-public.pem
+for bits in "${rsa_bits[@]}"; do
+    echo "Generating RSA $bits keys..."
+    openssl genpkey -algorithm RSA -out "sample-rsa-$bits-01-private.pem" -pkeyopt "rsa_keygen_bits:$bits"
+    openssl rsa -in "sample-rsa-$bits-01-private.pem" -pubout -out "sample-rsa-$bits-01-public.pem"
+done
 
 echo "Test key generation complete!"
 echo "Generated keys:"

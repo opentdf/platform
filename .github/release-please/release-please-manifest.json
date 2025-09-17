@@ -5,5 +5,5 @@
   "lib/identifier": "0.1.0",
   "protocol/go": "0.10.0",
   "sdk": "0.7.0",
-  "service": "0.9.0"
+  "service": "0.10.0"
 }

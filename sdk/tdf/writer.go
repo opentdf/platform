@@ -341,6 +341,7 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 //
 // Performance note: Finalization is O(n) where n is the number of segments.
 // Memory usage is proportional to manifest size, not total data size.
+
 func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeConfig]) (*FinalizeResult, error) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
@@ -357,7 +358,69 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 	for _, opt := range opts {
 		opt(cfg)
 	}
+	manifest, totalPlaintextSize, totalEncryptedSize, err := w.getManifest(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+	manifestBytes, err := json.Marshal(manifest)
+	if err != nil {
+		return nil, err
+	}
 
+	finalBytes, err := w.archiveWriter.Finalize(ctx, manifestBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := w.archiveWriter.Close(); err != nil {
+		return nil, err
+	}
+
+	// Persist the final manifest for later retrieval via GetManifest.
+	w.manifest = manifest
+	w.finalized = true
+	return &FinalizeResult{
+		Data:          finalBytes,
+		Manifest:      manifest,
+		TotalSegments: len(manifest.EncryptionInformation.IntegrityInformation.Segments),
+		TotalSize:     totalPlaintextSize,
+		EncryptedSize: totalEncryptedSize,
+	}, nil
+}
+
+// GetManifest returns the current manifest snapshot.
+//
+// Behavior:
+//   - If Finalize has completed, this returns the finalized manifest.
+//   - If called before Finalize, this returns a stub manifest synthesized
+//     from the writer's current state (segments present so far, algorithm
+//     selections, and payload defaults). This pre-finalize manifest is not
+//     complete and must not be used for verification; it is provided for
+//     informational or client-side pre-calculation purposes only.
+//
+// No logging is performed; callers should consult this documentation for
+// the caveat about pre-finalize state.
+func (w *Writer) GetManifest(ctx context.Context, opts ...Option[*WriterFinalizeConfig]) (*Manifest, error) {
+	w.mutex.RLock()
+	defer w.mutex.RUnlock()
+
+	manifest, _, _, err := w.getManifest(ctx, &WriterFinalizeConfig{
+		attributes:        make([]*policy.Value, 0),
+		encryptedMetadata: "",
+		payloadMimeType:   "application/octet-stream",
+	})
+	if err != nil {
+		return nil, err
+	}
+	return manifest, nil
+}
+
+func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*Manifest, int64, int64, error) {
+	// If already finalized and we have the final manifest, return a copy.
+	if w.finalized && w.manifest != nil {
+		return cloneManifest(w.manifest), 0, 0, nil
+	}
+	// Archive layer will infer the same order by sorting present indices.
 	// Merge writer-level initial settings if finalize options omitted them.
 	if len(cfg.attributes) == 0 && len(w.initialAttributes) > 0 {
 		cfg.attributes = w.initialAttributes
@@ -366,11 +429,21 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 		cfg.defaultKas = w.initialDefaultKAS
 	}
 
+	manifest := &Manifest{
+		TDFVersion: TDFSpecVersion,
+		Payload: Payload{
+			MimeType:    cfg.payloadMimeType,
+			Protocol:    tdfAsZip,
+			Type:        tdfZipReference,
+			URL:         archive.TDFPayloadFileName,
+			IsEncrypted: true,
+		},
+	}
 	// Determine finalize order by collecting all present segment indices and sorting.
 	// This densifies sparse indices automatically and ignores any gaps.
 	order := make([]int, 0, len(w.segments))
 	if len(w.segments) == 0 {
-		return nil, errors.New("no segments written")
+		return nil, 0, 0, errors.New("no segments written")
 	}
 	for idx := range w.segments {
 		order = append(order, idx)
@@ -382,13 +455,13 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 		seen := make(map[int]struct{}, len(cfg.keepSegments))
 		for _, idx := range cfg.keepSegments {
 			if idx < 0 {
-				return nil, fmt.Errorf("WithSegments contains invalid index %d (must be >= 0)", idx)
+				return nil, 0, 0, fmt.Errorf("WithSegments contains invalid index %d (must be >= 0)", idx)
 			}
 			if _, ok := w.segments[idx]; !ok {
-				return nil, fmt.Errorf("WithSegments references segment %d which was not written", idx)
+				return nil, 0, 0, fmt.Errorf("WithSegments references segment %d which was not written", idx)
 			}
 			if _, dup := seen[idx]; dup {
-				return nil, fmt.Errorf("WithSegments contains duplicate index %d", idx)
+				return nil, 0, 0, fmt.Errorf("WithSegments contains duplicate index %d", idx)
 			}
 			seen[idx] = struct{}{}
 			subset = append(subset, idx)
@@ -404,32 +477,20 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 		}
 	}
 	if !hasZero {
-		return nil, fmt.Errorf("segment 0 is required for header emission; got order without 0: %v", order)
-	}
-	// Archive layer will infer the same order by sorting present indices.
-
-	manifest := &Manifest{
-		TDFVersion: TDFSpecVersion,
-		Payload: Payload{
-			MimeType:    cfg.payloadMimeType,
-			Protocol:    tdfAsZip,
-			Type:        tdfZipReference,
-			URL:         archive.TDFPayloadFileName,
-			IsEncrypted: true,
-		},
+		return nil, 0, 0, fmt.Errorf("segment 0 is required for header emission; got order without 0: %v", order)
 	}
 
 	// Generate splits using the splitter
 	splitter := keysplit.NewXORSplitter(keysplit.WithDefaultKAS(cfg.defaultKas))
 	result, err := splitter.GenerateSplits(ctx, cfg.attributes, w.dek)
 	if err != nil {
-		return nil, err
+		return nil, 0, 0, err
 	}
 
 	// Build key access objects from the splits
 	policyBytes, err := buildPolicy(cfg.attributes)
 	if err != nil {
-		return nil, err
+		return nil, 0, 0, err
 	}
 
 	encryptInfo := EncryptionInformation{
@@ -469,7 +530,7 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 	for _, i := range order {
 		segment, exists := w.segments[i]
 		if !exists {
-			return nil, fmt.Errorf("segment %d not written; cannot finalize", i)
+			return nil, 0, 0, fmt.Errorf("segment %d not written; cannot finalize", i)
 		}
 		if segment.Hash != "" {
 			// Accumulate sizes for result
@@ -479,17 +540,17 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 			// Decode the base64-encoded segment hash to match reader validation
 			decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
 			if err != nil {
-				return nil, fmt.Errorf("failed to decode segment hash: %w", err)
+				return nil, 0, 0, fmt.Errorf("failed to decode segment hash: %w", err)
 			}
 			aggregateHash.Write(decodedHash)
 			continue
 		}
-		return nil, errors.New("empty segment hash")
+		return nil, 0, 0, errors.New("empty segment hash")
 	}
 
 	rootSignature, err := calculateSignature(aggregateHash.Bytes(), w.dek, w.integrityAlgorithm, false)
 	if err != nil {
-		return nil, err
+		return nil, 0, 0, err
 	}
 	encryptInfo.RootSignature = RootSignature{
 		Algorithm: w.integrityAlgorithm.String(),
@@ -498,7 +559,7 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 
 	keyAccessList, err := buildKeyAccessObjects(result, policyBytes, cfg.encryptedMetadata)
 	if err != nil {
-		return nil, err
+		return nil, 0, 0, err
 	}
 
 	encryptInfo.KeyAccessObjs = keyAccessList
@@ -506,121 +567,11 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 
 	signedAssertions, err := w.buildAssertions(aggregateHash.Bytes(), cfg.assertions)
 	if err != nil {
-		return nil, err
+		return nil, 0, 0, err
 	}
 
 	manifest.Assertions = signedAssertions
-
-	manifestBytes, err := json.Marshal(manifest)
-	if err != nil {
-		return nil, err
-	}
-
-	finalBytes, err := w.archiveWriter.Finalize(ctx, manifestBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := w.archiveWriter.Close(); err != nil {
-		return nil, err
-	}
-
-	// Persist the final manifest for later retrieval via GetManifest.
-	w.manifest = manifest
-	w.finalized = true
-	return &FinalizeResult{
-		Data:          finalBytes,
-		Manifest:      manifest,
-		TotalSegments: len(order),
-		TotalSize:     totalPlaintextSize,
-		EncryptedSize: totalEncryptedSize,
-	}, nil
-}
-
-// GetManifest returns the current manifest snapshot.
-//
-// Behavior:
-//   - If Finalize has completed, this returns the finalized manifest.
-//   - If called before Finalize, this returns a stub manifest synthesized
-//     from the writer's current state (segments present so far, algorithm
-//     selections, and payload defaults). This pre-finalize manifest is not
-//     complete and must not be used for verification; it is provided for
-//     informational or client-side pre-calculation purposes only.
-//
-// No logging is performed; callers should consult this documentation for
-// the caveat about pre-finalize state.
-func (w *Writer) GetManifest() *Manifest {
-	w.mutex.RLock()
-	defer w.mutex.RUnlock()
-
-	// If already finalized and we have the final manifest, return a copy.
-	if w.finalized && w.manifest != nil {
-		return cloneManifest(w.manifest)
-	}
-
-	// Build a stub manifest from current state. This intentionally omits
-	// KeyAccess objects, assertions, and root signature which are set
-	// during finalization.
-	m := &Manifest{
-		TDFVersion: TDFSpecVersion,
-		Payload: Payload{
-			MimeType:    "application/octet-stream",
-			Protocol:    tdfAsZip,
-			Type:        tdfZipReference,
-			URL:         archive.TDFPayloadFileName,
-			IsEncrypted: true,
-		},
-	}
-
-	enc := EncryptionInformation{
-		KeyAccessType: kSplitKeyType,
-		Method: Method{
-			Algorithm:    kGCMCipherAlgorithm,
-			IsStreamable: true,
-		},
-		IntegrityInformation: IntegrityInformation{
-			Segments: make([]Segment, 0),
-		},
-	}
-
-	// If initial attributes were provided at writer creation, include a
-	// provisional policy derived from them. This is informational only and
-	// may change upon Finalize based on finalize-time options.
-	if len(w.initialAttributes) > 0 {
-		if policyBytes, err := buildPolicy(w.initialAttributes); err == nil {
-			enc.Policy = string(ocrypto.Base64Encode(policyBytes))
-		}
-	}
-
-	// Populate segment integrity info from what we have so far.
-	if len(w.segments) > 0 {
-		// Find the highest written index so far
-		maxIdx := 0
-		for i := range w.segments {
-			if i > maxIdx {
-				maxIdx = i
-			}
-		}
-		segs := make([]Segment, maxIdx+1)
-		for i := 0; i <= maxIdx; i++ {
-			if s, ok := w.segments[i]; ok {
-				segs[i] = s
-			}
-		}
-		enc.IntegrityInformation.Segments = segs
-	}
-
-	// Default sizes from first segment if present.
-	if first, ok := w.segments[0]; ok {
-		enc.IntegrityInformation.DefaultSegmentSize = first.Size
-		enc.IntegrityInformation.DefaultEncryptedSegSize = first.EncryptedSize
-	}
-
-	// Set the hash algorithm used for segments.
-	enc.IntegrityInformation.SegmentHashAlgorithm = w.segmentIntegrityAlgorithm.String()
-
-	m.EncryptionInformation = enc
-	return m
+	return manifest, totalPlaintextSize, totalEncryptedSize, nil
 }
 
 // cloneManifest makes a shallow-deep copy of a Manifest to avoid callers

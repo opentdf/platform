@@ -228,5 +228,3 @@ func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
 
 	return requiredOblValueFQNsPerResource, allRequiredOblValueFQNs, nil
 }
-
-// TODO: pdp.GetObligationsFulfilled?

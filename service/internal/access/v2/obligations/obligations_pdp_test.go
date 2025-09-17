@@ -783,7 +783,6 @@ func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_MoreFulfilledTh
 	decisionRequestContext := emptyDecisionRequestContext
 
 	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
-
 	s.True(fulfilled)
 }
 
@@ -793,7 +792,6 @@ func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_ExactMatch() {
 	decisionRequestContext := emptyDecisionRequestContext
 
 	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
-
 	s.True(fulfilled)
 }
 
@@ -813,7 +811,6 @@ func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_EmptyTriggered(
 	decisionRequestContext := emptyDecisionRequestContext
 
 	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
-
 	s.True(fulfilled)
 }
 
@@ -833,7 +830,6 @@ func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_BothEmpty() {
 	decisionRequestContext := emptyDecisionRequestContext
 
 	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
-
 	s.True(fulfilled)
 }
 
@@ -843,7 +839,6 @@ func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_SingleObligatio
 	decisionRequestContext := emptyDecisionRequestContext
 
 	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
-
 	s.True(fulfilled)
 }
 
@@ -863,7 +858,6 @@ func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_DuplicateTrigge
 	decisionRequestContext := emptyDecisionRequestContext
 
 	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
-
 	s.True(fulfilled)
 }
 
@@ -873,7 +867,6 @@ func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_DuplicateFulfil
 	decisionRequestContext := emptyDecisionRequestContext
 
 	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
-
 	s.True(fulfilled)
 }
 
@@ -883,7 +876,6 @@ func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_AllObligations_
 	decisionRequestContext := emptyDecisionRequestContext
 
 	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
-
 	s.True(fulfilled)
 }
 
@@ -897,7 +889,6 @@ func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_WithPEPClientID
 	}
 
 	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
-
 	s.True(fulfilled)
 }
 

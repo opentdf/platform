@@ -107,10 +107,13 @@ func NewObligationsPolicyDecisionPoint(
 	return pdp, nil
 }
 
-// // GetAllTriggeredObligationsAreFulfilled will
+// GetAllTriggeredObligationsAreFulfilled will
 // func (p *ObligationsPolicyDecisionPoint) GetAllTriggeredObligationsAreFulfilled(
 // 	ctx context.Context,
-
+// 	resources []*authz.Resource,
+// 	action *policy.Action,
+// 	decisionRequestContext *policy.RequestContext,
+// 	pepFulfillableObligationValueFQNs []string,
 // ) (bool, [][]string, error) {
 
 // }
@@ -276,8 +279,12 @@ func (p *ObligationsPolicyDecisionPoint) getTriggeredObligations(
 	l.DebugContext(
 		ctx,
 		"found required obligations",
-		slog.Any("required_obl_values_per_resource", requiredOblValueFQNsPerResource),
-		slog.Any("required_obligations_across_all_resources", allRequiredOblValueFQNs),
+		slog.Any("total_required_obligations_deduplicated", allRequiredOblValueFQNs),
+	)
+	l.TraceContext(
+		ctx,
+		"obligations per resource",
+		slog.Any("required_obligations_per_resource", requiredOblValueFQNsPerResource),
 	)
 
 	return requiredOblValueFQNsPerResource, allRequiredOblValueFQNs, nil

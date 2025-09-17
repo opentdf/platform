@@ -161,51 +161,51 @@ func newTestCache(t *testing.T, log *logger.Logger) *cache.Cache {
 	t.Helper()
 	cm, err := cache.NewCacheManager(ristrettoMaxCost)
 	require.NoError(t, err)
-	c, err := cm.NewCache("testBasicManagerCache", log, cache.Options{
+	c, err := cm.NewCache("testServiceManagedCache", log, cache.Options{
 		Expiration: time.Duration(ristrettoCacheTTL) * time.Second,
 	})
 	require.NoError(t, err)
 	return c
 }
 
-func TestNewBasicManager(t *testing.T) {
+func TestNewManagedKeyManager(t *testing.T) {
 	log := logger.CreateTestLogger()
 	testCache := newTestCache(t, log)
 	validRootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" // 32 bytes
 
 	t.Run("successful creation", func(t *testing.T) {
-		bm, err := NewBasicManager(log, testCache, validRootKeyHex)
+		bm, err := NewManagedKeyManager(log, testCache, validRootKeyHex)
 		require.NoError(t, err)
 		require.NotNil(t, bm)
-		assert.Equal(t, BasicManagerName, bm.Name())
+		assert.Equal(t, ManagedKeyProviderName, bm.Name())
 	})
 
 	t.Run("invalid root key hex", func(t *testing.T) {
-		_, err := NewBasicManager(log, testCache, "invalid-hex")
+		_, err := NewManagedKeyManager(log, testCache, "invalid-hex")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to hex decode root key")
 	})
 }
 
-func TestBasicManager_Name(t *testing.T) {
+func TestServiceManaged_Name(t *testing.T) {
 	log := logger.CreateTestLogger()
 	testCache := newTestCache(t, log)
 	validRootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
-	bm, _ := NewBasicManager(log, testCache, validRootKeyHex)
-	assert.Equal(t, BasicManagerName, bm.Name())
+	bm, _ := NewManagedKeyManager(log, testCache, validRootKeyHex)
+	assert.Equal(t, ManagedKeyProviderName, bm.Name())
 }
 
-func TestBasicManager_Close(t *testing.T) {
+func TestServiceManaged_Close(t *testing.T) {
 	log := logger.CreateTestLogger()
 	testCache := newTestCache(t, log)
 	validRootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
-	bm, _ := NewBasicManager(log, testCache, validRootKeyHex)
+	bm, _ := NewManagedKeyManager(log, testCache, validRootKeyHex)
 	require.NotNil(t, bm.rootKey)
 	bm.Close()
 	assert.Nil(t, bm.rootKey, "rootKey should be nilled out after Close")
 }
 
-func TestBasicManager_unwrap(t *testing.T) {
+func TestServiceManaged_unwrap(t *testing.T) {
 	log := logger.CreateTestLogger()
 	testCache := newTestCache(t, log)
 	rootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
@@ -216,7 +216,7 @@ func TestBasicManager_unwrap(t *testing.T) {
 	wrappedKeyStr, err := wrapKeyWithAESGCM(samplePrivateKey, rootKey)
 	require.NoError(t, err)
 
-	bm, err := NewBasicManager(log, testCache, rootKeyHex)
+	bm, err := NewManagedKeyManager(log, testCache, rootKeyHex)
 	require.NoError(t, err)
 
 	t.Run("cache miss, successful unwrap and cache", func(t *testing.T) {
@@ -267,7 +267,7 @@ func TestBasicManager_unwrap(t *testing.T) {
 	})
 }
 
-func TestBasicManager_Decrypt(t *testing.T) {
+func TestServiceManaged_Decrypt(t *testing.T) {
 	log := logger.CreateTestLogger()
 	testCache := newTestCache(t, log)
 	rootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
@@ -293,7 +293,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 	wrappedECPrivKeyStr, err := wrapKeyWithAESGCM([]byte(ecPrivKey), rootKey)
 	require.NoError(t, err)
 
-	bm, err := NewBasicManager(log, testCache, rootKeyHex)
+	bm, err := NewManagedKeyManager(log, testCache, rootKeyHex)
 	require.NoError(t, err)
 
 	samplePayload := []byte("secret payload16") // 16 bytes for valid AES key
@@ -410,7 +410,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 	})
 }
 
-func TestBasicManager_DeriveKey(t *testing.T) {
+func TestServiceManaged_DeriveKey(t *testing.T) {
 	log := logger.CreateTestLogger()
 	testCache := newTestCache(t, log)
 	rootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
@@ -424,7 +424,7 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 	wrappedECPrivKeyStr, err := wrapKeyWithAESGCM([]byte(ecPrivKey), rootKey)
 	require.NoError(t, err)
 
-	bm, err := NewBasicManager(log, testCache, rootKeyHex)
+	bm, err := NewManagedKeyManager(log, testCache, rootKeyHex)
 	require.NoError(t, err)
 
 	clientEphemeralECDHKey, err := ecdh.P256().GenerateKey(rand.Reader)
@@ -487,11 +487,11 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 	})
 }
 
-func TestBasicManager_GenerateECSessionKey(t *testing.T) {
+func TestServiceManaged_GenerateECSessionKey(t *testing.T) {
 	log := logger.CreateTestLogger()
 	testCache := newTestCache(t, log)
 	rootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
-	bm, err := NewBasicManager(log, testCache, rootKeyHex)
+	bm, err := NewManagedKeyManager(log, testCache, rootKeyHex)
 	require.NoError(t, err)
 
 	clientPrivKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

@@ -18,39 +18,39 @@ import (
 )
 
 const (
-	// BasicManagerName is the unique identifier for the BasicManager.
-	BasicManagerName     = "opentdf.io/basic"
-	ristrettoBufferItems = 64
-	ristrettoMaxCost     = 3400000
-	ristrettoNumCounters = ristrettoMaxCost * 10
-	ristrettoCacheTTL    = 30
+	// ManagedKeyProviderName is the unique identifier for the ServiceManaged.
+	ManagedKeyProviderName = "opentdf.io/basic"
+	ristrettoBufferItems   = 64
+	ristrettoMaxCost       = 3400000
+	ristrettoNumCounters   = ristrettoMaxCost * 10
+	ristrettoCacheTTL      = 30
 )
 
-// BasicManager is implements the SecurityProvider for wrapped keys stored internally (provider mode).
-type BasicManager struct {
+// ManagedKeyManager implements the trust.KeyManager interface for wrapped keys stored internally (provider mode).
+type ManagedKeyManager struct {
 	l       *logger.Logger
 	rootKey []byte
 	cache   *cache.Cache
 }
 
-func NewBasicManager(logger *logger.Logger, c *cache.Cache, rootKey string) (*BasicManager, error) {
+func NewManagedKeyManager(logger *logger.Logger, c *cache.Cache, rootKey string) (*ManagedKeyManager, error) {
 	rk, err := hex.DecodeString(rootKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hex decode root key: %w", err)
 	}
 
-	return &BasicManager{
+	return &ManagedKeyManager{
 		l:       logger,
 		rootKey: rk,
 		cache:   c,
 	}, nil
 }
 
-func (b *BasicManager) Name() string {
-	return BasicManagerName
+func (b *ManagedKeyManager) Name() string {
+	return ManagedKeyProviderName
 }
 
-func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ocrypto.ProtectedKey, error) {
+func (b *ManagedKeyManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ocrypto.ProtectedKey, error) {
 	// Implementation of Decrypt method
 
 	// Get Private Key
@@ -103,7 +103,7 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 	return nil, fmt.Errorf("unsupported algorithm: %s", keyDetails.Algorithm())
 }
 
-func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ocrypto.ProtectedKey, error) {
+func (b *ManagedKeyManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ocrypto.ProtectedKey, error) {
 	// Implementation of DeriveKey method
 	privateKeyCtx, err := keyDetails.ExportPrivateKey(ctx)
 	if err != nil {
@@ -159,7 +159,7 @@ func (e *OCEncapsulator) PublicKeyAsPEM() (string, error) {
 	return e.PublicKeyEncryptor.PublicKeyInPemFormat()
 }
 
-func (b *BasicManager) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (ocrypto.Encapsulator, error) {
+func (b *ManagedKeyManager) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (ocrypto.Encapsulator, error) {
 	pke, err := ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create public key encryptor: %w", err)
@@ -167,7 +167,7 @@ func (b *BasicManager) GenerateECSessionKey(_ context.Context, ephemeralPublicKe
 	return &OCEncapsulator{PublicKeyEncryptor: pke}, nil
 }
 
-func (b *BasicManager) Close() {
+func (b *ManagedKeyManager) Close() {
 	// Zero out the root key to minimize its time in memory.
 	for i := range b.rootKey {
 		b.rootKey[i] = 0
@@ -175,7 +175,7 @@ func (b *BasicManager) Close() {
 	b.rootKey = nil
 }
 
-func (b *BasicManager) unwrap(ctx context.Context, kid string, wrappedKey string) ([]byte, error) {
+func (b *ManagedKeyManager) unwrap(ctx context.Context, kid string, wrappedKey string) ([]byte, error) {
 	cacheEnabled := b.cache != nil
 	if cacheEnabled {
 		if privKey, err := b.cache.Get(ctx, kid); err == nil {

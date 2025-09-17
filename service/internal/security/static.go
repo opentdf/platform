@@ -13,7 +13,7 @@ import (
 	"github.com/opentdf/platform/service/trust"
 )
 
-const inProcessSystemName = "opentdf.io/in-process"
+const staticKeyProviderName = "opentdf.io/static"
 
 func convertPEMToJWK(_ string) (string, error) {
 	// Implement the conversion logic here or use an external library if available.
@@ -21,16 +21,16 @@ func convertPEMToJWK(_ string) (string, error) {
 	return "", errors.New("convertPEMToJWK function is not implemented")
 }
 
-// InProcessProvider adapts a CryptoProvider to the SecurityProvider interface
-type InProcessProvider struct {
+// StaticKeyService adapts a CryptoProvider to the trust.KeyService interface
+type StaticKeyService struct {
 	cryptoProvider *StandardCrypto
 	logger         *slog.Logger
 	defaultKeys    map[string]bool
 	legacyKeys     map[string]bool
 }
 
-// KeyDetailsAdapter adapts CryptoProvider to KeyDetails
-type KeyDetailsAdapter struct {
+// staticKeyDetails adapts CryptoProvider to KeyDetails
+type staticKeyDetails struct {
 	id             trust.KeyIdentifier
 	algorithm      ocrypto.KeyType
 	legacy         bool
@@ -38,27 +38,27 @@ type KeyDetailsAdapter struct {
 }
 
 // Mode returns the mode of the key details
-func (k *KeyDetailsAdapter) System() string {
-	return inProcessSystemName
+func (k *staticKeyDetails) System() string {
+	return staticKeyProviderName
 }
 
-func (k *KeyDetailsAdapter) ID() trust.KeyIdentifier {
+func (k *staticKeyDetails) ID() trust.KeyIdentifier {
 	return k.id
 }
 
-func (k *KeyDetailsAdapter) Algorithm() ocrypto.KeyType {
+func (k *staticKeyDetails) Algorithm() ocrypto.KeyType {
 	return k.algorithm
 }
 
-func (k *KeyDetailsAdapter) IsLegacy() bool {
+func (k *staticKeyDetails) IsLegacy() bool {
 	return k.legacy
 }
 
-func (k *KeyDetailsAdapter) ExportPrivateKey(_ context.Context) (*trust.PrivateKey, error) {
+func (k *staticKeyDetails) ExportPrivateKey(_ context.Context) (*trust.PrivateKey, error) {
 	return nil, errors.New("private key export not supported")
 }
 
-func (k *KeyDetailsAdapter) ExportPublicKey(_ context.Context, format trust.KeyType) (string, error) {
+func (k *staticKeyDetails) ExportPublicKey(_ context.Context, format trust.KeyType) (string, error) {
 	kid := string(k.id)
 	switch format {
 	case trust.KeyTypeJWK:
@@ -88,7 +88,7 @@ func (k *KeyDetailsAdapter) ExportPublicKey(_ context.Context, format trust.KeyT
 	}
 }
 
-func (k *KeyDetailsAdapter) ExportCertificate(_ context.Context) (string, error) {
+func (k *staticKeyDetails) ExportCertificate(_ context.Context) (string, error) {
 	kid := string(k.id)
 	if k.algorithm == AlgorithmECP256R1 {
 		return k.cryptoProvider.ECCertificate(kid)
@@ -96,13 +96,13 @@ func (k *KeyDetailsAdapter) ExportCertificate(_ context.Context) (string, error)
 	return "", errors.New("certificates only available for EC keys")
 }
 
-func (k *KeyDetailsAdapter) ProviderConfig() *policy.KeyProviderConfig {
+func (k *staticKeyDetails) ProviderConfig() *policy.KeyProviderConfig {
 	// Provider config is not supported for this adapter.
 	return nil
 }
 
-// NewSecurityProviderAdapter creates a new adapter that implements SecurityProvider using a CryptoProvider
-func NewSecurityProviderAdapter(cryptoProvider *StandardCrypto, defaultKeys, legacyKeys []string) trust.KeyService {
+// NewStaticKeyService creates a new adapter that implements SecurityProvider using a CryptoProvider
+func NewStaticKeyService(cryptoProvider *StandardCrypto, defaultKeys, legacyKeys []string) trust.KeyService {
 	legacyKeysMap := make(map[string]bool, len(legacyKeys))
 	for _, key := range legacyKeys {
 		legacyKeysMap[key] = true
@@ -113,7 +113,7 @@ func NewSecurityProviderAdapter(cryptoProvider *StandardCrypto, defaultKeys, leg
 		defaultKeysMap[key] = true
 	}
 
-	return &InProcessProvider{
+	return &StaticKeyService{
 		cryptoProvider: cryptoProvider,
 		logger:         slog.Default(),
 		defaultKeys:    defaultKeysMap,
@@ -122,12 +122,12 @@ func NewSecurityProviderAdapter(cryptoProvider *StandardCrypto, defaultKeys, leg
 }
 
 // Name returns the name of the provider
-func (a *InProcessProvider) Name() string {
-	return inProcessSystemName
+func (a *StaticKeyService) Name() string {
+	return staticKeyProviderName
 }
 
 // WithLogger sets the logger for the adapter
-func (a *InProcessProvider) WithLogger(logger *slog.Logger) *InProcessProvider {
+func (a *StaticKeyService) WithLogger(logger *slog.Logger) *StaticKeyService {
 	a.logger = logger
 	return a
 }
@@ -135,7 +135,7 @@ func (a *InProcessProvider) WithLogger(logger *slog.Logger) *InProcessProvider {
 // FindKeyByAlgorithm finds a key by algorithm using the underlying CryptoProvider.
 // This will only return default keys if legacy is false.
 // If legacy is true, it will return the first legacy key found that matches the algorithm.
-func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm string, legacy bool) (trust.KeyDetails, error) {
+func (a *StaticKeyService) FindKeyByAlgorithm(_ context.Context, algorithm string, legacy bool) (trust.KeyDetails, error) {
 	// Get the key ID for this algorithm
 	kids, err := a.cryptoProvider.ListKIDsByAlgorithm(algorithm)
 	if err != nil || len(kids) == 0 {
@@ -143,7 +143,7 @@ func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm stri
 	}
 	for _, kid := range kids {
 		if legacy && a.legacyKeys[kid] || !legacy && a.defaultKeys[kid] {
-			return &KeyDetailsAdapter{
+			return &staticKeyDetails{
 				id:             trust.KeyIdentifier(kid),
 				algorithm:      ocrypto.KeyType(algorithm),
 				cryptoProvider: a.cryptoProvider,
@@ -155,13 +155,13 @@ func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm stri
 }
 
 // FindKeyByID finds a key by ID
-func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
+func (a *StaticKeyService) FindKeyByID(_ context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
 	if k, err := a.cryptoProvider.RSAPublicKey(string(id)); err == nil {
 		e, err := ocrypto.FromPublicPEM(k)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse rsa public key while scanning for [%s]: %w", id, err)
 		}
-		return &KeyDetailsAdapter{
+		return &staticKeyDetails{
 			id:             id,
 			algorithm:      e.KeyType(),
 			legacy:         a.legacyKeys[string(id)],
@@ -173,7 +173,7 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse ec public key while scanning for [%s]: %w", id, err)
 		}
-		return &KeyDetailsAdapter{
+		return &staticKeyDetails{
 			id:             id,
 			algorithm:      e.KeyType(),
 			legacy:         a.legacyKeys[string(id)],
@@ -184,11 +184,11 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 }
 
 // ListKeys lists all available keys
-func (a *InProcessProvider) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
+func (a *StaticKeyService) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
 	return a.ListKeysWith(ctx, trust.ListKeyOptions{LegacyOnly: false})
 }
 
-func (a *InProcessProvider) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
+func (a *StaticKeyService) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
 	// This is a limited implementation as CryptoProvider doesn't expose a list of all keys
 	var keys []trust.KeyDetails
 
@@ -199,7 +199,7 @@ func (a *InProcessProvider) ListKeysWith(ctx context.Context, opts trust.ListKey
 				if opts.LegacyOnly && !a.legacyKeys[kid] {
 					continue // Skip non-legacy keys if LegacyOnly is true
 				}
-				keys = append(keys, &KeyDetailsAdapter{
+				keys = append(keys, &staticKeyDetails{
 					id:             trust.KeyIdentifier(kid),
 					algorithm:      ocrypto.KeyType(alg),
 					cryptoProvider: a.cryptoProvider,
@@ -221,7 +221,7 @@ func (a *InProcessProvider) ListKeysWith(ctx context.Context, opts trust.ListKey
 }
 
 // Decrypt implements the unified decryption method for both RSA and EC
-func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ocrypto.ProtectedKey, error) {
+func (a *StaticKeyService) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ocrypto.ProtectedKey, error) {
 	kid := string(keyDetails.ID())
 
 	var protectedKey ocrypto.ProtectedKey
@@ -266,7 +266,7 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 }
 
 // DeriveKey generates a symmetric key for NanoTDF
-func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ocrypto.ProtectedKey, error) {
+func (a *StaticKeyService) DeriveKey(_ context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ocrypto.ProtectedKey, error) {
 	k, err := a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(keyDetails.ID()), ephemeralPublicKeyBytes, curve)
 	if err != nil {
 		return nil, err
@@ -279,7 +279,7 @@ func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDet
 }
 
 // GenerateECSessionKey generates a session key for NanoTDF
-func (a *InProcessProvider) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
+func (a *StaticKeyService) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
 	pke, err := ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("session key generation failed to create public key encryptor: %w", err)
@@ -288,13 +288,13 @@ func (a *InProcessProvider) GenerateECSessionKey(_ context.Context, ephemeralPub
 }
 
 // Close releases any resources held by the provider
-func (a *InProcessProvider) Close() {
+func (a *StaticKeyService) Close() {
 	a.cryptoProvider.Close()
 }
 
 // determineKeyType tries to determine the algorithm of a key based on its ID
 // This is a helper method for the Decrypt method
-func (a *InProcessProvider) determineKeyType(_ context.Context, kid string) (string, error) {
+func (a *StaticKeyService) determineKeyType(_ context.Context, kid string) (string, error) {
 	// First try RSA
 	if _, err := a.cryptoProvider.RSAPublicKey(kid); err == nil {
 		return AlgorithmRSA2048, nil

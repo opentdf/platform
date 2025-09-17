@@ -348,7 +348,7 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 	c := mustNewCryptoProvider(t, configStandard)
 	defer c.Close()
 
-	inProcess := security.NewSecurityProviderAdapter(c, nil, nil)
+	inProcess := security.NewStaticKeyService(c, nil, nil)
 
 	delegator := trust.NewDelegatingKeyService(inProcess, logger.CreateTestLogger(), nil)
 	delegator.RegisterKeyManager(inProcess.Name(), func(_ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {

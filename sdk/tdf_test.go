@@ -2560,3 +2560,29 @@ func TestIsLessThanSemver(t *testing.T) {
 		})
 	}
 }
+
+func TestCreatePolicyObjectDeduplication(t *testing.T) {
+	attributes := []AttributeValueFQN{}
+
+	fqn1 := "https://example.com/attr/Classification/value/S"
+	fqn2 := "https://example.com/attr/Classification/value/X"
+	attr1, err := NewAttributeValueFQN(fqn1)
+	require.NoError(t, err)
+	attributes = append(attributes, attr1)
+
+	attr2, err := NewAttributeValueFQN(fqn1)
+	require.NoError(t, err)
+	attributes = append(attributes, attr2)
+
+	attr3, err := NewAttributeValueFQN(fqn2)
+	require.NoError(t, err)
+	attributes = append(attributes, attr3)
+
+	policyObj, err := createPolicyObject(attributes)
+	require.NoError(t, err)
+
+	// Ensure deduplication occurred
+	assert.Len(t, policyObj.Body.DataAttributes, 2)
+	assert.Contains(t, policyObj.Body.DataAttributes, attributeObject{Attribute: fqn1})
+	assert.Contains(t, policyObj.Body.DataAttributes, attributeObject{Attribute: fqn2})
+}

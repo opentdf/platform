@@ -107,7 +107,61 @@ func NewObligationsPolicyDecisionPoint(
 	return pdp, nil
 }
 
-// GetRequiredObligations takes in an action and multiple resources subject to decisioning.
+// // GetAllTriggeredObligationsAreFulfilled will
+// func (p *ObligationsPolicyDecisionPoint) GetAllTriggeredObligationsAreFulfilled(
+// 	ctx context.Context,
+
+// ) (bool, [][]string, error) {
+
+// }
+
+// getAllObligationsAreFulfilled checks the deduplicated list of triggered obligations against the PEP
+// self-reported fulfillable obligations to validate the PEP can fulfill all that were triggered.
+//
+// While this is a simple check now, enhancements in types of obligations and the fulfillment source of truth
+// (such as a PEP registration or centralized config) will add complexity to this validation.
+func (p *ObligationsPolicyDecisionPoint) getAllObligationsAreFulfilled(
+	ctx context.Context,
+	allTriggeredObligationValueFQNs []string,
+	pepFulfillableObligationValueFQNs []string,
+	decisionRequestContext *policy.RequestContext,
+) bool {
+	fulfillable := make(map[string]struct{})
+	for _, obligation := range pepFulfillableObligationValueFQNs {
+		fulfillable[obligation] = struct{}{}
+	}
+
+	unfulfilled := make([]string, 0)
+	for _, obligated := range allTriggeredObligationValueFQNs {
+		if _, found := fulfillable[obligated]; !found {
+			unfulfilled = append(unfulfilled, obligated)
+		}
+	}
+
+	l := p.logger
+	pepClientID := decisionRequestContext.GetPep().GetClientId()
+	if pepClientID != "" {
+		l = l.With("pep_client_id", pepClientID)
+	}
+
+	if len(unfulfilled) > 0 {
+		l.DebugContext(
+			ctx,
+			"found unfulfilled obligations that cannot be fulfilled by PEP",
+			slog.Any("unfulfilled_obligations", unfulfilled),
+		)
+		return false
+	}
+
+	l.DebugContext(
+		ctx,
+		"all triggered obligations can be fulfilled by PEP",
+	)
+
+	return true
+}
+
+// getTriggeredObligations takes in an action and multiple resources subject to decisioning.
 //
 // It drills into the resources to find all triggered obligations on each combination of:
 //  1. action
@@ -115,7 +169,7 @@ func NewObligationsPolicyDecisionPoint(
 //  3. decision request context (at present, strictly any scoped PEP clientID)
 //
 // In response, it returns the obligations required per each input resource index and the entire list of deduplicated required obligations
-func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
+func (p *ObligationsPolicyDecisionPoint) getTriggeredObligations(
 	ctx context.Context,
 	action *policy.Action,
 	resources []*authz.Resource,
@@ -228,5 +282,3 @@ func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
 
 	return requiredOblValueFQNsPerResource, allRequiredOblValueFQNs, nil
 }
-
-// TODO: pdp.GetObligationsFulfilled?

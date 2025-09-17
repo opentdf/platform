@@ -403,12 +403,16 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 func (w *Writer) GetManifest(ctx context.Context, opts ...Option[*WriterFinalizeConfig]) (*Manifest, error) {
 	w.mutex.RLock()
 	defer w.mutex.RUnlock()
-
-	manifest, _, _, err := w.getManifest(ctx, &WriterFinalizeConfig{
+	cfg := &WriterFinalizeConfig{
 		attributes:        make([]*policy.Value, 0),
 		encryptedMetadata: "",
 		payloadMimeType:   "application/octet-stream",
-	})
+	}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
+	manifest, _, _, err := w.getManifest(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}

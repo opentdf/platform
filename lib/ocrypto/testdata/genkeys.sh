@@ -11,19 +11,18 @@ echo "Generating test keys..."
 
 # Define EC curves: openssl_name:output_name
 ec_curves=(
-    "prime256v1:secp256r1"
-    "secp384r1:secp384r1"
-    "secp521r1:secp521r1"
-    "secp256k1:secp256k1"
-    "brainpoolP160r1:brainpoolP160r1"
+    "secp256r1"
+    "secp384r1"
+    "secp521r1"
+    "secp256k1"
+    "brainpoolP160r1"
 )
 
 # Generate EC keys
-for curve_pair in "${ec_curves[@]}"; do
-    IFS=':' read -r openssl_name output_name <<<"$curve_pair"
-    echo "Generating EC $output_name keys..."
-    openssl ecparam -name "$openssl_name" -genkey -noout -out "sample-ec-$output_name-01-private.pem"
-    openssl ec -in "sample-ec-$output_name-01-private.pem" -pubout -out "sample-ec-$output_name-01-public.pem"
+for curve_name in "${ec_curves[@]}"; do
+    echo "Generating EC $curve_name keys..."
+    openssl ecparam -name "$curve_name" -genkey -noout -out "sample-ec-$curve_name-01-private.pem"
+    openssl ec -in "sample-ec-$curve_name-01-private.pem" -pubout -out "sample-ec-$curve_name-01-public.pem"
 done
 
 # Define RSA bit lengths

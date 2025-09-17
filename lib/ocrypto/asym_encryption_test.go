@@ -14,55 +14,36 @@ func TestFromPublicPEM(t *testing.T) {
 		name         string
 		filename     string
 		expectedType KeyType
-		shouldFail   bool
 	}{
 		{
 			name:         "EC secp256r1 public key",
 			filename:     "sample-ec-secp256r1-01-public.pem",
 			expectedType: EC256Key,
-			shouldFail:   false,
 		},
 		{
 			name:         "EC secp384r1 public key",
 			filename:     "sample-ec-secp384r1-01-public.pem",
 			expectedType: EC384Key,
-			shouldFail:   false,
 		},
 		{
 			name:         "EC secp521r1 public key",
 			filename:     "sample-ec-secp521r1-01-public.pem",
 			expectedType: EC521Key,
-			shouldFail:   false,
 		},
 		{
 			name:         "RSA 2048 public key",
 			filename:     "sample-rsa-2048-01-public.pem",
 			expectedType: RSA2048Key,
-			shouldFail:   false,
 		},
 		{
 			name:         "RSA 4096 public key",
 			filename:     "sample-rsa-4096-01-public.pem",
 			expectedType: RSA4096Key,
-			shouldFail:   false,
 		},
 		{
 			name:         "Unsupported RSA 1024 public key",
 			filename:     "sample-rsa-1024-01-public.pem",
 			expectedType: KeyType("rsa:1024"),
-			shouldFail:   false,
-		},
-		{
-			name:         "Unsupported EC secp256k1 public key",
-			filename:     "sample-ec-secp256k1-01-public.pem",
-			expectedType: KeyType("ec:secp256k1"),
-			shouldFail:   true,
-		},
-		{
-			name:         "Unsupported EC brainpoolP160r1 public key",
-			filename:     "sample-ec-brainpoolP160r1-01-public.pem",
-			expectedType: KeyType("ec:brainpoolP160r1"),
-			shouldFail:   true,
 		},
 	}
 
@@ -75,16 +56,8 @@ func TestFromPublicPEM(t *testing.T) {
 
 			// Load the public key using FromPublicPEM
 			encryptor, err := FromPublicPEM(string(pemData))
-
-			if tc.shouldFail {
-				assert.Error(t, err, "Expected error for %s", tc.name)
-				return
-			}
-
 			require.NoError(t, err, "Failed to load public key from %s", tc.filename)
-			require.NotNil(t, encryptor, "Encryptor should not be nil")
-
-			// Test that KeyType() returns the expected type
+			require.NotNil(t, encryptor, "Encryptor should not be nil") // Test that KeyType() returns the expected type
 			keyType := encryptor.KeyType()
 			assert.Equal(t, tc.expectedType, keyType, "KeyType() returned unexpected value for %s", tc.name)
 
@@ -96,7 +69,40 @@ func TestFromPublicPEM(t *testing.T) {
 	}
 }
 
-func TestFromPublicPEMInvalidInput(t *testing.T) {
+func TestFromPublicPEM_UnsupportedFiles(t *testing.T) {
+	testCases := []struct {
+		name     string
+		filename string
+	}{
+		{
+			name:     "Unsupported EC secp256k1 public key",
+			filename: "sample-ec-secp256k1-01-public.pem",
+		},
+		{
+			name:     "Unsupported EC brainpoolP160r1 public key",
+			filename: "sample-ec-brainpoolP160r1-01-public.pem",
+		},
+		{
+			name:     "Loading a private key should fail",
+			filename: "sample-ec-secp256r1-01-private.pem",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Read the PEM file
+			testDataPath := filepath.Join("testdata", tc.filename)
+			pemData, err := os.ReadFile(testDataPath)
+			require.NoError(t, err, "Failed to read test file %s", tc.filename)
+
+			// Load the public key using FromPublicPEM - should fail for unsupported curves
+			_, err = FromPublicPEM(string(pemData))
+			assert.Error(t, err, "Expected error for unsupported curve %s", tc.name)
+		})
+	}
+}
+
+func TestFromPublicPEM_InvalidInput(t *testing.T) {
 	testCases := []struct {
 		name     string
 		pemData  string

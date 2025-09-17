@@ -145,9 +145,9 @@ func (e AsymEncryption) Type() SchemeType {
 
 func (e AsymEncryption) KeyType() KeyType {
 	switch e.PublicKey.Size() {
-	case 2048 / 8: //nolint:mnd // standard key size in bytes
+	case RSA2048Size / 8: //nolint:mnd // standard key size in bytes
 		return RSA2048Key
-	case 4096 / 8: //nolint:mnd // large key size in bytes
+	case RSA4096Size / 8: //nolint:mnd // large key size in bytes
 		return RSA4096Key
 	default:
 		bitlen := e.PublicKey.Size() * 8 //nolint:mnd // convert to bits
@@ -169,7 +169,7 @@ func (e ECEncryptor) KeyType() KeyType {
 		return EC521Key
 	default:
 		if n, ok := e.pub.Curve().(fmt.Stringer); ok {
-			return KeyType("ec:[" + n.String() + "]")
+			return KeyType("ec:" + n.String())
 		}
 		return KeyType("ec:[unknown]")
 	}

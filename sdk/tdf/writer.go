@@ -163,7 +163,7 @@ func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error
 	}
 
 	// Initialize archive writer - start with 1 segment and expand dynamically
-	archiveWriter := archive.NewSegmentTDFWriter(1)
+	archiveWriter := archive.NewSegmentTDFWriter(1, archive.WithZip64())
 
 	// Generate DEK
 	dek, err := ocrypto.RandomBytes(kKeySize)

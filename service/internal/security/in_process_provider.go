@@ -159,7 +159,7 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 	if k, err := a.cryptoProvider.RSAPublicKey(string(id)); err == nil {
 		e, err := ocrypto.FromPublicPEM(k)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create asym encryption from rsa public key: %w", err)
+			return nil, fmt.Errorf("failed to parse rsa public key while scanning for [%s]: %w", id, err)
 		}
 		return &KeyDetailsAdapter{
 			id:             id,
@@ -171,7 +171,7 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 	if k, err := a.cryptoProvider.ECPublicKey(string(id)); err == nil {
 		e, err := ocrypto.FromPublicPEM(k)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create asym encryption from ec public key: %w", err)
+			return nil, fmt.Errorf("failed to parse ec public key while scanning for [%s]: %w", id, err)
 		}
 		return &KeyDetailsAdapter{
 			id:             id,

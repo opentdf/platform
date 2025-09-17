@@ -9,7 +9,7 @@ cd "$(dirname "$0")"
 
 echo "Generating test keys..."
 
-# Define EC curves: openssl_name:output_name
+# Which EC curves we are using to generate keys
 ec_curves=(
     "secp256r1"
     "secp384r1"
@@ -25,7 +25,7 @@ for curve_name in "${ec_curves[@]}"; do
     openssl ec -in "sample-ec-$curve_name-01-private.pem" -pubout -out "sample-ec-$curve_name-01-public.pem"
 done
 
-# Define RSA bit lengths
+# What RSA bit lengths we want to test
 rsa_bits=(2048 4096 1024)
 
 # Generate RSA keys

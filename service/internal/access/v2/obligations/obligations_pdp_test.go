@@ -187,8 +187,6 @@ func (s *ObligationsPDPSuite) Test_NewObligationsPolicyDecisionPoint_Success() {
 	s.NotNil(pdp.logger)
 	s.Equal(attributesByValueFQN, pdp.attributesByValueFQN)
 	s.Empty(pdp.registeredResourceValuesByFQN)
-	s.Len(pdp.obligationValuesByFQN, 1)
-	s.Contains(pdp.obligationValuesByFQN, mockObligationFQN1)
 	s.NotNil(pdp.simpleTriggerActionsToAttributes)
 	s.NotNil(pdp.clientIDScopedTriggerActionsToAttributes)
 }
@@ -208,8 +206,6 @@ func (s *ObligationsPDPSuite) Test_NewObligationsPolicyDecisionPoint_WithClientS
 
 	s.Require().NoError(err)
 	s.NotNil(pdp)
-	s.Len(pdp.obligationValuesByFQN, 1)
-	s.Contains(pdp.obligationValuesByFQN, mockObligationFQN2)
 	s.Contains(pdp.clientIDScopedTriggerActionsToAttributes, mockClientID)
 	s.Contains(pdp.clientIDScopedTriggerActionsToAttributes[mockClientID], actionNameRead)
 	s.Contains(pdp.clientIDScopedTriggerActionsToAttributes[mockClientID][actionNameRead], mockAttrValFQN2)
@@ -270,7 +266,6 @@ func (s *ObligationsPDPSuite) Test_NewObligationsPolicyDecisionPoint_EmptyObliga
 
 	s.Require().NoError(err)
 	s.NotNil(pdp)
-	s.Empty(pdp.obligationValuesByFQN)
 	s.Empty(pdp.simpleTriggerActionsToAttributes)
 	s.Empty(pdp.clientIDScopedTriggerActionsToAttributes)
 }

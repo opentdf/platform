@@ -665,6 +665,81 @@ components:
           description: Keys for the namespace
       title: Namespace
       additionalProperties: false
+    policy.Obligation:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        namespace:
+          title: namespace
+          $ref: '#/components/schemas/policy.Namespace'
+        name:
+          type: string
+          title: name
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.ObligationValue'
+          title: values
+        fqn:
+          type: string
+          title: fqn
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: Obligation
+      additionalProperties: false
+    policy.ObligationTrigger:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        obligationValue:
+          title: obligation_value
+          $ref: '#/components/schemas/policy.ObligationValue'
+        action:
+          title: action
+          $ref: '#/components/schemas/policy.Action'
+        attributeValue:
+          title: attribute_value
+          $ref: '#/components/schemas/policy.Value'
+        context:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.RequestContext'
+          title: context
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: ObligationTrigger
+      additionalProperties: false
+    policy.ObligationValue:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        obligation:
+          title: obligation
+          $ref: '#/components/schemas/policy.Obligation'
+        value:
+          type: string
+          title: value
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.ObligationTrigger'
+          title: triggers
+        fqn:
+          type: string
+          title: fqn
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: ObligationValue
+      additionalProperties: false
     policy.PageRequest:
       type: object
       properties:
@@ -707,6 +782,15 @@ components:
           description: Total count of entire list
       title: PageResponse
       additionalProperties: false
+    policy.PolicyEnforcementPoint:
+      type: object
+      properties:
+        clientId:
+          type: string
+          title: client_id
+          minLength: 1
+      title: PolicyEnforcementPoint
+      additionalProperties: false
     policy.PublicKey:
       type: object
       oneOf:
@@ -735,6 +819,15 @@ components:
       title: PublicKey
       additionalProperties: false
       description: Deprecated
+    policy.RequestContext:
+      type: object
+      properties:
+        pep:
+          title: pep
+          $ref: '#/components/schemas/policy.PolicyEnforcementPoint'
+      title: RequestContext
+      additionalProperties: false
+      description: Holds the context needed for obligation fulfillment
     policy.ResourceMapping:
       type: object
       properties:
@@ -927,6 +1020,11 @@ components:
           items:
             $ref: '#/components/schemas/policy.ResourceMapping'
           title: resource_mappings
+        obligations:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Obligation'
+          title: obligations
         metadata:
           title: metadata
           description: Common metadata

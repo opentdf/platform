@@ -74,6 +74,78 @@ func (q *Queries) deleteAttributeValue(ctx context.Context, id string) (int64, e
 }
 
 const getAttributeValue = `-- name: getAttributeValue :one
+WITH obligation_triggers_agg AS (
+    SELECT
+        ot.obligation_value_id,
+        JSONB_AGG(
+            DISTINCT JSONB_BUILD_OBJECT(
+                'id', ot.id,
+                'action', JSONB_BUILD_OBJECT(
+                    'id', a.id,
+                    'name', a.name
+                ),
+                'attribute_value', JSONB_BUILD_OBJECT(
+                    'id', av.id,
+                    'fqn', av_fqns.fqn
+                ),
+                'context', CASE
+                    WHEN ot.client_id IS NOT NULL THEN JSONB_BUILD_ARRAY(
+                        JSONB_BUILD_OBJECT(
+                            'pep', JSONB_BUILD_OBJECT(
+                                'client_id', ot.client_id
+                            )
+                        )
+                    )
+                    ELSE '[]'::JSONB
+                END
+            )
+        ) AS triggers
+    FROM obligation_triggers ot
+    JOIN actions a ON ot.action_id = a.id
+    JOIN attribute_values av ON ot.attribute_value_id = av.id
+    LEFT JOIN attribute_fqns av_fqns ON av.id = av_fqns.value_id
+    GROUP BY ot.obligation_value_id
+),
+obligation_values_agg AS (
+    SELECT
+        ov.obligation_definition_id,
+        JSONB_AGG(
+            DISTINCT JSONB_BUILD_OBJECT(
+                'id', ov.id,
+                'value', ov.value,
+                'fqn', ov_fqns.fqn,
+                'triggers', COALESCE(ota.triggers, '[]'::JSONB)
+            )
+        ) AS values
+    FROM obligation_values_standard ov
+    LEFT JOIN attribute_fqns ov_fqns ON ov.id = ov_fqns.value_id
+    LEFT JOIN obligation_triggers_agg ota ON ov.id = ota.obligation_value_id
+    GROUP BY ov.obligation_definition_id
+),
+attribute_obligations AS (
+    SELECT
+        ot.attribute_value_id,
+        JSONB_AGG(
+            DISTINCT JSONB_BUILD_OBJECT(
+                'id', od.id,
+                'name', od.name,
+                'fqn', ns_fqns.fqn,
+                'namespace', JSONB_BUILD_OBJECT(
+                    'id', n.id,
+                    'name', n.name,
+                    'fqn', ns_fqns.fqn
+                ),
+                'values', COALESCE(ova.values, '[]'::JSONB)
+            )
+        ) AS obligations
+    FROM obligation_triggers ot
+    JOIN obligation_values_standard ov ON ot.obligation_value_id = ov.id
+    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+    JOIN attribute_namespaces n ON od.namespace_id = n.id
+    LEFT JOIN attribute_fqns ns_fqns ON n.id = ns_fqns.namespace_id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+    LEFT JOIN obligation_values_agg ova ON od.id = ova.obligation_definition_id
+    GROUP BY ot.attribute_value_id
+)
 SELECT
     av.id,
     av.value,
@@ -89,7 +161,8 @@ SELECT
             'public_key', kas.public_key
         )
     ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants,
-    value_keys.keys as keys
+    value_keys.keys as keys,
+    ao.obligations
 FROM attribute_values av
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
@@ -112,10 +185,11 @@ LEFT JOIN (
     INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
     INNER JOIN key_access_servers kas ON kas.id = kask.key_access_server_id
     GROUP BY k.value_id
-) value_keys ON av.id = value_keys.value_id   
+) value_keys ON av.id = value_keys.value_id
+LEFT JOIN attribute_obligations ao ON av.id = ao.attribute_value_id
 WHERE ($1::uuid IS NULL OR av.id = $1::uuid)
   AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
-GROUP BY av.id, fqns.fqn, value_keys.keys
+GROUP BY av.id, fqns.fqn, value_keys.keys, ao.obligations
 `
 
 type getAttributeValueParams struct {
@@ -132,10 +206,83 @@ type getAttributeValueRow struct {
 	Fqn                   pgtype.Text `json:"fqn"`
 	Grants                []byte      `json:"grants"`
 	Keys                  []byte      `json:"keys"`
+	Obligations           []byte      `json:"obligations"`
 }
 
 // getAttributeValue
 //
+//	WITH obligation_triggers_agg AS (
+//	    SELECT
+//	        ot.obligation_value_id,
+//	        JSONB_AGG(
+//	            DISTINCT JSONB_BUILD_OBJECT(
+//	                'id', ot.id,
+//	                'action', JSONB_BUILD_OBJECT(
+//	                    'id', a.id,
+//	                    'name', a.name
+//	                ),
+//	                'attribute_value', JSONB_BUILD_OBJECT(
+//	                    'id', av.id,
+//	                    'fqn', av_fqns.fqn
+//	                ),
+//	                'context', CASE
+//	                    WHEN ot.client_id IS NOT NULL THEN JSONB_BUILD_ARRAY(
+//	                        JSONB_BUILD_OBJECT(
+//	                            'pep', JSONB_BUILD_OBJECT(
+//	                                'client_id', ot.client_id
+//	                            )
+//	                        )
+//	                    )
+//	                    ELSE '[]'::JSONB
+//	                END
+//	            )
+//	        ) AS triggers
+//	    FROM obligation_triggers ot
+//	    JOIN actions a ON ot.action_id = a.id
+//	    JOIN attribute_values av ON ot.attribute_value_id = av.id
+//	    LEFT JOIN attribute_fqns av_fqns ON av.id = av_fqns.value_id
+//	    GROUP BY ot.obligation_value_id
+//	),
+//	obligation_values_agg AS (
+//	    SELECT
+//	        ov.obligation_definition_id,
+//	        JSONB_AGG(
+//	            DISTINCT JSONB_BUILD_OBJECT(
+//	                'id', ov.id,
+//	                'value', ov.value,
+//	                'fqn', ov_fqns.fqn,
+//	                'triggers', COALESCE(ota.triggers, '[]'::JSONB)
+//	            )
+//	        ) AS values
+//	    FROM obligation_values_standard ov
+//	    LEFT JOIN attribute_fqns ov_fqns ON ov.id = ov_fqns.value_id
+//	    LEFT JOIN obligation_triggers_agg ota ON ov.id = ota.obligation_value_id
+//	    GROUP BY ov.obligation_definition_id
+//	),
+//	attribute_obligations AS (
+//	    SELECT
+//	        ot.attribute_value_id,
+//	        JSONB_AGG(
+//	            DISTINCT JSONB_BUILD_OBJECT(
+//	                'id', od.id,
+//	                'name', od.name,
+//	                'fqn', ns_fqns.fqn,
+//	                'namespace', JSONB_BUILD_OBJECT(
+//	                    'id', n.id,
+//	                    'name', n.name,
+//	                    'fqn', ns_fqns.fqn
+//	                ),
+//	                'values', COALESCE(ova.values, '[]'::JSONB)
+//	            )
+//	        ) AS obligations
+//	    FROM obligation_triggers ot
+//	    JOIN obligation_values_standard ov ON ot.obligation_value_id = ov.id
+//	    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+//	    JOIN attribute_namespaces n ON od.namespace_id = n.id
+//	    LEFT JOIN attribute_fqns ns_fqns ON n.id = ns_fqns.namespace_id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+//	    LEFT JOIN obligation_values_agg ova ON od.id = ova.obligation_definition_id
+//	    GROUP BY ot.attribute_value_id
+//	)
 //	SELECT
 //	    av.id,
 //	    av.value,
@@ -151,7 +298,8 @@ type getAttributeValueRow struct {
 //	            'public_key', kas.public_key
 //	        )
 //	    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants,
-//	    value_keys.keys as keys
+//	    value_keys.keys as keys,
+//	    ao.obligations
 //	FROM attribute_values av
 //	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 //	LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
@@ -175,9 +323,10 @@ type getAttributeValueRow struct {
 //	    INNER JOIN key_access_servers kas ON kas.id = kask.key_access_server_id
 //	    GROUP BY k.value_id
 //	) value_keys ON av.id = value_keys.value_id
+//	LEFT JOIN attribute_obligations ao ON av.id = ao.attribute_value_id
 //	WHERE ($1::uuid IS NULL OR av.id = $1::uuid)
 //	  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
-//	GROUP BY av.id, fqns.fqn, value_keys.keys
+//	GROUP BY av.id, fqns.fqn, value_keys.keys, ao.obligations
 func (q *Queries) getAttributeValue(ctx context.Context, arg getAttributeValueParams) (getAttributeValueRow, error) {
 	row := q.db.QueryRow(ctx, getAttributeValue, arg.ID, arg.Fqn)
 	var i getAttributeValueRow
@@ -190,6 +339,7 @@ func (q *Queries) getAttributeValue(ctx context.Context, arg getAttributeValuePa
 		&i.Fqn,
 		&i.Grants,
 		&i.Keys,
+		&i.Obligations,
 	)
 	return i, err
 }

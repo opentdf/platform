@@ -101,6 +101,15 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		}
 	}
 
+	obligations := make([]*policy.Obligation, 0)
+	if av.Obligations != nil {
+		obligations, err = unmarshalObligations(av.Obligations)
+		if err != nil {
+			c.logger.ErrorContext(ctx, "could not unmarshal obligations", slog.String("error", err.Error()))
+			return nil, err
+		}
+	}
+
 	return &policy.Value{
 		Id:       av.ID,
 		Value:    av.Value,
@@ -109,9 +118,10 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		Attribute: &policy.Attribute{
 			Id: av.AttributeDefinitionID,
 		},
-		Fqn:     av.Fqn.String,
-		Grants:  grants,
-		KasKeys: keys,
+		Fqn:         av.Fqn.String,
+		Grants:      grants,
+		KasKeys:     keys,
+		Obligations: obligations,
 	}, nil
 }
 

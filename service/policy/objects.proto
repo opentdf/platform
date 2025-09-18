@@ -116,6 +116,8 @@ message Value {
 
   repeated ResourceMapping resource_mappings = 10;
 
+  repeated Obligation obligations = 11;
+
   // Common metadata
   common.Metadata metadata = 100;
 }

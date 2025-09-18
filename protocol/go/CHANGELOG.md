@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.10.0](https://github.com/opentdf/platform/compare/protocol/go/v0.9.0...protocol/go/v0.10.0) (2025-09-16)
+
+
+### Features
+
+* **policy:** add protovalidate for obligation defs + vals ([#2699](https://github.com/opentdf/platform/issues/2699)) ([af5c049](https://github.com/opentdf/platform/commit/af5c049435355646b7b59fd3a4b0191875a4b88d))
+
+## [0.9.0](https://github.com/opentdf/platform/compare/protocol/go/v0.8.0...protocol/go/v0.9.0) (2025-09-11)
+
+
+### Features
+
+* **policy:** add FQN of obligation definitions/values to protos ([#2703](https://github.com/opentdf/platform/issues/2703)) ([45ded0e](https://github.com/opentdf/platform/commit/45ded0e2717cca7ca8465e642c05e02ca4acd6c5))
+* **policy:** Add obligation triggers ([#2675](https://github.com/opentdf/platform/issues/2675)) ([22d0837](https://github.com/opentdf/platform/commit/22d08378c06eef1ec5d59250d3e22f81d230c49d))
+* **policy:** Allow creation and update of triggers on Obligation Values ([#2691](https://github.com/opentdf/platform/issues/2691)) ([b1e7ba1](https://github.com/opentdf/platform/commit/b1e7ba14a34c719d711db45cc9401c332c1175a5))
+* **policy:** Allow for additional context to be added to obligation triggers ([#2705](https://github.com/opentdf/platform/issues/2705)) ([7025599](https://github.com/opentdf/platform/commit/7025599b30e76bb5b546f5d68f5fee9405f8a0b5))
+* **policy:** obligations + values CRUD ([#2545](https://github.com/opentdf/platform/issues/2545)) ([c194e35](https://github.com/opentdf/platform/commit/c194e3522b9dfab74a5a21747d012f88a188f989))
+
+
+### Bug Fixes
+
+* **deps:** update protovalidate to v0.14.2 to use new buf validate MessageOneofRule ([#2698](https://github.com/opentdf/platform/issues/2698)) ([1cae18e](https://github.com/opentdf/platform/commit/1cae18e6b6f4a72869b0cdb65d775e108da07872))
+
 ## [0.8.0](https://github.com/opentdf/platform/compare/protocol/go/v0.7.0...protocol/go/v0.8.0) (2025-09-04)
 
 

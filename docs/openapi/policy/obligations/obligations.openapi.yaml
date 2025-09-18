@@ -1140,6 +1140,8 @@ components:
           title: pep
           $ref: '#/components/schemas/policy.PolicyEnforcementPoint'
       title: RequestContext
+      required:
+        - pep
       additionalProperties: false
       description: Holds the context needed for obligation fulfillment
     policy.ResourceMapping:
@@ -1389,30 +1391,35 @@ components:
       additionalProperties: false
     policy.obligations.CreateObligationRequest:
       type: object
-      oneOf:
-        - properties:
-            fqn:
-              type: string
-              title: fqn
-          title: fqn
-          required:
-            - fqn
-        - properties:
-            id:
-              type: string
-              title: id
-          title: id
-          required:
-            - id
       properties:
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
         name:
           type: string
           title: name
+          maxLength: 253
+          description: |+
+            Obligation name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.:
+            ```
+            this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
+            ```
+
         values:
           type: array
           items:
             type: string
+            maxLength: 253
+            pattern: ^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$
+            uniqueItems: true
           title: values
+          uniqueItems: true
           description: Optional
         metadata:
           title: metadata
@@ -1421,6 +1428,8 @@ components:
              Common metadata
           $ref: '#/components/schemas/common.MetadataMutable'
       title: CreateObligationRequest
+      required:
+        - name
       additionalProperties: false
     policy.obligations.CreateObligationResponse:
       type: object
@@ -1432,25 +1441,26 @@ components:
       additionalProperties: false
     policy.obligations.CreateObligationValueRequest:
       type: object
-      oneOf:
-        - properties:
-            fqn:
-              type: string
-              title: fqn
-          title: fqn
-          required:
-            - fqn
-        - properties:
-            id:
-              type: string
-              title: id
-          title: id
-          required:
-            - id
       properties:
+        obligationId:
+          type: string
+          title: obligation_id
+          format: uuid
+        obligationFqn:
+          type: string
+          title: obligation_fqn
+          minLength: 1
+          format: uri
         value:
           type: string
           title: value
+          maxLength: 253
+          description: |+
+            Obligation value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored value will be normalized to lower case.:
+            ```
+            this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
+            ```
+
         triggers:
           type: array
           items:
@@ -1466,6 +1476,8 @@ components:
              Common metadata
           $ref: '#/components/schemas/common.MetadataMutable'
       title: CreateObligationValueRequest
+      required:
+        - value
       additionalProperties: false
     policy.obligations.CreateObligationValueResponse:
       type: object
@@ -1477,21 +1489,16 @@ components:
       additionalProperties: false
     policy.obligations.DeleteObligationRequest:
       type: object
-      oneOf:
-        - properties:
-            fqn:
-              type: string
-              title: fqn
-          title: fqn
-          required:
-            - fqn
-        - properties:
-            id:
-              type: string
-              title: id
+      properties:
+        id:
+          type: string
           title: id
-          required:
-            - id
+          format: uuid
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
       title: DeleteObligationRequest
       additionalProperties: false
     policy.obligations.DeleteObligationResponse:
@@ -1504,21 +1511,16 @@ components:
       additionalProperties: false
     policy.obligations.DeleteObligationValueRequest:
       type: object
-      oneOf:
-        - properties:
-            fqn:
-              type: string
-              title: fqn
-          title: fqn
-          required:
-            - fqn
-        - properties:
-            id:
-              type: string
-              title: id
+      properties:
+        id:
+          type: string
           title: id
-          required:
-            - id
+          format: uuid
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
       title: DeleteObligationValueRequest
       additionalProperties: false
     policy.obligations.DeleteObligationValueResponse:
@@ -1531,21 +1533,16 @@ components:
       additionalProperties: false
     policy.obligations.GetObligationRequest:
       type: object
-      oneOf:
-        - properties:
-            fqn:
-              type: string
-              title: fqn
-          title: fqn
-          required:
-            - fqn
-        - properties:
-            id:
-              type: string
-              title: id
+      properties:
+        id:
+          type: string
           title: id
-          required:
-            - id
+          format: uuid
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
       title: GetObligationRequest
       additionalProperties: false
       description: Definitions
@@ -1559,21 +1556,16 @@ components:
       additionalProperties: false
     policy.obligations.GetObligationValueRequest:
       type: object
-      oneOf:
-        - properties:
-            fqn:
-              type: string
-              title: fqn
-          title: fqn
-          required:
-            - fqn
-        - properties:
-            id:
-              type: string
-              title: id
+      properties:
+        id:
+          type: string
           title: id
-          required:
-            - id
+          format: uuid
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
       title: GetObligationValueRequest
       additionalProperties: false
       description: Values
@@ -1592,7 +1584,15 @@ components:
           type: array
           items:
             type: string
+            minLength: 1
+            format: uri
+            maxItems: 250
+            minItems: 1
+            uniqueItems: true
           title: fqns
+          maxItems: 250
+          minItems: 1
+          uniqueItems: true
       title: GetObligationValuesByFQNsRequest
       additionalProperties: false
     policy.obligations.GetObligationValuesByFQNsResponse:
@@ -1624,7 +1624,15 @@ components:
           type: array
           items:
             type: string
+            minLength: 1
+            format: uri
+            maxItems: 250
+            minItems: 1
+            uniqueItems: true
           title: fqns
+          maxItems: 250
+          minItems: 1
+          uniqueItems: true
       title: GetObligationsByFQNsRequest
       additionalProperties: false
     policy.obligations.GetObligationsByFQNsResponse:
@@ -1651,22 +1659,16 @@ components:
       additionalProperties: false
     policy.obligations.ListObligationsRequest:
       type: object
-      oneOf:
-        - properties:
-            fqn:
-              type: string
-              title: fqn
-          title: fqn
-          required:
-            - fqn
-        - properties:
-            id:
-              type: string
-              title: id
-          title: id
-          required:
-            - id
       properties:
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
         pagination:
           title: pagination
           description: Optional
@@ -1710,11 +1712,19 @@ components:
         id:
           type: string
           title: id
+          format: uuid
           description: Required
         name:
           type: string
           title: name
-          description: Optional
+          maxLength: 253
+          description: |+
+            Optional
+            Obligation name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.:
+            ```
+            size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true
+            ```
+
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.MetadataMutable'
@@ -1737,11 +1747,19 @@ components:
         id:
           type: string
           title: id
+          format: uuid
           description: Required
         value:
           type: string
           title: value
-          description: Optional
+          maxLength: 253
+          description: |+
+            Optional
+            Obligation value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored value will be normalized to lower case.:
+            ```
+            size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true
+            ```
+
         triggers:
           type: array
           items:
@@ -1752,6 +1770,9 @@ components:
              Obligation Triggers provided here will replace all existing records in the database.
         metadata:
           title: metadata
+          description: |-
+            Optional
+             Common metadata
           $ref: '#/components/schemas/common.MetadataMutable'
         metadataUpdateBehavior:
           title: metadata_update_behavior

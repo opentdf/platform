@@ -1401,6 +1401,8 @@ components:
           title: pep
           $ref: '#/components/schemas/policy.PolicyEnforcementPoint'
       title: RequestContext
+      required:
+        - pep
       additionalProperties: false
       description: Holds the context needed for obligation fulfillment
     policy.ResourceMapping:

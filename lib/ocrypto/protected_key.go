@@ -63,7 +63,8 @@ func (k *AESProtectedKey) Export(encapsulator Encapsulator) ([]byte, error) {
 	}
 
 	// Encrypt the key data before returning
-	encryptedKey, err := encapsulator.Encapsulate(k)
+	keyCopy := append([]byte{}, k.rawKey...)
+	encryptedKey, err := encapsulator.Encrypt(keyCopy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt key data for export: %w", err)
 	}

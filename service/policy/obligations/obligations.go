@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/obligations/obligationsconnect"
@@ -131,11 +132,12 @@ func (s *Service) CreateObligation(ctx context.Context, req *connect.Request[obl
 }
 
 func (s *Service) GetObligation(ctx context.Context, req *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error) {
-	s.logger.DebugContext(ctx, "getting obligation", slog.Any("identifier", req.Msg.GetIdentifier()))
+	identifier := req.Msg.GetId() + req.Msg.GetFqn()
+	s.logger.DebugContext(ctx, "getting obligation", slog.Any("identifier", identifier))
 
 	obl, err := s.dbClient.GetObligation(ctx, req.Msg)
 	if err != nil {
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.Msg.GetIdentifier()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", identifier))
 	}
 	rsp := &obligations.GetObligationResponse{Obligation: obl}
 	return connect.NewResponse(rsp), nil
@@ -150,7 +152,7 @@ func (s *Service) GetObligationsByFQNs(ctx context.Context, req *connect.Request
 	}
 	obls := make(map[string]*policy.Obligation)
 	for _, obl := range os {
-		obls[policydb.BuildOblFQN(obl.GetNamespace().GetFqn(), obl.GetName())] = obl
+		obls[identifier.BuildOblFQN(obl.GetNamespace().GetFqn(), obl.GetName())] = obl
 	}
 	rsp := &obligations.GetObligationsByFQNsResponse{FqnObligationMap: obls}
 	return connect.NewResponse(rsp), nil
@@ -170,11 +172,7 @@ func (s *Service) UpdateObligation(ctx context.Context, req *connect.Request[obl
 	s.logger.DebugContext(ctx, "updating obligation", slog.String("id", id))
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		original, err := txClient.GetObligation(ctx, &obligations.GetObligationRequest{
-			Identifier: &obligations.GetObligationRequest_Id{
-				Id: id,
-			},
-		})
+		original, err := txClient.GetObligation(ctx, &obligations.GetObligationRequest{Id: id})
 		if err != nil {
 			return err
 		}
@@ -253,11 +251,12 @@ func (s *Service) CreateObligationValue(ctx context.Context, req *connect.Reques
 }
 
 func (s *Service) GetObligationValue(ctx context.Context, req *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error) {
-	s.logger.DebugContext(ctx, "getting obligation value", slog.Any("identifier", req.Msg.GetIdentifier()))
+	identifier := req.Msg.GetId() + req.Msg.GetFqn()
+	s.logger.DebugContext(ctx, "getting obligation value", slog.Any("identifier", identifier))
 
 	val, err := s.dbClient.GetObligationValue(ctx, req.Msg)
 	if err != nil {
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.Msg.GetIdentifier()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", identifier))
 	}
 	rsp := &obligations.GetObligationValueResponse{Value: val}
 	return connect.NewResponse(rsp), nil
@@ -273,7 +272,7 @@ func (s *Service) GetObligationValuesByFQNs(ctx context.Context, req *connect.Re
 	vals := make(map[string]*policy.ObligationValue)
 	for _, val := range vs {
 		obl := val.GetObligation()
-		vals[policydb.BuildOblValFQN(obl.GetNamespace().GetFqn(), obl.GetName(), val.GetValue())] = val
+		vals[identifier.BuildOblValFQN(obl.GetNamespace().GetFqn(), obl.GetName(), val.GetValue())] = val
 	}
 	rsp := &obligations.GetObligationValuesByFQNsResponse{FqnValueMap: vals}
 	return connect.NewResponse(rsp), nil
@@ -293,11 +292,7 @@ func (s *Service) UpdateObligationValue(ctx context.Context, req *connect.Reques
 	s.logger.DebugContext(ctx, "updating obligation value", slog.String("id", id))
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		original, err := txClient.GetObligationValue(ctx, &obligations.GetObligationValueRequest{
-			Identifier: &obligations.GetObligationValueRequest_Id{
-				Id: id,
-			},
-		})
+		original, err := txClient.GetObligationValue(ctx, &obligations.GetObligationValueRequest{Id: id})
 		if err != nil {
 			return err
 		}

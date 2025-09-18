@@ -471,7 +471,7 @@ message PolicyEnforcementPoint {
 
 // Holds the context needed for obligation fulfillment
 message RequestContext {
-  PolicyEnforcementPoint pep = 1;
+  PolicyEnforcementPoint pep = 1 [(buf.validate.field).required = true];
 }
 
 message Obligation {

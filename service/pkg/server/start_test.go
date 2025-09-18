@@ -362,12 +362,12 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 						"test": {},
 					},
 				},
-				otdf:                s,
-				client:              nil,
-				keyManagerFactories: []trust.NamedKeyManagerFactory{},
-				logger:              logger,
-				reg:                 registry,
-				cacheManager:        &cache.Manager{},
+				otdf:                   s,
+				client:                 nil,
+				keyManagerCtxFactories: []trust.NamedKeyManagerCtxFactory{},
+				logger:                 logger,
+				reg:                    registry,
+				cacheManager:           &cache.Manager{},
 			})
 			require.NoError(t, err)
 			defer cleanup()
@@ -533,10 +533,15 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Success() {
 					config.LoaderNameDefaultSettings,
 				}),
 			)
-			// require that it got past the service config and mode setup
-			// expected error when trying to setup cache in CI due to DB not running
+			// The ServiceManager now handles these configurations more gracefully
+			// If database is available, services should start successfully
+			// If database is not available, we expect a database connection error
 			if err != nil {
-				require.ErrorContains(t, err, "issue creating database client")
+				// If there's an error, it should be related to database connection
+				require.ErrorContains(t, err, "failed to connect to database")
+			} else {
+				// If no error, it means database is available and services started successfully
+				t.Log("Services started successfully - database connection is available")
 			}
 		})
 	}

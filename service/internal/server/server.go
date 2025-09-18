@@ -469,7 +469,7 @@ func (s OpenTDFServer) Start() error {
 	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
 	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 
-	ln, err := s.openHTTPServerPort()
+	ln, err := s.openHTTPServerPort(context.Background())
 	if err != nil {
 		return err
 	}
@@ -557,7 +557,7 @@ func (s *inProcessServer) WithContextDialer() grpc.DialOption {
 	})
 }
 
-func (s OpenTDFServer) openHTTPServerPort() (net.Listener, error) {
+func (s OpenTDFServer) openHTTPServerPort(ctx context.Context) (net.Listener, error) {
 	addr := s.HTTPServer.Addr
 	if addr == "" {
 		if s.HTTPServer.TLSConfig != nil {
@@ -566,7 +566,12 @@ func (s OpenTDFServer) openHTTPServerPort() (net.Listener, error) {
 			addr = ":http"
 		}
 	}
-	return net.Listen("tcp", addr)
+	lc := net.ListenConfig{}
+	listener, err := lc.Listen(ctx, "tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	return listener, nil
 }
 
 func (s OpenTDFServer) startHTTPServer(ln net.Listener) {

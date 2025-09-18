@@ -5237,7 +5237,7 @@ this case the resource acts as and represents a single entity for authorization/
         
       
         <h3 id="authorization.v2.GetDecisionMultiResourceRequest">GetDecisionMultiResourceRequest</h3>
-        <p>Can the identified entity/entities access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. multiple resources</p><p>Note: this is a more performant bulk request for multiple resource decisions, up to 1000 per request</p>
+        <p>Can the identified entity/entities access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. multiple resources</p><p>If entitled, checks obligation policy: fulfillable obligations must satisfy all triggered.</p><p>Note: this is a more performant bulk request for multiple resource decisions, up to 1000 per request</p>
 
         
           <table class="field-table">
@@ -5265,6 +5265,14 @@ this case the resource acts as and represents a single entity for authorization/
                   <td><a href="#authorization.v2.Resource">Resource</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fulfillable_obligation_fqns</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>obligations (fully qualified values) the requester is capable of fulfilling
+i.e. https://&lt;namespace&gt;/obl/&lt;definition name&gt;/value/&lt;value&gt; </p></td>
                 </tr>
               
             </tbody>
@@ -5306,7 +5314,7 @@ this case the resource acts as and represents a single entity for authorization/
         
       
         <h3 id="authorization.v2.GetDecisionRequest">GetDecisionRequest</h3>
-        <p>Can the identified entity/entities access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. one resource</p>
+        <p>Can the identified entity/entities access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. one resource</p><p>If entitled, checks obligation policy: fulfillable obligations must satisfy all triggered.</p>
 
         
           <table class="field-table">
@@ -5336,6 +5344,14 @@ this case the resource acts as and represents a single entity for authorization/
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>fulfillable_obligation_fqns</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>obligations (fully qualified values) the requester is capable of fulfilling
+i.e. https://&lt;namespace&gt;/obl/&lt;definition name&gt;/value/&lt;value&gt; </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -5357,10 +5373,7 @@ this case the resource acts as and represents a single entity for authorization/
                   <td>decision</td>
                   <td><a href="#authorization.v2.ResourceDecision">ResourceDecision</a></td>
                   <td></td>
-                  <td><p>decision on the resource
-
-optional list of obligations represented in URI format
-repeated string obligations = 2; </p></td>
+                  <td><p>decision on the resource </p></td>
                 </tr>
               
             </tbody>
@@ -5512,6 +5525,14 @@ down the hierarchical values instead of returning solely the value that is direc
                   <td><p>decision result </p></td>
                 </tr>
               
+                <tr>
+                  <td>required_obligations</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>obligations (fully qualified values) the PEP is required to fulfill on the given resource
+i.e. https://&lt;namespace&gt;/obl/&lt;definition name&gt;/value/&lt;value&gt; </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -5544,7 +5565,7 @@ down the hierarchical values instead of returning solely the value that is direc
               <tr>
                 <td>DECISION_PERMIT</td>
                 <td>2</td>
-                <td><p>DECISION_OBLIGATED = 3;</p></td>
+                <td><p></p></td>
               </tr>
             
           </tbody>

@@ -957,7 +957,7 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
 			gotAllFulfilled, gotPerResource, err := s.pdp.GetAllTriggeredObligationsAreFulfilled(t.Context(), tt.args.resources, tt.args.action, tt.args.decisionRequestContext, tt.args.pepFulfillable)
-			s.NoError(err)
+			s.Require().NoError(err)
 			s.Equal(tt.wantAllFulfilled, gotAllFulfilled)
 			s.Equal(tt.wantPerResource, gotPerResource)
 		})

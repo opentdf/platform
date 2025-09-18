@@ -24,11 +24,11 @@ var absentAttributeValueUUID = "78909865-8888-9999-9999-000000000000"
 
 type AttributeValuesSuite struct {
 	suite.Suite
-	f             fixtures.Fixtures
-	db            fixtures.DBInterface
-	ctx           context.Context //nolint:containedctx // context is used in the test suite
-	namespaces    []*policy.Namespace
-	obligationIDs []string
+	f           fixtures.Fixtures
+	db          fixtures.DBInterface
+	ctx         context.Context //nolint:containedctx // context is used in the test suite
+	namespaces  []*policy.Namespace
+	obligations []*policy.Obligation
 }
 
 func (s *AttributeValuesSuite) SetupSuite() {
@@ -46,13 +46,14 @@ func (s *AttributeValuesSuite) SetupSuite() {
 
 func (s *AttributeValuesSuite) SetupTest() {
 	s.namespaces = make([]*policy.Namespace, 0)
-	s.obligationIDs = make([]string, 0)
+	s.obligations = make([]*policy.Obligation, 0)
 }
 
 func (s *AttributeValuesSuite) TearDownTest() {
-	for _, id := range s.obligationIDs {
+	for _, obl := range s.obligations {
 		_, err := s.db.PolicyClient.DeleteObligation(s.ctx, &obligations.DeleteObligationRequest{
-			Identifier: &obligations.DeleteObligationRequest_Id{Id: id},
+			Id:  obl.GetId(),
+			Fqn: obl.GetFqn(),
 		})
 		s.Require().NoError(err)
 	}
@@ -1088,23 +1089,19 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_With_Two_Obligations_Succe
 
 	// Create first obligation with two obligation values
 	obl1, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
-		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
-			Id: ns.GetId(),
-		},
-		Name: "test_obligation_1",
+		NamespaceId: ns.GetId(),
+		Name:        "test_obligation_1",
 	})
 	s.Require().NoError(err)
-	s.obligationIDs = append(s.obligationIDs, obl1.GetId())
+	s.obligations = append(s.obligations, obl1)
 
 	// Create first obligation value with two triggers
 	readAction := s.f.GetStandardAction("read")
 	updateAction := s.f.GetStandardAction("update")
 
 	obl1Val1, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
-			Id: obl1.GetId(),
-		},
-		Value: "obligation_value_1",
+		ObligationId: obl1.GetId(),
+		Value:        "obligation_value_1",
 		Triggers: []*obligations.ValueTriggerRequest{
 			{
 				Action:         &common.IdNameIdentifier{Id: readAction.GetId()},
@@ -1130,10 +1127,8 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_With_Two_Obligations_Succe
 
 	// Create second obligation value with two triggers
 	obl1Val2, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
-			Id: obl1.GetId(),
-		},
-		Value: "obligation_value_2",
+		ObligationId: obl1.GetId(),
+		Value:        "obligation_value_2",
 		Triggers: []*obligations.ValueTriggerRequest{
 			{
 				Action:         &common.IdNameIdentifier{Id: readAction.GetId()},
@@ -1150,20 +1145,16 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_With_Two_Obligations_Succe
 
 	// Create second obligation with one obligation value
 	obl2, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
-		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
-			Id: ns.GetId(),
-		},
-		Name: "test_obligation_2",
+		NamespaceId: ns.GetId(),
+		Name:        "test_obligation_2",
 	})
 	s.Require().NoError(err)
-	s.obligationIDs = append(s.obligationIDs, obl2.GetId())
+	s.obligations = append(s.obligations, obl2)
 
 	// Create obligation value with one trigger
 	obl2Val1, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
-			Id: obl2.GetId(),
-		},
-		Value: "obligation_value_3",
+		ObligationId: obl2.GetId(),
+		Value:        "obligation_value_3",
 		Triggers: []*obligations.ValueTriggerRequest{
 			{
 				Action:         &common.IdNameIdentifier{Id: updateAction.GetId()},

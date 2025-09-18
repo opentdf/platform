@@ -63,7 +63,7 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 		Metadata:  metadata,
 		Namespace: namespace,
 		Values:    oblVals,
-		Fqn:       BuildOblFQN(namespace.GetFqn(), name),
+		Fqn:       identifier.BuildOblFQN(namespace.GetFqn(), name),
 	}, nil
 }
 
@@ -345,7 +345,7 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 		Value:      value,
 		Metadata:   metadata,
 		Triggers:   triggers,
-		Fqn:        BuildOblValFQN(namespace.GetFqn(), obl.GetName(), value),
+		Fqn:        identifier.BuildOblValFQN(namespace.GetFqn(), obl.GetName(), value),
 	}, nil
 }
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.0](https://github.com/opentdf/platform/compare/protocol/go/v0.10.0...protocol/go/v0.11.0) (2025-09-18)
+
+
+### Features
+
+* **authz:** obligations protos within auth service ([#2745](https://github.com/opentdf/platform/issues/2745)) ([41ee5a8](https://github.com/opentdf/platform/commit/41ee5a8c0caaa99d5b80d6ebb23696d13053938f))
+* **policy:** Return obligations from GetAttributeValue calls ([#2742](https://github.com/opentdf/platform/issues/2742)) ([aa9b393](https://github.com/opentdf/platform/commit/aa9b393ac27522a3db69131a48409d8f297ebe56))
+
 ## [0.10.0](https://github.com/opentdf/platform/compare/protocol/go/v0.9.0...protocol/go/v0.10.0) (2025-09-16)
 
 

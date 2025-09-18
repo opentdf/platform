@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -151,11 +152,13 @@ func (p *ObligationsPolicyDecisionPoint) getAllObligationsAreFulfilled(
 ) bool {
 	fulfillable := make(map[string]struct{})
 	for _, obligation := range pepFulfillableObligationValueFQNs {
+		obligation = strings.ToLower(obligation)
 		fulfillable[obligation] = struct{}{}
 	}
 
 	var unfulfilled []string
 	for _, obligated := range allTriggeredObligationValueFQNs {
+		obligated = strings.ToLower(obligated)
 		if _, found := fulfillable[obligated]; !found {
 			unfulfilled = append(unfulfilled, obligated)
 		}

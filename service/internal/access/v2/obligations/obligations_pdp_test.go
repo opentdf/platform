@@ -1,6 +1,7 @@
 package obligations
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -784,6 +785,15 @@ func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_MoreFulfilledTh
 func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_ExactMatch() {
 	allTriggeredObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN2}
 	pepFulfillableObligationValueFQNs := []string{mockObligationFQN2, mockObligationFQN1}
+	decisionRequestContext := emptyDecisionRequestContext
+
+	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	s.True(fulfilled)
+}
+
+func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_CasingMismatchFQNs() {
+	allTriggeredObligationValueFQNs := []string{strings.ToUpper(mockObligationFQN1), mockObligationFQN2}
+	pepFulfillableObligationValueFQNs := []string{strings.ToUpper(mockObligationFQN2), mockObligationFQN1}
 	decisionRequestContext := emptyDecisionRequestContext
 
 	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)

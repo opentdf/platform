@@ -130,12 +130,18 @@ func (p *ObligationsPolicyDecisionPoint) GetAllTriggeredObligationsAreFulfilled(
 	decisionRequestContext *policy.RequestContext,
 	pepFulfillableObligationValueFQNs []string,
 ) (bool, [][]string, error) {
-	perResource, allTriggered, err := p.getTriggeredObligations(ctx, action, resources, decisionRequestContext)
+	log := p.logger.With("action", strings.ToLower(action.GetName()))
+	pepClientID := decisionRequestContext.GetPep().GetClientId()
+	if pepClientID != "" {
+		log = log.With("pep_client_id", pepClientID)
+	}
+
+	perResource, allTriggered, err := p.getTriggeredObligations(ctx, log, action, resources, decisionRequestContext)
 	if err != nil {
 		return false, nil, err
 	}
 
-	allFulfilled := p.getAllObligationsAreFulfilled(ctx, allTriggered, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	allFulfilled := p.getAllObligationsAreFulfilled(ctx, log, allTriggered, pepFulfillableObligationValueFQNs)
 	return allFulfilled, perResource, nil
 }
 
@@ -143,12 +149,13 @@ func (p *ObligationsPolicyDecisionPoint) GetAllTriggeredObligationsAreFulfilled(
 // self-reported fulfillable obligations to validate the PEP can fulfill all that were triggered.
 //
 // While this is a simple check now, enhancements in types of obligations and the fulfillment source of truth
-// (such as a PEP registration or centralized config) will add complexity to this validation.
+// (such as a PEP registration or centralized config) will add complexity to this validation. The RequestContext
+// itself may sometimes contain information that may fulfill the obligation in the future.
 func (p *ObligationsPolicyDecisionPoint) getAllObligationsAreFulfilled(
 	ctx context.Context,
+	log *logger.Logger,
 	allTriggeredObligationValueFQNs []string,
 	pepFulfillableObligationValueFQNs []string,
-	decisionRequestContext *policy.RequestContext,
 ) bool {
 	fulfillable := make(map[string]struct{})
 	for _, obligation := range pepFulfillableObligationValueFQNs {
@@ -162,12 +169,6 @@ func (p *ObligationsPolicyDecisionPoint) getAllObligationsAreFulfilled(
 		if _, found := fulfillable[obligated]; !found {
 			unfulfilled = append(unfulfilled, obligated)
 		}
-	}
-
-	log := p.logger
-	pepClientID := decisionRequestContext.GetPep().GetClientId()
-	if pepClientID != "" {
-		log = log.With("pep_client_id", pepClientID)
 	}
 
 	if len(unfulfilled) > 0 {
@@ -197,6 +198,7 @@ func (p *ObligationsPolicyDecisionPoint) getAllObligationsAreFulfilled(
 // In response, it returns the obligations required per each input resource index and the entire list of deduplicated required obligations
 func (p *ObligationsPolicyDecisionPoint) getTriggeredObligations(
 	ctx context.Context,
+	log *logger.Logger,
 	action *policy.Action,
 	resources []*authz.Resource,
 	decisionRequestContext *policy.RequestContext,
@@ -208,11 +210,7 @@ func (p *ObligationsPolicyDecisionPoint) getTriggeredObligations(
 	allOblValFQNsSeen := make(map[string]struct{})
 
 	pepClientID := decisionRequestContext.GetPep().GetClientId()
-	actionName := action.GetName()
-
-	log := p.logger.
-		With("action", actionName).
-		With("pep_client_id", pepClientID)
+	actionName := strings.ToLower(action.GetName())
 
 	// Short-circuit if the requested action and optional scoping clientID are not found within any obligation triggers
 	attrValueFQNsToObligations, triggersOnActionExist := p.simpleTriggerActionsToAttributes[actionName]
@@ -235,7 +233,7 @@ func (p *ObligationsPolicyDecisionPoint) getTriggeredObligations(
 		var attrValueFQNs []string
 		switch resource.GetResource().(type) {
 		case *authz.Resource_RegisteredResourceValueFqn:
-			regResValFQN := resource.GetRegisteredResourceValueFqn()
+			regResValFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
 			regResValue, ok := p.registeredResourceValuesByFQN[regResValFQN]
 			if !ok {
 				return nil, nil, fmt.Errorf("%w: %s", ErrUnknownRegisteredResourceValue, regResValFQN)
@@ -262,6 +260,8 @@ func (p *ObligationsPolicyDecisionPoint) getTriggeredObligations(
 		seenThisResource := make(map[string]struct{})
 		resourceRequiredOblValueFQNsSet := make([]string, 0)
 		for _, attrValFQN := range attrValueFQNs {
+			attrValFQN = strings.ToLower(attrValFQN)
+
 			if triggeredObligations, someTriggered := attrValueFQNsToObligations[attrValFQN]; someTriggered {
 				for _, oblValFQN := range triggeredObligations {
 					if _, seen := seenThisResource[oblValFQN]; seen {

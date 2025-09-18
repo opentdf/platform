@@ -22,9 +22,9 @@ const (
 	mockObligationFQN3 = "https://example.org/obl/create_obligation/value/create_value"
 	mockObligationFQN4 = "https://example.org/obl/custom_obligation/value/custom_value"
 
-	mockRegResValFQN1 = "https://example.org/reg_res/resource1/value/val1"
-	mockRegResValFQN2 = "https://example.org/reg_res/resource2/value/val2"
-	mockRegResValFQN3 = "https://example.org/reg_res/resource2/value/val3"
+	mockRegResValFQN1 = "https://reg_res/resource1/value/val1"
+	mockRegResValFQN2 = "https://reg_res/resource2/value/val2"
+	mockRegResValFQN3 = "https://reg_res/resource2/value/val3"
 
 	mockClientID = "mock-client-id"
 
@@ -43,7 +43,8 @@ var (
 
 type ObligationsPDPSuite struct {
 	suite.Suite
-	pdp *ObligationsPolicyDecisionPoint
+	pdp        *ObligationsPolicyDecisionPoint
+	testLogger *logger.Logger
 }
 
 func Test_ObligationsPDPSuite(t *testing.T) {
@@ -157,11 +158,13 @@ func (s *ObligationsPDPSuite) SetupSuite() {
 		},
 	}
 
+	s.testLogger = logger.CreateTestLogger()
+
 	// Create a new PDP instance
 	var err error
 	s.pdp, err = NewObligationsPolicyDecisionPoint(
 		s.T().Context(),
-		logger.CreateTestLogger(),
+		s.testLogger,
 		attributesByValueFQN,
 		registeredResourceValuesByFQN,
 		allObligations,
@@ -314,7 +317,7 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_NoObligationsTriggere
 	}
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			perResource, all, err := s.pdp.getTriggeredObligations(t.Context(), tt.args.action, tt.args.resources, tt.args.decisionRequestContext)
+			perResource, all, err := s.pdp.getTriggeredObligations(t.Context(), s.testLogger, tt.args.action, tt.args.resources, tt.args.decisionRequestContext)
 			s.Require().NoError(err)
 			s.Len(perResource, len(tt.args.resources))
 
@@ -338,7 +341,7 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_SimpleObligation_NoRe
 	}
 	decisionRequestContext := emptyDecisionRequestContext
 
-	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionRead, resources, decisionRequestContext)
 
 	s.Require().NoError(err)
 	s.Equal([][]string{{mockObligationFQN1}}, perResource)
@@ -362,14 +365,14 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_ClientScopedObligatio
 	}
 
 	// Found when client provided and matching
-	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionRead, resources, decisionRequestContext)
 	s.Require().NoError(err)
 	s.Equal([][]string{{mockObligationFQN2}}, perResource)
 	s.Equal([]string{mockObligationFQN2}, all)
 
 	// Not found when client not provided
 	decisionRequestContext.Pep.ClientId = ""
-	perResource, all, err = s.pdp.getTriggeredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+	perResource, all, err = s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionRead, resources, decisionRequestContext)
 	s.Require().NoError(err)
 	for _, r := range perResource {
 		s.Empty(r)
@@ -407,7 +410,7 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_MixedObligations_Trig
 		},
 	}
 
-	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionRead, resources, decisionRequestContext)
 	s.Require().NoError(err)
 	// Obligations in order of resources: unscoped, scoped, both
 	s.Equal([][]string{{mockObligationFQN1}, {mockObligationFQN2}, {mockObligationFQN1, mockObligationFQN2}}, perResource)
@@ -426,7 +429,7 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_UnknownRegisteredReso
 	}
 	decisionRequestContext := emptyDecisionRequestContext
 
-	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionRead, resources, decisionRequestContext)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, ErrUnknownRegisteredResourceValue)
 	s.Contains(err.Error(), badRegResValFQN, "error should contain the FQN that was not found")
@@ -446,7 +449,7 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_CreateAction_SimpleOb
 	}
 	decisionRequestContext := emptyDecisionRequestContext
 
-	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), actionCreate, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionCreate, resources, decisionRequestContext)
 
 	s.Require().NoError(err)
 	s.Equal([][]string{{mockObligationFQN3}}, perResource)
@@ -470,7 +473,7 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_CreateAction_NoObliga
 		},
 	}
 
-	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), actionCreate, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionCreate, resources, decisionRequestContext)
 
 	s.Require().NoError(err)
 	// No create obligations exist for mockAttrValFQN2, so nothing should be triggered
@@ -495,13 +498,13 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_ReadVsCreateAction_Di
 	decisionRequestContext := emptyDecisionRequestContext
 
 	// Test with 'read' action - should trigger read obligation
-	perResourceRead, allRead, err := s.pdp.getTriggeredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+	perResourceRead, allRead, err := s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionRead, resources, decisionRequestContext)
 	s.Require().NoError(err)
 	s.Equal([][]string{{mockObligationFQN1}}, perResourceRead)
 	s.Equal([]string{mockObligationFQN1}, allRead)
 
 	// Test with 'create' action - should trigger create obligation
-	perResourceCreate, allCreate, err := s.pdp.getTriggeredObligations(s.T().Context(), actionCreate, resources, decisionRequestContext)
+	perResourceCreate, allCreate, err := s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionCreate, resources, decisionRequestContext)
 	s.Require().NoError(err)
 	s.Equal([][]string{{mockObligationFQN3}}, perResourceCreate)
 	s.Equal([]string{mockObligationFQN3}, allCreate)
@@ -520,7 +523,7 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_RegisteredResource_Re
 	}
 	decisionRequestContext := emptyDecisionRequestContext
 
-	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionRead, resources, decisionRequestContext)
 
 	s.Require().NoError(err)
 	s.Require().Len(perResource, 1, "should have obligations for exactly one resource")
@@ -540,7 +543,7 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_RegisteredResource_Cr
 	}
 	decisionRequestContext := emptyDecisionRequestContext
 
-	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), actionCreate, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionCreate, resources, decisionRequestContext)
 
 	s.Require().NoError(err)
 	s.Require().Len(perResource, 1, "should have obligations for exactly one resource")
@@ -565,7 +568,7 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_RegisteredResource_No
 		},
 	}
 
-	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), actionCreate, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionCreate, resources, decisionRequestContext)
 
 	s.Require().NoError(err)
 	s.Len(perResource, len(resources))
@@ -590,7 +593,7 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_RegisteredResource_Cl
 		},
 	}
 
-	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionRead, resources, decisionRequestContext)
 
 	s.Require().NoError(err)
 	s.Require().Len(perResource, 1, "should have obligations for exactly one resource")
@@ -601,7 +604,7 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_RegisteredResource_Cl
 
 	// Nothing should be triggered if no client
 	decisionRequestContext.Pep.ClientId = ""
-	perResource, all, err = s.pdp.getTriggeredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+	perResource, all, err = s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionRead, resources, decisionRequestContext)
 	s.Require().NoError(err)
 	s.Len(perResource, len(resources))
 	for _, r := range perResource {
@@ -632,7 +635,7 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_MixedResources_Regist
 		},
 	}
 
-	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionRead, resources, decisionRequestContext)
 
 	s.Require().NoError(err)
 	s.Require().Len(perResource, 2, "should have obligations for exactly two resources")
@@ -661,7 +664,7 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_RegisteredResource_Cu
 	}
 	decisionRequestContext := emptyDecisionRequestContext
 
-	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), actionCustom, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionCustom, resources, decisionRequestContext)
 
 	s.Require().NoError(err)
 	s.Require().Len(perResource, 1, "should have obligations for exactly one resource")
@@ -676,7 +679,7 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_RegisteredResource_Cu
 			ClientId: mockClientID,
 		},
 	}
-	perResource, all, err = s.pdp.getTriggeredObligations(s.T().Context(), actionCustom, resources, decisionRequestContext)
+	perResource, all, err = s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionCustom, resources, decisionRequestContext)
 
 	s.Require().NoError(err)
 	s.Require().Len(perResource, 1, "should have obligations for exactly one resource")
@@ -697,7 +700,7 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_RegisteredResource_Cu
 	}
 	decisionRequestContext := emptyDecisionRequestContext
 
-	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionRead, resources, decisionRequestContext)
 
 	s.Require().NoError(err)
 	s.Require().Len(perResource, 1, "should have results for exactly one resource")
@@ -716,7 +719,7 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_CustomAction_Register
 	}
 	decisionRequestContext := emptyDecisionRequestContext
 
-	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), actionCustom, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionCustom, resources, decisionRequestContext)
 
 	s.Require().NoError(err)
 	s.Require().Len(perResource, 1, "should have obligations for exactly one resource")
@@ -752,7 +755,7 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_CustomAction_MixedRes
 	}
 	decisionRequestContext := emptyDecisionRequestContext
 
-	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), actionCustom, resources, decisionRequestContext)
+	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), s.testLogger, actionCustom, resources, decisionRequestContext)
 
 	s.Require().NoError(err)
 	s.Require().Len(perResource, 3, "should have results for exactly three resources")
@@ -776,36 +779,32 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_CustomAction_MixedRes
 func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_MoreFulfilledThanTriggered() {
 	allTriggeredObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN2}
 	pepFulfillableObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN2, mockObligationFQN3}
-	decisionRequestContext := emptyDecisionRequestContext
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), s.testLogger, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs)
 	s.True(fulfilled)
 }
 
 func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_ExactMatch() {
 	allTriggeredObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN2}
 	pepFulfillableObligationValueFQNs := []string{mockObligationFQN2, mockObligationFQN1}
-	decisionRequestContext := emptyDecisionRequestContext
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), s.testLogger, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs)
 	s.True(fulfilled)
 }
 
 func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_CasingMismatchFQNs() {
 	allTriggeredObligationValueFQNs := []string{strings.ToUpper(mockObligationFQN1), mockObligationFQN2}
 	pepFulfillableObligationValueFQNs := []string{strings.ToUpper(mockObligationFQN2), mockObligationFQN1}
-	decisionRequestContext := emptyDecisionRequestContext
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), s.testLogger, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs)
 	s.True(fulfilled)
 }
 
 func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_MissingObligation() {
 	allTriggeredObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN3}
 	pepFulfillableObligationValueFQNs := []string{mockObligationFQN1}
-	decisionRequestContext := emptyDecisionRequestContext
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), s.testLogger, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs)
 
 	s.False(fulfilled)
 }
@@ -813,18 +812,16 @@ func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_MissingObligati
 func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_EmptyTriggered() {
 	allTriggeredObligationValueFQNs := []string{}
 	pepFulfillableObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN2}
-	decisionRequestContext := emptyDecisionRequestContext
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), s.testLogger, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs)
 	s.True(fulfilled)
 }
 
 func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_EmptyFulfillable() {
 	allTriggeredObligationValueFQNs := []string{mockObligationFQN1}
 	pepFulfillableObligationValueFQNs := []string{}
-	decisionRequestContext := emptyDecisionRequestContext
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), s.testLogger, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs)
 
 	s.False(fulfilled)
 }
@@ -832,27 +829,24 @@ func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_EmptyFulfillabl
 func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_BothEmpty() {
 	allTriggeredObligationValueFQNs := []string{}
 	pepFulfillableObligationValueFQNs := []string{}
-	decisionRequestContext := emptyDecisionRequestContext
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), s.testLogger, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs)
 	s.True(fulfilled)
 }
 
 func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_SingleObligation_Fulfilled() {
 	allTriggeredObligationValueFQNs := []string{mockObligationFQN1}
 	pepFulfillableObligationValueFQNs := []string{mockObligationFQN1}
-	decisionRequestContext := emptyDecisionRequestContext
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), s.testLogger, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs)
 	s.True(fulfilled)
 }
 
 func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_SingleObligation_NotFulfilled() {
 	allTriggeredObligationValueFQNs := []string{mockObligationFQN3}
 	pepFulfillableObligationValueFQNs := []string{mockObligationFQN2}
-	decisionRequestContext := emptyDecisionRequestContext
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), s.testLogger, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs)
 
 	s.False(fulfilled)
 }
@@ -860,40 +854,24 @@ func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_SingleObligatio
 func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_DuplicateTriggered() {
 	allTriggeredObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN1, mockObligationFQN2}
 	pepFulfillableObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN2}
-	decisionRequestContext := emptyDecisionRequestContext
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), s.testLogger, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs)
 	s.True(fulfilled)
 }
 
 func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_DuplicateFulfillable() {
 	allTriggeredObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN2}
 	pepFulfillableObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN1, mockObligationFQN2, mockObligationFQN2}
-	decisionRequestContext := emptyDecisionRequestContext
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), s.testLogger, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs)
 	s.True(fulfilled)
 }
 
 func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_AllObligations_Fulfilled() {
 	allTriggeredObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN2, mockObligationFQN3, mockObligationFQN4}
 	pepFulfillableObligationValueFQNs := []string{mockObligationFQN4, mockObligationFQN3, mockObligationFQN2, mockObligationFQN1}
-	decisionRequestContext := emptyDecisionRequestContext
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
-	s.True(fulfilled)
-}
-
-func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_WithPEPClientID() {
-	allTriggeredObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN2}
-	pepFulfillableObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN2}
-	decisionRequestContext := &policy.RequestContext{
-		Pep: &policy.PolicyEnforcementPoint{
-			ClientId: mockClientID,
-		},
-	}
-
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), s.testLogger, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs)
 	s.True(fulfilled)
 }
 
@@ -911,7 +889,7 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 		wantPerResource  [][]string
 	}{
 		{
-			name: "fulfilled",
+			name: "fulfilled - attributes",
 			args: args{
 				action: actionRead,
 				resources: []*authz.Resource{
@@ -929,7 +907,64 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 			wantPerResource:  [][]string{{mockObligationFQN1}},
 		},
 		{
-			name: "unfulfilled",
+			name: "fulfilled - registered resource",
+			args: args{
+				action: actionRead,
+				resources: []*authz.Resource{
+					{
+						Resource: &authz.Resource_RegisteredResourceValueFqn{
+							RegisteredResourceValueFqn: mockRegResValFQN1,
+						},
+					},
+				},
+				pepFulfillable: []string{mockObligationFQN1},
+			},
+			wantAllFulfilled: true,
+			wantPerResource:  [][]string{{mockObligationFQN1}},
+		},
+		{
+			name: "fulfilled - registered resource client scoped",
+			args: args{
+				action: actionRead,
+				resources: []*authz.Resource{
+					{
+						Resource: &authz.Resource_RegisteredResourceValueFqn{
+							RegisteredResourceValueFqn: mockRegResValFQN2,
+						},
+					},
+				},
+				decisionRequestContext: &policy.RequestContext{
+					Pep: &policy.PolicyEnforcementPoint{
+						ClientId: mockClientID,
+					},
+				},
+				pepFulfillable: []string{mockObligationFQN2},
+			},
+			wantAllFulfilled: true,
+			wantPerResource:  [][]string{{mockObligationFQN2}},
+		},
+		{
+			name: "fulfilled - casing mismatches",
+			args: args{
+				action: &policy.Action{
+					Name: strings.ToUpper(actionRead.GetName()),
+				},
+				resources: []*authz.Resource{
+					{
+						Resource: &authz.Resource_AttributeValues_{
+							AttributeValues: &authz.Resource_AttributeValues{
+								Fqns: []string{strings.ToUpper(mockAttrValFQN1)},
+							},
+						},
+					},
+				},
+				pepFulfillable: []string{strings.ToUpper(mockObligationFQN1)},
+			},
+			wantAllFulfilled: true,
+			wantPerResource:  [][]string{{mockObligationFQN1}},
+		},
+		{
+			name: "unfulfilled - attributes",
 			args: args{
 				action: actionRead,
 				resources: []*authz.Resource{
@@ -938,6 +973,22 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 							AttributeValues: &authz.Resource_AttributeValues{
 								Fqns: []string{mockAttrValFQN1},
 							},
+						},
+					},
+				},
+				pepFulfillable: []string{mockObligationFQN2},
+			},
+			wantAllFulfilled: false,
+			wantPerResource:  [][]string{{mockObligationFQN1}},
+		},
+		{
+			name: "unfulfilled - registered resource",
+			args: args{
+				action: actionRead,
+				resources: []*authz.Resource{
+					{
+						Resource: &authz.Resource_RegisteredResourceValueFqn{
+							RegisteredResourceValueFqn: mockRegResValFQN1,
 						},
 					},
 				},
@@ -968,8 +1019,8 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 		s.T().Run(tt.name, func(t *testing.T) {
 			gotAllFulfilled, gotPerResource, err := s.pdp.GetAllTriggeredObligationsAreFulfilled(t.Context(), tt.args.resources, tt.args.action, tt.args.decisionRequestContext, tt.args.pepFulfillable)
 			s.Require().NoError(err)
-			s.Equal(tt.wantAllFulfilled, gotAllFulfilled)
-			s.Equal(tt.wantPerResource, gotPerResource)
+			s.Equal(tt.wantAllFulfilled, gotAllFulfilled, tt.name)
+			s.Equal(tt.wantPerResource, gotPerResource, tt.name)
 		})
 	}
 }

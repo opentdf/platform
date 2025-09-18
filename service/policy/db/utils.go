@@ -162,7 +162,7 @@ func unmarshalObligationTrigger(triggerJSON []byte) (*policy.ObligationTrigger, 
 
 func unmarshalObligations(obligationsJSON []byte) ([]*policy.Obligation, error) {
 	if obligationsJSON == nil {
-		return make([]*policy.Obligation, 0), nil
+		return nil, nil
 	}
 
 	raw := []json.RawMessage{}

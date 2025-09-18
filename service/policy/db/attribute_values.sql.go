@@ -113,13 +113,15 @@ obligation_values_agg AS (
             DISTINCT JSONB_BUILD_OBJECT(
                 'id', ov.id,
                 'value', ov.value,
-                'fqn', ov_fqns.fqn,
+                'fqn', ns_fqns.fqn || '/obl/' || od.name || '/value/' || ov.value,
                 'triggers', COALESCE(ota.triggers, '[]'::JSONB)
             )
         ) AS values
     FROM obligation_values_standard ov
-    LEFT JOIN attribute_fqns ov_fqns ON ov.id = ov_fqns.value_id
     LEFT JOIN obligation_triggers_agg ota ON ov.id = ota.obligation_value_id
+    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+    JOIN attribute_namespaces n ON od.namespace_id = n.id
+    LEFT JOIN attribute_fqns ns_fqns ON n.id = ns_fqns.namespace_id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
     GROUP BY ov.obligation_definition_id
 ),
 attribute_obligations AS (
@@ -129,7 +131,7 @@ attribute_obligations AS (
             DISTINCT JSONB_BUILD_OBJECT(
                 'id', od.id,
                 'name', od.name,
-                'fqn', ns_fqns.fqn,
+                'fqn', ns_fqns.fqn || '/obl/' || od.name,
                 'namespace', JSONB_BUILD_OBJECT(
                     'id', n.id,
                     'name', n.name,
@@ -250,13 +252,15 @@ type getAttributeValueRow struct {
 //	            DISTINCT JSONB_BUILD_OBJECT(
 //	                'id', ov.id,
 //	                'value', ov.value,
-//	                'fqn', ov_fqns.fqn,
+//	                'fqn', ns_fqns.fqn || '/obl/' || od.name || '/value/' || ov.value,
 //	                'triggers', COALESCE(ota.triggers, '[]'::JSONB)
 //	            )
 //	        ) AS values
 //	    FROM obligation_values_standard ov
-//	    LEFT JOIN attribute_fqns ov_fqns ON ov.id = ov_fqns.value_id
 //	    LEFT JOIN obligation_triggers_agg ota ON ov.id = ota.obligation_value_id
+//	    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+//	    JOIN attribute_namespaces n ON od.namespace_id = n.id
+//	    LEFT JOIN attribute_fqns ns_fqns ON n.id = ns_fqns.namespace_id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 //	    GROUP BY ov.obligation_definition_id
 //	),
 //	attribute_obligations AS (
@@ -266,7 +270,7 @@ type getAttributeValueRow struct {
 //	            DISTINCT JSONB_BUILD_OBJECT(
 //	                'id', od.id,
 //	                'name', od.name,
-//	                'fqn', ns_fqns.fqn,
+//	                'fqn', ns_fqns.fqn || '/obl/' || od.name,
 //	                'namespace', JSONB_BUILD_OBJECT(
 //	                    'id', n.id,
 //	                    'name', n.name,

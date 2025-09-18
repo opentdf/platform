@@ -1209,6 +1209,7 @@ func (s *AttributeValuesSuite) assertObligations(expected, actual []*policy.Obli
 		s.Require().True(foundObl, "unexpected obligation with ID %s", actObl.GetId())
 		s.Equal(expObl.GetName(), actObl.GetName(), "obligation name mismatch for ID %s", actObl.GetId())
 		s.Require().Len(actObl.GetValues(), len(expObl.GetValues()), "number of obligation values does not match for obligation ID %s", actObl.GetId())
+		s.Require().Equal(expObl.GetFqn(), actObl.GetFqn(), "obligation namespace FQN mismatch for obligation ID %s", actObl.GetId())
 
 		expValuesMap := make(map[string]*policy.ObligationValue)
 		for _, val := range expObl.GetValues() {
@@ -1220,6 +1221,7 @@ func (s *AttributeValuesSuite) assertObligations(expected, actual []*policy.Obli
 			s.Require().True(foundVal, "unexpected obligation value with ID %s for obligation ID %s", actVal.GetId(), actObl.GetId())
 			s.Require().Equal(expVal.GetValue(), actVal.GetValue(), "obligation value mismatch for value ID %s", actVal.GetId())
 			s.Require().Len(actVal.GetTriggers(), len(expVal.GetTriggers()), "number of triggers does not match for obligation value ID %s", actVal.GetId())
+			s.Require().Equal(expVal.GetFqn(), actVal.GetFqn(), "obligation value FQN mismatch for value ID %s", actVal.GetId())
 
 			expTriggersMap := make(map[string]*policy.ObligationTrigger)
 			for _, trig := range expVal.GetTriggers() {

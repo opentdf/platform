@@ -884,6 +884,7 @@ func Test_GetDecisionRequest_Fails(t *testing.T) {
 				},
 				FulfillableObligationFqns: getTooManyObligations(),
 			},
+			expectedValidationError: "obligation_value_fqns_valid",
 		},
 		{
 			name: "invalid obligation format",
@@ -901,6 +902,7 @@ func Test_GetDecisionRequest_Fails(t *testing.T) {
 				},
 				FulfillableObligationFqns: []string{"invalid-format"},
 			},
+			expectedValidationError: "obligation_value_fqns_valid",
 		},
 	}
 
@@ -922,7 +924,8 @@ func Test_GetDecisionMultiResourceRequest_Succeeds(t *testing.T) {
 	// All known good cases should pass
 	for _, tc := range goodMultiResourceRequests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.request.FulfillableObligationFqns = getRandomValidObligationValueFQNsList()
+			clonedReq := proto.Clone(tc.request).(*authzV2.GetDecisionMultiResourceRequest)
+			clonedReq.FulfillableObligationFqns = getRandomValidObligationValueFQNsList()
 			err := v.Validate(tc.request)
 			require.NoError(t, err, "validation should succeed for request: %s", tc.name)
 		})
@@ -1640,8 +1643,9 @@ func Test_RollupSingleResourceDecision_WithNilChecks(t *testing.T) {
 
 // Helpers
 
+// A random list of obligation FQNs 0 to 50 in length
 func getRandomValidObligationValueFQNsList() []string {
-	count := rand.Intn(50)
+	count := rand.Intn(51)
 	randomList := make([]string, count)
 	for i := range count {
 		randomList[i] = getRandomObligationValueFQN()

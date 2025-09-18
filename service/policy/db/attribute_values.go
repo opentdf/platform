@@ -101,13 +101,10 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		}
 	}
 
-	obligations := make([]*policy.Obligation, 0)
-	if av.Obligations != nil {
-		obligations, err = unmarshalObligations(av.Obligations)
-		if err != nil {
-			c.logger.ErrorContext(ctx, "could not unmarshal obligations", slog.String("error", err.Error()))
-			return nil, err
-		}
+	obligations, err := unmarshalObligations(av.Obligations)
+	if err != nil {
+		c.logger.ErrorContext(ctx, "could not unmarshal obligations", slog.String("error", err.Error()))
+		return nil, err
 	}
 
 	return &policy.Value{

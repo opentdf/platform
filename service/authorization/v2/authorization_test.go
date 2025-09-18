@@ -924,7 +924,7 @@ func Test_GetDecisionMultiResourceRequest_Succeeds(t *testing.T) {
 	// All known good cases should pass
 	for _, tc := range goodMultiResourceRequests {
 		t.Run(tc.name, func(t *testing.T) {
-			clonedReq := proto.Clone(tc.request).(*authzV2.GetDecisionMultiResourceRequest)
+			clonedReq, _ := proto.Clone(tc.request).(*authzV2.GetDecisionMultiResourceRequest)
 			clonedReq.FulfillableObligationFqns = getRandomValidObligationValueFQNsList()
 			err := v.Validate(tc.request)
 			require.NoError(t, err, "validation should succeed for request: %s", tc.name)

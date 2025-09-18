@@ -1225,12 +1225,12 @@ func (s *AttributeValuesSuite) assertObligations(expected, actual []*policy.Obli
 
 			expTriggersMap := make(map[string]*policy.ObligationTrigger)
 			for _, trig := range expVal.GetTriggers() {
-				expTriggersMap[trig.GetAction().GetId()] = trig
+				expTriggersMap[trig.GetId()] = trig
 			}
 
 			for _, actTrig := range actVal.GetTriggers() {
-				expTrig, found := expTriggersMap[actTrig.GetAction().GetId()]
-				s.Require().True(found, "unexpected trigger with action ID %s for obligation value ID %s", actTrig.GetAction().GetId(), actVal.GetId())
+				expTrig, found := expTriggersMap[actTrig.GetId()]
+				s.Require().True(found, "unexpected trigger with ID %s for obligation value ID %s", actTrig.GetId(), actVal.GetId())
 				s.Require().Equal(expTrig.GetAction().GetId(), actTrig.GetAction().GetId(), "trigger action ID mismatch for action ID %s", actTrig.GetAction().GetId())
 				s.Require().Len(actTrig.GetContext(), len(expTrig.GetContext()), "number of trigger context entries does not match for actual trigger %s", actTrig.GetId())
 				if len(actTrig.GetContext()) >= 1 {

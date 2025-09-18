@@ -107,16 +107,32 @@ func NewObligationsPolicyDecisionPoint(
 	return pdp, nil
 }
 
-// GetAllTriggeredObligationsAreFulfilled will
-// func (p *ObligationsPolicyDecisionPoint) GetAllTriggeredObligationsAreFulfilled(
-// 	ctx context.Context,
-// 	resources []*authz.Resource,
-// 	action *policy.Action,
-// 	decisionRequestContext *policy.RequestContext,
-// 	pepFulfillableObligationValueFQNs []string,
-// ) (bool, [][]string, error) {
+// GetAllTriggeredObligationsAreFulfilled takes in:
+// 
+// 1. resources
+// 2. an action being taken
+// 3. a decision request context
+// 4. the obligation value FQNs a PEP is capable of fulfilling (self-reported)
+//
+// It will check the action, resources, and decision request context for the obligation values triggered,
+// compare the PEP fulfillable obligations against those that have been triggered as required,
+// and return whether or not all triggered obligations can be fulfilled along with the set of obligation FQNs
+// the PEP must fulfill for each resource in the provided list.
+func (p *ObligationsPolicyDecisionPoint) GetAllTriggeredObligationsAreFulfilled(
+	ctx context.Context,
+	resources []*authz.Resource,
+	action *policy.Action,
+	decisionRequestContext *policy.RequestContext,
+	pepFulfillableObligationValueFQNs []string,
+) (bool, [][]string, error) {
+	perResource, allTriggered, err := p.getTriggeredObligations(ctx, action, resources, decisionRequestContext)
+	if err != nil {
+		return false, nil, err
+	}
 
-// }
+	allFulfilled := p.getAllObligationsAreFulfilled(ctx, allTriggered, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	return allFulfilled, perResource, nil
+}
 
 // getAllObligationsAreFulfilled checks the deduplicated list of triggered obligations against the PEP
 // self-reported fulfillable obligations to validate the PEP can fulfill all that were triggered.
@@ -199,7 +215,8 @@ func (p *ObligationsPolicyDecisionPoint) getTriggeredObligations(
 		_, triggersOnClientIDExist = clientScoped[actionName]
 	}
 	if !triggersOnActionExist && !triggersOnClientIDExist {
-		l.DebugContext(ctx, "no triggered obligations found for action",
+		l.DebugContext(ctx, "no triggered obligations found for action")
+		l.TraceContext(ctx, "considered obligation trigger scenarios",
 			slog.Any("simple", p.simpleTriggerActionsToAttributes),
 			slog.Any("client_scoped", p.clientIDScopedTriggerActionsToAttributes),
 		)

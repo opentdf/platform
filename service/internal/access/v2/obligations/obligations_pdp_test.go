@@ -892,6 +892,83 @@ func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_WithPEPClientID
 	s.True(fulfilled)
 }
 
+func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke() {
+	type args struct {
+		resources              []*authz.Resource
+		action                 *policy.Action
+		decisionRequestContext *policy.RequestContext
+		pepFulfillable         []string
+	}
+	tests := []struct {
+		name             string
+		args             args
+		wantAllFulfilled bool
+		wantPerResource  [][]string
+	}{
+		{
+			name: "fulfilled",
+			args: args{
+				action: actionRead,
+				resources: []*authz.Resource{
+					{
+						Resource: &authz.Resource_AttributeValues_{
+							AttributeValues: &authz.Resource_AttributeValues{
+								Fqns: []string{mockAttrValFQN1},
+							},
+						},
+					},
+				},
+				pepFulfillable: []string{mockObligationFQN1},
+			},
+			wantAllFulfilled: true,
+			wantPerResource:  [][]string{{mockObligationFQN1}},
+		},
+		{
+			name: "unfulfilled",
+			args: args{
+				action: actionRead,
+				resources: []*authz.Resource{
+					{
+						Resource: &authz.Resource_AttributeValues_{
+							AttributeValues: &authz.Resource_AttributeValues{
+								Fqns: []string{mockAttrValFQN1},
+							},
+						},
+					},
+				},
+				pepFulfillable: []string{mockObligationFQN2},
+			},
+			wantAllFulfilled: false,
+			wantPerResource:  [][]string{{mockObligationFQN1}},
+		},
+		{
+			name: "no obligations triggered",
+			args: args{
+				action: actionRead,
+				resources: []*authz.Resource{
+					{
+						Resource: &authz.Resource_AttributeValues_{
+							AttributeValues: &authz.Resource_AttributeValues{
+								Fqns: []string{mockAttrValFQN3},
+							},
+						},
+					},
+				},
+			},
+			wantAllFulfilled: true,
+			wantPerResource:  [][]string{{}},
+		},
+	}
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			gotAllFulfilled, gotPerResource, err := s.pdp.GetAllTriggeredObligationsAreFulfilled(t.Context(), tt.args.resources, tt.args.action, tt.args.decisionRequestContext, tt.args.pepFulfillable)
+			s.NoError(err)
+			s.Equal(tt.wantAllFulfilled, gotAllFulfilled)
+			s.Equal(tt.wantPerResource, gotPerResource)
+		})
+	}
+}
+
 //
 // Test suite helpers
 //

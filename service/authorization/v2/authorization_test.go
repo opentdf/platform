@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"buf.build/go/protovalidate"
+	"github.com/opentdf/platform/lib/identifier"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -23,6 +24,7 @@ var (
 	sampleResourceFQN           = "https://example.com/attr/hier/value/highest"
 	sampleResourceFQN2          = "https://example.com/attr/hier/value/lowest"
 	sampleRegisteredResourceFQN = "https://example.com/reg_res/system/value/internal"
+	sampleObligationValueFQN    = "https://example.com/obl/drm/value/prevent_print"
 
 	// Good multi-resource requests that should pass validation
 	goodMultiResourceRequests = []struct {
@@ -353,6 +355,62 @@ var (
 			},
 			expectedValidationError: "registered_resource_value_fqn",
 		},
+		{
+			name: "too many obligations",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_EntityChain{
+						EntityChain: &entity.EntityChain{
+							EphemeralId: "1234",
+							Entities: []*entity.Entity{
+								{
+									EphemeralId: "chained-1",
+									EntityType:  &entity.Entity_EmailAddress{EmailAddress: "test@test.com"},
+									Category:    entity.Entity_CATEGORY_SUBJECT,
+								},
+							},
+						},
+					},
+				},
+				Action: sampleActionCreate,
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_AttributeValues_{
+							AttributeValues: &authzV2.Resource_AttributeValues{
+								Fqns: []string{sampleResourceFQN},
+							},
+						},
+					},
+					{
+						Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+							RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+						},
+					},
+				},
+				FulfillableObligationFqns: getTooManyObligations(),
+			},
+			expectedValidationError: "obligation_value_fqns_valid",
+		},
+		{
+			name: "invalid obligation",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				Action: sampleActionCreate,
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+							RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+						},
+					},
+				},
+				FulfillableObligationFqns: []string{"missing.scheme/obl/name/value/val"},
+			},
+			expectedValidationError: "obligation_value_fqns_valid",
+		},
 	}
 )
 
@@ -418,6 +476,10 @@ func Test_Resource_ManyAttributeValues(t *testing.T) {
 
 func Test_GetDecisionRequest_Succeeds(t *testing.T) {
 	v := getValidator()
+	fiftyObligations := make([]string, 50)
+	for i := range 50 {
+		fiftyObligations[i] = sampleObligationValueFQN
+	}
 
 	cases := []struct {
 		name    string
@@ -558,6 +620,40 @@ func Test_GetDecisionRequest_Succeeds(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "entity: registered resource, action: create, resource: registered, obligations - 1",
+			request: &authzV2.GetDecisionRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				Action: sampleActionCreate,
+				Resource: &authzV2.Resource{
+					Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				FulfillableObligationFqns: []string{sampleObligationValueFQN},
+			},
+		},
+		{
+			name: "entity: registered resource, action: create, resource: registered, obligations - 50",
+			request: &authzV2.GetDecisionRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				Action: sampleActionCreate,
+				Resource: &authzV2.Resource{
+					Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				FulfillableObligationFqns: fiftyObligations,
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -570,6 +666,7 @@ func Test_GetDecisionRequest_Succeeds(t *testing.T) {
 
 func Test_GetDecisionRequest_Fails(t *testing.T) {
 	v := getValidator()
+
 	cases := []struct {
 		name                    string
 		request                 *authzV2.GetDecisionRequest
@@ -771,6 +868,42 @@ func Test_GetDecisionRequest_Fails(t *testing.T) {
 			},
 			expectedValidationError: "entities",
 		},
+		{
+			name: "too many obligations",
+			request: &authzV2.GetDecisionRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				Action: sampleActionCreate,
+				Resource: &authzV2.Resource{
+					Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				FulfillableObligationFqns: getTooManyObligations(),
+			},
+			expectedValidationError: "obligation_value_fqns_valid",
+		},
+		{
+			name: "invalid obligation format",
+			request: &authzV2.GetDecisionRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				Action: sampleActionCreate,
+				Resource: &authzV2.Resource{
+					Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				FulfillableObligationFqns: []string{"invalid-format"},
+			},
+			expectedValidationError: "obligation_value_fqns_valid",
+		},
 	}
 
 	for _, tc := range cases {
@@ -791,6 +924,8 @@ func Test_GetDecisionMultiResourceRequest_Succeeds(t *testing.T) {
 	// All known good cases should pass
 	for _, tc := range goodMultiResourceRequests {
 		t.Run(tc.name, func(t *testing.T) {
+			clonedReq, _ := proto.Clone(tc.request).(*authzV2.GetDecisionMultiResourceRequest)
+			clonedReq.FulfillableObligationFqns = getRandomValidObligationValueFQNsList()
 			err := v.Validate(tc.request)
 			require.NoError(t, err, "validation should succeed for request: %s", tc.name)
 		})
@@ -874,6 +1009,7 @@ func Test_GetDecisionBulkRequest_Succeeds(t *testing.T) {
 			clonedReq.Action = &policy.Action{
 				Name: actions[rand.Intn(len(actions))],
 			}
+			clonedReq.FulfillableObligationFqns = getRandomValidObligationValueFQNsList()
 			reqs[j] = clonedReq
 		}
 		for j := firstCount; j < firstCount+secondCount; j++ {
@@ -882,6 +1018,7 @@ func Test_GetDecisionBulkRequest_Succeeds(t *testing.T) {
 			clonedReq.Action = &policy.Action{
 				Name: actions[rand.Intn(len(actions))],
 			}
+			clonedReq.FulfillableObligationFqns = getRandomValidObligationValueFQNsList()
 			reqs[j] = clonedReq
 		}
 
@@ -1502,4 +1639,43 @@ func Test_RollupSingleResourceDecision_WithNilChecks(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "no decision results returned")
 	})
+}
+
+// Helpers
+
+// A random list of obligation FQNs 0 to 50 in length
+func getRandomValidObligationValueFQNsList() []string {
+	count := rand.Intn(51)
+	randomList := make([]string, count)
+	for i := range count {
+		randomList[i] = getRandomObligationValueFQN()
+	}
+	return randomList
+}
+
+func getTooManyObligations() []string {
+	tooMany := make([]string, 51)
+	for i := range tooMany {
+		tooMany[i] = getRandomObligationValueFQN()
+	}
+	return tooMany
+}
+
+const charset = "abcdefghijklmnopqrstuvwxyz"
+
+func randString(length int) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(b)
+}
+
+// builds a random FQN for an obligation value that matches
+// https://<namespace>.com/obl/<name>/value/<value>
+func getRandomObligationValueFQN() string {
+	namespace := "https://" + randString(5) + ".com"
+	name := randString(5)
+	value := randString(5)
+	return identifier.BuildOblValFQN(namespace, name, value)
 }

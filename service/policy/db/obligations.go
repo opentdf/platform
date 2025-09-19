@@ -14,6 +14,14 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+func setOblValFQNs(values []*policy.ObligationValue, nsFQN, name string) []*policy.ObligationValue {
+	for i, v := range values {
+		v.Fqn = identifier.BuildOblValFQN(nsFQN, name, v.GetValue())
+		values[i] = v
+	}
+	return values
+}
+
 ///
 /// Obligation Definitions
 ///
@@ -50,11 +58,6 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 		return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
 	}
 
-	for idx, val := range oblVals {
-		val.Fqn = identifier.BuildOblValFQN(namespace.GetFqn(), name, val.GetValue())
-		oblVals[idx] = val
-	}
-
 	metadata := &common.Metadata{}
 	if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal obligation metadata: %w", err)
@@ -62,13 +65,16 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 	metadata.CreatedAt = now
 	metadata.UpdatedAt = now
 
+	nsFQN := namespace.GetFqn()
+	oblVals = setOblValFQNs(oblVals, nsFQN, name)
+
 	return &policy.Obligation{
 		Id:        row.ID,
 		Name:      name,
 		Metadata:  metadata,
 		Namespace: namespace,
 		Values:    oblVals,
-		Fqn:       identifier.BuildOblFQN(namespace.GetFqn(), name),
+		Fqn:       identifier.BuildOblFQN(nsFQN, name),
 	}, nil
 }
 
@@ -96,10 +102,8 @@ func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObl
 		return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
 	}
 
-	for idx, val := range oblVals {
-		val.Fqn = identifier.BuildOblValFQN(namespace.GetFqn(), name, val.GetValue())
-		oblVals[idx] = val
-	}
+	nsFQN = namespace.GetFqn()
+	oblVals = setOblValFQNs(oblVals, nsFQN, name)
 
 	metadata := &common.Metadata{}
 	if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
@@ -112,7 +116,7 @@ func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObl
 		Metadata:  metadata,
 		Namespace: namespace,
 		Values:    oblVals,
-		Fqn:       identifier.BuildOblFQN(namespace.GetFqn(), name),
+		Fqn:       identifier.BuildOblFQN(nsFQN, name),
 	}, nil
 }
 
@@ -152,10 +156,8 @@ func (c PolicyDBClient) GetObligationsByFQNs(ctx context.Context, r *obligations
 			return nil, err
 		}
 		name := r.Name
-		for idx, val := range values {
-			val.Fqn = identifier.BuildOblValFQN(namespace.GetFqn(), name, val.GetValue())
-			values[idx] = val
-		}
+		nsFQN := namespace.GetFqn()
+		values = setOblValFQNs(values, nsFQN, name)
 
 		obls[i] = &policy.Obligation{
 			Id:        r.ID,
@@ -163,7 +165,7 @@ func (c PolicyDBClient) GetObligationsByFQNs(ctx context.Context, r *obligations
 			Metadata:  metadata,
 			Namespace: namespace,
 			Values:    values,
-			Fqn:       identifier.BuildOblFQN(namespace.GetFqn(), name),
+			Fqn:       identifier.BuildOblFQN(nsFQN, name),
 		}
 	}
 
@@ -200,16 +202,14 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 			return nil, nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
 		}
 
-		name := r.Name
 		values, err := unmarshalObligationValues(r.Values)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		for idx, val := range values {
-			val.Fqn = identifier.BuildOblValFQN(namespace.GetFqn(), name, val.GetValue())
-			values[idx] = val
-		}
+		name := r.Name
+		nsFQN := namespace.GetFqn()
+		values = setOblValFQNs(values, nsFQN, name)
 
 		obls[i] = &policy.Obligation{
 			Id:        r.ID,
@@ -217,7 +217,7 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 			Metadata:  metadata,
 			Namespace: namespace,
 			Values:    values,
-			Fqn:       identifier.BuildOblFQN(namespace.GetFqn(), name),
+			Fqn:       identifier.BuildOblFQN(nsFQN, name),
 		}
 	}
 
@@ -274,10 +274,8 @@ func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.Upd
 	namespace := obl.GetNamespace()
 	nsFQN := namespace.GetFqn()
 	values := obl.GetValues()
-	for idx, val := range values {
-		val.Fqn = identifier.BuildOblValFQN(nsFQN, name, val.GetValue())
-		values[idx] = val
-	}
+	values = setOblValFQNs(values, nsFQN, name)
+
 	return &policy.Obligation{
 		Id:        id,
 		Name:      name,

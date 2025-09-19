@@ -349,7 +349,7 @@ func setupERSConnection(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, 
 
 	// Configure authentication if credentials are provided
 	if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
-		if err := configureERSAuthentication(cfg, oidcconfig, tlsConfig, ersConnectRPCConn); err != nil {
+		if err := configureERSAuthentication(logger.Logger, cfg, oidcconfig, tlsConfig, ersConnectRPCConn); err != nil {
 			return nil, err
 		}
 	}
@@ -384,7 +384,7 @@ func configureTLSForERS(cfg *config.Config, ersConnectRPCConn *sdk.ConnectRPCCon
 }
 
 // configureERSAuthentication sets up authentication for ERS connection
-func configureERSAuthentication(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, tlsConfig *tls.Config, ersConn *sdk.ConnectRPCConnection) error {
+func configureERSAuthentication(log *slog.Logger, cfg *config.Config, oidcconfig *auth.OIDCConfiguration, tlsConfig *tls.Config, ersConn *sdk.ConnectRPCConnection) error {
 	if oidcconfig.Issuer == "" {
 		return errors.New("cannot add token interceptor: oidcconfig is empty")
 	}
@@ -395,6 +395,7 @@ func configureERSAuthentication(cfg *config.Config, oidcconfig *auth.OIDCConfigu
 	}
 
 	ts, err := sdk.NewIDPAccessTokenSource(
+		log,
 		oauth.ClientCredentials{ClientID: cfg.SDKConfig.ClientID, ClientAuth: cfg.SDKConfig.ClientSecret},
 		oidcconfig.TokenEndpoint,
 		nil,

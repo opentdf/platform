@@ -8,6 +8,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"io"
+	"log/slog"
 	"os"
 	"testing"
 
@@ -431,6 +432,9 @@ func (s *NanoSuite) Test_CreateNanoTDF_BaseKey() {
 
 	// Create SDK
 	sdk := &SDK{
+		config: config{
+			logger: slog.Default(),
+		},
 		wellknownConfiguration: mockClient,
 	}
 

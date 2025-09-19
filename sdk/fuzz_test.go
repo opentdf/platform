@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"io"
+	"log/slog"
 	"net/http"
 	"testing"
 
@@ -26,6 +27,7 @@ func writeBytes(writerFunc func(io.Writer) error) []byte {
 func newSDK() *SDK {
 	key, _ := ocrypto.NewRSAKeyPair(tdf3KeySize)
 	cfg := &config{
+		logger:        slog.Default(),
 		kasSessionKey: &key,
 	}
 	sdk := &SDK{

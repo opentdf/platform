@@ -160,6 +160,28 @@ func unmarshalObligationTrigger(triggerJSON []byte) (*policy.ObligationTrigger, 
 	return trigger, nil
 }
 
+func unmarshalObligations(obligationsJSON []byte) ([]*policy.Obligation, error) {
+	if obligationsJSON == nil {
+		return nil, nil
+	}
+
+	raw := []json.RawMessage{}
+	if err := json.Unmarshal(obligationsJSON, &raw); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal obligations array [%s]: %w", string(obligationsJSON), err)
+	}
+
+	obls := make([]*policy.Obligation, 0, len(raw))
+	for _, r := range raw {
+		o := &policy.Obligation{}
+		if err := protojson.Unmarshal(r, o); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal obligation [%s]: %w", string(r), err)
+		}
+		obls = append(obls, o)
+	}
+
+	return obls, nil
+}
+
 func unmarshalObligationValues(valuesJSON []byte) ([]*policy.ObligationValue, error) {
 	if valuesJSON == nil {
 		return nil, nil

@@ -27,6 +27,7 @@ func init() {
 	}
 	decryptCmd.Flags().StringVarP(&decryptAlg, "rewrap-encapsulation-algorithm", "A", "rsa:2048", "Key wrap response algorithm algorithm:parameters")
 	decryptCmd.Flags().StringVar(&magicWord, "magic-word", "", "Use a 'magic word' as a shared secret.")
+	decryptCmd.Flags().StringVar(&privateKeyPath, "private-key-path", "", "Private key for signing assertions")
 	ExamplesCmd.AddCommand(decryptCmd)
 }
 
@@ -37,7 +38,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 
 	tdfFile := args[0]
 
-	// Configure new client
+	// Create new client
 	client, err := newSDK()
 	if err != nil {
 		return err
@@ -102,12 +103,26 @@ func decrypt(cmd *cobra.Command, args []string) error {
 		// Assertion
 		registry := sdk.NewAssertionRegistry()
 		// Register the provider to handle the exact assertion ID.
-		pattern, _ := regexp.Compile("^" + MagicWordAssertionID + "$")
+		magicWordPattern, _ := regexp.Compile("^" + MagicWordAssertionID + "$")
 		// Magic word provider with state, this works in a simple CLI
 		magicWordProvider := NewMagicWordAssertionProvider(magicWord)
-		registry.RegisterValidator(pattern, magicWordProvider)
-		// Public key provider
-		//sdk.NewKeyAssertionValidator()
+		registry.RegisterValidator(magicWordPattern, magicWordProvider)
+		// Public key validator
+		// Register the provider to handle the exact assertion ID.
+		keyPattern, err := regexp.Compile("^" + sdk.KeyAssertionID)
+		if err != nil {
+			return err
+		}
+		if privateKeyPath != "" {
+			key := getAssertionKeyPublic(privateKeyPath)
+			keys := sdk.AssertionVerificationKeys{
+				Keys: map[string]sdk.AssertionKey{
+					sdk.KeyAssertionID: key,
+				},
+			}
+			keyValidator := sdk.NewKeyAssertionValidator(keys)
+			registry.RegisterValidator(keyPattern, keyValidator)
+		}
 		// Register the registry with the SDK client
 		opts = append(opts, sdk.WithAssertionProviderFactory(registry))
 		// Enable assertion verification

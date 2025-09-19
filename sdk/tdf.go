@@ -1379,6 +1379,7 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		err = validator.Validate(ctx, assertion, *r)
 		if err != nil {
 			// TODO ??? report validation error and allow to continue
+			// TODO ??? validation/trust error will be reported as a tamper event
 			return r.handleAssertionVerificationError(assertion.ID, err)
 		}
 	}

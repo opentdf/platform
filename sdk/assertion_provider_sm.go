@@ -11,8 +11,6 @@ import (
 	"fmt"
 	"runtime"
 	"time"
-
-	"github.com/opentdf/platform/lib/ocrypto"
 )
 
 const (
@@ -119,10 +117,7 @@ func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion
 	var completeHashBuilder bytes.Buffer
 	completeHashBuilder.Write(hashOfAssertionAsHex)
 
-	decodedSig, _ := ocrypto.Base64Decode([]byte(assertionSig))
-	decodedSig2, _ := ocrypto.Base64Decode(decodedSig)
-	decodedSigString := string(decodedSig2)
-	if decodedSigString != r.manifest.RootSignature.Signature {
+	if assertionSig != r.manifest.RootSignature.Signature {
 		return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: a.ID})
 	}
 	return nil

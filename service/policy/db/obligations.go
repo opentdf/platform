@@ -206,12 +206,18 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 			return nil, nil, err
 		}
 
+		for idx, val := range values {
+			val.Fqn = identifier.BuildOblValFQN(namespace.GetFqn(), name, val.GetValue())
+			values[idx] = val
+		}
+
 		obls[i] = &policy.Obligation{
 			Id:        r.ID,
 			Name:      name,
 			Metadata:  metadata,
 			Namespace: namespace,
 			Values:    values,
+			Fqn:       identifier.BuildOblFQN(namespace.GetFqn(), name),
 		}
 	}
 
@@ -272,6 +278,7 @@ func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.Upd
 		Metadata:  metadata,
 		Namespace: obl.GetNamespace(),
 		Values:    obl.GetValues(),
+		Fqn:       identifier.BuildOblFQN(obl.GetNamespace().GetFqn(), name),
 	}, nil
 }
 
@@ -352,9 +359,10 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 	metadata.CreatedAt = now
 	metadata.UpdatedAt = now
 
+	name := row.Name
 	obl := &policy.Obligation{
 		Id:        row.ObligationID,
-		Name:      row.Name,
+		Name:      name,
 		Namespace: namespace,
 	}
 
@@ -364,7 +372,7 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 		Value:      value,
 		Metadata:   metadata,
 		Triggers:   triggers,
-		Fqn:        identifier.BuildOblValFQN(namespace.GetFqn(), obl.GetName(), value),
+		Fqn:        identifier.BuildOblValFQN(namespace.GetFqn(), name, value),
 	}, nil
 }
 
@@ -397,18 +405,21 @@ func (c PolicyDBClient) GetObligationValue(ctx context.Context, r *obligations.G
 		return nil, fmt.Errorf("failed to unmarshal obligation triggers: %w", err)
 	}
 
+	name := row.Name
+	value := row.Value
 	obl := &policy.Obligation{
 		Id:        row.ObligationID,
-		Name:      row.Name,
+		Name:      name,
 		Namespace: namespace,
 	}
 
 	return &policy.ObligationValue{
 		Id:         row.ID,
 		Obligation: obl,
-		Value:      row.Value,
+		Value:      value,
 		Metadata:   metadata,
 		Triggers:   triggers,
+		Fqn:        identifier.BuildOblValFQN(namespace.GetFqn(), name, value),
 	}, nil
 }
 
@@ -451,18 +462,21 @@ func (c PolicyDBClient) GetObligationValuesByFQNs(ctx context.Context, r *obliga
 			return nil, fmt.Errorf("failed to unmarshal obligation triggers: %w", err)
 		}
 
+		name := r.Name
+		value := r.Value
 		obl := &policy.Obligation{
 			Id:        r.ObligationID,
-			Name:      r.Name,
+			Name:      name,
 			Namespace: namespace,
 		}
 
 		vals[i] = &policy.ObligationValue{
 			Id:         r.ID,
-			Value:      r.Value,
+			Value:      value,
 			Metadata:   metadata,
 			Obligation: obl,
 			Triggers:   triggers,
+			Fqn:        identifier.BuildOblValFQN(namespace.GetFqn(), name, value),
 		}
 	}
 
@@ -529,12 +543,15 @@ func (c PolicyDBClient) UpdateObligationValue(ctx context.Context, r *obligation
 		}
 	}
 
+	obl := oblVal.GetObligation()
+	name := obl.GetName()
 	return &policy.ObligationValue{
 		Id:         id,
 		Value:      value,
 		Metadata:   metadata,
-		Obligation: oblVal.GetObligation(),
+		Obligation: obl,
 		Triggers:   triggers,
+		Fqn:        identifier.BuildOblValFQN(obl.GetNamespace().GetFqn(), name, value),
 	}, nil
 }
 

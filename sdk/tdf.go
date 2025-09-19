@@ -391,7 +391,7 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
 			if err == nil {
 				err = populateKasInfoFromBaseKey(baseKey, tdfConfig)
 			} else {
-				slog.Debug("cannot getting base key, falling back to default kas", slog.Any("error", err))
+				s.Logger().Debug("cannot getting base key, falling back to default kas", slog.Any("error", err))
 				dk := s.defaultKases(tdfConfig)
 				tdfConfig.kaoTemplate = nil
 				tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)
@@ -450,9 +450,9 @@ func (s SDK) newGranter(ctx context.Context, tdfConfig *TDFConfig) (granter, err
 	var g granter
 	var err error
 	if len(tdfConfig.attributeValues) > 0 {
-		g, err = newGranterFromAttributes(s.kasKeyCache, tdfConfig.attributeValues...)
+		g, err = newGranterFromAttributes(s.logger, s.kasKeyCache, tdfConfig.attributeValues...)
 	} else if len(tdfConfig.attributes) > 0 {
-		g, err = newGranterFromService(ctx, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
+		g, err = newGranterFromService(ctx, s.logger, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
 	}
 	if err != nil {
 		return g, err
@@ -729,7 +729,7 @@ func createPolicyObject(attributes []AttributeValueFQN) (PolicyObject, error) {
 	return policyObj, nil
 }
 
-func allowListFromKASRegistry(ctx context.Context, kasRegistryClient sdkconnect.KeyAccessServerRegistryServiceClient, platformURL string) (AllowList, error) {
+func allowListFromKASRegistry(ctx context.Context, logger *slog.Logger, kasRegistryClient sdkconnect.KeyAccessServerRegistryServiceClient, platformURL string) (AllowList, error) {
 	kases, err := kasRegistryClient.ListKeyAccessServers(ctx, &kasregistry.ListKeyAccessServersRequest{})
 	if err != nil {
 		return nil, fmt.Errorf("kasregistry.ListKeyAccessServers failed: %w", err)
@@ -742,7 +742,7 @@ func allowListFromKASRegistry(ctx context.Context, kasRegistryClient sdkconnect.
 		}
 	}
 	// grpc target does not have a scheme
-	slog.Debug("adding platform URL to KAS allowlist", slog.String("platform_url", platformURL))
+	logger.Debug("adding platform URL to KAS allowlist", slog.String("platform_url", platformURL))
 	err = kasAllowlist.Add(platformURL)
 	if err != nil {
 		return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)
@@ -774,7 +774,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 			if err != nil {
 				return nil, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
 			}
-			allowList, err := allowListFromKASRegistry(context.Background(), s.KeyAccessServerRegistry, platformEndpoint)
+			allowList, err := allowListFromKASRegistry(context.Background(), s.logger, s.KeyAccessServerRegistry, platformEndpoint)
 			if err != nil {
 				return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
 			}
@@ -1379,7 +1379,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		// if ignoreing allowlist then warn
 		// if kas url is not allowed then return error
 		if r.config.ignoreAllowList {
-			slog.WarnContext(ctx, "kasAllowlist is ignored, kas url is allowed", slog.String("kas_url", kasurl))
+			getLogger().WarnContext(ctx, "kasAllowlist is ignored, kas url is allowed", slog.String("kas_url", kasurl))
 		} else if !r.config.kasAllowlist.IsAllowed(kasurl) {
 			reqFail(fmt.Errorf("KasAllowlist: kas url %s is not allowed", kasurl), req)
 			continue
@@ -1479,12 +1479,12 @@ func populateKasInfoFromBaseKey(key *policy.SimpleKasKey, tdfConfig *TDFConfig) 
 
 	// ? Maybe we shouldn't overwrite the key type
 	if tdfConfig.preferredKeyWrapAlg != ocrypto.KeyType(algoString) {
-		slog.Warn("base key is enabled, setting key type", slog.String("key_type", algoString))
+		getLogger().Warn("base key is enabled, setting key type", slog.String("key_type", algoString))
 	}
 	tdfConfig.preferredKeyWrapAlg = ocrypto.KeyType(algoString)
 	tdfConfig.splitPlan = nil
 	if len(tdfConfig.kasInfoList) > 0 {
-		slog.Warn("base key is enabled, overwriting kasInfoList with base key info")
+		getLogger().Warn("base key is enabled, overwriting kasInfoList with base key info")
 	}
 	tdfConfig.kasInfoList = []KASInfo{
 		{

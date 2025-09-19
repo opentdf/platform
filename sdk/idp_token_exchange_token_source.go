@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -13,15 +14,17 @@ import (
 type IDPTokenExchangeTokenSource struct {
 	IDPAccessTokenSource
 	oauth.TokenExchangeInfo
+	logger *slog.Logger
 }
 
-func NewIDPTokenExchangeTokenSource(exchangeInfo oauth.TokenExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string, key *ocrypto.RsaKeyPair) (*IDPTokenExchangeTokenSource, error) {
-	idpSource, err := NewIDPAccessTokenSource(credentials, idpTokenEndpoint, scopes, key)
+func NewIDPTokenExchangeTokenSource(logger *slog.Logger, exchangeInfo oauth.TokenExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string, key *ocrypto.RsaKeyPair) (*IDPTokenExchangeTokenSource, error) {
+	idpSource, err := NewIDPAccessTokenSource(slog.Default(), credentials, idpTokenEndpoint, scopes, key)
 	if err != nil {
 		return nil, err
 	}
 
 	exchangeSource := IDPTokenExchangeTokenSource{
+		logger:               logger,
 		IDPAccessTokenSource: *idpSource,
 		TokenExchangeInfo:    exchangeInfo,
 	}
@@ -34,7 +37,7 @@ func (i *IDPTokenExchangeTokenSource) AccessToken(ctx context.Context, client *h
 	defer i.IDPAccessTokenSource.tokenMutex.Unlock()
 
 	if i.IDPAccessTokenSource.token == nil || i.IDPAccessTokenSource.token.Expired() {
-		tok, err := oauth.DoTokenExchange(ctx, client, i.idpTokenEndpoint.String(), i.scopes, i.credentials, i.TokenExchangeInfo, i.dpopKey)
+		tok, err := oauth.DoTokenExchange(ctx, i.logger, client, i.idpTokenEndpoint.String(), i.scopes, i.credentials, i.TokenExchangeInfo, i.dpopKey)
 		if err != nil {
 			return "", err
 		}

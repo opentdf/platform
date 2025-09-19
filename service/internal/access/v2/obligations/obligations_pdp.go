@@ -315,5 +315,4 @@ func loggerWithAttributes(log *logger.Logger, actionName, pepClientID string) *l
 		log = log.With("pep_client_id", pepClientID)
 	}
 	return log.With("action", strings.ToLower(actionName))
-
 }

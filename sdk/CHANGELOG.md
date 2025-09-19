@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.8.0](https://github.com/opentdf/platform/compare/sdk/v0.7.0...sdk/v0.8.0) (2025-09-19)
+
+
+### Features
+
+* **policy:** obligations + values CRUD ([#2545](https://github.com/opentdf/platform/issues/2545)) ([c194e35](https://github.com/opentdf/platform/commit/c194e3522b9dfab74a5a21747d012f88a188f989))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.3.0 to 0.5.0 in /sdk ([#2693](https://github.com/opentdf/platform/issues/2693)) ([b511048](https://github.com/opentdf/platform/commit/b5110481d28e05c0e1fd3b2bf6074d7f096a0356))
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.5.0 to 0.6.0 in /sdk ([#2712](https://github.com/opentdf/platform/issues/2712)) ([74956bf](https://github.com/opentdf/platform/commit/74956bf58822eba432e746374a60b51fdc43cded))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.7.0 to 0.8.0 in /sdk ([#2692](https://github.com/opentdf/platform/issues/2692)) ([fac2ef2](https://github.com/opentdf/platform/commit/fac2ef2a1dcbb4ee1e4ca5a2638febebf9f343f5))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.8.0 to 0.9.0 in /sdk ([#2724](https://github.com/opentdf/platform/issues/2724)) ([e07cc91](https://github.com/opentdf/platform/commit/e07cc916460daa24db24969cef8ecd36bec4d6a4))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.9.0 to 0.10.0 in /sdk ([#2737](https://github.com/opentdf/platform/issues/2737)) ([f4a8d1d](https://github.com/opentdf/platform/commit/f4a8d1df1ddf1869cac750de344ae14710f70b1d))
+* **sdk:** newGranter nil check ([#2729](https://github.com/opentdf/platform/issues/2729)) ([a1bebc5](https://github.com/opentdf/platform/commit/a1bebc509083d27cd6e920e7305606ae2d8bf12b))
+
 ## [0.7.0](https://github.com/opentdf/platform/compare/sdk/v0.6.1...sdk/v0.7.0) (2025-08-25)
 
 

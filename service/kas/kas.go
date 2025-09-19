@@ -80,7 +80,11 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					// Register Basic Key Manager
 
 					p.KeyDelegator.RegisterKeyManager(security.BasicManagerName, func(opts *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
-						bm, err := security.NewBasicManager(opts.Logger, opts.Cache, kasCfg.RootKey)
+						rootKey, err := kasCfg.LoadRootKey(opts.Logger)
+						if err != nil {
+							return nil, fmt.Errorf("failed to load root key: %w", err)
+						}
+						bm, err := security.NewBasicManager(opts.Logger, opts.Cache, rootKey)
 						if err != nil {
 							return nil, err
 						}

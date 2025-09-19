@@ -2,7 +2,13 @@ package access
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/hex"
+	"fmt"
+	"log/slog"
 	"net/url"
+	"os"
+	"strings"
 	"time"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
@@ -40,7 +46,8 @@ type KASConfig struct {
 	// Deprecated
 	RSACertID string `mapstructure:"rsacertid" json:"rsacertid"`
 
-	RootKey string `mapstructure:"root_key" json:"root_key"`
+	RootKey     string `mapstructure:"root_key" json:"root_key"`
+	RootKeyFile string `mapstructure:"root_key_file" json:"root_key_file"`
 
 	KeyCacheExpiration time.Duration `mapstructure:"key_cache_expiration" json:"key_cache_expiration"`
 
@@ -71,6 +78,65 @@ func (p *Provider) IsReady(ctx context.Context) error {
 	// TODO: Not sure what we want to check here?
 	p.Logger.TraceContext(ctx, "checking readiness of kas service")
 	return nil
+}
+
+// LoadRootKey loads and validates the root key from the configuration.
+// It supports loading from RootKey (hex or base64 string) or RootKeyFile (file path).
+// If both are present, it logs a warning and uses RootKey, ignoring the file.
+func (kasCfg *KASConfig) LoadRootKey(l *logger.Logger) (string, error) {
+	// Check if both are present and warn
+	if kasCfg.RootKey != "" && kasCfg.RootKeyFile != "" {
+		l.Warn("both root_key and root_key_file are configured, ignoring root_key_file",
+			slog.String("root_key_file", kasCfg.RootKeyFile))
+		return validateAndNormalizeKey(kasCfg.RootKey)
+	}
+
+	// Use RootKey if present
+	if kasCfg.RootKey != "" {
+		return validateAndNormalizeKey(kasCfg.RootKey)
+	}
+
+	// Use RootKeyFile if present
+	if kasCfg.RootKeyFile != "" {
+		keyData, err := os.ReadFile(kasCfg.RootKeyFile)
+		if err != nil {
+			return "", fmt.Errorf("failed to read root key file %s: %w", kasCfg.RootKeyFile, err)
+		}
+
+		// Clean up any whitespace/newlines from file content
+		keyStr := strings.TrimSpace(string(keyData))
+		return validateAndNormalizeKey(keyStr)
+	}
+
+	return "", fmt.Errorf("neither root_key nor root_key_file is configured")
+}
+
+// validateAndNormalizeKey validates the key format and converts it to hex encoding.
+// It supports both hex and base64 encoded AES-256 keys.
+func validateAndNormalizeKey(keyStr string) (string, error) {
+	keyStr = strings.TrimSpace(keyStr)
+
+	// Try hex decoding first
+	if hexKey, err := hex.DecodeString(keyStr); err == nil {
+		// Validate it's exactly 32 bytes (256 bits)
+		if len(hexKey) == 32 {
+			return keyStr, nil
+		}
+		return "", fmt.Errorf("hex decoded key must be exactly 32 bytes (256 bits), got %d bytes", len(hexKey))
+	}
+
+	// Try base64 decoding
+	if base64Key, err := base64.StdEncoding.DecodeString(keyStr); err == nil {
+		// Validate it's exactly 32 bytes (256 bits)
+		if len(base64Key) == 32 {
+			// Convert to hex for consistent internal representation
+			return hex.EncodeToString(base64Key), nil
+		}
+		return "", fmt.Errorf("base64 decoded key must be exactly 32 bytes (256 bits), got %d bytes", len(base64Key))
+	}
+
+	// If neither works, it's invalid
+	return "", fmt.Errorf("key must be a valid hex or base64 encoded 32-byte (256-bit) AES key")
 }
 
 func (kasCfg *KASConfig) UpgradeMapToKeyring(c *security.StandardCrypto) {

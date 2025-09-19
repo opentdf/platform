@@ -50,6 +50,11 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 		return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
 	}
 
+	for idx, val := range oblVals {
+		val.Fqn = identifier.BuildOblValFQN(namespace.GetFqn(), name, val.GetValue())
+		oblVals[idx] = val
+	}
+
 	metadata := &common.Metadata{}
 	if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal obligation metadata: %w", err)
@@ -80,6 +85,7 @@ func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObl
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	name := row.Name
 	oblVals, err := unmarshalObligationValues(row.Values)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal obligation values: %w", err)
@@ -90,6 +96,11 @@ func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObl
 		return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
 	}
 
+	for idx, val := range oblVals {
+		val.Fqn = identifier.BuildOblValFQN(namespace.GetFqn(), name, val.GetValue())
+		oblVals[idx] = val
+	}
+
 	metadata := &common.Metadata{}
 	if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal obligation metadata: %w", err)
@@ -97,10 +108,11 @@ func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObl
 
 	return &policy.Obligation{
 		Id:        row.ID,
-		Name:      row.Name,
+		Name:      name,
 		Metadata:  metadata,
 		Namespace: namespace,
 		Values:    oblVals,
+		Fqn:       identifier.BuildOblFQN(namespace.GetFqn(), name),
 	}, nil
 }
 

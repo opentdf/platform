@@ -1336,6 +1336,11 @@ components:
           items:
             $ref: '#/components/schemas/policy.ResourceMapping'
           title: resource_mappings
+        obligations:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Obligation'
+          title: obligations
         metadata:
           title: metadata
           description: Common metadata

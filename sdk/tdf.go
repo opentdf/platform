@@ -374,9 +374,7 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
 
 	// * Get base key before autoconfigure to condition off of.
 	if tdfConfig.autoconfigure {
-		var g granter
-		var err error
-		g, err = s.newGranter(ctx, tdfConfig, err)
+		g, err := s.newGranter(ctx, tdfConfig)
 		if err != nil {
 			return err
 		}
@@ -448,15 +446,19 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
 	return nil
 }
 
-func (s SDK) newGranter(ctx context.Context, tdfConfig *TDFConfig, err error) (granter, error) {
+func (s SDK) newGranter(ctx context.Context, tdfConfig *TDFConfig) (granter, error) {
 	var g granter
+	var err error
 	if len(tdfConfig.attributeValues) > 0 {
 		g, err = newGranterFromAttributes(s.kasKeyCache, tdfConfig.attributeValues...)
 	} else if len(tdfConfig.attributes) > 0 {
 		g, err = newGranterFromService(ctx, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
 	}
+	if err != nil {
+		return g, err
+	}
 	g.keyInfoFetcher = s
-	return g, err
+	return g, nil
 }
 
 func (t *TDFObject) Manifest() Manifest {

@@ -271,14 +271,20 @@ func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.Upd
 	}
 	metadata.CreatedAt = obl.GetMetadata().GetCreatedAt()
 	metadata.UpdatedAt = now
-
+	namespace := obl.GetNamespace()
+	nsFQN := namespace.GetFqn()
+	values := obl.GetValues()
+	for idx, val := range values {
+		val.Fqn = identifier.BuildOblValFQN(nsFQN, name, val.GetValue())
+		values[idx] = val
+	}
 	return &policy.Obligation{
 		Id:        id,
 		Name:      name,
 		Metadata:  metadata,
-		Namespace: obl.GetNamespace(),
-		Values:    obl.GetValues(),
-		Fqn:       identifier.BuildOblFQN(obl.GetNamespace().GetFqn(), name),
+		Namespace: namespace,
+		Values:    values,
+		Fqn:       identifier.BuildOblFQN(nsFQN, name),
 	}, nil
 }
 
@@ -360,10 +366,12 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 	metadata.UpdatedAt = now
 
 	name := row.Name
+	nsFQN = namespace.GetFqn()
 	obl := &policy.Obligation{
 		Id:        row.ObligationID,
 		Name:      name,
 		Namespace: namespace,
+		Fqn:       identifier.BuildOblFQN(nsFQN, name),
 	}
 
 	return &policy.ObligationValue{
@@ -372,7 +380,7 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 		Value:      value,
 		Metadata:   metadata,
 		Triggers:   triggers,
-		Fqn:        identifier.BuildOblValFQN(namespace.GetFqn(), name, value),
+		Fqn:        identifier.BuildOblValFQN(nsFQN, name, value),
 	}, nil
 }
 
@@ -407,10 +415,12 @@ func (c PolicyDBClient) GetObligationValue(ctx context.Context, r *obligations.G
 
 	name := row.Name
 	value := row.Value
+	nsFQN = namespace.GetFqn()
 	obl := &policy.Obligation{
 		Id:        row.ObligationID,
 		Name:      name,
 		Namespace: namespace,
+		Fqn:       identifier.BuildOblFQN(nsFQN, name),
 	}
 
 	return &policy.ObligationValue{
@@ -419,7 +429,7 @@ func (c PolicyDBClient) GetObligationValue(ctx context.Context, r *obligations.G
 		Value:      value,
 		Metadata:   metadata,
 		Triggers:   triggers,
-		Fqn:        identifier.BuildOblValFQN(namespace.GetFqn(), name, value),
+		Fqn:        identifier.BuildOblValFQN(nsFQN, name, value),
 	}, nil
 }
 
@@ -464,10 +474,12 @@ func (c PolicyDBClient) GetObligationValuesByFQNs(ctx context.Context, r *obliga
 
 		name := r.Name
 		value := r.Value
+		nsFQN := namespace.GetFqn()
 		obl := &policy.Obligation{
 			Id:        r.ObligationID,
 			Name:      name,
 			Namespace: namespace,
+			Fqn:       identifier.BuildOblFQN(nsFQN, name),
 		}
 
 		vals[i] = &policy.ObligationValue{
@@ -476,7 +488,7 @@ func (c PolicyDBClient) GetObligationValuesByFQNs(ctx context.Context, r *obliga
 			Metadata:   metadata,
 			Obligation: obl,
 			Triggers:   triggers,
-			Fqn:        identifier.BuildOblValFQN(namespace.GetFqn(), name, value),
+			Fqn:        identifier.BuildOblValFQN(nsFQN, name, value),
 		}
 	}
 
@@ -545,13 +557,16 @@ func (c PolicyDBClient) UpdateObligationValue(ctx context.Context, r *obligation
 
 	obl := oblVal.GetObligation()
 	name := obl.GetName()
+	namespace := obl.GetNamespace()
+	nsFQN := namespace.GetFqn()
+	obl.Fqn = identifier.BuildOblFQN(nsFQN, name)
 	return &policy.ObligationValue{
 		Id:         id,
 		Value:      value,
 		Metadata:   metadata,
 		Obligation: obl,
 		Triggers:   triggers,
-		Fqn:        identifier.BuildOblValFQN(obl.GetNamespace().GetFqn(), name, value),
+		Fqn:        identifier.BuildOblValFQN(nsFQN, name, value),
 	}, nil
 }
 

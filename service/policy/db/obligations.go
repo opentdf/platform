@@ -151,13 +151,19 @@ func (c PolicyDBClient) GetObligationsByFQNs(ctx context.Context, r *obligations
 		if err != nil {
 			return nil, err
 		}
+		name := r.Name
+		for idx, val := range values {
+			val.Fqn = identifier.BuildOblValFQN(namespace.GetFqn(), name, val.GetValue())
+			values[idx] = val
+		}
 
 		obls[i] = &policy.Obligation{
 			Id:        r.ID,
-			Name:      r.Name,
+			Name:      name,
 			Metadata:  metadata,
 			Namespace: namespace,
 			Values:    values,
+			Fqn:       identifier.BuildOblFQN(namespace.GetFqn(), name),
 		}
 	}
 
@@ -194,6 +200,7 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 			return nil, nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
 		}
 
+		name := r.Name
 		values, err := unmarshalObligationValues(r.Values)
 		if err != nil {
 			return nil, nil, err
@@ -201,7 +208,7 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 
 		obls[i] = &policy.Obligation{
 			Id:        r.ID,
-			Name:      r.Name,
+			Name:      name,
 			Metadata:  metadata,
 			Namespace: namespace,
 			Values:    values,

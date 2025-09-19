@@ -76,7 +76,7 @@ func (a *Assertion) Verify(key AssertionKey) (string, string, error) {
 	if !found {
 		return "", "", errors.New("hash claim not found")
 	}
-	hash, ok := hashClaim.(string)
+	verifiedHash, ok := hashClaim.(string)
 	if !ok {
 		return "", "", errors.New("hash claim is not a string")
 	}
@@ -85,11 +85,14 @@ func (a *Assertion) Verify(key AssertionKey) (string, string, error) {
 	if !found {
 		return "", "", errors.New("signature claim not found")
 	}
-	sig, ok := sigClaim.(string)
+	verifiedSignature, ok := sigClaim.(string)
 	if !ok {
 		return "", "", errors.New("signature claim is not a string")
 	}
-	return hash, sig, nil
+	decodedSig, _ := ocrypto.Base64Decode([]byte(verifiedSignature))
+	decodedSig2, _ := ocrypto.Base64Decode(decodedSig)
+	verifiedSignatureString := string(decodedSig2)
+	return verifiedHash, verifiedSignatureString, nil
 }
 
 // GetHash returns the hash of the assertion in hex format.

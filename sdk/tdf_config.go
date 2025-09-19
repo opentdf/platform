@@ -380,6 +380,7 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 
 func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
+		// FIXME use assertion registry to verify keys
 		c.verifiers = keys
 		return nil
 	}

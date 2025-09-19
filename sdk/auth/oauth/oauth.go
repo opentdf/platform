@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudflare/cfssl/log"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -197,7 +196,7 @@ func processResponse(resp *http.Response) (*Token, error) {
 }
 
 func getDPoPAssertion(logger *slog.Logger, dpopJWK jwk.Key, method string, endpoint string, nonce string) (string, error) {
-	log.Debug("building DPoP Proof")
+	logger.Debug("building DPoP Proof")
 	publicKey, err := jwk.PublicKeyOf(dpopJWK)
 	const expirationTime = 5 * time.Minute
 

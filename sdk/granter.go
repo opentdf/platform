@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cloudflare/cfssl/log"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -523,7 +522,7 @@ func storeKeysToCache(logger *slog.Logger, kases []*policy.KeyAccessServer, keys
 	for _, kas := range kases {
 		keys := kas.GetPublicKey().GetCached().GetKeys()
 		if len(keys) == 0 {
-			log.Debug("no cached key in policy service", slog.String("kas", kas.GetUri()))
+			logger.Debug("no cached key in policy service", slog.String("kas", kas.GetUri()))
 			continue
 		}
 		for _, ki := range keys {
@@ -539,7 +538,7 @@ func storeKeysToCache(logger *slog.Logger, kases []*policy.KeyAccessServer, keys
 			if kc != nil && ki.GetKid() != "" && ki.GetPem() != "" {
 				rl, err := NewResourceLocator(kas.GetUri())
 				if err != nil {
-					log.Debug("failed to create ResourceLocator",
+					logger.Debug("failed to create ResourceLocator",
 						slog.String("kas", kas.GetUri()),
 						slog.Any("error", err),
 					)
@@ -574,7 +573,7 @@ func storeKeysToCache(logger *slog.Logger, kases []*policy.KeyAccessServer, keys
 		if kc != nil && key.GetPublicKey().GetKid() != "" && key.GetPublicKey().GetPem() != "" {
 			rl, err := NewResourceLocator(key.GetKasUri())
 			if err != nil {
-				log.Debug("failed to create ResourceLocator",
+				logger.Debug("failed to create ResourceLocator",
 					slog.String("kas", key.GetKasUri()),
 					slog.Any("error", err),
 				)

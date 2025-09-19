@@ -1,18 +1,22 @@
-//nolint:forbidigo,nestif // Sample code
 package cmd
 
 import (
 	"bytes"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/opentdf/platform/sdk"
-
 	"github.com/spf13/cobra"
 )
+
+var decryptAlg string
 
 func init() {
 	decryptCmd := &cobra.Command{
@@ -21,7 +25,9 @@ func init() {
 		RunE:  decrypt,
 		Args:  cobra.MinimumNArgs(1),
 	}
-	decryptCmd.Flags().StringVarP(&alg, "rewrap-encapsulation-algorithm", "A", "rsa:2048", "Key wrap response algorithm algorithm:parameters")
+	decryptCmd.Flags().StringVarP(&decryptAlg, "rewrap-encapsulation-algorithm", "A", "rsa:2048", "Key wrap response algorithm algorithm:parameters")
+	decryptCmd.Flags().StringVar(&magicWord, "magic-word", "", "Use a 'magic word' as a shared secret.")
+	decryptCmd.Flags().StringVar(&privateKeyPath, "private-key-path", "", "Private key for signing assertions")
 	ExamplesCmd.AddCommand(decryptCmd)
 }
 
@@ -86,13 +92,41 @@ func decrypt(cmd *cobra.Command, args []string) error {
 
 	if !isNano {
 		opts := []sdk.TDFReaderOption{}
-		if alg != "" {
-			kt, err := keyTypeForKeyType(alg)
+		if decryptAlg != "" {
+			kt, err := keyTypeForKeyType(decryptAlg)
 			if err != nil {
 				return err
 			}
 			opts = append(opts, sdk.WithSessionKeyType(kt))
 		}
+
+		// Assertion
+		registry := sdk.NewAssertionRegistry()
+		// Register the provider to handle the exact assertion ID.
+		magicWordPattern, _ := regexp.Compile("^" + MagicWordAssertionID + "$")
+		// Magic word provider with state, this works in a simple CLI
+		magicWordProvider := NewMagicWordAssertionProvider(magicWord)
+		registry.RegisterValidator(magicWordPattern, magicWordProvider)
+		// Public key validator
+		// Register the provider to handle the exact assertion ID.
+		keyPattern, err := regexp.Compile("^" + sdk.KeyAssertionID)
+		if err != nil {
+			return err
+		}
+		if privateKeyPath != "" {
+			key := getAssertionKeyPublic(privateKeyPath)
+			keys := sdk.AssertionVerificationKeys{
+				Keys: map[string]sdk.AssertionKey{
+					sdk.KeyAssertionID: key,
+				},
+			}
+			keyValidator := sdk.NewKeyAssertionValidator(keys)
+			registry.RegisterValidator(keyPattern, keyValidator)
+		}
+		// Register the registry with the SDK client
+		opts = append(opts, sdk.WithAssertionProviderFactory(registry))
+		// Enable assertion verification
+		opts = append(opts, sdk.WithDisableAssertionVerification(false))
 		tdfreader, err := client.LoadTDF(file, opts...)
 		if err != nil {
 			return err
@@ -110,4 +144,45 @@ func decrypt(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return nil
+}
+
+func getAssertionKeyPublic(path string) sdk.AssertionKey {
+	privPEM, err := os.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+	block, _ := pem.Decode(privPEM)
+	if block == nil {
+		panic("no PEM block found")
+	}
+
+	// If the private key is encrypted, you'll need the passphrase and to decrypt first.
+	// This snippet expects an unencrypted PKCS#1 or PKCS#8 key.
+	var rsaPriv *rsa.PrivateKey
+	switch block.Type {
+	case "RSA PRIVATE KEY":
+		rsaPriv, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			panic(err)
+		}
+	case "PRIVATE KEY":
+		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+		if err != nil {
+			panic(err)
+		}
+		var ok bool
+		rsaPriv, ok = key.(*rsa.PrivateKey)
+		if !ok {
+			panic(errors.New("not an RSA private key"))
+		}
+	default:
+		panic(fmt.Errorf("unsupported key type: %s", block.Type))
+	}
+
+	// Extract RSA public key
+	rsaPub := &rsaPriv.PublicKey
+	return sdk.AssertionKey{
+		Alg: sdk.AssertionKeyAlgRS256,
+		Key: rsaPub,
+	}
 }

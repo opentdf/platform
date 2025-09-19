@@ -3,7 +3,10 @@ package cmd
 
 import (
 	"bytes"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -26,16 +29,18 @@ var (
 	collection     int
 	alg            string
 	policyMode     string
+	magicWord      string
+	privateKeyPath string
 )
 
 func init() {
 	encryptCmd := cobra.Command{
 		Use:   "encrypt",
-		Short: "Create encrypted TDF",
+		Short: "Configure encrypted TDF",
 		RunE:  encrypt,
 		Args:  cobra.MinimumNArgs(1),
 	}
-	encryptCmd.Flags().StringSliceVarP(&dataAttributes, "data-attributes", "a", []string{"https://example.com/attr/attr1/value/value1"}, "space separated list of data attributes")
+	encryptCmd.Flags().StringSliceVarP(&dataAttributes, "data-attributes", "a", []string{}, "space separated list of data attributes")
 	encryptCmd.Flags().BoolVar(&nanoFormat, "nano", false, "Output in nanoTDF format")
 	encryptCmd.Flags().BoolVar(&autoconfigure, "autoconfigure", true, "Use attribute grants to select kases")
 	encryptCmd.Flags().BoolVar(&noKIDInKAO, "no-kid-in-kao", false, "[deprecated] Disable storing key identifiers in TDF KAOs")
@@ -44,7 +49,8 @@ func init() {
 	encryptCmd.Flags().StringVarP(&alg, "key-encapsulation-algorithm", "A", "rsa:2048", "Key wrap algorithm algorithm:parameters")
 	encryptCmd.Flags().IntVarP(&collection, "collection", "c", 0, "number of nano's to create for collection. If collection >0 (default) then output will be <iteration>_<output>")
 	encryptCmd.Flags().StringVar(&policyMode, "policy-mode", "", "Store policy as encrypted instead of plaintext (nanoTDF only) [plaintext|encrypted]")
-
+	encryptCmd.Flags().StringVar(&magicWord, "magic-word", "", "Use a 'magic word' as a shared secret.")
+	encryptCmd.Flags().StringVar(&privateKeyPath, "private-key-path", "", "Private key for signing assertions")
 	ExamplesCmd.AddCommand(&encryptCmd)
 }
 
@@ -97,6 +103,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	if !nanoFormat {
 		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
+		autoconfigure = false
 		if !autoconfigure {
 			opts = append(opts, sdk.WithAutoconfigure(autoconfigure))
 			opts = append(opts, sdk.WithKasInformation(
@@ -105,6 +112,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 					PublicKey: "",
 				}))
 		}
+		// Deprecated: WithWrappingKeyAlg sets the key type for the TDF wrapping key for both storage and transit.
 		if alg != "" {
 			kt, err := keyTypeForKeyType(alg)
 			if err != nil {
@@ -112,7 +120,25 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			}
 			opts = append(opts, sdk.WithWrappingKeyAlg(kt))
 		}
-		tdf, err := client.CreateTDF(out, in, opts...)
+		// Assertion
+		registry := sdk.NewAssertionRegistry()
+		// Magic word provider
+		if magicWord != "" {
+			// constructor with word works in a simple CLI
+			magicWordProvider := NewMagicWordAssertionProvider(magicWord)
+			registry.RegisterBuilder(magicWordProvider)
+		}
+		// Key provider
+		if privateKeyPath != "" {
+			privateKey := getAssertionKeys(privateKeyPath)
+			publicKeyProvider := sdk.NewKeyAssertionBuilder(privateKey)
+			registry.RegisterBuilder(publicKeyProvider)
+		}
+		// Add system metadata assertion (uses DEK)
+		opts = append(opts, sdk.WithSystemMetadataAssertion())
+		// Add assertion registry
+		opts = append(opts, sdk.WithAssertionRegistryBuilder(registry))
+		tdf, err := client.CreateTDFContext(cmd.Context(), out, in, opts...)
 		if err != nil {
 			return err
 		}
@@ -174,6 +200,44 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return nil
+}
+
+func getAssertionKeys(path string) sdk.AssertionKey {
+	privPEM, err := os.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+	block, _ := pem.Decode(privPEM)
+	if block == nil {
+		panic("no PEM block found")
+	}
+
+	// If the private key is encrypted, you'll need the passphrase and to decrypt first.
+	// This snippet expects an unencrypted PKCS#1 or PKCS#8 key.
+	var rsaPriv *rsa.PrivateKey
+	switch block.Type {
+	case "RSA PRIVATE KEY":
+		rsaPriv, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			panic(err)
+		}
+	case "PRIVATE KEY":
+		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+		if err != nil {
+			panic(err)
+		}
+		var ok bool
+		rsaPriv, ok = key.(*rsa.PrivateKey)
+		if !ok {
+			panic(errors.New("not an RSA private key"))
+		}
+	default:
+		panic(fmt.Errorf("unsupported key type: %s", block.Type))
+	}
+	return sdk.AssertionKey{
+		Alg: sdk.AssertionKeyAlgRS256,
+		Key: rsaPriv,
+	}
 }
 
 func keyTypeForKeyType(alg string) (ocrypto.KeyType, error) {

@@ -68,7 +68,7 @@ type TDFConfig struct {
 	mimeType                   string
 	integrityAlgorithm         IntegrityAlgorithm
 	segmentIntegrityAlgorithm  IntegrityAlgorithm
-	assertions                 []AssertionConfig
+	assertionConfigs           []AssertionConfig
 	attributes                 []AttributeValueFQN
 	attributeValues            []*policy.Value
 	kasInfoList                []KASInfo
@@ -77,18 +77,20 @@ type TDFConfig struct {
 	preferredKeyWrapAlg        ocrypto.KeyType
 	useHex                     bool
 	excludeVersionFromManifest bool
-	addDefaultAssertion        bool
+	addSystemMetadataAssertion bool
+	// assertionRegistry allows custom assertions
+	assertionRegistry *AssertionRegistry
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	c := &TDFConfig{
-		autoconfigure:             true,
-		defaultSegmentSize:        defaultSegmentSize,
-		enableEncryption:          true,
-		tdfFormat:                 JSONFormat,
-		integrityAlgorithm:        HS256,
-		segmentIntegrityAlgorithm: GMAC,
-		addDefaultAssertion:       false,
+		autoconfigure:              true,
+		defaultSegmentSize:         defaultSegmentSize,
+		enableEncryption:           true,
+		tdfFormat:                  JSONFormat,
+		integrityAlgorithm:         HS256,
+		segmentIntegrityAlgorithm:  GMAC,
+		addSystemMetadataAssertion: false,
 	}
 
 	for _, o := range opt {
@@ -193,18 +195,18 @@ func WithSegmentSize(size int64) TDFOption {
 	}
 }
 
-// WithDefaultAssertion returns an Option that adds a default assertion to the TDF.
+// WithSystemMetadataAssertion returns an Option that enables public key assertions.
 func WithSystemMetadataAssertion() TDFOption {
 	return func(c *TDFConfig) error {
-		c.addDefaultAssertion = true
+		c.addSystemMetadataAssertion = true
 		return nil
 	}
 }
 
-// WithAssertions returns an Option that add assertions to TDF.
+// WithAssertions returns an Option that adds public key assertion configs.
 func WithAssertions(assertionList ...AssertionConfig) TDFOption {
 	return func(c *TDFConfig) error {
-		c.assertions = append(c.assertions, assertionList...)
+		c.assertionConfigs = append(c.assertionConfigs, assertionList...)
 		return nil
 	}
 }
@@ -250,6 +252,14 @@ func WithTargetMode(mode string) TDFOption {
 	}
 }
 
+// WithAssertionRegistryBuilder enables custom assertion signing
+func WithAssertionRegistryBuilder(registry *AssertionRegistry) TDFOption {
+	return func(c *TDFConfig) error {
+		c.assertionRegistry = registry
+		return nil
+	}
+}
+
 // Schema Validation where 0 = none (skip), 1 = lax (allowing novel entries, 'falsy' values for unkowns), 2 = strict (rejecting novel entries, strict match to manifest schema)
 type SchemaValidationIntensity int
 
@@ -263,8 +273,12 @@ const (
 type TDFReaderOption func(*TDFReaderConfig) error
 
 type TDFReaderConfig struct {
-	verifiers                    AssertionVerificationKeys
+	// verifiers verification public keys
+	verifiers AssertionVerificationKeys
+	// TODO ??? disable all assertion verification?
 	disableAssertionVerification bool
+	// assertionRegistry allows custom verification and validation implementation
+	assertionRegistry *AssertionRegistry
 
 	schemaValidationIntensity SchemaValidationIntensity
 	kasSessionKey             ocrypto.KeyPair
@@ -365,7 +379,17 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 
 func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
+		// FIXME use assertion registry to verify keys
 		c.verifiers = keys
+		return nil
+	}
+}
+
+// WithAssertionProviderFactory sets a custom assertion validation builder for reading.
+// If not set, the default key-based builder will be used.
+func WithAssertionProviderFactory(factory *AssertionRegistry) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.assertionRegistry = factory
 		return nil
 	}
 }
@@ -377,6 +401,7 @@ func WithSchemaValidation(intensity SchemaValidationIntensity) TDFReaderOption {
 	}
 }
 
+// WithDisableAssertionVerification disables system metadata assertion verification for reading.
 func WithDisableAssertionVerification(disable bool) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.disableAssertionVerification = disable

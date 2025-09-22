@@ -294,8 +294,8 @@ func (w *StreamingWriter) Finalize(ctx context.Context, attributeFQNs []string, 
 // GetManifest returns the current manifest snapshot from the underlying writer.
 // Before finalize, this is a provisional manifest (informational only). After
 // finalize, it is the final manifest.
-func (w *StreamingWriter) GetManifest() *tdf.Manifest {
-	return w.writer.GetManifest()
+func (w *StreamingWriter) GetManifest(ctx context.Context) (*tdf.Manifest, error) {
+	return w.writer.GetManifest(ctx)
 }
 
 // fetchAttributesByFQNs retrieves attribute values from the platform by their FQNs.

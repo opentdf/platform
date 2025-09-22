@@ -37,7 +37,7 @@ func (i *IDPTokenExchangeTokenSource) AccessToken(ctx context.Context, client *h
 	defer i.IDPAccessTokenSource.tokenMutex.Unlock()
 
 	if i.IDPAccessTokenSource.token == nil || i.IDPAccessTokenSource.token.Expired() {
-		tok, err := oauth.DoTokenExchange(ctx, i.logger, client, i.idpTokenEndpoint.String(), i.scopes, i.credentials, i.TokenExchangeInfo, i.dpopKey)
+		tok, err := oauth.DoTokenExchange(ctx, client, i.idpTokenEndpoint.String(), i.scopes, i.credentials, i.TokenExchangeInfo, i.dpopKey)
 		if err != nil {
 			return "", err
 		}

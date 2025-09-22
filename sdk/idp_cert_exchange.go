@@ -46,7 +46,7 @@ func (c *CertExchangeTokenSource) AccessToken(ctx context.Context, _ *http.Clien
 	defer c.tokenMutex.Unlock()
 
 	if c.token == nil || c.token.Expired() {
-		tok, err := oauth.DoCertExchange(ctx, c.logger, c.IdpEndpoint, c.info, c.credentials, c.key)
+		tok, err := oauth.DoCertExchange(ctx, c.IdpEndpoint, c.info, c.credentials, c.key)
 		if err != nil {
 			return "", err
 		}

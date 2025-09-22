@@ -95,7 +95,7 @@ func (t *IDPAccessTokenSource) AccessToken(ctx context.Context, client *http.Cli
 
 	if t.token == nil || t.token.Expired() {
 		t.logger.DebugContext(ctx, "getting new access token")
-		tok, err := oauth.GetAccessToken(t.logger, client, t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
+		tok, err := oauth.GetAccessToken(client, t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
 		if err != nil {
 			return "", fmt.Errorf("error getting access token: %w", err)
 		}

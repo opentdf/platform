@@ -141,7 +141,7 @@ func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error)
 // GetAccessToken this misses the flow where the Authorization server can tell us the next nonce to use.
 // missing this flow costs us a bit in efficiency (a round trip per access token) but this is
 // still correct because
-func GetAccessToken(logger *slog.Logger, client *http.Client, tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, dpopPrivateKey jwk.Key) (*Token, error) {
+func GetAccessToken(client *http.Client, tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, dpopPrivateKey jwk.Key) (*Token, error) {
 	req, err := getAccessTokenRequest(tokenEndpoint, "", scopes, clientCredentials, &dpopPrivateKey)
 	if err != nil {
 		return nil, err
@@ -246,8 +246,8 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 	return string(proof), nil
 }
 
-func DoTokenExchange(ctx context.Context, log *slog.Logger, client *http.Client, tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, tokenExchange TokenExchangeInfo, key jwk.Key) (*Token, error) {
-	req, err := getTokenExchangeRequest(ctx, log, tokenEndpoint, "", scopes, clientCredentials, tokenExchange, &key)
+func DoTokenExchange(ctx context.Context, client *http.Client, tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, tokenExchange TokenExchangeInfo, key jwk.Key) (*Token, error) {
+	req, err := getTokenExchangeRequest(ctx, tokenEndpoint, "", scopes, clientCredentials, tokenExchange, &key)
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +261,7 @@ func DoTokenExchange(ctx context.Context, log *slog.Logger, client *http.Client,
 	defer resp.Body.Close()
 
 	if nonceHeader := resp.Header.Get("dpop-nonce"); nonceHeader != "" && resp.StatusCode == http.StatusBadRequest {
-		nonceReq, err := getTokenExchangeRequest(ctx, log, tokenEndpoint, nonceHeader, scopes, clientCredentials, tokenExchange, &key)
+		nonceReq, err := getTokenExchangeRequest(ctx, tokenEndpoint, nonceHeader, scopes, clientCredentials, tokenExchange, &key)
 		if err != nil {
 			return nil, err
 		}
@@ -278,7 +278,7 @@ func DoTokenExchange(ctx context.Context, log *slog.Logger, client *http.Client,
 	return processResponse(resp)
 }
 
-func getTokenExchangeRequest(ctx context.Context, logger *slog.Logger, tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, tokenExchange TokenExchangeInfo, privateJWK *jwk.Key) (*http.Request, error) {
+func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, tokenExchange TokenExchangeInfo, privateJWK *jwk.Key) (*http.Request, error) {
 	data := url.Values{
 		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
 		"subject_token":        {tokenExchange.SubjectToken},
@@ -313,8 +313,8 @@ func getTokenExchangeRequest(ctx context.Context, logger *slog.Logger, tokenEndp
 	return req, nil
 }
 
-func DoCertExchange(ctx context.Context, log *slog.Logger, tokenEndpoint string, exchangeInfo CertExchangeInfo, clientCredentials ClientCredentials, key jwk.Key) (*Token, error) {
-	req, err := getCertExchangeRequest(ctx, log, tokenEndpoint, clientCredentials, exchangeInfo, key)
+func DoCertExchange(ctx context.Context, tokenEndpoint string, exchangeInfo CertExchangeInfo, clientCredentials ClientCredentials, key jwk.Key) (*Token, error) {
+	req, err := getCertExchangeRequest(ctx, tokenEndpoint, clientCredentials, exchangeInfo, key)
 	if err != nil {
 		return nil, err
 	}
@@ -332,7 +332,7 @@ func DoCertExchange(ctx context.Context, log *slog.Logger, tokenEndpoint string,
 	return processResponse(resp)
 }
 
-func getCertExchangeRequest(ctx context.Context, logger *slog.Logger, tokenEndpoint string, clientCredentials ClientCredentials, exchangeInfo CertExchangeInfo, key jwk.Key) (*http.Request, error) {
+func getCertExchangeRequest(ctx context.Context, tokenEndpoint string, clientCredentials ClientCredentials, exchangeInfo CertExchangeInfo, key jwk.Key) (*http.Request, error) {
 	data := url.Values{"grant_type": {"password"}, "client_id": {clientCredentials.ClientID}, "username": {""}, "password": {""}}
 
 	for _, a := range exchangeInfo.Audience {

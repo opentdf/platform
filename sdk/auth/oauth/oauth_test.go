@@ -10,7 +10,6 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"encoding/json"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -91,7 +90,6 @@ func (s *OAuthSuite) TestCertExchangeFromKeycloak() {
 
 	tok, err := DoCertExchange(
 		context.Background(),
-		slog.Default(),
 		s.keycloakHTTPSEndpoint,
 		exhcangeInfo,
 		clientCredentials,
@@ -130,7 +128,6 @@ func (s *OAuthSuite) TestGettingAccessTokenFromKeycloak() {
 	}
 
 	tok, err := GetAccessToken(
-		slog.Default(),
 		http.DefaultClient,
 		s.keycloakEndpoint,
 		[]string{"testscope"},
@@ -186,7 +183,6 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 	}
 
 	subjectToken, err := GetAccessToken(
-		slog.Default(),
 		http.DefaultClient,
 		s.keycloakEndpoint,
 		[]string{"testscope"},
@@ -204,7 +200,7 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 		Audience:     []string{"opentdf-sdk"},
 	}
 
-	exchangedTok, err := DoTokenExchange(ctx, slog.Default(), http.DefaultClient, s.keycloakEndpoint, []string{}, exchangeCredentials, tokenExchange, s.dpopJWK)
+	exchangedTok, err := DoTokenExchange(ctx, http.DefaultClient, s.keycloakEndpoint, []string{}, exchangeCredentials, tokenExchange, s.dpopJWK)
 	s.Require().NoError(err)
 
 	tokenDetails, err := jwt.ParseString(exchangedTok.AccessToken, jwt.WithVerify(false))
@@ -278,7 +274,7 @@ func (s *OAuthSuite) TestClientSecretNoNonce() {
 		ClientID:   "theclient",
 		ClientAuth: "thesecret",
 	}
-	_, err := GetAccessToken(slog.Default(), http.DefaultClient, server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, s.dpopJWK)
+	_, err := GetAccessToken(http.DefaultClient, server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, s.dpopJWK)
 	s.Require().NoError(err, "didn't get a token back from the IdP")
 }
 
@@ -341,7 +337,7 @@ func (s *OAuthSuite) TestClientSecretWithNonce() {
 		ClientID:   "theclient",
 		ClientAuth: "thesecret",
 	}
-	_, err := GetAccessToken(slog.Default(), http.DefaultClient, server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, s.dpopJWK)
+	_, err := GetAccessToken(http.DefaultClient, server.URL+"/token", []string{"scope1", "scope2"}, clientCredentials, s.dpopJWK)
 	if err != nil {
 		s.T().Errorf("didn't get a token back from the IdP: %v", err)
 	}
@@ -461,7 +457,7 @@ func (s *OAuthSuite) TestSignedJWTWithNonce() {
 
 	url = server.URL + "/token"
 
-	_, err = GetAccessToken(slog.Default(), http.DefaultClient, url, []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
+	_, err = GetAccessToken(http.DefaultClient, url, []string{"scope1", "scope2"}, clientCredentials, dpopJWK)
 	if err != nil {
 		s.T().Errorf("didn't get a token back from the IdP: %v", err)
 	}

@@ -15,13 +15,13 @@ import (
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/logger"
+	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 )
 
 type Service struct {
@@ -179,7 +179,7 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	resource := request.GetResource()
 
 	requestAuthToken := ctxAuth.GetAccessTokenFromContext(ctx, as.logger)
-	
+	// TODO: pull from dedicated clientID context as configured in server.auth.policy and set by interceptor to ctx
 
 	decisions, permitted, err := pdp.GetDecision(
 		ctx,

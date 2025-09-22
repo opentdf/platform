@@ -21,6 +21,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 )
 
 type Service struct {
@@ -177,7 +178,17 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	action := request.GetAction()
 	resource := request.GetResource()
 
-	decisions, permitted, err := pdp.GetDecision(ctx, entityIdentifier, action, []*authzV2.Resource{resource})
+	requestAuthToken := ctxAuth.GetAccessTokenFromContext(ctx, as.logger)
+	
+
+	decisions, permitted, err := pdp.GetDecision(
+		ctx,
+		entityIdentifier,
+		action,
+		[]*authzV2.Resource{resource},
+		nil,
+		nil,
+	)
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to get decision", slog.Any("error", err))
 		if errors.Is(err, access.ErrFQNNotFound) || errors.Is(err, access.ErrDefinitionNotFound) {

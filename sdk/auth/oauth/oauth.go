@@ -56,12 +56,12 @@ func (t Token) Expired() bool {
 	return time.Now().After(expirationTime.Add(-tokenExpirationBuffer))
 }
 
-func getAccessTokenRequest(logger *slog.Logger, tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, privateJWK *jwk.Key) (*http.Request, error) {
+func getAccessTokenRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, privateJWK *jwk.Key) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodPost, tokenEndpoint, nil) //nolint: noctx // TODO(#455): AccessToken methods should take contexts
 	if err != nil {
 		return nil, err
 	}
-	dpop, err := getDPoPAssertion(logger, *privateJWK, http.MethodPost, tokenEndpoint, dpopNonce)
+	dpop, err := getDPoPAssertion(*privateJWK, http.MethodPost, tokenEndpoint, dpopNonce)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func getSignedToken(clientID, tokenEndpoint string, key jwk.Key) ([]byte, error)
 // missing this flow costs us a bit in efficiency (a round trip per access token) but this is
 // still correct because
 func GetAccessToken(logger *slog.Logger, client *http.Client, tokenEndpoint string, scopes []string, clientCredentials ClientCredentials, dpopPrivateKey jwk.Key) (*Token, error) {
-	req, err := getAccessTokenRequest(logger, tokenEndpoint, "", scopes, clientCredentials, &dpopPrivateKey)
+	req, err := getAccessTokenRequest(tokenEndpoint, "", scopes, clientCredentials, &dpopPrivateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func GetAccessToken(logger *slog.Logger, client *http.Client, tokenEndpoint stri
 	defer resp.Body.Close()
 
 	if nonceHeader := resp.Header.Get("dpop-nonce"); nonceHeader != "" && resp.StatusCode == http.StatusBadRequest {
-		nonceReq, err := getAccessTokenRequest(logger, tokenEndpoint, nonceHeader, scopes, clientCredentials, &dpopPrivateKey)
+		nonceReq, err := getAccessTokenRequest(tokenEndpoint, nonceHeader, scopes, clientCredentials, &dpopPrivateKey)
 		if err != nil {
 			return nil, err
 		}
@@ -195,8 +195,7 @@ func processResponse(resp *http.Response) (*Token, error) {
 	return token, nil
 }
 
-func getDPoPAssertion(logger *slog.Logger, dpopJWK jwk.Key, method string, endpoint string, nonce string) (string, error) {
-	logger.Debug("building DPoP Proof")
+func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce string) (string, error) {
 	publicKey, err := jwk.PublicKeyOf(dpopJWK)
 	const expirationTime = 5 * time.Minute
 
@@ -299,7 +298,7 @@ func getTokenExchangeRequest(ctx context.Context, logger *slog.Logger, tokenEndp
 	if err != nil {
 		return nil, fmt.Errorf("error getting HTTP request: %w", err)
 	}
-	dpop, err := getDPoPAssertion(logger, *privateJWK, http.MethodPost, tokenEndpoint, dpopNonce)
+	dpop, err := getDPoPAssertion(*privateJWK, http.MethodPost, tokenEndpoint, dpopNonce)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +345,7 @@ func getCertExchangeRequest(ctx context.Context, logger *slog.Logger, tokenEndpo
 		return nil, err
 	}
 
-	dpop, err := getDPoPAssertion(logger, key, http.MethodPost, tokenEndpoint, "")
+	dpop, err := getDPoPAssertion(key, http.MethodPost, tokenEndpoint, "")
 	if err != nil {
 		return nil, err
 	}

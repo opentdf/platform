@@ -351,7 +351,12 @@ func ECPrivateKeyFromPem(privateECKeyInPem []byte) (*ecdh.PrivateKey, error) {
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("ec x509.ParsePKCS8PrivateKey failed: %w", err)
+	    // If PKCS8 fails, try EC private key format
+	    ecKey, ecErr := x509.ParseECPrivateKey(block.Bytes)
+	    if ecErr != nil {
+	        return nil, fmt.Errorf("failed to parse private key as PKCS8 or EC format: PKCS8 error: %w, EC error: %v", err, ecErr)
+	    }
+	    return ConvertToECDHPrivateKey(ecKey)
 	}
 
 	switch privateKey := priv.(type) {

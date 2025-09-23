@@ -1,7 +1,11 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/json"
+	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -18,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type FakeAccessTokenSource struct {
@@ -64,7 +69,7 @@ func TestCreatingRequest(t *testing.T) {
 	kasKey, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
 	require.NoError(t, err, "error creating RSA Key")
 
-	client := newKASClient(nil, options, tokenSource, &kasKey)
+	client := newKASClient(nil, options, tokenSource, &kasKey, []string{})
 	require.NoError(t, err)
 
 	keyAccess := []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
@@ -385,4 +390,420 @@ func TestKasKeyCache_Expiration(t *testing.T) {
 	// Verify the entry was actually removed from the cache
 	_, exists := cache.c[cacheKey]
 	assert.False(t, exists, "Expired key should be removed from cache")
+}
+
+func Test_newConnectRewrapRequest(t *testing.T) {
+	c := newKASClient(nil, nil, nil, nil, []string{"https://example.com/attr/attr1/value/val1"})
+	req := c.newConnectRewrapRequest(&kaspb.RewrapRequest{}, c.fulfillableObligations)
+	require.Equal(t, "https://example.com/attr/attr1/value/val1", req.Header().Get(fulfillableObligationsHeader))
+}
+
+func Test_retrieveObligationsFromMetadata(t *testing.T) {
+	c := newKASClient(nil, nil, nil, nil, nil)
+	metadata := createMetadataWithObligations(map[string][]string{
+		"policy1": {"https://example.com/attr/attr1/value/val1", "https://example.com/attr/attr2/value/val2"},
+	})
+
+	fqns := c.retrieveObligationsFromMetadata(metadata, "policy1")
+	assert.Len(t, fqns, 2)
+	assert.Equal(t, "https://example.com/attr/attr1/value/val1", fqns[0])
+	assert.Equal(t, "https://example.com/attr/attr2/value/val2", fqns[1])
+}
+
+func Test_retrieveObligationsFromMetadata_NoObligations(t *testing.T) {
+	c := newKASClient(nil, nil, nil, nil, nil)
+	fqns := c.retrieveObligationsFromMetadata(createMetadataWithObligations(nil), "policy1")
+	assert.Empty(t, fqns)
+}
+
+func Test_retrieveObligationsFromMetadata_NotStructValue(t *testing.T) {
+	c := newKASClient(nil, nil, nil, nil, nil)
+	metadata := make(map[string]*structpb.Value)
+	metadata[triggeredObligationsHeader] = &structpb.Value{
+		Kind: &structpb.Value_BoolValue{
+			BoolValue: true,
+		},
+	}
+	fqns := c.retrieveObligationsFromMetadata(metadata, "policy1")
+	assert.Empty(t, fqns)
+}
+
+func Test_retrieveObligationsFromMetadata_PolicyNotPresent(t *testing.T) {
+	c := newKASClient(nil, nil, nil, nil, nil)
+	metadata := make(map[string]*structpb.Value)
+	metadata[triggeredObligationsHeader] = &structpb.Value{
+		Kind: &structpb.Value_StructValue{
+			StructValue: &structpb.Struct{Fields: map[string]*structpb.Value{}},
+		},
+	}
+	fqns := c.retrieveObligationsFromMetadata(metadata, "policy1")
+	assert.Empty(t, fqns)
+}
+
+func Test_retrieveObligationsFromMetadata_ListValuesNotPresent(t *testing.T) {
+	c := newKASClient(nil, nil, nil, nil, nil)
+	metadata := make(map[string]*structpb.Value)
+	metadata[triggeredObligationsHeader] = &structpb.Value{
+		Kind: &structpb.Value_StructValue{
+			StructValue: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"not_a_list": {
+						Kind: &structpb.Value_StringValue{StringValue: "not a list"},
+					},
+				},
+			},
+		},
+	}
+	fqns := c.retrieveObligationsFromMetadata(metadata, "policy1")
+	assert.Empty(t, fqns)
+}
+
+func Test_processRSAResponse(t *testing.T) {
+	c := newKASClient(nil, nil, nil, nil, nil)
+
+	// Create a mock AsymDecryption
+	mockPrivateKey, err := ocrypto.NewRSAKeyPair(2048)
+	require.NoError(t, err)
+	privateKeyPEM, err := mockPrivateKey.PrivateKeyInPemFormat()
+	require.NoError(t, err)
+	mockDecryptor, err := ocrypto.NewAsymDecryption(privateKeyPEM)
+	require.NoError(t, err)
+
+	// Create a mock AsymEncryption to create the wrapped key
+	publicKeyPEM, err := mockPrivateKey.PublicKeyInPemFormat()
+	require.NoError(t, err)
+	mockEncryptor, err := ocrypto.NewAsymEncryption(publicKeyPEM)
+	require.NoError(t, err)
+
+	symmetricKey := []byte("supersecretkey")
+	wrappedKey, err := mockEncryptor.Encrypt(symmetricKey)
+	require.NoError(t, err)
+
+	response := &kaspb.RewrapResponse{
+		Responses: []*kaspb.PolicyRewrapResult{
+			{
+				PolicyId: "policy1",
+				Results: []*kaspb.KeyAccessRewrapResult{
+					{
+						KeyAccessObjectId: "kao1",
+						Status:            "permit",
+						Result: &kaspb.KeyAccessRewrapResult_KasWrappedKey{
+							KasWrappedKey: wrappedKey,
+						},
+					},
+				},
+			},
+		},
+		Metadata: createMetadataWithObligations(map[string][]string{
+			"policy1": {"https://example.com/attr/attr1/value/val1"},
+		}),
+	}
+
+	policyResults, err := c.processRSAResponse(response, mockDecryptor)
+	require.NoError(t, err)
+	require.Len(t, policyResults, 1)
+
+	result, ok := policyResults["policy1"]
+	require.True(t, ok)
+	require.Equal(t, "policy1", result.policyID)
+	require.Len(t, result.kaoRes, 1)
+	require.Equal(t, symmetricKey, result.kaoRes[0].SymmetricKey)
+	require.Len(t, result.obligations, 1)
+	require.Equal(t, "https://example.com/attr/attr1/value/val1", result.obligations[0])
+}
+
+func Test_processECResponse(t *testing.T) {
+	c := newKASClient(nil, nil, nil, nil, nil)
+
+	// 1. Set up keys for encryption
+	kasPublicKey, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
+	require.NoError(t, err)
+	kasPublicKeyPEM, err := kasPublicKey.PublicKeyInPemFormat()
+	require.NoError(t, err)
+
+	clientPrivateKey, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
+	require.NoError(t, err)
+	clientPrivateKeyPEM, err := clientPrivateKey.PrivateKeyInPemFormat()
+	require.NoError(t, err)
+
+	// 2. Compute shared secret and derive session key (for encryption)
+	ecdhKey, err := ocrypto.ComputeECDHKey([]byte(clientPrivateKeyPEM), []byte(kasPublicKeyPEM))
+	require.NoError(t, err)
+
+	digest := sha256.New()
+	digest.Write([]byte("TDF"))
+	salt := digest.Sum(nil)
+	sessionKey, err := ocrypto.CalculateHKDF(salt, ecdhKey)
+	require.NoError(t, err)
+
+	// 3. Create AES-GCM cipher for encryption
+	encryptor, err := ocrypto.NewAESGcm(sessionKey)
+	require.NoError(t, err)
+
+	// 4. Encrypt a symmetric key
+	symmetricKey1 := []byte("supersecretkey1")
+	wrappedKey1, err := encryptor.Encrypt(symmetricKey1)
+	require.NoError(t, err)
+
+	symmetricKey2 := []byte("supersecretkey2")
+	wrappedKey2, err := encryptor.Encrypt(symmetricKey2)
+	require.NoError(t, err)
+
+	// 5. Create mock response with multiple policies
+	response := &kaspb.RewrapResponse{
+		Responses: []*kaspb.PolicyRewrapResult{
+			{
+				PolicyId: "policy1",
+				Results: []*kaspb.KeyAccessRewrapResult{
+					{
+						KeyAccessObjectId: "kao1",
+						Status:            "permit",
+						Result: &kaspb.KeyAccessRewrapResult_KasWrappedKey{
+							KasWrappedKey: wrappedKey1,
+						},
+					},
+				},
+			},
+			{
+				PolicyId: "policy2",
+				Results: []*kaspb.KeyAccessRewrapResult{
+					{
+						KeyAccessObjectId: "kao2",
+						Status:            "permit",
+						Result: &kaspb.KeyAccessRewrapResult_KasWrappedKey{
+							KasWrappedKey: wrappedKey2,
+						},
+					},
+				},
+			},
+		},
+		Metadata: createMetadataWithObligations(map[string][]string{
+			"policy1": {"https://example.com/attr/attr1/value/val1"},
+			"policy2": {"https://example.com/attr/attr2/value/val2"},
+		}),
+	}
+
+	// 6. Create AES-GCM cipher for decryption (using the same session key)
+	decryptor, err := ocrypto.NewAESGcm(sessionKey)
+	require.NoError(t, err)
+
+	// 7. Process the response
+	policyResults, err := c.processECResponse(response, decryptor)
+	require.NoError(t, err)
+	require.Len(t, policyResults, 2)
+
+	// 8. Assertions for policy1
+	result1, ok := policyResults["policy1"]
+	require.True(t, ok)
+	require.Equal(t, "policy1", result1.policyID)
+	require.Len(t, result1.kaoRes, 1)
+	require.Equal(t, symmetricKey1, result1.kaoRes[0].SymmetricKey)
+	require.Len(t, result1.obligations, 1)
+	require.Equal(t, "https://example.com/attr/attr1/value/val1", result1.obligations[0])
+
+	// 9. Assertions for policy2
+	result2, ok := policyResults["policy2"]
+	require.True(t, ok)
+	require.Equal(t, "policy2", result2.policyID)
+	require.Len(t, result2.kaoRes, 1)
+	require.Equal(t, symmetricKey2, result2.kaoRes[0].SymmetricKey)
+	require.Len(t, result2.obligations, 1)
+	require.Equal(t, "https://example.com/attr/attr2/value/val2", result2.obligations[0])
+}
+
+type mockService interface {
+	Process(req *http.Request) (*http.Response, error)
+}
+
+type MockKas struct {
+	t           *testing.T
+	obligations map[string][]string // policyID -> obligations
+}
+
+func (f *MockKas) Process(req *http.Request) (*http.Response, error) {
+	// 1. KAS generates its own ephemeral keypair for the ECDH exchange.
+	kasKeypair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
+	require.NoError(f.t, err)
+	kasPublicKeyPEM, err := kasKeypair.PublicKeyInPemFormat()
+	require.NoError(f.t, err)
+	kasPrivateKeyPEM, err := kasKeypair.PrivateKeyInPemFormat()
+	require.NoError(f.t, err)
+
+	// 2. Extract the client's public key from the incoming request.
+	bodyBytes, err := io.ReadAll(req.Body)
+	require.NoError(f.t, err)
+	req.Body = io.NopCloser(bytes.NewReader(bodyBytes)) // Restore body
+
+	var bodyJSON map[string]interface{}
+	err = json.Unmarshal(bodyBytes, &bodyJSON)
+	require.NoError(f.t, err)
+	signedRequestToken, ok := bodyJSON["signedRequestToken"].(string)
+	require.True(f.t, ok)
+
+	// We need a public key to verify the token, but for this mock we can parse without verification.
+	token, err := jwt.ParseString(signedRequestToken, jwt.WithVerify(false))
+	require.NoError(f.t, err)
+
+	requestBodyClaim, _ := token.Get("requestBody")
+	requestBodyJSON, _ := requestBodyClaim.(string)
+	var unsignedReq kaspb.UnsignedRewrapRequest
+	err = protojson.Unmarshal([]byte(requestBodyJSON), &unsignedReq)
+	require.NoError(f.t, err)
+	clientPublicKeyPEM := unsignedReq.GetClientPublicKey()
+
+	// 3. Compute the shared secret (ECDH) and derive the session key (HKDF).
+	ecdhKey, err := ocrypto.ComputeECDHKey([]byte(kasPrivateKeyPEM), []byte(clientPublicKeyPEM))
+	require.NoError(f.t, err)
+	sessionKey, err := ocrypto.CalculateHKDF(versionSalt(), ecdhKey)
+	require.NoError(f.t, err)
+
+	// 4. Encrypt the symmetric key using the derived session key.
+	encryptor, err := ocrypto.NewAESGcm(sessionKey)
+	require.NoError(f.t, err)
+	symmetricKey := []byte("supersecretkey1")
+	wrappedKey, err := encryptor.Encrypt(symmetricKey)
+	require.NoError(f.t, err)
+
+	// 5. Construct the KAS rewrap response.
+	rewrapResponse := &kaspb.RewrapResponse{
+		SessionPublicKey: kasPublicKeyPEM,
+	}
+	triggeredObligations := make(map[string][]string)
+	for _, req := range unsignedReq.GetRequests() {
+		policyID := req.GetPolicy().GetId()
+		rewrapResponse.Responses = append(rewrapResponse.Responses, &kaspb.PolicyRewrapResult{
+			PolicyId: policyID,
+			Results: []*kaspb.KeyAccessRewrapResult{
+				{
+					KeyAccessObjectId: req.GetKeyAccessObjects()[0].GetKeyAccessObjectId(),
+					Status:            "permit",
+					Result: &kaspb.KeyAccessRewrapResult_KasWrappedKey{
+						KasWrappedKey: wrappedKey,
+					},
+				},
+			},
+		})
+
+		if fqns, exists := f.obligations[policyID]; exists {
+			triggeredObligations[policyID] = fqns
+		}
+	}
+	rewrapResponse.Metadata = createMetadataWithObligations(triggeredObligations)
+
+	responseBody, err := protojson.Marshal(rewrapResponse)
+	require.NoError(f.t, err)
+
+	mockHTTPResponse := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(bytes.NewReader(responseBody)),
+		Header:     make(http.Header),
+	}
+	mockHTTPResponse.Header.Set("Content-Type", "application/json")
+
+	return mockHTTPResponse, nil
+}
+
+// mockRoundTripper is a mock implementation of http.RoundTripper for testing.
+type mockRoundTripper struct {
+	Response    *http.Response
+	mockService mockService
+	Err         error
+}
+
+// RoundTrip implements the http.RoundTripper interface.
+func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	if m.Err != nil || m.Response != nil {
+		return m.Response, m.Err
+	}
+	return m.mockService.Process(req)
+}
+
+func Test_nanoUnwrap(t *testing.T) {
+	// 1. Set up the mock HTTP client
+	mockClient := &http.Client{
+		Transport: &mockRoundTripper{mockService: &MockKas{
+			t: t,
+			obligations: map[string][]string{
+				"policy1": {"https://example.com/attr/attr1/value/val1"},
+				"policy2": {"https://example.com/attr/attr2/value/val2"},
+			},
+		}},
+	}
+
+	// 2. Create the KAS client with the mocked HTTP client
+	tokenSource := getTokenSource(t)
+	c := newKASClient(mockClient, []connect.ClientOption{connect.WithProtoJSON()}, tokenSource, nil, nil)
+
+	// 3. Define a dummy request.
+	dummyKeyAccess := []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+		{
+			Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+				Id: "policy1",
+			},
+			KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+				{
+					KeyAccessObject: &kaspb.KeyAccess{KasUrl: "https://kas.example.com"},
+				},
+			},
+		},
+		{
+			Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+				Id: "policy2",
+			},
+			KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+				{
+					KeyAccessObject: &kaspb.KeyAccess{KasUrl: "https://kas.example.com"},
+				},
+			},
+		},
+	}
+
+	// 4. Call nanoUnwrap
+	policyResults, err := c.nanoUnwrap(context.Background(), dummyKeyAccess...)
+	require.NoError(t, err)
+	require.Len(t, policyResults, 2)
+
+	// 5. Assertions
+	result1, ok := policyResults["policy1"]
+	require.True(t, ok)
+	require.Equal(t, "policy1", result1.policyID)
+	require.Len(t, result1.kaoRes, 1)
+	require.Equal(t, []byte("supersecretkey1"), result1.kaoRes[0].SymmetricKey)
+	require.NoError(t, result1.kaoRes[0].Error)
+	require.Len(t, result1.obligations, 1)
+	require.Equal(t, "https://example.com/attr/attr1/value/val1", result1.obligations[0])
+
+	result2, ok := policyResults["policy2"]
+	require.True(t, ok)
+	require.Equal(t, "policy2", result2.policyID)
+	require.Len(t, result2.kaoRes, 1)
+	require.Equal(t, []byte("supersecretkey1"), result2.kaoRes[0].SymmetricKey)
+	require.NoError(t, result2.kaoRes[0].Error)
+	require.Len(t, result2.obligations, 1)
+	require.Equal(t, "https://example.com/attr/attr2/value/val2", result2.obligations[0])
+}
+
+func createMetadataWithObligations(obligations map[string][]string) map[string]*structpb.Value {
+	metadata := make(map[string]*structpb.Value)
+	if len(obligations) == 0 {
+		return metadata
+	}
+
+	fields := make(map[string]*structpb.Value)
+	for policyID, fqns := range obligations {
+		listValue := &structpb.ListValue{}
+		for _, fqn := range fqns {
+			listValue.Values = append(listValue.Values, structpb.NewStringValue(fqn))
+		}
+		fields[policyID] = structpb.NewListValue(listValue)
+	}
+
+	metadata[triggeredObligationsHeader] = &structpb.Value{
+		Kind: &structpb.Value_StructValue{
+			StructValue: &structpb.Struct{
+				Fields: fields,
+			},
+		},
+	}
+	return metadata
 }

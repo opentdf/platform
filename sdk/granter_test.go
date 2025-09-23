@@ -29,6 +29,7 @@ const (
 	specifiedKas        = "https://attr.kas.com/"
 	evenMoreSpecificKas = "https://value.kas.com/"
 	lessSpecificKas     = "https://namespace.kas.com/"
+	obligationKas       = "https://obligation.kas.com/"
 	fakePem             = mockRSAPublicKey1
 )
 
@@ -74,6 +75,12 @@ var (
 	mpc, _ = NewAttributeValueFQN("https://virtru.com/attr/mapped/value/c")
 	mpd, _ = NewAttributeValueFQN("https://virtru.com/attr/mapped/value/d")
 	mpu, _ = NewAttributeValueFQN("https://virtru.com/attr/mapped/value/unspecified")
+
+	// Attributes for testing obligations
+	OBLIGATION, _  = NewAttributeNameFQN("https://virtru.com/attr/obligation")
+	obWatermark, _ = NewAttributeValueFQN("https://virtru.com/attr/obligation/value/watermark")
+	obRedact, _    = NewAttributeValueFQN("https://virtru.com/attr/obligation/value/redact")
+	obGeo, _       = NewAttributeValueFQN("https://virtru.com/attr/obligation/value/geofence")
 )
 
 func spongeCase(s string) string {
@@ -207,6 +214,14 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 			Id:        "UNS",
 			Namespace: &nsThree,
 			Name:      "unspecified",
+			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Fqn:       fqn.String(),
+		}
+	case OBLIGATION.key:
+		return &policy.Attribute{
+			Id:        "OBL",
+			Namespace: &nsOne,
+			Name:      "obligation",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Fqn:       fqn.String(),
 		}
@@ -450,6 +465,18 @@ func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 		if strings.ToLower(fqn.Value()) == "specked" {
 			p.Grants = make([]*policy.KeyAccessServer, 1)
 			p.Grants[0] = mockGrant(evenMoreSpecificKas, "r1")
+		}
+	case OBLIGATION.key:
+		switch strings.ToLower(fqn.Value()) {
+		case "watermark":
+			p.KasKeys = make([]*policy.SimpleKasKey, 1)
+			p.KasKeys[0] = mockSimpleKasKey(obligationKas, "r3")
+		case "redact":
+			p.KasKeys = make([]*policy.SimpleKasKey, 1)
+			p.KasKeys[0] = mockSimpleKasKey(obligationKas, "r3")
+		case "geofence":
+			p.KasKeys = make([]*policy.SimpleKasKey, 1)
+			p.KasKeys[0] = mockSimpleKasKey("https://d.kas/", "e1")
 		}
 	}
 	return &p

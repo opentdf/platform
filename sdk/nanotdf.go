@@ -1038,7 +1038,7 @@ func (s SDK) getNanoRewrapKey(ctx context.Context, decryptor *NanoTDFDecryptHand
 		}
 	}
 
-	client := newKASClient(s.conn.Client, s.conn.Options, s.tokenSource, nil)
+	client := newKASClient(s.conn.Client, s.conn.Options, s.tokenSource, nil, []string{})
 	kasURL, err := decryptor.header.kasURL.GetURL()
 	if err != nil {
 		return nil, fmt.Errorf("nano header kasUrl: %w", err)
@@ -1049,17 +1049,17 @@ func (s SDK) getNanoRewrapKey(ctx context.Context, decryptor *NanoTDFDecryptHand
 		return nil, fmt.Errorf("rewrap failed: %w", err)
 	}
 	result, ok := policyResult["policy"]
-	if !ok || len(result) != 1 {
+	if !ok || len(result.kaoRes) != 1 {
 		return nil, errors.New("policy was not found in rewrap response")
 	}
-	if result[0].Error != nil {
-		return nil, fmt.Errorf("rewrapError: %w", result[0].Error)
+	if result.kaoRes[0].Error != nil {
+		return nil, fmt.Errorf("rewrapError: %w", result.kaoRes[0].Error)
 	}
 
 	if s.collectionStore != nil {
-		s.collectionStore.store(decryptor.getRawHeader(), result[0].SymmetricKey)
+		s.collectionStore.store(decryptor.getRawHeader(), result.kaoRes[0].SymmetricKey)
 	}
-	return result[0].SymmetricKey, nil
+	return result.kaoRes[0].SymmetricKey, nil
 }
 
 func versionSalt() []byte {

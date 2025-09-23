@@ -52,18 +52,19 @@ const (
 
 // Loads and reads ZTDF files
 type Reader struct {
-	tokenSource         auth.AccessTokenSource
-	httpClient          *http.Client
-	connectOptions      []connect.ClientOption
-	manifest            Manifest
-	unencryptedMetadata []byte
-	tdfReader           archive.TDFReader
-	cursor              int64
-	aesGcm              ocrypto.AesGcm
-	payloadSize         int64
-	payloadKey          []byte
-	kasSessionKey       ocrypto.KeyPair
-	config              TDFReaderConfig
+	tokenSource          auth.AccessTokenSource
+	httpClient           *http.Client
+	connectOptions       []connect.ClientOption
+	manifest             Manifest
+	unencryptedMetadata  []byte
+	tdfReader            archive.TDFReader
+	cursor               int64
+	aesGcm               ocrypto.AesGcm
+	payloadSize          int64
+	payloadKey           []byte
+	kasSessionKey        ocrypto.KeyPair
+	config               TDFReaderConfig
+	triggeredObligations []string
 }
 
 type TDFObject struct {
@@ -762,6 +763,10 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		opts = append([]TDFReaderOption{withSessionKey(s.kasSessionKey)}, opts...)
 	}
 
+	if s.fulfillableObligationFQNs != nil {
+		opts = append([]TDFReaderOption{withFulfillableObligationFQNs(s.fulfillableObligationFQNs)}, opts...)
+	}
+
 	config, err := newTDFReaderConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("newAssertionConfig failed: %w", err)
@@ -1092,6 +1097,12 @@ func (r *Reader) DataAttributes() ([]string, error) {
 	return attributes, nil
 }
 
+// Return the triggered obligations that were found during the rewrap process.
+// ! WriteTo must be called before this function to ensure obligations are populated.
+func (r *Reader) Obligations() []string {
+	return r.triggeredObligations
+}
+
 /*
 *WARNING:* Using this function is unsafe since KAS will no longer be able to prevent access to the key.
 
@@ -1359,7 +1370,7 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 
 // Unwraps the payload key, if possible, using the access service
 func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocognit // Better readability keeping it as is
-	kasClient := newKASClient(r.httpClient, r.connectOptions, r.tokenSource, r.kasSessionKey)
+	kasClient := newKASClient(r.httpClient, r.connectOptions, r.tokenSource, r.kasSessionKey, r.config.fulfillableObligationFQNs)
 
 	var kaoResults []kaoResult
 	reqFail := func(err error, req *kas.UnsignedRewrapRequest_WithPolicyRequest) {
@@ -1395,7 +1406,9 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 				err = errors.New("could not find policy in rewrap response")
 				reqFail(err, req)
 			}
-			kaoResults = append(kaoResults, result...)
+			// ! Should constantly be the same obligation for the same policy
+			r.triggeredObligations = result.obligations
+			kaoResults = append(kaoResults, result.kaoRes...)
 		}
 	}
 

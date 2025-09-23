@@ -4,11 +4,13 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -302,6 +304,24 @@ type TDFSuite struct {
 	kases            []FakeKas
 	kasTestURLLookup map[string]string
 	fakeWellKnown    map[string]interface{}
+}
+
+type Policy struct {
+	UUID string        `json:"uuid"`
+	Body KasPolicyBody `json:"body"`
+}
+
+type KasPolicyBody struct {
+	DataAttributes []Attribute `json:"dataAttributes"`
+	Dissem         []string    `json:"dissem"`
+}
+
+type Attribute struct {
+	URI           string           `json:"attribute"` // attribute
+	PublicKey     crypto.PublicKey `json:"pubKey"`    // pubKey
+	ProviderURI   string           `json:"kasUrl"`    // kasUrl
+	SchemaVersion string           `json:"tdf_spec_version,omitempty"`
+	Name          string           `json:"displayName"` // displayName
 }
 
 func (s *TDFSuite) SetupSuite() {
@@ -1905,6 +1925,88 @@ func (s *TDFSuite) Test_KeySplits() {
 	}
 }
 
+func (s *TDFSuite) Test_Obligations() {
+	for _, test := range []struct {
+		n              string
+		fileSize       int64
+		tdfFileSize    float64
+		checksum       string
+		obligationFQNs []string
+		opts           []TDFOption
+	}{
+		{
+			n:              "with-obligations-same-kas",
+			fileSize:       5,
+			tdfFileSize:    1897,
+			checksum:       "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
+			obligationFQNs: []string{obWatermark.url, obRedact.url},
+			opts: []TDFOption{
+				WithDataAttributes(obWatermark.url, obRedact.url),
+			},
+		},
+		{
+			n:              "with-obligations-different-kas",
+			fileSize:       5,
+			tdfFileSize:    2690,
+			checksum:       "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
+			obligationFQNs: []string{obWatermark.url, obRedact.url, obGeo.url},
+			opts: []TDFOption{
+				WithDataAttributes(obWatermark.url, obRedact.url, obGeo.url),
+			},
+		},
+	} {
+		s.Run(test.n, func() {
+			// create .txt file
+			plainTextFileName := test.n + ".txt"
+			tdfFileName := plainTextFileName + ".tdf"
+			decryptedTdfFileName := tdfFileName + ".txt"
+
+			defer func() {
+				// Remove the test files
+				_ = os.Remove(plainTextFileName)
+				_ = os.Remove(tdfFileName)
+				_ = os.Remove(decryptedTdfFileName)
+			}()
+
+			// test encrypt
+			s.testEncrypt(s.sdk, test.opts, plainTextFileName, tdfFileName, tdfTest{
+				n:           test.n,
+				fileSize:    test.fileSize,
+				tdfFileSize: test.tdfFileSize,
+				checksum:    test.checksum,
+			})
+
+			// test decrypt with reader
+			readSeeker, err := os.Open(tdfFileName)
+			s.Require().NoError(err)
+			defer func(readSeeker *os.File) {
+				err := readSeeker.Close()
+				s.Require().NoError(err)
+			}(readSeeker)
+
+			r, err := s.sdk.LoadTDF(readSeeker)
+			s.Require().NoError(err)
+			s.Require().Empty(r.Obligations(), "Obligations should be empty until decryption")
+
+			// Validate decryption
+			s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, tdfTest{
+				n:        test.n,
+				fileSize: test.fileSize,
+				checksum: test.checksum,
+				policy:   []AttributeValueFQN{obWatermark, obRedact},
+			})
+
+			_, err = r.WriteTo(io.Discard)
+			s.Require().NoError(err)
+			s.Require().Len(r.Obligations(), len(test.obligationFQNs), "Should have two obligations")
+			actualObligations := r.Obligations()
+			for _, ob := range test.obligationFQNs {
+				s.Require().Contains(actualObligations, ob, "Actual obligations should contain "+ob)
+			}
+		})
+	}
+}
+
 func (s *TDFSuite) Test_Autoconfigure() {
 	for index, test := range []tdfTest{
 		{
@@ -2145,7 +2247,7 @@ func (s *TDFSuite) startBackend() {
 		{"https://a.kas/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
 		{"https://b.kas/", mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID},
 		{"https://c.kas/", mockRSAPrivateKey3, mockRSAPublicKey3, defaultKID},
-		{"https://d.kas/", mockECPrivateKey1, mockECPublicKey1, defaultKID},
+		{"https://d.kas/", mockECPrivateKey1, mockECPublicKey1, "e1"},
 		{"https://e.kas/", mockECPrivateKey2, mockECPublicKey2, defaultKID},
 		{kasAu, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
 		{kasCa, mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID},
@@ -2154,6 +2256,7 @@ func (s *TDFSuite) startBackend() {
 		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
 		{baseKeyURL, mockRSAPrivateKey1, mockRSAPublicKey1, baseKeyKID},
 		{evenMoreSpecificKas, mockRSAPrivateKey3, mockRSAPublicKey3, "r3"},
+		{obligationKas, mockRSAPrivateKey3, mockRSAPublicKey3, "r3"},
 	}
 	fkar := &FakeKASRegistry{kases: kasesToMake, s: s}
 
@@ -2171,6 +2274,11 @@ func (s *TDFSuite) startBackend() {
 				URL: ki.url, PublicKey: ki.public, KID: ki.kid, Algorithm: "rsa:2048",
 			},
 			legakeys: map[string]keyInfo{},
+			obligations: map[string]string{
+				obWatermark.url: obWatermark.url,
+				obRedact.url:    obRedact.url,
+				obGeo.url:       obGeo.url,
+			},
 		}
 		path, handler := attributesconnect.NewAttributesServiceHandler(fa)
 		mux.Handle(path, handler)
@@ -2199,7 +2307,9 @@ func (s *TDFSuite) startBackend() {
 		WithClientCredentials("test", "test", nil),
 		withCustomAccessTokenSource(&ats),
 		WithTokenEndpoint("http://localhost:65432/auth/token"),
-		WithInsecurePlaintextConn())
+		WithInsecurePlaintextConn(),
+		WithFulfillableObligationFQNs([]string{obWatermark.url, obRedact.url}),
+	)
 	s.Require().NoError(err)
 	s.sdk = sdk
 }
@@ -2277,9 +2387,10 @@ func (f *FakeKASRegistry) ListKeyAccessServers(_ context.Context, _ *connect.Req
 type FakeKas struct {
 	kasconnect.UnimplementedAccessServiceHandler
 	KASInfo
-	privateKey string
-	s          *TDFSuite
-	legakeys   map[string]keyInfo
+	privateKey  string
+	s           *TDFSuite
+	legakeys    map[string]keyInfo
+	obligations map[string]string
 }
 
 func (f *FakeKas) Rewrap(_ context.Context, in *connect.Request[kaspb.RewrapRequest]) (*connect.Response[kaspb.RewrapResponse], error) {
@@ -2313,6 +2424,7 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse 
 	err := protojson.Unmarshal([]byte(rewrapRequest), &bodyData)
 	f.s.Require().NoError(err, "json.Unmarshal failed")
 	resp := &kaspb.RewrapResponse{}
+	policyObligationMap := make(map[string][]string)
 
 	for _, req := range bodyData.GetRequests() {
 		results := &kaspb.PolicyRewrapResult{PolicyId: req.GetPolicy().GetId()}
@@ -2408,8 +2520,30 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse 
 			}
 			results.Results = append(results.Results, kaoResult)
 		}
+
+		policyObligationMap[req.GetPolicy().GetId()] = f.s.checkPolicyObligations(f.obligations, req)
 	}
+	resp.Metadata = createMetadataWithObligations(policyObligationMap)
+
 	return resp
+}
+
+func (s *TDFSuite) checkPolicyObligations(obligationsMap map[string]string, req *kaspb.UnsignedRewrapRequest_WithPolicyRequest) []string {
+	var obligations []string
+	sDecPolicy, policyErr := base64.StdEncoding.DecodeString(req.GetPolicy().GetBody())
+	policy := &Policy{}
+	if policyErr == nil {
+		policyErr = json.Unmarshal(sDecPolicy, policy)
+		if policyErr != nil {
+			return obligations
+		}
+	}
+	for _, attr := range policy.Body.DataAttributes {
+		if val, found := obligationsMap[attr.URI]; found {
+			obligations = append(obligations, val)
+		}
+	}
+	return obligations
 }
 
 func (s *TDFSuite) checkIdentical(file, checksum string) bool {

@@ -56,6 +56,7 @@ type FakeAccessTokenSource struct {
 }
 
 type FakeAccessServiceServer struct {
+	clientID    string
 	accessToken []string
 	dpopKey     jwk.Key
 	kas.UnimplementedAccessServiceServer
@@ -72,6 +73,7 @@ func (f *FakeAccessServiceServer) LegacyPublicKey(_ context.Context, _ *connect.
 func (f *FakeAccessServiceServer) Rewrap(ctx context.Context, req *connect.Request[kas.RewrapRequest]) (*connect.Response[kas.RewrapResponse], error) {
 	f.accessToken = req.Header()["Authorization"]
 	f.dpopKey = ctxAuth.GetJWKFromContext(ctx, logger.CreateTestLogger())
+	f.clientID, _ = ctxAuth.GetClientIDFromContext(ctx)
 
 	return &connect.Response[kas.RewrapResponse]{Msg: &kas.RewrapResponse{}}, nil
 }
@@ -148,7 +150,9 @@ func (s *AuthSuite) SetupTest() {
 		}
 	}))
 
-	policyCfg := PolicyConfig{}
+	policyCfg := PolicyConfig{
+		ClientIDClaim: "cid",
+	}
 	err = defaults.Set(&policyCfg)
 	s.Require().NoError(err)
 
@@ -214,6 +218,8 @@ func TestNormalizeUrl(t *testing.T) {
 func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	// Mock the checkToken method to return a valid token and context
 	mockToken := jwt.New()
+	mockToken.Set("cid", "mockClientID")
+
 	type contextKey string
 	mockCtx := context.WithValue(context.Background(), contextKey("mockKey"), "mockValue")
 	s.auth._testCheckTokenFunc = func(_ context.Context, authHeader []string, _ receiverInfo, _ []string) (jwt.Token, context.Context, error) {
@@ -234,6 +240,9 @@ func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	s.Require().NoError(err)
 	s.Require().NotNil(nextCtx)
 	s.Equal("mockValue", nextCtx.Value(contextKey("mockKey")))
+	clientID, err := ctxAuth.GetClientIDFromContext(nextCtx)
+	s.Require().NoError(err)
+	s.Equal("mockClientID", clientID)
 
 	// Test with a route not requiring reauthorization
 	nextCtx, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/PublicKey", nil)
@@ -482,7 +491,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
 	s.Require().NoError(tok.Set("iss", s.server.URL))
 	s.Require().NoError(tok.Set("aud", "test"))
-	s.Require().NoError(tok.Set("cid", "client2"))
+	s.Require().NoError(tok.Set("cid", "client-123"))
 	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-standard"}}))
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	s.Require().NoError(err)
@@ -517,6 +526,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 
 	_, err = client.Rewrap(context.Background(), &kas.RewrapRequest{})
 	s.Require().NoError(err)
+	s.Equal(fakeServer.clientID, "client-123")
 	s.NotNil(fakeServer.dpopKey)
 	dpopJWKFromRequest, ok := fakeServer.dpopKey.(jwk.RSAPublicKey)
 	s.True(ok)
@@ -552,12 +562,15 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 
 	jwkChan := make(chan jwk.Key, 1)
 	timeout := make(chan string, 1)
+	clientIDChan := make(chan string, 1)
 	go func() {
 		time.Sleep(5 * time.Second)
 		timeout <- ""
 	}()
 	server := httptest.NewServer(s.auth.MuxHandler(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 		jwkChan <- ctxAuth.GetJWKFromContext(req.Context(), logger.CreateTestLogger())
+		cid, _ := ctxAuth.GetClientIDFromContext(req.Context())
+		clientIDChan <- cid
 	})))
 	defer server.Close()
 
@@ -585,6 +598,15 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	case <-timeout:
 		s.Require().FailNow("timed out waiting for call to complete")
 	}
+	var clientID string
+	select {
+	case cid := <-clientIDChan:
+		clientID = cid
+	case <-timeout:
+		s.Require().FailNow("timed out waiting for call to complete")
+	}
+
+	s.Equal(clientID, "client2")
 
 	s.NotNil(dpopKeyFromRequest)
 	dpopJWKFromRequest, ok := dpopKeyFromRequest.(jwk.RSAPublicKey)

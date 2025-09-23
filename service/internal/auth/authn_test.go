@@ -39,6 +39,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -261,6 +262,63 @@ func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	_, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/Rewrap", unauthHeader)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "unauthenticated")
+}
+
+func (s *AuthSuite) Test_ConnectUnaryServerInterceptor_ClientIDPropagated() {
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	// default client ID claim in policy config is 'azp'
+	s.Require().NoError(tok.Set("azp", "test-client-id"))
+	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-standard"}}))
+
+	policyCfg := new(PolicyConfig)
+	err := defaults.Set(policyCfg)
+	s.Require().NoError(err)
+
+	authnConfig := AuthNConfig{
+		Issuer:   s.server.URL,
+		Audience: "test",
+		Policy:   *policyCfg,
+	}
+	config := Config{
+		AuthNConfig: authnConfig,
+	}
+	auth, err := NewAuthenticator(context.Background(), config, &logger.Logger{
+		Logger: slog.New(slog.Default().Handler()),
+	}, func(_ string, _ any) error { return nil })
+	s.Require().NoError(err)
+
+	// Sign the token
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+
+	// Create a minimal connect server setup to properly test the interceptor
+	// This is necessary because connect requests need proper procedure routing
+	interceptor := connect.WithInterceptors(auth.ConnectUnaryServerInterceptor())
+
+	fakeServer := &FakeAccessServiceServer{}
+	mux := http.NewServeMux()
+	path, handler := kasconnect.NewAccessServiceHandler(fakeServer, interceptor)
+	mux.Handle(path, handler)
+
+	server := memhttp.New(mux)
+	defer server.Close()
+
+	// Create a connect client that sends a Bearer token
+	conn, _ := grpc.NewClient("passthrough://bufconn", grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+		return server.Listener.DialContext(ctx, "tcp", "http://localhost:8080")
+	}), grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	client := kas.NewAccessServiceClient(conn)
+
+	// Make the request
+	_, err = client.Rewrap(metadata.AppendToOutgoingContext(s.T().Context(), "authorization", "Bearer "+string(signedTok)), &kas.RewrapRequest{})
+	s.Require().NoError(err)
+
+	// Assert that the client ID was properly extracted and set in the context
+	s.Equal("test-client-id", fakeServer.clientID)
 }
 
 func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
@@ -526,7 +584,10 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 
 	_, err = client.Rewrap(context.Background(), &kas.RewrapRequest{})
 	s.Require().NoError(err)
+	
+	// interceptor propagated clientID from the token at the configured claim
 	s.Equal(fakeServer.clientID, "client-123")
+
 	s.NotNil(fakeServer.dpopKey)
 	dpopJWKFromRequest, ok := fakeServer.dpopKey.(jwk.RSAPublicKey)
 	s.True(ok)

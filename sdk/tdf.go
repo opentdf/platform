@@ -719,12 +719,18 @@ func createPolicyObject(attributes []AttributeValueFQN) (PolicyObject, error) {
 	policyObj := PolicyObject{}
 	policyObj.UUID = uuidObj.String()
 
+	// Deduplicate attributes
+	uniqueAttributes := make(map[string]struct{})
 	for _, attribute := range attributes {
-		attributeObj := attributeObject{}
-		attributeObj.Attribute = attribute.String()
-		policyObj.Body.DataAttributes = append(policyObj.Body.DataAttributes, attributeObj)
-		policyObj.Body.Dissem = make([]string, 0)
+		attributeStr := attribute.String()
+		if _, exists := uniqueAttributes[attributeStr]; !exists {
+			uniqueAttributes[attributeStr] = struct{}{}
+			attributeObj := attributeObject{Attribute: attributeStr}
+			policyObj.Body.DataAttributes = append(policyObj.Body.DataAttributes, attributeObj)
+		}
 	}
+
+	policyObj.Body.Dissem = make([]string, 0)
 
 	return policyObj, nil
 }

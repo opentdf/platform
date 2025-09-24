@@ -404,9 +404,9 @@ func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOpti
 	}
 }
 
-// WithAssertionProviderFactory sets a custom assertion validation builder for reading.
+// WithAssertionRegistryReader sets a custom assertion validation builder for reading.
 // If not set, the default key-based builder will be used.
-func WithAssertionProviderFactory(factory *AssertionRegistry) TDFReaderOption {
+func WithAssertionRegistryReader(factory *AssertionRegistry) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.assertionRegistry = factory
 		return nil

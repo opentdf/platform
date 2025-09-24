@@ -123,8 +123,8 @@ func decrypt(cmd *cobra.Command, args []string) error {
 			keyValidator := sdk.NewKeyAssertionValidator(keys)
 			registry.RegisterValidator(keyPattern, keyValidator)
 		}
-		// Register the registry with the SDK client
-		opts = append(opts, sdk.WithAssertionProviderFactory(registry))
+		// Add the registry to the SDK client
+		opts = append(opts, sdk.WithAssertionRegistryReader(registry))
 		// Enable assertion verification
 		opts = append(opts, sdk.WithDisableAssertionVerification(false))
 		tdfreader, err := client.LoadTDF(file, opts...)

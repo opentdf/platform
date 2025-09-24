@@ -584,7 +584,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 
 	_, err = client.Rewrap(context.Background(), &kas.RewrapRequest{})
 	s.Require().NoError(err)
-	
+
 	// interceptor propagated clientID from the token at the configured claim
 	s.Equal(fakeServer.clientID, "client-123")
 
@@ -873,6 +873,67 @@ func (s *AuthSuite) Test_LookupGatewayPaths() {
 		s.Run(tt.name, func() {
 			result := s.auth.lookupGatewayPaths(context.Background(), tt.path, tt.header)
 			s.Equal(tt.expected, result)
+		})
+	}
+}
+
+func Test_GetClientIDFromToken(t *testing.T) {
+	tests := []struct {
+		name              string
+		claims            map[string]interface{}
+		clientIDClaim     string
+		expectedClientID  string
+		expectedClaimName string
+	}{
+		{
+			name: "Happy Path",
+			claims: map[string]interface{}{
+				"cid": "test-client-id",
+			},
+			clientIDClaim:     "cid",
+			expectedClientID:  "test-client-id",
+			expectedClaimName: "cid",
+		},
+		{
+			name: "Claim not found",
+			claims: map[string]interface{}{
+				"other-claim": "some-value",
+			},
+			clientIDClaim:     "cid",
+			expectedClientID:  "",
+			expectedClaimName: "cid",
+		},
+		{
+			name: "Other claim name",
+			claims: map[string]interface{}{
+				"client": "test-client-id",
+			},
+			clientIDClaim:     "client",
+			expectedClientID:  "test-client-id",
+			expectedClaimName: "client",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			auth := &Authentication{
+				oidcConfiguration: AuthNConfig{
+					Policy: PolicyConfig{
+						ClientIDClaim: tt.clientIDClaim,
+					},
+				},
+			}
+
+			tok := jwt.New()
+			for k, v := range tt.claims {
+				err := tok.Set(k, v)
+				require.NoError(t, err)
+			}
+
+			clientID, clientIDClaimName := auth.getClientIDFromToken(tok)
+
+			assert.Equal(t, tt.expectedClientID, clientID)
+			assert.Equal(t, tt.expectedClaimName, clientIDClaimName)
 		})
 	}
 }

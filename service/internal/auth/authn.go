@@ -70,9 +70,6 @@ const (
 	ActionDelete    = "delete"
 	ActionUnsafe    = "unsafe"
 	ActionOther     = "other"
-
-	mdAccessTokenKey = "access_token"
-	mdClientIDKey    = "client_id"
 )
 
 // Authentication holds a jwks cache and information about the openid configuration
@@ -244,15 +241,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		var clientID string
-		clientIDClaim := a.oidcConfiguration.Policy.ClientIDClaim
-		if clientIDClaim != "" {
-			if id, ok := accessTok.Get(clientIDClaim); ok {
-				if clientIDClaimValue, ok := id.(string); ok {
-					clientID = clientIDClaimValue
-				}
-			}
-		}
+		clientID, clientIDClaim := a.getClientIDFromToken(accessTok)
 		ctxWithMetadata := ctxAuth.ContextWithAuthnMetadata(ctxWithJWK, clientID)
 
 		// Check if the token is allowed to access the resource
@@ -343,15 +332,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 
-			var clientID string
-			clientIDClaim := a.oidcConfiguration.Policy.ClientIDClaim
-			if clientIDClaim != "" {
-				if id, ok := token.Get(clientIDClaim); ok {
-					if idStr, ok := id.(string); ok {
-						clientID = idStr
-					}
-				}
-			}
+			clientID, clientIDClaim := a.getClientIDFromToken(token)
 			ctxWithMetadata := ctxAuth.ContextWithAuthnMetadata(ctxWithJWK, clientID)
 
 			// Check if the token is allowed to access the resource
@@ -704,16 +685,23 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 			}
 
 			// Return the next context with the token
-			var clientID string
-			if clientIDClaim := a.oidcConfiguration.Policy.ClientIDClaim; clientIDClaim != "" {
-				if id, ok := token.Get(clientIDClaim); ok {
-					if idStr, ok := id.(string); ok {
-						clientID = idStr
-					}
-				}
-			}
+			clientID, _ := a.getClientIDFromToken(token)
 			return ctxAuth.ContextWithAuthnMetadata(ctxWithJWK, clientID), nil
 		}
 	}
 	return ctx, nil
+}
+
+// getClientIDFromToken returns the client ID from the token and the configured claim name
+func (a *Authentication) getClientIDFromToken(tok jwt.Token) (string, string) {
+	var clientID string
+	clientIDClaim := a.oidcConfiguration.Policy.ClientIDClaim
+	if clientIDClaim != "" {
+		if val, ok := tok.Get(clientIDClaim); ok {
+			if strVal, ok := val.(string); ok {
+				clientID = strVal
+			}
+		}
+	}
+	return clientID, clientIDClaim
 }

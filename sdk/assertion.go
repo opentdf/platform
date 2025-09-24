@@ -182,6 +182,9 @@ type Binding struct {
 	Method string `json:"method,omitempty"`
 	// Signature of the assertion.
 	Signature string `json:"signature,omitempty"`
+	// Version of the canonicalization and binding format (default: "1.0")
+	// This allows future changes to canonicalization while maintaining compatibility
+	Version string `json:"version,omitempty"`
 }
 
 // AssertionType represents the type of the assertion.

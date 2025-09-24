@@ -880,38 +880,91 @@ func (s *AuthSuite) Test_LookupGatewayPaths() {
 
 func Test_GetClientIDFromToken(t *testing.T) {
 	tests := []struct {
-		name              string
-		claims            map[string]interface{}
-		clientIDClaim     string
-		expectedClientID  string
-		expectedClaimName string
+		name             string
+		claims           map[string]interface{}
+		clientIDClaim    string
+		expectedClientID string
+		expectedErr      error
+		expectError      bool
 	}{
 		{
-			name: "Happy Path",
+			name: "Happy Path - simple claim",
 			claims: map[string]interface{}{
 				"cid": "test-client-id",
 			},
-			clientIDClaim:     "cid",
-			expectedClientID:  "test-client-id",
-			expectedClaimName: "cid",
+			clientIDClaim:    "cid",
+			expectedClientID: "test-client-id",
+			expectError:      false,
 		},
 		{
-			name: "Claim not found",
-			claims: map[string]interface{}{
-				"other-claim": "some-value",
-			},
-			clientIDClaim:     "cid",
-			expectedClientID:  "",
-			expectedClaimName: "cid",
-		},
-		{
-			name: "Other claim name",
+			name: "Happy Path - different claim name",
 			claims: map[string]interface{}{
 				"client": "test-client-id",
 			},
-			clientIDClaim:     "client",
-			expectedClientID:  "test-client-id",
-			expectedClaimName: "client",
+			clientIDClaim:    "client",
+			expectedClientID: "test-client-id",
+			expectError:      false,
+		},
+		{
+			name: "Happy Path - dot notation",
+			claims: map[string]interface{}{
+				"client": map[string]interface{}{
+					"info": map[string]interface{}{
+						"id": "test-client-id",
+					},
+				},
+			},
+			clientIDClaim:    "client.info.id",
+			expectedClientID: "test-client-id",
+			expectError:      false,
+		},
+		{
+			name:             "Error - no client ID claim configured",
+			claims:           map[string]interface{}{"cid": "test"},
+			clientIDClaim:    "", // empty claim name
+			expectedClientID: "",
+			expectedErr:      ErrClientIDClaimNotConfigured,
+			expectError:      true,
+		},
+		{
+			name: "Error - claim not found",
+			claims: map[string]interface{}{
+				"other-claim": "some-value",
+			},
+			clientIDClaim:    "cid",
+			expectedClientID: "",
+			expectedErr:      ErrClientIDClaimNotFound,
+			expectError:      true,
+		},
+		{
+			name: "Error - claim is not a string (int)",
+			claims: map[string]interface{}{
+				"cid": 12345,
+			},
+			clientIDClaim:    "cid",
+			expectedClientID: "",
+			expectedErr:      ErrClientIDClaimNotString,
+			expectError:      true,
+		},
+		{
+			name: "Error - claim is not a string (bool)",
+			claims: map[string]interface{}{
+				"cid": true,
+			},
+			clientIDClaim:    "cid",
+			expectedClientID: "",
+			expectedErr:      ErrClientIDClaimNotString,
+			expectError:      true,
+		},
+		{
+			name: "Error - claim is not a string (object)",
+			claims: map[string]interface{}{
+				"cid": map[string]interface{}{"nested": "value"},
+			},
+			clientIDClaim:    "cid",
+			expectedClientID: "",
+			expectedErr:      ErrClientIDClaimNotString,
+			expectError:      true,
 		},
 	}
 
@@ -931,10 +984,16 @@ func Test_GetClientIDFromToken(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			clientID, clientIDClaimName := auth.getClientIDFromToken(tok)
+			clientID, err := auth.getClientIDFromToken(context.Background(), tok)
 
 			assert.Equal(t, tt.expectedClientID, clientID)
-			assert.Equal(t, tt.expectedClaimName, clientIDClaimName)
+
+			if tt.expectError {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, tt.expectedErr)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }

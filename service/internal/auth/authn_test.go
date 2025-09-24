@@ -984,7 +984,7 @@ func Test_GetClientIDFromToken(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			clientID, err := auth.getClientIDFromToken(context.Background(), tok)
+			clientID, err := auth.getClientIDFromToken(t.Context(), tok)
 
 			assert.Equal(t, tt.expectedClientID, clientID)
 

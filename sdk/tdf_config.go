@@ -270,6 +270,7 @@ type TDFReaderConfig struct {
 	kasSessionKey             ocrypto.KeyPair
 	kasAllowlist              AllowList // KAS URLs that are allowed to be used for reading TDFs
 	ignoreAllowList           bool      // If true, the kasAllowlist will be ignored, and all KAS URLs will be allowed
+	fulfillableObligationFQNs []string
 }
 
 type AllowList map[string]bool
@@ -423,6 +424,13 @@ func WithIgnoreAllowlist(ignore bool) TDFReaderOption {
 func withSessionKey(k ocrypto.KeyPair) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.kasSessionKey = k
+		return nil
+	}
+}
+
+func withFulfillableObligationFQNs(fqns []string) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.fulfillableObligationFQNs = fqns
 		return nil
 	}
 }

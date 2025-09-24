@@ -167,8 +167,8 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 		}
 	}
 
-	kasClient := newKASClient(s.conn.Client, s.conn.Options, s.tokenSource, s.kasSessionKey)
-	allRewrapResp := make(map[string][]kaoResult)
+	kasClient := newKASClient(s.conn.Client, s.conn.Options, s.tokenSource, s.kasSessionKey, s.fulfillableObligationFQNs)
+	allRewrapResp := make(map[string]policyResult)
 	var err error
 	for kasurl, rewrapRequests := range kasRewrapRequests {
 		if bulkReq.ignoreAllowList {
@@ -178,15 +178,20 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 			for _, req := range rewrapRequests {
 				id := req.GetPolicy().GetId()
 				for _, kao := range req.GetKeyAccessObjects() {
-					allRewrapResp[id] = append(allRewrapResp[id], kaoResult{
+					policyRewrapResp, ok := allRewrapResp[id]
+					if !ok {
+						policyRewrapResp = policyResult{policyID: id, obligations: []string{}, kaoRes: []kaoResult{}}
+					}
+					policyRewrapResp.kaoRes = append(policyRewrapResp.kaoRes, kaoResult{
 						Error:             fmt.Errorf("KasAllowlist: kas url %s is not allowed", kasurl),
 						KeyAccessObjectID: kao.GetKeyAccessObjectId(),
 					})
+					allRewrapResp[id] = policyRewrapResp
 				}
 			}
 			continue
 		}
-		var rewrapResp map[string][]kaoResult
+		var rewrapResp map[string]policyResult
 		switch bulkReq.TDFType {
 		case Nano:
 			rewrapResp, err = kasClient.nanoUnwrap(ctx, rewrapRequests...)
@@ -195,7 +200,16 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 		}
 
 		for id, res := range rewrapResp {
-			allRewrapResp[id] = append(allRewrapResp[id], res...)
+			// ! It's possible that we already created a policyResult for the policy above for a specific KAS URL.
+			// ! Meaning for another kas url of the same policy we will end up with an empty list of obligations.
+			// ! This should be fine since we will error out anyways.
+			if existingResp, ok := allRewrapResp[id]; !ok {
+				allRewrapResp[id] = res
+			} else {
+				// ! Should not need to append obligations since they should be the same for all TDFs under a policy
+				existingResp.kaoRes = append(existingResp.kaoRes, res.kaoRes...)
+				allRewrapResp[id] = existingResp
+			}
 		}
 	}
 	if err != nil {
@@ -204,14 +218,15 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 
 	var errList []error
 	for id, tdf := range policyTDF {
-		kaoRes, ok := allRewrapResp[id]
+		policyRes, ok := allRewrapResp[id]
 		if !ok {
 			tdf.Error = errors.New("rewrap did not create a response for this TDF")
 			errList = append(errList, tdf.Error)
 			continue
 		}
 		decryptor := tdfDecryptors[id]
-		if _, err = decryptor.Decrypt(ctx, kaoRes); err != nil {
+		populateDecryptorWithObligations(decryptor, policyRes.obligations)
+		if _, err = decryptor.Decrypt(ctx, policyRes.kaoRes); err != nil {
 			tdf.Error = err
 			errList = append(errList, tdf.Error)
 			continue
@@ -230,4 +245,15 @@ func (b *BulkDecryptRequest) appendTDFs(tdfs ...*BulkTDF) {
 		b.TDFs,
 		tdfs...,
 	)
+}
+
+func populateDecryptorWithObligations(decryptor interface{}, obligations []string) {
+	switch d := decryptor.(type) {
+	case *tdf3DecryptHandler:
+		d.reader.triggeredObligations = obligations
+	case *NanoTDFDecryptHandler:
+		slog.Warn("the NanoTDFDecryptHandler does not support obligations yet")
+	default:
+		slog.Warn("unknown decryptor type, cannot populate obligations", slog.String("type", fmt.Sprintf("%T", d)))
+	}
 }

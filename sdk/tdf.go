@@ -157,7 +157,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
-	tdfConfig, err := newTDFConfig(opts...)
+	tdfConfig, err := NewTDFConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
 	}
@@ -168,7 +168,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	}
 
 	tdfObject := &TDFObject{}
-	err = s.prepareManifest(ctx, tdfObject, *tdfConfig)
+	err = s.PrepareManifest(ctx, tdfObject, *tdfConfig)
 	if err != nil {
 		return nil, fmt.Errorf("fail to create a new split key: %w", err)
 	}
@@ -208,6 +208,9 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		}
 
 		n, err := reader.Read(readBuf.Bytes()[:readSize])
+		if err == io.EOF && totalSegments == 1 {
+			err = nil // EOF is expected on the last segment
+		}
 		if err != nil {
 			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
 		}
@@ -465,12 +468,18 @@ func (t *TDFObject) Manifest() Manifest {
 	return t.manifest
 }
 
+func (t *TDFObject) PayloadKey() []byte {
+	key := make([]byte, len(t.payloadKey))
+	copy(key, t.payloadKey[:])
+	return key
+}
+
 func (r *Reader) Manifest() Manifest {
 	return r.manifest
 }
 
 // prepare the manifest for TDF
-func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFConfig) error { //nolint:funlen,gocognit // Better readability keeping it as is
+func (s SDK) PrepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFConfig) error { //nolint:funlen,gocognit // Better readability keeping it as is
 	manifest := Manifest{}
 
 	if !tdfConfig.excludeVersionFromManifest {
@@ -885,7 +894,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 	var payloadReadOffset int64
 	var decryptedDataOffset int64
 	for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
-		if decryptedDataOffset+seg.Size < r.cursor {
+		if decryptedDataOffset+seg.Size <= r.cursor {
 			decryptedDataOffset += seg.Size
 			payloadReadOffset += seg.EncryptedSize
 			continue

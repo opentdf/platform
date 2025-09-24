@@ -8,7 +8,7 @@ import (
 )
 
 func makeConfig(t *testing.T, cfgFunc TDFOption) *TDFConfig {
-	tdfConfig, err := newTDFConfig(cfgFunc)
+	tdfConfig, err := NewTDFConfig(cfgFunc)
 	require.NoError(t, err)
 	return tdfConfig
 }
@@ -194,7 +194,7 @@ func TestWithTargetMode(t *testing.T) {
 			var cfg *TDFConfig
 			var err error
 
-			cfg, err = newTDFConfig(WithTargetMode(test.targetMode))
+			cfg, err = NewTDFConfig(WithTargetMode(test.targetMode))
 
 			if test.expectError {
 				require.Error(t, err)

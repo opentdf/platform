@@ -80,7 +80,7 @@ type TDFConfig struct {
 	addDefaultAssertion        bool
 }
 
-func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
+func NewTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	c := &TDFConfig{
 		autoconfigure:             true,
 		defaultSegmentSize:        defaultSegmentSize,

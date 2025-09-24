@@ -59,12 +59,6 @@ func Parse[T FullyQualified](identifier string) (T, error) {
 			return result, err
 		}
 
-	case *FullyQualifiedObligation:
-		parsed, err = parseObligationFqn(identifier)
-		if err != nil {
-			return result, err
-		}
-
 	case *FullyQualifiedResourceMappingGroup:
 		parsed, err = parseResourceMappingGroupFqn(identifier)
 		if err != nil {

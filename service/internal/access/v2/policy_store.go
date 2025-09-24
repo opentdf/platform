@@ -17,8 +17,17 @@ type EntitlementPolicyStore interface {
 	ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error)
 	ListAllSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error)
 	ListAllRegisteredResources(ctx context.Context) ([]*policy.RegisteredResource, error)
+	GetEntitlementPolicy(ctx context.Context) (EntitlementPolicy, error)
 	IsEnabled() bool
 	IsReady(context.Context) bool
+}
+
+// The EntitlementPolicy struct holds all the cached entitlement policy, as generics allow one
+// data type per service cache instance.
+type EntitlementPolicy struct {
+	Attributes          []*policy.Attribute
+	SubjectMappings     []*policy.SubjectMapping
+	RegisteredResources []*policy.RegisteredResource
 }
 
 var (
@@ -125,4 +134,26 @@ func (p *EntitlementPolicyRetriever) ListAllRegisteredResources(ctx context.Cont
 	}
 
 	return rrList, nil
+}
+
+func (p *EntitlementPolicyRetriever) GetEntitlementPolicy(ctx context.Context) (EntitlementPolicy, error) {
+	var ep EntitlementPolicy
+	var err error
+
+	ep.Attributes, err = p.ListAllAttributes(ctx)
+	if err != nil {
+		return EntitlementPolicy{}, err
+	}
+
+	ep.SubjectMappings, err = p.ListAllSubjectMappings(ctx)
+	if err != nil {
+		return EntitlementPolicy{}, err
+	}
+
+	ep.RegisteredResources, err = p.ListAllRegisteredResources(ctx)
+	if err != nil {
+		return EntitlementPolicy{}, err
+	}
+
+	return ep, nil
 }

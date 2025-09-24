@@ -138,6 +138,10 @@ func (c *Cache) Delete(ctx context.Context, key string) error {
 	return c.manager.cache.Delete(ctx, c.getKey(key))
 }
 
+func (c *Cache) Wait() {
+	c.manager.underlyingStore.Wait()
+}
+
 func (c *Cache) getKey(key string) string {
 	return c.serviceName + ":" + key
 }

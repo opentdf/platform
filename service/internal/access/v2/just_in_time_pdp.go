@@ -60,19 +60,13 @@ func NewJustInTimePDP(
 		l.DebugContext(ctx, "no EntitlementPolicyStore provided or not yet ready, will retrieve directly from policy services")
 		store = NewEntitlementPolicyRetriever(sdk)
 	}
-
-	allAttributes, err := store.ListAllAttributes(ctx)
+	entitlementPolicy, err := store.GetEntitlementPolicy(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list cached attributes: %w", err)
+		return nil, fmt.Errorf("failed to get entitlement policy from store: %w", err)
 	}
-	allSubjectMappings, err := store.ListAllSubjectMappings(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list cached subject mappings: %w", err)
-	}
-	allRegisteredResources, err := store.ListAllRegisteredResources(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch all registered resources: %w", err)
-	}
+	allAttributes := entitlementPolicy.Attributes
+	allSubjectMappings := entitlementPolicy.SubjectMappings
+	allRegisteredResources := entitlementPolicy.RegisteredResources
 
 	pdp, err := NewPolicyDecisionPoint(ctx, l, allAttributes, allSubjectMappings, allRegisteredResources)
 	if err != nil {

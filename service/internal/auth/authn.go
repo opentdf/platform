@@ -697,7 +697,7 @@ func (a *Authentication) getClientIDFromToken(tok jwt.Token) (string, string) {
 	var clientID string
 	clientIDClaim := a.oidcConfiguration.Policy.ClientIDClaim
 	if clientIDClaim != "" {
-		if val, ok := tok.Get(clientIDClaim); ok {
+		if val, exists := tok.Get(clientIDClaim); exists {
 			if strVal, ok := val.(string); ok {
 				clientID = strVal
 			}

@@ -219,7 +219,8 @@ func TestNormalizeUrl(t *testing.T) {
 func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	// Mock the checkToken method to return a valid token and context
 	mockToken := jwt.New()
-	mockToken.Set("cid", "mockClientID")
+	err := mockToken.Set("cid", "mockClientID")
+	s.Require().NoError(err)
 
 	type contextKey string
 	mockCtx := context.WithValue(context.Background(), contextKey("mockKey"), "mockValue")
@@ -586,7 +587,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	s.Require().NoError(err)
 
 	// interceptor propagated clientID from the token at the configured claim
-	s.Equal(fakeServer.clientID, "client-123")
+	s.Equal("client-123", fakeServer.clientID)
 
 	s.NotNil(fakeServer.dpopKey)
 	dpopJWKFromRequest, ok := fakeServer.dpopKey.(jwk.RSAPublicKey)
@@ -667,7 +668,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 		s.Require().FailNow("timed out waiting for call to complete")
 	}
 
-	s.Equal(clientID, "client2")
+	s.Equal("client2", clientID)
 
 	s.NotNil(dpopKeyFromRequest)
 	dpopJWKFromRequest, ok := dpopKeyFromRequest.(jwk.RSAPublicKey)

@@ -77,7 +77,7 @@ func TestContextWithAuthnMetadata(t *testing.T) {
 	mockClientID := "test-client-id"
 
 	t.Run("should add access token and client id to metadata", func(t *testing.T) {
-		ctx := ContextWithAuthNInfo(context.Background(), nil, nil, "raw-token-string")
+		ctx := ContextWithAuthNInfo(t.Context(), nil, nil, "raw-token-string")
 		enrichedCtx := ContextWithAuthnMetadata(ctx, mockClientID)
 
 		md, ok := metadata.FromIncomingContext(enrichedCtx)
@@ -93,7 +93,7 @@ func TestContextWithAuthnMetadata(t *testing.T) {
 	})
 
 	t.Run("should not set client id if empty", func(t *testing.T) {
-		ctx := ContextWithAuthNInfo(context.Background(), nil, nil, "raw-token-string")
+		ctx := ContextWithAuthNInfo(t.Context(), nil, nil, "raw-token-string")
 		enrichedCtx := ContextWithAuthnMetadata(ctx, "")
 
 		md, ok := metadata.FromIncomingContext(enrichedCtx)
@@ -105,7 +105,7 @@ func TestContextWithAuthnMetadata(t *testing.T) {
 
 	t.Run("should preserve existing metadata", func(t *testing.T) {
 		originalMD := metadata.New(map[string]string{"original-key": "original-value"})
-		ctx := metadata.NewIncomingContext(context.Background(), originalMD)
+		ctx := metadata.NewIncomingContext(t.Context(), originalMD)
 		ctx = ContextWithAuthNInfo(ctx, nil, nil, "raw-token-string")
 
 		enrichedCtx := ContextWithAuthnMetadata(ctx, mockClientID)

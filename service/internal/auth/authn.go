@@ -233,8 +233,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 				origin = "http://" + strings.TrimSuffix(origin, ":80")
 			}
 		}
-		ctx := r.Context()
-		accessTok, ctxWithJWK, err := a.checkToken(ctx, header, receiverInfo{
+		accessTok, ctx, err := a.checkToken(r.Context(), header, receiverInfo{
 			u: []string{normalizeURL(origin, r.URL)},
 			m: []string{r.Method},
 		}, dp)
@@ -259,7 +258,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			log = log.
 				With("client_id", clientID).
 				With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
-			ctx = ctxAuth.ContextWithAuthnMetadata(ctxWithJWK, clientID)
+			ctx = ctxAuth.ContextWithAuthnMetadata(ctx, clientID)
 		}
 
 		// Check if the token is allowed to access the resource
@@ -276,7 +275,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		}
 		if allow, err := a.enforcer.Enforce(accessTok, r.URL.Path, action); err != nil {
 			if err.Error() == "permission denied" {
-				log.WarnContext(ctx,
+				log.WarnContext(
+					ctx,
 					"permission denied",
 					slog.String("azp", accessTok.Subject()),
 					slog.Any("error", err),
@@ -348,10 +348,10 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 
-			clientID, err := a.getClientIDFromToken(ctx, token)
+			clientID, err := a.getClientIDFromToken(ctxWithJWK, token)
 			if err != nil {
 				log.WarnContext(
-					ctx,
+					ctxWithJWK,
 					"could not determine client ID from token",
 					slog.Any("err", err),
 				)

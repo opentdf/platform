@@ -180,9 +180,7 @@ func (s *AuthSuite) SetupTest() {
 				"/static-doublestar4/x/**",
 			},
 		},
-		&logger.Logger{
-			Logger: slog.New(slog.Default().Handler()),
-		},
+		logger.CreateTestLogger(),
 		func(_ string, _ any) error { return nil },
 	)
 
@@ -286,9 +284,7 @@ func (s *AuthSuite) Test_ConnectUnaryServerInterceptor_ClientIDPropagated() {
 	config := Config{
 		AuthNConfig: authnConfig,
 	}
-	auth, err := NewAuthenticator(context.Background(), config, &logger.Logger{
-		Logger: slog.New(slog.Default().Handler()),
-	}, func(_ string, _ any) error { return nil })
+	auth, err := NewAuthenticator(s.T().Context(), config, logger.CreateTestLogger(), func(_ string, _ any) error { return nil })
 	s.Require().NoError(err)
 
 	// Sign the token

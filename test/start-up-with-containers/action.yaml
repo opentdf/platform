@@ -117,6 +117,8 @@ runs:
 
         <opentdf-dev.yaml >opentdf.yaml yq e "${yq_command}"
 
+        cat opentdf.yaml
+
       working-directory: otdf-test-platform
     - name: Enable ECC wrapping for TDFs
       shell: bash

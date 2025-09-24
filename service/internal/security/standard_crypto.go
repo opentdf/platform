@@ -236,7 +236,7 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 		}
 		k := StandardECCrypto{
 			KeyPairInfo: KeyPairInfo{
-				Algorithm:   AlgorithmRSA2048,
+				Algorithm:   AlgorithmECP256R1,
 				KID:         id,
 				Private:     kasInfo.PrivateKeyPath,
 				Certificate: kasInfo.PublicKeyPath,

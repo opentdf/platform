@@ -144,7 +144,7 @@ message CreateObligationRequest {
 req := &obligations.CreateObligationRequest{Name: "drm"}
 ```
 
-**ERD for Proto Generation Process:**
+**Proto Generation Process Flow:**
 ```mermaid
 erDiagram
     CONSTANTS_FILE ||--o{ TEMPLATE_FILE : "provides variables to"

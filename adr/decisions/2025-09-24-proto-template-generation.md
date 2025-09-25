@@ -144,36 +144,38 @@ message CreateObligationRequest {
 req := &obligations.CreateObligationRequest{Name: "drm"}
 ```
 
-**ERD for Proto Generation Process:**
+**Proto Generation Process Flow:**
 ```mermaid
-erDiagram
-    CONSTANTS_FILE ||--o{ TEMPLATE_FILE : "provides variables to"
-    TEMPLATE_FILE ||--|| GENERATED_PROTO : "generates"
-    GENERATED_PROTO ||--o{ COMPILED_CODE : "compiles to"
+flowchart TD
+    A[Proto Template Files<br/>*.proto.template] --> B{Load Constants}
+    B --> C[proto_constants.env]
+    B --> D[validation_rules.yaml]
+    B --> E[limits.json]
     
-    CONSTANTS_FILE {
-        string filename
-        string format "env|yaml|json"
-        map variables
-    }
+    C --> F[Template Processor<br/>envsubst/custom tool]
+    D --> F
+    E --> F
+    A --> F
     
-    TEMPLATE_FILE {
-        string filename "*.proto.template"
-        string content "proto with ${VAR} substitutions"
-        array imports
-    }
+    F --> G{Validation}
+    G -->|Valid| H[Generated Proto Files<br/>*.proto]
+    G -->|Invalid| I[Build Error<br/>Template syntax/missing vars]
     
-    GENERATED_PROTO {
-        string filename "*.proto"
-        string content "standard protobuf"
-        timestamp generated_at
-    }
+    H --> J[Buf Generate]
+    J --> K[Generated Code<br/>Go/TS/Python]
     
-    COMPILED_CODE {
-        string language "go|typescript|python"
-        string output_path
-        array generated_files
-    }
+    L[Developer] -->|Edits| A
+    L -->|Updates| C
+    L -->|Updates| D
+    L -->|Updates| E
+    
+    M[CI/CD Pipeline] --> F
+    N[Local Development] --> F
+    
+    style H fill:#90EE90
+    style I fill:#FFB6C1
+    style K fill:#87CEEB
+    style A fill:#F0E68C
 ```
 
 Build Process Integration:

@@ -179,6 +179,7 @@ erDiagram
 Build Process Integration:
 ```makefile
 # Generate proto files from templates
+# Note: This assumes variables from a file like proto_constants.env are exported into the shell environment.
 proto-gen:
 	@echo "Generating proto files from templates..."
 	@find . -name "*.proto.template" -exec sh -c 'envsubst < "$$1" > "$${1%.template}"' _ {} \;

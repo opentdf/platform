@@ -90,7 +90,7 @@ func NewIDPAccessTokenSource(
 }
 
 // AccessToken use a pointer receiver so that the token state is shared
-func (t *IDPAccessTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error) {
+func (t *IDPAccessTokenSource) AccessToken(_ context.Context, client *http.Client) (auth.AccessToken, error) {
 	t.tokenMutex.Lock()
 	defer t.tokenMutex.Unlock()
 

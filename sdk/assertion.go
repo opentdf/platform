@@ -4,18 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"runtime"
-	"time"
 
 	"github.com/gowebpki/jcs"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
-)
-
-const (
-	SystemMetadataAssertionID = "system-metadata"
-	SystemMetadataSchemaV1    = "system-metadata-v1"
 )
 
 // AssertionConfig is a shadow of Assertion with the addition of the signing key.
@@ -44,15 +37,20 @@ var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with 
 // It returns an error if the signing fails.
 // The assertion binding is updated with the method and the signature.
 func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
+	if key.IsEmpty() {
+		return errors.New("signing key not configured")
+	}
+	// Configure JWT with assertion hash and signature claims
 	tok := jwt.New()
 	if err := tok.Set(kAssertionHash, hash); err != nil {
 		return fmt.Errorf("failed to set assertion hash: %w", err)
 	}
-	if err := tok.Set(kAssertionSignature, sig); err != nil {
+	assertionSig := ocrypto.Base64Encode([]byte(sig))
+	if err := tok.Set(kAssertionSignature, assertionSig); err != nil {
 		return fmt.Errorf("failed to set assertion signature: %w", err)
 	}
 
-	// sign the hash and signature
+	// Sign the token with the configured key
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key))
 	if err != nil {
 		return fmt.Errorf("signing assertion failed: %w", err)
@@ -67,7 +65,7 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 
 // Verify checks the binding signature of the assertion and
 // returns the hash and the signature. It returns an error if the verification fails.
-func (a Assertion) Verify(key AssertionKey) (string, string, error) {
+func (a *Assertion) Verify(key AssertionKey) (string, string, error) {
 	tok, err := jwt.Parse([]byte(a.Binding.Signature),
 		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key),
 	)
@@ -78,7 +76,7 @@ func (a Assertion) Verify(key AssertionKey) (string, string, error) {
 	if !found {
 		return "", "", errors.New("hash claim not found")
 	}
-	hash, ok := hashClaim.(string)
+	verifiedHash, ok := hashClaim.(string)
 	if !ok {
 		return "", "", errors.New("hash claim is not a string")
 	}
@@ -87,15 +85,18 @@ func (a Assertion) Verify(key AssertionKey) (string, string, error) {
 	if !found {
 		return "", "", errors.New("signature claim not found")
 	}
-	sig, ok := sigClaim.(string)
+	verifiedSignature, ok := sigClaim.(string)
 	if !ok {
 		return "", "", errors.New("signature claim is not a string")
 	}
-	return hash, sig, nil
+	decodedSig, _ := ocrypto.Base64Decode([]byte(verifiedSignature))
+	decodedSig2, _ := ocrypto.Base64Decode(decodedSig)
+	verifiedSignatureString := string(decodedSig2)
+	return verifiedHash, verifiedSignatureString, nil
 }
 
 // GetHash returns the hash of the assertion in hex format.
-func (a Assertion) GetHash() ([]byte, error) {
+func (a *Assertion) GetHash() ([]byte, error) {
 	// Clear out the binding
 	a.Binding = Binding{}
 
@@ -164,12 +165,18 @@ func (s *Statement) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+const (
+	// StatementFormatJSON is a marshaled JSON object into a string
+	StatementFormatJSON   = "json"
+	StatementFormatString = "string"
+)
+
 // Statement includes information applying to the scope of the assertion.
 // It could contain rights, handling instructions, or general metadata.
 type Statement struct {
-	// Format describes the payload encoding format. (e.g. json)
+	// Format describes the payload encoding format. (e.g. json-structured, string)
 	Format string `json:"format,omitempty" validate:"required"`
-	// Schema describes the schema of the payload. (e.g. tdf)
+	// Schema URI identifying the schema or standard that defines the structure and semantics of the value.
 	Schema string `json:"schema,omitempty" validate:"required"`
 	// Value is the payload of the assertion.
 	Value string `json:"value,omitempty"  validate:"required"`
@@ -289,45 +296,4 @@ func (k AssertionVerificationKeys) Get(assertionID string) (AssertionKey, error)
 // IsEmpty returns true if the default key and the keys map are empty.
 func (k AssertionVerificationKeys) IsEmpty() bool {
 	return k.DefaultKey.IsEmpty() && len(k.Keys) == 0
-}
-
-// GetSystemMetadataAssertionConfig returns a default assertion configuration with predefined values.
-func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
-	// Define the JSON structure
-	type Metadata struct {
-		TDFSpecVersion string `json:"tdf_spec_version,omitempty"`
-		CreationDate   string `json:"creation_date,omitempty"`
-		OS             string `json:"operating_system,omitempty"`
-		SDKVersion     string `json:"sdk_version,omitempty"`
-		GoVersion      string `json:"go_version,omitempty"`
-		Architecture   string `json:"architecture,omitempty"`
-	}
-
-	// Populate the metadata
-	metadata := Metadata{
-		TDFSpecVersion: TDFSpecVersion,
-		CreationDate:   time.Now().Format(time.RFC3339),
-		OS:             runtime.GOOS,
-		SDKVersion:     "Go-" + Version,
-		GoVersion:      runtime.Version(),
-		Architecture:   runtime.GOARCH,
-	}
-
-	// Marshal the metadata to JSON
-	metadataJSON, err := json.Marshal(metadata)
-	if err != nil {
-		return AssertionConfig{}, fmt.Errorf("failed to marshal system metadata: %w", err)
-	}
-
-	return AssertionConfig{
-		ID:             SystemMetadataAssertionID,
-		Type:           BaseAssertion,
-		Scope:          PayloadScope,
-		AppliesToState: Unencrypted,
-		Statement: Statement{
-			Format: "json",
-			Schema: SystemMetadataSchemaV1,
-			Value:  string(metadataJSON),
-		},
-	}, nil
 }

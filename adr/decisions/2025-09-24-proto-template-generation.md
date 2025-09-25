@@ -148,12 +148,8 @@ req := &obligations.CreateObligationRequest{Name: "drm"}
 flowchart TD
     A[Proto Template Files<br/>*.proto.template] --> B{Load Constants}
     B --> C[proto_constants.env]
-    B --> D[validation_rules.yaml]
-    B --> E[limits.json]
     
     C --> F[Template Processor<br/>envsubst/custom tool]
-    D --> F
-    E --> F
     A --> F
     
     F --> G{Validation}
@@ -165,8 +161,6 @@ flowchart TD
     
     L[Developer] -->|Edits| A
     L -->|Updates| C
-    L -->|Updates| D
-    L -->|Updates| E
     
     M[CI/CD Pipeline] --> F
     N[Local Development] --> F

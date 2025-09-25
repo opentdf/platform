@@ -287,7 +287,6 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 		)
 	default:
 		ts, err = NewIDPAccessTokenSource(
-			c.logger,
 			*c.clientCredentials,
 			c.tokenEndpoint,
 			c.scopes,

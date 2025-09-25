@@ -18,7 +18,7 @@ type IDPTokenExchangeTokenSource struct {
 }
 
 func NewIDPTokenExchangeTokenSource(logger *slog.Logger, exchangeInfo oauth.TokenExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string, key *ocrypto.RsaKeyPair) (*IDPTokenExchangeTokenSource, error) {
-	idpSource, err := NewIDPAccessTokenSource(slog.Default(), credentials, idpTokenEndpoint, scopes, key)
+	idpSource, err := NewIDPAccessTokenSource(credentials, idpTokenEndpoint, scopes, key)
 	if err != nil {
 		return nil, err
 	}

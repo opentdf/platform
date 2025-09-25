@@ -3,7 +3,6 @@ package sdk
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"sync"
@@ -49,7 +48,6 @@ func getNewDPoPKey(dpopKeyPair *ocrypto.RsaKeyPair) (string, jwk.Key, *ocrypto.A
 // IDPAccessTokenSource credentials that allow us to connect to an IDP and obtain an access token that is bound
 // to a DPoP key
 type IDPAccessTokenSource struct {
-	logger           *slog.Logger
 	credentials      oauth.ClientCredentials
 	idpTokenEndpoint url.URL
 	token            *oauth.Token
@@ -61,7 +59,10 @@ type IDPAccessTokenSource struct {
 }
 
 func NewIDPAccessTokenSource(
-	log *slog.Logger, credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string, key *ocrypto.RsaKeyPair,
+	credentials oauth.ClientCredentials,
+	idpTokenEndpoint string,
+	scopes []string,
+	key *ocrypto.RsaKeyPair,
 ) (*IDPAccessTokenSource, error) {
 	endpoint, err := url.Parse(idpTokenEndpoint)
 	if err != nil {
@@ -74,7 +75,7 @@ func NewIDPAccessTokenSource(
 	}
 
 	tokenSource := IDPAccessTokenSource{
-		logger:           log,
+		// logger:           log,
 		credentials:      credentials,
 		idpTokenEndpoint: *endpoint,
 		token:            nil,
@@ -94,7 +95,6 @@ func (t *IDPAccessTokenSource) AccessToken(ctx context.Context, client *http.Cli
 	defer t.tokenMutex.Unlock()
 
 	if t.token == nil || t.token.Expired() {
-		t.logger.DebugContext(ctx, "getting new access token")
 		tok, err := oauth.GetAccessToken(client, t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
 		if err != nil {
 			return "", fmt.Errorf("error getting access token: %w", err)

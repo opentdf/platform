@@ -72,17 +72,30 @@ Create shared message types containing common values that are referenced by othe
 **Example Implementation:**
 ```protobuf
 // shared_validation.proto
-message FQNValidation {
-  string pattern = 1 [(validate.rules).string.pattern = "^https:\\/\\/[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.\\[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*\\/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]$"];
+message NameValidation {
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
 }
 
 // obligations.proto
 message CreateObligationRequest {
-  string namespace_fqn = 1;
-  FQNValidation fqn_validation = 2; // Indirection layer
-  string name = 3;
+  NameValidation name = 1;
 }
 ```
+```go
+// obligations.go
+req := &obligations.CreateObligationRequest{
+  NameValidation{
+    Name: "drm"
+  }
+}
+```
+
 
 * 🟩 **Good**, because centralizes validation rules in reusable components
 * 🟩 **Good**, because works with existing protobuf toolchain without modification
@@ -100,15 +113,11 @@ Use template files (.proto.template) with variable substitution to generate stan
 
 Template Variables (`proto_constants.env`):
 ```bash
-# FQN Validation Patterns
-FQN_NAMESPACE_PATTERN="^https:\\/\\/[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.\\[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*$"
-FQN_OBLIGATION_PATTERN="^https:\\/\\/[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.\\[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*\\/obl\\/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]$"
+# Name Validation Pattern
+NAME_PATTERN="^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$$"
 
-# Common Field Constraints
+# Common Field Constraint
 MAX_NAME_LENGTH=253
-MIN_NAME_LENGTH=1
-DEFAULT_PAGE_SIZE=20
-MAX_PAGE_SIZE=1000
 ```
 
 Template File (`obligations.proto.template`):
@@ -119,26 +128,20 @@ package policy.obligations;
 
 import "validate/validate.proto";
 
+// obligations.proto
 message CreateObligationRequest {
-  string namespace_fqn = 1 [(validate.rules).string = {
-    pattern: "${FQN_NAMESPACE_PATTERN}",
-    min_len: ${MIN_NAME_LENGTH},
-    max_len: ${MAX_NAME_LENGTH}
-  }];
-  
-  string name = 2 [(validate.rules).string = {
-    min_len: ${MIN_NAME_LENGTH},
-    max_len: ${MAX_NAME_LENGTH}
-  }];
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = ${MAX_NAME_LENGTH},
+    (buf.validate.field).cel = {
+      expression: "this.matches('${NAME_PATTERN}')"
+    }
+  ];
 }
-
-message GetObligationRequest {
-  string fqn = 1 [(validate.rules).string.pattern = "${FQN_OBLIGATION_PATTERN}"];
-}
-
-message ListObligationsRequest {
-  int32 page_size = 1 [(validate.rules).int32 = {gte: 1, lte: ${MAX_PAGE_SIZE}}];
-}
+```
+```go
+// obligations.go
+req := &obligations.CreateObligationRequest{Name: "drm"}
 ```
 
 **ERD for Proto Generation Process:**

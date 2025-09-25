@@ -90,9 +90,9 @@ message CreateObligationRequest {
 ```go
 // obligations.go
 req := &obligations.CreateObligationRequest{
-  NameValidation{
-    Name: "drm"
-  }
+  Name: &NameValidation{
+    Name: "drm",
+  },
 }
 ```
 

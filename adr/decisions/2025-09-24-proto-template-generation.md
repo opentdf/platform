@@ -38,7 +38,6 @@ How can we eliminate duplication in protobuf files while maintaining clarity and
 
 * **Option 1**: Intermediate Message Abstraction
 * **Option 2**: Proto Template Generation with Preprocessing
-* **Option 3**: External Constants via Imports (status quo with improvements)
 
 ## Decision Outcome
 
@@ -114,7 +113,7 @@ Use template files (.proto.template) with variable substitution to generate stan
 Template Variables (`proto_constants.env`):
 ```bash
 # Name Validation Pattern
-NAME_PATTERN="^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$$"
+NAME_PATTERN="^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$"
 
 # Common Field Constraint
 MAX_NAME_LENGTH=253

@@ -146,7 +146,7 @@ func (p *EntitlementPolicyRetriever) ListAllObligations(ctx context.Context) ([]
 			return nil, errors.Join(ErrFailedToFetchObligations, err)
 		}
 
-		nextOffset := listed.GetPagination().GetNextOffset()
+		nextOffset = listed.GetPagination().GetNextOffset()
 		obligationList = append(obligationList, listed.GetObligations()...)
 
 		if nextOffset <= 0 {

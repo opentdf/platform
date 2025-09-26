@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.11.0](https://github.com/opentdf/platform/compare/service/v0.10.0...service/v0.11.0) (2025-09-26)
+
+
+### Features
+
+* **authz:** add obligation fulfillment logic to obligation PDP ([#2740](https://github.com/opentdf/platform/issues/2740)) ([2f8d30d](https://github.com/opentdf/platform/commit/2f8d30d2c3de584b3603678fedec2fac9eb34d70))
+* **authz:** obligations protos within auth service ([#2745](https://github.com/opentdf/platform/issues/2745)) ([41ee5a8](https://github.com/opentdf/platform/commit/41ee5a8c0caaa99d5b80d6ebb23696d13053938f))
+* **authz:** protovalidate tests for new authz obligations fields ([#2747](https://github.com/opentdf/platform/issues/2747)) ([73e6319](https://github.com/opentdf/platform/commit/73e63197ceceb88b66b9faa9b0ed076b4cc8db53))
+* **core:** propagate token clientID on configured claim via interceptor into shared context metadata ([#2760](https://github.com/opentdf/platform/issues/2760)) ([0f77246](https://github.com/opentdf/platform/commit/0f772464dfd9209ef465da3ee3df5521ed660acf))
+* **policy:** Return obligations from GetAttributeValue calls ([#2742](https://github.com/opentdf/platform/issues/2742)) ([aa9b393](https://github.com/opentdf/platform/commit/aa9b393ac27522a3db69131a48409d8f297ebe56))
+
+
+### Bug Fixes
+
+* ECC key loading (deprecated) ([#2757](https://github.com/opentdf/platform/issues/2757)) ([49990eb](https://github.com/opentdf/platform/commit/49990eb5f7c9c0b35f1be3319f73992429d65a18))
+* **policy:** Change to nil ([#2746](https://github.com/opentdf/platform/issues/2746)) ([a449434](https://github.com/opentdf/platform/commit/a44943426e4ffcfb36ee2253c6554689ffa4a76f))
+
 ## [0.10.0](https://github.com/opentdf/platform/compare/service/v0.9.0...service/v0.10.0) (2025-09-17)
 
 

@@ -196,7 +196,6 @@ func processResponse(resp *http.Response) (*Token, error) {
 }
 
 func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce string) (string, error) {
-	slog.Debug("building DPoP Proof")
 	publicKey, err := jwk.PublicKeyOf(dpopJWK)
 	const expirationTime = 5 * time.Minute
 

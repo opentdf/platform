@@ -3,7 +3,6 @@ package sdk
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"sync"
@@ -60,7 +59,10 @@ type IDPAccessTokenSource struct {
 }
 
 func NewIDPAccessTokenSource(
-	credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string, key *ocrypto.RsaKeyPair,
+	credentials oauth.ClientCredentials,
+	idpTokenEndpoint string,
+	scopes []string,
+	key *ocrypto.RsaKeyPair,
 ) (*IDPAccessTokenSource, error) {
 	endpoint, err := url.Parse(idpTokenEndpoint)
 	if err != nil {
@@ -73,6 +75,7 @@ func NewIDPAccessTokenSource(
 	}
 
 	tokenSource := IDPAccessTokenSource{
+		// logger:           log,
 		credentials:      credentials,
 		idpTokenEndpoint: *endpoint,
 		token:            nil,
@@ -87,12 +90,11 @@ func NewIDPAccessTokenSource(
 }
 
 // AccessToken use a pointer receiver so that the token state is shared
-func (t *IDPAccessTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error) {
+func (t *IDPAccessTokenSource) AccessToken(_ context.Context, client *http.Client) (auth.AccessToken, error) {
 	t.tokenMutex.Lock()
 	defer t.tokenMutex.Unlock()
 
 	if t.token == nil || t.token.Expired() {
-		slog.DebugContext(ctx, "getting new access token")
 		tok, err := oauth.GetAccessToken(client, t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
 		if err != nil {
 			return "", fmt.Errorf("error getting access token: %w", err)

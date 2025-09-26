@@ -13,8 +13,8 @@ import (
 var (
 	authnContextKey     = authContextKey{}
 	ErrNoMetadataFound  = errors.New("no metadata found within context")
-	ErrMissingClientID  = errors.New("context metadata missing authn idP clientID that should have been set by interceptor")
-	ErrConflictClientID = errors.New("context metadata has more than one authn idP clientID and should only ever have one")
+	ErrMissingClientID  = errors.New("missing authn idP clientID")
+	ErrConflictClientID = errors.New("context metadata mistakenly has more than one authn idP clientID")
 )
 
 const (

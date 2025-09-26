@@ -2,7 +2,7 @@
   "lib/fixtures": "0.3.0",
   "lib/ocrypto": "0.6.0",
   "lib/flattening": "0.1.3",
-  "lib/identifier": "0.1.0",
+  "lib/identifier": "0.2.0",
   "protocol/go": "0.11.0",
   "sdk": "0.8.0",
   "service": "0.10.0"

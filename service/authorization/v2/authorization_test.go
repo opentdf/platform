@@ -1313,6 +1313,33 @@ func Test_RollupSingleResourceDecision(t *testing.T) {
 			expectedError: nil,
 		},
 		{
+			name:      "should surface obligations in a permit decision",
+			permitted: true,
+			decisions: []*access.Decision{
+				{
+					Access: true,
+					Results: []access.ResourceDecision{
+						{
+							ResourceID: "resource-123",
+							RequiredObligationValueFQNs: []string{
+								"obligation-abc",
+							},
+						},
+					},
+				},
+			},
+			expectedResult: &authzV2.GetDecisionResponse{
+				Decision: &authzV2.ResourceDecision{
+					Decision:            authzV2.Decision_DECISION_PERMIT,
+					EphemeralResourceId: "resource-123",
+					RequiredObligations: []string{
+						"obligation-abc",
+					},
+				},
+			},
+			expectedError: nil,
+		},
+		{
 			name:      "should return deny decision when permitted is false",
 			permitted: false,
 			decisions: []*access.Decision{
@@ -1329,6 +1356,29 @@ func Test_RollupSingleResourceDecision(t *testing.T) {
 				Decision: &authzV2.ResourceDecision{
 					Decision:            authzV2.Decision_DECISION_DENY,
 					EphemeralResourceId: "resource-123",
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name:      "should surface obligations within a deny decision",
+			permitted: false,
+			decisions: []*access.Decision{
+				{
+					Access: true, // Verify permitted takes precedence
+					Results: []access.ResourceDecision{
+						{
+							ResourceID:                  "resource-123",
+							RequiredObligationValueFQNs: []string{"obligation-123"},
+						},
+					},
+				},
+			},
+			expectedResult: &authzV2.GetDecisionResponse{
+				Decision: &authzV2.ResourceDecision{
+					Decision:            authzV2.Decision_DECISION_DENY,
+					EphemeralResourceId: "resource-123",
+					RequiredObligations: []string{"obligation-123"},
 				},
 			},
 			expectedError: nil,
@@ -1364,7 +1414,7 @@ func Test_RollupSingleResourceDecision(t *testing.T) {
 				assert.Nil(t, result)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tc.expectedResult, result)
+				assert.True(t, proto.Equal(tc.expectedResult, result))
 			}
 		})
 	}
@@ -1526,6 +1576,77 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 			},
 		},
 		{
+			name: "should return obligations whenever found on a resource",
+			decisions: []*access.Decision{
+				{
+					Access: true,
+					Results: []access.ResourceDecision{
+						{
+							Passed:     true,
+							ResourceID: "resource-123",
+							RequiredObligationValueFQNs: []string{
+								"obligation-123",
+								"obligation-abc",
+								"obligation-456",
+							},
+						},
+						{
+							Passed:     true,
+							ResourceID: "resource-abc",
+							RequiredObligationValueFQNs: []string{
+								"obligation-abc",
+							},
+						},
+					},
+				},
+				{
+					Access: false,
+					Results: []access.ResourceDecision{
+						{
+							Passed:     false,
+							ResourceID: "resource-456",
+						},
+						{
+							Passed:     true,
+							ResourceID: "resource-extra",
+							RequiredObligationValueFQNs: []string{
+								"obligation-extra",
+							},
+						},
+					},
+				},
+			},
+			expectedResult: []*authzV2.ResourceDecision{
+				{
+					Decision:            authzV2.Decision_DECISION_PERMIT,
+					EphemeralResourceId: "resource-123",
+					RequiredObligations: []string{
+						"obligation-123",
+						"obligation-abc",
+						"obligation-456",
+					},
+				},
+				{
+					Decision:            authzV2.Decision_DECISION_PERMIT,
+					EphemeralResourceId: "resource-abc",
+					RequiredObligations: []string{
+						"obligation-abc",
+					},
+				},
+				{
+					Decision:            authzV2.Decision_DECISION_DENY,
+					EphemeralResourceId: "resource-456",
+				},
+				{
+					Decision:            authzV2.Decision_DECISION_PERMIT,
+					EphemeralResourceId: "resource-extra",
+					RequiredObligations: []string{
+						"obligation-extra",
+					},
+				},
+			},
+		},
+		{
 			name: "should return error when decision has no results",
 			decisions: []*access.Decision{
 				{
@@ -1547,7 +1668,10 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 				assert.Nil(t, result)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tc.expectedResult, result)
+				// resource order preserved
+				for i, decision := range result {
+					assert.True(t, proto.Equal(tc.expectedResult[i], decision))
+				}
 			}
 		})
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"connectrpc.com/connect"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -45,6 +46,7 @@ func rollupMultiResourceDecisions(
 			resourceDecision := &authzV2.ResourceDecision{
 				Decision:            access,
 				EphemeralResourceId: result.ResourceID,
+				RequiredObligations: result.RequiredObligationValueFQNs,
 			}
 			resourceDecisions = append(resourceDecisions, resourceDecision)
 		}
@@ -80,6 +82,7 @@ func rollupSingleResourceDecision(
 	resourceDecision := &authzV2.ResourceDecision{
 		Decision:            access,
 		EphemeralResourceId: result.ResourceID,
+		RequiredObligations: result.RequiredObligationValueFQNs,
 	}
 	return &authzV2.GetDecisionResponse{
 		Decision: resourceDecision,
@@ -88,7 +91,7 @@ func rollupSingleResourceDecision(
 
 // Checks for known error types and returns standardized error codes and messages
 func statusifyError(ctx context.Context, l *logger.Logger, err error, logs ...any) error {
-	l = l.With("error", err.Error())
+	logs = append(logs, slog.Any("error", err))
 	if errors.Is(err, access.ErrFQNNotFound) {
 		l.ErrorContext(ctx, "FQN not found", logs...)
 		return connect.NewError(connect.CodeNotFound, err)

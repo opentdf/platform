@@ -34,7 +34,7 @@ require (
 	github.com/open-policy-agent/opa v1.5.1
 	github.com/opentdf/platform/lib/fixtures v0.3.0
 	github.com/opentdf/platform/lib/flattening v0.1.3
-	github.com/opentdf/platform/lib/identifier v0.1.0
+	github.com/opentdf/platform/lib/identifier v0.2.0
 	github.com/opentdf/platform/lib/ocrypto v0.6.0
 	github.com/opentdf/platform/protocol/go v0.11.0
 	github.com/opentdf/platform/sdk v0.7.0

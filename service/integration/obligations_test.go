@@ -1601,6 +1601,7 @@ func (s *ObligationsSuite) assertObligationBasics(obl *policy.Obligation, name, 
 	s.Equal(name, obl.GetName())
 	s.assertNamespace(obl.GetNamespace(), namespaceID, namespaceName, namespaceFQN)
 	s.assertMetadata(obl.GetMetadata())
+	s.Equal(identifier.BuildOblFQN(namespaceFQN, name), obl.GetFqn())
 }
 
 func (s *ObligationsSuite) assertNamespace(ns *policy.Namespace, namespaceID, namespaceName, namespaceFQN string) {
@@ -1633,6 +1634,7 @@ func (s *ObligationsSuite) assertObligationValueBasics(oblValue *policy.Obligati
 	s.Equal(value, oblValue.GetValue())
 	s.assertNamespace(oblValue.GetObligation().GetNamespace(), namespaceID, namespaceName, namespaceFQN)
 	s.assertMetadata(oblValue.GetMetadata())
+	s.Equal(identifier.BuildOblValFQN(namespaceFQN, oblValue.GetObligation().GetName(), value), oblValue.GetFqn())
 }
 
 func (s *ObligationsSuite) setupTriggerTests() *TriggerSetup {

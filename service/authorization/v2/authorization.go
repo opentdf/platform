@@ -201,7 +201,7 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	}
 	resp, err := rollupSingleResourceDecision(permitted, decisions)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrFailedToRollupDecision, err))
+		return nil, statusifyError(ctx, as.logger, err)
 	}
 	return connect.NewResponse(resp), nil
 }
@@ -246,7 +246,7 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 
 	resourceDecisions, err := rollupMultiResourceDecisions(decisions)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, statusifyError(ctx, as.logger, err)
 	}
 
 	resp := &authzV2.GetDecisionMultiResourceResponse{

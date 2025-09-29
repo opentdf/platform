@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"maps"
 	"regexp"
 	"slices"
@@ -568,7 +569,7 @@ func TestConfigurationServicePutGet(t *testing.T) {
 	} {
 		t.Run(tc.n, func(t *testing.T) {
 			v := valuesToPolicy(tc.policy...)
-			grants, err := newGranterFromAttributes(newKasKeyCache(), v...)
+			grants, err := newGranterFromAttributes(slog.Default(), newKasKeyCache(), v...)
 			require.NoError(t, err)
 			assert.Len(t, grants.grantTable, tc.size)
 			assert.Subset(t, policyToStringKeys(tc.policy), slices.Collect(maps.Keys(grants.grantTable)))
@@ -726,7 +727,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
-			reasoner, err := newGranterFromAttributes(newKasKeyCache(), valuesToPolicy(tc.policy...)...)
+			reasoner, err := newGranterFromAttributes(slog.Default(), newKasKeyCache(), valuesToPolicy(tc.policy...)...)
 			require.NoError(t, err)
 
 			reasoner.keyInfoFetcher = &fakeKeyInfoFetcher{}
@@ -874,7 +875,7 @@ func TestReasonerSpecificity(t *testing.T) {
 		},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
-			reasoner, err := newGranterFromService(t.Context(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
+			reasoner, err := newGranterFromService(t.Context(), slog.Default(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
 			require.NoError(t, err)
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {
@@ -1025,7 +1026,7 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 		},
 	} {
 		t.Run((tc.n + "\n" + tc.desc), func(t *testing.T) {
-			reasoner, err := newGranterFromService(t.Context(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
+			reasoner, err := newGranterFromService(t.Context(), slog.Default(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
 			require.NoError(t, err)
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {

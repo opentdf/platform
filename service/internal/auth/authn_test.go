@@ -39,6 +39,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -56,6 +57,7 @@ type FakeAccessTokenSource struct {
 }
 
 type FakeAccessServiceServer struct {
+	clientID    string
 	accessToken []string
 	dpopKey     jwk.Key
 	kas.UnimplementedAccessServiceServer
@@ -72,6 +74,7 @@ func (f *FakeAccessServiceServer) LegacyPublicKey(_ context.Context, _ *connect.
 func (f *FakeAccessServiceServer) Rewrap(ctx context.Context, req *connect.Request[kas.RewrapRequest]) (*connect.Response[kas.RewrapResponse], error) {
 	f.accessToken = req.Header()["Authorization"]
 	f.dpopKey = ctxAuth.GetJWKFromContext(ctx, logger.CreateTestLogger())
+	f.clientID, _ = ctxAuth.GetClientIDFromContext(ctx)
 
 	return &connect.Response[kas.RewrapResponse]{Msg: &kas.RewrapResponse{}}, nil
 }
@@ -148,7 +151,9 @@ func (s *AuthSuite) SetupTest() {
 		}
 	}))
 
-	policyCfg := PolicyConfig{}
+	policyCfg := PolicyConfig{
+		ClientIDClaim: "cid",
+	}
 	err = defaults.Set(&policyCfg)
 	s.Require().NoError(err)
 
@@ -175,9 +180,7 @@ func (s *AuthSuite) SetupTest() {
 				"/static-doublestar4/x/**",
 			},
 		},
-		&logger.Logger{
-			Logger: slog.New(slog.Default().Handler()),
-		},
+		logger.CreateTestLogger(),
 		func(_ string, _ any) error { return nil },
 	)
 
@@ -214,6 +217,9 @@ func TestNormalizeUrl(t *testing.T) {
 func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	// Mock the checkToken method to return a valid token and context
 	mockToken := jwt.New()
+	err := mockToken.Set("cid", "mockClientID")
+	s.Require().NoError(err)
+
 	type contextKey string
 	mockCtx := context.WithValue(context.Background(), contextKey("mockKey"), "mockValue")
 	s.auth._testCheckTokenFunc = func(_ context.Context, authHeader []string, _ receiverInfo, _ []string) (jwt.Token, context.Context, error) {
@@ -234,6 +240,9 @@ func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	s.Require().NoError(err)
 	s.Require().NotNil(nextCtx)
 	s.Equal("mockValue", nextCtx.Value(contextKey("mockKey")))
+	clientID, err := ctxAuth.GetClientIDFromContext(nextCtx)
+	s.Require().NoError(err)
+	s.Equal("mockClientID", clientID)
 
 	// Test with a route not requiring reauthorization
 	nextCtx, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/PublicKey", nil)
@@ -252,6 +261,61 @@ func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	_, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/Rewrap", unauthHeader)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "unauthenticated")
+}
+
+func (s *AuthSuite) Test_ConnectUnaryServerInterceptor_ClientIDPropagated() {
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	// default client ID claim in policy config is 'azp'
+	s.Require().NoError(tok.Set("azp", "test-client-id"))
+	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-standard"}}))
+
+	policyCfg := new(PolicyConfig)
+	err := defaults.Set(policyCfg)
+	s.Require().NoError(err)
+
+	authnConfig := AuthNConfig{
+		Issuer:   s.server.URL,
+		Audience: "test",
+		Policy:   *policyCfg,
+	}
+	config := Config{
+		AuthNConfig: authnConfig,
+	}
+	auth, err := NewAuthenticator(s.T().Context(), config, logger.CreateTestLogger(), func(_ string, _ any) error { return nil })
+	s.Require().NoError(err)
+
+	// Sign the token
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+
+	// Create a minimal connect server setup to properly test the interceptor
+	// This is necessary because connect requests need proper procedure routing
+	interceptor := connect.WithInterceptors(auth.ConnectUnaryServerInterceptor())
+
+	fakeServer := &FakeAccessServiceServer{}
+	mux := http.NewServeMux()
+	path, handler := kasconnect.NewAccessServiceHandler(fakeServer, interceptor)
+	mux.Handle(path, handler)
+
+	server := memhttp.New(mux)
+	defer server.Close()
+
+	// Create a connect client that sends a Bearer token
+	conn, _ := grpc.NewClient("passthrough://bufconn", grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+		return server.Listener.DialContext(ctx, "tcp", "http://localhost:8080")
+	}), grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	client := kas.NewAccessServiceClient(conn)
+
+	// Make the request
+	_, err = client.Rewrap(metadata.AppendToOutgoingContext(s.T().Context(), "authorization", "Bearer "+string(signedTok)), &kas.RewrapRequest{})
+	s.Require().NoError(err)
+
+	// Assert that the client ID was properly extracted and set in the context
+	s.Equal("test-client-id", fakeServer.clientID)
 }
 
 func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
@@ -482,7 +546,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
 	s.Require().NoError(tok.Set("iss", s.server.URL))
 	s.Require().NoError(tok.Set("aud", "test"))
-	s.Require().NoError(tok.Set("cid", "client2"))
+	s.Require().NoError(tok.Set("cid", "client-123"))
 	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-standard"}}))
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	s.Require().NoError(err)
@@ -517,6 +581,10 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 
 	_, err = client.Rewrap(context.Background(), &kas.RewrapRequest{})
 	s.Require().NoError(err)
+
+	// interceptor propagated clientID from the token at the configured claim
+	s.Equal("client-123", fakeServer.clientID)
+
 	s.NotNil(fakeServer.dpopKey)
 	dpopJWKFromRequest, ok := fakeServer.dpopKey.(jwk.RSAPublicKey)
 	s.True(ok)
@@ -552,12 +620,15 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 
 	jwkChan := make(chan jwk.Key, 1)
 	timeout := make(chan string, 1)
+	clientIDChan := make(chan string, 1)
 	go func() {
 		time.Sleep(5 * time.Second)
 		timeout <- ""
 	}()
 	server := httptest.NewServer(s.auth.MuxHandler(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 		jwkChan <- ctxAuth.GetJWKFromContext(req.Context(), logger.CreateTestLogger())
+		cid, _ := ctxAuth.GetClientIDFromContext(req.Context())
+		clientIDChan <- cid
 	})))
 	defer server.Close()
 
@@ -585,6 +656,15 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	case <-timeout:
 		s.Require().FailNow("timed out waiting for call to complete")
 	}
+	var clientID string
+	select {
+	case cid := <-clientIDChan:
+		clientID = cid
+	case <-timeout:
+		s.Require().FailNow("timed out waiting for call to complete")
+	}
+
+	s.Equal("client2", clientID)
 
 	s.NotNil(dpopKeyFromRequest)
 	dpopJWKFromRequest, ok := dpopKeyFromRequest.(jwk.RSAPublicKey)
@@ -790,6 +870,126 @@ func (s *AuthSuite) Test_LookupGatewayPaths() {
 		s.Run(tt.name, func() {
 			result := s.auth.lookupGatewayPaths(context.Background(), tt.path, tt.header)
 			s.Equal(tt.expected, result)
+		})
+	}
+}
+
+func Test_GetClientIDFromToken(t *testing.T) {
+	tests := []struct {
+		name             string
+		claims           map[string]interface{}
+		clientIDClaim    string
+		expectedClientID string
+		expectedErr      error
+		expectError      bool
+	}{
+		{
+			name: "Happy Path - simple claim",
+			claims: map[string]interface{}{
+				"cid": "test-client-id",
+			},
+			clientIDClaim:    "cid",
+			expectedClientID: "test-client-id",
+			expectError:      false,
+		},
+		{
+			name: "Happy Path - different claim name",
+			claims: map[string]interface{}{
+				"client": "test-client-id",
+			},
+			clientIDClaim:    "client",
+			expectedClientID: "test-client-id",
+			expectError:      false,
+		},
+		{
+			name: "Happy Path - dot notation",
+			claims: map[string]interface{}{
+				"client": map[string]interface{}{
+					"info": map[string]interface{}{
+						"id": "test-client-id",
+					},
+				},
+			},
+			clientIDClaim:    "client.info.id",
+			expectedClientID: "test-client-id",
+			expectError:      false,
+		},
+		{
+			name:             "Error - no client ID claim configured",
+			claims:           map[string]interface{}{"cid": "test"},
+			clientIDClaim:    "", // empty claim name
+			expectedClientID: "",
+			expectedErr:      ErrClientIDClaimNotConfigured,
+			expectError:      true,
+		},
+		{
+			name: "Error - claim not found",
+			claims: map[string]interface{}{
+				"other-claim": "some-value",
+			},
+			clientIDClaim:    "cid",
+			expectedClientID: "",
+			expectedErr:      ErrClientIDClaimNotFound,
+			expectError:      true,
+		},
+		{
+			name: "Error - claim is not a string (int)",
+			claims: map[string]interface{}{
+				"cid": 12345,
+			},
+			clientIDClaim:    "cid",
+			expectedClientID: "",
+			expectedErr:      ErrClientIDClaimNotString,
+			expectError:      true,
+		},
+		{
+			name: "Error - claim is not a string (bool)",
+			claims: map[string]interface{}{
+				"cid": true,
+			},
+			clientIDClaim:    "cid",
+			expectedClientID: "",
+			expectedErr:      ErrClientIDClaimNotString,
+			expectError:      true,
+		},
+		{
+			name: "Error - claim is not a string (object)",
+			claims: map[string]interface{}{
+				"cid": map[string]interface{}{"nested": "value"},
+			},
+			clientIDClaim:    "cid",
+			expectedClientID: "",
+			expectedErr:      ErrClientIDClaimNotString,
+			expectError:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			auth := &Authentication{
+				oidcConfiguration: AuthNConfig{
+					Policy: PolicyConfig{
+						ClientIDClaim: tt.clientIDClaim,
+					},
+				},
+			}
+
+			tok := jwt.New()
+			for k, v := range tt.claims {
+				err := tok.Set(k, v)
+				require.NoError(t, err)
+			}
+
+			clientID, err := auth.getClientIDFromToken(t.Context(), tok)
+
+			assert.Equal(t, tt.expectedClientID, clientID)
+
+			if tt.expectError {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, tt.expectedErr)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }

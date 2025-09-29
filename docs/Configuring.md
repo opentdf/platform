@@ -352,6 +352,9 @@ server:
 
       ## Dot notation is used to access the groups claim
       group_claim: "realm_access.roles"
+
+      # Dot notation is used to access the claim the represents the idP client ID 
+      client_id_claim: # azp
       
       ## Deprecated: Use standard casbin policy groupings (g, <user/group>, <role>)
       ## Maps the external role to the OpenTDF role

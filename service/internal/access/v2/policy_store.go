@@ -131,7 +131,7 @@ func (p *EntitlementPolicyRetriever) ListAllRegisteredResources(ctx context.Cont
 }
 
 func (p *EntitlementPolicyRetriever) ListAllObligations(ctx context.Context) ([]*policy.Obligation, error) {
-	// If quantity of obligationss exceeds maximum list pagination, all are needed to determine entitlements
+	// If quantity of obligations exceeds maximum list pagination, all are needed to determine entitlements
 	var nextOffset int32
 	obligationList := make([]*policy.Obligation, 0)
 

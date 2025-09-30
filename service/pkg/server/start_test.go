@@ -235,7 +235,7 @@ func (s *StartTestSuite) SetupSuite() {
 		"kas-private.pem":    dummyRsaPrivate,
 		"kas-cert.pem":       dummyRsaPublic, // Using public key as cert for dummy purposes
 		"kas-ec-private.pem": dummyEcPrivate,
-		"kas-ec-cert.pem":    dummyEcCert,
+		"kas-ec-public.pem":  dummyEcCert,
 	}
 
 	for filename, content := range keyFiles {

@@ -108,4 +108,4 @@ server:
         - kid: e1
           alg: ec:secp256r1
           private: ./testdata/kas-ec-private.pem
-          cert: ./testdata/kas-ec-cert.pem
+          cert: ./testdata/kas-ec-public.pem

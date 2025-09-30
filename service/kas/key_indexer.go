@@ -256,9 +256,13 @@ func convertPEMToJWK(_ string) (string, error) {
 }
 
 func (p *KeyAdapter) ExportPrivateKey(_ context.Context) (*trust.PrivateKey, error) {
+	privateKey := p.key.GetKey().GetPrivateKeyCtx().GetWrappedKey()
+	if privateKey == "" {
+		return nil, fmt.Errorf("private key is not exportable. Key ID: %s, KAS: %s", p.key.GetKey().GetKeyId(), p.key.GetKasUri())
+	}
 	return &trust.PrivateKey{
 		WrappingKeyID: trust.KeyIdentifier(p.key.GetKey().GetPrivateKeyCtx().GetKeyId()),
-		WrappedKey:    p.key.GetKey().GetPrivateKeyCtx().GetWrappedKey(),
+		WrappedKey:    privateKey,
 	}, nil
 }
 

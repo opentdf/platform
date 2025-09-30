@@ -118,5 +118,5 @@ server:
         - kid: e1
           alg: ec:secp256r1
           private: /keys/kas-ec-private.pem
-          cert: /keys/kas-ec-cert.pem
+          cert: /keys/kas-ec-public.pem
   port: 8080

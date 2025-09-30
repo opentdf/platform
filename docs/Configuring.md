@@ -145,7 +145,7 @@ server:
         - kid: e1
           alg: ec:secp256r1
           private: kas-ec-private.pem
-          cert: kas-ec-cert.pem
+          cert: kas-ec-public.pem
 ```
 
 ### Crypto Provider

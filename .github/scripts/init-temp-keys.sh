@@ -48,7 +48,8 @@ openssl genpkey -algorithm RSA -out "$opt_output/kas-private.pem" -pkeyopt rsa_k
 openssl rsa -in "$opt_output/kas-private.pem" -pubout -out "$opt_output/kas-cert.pem"
 # Generate ECC Key
 openssl ecparam -name prime256v1 >ecparams.tmp
-openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout "$opt_output/kas-ec-private.pem" -out "$opt_output/kas-ec-cert.pem" -days 365
+openssl genpkey -paramfile ecparams.tmp -out "$opt_output/kas-ec-private.pem"
+openssl pkey -in "$opt_output/kas-ec-private.pem" -pubout -out "$opt_output/kas-ec-public.pem"
 
 mkdir -p keys
 openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=ca" -keyout keys/keycloak-ca-private.pem -out keys/keycloak-ca.pem -days 365

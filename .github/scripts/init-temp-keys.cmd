@@ -6,7 +6,7 @@ mkdir keys
 
 openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout keys/kas-private.pem -out keys/kas-cert.pem -days 365
 openssl ecparam -name prime256v1 >ecparams.tmp
-openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout keys/kas-ec-private.pem -out keys/kas-ec-cert.pem -days 365
+openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout keys/kas-ec-private.pem -out keys/kas-ec-public.pem -days 365
 
 openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=ca" -keyout keys/keycloak-ca-private.pem -out keys/keycloak-ca.pem -days 365
 printf "subjectAltName=DNS:localhost,IP:127.0.0.1" > keys/sanX509.conf

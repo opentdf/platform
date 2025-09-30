@@ -44,6 +44,9 @@ var (
 		// HealthZ
 		"/healthz",
 		"/grpc.health.v1.Health/Check",
+		// Policy
+		"/policy/namespace",
+		"/policy/namespace/fqn/**",
 	}
 	// Routes which require reauthorization for IPC
 	ipcReauthRoutes = [...]string{

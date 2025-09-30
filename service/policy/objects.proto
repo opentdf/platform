@@ -48,6 +48,16 @@ message Namespace {
 
   // Keys for the namespace
   repeated SimpleKasKey kas_keys = 7;
+
+  // Root certificates for chain of trust
+  repeated Certificate root_certs = 8;
+}
+
+message Certificate {
+  // generated uuid in database
+  string id = 1;
+  // x5c format - An array of base64-encoded DER certificates (not PEM; no headers/footers)
+  string x5c = 2;
 }
 
 message Attribute {

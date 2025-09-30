@@ -780,6 +780,11 @@ func (s *AuthSuite) Test_PublicPath_Matches() {
 	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static-doublestar3/test/next")))
 	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/static-doublestar4/x/test/next")))
 
+	// Test namespace FQN paths
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/policy/namespace/fqn/https%3A%2F%2Fexample.com")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/policy/namespace/fqn/example.org")))
+	s.Require().True(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/policy/namespace/fqn/sub.example.org")))
+
 	// Failing routes
 	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public3/")))
 	s.Require().False(slices.ContainsFunc(s.auth.publicRoutes, s.auth.isPublicRoute("/public2")))

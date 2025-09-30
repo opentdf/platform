@@ -2,11 +2,17 @@ package namespaces
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
 
 	"connectrpc.com/connect"
+	"github.com/go-jose/go-jose/v4"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces/namespacesconnect"
@@ -47,11 +53,12 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	return &serviceregistry.Service[namespacesconnect.NamespaceServiceHandler]{
 		Close: nsService.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[namespacesconnect.NamespaceServiceHandler]{
-			Namespace:      ns,
-			DB:             dbRegister,
-			ServiceDesc:    &namespaces.NamespaceService_ServiceDesc,
-			ConnectRPCFunc: namespacesconnect.NewNamespaceServiceHandler,
-			OnConfigUpdate: onUpdateConfigHook,
+			Namespace:       ns,
+			DB:              dbRegister,
+			ServiceDesc:     &namespaces.NamespaceService_ServiceDesc,
+			ConnectRPCFunc:  namespacesconnect.NewNamespaceServiceHandler,
+			GRPCGatewayFunc: namespaces.RegisterNamespaceServiceHandler,
+			OnConfigUpdate:  onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (namespacesconnect.NamespaceServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
@@ -118,10 +125,128 @@ func (ns NamespacesService) GetNamespace(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("id", identifier))
 	}
+	// FIXME for POC only
+	UpdateConfigurationRootCACert(namespace)
 
 	rsp.Namespace = namespace
 
 	return connect.NewResponse(rsp), nil
+}
+
+func UpdateConfigurationRootCACert(n *policy.Namespace) {
+	// FIXME for POC only
+	certPEM := `
+Bag Attributes: <No Attributes>
+subject=C=US, ST=Texas, L=Houston, O=SSL Corporation, CN=SSL.com Root Certification Authority ECC
+issuer=C=US, ST=Texas, L=Houston, O=SSL Corporation, CN=SSL.com Root Certification Authority ECC
+-----BEGIN CERTIFICATE-----
+MIICjTCCAhSgAwIBAgIIdebfy8FoW6gwCgYIKoZIzj0EAwIwfDELMAkGA1UEBhMC
+VVMxDjAMBgNVBAgMBVRleGFzMRAwDgYDVQQHDAdIb3VzdG9uMRgwFgYDVQQKDA9T
+U0wgQ29ycG9yYXRpb24xMTAvBgNVBAMMKFNTTC5jb20gUm9vdCBDZXJ0aWZpY2F0
+aW9uIEF1dGhvcml0eSBFQ0MwHhcNMTYwMjEyMTgxNDAzWhcNNDEwMjEyMTgxNDAz
+WjB8MQswCQYDVQQGEwJVUzEOMAwGA1UECAwFVGV4YXMxEDAOBgNVBAcMB0hvdXN0
+b24xGDAWBgNVBAoMD1NTTCBDb3Jwb3JhdGlvbjExMC8GA1UEAwwoU1NMLmNvbSBS
+b290IENlcnRpZmljYXRpb24gQXV0aG9yaXR5IEVDQzB2MBAGByqGSM49AgEGBSuB
+BAAiA2IABEVuqVDEpiM2nl8ojRfLliJkP9x6jh3MCLOicSS6jkm5BBtHllirLZXI
+7Z4INcgn64mMU1jrYor+8FsPazFSY0E7ic3s7LaNGdM0B9y7xgZ/wkWV7Mt/qCPg
+CemB+vNH06NjMGEwHQYDVR0OBBYEFILRhXMw5zUE044CkvvlpNHEIejNMA8GA1Ud
+EwEB/wQFMAMBAf8wHwYDVR0jBBgwFoAUgtGFczDnNQTTjgKS++Wk0cQh6M0wDgYD
+VR0PAQH/BAQDAgGGMAoGCCqGSM49BAMCA2cAMGQCMG/n61kRpGDPYbCWe+0F+S8T
+kdzt5fxQaxFGRrMcIQBiu77D5+jNB5n5DQtdcj7EqgIwH7y6C+IwJPt8bYBVCpk+
+gA0z5Wajs6O7pdWLjwkspl1+4vAHCGht0nxpbl/f5Wpl
+-----END CERTIFICATE-----
+`
+	// Parse PEM to DER
+	block, _ := pem.Decode([]byte(certPEM))
+	if block == nil || block.Type != "CERTIFICATE" {
+		slog.Error("failed to decode PEM certificate")
+		return
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		slog.Error("failed to parse certificate", slog.String("error", err.Error()))
+		return
+	}
+
+	// Prepare JSON-friendly JWK representation with x5c
+	jwkMap := map[string]any{}
+
+	// Derive kty/crv/alg from public key
+	switch pk := cert.PublicKey.(type) {
+	case *ecdsa.PublicKey:
+		jwkMap["kty"] = "EC"
+		// Determine crv from params
+		switch pk.Curve.Params().Name {
+		case "P-256", "prime256v1", "secp256r1":
+			jwkMap["crv"] = "P-256"
+			jwkMap["alg"] = "ES256"
+		case "P-384", "secp384r1":
+			jwkMap["crv"] = "P-384"
+			jwkMap["alg"] = "ES384"
+		case "P-521", "secp521r1":
+			jwkMap["crv"] = "P-521"
+			jwkMap["alg"] = "ES512"
+		default:
+			jwkMap["crv"] = pk.Curve.Params().Name
+		}
+		// Set x and y as base64url (no padding)
+		xBytes := pk.X.Bytes()
+		yBytes := pk.Y.Bytes()
+		// Left-pad to field size
+		fieldLen := (pk.Curve.Params().BitSize + 7) / 8
+		if len(xBytes) < fieldLen {
+			p := make([]byte, fieldLen-len(xBytes))
+			xBytes = append(p, xBytes...)
+		}
+		if len(yBytes) < fieldLen {
+			p := make([]byte, fieldLen-len(yBytes))
+			yBytes = append(p, yBytes...)
+		}
+		jwkMap["x"] = base64.RawURLEncoding.EncodeToString(xBytes)
+		jwkMap["y"] = base64.RawURLEncoding.EncodeToString(yBytes)
+	case *rsa.PublicKey:
+		jwkMap["kty"] = "RSA"
+		jwkMap["alg"] = "RS256"
+		n := pk.N.Bytes()
+		e := pk.E
+		jwkMap["n"] = base64.RawURLEncoding.EncodeToString(n)
+		// encode e as minimal big-endian bytes
+		var eBytes []byte
+		if e > 0 {
+			for v := e; v > 0; v >>= 8 {
+				eBytes = append([]byte{byte(v & 0xff)}, eBytes...)
+			}
+		} else {
+			eBytes = []byte{0x01, 0x00, 0x01} // fallback 65537
+		}
+		jwkMap["e"] = base64.RawURLEncoding.EncodeToString(eBytes)
+	default:
+		// Fallback using go-jose to make a JSON-friendly map
+		j := jose.JSONWebKey{Key: cert.PublicKey}
+		pub := j.Public()
+		jwkMap["pub"] = pub.Key
+		// Marshal to JSON then unmarshal to map if needed, but here keep minimal fields
+		jwkMap["kty"] = "oct"
+	}
+
+	// Use for signatures
+	jwkMap["use"] = "sig"
+
+	// kid from SKI if present
+	if len(cert.SubjectKeyId) > 0 {
+		jwkMap["kid"] = base64.RawURLEncoding.EncodeToString(cert.SubjectKeyId)
+	}
+
+	// x5c: base64 DER (no headers)
+	x5c := []any{base64.StdEncoding.EncodeToString(cert.Raw)}
+	jwkMap["x5c"] = x5c
+
+	// x5t (SHA-1) and x5t#S256 optional, but skipped here
+	certificate := policy.Certificate{
+		X5C: base64.StdEncoding.EncodeToString(cert.Raw),
+	}
+	n.RootCerts = append(n.RootCerts, &certificate)
+
 }
 
 func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Request[namespaces.CreateNamespaceRequest]) (*connect.Response[namespaces.CreateNamespaceResponse], error) {

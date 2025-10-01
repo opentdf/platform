@@ -387,7 +387,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 }
 
 // IPCMetadataClientInterceptor transfers gRPC outgoing metadata to Connect request headers for IPC calls
-func IPCMetadataClientInterceptor(l *logger.Logger) connect.UnaryInterceptorFunc {
+func IPCMetadataClientInterceptor() connect.UnaryInterceptorFunc {
 	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(
 			ctx context.Context,

@@ -262,7 +262,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			log = log.
 				With("client_id", clientID).
 				With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
-			ctx = ctxAuth.ContextWithAuthnMetadata(ctx, log, clientID)
+			incoming := true
+			ctx = ctxAuth.ContextWithAuthnMetadata(ctx, log, clientID, incoming)
 		}
 
 		// Check if the token is allowed to access the resource
@@ -363,7 +364,8 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				log = log.
 					With("client_id", clientID).
 					With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
-				ctxWithJWK = ctxAuth.ContextWithAuthnMetadata(ctxWithJWK, log, clientID)
+				incoming := true
+				ctxWithJWK = ctxAuth.ContextWithAuthnMetadata(ctxWithJWK, log, clientID, incoming)
 			}
 
 			// Check if the token is allowed to access the resource
@@ -401,7 +403,8 @@ func IPCMetadataClientInterceptor(log *logger.Logger) connect.UnaryInterceptorFu
 				return next(ctx, req)
 			}
 
-			clientID, err := ctxAuth.GetClientIDFromContext(ctx, false)
+			incoming := true
+			clientID, err := ctxAuth.GetClientIDFromContext(ctx, incoming)
 			if err != nil {
 				// metadata will not always be found over IPC - log other errors
 				if !errors.Is(err, ctxAuth.ErrNoMetadataFound) {
@@ -769,7 +772,8 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 			if err != nil {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
-			return ctxAuth.ContextWithAuthnMetadata(ctxWithJWK, a.logger, clientID), nil
+			incoming := false
+			return ctxAuth.ContextWithAuthnMetadata(ctxWithJWK, a.logger, clientID, incoming), nil
 		}
 	}
 	return ctx, nil

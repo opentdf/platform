@@ -309,22 +309,8 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			a.logger.Info("ConnectUnaryServerInterceptor")
 			// if the token is already in the context, skip the interceptor
-			if token := ctxAuth.GetAccessTokenFromContext(ctx, a.logger); token != nil {
-				clientID, err := a.getClientIDFromToken(ctx, token)
-				if err != nil {
-					a.logger.WarnContext(
-						ctx,
-						"could not determine client ID from token",
-						slog.Any("err", err),
-					)
-				} else {
-					log := a.logger.
-						With("client_id", clientID).
-						With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
-					ctx = ctxAuth.ContextWithAuthnMetadata(ctx, log, clientID)
-				}
+			if ctxAuth.GetAccessTokenFromContext(ctx, a.logger) != nil {
 				return next(ctx, req)
 			}
 

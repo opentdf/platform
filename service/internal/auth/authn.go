@@ -68,7 +68,8 @@ var (
 	ErrClientIDClaimNotFound      = errors.New("client ID claim not found")
 	ErrClientIDClaimNotString     = errors.New("client ID claim is not a string")
 
-	canonicalHeaderClientIDKey = http.CanonicalHeaderKey("x-ipc-auth-client-id")
+	canonicalIPCHeaderClientID    = http.CanonicalHeaderKey("x-ipc-auth-client-id")
+	canonicalIPCHeaderAccessToken = http.CanonicalHeaderKey("x-ipc-access-token")
 )
 
 const (
@@ -407,7 +408,12 @@ func IPCMetadataClientInterceptor(log *logger.Logger) connect.UnaryInterceptorFu
 					log.ErrorContext(ctx, "IPCMetadataClientInterceptor", slog.Any("error", err))
 				}
 			} else {
-				req.Header().Add(canonicalHeaderClientIDKey, clientID)
+				req.Header().Add(canonicalIPCHeaderClientID, clientID)
+			}
+
+			authToken := ctxAuth.GetRawAccessTokenFromContext(ctx, log)
+			if authToken != "" {
+				req.Header().Add(canonicalIPCHeaderAccessToken, authToken)
 			}
 
 			return next(ctx, req)
@@ -429,8 +435,11 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 
 			// Transfer metadata from headers to context for IPC calls due to Connect/IPC limitations
 			md := metadata.New(map[string]string{})
-			if clientID := req.Header().Get(canonicalHeaderClientIDKey); clientID != "" {
+			if clientID := req.Header().Get(canonicalIPCHeaderClientID); clientID != "" {
 				md.Set(ctxAuth.ClientIDKey, clientID)
+			}
+			if authToken := req.Header().Get(canonicalIPCHeaderAccessToken); authToken != "" {
+				md.Set(ctxAuth.AccessTokenKey, authToken)
 			}
 			if hasIncoming {
 				md = metadata.Join(md, incomingMD.Copy())

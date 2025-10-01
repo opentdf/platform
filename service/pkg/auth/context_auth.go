@@ -91,8 +91,16 @@ func ContextWithAuthnMetadata(ctx context.Context, l *logger.Logger, clientID st
 }
 
 // GetClientIDFromContext retrieves the client ID from the metadata in the context
-func GetClientIDFromContext(ctx context.Context) (string, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
+func GetClientIDFromContext(ctx context.Context, incoming bool) (string, error) {
+	var (
+		md metadata.MD
+		ok bool
+	)
+	if incoming {
+		md, ok = metadata.FromIncomingContext(ctx)
+	} else {
+		md, ok = metadata.FromOutgoingContext(ctx)
+	}
 	if !ok {
 		return "", ErrNoMetadataFound
 	}

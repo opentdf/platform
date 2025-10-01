@@ -240,7 +240,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 		CacheManager:   cacheManager,
 		ConnectRPC:     connectRPC,
 		ConnectRPCInProcess: &inProcessServer{
-			logger:             logger,
+			logger:             logger.With("ipc_server", "true"),
 			srv:                memhttp.New(connectRPCIpc.Mux),
 			maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
 			maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
@@ -512,7 +512,7 @@ func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
 	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingConnectInterceptor())
 
 	// Add IPC metadata transfer interceptor (transfers gRPC metadata to Connect headers)
-	clientInterceptors = append(clientInterceptors, auth.IPCMetadataClientInterceptor())
+	clientInterceptors = append(clientInterceptors, auth.IPCMetadataClientInterceptor(s.logger))
 
 	conn := sdk.ConnectRPCConnection{
 		Client:   s.srv.Client(),

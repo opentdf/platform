@@ -74,7 +74,7 @@ func (f *FakeAccessServiceServer) LegacyPublicKey(_ context.Context, _ *connect.
 func (f *FakeAccessServiceServer) Rewrap(ctx context.Context, req *connect.Request[kas.RewrapRequest]) (*connect.Response[kas.RewrapResponse], error) {
 	f.accessToken = req.Header()["Authorization"]
 	f.dpopKey = ctxAuth.GetJWKFromContext(ctx, logger.CreateTestLogger())
-	f.clientID, _ = ctxAuth.GetClientIDFromContext(ctx)
+	f.clientID, _ = ctxAuth.GetClientIDFromContext(ctx, true)
 
 	return &connect.Response[kas.RewrapResponse]{Msg: &kas.RewrapResponse{}}, nil
 }
@@ -240,7 +240,7 @@ func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	s.Require().NoError(err)
 	s.Require().NotNil(nextCtx)
 	s.Equal("mockValue", nextCtx.Value(contextKey("mockKey")))
-	clientID, err := ctxAuth.GetClientIDFromContext(nextCtx)
+	clientID, err := ctxAuth.GetClientIDFromContext(nextCtx, true)
 	s.Require().NoError(err)
 	s.Equal("mockClientID", clientID)
 
@@ -627,7 +627,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	}()
 	server := httptest.NewServer(s.auth.MuxHandler(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 		jwkChan <- ctxAuth.GetJWKFromContext(req.Context(), logger.CreateTestLogger())
-		cid, _ := ctxAuth.GetClientIDFromContext(req.Context())
+		cid, _ := ctxAuth.GetClientIDFromContext(req.Context(), true)
 		clientIDChan <- cid
 	})))
 	defer server.Close()

@@ -67,6 +67,8 @@ var (
 	ErrClientIDClaimNotConfigured = errors.New("no client ID claim configured")
 	ErrClientIDClaimNotFound      = errors.New("client ID claim not found")
 	ErrClientIDClaimNotString     = errors.New("client ID claim is not a string")
+
+	canonicalHeaderClientIDKey = http.CanonicalHeaderKey("x-ipc-auth-client-id")
 )
 
 const (
@@ -387,7 +389,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 }
 
 // IPCMetadataClientInterceptor transfers gRPC outgoing metadata to Connect request headers for IPC calls
-func IPCMetadataClientInterceptor() connect.UnaryInterceptorFunc {
+func IPCMetadataClientInterceptor(log *logger.Logger) connect.UnaryInterceptorFunc {
 	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(
 			ctx context.Context,
@@ -398,16 +400,14 @@ func IPCMetadataClientInterceptor() connect.UnaryInterceptorFunc {
 				return next(ctx, req)
 			}
 
-			// Transfer gRPC outgoing metadata to Connect headers over IPC layer
-			md, ok := metadata.FromOutgoingContext(ctx)
-
-			// TODO: tighten this up
-			if ok && len(md) > 0 {
-				for key, values := range md {
-					for _, value := range values {
-						req.Header().Add(key, value)
-					}
+			clientID, err := ctxAuth.GetClientIDFromContext(ctx, false)
+			if err != nil {
+				// metadata will not always be found over IPC - log other errors
+				if !errors.Is(err, ctxAuth.ErrNoMetadataFound) {
+					log.ErrorContext(ctx, "IPCMetadataClientInterceptor", slog.Any("error", err))
 				}
+			} else {
+				req.Header().Add(canonicalHeaderClientIDKey, clientID)
 			}
 
 			return next(ctx, req)
@@ -415,8 +415,10 @@ func IPCMetadataClientInterceptor() connect.UnaryInterceptorFunc {
 	})
 }
 
-// IPCReauthInterceptor is a grpc interceptor that verifies the token in the metadata
-// and reauthorizes the token if the route is in the list
+// IPCUnaryServerInterceptor is a grpc interceptor that:
+// 1. verifies the token in the metadata
+// 2. reauthorizes the token if the route is in the list
+// 3. translates IPC Connect request headers back to context metadata for downstream consumers
 func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(
@@ -425,15 +427,10 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 		) (connect.AnyResponse, error) {
 			incomingMD, hasIncoming := metadata.FromIncomingContext(ctx)
 
-			// Transfer metadata from headers to context for IPC calls
-			// Connect doesn't automatically bridge outgoing->incoming metadata for IPC
+			// Transfer metadata from headers to context for IPC calls due to Connect/IPC limitations
 			md := metadata.New(map[string]string{})
-			// TODO: tighten this up
-			if accessToken := req.Header().Get("access_token"); accessToken != "" {
-				md.Set("access_token", accessToken)
-			}
-			if clientID := req.Header().Get("client_id"); clientID != "" {
-				md.Set("client_id", clientID)
+			if clientID := req.Header().Get(canonicalHeaderClientIDKey); clientID != "" {
+				md.Set(ctxAuth.ClientIDKey, clientID)
 			}
 			if hasIncoming {
 				md = metadata.Join(md, incomingMD.Copy())

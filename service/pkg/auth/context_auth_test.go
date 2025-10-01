@@ -88,7 +88,7 @@ func TestContextWithAuthnMetadata(t *testing.T) {
 		require.Len(t, accessToken, 1)
 		assert.Equal(t, "raw-token-string", accessToken[0])
 
-		clientIDs := md.Get(clientIDKey)
+		clientIDs := md.Get(ClientIDKey)
 		require.Len(t, clientIDs, 1)
 		assert.Equal(t, mockClientID, clientIDs[0])
 	})
@@ -100,7 +100,7 @@ func TestContextWithAuthnMetadata(t *testing.T) {
 		md, ok := metadata.FromIncomingContext(enrichedCtx)
 		require.True(t, ok)
 
-		clientIDs := md.Get(clientIDKey)
+		clientIDs := md.Get(ClientIDKey)
 		assert.Empty(t, clientIDs)
 	})
 
@@ -118,7 +118,7 @@ func TestContextWithAuthnMetadata(t *testing.T) {
 		require.Len(t, originalValue, 1)
 		assert.Equal(t, "original-value", originalValue[0])
 
-		clientIDs := md.Get(clientIDKey)
+		clientIDs := md.Get(ClientIDKey)
 		require.Len(t, clientIDs, 1)
 		assert.Equal(t, mockClientID, clientIDs[0])
 	})
@@ -128,7 +128,7 @@ func TestGetClientIDFromContext(t *testing.T) {
 	mockClientID := "test-client-id"
 
 	t.Run("good - should retrieve client id from context", func(t *testing.T) {
-		md := metadata.New(map[string]string{clientIDKey: mockClientID})
+		md := metadata.New(map[string]string{ClientIDKey: mockClientID})
 		ctx := metadata.NewIncomingContext(t.Context(), md)
 
 		clientID, err := GetClientIDFromContext(ctx)
@@ -152,7 +152,7 @@ func TestGetClientIDFromContext(t *testing.T) {
 	})
 
 	t.Run("bad - should return error if more than one metadata client_id key in context", func(t *testing.T) {
-		md := metadata.Pairs(clientIDKey, "id-1", clientIDKey, "id-2")
+		md := metadata.Pairs(ClientIDKey, "id-1", ClientIDKey, "id-2")
 		ctx := metadata.NewIncomingContext(t.Context(), md)
 
 		_, err := GetClientIDFromContext(ctx)

@@ -18,8 +18,8 @@ var (
 )
 
 const (
-	accessTokenKey = "access_token"
-	clientIDKey    = "client_id"
+	AccessTokenKey = "access_token"
+	ClientIDKey    = "client_id"
 )
 
 type authContextKey struct{}
@@ -79,12 +79,12 @@ func GetRawAccessTokenFromContext(ctx context.Context, l *logger.Logger) string 
 // in-process within Go alone
 func ContextWithAuthnMetadata(ctx context.Context, l *logger.Logger, clientID string) context.Context {
 	if rawToken := GetRawAccessTokenFromContext(ctx, l); rawToken != "" {
-		ctx = metadata.AppendToOutgoingContext(ctx, accessTokenKey, rawToken)
+		ctx = metadata.AppendToOutgoingContext(ctx, AccessTokenKey, rawToken)
 	}
 
 	// Add client ID to metadata for downstream services
 	if clientID != "" {
-		ctx = metadata.AppendToOutgoingContext(ctx, clientIDKey, clientID)
+		ctx = metadata.AppendToOutgoingContext(ctx, ClientIDKey, clientID)
 	}
 
 	return ctx
@@ -97,7 +97,7 @@ func GetClientIDFromContext(ctx context.Context) (string, error) {
 		return "", ErrNoMetadataFound
 	}
 
-	clientIDs := md.Get(clientIDKey)
+	clientIDs := md.Get(ClientIDKey)
 	if len(clientIDs) == 0 {
 		return "", ErrMissingClientID
 	}

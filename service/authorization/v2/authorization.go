@@ -170,8 +170,7 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	defer span.End()
 
 	md, _ := metadata.FromIncomingContext(ctx)
-	md2, _ := metadata.FromOutgoingContext(ctx)
-	as.logger.InfoContext(ctx, "metadata in authorization service", slog.Any("md", md), slog.Any("md2", md2), slog.Any("ctx", ctx))
+	as.logger.InfoContext(ctx, "metadata in authorization service", slog.Any("incoming", md), slog.Any("ctx", ctx))
 
 	// Extract trace context from the incoming request
 	propagator := otel.GetTextMapPropagator()

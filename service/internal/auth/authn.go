@@ -402,24 +402,16 @@ func IPCMetadataClientInterceptor(l *logger.Logger) connect.UnaryInterceptorFunc
 				return next(ctx, req)
 			}
 
-			// Transfer gRPC outgoing metadata to Connect headers for IPC
+			// Transfer gRPC outgoing metadata to Connect headers over IPC layer
 			md, ok := metadata.FromOutgoingContext(ctx)
-			l.InfoContext(ctx, "IPCMetadataClientInterceptor running",
-				slog.Bool("has_metadata", ok),
-				slog.Any("metadata", md),
-				slog.String("procedure", req.Spec().Procedure),
-				slog.Any("existing_headers", req.Header()),
-			)
 
+			// TODO: tighten this up
 			if ok && len(md) > 0 {
 				for key, values := range md {
 					for _, value := range values {
 						req.Header().Add(key, value)
 					}
 				}
-				l.InfoContext(ctx, "IPCMetadataClientInterceptor transferred metadata",
-					slog.Any("headers_after", req.Header()),
-				)
 			}
 
 			return next(ctx, req)
@@ -435,47 +427,27 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			mdIn, _ := metadata.FromIncomingContext(ctx)
-			mdOut, _ := metadata.FromOutgoingContext(ctx)
-			a.logger.InfoContext(
-				ctx, "IPCUnaryServerInterceptor interceptor ran",
-				slog.Any("mdIn", mdIn),
-				slog.Any("mdOut", mdOut),
-				slog.String("call", req.Spec().Procedure),
-				slog.Any("context", ctx),
-				slog.Any("headers", req.Header()),
-			)
+			incomingMD, hasIncoming := metadata.FromIncomingContext(ctx)
 
 			// Transfer metadata from headers to context for IPC calls
 			// Connect doesn't automatically bridge outgoing->incoming metadata for IPC
 			md := metadata.New(map[string]string{})
+			// TODO: tighten this up
 			if accessToken := req.Header().Get("access_token"); accessToken != "" {
 				md.Set("access_token", accessToken)
 			}
 			if clientID := req.Header().Get("client_id"); clientID != "" {
 				md.Set("client_id", clientID)
 			}
-			if len(md) > 0 {
-				// Merge with existing incoming metadata if present
-				if len(mdIn) > 0 {
-					md = metadata.Join(mdIn, md)
-				}
-				ctx = metadata.NewIncomingContext(ctx, md)
+			if hasIncoming {
+				md = metadata.Join(md, incomingMD.Copy())
 			}
+			ctx = metadata.NewIncomingContext(ctx, md)
 
-			// TODO: context emptied out over IPC?
 			nextCtx, err := a.ipcReauthCheck(ctx, req.Spec().Procedure, req.Header())
 			if err != nil {
 				return nil, err
 			}
-			mdIn, _ = metadata.FromIncomingContext(ctx)
-			mdOut, _ = metadata.FromOutgoingContext(ctx)
-			a.logger.InfoContext(ctx,
-				"IPCUnaryServerInterceptor interceptor ending metadata",
-				slog.Any("mdIn", mdIn),
-				slog.Any("mdOut", mdOut),
-				slog.Any("context", nextCtx),
-			)
 			return next(nextCtx, req)
 		})
 	}

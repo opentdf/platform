@@ -512,7 +512,7 @@ func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
 	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingConnectInterceptor())
 
 	// Add IPC metadata transfer interceptor (transfers gRPC metadata to Connect headers)
-	clientInterceptors = append(clientInterceptors, auth.IPCMetadataClientInterceptor(s.logger))
+	clientInterceptors = append(clientInterceptors, auth.IPCMetadataClientInterceptor())
 
 	conn := sdk.ConnectRPCConnection{
 		Client:   s.srv.Client(),

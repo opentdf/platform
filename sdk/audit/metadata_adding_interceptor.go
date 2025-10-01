@@ -2,7 +2,6 @@ package audit
 
 import (
 	"context"
-	"log/slog"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -45,17 +44,9 @@ func MetadataAddingClientInterceptor(
 	return err
 }
 
-func MetadataAddingConnectInterceptor(l *slog.Logger) connect.UnaryInterceptorFunc {
+func MetadataAddingConnectInterceptor() connect.UnaryInterceptorFunc {
 	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			incoming, _ := metadata.FromIncomingContext(ctx)
-			ougoing, _ := metadata.FromOutgoingContext(ctx)
-			l.Info("MetadataAddingConnectInterceptor ran",
-				slog.Any("headers", req.Header()),
-				slog.Any("context", ctx),
-				slog.Any("incoming metadata", incoming),
-				slog.Any("outgoing metadata", ougoing),
-			)
 			// Only apply to outgoing client requests
 			if !req.Spec().IsClient {
 				return next(ctx, req)

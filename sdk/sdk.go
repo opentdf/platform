@@ -190,7 +190,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	var uci []connect.Interceptor
 
 	// Add request ID interceptor
-	uci = append(uci, audit.MetadataAddingConnectInterceptor(cfg.logger))
+	uci = append(uci, audit.MetadataAddingConnectInterceptor())
 
 	accessTokenSource, err := buildIDPTokenSource(cfg)
 	if err != nil {

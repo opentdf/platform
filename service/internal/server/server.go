@@ -509,7 +509,7 @@ func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
 	var clientInterceptors []connect.Interceptor
 
 	// Add audit interceptor
-	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingConnectInterceptor(s.logger.Logger))
+	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingConnectInterceptor())
 
 	// Add IPC metadata transfer interceptor (transfers gRPC metadata to Connect headers)
 	clientInterceptors = append(clientInterceptors, auth.IPCMetadataClientInterceptor(s.logger))

@@ -2,7 +2,6 @@ package audit
 
 import (
 	"context"
-	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -121,7 +120,7 @@ func runConnectServer(f *FakeAccessServiceServerConnect) (kasconnect.AccessServi
 	client := kasconnect.NewAccessServiceClient(
 		server.Client(),
 		server.URL,
-		connect.WithInterceptors(MetadataAddingConnectInterceptor(slog.Default())),
+		connect.WithInterceptors(MetadataAddingConnectInterceptor()),
 	)
 
 	return client, func() {

@@ -71,9 +71,6 @@ func NewObligationsPolicyDecisionPoint(
 					if _, ok := simpleTriggered[actionName]; !ok {
 						simpleTriggered[actionName] = make(map[string][]string)
 					}
-					// TODO: fix this when we have FQNs on values from ListObligations provided
-					// obligationValueFQN := fmt.Sprintf("https://demo.com/obl/drm/value/%s", obligationValue.GetValue())
-					// simpleTriggered[actionName][attrValFqn] = append(simpleTriggered[actionName][attrValFqn], obligationValueFQN)
 					simpleTriggered[actionName][attrValFqn] = append(simpleTriggered[actionName][attrValFqn], obligationValue.GetFqn())
 				}
 
@@ -90,9 +87,6 @@ func NewObligationsPolicyDecisionPoint(
 					if _, ok := clientScopedTriggered[requiredPEPClientID][actionName]; !ok {
 						clientScopedTriggered[requiredPEPClientID][actionName] = make(map[string][]string)
 					}
-					// TODO: fix this when we have FQNs on values from ListObligations provided
-					// obligationValueFQN := fmt.Sprintf("https://demo.com/obl/drm/value/%s", obligationValue.GetValue())
-					// clientScopedTriggered[requiredPEPClientID][actionName][attrValFqn] = append(clientScopedTriggered[requiredPEPClientID][actionName][attrValFqn], obligationValueFQN)
 					clientScopedTriggered[requiredPEPClientID][actionName][attrValFqn] = append(clientScopedTriggered[requiredPEPClientID][actionName][attrValFqn], obligationValue.GetFqn())
 				}
 			}

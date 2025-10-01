@@ -380,10 +380,6 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 			}
 
-			mdIn, _ := metadata.FromIncomingContext(ctxWithJWK)
-			mdOut, _ := metadata.FromOutgoingContext(ctxWithJWK)
-			a.logger.InfoContext(ctx, "metadata at end of ConnectUnaryServerInterceptor", slog.Any("mdIn", mdIn), slog.Any("mdOut", mdOut), slog.Any("ctx", ctxWithJWK))
-
 			return next(ctxWithJWK, req)
 		})
 	}

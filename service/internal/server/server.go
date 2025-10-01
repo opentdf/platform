@@ -529,7 +529,6 @@ func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
 func (s inProcessServer) GrpcConn() *grpc.ClientConn {
 	var clientInterceptors []grpc.UnaryClientInterceptor
 
-	// TODO: add PEP client propagation
 	// Add audit interceptor
 	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingClientInterceptor)
 

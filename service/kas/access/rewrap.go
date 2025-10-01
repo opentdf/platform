@@ -33,7 +33,6 @@ import (
 	"github.com/opentdf/platform/service/trust"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -667,10 +666,6 @@ func (p *Provider) listLegacyKeys(ctx context.Context) []trust.KeyIdentifier {
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo) (string, policyKAOResults) {
-	mdIn, _ := metadata.FromIncomingContext(ctx)
-	mdOut, _ := metadata.FromOutgoingContext(ctx)
-	p.Logger.InfoContext(ctx, "KAS rewrap context metadata", slog.Any("mdIn", mdIn), slog.Any("mdOut", mdOut), slog.Any("ctx", ctx))
-
 	if p.Tracer != nil {
 		var span trace.Span
 		ctx, span = p.Start(ctx, "rewrap-tdf3")

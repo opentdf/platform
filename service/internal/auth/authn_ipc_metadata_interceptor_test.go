@@ -108,7 +108,7 @@ func TestIPCMetadataClientInterceptor_Integration(t *testing.T) {
 
 	t.Run("client_id propagated through interceptor chain", func(t *testing.T) {
 		clientID := "integration-test-client"
-		ctx := context.Background()
+		ctx := t.Context()
 		ctx = metadata.AppendToOutgoingContext(ctx, ctxAuth.ClientIDKey, clientID)
 
 		interceptor := IPCMetadataClientInterceptor(testLogger)
@@ -213,12 +213,11 @@ func TestIPCUnaryServerInterceptor(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			interceptor := auth.IPCUnaryServerInterceptor()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			req := tt.setupRequest()
 
-			var receivedCtx context.Context
-			mockNext := func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
-				receivedCtx = ctx
+			mockNext := func(postInterceptorCtx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+				ctx = postInterceptorCtx
 				return connect.NewResponse(&kas.PublicKeyResponse{}), nil
 			}
 
@@ -226,10 +225,10 @@ func TestIPCUnaryServerInterceptor(t *testing.T) {
 			_, err := interceptorFunc(ctx, req)
 
 			require.NoError(t, err)
-			require.NotNil(t, receivedCtx)
+			require.NotNil(t, ctx)
 
 			// Verify incoming metadata
-			md, ok := metadata.FromIncomingContext(receivedCtx)
+			md, ok := metadata.FromIncomingContext(ctx)
 			if tt.expectMetadata {
 				assert.True(t, ok, "should have incoming metadata")
 				for _, key := range tt.expectedIncomingMDKeys {

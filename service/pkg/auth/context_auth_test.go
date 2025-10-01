@@ -75,10 +75,11 @@ func TestGetContextDetailsInvalidType(t *testing.T) {
 
 func TestContextWithAuthnMetadata(t *testing.T) {
 	mockClientID := "test-client-id"
+	l := logger.CreateTestLogger()
 
 	t.Run("should add access token and client id to metadata", func(t *testing.T) {
 		ctx := ContextWithAuthNInfo(t.Context(), nil, nil, "raw-token-string")
-		enrichedCtx := ContextWithAuthnMetadata(ctx, mockClientID)
+		enrichedCtx := ContextWithAuthnMetadata(ctx, l, mockClientID)
 
 		md, ok := metadata.FromIncomingContext(enrichedCtx)
 		require.True(t, ok)
@@ -94,7 +95,7 @@ func TestContextWithAuthnMetadata(t *testing.T) {
 
 	t.Run("should not set client id if empty", func(t *testing.T) {
 		ctx := ContextWithAuthNInfo(t.Context(), nil, nil, "raw-token-string")
-		enrichedCtx := ContextWithAuthnMetadata(ctx, "")
+		enrichedCtx := ContextWithAuthnMetadata(ctx, l, "")
 
 		md, ok := metadata.FromIncomingContext(enrichedCtx)
 		require.True(t, ok)
@@ -108,7 +109,7 @@ func TestContextWithAuthnMetadata(t *testing.T) {
 		ctx := metadata.NewIncomingContext(t.Context(), originalMD)
 		ctx = ContextWithAuthNInfo(ctx, nil, nil, "raw-token-string")
 
-		enrichedCtx := ContextWithAuthnMetadata(ctx, mockClientID)
+		enrichedCtx := ContextWithAuthnMetadata(ctx, l, mockClientID)
 
 		md, ok := metadata.FromIncomingContext(enrichedCtx)
 		require.True(t, ok)

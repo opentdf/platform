@@ -3,6 +3,7 @@ package access
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strconv"
 
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -10,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/opentdf/platform/service/tracing"
+	"google.golang.org/grpc/metadata"
 )
 
 const (
@@ -87,6 +89,8 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 // checkAttributes makes authorization service GetDecision requests to check access to resources
 func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Resource, ent *entity.Token) ([]*authzV2.ResourceDecision, error) {
 	ctx = tracing.InjectTraceContext(ctx)
+	md, _ := metadata.FromOutgoingContext(ctx)
+	p.Logger.InfoContext(ctx, "KAS checkAttributes context", slog.Any("outgoing context", ctx), slog.Any("outgoing metadata", md))
 
 	// If only one resource, prefer singular endpoint
 	if len(resources) == 1 {

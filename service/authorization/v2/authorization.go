@@ -22,6 +22,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -167,6 +168,10 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 
 	ctx, span := as.Tracer.Start(ctx, "GetDecision")
 	defer span.End()
+
+	md, _ := metadata.FromIncomingContext(ctx)
+	md2, _ := metadata.FromOutgoingContext(ctx)
+	as.logger.InfoContext(ctx, "metadata in authorization service", slog.Any("md", md), slog.Any("md2", md2), slog.Any("ctx", ctx))
 
 	// Extract trace context from the incoming request
 	propagator := otel.GetTextMapPropagator()

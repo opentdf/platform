@@ -162,6 +162,7 @@ https://github.com/valyala/fasthttp/blob/master/fasthttputil/inmemory_listener.g
 */
 type inProcessServer struct {
 	srv                *memhttp.Server
+	logger             *logger.Logger
 	maxCallRecvMsgSize int
 	maxCallSendMsgSize int
 	*ConnectRPC
@@ -239,6 +240,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 		CacheManager:   cacheManager,
 		ConnectRPC:     connectRPC,
 		ConnectRPCInProcess: &inProcessServer{
+			logger:             logger,
 			srv:                memhttp.New(connectRPCIpc.Mux),
 			maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
 			maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
@@ -507,7 +509,10 @@ func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
 	var clientInterceptors []connect.Interceptor
 
 	// Add audit interceptor
-	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingConnectInterceptor())
+	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingConnectInterceptor(s.logger.Logger))
+
+	// Add IPC metadata transfer interceptor (transfers gRPC metadata to Connect headers)
+	clientInterceptors = append(clientInterceptors, auth.IPCMetadataClientInterceptor(s.logger))
 
 	conn := sdk.ConnectRPCConnection{
 		Client:   s.srv.Client(),
@@ -524,6 +529,7 @@ func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
 func (s inProcessServer) GrpcConn() *grpc.ClientConn {
 	var clientInterceptors []grpc.UnaryClientInterceptor
 
+	// TODO: add PEP client propagation
 	// Add audit interceptor
 	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingClientInterceptor)
 

@@ -172,7 +172,6 @@ func TestIPCUnaryServerInterceptor(t *testing.T) {
 		name                   string
 		setupRequest           func() connect.AnyRequest
 		expectedIncomingMDKeys []string
-		expectMetadata         bool
 	}{
 		{
 			name: "transfers client_id from headers to incoming metadata",
@@ -185,7 +184,6 @@ func TestIPCUnaryServerInterceptor(t *testing.T) {
 				}
 			},
 			expectedIncomingMDKeys: []string{ctxAuth.ClientIDKey},
-			expectMetadata:         true,
 		},
 		{
 			name: "does not add metadata when no headers present",
@@ -197,7 +195,6 @@ func TestIPCUnaryServerInterceptor(t *testing.T) {
 				}
 			},
 			expectedIncomingMDKeys: []string{},
-			expectMetadata:         false,
 		},
 		{
 			name: "merges with existing incoming metadata",
@@ -210,7 +207,6 @@ func TestIPCUnaryServerInterceptor(t *testing.T) {
 				}
 			},
 			expectedIncomingMDKeys: []string{ctxAuth.ClientIDKey},
-			expectMetadata:         true,
 		},
 	}
 
@@ -221,9 +217,18 @@ func TestIPCUnaryServerInterceptor(t *testing.T) {
 			ctx := t.Context()
 			req := tt.setupRequest()
 
-			var receivedCtx context.Context
 			mockNext := func(postInterceptorCtx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
-				receivedCtx = postInterceptorCtx
+				// Verify incoming metadata inside the next function
+				require.NotNil(t, postInterceptorCtx)
+				md, ok := metadata.FromIncomingContext(postInterceptorCtx)
+				if len(tt.expectedIncomingMDKeys) > 0 {
+					assert.True(t, ok, "should have incoming metadata")
+					for _, key := range tt.expectedIncomingMDKeys {
+						assert.NotEmpty(t, md.Get(key), "metadata key %s should exist", key)
+					}
+				} else {
+					assert.Zero(t, md.Len())
+				}
 				return connect.NewResponse(&kas.PublicKeyResponse{}), nil
 			}
 
@@ -231,16 +236,6 @@ func TestIPCUnaryServerInterceptor(t *testing.T) {
 			_, err := interceptorFunc(ctx, req)
 
 			require.NoError(t, err)
-			require.NotNil(t, receivedCtx)
-
-			// Verify incoming metadata
-			md, ok := metadata.FromIncomingContext(receivedCtx)
-			if tt.expectMetadata {
-				assert.True(t, ok, "should have incoming metadata")
-				for _, key := range tt.expectedIncomingMDKeys {
-					assert.NotEmpty(t, md.Get(key), "metadata key %s should exist", key)
-				}
-			}
 		})
 	}
 }

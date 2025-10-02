@@ -373,7 +373,7 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_WithNegation() {
 				suite.Contains(tc.expectedServices, namespace.Name)
 				suite.Contains(modeStrings, namespace.Namespace.Mode)
 
-				namespace.Namespace.IsEnabled(modeStrings)
+				suite.True(namespace.Namespace.IsEnabled(modeStrings))
 			}
 		})
 	}
@@ -431,7 +431,7 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_BackwardCompatibility() 
 				suite.Contains(tc.expectedServices, namespace.Name)
 				suite.Contains(modeStrings, namespace.Namespace.Mode)
 
-				namespace.Namespace.IsEnabled(modeStrings)
+				suite.True(namespace.Namespace.IsEnabled(modeStrings))
 			}
 		})
 	}

@@ -368,7 +368,7 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_WithNegation() {
 
 			suite.Require().NoError(err)
 			suite.ElementsMatch(tc.expectedServices, registeredServices)
-			// check that registered namesapces are enabled
+			// check that registered namespaces are enabled
 			for _, namespace := range registry.GetNamespaces() {
 				suite.Contains(tc.expectedServices, namespace.Name)
 				suite.Contains(modeStrings, namespace.Namespace.Mode)
@@ -426,7 +426,7 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_BackwardCompatibility() 
 			for i, m := range tc.mode {
 				modeStrings[i] = m.String()
 			}
-			// check that registered namesapces are enabled
+			// check that registered namespaces are enabled
 			for _, namespace := range registry.GetNamespaces() {
 				suite.Contains(tc.expectedServices, namespace.Name)
 				suite.Contains(modeStrings, namespace.Namespace.Mode)

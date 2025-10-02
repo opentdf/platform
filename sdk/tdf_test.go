@@ -1986,7 +1986,10 @@ func (s *TDFSuite) Test_Obligations() {
 
 			r, err := s.sdk.LoadTDF(readSeeker)
 			s.Require().NoError(err)
-			s.Require().Empty(r.Obligations(), "Obligations should be empty until decryption")
+			s.Require().Nil(r.Obligations(), "Obligations should be nil")
+			for _, ob := range []string{obGeo.url, obRedact.url, obWatermark.url} {
+				s.Require().Contains(r.config.fulfillableObligationFQNs, ob, "Should contain obligation "+ob)
+			}
 
 			// Validate decryption
 			s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, tdfTest{
@@ -1998,10 +2001,10 @@ func (s *TDFSuite) Test_Obligations() {
 
 			_, err = r.WriteTo(io.Discard)
 			s.Require().NoError(err)
-			s.Require().Len(r.Obligations(), len(test.obligationFQNs), "Should have two obligations")
+			s.Require().Len(r.Obligations().FQNs, len(test.obligationFQNs), "Should have correct number of obligations")
 			actualObligations := r.Obligations()
 			for _, ob := range test.obligationFQNs {
-				s.Require().Contains(actualObligations, ob, "Actual obligations should contain "+ob)
+				s.Require().Contains(actualObligations.FQNs, ob, "Actual obligations should contain "+ob)
 			}
 		})
 	}
@@ -2308,7 +2311,7 @@ func (s *TDFSuite) startBackend() {
 		withCustomAccessTokenSource(&ats),
 		WithTokenEndpoint("http://localhost:65432/auth/token"),
 		WithInsecurePlaintextConn(),
-		WithFulfillableObligationFQNs([]string{obWatermark.url, obRedact.url}),
+		WithSDKFulfillableObligationFQNs([]string{obWatermark.url, obRedact.url, obGeo.url}),
 	)
 	s.Require().NoError(err)
 	s.sdk = sdk

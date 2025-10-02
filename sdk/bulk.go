@@ -12,9 +12,10 @@ import (
 
 // BulkTDF: Reader is TDF Content. Writer writes encrypted data. Error is the error that occurs if decrypting fails.
 type BulkTDF struct {
-	Reader io.ReadSeeker
-	Writer io.Writer
-	Error  error
+	Reader               io.ReadSeeker
+	Writer               io.Writer
+	Error                error
+	TriggeredObligations *Obligations
 }
 
 type BulkDecryptRequest struct {
@@ -24,6 +25,13 @@ type BulkDecryptRequest struct {
 	TDFType               TdfType
 	kasAllowlist          AllowList
 	ignoreAllowList       bool
+}
+
+// BulkDecryptPrepared holds the prepared state for bulk decryption
+type BulkDecryptPrepared struct {
+	PolicyTDF     map[string]*BulkTDF
+	TdfDecryptors map[string]decryptor
+	AllRewrapResp map[string]policyResult
 }
 
 // BulkErrors List of Errors that Failed during Bulk Decryption
@@ -116,17 +124,9 @@ func (s SDK) createDecryptor(tdf *BulkTDF, req *BulkDecryptRequest) (decryptor, 
 	return nil, fmt.Errorf("unknown tdf type: %s", req.TDFType)
 }
 
-// BulkDecrypt Decrypts a list of BulkTDF and if a partial failure of TDFs unable to be decrypted, BulkErrors would be returned.
-func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
-	bulkReq, createError := createBulkRewrapRequest(opts...)
-	if createError != nil {
-		return fmt.Errorf("failed to create bulk rewrap request: %w", createError)
-	}
-	kasRewrapRequests := make(map[string][]*kas.UnsignedRewrapRequest_WithPolicyRequest)
-	tdfDecryptors := make(map[string]decryptor)
-	policyTDF := make(map[string]*BulkTDF)
-
-	if !bulkReq.ignoreAllowList && len(bulkReq.kasAllowlist) == 0 { //nolint:nestif // if kasAllowlist is not set, we get it from the registry
+// setupKasAllowlist configures the KAS allowlist for the bulk request
+func (s SDK) setupKasAllowlist(ctx context.Context, bulkReq *BulkDecryptRequest) error {
+	if !bulkReq.ignoreAllowList && len(bulkReq.kasAllowlist) == 0 {
 		if s.KeyAccessServerRegistry != nil {
 			platformEndpoint, err := s.PlatformConfiguration.platformEndpoint()
 			if err != nil {
@@ -145,10 +145,18 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 			return errors.New("no KAS allowlist provided and no KeyAccessServerRegistry available")
 		}
 	}
+	return nil
+}
+
+// prepareDecryptors creates decryptors and rewrap requests for all TDFs
+func (s SDK) prepareDecryptors(ctx context.Context, bulkReq *BulkDecryptRequest) (map[string][]*kas.UnsignedRewrapRequest_WithPolicyRequest, map[string]decryptor, map[string]*BulkTDF, error) {
+	kasRewrapRequests := make(map[string][]*kas.UnsignedRewrapRequest_WithPolicyRequest)
+	tdfDecryptors := make(map[string]decryptor)
+	policyTDF := make(map[string]*BulkTDF)
 
 	for i, tdf := range bulkReq.TDFs {
 		policyID := fmt.Sprintf("policy-%d", i)
-		decryptor, err := s.createDecryptor(tdf, bulkReq) //nolint:contextcheck // dont want to change signature of LoadTDF
+		decryptor, err := s.createDecryptor(tdf, bulkReq)
 		if err != nil {
 			tdf.Error = err
 			continue
@@ -167,9 +175,15 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 		}
 	}
 
-	kasClient := newKASClient(s.conn.Client, s.conn.Options, s.tokenSource, s.kasSessionKey, s.fulfillableObligationFQNs)
+	return kasRewrapRequests, tdfDecryptors, policyTDF, nil
+}
+
+// performRewraps executes all rewrap requests with KAS servers
+func (s SDK) performRewraps(ctx context.Context, bulkReq *BulkDecryptRequest, kasRewrapRequests map[string][]*kas.UnsignedRewrapRequest_WithPolicyRequest, fulfillableObligations []string) (map[string]policyResult, error) {
+	kasClient := newKASClient(s.conn.Client, s.conn.Options, s.tokenSource, s.kasSessionKey, fulfillableObligations)
 	allRewrapResp := make(map[string]policyResult)
 	var err error
+
 	for kasurl, rewrapRequests := range kasRewrapRequests {
 		if bulkReq.ignoreAllowList {
 			slog.Warn("kasAllowlist is ignored, kas url is allowed", slog.String("kas_url", kasurl))
@@ -191,6 +205,7 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 			}
 			continue
 		}
+
 		var rewrapResp map[string]policyResult
 		switch bulkReq.TDFType {
 		case Nano:
@@ -212,26 +227,120 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 			}
 		}
 	}
+
 	if err != nil {
-		return fmt.Errorf("bulk rewrap failed: %w", err)
+		return nil, fmt.Errorf("bulk rewrap failed: %w", err)
 	}
 
-	var errList []error
+	return allRewrapResp, nil
+}
+
+// PrepareBulkDecrypt does everything except decrypt from the Bulk Decrypt
+// TODO: Better comment
+// ! Currently you cannot specify fulfillable obligations on an individual TDF basis
+func (s SDK) PrepareBulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) (*BulkDecryptPrepared, error) {
+	bulkReq, createError := createBulkRewrapRequest(opts...)
+	if createError != nil {
+		return nil, fmt.Errorf("failed to create bulk rewrap request: %w", createError)
+	}
+
+	// Setup KAS allowlist
+	if err := s.setupKasAllowlist(ctx, bulkReq); err != nil {
+		return nil, err
+	}
+
+	// Prepare decryptors and rewrap requests
+	kasRewrapRequests, tdfDecryptors, policyTDF, err := s.prepareDecryptors(ctx, bulkReq)
+	if err != nil {
+		return nil, err
+	}
+
+	// Use the default fulfillable obligations unless a decryptor is available to provide its own
+	fulfillableObligations := s.fulfillableObligationFQNs
+	if len(tdfDecryptors) > 0 {
+		for _, d := range tdfDecryptors {
+			fulfillableObligations = getFulfillableObligations(d)
+			break
+		}
+	}
+
+	// Perform rewraps
+	allRewrapResp, err := s.performRewraps(ctx, bulkReq, kasRewrapRequests, fulfillableObligations)
+	if err != nil {
+		return nil, err
+	}
+
 	for id, tdf := range policyTDF {
 		policyRes, ok := allRewrapResp[id]
+		if !ok {
+			tdf.Error = errors.New("rewrap did not create a response for this TDF")
+			continue
+		}
+		tdf.TriggeredObligations = &Obligations{FQNs: policyRes.obligations}
+	}
+
+	return &BulkDecryptPrepared{
+		PolicyTDF:     policyTDF,
+		TdfDecryptors: tdfDecryptors,
+		AllRewrapResp: allRewrapResp,
+	}, nil
+}
+
+// Allow the bulk decryption to occur
+func (bp *BulkDecryptPrepared) BulkDecrypt(ctx context.Context) error {
+	var errList []error
+	var err error
+	for id, tdf := range bp.PolicyTDF {
+		policyRes, ok := bp.AllRewrapResp[id]
 		if !ok {
 			tdf.Error = errors.New("rewrap did not create a response for this TDF")
 			errList = append(errList, tdf.Error)
 			continue
 		}
-		decryptor := tdfDecryptors[id]
-		populateDecryptorWithObligations(decryptor, policyRes.obligations)
+		decryptor := bp.TdfDecryptors[id]
 		if _, err = decryptor.Decrypt(ctx, policyRes.kaoRes); err != nil {
 			tdf.Error = err
 			errList = append(errList, tdf.Error)
 			continue
 		}
 	}
+
+	if len(errList) != 0 {
+		return BulkErrors(errList)
+	}
+
+	return nil
+}
+
+func (bp *BulkDecryptPrepared) handleBulkDecrypt(ctx context.Context) []error {
+	var errList []error
+	var err error
+	for id, tdf := range bp.PolicyTDF {
+		policyRes, ok := bp.AllRewrapResp[id]
+		if !ok {
+			tdf.Error = errors.New("rewrap did not create a response for this TDF")
+			errList = append(errList, tdf.Error)
+			continue
+		}
+		decryptor := bp.TdfDecryptors[id]
+		if _, err = decryptor.Decrypt(ctx, policyRes.kaoRes); err != nil {
+			tdf.Error = err
+			errList = append(errList, tdf.Error)
+			continue
+		}
+	}
+
+	return errList
+}
+
+// BulkDecrypt Decrypts a list of BulkTDF and if a partial failure of TDFs unable to be decrypted, BulkErrors would be returned.
+func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
+	prepared, err := s.PrepareBulkDecrypt(ctx, opts...)
+	if err != nil {
+		return err
+	}
+
+	errList := prepared.handleBulkDecrypt(ctx)
 
 	if len(errList) != 0 {
 		return BulkErrors(errList)
@@ -247,13 +356,19 @@ func (b *BulkDecryptRequest) appendTDFs(tdfs ...*BulkTDF) {
 	)
 }
 
-func populateDecryptorWithObligations(decryptor interface{}, obligations []string) {
+func getFulfillableObligations(decryptor decryptor) []string {
+	if decryptor == nil {
+		slog.Warn("decryptor is nil, cannot populate obligations")
+		return make([]string, 0)
+	}
+
 	switch d := decryptor.(type) {
 	case *tdf3DecryptHandler:
-		d.reader.triggeredObligations = obligations
+		return d.reader.config.fulfillableObligationFQNs
 	case *NanoTDFDecryptHandler:
-		slog.Warn("the NanoTDFDecryptHandler does not support obligations yet")
+		return d.config.fulfillableObligationFQNs
 	default:
 		slog.Warn("unknown decryptor type, cannot populate obligations", slog.String("type", fmt.Sprintf("%T", d)))
+		return make([]string, 0)
 	}
 }

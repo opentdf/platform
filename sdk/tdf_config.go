@@ -421,16 +421,16 @@ func WithIgnoreAllowlist(ignore bool) TDFReaderOption {
 	}
 }
 
-func withSessionKey(k ocrypto.KeyPair) TDFReaderOption {
+func WithTDFFulfillableObligationFQNs(fqns []string) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
-		c.kasSessionKey = k
+		c.fulfillableObligationFQNs = fqns
 		return nil
 	}
 }
 
-func withFulfillableObligationFQNs(fqns []string) TDFReaderOption {
+func withSessionKey(k ocrypto.KeyPair) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
-		c.fulfillableObligationFQNs = fqns
+		c.kasSessionKey = k
 		return nil
 	}
 }

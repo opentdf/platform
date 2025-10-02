@@ -759,7 +759,7 @@ func Test_nanoUnwrap(t *testing.T) {
 	}
 
 	// 4. Call nanoUnwrap
-	policyResults, err := c.nanoUnwrap(context.Background(), dummyKeyAccess...)
+	policyResults, err := c.nanoUnwrap(t.Context(), dummyKeyAccess...)
 	require.NoError(t, err)
 	require.Len(t, policyResults, 2)
 

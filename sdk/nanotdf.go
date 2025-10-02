@@ -11,11 +11,14 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"sync"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/sdk/auth"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 )
@@ -872,6 +875,21 @@ type NanoTDFDecryptHandler struct {
 	config *NanoTDFReaderConfig
 }
 
+type NanoTDFReader struct {
+	reader          io.ReadSeeker
+	tokenSource     auth.AccessTokenSource
+	httpClient      *http.Client
+	connectOptions  []connect.ClientOption
+	collectionStore *collectionStore
+
+	header     NanoTDFHeader
+	headerBuf  []byte
+	payloadKey []byte
+
+	config               *NanoTDFReaderConfig
+	triggeredObligations *Obligations
+}
+
 func createNanoTDFDecryptHandler(reader io.ReadSeeker, writer io.Writer, opts ...NanoTDFReaderOption) (*NanoTDFDecryptHandler, error) {
 	nanoTdfReaderConfig, err := newNanoTDFReaderConfig(opts...)
 	if err != nil {
@@ -886,107 +904,82 @@ func createNanoTDFDecryptHandler(reader io.ReadSeeker, writer io.Writer, opts ..
 
 func (n *NanoTDFDecryptHandler) CreateRewrapRequest(ctx context.Context) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
 	var err error
-	var headerSize uint32
-	n.header, headerSize, err = NewNanoTDFHeaderFromReader(n.reader)
-	if err != nil {
-		return nil, err
-	}
-	_, err = n.reader.Seek(0, io.SeekStart)
-	if err != nil {
-		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
-	}
-
-	headerBuf := make([]byte, headerSize)
-	_, err = n.reader.Read(headerBuf)
-	if err != nil {
-		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
-	}
-	kasURL, err := n.header.kasURL.GetURL()
+	n.header, n.headerBuf, err = getNanoTDFHeader(n.reader)
 	if err != nil {
 		return nil, err
 	}
 
-	if n.config.ignoreAllowList {
-		slog.WarnContext(ctx, "kasAllowlist is ignored, kas url is allowed", slog.String("kas_url", kasURL))
-	} else if !n.config.kasAllowlist.IsAllowed(kasURL) {
-		return nil, fmt.Errorf("KasAllowlist: kas url %s is not allowed", kasURL)
-	}
-
-	req := &kas.UnsignedRewrapRequest_WithPolicyRequest{
-		KeyAccessObjects: []*kas.UnsignedRewrapRequest_WithKeyAccessObject{
-			{
-				KeyAccessObjectId: "kao-0",
-				KeyAccessObject:   &kas.KeyAccess{KasUrl: kasURL, Header: headerBuf},
-			},
-		},
-		Policy: &kas.UnsignedRewrapRequest_WithPolicy{
-			Id: "policy",
-		},
-		Algorithm: "ec:secp256r1",
-	}
-	return map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest{kasURL: req}, nil
+	return createNanoRewrapRequest(ctx, n.config, n.header, n.headerBuf)
 }
 
 func (n *NanoTDFDecryptHandler) Decrypt(ctx context.Context, result []kaoResult) (int, error) {
-	var err error
-	if len(result) != 1 {
-		return 0, errors.New("improper result from kas")
-	}
-
-	if result[0].Error != nil {
-		return 0, result[0].Error
-	}
-	key := result[0].SymmetricKey
-
-	const (
-		kPayloadLoadLengthBufLength = 4
-	)
-	payloadLengthBuf := make([]byte, kPayloadLoadLengthBufLength)
-	_, err = n.reader.Read(payloadLengthBuf[1:])
-	if err != nil {
-		return 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
-	}
-
-	payloadLength := binary.BigEndian.Uint32(payloadLengthBuf)
-	slog.DebugContext(ctx, "decrypt", slog.Uint64("payload_length", uint64(payloadLength)))
-
-	cipherData := make([]byte, payloadLength)
-	_, err = n.reader.Read(cipherData)
-	if err != nil {
-		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
-	}
-
-	aesGcm, err := ocrypto.NewAESGcm(key)
-	if err != nil {
-		return 0, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
-	}
-
-	ivPadded := make([]byte, 0, ocrypto.GcmStandardNonceSize)
-	noncePadding := make([]byte, kIvPadding)
-	ivPadded = append(ivPadded, noncePadding...)
-	iv := cipherData[:kNanoTDFIvSize]
-	ivPadded = append(ivPadded, iv...)
-
-	tagSize, err := SizeOfAuthTagForCipher(n.header.sigCfg.cipher)
-	if err != nil {
-		return 0, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
-	}
-
-	decryptedData, err := aesGcm.DecryptWithIVAndTagSize(ivPadded, cipherData[kNanoTDFIvSize:], tagSize)
-	if err != nil {
-		return 0, err
-	}
-
-	writeLen, err := n.writer.Write(decryptedData)
-	if err != nil {
-		return 0, err
-	}
-
-	return writeLen, nil
+	return decryptNanoTDF(ctx, n.reader, n.writer, result, &n.header)
 }
 
-func (n *NanoTDFDecryptHandler) getRawHeader() []byte {
-	return n.headerBuf
+// What do we need:
+// 1. Get obligations before decrypting a file
+// 2. Store obligations triggered during decrypting a file
+
+// No current way to return obligations for NanoTDF, since there is no reader.
+func (s SDK) LoadNanoTDF(reader io.ReadSeeker, opts ...NanoTDFReaderOption) (*NanoTDFReader, error) {
+	nanoTdfReaderConfig, err := newNanoTDFReaderConfig(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("newNanoTDFReaderConfig failed: %w", err)
+	}
+
+	if len(nanoTdfReaderConfig.kasAllowlist) == 0 && !nanoTdfReaderConfig.ignoreAllowList { //nolint:nestif // handling the case where kasAllowlist is not provided
+		if s.KeyAccessServerRegistry != nil {
+			platformEndpoint, err := s.PlatformConfiguration.platformEndpoint()
+			if err != nil {
+				return nil, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
+			}
+			// retrieve the registered kases if not provided
+			allowList, err := allowListFromKASRegistry(context.Background(), s.KeyAccessServerRegistry, platformEndpoint)
+			if err != nil {
+				return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
+			}
+			nanoTdfReaderConfig.kasAllowlist = allowList
+		} else {
+			slog.Error("no KAS allowlist provided and no KeyAccessServerRegistry available")
+			return nil, errors.New("no KAS allowlist provided and no KeyAccessServerRegistry available")
+		}
+	}
+
+	header, headerBuf, err := getNanoTDFHeader(reader)
+	if err != nil {
+		return nil, fmt.Errorf("getNanoTDFHeader: %w", err)
+	}
+
+	return &NanoTDFReader{
+		reader:          reader,
+		tokenSource:     s.tokenSource,
+		httpClient:      s.conn.Client,
+		connectOptions:  s.conn.Options,
+		config:          nanoTdfReaderConfig,
+		collectionStore: s.collectionStore,
+		header:          header,
+		headerBuf:       headerBuf,
+	}, nil
+}
+
+// Do all network behavior (Rewrap request)
+func (n *NanoTDFReader) Init(ctx context.Context) error {
+	if n.payloadKey != nil {
+		return nil
+	}
+
+	return n.getNanoRewrapKey(ctx)
+}
+
+func (n *NanoTDFReader) DecryptNanoTDF(ctx context.Context, writer io.Writer) (int, error) {
+	if n.payloadKey == nil {
+		err := n.getNanoRewrapKey(ctx)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	return decryptNanoTDF(ctx, n.reader, writer, []kaoResult{{SymmetricKey: n.payloadKey}}, &n.header)
 }
 
 // ReadNanoTDF - read the nano tdf and return the decrypted data from it
@@ -996,70 +989,58 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker, opts ...NanoTDF
 
 // ReadNanoTDFContext - allows cancelling the reader
 func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker, opts ...NanoTDFReaderOption) (int, error) {
-	handler, err := createNanoTDFDecryptHandler(reader, writer, opts...)
+	r, err := s.LoadNanoTDF(reader, opts...)
 	if err != nil {
-		return 0, fmt.Errorf("createNanoTDFDecryptHandler failed: %w", err)
+		return 0, fmt.Errorf("LoadNanoTDF: %w", err)
 	}
 
-	if len(handler.config.kasAllowlist) == 0 && !handler.config.ignoreAllowList { //nolint:nestif // handling the case where kasAllowlist is not provided
-		if s.KeyAccessServerRegistry != nil {
-			platformEndpoint, err := s.PlatformConfiguration.platformEndpoint()
-			if err != nil {
-				return 0, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
-			}
-			// retrieve the registered kases if not provided
-			allowList, err := allowListFromKASRegistry(ctx, s.KeyAccessServerRegistry, platformEndpoint)
-			if err != nil {
-				return 0, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
-			}
-			handler.config.kasAllowlist = allowList
-		} else {
-			slog.ErrorContext(ctx, "no KAS allowlist provided and no KeyAccessServerRegistry available")
-			return 0, errors.New("no KAS allowlist provided and no KeyAccessServerRegistry available")
-		}
-	}
-
-	symmetricKey, err := s.getNanoRewrapKey(ctx, handler)
+	err = r.getNanoRewrapKey(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("getNanoRewrapKey: %w", err)
 	}
-	return handler.Decrypt(ctx, []kaoResult{{SymmetricKey: symmetricKey}})
+
+	return r.DecryptNanoTDF(ctx, writer)
 }
 
-func (s SDK) getNanoRewrapKey(ctx context.Context, decryptor *NanoTDFDecryptHandler) ([]byte, error) {
-	req, err := decryptor.CreateRewrapRequest(ctx)
+func (n *NanoTDFReader) getNanoRewrapKey(ctx context.Context) error {
+	req, err := createNanoRewrapRequest(ctx, n.config, n.header, n.headerBuf)
 	if err != nil {
-		return nil, fmt.Errorf("CreateRewrapRequest: %w", err)
+		return fmt.Errorf("CreateRewrapRequest: %w", err)
 	}
 
-	if s.collectionStore != nil {
-		if key, found := s.collectionStore.get(decryptor.getRawHeader()); found {
-			return key, nil
-		}
-	}
-
-	client := newKASClient(s.conn.Client, s.conn.Options, s.tokenSource, nil, []string{})
-	kasURL, err := decryptor.header.kasURL.GetURL()
+	client := newKASClient(n.httpClient, n.connectOptions, n.tokenSource, nil, n.config.fulfillableObligationFQNs)
+	kasURL, err := n.header.kasURL.GetURL()
 	if err != nil {
-		return nil, fmt.Errorf("nano header kasUrl: %w", err)
+		return fmt.Errorf("nano header kasUrl: %w", err)
 	}
 
 	policyResult, err := client.nanoUnwrap(ctx, req[kasURL])
 	if err != nil {
-		return nil, fmt.Errorf("rewrap failed: %w", err)
+		return fmt.Errorf("rewrap failed: %w", err)
 	}
 	result, ok := policyResult["policy"]
 	if !ok || len(result.kaoRes) != 1 {
-		return nil, errors.New("policy was not found in rewrap response")
+		return errors.New("policy was not found in rewrap response")
 	}
 	if result.kaoRes[0].Error != nil {
-		return nil, fmt.Errorf("rewrapError: %w", result.kaoRes[0].Error)
+		return fmt.Errorf("rewrapError: %w", result.kaoRes[0].Error)
 	}
 
-	if s.collectionStore != nil {
-		s.collectionStore.store(decryptor.getRawHeader(), result.kaoRes[0].SymmetricKey)
+	if n.collectionStore != nil {
+		n.collectionStore.store(n.headerBuf, result.kaoRes[0].SymmetricKey)
 	}
-	return result.kaoRes[0].SymmetricKey, nil
+
+	n.triggeredObligations = &Obligations{FQNs: result.obligations}
+	n.payloadKey = result.kaoRes[0].SymmetricKey
+
+	return nil
+}
+
+func (n *NanoTDFReader) GetTriggeredObligations() *Obligations {
+	if n.triggeredObligations == nil {
+		// TODO: Either get payload key or GetDecisions
+	}
+	return n.triggeredObligations
 }
 
 func versionSalt() []byte {
@@ -1168,4 +1149,111 @@ func getNanoKasInfoFromBaseKey(s *SDK) (*KASInfo, error) {
 		KID:       baseKey.GetPublicKey().GetKid(),
 		Algorithm: alg,
 	}, nil
+}
+
+func getNanoTDFHeader(reader io.ReadSeeker) (NanoTDFHeader, []byte, error) {
+	var err error
+	var headerSize uint32
+	var header NanoTDFHeader
+	header, headerSize, err = NewNanoTDFHeaderFromReader(reader)
+	if err != nil {
+		return header, []byte{}, err
+	}
+	_, err = reader.Seek(0, io.SeekStart)
+	if err != nil {
+		return header, []byte{}, fmt.Errorf("readSeeker.Seek failed: %w", err)
+	}
+
+	headerBuf := make([]byte, headerSize)
+	_, err = reader.Read(headerBuf)
+	if err != nil {
+		return header, []byte{}, fmt.Errorf("readSeeker.Read failed: %w", err)
+	}
+
+	return header, headerBuf, nil
+}
+
+func createNanoRewrapRequest(ctx context.Context, config *NanoTDFReaderConfig, header NanoTDFHeader, headerBuf []byte) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
+	kasURL, err := header.kasURL.GetURL()
+	if err != nil {
+		return nil, err
+	}
+
+	if config.ignoreAllowList {
+		slog.WarnContext(ctx, "kasAllowlist is ignored, kas url is allowed", slog.String("kas_url", kasURL))
+	} else if !config.kasAllowlist.IsAllowed(kasURL) {
+		return nil, fmt.Errorf("KasAllowlist: kas url %s is not allowed", kasURL)
+	}
+
+	req := &kas.UnsignedRewrapRequest_WithPolicyRequest{
+		KeyAccessObjects: []*kas.UnsignedRewrapRequest_WithKeyAccessObject{
+			{
+				KeyAccessObjectId: "kao-0",
+				KeyAccessObject:   &kas.KeyAccess{KasUrl: kasURL, Header: headerBuf},
+			},
+		},
+		Policy: &kas.UnsignedRewrapRequest_WithPolicy{
+			Id: "policy",
+		},
+		Algorithm: "ec:secp256r1",
+	}
+	return map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest{kasURL: req}, nil
+}
+
+func decryptNanoTDF(ctx context.Context, reader io.ReadSeeker, writer io.Writer, result []kaoResult, header *NanoTDFHeader) (int, error) {
+	var err error
+	if len(result) != 1 {
+		return 0, errors.New("improper result from kas")
+	}
+
+	if result[0].Error != nil {
+		return 0, result[0].Error
+	}
+	key := result[0].SymmetricKey
+
+	const (
+		kPayloadLoadLengthBufLength = 4
+	)
+	payloadLengthBuf := make([]byte, kPayloadLoadLengthBufLength)
+	_, err = reader.Read(payloadLengthBuf[1:])
+	if err != nil {
+		return 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
+	}
+
+	payloadLength := binary.BigEndian.Uint32(payloadLengthBuf)
+	slog.DebugContext(ctx, "decrypt", slog.Uint64("payload_length", uint64(payloadLength)))
+
+	cipherData := make([]byte, payloadLength)
+	_, err = reader.Read(cipherData)
+	if err != nil {
+		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
+	}
+
+	aesGcm, err := ocrypto.NewAESGcm(key)
+	if err != nil {
+		return 0, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
+	}
+
+	ivPadded := make([]byte, 0, ocrypto.GcmStandardNonceSize)
+	noncePadding := make([]byte, kIvPadding)
+	ivPadded = append(ivPadded, noncePadding...)
+	iv := cipherData[:kNanoTDFIvSize]
+	ivPadded = append(ivPadded, iv...)
+
+	tagSize, err := SizeOfAuthTagForCipher(header.sigCfg.cipher)
+	if err != nil {
+		return 0, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
+	}
+
+	decryptedData, err := aesGcm.DecryptWithIVAndTagSize(ivPadded, cipherData[kNanoTDFIvSize:], tagSize)
+	if err != nil {
+		return 0, err
+	}
+
+	writeLen, err := writer.Write(decryptedData)
+	if err != nil {
+		return 0, err
+	}
+
+	return writeLen, nil
 }

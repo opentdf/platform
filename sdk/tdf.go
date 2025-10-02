@@ -64,7 +64,11 @@ type Reader struct {
 	payloadKey           []byte
 	kasSessionKey        ocrypto.KeyPair
 	config               TDFReaderConfig
-	triggeredObligations []string
+	triggeredObligations *Obligations
+}
+
+type Obligations struct {
+	FQNs []string
 }
 
 type TDFObject struct {
@@ -763,13 +767,13 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		opts = append([]TDFReaderOption{withSessionKey(s.kasSessionKey)}, opts...)
 	}
 
-	if s.fulfillableObligationFQNs != nil {
-		opts = append([]TDFReaderOption{withFulfillableObligationFQNs(s.fulfillableObligationFQNs)}, opts...)
-	}
-
 	config, err := newTDFReaderConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("newAssertionConfig failed: %w", err)
+	}
+
+	if len(config.fulfillableObligationFQNs) == 0 && len(s.fulfillableObligationFQNs) > 0 {
+		config.fulfillableObligationFQNs = s.fulfillableObligationFQNs
 	}
 
 	if len(config.kasAllowlist) == 0 && !config.ignoreAllowList { //nolint:nestif // handle the case where kasAllowlist is empty
@@ -1098,8 +1102,11 @@ func (r *Reader) DataAttributes() ([]string, error) {
 }
 
 // Return the triggered obligations that were found during the rewrap process.
-// ! WriteTo must be called before this function to ensure obligations are populated.
-func (r *Reader) Obligations() []string {
+func (r *Reader) Obligations() *Obligations {
+	if r.triggeredObligations == nil {
+		// TODO: Call GetDecisions
+		return nil
+	}
 	return r.triggeredObligations
 }
 
@@ -1407,7 +1414,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 				reqFail(err, req)
 			}
 			// ! Should constantly be the same obligation for the same policy
-			r.triggeredObligations = result.obligations
+			r.triggeredObligations = &Obligations{FQNs: result.obligations}
 			kaoResults = append(kaoResults, result.kaoRes...)
 		}
 	}

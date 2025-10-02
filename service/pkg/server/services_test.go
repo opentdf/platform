@@ -111,27 +111,27 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_ALL_Expect_All_
 	authz, err := registry.GetNamespace(ServiceAuthorization.String())
 	suite.Require().NoError(err)
 	suite.Len(authz.Services, numExpectedAuthorizationServiceVersions)
-	suite.Equal(ServiceAuthorization.String(), authz.Mode)
+	suite.Equal(serviceregistry.ModeALL.String(), authz.Mode)
 
 	kas, err := registry.GetNamespace(ServiceKAS.String())
 	suite.Require().NoError(err)
 	suite.Len(kas.Services, 1)
-	suite.Equal(ServiceKAS.String(), kas.Mode)
+	suite.Equal(serviceregistry.ModeALL.String(), kas.Mode)
 
 	policy, err := registry.GetNamespace(ServicePolicy.String())
 	suite.Require().NoError(err)
 	suite.Len(policy.Services, numExpectedPolicyServices)
-	suite.Equal(ServicePolicy.String(), policy.Mode)
+	suite.Equal(serviceregistry.ModeALL.String(), policy.Mode)
 
 	wellKnown, err := registry.GetNamespace(ServiceWellKnown.String())
 	suite.Require().NoError(err)
 	suite.Len(wellKnown.Services, 1)
-	suite.Equal(ServiceWellKnown.String(), wellKnown.Mode)
+	suite.Equal(serviceregistry.ModeALL.String(), wellKnown.Mode)
 
 	ers, err := registry.GetNamespace(ServiceEntityResolution.String())
 	suite.Require().NoError(err)
 	suite.Len(ers.Services, numExpectedEntityResolutionServiceVersions)
-	suite.Equal(ServiceEntityResolution.String(), ers.Mode)
+	suite.Equal(serviceregistry.ModeALL.String(), ers.Mode)
 }
 
 // Every service except kas is registered
@@ -143,7 +143,7 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_Core_Expect_Cor
 	authz, err := registry.GetNamespace(ServiceAuthorization.String())
 	suite.Require().NoError(err)
 	suite.Len(authz.Services, numExpectedAuthorizationServiceVersions)
-	suite.Equal(ServiceAuthorization.String(), authz.Mode)
+	suite.Equal(serviceregistry.ModeCore.String(), authz.Mode)
 
 	_, err = registry.GetNamespace(ServiceKAS.String())
 	suite.Require().Error(err)
@@ -152,12 +152,12 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_Core_Expect_Cor
 	policy, err := registry.GetNamespace(ServicePolicy.String())
 	suite.Require().NoError(err)
 	suite.Len(policy.Services, numExpectedPolicyServices)
-	suite.Equal(ServicePolicy.String(), policy.Mode)
+	suite.Equal(serviceregistry.ModeCore.String(), policy.Mode)
 
 	wellKnown, err := registry.GetNamespace(ServiceWellKnown.String())
 	suite.Require().NoError(err)
 	suite.Len(wellKnown.Services, 1)
-	suite.Equal(ServiceWellKnown.String(), wellKnown.Mode)
+	suite.Equal(serviceregistry.ModeCore.String(), wellKnown.Mode)
 }
 
 // Register core and kas services
@@ -169,22 +169,22 @@ func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expec
 	authz, err := registry.GetNamespace(ServiceAuthorization.String())
 	suite.Require().NoError(err)
 	suite.Len(authz.Services, numExpectedAuthorizationServiceVersions)
-	suite.Equal(ServiceAuthorization.String(), authz.Mode)
+	suite.Equal(serviceregistry.ModeCore.String(), authz.Mode)
 
 	kas, err := registry.GetNamespace(ServiceKAS.String())
 	suite.Require().NoError(err)
 	suite.Len(kas.Services, 1)
-	suite.Equal(ServiceKAS.String(), kas.Mode)
+	suite.Equal(serviceregistry.ModeKAS.String(), kas.Mode)
 
 	policy, err := registry.GetNamespace(ServicePolicy.String())
 	suite.Require().NoError(err)
 	suite.Len(policy.Services, numExpectedPolicyServices)
-	suite.Equal(ServicePolicy.String(), policy.Mode)
+	suite.Equal(serviceregistry.ModeCore.String(), policy.Mode)
 
 	wellKnown, err := registry.GetNamespace(ServiceWellKnown.String())
 	suite.Require().NoError(err)
 	suite.Len(wellKnown.Services, 1)
-	suite.Equal(ServiceWellKnown.String(), wellKnown.Mode)
+	suite.Equal(serviceregistry.ModeCore.String(), wellKnown.Mode)
 }
 
 // Register core and kas and ERS services
@@ -196,27 +196,27 @@ func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expec
 	authz, err := registry.GetNamespace(ServiceAuthorization.String())
 	suite.Require().NoError(err)
 	suite.Len(authz.Services, numExpectedAuthorizationServiceVersions)
-	suite.Equal(ServiceAuthorization.String(), authz.Mode)
+	suite.Equal(serviceregistry.ModeCore.String(), authz.Mode)
 
 	kas, err := registry.GetNamespace(ServiceKAS.String())
 	suite.Require().NoError(err)
 	suite.Len(kas.Services, 1)
-	suite.Equal(ServiceKAS.String(), kas.Mode)
+	suite.Equal(serviceregistry.ModeKAS.String(), kas.Mode)
 
 	policy, err := registry.GetNamespace(ServicePolicy.String())
 	suite.Require().NoError(err)
 	suite.Len(policy.Services, numExpectedPolicyServices)
-	suite.Equal(ServicePolicy.String(), policy.Mode)
+	suite.Equal(serviceregistry.ModeCore.String(), policy.Mode)
 
 	wellKnown, err := registry.GetNamespace(ServiceWellKnown.String())
 	suite.Require().NoError(err)
 	suite.Len(wellKnown.Services, 1)
-	suite.Equal(ServiceWellKnown.String(), wellKnown.Mode)
+	suite.Equal(serviceregistry.ModeCore.String(), wellKnown.Mode)
 
 	ers, err := registry.GetNamespace(ServiceEntityResolution.String())
 	suite.Require().NoError(err)
 	suite.Len(ers.Services, numExpectedEntityResolutionServiceVersions)
-	suite.Equal(ServiceEntityResolution.String(), ers.Mode)
+	suite.Equal(serviceregistry.ModeERS.String(), ers.Mode)
 }
 
 func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {

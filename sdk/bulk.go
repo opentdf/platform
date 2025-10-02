@@ -126,7 +126,7 @@ func (s SDK) createDecryptor(tdf *BulkTDF, req *BulkDecryptRequest) (decryptor, 
 
 // setupKasAllowlist configures the KAS allowlist for the bulk request
 func (s SDK) setupKasAllowlist(ctx context.Context, bulkReq *BulkDecryptRequest) error {
-	if !bulkReq.ignoreAllowList && len(bulkReq.kasAllowlist) == 0 {
+	if !bulkReq.ignoreAllowList && len(bulkReq.kasAllowlist) == 0 { //nolint:nestif // not complex
 		if s.KeyAccessServerRegistry != nil {
 			platformEndpoint, err := s.PlatformConfiguration.platformEndpoint()
 			if err != nil {
@@ -149,14 +149,14 @@ func (s SDK) setupKasAllowlist(ctx context.Context, bulkReq *BulkDecryptRequest)
 }
 
 // prepareDecryptors creates decryptors and rewrap requests for all TDFs
-func (s SDK) prepareDecryptors(ctx context.Context, bulkReq *BulkDecryptRequest) (map[string][]*kas.UnsignedRewrapRequest_WithPolicyRequest, map[string]decryptor, map[string]*BulkTDF, error) {
+func (s SDK) prepareDecryptors(ctx context.Context, bulkReq *BulkDecryptRequest) (map[string][]*kas.UnsignedRewrapRequest_WithPolicyRequest, map[string]decryptor, map[string]*BulkTDF) {
 	kasRewrapRequests := make(map[string][]*kas.UnsignedRewrapRequest_WithPolicyRequest)
 	tdfDecryptors := make(map[string]decryptor)
 	policyTDF := make(map[string]*BulkTDF)
 
 	for i, tdf := range bulkReq.TDFs {
 		policyID := fmt.Sprintf("policy-%d", i)
-		decryptor, err := s.createDecryptor(tdf, bulkReq)
+		decryptor, err := s.createDecryptor(tdf, bulkReq) //nolint:contextcheck // context is not used in createDecryptor
 		if err != nil {
 			tdf.Error = err
 			continue
@@ -175,7 +175,7 @@ func (s SDK) prepareDecryptors(ctx context.Context, bulkReq *BulkDecryptRequest)
 		}
 	}
 
-	return kasRewrapRequests, tdfDecryptors, policyTDF, nil
+	return kasRewrapRequests, tdfDecryptors, policyTDF
 }
 
 // performRewraps executes all rewrap requests with KAS servers
@@ -250,10 +250,7 @@ func (s SDK) PrepareBulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) 
 	}
 
 	// Prepare decryptors and rewrap requests
-	kasRewrapRequests, tdfDecryptors, policyTDF, err := s.prepareDecryptors(ctx, bulkReq)
-	if err != nil {
-		return nil, err
-	}
+	kasRewrapRequests, tdfDecryptors, policyTDF := s.prepareDecryptors(ctx, bulkReq)
 
 	// Use the default fulfillable obligations unless a decryptor is available to provide its own
 	fulfillableObligations := s.fulfillableObligationFQNs

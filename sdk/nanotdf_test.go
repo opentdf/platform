@@ -786,7 +786,7 @@ func (s *NanoSuite) Test_NanoTDFReader_ObligationsSupport() {
 
 	// Verify obligations are stored
 	s.Require().NotNil(nanoReader.triggeredObligations)
-	s.Require().Equal(2, len(nanoReader.triggeredObligations.FQNs))
+	s.Require().Len(nanoReader.triggeredObligations.FQNs, 2)
 	s.Require().Contains(nanoReader.triggeredObligations.FQNs, "obligation1")
 	s.Require().Contains(nanoReader.triggeredObligations.FQNs, "obligation2")
 }
@@ -834,7 +834,7 @@ func (s *NanoSuite) Test_NanoTDFReader_RealWorkflow() {
 	// Create the NanoTDF
 	tdfSize, err := sdk.CreateNanoTDF(output, input, *config)
 	s.Require().NoError(err)
-	s.Require().Greater(tdfSize, uint32(0))
+	s.Require().Positive(tdfSize)
 
 	// Step 2: Load the created NanoTDF
 	tdfData := output.Bytes()
@@ -846,7 +846,7 @@ func (s *NanoSuite) Test_NanoTDFReader_RealWorkflow() {
 
 	// Step 3: Validate the header (it should be loaded automatically)
 	s.Require().NotNil(nanoReader.headerBuf)
-	s.Require().Greater(len(nanoReader.headerBuf), 0)
+	s.Require().NotEmpty(nanoReader.headerBuf)
 
 	// Check KAS URL
 	kasURL, err := nanoReader.header.kasURL.GetURL()
@@ -856,9 +856,9 @@ func (s *NanoSuite) Test_NanoTDFReader_RealWorkflow() {
 	// Check policy mode and other header fields
 	s.Require().Equal(PolicyType(2), nanoReader.header.PolicyMode) // Embedded encrypted policy
 	s.Require().NotNil(nanoReader.header.PolicyBody)
-	s.Require().Greater(len(nanoReader.header.PolicyBody), 0)
+	s.Require().NotEmpty(nanoReader.header.PolicyBody)
 	s.Require().NotNil(nanoReader.header.EphemeralKey)
-	s.Require().Equal(33, len(nanoReader.header.EphemeralKey)) // secp256r1 compressed key
+	s.Require().Len(nanoReader.header.EphemeralKey, 33) // secp256r1 compressed key
 
 	// Step 4: Test that obligations tracking is working
 	s.Require().Nil(nanoReader.GetTriggeredObligations()) // No obligations triggered yet
@@ -955,8 +955,8 @@ func (m *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 		// Create a mock HTTP response
 		resp := &http.Response{
-			Status:     "200 OK",
-			StatusCode: 200,
+			Status:     http.StatusText(http.StatusOK),
+			StatusCode: http.StatusOK,
 			Header: http.Header{
 				"Content-Type": []string{"application/json"},
 			},
@@ -999,7 +999,7 @@ func (m *mockTransport) handleRewrapRequest(req *http.Request) (*http.Response, 
 	// Extract the signed request token
 	signedRequestToken, ok := bodyJSON["signedRequestToken"].(string)
 	if !ok {
-		return nil, fmt.Errorf("missing signedRequestToken in request")
+		return nil, errors.New("missing signedRequestToken in request")
 	}
 
 	// Parse the JWT token without verification (for testing)
@@ -1011,12 +1011,12 @@ func (m *mockTransport) handleRewrapRequest(req *http.Request) (*http.Response, 
 	// Extract the request body from the JWT
 	requestBodyClaim, ok := token.Get("requestBody")
 	if !ok {
-		return nil, fmt.Errorf("missing requestBody in JWT")
+		return nil, errors.New("missing requestBody in JWT")
 	}
 
 	requestBodyJSON, ok := requestBodyClaim.(string)
 	if !ok {
-		return nil, fmt.Errorf("requestBody is not a string")
+		return nil, errors.New("requestBody is not a string")
 	}
 
 	// Parse the unsigned rewrap request
@@ -1031,12 +1031,12 @@ func (m *mockTransport) handleRewrapRequest(req *http.Request) (*http.Response, 
 
 	// Extract the NanoTDF header from the KeyAccessObject to get the ephemeral public key
 	if len(unsignedReq.GetRequests()) == 0 || len(unsignedReq.GetRequests()[0].GetKeyAccessObjects()) == 0 {
-		return nil, fmt.Errorf("no key access objects in request")
+		return nil, errors.New("no key access objects in request")
 	}
 
 	headerBuf := unsignedReq.GetRequests()[0].GetKeyAccessObjects()[0].GetKeyAccessObject().GetHeader()
 	if len(headerBuf) == 0 {
-		return nil, fmt.Errorf("no header in key access object")
+		return nil, errors.New("no header in key access object")
 	}
 
 	// Parse the NanoTDF header to extract the ephemeral public key
@@ -1155,8 +1155,8 @@ func (m *mockTransport) handleRewrapRequest(req *http.Request) (*http.Response, 
 
 	// Create HTTP response
 	resp := &http.Response{
-		Status:     "200 OK",
-		StatusCode: 200,
+		Status:     http.StatusText(http.StatusOK),
+		StatusCode: http.StatusOK,
 		Header: http.Header{
 			"Content-Type": []string{"application/json"},
 		},

@@ -989,7 +989,7 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker, opts ...NanoTDF
 
 // ReadNanoTDFContext - allows cancelling the reader
 func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker, opts ...NanoTDFReaderOption) (int, error) {
-	r, err := s.LoadNanoTDF(reader, opts...)
+	r, err := s.LoadNanoTDF(reader, opts...) //nolint:contextcheck // context not needed for loading
 	if err != nil {
 		return 0, fmt.Errorf("LoadNanoTDF: %w", err)
 	}
@@ -1002,10 +1002,24 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 	return r.DecryptNanoTDF(ctx, writer)
 }
 
+func (n *NanoTDFReader) GetTriggeredObligations() *Obligations {
+	if n.triggeredObligations == nil { //nolint:revive // Will implement later
+		// TODO: Either get payload key or GetDecisions
+	}
+	return n.triggeredObligations
+}
+
 func (n *NanoTDFReader) getNanoRewrapKey(ctx context.Context) error {
 	req, err := createNanoRewrapRequest(ctx, n.config, n.header, n.headerBuf)
 	if err != nil {
 		return fmt.Errorf("CreateRewrapRequest: %w", err)
+	}
+
+	if n.collectionStore != nil {
+		if key, found := n.collectionStore.get(n.headerBuf); found {
+			n.payloadKey = key
+			return nil
+		}
 	}
 
 	client := newKASClient(n.httpClient, n.connectOptions, n.tokenSource, nil, n.config.fulfillableObligationFQNs)
@@ -1034,13 +1048,6 @@ func (n *NanoTDFReader) getNanoRewrapKey(ctx context.Context) error {
 	n.payloadKey = result.kaoRes[0].SymmetricKey
 
 	return nil
-}
-
-func (n *NanoTDFReader) GetTriggeredObligations() *Obligations {
-	if n.triggeredObligations == nil {
-		// TODO: Either get payload key or GetDecisions
-	}
-	return n.triggeredObligations
 }
 
 func versionSalt() []byte {

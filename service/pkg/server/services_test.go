@@ -361,8 +361,20 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_WithNegation() {
 				return
 			}
 
+			modeStrings := make([]string, len(tc.modes))
+			for i, m := range tc.modes {
+				modeStrings[i] = m.String()
+			}
+
 			suite.Require().NoError(err)
 			suite.ElementsMatch(tc.expectedServices, registeredServices)
+			// check that registered namesapces are enabled
+			for _, namespace := range registry.GetNamespaces() {
+				suite.Contains(tc.expectedServices, namespace.Name)
+				suite.Contains(modeStrings, namespace.Namespace.Mode)
+
+				namespace.Namespace.IsEnabled(modeStrings)
+			}
 		})
 	}
 }
@@ -409,6 +421,18 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_BackwardCompatibility() 
 
 			suite.Require().NoError(err)
 			suite.ElementsMatch(tc.expectedServices, registeredServices)
+
+			modeStrings := make([]string, len(tc.mode))
+			for i, m := range tc.mode {
+				modeStrings[i] = m.String()
+			}
+			// check that registered namesapces are enabled
+			for _, namespace := range registry.GetNamespaces() {
+				suite.Contains(tc.expectedServices, namespace.Name)
+				suite.Contains(modeStrings, namespace.Namespace.Mode)
+
+				namespace.Namespace.IsEnabled(modeStrings)
+			}
 		})
 	}
 }

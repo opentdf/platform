@@ -2,6 +2,8 @@ package namespaces
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -303,6 +305,20 @@ func (ns NamespacesService) AssignCertificateToNamespace(ctx context.Context, r 
 		ObjectID:   namespaceID,
 	}
 
+	// Validate x5c is valid base64-encoded DER certificate
+	derBytes, err := base64.StdEncoding.DecodeString(x5c)
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, ns.logger, err, "Invalid x5c format: must be base64-encoded")
+	}
+
+	// Validate it's a valid X.509 certificate
+	_, err = x509.ParseCertificate(derBytes)
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, ns.logger, err, "Invalid certificate: not a valid X.509 certificate")
+	}
+
 	// Create the certificate
 	metadataJSON, _, err := db.MarshalCreateMetadata(metadata)
 	if err != nil {
@@ -321,7 +337,11 @@ func (ns NamespacesService) AssignCertificateToNamespace(ctx context.Context, r 
 	if err != nil {
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		// Clean up the certificate we just created
-		_ = ns.dbClient.DeleteCertificate(ctx, certID)
+		if cleanupErr := ns.dbClient.DeleteCertificate(ctx, certID); cleanupErr != nil {
+			ns.logger.ErrorContext(ctx, "failed to cleanup orphaned certificate after assignment failure",
+				slog.String("cert_id", certID),
+				slog.String("error", cleanupErr.Error()))
+		}
 		return nil, db.StatusifyError(ctx, ns.logger, err, "Failed to assign certificate to namespace")
 	}
 

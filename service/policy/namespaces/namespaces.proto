@@ -168,6 +168,49 @@ message RemovePublicKeyFromNamespaceResponse {
   NamespaceKey namespace_key = 1;
 }
 
+/*
+   Certificates
+*/
+
+// Maps a namespace to a certificate (similar to NamespaceKey pattern)
+message NamespaceCertificate {
+  // Required
+  string namespace_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+  // Required (The id from the Certificate object)
+  string certificate_id = 2 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+}
+
+message AssignCertificateToNamespaceRequest {
+  // Required
+  string namespace_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+  // Required - x5c format certificate (base64-encoded DER)
+  string x5c = 2 [(buf.validate.field).required = true];
+  // Optional
+  common.MetadataMutable metadata = 100;
+}
+
+message AssignCertificateToNamespaceResponse {
+  NamespaceCertificate namespace_certificate = 1;
+  policy.Certificate certificate = 2; // Return the full certificate object for convenience
+}
+
+message RemoveCertificateFromNamespaceRequest {
+  NamespaceCertificate namespace_certificate = 1 [(buf.validate.field).required = true];
+}
+
+message RemoveCertificateFromNamespaceResponse {
+  NamespaceCertificate namespace_certificate = 1;
+}
+
 service NamespaceService {
   rpc GetNamespace(GetNamespaceRequest) returns (GetNamespaceResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
@@ -197,4 +240,10 @@ service NamespaceService {
    *---------------------------------------*/
   rpc AssignPublicKeyToNamespace(AssignPublicKeyToNamespaceRequest) returns (AssignPublicKeyToNamespaceResponse) {}
   rpc RemovePublicKeyFromNamespace(RemovePublicKeyFromNamespaceRequest) returns (RemovePublicKeyFromNamespaceResponse) {}
+
+  /*--------------------------------------*
+   * Namespace <> Certificate RPCs
+   *---------------------------------------*/
+  rpc AssignCertificateToNamespace(AssignCertificateToNamespaceRequest) returns (AssignCertificateToNamespaceResponse) {}
+  rpc RemoveCertificateFromNamespace(RemoveCertificateFromNamespaceRequest) returns (RemoveCertificateFromNamespaceResponse) {}
 }

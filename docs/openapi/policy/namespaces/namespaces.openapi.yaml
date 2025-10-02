@@ -327,6 +327,80 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.namespaces.RemovePublicKeyFromNamespaceResponse'
+  /policy.namespaces.NamespaceService/AssignCertificateToNamespace:
+    post:
+      tags:
+        - policy.namespaces.NamespaceService
+      summary: AssignCertificateToNamespace
+      description: |-
+        --------------------------------------*
+         Namespace <> Certificate RPCs
+        ---------------------------------------
+      operationId: policy.namespaces.NamespaceService.AssignCertificateToNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.namespaces.AssignCertificateToNamespaceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.namespaces.AssignCertificateToNamespaceResponse'
+  /policy.namespaces.NamespaceService/RemoveCertificateFromNamespace:
+    post:
+      tags:
+        - policy.namespaces.NamespaceService
+      summary: RemoveCertificateFromNamespace
+      operationId: policy.namespaces.NamespaceService.RemoveCertificateFromNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.namespaces.RemoveCertificateFromNamespaceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.namespaces.RemoveCertificateFromNamespaceResponse'
 components:
   schemas:
     common.ActiveStateEnum:
@@ -780,6 +854,39 @@ components:
           title: pem
       title: SimpleKasPublicKey
       additionalProperties: false
+    policy.namespaces.AssignCertificateToNamespaceRequest:
+      type: object
+      properties:
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+          description: Required
+        x5c:
+          type: string
+          title: x5c
+          description: Required - x5c format certificate (base64-encoded DER)
+        metadata:
+          title: metadata
+          description: Optional
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: AssignCertificateToNamespaceRequest
+      required:
+        - namespaceId
+        - x5c
+      additionalProperties: false
+    policy.namespaces.AssignCertificateToNamespaceResponse:
+      type: object
+      properties:
+        namespaceCertificate:
+          title: namespace_certificate
+          $ref: '#/components/schemas/policy.namespaces.NamespaceCertificate'
+        certificate:
+          title: certificate
+          description: Return the full certificate object for convenience
+          $ref: '#/components/schemas/policy.Certificate'
+      title: AssignCertificateToNamespaceResponse
+      additionalProperties: false
     policy.namespaces.AssignKeyAccessServerToNamespaceRequest:
       type: object
       properties:
@@ -936,6 +1043,25 @@ components:
           $ref: '#/components/schemas/policy.PageResponse'
       title: ListNamespacesResponse
       additionalProperties: false
+    policy.namespaces.NamespaceCertificate:
+      type: object
+      properties:
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+          description: Required
+        certificateId:
+          type: string
+          title: certificate_id
+          format: uuid
+          description: Required (The id from the Certificate object)
+      title: NamespaceCertificate
+      required:
+        - namespaceId
+        - certificateId
+      additionalProperties: false
+      description: Maps a namespace to a certificate (similar to NamespaceKey pattern)
     policy.namespaces.NamespaceKey:
       type: object
       properties:
@@ -970,6 +1096,24 @@ components:
       title: NamespaceKeyAccessServer
       additionalProperties: false
       description: Deprecated
+    policy.namespaces.RemoveCertificateFromNamespaceRequest:
+      type: object
+      properties:
+        namespaceCertificate:
+          title: namespace_certificate
+          $ref: '#/components/schemas/policy.namespaces.NamespaceCertificate'
+      title: RemoveCertificateFromNamespaceRequest
+      required:
+        - namespaceCertificate
+      additionalProperties: false
+    policy.namespaces.RemoveCertificateFromNamespaceResponse:
+      type: object
+      properties:
+        namespaceCertificate:
+          title: namespace_certificate
+          $ref: '#/components/schemas/policy.namespaces.NamespaceCertificate'
+      title: RemoveCertificateFromNamespaceResponse
+      additionalProperties: false
     policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest:
       type: object
       properties:

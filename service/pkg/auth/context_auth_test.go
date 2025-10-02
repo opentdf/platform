@@ -73,14 +73,13 @@ func TestGetContextDetailsInvalidType(t *testing.T) {
 	assert.Nil(t, retrievedJWK, "JWK should be nil when context value is invalid")
 }
 
-func TestContextWithAuthnMetadata(t *testing.T) {
+func TestEnrichIncomingContextMetadataWithAuthn(t *testing.T) {
 	mockClientID := "test-client-id"
 	l := logger.CreateTestLogger()
 
 	t.Run("should add access token and client id to metadata", func(t *testing.T) {
-		incoming := true
 		ctx := ContextWithAuthNInfo(t.Context(), nil, nil, "raw-token-string")
-		enrichedCtx := ContextWithAuthnMetadata(ctx, l, mockClientID, incoming)
+		enrichedCtx := EnrichIncomingContextMetadataWithAuthn(ctx, l, mockClientID)
 
 		md, ok := metadata.FromIncomingContext(enrichedCtx)
 		require.True(t, ok)
@@ -96,8 +95,7 @@ func TestContextWithAuthnMetadata(t *testing.T) {
 
 	t.Run("should not set client id if empty", func(t *testing.T) {
 		ctx := ContextWithAuthNInfo(t.Context(), nil, nil, "raw-token-string")
-		incoming := true
-		enrichedCtx := ContextWithAuthnMetadata(ctx, l, "", incoming)
+		enrichedCtx := EnrichIncomingContextMetadataWithAuthn(ctx, l, "")
 
 		md, ok := metadata.FromIncomingContext(enrichedCtx)
 		require.True(t, ok)
@@ -110,8 +108,7 @@ func TestContextWithAuthnMetadata(t *testing.T) {
 		originalMD := metadata.New(map[string]string{"original-key": "original-value"})
 		ctx := metadata.NewIncomingContext(t.Context(), originalMD)
 		ctx = ContextWithAuthNInfo(ctx, nil, nil, "raw-token-string")
-		incoming := true
-		enrichedCtx := ContextWithAuthnMetadata(ctx, l, mockClientID, incoming)
+		enrichedCtx := EnrichIncomingContextMetadataWithAuthn(ctx, l, mockClientID)
 
 		md, ok := metadata.FromIncomingContext(enrichedCtx)
 		require.True(t, ok)
@@ -124,11 +121,15 @@ func TestContextWithAuthnMetadata(t *testing.T) {
 		require.Len(t, clientIDs, 1)
 		assert.Equal(t, mockClientID, clientIDs[0])
 	})
+}
 
-	t.Run("should add access token and client id to metadata - outgoing", func(t *testing.T) {
+func TestEnrichOutgoingContextMetadataWithAuthn(t *testing.T) {
+	mockClientID := "test-client-id"
+	l := logger.CreateTestLogger()
+
+	t.Run("should add access token and client id to metadata", func(t *testing.T) {
 		ctx := ContextWithAuthNInfo(t.Context(), nil, nil, "raw-token-string")
-		incoming := false
-		enrichedCtx := ContextWithAuthnMetadata(ctx, l, mockClientID, incoming)
+		enrichedCtx := EnrichOutgoingContextMetadataWithAuthn(ctx, l, mockClientID)
 
 		md, ok := metadata.FromOutgoingContext(enrichedCtx)
 		require.True(t, ok)
@@ -142,10 +143,9 @@ func TestContextWithAuthnMetadata(t *testing.T) {
 		assert.Equal(t, mockClientID, clientIDs[0])
 	})
 
-	t.Run("should not set client id if empty - outgoing", func(t *testing.T) {
+	t.Run("should not set client id if empty", func(t *testing.T) {
 		ctx := ContextWithAuthNInfo(t.Context(), nil, nil, "raw-token-string")
-		incoming := false
-		enrichedCtx := ContextWithAuthnMetadata(ctx, l, "", incoming)
+		enrichedCtx := EnrichOutgoingContextMetadataWithAuthn(ctx, l, "")
 
 		md, ok := metadata.FromOutgoingContext(enrichedCtx)
 		require.True(t, ok)
@@ -154,12 +154,11 @@ func TestContextWithAuthnMetadata(t *testing.T) {
 		assert.Empty(t, clientIDs)
 	})
 
-	t.Run("should preserve existing metadata - outgoing", func(t *testing.T) {
+	t.Run("should preserve existing metadata", func(t *testing.T) {
 		originalMD := metadata.New(map[string]string{"original-key": "original-value"})
 		ctx := metadata.NewOutgoingContext(t.Context(), originalMD)
 		ctx = ContextWithAuthNInfo(ctx, nil, nil, "raw-token-string")
-		incoming := false
-		enrichedCtx := ContextWithAuthnMetadata(ctx, l, mockClientID, incoming)
+		enrichedCtx := EnrichOutgoingContextMetadataWithAuthn(ctx, l, mockClientID)
 
 		md, ok := metadata.FromOutgoingContext(enrichedCtx)
 		require.True(t, ok)

@@ -73,21 +73,12 @@ func GetRawAccessTokenFromContext(ctx context.Context, l *logger.Logger) string 
 	return ""
 }
 
-// ContextWithAuthnMetadata adds the access token and client ID to context metadata
+// EnrichIncomingContextMetadataWithAuthn adds the access token and client ID to incoming context metadata
 //
-// Adding the authn into to gRPC metadata propagates it across services rather than strictly
+// Adding the authn info to gRPC metadata propagates it across services rather than strictly
 // in-process within Go alone
-func ContextWithAuthnMetadata(ctx context.Context, l *logger.Logger, clientID string, incoming bool) context.Context {
+func EnrichIncomingContextMetadataWithAuthn(ctx context.Context, l *logger.Logger, clientID string) context.Context {
 	rawToken := GetRawAccessTokenFromContext(ctx, l)
-	if !incoming {
-		if rawToken != "" {
-			ctx = metadata.AppendToOutgoingContext(ctx, AccessTokenKey, rawToken)
-		}
-		if clientID != "" {
-			ctx = metadata.AppendToOutgoingContext(ctx, ClientIDKey, clientID)
-		}
-		return ctx
-	}
 
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -104,6 +95,22 @@ func ContextWithAuthnMetadata(ctx context.Context, l *logger.Logger, clientID st
 	}
 
 	return metadata.NewIncomingContext(ctx, md)
+}
+
+// EnrichOutgoingContextMetadataWithAuthn adds the access token and client ID to outgoing context metadata
+//
+// Adding the authn info to gRPC metadata propagates it across services rather than strictly
+// in-process within Go alone
+func EnrichOutgoingContextMetadataWithAuthn(ctx context.Context, l *logger.Logger, clientID string) context.Context {
+	rawToken := GetRawAccessTokenFromContext(ctx, l)
+	kvs := make([]string, 0)
+	if rawToken != "" {
+		kvs = append(kvs, AccessTokenKey, rawToken)
+	}
+	if clientID != "" {
+		kvs = append(kvs, ClientIDKey, clientID)
+	}
+	return metadata.AppendToOutgoingContext(ctx, kvs...)
 }
 
 // GetClientIDFromContext retrieves the client ID from the metadata in the context

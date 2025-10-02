@@ -318,7 +318,8 @@ func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[aut
 
 // Builds a decision request context out of contextual metadata for the downstream obligation trigger/fulfillment decisioning
 func (as *Service) getDecisionRequestContext(ctx context.Context) (*policy.RequestContext, error) {
-	clientID, err := ctxAuth.GetClientIDFromContext(ctx, true)
+	incoming := true
+	clientID, err := ctxAuth.GetClientIDFromContext(ctx, incoming)
 	if err != nil {
 		return nil, errors.Join(ErrFailedToBuildRequestContext, err)
 	}

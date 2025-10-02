@@ -40,8 +40,7 @@ func MetadataAddingClientInterceptor(
 		ctx = metadata.AppendToOutgoingContext(ctx, string(ActorIDHeaderKey), actorID)
 	}
 
-	err := invoker(ctx, method, req, reply, cc, opts...)
-	return err
+	return invoker(ctx, method, req, reply, cc, opts...)
 }
 
 func MetadataAddingConnectInterceptor() connect.UnaryInterceptorFunc {

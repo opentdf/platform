@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package policy.namespaces;
 
-import "google/api/annotations.proto";
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "policy/objects.proto";
@@ -171,12 +170,10 @@ message RemovePublicKeyFromNamespaceResponse {
 
 service NamespaceService {
   rpc GetNamespace(GetNamespaceRequest) returns (GetNamespaceResponse) {
-    option (google.api.http) = { get: "/policy/namespace/fqn/{fqn=**}" };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc ListNamespaces(ListNamespacesRequest) returns (ListNamespacesResponse) {
-    option (google.api.http) = { get: "/policy/namespace" };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 

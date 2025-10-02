@@ -234,6 +234,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.Certificate"><span class="badge">M</span>Certificate</a>
+                </li>
+              
+                <li>
                   <a href="#policy.Condition"><span class="badge">M</span>Condition</a>
                 </li>
               
@@ -2529,6 +2533,37 @@ Indicates a key may be found in TDFs without key identifiers </p></td>
 
         
       
+        <h3 id="policy.Certificate">Certificate</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>generated uuid in database </p></td>
+                </tr>
+              
+                <tr>
+                  <td>x5c</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>x5c format - An array of base64-encoded DER certificates (not PEM; no headers/footers) </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.Condition">Condition</h3>
         <p>A Condition defines a rule of <the value at the flattened 'selector value'</p><p>location> <operator> <subject external values></p>
 
@@ -2939,6 +2974,13 @@ enable federation </p></td>
                   <td><a href="#policy.SimpleKasKey">SimpleKasKey</a></td>
                   <td>repeated</td>
                   <td><p>Keys for the namespace </p></td>
+                </tr>
+              
+                <tr>
+                  <td>root_certs</td>
+                  <td><a href="#policy.Certificate">Certificate</a></td>
+                  <td>repeated</td>
+                  <td><p>Root certificates for chain of trust </p></td>
                 </tr>
               
             </tbody>

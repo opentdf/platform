@@ -537,6 +537,19 @@ components:
          the Joda Time's [`ISODateTimeFormat.dateTime()`](
          http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()
          ) to obtain a formatter capable of generating timestamps in this format.
+    policy.Certificate:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: generated uuid in database
+        x5c:
+          type: string
+          title: x5c
+          description: x5c format - An array of base64-encoded DER certificates (not PEM; no headers/footers)
+      title: Certificate
+      additionalProperties: false
     policy.KasPublicKey:
       type: object
       properties:
@@ -658,6 +671,12 @@ components:
             $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Keys for the namespace
+        rootCerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Certificate'
+          title: root_certs
+          description: Root certificates for chain of trust
       title: Namespace
       additionalProperties: false
     policy.PageRequest:

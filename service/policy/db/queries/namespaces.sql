@@ -33,7 +33,8 @@ SELECT
         'name', kas.name,
         'public_key', kas.public_key
     )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants,
-    nmp_keys.keys as keys
+    nmp_keys.keys as keys,
+    nmp_certs.certs as certs
 FROM attribute_namespaces ns
 LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
 LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
@@ -57,10 +58,23 @@ LEFT JOIN (
     INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
     GROUP BY k.namespace_id
 ) nmp_keys ON ns.id = nmp_keys.namespace_id
-WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL 
+LEFT JOIN (
+    SELECT
+        c.namespace_id,
+        JSONB_AGG(
+            DISTINCT JSONB_BUILD_OBJECT(
+                'id', cert.id,
+                'x5c', cert.x5c
+            )
+        ) FILTER (WHERE cert.id IS NOT NULL) AS certs
+    FROM attribute_namespace_certificates c
+    INNER JOIN certificates cert ON c.certificate_id = cert.id
+    GROUP BY c.namespace_id
+) nmp_certs ON ns.id = nmp_certs.namespace_id
+WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL
   AND (sqlc.narg('id')::uuid IS NULL OR ns.id = sqlc.narg('id')::uuid)
   AND (sqlc.narg('name')::text IS NULL OR ns.name = REGEXP_REPLACE(sqlc.narg('name')::text, '^https?://', ''))
-GROUP BY ns.id, fqns.fqn, nmp_keys.keys;
+GROUP BY ns.id, fqns.fqn, nmp_keys.keys, nmp_certs.certs;
 
 -- name: createNamespace :one
 INSERT INTO attribute_namespaces (name, metadata)
@@ -97,3 +111,32 @@ UPDATE attribute_namespace_public_key_map
 SET key_access_server_key_id = sqlc.arg('new_key_id')::uuid
 WHERE (key_access_server_key_id = sqlc.arg('old_key_id')::uuid)
 RETURNING namespace_id;
+
+----------------------------------------------------------------
+-- CERTIFICATES
+----------------------------------------------------------------
+
+-- name: createCertificate :one
+INSERT INTO certificates (x5c, metadata)
+VALUES ($1, $2)
+RETURNING id;
+
+-- name: getCertificate :one
+SELECT
+    id,
+    x5c,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+FROM certificates
+WHERE id = $1;
+
+-- name: deleteCertificate :execrows
+DELETE FROM certificates WHERE id = $1;
+
+-- name: assignCertificateToNamespace :one
+INSERT INTO attribute_namespace_certificates (namespace_id, certificate_id)
+VALUES ($1, $2)
+RETURNING *;
+
+-- name: removeCertificateFromNamespace :execrows
+DELETE FROM attribute_namespace_certificates
+WHERE namespace_id = $1 AND certificate_id = $2;

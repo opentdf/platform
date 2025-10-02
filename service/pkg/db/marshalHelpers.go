@@ -194,3 +194,34 @@ func UnmarshalSimpleKasKey(keysJSON []byte) (*policy.SimpleKasKey, error) {
 	}
 	return key, nil
 }
+
+func CertificatesProtoJSON(certsJSON []byte) ([]*policy.Certificate, error) {
+	var (
+		certs []*policy.Certificate
+		raw   []json.RawMessage
+	)
+	if err := json.Unmarshal(certsJSON, &raw); err != nil {
+		return nil, err
+	}
+	for _, r := range raw {
+		c, err := UnmarshalCertificate([]byte(r))
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal certificate: %w", err)
+		}
+		if c != nil {
+			certs = append(certs, c)
+		}
+	}
+	return certs, nil
+}
+
+func UnmarshalCertificate(certJSON []byte) (*policy.Certificate, error) {
+	var cert *policy.Certificate
+	if certJSON != nil {
+		cert = &policy.Certificate{}
+		if err := protojson.Unmarshal(certJSON, cert); err != nil {
+			return nil, err
+		}
+	}
+	return cert, nil
+}

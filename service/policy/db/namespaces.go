@@ -70,14 +70,24 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*poli
 		}
 	}
 
+	var certs []*policy.Certificate
+	if len(ns.Certs) > 0 {
+		certs, err = db.CertificatesProtoJSON(ns.Certs)
+		if err != nil {
+			c.logger.ErrorContext(ctx, "could not unmarshal certificates", slog.String("error", err.Error()))
+			return nil, err
+		}
+	}
+
 	return &policy.Namespace{
-		Id:       ns.ID,
-		Name:     ns.Name,
-		Active:   &wrapperspb.BoolValue{Value: ns.Active},
-		Grants:   grants,
-		Metadata: metadata,
-		Fqn:      ns.Fqn.String,
-		KasKeys:  keys,
+		Id:        ns.ID,
+		Name:      ns.Name,
+		Active:    &wrapperspb.BoolValue{Value: ns.Active},
+		Grants:    grants,
+		Metadata:  metadata,
+		Fqn:       ns.Fqn.String,
+		KasKeys:   keys,
+		RootCerts: certs,
 	}, nil
 }
 
@@ -385,4 +395,73 @@ func (c PolicyDBClient) RemovePublicKeyFromNamespace(ctx context.Context, k *nam
 		NamespaceId: k.GetNamespaceId(),
 		KeyId:       k.GetKeyId(),
 	}, nil
+}
+
+// CreateCertificate creates a new certificate in the database
+func (c PolicyDBClient) CreateCertificate(ctx context.Context, x5c string, metadata []byte) (string, error) {
+	certID, err := c.queries.createCertificate(ctx, createCertificateParams{
+		X5c:      x5c,
+		Metadata: metadata,
+	})
+	if err != nil {
+		return "", db.WrapIfKnownInvalidQueryErr(err)
+	}
+	return certID, nil
+}
+
+// GetCertificate retrieves a certificate by ID
+func (c PolicyDBClient) GetCertificate(ctx context.Context, id string) (*policy.Certificate, error) {
+	cert, err := c.queries.getCertificate(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	metadata := &common.Metadata{}
+	if err = unmarshalMetadata(cert.Metadata, metadata); err != nil {
+		return nil, err
+	}
+
+	return &policy.Certificate{
+		Id:  cert.ID,
+		X5C: cert.X5c,
+	}, nil
+}
+
+// DeleteCertificate removes a certificate from the database
+func (c PolicyDBClient) DeleteCertificate(ctx context.Context, id string) error {
+	count, err := c.queries.deleteCertificate(ctx, id)
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return db.ErrNotFound
+	}
+	return nil
+}
+
+// AssignCertificateToNamespace assigns a certificate to a namespace
+func (c PolicyDBClient) AssignCertificateToNamespace(ctx context.Context, namespaceID, certificateID string) error {
+	_, err := c.queries.assignCertificateToNamespace(ctx, assignCertificateToNamespaceParams{
+		NamespaceID:   namespaceID,
+		CertificateID: certificateID,
+	})
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	return nil
+}
+
+// RemoveCertificateFromNamespace removes a certificate from a namespace
+func (c PolicyDBClient) RemoveCertificateFromNamespace(ctx context.Context, namespaceID, certificateID string) error {
+	count, err := c.queries.removeCertificateFromNamespace(ctx, removeCertificateFromNamespaceParams{
+		NamespaceID:   namespaceID,
+		CertificateID: certificateID,
+	})
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return db.ErrNotFound
+	}
+	return nil
 }

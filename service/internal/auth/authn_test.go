@@ -242,7 +242,7 @@ func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	s.Require().NotNil(nextCtx)
 	s.Equal("mockValue", nextCtx.Value(contextKey("mockKey")))
 
-	inbound := false
+	inbound := true
 	clientID, err := ctxAuth.GetClientIDFromContext(nextCtx, inbound)
 	s.Require().NoError(err)
 	s.Equal("mockClientID", clientID)

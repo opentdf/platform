@@ -770,7 +770,7 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 			if err != nil {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
-			return ctxAuth.EnrichOutgoingContextMetadataWithAuthn(ctxWithJWK, a.logger, clientID), nil
+			return ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, a.logger, clientID), nil
 		}
 	}
 	return ctx, nil

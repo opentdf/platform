@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"sync"
 
@@ -13,6 +14,7 @@ import (
 
 type CertExchangeTokenSource struct {
 	auth.AccessTokenSource
+	logger      *slog.Logger
 	IdpEndpoint string
 	credentials oauth.ClientCredentials
 	tokenMutex  *sync.Mutex
@@ -21,13 +23,14 @@ type CertExchangeTokenSource struct {
 	key         jwk.Key
 }
 
-func NewCertExchangeTokenSource(info oauth.CertExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string, dpop *ocrypto.RsaKeyPair) (auth.AccessTokenSource, error) {
+func NewCertExchangeTokenSource(logger *slog.Logger, info oauth.CertExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string, dpop *ocrypto.RsaKeyPair) (auth.AccessTokenSource, error) {
 	_, dpopKey, _, err := getNewDPoPKey(dpop)
 	if err != nil {
 		return nil, err
 	}
 
 	exchangeSource := CertExchangeTokenSource{
+		logger:      logger,
 		info:        info,
 		IdpEndpoint: idpTokenEndpoint,
 		credentials: credentials,

@@ -54,6 +54,11 @@ erDiagram
         uuid value_id FK,UK "Foreign key to the attribute value"
     }
 
+    attribute_namespace_certificates {
+        uuid certificate_id PK,FK "Foreign key to the certificate"
+        uuid namespace_id PK,FK "Foreign key to the namespace"
+    }
+
     attribute_namespace_key_access_grants {
         uuid key_access_server_id PK,FK "Foreign key to the KAS registration"
         uuid namespace_id PK,FK "Foreign key to the namespace of the KAS grant"
@@ -96,6 +101,14 @@ erDiagram
     base_keys {
         uuid id PK 
         uuid key_access_server_key_id FK 
+    }
+
+    certificates {
+        timestamp_with_time_zone created_at "Timestamp when the certificate was created"
+        uuid id PK "Unique identifier for the certificate"
+        jsonb metadata "Optional metadata for the certificate"
+        timestamp_with_time_zone updated_at "Timestamp when the certificate was last updated"
+        text x5c "x5c format - Base64-encoded DER certificate (not PEM; no headers/footers)"
     }
 
     goose_db_version {
@@ -276,6 +289,8 @@ erDiagram
     attribute_values }o--|| attribute_definitions : "attribute_definition_id"
     attribute_fqns }o--|| attribute_namespaces : "namespace_id"
     attribute_fqns }o--|| attribute_values : "value_id"
+    attribute_namespace_certificates }o--|| attribute_namespaces : "namespace_id"
+    attribute_namespace_certificates }o--|| certificates : "certificate_id"
     attribute_namespace_key_access_grants }o--|| attribute_namespaces : "namespace_id"
     attribute_namespace_key_access_grants }o--|| key_access_servers : "key_access_server_id"
     attribute_namespace_public_key_map }o--|| attribute_namespaces : "namespace_id"

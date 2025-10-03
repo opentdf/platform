@@ -97,7 +97,6 @@ func EnrichIncomingContextMetadataWithAuthn(ctx context.Context, l *logger.Logge
 	return metadata.NewIncomingContext(ctx, md)
 }
 
-
 // GetClientIDFromContext retrieves the client ID from the metadata in the context
 func GetClientIDFromContext(ctx context.Context, incoming bool) (string, error) {
 	var (

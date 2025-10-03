@@ -1,7 +1,6 @@
 package authorization
 
 import (
-	"errors"
 	"math/rand"
 	"strconv"
 	"testing"
@@ -1286,12 +1285,11 @@ func Test_GetEntitlementsRequest_Fails(t *testing.T) {
 
 func Test_RollupSingleResourceDecision(t *testing.T) {
 	tests := []struct {
-		name            string
-		permitted       bool
-		decisions       []*access.Decision
-		expectedResult  *authzV2.GetDecisionResponse
-		expectedError   error
-		errorMsgContain string
+		name           string
+		permitted      bool
+		decisions      []*access.Decision
+		expectedResult *authzV2.GetDecisionResponse
+		expectedError  error
 	}{
 		{
 			name:      "should return permit decision when permitted is true",
@@ -1310,6 +1308,33 @@ func Test_RollupSingleResourceDecision(t *testing.T) {
 				Decision: &authzV2.ResourceDecision{
 					Decision:            authzV2.Decision_DECISION_PERMIT,
 					EphemeralResourceId: "resource-123",
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name:      "should surface obligations in a permit decision",
+			permitted: true,
+			decisions: []*access.Decision{
+				{
+					Access: true,
+					Results: []access.ResourceDecision{
+						{
+							ResourceID: "resource-123",
+							RequiredObligationValueFQNs: []string{
+								"obligation-abc",
+							},
+						},
+					},
+				},
+			},
+			expectedResult: &authzV2.GetDecisionResponse{
+				Decision: &authzV2.ResourceDecision{
+					Decision:            authzV2.Decision_DECISION_PERMIT,
+					EphemeralResourceId: "resource-123",
+					RequiredObligations: []string{
+						"obligation-abc",
+					},
 				},
 			},
 			expectedError: nil,
@@ -1336,12 +1361,34 @@ func Test_RollupSingleResourceDecision(t *testing.T) {
 			expectedError: nil,
 		},
 		{
-			name:            "should return error when no decisions are provided",
-			permitted:       true,
-			decisions:       []*access.Decision{},
-			expectedResult:  nil,
-			expectedError:   errors.New("no decisions returned"),
-			errorMsgContain: "no decisions returned",
+			name:      "should surface obligations within a deny decision",
+			permitted: false,
+			decisions: []*access.Decision{
+				{
+					Access: true, // Verify permitted takes precedence
+					Results: []access.ResourceDecision{
+						{
+							ResourceID:                  "resource-123",
+							RequiredObligationValueFQNs: []string{"obligation-123"},
+						},
+					},
+				},
+			},
+			expectedResult: &authzV2.GetDecisionResponse{
+				Decision: &authzV2.ResourceDecision{
+					Decision:            authzV2.Decision_DECISION_DENY,
+					EphemeralResourceId: "resource-123",
+					RequiredObligations: []string{"obligation-123"},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name:           "should return error when no decisions are provided",
+			permitted:      true,
+			decisions:      []*access.Decision{},
+			expectedResult: nil,
+			expectedError:  ErrNoDecisions,
 		},
 		{
 			name:      "should return error when decision has no results",
@@ -1352,9 +1399,8 @@ func Test_RollupSingleResourceDecision(t *testing.T) {
 					Results: []access.ResourceDecision{},
 				},
 			},
-			expectedResult:  nil,
-			expectedError:   errors.New("no decision results returned"),
-			errorMsgContain: "no decision results returned",
+			expectedResult: nil,
+			expectedError:  ErrDecisionMustHaveResults,
 		},
 	}
 
@@ -1364,11 +1410,11 @@ func Test_RollupSingleResourceDecision(t *testing.T) {
 
 			if tc.expectedError != nil {
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), tc.errorMsgContain)
+				require.ErrorIs(t, err, tc.expectedError)
 				assert.Nil(t, result)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tc.expectedResult, result)
+				assert.True(t, proto.Equal(tc.expectedResult, result))
 			}
 		})
 	}
@@ -1376,11 +1422,10 @@ func Test_RollupSingleResourceDecision(t *testing.T) {
 
 func Test_RollupMultiResourceDecisions(t *testing.T) {
 	tests := []struct {
-		name            string
-		decisions       []*access.Decision
-		expectedResult  []*authzV2.ResourceDecision
-		expectedError   error
-		errorMsgContain string
+		name           string
+		decisions      []*access.Decision
+		expectedResult []*authzV2.ResourceDecision
+		expectedError  error
 	}{
 		{
 			name: "should return multiple permit decisions",
@@ -1414,7 +1459,6 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 					EphemeralResourceId: "resource-456",
 				},
 			},
-			expectedError: nil,
 		},
 		{
 			name: "should return mix of permit and deny decisions",
@@ -1448,7 +1492,6 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 					EphemeralResourceId: "resource-456",
 				},
 			},
-			expectedError: nil,
 		},
 		{
 			name: "should rely on results and default to false decisions",
@@ -1490,7 +1533,6 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 					EphemeralResourceId: "resource-456",
 				},
 			},
-			expectedError: nil,
 		},
 		{
 			name: "should ignore global access and care about resource decisions predominantly",
@@ -1532,7 +1574,77 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 					EphemeralResourceId: "resource-456",
 				},
 			},
-			expectedError: nil,
+		},
+		{
+			name: "should return obligations whenever found on a resource",
+			decisions: []*access.Decision{
+				{
+					Access: true,
+					Results: []access.ResourceDecision{
+						{
+							Passed:     true,
+							ResourceID: "resource-123",
+							RequiredObligationValueFQNs: []string{
+								"obligation-123",
+								"obligation-abc",
+								"obligation-456",
+							},
+						},
+						{
+							Passed:     true,
+							ResourceID: "resource-abc",
+							RequiredObligationValueFQNs: []string{
+								"obligation-abc",
+							},
+						},
+					},
+				},
+				{
+					Access: false,
+					Results: []access.ResourceDecision{
+						{
+							Passed:     false,
+							ResourceID: "resource-456",
+						},
+						{
+							Passed:     true,
+							ResourceID: "resource-extra",
+							RequiredObligationValueFQNs: []string{
+								"obligation-extra",
+							},
+						},
+					},
+				},
+			},
+			expectedResult: []*authzV2.ResourceDecision{
+				{
+					Decision:            authzV2.Decision_DECISION_PERMIT,
+					EphemeralResourceId: "resource-123",
+					RequiredObligations: []string{
+						"obligation-123",
+						"obligation-abc",
+						"obligation-456",
+					},
+				},
+				{
+					Decision:            authzV2.Decision_DECISION_PERMIT,
+					EphemeralResourceId: "resource-abc",
+					RequiredObligations: []string{
+						"obligation-abc",
+					},
+				},
+				{
+					Decision:            authzV2.Decision_DECISION_DENY,
+					EphemeralResourceId: "resource-456",
+				},
+				{
+					Decision:            authzV2.Decision_DECISION_PERMIT,
+					EphemeralResourceId: "resource-extra",
+					RequiredObligations: []string{
+						"obligation-extra",
+					},
+				},
+			},
 		},
 		{
 			name: "should return error when decision has no results",
@@ -1542,9 +1654,7 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 					Results: []access.ResourceDecision{},
 				},
 			},
-			expectedResult:  nil,
-			expectedError:   errors.New("no decision results returned"),
-			errorMsgContain: "no decision results returned",
+			expectedError: ErrDecisionMustHaveResults,
 		},
 	}
 
@@ -1554,11 +1664,14 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 
 			if tc.expectedError != nil {
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), tc.errorMsgContain)
+				require.ErrorIs(t, err, tc.expectedError)
 				assert.Nil(t, result)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tc.expectedResult, result)
+				// resource order preserved
+				for i, decision := range result {
+					assert.True(t, proto.Equal(tc.expectedResult[i], decision))
+				}
 			}
 		})
 	}
@@ -1590,14 +1703,14 @@ func Test_RollupMultiResourceDecisions_WithNilChecks(t *testing.T) {
 		var decisions []*access.Decision
 		_, err := rollupMultiResourceDecisions(decisions)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "no decisions returned")
+		require.ErrorIs(t, err, ErrNoDecisions)
 	})
 
 	t.Run("nil decision in array", func(t *testing.T) {
 		decisions := []*access.Decision{nil}
 		_, err := rollupMultiResourceDecisions(decisions)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "nil decision at index 0")
+		require.ErrorIs(t, err, ErrDecisionCannotBeNil)
 	})
 
 	t.Run("nil Results field", func(t *testing.T) {
@@ -1609,7 +1722,7 @@ func Test_RollupMultiResourceDecisions_WithNilChecks(t *testing.T) {
 		}
 		_, err := rollupMultiResourceDecisions(decisions)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "no decision results returned")
+		require.ErrorIs(t, err, ErrDecisionMustHaveResults)
 	})
 }
 
@@ -1618,14 +1731,14 @@ func Test_RollupSingleResourceDecision_WithNilChecks(t *testing.T) {
 		var decisions []*access.Decision
 		_, err := rollupSingleResourceDecision(true, decisions)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "no decisions returned")
+		require.ErrorIs(t, err, ErrNoDecisions)
 	})
 
 	t.Run("nil decision in array", func(t *testing.T) {
 		decisions := []*access.Decision{nil}
 		_, err := rollupSingleResourceDecision(true, decisions)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "nil decision at index 0")
+		require.ErrorIs(t, err, ErrDecisionCannotBeNil)
 	})
 
 	t.Run("nil Results field", func(t *testing.T) {
@@ -1637,7 +1750,7 @@ func Test_RollupSingleResourceDecision_WithNilChecks(t *testing.T) {
 		}
 		_, err := rollupSingleResourceDecision(true, decisions)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "no decision results returned")
+		require.ErrorIs(t, err, ErrDecisionMustHaveResults)
 	})
 }
 

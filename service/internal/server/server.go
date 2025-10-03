@@ -162,6 +162,7 @@ https://github.com/valyala/fasthttp/blob/master/fasthttputil/inmemory_listener.g
 */
 type inProcessServer struct {
 	srv                *memhttp.Server
+	logger             *logger.Logger
 	maxCallRecvMsgSize int
 	maxCallSendMsgSize int
 	*ConnectRPC
@@ -239,6 +240,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 		CacheManager:   cacheManager,
 		ConnectRPC:     connectRPC,
 		ConnectRPCInProcess: &inProcessServer{
+			logger:             logger.With("ipc_server", "true"),
 			srv:                memhttp.New(connectRPCIpc.Mux),
 			maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
 			maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
@@ -508,6 +510,9 @@ func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
 
 	// Add audit interceptor
 	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingConnectInterceptor())
+
+	// Add IPC metadata transfer interceptor (transfers gRPC metadata to Connect headers)
+	clientInterceptors = append(clientInterceptors, auth.IPCMetadataClientInterceptor(s.logger))
 
 	conn := sdk.ConnectRPCConnection{
 		Client:   s.srv.Client(),

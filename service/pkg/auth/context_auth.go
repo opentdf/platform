@@ -13,13 +13,13 @@ import (
 var (
 	authnContextKey     = authContextKey{}
 	ErrNoMetadataFound  = errors.New("no metadata found within context")
-	ErrMissingClientID  = errors.New("context metadata missing authn idP clientID that should have been set by interceptor")
-	ErrConflictClientID = errors.New("context metadata has more than one authn idP clientID and should only ever have one")
+	ErrMissingClientID  = errors.New("missing authn idP clientID")
+	ErrConflictClientID = errors.New("context metadata mistakenly has more than one authn idP clientID")
 )
 
 const (
-	accessTokenKey = "access_token"
-	clientIDKey    = "client_id"
+	AccessTokenKey = "access_token"
+	ClientIDKey    = "client_id"
 )
 
 type authContextKey struct{}
@@ -73,39 +73,46 @@ func GetRawAccessTokenFromContext(ctx context.Context, l *logger.Logger) string 
 	return ""
 }
 
-// ContextWithAuthnMetadata adds the access token and client ID to context metadata
+// EnrichIncomingContextMetadataWithAuthn adds the access token and client ID to incoming context metadata
 //
-// Adding the authn into to gRPC metadata propagates it across services rather than strictly
+// Adding the authn info to gRPC metadata propagates it across services rather than strictly
 // in-process within Go alone
-func ContextWithAuthnMetadata(ctx context.Context, clientID string) context.Context {
+func EnrichIncomingContextMetadataWithAuthn(ctx context.Context, l *logger.Logger, clientID string) context.Context {
+	rawToken := GetRawAccessTokenFromContext(ctx, l)
+
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		md = metadata.New(nil)
 	} else {
-		// Do not modify original metadata from parent context
 		md = md.Copy()
 	}
-
-	if rawToken := GetRawAccessTokenFromContext(ctx, nil); rawToken != "" {
-		md.Set(accessTokenKey, rawToken)
+	if rawToken != "" {
+		md.Set(AccessTokenKey, rawToken)
 	}
 
-	// Add client ID to metadata for downstream services
 	if clientID != "" {
-		md.Set(clientIDKey, clientID)
+		md.Set(ClientIDKey, clientID)
 	}
 
 	return metadata.NewIncomingContext(ctx, md)
 }
 
 // GetClientIDFromContext retrieves the client ID from the metadata in the context
-func GetClientIDFromContext(ctx context.Context) (string, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
+func GetClientIDFromContext(ctx context.Context, incoming bool) (string, error) {
+	var (
+		md metadata.MD
+		ok bool
+	)
+	if incoming {
+		md, ok = metadata.FromIncomingContext(ctx)
+	} else {
+		md, ok = metadata.FromOutgoingContext(ctx)
+	}
 	if !ok {
 		return "", ErrNoMetadataFound
 	}
 
-	clientIDs := md.Get(clientIDKey)
+	clientIDs := md.Get(ClientIDKey)
 	if len(clientIDs) == 0 {
 		return "", ErrMissingClientID
 	}

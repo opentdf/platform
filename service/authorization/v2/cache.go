@@ -17,6 +17,7 @@ const (
 	attributesCacheKey          = "attributes_cache_key"
 	subjectMappingsCacheKey     = "subject_mappings_cache_key"
 	registeredResourcesCacheKey = "registered_resources_cache_key"
+	obligationsCacheKey         = "obligations_cache_key"
 )
 
 var (
@@ -62,6 +63,7 @@ type EntitlementPolicy struct {
 	Attributes          []*policy.Attribute
 	SubjectMappings     []*policy.SubjectMapping
 	RegisteredResources []*policy.RegisteredResource
+	Obligations         []*policy.Obligation
 }
 
 // NewEntitlementPolicyCache holds a platform-provided cache client and manages a periodic refresh of
@@ -146,7 +148,7 @@ func (c *EntitlementPolicyCache) Stop() {
 		select {
 		case <-c.stopRefresh:
 			// Channel is already closed, nothing to do
-			c.logger.DebugContext(context.Background(), "stop called on already stopped cache")
+			c.logger.Debug("stop called on already stopped cache")
 			return
 		default:
 			// Channel is still open, proceed with closing
@@ -158,7 +160,7 @@ func (c *EntitlementPolicyCache) Stop() {
 				// Goroutine completed successfully
 			case <-time.After(stopTimeout):
 				// Timeout as a safety mechanism in case the goroutine is stuck
-				c.logger.WarnContext(context.Background(), "timed out waiting for refresh goroutine to complete")
+				c.logger.Warn("timed out waiting for refresh goroutine to complete")
 			}
 		}
 	}
@@ -177,6 +179,10 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 		return err
 	}
 	registeredResources, err := c.retriever.ListAllRegisteredResources(ctx)
+	if err != nil {
+		return err
+	}
+	obligations, err := c.retriever.ListAllObligations(ctx)
 	if err != nil {
 		return err
 	}
@@ -200,11 +206,18 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 		return errors.Join(ErrFailedToSet, err)
 	}
 
+	err = c.cacheClient.Set(ctx, obligationsCacheKey, obligations, authzCacheTags)
+	if err != nil {
+		c.isCacheFilled = false
+		return errors.Join(ErrFailedToSet, err)
+	}
+
 	c.logger.DebugContext(ctx,
 		"refreshed EntitlementPolicyCache",
 		slog.Int("attributes_count", len(attributes)),
 		slog.Int("subject_mappings_count", len(subjectMappings)),
 		slog.Int("registered_resources_count", len(registeredResources)),
+		slog.Int("obligations_count", len(obligations)),
 	)
 
 	// Mark the cache as filled after a successful refresh
@@ -277,6 +290,28 @@ func (c *EntitlementPolicyCache) ListAllRegisteredResources(ctx context.Context)
 		return nil, fmt.Errorf("%w: %T", ErrCachedTypeNotExpected, registeredResources)
 	}
 	return registeredResources, nil
+}
+
+// ListAllObligations returns the cached obligations, or none in the event of a cache miss
+func (c *EntitlementPolicyCache) ListAllObligations(ctx context.Context) ([]*policy.Obligation, error) {
+	var (
+		obligations []*policy.Obligation
+		ok          bool
+	)
+
+	cached, err := c.cacheClient.Get(ctx, obligationsCacheKey)
+	if err != nil {
+		if errors.Is(err, cache.ErrCacheMiss) {
+			return obligations, nil
+		}
+		return nil, fmt.Errorf("%w, obligations: %w", ErrFailedToGet, err)
+	}
+
+	obligations, ok = cached.([]*policy.Obligation)
+	if !ok {
+		return nil, fmt.Errorf("%w: %T", ErrCachedTypeNotExpected, obligations)
+	}
+	return obligations, nil
 }
 
 // periodicRefresh refreshes the cache at the specified interval

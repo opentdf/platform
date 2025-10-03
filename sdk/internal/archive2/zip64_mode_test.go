@@ -3,7 +3,6 @@ package archive2
 import (
 	"archive/zip"
 	"bytes"
-	"context"
 	"io"
 	"testing"
 )
@@ -93,7 +92,6 @@ func TestZip64Mode_Always_Small_UsesZip64(t *testing.T) {
 
 func TestZip64Mode_Never_Overflow_Fails(t *testing.T) {
 	w := NewSegmentTDFWriter(1, WithZip64Mode(Zip64Never))
-	ctx := context.Background()
 
 	// Simulate sizes that would require ZIP64 by directly bumping payloadEntry fields
 	sw, ok := w.(*segmentWriter)
@@ -101,13 +99,13 @@ func TestZip64Mode_Never_Overflow_Fails(t *testing.T) {
 		t.Fatal("writer type assertion failed")
 	}
 	// Write minimal segment to initialize structures
-	if _, err := w.WriteSegment(ctx, 0, []byte("x")); err != nil {
+	if _, err := w.WriteSegment(t.Context(), 0, []byte("x")); err != nil {
 		t.Fatal(err)
 	}
 	sw.payloadEntry.Size = uint64(^uint32(0)) + 1 // exceed 32-bit
 	sw.payloadEntry.CompressedSize = sw.payloadEntry.Size
 
-	if _, err := w.Finalize(ctx, []byte(`{"m":1}`)); err == nil {
+	if _, err := w.Finalize(t.Context(), []byte(`{"m":1}`)); err == nil {
 		t.Fatal("expected finalize to fail due to Zip64Never")
 	}
 }

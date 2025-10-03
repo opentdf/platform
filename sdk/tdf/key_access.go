@@ -16,13 +16,13 @@ var tdfSaltBytes []byte
 
 // tdfSalt generates the standard TDF salt for key derivation
 func init() {
-    digest := sha256.New()
-    digest.Write([]byte("TDF"))
-    tdfSaltBytes = digest.Sum(nil)
+	digest := sha256.New()
+	digest.Write([]byte("TDF"))
+	tdfSaltBytes = digest.Sum(nil)
 }
 
 func tdfSalt() []byte {
-    return tdfSaltBytes
+	return tdfSaltBytes
 }
 
 // BuildKeyAccessObjects creates KeyAccess objects from splits for TDF manifest inclusion

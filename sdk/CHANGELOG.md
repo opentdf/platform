@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/opentdf/platform/compare/sdk/v0.8.0...sdk/v0.9.0) (2025-10-03)
+
+
+### Features
+
+* **sdk:** sdk should optionally take in a logger ([#2754](https://github.com/opentdf/platform/issues/2754)) ([f40d05f](https://github.com/opentdf/platform/commit/f40d05ff24aa7ff4270f206c4e3efc13125ec284))
+
 ## [0.8.0](https://github.com/opentdf/platform/compare/sdk/v0.7.0...sdk/v0.8.0) (2025-09-19)
 
 

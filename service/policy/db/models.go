@@ -178,6 +178,14 @@ type AttributeNamespace struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+// Junction table to map root certificates to attribute namespaces
+type AttributeNamespaceCertificate struct {
+	// Foreign key to the namespace
+	NamespaceID string `json:"namespace_id"`
+	// Foreign key to the certificate
+	CertificateID string `json:"certificate_id"`
+}
+
 // Table to store the grants of key access servers (KASs) to attribute namespaces
 type AttributeNamespaceKeyAccessGrant struct {
 	// Foreign key to the namespace of the KAS grant
@@ -229,6 +237,20 @@ type AttributeValuePublicKeyMap struct {
 type BaseKey struct {
 	ID                   string      `json:"id"`
 	KeyAccessServerKeyID pgtype.UUID `json:"key_access_server_key_id"`
+}
+
+// Table to store X.509 certificates for chain of trust
+type Certificate struct {
+	// Unique identifier for the certificate
+	ID string `json:"id"`
+	// x5c format - Base64-encoded DER certificate (not PEM; no headers/footers)
+	X5c string `json:"x5c"`
+	// Optional metadata for the certificate
+	Metadata []byte `json:"metadata"`
+	// Timestamp when the certificate was created
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	// Timestamp when the certificate was last updated
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 // Table to store the known registrations of key access servers (KASs)

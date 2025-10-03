@@ -2,6 +2,8 @@ package namespaces
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -286,6 +288,95 @@ func (ns NamespacesService) RemovePublicKeyFromNamespace(ctx context.Context, r 
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextDeletionFailed, slog.String("namespaceKey", key.String()))
 	}
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	return connect.NewResponse(rsp), nil
+}
+
+func (ns NamespacesService) AssignCertificateToNamespace(ctx context.Context, r *connect.Request[namespaces.AssignCertificateToNamespaceRequest]) (*connect.Response[namespaces.AssignCertificateToNamespaceResponse], error) {
+	rsp := &namespaces.AssignCertificateToNamespaceResponse{}
+
+	namespaceID := r.Msg.GetNamespaceId()
+	x5c := r.Msg.GetX5C()
+	metadata := r.Msg.GetMetadata()
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeNamespaceCertificate,
+		ObjectID:   namespaceID,
+	}
+
+	// Validate x5c is valid base64-encoded DER certificate
+	derBytes, err := base64.StdEncoding.DecodeString(x5c)
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, ns.logger, err, "Invalid x5c format: must be base64-encoded")
+	}
+
+	// Validate it's a valid X.509 certificate
+	_, err = x509.ParseCertificate(derBytes)
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, ns.logger, err, "Invalid certificate: not a valid X.509 certificate")
+	}
+
+	// Create the certificate
+	metadataJSON, _, err := db.MarshalCreateMetadata(metadata)
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, ns.logger, err, "Failed to marshal metadata")
+	}
+
+	certID, err := ns.dbClient.CreateCertificate(ctx, x5c, metadataJSON)
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, ns.logger, err, "Failed to create certificate")
+	}
+
+	// Assign certificate to namespace
+	err = ns.dbClient.AssignCertificateToNamespace(ctx, namespaceID, certID)
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		// Clean up the certificate we just created
+		if cleanupErr := ns.dbClient.DeleteCertificate(ctx, certID); cleanupErr != nil {
+			ns.logger.ErrorContext(ctx, "failed to cleanup orphaned certificate after assignment failure",
+				slog.String("cert_id", certID),
+				slog.String("error", cleanupErr.Error()))
+		}
+		return nil, db.StatusifyError(ctx, ns.logger, err, "Failed to assign certificate to namespace")
+	}
+
+	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.NamespaceCertificate = &namespaces.NamespaceCertificate{
+		NamespaceId:   namespaceID,
+		CertificateId: certID,
+	}
+	rsp.Certificate = &policy.Certificate{
+		Id:  certID,
+		X5C: x5c,
+	}
+
+	return connect.NewResponse(rsp), nil
+}
+
+func (ns NamespacesService) RemoveCertificateFromNamespace(ctx context.Context, r *connect.Request[namespaces.RemoveCertificateFromNamespaceRequest]) (*connect.Response[namespaces.RemoveCertificateFromNamespaceResponse], error) {
+	rsp := &namespaces.RemoveCertificateFromNamespaceResponse{}
+
+	cert := r.Msg.GetNamespaceCertificate()
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeNamespaceCertificate,
+		ObjectID:   fmt.Sprintf("%s:%s", cert.GetNamespaceId(), cert.GetCertificateId()),
+	}
+
+	err := ns.dbClient.RemoveCertificateFromNamespace(ctx, cert.GetNamespaceId(), cert.GetCertificateId())
+	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, ns.logger, err, "Failed to remove certificate from namespace")
+	}
+	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.NamespaceCertificate = cert
 
 	return connect.NewResponse(rsp), nil
 }

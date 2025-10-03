@@ -32,6 +32,7 @@ const (
 	ObjectTypeKasAttributeDefinitionKeyAssignment
 	ObjectTypeKasAttributeValueKeyAssignment
 	ObjectTypeKasAttributeNamespaceKeyAssignment
+	ObjectTypeNamespaceCertificate
 )
 
 func (ot ObjectType) String() string {
@@ -61,6 +62,7 @@ func (ot ObjectType) String() string {
 		"kas_attribute_definition_key_assignment",
 		"kas_attribute_value_key_assignment",
 		"kas_attribute_namespace_key_assignment",
+		"namespace_certificate",
 	}[ot]
 }
 

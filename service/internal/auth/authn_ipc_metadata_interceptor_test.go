@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/logger"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
@@ -16,6 +18,9 @@ import (
 func TestIPCMetadataClientInterceptor(t *testing.T) {
 	testLogger := logger.CreateTestLogger()
 	mockClientID := "test-client-id"
+	mockAccessToken := "test-access-token"
+	mockToken := jwt.New()
+	var mockJWK jwk.Key
 
 	tests := []struct {
 		name            string
@@ -24,13 +29,19 @@ func TestIPCMetadataClientInterceptor(t *testing.T) {
 		expectedHeaders map[string]string
 	}{
 		{
-			name: "transfers client_id from incoming metadata to headers",
+			name: "transfers clientID and access token from incoming metadata to headers",
 			setupContext: func(ctx context.Context) context.Context {
-				md := metadata.New(map[string]string{ctxAuth.ClientIDKey: mockClientID})
+				md := metadata.New(map[string]string{
+					ctxAuth.ClientIDKey: mockClientID,
+				})
+				ctx = ctxAuth.ContextWithAuthNInfo(ctx, mockJWK, mockToken, mockAccessToken)
 				return metadata.NewIncomingContext(ctx, md)
 			},
-			isClient:        true,
-			expectedHeaders: map[string]string{canonicalIPCHeaderClientID: mockClientID},
+			isClient: true,
+			expectedHeaders: map[string]string{
+				canonicalIPCHeaderClientID:    mockClientID,
+				canonicalIPCHeaderAccessToken: mockAccessToken,
+			},
 		},
 		{
 			name: "does not add headers when no metadata present",
@@ -53,14 +64,16 @@ func TestIPCMetadataClientInterceptor(t *testing.T) {
 			name: "handles multiple metadata values",
 			setupContext: func(ctx context.Context) context.Context {
 				md := metadata.New(map[string]string{
-					ctxAuth.ClientIDKey: "test-client-id-123",
+					ctxAuth.ClientIDKey: mockClientID,
 					"custom-key":        "custom-value",
 				})
+				ctx = ctxAuth.ContextWithAuthNInfo(ctx, mockJWK, mockToken, mockAccessToken)
 				return metadata.NewIncomingContext(ctx, md)
 			},
 			isClient: true,
 			expectedHeaders: map[string]string{
-				canonicalIPCHeaderClientID: "test-client-id-123",
+				canonicalIPCHeaderClientID:    mockClientID,
+				canonicalIPCHeaderAccessToken: mockAccessToken,
 			},
 		},
 	}
@@ -110,19 +123,28 @@ func TestIPCMetadataClientInterceptor(t *testing.T) {
 func TestIPCMetadataClientInterceptor_Integration(t *testing.T) {
 	testLogger := logger.CreateTestLogger()
 
-	t.Run("clientID propagated through interceptor chain", func(t *testing.T) {
+	t.Run("clientID and accessToken propagated through interceptor chain", func(t *testing.T) {
 		clientID := "integration-test-client"
+		accessToken := "integration-test-token"
 		ctx := t.Context()
-		md := metadata.New(map[string]string{ctxAuth.ClientIDKey: clientID})
+		var mockJWK jwk.Key
+		mockToken := jwt.New()
+
+		md := metadata.New(map[string]string{
+			ctxAuth.ClientIDKey: clientID,
+		})
+		ctx = ctxAuth.ContextWithAuthNInfo(ctx, mockJWK, mockToken, accessToken)
+
 		ctx = metadata.NewIncomingContext(ctx, md)
 
 		interceptor := IPCMetadataClientInterceptor(testLogger)
 
 		req := connect.NewRequest(&kas.PublicKeyRequest{})
 
-		var receivedClientID string
+		var receivedClientID, receivedAccessToken string
 		mockNext := func(_ context.Context, r connect.AnyRequest) (connect.AnyResponse, error) {
 			receivedClientID = r.Header().Get(canonicalIPCHeaderClientID)
+			receivedAccessToken = r.Header().Get(canonicalIPCHeaderAccessToken)
 			return connect.NewResponse(&kas.PublicKeyResponse{}), nil
 		}
 
@@ -136,6 +158,7 @@ func TestIPCMetadataClientInterceptor_Integration(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, clientID, receivedClientID)
+		assert.Equal(t, accessToken, receivedAccessToken)
 	})
 }
 
@@ -174,16 +197,17 @@ func TestIPCUnaryServerInterceptor(t *testing.T) {
 		expectedIncomingMDKeys []string
 	}{
 		{
-			name: "transfers client_id from headers to incoming metadata",
+			name: "transfers clientID and access token from headers to incoming metadata",
 			setupRequest: func() connect.AnyRequest {
 				req := connect.NewRequest(&kas.PublicKeyRequest{})
 				req.Header().Set(canonicalIPCHeaderClientID, "test-client-from-header")
+				req.Header().Set(canonicalIPCHeaderAccessToken, "test-token-from-header")
 				return &mockAnyRequest{
 					Request:  req,
 					isClient: false,
 				}
 			},
-			expectedIncomingMDKeys: []string{ctxAuth.ClientIDKey},
+			expectedIncomingMDKeys: []string{ctxAuth.ClientIDKey, ctxAuth.AccessTokenKey},
 		},
 		{
 			name: "does not add metadata when no headers present",
@@ -201,12 +225,13 @@ func TestIPCUnaryServerInterceptor(t *testing.T) {
 			setupRequest: func() connect.AnyRequest {
 				req := connect.NewRequest(&kas.PublicKeyRequest{})
 				req.Header().Set(canonicalIPCHeaderClientID, "merged-client-id")
+				req.Header().Set(canonicalIPCHeaderAccessToken, "merged-token")
 				return &mockAnyRequest{
 					Request:  req,
 					isClient: false,
 				}
 			},
-			expectedIncomingMDKeys: []string{ctxAuth.ClientIDKey},
+			expectedIncomingMDKeys: []string{ctxAuth.ClientIDKey, ctxAuth.AccessTokenKey},
 		},
 	}
 
@@ -248,11 +273,13 @@ func TestIPCUnaryServerInterceptor_Integration(t *testing.T) {
 		ipcReauthRoutes: []string{},
 	}
 
-	t.Run("client_id from header available in context metadata", func(t *testing.T) {
+	t.Run("clientID and access token from headers available in context metadata", func(t *testing.T) {
 		clientID := "integration-client-id"
+		accessToken := "integration-access-token"
 
 		req := connect.NewRequest(&kas.PublicKeyRequest{})
 		req.Header().Set(canonicalIPCHeaderClientID, clientID)
+		req.Header().Set(canonicalIPCHeaderAccessToken, accessToken)
 
 		wrappedReq := &mockAnyRequest{
 			Request:  req,
@@ -263,13 +290,17 @@ func TestIPCUnaryServerInterceptor_Integration(t *testing.T) {
 
 		ctx := t.Context()
 
-		var receivedClientID string
+		var receivedClientID, receivedAccessToken string
 		mockNext := func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
 			md, ok := metadata.FromIncomingContext(ctx)
 			require.True(t, ok)
 			clientIDs := md.Get(ctxAuth.ClientIDKey)
 			if len(clientIDs) > 0 {
 				receivedClientID = clientIDs[0]
+			}
+			accessTokens := md.Get(ctxAuth.AccessTokenKey)
+			if len(accessTokens) > 0 {
+				receivedAccessToken = accessTokens[0]
 			}
 			return connect.NewResponse(&kas.PublicKeyResponse{}), nil
 		}
@@ -279,5 +310,6 @@ func TestIPCUnaryServerInterceptor_Integration(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, clientID, receivedClientID)
+		assert.Equal(t, accessToken, receivedAccessToken)
 	})
 }

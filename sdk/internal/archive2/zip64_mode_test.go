@@ -21,21 +21,20 @@ func buildZip(t *testing.T, segs [][]byte, finalize []byte) []byte {
 
 func TestZip64Mode_Auto_Small_UsesZip32(t *testing.T) {
 	w := NewSegmentTDFWriter(2, WithZip64Mode(Zip64Auto))
-	ctx := context.Background()
 
 	var parts [][]byte
-	p0, err := w.WriteSegment(ctx, 0, []byte("hello "))
+	p0, err := w.WriteSegment(t.Context(), 0, []byte("hello "))
 	if err != nil {
 		t.Fatal(err)
 	}
 	parts = append(parts, p0)
-	p1, err := w.WriteSegment(ctx, 1, []byte("world"))
+	p1, err := w.WriteSegment(t.Context(), 1, []byte("world"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	parts = append(parts, p1)
 
-	fin, err := w.Finalize(ctx, []byte(`{"m":1}`))
+	fin, err := w.Finalize(t.Context(), []byte(`{"m":1}`))
 	if err != nil {
 		t.Fatal(err)
 	}

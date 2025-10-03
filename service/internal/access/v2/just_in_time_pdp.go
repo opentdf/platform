@@ -102,15 +102,24 @@ func NewJustInTimePDP(
 	return p, nil
 }
 
-// GetDecision retrieves the decision for the provided entity chain, action, and resources.
-// It resolves the entity chain to get the entity representations and then calls the embedded PDP to get the decision.
-// The decision is returned as a slice of Decision objects, along with a global boolean indicating whether or not all
-// decisions are allowed.
+// GetDecision retrieves the decision for the provided entity identifier, action, and resources.
 //
-// IFF the entity was entitled to take the action on all resources, the PEP's fulfillable obligations are checked against
-// those triggered by the actions, attributes, and the decision request context. Since the entity was entitled, the Decision
-// returned indicates the obligations required whether or not they were satisfied by the fulfillable obligations. This allows
-// a PEP to take corrective action.
+// Obligations are not entity-driven, so the actions, attributes, and decision request context are checked against
+// Policy to determine which are triggered. The triggered obligations are compared against those the caller (PEP)
+// reports that it can fulfill to ensure all can be satisfied.
+//
+// Then, it resolves the Entity Identifier into either the Registered Resource or a Token/Entity Chain and roundtrips to ERS
+// for their representations. In the case of multiple entity representations, multiple decisions are returned (one per entity).
+// 
+// The result is a list of Decision objects (one per entity), along with a global boolean indicating whether or not all
+// decisions were to permit: full entitlement + all triggered obligations fulfillable.
+//
+// | Entity entitled | Triggered obligations are fulfillable | Decision |  Required Obligations Returned |
+// | --------------- | ------------------------------------- | -------- | ------------------------------ |
+// | Yes             | Yes								     | Permit   | Yes                            |
+// | Yes             | No							         | Deny     | Yes (allows corrective action) |
+// | No              | Yes							         | Deny     | No                             |
+// | No              | No							         | Deny     | No                             |
 func (p *JustInTimePDP) GetDecision(
 	ctx context.Context,
 	entityIdentifier *authzV2.EntityIdentifier,

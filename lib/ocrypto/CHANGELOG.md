@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.6.0...lib/ocrypto/v0.7.0) (2025-10-03)
+
+
+### Features
+
+* use public AES protected key from lib/ocrypto ([#2600](https://github.com/opentdf/platform/issues/2600)) ([75d7590](https://github.com/opentdf/platform/commit/75d7590ec062f822045027d4eb0b59a48bdea465))
+
 ## [0.6.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.5.0...lib/ocrypto/v0.6.0) (2025-09-11)
 
 

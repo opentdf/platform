@@ -110,7 +110,7 @@ func NewJustInTimePDP(
 //
 // Then, it resolves the Entity Identifier into either the Registered Resource or a Token/Entity Chain and roundtrips to ERS
 // for their representations. In the case of multiple entity representations, multiple decisions are returned (one per entity).
-// 
+//
 // The result is a list of Decision objects (one per entity), along with a global boolean indicating whether or not all
 // decisions were to permit: full entitlement + all triggered obligations fulfillable.
 //

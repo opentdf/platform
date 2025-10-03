@@ -250,15 +250,14 @@ Root level key `kas`
 
 Environment Variable: `OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:2048"},{"kid":"k2","alg":"ec:secp256r1"}]'`
 
-| Field                             | Description                                                                     | Default  |
-| --------------------------------- | ------------------------------------------------------------------------------- | -------- |
-| `keyring.*.kid`                   | Which key id this is binding                                                    |          |
-| `keyring.*.alg`                   | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |          |
-| `keyring.*.legacy`                | Indicates this may be used for TDFs with no key ID; default if all unspecified. | inferred |
-| `preview_features.ec_tdf_enabled` | Whether tdf based ecc support is enabled.                                       | `false`  |
-| `preview_features.key_management` | Whether new key management features are enabled.                                | `false`  |
-| `root_key`                        | Key needed when new key_management functionality is enabled.                    |          |
-
+| Field                    | Description                                                                     | Default  |
+| ------------------------ | ------------------------------------------------------------------------------- | -------- |
+| `keyring.*.kid`          | Which key id this is binding                                                    |          |
+| `keyring.*.alg`          | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |          |
+| `keyring.*.legacy`       | Indicates this may be used for TDFs with no key ID; default if all unspecified. | inferred |
+| `preview.ec_tdf_enabled` | Whether tdf based ecc support is enabled.                                       | `false`  |
+| `preview.key_management` | Whether new key management features are enabled.                                | `false`  |
+| `root_key`               | Key needed when new key_management functionality is enabled.                    |          |
 
 Example:
 

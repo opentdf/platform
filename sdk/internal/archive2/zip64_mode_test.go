@@ -73,13 +73,12 @@ func TestZip64Mode_Auto_Small_UsesZip32(t *testing.T) {
 
 func TestZip64Mode_Always_Small_UsesZip64(t *testing.T) {
 	w := NewSegmentTDFWriter(1, WithZip64Mode(Zip64Always))
-	ctx := context.Background()
 
-	seg, err := w.WriteSegment(ctx, 0, []byte("data"))
+	seg, err := w.WriteSegment(t.Context(), 0, []byte("data"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	fin, err := w.Finalize(ctx, []byte(`{"m":1}`))
+	fin, err := w.Finalize(t.Context(), []byte(`{"m":1}`))
 	if err != nil {
 		t.Fatal(err)
 	}

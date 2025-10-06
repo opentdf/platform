@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/crc32"
+	"log/slog"
 	"sort"
 	"strings"
 	"sync"
@@ -412,6 +413,9 @@ func (w *Writer) GetManifest(ctx context.Context, opts ...Option[*WriterFinalize
 	}
 	for _, opt := range opts {
 		opt(cfg)
+	}
+	if !w.finalized {
+		slog.Warn("GetManifest called before Finalize; returned manifest is a stub and not complete, pre-finalize state may not include all segments or attributes.")
 	}
 
 	manifest, _, _, err := w.getManifest(ctx, cfg)

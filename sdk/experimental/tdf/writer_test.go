@@ -104,9 +104,9 @@ func testGetManifestIncludesInitialPolicy(t *testing.T) {
 	}
 	assert.True(t, found, "provisional policy should include initial attribute FQN")
 
-	// Also ensure no key access objects or root signature present pre-finalize
-	assert.Empty(t, m.EncryptionInformation.KeyAccessObjs)
-	assert.Empty(t, m.EncryptionInformation.RootSignature.Signature)
+	// Pre-finalize manifest should include kaos based on initial attributes, and estimated root signature
+	assert.Len(t, m.EncryptionInformation.KeyAccessObjs, 1)
+	assert.NotEmpty(t, m.EncryptionInformation.RootSignature.Signature)
 }
 
 // Sparse indices end-to-end: write 0,1,2,5000,5001,5002 and verify manifest and totals.
@@ -885,7 +885,7 @@ func validateManifestSchema(t *testing.T, manifest *Manifest) {
 	_, filename, _, ok := runtime.Caller(0)
 	require.True(t, ok, "Failed to get current file path")
 
-	schemaPath := filepath.Join(filepath.Dir(filename), "..", "schema", "manifest.schema.json")
+	schemaPath := filepath.Join(filepath.Dir(filename), "..", "..", "schema", "manifest.schema.json")
 	schemaBytes, err := os.ReadFile(schemaPath)
 	require.NoError(t, err, "Failed to read manifest schema file")
 
@@ -1039,7 +1039,7 @@ func testGetManifestBeforeAndAfterFinalize(t *testing.T) {
 	m2, err := writer.GetManifest(t.Context())
 	require.NoError(t, err)
 	// Expect at least one key access and a root signature after finalize
-	assert.GreaterOrEqual(t, len(m2.EncryptionInformation.KeyAccessObjs), 1)
+	assert.Len(t, m2.EncryptionInformation.KeyAccessObjs, 1)
 	assert.NotEmpty(t, m2.EncryptionInformation.RootSignature.Signature)
 
 	// Ensure GetManifest returns a clone, not the same pointer

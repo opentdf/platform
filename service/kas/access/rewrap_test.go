@@ -14,11 +14,13 @@ import (
 	"testing"
 
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/service/logger"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
@@ -550,4 +552,242 @@ func Test_GetEntityInfo_When_Authorization_MD_Invalid_Expect_Error(t *testing.T)
 	_, err := getEntityInfo(ctx, logger.CreateTestLogger())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing")
+}
+
+func TestGetFullfillableObligationsFromMetadata(t *testing.T) {
+	tests := []struct {
+		name           string
+		header         http.Header
+		expectedResult []string
+		expectedError  error
+		errorContains  string
+	}{
+		{
+			name:           "nil header",
+			header:         nil,
+			expectedResult: []string{},
+			expectedError:  nil,
+		},
+		{
+			name:           "empty header",
+			header:         make(http.Header),
+			expectedResult: []string{},
+			expectedError:  nil,
+		},
+		{
+			name: "header without obligations",
+			header: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+			expectedResult: []string{},
+			expectedError:  nil,
+		},
+		{
+			name: "valid single watermark obligation",
+			header: http.Header{
+				fullfillableObligationsHeader: []string{base64.StdEncoding.EncodeToString([]byte("https://demo.com/obl/test/value/watermark"))},
+			},
+			expectedResult: []string{"https://demo.com/obl/test/value/watermark"},
+			expectedError:  nil,
+		},
+		{
+			name: "valid multiple obligations",
+			header: http.Header{
+				fullfillableObligationsHeader: []string{base64.StdEncoding.EncodeToString([]byte("https://demo.com/obl/test/value/watermark,https://demo.com/obl/test/value/geofence"))},
+			},
+			expectedResult: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+			expectedError:  nil,
+		},
+		{
+			name: "mixed valid and invalid fqns",
+			header: http.Header{
+				fullfillableObligationsHeader: []string{base64.StdEncoding.EncodeToString([]byte("https://demo.com/obl/test/value/watermark,https://example.com/attr/Classification/value/restricted,https://virtru.com/obl/test/value/audit"))},
+			},
+			expectedResult: nil,
+			expectedError:  identifier.ErrInvalidFQNFormat,
+			errorContains:  "https://example.com/attr/Classification/value/restricted",
+		},
+		{
+			name: "empty obligation string",
+			header: http.Header{
+				fullfillableObligationsHeader: []string{base64.StdEncoding.EncodeToString([]byte(""))},
+			},
+			expectedResult: []string{},
+			expectedError:  nil,
+		},
+		{
+			name: "obligations with empty values filtered out",
+			header: http.Header{
+				fullfillableObligationsHeader: []string{base64.StdEncoding.EncodeToString([]byte("https://demo.com/obl/test/value/watermark,,https://demo.com/obl/test/value/geofence"))},
+			},
+			expectedResult: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+			expectedError:  nil,
+		},
+		{
+			name: "obligations with whitespace trimmed",
+			header: http.Header{
+				fullfillableObligationsHeader: []string{base64.StdEncoding.EncodeToString([]byte("  https://demo.com/obl/test/value/watermark  ,  https://demo.com/obl/test/value/geofence  "))},
+			},
+			expectedResult: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+			expectedError:  nil,
+		},
+		{
+			name: "invalid FQN format obligation",
+			header: http.Header{
+				fullfillableObligationsHeader: []string{base64.StdEncoding.EncodeToString([]byte("invalid-obligation-format"))},
+			},
+			expectedResult: nil,
+			expectedError:  identifier.ErrInvalidFQNFormat,
+			errorContains:  "invalid-obligation-format",
+		},
+		{
+			name: "mixed invalid FQN format obligation",
+			header: http.Header{
+				fullfillableObligationsHeader: []string{base64.StdEncoding.EncodeToString([]byte("https://demo.com/obl/test/value/watermark,invalid-obligation-format"))},
+			},
+			expectedResult: nil,
+			expectedError:  identifier.ErrInvalidFQNFormat,
+			errorContains:  "invalid-obligation-format",
+		},
+		{
+			name: "invalid base64 encoding",
+			header: http.Header{
+				fullfillableObligationsHeader: []string{"invalid-base64!@#"},
+			},
+			expectedResult: nil,
+			expectedError:  ErrDecodingObligations,
+		},
+		{
+			name: "empty base64 string",
+			header: http.Header{
+				fullfillableObligationsHeader: []string{""},
+			},
+			expectedResult: []string{},
+			expectedError:  nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := getFullfillableObligationsFromMetadata(tt.header)
+
+			if tt.expectedError != nil {
+				require.Error(t, err)
+				require.ErrorIs(t, err, tt.expectedError)
+				require.ErrorContains(t, err, tt.errorContains)
+				require.Nil(t, result)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedResult, result)
+			}
+		})
+	}
+}
+
+func TestPopulateRequiredObligationsOnResponse(t *testing.T) {
+	tests := []struct {
+		name        string
+		response    *kaspb.RewrapResponse
+		obligations []string
+		policyID    string
+		validate    func(t *testing.T, response *kaspb.RewrapResponse)
+	}{
+		{
+			name: "single obligation",
+			response: &kaspb.RewrapResponse{
+				Metadata: make(map[string]*structpb.Value),
+			},
+			obligations: []string{"obligation1"},
+			policyID:    "policy1",
+			validate: func(t *testing.T, response *kaspb.RewrapResponse) {
+				metadata := response.GetMetadata()
+				require.Contains(t, metadata, triggeredObligationsHeader) //nolint:staticcheck // testing deprecated field
+
+				structValue := metadata[triggeredObligationsHeader].GetStructValue() //nolint:staticcheck // testing deprecated field
+				require.NotNil(t, structValue)
+				require.Contains(t, structValue.GetFields(), "policy1")
+
+				fields := structValue.GetFields()
+				listValue := fields["policy1"].GetListValue()
+				require.NotNil(t, listValue)
+				require.Len(t, listValue.GetValues(), 1)
+				assert.Equal(t, "obligation1", listValue.GetValues()[0].GetStringValue())
+			},
+		},
+		{
+			name: "multiple obligations",
+			response: &kaspb.RewrapResponse{
+				Metadata: make(map[string]*structpb.Value),
+			},
+			obligations: []string{"obligation1", "obligation2", "obligation3"},
+			policyID:    "policy1",
+			validate: func(t *testing.T, response *kaspb.RewrapResponse) {
+				metadata := response.GetMetadata()
+				require.Contains(t, metadata, triggeredObligationsHeader)
+
+				structValue := metadata[triggeredObligationsHeader].GetStructValue()
+				require.NotNil(t, structValue)
+				require.Contains(t, structValue.GetFields(), "policy1")
+
+				fields := structValue.GetFields()
+				listValue := fields["policy1"].GetListValue()
+				require.NotNil(t, listValue)
+				require.Len(t, listValue.GetValues(), 3)
+				assert.Equal(t, "obligation1", listValue.GetValues()[0].GetStringValue())
+				assert.Equal(t, "obligation2", listValue.GetValues()[1].GetStringValue())
+				assert.Equal(t, "obligation3", listValue.GetValues()[2].GetStringValue())
+			},
+		},
+		{
+			name: "empty obligations list",
+			response: &kaspb.RewrapResponse{
+				Metadata: make(map[string]*structpb.Value),
+			},
+			obligations: []string{},
+			policyID:    "policy1",
+			validate: func(t *testing.T, response *kaspb.RewrapResponse) {
+				metadata := response.GetMetadata()
+				require.Contains(t, metadata, triggeredObligationsHeader) //nolint:staticcheck // testing deprecated field
+
+				structValue := metadata[triggeredObligationsHeader].GetStructValue() //nolint:staticcheck // testing deprecated field
+				require.NotNil(t, structValue)
+				require.Contains(t, structValue.GetFields(), "policy1")
+
+				fields := structValue.GetFields()
+				listValue := fields["policy1"].GetListValue()
+				require.NotNil(t, listValue)
+				require.Empty(t, listValue.GetValues())
+			},
+		},
+		{
+			name: "nil response metadata",
+			response: &kaspb.RewrapResponse{
+				Metadata: nil,
+			},
+			obligations: []string{"obligation1"},
+			policyID:    "policy1",
+			validate: func(t *testing.T, response *kaspb.RewrapResponse) {
+				metadata := response.GetMetadata()
+				require.NotNil(t, metadata)                               //nolint:staticcheck // testing deprecated field
+				require.Contains(t, metadata, triggeredObligationsHeader) //nolint:staticcheck // testing deprecated field
+
+				structValue := metadata[triggeredObligationsHeader].GetStructValue() //nolint:staticcheck // testing deprecated field
+				require.NotNil(t, structValue)
+				require.Contains(t, structValue.GetFields(), "policy1")
+
+				fields := structValue.GetFields()
+				listValue := fields["policy1"].GetListValue()
+				require.NotNil(t, listValue)
+				require.Len(t, listValue.GetValues(), 1)
+				require.Equal(t, "obligation1", listValue.GetValues()[0].GetStringValue())
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			populateRequiredObligationsOnResponse(tt.response, tt.obligations, tt.policyID)
+			tt.validate(t, tt.response)
+		})
+	}
 }

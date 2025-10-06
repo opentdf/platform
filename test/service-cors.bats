@@ -25,16 +25,16 @@ fi
   [[ "$output" =~ "HTTP/2 200" ]] || [[ "$output" =~ "HTTP/1.1 200 OK" ]]
 
   # Verify Access-Control-Allow-Headers includes Authorization
-  [[ "$output" =~ "Access-Control-Allow-Headers:".*"Authorization" ]]
+  [[ "$output" =~ [Aa]ccess-[Cc]ontrol-[Aa]llow-[Hh]eaders:.*[Aa]uthorization ]]
 
   # Verify Access-Control-Allow-Origin is set
-  [[ "$output" =~ "Access-Control-Allow-Origin: http://localhost:3000" ]]
+  [[ "$output" =~ [Aa]ccess-[Cc]ontrol-[Aa]llow-[Oo]rigin:\ http://localhost:3000 ]]
 
   # Verify credentials are allowed
-  [[ "$output" =~ "Access-Control-Allow-Credentials: true" ]]
+  [[ "$output" =~ [Aa]ccess-[Cc]ontrol-[Aa]llow-[Cc]redentials:\ true ]]
 
   # Verify max-age is set
-  [[ "$output" =~ "Access-Control-Max-Age: 3600" ]]
+  [[ "$output" =~ [Aa]ccess-[Cc]ontrol-[Mm]ax-[Aa]ge:\ 3600 ]]
 }
 
 @test "CORS: preflight request with different headers" {
@@ -50,7 +50,7 @@ fi
   [[ "$output" =~ "HTTP/2 200" ]] || [[ "$output" =~ "HTTP/1.1 200 OK" ]]
 
   # Verify Authorization is in allowed headers
-  [[ "$output" =~ "Access-Control-Allow-Headers:".*"Authorization" ]]
+  [[ "$output" =~ [Aa]ccess-[Cc]ontrol-[Aa]llow-[Hh]eaders:.*[Aa]uthorization ]]
 }
 
 @test "CORS: actual request with Authorization header" {
@@ -64,8 +64,8 @@ fi
   echo "$output"
 
   # Verify CORS headers are in response (status may be 401 due to invalid token, but CORS should work)
-  [[ "$output" =~ "Access-Control-Allow-Origin: http://localhost:3000" ]]
-  [[ "$output" =~ "Access-Control-Allow-Credentials: true" ]]
+  [[ "$output" =~ [Aa]ccess-[Cc]ontrol-[Aa]llow-[Oo]rigin:\ http://localhost:3000 ]]
+  [[ "$output" =~ [Aa]ccess-[Cc]ontrol-[Aa]llow-[Cc]redentials:\ true ]]
 }
 
 @test "CORS: wildcard origin configuration" {
@@ -82,7 +82,7 @@ fi
   [[ "$output" =~ "HTTP/2 200" ]] || [[ "$output" =~ "HTTP/1.1 200 OK" ]]
 
   # Origin should be reflected back or wildcard
-  [[ "$output" =~ "Access-Control-Allow-Origin:" ]]
+  [[ "$output" =~ [Aa]ccess-[Cc]ontrol-[Aa]llow-[Oo]rigin: ]]
 }
 
 @test "CORS: verify Content-Type in allowed headers" {
@@ -95,7 +95,7 @@ fi
   echo "$output"
 
   # Verify Content-Type is in allowed headers
-  [[ "$output" =~ "Access-Control-Allow-Headers:".*"Content-Type" ]]
+  [[ "$output" =~ [Aa]ccess-[Cc]ontrol-[Aa]llow-[Hh]eaders:.*[Cc]ontent-[Tt]ype ]]
 }
 
 @test "CORS: verify Connect-Protocol-Version in allowed headers" {
@@ -108,5 +108,5 @@ fi
   echo "$output"
 
   # Verify Connect-Protocol-Version is in allowed headers
-  [[ "$output" =~ "Access-Control-Allow-Headers:".*"Connect-Protocol-Version" ]]
+  [[ "$output" =~ [Aa]ccess-[Cc]ontrol-[Aa]llow-[Hh]eaders:.*[Cc]onnect-[Pp]rotocol-[Vv]ersion ]]
 }

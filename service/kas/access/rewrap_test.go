@@ -853,6 +853,57 @@ func TestPopulateRequiredObligationsOnResponse(t *testing.T) {
 				require.Equal(t, "https://demo.com/obl/test/value/watermark", listValue.GetValues()[0].GetStringValue())
 			},
 		},
+		{
+			name: "preserve existing metadata when adding obligations",
+			response: &kaspb.RewrapResponse{
+				Metadata: map[string]*structpb.Value{
+					"existing-header": structpb.NewStringValue("existing-value"),
+					"session-info": structpb.NewStructValue(&structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"sessionId": structpb.NewStringValue("session-123"),
+							"timestamp": structpb.NewNumberValue(1672531200),
+						},
+					}),
+				},
+			},
+			policies: []policyObligation{
+				{
+					obligations: []string{
+						"https://demo.com/obl/test/value/watermark",
+					},
+					policyID: "policy1",
+				},
+			},
+			validate: func(t *testing.T, response *kaspb.RewrapResponse) {
+				metadata := response.GetMetadata()
+				require.NotNil(t, metadata) //nolint:staticcheck // testing deprecated field
+
+				// Verify existing metadata is preserved
+				require.Contains(t, metadata, "existing-header")
+				require.Equal(t, "existing-value", metadata["existing-header"].GetStringValue())
+
+				require.Contains(t, metadata, "session-info")
+				sessionInfo := metadata["session-info"].GetStructValue()
+				require.NotNil(t, sessionInfo)
+				sessionFields := sessionInfo.GetFields()
+				require.Contains(t, sessionFields, "sessionId")
+				require.Equal(t, "session-123", sessionFields["sessionId"].GetStringValue())
+				require.Contains(t, sessionFields, "timestamp")
+				require.InDelta(t, float64(1672531200), sessionFields["timestamp"].GetNumberValue(), 0.001)
+
+				// Verify new obligations are added
+				require.Contains(t, metadata, triggeredObligationsHeader)
+				structValue := metadata[triggeredObligationsHeader].GetStructValue()
+				require.NotNil(t, structValue)
+				require.Contains(t, structValue.GetFields(), "policy1")
+
+				obligationFields := structValue.GetFields()
+				listValue := obligationFields["policy1"].GetListValue()
+				require.NotNil(t, listValue)
+				require.Len(t, listValue.GetValues(), 1)
+				require.Equal(t, "https://demo.com/obl/test/value/watermark", listValue.GetValues()[0].GetStringValue())
+			},
+		},
 	}
 
 	for _, tt := range tests {

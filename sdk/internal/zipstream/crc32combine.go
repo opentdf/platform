@@ -1,4 +1,6 @@
-package archive2
+// Experimental: This package is EXPERIMENTAL and may change or be removed at any time
+
+package zipstream
 
 // CRC32CombineIEEE combines two CRC-32 (IEEE) checksums as if the data were concatenated.
 // crc1 is the CRC of the first part, crc2 of the second part, and len2 is the byte length of the second part.

@@ -1,4 +1,6 @@
-package archive2
+// Experimental: This package is EXPERIMENTAL and may change or be removed at any time
+
+package zipstream
 
 import (
 	"hash/crc32"

@@ -1,4 +1,6 @@
-package archive2
+// Experimental: This package is EXPERIMENTAL and may change or be removed at any time
+
+package zipstream
 
 const (
 	fileHeaderSignature             = 0x04034b50 // (PK♥♦ or "PK\3\4")

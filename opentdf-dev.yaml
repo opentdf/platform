@@ -119,7 +119,6 @@ server:
       #        insecure: true # If collector is just HTTP, not HTTPS
       # headers: {} # Add if authentication is needed
   cors:
-    enabled: true
     # "*" to allow any origin or a specific domain like "https://yourdomain.com"
     allowedorigins:
       - "*"

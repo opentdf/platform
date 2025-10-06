@@ -157,6 +157,7 @@ jobs:
       - name: Setup Bats and bats libs
         uses: bats-core/bats-action@42fcc8700f773c075a16a90eb11674c0318ad507 # 3.0.1
       - run: test/service-start.bats
+      - run: test/service-cors.bats
       - run: test/tdf-roundtrips.bats
       - run: test/policy-service.bats
       - name: verify builtin casbin policy
@@ -395,7 +396,7 @@ jobs:
       focus-sdk: go
       # use commit instead of ref so we can "go get" specific sdk version
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }} lts
-  
+
   tests-bdd:
     name: Cucumber BDD Tests
     runs-on: ubuntu-22.04
@@ -423,21 +424,21 @@ jobs:
         with:
           go-version-file: ./tests-bdd/go.mod
           cache: false
-      
+
       - name: Build local platform-cukes image for testing
         run: docker build -t platform-cukes .
 
       - name: Run BDD Tests
         run: |
           CUKES_LOG_HANDLER=console go test ./tests-bdd -v --tags=cukes --godog.random --godog.format="cucumber:$(pwd)/cukes_platform_report.json,pretty:$(pwd)/cukes_platform_report.log,pretty" ./features
-      
+
       - name: Check for undefined steps
         run: |
           if grep -qi "Undefined" cukes_platform_report.log; then
             echo "❌ Undefined steps found in BDD tests!"
             exit 1
           fi
-      
+
       - name: Get logs on failure
         if: failure() || cancelled()
         run: |

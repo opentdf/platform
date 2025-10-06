@@ -276,7 +276,11 @@ func (p *ObligationsPolicyDecisionPoint) getTriggeredObligations(
 				}
 			}
 
-			if triggeredObligations, someTriggered := p.clientIDScopedTriggerActionsToAttributes[pepClientID][actionName][attrValFQN]; someTriggered {
+			if !triggersOnClientIDExist {
+				continue
+			}
+
+			if triggeredObligations, someTriggered := clientScoped[actionName][attrValFQN]; someTriggered {
 				for _, oblValFQN := range triggeredObligations {
 					if _, seen := seenThisResource[oblValFQN]; seen {
 						continue
@@ -299,7 +303,7 @@ func (p *ObligationsPolicyDecisionPoint) getTriggeredObligations(
 	log.DebugContext(
 		ctx,
 		"found required obligations",
-		slog.Any("total_required_obligations_deduplicated", allRequiredOblValueFQNs),
+		slog.Any("deduplicated_request_obligations_across_all_resources", allRequiredOblValueFQNs),
 	)
 	log.TraceContext(
 		ctx,

@@ -1,3 +1,5 @@
+// Experimental: This package is EXPERIMENTAL and may change or be removed at any time
+
 package tdf_test
 
 import (
@@ -10,7 +12,7 @@ import (
 	"log"
 
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/sdk/tdf"
+	"github.com/opentdf/platform/sdk/experimental/tdf"
 )
 
 // ExampleWriter demonstrates basic TDF creation with the experimental streaming writer.

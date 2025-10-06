@@ -1,3 +1,5 @@
+// Experimental: This package is EXPERIMENTAL and may change or be removed at any time
+
 package tdf
 
 import (
@@ -15,8 +17,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/sdk/experimental/tdf/keysplit"
 	"github.com/opentdf/platform/sdk/internal/archive2"
-	"github.com/opentdf/platform/sdk/tdf/keysplit"
 )
 
 const (

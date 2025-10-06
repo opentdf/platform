@@ -1,3 +1,4 @@
+// Experimental: This package is EXPERIMENTAL and may change or be removed at any time
 // Package keysplit provides key splitting functionality for TDF (Trusted Data Format) encryption.
 //
 // This package extracts the key splitting logic from the main SDK granter functionality,

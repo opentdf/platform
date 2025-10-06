@@ -1,3 +1,5 @@
+// Experimental: This package is EXPERIMENTAL and may change or be removed at any time
+
 package tdf
 
 import (
@@ -999,7 +1001,8 @@ func BenchmarkTDFCreation(b *testing.B) {
 func testGetManifestBeforeAndAfterFinalize(t *testing.T) {
 	ctx := t.Context()
 
-	writer, err := NewWriter(ctx)
+	initKAS := &policy.SimpleKasKey{KasUri: testKAS3, PublicKey: &policy.SimpleKasPublicKey{Algorithm: policy.Algorithm_ALGORITHM_RSA_2048, Kid: "kid3", Pem: mockRSAPublicKey1}}
+	writer, err := NewWriter(ctx, WithDefaultKASForWriter(initKAS))
 	require.NoError(t, err)
 
 	// Before writing any segment, stub manifest should still be available

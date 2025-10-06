@@ -1,3 +1,5 @@
+// Experimental: This package is EXPERIMENTAL and may change or be removed at any time
+
 package tdf
 
 import (
@@ -7,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/lib/ocrypto"
-	"github.com/opentdf/platform/sdk/tdf/keysplit"
+	"github.com/opentdf/platform/sdk/experimental/tdf/keysplit"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -1,3 +1,5 @@
+// Experimental: This package is EXPERIMENTAL and may change or be removed at any time
+
 package tdf
 
 import (
@@ -9,7 +11,7 @@ import (
 	"log/slog"
 
 	"github.com/opentdf/platform/lib/ocrypto"
-	"github.com/opentdf/platform/sdk/tdf/keysplit"
+	"github.com/opentdf/platform/sdk/experimental/tdf/keysplit"
 )
 
 var tdfSaltBytes []byte

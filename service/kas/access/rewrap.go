@@ -45,11 +45,14 @@ const (
 	kNanoAlgorithm                = "ec:secp256r1"
 	kFailedStatus                 = "fail"
 	kPermitStatus                 = "permit"
-	fullfillableObligationsHeader = "X-Fulfillable-Obligations"
+	additionalRewrapContextHeader = "X-Rewrap-Additional-Context"
 	triggeredObligationsHeader    = "X-Triggered-Obligations"
 )
 
-var ErrDecodingObligations = errors.New("failed to decode fulfillable obligations")
+var (
+	ErrDecodingRewrapContext     = errors.New("failed to decode additional rewrap context")
+	ErrUnmarshalingRewrapContext = errors.New("failed to unmarshal additional rewrap context")
+)
 
 type SignedRequestBody struct {
 	RequestBody string `json:"requestBody"`
@@ -88,6 +91,10 @@ type policyResult struct {
 
 // From policy ID to KAO ID to result
 type policyKAOResults map[string]policyResult
+
+type AdditionalRewrapContext struct {
+	Obligations []string `json:"obligations,omitempty"`
+}
 
 const (
 	kNanoTDFGMACLength = 8
@@ -441,16 +448,16 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 		}
 	}
 	var results policyKAOResults
-	fullfillableObligations, err := getFullfillableObligationsFromMetadata(req.Header())
+	additionalRewrapContext, err := getAdditionalRewrapContext(req.Header())
 	if err != nil {
-		p.Logger.WarnContext(ctx, "failed to get fulfillable obligations", slog.Any("error", err))
+		p.Logger.WarnContext(ctx, "failed to get additional rewrap context", slog.Any("error", err))
 		return nil, err400(err.Error())
 	}
 	if len(tdf3Reqs) > 0 {
-		resp.SessionPublicKey, results = p.tdf3Rewrap(ctx, tdf3Reqs, body.GetClientPublicKey(), entityInfo, fullfillableObligations)
+		resp.SessionPublicKey, results = p.tdf3Rewrap(ctx, tdf3Reqs, body.GetClientPublicKey(), entityInfo, additionalRewrapContext)
 		addResultsToResponse(resp, results)
 	} else {
-		resp.SessionPublicKey, results = p.nanoTDFRewrap(ctx, nanoReqs, body.GetClientPublicKey(), entityInfo, fullfillableObligations)
+		resp.SessionPublicKey, results = p.nanoTDFRewrap(ctx, nanoReqs, body.GetClientPublicKey(), entityInfo, additionalRewrapContext)
 		addResultsToResponse(resp, results)
 	}
 
@@ -683,7 +690,7 @@ func (p *Provider) listLegacyKeys(ctx context.Context) []trust.KeyIdentifier {
 	return kidsToCheck
 }
 
-func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo, fullfillableObligations []string) (string, policyKAOResults) {
+func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo, additionalRewrapContext *AdditionalRewrapContext) (string, policyKAOResults) {
 	if p.Tracer != nil {
 		var span trace.Span
 		ctx, span = p.Start(ctx, "rewrap-tdf3")
@@ -717,7 +724,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		Jwt:         entityInfo.Token,
 	}
 
-	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies, fullfillableObligations)
+	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies, additionalRewrapContext.Obligations)
 	if accessErr != nil {
 		p.Logger.DebugContext(ctx,
 			"tdf3rewrap: cannot access policy",
@@ -821,7 +828,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 	return sessionKey, results
 }
 
-func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo, fullfillableObligations []string) (string, policyKAOResults) {
+func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo, additionalRewrapContext *AdditionalRewrapContext) (string, policyKAOResults) {
 	ctx, span := p.Start(ctx, "nanoTDFRewrap")
 	defer span.End()
 
@@ -844,7 +851,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 		Jwt:         entityInfo.Token,
 	}
 
-	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies, fullfillableObligations)
+	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies, additionalRewrapContext.Obligations)
 	if accessErr != nil {
 		failAllKaos(requests, results, err500("could not perform access"))
 		return "", results
@@ -1067,20 +1074,29 @@ func populateRequiredObligationsOnResponse(response *kaspb.RewrapResponse, oblig
 	response.Metadata = metadata
 }
 
-// Retrieve fullfillable obligations from request metadata header
-// Header is base64 encoded comma separated list of obligations in FQN format
-// Example: "https://demo.com/obl/test/value/watermark,https://demo.com/obl/test/value/geofence"
-func getFullfillableObligationsFromMetadata(header http.Header) ([]string, error) {
-	obligations := make([]string, 0)
-	if header == nil {
-		return obligations, nil
+// Retrieve additional request context needed for rewrap processing
+// Header is json encoded AdditionalRewrapContext struct
+// Example: `{"obligations": ["https://demo.com/obl/test/value/watermark","https://demo.com/obl/test/value/geofence"]}`
+func getAdditionalRewrapContext(header http.Header) (*AdditionalRewrapContext, error) {
+	rewrapContext := &AdditionalRewrapContext{
+		Obligations: []string{},
 	}
-	if val := header.Get(fullfillableObligationsHeader); val != "" {
+	if header == nil {
+		return rewrapContext, nil
+	}
+	if val := header.Get(additionalRewrapContextHeader); val != "" {
 		decoded, err := base64.StdEncoding.DecodeString(val)
 		if err != nil {
-			return nil, ErrDecodingObligations
+			return nil, errors.Join(ErrDecodingRewrapContext, err)
 		}
-		for _, r := range strings.Split(string(decoded), ",") {
+
+		err = json.Unmarshal(decoded, rewrapContext)
+		if err != nil {
+			return nil, errors.Join(ErrUnmarshalingRewrapContext, err)
+		}
+
+		validObligations := make([]string, 0)
+		for _, r := range rewrapContext.Obligations {
 			normalizedObligation := strings.TrimSpace(r)
 			if len(normalizedObligation) == 0 {
 				continue
@@ -1089,10 +1105,9 @@ func getFullfillableObligationsFromMetadata(header http.Header) ([]string, error
 			if err != nil {
 				return nil, fmt.Errorf("%w, for obligation %s", err, normalizedObligation)
 			}
-			obligations = append(obligations, normalizedObligation)
+			validObligations = append(validObligations, normalizedObligation)
 		}
-
-		return obligations, nil
+		rewrapContext.Obligations = validObligations
 	}
-	return obligations, nil
+	return rewrapContext, nil
 }

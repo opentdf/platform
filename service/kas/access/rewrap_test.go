@@ -554,87 +554,103 @@ func Test_GetEntityInfo_When_Authorization_MD_Invalid_Expect_Error(t *testing.T)
 	require.Contains(t, err.Error(), "missing")
 }
 
-func TestGetFullfillableObligationsFromMetadata(t *testing.T) {
+func TestGetAdditionalRewrapContext(t *testing.T) {
 	tests := []struct {
 		name           string
 		header         http.Header
-		expectedResult []string
+		expectedResult *AdditionalRewrapContext
 		expectedError  error
 		errorContains  string
 	}{
 		{
-			name:           "nil header",
-			header:         nil,
-			expectedResult: []string{},
-			expectedError:  nil,
+			name:   "nil header",
+			header: nil,
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: []string{},
+			},
+			expectedError: nil,
 		},
 		{
-			name:           "empty header",
-			header:         make(http.Header),
-			expectedResult: []string{},
-			expectedError:  nil,
+			name:   "empty header",
+			header: make(http.Header),
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: []string{},
+			},
+			expectedError: nil,
 		},
 		{
 			name: "header without obligations",
 			header: http.Header{
 				"Content-Type": []string{"application/json"},
 			},
-			expectedResult: []string{},
-			expectedError:  nil,
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: []string{},
+			},
+			expectedError: nil,
 		},
 		{
 			name: "valid single watermark obligation",
 			header: http.Header{
-				fullfillableObligationsHeader: []string{base64.StdEncoding.EncodeToString([]byte("https://demo.com/obl/test/value/watermark"))},
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": ["https://demo.com/obl/test/value/watermark"]}`))},
 			},
-			expectedResult: []string{"https://demo.com/obl/test/value/watermark"},
-			expectedError:  nil,
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: []string{"https://demo.com/obl/test/value/watermark"},
+			},
+			expectedError: nil,
 		},
 		{
 			name: "valid multiple obligations",
 			header: http.Header{
-				fullfillableObligationsHeader: []string{base64.StdEncoding.EncodeToString([]byte("https://demo.com/obl/test/value/watermark,https://demo.com/obl/test/value/geofence"))},
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": ["https://demo.com/obl/test/value/watermark","https://demo.com/obl/test/value/geofence"]}`))},
 			},
-			expectedResult: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
-			expectedError:  nil,
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+			},
+			expectedError: nil,
 		},
 		{
 			name: "mixed valid and invalid fqns",
 			header: http.Header{
-				fullfillableObligationsHeader: []string{base64.StdEncoding.EncodeToString([]byte("https://demo.com/obl/test/value/watermark,https://example.com/attr/Classification/value/restricted,https://virtru.com/obl/test/value/audit"))},
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": ["https://demo.com/obl/test/value/watermark","https://example.com/attr/Classification/value/restricted","https://virtru.com/obl/test/value/audit"]}`))},
 			},
 			expectedResult: nil,
 			expectedError:  identifier.ErrInvalidFQNFormat,
 			errorContains:  "https://example.com/attr/Classification/value/restricted",
 		},
 		{
-			name: "empty obligation string",
+			name: "empty obligations array",
 			header: http.Header{
-				fullfillableObligationsHeader: []string{base64.StdEncoding.EncodeToString([]byte(""))},
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": []}`))},
 			},
-			expectedResult: []string{},
-			expectedError:  nil,
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: []string{},
+			},
+			expectedError: nil,
 		},
 		{
 			name: "obligations with empty values filtered out",
 			header: http.Header{
-				fullfillableObligationsHeader: []string{base64.StdEncoding.EncodeToString([]byte("https://demo.com/obl/test/value/watermark,,https://demo.com/obl/test/value/geofence"))},
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": ["https://demo.com/obl/test/value/watermark","","https://demo.com/obl/test/value/geofence"]}`))},
 			},
-			expectedResult: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
-			expectedError:  nil,
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+			},
+			expectedError: nil,
 		},
 		{
 			name: "obligations with whitespace trimmed",
 			header: http.Header{
-				fullfillableObligationsHeader: []string{base64.StdEncoding.EncodeToString([]byte("  https://demo.com/obl/test/value/watermark  ,  https://demo.com/obl/test/value/geofence  "))},
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": ["  https://demo.com/obl/test/value/watermark  ","  https://demo.com/obl/test/value/geofence  "]}`))},
 			},
-			expectedResult: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
-			expectedError:  nil,
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+			},
+			expectedError: nil,
 		},
 		{
 			name: "invalid FQN format obligation",
 			header: http.Header{
-				fullfillableObligationsHeader: []string{base64.StdEncoding.EncodeToString([]byte("invalid-obligation-format"))},
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": ["invalid-obligation-format"]}`))},
 			},
 			expectedResult: nil,
 			expectedError:  identifier.ErrInvalidFQNFormat,
@@ -643,7 +659,7 @@ func TestGetFullfillableObligationsFromMetadata(t *testing.T) {
 		{
 			name: "mixed invalid FQN format obligation",
 			header: http.Header{
-				fullfillableObligationsHeader: []string{base64.StdEncoding.EncodeToString([]byte("https://demo.com/obl/test/value/watermark,invalid-obligation-format"))},
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": ["https://demo.com/obl/test/value/watermark","invalid-obligation-format"]}`))},
 			},
 			expectedResult: nil,
 			expectedError:  identifier.ErrInvalidFQNFormat,
@@ -652,29 +668,41 @@ func TestGetFullfillableObligationsFromMetadata(t *testing.T) {
 		{
 			name: "invalid base64 encoding",
 			header: http.Header{
-				fullfillableObligationsHeader: []string{"invalid-base64!@#"},
+				additionalRewrapContextHeader: []string{`{"obligations": ["https://demo.com/obl/test/value/watermark","invalid-obligation-format"]}`},
 			},
 			expectedResult: nil,
-			expectedError:  ErrDecodingObligations,
+			expectedError:  ErrDecodingRewrapContext,
+		},
+		{
+			name: "invalid JSON format",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{invalid json}`))},
+			},
+			expectedResult: nil,
+			expectedError:  ErrUnmarshalingRewrapContext,
 		},
 		{
 			name: "empty base64 string",
 			header: http.Header{
-				fullfillableObligationsHeader: []string{""},
+				additionalRewrapContextHeader: []string{""},
 			},
-			expectedResult: []string{},
-			expectedError:  nil,
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: []string{},
+			},
+			expectedError: nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := getFullfillableObligationsFromMetadata(tt.header)
+			result, err := getAdditionalRewrapContext(tt.header)
 
 			if tt.expectedError != nil {
 				require.Error(t, err)
 				require.ErrorIs(t, err, tt.expectedError)
-				require.ErrorContains(t, err, tt.errorContains)
+				if tt.errorContains != "" {
+					require.ErrorContains(t, err, tt.errorContains)
+				}
 				require.Nil(t, result)
 			} else {
 				require.NoError(t, err)

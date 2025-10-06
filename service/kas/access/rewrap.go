@@ -376,7 +376,6 @@ func failedKAORewrap(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest_
 
 func addResultsToResponse(response *kaspb.RewrapResponse, result policyKAOResults) {
 	for policyID, policyMap := range result {
-		// TODO: Add obligations per policy to metadata
 		policyResults := &kaspb.PolicyRewrapResult{
 			PolicyId: policyID,
 		}
@@ -1048,19 +1047,21 @@ func populateRequiredObligationsOnResponse(response *kaspb.RewrapResponse, oblig
 		metadata = make(map[string]*structpb.Value)
 	}
 
+	var fields map[string]*structpb.Value
 	if _, ok := metadata[triggeredObligationsHeader]; !ok {
-		fields := make(map[string]*structpb.Value)
+		fields = make(map[string]*structpb.Value)
 		metadata[triggeredObligationsHeader] = structpb.NewStructValue(&structpb.Struct{
 			Fields: fields,
 		})
+	} else {
+		fields = metadata[triggeredObligationsHeader].GetStructValue().GetFields()
 	}
 
 	values := make([]*structpb.Value, len(obligations))
 	for i, obligation := range obligations {
 		values[i] = structpb.NewStringValue(obligation)
 	}
-	existing := metadata[triggeredObligationsHeader].GetStructValue()
-	existing.Fields[policyID] = structpb.NewListValue(&structpb.ListValue{
+	fields[policyID] = structpb.NewListValue(&structpb.ListValue{
 		Values: values,
 	})
 	response.Metadata = metadata

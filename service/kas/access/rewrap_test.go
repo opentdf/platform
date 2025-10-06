@@ -685,20 +685,28 @@ func TestGetFullfillableObligationsFromMetadata(t *testing.T) {
 }
 
 func TestPopulateRequiredObligationsOnResponse(t *testing.T) {
-	tests := []struct {
-		name        string
-		response    *kaspb.RewrapResponse
+	type policyObligation struct {
 		obligations []string
 		policyID    string
-		validate    func(t *testing.T, response *kaspb.RewrapResponse)
+	}
+
+	tests := []struct {
+		name     string
+		response *kaspb.RewrapResponse
+		policies []policyObligation
+		validate func(t *testing.T, response *kaspb.RewrapResponse)
 	}{
 		{
-			name: "single obligation",
+			name: "single policy with single obligation",
 			response: &kaspb.RewrapResponse{
 				Metadata: make(map[string]*structpb.Value),
 			},
-			obligations: []string{"obligation1"},
-			policyID:    "policy1",
+			policies: []policyObligation{
+				{
+					obligations: []string{"https://demo.com/obl/test/value/watermark"},
+					policyID:    "policy1",
+				},
+			},
 			validate: func(t *testing.T, response *kaspb.RewrapResponse) {
 				metadata := response.GetMetadata()
 				require.Contains(t, metadata, triggeredObligationsHeader) //nolint:staticcheck // testing deprecated field
@@ -711,16 +719,23 @@ func TestPopulateRequiredObligationsOnResponse(t *testing.T) {
 				listValue := fields["policy1"].GetListValue()
 				require.NotNil(t, listValue)
 				require.Len(t, listValue.GetValues(), 1)
-				assert.Equal(t, "obligation1", listValue.GetValues()[0].GetStringValue())
+				assert.Equal(t, "https://demo.com/obl/test/value/watermark", listValue.GetValues()[0].GetStringValue())
 			},
 		},
 		{
-			name: "multiple obligations",
+			name: "single policy with multiple obligations",
 			response: &kaspb.RewrapResponse{
 				Metadata: make(map[string]*structpb.Value),
 			},
-			obligations: []string{"obligation1", "obligation2", "obligation3"},
-			policyID:    "policy1",
+			policies: []policyObligation{
+				{
+					obligations: []string{
+						"https://demo.com/obl/test/value/watermark",
+						"https://demo.com/obl/test/value/geofence",
+					},
+					policyID: "policy1",
+				},
+			},
 			validate: func(t *testing.T, response *kaspb.RewrapResponse) {
 				metadata := response.GetMetadata()
 				require.Contains(t, metadata, triggeredObligationsHeader)
@@ -732,10 +747,58 @@ func TestPopulateRequiredObligationsOnResponse(t *testing.T) {
 				fields := structValue.GetFields()
 				listValue := fields["policy1"].GetListValue()
 				require.NotNil(t, listValue)
-				require.Len(t, listValue.GetValues(), 3)
-				assert.Equal(t, "obligation1", listValue.GetValues()[0].GetStringValue())
-				assert.Equal(t, "obligation2", listValue.GetValues()[1].GetStringValue())
-				assert.Equal(t, "obligation3", listValue.GetValues()[2].GetStringValue())
+				require.Len(t, listValue.GetValues(), 2)
+				assert.Equal(t, "https://demo.com/obl/test/value/watermark", listValue.GetValues()[0].GetStringValue())
+				assert.Equal(t, "https://demo.com/obl/test/value/geofence", listValue.GetValues()[1].GetStringValue())
+			},
+		},
+		{
+			name: "multiple policies with different obligations",
+			response: &kaspb.RewrapResponse{
+				Metadata: make(map[string]*structpb.Value),
+			},
+			policies: []policyObligation{
+				{
+					obligations: []string{"https://demo.com/obl/test/value/watermark"},
+					policyID:    "policy1",
+				},
+				{
+					obligations: []string{"https://demo.com/obl/test/value/geofence"},
+					policyID:    "policy2",
+				},
+				{
+					obligations: []string{"https://example.com/obl/test/value/mfa"},
+					policyID:    "policy3",
+				},
+			},
+			validate: func(t *testing.T, response *kaspb.RewrapResponse) {
+				metadata := response.GetMetadata()
+				require.Contains(t, metadata, triggeredObligationsHeader)
+
+				structValue := metadata[triggeredObligationsHeader].GetStructValue()
+				require.NotNil(t, structValue)
+				fields := structValue.GetFields()
+
+				// Verify policy1
+				require.Contains(t, fields, "policy1")
+				listValue1 := fields["policy1"].GetListValue()
+				require.NotNil(t, listValue1)
+				require.Len(t, listValue1.GetValues(), 1)
+				require.Equal(t, "https://demo.com/obl/test/value/watermark", listValue1.GetValues()[0].GetStringValue())
+
+				// Verify policy2
+				require.Contains(t, fields, "policy2")
+				listValue2 := fields["policy2"].GetListValue()
+				require.NotNil(t, listValue2)
+				require.Len(t, listValue2.GetValues(), 1)
+				require.Equal(t, "https://demo.com/obl/test/value/geofence", listValue2.GetValues()[0].GetStringValue())
+
+				// Verify policy3
+				require.Contains(t, fields, "policy3")
+				listValue3 := fields["policy3"].GetListValue()
+				require.NotNil(t, listValue3)
+				require.Len(t, listValue3.GetValues(), 1)
+				require.Equal(t, "https://example.com/obl/test/value/mfa", listValue3.GetValues()[0].GetStringValue())
 			},
 		},
 		{
@@ -743,8 +806,12 @@ func TestPopulateRequiredObligationsOnResponse(t *testing.T) {
 			response: &kaspb.RewrapResponse{
 				Metadata: make(map[string]*structpb.Value),
 			},
-			obligations: []string{},
-			policyID:    "policy1",
+			policies: []policyObligation{
+				{
+					obligations: []string{},
+					policyID:    "policy1",
+				},
+			},
 			validate: func(t *testing.T, response *kaspb.RewrapResponse) {
 				metadata := response.GetMetadata()
 				require.Contains(t, metadata, triggeredObligationsHeader) //nolint:staticcheck // testing deprecated field
@@ -764,8 +831,12 @@ func TestPopulateRequiredObligationsOnResponse(t *testing.T) {
 			response: &kaspb.RewrapResponse{
 				Metadata: nil,
 			},
-			obligations: []string{"obligation1"},
-			policyID:    "policy1",
+			policies: []policyObligation{
+				{
+					obligations: []string{"https://demo.com/obl/test/value/watermark"},
+					policyID:    "policy1",
+				},
+			},
 			validate: func(t *testing.T, response *kaspb.RewrapResponse) {
 				metadata := response.GetMetadata()
 				require.NotNil(t, metadata)                               //nolint:staticcheck // testing deprecated field
@@ -779,14 +850,17 @@ func TestPopulateRequiredObligationsOnResponse(t *testing.T) {
 				listValue := fields["policy1"].GetListValue()
 				require.NotNil(t, listValue)
 				require.Len(t, listValue.GetValues(), 1)
-				require.Equal(t, "obligation1", listValue.GetValues()[0].GetStringValue())
+				require.Equal(t, "https://demo.com/obl/test/value/watermark", listValue.GetValues()[0].GetStringValue())
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			populateRequiredObligationsOnResponse(tt.response, tt.obligations, tt.policyID)
+			// Call populateRequiredObligationsOnResponse for each policy
+			for _, policy := range tt.policies {
+				populateRequiredObligationsOnResponse(tt.response, policy.obligations, policy.policyID)
+			}
 			tt.validate(t, tt.response)
 		})
 	}

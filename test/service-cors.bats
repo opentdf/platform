@@ -2,12 +2,22 @@
 
 # Tests for validating CORS configuration allows Authorization header
 
+# Set base URL based on TLS configuration
+BASE_URL="http://localhost:8080"
+CURL_OPTIONS=""
+
+# Check if TLS is enabled via environment variable
+if [[ "${TLS_ENABLED:-false}" == "true" ]]; then
+  BASE_URL="https://localhost:8080"
+  CURL_OPTIONS="-k"  # Allow insecure connections for self-signed certs
+fi
+
 @test "CORS: preflight request includes Authorization in allowed headers" {
-  run curl -i -X OPTIONS \
+  run curl -i -X OPTIONS $CURL_OPTIONS \
     -H "Origin: http://localhost:3000" \
     -H "Access-Control-Request-Method: POST" \
     -H "Access-Control-Request-Headers: authorization,content-type,connect-protocol-version" \
-    http://localhost:8080/policy.namespaces.NamespaceService/GetNamespace
+    ${BASE_URL}/policy.namespaces.NamespaceService/GetNamespace
 
   echo "$output"
 
@@ -28,11 +38,11 @@
 }
 
 @test "CORS: preflight request with different headers" {
-  run curl -i -X OPTIONS \
+  run curl -i -X OPTIONS $CURL_OPTIONS \
     -H "Origin: http://localhost:3000" \
     -H "Access-Control-Request-Method: POST" \
     -H "Access-Control-Request-Headers: authorization" \
-    http://localhost:8080/policy.namespaces.NamespaceService/GetNamespace
+    ${BASE_URL}/policy.namespaces.NamespaceService/GetNamespace
 
   echo "$output"
 
@@ -44,12 +54,12 @@
 }
 
 @test "CORS: actual request with Authorization header" {
-  run curl -i -X POST \
+  run curl -i -X POST $CURL_OPTIONS \
     -H "Origin: http://localhost:3000" \
     -H "Authorization: Bearer test-token" \
     -H "Content-Type: application/json" \
     -H "Connect-Protocol-Version: 1" \
-    http://localhost:8080/policy.namespaces.NamespaceService/GetNamespace
+    ${BASE_URL}/policy.namespaces.NamespaceService/GetNamespace
 
   echo "$output"
 
@@ -59,11 +69,11 @@
 }
 
 @test "CORS: wildcard origin configuration" {
-  run curl -i -X OPTIONS \
+  run curl -i -X OPTIONS $CURL_OPTIONS \
     -H "Origin: http://example.com" \
     -H "Access-Control-Request-Method: POST" \
     -H "Access-Control-Request-Headers: authorization,content-type" \
-    http://localhost:8080/policy.namespaces.NamespaceService/GetNamespace
+    ${BASE_URL}/policy.namespaces.NamespaceService/GetNamespace
 
   echo "$output"
 
@@ -76,11 +86,11 @@
 }
 
 @test "CORS: verify Content-Type in allowed headers" {
-  run curl -i -X OPTIONS \
+  run curl -i -X OPTIONS $CURL_OPTIONS \
     -H "Origin: http://localhost:3000" \
     -H "Access-Control-Request-Method: POST" \
     -H "Access-Control-Request-Headers: content-type" \
-    http://localhost:8080/policy.namespaces.NamespaceService/GetNamespace
+    ${BASE_URL}/policy.namespaces.NamespaceService/GetNamespace
 
   echo "$output"
 
@@ -89,11 +99,11 @@
 }
 
 @test "CORS: verify Connect-Protocol-Version in allowed headers" {
-  run curl -i -X OPTIONS \
+  run curl -i -X OPTIONS $CURL_OPTIONS \
     -H "Origin: http://localhost:3000" \
     -H "Access-Control-Request-Method: POST" \
     -H "Access-Control-Request-Headers: connect-protocol-version" \
-    http://localhost:8080/policy.namespaces.NamespaceService/GetNamespace
+    ${BASE_URL}/policy.namespaces.NamespaceService/GetNamespace
 
   echo "$output"
 

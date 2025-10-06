@@ -19,7 +19,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk/experimental/tdf/keysplit"
-	"github.com/opentdf/platform/sdk/internal/archive2"
+	"github.com/opentdf/platform/sdk/internal/zipstream"
 )
 
 const (
@@ -97,7 +97,7 @@ type Writer struct {
 	WriterConfig
 
 	// archiveWriter handles the underlying ZIP archive creation
-	archiveWriter archive2.SegmentWriter
+	archiveWriter zipstream.SegmentWriter
 
 	// State management
 	mutex     sync.RWMutex // Protects concurrent access to writer state
@@ -166,7 +166,7 @@ func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error
 	}
 
 	// Initialize archive writer - start with 1 segment and expand dynamically
-	archiveWriter := archive2.NewSegmentTDFWriter(1, archive2.WithZip64())
+	archiveWriter := zipstream.NewSegmentTDFWriter(1, zipstream.WithZip64())
 
 	// Generate DEK
 	dek, err := ocrypto.RandomBytes(kKeySize)
@@ -445,7 +445,7 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 			MimeType:    cfg.payloadMimeType,
 			Protocol:    tdfAsZip,
 			Type:        tdfZipReference,
-			URL:         archive2.TDFPayloadFileName,
+			URL:         zipstream.TDFPayloadFileName,
 			IsEncrypted: true,
 		},
 	}

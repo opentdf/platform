@@ -628,6 +628,16 @@ func TestGetAdditionalRewrapContext(t *testing.T) {
 			expectedError: nil,
 		},
 		{
+			name: "no obligations array",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{}`))},
+			},
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: []string{},
+			},
+			expectedError: nil,
+		},
+		{
 			name: "obligations with empty values filtered out",
 			header: http.Header{
 				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": ["https://demo.com/obl/test/value/watermark","","https://demo.com/obl/test/value/geofence"]}`))},

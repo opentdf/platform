@@ -1055,7 +1055,8 @@ func populateRequiredObligationsOnResponse(response *kaspb.RewrapResponse, oblig
 	}
 
 	var fields map[string]*structpb.Value
-	if _, ok := metadata[triggeredObligationsHeader]; !ok {
+	obligationValue, ok := metadata[triggeredObligationsHeader]
+	if !ok || obligationValue.GetStructValue() == nil {
 		fields = make(map[string]*structpb.Value)
 		metadata[triggeredObligationsHeader] = structpb.NewStructValue(&structpb.Struct{
 			Fields: fields,

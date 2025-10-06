@@ -22,7 +22,7 @@ fi
   echo "$output"
 
   # Verify 200 OK response (HTTP/1.1 or HTTP/2)
-  [[ "$output" =~ "HTTP/[12](\.[01])? 200" ]]
+  [[ "$output" =~ "HTTP/2 200" ]] || [[ "$output" =~ "HTTP/1.1 200 OK" ]]
 
   # Verify Access-Control-Allow-Headers includes Authorization
   [[ "$output" =~ "Access-Control-Allow-Headers:".*"Authorization" ]]
@@ -47,7 +47,7 @@ fi
   echo "$output"
 
   # Verify 200 OK response (HTTP/1.1 or HTTP/2)
-  [[ "$output" =~ "HTTP/[12](\.[01])? 200" ]]
+  [[ "$output" =~ "HTTP/2 200" ]] || [[ "$output" =~ "HTTP/1.1 200 OK" ]]
 
   # Verify Authorization is in allowed headers
   [[ "$output" =~ "Access-Control-Allow-Headers:".*"Authorization" ]]
@@ -79,7 +79,7 @@ fi
 
   # With wildcard ("*") in config, different origins should work
   # Server should return 200 OK (HTTP/1.1 or HTTP/2)
-  [[ "$output" =~ "HTTP/[12](\.[01])? 200" ]]
+  [[ "$output" =~ "HTTP/2 200" ]] || [[ "$output" =~ "HTTP/1.1 200 OK" ]]
 
   # Origin should be reflected back or wildcard
   [[ "$output" =~ "Access-Control-Allow-Origin:" ]]

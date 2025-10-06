@@ -312,7 +312,21 @@ func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.H
 	}
 
 	// Note: The grpc-gateway handlers are getting chained together in reverse. So the last handler is the first to be called.
-	// CORS
+
+	// Enable pprof
+	if c.EnablePprof {
+		grpcGateway = pprofHandler(grpcGateway)
+		// Need to extend write timeout to collect pprof data.
+		if c.HTTPServerConfig.WriteTimeout < 30*time.Second {
+			c.HTTPServerConfig.WriteTimeout = 30 * time.Second //nolint:mnd // easier to read that we are overriding the default
+		}
+	}
+
+	var handler http.Handler
+	// Applyjus routing first
+	handler = routeConnectRPCRequests(connectRPC, grpcGateway)
+
+	// Then apply CORS to the entire routing handler
 	if c.CORS.Enabled {
 		corsHandler := cors.New(cors.Options{
 			AllowOriginFunc: func(_ *http.Request, origin string) bool {
@@ -333,30 +347,17 @@ func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.H
 			MaxAge:           c.CORS.MaxAge,
 			Debug:            c.CORS.Debug,
 		})
-
-		// Apply CORS to connectRPC and extra handlers
-		connectRPC = corsHandler.Handler(connectRPC)
-		grpcGateway = corsHandler.Handler(grpcGateway)
+		handler = corsHandler.Handler(handler)
 	}
 
-	// Enable pprof
-	if c.EnablePprof {
-		grpcGateway = pprofHandler(grpcGateway)
-		// Need to extend write timeout to collect pprof data.
-		if c.HTTPServerConfig.WriteTimeout < 30*time.Second {
-			c.HTTPServerConfig.WriteTimeout = 30 * time.Second //nolint:mnd // easier to read that we are overriding the default
-		}
-	}
-
-	var handler http.Handler
+	// Finally wrap with h2c if TLS is not enabled, or load TLS config
 	if !c.TLS.Enabled {
-		handler = h2c.NewHandler(routeConnectRPCRequests(connectRPC, grpcGateway), &http2.Server{})
+		handler = h2c.NewHandler(handler, &http2.Server{})
 	} else {
 		tc, err = loadTLSConfig(c.TLS)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load tls config: %w", err)
 		}
-		handler = routeConnectRPCRequests(connectRPC, grpcGateway)
 	}
 
 	if c.HTTPServerConfig.ReadTimeout == 0 {

@@ -81,6 +81,7 @@ jobs:
     permissions:
       checks: write
       contents: read
+      id-token: write
       pull-requests: write
       packages: read
     uses: opentdf/platform/.github/workflows/checks.yaml@main

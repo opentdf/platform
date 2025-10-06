@@ -56,9 +56,9 @@ func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.We
 	}
 }
 
-func (s WellKnownService) GetWellKnownConfiguration(_ context.Context, _ *connect.Request[wellknown.GetWellKnownConfigurationRequest]) (*connect.Response[wellknown.GetWellKnownConfigurationResponse], error) {
+func (s WellKnownService) GetWellKnownConfiguration(ctx context.Context, _ *connect.Request[wellknown.GetWellKnownConfigurationRequest]) (*connect.Response[wellknown.GetWellKnownConfigurationResponse], error) {
 	rwMutex.RLock()
-	s.logger.Debug("wellknown configuration contents", slog.Any("config", wellKnownConfiguration))
+	s.logger.TraceContext(ctx, "wellknown configuration contents", slog.Any("config", wellKnownConfiguration))
 	cfg, err := structpb.NewStruct(wellKnownConfiguration)
 	rwMutex.RUnlock()
 	if err != nil {

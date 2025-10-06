@@ -25,6 +25,7 @@ import (
 
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/logger"
+	"google.golang.org/grpc/metadata"
 
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 )
@@ -66,6 +67,9 @@ var (
 	ErrClientIDClaimNotConfigured = errors.New("no client ID claim configured")
 	ErrClientIDClaimNotFound      = errors.New("client ID claim not found")
 	ErrClientIDClaimNotString     = errors.New("client ID claim is not a string")
+
+	canonicalIPCHeaderClientID    = http.CanonicalHeaderKey("x-ipc-auth-client-id")
+	canonicalIPCHeaderAccessToken = http.CanonicalHeaderKey("x-ipc-access-token")
 )
 
 const (
@@ -258,7 +262,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			log = log.
 				With("client_id", clientID).
 				With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
-			ctx = ctxAuth.ContextWithAuthnMetadata(ctx, clientID)
+			ctx = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctx, log, clientID)
 		}
 
 		// Check if the token is allowed to access the resource
@@ -309,7 +313,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
 			// if the token is already in the context, skip the interceptor
-			if ctxAuth.GetAccessTokenFromContext(ctx, nil) != nil {
+			if ctxAuth.GetAccessTokenFromContext(ctx, a.logger) != nil {
 				return next(ctx, req)
 			}
 
@@ -359,7 +363,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				log = log.
 					With("client_id", clientID).
 					With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
-				ctxWithJWK = ctxAuth.ContextWithAuthnMetadata(ctxWithJWK, clientID)
+				ctxWithJWK = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, log, clientID)
 			}
 
 			// Check if the token is allowed to access the resource
@@ -385,14 +389,64 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 	return connect.UnaryInterceptorFunc(interceptor)
 }
 
-// IPCReauthInterceptor is a grpc interceptor that verifies the token in the metadata
-// and reauthorizes the token if the route is in the list
+// IPCMetadataClientInterceptor transfers gRPC outgoing metadata to Connect request headers for IPC calls
+func IPCMetadataClientInterceptor(log *logger.Logger) connect.UnaryInterceptorFunc {
+	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return connect.UnaryFunc(func(
+			ctx context.Context,
+			req connect.AnyRequest,
+		) (connect.AnyResponse, error) {
+			// Only apply to outgoing client requests
+			if !req.Spec().IsClient {
+				return next(ctx, req)
+			}
+
+			incoming := true
+			clientID, err := ctxAuth.GetClientIDFromContext(ctx, incoming)
+			if err != nil {
+				// metadata will not always be found over IPC - log other errors
+				if !errors.Is(err, ctxAuth.ErrNoMetadataFound) {
+					log.ErrorContext(ctx, "IPCMetadataClientInterceptor", slog.Any("error", err))
+				}
+			} else {
+				req.Header().Add(canonicalIPCHeaderClientID, clientID)
+			}
+
+			authToken := ctxAuth.GetRawAccessTokenFromContext(ctx, log)
+			if authToken != "" {
+				req.Header().Add(canonicalIPCHeaderAccessToken, authToken)
+			}
+
+			return next(ctx, req)
+		})
+	})
+}
+
+// IPCUnaryServerInterceptor is a grpc interceptor that:
+// 1. verifies the token in the metadata
+// 2. reauthorizes the token if the route is in the list
+// 3. translates known IPC Connect request headers back to context metadata for downstream consumers
 func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
+			incomingMD, hasIncoming := metadata.FromIncomingContext(ctx)
+
+			// Transfer metadata from headers to context for IPC calls due to Connect/IPC limitations
+			md := metadata.New(map[string]string{})
+			if clientID := req.Header().Get(canonicalIPCHeaderClientID); clientID != "" {
+				md.Set(ctxAuth.ClientIDKey, clientID)
+			}
+			if authToken := req.Header().Get(canonicalIPCHeaderAccessToken); authToken != "" {
+				md.Set(ctxAuth.AccessTokenKey, authToken)
+			}
+			if hasIncoming {
+				md = metadata.Join(md, incomingMD.Copy())
+			}
+			ctx = metadata.NewIncomingContext(ctx, md)
+
 			nextCtx, err := a.ipcReauthCheck(ctx, req.Spec().Procedure, req.Header())
 			if err != nil {
 				return nil, err
@@ -716,7 +770,7 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 			if err != nil {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
-			return ctxAuth.ContextWithAuthnMetadata(ctxWithJWK, clientID), nil
+			return ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, a.logger, clientID), nil
 		}
 	}
 	return ctx, nil

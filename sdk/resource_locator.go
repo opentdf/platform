@@ -297,13 +297,10 @@ func (rl *ResourceLocator) setURLParts(urlBody, identifier string, baseProtocol 
 	var paddingLen int
 
 	switch {
-	case identifierLen == 0:
-		idProtocol = identifierNone
-		paddingLen = 0
-	case identifierLen > 0 && identifierLen <= identifier2ByteLength:
+	case identifierLen <= identifier2ByteLength:
 		idProtocol = identifier2Byte
 		paddingLen = identifier2ByteLength - identifierLen
-	case identifierLen <= identifier8ByteLength:
+	case identifierLen > identifier2ByteLength && identifierLen <= identifier8ByteLength:
 		idProtocol = identifier8Byte
 		paddingLen = identifier8ByteLength - identifierLen
 	case identifierLen > identifier8ByteLength && identifierLen <= identifier32ByteLength:

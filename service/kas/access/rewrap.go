@@ -92,8 +92,12 @@ type policyResult struct {
 // From policy ID to KAO ID to result
 type policyKAOResults map[string]policyResult
 
+type ObligationCtx struct {
+	FulfillableFQNs []string `json:"fulfillableFQNs,omitempty"`
+}
+
 type AdditionalRewrapContext struct {
-	Obligations []string `json:"obligations,omitempty"`
+	Obligations ObligationCtx `json:"obligations"`
 }
 
 const (
@@ -724,7 +728,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		Jwt:         entityInfo.Token,
 	}
 
-	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies, additionalRewrapContext.Obligations)
+	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies, additionalRewrapContext.Obligations.FulfillableFQNs)
 	if accessErr != nil {
 		p.Logger.DebugContext(ctx,
 			"tdf3rewrap: cannot access policy",
@@ -797,7 +801,6 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			}
 
 			if !access {
-				// ? Maybe we should change the error if we get an obligation failure? Not just "forbidden"
 				p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 				failedKAORewrap(kaoResults, kao, err403("forbidden"))
 				continue
@@ -851,7 +854,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 		Jwt:         entityInfo.Token,
 	}
 
-	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies, additionalRewrapContext.Obligations)
+	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies, additionalRewrapContext.Obligations.FulfillableFQNs)
 	if accessErr != nil {
 		failAllKaos(requests, results, err500("could not perform access"))
 		return "", results
@@ -1077,10 +1080,19 @@ func populateRequiredObligationsOnResponse(response *kaspb.RewrapResponse, oblig
 
 // Retrieve additional request context needed for rewrap processing
 // Header is json encoded AdditionalRewrapContext struct
-// Example: `{"obligations": ["https://demo.com/obl/test/value/watermark","https://demo.com/obl/test/value/geofence"]}`
+/*
+Example:
+
+{
+	"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark","https://demo.com/obl/test/value/geofence"]}
+}
+
+*/
 func getAdditionalRewrapContext(header http.Header) (*AdditionalRewrapContext, error) {
 	rewrapContext := &AdditionalRewrapContext{
-		Obligations: []string{},
+		Obligations: ObligationCtx{
+			FulfillableFQNs: []string{},
+		},
 	}
 	if header == nil {
 		return rewrapContext, nil
@@ -1097,7 +1109,7 @@ func getAdditionalRewrapContext(header http.Header) (*AdditionalRewrapContext, e
 		}
 
 		validObligations := make([]string, 0)
-		for _, r := range rewrapContext.Obligations {
+		for _, r := range rewrapContext.Obligations.FulfillableFQNs {
 			normalizedObligation := strings.TrimSpace(r)
 			if len(normalizedObligation) == 0 {
 				continue
@@ -1108,7 +1120,7 @@ func getAdditionalRewrapContext(header http.Header) (*AdditionalRewrapContext, e
 			}
 			validObligations = append(validObligations, normalizedObligation)
 		}
-		rewrapContext.Obligations = validObligations
+		rewrapContext.Obligations.FulfillableFQNs = validObligations
 	}
 	return rewrapContext, nil
 }

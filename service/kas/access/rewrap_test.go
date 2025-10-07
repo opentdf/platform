@@ -566,7 +566,9 @@ func TestGetAdditionalRewrapContext(t *testing.T) {
 			name:   "nil header",
 			header: nil,
 			expectedResult: &AdditionalRewrapContext{
-				Obligations: []string{},
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{},
+				},
 			},
 			expectedError: nil,
 		},
@@ -574,7 +576,9 @@ func TestGetAdditionalRewrapContext(t *testing.T) {
 			name:   "empty header",
 			header: make(http.Header),
 			expectedResult: &AdditionalRewrapContext{
-				Obligations: []string{},
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{},
+				},
 			},
 			expectedError: nil,
 		},
@@ -584,34 +588,40 @@ func TestGetAdditionalRewrapContext(t *testing.T) {
 				"Content-Type": []string{"application/json"},
 			},
 			expectedResult: &AdditionalRewrapContext{
-				Obligations: []string{},
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{},
+				},
 			},
 			expectedError: nil,
 		},
 		{
 			name: "valid single watermark obligation",
 			header: http.Header{
-				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": ["https://demo.com/obl/test/value/watermark"]}`))},
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark"]}}`))},
 			},
 			expectedResult: &AdditionalRewrapContext{
-				Obligations: []string{"https://demo.com/obl/test/value/watermark"},
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{"https://demo.com/obl/test/value/watermark"},
+				},
 			},
 			expectedError: nil,
 		},
 		{
 			name: "valid multiple obligations",
 			header: http.Header{
-				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": ["https://demo.com/obl/test/value/watermark","https://demo.com/obl/test/value/geofence"]}`))},
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark","https://demo.com/obl/test/value/geofence"]}}`))},
 			},
 			expectedResult: &AdditionalRewrapContext{
-				Obligations: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+				},
 			},
 			expectedError: nil,
 		},
 		{
 			name: "mixed valid and invalid fqns",
 			header: http.Header{
-				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": ["https://demo.com/obl/test/value/watermark","https://example.com/attr/Classification/value/restricted","https://virtru.com/obl/test/value/audit"]}`))},
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark","https://example.com/attr/Classification/value/restricted","https://virtru.com/obl/test/value/audit"]}}`))},
 			},
 			expectedResult: nil,
 			expectedError:  identifier.ErrInvalidFQNFormat,
@@ -620,10 +630,12 @@ func TestGetAdditionalRewrapContext(t *testing.T) {
 		{
 			name: "empty obligations array",
 			header: http.Header{
-				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": []}`))},
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {"fulfillableFQNs": []}}`))},
 			},
 			expectedResult: &AdditionalRewrapContext{
-				Obligations: []string{},
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{},
+				},
 			},
 			expectedError: nil,
 		},
@@ -633,34 +645,40 @@ func TestGetAdditionalRewrapContext(t *testing.T) {
 				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{}`))},
 			},
 			expectedResult: &AdditionalRewrapContext{
-				Obligations: []string{},
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{},
+				},
 			},
 			expectedError: nil,
 		},
 		{
 			name: "obligations with empty values filtered out",
 			header: http.Header{
-				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": ["https://demo.com/obl/test/value/watermark","","https://demo.com/obl/test/value/geofence"]}`))},
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark","","https://demo.com/obl/test/value/geofence"]}}`))},
 			},
 			expectedResult: &AdditionalRewrapContext{
-				Obligations: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+				},
 			},
 			expectedError: nil,
 		},
 		{
 			name: "obligations with whitespace trimmed",
 			header: http.Header{
-				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": ["  https://demo.com/obl/test/value/watermark  ","  https://demo.com/obl/test/value/geofence  "]}`))},
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {"fulfillableFQNs": [" https://demo.com/obl/test/value/watermark "," https://demo.com/obl/test/value/geofence "]}}`))},
 			},
 			expectedResult: &AdditionalRewrapContext{
-				Obligations: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+				},
 			},
 			expectedError: nil,
 		},
 		{
 			name: "invalid FQN format obligation",
 			header: http.Header{
-				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": ["invalid-obligation-format"]}`))},
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {"fulfillableFQNs": ["invalid-obligation-format"]}}`))},
 			},
 			expectedResult: nil,
 			expectedError:  identifier.ErrInvalidFQNFormat,
@@ -669,7 +687,7 @@ func TestGetAdditionalRewrapContext(t *testing.T) {
 		{
 			name: "mixed invalid FQN format obligation",
 			header: http.Header{
-				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": ["https://demo.com/obl/test/value/watermark","invalid-obligation-format"]}`))},
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark","invalid-obligation-format"]}}`))},
 			},
 			expectedResult: nil,
 			expectedError:  identifier.ErrInvalidFQNFormat,
@@ -678,7 +696,7 @@ func TestGetAdditionalRewrapContext(t *testing.T) {
 		{
 			name: "invalid base64 encoding",
 			header: http.Header{
-				additionalRewrapContextHeader: []string{`{"obligations": ["https://demo.com/obl/test/value/watermark","invalid-obligation-format"]}`},
+				additionalRewrapContextHeader: []string{`{"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark","invalid-obligation-format"]}}`},
 			},
 			expectedResult: nil,
 			expectedError:  ErrDecodingRewrapContext,
@@ -697,7 +715,9 @@ func TestGetAdditionalRewrapContext(t *testing.T) {
 				additionalRewrapContextHeader: []string{""},
 			},
 			expectedResult: &AdditionalRewrapContext{
-				Obligations: []string{},
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{},
+				},
 			},
 			expectedError: nil,
 		},

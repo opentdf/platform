@@ -29,7 +29,7 @@ type PDPAccessResult struct {
 	RequiredObligations []string
 }
 
-func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies []*Policy, obligations []string) ([]PDPAccessResult, error) {
+func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies []*Policy, fulfillableObligationFQNs []string) ([]PDPAccessResult, error) {
 	var res []PDPAccessResult
 	var resources []*authzV2.Resource
 	idPolicyMap := make(map[string]*Policy)
@@ -68,7 +68,7 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 	ctx, span := p.Start(ctx, "checkAttributes")
 	defer span.End()
 
-	resourceDecisions, err := p.checkAttributes(ctx, resources, token, obligations)
+	resourceDecisions, err := p.checkAttributes(ctx, resources, token, fulfillableObligationFQNs)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 }
 
 // checkAttributes makes authorization service GetDecision requests to check access to resources
-func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Resource, ent *entity.Token, obligations []string) ([]*authzV2.ResourceDecision, error) {
+func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Resource, ent *entity.Token, fulfillableObligationFQNs []string) ([]*authzV2.ResourceDecision, error) {
 	ctx = tracing.InjectTraceContext(ctx)
 
 	// If only one resource, prefer singular endpoint
@@ -97,7 +97,7 @@ func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Res
 			},
 			Action:                    decryptAction,
 			Resource:                  resources[0],
-			FulfillableObligationFqns: obligations,
+			FulfillableObligationFqns: fulfillableObligationFQNs,
 		}
 		dr, err := p.SDK.AuthorizationV2.GetDecision(ctx, req)
 		if err != nil {
@@ -114,7 +114,7 @@ func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Res
 		},
 		Action:                    decryptAction,
 		Resources:                 resources,
-		FulfillableObligationFqns: obligations,
+		FulfillableObligationFqns: fulfillableObligationFQNs,
 	}
 
 	dr, err := p.SDK.AuthorizationV2.GetDecisionMultiResource(ctx, req)

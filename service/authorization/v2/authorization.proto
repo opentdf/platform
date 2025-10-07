@@ -42,7 +42,11 @@ message EntityIdentifier {
     }];
 
     // derive the entity from the request's authorization access token JWT, rather than passing in the body
-    google.protobuf.BoolValue use_request_token = 4;
+    google.protobuf.BoolValue use_request_token = 4 [(buf.validate.field).cel = {
+      id: "use_request_token_must_be_true"
+      message: "use_request_token must be true when set"
+      expression: "this == true"
+    }];
   }
 }
 

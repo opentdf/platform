@@ -27,6 +27,7 @@ var (
 	ErrFailedToUseRequestTokenEntityIdentifier = errors.New("access: failed to use request token as entity identifier - none found in context")
 	ErrInvalidUseRequestTokenEntityIdentifier  = errors.New("access: invalid use request token as entity identifier - must be true if provided")
 
+	//nolint:gosec // not a credential
 	requestAuthTokenEphemeralID = "use-request-auth-ctx-entity"
 )
 

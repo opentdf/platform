@@ -1,0 +1,410 @@
+erDiagram
+    %% ==============================================
+    %% ATTRIBUTE POLICY MANAGEMENT DOMAIN
+    %% ==============================================
+    
+    ATTRIBUTE_NAMESPACES {
+        uuid id PK "Primary key"
+        varchar name UK "Namespace name (e.g. example.com)"
+        jsonb metadata "Namespace metadata"
+        boolean active "Active/Inactive state"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    ATTRIBUTE_DEFINITIONS {
+        uuid id PK "Primary key"
+        uuid namespace_id FK "Foreign key to namespace"
+        varchar name "Attribute name (unique within namespace)"
+        attribute_definition_rule rule "UNSPECIFIED, ALL_OF, ANY_OF, HIERARCHY"
+        jsonb metadata "Attribute definition metadata"
+        boolean active "Active/Inactive state"
+        uuid[] values_order "Order of value IDs for hierarchy rule"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    ATTRIBUTE_VALUES {
+        uuid id PK "Primary key"
+        uuid attribute_definition_id FK "Foreign key to definition"
+        varchar value "Value string (unique within definition)"
+        jsonb metadata "Attribute value metadata"
+        boolean active "Active/Inactive state"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    ATTRIBUTE_FQNS {
+        uuid id PK "Primary key"
+        uuid namespace_id FK "Foreign key to namespace"
+        uuid attribute_id FK "Foreign key to definition"
+        uuid value_id FK "Foreign key to value"
+        text fqn UK "Fully qualified name"
+    }
+
+    %% ==============================================
+    %% KEY ACCESS SERVER DOMAIN
+    %% ==============================================
+    
+    KEY_ACCESS_SERVERS {
+        uuid id PK "Primary key"
+        varchar uri UK "KAS URI"
+        jsonb public_key "Legacy public key (DEPRECATED)"
+        varchar name UK "Optional common name"
+        varchar source_type "Source type for KAS"
+        jsonb metadata "KAS metadata"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    %% ==============================================
+    %% KEY MANAGEMENT DOMAIN (New Architecture)
+    %% ==============================================
+    
+    PROVIDER_CONFIG {
+        uuid id PK "Primary key"
+        varchar provider_name UK "Unique provider name"
+        jsonb config "Provider configuration"
+        jsonb metadata "Provider metadata"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    ASYM_KEY {
+        uuid id PK "Primary key"
+        varchar key_id UK "Key identifier"
+        int key_algorithm "Key algorithm"
+        int key_status "Active=1, Inactive, Compromised, Expired"
+        int key_mode "LOCAL or REMOTE storage"
+        jsonb public_key_ctx "Public key context (JSON)"
+        jsonb private_key_ctx "Private key context (JSON)"
+        timestamp expiration "Key expiration"
+        uuid provider_config_id FK "Provider configuration reference"
+        jsonb metadata "Key metadata"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    SYM_KEY {
+        uuid id PK "Primary key"
+        varchar key_id UK "Key identifier"
+        int key_status "Active=1, Inactive, Compromised, Expired"
+        int key_mode "LOCAL or REMOTE storage"
+        bytea key_value "Symmetric key value"
+        timestamp expiration "Key expiration"
+        uuid provider_config_id FK "Provider configuration reference"
+        jsonb metadata "Key metadata"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    KEY_ACCESS_SERVER_KEYS {
+        uuid id PK "Primary key (inherits from asym_key)"
+        uuid key_access_server_id FK "KAS reference"
+        varchar key_id UK "Key identifier"
+        int key_algorithm "Key algorithm"
+        int key_status "Key status"
+        int key_mode "Storage mode"
+        jsonb public_key_ctx "Public key context"
+        jsonb private_key_ctx "Private key context"
+        timestamp expiration "Key expiration"
+        uuid provider_config_id FK "Provider configuration"
+        boolean legacy "Legacy key flag"
+        jsonb metadata "Key metadata"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    BASE_KEYS {
+        uuid id PK "Primary key"
+        uuid key_access_server_key_id FK "Reference to KAS key"
+    }
+
+    %% ==============================================
+    %% KEY ACCESS GRANTS DOMAIN
+    %% ==============================================
+    
+    ATTRIBUTE_NAMESPACE_KEY_ACCESS_GRANTS {
+        uuid namespace_id PK,FK "Namespace reference"
+        uuid key_access_server_id PK,FK "KAS reference"
+    }
+    
+    ATTRIBUTE_DEFINITION_KEY_ACCESS_GRANTS {
+        uuid attribute_definition_id PK,FK "Definition reference"
+        uuid key_access_server_id PK,FK "KAS reference"
+    }
+    
+    ATTRIBUTE_VALUE_KEY_ACCESS_GRANTS {
+        uuid attribute_value_id PK,FK "Value reference"
+        uuid key_access_server_id PK,FK "KAS reference"
+    }
+    
+    %% New Key Mapping Tables
+    ATTRIBUTE_NAMESPACE_PUBLIC_KEY_MAP {
+        uuid namespace_id PK,FK "Namespace reference"
+        uuid key_access_server_key_id PK,FK "KAS key reference"
+    }
+    
+    ATTRIBUTE_DEFINITION_PUBLIC_KEY_MAP {
+        uuid definition_id PK,FK "Definition reference"
+        uuid key_access_server_key_id PK,FK "KAS key reference"
+    }
+    
+    ATTRIBUTE_VALUE_PUBLIC_KEY_MAP {
+        uuid value_id PK,FK "Value reference"
+        uuid key_access_server_key_id PK,FK "KAS key reference"
+    }
+
+    %% ==============================================
+    %% RESOURCE MAPPING DOMAIN
+    %% ==============================================
+    
+    RESOURCE_MAPPING_GROUPS {
+        uuid id PK "Primary key"
+        uuid namespace_id FK "Namespace reference"
+        varchar name "Group name (unique within namespace)"
+        jsonb metadata "Group metadata"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    RESOURCE_MAPPINGS {
+        uuid id PK "Primary key"
+        uuid attribute_value_id FK "Value reference"
+        uuid group_id FK "Optional group reference"
+        varchar[] terms "Resource mapping terms array"
+        jsonb metadata "Mapping metadata"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+
+    %% ==============================================
+    %% SUBJECT MAPPING DOMAIN
+    %% ==============================================
+    
+    SUBJECT_CONDITION_SET {
+        uuid id PK "Primary key"
+        jsonb condition "Condition logic (JSON)"
+        text[] selector_values "Cached selector values (indexed)"
+        jsonb metadata "Condition set metadata"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    SUBJECT_MAPPINGS {
+        uuid id PK "Primary key"
+        uuid attribute_value_id FK "Value reference"
+        uuid subject_condition_set_id FK "Condition set reference"
+        jsonb metadata "Subject mapping metadata"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+
+    %% ==============================================
+    %% ACTIONS DOMAIN
+    %% ==============================================
+    
+    ACTIONS {
+        uuid id PK "Primary key"
+        varchar name UK "Action name (e.g., read, write)"
+        boolean is_standard "Standard vs custom action"
+        jsonb metadata "Action metadata"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    SUBJECT_MAPPING_ACTIONS {
+        uuid subject_mapping_id PK,FK "Subject mapping reference"
+        uuid action_id PK,FK "Action reference"
+        timestamp created_at "Creation timestamp"
+    }
+
+    %% ==============================================
+    %% REGISTERED RESOURCES DOMAIN
+    %% ==============================================
+    
+    REGISTERED_RESOURCES {
+        uuid id PK "Primary key"
+        varchar name UK "Resource name"
+        jsonb metadata "Resource metadata"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    REGISTERED_RESOURCE_VALUES {
+        uuid id PK "Primary key"
+        uuid registered_resource_id FK "Resource reference"
+        varchar value "Resource value (unique within resource)"
+        jsonb metadata "Value metadata"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    REGISTERED_RESOURCE_ACTION_ATTRIBUTE_VALUES {
+        uuid id PK "Primary key"
+        uuid registered_resource_value_id FK "Resource value reference"
+        uuid action_id FK "Action reference"
+        uuid attribute_value_id FK "Attribute value reference"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+
+    %% ==============================================
+    %% OBLIGATIONS DOMAIN
+    %% ==============================================
+    
+    OBLIGATION_DEFINITIONS {
+        uuid id PK "Primary key"
+        uuid namespace_id FK "Namespace reference"
+        varchar name "Obligation name (unique within namespace)"
+        jsonb metadata "Obligation metadata"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    OBLIGATION_VALUES_STANDARD {
+        uuid id PK "Primary key"
+        uuid obligation_definition_id FK "Obligation definition reference"
+        varchar value "Obligation value (unique within definition)"
+        jsonb metadata "Value metadata"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    OBLIGATION_TRIGGERS {
+        uuid id PK "Primary key"
+        uuid obligation_value_id FK "Obligation value reference"
+        uuid action_id FK "Action reference"
+        uuid attribute_value_id FK "Attribute value reference"
+        jsonb metadata "Trigger metadata"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    OBLIGATION_FULFILLERS {
+        uuid id PK "Primary key"
+        uuid obligation_value_id FK "Obligation value reference"
+        jsonb conditionals "Fulfillment conditions"
+        jsonb metadata "Fulfiller metadata"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+
+    %% ==============================================
+    %% ENTITY RESOLUTION SERVICE DOMAIN (Test Data)
+    %% ==============================================
+    
+    ERS_USERS {
+        serial id PK "Primary key"
+        varchar username UK "Username"
+        varchar email UK "Email address"
+        varchar first_name "First name"
+        varchar last_name "Last name"
+        varchar department "Department"
+        varchar job_title "Job title"
+        boolean active "Active status"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    ERS_CLIENTS {
+        serial id PK "Primary key"
+        varchar client_id UK "Client identifier"
+        varchar client_name "Client name"
+        text description "Client description"
+        varchar environment "Environment (dev, staging, prod)"
+        boolean active "Active status"
+        timestamp created_at "Creation timestamp"
+        timestamp updated_at "Last update timestamp"
+    }
+    
+    ERS_GROUPS {
+        serial id PK "Primary key"
+        varchar group_name UK "Group name"
+        varchar group_type "Group type (department, team, role)"
+        text description "Group description"
+        int parent_group_id FK "Self-reference to parent group"
+        boolean active "Active status"
+        timestamp created_at "Creation timestamp"
+    }
+    
+    ERS_USER_GROUPS {
+        serial id PK "Primary key"
+        int user_id FK "User reference"
+        int group_id FK "Group reference"
+        varchar role "Role within group"
+        timestamp created_at "Creation timestamp"
+    }
+    
+    ERS_CLIENT_PERMISSIONS {
+        serial id PK "Primary key"
+        int client_id FK "Client reference"
+        varchar permission_name "Permission name"
+        varchar resource_type "Resource type"
+        timestamp granted_at "Grant timestamp"
+    }
+
+    %% ==============================================
+    %% CORE RELATIONSHIPS
+    %% ==============================================
+    
+    %% Attribute Policy Relationships
+    ATTRIBUTE_NAMESPACES ||--o{ ATTRIBUTE_DEFINITIONS : "contains"
+    ATTRIBUTE_DEFINITIONS ||--o{ ATTRIBUTE_VALUES : "has_values"
+    ATTRIBUTE_NAMESPACES ||--o{ ATTRIBUTE_FQNS : "namespace_fqn"
+    ATTRIBUTE_DEFINITIONS ||--o{ ATTRIBUTE_FQNS : "definition_fqn"
+    ATTRIBUTE_VALUES ||--o{ ATTRIBUTE_FQNS : "value_fqn"
+    
+    %% Key Access Server Relationships
+    KEY_ACCESS_SERVERS ||--o{ KEY_ACCESS_SERVER_KEYS : "has_keys"
+    PROVIDER_CONFIG ||--o{ ASYM_KEY : "configures"
+    PROVIDER_CONFIG ||--o{ SYM_KEY : "configures"
+    PROVIDER_CONFIG ||--o{ KEY_ACCESS_SERVER_KEYS : "configures"
+    KEY_ACCESS_SERVER_KEYS ||--|| BASE_KEYS : "base_key"
+    
+    %% Key Access Grants (Legacy)
+    ATTRIBUTE_NAMESPACES ||--o{ ATTRIBUTE_NAMESPACE_KEY_ACCESS_GRANTS : "namespace_grants"
+    KEY_ACCESS_SERVERS ||--o{ ATTRIBUTE_NAMESPACE_KEY_ACCESS_GRANTS : "kas_namespace_grants"
+    ATTRIBUTE_DEFINITIONS ||--o{ ATTRIBUTE_DEFINITION_KEY_ACCESS_GRANTS : "definition_grants"
+    KEY_ACCESS_SERVERS ||--o{ ATTRIBUTE_DEFINITION_KEY_ACCESS_GRANTS : "kas_definition_grants"
+    ATTRIBUTE_VALUES ||--o{ ATTRIBUTE_VALUE_KEY_ACCESS_GRANTS : "value_grants"
+    KEY_ACCESS_SERVERS ||--o{ ATTRIBUTE_VALUE_KEY_ACCESS_GRANTS : "kas_value_grants"
+    
+    %% Key Access Grants (New)
+    ATTRIBUTE_NAMESPACES ||--o{ ATTRIBUTE_NAMESPACE_PUBLIC_KEY_MAP : "namespace_key_map"
+    KEY_ACCESS_SERVER_KEYS ||--o{ ATTRIBUTE_NAMESPACE_PUBLIC_KEY_MAP : "kas_key_namespace_map"
+    ATTRIBUTE_DEFINITIONS ||--o{ ATTRIBUTE_DEFINITION_PUBLIC_KEY_MAP : "definition_key_map"
+    KEY_ACCESS_SERVER_KEYS ||--o{ ATTRIBUTE_DEFINITION_PUBLIC_KEY_MAP : "kas_key_definition_map"
+    ATTRIBUTE_VALUES ||--o{ ATTRIBUTE_VALUE_PUBLIC_KEY_MAP : "value_key_map"
+    KEY_ACCESS_SERVER_KEYS ||--o{ ATTRIBUTE_VALUE_PUBLIC_KEY_MAP : "kas_key_value_map"
+    
+    %% Resource Mapping Relationships
+    ATTRIBUTE_NAMESPACES ||--o{ RESOURCE_MAPPING_GROUPS : "has_groups"
+    RESOURCE_MAPPING_GROUPS ||--o{ RESOURCE_MAPPINGS : "groups_mappings"
+    ATTRIBUTE_VALUES ||--o{ RESOURCE_MAPPINGS : "mapped_to"
+    
+    %% Subject Mapping Relationships
+    SUBJECT_CONDITION_SET ||--o{ SUBJECT_MAPPINGS : "conditions"
+    ATTRIBUTE_VALUES ||--o{ SUBJECT_MAPPINGS : "entitled_to"
+    SUBJECT_MAPPINGS ||--o{ SUBJECT_MAPPING_ACTIONS : "has_actions"
+    ACTIONS ||--o{ SUBJECT_MAPPING_ACTIONS : "action_mappings"
+    
+    %% Registered Resources Relationships
+    REGISTERED_RESOURCES ||--o{ REGISTERED_RESOURCE_VALUES : "has_values"
+    REGISTERED_RESOURCE_VALUES ||--o{ REGISTERED_RESOURCE_ACTION_ATTRIBUTE_VALUES : "resource_entitlements"
+    ACTIONS ||--o{ REGISTERED_RESOURCE_ACTION_ATTRIBUTE_VALUES : "action_entitlements"
+    ATTRIBUTE_VALUES ||--o{ REGISTERED_RESOURCE_ACTION_ATTRIBUTE_VALUES : "attribute_entitlements"
+    
+    %% Obligations Relationships
+    ATTRIBUTE_NAMESPACES ||--o{ OBLIGATION_DEFINITIONS : "namespace_obligations"
+    OBLIGATION_DEFINITIONS ||--o{ OBLIGATION_VALUES_STANDARD : "obligation_values"
+    OBLIGATION_VALUES_STANDARD ||--o{ OBLIGATION_TRIGGERS : "triggered_by"
+    OBLIGATION_VALUES_STANDARD ||--o{ OBLIGATION_FULFILLERS : "fulfilled_by"
+    ACTIONS ||--o{ OBLIGATION_TRIGGERS : "trigger_actions"
+    ATTRIBUTE_VALUES ||--o{ OBLIGATION_TRIGGERS : "trigger_attributes"
+    
+    %% Entity Resolution Service Relationships
+    ERS_GROUPS ||--o{ ERS_GROUPS : "parent_child"
+    ERS_USERS ||--o{ ERS_USER_GROUPS : "user_memberships"
+    ERS_GROUPS ||--o{ ERS_USER_GROUPS : "group_memberships"
+    ERS_CLIENTS ||--o{ ERS_CLIENT_PERMISSIONS : "client_permissions"

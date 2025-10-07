@@ -640,6 +640,18 @@ func TestGetAdditionalRewrapContext(t *testing.T) {
 			expectedError: nil,
 		},
 		{
+			name: "no fulfillableFQNs array",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {}}`))},
+			},
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{},
+				},
+			},
+			expectedError: nil,
+		},
+		{
 			name: "no obligations array",
 			header: http.Header{
 				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{}`))},

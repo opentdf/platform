@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/opentdf/platform/service/internal/access/v2/obligations"
 	"github.com/opentdf/platform/service/logger"
@@ -24,6 +25,9 @@ var (
 	ErrMissingRequiredSDK                      = errors.New("access: missing required SDK")
 	ErrInvalidEntityType                       = errors.New("access: invalid entity type")
 	ErrFailedToUseRequestTokenEntityIdentifier = errors.New("access: failed to use request token as entity identifier - none found in context")
+	ErrInvalidUseRequestTokenEntityIdentifier  = errors.New("access: invalid use request token as entity identifier - must be true if provided")
+
+	requestAuthTokenEphemeralID = "use-request-auth-ctx"
 )
 
 type JustInTimePDP struct {
@@ -156,11 +160,7 @@ func (p *JustInTimePDP) GetDecision(
 		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
 
 	case *authzV2.EntityIdentifier_UseRequestToken:
-		token := ctxAuth.GetRawAccessTokenFromContext(ctx, p.logger)
-		if token == "" {
-			return nil, false, ErrFailedToUseRequestTokenEntityIdentifier
-		}
-		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, &entity.Token{Jwt: token}, skipEnvironmentEntities)
+		entityRepresentations, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetUseRequestToken(), skipEnvironmentEntities)
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
@@ -256,11 +256,7 @@ func (p *JustInTimePDP) GetEntitlements(
 		return p.pdp.GetEntitlementsRegisteredResource(ctx, regResValueFQN, withComprehensiveHierarchy)
 
 	case *authzV2.EntityIdentifier_UseRequestToken:
-		token := ctxAuth.GetRawAccessTokenFromContext(ctx, p.logger)
-		if token == "" {
-			return nil, ErrFailedToUseRequestTokenEntityIdentifier
-		}
-		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, &entity.Token{Jwt: token}, skipEnvironmentEntities)
+		entityRepresentations, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetUseRequestToken(), skipEnvironmentEntities)
 
 	default:
 		return nil, fmt.Errorf("entity type %T: %w", entityIdentifier.GetIdentifier(), ErrInvalidEntityType)
@@ -381,4 +377,26 @@ func (p *JustInTimePDP) resolveEntitiesFromToken(
 		return nil, fmt.Errorf("received %d entity chains in ERS response but expected exactly 1", len(entityChains))
 	}
 	return p.resolveEntitiesFromEntityChain(ctx, entityChains[0], skipEnvironmentEntities)
+}
+
+// resolveEntitiesFromRequestToken pulls the request token off the context where it has been set upstream
+// by an interceptor and builds an entity.Token that it then resolves
+func (p *JustInTimePDP) resolveEntitiesFromRequestToken(
+	ctx context.Context,
+	useRequestToken *wrapperspb.BoolValue,
+	skipEnvironmentEntities bool,
+) ([]*entityresolutionV2.EntityRepresentation, error) {
+	if !useRequestToken.GetValue() {
+		return nil, ErrInvalidUseRequestTokenEntityIdentifier
+	}
+	rawToken := ctxAuth.GetRawAccessTokenFromContext(ctx, p.logger)
+	if rawToken == "" {
+		return nil, ErrFailedToUseRequestTokenEntityIdentifier
+	}
+	token := &entity.Token{
+		Jwt:         rawToken,
+		EphemeralId: requestAuthTokenEphemeralID,
+	}
+
+	return p.resolveEntitiesFromToken(ctx, token, skipEnvironmentEntities)
 }

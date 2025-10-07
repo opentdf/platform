@@ -40,6 +40,9 @@ message EntityIdentifier {
       message: "token must be provided"
       expression: "has(this.jwt) && this.jwt.size() > 0"
     }];
+
+    // derive the entity from the request's authorization access token JWT, rather than passing in the body
+    google.protobuf.BoolValue use_request_token = 4;
   }
 }
 

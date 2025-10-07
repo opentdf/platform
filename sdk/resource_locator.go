@@ -282,21 +282,25 @@ func (rl *ResourceLocator) setURLWithIdentifier(url string, identifier string) e
 		if len(urlBody) > kMaxBodyLen {
 			return errors.New("URL too long")
 		}
+		padding := ""
 		identifierLen := len(identifier)
 		switch {
 		case identifierLen == 0:
 			rl.protocol = urlProtocolHTTPS | identifierNone
-		case identifierLen >= 1 && identifierLen <= 2:
+		case identifierLen >= 1 && identifierLen <= identifier2ByteLength:
+			padding = strings.Repeat("\x00", identifier2ByteLength-identifierLen)
 			rl.protocol = urlProtocolHTTPS | identifier2Byte
-		case identifierLen >= 3 && identifierLen <= 8:
+		case identifierLen > identifier2ByteLength && identifierLen <= identifier8ByteLength:
+			padding = strings.Repeat("\x00", identifier8ByteLength-identifierLen)
 			rl.protocol = urlProtocolHTTPS | identifier8Byte
-		case identifierLen >= 9 && identifierLen <= 32:
+		case identifierLen > identifier8ByteLength && identifierLen <= identifier32ByteLength:
+			padding = strings.Repeat("\x00", identifier32ByteLength-identifierLen)
 			rl.protocol = urlProtocolHTTPS | identifier32Byte
 		default:
 			return fmt.Errorf("unsupported identifier length: %d", identifierLen)
 		}
 		rl.body = urlBody
-		rl.identifier = identifier
+		rl.identifier = identifier + padding
 		return nil
 	}
 	if strings.HasPrefix(lowerURL, kPrefixHTTP) {
@@ -309,13 +313,13 @@ func (rl *ResourceLocator) setURLWithIdentifier(url string, identifier string) e
 		switch {
 		case identifierLen == 0:
 			rl.protocol = urlProtocolHTTP | identifierNone
-		case identifierLen >= 1 && identifierLen <= identifier2ByteLength:
+		case identifierLen > 0 && identifierLen <= identifier2ByteLength:
 			padding = strings.Repeat("\x00", identifier2ByteLength-identifierLen)
 			rl.protocol = urlProtocolHTTP | identifier2Byte
-		case identifierLen >= 3 && identifierLen <= identifier8ByteLength:
+		case identifierLen > identifier2ByteLength && identifierLen <= identifier8ByteLength:
 			padding = strings.Repeat("\x00", identifier8ByteLength-identifierLen)
 			rl.protocol = urlProtocolHTTP | identifier8Byte
-		case identifierLen >= 9 && identifierLen <= identifier32ByteLength:
+		case identifierLen > identifier8ByteLength && identifierLen <= identifier32ByteLength:
 			padding = strings.Repeat("\x00", identifier32ByteLength-identifierLen)
 			rl.protocol = urlProtocolHTTP | identifier32Byte
 		default:

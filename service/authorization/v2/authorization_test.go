@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
@@ -128,6 +129,27 @@ var (
 		{
 			name: "missing entity identifier",
 			request: &authzV2.GetDecisionMultiResourceRequest{
+				Action: sampleActionCreate,
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_AttributeValues_{
+							AttributeValues: &authzV2.Resource_AttributeValues{
+								Fqns: []string{sampleResourceFQN},
+							},
+						},
+					},
+				},
+			},
+			expectedValidationError: "entity_identifier",
+		},
+		{
+			name: "entity identifier - request token invalid",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_UseRequestToken{
+						UseRequestToken: wrapperspb.Bool(false),
+					},
+				},
 				Action: sampleActionCreate,
 				Resources: []*authzV2.Resource{
 					{
@@ -506,6 +528,24 @@ func Test_GetDecisionRequest_Succeeds(t *testing.T) {
 			},
 		},
 		{
+			name: "entity: use request token, action: create, resource: attribute values",
+			request: &authzV2.GetDecisionRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_UseRequestToken{
+						UseRequestToken: wrapperspb.Bool(true),
+					},
+				},
+				Action: sampleActionCreate,
+				Resource: &authzV2.Resource{
+					Resource: &authzV2.Resource_AttributeValues_{
+						AttributeValues: &authzV2.Resource_AttributeValues{
+							Fqns: []string{sampleResourceFQN},
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "entity: token, action: create, resource: registered",
 			request: &authzV2.GetDecisionRequest{
 				EntityIdentifier: &authzV2.EntityIdentifier{
@@ -674,6 +714,44 @@ func Test_GetDecisionRequest_Fails(t *testing.T) {
 		{
 			name: "missing entity identifier",
 			request: &authzV2.GetDecisionRequest{
+				Action: sampleActionCreate,
+				Resource: &authzV2.Resource{
+					Resource: &authzV2.Resource_AttributeValues_{
+						AttributeValues: &authzV2.Resource_AttributeValues{
+							Fqns: []string{sampleResourceFQN},
+						},
+					},
+				},
+			},
+			expectedValidationError: "entity_identifier",
+		},
+		{
+			name: "entity identifier (request token) but nil",
+			request: &authzV2.GetDecisionRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_UseRequestToken{
+						UseRequestToken: nil,
+					},
+				},
+				Action: sampleActionCreate,
+				Resource: &authzV2.Resource{
+					Resource: &authzV2.Resource_AttributeValues_{
+						AttributeValues: &authzV2.Resource_AttributeValues{
+							Fqns: []string{sampleResourceFQN},
+						},
+					},
+				},
+			},
+			expectedValidationError: "entity_identifier",
+		},
+		{
+			name: "entity identifier (request token) but false",
+			request: &authzV2.GetDecisionRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_UseRequestToken{
+						UseRequestToken: wrapperspb.Bool(false),
+					},
+				},
 				Action: sampleActionCreate,
 				Resource: &authzV2.Resource{
 					Resource: &authzV2.Resource_AttributeValues_{

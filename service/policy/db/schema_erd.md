@@ -106,6 +106,7 @@ erDiagram
     certificates {
         timestamp_with_time_zone created_at "Timestamp when the certificate was created"
         uuid id PK "Unique identifier for the certificate"
+        boolean is_root "Indicates whether this is a root certificate (true) or intermediate/leaf certificate (false)"
         jsonb metadata "Optional metadata for the certificate"
         timestamp_with_time_zone updated_at "Timestamp when the certificate was last updated"
         text x5c "x5c format - Base64-encoded DER certificate (not PEM; no headers/footers)"

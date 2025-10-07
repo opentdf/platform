@@ -451,6 +451,20 @@ components:
         Describes whether this kas is managed by the organization or if they imported
          the kas information from an external party. These two modes are necessary in order
          to encrypt a tdf dek with an external parties kas public key.
+    common.IdFqnIdentifier:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
+      title: IdFqnIdentifier
+      additionalProperties: false
     common.Metadata:
       type: object
       properties:
@@ -857,11 +871,10 @@ components:
     policy.namespaces.AssignCertificateToNamespaceRequest:
       type: object
       properties:
-        namespaceId:
-          type: string
-          title: namespace_id
-          format: uuid
-          description: Required
+        namespace:
+          title: namespace
+          description: Required - namespace identifier (id or fqn)
+          $ref: '#/components/schemas/common.IdFqnIdentifier'
         x5c:
           type: string
           title: x5c
@@ -872,7 +885,7 @@ components:
           $ref: '#/components/schemas/common.MetadataMutable'
       title: AssignCertificateToNamespaceRequest
       required:
-        - namespaceId
+        - namespace
         - x5c
       additionalProperties: false
     policy.namespaces.AssignCertificateToNamespaceResponse:
@@ -1046,11 +1059,10 @@ components:
     policy.namespaces.NamespaceCertificate:
       type: object
       properties:
-        namespaceId:
-          type: string
-          title: namespace_id
-          format: uuid
-          description: Required
+        namespace:
+          title: namespace
+          description: Required - namespace identifier (id or fqn)
+          $ref: '#/components/schemas/common.IdFqnIdentifier'
         certificateId:
           type: string
           title: certificate_id
@@ -1058,7 +1070,7 @@ components:
           description: Required (The id from the Certificate object)
       title: NamespaceCertificate
       required:
-        - namespaceId
+        - namespace
         - certificateId
       additionalProperties: false
       description: Maps a namespace to a certificate (similar to NamespaceKey pattern)

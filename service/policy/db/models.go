@@ -245,6 +245,8 @@ type Certificate struct {
 	ID string `json:"id"`
 	// x5c format - Base64-encoded DER certificate (not PEM; no headers/footers)
 	X5c string `json:"x5c"`
+	// Indicates whether this is a root certificate (true) or intermediate/leaf certificate (false)
+	IsRoot bool `json:"is_root"`
 	// Optional metadata for the certificate
 	Metadata []byte `json:"metadata"`
 	// Timestamp when the certificate was created

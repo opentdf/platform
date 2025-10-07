@@ -415,12 +415,12 @@ func Test_AssignCertificateToNamespace(t *testing.T) {
 			name:         "Invalid - Empty Request",
 			req:          &namespaces.AssignCertificateToNamespaceRequest{},
 			expectError:  true,
-			errorMessage: errMessageNamespaceID,
+			errorMessage: "namespace",
 		},
 		{
 			name: "Invalid - Missing x5c",
 			req: &namespaces.AssignCertificateToNamespaceRequest{
-				NamespaceId: validUUID,
+				Namespace: &common.IdFqnIdentifier{Id: validUUID},
 			},
 			expectError:  true,
 			errorMessage: "x5c",
@@ -431,13 +431,13 @@ func Test_AssignCertificateToNamespace(t *testing.T) {
 				X5C: validX5C,
 			},
 			expectError:  true,
-			errorMessage: errMessageNamespaceID,
+			errorMessage: "namespace",
 		},
 		{
 			name: "Invalid - Bad namespace UUID",
 			req: &namespaces.AssignCertificateToNamespaceRequest{
-				NamespaceId: "not-a-uuid",
-				X5C:         validX5C,
+				Namespace: &common.IdFqnIdentifier{Id: "not-a-uuid"},
+				X5C:       validX5C,
 			},
 			expectError:  true,
 			errorMessage: errMessageUUID,
@@ -445,16 +445,16 @@ func Test_AssignCertificateToNamespace(t *testing.T) {
 		{
 			name: "Valid - All fields present",
 			req: &namespaces.AssignCertificateToNamespaceRequest{
-				NamespaceId: validUUID,
-				X5C:         validX5C,
+				Namespace: &common.IdFqnIdentifier{Id: validUUID},
+				X5C:       validX5C,
 			},
 			expectError: false,
 		},
 		{
 			name: "Valid - With metadata",
 			req: &namespaces.AssignCertificateToNamespaceRequest{
-				NamespaceId: validUUID,
-				X5C:         validX5C,
+				Namespace: &common.IdFqnIdentifier{Id: validUUID},
+				X5C:       validX5C,
 				Metadata: &common.MetadataMutable{
 					Labels: map[string]string{"source": "test"},
 				},
@@ -502,13 +502,13 @@ func Test_RemoveCertificateFromNamespace(t *testing.T) {
 				NamespaceCertificate: &namespaces.NamespaceCertificate{},
 			},
 			expectError:  true,
-			errorMessage: errMessageNamespaceID,
+			errorMessage: "namespace",
 		},
 		{
 			name: "Invalid - Missing certificate ID",
 			req: &namespaces.RemoveCertificateFromNamespaceRequest{
 				NamespaceCertificate: &namespaces.NamespaceCertificate{
-					NamespaceId: validUUID,
+					Namespace: &common.IdFqnIdentifier{Id: validUUID},
 				},
 			},
 			expectError:  true,
@@ -522,13 +522,13 @@ func Test_RemoveCertificateFromNamespace(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: errMessageNamespaceID,
+			errorMessage: "namespace",
 		},
 		{
 			name: "Invalid - Bad namespace UUID",
 			req: &namespaces.RemoveCertificateFromNamespaceRequest{
 				NamespaceCertificate: &namespaces.NamespaceCertificate{
-					NamespaceId:   "not-a-uuid",
+					Namespace:     &common.IdFqnIdentifier{Id: "not-a-uuid"},
 					CertificateId: validUUID,
 				},
 			},
@@ -539,7 +539,7 @@ func Test_RemoveCertificateFromNamespace(t *testing.T) {
 			name: "Invalid - Bad certificate UUID",
 			req: &namespaces.RemoveCertificateFromNamespaceRequest{
 				NamespaceCertificate: &namespaces.NamespaceCertificate{
-					NamespaceId:   validUUID,
+					Namespace:     &common.IdFqnIdentifier{Id: validUUID},
 					CertificateId: "not-a-uuid",
 				},
 			},
@@ -550,7 +550,7 @@ func Test_RemoveCertificateFromNamespace(t *testing.T) {
 			name: "Valid - All fields present",
 			req: &namespaces.RemoveCertificateFromNamespaceRequest{
 				NamespaceCertificate: &namespaces.NamespaceCertificate{
-					NamespaceId:   validUUID,
+					Namespace:     &common.IdFqnIdentifier{Id: validUUID},
 					CertificateId: validUUID,
 				},
 			},

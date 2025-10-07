@@ -59,25 +59,26 @@ func (q *Queries) assignPublicKeyToNamespace(ctx context.Context, arg assignPubl
 
 const createCertificate = `-- name: createCertificate :one
 
-INSERT INTO certificates (x5c, metadata)
-VALUES ($1, $2)
+INSERT INTO certificates (x5c, is_root, metadata)
+VALUES ($1, COALESCE($2::BOOLEAN, TRUE), $3)
 RETURNING id
 `
 
 type createCertificateParams struct {
-	X5c      string `json:"x5c"`
-	Metadata []byte `json:"metadata"`
+	X5c      string      `json:"x5c"`
+	IsRoot   pgtype.Bool `json:"is_root"`
+	Metadata []byte      `json:"metadata"`
 }
 
 // --------------------------------------------------------------
 // CERTIFICATES
 // --------------------------------------------------------------
 //
-//	INSERT INTO certificates (x5c, metadata)
-//	VALUES ($1, $2)
+//	INSERT INTO certificates (x5c, is_root, metadata)
+//	VALUES ($1, COALESCE($2::BOOLEAN, TRUE), $3)
 //	RETURNING id
 func (q *Queries) createCertificate(ctx context.Context, arg createCertificateParams) (string, error) {
-	row := q.db.QueryRow(ctx, createCertificate, arg.X5c, arg.Metadata)
+	row := q.db.QueryRow(ctx, createCertificate, arg.X5c, arg.IsRoot, arg.Metadata)
 	var id string
 	err := row.Scan(&id)
 	return id, err
@@ -327,7 +328,7 @@ FROM attribute_namespaces ns
 CROSS JOIN counted
 LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
 WHERE ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
-LIMIT $3 
+LIMIT $3
 OFFSET $2
 `
 

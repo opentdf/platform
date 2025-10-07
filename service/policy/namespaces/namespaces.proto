@@ -174,11 +174,8 @@ message RemovePublicKeyFromNamespaceResponse {
 
 // Maps a namespace to a certificate (similar to NamespaceKey pattern)
 message NamespaceCertificate {
-  // Required
-  string namespace_id = 1 [
-    (buf.validate.field).string.uuid = true,
-    (buf.validate.field).required = true
-  ];
+  // Required - namespace identifier (id or fqn)
+  common.IdFqnIdentifier namespace = 1 [(buf.validate.field).required = true];
   // Required (The id from the Certificate object)
   string certificate_id = 2 [
     (buf.validate.field).string.uuid = true,
@@ -187,11 +184,8 @@ message NamespaceCertificate {
 }
 
 message AssignCertificateToNamespaceRequest {
-  // Required
-  string namespace_id = 1 [
-    (buf.validate.field).string.uuid = true,
-    (buf.validate.field).required = true
-  ];
+  // Required - namespace identifier (id or fqn)
+  common.IdFqnIdentifier namespace = 1 [(buf.validate.field).required = true];
   // Required - x5c format certificate (base64-encoded DER)
   string x5c = 2 [(buf.validate.field).required = true];
   // Optional

@@ -1,4 +1,4 @@
----------------------------------------------------------------- 
+----------------------------------------------------------------
 -- NAMESPACES
 ----------------------------------------------------------------
 
@@ -17,8 +17,8 @@ FROM attribute_namespaces ns
 CROSS JOIN counted
 LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
 WHERE (sqlc.narg('active')::BOOLEAN IS NULL OR ns.active = sqlc.narg('active')::BOOLEAN)
-LIMIT @limit_ 
-OFFSET @offset_; 
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: getNamespace :one
 SELECT
@@ -117,8 +117,8 @@ RETURNING namespace_id;
 ----------------------------------------------------------------
 
 -- name: createCertificate :one
-INSERT INTO certificates (x5c, metadata)
-VALUES ($1, $2)
+INSERT INTO certificates (x5c, is_root, metadata)
+VALUES (sqlc.arg('x5c'), COALESCE(sqlc.narg('is_root')::BOOLEAN, TRUE), sqlc.arg('metadata'))
 RETURNING id;
 
 -- name: getCertificate :one

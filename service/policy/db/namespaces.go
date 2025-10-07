@@ -398,9 +398,10 @@ func (c PolicyDBClient) RemovePublicKeyFromNamespace(ctx context.Context, k *nam
 }
 
 // CreateCertificate creates a new certificate in the database
-func (c PolicyDBClient) CreateCertificate(ctx context.Context, x5c string, metadata []byte) (string, error) {
+func (c PolicyDBClient) CreateCertificate(ctx context.Context, x5c string, isRoot bool, metadata []byte) (string, error) {
 	certID, err := c.queries.createCertificate(ctx, createCertificateParams{
 		X5c:      x5c,
+		IsRoot:   pgtype.Bool{Bool: isRoot, Valid: true},
 		Metadata: metadata,
 	})
 	if err != nil {
@@ -439,9 +440,33 @@ func (c PolicyDBClient) DeleteCertificate(ctx context.Context, id string) error 
 	return nil
 }
 
+// resolveNamespaceID resolves a namespace identifier to its UUID
+func (c PolicyDBClient) resolveNamespaceID(ctx context.Context, identifier common.IdFqnIdentifier) (string, error) {
+	// If ID is provided, use it directly
+	if identifier.GetId() != "" {
+		return identifier.GetId(), nil
+	}
+
+	// If FQN is provided, look up the namespace by FQN to get its ID
+	if identifier.GetFqn() != "" {
+		ns, err := c.GetNamespace(ctx, identifier.GetFqn())
+		if err != nil {
+			return "", err
+		}
+		return ns.GetId(), nil
+	}
+
+	return "", fmt.Errorf("namespace identifier must have either id or fqn: %w", db.ErrNotFound)
+}
+
 // AssignCertificateToNamespace assigns a certificate to a namespace
-func (c PolicyDBClient) AssignCertificateToNamespace(ctx context.Context, namespaceID, certificateID string) error {
-	_, err := c.queries.assignCertificateToNamespace(ctx, assignCertificateToNamespaceParams{
+func (c PolicyDBClient) AssignCertificateToNamespace(ctx context.Context, namespaceIdentifier common.IdFqnIdentifier, certificateID string) error {
+	namespaceID, err := c.resolveNamespaceID(ctx, namespaceIdentifier)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.queries.assignCertificateToNamespace(ctx, assignCertificateToNamespaceParams{
 		NamespaceID:   namespaceID,
 		CertificateID: certificateID,
 	})
@@ -451,8 +476,36 @@ func (c PolicyDBClient) AssignCertificateToNamespace(ctx context.Context, namesp
 	return nil
 }
 
+// CreateAndAssignCertificateToNamespace creates a certificate and assigns it to a namespace in a transaction
+func (c PolicyDBClient) CreateAndAssignCertificateToNamespace(ctx context.Context, namespaceID common.IdFqnIdentifier, x5c string, isRoot bool, metadata []byte) (string, error) {
+	var certID string
+	err := c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
+		var err error
+		certID, err = txClient.CreateCertificate(ctx, x5c, isRoot, metadata)
+		if err != nil {
+			return err
+		}
+
+		err = txClient.AssignCertificateToNamespace(ctx, namespaceID, certID)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return certID, nil
+}
+
 // RemoveCertificateFromNamespace removes a certificate from a namespace
-func (c PolicyDBClient) RemoveCertificateFromNamespace(ctx context.Context, namespaceID, certificateID string) error {
+func (c PolicyDBClient) RemoveCertificateFromNamespace(ctx context.Context, namespaceIdentifier common.IdFqnIdentifier, certificateID string) error {
+	namespaceID, err := c.resolveNamespaceID(ctx, namespaceIdentifier)
+	if err != nil {
+		return err
+	}
+
 	count, err := c.queries.removeCertificateFromNamespace(ctx, removeCertificateFromNamespaceParams{
 		NamespaceID:   namespaceID,
 		CertificateID: certificateID,

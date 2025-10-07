@@ -767,9 +767,9 @@ func TestPopulateRequiredObligationsOnResponse(t *testing.T) {
 			},
 			validate: func(t *testing.T, response *kaspb.RewrapResponse) {
 				metadata := response.GetMetadata()
-				require.Contains(t, metadata, triggeredObligationsHeader) //nolint:staticcheck // testing deprecated field
+				require.Contains(t, metadata, requiredObligationsHeader) //nolint:staticcheck // testing deprecated field
 
-				structValue := metadata[triggeredObligationsHeader].GetStructValue() //nolint:staticcheck // testing deprecated field
+				structValue := metadata[requiredObligationsHeader].GetStructValue() //nolint:staticcheck // testing deprecated field
 				require.NotNil(t, structValue)
 				require.Contains(t, structValue.GetFields(), "policy1")
 
@@ -796,9 +796,9 @@ func TestPopulateRequiredObligationsOnResponse(t *testing.T) {
 			},
 			validate: func(t *testing.T, response *kaspb.RewrapResponse) {
 				metadata := response.GetMetadata()
-				require.Contains(t, metadata, triggeredObligationsHeader)
+				require.Contains(t, metadata, requiredObligationsHeader)
 
-				structValue := metadata[triggeredObligationsHeader].GetStructValue()
+				structValue := metadata[requiredObligationsHeader].GetStructValue()
 				require.NotNil(t, structValue)
 				require.Contains(t, structValue.GetFields(), "policy1")
 
@@ -831,9 +831,9 @@ func TestPopulateRequiredObligationsOnResponse(t *testing.T) {
 			},
 			validate: func(t *testing.T, response *kaspb.RewrapResponse) {
 				metadata := response.GetMetadata()
-				require.Contains(t, metadata, triggeredObligationsHeader)
+				require.Contains(t, metadata, requiredObligationsHeader)
 
-				structValue := metadata[triggeredObligationsHeader].GetStructValue()
+				structValue := metadata[requiredObligationsHeader].GetStructValue()
 				require.NotNil(t, structValue)
 				fields := structValue.GetFields()
 
@@ -872,9 +872,9 @@ func TestPopulateRequiredObligationsOnResponse(t *testing.T) {
 			},
 			validate: func(t *testing.T, response *kaspb.RewrapResponse) {
 				metadata := response.GetMetadata()
-				require.Contains(t, metadata, triggeredObligationsHeader) //nolint:staticcheck // testing deprecated field
+				require.Contains(t, metadata, requiredObligationsHeader) //nolint:staticcheck // testing deprecated field
 
-				structValue := metadata[triggeredObligationsHeader].GetStructValue() //nolint:staticcheck // testing deprecated field
+				structValue := metadata[requiredObligationsHeader].GetStructValue() //nolint:staticcheck // testing deprecated field
 				require.NotNil(t, structValue)
 				require.Contains(t, structValue.GetFields(), "policy1")
 
@@ -897,10 +897,10 @@ func TestPopulateRequiredObligationsOnResponse(t *testing.T) {
 			},
 			validate: func(t *testing.T, response *kaspb.RewrapResponse) {
 				metadata := response.GetMetadata()
-				require.NotNil(t, metadata)                               //nolint:staticcheck // testing deprecated field
-				require.Contains(t, metadata, triggeredObligationsHeader) //nolint:staticcheck // testing deprecated field
+				require.NotNil(t, metadata)                              //nolint:staticcheck // testing deprecated field
+				require.Contains(t, metadata, requiredObligationsHeader) //nolint:staticcheck // testing deprecated field
 
-				structValue := metadata[triggeredObligationsHeader].GetStructValue() //nolint:staticcheck // testing deprecated field
+				structValue := metadata[requiredObligationsHeader].GetStructValue() //nolint:staticcheck // testing deprecated field
 				require.NotNil(t, structValue)
 				require.Contains(t, structValue.GetFields(), "policy1")
 
@@ -950,8 +950,8 @@ func TestPopulateRequiredObligationsOnResponse(t *testing.T) {
 				require.InDelta(t, float64(1672531200), sessionFields["timestamp"].GetNumberValue(), 0.001)
 
 				// Verify new obligations are added
-				require.Contains(t, metadata, triggeredObligationsHeader)
-				structValue := metadata[triggeredObligationsHeader].GetStructValue()
+				require.Contains(t, metadata, requiredObligationsHeader)
+				structValue := metadata[requiredObligationsHeader].GetStructValue()
 				require.NotNil(t, structValue)
 				require.Contains(t, structValue.GetFields(), "policy1")
 

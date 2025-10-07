@@ -46,7 +46,7 @@ const (
 	kFailedStatus                 = "fail"
 	kPermitStatus                 = "permit"
 	additionalRewrapContextHeader = "X-Rewrap-Additional-Context"
-	triggeredObligationsHeader    = "X-Triggered-Obligations"
+	requiredObligationsHeader     = "X-Required-Obligations"
 )
 
 var (
@@ -1058,14 +1058,14 @@ func populateRequiredObligationsOnResponse(response *kaspb.RewrapResponse, oblig
 	}
 
 	var fields map[string]*structpb.Value
-	obligationValue, ok := metadata[triggeredObligationsHeader]
+	obligationValue, ok := metadata[requiredObligationsHeader]
 	if !ok || obligationValue.GetStructValue() == nil {
 		fields = make(map[string]*structpb.Value)
-		metadata[triggeredObligationsHeader] = structpb.NewStructValue(&structpb.Struct{
+		metadata[requiredObligationsHeader] = structpb.NewStructValue(&structpb.Struct{
 			Fields: fields,
 		})
 	} else {
-		fields = metadata[triggeredObligationsHeader].GetStructValue().GetFields()
+		fields = metadata[requiredObligationsHeader].GetStructValue().GetFields()
 	}
 
 	values := make([]*structpb.Value, len(obligations))

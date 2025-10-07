@@ -14,14 +14,16 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
+	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 
 	"github.com/opentdf/platform/service/internal/access/v2/obligations"
 	"github.com/opentdf/platform/service/logger"
 )
 
 var (
-	ErrMissingRequiredSDK = errors.New("access: missing required SDK")
-	ErrInvalidEntityType  = errors.New("access: invalid entity type")
+	ErrMissingRequiredSDK                      = errors.New("access: missing required SDK")
+	ErrInvalidEntityType                       = errors.New("access: invalid entity type")
+	ErrFailedToUseRequestTokenEntityIdentifier = errors.New("access: failed to use request token as entity identifier - none found in context")
 )
 
 type JustInTimePDP struct {
@@ -153,6 +155,13 @@ func (p *JustInTimePDP) GetDecision(
 	case *authzV2.EntityIdentifier_Token:
 		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
 
+	case *authzV2.EntityIdentifier_UseRequestToken:
+		token := ctxAuth.GetRawAccessTokenFromContext(ctx, p.logger)
+		if token == "" {
+			return nil, false, ErrFailedToUseRequestTokenEntityIdentifier
+		}
+		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, &entity.Token{Jwt: token}, skipEnvironmentEntities)
+
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
 		// Registered resources do not have entity representations, so only one decision is made
@@ -245,6 +254,13 @@ func (p *JustInTimePDP) GetEntitlements(
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
 		// registered resources do not have entity representations, so we can skip the remaining logic
 		return p.pdp.GetEntitlementsRegisteredResource(ctx, regResValueFQN, withComprehensiveHierarchy)
+
+	case *authzV2.EntityIdentifier_UseRequestToken:
+		token := ctxAuth.GetRawAccessTokenFromContext(ctx, p.logger)
+		if token == "" {
+			return nil, ErrFailedToUseRequestTokenEntityIdentifier
+		}
+		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, &entity.Token{Jwt: token}, skipEnvironmentEntities)
 
 	default:
 		return nil, fmt.Errorf("entity type %T: %w", entityIdentifier.GetIdentifier(), ErrInvalidEntityType)

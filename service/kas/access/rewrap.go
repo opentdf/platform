@@ -879,7 +879,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 		if !ok { // this should not happen
 			continue
 		}
-		policyRes := results[req.GetPolicy().GetId()]
+		policyRes, ok := results[req.GetPolicy().GetId()]
 		if !ok { // this should not happen
 			//nolint:sloglint // reference to key is intentional
 			p.Logger.WarnContext(ctx, "policy not found in policyReq response", "policy.uuid", policy.UUID)
@@ -1065,7 +1065,7 @@ func populateRequiredObligationsOnResponse(response *kaspb.RewrapResponse, oblig
 			Fields: fields,
 		})
 	} else {
-		fields = metadata[requiredObligationsHeader].GetStructValue().GetFields()
+		fields = obligationValue.GetStructValue().GetFields()
 	}
 
 	values := make([]*structpb.Value, len(obligations))

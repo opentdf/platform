@@ -271,63 +271,50 @@ func (rl ResourceLocator) getLength() uint16 {
 	return uint16(1 /* protocol byte */ + 1 /* length byte */ + len(rl.body) + len(rl.identifier))
 }
 
-// setURL - Store a fully qualified protocol+body string into a ResourceLocator as a protocol value and a body string
+// setURLWithIdentifier - Store a fully qualified protocol+body string and an identifier into a ResourceLocator.
 func (rl *ResourceLocator) setURLWithIdentifier(url string, identifier string) error {
 	if identifier == "" {
 		return errors.New("identifier is empty")
 	}
 	lowerURL := strings.ToLower(url)
+
 	if strings.HasPrefix(lowerURL, kPrefixHTTPS) {
-		urlBody := url[len(kPrefixHTTPS):]
-		if len(urlBody) > kMaxBodyLen {
-			return errors.New("URL too long")
-		}
-		padding := ""
-		identifierLen := len(identifier)
-		switch {
-		case identifierLen == 0:
-			rl.protocol = urlProtocolHTTPS | identifierNone
-		case identifierLen >= 1 && identifierLen <= identifier2ByteLength:
-			padding = strings.Repeat("\x00", identifier2ByteLength-identifierLen)
-			rl.protocol = urlProtocolHTTPS | identifier2Byte
-		case identifierLen > identifier2ByteLength && identifierLen <= identifier8ByteLength:
-			padding = strings.Repeat("\x00", identifier8ByteLength-identifierLen)
-			rl.protocol = urlProtocolHTTPS | identifier8Byte
-		case identifierLen > identifier8ByteLength && identifierLen <= identifier32ByteLength:
-			padding = strings.Repeat("\x00", identifier32ByteLength-identifierLen)
-			rl.protocol = urlProtocolHTTPS | identifier32Byte
-		default:
-			return fmt.Errorf("unsupported identifier length: %d", identifierLen)
-		}
-		rl.body = urlBody
-		rl.identifier = identifier + padding
-		return nil
+		return rl.setURLParts(url[len(kPrefixHTTPS):], identifier, urlProtocolHTTPS)
 	}
 	if strings.HasPrefix(lowerURL, kPrefixHTTP) {
-		urlBody := url[len(kPrefixHTTP):]
-		if len(urlBody) > kMaxBodyLen {
-			return errors.New("URL too long")
-		}
-		identifierLen := len(identifier)
-		padding := ""
-		switch {
-		case identifierLen == 0:
-			rl.protocol = urlProtocolHTTP | identifierNone
-		case identifierLen > 0 && identifierLen <= identifier2ByteLength:
-			padding = strings.Repeat("\x00", identifier2ByteLength-identifierLen)
-			rl.protocol = urlProtocolHTTP | identifier2Byte
-		case identifierLen > identifier2ByteLength && identifierLen <= identifier8ByteLength:
-			padding = strings.Repeat("\x00", identifier8ByteLength-identifierLen)
-			rl.protocol = urlProtocolHTTP | identifier8Byte
-		case identifierLen > identifier8ByteLength && identifierLen <= identifier32ByteLength:
-			padding = strings.Repeat("\x00", identifier32ByteLength-identifierLen)
-			rl.protocol = urlProtocolHTTP | identifier32Byte
-		default:
-			return fmt.Errorf("unsupported identifier length: %d", identifierLen)
-		}
-		rl.body = urlBody
-		rl.identifier = identifier + padding
-		return nil
+		return rl.setURLParts(url[len(kPrefixHTTP):], identifier, urlProtocolHTTP)
 	}
 	return errors.New("unsupported protocol with identifier: " + url)
+}
+
+func (rl *ResourceLocator) setURLParts(urlBody, identifier string, baseProtocol protocolHeader) error {
+	if len(urlBody) > kMaxBodyLen {
+		return errors.New("URL too long")
+	}
+
+	identifierLen := len(identifier)
+	var idProtocol protocolHeader
+	var paddingLen int
+
+	switch {
+	case identifierLen == 0:
+		idProtocol = identifierNone
+		paddingLen = 0
+	case identifierLen > 0 && identifierLen <= identifier2ByteLength:
+		idProtocol = identifier2Byte
+		paddingLen = identifier2ByteLength - identifierLen
+	case identifierLen <= identifier8ByteLength:
+		idProtocol = identifier8Byte
+		paddingLen = identifier8ByteLength - identifierLen
+	case identifierLen > identifier8ByteLength && identifierLen <= identifier32ByteLength:
+		idProtocol = identifier32Byte
+		paddingLen = identifier32ByteLength - identifierLen
+	default:
+		return fmt.Errorf("unsupported identifier length: %d", identifierLen)
+	}
+
+	rl.protocol = baseProtocol | idProtocol
+	rl.body = urlBody
+	rl.identifier = identifier + strings.Repeat("\x00", paddingLen)
+	return nil
 }

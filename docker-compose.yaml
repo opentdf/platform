@@ -24,6 +24,7 @@ services:
       KC_DB_URL_PORT: 5432
       KC_DB_URL_DATABASE: keycloak
       KC_DB_USERNAME: keycloak
+      KG_LOG_LEVEL_ORG_KEYCLOAK: debug
       KC_DB_PASSWORD: changeme
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_BACKCHANNEL: "false"

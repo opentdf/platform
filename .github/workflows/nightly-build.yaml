@@ -22,7 +22,7 @@ jobs:
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          service_account: gha-9a643e00025c3c3c2568866@prj-opentdf-4fc4.iam.gserviceaccount.com
           token_format: "access_token"
           create_credentials_file: false
 

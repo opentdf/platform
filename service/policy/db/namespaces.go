@@ -441,7 +441,7 @@ func (c PolicyDBClient) DeleteCertificate(ctx context.Context, id string) error 
 }
 
 // resolveNamespaceID resolves a namespace identifier to its UUID
-func (c PolicyDBClient) resolveNamespaceID(ctx context.Context, identifier common.IdFqnIdentifier) (string, error) {
+func (c PolicyDBClient) resolveNamespaceID(ctx context.Context, identifier *common.IdFqnIdentifier) (string, error) {
 	// If ID is provided, use it directly
 	if identifier.GetId() != "" {
 		return identifier.GetId(), nil
@@ -460,7 +460,7 @@ func (c PolicyDBClient) resolveNamespaceID(ctx context.Context, identifier commo
 }
 
 // AssignCertificateToNamespace assigns a certificate to a namespace
-func (c PolicyDBClient) AssignCertificateToNamespace(ctx context.Context, namespaceIdentifier common.IdFqnIdentifier, certificateID string) error {
+func (c PolicyDBClient) AssignCertificateToNamespace(ctx context.Context, namespaceIdentifier *common.IdFqnIdentifier, certificateID string) error {
 	namespaceID, err := c.resolveNamespaceID(ctx, namespaceIdentifier)
 	if err != nil {
 		return err
@@ -477,7 +477,7 @@ func (c PolicyDBClient) AssignCertificateToNamespace(ctx context.Context, namesp
 }
 
 // CreateAndAssignCertificateToNamespace creates a certificate and assigns it to a namespace in a transaction
-func (c PolicyDBClient) CreateAndAssignCertificateToNamespace(ctx context.Context, namespaceID common.IdFqnIdentifier, x5c string, isRoot bool, metadata []byte) (string, error) {
+func (c PolicyDBClient) CreateAndAssignCertificateToNamespace(ctx context.Context, namespaceID *common.IdFqnIdentifier, x5c string, isRoot bool, metadata []byte) (string, error) {
 	var certID string
 	err := c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
 		var err error
@@ -500,7 +500,7 @@ func (c PolicyDBClient) CreateAndAssignCertificateToNamespace(ctx context.Contex
 }
 
 // RemoveCertificateFromNamespace removes a certificate from a namespace
-func (c PolicyDBClient) RemoveCertificateFromNamespace(ctx context.Context, namespaceIdentifier common.IdFqnIdentifier, certificateID string) error {
+func (c PolicyDBClient) RemoveCertificateFromNamespace(ctx context.Context, namespaceIdentifier *common.IdFqnIdentifier, certificateID string) error {
 	namespaceID, err := c.resolveNamespaceID(ctx, namespaceIdentifier)
 	if err != nil {
 		return err

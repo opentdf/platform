@@ -15,7 +15,7 @@ type BulkTDF struct {
 	Reader               io.ReadSeeker
 	Writer               io.Writer
 	Error                error
-	TriggeredObligations *Obligations
+	TriggeredObligations Obligations
 }
 
 type BulkDecryptRequest struct {
@@ -272,7 +272,7 @@ func (s SDK) PrepareBulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) 
 			tdf.Error = errors.New("rewrap did not create a response for this TDF")
 			continue
 		}
-		tdf.TriggeredObligations = &Obligations{FQNs: policyRes.obligations}
+		tdf.TriggeredObligations = Obligations{FQNs: policyRes.obligations}
 	}
 
 	return &BulkDecryptPrepared{

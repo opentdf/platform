@@ -1086,6 +1086,10 @@ func (n *NanoTDFReader) getNanoRewrapKey(ctx context.Context) error {
 	if !ok || len(result.kaoRes) != 1 {
 		return errors.New("policy was not found in rewrap response")
 	}
+
+	// Populate obligations after policy result is found.
+	n.requiredObligations = &Obligations{FQNs: result.obligations}
+
 	if result.kaoRes[0].Error != nil {
 		return fmt.Errorf("rewrapError: %w", result.kaoRes[0].Error)
 	}
@@ -1094,7 +1098,6 @@ func (n *NanoTDFReader) getNanoRewrapKey(ctx context.Context) error {
 		n.collectionStore.store(n.headerBuf, result.kaoRes[0].SymmetricKey)
 	}
 
-	n.requiredObligations = &Obligations{FQNs: result.obligations}
 	n.payloadKey = result.kaoRes[0].SymmetricKey
 
 	return nil

@@ -308,27 +308,6 @@ func (bp *BulkDecryptPrepared) BulkDecrypt(ctx context.Context) error {
 	return nil
 }
 
-func (bp *BulkDecryptPrepared) handleBulkDecrypt(ctx context.Context) []error {
-	var errList []error
-	var err error
-	for id, tdf := range bp.PolicyTDF {
-		policyRes, ok := bp.allRewrapResp[id]
-		if !ok {
-			tdf.Error = errors.New("rewrap did not create a response for this TDF")
-			errList = append(errList, tdf.Error)
-			continue
-		}
-		decryptor := bp.tdfDecryptors[id]
-		if _, err = decryptor.Decrypt(ctx, policyRes.kaoRes); err != nil {
-			tdf.Error = err
-			errList = append(errList, tdf.Error)
-			continue
-		}
-	}
-
-	return errList
-}
-
 // BulkDecrypt Decrypts a list of BulkTDF and if a partial failure of TDFs unable to be decrypted, BulkErrors would be returned.
 func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 	prepared, err := s.PrepareBulkDecrypt(ctx, opts...)
@@ -336,13 +315,7 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 		return err
 	}
 
-	errList := prepared.handleBulkDecrypt(ctx)
-
-	if len(errList) != 0 {
-		return BulkErrors(errList)
-	}
-
-	return nil
+	return prepared.BulkDecrypt(ctx)
 }
 
 func (b *BulkDecryptRequest) appendTDFs(tdfs ...*BulkTDF) {

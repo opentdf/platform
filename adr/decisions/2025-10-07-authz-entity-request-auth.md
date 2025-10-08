@@ -31,6 +31,13 @@ in a decision/entitlements request, and would need to do more work clientside as
     - effectively GetMyEntitlements, GetMyDecision
 * Security:
     - fewer access tokens retrieved by an SDK instance
+    - no changes to casbin RBAC route authz policy
+    - any users permitted to make GetDecision/GetEntitlement queries will only get to check their own tokens more easily (inherently more secure than ability to check someone else's)
+    - tokens have already been available to in-process services, and this work builds upon that feature
+    - no security footguns when decisioning/entitling as the request auth usage is _explicit_ not _implicit_
+
+Note: platform security controls safeguarding request access tokens as platform-level resources (should an IPC PEP
+be allowed to touch an access token) is considered out of scope
 
 ## Considered Options
 

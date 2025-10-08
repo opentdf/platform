@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -455,6 +456,9 @@ func (s *NanoSuite) Test_CreateNanoTDF_BaseKey() {
 
 	// Create SDK
 	sdk := &SDK{
+		config: config{
+			logger: slog.Default(),
+		},
 		wellknownConfiguration: mockClient,
 	}
 

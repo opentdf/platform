@@ -65,7 +65,7 @@ openssl pkcs12 -export -in keys/keycloak-ca.pem -inkey keys/keycloak-ca-private.
 # For Apple Silicon: export JAVA_OPTS_APPEND="-XX:UseSVE=0" before running this script
 if [ -n "$JAVA_OPTS_APPEND" ]; then
   JAVA_ENV_OPTS="-e JAVA_TOOL_OPTIONS=$JAVA_OPTS_APPEND"
-elif [ "$(uname -m)" = "arm64" ]; then
+elif [ "$(uname -m)" = "arm64" ] && sysctl -n machdep.cpu.brand_string 2>/dev/null | grep -q -w "M4"; then
   JAVA_ENV_OPTS="-e JAVA_TOOL_OPTIONS=-XX:UseSVE=0"
 else
   JAVA_ENV_OPTS=""

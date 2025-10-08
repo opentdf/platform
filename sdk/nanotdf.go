@@ -100,7 +100,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	size += uint32(resource.getLength())
 	header.kasURL = *resource
 
-	slog.Debug("checkpoint NewNanoTDFHeaderFromReader", slog.Uint64("resource_locator", uint64(resource.getLength())))
+	getLogger().Debug("checkpoint NewNanoTDFHeaderFromReader", slog.Uint64("resource_locator", uint64(resource.getLength())))
 
 	// Read ECC and Binding Mode
 	oneBytes := make([]byte, 1)
@@ -145,7 +145,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	}
 	size += uint32(l)
 	policyLength := binary.BigEndian.Uint16(twoBytes)
-	slog.Debug("checkpoint NewNanoTDFHeaderFromReader", slog.Uint64("policy_length", uint64(policyLength)))
+	getLogger().Debug("checkpoint NewNanoTDFHeaderFromReader", slog.Uint64("policy_length", uint64(policyLength)))
 
 	// Read policy body
 	header.PolicyMode = policyMode
@@ -208,7 +208,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	size += uint32(l)
 	header.EphemeralKey = ephemeralKey
 
-	slog.Debug("checkpoint NewNanoTDFHeaderFromReader", slog.Uint64("header_size", uint64(size)))
+	getLogger().Debug("checkpoint NewNanoTDFHeaderFromReader", slog.Uint64("header_size", uint64(size)))
 
 	return header, size, nil
 }
@@ -279,12 +279,12 @@ func (ep embeddedPolicy) writeEmbeddedPolicy(writer io.Writer) error {
 	if _, err := writer.Write(buf); err != nil {
 		return err
 	}
-	slog.Debug("writeEmbeddedPolicy", slog.Uint64("policy_length", uint64(ep.lengthBody)))
+	getLogger().Debug("writeEmbeddedPolicy", slog.Uint64("policy_length", uint64(ep.lengthBody)))
 
 	if _, err := writer.Write(ep.body); err != nil {
 		return err
 	}
-	slog.Debug("writeEmbeddedPolicy", slog.Uint64("policy_body", uint64(len(ep.body))))
+	getLogger().Debug("writeEmbeddedPolicy", slog.Uint64("policy_body", uint64(len(ep.body))))
 
 	return nil
 }
@@ -621,7 +621,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	}
 	totalBytes += uint32(l)
 
-	slog.Debug("writeNanoTDFHeader", slog.Uint64("magic_number", uint64(len(kNanoTDFMagicStringAndVersion))))
+	getLogger().Debug("writeNanoTDFHeader", slog.Uint64("magic_number", uint64(len(kNanoTDFMagicStringAndVersion))))
 
 	// Write the kas url
 	err = config.kasURL.writeResourceLocator(writer)
@@ -629,7 +629,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 		return nil, 0, 0, err
 	}
 	totalBytes += uint32(config.kasURL.getLength())
-	slog.Debug("writeNanoTDFHeader", slog.Uint64("resource_locator_number", uint64(config.kasURL.getLength())))
+	getLogger().Debug("writeNanoTDFHeader", slog.Uint64("resource_locator_number", uint64(config.kasURL.getLength())))
 
 	// Write ECC And Binding Mode
 	l, err = writer.Write([]byte{serializeBindingCfg(config.bindCfg)})
@@ -808,7 +808,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 		return 0, fmt.Errorf("writeNanoTDFHeader failed:%w", err)
 	}
 
-	slog.Debug("checkpoint CreateNanoTDF", slog.Uint64("header", uint64(totalSize)))
+	s.Logger().Debug("checkpoint CreateNanoTDF", slog.Uint64("header", uint64(totalSize)))
 
 	aesGcm, err := ocrypto.NewAESGcm(key)
 	if err != nil {
@@ -850,7 +850,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	}
 	totalSize += uint32(l)
 
-	slog.Debug("checkpoint CreateNanoTDF", slog.Uint64("payload_length", uint64(len(cipherDataWithoutPadding))))
+	s.Logger().Debug("checkpoint CreateNanoTDF", slog.Uint64("payload_length", uint64(len(cipherDataWithoutPadding))))
 
 	// write cipher data
 	l, err = writer.Write(cipherDataWithoutPadding)
@@ -940,7 +940,7 @@ func (s SDK) LoadNanoTDF(reader io.ReadSeeker, opts ...NanoTDFReaderOption) (*Na
 				return nil, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
 			}
 			// retrieve the registered kases if not provided
-			allowList, err := allowListFromKASRegistry(context.Background(), s.KeyAccessServerRegistry, platformEndpoint)
+			allowList, err := allowListFromKASRegistry(context.Background(), s.logger, s.KeyAccessServerRegistry, platformEndpoint)
 			if err != nil {
 				return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
 			}
@@ -1142,7 +1142,7 @@ func getKasInfoForNanoTDF(s *SDK, config *NanoTDFConfig) (*KASInfo, error) {
 		}
 	}
 
-	slog.Debug("getNanoKasInfoFromBaseKey failed, falling back to default kas", slog.String("error", err.Error()))
+	s.logger.Debug("getNanoKasInfoFromBaseKey failed, falling back to default kas", slog.String("error", err.Error()))
 
 	kasURL, err := config.kasURL.GetURL()
 	if err != nil {

@@ -471,6 +471,9 @@ jobs:
       - uses: opentdf/otdfctl/e2e@main
         with:
           otdfctl-ref: "main"
+        env:
+          TESTRAIL_USER: ${{ secrets.TESTRAIL_USER }}
+          TESTRAIL_PASS: ${{ secrets.TESTRAIL_PASS }}
 
   buflint:
     permissions:

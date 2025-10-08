@@ -250,15 +250,14 @@ Root level key `kas`
 
 Environment Variable: `OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:2048"},{"kid":"k2","alg":"ec:secp256r1"}]'`
 
-| Field                             | Description                                                                     | Default  |
-| --------------------------------- | ------------------------------------------------------------------------------- | -------- |
-| `keyring.*.kid`                   | Which key id this is binding                                                    |          |
-| `keyring.*.alg`                   | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |          |
-| `keyring.*.legacy`                | Indicates this may be used for TDFs with no key ID; default if all unspecified. | inferred |
-| `preview_features.ec_tdf_enabled` | Whether tdf based ecc support is enabled.                                       | `false`  |
-| `preview_features.key_management` | Whether new key management features are enabled.                                | `false`  |
-| `root_key`                        | Key needed when new key_management functionality is enabled.                    |          |
-
+| Field                    | Description                                                                     | Default  |
+| ------------------------ | ------------------------------------------------------------------------------- | -------- |
+| `keyring.*.kid`          | Which key id this is binding                                                    |          |
+| `keyring.*.alg`          | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |          |
+| `keyring.*.legacy`       | Indicates this may be used for TDFs with no key ID; default if all unspecified. | inferred |
+| `preview.ec_tdf_enabled` | Whether tdf based ecc support is enabled.                                       | `false`  |
+| `preview.key_management` | Whether new key management features are enabled.                                | `false`  |
+| `root_key`               | Key needed when new key_management functionality is enabled.                    |          |
 
 Example:
 
@@ -352,6 +351,9 @@ server:
 
       ## Dot notation is used to access the groups claim
       group_claim: "realm_access.roles"
+
+      # Dot notation is used to access the claim the represents the idP client ID 
+      client_id_claim: # azp
       
       ## Deprecated: Use standard casbin policy groupings (g, <user/group>, <role>)
       ## Maps the external role to the OpenTDF role

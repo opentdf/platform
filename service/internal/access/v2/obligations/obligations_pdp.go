@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strconv"
+	"strings"
 
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -28,7 +28,7 @@ type ObligationsPolicyDecisionPoint struct {
 	logger                        *logger.Logger
 	attributesByValueFQN          map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
 	registeredResourceValuesByFQN map[string]*policy.RegisteredResourceValue
-	obligationValuesByFQN         map[string]*policy.ObligationValue
+
 	// When resolving triggered obligations, there are multiple trigger paths:
 	// 1. actions on attributes
 	// 2. actions on attributes within the request context of a specific PEP, driven by PEP idP clientID
@@ -54,19 +54,18 @@ func NewObligationsPolicyDecisionPoint(
 		logger:                        l,
 		attributesByValueFQN:          attributesByValueFQN,
 		registeredResourceValuesByFQN: registeredResourceValuesByFQN,
-		obligationValuesByFQN:         make(map[string]*policy.ObligationValue),
 	}
 
 	simpleTriggered := make(obligationValuesByActionOnAnAttributeValue)
 	clientScopedTriggered := make(map[string]obligationValuesByActionOnAnAttributeValue)
 
+	// For every trigger on every value on every obligation definition
 	for _, definition := range allObligations {
 		for _, obligationValue := range definition.GetValues() {
-			pdp.obligationValuesByFQN[obligationValue.GetFqn()] = obligationValue
-
 			for _, trigger := range obligationValue.GetTriggers() {
 				attrValFqn := trigger.GetAttributeValue().GetFqn()
 				actionName := trigger.GetAction().GetName()
+
 				// Populate unscoped lookup graph with just actions and attributes alone
 				if len(trigger.GetContext()) == 0 {
 					if _, ok := simpleTriggered[actionName]; !ok {
@@ -75,7 +74,7 @@ func NewObligationsPolicyDecisionPoint(
 					simpleTriggered[actionName][attrValFqn] = append(simpleTriggered[actionName][attrValFqn], obligationValue.GetFqn())
 				}
 
-				// If request contexts were provided, PEP client ID was required to scope an obligation value to a PEP, so populate that lookup graph
+				// If trigger has a request context specified, PEP clientID will scope the obligation value to a specific PEP
 				for _, optionalRequestContext := range trigger.GetContext() {
 					requiredPEPClientID := optionalRequestContext.GetPep().GetClientId()
 
@@ -101,13 +100,92 @@ func NewObligationsPolicyDecisionPoint(
 	pdp.logger.DebugContext(
 		ctx,
 		"created obligations policy decision point",
-		slog.Int("obligation_values_count", len(pdp.obligationValuesByFQN)),
+	)
+
+	pdp.logger.TraceContext(
+		ctx,
+		"trigger relationships",
+		slog.Any("simple", simpleTriggered),
+		slog.Any("client_scoped", clientScopedTriggered),
 	)
 
 	return pdp, nil
 }
 
-// GetRequiredObligations takes in an action and multiple resources subject to decisioning.
+// GetAllTriggeredObligationsAreFulfilled takes in:
+//
+// 1. resources
+// 2. an action being taken
+// 3. a decision request context
+// 4. the obligation value FQNs a PEP is capable of fulfilling (self-reported)
+//
+// It will check the action, resources, and decision request context for the obligation values triggered,
+// compare the PEP fulfillable obligations against those that have been triggered as required,
+// and return whether or not all triggered obligations can be fulfilled along with the set of obligation FQNs
+// the PEP must fulfill for each resource in the provided list.
+func (p *ObligationsPolicyDecisionPoint) GetAllTriggeredObligationsAreFulfilled(
+	ctx context.Context,
+	resources []*authz.Resource,
+	action *policy.Action,
+	decisionRequestContext *policy.RequestContext,
+	pepFulfillableObligationValueFQNs []string,
+) (bool, [][]string, error) {
+	perResource, allTriggered, err := p.getTriggeredObligations(ctx, action, resources, decisionRequestContext)
+	if err != nil {
+		return false, nil, err
+	}
+
+	allFulfilled := p.getAllObligationsAreFulfilled(ctx, action, allTriggered, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	return allFulfilled, perResource, nil
+}
+
+// getAllObligationsAreFulfilled checks the deduplicated list of triggered obligations against the PEP
+// self-reported fulfillable obligations to validate the PEP can fulfill all that were triggered.
+//
+// While this is a simple check now, enhancements in types of obligations and the fulfillment source of truth
+// (such as a PEP registration or centralized config) will add complexity to this validation. The RequestContext
+// itself may sometimes contain information that may fulfill the obligation in the future.
+func (p *ObligationsPolicyDecisionPoint) getAllObligationsAreFulfilled(
+	ctx context.Context,
+	action *policy.Action,
+	allTriggeredObligationValueFQNs []string,
+	pepFulfillableObligationValueFQNs []string,
+	decisionRequestContext *policy.RequestContext,
+) bool {
+	log := loggerWithAttributes(p.logger, strings.ToLower(action.GetName()), decisionRequestContext.GetPep().GetClientId())
+
+	fulfillable := make(map[string]struct{})
+	for _, obligation := range pepFulfillableObligationValueFQNs {
+		obligation = strings.ToLower(obligation)
+		fulfillable[obligation] = struct{}{}
+	}
+
+	var unfulfilled []string
+	for _, obligated := range allTriggeredObligationValueFQNs {
+		obligated = strings.ToLower(obligated)
+		if _, found := fulfillable[obligated]; !found {
+			unfulfilled = append(unfulfilled, obligated)
+		}
+	}
+
+	if len(unfulfilled) > 0 {
+		log.DebugContext(
+			ctx,
+			"found unfulfilled obligations that cannot be fulfilled by PEP",
+			slog.Any("unfulfilled_obligations", unfulfilled),
+		)
+		return false
+	}
+
+	log.DebugContext(
+		ctx,
+		"all triggered obligations can be fulfilled by PEP",
+	)
+
+	return true
+}
+
+// getTriggeredObligations takes in an action and multiple resources subject to decisioning.
 //
 // It drills into the resources to find all triggered obligations on each combination of:
 //  1. action
@@ -115,7 +193,7 @@ func NewObligationsPolicyDecisionPoint(
 //  3. decision request context (at present, strictly any scoped PEP clientID)
 //
 // In response, it returns the obligations required per each input resource index and the entire list of deduplicated required obligations
-func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
+func (p *ObligationsPolicyDecisionPoint) getTriggeredObligations(
 	ctx context.Context,
 	action *policy.Action,
 	resources []*authz.Resource,
@@ -128,12 +206,8 @@ func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
 	allOblValFQNsSeen := make(map[string]struct{})
 
 	pepClientID := decisionRequestContext.GetPep().GetClientId()
-	actionName := action.GetName()
-
-	l := p.logger.
-		With("action", actionName).
-		With("pep_client_id", pepClientID).
-		With("resources_count", strconv.Itoa(len(resources)))
+	actionName := strings.ToLower(action.GetName())
+	log := loggerWithAttributes(p.logger, actionName, pepClientID)
 
 	// Short-circuit if the requested action and optional scoping clientID are not found within any obligation triggers
 	attrValueFQNsToObligations, triggersOnActionExist := p.simpleTriggerActionsToAttributes[actionName]
@@ -142,9 +216,10 @@ func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
 		_, triggersOnClientIDExist = clientScoped[actionName]
 	}
 	if !triggersOnActionExist && !triggersOnClientIDExist {
-		l.DebugContext(ctx, "no triggered obligations found for action",
-			slog.Any("simple", p.simpleTriggerActionsToAttributes),
-			slog.Any("client_scoped", p.clientIDScopedTriggerActionsToAttributes),
+		log.DebugContext(
+			ctx,
+			"no triggered obligations found",
+			slog.Int("resources_count", len(resources)),
 		)
 		return requiredOblValueFQNsPerResource, nil, nil
 	}
@@ -152,10 +227,10 @@ func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
 	// Traverse trigger lookup graphs to resolve required obligations
 	for i, resource := range resources {
 		// For each type of resource, drill down within to collect the attribute value FQNs relevant to this action
-		attrValueFQNs := []string{}
+		var attrValueFQNs []string
 		switch resource.GetResource().(type) {
 		case *authz.Resource_RegisteredResourceValueFqn:
-			regResValFQN := resource.GetRegisteredResourceValueFqn()
+			regResValFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
 			regResValue, ok := p.registeredResourceValuesByFQN[regResValFQN]
 			if !ok {
 				return nil, nil, fmt.Errorf("%w: %s", ErrUnknownRegisteredResourceValue, regResValFQN)
@@ -182,6 +257,8 @@ func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
 		seenThisResource := make(map[string]struct{})
 		resourceRequiredOblValueFQNsSet := make([]string, 0)
 		for _, attrValFQN := range attrValueFQNs {
+			attrValFQN = strings.ToLower(attrValFQN)
+
 			if triggeredObligations, someTriggered := attrValueFQNsToObligations[attrValFQN]; someTriggered {
 				for _, oblValFQN := range triggeredObligations {
 					if _, seen := seenThisResource[oblValFQN]; seen {
@@ -199,7 +276,11 @@ func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
 				}
 			}
 
-			if triggeredObligations, someTriggered := p.clientIDScopedTriggerActionsToAttributes[pepClientID][actionName][attrValFQN]; someTriggered {
+			if !triggersOnClientIDExist {
+				continue
+			}
+
+			if triggeredObligations, someTriggered := clientScoped[actionName][attrValFQN]; someTriggered {
 				for _, oblValFQN := range triggeredObligations {
 					if _, seen := seenThisResource[oblValFQN]; seen {
 						continue
@@ -219,12 +300,23 @@ func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
 		requiredOblValueFQNsPerResource[i] = resourceRequiredOblValueFQNsSet
 	}
 
-	l.DebugContext(
+	log.DebugContext(
 		ctx,
 		"found required obligations",
-		slog.Any("required_obl_values_per_resource", requiredOblValueFQNsPerResource),
-		slog.Any("required_obligations_across_all_resources", allRequiredOblValueFQNs),
+		slog.Any("deduplicated_request_obligations_across_all_resources", allRequiredOblValueFQNs),
+	)
+	log.TraceContext(
+		ctx,
+		"obligations per resource",
+		slog.Any("required_obligations_per_resource", requiredOblValueFQNsPerResource),
 	)
 
 	return requiredOblValueFQNsPerResource, allRequiredOblValueFQNs, nil
+}
+
+func loggerWithAttributes(log *logger.Logger, actionName, pepClientID string) *logger.Logger {
+	if pepClientID != "" {
+		log = log.With("pep_client_id", pepClientID)
+	}
+	return log.With("action", strings.ToLower(actionName))
 }

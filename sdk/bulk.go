@@ -30,8 +30,8 @@ type BulkDecryptRequest struct {
 // BulkDecryptPrepared holds the prepared state for bulk decryption
 type BulkDecryptPrepared struct {
 	PolicyTDF     map[string]*BulkTDF
-	TdfDecryptors map[string]decryptor
-	AllRewrapResp map[string]policyResult
+	tdfDecryptors map[string]decryptor
+	allRewrapResp map[string]policyResult
 }
 
 // BulkErrors List of Errors that Failed during Bulk Decryption
@@ -236,7 +236,6 @@ func (s SDK) performRewraps(ctx context.Context, bulkReq *BulkDecryptRequest, ka
 }
 
 // PrepareBulkDecrypt does everything except decrypt from the Bulk Decrypt
-// TODO: Better comment
 // ! Currently you cannot specify fulfillable obligations on an individual TDF basis
 func (s SDK) PrepareBulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) (*BulkDecryptPrepared, error) {
 	bulkReq, createError := createBulkRewrapRequest(opts...)
@@ -278,8 +277,8 @@ func (s SDK) PrepareBulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) 
 
 	return &BulkDecryptPrepared{
 		PolicyTDF:     policyTDF,
-		TdfDecryptors: tdfDecryptors,
-		AllRewrapResp: allRewrapResp,
+		tdfDecryptors: tdfDecryptors,
+		allRewrapResp: allRewrapResp,
 	}, nil
 }
 
@@ -288,13 +287,13 @@ func (bp *BulkDecryptPrepared) BulkDecrypt(ctx context.Context) error {
 	var errList []error
 	var err error
 	for id, tdf := range bp.PolicyTDF {
-		policyRes, ok := bp.AllRewrapResp[id]
+		policyRes, ok := bp.allRewrapResp[id]
 		if !ok {
 			tdf.Error = errors.New("rewrap did not create a response for this TDF")
 			errList = append(errList, tdf.Error)
 			continue
 		}
-		decryptor := bp.TdfDecryptors[id]
+		decryptor := bp.tdfDecryptors[id]
 		if _, err = decryptor.Decrypt(ctx, policyRes.kaoRes); err != nil {
 			tdf.Error = err
 			errList = append(errList, tdf.Error)
@@ -313,13 +312,13 @@ func (bp *BulkDecryptPrepared) handleBulkDecrypt(ctx context.Context) []error {
 	var errList []error
 	var err error
 	for id, tdf := range bp.PolicyTDF {
-		policyRes, ok := bp.AllRewrapResp[id]
+		policyRes, ok := bp.allRewrapResp[id]
 		if !ok {
 			tdf.Error = errors.New("rewrap did not create a response for this TDF")
 			errList = append(errList, tdf.Error)
 			continue
 		}
-		decryptor := bp.TdfDecryptors[id]
+		decryptor := bp.tdfDecryptors[id]
 		if _, err = decryptor.Decrypt(ctx, policyRes.kaoRes); err != nil {
 			tdf.Error = err
 			errList = append(errList, tdf.Error)

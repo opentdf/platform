@@ -253,7 +253,7 @@ func createDefaultSplitPlan(defaultKAS string) []SplitAssignment {
 
 	// Single default KAS - no split ID needed since there's only one split
 	return []SplitAssignment{{
-		SplitID: "",
+		SplitID: generateSplitID(),
 		KASURLs: []string{defaultKAS},
 		Keys:    make(map[string]*policy.SimpleKasPublicKey), // No keys available for default
 	}}

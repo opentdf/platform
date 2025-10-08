@@ -213,7 +213,7 @@ func wrapKeyWithEC(keyType ocrypto.KeyType, kasPublicKeyPEM string, symKey []byt
 		return "", "", "", fmt.Errorf("failed to derive wrap key: %w", err)
 	}
 
-	// Ensure we have the right length for wrapping (trim or pad as needed)
+	// Ensure we have the right length for wrapping, trim if needed, or error if too short
 	if len(wrapKey) > len(symKey) {
 		wrapKey = wrapKey[:len(symKey)]
 	} else if len(wrapKey) < len(symKey) {

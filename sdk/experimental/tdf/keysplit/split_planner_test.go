@@ -307,7 +307,7 @@ func TestCreateDefaultSplitPlan(t *testing.T) {
 
 			require.Len(t, result, tt.expectedLen, tt.description)
 			assignment := result[0]
-			assert.Empty(t, assignment.SplitID, "Default split should have empty ID")
+			assert.NotEmpty(t, assignment.SplitID, "Default split should have random ID")
 			assert.Equal(t, []string{tt.defaultKAS}, assignment.KASURLs)
 			assert.Empty(t, assignment.Keys, "Default split should have empty keys map")
 		})

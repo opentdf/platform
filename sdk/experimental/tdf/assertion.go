@@ -378,7 +378,7 @@ type AssertionVerificationKeys struct {
 }
 
 // Get returns the key for the given assertion ID or the default key if the key is not found.
-// If the default key is not set, it returns error.
+// If the default key is not set, it returns an empty key.
 func (k AssertionVerificationKeys) Get(assertionID string) (AssertionKey, error) {
 	if key, ok := k.Keys[assertionID]; ok {
 		return key, nil

@@ -12,7 +12,6 @@ import (
 	"hash/crc32"
 	"log/slog"
 	"sort"
-	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -636,11 +635,11 @@ func (w *Writer) buildAssertions(aggregateHash []byte, assertions []AssertionCon
 			return nil, fmt.Errorf("error decoding hex string: %w", err)
 		}
 
-		var completeHashBuilder strings.Builder
-		completeHashBuilder.WriteString(string(aggregateHash))
+		var completeHashBuilder bytes.Buffer
+		completeHashBuilder.Write(aggregateHash)
 		completeHashBuilder.Write(hashOfAssertion)
 
-		encoded := ocrypto.Base64Encode([]byte(completeHashBuilder.String()))
+		encoded := ocrypto.Base64Encode(completeHashBuilder.Bytes())
 
 		assertionSigningKey := AssertionKey{}
 

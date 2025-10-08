@@ -16,6 +16,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/Masterminds/semver/v3"
+	authorizationv2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
@@ -52,19 +53,20 @@ const (
 
 // Loads and reads ZTDF files
 type Reader struct {
-	tokenSource          auth.AccessTokenSource
-	httpClient           *http.Client
-	connectOptions       []connect.ClientOption
-	manifest             Manifest
-	unencryptedMetadata  []byte
-	tdfReader            archive.TDFReader
-	cursor               int64
-	aesGcm               ocrypto.AesGcm
-	payloadSize          int64
-	payloadKey           []byte
-	kasSessionKey        ocrypto.KeyPair
-	config               TDFReaderConfig
-	triggeredObligations *Obligations
+	tokenSource         auth.AccessTokenSource
+	httpClient          *http.Client
+	connectOptions      []connect.ClientOption
+	manifest            Manifest
+	unencryptedMetadata []byte
+	tdfReader           archive.TDFReader
+	cursor              int64
+	aesGcm              ocrypto.AesGcm
+	payloadSize         int64
+	payloadKey          []byte
+	kasSessionKey       ocrypto.KeyPair
+	config              TDFReaderConfig
+	requiredObligations *Obligations
+	authV2Client        sdkconnect.AuthorizationServiceClientV2
 }
 
 type Obligations struct {
@@ -87,6 +89,12 @@ type ecKeyWrappedKeyInfo struct {
 	publicKey  string
 	wrappedKey string
 }
+
+var (
+	ErrAccessDeniedPreObligations = errors.New("access denied: before obligation evaluation")
+	errGetDecisions               = errors.New("getDecisions call failed")
+	errDataAttributes             = errors.New("retrieving data attributes failed")
+)
 
 func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []kaoResult) (int, error) {
 	err := r.reader.buildKey(ctx, results)
@@ -829,6 +837,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		kasSessionKey:  config.kasSessionKey,
 		config:         *config,
 		payloadSize:    payloadSize,
+		authV2Client:   s.AuthorizationV2,
 	}, nil
 }
 
@@ -1101,13 +1110,29 @@ func (r *Reader) DataAttributes() ([]string, error) {
 	return attributes, nil
 }
 
-// Return the triggered obligations that were found during the rewrap process.
-func (r *Reader) Obligations() *Obligations {
-	if r.triggeredObligations == nil {
-		// TODO: Call GetDecisions
-		return nil
+/*
+* Will return the required obligations for the TDF.
+* If the obligations were populated from an Init() or DecryptNanoTDF() call, this function will return those.
+* If obligations were not populated, this function will parse the policy from the TDF
+* and call Authorization Service to get the required obligations.
+ */
+func (r *Reader) Obligations(ctx context.Context) (Obligations, error) {
+	if r.requiredObligations != nil && len(r.requiredObligations.FQNs) > 0 {
+		return *r.requiredObligations, nil
 	}
-	return r.triggeredObligations
+
+	attributes, err := r.DataAttributes()
+	if err != nil {
+		return Obligations{}, errors.Join(err, errDataAttributes)
+	}
+
+	requiredObligations, err := getObligations(ctx, r.authV2Client, attributes, r.config.fulfillableObligationFQNs)
+	if err != nil {
+		return Obligations{}, err
+	}
+
+	r.requiredObligations = &Obligations{FQNs: requiredObligations}
+	return *r.requiredObligations, nil
 }
 
 /*
@@ -1414,7 +1439,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 				reqFail(err, req)
 			}
 			// ! Should constantly be the same obligation for the same policy
-			r.triggeredObligations = &Obligations{FQNs: result.obligations}
+			r.requiredObligations = &Obligations{FQNs: result.obligations}
 			kaoResults = append(kaoResults, result.kaoRes...)
 		}
 	}
@@ -1534,4 +1559,31 @@ func createKaoTemplateFromKasInfo(kasInfoArr []KASInfo) []kaoTpl {
 	}
 
 	return kaoTemplate
+}
+
+func getObligations(ctx context.Context, authClient sdkconnect.AuthorizationServiceClientV2, attributes, fulfillableObligationFQNs []string) ([]string, error) {
+	resp, err := authClient.GetDecision(ctx, &authorizationv2.GetDecisionRequest{
+		Action: &policy.Action{
+			Value: &policy.Action_Standard{
+				Standard: policy.Action_STANDARD_ACTION_DECRYPT,
+			},
+		},
+		Resource: &authorizationv2.Resource{
+			Resource: &authorizationv2.Resource_AttributeValues_{
+				AttributeValues: &authorizationv2.Resource_AttributeValues{
+					Fqns: attributes,
+				},
+			},
+		},
+		FulfillableObligationFqns: fulfillableObligationFQNs,
+	})
+	if err != nil {
+		return nil, errors.Join(err, errGetDecisions)
+	}
+
+	if resp.GetDecision().GetDecision() == authorizationv2.Decision_DECISION_DENY && len(resp.GetDecision().GetRequiredObligations()) == 0 {
+		return nil, ErrAccessDeniedPreObligations
+	}
+
+	return resp.GetDecision().GetRequiredObligations(), nil
 }

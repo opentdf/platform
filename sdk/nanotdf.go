@@ -19,6 +19,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/sdk/sdkconnect"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 )
@@ -881,13 +882,14 @@ type NanoTDFReader struct {
 	httpClient      *http.Client
 	connectOptions  []connect.ClientOption
 	collectionStore *collectionStore
+	authV2Client    sdkconnect.AuthorizationServiceClientV2
 
 	header     NanoTDFHeader
 	headerBuf  []byte
 	payloadKey []byte
 
-	config               *NanoTDFReaderConfig
-	triggeredObligations *Obligations
+	config              *NanoTDFReaderConfig
+	requiredObligations *Obligations
 }
 
 func createNanoTDFDecryptHandler(reader io.ReadSeeker, writer io.Writer, opts ...NanoTDFReaderOption) (*NanoTDFDecryptHandler, error) {
@@ -927,6 +929,10 @@ func (s SDK) LoadNanoTDF(reader io.ReadSeeker, opts ...NanoTDFReaderOption) (*Na
 		return nil, fmt.Errorf("newNanoTDFReaderConfig failed: %w", err)
 	}
 
+	if len(nanoTdfReaderConfig.fulfillableObligationFQNs) == 0 && len(s.fulfillableObligationFQNs) > 0 {
+		nanoTdfReaderConfig.fulfillableObligationFQNs = s.fulfillableObligationFQNs
+	}
+
 	if len(nanoTdfReaderConfig.kasAllowlist) == 0 && !nanoTdfReaderConfig.ignoreAllowList { //nolint:nestif // handling the case where kasAllowlist is not provided
 		if s.KeyAccessServerRegistry != nil {
 			platformEndpoint, err := s.PlatformConfiguration.platformEndpoint()
@@ -959,6 +965,7 @@ func (s SDK) LoadNanoTDF(reader io.ReadSeeker, opts ...NanoTDFReaderOption) (*Na
 		collectionStore: s.collectionStore,
 		header:          header,
 		headerBuf:       headerBuf,
+		authV2Client:    s.AuthorizationV2,
 	}, nil
 }
 
@@ -1002,11 +1009,54 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 	return r.DecryptNanoTDF(ctx, writer)
 }
 
-func (n *NanoTDFReader) GetTriggeredObligations() *Obligations {
-	if n.triggeredObligations == nil { //nolint:revive // Will implement later
-		// TODO: Either get payload key or GetDecisions
+/*
+* Will return the required obligations for the TDF.
+* If the obligations were populated from an Init() or DecryptNanoTDF() call, this function will return those.
+* If obligations were not populated, this function will parse the policy from the TDF
+* and call Authorization Service to get the required obligations.
+*
+* Note:
+* For NanoTDF, obligations can only be returned on-demand for (via Authorization Service) if the
+* policy mode is plaintext.
+ */
+func (n *NanoTDFReader) Obligations(ctx context.Context) (Obligations, error) {
+	if n.requiredObligations != nil && len(n.requiredObligations.FQNs) > 0 {
+		return *n.requiredObligations, nil
 	}
-	return n.triggeredObligations
+
+	attributes, err := n.dataAttributes()
+	if err != nil {
+		return Obligations{}, errors.Join(err, errDataAttributes)
+	}
+
+	requiredObligations, err := getObligations(ctx, n.authV2Client, attributes, n.config.fulfillableObligationFQNs)
+	if err != nil {
+		return Obligations{}, err
+	}
+
+	n.requiredObligations = &Obligations{FQNs: requiredObligations}
+	return *n.requiredObligations, nil
+}
+
+func (n *NanoTDFReader) dataAttributes() ([]string, error) {
+	var policyObj PolicyObject
+	switch n.header.PolicyMode {
+	case NanoTDFPolicyModePlainText:
+		err := json.Unmarshal(n.header.PolicyBody, &policyObj)
+		if err != nil {
+			return nil, fmt.Errorf("json.Unmarshal failed:%w", err)
+		}
+	case NanoTDFPolicyModeEncrypted, NanoTDFPolicyModeEncryptedPolicyKeyAccess, NanoTDFPolicyModeRemote:
+		return nil, fmt.Errorf("cannot get attributes from policy for policy mode: %v", n.header.PolicyMode)
+	default:
+		return nil, fmt.Errorf("unsupported policy mode: %v", n.header.PolicyMode)
+	}
+
+	var attributes []string
+	for _, attr := range policyObj.Body.DataAttributes {
+		attributes = append(attributes, attr.Attribute)
+	}
+	return attributes, nil
 }
 
 func (n *NanoTDFReader) getNanoRewrapKey(ctx context.Context) error {
@@ -1044,7 +1094,7 @@ func (n *NanoTDFReader) getNanoRewrapKey(ctx context.Context) error {
 		n.collectionStore.store(n.headerBuf, result.kaoRes[0].SymmetricKey)
 	}
 
-	n.triggeredObligations = &Obligations{FQNs: result.obligations}
+	n.requiredObligations = &Obligations{FQNs: result.obligations}
 	n.payloadKey = result.kaoRes[0].SymmetricKey
 
 	return nil

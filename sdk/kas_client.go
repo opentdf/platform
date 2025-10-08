@@ -3,12 +3,13 @@ package sdk
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -24,11 +25,11 @@ import (
 )
 
 const (
-	secondsPerMinute             = 60
-	statusFail                   = "fail"
-	statusPermit                 = "permit"
-	fulfillableObligationsHeader = "X-Fullfillable-Obligations"
-	triggeredObligationsHeader   = "X-Triggered-Obligations"
+	secondsPerMinute              = 60
+	statusFail                    = "fail"
+	statusPermit                  = "permit"
+	additionalRewrapContextHeader = "X-Rewrap-Additional-Context"
+	triggeredObligationsHeader    = "X-Required-Obligations"
 )
 
 type KASClient struct {
@@ -39,7 +40,7 @@ type KASClient struct {
 
 	// Set this to enable legacy, non-batch rewrap requests
 	supportSingleRewrapEndpoint bool
-	fulfillableObligations      string
+	fulfillableObligations      []string
 }
 
 type kaoResult struct {
@@ -59,6 +60,14 @@ type decryptor interface {
 	Decrypt(ctx context.Context, results []kaoResult) (int, error)
 }
 
+type obligationContext struct {
+	FulfillableFQNs []string `json:"fulfillableFQNs"`
+}
+
+type additionalRewrapContext struct {
+	Obligations obligationContext `json:"obligations"`
+}
+
 func newKASClient(httpClient *http.Client, options []connect.ClientOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.KeyPair, fulfillableObligations []string) *KASClient {
 	return &KASClient{
 		accessTokenSource:           accessTokenSource,
@@ -66,7 +75,7 @@ func newKASClient(httpClient *http.Client, options []connect.ClientOption, acces
 		connectOptions:              options,
 		sessionKey:                  sessionKey,
 		supportSingleRewrapEndpoint: true,
-		fulfillableObligations:      strings.Join(fulfillableObligations, ","),
+		fulfillableObligations:      fulfillableObligations,
 	}
 }
 
@@ -84,7 +93,11 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.Unsig
 
 	serviceClient := kasconnect.NewAccessServiceClient(k.httpClient, parsedURL, k.connectOptions...)
 
-	response, err := serviceClient.Rewrap(ctx, k.newConnectRewrapRequest(rewrapRequest, k.fulfillableObligations))
+	rewrapReq, err := k.newConnectRewrapRequest(rewrapRequest)
+	if err != nil {
+		return nil, fmt.Errorf("error creating rewrap request: %w", err)
+	}
+	response, err := serviceClient.Rewrap(ctx, rewrapReq)
 	if err != nil {
 		return upgradeRewrapErrorV1(err, requests)
 	}
@@ -94,10 +107,21 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.Unsig
 	return response.Msg, nil
 }
 
-func (k *KASClient) newConnectRewrapRequest(rewrapReq *kas.RewrapRequest, obligationFQNs string) *connect.Request[kas.RewrapRequest] {
+func (k *KASClient) newConnectRewrapRequest(rewrapReq *kas.RewrapRequest) (*connect.Request[kas.RewrapRequest], error) {
 	req := connect.NewRequest(rewrapReq)
-	req.Header().Set(fulfillableObligationsHeader, obligationFQNs)
-	return req
+	rewrapContext := &additionalRewrapContext{
+		Obligations: obligationContext{
+			FulfillableFQNs: k.fulfillableObligations,
+		},
+	}
+	rewrapContextJSON, err := json.Marshal(rewrapContext)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling additional rewrap context: %w", err)
+	}
+
+	rewrapContextBase64 := base64.StdEncoding.EncodeToString(rewrapContextJSON)
+	req.Header().Set(additionalRewrapContextHeader, rewrapContextBase64)
+	return req, nil
 }
 
 // convert v1 responses to v2
@@ -189,6 +213,7 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRew
 					policyRes.kaoRes = append(policyRes.kaoRes, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError())})
 				}
 			}
+			policyRes.obligations = k.retrieveObligationsFromMetadata(response.GetMetadata(), results.GetPolicyId())
 			policyResults[results.GetPolicyId()] = policyRes
 		}
 
@@ -299,12 +324,13 @@ func (k *KASClient) processECResponse(response *kas.RewrapResponse, aesGcm ocryp
 				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError())})
 			}
 		}
-		triggeredFQNs := k.retrieveObligationsFromMetadata(response.GetMetadata(), results.GetPolicyId())
-		policyResults[results.GetPolicyId()] = policyResult{policyID: results.GetPolicyId(), kaoRes: kaoKeys, obligations: triggeredFQNs}
+		requiredObligations := k.retrieveObligationsFromMetadata(response.GetMetadata(), results.GetPolicyId())
+		policyResults[results.GetPolicyId()] = policyResult{policyID: results.GetPolicyId(), kaoRes: kaoKeys, obligations: requiredObligations}
 	}
 	return policyResults, nil
 }
 
+// ! Consider refactoring so we don't have to unmarshal for each policy
 func (k *KASClient) retrieveObligationsFromMetadata(metadata map[string]*structpb.Value, policyID string) []string {
 	var triggeredFQNs []string
 
@@ -322,7 +348,12 @@ func (k *KASClient) retrieveObligationsFromMetadata(metadata map[string]*structp
 		return triggeredFQNs
 	}
 
-	policyOblsValue, ok := structValue.GetFields()[policyID]
+	obligationFields := structValue.GetFields()
+	if obligationFields == nil {
+		return triggeredFQNs
+	}
+
+	policyOblsValue, ok := obligationFields[policyID]
 	if !ok {
 		return triggeredFQNs
 	}
@@ -369,8 +400,8 @@ func (k *KASClient) processRSAResponse(response *kas.RewrapResponse, asymDecrypt
 				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError())})
 			}
 		}
-		triggeredFQNs := k.retrieveObligationsFromMetadata(response.GetMetadata(), results.GetPolicyId())
-		policyResults[results.GetPolicyId()] = policyResult{policyID: results.GetPolicyId(), kaoRes: kaoKeys, obligations: triggeredFQNs}
+		requiredObligations := k.retrieveObligationsFromMetadata(response.GetMetadata(), results.GetPolicyId())
+		policyResults[results.GetPolicyId()] = policyResult{policyID: results.GetPolicyId(), kaoRes: kaoKeys, obligations: requiredObligations}
 	}
 	return policyResults, nil
 }

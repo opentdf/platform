@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"golang.org/x/crypto/hkdf"
@@ -35,6 +36,9 @@ type PublicKeyEncryptor interface {
 
 	// Type required to use the scheme for encryption - notably, if it procduces extra metadata.
 	Type() SchemeType
+
+	// KeyType returns the key type, e.g. RSA or EC.
+	KeyType() KeyType
 
 	// For EC schemes, this method returns the public part of the ephemeral key.
 	// Otherwise, it returns nil.
@@ -139,8 +143,36 @@ func (e AsymEncryption) Type() SchemeType {
 	return RSA
 }
 
+func (e AsymEncryption) KeyType() KeyType {
+	switch e.PublicKey.Size() {
+	case RSA2048Size / 8: //nolint:mnd // standard key size in bytes
+		return RSA2048Key
+	case RSA4096Size / 8: //nolint:mnd // large key size in bytes
+		return RSA4096Key
+	default:
+		bitlen := e.PublicKey.Size() * 8 //nolint:mnd // convert to bits
+		return KeyType("rsa:" + strconv.Itoa(bitlen))
+	}
+}
+
 func (e ECEncryptor) Type() SchemeType {
 	return EC
+}
+
+func (e ECEncryptor) KeyType() KeyType {
+	switch e.pub.Curve() {
+	case ecdh.P256():
+		return EC256Key
+	case ecdh.P384():
+		return EC384Key
+	case ecdh.P521():
+		return EC521Key
+	default:
+		if n, ok := e.pub.Curve().(fmt.Stringer); ok {
+			return KeyType("ec:" + n.String())
+		}
+		return KeyType("ec:[unknown]")
+	}
 }
 
 func (e AsymEncryption) EphemeralKey() []byte {

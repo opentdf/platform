@@ -616,7 +616,7 @@ components:
 
         publicKey:
           title: public_key
-          description: Deprecated
+          description: 'Deprecated: KAS can have multiple key pairs'
           $ref: '#/components/schemas/policy.PublicKey'
         sourceType:
           title: source_type

@@ -1162,7 +1162,7 @@ type Action struct {
 
 	// Generated uuid in database
 	Id string `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
-	// Deprecated
+	// Deprecated: use 'name' instead
 	//
 	// Types that are assignable to Value:
 	//
@@ -1827,7 +1827,7 @@ type KeyAccessServer struct {
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Address of a KAS instance
 	Uri string `protobuf:"bytes,2,opt,name=uri,proto3" json:"uri,omitempty"`
-	// Deprecated
+	// Deprecated: KAS can have multiple key pairs
 	PublicKey *PublicKey `protobuf:"bytes,3,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
 	// The source of the KAS: (INTERNAL, EXTERNAL)
 	SourceType SourceType `protobuf:"varint,4,opt,name=source_type,json=sourceType,proto3,enum=policy.SourceType" json:"source_type,omitempty"`

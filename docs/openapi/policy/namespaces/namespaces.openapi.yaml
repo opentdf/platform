@@ -182,10 +182,7 @@ paths:
       tags:
         - policy.namespaces.NamespaceService
       summary: AssignKeyAccessServerToNamespace
-      description: |-
-        --------------------------------------*
-         Namespace <> Key Access Server RPCs
-        ---------------------------------------
+      description: 'Deprecated: utilize AssignPublicKeyToNamespace'
       operationId: policy.namespaces.NamespaceService.AssignKeyAccessServerToNamespace
       parameters:
         - name: Connect-Protocol-Version
@@ -222,6 +219,7 @@ paths:
       tags:
         - policy.namespaces.NamespaceService
       summary: RemoveKeyAccessServerFromNamespace
+      description: 'Deprecated: utilize RemovePublicKeyFromNamespace'
       operationId: policy.namespaces.NamespaceService.RemoveKeyAccessServerFromNamespace
       parameters:
         - name: Connect-Protocol-Version
@@ -699,7 +697,7 @@ components:
 
         publicKey:
           title: public_key
-          description: Deprecated
+          description: 'Deprecated: KAS can have multiple key pairs'
           $ref: '#/components/schemas/policy.PublicKey'
         sourceType:
           title: source_type
@@ -908,6 +906,7 @@ components:
           $ref: '#/components/schemas/policy.namespaces.NamespaceKeyAccessServer'
       title: AssignKeyAccessServerToNamespaceRequest
       additionalProperties: false
+      description: 'Deprecated: utilize AssignPublicKeyToNamespaceRequest'
     policy.namespaces.AssignKeyAccessServerToNamespaceResponse:
       type: object
       properties:
@@ -1134,6 +1133,7 @@ components:
           $ref: '#/components/schemas/policy.namespaces.NamespaceKeyAccessServer'
       title: RemoveKeyAccessServerFromNamespaceRequest
       additionalProperties: false
+      description: 'Deprecated: utilize RemovePublicKeyFromNamespaceRequest'
     policy.namespaces.RemoveKeyAccessServerFromNamespaceResponse:
       type: object
       properties:

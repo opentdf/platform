@@ -162,6 +162,7 @@ https://github.com/valyala/fasthttp/blob/master/fasthttputil/inmemory_listener.g
 */
 type inProcessServer struct {
 	srv                *memhttp.Server
+	logger             *logger.Logger
 	maxCallRecvMsgSize int
 	maxCallSendMsgSize int
 	*ConnectRPC
@@ -239,6 +240,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 		CacheManager:   cacheManager,
 		ConnectRPC:     connectRPC,
 		ConnectRPCInProcess: &inProcessServer{
+			logger:             logger.With("ipc_server", "true"),
 			srv:                memhttp.New(connectRPCIpc.Mux),
 			maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
 			maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
@@ -381,7 +383,7 @@ var rpcPathRegex = regexp.MustCompile(`^/[\w\.]+\.[\w\.]+/[\w]+$`)
 func routeConnectRPCRequests(connectRPC http.Handler, httpHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// contentType := r.Header.Get("Content-Type")
-		if (r.Method == http.MethodPost || r.Method == http.MethodGet) && rpcPathRegex.MatchString(r.URL.Path) {
+		if (r.Method == http.MethodPost || r.Method == http.MethodGet || r.Method == http.MethodOptions) && rpcPathRegex.MatchString(r.URL.Path) {
 			connectRPC.ServeHTTP(w, r)
 		} else {
 			httpHandler.ServeHTTP(w, r)
@@ -508,6 +510,9 @@ func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
 
 	// Add audit interceptor
 	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingConnectInterceptor())
+
+	// Add IPC metadata transfer interceptor (transfers gRPC metadata to Connect headers)
+	clientInterceptors = append(clientInterceptors, auth.IPCMetadataClientInterceptor(s.logger))
 
 	conn := sdk.ConnectRPCConnection{
 		Client:   s.srv.Client(),

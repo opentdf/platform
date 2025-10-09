@@ -12,15 +12,24 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	authzV2Connect "github.com/opentdf/platform/protocol/go/authorization/v2/authorizationv2connect"
+	"github.com/opentdf/platform/protocol/go/policy"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/logger"
+	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+)
+
+var (
+	ErrFailedToBuildRequestContext = errors.New("failed to contextualize decision request")
+	ErrFailedToInitPDP             = errors.New("failed to create JIT PDP")
+	ErrFailedToGetDecision         = errors.New("failed to get decision")
+	ErrFailedToGetEntitlements     = errors.New("failed to get entitlements")
 )
 
 type Service struct {
@@ -138,15 +147,12 @@ func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[aut
 	// When authorization service can consume cached policy, switch to the other PDP (process based on policy passed in)
 	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache)
 	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.Any("error", err))
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToGetEntitlements, ErrFailedToInitPDP, err))
 	}
 
 	entitlements, err := pdp.GetEntitlements(ctx, entityIdentifier, withComprehensiveHierarchy)
 	if err != nil {
-		// TODO: any bad request errors that aren't 500s?
-		as.logger.ErrorContext(ctx, "failed to get entitlements", slog.Any("error", err))
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToGetEntitlements, err))
 	}
 	rsp := &authzV2.GetEntitlementsResponse{
 		Entitlements: entitlements,
@@ -168,27 +174,34 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 
 	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache)
 	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.Any("error", err))
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToInitPDP, err))
 	}
 
 	request := req.Msg
 	entityIdentifier := request.GetEntityIdentifier()
 	action := request.GetAction()
 	resource := request.GetResource()
+	fulfillableObligations := request.GetFulfillableObligationFqns()
 
-	decisions, permitted, err := pdp.GetDecision(ctx, entityIdentifier, action, []*authzV2.Resource{resource})
+	reqContext, err := as.getDecisionRequestContext(ctx)
 	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to get decision", slog.Any("error", err))
-		if errors.Is(err, access.ErrFQNNotFound) || errors.Is(err, access.ErrDefinitionNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
-		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, statusifyError(ctx, as.logger, err)
+	}
+
+	decisions, permitted, err := pdp.GetDecision(
+		ctx,
+		entityIdentifier,
+		action,
+		[]*authzV2.Resource{resource},
+		reqContext,
+		fulfillableObligations,
+	)
+	if err != nil {
+		return nil, statusifyError(ctx, as.logger, err)
 	}
 	resp, err := rollupSingleResourceDecision(permitted, decisions)
 	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to rollup single-resource decision", slog.Any("error", err))
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, statusifyError(ctx, as.logger, err)
 	}
 	return connect.NewResponse(resp), nil
 }
@@ -206,21 +219,34 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 
 	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache)
 	if err != nil {
-		return nil, statusifyError(ctx, as.logger, errors.Join(errors.New("failed to create JIT PDP"), err))
+		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToInitPDP, err))
 	}
 	request := req.Msg
 	entityIdentifier := request.GetEntityIdentifier()
 	action := request.GetAction()
 	resources := request.GetResources()
+	fulfillableObligations := request.GetFulfillableObligationFqns()
 
-	decisions, allPermitted, err := pdp.GetDecision(ctx, entityIdentifier, action, resources)
+	reqContext, err := as.getDecisionRequestContext(ctx)
 	if err != nil {
-		return nil, statusifyError(ctx, as.logger, errors.Join(errors.New("failed to get decision"), err))
+		return nil, statusifyError(ctx, as.logger, err)
+	}
+
+	decisions, allPermitted, err := pdp.GetDecision(
+		ctx,
+		entityIdentifier,
+		action,
+		resources,
+		reqContext,
+		fulfillableObligations,
+	)
+	if err != nil {
+		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToGetDecision, err))
 	}
 
 	resourceDecisions, err := rollupMultiResourceDecisions(decisions)
 	if err != nil {
-		return nil, statusifyError(ctx, as.logger, errors.Join(errors.New("failed to rollup multi-resource decision"), err))
+		return nil, statusifyError(ctx, as.logger, err)
 	}
 
 	resp := &authzV2.GetDecisionMultiResourceResponse{
@@ -246,11 +272,16 @@ func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[aut
 
 	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache)
 	if err != nil {
-		return nil, statusifyError(ctx, as.logger, errors.Join(errors.New("failed to create JIT PDP"), err))
+		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToInitPDP, err))
 	}
 
 	multiRequests := req.Msg.GetDecisionRequests()
 	decisionResponses := make([]*authzV2.GetDecisionMultiResourceResponse, len(multiRequests))
+
+	reqContext, err := as.getDecisionRequestContext(ctx)
+	if err != nil {
+		return nil, statusifyError(ctx, as.logger, err)
+	}
 
 	// TODO: revisit performance of this loop after introduction of caching and registered resource values within decisioning,
 	// as the same entity in multiple requests should only be resolved JIT once, not once per request if the same in each.
@@ -258,15 +289,16 @@ func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[aut
 		entityIdentifier := request.GetEntityIdentifier()
 		action := request.GetAction()
 		resources := request.GetResources()
+		fulfillableObligations := request.GetFulfillableObligationFqns()
 
-		decisions, allPermitted, err := pdp.GetDecision(ctx, entityIdentifier, action, resources)
+		decisions, allPermitted, err := pdp.GetDecision(ctx, entityIdentifier, action, resources, reqContext, fulfillableObligations)
 		if err != nil {
-			return nil, statusifyError(ctx, as.logger, errors.Join(errors.New("failed to get bulk decision"), err))
+			return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToGetDecision, err))
 		}
 
 		resourceDecisions, err := rollupMultiResourceDecisions(decisions)
 		if err != nil {
-			return nil, statusifyError(ctx, as.logger, errors.Join(errors.New("failed to rollup bulk multi-resource decision"), err), slog.Int("index", idx))
+			return nil, statusifyError(ctx, as.logger, err, slog.Int("index", idx))
 		}
 
 		decisionResponse := &authzV2.GetDecisionMultiResourceResponse{
@@ -282,4 +314,18 @@ func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[aut
 		DecisionResponses: decisionResponses,
 	}
 	return connect.NewResponse(rsp), nil
+}
+
+// Builds a decision request context out of contextual metadata for the downstream obligation trigger/fulfillment decisioning
+func (as *Service) getDecisionRequestContext(ctx context.Context) (*policy.RequestContext, error) {
+	incoming := true
+	clientID, err := ctxAuth.GetClientIDFromContext(ctx, incoming)
+	if err != nil {
+		return nil, errors.Join(ErrFailedToBuildRequestContext, err)
+	}
+	return &policy.RequestContext{
+		Pep: &policy.PolicyEnforcementPoint{
+			ClientId: clientID,
+		},
+	}, nil
 }

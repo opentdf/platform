@@ -436,9 +436,6 @@ func newGranterFromService(ctx context.Context, logger *slog.Logger, keyCache *k
 
 	av, err := as.GetAttributeValuesByFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: fqnsStr,
-		WithValue: &policy.AttributeValueSelector{
-			WithKeyAccessGrants: true,
-		},
 	})
 	if err != nil {
 		return granter{}, err

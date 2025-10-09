@@ -20,6 +20,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Deprecated: never utilized
 type AttributeNamespaceSelector struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -67,6 +68,7 @@ func (x *AttributeNamespaceSelector) GetWithAttributes() *AttributeNamespaceSele
 	return nil
 }
 
+// Deprecated: never utilized
 type AttributeDefinitionSelector struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -131,6 +133,7 @@ func (x *AttributeDefinitionSelector) GetWithValues() *AttributeDefinitionSelect
 	return nil
 }
 
+// Deprecated: never utilized
 type AttributeValueSelector struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -335,7 +338,6 @@ type AttributeNamespaceSelector_AttributeSelector struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Deprecated
 	WithKeyAccessGrants bool                                                        `protobuf:"varint,1,opt,name=with_key_access_grants,json=withKeyAccessGrants,proto3" json:"with_key_access_grants,omitempty"`
 	WithValues          *AttributeNamespaceSelector_AttributeSelector_ValueSelector `protobuf:"bytes,10,opt,name=with_values,json=withValues,proto3" json:"with_values,omitempty"`
 }

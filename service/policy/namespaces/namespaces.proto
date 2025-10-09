@@ -133,7 +133,9 @@ message DeactivateNamespaceResponse {}
    Assign Key Access Server to Namespace
 */
 
+// deprecated: utilize AssignPublicKeyToNamespaceRequest
 message AssignKeyAccessServerToNamespaceRequest {
+  option deprecated = true;
   NamespaceKeyAccessServer namespace_key_access_server = 1;
 }
 
@@ -141,7 +143,9 @@ message AssignKeyAccessServerToNamespaceResponse {
   NamespaceKeyAccessServer namespace_key_access_server = 1;
 }
 
+// deprecated: utilize RemovePublicKeyFromNamespaceRequest
 message RemoveKeyAccessServerFromNamespaceRequest {
+  option deprecated = true;
   NamespaceKeyAccessServer namespace_key_access_server = 1;
 }
 
@@ -184,10 +188,12 @@ service NamespaceService {
   /*--------------------------------------*
    * Namespace <> Key Access Server RPCs
    *---------------------------------------*/
+  // deprecated: utilize AssignPublicKeyToNamespace
   rpc AssignKeyAccessServerToNamespace(AssignKeyAccessServerToNamespaceRequest) returns (AssignKeyAccessServerToNamespaceResponse) {
     option deprecated = true;
   }
 
+  // deprecated: utilize RemovePublicKeyFromNamespace
   rpc RemoveKeyAccessServerFromNamespace(RemoveKeyAccessServerFromNamespaceRequest) returns (RemoveKeyAccessServerFromNamespaceResponse) {
     option deprecated = true;
   }

@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package policy;
 
+// Deprecated: never utilized
 message AttributeNamespaceSelector {
   message AttributeSelector {
-    // Deprecated
     bool with_key_access_grants = 1;
     message ValueSelector {
       // Deprecated
@@ -17,6 +17,7 @@ message AttributeNamespaceSelector {
   AttributeSelector with_attributes = 10;
 }
 
+// Deprecated: never utilized
 message AttributeDefinitionSelector {
   // Deprecated
   bool with_key_access_grants = 1;
@@ -33,6 +34,7 @@ message AttributeDefinitionSelector {
   ValueSelector with_values = 11;
 }
 
+// Deprecated: never utilized
 message AttributeValueSelector {
   // Deprecated
   bool with_key_access_grants = 1;

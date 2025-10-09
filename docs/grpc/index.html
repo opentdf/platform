@@ -2790,7 +2790,7 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
                   <td>public_key</td>
                   <td><a href="#policy.PublicKey">PublicKey</a></td>
                   <td></td>
-                  <td><p>Deprecated </p></td>
+                  <td><p>Deprecated: KAS can have multiple key pairs </p></td>
                 </tr>
               
                 <tr>
@@ -6910,7 +6910,7 @@ buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
 
       
         <h3 id="policy.AttributeDefinitionSelector">AttributeDefinitionSelector</h3>
-        <p></p>
+        <p>Deprecated: never utilized</p>
 
         
           <table class="field-table">
@@ -6993,7 +6993,7 @@ buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
         
       
         <h3 id="policy.AttributeNamespaceSelector">AttributeNamespaceSelector</h3>
-        <p></p>
+        <p>Deprecated: never utilized</p>
 
         
           <table class="field-table">
@@ -7030,7 +7030,7 @@ buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
                   <td>with_key_access_grants</td>
                   <td><a href="#bool">bool</a></td>
                   <td></td>
-                  <td><p>Deprecated </p></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -7086,7 +7086,7 @@ buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
         
       
         <h3 id="policy.AttributeValueSelector">AttributeValueSelector</h3>
-        <p></p>
+        <p>Deprecated: never utilized</p>
 
         
           <table class="field-table">
@@ -7614,7 +7614,7 @@ Custom actions only: replaces the existing action name </p></td>
 
       
         <h3 id="policy.attributes.AssignKeyAccessServerToAttributeRequest">AssignKeyAccessServerToAttributeRequest</h3>
-        <p></p>
+        <p>deprecated: utilize AssignPublicKeyToAttributeRequest</p>
 
         
           <table class="field-table">
@@ -7662,7 +7662,7 @@ Custom actions only: replaces the existing action name </p></td>
         
       
         <h3 id="policy.attributes.AssignKeyAccessServerToValueRequest">AssignKeyAccessServerToValueRequest</h3>
-        <p></p>
+        <p>deprecated: utilize AssignPublicKeyToValueRequest</p>
 
         
           <table class="field-table">
@@ -8118,7 +8118,7 @@ Common metadata </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p><strong>Deprecated.</strong> Deprecated </p></td>
+                  <td><p><strong>Deprecated.</strong> deprecated: utilize identifier </p></td>
                 </tr>
               
                 <tr>
@@ -8201,7 +8201,7 @@ Common metadata </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p><strong>Deprecated.</strong> Deprecated </p></td>
+                  <td><p><strong>Deprecated.</strong> deprecated: utilize identifier </p></td>
                 </tr>
               
                 <tr>
@@ -8286,14 +8286,6 @@ Common metadata </p></td>
                   <td>repeated</td>
                   <td><p>Required
 Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&lt;attribute_name&gt;/value/&lt;value_name&gt;), normalized to lower case. </p></td>
-                </tr>
-              
-                <tr>
-                  <td>with_value</td>
-                  <td><a href="#policy.AttributeValueSelector">policy.AttributeValueSelector</a></td>
-                  <td></td>
-                  <td><p>Optional
-This attribute value selector is not used currently, but left here for future use. </p></td>
                 </tr>
               
             </tbody>
@@ -8531,7 +8523,7 @@ Namespace ID or name </p></td>
         
       
         <h3 id="policy.attributes.RemoveKeyAccessServerFromAttributeRequest">RemoveKeyAccessServerFromAttributeRequest</h3>
-        <p></p>
+        <p>deprecated: utilize RemovePublicKeyFromAttributeRequest</p>
 
         
           <table class="field-table">
@@ -8579,7 +8571,7 @@ Namespace ID or name </p></td>
         
       
         <h3 id="policy.attributes.RemoveKeyAccessServerFromValueRequest">RemoveKeyAccessServerFromValueRequest</h3>
-        <p></p>
+        <p>deprecated: utilize RemovePublicKeyFromValueRequest</p>
 
         
           <table class="field-table">
@@ -9008,30 +9000,28 @@ Value RPCs
                 <td>AssignKeyAccessServerToAttribute</td>
                 <td><a href="#policy.attributes.AssignKeyAccessServerToAttributeRequest">AssignKeyAccessServerToAttributeRequest</a></td>
                 <td><a href="#policy.attributes.AssignKeyAccessServerToAttributeResponse">AssignKeyAccessServerToAttributeResponse</a></td>
-                <td><p>--------------------------------------*
-Attribute &lt;&gt; Key Access Server RPCs
----------------------------------------</p></td>
+                <td><p>deprecated: utilize AssignPublicKeyToAttribute</p></td>
               </tr>
             
               <tr>
                 <td>RemoveKeyAccessServerFromAttribute</td>
                 <td><a href="#policy.attributes.RemoveKeyAccessServerFromAttributeRequest">RemoveKeyAccessServerFromAttributeRequest</a></td>
                 <td><a href="#policy.attributes.RemoveKeyAccessServerFromAttributeResponse">RemoveKeyAccessServerFromAttributeResponse</a></td>
-                <td><p></p></td>
+                <td><p>deprecated: utilize RemovePublicKeyFromAttribute</p></td>
               </tr>
             
               <tr>
                 <td>AssignKeyAccessServerToValue</td>
                 <td><a href="#policy.attributes.AssignKeyAccessServerToValueRequest">AssignKeyAccessServerToValueRequest</a></td>
                 <td><a href="#policy.attributes.AssignKeyAccessServerToValueResponse">AssignKeyAccessServerToValueResponse</a></td>
-                <td><p></p></td>
+                <td><p>deprecated: utilize AssignPublicKeyToValue</p></td>
               </tr>
             
               <tr>
                 <td>RemoveKeyAccessServerFromValue</td>
                 <td><a href="#policy.attributes.RemoveKeyAccessServerFromValueRequest">RemoveKeyAccessServerFromValueRequest</a></td>
                 <td><a href="#policy.attributes.RemoveKeyAccessServerFromValueResponse">RemoveKeyAccessServerFromValueResponse</a></td>
-                <td><p></p></td>
+                <td><p>deprecated: utilize RemovePublicKeyFromValue</p></td>
               </tr>
             
               <tr>
@@ -11705,7 +11695,7 @@ Provider Management</p></td>
 
       
         <h3 id="policy.namespaces.AssignKeyAccessServerToNamespaceRequest">AssignKeyAccessServerToNamespaceRequest</h3>
-        <p></p>
+        <p>deprecated: utilize AssignPublicKeyToNamespaceRequest</p>
 
         
           <table class="field-table">
@@ -12095,7 +12085,7 @@ ACTIVE by default when not specified </p></td>
         
       
         <h3 id="policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest">RemoveKeyAccessServerFromNamespaceRequest</h3>
-        <p></p>
+        <p>deprecated: utilize RemovePublicKeyFromNamespaceRequest</p>
 
         
           <table class="field-table">
@@ -12305,16 +12295,14 @@ ACTIVE by default when not specified </p></td>
                 <td>AssignKeyAccessServerToNamespace</td>
                 <td><a href="#policy.namespaces.AssignKeyAccessServerToNamespaceRequest">AssignKeyAccessServerToNamespaceRequest</a></td>
                 <td><a href="#policy.namespaces.AssignKeyAccessServerToNamespaceResponse">AssignKeyAccessServerToNamespaceResponse</a></td>
-                <td><p>--------------------------------------*
-Namespace &lt;&gt; Key Access Server RPCs
----------------------------------------</p></td>
+                <td><p>deprecated: utilize AssignPublicKeyToNamespace</p></td>
               </tr>
             
               <tr>
                 <td>RemoveKeyAccessServerFromNamespace</td>
                 <td><a href="#policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest">RemoveKeyAccessServerFromNamespaceRequest</a></td>
                 <td><a href="#policy.namespaces.RemoveKeyAccessServerFromNamespaceResponse">RemoveKeyAccessServerFromNamespaceResponse</a></td>
-                <td><p></p></td>
+                <td><p>deprecated: utilize RemovePublicKeyFromNamespace</p></td>
               </tr>
             
               <tr>

@@ -88,6 +88,111 @@ func TestReadResourceLocator(t *testing.T) {
 	}
 }
 
+func TestURLWithIdentifier(t *testing.T) {
+	tests := []struct {
+		name               string
+		url                string
+		identifier         string
+		expectedErr        bool
+		expectedProtocol   protocolHeader
+		expectedBody       string
+		expectedIdentifier string
+	}{
+		{
+			name:               "HTTPS URL with 18-byte identifier",
+			url:                "https://example.com",
+			identifier:         "aws-kms-asymmetric",
+			expectedErr:        false,
+			expectedProtocol:   urlProtocolHTTPS | identifier32Byte,
+			expectedBody:       "example.com",
+			expectedIdentifier: "aws-kms-asymmetric\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+		},
+		{
+			name:               "HTTP URL with 8-byte identifier",
+			url:                "http://example.com",
+			identifier:         "id123456",
+			expectedErr:        false,
+			expectedProtocol:   urlProtocolHTTP | identifier8Byte,
+			expectedBody:       "example.com",
+			expectedIdentifier: "id123456",
+		},
+		{
+			name:               "HTTPS URL with 2-byte identifier",
+			url:                "https://example.com",
+			identifier:         "i1",
+			expectedErr:        false,
+			expectedProtocol:   urlProtocolHTTPS | identifier2Byte,
+			expectedBody:       "example.com",
+			expectedIdentifier: "i1",
+		},
+		{
+			name:               "HTTP URL with 6-byte identifier",
+			url:                "http://example.com",
+			identifier:         "id1234",
+			expectedErr:        false,
+			expectedProtocol:   urlProtocolHTTP | identifier8Byte,
+			expectedBody:       "example.com",
+			expectedIdentifier: "id1234\x00\x00",
+		},
+		{
+			name:               "HTTPS URL with 32-byte identifier",
+			url:                "https://long.url.for.testing.com/path",
+			identifier:         "12345678901234567890123456789012",
+			expectedErr:        false,
+			expectedProtocol:   urlProtocolHTTPS | identifier32Byte,
+			expectedBody:       "long.url.for.testing.com/path",
+			expectedIdentifier: "12345678901234567890123456789012",
+		},
+		{
+			name:               "Unsupported protocol should error",
+			url:                "ftp://example.com",
+			identifier:         "id1",
+			expectedErr:        true,
+			expectedProtocol:   0,
+			expectedBody:       "",
+			expectedIdentifier: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rl := &ResourceLocator{}
+			err := rl.setURLWithIdentifier(tt.url, tt.identifier)
+
+			if tt.expectedErr {
+				if err == nil {
+					t.Fatal("expected an error but got none")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("setURLWithIdentifier() unexpected error: %v", err)
+			}
+
+			var buf bytes.Buffer
+			err = rl.writeResourceLocator(&buf)
+			if err != nil {
+				t.Fatalf("writeResourceLocator() unexpected error: %v", err)
+			}
+
+			parsedRl, err := NewResourceLocatorFromReader(&buf)
+			if err != nil {
+				t.Fatalf("NewResourceLocatorFromReader() unexpected error: %v", err)
+			}
+
+			if tt.expectedProtocol != parsedRl.protocol {
+				t.Fatalf("expected protocol %v, got %v", tt.expectedProtocol, parsedRl.protocol)
+			}
+			if tt.expectedBody != parsedRl.body {
+				t.Fatalf("expected body %q, got %q", tt.expectedBody, parsedRl.body)
+			}
+			if tt.expectedIdentifier != parsedRl.identifier {
+				t.Fatalf("expected identifier %q, got %q", tt.expectedIdentifier, parsedRl.identifier)
+			}
+		})
+	}
+}
+
 func TestGetIdentifier(t *testing.T) {
 	tests := []struct {
 		n           string

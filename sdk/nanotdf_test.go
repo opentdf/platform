@@ -712,7 +712,7 @@ func (s *NanoSuite) Test_NanoTDFReader_LoadNanoTDF() {
 	reader := bytes.NewReader(nanoTDFData)
 
 	// Test successful load with ignore allowlist
-	nanoReader, err := sdk.LoadNanoTDF(reader, WithNanoIgnoreAllowlist(true))
+	nanoReader, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoIgnoreAllowlist(true))
 	s.Require().NoError(err)
 	s.Require().NotNil(nanoReader)
 	s.Require().Equal(reader, nanoReader.reader)
@@ -724,7 +724,7 @@ func (s *NanoSuite) Test_NanoTDFReader_LoadNanoTDF() {
 	// Test with KAS allowlist
 	allowedURLs := []string{"https://kas.example.com"}
 	reader = bytes.NewReader(nanoTDFData) // Reset reader
-	nanoReader2, err := sdk.LoadNanoTDF(reader, WithNanoKasAllowlist(allowedURLs))
+	nanoReader2, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoKasAllowlist(allowedURLs))
 	s.Require().NoError(err)
 	s.Require().NotNil(nanoReader2.config.kasAllowlist)
 	s.Require().True(nanoReader2.config.kasAllowlist.IsAllowed("https://kas.example.com"))
@@ -732,12 +732,12 @@ func (s *NanoSuite) Test_NanoTDFReader_LoadNanoTDF() {
 	// Test with fulfillable obligations
 	obligations := []string{"obligation1", "obligation2"}
 	reader = bytes.NewReader(nanoTDFData) // Reset reader
-	nanoReader3, err := sdk.LoadNanoTDF(reader, WithNanoTDFFulfillableObligationFQNs(obligations), WithNanoIgnoreAllowlist(true))
+	nanoReader3, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoTDFFulfillableObligationFQNs(obligations), WithNanoIgnoreAllowlist(true))
 	s.Require().NoError(err)
 	s.Require().Equal(obligations, nanoReader3.config.fulfillableObligationFQNs)
 
 	// Test with invalid reader (nil)
-	_, err = sdk.LoadNanoTDF(nil)
+	_, err = sdk.LoadNanoTDF(s.T().Context(), nil)
 	s.Require().Error(err)
 }
 
@@ -748,7 +748,7 @@ func (s *NanoSuite) Test_NanoTDFReader_Init_WithPayloadKeySet() {
 	nanoTDFData, err := s.createRealNanoTDF(sdk, NanoTDFPolicyModeDefault)
 	s.Require().NoError(err)
 	reader := bytes.NewReader(nanoTDFData)
-	nanoReader, err := sdk.LoadNanoTDF(reader, WithNanoIgnoreAllowlist(true))
+	nanoReader, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoIgnoreAllowlist(true))
 	s.Require().NoError(err)
 
 	// Test that calling Init twice doesn't cause issues when payloadKey is set
@@ -765,7 +765,7 @@ func (s *NanoSuite) Test_NanoTDFReader_Init_WithoutPayloadKeySet() {
 	s.Require().NoError(err)
 	reader := bytes.NewReader(nanoTDFData)
 
-	nanoReader, err := sdk.LoadNanoTDF(reader, WithNanoIgnoreAllowlist(true))
+	nanoReader, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoIgnoreAllowlist(true))
 	s.Require().NoError(err)
 
 	err = nanoReader.Init(s.T().Context())
@@ -780,7 +780,7 @@ func (s *NanoSuite) Test_NanoTDFReader_ObligationsSupport() {
 	nanoTDFData, err := s.createRealNanoTDF(sdk, NanoTDFPolicyModeDefault)
 	s.Require().NoError(err)
 	reader := bytes.NewReader(nanoTDFData)
-	nanoReader, err := sdk.LoadNanoTDF(reader, WithNanoIgnoreAllowlist(true))
+	nanoReader, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoIgnoreAllowlist(true))
 	s.Require().NoError(err)
 	s.Require().Nil(nanoReader.requiredObligations)
 
@@ -806,7 +806,7 @@ func (s *NanoSuite) Test_NanoTDFReader_DecryptNanoTDF() {
 	reader := bytes.NewReader(nanoTDFData)
 	writer := &bytes.Buffer{}
 
-	nanoReader, err := sdk.LoadNanoTDF(reader, WithNanoIgnoreAllowlist(true))
+	nanoReader, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoIgnoreAllowlist(true))
 	s.Require().NoError(err)
 
 	_, err = nanoReader.DecryptNanoTDF(s.T().Context(), writer)
@@ -846,7 +846,7 @@ func (s *NanoSuite) Test_NanoTDFReader_RealWorkflow() {
 	tdfData := output.Bytes()
 	reader := bytes.NewReader(tdfData)
 
-	nanoReader, err := sdk.LoadNanoTDF(reader, WithNanoIgnoreAllowlist(true))
+	nanoReader, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoIgnoreAllowlist(true))
 	s.Require().NoError(err)
 	s.Require().NotNil(nanoReader)
 
@@ -958,7 +958,7 @@ func (s *NanoSuite) Test_NanoTDF_Obligations() {
 				tdfData = plaintextPolicyTDF
 			}
 			reader := bytes.NewReader(tdfData)
-			nanoReader, err := sdk.LoadNanoTDF(reader, WithNanoTDFFulfillableObligationFQNs(tc.fulfillableObligations), WithNanoIgnoreAllowlist(true))
+			nanoReader, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoTDFFulfillableObligationFQNs(tc.fulfillableObligations), WithNanoIgnoreAllowlist(true))
 			s.Require().NoError(err)
 			nanoReader.authV2Client = fakeAuthz
 

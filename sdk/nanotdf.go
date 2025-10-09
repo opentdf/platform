@@ -923,7 +923,7 @@ func (n *NanoTDFDecryptHandler) Decrypt(ctx context.Context, result []kaoResult)
 // 2. Store obligations triggered during decrypting a file
 
 // No current way to return obligations for NanoTDF, since there is no reader.
-func (s SDK) LoadNanoTDF(reader io.ReadSeeker, opts ...NanoTDFReaderOption) (*NanoTDFReader, error) {
+func (s SDK) LoadNanoTDF(ctx context.Context, reader io.ReadSeeker, opts ...NanoTDFReaderOption) (*NanoTDFReader, error) {
 	nanoTdfReaderConfig, err := newNanoTDFReaderConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("newNanoTDFReaderConfig failed: %w", err)
@@ -940,7 +940,7 @@ func (s SDK) LoadNanoTDF(reader io.ReadSeeker, opts ...NanoTDFReaderOption) (*Na
 				return nil, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
 			}
 			// retrieve the registered kases if not provided
-			allowList, err := allowListFromKASRegistry(context.Background(), s.logger, s.KeyAccessServerRegistry, platformEndpoint)
+			allowList, err := allowListFromKASRegistry(ctx, s.logger, s.KeyAccessServerRegistry, platformEndpoint)
 			if err != nil {
 				return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
 			}
@@ -996,7 +996,7 @@ func (s SDK) ReadNanoTDF(writer io.Writer, reader io.ReadSeeker, opts ...NanoTDF
 
 // ReadNanoTDFContext - allows cancelling the reader
 func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker, opts ...NanoTDFReaderOption) (int, error) {
-	r, err := s.LoadNanoTDF(reader, opts...) //nolint:contextcheck // context not needed for loading
+	r, err := s.LoadNanoTDF(ctx, reader, opts...)
 	if err != nil {
 		return 0, fmt.Errorf("LoadNanoTDF: %w", err)
 	}

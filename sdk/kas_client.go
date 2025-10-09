@@ -201,9 +201,8 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRew
 		policyResults := make(map[string]policyResult)
 		err = errors.New("nanoUnwrap: session public key is empty")
 		for _, results := range response.GetResponses() {
-			var policyRes policyResult
-			var ok bool
-			if policyRes, ok = policyResults[results.GetPolicyId()]; !ok {
+			policyRes, ok := policyResults[results.GetPolicyId()]
+			if !ok {
 				policyRes = policyResult{policyID: results.GetPolicyId(), obligations: []string{}, kaoRes: []kaoResult{}}
 			}
 			for _, kao := range results.GetResults() {
@@ -237,9 +236,8 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRew
 
 	policyResults := make(map[string]policyResult)
 	for _, results := range response.GetResponses() {
-		var policyRes policyResult
-		var ok bool
-		if policyRes, ok = policyResults[results.GetPolicyId()]; !ok {
+		policyRes, ok := policyResults[results.GetPolicyId()]
+		if !ok {
 			policyRes = policyResult{policyID: results.GetPolicyId(), obligations: []string{}, kaoRes: []kaoResult{}}
 		}
 		for _, kao := range results.GetResults() {
@@ -330,7 +328,6 @@ func (k *KASClient) processECResponse(response *kas.RewrapResponse, aesGcm ocryp
 	return policyResults, nil
 }
 
-// ! Consider refactoring so we don't have to unmarshal for each policy
 func (k *KASClient) retrieveObligationsFromMetadata(metadata map[string]*structpb.Value, policyID string) []string {
 	var triggeredFQNs []string
 

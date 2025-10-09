@@ -280,7 +280,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 	// get the attribute ids for the values were mapping to the client
 	var attributeValueIDs []string
 	fqnResp, err := client.Attributes.GetAttributeValuesByFqns(context.Background(), &attributes.GetAttributeValuesByFqnsRequest{
-		Fqns:      attributesToMap,
+		Fqns: attributesToMap,
 	})
 	if err != nil {
 		slog.Error("get attribute values by fqn ", slog.String("error", err.Error()))

@@ -61,6 +61,8 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					}
 				}
 
+				var kmgrNames []string
+
 				if kasCfg.Preview.KeyManagement {
 					srp.Logger.Info("preview feature: key management is enabled")
 
@@ -75,10 +77,10 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURL.String(), srp.Logger), srp.Logger, cacheClient)
 					for _, manager := range srp.KeyManagerFactories {
 						p.KeyDelegator.RegisterKeyManager(manager.Name, manager.Factory)
+						kmgrNames = append(kmgrNames, manager.Name)
 					}
 
 					// Register Basic Key Manager
-
 					p.KeyDelegator.RegisterKeyManager(security.BasicManagerName, func(opts *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
 						bm, err := security.NewBasicManager(opts.Logger, opts.Cache, kasCfg.RootKey)
 						if err != nil {
@@ -86,6 +88,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 						}
 						return bm, nil
 					})
+					kmgrNames = append(kmgrNames, security.BasicManagerName)
 					// Explicitly set the default manager for session key generation.
 					// This should be configurable, e.g., defaulting to BasicManager or an HSM if available.
 					p.KeyDelegator.SetDefaultMode(security.BasicManagerName) // Example: default to BasicManager
@@ -102,7 +105,9 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					})
 					// Set default for non-key-management mode
 					p.KeyDelegator.SetDefaultMode(inProcessService.Name())
+					kmgrNames = append(kmgrNames, inProcessService.Name())
 				}
+				srp.Logger.Info("kas registered trust.KeyManagers", slog.Any("key_managers", kmgrNames))
 
 				p.SDK = srp.SDK
 				p.Logger = srp.Logger

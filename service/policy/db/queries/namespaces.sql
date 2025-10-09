@@ -100,7 +100,7 @@ WHERE namespace_id = $1 AND key_access_server_id = $2;
 -- name: assignPublicKeyToNamespace :one
 INSERT INTO attribute_namespace_public_key_map (namespace_id, key_access_server_key_id)
 VALUES ($1, $2)
-RETURNING *;
+RETURNING namespace_id, key_access_server_key_id;
 
 -- name: removePublicKeyFromNamespace :execrows
 DELETE FROM attribute_namespace_public_key_map
@@ -135,7 +135,7 @@ DELETE FROM certificates WHERE id = $1;
 -- name: assignCertificateToNamespace :one
 INSERT INTO attribute_namespace_certificates (namespace_id, certificate_id)
 VALUES ($1, $2)
-RETURNING *;
+RETURNING namespace_id, certificate_id;
 
 -- name: removeCertificateFromNamespace :execrows
 DELETE FROM attribute_namespace_certificates

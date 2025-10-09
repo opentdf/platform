@@ -83,11 +83,11 @@ type NamespaceServiceClient interface {
 	CreateNamespace(context.Context, *connect.Request[namespaces.CreateNamespaceRequest]) (*connect.Response[namespaces.CreateNamespaceResponse], error)
 	UpdateNamespace(context.Context, *connect.Request[namespaces.UpdateNamespaceRequest]) (*connect.Response[namespaces.UpdateNamespaceResponse], error)
 	DeactivateNamespace(context.Context, *connect.Request[namespaces.DeactivateNamespaceRequest]) (*connect.Response[namespaces.DeactivateNamespaceResponse], error)
-	// deprecated: utilize AssignPublicKeyToNamespace
+	// Deprecated: utilize AssignPublicKeyToNamespace
 	//
 	// Deprecated: do not use.
 	AssignKeyAccessServerToNamespace(context.Context, *connect.Request[namespaces.AssignKeyAccessServerToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyAccessServerToNamespaceResponse], error)
-	// deprecated: utilize RemovePublicKeyFromNamespace
+	// Deprecated: utilize RemovePublicKeyFromNamespace
 	//
 	// Deprecated: do not use.
 	RemoveKeyAccessServerFromNamespace(context.Context, *connect.Request[namespaces.RemoveKeyAccessServerFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyAccessServerFromNamespaceResponse], error)
@@ -239,11 +239,11 @@ type NamespaceServiceHandler interface {
 	CreateNamespace(context.Context, *connect.Request[namespaces.CreateNamespaceRequest]) (*connect.Response[namespaces.CreateNamespaceResponse], error)
 	UpdateNamespace(context.Context, *connect.Request[namespaces.UpdateNamespaceRequest]) (*connect.Response[namespaces.UpdateNamespaceResponse], error)
 	DeactivateNamespace(context.Context, *connect.Request[namespaces.DeactivateNamespaceRequest]) (*connect.Response[namespaces.DeactivateNamespaceResponse], error)
-	// deprecated: utilize AssignPublicKeyToNamespace
+	// Deprecated: utilize AssignPublicKeyToNamespace
 	//
 	// Deprecated: do not use.
 	AssignKeyAccessServerToNamespace(context.Context, *connect.Request[namespaces.AssignKeyAccessServerToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyAccessServerToNamespaceResponse], error)
-	// deprecated: utilize RemovePublicKeyFromNamespace
+	// Deprecated: utilize RemovePublicKeyFromNamespace
 	//
 	// Deprecated: do not use.
 	RemoveKeyAccessServerFromNamespace(context.Context, *connect.Request[namespaces.RemoveKeyAccessServerFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyAccessServerFromNamespaceResponse], error)

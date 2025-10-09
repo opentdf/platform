@@ -135,19 +135,19 @@ type AttributesServiceClient interface {
 	CreateAttributeValue(context.Context, *connect.Request[attributes.CreateAttributeValueRequest]) (*connect.Response[attributes.CreateAttributeValueResponse], error)
 	UpdateAttributeValue(context.Context, *connect.Request[attributes.UpdateAttributeValueRequest]) (*connect.Response[attributes.UpdateAttributeValueResponse], error)
 	DeactivateAttributeValue(context.Context, *connect.Request[attributes.DeactivateAttributeValueRequest]) (*connect.Response[attributes.DeactivateAttributeValueResponse], error)
-	// deprecated: utilize AssignPublicKeyToAttribute
+	// Deprecated: utilize AssignPublicKeyToAttribute
 	//
 	// Deprecated: do not use.
 	AssignKeyAccessServerToAttribute(context.Context, *connect.Request[attributes.AssignKeyAccessServerToAttributeRequest]) (*connect.Response[attributes.AssignKeyAccessServerToAttributeResponse], error)
-	// deprecated: utilize RemovePublicKeyFromAttribute
+	// Deprecated: utilize RemovePublicKeyFromAttribute
 	//
 	// Deprecated: do not use.
 	RemoveKeyAccessServerFromAttribute(context.Context, *connect.Request[attributes.RemoveKeyAccessServerFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromAttributeResponse], error)
-	// deprecated: utilize AssignPublicKeyToValue
+	// Deprecated: utilize AssignPublicKeyToValue
 	//
 	// Deprecated: do not use.
 	AssignKeyAccessServerToValue(context.Context, *connect.Request[attributes.AssignKeyAccessServerToValueRequest]) (*connect.Response[attributes.AssignKeyAccessServerToValueResponse], error)
-	// deprecated: utilize RemovePublicKeyFromValue
+	// Deprecated: utilize RemovePublicKeyFromValue
 	//
 	// Deprecated: do not use.
 	RemoveKeyAccessServerFromValue(context.Context, *connect.Request[attributes.RemoveKeyAccessServerFromValueRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromValueResponse], error)
@@ -439,19 +439,19 @@ type AttributesServiceHandler interface {
 	CreateAttributeValue(context.Context, *connect.Request[attributes.CreateAttributeValueRequest]) (*connect.Response[attributes.CreateAttributeValueResponse], error)
 	UpdateAttributeValue(context.Context, *connect.Request[attributes.UpdateAttributeValueRequest]) (*connect.Response[attributes.UpdateAttributeValueResponse], error)
 	DeactivateAttributeValue(context.Context, *connect.Request[attributes.DeactivateAttributeValueRequest]) (*connect.Response[attributes.DeactivateAttributeValueResponse], error)
-	// deprecated: utilize AssignPublicKeyToAttribute
+	// Deprecated: utilize AssignPublicKeyToAttribute
 	//
 	// Deprecated: do not use.
 	AssignKeyAccessServerToAttribute(context.Context, *connect.Request[attributes.AssignKeyAccessServerToAttributeRequest]) (*connect.Response[attributes.AssignKeyAccessServerToAttributeResponse], error)
-	// deprecated: utilize RemovePublicKeyFromAttribute
+	// Deprecated: utilize RemovePublicKeyFromAttribute
 	//
 	// Deprecated: do not use.
 	RemoveKeyAccessServerFromAttribute(context.Context, *connect.Request[attributes.RemoveKeyAccessServerFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromAttributeResponse], error)
-	// deprecated: utilize AssignPublicKeyToValue
+	// Deprecated: utilize AssignPublicKeyToValue
 	//
 	// Deprecated: do not use.
 	AssignKeyAccessServerToValue(context.Context, *connect.Request[attributes.AssignKeyAccessServerToValueRequest]) (*connect.Response[attributes.AssignKeyAccessServerToValueResponse], error)
-	// deprecated: utilize RemovePublicKeyFromValue
+	// Deprecated: utilize RemovePublicKeyFromValue
 	//
 	// Deprecated: do not use.
 	RemoveKeyAccessServerFromValue(context.Context, *connect.Request[attributes.RemoveKeyAccessServerFromValueRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromValueResponse], error)

@@ -384,7 +384,7 @@ type GetAttributeRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// deprecated: utilize identifier
+	// Deprecated: utilize identifier
 	//
 	// Deprecated: Marked as deprecated in policy/attributes/attributes.proto.
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -868,7 +868,7 @@ type GetAttributeValueRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// deprecated: utilize identifier
+	// Deprecated: utilize identifier
 	//
 	// Deprecated: Marked as deprecated in policy/attributes/attributes.proto.
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -1545,7 +1545,7 @@ func (x *GetAttributeValuesByFqnsResponse) GetFqnAttributeValues() map[string]*G
 	return nil
 }
 
-// deprecated: utilize AssignPublicKeyToAttributeRequest
+// Deprecated: utilize AssignPublicKeyToAttributeRequest
 //
 // Deprecated: Marked as deprecated in policy/attributes/attributes.proto.
 type AssignKeyAccessServerToAttributeRequest struct {
@@ -1644,7 +1644,7 @@ func (x *AssignKeyAccessServerToAttributeResponse) GetAttributeKeyAccessServer()
 	return nil
 }
 
-// deprecated: utilize RemovePublicKeyFromAttributeRequest
+// Deprecated: utilize RemovePublicKeyFromAttributeRequest
 //
 // Deprecated: Marked as deprecated in policy/attributes/attributes.proto.
 type RemoveKeyAccessServerFromAttributeRequest struct {
@@ -1743,7 +1743,7 @@ func (x *RemoveKeyAccessServerFromAttributeResponse) GetAttributeKeyAccessServer
 	return nil
 }
 
-// deprecated: utilize AssignPublicKeyToValueRequest
+// Deprecated: utilize AssignPublicKeyToValueRequest
 //
 // Deprecated: Marked as deprecated in policy/attributes/attributes.proto.
 type AssignKeyAccessServerToValueRequest struct {
@@ -1842,7 +1842,7 @@ func (x *AssignKeyAccessServerToValueResponse) GetValueKeyAccessServer() *ValueK
 	return nil
 }
 
-// deprecated: utilize RemovePublicKeyFromValueRequest
+// Deprecated: utilize RemovePublicKeyFromValueRequest
 //
 // Deprecated: Marked as deprecated in policy/attributes/attributes.proto.
 type RemoveKeyAccessServerFromValueRequest struct {

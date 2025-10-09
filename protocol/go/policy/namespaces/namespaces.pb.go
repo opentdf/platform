@@ -696,7 +696,7 @@ func (*DeactivateNamespaceResponse) Descriptor() ([]byte, []int) {
 	return file_policy_namespaces_namespaces_proto_rawDescGZIP(), []int{11}
 }
 
-// deprecated: utilize AssignPublicKeyToNamespaceRequest
+// Deprecated: utilize AssignPublicKeyToNamespaceRequest
 //
 // Deprecated: Marked as deprecated in policy/namespaces/namespaces.proto.
 type AssignKeyAccessServerToNamespaceRequest struct {
@@ -793,7 +793,7 @@ func (x *AssignKeyAccessServerToNamespaceResponse) GetNamespaceKeyAccessServer()
 	return nil
 }
 
-// deprecated: utilize RemovePublicKeyFromNamespaceRequest
+// Deprecated: utilize RemovePublicKeyFromNamespaceRequest
 //
 // Deprecated: Marked as deprecated in policy/namespaces/namespaces.proto.
 type RemoveKeyAccessServerFromNamespaceRequest struct {

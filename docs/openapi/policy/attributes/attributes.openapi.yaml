@@ -402,7 +402,7 @@ paths:
       tags:
         - policy.attributes.AttributesService
       summary: AssignKeyAccessServerToAttribute
-      description: 'deprecated: utilize AssignPublicKeyToAttribute'
+      description: 'Deprecated: utilize AssignPublicKeyToAttribute'
       operationId: policy.attributes.AttributesService.AssignKeyAccessServerToAttribute
       parameters:
         - name: Connect-Protocol-Version
@@ -439,7 +439,7 @@ paths:
       tags:
         - policy.attributes.AttributesService
       summary: RemoveKeyAccessServerFromAttribute
-      description: 'deprecated: utilize RemovePublicKeyFromAttribute'
+      description: 'Deprecated: utilize RemovePublicKeyFromAttribute'
       operationId: policy.attributes.AttributesService.RemoveKeyAccessServerFromAttribute
       parameters:
         - name: Connect-Protocol-Version
@@ -476,7 +476,7 @@ paths:
       tags:
         - policy.attributes.AttributesService
       summary: AssignKeyAccessServerToValue
-      description: 'deprecated: utilize AssignPublicKeyToValue'
+      description: 'Deprecated: utilize AssignPublicKeyToValue'
       operationId: policy.attributes.AttributesService.AssignKeyAccessServerToValue
       parameters:
         - name: Connect-Protocol-Version
@@ -513,7 +513,7 @@ paths:
       tags:
         - policy.attributes.AttributesService
       summary: RemoveKeyAccessServerFromValue
-      description: 'deprecated: utilize RemovePublicKeyFromValue'
+      description: 'Deprecated: utilize RemovePublicKeyFromValue'
       operationId: policy.attributes.AttributesService.RemoveKeyAccessServerFromValue
       parameters:
         - name: Connect-Protocol-Version
@@ -1559,7 +1559,7 @@ components:
           $ref: '#/components/schemas/policy.attributes.AttributeKeyAccessServer'
       title: AssignKeyAccessServerToAttributeRequest
       additionalProperties: false
-      description: 'deprecated: utilize AssignPublicKeyToAttributeRequest'
+      description: 'Deprecated: utilize AssignPublicKeyToAttributeRequest'
     policy.attributes.AssignKeyAccessServerToAttributeResponse:
       type: object
       properties:
@@ -1577,7 +1577,7 @@ components:
           $ref: '#/components/schemas/policy.attributes.ValueKeyAccessServer'
       title: AssignKeyAccessServerToValueRequest
       additionalProperties: false
-      description: 'deprecated: utilize AssignPublicKeyToValueRequest'
+      description: 'Deprecated: utilize AssignPublicKeyToValueRequest'
     policy.attributes.AssignKeyAccessServerToValueResponse:
       type: object
       properties:
@@ -1812,7 +1812,7 @@ components:
           type: string
           title: id
           format: uuid
-          description: 'deprecated: utilize identifier'
+          description: 'Deprecated: utilize identifier'
           deprecated: true
       title: GetAttributeRequest
       additionalProperties: false
@@ -1861,7 +1861,7 @@ components:
           type: string
           title: id
           format: uuid
-          description: 'deprecated: utilize identifier'
+          description: 'Deprecated: utilize identifier'
           deprecated: true
       title: GetAttributeValueRequest
       additionalProperties: false
@@ -2014,7 +2014,7 @@ components:
           $ref: '#/components/schemas/policy.attributes.AttributeKeyAccessServer'
       title: RemoveKeyAccessServerFromAttributeRequest
       additionalProperties: false
-      description: 'deprecated: utilize RemovePublicKeyFromAttributeRequest'
+      description: 'Deprecated: utilize RemovePublicKeyFromAttributeRequest'
     policy.attributes.RemoveKeyAccessServerFromAttributeResponse:
       type: object
       properties:
@@ -2032,7 +2032,7 @@ components:
           $ref: '#/components/schemas/policy.attributes.ValueKeyAccessServer'
       title: RemoveKeyAccessServerFromValueRequest
       additionalProperties: false
-      description: 'deprecated: utilize RemovePublicKeyFromValueRequest'
+      description: 'Deprecated: utilize RemovePublicKeyFromValueRequest'
     policy.attributes.RemoveKeyAccessServerFromValueResponse:
       type: object
       properties:

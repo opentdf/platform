@@ -93,7 +93,7 @@ message GetAttributeRequest {
     message: "Either id or one of attribute_id or fqn must be set"
   };
 
-  // deprecated: utilize identifier
+  // Deprecated: utilize identifier
   string id = 1 [
     deprecated = true,
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
@@ -189,7 +189,7 @@ message GetAttributeValueRequest {
     message: "Either id or one of value_id or fqn must be set"
   };
 
-  // deprecated: utilize identifier
+  // Deprecated: utilize identifier
   string id = 1 [
     deprecated = true,
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
@@ -300,7 +300,7 @@ message GetAttributeValuesByFqnsResponse {
    Assign Key Access Server (KAS Grant) to Attribute and Value
 */
 
-// deprecated: utilize AssignPublicKeyToAttributeRequest
+// Deprecated: utilize AssignPublicKeyToAttributeRequest
 message AssignKeyAccessServerToAttributeRequest {
   option deprecated = true;
 
@@ -313,7 +313,7 @@ message AssignKeyAccessServerToAttributeResponse {
   AttributeKeyAccessServer attribute_key_access_server = 1;
 }
 
-// deprecated: utilize RemovePublicKeyFromAttributeRequest
+// Deprecated: utilize RemovePublicKeyFromAttributeRequest
 message RemoveKeyAccessServerFromAttributeRequest {
   option deprecated = true;
   // Required
@@ -325,7 +325,7 @@ message RemoveKeyAccessServerFromAttributeResponse {
   AttributeKeyAccessServer attribute_key_access_server = 1;
 }
 
-// deprecated: utilize AssignPublicKeyToValueRequest
+// Deprecated: utilize AssignPublicKeyToValueRequest
 message AssignKeyAccessServerToValueRequest {
   option deprecated = true;
   // Required
@@ -337,7 +337,7 @@ message AssignKeyAccessServerToValueResponse {
   ValueKeyAccessServer value_key_access_server = 1;
 }
 
-// deprecated: utilize RemovePublicKeyFromValueRequest
+// Deprecated: utilize RemovePublicKeyFromValueRequest
 message RemoveKeyAccessServerFromValueRequest {
   option deprecated = true;
   // Required
@@ -437,22 +437,22 @@ service AttributesService {
   /*--------------------------------------*
    * Attribute <> Key Access Server RPCs
    *---------------------------------------*/
-  // deprecated: utilize AssignPublicKeyToAttribute
+  // Deprecated: utilize AssignPublicKeyToAttribute
   rpc AssignKeyAccessServerToAttribute(AssignKeyAccessServerToAttributeRequest) returns (AssignKeyAccessServerToAttributeResponse) {
     option deprecated = true;
   }
 
-  // deprecated: utilize RemovePublicKeyFromAttribute
+  // Deprecated: utilize RemovePublicKeyFromAttribute
   rpc RemoveKeyAccessServerFromAttribute(RemoveKeyAccessServerFromAttributeRequest) returns (RemoveKeyAccessServerFromAttributeResponse) {
     option deprecated = true;
   }
 
-  // deprecated: utilize AssignPublicKeyToValue
+  // Deprecated: utilize AssignPublicKeyToValue
   rpc AssignKeyAccessServerToValue(AssignKeyAccessServerToValueRequest) returns (AssignKeyAccessServerToValueResponse) {
     option deprecated = true;
   }
 
-  // deprecated: utilize RemovePublicKeyFromValue
+  // Deprecated: utilize RemovePublicKeyFromValue
   rpc RemoveKeyAccessServerFromValue(RemoveKeyAccessServerFromValueRequest) returns (RemoveKeyAccessServerFromValueResponse) {
     option deprecated = true;
   }

@@ -182,7 +182,7 @@ paths:
       tags:
         - policy.namespaces.NamespaceService
       summary: AssignKeyAccessServerToNamespace
-      description: 'deprecated: utilize AssignPublicKeyToNamespace'
+      description: 'Deprecated: utilize AssignPublicKeyToNamespace'
       operationId: policy.namespaces.NamespaceService.AssignKeyAccessServerToNamespace
       parameters:
         - name: Connect-Protocol-Version
@@ -219,7 +219,7 @@ paths:
       tags:
         - policy.namespaces.NamespaceService
       summary: RemoveKeyAccessServerFromNamespace
-      description: 'deprecated: utilize RemovePublicKeyFromNamespace'
+      description: 'Deprecated: utilize RemovePublicKeyFromNamespace'
       operationId: policy.namespaces.NamespaceService.RemoveKeyAccessServerFromNamespace
       parameters:
         - name: Connect-Protocol-Version
@@ -767,7 +767,7 @@ components:
           $ref: '#/components/schemas/policy.namespaces.NamespaceKeyAccessServer'
       title: AssignKeyAccessServerToNamespaceRequest
       additionalProperties: false
-      description: 'deprecated: utilize AssignPublicKeyToNamespaceRequest'
+      description: 'Deprecated: utilize AssignPublicKeyToNamespaceRequest'
     policy.namespaces.AssignKeyAccessServerToNamespaceResponse:
       type: object
       properties:
@@ -958,7 +958,7 @@ components:
           $ref: '#/components/schemas/policy.namespaces.NamespaceKeyAccessServer'
       title: RemoveKeyAccessServerFromNamespaceRequest
       additionalProperties: false
-      description: 'deprecated: utilize RemovePublicKeyFromNamespaceRequest'
+      description: 'Deprecated: utilize RemovePublicKeyFromNamespaceRequest'
     policy.namespaces.RemoveKeyAccessServerFromNamespaceResponse:
       type: object
       properties:

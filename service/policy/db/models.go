@@ -243,8 +243,8 @@ type BaseKey struct {
 type Certificate struct {
 	// Unique identifier for the certificate
 	ID string `json:"id"`
-	// x5c format - Base64-encoded DER certificate (not PEM; no headers/footers)
-	X5c string `json:"x5c"`
+	// PEM format - Base64-encoded DER certificate (not PEM; no headers/footers)
+	Pem string `json:"pem"`
 	// Indicates whether this is a root certificate (true) or intermediate/leaf certificate (false)
 	IsRoot bool `json:"is_root"`
 	// Optional metadata for the certificate

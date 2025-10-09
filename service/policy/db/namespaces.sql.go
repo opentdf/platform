@@ -59,13 +59,13 @@ func (q *Queries) assignPublicKeyToNamespace(ctx context.Context, arg assignPubl
 
 const createCertificate = `-- name: createCertificate :one
 
-INSERT INTO certificates (x5c, is_root, metadata)
+INSERT INTO certificates (pem, is_root, metadata)
 VALUES ($1, COALESCE($2::BOOLEAN, TRUE), $3)
 RETURNING id
 `
 
 type createCertificateParams struct {
-	X5c      string      `json:"x5c"`
+	Pem      string      `json:"pem"`
 	IsRoot   pgtype.Bool `json:"is_root"`
 	Metadata []byte      `json:"metadata"`
 }
@@ -74,11 +74,11 @@ type createCertificateParams struct {
 // CERTIFICATES
 // --------------------------------------------------------------
 //
-//	INSERT INTO certificates (x5c, is_root, metadata)
+//	INSERT INTO certificates (pem, is_root, metadata)
 //	VALUES ($1, COALESCE($2::BOOLEAN, TRUE), $3)
 //	RETURNING id
 func (q *Queries) createCertificate(ctx context.Context, arg createCertificateParams) (string, error) {
-	row := q.db.QueryRow(ctx, createCertificate, arg.X5c, arg.IsRoot, arg.Metadata)
+	row := q.db.QueryRow(ctx, createCertificate, arg.Pem, arg.IsRoot, arg.Metadata)
 	var id string
 	err := row.Scan(&id)
 	return id, err
@@ -140,7 +140,7 @@ func (q *Queries) deleteNamespace(ctx context.Context, id string) (int64, error)
 const getCertificate = `-- name: getCertificate :one
 SELECT
     id,
-    x5c,
+    pem,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 FROM certificates
 WHERE id = $1
@@ -148,7 +148,7 @@ WHERE id = $1
 
 type getCertificateRow struct {
 	ID       string `json:"id"`
-	X5c      string `json:"x5c"`
+	Pem      string `json:"pem"`
 	Metadata []byte `json:"metadata"`
 }
 
@@ -156,14 +156,14 @@ type getCertificateRow struct {
 //
 //	SELECT
 //	    id,
-//	    x5c,
+//	    pem,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 //	FROM certificates
 //	WHERE id = $1
 func (q *Queries) getCertificate(ctx context.Context, id string) (getCertificateRow, error) {
 	row := q.db.QueryRow(ctx, getCertificate, id)
 	var i getCertificateRow
-	err := row.Scan(&i.ID, &i.X5c, &i.Metadata)
+	err := row.Scan(&i.ID, &i.Pem, &i.Metadata)
 	return i, err
 }
 
@@ -211,7 +211,7 @@ LEFT JOIN (
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
                 'id', cert.id,
-                'x5c', cert.x5c
+                'pem', cert.pem
             )
         ) FILTER (WHERE cert.id IS NOT NULL) AS certs
     FROM attribute_namespace_certificates c
@@ -285,7 +285,7 @@ type getNamespaceRow struct {
 //	        JSONB_AGG(
 //	            DISTINCT JSONB_BUILD_OBJECT(
 //	                'id', cert.id,
-//	                'x5c', cert.x5c
+//	                'pem', cert.pem
 //	            )
 //	        ) FILTER (WHERE cert.id IS NOT NULL) AS certs
 //	    FROM attribute_namespace_certificates c

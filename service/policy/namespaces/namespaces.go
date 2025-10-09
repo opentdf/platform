@@ -296,7 +296,7 @@ func (ns NamespacesService) AssignCertificateToNamespace(ctx context.Context, r 
 	rsp := &namespaces.AssignCertificateToNamespaceResponse{}
 
 	namespaceIdentifier := r.Msg.GetNamespace()
-	x5c := r.Msg.GetX5C()
+	pem := r.Msg.GetPem()
 	metadata := r.Msg.GetMetadata()
 
 	// Get string representation for audit log (either ID or FQN)
@@ -311,11 +311,11 @@ func (ns NamespacesService) AssignCertificateToNamespace(ctx context.Context, r 
 		ObjectID:   auditObjectID,
 	}
 
-	// Validate x5c is valid base64-encoded DER certificate
-	derBytes, err := base64.StdEncoding.DecodeString(x5c)
+	// Validate PEM is valid base64-encoded DER certificate
+	derBytes, err := base64.StdEncoding.DecodeString(pem)
 	if err != nil {
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, ns.logger, err, "Invalid x5c format: must be base64-encoded")
+		return nil, db.StatusifyError(ctx, ns.logger, err, "Invalid PEM format: must be base64-encoded")
 	}
 
 	// Validate it's a valid X.509 certificate
@@ -334,7 +334,7 @@ func (ns NamespacesService) AssignCertificateToNamespace(ctx context.Context, r 
 
 	// Create and assign certificate in a transaction
 	// This ensures that if assignment fails, certificate creation is rolled back
-	certID, err := ns.dbClient.CreateAndAssignCertificateToNamespace(ctx, namespaceIdentifier, x5c, true, metadataJSON)
+	certID, err := ns.dbClient.CreateAndAssignCertificateToNamespace(ctx, namespaceIdentifier, pem, true, metadataJSON)
 	if err != nil {
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, ns.logger, err, "Failed to create and assign certificate")
@@ -348,7 +348,7 @@ func (ns NamespacesService) AssignCertificateToNamespace(ctx context.Context, r 
 	}
 	rsp.Certificate = &policy.Certificate{
 		Id:  certID,
-		X5C: x5c,
+		Pem: pem,
 	}
 
 	return connect.NewResponse(rsp), nil

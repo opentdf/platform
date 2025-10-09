@@ -56,8 +56,8 @@ message Namespace {
 message Certificate {
   // generated uuid in database
   string id = 1;
-  // x5c format - An array of base64-encoded DER certificates (not PEM; no headers/footers)
-  string x5c = 2;
+  // PEM format certificate
+  string pem = 2;
 }
 
 message Attribute {

@@ -186,8 +186,8 @@ message NamespaceCertificate {
 message AssignCertificateToNamespaceRequest {
   // Required - namespace identifier (id or fqn)
   common.IdFqnIdentifier namespace = 1 [(buf.validate.field).required = true];
-  // Required - x5c format certificate (base64-encoded DER)
-  string x5c = 2 [(buf.validate.field).required = true];
+  // Required - PEM format certificate
+  string pem = 2 [(buf.validate.field).required = true];
   // Optional
   common.MetadataMutable metadata = 100;
 }

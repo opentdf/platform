@@ -401,8 +401,21 @@ func Test_RemovePublicKeyFromNamespace(t *testing.T) {
 
 func Test_AssignCertificateToNamespace(t *testing.T) {
 	const (
-		// Valid x5c certificate (base64-encoded DER)
-		validX5C = "MIICjTCCAhSgAwIBAgIIdebfy8FoW6gwCgYIKoZIzj0EAwIwfDELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNBMRYwFAYDVQQHDA1TYW4gRnJhbmNpc2NvMRkwFwYDVQQKDBBvcGVudGRmLm9yZyBJbmMxDTALBgNVBAsMBFRlc3QxHjAcBgNVBAMMFW9wZW50ZGYub3JnIFRlc3QgQ0EwHhcNMjMwMTA0MTcwMDAwWhcNMzMwMTA0MTcwMDAwWjB8MQswCQYDVQQGEwJVUzELMAkGA1UECAwCQ0ExFjAUBgNVBAcMDVNhbiBGcmFuY2lzY28xGTAXBgNVBAoMEG9wZW50ZGYub3JnIEluYzENMAsGA1UECwwEVGVzdDEeMBwGA1UEAwwVb3BlbnRkZi5vcmcgVGVzdCBDQTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJxnFtjHhP+oVPXm/hj/mZzzsKfKlF0vCL0eMR0K+Pp4OqEWVe0KN6FZPDGz7zKcrmqU5TXnNJ9YI9U6d0hJDyCjUzBRMB0GA1UdDgQWBBQVFzPXe9XHOD+UGpnL8N6m7w7fYDAfBgNVHSMEGDAWgBQVFzPXe9XHOD+UGpnL8N6m7w7fYDAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0cAMEQCIFBEa8VPY9xJfMPNDGR8g7mFPHvxNKCNUZk8ooLjkVsVAiBZONcH5dDCr+fRGUnXjqWN0v+ZCVEoQr8vMrZBPf3KOQ=="
+		// Valid PEM certificate
+		validPem = `-----BEGIN CERTIFICATE-----
+MIICjTCCAhSgAwIBAgIIdebfy8FoW6gwCgYIKoZIzj0EAwIwfDELMAkGA1UEBhMC
+VVMxCzAJBgNVBAgMAkNBMRYwFAYDVQQHDA1TYW4gRnJhbmNpc2NvMRkwFwYDVQQK
+DBBvcGVudGRmLm9yZyBJbmMxDTALBgNVBAsMBFRlc3QxHjAcBgNVBAMMFW9wZW50
+ZGYub3JnIFRlc3QgQ0EwHhcNMjMwMTA0MTcwMDAwWhcNMzMwMTA0MTcwMDAwWjB8
+MQswCQYDVQQGEwJVUzELMAkGA1UECAwCQ0ExFjAUBgNVBAcMDVNhbiBGcmFuY2lz
+Y28xGTAXBgNVBAoMEG9wZW50ZGYub3JnIEluYzENMAsGA1UECwwEVGVzdDEeMBwG
+A1UEAwwVb3BlbnRkZi5vcmcgVGVzdCBDQTBZMBMGByqGSM49AgEGCCqGSM49AwEH
+A0IABJxnFtjHhP+oVPXm/hj/mZzzsKfKlF0vCL0eMR0K+Pp4OqEWVe0KN6FZPDGz
+7zKcrmqU5TXnNJ9YI9U6d0hJDyCjUzBRMB0GA1UdDgQWBBQVFzPXe9XHOD+UGpnL
+8N6m7w7fYDAfBgNVHSMEGDAWgBQVFzPXe9XHOD+UGpnL8N6m7w7fYDAPBgNVHRMB
+Af8EBTADAQH/MAoGCCqGSM49BAMCA0cAMEQCIFBEa8VPY9xJfMPNDGR8g7mFPHvx
+NKCNUZk8ooLjkVsVAiBZONcH5dDCr+fRGUnXjqWN0v+ZCVEoQr8vMrZBPf3KOQ==
+-----END CERTIFICATE-----`
 	)
 
 	testCases := []struct {
@@ -418,17 +431,17 @@ func Test_AssignCertificateToNamespace(t *testing.T) {
 			errorMessage: "namespace",
 		},
 		{
-			name: "Invalid - Missing x5c",
+			name: "Invalid - Missing pem",
 			req: &namespaces.AssignCertificateToNamespaceRequest{
 				Namespace: &common.IdFqnIdentifier{Id: validUUID},
 			},
 			expectError:  true,
-			errorMessage: "x5c",
+			errorMessage: "pem",
 		},
 		{
 			name: "Invalid - Missing namespace ID",
 			req: &namespaces.AssignCertificateToNamespaceRequest{
-				X5C: validX5C,
+				Pem: validPem,
 			},
 			expectError:  true,
 			errorMessage: "namespace",
@@ -437,7 +450,7 @@ func Test_AssignCertificateToNamespace(t *testing.T) {
 			name: "Invalid - Bad namespace UUID",
 			req: &namespaces.AssignCertificateToNamespaceRequest{
 				Namespace: &common.IdFqnIdentifier{Id: "not-a-uuid"},
-				X5C:       validX5C,
+				Pem:       validPem,
 			},
 			expectError:  true,
 			errorMessage: errMessageUUID,
@@ -446,7 +459,7 @@ func Test_AssignCertificateToNamespace(t *testing.T) {
 			name: "Valid - All fields present",
 			req: &namespaces.AssignCertificateToNamespaceRequest{
 				Namespace: &common.IdFqnIdentifier{Id: validUUID},
-				X5C:       validX5C,
+				Pem:       validPem,
 			},
 			expectError: false,
 		},
@@ -454,7 +467,7 @@ func Test_AssignCertificateToNamespace(t *testing.T) {
 			name: "Valid - With metadata",
 			req: &namespaces.AssignCertificateToNamespaceRequest{
 				Namespace: &common.IdFqnIdentifier{Id: validUUID},
-				X5C:       validX5C,
+				Pem:       validPem,
 				Metadata: &common.MetadataMutable{
 					Labels: map[string]string{"source": "test"},
 				},

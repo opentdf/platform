@@ -398,9 +398,9 @@ func (c PolicyDBClient) RemovePublicKeyFromNamespace(ctx context.Context, k *nam
 }
 
 // CreateCertificate creates a new certificate in the database
-func (c PolicyDBClient) CreateCertificate(ctx context.Context, x5c string, isRoot bool, metadata []byte) (string, error) {
+func (c PolicyDBClient) CreateCertificate(ctx context.Context, pem string, isRoot bool, metadata []byte) (string, error) {
 	certID, err := c.queries.createCertificate(ctx, createCertificateParams{
-		X5c:      x5c,
+		Pem:      pem,
 		IsRoot:   pgtype.Bool{Bool: isRoot, Valid: true},
 		Metadata: metadata,
 	})
@@ -424,7 +424,7 @@ func (c PolicyDBClient) GetCertificate(ctx context.Context, id string) (*policy.
 
 	return &policy.Certificate{
 		Id:  cert.ID,
-		X5C: cert.X5c,
+		Pem: cert.Pem,
 	}, nil
 }
 
@@ -477,11 +477,11 @@ func (c PolicyDBClient) AssignCertificateToNamespace(ctx context.Context, namesp
 }
 
 // CreateAndAssignCertificateToNamespace creates a certificate and assigns it to a namespace in a transaction
-func (c PolicyDBClient) CreateAndAssignCertificateToNamespace(ctx context.Context, namespaceID *common.IdFqnIdentifier, x5c string, isRoot bool, metadata []byte) (string, error) {
+func (c PolicyDBClient) CreateAndAssignCertificateToNamespace(ctx context.Context, namespaceID *common.IdFqnIdentifier, pem string, isRoot bool, metadata []byte) (string, error) {
 	var certID string
 	err := c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
 		var err error
-		certID, err = txClient.CreateCertificate(ctx, x5c, isRoot, metadata)
+		certID, err = txClient.CreateCertificate(ctx, pem, isRoot, metadata)
 		if err != nil {
 			return err
 		}

@@ -632,10 +632,10 @@ components:
           type: string
           title: id
           description: generated uuid in database
-        x5c:
+        pem:
           type: string
-          title: x5c
-          description: x5c format - An array of base64-encoded DER certificates (not PEM; no headers/footers)
+          title: pem
+          description: PEM format certificate
       title: Certificate
       additionalProperties: false
     policy.KasPublicKey:
@@ -875,10 +875,10 @@ components:
           title: namespace
           description: Required - namespace identifier (id or fqn)
           $ref: '#/components/schemas/common.IdFqnIdentifier'
-        x5c:
+        pem:
           type: string
-          title: x5c
-          description: Required - x5c format certificate (base64-encoded DER)
+          title: pem
+          description: Required - PEM format certificate
         metadata:
           title: metadata
           description: Optional
@@ -886,7 +886,7 @@ components:
       title: AssignCertificateToNamespaceRequest
       required:
         - namespace
-        - x5c
+        - pem
       additionalProperties: false
     policy.namespaces.AssignCertificateToNamespaceResponse:
       type: object

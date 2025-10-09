@@ -1073,10 +1073,10 @@ components:
           type: string
           title: id
           description: generated uuid in database
-        x5c:
+        pem:
           type: string
-          title: x5c
-          description: x5c format - An array of base64-encoded DER certificates (not PEM; no headers/footers)
+          title: pem
+          description: PEM format certificate
       title: Certificate
       additionalProperties: false
     policy.Condition:

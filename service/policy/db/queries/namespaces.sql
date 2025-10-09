@@ -64,7 +64,7 @@ LEFT JOIN (
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
                 'id', cert.id,
-                'x5c', cert.x5c
+                'pem', cert.pem
             )
         ) FILTER (WHERE cert.id IS NOT NULL) AS certs
     FROM attribute_namespace_certificates c
@@ -117,14 +117,14 @@ RETURNING namespace_id;
 ----------------------------------------------------------------
 
 -- name: createCertificate :one
-INSERT INTO certificates (x5c, is_root, metadata)
-VALUES (sqlc.arg('x5c'), COALESCE(sqlc.narg('is_root')::BOOLEAN, TRUE), sqlc.arg('metadata'))
+INSERT INTO certificates (pem, is_root, metadata)
+VALUES (sqlc.arg('pem'), COALESCE(sqlc.narg('is_root')::BOOLEAN, TRUE), sqlc.arg('metadata'))
 RETURNING id;
 
 -- name: getCertificate :one
 SELECT
     id,
-    x5c,
+    pem,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 FROM certificates
 WHERE id = $1;

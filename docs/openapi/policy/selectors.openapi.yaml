@@ -59,6 +59,7 @@ components:
           $ref: '#/components/schemas/policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector'
       title: AttributeSelector
       additionalProperties: false
+      description: Deprecated
     policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector:
       type: object
       properties:

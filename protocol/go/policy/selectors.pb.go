@@ -333,6 +333,7 @@ func (x *PageResponse) GetTotal() int32 {
 	return 0
 }
 
+// Deprecated
 type AttributeNamespaceSelector_AttributeSelector struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

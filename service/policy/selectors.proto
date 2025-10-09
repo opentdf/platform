@@ -4,6 +4,7 @@ package policy;
 
 // Deprecated: never utilized
 message AttributeNamespaceSelector {
+  // Deprecated
   message AttributeSelector {
     bool with_key_access_grants = 1;
     message ValueSelector {

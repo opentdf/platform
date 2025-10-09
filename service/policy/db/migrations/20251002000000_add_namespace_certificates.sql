@@ -30,11 +30,17 @@ COMMENT ON TABLE attribute_namespace_certificates IS 'Junction table to map root
 COMMENT ON COLUMN attribute_namespace_certificates.namespace_id IS 'Foreign key to the namespace';
 COMMENT ON COLUMN attribute_namespace_certificates.certificate_id IS 'Foreign key to the certificate';
 
+CREATE TRIGGER certificates_updated_at
+  BEFORE UPDATE ON certificates
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at();
+
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
 
+DROP TRIGGER IF EXISTS certificates_updated_at ON certificates;
 DROP TABLE IF EXISTS attribute_namespace_certificates;
 DROP TABLE IF EXISTS certificates;
 

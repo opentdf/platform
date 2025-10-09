@@ -175,7 +175,7 @@ server:
       ec:
         e1:
           private_key_path: kas-ec-private.pem
-          public_key_path: kas-ec-cert.pem
+          public_key_path: kas-ec-public.pem
         e2:
           private_key_path: kas-e2-private.pem
           public_key_path: kas-e2-cert.pem
@@ -257,7 +257,7 @@ server:
         - kid: e1
           alg: ec:secp256r1
           private: kas-ec-private.pem
-          cert: kas-ec-cert.pem
+          cert: kas-ec-public.pem
   port: 8080
 opa:
   embedded: true

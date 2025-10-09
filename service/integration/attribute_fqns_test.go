@@ -981,9 +981,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 	fqns := []string{fqn1}
 	attributeAndValue, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: fqns,
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().NoError(err)
 
@@ -1009,9 +1006,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 	fqns = []string{fqn1, fqn2}
 	attributeAndValue, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: fqns,
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().NoError(err)
 	s.Len(attributeAndValue, 2)
@@ -1066,9 +1060,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_NormalizesLowerCase() {
 	fqns := []string{upperNsFqn1}
 	attributeAndValue, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: fqns,
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().NoError(err)
 
@@ -1100,9 +1091,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_NormalizesLowerCase() {
 	fqns = []string{upperNsFqn1, upperNsFqn2}
 	attributeAndValue, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: fqns,
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().NoError(err)
 	s.Len(attributeAndValue, 2)
@@ -1164,9 +1152,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_AllValuesHaveProperFqns
 	fqns := []string{fqn1}
 	attributeAndValues, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: fqns,
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().NoError(err)
 
@@ -1199,9 +1184,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_AllValuesHaveProperFqns
 	fqns = []string{fqn1, fqn2, fqn3}
 	attributeAndValues, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: fqns,
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().NoError(err)
 	s.Len(attributeAndValues, 3)
@@ -1269,9 +1251,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedNa
 	// get the attribute by the value fqn for v1
 	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{fqnBuilder(ns.GetName(), attr.GetName(), v1.GetValue())},
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().Error(err)
 	s.Nil(v)
@@ -1280,9 +1259,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedNa
 	// get the attribute by the value fqn for v2
 	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{fqnBuilder(ns.GetName(), attr.GetName(), v2.GetValue())},
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().Error(err)
 	s.Nil(v)
@@ -1321,9 +1297,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedAt
 	// get the attribute by the value fqn for v1
 	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{fqnBuilder(ns.GetName(), attr.GetName(), v1.GetValue())},
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().Error(err)
 	s.Nil(v)
@@ -1332,9 +1305,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedAt
 	// get the attribute by the value fqn for v2
 	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{fqnBuilder(ns.GetName(), attr.GetName(), v2.GetValue())},
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().Error(err)
 	s.Nil(v)
@@ -1370,9 +1340,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedAt
 	// get the attribute by the value fqn for v1
 	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{fqnBuilder(ns.GetName(), attr.GetName(), v1.GetValue())},
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().Error(err)
 	s.Nil(v)
@@ -1381,9 +1348,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedAt
 	// get the attribute by the value fqn for v2
 	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{fqnBuilder(ns.GetName(), attr.GetName(), v2.GetValue())},
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().NoError(err)
 	s.NotNil(v)
@@ -1423,9 +1387,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_InactiveDef_Activ
 	// get the attribute by the value fqn for v1
 	retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{fqnBuilder(ns.GetName(), attr.GetName(), v1.GetValue())},
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().Error(err)
 	s.Nil(retrieved)
@@ -1466,9 +1427,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_InactiveNsAndDef_
 	// get the attribute by the value fqn for v1
 	retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{fqnBuilder(ns.GetName(), attr.GetName(), v1.GetValue())},
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().Error(err)
 	s.Nil(retrieved)
@@ -1516,9 +1474,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_ActiveDef_Inactiv
 	// get the attribute by the value fqn for v1
 	retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{fqnBuilder(gotNs.GetName(), attr.GetName(), v1.GetValue())},
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().Error(err)
 	s.Nil(retrieved)
@@ -1530,9 +1485,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithNonValueFqns(
 	attrFqn := fqnBuilder("example.com", "attr1", "")
 	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{nsFqn},
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().Error(err)
 	s.Nil(v)
@@ -1540,9 +1492,6 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithNonValueFqns(
 
 	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{attrFqn},
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().Error(err)
 	s.Nil(v)

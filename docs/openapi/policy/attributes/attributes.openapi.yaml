@@ -135,30 +135,6 @@ paths:
             description: |-
               Required
                Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
-        - name: withValue.withKeyAccessGrants
-          in: query
-          description: Deprecated
-          schema:
-            type: boolean
-            title: with_key_access_grants
-            description: Deprecated
-        - name: withValue.withSubjectMaps
-          in: query
-          schema:
-            type: boolean
-            title: with_subject_maps
-        - name: withValue.withResourceMaps
-          in: query
-          schema:
-            type: boolean
-            title: with_resource_maps
-        - name: withValue.withAttribute.withKeyAccessGrants
-          in: query
-          description: Deprecated
-          schema:
-            type: boolean
-            title: with_key_access_grants
-            description: Deprecated
       responses:
         default:
           description: Error
@@ -426,10 +402,7 @@ paths:
       tags:
         - policy.attributes.AttributesService
       summary: AssignKeyAccessServerToAttribute
-      description: |-
-        --------------------------------------*
-         Attribute <> Key Access Server RPCs
-        ---------------------------------------
+      description: 'Deprecated: utilize AssignPublicKeyToAttribute'
       operationId: policy.attributes.AttributesService.AssignKeyAccessServerToAttribute
       parameters:
         - name: Connect-Protocol-Version
@@ -466,6 +439,7 @@ paths:
       tags:
         - policy.attributes.AttributesService
       summary: RemoveKeyAccessServerFromAttribute
+      description: 'Deprecated: utilize RemovePublicKeyFromAttribute'
       operationId: policy.attributes.AttributesService.RemoveKeyAccessServerFromAttribute
       parameters:
         - name: Connect-Protocol-Version
@@ -502,6 +476,7 @@ paths:
       tags:
         - policy.attributes.AttributesService
       summary: AssignKeyAccessServerToValue
+      description: 'Deprecated: utilize AssignPublicKeyToValue'
       operationId: policy.attributes.AttributesService.AssignKeyAccessServerToValue
       parameters:
         - name: Connect-Protocol-Version
@@ -538,6 +513,7 @@ paths:
       tags:
         - policy.attributes.AttributesService
       summary: RemoveKeyAccessServerFromValue
+      description: 'Deprecated: utilize RemovePublicKeyFromValue'
       operationId: policy.attributes.AttributesService.RemoveKeyAccessServerFromValue
       parameters:
         - name: Connect-Protocol-Version
@@ -1032,40 +1008,6 @@ components:
       required:
         - rule
       additionalProperties: false
-    policy.AttributeValueSelector:
-      type: object
-      properties:
-        withKeyAccessGrants:
-          type: boolean
-          title: with_key_access_grants
-          description: Deprecated
-        withSubjectMaps:
-          type: boolean
-          title: with_subject_maps
-        withResourceMaps:
-          type: boolean
-          title: with_resource_maps
-        withAttribute:
-          title: with_attribute
-          $ref: '#/components/schemas/policy.AttributeValueSelector.AttributeSelector'
-      title: AttributeValueSelector
-      additionalProperties: false
-    policy.AttributeValueSelector.AttributeSelector:
-      type: object
-      properties:
-        withKeyAccessGrants:
-          type: boolean
-          title: with_key_access_grants
-          description: Deprecated
-        withNamespace:
-          title: with_namespace
-          $ref: '#/components/schemas/policy.AttributeValueSelector.AttributeSelector.NamespaceSelector'
-      title: AttributeSelector
-      additionalProperties: false
-    policy.AttributeValueSelector.AttributeSelector.NamespaceSelector:
-      type: object
-      title: NamespaceSelector
-      additionalProperties: false
     policy.Condition:
       type: object
       properties:
@@ -1178,7 +1120,7 @@ components:
 
         publicKey:
           title: public_key
-          description: Deprecated
+          description: 'Deprecated: KAS can have multiple key pairs'
           $ref: '#/components/schemas/policy.PublicKey'
         sourceType:
           title: source_type
@@ -1617,6 +1559,7 @@ components:
           $ref: '#/components/schemas/policy.attributes.AttributeKeyAccessServer'
       title: AssignKeyAccessServerToAttributeRequest
       additionalProperties: false
+      description: 'Deprecated: utilize AssignPublicKeyToAttributeRequest'
     policy.attributes.AssignKeyAccessServerToAttributeResponse:
       type: object
       properties:
@@ -1634,6 +1577,7 @@ components:
           $ref: '#/components/schemas/policy.attributes.ValueKeyAccessServer'
       title: AssignKeyAccessServerToValueRequest
       additionalProperties: false
+      description: 'Deprecated: utilize AssignPublicKeyToValueRequest'
     policy.attributes.AssignKeyAccessServerToValueResponse:
       type: object
       properties:
@@ -1868,7 +1812,7 @@ components:
           type: string
           title: id
           format: uuid
-          description: Deprecated
+          description: 'Deprecated: utilize identifier'
           deprecated: true
       title: GetAttributeRequest
       additionalProperties: false
@@ -1917,7 +1861,7 @@ components:
           type: string
           title: id
           format: uuid
-          description: Deprecated
+          description: 'Deprecated: utilize identifier'
           deprecated: true
       title: GetAttributeValueRequest
       additionalProperties: false
@@ -1958,12 +1902,6 @@ components:
           description: |-
             Required
              Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
-        withValue:
-          title: with_value
-          description: |-
-            Optional
-             This attribute value selector is not used currently, but left here for future use.
-          $ref: '#/components/schemas/policy.AttributeValueSelector'
       title: GetAttributeValuesByFqnsRequest
       additionalProperties: false
     policy.attributes.GetAttributeValuesByFqnsResponse:
@@ -2076,6 +2014,7 @@ components:
           $ref: '#/components/schemas/policy.attributes.AttributeKeyAccessServer'
       title: RemoveKeyAccessServerFromAttributeRequest
       additionalProperties: false
+      description: 'Deprecated: utilize RemovePublicKeyFromAttributeRequest'
     policy.attributes.RemoveKeyAccessServerFromAttributeResponse:
       type: object
       properties:
@@ -2093,6 +2032,7 @@ components:
           $ref: '#/components/schemas/policy.attributes.ValueKeyAccessServer'
       title: RemoveKeyAccessServerFromValueRequest
       additionalProperties: false
+      description: 'Deprecated: utilize RemovePublicKeyFromValueRequest'
     policy.attributes.RemoveKeyAccessServerFromValueResponse:
       type: object
       properties:

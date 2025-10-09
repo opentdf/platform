@@ -1008,40 +1008,6 @@ components:
       required:
         - rule
       additionalProperties: false
-    policy.AttributeValueSelector:
-      type: object
-      properties:
-        withKeyAccessGrants:
-          type: boolean
-          title: with_key_access_grants
-          description: Deprecated
-        withSubjectMaps:
-          type: boolean
-          title: with_subject_maps
-        withResourceMaps:
-          type: boolean
-          title: with_resource_maps
-        withAttribute:
-          title: with_attribute
-          $ref: '#/components/schemas/policy.AttributeValueSelector.AttributeSelector'
-      title: AttributeValueSelector
-      additionalProperties: false
-    policy.AttributeValueSelector.AttributeSelector:
-      type: object
-      properties:
-        withKeyAccessGrants:
-          type: boolean
-          title: with_key_access_grants
-          description: Deprecated
-        withNamespace:
-          title: with_namespace
-          $ref: '#/components/schemas/policy.AttributeValueSelector.AttributeSelector.NamespaceSelector'
-      title: AttributeSelector
-      additionalProperties: false
-    policy.AttributeValueSelector.AttributeSelector.NamespaceSelector:
-      type: object
-      title: NamespaceSelector
-      additionalProperties: false
     policy.Certificate:
       type: object
       properties:

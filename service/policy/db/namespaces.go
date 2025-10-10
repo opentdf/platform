@@ -423,8 +423,9 @@ func (c PolicyDBClient) GetCertificate(ctx context.Context, id string) (*policy.
 	}
 
 	return &policy.Certificate{
-		Id:  cert.ID,
-		Pem: cert.Pem,
+		Id:       cert.ID,
+		Pem:      cert.Pem,
+		Metadata: metadata,
 	}, nil
 }
 

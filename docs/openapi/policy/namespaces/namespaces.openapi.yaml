@@ -634,6 +634,9 @@ components:
           type: string
           title: pem
           description: PEM format certificate
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
       title: Certificate
       additionalProperties: false
     policy.KasPublicKey:

@@ -148,3 +148,7 @@ RETURNING namespace_id, certificate_id;
 -- name: removeCertificateFromNamespace :execrows
 DELETE FROM attribute_namespace_certificates
 WHERE namespace_id = $1 AND certificate_id = $2;
+
+-- name: countCertificateNamespaceAssignments :one
+SELECT COUNT(*) FROM attribute_namespace_certificates
+WHERE certificate_id = $1;

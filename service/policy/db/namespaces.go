@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -397,8 +399,55 @@ func (c PolicyDBClient) RemovePublicKeyFromNamespace(ctx context.Context, k *nam
 	}, nil
 }
 
+// validateRootCertificate validates that the PEM string is a valid PEM-encoded root certificate
+func validateRootCertificate(pemStr string) error {
+	// Check that the PEM string contains "BEGIN CERTIFICATE"
+	if !strings.Contains(pemStr, "BEGIN CERTIFICATE") {
+		return errors.New("invalid PEM format: must contain BEGIN CERTIFICATE marker")
+	}
+
+	// Check that the PEM string contains newlines (proper PEM formatting)
+	if !strings.Contains(pemStr, "\n") {
+		return errors.New("invalid PEM format: must contain newlines")
+	}
+
+	// Decode PEM block
+	block, _ := pem.Decode([]byte(pemStr))
+	if block == nil {
+		return errors.New("invalid PEM format: failed to decode PEM block")
+	}
+
+	// Verify it's a CERTIFICATE type
+	if block.Type != "CERTIFICATE" {
+		return fmt.Errorf("invalid PEM type: expected CERTIFICATE, got %s", block.Type)
+	}
+
+	// Parse the certificate
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("invalid certificate: not a valid X.509 certificate: %w", err)
+	}
+
+	// Verify it's a root certificate (self-signed)
+	if !cert.IsCA {
+		return errors.New("invalid certificate: must be a CA certificate (IsCA=true)")
+	}
+
+	// Check if it's self-signed by comparing issuer and subject
+	if cert.Issuer.String() != cert.Subject.String() {
+		return errors.New("invalid certificate: must be a root certificate (self-signed)")
+	}
+
+	return nil
+}
+
 // CreateCertificate creates a new certificate in the database
 func (c PolicyDBClient) CreateCertificate(ctx context.Context, pem string, metadata []byte) (string, error) {
+	// Validate the certificate before storing
+	if err := validateRootCertificate(pem); err != nil {
+		return "", err
+	}
+
 	certID, err := c.queries.createCertificate(ctx, createCertificateParams{
 		Pem:      pem,
 		Metadata: metadata,
@@ -442,14 +491,26 @@ func (c PolicyDBClient) DeleteCertificate(ctx context.Context, id string) error 
 
 // resolveNamespaceID resolves a namespace identifier to its UUID
 func (c PolicyDBClient) resolveNamespaceID(ctx context.Context, identifier *common.IdFqnIdentifier) (string, error) {
-	// If ID is provided, use it directly
+	// If ID is provided, check if it's a valid UUID
 	if identifier.GetId() != "" {
-		return identifier.GetId(), nil
+		id := identifier.GetId()
+		// Check if the ID is a valid UUID
+		uuid := pgtypeUUID(id)
+		if uuid.Valid {
+			// It's a valid UUID, use it directly
+			return id, nil
+		}
+		// Not a valid UUID, treat it as a namespace name and look it up
+		ns, err := c.GetNamespace(ctx, &namespaces.GetNamespaceRequest_Fqn{Fqn: id})
+		if err != nil {
+			return "", err
+		}
+		return ns.GetId(), nil
 	}
 
 	// If FQN is provided, look up the namespace by FQN to get its ID
 	if identifier.GetFqn() != "" {
-		ns, err := c.GetNamespace(ctx, identifier.GetFqn())
+		ns, err := c.GetNamespace(ctx, &namespaces.GetNamespaceRequest_Fqn{Fqn: identifier.GetFqn()})
 		if err != nil {
 			return "", err
 		}
@@ -509,7 +570,7 @@ func (c PolicyDBClient) CreateAndAssignCertificateToNamespace(ctx context.Contex
 	return certID, nil
 }
 
-// RemoveCertificateFromNamespace removes a certificate from a namespace
+// RemoveCertificateFromNamespace removes a certificate from a namespace and deletes the certificate if it's not used elsewhere
 func (c PolicyDBClient) RemoveCertificateFromNamespace(ctx context.Context, namespaceIdentifier *common.IdFqnIdentifier, certificateID string) error {
 	namespaceID, err := c.resolveNamespaceID(ctx, namespaceIdentifier)
 	if err != nil {
@@ -526,5 +587,20 @@ func (c PolicyDBClient) RemoveCertificateFromNamespace(ctx context.Context, name
 	if count == 0 {
 		return db.ErrNotFound
 	}
+
+	// Check if the certificate is still assigned to any other namespaces
+	assignmentCount, err := c.queries.countCertificateNamespaceAssignments(ctx, certificateID)
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	// Only delete the certificate if it's not assigned to any other namespace
+	if assignmentCount == 0 {
+		err = c.DeleteCertificate(ctx, certificateID)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

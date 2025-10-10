@@ -57,6 +57,22 @@ func (q *Queries) assignPublicKeyToNamespace(ctx context.Context, arg assignPubl
 	return i, err
 }
 
+const countCertificateNamespaceAssignments = `-- name: countCertificateNamespaceAssignments :one
+SELECT COUNT(*) FROM attribute_namespace_certificates
+WHERE certificate_id = $1
+`
+
+// countCertificateNamespaceAssignments
+//
+//	SELECT COUNT(*) FROM attribute_namespace_certificates
+//	WHERE certificate_id = $1
+func (q *Queries) countCertificateNamespaceAssignments(ctx context.Context, certificateID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countCertificateNamespaceAssignments, certificateID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createCertificate = `-- name: createCertificate :one
 
 INSERT INTO certificates (pem, metadata)

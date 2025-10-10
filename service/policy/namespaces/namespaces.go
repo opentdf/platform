@@ -2,8 +2,6 @@ package namespaces
 
 import (
 	"context"
-	"crypto/x509"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -309,20 +307,6 @@ func (ns NamespacesService) AssignCertificateToNamespace(ctx context.Context, r 
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeNamespaceCertificate,
 		ObjectID:   auditObjectID,
-	}
-
-	// Validate PEM is valid base64-encoded DER certificate
-	derBytes, err := base64.StdEncoding.DecodeString(pem)
-	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, ns.logger, err, "Invalid PEM format: must be base64-encoded")
-	}
-
-	// Validate it's a valid X.509 certificate
-	_, err = x509.ParseCertificate(derBytes)
-	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, ns.logger, err, "Invalid certificate: not a valid X.509 certificate")
 	}
 
 	// Create the certificate metadata

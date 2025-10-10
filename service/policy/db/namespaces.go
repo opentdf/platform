@@ -456,8 +456,7 @@ func (c PolicyDBClient) resolveNamespaceID(ctx context.Context, identifier *comm
 		}
 		return ns.GetId(), nil
 	}
-
-	return "", fmt.Errorf("namespace identifier must have either id or fqn: %w", db.ErrNotFound)
+	return "", errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", identifier, identifier))
 }
 
 // AssignCertificateToNamespace assigns a certificate to a namespace

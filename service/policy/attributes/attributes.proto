@@ -284,9 +284,10 @@ message GetAttributeValuesByFqnsRequest {
     max_items: 250
   }];
 
-  reserved 2;
-  reserved "with_value";
+  // Deprecated
+  policy.AttributeValueSelector with_value = 2;
 }
+
 message GetAttributeValuesByFqnsResponse {
   message AttributeAndValue {
     policy.Attribute attribute = 1;

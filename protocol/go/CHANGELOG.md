@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/opentdf/platform/compare/protocol/go/v0.11.0...protocol/go/v0.12.0) (2025-10-10)
+
+
+### Bug Fixes
+
+* **core:** deprecated stale protos and add better upgrade comments ([#2793](https://github.com/opentdf/platform/issues/2793)) ([f2678cc](https://github.com/opentdf/platform/commit/f2678cc6929824ae3d73d2c808ce8412086011ee))
+
 ## [0.11.0](https://github.com/opentdf/platform/compare/protocol/go/v0.10.0...protocol/go/v0.11.0) (2025-09-18)
 
 

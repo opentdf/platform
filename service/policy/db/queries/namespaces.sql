@@ -117,8 +117,8 @@ RETURNING namespace_id;
 ----------------------------------------------------------------
 
 -- name: createCertificate :one
-INSERT INTO certificates (pem, is_root, metadata)
-VALUES (sqlc.arg('pem'), COALESCE(sqlc.narg('is_root')::BOOLEAN, TRUE), sqlc.arg('metadata'))
+INSERT INTO certificates (pem, metadata)
+VALUES (sqlc.arg('pem'), sqlc.arg('metadata'))
 RETURNING id;
 
 -- name: getCertificate :one
@@ -128,6 +128,14 @@ SELECT
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
 FROM certificates
 WHERE id = $1;
+
+-- name: getCertificateByPEM :one
+SELECT
+    id,
+    pem,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+FROM certificates
+WHERE pem = $1;
 
 -- name: deleteCertificate :execrows
 DELETE FROM certificates WHERE id = $1;

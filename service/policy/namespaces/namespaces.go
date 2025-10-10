@@ -334,7 +334,7 @@ func (ns NamespacesService) AssignCertificateToNamespace(ctx context.Context, r 
 
 	// Create and assign certificate in a transaction
 	// This ensures that if assignment fails, certificate creation is rolled back
-	certID, err := ns.dbClient.CreateAndAssignCertificateToNamespace(ctx, namespaceIdentifier, pem, true, metadataJSON)
+	certID, err := ns.dbClient.CreateAndAssignCertificateToNamespace(ctx, namespaceIdentifier, pem, metadataJSON)
 	if err != nil {
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, ns.logger, err, "Failed to create and assign certificate")

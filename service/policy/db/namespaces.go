@@ -398,10 +398,9 @@ func (c PolicyDBClient) RemovePublicKeyFromNamespace(ctx context.Context, k *nam
 }
 
 // CreateCertificate creates a new certificate in the database
-func (c PolicyDBClient) CreateCertificate(ctx context.Context, pem string, isRoot bool, metadata []byte) (string, error) {
+func (c PolicyDBClient) CreateCertificate(ctx context.Context, pem string, metadata []byte) (string, error) {
 	certID, err := c.queries.createCertificate(ctx, createCertificateParams{
 		Pem:      pem,
-		IsRoot:   pgtype.Bool{Bool: isRoot, Valid: true},
 		Metadata: metadata,
 	})
 	if err != nil {
@@ -477,11 +476,22 @@ func (c PolicyDBClient) AssignCertificateToNamespace(ctx context.Context, namesp
 }
 
 // CreateAndAssignCertificateToNamespace creates a certificate and assigns it to a namespace in a transaction
-func (c PolicyDBClient) CreateAndAssignCertificateToNamespace(ctx context.Context, namespaceID *common.IdFqnIdentifier, pem string, isRoot bool, metadata []byte) (string, error) {
+func (c PolicyDBClient) CreateAndAssignCertificateToNamespace(ctx context.Context, namespaceID *common.IdFqnIdentifier, pem string, metadata []byte) (string, error) {
+	// Check if certificate with same PEM already exists
+	existingCert, err := c.queries.getCertificateByPEM(ctx, pem)
+	if err == nil {
+		// Certificate exists, just assign it to namespace
+		err = c.AssignCertificateToNamespace(ctx, namespaceID, existingCert.ID)
+		if err != nil {
+			return "", err
+		}
+		return existingCert.ID, nil
+	}
+
 	var certID string
-	err := c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
+	err = c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
 		var err error
-		certID, err = txClient.CreateCertificate(ctx, pem, isRoot, metadata)
+		certID, err = txClient.CreateCertificate(ctx, pem, metadata)
 		if err != nil {
 			return err
 		}

@@ -5,16 +5,14 @@ CREATE TABLE IF NOT EXISTS certificates
 (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     pem TEXT NOT NULL,
-    is_root BOOLEAN NOT NULL DEFAULT TRUE,
     metadata JSONB,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-COMMENT ON TABLE certificates IS 'Table to store X.509 certificates for chain of trust';
+COMMENT ON TABLE certificates IS 'Table to store X.509 certificates for chain of trust (root only)';
 COMMENT ON COLUMN certificates.id IS 'Unique identifier for the certificate';
 COMMENT ON COLUMN certificates.pem IS 'PEM format - Base64-encoded DER certificate (not PEM; no headers/footers)';
-COMMENT ON COLUMN certificates.is_root IS 'Indicates whether this is a root certificate (true) or intermediate/leaf certificate (false)';
 COMMENT ON COLUMN certificates.metadata IS 'Optional metadata for the certificate';
 COMMENT ON COLUMN certificates.created_at IS 'Timestamp when the certificate was created';
 COMMENT ON COLUMN certificates.updated_at IS 'Timestamp when the certificate was last updated';

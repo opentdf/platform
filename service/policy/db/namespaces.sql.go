@@ -59,26 +59,25 @@ func (q *Queries) assignPublicKeyToNamespace(ctx context.Context, arg assignPubl
 
 const createCertificate = `-- name: createCertificate :one
 
-INSERT INTO certificates (pem, is_root, metadata)
-VALUES ($1, COALESCE($2::BOOLEAN, TRUE), $3)
+INSERT INTO certificates (pem, metadata)
+VALUES ($1, $2)
 RETURNING id
 `
 
 type createCertificateParams struct {
-	Pem      string      `json:"pem"`
-	IsRoot   pgtype.Bool `json:"is_root"`
-	Metadata []byte      `json:"metadata"`
+	Pem      string `json:"pem"`
+	Metadata []byte `json:"metadata"`
 }
 
 // --------------------------------------------------------------
 // CERTIFICATES
 // --------------------------------------------------------------
 //
-//	INSERT INTO certificates (pem, is_root, metadata)
-//	VALUES ($1, COALESCE($2::BOOLEAN, TRUE), $3)
+//	INSERT INTO certificates (pem, metadata)
+//	VALUES ($1, $2)
 //	RETURNING id
 func (q *Queries) createCertificate(ctx context.Context, arg createCertificateParams) (string, error) {
-	row := q.db.QueryRow(ctx, createCertificate, arg.Pem, arg.IsRoot, arg.Metadata)
+	row := q.db.QueryRow(ctx, createCertificate, arg.Pem, arg.Metadata)
 	var id string
 	err := row.Scan(&id)
 	return id, err
@@ -163,6 +162,36 @@ type getCertificateRow struct {
 func (q *Queries) getCertificate(ctx context.Context, id string) (getCertificateRow, error) {
 	row := q.db.QueryRow(ctx, getCertificate, id)
 	var i getCertificateRow
+	err := row.Scan(&i.ID, &i.Pem, &i.Metadata)
+	return i, err
+}
+
+const getCertificateByPEM = `-- name: getCertificateByPEM :one
+SELECT
+    id,
+    pem,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+FROM certificates
+WHERE pem = $1
+`
+
+type getCertificateByPEMRow struct {
+	ID       string `json:"id"`
+	Pem      string `json:"pem"`
+	Metadata []byte `json:"metadata"`
+}
+
+// getCertificateByPEM
+//
+//	SELECT
+//	    id,
+//	    pem,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+//	FROM certificates
+//	WHERE pem = $1
+func (q *Queries) getCertificateByPEM(ctx context.Context, pem string) (getCertificateByPEMRow, error) {
+	row := q.db.QueryRow(ctx, getCertificateByPEM, pem)
+	var i getCertificateByPEMRow
 	err := row.Scan(&i.ID, &i.Pem, &i.Metadata)
 	return i, err
 }

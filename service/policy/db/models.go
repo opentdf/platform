@@ -239,14 +239,12 @@ type BaseKey struct {
 	KeyAccessServerKeyID pgtype.UUID `json:"key_access_server_key_id"`
 }
 
-// Table to store X.509 certificates for chain of trust
+// Table to store X.509 certificates for chain of trust (root only)
 type Certificate struct {
 	// Unique identifier for the certificate
 	ID string `json:"id"`
 	// PEM format - Base64-encoded DER certificate (not PEM; no headers/footers)
 	Pem string `json:"pem"`
-	// Indicates whether this is a root certificate (true) or intermediate/leaf certificate (false)
-	IsRoot bool `json:"is_root"`
 	// Optional metadata for the certificate
 	Metadata []byte `json:"metadata"`
 	// Timestamp when the certificate was created

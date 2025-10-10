@@ -74,7 +74,7 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*poli
 	if len(ns.Certs) > 0 {
 		certs, err = db.CertificatesProtoJSON(ns.Certs)
 		if err != nil {
-			c.logger.ErrorContext(ctx, "could not unmarshal certificates", slog.String("error", err.Error()))
+			c.logger.ErrorContext(ctx, "could not unmarshal certificates", slog.Any("error", err))
 			return nil, err
 		}
 	}

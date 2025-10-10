@@ -16,9 +16,6 @@
 # Role: Admin
 ## gRPC and HTTP routes
 p,	role:admin,		*,					*,			allow
-# Certificate management - admin only (explicit rules for security)
-p,	role:admin,		policy.namespaces.NamespaceService/AssignCertificateToNamespace,		write,		allow
-p,	role:admin,		policy.namespaces.NamespaceService/RemoveCertificateFromNamespace,	delete,		allow
 
 ## Role: Standard
 ## gRPC routes

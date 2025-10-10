@@ -4,11 +4,13 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -31,6 +33,7 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
+	authorizationv2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -280,6 +283,12 @@ type assertionTests struct {
 	useHex                       bool
 }
 
+type FakeAuthz struct {
+	decision            authorizationv2.Decision
+	requiredObligations []string
+	numCalls            int
+}
+
 const payload = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 var buffer []byte //nolint:gochecknoglobals // for testing
@@ -302,6 +311,24 @@ type TDFSuite struct {
 	kases            []FakeKas
 	kasTestURLLookup map[string]string
 	fakeWellKnown    map[string]interface{}
+}
+
+type Policy struct {
+	UUID string        `json:"uuid"`
+	Body KasPolicyBody `json:"body"`
+}
+
+type KasPolicyBody struct {
+	DataAttributes []Attribute `json:"dataAttributes"`
+	Dissem         []string    `json:"dissem"`
+}
+
+type Attribute struct {
+	URI           string           `json:"attribute"` // attribute
+	PublicKey     crypto.PublicKey `json:"pubKey"`    // pubKey
+	ProviderURI   string           `json:"kasUrl"`    // kasUrl
+	SchemaVersion string           `json:"tdf_spec_version,omitempty"`
+	Name          string           `json:"displayName"` // displayName
 }
 
 func (s *TDFSuite) SetupSuite() {
@@ -1905,6 +1932,252 @@ func (s *TDFSuite) Test_KeySplits() {
 	}
 }
 
+func (s *TDFSuite) Test_Obligations_Decrypt() {
+	for _, test := range []struct {
+		n              string
+		fileSize       int64
+		tdfFileSize    float64
+		checksum       string
+		obligationFQNs []string
+		opts           []TDFOption
+	}{
+		{
+			n:              "with-obligations-same-kas",
+			fileSize:       5,
+			tdfFileSize:    1897,
+			checksum:       "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
+			obligationFQNs: []string{obWatermark.url, obRedact.url},
+			opts: []TDFOption{
+				WithDataAttributes(obWatermark.url, obRedact.url),
+			},
+		},
+		{
+			n:              "with-obligations-different-kas",
+			fileSize:       5,
+			tdfFileSize:    2690,
+			checksum:       "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
+			obligationFQNs: []string{obWatermark.url, obRedact.url, obGeo.url},
+			opts: []TDFOption{
+				WithDataAttributes(obWatermark.url, obRedact.url, obGeo.url),
+			},
+		},
+	} {
+		s.Run(test.n, func() {
+			// create .txt file
+			plainTextFileName := test.n + ".txt"
+			tdfFileName := plainTextFileName + ".tdf"
+			decryptedTdfFileName := tdfFileName + ".txt"
+
+			defer func() {
+				// Remove the test files
+				_ = os.Remove(plainTextFileName)
+				_ = os.Remove(tdfFileName)
+				_ = os.Remove(decryptedTdfFileName)
+			}()
+
+			// test encrypt
+			s.testEncrypt(s.sdk, test.opts, plainTextFileName, tdfFileName, tdfTest{
+				n:           test.n,
+				fileSize:    test.fileSize,
+				tdfFileSize: test.tdfFileSize,
+				checksum:    test.checksum,
+			})
+
+			// test decrypt with reader
+			readSeeker, err := os.Open(tdfFileName)
+			s.Require().NoError(err)
+			defer func(readSeeker *os.File) {
+				err := readSeeker.Close()
+				s.Require().NoError(err)
+			}(readSeeker)
+
+			r, err := s.sdk.LoadTDF(readSeeker)
+			s.Require().NoError(err)
+			for _, ob := range []string{obGeo.url, obRedact.url, obWatermark.url} {
+				s.Require().Contains(r.config.fulfillableObligationFQNs, ob, "Should contain obligation "+ob)
+			}
+
+			// Validate decryption
+			s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, tdfTest{
+				n:        test.n,
+				fileSize: test.fileSize,
+				checksum: test.checksum,
+				policy:   []AttributeValueFQN{obWatermark, obRedact},
+			})
+
+			_, err = r.WriteTo(io.Discard)
+			s.Require().NoError(err)
+			obligations, err := r.Obligations(s.T().Context())
+			s.Require().NoError(err)
+			s.Require().NotNil(obligations, "Obligations should not be nil")
+			s.Require().Len(obligations.FQNs, len(test.obligationFQNs), "Should have correct number of obligations")
+			actualObligations := obligations
+			for _, ob := range test.obligationFQNs {
+				s.Require().Contains(actualObligations.FQNs, ob, "Actual obligations should contain "+ob)
+			}
+		})
+	}
+}
+
+func (s *TDFSuite) Test_Obligations() {
+	originalV2 := s.sdk.AuthorizationV2
+	defer func() {
+		s.sdk.AuthorizationV2 = originalV2
+	}()
+
+	// Define test cases covering all code paths in Obligations()
+	testCases := []struct {
+		name                      string
+		requiredObligations       []string
+		decision                  authorizationv2.Decision
+		fulfillableObligationFQNs []string
+		shouldReturnError         bool
+		expectedError             error
+		prepopulatedObligations   []string
+		numCalls                  int
+	}{
+		{
+			name:                      "Nil required obligations - PERMIT with obligations (should succeed)",
+			requiredObligations:       []string{obGeo.url},
+			decision:                  authorizationv2.Decision_DECISION_PERMIT,
+			fulfillableObligationFQNs: []string{obGeo.url},
+			shouldReturnError:         false,
+			numCalls:                  1,
+		},
+		{
+			name:                      "Nil required obligations - PERMIT with no obligations (should succeed)",
+			requiredObligations:       []string{},
+			decision:                  authorizationv2.Decision_DECISION_PERMIT,
+			fulfillableObligationFQNs: []string{},
+			shouldReturnError:         false,
+			numCalls:                  2,
+		},
+		{
+			name:                      "Nil required obligations - DENY bc of obligations (should succeed)",
+			requiredObligations:       []string{obGeo.url},
+			decision:                  authorizationv2.Decision_DECISION_DENY,
+			fulfillableObligationFQNs: []string{},
+			shouldReturnError:         false,
+			numCalls:                  1,
+		},
+		{
+			name:                      "Nil required obligations - DENY with no obligations (should fail)",
+			requiredObligations:       []string{},
+			decision:                  authorizationv2.Decision_DECISION_DENY,
+			fulfillableObligationFQNs: []string{},
+			shouldReturnError:         true,
+			expectedError:             ErrAccessDeniedPreObligations,
+			numCalls:                  1,
+		},
+		{
+			name:                      "Empty Obligation FQNs",
+			requiredObligations:       []string{obGeo.url},
+			decision:                  authorizationv2.Decision_DECISION_PERMIT,
+			fulfillableObligationFQNs: []string{obGeo.url},
+			shouldReturnError:         false,
+			expectedError:             nil,
+			numCalls:                  1,
+			prepopulatedObligations:   []string{},
+		},
+		{
+			name:                      "Non-empty Obligation FQNs",
+			requiredObligations:       []string{obGeo.url},
+			decision:                  authorizationv2.Decision_DECISION_PERMIT,
+			fulfillableObligationFQNs: []string{obGeo.url},
+			shouldReturnError:         false,
+			expectedError:             nil,
+			numCalls:                  0,
+			prepopulatedObligations:   []string{obGeo.url},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// Reset SDK to clean state for each test
+			fakeAuthz := &FakeAuthz{
+				requiredObligations: tc.requiredObligations,
+				decision:            tc.decision,
+				numCalls:            0,
+			}
+			s.sdk.AuthorizationV2 = fakeAuthz
+
+			// Create test files for each test case
+			plainTextFileName := fmt.Sprintf("obligations_%s.txt", strings.ReplaceAll(tc.name, " ", "_"))
+			tdfFileName := plainTextFileName + ".tdf"
+
+			defer func() {
+				_ = os.Remove(plainTextFileName)
+				_ = os.Remove(tdfFileName)
+			}()
+
+			// Encrypt the TDF file for testing
+			opts := []TDFOption{WithKasInformation(s.kases[0].KASInfo), WithDataAttributes(obWatermark.url, obRedact.url, obGeo.url)}
+			s.testEncrypt(s.sdk, opts, plainTextFileName, tdfFileName, tdfTest{
+				n:           strings.ReplaceAll(tc.name, " ", "_"),
+				fileSize:    5,
+				tdfFileSize: 2690,
+				checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
+			})
+
+			// Load TDF with specified fulfillable obligations
+			readSeeker, err := os.Open(tdfFileName)
+			s.Require().NoError(err)
+			defer func(readSeeker *os.File) {
+				err := readSeeker.Close()
+				s.Require().NoError(err)
+			}(readSeeker)
+
+			var loadOpts []TDFReaderOption
+			if len(tc.fulfillableObligationFQNs) > 0 {
+				loadOpts = append(loadOpts, WithTDFFulfillableObligationFQNs(tc.fulfillableObligationFQNs))
+			}
+
+			r, err := s.sdk.LoadTDF(readSeeker, loadOpts...)
+			s.Require().NoError(err)
+
+			// Verify fulfillable obligations were set correctly
+			if len(tc.fulfillableObligationFQNs) > 0 {
+				s.Require().Len(r.config.fulfillableObligationFQNs, len(tc.fulfillableObligationFQNs), "Should have correct number of fulfillable obligations")
+				for _, ob := range tc.fulfillableObligationFQNs {
+					s.Require().Contains(r.config.fulfillableObligationFQNs, ob, "Should contain fulfillable obligation "+ob)
+				}
+			}
+
+			if tc.prepopulatedObligations != nil {
+				r.requiredObligations = &Obligations{FQNs: tc.prepopulatedObligations}
+			}
+
+			// First call to Obligations() - this should trigger GetDecision
+			obligations, err := r.Obligations(s.T().Context())
+
+			defer func() {
+				s.Require().Equal(tc.numCalls, fakeAuthz.numCalls, "GetDecision should have been called expected number of times")
+			}()
+
+			if tc.shouldReturnError {
+				s.Require().Error(err, "Expected error for test case: %s", tc.name)
+				if tc.expectedError != nil {
+					s.Require().ErrorIs(err, tc.expectedError, "Error should be of expected type")
+				}
+				return
+			}
+
+			s.Require().NoError(err, "Should not return error for test case: %s", tc.name)
+			s.Require().NotNil(obligations, "Obligations should not be nil")
+			s.Require().Len(obligations.FQNs, len(tc.requiredObligations), "Should have correct number of obligations")
+			for _, ob := range tc.requiredObligations {
+				s.Require().Contains(obligations.FQNs, ob, "Actual obligations should contain "+ob)
+			}
+
+			// Second call to Obligations() - this should use cached result
+			obligations2, err := r.Obligations(s.T().Context())
+			s.Require().NoError(err, "Second call should not return error")
+			s.Require().NotNil(obligations2, "Second call obligations should not be nil")
+			s.Require().Equal(obligations, obligations2, "Second call should return same obligations")
+		})
+	}
+}
+
 func (s *TDFSuite) Test_Autoconfigure() {
 	for index, test := range []tdfTest{
 		{
@@ -2145,7 +2418,7 @@ func (s *TDFSuite) startBackend() {
 		{"https://a.kas/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
 		{"https://b.kas/", mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID},
 		{"https://c.kas/", mockRSAPrivateKey3, mockRSAPublicKey3, defaultKID},
-		{"https://d.kas/", mockECPrivateKey1, mockECPublicKey1, defaultKID},
+		{"https://d.kas/", mockECPrivateKey1, mockECPublicKey1, "e1"},
 		{"https://e.kas/", mockECPrivateKey2, mockECPublicKey2, defaultKID},
 		{kasAu, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
 		{kasCa, mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID},
@@ -2154,6 +2427,7 @@ func (s *TDFSuite) startBackend() {
 		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
 		{baseKeyURL, mockRSAPrivateKey1, mockRSAPublicKey1, baseKeyKID},
 		{evenMoreSpecificKas, mockRSAPrivateKey3, mockRSAPublicKey3, "r3"},
+		{obligationKas, mockRSAPrivateKey3, mockRSAPublicKey3, "r3"},
 	}
 	fkar := &FakeKASRegistry{kases: kasesToMake, s: s}
 
@@ -2171,6 +2445,11 @@ func (s *TDFSuite) startBackend() {
 				URL: ki.url, PublicKey: ki.public, KID: ki.kid, Algorithm: "rsa:2048",
 			},
 			legakeys: map[string]keyInfo{},
+			obligations: map[string]string{
+				obWatermark.url: obWatermark.url,
+				obRedact.url:    obRedact.url,
+				obGeo.url:       obGeo.url,
+			},
 		}
 		path, handler := attributesconnect.NewAttributesServiceHandler(fa)
 		mux.Handle(path, handler)
@@ -2199,7 +2478,9 @@ func (s *TDFSuite) startBackend() {
 		WithClientCredentials("test", "test", nil),
 		withCustomAccessTokenSource(&ats),
 		WithTokenEndpoint("http://localhost:65432/auth/token"),
-		WithInsecurePlaintextConn())
+		WithInsecurePlaintextConn(),
+		WithSDKFulfillableObligationFQNs([]string{obWatermark.url, obRedact.url, obGeo.url}),
+	)
 	s.Require().NoError(err)
 	s.sdk = sdk
 }
@@ -2277,9 +2558,10 @@ func (f *FakeKASRegistry) ListKeyAccessServers(_ context.Context, _ *connect.Req
 type FakeKas struct {
 	kasconnect.UnimplementedAccessServiceHandler
 	KASInfo
-	privateKey string
-	s          *TDFSuite
-	legakeys   map[string]keyInfo
+	privateKey  string
+	s           *TDFSuite
+	legakeys    map[string]keyInfo
+	obligations map[string]string
 }
 
 func (f *FakeKas) Rewrap(_ context.Context, in *connect.Request[kaspb.RewrapRequest]) (*connect.Response[kaspb.RewrapResponse], error) {
@@ -2313,6 +2595,7 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse 
 	err := protojson.Unmarshal([]byte(rewrapRequest), &bodyData)
 	f.s.Require().NoError(err, "json.Unmarshal failed")
 	resp := &kaspb.RewrapResponse{}
+	policyObligationMap := make(map[string][]string)
 
 	for _, req := range bodyData.GetRequests() {
 		results := &kaspb.PolicyRewrapResult{PolicyId: req.GetPolicy().GetId()}
@@ -2408,8 +2691,30 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse 
 			}
 			results.Results = append(results.Results, kaoResult)
 		}
+
+		policyObligationMap[req.GetPolicy().GetId()] = f.s.checkPolicyObligations(f.obligations, req)
 	}
+	resp.Metadata = createMetadataWithObligations(policyObligationMap)
+
 	return resp
+}
+
+func (s *TDFSuite) checkPolicyObligations(obligationsMap map[string]string, req *kaspb.UnsignedRewrapRequest_WithPolicyRequest) []string {
+	var obligations []string
+	sDecPolicy, policyErr := base64.StdEncoding.DecodeString(req.GetPolicy().GetBody())
+	policy := &Policy{}
+	if policyErr == nil {
+		policyErr = json.Unmarshal(sDecPolicy, policy)
+		if policyErr != nil {
+			return obligations
+		}
+	}
+	for _, attr := range policy.Body.DataAttributes {
+		if val, found := obligationsMap[attr.URI]; found {
+			obligations = append(obligations, val)
+		}
+	}
+	return obligations
 }
 
 func (s *TDFSuite) checkIdentical(file, checksum string) bool {
@@ -2559,4 +2864,27 @@ func TestIsLessThanSemver(t *testing.T) {
 			}
 		})
 	}
+}
+
+func (a *FakeAuthz) GetDecision(_ context.Context, req *authorizationv2.GetDecisionRequest) (*authorizationv2.GetDecisionResponse, error) {
+	a.numCalls++
+	return &authorizationv2.GetDecisionResponse{
+		Decision: &authorizationv2.ResourceDecision{
+			EphemeralResourceId: req.GetResource().GetEphemeralId(),
+			Decision:            a.decision,
+			RequiredObligations: a.requiredObligations,
+		},
+	}, nil
+}
+
+func (a *FakeAuthz) GetDecisionMultiResource(_ context.Context, _ *authorizationv2.GetDecisionMultiResourceRequest) (*authorizationv2.GetDecisionMultiResourceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDecisionMultiResource not implemented")
+}
+
+func (a *FakeAuthz) GetDecisionBulk(_ context.Context, _ *authorizationv2.GetDecisionBulkRequest) (*authorizationv2.GetDecisionBulkResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDecisionBulk not implemented")
+}
+
+func (a *FakeAuthz) GetEntitlements(_ context.Context, _ *authorizationv2.GetEntitlementsRequest) (*authorizationv2.GetEntitlementsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetEntitlements not implemented")
 }

@@ -60,6 +60,12 @@ const (
 	// NamespaceServiceRemovePublicKeyFromNamespaceProcedure is the fully-qualified name of the
 	// NamespaceService's RemovePublicKeyFromNamespace RPC.
 	NamespaceServiceRemovePublicKeyFromNamespaceProcedure = "/policy.namespaces.NamespaceService/RemovePublicKeyFromNamespace"
+	// NamespaceServiceAssignCertificateToNamespaceProcedure is the fully-qualified name of the
+	// NamespaceService's AssignCertificateToNamespace RPC.
+	NamespaceServiceAssignCertificateToNamespaceProcedure = "/policy.namespaces.NamespaceService/AssignCertificateToNamespace"
+	// NamespaceServiceRemoveCertificateFromNamespaceProcedure is the fully-qualified name of the
+	// NamespaceService's RemoveCertificateFromNamespace RPC.
+	NamespaceServiceRemoveCertificateFromNamespaceProcedure = "/policy.namespaces.NamespaceService/RemoveCertificateFromNamespace"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -74,6 +80,8 @@ var (
 	namespaceServiceRemoveKeyAccessServerFromNamespaceMethodDescriptor = namespaceServiceServiceDescriptor.Methods().ByName("RemoveKeyAccessServerFromNamespace")
 	namespaceServiceAssignPublicKeyToNamespaceMethodDescriptor         = namespaceServiceServiceDescriptor.Methods().ByName("AssignPublicKeyToNamespace")
 	namespaceServiceRemovePublicKeyFromNamespaceMethodDescriptor       = namespaceServiceServiceDescriptor.Methods().ByName("RemovePublicKeyFromNamespace")
+	namespaceServiceAssignCertificateToNamespaceMethodDescriptor       = namespaceServiceServiceDescriptor.Methods().ByName("AssignCertificateToNamespace")
+	namespaceServiceRemoveCertificateFromNamespaceMethodDescriptor     = namespaceServiceServiceDescriptor.Methods().ByName("RemoveCertificateFromNamespace")
 )
 
 // NamespaceServiceClient is a client for the policy.namespaces.NamespaceService service.
@@ -96,6 +104,9 @@ type NamespaceServiceClient interface {
 	// ---------------------------------------
 	AssignPublicKeyToNamespace(context.Context, *connect.Request[namespaces.AssignPublicKeyToNamespaceRequest]) (*connect.Response[namespaces.AssignPublicKeyToNamespaceResponse], error)
 	RemovePublicKeyFromNamespace(context.Context, *connect.Request[namespaces.RemovePublicKeyFromNamespaceRequest]) (*connect.Response[namespaces.RemovePublicKeyFromNamespaceResponse], error)
+	// Namespace <> Certificate RPCs
+	AssignCertificateToNamespace(context.Context, *connect.Request[namespaces.AssignCertificateToNamespaceRequest]) (*connect.Response[namespaces.AssignCertificateToNamespaceResponse], error)
+	RemoveCertificateFromNamespace(context.Context, *connect.Request[namespaces.RemoveCertificateFromNamespaceRequest]) (*connect.Response[namespaces.RemoveCertificateFromNamespaceResponse], error)
 }
 
 // NewNamespaceServiceClient constructs a client for the policy.namespaces.NamespaceService service.
@@ -164,6 +175,18 @@ func NewNamespaceServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(namespaceServiceRemovePublicKeyFromNamespaceMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		assignCertificateToNamespace: connect.NewClient[namespaces.AssignCertificateToNamespaceRequest, namespaces.AssignCertificateToNamespaceResponse](
+			httpClient,
+			baseURL+NamespaceServiceAssignCertificateToNamespaceProcedure,
+			connect.WithSchema(namespaceServiceAssignCertificateToNamespaceMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		removeCertificateFromNamespace: connect.NewClient[namespaces.RemoveCertificateFromNamespaceRequest, namespaces.RemoveCertificateFromNamespaceResponse](
+			httpClient,
+			baseURL+NamespaceServiceRemoveCertificateFromNamespaceProcedure,
+			connect.WithSchema(namespaceServiceRemoveCertificateFromNamespaceMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -178,6 +201,8 @@ type namespaceServiceClient struct {
 	removeKeyAccessServerFromNamespace *connect.Client[namespaces.RemoveKeyAccessServerFromNamespaceRequest, namespaces.RemoveKeyAccessServerFromNamespaceResponse]
 	assignPublicKeyToNamespace         *connect.Client[namespaces.AssignPublicKeyToNamespaceRequest, namespaces.AssignPublicKeyToNamespaceResponse]
 	removePublicKeyFromNamespace       *connect.Client[namespaces.RemovePublicKeyFromNamespaceRequest, namespaces.RemovePublicKeyFromNamespaceResponse]
+	assignCertificateToNamespace       *connect.Client[namespaces.AssignCertificateToNamespaceRequest, namespaces.AssignCertificateToNamespaceResponse]
+	removeCertificateFromNamespace     *connect.Client[namespaces.RemoveCertificateFromNamespaceRequest, namespaces.RemoveCertificateFromNamespaceResponse]
 }
 
 // GetNamespace calls policy.namespaces.NamespaceService.GetNamespace.
@@ -232,6 +257,18 @@ func (c *namespaceServiceClient) RemovePublicKeyFromNamespace(ctx context.Contex
 	return c.removePublicKeyFromNamespace.CallUnary(ctx, req)
 }
 
+// AssignCertificateToNamespace calls
+// policy.namespaces.NamespaceService.AssignCertificateToNamespace.
+func (c *namespaceServiceClient) AssignCertificateToNamespace(ctx context.Context, req *connect.Request[namespaces.AssignCertificateToNamespaceRequest]) (*connect.Response[namespaces.AssignCertificateToNamespaceResponse], error) {
+	return c.assignCertificateToNamespace.CallUnary(ctx, req)
+}
+
+// RemoveCertificateFromNamespace calls
+// policy.namespaces.NamespaceService.RemoveCertificateFromNamespace.
+func (c *namespaceServiceClient) RemoveCertificateFromNamespace(ctx context.Context, req *connect.Request[namespaces.RemoveCertificateFromNamespaceRequest]) (*connect.Response[namespaces.RemoveCertificateFromNamespaceResponse], error) {
+	return c.removeCertificateFromNamespace.CallUnary(ctx, req)
+}
+
 // NamespaceServiceHandler is an implementation of the policy.namespaces.NamespaceService service.
 type NamespaceServiceHandler interface {
 	GetNamespace(context.Context, *connect.Request[namespaces.GetNamespaceRequest]) (*connect.Response[namespaces.GetNamespaceResponse], error)
@@ -252,6 +289,9 @@ type NamespaceServiceHandler interface {
 	// ---------------------------------------
 	AssignPublicKeyToNamespace(context.Context, *connect.Request[namespaces.AssignPublicKeyToNamespaceRequest]) (*connect.Response[namespaces.AssignPublicKeyToNamespaceResponse], error)
 	RemovePublicKeyFromNamespace(context.Context, *connect.Request[namespaces.RemovePublicKeyFromNamespaceRequest]) (*connect.Response[namespaces.RemovePublicKeyFromNamespaceResponse], error)
+	// Namespace <> Certificate RPCs
+	AssignCertificateToNamespace(context.Context, *connect.Request[namespaces.AssignCertificateToNamespaceRequest]) (*connect.Response[namespaces.AssignCertificateToNamespaceResponse], error)
+	RemoveCertificateFromNamespace(context.Context, *connect.Request[namespaces.RemoveCertificateFromNamespaceRequest]) (*connect.Response[namespaces.RemoveCertificateFromNamespaceResponse], error)
 }
 
 // NewNamespaceServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -316,6 +356,18 @@ func NewNamespaceServiceHandler(svc NamespaceServiceHandler, opts ...connect.Han
 		connect.WithSchema(namespaceServiceRemovePublicKeyFromNamespaceMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	namespaceServiceAssignCertificateToNamespaceHandler := connect.NewUnaryHandler(
+		NamespaceServiceAssignCertificateToNamespaceProcedure,
+		svc.AssignCertificateToNamespace,
+		connect.WithSchema(namespaceServiceAssignCertificateToNamespaceMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	namespaceServiceRemoveCertificateFromNamespaceHandler := connect.NewUnaryHandler(
+		NamespaceServiceRemoveCertificateFromNamespaceProcedure,
+		svc.RemoveCertificateFromNamespace,
+		connect.WithSchema(namespaceServiceRemoveCertificateFromNamespaceMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/policy.namespaces.NamespaceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case NamespaceServiceGetNamespaceProcedure:
@@ -336,6 +388,10 @@ func NewNamespaceServiceHandler(svc NamespaceServiceHandler, opts ...connect.Han
 			namespaceServiceAssignPublicKeyToNamespaceHandler.ServeHTTP(w, r)
 		case NamespaceServiceRemovePublicKeyFromNamespaceProcedure:
 			namespaceServiceRemovePublicKeyFromNamespaceHandler.ServeHTTP(w, r)
+		case NamespaceServiceAssignCertificateToNamespaceProcedure:
+			namespaceServiceAssignCertificateToNamespaceHandler.ServeHTTP(w, r)
+		case NamespaceServiceRemoveCertificateFromNamespaceProcedure:
+			namespaceServiceRemoveCertificateFromNamespaceHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -379,4 +435,12 @@ func (UnimplementedNamespaceServiceHandler) AssignPublicKeyToNamespace(context.C
 
 func (UnimplementedNamespaceServiceHandler) RemovePublicKeyFromNamespace(context.Context, *connect.Request[namespaces.RemovePublicKeyFromNamespaceRequest]) (*connect.Response[namespaces.RemovePublicKeyFromNamespaceResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.namespaces.NamespaceService.RemovePublicKeyFromNamespace is not implemented"))
+}
+
+func (UnimplementedNamespaceServiceHandler) AssignCertificateToNamespace(context.Context, *connect.Request[namespaces.AssignCertificateToNamespaceRequest]) (*connect.Response[namespaces.AssignCertificateToNamespaceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.namespaces.NamespaceService.AssignCertificateToNamespace is not implemented"))
+}
+
+func (UnimplementedNamespaceServiceHandler) RemoveCertificateFromNamespace(context.Context, *connect.Request[namespaces.RemoveCertificateFromNamespaceRequest]) (*connect.Response[namespaces.RemoveCertificateFromNamespaceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.namespaces.NamespaceService.RemoveCertificateFromNamespace is not implemented"))
 }

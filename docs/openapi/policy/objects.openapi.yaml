@@ -349,6 +349,23 @@ components:
       required:
         - rule
       additionalProperties: false
+    policy.Certificate:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: generated uuid in database
+        pem:
+          type: string
+          title: pem
+          description: PEM format certificate
+        metadata:
+          title: metadata
+          description: Optional metadata.
+          $ref: '#/components/schemas/common.Metadata'
+      title: Certificate
+      additionalProperties: false
     policy.Condition:
       type: object
       properties:
@@ -582,6 +599,12 @@ components:
             $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Keys for the namespace
+        rootCerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Certificate'
+          title: root_certs
+          description: Root certificates for chain of trust
       title: Namespace
       additionalProperties: false
     policy.Obligation:

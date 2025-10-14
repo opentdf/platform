@@ -750,6 +750,7 @@ components:
           description: PEM format certificate
         metadata:
           title: metadata
+          description: Optional metadata.
           $ref: '#/components/schemas/common.Metadata'
       title: Certificate
       additionalProperties: false

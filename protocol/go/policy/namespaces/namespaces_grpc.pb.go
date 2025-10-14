@@ -52,9 +52,7 @@ type NamespaceServiceClient interface {
 	// ---------------------------------------
 	AssignPublicKeyToNamespace(ctx context.Context, in *AssignPublicKeyToNamespaceRequest, opts ...grpc.CallOption) (*AssignPublicKeyToNamespaceResponse, error)
 	RemovePublicKeyFromNamespace(ctx context.Context, in *RemovePublicKeyFromNamespaceRequest, opts ...grpc.CallOption) (*RemovePublicKeyFromNamespaceResponse, error)
-	// --------------------------------------*
 	// Namespace <> Certificate RPCs
-	// ---------------------------------------
 	AssignCertificateToNamespace(ctx context.Context, in *AssignCertificateToNamespaceRequest, opts ...grpc.CallOption) (*AssignCertificateToNamespaceResponse, error)
 	RemoveCertificateFromNamespace(ctx context.Context, in *RemoveCertificateFromNamespaceRequest, opts ...grpc.CallOption) (*RemoveCertificateFromNamespaceResponse, error)
 }
@@ -188,9 +186,7 @@ type NamespaceServiceServer interface {
 	// ---------------------------------------
 	AssignPublicKeyToNamespace(context.Context, *AssignPublicKeyToNamespaceRequest) (*AssignPublicKeyToNamespaceResponse, error)
 	RemovePublicKeyFromNamespace(context.Context, *RemovePublicKeyFromNamespaceRequest) (*RemovePublicKeyFromNamespaceResponse, error)
-	// --------------------------------------*
 	// Namespace <> Certificate RPCs
-	// ---------------------------------------
 	AssignCertificateToNamespace(context.Context, *AssignCertificateToNamespaceRequest) (*AssignCertificateToNamespaceResponse, error)
 	RemoveCertificateFromNamespace(context.Context, *RemoveCertificateFromNamespaceRequest) (*RemoveCertificateFromNamespaceResponse, error)
 	mustEmbedUnimplementedNamespaceServiceServer()

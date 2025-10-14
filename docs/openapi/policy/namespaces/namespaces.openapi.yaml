@@ -330,10 +330,7 @@ paths:
       tags:
         - policy.namespaces.NamespaceService
       summary: AssignCertificateToNamespace
-      description: |-
-        --------------------------------------*
-         Namespace <> Certificate RPCs
-        ---------------------------------------
+      description: Namespace <> Certificate RPCs
       operationId: policy.namespaces.NamespaceService.AssignCertificateToNamespace
       parameters:
         - name: Connect-Protocol-Version
@@ -636,6 +633,7 @@ components:
           description: PEM format certificate
         metadata:
           title: metadata
+          description: Optional metadata.
           $ref: '#/components/schemas/common.Metadata'
       title: Certificate
       additionalProperties: false
@@ -894,6 +892,7 @@ components:
       properties:
         namespaceCertificate:
           title: namespace_certificate
+          description: The mapping of the namespace to the certificate.
           $ref: '#/components/schemas/policy.namespaces.NamespaceCertificate'
         certificate:
           title: certificate
@@ -1115,6 +1114,7 @@ components:
       properties:
         namespaceCertificate:
           title: namespace_certificate
+          description: The namespace and certificate to unassign.
           $ref: '#/components/schemas/policy.namespaces.NamespaceCertificate'
       title: RemoveCertificateFromNamespaceRequest
       required:
@@ -1125,6 +1125,7 @@ components:
       properties:
         namespaceCertificate:
           title: namespace_certificate
+          description: The unassigned namespace and certificate.
           $ref: '#/components/schemas/policy.namespaces.NamespaceCertificate'
       title: RemoveCertificateFromNamespaceResponse
       additionalProperties: false

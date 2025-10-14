@@ -28,7 +28,7 @@ var (
 	ErrInvalidWithRequestTokenEntityIdentifier  = errors.New("access: invalid use request token as entity identifier - must be true if provided")
 
 	//nolint:gosec // not a credential
-	requestAuthTokenEphemeralID = "use-request-auth-ctx-entity"
+	requestAuthTokenEphemeralID = "with-request-token-auth-entity"
 )
 
 type JustInTimePDP struct {

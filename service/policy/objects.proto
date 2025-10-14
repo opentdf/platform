@@ -58,6 +58,7 @@ message Certificate {
   string id = 1;
   // PEM format certificate
   string pem = 2;
+  // Optional metadata.
   common.Metadata metadata = 3;
 }
 

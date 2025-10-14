@@ -197,15 +197,18 @@ message AssignCertificateToNamespaceRequest {
 }
 
 message AssignCertificateToNamespaceResponse {
+  // The mapping of the namespace to the certificate.
   NamespaceCertificate namespace_certificate = 1;
   policy.Certificate certificate = 2; // Return the full certificate object for convenience
 }
 
 message RemoveCertificateFromNamespaceRequest {
+  // The namespace and certificate to unassign.
   NamespaceCertificate namespace_certificate = 1 [(buf.validate.field).required = true];
 }
 
 message RemoveCertificateFromNamespaceResponse {
+  // The unassigned namespace and certificate.
   NamespaceCertificate namespace_certificate = 1;
 }
 
@@ -241,9 +244,7 @@ service NamespaceService {
   rpc AssignPublicKeyToNamespace(AssignPublicKeyToNamespaceRequest) returns (AssignPublicKeyToNamespaceResponse) {}
   rpc RemovePublicKeyFromNamespace(RemovePublicKeyFromNamespaceRequest) returns (RemovePublicKeyFromNamespaceResponse) {}
 
-  /*--------------------------------------*
-   * Namespace <> Certificate RPCs
-   *---------------------------------------*/
+  // Namespace <> Certificate RPCs
   rpc AssignCertificateToNamespace(AssignCertificateToNamespaceRequest) returns (AssignCertificateToNamespaceResponse) {}
   rpc RemoveCertificateFromNamespace(RemoveCertificateFromNamespaceRequest) returns (RemoveCertificateFromNamespaceResponse) {}
 }

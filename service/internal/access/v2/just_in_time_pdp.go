@@ -27,7 +27,6 @@ var (
 	ErrFailedToWithRequestTokenEntityIdentifier = errors.New("access: failed to use request token as entity identifier - none found in context")
 	ErrInvalidWithRequestTokenEntityIdentifier  = errors.New("access: invalid use request token as entity identifier - must be true if provided")
 
-	//nolint:gosec // not a credential
 	requestAuthTokenEphemeralID = "with-request-token-auth-entity"
 )
 
@@ -384,10 +383,10 @@ func (p *JustInTimePDP) resolveEntitiesFromToken(
 // by an interceptor and builds an entity.Token that it then resolves
 func (p *JustInTimePDP) resolveEntitiesFromRequestToken(
 	ctx context.Context,
-	WithRequestToken *wrapperspb.BoolValue,
+	withRequestToken *wrapperspb.BoolValue,
 	skipEnvironmentEntities bool,
 ) ([]*entityresolutionV2.EntityRepresentation, error) {
-	if !WithRequestToken.GetValue() {
+	if !withRequestToken.GetValue() {
 		return nil, ErrInvalidWithRequestTokenEntityIdentifier
 	}
 	rawToken := ctxAuth.GetRawAccessTokenFromContext(ctx, p.logger)

@@ -259,9 +259,6 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 	fqns := []string{fmt.Sprintf("https://%s/attr/%s/value/%s", gotAttr.GetNamespace().GetName(), createdAttr.GetName(), gotAttr.GetValues()[0].GetValue())}
 	req := &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: fqns,
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	}
 	resp, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, req)
 	s.Require().NoError(err)
@@ -695,9 +692,6 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRuleAndNameAndReorderin
 
 		val, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 			Fqns: []string{fqn},
-			WithValue: &policy.AttributeValueSelector{
-				WithSubjectMaps: true,
-			},
 		})
 		s.Require().NoError(err)
 		s.NotNil(val)
@@ -787,9 +781,6 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithNewName() {
 	}
 	req := &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: fqns,
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	}
 	retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, req)
 	s.Require().NoError(err)
@@ -934,9 +925,6 @@ func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
 		fqns := []string{fmt.Sprintf("https://%s/attr/%s/value/%s", ns.GetName(), name, v.GetValue())}
 		req := &attributes.GetAttributeValuesByFqnsRequest{
 			Fqns: fqns,
-			WithValue: &policy.AttributeValueSelector{
-				WithSubjectMaps: true,
-			},
 		}
 		retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, req)
 		s.Require().Error(err)

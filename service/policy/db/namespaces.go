@@ -441,11 +441,11 @@ func validateRootCertificate(pemStr string) error {
 	return nil
 }
 
-// CreateCertificate creates a new certificate in the database
-func (c PolicyDBClient) CreateCertificate(ctx context.Context, pem string, metadata []byte) (string, error) {
+// CreateCertificate imports the root certificate into the `certificates` table and returns policy.Certificate
+func (c PolicyDBClient) CreateCertificate(ctx context.Context, pem string, metadata []byte) (*policy.Certificate, error) {
 	// Validate the certificate before storing
 	if err := validateRootCertificate(pem); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	certID, err := c.queries.createCertificate(ctx, createCertificateParams{
@@ -453,12 +453,14 @@ func (c PolicyDBClient) CreateCertificate(ctx context.Context, pem string, metad
 		Metadata: metadata,
 	})
 	if err != nil {
-		return "", db.WrapIfKnownInvalidQueryErr(err)
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	return certID, nil
+
+	// Return the full certificate object
+	return c.GetCertificate(ctx, certID)
 }
 
-// GetCertificate retrieves a certificate by ID
+// GetCertificate retrieves a certificate by its ID
 func (c PolicyDBClient) GetCertificate(ctx context.Context, id string) (*policy.Certificate, error) {
 	cert, err := c.queries.getCertificate(ctx, id)
 	if err != nil {
@@ -484,7 +486,7 @@ func (c PolicyDBClient) DeleteCertificate(ctx context.Context, id string) error 
 		return db.WrapIfKnownInvalidQueryErr(err)
 	}
 	if count == 0 {
-		return db.ErrNotFound
+		return fmt.Errorf("unable to delete certificate [%s]: %w", id, db.ErrNotFound)
 	}
 	return nil
 }
@@ -519,7 +521,7 @@ func (c PolicyDBClient) resolveNamespaceID(ctx context.Context, identifier *comm
 	return "", errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", identifier, identifier))
 }
 
-// AssignCertificateToNamespace assigns a certificate to a namespace
+// AssignCertificateToNamespace assigns a trusted root certificate to a namespace for trust validation
 func (c PolicyDBClient) AssignCertificateToNamespace(ctx context.Context, namespaceIdentifier *common.IdFqnIdentifier, certificateID string) error {
 	namespaceID, err := c.resolveNamespaceID(ctx, namespaceIdentifier)
 	if err != nil {
@@ -552,10 +554,11 @@ func (c PolicyDBClient) CreateAndAssignCertificateToNamespace(ctx context.Contex
 	var certID string
 	err = c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
 		var err error
-		certID, err = txClient.CreateCertificate(ctx, pem, metadata)
+		cert, err := txClient.CreateCertificate(ctx, pem, metadata)
 		if err != nil {
 			return err
 		}
+		certID = cert.GetId()
 
 		err = txClient.AssignCertificateToNamespace(ctx, namespaceID, certID)
 		if err != nil {

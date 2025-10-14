@@ -24,10 +24,10 @@ type secretState struct {
 }
 
 var (
-    // ErrSecretNotResolved is returned when attempting to access a secret that hasn't been resolved yet.
-    ErrSecretNotResolved = errors.New("secret not resolved")
-    // ErrSecretMissingEnv indicates the requested env var does not exist.
-    ErrSecretMissingEnv = errors.New("secret env var not set")
+	// ErrSecretNotResolved is returned when attempting to access a secret that hasn't been resolved yet.
+	ErrSecretNotResolved = errors.New("secret not resolved")
+	// ErrSecretMissingEnv indicates the requested env var does not exist.
+	ErrSecretMissingEnv = errors.New("secret env var not set")
 )
 
 const redactedPlaceholder = "[REDACTED]"
@@ -126,13 +126,13 @@ func (s Secret) String() string { return redactedPlaceholder }
 
 // LogValue implements slog.LogValuer to prevent accidental secret leakage in logs.
 func (s Secret) LogValue() slog.Value {
-    if s.state != nil && s.state.source != "" {
-        return slog.GroupValue(
-            slog.String("value", redactedPlaceholder),
-            slog.String("source", s.state.source),
-        )
-    }
-    return slog.StringValue(redactedPlaceholder)
+	if s.state != nil && s.state.source != "" {
+		return slog.GroupValue(
+			slog.String("value", redactedPlaceholder),
+			slog.String("source", s.state.source),
+		)
+	}
+	return slog.StringValue(redactedPlaceholder)
 }
 
 // MarshalJSON redacts the value when serialized to JSON.

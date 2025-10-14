@@ -1,7 +1,6 @@
 package config
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"testing"
@@ -12,7 +11,7 @@ func TestSecret_Literal(t *testing.T) {
 	if s.String() != "[REDACTED]" {
 		t.Fatalf("expected redacted String, got %q", s.String())
 	}
-	got, err := s.Resolve(context.Background())
+	got, err := s.Resolve(t.Context())
 	if err != nil {
 		t.Fatalf("resolve literal: %v", err)
 	}
@@ -33,7 +32,7 @@ func TestSecret_FromEnv(t *testing.T) {
 	if s.String() != "[REDACTED]" {
 		t.Fatalf("expected redacted String, got %q", s.String())
 	}
-	got, err := s.Resolve(context.Background())
+	got, err := s.Resolve(t.Context())
 	if err != nil {
 		t.Fatalf("resolve env: %v", err)
 	}
@@ -50,7 +49,7 @@ func TestSecret_FromFile_Trim(t *testing.T) {
 		t.Fatalf("write: %v", err)
 	}
 	s := NewFileSecret(p)
-	got, err := s.Resolve(context.Background())
+	got, err := s.Resolve(t.Context())
 	if err != nil {
 		t.Fatalf("resolve file: %v", err)
 	}

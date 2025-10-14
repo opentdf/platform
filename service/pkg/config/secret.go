@@ -24,11 +24,13 @@ type secretState struct {
 }
 
 var (
-	// ErrSecretNotResolved is returned when attempting to access a secret that hasn't been resolved yet.
-	ErrSecretNotResolved = errors.New("secret not resolved")
-	// ErrSecretMissingEnv indicates the requested env var does not exist.
-	ErrSecretMissingEnv = errors.New("secret env var not set")
+    // ErrSecretNotResolved is returned when attempting to access a secret that hasn't been resolved yet.
+    ErrSecretNotResolved = errors.New("secret not resolved")
+    // ErrSecretMissingEnv indicates the requested env var does not exist.
+    ErrSecretMissingEnv = errors.New("secret env var not set")
 )
+
+const redactedPlaceholder = "[REDACTED]"
 
 // NewLiteralSecret creates a Secret from a literal value and marks it resolved.
 func NewLiteralSecret(v string) Secret {
@@ -120,23 +122,21 @@ func (s Secret) Resolve(ctx context.Context) (string, error) {
 }
 
 // String implements fmt.Stringer and returns a redacted representation.
-func (s Secret) String() string { return "[REDACTED]" }
+func (s Secret) String() string { return redactedPlaceholder }
 
 // LogValue implements slog.LogValuer to prevent accidental secret leakage in logs.
 func (s Secret) LogValue() slog.Value {
-	if s.state != nil && s.state.source != "" {
-		return slog.GroupValue(
-			slog.String("value", "[REDACTED]"),
-			slog.String("source", s.state.source),
-		)
-	}
-	return slog.StringValue("[REDACTED]")
+    if s.state != nil && s.state.source != "" {
+        return slog.GroupValue(
+            slog.String("value", redactedPlaceholder),
+            slog.String("source", s.state.source),
+        )
+    }
+    return slog.StringValue(redactedPlaceholder)
 }
 
 // MarshalJSON redacts the value when serialized to JSON.
-func (s Secret) MarshalJSON() ([]byte, error) {
-	return json.Marshal("[REDACTED]")
-}
+func (s Secret) MarshalJSON() ([]byte, error) { return json.Marshal(redactedPlaceholder) }
 
 // Export returns the raw secret value if resolved, otherwise returns an error.
 // Intended for explicit, narrow use when the raw value is required.

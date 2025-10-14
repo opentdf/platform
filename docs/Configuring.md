@@ -335,9 +335,32 @@ services:
 Notes:
 - Secrets are redacted in logs and JSON output; only a redacted summary is shown.
 - For nested secret fields in service-specific configs, prefer the inline `env:` form in YAML to avoid underscore-to-dot mapping issues with environment variables alone.
-- You can still use a structured form for references:
-  - `root_key: { fromEnv: "OPENTDF_SERVICES_KAS_ROOT_KEY" }`
-  - `root_key: { fromFile: "/path/to/secret" }`
+- You can still use a structured map form for references (YAML):
+
+  Block style (preferred for readability):
+  ```yaml
+  services:
+    kas:
+      root_key:
+        fromEnv: OPENTDF_SERVICES_KAS_ROOT_KEY
+  ```
+
+  Or referencing a file path:
+  ```yaml
+  services:
+    kas:
+      root_key:
+        fromFile: /var/run/secrets/opentdf/kas_root_key
+  ```
+
+  Flow style (compact):
+  ```yaml
+  services:
+    kas:
+      root_key: { fromEnv: OPENTDF_SERVICES_KAS_ROOT_KEY }
+      # or
+      root_key: { fromFile: /var/run/secrets/opentdf/kas_root_key }
+  ```
 
 
 Example:

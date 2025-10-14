@@ -1585,7 +1585,7 @@ func getObligations(ctx context.Context, authClient sdkconnect.AuthorizationServ
 func getKasErrorToReturn(err error, defaultError error) error {
 	errToReturn := defaultError
 	if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
-		errToReturn = errors.Join(ErrRewrapBadRequest, defaultError)
+		errToReturn = errors.Join(ErrRewrapBadRequest, errToReturn)
 	} else if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
 		errToReturn = errors.Join(ErrRewrapForbidden, errToReturn)
 	}

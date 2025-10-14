@@ -9,18 +9,17 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"sync"
 )
 
-// Secret represents a sensitive value that should not be logged or marshaled plainly.
-// It can be provided literally or by reference (e.g., environment variable).
-type Secret struct {
-	// value holds the resolved secret when available.
-	value string
+// Secret represents a sensitive value. It holds an internal pointer to state
+// so copying Secret values does not copy the underlying lock.
+type Secret struct{ state *secretState }
 
-	// source is a human-readable origin for the secret (e.g., "literal", "env:OPENTDF_FOO").
-	source string
-
-	// resolved indicates whether value has been materialized.
+type secretState struct {
+	mu       sync.Mutex
+	value    string
+	source   string
 	resolved bool
 }
 
@@ -33,12 +32,12 @@ var (
 
 // NewLiteralSecret creates a Secret from a literal value and marks it resolved.
 func NewLiteralSecret(v string) Secret {
-	return Secret{value: v, source: "literal", resolved: true}
+	return Secret{state: &secretState{value: v, source: "literal", resolved: true}}
 }
 
 // NewEnvSecret creates a Secret that will resolve from the given environment variable.
 func NewEnvSecret(envName string) Secret {
-	return Secret{source: "env:" + envName}
+	return Secret{state: &secretState{source: "env:" + envName}}
 }
 
 // NewFileSecret creates a Secret that will resolve from the contents of a file path.
@@ -46,55 +45,77 @@ func NewEnvSecret(envName string) Secret {
 func NewFileSecret(path string) Secret {
 	// Normalize to absolute-ish source marker
 	if !strings.HasPrefix(path, "file:") {
-		return Secret{source: "file:" + path}
+		return Secret{state: &secretState{source: "file:" + path}}
 	}
-	return Secret{source: path}
+	return Secret{state: &secretState{source: path}}
 }
 
 // Resolve ensures the secret is materialized and returns its value.
 // If the secret references an environment variable, it reads it from the process environment.
-func (s *Secret) Resolve(_ context.Context) (string, error) {
-	if s.resolved {
-		return s.value, nil
+func (s Secret) Resolve(ctx context.Context) (string, error) {
+	if s.state == nil {
+		return "", ErrSecretNotResolved
+	}
+	st := s.state
+	st.mu.Lock()
+	defer st.mu.Unlock()
+
+	if st.resolved {
+		return st.value, nil
 	}
 
-	// Resolve based on source scheme
-	// If no source is set, the secret is unset/optional and not resolved
-	if s.source == "" {
+	if st.source == "" {
 		return "", ErrSecretNotResolved
 	}
 
+	if ctx != nil {
+		if err := ctx.Err(); err != nil {
+			return "", err
+		}
+	}
+
 	switch {
-	case len(s.source) > 4 && s.source[:4] == "env:":
-		envName := s.source[4:]
+	case len(st.source) > 4 && st.source[:4] == "env:":
+		envName := st.source[4:]
+		if envName == "" {
+			return "", errors.New("empty env directive")
+		}
 		if v, ok := os.LookupEnv(envName); ok {
-			s.value = v
-			s.resolved = true
-			return s.value, nil
+			st.value = v
+			st.resolved = true
+			return st.value, nil
 		}
 		return "", fmt.Errorf("%w: %s", ErrSecretMissingEnv, envName)
-	case len(s.source) > 5 && s.source[:5] == "file:":
-		path := s.source[5:]
+	case len(st.source) > 5 && st.source[:5] == "file:":
+		path := st.source[5:]
+		if path == "" {
+			return "", errors.New("empty file directive")
+		}
+		if ctx != nil {
+			if err := ctx.Err(); err != nil {
+				return "", err
+			}
+		}
 		b, err := os.ReadFile(path)
 		if err != nil {
 			// Mask file not found vs other errors in public message
 			if errors.Is(err, fs.ErrNotExist) {
 				return "", fmt.Errorf("secret file not found: %s", path)
 			}
-			return "", fmt.Errorf("error reading secret file: %w", err)
+			return "", fmt.Errorf("error reading secret file %s: %w", path, err)
 		}
-		s.value = string(b)
-		s.resolved = true
-		return s.value, nil
-	case s.source == "literal":
+		st.value = strings.TrimSpace(string(b))
+		st.resolved = true
+		return st.value, nil
+	case st.source == "literal":
 		// Should have been resolved already; treat as not resolved if empty.
-		if s.resolved {
-			return s.value, nil
+		if st.resolved {
+			return st.value, nil
 		}
 		return "", ErrSecretNotResolved
 	default:
 		// Placeholder for future resolvers (e.g., fromURI)
-		return "", fmt.Errorf("unrecognized secret source: %s", s.source)
+		return "", fmt.Errorf("unrecognized secret source: %s", st.source)
 	}
 }
 
@@ -103,10 +124,10 @@ func (s Secret) String() string { return "[REDACTED]" }
 
 // LogValue implements slog.LogValuer to prevent accidental secret leakage in logs.
 func (s Secret) LogValue() slog.Value {
-	if s.source != "" {
+	if s.state != nil && s.state.source != "" {
 		return slog.GroupValue(
 			slog.String("value", "[REDACTED]"),
-			slog.String("source", s.source),
+			slog.String("source", s.state.source),
 		)
 	}
 	return slog.StringValue("[REDACTED]")
@@ -120,11 +141,23 @@ func (s Secret) MarshalJSON() ([]byte, error) {
 // Export returns the raw secret value if resolved, otherwise returns an error.
 // Intended for explicit, narrow use when the raw value is required.
 func (s Secret) Export() (string, error) {
-	if !s.resolved {
+	if s.state == nil {
 		return "", ErrSecretNotResolved
 	}
-	return s.value, nil
+	s.state.mu.Lock()
+	defer s.state.mu.Unlock()
+	if !s.state.resolved {
+		return "", ErrSecretNotResolved
+	}
+	return s.state.value, nil
 }
 
 // IsZero reports whether the secret has no value and no source.
-func (s Secret) IsZero() bool { return !s.resolved && s.source == "" && s.value == "" }
+func (s Secret) IsZero() bool {
+	if s.state == nil {
+		return true
+	}
+	s.state.mu.Lock()
+	defer s.state.mu.Unlock()
+	return !s.state.resolved && s.state.source == "" && s.state.value == ""
+}

@@ -46,3 +46,20 @@ func TestDecodeHook_InlineForms(t *testing.T) {
 		t.Fatalf("file: %v %q", err, c)
 	}
 }
+
+func TestDecodeHook_MalformedDirectives(t *testing.T) {
+	cases := []ServiceConfig{
+		{"x": "env:"},
+		{"x": "file:"},
+		{"x": map[string]any{"fromEnv": ""}},
+		{"x": map[string]any{"fromFile": ""}},
+	}
+	for _, in := range cases {
+		var out struct {
+			X Secret `mapstructure:"x"`
+		}
+		if err := BindServiceConfig(context.Background(), in, &out); err == nil {
+			t.Fatalf("expected error for malformed directive: %+v", in)
+		}
+	}
+}

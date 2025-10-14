@@ -57,7 +57,11 @@ func BindServiceConfig[T any](ctx context.Context, svcCfg ServiceConfig, out *T,
 
 	// Validate struct using go-playground/validator tags, if present
 	if err := validator.New().Struct(out); err != nil {
-		return err
+		var verrs validator.ValidationErrors
+		if errors.As(err, &verrs) {
+			return fmt.Errorf("validation failed: %s", verrs.Error())
+		}
+		return fmt.Errorf("validation failed: %w", err)
 	}
 	return nil
 }

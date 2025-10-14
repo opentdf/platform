@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"testing"
 )
 
@@ -38,6 +39,23 @@ func TestSecret_FromEnv(t *testing.T) {
 	}
 	if got != "env-secret" {
 		t.Fatalf("unexpected value: %q", got)
+	}
+}
+
+func TestSecret_FromFile_Trim(t *testing.T) {
+	dir := t.TempDir()
+	p := dir + "/s.txt"
+	// Include trailing newline to simulate typical secret mounts
+	if err := os.WriteFile(p, []byte("abc\n"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	s := NewFileSecret(p)
+	got, err := s.Resolve(context.Background())
+	if err != nil {
+		t.Fatalf("resolve file: %v", err)
+	}
+	if got != "abc" {
+		t.Fatalf("expected trimmed value 'abc', got %q", got)
 	}
 }
 

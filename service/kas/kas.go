@@ -152,12 +152,11 @@ func determineKASURL(srp serviceregistry.RegistrationParams, kasCfg access.KASCo
 	return kasURL, nil
 }
 
-func handleKeyManagement(srp serviceregistry.RegistrationParams, kasCfg access.KASConfig, p *access.Provider, cacheClient *cache.Cache) error {
+func handleKeyManagement(srp serviceregistry.RegistrationParams, kasCfg *access.KASConfig, p *access.Provider, cacheClient *cache.Cache) error {
 	srp.Logger.Info("preview feature: key management is enabled")
-	srp.Logger.Debug("kas root_key summary", slog.Any("root_key", kasCfg.RootKey))
 	srp.Logger.Debug("kas preview settings", slog.Any("preview", kasCfg.Preview))
 
-	kasURL, err := determineKASURL(srp, kasCfg)
+	kasURL, err := determineKASURL(srp, *kasCfg)
 	if err != nil {
 		return fmt.Errorf("failed to determine KAS URL: %w", err)
 	}

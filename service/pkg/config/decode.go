@@ -23,10 +23,18 @@ func secretDecodeHook(from, to reflect.Type, data any) (any, error) {
 		// Support friendly inline directives: "env:VAR", "file:/path", "literal:..."
 		s := reflect.ValueOf(data).String()
 		switch {
-		case strings.HasPrefix(s, "env:") && len(s) > len("env:"):
-			return NewEnvSecret(strings.TrimPrefix(s, "env:")), nil
-		case strings.HasPrefix(s, "file:") && len(s) > len("file:"):
-			return NewFileSecret(strings.TrimPrefix(s, "file:")), nil
+		case strings.HasPrefix(s, "env:"):
+			v := strings.TrimPrefix(s, "env:")
+			if v == "" {
+				return nil, errors.New("empty env directive")
+			}
+			return NewEnvSecret(v), nil
+		case strings.HasPrefix(s, "file:"):
+			v := strings.TrimPrefix(s, "file:")
+			if v == "" {
+				return nil, errors.New("empty file directive")
+			}
+			return NewFileSecret(v), nil
 		case strings.HasPrefix(s, "literal:"):
 			return NewLiteralSecret(strings.TrimPrefix(s, "literal:")), nil
 		default:

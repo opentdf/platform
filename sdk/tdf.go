@@ -1246,13 +1246,7 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 
 		if err != nil {
 			errToReturn := fmt.Errorf("kao unwrap failed for split %v: %w", ss, err)
-			if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
-				errToReturn = fmt.Errorf("%w: %w", ErrRewrapBadRequest, errToReturn)
-			}
-			if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
-				errToReturn = fmt.Errorf("%w: %w", errRewrapForbidden, errToReturn)
-			}
-			skippedSplits[ss] = errToReturn
+			skippedSplits[ss] = getKasErrorToReturn(err, errToReturn)
 			continue
 		}
 
@@ -1586,4 +1580,15 @@ func getObligations(ctx context.Context, authClient sdkconnect.AuthorizationServ
 	}
 
 	return resp.GetDecision().GetRequiredObligations(), nil
+}
+
+func getKasErrorToReturn(err error, defaultError error) error {
+	errToReturn := defaultError
+	if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
+		errToReturn = errors.Join(ErrRewrapBadRequest, defaultError)
+	} else if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
+		errToReturn = errors.Join(ErrRewrapForbidden, errToReturn)
+	}
+
+	return errToReturn
 }

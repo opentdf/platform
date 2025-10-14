@@ -2866,6 +2866,30 @@ func TestIsLessThanSemver(t *testing.T) {
 	}
 }
 
+func TestGetKasErrorToReturn(t *testing.T) {
+	defaultError := errors.New("default KAS error")
+
+	t.Run("InvalidArgument error returns ErrRewrapBadRequest", func(t *testing.T) {
+		inputError := errors.New("rpc error: code = InvalidArgument desc = invalid request")
+		result := getKasErrorToReturn(inputError, defaultError)
+		require.ErrorIs(t, result, ErrRewrapBadRequest)
+		require.ErrorIs(t, result, defaultError)
+	})
+
+	t.Run("PermissionDenied error returns ErrRewrapForbidden", func(t *testing.T) {
+		inputError := errors.New("rpc error: code = PermissionDenied desc = access denied")
+		result := getKasErrorToReturn(inputError, defaultError)
+		require.ErrorIs(t, result, ErrRewrapForbidden)
+		require.ErrorIs(t, result, defaultError)
+	})
+
+	t.Run("Other error returns default error unchanged", func(t *testing.T) {
+		inputError := errors.New("rpc error: code = Internal desc = internal server error")
+		result := getKasErrorToReturn(inputError, defaultError)
+		require.Equal(t, defaultError, result)
+	})
+}
+
 func (a *FakeAuthz) GetDecision(_ context.Context, req *authorizationv2.GetDecisionRequest) (*authorizationv2.GetDecisionResponse, error) {
 	a.numCalls++
 	return &authorizationv2.GetDecisionResponse{

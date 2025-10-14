@@ -1091,7 +1091,8 @@ func (n *NanoTDFReader) getNanoRewrapKey(ctx context.Context) error {
 	n.requiredObligations = &Obligations{FQNs: result.obligations}
 
 	if result.kaoRes[0].Error != nil {
-		return fmt.Errorf("rewrapError: %w", result.kaoRes[0].Error)
+		errToReturn := fmt.Errorf("rewrapError: %w", result.kaoRes[0].Error)
+		return getKasErrorToReturn(result.kaoRes[0].Error, errToReturn)
 	}
 
 	if n.collectionStore != nil {

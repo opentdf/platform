@@ -40,11 +40,10 @@ type NamespaceServiceClient interface {
 	UpdateNamespace(ctx context.Context, in *UpdateNamespaceRequest, opts ...grpc.CallOption) (*UpdateNamespaceResponse, error)
 	DeactivateNamespace(ctx context.Context, in *DeactivateNamespaceRequest, opts ...grpc.CallOption) (*DeactivateNamespaceResponse, error)
 	// Deprecated: Do not use.
-	// --------------------------------------*
-	// Namespace <> Key Access Server RPCs
-	// ---------------------------------------
+	// Deprecated: utilize AssignPublicKeyToNamespace
 	AssignKeyAccessServerToNamespace(ctx context.Context, in *AssignKeyAccessServerToNamespaceRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToNamespaceResponse, error)
 	// Deprecated: Do not use.
+	// Deprecated: utilize RemovePublicKeyFromNamespace
 	RemoveKeyAccessServerFromNamespace(ctx context.Context, in *RemoveKeyAccessServerFromNamespaceRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromNamespaceResponse, error)
 	// --------------------------------------*
 	// Namespace <> Key RPCs
@@ -154,11 +153,10 @@ type NamespaceServiceServer interface {
 	UpdateNamespace(context.Context, *UpdateNamespaceRequest) (*UpdateNamespaceResponse, error)
 	DeactivateNamespace(context.Context, *DeactivateNamespaceRequest) (*DeactivateNamespaceResponse, error)
 	// Deprecated: Do not use.
-	// --------------------------------------*
-	// Namespace <> Key Access Server RPCs
-	// ---------------------------------------
+	// Deprecated: utilize AssignPublicKeyToNamespace
 	AssignKeyAccessServerToNamespace(context.Context, *AssignKeyAccessServerToNamespaceRequest) (*AssignKeyAccessServerToNamespaceResponse, error)
 	// Deprecated: Do not use.
+	// Deprecated: utilize RemovePublicKeyFromNamespace
 	RemoveKeyAccessServerFromNamespace(context.Context, *RemoveKeyAccessServerFromNamespaceRequest) (*RemoveKeyAccessServerFromNamespaceResponse, error)
 	// --------------------------------------*
 	// Namespace <> Key RPCs

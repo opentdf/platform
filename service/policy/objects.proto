@@ -97,7 +97,7 @@ message Value {
 
   string value = 3;
 
-  // Deprecated
+  // Deprecated: no replacement
   reserved "members";
   reserved 4;
 
@@ -138,7 +138,7 @@ message Action {
     // Migrate to 'create' action name
     STANDARD_ACTION_TRANSMIT = 2;
   }
-  // Deprecated
+  // Deprecated: use 'name' instead
   oneof value {
     // Deprecated
     StandardAction standard = 1;
@@ -331,7 +331,7 @@ message KeyAccessServer {
       ".*)?$')"
   }];
 
-  // Deprecated
+  // Deprecated: KAS can have multiple key pairs
   PublicKey public_key = 3;
 
   // The source of the KAS: (INTERNAL, EXTERNAL)

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.9.0](https://github.com/opentdf/platform/compare/sdk/v0.8.0...sdk/v0.9.0) (2025-10-09)
+
+
+### Features
+
+* **sdk:** DSPX-1465 refactor TDF architecture with streaming support and segment-based writing ([#2785](https://github.com/opentdf/platform/issues/2785)) ([ea9b278](https://github.com/opentdf/platform/commit/ea9b278e34e52958990446924e110175ed9a3d6f))
+* **sdk:** Experimental zipstream lib, add segment-based streaming ZIP writer, ZIP64 modes ([#2782](https://github.com/opentdf/platform/issues/2782)) ([b381179](https://github.com/opentdf/platform/commit/b381179119bca67ef19a935771b5a2efb5f6823a))
+* **sdk:** sdk should optionally take in a logger ([#2754](https://github.com/opentdf/platform/issues/2754)) ([f40d05f](https://github.com/opentdf/platform/commit/f40d05ff24aa7ff4270f206c4e3efc13125ec284))
+
+
+### Bug Fixes
+
+* **core:** deprecate policy WithValue selector not utilized by RPC ([#2794](https://github.com/opentdf/platform/issues/2794)) ([c573595](https://github.com/opentdf/platform/commit/c573595aba6c0e5223fc7fd924840c1bf34cd895))
+
 ## [0.8.0](https://github.com/opentdf/platform/compare/sdk/v0.7.0...sdk/v0.8.0) (2025-09-19)
 
 

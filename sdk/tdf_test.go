@@ -2050,7 +2050,7 @@ func (s *TDFSuite) Test_Obligations() {
 			decision:                  authorizationv2.Decision_DECISION_PERMIT,
 			fulfillableObligationFQNs: []string{},
 			shouldReturnError:         false,
-			numCalls:                  2,
+			numCalls:                  1,
 		},
 		{
 			name:                      "Nil required obligations - DENY bc of obligations (should succeed)",
@@ -2071,12 +2071,12 @@ func (s *TDFSuite) Test_Obligations() {
 		},
 		{
 			name:                      "Empty Obligation FQNs",
-			requiredObligations:       []string{obGeo.url},
+			requiredObligations:       []string{},
 			decision:                  authorizationv2.Decision_DECISION_PERMIT,
-			fulfillableObligationFQNs: []string{obGeo.url},
+			fulfillableObligationFQNs: []string{},
 			shouldReturnError:         false,
 			expectedError:             nil,
-			numCalls:                  1,
+			numCalls:                  0,
 			prepopulatedObligations:   []string{},
 		},
 		{

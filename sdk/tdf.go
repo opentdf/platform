@@ -1112,12 +1112,12 @@ func (r *Reader) DataAttributes() ([]string, error) {
 
 /*
 * Will return the required obligations for the TDF.
-* If the obligations were populated from an Init() or DecryptNanoTDF() call, this function will return those.
+* If the obligations were populated from an Init() or WriteTo() call, this function will return those.
 * If obligations were not populated, this function will parse the policy from the TDF
 * and call Authorization Service to get the required obligations.
  */
 func (r *Reader) Obligations(ctx context.Context) (Obligations, error) {
-	if r.requiredObligations != nil && len(r.requiredObligations.FQNs) > 0 {
+	if r.requiredObligations != nil {
 		return *r.requiredObligations, nil
 	}
 

@@ -1020,7 +1020,7 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 * policy mode is plaintext.
  */
 func (n *NanoTDFReader) Obligations(ctx context.Context) (Obligations, error) {
-	if n.requiredObligations != nil && len(n.requiredObligations.FQNs) > 0 {
+	if n.requiredObligations != nil {
 		return *n.requiredObligations, nil
 	}
 

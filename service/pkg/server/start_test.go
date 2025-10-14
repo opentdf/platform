@@ -353,7 +353,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			require.NoError(t, err)
 
 			// Start services with test service
-			cleanup, err := startServices(context.Background(), startServicesParams{
+			cleanup, err := startServices(t.Context(), startServicesParams{
 				cfg: &config.Config{
 					Mode: tc.mode,
 					Services: map[string]config.ServiceConfig{

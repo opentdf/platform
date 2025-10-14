@@ -1,7 +1,6 @@
 package config
 
 import (
-	"context"
 	"testing"
 )
 
@@ -25,17 +24,17 @@ func TestBindServiceConfig_LiteralAndEnv(t *testing.T) {
 	}
 
 	var out demoCfg
-	if err := BindServiceConfig(context.Background(), in, &out, WithEagerSecretResolution()); err != nil {
+	if err := BindServiceConfig(t.Context(), in, &out, WithEagerSecretResolution()); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
 	if out.User != "alice" {
 		t.Fatalf("user mismatch: %q", out.User)
 	}
-	pass, err := out.Pass.Resolve(context.Background())
+	pass, err := out.Pass.Resolve(t.Context())
 	if err != nil || pass != "p@ss" {
 		t.Fatalf("pass resolve: %v %q", err, pass)
 	}
-	tok, err := out.Nested.Token.Resolve(context.Background())
+	tok, err := out.Nested.Token.Resolve(t.Context())
 	if err != nil || tok != "tok" {
 		t.Fatalf("token resolve: %v %q", err, tok)
 	}

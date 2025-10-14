@@ -1,7 +1,6 @@
 package config
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -29,19 +28,19 @@ func TestDecodeHook_InlineForms(t *testing.T) {
 	}
 
 	var out inlineCfg
-	if err := BindServiceConfig(context.Background(), in, &out); err != nil {
+	if err := BindServiceConfig(t.Context(), in, &out); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
 
-	a, err := out.A.Resolve(context.Background())
+	a, err := out.A.Resolve(t.Context())
 	if err != nil || a != "abc" {
 		t.Fatalf("literal: %v %q", err, a)
 	}
-	b, err := out.B.Resolve(context.Background())
+	b, err := out.B.Resolve(t.Context())
 	if err != nil || b != "from-env" {
 		t.Fatalf("env: %v %q", err, b)
 	}
-	c, err := out.C.Resolve(context.Background())
+	c, err := out.C.Resolve(t.Context())
 	if err != nil || c != "from-file" {
 		t.Fatalf("file: %v %q", err, c)
 	}
@@ -58,7 +57,7 @@ func TestDecodeHook_MalformedDirectives(t *testing.T) {
 		var out struct {
 			X Secret `mapstructure:"x"`
 		}
-		if err := BindServiceConfig(context.Background(), in, &out); err == nil {
+		if err := BindServiceConfig(t.Context(), in, &out); err == nil {
 			t.Fatalf("expected error for malformed directive: %+v", in)
 		}
 	}

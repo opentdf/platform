@@ -1,7 +1,6 @@
 package config
 
 import (
-	"context"
 	"sync"
 	"testing"
 )
@@ -18,7 +17,7 @@ func TestSecret_Resolve_Concurrent(t *testing.T) {
 	for i := 0; i < n; i++ {
 		go func() {
 			defer wg.Done()
-			v, err := s.Resolve(context.Background())
+			v, err := s.Resolve(t.Context())
 			if err != nil {
 				errs <- err
 				return

@@ -146,8 +146,8 @@ var (
 			name: "entity identifier - request token invalid",
 			request: &authzV2.GetDecisionMultiResourceRequest{
 				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_UseRequestToken{
-						UseRequestToken: wrapperspb.Bool(false),
+					Identifier: &authzV2.EntityIdentifier_WithRequestToken{
+						WithRequestToken: wrapperspb.Bool(false),
 					},
 				},
 				Action: sampleActionCreate,
@@ -531,8 +531,8 @@ func Test_GetDecisionRequest_Succeeds(t *testing.T) {
 			name: "entity: use request token, action: create, resource: attribute values",
 			request: &authzV2.GetDecisionRequest{
 				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_UseRequestToken{
-						UseRequestToken: wrapperspb.Bool(true),
+					Identifier: &authzV2.EntityIdentifier_WithRequestToken{
+						WithRequestToken: wrapperspb.Bool(true),
 					},
 				},
 				Action: sampleActionCreate,
@@ -729,8 +729,8 @@ func Test_GetDecisionRequest_Fails(t *testing.T) {
 			name: "entity identifier (request token) but nil",
 			request: &authzV2.GetDecisionRequest{
 				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_UseRequestToken{
-						UseRequestToken: nil,
+					Identifier: &authzV2.EntityIdentifier_WithRequestToken{
+						WithRequestToken: nil,
 					},
 				},
 				Action: sampleActionCreate,
@@ -748,8 +748,8 @@ func Test_GetDecisionRequest_Fails(t *testing.T) {
 			name: "entity identifier (request token) but false",
 			request: &authzV2.GetDecisionRequest{
 				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_UseRequestToken{
-						UseRequestToken: wrapperspb.Bool(false),
+					Identifier: &authzV2.EntityIdentifier_WithRequestToken{
+						WithRequestToken: wrapperspb.Bool(false),
 					},
 				},
 				Action: sampleActionCreate,

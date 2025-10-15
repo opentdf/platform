@@ -14,14 +14,20 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
+	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/opentdf/platform/service/internal/access/v2/obligations"
 	"github.com/opentdf/platform/service/logger"
 )
 
 var (
-	ErrMissingRequiredSDK = errors.New("access: missing required SDK")
-	ErrInvalidEntityType  = errors.New("access: invalid entity type")
+	ErrMissingRequiredSDK                       = errors.New("access: missing required SDK")
+	ErrInvalidEntityType                        = errors.New("access: invalid entity type")
+	ErrFailedToWithRequestTokenEntityIdentifier = errors.New("access: failed to use request token as entity identifier - none found in context")
+	ErrInvalidWithRequestTokenEntityIdentifier  = errors.New("access: invalid use request token as entity identifier - must be true if provided")
+
+	requestAuthTokenEphemeralID = "with-request-token-auth-entity"
 )
 
 type JustInTimePDP struct {
@@ -153,6 +159,9 @@ func (p *JustInTimePDP) GetDecision(
 	case *authzV2.EntityIdentifier_Token:
 		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
 
+	case *authzV2.EntityIdentifier_WithRequestToken:
+		entityRepresentations, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities)
+
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
 		// Registered resources do not have entity representations, so only one decision is made
@@ -245,6 +254,9 @@ func (p *JustInTimePDP) GetEntitlements(
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
 		// registered resources do not have entity representations, so we can skip the remaining logic
 		return p.pdp.GetEntitlementsRegisteredResource(ctx, regResValueFQN, withComprehensiveHierarchy)
+
+	case *authzV2.EntityIdentifier_WithRequestToken:
+		entityRepresentations, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities)
 
 	default:
 		return nil, fmt.Errorf("entity type %T: %w", entityIdentifier.GetIdentifier(), ErrInvalidEntityType)
@@ -365,4 +377,26 @@ func (p *JustInTimePDP) resolveEntitiesFromToken(
 		return nil, fmt.Errorf("received %d entity chains in ERS response but expected exactly 1", len(entityChains))
 	}
 	return p.resolveEntitiesFromEntityChain(ctx, entityChains[0], skipEnvironmentEntities)
+}
+
+// resolveEntitiesFromRequestToken pulls the request token off the context where it has been set upstream
+// by an interceptor and builds an entity.Token that it then resolves
+func (p *JustInTimePDP) resolveEntitiesFromRequestToken(
+	ctx context.Context,
+	withRequestToken *wrapperspb.BoolValue,
+	skipEnvironmentEntities bool,
+) ([]*entityresolutionV2.EntityRepresentation, error) {
+	if !withRequestToken.GetValue() {
+		return nil, ErrInvalidWithRequestTokenEntityIdentifier
+	}
+	rawToken := ctxAuth.GetRawAccessTokenFromContext(ctx, p.logger)
+	if rawToken == "" {
+		return nil, ErrFailedToWithRequestTokenEntityIdentifier
+	}
+	token := &entity.Token{
+		Jwt:         rawToken,
+		EphemeralId: requestAuthTokenEphemeralID,
+	}
+
+	return p.resolveEntitiesFromToken(ctx, token, skipEnvironmentEntities)
 }

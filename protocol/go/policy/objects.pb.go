@@ -847,7 +847,8 @@ type Certificate struct {
 	// generated uuid in database
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// PEM format certificate
-	Pem      string           `protobuf:"bytes,2,opt,name=pem,proto3" json:"pem,omitempty"`
+	Pem string `protobuf:"bytes,2,opt,name=pem,proto3" json:"pem,omitempty"`
+	// Optional metadata.
 	Metadata *common.Metadata `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
 }
 

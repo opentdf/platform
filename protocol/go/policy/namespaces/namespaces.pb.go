@@ -1208,6 +1208,7 @@ type AssignCertificateToNamespaceResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// The mapping of the namespace to the certificate.
 	NamespaceCertificate *NamespaceCertificate `protobuf:"bytes,1,opt,name=namespace_certificate,json=namespaceCertificate,proto3" json:"namespace_certificate,omitempty"`
 	Certificate          *policy.Certificate   `protobuf:"bytes,2,opt,name=certificate,proto3" json:"certificate,omitempty"` // Return the full certificate object for convenience
 }
@@ -1263,6 +1264,7 @@ type RemoveCertificateFromNamespaceRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// The namespace and certificate to unassign.
 	NamespaceCertificate *NamespaceCertificate `protobuf:"bytes,1,opt,name=namespace_certificate,json=namespaceCertificate,proto3" json:"namespace_certificate,omitempty"`
 }
 
@@ -1310,6 +1312,7 @@ type RemoveCertificateFromNamespaceResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// The unassigned namespace and certificate.
 	NamespaceCertificate *NamespaceCertificate `protobuf:"bytes,1,opt,name=namespace_certificate,json=namespaceCertificate,proto3" json:"namespace_certificate,omitempty"`
 }
 

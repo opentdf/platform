@@ -1,4 +1,6 @@
-package sdk
+// Experimental: This package is EXPERIMENTAL and may change or be removed at any time
+
+package tdf
 
 const (
 	// The latest version of TDF Spec currently targeted by the SDK.
@@ -7,5 +9,5 @@ const (
 	TDFSpecVersion = "4.3.0"
 
 	// The three-part semantic version number of this SDK
-	Version = "0.9.0" // x-release-please-version
+	Version = "0.6.0" // x-release-please-version
 )

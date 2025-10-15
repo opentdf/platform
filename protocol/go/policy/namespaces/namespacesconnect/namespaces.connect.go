@@ -104,9 +104,7 @@ type NamespaceServiceClient interface {
 	// ---------------------------------------
 	AssignPublicKeyToNamespace(context.Context, *connect.Request[namespaces.AssignPublicKeyToNamespaceRequest]) (*connect.Response[namespaces.AssignPublicKeyToNamespaceResponse], error)
 	RemovePublicKeyFromNamespace(context.Context, *connect.Request[namespaces.RemovePublicKeyFromNamespaceRequest]) (*connect.Response[namespaces.RemovePublicKeyFromNamespaceResponse], error)
-	// --------------------------------------*
 	// Namespace <> Certificate RPCs
-	// ---------------------------------------
 	AssignCertificateToNamespace(context.Context, *connect.Request[namespaces.AssignCertificateToNamespaceRequest]) (*connect.Response[namespaces.AssignCertificateToNamespaceResponse], error)
 	RemoveCertificateFromNamespace(context.Context, *connect.Request[namespaces.RemoveCertificateFromNamespaceRequest]) (*connect.Response[namespaces.RemoveCertificateFromNamespaceResponse], error)
 }
@@ -291,9 +289,7 @@ type NamespaceServiceHandler interface {
 	// ---------------------------------------
 	AssignPublicKeyToNamespace(context.Context, *connect.Request[namespaces.AssignPublicKeyToNamespaceRequest]) (*connect.Response[namespaces.AssignPublicKeyToNamespaceResponse], error)
 	RemovePublicKeyFromNamespace(context.Context, *connect.Request[namespaces.RemovePublicKeyFromNamespaceRequest]) (*connect.Response[namespaces.RemovePublicKeyFromNamespaceResponse], error)
-	// --------------------------------------*
 	// Namespace <> Certificate RPCs
-	// ---------------------------------------
 	AssignCertificateToNamespace(context.Context, *connect.Request[namespaces.AssignCertificateToNamespaceRequest]) (*connect.Response[namespaces.AssignCertificateToNamespaceResponse], error)
 	RemoveCertificateFromNamespace(context.Context, *connect.Request[namespaces.RemoveCertificateFromNamespaceRequest]) (*connect.Response[namespaces.RemoveCertificateFromNamespaceResponse], error)
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/opentdf/platform/sdk/internal/archive"
 	"github.com/opentdf/platform/sdk/sdkconnect"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
@@ -1557,6 +1558,13 @@ func createKaoTemplateFromKasInfo(kasInfoArr []KASInfo) []kaoTpl {
 
 func getObligations(ctx context.Context, authClient sdkconnect.AuthorizationServiceClientV2, attributes, fulfillableObligationFQNs []string) ([]string, error) {
 	resp, err := authClient.GetDecision(ctx, &authorizationv2.GetDecisionRequest{
+		EntityIdentifier: &authorizationv2.EntityIdentifier{
+			Identifier: &authorizationv2.EntityIdentifier_WithRequestToken{
+				WithRequestToken: &wrapperspb.BoolValue{
+					Value: true,
+				},
+			},
+		},
 		Action: &policy.Action{
 			Value: &policy.Action_Standard{
 				Standard: policy.Action_STANDARD_ACTION_DECRYPT,

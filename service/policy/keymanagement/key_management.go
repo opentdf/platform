@@ -112,6 +112,7 @@ func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Reque
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("manager field is required"))
 	}
 	if !ksvc.isManagerRegistered(manager) {
+		ksvc.logger.InfoContext(ctx, "unregistered manager type", slog.String("manager", manager), slog.Any("registered_managers", ksvc.listManagerNames()))
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("manager type '%s' is not registered", manager))
 	}
 
@@ -277,4 +278,12 @@ func (ksvc *Service) isManagerRegistered(managerName string) bool {
 		}
 	}
 	return false
+}
+
+func (ksvc Service) listManagerNames() []string {
+	names := make([]string, 0, len(ksvc.keyManagerFactories))
+	for _, factory := range ksvc.keyManagerFactories {
+		names = append(names, factory.Name)
+	}
+	return names
 }

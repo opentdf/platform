@@ -929,22 +929,9 @@ func (s SDK) LoadNanoTDF(ctx context.Context, reader io.ReadSeeker, opts ...Nano
 		nanoTdfReaderConfig.fulfillableObligationFQNs = s.fulfillableObligationFQNs
 	}
 
-	if len(nanoTdfReaderConfig.kasAllowlist) == 0 && !nanoTdfReaderConfig.ignoreAllowList { //nolint:nestif // handling the case where kasAllowlist is not provided
-		if s.KeyAccessServerRegistry != nil {
-			platformEndpoint, err := s.PlatformConfiguration.platformEndpoint()
-			if err != nil {
-				return nil, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
-			}
-			// retrieve the registered kases if not provided
-			allowList, err := allowListFromKASRegistry(ctx, s.logger, s.KeyAccessServerRegistry, platformEndpoint)
-			if err != nil {
-				return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
-			}
-			nanoTdfReaderConfig.kasAllowlist = allowList
-		} else {
-			slog.Error("no KAS allowlist provided and no KeyAccessServerRegistry available")
-			return nil, errors.New("no KAS allowlist provided and no KeyAccessServerRegistry available")
-		}
+	nanoTdfReaderConfig.kasAllowlist, err = getKasAllowList(ctx, nanoTdfReaderConfig.kasAllowlist, s, nanoTdfReaderConfig.ignoreAllowList)
+	if err != nil {
+		return nil, err
 	}
 
 	header, headerBuf, err := getNanoTDFHeader(reader)

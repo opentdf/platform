@@ -787,22 +787,9 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		config.fulfillableObligationFQNs = s.fulfillableObligationFQNs
 	}
 
-	if len(config.kasAllowlist) == 0 && !config.ignoreAllowList { //nolint:nestif // handle the case where kasAllowlist is empty
-		if s.KeyAccessServerRegistry != nil {
-			// retrieve the registered kases if not provided
-			platformEndpoint, err := s.PlatformConfiguration.platformEndpoint()
-			if err != nil {
-				return nil, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
-			}
-			allowList, err := allowListFromKASRegistry(context.Background(), s.logger, s.KeyAccessServerRegistry, platformEndpoint)
-			if err != nil {
-				return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
-			}
-			config.kasAllowlist = allowList
-		} else {
-			slog.Error("no KAS allowlist provided and no KeyAccessServerRegistry available")
-			return nil, errors.New("no KAS allowlist provided and no KeyAccessServerRegistry available")
-		}
+	config.kasAllowlist, err = getKasAllowList(context.Background(), config.kasAllowlist, s, config.ignoreAllowList)
+	if err != nil {
+		return nil, err
 	}
 
 	manifest, err := tdfReader.Manifest()
@@ -1602,4 +1589,26 @@ func getKasErrorToReturn(err error, defaultError error) error {
 	}
 
 	return errToReturn
+}
+
+func getKasAllowList(ctx context.Context, kasAllowList AllowList, s SDK, ignoreAllowList bool) (AllowList, error) {
+	allowList := kasAllowList
+	if len(allowList) == 0 && !ignoreAllowList {
+		if s.KeyAccessServerRegistry == nil {
+			slog.Error("no KAS allowlist provided and no KeyAccessServerRegistry available")
+			return nil, errors.New("no KAS allowlist provided and no KeyAccessServerRegistry available")
+		}
+
+		// retrieve the registered kases if not provided
+		platformEndpoint, err := s.PlatformConfiguration.platformEndpoint()
+		if err != nil {
+			return nil, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
+		}
+		allowList, err = allowListFromKASRegistry(ctx, s.logger, s.KeyAccessServerRegistry, platformEndpoint)
+		if err != nil {
+			return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
+		}
+	}
+
+	return allowList, nil
 }

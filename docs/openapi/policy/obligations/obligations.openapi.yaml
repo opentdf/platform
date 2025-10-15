@@ -457,6 +457,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.RemoveObligationTriggerResponse'
+  /policy.obligations.Service/ListObligationTriggers:
+    post:
+      tags:
+        - policy.obligations.Service
+      summary: ListObligationTriggers
+      operationId: policy.obligations.Service.ListObligationTriggers
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.obligations.ListObligationTriggersRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.obligations.ListObligationTriggersResponse'
 components:
   schemas:
     common.MetadataUpdateEnum:
@@ -1679,6 +1714,37 @@ components:
           title: value
           $ref: '#/components/schemas/policy.Obligation'
       title: FqnObligationMapEntry
+      additionalProperties: false
+    policy.obligations.ListObligationTriggersRequest:
+      type: object
+      properties:
+        obligationValueId:
+          type: string
+          title: obligation_value_id
+          format: uuid
+        obligationValueFqn:
+          type: string
+          title: obligation_value_fqn
+          minLength: 1
+          format: uri
+        pagination:
+          title: pagination
+          description: Optional
+          $ref: '#/components/schemas/policy.PageRequest'
+      title: ListObligationTriggersRequest
+      additionalProperties: false
+    policy.obligations.ListObligationTriggersResponse:
+      type: object
+      properties:
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.ObligationTrigger'
+          title: triggers
+        pagination:
+          title: pagination
+          $ref: '#/components/schemas/policy.PageResponse'
+      title: ListObligationTriggersResponse
       additionalProperties: false
     policy.obligations.ListObligationsRequest:
       type: object

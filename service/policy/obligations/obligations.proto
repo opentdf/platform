@@ -302,6 +302,27 @@ message RemoveObligationTriggerResponse {
     policy.ObligationTrigger trigger = 1;
 }
 
+message ListObligationTriggersRequest {
+    // Required
+    option (buf.validate.message).oneof = { fields: ["obligation_value_id", "obligation_value_fqn"], required: true };
+    string obligation_value_id = 1 [(buf.validate.field).string.uuid = true];
+    string obligation_value_fqn = 2 [
+        (buf.validate.field).string = {
+            min_len : 1
+            uri : true
+        }
+    ];
+
+    // Optional
+    policy.PageRequest pagination = 10;
+}
+
+message ListObligationTriggersResponse {
+    repeated policy.ObligationTrigger triggers = 1;
+
+    policy.PageResponse pagination = 10;
+}
+
 // Fulfillers
 // message AddObligationFulfillerRequest {
 //     // Required
@@ -376,6 +397,10 @@ service Service {
     rpc AddObligationTrigger(AddObligationTriggerRequest) returns (AddObligationTriggerResponse) {}
 
     rpc RemoveObligationTrigger(RemoveObligationTriggerRequest) returns (RemoveObligationTriggerResponse) {}
+
+    rpc ListObligationTriggers(ListObligationTriggersRequest) returns (ListObligationTriggersResponse) {
+        option idempotency_level = NO_SIDE_EFFECTS;
+    }
 
    /*--------------------------------------*
     * Fulfiller RPCs

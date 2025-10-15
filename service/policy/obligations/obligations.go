@@ -415,6 +415,10 @@ func (s *Service) RemoveObligationTrigger(ctx context.Context, req *connect.Requ
 	return connect.NewResponse(rsp), nil
 }
 
+func (s *Service) ListObligationTriggers(ctx context.Context, req *connect.Request[obligations.ListObligationTriggersRequest]) (*connect.Response[obligations.ListObligationTriggersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("ListObligationTriggers is not yet implemented"))
+}
+
 // func (s *Service) AddObligationFulfiller(_ context.Context, _ *connect.Request[obligations.AddObligationFulfillerRequest]) (*connect.Response[obligations.AddObligationFulfillerResponse], error) {
 // 	// TODO: Implement AddObligationFulfiller logic
 // 	return connect.NewResponse(&obligations.AddObligationFulfillerResponse{}), nil

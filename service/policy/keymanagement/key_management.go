@@ -112,7 +112,9 @@ func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Reque
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("manager field is required"))
 	}
 	if !ksvc.isManagerRegistered(manager) {
-		ksvc.logger.WarnContext(ctx, "create provider: manager type is not registered", slog.String("manager", manager), slog.Any("registered_managers", ksvc.listManagerNames()))
+		ksvc.logger.WarnContext(ctx, "create provider: manager type is not registered",
+			slog.String("manager", manager),
+			slog.Any("registered_managers", ksvc.listManagerNames()))
 	}
 
 	auditParams := audit.PolicyEventParams{

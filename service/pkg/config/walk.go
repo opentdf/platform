@@ -25,17 +25,21 @@ func walkValue(rv reflect.Value, fn func(*Secret) error) error {
 		rv = rv.Elem()
 	}
 
-	//nolint:exhaustive // Only handling relevant kinds for Secret traversal
+	//nolint:exhaustive // We only need to traverse struct, map, slice, and array kinds for secrets
 	switch rv.Kind() {
 	case reflect.Struct:
 		rt := rv.Type()
 		// Handle Secret itself
 		if rt == reflect.TypeOf(Secret{}) {
 			if rv.CanAddr() {
-				s, ok := rv.Addr().Interface().(*Secret)
-				if ok {
+				if s, ok := rv.Addr().Interface().(*Secret); ok {
 					return fn(s)
 				}
+				return nil
+			}
+			// For non-addressable Secret values (e.g., map index), operate on a copy.
+			if s, ok := rv.Interface().(Secret); ok {
+				return fn(&s)
 			}
 			return nil
 		}

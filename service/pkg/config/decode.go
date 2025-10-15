@@ -42,15 +42,20 @@ func secretDecodeHook(from, to reflect.Type, data any) (any, error) {
 			return NewLiteralSecret(s), nil
 		}
 	case reflect.Map:
-		// Must be map[string]any
+		// Must be map[string]any (case-insensitive key handling)
 		m, okm := data.(map[string]any)
 		if !okm {
 			return nil, fmt.Errorf("invalid secret map type: %T", data)
 		}
-		if env, ok := m["fromEnv"].(string); ok && env != "" {
+		// Normalize keys to lowercase for robust matching (Viper may lowercase keys)
+		lower := make(map[string]any, len(m))
+		for k, v := range m {
+			lower[strings.ToLower(k)] = v
+		}
+		if env, ok := lower["fromenv"].(string); ok && env != "" {
 			return NewEnvSecret(env), nil
 		}
-		if file, ok2 := m["fromFile"].(string); ok2 && file != "" {
+		if file, ok2 := lower["fromfile"].(string); ok2 && file != "" {
 			return NewFileSecret(file), nil
 		}
 		// Future: support {"fromURI":"aws-secretsmanager://..."}

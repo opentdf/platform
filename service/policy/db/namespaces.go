@@ -327,11 +327,11 @@ func (c PolicyDBClient) UnsafeReactivateNamespace(ctx context.Context, id string
 
 func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, existing *policy.Namespace, fqn string) (*policy.Namespace, error) {
 	if existing == nil {
-		return nil, db.ErrNotFound
+		return nil, fmt.Errorf("namespace not found: %w", db.ErrNotFound)
 	}
 
 	if existing.GetFqn() != fqn {
-		return nil, db.ErrFqnMismatch
+		return nil, fmt.Errorf("fqn mismatch: %w", db.ErrNotFound)
 	}
 
 	id := existing.GetId()

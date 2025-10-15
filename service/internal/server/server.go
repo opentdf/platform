@@ -383,7 +383,7 @@ var rpcPathRegex = regexp.MustCompile(`^/[\w\.]+\.[\w\.]+/[\w]+$`)
 func routeConnectRPCRequests(connectRPC http.Handler, httpHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// contentType := r.Header.Get("Content-Type")
-		if (r.Method == http.MethodPost || r.Method == http.MethodGet) && rpcPathRegex.MatchString(r.URL.Path) {
+		if (r.Method == http.MethodPost || r.Method == http.MethodGet || r.Method == http.MethodOptions) && rpcPathRegex.MatchString(r.URL.Path) {
 			connectRPC.ServeHTTP(w, r)
 		} else {
 			httpHandler.ServeHTTP(w, r)

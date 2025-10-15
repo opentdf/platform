@@ -1569,6 +1569,7 @@ func getObligations(ctx context.Context, authClient sdkconnect.AuthorizationServ
 			Value: &policy.Action_Standard{
 				Standard: policy.Action_STANDARD_ACTION_DECRYPT,
 			},
+			Name: "read",
 		},
 		Resource: &authorizationv2.Resource{
 			Resource: &authorizationv2.Resource_AttributeValues_{

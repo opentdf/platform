@@ -245,23 +245,13 @@ func (c *Config) Reload(ctx context.Context) error {
 					continue
 				}
 				if loaderValue != nil {
-					// Avoid logging sensitive values
-					if strings.Contains(strings.ToLower(key), "secret") {
-						slog.DebugContext(
-							ctx,
-							"config merge",
-							slog.String("loader", loader.Name()),
-							slog.String("key", key),
-							slog.String("value", "[REDACTED]"),
-						)
-					} else {
-						slog.DebugContext(
-							ctx,
-							"config merge",
-							slog.String("loader", loader.Name()),
-							slog.String("key", key),
-						)
-					}
+					// Log loader and key only; never log values in merge path
+					slog.DebugContext(
+						ctx,
+						"config merge",
+						slog.String("loader", loader.Name()),
+						slog.String("key", key),
+					)
 					orderedViper.Set(key, loaderValue)
 					assigned[key] = struct{}{}
 				}

@@ -77,8 +77,8 @@ func (s Secret) Resolve(ctx context.Context) (string, error) {
 	}
 
 	switch {
-	case len(st.source) > 4 && st.source[:4] == "env:":
-		envName := st.source[4:]
+	case strings.HasPrefix(st.source, "env:"):
+		envName := strings.TrimPrefix(st.source, "env:")
 		if envName == "" {
 			return "", errors.New("empty env directive")
 		}
@@ -88,8 +88,8 @@ func (s Secret) Resolve(ctx context.Context) (string, error) {
 			return st.value, nil
 		}
 		return "", fmt.Errorf("%w: %s", ErrSecretMissingEnv, envName)
-	case len(st.source) > 5 && st.source[:5] == "file:":
-		path := st.source[5:]
+	case strings.HasPrefix(st.source, "file:"):
+		path := strings.TrimPrefix(st.source, "file:")
 		if path == "" {
 			return "", errors.New("empty file directive")
 		}

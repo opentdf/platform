@@ -235,7 +235,7 @@ func WithNoKIDInNano() Option {
 }
 
 // WithFulfillableObligationFQNs sets the list of obligation FQNs that can
-func WithSDKFulfillableObligationFQNs(fqns []string) Option {
+func WithFulfillableObligationFQNs(fqns []string) Option {
 	return func(c *config) {
 		c.fulfillableObligationFQNs = fqns
 	}

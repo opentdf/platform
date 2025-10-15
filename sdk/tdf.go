@@ -50,6 +50,7 @@ const (
 	kAssertionSignature    = "assertionSig"
 	kAssertionHash         = "assertionHash"
 	hexSemverThreshold     = "4.3.0"
+	readActionName         = "read"
 )
 
 // Loads and reads ZTDF files
@@ -781,7 +782,8 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		return nil, fmt.Errorf("newAssertionConfig failed: %w", err)
 	}
 
-	if len(config.fulfillableObligationFQNs) == 0 && len(s.fulfillableObligationFQNs) > 0 {
+	useGlobalFulfillableObligations := len(config.fulfillableObligationFQNs) == 0 && len(s.fulfillableObligationFQNs) > 0
+	if useGlobalFulfillableObligations {
 		config.fulfillableObligationFQNs = s.fulfillableObligationFQNs
 	}
 
@@ -1569,7 +1571,7 @@ func getObligations(ctx context.Context, authClient sdkconnect.AuthorizationServ
 			Value: &policy.Action_Standard{
 				Standard: policy.Action_STANDARD_ACTION_DECRYPT,
 			},
-			Name: "read",
+			Name: readActionName,
 		},
 		Resource: &authorizationv2.Resource{
 			Resource: &authorizationv2.Resource_AttributeValues_{

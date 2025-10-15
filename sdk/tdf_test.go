@@ -1944,11 +1944,11 @@ func (s *TDFSuite) Test_Obligations_Decrypt() {
 		{
 			n:              "with-obligations-same-kas",
 			fileSize:       5,
-			tdfFileSize:    1897,
+			tdfFileSize:    2534,
 			checksum:       "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			obligationFQNs: []string{obWatermark.url, obRedact.url},
+			obligationFQNs: []string{obligationWatermark, obligationRedact},
 			opts: []TDFOption{
-				WithDataAttributes(obWatermark.url, obRedact.url),
+				WithDataAttributes(oa1.key, oa3.key),
 			},
 		},
 		{
@@ -1956,9 +1956,9 @@ func (s *TDFSuite) Test_Obligations_Decrypt() {
 			fileSize:       5,
 			tdfFileSize:    2690,
 			checksum:       "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			obligationFQNs: []string{obWatermark.url, obRedact.url, obGeo.url},
+			obligationFQNs: []string{obligationWatermark, obligationRedact, obligationGeofence},
 			opts: []TDFOption{
-				WithDataAttributes(obWatermark.url, obRedact.url, obGeo.url),
+				WithDataAttributes(oa1.key, oa2.key, oa3.key),
 			},
 		},
 	} {
@@ -1993,7 +1993,7 @@ func (s *TDFSuite) Test_Obligations_Decrypt() {
 
 			r, err := s.sdk.LoadTDF(readSeeker)
 			s.Require().NoError(err)
-			for _, ob := range []string{obGeo.url, obRedact.url, obWatermark.url} {
+			for _, ob := range []string{obligationGeofence, obligationRedact, obligationWatermark} {
 				s.Require().Contains(r.config.fulfillableObligationFQNs, ob, "Should contain obligation "+ob)
 			}
 
@@ -2002,7 +2002,7 @@ func (s *TDFSuite) Test_Obligations_Decrypt() {
 				n:        test.n,
 				fileSize: test.fileSize,
 				checksum: test.checksum,
-				policy:   []AttributeValueFQN{obWatermark, obRedact},
+				policy:   []AttributeValueFQN{oa1, oa3},
 			})
 
 			_, err = r.WriteTo(io.Discard)
@@ -2038,9 +2038,9 @@ func (s *TDFSuite) Test_Obligations() {
 	}{
 		{
 			name:                      "Nil required obligations - PERMIT with obligations (should succeed)",
-			requiredObligations:       []string{obGeo.url},
+			requiredObligations:       []string{obligationWatermark},
 			decision:                  authorizationv2.Decision_DECISION_PERMIT,
-			fulfillableObligationFQNs: []string{obGeo.url},
+			fulfillableObligationFQNs: []string{obligationWatermark},
 			shouldReturnError:         false,
 			numCalls:                  1,
 		},
@@ -2054,7 +2054,7 @@ func (s *TDFSuite) Test_Obligations() {
 		},
 		{
 			name:                      "Nil required obligations - DENY bc of obligations (should succeed)",
-			requiredObligations:       []string{obGeo.url},
+			requiredObligations:       []string{obligationGeofence},
 			decision:                  authorizationv2.Decision_DECISION_DENY,
 			fulfillableObligationFQNs: []string{},
 			shouldReturnError:         false,
@@ -2081,13 +2081,13 @@ func (s *TDFSuite) Test_Obligations() {
 		},
 		{
 			name:                      "Non-empty Obligation FQNs",
-			requiredObligations:       []string{obGeo.url},
+			requiredObligations:       []string{obligationGeofence},
 			decision:                  authorizationv2.Decision_DECISION_PERMIT,
-			fulfillableObligationFQNs: []string{obGeo.url},
+			fulfillableObligationFQNs: []string{obligationGeofence},
 			shouldReturnError:         false,
 			expectedError:             nil,
 			numCalls:                  0,
-			prepopulatedObligations:   []string{obGeo.url},
+			prepopulatedObligations:   []string{obligationGeofence},
 		},
 	}
 
@@ -2111,7 +2111,7 @@ func (s *TDFSuite) Test_Obligations() {
 			}()
 
 			// Encrypt the TDF file for testing
-			opts := []TDFOption{WithKasInformation(s.kases[0].KASInfo), WithDataAttributes(obWatermark.url, obRedact.url, obGeo.url)}
+			opts := []TDFOption{WithKasInformation(s.kases[0].KASInfo), WithDataAttributes(oa1.key, oa2.key, oa3.key)}
 			s.testEncrypt(s.sdk, opts, plainTextFileName, tdfFileName, tdfTest{
 				n:           strings.ReplaceAll(tc.name, " ", "_"),
 				fileSize:    5,
@@ -2444,12 +2444,8 @@ func (s *TDFSuite) startBackend() {
 			s: s, privateKey: ki.private, KASInfo: KASInfo{
 				URL: ki.url, PublicKey: ki.public, KID: ki.kid, Algorithm: "rsa:2048",
 			},
-			legakeys: map[string]keyInfo{},
-			obligations: map[string]string{
-				obWatermark.url: obWatermark.url,
-				obRedact.url:    obRedact.url,
-				obGeo.url:       obGeo.url,
-			},
+			legakeys:    map[string]keyInfo{},
+			obligations: obligationMap,
 		}
 		path, handler := attributesconnect.NewAttributesServiceHandler(fa)
 		mux.Handle(path, handler)
@@ -2479,7 +2475,7 @@ func (s *TDFSuite) startBackend() {
 		withCustomAccessTokenSource(&ats),
 		WithTokenEndpoint("http://localhost:65432/auth/token"),
 		WithInsecurePlaintextConn(),
-		WithSDKFulfillableObligationFQNs([]string{obWatermark.url, obRedact.url, obGeo.url}),
+		WithFulfillableObligationFQNs([]string{obligationGeofence, obligationRedact, obligationWatermark}),
 	)
 	s.Require().NoError(err)
 	s.sdk = sdk

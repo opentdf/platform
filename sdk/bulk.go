@@ -28,6 +28,8 @@ type BulkDecryptRequest struct {
 }
 
 // BulkDecryptPrepared holds the prepared state for bulk decryption
+// The PolicyTDF is a map of created policy IDs to their corresponding BulkTDF
+// The policy IDs are generated during the prepareDecryptors function
 type BulkDecryptPrepared struct {
 	PolicyTDF     map[string]*BulkTDF
 	tdfDecryptors map[string]decryptor
@@ -255,7 +257,7 @@ func (s SDK) PrepareBulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) 
 	fulfillableObligations := s.fulfillableObligationFQNs
 	if len(tdfDecryptors) > 0 {
 		for _, d := range tdfDecryptors {
-			fulfillableObligations = getFulfillableObligations(d)
+			fulfillableObligations = getFulfillableObligations(d, s.logger)
 			break
 		}
 	}
@@ -325,9 +327,9 @@ func (b *BulkDecryptRequest) appendTDFs(tdfs ...*BulkTDF) {
 	)
 }
 
-func getFulfillableObligations(decryptor decryptor) []string {
+func getFulfillableObligations(decryptor decryptor, logger *slog.Logger) []string {
 	if decryptor == nil {
-		slog.Warn("decryptor is nil, cannot populate obligations")
+		logger.Warn("decryptor is nil, cannot populate obligations")
 		return make([]string, 0)
 	}
 
@@ -337,7 +339,7 @@ func getFulfillableObligations(decryptor decryptor) []string {
 	case *NanoTDFDecryptHandler:
 		return d.config.fulfillableObligationFQNs
 	default:
-		slog.Warn("unknown decryptor type, cannot populate obligations", slog.String("type", fmt.Sprintf("%T", d)))
+		logger.Warn("unknown decryptor type, cannot populate obligations", slog.String("type", fmt.Sprintf("%T", d)))
 		return make([]string, 0)
 	}
 }

@@ -340,27 +340,19 @@ func (k *KASClient) retrieveObligationsFromMetadata(metadata map[string]*structp
 		return triggeredFQNs
 	}
 
-	structValue := triggerOblsValue.GetStructValue()
-	if structValue == nil {
+	fields := triggerOblsValue.GetStructValue().GetFields()
+	if fields == nil {
 		return triggeredFQNs
 	}
 
-	obligationFields := structValue.GetFields()
-	if obligationFields == nil {
-		return triggeredFQNs
-	}
-
-	policyOblsValue, ok := obligationFields[policyID]
+	policyOblsValue, ok := fields[policyID]
 	if !ok {
 		return triggeredFQNs
 	}
 
-	listValue := policyOblsValue.GetListValue()
-	if listValue == nil {
-		return triggeredFQNs
-	}
+	values := policyOblsValue.GetListValue().GetValues()
 
-	for _, v := range listValue.GetValues() {
+	for _, v := range values {
 		triggeredFQNs = append(triggeredFQNs, v.GetStringValue())
 	}
 

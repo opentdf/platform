@@ -918,18 +918,14 @@ func (n *NanoTDFDecryptHandler) Decrypt(ctx context.Context, result []kaoResult)
 	return decryptNanoTDF(ctx, n.reader, n.writer, result, &n.header)
 }
 
-// What do we need:
-// 1. Get obligations before decrypting a file
-// 2. Store obligations triggered during decrypting a file
-
-// No current way to return obligations for NanoTDF, since there is no reader.
 func (s SDK) LoadNanoTDF(ctx context.Context, reader io.ReadSeeker, opts ...NanoTDFReaderOption) (*NanoTDFReader, error) {
 	nanoTdfReaderConfig, err := newNanoTDFReaderConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("newNanoTDFReaderConfig failed: %w", err)
 	}
 
-	if len(nanoTdfReaderConfig.fulfillableObligationFQNs) == 0 && len(s.fulfillableObligationFQNs) > 0 {
+	useGlobalFulfillableObligations := len(nanoTdfReaderConfig.fulfillableObligationFQNs) == 0 && len(s.fulfillableObligationFQNs) > 0
+	if useGlobalFulfillableObligations {
 		nanoTdfReaderConfig.fulfillableObligationFQNs = s.fulfillableObligationFQNs
 	}
 

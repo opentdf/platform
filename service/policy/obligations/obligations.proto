@@ -303,10 +303,10 @@ message RemoveObligationTriggerResponse {
 }
 
 message ListObligationTriggersRequest {
-    // Required
-    option (buf.validate.message).oneof = { fields: ["obligation_value_id", "obligation_value_fqn"], required: true };
-    string obligation_value_id = 1 [(buf.validate.field).string.uuid = true];
-    string obligation_value_fqn = 2 [
+    // Optional
+    option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+    string namespace_id = 1 [(buf.validate.field).string.uuid = true];
+    string namespace_fqn = 2 [
         (buf.validate.field).string = {
             min_len : 1
             uri : true

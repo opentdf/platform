@@ -1718,13 +1718,13 @@ components:
     policy.obligations.ListObligationTriggersRequest:
       type: object
       properties:
-        obligationValueId:
+        namespaceId:
           type: string
-          title: obligation_value_id
+          title: namespace_id
           format: uuid
-        obligationValueFqn:
+        namespaceFqn:
           type: string
-          title: obligation_value_fqn
+          title: namespace_fqn
           minLength: 1
           format: uri
         pagination:

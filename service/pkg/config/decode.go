@@ -54,7 +54,7 @@ func secretDecodeHook(from, to reflect.Type, data any) (any, error) {
 			return NewFileSecret(file), nil
 		}
 		// Future: support {"fromURI":"aws-secretsmanager://..."}
-		return nil, errors.New("unsupported secret map, expected {fromEnv:string}")
+		return nil, errors.New("unsupported secret map, expected {fromEnv:string} or {fromFile:string}")
 	default:
 		return nil, fmt.Errorf("cannot decode %s into Secret", from.Kind())
 	}

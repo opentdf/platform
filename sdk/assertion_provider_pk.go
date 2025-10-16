@@ -5,9 +5,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 )
 
-// TODO ??? prefix in name
+// KeyAssertionID is the standard identifier for key-based assertions.
+//
+// Assertion ID Naming Convention:
+//   - System assertions (built-in): Use simple kebab-case names (e.g., "assertion-key", "system-metadata")
+//   - Custom assertions: Should use reverse-domain notation or descriptive prefixes to avoid conflicts
+//     (e.g., "com.example.custom-assertion", "app-specific-assertion")
+//
+// The simple "assertion-key" ID is used for SDK-provided key-based assertions and is part of the
+// standard TDF specification. Custom implementations should choose unique IDs that won't conflict
+// with current or future standard assertion types.
 const KeyAssertionID = "assertion-key"
 
 type PublicKeyStatement struct {
@@ -15,7 +25,7 @@ type PublicKeyStatement struct {
 	Key       any    `json:"key"`
 }
 
-type KeyAssertionBuilder struct {
+type KeyAssertionBinder struct {
 	privateKey AssertionKey
 	publicKey  AssertionKey
 }
@@ -24,8 +34,8 @@ type KeyAssertionValidator struct {
 	publicKeys AssertionVerificationKeys
 }
 
-func NewKeyAssertionBuilder(privateKey AssertionKey) *KeyAssertionBuilder {
-	return &KeyAssertionBuilder{
+func NewKeyAssertionBinder(privateKey AssertionKey) *KeyAssertionBinder {
+	return &KeyAssertionBinder{
 		privateKey: privateKey,
 	}
 }
@@ -36,7 +46,8 @@ func NewKeyAssertionValidator(publicKeys AssertionVerificationKeys) *KeyAssertio
 	}
 }
 
-func (p KeyAssertionBuilder) Configure(ctx context.Context) (AssertionConfig, error) {
+func (p KeyAssertionBinder) Bind(ctx context.Context, m Manifest) (Assertion, error) {
+	// Create the public key statement
 	statement := PublicKeyStatement{
 		Algorithm: p.publicKey.Alg.String(),
 		Key:       p.publicKey.Key,
@@ -44,11 +55,12 @@ func (p KeyAssertionBuilder) Configure(ctx context.Context) (AssertionConfig, er
 
 	jsonBytes, err := json.Marshal(statement)
 	if err != nil {
-		return AssertionConfig{}, fmt.Errorf("failed to marshal public key statement: %w", err)
+		return Assertion{}, fmt.Errorf("failed to marshal public key statement: %w", err)
 	}
 	statementValue := string(jsonBytes)
 
-	return AssertionConfig{
+	// Build the assertion
+	assertion := Assertion{
 		ID:             KeyAssertionID,
 		Type:           BaseAssertion,
 		Scope:          PayloadScope,
@@ -58,31 +70,27 @@ func (p KeyAssertionBuilder) Configure(ctx context.Context) (AssertionConfig, er
 			Schema: SystemMetadataSchemaV1,
 			Value:  statementValue,
 		},
-	}, nil
-}
-
-func (p KeyAssertionBuilder) Bind(ctx context.Context, ac AssertionConfig, m Manifest) (Assertion, error) {
-	assertion := Assertion{
-		ID:             ac.ID,
-		Type:           ac.Type,
-		Scope:          ac.Scope,
-		Statement:      ac.Statement,
-		AppliesToState: ac.AppliesToState,
 	}
+
+	// Get the hash and sign the assertion
 	assertionHash, err := assertion.GetHash()
 	if err != nil {
 		return assertion, fmt.Errorf("failed to get hash of assertion: %w", err)
 	}
+
 	// aggregation hash replaced with manifest root signature
 	if err := assertion.Sign(string(assertionHash), m.RootSignature.Signature, p.privateKey); err != nil {
 		return assertion, fmt.Errorf("failed to sign assertion: %w", err)
 	}
+
 	return assertion, nil
 }
 
 func (p KeyAssertionValidator) Verify(ctx context.Context, a Assertion, r Reader) error {
 	if p.publicKeys.IsEmpty() {
-		// TODO ??? warn maybe
+		slog.WarnContext(ctx, "no verification keys configured for assertion validation",
+			slog.String("assertion_id", a.ID),
+			slog.String("assertion_type", string(a.Type)))
 		return nil
 		// if an error is thrown here, a tamper event will be triggered
 		// return errors.New("no verification key configured")

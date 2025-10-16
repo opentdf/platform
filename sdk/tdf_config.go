@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -92,6 +93,7 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		integrityAlgorithm:         HS256,
 		segmentIntegrityAlgorithm:  GMAC,
 		addSystemMetadataAssertion: false,
+		assertionRegistry:          newAssertionRegistry(),
 	}
 
 	for _, o := range opt {
@@ -253,10 +255,11 @@ func WithTargetMode(mode string) TDFOption {
 	}
 }
 
-// WithAssertionRegistryBuilder enables custom assertion signing
-func WithAssertionRegistryBuilder(registry *AssertionRegistry) TDFOption {
+// WithAssertionBinder registers a custom assertion binder for TDF creation.
+// The binder will be called during TDF creation to bind assertions to the manifest.
+func WithAssertionBinder(binder AssertionBinder) TDFOption {
 	return func(c *TDFConfig) error {
-		c.assertionRegistry = registry
+		c.assertionRegistry.RegisterBinder(binder)
 		return nil
 	}
 }
@@ -271,13 +274,38 @@ const (
 	unreasonable = 100
 )
 
+// AssertionVerificationMode defines how assertion verification errors are handled during TDF reading.
+//
+// The mode determines the behavior when encountering unknown assertions or verification failures:
+//   - PermissiveMode: Unknown assertions are skipped with a warning; verification failures are reported but may allow continuation
+//   - StrictMode: All assertions must be known and verified; any failure results in immediate error
+//   - FailFast: Stop at the first assertion verification error (default behavior)
+//
+// Security Considerations:
+//   - Permissive mode is useful for forward compatibility but may mask security issues
+//   - Strict mode ensures all assertions are validated but may break on new assertion types
+//   - FailFast mode is recommended for production use with well-defined assertion requirements
+type AssertionVerificationMode int
+
+const (
+	// FailFast stops at the first assertion verification error (default, most secure)
+	FailFast AssertionVerificationMode = iota
+	// PermissiveMode allows unknown assertions and logs verification failures as warnings
+	PermissiveMode
+	// StrictMode requires all assertions to be known and successfully verified
+	StrictMode
+)
+
 type TDFReaderOption func(*TDFReaderConfig) error
 
 type TDFReaderConfig struct {
 	// verifiers verification public keys
 	verifiers AssertionVerificationKeys
-	// TODO ??? disable all assertion verification?
+	// disableAssertionVerification disables all assertion verification (not recommended for production)
 	disableAssertionVerification bool
+	// assertionVerificationMode defines how assertion verification errors are handled
+	// Default is FailFast (most secure). See AssertionVerificationMode for details.
+	assertionVerificationMode AssertionVerificationMode
 	// assertionRegistry allows custom verification and validation implementation
 	assertionRegistry *AssertionRegistry
 
@@ -358,6 +386,7 @@ func (a AllowList) Add(kasURL string) error {
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
+		assertionRegistry:            newAssertionRegistry(),
 	}
 
 	for _, o := range opt {
@@ -386,12 +415,12 @@ func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOpti
 	}
 }
 
-// WithAssertionRegistryReader sets a custom assertion validation builder for reading.
-// If not set, the default key-based builder will be used.
-func WithAssertionRegistryReader(factory *AssertionRegistry) TDFReaderOption {
+// WithAssertionValidator registers a custom assertion validator for TDF reading.
+// The validator will be called during TDF reading to validate assertions matching the pattern.
+// The pattern is a compiled regular expression that matches against assertion IDs.
+func WithAssertionValidator(pattern *regexp.Regexp, validator AssertionValidator) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
-		c.assertionRegistry = factory
-		return nil
+		return c.assertionRegistry.RegisterValidator(pattern, validator)
 	}
 }
 
@@ -403,9 +432,23 @@ func WithSchemaValidation(intensity SchemaValidationIntensity) TDFReaderOption {
 }
 
 // WithDisableAssertionVerification disables system metadata assertion verification for reading.
+// Not recommended for production use.
 func WithDisableAssertionVerification(disable bool) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.disableAssertionVerification = disable
+		return nil
+	}
+}
+
+// WithAssertionVerificationMode sets the assertion verification error handling mode.
+// Default is FailFast (most secure). See AssertionVerificationMode for mode descriptions.
+//
+// Example:
+//
+//	client.LoadTDF(file, sdk.WithAssertionVerificationMode(sdk.PermissiveMode))
+func WithAssertionVerificationMode(mode AssertionVerificationMode) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.assertionVerificationMode = mode
 		return nil
 	}
 }

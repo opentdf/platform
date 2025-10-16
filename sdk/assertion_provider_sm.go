@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"runtime"
 	"time"
 )
@@ -20,8 +21,11 @@ const (
 	SystemMetadataSchemaV2 = "system-metadata-v2"
 )
 
+// systemMetadataAssertionPattern is pre-compiled regex for system metadata assertions
+var systemMetadataAssertionPattern = regexp.MustCompile("^" + SystemMetadataAssertionID + "$")
+
 // SystemMetadataAssertionProvider provides information about the system that is running the application.
-// Implements AssertionProvider
+// Implements AssertionBuilder and AssertionValidator
 type SystemMetadataAssertionProvider struct {
 	useHex        bool
 	payloadKey    []byte
@@ -36,11 +40,14 @@ func NewSystemMetadataAssertionProvider(useHex bool, payloadKey []byte, aggregat
 	}
 }
 
-func (p SystemMetadataAssertionProvider) Configure(_ context.Context) (AssertionConfig, error) {
-	return GetSystemMetadataAssertionConfig()
-}
+func (p SystemMetadataAssertionProvider) Bind(ctx context.Context, m Manifest) (Assertion, error) {
+	// Get the assertion config
+	ac, err := GetSystemMetadataAssertionConfig()
+	if err != nil {
+		return Assertion{}, fmt.Errorf("failed to get system metadata assertion config: %w", err)
+	}
 
-func (p SystemMetadataAssertionProvider) Bind(ctx context.Context, ac AssertionConfig, m Manifest) (Assertion, error) {
+	// Build the assertion
 	assertion := Assertion{
 		ID:             ac.ID,
 		Type:           ac.Type,
@@ -53,20 +60,6 @@ func (p SystemMetadataAssertionProvider) Bind(ctx context.Context, ac AssertionC
 	if err != nil {
 		return assertion, err
 	}
-
-	//hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-	//_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
-	//if err != nil {
-	//	return assertion, fmt.Errorf("error decoding hex string: %w", err)
-	//}
-	//
-	//var completeHashBuilder strings.Builder
-	//completeHashBuilder.WriteString(p.aggregateHash)
-	//if p.useHex {
-	//	completeHashBuilder.Write(hashOfAssertionAsHex)
-	//} else {
-	//	completeHashBuilder.Write(hashOfAssertion)
-	//}
 
 	assertionSigningKey := AssertionKey{
 		Alg: AssertionKeyAlgHS256,

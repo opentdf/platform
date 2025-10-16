@@ -1,7 +1,19 @@
 package cmd
 
 // Simple Magic Word Assertion Provider Example
-// TODO ??? passphrase
+//
+// This is a basic demonstration provider that uses a shared secret (magic word) for assertion
+// verification. It is NOT suitable for production use as it provides minimal security.
+//
+// For production scenarios, consider using:
+// - Key-based assertions (sdk.KeyAssertionBinder) with asymmetric cryptography
+// - X.509 certificate-based signing with hardware security modules (HSMs)
+// - Cloud KMS integration for key management
+//
+// This example is useful for:
+// - Understanding the assertion provider interface
+// - Testing and development environments
+// - Educational purposes demonstrating the provider pattern
 
 import (
 	"context"
@@ -17,7 +29,7 @@ import (
 const MagicWordAssertionID = "magic-word"
 
 // MagicWordAssertionProvider "signs" an assertion by appending a secret word.
-// Implements sdk.AssertionProvider
+// Implements sdk.AssertionBinder and sdk.AssertionValidator
 type MagicWordAssertionProvider struct {
 	MagicWord string
 }
@@ -29,12 +41,13 @@ func NewMagicWordAssertionProvider(magicWord string) *MagicWordAssertionProvider
 	}
 }
 
-func (p *MagicWordAssertionProvider) Configure(_ context.Context) (sdk.AssertionConfig, error) {
+func (p *MagicWordAssertionProvider) Bind(_ context.Context, m sdk.Manifest) (sdk.Assertion, error) {
+	// Create the statement by hashing the magic word
 	h := hmac.New(sha256.New, []byte(p.MagicWord))
 	h.Write([]byte(p.MagicWord))
 	statementValue := hex.EncodeToString(h.Sum(nil))
 
-	return sdk.AssertionConfig{
+	return sdk.Assertion{
 		ID:             MagicWordAssertionID,
 		Type:           sdk.BaseAssertion,
 		Scope:          sdk.PayloadScope,
@@ -44,17 +57,6 @@ func (p *MagicWordAssertionProvider) Configure(_ context.Context) (sdk.Assertion
 			Schema: "urn:magic-word:assertion:v1",
 			Value:  statementValue,
 		},
-		// no SigningKey used in this example
-	}, nil
-}
-
-func (p *MagicWordAssertionProvider) Bind(_ context.Context, ac sdk.AssertionConfig, m sdk.Manifest) (sdk.Assertion, error) {
-	return sdk.Assertion{
-		ID:             ac.ID,
-		Type:           ac.Type,
-		Scope:          ac.Scope,
-		AppliesToState: ac.AppliesToState,
-		Statement:      ac.Statement,
 		Binding: sdk.Binding{
 			Method:    "",
 			Signature: fmt.Sprintf("%s:%s", m.Signature, p.MagicWord),

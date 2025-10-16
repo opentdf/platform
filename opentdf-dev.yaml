@@ -46,6 +46,7 @@ services:
       from:
         email: true
         username: true
+    # cache_expiration: 30s # disabled unless present and > 0
   # policy is enabled by default in mode 'all'
   # policy:
   #   enabled: true

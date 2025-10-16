@@ -48,58 +48,59 @@ const (
 // - For supported blocks (PUBLIC KEY or CERTIFICATE):
 //   - If parsing/classification fails, return an error immediately.
 //   - If valid, remember the first valid key found.
+//
 // - Returns the first valid key if any; otherwise ErrInvalidPEMBlock.
 //
 // Supported algorithms: RSA 2048/4096 and EC P-256/P-384/P-521.
 func ValidatePublicKeyPEM(pemBytes []byte) (*PublicKeyInfo, error) {
-    var firstValid *PublicKeyInfo
+	var firstValid *PublicKeyInfo
 
-    data := pemBytes
-    for {
-        block, rest := pem.Decode(data)
-        if block == nil {
-            break
-        }
+	data := pemBytes
+	for {
+		block, rest := pem.Decode(data)
+		if block == nil {
+			break
+		}
 
-        switch block.Type {
-        case "PUBLIC KEY":
-            pub, err := x509.ParsePKIXPublicKey(block.Bytes)
-            if err != nil {
-                return nil, fmt.Errorf("%w: %w", ErrInvalidPublicKey, err)
-            }
-            info, err := classifyPublicKey(pub, SourcePublicKey)
-            if err != nil {
-                return nil, err
-            }
-            if firstValid == nil {
-                firstValid = info
-            }
-        case "CERTIFICATE":
-            cert, err := x509.ParseCertificate(block.Bytes)
-            if err != nil {
-                return nil, fmt.Errorf("%w: %w", ErrInvalidPublicKey, err)
-            }
-            info, err := classifyPublicKey(cert.PublicKey, SourceCertificate)
-            if err != nil {
-                return nil, err
-            }
-            if firstValid == nil {
-                firstValid = info
-            }
-        default:
-            // ignore unrelated block types
-        }
+		switch block.Type {
+		case "PUBLIC KEY":
+			pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+			if err != nil {
+				return nil, fmt.Errorf("%w: %w", ErrInvalidPublicKey, err)
+			}
+			info, err := classifyPublicKey(pub, SourcePublicKey)
+			if err != nil {
+				return nil, err
+			}
+			if firstValid == nil {
+				firstValid = info
+			}
+		case "CERTIFICATE":
+			cert, err := x509.ParseCertificate(block.Bytes)
+			if err != nil {
+				return nil, fmt.Errorf("%w: %w", ErrInvalidPublicKey, err)
+			}
+			info, err := classifyPublicKey(cert.PublicKey, SourceCertificate)
+			if err != nil {
+				return nil, err
+			}
+			if firstValid == nil {
+				firstValid = info
+			}
+		default:
+			// ignore unrelated block types
+		}
 
-        data = rest
-        if len(data) == 0 {
-            break
-        }
-    }
+		data = rest
+		if len(data) == 0 {
+			break
+		}
+	}
 
-    if firstValid != nil {
-        return firstValid, nil
-    }
-    return nil, ErrInvalidPEMBlock
+	if firstValid != nil {
+		return firstValid, nil
+	}
+	return nil, ErrInvalidPEMBlock
 }
 
 func classifyPublicKey(pub any, source string) (*PublicKeyInfo, error) {
@@ -115,19 +116,19 @@ func classifyPublicKey(pub any, source string) (*PublicKeyInfo, error) {
 			return nil, fmt.Errorf("%w: %d", ErrInvalidRSAKeySize, bits)
 		}
 
-    case *ecdsa.PublicKey:
-        // Use the named curve rather than bit length to avoid ambiguity with
-        // similarly sized but unsupported curves (e.g., secp256k1).
-        switch k.Params().Name {
-        case "P-256":
-            return &PublicKeyInfo{Type: EC256Key, ECCurve: ECCModeSecp256r1, Source: source}, nil
-        case "P-384":
-            return &PublicKeyInfo{Type: EC384Key, ECCurve: ECCModeSecp384r1, Source: source}, nil
-        case "P-521":
-            return &PublicKeyInfo{Type: EC521Key, ECCurve: ECCModeSecp521r1, Source: source}, nil
-        default:
-            return nil, ErrInvalidECCurve
-        }
+	case *ecdsa.PublicKey:
+		// Use the named curve rather than bit length to avoid ambiguity with
+		// similarly sized but unsupported curves (e.g., secp256k1).
+		switch k.Params().Name {
+		case "P-256":
+			return &PublicKeyInfo{Type: EC256Key, ECCurve: ECCModeSecp256r1, Source: source}, nil
+		case "P-384":
+			return &PublicKeyInfo{Type: EC384Key, ECCurve: ECCModeSecp384r1, Source: source}, nil
+		case "P-521":
+			return &PublicKeyInfo{Type: EC521Key, ECCurve: ECCModeSecp521r1, Source: source}, nil
+		default:
+			return nil, ErrInvalidECCurve
+		}
 
 	default:
 		return nil, ErrUnsupportedPublicKeyType

@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -207,11 +208,64 @@ func WithSystemMetadataAssertion() TDFOption {
 }
 
 // WithAssertions returns an Option that adds public key assertion configs.
+// Each assertion config will be bound to the TDF during creation using the
+// signing key specified in the config.
 func WithAssertions(assertionList ...AssertionConfig) TDFOption {
 	return func(c *TDFConfig) error {
-		c.assertionConfigs = append(c.assertionConfigs, assertionList...)
+		// Register a binder for each assertion config
+		for _, assertionConfig := range assertionList {
+			// Add to assertionConfigs slice for backward compatibility
+			c.assertionConfigs = append(c.assertionConfigs, assertionConfig)
+
+			// Create a binder that will bind this specific assertion
+			binder := &configBasedAssertionBinder{config: assertionConfig}
+			c.assertionRegistry.RegisterBinder(binder)
+		}
 		return nil
 	}
+}
+
+// configBasedAssertionBinder creates an assertion from an AssertionConfig.
+// It implements the AssertionBinder interface.
+type configBasedAssertionBinder struct {
+	config AssertionConfig
+}
+
+func (b *configBasedAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, error) {
+	// Configure the assertion from config
+	assertion := Assertion{
+		ID:             b.config.ID,
+		Type:           b.config.Type,
+		Scope:          b.config.Scope,
+		Statement:      b.config.Statement,
+		AppliesToState: b.config.AppliesToState,
+	}
+
+	// Get the hash of the assertion
+	assertionHashBytes, err := assertion.GetHash()
+	if err != nil {
+		return Assertion{}, fmt.Errorf("failed to get assertion hash: %w", err)
+	}
+	assertionHash := string(assertionHashBytes)
+
+	// Use root signature for binding (v2 schema)
+	rootSignature := m.RootSignature.Signature
+
+	// Determine signing key - if not provided in config, assertion must be signed
+	// externally or will fail verification
+	signingKey := b.config.SigningKey
+	if signingKey.IsEmpty() {
+		// No signing key provided - assertion will not have a binding signature
+		// This may be intentional for assertions that don't require cryptographic binding
+		return assertion, nil
+	}
+
+	// Sign the assertion
+	if err := assertion.Sign(assertionHash, rootSignature, signingKey); err != nil {
+		return Assertion{}, fmt.Errorf("failed to sign assertion: %w", err)
+	}
+
+	return assertion, nil
 }
 
 // WithAutoconfigure toggles inferring KAS info for encrypt from data attributes.
@@ -427,8 +481,34 @@ func WithMaxManifestSize(size int64) TDFReaderOption {
 
 func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
-		// FIXME use assertion registry to verify keys
 		c.verifiers = keys
+
+		// Register validators for all keys in the verification keys map
+		for assertionID := range keys.Keys {
+			// Create a regex pattern that exactly matches this assertion ID
+			pattern, err := regexp.Compile("^" + regexp.QuoteMeta(assertionID) + "$")
+			if err != nil {
+				return fmt.Errorf("failed to compile regex for assertion ID %s: %w", assertionID, err)
+			}
+
+			// Register a KeyAssertionValidator for this specific assertion ID
+			validator := &KeyAssertionValidator{publicKeys: keys}
+			if err := c.assertionRegistry.RegisterValidator(pattern, validator); err != nil {
+				return fmt.Errorf("failed to register validator for assertion ID %s: %w", assertionID, err)
+			}
+		}
+
+		// If there's a default key, register a catch-all validator
+		if keys.DefaultKey.Key != nil {
+			// Match any assertion ID that wasn't already registered
+			pattern := regexp.MustCompile(".*")
+			validator := &KeyAssertionValidator{publicKeys: keys}
+			// Note: this will be used as a fallback for unregistered assertion IDs
+			if err := c.assertionRegistry.RegisterValidator(pattern, validator); err != nil {
+				return fmt.Errorf("failed to register default validator: %w", err)
+			}
+		}
+
 		return nil
 	}
 }

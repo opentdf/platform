@@ -45,8 +45,9 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 	if err := tok.Set(kAssertionHash, hash); err != nil {
 		return fmt.Errorf("failed to set assertion hash: %w", err)
 	}
-	assertionSig := ocrypto.Base64Encode([]byte(sig))
-	if err := tok.Set(kAssertionSignature, assertionSig); err != nil {
+	// Note: sig is already base64-encoded when it comes from manifest.RootSignature.Signature
+	// so we store it directly without additional encoding
+	if err := tok.Set(kAssertionSignature, sig); err != nil {
 		return fmt.Errorf("failed to set assertion signature: %w", err)
 	}
 
@@ -89,9 +90,9 @@ func (a *Assertion) Verify(key AssertionKey) (string, string, error) {
 	if !ok {
 		return "", "", errors.New("signature claim is not a string")
 	}
-	decodedSig, _ := ocrypto.Base64Decode([]byte(verifiedSignature))
-	verifiedSignatureString := string(decodedSig)
-	return verifiedHash, verifiedSignatureString, nil
+	// Note: signature is stored as base64-encoded string (matching manifest.RootSignature.Signature format)
+	// so we return it directly without decoding
+	return verifiedHash, verifiedSignature, nil
 }
 
 // GetHash returns the hash of the assertion in hex format.

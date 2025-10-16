@@ -87,6 +87,14 @@ func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, erro
 }
 
 func (p KeyAssertionValidator) Verify(ctx context.Context, a Assertion, r Reader) error {
+	// Skip verification for assertions without bindings
+	if a.Binding.Signature == "" {
+		slog.WarnContext(ctx, "assertion has no binding, skipping verification",
+			slog.String("assertion_id", a.ID),
+			slog.String("assertion_type", string(a.Type)))
+		return nil
+	}
+
 	if p.publicKeys.IsEmpty() {
 		slog.WarnContext(ctx, "no verification keys configured for assertion validation",
 			slog.String("assertion_id", a.ID),

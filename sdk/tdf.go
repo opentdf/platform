@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -1501,6 +1502,22 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(useHex, payloadKey[:], aggregateHash.String())
 		// if already registered, ignore
 		_ = r.config.assertionRegistry.RegisterValidator(systemMetadataAssertionPattern, systemMetadataAssertionProvider)
+
+		// Register DEK-based fallback validator for assertions without explicit validators
+		// This maintains backward compatibility with the old behavior where assertions
+		// were verified using the DEK (payload key) by default when no explicit keys were provided
+		if r.config.verifiers.IsEmpty() {
+			// No explicit verifiers provided - create DEK-based verifier for all assertions
+			dekVerificationKeys := AssertionVerificationKeys{
+				DefaultKey: AssertionKey{
+					Alg: AssertionKeyAlgHS256,
+					Key: payloadKey[:],
+				},
+			}
+			dekValidator := &KeyAssertionValidator{publicKeys: dekVerificationKeys}
+			// Register catch-all pattern for any assertion
+			_ = r.config.assertionRegistry.RegisterValidator(regexp.MustCompile(".*"), dekValidator)
+		}
 	}
 
 	// Validate assertions based on configured verification mode

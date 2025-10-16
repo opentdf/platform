@@ -20,6 +20,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -71,7 +72,7 @@ func (p *MagicWordAssertionProvider) Verify(_ context.Context, a sdk.Assertion, 
 	computedHMAC := hex.EncodeToString(h.Sum(nil))
 
 	if computedHMAC != a.Statement.Value {
-		return fmt.Errorf("invalid assertion value: HMAC verification failed")
+		return errors.New("invalid assertion value: HMAC verification failed")
 	}
 
 	return nil

@@ -46,7 +46,7 @@ func NewKeyAssertionValidator(publicKeys AssertionVerificationKeys) *KeyAssertio
 	}
 }
 
-func (p KeyAssertionBinder) Bind(ctx context.Context, m Manifest) (Assertion, error) {
+func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, error) {
 	// Create the public key statement
 	statement := PublicKeyStatement{
 		Algorithm: p.publicKey.Alg.String(),
@@ -124,7 +124,7 @@ func (p KeyAssertionValidator) Verify(ctx context.Context, a Assertion, r Reader
 	return nil
 }
 
-func (p KeyAssertionValidator) Validate(ctx context.Context, a Assertion, r Reader) error {
+func (p KeyAssertionValidator) Validate(_ context.Context, a Assertion, _ Reader) error {
 	if p.publicKeys.IsEmpty() {
 		return errors.New("no verification keys are trusted")
 	}

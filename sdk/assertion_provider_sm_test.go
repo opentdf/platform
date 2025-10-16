@@ -68,6 +68,8 @@ func TestGetSystemMetadataAssertionConfig_DefaultsToV2(t *testing.T) {
 // TestSystemMetadataAssertionProvider_Bind_UsesV2Schema verifies that
 // the Bind() method creates assertions with v2 schema
 func TestSystemMetadataAssertionProvider_Bind_UsesV2Schema(t *testing.T) {
+	t.Parallel()
+
 	payloadKey := []byte("test-payload-key-32-bytes-long!")
 	aggregateHash := "test-aggregate-hash"
 
@@ -85,8 +87,7 @@ func TestSystemMetadataAssertionProvider_Bind_UsesV2Schema(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
-	assertion, err := provider.Bind(ctx, manifest)
+	assertion, err := provider.Bind(t.Context(), manifest)
 	require.NoError(t, err)
 
 	assert.Equal(t, SystemMetadataAssertionID, assertion.ID)

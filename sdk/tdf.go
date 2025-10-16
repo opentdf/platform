@@ -1524,7 +1524,8 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 	if !r.config.disableAssertionVerification {
 		// useHex is used for legacy TDF compatibility (versions < 4.3.0)
 		// When reading legacy TDFs, signatures are hex-encoded instead of raw bytes
-		useHex := !r.config.disableAssertionVerification
+		// Legacy TDFs have no TDFVersion field in the manifest
+		useHex := r.manifest.TDFVersion == ""
 		systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(useHex, payloadKey[:], aggregateHash.String())
 		// if already registered, ignore
 		_ = r.config.assertionRegistry.RegisterValidator(systemMetadataAssertionPattern, systemMetadataAssertionProvider)
@@ -1533,21 +1534,25 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		// This maintains backward compatibility with the old behavior where assertions
 		// were verified using the DEK (payload key) by default when no explicit keys were provided
 		if r.config.verifiers.IsEmpty() {
-			// No explicit verifiers provided - create DEK-based verifier for all assertions
-			dekVerificationKeys := AssertionVerificationKeys{
-				DefaultKey: AssertionKey{
-					Alg: AssertionKeyAlgHS256,
-					Key: payloadKey[:],
-				},
-			}
-			dekValidator := &KeyAssertionValidator{publicKeys: dekVerificationKeys}
+			// No explicit verifiers provided - use SystemMetadataAssertionProvider for all assertions
+			// This provider supports both legacy (v1) and current (v2) assertion formats
+			// Legacy format: assertionSig = base64(aggregateHash + assertionHash)
+			// Current format: assertionSig = rootSignature
+			fallbackValidator := NewSystemMetadataAssertionProvider(useHex, payloadKey[:], aggregateHash.String())
 			// Register catch-all pattern for any assertion
-			_ = r.config.assertionRegistry.RegisterValidator(regexp.MustCompile(".*"), dekValidator)
+			_ = r.config.assertionRegistry.RegisterValidator(regexp.MustCompile(".*"), fallbackValidator)
 		}
 	}
 
 	// Validate assertions based on configured verification mode
 	for _, assertion := range r.manifest.Assertions {
+		slog.DebugContext(ctx, "validating assertion",
+			slog.String("assertion_id", assertion.ID),
+			slog.String("assertion_type", string(assertion.Type)),
+			slog.String("assertion_scope", string(assertion.Scope)),
+			slog.String("assertion_schema", assertion.Statement.Schema),
+			slog.Int("verification_mode", int(r.config.assertionVerificationMode)))
+
 		validator, err := r.config.assertionRegistry.GetValidationProvider(assertion.ID)
 		if err != nil {
 			// Unknown assertion handling depends on verification mode
@@ -1571,11 +1576,19 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		}
 
 		// Verify integrity and binding
+		slog.DebugContext(ctx, "verifying assertion integrity and binding",
+			slog.String("assertion_id", assertion.ID))
 		err = validator.Verify(ctx, assertion, *r)
 		if err != nil {
 			// Verification errors are always treated as potential tampering
+			slog.ErrorContext(ctx, "assertion verification failed",
+				slog.String("assertion_id", assertion.ID),
+				slog.String("assertion_schema", assertion.Statement.Schema),
+				slog.Any("error", err))
 			return r.handleAssertionVerificationError(assertion.ID, err)
 		}
+		slog.DebugContext(ctx, "assertion verification succeeded",
+			slog.String("assertion_id", assertion.ID))
 
 		// Validate trust
 		err = validator.Validate(ctx, assertion, *r)
@@ -1594,6 +1607,8 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 				return r.handleAssertionVerificationError(assertion.ID, err)
 			}
 		}
+		slog.DebugContext(ctx, "assertion validation complete",
+			slog.String("assertion_id", assertion.ID))
 	}
 
 	gcm, err := ocrypto.NewAESGcm(payloadKey[:])

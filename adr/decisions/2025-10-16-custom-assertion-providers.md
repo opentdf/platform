@@ -157,6 +157,40 @@ tdfreader, err := client.LoadTDF(file,
 
 - ↔️ **Performance**: Minimal overhead from pattern matching and interface dispatch
 
+## Cryptographic Binding Mechanism
+
+### Binding Target: Manifest Root Signature
+
+Assertions are cryptographically bound to the TDF payload by signing the manifest's **root signature** along with the assertion hash. The root signature is chosen as the binding target because:
+
+1. **No Runtime Computation**: Root signature is stored directly in the manifest, avoiding the need to recompute aggregate hashes from segments during verification
+2. **Comprehensive Coverage**: Root signature is an HMAC over the aggregate hash of all payload segments, providing complete integrity coverage
+3. **Simple Verification**: Direct string comparison against manifest value
+
+### Encoding Convention
+
+The root signature in the manifest is **base64-encoded**. The assertion binding mechanism maintains this encoding:
+
+- **During `Assertion.Sign()`**: The root signature parameter is already base64-encoded (from `manifest.RootSignature.Signature`), so it's stored directly in the JWT without additional encoding
+- **During `Assertion.Verify()`**: The signature is extracted from the JWT and compared directly against `manifest.RootSignature.Signature` (both are base64-encoded strings)
+
+**Important**: Custom binders that implement cryptographic binding should follow this convention to ensure compatibility.
+
+### Example Binding Flow
+
+```go
+// During TDF creation (in AssertionBinder.Bind):
+assertionHash := assertion.GetHash()
+rootSignature := manifest.RootSignature.Signature  // Already base64-encoded
+assertion.Sign(assertionHash, rootSignature, signingKey)
+
+// During TDF verification (in AssertionValidator.Verify):
+verifiedHash, verifiedSig := assertion.Verify(verificationKey)
+if manifest.RootSignature.Signature != verifiedSig {  // Both base64-encoded
+    return errors.New("signature mismatch")
+}
+```
+
 ## Security Considerations
 
 1. **Key Management**: Custom binders must handle private keys securely (PIV/CAC/HSM never expose key material)
@@ -164,6 +198,7 @@ tdfreader, err := client.LoadTDF(file,
 3. **Trust Models**: The `Validate()` method enables policy-based trust decisions beyond cryptographic verification
 4. **Audit Logging**: Binders and validators should log operations for compliance and debugging
 5. **Pattern Safety**: Regex patterns must be carefully designed to avoid unintended validator selection
+6. **Binding Integrity**: The root signature binding ensures assertions cannot be moved between TDFs or added/removed without detection
 
 ## Acceptance Criteria
 

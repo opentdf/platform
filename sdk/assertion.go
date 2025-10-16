@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/gowebpki/jcs"
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -67,10 +68,17 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 // Verify checks the binding signature of the assertion and
 // returns the hash and the signature. It returns an error if the verification fails.
 func (a *Assertion) Verify(key AssertionKey) (string, string, error) {
+	slog.Debug("verifying assertion JWT signature",
+		slog.String("assertion_id", a.ID),
+		slog.String("key_alg", key.Alg.String()))
+
 	tok, err := jwt.Parse([]byte(a.Binding.Signature),
 		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key),
 	)
 	if err != nil {
+		slog.Error("failed to parse JWT signature",
+			slog.String("assertion_id", a.ID),
+			slog.Any("error", err))
 		return "", "", fmt.Errorf("%w: %w", errAssertionVerifyKeyFailure, err)
 	}
 	hashClaim, found := tok.Get(kAssertionHash)
@@ -90,6 +98,12 @@ func (a *Assertion) Verify(key AssertionKey) (string, string, error) {
 	if !ok {
 		return "", "", errors.New("signature claim is not a string")
 	}
+
+	slog.Debug("assertion JWT verified successfully",
+		slog.String("assertion_id", a.ID),
+		slog.String("assertion_hash", verifiedHash),
+		slog.Int("assertion_sig_length", len(verifiedSignature)))
+
 	// Note: signature is stored as base64-encoded string (matching manifest.RootSignature.Signature format)
 	// so we return it directly without decoding
 	return verifiedHash, verifiedSignature, nil

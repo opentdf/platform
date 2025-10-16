@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"runtime"
 	"time"
@@ -75,7 +76,7 @@ func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (As
 	return assertion, nil
 }
 
-func (p SystemMetadataAssertionProvider) Verify(_ context.Context, a Assertion, r Reader) error {
+func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, r Reader) error {
 	assertionKey := AssertionKey{
 		Alg: AssertionKeyAlgHS256,
 		Key: p.payloadKey,
@@ -98,20 +99,27 @@ func (p SystemMetadataAssertionProvider) Verify(_ context.Context, a Assertion, 
 		return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: a.ID})
 	}
 
-	// Dual-mode validation: support both v1 (legacy) and v2 (current) schemas
-	// v1: assertion signed with base64(aggregateHash + assertionHash)
-	// v2: assertion signed with rootSignature
-	isLegacySchema := a.Statement.Schema == SystemMetadataSchemaV1 || a.Statement.Schema == ""
-
-	if isLegacySchema {
-		return p.verifyLegacyAssertion(a.ID, assertionSig, hashOfAssertionAsHex)
-	} else if assertionSig != r.manifest.RootSignature.Signature {
-		// Current validation (v2+ TDFs)
-		// Expected signature format: rootSignature
-		return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: a.ID})
+	// Auto-detect binding format: check if assertionSig matches root signature
+	// v2 format: assertionSig = rootSignature
+	// v1 (legacy) format: assertionSig = base64(aggregateHash + assertionHash)
+	//
+	// This allows any assertion (regardless of schema) to use either format
+	if assertionSig == r.manifest.RootSignature.Signature {
+		// Current v2 format validation
+		slog.DebugContext(ctx, "assertion uses v2 format (root signature)",
+			slog.String("assertion_id", a.ID),
+			slog.String("assertion_schema", a.Statement.Schema))
+		return nil
 	}
 
-	return nil
+	// Try legacy format verification
+	// This handles assertions from Java SDK and other legacy implementations
+	slog.DebugContext(ctx, "assertion uses legacy v1 format, attempting legacy verification",
+		slog.String("assertion_id", a.ID),
+		slog.String("assertion_schema", a.Statement.Schema),
+		slog.Bool("use_hex", p.useHex),
+		slog.Int("assertion_sig_length", len(assertionSig)))
+	return p.verifyLegacyAssertion(a.ID, assertionSig, hashOfAssertionAsHex)
 }
 
 // Validate does nothing.
@@ -145,10 +153,25 @@ func (p SystemMetadataAssertionProvider) verifyLegacyAssertion(assertionID, asse
 
 	expectedSig := string(ocrypto.Base64Encode(completeHashBuilder.Bytes()))
 
+	slog.Debug("legacy assertion verification details",
+		slog.String("assertion_id", assertionID),
+		slog.Int("aggregate_hash_length", len(p.aggregateHash)),
+		slog.Int("assertion_hash_length", len(hashToUse)),
+		slog.Int("expected_sig_length", len(expectedSig)),
+		slog.Int("actual_sig_length", len(assertionSig)),
+		slog.Bool("signatures_match", assertionSig == expectedSig))
+
 	if assertionSig != expectedSig {
+		const logPrefixLength = 64
+		slog.Error("legacy assertion signature mismatch",
+			slog.String("assertion_id", assertionID),
+			slog.String("expected_sig_prefix", expectedSig[:min(logPrefixLength, len(expectedSig))]),
+			slog.String("actual_sig_prefix", assertionSig[:min(logPrefixLength, len(assertionSig))]))
 		return fmt.Errorf("%w: failed integrity check on legacy assertion signature", ErrAssertionFailure{ID: assertionID})
 	}
 
+	slog.Debug("legacy assertion verification succeeded",
+		slog.String("assertion_id", assertionID))
 	return nil
 }
 

@@ -1,0 +1,234 @@
+# Custom Assertion Providers for OpenTDF SDK
+
+## Status
+Implemented
+
+## Context
+
+The OpenTDF SDK needs to support custom assertion signing and validation mechanisms to enable integration with:
+
+- Hardware security modules (HSMs)
+- Smart cards (CAC/PIV)
+- Cloud-based key management services (AWS KMS, Azure Key Vault, GCP KMS)
+- X.509 certificate-based signing
+- Custom cryptographic implementations
+
+The SDK must allow developers to provide their own signing and validation logic while maintaining compatibility with existing DEK-based assertion handling.
+
+## Decision
+
+Implement a **binder/validator pattern** that enables custom assertion signing and validation through simple interfaces.
+
+### Key Design Principles
+
+1. **Pluggable Architecture**: Developers provide custom binders and validators
+2. **Clear Separation**: Distinct interfaces for signing (`AssertionBinder`) and validation (`AssertionValidator`)
+3. **Pattern-Based Dispatch**: Validators are selected via regex matching on assertion IDs
+4. **Cryptographic Independence**: Separates cryptographic verification from policy validation
+5. **Efficient Mutation**: Support post-creation assertion binding without full re-encryption
+
+### Architecture
+
+```
+                 Assertion System
+                         │
+            ┌────────────┴────────────┐
+            │                         │
+      Binders (Signing)          Validators (Verification)
+            │                         │
+    ┌───────┴───────┐        ┌───────┴───────┐
+    │               │        │               │
+  Key-Based    Custom     Key-Based    Custom
+  (RSA/EC)     (HSM/KMS)  (RSA/EC)     (HSM/KMS)
+    │               │        │               │
+ Built-in      External   Built-in      External
+```
+
+### Interfaces
+
+#### AssertionBinder (for Creating Assertions)
+
+```go
+type AssertionBinder interface {
+    // Bind creates and signs an assertion based on the TDF manifest
+    Bind(ctx context.Context, manifest Manifest) (Assertion, error)
+}
+```
+
+#### AssertionValidator (for Verifying Assertions)
+
+```go
+type AssertionValidator interface {
+    // Verify checks the assertion's cryptographic binding
+    Verify(ctx context.Context, assertion Assertion, reader Reader) error
+
+    // Validate checks the assertion's policy and trust requirements
+    Validate(ctx context.Context, assertion Assertion, reader Reader) error
+}
+```
+
+### Usage
+
+#### Creating TDFs with Custom Assertion Binders
+
+```go
+// Key-based assertion signing (RSA/EC)
+privateKey := sdk.AssertionKey{
+    Alg: sdk.AssertionKeyAlgRS256,
+    Key: rsaPrivateKey,
+}
+keyBinder := sdk.NewKeyAssertionBinder(privateKey)
+
+client.CreateTDF(output, input,
+    sdk.WithDataAttributes("https://example.com/attr/Classification/value/Secret"),
+    sdk.WithAssertionBinder(keyBinder))
+
+// Custom binder (e.g., "Magic Word" for simple scenarios)
+magicWordBinder := NewMagicWordAssertionProvider("swordfish")
+client.CreateTDF(output, input,
+    sdk.WithDataAttributes("https://example.com/attr/Classification/value/Secret"),
+    sdk.WithAssertionBinder(magicWordBinder))
+
+// Default behavior with system metadata assertion
+client.CreateTDF(output, input,
+    sdk.WithDataAttributes("https://example.com/attr/Classification/value/Secret"),
+    sdk.WithSystemMetadataAssertion())
+```
+
+#### Reading TDFs with Custom Assertion Validators
+
+```go
+// Key-based assertion validation
+publicKeys := sdk.AssertionVerificationKeys{
+    Keys: map[string]sdk.AssertionKey{
+        sdk.KeyAssertionID: {
+            Alg: sdk.AssertionKeyAlgRS256,
+            Key: rsaPublicKey,
+        },
+    },
+}
+keyValidator := sdk.NewKeyAssertionValidator(publicKeys)
+keyPattern := regexp.MustCompile("^" + sdk.KeyAssertionID)
+
+tdfreader, err := client.LoadTDF(file,
+    sdk.WithAssertionValidator(keyPattern, keyValidator),
+    sdk.WithDisableAssertionVerification(false))
+
+// Custom validator (e.g., "Magic Word")
+magicWordValidator := NewMagicWordAssertionProvider("swordfish")
+magicWordPattern := regexp.MustCompile("^magic-word$")
+
+tdfreader, err := client.LoadTDF(file,
+    sdk.WithAssertionValidator(magicWordPattern, magicWordValidator),
+    sdk.WithDisableAssertionVerification(false))
+```
+
+## Design Rationale
+
+### Why Binder/Validator Pattern
+
+**Simplicity**: Single-method interfaces (`Bind()` for signing, `Verify()`/`Validate()` for validation) are easier to implement than multi-method provider interfaces.
+
+**Flexibility**: Regex-based validator dispatch enables different validation strategies for different assertion types within the same TDF.
+
+**Separation of Concerns**:
+- `Verify()` handles cryptographic binding validation
+- `Validate()` handles policy and trust evaluation
+- Clear distinction between "is the signature valid?" vs "do we trust the signer?"
+
+**Efficiency**: Direct registration avoids factory indirection. `AppendAssertion()` enables adding assertions to existing TDFs without full decryption/re-encryption cycles.
+
+## Consequences
+
+### Positive
+
+- ✅ **Extensibility**: Supports any signing mechanism (HSM, cloud KMS, hardware tokens)
+- ✅ **Simplicity**: Single-method interfaces are straightforward to implement
+- ✅ **Flexibility**: Pattern-based dispatch supports mixed assertion types in one TDF
+- ✅ **Efficiency**: Post-creation assertion binding without full re-encryption
+- ✅ **Security**: Cryptographic verification is independent from trust policy
+
+### Negative
+
+- ❌ **API Changes**: Replaces previous assertion provider patterns
+- ❌ **Learning Curve**: Developers must understand when to use binders vs validators
+
+### Neutral
+
+- ↔️ **Performance**: Minimal overhead from pattern matching and interface dispatch
+
+## Security Considerations
+
+1. **Key Management**: Custom binders must handle private keys securely (preferably never exposing them)
+2. **Certificate Validation**: Validators should verify certificate chains, expiration, and revocation status
+3. **Trust Models**: The `Validate()` method enables policy-based trust decisions beyond cryptographic verification
+4. **Audit Logging**: Binders and validators should log operations for compliance and debugging
+5. **Pattern Safety**: Regex patterns must be carefully designed to avoid unintended validator selection
+
+## Acceptance Criteria
+
+✅ **Pluggable signing and validation**
+- Custom implementations via `AssertionBinder` and `AssertionValidator` interfaces
+
+✅ **Backward compatibility**
+- System metadata assertions maintain existing DEK-based behavior
+
+✅ **Flexible dispatch**
+- Regex-based pattern matching enables selective validation by assertion type
+
+✅ **Efficient assertion management**
+- Post-creation binding via `AppendAssertion()` without full re-encryption
+
+## Implementation Guide
+
+### Custom Binder (Signing)
+
+1. Implement `AssertionBinder.Bind(ctx, manifest) (Assertion, error)`
+2. Create assertion with appropriate ID, scope, and statement
+3. Generate cryptographic signature over manifest
+4. Return complete assertion with binding
+5. Register via `sdk.WithAssertionBinder(binder)`
+
+### Custom Validator (Verification)
+
+1. Implement `AssertionValidator.Verify(ctx, assertion, reader) error` for cryptographic checks
+2. Implement `AssertionValidator.Validate(ctx, assertion, reader) error` for policy/trust checks
+3. Define regex pattern matching target assertion IDs
+4. Register via `sdk.WithAssertionValidator(pattern, validator)`
+
+### Hardware Token (PKCS#11)
+
+Implement `AssertionBinder` that:
+- Connects to PKCS#11 library
+- References key by label/ID without exposing private key material
+- Calls token's signing operation in `Bind()`
+- Returns assertion with signature from hardware
+
+### Cloud KMS
+
+Implement `AssertionBinder` that:
+- Authenticates to KMS service (AWS KMS, Azure Key Vault, GCP KMS)
+- References key by ARN/URI
+- Calls KMS Sign API in `Bind()`
+- Handles key versioning and rotation
+
+## Future Considerations
+
+1. **Caching**: Validator result caching for improved performance
+2. **Batch Operations**: Optimized bulk signing/validation patterns
+3. **Standard Binders**: Common KMS service integrations (AWS, Azure, GCP)
+4. **PKCS#11 Reference**: Production-ready hardware token implementations
+5. **X.509 PKI**: Full certificate chain and revocation checking
+
+## Decision Record
+
+- **Date**: 2025-10-16
+- **Authors**: Platform SDK Team
+- **Stakeholders**: Security Team, Enterprise Customers requiring HSM/KMS integration
+
+## References
+
+- [OpenTDF Specification](https://github.com/opentdf/spec)
+- [PKCS#11 Specification](http://docs.oasis-open.org/pkcs11/pkcs11-base/v2.40/os/pkcs11-base-v2.40-os.html)
+- [X.509 Certificate Standard](https://www.itu.int/rec/T-REC-X.509)
+- [PIV Card Specification](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-73-4.pdf)

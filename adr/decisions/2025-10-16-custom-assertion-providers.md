@@ -7,10 +7,10 @@ Implemented
 
 The OpenTDF SDK needs to support custom assertion signing and validation mechanisms to enable integration with:
 
+- Personal Identity Verification (PIV) cards
+- Common Access Card (CAC)
 - Hardware security modules (HSMs)
-- Smart cards (CAC/PIV)
-- Cloud-based key management services (AWS KMS, Azure Key Vault, GCP KMS)
-- X.509 certificate-based signing
+- Cloud-based key management services (KMS)
 - Custom cryptographic implementations
 
 The SDK must allow developers to provide their own signing and validation logic while maintaining compatibility with existing DEK-based assertion handling.
@@ -150,8 +150,8 @@ tdfreader, err := client.LoadTDF(file,
 
 ### Negative
 
-- ❌ **API Changes**: Replaces previous assertion provider patterns
 - ❌ **Learning Curve**: Developers must understand when to use binders vs validators
+- ❌ **Pattern Matching**: Regex-based validator dispatch requires careful pattern design
 
 ### Neutral
 
@@ -159,8 +159,8 @@ tdfreader, err := client.LoadTDF(file,
 
 ## Security Considerations
 
-1. **Key Management**: Custom binders must handle private keys securely (preferably never exposing them)
-2. **Certificate Validation**: Validators should verify certificate chains, expiration, and revocation status
+1. **Key Management**: Custom binders must handle private keys securely (PIV/CAC/HSM never expose key material)
+2. **Certificate Validation**: Validators should verify X.509 certificate chains, expiration, and revocation status
 3. **Trust Models**: The `Validate()` method enables policy-based trust decisions beyond cryptographic verification
 4. **Audit Logging**: Binders and validators should log operations for compliance and debugging
 5. **Pattern Safety**: Regex patterns must be carefully designed to avoid unintended validator selection
@@ -170,8 +170,8 @@ tdfreader, err := client.LoadTDF(file,
 ✅ **Pluggable signing and validation**
 - Custom implementations via `AssertionBinder` and `AssertionValidator` interfaces
 
-✅ **Backward compatibility**
-- System metadata assertions maintain existing DEK-based behavior
+✅ **Clean API design**
+- Direct binder/validator interfaces without intermediate abstractions
 
 ✅ **Flexible dispatch**
 - Regex-based pattern matching enables selective validation by assertion type
@@ -196,19 +196,28 @@ tdfreader, err := client.LoadTDF(file,
 3. Define regex pattern matching target assertion IDs
 4. Register via `sdk.WithAssertionValidator(pattern, validator)`
 
-### Hardware Token (PKCS#11)
+### PIV/CAC Card (PKCS#11)
 
 Implement `AssertionBinder` that:
-- Connects to PKCS#11 library
+- Connects to PIV/CAC card via PKCS#11 library
+- References signing certificate by slot/label
+- Private key never leaves the card
+- Calls card's signing operation in `Bind()`
+- Returns assertion with X.509-based signature
+
+### HSM (PKCS#11)
+
+Implement `AssertionBinder` that:
+- Connects to HSM via PKCS#11 library
 - References key by label/ID without exposing private key material
-- Calls token's signing operation in `Bind()`
+- Calls HSM signing operation in `Bind()`
 - Returns assertion with signature from hardware
 
 ### Cloud KMS
 
 Implement `AssertionBinder` that:
-- Authenticates to KMS service (AWS KMS, Azure Key Vault, GCP KMS)
-- References key by ARN/URI
+- Authenticates to cloud KMS service
+- References key by identifier (ARN/URI/resource ID)
 - Calls KMS Sign API in `Bind()`
 - Handles key versioning and rotation
 
@@ -216,15 +225,15 @@ Implement `AssertionBinder` that:
 
 1. **Caching**: Validator result caching for improved performance
 2. **Batch Operations**: Optimized bulk signing/validation patterns
-3. **Standard Binders**: Common KMS service integrations (AWS, Azure, GCP)
-4. **PKCS#11 Reference**: Production-ready hardware token implementations
-5. **X.509 PKI**: Full certificate chain and revocation checking
+3. **Standard Implementations**: Reference implementations for PIV/CAC, HSM, and cloud KMS providers
+4. **PKCS#11 Library**: Production-ready PIV/CAC/HSM integration library
+5. **X.509 PKI**: Full certificate chain validation and revocation checking (OCSP/CRL)
 
 ## Decision Record
 
 - **Date**: 2025-10-16
 - **Authors**: Platform SDK Team
-- **Stakeholders**: Security Team, Enterprise Customers requiring HSM/KMS integration
+- **Stakeholders**: Security Team, Enterprise Customers requiring PIV/CAC/HSM/KMS integration
 
 ## References
 

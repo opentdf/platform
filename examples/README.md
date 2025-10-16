@@ -45,11 +45,11 @@ go build -o examples-cli
 
 ## Assertion Provider Examples
 
-The `assertion` command demonstrates how to use the `ProviderFactory` to implement custom signing and validation for TDF assertions.
+The `assertion` command demonstrates how to implement custom signing and validation for TDF assertions using assertion binders and validators.
 
 ### Adding an Assertion to an Existing TDF
 
-The `assertion add` subcommand demonstrates how to add a new assertion to an existing TDF. To ensure the integrity of the TDF is maintained, this is accomplished by performing a full decrypt and re-encrypt workflow. This process guarantees that the TDF's root signature is correctly recalculated to include the new assertion.
+The `assertion add` subcommand demonstrates how to add a new assertion to an existing TDF. The TDF manifest is read, the new assertion is added, and the manifest is rewritten. This updates only the manifest structure without re-encrypting the payload data, making it an efficient operation for adding assertions post-creation.
 
 **To use this example:**
 
@@ -67,8 +67,16 @@ The provider interfaces allow developers to:
 - Maintain backward compatibility while adding new capabilities.
 
 For full implementation details, see:
-- [Provider Factory](../sdk/assertion_provider_factory.go)
-- [Provider Interfaces](../sdk/assertion_provider.go)
+- [Assertion Provider Interfaces](../sdk/assertion_provider.go)
+- [Assertion Registry](../sdk/assertion_provider_registry.go)
+- [Assertions](../docs/Assertions.md) - Signature format for interoperability
+- [Troubleshooting Assertions](../docs/Assertions-Troubleshooting.md) - Common issues and solutions
+
+**Security Note:** The examples use unencrypted private keys for simplicity. In production:
+- Use password-protected private keys or hardware security modules (HSMs)
+- Store keys in secure key management systems (AWS KMS, Azure Key Vault, etc.)
+- Set restrictive file permissions on key files (`chmod 600`)
+- Never commit private keys to version control
 
 ## Configuration Options
 

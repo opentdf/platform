@@ -2,9 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -26,8 +23,8 @@ func init() {
 		Args:  cobra.MinimumNArgs(1),
 	}
 	decryptCmd.Flags().StringVarP(&decryptAlg, "rewrap-encapsulation-algorithm", "A", "rsa:2048", "Key wrap response algorithm algorithm:parameters")
-	decryptCmd.Flags().StringVar(&magicWord, "magic-word", "", "Use a 'magic word' as a shared secret.")
-	decryptCmd.Flags().StringVar(&privateKeyPath, "private-key-path", "", "Private key for signing assertions")
+	decryptCmd.Flags().StringVar(&magicWord, "magic-word", "", "Magic word shared secret for assertion validation")
+	decryptCmd.Flags().StringVar(&privateKeyPath, "private-key-path", "", "Path to private key file for assertion validation")
 	ExamplesCmd.AddCommand(decryptCmd)
 }
 
@@ -109,7 +106,10 @@ func decrypt(cmd *cobra.Command, args []string) error {
 		}
 		// Public key validator
 		if privateKeyPath != "" {
-			key := getAssertionKeyPublic(privateKeyPath)
+			key, err := getAssertionKeyPublic(privateKeyPath)
+			if err != nil {
+				return fmt.Errorf("failed to load assertion key: %w", err)
+			}
 			keys := sdk.AssertionVerificationKeys{
 				Keys: map[string]sdk.AssertionKey{
 					sdk.KeyAssertionID: key,
@@ -138,45 +138,4 @@ func decrypt(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return nil
-}
-
-func getAssertionKeyPublic(path string) sdk.AssertionKey {
-	privPEM, err := os.ReadFile(path)
-	if err != nil {
-		panic(err)
-	}
-	block, _ := pem.Decode(privPEM)
-	if block == nil {
-		panic("no PEM block found")
-	}
-
-	// If the private key is encrypted, you'll need the passphrase and to decrypt first.
-	// This snippet expects an unencrypted PKCS#1 or PKCS#8 key.
-	var rsaPriv *rsa.PrivateKey
-	switch block.Type {
-	case "RSA PRIVATE KEY":
-		rsaPriv, err = x509.ParsePKCS1PrivateKey(block.Bytes)
-		if err != nil {
-			panic(err)
-		}
-	case "PRIVATE KEY":
-		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-		if err != nil {
-			panic(err)
-		}
-		var ok bool
-		rsaPriv, ok = key.(*rsa.PrivateKey)
-		if !ok {
-			panic(errors.New("not an RSA private key"))
-		}
-	default:
-		panic(fmt.Errorf("unsupported key type: %s", block.Type))
-	}
-
-	// Extract RSA public key
-	rsaPub := &rsaPriv.PublicKey
-	return sdk.AssertionKey{
-		Alg: sdk.AssertionKeyAlgRS256,
-		Key: rsaPub,
-	}
 }

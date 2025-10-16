@@ -3,10 +3,7 @@ package cmd
 
 import (
 	"bytes"
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -49,8 +46,8 @@ func init() {
 	encryptCmd.Flags().StringVarP(&alg, "key-encapsulation-algorithm", "A", "rsa:2048", "Key wrap algorithm algorithm:parameters")
 	encryptCmd.Flags().IntVarP(&collection, "collection", "c", 0, "number of nano's to create for collection. If collection >0 (default) then output will be <iteration>_<output>")
 	encryptCmd.Flags().StringVar(&policyMode, "policy-mode", "", "Store policy as encrypted instead of plaintext (nanoTDF only) [plaintext|encrypted]")
-	encryptCmd.Flags().StringVar(&magicWord, "magic-word", "", "Use a 'magic word' as a shared secret.")
-	encryptCmd.Flags().StringVar(&privateKeyPath, "private-key-path", "", "Private key for signing assertions")
+	encryptCmd.Flags().StringVar(&magicWord, "magic-word", "", "Magic word shared secret for assertion signing")
+	encryptCmd.Flags().StringVar(&privateKeyPath, "private-key-path", "", "Path to private key file for assertion signing")
 	ExamplesCmd.AddCommand(&encryptCmd)
 }
 
@@ -128,7 +125,10 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		}
 		// Key provider
 		if privateKeyPath != "" {
-			privateKey := getAssertionKeys(privateKeyPath)
+			privateKey, err := getAssertionKeyPrivate(privateKeyPath)
+			if err != nil {
+				return fmt.Errorf("failed to load assertion key: %w", err)
+			}
 			publicKeyBinder := sdk.NewKeyAssertionBinder(privateKey)
 			opts = append(opts, sdk.WithAssertionBinder(publicKeyBinder))
 		}
@@ -196,44 +196,6 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return nil
-}
-
-func getAssertionKeys(path string) sdk.AssertionKey {
-	privPEM, err := os.ReadFile(path)
-	if err != nil {
-		panic(err)
-	}
-	block, _ := pem.Decode(privPEM)
-	if block == nil {
-		panic("no PEM block found")
-	}
-
-	// If the private key is encrypted, you'll need the passphrase and to decrypt first.
-	// This snippet expects an unencrypted PKCS#1 or PKCS#8 key.
-	var rsaPriv *rsa.PrivateKey
-	switch block.Type {
-	case "RSA PRIVATE KEY":
-		rsaPriv, err = x509.ParsePKCS1PrivateKey(block.Bytes)
-		if err != nil {
-			panic(err)
-		}
-	case "PRIVATE KEY":
-		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-		if err != nil {
-			panic(err)
-		}
-		var ok bool
-		rsaPriv, ok = key.(*rsa.PrivateKey)
-		if !ok {
-			panic(errors.New("not an RSA private key"))
-		}
-	default:
-		panic(fmt.Errorf("unsupported key type: %s", block.Type))
-	}
-	return sdk.AssertionKey{
-		Alg: sdk.AssertionKeyAlgRS256,
-		Key: rsaPriv,
-	}
 }
 
 func keyTypeForKeyType(alg string) (ocrypto.KeyType, error) {

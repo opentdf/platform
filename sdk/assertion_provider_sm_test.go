@@ -39,22 +39,9 @@ func TestSystemMetadataAssertion_SchemaVersionDetection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a mock assertion with the specified schema
-			assertion := Assertion{
-				ID:             SystemMetadataAssertionID,
-				Type:           BaseAssertion,
-				Scope:          PayloadScope,
-				AppliesToState: Unencrypted,
-				Statement: Statement{
-					Format: StatementFormatJSON,
-					Schema: tt.schema,
-					Value:  `{"test":"data"}`,
-				},
-			}
-
 			// Check if the schema detection logic would classify this as legacy
-			isLegacySchema := assertion.Statement.Schema == SystemMetadataSchemaV1 ||
-				assertion.Statement.Schema == ""
+			// This mimics the logic in SystemMetadataAssertionProvider.Verify()
+			isLegacySchema := tt.schema == SystemMetadataSchemaV1 || tt.schema == ""
 
 			assert.Equal(t, tt.expectedLegacy, isLegacySchema,
 				"%s: %s", tt.name, tt.description)
@@ -72,8 +59,10 @@ func TestGetSystemMetadataAssertionConfig_DefaultsToV2(t *testing.T) {
 		"Assertion ID should be 'system-metadata'")
 	assert.Equal(t, SystemMetadataSchemaV2, config.Statement.Schema,
 		"New assertions should default to v2 schema")
-	assert.Equal(t, StatementFormatJSON, config.Statement.Format,
-		"Statement format should be JSON")
+	// Verify statement format (string comparison, not JSON)
+	if config.Statement.Format != StatementFormatJSON {
+		t.Errorf("Expected format %q, got %q", StatementFormatJSON, config.Statement.Format)
+	}
 }
 
 // TestSystemMetadataAssertionProvider_Bind_UsesV2Schema verifies that

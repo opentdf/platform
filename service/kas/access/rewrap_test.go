@@ -846,8 +846,9 @@ func TestAddResultsToResponse(t *testing.T) {
 			input: policyKAOResults{
 				"policy-1": {
 					"kao-1": kaoResult{
-						ID:       "kao-1",
-						Encapped: []byte("encrypted-key-data"),
+						ID:                  "kao-1",
+						Encapped:            []byte("encrypted-key-data"),
+						RequiredObligations: []string{"https://demo.com/obl/test/value/watermark"},
 					},
 				},
 			},
@@ -860,6 +861,13 @@ func TestAddResultsToResponse(t *testing.T) {
 								KeyAccessObjectId: "kao-1",
 								Status:            kPermitStatus,
 								Result:            &kaspb.KeyAccessRewrapResult_KasWrappedKey{KasWrappedKey: []byte("encrypted-key-data")},
+								Metadata: map[string]*structpb.Value{
+									requiredObligationsHeader: structpb.NewListValue(&structpb.ListValue{
+										Values: []*structpb.Value{
+											structpb.NewStringValue("https://demo.com/obl/test/value/watermark"),
+										},
+									}),
+								},
 							},
 						},
 					},
@@ -948,6 +956,11 @@ func TestAddResultsToResponse(t *testing.T) {
 								KeyAccessObjectId: "kao-1",
 								Status:            kFailedStatus,
 								Result:            &kaspb.KeyAccessRewrapResult_Error{Error: "kao not processed by kas"},
+								Metadata: map[string]*structpb.Value{
+									requiredObligationsHeader: structpb.NewListValue(&structpb.ListValue{
+										Values: []*structpb.Value{},
+									}),
+								},
 							},
 						},
 					},
@@ -984,6 +997,11 @@ func TestAddResultsToResponse(t *testing.T) {
 								KeyAccessObjectId: "kao-1",
 								Status:            kPermitStatus,
 								Result:            &kaspb.KeyAccessRewrapResult_KasWrappedKey{KasWrappedKey: []byte("encrypted-key-1")},
+								Metadata: map[string]*structpb.Value{
+									requiredObligationsHeader: structpb.NewListValue(&structpb.ListValue{
+										Values: []*structpb.Value{},
+									}),
+								},
 							},
 							{
 								KeyAccessObjectId: "kao-2",
@@ -1007,6 +1025,11 @@ func TestAddResultsToResponse(t *testing.T) {
 								KeyAccessObjectId: "kao-3",
 								Status:            kPermitStatus,
 								Result:            &kaspb.KeyAccessRewrapResult_KasWrappedKey{KasWrappedKey: []byte("encrypted-key-3")},
+								Metadata: map[string]*structpb.Value{
+									requiredObligationsHeader: structpb.NewListValue(&structpb.ListValue{
+										Values: []*structpb.Value{},
+									}),
+								},
 							},
 						},
 					},

@@ -401,7 +401,6 @@ func addResultsToResponse(response *kaspb.RewrapResponse, result policyKAOResult
 			}
 			switch {
 			case kaoRes.Error != nil:
-				kaoResult.Metadata = createKAOMetadata(kaoRes.RequiredObligations)
 				kaoResult.Status = kFailedStatus
 				kaoResult.Result = &kaspb.KeyAccessRewrapResult_Error{Error: kaoRes.Error.Error()}
 			case kaoRes.Encapped != nil:
@@ -411,6 +410,7 @@ func addResultsToResponse(response *kaspb.RewrapResponse, result policyKAOResult
 				kaoResult.Status = kFailedStatus
 				kaoResult.Result = &kaspb.KeyAccessRewrapResult_Error{Error: "kao not processed by kas"}
 			}
+			kaoResult.Metadata = createKAOMetadata(kaoRes.RequiredObligations)
 			policyResults.Results = append(policyResults.Results, kaoResult)
 		}
 		response.Responses = append(response.Responses, policyResults)
@@ -818,9 +818,10 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				continue
 			}
 			kaoResults[kaoID] = kaoResult{
-				ID:                 kaoID,
-				Encapped:           encryptedKey,
-				EphemeralPublicKey: asymEncrypt.EphemeralKey(),
+				ID:                  kaoID,
+				Encapped:            encryptedKey,
+				EphemeralPublicKey:  asymEncrypt.EphemeralKey(),
+				RequiredObligations: requiredObligationsForPolicy,
 			}
 
 			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
@@ -915,8 +916,9 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 			}
 
 			kaoResults[kao.GetKeyAccessObjectId()] = kaoResult{
-				ID:       kao.GetKeyAccessObjectId(),
-				Encapped: cipherText,
+				ID:                  kao.GetKeyAccessObjectId(),
+				Encapped:            cipherText,
+				RequiredObligations: requiredObligationsForPolicy,
 			}
 
 			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)

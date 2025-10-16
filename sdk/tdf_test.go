@@ -2198,6 +2198,192 @@ func (s *TDFSuite) Test_Obligations() {
 	}
 }
 
+func TestDedupRequiredObligations(t *testing.T) {
+	testCases := []struct {
+		name           string
+		kaoResults     []kaoResult
+		expectedResult []string
+	}{
+		{
+			name:           "empty input",
+			kaoResults:     []kaoResult{},
+			expectedResult: []string{},
+		},
+		{
+			name: "single kao with no obligations",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID:   "kao-1",
+					RequiredObligations: []string{},
+				},
+			},
+			expectedResult: []string{},
+		},
+		{
+			name: "single kao with single obligation",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID:   "kao-1",
+					RequiredObligations: []string{"https://demo.com/obl/test/value/watermark"},
+				},
+			},
+			expectedResult: []string{"https://demo.com/obl/test/value/watermark"},
+		},
+		{
+			name: "single kao with multiple obligations",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID: "kao-1",
+					RequiredObligations: []string{
+						"https://demo.com/obl/test/value/watermark",
+						"https://demo.com/obl/test/value/geofence",
+					},
+				},
+			},
+			expectedResult: []string{
+				"https://demo.com/obl/test/value/watermark",
+				"https://demo.com/obl/test/value/geofence",
+			},
+		},
+		{
+			name: "multiple kaos with same obligations - should dedupe",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID:   "kao-1",
+					RequiredObligations: []string{"https://demo.com/obl/test/value/watermark"},
+				},
+				{
+					KeyAccessObjectID:   "kao-2",
+					RequiredObligations: []string{"https://demo.com/obl/test/value/watermark"},
+				},
+			},
+			expectedResult: []string{"https://demo.com/obl/test/value/watermark"},
+		},
+		{
+			name: "multiple kaos with different obligations",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID:   "kao-1",
+					RequiredObligations: []string{"https://demo.com/obl/test/value/watermark"},
+				},
+				{
+					KeyAccessObjectID:   "kao-2",
+					RequiredObligations: []string{"https://demo.com/obl/test/value/geofence"},
+				},
+			},
+			expectedResult: []string{
+				"https://demo.com/obl/test/value/watermark",
+				"https://demo.com/obl/test/value/geofence",
+			},
+		},
+		{
+			name: "case insensitive deduplication",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID:   "kao-1",
+					RequiredObligations: []string{"https://demo.com/obl/test/value/WATERMARK"},
+				},
+				{
+					KeyAccessObjectID:   "kao-2",
+					RequiredObligations: []string{"https://demo.com/obl/test/value/watermark"},
+				},
+			},
+			expectedResult: []string{"https://demo.com/obl/test/value/watermark"},
+		},
+		{
+			name: "whitespace trimming and deduplication",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID:   "kao-1",
+					RequiredObligations: []string{" https://demo.com/obl/test/value/watermark "},
+				},
+				{
+					KeyAccessObjectID:   "kao-2",
+					RequiredObligations: []string{"https://demo.com/obl/test/value/watermark"},
+				},
+			},
+			expectedResult: []string{"https://demo.com/obl/test/value/watermark"},
+		},
+		{
+			name: "complex case - mixed duplicates with case and whitespace variations",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID: "kao-1",
+					RequiredObligations: []string{
+						"https://demo.com/obl/test/value/WATERMARK",
+						"https://demo.com/obl/test/value/geofence",
+					},
+				},
+				{
+					KeyAccessObjectID: "kao-2",
+					RequiredObligations: []string{
+						" https://demo.com/obl/test/value/watermark ",
+						"https://demo.com/obl/test/value/ENCRYPTION",
+					},
+				},
+				{
+					KeyAccessObjectID: "kao-3",
+					RequiredObligations: []string{
+						"https://demo.com/obl/test/value/geofence",
+						"https://demo.com/obl/test/value/encryption",
+					},
+				},
+			},
+			expectedResult: []string{
+				"https://demo.com/obl/test/value/watermark",
+				"https://demo.com/obl/test/value/geofence",
+				"https://demo.com/obl/test/value/encryption",
+			},
+		},
+		{
+			name: "empty string obligations should be normalized",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID: "kao-1",
+					RequiredObligations: []string{
+						"",
+						"   ",
+						"https://demo.com/obl/test/value/watermark",
+					},
+				},
+			},
+			expectedResult: []string{
+				"https://demo.com/obl/test/value/watermark",
+			},
+		},
+		{
+			name: "preserve order of first occurrence",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID: "kao-1",
+					RequiredObligations: []string{
+						"https://demo.com/obl/test/value/geofence",
+						"https://demo.com/obl/test/value/watermark",
+					},
+				},
+				{
+					KeyAccessObjectID: "kao-2",
+					RequiredObligations: []string{
+						"https://demo.com/obl/test/value/watermark",
+						"https://demo.com/obl/test/value/geofence",
+					},
+				},
+			},
+			expectedResult: []string{
+				"https://demo.com/obl/test/value/geofence",
+				"https://demo.com/obl/test/value/watermark",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := dedupRequiredObligations(tc.kaoResults)
+			assert.Equal(t, tc.expectedResult, result, "Deduplication result should match expected")
+		})
+	}
+}
+
 func (s *TDFSuite) Test_Autoconfigure() {
 	for index, test := range []tdfTest{
 		{

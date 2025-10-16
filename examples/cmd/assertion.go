@@ -30,8 +30,10 @@ var addAssertionCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Adds a new assertion to an existing TDF",
 	RunE:  appendAssertion,
-	Long: `This command demonstrates adding an assertion to an existing TDF file
-by efficiently modifying the manifest without full decryption or KAS calls.
+	Long: `This command demonstrates adding an assertion to an existing TDF file.
+
+The TDF manifest is read, updated with the new assertion, and rewritten to a new file.
+This updates only the manifest structure without re-encrypting the payload data.
 
 Example:
   ./examples-cli assertion add --in sensitive.txt.tdf --out sensitive-with-assertion.txt.tdf --magic-word swordfish
@@ -48,12 +50,13 @@ func appendAssertion(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open input file: %w", err)
 	}
+	defer inFileReader.Close()
+
 	// Read TDF
 	tdfReader, err := s.LoadTDF(inFileReader)
 	if err != nil {
 		return err
 	}
-	inFileReader.Close()
 	// Construct Assertion Provider
 	assertionProvider := NewMagicWordAssertionProvider(magicWordAA)
 	// Create (Bind) Assertion

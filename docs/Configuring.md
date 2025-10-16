@@ -283,7 +283,7 @@ Root level key `authorization`
 
 > **Note:** Both Authorization v1 and v2 use the same configuration section, but some keys are version-specific. See below for details.
 
-#### Common Keys (v1 & v2)
+#### Shared Keys (v1 & v2)
 
 | Field | Description | Default | Environment Variables |
 |-------|-------------|---------|----------------------|
@@ -303,7 +303,7 @@ Root level key `authorization`
 | `entitlement_policy_cache.enabled`      | Enable the entitlement policy cache              | `false` |                      |
 | `entitlement_policy_cache.refresh_interval` | How often to refresh the entitlement policy cache (e.g. `30s`) |         |                      |
 
-##### Example: Authorization v1
+#### Example: Authorization v1
 
 ```yaml
 services:
@@ -313,7 +313,7 @@ services:
       query: data.opentdf.entitlements.attributes
 ```
 
-##### Example: Authorization v2
+#### Example: Authorization v2
 
 ```yaml
 services:
@@ -343,13 +343,19 @@ Root level key `entityresolution`
 | `inferid.from.username` | Infer entity IDs from usernames (specific to `keycloak` mode) | `false`   | OPENTDF_SERVICES_ENTITYRESOLUTION_INFERID_FROM_USERNAME |
 | `inferid.from.clientid` | Infer entity IDs from client IDs (specific to `keycloak` mode) | `false`   | OPENTDF_SERVICES_ENTITYRESOLUTION_INFERID_FROM_CLIENTID |
 
+#### Entity Resolution v1 Only
+
+| Field | Description | Default | Environment Variables |
+|-------|-------------|---------|----------------------|
+| *(none currently)* | | | |
+
 #### Entity Resolution v2 Only
 
 | Field              | Description                                                        | Default  | Environment Variable |
 |--------------------|--------------------------------------------------------------------|----------|---------------------|
 | `cache_expiration` | Cache duration for entity resolution results (e.g., `30s`). Disabled if not set or zero. (specific to `keycloak` mode) | disabled |                     |
 
-##### Example: Entity Resolution v1
+#### Example: Entity Resolution v1
 
 ```yaml
 services:
@@ -365,7 +371,7 @@ services:
         username: true
 ```
 
-##### Example: Entity Resolution v2
+#### Example: Entity Resolution v2
 
 ```yaml
 services:

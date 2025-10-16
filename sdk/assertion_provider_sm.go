@@ -3,9 +3,7 @@ package sdk
 // System Metadata Assertion Provider
 
 import (
-	"bytes"
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -40,7 +38,7 @@ func NewSystemMetadataAssertionProvider(useHex bool, payloadKey []byte, aggregat
 	}
 }
 
-func (p SystemMetadataAssertionProvider) Bind(ctx context.Context, m Manifest) (Assertion, error) {
+func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (Assertion, error) {
 	// Get the assertion config
 	ac, err := GetSystemMetadataAssertionConfig()
 	if err != nil {
@@ -63,7 +61,7 @@ func (p SystemMetadataAssertionProvider) Bind(ctx context.Context, m Manifest) (
 
 	assertionSigningKey := AssertionKey{
 		Alg: AssertionKeyAlgHS256,
-		Key: p.payloadKey[:],
+		Key: p.payloadKey,
 	}
 
 	// aggregation hash replaced with manifest root signature
@@ -73,10 +71,10 @@ func (p SystemMetadataAssertionProvider) Bind(ctx context.Context, m Manifest) (
 	return assertion, nil
 }
 
-func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, r Reader) error {
+func (p SystemMetadataAssertionProvider) Verify(_ context.Context, a Assertion, r Reader) error {
 	assertionKey := AssertionKey{
 		Alg: AssertionKeyAlgHS256,
-		Key: p.payloadKey[:],
+		Key: p.payloadKey,
 	}
 
 	assertionHash, assertionSig, err := a.Verify(assertionKey)
@@ -95,20 +93,6 @@ func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion
 	if string(hashOfAssertionAsHex) != assertionHash {
 		return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: a.ID})
 	}
-
-	hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-	_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
-	if err != nil {
-		return fmt.Errorf("error decoding hex string: %w", err)
-	}
-
-	isLegacyTDF := r.manifest.TDFVersion == ""
-	if isLegacyTDF {
-		hashOfAssertion = hashOfAssertionAsHex
-	}
-
-	var completeHashBuilder bytes.Buffer
-	completeHashBuilder.Write(hashOfAssertionAsHex)
 
 	if assertionSig != r.manifest.RootSignature.Signature {
 		return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: a.ID})

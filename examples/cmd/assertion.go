@@ -21,8 +21,8 @@ var assertionCmd = &cobra.Command{
 
 The "Magic Word" provider is a basic implementation used for demonstration purposes.
 It "signs" assertions by appending a secret word and validates them by checking for it.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
+	Run: func(cmd *cobra.Command, _ []string) {
+		_ = cmd.Help()
 	},
 }
 

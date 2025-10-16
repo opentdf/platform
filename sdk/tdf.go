@@ -31,26 +31,39 @@ import (
 )
 
 const (
-	keyAccessSchemaVersion = "1.0"
-	maxFileSizeSupported   = 68719476736 // 64gb
-	defaultMimeType        = "application/octet-stream"
-	tdfAsZip               = "zip"
-	gcmIvSize              = 12
-	aesBlockSize           = 16
-	hmacIntegrityAlgorithm = "HS256"
-	gmacIntegrityAlgorithm = "GMAC"
-	tdfZipReference        = "reference"
-	kKeySize               = 32
-	kWrapped               = "wrapped"
-	kECWrapped             = "ec-wrapped"
-	kKasProtocol           = "kas"
-	kSplitKeyType          = "split"
-	kGCMCipherAlgorithm    = "AES-256-GCM"
-	kGMACPayloadLength     = 16
-	kAssertionSignature    = "assertionSig"
-	kAssertionHash         = "assertionHash"
-	hexSemverThreshold     = "4.3.0"
-	readActionName         = "read"
+	keyAccessSchemaVersion  = "1.0"
+	maxFileSizeSupported    = 68719476736 // 64gb
+	defaultMimeType         = "application/octet-stream"
+	tdfAsZip                = "zip"
+	gcmIvSize               = 12
+	aesBlockSize            = 16
+	hmacIntegrityAlgorithm  = "HS256"
+	gmacIntegrityAlgorithm  = "GMAC"
+	tdfZipReference         = "reference"
+	kKeySize                = 32
+	kWrapped                = "wrapped"
+	kECWrapped              = "ec-wrapped"
+	kKasProtocol            = "kas"
+	kSplitKeyType           = "split"
+	kGCMCipherAlgorithm     = "AES-256-GCM"
+	kGMACPayloadLength      = 16
+	kAssertionSignature     = "assertionSig"
+	kAssertionHash          = "assertionHash"
+	kClientPublicKey        = "clientPublicKey"
+	kSignedRequestToken     = "signedRequestToken"
+	kKasURL                 = "url"
+	kRewrapV2               = "/v2/rewrap"
+	kAuthorizationKey       = "Authorization"
+	kContentTypeKey         = "Content-Type"
+	kAcceptKey              = "Accept"
+	kContentTypeJSONValue   = "application/json"
+	kEntityWrappedKey       = "entityWrappedKey"
+	kPolicy                 = "policy"
+	kHmacIntegrityAlgorithm = "HS256"
+	kGmacIntegrityAlgorithm = "GMAC"
+	hexSemverThreshold      = "4.3.0"
+	manifestFileName        = "0.manifest.json"
+	readActionName          = "read"
 )
 
 // Loads and reads ZTDF files
@@ -139,7 +152,7 @@ func (t TDFObject) Size() int64 {
 //
 // Note: This method modifies the TDF's manifest in place. The assertion will be
 // cryptographically bound to the TDF's payload using the aggregate hash.
-func (t *TDFObject) AppendAssertion(ctx context.Context, assertionConfig AssertionConfig, key AssertionKey) error {
+func (t *TDFObject) AppendAssertion(_ context.Context, assertionConfig AssertionConfig, key AssertionKey) error {
 	// Configure the assertion from config
 	assertion := Assertion{
 		ID:             assertionConfig.ID,
@@ -170,9 +183,6 @@ func (t *TDFObject) AppendAssertion(ctx context.Context, assertionConfig Asserti
 	// 2. Assertions cannot be added/removed without detection (integrity)
 	// 3. The assertion applies to the exact payload state at assertion creation time
 	rootSignature := t.manifest.RootSignature.Signature
-	combinedHash := make([]byte, 0, len(rootSignature)+len(assertionHashBytes))
-	combinedHash = append(combinedHash, rootSignature...)
-	combinedHash = append(combinedHash, assertionHashBytes...)
 
 	// Sign the assertion using the provided signing builder
 	if err := assertion.Sign(assertionHash, rootSignature, key); err != nil {
@@ -1256,7 +1266,7 @@ func WriteTDFWithUpdatedManifest(inPath, outPath string, manifest Manifest) erro
 	replaced := false
 
 	for _, f := range zr.File {
-		isManifest := f.Name == "0.manifest.json" || f.Name == "manifest.json"
+		isManifest := f.Name == manifestFileName || f.Name == "manifest.json"
 
 		// Clone header for faithful copy
 		hdr := &zip.FileHeader{
@@ -1310,6 +1320,7 @@ func WriteTDFWithUpdatedManifest(inPath, outPath string, manifest Manifest) erro
 			return fmt.Errorf("failed to create output entry %q: %w", f.Name, err)
 		}
 
+		//nolint:gosec // G110: Decompression bomb warning expected when unpacking ZIP files
 		if _, err := io.Copy(ww, rc); err != nil {
 			rc.Close()
 			_ = zw.Close()
@@ -1321,7 +1332,7 @@ func WriteTDFWithUpdatedManifest(inPath, outPath string, manifest Manifest) erro
 	if !replaced {
 		// If no manifest was found, add one as 0.manifest.json
 		hdr := &zip.FileHeader{
-			Name:     "0.manifest.json",
+			Name:     manifestFileName,
 			Method:   zip.Deflate,
 			Modified: time.Now().UTC(),
 		}
@@ -1344,21 +1355,6 @@ func WriteTDFWithUpdatedManifest(inPath, outPath string, manifest Manifest) erro
 	}
 
 	return nil
-}
-
-// calculateAggregateHash reconstructs the aggregate hash from the TDF's segments
-func (r *Reader) calculateAggregateHash() ([]byte, error) {
-	var aggregateHashBuilder strings.Builder
-
-	for _, segment := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
-		decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode segment hash: %w", err)
-		}
-		aggregateHashBuilder.Write(decodedHash)
-	}
-
-	return []byte(aggregateHashBuilder.String()), nil
 }
 
 func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
@@ -1549,7 +1545,7 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 			case StrictMode:
 				// Fail on unknown assertions
 				return fmt.Errorf("%w: unknown assertion type in strict mode", ErrAssertionFailure{ID: assertion.ID})
-			default: // FailFast
+			case FailFast:
 				// Skip with warning (default behavior for backward compatibility)
 				slog.WarnContext(ctx, "no validator registered for assertion, skipping",
 					slog.String("assertion_id", assertion.ID))
@@ -1576,7 +1572,8 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 					slog.Any("error", err))
 				// This could be reported as a tamper event in the future
 				continue
-			default: // StrictMode and FailFast both fail on validation errors
+			case StrictMode, FailFast:
+				// StrictMode and FailFast both fail on validation errors
 				return r.handleAssertionVerificationError(assertion.ID, err)
 			}
 		}

@@ -1,3 +1,4 @@
+//nolint:forbidigo,nestif // Example code
 package cmd
 
 import (

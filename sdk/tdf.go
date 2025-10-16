@@ -40,6 +40,7 @@ const (
 	hmacIntegrityAlgorithm = "HS256"
 	gmacIntegrityAlgorithm = "GMAC"
 	tdfZipReference        = "reference"
+	manifestFileName       = "0.manifest.json"
 	kKeySize               = 32
 	kWrapped               = "wrapped"
 	kECWrapped             = "ec-wrapped"

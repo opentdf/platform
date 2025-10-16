@@ -1521,20 +1521,44 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 	}
 
 	// Register DEK default system metadata assertion validator
-	if !r.config.disableAssertionVerification {
-		// useHex is used for legacy TDF compatibility (versions < 4.3.0)
-		// When reading legacy TDFs, signatures are hex-encoded instead of raw bytes
-		// Legacy TDFs have no TDFVersion field in the manifest
-		useHex := r.manifest.TDFVersion == ""
-		systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(useHex, payloadKey[:], aggregateHash.String())
-		// if already registered, ignore
-		_ = r.config.assertionRegistry.RegisterValidator(systemMetadataAssertionPattern, systemMetadataAssertionProvider)
+	if r.config.disableAssertionVerification {
+		// Skip all assertion verification setup
+		gcm, err := ocrypto.NewAESGcm(payloadKey[:])
+		if err != nil {
+			return fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
+		}
 
-		// Register DEK-based fallback validator for assertions without explicit validators
-		// This maintains backward compatibility with the old behavior where assertions
-		// were verified using the DEK (payload key) by default when no explicit keys were provided
-		if r.config.verifiers.IsEmpty() {
-			// No explicit verifiers provided - use SystemMetadataAssertionProvider for all assertions
+		r.unencryptedMetadata = unencryptedMetadata
+		r.payloadKey = payloadKey[:]
+		r.aesGcm = gcm
+
+		return nil
+	}
+
+	// useHex is used for legacy TDF compatibility (versions < 4.3.0)
+	// When reading legacy TDFs, signatures are hex-encoded instead of raw bytes
+	// Legacy TDFs have no TDFVersion field in the manifest
+	useHex := r.manifest.TDFVersion == ""
+	systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(useHex, payloadKey[:], aggregateHash.String())
+	// if already registered, ignore
+	_ = r.config.assertionRegistry.RegisterValidator(systemMetadataAssertionPattern, systemMetadataAssertionProvider)
+
+	// Register DEK-based fallback validator for assertions without explicit validators
+	// This maintains backward compatibility with the old behavior where assertions
+	// were verified using the DEK (payload key) by default when no explicit keys were provided
+	// Only register if there are assertions with bindings in the manifest
+	if r.config.verifiers.IsEmpty() {
+		// Check if any assertions have bindings that need verification
+		hasSignedAssertions := false
+		for _, assertion := range r.manifest.Assertions {
+			if assertion.Binding.Signature != "" {
+				hasSignedAssertions = true
+				break
+			}
+		}
+
+		if hasSignedAssertions {
+			// No explicit verifiers provided - use SystemMetadataAssertionProvider for all assertions with bindings
 			// This provider supports both legacy (v1) and current (v2) assertion formats
 			// Legacy format: assertionSig = base64(aggregateHash + assertionHash)
 			// Current format: assertionSig = rootSignature

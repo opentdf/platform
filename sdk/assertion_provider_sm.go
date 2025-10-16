@@ -77,6 +77,12 @@ func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (As
 }
 
 func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, r Reader) error {
+	// Assertions without cryptographic bindings cannot be verified
+	// This is a security check - assertions MUST be signed to be trusted
+	if a.Binding.Signature == "" {
+		return fmt.Errorf("%w: assertion has no binding signature", ErrAssertionFailure{ID: a.ID})
+	}
+
 	assertionKey := AssertionKey{
 		Alg: AssertionKeyAlgHS256,
 		Key: p.payloadKey,

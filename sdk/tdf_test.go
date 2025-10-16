@@ -2021,21 +2021,19 @@ func (s *TDFSuite) Test_Obligations_Decrypt() {
 
 				_, err = r.WriteTo(io.Discard)
 				s.Require().NoError(err)
-				obligations, err := r.Obligations(s.T().Context())
-				s.Require().NoError(err)
-				s.Require().Empty(obligations.FQNs, "Obligations should be empty on successful decryption")
 			} else {
 				// The decryption should fail due to unmet obligations
 				_, err = r.WriteTo(io.Discard)
 				s.Require().Error(err, "Decryption should fail when obligations are not met")
-				obligations, err := r.Obligations(s.T().Context())
-				s.Require().NoError(err)
-				s.Require().NotNil(obligations, "Obligations should not be nil")
-				s.Require().Len(obligations.FQNs, len(test.requiredObligationFQNs), "Should have correct number of obligations")
-				actualObligations := obligations
-				for _, ob := range test.requiredObligationFQNs {
-					s.Require().Contains(actualObligations.FQNs, ob, "Actual obligations should contain "+ob)
-				}
+			}
+
+			obligations, err := r.Obligations(s.T().Context())
+			s.Require().NoError(err)
+			s.Require().NotNil(obligations, "Obligations should not be nil")
+			s.Require().Len(obligations.FQNs, len(test.requiredObligationFQNs), "Should have correct number of obligations")
+			actualObligations := obligations
+			for _, ob := range test.requiredObligationFQNs {
+				s.Require().Contains(actualObligations.FQNs, ob, "Actual obligations should contain "+ob)
 			}
 		})
 	}
@@ -2631,9 +2629,9 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations
 	resp := &kaspb.RewrapResponse{}
 
 	for _, req := range bodyData.GetRequests() {
+		requiredObligations := f.s.checkPolicyObligations(f.attrToRequiredObligations, req)
 		if f.KASInfo.URL == f.s.kasTestURLLookup[obligationKas] {
-			// Check if fulfillable obligations satisfy the required obligations for this policy
-			requiredObligations := f.s.checkPolicyObligations(f.attrToRequiredObligations, req)
+			// Only return failures for obligation kas URL
 			if !f.s.checkObligationsFulfillment(requiredObligations, fulfillableObligations) {
 				// Return a deny response if obligations are not fulfilled
 				results := &kaspb.PolicyRewrapResult{PolicyId: req.GetPolicy().GetId()}
@@ -2743,6 +2741,7 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations
 				Result:            &kaspb.KeyAccessRewrapResult_KasWrappedKey{KasWrappedKey: entityWrappedKey},
 				Status:            "permit",
 				KeyAccessObjectId: kaoReq.GetKeyAccessObjectId(),
+				Metadata:          createMetadataWithObligations(requiredObligations),
 			}
 			results.Results = append(results.Results, kaoResult)
 		}

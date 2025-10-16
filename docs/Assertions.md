@@ -162,8 +162,164 @@ To test cross-tool compatibility:
 other-tool decrypt test.tdf --verify-assertions
 ```
 
+## Backwards Compatibility
+
+### System Metadata Assertion Schema Versions
+
+The SDK supports multiple schema versions for system metadata assertions to maintain backwards compatibility with TDFs created by older SDK versions.
+
+#### Schema Version 2 (Current - `system-metadata-v2`)
+
+**Used by**: SDK v1.24+
+**Signature Binding**: Uses the manifest's `rootSignature` directly
+
+```json
+{
+  "id": "system-metadata",
+  "statement": {
+    "schema": "system-metadata-v2",
+    "format": "json",
+    "value": "{...}"
+  },
+  "binding": {
+    "signature": "eyJ...  // JWT containing rootSignature"
+  }
+}
+```
+
+**Signature Payload**:
+```json
+{
+  "assertionHash": "<sha256-of-statement>",
+  "assertionSig": "<base64(rootSignature)>"
+}
+```
+
+**Advantages**:
+- Simpler binding mechanism
+- Directly reuses the already-signed root signature
+- Reduces redundant hash concatenation
+
+#### Schema Version 1 (Legacy - `system-metadata-v1` or empty)
+
+**Used by**: SDK v1.24-
+**Signature Binding**: Uses concatenated `aggregateHash + assertionHash`
+
+```json
+{
+  "id": "system-metadata",
+  "statement": {
+    "schema": "system-metadata-v1",  // or omitted entirely
+    "format": "json",
+    "value": "{...}"
+  },
+  "binding": {
+    "signature": "eyJ...  // JWT containing composite hash"
+  }
+}
+```
+
+**Signature Payload**:
+```json
+{
+  "assertionHash": "<sha256-of-statement>",
+  "assertionSig": "<base64(aggregateHash + assertionHash)>"
+}
+```
+
+where `aggregateHash` is the raw concatenation of all segment hashes.
+
+### Dual-Mode Validation
+
+The SDK automatically detects the assertion schema version and applies the appropriate validation logic:
+
+```go
+// V2 validation (current)
+if assertion.Statement.Schema == "system-metadata-v2" {
+    // Verify signature against rootSignature
+    if assertionSig != manifest.RootSignature.Signature {
+        return ErrAssertionFailure
+    }
+}
+
+// V1 validation (legacy)
+if assertion.Statement.Schema == "system-metadata-v1" || assertion.Statement.Schema == "" {
+    // Verify signature against aggregateHash + assertionHash
+    expectedSig := base64(aggregateHash + assertionHash)
+    if assertionSig != expectedSig {
+        return ErrAssertionFailure
+    }
+}
+```
+
+### Migration Guide
+
+#### Reading Old TDFs with New SDK
+
+✅ **Fully Supported**: The new SDK can read and validate TDFs created by older SDK versions (v1.x) through automatic schema detection.
+
+```bash
+# TDF created with SDK v1.x
+old-sdk encrypt data.txt -o old.tdf
+
+# Can be read with SDK v2.0+
+new-sdk decrypt old.tdf  # ✅ Works automatically
+```
+
+#### Reading New TDFs with Old SDK
+
+⚠️ **Not Supported**: Older SDK versions (v1.x) cannot read TDFs created by the new SDK (v2.0+) because they don't recognize the v2 schema.
+
+**Workaround**: Continue using SDK v1.x for TDF creation during migration period, or coordinate simultaneous upgrades.
+
+#### Creating TDFs During Migration
+
+To ensure maximum compatibility during a migration period:
+
+1. **Default Behavior** (Recommended): New SDK creates TDFs with v2 schema
+   ```go
+   sdk.CreateTDF(output, input, WithSystemMetadataAssertion())
+   // Uses system-metadata-v2
+   ```
+
+2. **All Consumers Must Upgrade**: Plan for coordinated upgrade when using v2 schema
+
+3. **Phased Migration**:
+   - Phase 1: Upgrade all readers to SDK v2.0+ (can read both v1 and v2)
+   - Phase 2: Upgrade writers to SDK v2.0+ (starts creating v2 TDFs)
+   - Phase 3: Decommission SDK v1.x entirely
+
+### Compatibility Matrix
+
+| TDF Creator | TDF Reader | Result |
+|------------|-----------|--------|
+| SDK v1.x (v1 schema) | SDK v1.x | ✅ Works |
+| SDK v1.x (v1 schema) | SDK v2.0+ | ✅ Works (auto-detects v1) |
+| SDK v2.0+ (v2 schema) | SDK v1.x | ❌ Fails (v1 doesn't recognize v2) |
+| SDK v2.0+ (v2 schema) | SDK v2.0+ | ✅ Works |
+
+### Version Detection
+
+The SDK determines the schema version using this logic:
+
+1. **Explicit v2**: `statement.schema == "system-metadata-v2"` → Use v2 validation
+2. **Explicit v1**: `statement.schema == "system-metadata-v1"` → Use v1 validation
+3. **Empty/Missing**: `statement.schema == ""` → Use v1 validation (backwards compatible)
+
+### Testing Backwards Compatibility
+
+```go
+// Unit tests verify dual-mode validation
+func TestSystemMetadataAssertion_SchemaVersionDetection(t *testing.T) {
+    // Tests v1, v2, and empty schema validation paths
+}
+```
+
+See `sdk/assertion_provider_sm_test.go` for complete test coverage.
+
 ## References
 
 - [OpenTDF Specification](https://github.com/opentdf/spec)
 - [JWS (RFC 7515)](https://datatracker.ietf.org/doc/html/rfc7515)
 - [JWT (RFC 7519)](https://datatracker.ietf.org/doc/html/rfc7519)
+- [Backwards Compatibility Analysis](../BACKWARDS_COMPATIBILITY_ANALYSIS.md) (detailed technical analysis)

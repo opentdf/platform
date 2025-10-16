@@ -3,13 +3,17 @@ package sdk
 // System Metadata Assertion Provider
 
 import (
+	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
 	"runtime"
 	"time"
+
+	"github.com/opentdf/platform/lib/ocrypto"
 )
 
 const (
@@ -94,14 +98,57 @@ func (p SystemMetadataAssertionProvider) Verify(_ context.Context, a Assertion, 
 		return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: a.ID})
 	}
 
-	if assertionSig != r.manifest.RootSignature.Signature {
+	// Dual-mode validation: support both v1 (legacy) and v2 (current) schemas
+	// v1: assertion signed with base64(aggregateHash + assertionHash)
+	// v2: assertion signed with rootSignature
+	isLegacySchema := a.Statement.Schema == SystemMetadataSchemaV1 || a.Statement.Schema == ""
+
+	if isLegacySchema {
+		return p.verifyLegacyAssertion(a.ID, assertionSig, hashOfAssertionAsHex)
+	} else if assertionSig != r.manifest.RootSignature.Signature {
+		// Current validation (v2+ TDFs)
+		// Expected signature format: rootSignature
 		return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: a.ID})
 	}
+
 	return nil
 }
 
 // Validate does nothing.
 func (p SystemMetadataAssertionProvider) Validate(_ context.Context, _ Assertion, _ Reader) error {
+	return nil
+}
+
+// verifyLegacyAssertion validates assertions using the pre-v2 schema format
+// where signatures are base64(aggregateHash + assertionHash)
+func (p SystemMetadataAssertionProvider) verifyLegacyAssertion(assertionID, assertionSig string, hashOfAssertionAsHex []byte) error {
+	// Legacy validation (pre-v2 TDFs)
+	// Expected signature format: base64(aggregateHash + assertionHash)
+	hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
+	_, err := hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
+	if err != nil {
+		return fmt.Errorf("%w: error decoding hex string: %w", ErrAssertionFailure{ID: assertionID}, err)
+	}
+
+	// Use raw bytes or hex based on useHex flag (legacy TDF compatibility)
+	var hashToUse []byte
+	if p.useHex {
+		hashToUse = hashOfAssertionAsHex
+	} else {
+		hashToUse = hashOfAssertion
+	}
+
+	// Combine aggregate hash with assertion hash (legacy format)
+	var completeHashBuilder bytes.Buffer
+	completeHashBuilder.WriteString(p.aggregateHash)
+	completeHashBuilder.Write(hashToUse)
+
+	expectedSig := string(ocrypto.Base64Encode(completeHashBuilder.Bytes()))
+
+	if assertionSig != expectedSig {
+		return fmt.Errorf("%w: failed integrity check on legacy assertion signature", ErrAssertionFailure{ID: assertionID})
+	}
+
 	return nil
 }
 

@@ -32,6 +32,28 @@ type Assertion struct {
 	Binding        Binding        `json:"binding,omitempty"`
 }
 
+// MarshalJSON implements custom JSON marshaling for Assertion.
+// It omits the binding field entirely when it's empty, rather than including it as {}.
+func (a Assertion) MarshalJSON() ([]byte, error) {
+	type Alias Assertion
+	if a.Binding.IsEmpty() {
+		// Marshal without the binding field
+		return json.Marshal(&struct {
+			*Alias
+			Binding *Binding `json:"binding,omitempty"`
+		}{
+			Alias:   (*Alias)(&a),
+			Binding: nil,
+		})
+	}
+	// Marshal normally with binding
+	return json.Marshal(&struct {
+		*Alias
+	}{
+		Alias: (*Alias)(&a),
+	})
+}
+
 var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with provided key")
 
 // Sign signs the assertion with the given hash and signature using the key.
@@ -203,6 +225,11 @@ type Binding struct {
 	Method string `json:"method,omitempty"`
 	// Signature of the assertion.
 	Signature string `json:"signature,omitempty"`
+}
+
+// IsEmpty returns true if both Method and Signature are empty.
+func (b Binding) IsEmpty() bool {
+	return b.Method == "" && b.Signature == ""
 }
 
 // AssertionType represents the type of the assertion.  Categorizes the assertion's purpose. Common values include handling (e.g., caveats, dissemination controls) or metadata (general information).

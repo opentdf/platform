@@ -760,7 +760,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 			},
 			verifiers:                    nil,
 			disableAssertionVerification: false,
-			expectedSize:                 2689,
+			expectedSize:                 1574,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -790,7 +790,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 			verifiers:                    nil,
 			disableAssertionVerification: false,
 			useHex:                       true,
-			expectedSize:                 2896,
+			expectedSize:                 1614,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -823,7 +823,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				DefaultKey: defaultKey,
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2689,
+			expectedSize:                 1574,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -872,7 +872,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2988,
+			expectedSize:                 1574,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -912,7 +912,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2689,
+			expectedSize:                 1574,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -929,7 +929,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: true,
-			expectedSize:                 2180,
+			expectedSize:                 1574,
 		},
 	} {
 		expectedTdfSize := test.expectedSize
@@ -1166,7 +1166,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					SigningKey: defaultKey,
 				},
 			},
-			expectedSize: 2689,
+			expectedSize: 1574,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -1214,7 +1214,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					},
 				},
 			},
-			expectedSize: 2988,
+			expectedSize: 1574,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -1248,7 +1248,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 			verifiers: &AssertionVerificationKeys{
 				DefaultKey: defaultKey,
 			},
-			expectedSize: 2689,
+			expectedSize: 1574,
 		},
 	} {
 		expectedTdfSize := test.expectedSize

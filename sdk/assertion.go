@@ -90,8 +90,7 @@ func (a *Assertion) Verify(key AssertionKey) (string, string, error) {
 		return "", "", errors.New("signature claim is not a string")
 	}
 	decodedSig, _ := ocrypto.Base64Decode([]byte(verifiedSignature))
-	decodedSig2, _ := ocrypto.Base64Decode(decodedSig)
-	verifiedSignatureString := string(decodedSig2)
+	verifiedSignatureString := string(decodedSig)
 	return verifiedHash, verifiedSignatureString, nil
 }
 
@@ -191,11 +190,12 @@ type Binding struct {
 	Signature string `json:"signature,omitempty"`
 }
 
-// AssertionType represents the type of the assertion.
+// AssertionType represents the type of the assertion.  Categorizes the assertion's purpose. Common values include handling (e.g., caveats, dissemination controls) or metadata (general information).
 type AssertionType string
 
 const (
 	HandlingAssertion AssertionType = "handling"
+	MetadataAssertion AssertionType = "metadata"
 	BaseAssertion     AssertionType = "other"
 )
 

@@ -100,19 +100,14 @@ func decrypt(cmd *cobra.Command, args []string) error {
 			opts = append(opts, sdk.WithSessionKeyType(kt))
 		}
 
-		// Assertion
-		registry := sdk.NewAssertionRegistry()
-		// Register the provider to handle the exact assertion ID.
-		magicWordPattern, _ := regexp.Compile("^" + MagicWordAssertionID + "$")
-		// Magic word provider with state, this works in a simple CLI
-		magicWordProvider := NewMagicWordAssertionProvider(magicWord)
-		registry.RegisterValidator(magicWordPattern, magicWordProvider)
-		// Public key validator
-		// Register the provider to handle the exact assertion ID.
-		keyPattern, err := regexp.Compile("^" + sdk.KeyAssertionID)
-		if err != nil {
-			return err
+		// Magic word validator
+		if magicWord != "" {
+			// Magic word provider with state, this works in a simple CLI
+			magicWordProvider := NewMagicWordAssertionProvider(magicWord)
+			magicWordPattern := regexp.MustCompile("^" + MagicWordAssertionID + "$")
+			opts = append(opts, sdk.WithAssertionValidator(magicWordPattern, magicWordProvider))
 		}
+		// Public key validator
 		if privateKeyPath != "" {
 			key := getAssertionKeyPublic(privateKeyPath)
 			keys := sdk.AssertionVerificationKeys{
@@ -121,10 +116,9 @@ func decrypt(cmd *cobra.Command, args []string) error {
 				},
 			}
 			keyValidator := sdk.NewKeyAssertionValidator(keys)
-			registry.RegisterValidator(keyPattern, keyValidator)
+			keyPattern := regexp.MustCompile("^" + sdk.KeyAssertionID)
+			opts = append(opts, sdk.WithAssertionValidator(keyPattern, keyValidator))
 		}
-		// Add the registry to the SDK client
-		opts = append(opts, sdk.WithAssertionRegistryReader(registry))
 		// Enable assertion verification
 		opts = append(opts, sdk.WithDisableAssertionVerification(false))
 		tdfreader, err := client.LoadTDF(file, opts...)

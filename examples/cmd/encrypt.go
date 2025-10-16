@@ -120,24 +120,20 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			}
 			opts = append(opts, sdk.WithWrappingKeyAlg(kt))
 		}
-		// Assertion
-		registry := sdk.NewAssertionRegistry()
 		// Magic word provider
 		if magicWord != "" {
 			// constructor with word works in a simple CLI
 			magicWordProvider := NewMagicWordAssertionProvider(magicWord)
-			registry.RegisterBuilder(magicWordProvider)
+			opts = append(opts, sdk.WithAssertionBinder(magicWordProvider))
 		}
 		// Key provider
 		if privateKeyPath != "" {
 			privateKey := getAssertionKeys(privateKeyPath)
-			publicKeyProvider := sdk.NewKeyAssertionBuilder(privateKey)
-			registry.RegisterBuilder(publicKeyProvider)
+			publicKeyBinder := sdk.NewKeyAssertionBinder(privateKey)
+			opts = append(opts, sdk.WithAssertionBinder(publicKeyBinder))
 		}
 		// Add system metadata assertion (uses DEK)
 		opts = append(opts, sdk.WithSystemMetadataAssertion())
-		// Add assertion registry
-		opts = append(opts, sdk.WithAssertionRegistryBuilder(registry))
 		tdf, err := client.CreateTDFContext(cmd.Context(), out, in, opts...)
 		if err != nil {
 			return err

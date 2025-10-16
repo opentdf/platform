@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"crypto/sha256"
@@ -11,9 +12,10 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"regexp"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/Masterminds/semver/v3"
@@ -153,8 +155,20 @@ func (t *TDFObject) AppendAssertion(ctx context.Context, assertionConfig Asserti
 		return fmt.Errorf("failed to get assertion hash: %w", err)
 	}
 	assertionHash := string(assertionHashBytes)
-	// TODO review root signature usage
-	// Combine rootSignature (signed and encoded aggregate hash) with assertion hash for binding
+
+	// Cryptographic Binding Strategy:
+	// The assertion is bound to the TDF payload using the manifest's root signature.
+	// This creates a chain of integrity: payload -> segments -> aggregate hash -> root signature -> assertion
+	//
+	// The rootSignature is the signed and base64-encoded aggregate hash of all payload segments.
+	// By including it in the assertion signature, we cryptographically bind the assertion to the
+	// specific payload content. Any modification to the payload will change the root signature,
+	// which will cause assertion verification to fail.
+	//
+	// This approach ensures:
+	// 1. Assertions cannot be moved between different TDFs (payload binding)
+	// 2. Assertions cannot be added/removed without detection (integrity)
+	// 3. The assertion applies to the exact payload state at assertion creation time
 	rootSignature := t.manifest.RootSignature.Signature
 	combinedHash := make([]byte, 0, len(rootSignature)+len(assertionHashBytes))
 	combinedHash = append(combinedHash, rootSignature...)
@@ -336,22 +350,18 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	tdfObject.manifest.URL = archive.TDFPayloadFileName
 	tdfObject.manifest.IsEncrypted = true
 
-	// if addSystemMetadataAssertion is true, register a system metadata assertion builder
+	// if addSystemMetadataAssertion is true, register a system metadata assertion binder
 	if tdfConfig.addSystemMetadataAssertion {
 		systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(tdfConfig.useHex, tdfObject.payloadKey[:], aggregateHash)
-		tdfConfig.assertionRegistry.RegisterBuilder(systemMetadataAssertionProvider)
+		tdfConfig.assertionRegistry.RegisterBinder(systemMetadataAssertionProvider)
 	}
 
 	var boundAssertions []Assertion
 	// Bind Assertions
-	for _, registered := range tdfConfig.assertionRegistry.builders {
-		assertionConfig, er := registered.Configure(ctx)
+	for _, registered := range tdfConfig.assertionRegistry.binders {
+		boundAssertion, er := registered.Bind(ctx, tdfObject.manifest)
 		if er != nil {
-			return nil, fmt.Errorf("failed to configure assertion builder: %w", er)
-		}
-		boundAssertion, er := registered.Bind(ctx, assertionConfig, tdfObject.manifest)
-		if er != nil {
-			return nil, er
+			return nil, fmt.Errorf("failed to bind assertion: %w", er)
 		}
 		boundAssertions = append(boundAssertions, boundAssertion)
 	}
@@ -1175,6 +1185,167 @@ func (r *Reader) AppendAssertion(_ context.Context, assertion Assertion) error {
 	return json.Unmarshal(manifestBytes, &Manifest{})
 }
 
+// WriteTDFWithUpdatedManifest writes the TDF to a new file with the updated manifest.
+// This is useful for adding assertions to an existing TDF without decrypting/re-encrypting the payload.
+//
+// The function copies the original TDF ZIP verbatim while replacing only the manifest entry,
+// which avoids the expensive operation of re-encrypting the payload and preserves all other
+// entries byte-for-byte.
+//
+// Parameters:
+//   - inPath: Path to the input TDF file
+//   - outPath: Path to the output TDF file
+//
+// Returns:
+//   - error: Any error that occurred during the write operation
+//
+// Example:
+//
+//	reader, _ := sdk.LoadTDF(file)
+//	reader.AppendAssertion(ctx, assertion)
+//	err := reader.WriteTDFWithUpdatedManifest("input.tdf", "output.tdf")
+func (r *Reader) WriteTDFWithUpdatedManifest(inPath, outPath string) error {
+	return WriteTDFWithUpdatedManifest(inPath, outPath, r.manifest)
+}
+
+// WriteTDFWithUpdatedManifest copies an existing TDF ZIP file while replacing only the manifest entry.
+// This avoids re-encrypting the payload by preserving all other entries byte-for-byte.
+//
+// Parameters:
+//   - inPath: Path to the input TDF file
+//   - outPath: Path to the output TDF file
+//   - manifest: The updated manifest to write
+//
+// Returns:
+//   - error: Any error that occurred during the operation
+func WriteTDFWithUpdatedManifest(inPath, outPath string, manifest Manifest) error {
+	// Prepare updated manifest JSON without re-encrypting payload
+	updatedManifestBytes, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated manifest: %w", err)
+	}
+
+	inF, err := os.Open(inPath)
+	if err != nil {
+		return fmt.Errorf("failed to open input TDF: %w", err)
+	}
+	defer inF.Close()
+
+	stat, err := inF.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat input TDF: %w", err)
+	}
+
+	zr, err := zip.NewReader(inF, stat.Size())
+	if err != nil {
+		return fmt.Errorf("failed to open TDF as zip: %w", err)
+	}
+
+	outF, err := os.Create(outPath)
+	if err != nil {
+		return fmt.Errorf("failed to create output TDF: %w", err)
+	}
+	defer func() {
+		// Ensure the file is closed even if zip writer close fails
+		_ = outF.Close()
+	}()
+
+	zw := zip.NewWriter(outF)
+
+	// Track if we replaced an existing manifest
+	replaced := false
+
+	for _, f := range zr.File {
+		isManifest := f.Name == "0.manifest.json" || f.Name == "manifest.json"
+
+		// Clone header for faithful copy
+		hdr := &zip.FileHeader{
+			Name:           f.Name,
+			Comment:        f.Comment,
+			Method:         f.Method,
+			NonUTF8:        f.NonUTF8,
+			Modified:       f.Modified,
+			ExternalAttrs:  f.ExternalAttrs,
+			CreatorVersion: f.CreatorVersion,
+			ReaderVersion:  f.ReaderVersion,
+			Extra:          append([]byte(nil), f.Extra...),
+		}
+
+		if isManifest {
+			// Replace the manifest contents
+			// Use Deflate for manifest to keep typical compression; preserve Modified timestamp if present
+			if hdr.Method == 0 {
+				// If the original was stored (rare for manifest), keep it; else deflate by default
+				hdr.Method = zip.Store
+			}
+			ww, err := zw.CreateHeader(hdr)
+			if err != nil {
+				_ = zw.Close()
+				return fmt.Errorf("failed to create manifest entry in output TDF: %w", err)
+			}
+			// Ensure deterministic-ish timestamp if missing
+			if hdr.Modified.IsZero() {
+				hdr.SetModTime(time.Now().UTC())
+			}
+			if _, err := ww.Write(updatedManifestBytes); err != nil {
+				_ = zw.Close()
+				return fmt.Errorf("failed to write updated manifest: %w", err)
+			}
+			replaced = true
+			continue
+		}
+
+		// Copy other entries byte-for-byte
+		// Preserve compression method and metadata
+		rc, err := f.Open()
+		if err != nil {
+			_ = zw.Close()
+			return fmt.Errorf("failed to open input entry %q: %w", f.Name, err)
+		}
+
+		ww, err := zw.CreateHeader(hdr)
+		if err != nil {
+			rc.Close()
+			_ = zw.Close()
+			return fmt.Errorf("failed to create output entry %q: %w", f.Name, err)
+		}
+
+		if _, err := io.Copy(ww, rc); err != nil {
+			rc.Close()
+			_ = zw.Close()
+			return fmt.Errorf("failed to copy entry %q: %w", f.Name, err)
+		}
+		rc.Close()
+	}
+
+	if !replaced {
+		// If no manifest was found, add one as 0.manifest.json
+		hdr := &zip.FileHeader{
+			Name:     "0.manifest.json",
+			Method:   zip.Deflate,
+			Modified: time.Now().UTC(),
+		}
+		ww, err := zw.CreateHeader(hdr)
+		if err != nil {
+			_ = zw.Close()
+			return fmt.Errorf("failed to create new manifest entry: %w", err)
+		}
+		if _, err := ww.Write(updatedManifestBytes); err != nil {
+			_ = zw.Close()
+			return fmt.Errorf("failed to write new manifest: %w", err)
+		}
+	}
+
+	if err := zw.Close(); err != nil {
+		return fmt.Errorf("failed to finalize output TDF: %w", err)
+	}
+	if err := outF.Close(); err != nil {
+		return fmt.Errorf("failed to close output TDF: %w", err)
+	}
+
+	return nil
+}
+
 // calculateAggregateHash reconstructs the aggregate hash from the TDF's segments
 func (r *Reader) calculateAggregateHash() ([]byte, error) {
 	var aggregateHashBuilder strings.Builder
@@ -1352,35 +1523,62 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		return ErrSegSizeMismatch
 	}
 
-	// Register DEK default system metadata assertion builder
+	// Register DEK default system metadata assertion validator
 	if !r.config.disableAssertionVerification {
-		systemMetadataPattern, _ := regexp.Compile("^" + SystemMetadataAssertionID + "$")
-		// TODO ??? useHex == !r.config.disableAssertionVerification
-		systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(!r.config.disableAssertionVerification, payloadKey[:], aggregateHash.String())
+		// useHex is used for legacy TDF compatibility (versions < 4.3.0)
+		// When reading legacy TDFs, signatures are hex-encoded instead of raw bytes
+		useHex := !r.config.disableAssertionVerification
+		systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(useHex, payloadKey[:], aggregateHash.String())
 		// if already registered, ignore
-		_ = r.config.assertionRegistry.RegisterValidator(systemMetadataPattern, systemMetadataAssertionProvider)
+		_ = r.config.assertionRegistry.RegisterValidator(systemMetadataAssertionPattern, systemMetadataAssertionProvider)
 	}
 
-	// Validate assertions
+	// Validate assertions based on configured verification mode
 	for _, assertion := range r.manifest.Assertions {
-		// TODO ??? check all or fail-fast
 		validator, err := r.config.assertionRegistry.GetValidationProvider(assertion.ID)
 		if err != nil {
-			// TODO ??? ignore unknown assertions
-			continue
+			// Unknown assertion handling depends on verification mode
+			switch r.config.assertionVerificationMode {
+			case PermissiveMode:
+				// Log and skip unknown assertions
+				slog.WarnContext(ctx, "unknown assertion type, skipping validation",
+					slog.String("assertion_id", assertion.ID),
+					slog.String("assertion_type", string(assertion.Type)),
+					slog.String("mode", "permissive"))
+				continue
+			case StrictMode:
+				// Fail on unknown assertions
+				return fmt.Errorf("%w: unknown assertion type in strict mode", ErrAssertionFailure{ID: assertion.ID})
+			default: // FailFast
+				// Skip with warning (default behavior for backward compatibility)
+				slog.WarnContext(ctx, "no validator registered for assertion, skipping",
+					slog.String("assertion_id", assertion.ID))
+				continue
+			}
 		}
+
 		// Verify integrity and binding
 		err = validator.Verify(ctx, assertion, *r)
 		if err != nil {
-			// TODO ??? fail always
+			// Verification errors are always treated as potential tampering
 			return r.handleAssertionVerificationError(assertion.ID, err)
 		}
+
 		// Validate trust
 		err = validator.Validate(ctx, assertion, *r)
 		if err != nil {
-			// TODO ??? report validation error and allow to continue
-			// TODO ??? validation/trust error will be reported as a tamper event
-			return r.handleAssertionVerificationError(assertion.ID, err)
+			// Trust validation errors may be handled based on mode
+			switch r.config.assertionVerificationMode {
+			case PermissiveMode:
+				// Log validation errors but continue
+				slog.ErrorContext(ctx, "assertion validation failed, continuing in permissive mode",
+					slog.String("assertion_id", assertion.ID),
+					slog.Any("error", err))
+				// This could be reported as a tamper event in the future
+				continue
+			default: // StrictMode and FailFast both fail on validation errors
+				return r.handleAssertionVerificationError(assertion.ID, err)
+			}
 		}
 	}
 

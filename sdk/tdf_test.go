@@ -2690,7 +2690,7 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse 
 
 		policyObligationMap[req.GetPolicy().GetId()] = f.s.checkPolicyObligations(f.obligations, req)
 	}
-	resp.Metadata = createMetadataWithObligations(policyObligationMap)
+	// resp.Metadata = createMetadataWithObligations(policyObligationMap)
 
 	return resp
 }

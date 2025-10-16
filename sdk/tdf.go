@@ -1422,11 +1422,11 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 				err = errors.New("could not find policy in rewrap response")
 				reqFail(err, req)
 			}
-			// ! Should constantly be the same obligation for the same policy
-			r.requiredObligations = &Obligations{FQNs: result.obligations}
-			kaoResults = append(kaoResults, result.kaoRes...)
+			kaoResults = append(kaoResults, result...)
 		}
 	}
+	// Deduplicate obligations for all kao results
+	r.requiredObligations = &Obligations{FQNs: dedupRequiredObligations(kaoResults)}
 
 	return r.buildKey(ctx, kaoResults)
 }
@@ -1611,4 +1611,19 @@ func getKasAllowList(ctx context.Context, kasAllowList AllowList, s SDK, ignoreA
 	}
 
 	return allowList, nil
+}
+
+func dedupRequiredObligations(kaoResults []kaoResult) []string {
+	seen := make(map[string]struct{})
+	dedupedOblgs := make([]string, 0)
+	for _, kao := range kaoResults {
+		for _, oblg := range kao.RequiredObligations {
+			if _, ok := seen[oblg]; !ok {
+				seen[oblg] = struct{}{}
+				dedupedOblgs = append(dedupedOblgs, oblg)
+			}
+		}
+	}
+
+	return dedupedOblgs
 }

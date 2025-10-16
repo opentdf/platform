@@ -172,6 +172,14 @@ type MockEncapsulator struct {
 	mock.Mock
 }
 
+func (m *MockEncapsulator) Encapsulate(dek ProtectedKey) ([]byte, error) {
+	args := m.Called(dek)
+	if a0, ok := args.Get(0).([]byte); ok {
+		return a0, args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 func (m *MockEncapsulator) Encrypt(data []byte) ([]byte, error) {
 	args := m.Called(data)
 	if a0, ok := args.Get(0).([]byte); ok {
@@ -180,7 +188,7 @@ func (m *MockEncapsulator) Encrypt(data []byte) ([]byte, error) {
 	return nil, args.Error(1)
 }
 
-func (m *MockEncapsulator) PublicKeyInPemFormat() (string, error) {
+func (m *MockEncapsulator) PublicKeyAsPEM() (string, error) {
 	args := m.Called()
 	return args.String(0), args.Error(1)
 }
@@ -193,7 +201,7 @@ func (m *MockEncapsulator) EphemeralKey() []byte {
 	return nil
 }
 
-var _ Encapsulator = (*MockEncapsulator)(nil)
+var _ ocrypto.Encapsulator = (*MockEncapsulator)(nil)
 
 type DelegatingKeyServiceTestSuite struct {
 	suite.Suite

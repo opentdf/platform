@@ -17,7 +17,6 @@ const (
 	defaultSegmentSize = 2 * 1024 * 1024 // 2mb
 	maxSegmentSize     = defaultSegmentSize * 2
 	minSegmentSize     = 16 * 1024
-	kasPublicKeyPath   = "/kas_public_key"
 	DefaultRSAKeySize  = 2048
 	ECKeySize256       = 256
 	ECKeySize384       = 384

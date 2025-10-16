@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
@@ -57,7 +58,7 @@ func (c *Client) RunMigrations(ctx context.Context, migrations *embed.FS) (int, 
 	)
 
 	// Create schema if it doesn't exist
-	q := "CREATE SCHEMA IF NOT EXISTS " + c.config.Schema
+	q := "CREATE SCHEMA IF NOT EXISTS " + pgx.Identifier{c.config.Schema}.Sanitize()
 	tag, err := c.Pgx.Exec(ctx, q)
 	if err != nil {
 		slog.ErrorContext(ctx,

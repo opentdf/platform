@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -23,9 +24,11 @@ var absentAttributeValueUUID = "78909865-8888-9999-9999-000000000000"
 
 type AttributeValuesSuite struct {
 	suite.Suite
-	f   fixtures.Fixtures
-	db  fixtures.DBInterface
-	ctx context.Context //nolint:containedctx // context is used in the test suite
+	f           fixtures.Fixtures
+	db          fixtures.DBInterface
+	ctx         context.Context //nolint:containedctx // context is used in the test suite
+	namespaces  []*policy.Namespace
+	obligations []*policy.Obligation
 }
 
 func (s *AttributeValuesSuite) SetupSuite() {
@@ -39,6 +42,25 @@ func (s *AttributeValuesSuite) SetupSuite() {
 	s.f = fixtures.NewFixture(s.db)
 	s.f.Provision()
 	stillActiveNsID, stillActiveAttributeID, deactivatedAttrValueID = setupDeactivateAttributeValue(s)
+}
+
+func (s *AttributeValuesSuite) SetupTest() {
+	s.namespaces = make([]*policy.Namespace, 0)
+	s.obligations = make([]*policy.Obligation, 0)
+}
+
+func (s *AttributeValuesSuite) TearDownTest() {
+	for _, obl := range s.obligations {
+		_, err := s.db.PolicyClient.DeleteObligation(s.ctx, &obligations.DeleteObligationRequest{
+			Id:  obl.GetId(),
+			Fqn: obl.GetFqn(),
+		})
+		s.Require().NoError(err)
+	}
+	for _, namespace := range s.namespaces {
+		_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, namespace, namespace.GetFqn())
+		s.Require().NoError(err)
+	}
 }
 
 func (s *AttributeValuesSuite) TearDownSuite() {
@@ -450,9 +472,6 @@ func (s *AttributeValuesSuite) Test_UnsafeUpdateAttributeValue() {
 	original := "https://example.net/attr/attr1/value/created_value"
 	retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{original},
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotFound)
@@ -461,9 +480,6 @@ func (s *AttributeValuesSuite) Test_UnsafeUpdateAttributeValue() {
 	updated := "https://example.net/attr/attr1/value/new_value"
 	retrieved, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{updated},
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	})
 	s.Require().NoError(err)
 	s.NotNil(retrieved)
@@ -1039,9 +1055,181 @@ func (s *AttributeValuesSuite) Test_RemovePublicKeyFromAttributeValue_Not_Found_
 	s.NotNil(resp)
 }
 
+func (s *AttributeValuesSuite) Test_GetAttributeValue_With_Two_Obligations_Success() {
+	// Create a namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-obligations.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+	s.namespaces = append(s.namespaces, ns)
+
+	// Create an attribute definition
+	attrDef, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test-attr-for-obligations",
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.NotNil(attrDef)
+
+	// Create a test attribute value that will have obligations triggered by it
+	req := &attributes.CreateAttributeValueRequest{
+		Value: "test_value_with_obligations",
+	}
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.GetId(), req)
+	s.Require().NoError(err)
+	s.NotNil(createdValue)
+
+	// Create first obligation with two obligation values
+	obl1, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "test_obligation_1",
+	})
+	s.Require().NoError(err)
+	s.obligations = append(s.obligations, obl1)
+
+	// Create first obligation value with two triggers
+	readAction := s.f.GetStandardAction("read")
+	updateAction := s.f.GetStandardAction("update")
+
+	obl1Val1, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationId: obl1.GetId(),
+		Value:        "obligation_value_1",
+		Triggers: []*obligations.ValueTriggerRequest{
+			{
+				Action:         &common.IdNameIdentifier{Id: readAction.GetId()},
+				AttributeValue: &common.IdFqnIdentifier{Id: createdValue.GetId()},
+				Context: &policy.RequestContext{
+					Pep: &policy.PolicyEnforcementPoint{
+						ClientId: "test-client-1",
+					},
+				},
+			},
+			{
+				Action:         &common.IdNameIdentifier{Id: updateAction.GetId()},
+				AttributeValue: &common.IdFqnIdentifier{Id: createdValue.GetId()},
+				Context: &policy.RequestContext{
+					Pep: &policy.PolicyEnforcementPoint{
+						ClientId: "test-client-2",
+					},
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+
+	// Create second obligation value with two triggers
+	obl1Val2, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationId: obl1.GetId(),
+		Value:        "obligation_value_2",
+		Triggers: []*obligations.ValueTriggerRequest{
+			{
+				Action:         &common.IdNameIdentifier{Id: readAction.GetId()},
+				AttributeValue: &common.IdFqnIdentifier{Id: createdValue.GetId()},
+				Context: &policy.RequestContext{
+					Pep: &policy.PolicyEnforcementPoint{
+						ClientId: "test-client-3",
+					},
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+
+	// Create second obligation with one obligation value
+	obl2, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "test_obligation_2",
+	})
+	s.Require().NoError(err)
+	s.obligations = append(s.obligations, obl2)
+
+	// Create obligation value with one trigger
+	obl2Val1, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationId: obl2.GetId(),
+		Value:        "obligation_value_3",
+		Triggers: []*obligations.ValueTriggerRequest{
+			{
+				Action:         &common.IdNameIdentifier{Id: updateAction.GetId()},
+				AttributeValue: &common.IdFqnIdentifier{Id: createdValue.GetId()},
+				Context: &policy.RequestContext{
+					Pep: &policy.PolicyEnforcementPoint{
+						ClientId: "test-client-5",
+					},
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+
+	// Test GetAttributeValue and verify obligations are returned
+	retrievedValue, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
+	s.Require().NoError(err)
+	s.NotNil(retrievedValue)
+	s.Require().Len(retrievedValue.GetObligations(), 2)
+
+	obl1.Values = append(obl1.Values, obl1Val1, obl1Val2)
+	obl2.Values = append(obl2.Values, obl2Val1)
+	s.assertObligations([]*policy.Obligation{obl1, obl2}, retrievedValue.GetObligations())
+}
+
 func TestAttributeValuesSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping attribute values integration tests")
 	}
 	suite.Run(t, new(AttributeValuesSuite))
+}
+
+func (s *AttributeValuesSuite) assertObligations(expected, actual []*policy.Obligation) {
+	s.Require().Len(actual, len(expected), "number of obligations does not match")
+
+	expectedMap := make(map[string]*policy.Obligation)
+	for _, obl := range expected {
+		expectedMap[obl.GetId()] = obl
+	}
+
+	for _, actObl := range actual {
+		expObl, foundObl := expectedMap[actObl.GetId()]
+		s.Require().True(foundObl, "unexpected obligation with ID %s", actObl.GetId())
+		s.Equal(expObl.GetName(), actObl.GetName(), "obligation name mismatch for ID %s", actObl.GetId())
+		s.Require().Len(actObl.GetValues(), len(expObl.GetValues()), "number of obligation values does not match for obligation ID %s", actObl.GetId())
+		s.Require().Equal(expObl.GetFqn(), actObl.GetFqn(), "obligation namespace FQN mismatch for obligation ID %s", actObl.GetId())
+
+		expValuesMap := make(map[string]*policy.ObligationValue)
+		for _, val := range expObl.GetValues() {
+			expValuesMap[val.GetId()] = val
+		}
+
+		for _, actVal := range actObl.GetValues() {
+			expVal, foundVal := expValuesMap[actVal.GetId()]
+			s.Require().True(foundVal, "unexpected obligation value with ID %s for obligation ID %s", actVal.GetId(), actObl.GetId())
+			s.Require().Equal(expVal.GetValue(), actVal.GetValue(), "obligation value mismatch for value ID %s", actVal.GetId())
+			s.Require().Len(actVal.GetTriggers(), len(expVal.GetTriggers()), "number of triggers does not match for obligation value ID %s", actVal.GetId())
+			s.Require().Equal(expVal.GetFqn(), actVal.GetFqn(), "obligation value FQN mismatch for value ID %s", actVal.GetId())
+
+			expTriggersMap := make(map[string]*policy.ObligationTrigger)
+			for _, trig := range expVal.GetTriggers() {
+				expTriggersMap[trig.GetId()] = trig
+			}
+
+			for _, actTrig := range actVal.GetTriggers() {
+				expTrig, found := expTriggersMap[actTrig.GetId()]
+				s.Require().True(found, "unexpected trigger with ID %s for obligation value ID %s", actTrig.GetId(), actVal.GetId())
+				s.Require().Equal(expTrig.GetAction().GetId(), actTrig.GetAction().GetId(), "trigger action ID mismatch for action ID %s", actTrig.GetAction().GetId())
+				s.Require().Len(actTrig.GetContext(), len(expTrig.GetContext()), "number of trigger context entries does not match for actual trigger %s", actTrig.GetId())
+				if len(actTrig.GetContext()) >= 1 {
+					expContextMap := make(map[string]*policy.RequestContext)
+					for _, ctx := range expTrig.GetContext() {
+						expContextMap[ctx.GetPep().GetClientId()] = ctx
+					}
+
+					for _, ctx := range actTrig.GetContext() {
+						s.Require().Equal(expContextMap[ctx.GetPep().GetClientId()], ctx, "trigger context mismatch for actual trigger %s", actTrig.GetId())
+					}
+				}
+				s.Require().Equal(expTrig.GetAttributeValue().GetId(), actTrig.GetAttributeValue().GetId(), "trigger attribute value ID mismatch for actual trigger %s", actTrig.GetId())
+			}
+		}
+	}
 }

@@ -6,6 +6,7 @@ The platform leverages [viper](https://github.com/spf13/viper) to help load conf
 
 - [Platform Configuration](#platform-configuration)
   - [Deployment Mode](#deployment-mode)
+    - [Service Negation](#service-negation)
   - [SDK Configuration](#sdk-configuration)
   - [Logger Configuration](#logger-configuration)
   - [Server Configuration](#server-configuration)
@@ -31,11 +32,29 @@ The platform is designed as a modular monolith, meaning that all services are bu
 - core: Runs essential services, including policy, authorization, and wellknown services.
 - kas: Runs the Key Access Server (KAS) service.
 
+### Service Negation
 
+You can exclude specific services from any mode using the negation syntax `-servicename`:
+
+- **Syntax**: `mode: <base-mode>,-<service1>,-<service2>`
+- **Constraint**: At least one positive mode must be specified (negation-only modes like `-kas` will result in an error)
+- **Available services**: `policy`, `authorization`, `kas`, `entityresolution`, `wellknown`
+
+**Examples:**
+```yaml
+# Run all services except Entity Resolution Service
+mode: all,-entityresolution
+
+# Run core services except Policy Service  
+mode: core,-policy
+
+# Run all services except both KAS and Entity Resolution
+mode: all,-kas,-entityresolution
+```
 
 | Field  | Description                                                                   | Default | Environment Variable |
 | ------ | ----------------------------------------------------------------------------- | ------- | -------------------- |
-| `mode` | Drives which services to run. Following modes are supported. (all, core, kas) | `all`   | OPENTDF_MODE         |
+| `mode` | Drives which services to run. Supported modes: `all`, `core`, `kas`. Use `-servicename` to exclude specific services (e.g., `all,-entityresolution`) | `all`   | OPENTDF_MODE         |
 
 ## SDK Configuration
 
@@ -231,15 +250,14 @@ Root level key `kas`
 
 Environment Variable: `OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:2048"},{"kid":"k2","alg":"ec:secp256r1"}]'`
 
-| Field                             | Description                                                                     | Default  |
-| --------------------------------- | ------------------------------------------------------------------------------- | -------- |
-| `keyring.*.kid`                   | Which key id this is binding                                                    |          |
-| `keyring.*.alg`                   | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |          |
-| `keyring.*.legacy`                | Indicates this may be used for TDFs with no key ID; default if all unspecified. | inferred |
-| `preview_features.ec_tdf_enabled` | Whether tdf based ecc support is enabled.                                       | `false`  |
-| `preview_features.key_management` | Whether new key management features are enabled.                                | `false`  |
-| `root_key`                        | Key needed when new key_management functionality is enabled.                    |          |
-
+| Field                    | Description                                                                     | Default  |
+| ------------------------ | ------------------------------------------------------------------------------- | -------- |
+| `keyring.*.kid`          | Which key id this is binding                                                    |          |
+| `keyring.*.alg`          | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |          |
+| `keyring.*.legacy`       | Indicates this may be used for TDFs with no key ID; default if all unspecified. | inferred |
+| `preview.ec_tdf_enabled` | Whether tdf based ecc support is enabled.                                       | `false`  |
+| `preview.key_management` | Whether new key management features are enabled.                                | `false`  |
+| `root_key`               | Key needed when new key_management functionality is enabled.                    |          |
 
 Example:
 
@@ -333,6 +351,9 @@ server:
 
       ## Dot notation is used to access the groups claim
       group_claim: "realm_access.roles"
+
+      # Dot notation is used to access the claim the represents the idP client ID 
+      client_id_claim: # azp
       
       ## Deprecated: Use standard casbin policy groupings (g, <user/group>, <role>)
       ## Maps the external role to the OpenTDF role

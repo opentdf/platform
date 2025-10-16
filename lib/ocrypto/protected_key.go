@@ -55,6 +55,7 @@ func (k *AESProtectedKey) DecryptAESGCM(iv []byte, body []byte, tagSize int) ([]
 }
 
 // Export returns the raw key data, optionally encrypting it with the provided Encapsulator
+// Deprecated: Use the Encapsulator's Encapsulate method instead
 func (k *AESProtectedKey) Export(encapsulator Encapsulator) ([]byte, error) {
 	if encapsulator == nil {
 		// Return error if encapsulator is nil
@@ -62,7 +63,8 @@ func (k *AESProtectedKey) Export(encapsulator Encapsulator) ([]byte, error) {
 	}
 
 	// Encrypt the key data before returning
-	encryptedKey, err := encapsulator.Encrypt(k.rawKey)
+	keyCopy := append([]byte{}, k.rawKey...)
+	encryptedKey, err := encapsulator.Encrypt(keyCopy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt key data for export: %w", err)
 	}

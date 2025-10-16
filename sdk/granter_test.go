@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"maps"
 	"regexp"
 	"slices"
@@ -26,9 +27,6 @@ const (
 	kasUs               = "https://kas.us/"
 	kasUsHCS            = "https://hcs.kas.us/"
 	kasUsSA             = "https://si.kas.us/"
-	authority           = "https://virtru.com/"
-	otherAuth           = "https://other.com/"
-	authWithGrants      = "https://hasgrants.com/"
 	specifiedKas        = "https://attr.kas.com/"
 	evenMoreSpecificKas = "https://value.kas.com/"
 	lessSpecificKas     = "https://namespace.kas.com/"
@@ -40,8 +38,7 @@ var (
 	N2K, _ = NewAttributeNameFQN("https://virtru.com/attr/Need%20to%20Know")
 	REL, _ = NewAttributeNameFQN("https://virtru.com/attr/Releasable%20To")
 
-	clsA, _ = NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Allowed")
-	// clsC, _  = NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Confidential")
+	clsA, _  = NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Allowed")
 	clsS, _  = NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Secret")
 	clsTS, _ = NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Top%20Secret")
 
@@ -49,7 +46,6 @@ var (
 	n2kInt, _ = NewAttributeValueFQN("https://virtru.com/attr/Need%20to%20Know/value/INT")
 	n2kSI, _  = NewAttributeValueFQN("https://virtru.com/attr/Need%20to%20Know/value/SI")
 
-	// rel25eye, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/FVEY")
 	rel2aus, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/AUS")
 	rel2can, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/CAN")
 	rel2gbr, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/GBR")
@@ -573,7 +569,7 @@ func TestConfigurationServicePutGet(t *testing.T) {
 	} {
 		t.Run(tc.n, func(t *testing.T) {
 			v := valuesToPolicy(tc.policy...)
-			grants, err := newGranterFromAttributes(newKasKeyCache(), v...)
+			grants, err := newGranterFromAttributes(slog.Default(), newKasKeyCache(), v...)
 			require.NoError(t, err)
 			assert.Len(t, grants.grantTable, tc.size)
 			assert.Subset(t, policyToStringKeys(tc.policy), slices.Collect(maps.Keys(grants.grantTable)))
@@ -731,7 +727,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
-			reasoner, err := newGranterFromAttributes(newKasKeyCache(), valuesToPolicy(tc.policy...)...)
+			reasoner, err := newGranterFromAttributes(slog.Default(), newKasKeyCache(), valuesToPolicy(tc.policy...)...)
 			require.NoError(t, err)
 
 			reasoner.keyInfoFetcher = &fakeKeyInfoFetcher{}
@@ -879,7 +875,7 @@ func TestReasonerSpecificity(t *testing.T) {
 		},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
-			reasoner, err := newGranterFromService(t.Context(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
+			reasoner, err := newGranterFromService(t.Context(), slog.Default(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
 			require.NoError(t, err)
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {
@@ -1030,7 +1026,7 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 		},
 	} {
 		t.Run((tc.n + "\n" + tc.desc), func(t *testing.T) {
-			reasoner, err := newGranterFromService(t.Context(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
+			reasoner, err := newGranterFromService(t.Context(), slog.Default(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
 			require.NoError(t, err)
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {

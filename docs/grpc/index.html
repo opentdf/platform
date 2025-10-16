@@ -179,6 +179,14 @@
             <ul>
               
                 <li>
+                  <a href="#common.IdFqnIdentifier"><span class="badge">M</span>IdFqnIdentifier</a>
+                </li>
+              
+                <li>
+                  <a href="#common.IdNameIdentifier"><span class="badge">M</span>IdNameIdentifier</a>
+                </li>
+              
+                <li>
                   <a href="#common.Metadata"><span class="badge">M</span>Metadata</a>
                 </li>
               
@@ -223,6 +231,10 @@
               
                 <li>
                   <a href="#policy.Attribute"><span class="badge">M</span>Attribute</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.Certificate"><span class="badge">M</span>Certificate</a>
                 </li>
               
                 <li>
@@ -274,6 +286,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.PolicyEnforcementPoint"><span class="badge">M</span>PolicyEnforcementPoint</a>
+                </li>
+              
+                <li>
                   <a href="#policy.PrivateKeyCtx"><span class="badge">M</span>PrivateKeyCtx</a>
                 </li>
               
@@ -295,6 +311,10 @@
               
                 <li>
                   <a href="#policy.RegisteredResourceValue.ActionAttributeValue"><span class="badge">M</span>RegisteredResourceValue.ActionAttributeValue</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.RequestContext"><span class="badge">M</span>RequestContext</a>
                 </li>
               
                 <li>
@@ -1318,6 +1338,14 @@
             <ul>
               
                 <li>
+                  <a href="#policy.namespaces.AssignCertificateToNamespaceRequest"><span class="badge">M</span>AssignCertificateToNamespaceRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.namespaces.AssignCertificateToNamespaceResponse"><span class="badge">M</span>AssignCertificateToNamespaceResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.namespaces.AssignKeyAccessServerToNamespaceRequest"><span class="badge">M</span>AssignKeyAccessServerToNamespaceRequest</a>
                 </li>
               
@@ -1366,11 +1394,23 @@
                 </li>
               
                 <li>
+                  <a href="#policy.namespaces.NamespaceCertificate"><span class="badge">M</span>NamespaceCertificate</a>
+                </li>
+              
+                <li>
                   <a href="#policy.namespaces.NamespaceKey"><span class="badge">M</span>NamespaceKey</a>
                 </li>
               
                 <li>
                   <a href="#policy.namespaces.NamespaceKeyAccessServer"><span class="badge">M</span>NamespaceKeyAccessServer</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.namespaces.RemoveCertificateFromNamespaceRequest"><span class="badge">M</span>RemoveCertificateFromNamespaceRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.namespaces.RemoveCertificateFromNamespaceResponse"><span class="badge">M</span>RemoveCertificateFromNamespaceResponse</a>
                 </li>
               
                 <li>
@@ -1493,6 +1533,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.obligations.ListObligationTriggersRequest"><span class="badge">M</span>ListObligationTriggersRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.obligations.ListObligationTriggersResponse"><span class="badge">M</span>ListObligationTriggersResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.obligations.ListObligationsRequest"><span class="badge">M</span>ListObligationsRequest</a>
                 </li>
               
@@ -1522,6 +1570,10 @@
               
                 <li>
                   <a href="#policy.obligations.UpdateObligationValueResponse"><span class="badge">M</span>UpdateObligationValueResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.obligations.ValueTriggerRequest"><span class="badge">M</span>ValueTriggerRequest</a>
                 </li>
               
               
@@ -2009,6 +2061,68 @@
       <p></p>
 
       
+        <h3 id="common.IdFqnIdentifier">IdFqnIdentifier</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="common.IdNameIdentifier">IdNameIdentifier</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="common.Metadata">Metadata</h3>
         <p>Struct to uniquely identify a resource with optional additional metadata</p>
 
@@ -2447,6 +2561,44 @@ Indicates a key may be found in TDFs without key identifiers </p></td>
 
         
       
+        <h3 id="policy.Certificate">Certificate</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>generated uuid in database </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pem</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>PEM format certificate </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Optional metadata. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.Condition">Condition</h3>
         <p>A Condition defines a rule of <the value at the flattened 'selector value'</p><p>location> <operator> <subject external values></p>
 
@@ -2708,7 +2860,7 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
                   <td>public_key</td>
                   <td><a href="#policy.PublicKey">PublicKey</a></td>
                   <td></td>
-                  <td><p>Deprecated </p></td>
+                  <td><p>Deprecated: KAS can have multiple key pairs </p></td>
                 </tr>
               
                 <tr>
@@ -2774,6 +2926,13 @@ Unique name of the KAS instance </p></td>
                 <tr>
                   <td>config_json</td>
                   <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>manager</td>
+                  <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -2852,6 +3011,13 @@ enable federation </p></td>
                   <td><p>Keys for the namespace </p></td>
                 </tr>
               
+                <tr>
+                  <td>root_certs</td>
+                  <td><a href="#policy.Certificate">Certificate</a></td>
+                  <td>repeated</td>
+                  <td><p>Root certificates for chain of trust </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -2894,6 +3060,13 @@ enable federation </p></td>
                   <td>values</td>
                   <td><a href="#policy.ObligationValue">ObligationValue</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
@@ -2950,6 +3123,13 @@ enable federation </p></td>
                 </tr>
               
                 <tr>
+                  <td>context</td>
+                  <td><a href="#policy.RequestContext">RequestContext</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -2995,8 +3175,46 @@ enable federation </p></td>
                 </tr>
               
                 <tr>
+                  <td>triggers</td>
+                  <td><a href="#policy.ObligationTrigger">ObligationTrigger</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.PolicyEnforcementPoint">PolicyEnforcementPoint</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>client_id</td>
+                  <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -3233,6 +3451,30 @@ Base64 encoded public key in PEM format </p></td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
                   <td><p>Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.RequestContext">RequestContext</h3>
+        <p>Holds the context needed for obligation fulfillment</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>pep</td>
+                  <td><a href="#policy.PolicyEnforcementPoint">PolicyEnforcementPoint</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -3696,6 +3938,13 @@ per namespace </p></td>
                 <tr>
                   <td>resource_mappings</td>
                   <td><a href="#policy.ResourceMapping">ResourceMapping</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>obligations</td>
+                  <td><a href="#policy.Obligation">Obligation</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -5009,6 +5258,13 @@ this case the resource acts as and represents a single entity for authorization/
                   <td><p>access token (JWT), which is used to create an entity chain (comprising one or more entities) </p></td>
                 </tr>
               
+                <tr>
+                  <td>with_request_token</td>
+                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
+                  <td></td>
+                  <td><p>derive the entity from the request&#39;s authorization access token JWT, rather than passing in the body </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -5065,7 +5321,7 @@ this case the resource acts as and represents a single entity for authorization/
         
       
         <h3 id="authorization.v2.GetDecisionMultiResourceRequest">GetDecisionMultiResourceRequest</h3>
-        <p>Can the identified entity/entities access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. multiple resources</p><p>Note: this is a more performant bulk request for multiple resource decisions, up to 1000 per request</p>
+        <p>Can the identified entity/entities access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. multiple resources</p><p>If entitled, checks obligation policy: fulfillable obligations must satisfy all triggered.</p><p>Note: this is a more performant bulk request for multiple resource decisions, up to 1000 per request</p>
 
         
           <table class="field-table">
@@ -5093,6 +5349,14 @@ this case the resource acts as and represents a single entity for authorization/
                   <td><a href="#authorization.v2.Resource">Resource</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fulfillable_obligation_fqns</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>obligations (fully qualified values) the requester is capable of fulfilling
+i.e. https://&lt;namespace&gt;/obl/&lt;definition name&gt;/value/&lt;value&gt; </p></td>
                 </tr>
               
             </tbody>
@@ -5134,7 +5398,7 @@ this case the resource acts as and represents a single entity for authorization/
         
       
         <h3 id="authorization.v2.GetDecisionRequest">GetDecisionRequest</h3>
-        <p>Can the identified entity/entities access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. one resource</p>
+        <p>Can the identified entity/entities access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. one resource</p><p>If entitled, checks obligation policy: fulfillable obligations must satisfy all triggered.</p>
 
         
           <table class="field-table">
@@ -5164,6 +5428,14 @@ this case the resource acts as and represents a single entity for authorization/
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>fulfillable_obligation_fqns</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>obligations (fully qualified values) the requester is capable of fulfilling
+i.e. https://&lt;namespace&gt;/obl/&lt;definition name&gt;/value/&lt;value&gt; </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -5185,10 +5457,7 @@ this case the resource acts as and represents a single entity for authorization/
                   <td>decision</td>
                   <td><a href="#authorization.v2.ResourceDecision">ResourceDecision</a></td>
                   <td></td>
-                  <td><p>decision on the resource
-
-optional list of obligations represented in URI format
-repeated string obligations = 2; </p></td>
+                  <td><p>decision on the resource </p></td>
                 </tr>
               
             </tbody>
@@ -5340,6 +5609,14 @@ down the hierarchical values instead of returning solely the value that is direc
                   <td><p>decision result </p></td>
                 </tr>
               
+                <tr>
+                  <td>required_obligations</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>obligations (fully qualified values) the PEP is required to fulfill on the given resource
+i.e. https://&lt;namespace&gt;/obl/&lt;definition name&gt;/value/&lt;value&gt; </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -5372,7 +5649,7 @@ down the hierarchical values instead of returning solely the value that is direc
               <tr>
                 <td>DECISION_PERMIT</td>
                 <td>2</td>
-                <td><p>DECISION_OBLIGATED = 3;</p></td>
+                <td><p></p></td>
               </tr>
             
           </tbody>
@@ -6717,7 +6994,7 @@ buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
 
       
         <h3 id="policy.AttributeDefinitionSelector">AttributeDefinitionSelector</h3>
-        <p></p>
+        <p>Deprecated: never utilized</p>
 
         
           <table class="field-table">
@@ -6800,7 +7077,7 @@ buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
         
       
         <h3 id="policy.AttributeNamespaceSelector">AttributeNamespaceSelector</h3>
-        <p></p>
+        <p>Deprecated: never utilized</p>
 
         
           <table class="field-table">
@@ -6824,7 +7101,7 @@ buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
         
       
         <h3 id="policy.AttributeNamespaceSelector.AttributeSelector">AttributeNamespaceSelector.AttributeSelector</h3>
-        <p></p>
+        <p>Deprecated</p>
 
         
           <table class="field-table">
@@ -6837,7 +7114,7 @@ buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
                   <td>with_key_access_grants</td>
                   <td><a href="#bool">bool</a></td>
                   <td></td>
-                  <td><p>Deprecated </p></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -6893,7 +7170,7 @@ buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
         
       
         <h3 id="policy.AttributeValueSelector">AttributeValueSelector</h3>
-        <p></p>
+        <p>Deprecated: never utilized</p>
 
         
           <table class="field-table">
@@ -7421,7 +7698,7 @@ Custom actions only: replaces the existing action name </p></td>
 
       
         <h3 id="policy.attributes.AssignKeyAccessServerToAttributeRequest">AssignKeyAccessServerToAttributeRequest</h3>
-        <p></p>
+        <p>Deprecated: utilize AssignPublicKeyToAttributeRequest</p>
 
         
           <table class="field-table">
@@ -7469,7 +7746,7 @@ Custom actions only: replaces the existing action name </p></td>
         
       
         <h3 id="policy.attributes.AssignKeyAccessServerToValueRequest">AssignKeyAccessServerToValueRequest</h3>
-        <p></p>
+        <p>Deprecated: utilize AssignPublicKeyToValueRequest</p>
 
         
           <table class="field-table">
@@ -7925,7 +8202,7 @@ Common metadata </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p><strong>Deprecated.</strong> Deprecated </p></td>
+                  <td><p><strong>Deprecated.</strong> Deprecated: utilize identifier </p></td>
                 </tr>
               
                 <tr>
@@ -8008,7 +8285,7 @@ Common metadata </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p><strong>Deprecated.</strong> Deprecated </p></td>
+                  <td><p><strong>Deprecated.</strong> Deprecated: utilize identifier </p></td>
                 </tr>
               
                 <tr>
@@ -8093,14 +8370,6 @@ Common metadata </p></td>
                   <td>repeated</td>
                   <td><p>Required
 Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&lt;attribute_name&gt;/value/&lt;value_name&gt;), normalized to lower case. </p></td>
-                </tr>
-              
-                <tr>
-                  <td>with_value</td>
-                  <td><a href="#policy.AttributeValueSelector">policy.AttributeValueSelector</a></td>
-                  <td></td>
-                  <td><p>Optional
-This attribute value selector is not used currently, but left here for future use. </p></td>
                 </tr>
               
             </tbody>
@@ -8338,7 +8607,7 @@ Namespace ID or name </p></td>
         
       
         <h3 id="policy.attributes.RemoveKeyAccessServerFromAttributeRequest">RemoveKeyAccessServerFromAttributeRequest</h3>
-        <p></p>
+        <p>Deprecated: utilize RemovePublicKeyFromAttributeRequest</p>
 
         
           <table class="field-table">
@@ -8386,7 +8655,7 @@ Namespace ID or name </p></td>
         
       
         <h3 id="policy.attributes.RemoveKeyAccessServerFromValueRequest">RemoveKeyAccessServerFromValueRequest</h3>
-        <p></p>
+        <p>Deprecated: utilize RemovePublicKeyFromValueRequest</p>
 
         
           <table class="field-table">
@@ -8815,30 +9084,28 @@ Value RPCs
                 <td>AssignKeyAccessServerToAttribute</td>
                 <td><a href="#policy.attributes.AssignKeyAccessServerToAttributeRequest">AssignKeyAccessServerToAttributeRequest</a></td>
                 <td><a href="#policy.attributes.AssignKeyAccessServerToAttributeResponse">AssignKeyAccessServerToAttributeResponse</a></td>
-                <td><p>--------------------------------------*
-Attribute &lt;&gt; Key Access Server RPCs
----------------------------------------</p></td>
+                <td><p>Deprecated: utilize AssignPublicKeyToAttribute</p></td>
               </tr>
             
               <tr>
                 <td>RemoveKeyAccessServerFromAttribute</td>
                 <td><a href="#policy.attributes.RemoveKeyAccessServerFromAttributeRequest">RemoveKeyAccessServerFromAttributeRequest</a></td>
                 <td><a href="#policy.attributes.RemoveKeyAccessServerFromAttributeResponse">RemoveKeyAccessServerFromAttributeResponse</a></td>
-                <td><p></p></td>
+                <td><p>Deprecated: utilize RemovePublicKeyFromAttribute</p></td>
               </tr>
             
               <tr>
                 <td>AssignKeyAccessServerToValue</td>
                 <td><a href="#policy.attributes.AssignKeyAccessServerToValueRequest">AssignKeyAccessServerToValueRequest</a></td>
                 <td><a href="#policy.attributes.AssignKeyAccessServerToValueResponse">AssignKeyAccessServerToValueResponse</a></td>
-                <td><p></p></td>
+                <td><p>Deprecated: utilize AssignPublicKeyToValue</p></td>
               </tr>
             
               <tr>
                 <td>RemoveKeyAccessServerFromValue</td>
                 <td><a href="#policy.attributes.RemoveKeyAccessServerFromValueRequest">RemoveKeyAccessServerFromValueRequest</a></td>
                 <td><a href="#policy.attributes.RemoveKeyAccessServerFromValueResponse">RemoveKeyAccessServerFromValueResponse</a></td>
-                <td><p></p></td>
+                <td><p>Deprecated: utilize RemovePublicKeyFromValue</p></td>
               </tr>
             
               <tr>
@@ -11143,7 +11410,7 @@ Request to create a new key in the Key Access Service.</p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Required
-The name of the key provider. (e.g. &#34;AWS KMS&#34;, &#34;Google Cloud KMS&#34;, &#34;Azure Key Vault&#34;) </p></td>
+The name of the key provider. (e.g. &#34;AWS KMS Instance 1&#34;, &#34;Google Cloud KMS Instance 2&#34;) </p></td>
                 </tr>
               
                 <tr>
@@ -11152,6 +11419,14 @@ The name of the key provider. (e.g. &#34;AWS KMS&#34;, &#34;Google Cloud KMS&#34
                   <td></td>
                   <td><p>Required
 JSON configuration for the key provider. This is unique to individual key providers. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>manager</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+The type of key manager (e.g. &#34;aws&#34;, &#34;gcp&#34;, &#34;azure&#34;, &#34;opentdf.io/basic&#34;) </p></td>
                 </tr>
               
                 <tr>
@@ -11262,6 +11537,13 @@ JSON configuration for the key provider. This is unique to individual key provid
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>manager</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional - filter by manager type when searching by name </p></td>
                 </tr>
               
             </tbody>
@@ -11382,6 +11664,13 @@ JSON configuration for the key provider. This is unique to individual key provid
                 </tr>
               
                 <tr>
+                  <td>manager</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
@@ -11489,8 +11778,77 @@ Provider Management</p></td>
       <p></p>
 
       
-        <h3 id="policy.namespaces.AssignKeyAccessServerToNamespaceRequest">AssignKeyAccessServerToNamespaceRequest</h3>
+        <h3 id="policy.namespaces.AssignCertificateToNamespaceRequest">AssignCertificateToNamespaceRequest</h3>
         <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace</td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
+                  <td></td>
+                  <td><p>Required - namespace identifier (id or fqn) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pem</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required - PEM format certificate </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.namespaces.AssignCertificateToNamespaceResponse">AssignCertificateToNamespaceResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_certificate</td>
+                  <td><a href="#policy.namespaces.NamespaceCertificate">NamespaceCertificate</a></td>
+                  <td></td>
+                  <td><p>The mapping of the namespace to the certificate. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>certificate</td>
+                  <td><a href="#policy.Certificate">policy.Certificate</a></td>
+                  <td></td>
+                  <td><p>Return the full certificate object for convenience </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.namespaces.AssignKeyAccessServerToNamespaceRequest">AssignKeyAccessServerToNamespaceRequest</h3>
+        <p>Deprecated: utilize AssignPublicKeyToNamespaceRequest</p>
 
         
           <table class="field-table">
@@ -11817,6 +12175,37 @@ ACTIVE by default when not specified </p></td>
 
         
       
+        <h3 id="policy.namespaces.NamespaceCertificate">NamespaceCertificate</h3>
+        <p>Maps a namespace to a certificate (similar to NamespaceKey pattern)</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace</td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
+                  <td></td>
+                  <td><p>Required - namespace identifier (id or fqn) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>certificate_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required (The id from the Certificate object) </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.namespaces.NamespaceKey">NamespaceKey</h3>
         <p></p>
 
@@ -11879,8 +12268,56 @@ ACTIVE by default when not specified </p></td>
 
         
       
-        <h3 id="policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest">RemoveKeyAccessServerFromNamespaceRequest</h3>
+        <h3 id="policy.namespaces.RemoveCertificateFromNamespaceRequest">RemoveCertificateFromNamespaceRequest</h3>
         <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_certificate</td>
+                  <td><a href="#policy.namespaces.NamespaceCertificate">NamespaceCertificate</a></td>
+                  <td></td>
+                  <td><p>The namespace and certificate to unassign. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.namespaces.RemoveCertificateFromNamespaceResponse">RemoveCertificateFromNamespaceResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_certificate</td>
+                  <td><a href="#policy.namespaces.NamespaceCertificate">NamespaceCertificate</a></td>
+                  <td></td>
+                  <td><p>The unassigned namespace and certificate. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest">RemoveKeyAccessServerFromNamespaceRequest</h3>
+        <p>Deprecated: utilize RemovePublicKeyFromNamespaceRequest</p>
 
         
           <table class="field-table">
@@ -12090,16 +12527,14 @@ ACTIVE by default when not specified </p></td>
                 <td>AssignKeyAccessServerToNamespace</td>
                 <td><a href="#policy.namespaces.AssignKeyAccessServerToNamespaceRequest">AssignKeyAccessServerToNamespaceRequest</a></td>
                 <td><a href="#policy.namespaces.AssignKeyAccessServerToNamespaceResponse">AssignKeyAccessServerToNamespaceResponse</a></td>
-                <td><p>--------------------------------------*
-Namespace &lt;&gt; Key Access Server RPCs
----------------------------------------</p></td>
+                <td><p>Deprecated: utilize AssignPublicKeyToNamespace</p></td>
               </tr>
             
               <tr>
                 <td>RemoveKeyAccessServerFromNamespace</td>
                 <td><a href="#policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest">RemoveKeyAccessServerFromNamespaceRequest</a></td>
                 <td><a href="#policy.namespaces.RemoveKeyAccessServerFromNamespaceResponse">RemoveKeyAccessServerFromNamespaceResponse</a></td>
-                <td><p></p></td>
+                <td><p>Deprecated: utilize RemovePublicKeyFromNamespace</p></td>
               </tr>
             
               <tr>
@@ -12115,6 +12550,20 @@ Namespace &lt;&gt; Key RPCs
                 <td>RemovePublicKeyFromNamespace</td>
                 <td><a href="#policy.namespaces.RemovePublicKeyFromNamespaceRequest">RemovePublicKeyFromNamespaceRequest</a></td>
                 <td><a href="#policy.namespaces.RemovePublicKeyFromNamespaceResponse">RemovePublicKeyFromNamespaceResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>AssignCertificateToNamespace</td>
+                <td><a href="#policy.namespaces.AssignCertificateToNamespaceRequest">AssignCertificateToNamespaceRequest</a></td>
+                <td><a href="#policy.namespaces.AssignCertificateToNamespaceResponse">AssignCertificateToNamespaceResponse</a></td>
+                <td><p>Namespace &lt;&gt; Certificate RPCs</p></td>
+              </tr>
+            
+              <tr>
+                <td>RemoveCertificateFromNamespace</td>
+                <td><a href="#policy.namespaces.RemoveCertificateFromNamespaceRequest">RemoveCertificateFromNamespaceRequest</a></td>
+                <td><a href="#policy.namespaces.RemoveCertificateFromNamespaceResponse">RemoveCertificateFromNamespaceResponse</a></td>
                 <td><p></p></td>
               </tr>
             
@@ -12193,24 +12642,32 @@ Namespace &lt;&gt; Key RPCs
             <tbody>
               
                 <tr>
-                  <td>obligation_value_id</td>
-                  <td><a href="#string">string</a></td>
+                  <td>obligation_value</td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
                   <td></td>
                   <td><p>Required </p></td>
                 </tr>
               
                 <tr>
-                  <td>action_id</td>
-                  <td><a href="#string">string</a></td>
+                  <td>action</td>
+                  <td><a href="#common.IdNameIdentifier">common.IdNameIdentifier</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
-                  <td>attribute_value_id</td>
-                  <td><a href="#string">string</a></td>
+                  <td>attribute_value</td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>context</td>
+                  <td><a href="#policy.RequestContext">policy.RequestContext</a></td>
+                  <td></td>
+                  <td><p>Optional
+The request context for this obligation value policy decisioning. </p></td>
                 </tr>
               
                 <tr>
@@ -12263,14 +12720,14 @@ Common metadata </p></td>
             <tbody>
               
                 <tr>
-                  <td>id</td>
+                  <td>namespace_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
               
                 <tr>
-                  <td>fqn</td>
+                  <td>namespace_fqn</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
@@ -12340,14 +12797,14 @@ Common metadata </p></td>
             <tbody>
               
                 <tr>
-                  <td>id</td>
+                  <td>obligation_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
               
                 <tr>
-                  <td>fqn</td>
+                  <td>obligation_fqn</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
@@ -12358,6 +12815,14 @@ Common metadata </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>triggers</td>
+                  <td><a href="#policy.obligations.ValueTriggerRequest">ValueTriggerRequest</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional
+Combination of action and attribute_value that will trigger this obligation value policy decisioning. </p></td>
                 </tr>
               
                 <tr>
@@ -12777,6 +13242,75 @@ Common metadata </p></td>
 
         
       
+        <h3 id="policy.obligations.ListObligationTriggersRequest">ListObligationTriggersRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.ListObligationTriggersResponse">ListObligationTriggersResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>triggers</td>
+                  <td><a href="#policy.ObligationTrigger">policy.ObligationTrigger</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.obligations.ListObligationsRequest">ListObligationsRequest</h3>
         <p></p>
 
@@ -12788,14 +13322,14 @@ Common metadata </p></td>
             <tbody>
               
                 <tr>
-                  <td>id</td>
+                  <td>namespace_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
               
                 <tr>
-                  <td>fqn</td>
+                  <td>namespace_fqn</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
@@ -12860,7 +13394,7 @@ Common metadata </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -12988,10 +13522,19 @@ Common metadata </p></td>
                 </tr>
               
                 <tr>
+                  <td>triggers</td>
+                  <td><a href="#policy.obligations.ValueTriggerRequest">ValueTriggerRequest</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional
+Obligation Triggers provided here will replace all existing records in the database. </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Optional
+Common metadata </p></td>
                 </tr>
               
                 <tr>
@@ -13023,6 +13566,44 @@ Common metadata </p></td>
                   <td><a href="#policy.ObligationValue">policy.ObligationValue</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.ValueTriggerRequest">ValueTriggerRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>action</td>
+                  <td><a href="#common.IdNameIdentifier">common.IdNameIdentifier</a></td>
+                  <td></td>
+                  <td><p>Required. The ID of the action that will trigger this obligation value policy decisioning. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value</td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
+                  <td></td>
+                  <td><p>Required. The attribute value ID that will trigger this obligation value policy decisioning. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>context</td>
+                  <td><a href="#policy.RequestContext">policy.RequestContext</a></td>
+                  <td></td>
+                  <td><p>Optional. The request context for this obligation value policy decisioning. </p></td>
                 </tr>
               
             </tbody>
@@ -13137,6 +13718,13 @@ Common metadata </p></td>
                 <td><p></p></td>
               </tr>
             
+              <tr>
+                <td>ListObligationTriggers</td>
+                <td><a href="#policy.obligations.ListObligationTriggersRequest">ListObligationTriggersRequest</a></td>
+                <td><a href="#policy.obligations.ListObligationTriggersResponse">ListObligationTriggersResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
           </tbody>
         </table>
 
@@ -13175,6 +13763,11 @@ Common metadata </p></td>
             
               <tr>
                 <td>GetObligationValuesByFQNs</td>
+                <td><p>NO_SIDE_EFFECTS</p></td>
+              </tr>
+            
+              <tr>
+                <td>ListObligationTriggers</td>
                 <td><p>NO_SIDE_EFFECTS</p></td>
               </tr>
             

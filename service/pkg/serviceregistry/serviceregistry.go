@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"strings"
+	"sync"
 
 	"connectrpc.com/connect"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -47,7 +49,16 @@ type RegistrationParams struct {
 	// NewCacheClient is a function that can be used to create a new cache instance for the service
 	NewCacheClient func(cache.Options) (*cache.Cache, error)
 
+	// KeyManagerFactories are the registered key manager factories that can be used to create
+	// key managers for the service to use.
+	// Prefer KeyManagerCtxFactories
+	// EXPERIMENTAL
 	KeyManagerFactories []trust.NamedKeyManagerFactory
+
+	// KeyManagerCtxFactories are the registered key manager context factories that can be used to create
+	// key managers for the service to use.
+	// EXPERIMENTAL
+	KeyManagerCtxFactories []trust.NamedKeyManagerCtxFactory
 
 	////// The following functions are optional and intended to be called by the service //////
 
@@ -237,19 +248,62 @@ type Namespace struct {
 	Services []IService
 }
 
-// Registry represents a map of service namespaces.
-type Registry map[string]Namespace
-
-// NewServiceRegistry creates a new instance of the service registry.
-func NewServiceRegistry() Registry {
-	return make(Registry)
+// IsEnabled checks if this namespace should be enabled based on configured modes.
+// Returns true if any of the configured modes match this namespace's mode,
+// or if "all" mode is configured, or if this namespace is "essential".
+func (n Namespace) IsEnabled(configuredModes []string) bool {
+	for _, configMode := range configuredModes {
+		// Case-insensitive comparison for mode matching
+		if strings.EqualFold(configMode, string(ModeALL)) ||
+			strings.EqualFold(n.Mode, string(ModeEssential)) ||
+			strings.EqualFold(configMode, n.Mode) {
+			return true
+		}
+	}
+	return false
 }
 
-// RegisterCoreService registers a core service with the given registration information.
-// It calls the RegisterService method of the Registry instance with the provided registration and service type "core".
-// Returns an error if the registration fails.
-func (reg Registry) RegisterCoreService(svc IService) error {
-	return reg.RegisterService(svc, "core")
+type ServiceName interface {
+	String() string
+}
+
+// ServiceConfiguration represents a service with its associated modes and implementations.
+type ServiceConfiguration struct {
+	Name     ServiceName
+	Modes    []ModeName
+	Services []IService
+}
+
+// Registry represents a service registry with namespaces and their registration order.
+type Registry struct {
+	mu         sync.RWMutex
+	namespaces map[string]*Namespace
+	order      []string
+}
+
+// NewServiceRegistry creates a new instance of the service registry.
+func NewServiceRegistry() *Registry {
+	return &Registry{
+		namespaces: make(map[string]*Namespace),
+		order:      make([]string, 0),
+	}
+}
+
+type NamespaceInfo struct {
+	Name      string
+	Namespace *Namespace
+}
+
+// GetNamespaces returns all namespaces in the registry
+func (reg *Registry) GetNamespaces() []NamespaceInfo {
+	reg.mu.RLock()
+	defer reg.mu.RUnlock()
+
+	namespaceInfo := make([]NamespaceInfo, len(reg.order))
+	for i, name := range reg.order {
+		namespaceInfo[i] = NamespaceInfo{Name: name, Namespace: reg.namespaces[name]}
+	}
+	return namespaceInfo
 }
 
 // RegisterService registers a service in the service registry.
@@ -258,39 +312,54 @@ func (reg Registry) RegisterCoreService(svc IService) error {
 // such as the namespace and service description.
 // The mode string specifies the mode in which the service should be registered.
 // It returns an error if the service is already registered in the specified namespace.
-func (reg Registry) RegisterService(svc IService, mode string) error {
-	// Can't directly modify structs within a map, so we need to copy the namespace
-	copyNamespace := reg[svc.GetNamespace()]
-	copyNamespace.Mode = mode
-	if copyNamespace.Services == nil {
-		copyNamespace.Services = make([]IService, 0)
+func (reg *Registry) RegisterService(svc IService, mode ModeName) error {
+	reg.mu.Lock()
+	defer reg.mu.Unlock()
+
+	nsName := svc.GetNamespace()
+
+	// Get or create the namespace
+	ns, exists := reg.namespaces[nsName]
+	if !exists {
+		ns = &Namespace{
+			Mode:     mode.String(),
+			Services: make([]IService, 0),
+		}
+		reg.namespaces[nsName] = ns
+		reg.order = append(reg.order, nsName)
 	}
-	found := slices.ContainsFunc(reg[svc.GetNamespace()].Services, func(s IService) bool {
+
+	// Check if a service with the same name is already registered in this namespace.
+	found := slices.ContainsFunc(ns.Services, func(s IService) bool {
 		return s.GetServiceDesc().ServiceName == svc.GetServiceDesc().ServiceName
 	})
-
 	if found {
-		return fmt.Errorf("service already registered namespace:%s service:%s", svc.GetNamespace(), svc.GetServiceDesc().ServiceName)
+		return fmt.Errorf("service already registered namespace:%s service:%s", nsName, svc.GetServiceDesc().ServiceName)
 	}
 
 	slog.Info(
 		"registered service",
-		slog.String("namespace", svc.GetNamespace()),
+		slog.String("namespace", nsName),
 		slog.String("service", svc.GetServiceDesc().ServiceName),
 	)
-	copyNamespace.Services = append(copyNamespace.Services, svc)
 
-	reg[svc.GetNamespace()] = copyNamespace
+	ns.Mode = mode.String()
+	ns.Services = append(ns.Services, svc)
+
 	return nil
 }
 
-// Shutdown stops all the services in the service registry.
-// It iterates over each namespace and service in the registry,
-// checks if the service has a Close method and if it has been started,
-// and then calls the Close method to stop the service.
-func (reg Registry) Shutdown() {
-	for name, ns := range reg {
-		for _, svc := range ns.Services {
+// Shutdown stops all the registered services in the reverse order of registration.
+// If a service is started and has a Close method, the Close method will be called.
+func (reg *Registry) Shutdown() {
+	reg.mu.RLock()
+	defer reg.mu.RUnlock()
+
+	for nsIdx := len(reg.order) - 1; nsIdx >= 0; nsIdx-- {
+		name := reg.order[nsIdx]
+		ns := reg.namespaces[name]
+		for serviceIdx := len(ns.Services) - 1; serviceIdx >= 0; serviceIdx-- {
+			svc := ns.Services[serviceIdx]
 			if svc.IsStarted() {
 				slog.Info("stopping service",
 					slog.String("namespace", name),
@@ -309,10 +378,59 @@ func (reg Registry) Shutdown() {
 }
 
 // GetNamespace returns the namespace with the given name from the service registry.
-func (reg Registry) GetNamespace(namespace string) (Namespace, error) {
-	ns, ok := reg[namespace]
+func (reg *Registry) GetNamespace(namespace string) (*Namespace, error) {
+	reg.mu.RLock()
+	defer reg.mu.RUnlock()
+
+	ns, ok := reg.namespaces[namespace]
 	if !ok {
-		return Namespace{}, fmt.Errorf("namespace not found: %s", namespace)
+		return nil, &ServiceConfigError{
+			Type:    "lookup",
+			Message: "namespace not found: " + namespace,
+		}
 	}
 	return ns, nil
+}
+
+// RegisterServicesFromConfiguration handles service registration using declarative configuration with negation support.
+func (reg *Registry) RegisterServicesFromConfiguration(modes []string, configurations []ServiceConfiguration) ([]string, error) {
+	// Parse modes to separate inclusions and exclusions
+	includedModes, excludedServices, err := ParseModesWithNegation(modes)
+	if err != nil {
+		return nil, err
+	}
+
+	registeredServices := make([]string, 0)
+
+	// Loop through each service configuration
+	for _, config := range configurations {
+		// Check if this service is explicitly excluded
+		if slices.Contains(excludedServices, config.Name.String()) {
+			continue
+		}
+
+		var nsMode ModeName
+		for _, requestedMode := range includedModes {
+			if slices.Contains(config.Modes, requestedMode) {
+				nsMode = requestedMode
+				break
+			}
+		}
+
+		if nsMode == "" {
+			continue
+		}
+
+		registeredServices = append(registeredServices, config.Name.String())
+
+		// Register all services using their own defined namespace
+		for _, service := range config.Services {
+			// Register the service with the determined mode
+			if err := reg.RegisterService(service, nsMode); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return registeredServices, nil
 }

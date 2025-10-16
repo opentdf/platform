@@ -9,9 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -43,10 +45,34 @@ const (
 	ErrWellKnowConfigEmpty           = Error("well-known configuration is empty")
 )
 
+var (
+	// Package-level logger for internal SDK functions
+	packageLogger *slog.Logger
+	loggerMutex   sync.RWMutex
+)
+
 type Error string
 
 func (c Error) Error() string {
 	return string(c)
+}
+
+// getLogger returns the package-level logger, defaulting to slog.Default() if not set to
+// provide access to the logger in exported functions where signatures are unable to be altered
+func getLogger() *slog.Logger {
+	loggerMutex.RLock()
+	defer loggerMutex.RUnlock()
+	if packageLogger != nil {
+		return packageLogger
+	}
+	return slog.Default()
+}
+
+// setPackageLogger sets the package-level logger for internal SDK functions
+func setPackageLogger(logger *slog.Logger) {
+	loggerMutex.Lock()
+	defer loggerMutex.Unlock()
+	packageLogger = logger
 }
 
 type SDK struct {
@@ -63,6 +89,7 @@ type SDK struct {
 	EntityResolutionV2      sdkconnect.EntityResolutionServiceClientV2
 	KeyAccessServerRegistry sdkconnect.KeyAccessServerRegistryServiceClient
 	Namespaces              sdkconnect.NamespaceServiceClient
+	Obligations             sdkconnect.ObligationsServiceClient
 	RegisteredResources     sdkconnect.RegisteredResourcesServiceClient
 	ResourceMapping         sdkconnect.ResourceMappingServiceClient
 	SubjectMapping          sdkconnect.SubjectMappingServiceClient
@@ -89,6 +116,14 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	for _, opt := range opts {
 		opt(cfg)
 	}
+
+	// Set default logger if none provided
+	if cfg.logger == nil {
+		cfg.logger = slog.Default()
+	}
+
+	// Set package-level logger for internal functions
+	setPackageLogger(cfg.logger)
 
 	// If IPC is enabled, we need to have a core connection
 	if cfg.ipc && cfg.coreConn == nil {
@@ -188,6 +223,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		Actions:                 sdkconnect.NewActionServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		Attributes:              sdkconnect.NewAttributesServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		Namespaces:              sdkconnect.NewNamespaceServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		Obligations:             sdkconnect.NewObligationsServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		RegisteredResources:     sdkconnect.NewRegisteredResourcesServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		ResourceMapping:         sdkconnect.NewResourceMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		SubjectMapping:          sdkconnect.NewSubjectMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
@@ -239,9 +275,10 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	case c.oauthAccessTokenSource != nil:
 		ts, err = NewOAuthAccessTokenSource(c.oauthAccessTokenSource, c.scopes, c.dpopKey)
 	case c.certExchange != nil:
-		ts, err = NewCertExchangeTokenSource(*c.certExchange, *c.clientCredentials, c.tokenEndpoint, c.dpopKey)
+		ts, err = NewCertExchangeTokenSource(c.logger, *c.certExchange, *c.clientCredentials, c.tokenEndpoint, c.dpopKey)
 	case c.tokenExchange != nil:
 		ts, err = NewIDPTokenExchangeTokenSource(
+			c.logger,
 			*c.tokenExchange,
 			*c.clientCredentials,
 			c.tokenEndpoint,
@@ -265,6 +302,11 @@ func (s SDK) Close() error {
 		s.collectionStore.close()
 	}
 	return nil
+}
+
+// Logger returns the configured slog.Logger for this SDK instance
+func (s SDK) Logger() *slog.Logger {
+	return s.logger
 }
 
 // Conn returns the underlying http connection

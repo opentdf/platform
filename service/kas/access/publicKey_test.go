@@ -137,11 +137,11 @@ func (m *MockSecurityProvider) ListKeysWith(_ context.Context, opts trust.ListKe
 	return keys, nil
 }
 
-func (m *MockSecurityProvider) Decrypt(_ context.Context, _ trust.KeyDetails, _, _ []byte) (trust.ProtectedKey, error) {
+func (m *MockSecurityProvider) Decrypt(_ context.Context, _ trust.KeyDetails, _, _ []byte) (ocrypto.ProtectedKey, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
-func (m *MockSecurityProvider) DeriveKey(_ context.Context, _ trust.KeyDetails, _ []byte, _ elliptic.Curve) (trust.ProtectedKey, error) {
+func (m *MockSecurityProvider) DeriveKey(_ context.Context, _ trust.KeyDetails, _ []byte, _ elliptic.Curve) (ocrypto.ProtectedKey, error) {
 	return nil, errors.New("not implemented for tests")
 }
 

@@ -81,6 +81,10 @@ func convertAlgToEnum(alg string) (policy.Algorithm, error) {
 	}
 }
 
+func (p *KeyIndexer) String() string {
+	return fmt.Sprintf("PlatformKeyIndexer[%s]", p.kasURI)
+}
+
 func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (trust.KeyDetails, error) {
 	alg, err := convertAlgToEnum(algorithm)
 	if err != nil {
@@ -194,7 +198,7 @@ func (p *KeyAdapter) IsLegacy() bool {
 func (p *KeyAdapter) System() string {
 	var mode string
 	if p.key.GetKey().GetProviderConfig() != nil {
-		mode = p.key.GetKey().GetProviderConfig().GetName()
+		mode = p.key.GetKey().GetProviderConfig().GetManager()
 	}
 	return mode
 }

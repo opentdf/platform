@@ -1,5 +1,60 @@
 # Changelog
 
+## [0.12.0](https://github.com/opentdf/platform/compare/protocol/go/v0.11.0...protocol/go/v0.12.0) (2025-10-14)
+
+
+### Features
+
+* **authz:** defer to request auth as decision/entitlements entity ([#2789](https://github.com/opentdf/platform/issues/2789)) ([feb34d8](https://github.com/opentdf/platform/commit/feb34d85a3cd9324a95cc7a2fac92a2e658170fe))
+* **policy:** Proto - root certificates by namespace ([#2800](https://github.com/opentdf/platform/issues/2800)) ([0edb359](https://github.com/opentdf/platform/commit/0edb3591bc0c12b3ffb47b4e43d19b56dae3d016))
+
+
+### Bug Fixes
+
+* **core:** deprecated stale protos and add better upgrade comments ([#2793](https://github.com/opentdf/platform/issues/2793)) ([f2678cc](https://github.com/opentdf/platform/commit/f2678cc6929824ae3d73d2c808ce8412086011ee))
+
+## [0.11.0](https://github.com/opentdf/platform/compare/protocol/go/v0.10.0...protocol/go/v0.11.0) (2025-09-18)
+
+
+### Features
+
+* **authz:** obligations protos within auth service ([#2745](https://github.com/opentdf/platform/issues/2745)) ([41ee5a8](https://github.com/opentdf/platform/commit/41ee5a8c0caaa99d5b80d6ebb23696d13053938f))
+* **policy:** Return obligations from GetAttributeValue calls ([#2742](https://github.com/opentdf/platform/issues/2742)) ([aa9b393](https://github.com/opentdf/platform/commit/aa9b393ac27522a3db69131a48409d8f297ebe56))
+
+## [0.10.0](https://github.com/opentdf/platform/compare/protocol/go/v0.9.0...protocol/go/v0.10.0) (2025-09-16)
+
+
+### Features
+
+* **policy:** add protovalidate for obligation defs + vals ([#2699](https://github.com/opentdf/platform/issues/2699)) ([af5c049](https://github.com/opentdf/platform/commit/af5c049435355646b7b59fd3a4b0191875a4b88d))
+
+## [0.9.0](https://github.com/opentdf/platform/compare/protocol/go/v0.8.0...protocol/go/v0.9.0) (2025-09-11)
+
+
+### Features
+
+* **policy:** add FQN of obligation definitions/values to protos ([#2703](https://github.com/opentdf/platform/issues/2703)) ([45ded0e](https://github.com/opentdf/platform/commit/45ded0e2717cca7ca8465e642c05e02ca4acd6c5))
+* **policy:** Add obligation triggers ([#2675](https://github.com/opentdf/platform/issues/2675)) ([22d0837](https://github.com/opentdf/platform/commit/22d08378c06eef1ec5d59250d3e22f81d230c49d))
+* **policy:** Allow creation and update of triggers on Obligation Values ([#2691](https://github.com/opentdf/platform/issues/2691)) ([b1e7ba1](https://github.com/opentdf/platform/commit/b1e7ba14a34c719d711db45cc9401c332c1175a5))
+* **policy:** Allow for additional context to be added to obligation triggers ([#2705](https://github.com/opentdf/platform/issues/2705)) ([7025599](https://github.com/opentdf/platform/commit/7025599b30e76bb5b546f5d68f5fee9405f8a0b5))
+* **policy:** obligations + values CRUD ([#2545](https://github.com/opentdf/platform/issues/2545)) ([c194e35](https://github.com/opentdf/platform/commit/c194e3522b9dfab74a5a21747d012f88a188f989))
+
+
+### Bug Fixes
+
+* **deps:** update protovalidate to v0.14.2 to use new buf validate MessageOneofRule ([#2698](https://github.com/opentdf/platform/issues/2698)) ([1cae18e](https://github.com/opentdf/platform/commit/1cae18e6b6f4a72869b0cdb65d775e108da07872))
+
+## [0.8.0](https://github.com/opentdf/platform/compare/protocol/go/v0.7.0...protocol/go/v0.8.0) (2025-09-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** Add manager column to provider configuration for  multi-instance support ([#2601](https://github.com/opentdf/platform/issues/2601))
+
+### Features
+
+* **policy:** Add manager column to provider configuration for  multi-instance support ([#2601](https://github.com/opentdf/platform/issues/2601)) ([a5fc994](https://github.com/opentdf/platform/commit/a5fc994acc5491bf8cbf751b675302b459e1f3b0))
+
 ## [0.7.0](https://github.com/opentdf/platform/compare/protocol/go/v0.6.2...protocol/go/v0.7.0) (2025-08-08)
 
 ### Features

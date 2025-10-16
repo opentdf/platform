@@ -26,9 +26,11 @@ type Decision struct {
 
 // ResourceDecision represents the result of evaluating the action on one resource for an entity.
 type ResourceDecision struct {
-	Passed          bool             `json:"passed" example:"false"`
-	ResourceID      string           `json:"resource_id,omitempty"`
-	DataRuleResults []DataRuleResult `json:"data_rule_results"`
+	Passed                      bool             `json:"passed" example:"false"`
+	ResourceID                  string           `json:"resource_id,omitempty"`
+	ResourceName                string           `json:"resource_name,omitempty"`
+	DataRuleResults             []DataRuleResult `json:"data_rule_results"`
+	RequiredObligationValueFQNs []string         `json:"required_obligation_value_fqns"`
 }
 
 // DataRuleResult represents the result of evaluating one rule for an entity.

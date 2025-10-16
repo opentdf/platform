@@ -31,38 +31,25 @@ import (
 )
 
 const (
-	keyAccessSchemaVersion  = "1.0"
-	maxFileSizeSupported    = 68719476736 // 64gb
-	defaultMimeType         = "application/octet-stream"
-	tdfAsZip                = "zip"
-	gcmIvSize               = 12
-	aesBlockSize            = 16
-	hmacIntegrityAlgorithm  = "HS256"
-	gmacIntegrityAlgorithm  = "GMAC"
-	tdfZipReference         = "reference"
-	kKeySize                = 32
-	kWrapped                = "wrapped"
-	kECWrapped              = "ec-wrapped"
-	kKasProtocol            = "kas"
-	kSplitKeyType           = "split"
-	kGCMCipherAlgorithm     = "AES-256-GCM"
-	kGMACPayloadLength      = 16
-	kAssertionSignature     = "assertionSig"
-	kAssertionHash          = "assertionHash"
-	kClientPublicKey        = "clientPublicKey"
-	kSignedRequestToken     = "signedRequestToken"
-	kKasURL                 = "url"
-	kRewrapV2               = "/v2/rewrap"
-	kAuthorizationKey       = "Authorization"
-	kContentTypeKey         = "Content-Type"
-	kAcceptKey              = "Accept"
-	kContentTypeJSONValue   = "application/json"
-	kEntityWrappedKey       = "entityWrappedKey"
-	kPolicy                 = "policy"
-	kHmacIntegrityAlgorithm = "HS256"
-	kGmacIntegrityAlgorithm = "GMAC"
-	hexSemverThreshold      = "4.3.0"
-	manifestFileName        = "0.manifest.json"
+	keyAccessSchemaVersion = "1.0"
+	maxFileSizeSupported   = 68719476736 // 64gb
+	defaultMimeType        = "application/octet-stream"
+	tdfAsZip               = "zip"
+	gcmIvSize              = 12
+	aesBlockSize           = 16
+	hmacIntegrityAlgorithm = "HS256"
+	gmacIntegrityAlgorithm = "GMAC"
+	tdfZipReference        = "reference"
+	kKeySize               = 32
+	kWrapped               = "wrapped"
+	kECWrapped             = "ec-wrapped"
+	kKasProtocol           = "kas"
+	kSplitKeyType          = "split"
+	kGCMCipherAlgorithm    = "AES-256-GCM"
+	kGMACPayloadLength     = 16
+	kAssertionSignature    = "assertionSig"
+	kAssertionHash         = "assertionHash"
+	hexSemverThreshold     = "4.3.0"
 )
 
 // Loads and reads ZTDF files
@@ -404,9 +391,7 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
 
 	// * Get base key before autoconfigure to condition off of.
 	if tdfConfig.autoconfigure {
-		var g granter
-		var err error
-		g, err = s.newGranter(ctx, tdfConfig, err)
+		g, err := s.newGranter(ctx, tdfConfig)
 		if err != nil {
 			return err
 		}
@@ -423,7 +408,7 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
 			if err == nil {
 				err = populateKasInfoFromBaseKey(baseKey, tdfConfig)
 			} else {
-				slog.Debug("cannot getting base key, falling back to default kas", slog.Any("error", err))
+				s.Logger().Debug("cannot getting base key, falling back to default kas", slog.Any("error", err))
 				dk := s.defaultKases(tdfConfig)
 				tdfConfig.kaoTemplate = nil
 				tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)
@@ -478,15 +463,19 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
 	return nil
 }
 
-func (s SDK) newGranter(ctx context.Context, tdfConfig *TDFConfig, err error) (granter, error) {
+func (s SDK) newGranter(ctx context.Context, tdfConfig *TDFConfig) (granter, error) {
 	var g granter
+	var err error
 	if len(tdfConfig.attributeValues) > 0 {
-		g, err = newGranterFromAttributes(s.kasKeyCache, tdfConfig.attributeValues...)
+		g, err = newGranterFromAttributes(s.logger, s.kasKeyCache, tdfConfig.attributeValues...)
 	} else if len(tdfConfig.attributes) > 0 {
-		g, err = newGranterFromService(ctx, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
+		g, err = newGranterFromService(ctx, s.logger, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
+	}
+	if err != nil {
+		return g, err
 	}
 	g.keyInfoFetcher = s
-	return g, err
+	return g, nil
 }
 
 func (t *TDFObject) Manifest() Manifest {
@@ -757,7 +746,7 @@ func createPolicyObject(attributes []AttributeValueFQN) (PolicyObject, error) {
 	return policyObj, nil
 }
 
-func allowListFromKASRegistry(ctx context.Context, kasRegistryClient sdkconnect.KeyAccessServerRegistryServiceClient, platformURL string) (AllowList, error) {
+func allowListFromKASRegistry(ctx context.Context, logger *slog.Logger, kasRegistryClient sdkconnect.KeyAccessServerRegistryServiceClient, platformURL string) (AllowList, error) {
 	kases, err := kasRegistryClient.ListKeyAccessServers(ctx, &kasregistry.ListKeyAccessServersRequest{})
 	if err != nil {
 		return nil, fmt.Errorf("kasregistry.ListKeyAccessServers failed: %w", err)
@@ -770,7 +759,7 @@ func allowListFromKASRegistry(ctx context.Context, kasRegistryClient sdkconnect.
 		}
 	}
 	// grpc target does not have a scheme
-	slog.Debug("adding platform URL to KAS allowlist", slog.String("platform_url", platformURL))
+	logger.Debug("adding platform URL to KAS allowlist", slog.String("platform_url", platformURL))
 	err = kasAllowlist.Add(platformURL)
 	if err != nil {
 		return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)
@@ -802,7 +791,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 			if err != nil {
 				return nil, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
 			}
-			allowList, err := allowListFromKASRegistry(context.Background(), s.KeyAccessServerRegistry, platformEndpoint)
+			allowList, err := allowListFromKASRegistry(context.Background(), s.logger, s.KeyAccessServerRegistry, platformEndpoint)
 			if err != nil {
 				return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
 			}
@@ -1605,7 +1594,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		// if ignoreing allowlist then warn
 		// if kas url is not allowed then return error
 		if r.config.ignoreAllowList {
-			slog.WarnContext(ctx, "kasAllowlist is ignored, kas url is allowed", slog.String("kas_url", kasurl))
+			getLogger().WarnContext(ctx, "kasAllowlist is ignored, kas url is allowed", slog.String("kas_url", kasurl))
 		} else if !r.config.kasAllowlist.IsAllowed(kasurl) {
 			reqFail(fmt.Errorf("KasAllowlist: kas url %s is not allowed", kasurl), req)
 			continue
@@ -1705,12 +1694,12 @@ func populateKasInfoFromBaseKey(key *policy.SimpleKasKey, tdfConfig *TDFConfig) 
 
 	// ? Maybe we shouldn't overwrite the key type
 	if tdfConfig.preferredKeyWrapAlg != ocrypto.KeyType(algoString) {
-		slog.Warn("base key is enabled, setting key type", slog.String("key_type", algoString))
+		getLogger().Warn("base key is enabled, setting key type", slog.String("key_type", algoString))
 	}
 	tdfConfig.preferredKeyWrapAlg = ocrypto.KeyType(algoString)
 	tdfConfig.splitPlan = nil
 	if len(tdfConfig.kasInfoList) > 0 {
-		slog.Warn("base key is enabled, overwriting kasInfoList with base key info")
+		getLogger().Warn("base key is enabled, overwriting kasInfoList with base key info")
 	}
 	tdfConfig.kasInfoList = []KASInfo{
 		{

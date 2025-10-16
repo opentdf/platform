@@ -289,3 +289,11 @@ func (ns NamespacesService) RemovePublicKeyFromNamespace(ctx context.Context, r 
 
 	return connect.NewResponse(rsp), nil
 }
+
+func (ns NamespacesService) AssignCertificateToNamespace(_ context.Context, _ *connect.Request[namespaces.AssignCertificateToNamespaceRequest]) (*connect.Response[namespaces.AssignCertificateToNamespaceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("certificate assignment not yet implemented"))
+}
+
+func (ns NamespacesService) RemoveCertificateFromNamespace(_ context.Context, _ *connect.Request[namespaces.RemoveCertificateFromNamespaceRequest]) (*connect.Response[namespaces.RemoveCertificateFromNamespaceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("certificate removal not yet implemented"))
+}

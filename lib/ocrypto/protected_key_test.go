@@ -75,14 +75,22 @@ func TestAESProtectedKey_Export_WithEncapsulator(t *testing.T) {
 	require.NoError(t, err)
 
 	// Mock encapsulator
+	mockEncryptFunc := func(data []byte) ([]byte, error) {
+		// Simple XOR encryption for testing
+		result := make([]byte, len(data))
+		for i, b := range data {
+			result[i] = b ^ 0xFF
+		}
+		return result, nil
+	}
 	mockEncapsulator := &mockEncapsulator{
-		encryptFunc: func(data []byte) ([]byte, error) {
-			// Simple XOR encryption for testing
-			result := make([]byte, len(data))
-			for i, b := range data {
-				result[i] = b ^ 0xFF
+		encryptFunc: mockEncryptFunc,
+		encapsulateFunc: func(k ProtectedKey) ([]byte, error) {
+			aeskey, ok := k.(*AESProtectedKey)
+			if !ok {
+				return nil, assert.AnError
 			}
-			return result, nil
+			return mockEncryptFunc(aeskey.rawKey)
 		},
 	}
 
@@ -104,6 +112,7 @@ func TestAESProtectedKey_Export_EncapsulatorError(t *testing.T) {
 	protectedKey, err := NewAESProtectedKey(key)
 	require.NoError(t, err)
 
+	// Since Export now calls Encrypt, make Encrypt return an error
 	mockEncapsulator := &mockEncapsulator{
 		encryptFunc: func(_ []byte) ([]byte, error) {
 			return nil, assert.AnError
@@ -175,12 +184,13 @@ func TestAESProtectedKey_InterfaceCompliance(t *testing.T) {
 // Mock encapsulator for testing
 type mockEncapsulator struct {
 	encryptFunc      func([]byte) ([]byte, error)
+	encapsulateFunc  func(ProtectedKey) ([]byte, error)
 	publicKeyPEMFunc func() (string, error)
 	ephemeralKeyFunc func() []byte
 }
 
-func (m *mockEncapsulator) Encapsulate(_ ProtectedKey) ([]byte, error) {
-	return nil, nil
+func (m *mockEncapsulator) Encapsulate(pk ProtectedKey) ([]byte, error) {
+	return m.encapsulateFunc(pk)
 }
 
 func (m *mockEncapsulator) Encrypt(data []byte) ([]byte, error) {

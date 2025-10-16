@@ -11,7 +11,6 @@ enum Decision {
   DECISION_UNSPECIFIED = 0;
   DECISION_DENY = 1;
   DECISION_PERMIT = 2;
-  // DECISION_OBLIGATED = 3;
 }
 
 // The EntityIdentifier specifies the actor in an entitlement or decision request - the PE, NPE, or PE+NPE being authorized.
@@ -40,6 +39,13 @@ message EntityIdentifier {
       id: "token_required"
       message: "token must be provided"
       expression: "has(this.jwt) && this.jwt.size() > 0"
+    }];
+
+    // derive the entity from the request's authorization access token JWT, rather than passing in the body
+    google.protobuf.BoolValue with_request_token = 4 [(buf.validate.field).cel = {
+      id: "with_request_token_must_be_true"
+      message: "with_request_token must be true when set"
+      expression: "this == true"
     }];
   }
 }
@@ -84,18 +90,31 @@ message ResourceDecision {
   string ephemeral_resource_id = 1;
   // decision result
   Decision decision = 2;
+  // obligations (fully qualified values) the PEP is required to fulfill on the given resource
+  // i.e. https://<namespace>/obl/<definition name>/value/<value>
+  repeated string required_obligations = 3;
 }
 
 // Can the identified entity/entities access?
 // 1. one entity reference (actor)
 // 2. one action
 // 3. one resource
+//
+// If entitled, checks obligation policy: fulfillable obligations must satisfy all triggered.
 message GetDecisionRequest {
   // an entity must be identified for authorization decisioning
   EntityIdentifier entity_identifier = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   Resource resource = 3 [(buf.validate.field).required = true];
+
+  // obligations (fully qualified values) the requester is capable of fulfilling
+  // i.e. https://<namespace>/obl/<definition name>/value/<value>
+  repeated string fulfillable_obligation_fqns = 4 [(buf.validate.field).cel = {
+    id: "obligation_value_fqns_valid"
+    message: "if provided, fulfillable_obligation_fqns must be between 1 and 50 in count with all valid FQNs"
+    expression: "this.size() == 0 || (this.size() <= 50 && this.all(item, item.isUri()))"
+  }];
 
   option (buf.validate.message).cel = {
     id: "get_decision_request.action_name_required"
@@ -106,26 +125,33 @@ message GetDecisionRequest {
 message GetDecisionResponse {
   // decision on the resource
   ResourceDecision decision = 1;
-  // optional list of obligations represented in URI format
-  // repeated string obligations = 2;
 }
 
 // Can the identified entity/entities access?
 // 1. one entity reference (actor)
 // 2. one action
 // 3. multiple resources
+//
+// If entitled, checks obligation policy: fulfillable obligations must satisfy all triggered.
+//
 // Note: this is a more performant bulk request for multiple resource decisions, up to 1000 per request
 message GetDecisionMultiResourceRequest {
   // an entity must be identified for authorization decisioning
   EntityIdentifier entity_identifier = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
-  repeated Resource resources = 3 [
-    (buf.validate.field).repeated = {
-      min_items: 1
-      max_items: 1000
-    }
-  ];
+  repeated Resource resources = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 1000
+  }];
+
+  // obligations (fully qualified values) the requester is capable of fulfilling
+  // i.e. https://<namespace>/obl/<definition name>/value/<value>
+  repeated string fulfillable_obligation_fqns = 4 [(buf.validate.field).cel = {
+    id: "obligation_value_fqns_valid"
+    message: "if provided, fulfillable_obligation_fqns must be between 1 and 50 in count with all valid FQNs"
+    expression: "this.size() == 0 || (this.size() <= 50 && this.all(item, item.isUri()))"
+  }];
 
   option (buf.validate.message).cel = {
     id: "get_decision_multi_request.action_name_required"
@@ -145,12 +171,10 @@ message GetDecisionMultiResourceResponse {
 // This is a more performant bulk request for complex decisioning (i.e. multiple entity chains or actions on
 // multiple resources)
 message GetDecisionBulkRequest {
-  repeated GetDecisionMultiResourceRequest decision_requests = 1 [
-    (buf.validate.field).repeated = {
-      min_items: 1
-      max_items: 200
-    }
-  ];
+  repeated GetDecisionMultiResourceRequest decision_requests = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+  }];
 }
 message GetDecisionBulkResponse {
   repeated GetDecisionMultiResourceResponse decision_responses = 1;

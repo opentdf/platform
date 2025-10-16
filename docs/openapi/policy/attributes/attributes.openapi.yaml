@@ -135,30 +135,6 @@ paths:
             description: |-
               Required
                Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
-        - name: withValue.withKeyAccessGrants
-          in: query
-          description: Deprecated
-          schema:
-            type: boolean
-            title: with_key_access_grants
-            description: Deprecated
-        - name: withValue.withSubjectMaps
-          in: query
-          schema:
-            type: boolean
-            title: with_subject_maps
-        - name: withValue.withResourceMaps
-          in: query
-          schema:
-            type: boolean
-            title: with_resource_maps
-        - name: withValue.withAttribute.withKeyAccessGrants
-          in: query
-          description: Deprecated
-          schema:
-            type: boolean
-            title: with_key_access_grants
-            description: Deprecated
       responses:
         default:
           description: Error
@@ -426,10 +402,7 @@ paths:
       tags:
         - policy.attributes.AttributesService
       summary: AssignKeyAccessServerToAttribute
-      description: |-
-        --------------------------------------*
-         Attribute <> Key Access Server RPCs
-        ---------------------------------------
+      description: 'Deprecated: utilize AssignPublicKeyToAttribute'
       operationId: policy.attributes.AttributesService.AssignKeyAccessServerToAttribute
       parameters:
         - name: Connect-Protocol-Version
@@ -466,6 +439,7 @@ paths:
       tags:
         - policy.attributes.AttributesService
       summary: RemoveKeyAccessServerFromAttribute
+      description: 'Deprecated: utilize RemovePublicKeyFromAttribute'
       operationId: policy.attributes.AttributesService.RemoveKeyAccessServerFromAttribute
       parameters:
         - name: Connect-Protocol-Version
@@ -502,6 +476,7 @@ paths:
       tags:
         - policy.attributes.AttributesService
       summary: AssignKeyAccessServerToValue
+      description: 'Deprecated: utilize AssignPublicKeyToValue'
       operationId: policy.attributes.AttributesService.AssignKeyAccessServerToValue
       parameters:
         - name: Connect-Protocol-Version
@@ -538,6 +513,7 @@ paths:
       tags:
         - policy.attributes.AttributesService
       summary: RemoveKeyAccessServerFromValue
+      description: 'Deprecated: utilize RemovePublicKeyFromValue'
       operationId: policy.attributes.AttributesService.RemoveKeyAccessServerFromValue
       parameters:
         - name: Connect-Protocol-Version
@@ -1032,39 +1008,22 @@ components:
       required:
         - rule
       additionalProperties: false
-    policy.AttributeValueSelector:
+    policy.Certificate:
       type: object
       properties:
-        withKeyAccessGrants:
-          type: boolean
-          title: with_key_access_grants
-          description: Deprecated
-        withSubjectMaps:
-          type: boolean
-          title: with_subject_maps
-        withResourceMaps:
-          type: boolean
-          title: with_resource_maps
-        withAttribute:
-          title: with_attribute
-          $ref: '#/components/schemas/policy.AttributeValueSelector.AttributeSelector'
-      title: AttributeValueSelector
-      additionalProperties: false
-    policy.AttributeValueSelector.AttributeSelector:
-      type: object
-      properties:
-        withKeyAccessGrants:
-          type: boolean
-          title: with_key_access_grants
-          description: Deprecated
-        withNamespace:
-          title: with_namespace
-          $ref: '#/components/schemas/policy.AttributeValueSelector.AttributeSelector.NamespaceSelector'
-      title: AttributeSelector
-      additionalProperties: false
-    policy.AttributeValueSelector.AttributeSelector.NamespaceSelector:
-      type: object
-      title: NamespaceSelector
+        id:
+          type: string
+          title: id
+          description: generated uuid in database
+        pem:
+          type: string
+          title: pem
+          description: PEM format certificate
+        metadata:
+          title: metadata
+          description: Optional metadata.
+          $ref: '#/components/schemas/common.Metadata'
+      title: Certificate
       additionalProperties: false
     policy.Condition:
       type: object
@@ -1178,7 +1137,7 @@ components:
 
         publicKey:
           title: public_key
-          description: Deprecated
+          description: 'Deprecated: KAS can have multiple key pairs'
           $ref: '#/components/schemas/policy.PublicKey'
         sourceType:
           title: source_type
@@ -1238,7 +1197,88 @@ components:
             $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Keys for the namespace
+        rootCerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Certificate'
+          title: root_certs
+          description: Root certificates for chain of trust
       title: Namespace
+      additionalProperties: false
+    policy.Obligation:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        namespace:
+          title: namespace
+          $ref: '#/components/schemas/policy.Namespace'
+        name:
+          type: string
+          title: name
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.ObligationValue'
+          title: values
+        fqn:
+          type: string
+          title: fqn
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: Obligation
+      additionalProperties: false
+    policy.ObligationTrigger:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        obligationValue:
+          title: obligation_value
+          $ref: '#/components/schemas/policy.ObligationValue'
+        action:
+          title: action
+          $ref: '#/components/schemas/policy.Action'
+        attributeValue:
+          title: attribute_value
+          $ref: '#/components/schemas/policy.Value'
+        context:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.RequestContext'
+          title: context
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: ObligationTrigger
+      additionalProperties: false
+    policy.ObligationValue:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        obligation:
+          title: obligation
+          $ref: '#/components/schemas/policy.Obligation'
+        value:
+          type: string
+          title: value
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.ObligationTrigger'
+          title: triggers
+        fqn:
+          type: string
+          title: fqn
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: ObligationValue
       additionalProperties: false
     policy.PageRequest:
       type: object
@@ -1282,6 +1322,15 @@ components:
           description: Total count of entire list
       title: PageResponse
       additionalProperties: false
+    policy.PolicyEnforcementPoint:
+      type: object
+      properties:
+        clientId:
+          type: string
+          title: client_id
+          minLength: 1
+      title: PolicyEnforcementPoint
+      additionalProperties: false
     policy.PublicKey:
       type: object
       oneOf:
@@ -1310,6 +1359,17 @@ components:
       title: PublicKey
       additionalProperties: false
       description: Deprecated
+    policy.RequestContext:
+      type: object
+      properties:
+        pep:
+          title: pep
+          $ref: '#/components/schemas/policy.PolicyEnforcementPoint'
+      title: RequestContext
+      required:
+        - pep
+      additionalProperties: false
+      description: Holds the context needed for obligation fulfillment
     policy.ResourceMapping:
       type: object
       properties:
@@ -1502,6 +1562,11 @@ components:
           items:
             $ref: '#/components/schemas/policy.ResourceMapping'
           title: resource_mappings
+        obligations:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Obligation'
+          title: obligations
         metadata:
           title: metadata
           description: Common metadata
@@ -1517,6 +1582,7 @@ components:
           $ref: '#/components/schemas/policy.attributes.AttributeKeyAccessServer'
       title: AssignKeyAccessServerToAttributeRequest
       additionalProperties: false
+      description: 'Deprecated: utilize AssignPublicKeyToAttributeRequest'
     policy.attributes.AssignKeyAccessServerToAttributeResponse:
       type: object
       properties:
@@ -1534,6 +1600,7 @@ components:
           $ref: '#/components/schemas/policy.attributes.ValueKeyAccessServer'
       title: AssignKeyAccessServerToValueRequest
       additionalProperties: false
+      description: 'Deprecated: utilize AssignPublicKeyToValueRequest'
     policy.attributes.AssignKeyAccessServerToValueResponse:
       type: object
       properties:
@@ -1768,7 +1835,7 @@ components:
           type: string
           title: id
           format: uuid
-          description: Deprecated
+          description: 'Deprecated: utilize identifier'
           deprecated: true
       title: GetAttributeRequest
       additionalProperties: false
@@ -1817,7 +1884,7 @@ components:
           type: string
           title: id
           format: uuid
-          description: Deprecated
+          description: 'Deprecated: utilize identifier'
           deprecated: true
       title: GetAttributeValueRequest
       additionalProperties: false
@@ -1858,12 +1925,6 @@ components:
           description: |-
             Required
              Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
-        withValue:
-          title: with_value
-          description: |-
-            Optional
-             This attribute value selector is not used currently, but left here for future use.
-          $ref: '#/components/schemas/policy.AttributeValueSelector'
       title: GetAttributeValuesByFqnsRequest
       additionalProperties: false
     policy.attributes.GetAttributeValuesByFqnsResponse:
@@ -1976,6 +2037,7 @@ components:
           $ref: '#/components/schemas/policy.attributes.AttributeKeyAccessServer'
       title: RemoveKeyAccessServerFromAttributeRequest
       additionalProperties: false
+      description: 'Deprecated: utilize RemovePublicKeyFromAttributeRequest'
     policy.attributes.RemoveKeyAccessServerFromAttributeResponse:
       type: object
       properties:
@@ -1993,6 +2055,7 @@ components:
           $ref: '#/components/schemas/policy.attributes.ValueKeyAccessServer'
       title: RemoveKeyAccessServerFromValueRequest
       additionalProperties: false
+      description: 'Deprecated: utilize RemovePublicKeyFromValueRequest'
     policy.attributes.RemoveKeyAccessServerFromValueResponse:
       type: object
       properties:

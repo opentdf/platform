@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.7.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.6.0...lib/ocrypto/v0.7.0) (2025-10-15)
+
+
+### Features
+
+* **core:** Adds helper `KeyType` method ([#2735](https://github.com/opentdf/platform/issues/2735)) ([7147c4b](https://github.com/opentdf/platform/commit/7147c4bcee9f691b6e9684e9922c16b55f0b2950))
+* use public AES protected key from lib/ocrypto ([#2600](https://github.com/opentdf/platform/issues/2600)) ([75d7590](https://github.com/opentdf/platform/commit/75d7590ec062f822045027d4eb0b59a48bdea465))
+
+## [0.6.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.5.0...lib/ocrypto/v0.6.0) (2025-09-11)
+
+
+### Bug Fixes
+
+* have export call encrypt instead of encapsulate ([#2709](https://github.com/opentdf/platform/issues/2709)) ([cdff893](https://github.com/opentdf/platform/commit/cdff893a09b66a386ec7ff19490ff777cdb84a14))
+
+## [0.5.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.4.0...lib/ocrypto/v0.5.0) (2025-09-04)
+
+
+### Features
+
+* **core:** Encapsulate&gt;Encrypt ([#2676](https://github.com/opentdf/platform/issues/2676)) ([3c5a614](https://github.com/opentdf/platform/commit/3c5a6145c9bcac47001639bdcf2576a444493dd5))
+
 ## [0.4.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.3.0...lib/ocrypto/v0.4.0) (2025-09-02)
 
 

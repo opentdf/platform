@@ -457,6 +457,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.RemoveObligationTriggerResponse'
+  /policy.obligations.Service/ListObligationTriggers:
+    post:
+      tags:
+        - policy.obligations.Service
+      summary: ListObligationTriggers
+      operationId: policy.obligations.Service.ListObligationTriggers
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.obligations.ListObligationTriggersRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.obligations.ListObligationTriggersResponse'
 components:
   schemas:
     common.MetadataUpdateEnum:
@@ -528,6 +563,40 @@ components:
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
+    common.IdFqnIdentifier:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
+      title: IdFqnIdentifier
+      additionalProperties: false
+    common.IdNameIdentifier:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+        name:
+          type: string
+          title: name
+          maxLength: 253
+          minLength: 1
+          description: |+
+            Name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.:
+            ```
+            this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
+            ```
+
+      title: IdNameIdentifier
+      additionalProperties: false
     common.Metadata:
       type: object
       properties:
@@ -771,6 +840,23 @@ components:
       required:
         - rule
       additionalProperties: false
+    policy.Certificate:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: generated uuid in database
+        pem:
+          type: string
+          title: pem
+          description: PEM format certificate
+        metadata:
+          title: metadata
+          description: Optional metadata.
+          $ref: '#/components/schemas/common.Metadata'
+      title: Certificate
+      additionalProperties: false
     policy.Condition:
       type: object
       properties:
@@ -883,7 +969,7 @@ components:
 
         publicKey:
           title: public_key
-          description: Deprecated
+          description: 'Deprecated: KAS can have multiple key pairs'
           $ref: '#/components/schemas/policy.PublicKey'
         sourceType:
           title: source_type
@@ -943,6 +1029,12 @@ components:
             $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Keys for the namespace
+        rootCerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Certificate'
+          title: root_certs
+          description: Root certificates for chain of trust
       title: Namespace
       additionalProperties: false
     policy.Obligation:
@@ -962,6 +1054,9 @@ components:
           items:
             $ref: '#/components/schemas/policy.ObligationValue'
           title: values
+        fqn:
+          type: string
+          title: fqn
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -982,6 +1077,11 @@ components:
         attributeValue:
           title: attribute_value
           $ref: '#/components/schemas/policy.Value'
+        context:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.RequestContext'
+          title: context
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -999,6 +1099,14 @@ components:
         value:
           type: string
           title: value
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.ObligationTrigger'
+          title: triggers
+        fqn:
+          type: string
+          title: fqn
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -1046,6 +1154,15 @@ components:
           description: Total count of entire list
       title: PageResponse
       additionalProperties: false
+    policy.PolicyEnforcementPoint:
+      type: object
+      properties:
+        clientId:
+          type: string
+          title: client_id
+          minLength: 1
+      title: PolicyEnforcementPoint
+      additionalProperties: false
     policy.PublicKey:
       type: object
       oneOf:
@@ -1074,6 +1191,17 @@ components:
       title: PublicKey
       additionalProperties: false
       description: Deprecated
+    policy.RequestContext:
+      type: object
+      properties:
+        pep:
+          title: pep
+          $ref: '#/components/schemas/policy.PolicyEnforcementPoint'
+      title: RequestContext
+      required:
+        - pep
+      additionalProperties: false
+      description: Holds the context needed for obligation fulfillment
     policy.ResourceMapping:
       type: object
       properties:
@@ -1266,6 +1394,11 @@ components:
           items:
             $ref: '#/components/schemas/policy.ResourceMapping'
           title: resource_mappings
+        obligations:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Obligation'
+          title: obligations
         metadata:
           title: metadata
           description: Common metadata
@@ -1275,16 +1408,24 @@ components:
     policy.obligations.AddObligationTriggerRequest:
       type: object
       properties:
-        obligationValueId:
-          type: string
-          title: obligation_value_id
+        obligationValue:
+          title: obligation_value
           description: Required
-        actionId:
-          type: string
-          title: action_id
-        attributeValueId:
-          type: string
-          title: attribute_value_id
+          $ref: '#/components/schemas/common.IdFqnIdentifier'
+        action:
+          title: action
+          description: Required
+          $ref: '#/components/schemas/common.IdNameIdentifier'
+        attributeValue:
+          title: attribute_value
+          description: Required
+          $ref: '#/components/schemas/common.IdFqnIdentifier'
+        context:
+          title: context
+          description: |-
+            Optional
+             The request context for this obligation value policy decisioning.
+          $ref: '#/components/schemas/policy.RequestContext'
         metadata:
           title: metadata
           description: |-
@@ -1292,6 +1433,10 @@ components:
              Common metadata
           $ref: '#/components/schemas/common.MetadataMutable'
       title: AddObligationTriggerRequest
+      required:
+        - obligationValue
+        - action
+        - attributeValue
       additionalProperties: false
       description: Triggers
     policy.obligations.AddObligationTriggerResponse:
@@ -1304,30 +1449,35 @@ components:
       additionalProperties: false
     policy.obligations.CreateObligationRequest:
       type: object
-      oneOf:
-        - properties:
-            fqn:
-              type: string
-              title: fqn
-          title: fqn
-          required:
-            - fqn
-        - properties:
-            id:
-              type: string
-              title: id
-          title: id
-          required:
-            - id
       properties:
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
         name:
           type: string
           title: name
+          maxLength: 253
+          description: |+
+            Obligation name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.:
+            ```
+            this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
+            ```
+
         values:
           type: array
           items:
             type: string
+            maxLength: 253
+            pattern: ^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$
+            uniqueItems: true
           title: values
+          uniqueItems: true
           description: Optional
         metadata:
           title: metadata
@@ -1336,6 +1486,8 @@ components:
              Common metadata
           $ref: '#/components/schemas/common.MetadataMutable'
       title: CreateObligationRequest
+      required:
+        - name
       additionalProperties: false
     policy.obligations.CreateObligationResponse:
       type: object
@@ -1347,25 +1499,34 @@ components:
       additionalProperties: false
     policy.obligations.CreateObligationValueRequest:
       type: object
-      oneOf:
-        - properties:
-            fqn:
-              type: string
-              title: fqn
-          title: fqn
-          required:
-            - fqn
-        - properties:
-            id:
-              type: string
-              title: id
-          title: id
-          required:
-            - id
       properties:
+        obligationId:
+          type: string
+          title: obligation_id
+          format: uuid
+        obligationFqn:
+          type: string
+          title: obligation_fqn
+          minLength: 1
+          format: uri
         value:
           type: string
           title: value
+          maxLength: 253
+          description: |+
+            Obligation value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored value will be normalized to lower case.:
+            ```
+            this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
+            ```
+
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.obligations.ValueTriggerRequest'
+          title: triggers
+          description: |-
+            Optional
+             Combination of action and attribute_value that will trigger this obligation value policy decisioning.
         metadata:
           title: metadata
           description: |-
@@ -1373,6 +1534,8 @@ components:
              Common metadata
           $ref: '#/components/schemas/common.MetadataMutable'
       title: CreateObligationValueRequest
+      required:
+        - value
       additionalProperties: false
     policy.obligations.CreateObligationValueResponse:
       type: object
@@ -1384,21 +1547,16 @@ components:
       additionalProperties: false
     policy.obligations.DeleteObligationRequest:
       type: object
-      oneOf:
-        - properties:
-            fqn:
-              type: string
-              title: fqn
-          title: fqn
-          required:
-            - fqn
-        - properties:
-            id:
-              type: string
-              title: id
+      properties:
+        id:
+          type: string
           title: id
-          required:
-            - id
+          format: uuid
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
       title: DeleteObligationRequest
       additionalProperties: false
     policy.obligations.DeleteObligationResponse:
@@ -1411,21 +1569,16 @@ components:
       additionalProperties: false
     policy.obligations.DeleteObligationValueRequest:
       type: object
-      oneOf:
-        - properties:
-            fqn:
-              type: string
-              title: fqn
-          title: fqn
-          required:
-            - fqn
-        - properties:
-            id:
-              type: string
-              title: id
+      properties:
+        id:
+          type: string
           title: id
-          required:
-            - id
+          format: uuid
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
       title: DeleteObligationValueRequest
       additionalProperties: false
     policy.obligations.DeleteObligationValueResponse:
@@ -1438,21 +1591,16 @@ components:
       additionalProperties: false
     policy.obligations.GetObligationRequest:
       type: object
-      oneOf:
-        - properties:
-            fqn:
-              type: string
-              title: fqn
-          title: fqn
-          required:
-            - fqn
-        - properties:
-            id:
-              type: string
-              title: id
+      properties:
+        id:
+          type: string
           title: id
-          required:
-            - id
+          format: uuid
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
       title: GetObligationRequest
       additionalProperties: false
       description: Definitions
@@ -1466,21 +1614,16 @@ components:
       additionalProperties: false
     policy.obligations.GetObligationValueRequest:
       type: object
-      oneOf:
-        - properties:
-            fqn:
-              type: string
-              title: fqn
-          title: fqn
-          required:
-            - fqn
-        - properties:
-            id:
-              type: string
-              title: id
+      properties:
+        id:
+          type: string
           title: id
-          required:
-            - id
+          format: uuid
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
       title: GetObligationValueRequest
       additionalProperties: false
       description: Values
@@ -1499,7 +1642,15 @@ components:
           type: array
           items:
             type: string
+            minLength: 1
+            format: uri
+            maxItems: 250
+            minItems: 1
+            uniqueItems: true
           title: fqns
+          maxItems: 250
+          minItems: 1
+          uniqueItems: true
       title: GetObligationValuesByFQNsRequest
       additionalProperties: false
     policy.obligations.GetObligationValuesByFQNsResponse:
@@ -1531,7 +1682,15 @@ components:
           type: array
           items:
             type: string
+            minLength: 1
+            format: uri
+            maxItems: 250
+            minItems: 1
+            uniqueItems: true
           title: fqns
+          maxItems: 250
+          minItems: 1
+          uniqueItems: true
       title: GetObligationsByFQNsRequest
       additionalProperties: false
     policy.obligations.GetObligationsByFQNsResponse:
@@ -1556,24 +1715,49 @@ components:
           $ref: '#/components/schemas/policy.Obligation'
       title: FqnObligationMapEntry
       additionalProperties: false
+    policy.obligations.ListObligationTriggersRequest:
+      type: object
+      properties:
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+        pagination:
+          title: pagination
+          description: Optional
+          $ref: '#/components/schemas/policy.PageRequest'
+      title: ListObligationTriggersRequest
+      additionalProperties: false
+    policy.obligations.ListObligationTriggersResponse:
+      type: object
+      properties:
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.ObligationTrigger'
+          title: triggers
+        pagination:
+          title: pagination
+          $ref: '#/components/schemas/policy.PageResponse'
+      title: ListObligationTriggersResponse
+      additionalProperties: false
     policy.obligations.ListObligationsRequest:
       type: object
-      oneOf:
-        - properties:
-            fqn:
-              type: string
-              title: fqn
-          title: fqn
-          required:
-            - fqn
-        - properties:
-            id:
-              type: string
-              title: id
-          title: id
-          required:
-            - id
       properties:
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
         pagination:
           title: pagination
           description: Optional
@@ -1599,6 +1783,8 @@ components:
         id:
           type: string
           title: id
+          format: uuid
+          description: Required
       title: RemoveObligationTriggerRequest
       additionalProperties: false
     policy.obligations.RemoveObligationTriggerResponse:
@@ -1615,11 +1801,19 @@ components:
         id:
           type: string
           title: id
+          format: uuid
           description: Required
         name:
           type: string
           title: name
-          description: Optional
+          maxLength: 253
+          description: |+
+            Optional
+            Obligation name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.:
+            ```
+            size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true
+            ```
+
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.MetadataMutable'
@@ -1642,13 +1836,32 @@ components:
         id:
           type: string
           title: id
+          format: uuid
           description: Required
         value:
           type: string
           title: value
-          description: Optional
+          maxLength: 253
+          description: |+
+            Optional
+            Obligation value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored value will be normalized to lower case.:
+            ```
+            size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true
+            ```
+
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.obligations.ValueTriggerRequest'
+          title: triggers
+          description: |-
+            Optional
+             Obligation Triggers provided here will replace all existing records in the database.
         metadata:
           title: metadata
+          description: |-
+            Optional
+             Common metadata
           $ref: '#/components/schemas/common.MetadataMutable'
         metadataUpdateBehavior:
           title: metadata_update_behavior
@@ -1662,6 +1875,26 @@ components:
           title: value
           $ref: '#/components/schemas/policy.ObligationValue'
       title: UpdateObligationValueResponse
+      additionalProperties: false
+    policy.obligations.ValueTriggerRequest:
+      type: object
+      properties:
+        action:
+          title: action
+          description: Required. The ID of the action that will trigger this obligation value policy decisioning.
+          $ref: '#/components/schemas/common.IdNameIdentifier'
+        attributeValue:
+          title: attribute_value
+          description: Required. The attribute value ID that will trigger this obligation value policy decisioning.
+          $ref: '#/components/schemas/common.IdFqnIdentifier'
+        context:
+          title: context
+          description: Optional. The request context for this obligation value policy decisioning.
+          $ref: '#/components/schemas/policy.RequestContext'
+      title: ValueTriggerRequest
+      required:
+        - action
+        - attributeValue
       additionalProperties: false
     connect-protocol-version:
       type: number

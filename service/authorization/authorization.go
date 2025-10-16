@@ -730,9 +730,6 @@ func retrieveAttributeDefinitions(ctx context.Context, attrFqns []string, sdk *o
 	}
 
 	resp, err := sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: false,
-		},
 		Fqns: attrFqns,
 	})
 	if err != nil {

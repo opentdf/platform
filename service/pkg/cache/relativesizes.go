@@ -1,4 +1,4 @@
-package util
+package cache
 
 import (
 	"strconv"
@@ -10,7 +10,7 @@ import (
 // If the input string cannot be parsed, the function returns the provided `defaultSize`.
 //
 // Example inputs: "10MB", "2 gb", "512kb", "100b"
-func RelativeFileSizeToBytes(size string, defaultSize int64) int64 {
+func relativeFileSizeToBytes(size string, defaultSize int64) int64 {
 	s := strings.TrimSpace(strings.ToLower(size))
 	multiplier := int64(1)
 

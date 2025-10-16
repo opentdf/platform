@@ -125,6 +125,94 @@ func unmarshalPrivatePublicKeyContext(pubCtx, privCtx []byte) (*policy.PublicKey
 	return pubKey, privKey, nil
 }
 
+func unmarshalObligationTriggers(triggersJSON []byte) ([]*policy.ObligationTrigger, error) {
+	obligationTriggers := make([]*policy.ObligationTrigger, 0)
+	if triggersJSON == nil {
+		return obligationTriggers, nil
+	}
+
+	raw := []json.RawMessage{}
+	if err := json.Unmarshal(triggersJSON, &raw); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal triggers array [%s]: %w", string(triggersJSON), err)
+	}
+
+	triggers := make([]*policy.ObligationTrigger, 0, len(raw))
+	for _, r := range raw {
+		t := &policy.ObligationTrigger{}
+		if err := protojson.Unmarshal(r, t); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal trigger [%s]: %w", string(r), err)
+		}
+		triggers = append(triggers, t)
+	}
+
+	return triggers, nil
+}
+
+func unmarshalObligationTrigger(triggerJSON []byte) (*policy.ObligationTrigger, error) {
+	trigger := &policy.ObligationTrigger{}
+	if triggerJSON == nil {
+		return trigger, nil
+	}
+
+	if err := protojson.Unmarshal(triggerJSON, trigger); err != nil {
+		return nil, errors.Join(fmt.Errorf("failed to unmarshal obligation trigger context [%s]: %w", string(triggerJSON), err), db.ErrUnmarshalValueFailed)
+	}
+	return trigger, nil
+}
+
+func unmarshalObligations(obligationsJSON []byte) ([]*policy.Obligation, error) {
+	if obligationsJSON == nil {
+		return nil, nil
+	}
+
+	raw := []json.RawMessage{}
+	if err := json.Unmarshal(obligationsJSON, &raw); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal obligations array [%s]: %w", string(obligationsJSON), err)
+	}
+
+	obls := make([]*policy.Obligation, 0, len(raw))
+	for _, r := range raw {
+		o := &policy.Obligation{}
+		if err := protojson.Unmarshal(r, o); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal obligation [%s]: %w", string(r), err)
+		}
+		obls = append(obls, o)
+	}
+
+	return obls, nil
+}
+
+func unmarshalObligationValues(valuesJSON []byte) ([]*policy.ObligationValue, error) {
+	if valuesJSON == nil {
+		return nil, nil
+	}
+
+	raw := []json.RawMessage{}
+	if err := json.Unmarshal(valuesJSON, &raw); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal values array [%s]: %w", string(valuesJSON), err)
+	}
+
+	values := make([]*policy.ObligationValue, 0, len(raw))
+	for _, r := range raw {
+		v := &policy.ObligationValue{}
+		if err := protojson.Unmarshal(r, v); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal value [%s]: %w", string(r), err)
+		}
+		values = append(values, v)
+	}
+
+	return values, nil
+}
+
+func unmarshalNamespace(namespaceJSON []byte, namespace *policy.Namespace) error {
+	if namespaceJSON != nil {
+		if err := protojson.Unmarshal(namespaceJSON, namespace); err != nil {
+			return fmt.Errorf("failed to unmarshal namespaceJSON [%s]: %w", string(namespaceJSON), err)
+		}
+	}
+	return nil
+}
+
 func pgtypeUUID(s string) pgtype.UUID {
 	u, err := uuid.Parse(s)
 

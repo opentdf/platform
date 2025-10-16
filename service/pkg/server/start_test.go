@@ -150,9 +150,7 @@ func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 		},
 		Port: 43481,
 	},
-		&logger.Logger{
-			Logger: slog.New(slog.Default().Handler()),
-		},
+		logger.CreateTestLogger(),
 		&cache.Manager{},
 	)
 }
@@ -362,12 +360,12 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 						"test": {},
 					},
 				},
-				otdf:                s,
-				client:              nil,
-				keyManagerFactories: []trust.NamedKeyManagerFactory{},
-				logger:              logger,
-				reg:                 registry,
-				cacheManager:        &cache.Manager{},
+				otdf:                   s,
+				client:                 nil,
+				keyManagerCtxFactories: []trust.NamedKeyManagerCtxFactory{},
+				logger:                 logger,
+				reg:                    registry,
+				cacheManager:           &cache.Manager{},
 			})
 			require.NoError(t, err)
 			defer cleanup()
@@ -527,10 +525,22 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Success() {
 
 			err = Start(
 				WithConfigFile(tempFilePath),
+				WithConfigLoaderOrder([]string{
+					config.LoaderNameEnvironmentValue,
+					config.LoaderNameFile,
+					config.LoaderNameDefaultSettings,
+				}),
 			)
-			// require that it got past the service config and mode setup
-			// expected error when trying to establish db connection
-			require.ErrorContains(t, err, "failed to connect to database")
+			// The ServiceManager now handles these configurations more gracefully
+			// If database is available, services should start successfully
+			// If database is not available, we expect a database connection error
+			if err != nil {
+				// If there's an error, it should be related to database connection
+				require.ErrorContains(t, err, "failed to connect to database")
+			} else {
+				// If no error, it means database is available and services started successfully
+				t.Log("Services started successfully - database connection is available")
+			}
 		})
 	}
 }

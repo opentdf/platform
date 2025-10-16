@@ -1,4 +1,4 @@
-package util
+package cache
 
 import (
 	"testing"
@@ -21,7 +21,7 @@ func TestRelativeFileSizeToBytes(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := RelativeFileSizeToBytes(tt.input, 1024*1024*1024)
+		got := relativeFileSizeToBytes(tt.input, 1024*1024*1024)
 		if tt.shouldErr {
 			if got != 1024*1024*1024 {
 				t.Errorf("expected fallback value for input %q, got %d", tt.input, got)

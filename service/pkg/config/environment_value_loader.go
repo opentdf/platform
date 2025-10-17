@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -15,6 +16,7 @@ const LoaderNameEnvironmentValue = "environment-value"
 type EnvironmentValueLoader struct {
 	allowListMap map[string]struct{}
 	viper        *viper.Viper
+	envPrefix    string
 }
 
 // NewEnvironmentValueLoader creates a new Viper-based configuration loader
@@ -40,6 +42,7 @@ func NewEnvironmentValueLoader(key string, allowList []string) (*EnvironmentValu
 	result := &EnvironmentValueLoader{
 		allowListMap: allowListMap,
 		viper:        v,
+		envPrefix:    strings.ToUpper(key),
 	}
 	return result, nil
 }
@@ -56,7 +59,41 @@ func (l *EnvironmentValueLoader) Get(key string) (any, error) {
 
 // GetConfigKeys returns all the configuration keys found in the environment variables.
 func (l *EnvironmentValueLoader) GetConfigKeys() ([]string, error) {
-	return l.viper.AllKeys(), nil
+	// Start with keys Viper already knows about (from defaults/file loads)
+	keys := make([]string, 0, len(l.viper.AllKeys()))
+	keys = append(keys, l.viper.AllKeys()...)
+
+	// Discover environment variables with the configured prefix and convert them to dotted keys
+	// Example: OPENTDF_SERVICES_KAS_ROOT_KEY -> services.kas.root_key
+	// Note: Viper treats keys case-insensitively; we normalize to lower-case dotted form here
+	prefix := l.envPrefix + "_"
+	for _, env := range os.Environ() {
+		// env is in the form KEY=VALUE
+		if !strings.HasPrefix(env, prefix) {
+			continue
+		}
+		// Split only on first '=' to get the key
+		eq := strings.IndexByte(env, '=')
+		if eq <= 0 {
+			continue
+		}
+		key := env[:eq]
+		// Trim prefix
+		raw := strings.TrimPrefix(key, prefix)
+		if raw == "" {
+			continue
+		}
+		// Convert to dotted lower-case key path
+		dotted := strings.ToLower(strings.ReplaceAll(raw, "_", "."))
+		// If an allow-list is set, skip keys not present in it
+		if l.allowListMap != nil {
+			if _, ok := l.allowListMap[dotted]; !ok {
+				continue
+			}
+		}
+		keys = append(keys, dotted)
+	}
+	return keys, nil
 }
 
 // Load loads the configuration into the provided struct

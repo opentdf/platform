@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 
 	"github.com/go-playground/validator/v10"
@@ -190,6 +191,22 @@ func (c *Config) Reload(ctx context.Context) error {
 		assigned = make(map[string]struct{})
 		orderedViper := viper.NewWithOptions(viper.WithLogger(slog.Default()))
 
+		// If an environment loader is present, configure orderedViper to read env directly.
+		for _, loader := range c.loaders {
+			if loader.Name() == LoaderNameEnvironmentValue {
+				// Match the environment loader's behavior
+				orderedViper.SetEnvPrefix("OPENTDF") // default; overridden below if loader exposes different
+				if evl, ok := loader.(*EnvironmentValueLoader); ok {
+					if evl.envPrefix != "" {
+						orderedViper.SetEnvPrefix(evl.envPrefix)
+					}
+				}
+				orderedViper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+				orderedViper.AutomaticEnv()
+				break
+			}
+		}
+
 		// Loop through loaders in their order of priority.
 		for _, loader := range c.loaders {
 			// The Load call allows the loader to refresh its internal state (e.g., re-read file, re-query DB).
@@ -228,6 +245,13 @@ func (c *Config) Reload(ctx context.Context) error {
 					continue
 				}
 				if loaderValue != nil {
+					// Log loader and key only; never log values in merge path
+					slog.DebugContext(
+						ctx,
+						"config merge",
+						slog.String("loader", loader.Name()),
+						slog.String("key", key),
+					)
 					orderedViper.Set(key, loaderValue)
 					assigned[key] = struct{}{}
 				}

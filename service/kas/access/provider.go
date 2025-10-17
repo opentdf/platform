@@ -40,7 +40,7 @@ type KASConfig struct {
 	// Deprecated
 	RSACertID string `mapstructure:"rsacertid" json:"rsacertid"`
 
-	RootKey string `mapstructure:"root_key" json:"root_key"`
+	RootKey config.Secret `mapstructure:"root_key" json:"root_key"`
 
 	KeyCacheExpiration time.Duration `mapstructure:"key_cache_expiration" json:"key_cache_expiration"`
 

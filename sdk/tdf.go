@@ -376,6 +376,29 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		}
 		boundAssertions = append(boundAssertions, boundAssertion)
 	}
+
+	// Sign any unsigned assertions with the DEK (payload key)
+	// All assertions MUST have cryptographic bindings for security
+	dekKey := AssertionKey{
+		Alg: AssertionKeyAlgHS256,
+		Key: tdfObject.payloadKey[:],
+	}
+	for i := range boundAssertions {
+		if boundAssertions[i].Binding.IsEmpty() {
+			// Get the hash of the assertion
+			assertionHashBytes, err := boundAssertions[i].GetHash()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get assertion hash: %w", err)
+			}
+			assertionHash := string(assertionHashBytes)
+
+			// Sign with DEK
+			if err := boundAssertions[i].Sign(assertionHash, tdfObject.manifest.RootSignature.Signature, dekKey); err != nil {
+				return nil, fmt.Errorf("failed to sign assertion %q with DEK: %w", boundAssertions[i].ID, err)
+			}
+		}
+	}
+
 	tdfObject.manifest.Assertions = boundAssertions
 
 	manifestAsStr, err := json.Marshal(tdfObject.manifest)

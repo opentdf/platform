@@ -199,6 +199,64 @@ if manifest.RootSignature.Signature != verifiedSig {  // Both base64-encoded
 4. **Audit Logging**: Binders and validators should log operations for compliance and debugging
 5. **Pattern Safety**: Regex patterns must be carefully designed to avoid unintended validator selection
 6. **Binding Integrity**: The root signature binding ensures assertions cannot be moved between TDFs or added/removed without detection
+7. **Mandatory Bindings**: All assertions MUST have cryptographic bindings. Assertions without explicit signing keys are automatically signed with the DEK (payload key) to maintain security while supporting backward compatibility
+
+## Cross-SDK Compatibility
+
+The Go SDK supports two assertion binding formats to maintain interoperability with Java and JavaScript SDKs:
+
+### Format v2 (Current - Go SDK)
+```
+assertionSig = rootSignature
+```
+- Used by Go SDK for newly created TDFs
+- More secure binding directly to manifest root signature
+- No need to reconstruct aggregate hash during verification
+
+### Format v1 (Legacy - Java/JS SDKs)
+```
+assertionSig = base64(aggregateHash + assertionHash)
+```
+- Used by older Java and JavaScript SDK versions
+- Supported for backward compatibility when reading TDFs
+- Less secure but maintained for cross-SDK interoperability
+
+### Auto-Detection
+Both `SystemMetadataAssertionProvider` and `KeyAssertionValidator` implement automatic format detection:
+
+1. First attempt to verify using v2 format (root signature comparison)
+2. If v2 fails, fall back to v1 legacy verification
+3. Log format detection for observability
+
+This ensures:
+- ✅ Go SDK can read TDFs created by Java/JS SDKs (v1 format)
+- ✅ Java/JS SDKs can read TDFs created by Go SDK with explicit keys (v2 format)
+- ✅ Tamper detection works correctly in both formats
+- ✅ No breaking changes for existing TDF consumers
+
+### DEK Auto-Signing
+
+Assertions without explicit signing keys are automatically signed with the DEK (payload key) during TDF creation:
+
+```go
+// In sdk/tdf.go during CreateTDF:
+// 1. Binders create assertions (may be unsigned if no explicit key)
+for _, binder := range assertionRegistry.binders {
+    boundAssertion := binder.Bind(ctx, manifest)
+    boundAssertions = append(boundAssertions, boundAssertion)
+}
+
+// 2. Auto-sign any unsigned assertions with DEK
+dekKey := AssertionKey{Alg: AssertionKeyAlgHS256, Key: payloadKey[:]}
+for i := range boundAssertions {
+    if boundAssertions[i].Binding.IsEmpty() {
+        assertionHash := boundAssertions[i].GetHash()
+        boundAssertions[i].Sign(assertionHash, manifest.RootSignature.Signature, dekKey)
+    }
+}
+```
+
+This ensures all assertions have mandatory cryptographic bindings while maintaining backward compatibility with test fixtures and SDKs that don't provide explicit keys.
 
 ## Acceptance Criteria
 

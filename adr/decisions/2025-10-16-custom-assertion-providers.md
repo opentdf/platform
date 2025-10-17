@@ -200,6 +200,7 @@ if manifest.RootSignature.Signature != verifiedSig {  // Both base64-encoded
 5. **Pattern Safety**: Regex patterns must be carefully designed to avoid unintended validator selection
 6. **Binding Integrity**: The root signature binding ensures assertions cannot be moved between TDFs or added/removed without detection
 7. **Mandatory Bindings**: All assertions MUST have cryptographic bindings. Assertions without explicit signing keys are automatically signed with the DEK (payload key) to maintain security while supporting backward compatibility
+8. **Verification Mode Security**: Validators respect the configured verification mode to prevent security bypasses (see Verification Modes section below)
 
 ## Cross-SDK Compatibility
 
@@ -257,6 +258,73 @@ for i := range boundAssertions {
 ```
 
 This ensures all assertions have mandatory cryptographic bindings while maintaining backward compatibility with test fixtures and SDKs that don't provide explicit keys.
+
+## Verification Modes
+
+The SDK supports three verification modes that control how assertion validation errors are handled. This provides flexibility for different security requirements and deployment scenarios.
+
+### Mode Comparison Matrix
+
+| Scenario | PermissiveMode | FailFast (Default) | StrictMode |
+|----------|---------------|-------------------|------------|
+| **Unknown assertion** | Skip + warn | Skip + warn | **FAIL** |
+| **Missing verification keys** | Skip + warn | **FAIL** | **FAIL** |
+| **Missing binding** | **FAIL** | **FAIL** | **FAIL** |
+| **Tampered binding** | **FAIL** | **FAIL** | **FAIL** |
+| **Verification failure** | Log + continue | **FAIL** | **FAIL** |
+| **Validation failure** | Log + continue | **FAIL** | **FAIL** |
+
+### Mode Selection Guidelines
+
+**PermissiveMode**:
+- Use Case: Development, testing, forward compatibility testing
+- Security Level: Low - May allow tampered assertions
+- Compatibility: Highest - Works with partial configurations
+- **WARNING**: Never use in production with sensitive data
+
+**FailFast (Default)**:
+- Use Case: Production deployments with known assertion types
+- Security Level: High - Detects tampering, prevents key bypass
+- Compatibility: Good - Forward compatible with unknown assertions
+- **Recommended**: Best balance for most production scenarios
+
+**StrictMode**:
+- Use Case: High-security, regulated environments, controlled TDF formats
+- Security Level: Maximum - Every assertion must be explicitly validated
+- Compatibility: Lowest - Breaks on unknown assertions
+- **Recommended**: Environments where all TDF formats are controlled
+
+### Security Fix (2025-10-17)
+
+A critical security vulnerability was identified and fixed where validators would skip verification when no keys were configured, rather than failing securely. The fix ensures:
+
+1. **FailFast and StrictMode**: Validators with empty key sets now fail with an error instead of silently skipping
+2. **PermissiveMode**: Maintains backward compatibility by logging warnings but continuing
+3. **Attack Prevention**: Prevents bypass attacks where adversaries use unconfigured key IDs
+
+Implementation details:
+- Added `verificationMode` field to all validators
+- Added `SetVerificationMode()` method for mode propagation
+- SDK automatically propagates mode to all registered validators during TDF reading
+
+### Usage Example
+
+```go
+// Production: Fail-secure with balanced compatibility (default)
+reader, _ := client.LoadTDF(file,
+    sdk.WithAssertionValidator(pattern, validator),
+    sdk.WithAssertionVerificationMode(sdk.FailFast))
+
+// Development: Best-effort validation with warnings
+reader, _ := client.LoadTDF(file,
+    sdk.WithAssertionValidator(pattern, validator),
+    sdk.WithAssertionVerificationMode(sdk.PermissiveMode))
+
+// High-security: Zero tolerance for unknowns
+reader, _ := client.LoadTDF(file,
+    sdk.WithAssertionValidator(pattern, validator),
+    sdk.WithAssertionVerificationMode(sdk.StrictMode))
+```
 
 ## Acceptance Criteria
 

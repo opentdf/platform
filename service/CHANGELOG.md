@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/opentdf/platform/compare/service/v0.10.0...service/v0.10.1) (2025-10-17)
+
+
+### Bug Fixes
+
+* **core:** Don't require known manager names [backport to release/service/v0.10] ([#2815](https://github.com/opentdf/platform/issues/2815)) ([cf87419](https://github.com/opentdf/platform/commit/cf87419f88ecba61bc55fa7dfb4547cc586a98c2))
+
 ## [0.10.0](https://github.com/opentdf/platform/compare/service/v0.9.0...service/v0.10.0) (2025-09-17)
 
 

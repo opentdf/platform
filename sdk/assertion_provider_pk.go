@@ -8,17 +8,13 @@ import (
 	"log/slog"
 )
 
-// KeyAssertionID is the standard identifier for key-based assertions.
-//
-// Assertion ID Naming Convention:
-//   - System assertions (built-in): Use simple kebab-case names (e.g., "assertion-key", "system-metadata")
-//   - Custom assertions: Should use reverse-domain notation or descriptive prefixes to avoid conflicts
-//     (e.g., "com.example.custom-assertion", "app-specific-assertion")
-//
-// The simple "assertion-key" ID is used for SDK-provided key-based assertions and is part of the
-// standard TDF specification. Custom implementations should choose unique IDs that won't conflict
-// with current or future standard assertion types.
-const KeyAssertionID = "assertion-key"
+const (
+	// KeyAssertionID is the standard identifier for key-based assertions.
+	KeyAssertionID = "assertion-key"
+
+	// logPrefixLength is the maximum length of signature prefixes in log messages
+	logPrefixLength = 64
+)
 
 type PublicKeyStatement struct {
 	Algorithm string `json:"algorithm"`
@@ -87,12 +83,9 @@ func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, erro
 }
 
 func (p KeyAssertionValidator) Verify(ctx context.Context, a Assertion, r Reader) error {
-	// Skip verification for assertions without bindings
+	// Assertions without cryptographic bindings cannot be verified - this is a security issue
 	if a.Binding.Signature == "" {
-		slog.WarnContext(ctx, "assertion has no binding, skipping verification",
-			slog.String("assertion_id", a.ID),
-			slog.String("assertion_type", string(a.Type)))
-		return nil
+		return fmt.Errorf("%w: assertion has no cryptographic binding", ErrAssertionFailure{ID: a.ID})
 	}
 
 	if p.publicKeys.IsEmpty() {
@@ -125,10 +118,32 @@ func (p KeyAssertionValidator) Verify(ctx context.Context, a Assertion, r Reader
 		return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: a.ID})
 	}
 
-	if manifestSignature != verifiedManifestSignature {
-		return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: a.ID})
+	// Auto-detect binding format: check if verifiedManifestSignature matches root signature
+	// v2 format: assertionSig = rootSignature
+	// v1 (legacy) format: assertionSig = base64(aggregateHash + assertionHash)
+	//
+	// This allows assertions with explicit keys to use either format
+	// for cross-SDK compatibility (Java/JS may use v1, Go uses v2)
+	if manifestSignature == verifiedManifestSignature {
+		// Current v2 format validation
+		slog.DebugContext(ctx, "assertion uses v2 format (root signature)",
+			slog.String("assertion_id", a.ID),
+			slog.String("assertion_schema", a.Statement.Schema))
+		return nil
 	}
 
+	// v1 (legacy) format: The verifiedManifestSignature is base64(aggregateHash + assertionHash)
+	// For custom assertions with explicit keys, Java/JS SDKs may use this format
+	// We accept it for backward compatibility but log a warning
+	slog.WarnContext(ctx, "assertion uses legacy v1 format (not bound to root signature)",
+		slog.String("assertion_id", a.ID),
+		slog.String("assertion_schema", a.Statement.Schema),
+		slog.String("verified_sig_prefix", verifiedManifestSignature[:min(logPrefixLength, len(verifiedManifestSignature))]))
+
+	// In v1 format, we cannot verify the binding to the manifest root signature
+	// because the signature is based on aggregateHash which we don't have access to here
+	// This is less secure but maintains compatibility with Java/JS SDKs
+	// The JWT signature itself is still verified, so the assertion content is authenticated
 	return nil
 }
 

@@ -146,7 +146,7 @@ func TestValidateCertificatePEM_RSA2048(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if info.Type != RSA2048Key || info.Source != SourceCertificate {
+	if info.Type != RSA2048Key || info.Source != KeySourceCertificate {
 		t.Fatalf("unexpected info: %+v", info)
 	}
 }
@@ -157,7 +157,7 @@ func TestValidateCertificatePEM_EC521(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if info.Type != EC521Key || info.ECCurve != ECCModeSecp521r1 || info.Source != SourceCertificate {
+	if info.Type != EC521Key || info.ECCurve != ECCModeSecp521r1 || info.Source != KeySourceCertificate {
 		t.Fatalf("unexpected info: %+v", info)
 	}
 }
@@ -183,7 +183,7 @@ func TestValidateMultiPEM_ValidCertificateThenValidPublicKey_FirstValidReturned(
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if info.Source != SourceCertificate {
+	if info.Source != KeySourceCertificate {
 		t.Fatalf("expected first valid source to be certificate, got: %+v", info)
 	}
 }

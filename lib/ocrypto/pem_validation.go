@@ -1,12 +1,10 @@
 package ocrypto
 
 import (
-	"crypto/ecdsa"
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 var (
@@ -23,21 +21,22 @@ var (
 )
 
 // PublicKeyInfo captures parsed metadata about a PEM public key.
+type KeySource string
+
+const (
+	// KeySourcePublicKey indicates the PEM block type was PUBLIC KEY
+	KeySourcePublicKey KeySource = "public-key"
+	// KeySourceCertificate indicates the PEM block type was CERTIFICATE
+	KeySourceCertificate KeySource = "certificate"
+)
+
 type PublicKeyInfo struct {
 	Type    KeyType
 	RSABits int
 	ECCurve ECCMode
-	// Source indicates where the key was parsed from: "public-key" or "certificate".
-	// Empty means unspecified.
-	Source string
+	// Source indicates where the key was parsed from.
+	Source KeySource
 }
-
-const (
-	// SourcePublicKey indicates the PEM block type was PUBLIC KEY
-	SourcePublicKey = "public-key"
-	// SourceCertificate indicates the PEM block type was CERTIFICATE
-	SourceCertificate = "certificate"
-)
 
 // ValidatePublicKeyPEM validates a PKIX PEM public key, or a certificate
 // containing a public key. It returns basic information about the key when
@@ -63,29 +62,53 @@ func ValidatePublicKeyPEM(pemBytes []byte) (*PublicKeyInfo, error) {
 		}
 
 		switch block.Type {
-		case "PUBLIC KEY":
-			pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+		case "PUBLIC KEY", "CERTIFICATE":
+			pemStr := string(pem.EncodeToMemory(&pem.Block{Type: block.Type, Bytes: block.Bytes}))
+			enc, err := FromPublicPEM(pemStr)
 			if err != nil {
+				if strings.Contains(err.Error(), "unsupported type of public key") {
+					return nil, ErrUnsupportedPublicKeyType
+				}
+				if strings.Contains(err.Error(), "unsupported curve") {
+					return nil, ErrInvalidECCurve
+				}
 				return nil, fmt.Errorf("%w: %w", ErrInvalidPublicKey, err)
 			}
-			info, err := classifyPublicKey(pub, SourcePublicKey)
-			if err != nil {
-				return nil, err
+			// Determine source
+			src := KeySourcePublicKey
+			if block.Type == "CERTIFICATE" {
+				src = KeySourceCertificate
 			}
-			if firstValid == nil {
-				firstValid = info
-			}
-		case "CERTIFICATE":
-			cert, err := x509.ParseCertificate(block.Bytes)
-			if err != nil {
-				return nil, fmt.Errorf("%w: %w", ErrInvalidPublicKey, err)
-			}
-			info, err := classifyPublicKey(cert.PublicKey, SourceCertificate)
-			if err != nil {
-				return nil, err
-			}
-			if firstValid == nil {
-				firstValid = info
+
+			// Classify based on concrete encryptor type
+			switch e := enc.(type) {
+			case *AsymEncryption:
+				// RSA path; compute bit length and enforce allowed sizes
+				bits := e.PublicKey.N.BitLen()
+				switch bits {
+				case RSA2048Size:
+					if firstValid == nil {
+						firstValid = &PublicKeyInfo{Type: RSA2048Key, RSABits: RSA2048Size, Source: src}
+					}
+				case RSA4096Size:
+					if firstValid == nil {
+						firstValid = &PublicKeyInfo{Type: RSA4096Key, RSABits: RSA4096Size, Source: src}
+					}
+				default:
+					return nil, fmt.Errorf("%w: %d", ErrInvalidRSAKeySize, bits)
+				}
+			case ECEncryptor:
+				// EC path; rely on KeyType mapping
+				kt := e.KeyType()
+				if curve, ok := kt.ECCurve(); ok {
+					if firstValid == nil {
+						firstValid = &PublicKeyInfo{Type: kt, ECCurve: curve, Source: src}
+					}
+				} else {
+					return nil, ErrInvalidECCurve
+				}
+			default:
+				return nil, ErrUnsupportedPublicKeyType
 			}
 		default:
 			// ignore unrelated block types
@@ -101,36 +124,4 @@ func ValidatePublicKeyPEM(pemBytes []byte) (*PublicKeyInfo, error) {
 		return firstValid, nil
 	}
 	return nil, ErrInvalidPEMBlock
-}
-
-func classifyPublicKey(pub any, source string) (*PublicKeyInfo, error) {
-	switch k := pub.(type) {
-	case *rsa.PublicKey:
-		bits := k.N.BitLen()
-		switch bits {
-		case RSA2048Size:
-			return &PublicKeyInfo{Type: RSA2048Key, RSABits: bits, Source: source}, nil
-		case RSA4096Size:
-			return &PublicKeyInfo{Type: RSA4096Key, RSABits: bits, Source: source}, nil
-		default:
-			return nil, fmt.Errorf("%w: %d", ErrInvalidRSAKeySize, bits)
-		}
-
-	case *ecdsa.PublicKey:
-		// Use the named curve rather than bit length to avoid ambiguity with
-		// similarly sized but unsupported curves (e.g., secp256k1).
-		switch k.Params().Name {
-		case "P-256":
-			return &PublicKeyInfo{Type: EC256Key, ECCurve: ECCModeSecp256r1, Source: source}, nil
-		case "P-384":
-			return &PublicKeyInfo{Type: EC384Key, ECCurve: ECCModeSecp384r1, Source: source}, nil
-		case "P-521":
-			return &PublicKeyInfo{Type: EC521Key, ECCurve: ECCModeSecp521r1, Source: source}, nil
-		default:
-			return nil, ErrInvalidECCurve
-		}
-
-	default:
-		return nil, ErrUnsupportedPublicKeyType
-	}
 }

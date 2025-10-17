@@ -11,7 +11,14 @@ type AssertionBinder interface {
 }
 
 type AssertionValidator interface {
+	// Schema returns the schema URI this validator handles.
+	// The schema identifies the assertion format and version.
+	// Examples: "urn:opentdf:system:metadata:v2", "urn:opentdf:key:assertion:v2"
+	Schema() string
+
+	// Verify checks the assertion's cryptographic binding
 	Verify(ctx context.Context, a Assertion, r Reader) error
-	// TODO add obligationStatus and more
+
+	// Validate checks the assertion's policy and trust requirements
 	Validate(ctx context.Context, a Assertion, r Reader) error
 }

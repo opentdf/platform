@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
@@ -102,8 +101,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 		if magicWord != "" {
 			// Magic word provider with state, this works in a simple CLI
 			magicWordProvider := NewMagicWordAssertionProvider(magicWord)
-			magicWordPattern := regexp.MustCompile("^" + MagicWordAssertionID + "$")
-			opts = append(opts, sdk.WithAssertionValidator(magicWordPattern, magicWordProvider))
+			opts = append(opts, sdk.WithAssertionValidator(magicWordProvider))
 		}
 		// Public key validator
 		if privateKeyPath != "" {
@@ -117,8 +115,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 				},
 			}
 			keyValidator := sdk.NewKeyAssertionValidator(keys)
-			keyPattern := regexp.MustCompile("^" + sdk.KeyAssertionID)
-			opts = append(opts, sdk.WithAssertionValidator(keyPattern, keyValidator))
+			opts = append(opts, sdk.WithAssertionValidator(keyValidator))
 		}
 		// Enable assertion verification
 		opts = append(opts, sdk.WithDisableAssertionVerification(false))

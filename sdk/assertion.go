@@ -74,6 +74,15 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 		return fmt.Errorf("failed to set assertion signature: %w", err)
 	}
 
+	// SECURITY: Add schema claim to cryptographically bind schema to assertion
+	// This prevents schema substitution attacks where an attacker changes Statement.Schema
+	// to route the assertion to a different validator with weaker security checks.
+	// The schema is included in both the JWT (signed) and the Statement (hashed),
+	// providing defense-in-depth against tampering.
+	if err := tok.Set("assertionSchema", a.Statement.Schema); err != nil {
+		return fmt.Errorf("failed to set assertion schema: %w", err)
+	}
+
 	// Sign the token with the configured key
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key))
 	if err != nil {
@@ -88,8 +97,9 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 }
 
 // Verify checks the binding signature of the assertion and
-// returns the hash and the signature. It returns an error if the verification fails.
-func (a *Assertion) Verify(key AssertionKey) (string, string, error) {
+// returns the hash, signature, and schema. It returns an error if the verification fails.
+// The schema return value will be empty string for legacy assertions without schema claim.
+func (a *Assertion) Verify(key AssertionKey) (string, string, string, error) {
 	slog.Debug("verifying assertion JWT signature",
 		slog.String("assertion_id", a.ID),
 		slog.String("key_alg", key.Alg.String()))
@@ -101,34 +111,55 @@ func (a *Assertion) Verify(key AssertionKey) (string, string, error) {
 		slog.Error("failed to parse JWT signature",
 			slog.String("assertion_id", a.ID),
 			slog.Any("error", err))
-		return "", "", fmt.Errorf("%w: %w", errAssertionVerifyKeyFailure, err)
+		return "", "", "", fmt.Errorf("%w: %w", errAssertionVerifyKeyFailure, err)
 	}
 	hashClaim, found := tok.Get(kAssertionHash)
 	if !found {
-		return "", "", errors.New("hash claim not found")
+		return "", "", "", errors.New("hash claim not found")
 	}
 	verifiedHash, ok := hashClaim.(string)
 	if !ok {
-		return "", "", errors.New("hash claim is not a string")
+		return "", "", "", errors.New("hash claim is not a string")
 	}
 
 	sigClaim, found := tok.Get(kAssertionSignature)
 	if !found {
-		return "", "", errors.New("signature claim not found")
+		return "", "", "", errors.New("signature claim not found")
 	}
 	verifiedSignature, ok := sigClaim.(string)
 	if !ok {
-		return "", "", errors.New("signature claim is not a string")
+		return "", "", "", errors.New("signature claim is not a string")
+	}
+
+	// SECURITY: Extract schema claim for validation
+	// This ensures the schema in the JWT matches the schema in Statement,
+	// preventing schema substitution attacks.
+	// For backward compatibility with legacy assertions (v1 schemas), the schema claim
+	// may not be present. In that case, we return empty string and validators should
+	// skip schema claim verification.
+	verifiedSchema := ""
+	schemaClaim, found := tok.Get("assertionSchema")
+	if found {
+		verifiedSchema, ok = schemaClaim.(string)
+		if !ok {
+			return "", "", "", errors.New("schema claim is not a string")
+		}
+	} else {
+		// Legacy assertion without schema claim - log for awareness
+		slog.Debug("assertion JWT missing schema claim (legacy format)",
+			slog.String("assertion_id", a.ID),
+			slog.String("statement_schema", a.Statement.Schema))
 	}
 
 	slog.Debug("assertion JWT verified successfully",
 		slog.String("assertion_id", a.ID),
 		slog.String("assertion_hash", verifiedHash),
+		slog.String("verified_schema", verifiedSchema),
 		slog.Int("assertion_sig_length", len(verifiedSignature)))
 
 	// Note: signature is stored as base64-encoded string (matching manifest.RootSignature.Signature format)
 	// so we return it directly without decoding
-	return verifiedHash, verifiedSignature, nil
+	return verifiedHash, verifiedSignature, verifiedSchema, nil
 }
 
 // GetHash returns the hash of the assertion in hex format.

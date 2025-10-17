@@ -12,6 +12,10 @@ const (
 	// KeyAssertionID is the standard identifier for key-based assertions.
 	KeyAssertionID = "assertion-key"
 
+	// KeyAssertionSchema is the schema URI for key-based assertions.
+	// v2 includes assertionSchema claim in JWT binding for security against schema substitution attacks.
+	KeyAssertionSchema = "urn:opentdf:key:assertion:v2"
+
 	// logPrefixLength is the maximum length of signature prefixes in log messages
 	logPrefixLength = 64
 )
@@ -51,6 +55,11 @@ func (p *KeyAssertionValidator) SetVerificationMode(mode AssertionVerificationMo
 	p.verificationMode = mode
 }
 
+// Schema returns the schema URI this validator handles.
+func (p *KeyAssertionValidator) Schema() string {
+	return KeyAssertionSchema
+}
+
 func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, error) {
 	// Create the public key statement
 	statement := PublicKeyStatement{
@@ -72,7 +81,7 @@ func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, erro
 		AppliesToState: Unencrypted,
 		Statement: Statement{
 			Format: StatementFormatJSON,
-			Schema: SystemMetadataSchemaV1,
+			Schema: KeyAssertionSchema,
 			Value:  statementValue,
 		},
 	}
@@ -92,6 +101,23 @@ func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, erro
 }
 
 func (p KeyAssertionValidator) Verify(ctx context.Context, a Assertion, r Reader) error {
+	// SECURITY: Validate schema matches expected value BEFORE any processing
+	// This prevents routing assertions with tampered schemas to this validator
+	// Defense in depth: checked here AND via hash verification later
+	expectedSchema := p.Schema()
+	if a.Statement.Schema != expectedSchema {
+		// Check if this is a legacy v1 schema (backward compatibility)
+		if a.Statement.Schema == "urn:opentdf:key:assertion:v1" {
+			slog.WarnContext(ctx, "assertion uses legacy v1 schema (no schema claim in JWT)",
+				slog.String("assertion_id", a.ID),
+				slog.String("schema", a.Statement.Schema))
+			// Allow legacy schema but it won't have schema claim protection
+		} else {
+			return fmt.Errorf("%w: schema mismatch - expected %q, got %q (possible schema substitution attack)",
+				ErrAssertionFailure{ID: a.ID}, expectedSchema, a.Statement.Schema)
+		}
+	}
+
 	// Assertions without cryptographic bindings cannot be verified - this is a security issue
 	if a.Binding.Signature == "" {
 		return fmt.Errorf("%w: assertion has no cryptographic binding", ErrAssertionFailure{ID: a.ID})
@@ -122,10 +148,18 @@ func (p KeyAssertionValidator) Verify(ctx context.Context, a Assertion, r Reader
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrAssertionFailure{ID: a.ID}, err)
 	}
-	// Verify the JWT with key
-	verifiedAssertionHash, verifiedManifestSignature, err := a.Verify(key)
+	// Verify the JWT with key (now returns schema claim)
+	verifiedAssertionHash, verifiedManifestSignature, verifiedSchema, err := a.Verify(key)
 	if err != nil {
 		return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: a.ID}, err)
+	}
+
+	// SECURITY: Verify schema claim matches Statement.Schema (if claim exists)
+	// This prevents schema substitution after JWT signing
+	// For legacy assertions (v1), verifiedSchema will be empty string - skip check
+	if verifiedSchema != "" && verifiedSchema != a.Statement.Schema {
+		return fmt.Errorf("%w: schema claim mismatch - JWT contains %q but Statement has %q (tampering detected)",
+			ErrAssertionFailure{ID: a.ID}, verifiedSchema, a.Statement.Schema)
 	}
 
 	// Get the hash of the assertion

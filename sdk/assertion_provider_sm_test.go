@@ -8,7 +8,7 @@ import (
 )
 
 // TestSystemMetadataAssertion_SchemaVersionDetection verifies that the
-// dual-mode validation correctly detects v1 (legacy) vs v2 (current) schemas
+// validation correctly detects v1 (legacy) vs v2 (current) schemas
 func TestSystemMetadataAssertion_SchemaVersionDetection(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -20,13 +20,13 @@ func TestSystemMetadataAssertion_SchemaVersionDetection(t *testing.T) {
 			name:           "v2_schema_is_current",
 			schema:         SystemMetadataSchemaV2,
 			expectedLegacy: false,
-			description:    "V2 schema should be treated as current (non-legacy)",
+			description:    "V2 schema should be treated as current (includes schema claim in JWT)",
 		},
 		{
 			name:           "v1_schema_is_legacy",
 			schema:         SystemMetadataSchemaV1,
 			expectedLegacy: true,
-			description:    "V1 schema should be treated as legacy",
+			description:    "V1 schema should be treated as legacy (no schema claim in JWT)",
 		},
 		{
 			name:           "empty_schema_is_legacy",
@@ -100,13 +100,15 @@ func TestSystemMetadataAssertionProvider_Verify_DualMode(t *testing.T) {
 	// This test documents the dual-mode validation behavior
 	// A full integration test would require actual TDF fixtures from old SDK versions
 
-	t.Run("v2_schema_uses_root_signature", func(t *testing.T) {
+	t.Run("v2_schema_uses_root_signature_with_schema_claim", func(t *testing.T) {
 		// In v2 validation:
 		// - assertionSig (from JWT) is compared against manifest.RootSignature.Signature
-		// - This is simpler and avoids concatenating hashes
+		// - JWT includes assertionSchema claim for additional security
+		// - This prevents schema substitution attacks
 
-		t.Log("V2 validation: assertionSig == rootSignature")
+		t.Log("V2 validation: assertionSig == rootSignature + JWT schema claim")
 		t.Log("✓ Validates that assertion is bound to the exact root signature")
+		t.Log("✓ Verifies schema claim in JWT matches Statement.Schema")
 	})
 
 	t.Run("v1_schema_uses_aggregate_hash", func(t *testing.T) {

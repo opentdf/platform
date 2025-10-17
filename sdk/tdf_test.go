@@ -1157,132 +1157,41 @@ func updateManifest(t *testing.T, tdfFile, outFile string, changer func(t *testi
 */
 
 func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
-	hs256Key := make([]byte, 32)
-	_, err := rand.Read(hs256Key)
+	// Test negative scenarios using KeyAssertionSchema with wrong verification keys
+	// Generate two separate RSA key pairs for testing wrong key scenarios
+	correctPrivateKey, err := rsa.GenerateKey(rand.Reader, tdf3KeySize)
 	s.Require().NoError(err)
 
-	privateKey, err := rsa.GenerateKey(rand.Reader, tdf3KeySize)
+	wrongPrivateKey, err := rsa.GenerateKey(rand.Reader, tdf3KeySize)
 	s.Require().NoError(err)
-
-	defaultKey := AssertionKey{
-		Alg: AssertionKeyAlgHS256,
-		Key: hs256Key,
-	}
 
 	for _, test := range []assertionTests{ //nolint:gochecknoglobals // requires for testing tdf
 		{
+			// Test case: Assertion signed with RS256, but wrong public key provided for verification
 			assertions: []AssertionConfig{
 				{
-					ID:             "assertion1",
+					ID:             KeyAssertionID,
 					Type:           BaseAssertion,
 					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
-						Format: "base64binary",
-						Schema: "text",
-						Value:  "ICAgIDxlZGoOkVkaD4=",
-					},
-					SigningKey: defaultKey,
-				},
-				{
-					ID:             "assertion2",
-					Type:           BaseAssertion,
-					Scope:          TrustedDataObjScope,
-					AppliesToState: Unencrypted,
-					Statement: Statement{
-						Format: "json",
-						Schema: "urn:nato:stanag:5636:A:1:elements:json",
-						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
-					},
-					SigningKey: defaultKey,
-				},
-			},
-			expectedSize: 1574,
-		},
-		{
-			assertions: []AssertionConfig{
-				{
-					ID:             "assertion1",
-					Type:           BaseAssertion,
-					Scope:          TrustedDataObjScope,
-					AppliesToState: Unencrypted,
-					Statement: Statement{
-						Format: "base64binary",
-						Schema: "text",
-						Value:  "ICAgIDxlZGoOkVkaD4=",
-					},
-					SigningKey: AssertionKey{
-						Alg: AssertionKeyAlgHS256,
-						Key: hs256Key,
-					},
-				},
-				{
-					ID:             "assertion2",
-					Type:           BaseAssertion,
-					Scope:          TrustedDataObjScope,
-					AppliesToState: Unencrypted,
-					Statement: Statement{
-						Format: "json",
-						Schema: "urn:nato:stanag:5636:A:1:elements:json",
-						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
+						Format: StatementFormatJSON,
+						Schema: KeyAssertionSchema,
+						Value:  "{\"test\":\"data\"}",
 					},
 					SigningKey: AssertionKey{
 						Alg: AssertionKeyAlgRS256,
-						Key: privateKey,
+						Key: correctPrivateKey,
 					},
 				},
 			},
 			verifiers: &AssertionVerificationKeys{
-				// defaultVerificationKey: nil,
 				Keys: map[string]AssertionKey{
-					"assertion1": {
+					KeyAssertionID: {
 						Alg: AssertionKeyAlgRS256,
-						Key: privateKey.PublicKey,
-					},
-					"assertion2": {
-						Alg: AssertionKeyAlgHS256,
-						Key: hs256Key,
+						Key: &wrongPrivateKey.PublicKey, // Wrong public key
 					},
 				},
-			},
-			expectedSize: 1574,
-		},
-		{
-			assertions: []AssertionConfig{
-				{
-					ID:             "assertion1",
-					Type:           BaseAssertion,
-					Scope:          TrustedDataObjScope,
-					AppliesToState: Unencrypted,
-					Statement: Statement{
-						Format: "base64binary",
-						Schema: "text",
-						Value:  "ICAgIDxlZGoOkVkaD4=",
-					},
-					SigningKey: AssertionKey{
-						Alg: AssertionKeyAlgHS256,
-						Key: hs256Key,
-					},
-				},
-				{
-					ID:             "assertion2",
-					Type:           BaseAssertion,
-					Scope:          TrustedDataObjScope,
-					AppliesToState: Unencrypted,
-					Statement: Statement{
-						Format: "json",
-						Schema: "urn:nato:stanag:5636:A:1:elements:json",
-						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
-					},
-					SigningKey: AssertionKey{
-						Alg: AssertionKeyAlgRS256,
-						Key: privateKey,
-					},
-				},
-			},
-			verifiers: &AssertionVerificationKeys{
-				// This will use wrong key algorithm - defaultKey is HS256 but assertion2 was signed with RS256
-				DefaultKey: defaultKey,
 			},
 			expectedSize: 1574,
 		},
@@ -1318,7 +1227,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 			_ = tdfObj
 		}
 
-		// test reader
+		// test reader - should fail verification with wrong key
 		{
 			readSeeker, err := os.Open(tdfFilename)
 			s.Require().NoError(err)

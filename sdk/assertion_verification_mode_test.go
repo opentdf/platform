@@ -1,7 +1,6 @@
 package sdk
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"regexp"
@@ -54,10 +53,7 @@ func TestVerificationMode_MissingKeys(t *testing.T) {
 
 			// Create a test assertion with a valid binding
 			assertion := Assertion{
-				ID:             KeyAssertionID,
-				Type:           BaseAssertion,
-				Scope:          PayloadScope,
-				AppliesToState: Unencrypted,
+				ID: KeyAssertionID,
 				Statement: Statement{
 					Format: StatementFormatJSON,
 					Schema: SystemMetadataSchemaV1,
@@ -83,7 +79,7 @@ func TestVerificationMode_MissingKeys(t *testing.T) {
 				},
 			}
 
-			err := validator.Verify(context.Background(), assertion, reader)
+			err := validator.Verify(t.Context(), assertion, reader)
 
 			if tt.shouldError {
 				require.Error(t, err, "%s: %s", tt.modeName, tt.description)
@@ -132,10 +128,7 @@ func TestVerificationMode_UnknownAssertion(t *testing.T) {
 
 			// Create a TDF config with an unknown assertion
 			unknownAssertion := Assertion{
-				ID:             "unknown-assertion-type-xyz",
-				Type:           BaseAssertion,
-				Scope:          PayloadScope,
-				AppliesToState: Unencrypted,
+				ID: "unknown-assertion-type-xyz",
 				Statement: Statement{
 					Format: StatementFormatJSON,
 					Schema: "unknown-schema-v1",
@@ -149,9 +142,7 @@ func TestVerificationMode_UnknownAssertion(t *testing.T) {
 
 			// Create a reader config with verification mode but NO validator for this assertion type
 			readerConfig := &TDFReaderConfig{
-				assertionRegistry:            newAssertionRegistry(),
-				assertionVerificationMode:    tt.mode,
-				disableAssertionVerification: false,
+				assertionRegistry: newAssertionRegistry(),
 			}
 
 			// Simulate the assertion verification logic from tdf.go
@@ -267,7 +258,7 @@ func TestVerificationMode_VerificationFailure(t *testing.T) {
 				},
 			}
 
-			err = validator.Verify(context.Background(), assertion, reader)
+			err = validator.Verify(t.Context(), assertion, reader)
 
 			// Note: All modes should fail on cryptographic verification errors
 			// because this indicates tampering or key mismatch
@@ -339,7 +330,7 @@ func TestVerificationMode_MissingCryptographicBinding(t *testing.T) {
 				},
 			}
 
-			err := validator.Verify(context.Background(), assertion, reader)
+			err := validator.Verify(t.Context(), assertion, reader)
 
 			// ALL modes must reject missing bindings (security requirement)
 			require.Error(t, err, "%s: missing bindings must ALWAYS fail", m.modeName)
@@ -356,11 +347,13 @@ func TestVerificationMode_ValidatorRegistration(t *testing.T) {
 	modes := []AssertionVerificationMode{PermissiveMode, FailFast, StrictMode}
 
 	for _, mode := range modes {
+		mode := mode // capture range variable
 		t.Run(mode.String(), func(t *testing.T) {
+			t.Parallel()
+
 			// Create a reader config with a specific mode
 			readerConfig := &TDFReaderConfig{
-				assertionRegistry:         newAssertionRegistry(),
-				assertionVerificationMode: mode,
+				assertionRegistry: newAssertionRegistry(),
 			}
 
 			// Register a validator
@@ -402,7 +395,9 @@ func TestVerificationMode_String(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt // capture range variable
 		t.Run(tt.expected, func(t *testing.T) {
+			t.Parallel()
 			actual := tt.mode.String()
 			assert.Equal(t, tt.expected, actual)
 		})
@@ -414,6 +409,7 @@ func TestVerificationMode_DefaultIsFailFast(t *testing.T) {
 	t.Parallel()
 
 	t.Run("KeyAssertionValidator", func(t *testing.T) {
+		t.Parallel()
 		keys := AssertionVerificationKeys{
 			Keys: map[string]AssertionKey{},
 		}
@@ -424,6 +420,7 @@ func TestVerificationMode_DefaultIsFailFast(t *testing.T) {
 	})
 
 	t.Run("SystemMetadataAssertionProvider", func(t *testing.T) {
+		t.Parallel()
 		payloadKey := []byte("test-key-32-bytes-long!!!!!!!!")
 		aggregateHash := "test-aggregate-hash"
 

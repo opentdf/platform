@@ -1,0 +1,215 @@
+package sdk
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+)
+
+const (
+	// KeyAssertionID is the standard identifier for key-based assertions.
+	KeyAssertionID = "assertion-key"
+
+	// KeyAssertionSchema is the schema URI for key-based assertions.
+	// v2 includes assertionSchema claim in JWT binding for security against schema substitution attacks.
+	KeyAssertionSchema = "urn:opentdf:key:assertion:v2"
+
+	// logPrefixLength is the maximum length of signature prefixes in log messages
+	logPrefixLength = 64
+)
+
+type PublicKeyStatement struct {
+	Algorithm string `json:"algorithm"`
+	Key       any    `json:"key"`
+}
+
+type KeyAssertionBinder struct {
+	privateKey AssertionKey
+	publicKey  AssertionKey
+}
+
+type KeyAssertionValidator struct {
+	publicKeys       AssertionVerificationKeys
+	verificationMode AssertionVerificationMode
+}
+
+func NewKeyAssertionBinder(privateKey AssertionKey) *KeyAssertionBinder {
+	return &KeyAssertionBinder{
+		privateKey: privateKey,
+	}
+}
+
+func NewKeyAssertionValidator(publicKeys AssertionVerificationKeys) *KeyAssertionValidator {
+	return &KeyAssertionValidator{
+		publicKeys:       publicKeys,
+		verificationMode: FailFast, // Default to secure mode
+	}
+}
+
+// SetVerificationMode updates the verification mode for this validator.
+// This is typically called by the SDK when registering validators to propagate
+// the global verification mode setting.
+func (p *KeyAssertionValidator) SetVerificationMode(mode AssertionVerificationMode) {
+	p.verificationMode = mode
+}
+
+// Schema returns the schema URI this validator handles.
+func (p *KeyAssertionValidator) Schema() string {
+	return KeyAssertionSchema
+}
+
+func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, error) {
+	// Create the public key statement
+	statement := PublicKeyStatement{
+		Algorithm: p.publicKey.Alg.String(),
+		Key:       p.publicKey.Key,
+	}
+
+	jsonBytes, err := json.Marshal(statement)
+	if err != nil {
+		return Assertion{}, fmt.Errorf("failed to marshal public key statement: %w", err)
+	}
+	statementValue := string(jsonBytes)
+
+	// Build the assertion
+	assertion := Assertion{
+		ID:             KeyAssertionID,
+		Type:           BaseAssertion,
+		Scope:          PayloadScope,
+		AppliesToState: Unencrypted,
+		Statement: Statement{
+			Format: StatementFormatJSON,
+			Schema: KeyAssertionSchema,
+			Value:  statementValue,
+		},
+	}
+
+	// Get the hash and sign the assertion
+	assertionHash, err := assertion.GetHash()
+	if err != nil {
+		return assertion, fmt.Errorf("failed to get hash of assertion: %w", err)
+	}
+
+	// aggregation hash replaced with manifest root signature
+	if err := assertion.Sign(string(assertionHash), m.RootSignature.Signature, p.privateKey); err != nil {
+		return assertion, fmt.Errorf("failed to sign assertion: %w", err)
+	}
+
+	return assertion, nil
+}
+
+func (p KeyAssertionValidator) Verify(ctx context.Context, a Assertion, r Reader) error {
+	// SECURITY: Validate schema matches expected value BEFORE any processing
+	// This prevents routing assertions with tampered schemas to this validator
+	// Defense in depth: checked here AND via hash verification later
+	expectedSchema := p.Schema()
+	if a.Statement.Schema != expectedSchema {
+		// Check if this is a legacy v1 schema (backward compatibility)
+		if a.Statement.Schema == "urn:opentdf:key:assertion:v1" {
+			slog.WarnContext(ctx, "assertion uses legacy v1 schema (no schema claim in JWT)",
+				slog.String("assertion_id", a.ID),
+				slog.String("schema", a.Statement.Schema))
+			// Allow legacy schema but it won't have schema claim protection
+		} else {
+			return fmt.Errorf("%w: schema mismatch - expected %q, got %q (possible schema substitution attack)",
+				ErrAssertionFailure{ID: a.ID}, expectedSchema, a.Statement.Schema)
+		}
+	}
+
+	// Assertions without cryptographic bindings cannot be verified - this is a security issue
+	if a.Binding.Signature == "" {
+		return fmt.Errorf("%w: assertion has no cryptographic binding", ErrAssertionFailure{ID: a.ID})
+	}
+
+	// Check if validator has keys configured
+	// Behavior depends on verification mode for security
+	if p.publicKeys.IsEmpty() {
+		switch p.verificationMode {
+		case PermissiveMode:
+			// Allow for forward compatibility - skip validation with warning
+			slog.WarnContext(ctx, "no verification keys configured, skipping in permissive mode",
+				slog.String("assertion_id", a.ID),
+				slog.String("assertion_type", string(a.Type)),
+				slog.String("mode", "permissive"))
+			return nil
+		case StrictMode, FailFast:
+			// Fail secure - cannot verify without keys
+			// This prevents attackers from bypassing verification by using unconfigured key IDs
+			return fmt.Errorf("%w: no verification keys configured for assertion validation", ErrAssertionFailure{ID: a.ID})
+		default:
+			// Unknown mode - fail secure by default
+			return fmt.Errorf("%w: no verification keys configured for assertion validation", ErrAssertionFailure{ID: a.ID})
+		}
+	}
+	// Look up the key for the assertion
+	key, err := p.publicKeys.Get(a.ID)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrAssertionFailure{ID: a.ID}, err)
+	}
+	// Verify the JWT with key (now returns schema claim)
+	verifiedAssertionHash, verifiedManifestSignature, verifiedSchema, err := a.Verify(key)
+	if err != nil {
+		return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: a.ID}, err)
+	}
+
+	// SECURITY: Verify schema claim matches Statement.Schema (if claim exists)
+	// This prevents schema substitution after JWT signing
+	// For legacy assertions (v1), verifiedSchema will be empty string - skip check
+	if verifiedSchema != "" && verifiedSchema != a.Statement.Schema {
+		return fmt.Errorf("%w: schema claim mismatch - JWT contains %q but Statement has %q (tampering detected)",
+			ErrAssertionFailure{ID: a.ID}, verifiedSchema, a.Statement.Schema)
+	}
+
+	// Get the hash of the assertion
+	assertionHash, err := a.GetHash()
+	if err != nil {
+		return fmt.Errorf("%w: failed to get hash of assertion: %w", ErrAssertionFailure{ID: a.ID}, err)
+	}
+	manifestSignature := r.Manifest().RootSignature.Signature
+
+	if string(assertionHash) != verifiedAssertionHash {
+		return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: a.ID})
+	}
+
+	// Auto-detect binding format: check if verifiedManifestSignature matches root signature
+	// v2 format: assertionSig = rootSignature
+	// v1 (legacy) format: assertionSig = base64(aggregateHash + assertionHash)
+	//
+	// This allows assertions with explicit keys to use either format
+	// for cross-SDK compatibility (Java/JS may use v1, Go uses v2)
+	if manifestSignature == verifiedManifestSignature {
+		// Current v2 format validation
+		slog.DebugContext(ctx, "assertion uses v2 format (root signature)",
+			slog.String("assertion_id", a.ID),
+			slog.String("assertion_schema", a.Statement.Schema))
+		return nil
+	}
+
+	// v1 (legacy) format: The verifiedManifestSignature is base64(aggregateHash + assertionHash)
+	// For custom assertions with explicit keys, Java/JS SDKs may use this format
+	// We accept it for backward compatibility but log a warning
+	slog.WarnContext(ctx, "assertion uses legacy v1 format (not bound to root signature)",
+		slog.String("assertion_id", a.ID),
+		slog.String("assertion_schema", a.Statement.Schema),
+		slog.String("verified_sig_prefix", verifiedManifestSignature[:min(logPrefixLength, len(verifiedManifestSignature))]))
+
+	// In v1 format, we cannot verify the binding to the manifest root signature
+	// because the signature is based on aggregateHash which we don't have access to here
+	// This is less secure but maintains compatibility with Java/JS SDKs
+	// The JWT signature itself is still verified, so the assertion content is authenticated
+	return nil
+}
+
+func (p KeyAssertionValidator) Validate(_ context.Context, a Assertion, _ Reader) error {
+	if p.publicKeys.IsEmpty() {
+		return errors.New("no verification keys are trusted")
+	}
+	// If found and verified, then it is trusted
+	_, err := p.publicKeys.Get(a.ID)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrAssertionFailure{ID: a.ID}, err)
+	}
+	return nil
+}

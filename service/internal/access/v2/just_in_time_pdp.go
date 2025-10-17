@@ -19,6 +19,7 @@ import (
 
 	"github.com/opentdf/platform/service/internal/access/v2/obligations"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 )
 
 var (
@@ -165,7 +166,7 @@ func (p *JustInTimePDP) GetDecision(
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
 		// Registered resources do not have entity representations, so only one decision is made
-		decision, err := p.pdp.GetDecisionRegisteredResource(ctx, regResValueFQN, action, resources)
+		decision, entitlements, err := p.pdp.GetDecisionRegisteredResource(ctx, regResValueFQN, action, resources)
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to get decision for registered resource value FQN [%s]: %w", regResValueFQN, err)
 		}
@@ -175,6 +176,7 @@ func (p *JustInTimePDP) GetDecision(
 
 		// If not entitled, obligations are not considered
 		if !decision.Access {
+			p.auditDecision(ctx, regResValueFQN, action, decision, entitlements, nil, nil, false)
 			return []*Decision{decision}, decision.Access, nil
 		}
 
@@ -184,6 +186,10 @@ func (p *JustInTimePDP) GetDecision(
 			decision.Results[idx].RequiredObligationValueFQNs = required
 		}
 
+		// Flatten all required obligations across all resources
+		allRequiredObligationValueFQNs := flattenRequiredObligations(requiredObligationsPerResource)
+
+		p.auditDecision(ctx, regResValueFQN, action, decision, entitlements, fulfillableObligationValueFQNs, allRequiredObligationValueFQNs, allTriggeredObligationsCanBeFulfilled)
 		return []*Decision{decision}, decision.Access, nil
 
 	default:
@@ -195,9 +201,10 @@ func (p *JustInTimePDP) GetDecision(
 
 	// Make initial entitlement decisions
 	entityDecisions := make([]*Decision, len(entityRepresentations))
+	entityEntitlements := make([]map[string][]*policy.Action, len(entityRepresentations))
 	allPermitted := true
 	for idx, entityRep := range entityRepresentations {
-		d, err := p.pdp.GetDecision(ctx, entityRep, action, resources)
+		d, entitlements, err := p.pdp.GetDecision(ctx, entityRep, action, resources)
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to get decision for entityRepresentation with original id [%s]: %w", entityRep.GetOriginalId(), err)
 		}
@@ -208,10 +215,15 @@ func (p *JustInTimePDP) GetDecision(
 			allPermitted = false
 		}
 		entityDecisions[idx] = d
+		entityEntitlements[idx] = entitlements
 	}
 
 	// If even one entity was denied access, obligations are not considered or returned
 	if !allPermitted {
+		// Audit each entity decision
+		for idx, entityRep := range entityRepresentations {
+			p.auditDecision(ctx, entityRep.GetOriginalId(), action, entityDecisions[idx], entityEntitlements[idx], nil, nil, false)
+		}
 		return entityDecisions, allPermitted, nil
 	}
 
@@ -222,6 +234,14 @@ func (p *JustInTimePDP) GetDecision(
 		for idx, required := range requiredObligationsPerResource {
 			decision.Results[idx].RequiredObligationValueFQNs = required
 		}
+	}
+
+	// Flatten all required obligations across all resources
+	allRequiredObligationValueFQNs := flattenRequiredObligations(requiredObligationsPerResource)
+
+	// Audit each entity decision with obligation information
+	for idx, entityRep := range entityRepresentations {
+		p.auditDecision(ctx, entityRep.GetOriginalId(), action, entityDecisions[idx], entityEntitlements[idx], fulfillableObligationValueFQNs, allRequiredObligationValueFQNs, allTriggeredObligationsCanBeFulfilled)
 	}
 
 	return entityDecisions, allPermitted, nil
@@ -399,4 +419,56 @@ func (p *JustInTimePDP) resolveEntitiesFromRequestToken(
 	}
 
 	return p.resolveEntitiesFromToken(ctx, token, skipEnvironmentEntities)
+}
+
+// auditDecision logs a GetDecisionV2 audit event with obligation information
+func (p *JustInTimePDP) auditDecision(
+	ctx context.Context,
+	entityID string,
+	action *policy.Action,
+	decision *Decision,
+	entitlements map[string][]*policy.Action,
+	fulfillableObligationValueFQNs []string,
+	requiredObligationValueFQNs []string,
+	obligationsSatisfied bool,
+) {
+	// Determine audit decision result
+	auditDecision := audit.GetDecisionResultDeny
+	if decision.Access {
+		auditDecision = audit.GetDecisionResultPermit
+	}
+
+	// Ensure entitlements is not nil
+	if entitlements == nil {
+		entitlements = make(map[string][]*policy.Action)
+	}
+
+	p.logger.Audit.GetDecisionV2(ctx, audit.GetDecisionV2EventParams{
+		EntityID:                       entityID,
+		ActionName:                     action.GetName(),
+		Decision:                       auditDecision,
+		Entitlements:                   entitlements,
+		FulfillableObligationValueFQNs: fulfillableObligationValueFQNs,
+		RequiredObligationValueFQNs:    requiredObligationValueFQNs,
+		ObligationsSatisfied:           obligationsSatisfied,
+		ResourceDecisions:              decision.Results,
+	})
+}
+
+// flattenRequiredObligations takes a per-resource list of required obligation FQNs
+// and returns a deduplicated flat list of all required obligations across all resources
+func flattenRequiredObligations(requiredObligationsPerResource [][]string) []string {
+	seen := make(map[string]struct{})
+	var result []string
+
+	for _, resourceObligations := range requiredObligationsPerResource {
+		for _, oblFQN := range resourceObligations {
+			if _, exists := seen[oblFQN]; !exists {
+				seen[oblFQN] = struct{}{}
+				result = append(result, oblFQN)
+			}
+		}
+	}
+
+	return result
 }

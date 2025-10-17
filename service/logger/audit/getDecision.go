@@ -44,10 +44,13 @@ type GetDecisionEventParams struct {
 }
 
 type GetDecisionV2EventParams struct {
-	EntityID     string
-	ActionName   string
-	Decision     DecisionResult
-	Entitlements subjectmappingbuiltin.AttributeValueFQNsToActions
+	EntityID                       string
+	ActionName                     string
+	Decision                       DecisionResult
+	Entitlements                   subjectmappingbuiltin.AttributeValueFQNsToActions
+	FulfillableObligationValueFQNs []string
+	RequiredObligationValueFQNs    []string
+	ObligationsSatisfied           bool
 	// Allow ResourceDecisions to be typed by the caller as structure is in-flight
 	ResourceDecisions interface{}
 }
@@ -105,6 +108,19 @@ func CreateV2GetDecisionEvent(ctx context.Context, params GetDecisionV2EventPara
 		},
 	}
 
+	// Build event metadata with both resource decisions and obligations
+	eventMetadata := struct {
+		ResourceDecisions              interface{} `json:"resource_decisions"`
+		FulfillableObligationValueFQNs []string    `json:"fulfillable_obligation_value_fqns,omitempty"`
+		RequiredObligationValueFQNs    []string    `json:"required_obligation_value_fqns,omitempty"`
+		ObligationsSatisfied           bool        `json:"obligations_satisfied"`
+	}{
+		ResourceDecisions:              params.ResourceDecisions,
+		FulfillableObligationValueFQNs: params.FulfillableObligationValueFQNs,
+		RequiredObligationValueFQNs:    params.RequiredObligationValueFQNs,
+		ObligationsSatisfied:           params.ObligationsSatisfied,
+	}
+
 	return &EventObject{
 		Object: auditEventObject{
 			ID:   params.EntityID + "-" + params.ActionName,
@@ -119,7 +135,7 @@ func CreateV2GetDecisionEvent(ctx context.Context, params GetDecisionV2EventPara
 			ID:         params.EntityID,
 			Attributes: actorAttributes,
 		},
-		EventMetaData: params.ResourceDecisions,
+		EventMetaData: eventMetadata,
 		ClientInfo: eventClientInfo{
 			Platform:  "authorization.v2",
 			UserAgent: auditDataFromContext.UserAgent,

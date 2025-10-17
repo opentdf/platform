@@ -15,7 +15,6 @@ import (
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/logger/audit"
 )
 
 // Decision represents the overall access decision for an entity.
@@ -162,32 +161,32 @@ func NewPolicyDecisionPoint(
 	return pdp, nil
 }
 
-// GetDecision evaluates the action on the resources for the entity and returns a decision.
+// GetDecision evaluates the action on the resources for the entity and returns a decision along with entitlements.
 func (p *PolicyDecisionPoint) GetDecision(
 	ctx context.Context,
 	entityRepresentation *entityresolutionV2.EntityRepresentation,
 	action *policy.Action,
 	resources []*authz.Resource,
-) (*Decision, error) {
+) (*Decision, map[string][]*policy.Action, error) {
 	l := p.logger.With("entity_id", entityRepresentation.GetOriginalId())
 	l = l.With("action", action.GetName())
 	l.DebugContext(ctx, "getting decision", slog.Int("resources_count", len(resources)))
 
 	if err := validateGetDecision(entityRepresentation, action, resources); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
 	decisionableAttributes, err := getResourceDecisionableAttributes(ctx, l, p.allRegisteredResourceValuesByFQN, p.allEntitleableAttributesByValueFQN /* action, */, resources)
 	if err != nil {
-		return nil, fmt.Errorf("error getting decisionable attributes: %w", err)
+		return nil, nil, fmt.Errorf("error getting decisionable attributes: %w", err)
 	}
 	l.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionable_attribute_values_count", len(decisionableAttributes)))
 
 	// Resolve them to their entitled FQNs and the actions available on each
 	entitledFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(decisionableAttributes, entityRepresentation)
 	if err != nil {
-		return nil, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
+		return nil, nil, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
 	}
 	l.DebugContext(ctx, "evaluated subject mappings", slog.Any("entitled_value_fqns_to_actions", entitledFQNsToActions))
 
@@ -199,7 +198,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 	for idx, resource := range resources {
 		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource)
 		if err != nil || resourceDecision == nil {
-			return nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
+			return nil, nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
 		}
 
 		if !resourceDecision.Passed {
@@ -216,20 +215,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 		decision.Results[idx] = *resourceDecision
 	}
 
-	auditDecision := audit.GetDecisionResultDeny
-	if decision.Access {
-		auditDecision = audit.GetDecisionResultPermit
-	}
-
-	l.Audit.GetDecisionV2(ctx, audit.GetDecisionV2EventParams{
-		EntityID:          entityRepresentation.GetOriginalId(),
-		ActionName:        action.GetName(),
-		Decision:          auditDecision,
-		Entitlements:      entitledFQNsToActions,
-		ResourceDecisions: decision.Results,
-	})
-
-	return decision, nil
+	return decision, entitledFQNsToActions, nil
 }
 
 func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
@@ -237,24 +223,24 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	entityRegisteredResourceValueFQN string,
 	action *policy.Action,
 	resources []*authz.Resource,
-) (*Decision, error) {
+) (*Decision, map[string][]*policy.Action, error) {
 	l := p.logger.With("entity_registered_resource_value_fqn", entityRegisteredResourceValueFQN)
 	l = l.With("action", action.GetName())
 	l.DebugContext(ctx, "getting decision", slog.Int("resources_count", len(resources)))
 
 	if err := validateGetDecisionRegisteredResource(entityRegisteredResourceValueFQN, action, resources); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	entityRegisteredResourceValue, ok := p.allRegisteredResourceValuesByFQN[entityRegisteredResourceValueFQN]
 	if !ok {
-		return nil, fmt.Errorf("registered resource value FQN not found in memory [%s]: %w", entityRegisteredResourceValueFQN, ErrInvalidResource)
+		return nil, nil, fmt.Errorf("registered resource value FQN not found in memory [%s]: %w", entityRegisteredResourceValueFQN, ErrInvalidResource)
 	}
 
 	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
 	decisionableAttributes, err := getResourceDecisionableAttributes(ctx, l, p.allRegisteredResourceValuesByFQN, p.allEntitleableAttributesByValueFQN /*action, */, resources)
 	if err != nil {
-		return nil, fmt.Errorf("error getting decisionable attributes: %w", err)
+		return nil, nil, fmt.Errorf("error getting decisionable attributes: %w", err)
 	}
 	l.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionable_attribute_values_count", len(decisionableAttributes)))
 
@@ -290,7 +276,7 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	for idx, resource := range resources {
 		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource)
 		if err != nil || resourceDecision == nil {
-			return nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
+			return nil, nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
 		}
 		if !resourceDecision.Passed {
 			decision.Access = false
@@ -306,7 +292,7 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 		decision.Results[idx] = *resourceDecision
 	}
 
-	return decision, nil
+	return decision, entitledFQNsToActions, nil
 }
 
 func (p *PolicyDecisionPoint) GetEntitlements(

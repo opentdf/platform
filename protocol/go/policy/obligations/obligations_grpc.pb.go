@@ -32,6 +32,7 @@ const (
 	Service_DeleteObligationValue_FullMethodName     = "/policy.obligations.Service/DeleteObligationValue"
 	Service_AddObligationTrigger_FullMethodName      = "/policy.obligations.Service/AddObligationTrigger"
 	Service_RemoveObligationTrigger_FullMethodName   = "/policy.obligations.Service/RemoveObligationTrigger"
+	Service_ListObligationTriggers_FullMethodName    = "/policy.obligations.Service/ListObligationTriggers"
 )
 
 // ServiceClient is the client API for Service service.
@@ -51,6 +52,7 @@ type ServiceClient interface {
 	DeleteObligationValue(ctx context.Context, in *DeleteObligationValueRequest, opts ...grpc.CallOption) (*DeleteObligationValueResponse, error)
 	AddObligationTrigger(ctx context.Context, in *AddObligationTriggerRequest, opts ...grpc.CallOption) (*AddObligationTriggerResponse, error)
 	RemoveObligationTrigger(ctx context.Context, in *RemoveObligationTriggerRequest, opts ...grpc.CallOption) (*RemoveObligationTriggerResponse, error)
+	ListObligationTriggers(ctx context.Context, in *ListObligationTriggersRequest, opts ...grpc.CallOption) (*ListObligationTriggersResponse, error)
 }
 
 type serviceClient struct {
@@ -178,6 +180,15 @@ func (c *serviceClient) RemoveObligationTrigger(ctx context.Context, in *RemoveO
 	return out, nil
 }
 
+func (c *serviceClient) ListObligationTriggers(ctx context.Context, in *ListObligationTriggersRequest, opts ...grpc.CallOption) (*ListObligationTriggersResponse, error) {
+	out := new(ListObligationTriggersResponse)
+	err := c.cc.Invoke(ctx, Service_ListObligationTriggers_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ServiceServer is the server API for Service service.
 // All implementations must embed UnimplementedServiceServer
 // for forward compatibility
@@ -195,6 +206,7 @@ type ServiceServer interface {
 	DeleteObligationValue(context.Context, *DeleteObligationValueRequest) (*DeleteObligationValueResponse, error)
 	AddObligationTrigger(context.Context, *AddObligationTriggerRequest) (*AddObligationTriggerResponse, error)
 	RemoveObligationTrigger(context.Context, *RemoveObligationTriggerRequest) (*RemoveObligationTriggerResponse, error)
+	ListObligationTriggers(context.Context, *ListObligationTriggersRequest) (*ListObligationTriggersResponse, error)
 	mustEmbedUnimplementedServiceServer()
 }
 
@@ -240,6 +252,9 @@ func (UnimplementedServiceServer) AddObligationTrigger(context.Context, *AddObli
 }
 func (UnimplementedServiceServer) RemoveObligationTrigger(context.Context, *RemoveObligationTriggerRequest) (*RemoveObligationTriggerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveObligationTrigger not implemented")
+}
+func (UnimplementedServiceServer) ListObligationTriggers(context.Context, *ListObligationTriggersRequest) (*ListObligationTriggersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListObligationTriggers not implemented")
 }
 func (UnimplementedServiceServer) mustEmbedUnimplementedServiceServer() {}
 
@@ -488,6 +503,24 @@ func _Service_RemoveObligationTrigger_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Service_ListObligationTriggers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListObligationTriggersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ServiceServer).ListObligationTriggers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Service_ListObligationTriggers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ServiceServer).ListObligationTriggers(ctx, req.(*ListObligationTriggersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Service_ServiceDesc is the grpc.ServiceDesc for Service service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -546,6 +579,10 @@ var Service_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveObligationTrigger",
 			Handler:    _Service_RemoveObligationTrigger_Handler,
+		},
+		{
+			MethodName: "ListObligationTriggers",
+			Handler:    _Service_ListObligationTriggers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

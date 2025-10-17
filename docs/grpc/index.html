@@ -234,6 +234,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.Certificate"><span class="badge">M</span>Certificate</a>
+                </li>
+              
+                <li>
                   <a href="#policy.Condition"><span class="badge">M</span>Condition</a>
                 </li>
               
@@ -1334,6 +1338,14 @@
             <ul>
               
                 <li>
+                  <a href="#policy.namespaces.AssignCertificateToNamespaceRequest"><span class="badge">M</span>AssignCertificateToNamespaceRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.namespaces.AssignCertificateToNamespaceResponse"><span class="badge">M</span>AssignCertificateToNamespaceResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.namespaces.AssignKeyAccessServerToNamespaceRequest"><span class="badge">M</span>AssignKeyAccessServerToNamespaceRequest</a>
                 </li>
               
@@ -1382,11 +1394,23 @@
                 </li>
               
                 <li>
+                  <a href="#policy.namespaces.NamespaceCertificate"><span class="badge">M</span>NamespaceCertificate</a>
+                </li>
+              
+                <li>
                   <a href="#policy.namespaces.NamespaceKey"><span class="badge">M</span>NamespaceKey</a>
                 </li>
               
                 <li>
                   <a href="#policy.namespaces.NamespaceKeyAccessServer"><span class="badge">M</span>NamespaceKeyAccessServer</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.namespaces.RemoveCertificateFromNamespaceRequest"><span class="badge">M</span>RemoveCertificateFromNamespaceRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.namespaces.RemoveCertificateFromNamespaceResponse"><span class="badge">M</span>RemoveCertificateFromNamespaceResponse</a>
                 </li>
               
                 <li>
@@ -1506,6 +1530,14 @@
               
                 <li>
                   <a href="#policy.obligations.GetObligationsByFQNsResponse.FqnObligationMapEntry"><span class="badge">M</span>GetObligationsByFQNsResponse.FqnObligationMapEntry</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.obligations.ListObligationTriggersRequest"><span class="badge">M</span>ListObligationTriggersRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.obligations.ListObligationTriggersResponse"><span class="badge">M</span>ListObligationTriggersResponse</a>
                 </li>
               
                 <li>
@@ -2529,6 +2561,44 @@ Indicates a key may be found in TDFs without key identifiers </p></td>
 
         
       
+        <h3 id="policy.Certificate">Certificate</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>generated uuid in database </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pem</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>PEM format certificate </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Optional metadata. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.Condition">Condition</h3>
         <p>A Condition defines a rule of <the value at the flattened 'selector value'</p><p>location> <operator> <subject external values></p>
 
@@ -2939,6 +3009,13 @@ enable federation </p></td>
                   <td><a href="#policy.SimpleKasKey">SimpleKasKey</a></td>
                   <td>repeated</td>
                   <td><p>Keys for the namespace </p></td>
+                </tr>
+              
+                <tr>
+                  <td>root_certs</td>
+                  <td><a href="#policy.Certificate">Certificate</a></td>
+                  <td>repeated</td>
+                  <td><p>Root certificates for chain of trust </p></td>
                 </tr>
               
             </tbody>
@@ -5179,6 +5256,13 @@ this case the resource acts as and represents a single entity for authorization/
                   <td><a href="#entity.Token">entity.Token</a></td>
                   <td></td>
                   <td><p>access token (JWT), which is used to create an entity chain (comprising one or more entities) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>with_request_token</td>
+                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
+                  <td></td>
+                  <td><p>derive the entity from the request&#39;s authorization access token JWT, rather than passing in the body </p></td>
                 </tr>
               
             </tbody>
@@ -11694,6 +11778,75 @@ Provider Management</p></td>
       <p></p>
 
       
+        <h3 id="policy.namespaces.AssignCertificateToNamespaceRequest">AssignCertificateToNamespaceRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace</td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
+                  <td></td>
+                  <td><p>Required - namespace identifier (id or fqn) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pem</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required - PEM format certificate </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.namespaces.AssignCertificateToNamespaceResponse">AssignCertificateToNamespaceResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_certificate</td>
+                  <td><a href="#policy.namespaces.NamespaceCertificate">NamespaceCertificate</a></td>
+                  <td></td>
+                  <td><p>The mapping of the namespace to the certificate. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>certificate</td>
+                  <td><a href="#policy.Certificate">policy.Certificate</a></td>
+                  <td></td>
+                  <td><p>Return the full certificate object for convenience </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.namespaces.AssignKeyAccessServerToNamespaceRequest">AssignKeyAccessServerToNamespaceRequest</h3>
         <p>Deprecated: utilize AssignPublicKeyToNamespaceRequest</p>
 
@@ -12022,6 +12175,37 @@ ACTIVE by default when not specified </p></td>
 
         
       
+        <h3 id="policy.namespaces.NamespaceCertificate">NamespaceCertificate</h3>
+        <p>Maps a namespace to a certificate (similar to NamespaceKey pattern)</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace</td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
+                  <td></td>
+                  <td><p>Required - namespace identifier (id or fqn) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>certificate_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required (The id from the Certificate object) </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.namespaces.NamespaceKey">NamespaceKey</h3>
         <p></p>
 
@@ -12075,6 +12259,54 @@ ACTIVE by default when not specified </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.namespaces.RemoveCertificateFromNamespaceRequest">RemoveCertificateFromNamespaceRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_certificate</td>
+                  <td><a href="#policy.namespaces.NamespaceCertificate">NamespaceCertificate</a></td>
+                  <td></td>
+                  <td><p>The namespace and certificate to unassign. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.namespaces.RemoveCertificateFromNamespaceResponse">RemoveCertificateFromNamespaceResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_certificate</td>
+                  <td><a href="#policy.namespaces.NamespaceCertificate">NamespaceCertificate</a></td>
+                  <td></td>
+                  <td><p>The unassigned namespace and certificate. </p></td>
                 </tr>
               
             </tbody>
@@ -12318,6 +12550,20 @@ Namespace &lt;&gt; Key RPCs
                 <td>RemovePublicKeyFromNamespace</td>
                 <td><a href="#policy.namespaces.RemovePublicKeyFromNamespaceRequest">RemovePublicKeyFromNamespaceRequest</a></td>
                 <td><a href="#policy.namespaces.RemovePublicKeyFromNamespaceResponse">RemovePublicKeyFromNamespaceResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>AssignCertificateToNamespace</td>
+                <td><a href="#policy.namespaces.AssignCertificateToNamespaceRequest">AssignCertificateToNamespaceRequest</a></td>
+                <td><a href="#policy.namespaces.AssignCertificateToNamespaceResponse">AssignCertificateToNamespaceResponse</a></td>
+                <td><p>Namespace &lt;&gt; Certificate RPCs</p></td>
+              </tr>
+            
+              <tr>
+                <td>RemoveCertificateFromNamespace</td>
+                <td><a href="#policy.namespaces.RemoveCertificateFromNamespaceRequest">RemoveCertificateFromNamespaceRequest</a></td>
+                <td><a href="#policy.namespaces.RemoveCertificateFromNamespaceResponse">RemoveCertificateFromNamespaceResponse</a></td>
                 <td><p></p></td>
               </tr>
             
@@ -12996,6 +13242,75 @@ Common metadata </p></td>
 
         
       
+        <h3 id="policy.obligations.ListObligationTriggersRequest">ListObligationTriggersRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.ListObligationTriggersResponse">ListObligationTriggersResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>triggers</td>
+                  <td><a href="#policy.ObligationTrigger">policy.ObligationTrigger</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.obligations.ListObligationsRequest">ListObligationsRequest</h3>
         <p></p>
 
@@ -13403,6 +13718,13 @@ Common metadata </p></td>
                 <td><p></p></td>
               </tr>
             
+              <tr>
+                <td>ListObligationTriggers</td>
+                <td><a href="#policy.obligations.ListObligationTriggersRequest">ListObligationTriggersRequest</a></td>
+                <td><a href="#policy.obligations.ListObligationTriggersResponse">ListObligationTriggersResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
           </tbody>
         </table>
 
@@ -13441,6 +13763,11 @@ Common metadata </p></td>
             
               <tr>
                 <td>GetObligationValuesByFQNs</td>
+                <td><p>NO_SIDE_EFFECTS</p></td>
+              </tr>
+            
+              <tr>
+                <td>ListObligationTriggers</td>
                 <td><p>NO_SIDE_EFFECTS</p></td>
               </tr>
             

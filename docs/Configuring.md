@@ -281,12 +281,29 @@ services:
 
 Root level key `authorization`
 
-| Field        | Description                     | Default                                | Environment Variables                     |
-| ------------ | ------------------------------- | -------------------------------------- | ----------------------------------------- |
-| `rego.path`  | Path to rego policy file        | Leverages embedded rego policy         | OPENTDF_SERVICES_AUTHORIZATION_REGO_PATH  |
-| `rego.query` | Rego query to execute in policy | `data.opentdf.entitlements.attributes` | OPENTDF_SERVICES_AUTHORIZATION_REGO_QUERY |
+> **Note:** Both Authorization v1 and v2 use the same configuration section, but some keys are version-specific. See below for details.
 
-Example:
+#### Shared Keys (v1 & v2)
+
+| Field | Description | Default | Environment Variables |
+|-------|-------------|---------|----------------------|
+| *(none currently; all keys are version-specific)* | | | |
+
+#### Authorization v1 Only
+
+| Field        | Description                  | Default                        | Environment Variables                       |
+|--------------|------------------------------|--------------------------------|---------------------------------------------|
+| `rego.path`  | Path to rego policy file     | Leverages embedded rego policy | OPENTDF_SERVICES_AUTHORIZATION_REGO_PATH    |
+| `rego.query` | Rego query to execute        | `data.opentdf.entitlements.attributes` | OPENTDF_SERVICES_AUTHORIZATION_REGO_QUERY   |
+
+#### Authorization v2 Only
+
+| Field                                   | Description                                      | Default | Environment Variables |
+|-----------------------------------------|--------------------------------------------------|---------|----------------------|
+| `entitlement_policy_cache.enabled`      | Enable the entitlement policy cache              | `false` |                      |
+| `entitlement_policy_cache.refresh_interval` | How often to refresh the entitlement policy cache (e.g. `30s`) |         |                      |
+
+#### Example: Authorization v1
 
 ```yaml
 services:
@@ -295,6 +312,82 @@ services:
       path: /path/to/policy.rego
       query: data.opentdf.entitlements.attributes
 ```
+
+#### Example: Authorization v2
+
+```yaml
+services:
+  authorization:
+    entitlement_policy_cache:
+      enabled: false
+      refresh_interval: 30s
+```
+
+### Entity Resolution
+
+Root level key `entityresolution`
+
+> **Note:** Both Entity Resolution v1 and v2 use the same configuration section. All configuration keys are shared between v1 and v2, except `cache_expiration`, which is only used in v2.
+
+#### Shared Keys (v1 & v2)
+
+| Field                   | Description                                                                                  | Default   | Environment Variable                                 |
+|-------------------------|----------------------------------------------------------------------------------------------|-----------|------------------------------------------------------|
+| `mode`                   | The mode in which to run ERS (`keycloak` or `claims`) | `keycloak`      | OPENTDF_SERVICES_ENTITYRESOLUTION_MODE                |
+| `url`                   | Endpoint URL for the entity resolution service (specific to `keycloak` mode)                                              | `""`      | OPENTDF_SERVICES_ENTITYRESOLUTION_URL                |
+| `clientid`              | Keycloak client ID for authentication (specific to `keycloak` mode)  | `""`      | OPENTDF_SERVICES_ENTITYRESOLUTION_CLIENTID           |
+| `clientsecret`          | Keycloak client secret for authentication(specific to `keycloak` mode)    | `""`      | OPENTDF_SERVICES_ENTITYRESOLUTION_CLIENTSECRET       |
+| `realm`                 | Keycloak realm for authentication (specific to `keycloak` mode)    |           | OPENTDF_SERVICES_ENTITYRESOLUTION_REALM              |
+| `legacykeycloak`        | Enables legacy Keycloak compatibility (`/auth` as base endpoint) (specific to `keycloak` mode)  | `false`   | OPENTDF_SERVICES_ENTITYRESOLUTION_LEGACYKEYCLOAK     |
+| `inferid.from.email`    | Infer entity IDs from email addresses (specific to `keycloak` mode) | `false`   | OPENTDF_SERVICES_ENTITYRESOLUTION_INFERID_FROM_EMAIL |
+| `inferid.from.username` | Infer entity IDs from usernames (specific to `keycloak` mode) | `false`   | OPENTDF_SERVICES_ENTITYRESOLUTION_INFERID_FROM_USERNAME |
+| `inferid.from.clientid` | Infer entity IDs from client IDs (specific to `keycloak` mode) | `false`   | OPENTDF_SERVICES_ENTITYRESOLUTION_INFERID_FROM_CLIENTID |
+
+#### Entity Resolution v1 Only
+
+| Field | Description | Default | Environment Variables |
+|-------|-------------|---------|----------------------|
+| *(none currently)* | | | |
+
+#### Entity Resolution v2 Only
+
+| Field              | Description                                                        | Default  | Environment Variable |
+|--------------------|--------------------------------------------------------------------|----------|---------------------|
+| `cache_expiration` | Cache duration for entity resolution results (e.g., `30s`). Disabled if not set or zero. (specific to `keycloak` mode) | disabled |                     |
+
+#### Example: Entity Resolution v1
+
+```yaml
+services:
+  entityresolution:
+    url: http://localhost:8888/auth
+    clientid: "tdf-entity-resolution"
+    clientsecret: "secret"
+    realm: "opentdf"
+    legacykeycloak: true
+    inferid:
+      from:
+        email: true
+        username: true
+```
+
+#### Example: Entity Resolution v2
+
+```yaml
+services:
+  entityresolution:
+    url: http://localhost:8888/auth
+    clientid: "tdf-entity-resolution"
+    clientsecret: "secret"
+    realm: "opentdf"
+    legacykeycloak: true
+    inferid:
+      from:
+        email: true
+        username: true
+    cache_expiration: 30s
+```
+
 
 ### Policy
 

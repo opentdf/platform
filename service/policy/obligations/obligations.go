@@ -2,6 +2,7 @@ package obligations
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -413,6 +414,10 @@ func (s *Service) RemoveObligationTrigger(ctx context.Context, req *connect.Requ
 
 	rsp := &obligations.RemoveObligationTriggerResponse{Trigger: deleted}
 	return connect.NewResponse(rsp), nil
+}
+
+func (s *Service) ListObligationTriggers(_ context.Context, _ *connect.Request[obligations.ListObligationTriggersRequest]) (*connect.Response[obligations.ListObligationTriggersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("listObligationTriggers is not yet implemented"))
 }
 
 // func (s *Service) AddObligationFulfiller(_ context.Context, _ *connect.Request[obligations.AddObligationFulfillerRequest]) (*connect.Response[obligations.AddObligationFulfillerResponse], error) {

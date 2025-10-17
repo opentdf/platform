@@ -28,6 +28,8 @@ const (
 	NamespaceService_RemoveKeyAccessServerFromNamespace_FullMethodName = "/policy.namespaces.NamespaceService/RemoveKeyAccessServerFromNamespace"
 	NamespaceService_AssignPublicKeyToNamespace_FullMethodName         = "/policy.namespaces.NamespaceService/AssignPublicKeyToNamespace"
 	NamespaceService_RemovePublicKeyFromNamespace_FullMethodName       = "/policy.namespaces.NamespaceService/RemovePublicKeyFromNamespace"
+	NamespaceService_AssignCertificateToNamespace_FullMethodName       = "/policy.namespaces.NamespaceService/AssignCertificateToNamespace"
+	NamespaceService_RemoveCertificateFromNamespace_FullMethodName     = "/policy.namespaces.NamespaceService/RemoveCertificateFromNamespace"
 )
 
 // NamespaceServiceClient is the client API for NamespaceService service.
@@ -50,6 +52,9 @@ type NamespaceServiceClient interface {
 	// ---------------------------------------
 	AssignPublicKeyToNamespace(ctx context.Context, in *AssignPublicKeyToNamespaceRequest, opts ...grpc.CallOption) (*AssignPublicKeyToNamespaceResponse, error)
 	RemovePublicKeyFromNamespace(ctx context.Context, in *RemovePublicKeyFromNamespaceRequest, opts ...grpc.CallOption) (*RemovePublicKeyFromNamespaceResponse, error)
+	// Namespace <> Certificate RPCs
+	AssignCertificateToNamespace(ctx context.Context, in *AssignCertificateToNamespaceRequest, opts ...grpc.CallOption) (*AssignCertificateToNamespaceResponse, error)
+	RemoveCertificateFromNamespace(ctx context.Context, in *RemoveCertificateFromNamespaceRequest, opts ...grpc.CallOption) (*RemoveCertificateFromNamespaceResponse, error)
 }
 
 type namespaceServiceClient struct {
@@ -143,6 +148,24 @@ func (c *namespaceServiceClient) RemovePublicKeyFromNamespace(ctx context.Contex
 	return out, nil
 }
 
+func (c *namespaceServiceClient) AssignCertificateToNamespace(ctx context.Context, in *AssignCertificateToNamespaceRequest, opts ...grpc.CallOption) (*AssignCertificateToNamespaceResponse, error) {
+	out := new(AssignCertificateToNamespaceResponse)
+	err := c.cc.Invoke(ctx, NamespaceService_AssignCertificateToNamespace_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *namespaceServiceClient) RemoveCertificateFromNamespace(ctx context.Context, in *RemoveCertificateFromNamespaceRequest, opts ...grpc.CallOption) (*RemoveCertificateFromNamespaceResponse, error) {
+	out := new(RemoveCertificateFromNamespaceResponse)
+	err := c.cc.Invoke(ctx, NamespaceService_RemoveCertificateFromNamespace_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NamespaceServiceServer is the server API for NamespaceService service.
 // All implementations must embed UnimplementedNamespaceServiceServer
 // for forward compatibility
@@ -163,6 +186,9 @@ type NamespaceServiceServer interface {
 	// ---------------------------------------
 	AssignPublicKeyToNamespace(context.Context, *AssignPublicKeyToNamespaceRequest) (*AssignPublicKeyToNamespaceResponse, error)
 	RemovePublicKeyFromNamespace(context.Context, *RemovePublicKeyFromNamespaceRequest) (*RemovePublicKeyFromNamespaceResponse, error)
+	// Namespace <> Certificate RPCs
+	AssignCertificateToNamespace(context.Context, *AssignCertificateToNamespaceRequest) (*AssignCertificateToNamespaceResponse, error)
+	RemoveCertificateFromNamespace(context.Context, *RemoveCertificateFromNamespaceRequest) (*RemoveCertificateFromNamespaceResponse, error)
 	mustEmbedUnimplementedNamespaceServiceServer()
 }
 
@@ -196,6 +222,12 @@ func (UnimplementedNamespaceServiceServer) AssignPublicKeyToNamespace(context.Co
 }
 func (UnimplementedNamespaceServiceServer) RemovePublicKeyFromNamespace(context.Context, *RemovePublicKeyFromNamespaceRequest) (*RemovePublicKeyFromNamespaceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemovePublicKeyFromNamespace not implemented")
+}
+func (UnimplementedNamespaceServiceServer) AssignCertificateToNamespace(context.Context, *AssignCertificateToNamespaceRequest) (*AssignCertificateToNamespaceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AssignCertificateToNamespace not implemented")
+}
+func (UnimplementedNamespaceServiceServer) RemoveCertificateFromNamespace(context.Context, *RemoveCertificateFromNamespaceRequest) (*RemoveCertificateFromNamespaceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveCertificateFromNamespace not implemented")
 }
 func (UnimplementedNamespaceServiceServer) mustEmbedUnimplementedNamespaceServiceServer() {}
 
@@ -372,6 +404,42 @@ func _NamespaceService_RemovePublicKeyFromNamespace_Handler(srv interface{}, ctx
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NamespaceService_AssignCertificateToNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AssignCertificateToNamespaceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NamespaceServiceServer).AssignCertificateToNamespace(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NamespaceService_AssignCertificateToNamespace_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NamespaceServiceServer).AssignCertificateToNamespace(ctx, req.(*AssignCertificateToNamespaceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NamespaceService_RemoveCertificateFromNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveCertificateFromNamespaceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NamespaceServiceServer).RemoveCertificateFromNamespace(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NamespaceService_RemoveCertificateFromNamespace_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NamespaceServiceServer).RemoveCertificateFromNamespace(ctx, req.(*RemoveCertificateFromNamespaceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NamespaceService_ServiceDesc is the grpc.ServiceDesc for NamespaceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -414,6 +482,14 @@ var NamespaceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemovePublicKeyFromNamespace",
 			Handler:    _NamespaceService_RemovePublicKeyFromNamespace_Handler,
+		},
+		{
+			MethodName: "AssignCertificateToNamespace",
+			Handler:    _NamespaceService_AssignCertificateToNamespace_Handler,
+		},
+		{
+			MethodName: "RemoveCertificateFromNamespace",
+			Handler:    _NamespaceService_RemoveCertificateFromNamespace_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

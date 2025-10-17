@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.6.0...lib/ocrypto/v0.7.0) (2025-10-15)
+
+
+### Features
+
+* **core:** Adds helper `KeyType` method ([#2735](https://github.com/opentdf/platform/issues/2735)) ([7147c4b](https://github.com/opentdf/platform/commit/7147c4bcee9f691b6e9684e9922c16b55f0b2950))
+* use public AES protected key from lib/ocrypto ([#2600](https://github.com/opentdf/platform/issues/2600)) ([75d7590](https://github.com/opentdf/platform/commit/75d7590ec062f822045027d4eb0b59a48bdea465))
+
 ## [0.6.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.5.0...lib/ocrypto/v0.6.0) (2025-09-11)
 
 

@@ -245,6 +245,20 @@ components:
           title: token
           required:
             - token
+        - properties:
+            withRequestToken:
+              title: with_request_token
+              description: |+
+                derive the entity from the request's authorization access token JWT, rather than passing in the body
+                with_request_token must be true when set:
+                ```
+                this == true
+                ```
+
+              $ref: '#/components/schemas/google.protobuf.BoolValue'
+          title: with_request_token
+          required:
+            - withRequestToken
       title: EntityIdentifier
       additionalProperties: false
       description: |-

@@ -1558,11 +1558,22 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		return nil
 	}
 
+	// Propagate verification mode to all registered validators
+	// This ensures validators respect the configured verification mode
+	for _, validatorEntry := range r.config.assertionRegistry.registeredValidators {
+		if setter, ok := validatorEntry.validator.(interface {
+			SetVerificationMode(AssertionVerificationMode)
+		}); ok {
+			setter.SetVerificationMode(r.config.assertionVerificationMode)
+		}
+	}
+
 	// useHex is used for legacy TDF compatibility (versions < 4.3.0)
 	// When reading legacy TDFs, signatures are hex-encoded instead of raw bytes
 	// Legacy TDFs have no TDFVersion field in the manifest
 	useHex := r.manifest.TDFVersion == ""
 	systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(useHex, payloadKey[:], aggregateHash.String())
+	systemMetadataAssertionProvider.SetVerificationMode(r.config.assertionVerificationMode)
 	// if already registered, ignore
 	_ = r.config.assertionRegistry.RegisterValidator(systemMetadataAssertionPattern, systemMetadataAssertionProvider)
 
@@ -1586,6 +1597,7 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 			// Legacy format: assertionSig = base64(aggregateHash + assertionHash)
 			// Current format: assertionSig = rootSignature
 			fallbackValidator := NewSystemMetadataAssertionProvider(useHex, payloadKey[:], aggregateHash.String())
+			fallbackValidator.SetVerificationMode(r.config.assertionVerificationMode)
 			// Register catch-all pattern for any assertion
 			_ = r.config.assertionRegistry.RegisterValidator(regexp.MustCompile(".*"), fallbackValidator)
 		}

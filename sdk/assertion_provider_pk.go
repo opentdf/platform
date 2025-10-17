@@ -27,7 +27,8 @@ type KeyAssertionBinder struct {
 }
 
 type KeyAssertionValidator struct {
-	publicKeys AssertionVerificationKeys
+	publicKeys       AssertionVerificationKeys
+	verificationMode AssertionVerificationMode
 }
 
 func NewKeyAssertionBinder(privateKey AssertionKey) *KeyAssertionBinder {
@@ -38,8 +39,16 @@ func NewKeyAssertionBinder(privateKey AssertionKey) *KeyAssertionBinder {
 
 func NewKeyAssertionValidator(publicKeys AssertionVerificationKeys) *KeyAssertionValidator {
 	return &KeyAssertionValidator{
-		publicKeys: publicKeys,
+		publicKeys:       publicKeys,
+		verificationMode: FailFast, // Default to secure mode
 	}
+}
+
+// SetVerificationMode updates the verification mode for this validator.
+// This is typically called by the SDK when registering validators to propagate
+// the global verification mode setting.
+func (p *KeyAssertionValidator) SetVerificationMode(mode AssertionVerificationMode) {
+	p.verificationMode = mode
 }
 
 func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, error) {
@@ -88,13 +97,25 @@ func (p KeyAssertionValidator) Verify(ctx context.Context, a Assertion, r Reader
 		return fmt.Errorf("%w: assertion has no cryptographic binding", ErrAssertionFailure{ID: a.ID})
 	}
 
+	// Check if validator has keys configured
+	// Behavior depends on verification mode for security
 	if p.publicKeys.IsEmpty() {
-		slog.WarnContext(ctx, "no verification keys configured for assertion validation",
-			slog.String("assertion_id", a.ID),
-			slog.String("assertion_type", string(a.Type)))
-		return nil
-		// if an error is thrown here, a tamper event will be triggered
-		// return errors.New("no verification key configured")
+		switch p.verificationMode {
+		case PermissiveMode:
+			// Allow for forward compatibility - skip validation with warning
+			slog.WarnContext(ctx, "no verification keys configured, skipping in permissive mode",
+				slog.String("assertion_id", a.ID),
+				slog.String("assertion_type", string(a.Type)),
+				slog.String("mode", "permissive"))
+			return nil
+		case StrictMode, FailFast:
+			// Fail secure - cannot verify without keys
+			// This prevents attackers from bypassing verification by using unconfigured key IDs
+			return fmt.Errorf("%w: no verification keys configured for assertion validation", ErrAssertionFailure{ID: a.ID})
+		default:
+			// Unknown mode - fail secure by default
+			return fmt.Errorf("%w: no verification keys configured for assertion validation", ErrAssertionFailure{ID: a.ID})
+		}
 	}
 	// Look up the key for the assertion
 	key, err := p.publicKeys.Get(a.ID)

@@ -30,17 +30,26 @@ var systemMetadataAssertionPattern = regexp.MustCompile("^" + SystemMetadataAsse
 // SystemMetadataAssertionProvider provides information about the system that is running the application.
 // Implements AssertionBuilder and AssertionValidator
 type SystemMetadataAssertionProvider struct {
-	useHex        bool
-	payloadKey    []byte
-	aggregateHash string
+	useHex           bool
+	payloadKey       []byte
+	aggregateHash    string
+	verificationMode AssertionVerificationMode
 }
 
 func NewSystemMetadataAssertionProvider(useHex bool, payloadKey []byte, aggregateHash string) *SystemMetadataAssertionProvider {
 	return &SystemMetadataAssertionProvider{
-		useHex:        useHex,
-		payloadKey:    payloadKey,
-		aggregateHash: aggregateHash,
+		useHex:           useHex,
+		payloadKey:       payloadKey,
+		aggregateHash:    aggregateHash,
+		verificationMode: FailFast, // Default to secure mode
 	}
+}
+
+// SetVerificationMode updates the verification mode for this validator.
+// This is typically called by the SDK when registering validators to propagate
+// the global verification mode setting.
+func (p *SystemMetadataAssertionProvider) SetVerificationMode(mode AssertionVerificationMode) {
+	p.verificationMode = mode
 }
 
 func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (Assertion, error) {

@@ -330,23 +330,57 @@ const (
 
 // AssertionVerificationMode defines how assertion verification errors are handled during TDF reading.
 //
-// The mode determines the behavior when encountering unknown assertions or verification failures:
-//   - PermissiveMode: Unknown assertions are skipped with a warning; verification failures are reported but may allow continuation
-//   - StrictMode: All assertions must be known and verified; any failure results in immediate error
-//   - FailFast: Stop at the first assertion verification error (default behavior)
+// The mode determines behavior when encountering unknown assertions, missing validators, or verification failures.
+// Each mode provides different security guarantees and compatibility trade-offs:
 //
-// Security Considerations:
-//   - Permissive mode is useful for forward compatibility but may mask security issues
-//   - Strict mode ensures all assertions are validated but may break on new assertion types
-//   - FailFast mode is recommended for production use with well-defined assertion requirements
+// ## PermissiveMode (Least Secure, Most Compatible)
+// Best for: Development, testing, forward compatibility with evolving TDF formats
+//   - Unknown assertions: SKIP with warning (allows newer TDF versions)
+//   - Missing verification keys: SKIP with warning (allows partial key configuration)
+//   - Verification failures: LOG error but continue (attempt best-effort validation)
+//   - Validation failures: LOG error but continue
+//
+// Security Impact: May allow tampered assertions to go undetected. Use only in non-production environments.
+//
+// ## FailFast (DEFAULT - Balanced Security)
+// Best for: Production with well-defined assertion requirements
+//   - Unknown assertions: SKIP with warning (forward compatible with new assertion types)
+//   - Missing verification keys: FAIL (prevents bypass via unconfigured keys)
+//   - Verification failures: FAIL immediately (cryptographic binding check failed)
+//   - Validation failures: FAIL immediately (trust/policy check failed)
+//
+// Security Impact: Secure against tampering but allows unknown assertion types for forward compatibility.
+//
+// ## StrictMode (Most Secure, Least Compatible)
+// Best for: High-security environments, regulated data, zero-tolerance for unknowns
+//   - Unknown assertions: FAIL (no surprises, every assertion must be explicitly validated)
+//   - Missing verification keys: FAIL (explicit trust required for all assertions)
+//   - Verification failures: FAIL immediately (cryptographic binding check failed)
+//   - Validation failures: FAIL immediately (trust/policy check failed)
+//
+// Security Impact: Maximum security but may break on new TDF formats or assertion types.
+//
+// ## Security Considerations
+//   - Missing cryptographic bindings ALWAYS fail regardless of mode (security requirement)
+//   - Permissive mode should NEVER be used in production for sensitive data
+//   - FailFast (default) provides the best balance for most production use cases
+//   - StrictMode is recommended for high-security environments where all TDF formats are controlled
 type AssertionVerificationMode int
 
 const (
-	// FailFast stops at the first assertion verification error (default, most secure)
+	// FailFast stops at the first assertion verification error (default, recommended for production).
+	// Provides balanced security while maintaining forward compatibility with unknown assertion types.
+	// Missing verification keys will cause verification to fail (fail-secure behavior).
 	FailFast AssertionVerificationMode = iota
-	// PermissiveMode allows unknown assertions and logs verification failures as warnings
+
+	// PermissiveMode allows best-effort validation, logging failures but continuing decryption.
+	// Should only be used in development/testing. NOT RECOMMENDED for production use.
+	// Missing verification keys will be skipped with warnings.
 	PermissiveMode
-	// StrictMode requires all assertions to be known and successfully verified
+
+	// StrictMode requires all assertions to be known and successfully verified with configured keys.
+	// Provides maximum security but may break on new TDF formats or assertion types.
+	// Any unknown assertion or missing key causes immediate failure.
 	StrictMode
 )
 

@@ -127,3 +127,102 @@ func TestSystemMetadataAssertionProvider_Verify_DualMode(t *testing.T) {
 		t.Log("✓ Ensures old TDFs without schema field can be validated")
 	})
 }
+
+// TestSystemMetadataAssertionProvider_MissingBinding_AllModes verifies that assertions
+// without cryptographic bindings always fail, regardless of verification mode
+func TestSystemMetadataAssertionProvider_MissingBinding_AllModes(t *testing.T) {
+	t.Parallel()
+
+	modes := []AssertionVerificationMode{PermissiveMode, FailFast, StrictMode}
+
+	modeNames := map[AssertionVerificationMode]string{
+		PermissiveMode: "PermissiveMode",
+		FailFast:       "FailFast",
+		StrictMode:     "StrictMode",
+	}
+
+	for _, mode := range modes {
+		mode := mode // capture range variable
+		t.Run(modeNames[mode], func(t *testing.T) {
+			t.Parallel()
+
+			payloadKey := []byte("test-payload-key-32-bytes-long!")
+			aggregateHash := "test-aggregate-hash"
+
+			provider := NewSystemMetadataAssertionProvider(false, payloadKey, aggregateHash)
+			provider.SetVerificationMode(mode)
+
+			// Create a test assertion WITHOUT a binding (security violation)
+			assertion := Assertion{
+				ID:             SystemMetadataAssertionID,
+				Type:           BaseAssertion,
+				Scope:          PayloadScope,
+				AppliesToState: Unencrypted,
+				Statement: Statement{
+					Format: StatementFormatJSON,
+					Schema: SystemMetadataSchemaV2,
+					Value:  `{"tdf_spec_version":"1.0","sdk_version":"Go-test"}`,
+				},
+				Binding: Binding{
+					Method:    "jws",
+					Signature: "", // Empty signature = no binding
+				},
+			}
+
+			// Create minimal reader
+			reader := Reader{
+				manifest: Manifest{
+					EncryptionInformation: EncryptionInformation{
+						IntegrityInformation: IntegrityInformation{
+							RootSignature: RootSignature{
+								Signature: "test-root-signature",
+								Algorithm: "HS256",
+							},
+						},
+					},
+				},
+			}
+
+			// Verify should ALWAYS fail when binding is missing
+			err := provider.Verify(t.Context(), assertion, reader)
+			require.Error(t, err, "Missing bindings should fail in %s mode", mode)
+			assert.Contains(t, err.Error(), "no cryptographic binding",
+				"Error should indicate missing binding")
+		})
+	}
+}
+
+// TestSystemMetadataAssertionProvider_DefaultMode verifies that providers
+// default to FailFast mode for security
+func TestSystemMetadataAssertionProvider_DefaultMode(t *testing.T) {
+	t.Parallel()
+
+	payloadKey := []byte("test-payload-key-32-bytes-long!")
+	aggregateHash := "test-aggregate-hash"
+
+	// Create provider without explicitly setting mode
+	provider := NewSystemMetadataAssertionProvider(false, payloadKey, aggregateHash)
+
+	// Verify the default mode is FailFast
+	assert.Equal(t, FailFast, provider.verificationMode,
+		"Default verification mode should be FailFast for security")
+}
+
+// TestSystemMetadataAssertionProvider_SetVerificationMode verifies that
+// the SetVerificationMode method properly updates the mode
+func TestSystemMetadataAssertionProvider_SetVerificationMode(t *testing.T) {
+	t.Parallel()
+
+	payloadKey := []byte("test-payload-key-32-bytes-long!")
+	aggregateHash := "test-aggregate-hash"
+
+	provider := NewSystemMetadataAssertionProvider(false, payloadKey, aggregateHash)
+
+	// Test each mode
+	modes := []AssertionVerificationMode{PermissiveMode, FailFast, StrictMode}
+	for _, mode := range modes {
+		provider.SetVerificationMode(mode)
+		assert.Equal(t, mode, provider.verificationMode,
+			"SetVerificationMode should update the mode to %s", mode)
+	}
+}

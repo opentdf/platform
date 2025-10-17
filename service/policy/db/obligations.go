@@ -663,3 +663,53 @@ func (c PolicyDBClient) DeleteObligationTrigger(ctx context.Context, r *obligati
 		Id: id,
 	}, nil
 }
+
+func (c PolicyDBClient) ListObligationTriggers(ctx context.Context, r *obligations.ListObligationTriggersRequest) ([]*policy.ObligationTrigger, *policy.PageResponse, error) {
+	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > maxLimit {
+		return nil, nil, db.ErrListLimitTooLarge
+	}
+
+	rows, err := c.queries.listObligationTriggers(ctx, listObligationTriggersParams{
+		NamespaceID:  r.GetNamespaceId(),
+		NamespaceFqn: r.GetNamespaceFqn(),
+		Offset:       offset,
+		Limit:        limit,
+	})
+	if err != nil {
+		return nil, nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	var result []*policy.ObligationTrigger
+	for _, row := range rows {
+		metadata := &common.Metadata{}
+		if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
+			return nil, nil, err
+		}
+
+		obligationTrigger, err := unmarshalObligationTrigger(row.Trigger)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		obligationTrigger.Metadata = metadata
+		result = append(result, obligationTrigger)
+	}
+
+	var total int32
+	var nextOffset int32
+	if len(rows) > 0 {
+		total = int32(rows[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
+
+	pageResult := &policy.PageResponse{
+		CurrentOffset: offset,
+		Total:         total,
+		NextOffset:    nextOffset,
+	}
+
+	return result, pageResult, nil
+}

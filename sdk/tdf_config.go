@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"regexp"
 	"strings"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -498,30 +497,11 @@ func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOpti
 	return func(c *TDFReaderConfig) error {
 		c.verifiers = keys
 
-		// Register validators for all keys in the verification keys map
-		for assertionID := range keys.Keys {
-			// Create a regex pattern that exactly matches this assertion ID
-			pattern, err := regexp.Compile("^" + regexp.QuoteMeta(assertionID) + "$")
-			if err != nil {
-				return fmt.Errorf("failed to compile regex for assertion ID %s: %w", assertionID, err)
-			}
-
-			// Register a KeyAssertionValidator for this specific assertion ID
-			validator := &KeyAssertionValidator{publicKeys: keys}
-			if err := c.assertionRegistry.RegisterValidator(pattern, validator); err != nil {
-				return fmt.Errorf("failed to register validator for assertion ID %s: %w", assertionID, err)
-			}
-		}
-
-		// If there's a default key, register a catch-all validator
-		if keys.DefaultKey.Key != nil {
-			// Match any assertion ID that wasn't already registered
-			pattern := regexp.MustCompile(".*")
-			validator := &KeyAssertionValidator{publicKeys: keys}
-			// Note: this will be used as a fallback for unregistered assertion IDs
-			if err := c.assertionRegistry.RegisterValidator(pattern, validator); err != nil {
-				return fmt.Errorf("failed to register default validator: %w", err)
-			}
+		// Register a single KeyAssertionValidator for all keys
+		// The validator handles schema-based lookup internally
+		validator := NewKeyAssertionValidator(keys)
+		if err := c.assertionRegistry.RegisterValidator(validator); err != nil {
+			return fmt.Errorf("failed to register key assertion validator: %w", err)
 		}
 
 		return nil
@@ -529,11 +509,11 @@ func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOpti
 }
 
 // WithAssertionValidator registers a custom assertion validator for TDF reading.
-// The validator will be called during TDF reading to validate assertions matching the pattern.
-// The pattern is a compiled regular expression that matches against assertion IDs.
-func WithAssertionValidator(pattern *regexp.Regexp, validator AssertionValidator) TDFReaderOption {
+// The validator will be called during TDF reading to validate assertions with matching schema URIs.
+// The schema URI is determined by the validator's Schema() method.
+func WithAssertionValidator(validator AssertionValidator) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
-		return c.assertionRegistry.RegisterValidator(pattern, validator)
+		return c.assertionRegistry.RegisterValidator(validator)
 	}
 }
 

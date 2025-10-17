@@ -13,7 +13,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -1534,8 +1533,8 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 
 	// Propagate verification mode to all registered validators
 	// This ensures validators respect the configured verification mode
-	for _, validatorEntry := range r.config.assertionRegistry.registeredValidators {
-		if setter, ok := validatorEntry.validator.(interface {
+	for _, validator := range r.config.assertionRegistry.validators {
+		if setter, ok := validator.(interface {
 			SetVerificationMode(AssertionVerificationMode)
 		}); ok {
 			setter.SetVerificationMode(r.config.assertionVerificationMode)
@@ -1549,33 +1548,11 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 	systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(useHex, payloadKey[:], aggregateHash.String())
 	systemMetadataAssertionProvider.SetVerificationMode(r.config.assertionVerificationMode)
 	// if already registered, ignore
-	_ = r.config.assertionRegistry.RegisterValidator(systemMetadataAssertionPattern, systemMetadataAssertionProvider)
+	_ = r.config.assertionRegistry.RegisterValidator(systemMetadataAssertionProvider)
 
-	// Register DEK-based fallback validator for assertions without explicit validators
-	// This maintains backward compatibility with the old behavior where assertions
-	// were verified using the DEK (payload key) by default when no explicit keys were provided
-	// Only register if there are assertions with bindings in the manifest
-	if r.config.verifiers.IsEmpty() {
-		// Check if any assertions have bindings that need verification
-		hasSignedAssertions := false
-		for _, assertion := range r.manifest.Assertions {
-			if assertion.Binding.Signature != "" {
-				hasSignedAssertions = true
-				break
-			}
-		}
-
-		if hasSignedAssertions {
-			// No explicit verifiers provided - use SystemMetadataAssertionProvider for all assertions with bindings
-			// This provider supports both legacy (v1) and current (v2) assertion formats
-			// Legacy format: assertionSig = base64(aggregateHash + assertionHash)
-			// Current format: assertionSig = rootSignature
-			fallbackValidator := NewSystemMetadataAssertionProvider(useHex, payloadKey[:], aggregateHash.String())
-			fallbackValidator.SetVerificationMode(r.config.assertionVerificationMode)
-			// Register catch-all pattern for any assertion
-			_ = r.config.assertionRegistry.RegisterValidator(regexp.MustCompile(".*"), fallbackValidator)
-		}
-	}
+	// Note: DEK-based fallback validation is no longer needed with schema-based matching.
+	// Validators are now registered by schema URI. The SystemMetadataAssertionProvider
+	// handles validation for system metadata assertions (both v1 and v2 formats).
 
 	// Validate assertions based on configured verification mode
 	for _, assertion := range r.manifest.Assertions {
@@ -1586,7 +1563,7 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 			slog.String("assertion_schema", assertion.Statement.Schema),
 			slog.Int("verification_mode", int(r.config.assertionVerificationMode)))
 
-		validator, err := r.config.assertionRegistry.GetValidationProvider(assertion.ID)
+		validator, err := r.config.assertionRegistry.GetValidationProvider(assertion.Statement.Schema)
 		if err != nil {
 			// Unknown assertion handling depends on verification mode
 			switch r.config.assertionVerificationMode {

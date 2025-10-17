@@ -3,7 +3,6 @@ package sdk
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -56,7 +55,7 @@ func TestVerificationMode_MissingKeys(t *testing.T) {
 				ID: KeyAssertionID,
 				Statement: Statement{
 					Format: StatementFormatJSON,
-					Schema: SystemMetadataSchemaV1,
+					Schema: KeyAssertionSchema,
 					Value:  `{"test":"data"}`,
 				},
 				Binding: Binding{
@@ -128,7 +127,6 @@ func TestVerificationMode_UnknownAssertion(t *testing.T) {
 
 			// Create a TDF config with an unknown assertion
 			unknownAssertion := Assertion{
-				ID: "unknown-assertion-type-xyz",
 				Statement: Statement{
 					Format: StatementFormatJSON,
 					Schema: "unknown-schema-v1",
@@ -146,7 +144,7 @@ func TestVerificationMode_UnknownAssertion(t *testing.T) {
 			}
 
 			// Simulate the assertion verification logic from tdf.go
-			_, err := readerConfig.assertionRegistry.GetValidationProvider(unknownAssertion.ID)
+			_, err := readerConfig.assertionRegistry.GetValidationProvider(unknownAssertion.Statement.Schema)
 
 			if err != nil {
 				// No validator registered for this assertion
@@ -216,7 +214,7 @@ func TestVerificationMode_VerificationFailure(t *testing.T) {
 				AppliesToState: Unencrypted,
 				Statement: Statement{
 					Format: StatementFormatJSON,
-					Schema: SystemMetadataSchemaV1,
+					Schema: KeyAssertionSchema,
 					Value:  `{"test":"data"}`,
 				},
 			}
@@ -296,7 +294,7 @@ func TestVerificationMode_MissingCryptographicBinding(t *testing.T) {
 				AppliesToState: Unencrypted,
 				Statement: Statement{
 					Format: StatementFormatJSON,
-					Schema: SystemMetadataSchemaV1,
+					Schema: KeyAssertionSchema,
 					Value:  `{"test":"data"}`,
 				},
 				Binding: Binding{
@@ -366,10 +364,9 @@ func TestVerificationMode_ValidatorRegistration(t *testing.T) {
 				},
 			}
 
-			pattern := regexp.MustCompile("^" + KeyAssertionID + "$")
 			validator := NewKeyAssertionValidator(keys)
 
-			err := readerConfig.assertionRegistry.RegisterValidator(pattern, validator)
+			err := readerConfig.assertionRegistry.RegisterValidator(validator)
 			require.NoError(t, err)
 
 			// Verify the mode is set correctly in the validator

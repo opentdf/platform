@@ -27,7 +27,7 @@ func TestKeyAssertionValidator_EmptyKeys_PermissiveMode(t *testing.T) {
 		AppliesToState: Unencrypted,
 		Statement: Statement{
 			Format: StatementFormatJSON,
-			Schema: SystemMetadataSchemaV1,
+			Schema: KeyAssertionSchema,
 			Value:  `{"algorithm":"RS256","key":"test-key"}`,
 		},
 		Binding: Binding{
@@ -73,7 +73,7 @@ func TestKeyAssertionValidator_EmptyKeys_FailFast(t *testing.T) {
 		AppliesToState: Unencrypted,
 		Statement: Statement{
 			Format: StatementFormatJSON,
-			Schema: SystemMetadataSchemaV1,
+			Schema: KeyAssertionSchema,
 			Value:  `{"algorithm":"RS256","key":"test-key"}`,
 		},
 		Binding: Binding{
@@ -121,7 +121,7 @@ func TestKeyAssertionValidator_EmptyKeys_StrictMode(t *testing.T) {
 		AppliesToState: Unencrypted,
 		Statement: Statement{
 			Format: StatementFormatJSON,
-			Schema: SystemMetadataSchemaV1,
+			Schema: KeyAssertionSchema,
 			Value:  `{"algorithm":"RS256","key":"test-key"}`,
 		},
 		Binding: Binding{
@@ -192,7 +192,7 @@ func TestKeyAssertionValidator_MissingBinding_AllModes(t *testing.T) {
 				AppliesToState: Unencrypted,
 				Statement: Statement{
 					Format: StatementFormatJSON,
-					Schema: SystemMetadataSchemaV1,
+					Schema: KeyAssertionSchema,
 					Value:  `{"algorithm":"RS256","key":"test-key"}`,
 				},
 				Binding: Binding{
@@ -241,7 +241,7 @@ func TestKeyAssertionValidator_DefaultMode(t *testing.T) {
 		AppliesToState: Unencrypted,
 		Statement: Statement{
 			Format: StatementFormatJSON,
-			Schema: SystemMetadataSchemaV1,
+			Schema: KeyAssertionSchema,
 			Value:  `{"algorithm":"RS256","key":"test-key"}`,
 		},
 		Binding: Binding{

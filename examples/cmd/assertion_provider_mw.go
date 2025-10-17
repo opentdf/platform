@@ -27,7 +27,10 @@ import (
 	"github.com/opentdf/platform/sdk"
 )
 
-const MagicWordAssertionID = "magic-word"
+const (
+	MagicWordAssertionID     = "magic-word"
+	MagicWordAssertionSchema = "urn:magic-word:assertion:v1"
+)
 
 // MagicWordAssertionProvider "signs" an assertion by appending a secret word.
 // Implements sdk.AssertionBinder and sdk.AssertionValidator
@@ -55,7 +58,7 @@ func (p *MagicWordAssertionProvider) Bind(_ context.Context, m sdk.Manifest) (sd
 		AppliesToState: sdk.Unencrypted,
 		Statement: sdk.Statement{
 			Format: sdk.StatementFormatString,
-			Schema: "urn:magic-word:assertion:v1",
+			Schema: MagicWordAssertionSchema,
 			Value:  statementValue,
 		},
 		Binding: sdk.Binding{
@@ -81,4 +84,9 @@ func (p *MagicWordAssertionProvider) Verify(_ context.Context, a sdk.Assertion, 
 // Validate does nothing.
 func (p *MagicWordAssertionProvider) Validate(_ context.Context, _ sdk.Assertion, _ sdk.Reader) error {
 	return nil
+}
+
+// Schema returns the schema URI this validator handles.
+func (p *MagicWordAssertionProvider) Schema() string {
+	return MagicWordAssertionSchema
 }

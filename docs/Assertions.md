@@ -58,9 +58,12 @@ The signature is a JWS Compact Serialization containing:
 ```json
 {
   "assertionHash": "<sha256-hash-of-assertion-statement>",
-  "assertionSig": "<signature-over-manifest>"
+  "assertionSig": "<signature-over-manifest>",
+  "assertionSchema": "<schema-uri-from-statement>"
 }
 ```
+
+**Security Note**: The `assertionSchema` claim (added in v2) cryptographically binds the schema to the assertion, preventing schema substitution attacks where an attacker modifies `statement.schema` to route the assertion to a different validator.
 
 **Signature:** RSA-SHA256 signature over `<header>.<payload>`
 
@@ -115,18 +118,23 @@ When implementing custom assertion providers, ensure:
    ```json
    {
      "assertionHash": "<sha256-of-statement>",
-     "assertionSig": "<signature-over-manifest>"
+     "assertionSig": "<signature-over-manifest>",
+     "assertionSchema": "<schema-uri>"
    }
    ```
+
+   **Important**: The `assertionSchema` claim is required for production use to prevent schema substitution attacks. Include it in all custom assertion implementations.
 
 ## Validation Requirements
 
 When validating assertions:
 
-1. **Verify Signature**: Check cryptographic signature using `assertionSig`
-2. **Verify Binding**: Confirm `assertionHash` matches SHA-256 of statement
-3. **Check Trust**: Validate signer is trusted (certificate chain, key ownership)
-4. **Policy Enforcement**: Apply any policy rules specific to the assertion type
+1. **Verify Schema**: Check that `statement.schema` matches the expected schema for this validator (defense against schema substitution attacks)
+2. **Verify Signature**: Check cryptographic signature using `assertionSig`
+3. **Verify Binding**: Confirm `assertionHash` matches SHA-256 of statement
+4. **Verify Schema Claim**: Confirm `assertionSchema` claim in JWT matches `statement.schema` (prevents tampering after signing)
+5. **Check Trust**: Validate signer is trusted (certificate chain, key ownership)
+6. **Policy Enforcement**: Apply any policy rules specific to the assertion type
 
 ## Algorithm Support
 
@@ -168,21 +176,22 @@ other-tool decrypt test.tdf --verify-assertions
 
 The SDK supports multiple schema versions for system metadata assertions to maintain backwards compatibility with TDFs created by older SDK versions.
 
-#### Schema Version 2 (Current - `system-metadata-v2`)
+#### Schema Version 2 (Current - `system-metadata-v2` or `urn:opentdf:system:metadata:v2`)
 
 **Used by**: SDK v1.24+
 **Signature Binding**: Uses the manifest's `rootSignature` directly
+**Security**: Includes `assertionSchema` claim in JWT to prevent schema substitution attacks
 
 ```json
 {
   "id": "system-metadata",
   "statement": {
-    "schema": "system-metadata-v2",
+    "schema": "urn:opentdf:system:metadata:v2",
     "format": "json",
     "value": "{...}"
   },
   "binding": {
-    "signature": "eyJ...  // JWT containing rootSignature"
+    "signature": "eyJ...  // JWT containing rootSignature and schema claim"
   }
 }
 ```
@@ -191,7 +200,8 @@ The SDK supports multiple schema versions for system metadata assertions to main
 ```json
 {
   "assertionHash": "<sha256-of-statement>",
-  "assertionSig": "<base64(rootSignature)>"
+  "assertionSig": "<base64(rootSignature)>",
+  "assertionSchema": "urn:opentdf:system:metadata:v2"
 }
 ```
 
@@ -199,6 +209,7 @@ The SDK supports multiple schema versions for system metadata assertions to main
 - Simpler binding mechanism
 - Directly reuses the already-signed root signature
 - Reduces redundant hash concatenation
+- **Cryptographically binds schema to prevent substitution attacks**
 
 #### Schema Version 1 (Legacy - `system-metadata-v1` or empty)
 

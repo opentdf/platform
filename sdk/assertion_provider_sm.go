@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"regexp"
 	"runtime"
 	"time"
 
@@ -18,14 +17,19 @@ import (
 )
 
 const (
+	// SystemMetadataAssertionID is the standard identifier for system metadata assertions.
 	SystemMetadataAssertionID = "system-metadata"
-	SystemMetadataSchemaV1    = "system-metadata-v1"
-	// SystemMetadataSchemaV2 use root signature instead of aggregateHash
-	SystemMetadataSchemaV2 = "system-metadata-v2"
-)
 
-// systemMetadataAssertionPattern is pre-compiled regex for system metadata assertions
-var systemMetadataAssertionPattern = regexp.MustCompile("^" + SystemMetadataAssertionID + "$")
+	// SystemMetadataSchemaV2 is the current schema URI for system metadata assertions.
+	// This format uses the root signature directly as the binding signature.
+	// v2 includes assertionSchema claim in JWT binding for security against schema substitution attacks.
+	SystemMetadataSchemaV2 = "urn:opentdf:system:metadata:v2"
+
+	// SystemMetadataSchemaV1 is the legacy schema URI for system metadata assertions.
+	// This format uses base64(aggregateHash + assertionHash) as the binding signature.
+	// Maintained for backward compatibility with old TDFs.
+	SystemMetadataSchemaV1 = "urn:opentdf:system:metadata:v1"
+)
 
 // SystemMetadataAssertionProvider provides information about the system that is running the application.
 // Implements AssertionBuilder and AssertionValidator
@@ -50,6 +54,13 @@ func NewSystemMetadataAssertionProvider(useHex bool, payloadKey []byte, aggregat
 // the global verification mode setting.
 func (p *SystemMetadataAssertionProvider) SetVerificationMode(mode AssertionVerificationMode) {
 	p.verificationMode = mode
+}
+
+// Schema returns the schema URI this validator handles.
+// Returns v2 which includes assertionSchema claim in JWT.
+// The validator also accepts v1 for backward compatibility.
+func (p *SystemMetadataAssertionProvider) Schema() string {
+	return SystemMetadataSchemaV2
 }
 
 func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (Assertion, error) {
@@ -86,6 +97,23 @@ func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (As
 }
 
 func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, r Reader) error {
+	// SECURITY: Validate schema matches expected value BEFORE any processing
+	// This prevents routing assertions with tampered schemas to this validator
+	// Defense in depth: checked here AND via hash verification later
+	expectedSchema := p.Schema()
+	if a.Statement.Schema != expectedSchema {
+		// Check if this is a legacy v1 schema (backward compatibility)
+		if a.Statement.Schema == SystemMetadataSchemaV1 {
+			slog.WarnContext(ctx, "assertion uses legacy v1 schema (no schema claim in JWT)",
+				slog.String("assertion_id", a.ID),
+				slog.String("schema", a.Statement.Schema))
+			// Allow legacy v1 schema but it won't have schema claim protection
+		} else {
+			return fmt.Errorf("%w: schema mismatch - expected %q, got %q (possible schema substitution attack)",
+				ErrAssertionFailure{ID: a.ID}, expectedSchema, a.Statement.Schema)
+		}
+	}
+
 	// Assertions without cryptographic bindings cannot be verified - this is a security issue
 	if a.Binding.Signature == "" {
 		return fmt.Errorf("%w: assertion has no cryptographic binding", ErrAssertionFailure{ID: a.ID})
@@ -96,12 +124,21 @@ func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion
 		Key: p.payloadKey,
 	}
 
-	assertionHash, assertionSig, err := a.Verify(assertionKey)
+	// Verify the JWT with key (now returns schema claim)
+	assertionHash, assertionSig, verifiedSchema, err := a.Verify(assertionKey)
 	if err != nil {
 		if errors.Is(err, errAssertionVerifyKeyFailure) {
 			return fmt.Errorf("assertion verification failed: %w", err)
 		}
 		return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: a.ID}, err)
+	}
+
+	// SECURITY: Verify schema claim matches Statement.Schema (if claim exists)
+	// This prevents schema substitution after JWT signing
+	// For legacy assertions (v1), verifiedSchema will be empty string - skip check
+	if verifiedSchema != "" && verifiedSchema != a.Statement.Schema {
+		return fmt.Errorf("%w: schema claim mismatch - JWT contains %q but Statement has %q (tampering detected)",
+			ErrAssertionFailure{ID: a.ID}, verifiedSchema, a.Statement.Schema)
 	}
 
 	// Get the hash of the assertion

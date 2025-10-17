@@ -5,62 +5,50 @@ package sdk
 import (
 	"context"
 	"fmt"
-	"regexp"
 )
 
 // AssertionRegistry manages and dispatches calls to registered assertion providers.
 // It implements both the AssertionBinder and AssertionValidator interfaces,
 // allowing it to be used internally for assertion management.
 type AssertionRegistry struct {
-	binders              []AssertionBinder
-	registeredValidators []registeredValidators
+	binders    []AssertionBinder
+	validators map[string]AssertionValidator
 }
 
 // newAssertionRegistry creates and initializes a new AssertionRegistry.
 func newAssertionRegistry() *AssertionRegistry {
 	return &AssertionRegistry{
-		binders:              make([]AssertionBinder, 0),
-		registeredValidators: make([]registeredValidators, 0),
+		binders:    make([]AssertionBinder, 0),
+		validators: make(map[string]AssertionValidator),
 	}
 }
 
-func (r *AssertionRegistry) RegisterValidator(pattern *regexp.Regexp, validator AssertionValidator) error {
+func (r *AssertionRegistry) RegisterValidator(validator AssertionValidator) error {
+	schema := validator.Schema()
 	// error if already registered
-	for _, p := range r.registeredValidators {
-		if p.pattern.String() == pattern.String() {
-			return fmt.Errorf("pattern '%s' is already registered", pattern.String())
-		}
+	if _, exists := r.validators[schema]; exists {
+		return fmt.Errorf("validator for schema '%s' is already registered", schema)
 	}
 	// register
-	r.registeredValidators = append(r.registeredValidators, registeredValidators{
-		pattern, validator,
-	})
+	r.validators[schema] = validator
 	return nil
 }
 
-// GetValidationProvider finds and returns the first registered AssertionValidationProvider
-// that matches the given assertionID. If no builder matches, it returns the default
-// builder if one is set, otherwise it returns an error.
-func (r *AssertionRegistry) GetValidationProvider(assertionID string) (AssertionValidator, error) {
-	for _, p := range r.registeredValidators {
-		if p.pattern.MatchString(assertionID) {
-			return p.validator, nil
-		}
+// GetValidationProvider finds and returns the registered AssertionValidator
+// for the given schema URI. If no validator matches, it returns an error.
+func (r *AssertionRegistry) GetValidationProvider(schema string) (AssertionValidator, error) {
+	validator, exists := r.validators[schema]
+	if !exists {
+		return nil, fmt.Errorf("no validation provider registered for schema '%s'", schema)
 	}
-	return nil, fmt.Errorf("no default nor validation builder registered for assertion ID '%s'", assertionID)
-}
-
-// registeredValidators holds a compiled regex and its associated validation builder.
-type registeredValidators struct {
-	pattern   *regexp.Regexp
-	validator AssertionValidator
+	return validator, nil
 }
 
 // --- AssertionValidator Implementation ---
 
 // Validate finds the correct validator for the assertion and delegates the validation call.
 func (r *AssertionRegistry) Validate(ctx context.Context, assertion Assertion, t Reader) error {
-	provider, err := r.GetValidationProvider(assertion.ID)
+	provider, err := r.GetValidationProvider(assertion.Statement.Schema)
 	if err != nil {
 		return err
 	}
@@ -69,7 +57,7 @@ func (r *AssertionRegistry) Validate(ctx context.Context, assertion Assertion, t
 
 // Verify finds the correct validator for the assertion and delegates the verification call.
 func (r *AssertionRegistry) Verify(ctx context.Context, assertion Assertion, t Reader) error {
-	provider, err := r.GetValidationProvider(assertion.ID)
+	provider, err := r.GetValidationProvider(assertion.Statement.Schema)
 	if err != nil {
 		return err
 	}

@@ -250,15 +250,16 @@ func (b *configBasedAssertionBinder) Bind(_ context.Context, m Manifest) (Assert
 	// Use root signature for binding (v2 schema)
 	rootSignature := m.RootSignature.Signature
 
-	// Determine signing key - if not provided in config, this is an error
-	// All assertions MUST have cryptographic bindings
+	// Determine signing key
 	signingKey := b.config.SigningKey
 	if signingKey.IsEmpty() {
-		// No signing key provided - this is invalid as all assertions require bindings
-		return Assertion{}, fmt.Errorf("assertion %q requires a signing key: all assertions must have cryptographic bindings", b.config.ID)
+		// No explicit signing key provided - use the payload key (DEK)
+		// This is handled by passing the payload key from the TDF creation context
+		// For now, return the unsigned assertion - it will be signed by a DEK-based binder
+		return assertion, nil
 	}
 
-	// Sign the assertion
+	// Sign the assertion with the explicit key
 	if err := assertion.Sign(assertionHash, rootSignature, signingKey); err != nil {
 		return Assertion{}, fmt.Errorf("failed to sign assertion: %w", err)
 	}

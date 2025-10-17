@@ -19,7 +19,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk/auth"
-	"github.com/opentdf/platform/sdk/sdkconnect"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 )
@@ -882,7 +881,6 @@ type NanoTDFReader struct {
 	httpClient      *http.Client
 	connectOptions  []connect.ClientOption
 	collectionStore *collectionStore
-	authV2Client    sdkconnect.AuthorizationServiceClientV2
 
 	header     NanoTDFHeader
 	headerBuf  []byte
@@ -948,7 +946,6 @@ func (s SDK) LoadNanoTDF(ctx context.Context, reader io.ReadSeeker, opts ...Nano
 		collectionStore: s.collectionStore,
 		header:          header,
 		headerBuf:       headerBuf,
-		authV2Client:    s.AuthorizationV2,
 	}, nil
 }
 
@@ -993,53 +990,17 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 }
 
 /*
-* Will return the required obligations for the TDF.
-* If the obligations were populated from an Init() or DecryptNanoTDF() call, this function will return those.
-* If obligations were not populated, this function will parse the policy from the TDF
-* and call Authorization Service to get the required obligations.
+* Returns the obligations required for access to the TDF payload, assuming you
+* have called Init() or DecryptNanoTDF() to populate obligations.
 *
-* Note:
-* For NanoTDF, obligations can only be returned on-demand for (via Authorization Service) if the
-* policy mode is plaintext.
+* If obligations are not populated an error is returned.
  */
-func (n *NanoTDFReader) Obligations(ctx context.Context) (Obligations, error) {
-	if n.requiredObligations != nil {
-		return *n.requiredObligations, nil
+func (n *NanoTDFReader) Obligations(_ context.Context) (Obligations, error) {
+	if n.requiredObligations == nil {
+		return Obligations{}, ErrObligationsNotPopulated
 	}
 
-	attributes, err := n.dataAttributes()
-	if err != nil {
-		return Obligations{}, errors.Join(err, errDataAttributes)
-	}
-
-	requiredObligations, err := getObligations(ctx, n.authV2Client, attributes, n.config.fulfillableObligationFQNs)
-	if err != nil {
-		return Obligations{}, err
-	}
-
-	n.requiredObligations = &Obligations{FQNs: requiredObligations}
 	return *n.requiredObligations, nil
-}
-
-func (n *NanoTDFReader) dataAttributes() ([]string, error) {
-	var policyObj PolicyObject
-	switch n.header.PolicyMode {
-	case NanoTDFPolicyModePlainText:
-		err := json.Unmarshal(n.header.PolicyBody, &policyObj)
-		if err != nil {
-			return nil, fmt.Errorf("json.Unmarshal failed:%w", err)
-		}
-	case NanoTDFPolicyModeEncrypted, NanoTDFPolicyModeEncryptedPolicyKeyAccess, NanoTDFPolicyModeRemote:
-		return nil, fmt.Errorf("cannot get attributes from policy for policy mode: %v", n.header.PolicyMode)
-	default:
-		return nil, fmt.Errorf("unsupported policy mode: %v", n.header.PolicyMode)
-	}
-
-	var attributes []string
-	for _, attr := range policyObj.Body.DataAttributes {
-		attributes = append(attributes, attr.Attribute)
-	}
-	return attributes, nil
 }
 
 func (n *NanoTDFReader) getNanoRewrapKey(ctx context.Context) error {

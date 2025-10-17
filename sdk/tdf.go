@@ -16,7 +16,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/Masterminds/semver/v3"
-	authorizationv2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
@@ -27,7 +26,6 @@ import (
 	"github.com/opentdf/platform/sdk/internal/archive"
 	"github.com/opentdf/platform/sdk/sdkconnect"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
@@ -68,7 +66,6 @@ type Reader struct {
 	kasSessionKey       ocrypto.KeyPair
 	config              TDFReaderConfig
 	requiredObligations *Obligations
-	authV2Client        sdkconnect.AuthorizationServiceClientV2
 }
 
 type Obligations struct {
@@ -92,11 +89,7 @@ type ecKeyWrappedKeyInfo struct {
 	wrappedKey string
 }
 
-var (
-	ErrAccessDeniedPreObligations = errors.New("access denied: before obligation evaluation")
-	errGetDecisions               = errors.New("getDecisions call failed")
-	errDataAttributes             = errors.New("retrieving data attributes failed")
-)
+var ErrObligationsNotPopulated = errors.New("obligations not populated")
 
 func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []kaoResult) (int, error) {
 	err := r.reader.buildKey(ctx, results)
@@ -827,7 +820,6 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		kasSessionKey:  config.kasSessionKey,
 		config:         *config,
 		payloadSize:    payloadSize,
-		authV2Client:   s.AuthorizationV2,
 	}, nil
 }
 
@@ -1101,27 +1093,16 @@ func (r *Reader) DataAttributes() ([]string, error) {
 }
 
 /*
-* Will return the required obligations for the TDF.
-* If the obligations were populated from an Init() or WriteTo() call, this function will return those.
-* If obligations were not populated, this function will parse the policy from the TDF
-* and call Authorization Service to get the required obligations.
+* Returns the obligations required for access to the TDF payload, assuming you
+* have called Init() or WriteTo() to populate obligations.
+*
+* If obligations are not populated an error is returned.
  */
-func (r *Reader) Obligations(ctx context.Context) (Obligations, error) {
-	if r.requiredObligations != nil {
-		return *r.requiredObligations, nil
+func (r *Reader) Obligations(_ context.Context) (Obligations, error) {
+	if r.requiredObligations == nil {
+		return Obligations{}, ErrObligationsNotPopulated
 	}
 
-	attributes, err := r.DataAttributes()
-	if err != nil {
-		return Obligations{}, errors.Join(err, errDataAttributes)
-	}
-
-	requiredObligations, err := getObligations(ctx, r.authV2Client, attributes, r.config.fulfillableObligationFQNs)
-	if err != nil {
-		return Obligations{}, err
-	}
-
-	r.requiredObligations = &Obligations{FQNs: requiredObligations}
 	return *r.requiredObligations, nil
 }
 
@@ -1543,41 +1524,6 @@ func createKaoTemplateFromKasInfo(kasInfoArr []KASInfo) []kaoTpl {
 	}
 
 	return kaoTemplate
-}
-
-func getObligations(ctx context.Context, authClient sdkconnect.AuthorizationServiceClientV2, attributes, fulfillableObligationFQNs []string) ([]string, error) {
-	resp, err := authClient.GetDecision(ctx, &authorizationv2.GetDecisionRequest{
-		EntityIdentifier: &authorizationv2.EntityIdentifier{
-			Identifier: &authorizationv2.EntityIdentifier_WithRequestToken{
-				WithRequestToken: &wrapperspb.BoolValue{
-					Value: true,
-				},
-			},
-		},
-		Action: &policy.Action{
-			Value: &policy.Action_Standard{
-				Standard: policy.Action_STANDARD_ACTION_DECRYPT,
-			},
-			Name: readActionName,
-		},
-		Resource: &authorizationv2.Resource{
-			Resource: &authorizationv2.Resource_AttributeValues_{
-				AttributeValues: &authorizationv2.Resource_AttributeValues{
-					Fqns: attributes,
-				},
-			},
-		},
-		FulfillableObligationFqns: fulfillableObligationFQNs,
-	})
-	if err != nil {
-		return nil, errors.Join(err, errGetDecisions)
-	}
-
-	if resp.GetDecision().GetDecision() == authorizationv2.Decision_DECISION_DENY && len(resp.GetDecision().GetRequiredObligations()) == 0 {
-		return nil, ErrAccessDeniedPreObligations
-	}
-
-	return resp.GetDecision().GetRequiredObligations(), nil
 }
 
 func getKasErrorToReturn(err error, defaultError error) error {

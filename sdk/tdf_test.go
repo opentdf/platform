@@ -33,7 +33,6 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
-	authorizationv2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -282,12 +281,6 @@ type assertionTests struct {
 	disableAssertionVerification bool
 	expectedSize                 int
 	useHex                       bool
-}
-
-type FakeAuthz struct {
-	decision            authorizationv2.Decision
-	requiredObligations []string
-	numCalls            int
 }
 
 const payload = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -2049,78 +2042,29 @@ func (s *TDFSuite) Test_Obligations() {
 	testCases := []struct {
 		name                      string
 		requiredObligations       []string
-		decision                  authorizationv2.Decision
 		fulfillableObligationFQNs []string
 		shouldReturnError         bool
 		expectedError             error
 		prepopulatedObligations   []string
-		numCalls                  int
 	}{
 		{
-			name:                      "Nil required obligations - PERMIT with obligations (should succeed)",
-			requiredObligations:       []string{obligationWatermark},
-			decision:                  authorizationv2.Decision_DECISION_PERMIT,
+			name:                      "Rewrap not called - Error",
 			fulfillableObligationFQNs: []string{obligationWatermark},
-			shouldReturnError:         false,
-			numCalls:                  1,
-		},
-		{
-			name:                      "Nil required obligations - PERMIT with no obligations (should succeed)",
-			requiredObligations:       []string{},
-			decision:                  authorizationv2.Decision_DECISION_PERMIT,
-			fulfillableObligationFQNs: []string{},
-			shouldReturnError:         false,
-			numCalls:                  1,
-		},
-		{
-			name:                      "Nil required obligations - DENY bc of obligations (should succeed)",
-			requiredObligations:       []string{obligationGeofence},
-			decision:                  authorizationv2.Decision_DECISION_DENY,
-			fulfillableObligationFQNs: []string{},
-			shouldReturnError:         false,
-			numCalls:                  1,
-		},
-		{
-			name:                      "Nil required obligations - DENY with no obligations (should fail)",
-			requiredObligations:       []string{},
-			decision:                  authorizationv2.Decision_DECISION_DENY,
-			fulfillableObligationFQNs: []string{},
 			shouldReturnError:         true,
-			expectedError:             ErrAccessDeniedPreObligations,
-			numCalls:                  1,
+			expectedError:             ErrObligationsNotPopulated,
 		},
 		{
-			name:                      "Empty Obligation FQNs",
-			requiredObligations:       []string{},
-			decision:                  authorizationv2.Decision_DECISION_PERMIT,
-			fulfillableObligationFQNs: []string{},
-			shouldReturnError:         false,
-			expectedError:             nil,
-			numCalls:                  0,
-			prepopulatedObligations:   []string{},
-		},
-		{
-			name:                      "Non-empty Obligation FQNs",
+			name:                      "Rewrap called - No Error",
 			requiredObligations:       []string{obligationGeofence},
-			decision:                  authorizationv2.Decision_DECISION_PERMIT,
 			fulfillableObligationFQNs: []string{obligationGeofence},
 			shouldReturnError:         false,
 			expectedError:             nil,
-			numCalls:                  0,
 			prepopulatedObligations:   []string{obligationGeofence},
 		},
 	}
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			// Reset SDK to clean state for each test
-			fakeAuthz := &FakeAuthz{
-				requiredObligations: tc.requiredObligations,
-				decision:            tc.decision,
-				numCalls:            0,
-			}
-			s.sdk.AuthorizationV2 = fakeAuthz
-
 			// Create test files for each test case
 			plainTextFileName := fmt.Sprintf("obligations_%s.txt", strings.ReplaceAll(tc.name, " ", "_"))
 			tdfFileName := plainTextFileName + ".tdf"
@@ -2169,10 +2113,6 @@ func (s *TDFSuite) Test_Obligations() {
 
 			// First call to Obligations() - this should trigger GetDecision
 			obligations, err := r.Obligations(s.T().Context())
-
-			defer func() {
-				s.Require().Equal(tc.numCalls, fakeAuthz.numCalls, "GetDecision should have been called expected number of times")
-			}()
 
 			if tc.shouldReturnError {
 				s.Require().Error(err, "Expected error for test case: %s", tc.name)
@@ -3142,27 +3082,4 @@ func TestGetKasErrorToReturn(t *testing.T) {
 		result := getKasErrorToReturn(inputError, defaultError)
 		require.Equal(t, defaultError, result)
 	})
-}
-
-func (a *FakeAuthz) GetDecision(_ context.Context, req *authorizationv2.GetDecisionRequest) (*authorizationv2.GetDecisionResponse, error) {
-	a.numCalls++
-	return &authorizationv2.GetDecisionResponse{
-		Decision: &authorizationv2.ResourceDecision{
-			EphemeralResourceId: req.GetResource().GetEphemeralId(),
-			Decision:            a.decision,
-			RequiredObligations: a.requiredObligations,
-		},
-	}, nil
-}
-
-func (a *FakeAuthz) GetDecisionMultiResource(_ context.Context, _ *authorizationv2.GetDecisionMultiResourceRequest) (*authorizationv2.GetDecisionMultiResourceResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetDecisionMultiResource not implemented")
-}
-
-func (a *FakeAuthz) GetDecisionBulk(_ context.Context, _ *authorizationv2.GetDecisionBulkRequest) (*authorizationv2.GetDecisionBulkResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetDecisionBulk not implemented")
-}
-
-func (a *FakeAuthz) GetEntitlements(_ context.Context, _ *authorizationv2.GetEntitlementsRequest) (*authorizationv2.GetEntitlementsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetEntitlements not implemented")
 }

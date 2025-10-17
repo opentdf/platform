@@ -21,7 +21,6 @@ import (
 	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
-	authorizationv2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
@@ -707,7 +706,7 @@ func (s *NanoSuite) Test_NanoTDFReader_LoadNanoTDF() {
 	sdk, err := s.createTestSDK()
 	sdk.fulfillableObligationFQNs = []string{"https://example.com/obl/value/obl1"}
 	s.Require().NoError(err)
-	nanoTDFData, err := s.createRealNanoTDF(sdk, NanoTDFPolicyModeDefault)
+	nanoTDFData, err := s.createRealNanoTDF(sdk)
 	s.Require().NoError(err)
 	reader := bytes.NewReader(nanoTDFData)
 
@@ -745,7 +744,7 @@ func (s *NanoSuite) Test_NanoTDFReader_Init_WithPayloadKeySet() {
 	// Create a real NanoTDF for testing
 	sdk, err := s.createTestSDK()
 	s.Require().NoError(err)
-	nanoTDFData, err := s.createRealNanoTDF(sdk, NanoTDFPolicyModeDefault)
+	nanoTDFData, err := s.createRealNanoTDF(sdk)
 	s.Require().NoError(err)
 	reader := bytes.NewReader(nanoTDFData)
 	nanoReader, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoIgnoreAllowlist(true))
@@ -761,7 +760,7 @@ func (s *NanoSuite) Test_NanoTDFReader_Init_WithoutPayloadKeySet() {
 	// Create a real NanoTDF for testing
 	sdk, err := s.createTestSDK()
 	s.Require().NoError(err)
-	nanoTDFData, err := s.createRealNanoTDF(sdk, NanoTDFPolicyModeDefault)
+	nanoTDFData, err := s.createRealNanoTDF(sdk)
 	s.Require().NoError(err)
 	reader := bytes.NewReader(nanoTDFData)
 
@@ -777,7 +776,7 @@ func (s *NanoSuite) Test_NanoTDFReader_ObligationsSupport() {
 	// Create a real NanoTDF for testing
 	sdk, err := s.createTestSDK()
 	s.Require().NoError(err)
-	nanoTDFData, err := s.createRealNanoTDF(sdk, NanoTDFPolicyModeDefault)
+	nanoTDFData, err := s.createRealNanoTDF(sdk)
 	s.Require().NoError(err)
 	reader := bytes.NewReader(nanoTDFData)
 	nanoReader, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoIgnoreAllowlist(true))
@@ -801,7 +800,7 @@ func (s *NanoSuite) Test_NanoTDFReader_DecryptNanoTDF() {
 	// Create a real NanoTDF for testing
 	sdk, err := s.createTestSDK()
 	s.Require().NoError(err)
-	nanoTDFData, err := s.createRealNanoTDF(sdk, NanoTDFPolicyModeDefault)
+	nanoTDFData, err := s.createRealNanoTDF(sdk)
 	s.Require().NoError(err)
 	reader := bytes.NewReader(nanoTDFData)
 	writer := &bytes.Buffer{}
@@ -873,9 +872,7 @@ func (s *NanoSuite) Test_NanoTDFReader_RealWorkflow() {
 func (s *NanoSuite) Test_NanoTDF_Obligations() {
 	sdk, err := s.createTestSDK()
 	s.Require().NoError(err)
-	encryptedPolicyTDF, err := s.createRealNanoTDF(sdk, NanoTDFPolicyModeDefault)
-	s.Require().NoError(err)
-	plaintextPolicyTDF, err := s.createRealNanoTDF(sdk, NanoTDFPolicyModePlainText)
+	encryptedPolicyTDF, err := s.createRealNanoTDF(sdk)
 	s.Require().NoError(err)
 
 	// Table-driven test for nano TDF obligations support
@@ -883,61 +880,16 @@ func (s *NanoSuite) Test_NanoTDF_Obligations() {
 		name                   string
 		fulfillableObligations []string
 		requiredObligations    []string
-		policyMode             string // Description for test name
 		expectError            error
-		decision               authorizationv2.Decision
 		populateObligations    []string
-		numGetDecisionCalls    int
 	}{
 		{
-			name:                "Encrypted Policy - Expect Error on Obligations()",
-			expectError:         errDataAttributes,
-			policyMode:          "encrypted",
-			numGetDecisionCalls: 0,
+			name:        "Rewrap not called - Error",
+			expectError: ErrObligationsNotPopulated,
 		},
 		{
-			name:                   "Plaintext Policy - Nil obligations - Calls GetDecision once, no error",
+			name:                   "Rewrap called - Obligations populated",
 			expectError:            nil,
-			policyMode:             "plaintext",
-			numGetDecisionCalls:    1,
-			decision:               authorizationv2.Decision_DECISION_PERMIT,
-			requiredObligations:    []string{"https://example.com/attr/attr1/value/value1"},
-			fulfillableObligations: []string{"https://example.com/attr/attr1/value/value1"},
-		},
-		{
-			name:                   "Plaintext Policy - Empty Obligations - Calls GetDecision zero times, no error",
-			expectError:            nil,
-			policyMode:             "plaintext",
-			numGetDecisionCalls:    0,
-			decision:               authorizationv2.Decision_DECISION_PERMIT,
-			requiredObligations:    []string{},
-			fulfillableObligations: []string{},
-			populateObligations:    []string{},
-		},
-		{
-			name:                   "Plaintext Policy - Nil Obligations - Calls GetDecision once, PreObligations Access Error",
-			expectError:            ErrAccessDeniedPreObligations,
-			policyMode:             "plaintext",
-			numGetDecisionCalls:    1,
-			decision:               authorizationv2.Decision_DECISION_DENY,
-			requiredObligations:    []string{},
-			fulfillableObligations: []string{"https://example.com/attr/attr1/value/value1"},
-		},
-		{
-			name:                   "Plaintext Policy - Nil Obligations - Calls GetDecision once, empty required obligations",
-			expectError:            nil,
-			policyMode:             "plaintext",
-			numGetDecisionCalls:    1,
-			decision:               authorizationv2.Decision_DECISION_PERMIT,
-			requiredObligations:    []string{},
-			fulfillableObligations: []string{"https://example.com/attr/attr1/value/value1"},
-		},
-		{
-			name:                   "Plaintext Policy - Obligations populated by Rewrap ",
-			expectError:            nil,
-			policyMode:             "plaintext",
-			numGetDecisionCalls:    0,
-			decision:               authorizationv2.Decision_DECISION_PERMIT,
 			requiredObligations:    []string{"https://example.com/attr/attr1/value/value1"},
 			fulfillableObligations: []string{"https://example.com/attr/attr1/value/value1"},
 			populateObligations:    []string{"https://example.com/attr/attr1/value/value1"},
@@ -946,22 +898,9 @@ func (s *NanoSuite) Test_NanoTDF_Obligations() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			fakeAuthz := &FakeAuthz{
-				requiredObligations: tc.requiredObligations,
-				decision:            tc.decision,
-				numCalls:            0,
-			}
-			var tdfData []byte
-			if tc.policyMode == "encrypted" {
-				tdfData = encryptedPolicyTDF
-			} else {
-				tdfData = plaintextPolicyTDF
-			}
-			reader := bytes.NewReader(tdfData)
+			reader := bytes.NewReader(encryptedPolicyTDF)
 			nanoReader, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoTDFFulfillableObligationFQNs(tc.fulfillableObligations), WithNanoIgnoreAllowlist(true))
 			s.Require().NoError(err)
-			nanoReader.authV2Client = fakeAuthz
-
 			// Check that it has fulfillable obligations set
 			if len(tc.fulfillableObligations) > 0 {
 				s.Require().NotNil(nanoReader.config.fulfillableObligationFQNs)
@@ -969,11 +908,6 @@ func (s *NanoSuite) Test_NanoTDF_Obligations() {
 			} else {
 				s.Require().Empty(nanoReader.config.fulfillableObligationFQNs)
 			}
-
-			defer func() {
-				// Verify the number of GetDecision calls
-				s.Require().Equal(tc.numGetDecisionCalls, fakeAuthz.numCalls, "GetDecision call count mismatch")
-			}()
 
 			if tc.populateObligations != nil {
 				nanoReader.requiredObligations = &Obligations{FQNs: tc.populateObligations}
@@ -999,7 +933,7 @@ func (s *NanoSuite) Test_NanoTDF_Obligations() {
 }
 
 // Helper function to create real NanoTDF data for testing
-func (s *NanoSuite) createRealNanoTDF(sdk *SDK, mode PolicyType) ([]byte, error) {
+func (s *NanoSuite) createRealNanoTDF(sdk *SDK) ([]byte, error) {
 	// Read the test file content
 	input := bytes.NewReader([]byte("Virtru!!!!"))
 	output := &bytes.Buffer{}
@@ -1022,7 +956,7 @@ func (s *NanoSuite) createRealNanoTDF(sdk *SDK, mode PolicyType) ([]byte, error)
 		return nil, err
 	}
 
-	err = config.SetPolicyMode(mode)
+	err = config.SetPolicyMode(NanoTDFPolicyModeDefault)
 	if err != nil {
 		return nil, err
 	}

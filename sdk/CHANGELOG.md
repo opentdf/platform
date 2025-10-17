@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.10.0](https://github.com/opentdf/platform/compare/sdk/v0.9.0...sdk/v0.10.0) (2025-10-17)
+
+
+### Features
+
+* **policy:** Proto - root certificates by namespace ([#2800](https://github.com/opentdf/platform/issues/2800)) ([0edb359](https://github.com/opentdf/platform/commit/0edb3591bc0c12b3ffb47b4e43d19b56dae3d016))
+* **policy:** Protos List obligation triggers ([#2803](https://github.com/opentdf/platform/issues/2803)) ([b32df81](https://github.com/opentdf/platform/commit/b32df81f6fe35f9db07e58f49ca71b43d7a02a13))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.6.0 to 0.7.0 in /sdk ([#2810](https://github.com/opentdf/platform/issues/2810)) ([1c5cf5f](https://github.com/opentdf/platform/commit/1c5cf5f7b4804ed6411992668d45e4c7ba8146c0))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.12.0 to 0.13.0 in /sdk ([#2813](https://github.com/opentdf/platform/issues/2813)) ([1643ed2](https://github.com/opentdf/platform/commit/1643ed238565fb8359d05d96750525ee8557932e))
+* **sdk:** Fix the bug in ResourceLocator serialization logic ([#2791](https://github.com/opentdf/platform/issues/2791)) ([01329d6](https://github.com/opentdf/platform/commit/01329d606e6add0905604ed3bdc522c25d303062))
+
 ## [0.9.0](https://github.com/opentdf/platform/compare/sdk/v0.8.0...sdk/v0.9.0) (2025-10-09)
 
 

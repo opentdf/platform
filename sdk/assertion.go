@@ -132,23 +132,21 @@ func (a *Assertion) Verify(key AssertionKey) (string, string, error) {
 }
 
 // GetHash returns the hash of the assertion in hex format.
-func (a *Assertion) GetHash() ([]byte, error) {
-	// Clear out the binding
-	a.Binding = Binding{}
-
-	// Marshal the assertion to JSON
+// The binding field is excluded from the hash calculation.
+func (a Assertion) GetHash() ([]byte, error) {
+	// Marshal the assertion to JSON (custom MarshalJSON handles binding omission)
 	assertionJSON, err := json.Marshal(a)
 	if err != nil {
 		return nil, fmt.Errorf("json.Marshal failed: %w", err)
 	}
 
-	// Unmarshal the JSON into a map to manipulate it
+	// Unmarshal the JSON into a map to ensure binding is removed
 	var jsonObject map[string]interface{}
 	if err := json.Unmarshal(assertionJSON, &jsonObject); err != nil {
 		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
 	}
 
-	// Remove the binding key
+	// Explicitly remove the binding key if present
 	delete(jsonObject, "binding")
 
 	// Marshal the map back to JSON

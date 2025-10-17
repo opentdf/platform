@@ -745,6 +745,10 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 						Schema: "text",
 						Value:  "ICAgIDxlZGoOkVkaD4=",
 					},
+					SigningKey: AssertionKey{
+						Alg: AssertionKeyAlgHS256,
+						Key: hs256Key,
+					},
 				},
 				{
 					ID:             "assertion2",
@@ -756,11 +760,17 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 						Schema: "urn:nato:stanag:5636:A:1:elements:json",
 						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
 					},
+					SigningKey: AssertionKey{
+						Alg: AssertionKeyAlgHS256,
+						Key: hs256Key,
+					},
 				},
 			},
-			verifiers:                    nil,
+			verifiers: &AssertionVerificationKeys{
+				DefaultKey: defaultKey,
+			},
 			disableAssertionVerification: false,
-			expectedSize:                 2052,
+			expectedSize:                 1574,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -774,6 +784,10 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 						Schema: "text",
 						Value:  "ICAgIDxlZGoOkVkaD4=",
 					},
+					SigningKey: AssertionKey{
+						Alg: AssertionKeyAlgHS256,
+						Key: hs256Key,
+					},
 				},
 				{
 					ID:             "assertion2",
@@ -785,12 +799,18 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 						Schema: "urn:nato:stanag:5636:A:1:elements:json",
 						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
 					},
+					SigningKey: AssertionKey{
+						Alg: AssertionKeyAlgHS256,
+						Key: hs256Key,
+					},
 				},
 			},
-			verifiers:                    nil,
+			verifiers: &AssertionVerificationKeys{
+				DefaultKey: defaultKey,
+			},
 			disableAssertionVerification: false,
 			useHex:                       true,
-			expectedSize:                 2092,
+			expectedSize:                 1614,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -901,6 +921,10 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 						Schema: "urn:nato:stanag:5636:A:1:elements:json",
 						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
 					},
+					SigningKey: AssertionKey{
+						Alg: AssertionKeyAlgRS256,
+						Key: privateKey,
+					},
 				},
 			},
 			verifiers: &AssertionVerificationKeys{
@@ -908,6 +932,10 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 					"assertion1": {
 						Alg: AssertionKeyAlgHS256,
 						Key: hs256Key,
+					},
+					"assertion2": {
+						Alg: AssertionKeyAlgRS256,
+						Key: privateKey.PublicKey,
 					},
 				},
 			},
@@ -925,6 +953,10 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 						Format: "json",
 						Schema: "urn:nato:stanag:5636:A:1:elements:json",
 						Value:  "{\"uuid\":\"f74efb60-4a9a-11ef-a6f1-8ee1a61c148a\",\"body\":{\"dataAttributes\":null,\"dissem\":null}}",
+					},
+					SigningKey: AssertionKey{
+						Alg: AssertionKeyAlgHS256,
+						Key: hs256Key,
 					},
 				},
 			},

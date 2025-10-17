@@ -251,13 +251,12 @@ func (b *configBasedAssertionBinder) Bind(_ context.Context, m Manifest) (Assert
 	// Use root signature for binding (v2 schema)
 	rootSignature := m.RootSignature.Signature
 
-	// Determine signing key - if not provided in config, assertion must be signed
-	// externally or will fail verification
+	// Determine signing key - if not provided in config, this is an error
+	// All assertions MUST have cryptographic bindings
 	signingKey := b.config.SigningKey
 	if signingKey.IsEmpty() {
-		// No signing key provided - assertion will not have a binding signature
-		// This may be intentional for assertions that don't require cryptographic binding
-		return assertion, nil
+		// No signing key provided - this is invalid as all assertions require bindings
+		return Assertion{}, fmt.Errorf("assertion %q requires a signing key: all assertions must have cryptographic bindings", b.config.ID)
 	}
 
 	// Sign the assertion

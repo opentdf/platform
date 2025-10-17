@@ -1618,9 +1618,13 @@ func dedupRequiredObligations(kaoResults []kaoResult) []string {
 	dedupedOblgs := make([]string, 0)
 	for _, kao := range kaoResults {
 		for _, oblg := range kao.RequiredObligations {
-			if _, ok := seen[oblg]; !ok {
-				seen[oblg] = struct{}{}
-				dedupedOblgs = append(dedupedOblgs, oblg)
+			normalizedOblg := strings.TrimSpace(strings.ToLower(oblg))
+			if len(normalizedOblg) == 0 {
+				continue
+			}
+			if _, ok := seen[normalizedOblg]; !ok {
+				seen[normalizedOblg] = struct{}{}
+				dedupedOblgs = append(dedupedOblgs, normalizedOblg)
 			}
 		}
 	}

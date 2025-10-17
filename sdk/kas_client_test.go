@@ -509,7 +509,7 @@ func Test_processRSAResponse(t *testing.T) {
 							KasWrappedKey: wrappedKey,
 						},
 						Metadata: createMetadataWithObligations([]string{
-							"https://example.com/attr/attr1/value/val1",
+							"https://example.com/attr/attr1/value/val3",
 						}),
 					},
 				},
@@ -535,7 +535,8 @@ func Test_processRSAResponse(t *testing.T) {
 	require.True(t, ok)
 	require.Len(t, result2, 1)
 	require.Equal(t, symmetricKey, result2[0].SymmetricKey)
-	require.Empty(t, result2[0].RequiredObligations)
+	require.Len(t, result2[0].RequiredObligations, 1)
+	require.Equal(t, "https://example.com/attr/attr1/value/val3", result2[0].RequiredObligations[0])
 }
 
 func Test_processECResponse(t *testing.T) {
@@ -641,7 +642,8 @@ func Test_processECResponse(t *testing.T) {
 	require.True(t, ok)
 	require.Len(t, result2, 1)
 	require.Equal(t, symmetricKey2, result2[0].SymmetricKey)
-	require.Empty(t, result2[0].RequiredObligations)
+	require.Len(t, result2[0].RequiredObligations, 1)
+	require.Equal(t, "https://example.com/attr/attr2/value/val2", result2[0].RequiredObligations[0])
 }
 
 type mockService interface {
@@ -714,6 +716,10 @@ func (f *MockKas) Process(req *http.Request) (*http.Response, error) {
 		}
 
 		var kaoResult *kaspb.KeyAccessRewrapResult
+		var metadata map[string]*structpb.Value
+		if fqns, exists := f.obligations[policyID]; exists {
+			metadata = createMetadataWithObligations(fqns)
+		}
 		if decision == "permit" {
 			// For permitted policies: no metadata/obligations
 			kaoResult = &kaspb.KeyAccessRewrapResult{
@@ -722,14 +728,9 @@ func (f *MockKas) Process(req *http.Request) (*http.Response, error) {
 				Result: &kaspb.KeyAccessRewrapResult_KasWrappedKey{
 					KasWrappedKey: wrappedKey,
 				},
+				Metadata: metadata,
 			}
 		} else {
-			// For failed policies: include metadata with obligations
-			var metadata map[string]*structpb.Value
-			if fqns, exists := f.obligations[policyID]; exists {
-				metadata = createMetadataWithObligations(fqns)
-			}
-
 			kaoResult = &kaspb.KeyAccessRewrapResult{
 				KeyAccessObjectId: req.GetKeyAccessObjects()[0].GetKeyAccessObjectId(),
 				Status:            "fail",
@@ -830,7 +831,8 @@ func Test_nanoUnwrap(t *testing.T) {
 	require.Len(t, result1, 1)
 	require.Equal(t, []byte("supersecretkey1"), result1[0].SymmetricKey)
 	require.NoError(t, result1[0].Error)
-	require.Empty(t, result1[0].RequiredObligations, "Permitted policies should not have required obligations")
+	require.Len(t, result1[0].RequiredObligations, 1)
+	require.Equal(t, "https://example.com/attr/attr1/value/val1", result1[0].RequiredObligations[0])
 
 	// Policy2 should be failed - has error, no symmetric key, has obligations
 	result2, ok := policyResults["policy2"]

@@ -198,10 +198,10 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRew
 		for _, results := range response.GetResponses() {
 			var kaoKeys []kaoResult
 			for _, kao := range results.GetResults() {
+				requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
 				if kao.GetStatus() == statusPermit {
-					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err, RequiredObligations: requiredObligationsForKAO})
 				} else {
-					requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
 					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError()), RequiredObligations: requiredObligationsForKAO})
 				}
 			}
@@ -230,16 +230,16 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRew
 	for _, results := range response.GetResponses() {
 		var kaoKeys []kaoResult
 		for _, kao := range results.GetResults() {
+			requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
 			if kao.GetStatus() == statusPermit {
 				wrappedKey := kao.GetKasWrappedKey()
 				key, err := aesGcm.Decrypt(wrappedKey)
 				if err != nil {
-					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err, RequiredObligations: requiredObligationsForKAO})
 				} else {
-					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key, RequiredObligations: requiredObligationsForKAO})
 				}
 			} else {
-				requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
 				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError()), RequiredObligations: requiredObligationsForKAO})
 			}
 		}
@@ -300,15 +300,15 @@ func (k *KASClient) processECResponse(response *kas.RewrapResponse, aesGcm ocryp
 	for _, results := range response.GetResponses() {
 		var kaoKeys []kaoResult
 		for _, kao := range results.GetResults() {
+			requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
 			if kao.GetStatus() == statusPermit {
 				key, err := aesGcm.Decrypt(kao.GetKasWrappedKey())
 				if err != nil {
-					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err, RequiredObligations: requiredObligationsForKAO})
 				} else {
-					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key, RequiredObligations: requiredObligationsForKAO})
 				}
 			} else {
-				requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
 				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError()), RequiredObligations: requiredObligationsForKAO})
 			}
 		}
@@ -365,15 +365,15 @@ func (k *KASClient) processRSAResponse(response *kas.RewrapResponse, asymDecrypt
 	for _, results := range response.GetResponses() {
 		var kaoKeys []kaoResult
 		for _, kao := range results.GetResults() {
+			requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
 			if kao.GetStatus() == statusPermit {
 				key, err := asymDecryption.Decrypt(kao.GetKasWrappedKey())
 				if err != nil {
-					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err, RequiredObligations: requiredObligationsForKAO})
 				} else {
-					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key, RequiredObligations: requiredObligationsForKAO})
 				}
 			} else {
-				requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
 				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError()), RequiredObligations: requiredObligationsForKAO})
 			}
 		}

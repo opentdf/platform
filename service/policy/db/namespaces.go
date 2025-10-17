@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
@@ -438,6 +439,20 @@ func validateRootCertificate(pemStr string) error {
 		return errors.Join(db.ErrInvalidCertificate, errors.New("invalid certificate: must be a root certificate (self-signed)"))
 	}
 
+	// Verify the self-signed certificate signature
+	if err := cert.CheckSignatureFrom(cert); err != nil {
+		return errors.Join(db.ErrInvalidCertificate, fmt.Errorf("invalid certificate: signature verification failed: %w", err))
+	}
+
+	// Validate temporal properties (NotBefore and NotAfter)
+	now := time.Now()
+	if now.Before(cert.NotBefore) {
+		return errors.Join(db.ErrInvalidCertificate, fmt.Errorf("invalid certificate: not yet valid (NotBefore: %v, current time: %v)", cert.NotBefore, now))
+	}
+	if now.After(cert.NotAfter) {
+		return errors.Join(db.ErrInvalidCertificate, fmt.Errorf("invalid certificate: expired (NotAfter: %v, current time: %v)", cert.NotAfter, now))
+	}
+
 	return nil
 }
 
@@ -540,20 +555,21 @@ func (c PolicyDBClient) AssignCertificateToNamespace(ctx context.Context, namesp
 
 // CreateAndAssignCertificateToNamespace creates a certificate and assigns it to a namespace in a transaction
 func (c PolicyDBClient) CreateAndAssignCertificateToNamespace(ctx context.Context, namespaceID *common.IdFqnIdentifier, pem string, metadata []byte) (string, error) {
-	// Check if certificate with same PEM already exists
-	existingCert, err := c.queries.getCertificateByPEM(ctx, pem)
-	if err == nil {
-		// Certificate exists, just assign it to namespace
-		err = c.AssignCertificateToNamespace(ctx, namespaceID, existingCert.ID)
-		if err != nil {
-			return "", err
-		}
-		return existingCert.ID, nil
-	}
-
 	var certID string
-	err = c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
-		var err error
+	err := c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
+		// Check if certificate with same PEM already exists (inside transaction to avoid race condition)
+		existingCert, err := txClient.queries.getCertificateByPEM(ctx, pem)
+		if err == nil {
+			// Certificate exists, just assign it to namespace
+			certID = existingCert.ID
+			err = txClient.AssignCertificateToNamespace(ctx, namespaceID, existingCert.ID)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+
+		// Certificate doesn't exist, create it
 		cert, err := txClient.CreateCertificate(ctx, pem, metadata)
 		if err != nil {
 			return err

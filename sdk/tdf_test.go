@@ -76,6 +76,7 @@ type tdfTest struct {
 	splitPlan        []keySplitStep
 	policy           []AttributeValueFQN
 	expectedPlanSize int
+	opts             []TDFReaderOption
 }
 
 type baseKeyTest struct {
@@ -1934,36 +1935,50 @@ func (s *TDFSuite) Test_KeySplits() {
 
 func (s *TDFSuite) Test_Obligations_Decrypt() {
 	for _, test := range []struct {
-		n              string
-		fileSize       int64
-		tdfFileSize    float64
-		checksum       string
-		obligationFQNs []string
-		opts           []TDFOption
+		n                      string
+		fileSize               int64
+		tdfFileSize            float64
+		checksum               string
+		requiredObligationFQNs []string
+		opts                   []TDFOption
+		fulfillableObligations []string
+		attrValueFQNs          []AttributeValueFQN
+		expectError            bool
 	}{
 		{
-			n:              "with-obligations-same-kas",
-			fileSize:       5,
-			tdfFileSize:    2534,
-			checksum:       "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			obligationFQNs: []string{obligationWatermark, obligationRedact},
-			opts: []TDFOption{
-				WithDataAttributes(oa1.key, oa3.key),
-			},
+			n:                      "two-attributes-same-kas-with-fulfillable-obligations",
+			fileSize:               5,
+			tdfFileSize:            1909,
+			checksum:               "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
+			requiredObligationFQNs: []string{obligationWatermark, obligationGeofence},
+			opts:                   []TDFOption{WithDataAttributes(oa1.key, oa2.key)}, // Both go to obligationKas
+			fulfillableObligations: []string{obligationWatermark, obligationGeofence},
+			attrValueFQNs:          []AttributeValueFQN{oa1, oa2},
+			expectError:            false,
 		},
 		{
-			n:              "with-obligations-different-kas",
-			fileSize:       5,
-			tdfFileSize:    2690,
-			checksum:       "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
-			obligationFQNs: []string{obligationWatermark, obligationRedact, obligationGeofence},
-			opts: []TDFOption{
-				WithDataAttributes(oa1.key, oa2.key, oa3.key),
-			},
+			n:                      "two-attributes-same-kas-no-fulfillable-obligations",
+			fileSize:               5,
+			tdfFileSize:            1909,
+			checksum:               "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
+			requiredObligationFQNs: []string{obligationWatermark, obligationGeofence},
+			opts:                   []TDFOption{WithDataAttributes(oa1.key, oa2.key)}, // Both go to obligationKas
+			fulfillableObligations: []string{},                                        // No fulfillable obligations
+			expectError:            true,
+		},
+		{
+			n:                      "fulfill-one-of-two-attributes-same-kas",
+			fileSize:               5,
+			tdfFileSize:            1909,
+			checksum:               "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
+			requiredObligationFQNs: []string{obligationWatermark, obligationGeofence},
+			opts:                   []TDFOption{WithDataAttributes(oa1.key, oa2.key)},
+			fulfillableObligations: []string{obligationWatermark},
+			expectError:            true,
 		},
 	} {
 		s.Run(test.n, func() {
-			// create .txt file
+			// Create a new SDK instance with limited fulfillable obligations
 			plainTextFileName := test.n + ".txt"
 			tdfFileName := plainTextFileName + ".tdf"
 			decryptedTdfFileName := tdfFileName + ".txt"
@@ -1975,7 +1990,7 @@ func (s *TDFSuite) Test_Obligations_Decrypt() {
 				_ = os.Remove(decryptedTdfFileName)
 			}()
 
-			// test encrypt
+			// test encrypt using the default SDK (which has all fulfillable obligations)
 			s.testEncrypt(s.sdk, test.opts, plainTextFileName, tdfFileName, tdfTest{
 				n:           test.n,
 				fileSize:    test.fileSize,
@@ -1983,7 +1998,6 @@ func (s *TDFSuite) Test_Obligations_Decrypt() {
 				checksum:    test.checksum,
 			})
 
-			// test decrypt with reader
 			readSeeker, err := os.Open(tdfFileName)
 			s.Require().NoError(err)
 			defer func(readSeeker *os.File) {
@@ -1993,26 +2007,32 @@ func (s *TDFSuite) Test_Obligations_Decrypt() {
 
 			r, err := s.sdk.LoadTDF(readSeeker)
 			s.Require().NoError(err)
-			for _, ob := range []string{obligationGeofence, obligationRedact, obligationWatermark} {
-				s.Require().Contains(r.config.fulfillableObligationFQNs, ob, "Should contain obligation "+ob)
+			r.config.fulfillableObligationFQNs = test.fulfillableObligations
+
+			if !test.expectError {
+				// Validate successful decryption
+				s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, tdfTest{
+					n:        test.n,
+					fileSize: test.fileSize,
+					checksum: test.checksum,
+					policy:   test.attrValueFQNs,
+					opts:     []TDFReaderOption{WithTDFFulfillableObligationFQNs(test.fulfillableObligations)},
+				})
+
+				_, err = r.WriteTo(io.Discard)
+				s.Require().NoError(err)
+			} else {
+				// The decryption should fail due to unmet obligations
+				_, err = r.WriteTo(io.Discard)
+				s.Require().Error(err, "Decryption should fail when obligations are not met")
 			}
 
-			// Validate decryption
-			s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, tdfTest{
-				n:        test.n,
-				fileSize: test.fileSize,
-				checksum: test.checksum,
-				policy:   []AttributeValueFQN{oa1, oa3},
-			})
-
-			_, err = r.WriteTo(io.Discard)
-			s.Require().NoError(err)
 			obligations, err := r.Obligations(s.T().Context())
 			s.Require().NoError(err)
 			s.Require().NotNil(obligations, "Obligations should not be nil")
-			s.Require().Len(obligations.FQNs, len(test.obligationFQNs), "Should have correct number of obligations")
+			s.Require().Len(obligations.FQNs, len(test.requiredObligationFQNs), "Should have correct number of obligations")
 			actualObligations := obligations
-			for _, ob := range test.obligationFQNs {
+			for _, ob := range test.requiredObligationFQNs {
 				s.Require().Contains(actualObligations.FQNs, ob, "Actual obligations should contain "+ob)
 			}
 		})
@@ -2178,6 +2198,192 @@ func (s *TDFSuite) Test_Obligations() {
 	}
 }
 
+func TestDedupRequiredObligations(t *testing.T) {
+	testCases := []struct {
+		name           string
+		kaoResults     []kaoResult
+		expectedResult []string
+	}{
+		{
+			name:           "empty input",
+			kaoResults:     []kaoResult{},
+			expectedResult: []string{},
+		},
+		{
+			name: "single kao with no obligations",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID:   "kao-1",
+					RequiredObligations: []string{},
+				},
+			},
+			expectedResult: []string{},
+		},
+		{
+			name: "single kao with single obligation",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID:   "kao-1",
+					RequiredObligations: []string{"https://demo.com/obl/test/value/watermark"},
+				},
+			},
+			expectedResult: []string{"https://demo.com/obl/test/value/watermark"},
+		},
+		{
+			name: "single kao with multiple obligations",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID: "kao-1",
+					RequiredObligations: []string{
+						"https://demo.com/obl/test/value/watermark",
+						"https://demo.com/obl/test/value/geofence",
+					},
+				},
+			},
+			expectedResult: []string{
+				"https://demo.com/obl/test/value/watermark",
+				"https://demo.com/obl/test/value/geofence",
+			},
+		},
+		{
+			name: "multiple kaos with same obligations - should dedupe",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID:   "kao-1",
+					RequiredObligations: []string{"https://demo.com/obl/test/value/watermark"},
+				},
+				{
+					KeyAccessObjectID:   "kao-2",
+					RequiredObligations: []string{"https://demo.com/obl/test/value/watermark"},
+				},
+			},
+			expectedResult: []string{"https://demo.com/obl/test/value/watermark"},
+		},
+		{
+			name: "multiple kaos with different obligations",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID:   "kao-1",
+					RequiredObligations: []string{"https://demo.com/obl/test/value/watermark"},
+				},
+				{
+					KeyAccessObjectID:   "kao-2",
+					RequiredObligations: []string{"https://demo.com/obl/test/value/geofence"},
+				},
+			},
+			expectedResult: []string{
+				"https://demo.com/obl/test/value/watermark",
+				"https://demo.com/obl/test/value/geofence",
+			},
+		},
+		{
+			name: "case insensitive deduplication",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID:   "kao-1",
+					RequiredObligations: []string{"https://demo.com/obl/test/value/WATERMARK"},
+				},
+				{
+					KeyAccessObjectID:   "kao-2",
+					RequiredObligations: []string{"https://demo.com/obl/test/value/watermark"},
+				},
+			},
+			expectedResult: []string{"https://demo.com/obl/test/value/watermark"},
+		},
+		{
+			name: "whitespace trimming and deduplication",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID:   "kao-1",
+					RequiredObligations: []string{" https://demo.com/obl/test/value/watermark "},
+				},
+				{
+					KeyAccessObjectID:   "kao-2",
+					RequiredObligations: []string{"https://demo.com/obl/test/value/watermark"},
+				},
+			},
+			expectedResult: []string{"https://demo.com/obl/test/value/watermark"},
+		},
+		{
+			name: "complex case - mixed duplicates with case and whitespace variations",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID: "kao-1",
+					RequiredObligations: []string{
+						"https://demo.com/obl/test/value/WATERMARK",
+						"https://demo.com/obl/test/value/geofence",
+					},
+				},
+				{
+					KeyAccessObjectID: "kao-2",
+					RequiredObligations: []string{
+						" https://demo.com/obl/test/value/watermark ",
+						"https://demo.com/obl/test/value/ENCRYPTION",
+					},
+				},
+				{
+					KeyAccessObjectID: "kao-3",
+					RequiredObligations: []string{
+						"https://demo.com/obl/test/value/geofence",
+						"https://demo.com/obl/test/value/encryption",
+					},
+				},
+			},
+			expectedResult: []string{
+				"https://demo.com/obl/test/value/watermark",
+				"https://demo.com/obl/test/value/geofence",
+				"https://demo.com/obl/test/value/encryption",
+			},
+		},
+		{
+			name: "empty string obligations should be normalized",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID: "kao-1",
+					RequiredObligations: []string{
+						"",
+						"   ",
+						"https://demo.com/obl/test/value/watermark",
+					},
+				},
+			},
+			expectedResult: []string{
+				"https://demo.com/obl/test/value/watermark",
+			},
+		},
+		{
+			name: "preserve order of first occurrence",
+			kaoResults: []kaoResult{
+				{
+					KeyAccessObjectID: "kao-1",
+					RequiredObligations: []string{
+						"https://demo.com/obl/test/value/geofence",
+						"https://demo.com/obl/test/value/watermark",
+					},
+				},
+				{
+					KeyAccessObjectID: "kao-2",
+					RequiredObligations: []string{
+						"https://demo.com/obl/test/value/watermark",
+						"https://demo.com/obl/test/value/geofence",
+					},
+				},
+			},
+			expectedResult: []string{
+				"https://demo.com/obl/test/value/geofence",
+				"https://demo.com/obl/test/value/watermark",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := dedupRequiredObligations(tc.kaoResults)
+			assert.Equal(t, tc.expectedResult, result, "Deduplication result should match expected")
+		})
+	}
+}
+
 func (s *TDFSuite) Test_Autoconfigure() {
 	for index, test := range []tdfTest{
 		{
@@ -2320,7 +2526,7 @@ func (s *TDFSuite) testDecryptWithReader(sdk *SDK, tdfFile, decryptedTdfFileName
 		s.Require().NoError(err)
 	}(readSeeker)
 
-	r, err := sdk.LoadTDF(readSeeker)
+	r, err := sdk.LoadTDF(readSeeker, test.opts...)
 	s.Require().NoError(err)
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(300*time.Minute))
@@ -2444,8 +2650,8 @@ func (s *TDFSuite) startBackend() {
 			s: s, privateKey: ki.private, KASInfo: KASInfo{
 				URL: ki.url, PublicKey: ki.public, KID: ki.kid, Algorithm: "rsa:2048",
 			},
-			legakeys:    map[string]keyInfo{},
-			obligations: obligationMap,
+			legakeys:                  map[string]keyInfo{},
+			attrToRequiredObligations: obligationMap,
 		}
 		path, handler := attributesconnect.NewAttributesServiceHandler(fa)
 		mux.Handle(path, handler)
@@ -2475,7 +2681,6 @@ func (s *TDFSuite) startBackend() {
 		withCustomAccessTokenSource(&ats),
 		WithTokenEndpoint("http://localhost:65432/auth/token"),
 		WithInsecurePlaintextConn(),
-		WithFulfillableObligationFQNs([]string{obligationGeofence, obligationRedact, obligationWatermark}),
 	)
 	s.Require().NoError(err)
 	s.sdk = sdk
@@ -2554,10 +2759,10 @@ func (f *FakeKASRegistry) ListKeyAccessServers(_ context.Context, _ *connect.Req
 type FakeKas struct {
 	kasconnect.UnimplementedAccessServiceHandler
 	KASInfo
-	privateKey  string
-	s           *TDFSuite
-	legakeys    map[string]keyInfo
-	obligations map[string]string
+	privateKey                string
+	s                         *TDFSuite
+	legakeys                  map[string]keyInfo
+	attrToRequiredObligations map[string]string
 }
 
 func (f *FakeKas) Rewrap(_ context.Context, in *connect.Request[kaspb.RewrapRequest]) (*connect.Response[kaspb.RewrapResponse], error) {
@@ -2577,7 +2782,24 @@ func (f *FakeKas) Rewrap(_ context.Context, in *connect.Request[kaspb.RewrapRequ
 	if !ok {
 		return nil, errors.New("requestBody not a string")
 	}
-	result := f.getRewrapResponse(requestBodyStr)
+
+	// Extract fulfillable obligations from header
+	var fulfillableObligations []string
+	if val := in.Header().Get("X-Rewrap-Additional-Context"); val != "" {
+		decoded, err := base64.StdEncoding.DecodeString(val)
+		if err == nil {
+			var rewrapContext struct {
+				Obligations struct {
+					FulfillableFQNs []string `json:"fulfillableFQNs"`
+				} `json:"obligations"`
+			}
+			if json.Unmarshal(decoded, &rewrapContext) == nil {
+				fulfillableObligations = rewrapContext.Obligations.FulfillableFQNs
+			}
+		}
+	}
+
+	result := f.getRewrapResponse(requestBodyStr, fulfillableObligations)
 
 	return connect.NewResponse(result), nil
 }
@@ -2586,14 +2808,35 @@ func (f *FakeKas) PublicKey(_ context.Context, _ *connect.Request[kaspb.PublicKe
 	return connect.NewResponse(&kaspb.PublicKeyResponse{PublicKey: f.KASInfo.PublicKey, Kid: f.KID}), nil
 }
 
-func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse {
+func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations []string) *kaspb.RewrapResponse {
 	bodyData := kaspb.UnsignedRewrapRequest{}
 	err := protojson.Unmarshal([]byte(rewrapRequest), &bodyData)
 	f.s.Require().NoError(err, "json.Unmarshal failed")
 	resp := &kaspb.RewrapResponse{}
-	policyObligationMap := make(map[string][]string)
 
 	for _, req := range bodyData.GetRequests() {
+		requiredObligations := f.s.checkPolicyObligations(f.attrToRequiredObligations, req)
+		if f.KASInfo.URL == f.s.kasTestURLLookup[obligationKas] {
+			// Only return failures for obligation kas URL
+			if !f.s.checkObligationsFulfillment(requiredObligations, fulfillableObligations) {
+				// Return a deny response if obligations are not fulfilled
+				results := &kaspb.PolicyRewrapResult{PolicyId: req.GetPolicy().GetId()}
+				for _, kaoReq := range req.GetKeyAccessObjects() {
+					kaoResult := &kaspb.KeyAccessRewrapResult{
+						Result: &kaspb.KeyAccessRewrapResult_Error{
+							Error: "forbidden",
+						},
+						Status:            "deny",
+						KeyAccessObjectId: kaoReq.GetKeyAccessObjectId(),
+						Metadata:          createMetadataWithObligations(requiredObligations),
+					}
+					results.Results = append(results.Results, kaoResult)
+				}
+				resp.Responses = append(resp.Responses, results)
+				continue
+			}
+		}
+
 		results := &kaspb.PolicyRewrapResult{PolicyId: req.GetPolicy().GetId()}
 		resp.Responses = append(resp.Responses, results)
 		for _, kaoReq := range req.GetKeyAccessObjects() {
@@ -2684,33 +2927,48 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse 
 				Result:            &kaspb.KeyAccessRewrapResult_KasWrappedKey{KasWrappedKey: entityWrappedKey},
 				Status:            "permit",
 				KeyAccessObjectId: kaoReq.GetKeyAccessObjectId(),
+				Metadata:          createMetadataWithObligations(requiredObligations),
 			}
 			results.Results = append(results.Results, kaoResult)
 		}
-
-		policyObligationMap[req.GetPolicy().GetId()] = f.s.checkPolicyObligations(f.obligations, req)
 	}
-	resp.Metadata = createMetadataWithObligations(policyObligationMap)
 
 	return resp
 }
 
 func (s *TDFSuite) checkPolicyObligations(obligationsMap map[string]string, req *kaspb.UnsignedRewrapRequest_WithPolicyRequest) []string {
-	var obligations []string
+	var requiredObligations []string
 	sDecPolicy, policyErr := base64.StdEncoding.DecodeString(req.GetPolicy().GetBody())
 	policy := &Policy{}
 	if policyErr == nil {
 		policyErr = json.Unmarshal(sDecPolicy, policy)
 		if policyErr != nil {
-			return obligations
+			return requiredObligations
 		}
 	}
 	for _, attr := range policy.Body.DataAttributes {
 		if val, found := obligationsMap[attr.URI]; found {
-			obligations = append(obligations, val)
+			requiredObligations = append(requiredObligations, val)
 		}
 	}
-	return obligations
+	return requiredObligations
+}
+
+func (s *TDFSuite) checkObligationsFulfillment(requiredObligations, fulfillableObligations []string) bool {
+	// Create a set of fulfillable obligations for fast lookup
+	fulfillableSet := make(map[string]bool)
+	for _, obligation := range fulfillableObligations {
+		fulfillableSet[obligation] = true
+	}
+
+	// Check if all required obligations are in the fulfillable set
+	for _, required := range requiredObligations {
+		if !fulfillableSet[required] {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (s *TDFSuite) checkIdentical(file, checksum string) bool {

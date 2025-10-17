@@ -410,23 +410,24 @@ func Test_newConnectRewrapRequest(t *testing.T) {
 
 func Test_retrieveObligationsFromMetadata(t *testing.T) {
 	c := newKASClient(nil, nil, nil, nil, nil)
-	metadata := createMetadataWithObligations(map[string][]string{
-		"policy1": {"https://example.com/attr/attr1/value/val1", "https://example.com/attr/attr2/value/val2"},
+	metadata := createMetadataWithObligations([]string{
+		"https://example.com/attr/attr1/value/val1",
+		"https://example.com/attr/attr2/value/val2",
 	})
 
-	fqns := c.retrieveObligationsFromMetadata(metadata, "policy1")
-	assert.Len(t, fqns, 2)
-	assert.Equal(t, "https://example.com/attr/attr1/value/val1", fqns[0])
-	assert.Equal(t, "https://example.com/attr/attr2/value/val2", fqns[1])
+	fqns := c.retrieveObligationsFromMetadata(metadata)
+	require.Len(t, fqns, 2)
+	require.Equal(t, "https://example.com/attr/attr1/value/val1", fqns[0])
+	require.Equal(t, "https://example.com/attr/attr2/value/val2", fqns[1])
 }
 
 func Test_retrieveObligationsFromMetadata_NoObligations(t *testing.T) {
 	c := newKASClient(nil, nil, nil, nil, nil)
-	fqns := c.retrieveObligationsFromMetadata(createMetadataWithObligations(nil), "policy1")
-	assert.Empty(t, fqns)
+	fqns := c.retrieveObligationsFromMetadata(createMetadataWithObligations(nil))
+	require.Empty(t, fqns)
 }
 
-func Test_retrieveObligationsFromMetadata_NotStructValue(t *testing.T) {
+func Test_retrieveObligationsFromMetadata_NotListValue(t *testing.T) {
 	c := newKASClient(nil, nil, nil, nil, nil)
 	metadata := make(map[string]*structpb.Value)
 	metadata[triggeredObligationsHeader] = &structpb.Value{
@@ -434,38 +435,20 @@ func Test_retrieveObligationsFromMetadata_NotStructValue(t *testing.T) {
 			BoolValue: true,
 		},
 	}
-	fqns := c.retrieveObligationsFromMetadata(metadata, "policy1")
-	assert.Empty(t, fqns)
+	fqns := c.retrieveObligationsFromMetadata(metadata)
+	require.Empty(t, fqns)
 }
 
-func Test_retrieveObligationsFromMetadata_PolicyNotPresent(t *testing.T) {
+func Test_retrieveObligationsFromMetadata_EmptyList(t *testing.T) {
 	c := newKASClient(nil, nil, nil, nil, nil)
 	metadata := make(map[string]*structpb.Value)
 	metadata[triggeredObligationsHeader] = &structpb.Value{
-		Kind: &structpb.Value_StructValue{
-			StructValue: &structpb.Struct{Fields: map[string]*structpb.Value{}},
+		Kind: &structpb.Value_ListValue{
+			ListValue: &structpb.ListValue{Values: []*structpb.Value{}},
 		},
 	}
-	fqns := c.retrieveObligationsFromMetadata(metadata, "policy1")
-	assert.Empty(t, fqns)
-}
-
-func Test_retrieveObligationsFromMetadata_ListValuesNotPresent(t *testing.T) {
-	c := newKASClient(nil, nil, nil, nil, nil)
-	metadata := make(map[string]*structpb.Value)
-	metadata[triggeredObligationsHeader] = &structpb.Value{
-		Kind: &structpb.Value_StructValue{
-			StructValue: &structpb.Struct{
-				Fields: map[string]*structpb.Value{
-					"not_a_list": {
-						Kind: &structpb.Value_StringValue{StringValue: "not a list"},
-					},
-				},
-			},
-		},
-	}
-	fqns := c.retrieveObligationsFromMetadata(metadata, "policy1")
-	assert.Empty(t, fqns)
+	fqns := c.retrieveObligationsFromMetadata(metadata)
+	require.Empty(t, fqns)
 }
 
 func Test_processRSAResponse(t *testing.T) {
@@ -496,30 +479,64 @@ func Test_processRSAResponse(t *testing.T) {
 				Results: []*kaspb.KeyAccessRewrapResult{
 					{
 						KeyAccessObjectId: "kao1",
+						Status:            "fail",
+						Result: &kaspb.KeyAccessRewrapResult_Error{
+							Error: "Access denied",
+						},
+						Metadata: createMetadataWithObligations([]string{
+							"https://example.com/attr/attr1/value/val1",
+						}),
+					},
+					{
+						KeyAccessObjectId: "kao2",
+						Status:            "fail",
+						Result: &kaspb.KeyAccessRewrapResult_Error{
+							Error: "Access denied",
+						},
+						Metadata: createMetadataWithObligations([]string{
+							"https://example.com/attr/attr1/value/val2",
+						}),
+					},
+				},
+			},
+			{
+				PolicyId: "policy2",
+				Results: []*kaspb.KeyAccessRewrapResult{
+					{
+						KeyAccessObjectId: "kao1",
 						Status:            "permit",
 						Result: &kaspb.KeyAccessRewrapResult_KasWrappedKey{
 							KasWrappedKey: wrappedKey,
 						},
+						Metadata: createMetadataWithObligations([]string{
+							"https://example.com/attr/attr1/value/val3",
+						}),
 					},
 				},
 			},
 		},
-		Metadata: createMetadataWithObligations(map[string][]string{
-			"policy1": {"https://example.com/attr/attr1/value/val1"},
-		}),
 	}
 
 	policyResults, err := c.processRSAResponse(response, mockDecryptor)
 	require.NoError(t, err)
-	require.Len(t, policyResults, 1)
+	require.Len(t, policyResults, 2)
 
 	result, ok := policyResults["policy1"]
 	require.True(t, ok)
-	require.Equal(t, "policy1", result.policyID)
-	require.Len(t, result.kaoRes, 1)
-	require.Equal(t, symmetricKey, result.kaoRes[0].SymmetricKey)
-	require.Len(t, result.obligations, 1)
-	require.Equal(t, "https://example.com/attr/attr1/value/val1", result.obligations[0])
+	require.Len(t, result, 2)
+	require.Nil(t, result[0].SymmetricKey)
+	require.Nil(t, result[1].SymmetricKey)
+	require.Len(t, result[0].RequiredObligations, 1)
+	require.Len(t, result[1].RequiredObligations, 1)
+	require.Equal(t, "https://example.com/attr/attr1/value/val1", result[0].RequiredObligations[0])
+	require.Equal(t, "https://example.com/attr/attr1/value/val2", result[1].RequiredObligations[0])
+
+	result2, ok := policyResults["policy2"]
+	require.True(t, ok)
+	require.Len(t, result2, 1)
+	require.Equal(t, symmetricKey, result2[0].SymmetricKey)
+	require.Len(t, result2[0].RequiredObligations, 1)
+	require.Equal(t, "https://example.com/attr/attr1/value/val3", result2[0].RequiredObligations[0])
 }
 
 func Test_processECResponse(t *testing.T) {
@@ -550,11 +567,6 @@ func Test_processECResponse(t *testing.T) {
 	encryptor, err := ocrypto.NewAESGcm(sessionKey)
 	require.NoError(t, err)
 
-	// 4. Encrypt a symmetric key
-	symmetricKey1 := []byte("supersecretkey1")
-	wrappedKey1, err := encryptor.Encrypt(symmetricKey1)
-	require.NoError(t, err)
-
 	symmetricKey2 := []byte("supersecretkey2")
 	wrappedKey2, err := encryptor.Encrypt(symmetricKey2)
 	require.NoError(t, err)
@@ -567,10 +579,23 @@ func Test_processECResponse(t *testing.T) {
 				Results: []*kaspb.KeyAccessRewrapResult{
 					{
 						KeyAccessObjectId: "kao1",
-						Status:            "permit",
-						Result: &kaspb.KeyAccessRewrapResult_KasWrappedKey{
-							KasWrappedKey: wrappedKey1,
+						Status:            "fail",
+						Result: &kaspb.KeyAccessRewrapResult_Error{
+							Error: "Access denied",
 						},
+						Metadata: createMetadataWithObligations([]string{
+							"https://example.com/attr/attr1/value/val1",
+						}),
+					},
+					{
+						KeyAccessObjectId: "kao2",
+						Status:            "fail",
+						Result: &kaspb.KeyAccessRewrapResult_Error{
+							Error: "Access denied",
+						},
+						Metadata: createMetadataWithObligations([]string{
+							"https://example.com/attr/attr1/value/val2",
+						}),
 					},
 				},
 			},
@@ -578,19 +603,18 @@ func Test_processECResponse(t *testing.T) {
 				PolicyId: "policy2",
 				Results: []*kaspb.KeyAccessRewrapResult{
 					{
-						KeyAccessObjectId: "kao2",
+						KeyAccessObjectId: "kao1",
 						Status:            "permit",
 						Result: &kaspb.KeyAccessRewrapResult_KasWrappedKey{
 							KasWrappedKey: wrappedKey2,
 						},
+						Metadata: createMetadataWithObligations([]string{
+							"https://example.com/attr/attr2/value/val2",
+						}),
 					},
 				},
 			},
 		},
-		Metadata: createMetadataWithObligations(map[string][]string{
-			"policy1": {"https://example.com/attr/attr1/value/val1"},
-			"policy2": {"https://example.com/attr/attr2/value/val2"},
-		}),
 	}
 
 	// 6. Create AES-GCM cipher for decryption (using the same session key)
@@ -605,20 +629,21 @@ func Test_processECResponse(t *testing.T) {
 	// 8. Assertions for policy1
 	result1, ok := policyResults["policy1"]
 	require.True(t, ok)
-	require.Equal(t, "policy1", result1.policyID)
-	require.Len(t, result1.kaoRes, 1)
-	require.Equal(t, symmetricKey1, result1.kaoRes[0].SymmetricKey)
-	require.Len(t, result1.obligations, 1)
-	require.Equal(t, "https://example.com/attr/attr1/value/val1", result1.obligations[0])
+	require.Len(t, result1, 2)
+	require.Nil(t, result1[0].SymmetricKey)
+	require.Nil(t, result1[1].SymmetricKey)
+	require.Len(t, result1[0].RequiredObligations, 1)
+	require.Equal(t, "https://example.com/attr/attr1/value/val1", result1[0].RequiredObligations[0])
+	require.Len(t, result1[1].RequiredObligations, 1)
+	require.Equal(t, "https://example.com/attr/attr1/value/val2", result1[1].RequiredObligations[0])
 
 	// 9. Assertions for policy2
 	result2, ok := policyResults["policy2"]
 	require.True(t, ok)
-	require.Equal(t, "policy2", result2.policyID)
-	require.Len(t, result2.kaoRes, 1)
-	require.Equal(t, symmetricKey2, result2.kaoRes[0].SymmetricKey)
-	require.Len(t, result2.obligations, 1)
-	require.Equal(t, "https://example.com/attr/attr2/value/val2", result2.obligations[0])
+	require.Len(t, result2, 1)
+	require.Equal(t, symmetricKey2, result2[0].SymmetricKey)
+	require.Len(t, result2[0].RequiredObligations, 1)
+	require.Equal(t, "https://example.com/attr/attr2/value/val2", result2[0].RequiredObligations[0])
 }
 
 type mockService interface {
@@ -626,8 +651,9 @@ type mockService interface {
 }
 
 type MockKas struct {
-	t           *testing.T
-	obligations map[string][]string // policyID -> obligations
+	t               *testing.T
+	obligations     map[string][]string // policyID -> obligations
+	policyDecisions map[string]string   // policyID -> "permit" or "fail"
 }
 
 func (f *MockKas) Process(req *http.Request) (*http.Response, error) {
@@ -678,27 +704,48 @@ func (f *MockKas) Process(req *http.Request) (*http.Response, error) {
 	rewrapResponse := &kaspb.RewrapResponse{
 		SessionPublicKey: kasPublicKeyPEM,
 	}
-	triggeredObligations := make(map[string][]string)
 	for _, req := range unsignedReq.GetRequests() {
 		policyID := req.GetPolicy().GetId()
+
+		// Determine if this policy should be permitted or failed
+		decision := "permit" // default to permit
+		if f.policyDecisions != nil {
+			if d, exists := f.policyDecisions[policyID]; exists {
+				decision = d
+			}
+		}
+
+		var kaoResult *kaspb.KeyAccessRewrapResult
+		var metadata map[string]*structpb.Value
+		if fqns, exists := f.obligations[policyID]; exists {
+			metadata = createMetadataWithObligations(fqns)
+		}
+		if decision == "permit" {
+			// For permitted policies: no metadata/obligations
+			kaoResult = &kaspb.KeyAccessRewrapResult{
+				KeyAccessObjectId: req.GetKeyAccessObjects()[0].GetKeyAccessObjectId(),
+				Status:            "permit",
+				Result: &kaspb.KeyAccessRewrapResult_KasWrappedKey{
+					KasWrappedKey: wrappedKey,
+				},
+				Metadata: metadata,
+			}
+		} else {
+			kaoResult = &kaspb.KeyAccessRewrapResult{
+				KeyAccessObjectId: req.GetKeyAccessObjects()[0].GetKeyAccessObjectId(),
+				Status:            "fail",
+				Result: &kaspb.KeyAccessRewrapResult_Error{
+					Error: "denied by policy",
+				},
+				Metadata: metadata,
+			}
+		}
+
 		rewrapResponse.Responses = append(rewrapResponse.Responses, &kaspb.PolicyRewrapResult{
 			PolicyId: policyID,
-			Results: []*kaspb.KeyAccessRewrapResult{
-				{
-					KeyAccessObjectId: req.GetKeyAccessObjects()[0].GetKeyAccessObjectId(),
-					Status:            "permit",
-					Result: &kaspb.KeyAccessRewrapResult_KasWrappedKey{
-						KasWrappedKey: wrappedKey,
-					},
-				},
-			},
+			Results:  []*kaspb.KeyAccessRewrapResult{kaoResult},
 		})
-
-		if fqns, exists := f.obligations[policyID]; exists {
-			triggeredObligations[policyID] = fqns
-		}
 	}
-	rewrapResponse.Metadata = createMetadataWithObligations(triggeredObligations)
 
 	responseBody, err := protojson.Marshal(rewrapResponse)
 	require.NoError(f.t, err)
@@ -737,6 +784,10 @@ func Test_nanoUnwrap(t *testing.T) {
 				"policy1": {"https://example.com/attr/attr1/value/val1"},
 				"policy2": {"https://example.com/attr/attr2/value/val2"},
 			},
+			policyDecisions: map[string]string{
+				"policy1": "permit", // policy1 should be permitted
+				"policy2": "fail",   // policy2 should be failed
+			},
 		}},
 	}
 
@@ -774,48 +825,24 @@ func Test_nanoUnwrap(t *testing.T) {
 	require.Len(t, policyResults, 2)
 
 	// 5. Assertions
+	// Policy1 should be permitted - has symmetric key, no error, no obligations
 	result1, ok := policyResults["policy1"]
 	require.True(t, ok)
-	require.Equal(t, "policy1", result1.policyID)
-	require.Len(t, result1.kaoRes, 1)
-	require.Equal(t, []byte("supersecretkey1"), result1.kaoRes[0].SymmetricKey)
-	require.NoError(t, result1.kaoRes[0].Error)
-	require.Len(t, result1.obligations, 1)
-	require.Equal(t, "https://example.com/attr/attr1/value/val1", result1.obligations[0])
+	require.Len(t, result1, 1)
+	require.Equal(t, []byte("supersecretkey1"), result1[0].SymmetricKey)
+	require.NoError(t, result1[0].Error)
+	require.Len(t, result1[0].RequiredObligations, 1)
+	require.Equal(t, "https://example.com/attr/attr1/value/val1", result1[0].RequiredObligations[0])
 
+	// Policy2 should be failed - has error, no symmetric key, has obligations
 	result2, ok := policyResults["policy2"]
 	require.True(t, ok)
-	require.Equal(t, "policy2", result2.policyID)
-	require.Len(t, result2.kaoRes, 1)
-	require.Equal(t, []byte("supersecretkey1"), result2.kaoRes[0].SymmetricKey)
-	require.NoError(t, result2.kaoRes[0].Error)
-	require.Len(t, result2.obligations, 1)
-	require.Equal(t, "https://example.com/attr/attr2/value/val2", result2.obligations[0])
-}
-
-func createMetadataWithObligations(obligations map[string][]string) map[string]*structpb.Value {
-	metadata := make(map[string]*structpb.Value)
-	if len(obligations) == 0 {
-		return metadata
-	}
-
-	fields := make(map[string]*structpb.Value)
-	for policyID, fqns := range obligations {
-		listValue := &structpb.ListValue{}
-		for _, fqn := range fqns {
-			listValue.Values = append(listValue.Values, structpb.NewStringValue(fqn))
-		}
-		fields[policyID] = structpb.NewListValue(listValue)
-	}
-
-	metadata[triggeredObligationsHeader] = &structpb.Value{
-		Kind: &structpb.Value_StructValue{
-			StructValue: &structpb.Struct{
-				Fields: fields,
-			},
-		},
-	}
-	return metadata
+	require.Len(t, result2, 1)
+	require.Nil(t, result2[0].SymmetricKey, "Failed policies should not have symmetric key")
+	require.Error(t, result2[0].Error)
+	require.Contains(t, result2[0].Error.Error(), "denied by policy")
+	require.Len(t, result2[0].RequiredObligations, 1)
+	require.Equal(t, "https://example.com/attr/attr2/value/val2", result2[0].RequiredObligations[0])
 }
 
 func Test_nanoUnwrap_EmptySPK_WithObligations(t *testing.T) {
@@ -832,13 +859,13 @@ func Test_nanoUnwrap_EmptySPK_WithObligations(t *testing.T) {
 						Result: &kaspb.KeyAccessRewrapResult_Error{
 							Error: "denied by policy",
 						},
+						Metadata: createMetadataWithObligations([]string{
+							"https://example.com/attr/attr1/value/val1",
+						}),
 					},
 				},
 			},
 		},
-		Metadata: createMetadataWithObligations(map[string][]string{
-			"policy1": {"https://example.com/attr/attr1/value/val1"},
-		}),
 	}
 
 	responseBody, err := protojson.Marshal(rewrapResponse)
@@ -883,15 +910,29 @@ func Test_nanoUnwrap_EmptySPK_WithObligations(t *testing.T) {
 	// 6. Assertions
 	result, ok := policyResults["policy1"]
 	require.True(t, ok)
-	require.Equal(t, "policy1", result.policyID)
+	require.Len(t, result, 1)
 
 	// Assert that the KAO result contains an error
-	require.Len(t, result.kaoRes, 1)
-	require.Error(t, result.kaoRes[0].Error)
-	require.Contains(t, result.kaoRes[0].Error.Error(), "denied by policy")
-	require.Nil(t, result.kaoRes[0].SymmetricKey)
+	require.Error(t, result[0].Error)
+	require.Contains(t, result[0].Error.Error(), "denied by policy")
+	require.Nil(t, result[0].SymmetricKey)
 
 	// Assert that obligations are still present despite the KAO error
-	require.Len(t, result.obligations, 1)
-	require.Equal(t, "https://example.com/attr/attr1/value/val1", result.obligations[0])
+	require.Len(t, result[0].RequiredObligations, 1)
+	require.Equal(t, "https://example.com/attr/attr1/value/val1", result[0].RequiredObligations[0])
+}
+
+func createMetadataWithObligations(obligations []string) map[string]*structpb.Value {
+	metadata := make(map[string]*structpb.Value)
+	if len(obligations) == 0 {
+		return metadata
+	}
+
+	listValue := &structpb.ListValue{}
+	for _, fqn := range obligations {
+		listValue.Values = append(listValue.Values, structpb.NewStringValue(fqn))
+	}
+
+	metadata[triggeredObligationsHeader] = structpb.NewListValue(listValue)
+	return metadata
 }

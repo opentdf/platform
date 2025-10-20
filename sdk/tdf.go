@@ -65,10 +65,10 @@ type Reader struct {
 	payloadKey          []byte
 	kasSessionKey       ocrypto.KeyPair
 	config              TDFReaderConfig
-	requiredObligations *Obligations
+	requiredObligations *RequiredObligations
 }
 
-type Obligations struct {
+type RequiredObligations struct {
 	FQNs []string
 }
 
@@ -1096,7 +1096,7 @@ func (r *Reader) DataAttributes() ([]string, error) {
 * If obligations are not populated we call Init() to populate them,
 * which will result in a rewrap call.
  */
-func (r *Reader) Obligations(ctx context.Context) (Obligations, error) {
+func (r *Reader) Obligations(ctx context.Context) (RequiredObligations, error) {
 	if r.requiredObligations == nil {
 		err := r.Init(ctx)
 		if r.requiredObligations != nil {
@@ -1104,7 +1104,7 @@ func (r *Reader) Obligations(ctx context.Context) (Obligations, error) {
 			// This is expected if the rewrap failed for a KAO because of obligations.
 			return *r.requiredObligations, nil
 		}
-		return Obligations{}, err
+		return RequiredObligations{}, err
 	}
 
 	return *r.requiredObligations, nil
@@ -1411,7 +1411,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		}
 	}
 	// Deduplicate obligations for all kao results
-	r.requiredObligations = &Obligations{FQNs: dedupRequiredObligations(kaoResults)}
+	r.requiredObligations = &RequiredObligations{FQNs: dedupRequiredObligations(kaoResults)}
 
 	return r.buildKey(ctx, kaoResults)
 }

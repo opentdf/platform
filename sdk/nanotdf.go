@@ -887,7 +887,7 @@ type NanoTDFReader struct {
 	payloadKey []byte
 
 	config              *NanoTDFReaderConfig
-	requiredObligations *Obligations
+	requiredObligations *RequiredObligations
 }
 
 func createNanoTDFDecryptHandler(reader io.ReadSeeker, writer io.Writer, opts ...NanoTDFReaderOption) (*NanoTDFDecryptHandler, error) {
@@ -995,7 +995,7 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 * If obligations are not populated we call Init() to populate them,
 * which will result in a rewrap call.
  */
-func (n *NanoTDFReader) Obligations(ctx context.Context) (Obligations, error) {
+func (n *NanoTDFReader) Obligations(ctx context.Context) (RequiredObligations, error) {
 	if n.requiredObligations == nil {
 		err := n.Init(ctx)
 		if n.requiredObligations != nil {
@@ -1003,7 +1003,7 @@ func (n *NanoTDFReader) Obligations(ctx context.Context) (Obligations, error) {
 			// This is expected if the rewrap failed for a KAO because of obligations.
 			return *n.requiredObligations, nil
 		}
-		return Obligations{}, err
+		return RequiredObligations{}, err
 	}
 
 	return *n.requiredObligations, nil
@@ -1038,7 +1038,7 @@ func (n *NanoTDFReader) getNanoRewrapKey(ctx context.Context) error {
 	}
 
 	// Populate obligations after policy result is found.
-	n.requiredObligations = &Obligations{FQNs: result[0].RequiredObligations}
+	n.requiredObligations = &RequiredObligations{FQNs: result[0].RequiredObligations}
 
 	if result[0].Error != nil {
 		errToReturn := fmt.Errorf("rewrapError: %w", result[0].Error)

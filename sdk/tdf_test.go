@@ -2114,7 +2114,7 @@ func (s *TDFSuite) Test_Obligations() {
 			}
 
 			if tc.prepopulatedObligations != nil {
-				r.requiredObligations = &Obligations{FQNs: tc.prepopulatedObligations}
+				r.requiredObligations = &RequiredObligations{FQNs: tc.prepopulatedObligations}
 			}
 
 			// First call to Obligations() - this should trigger GetDecision

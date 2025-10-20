@@ -785,7 +785,7 @@ func (s *NanoSuite) Test_NanoTDFReader_ObligationsSupport() {
 	s.Require().Nil(nanoReader.requiredObligations)
 
 	// Mock some triggered obligations as would happen during rewrap
-	mockObligations := Obligations{
+	mockObligations := RequiredObligations{
 		FQNs: []string{"obligation1", "obligation2"},
 	}
 	nanoReader.requiredObligations = &mockObligations
@@ -912,7 +912,7 @@ func (s *NanoSuite) Test_NanoTDF_Obligations() {
 			}
 
 			if tc.populateObligations != nil {
-				nanoReader.requiredObligations = &Obligations{FQNs: tc.populateObligations}
+				nanoReader.requiredObligations = &RequiredObligations{FQNs: tc.populateObligations}
 			}
 
 			// Initialize the reader (this will parse the header)

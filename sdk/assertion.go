@@ -74,14 +74,14 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 		return fmt.Errorf("failed to set assertion signature: %w", err)
 	}
 
-	// SECURITY: Add schema claim to cryptographically bind schema to assertion
+	// TODO SECURITY: Add schema claim to cryptographically bind schema to assertion
 	// This prevents schema substitution attacks where an attacker changes Statement.Schema
 	// to route the assertion to a different validator with weaker security checks.
 	// The schema is included in both the JWT (signed) and the Statement (hashed),
 	// providing defense-in-depth against tampering.
-	if err := tok.Set("assertionSchema", a.Statement.Schema); err != nil {
-		return fmt.Errorf("failed to set assertion schema: %w", err)
-	}
+	// if err := tok.Set("assertionSchema", a.Statement.Schema); err != nil {
+	// 	return fmt.Errorf("failed to set assertion schema: %w", err)
+	// }
 
 	// Sign the token with the configured key
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key))

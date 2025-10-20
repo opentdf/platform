@@ -238,7 +238,6 @@ Supports two assertion binding formats:
 assertionSig = rootSignature
 ```
 - More secure, direct binding to manifest root signature
-- Includes `assertionSchema` claim in JWT for schema substitution attack prevention
 
 **Format v1 (Legacy - Java/JS SDKs)**:
 ```
@@ -249,17 +248,6 @@ assertionSig = base64(aggregateHash + assertionHash)
 
 Both `SystemMetadataAssertionProvider` and `KeyAssertionValidator` auto-detect format version.
 
-### Assertion Schema Versions
-
-As of 2025-10-17, built-in assertion schemas include the `assertionSchema` JWT claim for security:
-
-| Assertion Type  | Current Schema                   | Legacy Schema                    | Schema Claim |
-|-----------------|----------------------------------|----------------------------------|--------------|
-| Key-Based       | `urn:opentdf:key:assertion:v2`   | `urn:opentdf:key:assertion:v1`   | v2: ✅, v1: ❌ |
-| System Metadata | `urn:opentdf:system:metadata:v2` | `urn:opentdf:system:metadata:v1` | v2: ✅, v1: ❌ |
-
-**Backward Compatibility**: All validators support reading legacy v1 schemas without the `assertionSchema` claim. New assertions created use v2 schemas with the claim for enhanced security.
-
 ### Security Considerations
 
 1. **Mandatory Bindings**: All assertions MUST have cryptographic bindings. Assertions without explicit signing keys are auto-signed with the DEK.
@@ -267,10 +255,6 @@ As of 2025-10-17, built-in assertion schemas include the `assertionSchema` JWT c
 3. **Certificate Validation**: Validators should verify X.509 certificate chains, expiration, and revocation status.
 4. **Verification Mode Security**: Validators respect configured mode to prevent bypasses. A critical security fix (2025-10-17) ensures validators fail securely when no keys are configured instead of silently skipping verification.
 5. **Binding Integrity**: Root signature binding ensures assertions cannot be moved between TDFs or tampered with.
-6. **Schema Integrity Binding** (2025-10-17): The schema URI is cryptographically bound to assertions via an `assertionSchema` claim in the JWT signature. This prevents schema substitution attacks where an attacker modifies `statement.schema` to route the assertion to a different validator with weaker security checks. Validators now verify:
-   - Schema matches expected value BEFORE any processing (fail-fast on mismatch)
-   - JWT `assertionSchema` claim matches `statement.schema` (prevents tampering after signing)
-   - Defense-in-depth: schema is validated pre-check, included in signed JWT, and included in hashed statement
 
 ### Implementation Guide
 
@@ -285,8 +269,7 @@ As of 2025-10-17, built-in assertion schemas include the `assertionSchema` JWT c
 1. Implement `AssertionValidator.Schema()` to return expected schema URI
 2. Implement `AssertionValidator.Verify()` for cryptographic checks:
    - Validate `assertion.Statement.Schema` matches expected schema BEFORE processing
-   - Verify JWT signature and extract `assertionHash`, `assertionSig`, and `assertionSchema` claims
-   - Verify `assertionSchema` claim matches `assertion.Statement.Schema`
+   - Verify JWT signature and extract `assertionHash`, `assertionSig` claims
    - Verify assertion hash and manifest binding
 3. Implement `AssertionValidator.Validate()` for policy/trust checks
 4. Define regex pattern matching target assertion IDs

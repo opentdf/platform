@@ -89,8 +89,6 @@ type ecKeyWrappedKeyInfo struct {
 	wrappedKey string
 }
 
-var ErrObligationsNotPopulated = errors.New("obligations not populated")
-
 func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []kaoResult) (int, error) {
 	err := r.reader.buildKey(ctx, results)
 	if err != nil {
@@ -1093,14 +1091,18 @@ func (r *Reader) DataAttributes() ([]string, error) {
 }
 
 /*
-* Returns the obligations required for access to the TDF payload, assuming you
-* have called Init() or WriteTo() to populate obligations.
+* Returns the obligations required for access to the TDF payload.
 *
-* If obligations are not populated an error is returned.
+* If obligations are not populated we call Init() to populate them,
+* which will result in a rewrap call.
  */
-func (r *Reader) Obligations(_ context.Context) (Obligations, error) {
+func (r *Reader) Obligations(ctx context.Context) (Obligations, error) {
 	if r.requiredObligations == nil {
-		return Obligations{}, ErrObligationsNotPopulated
+		err := r.Init(ctx)
+		if r.requiredObligations != nil {
+			return *r.requiredObligations, nil // Do not return error if obligations were populated. This is expected if the rewrap failed for a KAO bc of obligations.
+		}
+		return Obligations{}, err
 	}
 
 	return *r.requiredObligations, nil

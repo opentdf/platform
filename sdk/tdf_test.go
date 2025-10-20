@@ -2046,17 +2046,23 @@ func (s *TDFSuite) Test_Obligations() {
 		shouldReturnError         bool
 		expectedError             error
 		prepopulatedObligations   []string
+		dataAttributes            []string
 	}{
 		{
-			name:                      "Rewrap not called - Error",
+			name:                      "Rewrap not called prior - Populate from Init() - No Error",
 			fulfillableObligationFQNs: []string{obligationWatermark},
-			shouldReturnError:         true,
-			expectedError:             ErrObligationsNotPopulated,
+			requiredObligations:       []string{obligationWatermark},
+			dataAttributes:            []string{oa1.key},
+			shouldReturnError:         false,
+			expectedError:             nil,
 		},
 		{
-			name:                      "Rewrap called - No Error",
+			// This test does not actually Rewrap, if it did we would have a mismatch
+			// set of required obligations.
+			name:                      "Rewrap called previously - No Error",
 			requiredObligations:       []string{obligationGeofence},
 			fulfillableObligationFQNs: []string{obligationGeofence},
+			dataAttributes:            []string{oa1.key},
 			shouldReturnError:         false,
 			expectedError:             nil,
 			prepopulatedObligations:   []string{obligationGeofence},
@@ -2075,11 +2081,11 @@ func (s *TDFSuite) Test_Obligations() {
 			}()
 
 			// Encrypt the TDF file for testing
-			opts := []TDFOption{WithKasInformation(s.kases[0].KASInfo), WithDataAttributes(oa1.key, oa2.key, oa3.key)}
+			opts := []TDFOption{WithKasInformation(s.kases[0].KASInfo), WithDataAttributes(tc.dataAttributes...)}
 			s.testEncrypt(s.sdk, opts, plainTextFileName, tdfFileName, tdfTest{
 				n:           strings.ReplaceAll(tc.name, " ", "_"),
 				fileSize:    5,
-				tdfFileSize: 2690,
+				tdfFileSize: 1737,
 				checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			})
 
@@ -2759,7 +2765,6 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations
 		if f.KASInfo.URL == f.s.kasTestURLLookup[obligationKas] {
 			// Only return failures for obligation kas URL
 			if !f.s.checkObligationsFulfillment(requiredObligations, fulfillableObligations) {
-				// Return a deny response if obligations are not fulfilled
 				results := &kaspb.PolicyRewrapResult{PolicyId: req.GetPolicy().GetId()}
 				for _, kaoReq := range req.GetKeyAccessObjects() {
 					kaoResult := &kaspb.KeyAccessRewrapResult{

@@ -34,7 +34,8 @@ import (
 )
 
 const (
-	nanoFakePem = "pem"
+	nanoFakePem       = "pem"
+	fakeObligationFQN = "https://fake.example.com/obl/value/obligation1"
 )
 
 // mockTransport is a custom RoundTripper that intercepts HTTP requests
@@ -865,8 +866,8 @@ func (s *NanoSuite) Test_NanoTDFReader_RealWorkflow() {
 	s.Require().NotNil(nanoReader.header.EphemeralKey)
 	s.Require().Len(nanoReader.header.EphemeralKey, 33) // secp256r1 compressed key
 
-	_, err = nanoReader.Obligations(s.T().Context()) // Fails bc we don't setup fake authz client here.
-	s.Require().Error(err)
+	_, err = nanoReader.Obligations(s.T().Context())
+	s.Require().NoError(err)
 }
 
 func (s *NanoSuite) Test_NanoTDF_Obligations() {
@@ -884,8 +885,9 @@ func (s *NanoSuite) Test_NanoTDF_Obligations() {
 		populateObligations    []string
 	}{
 		{
-			name:        "Rewrap not called - Error",
-			expectError: ErrObligationsNotPopulated,
+			name:                "Rewrap not called prior - Call Rewrap",
+			expectError:         nil,
+			requiredObligations: []string{fakeObligationFQN},
 		},
 		{
 			name:                   "Rewrap called - Obligations populated",
@@ -1212,11 +1214,11 @@ func (m *mockTransport) handleRewrapRequest(req *http.Request) (*http.Response, 
 						Result: &kas.KeyAccessRewrapResult_KasWrappedKey{
 							KasWrappedKey: wrappedKey,
 						},
+						Metadata: createMetadataWithObligations([]string{fakeObligationFQN}),
 					},
 				},
 			},
 		},
-		Metadata: make(map[string]*structpb.Value),
 	}
 
 	// Marshal the response

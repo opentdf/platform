@@ -990,14 +990,18 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 }
 
 /*
-* Returns the obligations required for access to the TDF payload, assuming you
-* have called Init() or DecryptNanoTDF() to populate obligations.
+* Returns the obligations required for access to the NanoTDF payload.
 *
-* If obligations are not populated an error is returned.
+* If obligations are not populated we call Init() to populate them,
+* which will result in a rewrap call.
  */
-func (n *NanoTDFReader) Obligations(_ context.Context) (Obligations, error) {
+func (n *NanoTDFReader) Obligations(ctx context.Context) (Obligations, error) {
 	if n.requiredObligations == nil {
-		return Obligations{}, ErrObligationsNotPopulated
+		err := n.Init(ctx)
+		if n.requiredObligations != nil {
+			return *n.requiredObligations, nil // Do not return error if obligations were populated. This is expected if the rewrap failed for a KAO bc of obligations.
+		}
+		return Obligations{}, err
 	}
 
 	return *n.requiredObligations, nil

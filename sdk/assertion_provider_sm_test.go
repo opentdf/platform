@@ -48,16 +48,16 @@ func TestSystemMetadataAssertion_SchemaVersionDetection(t *testing.T) {
 	}
 }
 
-// TestGetSystemMetadataAssertionConfig_DefaultsToV2 verifies that newly
-// created system metadata assertions use the v2 schema by default
-func TestGetSystemMetadataAssertionConfig_DefaultsToV2(t *testing.T) {
+// TestGetSystemMetadataAssertionConfig_DefaultsToV1 verifies that newly
+// created system metadata assertions use the v1 schema for cross-SDK compatibility
+func TestGetSystemMetadataAssertionConfig_DefaultsToV1(t *testing.T) {
 	config, err := GetSystemMetadataAssertionConfig()
 	require.NoError(t, err)
 
 	assert.Equal(t, SystemMetadataAssertionID, config.ID,
 		"Assertion ID should be 'system-metadata'")
-	assert.Equal(t, SystemMetadataSchemaV2, config.Statement.Schema,
-		"New assertions should default to v2 schema")
+	assert.Equal(t, SystemMetadataSchemaV1, config.Statement.Schema,
+		"New assertions should use v1 schema for cross-SDK compatibility")
 	// Verify statement format (string comparison, not JSON)
 	if config.Statement.Format != StatementFormatJSON {
 		t.Errorf("Expected format %q, got %q", StatementFormatJSON, config.Statement.Format)
@@ -91,7 +91,7 @@ func TestSystemMetadataAssertionProvider_Bind_UsesV2Schema(t *testing.T) {
 
 	assert.Equal(t, SystemMetadataAssertionID, assertion.ID)
 	assert.Equal(t, SystemMetadataSchemaV2, assertion.Statement.Schema,
-		"Newly bound assertions should use v2 schema")
+		"Newly bound assertions should use v2 schema when useHex=false")
 }
 
 // TestSystemMetadataAssertionProvider_Verify_DualMode tests that the
@@ -160,7 +160,7 @@ func TestSystemMetadataAssertionProvider_MissingBinding_AllModes(t *testing.T) {
 				AppliesToState: Unencrypted,
 				Statement: Statement{
 					Format: StatementFormatJSON,
-					Schema: SystemMetadataSchemaV2,
+					Schema: SystemMetadataSchemaV1,
 					Value:  `{"tdf_spec_version":"1.0","sdk_version":"Go-test"}`,
 				},
 				Binding: Binding{
@@ -225,4 +225,101 @@ func TestSystemMetadataAssertionProvider_SetVerificationMode(t *testing.T) {
 		assert.Equal(t, mode, provider.verificationMode,
 			"SetVerificationMode should update the mode to %s", mode)
 	}
+}
+
+// TestSystemMetadataAssertionProvider_TamperedStatement verifies that
+// tampering with assertion statement values is detected and causes verification to fail.
+// This mirrors the test_tdf_with_altered_assertion_statement test in tests/xtest.
+func TestSystemMetadataAssertionProvider_TamperedStatement(t *testing.T) {
+	t.Parallel()
+
+	payloadKey := []byte("test-payload-key-32-bytes-long!")
+	aggregateHash := "test-aggregate-hash"
+
+	// Use modern TDF format (useHex=false) which uses V2 schema
+	provider := NewSystemMetadataAssertionProvider(false, payloadKey, aggregateHash)
+	provider.SetVerificationMode(FailFast)
+
+	// Create a minimal manifest with nested structure
+	manifest := Manifest{
+		EncryptionInformation: EncryptionInformation{
+			IntegrityInformation: IntegrityInformation{
+				RootSignature: RootSignature{
+					Signature: "test-root-signature",
+					Algorithm: "HS256",
+				},
+			},
+		},
+	}
+
+	// Create and bind an assertion with original statement
+	originalAssertion, err := provider.Bind(t.Context(), manifest)
+	require.NoError(t, err, "Binding assertion should succeed")
+
+	// Verify original assertion passes
+	reader := Reader{
+		manifest: manifest,
+	}
+	err = provider.Verify(t.Context(), originalAssertion, reader)
+	require.NoError(t, err, "Original assertion should verify successfully")
+
+	// Now tamper with the statement value (simulate what the xtest does)
+	tamperedAssertion := originalAssertion
+	tamperedAssertion.Statement.Value = "tampered"
+
+	// Verify that tampering is detected
+	err = provider.Verify(t.Context(), tamperedAssertion, reader)
+	require.Error(t, err, "Tampered assertion should fail verification")
+	assert.Contains(t, err.Error(), "hash",
+		"Error should indicate hash mismatch due to tampering")
+}
+
+// TestSystemMetadataAssertionProvider_TamperedStatement_LegacyV1 verifies that
+// tampering detection works for legacy V1 schema assertions as well.
+func TestSystemMetadataAssertionProvider_TamperedStatement_LegacyV1(t *testing.T) {
+	t.Parallel()
+
+	payloadKey := []byte("test-payload-key-32-bytes-long!")
+	aggregateHash := "test-aggregate-hash"
+
+	// Use legacy TDF format (useHex=true) which uses V1 schema
+	provider := NewSystemMetadataAssertionProvider(true, payloadKey, aggregateHash)
+	provider.SetVerificationMode(FailFast)
+
+	// Create a minimal manifest with nested structure
+	manifest := Manifest{
+		EncryptionInformation: EncryptionInformation{
+			IntegrityInformation: IntegrityInformation{
+				RootSignature: RootSignature{
+					Signature: "test-root-signature",
+					Algorithm: "HS256",
+				},
+			},
+		},
+	}
+
+	// Create and bind an assertion with original statement
+	originalAssertion, err := provider.Bind(t.Context(), manifest)
+	require.NoError(t, err, "Binding assertion should succeed")
+
+	// Verify it uses V1 schema
+	assert.Equal(t, SystemMetadataSchemaV1, originalAssertion.Statement.Schema,
+		"Legacy TDF should use V1 schema")
+
+	// Verify original assertion passes
+	reader := Reader{
+		manifest: manifest,
+	}
+	err = provider.Verify(t.Context(), originalAssertion, reader)
+	require.NoError(t, err, "Original assertion should verify successfully")
+
+	// Now tamper with the statement value
+	tamperedAssertion := originalAssertion
+	tamperedAssertion.Statement.Value = "tampered"
+
+	// Verify that tampering is detected
+	err = provider.Verify(t.Context(), tamperedAssertion, reader)
+	require.Error(t, err, "Tampered assertion should fail verification")
+	assert.Contains(t, err.Error(), "hash",
+		"Error should indicate hash mismatch due to tampering")
 }

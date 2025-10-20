@@ -24,10 +24,9 @@ const (
 	// This format uses the root signature directly as the binding signature.
 	SystemMetadataSchemaV2 = "urn:opentdf:system:metadata:v2"
 
-	// SystemMetadataSchemaV1 is the legacy schema URI for system metadata assertions.
-	// This format uses base64(aggregateHash + assertionHash) as the binding signature.
-	// Maintained for backward compatibility with old TDFs.
-	SystemMetadataSchemaV1 = "urn:opentdf:system:metadata:v1"
+	// SystemMetadataSchemaV1 is the schema for system metadata assertions.
+	// Compatible with Java and JS SDKs.
+	SystemMetadataSchemaV1 = "system-metadata-v1"
 )
 
 // SystemMetadataAssertionProvider provides information about the system that is running the application.
@@ -56,9 +55,12 @@ func (p *SystemMetadataAssertionProvider) SetVerificationMode(mode AssertionVeri
 }
 
 // Schema returns the schema URI this validator handles.
-// Returns v2 which uses root signature binding.
-// The validator also accepts v1 for backward compatibility.
+// Returns v1 for legacy TDFs (useHex=true) or v2 for modern TDFs (useHex=false).
+// The validator supports both v1 and v2 binding formats via auto-detection.
 func (p *SystemMetadataAssertionProvider) Schema() string {
+	if p.useHex {
+		return SystemMetadataSchemaV1
+	}
 	return SystemMetadataSchemaV2
 }
 
@@ -68,6 +70,9 @@ func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (As
 	if err != nil {
 		return Assertion{}, fmt.Errorf("failed to get system metadata assertion config: %w", err)
 	}
+
+	// Override schema based on useHex flag (legacy vs modern TDF)
+	ac.Statement.Schema = p.Schema()
 
 	// Build the assertion
 	assertion := Assertion{
@@ -96,21 +101,22 @@ func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (As
 }
 
 func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, r Reader) error {
-	// SECURITY: Validate schema matches expected value BEFORE any processing
-	// This prevents routing assertions with tampered schemas to this validator
+	// SECURITY: Validate schema is one of the supported schemas
+	// This prevents routing assertions with unknown schemas to this validator
 	// Defense in depth: checked here AND via hash verification later
-	expectedSchema := p.Schema()
-	if a.Statement.Schema != expectedSchema {
-		// Check if this is a legacy v1 schema (backward compatibility)
-		if a.Statement.Schema == SystemMetadataSchemaV1 || a.Statement.Schema == "" {
-			slog.WarnContext(ctx, "assertion uses legacy v1 schema",
-				slog.String("assertion_id", a.ID),
-				slog.String("schema", a.Statement.Schema))
-			// Allow legacy v1 schema for backward compatibility
-		} else {
-			return fmt.Errorf("%w: schema mismatch - expected %q, got %q (possible schema substitution attack)",
-				ErrAssertionFailure{ID: a.ID}, expectedSchema, a.Statement.Schema)
-		}
+	isValidSchema := a.Statement.Schema == SystemMetadataSchemaV1 ||
+		a.Statement.Schema == SystemMetadataSchemaV2 ||
+		a.Statement.Schema == ""
+
+	if !isValidSchema {
+		return fmt.Errorf("%w: unsupported schema %q (expected %q or %q)",
+			ErrAssertionFailure{ID: a.ID}, a.Statement.Schema, SystemMetadataSchemaV1, SystemMetadataSchemaV2)
+	}
+
+	if a.Statement.Schema == SystemMetadataSchemaV1 || a.Statement.Schema == "" {
+		slog.DebugContext(ctx, "assertion uses v1 schema",
+			slog.String("assertion_id", a.ID),
+			slog.String("schema", a.Statement.Schema))
 	}
 
 	// Assertions without cryptographic bindings cannot be verified - this is a security issue
@@ -252,7 +258,7 @@ func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
 		AppliesToState: Unencrypted,
 		Statement: Statement{
 			Format: StatementFormatJSON,
-			Schema: SystemMetadataSchemaV2,
+			Schema: SystemMetadataSchemaV1,
 			Value:  string(metadataJSON),
 		},
 	}, nil

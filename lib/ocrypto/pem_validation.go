@@ -80,20 +80,17 @@ func ValidatePublicKeyPEM(pemBytes []byte) (*PublicKeyInfo, error) {
 				src = KeySourceCertificate
 			}
 
-			// Classify based on concrete encryptor type
+			// Classify based on concrete encryptor type (build once, assign once)
+			var info *PublicKeyInfo
 			switch e := enc.(type) {
 			case *AsymEncryption:
 				// RSA path; compute bit length and enforce allowed sizes
 				bits := e.PublicKey.N.BitLen()
 				switch bits {
 				case RSA2048Size:
-					if firstValid == nil {
-						firstValid = &PublicKeyInfo{Type: RSA2048Key, RSABits: RSA2048Size, Source: src}
-					}
+					info = &PublicKeyInfo{Type: RSA2048Key, RSABits: RSA2048Size, Source: src}
 				case RSA4096Size:
-					if firstValid == nil {
-						firstValid = &PublicKeyInfo{Type: RSA4096Key, RSABits: RSA4096Size, Source: src}
-					}
+					info = &PublicKeyInfo{Type: RSA4096Key, RSABits: RSA4096Size, Source: src}
 				default:
 					return nil, fmt.Errorf("%w: %d", ErrInvalidRSAKeySize, bits)
 				}
@@ -101,23 +98,21 @@ func ValidatePublicKeyPEM(pemBytes []byte) (*PublicKeyInfo, error) {
 				// EC path; rely on KeyType mapping
 				kt := e.KeyType()
 				if curve, ok := kt.ECCurve(); ok {
-					if firstValid == nil {
-						firstValid = &PublicKeyInfo{Type: kt, ECCurve: curve, Source: src}
-					}
+					info = &PublicKeyInfo{Type: kt, ECCurve: curve, Source: src}
 				} else {
 					return nil, ErrInvalidECCurve
 				}
 			default:
 				return nil, ErrUnsupportedPublicKeyType
 			}
+			if firstValid == nil {
+				firstValid = info
+			}
 		default:
 			// ignore unrelated block types
 		}
 
 		data = rest
-		if len(data) == 0 {
-			break
-		}
 	}
 
 	if firstValid != nil {

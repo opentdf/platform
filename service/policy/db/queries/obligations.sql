@@ -109,7 +109,7 @@ WHERE
     -- lookup by obligation id OR by namespace fqn + obligation name
     (
         -- lookup by obligation id
-        (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = @id::UUID)
+        (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = NULLIF(@id::TEXT, '')::UUID)
         OR
         -- lookup by namespace fqn + obligation name
         (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL
@@ -208,7 +208,7 @@ WHERE id IN (
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = @id::UUID)
+            (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = NULLIF(@id::TEXT, '')::UUID)
             OR
             -- lookup by namespace fqn + obligation name
             (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL 
@@ -301,7 +301,7 @@ WITH obligation_lookup AS (
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = @id::UUID)
+            (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = NULLIF(@id::TEXT, '')::UUID)
             OR
             -- lookup by namespace fqn + obligation name
             (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL 
@@ -472,7 +472,7 @@ WHERE id IN (
         -- lookup by value id OR by namespace fqn + obligation name + value name
         (
             -- lookup by value id
-            (NULLIF(@id::TEXT, '') IS NOT NULL AND ov.id = @id::UUID)
+            (NULLIF(@id::TEXT, '') IS NOT NULL AND ov.id = NULLIF(@id::TEXT, '')::UUID)
             OR
             -- lookup by namespace fqn + obligation name + value name
             (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL AND NULLIF(@value::TEXT, '') IS NOT NULL
@@ -584,3 +584,66 @@ WHERE obligation_value_id = $1;
 DELETE FROM obligation_triggers
 WHERE id = $1
 RETURNING id;
+
+-- name: listObligationTriggers :many
+SELECT
+    JSON_STRIP_NULLS(
+        JSON_BUILD_OBJECT(
+            'id', ot.id,
+            'obligation_value', JSON_BUILD_OBJECT(
+                'id', ov.id,
+                'value', ov.value,
+                'obligation', JSON_BUILD_OBJECT(
+                    'id', od.id,
+                    'name', od.name,
+                    'namespace', JSON_BUILD_OBJECT(
+                        'id', n.id,
+                        'name', n.name,
+                        'fqn', COALESCE(ns_fqns.fqn, '')
+                    )
+                )
+            ),
+            'action', JSON_BUILD_OBJECT(
+                'id', a.id,
+                'name', a.name
+            ),
+            'attribute_value', JSON_BUILD_OBJECT(
+                'id', av.id,
+                'value', av.value,
+                'fqn', COALESCE(av_fqns.fqn, '')
+            ),
+            'context', CASE
+                WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
+                    JSON_BUILD_OBJECT(
+                        'pep', JSON_BUILD_OBJECT(
+                            'client_id', ot.client_id
+                        )
+                    )
+                )
+                ELSE '[]'::JSON
+            END
+        )
+    ) as trigger,
+    JSON_STRIP_NULLS(
+        JSON_BUILD_OBJECT(
+            'labels', ot.metadata -> 'labels',
+            'created_at', ot.created_at,
+            'updated_at', ot.updated_at
+        )
+    ) as metadata,
+    COUNT(*) OVER() as total
+FROM obligation_triggers ot
+JOIN obligation_values_standard ov ON ot.obligation_value_id = ov.id
+JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+JOIN attribute_namespaces n ON od.namespace_id = n.id
+LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+JOIN actions a ON ot.action_id = a.id
+JOIN attribute_values av ON ot.attribute_value_id = av.id
+LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
+WHERE
+    (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = @namespace_id::UUID) AND
+    (NULLIF(@namespace_fqn::TEXT, '') IS NULL OR ns_fqns.fqn = @namespace_fqn::VARCHAR)
+ORDER BY ot.created_at DESC
+LIMIT @limit_
+OFFSET @offset_;
+

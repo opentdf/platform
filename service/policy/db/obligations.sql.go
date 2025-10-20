@@ -368,7 +368,7 @@ WITH obligation_lookup AS (
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
             OR
             -- lookup by namespace fqn + obligation name
             (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL 
@@ -427,7 +427,7 @@ type createObligationValueRow struct {
 //	        -- lookup by obligation id OR by namespace fqn + obligation name
 //	        (
 //	            -- lookup by obligation id
-//	            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+//	            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
 //	            OR
 //	            -- lookup by namespace fqn + obligation name
 //	            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL
@@ -502,7 +502,7 @@ WHERE id IN (
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
             OR
             -- lookup by namespace fqn + obligation name
             (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL 
@@ -530,7 +530,7 @@ type deleteObligationParams struct {
 //	        -- lookup by obligation id OR by namespace fqn + obligation name
 //	        (
 //	            -- lookup by obligation id
-//	            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+//	            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
 //	            OR
 //	            -- lookup by namespace fqn + obligation name
 //	            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL
@@ -574,7 +574,7 @@ WHERE id IN (
         -- lookup by value id OR by namespace fqn + obligation name + value name
         (
             -- lookup by value id
-            (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = $1::UUID)
+            (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = NULLIF($1::TEXT, '')::UUID)
             OR
             -- lookup by namespace fqn + obligation name + value name
             (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL AND NULLIF($4::TEXT, '') IS NOT NULL
@@ -604,7 +604,7 @@ type deleteObligationValueParams struct {
 //	        -- lookup by value id OR by namespace fqn + obligation name + value name
 //	        (
 //	            -- lookup by value id
-//	            (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = $1::UUID)
+//	            (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = NULLIF($1::TEXT, '')::UUID)
 //	            OR
 //	            -- lookup by namespace fqn + obligation name + value name
 //	            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL AND NULLIF($4::TEXT, '') IS NOT NULL
@@ -683,7 +683,7 @@ WHERE
     -- lookup by obligation id OR by namespace fqn + obligation name
     (
         -- lookup by obligation id
-        (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+        (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
         OR
         -- lookup by namespace fqn + obligation name
         (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL
@@ -766,7 +766,7 @@ type getObligationRow struct {
 //	    -- lookup by obligation id OR by namespace fqn + obligation name
 //	    (
 //	        -- lookup by obligation id
-//	        (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+//	        (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
 //	        OR
 //	        -- lookup by namespace fqn + obligation name
 //	        (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL

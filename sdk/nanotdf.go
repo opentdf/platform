@@ -999,7 +999,9 @@ func (n *NanoTDFReader) Obligations(ctx context.Context) (Obligations, error) {
 	if n.requiredObligations == nil {
 		err := n.Init(ctx)
 		if n.requiredObligations != nil {
-			return *n.requiredObligations, nil // Do not return error if obligations were populated. This is expected if the rewrap failed for a KAO bc of obligations.
+			// Do not return error if obligations were populated.
+			// This is expected if the rewrap failed for a KAO because of obligations.
+			return *n.requiredObligations, nil
 		}
 		return Obligations{}, err
 	}

@@ -1100,7 +1100,9 @@ func (r *Reader) Obligations(ctx context.Context) (Obligations, error) {
 	if r.requiredObligations == nil {
 		err := r.Init(ctx)
 		if r.requiredObligations != nil {
-			return *r.requiredObligations, nil // Do not return error if obligations were populated. This is expected if the rewrap failed for a KAO bc of obligations.
+			// Do not return error if obligations were populated.
+			// This is expected if the rewrap failed for a KAO because of obligations.
+			return *r.requiredObligations, nil
 		}
 		return Obligations{}, err
 	}

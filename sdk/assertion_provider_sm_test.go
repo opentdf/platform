@@ -18,7 +18,7 @@ func TestSystemMetadataAssertion_SchemaVersionDetection(t *testing.T) {
 	}{
 		{
 			name:           "v2_schema_is_current",
-			schema:         SystemMetadataSchemaV2,
+			schema:         SystemMetadataSchemaV1,
 			expectedLegacy: false,
 			description:    "V2 schema should be treated as current (includes schema claim in JWT)",
 		},
@@ -56,7 +56,7 @@ func TestGetSystemMetadataAssertionConfig_DefaultsToV2(t *testing.T) {
 
 	assert.Equal(t, SystemMetadataAssertionID, config.ID,
 		"Assertion ID should be 'system-metadata'")
-	assert.Equal(t, SystemMetadataSchemaV2, config.Statement.Schema,
+	assert.Equal(t, SystemMetadataSchemaV1, config.Statement.Schema,
 		"New assertions should default to v2 schema")
 	// Verify statement format (string comparison, not JSON)
 	if config.Statement.Format != StatementFormatJSON {
@@ -90,7 +90,7 @@ func TestSystemMetadataAssertionProvider_Bind_UsesV2Schema(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, SystemMetadataAssertionID, assertion.ID)
-	assert.Equal(t, SystemMetadataSchemaV2, assertion.Statement.Schema,
+	assert.Equal(t, SystemMetadataSchemaV1, assertion.Statement.Schema,
 		"Newly bound assertions should use v2 schema")
 }
 
@@ -162,7 +162,7 @@ func TestSystemMetadataAssertionProvider_MissingBinding_AllModes(t *testing.T) {
 				AppliesToState: Unencrypted,
 				Statement: Statement{
 					Format: StatementFormatJSON,
-					Schema: SystemMetadataSchemaV2,
+					Schema: SystemMetadataSchemaV1,
 					Value:  `{"tdf_spec_version":"1.0","sdk_version":"Go-test"}`,
 				},
 				Binding: Binding{

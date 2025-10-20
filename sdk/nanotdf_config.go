@@ -123,8 +123,9 @@ func WithECDSAPolicyBinding() NanoTDFOption {
 }
 
 type NanoTDFReaderConfig struct {
-	kasAllowlist    AllowList
-	ignoreAllowList bool
+	kasAllowlist              AllowList
+	ignoreAllowList           bool
+	fulfillableObligationFQNs []string
 }
 
 func newNanoTDFReaderConfig(opt ...NanoTDFReaderOption) (*NanoTDFReaderConfig, error) {
@@ -163,6 +164,13 @@ func withNanoKasAllowlist(allowlist AllowList) NanoTDFReaderOption {
 func WithNanoIgnoreAllowlist(ignore bool) NanoTDFReaderOption {
 	return func(c *NanoTDFReaderConfig) error {
 		c.ignoreAllowList = ignore
+		return nil
+	}
+}
+
+func WithNanoTDFFulfillableObligationFQNs(fqns []string) NanoTDFReaderOption {
+	return func(c *NanoTDFReaderConfig) error {
+		c.fulfillableObligationFQNs = fqns
 		return nil
 	}
 }

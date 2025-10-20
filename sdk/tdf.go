@@ -48,6 +48,7 @@ const (
 	kAssertionSignature    = "assertionSig"
 	kAssertionHash         = "assertionHash"
 	hexSemverThreshold     = "4.3.0"
+	readActionName         = "read"
 )
 
 // Loads and reads ZTDF files
@@ -64,6 +65,11 @@ type Reader struct {
 	payloadKey          []byte
 	kasSessionKey       ocrypto.KeyPair
 	config              TDFReaderConfig
+	requiredObligations *Obligations
+}
+
+type Obligations struct {
+	FQNs []string
 }
 
 type TDFObject struct {
@@ -82,6 +88,8 @@ type ecKeyWrappedKeyInfo struct {
 	publicKey  string
 	wrappedKey string
 }
+
+var ErrObligationsNotPopulated = errors.New("obligations not populated")
 
 func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []kaoResult) (int, error) {
 	err := r.reader.buildKey(ctx, results)
@@ -767,22 +775,14 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		return nil, fmt.Errorf("newAssertionConfig failed: %w", err)
 	}
 
-	if len(config.kasAllowlist) == 0 && !config.ignoreAllowList { //nolint:nestif // handle the case where kasAllowlist is empty
-		if s.KeyAccessServerRegistry != nil {
-			// retrieve the registered kases if not provided
-			platformEndpoint, err := s.PlatformConfiguration.platformEndpoint()
-			if err != nil {
-				return nil, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
-			}
-			allowList, err := allowListFromKASRegistry(context.Background(), s.logger, s.KeyAccessServerRegistry, platformEndpoint)
-			if err != nil {
-				return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
-			}
-			config.kasAllowlist = allowList
-		} else {
-			slog.Error("no KAS allowlist provided and no KeyAccessServerRegistry available")
-			return nil, errors.New("no KAS allowlist provided and no KeyAccessServerRegistry available")
-		}
+	useGlobalFulfillableObligations := len(config.fulfillableObligationFQNs) == 0 && len(s.fulfillableObligationFQNs) > 0
+	if useGlobalFulfillableObligations {
+		config.fulfillableObligationFQNs = s.fulfillableObligationFQNs
+	}
+
+	config.kasAllowlist, err = getKasAllowList(context.Background(), config.kasAllowlist, s, config.ignoreAllowList)
+	if err != nil {
+		return nil, err
 	}
 
 	manifest, err := tdfReader.Manifest()
@@ -1093,6 +1093,20 @@ func (r *Reader) DataAttributes() ([]string, error) {
 }
 
 /*
+* Returns the obligations required for access to the TDF payload, assuming you
+* have called Init() or WriteTo() to populate obligations.
+*
+* If obligations are not populated an error is returned.
+ */
+func (r *Reader) Obligations(_ context.Context) (Obligations, error) {
+	if r.requiredObligations == nil {
+		return Obligations{}, ErrObligationsNotPopulated
+	}
+
+	return *r.requiredObligations, nil
+}
+
+/*
 *WARNING:* Using this function is unsafe since KAS will no longer be able to prevent access to the key.
 
 Retrieve the payload key, either from performing an buildKey or from a previous buildKey,
@@ -1203,13 +1217,7 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 
 		if err != nil {
 			errToReturn := fmt.Errorf("kao unwrap failed for split %v: %w", ss, err)
-			if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
-				errToReturn = fmt.Errorf("%w: %w", ErrRewrapBadRequest, errToReturn)
-			}
-			if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
-				errToReturn = fmt.Errorf("%w: %w", errRewrapForbidden, errToReturn)
-			}
-			skippedSplits[ss] = errToReturn
+			skippedSplits[ss] = getKasErrorToReturn(err, errToReturn)
 			continue
 		}
 
@@ -1359,7 +1367,7 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 
 // Unwraps the payload key, if possible, using the access service
 func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocognit // Better readability keeping it as is
-	kasClient := newKASClient(r.httpClient, r.connectOptions, r.tokenSource, r.kasSessionKey)
+	kasClient := newKASClient(r.httpClient, r.connectOptions, r.tokenSource, r.kasSessionKey, r.config.fulfillableObligationFQNs)
 
 	var kaoResults []kaoResult
 	reqFail := func(err error, req *kas.UnsignedRewrapRequest_WithPolicyRequest) {
@@ -1398,6 +1406,8 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 			kaoResults = append(kaoResults, result...)
 		}
 	}
+	// Deduplicate obligations for all kao results
+	r.requiredObligations = &Obligations{FQNs: dedupRequiredObligations(kaoResults)}
 
 	return r.buildKey(ctx, kaoResults)
 }
@@ -1514,4 +1524,56 @@ func createKaoTemplateFromKasInfo(kasInfoArr []KASInfo) []kaoTpl {
 	}
 
 	return kaoTemplate
+}
+
+func getKasErrorToReturn(err error, defaultError error) error {
+	errToReturn := defaultError
+	if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
+		errToReturn = errors.Join(ErrRewrapBadRequest, errToReturn)
+	} else if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
+		errToReturn = errors.Join(ErrRewrapForbidden, errToReturn)
+	}
+
+	return errToReturn
+}
+
+func getKasAllowList(ctx context.Context, kasAllowList AllowList, s SDK, ignoreAllowList bool) (AllowList, error) {
+	allowList := kasAllowList
+	if len(allowList) == 0 && !ignoreAllowList {
+		if s.KeyAccessServerRegistry == nil {
+			slog.Error("no KAS allowlist provided and no KeyAccessServerRegistry available")
+			return nil, errors.New("no KAS allowlist provided and no KeyAccessServerRegistry available")
+		}
+
+		// retrieve the registered kases if not provided
+		platformEndpoint, err := s.PlatformConfiguration.platformEndpoint()
+		if err != nil {
+			return nil, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
+		}
+		allowList, err = allowListFromKASRegistry(ctx, s.logger, s.KeyAccessServerRegistry, platformEndpoint)
+		if err != nil {
+			return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
+		}
+	}
+
+	return allowList, nil
+}
+
+func dedupRequiredObligations(kaoResults []kaoResult) []string {
+	seen := make(map[string]struct{})
+	dedupedOblgs := make([]string, 0)
+	for _, kao := range kaoResults {
+		for _, oblg := range kao.RequiredObligations {
+			normalizedOblg := strings.TrimSpace(strings.ToLower(oblg))
+			if len(normalizedOblg) == 0 {
+				continue
+			}
+			if _, ok := seen[normalizedOblg]; !ok {
+				seen[normalizedOblg] = struct{}{}
+				dedupedOblgs = append(dedupedOblgs, normalizedOblg)
+			}
+		}
+	}
+
+	return dedupedOblgs
 }

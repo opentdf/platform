@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type arrayCfg struct {
@@ -27,9 +29,7 @@ func TestBind_FromYAMLArray_SecretsSlice(t *testing.T) {
 	t.Setenv("OPENTDF_YAML_ARR", "arr-env")
 	dir := t.TempDir()
 	fp := filepath.Join(dir, "s.txt")
-	if err := os.WriteFile(fp, []byte("from-file\n"), 0o600); err != nil {
-		t.Fatalf("write: %v", err)
-	}
+	require.NoError(t, os.WriteFile(fp, []byte("from-file\n"), 0o600))
 
 	yaml := "" +
 		"secrets:\n" +
@@ -39,26 +39,20 @@ func TestBind_FromYAMLArray_SecretsSlice(t *testing.T) {
 
 	v := viper.New()
 	v.SetConfigType("yaml")
-	if err := v.ReadConfig(bytes.NewBufferString(yaml)); err != nil {
-		t.Fatalf("read yaml: %v", err)
-	}
+	require.NoError(t, v.ReadConfig(bytes.NewBufferString(yaml)))
 
 	in := ServiceConfig{
 		"secrets": v.Get("secrets"),
 	}
 	var out arrayCfg
-	if err := BindServiceConfig(context.Background(), in, &out, WithEagerSecretResolution()); err != nil {
-		t.Fatalf("bind: %v", err)
-	}
-	if len(out.Secrets) != 3 {
-		t.Fatalf("expected 3 secrets, got %d", len(out.Secrets))
-	}
+	require.NoError(t, BindServiceConfig(context.Background(), in, &out, WithEagerSecretResolution()))
+	require.Len(t, out.Secrets, 3)
 	s0, _ := out.Secrets[0].Resolve(context.Background())
 	s1, _ := out.Secrets[1].Resolve(context.Background())
 	s2, _ := out.Secrets[2].Resolve(context.Background())
-	if s0 != "arr-env" || s1 != "from-file" || s2 != "abc" {
-		t.Fatalf("values mismatch: %q %q %q", s0, s1, s2)
-	}
+	assert.Equal(t, "arr-env", s0)
+	assert.Equal(t, "from-file", s1)
+	assert.Equal(t, "abc", s2)
 }
 
 func TestBind_FromYAMLArray_StructsWithSecretFields(t *testing.T) {
@@ -73,26 +67,18 @@ func TestBind_FromYAMLArray_StructsWithSecretFields(t *testing.T) {
 
 	v := viper.New()
 	v.SetConfigType("yaml")
-	if err := v.ReadConfig(bytes.NewBufferString(yaml)); err != nil {
-		t.Fatalf("read yaml: %v", err)
-	}
+	require.NoError(t, v.ReadConfig(bytes.NewBufferString(yaml)))
 
 	in := ServiceConfig{
 		"providers": v.Get("providers"),
 	}
 	var out providersCfg
-	if err := BindServiceConfig(context.Background(), in, &out, WithEagerSecretResolution()); err != nil {
-		t.Fatalf("bind: %v", err)
-	}
-	if len(out.Providers) != 2 {
-		t.Fatalf("expected 2 providers, got %d", len(out.Providers))
-	}
-	if out.Providers[0].Name != "a" || out.Providers[1].Name != "b" {
-		t.Fatalf("names mismatch: %q %q", out.Providers[0].Name, out.Providers[1].Name)
-	}
+	require.NoError(t, BindServiceConfig(context.Background(), in, &out, WithEagerSecretResolution()))
+	require.Len(t, out.Providers, 2)
+	assert.Equal(t, "a", out.Providers[0].Name)
+	assert.Equal(t, "b", out.Providers[1].Name)
 	p0, _ := out.Providers[0].Password.Resolve(context.Background())
 	p1, _ := out.Providers[1].Password.Resolve(context.Background())
-	if p0 != "alpha" || p1 != "b-pass" {
-		t.Fatalf("passwords mismatch: %q %q", p0, p1)
-	}
+	assert.Equal(t, "alpha", p0)
+	assert.Equal(t, "b-pass", p1)
 }

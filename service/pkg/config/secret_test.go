@@ -3,25 +3,22 @@ package config
 import (
 	"encoding/json"
 	"os"
+	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSecret_Literal(t *testing.T) {
 	s := NewLiteralSecret("super-secret")
-	if s.String() != "[REDACTED]" {
-		t.Fatalf("expected redacted String, got %q", s.String())
-	}
+	assert.Equal(t, "[REDACTED]", s.String())
 	got, err := s.Resolve(t.Context())
-	if err != nil {
-		t.Fatalf("resolve literal: %v", err)
-	}
-	if got != "super-secret" {
-		t.Fatalf("unexpected value: %q", got)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "super-secret", got)
 	raw, err := s.Export()
-	if err != nil || raw != "super-secret" {
-		t.Fatalf("export literal: %v, %q", err, raw)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "super-secret", raw)
 }
 
 func TestSecret_FromEnv(t *testing.T) {
@@ -29,42 +26,55 @@ func TestSecret_FromEnv(t *testing.T) {
 	t.Setenv(env, "env-secret")
 
 	s := NewEnvSecret(env)
-	if s.String() != "[REDACTED]" {
-		t.Fatalf("expected redacted String, got %q", s.String())
-	}
+	assert.Equal(t, "[REDACTED]", s.String())
 	got, err := s.Resolve(t.Context())
-	if err != nil {
-		t.Fatalf("resolve env: %v", err)
-	}
-	if got != "env-secret" {
-		t.Fatalf("unexpected value: %q", got)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "env-secret", got)
 }
 
 func TestSecret_FromFile_Trim(t *testing.T) {
 	dir := t.TempDir()
 	p := dir + "/s.txt"
 	// Include trailing newline to simulate typical secret mounts
-	if err := os.WriteFile(p, []byte("abc\n"), 0o600); err != nil {
-		t.Fatalf("write: %v", err)
-	}
+	require.NoError(t, os.WriteFile(p, []byte("abc\n"), 0o600))
 	s := NewFileSecret(p)
 	got, err := s.Resolve(t.Context())
-	if err != nil {
-		t.Fatalf("resolve file: %v", err)
-	}
-	if got != "abc" {
-		t.Fatalf("expected trimmed value 'abc', got %q", got)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "abc", got, "expected trimmed value")
 }
 
 func TestSecret_JSONRedacted(t *testing.T) {
 	s := NewLiteralSecret("dont-log-me")
 	b, err := json.Marshal(s)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
+	require.NoError(t, err)
+	assert.Equal(t, "\"[REDACTED]\"", string(b))
+}
+
+func TestSecret_Resolve_Concurrent(t *testing.T) {
+	t.Setenv("OPENTDF_CONCUR", "concur")
+	s := NewEnvSecret("OPENTDF_CONCUR")
+
+	const n = 50
+	var wg sync.WaitGroup
+	wg.Add(n)
+	errs := make(chan error, n)
+	vals := make(chan string, n)
+	for i := 0; i < n; i++ {
+		go func() {
+			defer wg.Done()
+			v, err := s.Resolve(t.Context())
+			if err != nil {
+				errs <- err
+				return
+			}
+			vals <- v
+		}()
 	}
-	if string(b) != "\"[REDACTED]\"" {
-		t.Fatalf("expected redacted json, got %s", b)
+	wg.Wait()
+	close(errs)
+	close(vals)
+	require.Empty(t, errs, "expected no resolve errors")
+	for v := range vals {
+		assert.Equal(t, "concur", v)
 	}
 }

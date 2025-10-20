@@ -60,26 +60,20 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					}
 				}
 
-				var kmgrNames []string
-
 				if kasCfg.Preview.KeyManagement {
 					if err := handleKeyManagement(srp, kasCfg, p, cacheClient); err != nil {
 						panic(err)
 					}
 					// Track registered manager names for logging
 					for _, manager := range srp.KeyManagerFactories {
-						kmgrNames = append(kmgrNames, manager.Name)
+						p.KeyDelegator.RegisterKeyManager(manager.Name, manager.Factory)
 					}
-					kmgrNames = append(kmgrNames, security.BasicManagerName)
 				} else {
-					name, err := handleLegacyMode(srp, kasCfg, p)
+					err := handleLegacyMode(srp, kasCfg, p)
 					if err != nil {
 						panic(err)
 					}
-					kmgrNames = append(kmgrNames, name)
 				}
-				srp.Logger.Info("kas registered trust.KeyManagers", slog.Any("key_managers", kmgrNames))
-
 				p.SDK = srp.SDK
 				p.Logger = srp.Logger
 				p.KASConfig = kasCfg
@@ -162,11 +156,15 @@ func handleKeyManagement(srp serviceregistry.RegistrationParams, kasCfg access.K
 	}
 	srp.Logger.Debug("determined KAS URL", slog.String("kas_url", kasURL.String()))
 
+	var kmgrNames []string
+
 	// Configure new delegation service
 	p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURL.String(), srp.Logger), srp.Logger, cacheClient)
 	for _, manager := range srp.KeyManagerFactories {
 		p.KeyDelegator.RegisterKeyManager(manager.Name, manager.Factory)
+		kmgrNames = append(kmgrNames, manager.Name)
 	}
+	kmgrNames = append(kmgrNames, security.BasicManagerName)
 
 	// Register Basic Key Manager
 	p.KeyDelegator.RegisterKeyManager(security.BasicManagerName, func(opts *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
@@ -184,12 +182,16 @@ func handleKeyManagement(srp serviceregistry.RegistrationParams, kasCfg access.K
 		}
 		return bm, nil
 	})
+
+	srp.Logger.Info("kas registered trust.KeyManagers", slog.Any("key_managers", kmgrNames))
+
 	// Explicitly set the default manager for session key generation.
-	p.KeyDelegator.SetDefaultMode(security.BasicManagerName)
+	// This should be configurable, e.g., defaulting to BasicManager or an HSM if available.
+	p.KeyDelegator.SetDefaultMode(security.BasicManagerName) // Example: default to BasicManager
 	return nil
 }
 
-func handleLegacyMode(srp serviceregistry.RegistrationParams, kasCfg access.KASConfig, p *access.Provider) (string, error) { //nolint:unparam // maintains a consistent signature with other handlers
+func handleLegacyMode(srp serviceregistry.RegistrationParams, kasCfg access.KASConfig, p *access.Provider) error { //nolint:unparam // maintains a consistent signature with other handlers
 	// Set up both the legacy CryptoProvider and the new SecurityProvider
 	kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)
 	p.CryptoProvider = srp.OTDF.CryptoProvider
@@ -200,9 +202,12 @@ func handleLegacyMode(srp serviceregistry.RegistrationParams, kasCfg access.KASC
 	p.KeyDelegator.RegisterKeyManager(inProcessService.Name(), func(*trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
 		return inProcessService, nil
 	})
+
+	srp.Logger.Info("kas registered trust.KeyManagers", slog.Any("key_managers", []string{inProcessService.Name()}))
+
 	// Set default for non-key-management mode
 	p.KeyDelegator.SetDefaultMode(inProcessService.Name())
-	return inProcessService.Name(), nil
+	return nil
 }
 
 func initSecurityProviderAdapter(cryptoProvider *security.StandardCrypto, kasCfg access.KASConfig, l *logger.Logger) trust.KeyService {

@@ -4,6 +4,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type inlineCfg struct {
@@ -16,9 +19,7 @@ func TestDecodeHook_InlineForms(t *testing.T) {
 	// Prepare a temp file for file: form
 	dir := t.TempDir()
 	f := filepath.Join(dir, "secret.txt")
-	if err := os.WriteFile(f, []byte("from-file"), 0o600); err != nil {
-		t.Fatalf("write file: %v", err)
-	}
+	require.NoError(t, os.WriteFile(f, []byte("from-file"), 0o600))
 	t.Setenv("OPENTDF_TEST_INLINE", "from-env")
 
 	in := ServiceConfig{
@@ -28,22 +29,17 @@ func TestDecodeHook_InlineForms(t *testing.T) {
 	}
 
 	var out inlineCfg
-	if err := BindServiceConfig(t.Context(), in, &out); err != nil {
-		t.Fatalf("bind: %v", err)
-	}
+	require.NoError(t, BindServiceConfig(t.Context(), in, &out))
 
 	a, err := out.A.Resolve(t.Context())
-	if err != nil || a != "abc" {
-		t.Fatalf("literal: %v %q", err, a)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "abc", a)
 	b, err := out.B.Resolve(t.Context())
-	if err != nil || b != "from-env" {
-		t.Fatalf("env: %v %q", err, b)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "from-env", b)
 	c, err := out.C.Resolve(t.Context())
-	if err != nil || c != "from-file" {
-		t.Fatalf("file: %v %q", err, c)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "from-file", c)
 }
 
 func TestDecodeHook_MalformedDirectives(t *testing.T) {
@@ -57,9 +53,8 @@ func TestDecodeHook_MalformedDirectives(t *testing.T) {
 		var out struct {
 			X Secret `mapstructure:"x"`
 		}
-		if err := BindServiceConfig(t.Context(), in, &out); err == nil {
-			t.Fatalf("expected error for malformed directive: %+v", in)
-		}
+		err := BindServiceConfig(t.Context(), in, &out)
+		require.Error(t, err)
 	}
 }
 
@@ -82,9 +77,7 @@ func TestBindServiceConfig_NestedTenants_SecretsAndLists(t *testing.T) {
 
 	dir := t.TempDir()
 	filePath := filepath.Join(dir, "pass.txt")
-	if err := os.WriteFile(filePath, []byte("from-file\n"), 0o600); err != nil {
-		t.Fatalf("write temp file: %v", err)
-	}
+	require.NoError(t, os.WriteFile(filePath, []byte("from-file\n"), 0o600))
 
 	in := ServiceConfig{
 		"client_secret": "env:OPENTDF_TEST_CLIENT_SECRET",
@@ -105,44 +98,33 @@ func TestBindServiceConfig_NestedTenants_SecretsAndLists(t *testing.T) {
 
 	var out svcCfgComplex
 	// Eagerly resolve to validate that nested secrets are materialized
-	if err := BindServiceConfig(t.Context(), in, &out, WithEagerSecretResolution()); err != nil {
-		t.Fatalf("bind: %v", err)
-	}
+	require.NoError(t, BindServiceConfig(t.Context(), in, &out, WithEagerSecretResolution()))
 
 	// Assert top-level secret
 	v, err := out.ClientSecret.Resolve(t.Context())
-	if err != nil || v != "client-secret" {
-		t.Fatalf("client_secret resolve: %v %q", err, v)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "client-secret", v)
 
 	// Assert tenant map
 	tenantA, ok := out.Tenants["tenantA"]
-	if !ok {
-		t.Fatalf("expected tenant 'tenantA' present")
-	}
+	require.True(t, ok, "expected tenant 'tenantA' present")
 	credA, err := tenantA.Credential.Resolve(t.Context())
-	if err != nil || credA != "tenant-a-cred" {
-		t.Fatalf("credential resolve: %v %q", err, credA)
-	}
-	if len(tenantA.Passwords) != 3 {
-		t.Fatalf("expected 3 passwords, got %d", len(tenantA.Passwords))
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "tenant-a-cred", credA)
+	require.Len(t, tenantA.Passwords, 3)
 	p0, _ := tenantA.Passwords[0].Resolve(t.Context())
 	p1, _ := tenantA.Passwords[1].Resolve(t.Context())
 	p2, _ := tenantA.Passwords[2].Resolve(t.Context())
-	if p0 != "p1" || p1 != "abc" || p2 != "from-file" {
-		t.Fatalf("passwords mismatch: %q, %q, %q", p0, p1, p2)
-	}
+	assert.Equal(t, "p1", p0)
+	assert.Equal(t, "abc", p1)
+	assert.Equal(t, "from-file", p2)
 
 	// Second tenant literal credential
 	tenantB, ok := out.Tenants["tenantB"]
-	if !ok {
-		t.Fatalf("expected tenant 'tenantB' present")
-	}
+	require.True(t, ok, "expected tenant 'tenantB' present")
 	credB, err := tenantB.Credential.Resolve(t.Context())
-	if err != nil || credB != "credB" {
-		t.Fatalf("credential resolve (tenantB): %v %q", err, credB)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "credB", credB)
 }
 
 func TestBindServiceConfig_NestedTenants_EagerFailureOnMissingEnv(t *testing.T) {
@@ -155,7 +137,6 @@ func TestBindServiceConfig_NestedTenants_EagerFailureOnMissingEnv(t *testing.T) 
 		},
 	}
 	var out svcCfgComplex
-	if err := BindServiceConfig(t.Context(), in, &out, WithEagerSecretResolution()); err == nil {
-		t.Fatalf("expected bind failure on missing env in eager resolution")
-	}
+	err := BindServiceConfig(t.Context(), in, &out, WithEagerSecretResolution())
+	require.Error(t, err)
 }

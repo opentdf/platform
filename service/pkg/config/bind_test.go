@@ -2,6 +2,9 @@ package config
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type demoCfg struct {
@@ -24,18 +27,16 @@ func TestBindServiceConfig_LiteralAndEnv(t *testing.T) {
 	}
 
 	var out demoCfg
-	if err := BindServiceConfig(t.Context(), in, &out, WithEagerSecretResolution()); err != nil {
-		t.Fatalf("bind: %v", err)
-	}
-	if out.User != "alice" {
-		t.Fatalf("user mismatch: %q", out.User)
-	}
+	err := BindServiceConfig(t.Context(), in, &out, WithEagerSecretResolution())
+	require.NoError(t, err)
+
+	assert.Equal(t, "alice", out.User)
+
 	pass, err := out.Pass.Resolve(t.Context())
-	if err != nil || pass != "p@ss" {
-		t.Fatalf("pass resolve: %v %q", err, pass)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "p@ss", pass)
+
 	tok, err := out.Nested.Token.Resolve(t.Context())
-	if err != nil || tok != "tok" {
-		t.Fatalf("token resolve: %v %q", err, tok)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "tok", tok)
 }

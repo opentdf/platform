@@ -20,6 +20,10 @@ const (
 	// SystemMetadataAssertionID is the standard identifier for system metadata assertions.
 	SystemMetadataAssertionID = "system-metadata"
 
+	// SystemMetadataSchemaV2 is the current schema URI for system metadata assertions.
+	// This format uses the root signature directly as the binding signature.
+	SystemMetadataSchemaV2 = "urn:opentdf:system:metadata:v2"
+
 	// SystemMetadataSchemaV1 is the legacy schema URI for system metadata assertions.
 	// This format uses base64(aggregateHash + assertionHash) as the binding signature.
 	// Maintained for backward compatibility with old TDFs.
@@ -52,10 +56,10 @@ func (p *SystemMetadataAssertionProvider) SetVerificationMode(mode AssertionVeri
 }
 
 // Schema returns the schema URI this validator handles.
-// Returns v2 which includes assertionSchema claim in JWT.
+// Returns v2 which uses root signature binding.
 // The validator also accepts v1 for backward compatibility.
 func (p *SystemMetadataAssertionProvider) Schema() string {
-	return SystemMetadataSchemaV1
+	return SystemMetadataSchemaV2
 }
 
 func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (Assertion, error) {
@@ -98,11 +102,11 @@ func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion
 	expectedSchema := p.Schema()
 	if a.Statement.Schema != expectedSchema {
 		// Check if this is a legacy v1 schema (backward compatibility)
-		if a.Statement.Schema == SystemMetadataSchemaV1 {
-			slog.WarnContext(ctx, "assertion uses legacy v1 schema (no schema claim in JWT)",
+		if a.Statement.Schema == SystemMetadataSchemaV1 || a.Statement.Schema == "" {
+			slog.WarnContext(ctx, "assertion uses legacy v1 schema",
 				slog.String("assertion_id", a.ID),
 				slog.String("schema", a.Statement.Schema))
-			// Allow legacy v1 schema but it won't have schema claim protection
+			// Allow legacy v1 schema for backward compatibility
 		} else {
 			return fmt.Errorf("%w: schema mismatch - expected %q, got %q (possible schema substitution attack)",
 				ErrAssertionFailure{ID: a.ID}, expectedSchema, a.Statement.Schema)
@@ -119,21 +123,13 @@ func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion
 		Key: p.payloadKey,
 	}
 
-	// Verify the JWT with key (now returns schema claim)
-	assertionHash, assertionSig, verifiedSchema, err := a.Verify(assertionKey)
+	// Verify the JWT with key
+	assertionHash, assertionSig, _, err := a.Verify(assertionKey)
 	if err != nil {
 		if errors.Is(err, errAssertionVerifyKeyFailure) {
 			return fmt.Errorf("assertion verification failed: %w", err)
 		}
 		return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: a.ID}, err)
-	}
-
-	// SECURITY: Verify schema claim matches Statement.Schema (if claim exists)
-	// This prevents schema substitution after JWT signing
-	// For legacy assertions (v1), verifiedSchema will be empty string - skip check
-	if verifiedSchema != "" && verifiedSchema != a.Statement.Schema {
-		return fmt.Errorf("%w: schema claim mismatch - JWT contains %q but Statement has %q (tampering detected)",
-			ErrAssertionFailure{ID: a.ID}, verifiedSchema, a.Statement.Schema)
 	}
 
 	// Get the hash of the assertion
@@ -256,7 +252,7 @@ func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
 		AppliesToState: Unencrypted,
 		Statement: Statement{
 			Format: StatementFormatJSON,
-			Schema: SystemMetadataSchemaV1,
+			Schema: SystemMetadataSchemaV2,
 			Value:  string(metadataJSON),
 		},
 	}, nil

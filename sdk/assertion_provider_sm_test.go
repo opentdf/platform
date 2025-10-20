@@ -18,15 +18,15 @@ func TestSystemMetadataAssertion_SchemaVersionDetection(t *testing.T) {
 	}{
 		{
 			name:           "v2_schema_is_current",
-			schema:         SystemMetadataSchemaV1,
+			schema:         SystemMetadataSchemaV2,
 			expectedLegacy: false,
-			description:    "V2 schema should be treated as current (includes schema claim in JWT)",
+			description:    "V2 schema should be treated as current (uses root signature)",
 		},
 		{
 			name:           "v1_schema_is_legacy",
 			schema:         SystemMetadataSchemaV1,
 			expectedLegacy: true,
-			description:    "V1 schema should be treated as legacy (no schema claim in JWT)",
+			description:    "V1 schema should be treated as legacy (uses aggregate hash)",
 		},
 		{
 			name:           "empty_schema_is_legacy",
@@ -56,7 +56,7 @@ func TestGetSystemMetadataAssertionConfig_DefaultsToV2(t *testing.T) {
 
 	assert.Equal(t, SystemMetadataAssertionID, config.ID,
 		"Assertion ID should be 'system-metadata'")
-	assert.Equal(t, SystemMetadataSchemaV1, config.Statement.Schema,
+	assert.Equal(t, SystemMetadataSchemaV2, config.Statement.Schema,
 		"New assertions should default to v2 schema")
 	// Verify statement format (string comparison, not JSON)
 	if config.Statement.Format != StatementFormatJSON {
@@ -90,7 +90,7 @@ func TestSystemMetadataAssertionProvider_Bind_UsesV2Schema(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, SystemMetadataAssertionID, assertion.ID)
-	assert.Equal(t, SystemMetadataSchemaV1, assertion.Statement.Schema,
+	assert.Equal(t, SystemMetadataSchemaV2, assertion.Statement.Schema,
 		"Newly bound assertions should use v2 schema")
 }
 
@@ -100,15 +100,13 @@ func TestSystemMetadataAssertionProvider_Verify_DualMode(t *testing.T) {
 	// This test documents the dual-mode validation behavior
 	// A full integration test would require actual TDF fixtures from old SDK versions
 
-	t.Run("v2_schema_uses_root_signature_with_schema_claim", func(t *testing.T) {
+	t.Run("v2_schema_uses_root_signature", func(t *testing.T) {
 		// In v2 validation:
 		// - assertionSig (from JWT) is compared against manifest.RootSignature.Signature
-		// - JWT includes assertionSchema claim for additional security
-		// - This prevents schema substitution attacks
+		// - This is simpler and directly reuses the already-signed root signature
 
-		t.Log("V2 validation: assertionSig == rootSignature + JWT schema claim")
+		t.Log("V2 validation: assertionSig == rootSignature")
 		t.Log("✓ Validates that assertion is bound to the exact root signature")
-		t.Log("✓ Verifies schema claim in JWT matches Statement.Schema")
 	})
 
 	t.Run("v1_schema_uses_aggregate_hash", func(t *testing.T) {
@@ -162,7 +160,7 @@ func TestSystemMetadataAssertionProvider_MissingBinding_AllModes(t *testing.T) {
 				AppliesToState: Unencrypted,
 				Statement: Statement{
 					Format: StatementFormatJSON,
-					Schema: SystemMetadataSchemaV1,
+					Schema: SystemMetadataSchemaV2,
 					Value:  `{"tdf_spec_version":"1.0","sdk_version":"Go-test"}`,
 				},
 				Binding: Binding{

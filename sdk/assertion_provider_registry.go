@@ -36,12 +36,21 @@ func (r *AssertionRegistry) RegisterValidator(validator AssertionValidator) erro
 
 // GetValidationProvider finds and returns the registered AssertionValidator
 // for the given schema URI. If no validator matches, it returns an error.
+// Supports wildcard ("*") validators that can handle any schema.
 func (r *AssertionRegistry) GetValidationProvider(schema string) (AssertionValidator, error) {
+	// Try exact schema match first
 	validator, exists := r.validators[schema]
-	if !exists {
-		return nil, fmt.Errorf("no validation provider registered for schema '%s'", schema)
+	if exists {
+		return validator, nil
 	}
-	return validator, nil
+
+	// Fallback to wildcard validator if registered
+	validator, exists = r.validators["*"]
+	if exists {
+		return validator, nil
+	}
+
+	return nil, fmt.Errorf("no validation provider registered for schema '%s'", schema)
 }
 
 // --- AssertionValidator Implementation ---

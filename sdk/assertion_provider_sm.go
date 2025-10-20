@@ -20,11 +20,6 @@ const (
 	// SystemMetadataAssertionID is the standard identifier for system metadata assertions.
 	SystemMetadataAssertionID = "system-metadata"
 
-	// SystemMetadataSchemaV2 is the current schema URI for system metadata assertions.
-	// This format uses the root signature directly as the binding signature.
-	// v2 includes assertionSchema claim in JWT binding for security against schema substitution attacks.
-	SystemMetadataSchemaV2 = "urn:opentdf:system:metadata:v2"
-
 	// SystemMetadataSchemaV1 is the legacy schema URI for system metadata assertions.
 	// This format uses base64(aggregateHash + assertionHash) as the binding signature.
 	// Maintained for backward compatibility with old TDFs.
@@ -60,7 +55,7 @@ func (p *SystemMetadataAssertionProvider) SetVerificationMode(mode AssertionVeri
 // Returns v2 which includes assertionSchema claim in JWT.
 // The validator also accepts v1 for backward compatibility.
 func (p *SystemMetadataAssertionProvider) Schema() string {
-	return SystemMetadataSchemaV2
+	return SystemMetadataSchemaV1
 }
 
 func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (Assertion, error) {
@@ -261,7 +256,7 @@ func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
 		AppliesToState: Unencrypted,
 		Statement: Statement{
 			Format: StatementFormatJSON,
-			Schema: SystemMetadataSchemaV2,
+			Schema: SystemMetadataSchemaV1,
 			Value:  string(metadataJSON),
 		},
 	}, nil

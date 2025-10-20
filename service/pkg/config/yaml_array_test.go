@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -45,11 +44,11 @@ func TestBind_FromYAMLArray_SecretsSlice(t *testing.T) {
 		"secrets": v.Get("secrets"),
 	}
 	var out arrayCfg
-	require.NoError(t, BindServiceConfig(context.Background(), in, &out, WithEagerSecretResolution()))
+	require.NoError(t, BindServiceConfig(t.Context(), in, &out, WithEagerSecretResolution()))
 	require.Len(t, out.Secrets, 3)
-	s0, _ := out.Secrets[0].Resolve(context.Background())
-	s1, _ := out.Secrets[1].Resolve(context.Background())
-	s2, _ := out.Secrets[2].Resolve(context.Background())
+	s0, _ := out.Secrets[0].Resolve(t.Context())
+	s1, _ := out.Secrets[1].Resolve(t.Context())
+	s2, _ := out.Secrets[2].Resolve(t.Context())
 	assert.Equal(t, "arr-env", s0)
 	assert.Equal(t, "from-file", s1)
 	assert.Equal(t, "abc", s2)
@@ -73,12 +72,12 @@ func TestBind_FromYAMLArray_StructsWithSecretFields(t *testing.T) {
 		"providers": v.Get("providers"),
 	}
 	var out providersCfg
-	require.NoError(t, BindServiceConfig(context.Background(), in, &out, WithEagerSecretResolution()))
+	require.NoError(t, BindServiceConfig(t.Context(), in, &out, WithEagerSecretResolution()))
 	require.Len(t, out.Providers, 2)
 	assert.Equal(t, "a", out.Providers[0].Name)
 	assert.Equal(t, "b", out.Providers[1].Name)
-	p0, _ := out.Providers[0].Password.Resolve(context.Background())
-	p1, _ := out.Providers[1].Password.Resolve(context.Background())
+	p0, _ := out.Providers[0].Password.Resolve(t.Context())
+	p1, _ := out.Providers[1].Password.Resolve(t.Context())
 	assert.Equal(t, "alpha", p0)
 	assert.Equal(t, "b-pass", p1)
 }

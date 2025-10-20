@@ -516,11 +516,15 @@ func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOpti
 	return func(c *TDFReaderConfig) error {
 		c.verifiers = keys
 
-		// Register a single KeyAssertionValidator for all keys
-		// The validator handles schema-based lookup internally
-		validator := NewKeyAssertionValidator(keys)
-		if err := c.assertionRegistry.RegisterValidator(validator); err != nil {
-			return fmt.Errorf("failed to register key assertion validator: %w", err)
+		// ONLY register wildcard validator if assertion verification is enabled
+		// This maintains backward compatibility with the disableAssertionVerification flag
+		if !c.disableAssertionVerification {
+			// Register a wildcard KeyAssertionValidator that handles any schema
+			// when verification keys are provided
+			validator := NewKeyAssertionValidator(keys)
+			if err := c.assertionRegistry.RegisterValidator(validator); err != nil {
+				return fmt.Errorf("failed to register key assertion validator: %w", err)
+			}
 		}
 
 		return nil

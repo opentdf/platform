@@ -176,32 +176,11 @@ other-tool decrypt test.tdf --verify-assertions
 
 The SDK supports multiple schema versions for system metadata assertions to maintain backwards compatibility with TDFs created by older SDK versions.
 
-#### Schema Version 2 (Current - `system-metadata-v2` or `urn:opentdf:system:metadata:v2`)
-
-**Used by**: SDK v1.24+
-**Signature Binding**: Uses the manifest's `rootSignature` directly
-**Security**: Includes `assertionSchema` claim in JWT to prevent schema substitution attacks
-
-```json
-{
-  "id": "system-metadata",
-  "statement": {
-    "schema": "urn:opentdf:system:metadata:v2",
-    "format": "json",
-    "value": "{...}"
-  },
-  "binding": {
-    "signature": "eyJ...  // JWT containing rootSignature and schema claim"
-  }
-}
-```
-
 **Signature Payload**:
 ```json
 {
   "assertionHash": "<sha256-of-statement>",
   "assertionSig": "<base64(rootSignature)>",
-  "assertionSchema": "urn:opentdf:system:metadata:v2"
 }
 ```
 

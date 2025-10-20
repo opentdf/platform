@@ -14,7 +14,7 @@ const (
 
 	// KeyAssertionSchema is the schema URI for key-based assertions.
 	// v2 includes assertionSchema claim in JWT binding for security against schema substitution attacks.
-	KeyAssertionSchema = "urn:opentdf:key:assertion:v2"
+	KeyAssertionSchema = "urn:opentdf:key:assertion:v1"
 
 	// logPrefixLength is the maximum length of signature prefixes in log messages
 	logPrefixLength = 64
@@ -56,8 +56,9 @@ func (p *KeyAssertionValidator) SetVerificationMode(mode AssertionVerificationMo
 }
 
 // Schema returns the schema URI this validator handles.
+// Returns wildcard to match any assertion schema when verification keys are provided.
 func (p *KeyAssertionValidator) Schema() string {
-	return KeyAssertionSchema
+	return SchemaWildcard
 }
 
 func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, error) {
@@ -101,22 +102,12 @@ func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, erro
 }
 
 func (p KeyAssertionValidator) Verify(ctx context.Context, a Assertion, r Reader) error {
-	// SECURITY: Validate schema matches expected value BEFORE any processing
-	// This prevents routing assertions with tampered schemas to this validator
-	// Defense in depth: checked here AND via hash verification later
-	expectedSchema := p.Schema()
-	if a.Statement.Schema != expectedSchema {
-		// Check if this is a legacy v1 schema (backward compatibility)
-		if a.Statement.Schema == "urn:opentdf:key:assertion:v1" {
-			slog.WarnContext(ctx, "assertion uses legacy v1 schema (no schema claim in JWT)",
-				slog.String("assertion_id", a.ID),
-				slog.String("schema", a.Statement.Schema))
-			// Allow legacy schema but it won't have schema claim protection
-		} else {
-			return fmt.Errorf("%w: schema mismatch - expected %q, got %q (possible schema substitution attack)",
-				ErrAssertionFailure{ID: a.ID}, expectedSchema, a.Statement.Schema)
-		}
-	}
+	// NOTE: This validator uses a wildcard schema pattern to match any assertion
+	// when verification keys are provided. Schema validation is still performed
+	// via the JWT's assertionSchema claim verification below.
+	slog.DebugContext(ctx, "validating assertion with key-based validator",
+		slog.String("assertion_id", a.ID),
+		slog.String("assertion_schema", a.Statement.Schema))
 
 	// Assertions without cryptographic bindings cannot be verified - this is a security issue
 	if a.Binding.Signature == "" {

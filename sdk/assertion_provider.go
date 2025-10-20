@@ -4,6 +4,11 @@ import (
 	"context"
 )
 
+const (
+	// SchemaWildcard is a wildcard pattern that matches any assertion schema.
+	SchemaWildcard = "*"
+)
+
 type AssertionBinder interface {
 	// Bind creates and signs an assertion, binding it to the given manifest.
 	// The implementation is responsible for both configuring the assertion and binding it.
@@ -13,7 +18,7 @@ type AssertionBinder interface {
 type AssertionValidator interface {
 	// Schema returns the schema URI this validator handles.
 	// The schema identifies the assertion format and version.
-	// Examples: "urn:opentdf:system:metadata:v2", "urn:opentdf:key:assertion:v2"
+	// Examples: "urn:opentdf:system:metadata:v1", "urn:opentdf:key:assertion:v1"
 	Schema() string
 
 	// Verify checks the assertion's cryptographic binding

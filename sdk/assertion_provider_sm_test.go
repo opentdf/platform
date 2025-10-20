@@ -64,34 +64,51 @@ func TestGetSystemMetadataAssertionConfig_DefaultsToV1(t *testing.T) {
 	}
 }
 
-// TestSystemMetadataAssertionProvider_Bind_UsesV2Schema verifies that
-// the Bind() method creates assertions with v2 schema
-func TestSystemMetadataAssertionProvider_Bind_UsesV2Schema(t *testing.T) {
+// TestSystemMetadataAssertionProvider_Bind_SchemaSelection verifies that
+// the Bind() method creates assertions with the correct schema based on useHex
+func TestSystemMetadataAssertionProvider_Bind_SchemaSelection(t *testing.T) {
 	t.Parallel()
 
 	payloadKey := []byte("test-payload-key-32-bytes-long!")
 	aggregateHash := "test-aggregate-hash"
 
-	provider := NewSystemMetadataAssertionProvider(false, payloadKey, aggregateHash)
-
-	// Create a minimal manifest with nested structure
-	manifest := Manifest{
-		EncryptionInformation: EncryptionInformation{
-			IntegrityInformation: IntegrityInformation{
-				RootSignature: RootSignature{
-					Signature: "test-root-signature",
-					Algorithm: "HS256",
-				},
-			},
-		},
+	// Test both legacy and modern TDF formats
+	testCases := []struct {
+		name           string
+		useHex         bool
+		expectedSchema string
+	}{
+		{"modern TDF (useHex=false) uses V2", false, SystemMetadataSchemaV2},
+		{"legacy TDF (useHex=true) uses V1", true, SystemMetadataSchemaV1},
 	}
 
-	assertion, err := provider.Bind(t.Context(), manifest)
-	require.NoError(t, err)
+	for _, tc := range testCases {
+		tc := tc // capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	assert.Equal(t, SystemMetadataAssertionID, assertion.ID)
-	assert.Equal(t, SystemMetadataSchemaV2, assertion.Statement.Schema,
-		"Newly bound assertions should use v2 schema when useHex=false")
+			provider := NewSystemMetadataAssertionProvider(tc.useHex, payloadKey, aggregateHash)
+
+			// Create a minimal manifest with nested structure
+			manifest := Manifest{
+				EncryptionInformation: EncryptionInformation{
+					IntegrityInformation: IntegrityInformation{
+						RootSignature: RootSignature{
+							Signature: "test-root-signature",
+							Algorithm: "HS256",
+						},
+					},
+				},
+			}
+
+			assertion, err := provider.Bind(t.Context(), manifest)
+			require.NoError(t, err)
+
+			assert.Equal(t, SystemMetadataAssertionID, assertion.ID)
+			assert.Equal(t, tc.expectedSchema, assertion.Statement.Schema,
+				"Schema should match useHex setting")
+		})
+	}
 }
 
 // TestSystemMetadataAssertionProvider_Verify_DualMode tests that the

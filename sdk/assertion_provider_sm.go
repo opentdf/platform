@@ -55,12 +55,16 @@ func (p *SystemMetadataAssertionProvider) SetVerificationMode(mode AssertionVeri
 }
 
 // Schema returns the schema URI this validator handles.
-// Returns v1 for legacy TDFs (useHex=true) or v2 for modern TDFs (useHex=false).
-// The validator supports both v1 and v2 binding formats via auto-detection.
+// Returns V1 for legacy TDFs (useHex=true) and V2 for modern TDFs (useHex=false).
+// - V1 (system-metadata-v1): Compatible with Java/JS SDKs and legacy Go TDFs
+// - V2 (urn:opentdf:system:metadata:v2): Modern URN format for TDF spec >= 4.3.0
+// The validator accepts both schemas for backward/forward compatibility.
 func (p *SystemMetadataAssertionProvider) Schema() string {
 	if p.useHex {
+		// Legacy TDF format (version < 4.3.0) - use V1 for compatibility
 		return SystemMetadataSchemaV1
 	}
+	// Modern TDF format (version >= 4.3.0) - use V2
 	return SystemMetadataSchemaV2
 }
 

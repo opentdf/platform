@@ -32,33 +32,57 @@ message LegacyPublicKeyRequest {
 }
 
 message PolicyBinding {
+  // Hashing algorithm
   string algorithm = 1 [json_name = "alg"];
+  // TODO: check on this
+  // Hash of the base64-encoded policy string (bound to the wrapped DEK)
   string hash = 2;
 }
 
 message KeyAccess {
+  // Ciphertext encoded as base64 string
   string encrypted_metadata = 1;
   PolicyBinding policy_binding = 2;
+  // Optional
+  // Typically 'kas'
   string protocol = 3;
+  // Typically 'wrapped' or 'ec-wrapped'
   string key_type = 4 [json_name = "type"];
+  // Optional
+  // URL of the KAS in the KAO saved to the TDF
   string kas_url = 5 [json_name = "url"];
+  // Optional
+  // 'key id' of the KAS public key from the policy-stored keys
+  // ZTDF-only (included within NanoTDF header)
   string kid = 6;
+  // ZTDF-only
   string split_id = 7 [json_name = "sid"];
+  // Required
+  // TDF wrapped key: a client-generated data encryption key wrapped by KAS and
+  // stored with the TDF, Rewrapped during decryption
   bytes wrapped_key = 8;
-  // header is only used for NanoTDFs
+  // NanoTDF: required
+  // ZTDF: omitted
   bytes header = 9;
+  // TODO: verify all the kid/split fields with key management team
 
   // For wrapping with an ECDH derived key, when type=ec-wrapped.
   // Should be a PEM-encoded PKCS#8 (asn.1) value.
   string ephemeral_public_key = 10;
 }
 
+// Bulk-style Rewrap request structure that is serialized into JSON and signed
+// within a Rewrap flow.
 message UnsignedRewrapRequest {
   message WithPolicy {
+    // ephemeral, unique ID (likely, an index)
     string id = 1;
+    // Nano: header per spec
+    // ZTDF: base64 of JSON policy object per spec
     string body = 2;
   }
   message WithKeyAccessObject {
+    // ephemeral, unique ID (likely, an index)
     string key_access_object_id = 1;
     KeyAccess key_access_object = 2;
   }
@@ -70,12 +94,16 @@ message UnsignedRewrapRequest {
   }
 
   string client_public_key = 1;
+  // Required
   repeated WithPolicyRequest requests = 2;
 
+  // Deprecated
   // Used for legacy non-bulk requests
   KeyAccess key_access = 3 [deprecated = true];
+  // Deprecated
   // Used for legacy non-bulk requests
   string policy = 4 [deprecated = true];
+  // Deprecated
   // Used for legacy non-bulk requests
   string algorithm = 5 [deprecated = true];
 }
@@ -93,6 +121,13 @@ message PublicKeyResponse {
 message RewrapRequest {
   reserved 2;
   reserved "bearer";
+
+  // Required
+  // A JWT signed by the DPoP private key, containing a 'requestBody' key representing the Rewrap request.
+  //
+  // v1 (legacy): existing TDF spec schema
+  //
+  // v2 (bulk): serialized JSON string 'UnsignedRewrapRequest' proto serialized
   string signed_request_token = 1;
 }
 

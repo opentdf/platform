@@ -1296,17 +1296,6 @@ func (q *Queries) getObligationsByFQNs(ctx context.Context, arg getObligationsBy
 }
 
 const listObligationTriggers = `-- name: listObligationTriggers :many
-WITH counted AS (
-    SELECT COUNT(ot.id) AS total
-    FROM obligation_triggers ot
-    JOIN obligation_values_standard ov ON ot.obligation_value_id = ov.id
-    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
-    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
-    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
-    WHERE
-        (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
-        (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
-)
 SELECT
     JSON_STRIP_NULLS(
         JSON_BUILD_OBJECT(
@@ -1352,7 +1341,7 @@ SELECT
             'updated_at', ot.updated_at
         )
     ) as metadata,
-    counted.total
+    COUNT(*) OVER() as total
 FROM obligation_triggers ot
 JOIN obligation_values_standard ov ON ot.obligation_value_id = ov.id
 JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
@@ -1361,7 +1350,6 @@ LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attr
 JOIN actions a ON ot.action_id = a.id
 JOIN attribute_values av ON ot.attribute_value_id = av.id
 LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
-CROSS JOIN counted
 WHERE
     (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
     (NULLIF($2::TEXT, '') IS NULL OR ns_fqns.fqn = $2::VARCHAR)
@@ -1385,17 +1373,6 @@ type listObligationTriggersRow struct {
 
 // listObligationTriggers
 //
-//	WITH counted AS (
-//	    SELECT COUNT(ot.id) AS total
-//	    FROM obligation_triggers ot
-//	    JOIN obligation_values_standard ov ON ot.obligation_value_id = ov.id
-//	    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
-//	    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
-//	    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
-//	    WHERE
-//	        (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
-//	        (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
-//	)
 //	SELECT
 //	    JSON_STRIP_NULLS(
 //	        JSON_BUILD_OBJECT(
@@ -1441,7 +1418,7 @@ type listObligationTriggersRow struct {
 //	            'updated_at', ot.updated_at
 //	        )
 //	    ) as metadata,
-//	    counted.total
+//	    COUNT(*) OVER() as total
 //	FROM obligation_triggers ot
 //	JOIN obligation_values_standard ov ON ot.obligation_value_id = ov.id
 //	JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
@@ -1450,7 +1427,6 @@ type listObligationTriggersRow struct {
 //	JOIN actions a ON ot.action_id = a.id
 //	JOIN attribute_values av ON ot.attribute_value_id = av.id
 //	LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
-//	CROSS JOIN counted
 //	WHERE
 //	    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
 //	    (NULLIF($2::TEXT, '') IS NULL OR ns_fqns.fqn = $2::VARCHAR)

@@ -892,7 +892,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			testClassSecretRegResFQN, testDeptEngineeringRegResFQN,
 		)
 
-		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
+		decision, entitlements, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
@@ -911,6 +911,16 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			s.Len(result.DataRuleResults, 1)
 			s.Empty(result.DataRuleResults[0].EntitlementFailures)
 		}
+
+		// Verify entitlements are returned correctly
+		s.Require().NotNil(entitlements, "Entitlements should not be nil")
+		s.Contains(entitlements, testClassTopSecretFQN, "Should be entitled to topsecret classification based on clearance 'ts'")
+		s.Contains(entitlements, testDeptEngineeringFQN, "Should be entitled to engineering department")
+
+		// Verify the testActionRead is in the entitled actions for these attribute values
+		s.Require().Contains(entitlements[testClassTopSecretFQN], testActionRead, "Should have read action for topsecret classification")
+		s.Require().Contains(entitlements[testDeptEngineeringFQN], testActionRead, "Should have read action for engineering department")
+		s.Require().Contains(entitlements[testDeptEngineeringFQN], testActionCreate, "Should have create action for engineering department")
 	})
 
 	s.Run("Multiple resources and entitled actions/attributes of varied casing - full access", func() {
@@ -1333,6 +1343,61 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		s.True(foundRnd)
 		s.True(foundTopSecret)
 	})
+}
+
+func (s *PDPTestSuite) Test_GetDecision_ReturnsDecisionRelatedEntitlements() {
+	f := s.fixtures
+
+	// Create PDP with test fixtures
+	pdp, err := NewPolicyDecisionPoint(
+		s.T().Context(),
+		s.logger,
+		[]*policy.Attribute{f.classificationAttr, f.departmentAttr},
+		[]*policy.SubjectMapping{f.topSecretMapping, f.engineeringMapping},
+		[]*policy.RegisteredResource{},
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	entity := s.createEntityWithProps("test-user-entitlements", map[string]interface{}{
+		"clearance":  "ts",
+		"department": "engineering",
+	})
+
+	resources := createResourcePerFqn(testClassSecretFQN, testDeptEngineeringFQN)
+
+	decision, entitlements, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
+
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+	s.True(decision.Access, "Entity should have access")
+
+	s.Require().NotNil(entitlements, "Entitlements should not be nil")
+
+	// The entitlement on the same attribute should be returned, but in this case, is hierarchically higher
+	s.Require().Contains(entitlements, testClassTopSecretFQN)
+	s.NotContains(entitlements, testClassSecretFQN)
+
+	// The entity should be entitled to engineering department
+	s.Require().Contains(entitlements, testDeptEngineeringFQN)
+
+	// Actions match expected
+	topsecretActions := entitlements[testClassTopSecretFQN]
+	s.Require().NotNil(topsecretActions)
+	s.Require().Len(topsecretActions, 1)
+	s.Equal(actions.ActionNameRead, topsecretActions[0].GetName())
+
+	engineeringActions := entitlements[testDeptEngineeringFQN]
+	s.Require().NotNil(engineeringActions)
+	s.Require().Len(engineeringActions, 2)
+
+	// Check both read and create actions are present (order may vary)
+	actionNames := make(map[string]bool)
+	for _, action := range engineeringActions {
+		actionNames[action.GetName()] = true
+	}
+	s.True(actionNames[actions.ActionNameRead])
+	s.True(actionNames[actions.ActionNameCreate])
 }
 
 // Test_GetDecision_PartialActionEntitlement tests scenarios where actions only partially align with entitlements

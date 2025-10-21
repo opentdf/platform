@@ -164,38 +164,6 @@ func RSAKeyTypeToBits(kt KeyType) (int, error) {
 	}
 }
 
-// RSABits returns the RSA bit length if the KeyType is RSA.
-// Second return value is false for non-RSA key types.
-func (kt KeyType) RSABits() (int, bool) { //nolint:ireturn // small helper
-	switch kt {
-	case RSA2048Key:
-		return RSA2048Size, true
-	case RSA4096Key:
-		return RSA4096Size, true
-	case EC256Key, EC384Key, EC521Key:
-		return 0, false
-	default:
-		return 0, false
-	}
-}
-
-// ECCurve returns the ECCMode if the KeyType is EC.
-// Second return value is false for non-EC key types.
-func (kt KeyType) ECCurve() (ECCMode, bool) { //nolint:ireturn // small helper
-	switch kt {
-	case EC256Key:
-		return ECCModeSecp256r1, true
-	case EC384Key:
-		return ECCModeSecp384r1, true
-	case EC521Key:
-		return ECCModeSecp521r1, true
-	case RSA2048Key, RSA4096Key:
-		return 0, false
-	default:
-		return 0, false
-	}
-}
-
 // NewECKeyPair Generates an EC key pair of the given bit size.
 func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
 	var c elliptic.Curve

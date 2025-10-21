@@ -95,9 +95,9 @@ func ValidatePublicKeyPEM(pemBytes []byte) (*PublicKeyInfo, error) {
 					return nil, fmt.Errorf("%w: %d", ErrInvalidRSAKeySize, bits)
 				}
 			case ECEncryptor:
-				// EC path; rely on KeyType mapping
+				// EC path; rely on KeyType mapping via helper
 				kt := e.KeyType()
-				if curve, ok := kt.ECCurve(); ok {
+				if curve, err := ECKeyTypeToMode(kt); err == nil {
 					info = &PublicKeyInfo{Type: kt, ECCurve: curve, Source: src}
 				} else {
 					return nil, ErrInvalidECCurve

@@ -52,6 +52,7 @@ type AssertionBinder interface {
 }
 
 type AssertionValidator interface {
+    Schema() string
     Verify(ctx context.Context, assertion Assertion, reader Reader) error
     Validate(ctx context.Context, assertion Assertion, reader Reader) error
 }
@@ -73,26 +74,9 @@ type AssertionValidator interface {
  Built-in      External   Built-in      External
 ```
 
-**Usage**:
-```go
-// Create TDF with custom binder
-privateKey := sdk.AssertionKey{Alg: sdk.AssertionKeyAlgRS256, Key: rsaPrivateKey}
-keyBinder := sdk.NewKeyAssertionBinder(privateKey)
-client.CreateTDF(output, input,
-    sdk.WithDataAttributes("attr/Classification/value/Secret"),
-    sdk.WithAssertionBinder(keyBinder))
-
-// Read TDF with custom validator
-publicKeys := sdk.AssertionVerificationKeys{
-    Keys: map[string]sdk.AssertionKey{
-        sdk.KeyAssertionID: {Alg: sdk.AssertionKeyAlgRS256, Key: rsaPublicKey},
-    },
-}
-keyValidator := sdk.NewKeyAssertionValidator(publicKeys)
-pattern := regexp.MustCompile("^" + sdk.KeyAssertionID)
-tdfreader, _ := client.LoadTDF(file,
-    sdk.WithAssertionValidator(pattern, keyValidator))
-```
+**Registration**:
+- Binders: `sdk.WithAssertionBinder(binder)`
+- Validators: `sdk.WithAssertionValidator(pattern, validator)` using regex-based schema matching
 
 ### Rationale
 
@@ -206,7 +190,10 @@ rootSignature := manifest.RootSignature.Signature  // Already base64-encoded
 assertion.Sign(assertionHash, rootSignature, signingKey)
 
 // During TDF verification (in AssertionValidator.Verify):
-verifiedHash, verifiedSig := assertion.Verify(verificationKey)
+verifiedHash, verifiedSig, _, err := assertion.Verify(verificationKey)
+if err != nil {
+    return err
+}
 if manifest.RootSignature.Signature != verifiedSig {
     return errors.New("signature mismatch")
 }
@@ -231,70 +218,29 @@ The SDK supports three verification modes for different security/compatibility t
 
 ### Cross-SDK Compatibility
 
-Supports two assertion binding formats:
+Two binding formats supported:
+- **v2 (current)**: `assertionSig = rootSignature` - binds to manifest root signature
+- **v1 (legacy)**: `assertionSig = base64(aggregateHash + assertionHash)` - for Java/JS SDK compatibility
 
-**Format v2 (Current - Go SDK)**:
-```
-assertionSig = rootSignature
-```
-- More secure, direct binding to manifest root signature
-
-**Format v1 (Legacy - Java/JS SDKs)**:
-```
-assertionSig = base64(aggregateHash + assertionHash)
-```
-- Maintained for backward compatibility with older Java/JS SDK versions
-- No schema claim in JWT (legacy format)
-
-Both `SystemMetadataAssertionProvider` and `KeyAssertionValidator` auto-detect format version.
+Auto-detection of format version enables interoperability.
 
 ### Security Considerations
 
-1. **Mandatory Bindings**: All assertions MUST have cryptographic bindings. Assertions without explicit signing keys are auto-signed with the DEK.
-2. **Key Management**: Custom binders must handle private keys securely (PIV/CAC/HSM never expose key material).
-3. **Certificate Validation**: Validators should verify X.509 certificate chains, expiration, and revocation status.
-4. **Verification Mode Security**: Validators respect configured mode to prevent bypasses. A critical security fix (2025-10-17) ensures validators fail securely when no keys are configured instead of silently skipping verification.
-5. **Binding Integrity**: Root signature binding ensures assertions cannot be moved between TDFs or tampered with.
+1. **Mandatory Bindings**: All assertions MUST have cryptographic bindings
+2. **Key Management**: Private keys should remain in HSM/PIV/CAC and never be exposed
+3. **Fail-Secure Validation**: Validators fail securely when keys are missing (not silently skip)
+4. **Binding Integrity**: Root signature binding prevents assertion tampering and cross-TDF reuse
 
-### Implementation Guide
+### Implementation Requirements
 
-**Custom Binder (Signing)**:
-1. Implement `AssertionBinder.Bind(ctx, manifest) (Assertion, error)`
-2. Create assertion with appropriate ID, scope, and statement
-3. Generate cryptographic signature over manifest
-4. Return complete assertion with binding
-5. Register via `sdk.WithAssertionBinder(binder)`
+**Binder Implementation**:
+- Implement `Bind(ctx, manifest)` to create assertion with cryptographic signature
+- Return assertion bound to manifest root signature
 
-**Custom Validator (Verification)**:
-1. Implement `AssertionValidator.Schema()` to return expected schema URI
-2. Implement `AssertionValidator.Verify()` for cryptographic checks:
-   - Validate `assertion.Statement.Schema` matches expected schema BEFORE processing
-   - Verify JWT signature and extract `assertionHash`, `assertionSig` claims
-   - Verify assertion hash and manifest binding
-3. Implement `AssertionValidator.Validate()` for policy/trust checks
-4. Define regex pattern matching target assertion IDs
-5. Register via `sdk.WithAssertionValidator(pattern, validator)`
-
-**Example: PIV/CAC Card (PKCS#11)**:
-- Connect to card via PKCS#11 library
-- Reference signing certificate by slot/label
-- Private key never leaves the card
-- Call card's signing operation in `Bind()`
-- Return assertion with X.509-based signature
-
-**Example: Cloud KMS**:
-- Authenticate to KMS service
-- Reference key by identifier (ARN/URI)
-- Call KMS Sign API in `Bind()`
-- Handle key versioning and rotation
-
-### Future Enhancements
-
-1. **Caching**: Validator result caching for improved performance
-2. **Batch Operations**: Optimized bulk signing/validation patterns
-3. **Standard Implementations**: Reference implementations for PIV/CAC, HSM, cloud KMS
-4. **PKCS#11 Library**: Production-ready PIV/CAC/HSM integration library
-5. **X.509 PKI**: Full certificate chain validation and revocation checking (OCSP/CRL)
+**Validator Implementation**:
+- Implement `Schema()` to return expected schema URI for routing
+- Implement `Verify()` for cryptographic validation (signature, hash, binding)
+- Implement `Validate()` for policy and trust enforcement
 
 ## Links
 

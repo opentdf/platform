@@ -43,6 +43,15 @@ type ObligationsPolicyDecisionPoint struct {
 	clientIDScopedTriggerActionsToAttributes map[string]obligationValuesByActionOnAnAttributeValue
 }
 
+type ObligationPolicyDecision struct {
+	// Whether or not all the obligations that were triggered can be fulfilled by the caller
+	AllObligationsAreFulfilled bool
+	// The Set of obligations required across all resources in the decision
+	RequiredObligationValueFQNs []string
+	// The Set of obligations required on each indexed resource
+	RequiredObligationValueFQNsPerResource [][]string
+}
+
 func NewObligationsPolicyDecisionPoint(
 	ctx context.Context,
 	l *logger.Logger,
@@ -120,23 +129,25 @@ func NewObligationsPolicyDecisionPoint(
 // 4. the obligation value FQNs a PEP is capable of fulfilling (self-reported)
 //
 // It will check the action, resources, and decision request context for the obligation values triggered,
-// compare the PEP fulfillable obligations against those that have been triggered as required,
-// and return whether or not all triggered obligations can be fulfilled along with the set of obligation FQNs
-// the PEP must fulfill for each resource in the provided list.
+// then compare the PEP fulfillable obligations against those that have been triggered as required.
 func (p *ObligationsPolicyDecisionPoint) GetAllTriggeredObligationsAreFulfilled(
 	ctx context.Context,
 	resources []*authz.Resource,
 	action *policy.Action,
 	decisionRequestContext *policy.RequestContext,
 	pepFulfillableObligationValueFQNs []string,
-) (bool, [][]string, error) {
+) (ObligationPolicyDecision, error) {
 	perResource, allTriggered, err := p.getTriggeredObligations(ctx, action, resources, decisionRequestContext)
 	if err != nil {
-		return false, nil, err
+		return ObligationPolicyDecision{}, err
 	}
 
 	allFulfilled := p.getAllObligationsAreFulfilled(ctx, action, allTriggered, pepFulfillableObligationValueFQNs, decisionRequestContext)
-	return allFulfilled, perResource, nil
+	return ObligationPolicyDecision{
+		AllObligationsAreFulfilled:             allFulfilled,
+		RequiredObligationValueFQNs:            allTriggered,
+		RequiredObligationValueFQNsPerResource: perResource,
+	}, nil
 }
 
 // getAllObligationsAreFulfilled checks the deduplicated list of triggered obligations against the PEP

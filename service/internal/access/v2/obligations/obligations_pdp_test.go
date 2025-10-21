@@ -1017,10 +1017,10 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 	}
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			gotAllFulfilled, gotPerResource, err := s.pdp.GetAllTriggeredObligationsAreFulfilled(t.Context(), tt.args.resources, tt.args.action, tt.args.decisionRequestContext, tt.args.pepFulfillable)
+			decision, err := s.pdp.GetAllTriggeredObligationsAreFulfilled(t.Context(), tt.args.resources, tt.args.action, tt.args.decisionRequestContext, tt.args.pepFulfillable)
 			s.Require().NoError(err)
-			s.Equal(tt.wantAllFulfilled, gotAllFulfilled, tt.name)
-			s.Equal(tt.wantPerResource, gotPerResource, tt.name)
+			s.Equal(tt.wantAllFulfilled, decision.AllObligationsAreFulfilled, tt.name)
+			s.Equal(tt.wantPerResource, decision.RequiredObligationValueFQNsPerResource, tt.name)
 		})
 	}
 }

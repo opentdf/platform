@@ -142,7 +142,7 @@ func (p *JustInTimePDP) GetDecision(
 	)
 
 	// Because there are three possible types of entities, check obligations first to more easily handle decisioning logic
-	allTriggeredObligationsCanBeFulfilled, requiredObligationsPerResource, err := p.obligationsPDP.GetAllTriggeredObligationsAreFulfilled(
+	obligationDecision, err := p.obligationsPDP.GetAllTriggeredObligationsAreFulfilled(
 		ctx,
 		resources,
 		action,
@@ -176,20 +176,17 @@ func (p *JustInTimePDP) GetDecision(
 
 		// If not entitled, obligations are not considered
 		if !decision.Access {
-			p.auditDecision(ctx, regResValueFQN, action, decision, entitlements, nil, nil, false)
+			p.auditDecision(ctx, regResValueFQN, action, decision, entitlements, nil, obligationDecision)
 			return []*Decision{decision}, decision.Access, nil
 		}
 
 		// Access should only be granted if entitled AND obligations fulfilled
-		decision.Access = allTriggeredObligationsCanBeFulfilled
-		for idx, required := range requiredObligationsPerResource {
+		decision.Access = obligationDecision.AllObligationsAreFulfilled
+		for idx, required := range obligationDecision.RequiredObligationValueFQNsPerResource {
 			decision.Results[idx].RequiredObligationValueFQNs = required
 		}
 
-		// Flatten all required obligations across all resources
-		allRequiredObligationValueFQNs := flattenRequiredObligations(requiredObligationsPerResource)
-
-		p.auditDecision(ctx, regResValueFQN, action, decision, entitlements, fulfillableObligationValueFQNs, allRequiredObligationValueFQNs, allTriggeredObligationsCanBeFulfilled)
+		p.auditDecision(ctx, regResValueFQN, action, decision, entitlements, fulfillableObligationValueFQNs, obligationDecision)
 		return []*Decision{decision}, decision.Access, nil
 
 	default:
@@ -222,26 +219,23 @@ func (p *JustInTimePDP) GetDecision(
 	if !allPermitted {
 		// Audit each entity decision
 		for idx, entityRep := range entityRepresentations {
-			p.auditDecision(ctx, entityRep.GetOriginalId(), action, entityDecisions[idx], entityEntitlements[idx], nil, nil, false)
+			p.auditDecision(ctx, entityRep.GetOriginalId(), action, entityDecisions[idx], entityEntitlements[idx], nil, obligationDecision)
 		}
 		return entityDecisions, allPermitted, nil
 	}
 
 	// Access should only be granted if entitled AND obligations fulfilled
-	allPermitted = allTriggeredObligationsCanBeFulfilled
+	allPermitted = obligationDecision.AllObligationsAreFulfilled
 	// Obligations are not entity-specific at this time so will be the same across every entity
 	for _, decision := range entityDecisions {
-		for idx, required := range requiredObligationsPerResource {
+		for idx, required := range obligationDecision.RequiredObligationValueFQNsPerResource {
 			decision.Results[idx].RequiredObligationValueFQNs = required
 		}
 	}
 
-	// Flatten all required obligations across all resources
-	allRequiredObligationValueFQNs := flattenRequiredObligations(requiredObligationsPerResource)
-
 	// Audit each entity decision with obligation information
 	for idx, entityRep := range entityRepresentations {
-		p.auditDecision(ctx, entityRep.GetOriginalId(), action, entityDecisions[idx], entityEntitlements[idx], fulfillableObligationValueFQNs, allRequiredObligationValueFQNs, allTriggeredObligationsCanBeFulfilled)
+		p.auditDecision(ctx, entityRep.GetOriginalId(), action, entityDecisions[idx], entityEntitlements[idx], fulfillableObligationValueFQNs, obligationDecision)
 	}
 
 	return entityDecisions, allPermitted, nil
@@ -429,8 +423,7 @@ func (p *JustInTimePDP) auditDecision(
 	decision *Decision,
 	entitlements map[string][]*policy.Action,
 	fulfillableObligationValueFQNs []string,
-	requiredObligationValueFQNs []string,
-	obligationsSatisfied bool,
+	obligationDecision obligations.ObligationPolicyDecision,
 ) {
 	// Determine audit decision result
 	auditDecision := audit.GetDecisionResultDeny
@@ -449,26 +442,8 @@ func (p *JustInTimePDP) auditDecision(
 		Decision:                       auditDecision,
 		Entitlements:                   entitlements,
 		FulfillableObligationValueFQNs: fulfillableObligationValueFQNs,
-		RequiredObligationValueFQNs:    requiredObligationValueFQNs,
-		ObligationsSatisfied:           obligationsSatisfied,
+		RequiredObligationValueFQNs:    obligationDecision.RequiredObligationValueFQNs,
+		ObligationsSatisfied:           obligationDecision.AllObligationsAreFulfilled,
 		ResourceDecisions:              decision.Results,
 	})
-}
-
-// flattenRequiredObligations takes a per-resource list of required obligation FQNs
-// and returns a deduplicated flat list of all required obligations across all resources
-func flattenRequiredObligations(requiredObligationsPerResource [][]string) []string {
-	seen := make(map[string]struct{})
-	var result []string
-
-	for _, resourceObligations := range requiredObligationsPerResource {
-		for _, oblFQN := range resourceObligations {
-			if _, exists := seen[oblFQN]; !exists {
-				seen[oblFQN] = struct{}{}
-				result = append(result, oblFQN)
-			}
-		}
-	}
-
-	return result
 }

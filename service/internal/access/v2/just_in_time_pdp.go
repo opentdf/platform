@@ -176,7 +176,7 @@ func (p *JustInTimePDP) GetDecision(
 
 		// If not entitled, obligations are not considered
 		if !decision.Access {
-			p.auditDecision(ctx, regResValueFQN, action, decision, entitlements, nil, obligationDecision)
+			p.auditDecision(ctx, regResValueFQN, action, decision, entitlements, fulfillableObligationValueFQNs, obligationDecision)
 			return []*Decision{decision}, decision.Access, nil
 		}
 
@@ -219,7 +219,7 @@ func (p *JustInTimePDP) GetDecision(
 	if !allPermitted {
 		// Audit each entity decision
 		for idx, entityRep := range entityRepresentations {
-			p.auditDecision(ctx, entityRep.GetOriginalId(), action, entityDecisions[idx], entityEntitlements[idx], nil, obligationDecision)
+			p.auditDecision(ctx, entityRep.GetOriginalId(), action, entityDecisions[idx], entityEntitlements[idx], fulfillableObligationValueFQNs, obligationDecision)
 		}
 		return entityDecisions, allPermitted, nil
 	}
@@ -301,8 +301,6 @@ func (p *JustInTimePDP) GetEntitlements(
 func (p *JustInTimePDP) getMatchedSubjectMappings(
 	ctx context.Context,
 	entityRepresentations []*entityresolutionV2.EntityRepresentation,
-	// updated with the results, attrValue FQN to attribute and value with subject mappings
-	// entitleableAttributes map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 ) ([]*policy.SubjectMapping, error) {
 	// Break the entity down the entities into their properties/selectors and retrieve only those subject mappings
 	subjectProperties := make([]*policy.SubjectProperty, 0)
@@ -427,13 +425,8 @@ func (p *JustInTimePDP) auditDecision(
 ) {
 	// Determine audit decision result
 	auditDecision := audit.GetDecisionResultDeny
-	if decision.Access {
+	if decision.Access && obligationDecision.AllObligationsAreFulfilled {
 		auditDecision = audit.GetDecisionResultPermit
-	}
-
-	// Ensure entitlements is not nil
-	if entitlements == nil {
-		entitlements = make(map[string][]*policy.Action)
 	}
 
 	p.logger.Audit.GetDecisionV2(ctx, audit.GetDecisionV2EventParams{

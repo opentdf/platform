@@ -102,7 +102,7 @@ func CreateV2GetDecisionEvent(ctx context.Context, params GetDecisionV2EventPara
 
 	actorAttributes := []interface{}{
 		struct {
-			Entitlements subjectmappingbuiltin.AttributeValueFQNsToActions `json:"entitlements"`
+			Entitlements subjectmappingbuiltin.AttributeValueFQNsToActions `json:"entitlements_relevant_to_decision"`
 		}{
 			Entitlements: params.Entitlements,
 		},
@@ -112,12 +112,10 @@ func CreateV2GetDecisionEvent(ctx context.Context, params GetDecisionV2EventPara
 	eventMetadata := struct {
 		ResourceDecisions              interface{} `json:"resource_decisions"`
 		FulfillableObligationValueFQNs []string    `json:"fulfillable_obligation_value_fqns,omitempty"`
-		RequiredObligationValueFQNs    []string    `json:"required_obligation_value_fqns,omitempty"`
 		ObligationsSatisfied           bool        `json:"obligations_satisfied"`
 	}{
 		ResourceDecisions:              params.ResourceDecisions,
 		FulfillableObligationValueFQNs: params.FulfillableObligationValueFQNs,
-		RequiredObligationValueFQNs:    params.RequiredObligationValueFQNs,
 		ObligationsSatisfied:           params.ObligationsSatisfied,
 	}
 

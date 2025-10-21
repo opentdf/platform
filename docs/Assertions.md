@@ -180,7 +180,7 @@ The SDK supports multiple schema versions for system metadata assertions to main
 ```json
 {
   "assertionHash": "<sha256-of-statement>",
-  "assertionSig": "<base64(rootSignature)>",
+  "assertionSig": "<base64(rootSignature)>"
 }
 ```
 

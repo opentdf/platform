@@ -887,6 +887,7 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 		args             args
 		wantAllFulfilled bool
 		wantPerResource  [][]string
+		wantOverall []string
 	}{
 		{
 			name: "fulfilled - attributes",
@@ -900,11 +901,24 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 							},
 						},
 					},
+					{
+						Resource: &authz.Resource_AttributeValues_{
+							AttributeValues: &authz.Resource_AttributeValues{
+								Fqns: []string{mockAttrValFQN2},
+							},
+						},
+					},
 				},
-				pepFulfillable: []string{mockObligationFQN1},
+				decisionRequestContext: &policy.RequestContext{
+					Pep: &policy.PolicyEnforcementPoint{
+						ClientId: mockClientID,
+					},
+				},
+				pepFulfillable: []string{mockObligationFQN1, mockObligationFQN2, mockObligationFQN3},
 			},
 			wantAllFulfilled: true,
-			wantPerResource:  [][]string{{mockObligationFQN1}},
+			wantPerResource:  [][]string{{mockObligationFQN1},{mockObligationFQN2}},
+			wantOverall: []string{mockObligationFQN1, mockObligationFQN2},
 		},
 		{
 			name: "fulfilled - registered resource",
@@ -921,6 +935,7 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 			},
 			wantAllFulfilled: true,
 			wantPerResource:  [][]string{{mockObligationFQN1}},
+			wantOverall: []string{mockObligationFQN1},
 		},
 		{
 			name: "fulfilled - registered resource client scoped",
@@ -942,6 +957,7 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 			},
 			wantAllFulfilled: true,
 			wantPerResource:  [][]string{{mockObligationFQN2}},
+			wantOverall: []string{mockObligationFQN2},
 		},
 		{
 			name: "fulfilled - casing mismatches",
@@ -962,6 +978,7 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 			},
 			wantAllFulfilled: true,
 			wantPerResource:  [][]string{{mockObligationFQN1}},
+			wantOverall: []string{mockObligationFQN1},
 		},
 		{
 			name: "unfulfilled - attributes",
@@ -980,6 +997,7 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 			},
 			wantAllFulfilled: false,
 			wantPerResource:  [][]string{{mockObligationFQN1}},
+			wantOverall: []string{mockObligationFQN1},
 		},
 		{
 			name: "unfulfilled - registered resource",
@@ -996,6 +1014,7 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 			},
 			wantAllFulfilled: false,
 			wantPerResource:  [][]string{{mockObligationFQN1}},
+			wantOverall: []string{mockObligationFQN1},
 		},
 		{
 			name: "no obligations triggered",
@@ -1021,6 +1040,7 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 			s.Require().NoError(err)
 			s.Equal(tt.wantAllFulfilled, decision.AllObligationsAreFulfilled, tt.name)
 			s.Equal(tt.wantPerResource, decision.RequiredObligationValueFQNsPerResource, tt.name)
+			s.Equal(tt.wantOverall, decision.RequiredObligationValueFQNs, tt.name)
 		})
 	}
 }

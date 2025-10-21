@@ -2,7 +2,6 @@ package sdk
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -26,8 +25,9 @@ type PublicKeyStatement struct {
 }
 
 type KeyAssertionBinder struct {
-	privateKey AssertionKey
-	publicKey  AssertionKey
+	privateKey     AssertionKey
+	publicKey      AssertionKey
+	statementValue string
 }
 
 type KeyAssertionValidator struct {
@@ -35,9 +35,11 @@ type KeyAssertionValidator struct {
 	verificationMode AssertionVerificationMode
 }
 
-func NewKeyAssertionBinder(privateKey AssertionKey) *KeyAssertionBinder {
+func NewKeyAssertionBinder(privateKey AssertionKey, publicKey AssertionKey, statementValue string) *KeyAssertionBinder {
 	return &KeyAssertionBinder{
-		privateKey: privateKey,
+		privateKey:     privateKey,
+		publicKey:      publicKey,
+		statementValue: statementValue,
 	}
 }
 
@@ -62,18 +64,6 @@ func (p *KeyAssertionValidator) Schema() string {
 }
 
 func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, error) {
-	// Create the public key statement
-	statement := PublicKeyStatement{
-		Algorithm: p.publicKey.Alg.String(),
-		Key:       p.publicKey.Key,
-	}
-
-	jsonBytes, err := json.Marshal(statement)
-	if err != nil {
-		return Assertion{}, fmt.Errorf("failed to marshal public key statement: %w", err)
-	}
-	statementValue := string(jsonBytes)
-
 	// Build the assertion
 	assertion := Assertion{
 		ID:             KeyAssertionID,
@@ -83,7 +73,7 @@ func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, erro
 		Statement: Statement{
 			Format: StatementFormatJSON,
 			Schema: KeyAssertionSchema,
-			Value:  statementValue,
+			Value:  p.statementValue,
 		},
 	}
 
@@ -105,9 +95,6 @@ func (p KeyAssertionValidator) Verify(ctx context.Context, a Assertion, r Reader
 	// NOTE: This validator uses a wildcard schema pattern to match any assertion
 	// when verification keys are provided. Schema validation is still performed
 	// via the JWT's assertionSchema claim verification below.
-	slog.DebugContext(ctx, "validating assertion with key-based validator",
-		slog.String("assertion_id", a.ID),
-		slog.String("assertion_schema", a.Statement.Schema))
 
 	// Assertions without cryptographic bindings cannot be verified - this is a security issue
 	if a.Binding.Signature == "" {

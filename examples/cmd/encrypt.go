@@ -129,7 +129,25 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return fmt.Errorf("failed to load assertion key: %w", err)
 			}
-			publicKeyBinder := sdk.NewKeyAssertionBinder(privateKey)
+			publicKey, err := getAssertionKeyPublic(privateKeyPath)
+			if err != nil {
+				return fmt.Errorf("failed to load public key: %w", err)
+			}
+
+			// Create statement value with public key information
+			statement := struct {
+				Algorithm string `json:"algorithm"`
+				Key       any    `json:"key"`
+			}{
+				Algorithm: publicKey.Alg.String(),
+				Key:       publicKey.Key,
+			}
+			statementJSON, err := json.Marshal(statement)
+			if err != nil {
+				return fmt.Errorf("failed to marshal statement: %w", err)
+			}
+
+			publicKeyBinder := sdk.NewKeyAssertionBinder(privateKey, publicKey, string(statementJSON))
 			opts = append(opts, sdk.WithAssertionBinder(publicKeyBinder))
 		}
 		// Add system metadata assertion (uses DEK)

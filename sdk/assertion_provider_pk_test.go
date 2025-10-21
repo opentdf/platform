@@ -3,6 +3,7 @@ package sdk
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -285,11 +286,20 @@ func TestKeyAssertionBinder_CreatesValidAssertion(t *testing.T) {
 		Key: privateKey,
 	}
 
-	binder := NewKeyAssertionBinder(assertionKey)
-	binder.publicKey = AssertionKey{
+	publicKey := AssertionKey{
 		Alg: AssertionKeyAlgRS256,
 		Key: &privateKey.PublicKey,
 	}
+
+	// Create statement value with public key information
+	statement := PublicKeyStatement{
+		Algorithm: publicKey.Alg.String(),
+		Key:       publicKey.Key,
+	}
+	statementJSON, err := json.Marshal(statement)
+	require.NoError(t, err)
+
+	binder := NewKeyAssertionBinder(assertionKey, publicKey, string(statementJSON))
 
 	// Create a minimal manifest
 	manifest := Manifest{

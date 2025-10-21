@@ -28,7 +28,6 @@ type MockLoader struct {
 }
 
 func (l *MockLoader) Load(mostRecentConfig Config) error {
-	l.loadCalled = true
 	if l.loadFn != nil {
 		return l.loadFn(mostRecentConfig)
 	}
@@ -36,7 +35,6 @@ func (l *MockLoader) Load(mostRecentConfig Config) error {
 }
 
 func (l *MockLoader) Get(key string) (any, error) {
-	l.loadCalled = true
 	if l.getFn != nil {
 		return l.getFn(key)
 	}
@@ -44,8 +42,7 @@ func (l *MockLoader) Get(key string) (any, error) {
 }
 
 func (l *MockLoader) GetConfigKeys() ([]string, error) {
-	l.loadCalled = true
-	if l.loadFn != nil {
+	if l.getConfigKeysFn != nil {
 		return l.getConfigKeysFn()
 	}
 	return nil, nil
@@ -75,7 +72,7 @@ func (l *MockLoader) Name() string {
 	if l.getNameFn != nil {
 		return l.getNameFn()
 	}
-	return ""
+	return "mock"
 }
 
 func newMockLoader() *MockLoader {
@@ -309,4 +306,188 @@ server:
 	assert.Len(t, config.Services, 1)
 	assert.Equal(t, "abc", config.Services["service_a"]["value1"])
 	assert.Equal(t, "def", config.Services["service_a"]["value2"])
+}
+
+// TestLoad_Precedence is a matrix test that verifies the loading order
+// and precedence of different configuration sources.
+func TestLoad_Precedence(t *testing.T) {
+	// Helper to create a temp config file for tests
+	newTempConfigFile := func(t *testing.T, content string) string {
+		t.Helper()
+		f, err := os.CreateTemp(t.TempDir(), "config-*.yaml")
+		require.NoError(t, err)
+		_, err = f.WriteString(content)
+		require.NoError(t, err)
+		require.NoError(t, f.Close())
+		return f.Name()
+	}
+
+	testCases := []struct {
+		name         string
+		setupLoaders func(t *testing.T, configFile string) []Loader
+		envVars      map[string]string
+		fileContent  string
+		asserts      func(t *testing.T, cfg *Config)
+	}{
+		{
+			name: "defaults only",
+			setupLoaders: func(t *testing.T, _ string) []Loader {
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				return []Loader{defaults}
+			},
+			asserts: func(t *testing.T, cfg *Config) {
+				// Assert values from `default` struct tags
+				assert.Equal(t, []string{"all"}, cfg.Mode)
+				assert.Equal(t, "info", cfg.Logger.Level)
+				assert.Equal(t, 8080, cfg.Server.Port)
+			},
+		},
+		{
+			name: "file overrides defaults",
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				file, err := NewConfigFileLoader("test", configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				// File loader comes first, so it has higher priority
+				return []Loader{file, defaults}
+			},
+			fileContent: `
+server:
+  port: 9090
+logger:
+  level: warn
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				// Values from file
+				assert.Equal(t, 9090, cfg.Server.Port)
+				assert.Equal(t, "warn", cfg.Logger.Level)
+				// Value from defaults
+				assert.Equal(t, []string{"all"}, cfg.Mode)
+			},
+		},
+		{
+			name: "mocked env overrides file and defaults",
+			envVars: map[string]string{
+				"TEST_SERVER_PORT":      "9999",
+				"TEST_LOGGER_LEVEL":     "debug",
+				"TEST_DB_HOST":          "env.host",
+				"TEST_SERVICES_FOO_BAR": "baz",
+			},
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				// Use a mock for env to test the Reload precedence logic
+				envLoader, err := NewEnvironmentValueLoader("TEST", nil)
+				require.NoError(t, err)
+
+				file, err := NewConfigFileLoader("test", configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				// Order: env > file > defaults
+				return []Loader{envLoader, file, defaults}
+			},
+			fileContent: `
+server:
+  port: 9090
+logger:
+  level: warn
+db:
+  host: file.host
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				// Values from mocked env
+				assert.Equal(t, 9999, cfg.Server.Port)
+				assert.Equal(t, "debug", cfg.Logger.Level)
+				assert.Equal(t, "env.host", cfg.DB.Host)
+
+				// Value from defaults (not overridden by file or env)
+				assert.Equal(t, []string{"all"}, cfg.Mode)
+
+				// Value from service map in mocked env
+				require.Contains(t, cfg.Services, "foo")
+				assert.Equal(t, "baz", cfg.Services["foo"]["bar"])
+			},
+		}, {
+			name: "env with allow list allows key",
+			envVars: map[string]string{
+				"TEST_SERVER_PORT": "9999", // This should be loaded
+			},
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				// Allow list only contains server.port
+				allowList := []string{"server.port"}
+				envLoader, err := NewEnvironmentValueLoader("TEST", allowList)
+				require.NoError(t, err)
+
+				file, err := NewConfigFileLoader("test", configFile)
+				require.NoError(t, err)
+				return []Loader{envLoader, file}
+			},
+			fileContent: `
+server:
+  port: 8888
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				// The allowed env var should override the file value.
+				assert.Equal(t, 9999, cfg.Server.Port)
+			},
+		},
+		{
+			name: "env with allow list blocks key",
+			envVars: map[string]string{
+				"TEST_SERVER_PORT":  "9999",  // This should be BLOCKED
+				"TEST_LOGGER_LEVEL": "debug", // This should be ALLOWED
+			},
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				// Allow list does NOT contain server.port
+				allowList := []string{"logger.level"}
+				envLoader, err := NewEnvironmentValueLoader("TEST", allowList)
+				require.NoError(t, err)
+
+				file, err := NewConfigFileLoader("test", configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				return []Loader{envLoader, file, defaults}
+			},
+			fileContent: `
+server:
+  port: 8888
+logger:
+  level: info
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				// The server.port env var was blocked, so the value from the file takes precedence.
+				assert.Equal(t, 8888, cfg.Server.Port)
+				// The logger.level env var was allowed, so it overrides the file value.
+				assert.Equal(t, "debug", cfg.Logger.Level)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup env vars
+			for k, v := range tc.envVars {
+				t.Setenv(k, v)
+			}
+
+			// Setup config file
+			configFile := ""
+			if tc.fileContent != "" {
+				configFile = newTempConfigFile(t, tc.fileContent)
+			}
+
+			// Setup loaders
+			loaders := tc.setupLoaders(t, configFile)
+
+			// Load config
+			cfg, err := Load(context.Background(), loaders...)
+
+			// Assertions
+			require.NoError(t, err)
+			require.NotNil(t, cfg)
+			tc.asserts(t, cfg)
+		})
+	}
 }

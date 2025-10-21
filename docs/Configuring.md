@@ -22,7 +22,8 @@ The platform leverages [viper](https://github.com/spf13/viper) to help load conf
       - [Configuration in opentdf-example.yaml](#configuration-in-opentdf-exampleyaml)
       - [Role Permissions](#role-permissions)
       - [Managing Authorization Policy](#managing-authorization-policy)
-  - [Cache Configuration](#cache-configuration)
+- [Cache Configuration](#cache-configuration)
+  - [Secrets In Config](#secrets-in-config)
 
 ## Deployment Mode
 
@@ -397,6 +398,63 @@ Root level key `policy`
 | ---------------------------- | ------------------------------------------------------ | ------- | -------------------------------------------------- |
 | `list_request_limit_default` | Policy List request limit default when not provided    | 1000    | OPENTDF_SERVICES_POLICY_LIST_REQUEST_LIMIT_DEFAULT |
 | `list_request_limit_max`     | Policy List request limit maximum enforced by services | 2500    | OPENTDF_SERVICES_POLICY_LIST_REQUEST_LIMIT_MAX     |
+
+## Secrets In Config
+
+Some service configuration fields are sensitive (secrets). The platform supports convenient, safe ways to provide these values in YAML without leaking them in logs:
+
+- Literal value: use `literal:` prefix
+- Environment variable reference: use `env:` prefix
+- File reference (e.g., mounted secret): use `file:` prefix
+
+Examples:
+
+```yaml
+services:
+  kas:
+    # Provide a root key via environment variable
+    root_key: "env:OPENTDF_SERVICES_KAS_ROOT_KEY"
+
+    # Or as a literal (avoid in production)
+    # root_key: "literal:493ff7acd07b..."
+
+    # Or from a file path (e.g., k8s secret volume)
+    # root_key: "file:/var/run/secrets/opentdf/kas_root_key"
+
+    preview:
+      key_management: true
+```
+
+Notes:
+- Secrets are redacted in logs and JSON output; only a redacted summary is shown.
+- For nested secret fields in service-specific configs, prefer the inline `env:` form in YAML to avoid underscore-to-dot mapping issues with environment variables alone.
+- You can still use a structured map form for references (YAML):
+
+  Block style (preferred for readability):
+  ```yaml
+  services:
+    kas:
+      root_key:
+        fromEnv: OPENTDF_SERVICES_KAS_ROOT_KEY
+  ```
+
+  Or referencing a file path:
+  ```yaml
+  services:
+    kas:
+      root_key:
+        fromFile: /var/run/secrets/opentdf/kas_root_key
+  ```
+
+  Flow style (compact):
+  ```yaml
+  services:
+    kas:
+      root_key: { fromEnv: OPENTDF_SERVICES_KAS_ROOT_KEY }
+      # or
+      root_key: { fromFile: /var/run/secrets/opentdf/kas_root_key }
+  ```
+
 
 Example:
 

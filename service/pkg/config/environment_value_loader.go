@@ -65,6 +65,9 @@ func (l *EnvironmentValueLoader) Load(_ Config) error {
 		upperKV := strings.ToUpper(kv)
 		if strings.HasPrefix(upperKV, l.envKeyPrefix) {
 			eqIdx := strings.Index(upperKV, "=")
+			if eqIdx == -1 {
+				continue
+			}
 			envKey := kv[len(l.envKeyPrefix):eqIdx]
 			envValue := kv[eqIdx+1:]
 			dottedKey := strings.ToLower(strings.ReplaceAll(envKey, "_", "."))

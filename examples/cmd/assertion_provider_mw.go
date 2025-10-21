@@ -51,7 +51,8 @@ func (p *MagicWordAssertionProvider) Bind(_ context.Context, m sdk.Manifest) (sd
 	h.Write([]byte(p.MagicWord))
 	statementValue := hex.EncodeToString(h.Sum(nil))
 
-	return sdk.Assertion{
+	// Build the assertion
+	assertion := sdk.Assertion{
 		ID:             MagicWordAssertionID,
 		Type:           sdk.BaseAssertion,
 		Scope:          sdk.PayloadScope,
@@ -61,21 +62,63 @@ func (p *MagicWordAssertionProvider) Bind(_ context.Context, m sdk.Manifest) (sd
 			Schema: MagicWordAssertionSchema,
 			Value:  statementValue,
 		},
-		Binding: sdk.Binding{
-			Method:    "",
-			Signature: fmt.Sprintf("%s:%s", m.Signature, p.MagicWord),
-		},
-	}, nil
+	}
+
+	// Get the assertion hash for binding
+	assertionHash, err := assertion.GetHash()
+	if err != nil {
+		return sdk.Assertion{}, fmt.Errorf("failed to get assertion hash: %w", err)
+	}
+
+	// Create HMAC-based cryptographic binding
+	// Bind to both the manifest root signature and the assertion content
+	bindingHMAC := hmac.New(sha256.New, []byte(p.MagicWord))
+	bindingHMAC.Write([]byte(m.RootSignature.Signature)) // Bind to manifest
+	bindingHMAC.Write(assertionHash)                     // Bind to assertion content
+	signature := hex.EncodeToString(bindingHMAC.Sum(nil))
+
+	assertion.Binding = sdk.Binding{
+		Method:    "hmac-sha256",
+		Signature: signature,
+	}
+
+	return assertion, nil
 }
 
 // Verify assertion is well-formed and bound
-func (p *MagicWordAssertionProvider) Verify(_ context.Context, a sdk.Assertion, _ sdk.Reader) error {
+func (p *MagicWordAssertionProvider) Verify(_ context.Context, a sdk.Assertion, r sdk.Reader) error {
+	// 1. Verify the statement value (HMAC of magic word)
 	h := hmac.New(sha256.New, []byte(p.MagicWord))
 	h.Write([]byte(p.MagicWord))
 	computedHMAC := hex.EncodeToString(h.Sum(nil))
 
 	if computedHMAC != a.Statement.Value {
 		return errors.New("invalid assertion value: HMAC verification failed")
+	}
+
+	// 2. Verify the binding signature
+	if a.Binding.Method != "hmac-sha256" {
+		return fmt.Errorf("unsupported binding method: %q (expected hmac-sha256)", a.Binding.Method)
+	}
+
+	if a.Binding.Signature == "" {
+		return errors.New("assertion has no cryptographic binding")
+	}
+
+	// Recompute the binding signature
+	assertionHash, err := a.GetHash()
+	if err != nil {
+		return fmt.Errorf("failed to get assertion hash: %w", err)
+	}
+
+	manifest := r.Manifest()
+	bindingHMAC := hmac.New(sha256.New, []byte(p.MagicWord))
+	bindingHMAC.Write([]byte(manifest.RootSignature.Signature))
+	bindingHMAC.Write(assertionHash)
+	expectedSignature := hex.EncodeToString(bindingHMAC.Sum(nil))
+
+	if a.Binding.Signature != expectedSignature {
+		return errors.New("invalid binding: signature verification failed")
 	}
 
 	return nil

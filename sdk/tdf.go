@@ -1095,19 +1095,21 @@ func (r *Reader) DataAttributes() ([]string, error) {
 *
 * If obligations are not populated we call Init() to populate them,
 * which will result in a rewrap call.
+*
  */
 func (r *Reader) Obligations(ctx context.Context) (RequiredObligations, error) {
-	if r.requiredObligations == nil {
-		err := r.Init(ctx)
-		if r.requiredObligations != nil {
-			// Do not return error if obligations were populated.
-			// This is expected if the rewrap failed for a KAO because of obligations.
-			return *r.requiredObligations, nil
-		}
-		return RequiredObligations{}, err
+	if r.requiredObligations != nil {
+		return *r.requiredObligations, nil
 	}
 
-	return *r.requiredObligations, nil
+	err := r.Init(ctx)
+	// Do not return error if we required obligations after Init()
+	// It's possible that an error was returned do to required obligations
+	if r.requiredObligations != nil && len(r.requiredObligations.FQNs) > 0 {
+		return *r.requiredObligations, nil
+	}
+
+	return RequiredObligations{FQNs: []string{}}, err
 }
 
 /*

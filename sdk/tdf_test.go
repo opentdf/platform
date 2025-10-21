@@ -1955,8 +1955,8 @@ func (s *TDFSuite) Test_Obligations_Decrypt() {
 			tdfFileSize:            1909,
 			checksum:               "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			requiredObligationFQNs: []string{obligationWatermark, obligationGeofence},
-			opts:                   []TDFOption{WithDataAttributes(oa1.key, oa2.key)}, // Both go to obligationKas
-			fulfillableObligations: []string{},                                        // No fulfillable obligations
+			opts:                   []TDFOption{WithDataAttributes(oa1.key, oa2.key)},
+			fulfillableObligations: []string{}, // No fulfillable obligations
 			expectError:            true,
 		},
 		{
@@ -2047,6 +2047,7 @@ func (s *TDFSuite) Test_Obligations() {
 		expectedError             error
 		prepopulatedObligations   []string
 		dataAttributes            []string
+		expectedSize              float64
 	}{
 		{
 			name:                      "Rewrap not called prior - Populate from Init() - No Error",
@@ -2055,6 +2056,7 @@ func (s *TDFSuite) Test_Obligations() {
 			dataAttributes:            []string{oa1.key},
 			shouldReturnError:         false,
 			expectedError:             nil,
+			expectedSize:              1737,
 		},
 		{
 			// This test does not actually Rewrap, if it did we would have a mismatch
@@ -2066,6 +2068,16 @@ func (s *TDFSuite) Test_Obligations() {
 			shouldReturnError:         false,
 			expectedError:             nil,
 			prepopulatedObligations:   []string{obligationGeofence},
+			expectedSize:              1737,
+		},
+		{
+			name:                      "Rewrap not called previously - No required obligations",
+			requiredObligations:       []string{},
+			fulfillableObligationFQNs: []string{},
+			dataAttributes:            []string{},
+			shouldReturnError:         false,
+			expectedError:             nil,
+			expectedSize:              1573,
 		},
 	}
 
@@ -2085,7 +2097,7 @@ func (s *TDFSuite) Test_Obligations() {
 			s.testEncrypt(s.sdk, opts, plainTextFileName, tdfFileName, tdfTest{
 				n:           strings.ReplaceAll(tc.name, " ", "_"),
 				fileSize:    5,
-				tdfFileSize: 1737,
+				tdfFileSize: tc.expectedSize,
 				checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			})
 
@@ -2117,7 +2129,7 @@ func (s *TDFSuite) Test_Obligations() {
 				r.requiredObligations = &RequiredObligations{FQNs: tc.prepopulatedObligations}
 			}
 
-			// First call to Obligations() - this should trigger GetDecision
+			// First call to Obligations() - calls Init()
 			obligations, err := r.Obligations(s.T().Context())
 
 			if tc.shouldReturnError {
@@ -2135,7 +2147,7 @@ func (s *TDFSuite) Test_Obligations() {
 				s.Require().Contains(obligations.FQNs, ob, "Actual obligations should contain "+ob)
 			}
 
-			// Second call to Obligations() - this should use cached result
+			// Second call to Obligations()
 			obligations2, err := r.Obligations(s.T().Context())
 			s.Require().NoError(err, "Second call should not return error")
 			s.Require().NotNil(obligations2, "Second call obligations should not be nil")

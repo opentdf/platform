@@ -996,17 +996,18 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 * which will result in a rewrap call.
  */
 func (n *NanoTDFReader) Obligations(ctx context.Context) (RequiredObligations, error) {
-	if n.requiredObligations == nil {
-		err := n.Init(ctx)
-		if n.requiredObligations != nil {
-			// Do not return error if obligations were populated.
-			// This is expected if the rewrap failed for a KAO because of obligations.
-			return *n.requiredObligations, nil
-		}
-		return RequiredObligations{}, err
+	if n.requiredObligations != nil {
+		return *n.requiredObligations, nil
 	}
 
-	return *n.requiredObligations, nil
+	err := n.Init(ctx)
+	// Do not return error if we required obligations after Init()
+	// It's possible that an error was returned do to required obligations
+	if n.requiredObligations != nil && len(n.requiredObligations.FQNs) > 0 {
+		return *n.requiredObligations, nil
+	}
+
+	return RequiredObligations{FQNs: []string{}}, err
 }
 
 func (n *NanoTDFReader) getNanoRewrapKey(ctx context.Context) error {

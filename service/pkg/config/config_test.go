@@ -368,6 +368,35 @@ logger:
 			},
 		},
 		{
+			name: "file with extras and defaults",
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				file, err := NewConfigFileLoader("test", configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				// File loader comes first, so it has higher priority
+				return []Loader{file, defaults}
+			},
+			fileContent: `
+server:
+  port: 9090
+  public_hostname: "test.host"
+logger:
+  level: warn
+special_key:
+  nested:
+    special_value: 123
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				// Values from file
+				assert.Equal(t, "test.host", cfg.Server.PublicHostname)
+				assert.Equal(t, 9090, cfg.Server.Port)
+				assert.Equal(t, "warn", cfg.Logger.Level)
+				// Value from defaults
+				assert.Equal(t, []string{"all"}, cfg.Mode)
+			},
+		},
+		{
 			name: "mocked env overrides file and defaults",
 			envVars: map[string]string{
 				"TEST_SERVER_PORT":      "9999",

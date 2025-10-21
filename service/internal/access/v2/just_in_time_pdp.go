@@ -174,16 +174,20 @@ func (p *JustInTimePDP) GetDecision(
 			return nil, false, fmt.Errorf("decision is nil for registered resource value FQN [%s]", regResValueFQN)
 		}
 
-		// If not entitled, obligations are not considered
+		// If not entitled, obligations are not populated on the returned results
 		if !decision.Access {
 			p.auditDecision(ctx, regResValueFQN, action, decision, entitlements, fulfillableObligationValueFQNs, obligationDecision)
 			return []*Decision{decision}, decision.Access, nil
 		}
 
 		// Access should only be granted if entitled AND obligations fulfilled
-		decision.Access = obligationDecision.AllObligationsAreFulfilled
-		for idx, required := range obligationDecision.RequiredObligationValueFQNsPerResource {
-			decision.Results[idx].RequiredObligationValueFQNs = required
+		decision.Access = obligationDecision.AllObligationsSatisfied
+		for idx, perResource := range obligationDecision.RequiredObligationValueFQNsPerResource {
+			resourceDecision := decision.Results[idx]
+			resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
+			resourceDecision.RequiredObligationValueFQNs = perResource.RequiredObligationValueFQNs
+			resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
+			decision.Results[idx] = resourceDecision
 		}
 
 		p.auditDecision(ctx, regResValueFQN, action, decision, entitlements, fulfillableObligationValueFQNs, obligationDecision)
@@ -215,27 +219,27 @@ func (p *JustInTimePDP) GetDecision(
 		entityEntitlements[idx] = entitlements
 	}
 
-	// If even one entity was denied access, obligations are not considered or returned
-	if !allPermitted {
-		// Audit each entity decision
+	// Return obligations if entitled, whether or not they were fulfilled
+	if allPermitted {
+		// But only grant access if entitled AND obligations fulfilled
+		allPermitted = obligationDecision.AllObligationsSatisfied
+
+		// Propagate required obligations within policy on each resource decision object
+		for idx, decision := range entityDecisions {
+			for idx, perResource := range obligationDecision.RequiredObligationValueFQNsPerResource {
+				resourceDecision := decision.Results[idx]
+				resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
+				resourceDecision.RequiredObligationValueFQNs = perResource.RequiredObligationValueFQNs
+				resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
+				decision.Results[idx] = resourceDecision
+			}
+			entityRep := entityRepresentations[idx]
+			p.auditDecision(ctx, entityRep.GetOriginalId(), action, decision, entityEntitlements[idx], fulfillableObligationValueFQNs, obligationDecision)
+		}
+	} else {
 		for idx, entityRep := range entityRepresentations {
 			p.auditDecision(ctx, entityRep.GetOriginalId(), action, entityDecisions[idx], entityEntitlements[idx], fulfillableObligationValueFQNs, obligationDecision)
 		}
-		return entityDecisions, allPermitted, nil
-	}
-
-	// Access should only be granted if entitled AND obligations fulfilled
-	allPermitted = obligationDecision.AllObligationsAreFulfilled
-	// Obligations are not entity-specific at this time so will be the same across every entity
-	for _, decision := range entityDecisions {
-		for idx, required := range obligationDecision.RequiredObligationValueFQNsPerResource {
-			decision.Results[idx].RequiredObligationValueFQNs = required
-		}
-	}
-
-	// Audit each entity decision with obligation information
-	for idx, entityRep := range entityRepresentations {
-		p.auditDecision(ctx, entityRep.GetOriginalId(), action, entityDecisions[idx], entityEntitlements[idx], fulfillableObligationValueFQNs, obligationDecision)
 	}
 
 	return entityDecisions, allPermitted, nil
@@ -425,7 +429,7 @@ func (p *JustInTimePDP) auditDecision(
 ) {
 	// Determine audit decision result
 	auditDecision := audit.GetDecisionResultDeny
-	if decision.Access && obligationDecision.AllObligationsAreFulfilled {
+	if decision.Access && obligationDecision.AllObligationsSatisfied {
 		auditDecision = audit.GetDecisionResultPermit
 	}
 
@@ -435,7 +439,7 @@ func (p *JustInTimePDP) auditDecision(
 		Decision:                       auditDecision,
 		Entitlements:                   entitlements,
 		FulfillableObligationValueFQNs: fulfillableObligationValueFQNs,
-		ObligationsSatisfied:           obligationDecision.AllObligationsAreFulfilled,
+		ObligationsSatisfied:           obligationDecision.AllObligationsSatisfied,
 		ResourceDecisions:              decision.Results,
 	})
 }

@@ -25,7 +25,11 @@ type Decision struct {
 
 // ResourceDecision represents the result of evaluating the action on one resource for an entity.
 type ResourceDecision struct {
-	Passed                      bool             `json:"passed" example:"false"`
+	// An overall result representing a roll-up of ObligationsSatisfied && Entitled
+	Passed bool `json:"passed" example:"false"`
+	// FulfillableObligations >= TriggeredObligations
+	ObligationsSatisfied        bool             `json:"obligations_satisfied" example:"false"`
+	Entitled                    bool             `json:"entitled" example:"false"`
 	ResourceID                  string           `json:"resource_id,omitempty"`
 	ResourceName                string           `json:"resource_name,omitempty"`
 	DataRuleResults             []DataRuleResult `json:"data_rule_results"`
@@ -201,14 +205,14 @@ func (p *PolicyDecisionPoint) GetDecision(
 			return nil, nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
 		}
 
-		if !resourceDecision.Passed {
+		if !resourceDecision.Entitled {
 			decision.Access = false
 		}
 
 		l.DebugContext(
 			ctx,
 			"resourceDecision result",
-			slog.Bool("passed", resourceDecision.Passed),
+			slog.Bool("passed", resourceDecision.Entitled),
 			slog.String("resource_id", resourceDecision.ResourceID),
 			slog.Int("data_rule_results_count", len(resourceDecision.DataRuleResults)),
 		)
@@ -278,14 +282,14 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 		if err != nil || resourceDecision == nil {
 			return nil, nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
 		}
-		if !resourceDecision.Passed {
+		if !resourceDecision.Entitled {
 			decision.Access = false
 		}
 
 		l.DebugContext(
 			ctx,
 			"resourceDecision result",
-			slog.Bool("passed", resourceDecision.Passed),
+			slog.Bool("entitled", resourceDecision.Entitled),
 			slog.String("resource_id", resourceDecision.ResourceID),
 			slog.Int("data_rule_results_count", len(resourceDecision.DataRuleResults)),
 		)

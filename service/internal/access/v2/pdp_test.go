@@ -907,7 +907,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		}
 		s.assertAllDecisionResults(decision, expectedResults)
 		for _, result := range decision.Results {
-			s.True(result.Passed, "All data rules should pass")
+			s.True(result.Entitled, "All data rules should pass")
 			s.Len(result.DataRuleResults, 1)
 			s.Empty(result.DataRuleResults[0].EntitlementFailures)
 		}
@@ -948,7 +948,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		}
 		s.assertAllDecisionResults(decision, expectedResults)
 		for _, result := range decision.Results {
-			s.True(result.Passed, "All data rules should pass")
+			s.True(result.Entitled, "All data rules should pass")
 			s.Len(result.DataRuleResults, 1)
 			s.Empty(result.DataRuleResults[0].EntitlementFailures)
 		}
@@ -981,7 +981,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 
 		s.assertAllDecisionResults(decision, expectedResults)
 		for idx, result := range decision.Results {
-			s.False(result.Passed, "Data rules should not pass")
+			s.False(result.Entitled, "Data rules should not pass")
 			// Only expect rule results if the rule was evaluated, which doesn't happen for early
 			// failures within action-attribute-value mismatches with the requested action
 			if idx < 3 {
@@ -1049,10 +1049,10 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			s.Len(result.DataRuleResults, 1)
 
 			if result.ResourceID == testClassSecretFQN {
-				s.True(result.Passed, "Secret should pass")
+				s.True(result.Entitled, "Secret should pass")
 				s.Empty(result.DataRuleResults[0].EntitlementFailures)
 			} else if result.ResourceID == testDeptFinanceFQN {
-				s.False(result.Passed, "Finance should not pass")
+				s.False(result.Entitled, "Finance should not pass")
 				s.NotEmpty(result.DataRuleResults[0].EntitlementFailures)
 			}
 		}
@@ -1089,7 +1089,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		foundRnd := false
 		foundTopSecret := false
 		for _, result := range decision.Results {
-			s.True(result.Passed, "All registered resource value access requests should pass")
+			s.True(result.Entitled, "All registered resource value access requests should pass")
 			s.Len(result.DataRuleResults, 1)
 			s.Empty(result.DataRuleResults[0].EntitlementFailures)
 			switch result.ResourceName {
@@ -1137,7 +1137,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		foundRnd := false
 		foundTopSecret := false
 		for _, result := range decision.Results {
-			s.True(result.Passed, "All registered resource value access requests should pass")
+			s.True(result.Entitled, "All registered resource value access requests should pass")
 			s.Len(result.DataRuleResults, 1)
 			s.Empty(result.DataRuleResults[0].EntitlementFailures)
 			switch result.ResourceName {
@@ -1184,7 +1184,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		foundRnd := false
 		foundTopSecret := false
 		for _, result := range decision.Results {
-			s.False(result.Passed, "All registered resource access requests should fail")
+			s.False(result.Entitled, "All registered resource access requests should fail")
 			s.Len(result.DataRuleResults, 1)
 			s.NotEmpty(result.DataRuleResults[0].EntitlementFailures)
 			switch result.ResourceName {
@@ -1232,7 +1232,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		foundRnd := false
 		foundTopSecret := false
 		for _, result := range decision.Results {
-			s.False(result.Passed, "All registered resource access requests should fail")
+			s.False(result.Entitled, "All registered resource access requests should fail")
 			switch result.ResourceName {
 			case rndDeptRegResFQN:
 				foundRnd = true
@@ -1831,7 +1831,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 
 		// Drill down proper structure of denial
 		resourceDecision := decision.Results[0]
-		s.Require().False(resourceDecision.Passed)
+		s.Require().False(resourceDecision.Entitled)
 		s.Equal("secret-engineering-usa-uk-resource", resourceDecision.ResourceID)
 		s.Len(resourceDecision.DataRuleResults, 3)
 		for _, ruleResult := range resourceDecision.DataRuleResults {
@@ -2468,7 +2468,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 		}
 		s.assertAllDecisionResults(decision, expectedResults)
 		for _, result := range decision.Results {
-			s.True(result.Passed, "All data rules should pass")
+			s.True(result.Entitled, "All data rules should pass")
 			s.Len(result.DataRuleResults, 1)
 			s.Empty(result.DataRuleResults[0].EntitlementFailures)
 		}
@@ -2496,7 +2496,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 		}
 		s.assertAllDecisionResults(decision, expectedResults)
 		for _, result := range decision.Results {
-			s.True(result.Passed, "All data rules should pass")
+			s.True(result.Entitled, "All data rules should pass")
 			s.Len(result.DataRuleResults, 1)
 			s.Empty(result.DataRuleResults[0].EntitlementFailures)
 		}
@@ -2523,7 +2523,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 
 		s.assertAllDecisionResults(decision, expectedResults)
 		for idx, result := range decision.Results {
-			s.False(result.Passed, "Data rules should not pass")
+			s.False(result.Entitled, "Data rules should not pass")
 			// Only expect rule results if the rule was evaluated, which doesn't happen for early
 			// failures within action-attribute-value mismatches with the requested action
 			if idx < 3 {
@@ -2580,10 +2580,10 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 			s.Len(result.DataRuleResults, 1)
 
 			if result.ResourceID == testClassSecretFQN {
-				s.True(result.Passed, "Secret should pass")
+				s.True(result.Entitled, "Secret should pass")
 				s.Empty(result.DataRuleResults[0].EntitlementFailures)
 			} else if result.ResourceID == testDeptFinanceFQN {
-				s.False(result.Passed, "Finance should not pass")
+				s.False(result.Entitled, "Finance should not pass")
 				s.NotEmpty(result.DataRuleResults[0].EntitlementFailures)
 			}
 		}
@@ -3152,7 +3152,7 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 func (s *PDPTestSuite) assertDecisionResult(decision *Decision, fqn string, shouldPass bool) {
 	resourceDecision := findResourceDecision(decision, fqn)
 	s.Require().NotNil(resourceDecision, "No result found for FQN: "+fqn)
-	s.Equal(shouldPass, resourceDecision.Passed, "Unexpected result for FQN %s. Expected (%t), got (%t)", fqn, shouldPass, resourceDecision.Passed)
+	s.Equal(shouldPass, resourceDecision.Entitled, "Unexpected result for FQN %s. Expected (%t), got (%t)", fqn, shouldPass, resourceDecision.Entitled)
 }
 
 // assertAllDecisionResults tests all FQNs in a map of FQN to expected pass/fail state

@@ -43,13 +43,20 @@ type ObligationsPolicyDecisionPoint struct {
 	clientIDScopedTriggerActionsToAttributes map[string]obligationValuesByActionOnAnAttributeValue
 }
 
+type PerResourceDecision struct {
+	// Whether or not all obligations triggered for the resource can be fulfilled by the caller
+	ObligationsSatisfied bool
+	// The Set of obligations required on this indexed resource
+	RequiredObligationValueFQNs []string
+}
+
 type ObligationPolicyDecision struct {
 	// Whether or not all the obligations that were triggered can be fulfilled by the caller
-	AllObligationsAreFulfilled bool
+	AllObligationsSatisfied bool
 	// The Set of obligations required across all resources in the decision
 	RequiredObligationValueFQNs []string
 	// The Set of obligations required on each indexed resource
-	RequiredObligationValueFQNsPerResource [][]string
+	RequiredObligationValueFQNsPerResource []PerResourceDecision
 }
 
 func NewObligationsPolicyDecisionPoint(
@@ -137,32 +144,32 @@ func (p *ObligationsPolicyDecisionPoint) GetAllTriggeredObligationsAreFulfilled(
 	decisionRequestContext *policy.RequestContext,
 	pepFulfillableObligationValueFQNs []string,
 ) (ObligationPolicyDecision, error) {
-	perResource, allTriggered, err := p.getTriggeredObligations(ctx, action, resources, decisionRequestContext)
+	perResourceTriggered, allTriggered, err := p.getTriggeredObligations(ctx, action, resources, decisionRequestContext)
 	if err != nil {
 		return ObligationPolicyDecision{}, err
 	}
 
-	allFulfilled := p.getAllObligationsAreFulfilled(ctx, action, allTriggered, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	perResourceDecisions, allFulfilled := p.rollupResourceObligationDecisions(ctx, action, perResourceTriggered, pepFulfillableObligationValueFQNs, decisionRequestContext)
 	return ObligationPolicyDecision{
-		AllObligationsAreFulfilled:             allFulfilled,
+		AllObligationsSatisfied:                allFulfilled,
 		RequiredObligationValueFQNs:            allTriggered,
-		RequiredObligationValueFQNsPerResource: perResource,
+		RequiredObligationValueFQNsPerResource: perResourceDecisions,
 	}, nil
 }
 
-// getAllObligationsAreFulfilled checks the deduplicated list of triggered obligations against the PEP
-// self-reported fulfillable obligations to validate the PEP can fulfill all that were triggered.
+// rollupResourceObligationDecisions checks the per-resource list of triggered obligations against the PEP
+// self-reported fulfillable obligations to validate the PEP can fulfill those triggered on each resource
 //
 // While this is a simple check now, enhancements in types of obligations and the fulfillment source of truth
 // (such as a PEP registration or centralized config) will add complexity to this validation. The RequestContext
 // itself may sometimes contain information that may fulfill the obligation in the future.
-func (p *ObligationsPolicyDecisionPoint) getAllObligationsAreFulfilled(
+func (p *ObligationsPolicyDecisionPoint) rollupResourceObligationDecisions(
 	ctx context.Context,
 	action *policy.Action,
-	allTriggeredObligationValueFQNs []string,
+	perResourceTriggeredObligationValueFQNs [][]string,
 	pepFulfillableObligationValueFQNs []string,
 	decisionRequestContext *policy.RequestContext,
-) bool {
+) ([]PerResourceDecision, bool) {
 	log := loggerWithAttributes(p.logger, strings.ToLower(action.GetName()), decisionRequestContext.GetPep().GetClientId())
 
 	fulfillable := make(map[string]struct{})
@@ -171,29 +178,43 @@ func (p *ObligationsPolicyDecisionPoint) getAllObligationsAreFulfilled(
 		fulfillable[obligation] = struct{}{}
 	}
 
+	seen := make(map[string]struct{})
 	var unfulfilled []string
-	for _, obligated := range allTriggeredObligationValueFQNs {
-		obligated = strings.ToLower(obligated)
-		if _, found := fulfillable[obligated]; !found {
-			unfulfilled = append(unfulfilled, obligated)
+	results := make([]PerResourceDecision, len(perResourceTriggeredObligationValueFQNs))
+	for i, resourceTriggeredObligations := range perResourceTriggeredObligationValueFQNs {
+		allSatisfied := true
+		for _, triggered := range resourceTriggeredObligations {
+			triggered = strings.ToLower(triggered)
+			if _, ok := fulfillable[triggered]; !ok {
+				if _, seen := seen[triggered]; seen {
+					continue
+				}
+				seen[triggered] = struct{}{}
+				unfulfilled = append(unfulfilled, triggered)
+				allSatisfied = false
+			}
+		}
+		results[i] = PerResourceDecision{
+			ObligationsSatisfied:        allSatisfied,
+			RequiredObligationValueFQNs: resourceTriggeredObligations,
 		}
 	}
 
 	if len(unfulfilled) > 0 {
 		log.DebugContext(
 			ctx,
-			"found unfulfilled obligations that cannot be fulfilled by PEP",
+			"found triggered obligations not reported as fulfillable",
 			slog.Any("unfulfilled_obligations", unfulfilled),
 		)
-		return false
+		return results, false
 	}
 
 	log.DebugContext(
 		ctx,
-		"all triggered obligations can be fulfilled by PEP",
+		"all triggered obligations reported as fulfillable",
 	)
 
-	return true
+	return results, true
 }
 
 // getTriggeredObligations takes in an action and multiple resources subject to decisioning.

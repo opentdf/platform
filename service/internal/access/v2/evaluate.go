@@ -85,7 +85,7 @@ func getResourceDecision(
 		// indicates a failure before attribute definition rule evaluation
 		if len(resourceAttributeValues.GetFqns()) == 0 {
 			failure := &ResourceDecision{
-				Passed:       false,
+				Entitled:     false,
 				ResourceID:   resourceID,
 				ResourceName: registeredResourceValueFQN,
 			}
@@ -151,7 +151,7 @@ func evaluateResourceAttributeValues(
 
 	// Return results in the appropriate structure
 	result := &ResourceDecision{
-		Passed:          passed,
+		Entitled:        passed,
 		ResourceID:      resourceID,
 		DataRuleResults: dataRuleResults,
 	}

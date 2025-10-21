@@ -174,20 +174,18 @@ func (p *JustInTimePDP) GetDecision(
 			return nil, false, fmt.Errorf("decision is nil for registered resource value FQN [%s]", regResValueFQN)
 		}
 
-		// If not entitled, obligations are not populated on the returned results
-		if !decision.Access {
-			p.auditDecision(ctx, regResValueFQN, action, decision, entitlements, fulfillableObligationValueFQNs, obligationDecision)
-			return []*Decision{decision}, decision.Access, nil
-		}
-
-		// Access should only be granted if entitled AND obligations fulfilled
-		decision.Access = obligationDecision.AllObligationsSatisfied
-		for idx, perResource := range obligationDecision.RequiredObligationValueFQNsPerResource {
-			resourceDecision := decision.Results[idx]
-			resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
-			resourceDecision.RequiredObligationValueFQNs = perResource.RequiredObligationValueFQNs
-			resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
-			decision.Results[idx] = resourceDecision
+		// Obligations are only populated on the returned results if entitled
+		if decision.Access {
+			// Access should only be granted if entitled AND obligations fulfilled
+			decision.Access = obligationDecision.AllObligationsSatisfied
+			
+			for idx, perResource := range obligationDecision.RequiredObligationValueFQNsPerResource {
+				resourceDecision := decision.Results[idx]
+				resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
+				resourceDecision.RequiredObligationValueFQNs = perResource.RequiredObligationValueFQNs
+				resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
+				decision.Results[idx] = resourceDecision
+			}
 		}
 
 		p.auditDecision(ctx, regResValueFQN, action, decision, entitlements, fulfillableObligationValueFQNs, obligationDecision)

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 
 	"github.com/gowebpki/jcs"
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -100,17 +99,10 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 // returns the hash, signature, and schema. It returns an error if the verification fails.
 // The schema return value will be empty string for legacy assertions without schema claim.
 func (a *Assertion) Verify(key AssertionKey) (string, string, string, error) {
-	slog.Debug("verifying assertion JWT signature",
-		slog.String("assertion_id", a.ID),
-		slog.String("key_alg", key.Alg.String()))
-
 	tok, err := jwt.Parse([]byte(a.Binding.Signature),
 		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key),
 	)
 	if err != nil {
-		slog.Error("failed to parse JWT signature",
-			slog.String("assertion_id", a.ID),
-			slog.Any("error", err))
 		return "", "", "", fmt.Errorf("%w: %w", errAssertionVerifyKeyFailure, err)
 	}
 	hashClaim, found := tok.Get(kAssertionHash)
@@ -144,18 +136,7 @@ func (a *Assertion) Verify(key AssertionKey) (string, string, string, error) {
 		if !ok {
 			return "", "", "", errors.New("schema claim is not a string")
 		}
-	} else {
-		// Legacy assertion without schema claim - log for awareness
-		slog.Debug("assertion JWT missing schema claim (legacy format)",
-			slog.String("assertion_id", a.ID),
-			slog.String("statement_schema", a.Statement.Schema))
 	}
-
-	slog.Debug("assertion JWT verified successfully",
-		slog.String("assertion_id", a.ID),
-		slog.String("assertion_hash", verifiedHash),
-		slog.String("verified_schema", verifiedSchema),
-		slog.Int("assertion_sig_length", len(verifiedSignature)))
 
 	// Note: signature is stored as base64-encoded string (matching manifest.RootSignature.Signature format)
 	// so we return it directly without decoding

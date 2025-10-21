@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 )
 
 const (
@@ -14,9 +13,6 @@ const (
 	// KeyAssertionSchema is the schema URI for key-based assertions.
 	// v2 includes assertionSchema claim in JWT binding for security against schema substitution attacks.
 	KeyAssertionSchema = "urn:opentdf:key:assertion:v1"
-
-	// logPrefixLength is the maximum length of signature prefixes in log messages
-	logPrefixLength = 64
 )
 
 type PublicKeyStatement struct {
@@ -91,7 +87,7 @@ func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, erro
 	return assertion, nil
 }
 
-func (p KeyAssertionValidator) Verify(ctx context.Context, a Assertion, r Reader) error {
+func (p KeyAssertionValidator) Verify(_ context.Context, a Assertion, r Reader) error {
 	// NOTE: This validator uses a wildcard schema pattern to match any assertion
 	// when verification keys are provided. Schema validation is still performed
 	// via the JWT's assertionSchema claim verification below.
@@ -106,11 +102,7 @@ func (p KeyAssertionValidator) Verify(ctx context.Context, a Assertion, r Reader
 	if p.publicKeys.IsEmpty() {
 		switch p.verificationMode {
 		case PermissiveMode:
-			// Allow for forward compatibility - skip validation with warning
-			slog.WarnContext(ctx, "no verification keys configured, skipping in permissive mode",
-				slog.String("assertion_id", a.ID),
-				slog.String("assertion_type", string(a.Type)),
-				slog.String("mode", "permissive"))
+			// Allow for forward compatibility - skip validation
 			return nil
 		case StrictMode, FailFast:
 			// Fail secure - cannot verify without keys
@@ -159,19 +151,12 @@ func (p KeyAssertionValidator) Verify(ctx context.Context, a Assertion, r Reader
 	// for cross-SDK compatibility (Java/JS may use v1, Go uses v2)
 	if manifestSignature == verifiedManifestSignature {
 		// Current v2 format validation
-		slog.DebugContext(ctx, "assertion uses v2 format (root signature)",
-			slog.String("assertion_id", a.ID),
-			slog.String("assertion_schema", a.Statement.Schema))
 		return nil
 	}
 
 	// v1 (legacy) format: The verifiedManifestSignature is base64(aggregateHash + assertionHash)
 	// For custom assertions with explicit keys, Java/JS SDKs may use this format
-	// We accept it for backward compatibility but log a warning
-	slog.WarnContext(ctx, "assertion uses legacy v1 format (not bound to root signature)",
-		slog.String("assertion_id", a.ID),
-		slog.String("assertion_schema", a.Statement.Schema),
-		slog.String("verified_sig_prefix", verifiedManifestSignature[:min(logPrefixLength, len(verifiedManifestSignature))]))
+	// We accept it for backward compatibility
 
 	// In v1 format, we cannot verify the binding to the manifest root signature
 	// because the signature is based on aggregateHash which we don't have access to here

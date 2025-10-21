@@ -31,8 +31,8 @@ go build -o examples-cli
 - [Assertion](./cmd/assertion.go) - Examples of custom signing and validation providers.
 
 ### Encryption & Decryption
-- [Encrypt](./cmd/encrypt.go) - Create encrypted TDF files.
-- [Decrypt](./cmd/decrypt.go) - Decrypt TDF files. Now includes a "Magic Word" example for simple custom validation.
+- [Encrypt](./cmd/encrypt.go) - Create encrypted TDF files
+- [Decrypt](./cmd/decrypt.go) - Decrypt TDF files with optional assertion validation
 - [IsValid](./cmd/isvalid.go) - Validate TDF files
 
 ### Key Access Service (KAS)
@@ -45,38 +45,35 @@ go build -o examples-cli
 
 ## Assertion Provider Examples
 
-The `assertion` command demonstrates how to implement custom signing and validation for TDF assertions using assertion binders and validators.
+The `assertion` command demonstrates custom signing and validation for TDF assertions using assertion binders and validators.
 
 ### Adding an Assertion to an Existing TDF
 
-The `assertion add` subcommand demonstrates how to add a new assertion to an existing TDF. The TDF manifest is read, the new assertion is added, and the manifest is rewritten. This updates only the manifest structure without re-encrypting the payload data, making it an efficient operation for adding assertions post-creation.
-
-**To use this example:**
+Add a new assertion to an existing TDF without re-encrypting payload data:
 
 ```shell
-# Add a new assertion to a TDF, creating a new output file
 ./examples-cli assertion add --in sensitive.tdf --out sensitive-plus-assertion.tdf --magic-word swordfish
 ```
 
+### Magic Word Provider
+
+Demonstration provider using HMAC-SHA256 for cryptographic binding:
+- **Binding Method**: `hmac-sha256`
+- **Statement**: HMAC hash of the magic word
+- **Signature**: HMAC over manifest root signature and assertion hash
+- **Use Case**: Educational example, not for production
+
 ### Implementation Details
 
-The provider interfaces allow developers to:
-- Implement custom signing logic without modifying the core SDK.
-- Support hardware tokens that never expose private keys.
-- Validate assertions using custom trust models.
-- Maintain backward compatibility while adding new capabilities.
+Implement `AssertionBinder` for signing and `AssertionValidator` for verification. Validators must implement `Schema()` for pattern-based routing.
 
-For full implementation details, see:
+See:
 - [Assertion Provider Interfaces](../sdk/assertion_provider.go)
 - [Assertion Registry](../sdk/assertion_provider_registry.go)
-- [Assertions](../docs/Assertions.md) - Signature format for interoperability
-- [Troubleshooting Assertions](../docs/Assertions-Troubleshooting.md) - Common issues and solutions
+- [Assertions](../docs/Assertions.md)
+- [Troubleshooting](../docs/Assertions-Troubleshooting.md)
 
-**Security Note:** The examples use unencrypted private keys for simplicity. In production:
-- Use password-protected private keys or hardware security modules (HSMs)
-- Store keys in secure key management systems (AWS KMS, Azure Key Vault, etc.)
-- Set restrictive file permissions on key files (`chmod 600`)
-- Never commit private keys to version control
+**Security Note:** Examples use simple keys for demonstration. Production use requires HSMs, KMS, or password-protected keys.
 
 ## Configuration Options
 

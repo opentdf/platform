@@ -107,14 +107,19 @@ func CreateV2GetDecisionEvent(ctx context.Context, params GetDecisionV2EventPara
 		},
 	}
 
+	fulfillable := params.FulfillableObligationValueFQNs
+	if fulfillable == nil {
+		fulfillable = []string{}
+	}
+
 	// Build event metadata with both resource decisions and obligations
 	eventMetadata := struct {
 		ResourceDecisions              interface{} `json:"resource_decisions"`
-		FulfillableObligationValueFQNs []string    `json:"fulfillable_obligation_value_fqns,omitempty"`
+		FulfillableObligationValueFQNs []string    `json:"fulfillable_obligation_value_fqns"`
 		ObligationsSatisfied           bool        `json:"obligations_satisfied"`
 	}{
 		ResourceDecisions:              params.ResourceDecisions,
-		FulfillableObligationValueFQNs: params.FulfillableObligationValueFQNs,
+		FulfillableObligationValueFQNs: fulfillable,
 		ObligationsSatisfied:           params.ObligationsSatisfied,
 	}
 

@@ -49,7 +49,6 @@ type GetDecisionV2EventParams struct {
 	Decision                       DecisionResult
 	Entitlements                   subjectmappingbuiltin.AttributeValueFQNsToActions
 	FulfillableObligationValueFQNs []string
-	RequiredObligationValueFQNs    []string
 	ObligationsSatisfied           bool
 	// Allow ResourceDecisions to be typed by the caller as structure is in-flight
 	ResourceDecisions interface{}

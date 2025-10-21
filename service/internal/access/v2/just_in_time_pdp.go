@@ -435,7 +435,6 @@ func (p *JustInTimePDP) auditDecision(
 		Decision:                       auditDecision,
 		Entitlements:                   entitlements,
 		FulfillableObligationValueFQNs: fulfillableObligationValueFQNs,
-		RequiredObligationValueFQNs:    obligationDecision.RequiredObligationValueFQNs,
 		ObligationsSatisfied:           obligationDecision.AllObligationsAreFulfilled,
 		ResourceDecisions:              decision.Results,
 	})

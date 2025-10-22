@@ -1,12 +1,15 @@
 package sdk
 
 import (
+	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/gowebpki/jcs"
 	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 )
@@ -58,7 +61,8 @@ var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with 
 // Sign signs the assertion with the given hash and signature using the key.
 // It returns an error if the signing fails.
 // The assertion binding is updated with the method and the signature.
-func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
+// Optional JWS protected headers can be passed (e.g., for including public key as jwk).
+func (a *Assertion) Sign(hash, sig string, key AssertionKey, headers ...jws.Headers) error {
 	if key.IsEmpty() {
 		return errors.New("signing key not configured")
 	}
@@ -82,8 +86,19 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 	// 	return fmt.Errorf("failed to set assertion schema: %w", err)
 	// }
 
+	// Build signing options
+	alg := jwa.KeyAlgorithmFrom(key.Alg.String())
+	var signOpts []jwt.SignOption
+	signOpts = append(signOpts, jwt.WithKey(alg, key.Key))
+
+	// Add protected headers if provided (e.g., public key as jwk for RSA/ECC)
+	if len(headers) > 0 {
+		signOpts = append(signOpts, jwt.WithKey(alg, key.Key, jws.WithProtectedHeaders(headers[0])))
+		signOpts = signOpts[1:] // Remove the first WithKey, keep only the one with headers
+	}
+
 	// Sign the token with the configured key
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key))
+	signedTok, err := jwt.Sign(tok, signOpts...)
 	if err != nil {
 		return fmt.Errorf("signing assertion failed: %w", err)
 	}
@@ -126,7 +141,7 @@ func (a *Assertion) Verify(key AssertionKey) (string, string, string, error) {
 	// SECURITY: Extract schema claim for validation
 	// This ensures the schema in the JWT matches the schema in Statement,
 	// preventing schema substitution attacks.
-	// For backward compatibility with legacy assertions (v1 schemas), the schema claim
+	// For backward compatibility with legacy assertions, the schema claim
 	// may not be present. In that case, we return empty string and validators should
 	// skip schema claim verification.
 	verifiedSchema := ""
@@ -348,4 +363,68 @@ func (k AssertionVerificationKeys) Get(assertionID string) (AssertionKey, error)
 // IsEmpty returns true if the default key and the keys map are empty.
 func (k AssertionVerificationKeys) IsEmpty() bool {
 	return k.DefaultKey.IsEmpty() && len(k.Keys) == 0
+}
+
+// ComputeAggregateHash computes the aggregate hash by concatenating all segment hashes.
+// This is used as input to assertion signature calculation.
+//
+// The aggregate hash is computed by:
+//  1. Base64 decoding each segment hash
+//  2. Concatenating all decoded hashes in order
+//
+// Parameters:
+//   - segments: Array of segment information from manifest
+//
+// Returns the aggregate hash as bytes, or error if base64 decoding fails.
+func ComputeAggregateHash(segments []Segment) ([]byte, error) {
+	aggregateHash := &bytes.Buffer{}
+	for _, segment := range segments {
+		decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode segment hash: %w", err)
+		}
+		aggregateHash.Write(decodedHash)
+	}
+	return aggregateHash.Bytes(), nil
+}
+
+// ComputeAssertionSignature computes the assertion signature in standard format.
+// This is the format used across all SDKs (Java/JS/Go).
+//
+// Format: base64(aggregateHash + assertionHash)
+//
+// The signature is computed by:
+//  1. Decoding the hex assertion hash to raw bytes
+//  2. Choosing between hex or raw bytes based on useHex flag
+//  3. Concatenating aggregateHash string + chosen hash bytes
+//  4. Base64 encoding the result
+//
+// Parameters:
+//   - aggregateHash: The aggregate hash string
+//   - assertionHashHex: The assertion hash as hex-encoded bytes
+//   - useHex: Whether to use hex encoding (true for TDF 4.2.2, false for TDF 4.3.0+)
+//
+// Returns the base64-encoded signature string, or error if hex decoding fails.
+func ComputeAssertionSignature(aggregateHash string, assertionHashHex []byte, useHex bool) (string, error) {
+	// Decode hex assertion hash to raw bytes
+	hashOfAssertion := make([]byte, hex.DecodedLen(len(assertionHashHex)))
+	_, err := hex.Decode(hashOfAssertion, assertionHashHex)
+	if err != nil {
+		return "", fmt.Errorf("error decoding hex string: %w", err)
+	}
+
+	// Use raw bytes or hex based on useHex flag (legacy TDF compatibility)
+	var hashToUse []byte
+	if useHex {
+		hashToUse = assertionHashHex
+	} else {
+		hashToUse = hashOfAssertion
+	}
+
+	// Combine aggregate hash with assertion hash
+	var completeHashBuilder bytes.Buffer
+	completeHashBuilder.WriteString(aggregateHash)
+	completeHashBuilder.Write(hashToUse)
+
+	return string(ocrypto.Base64Encode(completeHashBuilder.Bytes())), nil
 }

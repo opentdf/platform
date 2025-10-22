@@ -5,7 +5,6 @@ package tdf
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
+	sdkpkg "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/sdk/experimental/tdf/keysplit"
 	"github.com/opentdf/platform/sdk/internal/zipstream"
 )
@@ -648,17 +648,12 @@ func (w *Writer) buildAssertions(aggregateHash []byte, assertions []AssertionCon
 			return nil, err
 		}
 
-		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
+		// Compute assertion signature using standard format
+		// Note: experimental TDF uses useHex=false (modern format)
+		encoded, err := sdkpkg.ComputeAssertionSignature(string(aggregateHash), hashOfAssertionAsHex, false)
 		if err != nil {
-			return nil, fmt.Errorf("error decoding hex string: %w", err)
+			return nil, fmt.Errorf("failed to compute assertion signature: %w", err)
 		}
-
-		var completeHashBuilder bytes.Buffer
-		completeHashBuilder.Write(aggregateHash)
-		completeHashBuilder.Write(hashOfAssertion)
-
-		encoded := ocrypto.Base64Encode(completeHashBuilder.Bytes())
 
 		assertionSigningKey := AssertionKey{}
 
@@ -670,7 +665,7 @@ func (w *Writer) buildAssertions(aggregateHash []byte, assertions []AssertionCon
 			assertionSigningKey = assertion.SigningKey
 		}
 
-		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), string(encoded), assertionSigningKey); err != nil {
+		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), encoded, assertionSigningKey); err != nil {
 			return nil, fmt.Errorf("failed to sign assertion: %w", err)
 		}
 

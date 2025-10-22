@@ -65,10 +65,10 @@ type Reader struct {
 	payloadKey          []byte
 	kasSessionKey       ocrypto.KeyPair
 	config              TDFReaderConfig
-	requiredObligations *Obligations
+	requiredObligations *RequiredObligations
 }
 
-type Obligations struct {
+type RequiredObligations struct {
 	FQNs []string
 }
 
@@ -88,8 +88,6 @@ type ecKeyWrappedKeyInfo struct {
 	publicKey  string
 	wrappedKey string
 }
-
-var ErrObligationsNotPopulated = errors.New("obligations not populated")
 
 func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []kaoResult) (int, error) {
 	err := r.reader.buildKey(ctx, results)
@@ -1093,17 +1091,25 @@ func (r *Reader) DataAttributes() ([]string, error) {
 }
 
 /*
-* Returns the obligations required for access to the TDF payload, assuming you
-* have called Init() or WriteTo() to populate obligations.
+* Returns the obligations required for access to the TDF payload.
 *
-* If obligations are not populated an error is returned.
+* If obligations are not populated we call Init() to populate them,
+* which will result in a rewrap call.
+*
  */
-func (r *Reader) Obligations(_ context.Context) (Obligations, error) {
-	if r.requiredObligations == nil {
-		return Obligations{}, ErrObligationsNotPopulated
+func (r *Reader) Obligations(ctx context.Context) (RequiredObligations, error) {
+	if r.requiredObligations != nil {
+		return *r.requiredObligations, nil
 	}
 
-	return *r.requiredObligations, nil
+	err := r.Init(ctx)
+	// Do not return error if we required obligations after Init()
+	// It's possible that an error was returned do to required obligations
+	if r.requiredObligations != nil && len(r.requiredObligations.FQNs) > 0 {
+		return *r.requiredObligations, nil
+	}
+
+	return RequiredObligations{FQNs: []string{}}, err
 }
 
 /*
@@ -1407,7 +1413,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		}
 	}
 	// Deduplicate obligations for all kao results
-	r.requiredObligations = &Obligations{FQNs: dedupRequiredObligations(kaoResults)}
+	r.requiredObligations = &RequiredObligations{FQNs: dedupRequiredObligations(kaoResults)}
 
 	return r.buildKey(ctx, kaoResults)
 }

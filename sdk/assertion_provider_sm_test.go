@@ -8,41 +8,35 @@ import (
 )
 
 // TestSystemMetadataAssertion_SchemaVersionDetection verifies that the
-// validation correctly detects v1 (legacy) vs v2 (current) schemas
+// validation correctly handles v1 schema and empty schema (legacy compatibility)
 func TestSystemMetadataAssertion_SchemaVersionDetection(t *testing.T) {
 	tests := []struct {
-		name           string
-		schema         string
-		expectedLegacy bool
-		description    string
+		name        string
+		schema      string
+		isSupported bool
+		description string
 	}{
 		{
-			name:           "v2_schema_is_current",
-			schema:         SystemMetadataSchemaV2,
-			expectedLegacy: false,
-			description:    "V2 schema should be treated as current (uses root signature)",
+			name:        "v1_schema_is_supported",
+			schema:      SystemMetadataSchemaV1,
+			isSupported: true,
+			description: "V1 schema is the standard cross-SDK compatible schema",
 		},
 		{
-			name:           "v1_schema_is_legacy",
-			schema:         SystemMetadataSchemaV1,
-			expectedLegacy: true,
-			description:    "V1 schema should be treated as legacy (uses aggregate hash)",
-		},
-		{
-			name:           "empty_schema_is_legacy",
-			schema:         "",
-			expectedLegacy: true,
-			description:    "Empty schema should default to legacy for backwards compatibility",
+			name:        "empty_schema_is_legacy",
+			schema:      "",
+			isSupported: true,
+			description: "Empty schema should be accepted for backwards compatibility",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Check if the schema detection logic would classify this as legacy
+			// Check if the schema is supported
 			// This mimics the logic in SystemMetadataAssertionProvider.Verify()
-			isLegacySchema := tt.schema == SystemMetadataSchemaV1 || tt.schema == ""
+			isValidSchema := tt.schema == SystemMetadataSchemaV1 || tt.schema == ""
 
-			assert.Equal(t, tt.expectedLegacy, isLegacySchema,
+			assert.Equal(t, tt.isSupported, isValidSchema,
 				"%s: %s", tt.name, tt.description)
 		})
 	}
@@ -65,20 +59,20 @@ func TestGetSystemMetadataAssertionConfig_DefaultsToV1(t *testing.T) {
 }
 
 // TestSystemMetadataAssertionProvider_Bind_SchemaSelection verifies that
-// the Bind() method creates assertions with the correct schema based on useHex
+// the Bind() method creates assertions with V1 schema for cross-SDK compatibility
 func TestSystemMetadataAssertionProvider_Bind_SchemaSelection(t *testing.T) {
 	t.Parallel()
 
 	payloadKey := []byte("test-payload-key-32-bytes-long!")
 	aggregateHash := "test-aggregate-hash"
 
-	// Test both legacy and modern TDF formats
+	// Test both legacy and modern TDF formats - both should use V1 schema
 	testCases := []struct {
 		name           string
 		useHex         bool
 		expectedSchema string
 	}{
-		{"modern TDF (useHex=false) uses V2", false, SystemMetadataSchemaV2},
+		{"modern TDF (useHex=false) uses V1", false, SystemMetadataSchemaV1},
 		{"legacy TDF (useHex=true) uses V1", true, SystemMetadataSchemaV1},
 	}
 

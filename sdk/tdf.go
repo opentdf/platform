@@ -1564,38 +1564,56 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 	// if already registered, ignore
 	_ = r.config.assertionRegistry.RegisterValidator(systemMetadataAssertionProvider)
 
-	// Note: DEK-based fallback validation is no longer needed with schema-based matching.
-	// Validators are now registered by schema URI. The SystemMetadataAssertionProvider
-	// handles validation for system metadata assertions (both v1 and v2 formats).
+	// Create DEK-based validator for fallback verification (not registered with wildcard)
+	// This will be used as a last resort for unknown assertions that might be DEK-signed
+	dekKey := AssertionKey{
+		Alg: AssertionKeyAlgHS256,
+		Key: payloadKey[:],
+	}
+	dekAssertionValidator := NewDEKAssertionValidator(dekKey, r.manifest.RootSignature.Signature, aggregateHash.String(), useHex)
+	dekAssertionValidator.SetVerificationMode(r.config.assertionVerificationMode)
 
 	// Validate assertions based on configured verification mode
 	for _, assertion := range r.manifest.Assertions {
-		slog.DebugContext(ctx, "validating assertion",
-			slog.String("assertion_id", assertion.ID),
-			slog.String("assertion_type", string(assertion.Type)),
-			slog.String("assertion_scope", string(assertion.Scope)),
-			slog.String("assertion_schema", assertion.Statement.Schema),
-			slog.Int("verification_mode", int(r.config.assertionVerificationMode)))
+		// SECURITY: Assertions without cryptographic bindings cannot be verified and must fail
+		// This prevents unsigned assertions from being tampered with
+		// Unsigned assertions represent a security risk and should not be accepted
+		if assertion.Binding.Signature == "" {
+			return fmt.Errorf("%w: assertion has no cryptographic binding - unsigned assertions are not allowed",
+				ErrAssertionFailure{ID: assertion.ID})
+		}
 
 		validator, err := r.config.assertionRegistry.GetValidationProvider(assertion.Statement.Schema)
-		if err != nil {
+		if err != nil && r.config.verifiers.IsEmpty() {
+			// No schema-specific validator found, and no explicit verification keys provided
+			// Try DEK-based verification as a fallback (for assertions signed with DEK during encryption)
+			dekVerifyErr := dekAssertionValidator.Verify(ctx, assertion, *r)
+			switch {
+			case dekVerifyErr == nil:
+				// DEK verification succeeded - assertion was signed with DEK
+				// Continue to validation phase
+				validator = dekAssertionValidator
+			case errors.Is(dekVerifyErr, errAssertionVerifyKeyFailure):
+				// JWT signature verification failed with DEK - assertion not signed with DEK
+				// Treat as unknown assertion (forward compatibility)
+				validator = nil
+			default:
+				// DEK verification failed for other reason (hash mismatch, binding mismatch, etc.)
+				// This indicates tampering of a DEK-signed assertion - FAIL immediately
+				return r.handleAssertionVerificationError(assertion.ID, dekVerifyErr)
+			}
+		}
+
+		// If we still don't have a validator, handle as unknown assertion
+		if err != nil && validator == nil {
 			// Unknown assertion handling depends on verification mode
 			switch r.config.assertionVerificationMode {
-			case PermissiveMode:
-				// Log and skip unknown assertions
-				slog.WarnContext(ctx, "unknown assertion type, skipping validation",
-					slog.String("assertion_id", assertion.ID),
-					slog.String("assertion_type", string(assertion.Type)),
-					slog.String("mode", "permissive"))
+			case PermissiveMode, FailFast:
+				// Skip unknown assertions with warning (forward compatibility)
 				continue
 			case StrictMode:
 				// Fail on unknown assertions
 				return fmt.Errorf("%w: unknown assertion type in strict mode", ErrAssertionFailure{ID: assertion.ID})
-			case FailFast:
-				// Skip with warning (default behavior for backward compatibility)
-				slog.WarnContext(ctx, "no validator registered for assertion, skipping",
-					slog.String("assertion_id", assertion.ID))
-				continue
 			}
 		}
 

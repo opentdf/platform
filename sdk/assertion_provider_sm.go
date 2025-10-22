@@ -3,28 +3,19 @@ package sdk
 // System Metadata Assertion Provider
 
 import (
-	"bytes"
 	"context"
-	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"runtime"
 	"time"
-
-	"github.com/opentdf/platform/lib/ocrypto"
 )
 
 const (
 	// SystemMetadataAssertionID is the standard identifier for system metadata assertions.
 	SystemMetadataAssertionID = "system-metadata"
 
-	// SystemMetadataSchemaV2 is the current schema URI for system metadata assertions.
-	// This format uses the root signature directly as the binding signature.
-	SystemMetadataSchemaV2 = "urn:opentdf:system:metadata:v2"
-
 	// SystemMetadataSchemaV1 is the schema for system metadata assertions.
-	// Compatible with Java and JS SDKs.
+	// Compatible with Java, JS, and Go SDKs.
 	SystemMetadataSchemaV1 = "system-metadata-v1"
 )
 
@@ -54,17 +45,9 @@ func (p *SystemMetadataAssertionProvider) SetVerificationMode(mode AssertionVeri
 }
 
 // Schema returns the schema URI this validator handles.
-// Returns V1 for legacy TDFs (useHex=true) and V2 for modern TDFs (useHex=false).
-// - V1 (system-metadata-v1): Compatible with Java/JS SDKs and legacy Go TDFs
-// - V2 (urn:opentdf:system:metadata:v2): Modern URN format for TDF spec >= 4.3.0
-// The validator accepts both schemas for backward/forward compatibility.
+// Always returns V1 for cross-SDK compatibility with Java and JS.
 func (p *SystemMetadataAssertionProvider) Schema() string {
-	if p.useHex {
-		// Legacy TDF format (version < 4.3.0) - use V1 for compatibility
-		return SystemMetadataSchemaV1
-	}
-	// Modern TDF format (version >= 4.3.0) - use V2
-	return SystemMetadataSchemaV2
+	return SystemMetadataSchemaV1
 }
 
 func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (Assertion, error) {
@@ -104,99 +87,28 @@ func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (As
 }
 
 func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, r Reader) error {
-	// SECURITY: Validate schema is one of the supported schemas
+	// SECURITY: Validate schema is the supported V1 schema
 	// This prevents routing assertions with unknown schemas to this validator
 	// Defense in depth: checked here AND via hash verification later
 	isValidSchema := a.Statement.Schema == SystemMetadataSchemaV1 ||
-		a.Statement.Schema == SystemMetadataSchemaV2 ||
-		a.Statement.Schema == ""
+		a.Statement.Schema == "" // Empty schema for legacy compatibility
 
 	if !isValidSchema {
-		return fmt.Errorf("%w: unsupported schema %q (expected %q or %q)",
-			ErrAssertionFailure{ID: a.ID}, a.Statement.Schema, SystemMetadataSchemaV1, SystemMetadataSchemaV2)
+		return fmt.Errorf("%w: unsupported schema %q (expected %q)",
+			ErrAssertionFailure{ID: a.ID}, a.Statement.Schema, SystemMetadataSchemaV1)
 	}
 
-	// Schema V1 or empty schema handling
-	_ = ctx // unused context
-
-	// Assertions without cryptographic bindings cannot be verified - this is a security issue
-	if a.Binding.Signature == "" {
-		return fmt.Errorf("%w: assertion has no cryptographic binding", ErrAssertionFailure{ID: a.ID})
-	}
-
+	// Use shared DEK-based verification logic
 	assertionKey := AssertionKey{
 		Alg: AssertionKeyAlgHS256,
 		Key: p.payloadKey,
 	}
 
-	// Verify the JWT with key
-	assertionHash, assertionSig, _, err := a.Verify(assertionKey)
-	if err != nil {
-		if errors.Is(err, errAssertionVerifyKeyFailure) {
-			return fmt.Errorf("assertion verification failed: %w", err)
-		}
-		return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: a.ID}, err)
-	}
-
-	// Get the hash of the assertion
-	hashOfAssertionAsHex, err := a.GetHash()
-	if err != nil {
-		return fmt.Errorf("%w: failed to get hash of assertion: %w", ErrAssertionFailure{ID: a.ID}, err)
-	}
-	if string(hashOfAssertionAsHex) != assertionHash {
-		return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: a.ID})
-	}
-
-	// Auto-detect binding format: check if assertionSig matches root signature
-	// v2 format: assertionSig = rootSignature
-	// v1 (legacy) format: assertionSig = base64(aggregateHash + assertionHash)
-	//
-	// This allows any assertion (regardless of schema) to use either format
-	if assertionSig == r.manifest.RootSignature.Signature {
-		// Current v2 format validation
-		return nil
-	}
-
-	// Try legacy format verification
-	// This handles assertions from Java SDK and other legacy implementations
-	return p.verifyLegacyAssertion(a.ID, assertionSig, hashOfAssertionAsHex)
+	return verifyDEKSignedAssertion(ctx, a, assertionKey, r.manifest.RootSignature.Signature, p.aggregateHash, p.useHex)
 }
 
 // Validate does nothing.
 func (p SystemMetadataAssertionProvider) Validate(_ context.Context, _ Assertion, _ Reader) error {
-	return nil
-}
-
-// verifyLegacyAssertion validates assertions using the pre-v2 schema format
-// where signatures are base64(aggregateHash + assertionHash)
-func (p SystemMetadataAssertionProvider) verifyLegacyAssertion(assertionID, assertionSig string, hashOfAssertionAsHex []byte) error {
-	// Legacy validation (pre-v2 TDFs)
-	// Expected signature format: base64(aggregateHash + assertionHash)
-	hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-	_, err := hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
-	if err != nil {
-		return fmt.Errorf("%w: error decoding hex string: %w", ErrAssertionFailure{ID: assertionID}, err)
-	}
-
-	// Use raw bytes or hex based on useHex flag (legacy TDF compatibility)
-	var hashToUse []byte
-	if p.useHex {
-		hashToUse = hashOfAssertionAsHex
-	} else {
-		hashToUse = hashOfAssertion
-	}
-
-	// Combine aggregate hash with assertion hash (legacy format)
-	var completeHashBuilder bytes.Buffer
-	completeHashBuilder.WriteString(p.aggregateHash)
-	completeHashBuilder.Write(hashToUse)
-
-	expectedSig := string(ocrypto.Base64Encode(completeHashBuilder.Bytes()))
-
-	if assertionSig != expectedSig {
-		return fmt.Errorf("%w: failed integrity check on legacy assertion signature", ErrAssertionFailure{ID: assertionID})
-	}
-
 	return nil
 }
 

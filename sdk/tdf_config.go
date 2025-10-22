@@ -473,6 +473,7 @@ func (a AllowList) Add(kasURL string) error {
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
+		assertionVerificationMode:    FailFast, // Default to FailFast mode (most secure, recommended for production)
 		assertionRegistry:            newAssertionRegistry(),
 	}
 

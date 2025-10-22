@@ -38,17 +38,8 @@ func (v *DEKAssertionValidator) Schema() string {
 
 // Verify checks the cryptographic binding of an assertion signed with the DEK.
 func (v *DEKAssertionValidator) Verify(ctx context.Context, a Assertion, r Reader) error {
-	// Compute aggregate hash from manifest
-	aggregateHashBytes, err := ComputeAggregateHash(r.Manifest().EncryptionInformation.IntegrityInformation.Segments)
-	if err != nil {
-		return fmt.Errorf("%w: failed to compute aggregate hash: %w", ErrAssertionFailure{ID: a.ID}, err)
-	}
-
-	// Determine encoding format from manifest
-	useHex := ShouldUseHexEncoding(r.Manifest())
-
 	// Use shared DEK-based verification logic
-	return verifyDEKSignedAssertion(ctx, a, v.dekKey, string(aggregateHashBytes), useHex)
+	return verifyDEKSignedAssertion(ctx, a, v.dekKey, r.Manifest())
 }
 
 // Validate does nothing - DEK-based validation doesn't check trust/policy.
@@ -63,16 +54,14 @@ func (v *DEKAssertionValidator) Validate(_ context.Context, _ Assertion, _ Reade
 //   - ctx: Context for the operation
 //   - assertion: The assertion to verify
 //   - dekKey: The DEK (payload key) used for verification
-//   - aggregateHash: The aggregate hash for verification
-//   - useHex: Whether to use hex encoding (for TDF 4.2.2 compatibility)
+//   - manifest: The TDF manifest containing segments and version info
 //
 // Returns error if verification fails (tampering detected), nil if verification succeeds.
 func verifyDEKSignedAssertion(
 	ctx context.Context,
 	assertion Assertion,
 	dekKey AssertionKey,
-	aggregateHash string,
-	useHex bool,
+	manifest Manifest,
 ) error {
 	_ = ctx // unused context
 
@@ -100,28 +89,5 @@ func verifyDEKSignedAssertion(
 	}
 
 	// Verify signature format: base64(aggregateHash + assertionHash)
-	return verifyDEKSignedAssertionFormat(assertion.ID, assertionSig, hashOfAssertionAsHex, aggregateHash, useHex)
-}
-
-// verifyDEKSignedAssertionFormat validates assertions using standard format
-// where signatures are base64(aggregateHash + assertionHash).
-// This is the standard format used across all SDKs (Java/JS/Go).
-func verifyDEKSignedAssertionFormat(
-	assertionID string,
-	assertionSig string,
-	hashOfAssertionAsHex []byte,
-	aggregateHash string,
-	useHex bool,
-) error {
-	// Compute expected signature using standard format
-	expectedSig, err := ComputeAssertionSignature(aggregateHash, hashOfAssertionAsHex, useHex)
-	if err != nil {
-		return fmt.Errorf("%w: failed to compute assertion signature: %w", ErrAssertionFailure{ID: assertionID}, err)
-	}
-
-	if assertionSig != expectedSig {
-		return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: assertionID})
-	}
-
-	return nil
+	return VerifyAssertionSignatureFormat(assertion.ID, assertionSig, hashOfAssertionAsHex, manifest)
 }

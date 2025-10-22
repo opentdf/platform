@@ -461,3 +461,50 @@ func ComputeAssertionSignature(aggregateHash string, assertionHashHex []byte, us
 func ShouldUseHexEncoding(m Manifest) bool {
 	return m.TDFVersion == ""
 }
+
+// VerifyAssertionSignatureFormat validates that the assertion signature matches the expected format.
+// This is the standard format used across all SDKs: base64(aggregateHash + assertionHash).
+//
+// This function is a convenience helper that:
+//  1. Computes the aggregate hash from manifest segments
+//  2. Determines the encoding format (hex vs raw bytes) from the TDF version
+//  3. Computes the expected signature using the standard format
+//  4. Compares it against the verified signature from the JWT
+//
+// Parameters:
+//   - assertionID: The assertion ID for error reporting
+//   - verifiedSignature: The signature claim extracted from the verified JWT
+//   - assertionHash: The hash of the assertion (hex-encoded bytes)
+//   - manifest: The TDF manifest containing segments and version info
+//
+// Returns an error if the signature format is invalid (tampering detected), nil if valid.
+//
+// This function is used by custom AssertionValidator implementations to verify
+// assertion signatures after JWT verification.
+func VerifyAssertionSignatureFormat(
+	assertionID string,
+	verifiedSignature string,
+	assertionHash []byte,
+	manifest Manifest,
+) error {
+	// Compute aggregate hash from manifest segments
+	aggregateHashBytes, err := ComputeAggregateHash(manifest.EncryptionInformation.IntegrityInformation.Segments)
+	if err != nil {
+		return fmt.Errorf("%w: failed to compute aggregate hash: %w", ErrAssertionFailure{ID: assertionID}, err)
+	}
+
+	// Determine encoding format from manifest
+	useHex := ShouldUseHexEncoding(manifest)
+
+	// Compute expected signature using standard format
+	expectedSig, err := ComputeAssertionSignature(string(aggregateHashBytes), assertionHash, useHex)
+	if err != nil {
+		return fmt.Errorf("%w: failed to compute assertion signature: %w", ErrAssertionFailure{ID: assertionID}, err)
+	}
+
+	if verifiedSignature != expectedSig {
+		return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: assertionID})
+	}
+
+	return nil
+}

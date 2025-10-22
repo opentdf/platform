@@ -49,7 +49,7 @@ func (p *SystemMetadataAssertionProvider) Schema() string {
 	return SystemMetadataSchemaV1
 }
 
-func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (Assertion, error) {
+func (p SystemMetadataAssertionProvider) Bind(_ context.Context, _ Manifest) (Assertion, error) {
 	// Get the assertion config
 	ac, err := GetSystemMetadataAssertionConfig()
 	if err != nil {
@@ -59,7 +59,9 @@ func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (As
 	// Override schema
 	ac.Statement.Schema = p.Schema()
 
-	// Build the assertion
+	// Build the assertion WITHOUT binding.
+	// The TDF creation process (tdf.go) will uniformly sign all unbound assertions with the DEK.
+	// This eliminates code duplication and ensures consistent signing logic across all DEK-based assertions.
 	assertion := Assertion{
 		ID:             ac.ID,
 		Type:           ac.Type,
@@ -68,34 +70,6 @@ func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (As
 		AppliesToState: ac.AppliesToState,
 	}
 
-	hashOfAssertionAsHex, err := assertion.GetHash()
-	if err != nil {
-		return assertion, err
-	}
-
-	// Compute aggregate hash from manifest
-	aggregateHashBytes, err := ComputeAggregateHash(m.EncryptionInformation.IntegrityInformation.Segments)
-	if err != nil {
-		return assertion, fmt.Errorf("failed to compute aggregate hash: %w", err)
-	}
-
-	// Determine encoding format from manifest
-	useHex := ShouldUseHexEncoding(m)
-
-	assertionSigningKey := AssertionKey{
-		Alg: AssertionKeyAlgHS256,
-		Key: p.payloadKey,
-	}
-
-	// Compute assertion signature using standard format
-	assertionSignature, err := ComputeAssertionSignature(string(aggregateHashBytes), hashOfAssertionAsHex, useHex)
-	if err != nil {
-		return assertion, fmt.Errorf("failed to compute assertion signature: %w", err)
-	}
-
-	if err := assertion.Sign(string(hashOfAssertionAsHex), assertionSignature, assertionSigningKey); err != nil {
-		return assertion, fmt.Errorf("failed to sign assertion: %w", err)
-	}
 	return assertion, nil
 }
 
@@ -111,22 +85,13 @@ func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion
 			ErrAssertionFailure{ID: a.ID}, a.Statement.Schema, SystemMetadataSchemaV1)
 	}
 
-	// Compute aggregate hash from manifest
-	aggregateHashBytes, err := ComputeAggregateHash(r.Manifest().EncryptionInformation.IntegrityInformation.Segments)
-	if err != nil {
-		return fmt.Errorf("%w: failed to compute aggregate hash: %w", ErrAssertionFailure{ID: a.ID}, err)
-	}
-
-	// Determine encoding format from manifest
-	useHex := ShouldUseHexEncoding(r.Manifest())
-
 	// Use shared DEK-based verification logic
 	assertionKey := AssertionKey{
 		Alg: AssertionKeyAlgHS256,
 		Key: p.payloadKey,
 	}
 
-	return verifyDEKSignedAssertion(ctx, a, assertionKey, string(aggregateHashBytes), useHex)
+	return verifyDEKSignedAssertion(ctx, a, assertionKey, r.Manifest())
 }
 
 // Validate does nothing.

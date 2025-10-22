@@ -61,7 +61,7 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 		t.Fatalf("event actor did not match expected: got %+v, want %+v", event.Actor, expectedEventActor)
 	}
 
-	expectedEventMetaData := map[string]string{
+	expectedEventMetaData := auditEventMetadata{
 		"keyID":         "",
 		"policyBinding": TestPolicyBinding,
 		"tdfFormat":     TestTDFFormat,

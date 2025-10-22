@@ -44,12 +44,14 @@ type GetDecisionEventParams struct {
 }
 
 type GetDecisionV2EventParams struct {
-	EntityID     string
-	ActionName   string
-	Decision     DecisionResult
-	Entitlements subjectmappingbuiltin.AttributeValueFQNsToActions
+	EntityID                       string
+	ActionName                     string
+	Decision                       DecisionResult
+	Entitlements                   subjectmappingbuiltin.AttributeValueFQNsToActions
+	FulfillableObligationValueFQNs []string
+	ObligationsSatisfied           bool
 	// Allow ResourceDecisions to be typed by the caller as structure is in-flight
-	ResourceDecisions interface{}
+	ResourceDecisions any
 }
 
 func CreateGetDecisionEvent(ctx context.Context, params GetDecisionEventParams) (*EventObject, error) {
@@ -97,12 +99,24 @@ func CreateV2GetDecisionEvent(ctx context.Context, params GetDecisionV2EventPara
 		result = ActionResultFailure
 	}
 
-	actorAttributes := []interface{}{
+	actorAttributes := []any{
 		struct {
-			Entitlements subjectmappingbuiltin.AttributeValueFQNsToActions `json:"entitlements"`
+			Entitlements subjectmappingbuiltin.AttributeValueFQNsToActions `json:"entitlements_relevant_to_decision"`
 		}{
 			Entitlements: params.Entitlements,
 		},
+	}
+
+	fulfillable := params.FulfillableObligationValueFQNs
+	if fulfillable == nil {
+		fulfillable = []string{}
+	}
+
+	// Build event metadata with both resource decisions and obligations
+	eventMetadata := auditEventMetadata{
+		"resource_decisions":                params.ResourceDecisions,
+		"fulfillable_obligation_value_fqns": fulfillable,
+		"obligations_satisfied":             params.ObligationsSatisfied,
 	}
 
 	return &EventObject{
@@ -119,7 +133,7 @@ func CreateV2GetDecisionEvent(ctx context.Context, params GetDecisionV2EventPara
 			ID:         params.EntityID,
 			Attributes: actorAttributes,
 		},
-		EventMetaData: params.ResourceDecisions,
+		EventMetaData: eventMetadata,
 		ClientInfo: eventClientInfo{
 			Platform:  "authorization.v2",
 			UserAgent: auditDataFromContext.UserAgent,
@@ -130,8 +144,8 @@ func CreateV2GetDecisionEvent(ctx context.Context, params GetDecisionV2EventPara
 	}, nil
 }
 
-func buildActorAttributes(entityChainEntitlements []EntityChainEntitlement) []interface{} {
-	actorAttributes := make([]interface{}, len(entityChainEntitlements))
+func buildActorAttributes(entityChainEntitlements []EntityChainEntitlement) []any {
+	actorAttributes := make([]any, len(entityChainEntitlements))
 	for i, v := range entityChainEntitlements {
 		actorAttributes[i] = struct {
 			EntityID                 string   `json:"entityId"`
@@ -146,24 +160,18 @@ func buildActorAttributes(entityChainEntitlements []EntityChainEntitlement) []in
 	return actorAttributes
 }
 
-func buildEventMetadata(entityDecisions []EntityDecision) interface{} {
-	eventMetadata := struct {
-		Entities []interface{} `json:"entities"`
-	}{
-		Entities: make([]interface{}, len(entityDecisions)),
-	}
+func buildEventMetadata(entityDecisions []EntityDecision) auditEventMetadata {
+	entities := make([]map[string]any, len(entityDecisions))
 
 	for i, v := range entityDecisions {
-		eventMetadata.Entities[i] = struct {
-			EntityID     string   `json:"id"`
-			Decision     string   `json:"decision"`
-			Entitlements []string `json:"entitlements"`
-		}{
-			EntityID:     v.EntityID,
-			Decision:     v.Decision,
-			Entitlements: v.Entitlements,
+		entities[i] = map[string]any{
+			"id":           v.EntityID,
+			"decision":     v.Decision,
+			"entitlements": v.Entitlements,
 		}
 	}
 
-	return eventMetadata
+	return auditEventMetadata{
+		"entities": entities,
+	}
 }

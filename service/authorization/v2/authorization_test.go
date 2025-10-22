@@ -1374,7 +1374,7 @@ func Test_RollupSingleResourceDecision(t *testing.T) {
 			permitted: true,
 			decisions: []*access.Decision{
 				{
-					Access: true,
+					AllPermitted: true,
 					Results: []access.ResourceDecision{
 						{
 							ResourceID: "resource-123",
@@ -1395,7 +1395,7 @@ func Test_RollupSingleResourceDecision(t *testing.T) {
 			permitted: true,
 			decisions: []*access.Decision{
 				{
-					Access: true,
+					AllPermitted: true,
 					Results: []access.ResourceDecision{
 						{
 							ResourceID: "resource-123",
@@ -1422,7 +1422,7 @@ func Test_RollupSingleResourceDecision(t *testing.T) {
 			permitted: false,
 			decisions: []*access.Decision{
 				{
-					Access: true, // Verify permitted takes precedence
+					AllPermitted: true, // Verify permitted takes precedence
 					Results: []access.ResourceDecision{
 						{
 							ResourceID: "resource-123",
@@ -1443,7 +1443,7 @@ func Test_RollupSingleResourceDecision(t *testing.T) {
 			permitted: false,
 			decisions: []*access.Decision{
 				{
-					Access: true, // Verify permitted takes precedence
+					AllPermitted: true, // Verify permitted takes precedence
 					Results: []access.ResourceDecision{
 						{
 							ResourceID:                  "resource-123",
@@ -1473,8 +1473,8 @@ func Test_RollupSingleResourceDecision(t *testing.T) {
 			permitted: true,
 			decisions: []*access.Decision{
 				{
-					Access:  true,
-					Results: []access.ResourceDecision{},
+					AllPermitted: true,
+					Results:      []access.ResourceDecision{},
 				},
 			},
 			expectedResult: nil,
@@ -1509,7 +1509,7 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 			name: "should return multiple permit decisions",
 			decisions: []*access.Decision{
 				{
-					Access: true,
+					AllPermitted: true,
 					Results: []access.ResourceDecision{
 						{
 							Passed:     true,
@@ -1518,7 +1518,7 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 					},
 				},
 				{
-					Access: true,
+					AllPermitted: true,
 					Results: []access.ResourceDecision{
 						{
 							Passed:     true,
@@ -1542,7 +1542,7 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 			name: "should return mix of permit and deny decisions",
 			decisions: []*access.Decision{
 				{
-					Access: true,
+					AllPermitted: true,
 					Results: []access.ResourceDecision{
 						{
 							Passed:     true,
@@ -1551,7 +1551,7 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 					},
 				},
 				{
-					Access: false,
+					AllPermitted: false,
 					Results: []access.ResourceDecision{
 						{
 							Passed:     false,
@@ -1575,7 +1575,7 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 			name: "should rely on results and default to false decisions",
 			decisions: []*access.Decision{
 				{
-					Access: true,
+					AllPermitted: true,
 					Results: []access.ResourceDecision{
 						{
 							Passed:     true,
@@ -1588,7 +1588,7 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 					},
 				},
 				{
-					Access: false,
+					AllPermitted: false,
 					Results: []access.ResourceDecision{
 						{
 							Passed:     false,
@@ -1616,7 +1616,7 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 			name: "should ignore global access and care about resource decisions predominantly",
 			decisions: []*access.Decision{
 				{
-					Access: false,
+					AllPermitted: false,
 					Results: []access.ResourceDecision{
 						{
 							Passed:     false,
@@ -1629,7 +1629,7 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 					},
 				},
 				{
-					Access: false,
+					AllPermitted: false,
 					Results: []access.ResourceDecision{
 						{
 							Passed:     true,
@@ -1657,7 +1657,7 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 			name: "should return obligations whenever found on a resource",
 			decisions: []*access.Decision{
 				{
-					Access: true,
+					AllPermitted: true,
 					Results: []access.ResourceDecision{
 						{
 							Passed:     true,
@@ -1678,7 +1678,7 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 					},
 				},
 				{
-					Access: false,
+					AllPermitted: false,
 					Results: []access.ResourceDecision{
 						{
 							Passed:     false,
@@ -1728,8 +1728,8 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 			name: "should return error when decision has no results",
 			decisions: []*access.Decision{
 				{
-					Access:  true,
-					Results: []access.ResourceDecision{},
+					AllPermitted: true,
+					Results:      []access.ResourceDecision{},
 				},
 			},
 			expectedError: ErrDecisionMustHaveResults,
@@ -1794,8 +1794,8 @@ func Test_RollupMultiResourceDecisions_WithNilChecks(t *testing.T) {
 	t.Run("nil Results field", func(t *testing.T) {
 		decisions := []*access.Decision{
 			{
-				Access:  true,
-				Results: nil,
+				AllPermitted: true,
+				Results:      nil,
 			},
 		}
 		_, err := rollupMultiResourceDecisions(decisions)
@@ -1822,8 +1822,8 @@ func Test_RollupSingleResourceDecision_WithNilChecks(t *testing.T) {
 	t.Run("nil Results field", func(t *testing.T) {
 		decisions := []*access.Decision{
 			{
-				Access:  true,
-				Results: nil,
+				AllPermitted: true,
+				Results:      nil,
 			},
 		}
 		_, err := rollupSingleResourceDecision(true, decisions)

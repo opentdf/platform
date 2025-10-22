@@ -181,9 +181,11 @@ func (p *JustInTimePDP) GetDecision(
 
 			for idx, perResource := range obligationDecision.RequiredObligationValueFQNsPerResource {
 				resourceDecision := decision.Results[idx]
+
 				resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
 				resourceDecision.RequiredObligationValueFQNs = perResource.RequiredObligationValueFQNs
 				resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
+
 				decision.Results[idx] = resourceDecision
 			}
 		}
@@ -226,11 +228,14 @@ func (p *JustInTimePDP) GetDecision(
 		for entityIdx, decision := range entityDecisions {
 			for idx, perResource := range obligationDecision.RequiredObligationValueFQNsPerResource {
 				resourceDecision := decision.Results[idx]
+
 				resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
 				resourceDecision.RequiredObligationValueFQNs = perResource.RequiredObligationValueFQNs
 				resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
+
 				decision.Results[idx] = resourceDecision
 			}
+			decision.Access = allPermitted
 			entityRepID := entityRepresentations[entityIdx].GetOriginalId()
 			p.auditDecision(ctx, entityRepID, action, decision, entityEntitlements[entityIdx], fulfillableObligationValueFQNs, obligationDecision)
 		}
@@ -429,7 +434,7 @@ func (p *JustInTimePDP) auditDecision(
 ) {
 	// Determine audit decision result
 	auditDecision := audit.GetDecisionResultDeny
-	if decision.Access && obligationDecision.AllObligationsSatisfied {
+	if decision.Access {
 		auditDecision = audit.GetDecisionResultPermit
 	}
 

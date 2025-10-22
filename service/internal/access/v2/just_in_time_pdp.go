@@ -238,7 +238,7 @@ func setResourceDecisionsWithObligations(
 	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
 
 	for idx := range decision.Results {
-		resourceDecision := decision.Results[idx]
+		resourceDecision := &decision.Results[idx]
 
 		if hasRequiredObligations {
 			// Update with specific obligation data from the obligations PDP
@@ -251,7 +251,6 @@ func setResourceDecisionsWithObligations(
 		}
 
 		resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
-		decision.Results[idx] = resourceDecision
 	}
 	return decision
 }

@@ -389,10 +389,24 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			if err != nil {
 				return nil, fmt.Errorf("failed to get assertion hash: %w", err)
 			}
-			assertionHash := string(assertionHashBytes)
+
+			// Compute aggregate hash from manifest segments
+			aggregateHashBytes, err := ComputeAggregateHash(tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments)
+			if err != nil {
+				return nil, fmt.Errorf("failed to compute aggregate hash: %w", err)
+			}
+
+			// Determine encoding format from manifest
+			useHex := ShouldUseHexEncoding(tdfObject.manifest)
+
+			// Compute assertion signature using standard format: base64(aggregateHash + assertionHash)
+			assertionSignature, err := ComputeAssertionSignature(string(aggregateHashBytes), assertionHashBytes, useHex)
+			if err != nil {
+				return nil, fmt.Errorf("failed to compute assertion signature: %w", err)
+			}
 
 			// Sign with DEK
-			if err := boundAssertions[i].Sign(assertionHash, tdfObject.manifest.RootSignature.Signature, dekKey); err != nil {
+			if err := boundAssertions[i].Sign(string(assertionHashBytes), assertionSignature, dekKey); err != nil {
 				return nil, fmt.Errorf("failed to sign assertion %q with DEK: %w", boundAssertions[i].ID, err)
 			}
 		}

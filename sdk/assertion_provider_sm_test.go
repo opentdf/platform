@@ -216,14 +216,21 @@ func TestSystemMetadataAssertionProvider_TamperedStatement(t *testing.T) {
 	provider := NewSystemMetadataAssertionProvider(payloadKey)
 	provider.SetVerificationMode(FailFast)
 
-	// Create a minimal manifest with nested structure
+	// Create a minimal manifest with segments for proper signature computation
+	segments := []Segment{
+		{Hash: "dGVzdC1oYXNoLTE="}, // base64("test-hash-1")
+		{Hash: "dGVzdC1oYXNoLTI="}, // base64("test-hash-2")
+	}
+
 	manifest := Manifest{
+		TDFVersion: "4.3.0", // Modern format
 		EncryptionInformation: EncryptionInformation{
 			IntegrityInformation: IntegrityInformation{
 				RootSignature: RootSignature{
 					Signature: "test-root-signature",
 					Algorithm: "HS256",
 				},
+				Segments: segments,
 			},
 		},
 	}
@@ -231,6 +238,10 @@ func TestSystemMetadataAssertionProvider_TamperedStatement(t *testing.T) {
 	// Create and bind an assertion with original statement
 	originalAssertion, err := provider.Bind(t.Context(), manifest)
 	require.NoError(t, err, "Binding assertion should succeed")
+
+	// Sign the assertion with DEK (simulating what tdf.go does)
+	originalAssertion, err = signAssertionWithDEK(originalAssertion, manifest, payloadKey)
+	require.NoError(t, err, "Signing assertion should succeed")
 
 	// Verify original assertion passes
 	reader := Reader{
@@ -261,14 +272,21 @@ func TestSystemMetadataAssertionProvider_TamperedStatement_Legacy(t *testing.T) 
 	provider := NewSystemMetadataAssertionProvider(payloadKey)
 	provider.SetVerificationMode(FailFast)
 
-	// Create a minimal manifest with nested structure
+	// Create a minimal manifest with segments for proper signature computation
+	segments := []Segment{
+		{Hash: "dGVzdC1oYXNoLTE="}, // base64("test-hash-1")
+		{Hash: "dGVzdC1oYXNoLTI="}, // base64("test-hash-2")
+	}
+
 	manifest := Manifest{
+		TDFVersion: "", // Empty = legacy format (useHex=true)
 		EncryptionInformation: EncryptionInformation{
 			IntegrityInformation: IntegrityInformation{
 				RootSignature: RootSignature{
 					Signature: "test-root-signature",
 					Algorithm: "HS256",
 				},
+				Segments: segments,
 			},
 		},
 	}
@@ -280,6 +298,10 @@ func TestSystemMetadataAssertionProvider_TamperedStatement_Legacy(t *testing.T) 
 	// Verify it uses the current schema
 	assert.Equal(t, SystemMetadataSchemaV1, originalAssertion.Statement.Schema,
 		"Legacy TDF format should use current schema")
+
+	// Sign the assertion with DEK (simulating what tdf.go does)
+	originalAssertion, err = signAssertionWithDEK(originalAssertion, manifest, payloadKey)
+	require.NoError(t, err, "Signing assertion should succeed")
 
 	// Verify original assertion passes
 	reader := Reader{
@@ -297,4 +319,41 @@ func TestSystemMetadataAssertionProvider_TamperedStatement_Legacy(t *testing.T) 
 	require.Error(t, err, "Tampered assertion should fail verification")
 	assert.Contains(t, err.Error(), "hash",
 		"Error should indicate hash mismatch due to tampering")
+}
+
+// signAssertionWithDEK is a test helper that signs an assertion with the DEK.
+// This simulates what tdf.go does during TDF creation for unbound assertions.
+func signAssertionWithDEK(assertion Assertion, manifest Manifest, payloadKey []byte) (Assertion, error) {
+	// Get assertion hash
+	assertionHashBytes, err := assertion.GetHash()
+	if err != nil {
+		return assertion, err
+	}
+
+	// Compute aggregate hash from manifest segments
+	aggregateHashBytes, err := ComputeAggregateHash(manifest.EncryptionInformation.IntegrityInformation.Segments)
+	if err != nil {
+		return assertion, err
+	}
+
+	// Determine encoding format from manifest
+	useHex := ShouldUseHexEncoding(manifest)
+
+	// Compute assertion signature using standard format
+	assertionSignature, err := ComputeAssertionSignature(string(aggregateHashBytes), assertionHashBytes, useHex)
+	if err != nil {
+		return assertion, err
+	}
+
+	// Sign with DEK
+	dekKey := AssertionKey{
+		Alg: AssertionKeyAlgHS256,
+		Key: payloadKey,
+	}
+
+	if err := assertion.Sign(string(assertionHashBytes), assertionSignature, dekKey); err != nil {
+		return assertion, err
+	}
+
+	return assertion, nil
 }

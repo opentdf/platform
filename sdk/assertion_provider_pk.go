@@ -187,27 +187,11 @@ func (p KeyAssertionValidator) Verify(_ context.Context, a Assertion, r Reader) 
 
 	// Verify binding format: assertionSig = base64(aggregateHash + assertionHash)
 	// This is the standard format for all assertions across all SDKs (Java/JS/Go)
-
-	// Compute aggregate hash from manifest segments
-	aggregateHashBytes, err := ComputeAggregateHash(r.Manifest().EncryptionInformation.IntegrityInformation.Segments)
-	if err != nil {
-		return fmt.Errorf("%w: failed to compute aggregate hash: %w", ErrAssertionFailure{ID: a.ID}, err)
+	if err := VerifyAssertionSignatureFormat(a.ID, verifiedManifestSignature, assertionHash, r.Manifest()); err != nil {
+		return err
 	}
 
-	// Determine useHex from TDF version (legacy TDFs have no version field)
-	useHex := ShouldUseHexEncoding(r.Manifest())
-
-	// Compute expected signature using standard format
-	expectedSig, err := ComputeAssertionSignature(string(aggregateHashBytes), assertionHash, useHex)
-	if err != nil {
-		return fmt.Errorf("%w: failed to compute assertion signature: %w", ErrAssertionFailure{ID: a.ID}, err)
-	}
-
-	if verifiedManifestSignature != expectedSig {
-		return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: a.ID})
-	}
-
-	_ = manifestSignature // Not used in this validator (signature verification done via JWT and ComputeAssertionSignature)
+	_ = manifestSignature // Not used in this validator (signature verification done via JWT and VerifyAssertionSignatureFormat)
 	return nil
 }
 

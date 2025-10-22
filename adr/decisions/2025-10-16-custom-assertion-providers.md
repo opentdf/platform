@@ -41,20 +41,22 @@ The OpenTDF SDK needs to support custom assertion signing and validation mechani
 
 **Chosen option**: "Binder/Validator Pattern" (Option 2)
 
-We implement separate `AssertionBinder` (for signing) and `AssertionValidator` (for verification) interfaces with regex-based pattern matching for validator dispatch.
+We implement separate `AssertionBinder` (for signing) and `AssertionValidator` (for verification) interfaces with exact string matching for validator dispatch.
 
 ### Key Design Elements
 
 **Interfaces**:
 ```go
 type AssertionBinder interface {
+    // Bind creates and signs an assertion, binding it to the manifest.
+    // Use ShouldUseHexEncoding(m) for format compatibility.
     Bind(ctx context.Context, manifest Manifest) (Assertion, error)
 }
 
 type AssertionValidator interface {
-    Schema() string
-    Verify(ctx context.Context, assertion Assertion, reader Reader) error
-    Validate(ctx context.Context, assertion Assertion, reader Reader) error
+    Schema() string  // Returns schema URI or "*" for wildcard
+    Verify(ctx context.Context, assertion Assertion, reader Reader) error    // Crypto check
+    Validate(ctx context.Context, assertion Assertion, reader Reader) error  // Policy check
 }
 ```
 
@@ -76,7 +78,7 @@ type AssertionValidator interface {
 
 **Registration**:
 - Binders: `sdk.WithAssertionBinder(binder)`
-- Validators: `sdk.WithAssertionValidator(pattern, validator)` using regex-based schema matching
+- Validators: `sdk.WithAssertionValidator(schema, validator)` using exact schema string matching (the `schema` parameter must exactly match the value returned by the validator's `Schema()` method)
 
 ### Rationale
 
@@ -99,7 +101,7 @@ type AssertionValidator interface {
 **Why Option 2 (Binder/Validator) works best**:
 - **Simplicity**: Single-method interfaces are easy to implement
 - **Separation of Concerns**: Verify (crypto) vs Validate (policy) are distinct operations
-- **Flexibility**: Regex-based validator dispatch enables mixed assertion types in one TDF
+- **Flexibility**: Schema-based validator dispatch enables mixed assertion types in one TDF
 - **Efficiency**: Direct registration avoids factory overhead
 - **Security**: Clear boundary between cryptographic verification and trust decisions
 
@@ -118,13 +120,12 @@ type AssertionValidator interface {
 ### Negative
 
 - ❌ **Learning Curve**: Developers must understand when to use binders vs validators
-- ❌ **Pattern Matching**: Regex-based validator dispatch requires careful pattern design
+- ❌ **Schema Matching**: Validator schema strings must exactly match registration keys
 - ❌ **Documentation Burden**: Need comprehensive examples for common scenarios (PIV/CAC, HSM, KMS)
 - ❌ **Validation Complexity**: Two-phase validation (Verify + Validate) may be confusing initially
 
 ### Neutral
 
-- ↔️ **Performance**: Minimal overhead from pattern matching and interface dispatch
 - ↔️ **API Surface**: Adds 2 new interfaces and 4 new option functions to SDK
 
 ## Pros and Cons of the Options
@@ -146,12 +147,12 @@ type AssertionValidator interface {
 **Pros**:
 - Clear separation between signing and validation
 - Single-method interfaces are easy to implement
-- Flexible pattern-based dispatch
+- Flexible schema-based dispatch
 - Independent implementation of crypto vs policy checks
 
 **Cons**:
 - Two interfaces to understand
-- Regex pattern matching requires careful design
+- Schema strings must exactly match between registration and validator implementation
 
 ### Option 3: Factory-Based Approach
 
@@ -181,28 +182,12 @@ type AssertionValidator interface {
 
 ### Cryptographic Binding Mechanism
 
-Assertions are cryptographically bound to the TDF payload by signing the manifest's **root signature** along with the assertion hash:
+**Standard Format**: `base64(aggregateHash + assertionHash)`
 
-```go
-// During TDF creation (in AssertionBinder.Bind):
-assertionHash := assertion.GetHash()
-rootSignature := manifest.RootSignature.Signature  // Already base64-encoded
-assertion.Sign(assertionHash, rootSignature, signingKey)
-
-// During TDF verification (in AssertionValidator.Verify):
-verifiedHash, verifiedSig, _, err := assertion.Verify(verificationKey)
-if err != nil {
-    return err
-}
-if manifest.RootSignature.Signature != verifiedSig {
-    return errors.New("signature mismatch")
-}
-```
-
-**Why root signature as binding target?**
-1. **No Runtime Computation**: Stored directly in manifest, no need to recompute aggregate hashes
-2. **Comprehensive Coverage**: HMAC over aggregate hash of all payload segments
-3. **Simple Verification**: Direct string comparison
+- Binds assertions to all payload segments via aggregateHash
+- Cross-SDK compatible (Java, JS, Go)
+- `ShouldUseHexEncoding(manifest)` determines legacy (hex) vs modern (raw bytes) encoding
+- SDK provides `ComputeAssertionSignature()` helper for consistent implementation
 
 ### Verification Modes
 
@@ -224,32 +209,21 @@ This enables forward compatibility (new assertion types are skipped) while detec
 
 **Recommendation**: Use `FailFast` for production (default), `PermissiveMode` only for development/testing, `StrictMode` for high-security environments.
 
-### Cross-SDK Compatibility
-
-Two binding formats supported:
-- **v2 (current)**: `assertionSig = rootSignature` - binds to manifest root signature
-- **v1 (legacy)**: `assertionSig = base64(aggregateHash + assertionHash)` - for Java/JS SDK compatibility
-
-Auto-detection of format version enables interoperability.
-
 ### Security Considerations
 
 1. **Mandatory Bindings**: All assertions MUST have cryptographic bindings - unsigned assertions are rejected immediately
 2. **Key Management**: Private keys should remain in HSM/PIV/CAC and never be exposed
 3. **Fail-Secure Validation**: Validators fail securely when keys are missing (not silently skip)
-4. **Binding Integrity**: Root signature binding prevents assertion tampering and cross-TDF reuse
-5. **DEK Fallback Validation**: Assertions without schema-specific validators attempt DEK verification as fallback, enabling tampering detection while maintaining forward compatibility
+4. **Binding Integrity**: Assertion signature format binds to all payload segments via aggregateHash
+5. **TDFVersion Spoofing**: `ShouldUseHexEncoding()` checks unprotected `TDFVersion` field - use ONLY for format detection, NOT security decisions. Always verify cryptographic bindings regardless of version.
+6. **DEK Fallback Validation**: Assertions without schema-specific validators attempt DEK verification as fallback, enabling tampering detection while maintaining forward compatibility
 
 ### Implementation Requirements
 
-**Binder Implementation**:
-- Implement `Bind(ctx, manifest)` to create assertion with cryptographic signature
-- Return assertion bound to manifest root signature
-
-**Validator Implementation**:
-- Implement `Schema()` to return expected schema URI for routing
-- Implement `Verify()` for cryptographic validation (signature, hash, binding)
-- Implement `Validate()` for policy and trust enforcement
+**Custom Binders/Validators must**:
+- Use `ShouldUseHexEncoding(manifest)` and `ComputeAssertionSignature()` for cross-SDK compatibility
+- Compute `aggregateHash` from manifest segments during binding/verification (not pre-store)
+- Verify cryptographic bindings in `Verify()`, enforce policy in `Validate()`
 
 ## Links
 

@@ -52,9 +52,9 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 		},
 		Actor: auditEventActor{
 			ID:         auditDataFromContext.ActorID,
-			Attributes: make([]interface{}, 0),
+			Attributes: make([]any, 0),
 		},
-		EventMetaData: map[string]string{
+		EventMetaData: auditEventMetadata{
 			"keyID":         "", // TODO: keyID once implemented
 			"policyBinding": params.PolicyBinding,
 			"tdfFormat":     params.TDFFormat,

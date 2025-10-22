@@ -212,7 +212,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 		l.DebugContext(
 			ctx,
 			"resourceDecision result",
-			slog.Bool("passed", resourceDecision.Entitled),
+			slog.Bool("entitled", resourceDecision.Entitled),
 			slog.String("resource_id", resourceDecision.ResourceID),
 			slog.Int("data_rule_results_count", len(resourceDecision.DataRuleResults)),
 		)

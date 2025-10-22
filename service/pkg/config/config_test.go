@@ -326,6 +326,7 @@ func TestLoad_Precedence(t *testing.T) {
 		name         string
 		setupLoaders func(t *testing.T, configFile string) []Loader
 		envVars      map[string]string
+		err          error
 		fileContent  string
 		asserts      func(t *testing.T, cfg *Config)
 	}{
@@ -398,16 +399,7 @@ special_key:
 		},
 		{
 			name: "env overrides file and defaults except client_id",
-			envVars: map[string]string{
-				"TEST_SERVER_PORT":              "9999",
-				"TEST_LOGGER_LEVEL":             "debug",
-				"TEST_DB_HOST":                  "env.host",
-				"TEST_SDK_CONFIG_CLIENT_ID":     "client-from-env",
-				"TEST_SDK_CONFIG_CLIENT_SECRET": "secret-from-env",
-				"TEST_SERVICES_FOO_BAR":         "baz",
-			},
 			setupLoaders: func(t *testing.T, configFile string) []Loader {
-				// Use a mock for env to test the Reload precedence logic
 				envLoader, err := NewEnvironmentValueLoader("TEST", nil)
 				require.NoError(t, err)
 
@@ -417,6 +409,14 @@ special_key:
 				require.NoError(t, err)
 				// Order: env > file > defaults
 				return []Loader{envLoader, file, defaults}
+			},
+			envVars: map[string]string{
+				"TEST_SERVER_PORT":              "9999",
+				"TEST_LOGGER_LEVEL":             "debug",
+				"TEST_DB_HOST":                  "env.host",
+				"TEST_SDK_CONFIG_CLIENT_ID":     "client-from-env",
+				"TEST_SDK_CONFIG_CLIENT_SECRET": "secret-from-env",
+				"TEST_SERVICES_FOO_BAR":         "baz",
 			},
 			fileContent: `
 server:
@@ -450,6 +450,14 @@ sdk_config:
 		},
 		{
 			name: "env from legacy overrides file and defaults",
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				legacyLoader, err := NewLegacyLoader("test", configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				// Order: env > file > defaults
+				return []Loader{legacyLoader, defaults}
+			},
 			envVars: map[string]string{
 				"TEST_SERVER_PORT":              "9999",
 				"TEST_LOGGER_LEVEL":             "debug",
@@ -457,15 +465,6 @@ sdk_config:
 				"TEST_SDK_CONFIG_CLIENT_ID":     "client-from-env",
 				"TEST_SDK_CONFIG_CLIENT_SECRET": "secret-from-env",
 				"TEST_SERVICES_FOO_BAR":         "baz",
-			},
-			setupLoaders: func(t *testing.T, configFile string) []Loader {
-				// Use a mock for env to test the Reload precedence logic
-				legacyLoader, err := NewLegacyLoader("test", configFile)
-				require.NoError(t, err)
-				defaults, err := NewDefaultSettingsLoader()
-				require.NoError(t, err)
-				// Order: env > file > defaults
-				return []Loader{legacyLoader, defaults}
 			},
 			fileContent: `
 server:
@@ -494,6 +493,65 @@ sdk_config:
 				// Value not placed service map in env
 				// Different from the EnvironmentValueLoader above
 				require.NotContains(t, cfg.Services, "foo")
+			},
+		},
+		{
+			name: "env does not override undefined snake-case YAML keys",
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				envLoader, err := NewEnvironmentValueLoader("TEST", nil)
+				require.NoError(t, err)
+
+				file, err := NewConfigFileLoader("test", configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				// Order: env > file > defaults
+				return []Loader{envLoader, file, defaults}
+			},
+			envVars: map[string]string{
+				"TEST_SDK_CONFIG_CLIENT_ID":     "client-from-env",
+				"TEST_SDK_CONFIG_CLIENT_SECRET": "secret-from-env",
+			},
+			fileContent: `
+server:
+  port: 9090
+logger:
+  level: warn
+db:
+  host: file.host
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				// Same as the LegacyLoader below
+				assert.Equal(t, "", cfg.SDKConfig.ClientID)
+				assert.Equal(t, "", cfg.SDKConfig.ClientSecret)
+			},
+		},
+		{
+			name: "env from legacy does not override undefined snake-case YAML keys",
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				legacyLoader, err := NewLegacyLoader("test", configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				// Order: env > file > defaults
+				return []Loader{legacyLoader, defaults}
+			},
+			envVars: map[string]string{
+				"TEST_SDK_CONFIG_CLIENT_ID":     "client-from-env",
+				"TEST_SDK_CONFIG_CLIENT_SECRET": "secret-from-env",
+			},
+			fileContent: `
+server:
+  port: 9090
+logger:
+  level: warn
+db:
+  host: file.host
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				// Same as the EnvironmentValueLoader above
+				assert.Equal(t, "", cfg.SDKConfig.ClientID)
+				assert.Equal(t, "", cfg.SDKConfig.ClientSecret)
 			},
 		}, {
 			name: "env with allow list allows key",
@@ -572,9 +630,15 @@ logger:
 			cfg, err := Load(context.Background(), loaders...)
 
 			// Assertions
-			require.NoError(t, err)
-			require.NotNil(t, cfg)
-			tc.asserts(t, cfg)
+			if tc.err != nil {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, cfg)
+			}
+			if tc.asserts != nil {
+				tc.asserts(t, cfg)
+			}
 		})
 	}
 }

@@ -44,6 +44,7 @@ type config struct {
 	entityResolutionConn               *ConnectRPCConnection
 	collectionStore                    *collectionStore
 	shouldValidatePlatformConnectivity bool
+	fulfillableObligationFQNs          []string
 	logger                             *slog.Logger
 }
 
@@ -230,6 +231,13 @@ func WithExtraClientOptions(opts ...connect.ClientOption) Option {
 func WithNoKIDInNano() Option {
 	return func(c *config) {
 		c.nanoFeatures.noKID = true
+	}
+}
+
+// WithFulfillableObligationFQNs sets the list of obligation FQNs that can
+func WithFulfillableObligationFQNs(fqns []string) Option {
+	return func(c *config) {
+		c.fulfillableObligationFQNs = fqns
 	}
 }
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/opentdf/platform/compare/protocol/go/v0.12.0...protocol/go/v0.13.0) (2025-10-16)
+
+
+### Features
+
+* **policy:** Protos List obligation triggers ([#2803](https://github.com/opentdf/platform/issues/2803)) ([b32df81](https://github.com/opentdf/platform/commit/b32df81f6fe35f9db07e58f49ca71b43d7a02a13))
+
 ## [0.12.0](https://github.com/opentdf/platform/compare/protocol/go/v0.11.0...protocol/go/v0.12.0) (2025-10-14)
 
 

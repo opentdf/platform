@@ -1144,3 +1144,105 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 		})
 	}
 }
+
+func Test_ListObligationTriggers_Request(t *testing.T) {
+	validUUID := uuid.NewString()
+
+	testCases := []struct {
+		name         string
+		req          *obligations.ListObligationTriggersRequest
+		expectError  bool
+		errorMessage string
+	}{
+		{
+			name:        "valid - no filters",
+			req:         &obligations.ListObligationTriggersRequest{},
+			expectError: false,
+		},
+		{
+			name: "valid - with namespace_id",
+			req: &obligations.ListObligationTriggersRequest{
+				NamespaceId: validUUID,
+			},
+			expectError: false,
+		},
+		{
+			name: "valid - with namespace_fqn",
+			req: &obligations.ListObligationTriggersRequest{
+				NamespaceFqn: validFQN1,
+			},
+			expectError: false,
+		},
+		{
+			name: "valid - with pagination only",
+			req: &obligations.ListObligationTriggersRequest{
+				Pagination: &policy.PageRequest{
+					Limit:  10,
+					Offset: 5,
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "valid - namespace_id with pagination",
+			req: &obligations.ListObligationTriggersRequest{
+				NamespaceId: validUUID,
+				Pagination: &policy.PageRequest{
+					Limit:  20,
+					Offset: 0,
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "valid - namespace_fqn with pagination",
+			req: &obligations.ListObligationTriggersRequest{
+				NamespaceFqn: validFQN1,
+				Pagination: &policy.PageRequest{
+					Limit:  15,
+					Offset: 10,
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid namespace_id",
+			req: &obligations.ListObligationTriggersRequest{
+				NamespaceId: invalidUUID,
+			},
+			expectError:  true,
+			errorMessage: errMessageUUID,
+		},
+		{
+			name: "invalid namespace_fqn",
+			req: &obligations.ListObligationTriggersRequest{
+				NamespaceFqn: invalidFQN,
+			},
+			expectError:  true,
+			errorMessage: errMessageURI,
+		},
+		{
+			name: "both namespace_id and namespace_fqn",
+			req: &obligations.ListObligationTriggersRequest{
+				NamespaceId:  validUUID,
+				NamespaceFqn: validFQN1,
+			},
+			expectError:  true,
+			errorMessage: errMessageOneOf,
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errorMessage)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

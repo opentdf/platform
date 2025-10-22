@@ -20,19 +20,18 @@ const (
 )
 
 // SystemMetadataAssertionProvider provides information about the system that is running the application.
-// Implements AssertionBuilder and AssertionValidator
+// Implements AssertionBuilder and AssertionValidator.
+// The encoding format (useHex) and aggregateHash are computed from the manifest during binding/verification.
 type SystemMetadataAssertionProvider struct {
-	useHex           bool
 	payloadKey       []byte
-	aggregateHash    string
 	verificationMode AssertionVerificationMode
 }
 
-func NewSystemMetadataAssertionProvider(useHex bool, payloadKey []byte, aggregateHash string) *SystemMetadataAssertionProvider {
+// NewSystemMetadataAssertionProvider creates a new system metadata assertion provider.
+// Only the payloadKey needs to be provided - useHex and aggregateHash are computed from the manifest.
+func NewSystemMetadataAssertionProvider(payloadKey []byte) *SystemMetadataAssertionProvider {
 	return &SystemMetadataAssertionProvider{
-		useHex:           useHex,
 		payloadKey:       payloadKey,
-		aggregateHash:    aggregateHash,
 		verificationMode: FailFast, // Default to secure mode
 	}
 }
@@ -50,14 +49,14 @@ func (p *SystemMetadataAssertionProvider) Schema() string {
 	return SystemMetadataSchemaV1
 }
 
-func (p SystemMetadataAssertionProvider) Bind(_ context.Context, _ Manifest) (Assertion, error) {
+func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (Assertion, error) {
 	// Get the assertion config
 	ac, err := GetSystemMetadataAssertionConfig()
 	if err != nil {
 		return Assertion{}, fmt.Errorf("failed to get system metadata assertion config: %w", err)
 	}
 
-	// Override schema based on useHex flag (legacy vs modern TDF)
+	// Override schema
 	ac.Statement.Schema = p.Schema()
 
 	// Build the assertion
@@ -74,13 +73,22 @@ func (p SystemMetadataAssertionProvider) Bind(_ context.Context, _ Manifest) (As
 		return assertion, err
 	}
 
+	// Compute aggregate hash from manifest
+	aggregateHashBytes, err := ComputeAggregateHash(m.EncryptionInformation.IntegrityInformation.Segments)
+	if err != nil {
+		return assertion, fmt.Errorf("failed to compute aggregate hash: %w", err)
+	}
+
+	// Determine encoding format from manifest
+	useHex := ShouldUseHexEncoding(m)
+
 	assertionSigningKey := AssertionKey{
 		Alg: AssertionKeyAlgHS256,
 		Key: p.payloadKey,
 	}
 
 	// Compute assertion signature using standard format
-	assertionSignature, err := ComputeAssertionSignature(p.aggregateHash, hashOfAssertionAsHex, p.useHex)
+	assertionSignature, err := ComputeAssertionSignature(string(aggregateHashBytes), hashOfAssertionAsHex, useHex)
 	if err != nil {
 		return assertion, fmt.Errorf("failed to compute assertion signature: %w", err)
 	}
@@ -91,7 +99,7 @@ func (p SystemMetadataAssertionProvider) Bind(_ context.Context, _ Manifest) (As
 	return assertion, nil
 }
 
-func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, _ Reader) error {
+func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, r Reader) error {
 	// SECURITY: Validate schema is the supported schema
 	// This prevents routing assertions with unknown schemas to this validator
 	// Defense in depth: checked here AND via hash verification later
@@ -103,13 +111,22 @@ func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion
 			ErrAssertionFailure{ID: a.ID}, a.Statement.Schema, SystemMetadataSchemaV1)
 	}
 
+	// Compute aggregate hash from manifest
+	aggregateHashBytes, err := ComputeAggregateHash(r.Manifest().EncryptionInformation.IntegrityInformation.Segments)
+	if err != nil {
+		return fmt.Errorf("%w: failed to compute aggregate hash: %w", ErrAssertionFailure{ID: a.ID}, err)
+	}
+
+	// Determine encoding format from manifest
+	useHex := ShouldUseHexEncoding(r.Manifest())
+
 	// Use shared DEK-based verification logic
 	assertionKey := AssertionKey{
 		Alg: AssertionKeyAlgHS256,
 		Key: p.payloadKey,
 	}
 
-	return verifyDEKSignedAssertion(ctx, a, assertionKey, p.aggregateHash, p.useHex)
+	return verifyDEKSignedAssertion(ctx, a, assertionKey, string(aggregateHashBytes), useHex)
 }
 
 // Validate does nothing.

@@ -14,17 +14,14 @@ import (
 // It uses a wildcard schema ("*") to match any assertion.
 type DEKAssertionValidator struct {
 	dekKey           AssertionKey
-	aggregateHash    string
-	useHex           bool
 	verificationMode AssertionVerificationMode
 }
 
 // NewDEKAssertionValidator creates a new DEK-based validator.
-func NewDEKAssertionValidator(dekKey AssertionKey, aggregateHash string, useHex bool) *DEKAssertionValidator {
+// The aggregateHash and useHex are computed from the manifest during verification.
+func NewDEKAssertionValidator(dekKey AssertionKey) *DEKAssertionValidator {
 	return &DEKAssertionValidator{
 		dekKey:           dekKey,
-		aggregateHash:    aggregateHash,
-		useHex:           useHex,
 		verificationMode: FailFast, // Default to secure mode
 	}
 }
@@ -40,9 +37,18 @@ func (v *DEKAssertionValidator) Schema() string {
 }
 
 // Verify checks the cryptographic binding of an assertion signed with the DEK.
-func (v *DEKAssertionValidator) Verify(ctx context.Context, a Assertion, _ Reader) error {
+func (v *DEKAssertionValidator) Verify(ctx context.Context, a Assertion, r Reader) error {
+	// Compute aggregate hash from manifest
+	aggregateHashBytes, err := ComputeAggregateHash(r.Manifest().EncryptionInformation.IntegrityInformation.Segments)
+	if err != nil {
+		return fmt.Errorf("%w: failed to compute aggregate hash: %w", ErrAssertionFailure{ID: a.ID}, err)
+	}
+
+	// Determine encoding format from manifest
+	useHex := ShouldUseHexEncoding(r.Manifest())
+
 	// Use shared DEK-based verification logic
-	return verifyDEKSignedAssertion(ctx, a, v.dekKey, v.aggregateHash, v.useHex)
+	return verifyDEKSignedAssertion(ctx, a, v.dekKey, string(aggregateHashBytes), useHex)
 }
 
 // Validate does nothing - DEK-based validation doesn't check trust/policy.

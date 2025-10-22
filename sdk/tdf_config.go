@@ -246,9 +246,6 @@ func (b *configBasedAssertionBinder) Bind(_ context.Context, m Manifest) (Assert
 	}
 	assertionHash := string(assertionHashBytes)
 
-	// Use root signature for binding (v2 schema)
-	rootSignature := m.RootSignature.Signature
-
 	// Determine signing key
 	signingKey := b.config.SigningKey
 	if signingKey.IsEmpty() {
@@ -258,8 +255,23 @@ func (b *configBasedAssertionBinder) Bind(_ context.Context, m Manifest) (Assert
 		return assertion, nil
 	}
 
+	// Compute aggregate hash from manifest segments
+	aggregateHashBytes, err := ComputeAggregateHash(m.EncryptionInformation.IntegrityInformation.Segments)
+	if err != nil {
+		return Assertion{}, fmt.Errorf("failed to compute aggregate hash: %w", err)
+	}
+
+	// Determine encoding format from manifest
+	useHex := ShouldUseHexEncoding(m)
+
+	// Compute assertion signature using standard format
+	assertionSignature, err := ComputeAssertionSignature(string(aggregateHashBytes), assertionHashBytes, useHex)
+	if err != nil {
+		return Assertion{}, fmt.Errorf("failed to compute assertion signature: %w", err)
+	}
+
 	// Sign the assertion with the explicit key
-	if err := assertion.Sign(assertionHash, rootSignature, signingKey); err != nil {
+	if err := assertion.Sign(assertionHash, assertionSignature, signingKey); err != nil {
 		return Assertion{}, fmt.Errorf("failed to sign assertion: %w", err)
 	}
 

@@ -147,9 +147,9 @@ func encrypt(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("failed to marshal statement: %w", err)
 			}
 
-			// useHex=false for modern TDF format (4.3.0+)
-			publicKeyBinder := sdk.NewKeyAssertionBinder(privateKey, publicKey, string(statementJSON), false)
-			opts = append(opts, sdk.WithAssertionBinder(publicKeyBinder))
+			// The SDK automatically determines the correct encoding format based on TDF version
+			keyBinder := sdk.NewKeyAssertionBinder(privateKey, publicKey, string(statementJSON))
+			opts = append(opts, sdk.WithAssertionBinder(keyBinder))
 		}
 		// Add system metadata assertion (uses DEK)
 		opts = append(opts, sdk.WithSystemMetadataAssertion())

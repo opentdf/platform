@@ -428,3 +428,36 @@ func ComputeAssertionSignature(aggregateHash string, assertionHashHex []byte, us
 
 	return string(ocrypto.Base64Encode(completeHashBuilder.Bytes())), nil
 }
+
+// ShouldUseHexEncoding determines whether to use hex encoding for assertion signatures
+// based on the TDF format version.
+//
+// Legacy TDFs (versions < 4.3.0) use hex encoding, while modern TDFs (4.3.0+) use raw bytes.
+// This function should be used by custom AssertionBinder and AssertionValidator
+// implementations to determine the correct encoding format when calling
+// ComputeAssertionSignature().
+//
+// SECURITY NOTE: The TDFVersion field is part of the manifest and is not
+// integrity-protected in legacy TDFs. An attacker could potentially modify
+// this field to cause format confusion. This function should ONLY be used
+// for determining encoding formats (hex vs raw bytes), NOT for making
+// security decisions. Always verify cryptographic bindings and signatures
+// regardless of the TDF version.
+//
+// Parameters:
+//   - m: The manifest to check
+//
+// Returns true if hex encoding should be used (useHex=true for legacy TDFs),
+// false if raw bytes should be used (useHex=false for modern TDFs).
+//
+// Example usage in custom AssertionBinder:
+//
+//	func (b *MyBinder) Bind(ctx context.Context, m Manifest) (Assertion, error) {
+//	    useHex := ShouldUseHexEncoding(m)
+//	    aggregateHash, _ := ComputeAggregateHash(m.EncryptionInformation.IntegrityInformation.Segments)
+//	    sig, _ := ComputeAssertionSignature(string(aggregateHash), assertionHash, useHex)
+//	    // ... use sig for binding
+//	}
+func ShouldUseHexEncoding(m Manifest) bool {
+	return m.TDFVersion == ""
+}

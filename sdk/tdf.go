@@ -350,7 +350,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 	// if addSystemMetadataAssertion is true, register a system metadata assertion binder
 	if tdfConfig.addSystemMetadataAssertion {
-		systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(tdfConfig.useHex, tdfObject.payloadKey[:], aggregateHash)
+		systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(tdfObject.payloadKey[:])
 		tdfConfig.assertionRegistry.RegisterBinder(systemMetadataAssertionProvider)
 	}
 
@@ -918,7 +918,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 		}
 	}
 
-	isLegacyTDF := r.manifest.TDFVersion == ""
+	isLegacyTDF := ShouldUseHexEncoding(r.manifest)
 
 	var totalBytes int64
 	var payloadReadOffset int64
@@ -1013,7 +1013,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		return 0, ErrTDFPayloadReadFail
 	}
 
-	isLegacyTDF := r.manifest.TDFVersion == ""
+	isLegacyTDF := ShouldUseHexEncoding(r.manifest)
 	var decryptedBuf bytes.Buffer
 	var payloadReadOffset int64
 	for index, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
@@ -1550,11 +1550,8 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		}
 	}
 
-	// useHex is used for legacy TDF compatibility (versions < 4.3.0)
-	// When reading legacy TDFs, signatures are hex-encoded instead of raw bytes
-	// Legacy TDFs have no TDFVersion field in the manifest
-	useHex := r.manifest.TDFVersion == ""
-	systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(useHex, payloadKey[:], string(aggregateHashBytes))
+	// Register system metadata assertion validator
+	systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(payloadKey[:])
 	systemMetadataAssertionProvider.SetVerificationMode(r.config.assertionVerificationMode)
 	// if already registered, ignore
 	_ = r.config.assertionRegistry.RegisterValidator(systemMetadataAssertionProvider)
@@ -1565,7 +1562,7 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		Alg: AssertionKeyAlgHS256,
 		Key: payloadKey[:],
 	}
-	dekAssertionValidator := NewDEKAssertionValidator(dekKey, string(aggregateHashBytes), useHex)
+	dekAssertionValidator := NewDEKAssertionValidator(dekKey)
 	dekAssertionValidator.SetVerificationMode(r.config.assertionVerificationMode)
 
 	// Validate assertions based on configured verification mode
@@ -1738,7 +1735,7 @@ func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLe
 func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (bool, error) {
 	rootSigAlg := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm
 	rootSigValue := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature
-	isLegacyTDF := manifest.TDFVersion == ""
+	isLegacyTDF := ShouldUseHexEncoding(manifest)
 
 	sigAlg := HS256
 	if strings.EqualFold(gmacIntegrityAlgorithm, rootSigAlg) {

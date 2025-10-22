@@ -419,9 +419,8 @@ func TestVerificationMode_DefaultIsFailFast(t *testing.T) {
 	t.Run("SystemMetadataAssertionProvider", func(t *testing.T) {
 		t.Parallel()
 		payloadKey := []byte("test-key-32-bytes-long!!!!!!!!")
-		aggregateHash := "test-aggregate-hash"
 
-		provider := NewSystemMetadataAssertionProvider(false, payloadKey, aggregateHash)
+		provider := NewSystemMetadataAssertionProvider(payloadKey)
 
 		assert.Equal(t, FailFast, provider.verificationMode,
 			"SystemMetadataAssertionProvider should default to FailFast for security")

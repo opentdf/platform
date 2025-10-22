@@ -19,7 +19,6 @@ type MockLoader struct {
 	closeFn         func() error
 	getNameFn       func() string
 
-	loadCalled    bool
 	watchCalled   bool
 	closeCalled   bool
 	getNameCalled bool
@@ -553,7 +552,8 @@ db:
 				assert.Equal(t, "", cfg.SDKConfig.ClientID)
 				assert.Equal(t, "", cfg.SDKConfig.ClientSecret)
 			},
-		}, {
+		},
+		{
 			name: "env with allow list allows key",
 			envVars: map[string]string{
 				"TEST_SERVER_PORT": "9999", // This should be loaded
@@ -627,7 +627,7 @@ logger:
 			loaders := tc.setupLoaders(t, configFile)
 
 			// Load config
-			cfg, err := Load(context.Background(), loaders...)
+			cfg, err := Load(t.Context(), loaders...)
 
 			// Assertions
 			if tc.err != nil {

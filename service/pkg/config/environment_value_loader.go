@@ -47,7 +47,7 @@ func (l *EnvironmentValueLoader) Get(key string) (any, error) {
 	if found {
 		return value, nil
 	}
-	return nil, nil
+	return nil, nil //nolint:nilnil // Not an error, value doesn't exist
 }
 
 // GetConfigKeys returns all the configuration keys found in the environment variables.

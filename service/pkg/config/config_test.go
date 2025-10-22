@@ -10,6 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	configKey = "test"
+)
+
 // Manual mock implementation of Loader
 type MockLoader struct {
 	loadFn          func(Config) error
@@ -229,9 +233,9 @@ func TestConfig_OnChange(t *testing.T) {
 
 func TestLoadConfig_NoFileExistsInEnv(t *testing.T) {
 	ctx := t.Context()
-	envLoader, err := NewEnvironmentValueLoader("test", nil)
+	envLoader, err := NewEnvironmentValueLoader(configKey, nil)
 	require.NoError(t, err)
-	configFileLoader, err := NewConfigFileLoader("test", "non-existent-file")
+	configFileLoader, err := NewConfigFileLoader(configKey, "non-existent-file")
 	require.NoError(t, err)
 	_, err = Load(
 		ctx,
@@ -275,9 +279,9 @@ server:
 
 	// Call LoadConfig with the temp file
 	ctx := t.Context()
-	envLoader, err := NewEnvironmentValueLoader("test", nil)
+	envLoader, err := NewEnvironmentValueLoader(configKey, nil)
 	require.NoError(t, err)
-	configFileLoader, err := NewConfigFileLoader("test", tempFile.Name())
+	configFileLoader, err := NewConfigFileLoader(configKey, tempFile.Name())
 	require.NoError(t, err)
 	config, err := Load(
 		ctx,
@@ -346,7 +350,7 @@ func TestLoad_Precedence(t *testing.T) {
 		{
 			name: "file overrides defaults",
 			setupLoaders: func(t *testing.T, configFile string) []Loader {
-				file, err := NewConfigFileLoader("test", configFile)
+				file, err := NewConfigFileLoader(configKey, configFile)
 				require.NoError(t, err)
 				defaults, err := NewDefaultSettingsLoader()
 				require.NoError(t, err)
@@ -370,7 +374,7 @@ logger:
 		{
 			name: "file with extras and defaults",
 			setupLoaders: func(t *testing.T, configFile string) []Loader {
-				file, err := NewConfigFileLoader("test", configFile)
+				file, err := NewConfigFileLoader(configKey, configFile)
 				require.NoError(t, err)
 				defaults, err := NewDefaultSettingsLoader()
 				require.NoError(t, err)
@@ -399,10 +403,10 @@ special_key:
 		{
 			name: "env overrides file and defaults except client_id",
 			setupLoaders: func(t *testing.T, configFile string) []Loader {
-				envLoader, err := NewEnvironmentValueLoader("TEST", nil)
+				envLoader, err := NewEnvironmentValueLoader(configKey, nil)
 				require.NoError(t, err)
 
-				file, err := NewConfigFileLoader("test", configFile)
+				file, err := NewConfigFileLoader(configKey, configFile)
 				require.NoError(t, err)
 				defaults, err := NewDefaultSettingsLoader()
 				require.NoError(t, err)
@@ -450,7 +454,7 @@ sdk_config:
 		{
 			name: "env from legacy overrides file and defaults",
 			setupLoaders: func(t *testing.T, configFile string) []Loader {
-				legacyLoader, err := NewLegacyLoader("test", configFile)
+				legacyLoader, err := NewLegacyLoader(configKey, configFile)
 				require.NoError(t, err)
 				defaults, err := NewDefaultSettingsLoader()
 				require.NoError(t, err)
@@ -497,10 +501,10 @@ sdk_config:
 		{
 			name: "env does not override undefined snake-case YAML keys",
 			setupLoaders: func(t *testing.T, configFile string) []Loader {
-				envLoader, err := NewEnvironmentValueLoader("TEST", nil)
+				envLoader, err := NewEnvironmentValueLoader(configKey, nil)
 				require.NoError(t, err)
 
-				file, err := NewConfigFileLoader("test", configFile)
+				file, err := NewConfigFileLoader(configKey, configFile)
 				require.NoError(t, err)
 				defaults, err := NewDefaultSettingsLoader()
 				require.NoError(t, err)
@@ -528,7 +532,7 @@ db:
 		{
 			name: "env from legacy does not override undefined snake-case YAML keys",
 			setupLoaders: func(t *testing.T, configFile string) []Loader {
-				legacyLoader, err := NewLegacyLoader("test", configFile)
+				legacyLoader, err := NewLegacyLoader(configKey, configFile)
 				require.NoError(t, err)
 				defaults, err := NewDefaultSettingsLoader()
 				require.NoError(t, err)
@@ -561,10 +565,10 @@ db:
 			setupLoaders: func(t *testing.T, configFile string) []Loader {
 				// Allow list only contains server.port
 				allowList := []string{"server.port"}
-				envLoader, err := NewEnvironmentValueLoader("TEST", allowList)
+				envLoader, err := NewEnvironmentValueLoader(configKey, allowList)
 				require.NoError(t, err)
 
-				file, err := NewConfigFileLoader("test", configFile)
+				file, err := NewConfigFileLoader(configKey, configFile)
 				require.NoError(t, err)
 				return []Loader{envLoader, file}
 			},
@@ -586,10 +590,10 @@ server:
 			setupLoaders: func(t *testing.T, configFile string) []Loader {
 				// Allow list does NOT contain server.port
 				allowList := []string{"logger.level"}
-				envLoader, err := NewEnvironmentValueLoader("TEST", allowList)
+				envLoader, err := NewEnvironmentValueLoader(configKey, allowList)
 				require.NoError(t, err)
 
-				file, err := NewConfigFileLoader("test", configFile)
+				file, err := NewConfigFileLoader(configKey, configFile)
 				require.NoError(t, err)
 				defaults, err := NewDefaultSettingsLoader()
 				require.NoError(t, err)

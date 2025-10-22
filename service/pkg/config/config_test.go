@@ -525,8 +525,8 @@ db:
 `,
 			asserts: func(t *testing.T, cfg *Config) {
 				// Same as the LegacyLoader below
-				assert.Equal(t, "", cfg.SDKConfig.ClientID)
-				assert.Equal(t, "", cfg.SDKConfig.ClientSecret)
+				assert.Empty(t, cfg.SDKConfig.ClientID)
+				assert.Empty(t, cfg.SDKConfig.ClientSecret)
 			},
 		},
 		{
@@ -553,8 +553,8 @@ db:
 `,
 			asserts: func(t *testing.T, cfg *Config) {
 				// Same as the EnvironmentValueLoader above
-				assert.Equal(t, "", cfg.SDKConfig.ClientID)
-				assert.Equal(t, "", cfg.SDKConfig.ClientSecret)
+				assert.Empty(t, cfg.SDKConfig.ClientID)
+				assert.Empty(t, cfg.SDKConfig.ClientSecret)
 			},
 		},
 		{

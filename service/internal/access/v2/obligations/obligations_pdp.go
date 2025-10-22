@@ -182,7 +182,7 @@ func (p *ObligationsPolicyDecisionPoint) rollupResourceObligationDecisions(
 	var unfulfilled []string
 	results := make([]PerResourceDecision, len(perResourceTriggeredObligationValueFQNs))
 	for i, resourceTriggeredObligations := range perResourceTriggeredObligationValueFQNs {
-		allSatisfied := true
+		resourceSatisfied := true
 		for _, triggered := range resourceTriggeredObligations {
 			triggered = strings.ToLower(triggered)
 			if _, ok := fulfillable[triggered]; !ok {
@@ -190,11 +190,11 @@ func (p *ObligationsPolicyDecisionPoint) rollupResourceObligationDecisions(
 					unfulfilledSeen[triggered] = struct{}{}
 					unfulfilled = append(unfulfilled, triggered)
 				}
-				allSatisfied = false
+				resourceSatisfied = false
 			}
 		}
 		results[i] = PerResourceDecision{
-			ObligationsSatisfied:        allSatisfied,
+			ObligationsSatisfied:        resourceSatisfied,
 			RequiredObligationValueFQNs: resourceTriggeredObligations,
 		}
 	}

@@ -178,7 +178,7 @@ func (p *JustInTimePDP) GetDecision(
 		if decision.Access {
 			// Access should only be granted if entitled AND obligations fulfilled
 			decision.Access = obligationDecision.AllObligationsSatisfied
-			
+
 			for idx, perResource := range obligationDecision.RequiredObligationValueFQNsPerResource {
 				resourceDecision := decision.Results[idx]
 				resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
@@ -223,7 +223,7 @@ func (p *JustInTimePDP) GetDecision(
 		allPermitted = obligationDecision.AllObligationsSatisfied
 
 		// Propagate required obligations within policy on each resource decision object
-		for idx, decision := range entityDecisions {
+		for entityIdx, decision := range entityDecisions {
 			for idx, perResource := range obligationDecision.RequiredObligationValueFQNsPerResource {
 				resourceDecision := decision.Results[idx]
 				resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
@@ -231,13 +231,15 @@ func (p *JustInTimePDP) GetDecision(
 				resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
 				decision.Results[idx] = resourceDecision
 			}
-			entityRep := entityRepresentations[idx]
-			p.auditDecision(ctx, entityRep.GetOriginalId(), action, decision, entityEntitlements[idx], fulfillableObligationValueFQNs, obligationDecision)
+			entityRepID := entityRepresentations[entityIdx].GetOriginalId()
+			p.auditDecision(ctx, entityRepID, action, decision, entityEntitlements[entityIdx], fulfillableObligationValueFQNs, obligationDecision)
 		}
-	} else {
-		for idx, entityRep := range entityRepresentations {
-			p.auditDecision(ctx, entityRep.GetOriginalId(), action, entityDecisions[idx], entityEntitlements[idx], fulfillableObligationValueFQNs, obligationDecision)
-		}
+		return entityDecisions, allPermitted, nil
+	}
+
+	// Not entitled, so just log decisions to audit without setting obligations to the result
+	for entityIdx, entityRep := range entityRepresentations {
+		p.auditDecision(ctx, entityRep.GetOriginalId(), action, entityDecisions[entityIdx], entityEntitlements[entityIdx], fulfillableObligationValueFQNs, obligationDecision)
 	}
 
 	return entityDecisions, allPermitted, nil

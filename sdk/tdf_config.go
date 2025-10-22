@@ -476,6 +476,7 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
 		maxManifestSize:              defaultMaxManifestSize,
+		assertionVerificationMode:    FailFast, // Default to FailFast mode (most secure, recommended for production)
 		assertionRegistry:            newAssertionRegistry(),
 	}
 

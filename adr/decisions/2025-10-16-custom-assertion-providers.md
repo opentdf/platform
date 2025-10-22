@@ -208,11 +208,19 @@ if manifest.RootSignature.Signature != verifiedSig {
 
 The SDK supports three verification modes for different security/compatibility trade-offs:
 
-| Mode                   | Unknown Assertions | Missing Keys | Missing Binding | Verification Failure |
-|------------------------|--------------------|--------------|-----------------|----------------------|
-| **PermissiveMode**     | Skip + warn        | Skip + warn  | **FAIL**        | Log + continue       |
-| **FailFast (default)** | Skip + warn        | **FAIL**     | **FAIL**        | **FAIL**             |
-| **StrictMode**         | **FAIL**           | **FAIL**     | **FAIL**        | **FAIL**             |
+| Mode                   | Unknown Assertions | Missing Keys | Missing Binding | Verification Failure | DEK Fallback |
+|------------------------|--------------------|--------------|-----------------|----------------------|--------------|
+| **PermissiveMode**     | Skip + warn        | Skip + warn  | **FAIL**        | Log + continue       | Attempted    |
+| **FailFast (default)** | Skip + warn        | **FAIL**     | **FAIL**        | **FAIL**             | Attempted    |
+| **StrictMode**         | **FAIL**           | **FAIL**     | **FAIL**        | **FAIL**             | Attempted    |
+
+**DEK Fallback Logic**: When no schema-specific validator exists and no explicit verification keys provided:
+1. Attempt verification with DEK (payload key)
+2. If JWT verification fails (wrong key) → Treat as unknown assertion (skip per mode)
+3. If JWT succeeds but hash/binding fails → **FAIL** (tampering detected)
+4. If verification succeeds → Assertion validated with DEK
+
+This enables forward compatibility (new assertion types are skipped) while detecting tampering (DEK-signed assertions are validated).
 
 **Recommendation**: Use `FailFast` for production (default), `PermissiveMode` only for development/testing, `StrictMode` for high-security environments.
 
@@ -226,10 +234,11 @@ Auto-detection of format version enables interoperability.
 
 ### Security Considerations
 
-1. **Mandatory Bindings**: All assertions MUST have cryptographic bindings
+1. **Mandatory Bindings**: All assertions MUST have cryptographic bindings - unsigned assertions are rejected immediately
 2. **Key Management**: Private keys should remain in HSM/PIV/CAC and never be exposed
 3. **Fail-Secure Validation**: Validators fail securely when keys are missing (not silently skip)
 4. **Binding Integrity**: Root signature binding prevents assertion tampering and cross-TDF reuse
+5. **DEK Fallback Validation**: Assertions without schema-specific validators attempt DEK verification as fallback, enabling tampering detection while maintaining forward compatibility
 
 ### Implementation Requirements
 

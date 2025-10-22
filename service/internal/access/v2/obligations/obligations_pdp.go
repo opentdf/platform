@@ -210,7 +210,7 @@ func (p *ObligationsPolicyDecisionPoint) rollupResourceObligationDecisions(
 
 	log.DebugContext(
 		ctx,
-		"all triggered obligations reported as fulfillable",
+		"any triggered obligations reported as fulfillable",
 	)
 
 	return results, true
@@ -333,7 +333,7 @@ func (p *ObligationsPolicyDecisionPoint) getTriggeredObligations(
 
 	log.DebugContext(
 		ctx,
-		"found required obligations",
+		"checked required obligations",
 		slog.Any("deduplicated_request_obligations_across_all_resources", allRequiredOblValueFQNs),
 	)
 	log.TraceContext(

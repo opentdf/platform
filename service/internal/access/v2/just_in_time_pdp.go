@@ -174,20 +174,29 @@ func (p *JustInTimePDP) GetDecision(
 			return nil, false, fmt.Errorf("decision is nil for registered resource value FQN [%s]", regResValueFQN)
 		}
 
-		// Obligations are only populated on the returned results if entitled
-		if decision.Access {
+		// Update resource decisions with obligations and set final access decision
+		hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
+		if decision.Access && hasRequiredObligations {
 			// Access should only be granted if entitled AND obligations fulfilled
 			decision.Access = obligationDecision.AllObligationsSatisfied
+		}
 
-			for idx, perResource := range obligationDecision.RequiredObligationValueFQNsPerResource {
-				resourceDecision := decision.Results[idx]
+		// Propagate obligations within policy on each resource decision object
+		for idx := range decision.Results {
+			resourceDecision := decision.Results[idx]
 
+			if hasRequiredObligations {
+				// Update with specific obligation data from the obligations PDP
+				perResource := obligationDecision.RequiredObligationValueFQNsPerResource[idx]
 				resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
 				resourceDecision.RequiredObligationValueFQNs = perResource.RequiredObligationValueFQNs
-				resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
-
-				decision.Results[idx] = resourceDecision
+			} else {
+				// No required obligations means all obligations are satisfied
+				resourceDecision.ObligationsSatisfied = true
 			}
+
+			resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
+			decision.Results[idx] = resourceDecision
 		}
 
 		p.auditDecision(ctx, regResValueFQN, action, decision, entitlements, fulfillableObligationValueFQNs, obligationDecision)
@@ -219,32 +228,35 @@ func (p *JustInTimePDP) GetDecision(
 		entityEntitlements[idx] = entitlements
 	}
 
-	// Return obligations if entitled, whether or not they were fulfilled
-	if allPermitted {
-		// But only grant access if entitled AND obligations fulfilled
+	// Update resource decisions with obligations and set final access decision
+	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
+	if allPermitted && hasRequiredObligations {
+		// Only grant access if entitled AND obligations fulfilled
 		allPermitted = obligationDecision.AllObligationsSatisfied
-
-		// Propagate required obligations within policy on each resource decision object
-		for entityIdx, decision := range entityDecisions {
-			for idx, perResource := range obligationDecision.RequiredObligationValueFQNsPerResource {
-				resourceDecision := decision.Results[idx]
-
-				resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
-				resourceDecision.RequiredObligationValueFQNs = perResource.RequiredObligationValueFQNs
-				resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
-
-				decision.Results[idx] = resourceDecision
-			}
-			decision.Access = allPermitted
-			entityRepID := entityRepresentations[entityIdx].GetOriginalId()
-			p.auditDecision(ctx, entityRepID, action, decision, entityEntitlements[entityIdx], fulfillableObligationValueFQNs, obligationDecision)
-		}
-		return entityDecisions, allPermitted, nil
 	}
 
-	// Not entitled, so just log decisions to audit without setting obligations to the result
-	for entityIdx, entityRep := range entityRepresentations {
-		p.auditDecision(ctx, entityRep.GetOriginalId(), action, entityDecisions[entityIdx], entityEntitlements[entityIdx], fulfillableObligationValueFQNs, obligationDecision)
+	// Propagate obligations within policy on each resource decision object
+	for entityIdx, decision := range entityDecisions {
+		for idx := range decision.Results {
+			resourceDecision := decision.Results[idx]
+
+			if hasRequiredObligations {
+				// Update with specific obligation data from the obligations PDP
+				perResource := obligationDecision.RequiredObligationValueFQNsPerResource[idx]
+				resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
+				resourceDecision.RequiredObligationValueFQNs = perResource.RequiredObligationValueFQNs
+			} else {
+				// No required obligations means all obligations are satisfied
+				resourceDecision.ObligationsSatisfied = true
+			}
+
+			resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
+			decision.Results[idx] = resourceDecision
+		}
+
+		decision.Access = allPermitted
+		entityRepID := entityRepresentations[entityIdx].GetOriginalId()
+		p.auditDecision(ctx, entityRepID, action, decision, entityEntitlements[entityIdx], fulfillableObligationValueFQNs, obligationDecision)
 	}
 
 	return entityDecisions, allPermitted, nil

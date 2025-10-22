@@ -645,6 +645,12 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 		return nil, err
 	}
 
+	returnedOblVal := trigger.GetObligationValue()
+	if returnedOblVal != nil {
+		returnedOblVal.Fqn = returnedOblVal.GetFqn()
+		trigger.ObligationValue = returnedOblVal
+	}
+
 	trigger.Metadata = metadata
 
 	return trigger, nil
@@ -694,6 +700,9 @@ func (c PolicyDBClient) ListObligationTriggers(ctx context.Context, r *obligatio
 			return nil, nil, err
 		}
 
+		returnedOblVal := obligationTrigger.GetObligationValue()
+		returnedOblVal.Fqn = identifier.BuildOblValFQN(returnedOblVal.GetObligation().GetNamespace().GetFqn(), returnedOblVal.GetObligation().GetName(), returnedOblVal.GetValue())
+		obligationTrigger.ObligationValue = returnedOblVal
 		obligationTrigger.Metadata = metadata
 		result = append(result, obligationTrigger)
 	}

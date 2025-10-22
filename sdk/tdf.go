@@ -1535,9 +1535,9 @@ func createKaoTemplateFromKasInfo(kasInfoArr []KASInfo) []kaoTpl {
 func getKasErrorToReturn(err error, defaultError error) error {
 	errToReturn := defaultError
 	if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
-		errToReturn = errors.Join(ErrRewrapBadRequest, errToReturn)
+		errToReturn = fmt.Errorf("%w: %w", ErrRewrapBadRequest, errToReturn)
 	} else if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
-		errToReturn = errors.Join(ErrRewrapForbidden, errToReturn)
+		errToReturn = fmt.Errorf("%w: %w", ErrRewrapForbidden, errToReturn)
 	}
 
 	return errToReturn

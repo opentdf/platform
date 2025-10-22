@@ -397,12 +397,14 @@ special_key:
 			},
 		},
 		{
-			name: "mocked env overrides file and defaults",
+			name: "env overrides file and defaults except client_id",
 			envVars: map[string]string{
-				"TEST_SERVER_PORT":      "9999",
-				"TEST_LOGGER_LEVEL":     "debug",
-				"TEST_DB_HOST":          "env.host",
-				"TEST_SERVICES_FOO_BAR": "baz",
+				"TEST_SERVER_PORT":              "9999",
+				"TEST_LOGGER_LEVEL":             "debug",
+				"TEST_DB_HOST":                  "env.host",
+				"TEST_SDK_CONFIG_CLIENT_ID":     "client-from-env",
+				"TEST_SDK_CONFIG_CLIENT_SECRET": "secret-from-env",
+				"TEST_SERVICES_FOO_BAR":         "baz",
 			},
 			setupLoaders: func(t *testing.T, configFile string) []Loader {
 				// Use a mock for env to test the Reload precedence logic
@@ -423,19 +425,75 @@ logger:
   level: warn
 db:
   host: file.host
+sdk_config:
+  client_id: client-from-file
+  client_secret: secret-from-file
 `,
 			asserts: func(t *testing.T, cfg *Config) {
-				// Values from mocked env
+				// Values from env
 				assert.Equal(t, 9999, cfg.Server.Port)
 				assert.Equal(t, "debug", cfg.Logger.Level)
 				assert.Equal(t, "env.host", cfg.DB.Host)
 
+				// Different from the LegacyLoader below
+				assert.Equal(t, "client-from-file", cfg.SDKConfig.ClientID)
+				assert.Equal(t, "secret-from-file", cfg.SDKConfig.ClientSecret)
+
 				// Value from defaults (not overridden by file or env)
 				assert.Equal(t, []string{"all"}, cfg.Mode)
 
-				// Value from service map in mocked env
+				// Value placed into service map in env
+				// Different from the LegacyLoader below
 				require.Contains(t, cfg.Services, "foo")
 				assert.Equal(t, "baz", cfg.Services["foo"]["bar"])
+			},
+		},
+		{
+			name: "env from legacy overrides file and defaults",
+			envVars: map[string]string{
+				"TEST_SERVER_PORT":              "9999",
+				"TEST_LOGGER_LEVEL":             "debug",
+				"TEST_DB_HOST":                  "env.host",
+				"TEST_SDK_CONFIG_CLIENT_ID":     "client-from-env",
+				"TEST_SDK_CONFIG_CLIENT_SECRET": "secret-from-env",
+				"TEST_SERVICES_FOO_BAR":         "baz",
+			},
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				// Use a mock for env to test the Reload precedence logic
+				legacyLoader, err := NewLegacyLoader("test", configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				// Order: env > file > defaults
+				return []Loader{legacyLoader, defaults}
+			},
+			fileContent: `
+server:
+  port: 9090
+logger:
+  level: warn
+db:
+  host: file.host
+sdk_config:
+  client_id: client-from-file
+  client_secret: secret-from-file
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				// Values from env
+				assert.Equal(t, 9999, cfg.Server.Port)
+				assert.Equal(t, "debug", cfg.Logger.Level)
+				assert.Equal(t, "env.host", cfg.DB.Host)
+
+				// Different from the EnvironmentValueLoader above
+				assert.Equal(t, "client-from-env", cfg.SDKConfig.ClientID)
+				assert.Equal(t, "secret-from-env", cfg.SDKConfig.ClientSecret)
+
+				// Value from defaults (not overridden by file or env)
+				assert.Equal(t, []string{"all"}, cfg.Mode)
+
+				// Value not placed service map in env
+				// Different from the EnvironmentValueLoader above
+				require.NotContains(t, cfg.Services, "foo")
 			},
 		}, {
 			name: "env with allow list allows key",

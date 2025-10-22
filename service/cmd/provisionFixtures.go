@@ -38,11 +38,7 @@ You can clear/recycle your database with 'docker compose down' and 'docker compo
 		Run: func(cmd *cobra.Command, _ []string) {
 			configFile, _ := cmd.Flags().GetString(configFileFlag)
 			configKey, _ := cmd.Flags().GetString(configKeyFlag)
-			envLoader, err := config.NewEnvironmentValueLoader(configKey, nil)
-			if err != nil {
-				panic(fmt.Errorf("could not load config: %w", err))
-			}
-			configFileLoader, err := config.NewConfigFileLoader(configKey, configFile)
+			legacyLoader, err := config.NewLegacyLoader(configKey, configFile)
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
@@ -52,8 +48,7 @@ You can clear/recycle your database with 'docker compose down' and 'docker compo
 			}
 			cfg, err := config.Load(
 				cmd.Context(),
-				envLoader,
-				configFileLoader,
+				legacyLoader,
 				defaultSettingsLoader,
 			)
 			if err != nil {

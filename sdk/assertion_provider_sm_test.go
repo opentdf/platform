@@ -64,16 +64,15 @@ func TestSystemMetadataAssertionProvider_Bind_SchemaSelection(t *testing.T) {
 	t.Parallel()
 
 	payloadKey := []byte("test-payload-key-32-bytes-long!")
-	aggregateHash := "test-aggregate-hash"
 
 	// Test both legacy and modern TDF formats - both should use current schema
 	testCases := []struct {
 		name           string
-		useHex         bool
+		tdfVersion     string // Set TDFVersion to control useHex behavior
 		expectedSchema string
 	}{
-		{"modern TDF (useHex=false) uses current schema", false, SystemMetadataSchemaV1},
-		{"legacy TDF (useHex=true) uses current schema", true, SystemMetadataSchemaV1},
+		{"modern TDF (useHex=false) uses current schema", "4.3.0", SystemMetadataSchemaV1},
+		{"legacy TDF (useHex=true) uses current schema", "", SystemMetadataSchemaV1},
 	}
 
 	for _, tc := range testCases {
@@ -81,15 +80,19 @@ func TestSystemMetadataAssertionProvider_Bind_SchemaSelection(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			provider := NewSystemMetadataAssertionProvider(tc.useHex, payloadKey, aggregateHash)
+			provider := NewSystemMetadataAssertionProvider(payloadKey)
 
 			// Create a minimal manifest with nested structure
 			manifest := Manifest{
+				TDFVersion: tc.tdfVersion,
 				EncryptionInformation: EncryptionInformation{
 					IntegrityInformation: IntegrityInformation{
 						RootSignature: RootSignature{
 							Signature: "test-root-signature",
 							Algorithm: "HS256",
+						},
+						Segments: []Segment{
+							{Hash: "segment1hash"},
 						},
 					},
 				},
@@ -124,9 +127,8 @@ func TestSystemMetadataAssertionProvider_MissingBinding_AllModes(t *testing.T) {
 			t.Parallel()
 
 			payloadKey := []byte("test-payload-key-32-bytes-long!")
-			aggregateHash := "test-aggregate-hash"
 
-			provider := NewSystemMetadataAssertionProvider(false, payloadKey, aggregateHash)
+			provider := NewSystemMetadataAssertionProvider(payloadKey)
 			provider.SetVerificationMode(mode)
 
 			// Create a test assertion WITHOUT a binding (security violation)
@@ -175,10 +177,9 @@ func TestSystemMetadataAssertionProvider_DefaultMode(t *testing.T) {
 	t.Parallel()
 
 	payloadKey := []byte("test-payload-key-32-bytes-long!")
-	aggregateHash := "test-aggregate-hash"
 
 	// Create provider without explicitly setting mode
-	provider := NewSystemMetadataAssertionProvider(false, payloadKey, aggregateHash)
+	provider := NewSystemMetadataAssertionProvider(payloadKey)
 
 	// Verify the default mode is FailFast
 	assert.Equal(t, FailFast, provider.verificationMode,
@@ -191,9 +192,8 @@ func TestSystemMetadataAssertionProvider_SetVerificationMode(t *testing.T) {
 	t.Parallel()
 
 	payloadKey := []byte("test-payload-key-32-bytes-long!")
-	aggregateHash := "test-aggregate-hash"
 
-	provider := NewSystemMetadataAssertionProvider(false, payloadKey, aggregateHash)
+	provider := NewSystemMetadataAssertionProvider(payloadKey)
 
 	// Test each mode
 	modes := []AssertionVerificationMode{PermissiveMode, FailFast, StrictMode}
@@ -211,10 +211,9 @@ func TestSystemMetadataAssertionProvider_TamperedStatement(t *testing.T) {
 	t.Parallel()
 
 	payloadKey := []byte("test-payload-key-32-bytes-long!")
-	aggregateHash := "test-aggregate-hash"
 
 	// Use modern TDF format (useHex=false) which uses V2 schema
-	provider := NewSystemMetadataAssertionProvider(false, payloadKey, aggregateHash)
+	provider := NewSystemMetadataAssertionProvider(payloadKey)
 	provider.SetVerificationMode(FailFast)
 
 	// Create a minimal manifest with nested structure
@@ -257,10 +256,9 @@ func TestSystemMetadataAssertionProvider_TamperedStatement_Legacy(t *testing.T) 
 	t.Parallel()
 
 	payloadKey := []byte("test-payload-key-32-bytes-long!")
-	aggregateHash := "test-aggregate-hash"
 
 	// Use legacy TDF format (useHex=true)
-	provider := NewSystemMetadataAssertionProvider(true, payloadKey, aggregateHash)
+	provider := NewSystemMetadataAssertionProvider(payloadKey)
 	provider.SetVerificationMode(FailFast)
 
 	// Create a minimal manifest with nested structure

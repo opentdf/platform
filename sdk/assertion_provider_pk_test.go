@@ -295,8 +295,7 @@ func TestKeyAssertionBinder_CreatesValidAssertion(t *testing.T) {
 	// Public key is now stored in JWS headers, not in statement value
 	// Statement value can be empty or contain custom data
 	// Key-based assertions use standard format with aggregation hash computed from manifest
-	useHex := false
-	binder := NewKeyAssertionBinder(assertionKey, publicKey, "", useHex)
+	binder := NewKeyAssertionBinder(assertionKey, publicKey, "")
 
 	// Create a minimal manifest
 	manifest := Manifest{

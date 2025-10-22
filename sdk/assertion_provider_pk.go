@@ -22,7 +22,6 @@ type KeyAssertionBinder struct {
 	privateKey     AssertionKey
 	publicKey      AssertionKey
 	statementValue string
-	useHex         bool
 }
 
 type KeyAssertionValidator struct {
@@ -34,13 +33,12 @@ type KeyAssertionValidator struct {
 // The publicKey will be included in the JWS protected headers as a jwk claim.
 // statementValue is optional and can be empty string - the public key is stored in JWS headers, not the statement.
 // Key-based assertions use standard format: base64(aggregationHash + assertionHash).
-// useHex determines whether to use hex encoding (TDF 4.2.2) or raw bytes (TDF 4.3.0+) for hash computation.
-func NewKeyAssertionBinder(privateKey AssertionKey, publicKey AssertionKey, statementValue string, useHex bool) *KeyAssertionBinder {
+// The encoding format (hex vs raw bytes) is automatically determined from the manifest during binding.
+func NewKeyAssertionBinder(privateKey AssertionKey, publicKey AssertionKey, statementValue string) *KeyAssertionBinder {
 	return &KeyAssertionBinder{
 		privateKey:     privateKey,
 		publicKey:      publicKey,
 		statementValue: statementValue,
-		useHex:         useHex,
 	}
 }
 
@@ -110,8 +108,11 @@ func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, erro
 		return assertion, fmt.Errorf("failed to compute aggregate hash: %w", err)
 	}
 
+	// Determine encoding format from manifest
+	useHex := ShouldUseHexEncoding(m)
+
 	// Compute assertion signature using standard format
-	assertionSignature, err := ComputeAssertionSignature(string(aggregateHashBytes), assertionHash, p.useHex)
+	assertionSignature, err := ComputeAssertionSignature(string(aggregateHashBytes), assertionHash, useHex)
 	if err != nil {
 		return assertion, fmt.Errorf("failed to compute assertion signature: %w", err)
 	}
@@ -186,11 +187,27 @@ func (p KeyAssertionValidator) Verify(_ context.Context, a Assertion, r Reader) 
 
 	// Verify binding format: assertionSig = base64(aggregateHash + assertionHash)
 	// This is the standard format for all assertions across all SDKs (Java/JS/Go)
-	// We cannot verify the binding to the manifest root signature here
-	// because the signature is based on aggregateHash which we don't have access to
-	// The JWT signature itself is verified, so the assertion content is authenticated
-	_ = manifestSignature // Not used - signature verification is done via JWT
-	_ = verifiedManifestSignature
+
+	// Compute aggregate hash from manifest segments
+	aggregateHashBytes, err := ComputeAggregateHash(r.Manifest().EncryptionInformation.IntegrityInformation.Segments)
+	if err != nil {
+		return fmt.Errorf("%w: failed to compute aggregate hash: %w", ErrAssertionFailure{ID: a.ID}, err)
+	}
+
+	// Determine useHex from TDF version (legacy TDFs have no version field)
+	useHex := ShouldUseHexEncoding(r.Manifest())
+
+	// Compute expected signature using standard format
+	expectedSig, err := ComputeAssertionSignature(string(aggregateHashBytes), assertionHash, useHex)
+	if err != nil {
+		return fmt.Errorf("%w: failed to compute assertion signature: %w", ErrAssertionFailure{ID: a.ID}, err)
+	}
+
+	if verifiedManifestSignature != expectedSig {
+		return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: a.ID})
+	}
+
+	_ = manifestSignature // Not used in this validator (signature verification done via JWT and ComputeAssertionSignature)
 	return nil
 }
 

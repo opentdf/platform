@@ -570,7 +570,6 @@ func (s *ObligationTriggersSuite) validateTrigger(actual *policy.ObligationTrigg
 
 	// Validate attribute value
 	s.Require().Equal(expectedAttributeValue.GetId(), actual.GetAttributeValue().GetId())
-	s.Require().NotEmpty(expectedAttributeValue.GetFqn())
 	s.Require().Equal(expectedAttributeValue.GetFqn(), actual.GetAttributeValue().GetFqn())
 	s.Require().Equal(expectedAttributeValue.GetValue(), actual.GetAttributeValue().GetValue())
 
@@ -580,6 +579,8 @@ func (s *ObligationTriggersSuite) validateTrigger(actual *policy.ObligationTrigg
 	s.Require().Equal(expectedObligationValue.GetObligation().GetId(), actual.GetObligationValue().GetObligation().GetId())
 	s.Require().Equal(expectedObligationValue.GetObligation().GetName(), actual.GetObligationValue().GetObligation().GetName())
 	s.Require().Equal(expectedObligationValue.GetObligation().GetNamespace().GetFqn(), actual.GetObligationValue().GetObligation().GetNamespace().GetFqn())
+	s.Require().NotEmpty(expectedObligationValue.GetFqn())
+	s.Require().Equal(expectedObligationValue.GetFqn(), actual.GetObligationValue().GetFqn())
 	s.Require().Empty(actual.GetObligationValue().GetTriggers())
 
 	// Validate action

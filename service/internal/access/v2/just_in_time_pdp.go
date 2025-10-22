@@ -181,24 +181,7 @@ func (p *JustInTimePDP) GetDecision(
 			decision.Access = obligationDecision.AllObligationsSatisfied
 		}
 
-		// Propagate obligations within policy on each resource decision object
-		for idx := range decision.Results {
-			resourceDecision := decision.Results[idx]
-
-			if hasRequiredObligations {
-				// Update with specific obligation data from the obligations PDP
-				perResource := obligationDecision.RequiredObligationValueFQNsPerResource[idx]
-				resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
-				resourceDecision.RequiredObligationValueFQNs = perResource.RequiredObligationValueFQNs
-			} else {
-				// No required obligations means all obligations are satisfied
-				resourceDecision.ObligationsSatisfied = true
-			}
-
-			resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
-			decision.Results[idx] = resourceDecision
-		}
-
+		decision = setResourceDecisionsWithObligations(decision, obligationDecision)
 		p.auditDecision(ctx, regResValueFQN, action, decision, entitlements, fulfillableObligationValueFQNs, obligationDecision)
 		return []*Decision{decision}, decision.Access, nil
 
@@ -237,29 +220,40 @@ func (p *JustInTimePDP) GetDecision(
 
 	// Propagate obligations within policy on each resource decision object
 	for entityIdx, decision := range entityDecisions {
-		for idx := range decision.Results {
-			resourceDecision := decision.Results[idx]
-
-			if hasRequiredObligations {
-				// Update with specific obligation data from the obligations PDP
-				perResource := obligationDecision.RequiredObligationValueFQNsPerResource[idx]
-				resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
-				resourceDecision.RequiredObligationValueFQNs = perResource.RequiredObligationValueFQNs
-			} else {
-				// No required obligations means all obligations are satisfied
-				resourceDecision.ObligationsSatisfied = true
-			}
-
-			resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
-			decision.Results[idx] = resourceDecision
-		}
-
+		decision = setResourceDecisionsWithObligations(decision, obligationDecision)
 		decision.Access = allPermitted
 		entityRepID := entityRepresentations[entityIdx].GetOriginalId()
 		p.auditDecision(ctx, entityRepID, action, decision, entityEntitlements[entityIdx], fulfillableObligationValueFQNs, obligationDecision)
 	}
 
 	return entityDecisions, allPermitted, nil
+}
+
+// setResourceDecisionsWithObligations updates all resource decisions with obligation
+// information and sets each resource passed state
+func setResourceDecisionsWithObligations(
+	decision *Decision,
+	obligationDecision obligations.ObligationPolicyDecision,
+) *Decision {
+	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
+
+	for idx := range decision.Results {
+		resourceDecision := decision.Results[idx]
+
+		if hasRequiredObligations {
+			// Update with specific obligation data from the obligations PDP
+			perResource := obligationDecision.RequiredObligationValueFQNsPerResource[idx]
+			resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
+			resourceDecision.RequiredObligationValueFQNs = perResource.RequiredObligationValueFQNs
+		} else {
+			// No required obligations means all obligations are satisfied
+			resourceDecision.ObligationsSatisfied = true
+		}
+
+		resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
+		decision.Results[idx] = resourceDecision
+	}
+	return decision
 }
 
 // GetEntitlements retrieves the entitlements for the provided entity chain.

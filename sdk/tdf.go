@@ -1504,17 +1504,12 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		return errors.Join(v...)
 	}
 
-	aggregateHash := &bytes.Buffer{}
-	for _, segment := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
-		decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
-		if err != nil {
-			return fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
-		}
-
-		aggregateHash.Write(decodedHash)
+	aggregateHashBytes, err := ComputeAggregateHash(r.manifest.EncryptionInformation.IntegrityInformation.Segments)
+	if err != nil {
+		return fmt.Errorf("ComputeAggregateHash failed:%w", err)
 	}
 
-	res, err := validateRootSignature(r.manifest, aggregateHash.Bytes(), payloadKey[:])
+	res, err := validateRootSignature(r.manifest, aggregateHashBytes, payloadKey[:])
 	if err != nil {
 		return fmt.Errorf("%w: splitKey.validateRootSignature failed: %w", ErrRootSignatureFailure, err)
 	}
@@ -1559,7 +1554,7 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 	// When reading legacy TDFs, signatures are hex-encoded instead of raw bytes
 	// Legacy TDFs have no TDFVersion field in the manifest
 	useHex := r.manifest.TDFVersion == ""
-	systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(useHex, payloadKey[:], aggregateHash.String())
+	systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(useHex, payloadKey[:], string(aggregateHashBytes))
 	systemMetadataAssertionProvider.SetVerificationMode(r.config.assertionVerificationMode)
 	// if already registered, ignore
 	_ = r.config.assertionRegistry.RegisterValidator(systemMetadataAssertionProvider)
@@ -1570,7 +1565,7 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		Alg: AssertionKeyAlgHS256,
 		Key: payloadKey[:],
 	}
-	dekAssertionValidator := NewDEKAssertionValidator(dekKey, r.manifest.RootSignature.Signature, aggregateHash.String(), useHex)
+	dekAssertionValidator := NewDEKAssertionValidator(dekKey, string(aggregateHashBytes), useHex)
 	dekAssertionValidator.SetVerificationMode(r.config.assertionVerificationMode)
 
 	// Validate assertions based on configured verification mode

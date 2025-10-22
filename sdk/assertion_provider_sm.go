@@ -45,12 +45,12 @@ func (p *SystemMetadataAssertionProvider) SetVerificationMode(mode AssertionVeri
 }
 
 // Schema returns the schema URI this validator handles.
-// Always returns V1 for cross-SDK compatibility with Java and JS.
+// Returns the current schema for cross-SDK compatibility with Java and JS.
 func (p *SystemMetadataAssertionProvider) Schema() string {
 	return SystemMetadataSchemaV1
 }
 
-func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (Assertion, error) {
+func (p SystemMetadataAssertionProvider) Bind(_ context.Context, _ Manifest) (Assertion, error) {
 	// Get the assertion config
 	ac, err := GetSystemMetadataAssertionConfig()
 	if err != nil {
@@ -79,15 +79,20 @@ func (p SystemMetadataAssertionProvider) Bind(_ context.Context, m Manifest) (As
 		Key: p.payloadKey,
 	}
 
-	// aggregation hash replaced with manifest root signature
-	if err := assertion.Sign(string(hashOfAssertionAsHex), m.RootSignature.Signature, assertionSigningKey); err != nil {
+	// Compute assertion signature using standard format
+	assertionSignature, err := ComputeAssertionSignature(p.aggregateHash, hashOfAssertionAsHex, p.useHex)
+	if err != nil {
+		return assertion, fmt.Errorf("failed to compute assertion signature: %w", err)
+	}
+
+	if err := assertion.Sign(string(hashOfAssertionAsHex), assertionSignature, assertionSigningKey); err != nil {
 		return assertion, fmt.Errorf("failed to sign assertion: %w", err)
 	}
 	return assertion, nil
 }
 
-func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, r Reader) error {
-	// SECURITY: Validate schema is the supported V1 schema
+func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, _ Reader) error {
+	// SECURITY: Validate schema is the supported schema
 	// This prevents routing assertions with unknown schemas to this validator
 	// Defense in depth: checked here AND via hash verification later
 	isValidSchema := a.Statement.Schema == SystemMetadataSchemaV1 ||
@@ -104,7 +109,7 @@ func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion
 		Key: p.payloadKey,
 	}
 
-	return verifyDEKSignedAssertion(ctx, a, assertionKey, r.manifest.RootSignature.Signature, p.aggregateHash, p.useHex)
+	return verifyDEKSignedAssertion(ctx, a, assertionKey, p.aggregateHash, p.useHex)
 }
 
 // Validate does nothing.

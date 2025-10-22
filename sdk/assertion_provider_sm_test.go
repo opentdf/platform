@@ -8,7 +8,7 @@ import (
 )
 
 // TestSystemMetadataAssertion_SchemaVersionDetection verifies that the
-// validation correctly handles v1 schema and empty schema (legacy compatibility)
+// validation correctly handles the current schema and empty schema (legacy compatibility)
 func TestSystemMetadataAssertion_SchemaVersionDetection(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -17,10 +17,10 @@ func TestSystemMetadataAssertion_SchemaVersionDetection(t *testing.T) {
 		description string
 	}{
 		{
-			name:        "v1_schema_is_supported",
+			name:        "current_schema_is_supported",
 			schema:      SystemMetadataSchemaV1,
 			isSupported: true,
-			description: "V1 schema is the standard cross-SDK compatible schema",
+			description: "Current schema is the standard cross-SDK compatible schema",
 		},
 		{
 			name:        "empty_schema_is_legacy",
@@ -42,16 +42,16 @@ func TestSystemMetadataAssertion_SchemaVersionDetection(t *testing.T) {
 	}
 }
 
-// TestGetSystemMetadataAssertionConfig_DefaultsToV1 verifies that newly
-// created system metadata assertions use the v1 schema for cross-SDK compatibility
-func TestGetSystemMetadataAssertionConfig_DefaultsToV1(t *testing.T) {
+// TestGetSystemMetadataAssertionConfig_DefaultsToCurrentSchema verifies that newly
+// created system metadata assertions use the current schema for cross-SDK compatibility
+func TestGetSystemMetadataAssertionConfig_DefaultsToCurrentSchema(t *testing.T) {
 	config, err := GetSystemMetadataAssertionConfig()
 	require.NoError(t, err)
 
 	assert.Equal(t, SystemMetadataAssertionID, config.ID,
 		"Assertion ID should be 'system-metadata'")
 	assert.Equal(t, SystemMetadataSchemaV1, config.Statement.Schema,
-		"New assertions should use v1 schema for cross-SDK compatibility")
+		"New assertions should use current schema for cross-SDK compatibility")
 	// Verify statement format (string comparison, not JSON)
 	if config.Statement.Format != StatementFormatJSON {
 		t.Errorf("Expected format %q, got %q", StatementFormatJSON, config.Statement.Format)
@@ -59,21 +59,21 @@ func TestGetSystemMetadataAssertionConfig_DefaultsToV1(t *testing.T) {
 }
 
 // TestSystemMetadataAssertionProvider_Bind_SchemaSelection verifies that
-// the Bind() method creates assertions with V1 schema for cross-SDK compatibility
+// the Bind() method creates assertions with the current schema for cross-SDK compatibility
 func TestSystemMetadataAssertionProvider_Bind_SchemaSelection(t *testing.T) {
 	t.Parallel()
 
 	payloadKey := []byte("test-payload-key-32-bytes-long!")
 	aggregateHash := "test-aggregate-hash"
 
-	// Test both legacy and modern TDF formats - both should use V1 schema
+	// Test both legacy and modern TDF formats - both should use current schema
 	testCases := []struct {
 		name           string
 		useHex         bool
 		expectedSchema string
 	}{
-		{"modern TDF (useHex=false) uses V1", false, SystemMetadataSchemaV1},
-		{"legacy TDF (useHex=true) uses V1", true, SystemMetadataSchemaV1},
+		{"modern TDF (useHex=false) uses current schema", false, SystemMetadataSchemaV1},
+		{"legacy TDF (useHex=true) uses current schema", true, SystemMetadataSchemaV1},
 	}
 
 	for _, tc := range testCases {
@@ -103,40 +103,6 @@ func TestSystemMetadataAssertionProvider_Bind_SchemaSelection(t *testing.T) {
 				"Schema should match useHex setting")
 		})
 	}
-}
-
-// TestSystemMetadataAssertionProvider_Verify_DualMode tests that the
-// Verify() method can handle both v1 and v2 assertion formats
-func TestSystemMetadataAssertionProvider_Verify_DualMode(t *testing.T) {
-	// This test documents the dual-mode validation behavior
-	// A full integration test would require actual TDF fixtures from old SDK versions
-
-	t.Run("v2_schema_uses_root_signature", func(t *testing.T) {
-		// In v2 validation:
-		// - assertionSig (from JWT) is compared against manifest.RootSignature.Signature
-		// - This is simpler and directly reuses the already-signed root signature
-
-		t.Log("V2 validation: assertionSig == rootSignature")
-		t.Log("✓ Validates that assertion is bound to the exact root signature")
-	})
-
-	t.Run("v1_schema_uses_aggregate_hash", func(t *testing.T) {
-		// In v1 validation:
-		// - assertionSig (from JWT) is compared against base64(aggregateHash + assertionHash)
-		// - This was the original format used by old SDK versions
-
-		t.Log("V1 validation: assertionSig == base64(aggregateHash + assertionHash)")
-		t.Log("✓ Maintains backwards compatibility with TDFs created by old SDK")
-	})
-
-	t.Run("empty_schema_defaults_to_v1", func(t *testing.T) {
-		// When schema is empty (old TDFs didn't set this field):
-		// - Treated as v1 for backwards compatibility
-		// - Ensures old TDFs can still be read
-
-		t.Log("Empty schema defaults to v1 validation")
-		t.Log("✓ Ensures old TDFs without schema field can be validated")
-	})
 }
 
 // TestSystemMetadataAssertionProvider_MissingBinding_AllModes verifies that assertions
@@ -285,15 +251,15 @@ func TestSystemMetadataAssertionProvider_TamperedStatement(t *testing.T) {
 		"Error should indicate hash mismatch due to tampering")
 }
 
-// TestSystemMetadataAssertionProvider_TamperedStatement_LegacyV1 verifies that
-// tampering detection works for legacy V1 schema assertions as well.
-func TestSystemMetadataAssertionProvider_TamperedStatement_LegacyV1(t *testing.T) {
+// TestSystemMetadataAssertionProvider_TamperedStatement_Legacy verifies that
+// tampering detection works for legacy TDF format (useHex=true) assertions as well.
+func TestSystemMetadataAssertionProvider_TamperedStatement_Legacy(t *testing.T) {
 	t.Parallel()
 
 	payloadKey := []byte("test-payload-key-32-bytes-long!")
 	aggregateHash := "test-aggregate-hash"
 
-	// Use legacy TDF format (useHex=true) which uses V1 schema
+	// Use legacy TDF format (useHex=true)
 	provider := NewSystemMetadataAssertionProvider(true, payloadKey, aggregateHash)
 	provider.SetVerificationMode(FailFast)
 
@@ -313,9 +279,9 @@ func TestSystemMetadataAssertionProvider_TamperedStatement_LegacyV1(t *testing.T
 	originalAssertion, err := provider.Bind(t.Context(), manifest)
 	require.NoError(t, err, "Binding assertion should succeed")
 
-	// Verify it uses V1 schema
+	// Verify it uses the current schema
 	assert.Equal(t, SystemMetadataSchemaV1, originalAssertion.Statement.Schema,
-		"Legacy TDF should use V1 schema")
+		"Legacy TDF format should use current schema")
 
 	// Verify original assertion passes
 	reader := Reader{

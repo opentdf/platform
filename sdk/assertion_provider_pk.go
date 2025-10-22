@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jws"
 )
 
 const (
@@ -11,19 +14,15 @@ const (
 	KeyAssertionID = "assertion-key"
 
 	// KeyAssertionSchema is the schema URI for key-based assertions.
-	// v2 includes assertionSchema claim in JWT binding for security against schema substitution attacks.
+	// Includes assertionSchema claim in JWT binding for security against schema substitution attacks.
 	KeyAssertionSchema = "urn:opentdf:key:assertion:v1"
 )
-
-type PublicKeyStatement struct {
-	Algorithm string `json:"algorithm"`
-	Key       any    `json:"key"`
-}
 
 type KeyAssertionBinder struct {
 	privateKey     AssertionKey
 	publicKey      AssertionKey
 	statementValue string
+	useHex         bool
 }
 
 type KeyAssertionValidator struct {
@@ -31,11 +30,17 @@ type KeyAssertionValidator struct {
 	verificationMode AssertionVerificationMode
 }
 
-func NewKeyAssertionBinder(privateKey AssertionKey, publicKey AssertionKey, statementValue string) *KeyAssertionBinder {
+// NewKeyAssertionBinder creates a new key-based assertion binder.
+// The publicKey will be included in the JWS protected headers as a jwk claim.
+// statementValue is optional and can be empty string - the public key is stored in JWS headers, not the statement.
+// Key-based assertions use standard format: base64(aggregationHash + assertionHash).
+// useHex determines whether to use hex encoding (TDF 4.2.2) or raw bytes (TDF 4.3.0+) for hash computation.
+func NewKeyAssertionBinder(privateKey AssertionKey, publicKey AssertionKey, statementValue string, useHex bool) *KeyAssertionBinder {
 	return &KeyAssertionBinder{
 		privateKey:     privateKey,
 		publicKey:      publicKey,
 		statementValue: statementValue,
+		useHex:         useHex,
 	}
 }
 
@@ -79,8 +84,39 @@ func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, erro
 		return assertion, fmt.Errorf("failed to get hash of assertion: %w", err)
 	}
 
-	// aggregation hash replaced with manifest root signature
-	if err := assertion.Sign(string(assertionHash), m.RootSignature.Signature, p.privateKey); err != nil {
+	// Convert public key to JWK format for inclusion in JWS headers
+	publicKeyJWK, err := jwk.FromRaw(p.publicKey.Key)
+	if err != nil {
+		return assertion, fmt.Errorf("failed to convert public key to JWK: %w", err)
+	}
+
+	// Set the algorithm on the JWK
+	if err := publicKeyJWK.Set(jwk.AlgorithmKey, p.publicKey.Alg.String()); err != nil {
+		return assertion, fmt.Errorf("failed to set algorithm on JWK: %w", err)
+	}
+
+	// Create JWS protected headers with the public key
+	headers := jws.NewHeaders()
+	if err := headers.Set(jwk.KeyIDKey, p.publicKey.Alg.String()); err != nil {
+		return assertion, fmt.Errorf("failed to set key ID in headers: %w", err)
+	}
+	if err := headers.Set("jwk", publicKeyJWK); err != nil {
+		return assertion, fmt.Errorf("failed to set jwk in headers: %w", err)
+	}
+
+	// Compute aggregate hash from manifest segments
+	aggregateHashBytes, err := ComputeAggregateHash(m.EncryptionInformation.IntegrityInformation.Segments)
+	if err != nil {
+		return assertion, fmt.Errorf("failed to compute aggregate hash: %w", err)
+	}
+
+	// Compute assertion signature using standard format
+	assertionSignature, err := ComputeAssertionSignature(string(aggregateHashBytes), assertionHash, p.useHex)
+	if err != nil {
+		return assertion, fmt.Errorf("failed to compute assertion signature: %w", err)
+	}
+
+	if err := assertion.Sign(string(assertionHash), assertionSignature, p.privateKey, headers); err != nil {
 		return assertion, fmt.Errorf("failed to sign assertion: %w", err)
 	}
 
@@ -91,6 +127,11 @@ func (p KeyAssertionValidator) Verify(_ context.Context, a Assertion, r Reader) 
 	// NOTE: This validator uses a wildcard schema pattern to match any assertion
 	// when verification keys are provided. Schema validation is still performed
 	// via the JWT's assertionSchema claim verification below.
+	//
+	// SECURITY: The JWS may contain a 'jwk' header with the public key, but we
+	// ALWAYS use the configured verification keys instead of the key from the header.
+	// This prevents attackers from bypassing verification by providing their own keys.
+	// The jwk header is informational only.
 
 	// Assertions without cryptographic bindings cannot be verified - this is a security issue
 	if a.Binding.Signature == "" {
@@ -126,7 +167,7 @@ func (p KeyAssertionValidator) Verify(_ context.Context, a Assertion, r Reader) 
 
 	// SECURITY: Verify schema claim matches Statement.Schema (if claim exists)
 	// This prevents schema substitution after JWT signing
-	// For legacy assertions (v1), verifiedSchema will be empty string - skip check
+	// For legacy assertions, verifiedSchema will be empty string - skip check
 	if verifiedSchema != "" && verifiedSchema != a.Statement.Schema {
 		return fmt.Errorf("%w: schema claim mismatch - JWT contains %q but Statement has %q (tampering detected)",
 			ErrAssertionFailure{ID: a.ID}, verifiedSchema, a.Statement.Schema)
@@ -143,25 +184,13 @@ func (p KeyAssertionValidator) Verify(_ context.Context, a Assertion, r Reader) 
 		return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: a.ID})
 	}
 
-	// Auto-detect binding format: check if verifiedManifestSignature matches root signature
-	// v2 format: assertionSig = rootSignature
-	// v1 (legacy) format: assertionSig = base64(aggregateHash + assertionHash)
-	//
-	// This allows assertions with explicit keys to use either format
-	// for cross-SDK compatibility (Java/JS may use v1, Go uses v2)
-	if manifestSignature == verifiedManifestSignature {
-		// Current v2 format validation
-		return nil
-	}
-
-	// v1 (legacy) format: The verifiedManifestSignature is base64(aggregateHash + assertionHash)
-	// For custom assertions with explicit keys, Java/JS SDKs may use this format
-	// We accept it for backward compatibility
-
-	// In v1 format, we cannot verify the binding to the manifest root signature
-	// because the signature is based on aggregateHash which we don't have access to here
-	// This is less secure but maintains compatibility with Java/JS SDKs
-	// The JWT signature itself is still verified, so the assertion content is authenticated
+	// Verify binding format: assertionSig = base64(aggregateHash + assertionHash)
+	// This is the standard format for all assertions across all SDKs (Java/JS/Go)
+	// We cannot verify the binding to the manifest root signature here
+	// because the signature is based on aggregateHash which we don't have access to
+	// The JWT signature itself is verified, so the assertion content is authenticated
+	_ = manifestSignature // Not used - signature verification is done via JWT
+	_ = verifiedManifestSignature
 	return nil
 }
 

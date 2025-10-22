@@ -896,7 +896,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 		s.Len(decision.Results, 4)
 
 		expectedResults := map[string]bool{
@@ -937,7 +937,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 		s.Len(decision.Results, 4)
 
 		expectedResults := map[string]bool{
@@ -969,7 +969,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 4)
 
 		expectedResults := map[string]bool{
@@ -1006,7 +1006,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 4)
 
 		expectedResults := map[string]bool{
@@ -1033,7 +1033,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access) // False because one resource is denied
+		s.False(decision.AllPermitted) // False because one resource is denied
 		s.Len(decision.Results, 4)
 
 		expectedResults := map[string]bool{
@@ -1083,7 +1083,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 		s.Len(decision.Results, 2)
 
 		foundRnd := false
@@ -1131,7 +1131,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 		s.Len(decision.Results, 2)
 
 		foundRnd := false
@@ -1178,7 +1178,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 2)
 
 		foundRnd := false
@@ -1226,7 +1226,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, unentitledAction, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 2)
 
 		foundRnd := false
@@ -1272,7 +1272,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, partiallyEntitledAction, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 2)
 
 		foundRnd := false
@@ -1319,7 +1319,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 2)
 
 		foundRnd := false
@@ -1370,7 +1370,7 @@ func (s *PDPTestSuite) Test_GetDecision_ReturnsDecisionRelatedEntitlements() {
 
 	s.Require().NoError(err)
 	s.Require().NotNil(decision)
-	s.True(decision.Access, "Entity should have access")
+	s.True(decision.AllPermitted, "Entity should have access")
 
 	s.Require().NotNil(entitlements, "Entitlements should not be nil")
 
@@ -1489,14 +1489,14 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		// Read should pass
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access) // Should be true because read is allowed
+		s.True(decision.AllPermitted) // Should be true because read is allowed
 		s.Len(decision.Results, 2)
 
 		// Create should fail
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, actionCreate, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access) // Should be false because create is not allowed
+		s.False(decision.AllPermitted) // Should be false because create is not allowed
 		s.Len(decision.Results, 2)
 	})
 
@@ -1515,32 +1515,32 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, actionRead, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 		s.Len(decision.Results, 3)
 
 		// Test create access - should be denied (confidential doesn't allow it)
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, actionCreate, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access) // Overall access is denied
+		s.False(decision.AllPermitted) // Overall access is denied
 
 		// Test print access - allowed by confidential but not by finance
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, testActionPrint, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access) // Overall access is denied because one rule fails
+		s.False(decision.AllPermitted) // Overall access is denied because one rule fails
 
 		// Test update access - allowed by finance but not by confidential
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, testActionUpdate, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access) // Overall access is denied because one rule fails
+		s.False(decision.AllPermitted) // Overall access is denied because one rule fails
 
 		// Test delete access - denied by both
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, testActionDelete, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 	})
 
 	s.Run("Action inheritance with partial permissions", func() {
@@ -1555,31 +1555,31 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionView, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 
 		// Test list access - should be denied
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, testActionList, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 
 		// Test search access - should be denied
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, testActionSearch, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 
 		// Test read access - should be allowed
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, actionRead, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 
 		// Test create access - should be allowed
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, actionCreate, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 	})
 
 	s.Run("Conflicting action policies across multiple attributes", func() {
@@ -1631,19 +1631,19 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		decision, _, err := classificationPDP.GetDecision(s.T().Context(), entity, actionRead, restrictedResources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 
 		// Test create access - should be denied for restricted despite comprehensive actions on public
 		decision, _, err = classificationPDP.GetDecision(s.T().Context(), entity, actionCreate, restrictedResources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 
 		// Test delete access - should be denied for restricted despite comprehensive actions on public
 		decision, _, err = classificationPDP.GetDecision(s.T().Context(), entity, testActionDelete, restrictedResources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 	})
 
 	s.Run("Requested entitled action (on hierarchical attribute) not supported by registered resource fails", func() {
@@ -1666,19 +1666,19 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionPrint, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 
 		// Test unentitled action - should be denied
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, testActionList, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 
 		// Test read access - should be allowed
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 	})
 
 	s.Run("Requested entitled action (on any_of attribute) not supported by registered resource fails", func() {
@@ -1701,19 +1701,19 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionDelete, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 
 		// Test unentitled action - should be denied
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, testActionList, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 
 		// Test read access - should be allowed
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 	})
 }
 
@@ -1750,19 +1750,19 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 
 		// Test create access (only engineering allows)
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, testActionCreate, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access) // False because both attributes need to pass
+		s.False(decision.AllPermitted) // False because both attributes need to pass
 
 		// Test update access (only secret allows)
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, testActionUpdate, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access) // False because both attributes need to pass
+		s.False(decision.AllPermitted) // False because both attributes need to pass
 	})
 
 	s.Run("HIERARCHY + ALL_OF combined: Secret classification and USA country", func() {
@@ -1779,13 +1779,13 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 
 		// Test update access (only secret allows, usa doesn't)
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, testActionUpdate, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access) // False because both attributes need to pass
+		s.False(decision.AllPermitted) // False because both attributes need to pass
 	})
 
 	s.Run("ANY_OF + ALL_OF combined: Engineering department and USA AND UK country", func() {
@@ -1802,13 +1802,13 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 
 		// Test create access (only engineering allows)
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, testActionCreate, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access) // False because both attributes need to pass
+		s.False(decision.AllPermitted) // False because both attributes need to pass
 	})
 
 	s.Run("HIERARCHY + ANY_OF + ALL_OF combined - ALL_OF FAILURE", func() {
@@ -1826,7 +1826,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 1)
 
 		// Drill down proper structure of denial
@@ -1861,14 +1861,14 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 
 		// No other action is permitted by all three attributes
 		for _, action := range []string{actions.ActionNameCreate, actions.ActionNameUpdate, actions.ActionNameDelete} {
 			d, _, err := pdp.GetDecision(s.T().Context(), entity, &policy.Action{Name: action}, []*authz.Resource{combinedResource})
 			s.Require().NoError(err)
 			s.Require().NotNil(d)
-			s.False(d.Access, "Action %s should not be allowed", action)
+			s.False(d.AllPermitted, "Action %s should not be allowed", action)
 		}
 	})
 
@@ -1887,7 +1887,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 
 		// Examine which attribute rule failed
 		s.Len(decision.Results, 1)
@@ -1931,13 +1931,13 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{complexResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 
 		// Test delete access (only platform:cloud allows)
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, testActionDelete, []*authz.Resource{complexResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access) // Overall fails because other attributes don't allow delete
+		s.False(decision.AllPermitted) // Overall fails because other attributes don't allow delete
 
 		// Count how many attributes passed/failed for delete action
 		s.Len(decision.Results, 1)
@@ -1982,7 +1982,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{cascadingResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access, "Entity with Secret clearance should have access to both Secret and Confidential")
+		s.True(decision.AllPermitted, "Entity with Secret clearance should have access to both Secret and Confidential")
 
 		// Entity with confidential clearance (which should NOT give access to secret)
 		entity = s.createEntityWithProps("confidential-entity", map[string]interface{}{
@@ -1993,7 +1993,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{cascadingResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access, "Entity with Confidential clearance should NOT have access to both classifications")
+		s.False(decision.AllPermitted, "Entity with Confidential clearance should NOT have access to both classifications")
 
 		// Verify which rule failed
 		s.Len(decision.Results, 1)
@@ -2020,7 +2020,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{cascadingResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access, "Entity with Secret clearance should have access to both Secret and Confidential")
+		s.True(decision.AllPermitted, "Entity with Secret clearance should have access to both Secret and Confidential")
 
 		// Entity with confidential clearance (which should NOT give access to secret)
 		entity = s.createEntityWithProps("confidential-entity", map[string]interface{}{
@@ -2031,7 +2031,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		decision, _, err = pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{cascadingResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access, "Entity with Confidential clearance should NOT have access to both classifications")
+		s.False(decision.AllPermitted, "Entity with Confidential clearance should NOT have access to both classifications")
 
 		// Verify which rule failed
 		s.Len(decision.Results, 1)
@@ -2109,7 +2109,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 		s.Len(decision.Results, 2)
 
 		// Use FQN-based assertions
@@ -2135,7 +2135,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 1)
 		onlyDecision := decision.Results[0]
 		s.Len(onlyDecision.DataRuleResults, 3)
@@ -2166,7 +2166,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 2)
 
 		// Use FQN-based assertions
@@ -2199,7 +2199,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 4)
 
 		// Use FQN-based assertions
@@ -2236,7 +2236,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 
 		// The implementation treats this as a single resource with multiple rules
 		s.Len(decision.Results, 1)
@@ -2274,7 +2274,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 
 		s.Require().NoError(err)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 		s.Len(decision.Results, 5)
 
 		decisionResults := map[string]bool{
@@ -2291,7 +2291,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 
 		// Overall access should be denied
 		s.Require().NoError(err)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 5)
 
 		// Only hybrid platform allows delete
@@ -2326,7 +2326,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
 
 		s.Require().NoError(err)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 
 		// The implementation treats this as a single resource with multiple rules
 		s.Len(decision.Results, 1)
@@ -2345,7 +2345,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 
 		// Overall access should be denied due to country not supporting update
 		s.Require().NoError(err)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 1)
 		onlyDecision = decision.Results[0]
 		s.Equal("combined-multi-ns-resource", onlyDecision.ResourceID)
@@ -2457,7 +2457,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 		s.Len(decision.Results, 4)
 
 		expectedResults := map[string]bool{
@@ -2485,7 +2485,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.True(decision.AllPermitted)
 		s.Len(decision.Results, 4)
 
 		expectedResults := map[string]bool{
@@ -2511,7 +2511,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 4)
 
 		expectedResults := map[string]bool{
@@ -2543,7 +2543,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access)
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 4)
 
 		expectedResults := map[string]bool{
@@ -2564,7 +2564,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.Access) // False because one resource is denied
+		s.False(decision.AllPermitted) // False because one resource is denied
 		s.Len(decision.Results, 4)
 
 		expectedResults := map[string]bool{

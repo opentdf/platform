@@ -19,8 +19,11 @@ import (
 
 // Decision represents the overall access decision for an entity.
 type Decision struct {
-	Access  bool               `json:"access" example:"false"`
-	Results []ResourceDecision `json:"entity_rule_result"`
+	// AllPermitted means all entities requesting to take the action on the resource(s) were entitled
+	// and that any triggered obligations were satisfied by those reported as fulfillable.
+	// The struct tag remains 'access' for backwards compatibility within audit records.
+	AllPermitted bool `json:"access" example:"false"`
+	Results      []ResourceDecision
 }
 
 // ResourceDecision represents the result of evaluating the action on one resource for an entity.
@@ -195,8 +198,8 @@ func (p *PolicyDecisionPoint) GetDecision(
 	l.DebugContext(ctx, "evaluated subject mappings", slog.Any("entitled_value_fqns_to_actions", entitledFQNsToActions))
 
 	decision := &Decision{
-		Access:  true,
-		Results: make([]ResourceDecision, len(resources)),
+		AllPermitted: true,
+		Results:      make([]ResourceDecision, len(resources)),
 	}
 
 	for idx, resource := range resources {
@@ -206,7 +209,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 		}
 
 		if !resourceDecision.Entitled {
-			decision.Access = false
+			decision.AllPermitted = false
 		}
 
 		l.DebugContext(
@@ -273,8 +276,8 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	}
 
 	decision := &Decision{
-		Access:  true,
-		Results: make([]ResourceDecision, len(resources)),
+		AllPermitted: true,
+		Results:      make([]ResourceDecision, len(resources)),
 	}
 
 	for idx, resource := range resources {
@@ -283,7 +286,7 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 			return nil, nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
 		}
 		if !resourceDecision.Entitled {
-			decision.Access = false
+			decision.AllPermitted = false
 		}
 
 		l.DebugContext(

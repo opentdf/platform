@@ -176,14 +176,12 @@ func (p *JustInTimePDP) GetDecision(
 
 		// Update resource decisions with obligations and set final access decision
 		hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
-		if decision.Access && hasRequiredObligations {
-			// Access should only be granted if entitled AND obligations fulfilled
-			decision.Access = obligationDecision.AllObligationsSatisfied
-		}
-
+		entitledWithAnyObligationsSatisfied := decision.AllPermitted && (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
+		decision.AllPermitted = entitledWithAnyObligationsSatisfied
 		decision = setResourceDecisionsWithObligations(decision, obligationDecision)
+
 		p.auditDecision(ctx, regResValueFQN, action, decision, entitlements, fulfillableObligationValueFQNs, obligationDecision)
-		return []*Decision{decision}, decision.Access, nil
+		return []*Decision{decision}, decision.AllPermitted, nil
 
 	default:
 		return nil, false, ErrInvalidEntityType
@@ -204,7 +202,8 @@ func (p *JustInTimePDP) GetDecision(
 		if d == nil {
 			return nil, false, fmt.Errorf("decision is nil: %w", err)
 		}
-		if !d.Access {
+		// If any entity lacks access to any resource, update overall decision denial
+		if !d.AllPermitted {
 			allPermitted = false
 		}
 		entityDecisions[idx] = d
@@ -213,15 +212,16 @@ func (p *JustInTimePDP) GetDecision(
 
 	// Update resource decisions with obligations and set final access decision
 	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
-	if allPermitted && hasRequiredObligations {
-		// Only grant access if entitled AND obligations fulfilled
-		allPermitted = obligationDecision.AllObligationsSatisfied
-	}
+	allEntitledWithAnyObligationsSatisfied := allPermitted && (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
+	allPermitted = allEntitledWithAnyObligationsSatisfied
 
 	// Propagate obligations within policy on each resource decision object
 	for entityIdx, decision := range entityDecisions {
+		// TODO: figure out this multi-entity response?
+		// entitledWithAnyObligationsSatisfied := decision.AllPermitted && (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
+		// decision.AllPermitted = entitledWithAnyObligationsSatisfied
 		decision = setResourceDecisionsWithObligations(decision, obligationDecision)
-		decision.Access = allPermitted
+		decision.AllPermitted = allPermitted
 		entityRepID := entityRepresentations[entityIdx].GetOriginalId()
 		p.auditDecision(ctx, entityRepID, action, decision, entityEntitlements[entityIdx], fulfillableObligationValueFQNs, obligationDecision)
 	}
@@ -439,7 +439,7 @@ func (p *JustInTimePDP) auditDecision(
 ) {
 	// Determine audit decision result
 	auditDecision := audit.GetDecisionResultDeny
-	if decision.Access {
+	if decision.AllPermitted {
 		auditDecision = audit.GetDecisionResultPermit
 	}
 

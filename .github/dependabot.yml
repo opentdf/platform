@@ -45,5 +45,3 @@ updates:
           - "github.com/opentdf/*"
     schedule:
       interval: daily
-    commit-message:
-      prefix: "fix(deps)"

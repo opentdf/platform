@@ -409,15 +409,15 @@ func (reg *Registry) RegisterServicesFromConfiguration(modes []string, configura
 			continue
 		}
 
-		shouldRegister := false
+		var nsMode ModeName
 		for _, requestedMode := range includedModes {
 			if slices.Contains(config.Modes, requestedMode) {
-				shouldRegister = true
+				nsMode = requestedMode
 				break
 			}
 		}
 
-		if !shouldRegister {
+		if nsMode == "" {
 			continue
 		}
 
@@ -425,11 +425,8 @@ func (reg *Registry) RegisterServicesFromConfiguration(modes []string, configura
 
 		// Register all services using their own defined namespace
 		for _, service := range config.Services {
-			// Get the namespace from the service itself
-			namespace := service.GetNamespace()
-
-			// Always register the service in its own namespace
-			if err := reg.RegisterService(service, ModeName(namespace)); err != nil {
+			// Register the service with the determined mode
+			if err := reg.RegisterService(service, nsMode); err != nil {
 				return nil, err
 			}
 		}

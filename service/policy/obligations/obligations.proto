@@ -302,6 +302,27 @@ message RemoveObligationTriggerResponse {
     policy.ObligationTrigger trigger = 1;
 }
 
+message ListObligationTriggersRequest {
+    // Optional
+    option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+    string namespace_id = 1 [(buf.validate.field).string.uuid = true];
+    string namespace_fqn = 2 [
+        (buf.validate.field).string = {
+            min_len : 1
+            uri : true
+        }
+    ];
+
+    // Optional
+    policy.PageRequest pagination = 10;
+}
+
+message ListObligationTriggersResponse {
+    repeated policy.ObligationTrigger triggers = 1;
+
+    policy.PageResponse pagination = 10;
+}
+
 // Fulfillers
 // message AddObligationFulfillerRequest {
 //     // Required
@@ -376,6 +397,10 @@ service Service {
     rpc AddObligationTrigger(AddObligationTriggerRequest) returns (AddObligationTriggerResponse) {}
 
     rpc RemoveObligationTrigger(RemoveObligationTriggerRequest) returns (RemoveObligationTriggerResponse) {}
+
+    rpc ListObligationTriggers(ListObligationTriggersRequest) returns (ListObligationTriggersResponse) {
+        option idempotency_level = NO_SIDE_EFFECTS;
+    }
 
    /*--------------------------------------*
     * Fulfiller RPCs

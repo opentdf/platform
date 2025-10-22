@@ -368,7 +368,7 @@ WITH obligation_lookup AS (
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
             OR
             -- lookup by namespace fqn + obligation name
             (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL 
@@ -427,7 +427,7 @@ type createObligationValueRow struct {
 //	        -- lookup by obligation id OR by namespace fqn + obligation name
 //	        (
 //	            -- lookup by obligation id
-//	            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+//	            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
 //	            OR
 //	            -- lookup by namespace fqn + obligation name
 //	            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL
@@ -502,7 +502,7 @@ WHERE id IN (
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
             OR
             -- lookup by namespace fqn + obligation name
             (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL 
@@ -530,7 +530,7 @@ type deleteObligationParams struct {
 //	        -- lookup by obligation id OR by namespace fqn + obligation name
 //	        (
 //	            -- lookup by obligation id
-//	            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+//	            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
 //	            OR
 //	            -- lookup by namespace fqn + obligation name
 //	            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL
@@ -574,7 +574,7 @@ WHERE id IN (
         -- lookup by value id OR by namespace fqn + obligation name + value name
         (
             -- lookup by value id
-            (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = $1::UUID)
+            (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = NULLIF($1::TEXT, '')::UUID)
             OR
             -- lookup by namespace fqn + obligation name + value name
             (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL AND NULLIF($4::TEXT, '') IS NOT NULL
@@ -604,7 +604,7 @@ type deleteObligationValueParams struct {
 //	        -- lookup by value id OR by namespace fqn + obligation name + value name
 //	        (
 //	            -- lookup by value id
-//	            (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = $1::UUID)
+//	            (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = NULLIF($1::TEXT, '')::UUID)
 //	            OR
 //	            -- lookup by namespace fqn + obligation name + value name
 //	            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL AND NULLIF($4::TEXT, '') IS NOT NULL
@@ -683,7 +683,7 @@ WHERE
     -- lookup by obligation id OR by namespace fqn + obligation name
     (
         -- lookup by obligation id
-        (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+        (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
         OR
         -- lookup by namespace fqn + obligation name
         (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL
@@ -766,7 +766,7 @@ type getObligationRow struct {
 //	    -- lookup by obligation id OR by namespace fqn + obligation name
 //	    (
 //	        -- lookup by obligation id
-//	        (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+//	        (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
 //	        OR
 //	        -- lookup by namespace fqn + obligation name
 //	        (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL
@@ -1285,6 +1285,169 @@ func (q *Queries) getObligationsByFQNs(ctx context.Context, arg getObligationsBy
 			&i.Namespace,
 			&i.Values,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listObligationTriggers = `-- name: listObligationTriggers :many
+SELECT
+    JSON_STRIP_NULLS(
+        JSON_BUILD_OBJECT(
+            'id', ot.id,
+            'obligation_value', JSON_BUILD_OBJECT(
+                'id', ov.id,
+                'value', ov.value,
+                'obligation', JSON_BUILD_OBJECT(
+                    'id', od.id,
+                    'name', od.name,
+                    'namespace', JSON_BUILD_OBJECT(
+                        'id', n.id,
+                        'name', n.name,
+                        'fqn', COALESCE(ns_fqns.fqn, '')
+                    )
+                )
+            ),
+            'action', JSON_BUILD_OBJECT(
+                'id', a.id,
+                'name', a.name
+            ),
+            'attribute_value', JSON_BUILD_OBJECT(
+                'id', av.id,
+                'value', av.value,
+                'fqn', COALESCE(av_fqns.fqn, '')
+            ),
+            'context', CASE
+                WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
+                    JSON_BUILD_OBJECT(
+                        'pep', JSON_BUILD_OBJECT(
+                            'client_id', ot.client_id
+                        )
+                    )
+                )
+                ELSE '[]'::JSON
+            END
+        )
+    ) as trigger,
+    JSON_STRIP_NULLS(
+        JSON_BUILD_OBJECT(
+            'labels', ot.metadata -> 'labels',
+            'created_at', ot.created_at,
+            'updated_at', ot.updated_at
+        )
+    ) as metadata,
+    COUNT(*) OVER() as total
+FROM obligation_triggers ot
+JOIN obligation_values_standard ov ON ot.obligation_value_id = ov.id
+JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+JOIN attribute_namespaces n ON od.namespace_id = n.id
+LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+JOIN actions a ON ot.action_id = a.id
+JOIN attribute_values av ON ot.attribute_value_id = av.id
+LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
+WHERE
+    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
+    (NULLIF($2::TEXT, '') IS NULL OR ns_fqns.fqn = $2::VARCHAR)
+ORDER BY ot.created_at DESC
+LIMIT $4
+OFFSET $3
+`
+
+type listObligationTriggersParams struct {
+	NamespaceID  string `json:"namespace_id"`
+	NamespaceFqn string `json:"namespace_fqn"`
+	Offset       int32  `json:"offset_"`
+	Limit        int32  `json:"limit_"`
+}
+
+type listObligationTriggersRow struct {
+	Trigger  []byte `json:"trigger"`
+	Metadata []byte `json:"metadata"`
+	Total    int64  `json:"total"`
+}
+
+// listObligationTriggers
+//
+//	SELECT
+//	    JSON_STRIP_NULLS(
+//	        JSON_BUILD_OBJECT(
+//	            'id', ot.id,
+//	            'obligation_value', JSON_BUILD_OBJECT(
+//	                'id', ov.id,
+//	                'value', ov.value,
+//	                'obligation', JSON_BUILD_OBJECT(
+//	                    'id', od.id,
+//	                    'name', od.name,
+//	                    'namespace', JSON_BUILD_OBJECT(
+//	                        'id', n.id,
+//	                        'name', n.name,
+//	                        'fqn', COALESCE(ns_fqns.fqn, '')
+//	                    )
+//	                )
+//	            ),
+//	            'action', JSON_BUILD_OBJECT(
+//	                'id', a.id,
+//	                'name', a.name
+//	            ),
+//	            'attribute_value', JSON_BUILD_OBJECT(
+//	                'id', av.id,
+//	                'value', av.value,
+//	                'fqn', COALESCE(av_fqns.fqn, '')
+//	            ),
+//	            'context', CASE
+//	                WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
+//	                    JSON_BUILD_OBJECT(
+//	                        'pep', JSON_BUILD_OBJECT(
+//	                            'client_id', ot.client_id
+//	                        )
+//	                    )
+//	                )
+//	                ELSE '[]'::JSON
+//	            END
+//	        )
+//	    ) as trigger,
+//	    JSON_STRIP_NULLS(
+//	        JSON_BUILD_OBJECT(
+//	            'labels', ot.metadata -> 'labels',
+//	            'created_at', ot.created_at,
+//	            'updated_at', ot.updated_at
+//	        )
+//	    ) as metadata,
+//	    COUNT(*) OVER() as total
+//	FROM obligation_triggers ot
+//	JOIN obligation_values_standard ov ON ot.obligation_value_id = ov.id
+//	JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+//	JOIN attribute_namespaces n ON od.namespace_id = n.id
+//	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+//	JOIN actions a ON ot.action_id = a.id
+//	JOIN attribute_values av ON ot.attribute_value_id = av.id
+//	LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
+//	WHERE
+//	    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
+//	    (NULLIF($2::TEXT, '') IS NULL OR ns_fqns.fqn = $2::VARCHAR)
+//	ORDER BY ot.created_at DESC
+//	LIMIT $4
+//	OFFSET $3
+func (q *Queries) listObligationTriggers(ctx context.Context, arg listObligationTriggersParams) ([]listObligationTriggersRow, error) {
+	rows, err := q.db.Query(ctx, listObligationTriggers,
+		arg.NamespaceID,
+		arg.NamespaceFqn,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []listObligationTriggersRow
+	for rows.Next() {
+		var i listObligationTriggersRow
+		if err := rows.Scan(&i.Trigger, &i.Metadata, &i.Total); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -46,6 +46,7 @@ services:
       from:
         email: true
         username: true
+    # cache_expiration: 30s # disabled unless present and > 0
   # policy is enabled by default in mode 'all'
   # policy:
   #   enabled: true
@@ -72,7 +73,7 @@ server:
       username_claim: # preferred_username
       # That claim to access groups (i.e. realm_access.roles)
       groups_claim: # realm_access.roles
-      # Claim the represents the idP client ID 
+      # Claim the represents the idP client ID
       client_id_claim: # azp
       ## Extends the builtin policy
       extension: |
@@ -119,6 +120,7 @@ server:
       #        insecure: true # If collector is just HTTP, not HTTPS
       # headers: {} # Add if authentication is needed
   cors:
+    enabled: true
     # "*" to allow any origin or a specific domain like "https://yourdomain.com"
     allowedorigins:
       - "*"

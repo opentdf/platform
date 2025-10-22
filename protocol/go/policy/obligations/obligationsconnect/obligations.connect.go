@@ -70,6 +70,9 @@ const (
 	// ServiceRemoveObligationTriggerProcedure is the fully-qualified name of the Service's
 	// RemoveObligationTrigger RPC.
 	ServiceRemoveObligationTriggerProcedure = "/policy.obligations.Service/RemoveObligationTrigger"
+	// ServiceListObligationTriggersProcedure is the fully-qualified name of the Service's
+	// ListObligationTriggers RPC.
+	ServiceListObligationTriggersProcedure = "/policy.obligations.Service/ListObligationTriggers"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -88,6 +91,7 @@ var (
 	serviceDeleteObligationValueMethodDescriptor     = serviceServiceDescriptor.Methods().ByName("DeleteObligationValue")
 	serviceAddObligationTriggerMethodDescriptor      = serviceServiceDescriptor.Methods().ByName("AddObligationTrigger")
 	serviceRemoveObligationTriggerMethodDescriptor   = serviceServiceDescriptor.Methods().ByName("RemoveObligationTrigger")
+	serviceListObligationTriggersMethodDescriptor    = serviceServiceDescriptor.Methods().ByName("ListObligationTriggers")
 )
 
 // ServiceClient is a client for the policy.obligations.Service service.
@@ -105,6 +109,7 @@ type ServiceClient interface {
 	DeleteObligationValue(context.Context, *connect.Request[obligations.DeleteObligationValueRequest]) (*connect.Response[obligations.DeleteObligationValueResponse], error)
 	AddObligationTrigger(context.Context, *connect.Request[obligations.AddObligationTriggerRequest]) (*connect.Response[obligations.AddObligationTriggerResponse], error)
 	RemoveObligationTrigger(context.Context, *connect.Request[obligations.RemoveObligationTriggerRequest]) (*connect.Response[obligations.RemoveObligationTriggerResponse], error)
+	ListObligationTriggers(context.Context, *connect.Request[obligations.ListObligationTriggersRequest]) (*connect.Response[obligations.ListObligationTriggersResponse], error)
 }
 
 // NewServiceClient constructs a client for the policy.obligations.Service service. By default, it
@@ -200,6 +205,13 @@ func NewServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...con
 			connect.WithSchema(serviceRemoveObligationTriggerMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		listObligationTriggers: connect.NewClient[obligations.ListObligationTriggersRequest, obligations.ListObligationTriggersResponse](
+			httpClient,
+			baseURL+ServiceListObligationTriggersProcedure,
+			connect.WithSchema(serviceListObligationTriggersMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -218,6 +230,7 @@ type serviceClient struct {
 	deleteObligationValue     *connect.Client[obligations.DeleteObligationValueRequest, obligations.DeleteObligationValueResponse]
 	addObligationTrigger      *connect.Client[obligations.AddObligationTriggerRequest, obligations.AddObligationTriggerResponse]
 	removeObligationTrigger   *connect.Client[obligations.RemoveObligationTriggerRequest, obligations.RemoveObligationTriggerResponse]
+	listObligationTriggers    *connect.Client[obligations.ListObligationTriggersRequest, obligations.ListObligationTriggersResponse]
 }
 
 // ListObligations calls policy.obligations.Service.ListObligations.
@@ -285,6 +298,11 @@ func (c *serviceClient) RemoveObligationTrigger(ctx context.Context, req *connec
 	return c.removeObligationTrigger.CallUnary(ctx, req)
 }
 
+// ListObligationTriggers calls policy.obligations.Service.ListObligationTriggers.
+func (c *serviceClient) ListObligationTriggers(ctx context.Context, req *connect.Request[obligations.ListObligationTriggersRequest]) (*connect.Response[obligations.ListObligationTriggersResponse], error) {
+	return c.listObligationTriggers.CallUnary(ctx, req)
+}
+
 // ServiceHandler is an implementation of the policy.obligations.Service service.
 type ServiceHandler interface {
 	ListObligations(context.Context, *connect.Request[obligations.ListObligationsRequest]) (*connect.Response[obligations.ListObligationsResponse], error)
@@ -300,6 +318,7 @@ type ServiceHandler interface {
 	DeleteObligationValue(context.Context, *connect.Request[obligations.DeleteObligationValueRequest]) (*connect.Response[obligations.DeleteObligationValueResponse], error)
 	AddObligationTrigger(context.Context, *connect.Request[obligations.AddObligationTriggerRequest]) (*connect.Response[obligations.AddObligationTriggerResponse], error)
 	RemoveObligationTrigger(context.Context, *connect.Request[obligations.RemoveObligationTriggerRequest]) (*connect.Response[obligations.RemoveObligationTriggerResponse], error)
+	ListObligationTriggers(context.Context, *connect.Request[obligations.ListObligationTriggersRequest]) (*connect.Response[obligations.ListObligationTriggersResponse], error)
 }
 
 // NewServiceHandler builds an HTTP handler from the service implementation. It returns the path on
@@ -391,6 +410,13 @@ func NewServiceHandler(svc ServiceHandler, opts ...connect.HandlerOption) (strin
 		connect.WithSchema(serviceRemoveObligationTriggerMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	serviceListObligationTriggersHandler := connect.NewUnaryHandler(
+		ServiceListObligationTriggersProcedure,
+		svc.ListObligationTriggers,
+		connect.WithSchema(serviceListObligationTriggersMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/policy.obligations.Service/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ServiceListObligationsProcedure:
@@ -419,6 +445,8 @@ func NewServiceHandler(svc ServiceHandler, opts ...connect.HandlerOption) (strin
 			serviceAddObligationTriggerHandler.ServeHTTP(w, r)
 		case ServiceRemoveObligationTriggerProcedure:
 			serviceRemoveObligationTriggerHandler.ServeHTTP(w, r)
+		case ServiceListObligationTriggersProcedure:
+			serviceListObligationTriggersHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -478,4 +506,8 @@ func (UnimplementedServiceHandler) AddObligationTrigger(context.Context, *connec
 
 func (UnimplementedServiceHandler) RemoveObligationTrigger(context.Context, *connect.Request[obligations.RemoveObligationTriggerRequest]) (*connect.Response[obligations.RemoveObligationTriggerResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.Service.RemoveObligationTrigger is not implemented"))
+}
+
+func (UnimplementedServiceHandler) ListObligationTriggers(context.Context, *connect.Request[obligations.ListObligationTriggersRequest]) (*connect.Response[obligations.ListObligationTriggersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.Service.ListObligationTriggers is not implemented"))
 }

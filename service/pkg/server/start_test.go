@@ -150,9 +150,7 @@ func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 		},
 		Port: 43481,
 	},
-		&logger.Logger{
-			Logger: slog.New(slog.Default().Handler()),
-		},
+		logger.CreateTestLogger(),
 		&cache.Manager{},
 	)
 }

@@ -30,6 +30,7 @@ const (
 	specifiedKas        = "https://attr.kas.com/"
 	evenMoreSpecificKas = "https://value.kas.com/"
 	lessSpecificKas     = "https://namespace.kas.com/"
+	obligationKas       = "https://obligation.kas.com/"
 	fakePem             = mockRSAPublicKey1
 )
 
@@ -75,6 +76,21 @@ var (
 	mpc, _ = NewAttributeValueFQN("https://virtru.com/attr/mapped/value/c")
 	mpd, _ = NewAttributeValueFQN("https://virtru.com/attr/mapped/value/d")
 	mpu, _ = NewAttributeValueFQN("https://virtru.com/attr/mapped/value/unspecified")
+
+	// Attributes for testing obligations
+
+	OBLIGATIONATTR, _   = NewAttributeNameFQN("https://virtru.com/attr/obligation_test")
+	oa1, _              = NewAttributeValueFQN("https://virtru.com/attr/obligation_test/value/value1")
+	oa2, _              = NewAttributeValueFQN("https://virtru.com/attr/obligation_test/value/value2")
+	oa3, _              = NewAttributeValueFQN("https://virtru.com/attr/obligation_test/value/value3")
+	obligationWatermark = "https://virtru.com/obl/obligation_test/value/watermark"
+	obligationGeofence  = "https://virtru.com/obl/obligation_test/value/geofence"
+	obligationRedact    = "https://virtru.com/obl/obligation_test/value/redact"
+	obligationMap       = map[string]string{
+		oa1.key: obligationWatermark,
+		oa2.key: obligationGeofence,
+		oa3.key: obligationRedact,
+	}
 )
 
 func spongeCase(s string) string {
@@ -208,6 +224,14 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 			Id:        "UNS",
 			Namespace: &nsThree,
 			Name:      "unspecified",
+			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Fqn:       fqn.String(),
+		}
+	case OBLIGATIONATTR.key:
+		return &policy.Attribute{
+			Id:        "OBL",
+			Namespace: &nsOne,
+			Name:      "obligation",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Fqn:       fqn.String(),
 		}
@@ -451,6 +475,18 @@ func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 		if strings.ToLower(fqn.Value()) == "specked" {
 			p.Grants = make([]*policy.KeyAccessServer, 1)
 			p.Grants[0] = mockGrant(evenMoreSpecificKas, "r1")
+		}
+	case OBLIGATIONATTR.key:
+		switch strings.ToLower(fqn.Value()) {
+		case "value1":
+			p.KasKeys = make([]*policy.SimpleKasKey, 1)
+			p.KasKeys[0] = mockSimpleKasKey(obligationKas, "r3")
+		case "value2":
+			p.KasKeys = make([]*policy.SimpleKasKey, 1)
+			p.KasKeys[0] = mockSimpleKasKey(obligationKas, "r3")
+		case "value3":
+			p.KasKeys = make([]*policy.SimpleKasKey, 1)
+			p.KasKeys[0] = mockSimpleKasKey("https://d.kas/", "e1")
 		}
 	}
 	return &p

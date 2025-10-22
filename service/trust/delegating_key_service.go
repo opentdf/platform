@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
 	"sync"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -198,6 +200,7 @@ func (d *DelegatingKeyService) getKeyManager(ctx context.Context, name string) (
 	factory, factoryExists := d.managerFactories[name]
 	// Read defaultMode under lock for comparison.
 	currentDefaultMode := d.defaultMode
+	allNames := slices.Collect(maps.Keys(d.managerFactories))
 	d.mutex.Unlock()
 
 	if factoryExists {
@@ -221,6 +224,7 @@ func (d *DelegatingKeyService) getKeyManager(ctx context.Context, name string) (
 	// If 'name' was the defaultMode, _defKM will error if its factory is also missing.
 	// If 'name' was not the defaultMode, we fall back to the default manager.
 	d.l.Debug("key manager factory not found for name, attempting to use/load default",
+		slog.Any("key_managers", allNames),
 		slog.String("requested_name", name),
 		slog.String("configured_default_mode", currentDefaultMode),
 	)

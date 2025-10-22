@@ -415,6 +415,20 @@ func (s *Service) RemoveObligationTrigger(ctx context.Context, req *connect.Requ
 	return connect.NewResponse(rsp), nil
 }
 
+func (s *Service) ListObligationTriggers(ctx context.Context, req *connect.Request[obligations.ListObligationTriggersRequest]) (*connect.Response[obligations.ListObligationTriggersResponse], error) {
+	s.logger.DebugContext(ctx, "listing obligation triggers")
+
+	triggers, pr, err := s.dbClient.ListObligationTriggers(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed)
+	}
+	rsp := &obligations.ListObligationTriggersResponse{
+		Triggers:   triggers,
+		Pagination: pr,
+	}
+	return connect.NewResponse(rsp), nil
+}
+
 // func (s *Service) AddObligationFulfiller(_ context.Context, _ *connect.Request[obligations.AddObligationFulfillerRequest]) (*connect.Response[obligations.AddObligationFulfillerResponse], error) {
 // 	// TODO: Implement AddObligationFulfiller logic
 // 	return connect.NewResponse(&obligations.AddObligationFulfillerResponse{}), nil

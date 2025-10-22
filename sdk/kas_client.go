@@ -3,6 +3,8 @@ package sdk
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -12,6 +14,7 @@ import (
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -22,9 +25,11 @@ import (
 )
 
 const (
-	secondsPerMinute = 60
-	statusFail       = "fail"
-	statusPermit     = "permit"
+	secondsPerMinute              = 60
+	statusFail                    = "fail"
+	statusPermit                  = "permit"
+	additionalRewrapContextHeader = "X-Rewrap-Additional-Context"
+	triggeredObligationsHeader    = "X-Required-Obligations"
 )
 
 type KASClient struct {
@@ -35,12 +40,14 @@ type KASClient struct {
 
 	// Set this to enable legacy, non-batch rewrap requests
 	supportSingleRewrapEndpoint bool
+	fulfillableObligations      []string
 }
 
 type kaoResult struct {
-	SymmetricKey      []byte
-	Error             error
-	KeyAccessObjectID string
+	SymmetricKey        []byte
+	Error               error
+	KeyAccessObjectID   string
+	RequiredObligations []string
 }
 
 type decryptor interface {
@@ -48,13 +55,22 @@ type decryptor interface {
 	Decrypt(ctx context.Context, results []kaoResult) (int, error)
 }
 
-func newKASClient(httpClient *http.Client, options []connect.ClientOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.KeyPair) *KASClient {
+type obligationContext struct {
+	FulfillableFQNs []string `json:"fulfillableFQNs"`
+}
+
+type additionalRewrapContext struct {
+	Obligations obligationContext `json:"obligations"`
+}
+
+func newKASClient(httpClient *http.Client, options []connect.ClientOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.KeyPair, fulfillableObligations []string) *KASClient {
 	return &KASClient{
 		accessTokenSource:           accessTokenSource,
 		httpClient:                  httpClient,
 		connectOptions:              options,
 		sessionKey:                  sessionKey,
 		supportSingleRewrapEndpoint: true,
+		fulfillableObligations:      fulfillableObligations,
 	}
 }
 
@@ -72,7 +88,11 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.Unsig
 
 	serviceClient := kasconnect.NewAccessServiceClient(k.httpClient, parsedURL, k.connectOptions...)
 
-	response, err := serviceClient.Rewrap(ctx, connect.NewRequest(rewrapRequest))
+	rewrapReq, err := k.newConnectRewrapRequest(rewrapRequest)
+	if err != nil {
+		return nil, fmt.Errorf("error creating rewrap request: %w", err)
+	}
+	response, err := serviceClient.Rewrap(ctx, rewrapReq)
 	if err != nil {
 		return upgradeRewrapErrorV1(err, requests)
 	}
@@ -80,6 +100,23 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.Unsig
 	upgradeRewrapResponseV1(response.Msg, requests)
 
 	return response.Msg, nil
+}
+
+func (k *KASClient) newConnectRewrapRequest(rewrapReq *kas.RewrapRequest) (*connect.Request[kas.RewrapRequest], error) {
+	req := connect.NewRequest(rewrapReq)
+	rewrapContext := &additionalRewrapContext{
+		Obligations: obligationContext{
+			FulfillableFQNs: k.fulfillableObligations,
+		},
+	}
+	rewrapContextJSON, err := json.Marshal(rewrapContext)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling additional rewrap context: %w", err)
+	}
+
+	rewrapContextBase64 := base64.StdEncoding.EncodeToString(rewrapContextJSON)
+	req.Header().Set(additionalRewrapContextHeader, rewrapContextBase64)
+	return req, nil
 }
 
 // convert v1 responses to v2
@@ -161,10 +198,11 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRew
 		for _, results := range response.GetResponses() {
 			var kaoKeys []kaoResult
 			for _, kao := range results.GetResults() {
+				requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
 				if kao.GetStatus() == statusPermit {
-					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err, RequiredObligations: requiredObligationsForKAO})
 				} else {
-					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError())})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError()), RequiredObligations: requiredObligationsForKAO})
 				}
 			}
 			policyResults[results.GetPolicyId()] = kaoKeys
@@ -192,16 +230,17 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRew
 	for _, results := range response.GetResponses() {
 		var kaoKeys []kaoResult
 		for _, kao := range results.GetResults() {
+			requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
 			if kao.GetStatus() == statusPermit {
 				wrappedKey := kao.GetKasWrappedKey()
 				key, err := aesGcm.Decrypt(wrappedKey)
 				if err != nil {
-					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err, RequiredObligations: requiredObligationsForKAO})
 				} else {
-					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key, RequiredObligations: requiredObligationsForKAO})
 				}
 			} else {
-				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError())})
+				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError()), RequiredObligations: requiredObligationsForKAO})
 			}
 		}
 		policyResults[results.GetPolicyId()] = kaoKeys
@@ -261,20 +300,50 @@ func (k *KASClient) processECResponse(response *kas.RewrapResponse, aesGcm ocryp
 	for _, results := range response.GetResponses() {
 		var kaoKeys []kaoResult
 		for _, kao := range results.GetResults() {
+			requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
 			if kao.GetStatus() == statusPermit {
 				key, err := aesGcm.Decrypt(kao.GetKasWrappedKey())
 				if err != nil {
-					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err, RequiredObligations: requiredObligationsForKAO})
 				} else {
-					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key, RequiredObligations: requiredObligationsForKAO})
 				}
 			} else {
-				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError())})
+				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError()), RequiredObligations: requiredObligationsForKAO})
 			}
 		}
 		policyResults[results.GetPolicyId()] = kaoKeys
 	}
 	return policyResults, nil
+}
+
+/*
+Metadata will be in the following form, per kao:
+
+	{
+	   "metadata": {
+		  "X-Required-Obligations": [<Required obligation FQNs>]
+	   }
+	}
+*/
+func (k *KASClient) retrieveObligationsFromMetadata(metadata map[string]*structpb.Value) []string {
+	var requiredObligations []string
+
+	if metadata == nil {
+		return requiredObligations
+	}
+
+	triggerOblsValue, ok := metadata[triggeredObligationsHeader]
+	if !ok {
+		return requiredObligations
+	}
+
+	triggerOblsList := triggerOblsValue.GetListValue().GetValues()
+	for _, v := range triggerOblsList {
+		requiredObligations = append(requiredObligations, v.GetStringValue())
+	}
+
+	return requiredObligations
 }
 
 func (k *KASClient) handleRSAKeyResponse(response *kas.RewrapResponse) (map[string][]kaoResult, error) {
@@ -296,15 +365,16 @@ func (k *KASClient) processRSAResponse(response *kas.RewrapResponse, asymDecrypt
 	for _, results := range response.GetResponses() {
 		var kaoKeys []kaoResult
 		for _, kao := range results.GetResults() {
+			requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
 			if kao.GetStatus() == statusPermit {
 				key, err := asymDecryption.Decrypt(kao.GetKasWrappedKey())
 				if err != nil {
-					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err, RequiredObligations: requiredObligationsForKAO})
 				} else {
-					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key})
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key, RequiredObligations: requiredObligationsForKAO})
 				}
 			} else {
-				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError())})
+				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError()), RequiredObligations: requiredObligationsForKAO})
 			}
 		}
 		policyResults[results.GetPolicyId()] = kaoKeys

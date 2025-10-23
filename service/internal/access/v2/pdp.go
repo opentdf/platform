@@ -186,7 +186,11 @@ func (p *PolicyDecisionPoint) GetDecision(
 	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
 	decisionableAttributes, err := getResourceDecisionableAttributes(ctx, l, p.allRegisteredResourceValuesByFQN, p.allEntitleableAttributesByValueFQN /* action, */, resources)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error getting decisionable attributes: %w", err)
+		if !errors.Is(err, ErrFQNNotFound) {
+			return nil, nil, fmt.Errorf("error getting decisionable attributes: %w", err)
+		}
+		// Not an error: deny access to individual resources, not the entire request
+		l.WarnContext(ctx, "encountered unknown FQN on resource", slog.Any("error", err))
 	}
 	l.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionable_attribute_values_count", len(decisionableAttributes)))
 

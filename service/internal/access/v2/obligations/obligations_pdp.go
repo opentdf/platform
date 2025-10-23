@@ -14,9 +14,8 @@ import (
 )
 
 var (
-	ErrEmptyPEPClientID               = errors.New("trigger request context is optional but must contain PEP client ID")
-	ErrUnknownRegisteredResourceValue = errors.New("unknown registered resource value")
-	ErrUnsupportedResourceType        = errors.New("unsupported resource type")
+	ErrEmptyPEPClientID        = errors.New("trigger request context is optional but must contain PEP client ID")
+	ErrUnsupportedResourceType = errors.New("unsupported resource type")
 )
 
 // A graph of action names to attribute value FQNs to lists of obligation value FQNs
@@ -263,8 +262,14 @@ func (p *ObligationsPolicyDecisionPoint) getTriggeredObligations(
 		case *authz.Resource_RegisteredResourceValueFqn:
 			regResValFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
 			regResValue, ok := p.registeredResourceValuesByFQN[regResValFQN]
+			// If not found, cannot trigger obligations
 			if !ok {
-				return nil, nil, fmt.Errorf("%w: %s", ErrUnknownRegisteredResourceValue, regResValFQN)
+				p.logger.WarnContext(
+					ctx,
+					"registered resource value not found - skipping",
+					slog.String("registered_resource_value_fqn", regResValFQN),
+				)
+				continue
 			}
 
 			// Check the action-attribute-values associated with a Registered Resource Value for a match to the request action

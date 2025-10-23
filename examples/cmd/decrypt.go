@@ -1,4 +1,4 @@
-//nolint:forbidigo,nestif // Sample code
+//nolint:forbidigo,nestif // Example code
 package cmd
 
 import (
@@ -10,9 +10,10 @@ import (
 	"path/filepath"
 
 	"github.com/opentdf/platform/sdk"
-
 	"github.com/spf13/cobra"
 )
+
+var decryptAlg string
 
 func init() {
 	decryptCmd := &cobra.Command{
@@ -21,7 +22,9 @@ func init() {
 		RunE:  decrypt,
 		Args:  cobra.MinimumNArgs(1),
 	}
-	decryptCmd.Flags().StringVarP(&alg, "rewrap-encapsulation-algorithm", "A", "rsa:2048", "Key wrap response algorithm algorithm:parameters")
+	decryptCmd.Flags().StringVarP(&decryptAlg, "rewrap-encapsulation-algorithm", "A", "rsa:2048", "Key wrap response algorithm algorithm:parameters")
+	decryptCmd.Flags().StringVar(&magicWord, "magic-word", "", "Magic word shared secret for assertion validation")
+	decryptCmd.Flags().StringVar(&privateKeyPath, "private-key-path", "", "Path to private key file for assertion validation")
 	ExamplesCmd.AddCommand(decryptCmd)
 }
 
@@ -86,13 +89,36 @@ func decrypt(cmd *cobra.Command, args []string) error {
 
 	if !isNano {
 		opts := []sdk.TDFReaderOption{}
-		if alg != "" {
-			kt, err := keyTypeForKeyType(alg)
+		if decryptAlg != "" {
+			kt, err := keyTypeForKeyType(decryptAlg)
 			if err != nil {
 				return err
 			}
 			opts = append(opts, sdk.WithSessionKeyType(kt))
 		}
+
+		// Magic word validator
+		if magicWord != "" {
+			// Magic word provider with state, this works in a simple CLI
+			magicWordProvider := NewMagicWordAssertionProvider(magicWord)
+			opts = append(opts, sdk.WithAssertionValidator(magicWordProvider))
+		}
+		// Public key validator
+		if privateKeyPath != "" {
+			key, err := getAssertionKeyPublic(privateKeyPath)
+			if err != nil {
+				return fmt.Errorf("failed to load assertion key: %w", err)
+			}
+			keys := sdk.AssertionVerificationKeys{
+				Keys: map[string]sdk.AssertionKey{
+					sdk.KeyAssertionID: key,
+				},
+			}
+			keyValidator := sdk.NewKeyAssertionValidator(keys)
+			opts = append(opts, sdk.WithAssertionValidator(keyValidator))
+		}
+		// Enable assertion verification
+		opts = append(opts, sdk.WithDisableAssertionVerification(false))
 		tdfreader, err := client.LoadTDF(file, opts...)
 		if err != nil {
 			return err

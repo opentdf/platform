@@ -895,7 +895,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				EphemeralId: "test-reg-res-id-5",
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
-			expectError:  true,
+			expectError:  false,
 			expectPass:   false,
 		},
 		{

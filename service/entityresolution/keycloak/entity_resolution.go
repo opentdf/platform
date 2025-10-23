@@ -84,7 +84,7 @@ func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger, svc
 }
 
 func (s *KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, req *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
-	ctx, span := s.Tracer.Start(ctx, "ResolveEntities")
+	ctx, span := s.Start(ctx, "ResolveEntities")
 	defer span.End()
 
 	connector, err := s.getConnector(ctx, s.idpConfig.TokenBuffer)
@@ -98,7 +98,7 @@ func (s *KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, r
 }
 
 func (s *KeycloakEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
-	ctx, span := s.Tracer.Start(ctx, "CreateEntityChainFromJwt")
+	ctx, span := s.Start(ctx, "CreateEntityChainFromJwt")
 	defer span.End()
 
 	connector, err := s.getConnector(ctx, s.idpConfig.TokenBuffer)

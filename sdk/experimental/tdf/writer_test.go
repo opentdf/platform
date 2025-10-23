@@ -87,9 +87,9 @@ func testGetManifestIncludesInitialPolicy(t *testing.T) {
 	m, err := writer.GetManifest(t.Context())
 	require.NoError(t, err)
 	require.NotNil(t, m)
-	require.NotEmpty(t, m.EncryptionInformation.Policy, "expected provisional policy in stub manifest")
+	require.NotEmpty(t, m.Policy, "expected provisional policy in stub manifest")
 
-	policyBytes, err := ocrypto.Base64Decode([]byte(m.EncryptionInformation.Policy))
+	policyBytes, err := ocrypto.Base64Decode([]byte(m.Policy))
 	require.NoError(t, err)
 
 	var pol Policy
@@ -105,8 +105,8 @@ func testGetManifestIncludesInitialPolicy(t *testing.T) {
 	assert.True(t, found, "provisional policy should include initial attribute FQN")
 
 	// Pre-finalize manifest should include kaos based on initial attributes, and estimated root signature
-	assert.Len(t, m.EncryptionInformation.KeyAccessObjs, 1)
-	assert.NotEmpty(t, m.EncryptionInformation.RootSignature.Signature)
+	assert.Len(t, m.KeyAccessObjs, 1)
+	assert.NotEmpty(t, m.Signature)
 }
 
 // Sparse indices end-to-end: write 0,1,2,5000,5001,5002 and verify manifest and totals.
@@ -138,7 +138,7 @@ func testSparseIndicesInOrder(t *testing.T) {
 	require.NotNil(t, fin.Manifest)
 	assert.Equal(t, len(order), fin.TotalSegments)
 
-	segs := fin.Manifest.EncryptionInformation.IntegrityInformation.Segments
+	segs := fin.Manifest.Segments
 	require.Len(t, segs, len(order))
 	// Ensure manifest segments are densely packed and sizes match our inputs in order
 	expectedPlain := 0
@@ -178,7 +178,7 @@ func testSparseIndicesOutOfOrder(t *testing.T) {
 	require.NotNil(t, fin.Manifest)
 	assert.Equal(t, len(finalOrder), fin.TotalSegments)
 
-	segs := fin.Manifest.EncryptionInformation.IntegrityInformation.Segments
+	segs := fin.Manifest.Segments
 	require.Len(t, segs, len(finalOrder))
 	expectedPlain := 0
 	for i, idx := range finalOrder {
@@ -211,9 +211,9 @@ func testInitialAttributesOnWriter(t *testing.T) {
 	fin1, err := writer.Finalize(ctx)
 	require.NoError(t, err)
 	require.NotNil(t, fin1.Manifest)
-	assert.GreaterOrEqual(t, len(fin1.Manifest.EncryptionInformation.KeyAccessObjs), 1)
+	assert.GreaterOrEqual(t, len(fin1.Manifest.KeyAccessObjs), 1)
 
-	policyBytes, err := ocrypto.Base64Decode([]byte(fin1.Manifest.EncryptionInformation.Policy))
+	policyBytes, err := ocrypto.Base64Decode([]byte(fin1.Manifest.Policy))
 	require.NoError(t, err)
 	var pol1 Policy
 	require.NoError(t, json.Unmarshal(policyBytes, &pol1))
@@ -241,7 +241,7 @@ func testInitialAttributesOnWriter(t *testing.T) {
 	fin2, err := writer2.Finalize(ctx, WithAttributeValues(overrideAttrs))
 	require.NoError(t, err)
 
-	policyBytes2, err := ocrypto.Base64Decode([]byte(fin2.Manifest.EncryptionInformation.Policy))
+	policyBytes2, err := ocrypto.Base64Decode([]byte(fin2.Manifest.Policy))
 	require.NoError(t, err)
 	var pol2 Policy
 	require.NoError(t, json.Unmarshal(policyBytes2, &pol2))
@@ -298,22 +298,22 @@ func testBasicTDFCreationFlow(t *testing.T) {
 
 	// Verify manifest structure
 	assert.Equal(t, TDFSpecVersion, finalizeResult.Manifest.TDFVersion, "TDF version should match expected")
-	assert.Equal(t, "application/octet-stream", finalizeResult.Manifest.Payload.MimeType, "Default MIME type should be set")
-	assert.True(t, finalizeResult.Manifest.Payload.IsEncrypted, "Payload should be marked as encrypted")
-	assert.Equal(t, "zip", finalizeResult.Manifest.Payload.Protocol, "Protocol should be zip")
-	assert.Equal(t, "reference", finalizeResult.Manifest.Payload.Type, "Type should be reference")
+	assert.Equal(t, "application/octet-stream", finalizeResult.Manifest.MimeType, "Default MIME type should be set")
+	assert.True(t, finalizeResult.Manifest.IsEncrypted, "Payload should be marked as encrypted")
+	assert.Equal(t, "zip", finalizeResult.Manifest.Protocol, "Protocol should be zip")
+	assert.Equal(t, "reference", finalizeResult.Manifest.Type, "Type should be reference")
 
 	// Verify key access objects
-	assert.Len(t, finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs, 1, "Should have one key access object for default KAS")
-	keyAccess := finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs[0]
+	assert.Len(t, finalizeResult.Manifest.KeyAccessObjs, 1, "Should have one key access object for default KAS")
+	keyAccess := finalizeResult.Manifest.KeyAccessObjs[0]
 	assert.Equal(t, testKAS1, keyAccess.KasURL, "KAS URL should match")
 	assert.Equal(t, "kas", keyAccess.Protocol, "Protocol should be kas")
 	assert.NotEmpty(t, keyAccess.WrappedKey, "Wrapped key should not be empty")
 
 	// Verify encryption information
-	assert.Equal(t, kGCMCipherAlgorithm, finalizeResult.Manifest.EncryptionInformation.Method.Algorithm, "Algorithm should be AES-256-GCM")
-	assert.True(t, finalizeResult.Manifest.EncryptionInformation.Method.IsStreamable, "Should be marked as streamable")
-	assert.NotEmpty(t, finalizeResult.Manifest.EncryptionInformation.Policy, "Policy should not be empty")
+	assert.Equal(t, kGCMCipherAlgorithm, finalizeResult.Manifest.Method.Algorithm, "Algorithm should be AES-256-GCM")
+	assert.True(t, finalizeResult.Manifest.Method.IsStreamable, "Should be marked as streamable")
+	assert.NotEmpty(t, finalizeResult.Manifest.Policy, "Policy should not be empty")
 }
 
 // testSingleSegmentWithAttributes tests TDF creation with attribute-based key splitting
@@ -343,10 +343,10 @@ func testSingleSegmentWithAttributes(t *testing.T) {
 	validateManifestSchema(t, finalizeResult.Manifest)
 
 	// Verify key access objects were created for each attribute's KAS
-	assert.GreaterOrEqual(t, len(finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs), 1, "Should have at least one key access object")
+	assert.GreaterOrEqual(t, len(finalizeResult.Manifest.KeyAccessObjs), 1, "Should have at least one key access object")
 
 	// Verify policy contains attributes
-	policyBytes, err := ocrypto.Base64Decode([]byte(finalizeResult.Manifest.EncryptionInformation.Policy))
+	policyBytes, err := ocrypto.Base64Decode([]byte(finalizeResult.Manifest.Policy))
 	require.NoError(t, err)
 	assert.NotEmpty(t, policyBytes, "Policy should not be empty")
 
@@ -406,8 +406,8 @@ func testMultiSegmentFlow(t *testing.T) {
 	validateManifestSchema(t, finalizeResult.Manifest)
 
 	// Verify root signature was calculated from all segments
-	assert.NotEmpty(t, finalizeResult.Manifest.EncryptionInformation.RootSignature.Signature, "Root signature should be set")
-	assert.Equal(t, "HS256", finalizeResult.Manifest.EncryptionInformation.RootSignature.Algorithm, "Root signature algorithm should be HS256")
+	assert.NotEmpty(t, finalizeResult.Manifest.Signature, "Root signature should be set")
+	assert.Equal(t, "HS256", finalizeResult.Manifest.Algorithm, "Root signature algorithm should be HS256")
 }
 
 // testKeySplittingWithMultipleAttributes tests XOR key splitting with complex attribute scenarios
@@ -440,7 +440,7 @@ func testKeySplittingWithMultipleAttributes(t *testing.T) {
 	validateManifestSchema(t, finalizeResult.Manifest)
 
 	// Verify multiple key access objects were created
-	keyAccessObjs := finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs
+	keyAccessObjs := finalizeResult.Manifest.KeyAccessObjs
 	assert.GreaterOrEqual(t, len(keyAccessObjs), 1, "Should have at least one key access object")
 
 	// Verify each key access object has proper structure
@@ -498,10 +498,10 @@ func testManifestGeneration(t *testing.T) {
 	assert.Equal(t, TDFSpecVersion, finalizeResult.Manifest.TDFVersion, "TDF version should match")
 
 	// Verify payload information
-	assert.Equal(t, customMimeType, finalizeResult.Manifest.Payload.MimeType, "MIME type should match custom value")
-	assert.Equal(t, "zip", finalizeResult.Manifest.Payload.Protocol, "Protocol should be zip")
-	assert.Equal(t, "reference", finalizeResult.Manifest.Payload.Type, "Type should be reference")
-	assert.True(t, finalizeResult.Manifest.Payload.IsEncrypted, "Payload should be encrypted")
+	assert.Equal(t, customMimeType, finalizeResult.Manifest.MimeType, "MIME type should match custom value")
+	assert.Equal(t, "zip", finalizeResult.Manifest.Protocol, "Protocol should be zip")
+	assert.Equal(t, "reference", finalizeResult.Manifest.Type, "Type should be reference")
+	assert.True(t, finalizeResult.Manifest.IsEncrypted, "Payload should be encrypted")
 
 	// Verify encryption information
 	encInfo := finalizeResult.Manifest.EncryptionInformation
@@ -511,8 +511,8 @@ func testManifestGeneration(t *testing.T) {
 
 	// Verify integrity information
 	intInfo := encInfo.IntegrityInformation
-	assert.Equal(t, "HS256", intInfo.RootSignature.Algorithm, "Root signature algorithm should be HS256")
-	assert.NotEmpty(t, intInfo.RootSignature.Signature, "Root signature should not be empty")
+	assert.Equal(t, "HS256", intInfo.Algorithm, "Root signature algorithm should be HS256")
+	assert.NotEmpty(t, intInfo.Signature, "Root signature should not be empty")
 
 	// Verify key access objects
 	assert.GreaterOrEqual(t, len(encInfo.KeyAccessObjs), 1, "Should have at least one key access object")
@@ -598,7 +598,7 @@ func testAssertionsAndMetadata(t *testing.T) {
 	assert.NotEmpty(t, metadata["timestamp"], "Timestamp should be set")
 
 	// Verify encrypted metadata in key access object
-	keyAccess := finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs[0]
+	keyAccess := finalizeResult.Manifest.KeyAccessObjs[0]
 	assert.NotEmpty(t, keyAccess.EncryptedMetadata, "Encrypted metadata should be present")
 }
 
@@ -711,10 +711,10 @@ func testXORReconstruction(t *testing.T) {
 
 	// The actual verification of XOR reconstruction is done internally by the splitter,
 	// but we can verify the structure is correct and key access objects were generated
-	assert.GreaterOrEqual(t, len(finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs), 1, "Should have key access objects")
+	assert.GreaterOrEqual(t, len(finalizeResult.Manifest.KeyAccessObjs), 1, "Should have key access objects")
 
 	// Verify that each key access object has the required fields
-	for i, keyAccess := range finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs {
+	for i, keyAccess := range finalizeResult.Manifest.KeyAccessObjs {
 		assert.NotEmpty(t, keyAccess.WrappedKey, "Key access %d should have wrapped key", i)
 		assert.NotEmpty(t, keyAccess.KasURL, "Key access %d should have KAS URL", i)
 		assert.NotEmpty(t, keyAccess.SplitID, "Key access %d should have split ID", i)
@@ -764,7 +764,7 @@ func testDifferentAttributeRules(t *testing.T) {
 
 			// Verify manifest was created successfully
 			assert.NotNil(t, finalizeResult.Manifest, "Manifest should not be nil for %s", tc.name)
-			assert.NotEmpty(t, finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs, "Should have key access objects for %s", tc.name)
+			assert.NotEmpty(t, finalizeResult.Manifest.KeyAccessObjs, "Should have key access objects for %s", tc.name)
 		})
 	}
 }
@@ -1010,11 +1010,11 @@ func testGetManifestBeforeAndAfterFinalize(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, m0)
 	assert.Equal(t, TDFSpecVersion, m0.TDFVersion)
-	assert.Equal(t, tdfAsZip, m0.Payload.Protocol)
-	assert.Equal(t, tdfZipReference, m0.Payload.Type)
-	assert.True(t, m0.Payload.IsEncrypted)
+	assert.Equal(t, tdfAsZip, m0.Protocol)
+	assert.Equal(t, tdfZipReference, m0.Type)
+	assert.True(t, m0.IsEncrypted)
 	// No segments yet
-	assert.Empty(t, m0.EncryptionInformation.Segments)
+	assert.Empty(t, m0.Segments)
 
 	// Write a segment and check stub updates
 	data := []byte("abc123")
@@ -1025,10 +1025,10 @@ func testGetManifestBeforeAndAfterFinalize(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, m1)
 	// Should reflect first segment defaults and sizes
-	assert.Len(t, m1.EncryptionInformation.Segments, 1)
-	assert.Equal(t, int64(len(data)), m1.EncryptionInformation.DefaultSegmentSize)
-	assert.Greater(t, m1.EncryptionInformation.DefaultEncryptedSegSize, int64(len(data)))
-	assert.Equal(t, writer.segmentIntegrityAlgorithm.String(), m1.EncryptionInformation.SegmentHashAlgorithm)
+	assert.Len(t, m1.Segments, 1)
+	assert.Equal(t, int64(len(data)), m1.DefaultSegmentSize)
+	assert.Greater(t, m1.DefaultEncryptedSegSize, int64(len(data)))
+	assert.Equal(t, writer.segmentIntegrityAlgorithm.String(), m1.SegmentHashAlgorithm)
 
 	// Finalize and GetManifest should return the final one (with key access, root signature)
 	attrs := []*policy.Value{createTestAttribute("https://example.com/attr/Test/value/Basic", testKAS1, "kid1")}
@@ -1039,8 +1039,8 @@ func testGetManifestBeforeAndAfterFinalize(t *testing.T) {
 	m2, err := writer.GetManifest(t.Context())
 	require.NoError(t, err)
 	// Expect at least one key access and a root signature after finalize
-	assert.Len(t, m2.EncryptionInformation.KeyAccessObjs, 1)
-	assert.NotEmpty(t, m2.EncryptionInformation.RootSignature.Signature)
+	assert.Len(t, m2.KeyAccessObjs, 1)
+	assert.NotEmpty(t, m2.Signature)
 
 	// Ensure GetManifest returns a clone, not the same pointer
 	assert.NotSame(t, fin.Manifest, m2)

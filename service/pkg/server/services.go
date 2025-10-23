@@ -162,7 +162,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 		if err == nil {
 			if extractedLogLevel != cfg.Logger.Level {
 				slog.Debug("configuring logger")
-				var newLoggerConfig logging.Config = cfg.Logger
+				var newLoggerConfig = cfg.Logger
 				newLoggerConfig.Level = extractedLogLevel
 				newSvcLogger, err := logging.NewLogger(newLoggerConfig)
 				// only assign if logger successfully created
@@ -190,7 +190,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 			}
 
 			// Function to create a cache given cache options
-			var createCacheClient func(cache.Options) (*cache.Cache, error) = func(options cache.Options) (*cache.Cache, error) {
+			var createCacheClient = func(options cache.Options) (*cache.Cache, error) {
 				slog.Info("creating cache client for",
 					slog.String("namespace", ns),
 					slog.String("service", svc.GetServiceDesc().ServiceName),

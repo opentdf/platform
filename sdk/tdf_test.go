@@ -333,7 +333,7 @@ func (s *TDFSuite) SetupSuite() {
 }
 
 func (s *TDFSuite) SetupTest() {
-	s.sdk.kasKeyCache.clear()
+	s.sdk.clear()
 	s.fakeWellKnown = createWellKnown(nil)
 }
 
@@ -477,7 +477,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 				s.Len(payloadKey, kKeySize)
 
 				// check that root sig and seg sig are hex encoded if useHex is true
-				b64decodedroot, err := ocrypto.Base64Decode([]byte(r.Manifest().EncryptionInformation.RootSignature.Signature))
+				b64decodedroot, err := ocrypto.Base64Decode([]byte(r.Manifest().Signature))
 				s.Require().NoError(err)
 				b64decodedseg, err := ocrypto.Base64Decode([]byte(r.Manifest().EncryptionInformation.Segments[0].Hash))
 				s.Require().NoError(err)
@@ -1774,10 +1774,10 @@ func (s *TDFSuite) Test_KeySplit_SameKas_SameAlgorithm() {
 	// * keys within our testing structure. Ultimately we should
 	// * modify the test infra to handle multiple active keys
 	for _, fakeKas := range s.kases {
-		if fakeKas.KASInfo.URL == s.kasTestURLLookup[evenMoreSpecificKas] {
+		if fakeKas.URL == s.kasTestURLLookup[evenMoreSpecificKas] {
 			old := &fakeKas
 			fakeKas.privateKey = mockRSAPrivateKey1
-			fakeKas.KASInfo.KID = "r0"
+			fakeKas.KID = "r0"
 			fakeKas.KASInfo.PublicKey = mockRSAPublicKey1
 			fakeKas.legakeys[old.KID] = keyInfo{old.KID, old.privateKey, old.KASInfo.PublicKey}
 		}
@@ -1805,7 +1805,7 @@ func (s *TDFSuite) Test_KeySplit_SameKas_SameAlgorithm() {
 
 			// test encrypt
 			tdo := s.testEncrypt(s.sdk, []TDFOption{WithDataAttributes(attrVal1.GetFqn(), attrVal2.GetFqn())}, plainTextFileName, tdfFileName, test)
-			s.Len(tdo.manifest.EncryptionInformation.KeyAccessObjs, 2, "Should have two key access objects")
+			s.Len(tdo.manifest.KeyAccessObjs, 2, "Should have two key access objects")
 			s.Equal("r0", tdo.manifest.EncryptionInformation.KeyAccessObjs[0].KID)
 			s.Equal("r3", tdo.manifest.EncryptionInformation.KeyAccessObjs[1].KID)
 			s.Equal(s.kasTestURLLookup[evenMoreSpecificKas], tdo.manifest.EncryptionInformation.KeyAccessObjs[0].KasURL)
@@ -1851,7 +1851,7 @@ func (s *TDFSuite) Test_KeyRotation() {
 
 			kasInfoList[0].PublicKey = ""
 			kasInfoList[0].KID = ""
-			s.sdk.kasKeyCache.clear()
+			s.sdk.clear()
 			tdo2 := s.testEncrypt(s.sdk, []TDFOption{WithKasInformation(kasInfoList...)}, tdf2Name, tdfFileName, test)
 			s.Equal("r2", tdo2.manifest.EncryptionInformation.KeyAccessObjs[0].KID)
 
@@ -1918,7 +1918,7 @@ func (s *TDFSuite) Test_KeySplits() {
 			// test encrypt
 			tdo := s.testEncrypt(s.sdk, []TDFOption{WithKasInformation(kasInfoList...)}, plaintTextFileName, tdfFileName, test)
 			s.Equal(test.splitPlan[0].KAS, tdo.manifest.EncryptionInformation.KeyAccessObjs[0].KasURL)
-			s.Len(tdo.manifest.EncryptionInformation.KeyAccessObjs, len(test.splitPlan))
+			s.Len(tdo.manifest.KeyAccessObjs, len(test.splitPlan))
 
 			// test decrypt with reader
 			s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, test)
@@ -2379,7 +2379,7 @@ func (s *TDFSuite) Test_Autoconfigure() {
 
 			// test encrypt
 			tdo := s.testEncrypt(s.sdk, []TDFOption{WithKasInformation(kasInfoList...)}, plaintTextFileName, tdfFileName, test)
-			s.Len(tdo.manifest.EncryptionInformation.KeyAccessObjs, test.expectedPlanSize)
+			s.Len(tdo.manifest.KeyAccessObjs, test.expectedPlanSize)
 
 			// test decrypt with reader
 			s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, test)
@@ -2421,13 +2421,13 @@ func (s *TDFSuite) Test_PopulateBaseKey_Success() {
 func rotateKey(k *FakeKas, kid, private, public string) func() {
 	old := *k
 	k.privateKey = private
-	k.KASInfo.KID = kid
+	k.KID = kid
 	k.KASInfo.PublicKey = public
 	k.legakeys[old.KID] = keyInfo{old.KID, old.privateKey, old.KASInfo.PublicKey}
 	return func() {
 		delete(k.legakeys, old.KID)
 		k.privateKey = old.privateKey
-		k.KASInfo.KID = old.KASInfo.KID
+		k.KID = old.KID
 		k.KASInfo.PublicKey = old.KASInfo.PublicKey
 	}
 }
@@ -2494,7 +2494,7 @@ func (s *TDFSuite) testDecryptWithReader(sdk *SDK, tdfFile, decryptedTdfFileName
 	s.Require().NotNil(r.payloadKey)
 
 	if test.mimeType != "" {
-		s.Equal(test.mimeType, r.Manifest().Payload.MimeType, "mimeType does not match")
+		s.Equal(test.mimeType, r.Manifest().MimeType, "mimeType does not match")
 	}
 
 	{
@@ -2623,9 +2623,9 @@ func (s *TDFSuite) startBackend() {
 		server := httptest.NewServer(mux)
 
 		// add to lookup reg
-		s.kasTestURLLookup[s.kases[i].KASInfo.URL] = server.URL
+		s.kasTestURLLookup[s.kases[i].URL] = server.URL
 		// replace kasinfo url with httptest server url
-		s.kases[i].KASInfo.URL = server.URL
+		s.kases[i].URL = server.URL
 
 		if i == 0 {
 			sdkPlatformURL = server.URL
@@ -2774,7 +2774,7 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations
 
 	for _, req := range bodyData.GetRequests() {
 		requiredObligations := f.s.checkPolicyObligations(f.attrToRequiredObligations, req)
-		if f.KASInfo.URL == f.s.kasTestURLLookup[obligationKas] {
+		if f.URL == f.s.kasTestURLLookup[obligationKas] {
 			// Only return failures for obligation kas URL
 			if !f.s.checkObligationsFulfillment(requiredObligations, fulfillableObligations) {
 				results := &kaspb.PolicyRewrapResult{PolicyId: req.GetPolicy().GetId()}

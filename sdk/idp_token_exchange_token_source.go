@@ -33,19 +33,19 @@ func NewIDPTokenExchangeTokenSource(logger *slog.Logger, exchangeInfo oauth.Toke
 }
 
 func (i *IDPTokenExchangeTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error) {
-	i.IDPAccessTokenSource.tokenMutex.Lock()
-	defer i.IDPAccessTokenSource.tokenMutex.Unlock()
+	i.tokenMutex.Lock()
+	defer i.tokenMutex.Unlock()
 
-	if i.IDPAccessTokenSource.token == nil || i.IDPAccessTokenSource.token.Expired() {
+	if i.token == nil || i.token.Expired() {
 		tok, err := oauth.DoTokenExchange(ctx, client, i.idpTokenEndpoint.String(), i.scopes, i.credentials, i.TokenExchangeInfo, i.dpopKey)
 		if err != nil {
 			return "", err
 		}
 
-		i.IDPAccessTokenSource.token = tok
+		i.token = tok
 	}
 
-	return auth.AccessToken(i.IDPAccessTokenSource.token.AccessToken), nil
+	return auth.AccessToken(i.token.AccessToken), nil
 }
 
 func (i *IDPTokenExchangeTokenSource) MakeToken(keyMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {

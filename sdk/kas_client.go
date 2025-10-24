@@ -518,7 +518,7 @@ func (s SDK) getPublicKey(ctx context.Context, kasurl, algorithm, kidToFind stri
 	req := kas.PublicKeyRequest{
 		Algorithm: algorithm,
 	}
-	if s.config.tdfFeatures.noKID {
+	if s.tdfFeatures.noKID {
 		req.V = "1"
 	}
 	resp, err := serviceClient.PublicKey(ctx, connect.NewRequest(&req))
@@ -527,7 +527,7 @@ func (s SDK) getPublicKey(ctx context.Context, kasurl, algorithm, kidToFind stri
 	}
 
 	kid := resp.Msg.GetKid()
-	if s.config.tdfFeatures.noKID {
+	if s.tdfFeatures.noKID {
 		kid = ""
 	}
 

@@ -82,7 +82,7 @@ func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger, svc
 }
 
 func (s *EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
-	ctx, span := s.Tracer.Start(ctx, "ResolveEntities")
+	ctx, span := s.Start(ctx, "ResolveEntities")
 	defer span.End()
 	connector, err := s.getConnector(ctx, s.idpConfig.TokenBuffer)
 	if err != nil {
@@ -94,7 +94,7 @@ func (s *EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *co
 }
 
 func (s *EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error) {
-	ctx, span := s.Tracer.Start(ctx, "CreateEntityChainsFromTokens")
+	ctx, span := s.Start(ctx, "CreateEntityChainsFromTokens")
 	defer span.End()
 
 	connector, err := s.getConnector(ctx, s.idpConfig.TokenBuffer)

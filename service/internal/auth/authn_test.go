@@ -138,7 +138,7 @@ func (s *AuthSuite) SetupTest() {
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if r.URL.Path == "/.well-known/openid-configuration" {
-			_, err := w.Write([]byte(fmt.Sprintf(`{"issuer":"%s","jwks_uri": "%s/jwks"}`, s.server.URL, s.server.URL)))
+			_, err := fmt.Fprintf(w, `{"issuer":"%s","jwks_uri": "%s/jwks"}`, s.server.URL, s.server.URL)
 			if err != nil {
 				panic(err)
 			}

@@ -205,6 +205,91 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues_Offset_Succeeds() {
 	}
 }
 
+func (s *AttributeValuesSuite) Test_ListAttributeValues_AttributeDefID_Succeeds() {
+	// Create a namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-pagination.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+	s.namespaces = append(s.namespaces, ns)
+
+	// Create an attribute definition
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test-attr-pagination",
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.NotNil(attr)
+
+	// Create multiple attribute values
+	expectedValues := make([]string, 5)
+	createdValueIDs := make([]string, 5)
+	for i := 0; i < 5; i++ {
+		value := fmt.Sprintf("test-value-%d", i+1)
+		expectedValues[i] = value
+
+		req := &attributes.CreateAttributeValueRequest{
+			Value: value,
+		}
+		createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attr.GetId(), req)
+		s.Require().NoError(err)
+		s.NotNil(createdValue)
+		createdValueIDs[i] = createdValue.GetId()
+		s.Equal(value, createdValue.GetValue())
+	}
+
+	// Test listing all values without pagination
+	listRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+		AttributeId: attr.GetId(),
+		State:       common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	s.Len(listRsp.GetValues(), 5)
+
+	// Verify all created values are in the response
+	foundValues := make(map[string]bool)
+	for _, val := range listRsp.GetValues() {
+		foundValues[val.GetValue()] = true
+		s.Equal(attr.GetId(), val.GetAttribute().GetId())
+	}
+	for _, expectedValue := range expectedValues {
+		s.True(foundValues[expectedValue], "Expected value %s not found in list", expectedValue)
+	}
+	s.Require().Equal(int32(5), listRsp.GetPagination().GetTotal())
+	s.Require().Equal(int32(0), listRsp.GetPagination().GetCurrentOffset())
+	s.Require().Equal(int32(0), listRsp.GetPagination().GetNextOffset())
+
+	// Deactivate one of the attribute values
+	deactivated, err := s.db.PolicyClient.DeactivateAttributeValue(s.ctx, createdValueIDs[2]) // deactivate "test-value-3"
+	s.Require().NoError(err)
+	s.Require().NotNil(deactivated)
+	s.Require().False(deactivated.GetActive().GetValue())
+
+	// Test listing only active values after deactivation
+	activeListRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+		AttributeId: attr.GetId(),
+		State:       common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+	})
+	s.Require().NoError(err)
+	s.NotNil(activeListRsp)
+	s.Len(activeListRsp.GetValues(), 4) // should be 4 active values now
+
+	// Verify that the deactivated value is not in the active list
+	activeFoundValues := make(map[string]bool)
+	for _, val := range activeListRsp.GetValues() {
+		activeFoundValues[val.GetValue()] = true
+		s.True(val.GetActive().GetValue(), "All values in active list should be active")
+		s.Equal(attr.GetId(), val.GetAttribute().GetId())
+	}
+	s.False(activeFoundValues["test-value-3"], "Deactivated value should not be in active list")
+	s.Require().Equal(int32(4), activeListRsp.GetPagination().GetTotal())
+	s.Require().Equal(int32(0), listRsp.GetPagination().GetCurrentOffset())
+	s.Require().Equal(int32(0), listRsp.GetPagination().GetNextOffset())
+}
+
 func (s *AttributeValuesSuite) Test_GetAttributeValue() {
 	f := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 

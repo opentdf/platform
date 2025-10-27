@@ -359,18 +359,14 @@ func (q *Queries) getNamespace(ctx context.Context, arg getNamespaceParams) (get
 
 const listNamespaces = `-- name: listNamespaces :many
 
-WITH counted AS (
-    SELECT COUNT(id) AS total FROM attribute_namespaces
-)
 SELECT
+    COUNT(*) OVER() AS total,
     ns.id,
     ns.name,
     ns.active,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
-    fqns.fqn,
-    counted.total
+    fqns.fqn
 FROM attribute_namespaces ns
-CROSS JOIN counted
 LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
 WHERE ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
 LIMIT $3
@@ -384,30 +380,26 @@ type listNamespacesParams struct {
 }
 
 type listNamespacesRow struct {
+	Total    int64       `json:"total"`
 	ID       string      `json:"id"`
 	Name     string      `json:"name"`
 	Active   bool        `json:"active"`
 	Metadata []byte      `json:"metadata"`
 	Fqn      pgtype.Text `json:"fqn"`
-	Total    int64       `json:"total"`
 }
 
 // --------------------------------------------------------------
 // NAMESPACES
 // --------------------------------------------------------------
 //
-//	WITH counted AS (
-//	    SELECT COUNT(id) AS total FROM attribute_namespaces
-//	)
 //	SELECT
+//	    COUNT(*) OVER() AS total,
 //	    ns.id,
 //	    ns.name,
 //	    ns.active,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
-//	    fqns.fqn,
-//	    counted.total
+//	    fqns.fqn
 //	FROM attribute_namespaces ns
-//	CROSS JOIN counted
 //	LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
 //	WHERE ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
 //	LIMIT $3
@@ -422,12 +414,12 @@ func (q *Queries) listNamespaces(ctx context.Context, arg listNamespacesParams) 
 	for rows.Next() {
 		var i listNamespacesRow
 		if err := rows.Scan(
+			&i.Total,
 			&i.ID,
 			&i.Name,
 			&i.Active,
 			&i.Metadata,
 			&i.Fqn,
-			&i.Total,
 		); err != nil {
 			return nil, err
 		}

@@ -737,10 +737,6 @@ func (q *Queries) listAttributesByDefOrValueFqns(ctx context.Context, fqns []str
 
 const listAttributesDetail = `-- name: listAttributesDetail :many
 
-WITH counted AS (
-    SELECT COUNT(ad.id) AS total
-    FROM attribute_definitions ad
-)
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -758,9 +754,8 @@ SELECT
         ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
     ) AS values,
     fqns.fqn,
-    counted.total
+    COUNT(*) OVER() AS total
 FROM attribute_definitions ad
-CROSS JOIN counted
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 LEFT JOIN (
   SELECT
@@ -776,7 +771,7 @@ WHERE
     ($1::BOOLEAN IS NULL OR ad.active = $1) AND
     (NULLIF($2, '') IS NULL OR ad.namespace_id = $2::uuid) AND 
     (NULLIF($3, '') IS NULL OR n.name = $3) 
-GROUP BY ad.id, n.name, fqns.fqn, counted.total
+GROUP BY ad.id, n.name, fqns.fqn
 LIMIT $5 
 OFFSET $4
 `
@@ -806,10 +801,6 @@ type listAttributesDetailRow struct {
 // ATTRIBUTES
 // --------------------------------------------------------------
 //
-//	WITH counted AS (
-//	    SELECT COUNT(ad.id) AS total
-//	    FROM attribute_definitions ad
-//	)
 //	SELECT
 //	    ad.id,
 //	    ad.name as attribute_name,
@@ -827,9 +818,8 @@ type listAttributesDetailRow struct {
 //	        ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
 //	    ) AS values,
 //	    fqns.fqn,
-//	    counted.total
+//	    COUNT(*) OVER() AS total
 //	FROM attribute_definitions ad
-//	CROSS JOIN counted
 //	LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 //	LEFT JOIN (
 //	  SELECT
@@ -845,7 +835,7 @@ type listAttributesDetailRow struct {
 //	    ($1::BOOLEAN IS NULL OR ad.active = $1) AND
 //	    (NULLIF($2, '') IS NULL OR ad.namespace_id = $2::uuid) AND
 //	    (NULLIF($3, '') IS NULL OR n.name = $3)
-//	GROUP BY ad.id, n.name, fqns.fqn, counted.total
+//	GROUP BY ad.id, n.name, fqns.fqn
 //	LIMIT $5
 //	OFFSET $4
 func (q *Queries) listAttributesDetail(ctx context.Context, arg listAttributesDetailParams) ([]listAttributesDetailRow, error) {
@@ -886,9 +876,6 @@ func (q *Queries) listAttributesDetail(ctx context.Context, arg listAttributesDe
 }
 
 const listAttributesSummary = `-- name: listAttributesSummary :many
-WITH counted AS (
-    SELECT COUNT(ad.id) AS total FROM attribute_definitions ad
-)
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -897,12 +884,11 @@ SELECT
     ad.namespace_id,
     ad.active,
     n.name as namespace_name,
-    counted.total
+    COUNT(*) OVER() AS total
 FROM attribute_definitions ad
-CROSS JOIN counted
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 WHERE ad.namespace_id = $1
-GROUP BY ad.id, n.name, counted.total
+GROUP BY ad.id, n.name
 LIMIT $3 
 OFFSET $2
 `
@@ -926,9 +912,6 @@ type listAttributesSummaryRow struct {
 
 // listAttributesSummary
 //
-//	WITH counted AS (
-//	    SELECT COUNT(ad.id) AS total FROM attribute_definitions ad
-//	)
 //	SELECT
 //	    ad.id,
 //	    ad.name as attribute_name,
@@ -937,12 +920,11 @@ type listAttributesSummaryRow struct {
 //	    ad.namespace_id,
 //	    ad.active,
 //	    n.name as namespace_name,
-//	    counted.total
+//	    COUNT(*) OVER() AS total
 //	FROM attribute_definitions ad
-//	CROSS JOIN counted
 //	LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 //	WHERE ad.namespace_id = $1
-//	GROUP BY ad.id, n.name, counted.total
+//	GROUP BY ad.id, n.name
 //	LIMIT $3
 //	OFFSET $2
 func (q *Queries) listAttributesSummary(ctx context.Context, arg listAttributesSummaryParams) ([]listAttributesSummaryRow, error) {

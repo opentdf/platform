@@ -3,18 +3,14 @@
 ----------------------------------------------------------------
 
 -- name: listNamespaces :many
-WITH counted AS (
-    SELECT COUNT(id) AS total FROM attribute_namespaces
-)
 SELECT
+    COUNT(*) OVER() AS total,
     ns.id,
     ns.name,
     ns.active,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
-    fqns.fqn,
-    counted.total
+    fqns.fqn
 FROM attribute_namespaces ns
-CROSS JOIN counted
 LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
 WHERE (sqlc.narg('active')::BOOLEAN IS NULL OR ns.active = sqlc.narg('active')::BOOLEAN)
 LIMIT @limit_

@@ -286,8 +286,8 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues_AttributeDefID_Succeeds(
 	}
 	s.False(activeFoundValues["test-value-3"], "Deactivated value should not be in active list")
 	s.Require().Equal(int32(4), activeListRsp.GetPagination().GetTotal())
-	s.Require().Equal(int32(0), listRsp.GetPagination().GetCurrentOffset())
-	s.Require().Equal(int32(0), listRsp.GetPagination().GetNextOffset())
+	s.Require().Equal(int32(0), activeListRsp.GetPagination().GetCurrentOffset())
+	s.Require().Equal(int32(0), activeListRsp.GetPagination().GetNextOffset())
 }
 
 func (s *AttributeValuesSuite) Test_GetAttributeValue() {

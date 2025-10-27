@@ -332,7 +332,7 @@ jobs:
 
       - name: save benchmark results as a step summary
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           script: |
             const fs = require('fs');
@@ -355,7 +355,7 @@ jobs:
           persist-credentials: false
 
       - name: save benchmark results as a comment
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           script: |
             const decisionOutput = process.env.BENCHMARK_MARKDOWN;

@@ -13,6 +13,10 @@ The assertion lifecycle consists of two main phases: creation and verification. 
 This diagram shows how assertions are created and bound to TDFs during the encryption process:
 
 ```mermaid
+---
+config:
+  theme: dark
+---
 flowchart TD
     %% Assertion Creation Phase
     A[TDF Creation Request] --> B{System Metadata Enabled?}
@@ -29,16 +33,19 @@ flowchart TD
     I --> J[Create Assertion Structure]
     J --> K[Generate Statement Content]
     K --> L[Compute Assertion Hash]
-    L --> M{Binding Type}
 
-    M -->|DEK-based| N[Use HMAC-SHA256 with DEK]
-    M -->|Key-based| O[Use RSA/ECDSA with Private Key]
+    P["Prepare JWT claims (assertionHash, assertionSig)"]
+    L --> P
 
-    N --> P[Create JWS with assertionHash + assertionSig]
+    P --> M{Binding Type}
+    M -->|DEK-based| N[Select DEK for signing]
+    M -->|Key-based| O[Select Private Key for signing]
+
     O --> Q[Include Public Key in JWS Headers]
-    Q --> P
 
-    P --> R[Sign JWT with Key]
+    N --> R[Sign JWT with Key]
+    Q --> R
+
     R --> S[Set Binding Signature]
     S --> T[Add Assertion to Manifest]
     T --> U{More Binders?}
@@ -51,6 +58,10 @@ flowchart TD
 This diagram shows how assertions are verified and validated during the decryption process:
 
 ```mermaid
+---
+config:
+  theme: dark
+---
 flowchart TD
     %% Assertion Verification Phase
     X[TDF Read Request] --> Y[Load TDF Manifest]

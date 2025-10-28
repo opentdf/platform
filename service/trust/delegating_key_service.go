@@ -115,13 +115,16 @@ func (d *DelegatingKeyService) Name() string {
 func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ocrypto.ProtectedKey, error) {
 	keyDetails, err := d.index.FindKeyByID(ctx, keyID)
 	if err != nil {
-		return nil, fmt.Errorf("unable to find key by ID '%s' within index %s: %w", keyID, d.index, err)
+		return nil, fmt.Errorf("decrypt: unable to find key by ID '%s' within index %s: %w", keyID, d.index, err)
 	}
 
 	pcfg := keyDetails.ProviderConfig()
+	if pcfg == nil {
+		return nil, fmt.Errorf("decrypt: key details for key ID '%s' returned nil ProviderConfig", keyID)
+	}
 	manager, err := d.getKeyManager(ctx, pcfg)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get key manager for system '%s': %w", keyDetails.System(), err)
+		return nil, fmt.Errorf("decrypt: unable to get key manager [%s#%s]: %w", pcfg.GetManager(), pcfg.GetName(), err)
 	}
 
 	return manager.Decrypt(ctx, keyDetails, ciphertext, ephemeralPublicKey)
@@ -130,12 +133,16 @@ func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier,
 func (d *DelegatingKeyService) DeriveKey(ctx context.Context, keyID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error) {
 	keyDetails, err := d.index.FindKeyByID(ctx, keyID)
 	if err != nil {
-		return nil, fmt.Errorf("unable to find key by ID '%s' in index %s: %w", keyID, d.index, err)
+		return nil, fmt.Errorf("derive: unable to find key by ID '%s' in index %s: %w", keyID, d.index, err)
 	}
 
-	manager, err := d.getKeyManager(ctx, keyDetails.ProviderConfig())
+	pcfg := keyDetails.ProviderConfig()
+	if pcfg == nil {
+		return nil, fmt.Errorf("derive: key details for key ID '%s' returned nil ProviderConfig", keyID)
+	}
+	manager, err := d.getKeyManager(ctx, pcfg)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get key manager for system '%s': %w", keyDetails.System(), err)
+		return nil, fmt.Errorf("derive: unable to get key manager [%s#%s]: %w", pcfg.GetManager(), pcfg.GetName(), err)
 	}
 
 	return manager.DeriveKey(ctx, keyDetails, ephemeralPublicKeyBytes, curve)

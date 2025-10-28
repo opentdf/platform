@@ -3,10 +3,6 @@
 ----------------------------------------------------------------
 
 -- name: listAttributesDetail :many
-WITH counted AS (
-    SELECT COUNT(ad.id) AS total
-    FROM attribute_definitions ad
-)
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -24,9 +20,8 @@ SELECT
         ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
     ) AS values,
     fqns.fqn,
-    counted.total
+    COUNT(*) OVER() AS total
 FROM attribute_definitions ad
-CROSS JOIN counted
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 LEFT JOIN (
   SELECT
@@ -42,14 +37,11 @@ WHERE
     (sqlc.narg('active')::BOOLEAN IS NULL OR ad.active = sqlc.narg('active')) AND
     (NULLIF(@namespace_id, '') IS NULL OR ad.namespace_id = @namespace_id::uuid) AND 
     (NULLIF(@namespace_name, '') IS NULL OR n.name = @namespace_name) 
-GROUP BY ad.id, n.name, fqns.fqn, counted.total
+GROUP BY ad.id, n.name, fqns.fqn
 LIMIT @limit_ 
 OFFSET @offset_; 
 
 -- name: listAttributesSummary :many
-WITH counted AS (
-    SELECT COUNT(ad.id) AS total FROM attribute_definitions ad
-)
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -58,12 +50,11 @@ SELECT
     ad.namespace_id,
     ad.active,
     n.name as namespace_name,
-    counted.total
+    COUNT(*) OVER() AS total
 FROM attribute_definitions ad
-CROSS JOIN counted
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 WHERE ad.namespace_id = $1
-GROUP BY ad.id, n.name, counted.total
+GROUP BY ad.id, n.name
 LIMIT @limit_ 
 OFFSET @offset_; 
 

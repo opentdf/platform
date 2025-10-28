@@ -82,9 +82,9 @@ func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyE
 		if err != nil {
 			return nil, err
 		}
-		return newECIES(e, salt, info)
+		return NewECIES(e, salt, info)
 	case *ecdh.PublicKey:
-		return newECIES(pub, salt, info)
+		return NewECIES(pub, salt, info)
 	default:
 		break
 	}
@@ -92,7 +92,7 @@ func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyE
 	return nil, errors.New("unsupported type of public key")
 }
 
-func newECIES(pub *ecdh.PublicKey, salt, info []byte) (ECEncryptor, error) {
+func NewECIES(pub *ecdh.PublicKey, salt, info []byte) (ECEncryptor, error) {
 	ek, err := pub.Curve().GenerateKey(rand.Reader)
 	return ECEncryptor{pub, ek, salt, info}, err
 }

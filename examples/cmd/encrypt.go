@@ -106,11 +106,11 @@ func encrypt(cmd *cobra.Command, args []string) error {
 				}))
 		}
 		if alg != "" {
-			kt, err := keyTypeForKeyType(alg)
+			kt, err := parseKeyType(alg)
 			if err != nil {
 				return err
 			}
-			opts = append(opts, sdk.WithWrappingKeyAlg(kt))
+			opts = append(opts, sdk.WithWrappingKeyAlg(kt)) //nolint:staticcheck // SA1019: This is test code for backward compatibility
 		}
 		tdf, err := client.CreateTDF(out, in, opts...)
 		if err != nil {
@@ -176,16 +176,12 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func keyTypeForKeyType(alg string) (ocrypto.KeyType, error) {
-	switch alg {
-	case string(ocrypto.RSA2048Key):
-		return ocrypto.RSA2048Key, nil
-	case string(ocrypto.EC256Key):
-		return ocrypto.EC256Key, nil
-	default:
-		// do not submit add ocrypto.UnknownKey
-		return ocrypto.RSA2048Key, fmt.Errorf("unsupported key type [%s]", alg)
+func parseKeyType(alg string) (ocrypto.KeyType, error) {
+	kt := ocrypto.KeyType(alg)
+	if kt.IsEC() || kt.IsRSA() {
+		return kt, nil
 	}
+	return ocrypto.RSA2048Key, fmt.Errorf("unsupported key type [%s]", alg)
 }
 
 func cat(_ *cobra.Command, nTdfFile string) error {

@@ -69,8 +69,11 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 
 				// Register key managers in well-known configuration
 				ksvc.keyManagerFactories = make([]registeredManagers, 0, len(srp.KeyManagerFactories))
+				if len(srp.KeyManagerFactories) > 0 {
+					srp.Logger.Error("keymanagement: ignoring legacy KeyManagerFactories; using KeyManagerCtxFactories instead")
+				}
 				managersMap := make(map[string]any)
-				for i, factory := range srp.KeyManagerFactories {
+				for i, factory := range srp.KeyManagerCtxFactories {
 					rm := registeredManagers{
 						Name:        factory.Name,
 						Description: "Key manager: " + factory.Name,

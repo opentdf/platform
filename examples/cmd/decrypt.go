@@ -87,7 +87,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	if !isNano {
 		opts := []sdk.TDFReaderOption{}
 		if alg != "" {
-			kt, err := keyTypeForKeyType(alg)
+			kt, err := parseKeyType(alg)
 			if err != nil {
 				return err
 			}

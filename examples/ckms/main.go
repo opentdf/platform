@@ -11,6 +11,7 @@ import (
 	auth "github.com/hashicorp/vault/api/auth/approle"
 	"github.com/opentdf/platform/examples/ckms/vaultkms"
 	"github.com/opentdf/platform/service/pkg/server"
+	"github.com/opentdf/platform/service/trust"
 )
 
 func start() error {
@@ -23,16 +24,22 @@ func start() error {
 		return fmt.Errorf("unable to initialize Vault client: %w", err)
 	}
 
-	kms, err := newVaultTrustService(vaultClient)
-	if err != nil {
-		return err
+	kmf := trust.NamedKeyManagerCtxFactory{
+		Name: "vault",
+		Factory: func(ctx context.Context, _ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+			kms, err := newVaultTrustService(ctx, vaultClient)
+			if err != nil {
+				return nil, err
+			}
+			return kms, nil
+		},
 	}
 
 	customStartOptions := []server.StartOptions{
 		server.WithWaitForShutdownSignal(),
 		server.WithConfigFile(configFile),
 		server.WithConfigKey(configKey),
-		server.WithTrustKeyManagers(kms),
+		server.WithTrustKeyManagerCtxFactories(kmf),
 	}
 
 	// Start the platform server with the custom options
@@ -42,7 +49,7 @@ func start() error {
 	return nil
 }
 
-func newVaultTrustService(vaultClient *vault.Client) (*vaultkms.VaultKeyService, error) {
+func newVaultTrustService(ctx context.Context, vaultClient *vault.Client) (*vaultkms.VaultKeyService, error) {
 	roleID := os.Getenv("KAS_APPROLE_ROLEID")
 	if roleID == "" {
 		return nil, errors.New("no role ID was provided in KAS_APPROLE_ROLEID env var")
@@ -68,7 +75,7 @@ func newVaultTrustService(vaultClient *vault.Client) (*vaultkms.VaultKeyService,
 		return nil, fmt.Errorf("unable to initialize AppRole auth method: %w", err)
 	}
 
-	authInfo, err := vaultClient.Auth().Login(context.Background(), appRoleAuth)
+	authInfo, err := vaultClient.Auth().Login(ctx, appRoleAuth)
 	if err != nil {
 		return nil, fmt.Errorf("unable to login to AppRole auth method: %w", err)
 	}

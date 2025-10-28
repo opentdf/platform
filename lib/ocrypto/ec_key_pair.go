@@ -73,6 +73,10 @@ type ECKeyPair struct {
 	PrivateKey *ecdsa.PrivateKey
 }
 
+func (kt KeyType) IsEC() bool {
+	return IsECKeyType(kt)
+}
+
 func IsECKeyType(kt KeyType) bool {
 	switch kt { //nolint:exhaustive // only handle ec types
 	case EC256Key, EC384Key, EC521Key:
@@ -80,6 +84,10 @@ func IsECKeyType(kt KeyType) bool {
 	default:
 		return false
 	}
+}
+
+func (kt KeyType) IsRSA() bool {
+	return IsRSAKeyType(kt)
 }
 
 func IsRSAKeyType(kt KeyType) bool {

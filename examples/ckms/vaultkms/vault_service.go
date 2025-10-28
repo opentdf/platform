@@ -11,12 +11,13 @@ import (
 
 	vault "github.com/hashicorp/vault/api"
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/trust"
 )
 
 type VaultItem struct {
 	kid     trust.KeyIdentifier
-	alg     string
+	alg     ocrypto.KeyType
 	public  ocrypto.PublicKeyEncryptor
 	private ocrypto.PrivateKeyDecryptor
 	nano    *ocrypto.ECDecryptor
@@ -26,8 +27,14 @@ func (v *VaultItem) ID() trust.KeyIdentifier {
 	return v.kid
 }
 
-func (v *VaultItem) Algorithm() string {
+func (v *VaultItem) Algorithm() ocrypto.KeyType {
 	return v.alg
+}
+
+func (v *VaultItem) ProviderConfig() *policy.KeyProviderConfig {
+	return &policy.KeyProviderConfig{
+		Manager: "vault",
+	}
 }
 
 func (v *VaultItem) IsLegacy() bool {
@@ -88,9 +95,11 @@ func (v *VaultKeyService) LoadKeys(ctx context.Context) error {
 
 	for _, key := range keys {
 		if k, err := v.loadKey(ctx, key); err != nil {
-			slog.ErrorContext(ctx, "failed to load key", "key", key, "err", err)
+			slog.ErrorContext(ctx, "failed to load key",
+				slog.Any("key", key),
+				slog.Any("err", err))
 		} else {
-			slog.DebugContext(ctx, "loaded key", "key", key)
+			slog.DebugContext(ctx, "loaded key", slog.Any("key", key))
 			v.items[k.ID()] = k
 		}
 	}
@@ -108,7 +117,7 @@ func nanoSalt() []byte {
 	return salt
 }
 
-func (v *VaultKeyService) FindKeyByAlgorithm(ctx context.Context, algorithm string, _ bool) (trust.KeyDetails, error) {
+func (v *VaultKeyService) FindKeyByAlgorithm(ctx context.Context, algorithm ocrypto.KeyType, _ bool) (trust.KeyDetails, error) {
 	// Legacy keys are not supported
 	if err := v.LoadKeys(ctx); err != nil {
 		return nil, fmt.Errorf("failed to refresh keys: %w", err)
@@ -118,7 +127,7 @@ func (v *VaultKeyService) FindKeyByAlgorithm(ctx context.Context, algorithm stri
 			return item, nil
 		}
 	}
-	return nil, errors.New("no key found for algorithm: " + algorithm)
+	return nil, errors.New("no key found for algorithm: " + string(algorithm))
 }
 
 func (v *VaultKeyService) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
@@ -177,7 +186,7 @@ func (k *InProcessWrappedKey) VerifyBinding(_ context.Context, policy, binding [
 	return nil
 }
 
-func (k *InProcessWrappedKey) Export(encapsulator trust.Encapsulator) ([]byte, error) {
+func (k *InProcessWrappedKey) Export(encapsulator ocrypto.Encapsulator) ([]byte, error) {
 	return encapsulator.Encrypt(k.rawKey)
 }
 
@@ -190,7 +199,7 @@ func (k *InProcessWrappedKey) DecryptAESGCM(iv []byte, body []byte, tagSize int)
 	return decryptedData, nil
 }
 
-func (v *VaultKeyService) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
+func (v *VaultKeyService) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ocrypto.ProtectedKey, error) {
 	if err := v.refreshKeys(ctx); err != nil {
 		return nil, fmt.Errorf("failed to refresh keys: %w", err)
 	}
@@ -207,7 +216,7 @@ func (v *VaultKeyService) Decrypt(ctx context.Context, keyDetails trust.KeyDetai
 	return NewInProcessAESKey(decryptedData)
 }
 
-func (v *VaultKeyService) DeriveKey(ctx context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
+func (v *VaultKeyService) DeriveKey(ctx context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ocrypto.ProtectedKey, error) {
 	if err := v.refreshKeys(ctx); err != nil {
 		return nil, fmt.Errorf("failed to refresh keys: %w", err)
 	}
@@ -225,8 +234,25 @@ func (v *VaultKeyService) DeriveKey(ctx context.Context, keyDetails trust.KeyDet
 	return NewInProcessAESKey(key)
 }
 
-func (v *VaultKeyService) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
-	return ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, nanoSalt(), nil)
+type OCEncapsulator struct {
+	ocrypto.PublicKeyEncryptor
+}
+
+func (e *OCEncapsulator) Encapsulate(dek ocrypto.ProtectedKey) ([]byte, error) {
+	// Delegate to the ProtectedKey to avoid exposing raw key material
+	return dek.Export(e)
+}
+
+func (e *OCEncapsulator) PublicKeyAsPEM() (string, error) {
+	return e.PublicKeyInPemFormat()
+}
+
+func (v *VaultKeyService) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (ocrypto.Encapsulator, error) {
+	pke, err := ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, nanoSalt(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create public key encryptor: %w", err)
+	}
+	return &OCEncapsulator{PublicKeyEncryptor: pke}, nil
 }
 
 func (v *VaultKeyService) Close() {
@@ -296,9 +322,14 @@ func (v *VaultKeyService) loadKey(ctx context.Context, key interface{}) (*VaultI
 		return nil, fmt.Errorf("unable to assert type of algorithm to string for key %s", kid)
 	}
 
+	alg := ocrypto.KeyType(algorithm)
+	if !alg.IsEC() && !alg.IsRSA() {
+		return nil, fmt.Errorf("unsupported key algorithm: %s", algorithm)
+	}
+
 	return &VaultItem{
 		kid:     kid,
-		alg:     algorithm,
+		alg:     alg,
 		public:  publicKey,
 		private: privateKey,
 		nano:    nanoKey,

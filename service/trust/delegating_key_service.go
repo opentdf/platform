@@ -116,7 +116,8 @@ func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier,
 		return nil, fmt.Errorf("unable to find key by ID '%s' within index %s: %w", keyID, d.index, err)
 	}
 
-	manager, err := d.getKeyManager(ctx, keyDetails.ProviderConfig())
+	pcfg := keyDetails.ProviderConfig()
+	manager, err := d.getKeyManager(ctx, pcfg)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get key manager for system '%s': %w", keyDetails.System(), err)
 	}

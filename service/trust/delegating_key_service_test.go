@@ -259,6 +259,7 @@ func (suite *DelegatingKeyServiceTestSuite) TestListKeysWith_Legacy() {
 
 func (suite *DelegatingKeyServiceTestSuite) TestDecrypt() {
 	mockKeyDetails := &MockKeyDetails{}
+	mockKeyDetails.On("ProviderConfig").Return(&policy.KeyProviderConfig{Manager: "mockManager", Name: "mock-01"})
 	mockKeyDetails.On("System").Return("mockManager")
 	suite.mockIndex.On("FindKeyByID", mock.Anything, KeyIdentifier("key1")).Return(mockKeyDetails, nil)
 
@@ -277,6 +278,7 @@ func (suite *DelegatingKeyServiceTestSuite) TestDecrypt() {
 
 func (suite *DelegatingKeyServiceTestSuite) TestDeriveKey() {
 	mockKeyDetails := &MockKeyDetails{}
+	mockKeyDetails.On("ProviderConfig").Return(&policy.KeyProviderConfig{Manager: "mockManager", Name: "mock-01"})
 	mockKeyDetails.On("System").Return("mockManager")
 	suite.mockIndex.On("FindKeyByID", mock.Anything, KeyIdentifier("key1")).Return(mockKeyDetails, nil)
 

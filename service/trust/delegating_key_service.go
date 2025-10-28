@@ -54,7 +54,8 @@ type DelegatingKeyService struct {
 	// Cache of key managers to avoid creating them multiple times
 	managers map[keyManagerDesignation]loadedManager
 
-	defaultMode keyManagerDesignation
+	defaultMode    keyManagerDesignation
+	defaultModeCfg []byte
 
 	defaultKeyManager KeyManager
 
@@ -82,10 +83,11 @@ func (d *DelegatingKeyService) RegisterKeyManagerCtx(name string, factory KeyMan
 	d.managerFactories[name] = factory
 }
 
-func (d *DelegatingKeyService) SetDefaultMode(manager, name string) {
+func (d *DelegatingKeyService) SetDefaultMode(manager, name string, cfg []byte) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	d.defaultMode = keyManagerDesignation{Manager: manager, Name: name}
+	d.defaultModeCfg = slices.Clone(cfg)
 }
 
 // Implementing KeyIndex methods
@@ -168,6 +170,7 @@ func (d *DelegatingKeyService) _defKM(ctx context.Context) (KeyManager, error) {
 		// Default manager not cached, need to initialize it.
 		// Get the defaultMode name while still holding the lock.
 		defaultModeName := d.defaultMode
+		defaultModeCfg := d.defaultModeCfg
 		d.mutex.Unlock() // Unlock before calling getKeyManager to avoid re-entrant lock on the same goroutine.
 
 		if defaultModeName.Manager == "" {
@@ -179,8 +182,9 @@ func (d *DelegatingKeyService) _defKM(ctx context.Context) (KeyManager, error) {
 		// due to the check `if name == currentDefaultMode` in getKeyManager,
 		// will error out if `defaultModeName` itself is not found, preventing recursion.
 		cfg := policy.KeyProviderConfig{
-			Manager: defaultModeName.Manager,
-			Name:    defaultModeName.Name,
+			Manager:    defaultModeName.Manager,
+			Name:       defaultModeName.Name,
+			ConfigJson: defaultModeCfg,
 		}
 		manager, err := d.getKeyManager(ctx, &cfg)
 		if err != nil {

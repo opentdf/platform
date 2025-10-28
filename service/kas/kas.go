@@ -103,7 +103,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					inProcessService := initSecurityProviderAdapter(p.CryptoProvider, kasCfg, srp.Logger)
 
 					p.KeyDelegator = trust.NewDelegatingKeyService(inProcessService, srp.Logger, nil)
-					p.KeyDelegator.RegisterKeyManagerCtx(inProcessService.Name(), func(_ context.Context, opts *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+					p.KeyDelegator.RegisterKeyManagerCtx(inProcessService.Name(), func(_ context.Context, _ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
 						return inProcessService, nil
 					})
 					// Set default for non-key-management mode

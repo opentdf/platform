@@ -480,6 +480,7 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Kas
 	if key.ProviderConfigID.Valid {
 		providerConfig = &policy.KeyProviderConfig{}
 		providerConfig.Id = UUIDToString(key.ProviderConfigID)
+		providerConfig.Manager = key.PcManager.String
 		providerConfig.Name = key.ProviderName.String
 		providerConfig.ConfigJson = key.PcConfig
 		providerConfig.Metadata = &common.Metadata{}

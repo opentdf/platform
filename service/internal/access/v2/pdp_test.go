@@ -1048,10 +1048,11 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		for _, result := range decision.Results {
 			s.Len(result.DataRuleResults, 1)
 
-			if result.ResourceID == testClassSecretFQN {
+			switch result.ResourceID {
+			case testClassSecretFQN:
 				s.True(result.Entitled, "Secret should pass")
 				s.Empty(result.DataRuleResults[0].EntitlementFailures)
-			} else if result.ResourceID == testDeptFinanceFQN {
+			case testDeptFinanceFQN:
 				s.False(result.Entitled, "Finance should not pass")
 				s.NotEmpty(result.DataRuleResults[0].EntitlementFailures)
 			}
@@ -2579,10 +2580,11 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 		for _, result := range decision.Results {
 			s.Len(result.DataRuleResults, 1)
 
-			if result.ResourceID == testClassSecretFQN {
+			switch result.ResourceID {
+			case testClassSecretFQN:
 				s.True(result.Entitled, "Secret should pass")
 				s.Empty(result.DataRuleResults[0].EntitlementFailures)
-			} else if result.ResourceID == testDeptFinanceFQN {
+			case testDeptFinanceFQN:
 				s.False(result.Entitled, "Finance should not pass")
 				s.NotEmpty(result.DataRuleResults[0].EntitlementFailures)
 			}

@@ -299,7 +299,7 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 
 func (s SDK) Close() error {
 	if s.collectionStore != nil {
-		s.collectionStore.close()
+		s.close()
 	}
 	return nil
 }

@@ -87,9 +87,9 @@ func (writer *Writer) EnableZip64() {
 // AddHeader set size of the file. calling this method means finished writing
 // the previous file and starting a new file.
 func (writer *Writer) AddHeader(filename string, size int64) error {
-	if len(writer.FileInfo.filename) != 0 {
+	if len(writer.filename) != 0 {
 		err := fmt.Errorf("writer: cannot add a new file until the current "+
-			"file write is not completed:%s", writer.FileInfo.filename)
+			"file write is not completed:%s", writer.filename)
 		return err
 	}
 
@@ -98,8 +98,8 @@ func (writer *Writer) AddHeader(filename string, size int64) error {
 	}
 
 	writer.writeState = Initial
-	writer.FileInfo.size = size
-	writer.FileInfo.filename = filename
+	writer.size = size
+	writer.filename = filename
 
 	return nil
 }
@@ -129,7 +129,7 @@ func (writer *Writer) AddData(data []byte) error {
 			localFileHeader.ExtraFieldLength = zip64ExtendedLocalInfoExtraFieldSize
 		}
 
-		localFileHeader.FilenameLength = uint16(len(writer.FileInfo.filename))
+		localFileHeader.FilenameLength = uint16(len(writer.filename))
 
 		// write localFileHeader
 		buf := new(bytes.Buffer)
@@ -144,7 +144,7 @@ func (writer *Writer) AddData(data []byte) error {
 		}
 
 		// write the file name
-		err = writer.writeData([]byte(writer.FileInfo.filename))
+		err = writer.writeData([]byte(writer.filename))
 		if err != nil {
 			return fmt.Errorf("io.Writer.Write failed: %w", err)
 		}
@@ -153,8 +153,8 @@ func (writer *Writer) AddData(data []byte) error {
 			zip64ExtendedLocalInfoExtraField := Zip64ExtendedLocalInfoExtraField{}
 			zip64ExtendedLocalInfoExtraField.Signature = zip64ExternalID
 			zip64ExtendedLocalInfoExtraField.Size = zip64ExtendedLocalInfoExtraFieldSize - 4
-			zip64ExtendedLocalInfoExtraField.OriginalSize = uint64(writer.FileInfo.size)
-			zip64ExtendedLocalInfoExtraField.CompressedSize = uint64(writer.FileInfo.size)
+			zip64ExtendedLocalInfoExtraField.OriginalSize = uint64(writer.size)
+			zip64ExtendedLocalInfoExtraField.CompressedSize = uint64(writer.size)
 
 			buf = new(bytes.Buffer)
 			err := binary.Write(buf, binary.LittleEndian, zip64ExtendedLocalInfoExtraField)
@@ -171,9 +171,9 @@ func (writer *Writer) AddData(data []byte) error {
 		writer.writeState = Appending
 
 		// calculate the initial crc
-		writer.FileInfo.crc = crc32.Checksum([]byte(""), crc32.MakeTable(crc32.IEEE))
-		writer.FileInfo.fileTime = fileTime
-		writer.FileInfo.fileDate = fileDate
+		writer.crc = crc32.Checksum([]byte(""), crc32.MakeTable(crc32.IEEE))
+		writer.fileTime = fileTime
+		writer.fileDate = fileDate
 	}
 
 	// now write the contents
@@ -183,18 +183,18 @@ func (writer *Writer) AddData(data []byte) error {
 	}
 
 	// calculate the crc32
-	writer.FileInfo.crc = crc32.Update(writer.FileInfo.crc,
+	writer.crc = crc32.Update(writer.crc,
 		crc32.MakeTable(crc32.IEEE), data)
 
 	// update the file size
-	writer.FileInfo.offset += int64(len(data))
+	writer.offset += int64(len(data))
 
 	// check if we reached end
-	if writer.FileInfo.offset >= writer.FileInfo.size {
+	if writer.offset >= writer.size {
 		writer.writeState = Finished
 
-		writer.FileInfo.offset = int64(writer.currentOffset)
-		writer.FileInfo.flag = 0x08
+		writer.offset = int64(writer.currentOffset)
+		writer.flag = 0x08
 
 		writer.fileInfoEntries = append(writer.fileInfoEntries, writer.FileInfo)
 	}
@@ -203,9 +203,9 @@ func (writer *Writer) AddData(data []byte) error {
 		if writer.isZip64 {
 			zip64DataDescriptor := Zip64DataDescriptor{}
 			zip64DataDescriptor.Signature = dataDescriptorSignature
-			zip64DataDescriptor.Crc32 = writer.FileInfo.crc
-			zip64DataDescriptor.CompressedSize = uint64(writer.FileInfo.size)
-			zip64DataDescriptor.UncompressedSize = uint64(writer.FileInfo.size)
+			zip64DataDescriptor.Crc32 = writer.crc
+			zip64DataDescriptor.CompressedSize = uint64(writer.size)
+			zip64DataDescriptor.UncompressedSize = uint64(writer.size)
 
 			// write the data descriptor
 			buf := new(bytes.Buffer)
@@ -220,16 +220,16 @@ func (writer *Writer) AddData(data []byte) error {
 			}
 
 			writer.currentOffset += localFileHeaderSize
-			writer.currentOffset += uint64(len(writer.FileInfo.filename))
-			writer.currentOffset += uint64(writer.FileInfo.size)
+			writer.currentOffset += uint64(len(writer.filename))
+			writer.currentOffset += uint64(writer.size)
 			writer.currentOffset += zip64DataDescriptorSize
 			writer.currentOffset += zip64ExtendedLocalInfoExtraFieldSize
 		} else {
 			zip32DataDescriptor := Zip32DataDescriptor{}
 			zip32DataDescriptor.Signature = dataDescriptorSignature
-			zip32DataDescriptor.Crc32 = writer.FileInfo.crc
-			zip32DataDescriptor.CompressedSize = uint32(writer.FileInfo.size)
-			zip32DataDescriptor.UncompressedSize = uint32(writer.FileInfo.size)
+			zip32DataDescriptor.Crc32 = writer.crc
+			zip32DataDescriptor.CompressedSize = uint32(writer.size)
+			zip32DataDescriptor.UncompressedSize = uint32(writer.size)
 
 			// write the data descriptor
 			buf := new(bytes.Buffer)
@@ -244,8 +244,8 @@ func (writer *Writer) AddData(data []byte) error {
 			}
 
 			writer.currentOffset += localFileHeaderSize
-			writer.currentOffset += uint64(len(writer.FileInfo.filename))
-			writer.currentOffset += uint64(writer.FileInfo.size)
+			writer.currentOffset += uint64(len(writer.filename))
+			writer.currentOffset += uint64(writer.size)
 			writer.currentOffset += zip32DataDescriptorSize
 		}
 

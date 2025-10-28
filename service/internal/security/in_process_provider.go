@@ -159,7 +159,8 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 	// Try to determine the algorithm by checking if the key works with known algorithms
 	for _, alg := range []string{AlgorithmECP256R1, AlgorithmRSA2048} {
 		// This is a hack since the original provider doesn't have a way to check if a key exists
-		if alg == AlgorithmECP256R1 {
+		switch alg {
+		case AlgorithmECP256R1:
 			if _, err := a.cryptoProvider.ECPublicKey(string(id)); err == nil {
 				return &KeyDetailsAdapter{
 					id:             id,
@@ -168,7 +169,7 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 					cryptoProvider: a.cryptoProvider,
 				}, nil
 			}
-		} else if alg == AlgorithmRSA2048 {
+		case AlgorithmRSA2048:
 			if _, err := a.cryptoProvider.RSAPublicKey(string(id)); err == nil {
 				return &KeyDetailsAdapter{
 					id:             id,

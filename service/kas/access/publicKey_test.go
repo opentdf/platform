@@ -182,7 +182,9 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 
 	// Create Provider with the mock security provider
 	delegator := trust.NewDelegatingKeyService(mockProvider, logger.CreateTestLogger(), nil)
-	delegator.RegisterKeyManager(mockProvider.Name(), func(_ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) { return mockProvider, nil })
+	delegator.RegisterKeyManagerCtx(mockProvider.Name(), func(_ context.Context, _ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+		return mockProvider, nil
+	})
 	kas := Provider{
 		KeyDelegator: delegator,
 		KASConfig: KASConfig{
@@ -351,7 +353,7 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 	inProcess := security.NewSecurityProviderAdapter(c, nil, nil)
 
 	delegator := trust.NewDelegatingKeyService(inProcess, logger.CreateTestLogger(), nil)
-	delegator.RegisterKeyManager(inProcess.Name(), func(_ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+	delegator.RegisterKeyManagerCtx(inProcess.Name(), func(_ context.Context, _ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
 		return inProcess, nil
 	})
 

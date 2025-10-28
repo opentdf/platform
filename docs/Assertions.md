@@ -4,6 +4,133 @@ This document describes the format of assertions in OpenTDF to ensure interopera
 
 For troubleshooting assertion issues, see [Assertions-Troubleshooting.md](./Assertions-Troubleshooting.md).
 
+## Assertion Lifecycle
+
+The assertion lifecycle consists of two main phases: creation and verification. The following diagrams illustrate these processes:
+
+### Assertion Creation Phase
+
+This diagram shows how assertions are created and bound to TDFs during the encryption process:
+
+```mermaid
+flowchart TD
+    %% Assertion Creation Phase
+    A[TDF Creation Request] --> B{System Metadata Enabled?}
+    B -->|Yes| C[Register SystemMetadataAssertionProvider]
+    B -->|No| D[Skip System Metadata]
+    C --> E[Register Custom AssertionBinders]
+    D --> E
+    E --> F[Create TDF Manifest]
+    F --> G[Compute Aggregate Hash from Segments]
+
+    %% Binding Process
+    G --> H[For Each Registered Binder]
+    H --> I[Call Binder Bind with manifest]
+    I --> J[Create Assertion Structure]
+    J --> K[Generate Statement Content]
+    K --> L[Compute Assertion Hash]
+    L --> M{Binding Type}
+
+    M -->|DEK-based| N[Use HMAC-SHA256 with DEK]
+    M -->|Key-based| O[Use RSA/ECDSA with Private Key]
+
+    N --> P[Create JWS with assertionHash + assertionSig]
+    O --> Q[Include Public Key in JWS Headers]
+    Q --> P
+
+    P --> R[Sign JWT with Key]
+    R --> S[Set Binding Signature]
+    S --> T[Add Assertion to Manifest]
+    T --> U{More Binders?}
+    U -->|Yes| H
+    U -->|No| V[Finalize TDF]
+```
+
+### Assertion Verification Phase
+
+This diagram shows how assertions are verified and validated during the decryption process:
+
+```mermaid
+flowchart TD
+    %% Assertion Verification Phase
+    X[TDF Read Request] --> Y[Load TDF Manifest]
+    Y --> Z[Extract Assertions]
+    Z --> AA[For Each Assertion]
+
+    AA --> BB{Has Cryptographic Binding?}
+    BB -->|No| CC[FAIL: Security Violation]
+    BB -->|Yes| DD[Lookup Validator by Schema]
+
+    DD --> EE{Validator Found?}
+    EE -->|No| FF{Verification Mode}
+    FF -->|Permissive| GG[SKIP: Allow Forward Compatibility]
+    FF -->|Strict/FailFast| HH[FAIL: Unknown Schema]
+
+    EE -->|Yes| II[Call Validator Verify]
+
+    %% Cryptographic Verification
+    II --> JJ[Parse JWS Token]
+    JJ --> KK{Key Type}
+
+    KK -->|DEK-based| LL[Verify with HMAC-SHA256]
+    KK -->|Key-based| MM[Verify with RSA/ECDSA]
+
+    LL --> NN[Extract assertionHash + assertionSig]
+    MM --> OO[Extract assertionHash + assertionSig + schema]
+    OO --> PP[Verify Schema Claim Matches Statement]
+    PP --> NN
+
+    NN --> QQ[Recompute Assertion Hash]
+    QQ --> RR{Hash Matches?}
+    RR -->|No| SS[FAIL: Content Tampered]
+    RR -->|Yes| TT[Verify Signature Format]
+
+    TT --> UU[Compute Expected Signature]
+    UU --> VV{Signature Valid?}
+    VV -->|No| WW[FAIL: Binding Invalid]
+    VV -->|Yes| XX[Call Validator Validate]
+
+    XX --> YY{Policy Valid?}
+    YY -->|No| ZZ[FAIL: Policy Violation]
+    YY -->|Yes| AAA[SUCCESS: Assertion Valid]
+
+    AAA --> BBB{More Assertions?}
+    BBB -->|Yes| AA
+    BBB -->|No| CCC[All Assertions Verified]
+
+    %% Styling
+    style CC fill:#ff9999
+    style HH fill:#ff9999
+    style SS fill:#ff9999
+    style WW fill:#ff9999
+    style ZZ fill:#ff9999
+    style AAA fill:#99ff99
+    style CCC fill:#99ff99
+    style GG fill:#ffff99
+```
+
+### Key Security Features
+
+Both phases incorporate multiple layers of security:
+
+1. **Cryptographic Binding**: Every assertion must have a JWS signature binding it to the TDF content
+2. **Content Integrity**: Assertion hash ensures statement content hasn't been modified
+3. **TDF Binding**: Signature includes aggregate hash, preventing assertion reuse across TDFs
+4. **Schema Protection**: JWT includes schema claim to prevent schema substitution attacks
+5. **Flexible Validation**: Supports multiple verification modes for different security requirements
+
+### Assertion Flow Summary
+
+**Creation Phase**:
+1. Register assertion binders (system metadata, custom)
+2. For each binder: create assertion structure, compute hash, sign with appropriate key
+3. Add signed assertions to TDF manifest
+
+**Verification Phase**:
+1. Extract assertions from TDF manifest
+2. For each assertion: verify cryptographic binding and validate against policy
+3. Fail fast on any security violation or continue based on verification mode
+
 ## Assertion Structure
 
 Assertions follow the OpenTDF specification and contain the following fields:

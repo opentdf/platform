@@ -97,7 +97,7 @@ func Test_getResourceDecisionsWithObligations(t *testing.T) {
 		{
 			name: "entitled: true, obligations: required and satisfied",
 			decision: &Decision{
-				Results:      []ResourceDecision{mkResourceDecision(testResource1ID, testResource1Name, true)},
+				Results: []ResourceDecision{mkResourceDecision(testResource1ID, testResource1Name, true)},
 			},
 			obligationDecision: obligations.ObligationPolicyDecision{
 				AllObligationsSatisfied:                true,
@@ -105,7 +105,7 @@ func Test_getResourceDecisionsWithObligations(t *testing.T) {
 				RequiredObligationValueFQNsPerResource: []obligations.PerResourceDecision{mkPerResourceDecision(true, testObligation1FQN)},
 			},
 			expectedDecision: &Decision{
-				Results:      []ResourceDecision{mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, []string{testObligation1FQN})},
+				Results: []ResourceDecision{mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, []string{testObligation1FQN})},
 			},
 			expectedAuditDecisions: []ResourceDecision{
 				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, []string{testObligation1FQN}),
@@ -114,7 +114,7 @@ func Test_getResourceDecisionsWithObligations(t *testing.T) {
 		{
 			name: "entitled: false, obligations: required and satisfied",
 			decision: &Decision{
-				Results:      []ResourceDecision{mkResourceDecision(testResource1ID, testResource1Name, false)},
+				Results: []ResourceDecision{mkResourceDecision(testResource1ID, testResource1Name, false)},
 			},
 			obligationDecision: obligations.ObligationPolicyDecision{
 				AllObligationsSatisfied:                true,
@@ -122,7 +122,7 @@ func Test_getResourceDecisionsWithObligations(t *testing.T) {
 				RequiredObligationValueFQNsPerResource: []obligations.PerResourceDecision{mkPerResourceDecision(true, testObligation1FQN)},
 			},
 			expectedDecision: &Decision{
-				Results:      []ResourceDecision{mkExpectedResourceDecision(testResource1ID, testResource1Name, false, true, false, nil)},
+				Results: []ResourceDecision{mkExpectedResourceDecision(testResource1ID, testResource1Name, false, true, false, nil)},
 			},
 			expectedAuditDecisions: []ResourceDecision{
 				mkExpectedResourceDecision(testResource1ID, testResource1Name, false, true, false, []string{testObligation1FQN}),
@@ -131,7 +131,7 @@ func Test_getResourceDecisionsWithObligations(t *testing.T) {
 		{
 			name: "entitled: true, obligations: required and not satisfied",
 			decision: &Decision{
-				Results:      []ResourceDecision{mkResourceDecision(testResource1ID, testResource1Name, true)},
+				Results: []ResourceDecision{mkResourceDecision(testResource1ID, testResource1Name, true)},
 			},
 			obligationDecision: obligations.ObligationPolicyDecision{
 				AllObligationsSatisfied:                false,
@@ -139,7 +139,7 @@ func Test_getResourceDecisionsWithObligations(t *testing.T) {
 				RequiredObligationValueFQNsPerResource: []obligations.PerResourceDecision{mkPerResourceDecision(false, testObligation1FQN)},
 			},
 			expectedDecision: &Decision{
-				Results:      []ResourceDecision{mkExpectedResourceDecision(testResource1ID, testResource1Name, true, false, false, []string{testObligation1FQN})},
+				Results: []ResourceDecision{mkExpectedResourceDecision(testResource1ID, testResource1Name, true, false, false, []string{testObligation1FQN})},
 			},
 			expectedAuditDecisions: []ResourceDecision{
 				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, false, false, []string{testObligation1FQN}),
@@ -179,7 +179,7 @@ func Test_getResourceDecisionsWithObligations(t *testing.T) {
 		{
 			name: "entitled: true, obligations: satisfied and multiple per resource",
 			decision: &Decision{
-				Results:      []ResourceDecision{mkResourceDecision(testResource1ID, testResource1Name, true)},
+				Results: []ResourceDecision{mkResourceDecision(testResource1ID, testResource1Name, true)},
 			},
 			obligationDecision: obligations.ObligationPolicyDecision{
 				AllObligationsSatisfied:     true,
@@ -200,14 +200,14 @@ func Test_getResourceDecisionsWithObligations(t *testing.T) {
 		{
 			name: "no resources",
 			decision: &Decision{
-				Results:      []ResourceDecision{},
+				Results: []ResourceDecision{},
 			},
 			obligationDecision: obligations.ObligationPolicyDecision{
 				RequiredObligationValueFQNs:            []string{},
 				RequiredObligationValueFQNsPerResource: []obligations.PerResourceDecision{},
 			},
 			expectedDecision: &Decision{
-				Results:      []ResourceDecision{},
+				Results: []ResourceDecision{},
 			},
 			expectedAuditDecisions: []ResourceDecision{},
 		},
@@ -267,7 +267,7 @@ func Test_getResourceDecisionsWithObligations(t *testing.T) {
 
 func Test_getResourceDecisionsWithObligations_ImmutabilityCheck(t *testing.T) {
 	originalDecision := &Decision{
-		Results:      []ResourceDecision{mkResourceDecision(testResource1ID, testResource1Name, true)},
+		Results: []ResourceDecision{mkResourceDecision(testResource1ID, testResource1Name, true)},
 	}
 
 	obligationDecision := obligations.ObligationPolicyDecision{

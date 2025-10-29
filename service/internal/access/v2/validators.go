@@ -9,7 +9,6 @@ import (
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
-	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 )
 
@@ -170,12 +169,10 @@ func validateEntityRepresentations(entityRepresentations []*entityresolutionV2.E
 
 // validateOneResourceDecision validates the parameters for an access decision on a resource
 //
-//   - accessibleAttributeValues: must not be nil
 //   - entitlements: must not be nil
 //   - action: must not be nil
 //   - resource: must not be nil
 func validateGetResourceDecision(
-	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resource *authzV2.Resource,
@@ -188,9 +185,6 @@ func validateGetResourceDecision(
 	}
 	if resource.GetResource() == nil {
 		return fmt.Errorf("resource is nil: %w", ErrInvalidResource)
-	}
-	if len(accessibleAttributeValues) == 0 {
-		return fmt.Errorf("accessible attribute values are empty: %w", ErrMissingRequiredPolicy)
 	}
 	return nil
 }

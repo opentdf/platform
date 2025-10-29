@@ -3,20 +3,15 @@
 ----------------------------------------------------------------
 
 -- name: listAttributeValues :many
-WITH counted AS (
-    SELECT COUNT(av.id) AS total
-    FROM attribute_values av
-)
 SELECT
+    COUNT(*) OVER() AS total,
     av.id,
     av.value,
     av.active,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
     av.attribute_definition_id,
-    fqns.fqn,
-    counted.total
+    fqns.fqn
 FROM attribute_values av
-CROSS JOIN counted
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 WHERE (
     (sqlc.narg('active')::BOOLEAN IS NULL OR av.active = sqlc.narg('active')) AND

@@ -430,10 +430,9 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_UnknownRegisteredReso
 	decisionRequestContext := emptyDecisionRequestContext
 
 	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, ErrUnknownRegisteredResourceValue)
-	s.Contains(err.Error(), badRegResValFQN, "error should contain the FQN that was not found")
-	s.Empty(perResource)
+	s.Require().NoError(err, "none triggered if FQN not found")
+	s.Len(perResource, 1)
+	s.Empty(perResource[0])
 	s.Empty(all)
 }
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.1](https://github.com/opentdf/platform/compare/service/v0.11.0...service/v0.11.1) (2025-10-29)
+
+
+### Features
+
+* **core:** Actually use KeyManager ProviderConfig [backport to release/service/v0.11] ([#2842](https://github.com/opentdf/platform/issues/2842)) ([da1c0b1](https://github.com/opentdf/platform/commit/da1c0b1d7247e7d51cc1a0cffffe65c100691cd0))
+
+
+### Bug Fixes
+
+* **authz:** handle individual resource edge cases in decisions [backport to release/service/v0.11] ([#2846](https://github.com/opentdf/platform/issues/2846)) ([a4ad9dd](https://github.com/opentdf/platform/commit/a4ad9ddb31cc424d73538bebb393fcc4309b4bc4))
+* **policy:** Return the correct total during list responses. [backport to release/service/v0.11] ([#2843](https://github.com/opentdf/platform/issues/2843)) ([ebe6469](https://github.com/opentdf/platform/commit/ebe64696010bc578029a635e6345e5c6b7324408))
+
 ## [0.11.0](https://github.com/opentdf/platform/compare/service/v0.10.0...service/v0.11.0) (2025-10-22)
 
 

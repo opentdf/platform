@@ -350,20 +350,15 @@ func (q *Queries) getAttributeValue(ctx context.Context, arg getAttributeValuePa
 
 const listAttributeValues = `-- name: listAttributeValues :many
 
-WITH counted AS (
-    SELECT COUNT(av.id) AS total
-    FROM attribute_values av
-)
 SELECT
+    COUNT(*) OVER() AS total,
     av.id,
     av.value,
     av.active,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
     av.attribute_definition_id,
-    fqns.fqn,
-    counted.total
+    fqns.fqn
 FROM attribute_values av
-CROSS JOIN counted
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 WHERE (
     ($1::BOOLEAN IS NULL OR av.active = $1) AND
@@ -381,33 +376,28 @@ type listAttributeValuesParams struct {
 }
 
 type listAttributeValuesRow struct {
+	Total                 int64       `json:"total"`
 	ID                    string      `json:"id"`
 	Value                 string      `json:"value"`
 	Active                bool        `json:"active"`
 	Metadata              []byte      `json:"metadata"`
 	AttributeDefinitionID string      `json:"attribute_definition_id"`
 	Fqn                   pgtype.Text `json:"fqn"`
-	Total                 int64       `json:"total"`
 }
 
 // --------------------------------------------------------------
 // ATTRIBUTE VALUES
 // --------------------------------------------------------------
 //
-//	WITH counted AS (
-//	    SELECT COUNT(av.id) AS total
-//	    FROM attribute_values av
-//	)
 //	SELECT
+//	    COUNT(*) OVER() AS total,
 //	    av.id,
 //	    av.value,
 //	    av.active,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
 //	    av.attribute_definition_id,
-//	    fqns.fqn,
-//	    counted.total
+//	    fqns.fqn
 //	FROM attribute_values av
-//	CROSS JOIN counted
 //	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 //	WHERE (
 //	    ($1::BOOLEAN IS NULL OR av.active = $1) AND
@@ -430,13 +420,13 @@ func (q *Queries) listAttributeValues(ctx context.Context, arg listAttributeValu
 	for rows.Next() {
 		var i listAttributeValuesRow
 		if err := rows.Scan(
+			&i.Total,
 			&i.ID,
 			&i.Value,
 			&i.Active,
 			&i.Metadata,
 			&i.AttributeDefinitionID,
 			&i.Fqn,
-			&i.Total,
 		); err != nil {
 			return nil, err
 		}

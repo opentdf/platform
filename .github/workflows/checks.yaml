@@ -394,7 +394,7 @@ jobs:
       packages: read
       pull-requests: write
       checks: write
-    uses: opentdf/tests/.github/workflows/xtest.yml@main
+    uses: opentdf/tests/.github/workflows/xtest.yml@fix-platform-pull-prs
     with:
       focus-sdk: go
       # use commit instead of ref so we can "go get" specific sdk version

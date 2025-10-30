@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/opentdf/platform/compare/sdk/v0.10.0...sdk/v0.11.0) (2025-10-30)
+
+
+### Bug Fixes
+
+* **deps:** bump toolchain to go1.24.9 for CVEs found by govulncheck ([#2849](https://github.com/opentdf/platform/issues/2849)) ([23f76c0](https://github.com/opentdf/platform/commit/23f76c034cfb4c325d868eb96c95ba616e362db4))
+
 ## [0.10.0](https://github.com/opentdf/platform/compare/sdk/v0.9.0...sdk/v0.10.0) (2025-10-21)
 
 

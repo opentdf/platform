@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.12.0](https://github.com/opentdf/platform/compare/service/v0.11.0...service/v0.12.0) (2025-10-30)
+
+
+### Features
+
+* **core:** Actually use KeyManager ProviderConfig ([#2837](https://github.com/opentdf/platform/issues/2837)) ([65ba2e0](https://github.com/opentdf/platform/commit/65ba2e002e30ac6624982e15c995dbd228a93541))
+
+
+### Bug Fixes
+
+* **authz:** handle individual resource edge cases in decisions ([#2835](https://github.com/opentdf/platform/issues/2835)) ([fad4437](https://github.com/opentdf/platform/commit/fad443714c28f190cde723e5307451f481befd12))
+* **authz:** obligations should be logged to audit but not returned when not entitled ([#2847](https://github.com/opentdf/platform/issues/2847)) ([35da5e3](https://github.com/opentdf/platform/commit/35da5e3170780534b09f84308dc59d8af87224f9))
+* **core:** Let default basic keymanager work again ([#2858](https://github.com/opentdf/platform/issues/2858)) ([fb0b99d](https://github.com/opentdf/platform/commit/fb0b99dc6b4fd0cc5c243de474a683672df77b78))
+* **deps:** bump toolchain to go1.24.9 for CVEs found by govulncheck ([#2849](https://github.com/opentdf/platform/issues/2849)) ([23f76c0](https://github.com/opentdf/platform/commit/23f76c034cfb4c325d868eb96c95ba616e362db4))
+* **policy:** Return the correct total during list responses. ([#2836](https://github.com/opentdf/platform/issues/2836)) ([5c1ec9c](https://github.com/opentdf/platform/commit/5c1ec9c088e714e7a7f6f678cded31e4942b0a83))
+
 ## [0.11.0](https://github.com/opentdf/platform/compare/service/v0.10.0...service/v0.11.0) (2025-10-22)
 
 

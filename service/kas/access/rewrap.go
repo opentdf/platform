@@ -83,6 +83,9 @@ type kaoResult struct {
 	// Optional: Present for EC wrapped responses
 	EphemeralPublicKey  []byte
 	RequiredObligations []string
+
+	// Only populated for Nano auditing, since policy is encrypted
+	KeyID string
 }
 
 // From policy ID to KAO ID to result
@@ -800,6 +803,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				TDFFormat:     "tdf3",
 				Algorithm:     req.GetAlgorithm(),
 				PolicyBinding: policyBinding,
+				KeyID:         kao.GetKeyAccessObject().GetKid(),
 			}
 
 			if !access {
@@ -901,6 +905,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 				IsSuccess: access,
 				TDFFormat: "Nano",
 				Algorithm: req.GetAlgorithm(),
+				KeyID:     kaoInfo.KeyID,
 			}
 
 			if !access {
@@ -992,8 +997,9 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 			return nil, results
 		}
 		results[kao.GetKeyAccessObjectId()] = kaoResult{
-			ID:  kao.GetKeyAccessObjectId(),
-			DEK: symmetricKey,
+			ID:    kao.GetKeyAccessObjectId(),
+			DEK:   symmetricKey,
+			KeyID: kid,
 		}
 		return policy, results
 	}

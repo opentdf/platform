@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.11.2](https://github.com/opentdf/platform/compare/service/v0.11.1...service/v0.11.2) (2025-10-30)
+
+
+### Bug Fixes
+
+* **authz:** obligations should be logged to audit but not returned when not entitled [backport to release/service/v0.11] ([#2855](https://github.com/opentdf/platform/issues/2855)) ([ca67239](https://github.com/opentdf/platform/commit/ca672393f2fca34c1aa4ed7190329590ef8f86b4))
+* **core:** Let default basic keymanager work again [backport to release/service/v0.11] ([#2859](https://github.com/opentdf/platform/issues/2859)) ([ba37f2a](https://github.com/opentdf/platform/commit/ba37f2ad32618f6deb9f8ac583ed56cc0da62b86))
+* **deps:** bump toolchain to go1.24.9 for CVEs found by govulncheck [backport to release/service/v0.11] ([#2850](https://github.com/opentdf/platform/issues/2850)) ([7abd272](https://github.com/opentdf/platform/commit/7abd272e8e03a6ef62b6819f71b79bfa5d38bb23))
+
 ## [0.11.1](https://github.com/opentdf/platform/compare/service/v0.11.0...service/v0.11.1) (2025-10-29)
 
 

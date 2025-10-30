@@ -134,10 +134,11 @@ func (d *DelegatingKeyService) DeriveKey(ctx context.Context, keyID KeyIdentifie
 	}
 
 	pcfg := keyDetails.ProviderConfig()
-	if pcfg == nil {
-		return nil, fmt.Errorf("derive: key details for key ID '%s' returned nil ProviderConfig", keyID)
-	}
 	manager, err := d.getKeyManager(ctx, pcfg)
+	if err != nil {
+		return nil, fmt.Errorf("derive: unable to get key manager [%s#%s]: %w", pcfg.GetManager(), pcfg.GetName(), err)
+	}
+
 	return manager.DeriveKey(ctx, keyDetails, ephemeralPublicKeyBytes, curve)
 }
 

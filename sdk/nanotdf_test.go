@@ -939,13 +939,19 @@ func (s *NanoSuite) Test_PolicyBinding_GMAC() {
 	// Create test policy data
 	policyData := []byte(`{"body":{"dataAttributes":["https://example.com/attr/classification/value/secret"]}}`)
 
-	// Create a mock digest with GMAC at the end (simulating real GMAC calculation)
+	// Create GMAC binding - need to simulate having GMAC at end of the digest
 	gmacBytes := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}
+	// Append GMAC to the digest to simulate real scenario
 	policyData = append(policyData, gmacBytes...)
+
+	digest := ocrypto.CalculateSHA256(policyData)
+
+	// For testing, we will use the last bytes as the GMAC binding
+	gmacBytes = digest[len(digest)-len(gmacBytes):]
 
 	binding := &gmacPolicyBinding{
 		binding: gmacBytes,
-		digest:  policyData,
+		digest:  digest,
 	}
 
 	// Test Hash function
@@ -959,8 +965,8 @@ func (s *NanoSuite) Test_PolicyBinding_GMAC() {
 
 	// Test Verify function with wrong binding - should fail
 	wrongBinding := &gmacPolicyBinding{
-		binding: []byte{0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01}, // Different binding
-		digest:  policyData,
+		binding: []byte{0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01},
+		digest:  digest,
 	}
 	valid, err = wrongBinding.Verify()
 	s.Require().NoError(err)
@@ -1069,10 +1075,10 @@ func (s *NanoSuite) Test_NanoTDFHeader_VerifyPolicyBinding() {
 		// Append GMAC to the digest to simulate real scenario
 		policyData = append(policyData, gmacBytes...)
 
-		gmacPolicyBinding := ocrypto.CalculateSHA256(policyData)
+		digest := ocrypto.CalculateSHA256(policyData)
 
 		// For testing, we will use the last bytes as the GMAC binding
-		gmacBytes = gmacPolicyBinding[len(gmacPolicyBinding)-len(gmacBytes):]
+		gmacBytes = digest[len(digest)-len(gmacBytes):]
 
 		// Create header with GMAC binding
 		header := &NanoTDFHeader{

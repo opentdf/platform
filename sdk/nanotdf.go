@@ -278,7 +278,9 @@ func (b *gmacPolicyBinding) Verify() (bool, error) {
 }
 
 func (b *gmacPolicyBinding) Hash() []byte {
-	return []byte(hex.EncodeToString(b.binding))
+	dst := make([]byte, hex.EncodedLen(len(b.binding)))
+	hex.Encode(dst, b.binding)
+	return dst
 }
 
 func (header *NanoTDFHeader) PolicyBinding() (PolicyBind, error) {

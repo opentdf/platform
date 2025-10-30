@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.7.0...lib/ocrypto/v0.8.0) (2025-10-30)
+
+
+### Bug Fixes
+
+* **deps:** bump toolchain to go1.24.9 for CVEs found by govulncheck ([#2849](https://github.com/opentdf/platform/issues/2849)) ([23f76c0](https://github.com/opentdf/platform/commit/23f76c034cfb4c325d868eb96c95ba616e362db4))
+
 ## [0.7.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.6.0...lib/ocrypto/v0.7.0) (2025-10-15)
 
 

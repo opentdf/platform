@@ -119,9 +119,6 @@ func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier,
 	}
 
 	pcfg := keyDetails.ProviderConfig()
-	if pcfg == nil {
-		return nil, fmt.Errorf("decrypt: key details for key ID '%s' returned nil ProviderConfig", keyID)
-	}
 	manager, err := d.getKeyManager(ctx, pcfg)
 	if err != nil {
 		return nil, fmt.Errorf("decrypt: unable to get key manager [%s#%s]: %w", pcfg.GetManager(), pcfg.GetName(), err)
@@ -141,10 +138,6 @@ func (d *DelegatingKeyService) DeriveKey(ctx context.Context, keyID KeyIdentifie
 		return nil, fmt.Errorf("derive: key details for key ID '%s' returned nil ProviderConfig", keyID)
 	}
 	manager, err := d.getKeyManager(ctx, pcfg)
-	if err != nil {
-		return nil, fmt.Errorf("derive: unable to get key manager [%s#%s]: %w", pcfg.GetManager(), pcfg.GetName(), err)
-	}
-
 	return manager.DeriveKey(ctx, keyDetails, ephemeralPublicKeyBytes, curve)
 }
 
@@ -212,9 +205,11 @@ func (d *DelegatingKeyService) _defKM(ctx context.Context) (KeyManager, error) {
 }
 
 func (d *DelegatingKeyService) getKeyManager(ctx context.Context, cfg *policy.KeyProviderConfig) (KeyManager, error) {
-	d.mutex.Lock()
+	if cfg == nil {
+		return d._defKM(ctx)
+	}
 
-	// Check For Manager First
+	d.mutex.Lock()
 	designation := keyManagerDesignation{
 		Manager: cfg.GetManager(),
 		Name:    cfg.GetName(),
@@ -223,11 +218,7 @@ func (d *DelegatingKeyService) getKeyManager(ctx context.Context, cfg *policy.Ke
 		d.mutex.Unlock()
 		return manager.KeyManager, nil
 	}
-
-	// Check Factory
 	factory, factoryExists := d.managerFactories[designation.Manager]
-	// Read defaultMode under lock for comparison.
-	currentDefaultMode := d.defaultMode
 	allManagers := slices.Collect(maps.Keys(d.managerFactories))
 	d.mutex.Unlock()
 
@@ -258,7 +249,6 @@ func (d *DelegatingKeyService) getKeyManager(ctx context.Context, cfg *policy.Ke
 	d.l.Debug("key manager factory not found for name, attempting to use/load default",
 		slog.Any("key_managers", allManagers),
 		slog.Any("requested_name", designation),
-		slog.Any("configured_default_mode", currentDefaultMode),
 	)
 	return d._defKM(ctx) // _defKM handles erroring if the default manager itself cannot be loaded.
 }

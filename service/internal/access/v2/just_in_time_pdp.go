@@ -253,6 +253,47 @@ func (p *JustInTimePDP) GetDecision(
 	}, nil
 }
 
+// getResourceDecisionsWithObligations updates the Decision Results with obligation info when
+// entitled, then sets each Resource Decision's passed state. Obligations are always populated on
+// the Resource Decisions returned separately for audit logs, but kept distinct to avoid leaking
+// obligations to those not entitled.
+func getResourceDecisionsWithObligations(
+	decision *Decision,
+	obligationDecision obligations.ObligationPolicyDecision,
+) (*Decision, []ResourceDecision) {
+	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
+
+	// Create audit snapshot with full obligation context for all resources, even if not entitled
+	auditResourceDecisions := make([]ResourceDecision, len(decision.Results))
+
+	for idx := range decision.Results {
+		resourceDecision := &decision.Results[idx]
+
+		// Default all obligations satisfied when none are required
+		resourceDecision.ObligationsSatisfied = true
+		var obligationFQNs []string
+
+		if hasRequiredObligations {
+			perResource := obligationDecision.RequiredObligationValueFQNsPerResource[idx]
+			resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
+			obligationFQNs = perResource.RequiredObligationValueFQNs
+
+			// Only set obligations in response if entitled
+			if resourceDecision.Entitled {
+				resourceDecision.RequiredObligationValueFQNs = obligationFQNs
+			}
+		}
+
+		resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
+
+		// For audit, copy and always attach required obligations list whether or not entitled
+		auditResourceDecisions[idx] = *resourceDecision
+		auditResourceDecisions[idx].RequiredObligationValueFQNs = obligationFQNs
+	}
+
+	return decision, auditResourceDecisions
+}
+
 // GetEntitlements retrieves the entitlements for the provided entity chain.
 // It resolves the entity chain to get the entity representations and then calls the embedded PDP to get the entitlements.
 func (p *JustInTimePDP) GetEntitlements(
@@ -452,45 +493,4 @@ func (p *JustInTimePDP) auditDecision(
 		ObligationsSatisfied:           obligationDecision.AllObligationsSatisfied,
 		ResourceDecisions:              auditResourceDecisions,
 	})
-}
-
-// getResourceDecisionsWithObligations updates the Decision Results with obligation info when
-// entitled, then sets each Resource Decision's passed state. Obligations are always populated on
-// the Resource Decisions returned separately for audit logs, but kept distinct to avoid leaking
-// obligations to those not entitled.
-func getResourceDecisionsWithObligations(
-	decision *Decision,
-	obligationDecision obligations.ObligationPolicyDecision,
-) (*Decision, []ResourceDecision) {
-	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
-
-	// Create audit snapshot with full obligation context for all resources, even if not entitled
-	auditResourceDecisions := make([]ResourceDecision, len(decision.Results))
-
-	for idx := range decision.Results {
-		resourceDecision := &decision.Results[idx]
-
-		// Default all obligations satisfied when none are required
-		resourceDecision.ObligationsSatisfied = true
-		var obligationFQNs []string
-
-		if hasRequiredObligations {
-			perResource := obligationDecision.RequiredObligationValueFQNsPerResource[idx]
-			resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
-			obligationFQNs = perResource.RequiredObligationValueFQNs
-
-			// Only set obligations in response if entitled
-			if resourceDecision.Entitled {
-				resourceDecision.RequiredObligationValueFQNs = obligationFQNs
-			}
-		}
-
-		resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
-
-		// For audit, copy and always attach required obligations list whether or not entitled
-		auditResourceDecisions[idx] = *resourceDecision
-		auditResourceDecisions[idx].RequiredObligationValueFQNs = obligationFQNs
-	}
-
-	return decision, auditResourceDecisions
 }

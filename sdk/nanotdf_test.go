@@ -954,9 +954,8 @@ func (s *NanoSuite) Test_PolicyBinding_GMAC() {
 		digest:  digest,
 	}
 
-	// Test Hash function
-	hash := binding.Hash()
-	s.Require().Equal([]byte(hex.EncodeToString(gmacBytes)), hash, "GMAC hash should return binding data directly")
+	// Test String function
+	s.Require().Equal(hex.EncodeToString(gmacBytes), binding.String(), "GMAC hash should return binding data directly")
 
 	// Test Verify function - should pass with correct binding
 	valid, err := binding.Verify()
@@ -998,11 +997,10 @@ func (s *NanoSuite) Test_PolicyBinding_ECDSA() {
 		curve:           keyPair.PrivateKey.Curve,
 	}
 
-	// Test Hash function
-	hash := binding.Hash()
-	expectedHash := ocrypto.SHA256AsHex(append(r, sBytes...))
-	s.Require().Equal(expectedHash, hash, "ECDSA hash should be SHA256 of r||s")
-	s.Require().NotEmpty(hash, "Hash should not be empty")
+	// Test String function
+	expectedHash := string(ocrypto.SHA256AsHex(append(r, sBytes...)))
+	s.Require().NotEmpty(binding.String(), "Hash should not be empty")
+	s.Require().Equal(expectedHash, binding.String(), "ECDSA hash should be SHA256 of r||s")
 
 	// Test Verify function - should pass with correct signature
 	valid, err := binding.Verify()

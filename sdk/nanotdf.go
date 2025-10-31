@@ -88,7 +88,7 @@ type gmacPolicyBinding struct {
 
 type PolicyBind interface {
 	Verify() (bool, error)
-	Hash() []byte
+	fmt.Stringer
 }
 
 func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error) {
@@ -268,8 +268,8 @@ func (b *ecdsaPolicyBinding) Verify() (bool, error) {
 		ephemeralECDSAPublicKey), nil
 }
 
-func (b *ecdsaPolicyBinding) Hash() []byte {
-	return ocrypto.SHA256AsHex(append(b.r, b.s...))
+func (b *ecdsaPolicyBinding) String() string {
+	return string(ocrypto.SHA256AsHex(append(b.r, b.s...)))
 }
 
 func (b *gmacPolicyBinding) Verify() (bool, error) {
@@ -277,10 +277,8 @@ func (b *gmacPolicyBinding) Verify() (bool, error) {
 	return bytes.Equal(bindingToCheck, b.binding), nil
 }
 
-func (b *gmacPolicyBinding) Hash() []byte {
-	dst := make([]byte, hex.EncodedLen(len(b.binding)))
-	hex.Encode(dst, b.binding)
-	return dst
+func (b *gmacPolicyBinding) String() string {
+	return hex.EncodeToString(b.binding)
 }
 
 func (header *NanoTDFHeader) PolicyBinding() (PolicyBind, error) {

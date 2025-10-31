@@ -80,6 +80,7 @@ jobs:
           version: v2.1
           working-directory: ${{ matrix.directory }}
           skip-cache: true
+          only-new-issues: true
       - if: matrix.directory == 'service'
         run: .github/scripts/init-temp-keys.sh
       - run: go test ./... -short
@@ -391,6 +392,8 @@ jobs:
     permissions:
       contents: read
       packages: read
+      pull-requests: write
+      checks: write
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: go

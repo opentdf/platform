@@ -10,6 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	configKey = "test"
+)
+
 // Manual mock implementation of Loader
 type MockLoader struct {
 	loadFn          func(Config) error
@@ -19,7 +23,6 @@ type MockLoader struct {
 	closeFn         func() error
 	getNameFn       func() string
 
-	loadCalled    bool
 	watchCalled   bool
 	closeCalled   bool
 	getNameCalled bool
@@ -28,7 +31,6 @@ type MockLoader struct {
 }
 
 func (l *MockLoader) Load(mostRecentConfig Config) error {
-	l.loadCalled = true
 	if l.loadFn != nil {
 		return l.loadFn(mostRecentConfig)
 	}
@@ -36,7 +38,6 @@ func (l *MockLoader) Load(mostRecentConfig Config) error {
 }
 
 func (l *MockLoader) Get(key string) (any, error) {
-	l.loadCalled = true
 	if l.getFn != nil {
 		return l.getFn(key)
 	}
@@ -44,8 +45,7 @@ func (l *MockLoader) Get(key string) (any, error) {
 }
 
 func (l *MockLoader) GetConfigKeys() ([]string, error) {
-	l.loadCalled = true
-	if l.loadFn != nil {
+	if l.getConfigKeysFn != nil {
 		return l.getConfigKeysFn()
 	}
 	return nil, nil
@@ -75,7 +75,7 @@ func (l *MockLoader) Name() string {
 	if l.getNameFn != nil {
 		return l.getNameFn()
 	}
-	return ""
+	return "mock"
 }
 
 func newMockLoader() *MockLoader {
@@ -233,9 +233,9 @@ func TestConfig_OnChange(t *testing.T) {
 
 func TestLoadConfig_NoFileExistsInEnv(t *testing.T) {
 	ctx := t.Context()
-	envLoader, err := NewEnvironmentValueLoader("test", nil)
+	envLoader, err := NewEnvironmentValueLoader(configKey, nil)
 	require.NoError(t, err)
-	configFileLoader, err := NewConfigFileLoader("test", "non-existent-file")
+	configFileLoader, err := NewConfigFileLoader(configKey, "non-existent-file")
 	require.NoError(t, err)
 	_, err = Load(
 		ctx,
@@ -279,9 +279,9 @@ server:
 
 	// Call LoadConfig with the temp file
 	ctx := t.Context()
-	envLoader, err := NewEnvironmentValueLoader("test", nil)
+	envLoader, err := NewEnvironmentValueLoader(configKey, nil)
 	require.NoError(t, err)
-	configFileLoader, err := NewConfigFileLoader("test", tempFile.Name())
+	configFileLoader, err := NewConfigFileLoader(configKey, tempFile.Name())
 	require.NoError(t, err)
 	config, err := Load(
 		ctx,
@@ -309,4 +309,340 @@ server:
 	assert.Len(t, config.Services, 1)
 	assert.Equal(t, "abc", config.Services["service_a"]["value1"])
 	assert.Equal(t, "def", config.Services["service_a"]["value2"])
+}
+
+// TestLoad_Precedence is a matrix test that verifies the loading order
+// and precedence of different configuration sources.
+func TestLoad_Precedence(t *testing.T) {
+	// Helper to create a temp config file for tests
+	newTempConfigFile := func(t *testing.T, content string) string {
+		t.Helper()
+		f, err := os.CreateTemp(t.TempDir(), "config-*.yaml")
+		require.NoError(t, err)
+		_, err = f.WriteString(content)
+		require.NoError(t, err)
+		require.NoError(t, f.Close())
+		return f.Name()
+	}
+
+	testCases := []struct {
+		name         string
+		setupLoaders func(t *testing.T, configFile string) []Loader
+		envVars      map[string]string
+		err          error
+		fileContent  string
+		asserts      func(t *testing.T, cfg *Config)
+	}{
+		{
+			name: "defaults only",
+			setupLoaders: func(t *testing.T, _ string) []Loader {
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				return []Loader{defaults}
+			},
+			asserts: func(t *testing.T, cfg *Config) {
+				// Assert values from `default` struct tags
+				assert.Equal(t, []string{"all"}, cfg.Mode)
+				assert.Equal(t, "info", cfg.Logger.Level)
+				assert.Equal(t, 8080, cfg.Server.Port)
+			},
+		},
+		{
+			name: "file overrides defaults",
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				file, err := NewConfigFileLoader(configKey, configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				// File loader comes first, so it has higher priority
+				return []Loader{file, defaults}
+			},
+			fileContent: `
+server:
+  port: 9090
+logger:
+  level: warn
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				// Values from file
+				assert.Equal(t, 9090, cfg.Server.Port)
+				assert.Equal(t, "warn", cfg.Logger.Level)
+				// Value from defaults
+				assert.Equal(t, []string{"all"}, cfg.Mode)
+			},
+		},
+		{
+			name: "file with extras and defaults",
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				file, err := NewConfigFileLoader(configKey, configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				// File loader comes first, so it has higher priority
+				return []Loader{file, defaults}
+			},
+			fileContent: `
+server:
+  port: 9090
+  public_hostname: "test.host"
+logger:
+  level: warn
+special_key:
+  nested:
+    special_value: 123
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				// Values from file
+				assert.Equal(t, "test.host", cfg.Server.PublicHostname)
+				assert.Equal(t, 9090, cfg.Server.Port)
+				assert.Equal(t, "warn", cfg.Logger.Level)
+				// Value from defaults
+				assert.Equal(t, []string{"all"}, cfg.Mode)
+			},
+		},
+		{
+			name: "env overrides file and defaults except client_id",
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				envLoader, err := NewEnvironmentValueLoader(configKey, nil)
+				require.NoError(t, err)
+
+				file, err := NewConfigFileLoader(configKey, configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				// Order: env > file > defaults
+				return []Loader{envLoader, file, defaults}
+			},
+			envVars: map[string]string{
+				"TEST_SERVER_PORT":              "9999",
+				"TEST_LOGGER_LEVEL":             "debug",
+				"TEST_DB_HOST":                  "env.host",
+				"TEST_SDK_CONFIG_CLIENT_ID":     "client-from-env",
+				"TEST_SDK_CONFIG_CLIENT_SECRET": "secret-from-env",
+				"TEST_SERVICES_FOO_BAR":         "baz",
+			},
+			fileContent: `
+server:
+  port: 9090
+logger:
+  level: warn
+db:
+  host: file.host
+sdk_config:
+  client_id: client-from-file
+  client_secret: secret-from-file
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				// Values from env
+				assert.Equal(t, 9999, cfg.Server.Port)
+				assert.Equal(t, "debug", cfg.Logger.Level)
+				assert.Equal(t, "env.host", cfg.DB.Host)
+
+				// Different from the LegacyLoader below
+				assert.Equal(t, "client-from-file", cfg.SDKConfig.ClientID)
+				assert.Equal(t, "secret-from-file", cfg.SDKConfig.ClientSecret)
+
+				// Value from defaults (not overridden by file or env)
+				assert.Equal(t, []string{"all"}, cfg.Mode)
+
+				// Value placed into service map in env
+				// Different from the LegacyLoader below
+				require.Contains(t, cfg.Services, "foo")
+				assert.Equal(t, "baz", cfg.Services["foo"]["bar"])
+			},
+		},
+		{
+			name: "env from legacy overrides file and defaults",
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				legacyLoader, err := NewLegacyLoader(configKey, configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				// Order: env > file > defaults
+				return []Loader{legacyLoader, defaults}
+			},
+			envVars: map[string]string{
+				"TEST_SERVER_PORT":              "9999",
+				"TEST_LOGGER_LEVEL":             "debug",
+				"TEST_DB_HOST":                  "env.host",
+				"TEST_SDK_CONFIG_CLIENT_ID":     "client-from-env",
+				"TEST_SDK_CONFIG_CLIENT_SECRET": "secret-from-env",
+				"TEST_SERVICES_FOO_BAR":         "baz",
+			},
+			fileContent: `
+server:
+  port: 9090
+logger:
+  level: warn
+db:
+  host: file.host
+sdk_config:
+  client_id: client-from-file
+  client_secret: secret-from-file
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				// Values from env
+				assert.Equal(t, 9999, cfg.Server.Port)
+				assert.Equal(t, "debug", cfg.Logger.Level)
+				assert.Equal(t, "env.host", cfg.DB.Host)
+
+				// Different from the EnvironmentValueLoader above
+				assert.Equal(t, "client-from-env", cfg.SDKConfig.ClientID)
+				assert.Equal(t, "secret-from-env", cfg.SDKConfig.ClientSecret)
+
+				// Value from defaults (not overridden by file or env)
+				assert.Equal(t, []string{"all"}, cfg.Mode)
+
+				// Value not placed service map in env
+				// Different from the EnvironmentValueLoader above
+				require.NotContains(t, cfg.Services, "foo")
+			},
+		},
+		{
+			name: "env does not override undefined snake-case YAML keys",
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				envLoader, err := NewEnvironmentValueLoader(configKey, nil)
+				require.NoError(t, err)
+
+				file, err := NewConfigFileLoader(configKey, configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				// Order: env > file > defaults
+				return []Loader{envLoader, file, defaults}
+			},
+			envVars: map[string]string{
+				"TEST_SDK_CONFIG_CLIENT_ID":     "client-from-env",
+				"TEST_SDK_CONFIG_CLIENT_SECRET": "secret-from-env",
+			},
+			fileContent: `
+server:
+  port: 9090
+logger:
+  level: warn
+db:
+  host: file.host
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				// Same as the LegacyLoader below
+				assert.Empty(t, cfg.SDKConfig.ClientID)
+				assert.Empty(t, cfg.SDKConfig.ClientSecret)
+			},
+		},
+		{
+			name: "env from legacy does not override undefined snake-case YAML keys",
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				legacyLoader, err := NewLegacyLoader(configKey, configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				// Order: env > file > defaults
+				return []Loader{legacyLoader, defaults}
+			},
+			envVars: map[string]string{
+				"TEST_SDK_CONFIG_CLIENT_ID":     "client-from-env",
+				"TEST_SDK_CONFIG_CLIENT_SECRET": "secret-from-env",
+			},
+			fileContent: `
+server:
+  port: 9090
+logger:
+  level: warn
+db:
+  host: file.host
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				// Same as the EnvironmentValueLoader above
+				assert.Empty(t, cfg.SDKConfig.ClientID)
+				assert.Empty(t, cfg.SDKConfig.ClientSecret)
+			},
+		},
+		{
+			name: "env with allow list allows key",
+			envVars: map[string]string{
+				"TEST_SERVER_PORT": "9999", // This should be loaded
+			},
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				// Allow list only contains server.port
+				allowList := []string{"server.port"}
+				envLoader, err := NewEnvironmentValueLoader(configKey, allowList)
+				require.NoError(t, err)
+
+				file, err := NewConfigFileLoader(configKey, configFile)
+				require.NoError(t, err)
+				return []Loader{envLoader, file}
+			},
+			fileContent: `
+server:
+  port: 8888
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				// The allowed env var should override the file value.
+				assert.Equal(t, 9999, cfg.Server.Port)
+			},
+		},
+		{
+			name: "env with allow list blocks key",
+			envVars: map[string]string{
+				"TEST_SERVER_PORT":  "9999",  // This should be BLOCKED
+				"TEST_LOGGER_LEVEL": "debug", // This should be ALLOWED
+			},
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				// Allow list does NOT contain server.port
+				allowList := []string{"logger.level"}
+				envLoader, err := NewEnvironmentValueLoader(configKey, allowList)
+				require.NoError(t, err)
+
+				file, err := NewConfigFileLoader(configKey, configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				return []Loader{envLoader, file, defaults}
+			},
+			fileContent: `
+server:
+  port: 8888
+logger:
+  level: info
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				// The server.port env var was blocked, so the value from the file takes precedence.
+				assert.Equal(t, 8888, cfg.Server.Port)
+				// The logger.level env var was allowed, so it overrides the file value.
+				assert.Equal(t, "debug", cfg.Logger.Level)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup env vars
+			for k, v := range tc.envVars {
+				t.Setenv(k, v)
+			}
+
+			// Setup config file
+			configFile := ""
+			if tc.fileContent != "" {
+				configFile = newTempConfigFile(t, tc.fileContent)
+			}
+
+			// Setup loaders
+			loaders := tc.setupLoaders(t, configFile)
+
+			// Load config
+			cfg, err := Load(t.Context(), loaders...)
+
+			// Assertions
+			if tc.err != nil {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, cfg)
+			}
+			if tc.asserts != nil {
+				tc.asserts(t, cfg)
+			}
+		})
+	}
 }

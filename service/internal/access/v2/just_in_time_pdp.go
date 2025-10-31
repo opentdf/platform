@@ -19,6 +19,7 @@ import (
 
 	"github.com/opentdf/platform/service/internal/access/v2/obligations"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 )
 
 var (
@@ -141,7 +142,7 @@ func (p *JustInTimePDP) GetDecision(
 	)
 
 	// Because there are three possible types of entities, check obligations first to more easily handle decisioning logic
-	allTriggeredObligationsCanBeFulfilled, requiredObligationsPerResource, err := p.obligationsPDP.GetAllTriggeredObligationsAreFulfilled(
+	obligationDecision, err := p.obligationsPDP.GetAllTriggeredObligationsAreFulfilled(
 		ctx,
 		resources,
 		action,
@@ -165,7 +166,7 @@ func (p *JustInTimePDP) GetDecision(
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
 		// Registered resources do not have entity representations, so only one decision is made
-		decision, err := p.pdp.GetDecisionRegisteredResource(ctx, regResValueFQN, action, resources)
+		decision, entitlements, err := p.pdp.GetDecisionRegisteredResource(ctx, regResValueFQN, action, resources)
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to get decision for registered resource value FQN [%s]: %w", regResValueFQN, err)
 		}
@@ -173,18 +174,14 @@ func (p *JustInTimePDP) GetDecision(
 			return nil, false, fmt.Errorf("decision is nil for registered resource value FQN [%s]", regResValueFQN)
 		}
 
-		// If not entitled, obligations are not considered
-		if !decision.Access {
-			return []*Decision{decision}, decision.Access, nil
-		}
+		// Update resource decisions with obligations and set final access decision
+		hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
+		entitledWithAnyObligationsSatisfied := decision.AllPermitted && (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
+		decision.AllPermitted = entitledWithAnyObligationsSatisfied
+		decisionWithObligationsWhenEntitled, auditResourceDecisions := getResourceDecisionsWithObligations(decision, obligationDecision)
 
-		// Access should only be granted if entitled AND obligations fulfilled
-		decision.Access = allTriggeredObligationsCanBeFulfilled
-		for idx, required := range requiredObligationsPerResource {
-			decision.Results[idx].RequiredObligationValueFQNs = required
-		}
-
-		return []*Decision{decision}, decision.Access, nil
+		p.auditDecision(ctx, regResValueFQN, action, entitledWithAnyObligationsSatisfied, entitlements, fulfillableObligationValueFQNs, obligationDecision, auditResourceDecisions)
+		return []*Decision{decisionWithObligationsWhenEntitled}, entitledWithAnyObligationsSatisfied, nil
 
 	default:
 		return nil, false, ErrInvalidEntityType
@@ -195,36 +192,83 @@ func (p *JustInTimePDP) GetDecision(
 
 	// Make initial entitlement decisions
 	entityDecisions := make([]*Decision, len(entityRepresentations))
+	entityEntitlements := make([]map[string][]*policy.Action, len(entityRepresentations))
 	allPermitted := true
 	for idx, entityRep := range entityRepresentations {
-		d, err := p.pdp.GetDecision(ctx, entityRep, action, resources)
+		d, entitlements, err := p.pdp.GetDecision(ctx, entityRep, action, resources)
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to get decision for entityRepresentation with original id [%s]: %w", entityRep.GetOriginalId(), err)
 		}
 		if d == nil {
 			return nil, false, fmt.Errorf("decision is nil: %w", err)
 		}
-		if !d.Access {
+		// If any entity lacks access to any resource, update overall decision denial
+		if !d.AllPermitted {
 			allPermitted = false
 		}
 		entityDecisions[idx] = d
+		entityEntitlements[idx] = entitlements
 	}
 
-	// If even one entity was denied access, obligations are not considered or returned
-	if !allPermitted {
-		return entityDecisions, allPermitted, nil
-	}
+	// Update resource decisions with obligations and set final access decision
+	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
+	allEntitledWithAnyObligationsSatisfied := allPermitted && (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
+	allPermitted = allEntitledWithAnyObligationsSatisfied
 
-	// Access should only be granted if entitled AND obligations fulfilled
-	allPermitted = allTriggeredObligationsCanBeFulfilled
-	// Obligations are not entity-specific at this time so will be the same across every entity
-	for _, decision := range entityDecisions {
-		for idx, required := range requiredObligationsPerResource {
-			decision.Results[idx].RequiredObligationValueFQNs = required
-		}
+	// Propagate obligations within policy on each resource decision object
+	for entityIdx, decision := range entityDecisions {
+		// TODO: figure out this multi-entity response?
+		// entitledWithAnyObligationsSatisfied := decision.AllPermitted && (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
+		// decision.AllPermitted = entitledWithAnyObligationsSatisfied
+		var auditResourceDecisions []ResourceDecision
+		decision, auditResourceDecisions = getResourceDecisionsWithObligations(decision, obligationDecision)
+		decision.AllPermitted = allPermitted
+		entityRepID := entityRepresentations[entityIdx].GetOriginalId()
+		p.auditDecision(ctx, entityRepID, action, allPermitted, entityEntitlements[entityIdx], fulfillableObligationValueFQNs, obligationDecision, auditResourceDecisions)
 	}
 
 	return entityDecisions, allPermitted, nil
+}
+
+// getResourceDecisionsWithObligations updates the Decision Results with obligation info when
+// entitled, then sets each Resource Decision's passed state. Obligations are always populated on
+// the Resource Decisions returned separately for audit logs, but kept distinct to avoid leaking
+// obligations to those not entitled.
+func getResourceDecisionsWithObligations(
+	decision *Decision,
+	obligationDecision obligations.ObligationPolicyDecision,
+) (*Decision, []ResourceDecision) {
+	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
+
+	// Create audit snapshot with full obligation context for all resources, even if not entitled
+	auditResourceDecisions := make([]ResourceDecision, len(decision.Results))
+
+	for idx := range decision.Results {
+		resourceDecision := &decision.Results[idx]
+
+		// Default all obligations satisfied when none are required
+		resourceDecision.ObligationsSatisfied = true
+		var obligationFQNs []string
+
+		if hasRequiredObligations {
+			perResource := obligationDecision.RequiredObligationValueFQNsPerResource[idx]
+			resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
+			obligationFQNs = perResource.RequiredObligationValueFQNs
+
+			// Only set obligations in response if entitled
+			if resourceDecision.Entitled {
+				resourceDecision.RequiredObligationValueFQNs = obligationFQNs
+			}
+		}
+
+		resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
+
+		// For audit, copy but always include list of required obligations even if not entitled
+		auditResourceDecisions[idx] = *resourceDecision
+		auditResourceDecisions[idx].RequiredObligationValueFQNs = obligationFQNs
+	}
+
+	return decision, auditResourceDecisions
 }
 
 // GetEntitlements retrieves the entitlements for the provided entity chain.
@@ -287,8 +331,6 @@ func (p *JustInTimePDP) GetEntitlements(
 func (p *JustInTimePDP) getMatchedSubjectMappings(
 	ctx context.Context,
 	entityRepresentations []*entityresolutionV2.EntityRepresentation,
-	// updated with the results, attrValue FQN to attribute and value with subject mappings
-	// entitleableAttributes map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 ) ([]*policy.SubjectMapping, error) {
 	// Break the entity down the entities into their properties/selectors and retrieve only those subject mappings
 	subjectProperties := make([]*policy.SubjectProperty, 0)
@@ -399,4 +441,34 @@ func (p *JustInTimePDP) resolveEntitiesFromRequestToken(
 	}
 
 	return p.resolveEntitiesFromToken(ctx, token, skipEnvironmentEntities)
+}
+
+// auditDecision logs a GetDecisionV2 audit event with obligation information.
+// The auditResourceDecisions parameter should contain the full obligation context including
+// for non-entitled resources, which is intentionally excluded from the actual response.
+func (p *JustInTimePDP) auditDecision(
+	ctx context.Context,
+	entityID string,
+	action *policy.Action,
+	allPermitted bool,
+	entitlements map[string][]*policy.Action,
+	fulfillableObligationValueFQNs []string,
+	obligationDecision obligations.ObligationPolicyDecision,
+	auditResourceDecisions []ResourceDecision,
+) {
+	// Determine audit decision result
+	auditDecision := audit.GetDecisionResultDeny
+	if allPermitted {
+		auditDecision = audit.GetDecisionResultPermit
+	}
+
+	p.logger.Audit.GetDecisionV2(ctx, audit.GetDecisionV2EventParams{
+		EntityID:                       entityID,
+		ActionName:                     action.GetName(),
+		Decision:                       auditDecision,
+		Entitlements:                   entitlements,
+		FulfillableObligationValueFQNs: fulfillableObligationValueFQNs,
+		ObligationsSatisfied:           obligationDecision.AllObligationsSatisfied,
+		ResourceDecisions:              auditResourceDecisions,
+	})
 }

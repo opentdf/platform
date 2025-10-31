@@ -47,8 +47,7 @@ func Start(f ...StartOptions) error {
 
 	slog.Debug("loading configuration from environment")
 	loaderOrder := []string{
-		config.LoaderNameEnvironmentValue,
-		config.LoaderNameFile,
+		config.LoaderNameLegacy,
 		config.LoaderNameDefaultSettings,
 	}
 	if startConfig.configLoaderOrder != nil {
@@ -82,6 +81,11 @@ func Start(f ...StartOptions) error {
 			}
 		case config.LoaderNameDefaultSettings:
 			loader, err = config.NewDefaultSettingsLoader()
+			if err != nil {
+				return err
+			}
+		case config.LoaderNameLegacy:
+			loader, err = config.NewLegacyLoader(startConfig.ConfigKey, startConfig.ConfigFile)
 			if err != nil {
 				return err
 			}

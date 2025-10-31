@@ -13,7 +13,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// Updated assertions to include better validation of the retrieved definition
 func TestGetDefinition(t *testing.T) {
 	validFQN := "https://example.org/attr/classification/value/public"
 	invalidFQN := "invalid-fqn"

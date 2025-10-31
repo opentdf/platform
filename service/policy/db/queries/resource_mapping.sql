@@ -3,17 +3,12 @@
 ----------------------------------------------------------------
 
 -- name: listResourceMappingGroups :many
-WITH counted AS (
-    SELECT COUNT(rmg.id) AS total
-    FROM resource_mapping_groups rmg
-)
 SELECT rmg.id,
     rmg.namespace_id,
     rmg.name,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', rmg.metadata -> 'labels', 'created_at', rmg.created_at, 'updated_at', rmg.updated_at)) as metadata,
-    counted.total
+    COUNT(*) OVER() AS total
 FROM resource_mapping_groups rmg
-CROSS JOIN counted
 WHERE (NULLIF(@namespace_id, '') IS NULL OR rmg.namespace_id = @namespace_id::uuid) 
 LIMIT @limit_ 
 OFFSET @offset_; 
@@ -45,10 +40,6 @@ DELETE FROM resource_mapping_groups WHERE id = $1;
 ----------------------------------------------------------------
 
 -- name: listResourceMappings :many
-WITH counted AS (
-    SELECT COUNT(rm.id) AS total
-    FROM resource_mappings rm
-)
 SELECT
     m.id,
     JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
@@ -61,14 +52,13 @@ SELECT
             'namespace_id', rmg.namespace_id
         )
     ) AS group,
-    counted.total
+    COUNT(*) OVER() AS total
 FROM resource_mappings m 
-CROSS JOIN counted
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
 WHERE (NULLIF(@group_id, '') IS NULL OR m.group_id = @group_id::UUID)
-GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, counted.total
+GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id
 LIMIT @limit_ 
 OFFSET @offset_; 
 

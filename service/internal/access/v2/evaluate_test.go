@@ -785,7 +785,7 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 			} else {
 				s.Require().NoError(err)
 				s.NotNil(resourceDecision)
-				s.Equal(tc.expectAccessible, resourceDecision.Passed)
+				s.Equal(tc.expectAccessible, resourceDecision.Entitled)
 
 				// Check results array has the correct length based on grouping by definition
 				definitions := make(map[string]bool)
@@ -895,7 +895,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				EphemeralId: "test-reg-res-id-5",
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
-			expectError:  true,
+			expectError:  false,
 			expectPass:   false,
 		},
 		{
@@ -937,7 +937,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			} else {
 				s.Require().NoError(err)
 				s.NotNil(decision)
-				s.Equal(tc.expectPass, decision.Passed, "Decision pass status didn't match")
+				s.Equal(tc.expectPass, decision.Entitled, "Decision entitlement status didn't match")
 				s.Equal(tc.resource.GetEphemeralId(), decision.ResourceID, "Resource ID didn't match")
 			}
 		})

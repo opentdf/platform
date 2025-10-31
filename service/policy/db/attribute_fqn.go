@@ -75,7 +75,7 @@ func (c *PolicyDBClient) AttrFqnReindex(ctx context.Context) (res struct { //nol
 func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attributes.GetAttributeValuesByFqnsRequest) (map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	fqns := r.GetFqns()
 
-	ctx, span := c.Tracer.Start(ctx, "DB:GetAttributesByValueFqns")
+	ctx, span := c.Start(ctx, "DB:GetAttributesByValueFqns")
 	defer span.End()
 
 	list := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(fqns))

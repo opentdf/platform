@@ -200,6 +200,7 @@ func getResourceDecisionableAttributes(
 	var (
 		decisionableAttributes = make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 		attrValueFQNs          = make([]string, 0)
+		notFoundFQNs           = make([]string, 0)
 	)
 
 	// Parse attribute value FQNs from various resource types
@@ -214,7 +215,7 @@ func getResourceDecisionableAttributes(
 			regResValueFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
 			regResValue, found := accessibleRegisteredResourceValues[regResValueFQN]
 			if !found {
-				return nil, fmt.Errorf("resource registered resource value FQN not found in memory [%s]: %w", regResValueFQN, ErrInvalidResource)
+				notFoundFQNs = append(notFoundFQNs, regResValueFQN)
 			}
 
 			for _, aav := range regResValue.GetActionAttributeValues() {
@@ -245,7 +246,8 @@ func getResourceDecisionableAttributes(
 
 		attributeAndValue, ok := entitleableAttributesByValueFQN[attrValueFQN]
 		if !ok {
-			return nil, fmt.Errorf("resource attribute value FQN not found in memory [%s]: %w", attrValueFQN, ErrInvalidResource)
+			notFoundFQNs = append(notFoundFQNs, attrValueFQN)
+			continue
 		}
 
 		decisionableAttributes[attrValueFQN] = attributeAndValue
@@ -253,6 +255,10 @@ func getResourceDecisionableAttributes(
 		if err != nil {
 			return nil, fmt.Errorf("error populating higher hierarchy attribute values: %w", err)
 		}
+	}
+
+	if len(notFoundFQNs) > 0 {
+		return decisionableAttributes, fmt.Errorf("resource FQNs not found in memory %v: %w", notFoundFQNs, ErrFQNNotFound)
 	}
 
 	return decisionableAttributes, nil

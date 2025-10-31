@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -413,11 +414,19 @@ func TestGetDecision(t *testing.T) {
 		logEntryTime.Format(time.RFC3339),
 	)
 
-	// Remove newlines and spaces from expected
-	expectedAuditLog = removeWhitespace(expectedAuditLog)
-	loggedMessage := removeWhitespace(string(logEntry.Audit))
+	// Parse both JSON strings for structural comparison
+	var expected, actual map[string]any
+	if err := json.Unmarshal([]byte(expectedAuditLog), &expected); err != nil {
+		t.Fatalf("Failed to unmarshal expected JSON: %v", err)
+	}
+	if err := json.Unmarshal(logEntry.Audit, &actual); err != nil {
+		t.Fatalf("Failed to unmarshal actual JSON: %v", err)
+	}
 
-	if expectedAuditLog != loggedMessage {
-		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
+	if !reflect.DeepEqual(expected, actual) {
+		// For better error messages, show the pretty-printed versions
+		expectedPretty, _ := json.MarshalIndent(expected, "", "  ")
+		actualPretty, _ := json.MarshalIndent(actual, "", "  ")
+		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedPretty, actualPretty)
 	}
 }

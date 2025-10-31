@@ -188,7 +188,7 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 		return nil, statusifyError(ctx, as.logger, err)
 	}
 
-	decisions, permitted, err := pdp.GetDecision(
+	decision, err := pdp.GetDecision(
 		ctx,
 		entityIdentifier,
 		action,
@@ -199,9 +199,14 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, err)
 	}
-	resp, err := rollupSingleResourceDecision(permitted, decisions)
+
+	resourceDecisions, err := rollupResourceDecisions(decision)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, err)
+	}
+
+	resp := &authzV2.GetDecisionResponse{
+		Decision: resourceDecisions[0],
 	}
 	return connect.NewResponse(resp), nil
 }
@@ -232,7 +237,7 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 		return nil, statusifyError(ctx, as.logger, err)
 	}
 
-	decisions, allPermitted, err := pdp.GetDecision(
+	decision, err := pdp.GetDecision(
 		ctx,
 		entityIdentifier,
 		action,
@@ -244,14 +249,14 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToGetDecision, err))
 	}
 
-	resourceDecisions, err := rollupMultiResourceDecisions(decisions)
+	resourceDecisions, err := rollupResourceDecisions(decision)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, err)
 	}
 
 	resp := &authzV2.GetDecisionMultiResourceResponse{
 		AllPermitted: &wrapperspb.BoolValue{
-			Value: allPermitted,
+			Value: decision.AllPermitted,
 		},
 		ResourceDecisions: resourceDecisions,
 	}
@@ -291,19 +296,19 @@ func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[aut
 		resources := request.GetResources()
 		fulfillableObligations := request.GetFulfillableObligationFqns()
 
-		decisions, allPermitted, err := pdp.GetDecision(ctx, entityIdentifier, action, resources, reqContext, fulfillableObligations)
+		decision, err := pdp.GetDecision(ctx, entityIdentifier, action, resources, reqContext, fulfillableObligations)
 		if err != nil {
 			return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToGetDecision, err))
 		}
 
-		resourceDecisions, err := rollupMultiResourceDecisions(decisions)
+		resourceDecisions, err := rollupResourceDecisions(decision)
 		if err != nil {
 			return nil, statusifyError(ctx, as.logger, err, slog.Int("index", idx))
 		}
 
 		decisionResponse := &authzV2.GetDecisionMultiResourceResponse{
 			AllPermitted: &wrapperspb.BoolValue{
-				Value: allPermitted,
+				Value: decision.AllPermitted,
 			},
 			ResourceDecisions: resourceDecisions,
 		}

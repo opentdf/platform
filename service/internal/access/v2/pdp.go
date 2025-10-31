@@ -70,7 +70,7 @@ var (
 	ErrMissingRequiredPolicy = errors.New("access: both attribute definitions and subject mappings must be provided or neither")
 )
 
-// PolicyDecisionPoint creates a new Policy Decision Point instance.
+// NewPolicyDecisionPoint creates a new Policy Decision Point instance.
 // It is presumed that all Attribute Definitions and Subject Mappings are valid and contain the entirety of entitlement policy.
 // Attribute Values without Subject Mappings will be ignored in decisioning.
 func NewPolicyDecisionPoint(

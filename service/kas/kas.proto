@@ -80,7 +80,7 @@ message KeyAccess {
   
   // Key identifier for the KAS public key used for wrapping
   // Optional: ZTDF (may specify which KAS key to use), NanoTDF (extracted from header)
-  // References a specific public key in the KAS key registry
+  // References a specific public key in the KAS key storage (either local keyring or KAS Registry service)
   // Example: "k1", "ec-key-2024"
   string kid = 6;
   

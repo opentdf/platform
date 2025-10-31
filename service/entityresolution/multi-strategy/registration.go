@@ -2,6 +2,7 @@ package multistrategy
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -43,16 +45,8 @@ func (ers *ERS) ResolveEntities(
 	ctx context.Context,
 	req *connect.Request[entityresolution.ResolveEntitiesRequest],
 ) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
-	// Extract JWT claims from context (this would be set by authentication middleware)
-	jwtClaims, ok := ctx.Value(types.JWTClaimsContextKey).(types.JWTClaims)
-	if !ok {
-		ers.logger.Warn("no JWT claims found in context for multi-strategy ERS")
-		jwtClaims = make(types.JWTClaims)
-	}
-
 	payload := req.Msg.GetEntities()
 	resolvedEntities := make([]*entityresolution.EntityRepresentation, 0, len(payload))
-
 	for _, entity := range payload {
 		entityID := entity.GetId()
 		if entityID == "" {
@@ -60,8 +54,33 @@ func (ers *ERS) ResolveEntities(
 			continue
 		}
 
+		var claimsMap types.JWTClaims
+		switch entity.GetEntityType().(type) {
+		case *authorization.Entity_Claims:
+			claims := entity.GetClaims()
+			if claims != nil {
+				// First unmarshal to structpb.Struct
+				var claimsStruct structpb.Struct
+				err := claims.UnmarshalTo(&claimsStruct)
+				if err != nil {
+					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err))
+				}
+				// Convert to map[string]interface{}
+				claimsMap = claimsStruct.AsMap()
+			}
+		default:
+			entityBytes, err := protojson.Marshal(entity)
+			if err != nil {
+				return nil, err
+			}
+			err = json.Unmarshal(entityBytes, &claimsMap)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		// Resolve entity using multi-strategy service
-		result, err := ers.service.ResolveEntity(ctx, entityID, jwtClaims)
+		result, err := ers.service.ResolveEntity(ctx, entityID, claimsMap)
 		if err != nil {
 			ers.logger.Error("failed to resolve entity",
 				slog.String("entity_id", entityID),
@@ -212,8 +231,11 @@ func (ers *ERS) createEntityChainFromSingleToken(ctx context.Context, token *aut
 	for _, strategy := range strategies {
 		attemptedStrategies = append(attemptedStrategies, strategy.Name)
 
+		// Put JWT claims into context for providers to access
+		ctxWithClaims := context.WithValue(ctx, types.JWTClaimsContextKey, jwtClaims)
+
 		// Resolve entity using this strategy
-		entityResult, err := ers.service.ResolveEntity(ctx, token.GetId(), jwtClaims)
+		entityResult, err := ers.service.ResolveEntity(ctxWithClaims, token.GetId(), jwtClaims)
 		if err != nil {
 			lastError = err
 			ers.logger.WarnContext(ctx, "strategy failed for token",

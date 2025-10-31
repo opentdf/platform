@@ -52,7 +52,6 @@ message PolicyBinding {
 message KeyAccess {
   // Base64-encoded encrypted metadata containing additional key information
   // Optional: Generally not used in modern implementations
-  // Legacy field that may contain additional cryptographic metadata
   string encrypted_metadata = 1;
   
   // Policy binding ensuring cryptographic integrity between policy and wrapped key

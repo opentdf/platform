@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/gob"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -932,6 +933,182 @@ func (s *NanoSuite) Test_NanoTDF_Obligations() {
 			s.Require().Equal(tc.requiredObligations, obl.FQNs)
 		})
 	}
+}
+
+func (s *NanoSuite) Test_PolicyBinding_GMAC() {
+	// Create test policy data
+	policyData := []byte(`{"body":{"dataAttributes":["https://example.com/attr/classification/value/secret"]}}`)
+
+	// Create GMAC binding - need to simulate having GMAC at end of the digest
+	gmacBytes := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}
+	// Append GMAC to the digest to simulate real scenario
+	policyData = append(policyData, gmacBytes...)
+
+	digest := ocrypto.CalculateSHA256(policyData)
+
+	// For testing, we will use the last bytes as the GMAC binding
+	gmacBytes = digest[len(digest)-len(gmacBytes):]
+
+	binding := &gmacPolicyBinding{
+		binding: gmacBytes,
+		digest:  digest,
+	}
+
+	// Test String function
+	s.Require().Equal(hex.EncodeToString(gmacBytes), binding.String(), "GMAC hash should return binding data directly")
+
+	// Test Verify function - should pass with correct binding
+	valid, err := binding.Verify()
+	s.Require().NoError(err)
+	s.Require().True(valid, "GMAC binding should be valid when binding matches digest suffix")
+
+	// Test Verify function with wrong binding - should fail
+	wrongBinding := &gmacPolicyBinding{
+		binding: []byte{0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01},
+		digest:  digest,
+	}
+	valid, err = wrongBinding.Verify()
+	s.Require().NoError(err)
+	s.Require().False(valid, "GMAC binding should be invalid when binding doesn't match digest suffix")
+}
+
+func (s *NanoSuite) Test_PolicyBinding_ECDSA() {
+	// Create a test ECDSA key pair
+	keyPair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
+	s.Require().NoError(err)
+
+	// Create test policy data
+	policyData := []byte(`{"body":{"dataAttributes":["https://example.com/attr/classification/value/secret"]}}`)
+	digest := ocrypto.CalculateSHA256(policyData)
+
+	// Sign the digest
+	r, sBytes, err := ocrypto.ComputeECDSASig(digest, keyPair.PrivateKey)
+	s.Require().NoError(err)
+
+	// Get the public key in compressed format
+	compressedPubKey, err := ocrypto.CompressedECPublicKey(ocrypto.ECCModeSecp256r1, keyPair.PrivateKey.PublicKey)
+	s.Require().NoError(err)
+
+	binding := &ecdsaPolicyBinding{
+		r:               r,
+		s:               sBytes,
+		ephemeralPubKey: compressedPubKey,
+		digest:          digest,
+		curve:           keyPair.PrivateKey.Curve,
+	}
+
+	// Test String function
+	expectedHash := string(ocrypto.SHA256AsHex(append(r, sBytes...)))
+	s.Require().NotEmpty(binding.String(), "Hash should not be empty")
+	s.Require().Equal(expectedHash, binding.String(), "ECDSA hash should be SHA256 of r||s")
+
+	// Test Verify function - should pass with correct signature
+	valid, err := binding.Verify()
+	s.Require().NoError(err)
+	s.Require().True(valid, "ECDSA binding should be valid with correct signature")
+
+	// Test Verify function with wrong signature - should fail
+	invalidR := make([]byte, 32)
+	invalidS := make([]byte, 32)
+	for i := range invalidR {
+		invalidR[i] = byte(i)
+		invalidS[i] = byte(i + 10)
+	}
+
+	wrongBinding := &ecdsaPolicyBinding{
+		r:               invalidR,
+		s:               invalidS,
+		ephemeralPubKey: compressedPubKey,
+		digest:          digest,
+		curve:           keyPair.PrivateKey.Curve,
+	}
+
+	valid, err = wrongBinding.Verify()
+	s.Require().NoError(err)
+	s.Require().False(valid, "ECDSA binding should be invalid with wrong signature")
+}
+
+func (s *NanoSuite) Test_NanoTDFHeader_VerifyPolicyBinding() {
+	s.Run("ECDSA Policy Binding Verification", func() {
+		// Create a test ECDSA key pair
+		keyPair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
+		s.Require().NoError(err)
+
+		// Create test policy data
+		policyData := []byte(`{"body":{"dataAttributes":["https://example.com/attr/classification/value/secret"]}}`)
+		digest := ocrypto.CalculateSHA256(policyData)
+
+		// Sign the digest
+		r, sBytes, err := ocrypto.ComputeECDSASig(digest, keyPair.PrivateKey)
+		s.Require().NoError(err)
+
+		// Get compressed public key
+		compressedPubKey, err := ocrypto.CompressedECPublicKey(ocrypto.ECCModeSecp256r1, keyPair.PrivateKey.PublicKey)
+		s.Require().NoError(err)
+
+		// Create header with ECDSA binding
+		header := &NanoTDFHeader{
+			bindCfg: bindingConfig{
+				useEcdsaBinding: true,
+				eccMode:         ocrypto.ECCModeSecp256r1,
+			},
+			PolicyBody:          policyData,
+			EphemeralKey:        compressedPubKey,
+			ecdsaPolicyBindingR: r,
+			ecdsaPolicyBindingS: sBytes,
+		}
+
+		// Test VerifyPolicyBinding method
+		valid, err := header.VerifyPolicyBinding()
+		s.Require().NoError(err)
+		s.Require().True(valid, "ECDSA policy binding should be valid")
+	})
+
+	s.Run("GMAC Policy Binding Verification", func() {
+		// Create test policy data
+		policyData := []byte(`{"body":{"dataAttributes":["https://example.com/attr/classification/value/secret"]}}`)
+
+		// Create GMAC binding - need to simulate having GMAC at end of the digest
+		gmacBytes := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}
+		// Append GMAC to the digest to simulate real scenario
+		policyData = append(policyData, gmacBytes...)
+
+		digest := ocrypto.CalculateSHA256(policyData)
+
+		// For testing, we will use the last bytes as the GMAC binding
+		gmacBytes = digest[len(digest)-len(gmacBytes):]
+
+		// Create header with GMAC binding
+		header := &NanoTDFHeader{
+			bindCfg: bindingConfig{
+				useEcdsaBinding: false,
+			},
+			PolicyBody:        policyData,
+			gmacPolicyBinding: gmacBytes,
+		}
+
+		// Test VerifyPolicyBinding method
+		valid, err := header.VerifyPolicyBinding()
+		s.Require().NoError(err)
+		s.Require().True(valid, "GMAC hash should match")
+	})
+
+	s.Run("Policy Binding Creation Error", func() {
+		// Create header with invalid ECC mode to trigger error in PolicyBinding()
+		header := &NanoTDFHeader{
+			bindCfg: bindingConfig{
+				useEcdsaBinding: true,
+				eccMode:         255, // Invalid ECC mode
+			},
+			PolicyBody: []byte("test"),
+		}
+
+		// Test VerifyPolicyBinding method with error case
+		valid, err := header.VerifyPolicyBinding()
+		s.Require().Error(err)
+		s.Require().False(valid)
+		s.Require().Contains(err.Error(), "unsupported nanoTDF ecc mode", "Error should be related to curve/ECC mode")
+	})
 }
 
 // Helper function to create real NanoTDF data for testing

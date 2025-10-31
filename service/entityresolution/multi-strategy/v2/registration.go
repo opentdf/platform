@@ -2,74 +2,95 @@ package multistrategy
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strconv"
 
 	"connectrpc.com/connect"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/entity"
 	ersV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
+	ent "github.com/opentdf/platform/service/entity"
 	multistrategy "github.com/opentdf/platform/service/entityresolution/multi-strategy"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// ERSV2 implements the EntityResolutionServiceHandler for v2 multi-strategy resolution
-type ERSV2 struct {
+// MultiStrategyERSV2 implements the EntityResolutionServiceHandler for v2 multi-strategy resolution
+type MultiStrategyERSV2 struct {
 	ersV2.UnimplementedEntityResolutionServiceServer
 	service *multistrategy.Service
 	logger  *logger.Logger
 	trace.Tracer
 }
 
-// NewERSV2 creates a new v2 multi-strategy ERS
-func NewERSV2(ctx context.Context, config types.MultiStrategyConfig, logger *logger.Logger) (*ERSV2, error) {
+// NewMultiStrategyERSV2 creates a new v2 multi-strategy ERS
+func NewMultiStrategyERSV2(ctx context.Context, config types.MultiStrategyConfig, logger *logger.Logger) (*MultiStrategyERSV2, error) {
 	service, err := multistrategy.NewService(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multi-strategy service: %w", err)
 	}
 
-	return &ERSV2{
+	return &MultiStrategyERSV2{
 		service: service,
 		logger:  logger,
 	}, nil
 }
 
 // GetService returns the underlying multi-strategy service for testing and health checks
-func (ers *ERSV2) GetService() *multistrategy.Service {
+func (ers *MultiStrategyERSV2) GetService() *multistrategy.Service {
 	return ers.service
 }
 
 // ResolveEntities implements the v2 EntityResolutionServiceHandler interface
-func (ers *ERSV2) ResolveEntities(
+func (ers *MultiStrategyERSV2) ResolveEntities(
 	ctx context.Context,
 	req *connect.Request[ersV2.ResolveEntitiesRequest],
 ) (*connect.Response[ersV2.ResolveEntitiesResponse], error) {
-	// Extract JWT claims from context (this would be set by authentication middleware)
-	jwtClaims, ok := ctx.Value(types.JWTClaimsContextKey).(types.JWTClaims)
-	if !ok {
-		ers.logger.Warn("no JWT claims found in context for multi-strategy ERS v2")
-		// For ResolveEntities, we need JWT claims to be provided by middleware
-		// This is different from CreateEntityChainsFromTokens which has the JWT token directly
-		jwtClaims = make(types.JWTClaims)
-	}
-
 	payload := req.Msg.GetEntities()
 	resolvedEntities := make([]*ersV2.EntityRepresentation, 0, len(payload))
 
-	for _, entityV2 := range payload {
+	for idx, entityV2 := range payload {
 		entityID := entityV2.GetEphemeralId()
 		if entityID == "" {
 			ers.logger.Warn("empty entity ID in request")
+			entityID = ent.EntityIDPrefix + strconv.Itoa(idx)
 			continue
 		}
 
+		var claimsMap types.JWTClaims
+		switch entityV2.GetEntityType().(type) {
+		case *entity.Entity_Claims:
+			claims := entityV2.GetClaims()
+			if claims != nil {
+				// First unmarshal to structpb.Struct
+				var claimsStruct structpb.Struct
+				err := claims.UnmarshalTo(&claimsStruct)
+				if err != nil {
+					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err))
+				}
+				// Convert to map[string]interface{}
+				claimsMap = claimsStruct.AsMap()
+			}
+		default:
+			entityBytes, err := protojson.Marshal(entityV2)
+			if err != nil {
+				return nil, err
+			}
+			err = json.Unmarshal(entityBytes, &claimsMap)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		// Resolve entity using multi-strategy service
-		result, err := ers.service.ResolveEntity(ctx, entityID, jwtClaims)
+		result, err := ers.service.ResolveEntity(ctx, entityID, claimsMap)
 		if err != nil {
 			ers.logger.Error("failed to resolve entity",
 				slog.String("entity_id", entityID),
@@ -126,7 +147,7 @@ func (ers *ERSV2) ResolveEntities(
 }
 
 // CreateEntityChainsFromTokens implements the v2 EntityResolutionServiceHandler interface
-func (ers *ERSV2) CreateEntityChainsFromTokens(
+func (ers *MultiStrategyERSV2) CreateEntityChainsFromTokens(
 	ctx context.Context,
 	req *connect.Request[ersV2.CreateEntityChainsFromTokensRequest],
 ) (*connect.Response[ersV2.CreateEntityChainsFromTokensResponse], error) {
@@ -165,7 +186,7 @@ func (ers *ERSV2) CreateEntityChainsFromTokens(
 }
 
 // createEntityChainFromSingleTokenV2 processes a single JWT token using multi-strategy resolution for v2
-func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token *entity.Token) (*entity.EntityChain, error) {
+func (ers *MultiStrategyERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token *entity.Token) (*entity.EntityChain, error) {
 	// Parse JWT to extract claims
 	jwtClaims, err := ers.parseJWTClaims(ctx, token.GetJwt())
 	if err != nil {
@@ -188,7 +209,7 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 			err,
 			map[string]interface{}{
 				"token_id":   token.GetEphemeralId(),
-				"jwt_claims": extractClaimNames(jwtClaims),
+				"entity_map": extractClaimNames(jwtClaims),
 			},
 		)
 	}
@@ -198,7 +219,7 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 			"no matching strategies found for JWT claims",
 			map[string]interface{}{
 				"token_id":   token.GetEphemeralId(),
-				"jwt_claims": extractClaimNames(jwtClaims),
+				"entity_map": extractClaimNames(jwtClaims),
 			},
 		)
 	}
@@ -276,7 +297,7 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 				"token_id":             token.GetEphemeralId(),
 				"failure_strategy":     failureStrategy,
 				"attempted_strategies": attemptedStrategies,
-				"jwt_claims":           extractClaimNames(jwtClaims),
+				"entity_map":           extractClaimNames(jwtClaims),
 			},
 		)
 	}
@@ -288,7 +309,7 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 }
 
 // createEntityFromResultV2 converts a multi-strategy EntityResult to a v2 entity.Entity
-func (ers *ERSV2) createEntityFromResultV2(ctx context.Context, result *types.EntityResult, strategy *types.MappingStrategy, tokenID string) *entity.Entity {
+func (ers *MultiStrategyERSV2) createEntityFromResultV2(ctx context.Context, result *types.EntityResult, strategy *types.MappingStrategy, tokenID string) *entity.Entity {
 	// Determine entity category based on strategy configuration
 	category := entity.Entity_CATEGORY_SUBJECT // Default
 	if strategy.EntityType == types.EntityTypeEnvironment {
@@ -365,7 +386,7 @@ func (ers *ERSV2) createEntityFromResultV2(ctx context.Context, result *types.En
 }
 
 // Helper functions for v2
-func (ers *ERSV2) parseJWTClaims(ctx context.Context, jwtString string) (types.JWTClaims, error) {
+func (ers *MultiStrategyERSV2) parseJWTClaims(ctx context.Context, jwtString string) (types.JWTClaims, error) {
 	// For now, use a simple JWT parser (in production, this should validate signatures)
 	// This is similar to how Keycloak ERS parses JWTs
 	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
@@ -381,7 +402,7 @@ func (ers *ERSV2) parseJWTClaims(ctx context.Context, jwtString string) (types.J
 	return types.JWTClaims(claims), nil
 }
 
-func (ers *ERSV2) countEntitiesInChainsV2(chains []*entity.EntityChain) int {
+func (ers *MultiStrategyERSV2) countEntitiesInChainsV2(chains []*entity.EntityChain) int {
 	total := 0
 	for _, chain := range chains {
 		total += len(chain.GetEntities())
@@ -416,7 +437,7 @@ func getEntityValueV2(entityType interface{}) string {
 }
 
 // RegisterMultiStrategyERSV2 registers the v2 multi-strategy ERS service
-func RegisterERSV2(config map[string]interface{}, logger *logger.Logger) (*ERSV2, serviceregistry.HandlerServer) {
+func RegisterMultiStrategyERSV2(config map[string]interface{}, logger *logger.Logger) (*MultiStrategyERSV2, serviceregistry.HandlerServer) {
 	var multiStrategyConfig types.MultiStrategyConfig
 
 	if err := mapstructure.Decode(config, &multiStrategyConfig); err != nil {
@@ -424,7 +445,7 @@ func RegisterERSV2(config map[string]interface{}, logger *logger.Logger) (*ERSV2
 		panic(fmt.Sprintf("Failed to decode multi-strategy configuration: %v", err))
 	}
 
-	ers, err := NewERSV2(context.Background(), multiStrategyConfig, logger)
+	ers, err := NewMultiStrategyERSV2(context.Background(), multiStrategyConfig, logger)
 	if err != nil {
 		logger.Error("failed to create multi-strategy ERS v2", slog.Any("error", err))
 		panic(fmt.Sprintf("Failed to create multi-strategy ERS v2: %v", err))
@@ -433,7 +454,7 @@ func RegisterERSV2(config map[string]interface{}, logger *logger.Logger) (*ERSV2
 	return ers, nil
 }
 
-// extractClaimNames extracts the names of claims from JWTClaims for logging
+// extractClaimNames extracts the names of fields from JWTClaims for logging
 func extractClaimNames(claims types.JWTClaims) []string {
 	names := make([]string, 0, len(claims))
 	for name := range claims {

@@ -31,9 +31,8 @@ func rollupResourceDecisions(
 		return nil, errors.Join(ErrFailedToRollupDecision, fmt.Errorf("%w: %+v", ErrDecisionMustHaveResults, decision))
 	}
 
-	var resourceDecisions []*authzV2.ResourceDecision
-
-	for _, result := range decision.Results {
+	resourceDecisions := make([]*authzV2.ResourceDecision, len(decision.Results))
+	for idx, result := range decision.Results {
 		access := authzV2.Decision_DECISION_DENY
 		if result.Passed {
 			access = authzV2.Decision_DECISION_PERMIT
@@ -43,7 +42,7 @@ func rollupResourceDecisions(
 			EphemeralResourceId: result.ResourceID,
 			RequiredObligations: result.RequiredObligationValueFQNs,
 		}
-		resourceDecisions = append(resourceDecisions, resourceDecision)
+		resourceDecisions[idx] = resourceDecision
 	}
 
 	return resourceDecisions, nil

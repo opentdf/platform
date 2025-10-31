@@ -227,7 +227,7 @@ func (p *JustInTimePDP) GetDecision(
 		for resourceIdx, nextResult := range entityRepresentationDecision.Results {
 			current := resourceDecisionsAcrossAllEntityReps[resourceIdx]
 
-			resourceDecisionsAcrossAllEntityReps[resourceIdx] = ResourceDecision{
+			merged := ResourceDecision{
 				ResourceID:   current.ResourceID,
 				ResourceName: current.ResourceName,
 				// AND together: all entity representations must be entitled
@@ -236,6 +236,13 @@ func (p *JustInTimePDP) GetDecision(
 				ObligationsSatisfied: current.ObligationsSatisfied && nextResult.ObligationsSatisfied,
 				// Omit each entity representation's DataRuleResults from result
 			}
+
+			// Keep obligations if entitled, clear if not
+			if merged.Entitled {
+				merged.RequiredObligationValueFQNs = current.RequiredObligationValueFQNs
+			}
+
+			resourceDecisionsAcrossAllEntityReps[resourceIdx] = merged
 		}
 	}
 

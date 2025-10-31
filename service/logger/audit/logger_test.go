@@ -14,6 +14,36 @@ import (
 	"github.com/opentdf/platform/protocol/go/authorization"
 )
 
+// Params
+var rewrapAttrs = []string{
+	"https://example1.com",
+	"https://example2.com",
+}
+
+const rewrapAttrsJSON = `["https://example1.com", "https://example2.com"]`
+
+var rewrapParams = RewrapAuditEventParams{
+	Policy: KasPolicy{
+		UUID: uuid.New(),
+		Body: KasPolicyBody{
+			DataAttributes: []KasAttribute{
+				{URI: rewrapAttrs[0]},
+				{URI: rewrapAttrs[1]},
+			},
+		},
+	},
+	TDFFormat:     "test-tdf-format",
+	Algorithm:     "test-algorithm",
+	PolicyBinding: "test-policy-binding",
+	KeyID:         "r1",
+}
+
+var policyCRUDParams = PolicyEventParams{
+	ActionType: ActionTypeUpdate,
+	ObjectID:   "test-object-id",
+	ObjectType: ObjectTypeKeyObject,
+}
+
 func createTestLogger() (*Logger, *bytes.Buffer) {
 	var buf bytes.Buffer
 
@@ -66,29 +96,6 @@ func extractLogEntry(t *testing.T, logBuffer *bytes.Buffer) (logEntryStructure, 
 	return entry, entryTime
 }
 
-// Params
-
-var rewrapParams = RewrapAuditEventParams{
-	Policy: KasPolicy{
-		UUID: uuid.New(),
-		Body: KasPolicyBody{
-			DataAttributes: []KasAttribute{
-				{URI: "https://example1.com"},
-				{URI: "https://example2.com"},
-			},
-		},
-	},
-	TDFFormat:     "test-tdf-format",
-	Algorithm:     "test-algorithm",
-	PolicyBinding: "test-policy-binding",
-}
-
-var policyCRUDParams = PolicyEventParams{
-	ActionType: ActionTypeUpdate,
-	ObjectID:   "test-object-id",
-	ObjectType: ObjectTypeKeyObject,
-}
-
 func TestAuditRewrapSuccess(t *testing.T) {
 	l, buf := createTestLogger()
 
@@ -104,7 +111,7 @@ func TestAuditRewrapSuccess(t *testing.T) {
 				"name": "",
 				"attributes": {
             		"assertions": [],
-            		"attrs": [],
+            		"attrs": %s,
             		"permissions": []
         		}
 			},
@@ -118,7 +125,7 @@ func TestAuditRewrapSuccess(t *testing.T) {
 			},
 			"eventMetaData": {
 			  "algorithm": "%s",
-				"keyID": "",
+				"keyID": "%s",
 				"policyBinding": "%s",
 				"tdfFormat": "%s"
 			},
@@ -134,8 +141,10 @@ func TestAuditRewrapSuccess(t *testing.T) {
 	  }
 		`,
 		rewrapParams.Policy.UUID.String(),
+		rewrapAttrsJSON,
 		TestActorID,
 		rewrapParams.Algorithm,
+		rewrapParams.KeyID,
 		rewrapParams.PolicyBinding,
 		rewrapParams.TDFFormat,
 		TestUserAgent,
@@ -168,7 +177,7 @@ func TestAuditRewrapFailure(t *testing.T) {
 				"name": "",
 				"attributes": {
             		"assertions": [],
-            		"attrs": [],
+            		"attrs": %s,
             		"permissions": []
         		}
 			},
@@ -182,7 +191,7 @@ func TestAuditRewrapFailure(t *testing.T) {
 			},
 			"eventMetaData": {
 			  "algorithm": "%s",
-				"keyID": "",
+				"keyID": "%s",
 				"policyBinding": "%s",
 				"tdfFormat": "%s"
 			},
@@ -198,8 +207,10 @@ func TestAuditRewrapFailure(t *testing.T) {
 	  }
 		`,
 		rewrapParams.Policy.UUID.String(),
+		rewrapAttrsJSON,
 		TestActorID,
 		rewrapParams.Algorithm,
+		rewrapParams.KeyID,
 		rewrapParams.PolicyBinding,
 		rewrapParams.TDFFormat,
 		TestUserAgent,

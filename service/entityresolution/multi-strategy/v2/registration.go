@@ -22,34 +22,34 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// MultiStrategyERSV2 implements the EntityResolutionServiceHandler for v2 multi-strategy resolution
-type MultiStrategyERSV2 struct {
+// ERSV2 implements the EntityResolutionServiceHandler for v2 multi-strategy resolution
+type ERSV2 struct {
 	ersV2.UnimplementedEntityResolutionServiceServer
 	service *multistrategy.Service
 	logger  *logger.Logger
 	trace.Tracer
 }
 
-// NewMultiStrategyERSV2 creates a new v2 multi-strategy ERS
-func NewMultiStrategyERSV2(ctx context.Context, config types.MultiStrategyConfig, logger *logger.Logger) (*MultiStrategyERSV2, error) {
+// NewERSV2 creates a new v2 multi-strategy ERS
+func NewERSV2(ctx context.Context, config types.MultiStrategyConfig, logger *logger.Logger) (*ERSV2, error) {
 	service, err := multistrategy.NewService(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multi-strategy service: %w", err)
 	}
 
-	return &MultiStrategyERSV2{
+	return &ERSV2{
 		service: service,
 		logger:  logger,
 	}, nil
 }
 
 // GetService returns the underlying multi-strategy service for testing and health checks
-func (ers *MultiStrategyERSV2) GetService() *multistrategy.Service {
+func (ers *ERSV2) GetService() *multistrategy.Service {
 	return ers.service
 }
 
 // ResolveEntities implements the v2 EntityResolutionServiceHandler interface
-func (ers *MultiStrategyERSV2) ResolveEntities(
+func (ers *ERSV2) ResolveEntities(
 	ctx context.Context,
 	req *connect.Request[ersV2.ResolveEntitiesRequest],
 ) (*connect.Response[ersV2.ResolveEntitiesResponse], error) {
@@ -147,7 +147,7 @@ func (ers *MultiStrategyERSV2) ResolveEntities(
 }
 
 // CreateEntityChainsFromTokens implements the v2 EntityResolutionServiceHandler interface
-func (ers *MultiStrategyERSV2) CreateEntityChainsFromTokens(
+func (ers *ERSV2) CreateEntityChainsFromTokens(
 	ctx context.Context,
 	req *connect.Request[ersV2.CreateEntityChainsFromTokensRequest],
 ) (*connect.Response[ersV2.CreateEntityChainsFromTokensResponse], error) {
@@ -186,7 +186,7 @@ func (ers *MultiStrategyERSV2) CreateEntityChainsFromTokens(
 }
 
 // createEntityChainFromSingleTokenV2 processes a single JWT token using multi-strategy resolution for v2
-func (ers *MultiStrategyERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token *entity.Token) (*entity.EntityChain, error) {
+func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token *entity.Token) (*entity.EntityChain, error) {
 	// Parse JWT to extract claims
 	jwtClaims, err := ers.parseJWTClaims(ctx, token.GetJwt())
 	if err != nil {
@@ -309,7 +309,7 @@ func (ers *MultiStrategyERSV2) createEntityChainFromSingleTokenV2(ctx context.Co
 }
 
 // createEntityFromResultV2 converts a multi-strategy EntityResult to a v2 entity.Entity
-func (ers *MultiStrategyERSV2) createEntityFromResultV2(ctx context.Context, result *types.EntityResult, strategy *types.MappingStrategy, tokenID string) *entity.Entity {
+func (ers *ERSV2) createEntityFromResultV2(ctx context.Context, result *types.EntityResult, strategy *types.MappingStrategy, tokenID string) *entity.Entity {
 	// Determine entity category based on strategy configuration
 	category := entity.Entity_CATEGORY_SUBJECT // Default
 	if strategy.EntityType == types.EntityTypeEnvironment {
@@ -386,7 +386,7 @@ func (ers *MultiStrategyERSV2) createEntityFromResultV2(ctx context.Context, res
 }
 
 // Helper functions for v2
-func (ers *MultiStrategyERSV2) parseJWTClaims(ctx context.Context, jwtString string) (types.JWTClaims, error) {
+func (ers *ERSV2) parseJWTClaims(ctx context.Context, jwtString string) (types.JWTClaims, error) {
 	// For now, use a simple JWT parser (in production, this should validate signatures)
 	// This is similar to how Keycloak ERS parses JWTs
 	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
@@ -402,7 +402,7 @@ func (ers *MultiStrategyERSV2) parseJWTClaims(ctx context.Context, jwtString str
 	return types.JWTClaims(claims), nil
 }
 
-func (ers *MultiStrategyERSV2) countEntitiesInChainsV2(chains []*entity.EntityChain) int {
+func (ers *ERSV2) countEntitiesInChainsV2(chains []*entity.EntityChain) int {
 	total := 0
 	for _, chain := range chains {
 		total += len(chain.GetEntities())
@@ -437,7 +437,7 @@ func getEntityValueV2(entityType interface{}) string {
 }
 
 // RegisterMultiStrategyERSV2 registers the v2 multi-strategy ERS service
-func RegisterMultiStrategyERSV2(config map[string]interface{}, logger *logger.Logger) (*MultiStrategyERSV2, serviceregistry.HandlerServer) {
+func RegisterMultiStrategyERSV2(config map[string]interface{}, logger *logger.Logger) (*ERSV2, serviceregistry.HandlerServer) {
 	var multiStrategyConfig types.MultiStrategyConfig
 
 	if err := mapstructure.Decode(config, &multiStrategyConfig); err != nil {
@@ -445,7 +445,7 @@ func RegisterMultiStrategyERSV2(config map[string]interface{}, logger *logger.Lo
 		panic(fmt.Sprintf("Failed to decode multi-strategy configuration: %v", err))
 	}
 
-	ers, err := NewMultiStrategyERSV2(context.Background(), multiStrategyConfig, logger)
+	ers, err := NewERSV2(context.Background(), multiStrategyConfig, logger)
 	if err != nil {
 		logger.Error("failed to create multi-strategy ERS v2", slog.Any("error", err))
 		panic(fmt.Sprintf("Failed to create multi-strategy ERS v2: %v", err))

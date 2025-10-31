@@ -135,7 +135,7 @@ func TestEntityChainComparison(t *testing.T) {
 		}
 
 		ctx := t.Context()
-		ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+		ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 		if err != nil {
 			t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 		}

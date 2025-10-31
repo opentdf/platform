@@ -69,7 +69,7 @@ func TestMultiStrategy_ClaimsOnly(t *testing.T) {
 	}
 
 	ctx := t.Context()
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+	ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
@@ -235,7 +235,7 @@ func TestMultiStrategy_SQLOnly(t *testing.T) {
 		},
 	}
 
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+	ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
@@ -372,7 +372,7 @@ func TestMultiStrategy_LDAPOnly(t *testing.T) {
 		},
 	}
 
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+	ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		// Check if this is the expected LDAP stub error
 		if strings.Contains(err.Error(), "LDAP not implemented - stub function") {
@@ -491,7 +491,7 @@ func TestMultiStrategy_MultiProviderFailover(t *testing.T) {
 	}
 
 	ctx := t.Context()
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+	ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
@@ -589,7 +589,7 @@ func TestMultiStrategy_MultiProviderEarlySuccess(t *testing.T) {
 	}
 
 	ctx := t.Context()
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+	ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
@@ -691,7 +691,7 @@ func TestMultiStrategy_EntityChainCreation(t *testing.T) {
 	}
 
 	ctx := t.Context()
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+	ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}

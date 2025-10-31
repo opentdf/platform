@@ -15,78 +15,38 @@ import (
 var (
 	ErrFailedToRollupDecision    = errors.New("failed to rollup decision")
 	ErrResponseSafeInternalError = errors.New("an unexpected error occurred")
-	ErrNoDecisions               = errors.New("no decisions returned")
 	ErrDecisionCannotBeNil       = errors.New("decision cannot be nil")
 	ErrDecisionMustHaveResults   = errors.New("decision must have results")
 )
 
-// rollupMultiResourceDecisions creates a standardized response for multi-resource decisions
-// by processing the decisions returned from the PDP.
-func rollupMultiResourceDecisions(
-	decisions []*access.Decision,
-) ([]*authzV2.ResourceDecision, error) {
-	if len(decisions) == 0 {
-		return nil, errors.Join(ErrFailedToRollupDecision, ErrNoDecisions)
-	}
-
-	var resourceDecisions []*authzV2.ResourceDecision
-
-	for idx, decision := range decisions {
-		if decision == nil {
-			return nil, errors.Join(ErrFailedToRollupDecision, fmt.Errorf("%w: index %d", ErrDecisionCannotBeNil, idx))
-		}
-		if len(decision.Results) == 0 {
-			return nil, errors.Join(ErrFailedToRollupDecision, fmt.Errorf("%w: %+v", ErrDecisionMustHaveResults, decision))
-		}
-		for _, result := range decision.Results {
-			access := authzV2.Decision_DECISION_DENY
-			if result.Passed {
-				access = authzV2.Decision_DECISION_PERMIT
-			}
-			resourceDecision := &authzV2.ResourceDecision{
-				Decision:            access,
-				EphemeralResourceId: result.ResourceID,
-				RequiredObligations: result.RequiredObligationValueFQNs,
-			}
-			resourceDecisions = append(resourceDecisions, resourceDecision)
-		}
-	}
-
-	return resourceDecisions, nil
-}
-
-// rollupSingleResourceDecision creates a standardized response for a single resource decision
+// rollupResourceDecisions creates a standardized response for multi-resource decisions
 // by processing the decision returned from the PDP.
-func rollupSingleResourceDecision(
-	permitted bool,
-	decisions []*access.Decision,
-) (*authzV2.GetDecisionResponse, error) {
-	if len(decisions) == 0 {
-		return nil, errors.Join(ErrFailedToRollupDecision, ErrNoDecisions)
-	}
-
-	decision := decisions[0]
+func rollupResourceDecisions(
+	decision *access.Decision,
+) ([]*authzV2.ResourceDecision, error) {
 	if decision == nil {
 		return nil, errors.Join(ErrFailedToRollupDecision, ErrDecisionCannotBeNil)
 	}
-
 	if len(decision.Results) == 0 {
 		return nil, errors.Join(ErrFailedToRollupDecision, fmt.Errorf("%w: %+v", ErrDecisionMustHaveResults, decision))
 	}
 
-	result := decision.Results[0]
-	access := authzV2.Decision_DECISION_DENY
-	if permitted {
-		access = authzV2.Decision_DECISION_PERMIT
+	var resourceDecisions []*authzV2.ResourceDecision
+
+	for _, result := range decision.Results {
+		access := authzV2.Decision_DECISION_DENY
+		if result.Passed {
+			access = authzV2.Decision_DECISION_PERMIT
+		}
+		resourceDecision := &authzV2.ResourceDecision{
+			Decision:            access,
+			EphemeralResourceId: result.ResourceID,
+			RequiredObligations: result.RequiredObligationValueFQNs,
+		}
+		resourceDecisions = append(resourceDecisions, resourceDecision)
 	}
-	resourceDecision := &authzV2.ResourceDecision{
-		Decision:            access,
-		EphemeralResourceId: result.ResourceID,
-		RequiredObligations: result.RequiredObligationValueFQNs,
-	}
-	return &authzV2.GetDecisionResponse{
-		Decision: resourceDecision,
-	}, nil
+
+	return resourceDecisions, nil
 }
 
 // Checks for known error types and returns standardized error codes and messages

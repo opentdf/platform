@@ -154,6 +154,7 @@ func (p *JustInTimePDP) GetDecision(
 	if err != nil {
 		return nil, fmt.Errorf("failed to check obligations: %w", err)
 	}
+	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
 
 	switch entityIdentifier.GetIdentifier().(type) {
 	case *authzV2.EntityIdentifier_EntityChain:
@@ -177,7 +178,6 @@ func (p *JustInTimePDP) GetDecision(
 		}
 
 		// Update resource decisions with obligations and set final access decision
-		hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
 		entitledWithAnyObligationsSatisfied := decision.AllPermitted && (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
 		decision.AllPermitted = entitledWithAnyObligationsSatisfied
 		decisionWithObligationsWhenEntitled, auditResourceDecisions := getResourceDecisionsWithObligations(decision, obligationDecision)
@@ -192,79 +192,58 @@ func (p *JustInTimePDP) GetDecision(
 		return nil, fmt.Errorf("failed to resolve entity identifier: %w", err)
 	}
 
-	// Update resource decisions with obligations and set final access decision
-	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
-
-	// Process each entity representation decision and consolidate in a single pass
-	var consolidatedResults []ResourceDecision
+	// Get a decision on each entity representation and consolidate into an overall decision
+	var resourceDecisionsAcrossAllEntityReps []ResourceDecision
 	allPermitted := true
 
-	for idx, entityRep := range entityRepresentations {
-		// Get decision for this entity representation
-		d, entitlements, err := p.pdp.GetDecision(ctx, entityRep, action, resources)
+	for _, entityRep := range entityRepresentations {
+		entityRepresentationDecision, entitlements, err := p.pdp.GetDecision(ctx, entityRep, action, resources)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get decision for entityRepresentation with original id [%s]: %w", entityRep.GetOriginalId(), err)
 		}
-		if d == nil {
+		if entityRepresentationDecision == nil {
 			return nil, fmt.Errorf("decision is nil: %w", err)
 		}
 
 		// If any entity lacks access to any resource, update overall decision denial
-		if !d.AllPermitted {
+		if !entityRepresentationDecision.AllPermitted {
 			allPermitted = false
 		}
 
-		// Apply obligations for audit logging
+		// Append obligations to audit record logged for this entity representation
 		var auditResourceDecisions []ResourceDecision
-		d, auditResourceDecisions = getResourceDecisionsWithObligations(d, obligationDecision)
-
-		// Audit this entity's decision
-		entityAllPermitted := d.AllPermitted && (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
+		entityRepresentationDecision, auditResourceDecisions = getResourceDecisionsWithObligations(entityRepresentationDecision, obligationDecision)
+		entityAllPermitted := entityRepresentationDecision.AllPermitted && (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
 		entityRepID := entityRep.GetOriginalId()
 		p.auditDecision(ctx, entityRepID, action, entityAllPermitted, entitlements, fulfillableObligationValueFQNs, obligationDecision, auditResourceDecisions)
 
-		// Consolidate: on first entity, initialize; on subsequent entities, AND together
-		if idx == 0 {
-			consolidatedResults = make([]ResourceDecision, len(d.Results))
-			copy(consolidatedResults, d.Results)
-		} else {
-			for resIdx, result := range d.Results {
-				consolidated := &consolidatedResults[resIdx]
-				// AND together entitlement/passed status across all entity representations
-				consolidated.Entitled = consolidated.Entitled && result.Entitled
-				consolidated.Passed = consolidated.Passed && result.Passed
-				consolidated.ObligationsSatisfied = consolidated.ObligationsSatisfied && result.ObligationsSatisfied
+		// Initialize consolidated results on first entity
+		if resourceDecisionsAcrossAllEntityReps == nil {
+			resourceDecisionsAcrossAllEntityReps = entityRepresentationDecision.Results
+			continue
+		}
 
-				// UNION obligations from all entity representations, but only if still entitled
-				// Obligations must not be returned when not entitled (per contract in getResourceDecisionsWithObligations)
-				if consolidated.Entitled {
-					obligationSet := make(map[string]struct{})
-					for _, fqn := range consolidated.RequiredObligationValueFQNs {
-						obligationSet[fqn] = struct{}{}
-					}
-					for _, fqn := range result.RequiredObligationValueFQNs {
-						obligationSet[fqn] = struct{}{}
-					}
-					consolidated.RequiredObligationValueFQNs = make([]string, 0, len(obligationSet))
-					for fqn := range obligationSet {
-						consolidated.RequiredObligationValueFQNs = append(consolidated.RequiredObligationValueFQNs, fqn)
-					}
-				} else {
-					// Clear obligations when not entitled
-					consolidated.RequiredObligationValueFQNs = nil
-				}
+		// Consolidate resource decisions across entity representations
+		for resourceIdx, nextResult := range entityRepresentationDecision.Results {
+			current := resourceDecisionsAcrossAllEntityReps[resourceIdx]
+
+			resourceDecisionsAcrossAllEntityReps[resourceIdx] = ResourceDecision{
+				ResourceID:   current.ResourceID,
+				ResourceName: current.ResourceName,
+				// AND together: all entity representations must be entitled
+				Entitled:             current.Entitled && nextResult.Entitled,
+				Passed:               current.Passed && nextResult.Passed,
+				ObligationsSatisfied: current.ObligationsSatisfied && nextResult.ObligationsSatisfied,
+				// Omit each entity representation's DataRuleResults from result
 			}
 		}
 	}
 
 	allEntitledWithAnyObligationsSatisfied := allPermitted && (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
-
-	consolidatedDecision := &Decision{
+	return &Decision{
 		AllPermitted: allEntitledWithAnyObligationsSatisfied,
-		Results:      consolidatedResults,
-	}
-
-	return consolidatedDecision, nil
+		Results:      resourceDecisionsAcrossAllEntityReps,
+	}, nil
 }
 
 // GetEntitlements retrieves the entitlements for the provided entity chain.

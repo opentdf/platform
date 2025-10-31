@@ -1550,7 +1550,7 @@ func Test_RollupResourceDecisions(t *testing.T) {
 		{
 			name: "should return error when decision has no results",
 			decision: &access.Decision{
-				Results:      []access.ResourceDecision{},
+				Results: []access.ResourceDecision{},
 			},
 			expectedError: ErrDecisionMustHaveResults,
 		},

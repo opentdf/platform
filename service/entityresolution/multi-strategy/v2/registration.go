@@ -59,9 +59,8 @@ func (ers *ERSV2) ResolveEntities(
 	for idx, entityV2 := range payload {
 		entityID := entityV2.GetEphemeralId()
 		if entityID == "" {
-			ers.logger.Warn("empty entity ID in request")
 			entityID = ent.EntityIDPrefix + strconv.Itoa(idx)
-			continue
+			ers.logger.Warn("empty entity ID in request; using generated ID", slog.String("entity_id", entityID))
 		}
 
 		var claimsMap types.JWTClaims

@@ -1371,7 +1371,6 @@ func Test_RollupResourceDecisions(t *testing.T) {
 		{
 			name: "should return multiple permit decisions",
 			decision: &access.Decision{
-				AllPermitted: true,
 				Results: []access.ResourceDecision{
 					{
 						Passed:     true,
@@ -1397,7 +1396,6 @@ func Test_RollupResourceDecisions(t *testing.T) {
 		{
 			name: "should return mix of permit and deny decisions",
 			decision: &access.Decision{
-				AllPermitted: false,
 				Results: []access.ResourceDecision{
 					{
 						Passed:     true,
@@ -1423,7 +1421,6 @@ func Test_RollupResourceDecisions(t *testing.T) {
 		{
 			name: "should rely on results and default to false decisions",
 			decision: &access.Decision{
-				AllPermitted: false,
 				Results: []access.ResourceDecision{
 					{
 						Passed:     true,
@@ -1457,7 +1454,6 @@ func Test_RollupResourceDecisions(t *testing.T) {
 		{
 			name: "should ignore global access and care about resource decisions predominantly",
 			decision: &access.Decision{
-				AllPermitted: false,
 				Results: []access.ResourceDecision{
 					{
 						Passed:     false,
@@ -1491,7 +1487,6 @@ func Test_RollupResourceDecisions(t *testing.T) {
 		{
 			name: "should return obligations whenever found on a resource",
 			decision: &access.Decision{
-				AllPermitted: true,
 				Results: []access.ResourceDecision{
 					{
 						Passed:     true,
@@ -1555,7 +1550,6 @@ func Test_RollupResourceDecisions(t *testing.T) {
 		{
 			name: "should return error when decision has no results",
 			decision: &access.Decision{
-				AllPermitted: true,
 				Results:      []access.ResourceDecision{},
 			},
 			expectedError: ErrDecisionMustHaveResults,

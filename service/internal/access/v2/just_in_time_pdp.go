@@ -116,10 +116,11 @@ func NewJustInTimePDP(
 // reports that it can fulfill to ensure all can be satisfied.
 //
 // Then, it resolves the Entity Identifier into either the Registered Resource or a Token/Entity Chain and roundtrips to ERS
-// for their representations. In the case of multiple entity representations, resource access is permitted if ALL are entitled.
+// for their representations. In the case of multiple entity representations, entitlement means ALL representations are entitled.
 //
-// The result is a single consolidated Decision object with one resource decision per requested resource, along with a global
-// boolean indicating whether all decisions were to permit: full entitlement + all triggered obligations fulfillable.
+// The result is a single consolidated Decision object with one resource decision per requested resource: where access means
+// full entitlement + all triggered obligations fulfillable.
+//
 // Individual entity representation decisions are audited separately to maintain visibility into the decision process.
 //
 // | Entity entitled | Triggered obligations are fulfillable | Decision |  Required Obligations Returned |

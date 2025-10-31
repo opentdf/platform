@@ -51,7 +51,8 @@ message PolicyBinding {
 // Key Access Object containing cryptographic material and metadata for TDF decryption
 message KeyAccess {
   // Base64-encoded encrypted metadata containing additional key information
-  // Optional: Generally not used in modern implementations
+  // Optional: Not used during KAS rewrap operations (client-side only)
+  // KAS service passes this through without processing or validation
   string encrypted_metadata = 1;
   
   // Policy binding ensuring cryptographic integrity between policy and wrapped key
@@ -263,7 +264,6 @@ message RewrapResponse {
   // Required: For EC-based operations (NanoTDF and ZTDF with key_type="ec-wrapped")
   // Optional: Empty for RSA-based ZTDF (key_type="wrapped")
   // Used by client to perform ECDH key agreement and decrypt the kas_wrapped_key values
-  // Example: "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE..."
   string session_public_key = 3;
   
   // Deprecated: Legacy schema version identifier

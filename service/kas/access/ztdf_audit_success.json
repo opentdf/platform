@@ -1,0 +1,43 @@
+{
+    "time": "2025-10-31T11:58:40.892713-05:00",
+    "level": "AUDIT",
+    "msg": "rewrap",
+    "namespace": "kas",
+    "audit": {
+        "object": {
+            "type": "key_object",
+            "id": "cd2f0354-a942-11f0-b197-a6a754e79d24",
+            "name": "",
+            "attributes": {
+                "assertions": [],
+                "attrs": [
+                    "https://test.obligations/attr/test_attr_for_triggers/value/test_valu_for_trigger"
+                ],
+                "permissions": []
+            }
+        },
+        "action": {
+            "type": "rewrap",
+            "result": "success"
+        },
+        "actor": {
+            "id": "031fe452-ddbb-4d36-b82f-c6b3dd4d122a",
+            "attributes": []
+        },
+        "eventMetaData": {
+            "algorithm": "rsa:2048",
+            "keyID": "r1",
+            "policyBinding": "YjEwNWMwZGVhMjkzYjBhZjU4MWNkOTE1MmU4N2NkNjkzNzQ2ODM5NDI0MGRjYjhmNjRiZjlhNmY0OWEzZjJlNw==",
+            "tdfFormat": "tdf3"
+        },
+        "clientInfo": {
+            "userAgent": "connect-go/1.18.1 (go1.24.6)",
+            "platform": "kas",
+            "requestIP": "None"
+        },
+        "original": null,
+        "updated": null,
+        "requestID": "73f131ae-cc21-490c-868d-260e58b8664d",
+        "timestamp": "2025-10-31T11:58:40-05:00"
+    }
+}

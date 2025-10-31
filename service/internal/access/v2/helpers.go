@@ -22,7 +22,7 @@ var (
 	ErrInvalidRegisteredResourceValue = errors.New("access: invalid registered resource value")
 )
 
-// getDefinition parses the value FQN and uses it to retrieve the definition from the provided definitions canmap
+// getDefinition parses the value FQN and uses it to retrieve the definition from the provided definitions map
 func getDefinition(valueFQN string, allDefinitionsByDefFQN map[string]*policy.Attribute) (*policy.Attribute, error) {
 	parsed, err := identifier.Parse[*identifier.FullyQualifiedAttribute](valueFQN)
 	if err != nil {

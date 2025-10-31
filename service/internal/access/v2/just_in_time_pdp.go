@@ -40,7 +40,7 @@ type JustInTimePDP struct {
 	obligationsPDP *obligations.ObligationsPolicyDecisionPoint
 }
 
-// JustInTimePDP creates a new Policy Decision Point instance with no in-memory policy and a remote connection
+// NewJustInTimePDP creates a new Policy Decision Point instance with no in-memory policy and a remote connection
 // via authenticated SDK, then fetches all entitlement policy from provided store interface or policy services directly.
 func NewJustInTimePDP(
 	ctx context.Context,
@@ -210,7 +210,7 @@ func (p *JustInTimePDP) GetDecision(
 			allPermitted = false
 		}
 
-		// Append obligations to audit record logged for this entity representation
+		// Apply obligations to resource decisions for this entity representation and prepare audit record
 		var auditResourceDecisions []ResourceDecision
 		entityRepresentationDecision, auditResourceDecisions = getResourceDecisionsWithObligations(entityRepresentationDecision, obligationDecision)
 		entityAllPermitted := entityRepresentationDecision.AllPermitted && (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
@@ -294,8 +294,8 @@ func getResourceDecisionsWithObligations(
 	return decision, auditResourceDecisions
 }
 
-// GetEntitlements retrieves the entitlements for the provided entity chain.
-// It resolves the entity chain to get the entity representations and then calls the embedded PDP to get the entitlements.
+// GetEntitlements retrieves the entitlements for the provided entity identifier.
+// It resolves the entity identifier to get the entity representations and then calls the embedded PDP to get the entitlements.
 func (p *JustInTimePDP) GetEntitlements(
 	ctx context.Context,
 	entityIdentifier *authzV2.EntityIdentifier,
@@ -354,7 +354,7 @@ func (p *JustInTimePDP) getMatchedSubjectMappings(
 	ctx context.Context,
 	entityRepresentations []*entityresolutionV2.EntityRepresentation,
 ) ([]*policy.SubjectMapping, error) {
-	// Break the entity down the entities into their properties/selectors and retrieve only those subject mappings
+	// Break the entities down into their properties/selectors and retrieve only those subject mappings
 	subjectProperties := make([]*policy.SubjectProperty, 0)
 	subjectPropertySet := make(map[string]struct{})
 	for _, entityRep := range entityRepresentations {

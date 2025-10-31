@@ -164,7 +164,7 @@ func (a *MultiStrategyTestAdapter) SetupTestData(_ context.Context, _ *internal.
 
 func (a *MultiStrategyTestAdapter) CreateERSService(ctx context.Context) (internal.ERSImplementation, error) {
 	// Create the v2 multi-strategy service
-	ers, err := multistrategyv2.NewERSV2(ctx, a.config, a.logger)
+	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, a.config, a.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func (a *MultiStrategyTestAdapter) CreateERSService(ctx context.Context) (intern
 // MultiStrategyERSWrapper wraps the multi-strategy ERS to handle contract tests
 // The multi-strategy ERS is designed for JWT tokens, but contract tests use entity IDs
 type MultiStrategyERSWrapper struct {
-	ers    *multistrategyv2.ERSV2
+	ers    *multistrategyv2.MultiStrategyERSV2
 	logger *logger.Logger
 }
 
@@ -504,7 +504,7 @@ func TestMultiStrategyChainFailureStrategies(t *testing.T) {
 		}
 
 		ctx := t.Context()
-		ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
+		ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
 		if err != nil {
 			t.Fatalf("Failed to create ERS: %v", err)
 		}
@@ -589,7 +589,7 @@ func TestMultiStrategyChainFailureStrategies(t *testing.T) {
 		}
 
 		ctx := t.Context()
-		ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
+		ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
 		if err != nil {
 			t.Fatalf("Failed to create ERS: %v", err)
 		}

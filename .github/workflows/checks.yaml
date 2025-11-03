@@ -214,7 +214,7 @@ jobs:
           mkcert -cert-file ./keys/platform.crt -key-file ./keys/platform-key.pem localhost
           cp opentdf-dev.yaml opentdf.yaml
           yq eval '.server.tls.enabled = true' -i opentdf.yaml
-          yq eval '.trace = {"enabled":true}' -i opentdf.yaml
+          yq eval '.trace.enabled = true' -i opentdf.yaml
       - name: Added Trusted Certs
         run: |
           sudo chmod -R 777 ./keys

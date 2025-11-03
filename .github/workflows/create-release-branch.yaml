@@ -16,3 +16,60 @@ jobs:
     secrets:
       APP_ID: ${{ secrets.APP_ID }}
       AUTOMATION_KEY: ${{ secrets.AUTOMATION_KEY }}
+  create-backport-label:
+    needs: create-release-branch
+    permissions:
+      issues: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Backport PR label if it doesn't exist
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const tagName = context.payload.release?.tag_name;
+            const labelPrefix = "backport release/";
+            // Extract the label name by removing patch version
+            let labelName;
+            if (tagName.includes('.')) {
+              const lastDotIndex = tagName.lastIndexOf('.');
+              labelName = `${labelPrefix}${tagName.substring(0, lastDotIndex)}`;
+            } else {
+              labelName = `${labelPrefix}${tagName}`;
+            }
+
+            const labelColor = Math.floor(Math.random() * 0xffffff)
+              .toString(16)
+              .padStart(6, "0"); // random color
+            const labelDescription = "Backport PR to release " + tagName;
+
+            try {
+              // Check if label already exists
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: labelName,
+              });
+              console.log(`✅ Label "${labelName}" already exists`);
+            } catch (error) {
+              if (error.status === 404) {
+                console.log(`🏷️ Creating label "${labelName}"`);
+                try {
+                  await github.rest.issues.createLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    name: labelName,
+                    color: labelColor,
+                    description: labelDescription,
+                  });
+                  console.log(`✅ Label "${labelName}" created`);
+                } catch (createError) {
+                  console.error(`❌ Error creating label "${labelName}":`, createError);
+                  throw createError;
+                }
+              } else {
+                console.error(`❌ Error getting label "${labelName}":`, error);
+                throw error;
+              }
+            }
+

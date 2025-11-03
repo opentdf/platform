@@ -31,16 +31,14 @@ jobs:
             const labelPrefix = "backport release/";
             // Extract the label name by removing patch version
             let labelName;
-            if (tagName.includes('.')) {
+            if (tagName && tagName.includes('.')) {
               const lastDotIndex = tagName.lastIndexOf('.');
               labelName = `${labelPrefix}${tagName.substring(0, lastDotIndex)}`;
             } else {
               labelName = `${labelPrefix}${tagName}`;
             }
 
-            const labelColor = Math.floor(Math.random() * 0xffffff)
-              .toString(16)
-              .padStart(6, "0"); // random color
+            const labelColor = "731ddb"; // purple
             const labelDescription = "Backport PR to release " + tagName;
 
             try {

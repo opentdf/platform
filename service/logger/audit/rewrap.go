@@ -25,6 +25,7 @@ type RewrapAuditEventParams struct {
 	TDFFormat     string
 	Algorithm     string
 	PolicyBinding string
+	KeyID         string
 }
 
 func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) (*EventObject, error) {
@@ -36,14 +37,19 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 		auditEventActionResult = ActionResultSuccess
 	}
 
+	attrFQNS := make([]string, len(params.Policy.Body.DataAttributes))
+	for i, attr := range params.Policy.Body.DataAttributes {
+		attrFQNS[i] = attr.URI
+	}
+
 	return &EventObject{
 		Object: auditEventObject{
 			Type: ObjectTypeKeyObject,
 			ID:   params.Policy.UUID.String(),
 			Attributes: eventObjectAttributes{
-				Assertions:  []string{},
-				Attrs:       []string{},
-				Permissions: []string{},
+				Assertions:  []string{}, // Assertions aren't passed in the rewrap policy body
+				Attrs:       attrFQNS,
+				Permissions: []string{}, // Currently always empty
 			},
 		},
 		Action: eventAction{
@@ -55,7 +61,7 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 			Attributes: make([]any, 0),
 		},
 		EventMetaData: auditEventMetadata{
-			"keyID":         "", // TODO: keyID once implemented
+			"keyID":         params.KeyID,
 			"policyBinding": params.PolicyBinding,
 			"tdfFormat":     params.TDFFormat,
 			"algorithm":     params.Algorithm,

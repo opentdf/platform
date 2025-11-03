@@ -118,7 +118,7 @@ func (p *JustInTimePDP) applyObligationsAndAudit(
 	action *policy.Action,
 	obligationDecision obligations.ObligationPolicyDecision,
 	fulfillableObligationValueFQNs []string,
-) (*Decision) {
+) *Decision {
 	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
 
 	// Apply obligations to resource decisions for this entity representation and prepare audit record

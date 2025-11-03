@@ -321,6 +321,14 @@ func (as *Service) getDecisionRequestContext(ctx context.Context) (*policy.Reque
 	incoming := true
 	clientID, err := ctxAuth.GetClientIDFromContext(ctx, incoming)
 	if err != nil {
+		if errors.Is(err, ctxAuth.ErrMissingClientID) {
+			as.logger.WarnContext(
+				ctx,
+				"no clientID found on the context - request may be unauthenticated",
+				slog.Any("error", errors.Join(ErrFailedToBuildRequestContext, err)),
+			)
+			return nil, nil
+		}
 		return nil, errors.Join(ErrFailedToBuildRequestContext, err)
 	}
 	return &policy.RequestContext{

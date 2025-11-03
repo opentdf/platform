@@ -109,6 +109,60 @@ func NewJustInTimePDP(
 	return p, nil
 }
 
+// applyObligationsAndAudit applies obligations to the entity representation decision and performs audit logging
+func (p *JustInTimePDP) applyObligationsAndAudit(
+	ctx context.Context,
+	entityRep *entityresolutionV2.EntityRepresentation,
+	decision *Decision,
+	entitlements map[string][]*policy.Action,
+	action *policy.Action,
+	obligationDecision obligations.ObligationPolicyDecision,
+	fulfillableObligationValueFQNs []string,
+) (*Decision) {
+	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
+
+	// Apply obligations to resource decisions for this entity representation and prepare audit record
+	var auditResourceDecisions []ResourceDecision
+	decision, auditResourceDecisions = getResourceDecisionsWithObligations(decision, obligationDecision)
+	entityAllPermitted := decision.AllPermitted && (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
+	entityRepID := entityRep.GetOriginalId()
+	p.auditDecision(ctx, entityRepID, action, entityAllPermitted, entitlements, fulfillableObligationValueFQNs, obligationDecision, auditResourceDecisions)
+
+	return decision
+}
+
+// consolidateResourceDecisions merges resource decisions from a new entity representation into the accumulated results.
+// All entity representations must be entitled for overall entitlement (AND logic).
+func consolidateResourceDecisions(
+	accumulated []ResourceDecision,
+	next []ResourceDecision,
+) []ResourceDecision {
+	consolidated := make([]ResourceDecision, len(accumulated))
+
+	for idx, nextResult := range next {
+		current := accumulated[idx]
+
+		merged := ResourceDecision{
+			ResourceID:   current.ResourceID,
+			ResourceName: current.ResourceName,
+			// AND together: all entity representations must be entitled
+			Entitled:             current.Entitled && nextResult.Entitled,
+			Passed:               current.Passed && nextResult.Passed,
+			ObligationsSatisfied: current.ObligationsSatisfied && nextResult.ObligationsSatisfied,
+			// Omit each entity representation's DataRuleResults from result
+		}
+
+		// Keep obligations if entitled, clear if not
+		if merged.Entitled {
+			merged.RequiredObligationValueFQNs = current.RequiredObligationValueFQNs
+		}
+
+		consolidated[idx] = merged
+	}
+
+	return consolidated
+}
+
 // GetDecision retrieves the decision for the provided entity identifier, action, and resources.
 //
 // Obligations are not entity-driven, so the actions, attributes, and decision request context are checked against
@@ -210,12 +264,15 @@ func (p *JustInTimePDP) GetDecision(
 			allPermitted = false
 		}
 
-		// Apply obligations to resource decisions for this entity representation and prepare audit record
-		var auditResourceDecisions []ResourceDecision
-		entityRepresentationDecision, auditResourceDecisions = getResourceDecisionsWithObligations(entityRepresentationDecision, obligationDecision)
-		entityAllPermitted := entityRepresentationDecision.AllPermitted && (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
-		entityRepID := entityRep.GetOriginalId()
-		p.auditDecision(ctx, entityRepID, action, entityAllPermitted, entitlements, fulfillableObligationValueFQNs, obligationDecision, auditResourceDecisions)
+		entityRepresentationDecision = p.applyObligationsAndAudit(
+			ctx,
+			entityRep,
+			entityRepresentationDecision,
+			entitlements,
+			action,
+			obligationDecision,
+			fulfillableObligationValueFQNs,
+		)
 
 		// Initialize consolidated results on first entity
 		if resourceDecisionsAcrossAllEntityReps == nil {
@@ -224,26 +281,10 @@ func (p *JustInTimePDP) GetDecision(
 		}
 
 		// Consolidate resource decisions across entity representations
-		for resourceIdx, nextResult := range entityRepresentationDecision.Results {
-			current := resourceDecisionsAcrossAllEntityReps[resourceIdx]
-
-			merged := ResourceDecision{
-				ResourceID:   current.ResourceID,
-				ResourceName: current.ResourceName,
-				// AND together: all entity representations must be entitled
-				Entitled:             current.Entitled && nextResult.Entitled,
-				Passed:               current.Passed && nextResult.Passed,
-				ObligationsSatisfied: current.ObligationsSatisfied && nextResult.ObligationsSatisfied,
-				// Omit each entity representation's DataRuleResults from result
-			}
-
-			// Keep obligations if entitled, clear if not
-			if merged.Entitled {
-				merged.RequiredObligationValueFQNs = current.RequiredObligationValueFQNs
-			}
-
-			resourceDecisionsAcrossAllEntityReps[resourceIdx] = merged
-		}
+		resourceDecisionsAcrossAllEntityReps = consolidateResourceDecisions(
+			resourceDecisionsAcrossAllEntityReps,
+			entityRepresentationDecision.Results,
+		)
 	}
 
 	allEntitledWithAnyObligationsSatisfied := allPermitted && (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)

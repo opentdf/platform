@@ -6,6 +6,7 @@ import (
 	"crypto/elliptic"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -70,6 +71,24 @@ type NanoTDFHeader struct {
 	gmacPolicyBinding   []byte
 	ecdsaPolicyBindingR []byte
 	ecdsaPolicyBindingS []byte
+}
+
+type ecdsaPolicyBinding struct {
+	r               []byte
+	s               []byte
+	ephemeralPubKey []byte
+	digest          []byte
+	curve           elliptic.Curve
+}
+
+type gmacPolicyBinding struct {
+	binding []byte
+	digest  []byte
+}
+
+type PolicyBind interface {
+	Verify() (bool, error)
+	fmt.Stringer
 }
 
 func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error) {
@@ -230,25 +249,59 @@ func (header *NanoTDFHeader) ECCurve() (elliptic.Curve, error) {
 }
 
 func (header *NanoTDFHeader) VerifyPolicyBinding() (bool, error) {
-	curve, err := ocrypto.GetECCurveFromECCMode(header.bindCfg.eccMode)
+	policyBind, err := header.PolicyBinding()
+	if err != nil {
+		return false, err
+	}
+	return policyBind.Verify()
+}
+
+func (b *ecdsaPolicyBinding) Verify() (bool, error) {
+	ephemeralECDSAPublicKey, err := ocrypto.UncompressECPubKey(b.curve, b.ephemeralPubKey)
 	if err != nil {
 		return false, err
 	}
 
-	digest := ocrypto.CalculateSHA256(header.PolicyBody)
-	if header.IsEcdsaBindingEnabled() {
-		ephemeralECDSAPublicKey, err := ocrypto.UncompressECPubKey(curve, header.EphemeralKey)
-		if err != nil {
-			return false, err
-		}
+	return ocrypto.VerifyECDSASig(b.digest,
+		b.r,
+		b.s,
+		ephemeralECDSAPublicKey), nil
+}
 
-		return ocrypto.VerifyECDSASig(digest,
-			header.ecdsaPolicyBindingR,
-			header.ecdsaPolicyBindingS,
-			ephemeralECDSAPublicKey), nil
+func (b *ecdsaPolicyBinding) String() string {
+	return string(ocrypto.SHA256AsHex(append(b.r, b.s...)))
+}
+
+func (b *gmacPolicyBinding) Verify() (bool, error) {
+	bindingToCheck := b.digest[len(b.digest)-kNanoTDFGMACLength:]
+	return bytes.Equal(bindingToCheck, b.binding), nil
+}
+
+func (b *gmacPolicyBinding) String() string {
+	return hex.EncodeToString(b.binding)
+}
+
+func (header *NanoTDFHeader) PolicyBinding() (PolicyBind, error) {
+	digest := ocrypto.CalculateSHA256(header.PolicyBody)
+
+	if header.IsEcdsaBindingEnabled() {
+		curve, err := ocrypto.GetECCurveFromECCMode(header.bindCfg.eccMode)
+		if err != nil {
+			return nil, err
+		}
+		return &ecdsaPolicyBinding{
+			r:               header.ecdsaPolicyBindingR,
+			s:               header.ecdsaPolicyBindingS,
+			ephemeralPubKey: header.EphemeralKey,
+			curve:           curve,
+			digest:          digest,
+		}, nil
 	}
-	binding := digest[len(digest)-kNanoTDFGMACLength:]
-	return bytes.Equal(binding, header.gmacPolicyBinding), nil
+
+	return &gmacPolicyBinding{
+		binding: header.gmacPolicyBinding,
+		digest:  digest,
+	}, nil
 }
 
 // ============================================================================================================

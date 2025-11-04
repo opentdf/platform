@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.1](https://github.com/opentdf/platform/compare/sdk/v0.10.0...sdk/v0.10.1) (2025-11-04)
+
+
+### Features
+
+* **sdk:** Expose policy binding hash from Nano. [backport to release/sdk/v0.10] ([#2869](https://github.com/opentdf/platform/issues/2869)) ([556a0e2](https://github.com/opentdf/platform/commit/556a0e2f6926df093ca4d44729efdf91bb4f398c))
+
+
+### Bug Fixes
+
+* **deps:** bump toolchain to go1.24.9 for CVEs found by govulncheck [backport to release/sdk/v0.10] ([#2872](https://github.com/opentdf/platform/issues/2872)) ([fbda5d1](https://github.com/opentdf/platform/commit/fbda5d1f21546f154195e0671bac38d70b352e68))
+
 ## [0.10.0](https://github.com/opentdf/platform/compare/sdk/v0.9.0...sdk/v0.10.0) (2025-10-21)
 
 

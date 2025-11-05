@@ -155,6 +155,7 @@ func (p *JustInTimePDP) GetDecision(
 		return nil, fmt.Errorf("failed to check obligations: %w", err)
 	}
 	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
+	allObligationsSatisfied := (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
 
 	switch entityIdentifier.GetIdentifier().(type) {
 	case *authzV2.EntityIdentifier_EntityChain:
@@ -178,11 +179,20 @@ func (p *JustInTimePDP) GetDecision(
 		}
 
 		// Update resource decisions with obligations and set final access decision
-		entitledWithAnyObligationsSatisfied := decision.AllPermitted && (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
+		entitledWithAnyObligationsSatisfied := decision.AllPermitted && allObligationsSatisfied
 		decision.AllPermitted = entitledWithAnyObligationsSatisfied
 		decisionWithObligationsWhenEntitled, auditResourceDecisions := getResourceDecisionsWithObligations(decision, obligationDecision)
 
-		p.auditDecision(ctx, regResValueFQN, action, entitledWithAnyObligationsSatisfied, entitlements, fulfillableObligationValueFQNs, obligationDecision, auditResourceDecisions)
+		p.auditDecision(
+			ctx,
+			regResValueFQN,
+			action,
+			entitledWithAnyObligationsSatisfied,
+			entitlements,
+			fulfillableObligationValueFQNs,
+			obligationDecision,
+			auditResourceDecisions,
+		)
 		return decisionWithObligationsWhenEntitled, nil
 
 	default:
@@ -217,6 +227,7 @@ func (p *JustInTimePDP) GetDecision(
 			entitlements,
 			action,
 			obligationDecision,
+			allObligationsSatisfied,
 			fulfillableObligationValueFQNs,
 		)
 
@@ -233,9 +244,9 @@ func (p *JustInTimePDP) GetDecision(
 		)
 	}
 
-	allEntitledWithAnyObligationsSatisfied := allPermitted && (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
+	allEntitledWithAllObligationsSatisfied := allPermitted && allObligationsSatisfied
 	return &Decision{
-		AllPermitted: allEntitledWithAnyObligationsSatisfied,
+		AllPermitted: allEntitledWithAllObligationsSatisfied,
 		Results:      resourceDecisionsAcrossAllEntityReps,
 	}, nil
 }
@@ -344,16 +355,24 @@ func (p *JustInTimePDP) applyObligationsAndAudit(
 	entitlements map[string][]*policy.Action,
 	action *policy.Action,
 	obligationDecision obligations.ObligationPolicyDecision,
+	allObligationsSatisfied bool,
 	fulfillableObligationValueFQNs []string,
 ) *Decision {
-	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
-
 	// Apply obligations to resource decisions for this entity representation and prepare audit record
 	var auditResourceDecisions []ResourceDecision
 	decision, auditResourceDecisions = getResourceDecisionsWithObligations(decision, obligationDecision)
-	entityAllPermitted := decision.AllPermitted && (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
+	entityAllPermitted := decision.AllPermitted && allObligationsSatisfied
 	entityRepID := entityRep.GetOriginalId()
-	p.auditDecision(ctx, entityRepID, action, entityAllPermitted, entitlements, fulfillableObligationValueFQNs, obligationDecision, auditResourceDecisions)
+	p.auditDecision(
+		ctx,
+		entityRepID,
+		action,
+		entityAllPermitted,
+		entitlements,
+		fulfillableObligationValueFQNs,
+		obligationDecision,
+		auditResourceDecisions,
+	)
 
 	return decision
 }

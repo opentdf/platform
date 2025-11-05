@@ -12,6 +12,7 @@ import (
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/service/internal/access/v2/obligations"
 	"github.com/opentdf/platform/service/logger"
 )
 
@@ -262,4 +263,100 @@ func getResourceDecisionableAttributes(
 	}
 
 	return decisionableAttributes, nil
+}
+
+// consolidateResourceDecisions merges resource decisions across entity representations using AND logic.
+// All entity representations must be entitled for overall entitlement.
+//
+// Assumes accumulated[i] and next[i] represent the same resource (guaranteed by GetDecision returning
+// results in the same order as input resources). Uses index-based matching for performance.
+func consolidateResourceDecisions(
+	accumulated []ResourceDecision,
+	next []ResourceDecision,
+) ([]ResourceDecision, error) {
+	// First entity representation: use its results as the starting point
+	if accumulated == nil {
+		return next, nil
+	}
+
+	if len(accumulated) != len(next) {
+		return nil, fmt.Errorf(
+			"%w: accumulated has %d but next has %d",
+			ErrResourceDecisionLengthMismatch, len(accumulated), len(next),
+		)
+	}
+
+	consolidated := make([]ResourceDecision, len(accumulated))
+
+	for idx := range accumulated {
+		accumulatedDecision := accumulated[idx]
+		nextDecision := next[idx]
+
+		if accumulatedDecision.ResourceID != nextDecision.ResourceID {
+			return nil, fmt.Errorf(
+				"%w at index %d: %q vs %q",
+				ErrResourceDecisionIDMismatch, idx, accumulatedDecision.ResourceID, nextDecision.ResourceID,
+			)
+		}
+
+		// AND together: all entity representations must be entitled
+		mergedDecision := ResourceDecision{
+			ResourceID:           accumulatedDecision.ResourceID,
+			ResourceName:         accumulatedDecision.ResourceName,
+			Entitled:             accumulatedDecision.Entitled && nextDecision.Entitled,
+			Passed:               accumulatedDecision.Passed && nextDecision.Passed,
+			ObligationsSatisfied: accumulatedDecision.ObligationsSatisfied && nextDecision.ObligationsSatisfied,
+			// Omit each entity representation's DataRuleResults from final result
+		}
+
+		// Keep obligations only if still entitled after merging all entity representations so far
+		if mergedDecision.Entitled {
+			mergedDecision.RequiredObligationValueFQNs = accumulatedDecision.RequiredObligationValueFQNs
+		}
+
+		consolidated[idx] = mergedDecision
+	}
+
+	return consolidated, nil
+}
+
+// getResourceDecisionsWithObligations updates the Decision Results with obligation info when
+// entitled, then sets each Resource Decision's passed state. Obligations are always populated on
+// the Resource Decisions returned separately for audit logs, but kept distinct to avoid leaking
+// obligations to those not entitled.
+func getResourceDecisionsWithObligations(
+	decision *Decision,
+	obligationDecision obligations.ObligationPolicyDecision,
+) (*Decision, []ResourceDecision) {
+	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
+
+	// Create audit snapshot with full obligation context for all resources, even if not entitled
+	auditResourceDecisions := make([]ResourceDecision, len(decision.Results))
+
+	for idx := range decision.Results {
+		resourceDecision := &decision.Results[idx]
+
+		// Default all obligations satisfied when none are required
+		resourceDecision.ObligationsSatisfied = true
+		var obligationFQNs []string
+
+		if hasRequiredObligations {
+			perResource := obligationDecision.RequiredObligationValueFQNsPerResource[idx]
+			resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
+			obligationFQNs = perResource.RequiredObligationValueFQNs
+
+			// Only set obligations in response if entitled
+			if resourceDecision.Entitled {
+				resourceDecision.RequiredObligationValueFQNs = obligationFQNs
+			}
+		}
+
+		resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
+
+		// For audit, copy and always attach required obligations list whether or not entitled
+		auditResourceDecisions[idx] = *resourceDecision
+		auditResourceDecisions[idx].RequiredObligationValueFQNs = obligationFQNs
+	}
+
+	return decision, auditResourceDecisions
 }

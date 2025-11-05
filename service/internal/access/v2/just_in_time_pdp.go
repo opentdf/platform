@@ -27,6 +27,8 @@ var (
 	ErrInvalidEntityType                        = errors.New("access: invalid entity type")
 	ErrFailedToWithRequestTokenEntityIdentifier = errors.New("access: failed to use request token as entity identifier - none found in context")
 	ErrInvalidWithRequestTokenEntityIdentifier  = errors.New("access: invalid use request token as entity identifier - must be true if provided")
+	ErrResourceDecisionLengthMismatch           = errors.New("access: resource decision length mismatch")
+	ErrResourceDecisionIDMismatch               = errors.New("access: resource decision ID mismatch")
 
 	requestAuthTokenEphemeralID = "with-request-token-auth-entity"
 )
@@ -231,17 +233,14 @@ func (p *JustInTimePDP) GetDecision(
 			fulfillableObligationValueFQNs,
 		)
 
-		// Initialize consolidated results on first entity
-		if resourceDecisionsAcrossAllEntityReps == nil {
-			resourceDecisionsAcrossAllEntityReps = entityRepresentationDecision.Results
-			continue
-		}
-
 		// Consolidate resource decisions across entity representations
-		resourceDecisionsAcrossAllEntityReps = consolidateResourceDecisions(
+		resourceDecisionsAcrossAllEntityReps, err = consolidateResourceDecisions(
 			resourceDecisionsAcrossAllEntityReps,
 			entityRepresentationDecision.Results,
 		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to consolidate resource decisions for entity representation [%s]: %w", entityRep.GetOriginalId(), err)
+		}
 	}
 
 	allEntitledWithAllObligationsSatisfied := allPermitted && allObligationsSatisfied
@@ -251,46 +250,6 @@ func (p *JustInTimePDP) GetDecision(
 	}, nil
 }
 
-// getResourceDecisionsWithObligations updates the Decision Results with obligation info when
-// entitled, then sets each Resource Decision's passed state. Obligations are always populated on
-// the Resource Decisions returned separately for audit logs, but kept distinct to avoid leaking
-// obligations to those not entitled.
-func getResourceDecisionsWithObligations(
-	decision *Decision,
-	obligationDecision obligations.ObligationPolicyDecision,
-) (*Decision, []ResourceDecision) {
-	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
-
-	// Create audit snapshot with full obligation context for all resources, even if not entitled
-	auditResourceDecisions := make([]ResourceDecision, len(decision.Results))
-
-	for idx := range decision.Results {
-		resourceDecision := &decision.Results[idx]
-
-		// Default all obligations satisfied when none are required
-		resourceDecision.ObligationsSatisfied = true
-		var obligationFQNs []string
-
-		if hasRequiredObligations {
-			perResource := obligationDecision.RequiredObligationValueFQNsPerResource[idx]
-			resourceDecision.ObligationsSatisfied = perResource.ObligationsSatisfied
-			obligationFQNs = perResource.RequiredObligationValueFQNs
-
-			// Only set obligations in response if entitled
-			if resourceDecision.Entitled {
-				resourceDecision.RequiredObligationValueFQNs = obligationFQNs
-			}
-		}
-
-		resourceDecision.Passed = resourceDecision.Entitled && resourceDecision.ObligationsSatisfied
-
-		// For audit, copy and always attach required obligations list whether or not entitled
-		auditResourceDecisions[idx] = *resourceDecision
-		auditResourceDecisions[idx].RequiredObligationValueFQNs = obligationFQNs
-	}
-
-	return decision, auditResourceDecisions
-}
 
 // GetEntitlements retrieves the entitlements for the provided entity identifier.
 // It resolves the entity identifier to get the entity representations and then calls the embedded PDP to get the entitlements.
@@ -375,38 +334,6 @@ func (p *JustInTimePDP) applyObligationsAndAudit(
 	)
 
 	return decision
-}
-
-// consolidateResourceDecisions merges resource decisions from a new entity representation into the accumulated results.
-// All entity representations must be entitled for overall entitlement (AND logic).
-func consolidateResourceDecisions(
-	accumulated []ResourceDecision,
-	next []ResourceDecision,
-) []ResourceDecision {
-	consolidated := make([]ResourceDecision, len(accumulated))
-
-	for idx, nextResult := range next {
-		current := accumulated[idx]
-
-		merged := ResourceDecision{
-			ResourceID:   current.ResourceID,
-			ResourceName: current.ResourceName,
-			// AND together: all entity representations must be entitled
-			Entitled:             current.Entitled && nextResult.Entitled,
-			Passed:               current.Passed && nextResult.Passed,
-			ObligationsSatisfied: current.ObligationsSatisfied && nextResult.ObligationsSatisfied,
-			// Omit each entity representation's DataRuleResults from result
-		}
-
-		// Keep obligations if entitled, clear if not
-		if merged.Entitled {
-			merged.RequiredObligationValueFQNs = current.RequiredObligationValueFQNs
-		}
-
-		consolidated[idx] = merged
-	}
-
-	return consolidated
 }
 
 // getMatchedSubjectMappings retrieves the subject mappings for the provided entity representations

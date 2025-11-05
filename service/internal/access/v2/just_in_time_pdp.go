@@ -260,7 +260,6 @@ func (p *JustInTimePDP) GetDecision(
 	}, nil
 }
 
-
 // GetEntitlements retrieves the entitlements for the provided entity identifier.
 // It resolves the entity identifier to get the entity representations and then calls the embedded PDP to get the entitlements.
 func (p *JustInTimePDP) GetEntitlements(

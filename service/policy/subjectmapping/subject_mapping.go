@@ -267,17 +267,25 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 		ObjectType: audit.ObjectTypeConditionSet,
 	}
 
-	conditionSet, err := s.dbClient.CreateSubjectConditionSet(ctx, req.Msg.GetSubjectConditionSet())
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		conditionSet, err := txClient.CreateSubjectConditionSet(ctx, req.Msg.GetSubjectConditionSet())
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("subjectConditionSet", req.Msg.String()))
+		}
+
+		auditParams.ObjectID = conditionSet.GetId()
+		auditParams.Original = conditionSet
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.SubjectConditionSet = conditionSet
+
+		return nil
+	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("subjectConditionSet", req.Msg.String()))
+		return nil, err
 	}
 
-	auditParams.ObjectID = conditionSet.GetId()
-	auditParams.Original = conditionSet
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.SubjectConditionSet = conditionSet
 	return connect.NewResponse(rsp), nil
 }
 
@@ -294,25 +302,33 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 		ObjectID:   subjectConditionSetID,
 	}
 
-	original, err := s.dbClient.GetSubjectConditionSet(ctx, subjectConditionSetID)
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		original, err := txClient.GetSubjectConditionSet(ctx, subjectConditionSetID)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", subjectConditionSetID))
+		}
+
+		updated, err := txClient.UpdateSubjectConditionSet(ctx, req.Msg)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", req.Msg.GetId()), slog.String("subjectConditionSet fields", req.Msg.String()))
+		}
+
+		auditParams.Original = original
+		auditParams.Updated = updated
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.SubjectConditionSet = &policy.SubjectConditionSet{
+			Id: subjectConditionSetID,
+		}
+
+		return nil
+	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", subjectConditionSetID))
+		return nil, err
 	}
 
-	updated, err := s.dbClient.UpdateSubjectConditionSet(ctx, req.Msg)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", req.Msg.GetId()), slog.String("subjectConditionSet fields", req.Msg.String()))
-	}
-
-	auditParams.Original = original
-	auditParams.Updated = updated
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.SubjectConditionSet = &policy.SubjectConditionSet{
-		Id: subjectConditionSetID,
-	}
 	return connect.NewResponse(rsp), nil
 }
 

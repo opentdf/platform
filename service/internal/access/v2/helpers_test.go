@@ -741,6 +741,8 @@ func assertResourceDecision(t *testing.T, expected, actual ResourceDecision, idx
 }
 
 func Test_applyObligationsAndConsolidate(t *testing.T) {
+	testAttrFQN := "https://example.org/attr/test/value/v1"
+
 	tests := []struct {
 		name                 string
 		accumulated          []ResourceDecision
@@ -983,6 +985,75 @@ func Test_applyObligationsAndConsolidate(t *testing.T) {
 				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, []string{testObligation1FQN}),
 				mkExpectedResourceDecision(testResource2ID, testResource2Name, false, false, false, []string{testObligation2FQN}),
 				mkExpectedResourceDecision(testResource3ID, testResource3Name, true, false, false, []string{testObligation2FQN}),
+			},
+		},
+		{
+			name:        "first entity - data rule results in audit only",
+			accumulated: nil,
+			nextDecision: &Decision{
+				Results: []ResourceDecision{
+					{
+						ResourceID:   testResource1ID,
+						ResourceName: testResource1Name,
+						Entitled:     true,
+						DataRuleResults: []DataRuleResult{
+							{
+								Passed:            true,
+								ResourceValueFQNs: []string{testAttrFQN},
+							},
+						},
+					},
+				},
+			},
+			obligationDecision: obligations.ObligationPolicyDecision{
+				RequiredObligationValueFQNs: []string{},
+				PerResourceDecisions:        []obligations.PerResourceDecision{},
+			},
+			expectedConsolidated: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil, DataRuleResult{
+					Passed:            true,
+					ResourceValueFQNs: []string{testAttrFQN},
+				}),
+			},
+			expectedAudit: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil, DataRuleResult{
+					Passed:            true,
+					ResourceValueFQNs: []string{testAttrFQN},
+				}),
+			},
+		},
+		{
+			name: "second entity - data rule results in audit only",
+			accumulated: []ResourceDecision{
+				{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: true, Passed: true, ObligationsSatisfied: true},
+			},
+			nextDecision: &Decision{
+				Results: []ResourceDecision{
+					{
+						ResourceID:   testResource1ID,
+						ResourceName: testResource1Name,
+						Entitled:     true,
+						DataRuleResults: []DataRuleResult{
+							{
+								Passed:            true,
+								ResourceValueFQNs: []string{testAttrFQN},
+							},
+						},
+					},
+				},
+			},
+			obligationDecision: obligations.ObligationPolicyDecision{
+				RequiredObligationValueFQNs: []string{},
+				PerResourceDecisions:        []obligations.PerResourceDecision{},
+			},
+			expectedConsolidated: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil),
+			},
+			expectedAudit: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil, DataRuleResult{
+					Passed:            true,
+					ResourceValueFQNs: []string{testAttrFQN},
+				}),
 			},
 		},
 		// Error scenarios

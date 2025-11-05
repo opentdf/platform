@@ -6224,7 +6224,7 @@ KAS service passes this through without processing or validation </p></td>
                   <td><a href="#kas.PolicyBinding">PolicyBinding</a></td>
                   <td></td>
                   <td><p>Policy binding ensuring cryptographic integrity between policy and wrapped key
-Required: ZTDF (contains hash and algorithm), NanoTDF (embedded in header)
+Required: ZTDF (contains hash and algorithm)
 Links the policy to the wrapped key cryptographically </p></td>
                 </tr>
               
@@ -6244,8 +6244,7 @@ Example: &#34;kas&#34; </p></td>
                   <td></td>
                   <td><p>Type of key wrapping used for the data encryption key
 Required: Always
-Values: &#39;wrapped&#39; (RSA-wrapped for ZTDF), &#39;ec-wrapped&#39; (ECDH-wrapped for NanoTDF)
-Example: &#34;ec-wrapped&#34;, &#34;wrapped&#34; </p></td>
+Values: &#39;wrapped&#39; (RSA-wrapped for ZTDF), &#39;ec-wrapped&#39; (experimental ECDH-wrapped) </p></td>
                 </tr>
               
                 <tr>
@@ -6263,7 +6262,7 @@ Example: &#34;https://kas.example.com&#34; </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Key identifier for the KAS public key used for wrapping
-Optional: ZTDF (may specify which KAS key to use), NanoTDF (extracted from header)
+Optional: ZTDF (may specify which KAS key to use, required if present in the TDF)
 References a specific public key in the KAS key storage (either local keyring or KAS Registry service)
 Example: &#34;k1&#34;, &#34;ec-key-2024&#34; </p></td>
                 </tr>
@@ -6273,8 +6272,7 @@ Example: &#34;k1&#34;, &#34;ec-key-2024&#34; </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Split identifier for key splitting scenarios
-Optional: ZTDF only (used in advanced key splitting configurations)
-NanoTDF: Not used
+Optional: ZTDF (used in advanced key splitting configurations)
 Used when keys are split across multiple parties for enhanced security </p></td>
                 </tr>
               
@@ -6303,7 +6301,7 @@ Contains magic bytes, version, algorithm, policy, and ephemeral key information 
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Ephemeral public key for ECDH key derivation (ec-wrapped type only)
-Required: When key_type=&#34;ec-wrapped&#34; (NanoTDF and ECDH-based ZTDF)
+Required: When key_type=&#34;ec-wrapped&#34; (experimental ECDH-based ZTDF)
 Omitted: When key_type=&#34;wrapped&#34; (RSA-based ZTDF)
 Should be a PEM-encoded PKCS#8 (ASN.1) formatted public key
 Used to derive the symmetric key for unwrapping the DEK </p></td>
@@ -6447,7 +6445,7 @@ Human-readable description of the failure reason </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Cryptographic hashing algorithm used for policy binding
-Optional: ZTDF (when policy_binding is an object), NanoTDF (embedded in header)
+Optional: ZTDF (when policy_binding is an object)
 Value: Always &#34;HS256&#34; (HMAC-SHA256) - other algorithms not supported
 Example: &#34;HS256&#34; </p></td>
                 </tr>
@@ -6457,10 +6455,10 @@ Example: &#34;HS256&#34; </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>HMAC-SHA256 hash of the base64-encoded policy using the DEK as the secret key
-Required: ZTDF (when policy_binding is an object), NanoTDF (computed from header)
+4.2.2 TDFs are hex and base64 encoded before HMAC computation
+Required: ZTDF (when policy_binding is an object)
 Links the policy content to the wrapped DEK cryptographically via HMAC
-Computed as HMAC-SHA256(DEK, base64_policy) then hex-encoded and base64-encoded
-Example: &#34;a1b2c3d4e5f6...&#34; </p></td>
+Computed as HMAC-SHA256(DEK, base64_policy) then hex-encoded and base64-encoded </p></td>
                 </tr>
               
             </tbody>
@@ -6863,7 +6861,8 @@ Required: Always </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Ephemeral, unique identifier for this policy within the request
+                  <td><p>An identifier unique within the scope of the rewrap request
+Used for mapping between request and response items.
 Required: Always
 Example: &#34;policy&#34;, &#34;policy-0&#34;, &#34;policy-1&#34; </p></td>
                 </tr>
@@ -6873,9 +6872,8 @@ Example: &#34;policy&#34;, &#34;policy-0&#34;, &#34;policy-1&#34; </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Policy content - format varies by TDF type:
-- NanoTDF: Empty string (policy is embedded in the header)
-- ZTDF: Base64-encoded JSON policy object containing attributes and other policy data
-Required: ZTDF (base64-encoded policy JSON), NanoTDF (empty or not used) </p></td>
+ZTDF: Base64-encoded JSON policy object containing attributes and other policy data
+Required: ZTDF (base64-encoded policy JSON) </p></td>
                 </tr>
               
             </tbody>

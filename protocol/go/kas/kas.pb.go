@@ -165,15 +165,15 @@ type PolicyBinding struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Cryptographic hashing algorithm used for policy binding
-	// Optional: ZTDF (when policy_binding is an object), NanoTDF (embedded in header)
+	// Optional: ZTDF (when policy_binding is an object)
 	// Value: Always "HS256" (HMAC-SHA256) - other algorithms not supported
 	// Example: "HS256"
 	Algorithm string `protobuf:"bytes,1,opt,name=algorithm,json=alg,proto3" json:"algorithm,omitempty"`
 	// HMAC-SHA256 hash of the base64-encoded policy using the DEK as the secret key
-	// Required: ZTDF (when policy_binding is an object), NanoTDF (computed from header)
+	// 4.2.2 TDFs are hex and base64 encoded before HMAC computation
+	// Required: ZTDF (when policy_binding is an object)
 	// Links the policy content to the wrapped DEK cryptographically via HMAC
 	// Computed as HMAC-SHA256(DEK, base64_policy) then hex-encoded and base64-encoded
-	// Example: "a1b2c3d4e5f6..."
 	Hash string `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
 }
 
@@ -234,7 +234,7 @@ type KeyAccess struct {
 	// KAS service passes this through without processing or validation
 	EncryptedMetadata string `protobuf:"bytes,1,opt,name=encrypted_metadata,json=encryptedMetadata,proto3" json:"encrypted_metadata,omitempty"`
 	// Policy binding ensuring cryptographic integrity between policy and wrapped key
-	// Required: ZTDF (contains hash and algorithm), NanoTDF (embedded in header)
+	// Required: ZTDF (contains hash and algorithm)
 	// Links the policy to the wrapped key cryptographically
 	PolicyBinding *PolicyBinding `protobuf:"bytes,2,opt,name=policy_binding,json=policyBinding,proto3" json:"policy_binding,omitempty"`
 	// Protocol identifier for the key access mechanism
@@ -244,8 +244,7 @@ type KeyAccess struct {
 	Protocol string `protobuf:"bytes,3,opt,name=protocol,proto3" json:"protocol,omitempty"`
 	// Type of key wrapping used for the data encryption key
 	// Required: Always
-	// Values: 'wrapped' (RSA-wrapped for ZTDF), 'ec-wrapped' (ECDH-wrapped for NanoTDF)
-	// Example: "ec-wrapped", "wrapped"
+	// Values: 'wrapped' (RSA-wrapped for ZTDF), 'ec-wrapped' (experimental ECDH-wrapped)
 	KeyType string `protobuf:"bytes,4,opt,name=key_type,json=type,proto3" json:"key_type,omitempty"`
 	// URL of the Key Access Server that can unwrap this key
 	// Optional: May be omitted if KAS URL is known from context
@@ -253,13 +252,12 @@ type KeyAccess struct {
 	// Example: "https://kas.example.com"
 	KasUrl string `protobuf:"bytes,5,opt,name=kas_url,json=url,proto3" json:"kas_url,omitempty"`
 	// Key identifier for the KAS public key used for wrapping
-	// Optional: ZTDF (may specify which KAS key to use), NanoTDF (extracted from header)
+	// Optional: ZTDF (may specify which KAS key to use, required if present in the TDF)
 	// References a specific public key in the KAS key storage (either local keyring or KAS Registry service)
 	// Example: "k1", "ec-key-2024"
 	Kid string `protobuf:"bytes,6,opt,name=kid,proto3" json:"kid,omitempty"`
 	// Split identifier for key splitting scenarios
-	// Optional: ZTDF only (used in advanced key splitting configurations)
-	// NanoTDF: Not used
+	// Optional: ZTDF (used in advanced key splitting configurations)
 	// Used when keys are split across multiple parties for enhanced security
 	SplitId string `protobuf:"bytes,7,opt,name=split_id,json=sid,proto3" json:"split_id,omitempty"`
 	// Client-generated data encryption key wrapped by KAS
@@ -273,7 +271,7 @@ type KeyAccess struct {
 	// Contains magic bytes, version, algorithm, policy, and ephemeral key information
 	Header []byte `protobuf:"bytes,9,opt,name=header,proto3" json:"header,omitempty"`
 	// Ephemeral public key for ECDH key derivation (ec-wrapped type only)
-	// Required: When key_type="ec-wrapped" (NanoTDF and ECDH-based ZTDF)
+	// Required: When key_type="ec-wrapped" (experimental ECDH-based ZTDF)
 	// Omitted: When key_type="wrapped" (RSA-based ZTDF)
 	// Should be a PEM-encoded PKCS#8 (ASN.1) formatted public key
 	// Used to derive the symmetric key for unwrapping the DEK
@@ -949,14 +947,14 @@ type UnsignedRewrapRequest_WithPolicy struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Ephemeral, unique identifier for this policy within the request
+	// An identifier unique within the scope of the rewrap request
+	// Used for mapping between request and response items.
 	// Required: Always
 	// Example: "policy", "policy-0", "policy-1"
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Policy content - format varies by TDF type:
-	// - NanoTDF: Empty string (policy is embedded in the header)
-	// - ZTDF: Base64-encoded JSON policy object containing attributes and other policy data
-	// Required: ZTDF (base64-encoded policy JSON), NanoTDF (empty or not used)
+	// ZTDF: Base64-encoded JSON policy object containing attributes and other policy data
+	// Required: ZTDF (base64-encoded policy JSON)
 	Body string `protobuf:"bytes,2,opt,name=body,proto3" json:"body,omitempty"`
 }
 

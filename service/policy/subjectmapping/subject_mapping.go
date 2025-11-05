@@ -269,12 +269,13 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 
 	var conditionSet *policy.SubjectConditionSet
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		var err error
-		conditionSet, err = txClient.CreateSubjectConditionSet(ctx, req.Msg.GetSubjectConditionSet())
+		cs, err := txClient.CreateSubjectConditionSet(ctx, req.Msg.GetSubjectConditionSet())
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("subjectConditionSet", req.Msg.String()))
 		}
+
+		conditionSet = cs
 		return nil
 	})
 	if err != nil {
@@ -305,19 +306,20 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 
 	var original, updated *policy.SubjectConditionSet
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		var err error
-		original, err = txClient.GetSubjectConditionSet(ctx, subjectConditionSetID)
+		orig, err := txClient.GetSubjectConditionSet(ctx, subjectConditionSetID)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", subjectConditionSetID))
 		}
 
-		updated, err = txClient.UpdateSubjectConditionSet(ctx, req.Msg)
+		upd, err := txClient.UpdateSubjectConditionSet(ctx, req.Msg)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", req.Msg.GetId()), slog.String("subjectConditionSet fields", req.Msg.String()))
 		}
 
+		original = orig
+		updated = upd
 		rsp.SubjectConditionSet = &policy.SubjectConditionSet{
 			Id: subjectConditionSetID,
 		}

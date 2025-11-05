@@ -265,104 +265,99 @@ func getResourceDecisionableAttributes(
 	return decisionableAttributes, nil
 }
 
-// applyObligationsAndConsolidate applies obligations to an entity representation's decision and consolidates
-// it with accumulated decisions from previous entity representations in a single pass (O(n) vs O(2n)).
+// applyObligationsAndConsolidate:
 //
-// For each resource, this function:
-// 1. Applies obligation state (ObligationsSatisfied, Passed, RequiredObligationValueFQNs)
-// 2. If not the first entity, consolidates with accumulated using AND logic
-// 3. Creates an audit snapshot with full obligation context
-//
-// All entity representations must be entitled for overall entitlement (AND logic).
-//
-// This optimization reduces two separate loops over resources to a single loop, improving performance
-// in authorization hot paths while maintaining the same logical behavior.
+// 1. IFF entitled to a resource on the passed in Decision, adds corresponding obligations and the obligations
+// satisfied state to the ResourceDecision
+// 2. Builds a list of ResourceDecisions for audit (which always should see obligation decision state)
+// 3. Merges the Decision's ResourceDecisions with those consolidated across the other entity representations
 func applyObligationsAndConsolidate(
-	accumulated []ResourceDecision,
-	nextDecision *Decision,
+	consolidatedAcrossEntityRepresentations []ResourceDecision,
+	currentEntityRepresentationDecision *Decision,
 	obligationDecision obligations.ObligationPolicyDecision,
-) (consolidated []ResourceDecision, auditDecisions []ResourceDecision, err error) {
+) ([]ResourceDecision, []ResourceDecision, error) {
 	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
-	isFirstEntity := accumulated == nil
-	numResources := len(nextDecision.Results)
+	isFirstEntity := consolidatedAcrossEntityRepresentations == nil
+	numResourceDecisions := len(currentEntityRepresentationDecision.Results)
+	numObligationResourceDecisions := len(obligationDecision.PerResourceDecisions)
 
-	// First entity: validate length matches obligation decisions
+	// First entity: validate both lists of decisions are equal length
 	if isFirstEntity && hasRequiredObligations {
-		if numResources != len(obligationDecision.RequiredObligationValueFQNsPerResource) {
+		if numResourceDecisions != numObligationResourceDecisions {
 			return nil, nil, fmt.Errorf(
 				"obligation decision count mismatch: expected %d but got %d",
-				numResources, len(obligationDecision.RequiredObligationValueFQNsPerResource),
+				numResourceDecisions, numObligationResourceDecisions,
 			)
 		}
 	}
 
-	// Subsequent entities: validate length matches accumulated
-	if !isFirstEntity && len(accumulated) != numResources {
+	// Subsequent entities: validate length matches consolidated
+	if !isFirstEntity && len(consolidatedAcrossEntityRepresentations) != numResourceDecisions {
 		return nil, nil, fmt.Errorf(
-			"%w: accumulated has %d but next has %d",
-			ErrResourceDecisionLengthMismatch, len(accumulated), numResources,
+			"%w: consolidatedAcrossEntityRepresentations has %d but currentEntityRepresentationDecision has %d",
+			ErrResourceDecisionLengthMismatch, len(consolidatedAcrossEntityRepresentations), numResourceDecisions,
 		)
 	}
 
-	consolidated = make([]ResourceDecision, numResources)
-	auditDecisions = make([]ResourceDecision, numResources)
+	consolidated := make([]ResourceDecision, numResourceDecisions)
+	resourceDecisionAuditRecords := make([]ResourceDecision, numResourceDecisions)
 
-	for idx := range nextDecision.Results {
-		nextResource := &nextDecision.Results[idx]
+	for resourceDecisionIdx := range currentEntityRepresentationDecision.Results {
+		currentResourceDecision := &currentEntityRepresentationDecision.Results[resourceDecisionIdx]
 
-		// Step 1: Apply obligations to next resource decision
-		nextResource.ObligationsSatisfied = true
+		// Step 1: Apply obligations to each resource decision on the current decision
+		currentResourceDecision.ObligationsSatisfied = true
 		var obligationFQNs []string
 
 		if hasRequiredObligations {
-			perResource := obligationDecision.RequiredObligationValueFQNsPerResource[idx]
-			nextResource.ObligationsSatisfied = perResource.ObligationsSatisfied
-			obligationFQNs = perResource.RequiredObligationValueFQNs
+			obligationDecisionOnResource := obligationDecision.PerResourceDecisions[resourceDecisionIdx]
+			currentResourceDecision.ObligationsSatisfied = obligationDecisionOnResource.ObligationsSatisfied
+			obligationFQNs = obligationDecisionOnResource.RequiredObligationValueFQNs
 
 			// Only set obligations in response if entitled
-			if nextResource.Entitled {
-				nextResource.RequiredObligationValueFQNs = obligationFQNs
+			if currentResourceDecision.Entitled {
+				currentResourceDecision.RequiredObligationValueFQNs = obligationFQNs
 			}
 		}
 
-		nextResource.Passed = nextResource.Entitled && nextResource.ObligationsSatisfied
+		currentResourceDecision.Passed = currentResourceDecision.Entitled && currentResourceDecision.ObligationsSatisfied
 
 		// Step 2: Consolidate with accumulated (if not first entity)
 		var finalDecision ResourceDecision
 		if isFirstEntity {
-			finalDecision = *nextResource
+			finalDecision = *currentResourceDecision
 		} else {
-			accumulatedDecision := accumulated[idx]
+			resourceDecisionAllEntitiesSoFar := consolidatedAcrossEntityRepresentations[resourceDecisionIdx]
 
 			// Validate resource IDs match
-			if accumulatedDecision.ResourceID != nextResource.ResourceID {
+			if resourceDecisionAllEntitiesSoFar.ResourceID != currentResourceDecision.ResourceID {
 				return nil, nil, fmt.Errorf(
 					"%w at index %d: %q vs %q",
-					ErrResourceDecisionIDMismatch, idx, accumulatedDecision.ResourceID, nextResource.ResourceID,
+					ErrResourceDecisionIDMismatch, resourceDecisionIdx, resourceDecisionAllEntitiesSoFar.ResourceID, currentResourceDecision.ResourceID,
 				)
 			}
 
 			// AND together: all entity representations must be entitled
 			finalDecision = ResourceDecision{
-				ResourceID:           accumulatedDecision.ResourceID,
-				ResourceName:         accumulatedDecision.ResourceName,
-				Entitled:             accumulatedDecision.Entitled && nextResource.Entitled,
-				Passed:               accumulatedDecision.Passed && nextResource.Passed,
-				ObligationsSatisfied: accumulatedDecision.ObligationsSatisfied && nextResource.ObligationsSatisfied,
+				ResourceID:           resourceDecisionAllEntitiesSoFar.ResourceID,
+				ResourceName:         resourceDecisionAllEntitiesSoFar.ResourceName,
+				Entitled:             resourceDecisionAllEntitiesSoFar.Entitled && currentResourceDecision.Entitled,
+				Passed:               resourceDecisionAllEntitiesSoFar.Passed && currentResourceDecision.Passed,
+				ObligationsSatisfied: resourceDecisionAllEntitiesSoFar.ObligationsSatisfied && currentResourceDecision.ObligationsSatisfied,
 			}
 
 			// Keep obligations if entitled, clear if not
 			if finalDecision.Entitled {
-				finalDecision.RequiredObligationValueFQNs = accumulatedDecision.RequiredObligationValueFQNs
+				finalDecision.RequiredObligationValueFQNs = resourceDecisionAllEntitiesSoFar.RequiredObligationValueFQNs
 			}
 		}
 
-		consolidated[idx] = finalDecision
+		consolidated[resourceDecisionIdx] = finalDecision
 
 		// Step 3: Create audit snapshot (always includes obligation context)
-		auditDecisions[idx] = *nextResource
-		auditDecisions[idx].RequiredObligationValueFQNs = obligationFQNs
+		resourceDecisionAuditRecords[resourceDecisionIdx] = *currentResourceDecision
+		resourceDecisionAuditRecords[resourceDecisionIdx].RequiredObligationValueFQNs = obligationFQNs
 	}
 
-	return consolidated, auditDecisions, nil
+	return consolidated, resourceDecisionAuditRecords, nil
 }

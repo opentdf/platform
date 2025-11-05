@@ -760,8 +760,8 @@ func Test_applyObligationsAndConsolidate(t *testing.T) {
 				},
 			},
 			obligationDecision: obligations.ObligationPolicyDecision{
-				RequiredObligationValueFQNs:            []string{},
-				RequiredObligationValueFQNsPerResource: []obligations.PerResourceDecision{},
+				RequiredObligationValueFQNs: []string{},
+				PerResourceDecisions:        []obligations.PerResourceDecision{},
 			},
 			expectedConsolidated: []ResourceDecision{
 				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil),
@@ -779,9 +779,9 @@ func Test_applyObligationsAndConsolidate(t *testing.T) {
 				},
 			},
 			obligationDecision: obligations.ObligationPolicyDecision{
-				AllObligationsSatisfied:                true,
-				RequiredObligationValueFQNs:            []string{testObligation1FQN},
-				RequiredObligationValueFQNsPerResource: []obligations.PerResourceDecision{mkPerResourceDecision(true, testObligation1FQN)},
+				AllObligationsSatisfied:     true,
+				RequiredObligationValueFQNs: []string{testObligation1FQN},
+				PerResourceDecisions:        []obligations.PerResourceDecision{mkPerResourceDecision(true, testObligation1FQN)},
 			},
 			expectedConsolidated: []ResourceDecision{
 				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, []string{testObligation1FQN}),
@@ -799,9 +799,9 @@ func Test_applyObligationsAndConsolidate(t *testing.T) {
 				},
 			},
 			obligationDecision: obligations.ObligationPolicyDecision{
-				AllObligationsSatisfied:                false,
-				RequiredObligationValueFQNs:            []string{testObligation1FQN},
-				RequiredObligationValueFQNsPerResource: []obligations.PerResourceDecision{mkPerResourceDecision(false, testObligation1FQN)},
+				AllObligationsSatisfied:     false,
+				RequiredObligationValueFQNs: []string{testObligation1FQN},
+				PerResourceDecisions:        []obligations.PerResourceDecision{mkPerResourceDecision(false, testObligation1FQN)},
 			},
 			expectedConsolidated: []ResourceDecision{
 				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, false, false, []string{testObligation1FQN}),
@@ -819,9 +819,9 @@ func Test_applyObligationsAndConsolidate(t *testing.T) {
 				},
 			},
 			obligationDecision: obligations.ObligationPolicyDecision{
-				AllObligationsSatisfied:                true,
-				RequiredObligationValueFQNs:            []string{testObligation1FQN},
-				RequiredObligationValueFQNsPerResource: []obligations.PerResourceDecision{mkPerResourceDecision(true, testObligation1FQN)},
+				AllObligationsSatisfied:     true,
+				RequiredObligationValueFQNs: []string{testObligation1FQN},
+				PerResourceDecisions:        []obligations.PerResourceDecision{mkPerResourceDecision(true, testObligation1FQN)},
 			},
 			expectedConsolidated: []ResourceDecision{
 				mkExpectedResourceDecision(testResource1ID, testResource1Name, false, true, false, nil),
@@ -842,8 +842,8 @@ func Test_applyObligationsAndConsolidate(t *testing.T) {
 				},
 			},
 			obligationDecision: obligations.ObligationPolicyDecision{
-				RequiredObligationValueFQNs:            []string{},
-				RequiredObligationValueFQNsPerResource: []obligations.PerResourceDecision{},
+				RequiredObligationValueFQNs: []string{},
+				PerResourceDecisions:        []obligations.PerResourceDecision{},
 			},
 			expectedConsolidated: []ResourceDecision{
 				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil),
@@ -863,8 +863,8 @@ func Test_applyObligationsAndConsolidate(t *testing.T) {
 				},
 			},
 			obligationDecision: obligations.ObligationPolicyDecision{
-				RequiredObligationValueFQNs:            []string{},
-				RequiredObligationValueFQNsPerResource: []obligations.PerResourceDecision{},
+				RequiredObligationValueFQNs: []string{},
+				PerResourceDecisions:        []obligations.PerResourceDecision{},
 			},
 			expectedConsolidated: []ResourceDecision{
 				mkExpectedResourceDecision(testResource1ID, testResource1Name, false, true, false, nil),
@@ -891,8 +891,8 @@ func Test_applyObligationsAndConsolidate(t *testing.T) {
 				},
 			},
 			obligationDecision: obligations.ObligationPolicyDecision{
-				RequiredObligationValueFQNs:            []string{},
-				RequiredObligationValueFQNsPerResource: []obligations.PerResourceDecision{},
+				RequiredObligationValueFQNs: []string{},
+				PerResourceDecisions:        []obligations.PerResourceDecision{},
 			},
 			expectedConsolidated: []ResourceDecision{
 				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, []string{testObligation1FQN}),
@@ -919,8 +919,8 @@ func Test_applyObligationsAndConsolidate(t *testing.T) {
 				},
 			},
 			obligationDecision: obligations.ObligationPolicyDecision{
-				RequiredObligationValueFQNs:            []string{},
-				RequiredObligationValueFQNsPerResource: []obligations.PerResourceDecision{},
+				RequiredObligationValueFQNs: []string{},
+				PerResourceDecisions:        []obligations.PerResourceDecision{},
 			},
 			expectedConsolidated: []ResourceDecision{
 				mkExpectedResourceDecision(testResource1ID, testResource1Name, false, true, false, nil),
@@ -943,8 +943,8 @@ func Test_applyObligationsAndConsolidate(t *testing.T) {
 				},
 			},
 			obligationDecision: obligations.ObligationPolicyDecision{
-				RequiredObligationValueFQNs:            []string{},
-				RequiredObligationValueFQNsPerResource: []obligations.PerResourceDecision{{}, {}},
+				RequiredObligationValueFQNs: []string{},
+				PerResourceDecisions:        []obligations.PerResourceDecision{{}, {}},
 			},
 			expectedConsolidated: []ResourceDecision{
 				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil),
@@ -968,7 +968,7 @@ func Test_applyObligationsAndConsolidate(t *testing.T) {
 			obligationDecision: obligations.ObligationPolicyDecision{
 				AllObligationsSatisfied:     false,
 				RequiredObligationValueFQNs: []string{testObligation1FQN, testObligation2FQN},
-				RequiredObligationValueFQNsPerResource: []obligations.PerResourceDecision{
+				PerResourceDecisions: []obligations.PerResourceDecision{
 					mkPerResourceDecision(true, testObligation1FQN),
 					mkPerResourceDecision(false, testObligation2FQN),
 					mkPerResourceDecision(false, testObligation2FQN),

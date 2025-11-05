@@ -227,7 +227,8 @@ func (p *JustInTimePDP) GetDecision(
 			allPermitted = false
 		}
 
-		// Apply obligations and consolidate in single pass (O(n) instead of O(2n))
+		// Add obligations (if entitled) to the entity rep decision, prep audit records for each resource decision,
+		// and consolidate resource decisions across all entity reps
 		var auditResourceDecisions []ResourceDecision
 		resourceDecisionsAcrossAllEntityReps, auditResourceDecisions, err = applyObligationsAndConsolidate(
 			resourceDecisionsAcrossAllEntityReps,

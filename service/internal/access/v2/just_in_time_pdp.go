@@ -180,10 +180,15 @@ func (p *JustInTimePDP) GetDecision(
 			return nil, fmt.Errorf("decision is nil for registered resource value FQN [%s]", regResValueFQN)
 		}
 
-		// Update resource decisions with obligations and set final access decision
+		// Apply obligations (no consolidation needed for single entity)
+		resourceDecisions, auditResourceDecisions, err := applyObligationsAndConsolidate(nil, decision, obligationDecision)
+		if err != nil {
+			return nil, fmt.Errorf("failed to apply obligations for registered resource [%s]: %w", regResValueFQN, err)
+		}
+
 		entitledWithAnyObligationsSatisfied := decision.AllPermitted && allObligationsSatisfied
 		decision.AllPermitted = entitledWithAnyObligationsSatisfied
-		decisionWithObligationsWhenEntitled, auditResourceDecisions := getResourceDecisionsWithObligations(decision, obligationDecision)
+		decision.Results = resourceDecisions
 
 		p.auditDecision(
 			ctx,
@@ -195,7 +200,7 @@ func (p *JustInTimePDP) GetDecision(
 			obligationDecision,
 			auditResourceDecisions,
 		)
-		return decisionWithObligationsWhenEntitled, nil
+		return decision, nil
 
 	default:
 		return nil, ErrInvalidEntityType
@@ -222,25 +227,29 @@ func (p *JustInTimePDP) GetDecision(
 			allPermitted = false
 		}
 
-		entityRepresentationDecision = p.applyObligationsAndAudit(
-			ctx,
-			entityRep,
-			entityRepresentationDecision,
-			entitlements,
-			action,
-			obligationDecision,
-			allObligationsSatisfied,
-			fulfillableObligationValueFQNs,
-		)
-
-		// Consolidate resource decisions across entity representations
-		resourceDecisionsAcrossAllEntityReps, err = consolidateResourceDecisions(
+		// Apply obligations and consolidate in single pass (O(n) instead of O(2n))
+		var auditResourceDecisions []ResourceDecision
+		resourceDecisionsAcrossAllEntityReps, auditResourceDecisions, err = applyObligationsAndConsolidate(
 			resourceDecisionsAcrossAllEntityReps,
-			entityRepresentationDecision.Results,
+			entityRepresentationDecision,
+			obligationDecision,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to consolidate resource decisions for entity representation [%s]: %w", entityRep.GetOriginalId(), err)
+			return nil, fmt.Errorf("failed to apply obligations and consolidate for entity representation [%s]: %w", entityRep.GetOriginalId(), err)
 		}
+
+		// Audit decision for this entity representation
+		entityAllPermitted := entityRepresentationDecision.AllPermitted && allObligationsSatisfied
+		p.auditDecision(
+			ctx,
+			entityRep.GetOriginalId(),
+			action,
+			entityAllPermitted,
+			entitlements,
+			fulfillableObligationValueFQNs,
+			obligationDecision,
+			auditResourceDecisions,
+		)
 	}
 
 	allEntitledWithAllObligationsSatisfied := allPermitted && allObligationsSatisfied
@@ -304,36 +313,6 @@ func (p *JustInTimePDP) GetEntitlements(
 		return nil, fmt.Errorf("failed to get entitlements: %w", err)
 	}
 	return entitlements, nil
-}
-
-// applyObligationsAndAudit applies obligations to the entity representation decision and performs audit logging
-func (p *JustInTimePDP) applyObligationsAndAudit(
-	ctx context.Context,
-	entityRep *entityresolutionV2.EntityRepresentation,
-	decision *Decision,
-	entitlements map[string][]*policy.Action,
-	action *policy.Action,
-	obligationDecision obligations.ObligationPolicyDecision,
-	allObligationsSatisfied bool,
-	fulfillableObligationValueFQNs []string,
-) *Decision {
-	// Apply obligations to resource decisions for this entity representation and prepare audit record
-	var auditResourceDecisions []ResourceDecision
-	decision, auditResourceDecisions = getResourceDecisionsWithObligations(decision, obligationDecision)
-	entityAllPermitted := decision.AllPermitted && allObligationsSatisfied
-	entityRepID := entityRep.GetOriginalId()
-	p.auditDecision(
-		ctx,
-		entityRepID,
-		action,
-		entityAllPermitted,
-		entitlements,
-		fulfillableObligationValueFQNs,
-		obligationDecision,
-		auditResourceDecisions,
-	)
-
-	return decision
 }
 
 // getMatchedSubjectMappings retrieves the subject mappings for the provided entity representations

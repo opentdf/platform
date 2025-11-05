@@ -16,6 +16,7 @@ jobs:
     secrets:
       APP_ID: ${{ secrets.APP_ID }}
       AUTOMATION_KEY: ${{ secrets.AUTOMATION_KEY }}
+  
   create-backport-label:
     needs: create-release-branch
     permissions:
@@ -28,6 +29,16 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const tagName = context.payload.release?.tag_name;
+            if (!tagName) {
+              console.error("❌ No tag name found in the release payload");
+              throw new Error("No tag name found");
+            }
+            // check if it matches vX.Y.Z format or something/vX.Y.Z
+            const tagPattern = /^(.*\/)?v\d+\.\d+\.\d+$/;
+            if (!tagPattern.test(tagName)) {
+              console.error(`❌ Tag name "${tagName}" does not match expected format`);
+              throw new Error("Invalid tag name format");
+            }
             const labelPrefix = "backport release/";
             // Extract the label name by removing patch version
             let labelName;

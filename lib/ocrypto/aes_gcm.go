@@ -46,6 +46,22 @@ func (aesGcm AesGcm) Encrypt(data []byte) ([]byte, error) {
 	cipherText := gcm.Seal(nonce, nonce, data, nil)
 	return cipherText, nil
 }
+func (aesGcm AesGcm) EncryptWithDestination(data []byte, dst []byte) ([]byte, error) {
+	nonce, err := RandomBytes(GcmStandardNonceSize)
+	if err != nil {
+		return nil, err
+	}
+	copy(dst[:GcmStandardNonceSize], nonce)
+
+
+	gcm, err := cipher.NewGCMWithNonceSize(aesGcm.block, GcmStandardNonceSize)
+	if err != nil {
+		return nil, fmt.Errorf("cipher.NewGCMWithNonceSize failed: %w", err)
+	}
+
+	cipherText := gcm.Seal(dst[:GcmStandardNonceSize], nonce, data, nil)
+	return cipherText, nil
+}
 
 // EncryptWithIV encrypts data with symmetric key.
 // NOTE: This method use default auth tag as aes block size(16 bytes)

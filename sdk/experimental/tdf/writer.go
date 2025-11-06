@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash/crc32"
 	"log/slog"
 	"sort"
 	"sync"
@@ -232,34 +231,35 @@ func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error
 //	uploadToS3(segment1, "part-001")
 func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*SegmentResult, error) {
 	w.mutex.Lock()
-	defer w.mutex.Unlock()
 
 	if w.finalized {
+		w.mutex.Unlock()
 		return nil, ErrAlreadyFinalized
 	}
 
 	if index < 0 {
+		w.mutex.Unlock()
 		return nil, ErrInvalidSegmentIndex
 	}
 
 	// Check for duplicate segments using map lookup
 	if _, exists := w.segments[index]; exists {
+		w.mutex.Unlock()
 		return nil, ErrSegmentAlreadyWritten
 	}
 
 	if index > w.maxSegmentIndex {
 		w.maxSegmentIndex = index
 	}
+	w.mutex.Unlock()
 
-	// Calculate CRC32 before encryption for integrity tracking
-	crc32Checksum := crc32.ChecksumIEEE(data)
-
+	segmentBlock := make([]byte, 100+len(data)+ 100)
 	// Encrypt directly without unnecessary copying - the archive layer will handle copying if needed
-	segmentCipher, err := w.block.Encrypt(data)
+	segmentCipher, err := w.block.EncryptWithDestination(data, segmentBlock[:100])
 	if err != nil {
 		return nil, err
 	}
-
+	segmentBlock = segmentBlock[:100+len(segmentCipher)]
 	segmentSig, err := calculateSignature(segmentCipher, w.dek, w.segmentIntegrityAlgorithm, false) // Don't ever hex encode new tdf's
 	if err != nil {
 		return nil, err
@@ -272,7 +272,7 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 		EncryptedSize: int64(len(segmentCipher)),
 	}
 
-	zipBytes, err := w.archiveWriter.WriteSegment(ctx, index, segmentCipher)
+	zipBytes, err := w.archiveWriter.WriteSegment(ctx, index, segmentBlock)
 	if err != nil {
 		return nil, err
 	}
@@ -282,8 +282,7 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 		Index:         index,
 		Hash:          segmentHash,
 		PlaintextSize: int64(len(data)),
-		EncryptedSize: int64(len(segmentCipher)),
-		CRC32:         crc32Checksum,
+		EncryptedSize: int64(len(zipBytes)),
 	}, nil
 }
 

@@ -8,12 +8,18 @@ import (
 )
 
 func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
+	attrs := []string{
+		"https://example1.com",
+		"https://example2.com",
+	}
+	keyID := "r1"
+
 	kasPolicy := KasPolicy{
 		UUID: uuid.New(),
 		Body: KasPolicyBody{
 			DataAttributes: []KasAttribute{
-				{URI: "https://example1.com"},
-				{URI: "https://example2.com"},
+				{URI: attrs[0]},
+				{URI: attrs[1]},
 			},
 			Dissem: []string{"dissem1", "dissem2"},
 		},
@@ -25,6 +31,7 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 		TDFFormat:     TestTDFFormat,
 		Algorithm:     TestAlgorithm,
 		PolicyBinding: TestPolicyBinding,
+		KeyID:         keyID,
 	}
 
 	event, err := CreateRewrapAuditEvent(createTestContext(), params)
@@ -37,7 +44,7 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 		ID:   kasPolicy.UUID.String(),
 		Attributes: eventObjectAttributes{
 			Assertions:  []string{},
-			Attrs:       []string{},
+			Attrs:       attrs,
 			Permissions: []string{},
 		},
 	}
@@ -62,7 +69,7 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 	}
 
 	expectedEventMetaData := auditEventMetadata{
-		"keyID":         "",
+		"keyID":         keyID,
 		"policyBinding": TestPolicyBinding,
 		"tdfFormat":     TestTDFFormat,
 		"algorithm":     TestAlgorithm,

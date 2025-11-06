@@ -32,6 +32,8 @@ type RegistrationParams struct {
 	// Config scoped to the service config. Since the main config contains all the service configs,
 	// which could have need-to-know information we don't want to expose it to all services.
 	Config config.ServiceConfig
+	// Security exposes platform-wide security overrides.
+	Security *config.SecurityConfig
 	// OTDF is the OpenTDF server that can be used to interact with the OpenTDFServer instance.
 	OTDF *server.OpenTDFServer
 	// DBClient is the database client that can be used to interact with the database. This client

@@ -204,6 +204,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 
 			err = svc.Start(ctx, serviceregistry.RegistrationParams{
 				Config:                 cfg.Services[svc.GetNamespace()],
+				Security:               &cfg.Security,
 				Logger:                 svcLogger,
 				DBClient:               svcDBClient,
 				SDK:                    client,

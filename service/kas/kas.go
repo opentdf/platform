@@ -27,7 +27,7 @@ func OnConfigUpdate(p *access.Provider) serviceregistry.OnConfigUpdateHook {
 			return fmt.Errorf("invalid kas cfg [%v] %w", cfg, err)
 		}
 
-		p.KASConfig = kasCfg
+		p.ApplyConfig(kasCfg, p.SecurityConfig())
 		p.Logger.Info("kas config reloaded")
 
 		return nil
@@ -114,7 +114,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 
 				p.SDK = srp.SDK
 				p.Logger = srp.Logger
-				p.KASConfig = kasCfg
+				p.ApplyConfig(kasCfg, srp.Security)
 				p.Tracer = srp.Tracer
 
 				srp.Logger.Debug("kas config", slog.Any("config", kasCfg))

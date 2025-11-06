@@ -34,7 +34,7 @@ jobs:
               throw new Error("No tag name found");
             }
             // check if it matches vX.Y.Z format or something/vX.Y.Z
-            const tagPattern = /^(.*\/)?v\d+\.\d+\.\d+$/;
+            const tagPattern = /^([\w/-_]+\/)?v\d+\.\d+\.\d+$/;
             if (!tagPattern.test(tagName)) {
               console.error(`❌ Tag name "${tagName}" does not match expected format`);
               throw new Error("Invalid tag name format");

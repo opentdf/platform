@@ -1219,7 +1219,7 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 			decision, err := s.pdp.GetAllTriggeredObligationsAreFulfilled(t.Context(), tt.args.resources, tt.args.action, tt.args.decisionRequestContext, tt.args.pepFulfillable)
 			s.Require().NoError(err)
 			s.Equal(tt.wantAllFulfilled, decision.AllObligationsSatisfied, tt.name)
-			s.Equal(tt.wantPerResource, decision.RequiredObligationValueFQNsPerResource, tt.name)
+			s.Equal(tt.wantPerResource, decision.PerResourceDecisions, tt.name)
 			s.Equal(tt.wantOverall, decision.RequiredObligationValueFQNs, tt.name)
 		})
 	}

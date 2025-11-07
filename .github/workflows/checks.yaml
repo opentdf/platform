@@ -394,8 +394,8 @@ jobs:
       contents: read
     runs-on: ubuntu-22.04
     outputs:
-      platform_ref: ${{ steps.compute.outputs.platform_ref || steps.set_refs.outputs.platform_ref }}
-      sdk_ref: ${{ steps.set_refs.outputs.sdk_ref }}
+      platform_ref: ${{ steps.compute.outputs.platform_ref }}
+      sdk_ref: ${{ steps.compute.outputs.sdk_ref }}
     steps:
       - name: Detect SDK backport branch
         id: detect

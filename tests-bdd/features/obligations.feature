@@ -127,7 +127,7 @@ Feature: Obligations Decisioning E2E Tests
 
   Scenario: ABAC entitlements with obligations - matrix test across entities, actions, and resources
     Given I send a request to create an obligation with:
-      | namespace_id | name | values                   |
+      | namespace_id | name | values                     |
       | ns1          | drm  | watermark,prevent_download |
     Then the response should be successful
     And I send a request to create an obligation trigger with:
@@ -137,27 +137,15 @@ Feature: Obligations Decisioning E2E Tests
       | obligation_name | obligation_value | action | attribute_value                                         |
       | drm             | prevent_download | read   | https://example.com/attr/classification/value/topsecret |
     Then the response should be successful
-    # Create subject condition set and mappings for ABAC
-    And a condition group referenced as "cg_ts_clearance" with an "or" operator with conditions:
-      | selector_value          | operator | values |
-      | .attributes.clearance[] | in       | TS     |
-    And a subject set referenced as "ss_ts_clearance" containing the condition groups "cg_ts_clearance"
-    And I send a request to create a subject condition set referenced as "scs_clearance_topsecret" containing subject sets "ss_ts_clearance"
-    And I send a request to create a subject mapping with:
-      | reference_id                | attribute_value                                         | condition_set_name      | standard actions | custom actions |
-      | sm_classification_topsecret | https://example.com/attr/classification/value/topsecret | scs_clearance_topsecret | read,transmit    |                |
-    And a user exists with username "alice-ts" and email "alice-ts@example.com" and the following attributes:
-      | name      | value  |
-      | clearance | ["TS"] |
-    Given there is a "user_name" subject entity with value "alice-ts" and referenced as "alice-ts"
-    When I send a multi-resource decision request for entity chain "alice-ts" for "read" action on resources:
+    Given there is a "user_name" subject entity with value "alice" and referenced as "alice"
+    When I send a multi-resource decision request for entity chain "alice" for "read" action on resources:
       | resource                                                |
       | https://example.com/attr/classification/value/topsecret |
     Then the response should be successful
     And I should get 1 decision responses
     And I should get a "PERMIT" decision response
     And the decision response should contain obligation "https://example.com/obl/drm/value/prevent_download"
-    When I send a multi-resource decision request for entity chain "alice-ts" for "transmit" action on resources:
+    When I send a multi-resource decision request for entity chain "alice" for "transmit" action on resources:
       | resource                                                |
       | https://example.com/attr/classification/value/topsecret |
     Then the response should be successful
@@ -167,8 +155,8 @@ Feature: Obligations Decisioning E2E Tests
 
   Scenario: Multiple obligations on single resource decision
     Given I send a request to create an obligation with:
-      | namespace_id | name | values                           |
-      | ns1          | drm  | watermark,prevent_download       |
+      | namespace_id | name | values                     |
+      | ns1          | drm  | watermark,prevent_download |
     Then the response should be successful
     And I send a request to create an obligation trigger with:
       | obligation_name | obligation_value | action | attribute_value                                         |
@@ -182,6 +170,6 @@ Feature: Obligations Decisioning E2E Tests
     Then the response should be successful
     And I should get a "PERMIT" decision response
     And the decision response should contain obligations:
-      | obligation                                           |
-      | https://example.com/obl/drm/value/watermark          |
-      | https://example.com/obl/drm/value/prevent_download   |
+      | obligation                                         |
+      | https://example.com/obl/drm/value/watermark        |
+      | https://example.com/obl/drm/value/prevent_download |

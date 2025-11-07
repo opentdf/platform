@@ -416,24 +416,27 @@ func (s *ObligationsStepDefinitions) theDecisionResponseForResourceShouldNotCont
 func (s *ObligationsStepDefinitions) theDecisionResponseShouldContainObligations(ctx context.Context, tbl *godog.Table) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	
-	// Check if v1 API is being used (no obligations support)
-	if apiVersion, ok := scenarioContext.GetObject("api_version").(string); ok && apiVersion == "v1" {
-		fmt.Printf("⚠️  Skipping obligations check (v1 API in use, obligations not supported)\n")
-		return ctx, nil
-	}
+	var actualObligations map[string]bool
 	
-	decisionResp, ok := scenarioContext.GetObject("decisionResponse").(*authorization.GetDecisionsResponse)
-	if !ok {
+	// Try v2 single-resource response first
+	if decisionRespV2, ok := scenarioContext.GetObject("decisionResponse").(*authzV2.GetDecisionResponse); ok {
+		actualObligations = make(map[string]bool)
+		if decisionRespV2.GetDecision() != nil {
+			for _, obl := range decisionRespV2.GetDecision().GetRequiredObligations() {
+				actualObligations[obl] = true
+			}
+		}
+	} else if decisionResp, ok := scenarioContext.GetObject("decisionResponse").(*authorization.GetDecisionsResponse); ok {
+		// Try multi-resource response
+		if len(decisionResp.GetDecisionResponses()) == 0 {
+			return ctx, fmt.Errorf("no decision responses found")
+		}
+		actualObligations = make(map[string]bool)
+		for _, obl := range decisionResp.GetDecisionResponses()[0].GetObligations() {
+			actualObligations[obl] = true
+		}
+	} else {
 		return ctx, fmt.Errorf("decision response not found or invalid")
-	}
-
-	if len(decisionResp.GetDecisionResponses()) == 0 {
-		return ctx, fmt.Errorf("no decision responses found")
-	}
-
-	actualObligations := make(map[string]bool)
-	for _, obl := range decisionResp.GetDecisionResponses()[0].GetObligations() {
-		actualObligations[obl] = true
 	}
 
 	for ri, row := range tbl.Rows {
@@ -442,7 +445,11 @@ func (s *ObligationsStepDefinitions) theDecisionResponseShouldContainObligations
 		}
 		expectedObligation := strings.TrimSpace(row.Cells[0].Value)
 		if !actualObligations[expectedObligation] {
-			return ctx, fmt.Errorf("expected obligation %s not found. Actual obligations: %v", expectedObligation, decisionResp.GetDecisionResponses()[0].GetObligations())
+			actualOblList := make([]string, 0, len(actualObligations))
+			for obl := range actualObligations {
+				actualOblList = append(actualOblList, obl)
+			}
+			return ctx, fmt.Errorf("expected obligation %s not found. Actual obligations: %v", expectedObligation, actualOblList)
 		}
 	}
 

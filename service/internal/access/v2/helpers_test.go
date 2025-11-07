@@ -6,6 +6,7 @@ import (
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/service/internal/access/v2/obligations"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/stretchr/testify/assert"
@@ -692,6 +693,419 @@ func TestMergeDeduplicatedActions(t *testing.T) {
 
 			for name := range tt.expectedActions {
 				assert.True(t, resultNames[name], "Expected action %s not found in result", name)
+			}
+		})
+	}
+}
+
+const (
+	testObligation1FQN = "https://example.org/obligation/attr1/value/obl1"
+	testObligation2FQN = "https://example.org/obligation/attr2/value/obl2"
+
+	testResource1ID   = "resource1"
+	testResource2ID   = "resource2"
+	testResource3ID   = "resource3"
+	testResource1Name = "Resource One"
+	testResource2Name = "Resource Two"
+	testResource3Name = "Resource Three"
+)
+
+func mkExpectedResourceDecision(id, name string, entitled, obligationsSatisfied, passed bool, obligations []string, dataRules ...DataRuleResult) ResourceDecision {
+	return ResourceDecision{
+		Entitled:                    entitled,
+		ObligationsSatisfied:        obligationsSatisfied,
+		Passed:                      passed,
+		ResourceID:                  id,
+		ResourceName:                name,
+		RequiredObligationValueFQNs: obligations,
+		DataRuleResults:             dataRules,
+	}
+}
+
+func mkPerResourceDecision(satisfied bool, obligationFQNs ...string) obligations.PerResourceDecision {
+	return obligations.PerResourceDecision{
+		ObligationsSatisfied:        satisfied,
+		RequiredObligationValueFQNs: obligationFQNs,
+	}
+}
+
+func assertResourceDecision(t *testing.T, expected, actual ResourceDecision, idx int, prefix string) {
+	t.Helper()
+	assert.Equal(t, expected.Entitled, actual.Entitled, "%s resource %d: Entitled mismatch", prefix, idx)
+	assert.Equal(t, expected.ObligationsSatisfied, actual.ObligationsSatisfied, "%s resource %d: ObligationsSatisfied mismatch", prefix, idx)
+	assert.Equal(t, expected.Passed, actual.Passed, "%s resource %d: Passed mismatch", prefix, idx)
+	assert.Equal(t, expected.ResourceID, actual.ResourceID, "%s resource %d: ResourceID mismatch", prefix, idx)
+	assert.Equal(t, expected.ResourceName, actual.ResourceName, "%s resource %d: ResourceName mismatch", prefix, idx)
+	assert.Equal(t, expected.RequiredObligationValueFQNs, actual.RequiredObligationValueFQNs, "%s resource %d: RequiredObligationValueFQNs mismatch", prefix, idx)
+	assert.Equal(t, expected.DataRuleResults, actual.DataRuleResults, "%s resource %d: DataRuleResults mismatch", prefix, idx)
+}
+
+func Test_applyObligationsAndConsolidate(t *testing.T) {
+	testAttrFQN := "https://example.org/attr/test/value/v1"
+
+	tests := []struct {
+		name                 string
+		accumulated          []ResourceDecision
+		nextDecision         *Decision
+		obligationDecision   obligations.ObligationPolicyDecision
+		expectedConsolidated []ResourceDecision
+		expectedAudit        []ResourceDecision
+		expectedErr          error
+	}{
+		// First entity scenarios
+		{
+			name:        "first entity - no obligations",
+			accumulated: nil,
+			nextDecision: &Decision{
+				Results: []ResourceDecision{
+					{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: true},
+				},
+			},
+			obligationDecision: obligations.ObligationPolicyDecision{
+				RequiredObligationValueFQNs: []string{},
+				PerResourceDecisions:        []obligations.PerResourceDecision{},
+			},
+			expectedConsolidated: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil),
+			},
+			expectedAudit: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil),
+			},
+		},
+		{
+			name:        "first entity - with obligations satisfied",
+			accumulated: nil,
+			nextDecision: &Decision{
+				Results: []ResourceDecision{
+					{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: true},
+				},
+			},
+			obligationDecision: obligations.ObligationPolicyDecision{
+				AllObligationsSatisfied:     true,
+				RequiredObligationValueFQNs: []string{testObligation1FQN},
+				PerResourceDecisions:        []obligations.PerResourceDecision{mkPerResourceDecision(true, testObligation1FQN)},
+			},
+			expectedConsolidated: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, []string{testObligation1FQN}),
+			},
+			expectedAudit: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, []string{testObligation1FQN}),
+			},
+		},
+		{
+			name:        "first entity - obligations not satisfied",
+			accumulated: nil,
+			nextDecision: &Decision{
+				Results: []ResourceDecision{
+					{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: true},
+				},
+			},
+			obligationDecision: obligations.ObligationPolicyDecision{
+				AllObligationsSatisfied:     false,
+				RequiredObligationValueFQNs: []string{testObligation1FQN},
+				PerResourceDecisions:        []obligations.PerResourceDecision{mkPerResourceDecision(false, testObligation1FQN)},
+			},
+			expectedConsolidated: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, false, false, []string{testObligation1FQN}),
+			},
+			expectedAudit: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, false, false, []string{testObligation1FQN}),
+			},
+		},
+		{
+			name:        "first entity - not entitled",
+			accumulated: nil,
+			nextDecision: &Decision{
+				Results: []ResourceDecision{
+					{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: false},
+				},
+			},
+			obligationDecision: obligations.ObligationPolicyDecision{
+				AllObligationsSatisfied:     true,
+				RequiredObligationValueFQNs: []string{testObligation1FQN},
+				PerResourceDecisions:        []obligations.PerResourceDecision{mkPerResourceDecision(true, testObligation1FQN)},
+			},
+			expectedConsolidated: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, false, true, false, nil),
+			},
+			expectedAudit: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, false, true, false, []string{testObligation1FQN}),
+			},
+		},
+		// Second entity AND scenarios
+		{
+			name: "second entity - both entitled (AND succeeds)",
+			accumulated: []ResourceDecision{
+				{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: true, Passed: true, ObligationsSatisfied: true},
+			},
+			nextDecision: &Decision{
+				Results: []ResourceDecision{
+					{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: true},
+				},
+			},
+			obligationDecision: obligations.ObligationPolicyDecision{
+				RequiredObligationValueFQNs: []string{},
+				PerResourceDecisions:        []obligations.PerResourceDecision{},
+			},
+			expectedConsolidated: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil),
+			},
+			expectedAudit: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil),
+			},
+		},
+		{
+			name: "second entity - first entitled, second not (AND fails)",
+			accumulated: []ResourceDecision{
+				{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: true, Passed: true, ObligationsSatisfied: true},
+			},
+			nextDecision: &Decision{
+				Results: []ResourceDecision{
+					{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: false},
+				},
+			},
+			obligationDecision: obligations.ObligationPolicyDecision{
+				RequiredObligationValueFQNs: []string{},
+				PerResourceDecisions:        []obligations.PerResourceDecision{},
+			},
+			expectedConsolidated: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, false, true, false, nil),
+			},
+			expectedAudit: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, false, true, false, nil),
+			},
+		},
+		{
+			name: "second entity - obligations preserved when both entitled",
+			accumulated: []ResourceDecision{
+				{
+					ResourceID:                  testResource1ID,
+					ResourceName:                testResource1Name,
+					Entitled:                    true,
+					Passed:                      true,
+					ObligationsSatisfied:        true,
+					RequiredObligationValueFQNs: []string{testObligation1FQN},
+				},
+			},
+			nextDecision: &Decision{
+				Results: []ResourceDecision{
+					{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: true},
+				},
+			},
+			obligationDecision: obligations.ObligationPolicyDecision{
+				RequiredObligationValueFQNs: []string{},
+				PerResourceDecisions:        []obligations.PerResourceDecision{},
+			},
+			expectedConsolidated: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, []string{testObligation1FQN}),
+			},
+			expectedAudit: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil),
+			},
+		},
+		{
+			name: "second entity - obligations cleared when second not entitled",
+			accumulated: []ResourceDecision{
+				{
+					ResourceID:                  testResource1ID,
+					ResourceName:                testResource1Name,
+					Entitled:                    true,
+					Passed:                      true,
+					ObligationsSatisfied:        true,
+					RequiredObligationValueFQNs: []string{testObligation1FQN},
+				},
+			},
+			nextDecision: &Decision{
+				Results: []ResourceDecision{
+					{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: false},
+				},
+			},
+			obligationDecision: obligations.ObligationPolicyDecision{
+				RequiredObligationValueFQNs: []string{},
+				PerResourceDecisions:        []obligations.PerResourceDecision{},
+			},
+			expectedConsolidated: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, false, true, false, nil),
+			},
+			expectedAudit: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, false, true, false, nil),
+			},
+		},
+		// Multiple resources
+		{
+			name: "multiple resources - mixed entitlement",
+			accumulated: []ResourceDecision{
+				{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: true, Passed: true, ObligationsSatisfied: true},
+				{ResourceID: testResource2ID, ResourceName: testResource2Name, Entitled: false, Passed: false, ObligationsSatisfied: true},
+			},
+			nextDecision: &Decision{
+				Results: []ResourceDecision{
+					{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: true},
+					{ResourceID: testResource2ID, ResourceName: testResource2Name, Entitled: true},
+				},
+			},
+			obligationDecision: obligations.ObligationPolicyDecision{
+				RequiredObligationValueFQNs: []string{},
+				PerResourceDecisions:        []obligations.PerResourceDecision{{}, {}},
+			},
+			expectedConsolidated: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil),
+				mkExpectedResourceDecision(testResource2ID, testResource2Name, false, true, false, nil),
+			},
+			expectedAudit: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil),
+				mkExpectedResourceDecision(testResource2ID, testResource2Name, true, true, true, nil),
+			},
+		},
+		{
+			name:        "multiple resources - mixed obligations",
+			accumulated: nil,
+			nextDecision: &Decision{
+				Results: []ResourceDecision{
+					{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: true},
+					{ResourceID: testResource2ID, ResourceName: testResource2Name, Entitled: false},
+					{ResourceID: testResource3ID, ResourceName: testResource3Name, Entitled: true},
+				},
+			},
+			obligationDecision: obligations.ObligationPolicyDecision{
+				AllObligationsSatisfied:     false,
+				RequiredObligationValueFQNs: []string{testObligation1FQN, testObligation2FQN},
+				PerResourceDecisions: []obligations.PerResourceDecision{
+					mkPerResourceDecision(true, testObligation1FQN),
+					mkPerResourceDecision(false, testObligation2FQN),
+					mkPerResourceDecision(false, testObligation2FQN),
+				},
+			},
+			expectedConsolidated: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, []string{testObligation1FQN}),
+				mkExpectedResourceDecision(testResource2ID, testResource2Name, false, false, false, nil),
+				mkExpectedResourceDecision(testResource3ID, testResource3Name, true, false, false, []string{testObligation2FQN}),
+			},
+			expectedAudit: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, []string{testObligation1FQN}),
+				mkExpectedResourceDecision(testResource2ID, testResource2Name, false, false, false, []string{testObligation2FQN}),
+				mkExpectedResourceDecision(testResource3ID, testResource3Name, true, false, false, []string{testObligation2FQN}),
+			},
+		},
+		{
+			name:        "first entity - data rule results in audit only",
+			accumulated: nil,
+			nextDecision: &Decision{
+				Results: []ResourceDecision{
+					{
+						ResourceID:   testResource1ID,
+						ResourceName: testResource1Name,
+						Entitled:     true,
+						DataRuleResults: []DataRuleResult{
+							{
+								Passed:            true,
+								ResourceValueFQNs: []string{testAttrFQN},
+							},
+						},
+					},
+				},
+			},
+			obligationDecision: obligations.ObligationPolicyDecision{
+				RequiredObligationValueFQNs: []string{},
+				PerResourceDecisions:        []obligations.PerResourceDecision{},
+			},
+			expectedConsolidated: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil, DataRuleResult{
+					Passed:            true,
+					ResourceValueFQNs: []string{testAttrFQN},
+				}),
+			},
+			expectedAudit: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil, DataRuleResult{
+					Passed:            true,
+					ResourceValueFQNs: []string{testAttrFQN},
+				}),
+			},
+		},
+		{
+			name: "second entity - data rule results in audit only",
+			accumulated: []ResourceDecision{
+				{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: true, Passed: true, ObligationsSatisfied: true},
+			},
+			nextDecision: &Decision{
+				Results: []ResourceDecision{
+					{
+						ResourceID:   testResource1ID,
+						ResourceName: testResource1Name,
+						Entitled:     true,
+						DataRuleResults: []DataRuleResult{
+							{
+								Passed:            true,
+								ResourceValueFQNs: []string{testAttrFQN},
+							},
+						},
+					},
+				},
+			},
+			obligationDecision: obligations.ObligationPolicyDecision{
+				RequiredObligationValueFQNs: []string{},
+				PerResourceDecisions:        []obligations.PerResourceDecision{},
+			},
+			expectedConsolidated: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil),
+			},
+			expectedAudit: []ResourceDecision{
+				mkExpectedResourceDecision(testResource1ID, testResource1Name, true, true, true, nil, DataRuleResult{
+					Passed:            true,
+					ResourceValueFQNs: []string{testAttrFQN},
+				}),
+			},
+		},
+		// Error scenarios
+		{
+			name: "length mismatch error",
+			accumulated: []ResourceDecision{
+				{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: true},
+			},
+			nextDecision: &Decision{
+				Results: []ResourceDecision{
+					{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: true},
+					{ResourceID: testResource2ID, ResourceName: testResource2Name, Entitled: true},
+				},
+			},
+			obligationDecision: obligations.ObligationPolicyDecision{},
+			expectedErr:        ErrResourceDecisionLengthMismatch,
+		},
+		{
+			name: "resource ID mismatch error",
+			accumulated: []ResourceDecision{
+				{ResourceID: testResource1ID, ResourceName: testResource1Name, Entitled: true, Passed: true, ObligationsSatisfied: true},
+			},
+			nextDecision: &Decision{
+				Results: []ResourceDecision{
+					{ResourceID: testResource2ID, ResourceName: testResource2Name, Entitled: true},
+				},
+			},
+			obligationDecision: obligations.ObligationPolicyDecision{},
+			expectedErr:        ErrResourceDecisionIDMismatch,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			consolidated, audit, err := applyObligationsAndConsolidate(tt.accumulated, tt.nextDecision, tt.obligationDecision)
+
+			if tt.expectedErr != nil {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, tt.expectedErr)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Len(t, consolidated, len(tt.expectedConsolidated))
+			require.Len(t, audit, len(tt.expectedAudit))
+
+			for i := range consolidated {
+				assertResourceDecision(t, tt.expectedConsolidated[i], consolidated[i], i, "consolidated")
+			}
+
+			for i := range audit {
+				assertResourceDecision(t, tt.expectedAudit[i], audit[i], i, "audit")
 			}
 		})
 	}

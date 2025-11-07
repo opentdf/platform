@@ -117,7 +117,7 @@ func (s *AuthorizationServiceStepDefinitions) thereIsASubjectEntityWithValueAndR
 
 func (s *AuthorizationServiceStepDefinitions) iSendADecisionRequestForEntityChainForActionOnResource(ctx context.Context, entityChainID, action, resource string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
-	
+
 	// Try v2 API first (supports obligations)
 	err := s.sendDecisionRequestV2(ctx, scenarioContext, entityChainID, action, resource)
 	if err == nil {
@@ -125,19 +125,19 @@ func (s *AuthorizationServiceStepDefinitions) iSendADecisionRequestForEntityChai
 		scenarioContext.RecordObject("api_version", "v2")
 		return ctx, nil
 	}
-	
+
 	// Check if it's an "unimplemented" or "not found" error indicating v2 API is unavailable
 	// If so, fall back to v1 API
 	errStr := err.Error()
-	if strings.Contains(errStr, "Unimplemented") || 
-	   strings.Contains(errStr, "not found") ||
-	   strings.Contains(errStr, "404") ||
-	   strings.Contains(errStr, "unimplemented") {
+	if strings.Contains(errStr, "Unimplemented") ||
+		strings.Contains(errStr, "not found") ||
+		strings.Contains(errStr, "404") ||
+		strings.Contains(errStr, "unimplemented") {
 		fmt.Printf("⚠️  Authorization v2 API not available, falling back to v1 (obligations not supported)\n")
 		scenarioContext.RecordObject("api_version", "v1")
 		return s.sendDecisionRequestV1(ctx, scenarioContext, entityChainID, action, resource)
 	}
-	
+
 	// If it's a different error, return it
 	return ctx, err
 }
@@ -151,13 +151,13 @@ func (s *AuthorizationServiceStepDefinitions) sendDecisionRequestV2(ctx context.
 		if !ok {
 			return fmt.Errorf("object not of expected type Entity")
 		}
-		
+
 		// Convert v1 Entity to v2 entity.Entity
 		v2Entity := &entity.Entity{
 			EphemeralId: v1Entity.GetId(),
 			Category:    convertEntityCategoryToV2(v1Entity.GetCategory()),
 		}
-		
+
 		// Convert entity type
 		switch et := v1Entity.GetEntityType().(type) {
 		case *authorization.Entity_EmailAddress:
@@ -177,7 +177,7 @@ func (s *AuthorizationServiceStepDefinitions) sendDecisionRequestV2(ctx context.
 				ClientId: et.ClientId,
 			}
 		}
-		
+
 		entities = append(entities, v2Entity)
 	}
 
@@ -217,7 +217,7 @@ func (s *AuthorizationServiceStepDefinitions) sendDecisionRequestV2(ctx context.
 	if err != nil {
 		return err
 	}
-	
+
 	scenarioContext.RecordObject(decisionResponse, resp)
 	return nil
 }
@@ -227,7 +227,7 @@ func (s *AuthorizationServiceStepDefinitions) sendDecisionRequestV1(ctx context.
 	entityChain := &authorization.EntityChain{
 		Entities: []*authorization.Entity{},
 	}
-	
+
 	for _, entityID := range strings.Split(entityChainID, ",") {
 		entity, ok := scenarioContext.GetObject(strings.TrimSpace(entityID)).(*authorization.Entity)
 		if !ok {
@@ -235,12 +235,12 @@ func (s *AuthorizationServiceStepDefinitions) sendDecisionRequestV1(ctx context.
 		}
 		entityChain.Entities = append(entityChain.Entities, entity)
 	}
-	
+
 	var resourceFQNs []string
 	for r := range strings.SplitSeq(resource, ",") {
 		resourceFQNs = append(resourceFQNs, strings.TrimSpace(r))
 	}
-	
+
 	resp, err := scenarioContext.SDK.Authorization.GetDecisions(ctx, &authorization.GetDecisionsRequest{
 		DecisionRequests: []*authorization.DecisionRequest{
 			{
@@ -256,7 +256,7 @@ func (s *AuthorizationServiceStepDefinitions) sendDecisionRequestV1(ctx context.
 			},
 		},
 	})
-	
+
 	scenarioContext.SetError(err)
 	scenarioContext.RecordObject(decisionResponse, resp)
 	return ctx, nil
@@ -265,7 +265,7 @@ func (s *AuthorizationServiceStepDefinitions) sendDecisionRequestV1(ctx context.
 // Helper to get all obligation value FQNs from the scenario context
 func getAllObligationsFromScenario(scenarioContext *PlatformScenarioContext) []string {
 	var obligationFQNs []string
-	
+
 	// Get all obligations stored in the scenario context
 	for key, obj := range scenarioContext.objects {
 		if obligation, ok := obj.(*policy.Obligation); ok {
@@ -276,7 +276,7 @@ func getAllObligationsFromScenario(scenarioContext *PlatformScenarioContext) []s
 			_ = key // unused
 		}
 	}
-	
+
 	return obligationFQNs
 }
 
@@ -294,7 +294,7 @@ func convertEntityCategoryToV2(v1Cat authorization.Entity_Category) entity.Entit
 
 func (s *AuthorizationServiceStepDefinitions) iShouldGetADecisionResponse(ctx context.Context, expectedResponse string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
-	
+
 	// Try v2 response first
 	if getDecisionsResponseV2, ok := scenarioContext.GetObject(decisionResponse).(*authzV2.GetDecisionResponse); ok {
 		expectedResponse = "DECISION_" + expectedResponse
@@ -304,7 +304,7 @@ func (s *AuthorizationServiceStepDefinitions) iShouldGetADecisionResponse(ctx co
 		}
 		return ctx, nil
 	}
-	
+
 	// Fall back to v1 response
 	getDecisionsResponse, ok := scenarioContext.GetObject(decisionResponse).(*authorization.GetDecisionsResponse)
 	if !ok {

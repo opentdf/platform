@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/authorization"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 )
@@ -290,51 +291,92 @@ func (s *ObligationsStepDefinitions) iSendAMultiResourceDecisionRequestForEntity
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	scenarioContext.ClearError()
 
-	entityChain := &authorization.EntityChain{
-		Entities: []*authorization.Entity{},
-	}
-
+	// Build entity chain for v2 API
+	var entities []*entity.Entity
 	for _, entityID := range strings.Split(entityChainID, ",") {
-		entity, ok := scenarioContext.GetObject(strings.TrimSpace(entityID)).(*authorization.Entity)
+		v1Entity, ok := scenarioContext.GetObject(strings.TrimSpace(entityID)).(*authorization.Entity)
 		if !ok {
 			return ctx, fmt.Errorf("entity %s not found or invalid type", entityID)
 		}
-		entityChain.Entities = append(entityChain.Entities, entity)
+
+		// Convert v1 Entity to v2 entity.Entity
+		v2Entity := &entity.Entity{
+			EphemeralId: v1Entity.GetId(),
+			Category:    convertEntityCategoryToV2(v1Entity.GetCategory()),
+		}
+
+		// Convert entity type
+		switch et := v1Entity.GetEntityType().(type) {
+		case *authorization.Entity_EmailAddress:
+			v2Entity.EntityType = &entity.Entity_EmailAddress{
+				EmailAddress: et.EmailAddress,
+			}
+		case *authorization.Entity_UserName:
+			v2Entity.EntityType = &entity.Entity_UserName{
+				UserName: et.UserName,
+			}
+		case *authorization.Entity_Claims:
+			v2Entity.EntityType = &entity.Entity_Claims{
+				Claims: et.Claims,
+			}
+		case *authorization.Entity_ClientId:
+			v2Entity.EntityType = &entity.Entity_ClientId{
+				ClientId: et.ClientId,
+			}
+		}
+
+		entities = append(entities, v2Entity)
 	}
 
-	var resourceFQNs []string
+	entityChain := &entity.EntityChain{
+		Entities: entities,
+	}
+
+	// Parse resource FQNs from table
+	var resources []*authzV2.Resource
+	resourceFQNMap := make(map[string]string) // map ephemeral ID to FQN
+	resourceIdx := 0
 	for ri, row := range tbl.Rows {
 		if ri == 0 {
 			continue // Skip header
 		}
 		for _, cell := range row.Cells {
-			resourceFQNs = append(resourceFQNs, strings.TrimSpace(cell.Value))
+			fqn := strings.TrimSpace(cell.Value)
+			ephemeralID := fmt.Sprintf("resource%d", resourceIdx)
+			resourceFQNMap[ephemeralID] = fqn
+			resources = append(resources, &authzV2.Resource{
+				EphemeralId: ephemeralID,
+				Resource: &authzV2.Resource_AttributeValues_{
+					AttributeValues: &authzV2.Resource_AttributeValues{
+						Fqns: []string{fqn},
+					},
+				},
+			})
+			resourceIdx++
 		}
 	}
 
-	var resourceAttributes []*authorization.ResourceAttribute
-	for _, fqn := range resourceFQNs {
-		resourceAttributes = append(resourceAttributes, &authorization.ResourceAttribute{
-			ResourceAttributesId: fqn,
-			AttributeValueFqns:   []string{fqn},
-		})
-	}
-
-	resp, err := scenarioContext.SDK.Authorization.GetDecisions(ctx, &authorization.GetDecisionsRequest{
-		DecisionRequests: []*authorization.DecisionRequest{
-			{
-				Actions: []*policy.Action{
-					{Name: strings.ToLower(action)},
-				},
-				EntityChains:       []*authorization.EntityChain{entityChain},
-				ResourceAttributes: resourceAttributes,
+	// Create v2 multi-resource decision request
+	req := &authzV2.GetDecisionMultiResourceRequest{
+		EntityIdentifier: &authzV2.EntityIdentifier{
+			Identifier: &authzV2.EntityIdentifier_EntityChain{
+				EntityChain: entityChain,
 			},
 		},
-	})
+		Action: &policy.Action{
+			Name: strings.ToLower(action),
+		},
+		Resources: resources,
+		// For testing purposes, we declare that we can fulfill all obligations
+		FulfillableObligationFqns: getAllObligationsFromScenario(scenarioContext),
+	}
+
+	resp, err := scenarioContext.SDK.AuthorizationV2.GetDecisionMultiResource(ctx, req)
 
 	scenarioContext.SetError(err)
 	scenarioContext.RecordObject(multiDecisionResponseKey, resp)
 	scenarioContext.RecordObject("decisionResponse", resp) // Also store as single response for compatibility
+	scenarioContext.RecordObject("resourceFQNMap", resourceFQNMap) // Store mapping for validation
 
 	return ctx, nil
 }
@@ -343,6 +385,16 @@ func (s *ObligationsStepDefinitions) iSendAMultiResourceDecisionRequestForEntity
 func (s *ObligationsStepDefinitions) iShouldGetNDecisionResponses(ctx context.Context, count int) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	
+	// Try v2 multi-resource response first
+	if decisionRespV2, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authzV2.GetDecisionMultiResourceResponse); ok {
+		actualCount := len(decisionRespV2.GetResourceDecisions())
+		if actualCount != count {
+			return ctx, fmt.Errorf("expected %d decision responses, got %d", count, actualCount)
+		}
+		return ctx, nil
+	}
+	
+	// Fall back to v1 response
 	decisionResp, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authorization.GetDecisionsResponse)
 	if !ok {
 		return ctx, fmt.Errorf("multi-decision response not found or invalid")
@@ -366,6 +418,27 @@ func (s *ObligationsStepDefinitions) theDecisionResponseForResourceShouldContain
 		return ctx, nil
 	}
 	
+	// Try v2 multi-resource response first
+	if decisionRespV2, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authzV2.GetDecisionMultiResourceResponse); ok {
+		// Get the FQN map to find the ephemeral ID for this resource
+		resourceFQNMap, _ := scenarioContext.GetObject("resourceFQNMap").(map[string]string)
+		
+		// Find the resource decision by matching FQN
+		for _, rd := range decisionRespV2.GetResourceDecisions() {
+			// Check if this resource decision matches our FQN
+			if fqn, exists := resourceFQNMap[rd.GetEphemeralResourceId()]; exists && fqn == resourceFQN {
+				for _, obl := range rd.GetRequiredObligations() {
+					if obl == obligationFQN {
+						return ctx, nil
+					}
+				}
+				return ctx, fmt.Errorf("obligation %s not found for resource %s. Found: %v", obligationFQN, resourceFQN, rd.GetRequiredObligations())
+			}
+		}
+		return ctx, fmt.Errorf("resource %s not found in decision responses", resourceFQN)
+	}
+	
+	// Fall back to v1 response
 	decisionResp, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authorization.GetDecisionsResponse)
 	if !ok {
 		return ctx, fmt.Errorf("multi-decision response not found or invalid")
@@ -395,6 +468,25 @@ func (s *ObligationsStepDefinitions) theDecisionResponseForResourceShouldNotCont
 		return ctx, nil
 	}
 	
+	// Try v2 multi-resource response first
+	if decisionRespV2, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authzV2.GetDecisionMultiResourceResponse); ok {
+		// Get the FQN map to find the ephemeral ID for this resource
+		resourceFQNMap, _ := scenarioContext.GetObject("resourceFQNMap").(map[string]string)
+		
+		// Find the resource decision by matching FQN
+		for _, rd := range decisionRespV2.GetResourceDecisions() {
+			// Check if this resource decision matches our FQN
+			if fqn, exists := resourceFQNMap[rd.GetEphemeralResourceId()]; exists && fqn == resourceFQN {
+				if len(rd.GetRequiredObligations()) > 0 {
+					return ctx, fmt.Errorf("expected no obligations for resource %s, but found: %v", resourceFQN, rd.GetRequiredObligations())
+				}
+				return ctx, nil
+			}
+		}
+		return ctx, fmt.Errorf("resource %s not found in decision responses", resourceFQN)
+	}
+	
+	// Fall back to v1 response
 	decisionResp, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authorization.GetDecisionsResponse)
 	if !ok {
 		return ctx, fmt.Errorf("multi-decision response not found or invalid")

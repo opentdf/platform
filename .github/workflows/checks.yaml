@@ -414,6 +414,9 @@ jobs:
           if echo "$BRANCH_NAME" | grep -Eq '^backport-[0-9]+-to-release/sdk/v[0-9]+\.[0-9]+(\.[0-9]+)?$'; then IS_SDK_BACKPORT_BRANCH=true; fi
           if [ -n "$BASE_REF" ] && echo "$BASE_REF" | grep -Eq '^release/sdk/v[0-9]+\.[0-9]+(\.[0-9]+)?$'; then IS_SDK_RELEASE_BRANCH_AS_BASE=true; fi
 
+          echo "IS_SDK_BACKPORT_BRANCH=$IS_SDK_BACKPORT_BRANCH"
+          echo "IS_SDK_RELEASE_BRANCH_AS_BASE=$IS_SDK_RELEASE_BRANCH_AS_BASE"
+
           if [ "$IS_SDK_BACKPORT_BRANCH" = true ] && [ "$IS_SDK_RELEASE_BRANCH_AS_BASE" = true ]; then
             echo "is_backport=true" >> "$GITHUB_OUTPUT"
           else
@@ -439,6 +442,7 @@ jobs:
 
             // derive sdk_ref from the triggering branch
             const sdkRef = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME || '';
+            core.info(`sdkRef=${sdkRef}`);
             if (process.env.GITHUB_ENV) {
               fs.appendFileSync(process.env.GITHUB_ENV, `SDK_REF=${sdkRef}\n`);
             }
@@ -446,18 +450,24 @@ jobs:
             let platformRef = 'main';
             try {
               const manifestPath = path.join('.github', 'release-please', 'release-please-manifest.json');
-              if (fs.existsSync(manifestPath)) {
+              const exists = fs.existsSync(manifestPath);
+              core.info(`manifestPath=${manifestPath} exists=${exists}`);
+              if (exists) {
                 const data = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
                 const serviceVer = data?.service;
+                core.info(`serviceVer=${serviceVer}`);
                 if (serviceVer && typeof serviceVer === 'string' && serviceVer.length > 0) {
-                  # ? Should we use --prune-tags here?
-                  try { execSync('git fetch --tags', { stdio: 'ignore' }); } catch (_) {}
+                  // optionally prune stale tags if needed
+                  try { execSync('git fetch --tags', { stdio: 'ignore' }); core.info('Fetched tags'); } catch (e) { core.info(`fetch tags ignored: ${e.message}`); }
                   const tag = `service/v${serviceVer}`;
+                  core.info(`candidate tag=${tag}`);
                   try {
                     execSync(`git rev-parse -q --verify refs/tags/${tag}`, { stdio: 'ignore' });
                     platformRef = tag;
+                    core.info(`verified tag exists, platformRef=${platformRef}`);
                   } catch (_) {
                     // No matching tag found; keep default of 'main'
+                    core.info('no matching tag found; using main');
                   }
                 }
               }

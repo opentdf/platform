@@ -479,10 +479,10 @@ jobs:
           TESTRAIL_USER: ${{ secrets.TESTRAIL_USER }}
           TESTRAIL_PASS: ${{ secrets.TESTRAIL_PASS }}
 
-  buflint:
+  buflint-and-gencode-checks:
     permissions:
       contents: read
-    name: Protocol Buffer Lint and Gencode Up-to-date check
+    name: Protocol Buffer Lint and All Gencode Up-to-date check
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -515,6 +515,12 @@ jobs:
       - run: make proto-generate
       - name: generate connect wrappers
         run: make connect-wrapper-generate
+
+      # Gencode for Database (SQLc) and ERD documentation
+      - run: cd service && go install github.com/KarnerTh/mermerd@v0.12.0
+      - run: cd service && go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0
+      - run: make policy-erd-gen policy-sql-gen
+
       # Ensure all generated files are staged before checking for diffs
       - run: git add docs/openapi/* docs/grpc/* || true
       - name: Restore go.mod after installing protoc-gen-doc
@@ -532,7 +538,7 @@ jobs:
   ci:
     permissions: {}
     needs:
-      - buflint
+      - buflint-and-gencode-checks
       - go
       - image
       - integration

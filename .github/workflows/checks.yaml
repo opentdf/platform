@@ -412,8 +412,8 @@ jobs:
 
           IS_SDK_BACKPORT_BRANCH=false
           IS_SDK_RELEASE_BRANCH_AS_BASE=false
-          if echo "$BRANCH_NAME" | grep -Eq '^backport-[0-9]+-to-release/sdk/v[0-9]+\.[0-9]+\.[0-9]+$'; then IS_SDK_BACKPORT_BRANCH=true; fi
-          if [ -n "$BASE_REF" ] && echo "$BASE_REF" | grep -Eq '^release/sdk/v[0-9]+\.[0-9]+\.[0-9]+$'; then IS_SDK_RELEASE_BRANCH_AS_BASE=true; fi
+          if echo "$BRANCH_NAME" | grep -Eq '^backport-[0-9]+-to-release/sdk/v[0-9]+\.[0-9]+(\.[0-9]+)?$'; then IS_SDK_BACKPORT_BRANCH=true; fi
+          if [ -n "$BASE_REF" ] && echo "$BASE_REF" | grep -Eq '^release/sdk/v[0-9]+\.[0-9]+(\.[0-9]+)?$'; then IS_SDK_RELEASE_BRANCH_AS_BASE=true; fi
 
           if [ "$IS_SDK_BACKPORT_BRANCH" = true ] && [ "$IS_SDK_RELEASE_BRANCH_AS_BASE" = true ]; then
             echo "is_backport=true"

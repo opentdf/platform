@@ -453,7 +453,8 @@ jobs:
                 const data = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
                 const serviceVer = data?.service;
                 if (serviceVer && typeof serviceVer === 'string' && serviceVer.length > 0) {
-                  try { execSync('git fetch --tags --prune', { stdio: 'ignore' }); } catch (_) {}
+                  # ? Should we use --prune-tags here?
+                  try { execSync('git fetch --tags', { stdio: 'ignore' }); } catch (_) {}
                   const tag = `service/v${serviceVer}`;
                   try {
                     execSync(`git rev-parse -q --verify refs/tags/${tag}`, { stdio: 'ignore' });

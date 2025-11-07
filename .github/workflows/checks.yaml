@@ -416,13 +416,15 @@ jobs:
           if [ -n "$BASE_REF" ] && echo "$BASE_REF" | grep -Eq '^release/sdk/v[0-9]+\.[0-9]+(\.[0-9]+)?$'; then IS_SDK_RELEASE_BRANCH_AS_BASE=true; fi
 
           if [ "$IS_SDK_BACKPORT_BRANCH" = true ] && [ "$IS_SDK_RELEASE_BRANCH_AS_BASE" = true ]; then
-            echo "is_backport=true"
+            is_backport = true
+            echo "is_backport" >> "$GITHUB_OUTPUT"
             echo "IS_SDK_BACKPORT=true" >> "$GITHUB_ENV"
           else
-            echo "is_backport=false"
+            is_backport = false
+            echo "is_backport" >> "$GITHUB_OUTPUT"
             echo "IS_SDK_BACKPORT=false" >> "$GITHUB_ENV"
           fi
-          # expose for debugging if needed
+
       - name: Checkout repository (for manifest and tags)
         if: steps.detect.outputs.is_backport == 'true'
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0

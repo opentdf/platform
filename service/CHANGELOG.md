@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.3](https://github.com/opentdf/platform/compare/service/v0.11.2...service/v0.11.3) (2025-11-07)
+
+
+### Features
+
+* **kas:** Add nano policy binding to rewrap audit. [backport to release/service/v0.11] ([#2880](https://github.com/opentdf/platform/issues/2880)) ([d8558f3](https://github.com/opentdf/platform/commit/d8558f3236d4f3026138824adafc39cb070bdadf))
+
+
+### Bug Fixes
+
+* **authz:** if entity identifier results in multiple representations, treat with AND in resource decision results [backport to release/service/v0.11] ([#2887](https://github.com/opentdf/platform/issues/2887)) ([f772064](https://github.com/opentdf/platform/commit/f772064f4588f4e8d4c3fe94c481c72b2c8c1fd0))
+* **kas:** populate rewrap audit log [backport to release/service/v0.11] ([#2867](https://github.com/opentdf/platform/issues/2867)) ([f460972](https://github.com/opentdf/platform/commit/f460972992fe349ed559271e6391ab8202521822))
+
 ## [0.11.2](https://github.com/opentdf/platform/compare/service/v0.11.1...service/v0.11.2) (2025-10-30)
 
 

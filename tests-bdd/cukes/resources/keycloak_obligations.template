@@ -1,0 +1,122 @@
+baseUrl: &baseUrl https://{{.hostname}}:{{.kcPort}}
+serverBaseUrl: &serverBaseUrl https://{{.hostname}}:{{.platformPort}}
+redirectUris: &redirectUris
+  - https://{{.hostname}}:{{.platformPort}}/*
+  - https://{{.hostname}}:{{.platformPort2}}/*
+webOrigins: &webOrigins
+  - *serverBaseUrl
+customAudMapper: &customAudMapper
+  name: audience-mapper
+  protocol: openid-connect
+  protocolMapper: oidc-audience-mapper
+  config:
+    included.client.audience: *serverBaseUrl
+    access.token.claim: 'true'
+    id.token.claim: 'true'
+realms:
+  - realm_repepresentation:
+      realm: {{.realm}}
+      enabled: true
+    custom_realm_roles:
+      - name: opentdf-org-admin
+      - name: opentdf-admin
+      - name: opentdf-standard
+    custom_groups:
+      - name: mygroup
+        attributes:
+          mygroupattribute:
+            - mygroupvalue
+    clients:
+      - client:
+          clientID: opentdf
+          enabled: true
+          name: opentdf
+          serviceAccountsEnabled: true
+          clientAuthenticatorType: client-secret
+          secret: secret
+          protocolMappers:
+            - *customAudMapper
+        sa_realm_roles:
+          - opentdf-org-admin
+      - client:
+          clientID: opentdf-admin
+          enabled: true
+          name: opentdf
+          serviceAccountsEnabled: true
+          clientAuthenticatorType: client-secret
+          secret: secret
+          protocolMappers:
+            - *customAudMapper
+        sa_realm_roles:
+          - opentdf-admin
+      - client:
+          clientID: opentdf-standard
+          enabled: true
+          name: opentdf
+          serviceAccountsEnabled: true
+          clientAuthenticatorType: client-secret
+          secret: secret
+          protocolMappers:
+            - *customAudMapper
+        sa_realm_roles:
+          - opentdf-standard
+      - client:
+          clientID: test-client
+          enabled: true
+          name: test-client
+          serviceAccountsEnabled: true
+          clientAuthenticatorType: client-secret
+          secret: secret
+          protocolMappers:
+            - *customAudMapper
+        sa_realm_roles:
+          - opentdf-standard
+    users:
+      - username: alice
+        enabled: true
+        firstName: Alice
+        lastName: User
+        email: alice@example.com
+        credentials:
+          - value: testuser123
+            type: password
+        attributes:
+          clearance:
+            - TS
+            - "Top Secret"
+          country:
+            - USA
+        realmRoles:
+          - opentdf-standard
+      - username: bob
+        enabled: true
+        firstName: Bob
+        lastName: User
+        email: bob@example.com
+        credentials:
+          - value: testuser123
+            type: password
+        attributes:
+          clearance:
+            - S
+            - Secret
+          country:
+            - USA
+        realmRoles:
+          - opentdf-standard
+      - username: charlie
+        enabled: true
+        firstName: Charlie
+        lastName: User
+        email: charlie@example.com
+        credentials:
+          - value: testuser123
+            type: password
+        attributes:
+          clearance:
+            - C
+            - Confidential
+          country:
+            - GBR
+        realmRoles:
+          - opentdf-standard

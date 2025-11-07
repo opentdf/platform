@@ -141,7 +141,7 @@ TBD
 You can use the `--godog.tags` option to run subsets of scenarios based on their tags. For example:
 
 ```shell
-go test ./tests-bdd/platform_test.go -v --tags=cukes --godog.tags="@fast or @unit"
+go test ./tests-bdd/platform_test.go -v --tags=cukes --godog.tags="@fast,@unit"
 ```
 
 This will run only scenarios that have either the `@fast` or `@unit` tag. You can use complex expressions with `and`, `or`, and `not` operators:
@@ -149,6 +149,8 @@ This will run only scenarios that have either the `@fast` or `@unit` tag. You ca
 ```shell
 go test ./tests-bdd/platform_test.go -v --tags=cukes --godog.tags="@fast and not @slow"
 ```
+
+Note: Godog uses commas (`,`) for OR logic, the word `and` for AND logic, and `not` for negation.
 
 The tags option works with any of the test files, allowing you to run specific subsets of scenarios across different test groups.
 

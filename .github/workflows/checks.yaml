@@ -402,8 +402,10 @@ jobs:
         shell: bash
         run: |
           BRANCH_NAME="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          echo "$BRANCH_NAME"
           # Determine base branch of PR if available
           BASE_REF="${GITHUB_BASE_REF:-}"
+          echo "$BASE_REF"
           if [ -z "$BASE_REF" ] && [ -n "$GITHUB_EVENT_PATH" ] && [ -f "$GITHUB_EVENT_PATH" ]; then
             BASE_REF=$(jq -r '.pull_request.base.ref // empty' "$GITHUB_EVENT_PATH" 2>/dev/null || true)
           fi

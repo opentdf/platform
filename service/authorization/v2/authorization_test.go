@@ -1,12 +1,12 @@
 package authorization
 
 import (
-	"errors"
 	"math/rand"
 	"strconv"
 	"testing"
 
 	"buf.build/go/protovalidate"
+	"github.com/opentdf/platform/lib/identifier"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
@@ -23,6 +24,7 @@ var (
 	sampleResourceFQN           = "https://example.com/attr/hier/value/highest"
 	sampleResourceFQN2          = "https://example.com/attr/hier/value/lowest"
 	sampleRegisteredResourceFQN = "https://example.com/reg_res/system/value/internal"
+	sampleObligationValueFQN    = "https://example.com/obl/drm/value/prevent_print"
 
 	// Good multi-resource requests that should pass validation
 	goodMultiResourceRequests = []struct {
@@ -127,6 +129,27 @@ var (
 		{
 			name: "missing entity identifier",
 			request: &authzV2.GetDecisionMultiResourceRequest{
+				Action: sampleActionCreate,
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_AttributeValues_{
+							AttributeValues: &authzV2.Resource_AttributeValues{
+								Fqns: []string{sampleResourceFQN},
+							},
+						},
+					},
+				},
+			},
+			expectedValidationError: "entity_identifier",
+		},
+		{
+			name: "entity identifier - request token invalid",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_WithRequestToken{
+						WithRequestToken: wrapperspb.Bool(false),
+					},
+				},
 				Action: sampleActionCreate,
 				Resources: []*authzV2.Resource{
 					{
@@ -353,6 +376,62 @@ var (
 			},
 			expectedValidationError: "registered_resource_value_fqn",
 		},
+		{
+			name: "too many obligations",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_EntityChain{
+						EntityChain: &entity.EntityChain{
+							EphemeralId: "1234",
+							Entities: []*entity.Entity{
+								{
+									EphemeralId: "chained-1",
+									EntityType:  &entity.Entity_EmailAddress{EmailAddress: "test@test.com"},
+									Category:    entity.Entity_CATEGORY_SUBJECT,
+								},
+							},
+						},
+					},
+				},
+				Action: sampleActionCreate,
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_AttributeValues_{
+							AttributeValues: &authzV2.Resource_AttributeValues{
+								Fqns: []string{sampleResourceFQN},
+							},
+						},
+					},
+					{
+						Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+							RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+						},
+					},
+				},
+				FulfillableObligationFqns: getTooManyObligations(),
+			},
+			expectedValidationError: "obligation_value_fqns_valid",
+		},
+		{
+			name: "invalid obligation",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				Action: sampleActionCreate,
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+							RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+						},
+					},
+				},
+				FulfillableObligationFqns: []string{"missing.scheme/obl/name/value/val"},
+			},
+			expectedValidationError: "obligation_value_fqns_valid",
+		},
 	}
 )
 
@@ -418,6 +497,10 @@ func Test_Resource_ManyAttributeValues(t *testing.T) {
 
 func Test_GetDecisionRequest_Succeeds(t *testing.T) {
 	v := getValidator()
+	fiftyObligations := make([]string, 50)
+	for i := range 50 {
+		fiftyObligations[i] = sampleObligationValueFQN
+	}
 
 	cases := []struct {
 		name    string
@@ -432,6 +515,24 @@ func Test_GetDecisionRequest_Succeeds(t *testing.T) {
 							EphemeralId: "123",
 							Jwt:         "sample-jwt-token",
 						},
+					},
+				},
+				Action: sampleActionCreate,
+				Resource: &authzV2.Resource{
+					Resource: &authzV2.Resource_AttributeValues_{
+						AttributeValues: &authzV2.Resource_AttributeValues{
+							Fqns: []string{sampleResourceFQN},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "entity: use request token, action: create, resource: attribute values",
+			request: &authzV2.GetDecisionRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_WithRequestToken{
+						WithRequestToken: wrapperspb.Bool(true),
 					},
 				},
 				Action: sampleActionCreate,
@@ -558,6 +659,40 @@ func Test_GetDecisionRequest_Succeeds(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "entity: registered resource, action: create, resource: registered, obligations - 1",
+			request: &authzV2.GetDecisionRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				Action: sampleActionCreate,
+				Resource: &authzV2.Resource{
+					Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				FulfillableObligationFqns: []string{sampleObligationValueFQN},
+			},
+		},
+		{
+			name: "entity: registered resource, action: create, resource: registered, obligations - 50",
+			request: &authzV2.GetDecisionRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				Action: sampleActionCreate,
+				Resource: &authzV2.Resource{
+					Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				FulfillableObligationFqns: fiftyObligations,
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -570,6 +705,7 @@ func Test_GetDecisionRequest_Succeeds(t *testing.T) {
 
 func Test_GetDecisionRequest_Fails(t *testing.T) {
 	v := getValidator()
+
 	cases := []struct {
 		name                    string
 		request                 *authzV2.GetDecisionRequest
@@ -578,6 +714,44 @@ func Test_GetDecisionRequest_Fails(t *testing.T) {
 		{
 			name: "missing entity identifier",
 			request: &authzV2.GetDecisionRequest{
+				Action: sampleActionCreate,
+				Resource: &authzV2.Resource{
+					Resource: &authzV2.Resource_AttributeValues_{
+						AttributeValues: &authzV2.Resource_AttributeValues{
+							Fqns: []string{sampleResourceFQN},
+						},
+					},
+				},
+			},
+			expectedValidationError: "entity_identifier",
+		},
+		{
+			name: "entity identifier (request token) but nil",
+			request: &authzV2.GetDecisionRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_WithRequestToken{
+						WithRequestToken: nil,
+					},
+				},
+				Action: sampleActionCreate,
+				Resource: &authzV2.Resource{
+					Resource: &authzV2.Resource_AttributeValues_{
+						AttributeValues: &authzV2.Resource_AttributeValues{
+							Fqns: []string{sampleResourceFQN},
+						},
+					},
+				},
+			},
+			expectedValidationError: "entity_identifier",
+		},
+		{
+			name: "entity identifier (request token) but false",
+			request: &authzV2.GetDecisionRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_WithRequestToken{
+						WithRequestToken: wrapperspb.Bool(false),
+					},
+				},
 				Action: sampleActionCreate,
 				Resource: &authzV2.Resource{
 					Resource: &authzV2.Resource_AttributeValues_{
@@ -771,6 +945,42 @@ func Test_GetDecisionRequest_Fails(t *testing.T) {
 			},
 			expectedValidationError: "entities",
 		},
+		{
+			name: "too many obligations",
+			request: &authzV2.GetDecisionRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				Action: sampleActionCreate,
+				Resource: &authzV2.Resource{
+					Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				FulfillableObligationFqns: getTooManyObligations(),
+			},
+			expectedValidationError: "obligation_value_fqns_valid",
+		},
+		{
+			name: "invalid obligation format",
+			request: &authzV2.GetDecisionRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				Action: sampleActionCreate,
+				Resource: &authzV2.Resource{
+					Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				FulfillableObligationFqns: []string{"invalid-format"},
+			},
+			expectedValidationError: "obligation_value_fqns_valid",
+		},
 	}
 
 	for _, tc := range cases {
@@ -791,6 +1001,8 @@ func Test_GetDecisionMultiResourceRequest_Succeeds(t *testing.T) {
 	// All known good cases should pass
 	for _, tc := range goodMultiResourceRequests {
 		t.Run(tc.name, func(t *testing.T) {
+			clonedReq, _ := proto.Clone(tc.request).(*authzV2.GetDecisionMultiResourceRequest)
+			clonedReq.FulfillableObligationFqns = getRandomValidObligationValueFQNsList()
 			err := v.Validate(tc.request)
 			require.NoError(t, err, "validation should succeed for request: %s", tc.name)
 		})
@@ -874,6 +1086,7 @@ func Test_GetDecisionBulkRequest_Succeeds(t *testing.T) {
 			clonedReq.Action = &policy.Action{
 				Name: actions[rand.Intn(len(actions))],
 			}
+			clonedReq.FulfillableObligationFqns = getRandomValidObligationValueFQNsList()
 			reqs[j] = clonedReq
 		}
 		for j := firstCount; j < firstCount+secondCount; j++ {
@@ -882,6 +1095,7 @@ func Test_GetDecisionBulkRequest_Succeeds(t *testing.T) {
 			clonedReq.Action = &policy.Action{
 				Name: actions[rand.Intn(len(actions))],
 			}
+			clonedReq.FulfillableObligationFqns = getRandomValidObligationValueFQNsList()
 			reqs[j] = clonedReq
 		}
 
@@ -1147,123 +1361,24 @@ func Test_GetEntitlementsRequest_Fails(t *testing.T) {
 	}
 }
 
-func Test_RollupSingleResourceDecision(t *testing.T) {
+func Test_RollupResourceDecisions(t *testing.T) {
 	tests := []struct {
-		name            string
-		permitted       bool
-		decisions       []*access.Decision
-		expectedResult  *authzV2.GetDecisionResponse
-		expectedError   error
-		errorMsgContain string
-	}{
-		{
-			name:      "should return permit decision when permitted is true",
-			permitted: true,
-			decisions: []*access.Decision{
-				{
-					Access: true,
-					Results: []access.ResourceDecision{
-						{
-							ResourceID: "resource-123",
-						},
-					},
-				},
-			},
-			expectedResult: &authzV2.GetDecisionResponse{
-				Decision: &authzV2.ResourceDecision{
-					Decision:            authzV2.Decision_DECISION_PERMIT,
-					EphemeralResourceId: "resource-123",
-				},
-			},
-			expectedError: nil,
-		},
-		{
-			name:      "should return deny decision when permitted is false",
-			permitted: false,
-			decisions: []*access.Decision{
-				{
-					Access: true, // Verify permitted takes precedence
-					Results: []access.ResourceDecision{
-						{
-							ResourceID: "resource-123",
-						},
-					},
-				},
-			},
-			expectedResult: &authzV2.GetDecisionResponse{
-				Decision: &authzV2.ResourceDecision{
-					Decision:            authzV2.Decision_DECISION_DENY,
-					EphemeralResourceId: "resource-123",
-				},
-			},
-			expectedError: nil,
-		},
-		{
-			name:            "should return error when no decisions are provided",
-			permitted:       true,
-			decisions:       []*access.Decision{},
-			expectedResult:  nil,
-			expectedError:   errors.New("no decisions returned"),
-			errorMsgContain: "no decisions returned",
-		},
-		{
-			name:      "should return error when decision has no results",
-			permitted: true,
-			decisions: []*access.Decision{
-				{
-					Access:  true,
-					Results: []access.ResourceDecision{},
-				},
-			},
-			expectedResult:  nil,
-			expectedError:   errors.New("no decision results returned"),
-			errorMsgContain: "no decision results returned",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			result, err := rollupSingleResourceDecision(tc.permitted, tc.decisions)
-
-			if tc.expectedError != nil {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tc.errorMsgContain)
-				assert.Nil(t, result)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tc.expectedResult, result)
-			}
-		})
-	}
-}
-
-func Test_RollupMultiResourceDecisions(t *testing.T) {
-	tests := []struct {
-		name            string
-		decisions       []*access.Decision
-		expectedResult  []*authzV2.ResourceDecision
-		expectedError   error
-		errorMsgContain string
+		name           string
+		decision       *access.Decision
+		expectedResult []*authzV2.ResourceDecision
+		expectedError  error
 	}{
 		{
 			name: "should return multiple permit decisions",
-			decisions: []*access.Decision{
-				{
-					Access: true,
-					Results: []access.ResourceDecision{
-						{
-							Passed:     true,
-							ResourceID: "resource-123",
-						},
+			decision: &access.Decision{
+				Results: []access.ResourceDecision{
+					{
+						Passed:     true,
+						ResourceID: "resource-123",
 					},
-				},
-				{
-					Access: true,
-					Results: []access.ResourceDecision{
-						{
-							Passed:     true,
-							ResourceID: "resource-456",
-						},
+					{
+						Passed:     true,
+						ResourceID: "resource-456",
 					},
 				},
 			},
@@ -1277,27 +1392,18 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 					EphemeralResourceId: "resource-456",
 				},
 			},
-			expectedError: nil,
 		},
 		{
 			name: "should return mix of permit and deny decisions",
-			decisions: []*access.Decision{
-				{
-					Access: true,
-					Results: []access.ResourceDecision{
-						{
-							Passed:     true,
-							ResourceID: "resource-123",
-						},
+			decision: &access.Decision{
+				Results: []access.ResourceDecision{
+					{
+						Passed:     true,
+						ResourceID: "resource-123",
 					},
-				},
-				{
-					Access: false,
-					Results: []access.ResourceDecision{
-						{
-							Passed:     false,
-							ResourceID: "resource-456",
-						},
+					{
+						Passed:     false,
+						ResourceID: "resource-456",
 					},
 				},
 			},
@@ -1311,31 +1417,22 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 					EphemeralResourceId: "resource-456",
 				},
 			},
-			expectedError: nil,
 		},
 		{
 			name: "should rely on results and default to false decisions",
-			decisions: []*access.Decision{
-				{
-					Access: true,
-					Results: []access.ResourceDecision{
-						{
-							Passed:     true,
-							ResourceID: "resource-123",
-						},
-						{
-							Passed:     false,
-							ResourceID: "resource-abc",
-						},
+			decision: &access.Decision{
+				Results: []access.ResourceDecision{
+					{
+						Passed:     true,
+						ResourceID: "resource-123",
 					},
-				},
-				{
-					Access: false,
-					Results: []access.ResourceDecision{
-						{
-							Passed:     false,
-							ResourceID: "resource-456",
-						},
+					{
+						Passed:     false,
+						ResourceID: "resource-abc",
+					},
+					{
+						Passed:     false,
+						ResourceID: "resource-456",
 					},
 				},
 			},
@@ -1353,31 +1450,22 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 					EphemeralResourceId: "resource-456",
 				},
 			},
-			expectedError: nil,
 		},
 		{
 			name: "should ignore global access and care about resource decisions predominantly",
-			decisions: []*access.Decision{
-				{
-					Access: false,
-					Results: []access.ResourceDecision{
-						{
-							Passed:     false,
-							ResourceID: "resource-123",
-						},
-						{
-							Passed:     true,
-							ResourceID: "resource-abc",
-						},
+			decision: &access.Decision{
+				Results: []access.ResourceDecision{
+					{
+						Passed:     false,
+						ResourceID: "resource-123",
 					},
-				},
-				{
-					Access: false,
-					Results: []access.ResourceDecision{
-						{
-							Passed:     true,
-							ResourceID: "resource-456",
-						},
+					{
+						Passed:     true,
+						ResourceID: "resource-abc",
+					},
+					{
+						Passed:     true,
+						ResourceID: "resource-456",
 					},
 				},
 			},
@@ -1395,111 +1483,162 @@ func Test_RollupMultiResourceDecisions(t *testing.T) {
 					EphemeralResourceId: "resource-456",
 				},
 			},
-			expectedError: nil,
+		},
+		{
+			name: "should return obligations whenever found on a resource",
+			decision: &access.Decision{
+				Results: []access.ResourceDecision{
+					{
+						Passed:     true,
+						ResourceID: "resource-123",
+						RequiredObligationValueFQNs: []string{
+							"obligation-123",
+							"obligation-abc",
+							"obligation-456",
+						},
+					},
+					{
+						Passed:     true,
+						ResourceID: "resource-abc",
+						RequiredObligationValueFQNs: []string{
+							"obligation-abc",
+						},
+					},
+					{
+						Passed:     false,
+						ResourceID: "resource-456",
+					},
+					{
+						Passed:     true,
+						ResourceID: "resource-extra",
+						RequiredObligationValueFQNs: []string{
+							"obligation-extra",
+						},
+					},
+				},
+			},
+			expectedResult: []*authzV2.ResourceDecision{
+				{
+					Decision:            authzV2.Decision_DECISION_PERMIT,
+					EphemeralResourceId: "resource-123",
+					RequiredObligations: []string{
+						"obligation-123",
+						"obligation-abc",
+						"obligation-456",
+					},
+				},
+				{
+					Decision:            authzV2.Decision_DECISION_PERMIT,
+					EphemeralResourceId: "resource-abc",
+					RequiredObligations: []string{
+						"obligation-abc",
+					},
+				},
+				{
+					Decision:            authzV2.Decision_DECISION_DENY,
+					EphemeralResourceId: "resource-456",
+				},
+				{
+					Decision:            authzV2.Decision_DECISION_PERMIT,
+					EphemeralResourceId: "resource-extra",
+					RequiredObligations: []string{
+						"obligation-extra",
+					},
+				},
+			},
 		},
 		{
 			name: "should return error when decision has no results",
-			decisions: []*access.Decision{
-				{
-					Access:  true,
-					Results: []access.ResourceDecision{},
-				},
+			decision: &access.Decision{
+				Results: []access.ResourceDecision{},
 			},
-			expectedResult:  nil,
-			expectedError:   errors.New("no decision results returned"),
-			errorMsgContain: "no decision results returned",
+			expectedError: ErrDecisionMustHaveResults,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := rollupMultiResourceDecisions(tc.decisions)
+			result, err := rollupResourceDecisions(tc.decision)
 
 			if tc.expectedError != nil {
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), tc.errorMsgContain)
+				require.ErrorIs(t, err, tc.expectedError)
 				assert.Nil(t, result)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tc.expectedResult, result)
+				// resource order preserved
+				for i, decision := range result {
+					assert.True(t, proto.Equal(tc.expectedResult[i], decision))
+				}
 			}
 		})
 	}
 }
 
-func Test_RollupMultiResourceDecisions_Simple(t *testing.T) {
-	// This test checks the minimal viable structure to pass through rollupMultiResourceDecision
-	decision := &access.Decision{
-		Results: []access.ResourceDecision{
-			{
-				Passed:     true,
-				ResourceID: "resource-123",
-			},
-		},
+func Test_RollupResourceDecisions_WithNilChecks(t *testing.T) {
+	t.Run("nil decision", func(t *testing.T) {
+		var decision *access.Decision
+		_, err := rollupResourceDecisions(decision)
+		require.Error(t, err)
+		require.ErrorIs(t, err, ErrDecisionCannotBeNil)
+	})
+
+	t.Run("nil Results field", func(t *testing.T) {
+		decision := &access.Decision{
+			AllPermitted: true,
+			Results:      nil,
+		}
+		_, err := rollupResourceDecisions(decision)
+		require.Error(t, err)
+		require.ErrorIs(t, err, ErrDecisionMustHaveResults)
+	})
+
+	t.Run("empty Results field", func(t *testing.T) {
+		decision := &access.Decision{
+			AllPermitted: true,
+			Results:      []access.ResourceDecision{},
+		}
+		_, err := rollupResourceDecisions(decision)
+		require.Error(t, err)
+		require.ErrorIs(t, err, ErrDecisionMustHaveResults)
+	})
+}
+
+// Helpers
+
+// A random list of obligation FQNs 0 to 50 in length
+func getRandomValidObligationValueFQNsList() []string {
+	count := rand.Intn(51)
+	randomList := make([]string, count)
+	for i := range count {
+		randomList[i] = getRandomObligationValueFQN()
 	}
-
-	decisions := []*access.Decision{decision}
-
-	result, err := rollupMultiResourceDecisions(decisions)
-
-	require.NoError(t, err)
-	assert.Len(t, result, 1)
-	assert.Equal(t, "resource-123", result[0].GetEphemeralResourceId())
-	assert.Equal(t, authzV2.Decision_DECISION_PERMIT, result[0].GetDecision())
+	return randomList
 }
 
-func Test_RollupMultiResourceDecisions_WithNilChecks(t *testing.T) {
-	t.Run("nil decisions array", func(t *testing.T) {
-		var decisions []*access.Decision
-		_, err := rollupMultiResourceDecisions(decisions)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "no decisions returned")
-	})
-
-	t.Run("nil decision in array", func(t *testing.T) {
-		decisions := []*access.Decision{nil}
-		_, err := rollupMultiResourceDecisions(decisions)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "nil decision at index 0")
-	})
-
-	t.Run("nil Results field", func(t *testing.T) {
-		decisions := []*access.Decision{
-			{
-				Access:  true,
-				Results: nil,
-			},
-		}
-		_, err := rollupMultiResourceDecisions(decisions)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "no decision results returned")
-	})
+func getTooManyObligations() []string {
+	tooMany := make([]string, 51)
+	for i := range tooMany {
+		tooMany[i] = getRandomObligationValueFQN()
+	}
+	return tooMany
 }
 
-func Test_RollupSingleResourceDecision_WithNilChecks(t *testing.T) {
-	t.Run("nil decisions array", func(t *testing.T) {
-		var decisions []*access.Decision
-		_, err := rollupSingleResourceDecision(true, decisions)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "no decisions returned")
-	})
+const charset = "abcdefghijklmnopqrstuvwxyz"
 
-	t.Run("nil decision in array", func(t *testing.T) {
-		decisions := []*access.Decision{nil}
-		_, err := rollupSingleResourceDecision(true, decisions)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "nil decision at index 0")
-	})
+func randString(length int) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(b)
+}
 
-	t.Run("nil Results field", func(t *testing.T) {
-		decisions := []*access.Decision{
-			{
-				Access:  true,
-				Results: nil,
-			},
-		}
-		_, err := rollupSingleResourceDecision(true, decisions)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "no decision results returned")
-	})
+// builds a random FQN for an obligation value that matches
+// https://<namespace>.com/obl/<name>/value/<value>
+func getRandomObligationValueFQN() string {
+	namespace := "https://" + randString(5) + ".com"
+	name := randString(5)
+	value := randString(5)
+	return identifier.BuildOblValFQN(namespace, name, value)
 }

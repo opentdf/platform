@@ -59,7 +59,7 @@ linters:
     - sloglint
     - spancheck
     - sqlclosecheck
-    # - staticcheck
+    - staticcheck
     # - tagalign
     # - tagliatelle # maybe we want this to force consistent config to ensure consistent tag alignment across the codebase
     - testableexamples

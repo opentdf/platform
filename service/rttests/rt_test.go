@@ -112,14 +112,14 @@ func (s *RoundtripSuite) SetupSuite() {
 	opts := []sdk.Option{}
 	if os.Getenv("TLS_ENABLED") == "" {
 		opts = append(opts, sdk.WithInsecurePlaintextConn())
-		s.TestConfig.PlatformEndpointWithScheme = "http://" + s.TestConfig.PlatformEndpoint
+		s.PlatformEndpointWithScheme = "http://" + s.PlatformEndpoint
 	} else {
-		s.TestConfig.PlatformEndpointWithScheme = "https://" + s.TestConfig.PlatformEndpoint
+		s.PlatformEndpointWithScheme = "https://" + s.PlatformEndpoint
 	}
 
-	opts = append(opts, sdk.WithClientCredentials(s.TestConfig.ClientID, s.TestConfig.ClientSecret, nil))
+	opts = append(opts, sdk.WithClientCredentials(s.ClientID, s.ClientSecret, nil))
 
-	sdk, err := sdk.New(s.TestConfig.PlatformEndpointWithScheme, opts...)
+	sdk, err := sdk.New(s.PlatformEndpointWithScheme, opts...)
 	s.Require().NoError(err)
 	s.client = sdk
 
@@ -280,8 +280,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 	// get the attribute ids for the values were mapping to the client
 	var attributeValueIDs []string
 	fqnResp, err := client.Attributes.GetAttributeValuesByFqns(context.Background(), &attributes.GetAttributeValuesByFqnsRequest{
-		Fqns:      attributesToMap,
-		WithValue: &policy.AttributeValueSelector{},
+		Fqns: attributesToMap,
 	})
 	if err != nil {
 		slog.Error("get attribute values by fqn ", slog.String("error", err.Error()))
@@ -292,7 +291,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 	}
 
 	// create subject mappings
-	slog.Info("creating subject mappings", slog.String("client_id", s.TestConfig.ClientID))
+	slog.Info("creating subject mappings", slog.String("client_id", s.ClientID))
 	for _, attributeID := range attributeValueIDs {
 		_, err = client.SubjectMapping.CreateSubjectMapping(context.Background(), &subjectmapping.CreateSubjectMappingRequest{
 			AttributeValueId: attributeID,
@@ -307,7 +306,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 							Conditions: []*policy.Condition{{
 								SubjectExternalSelectorValue: ".clientId",
 								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-								SubjectExternalValues:        []string{s.TestConfig.ClientID},
+								SubjectExternalValues:        []string{s.ClientID},
 							}},
 							BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
 						},

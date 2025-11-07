@@ -37,7 +37,7 @@ func (s EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *con
 }
 
 func (s EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error) {
-	ctx, span := s.Tracer.Start(ctx, "CreateEntityChainsFromTokens")
+	ctx, span := s.Start(ctx, "CreateEntityChainsFromTokens")
 	defer span.End()
 
 	resp, err := CreateEntityChainsFromTokens(ctx, req.Msg, s.logger)

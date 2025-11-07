@@ -37,6 +37,10 @@ var (
 	ErrNamespaceMismatch          = errors.New("ErrNamespaceMismatch: namespace mismatch")
 	ErrKIDMismatch                = errors.New("ErrKIDMismatch: Key ID mismatch")
 	ErrKasURIMismatch             = errors.New("ErrKasURIMismatch: KAS URI mismatch")
+	ErrInvalidOblTriParam         = errors.New("ErrInvalidOblTriParam: either the obligation value, attribute value, or action provided was not found")
+	ErrCheckViolation             = errors.New("ErrCheckViolation: check constraint violation")
+	ErrFqnMismatch                = errors.New("ErrFqnMismatch: FQN mismatch")
+	ErrInvalidCertificate         = errors.New("ErrInvalidCertificate: invalid certificate")
 )
 
 // Get helpful error message for PostgreSQL violation
@@ -59,6 +63,8 @@ func WrapIfKnownInvalidQueryErr(err error) error {
 				return errors.Join(ErrUUIDInvalid, e)
 			}
 			return errors.Join(ErrEnumValueInvalid, e)
+		case pgerrcode.CheckViolation:
+			return errors.Join(ErrCheckViolation, e)
 		default:
 			slog.Error("unknown error code",
 				slog.String("error", e.Message),
@@ -127,6 +133,9 @@ const (
 	ErrorTextNamespaceMismatch          = "namespace mismatch"
 	ErrorTextKasURIMismatch             = "kas uri mismatch"
 	ErrorTextKIDMismatch                = "key id mismatch"
+	ErrorTextInvalidOblTrigParam        = "either the obligation value, attribute value, or action provided is invalid"
+	ErrorTextFqnMismatch                = "fqn mismatch"
+	ErrorTextInvalidCertificate         = "invalid certificate"
 )
 
 func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackErr string, logs ...any) error {
@@ -190,6 +199,18 @@ func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackEr
 	if errors.Is(err, ErrKasURIMismatch) {
 		l.ErrorContext(ctx, ErrorTextKasURIMismatch, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextKasURIMismatch))
+	}
+	if errors.Is(err, ErrInvalidOblTriParam) {
+		l.ErrorContext(ctx, ErrorTextInvalidOblTrigParam, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextInvalidOblTrigParam))
+	}
+	if errors.Is(err, ErrFqnMismatch) {
+		l.ErrorContext(ctx, ErrorTextFqnMismatch, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextFqnMismatch))
+	}
+	if errors.Is(err, ErrInvalidCertificate) {
+		l.ErrorContext(ctx, ErrorTextInvalidCertificate, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextInvalidCertificate))
 	}
 
 	l.ErrorContext(ctx, "request error", append(logs, slog.Any("error", err))...)

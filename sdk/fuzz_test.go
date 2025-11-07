@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"io"
+	"log/slog"
 	"net/http"
 	"testing"
 
@@ -26,6 +27,7 @@ func writeBytes(writerFunc func(io.Writer) error) []byte {
 func newSDK() *SDK {
 	key, _ := ocrypto.NewRSAKeyPair(tdf3KeySize)
 	cfg := &config{
+		logger:        slog.Default(),
 		kasSessionKey: &key,
 	}
 	sdk := &SDK{
@@ -198,7 +200,7 @@ func FuzzLoadTDF(f *testing.F) {
 		_, _ = rand.Read(r.payloadKey)
 		gcm, err := ocrypto.NewAESGcm(r.payloadKey)
 		require.NoError(t, err)
-		for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
+		for _, seg := range r.manifest.Segments {
 			r.payloadSize += seg.Size
 		}
 		r.unencryptedMetadata = []byte{}

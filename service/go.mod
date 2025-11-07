@@ -2,7 +2,7 @@ module github.com/opentdf/platform/service
 
 go 1.24.0
 
-toolchain go1.24.6
+toolchain go1.24.9
 
 require (
 	buf.build/go/protovalidate v0.13.1
@@ -16,25 +16,28 @@ require (
 	github.com/casbin/casbin/v2 v2.108.0
 	github.com/creasty/defaults v1.8.0
 	github.com/dgraph-io/ristretto v0.2.0
+	github.com/docker/docker v28.3.3+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/eko/gocache/lib/v4 v4.2.0
 	github.com/eko/gocache/store/ristretto/v4 v4.2.2
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-chi/cors v1.2.1
 	github.com/go-playground/validator/v10 v10.26.0
-	github.com/go-viper/mapstructure/v2 v2.3.0
+	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.0
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/lestrrat-go/jwx/v2 v2.1.6
+	github.com/lib/pq v1.10.9
+	github.com/mattn/go-sqlite3 v1.14.29
 	github.com/open-policy-agent/opa v1.5.1
 	github.com/opentdf/platform/lib/fixtures v0.3.0
 	github.com/opentdf/platform/lib/flattening v0.1.3
-	github.com/opentdf/platform/lib/identifier v0.0.2
-	github.com/opentdf/platform/lib/ocrypto v0.3.0
-	github.com/opentdf/platform/protocol/go v0.6.2
-	github.com/opentdf/platform/sdk v0.5.0
+	github.com/opentdf/platform/lib/identifier v0.2.0
+	github.com/opentdf/platform/lib/ocrypto v0.7.0
+	github.com/opentdf/platform/protocol/go v0.13.0
+	github.com/opentdf/platform/sdk v0.10.1
 	github.com/pressly/goose/v3 v3.24.3
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
@@ -56,13 +59,13 @@ require (
 )
 
 require (
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250613105001-9f2d3c737feb.1 // indirect
 	cel.dev/expr v0.23.1 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da // indirect
-	github.com/docker/docker v28.2.2+incompatible // indirect
 	github.com/ebitengine/purego v0.8.4 // indirect
 	github.com/moby/go-archive v0.1.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.5 // indirect
@@ -71,7 +74,6 @@ require (
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250613105001-9f2d3c737feb.1 // indirect
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect; indi\

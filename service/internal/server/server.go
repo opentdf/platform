@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	defaultWriteTimeout time.Duration = 5 * time.Second
+	defaultWriteTimeout time.Duration = 10 * time.Second
 	defaultReadTimeout  time.Duration = 10 * time.Second
 	shutdownTimeout     time.Duration = 5 * time.Second
 )
@@ -69,7 +69,7 @@ type Config struct {
 	// Enable pprof
 	EnablePprof bool `mapstructure:"enable_pprof" json:"enable_pprof" default:"false"`
 	// Trace is for configuring open telemetry based tracing.
-	Trace tracing.Config `mapstructure:"trace"`
+	Trace tracing.Config `mapstructure:"trace" json:"trace"`
 }
 
 func (c Config) LogValue() slog.Value {
@@ -126,7 +126,7 @@ type CORSConfig struct {
 	AllowedMethods   []string `mapstructure:"allowedmethods" json:"allowedmethods" default:"[\"GET\",\"POST\",\"PATCH\",\"DELETE\",\"OPTIONS\"]"`
 	AllowedHeaders   []string `mapstructure:"allowedheaders" json:"allowedheaders" default:"[\"Accept\",\"Content-Type\",\"Content-Length\",\"Accept-Encoding\",\"X-CSRF-Token\",\"Authorization\",\"X-Requested-With\",\"Dpop\",\"Connect-Protocol-Version\"]"`
 	ExposedHeaders   []string `mapstructure:"exposedheaders" json:"exposedheaders"`
-	AllowCredentials bool     `mapstructure:"allowcredentials" json:"allowedcredentials" default:"true"`
+	AllowCredentials bool     `mapstructure:"allowcredentials" json:"allowcredentials" default:"true"`
 	MaxAge           int      `mapstructure:"maxage" json:"maxage" default:"3600"`
 	Debug            bool     `mapstructure:"debug" json:"debug"`
 }
@@ -162,6 +162,7 @@ https://github.com/valyala/fasthttp/blob/master/fasthttputil/inmemory_listener.g
 */
 type inProcessServer struct {
 	srv                *memhttp.Server
+	logger             *logger.Logger
 	maxCallRecvMsgSize int
 	maxCallSendMsgSize int
 	*ConnectRPC
@@ -239,6 +240,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 		CacheManager:   cacheManager,
 		ConnectRPC:     connectRPC,
 		ConnectRPCInProcess: &inProcessServer{
+			logger:             logger.With("ipc_server", "true"),
 			srv:                memhttp.New(connectRPCIpc.Mux),
 			maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
 			maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
@@ -381,7 +383,7 @@ var rpcPathRegex = regexp.MustCompile(`^/[\w\.]+\.[\w\.]+/[\w]+$`)
 func routeConnectRPCRequests(connectRPC http.Handler, httpHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// contentType := r.Header.Get("Content-Type")
-		if (r.Method == http.MethodPost || r.Method == http.MethodGet) && rpcPathRegex.MatchString(r.URL.Path) {
+		if (r.Method == http.MethodPost || r.Method == http.MethodGet || r.Method == http.MethodOptions) && rpcPathRegex.MatchString(r.URL.Path) {
 			connectRPC.ServeHTTP(w, r)
 		} else {
 			httpHandler.ServeHTTP(w, r)
@@ -469,7 +471,7 @@ func (s OpenTDFServer) Start() error {
 	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
 	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 
-	ln, err := s.openHTTPServerPort()
+	ln, err := s.openHTTPServerPort(context.Background())
 	if err != nil {
 		return err
 	}
@@ -508,6 +510,9 @@ func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
 
 	// Add audit interceptor
 	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingConnectInterceptor())
+
+	// Add IPC metadata transfer interceptor (transfers gRPC metadata to Connect headers)
+	clientInterceptors = append(clientInterceptors, auth.IPCMetadataClientInterceptor(s.logger))
 
 	conn := sdk.ConnectRPCConnection{
 		Client:   s.srv.Client(),
@@ -557,7 +562,7 @@ func (s *inProcessServer) WithContextDialer() grpc.DialOption {
 	})
 }
 
-func (s OpenTDFServer) openHTTPServerPort() (net.Listener, error) {
+func (s OpenTDFServer) openHTTPServerPort(ctx context.Context) (net.Listener, error) {
 	addr := s.HTTPServer.Addr
 	if addr == "" {
 		if s.HTTPServer.TLSConfig != nil {
@@ -566,7 +571,12 @@ func (s OpenTDFServer) openHTTPServerPort() (net.Listener, error) {
 			addr = ":http"
 		}
 	}
-	return net.Listen("tcp", addr)
+	lc := net.ListenConfig{}
+	listener, err := lc.Listen(ctx, "tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	return listener, nil
 }
 
 func (s OpenTDFServer) startHTTPServer(ln net.Listener) {

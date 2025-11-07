@@ -31,52 +31,155 @@ message LegacyPublicKeyRequest {
   string algorithm = 1;
 }
 
+// Policy binding ensures cryptographic integrity between policy and wrapped key
+// Prevents policy tampering by binding the policy hash to the encrypted key
 message PolicyBinding {
+  // Cryptographic hashing algorithm used for policy binding
+  // Optional: ZTDF (when policy_binding is an object)
+  // Value: Always "HS256" (HMAC-SHA256) - other algorithms not supported
+  // Example: "HS256"
   string algorithm = 1 [json_name = "alg"];
+  
+  // HMAC-SHA256 hash of the base64-encoded policy using the DEK as the secret key
+  // 4.2.2 TDFs are hex and base64 encoded before HMAC computation
+  // Required: ZTDF (when policy_binding is an object)
+  // Links the policy content to the wrapped DEK cryptographically via HMAC
+  // Computed as HMAC-SHA256(DEK, base64_policy) then hex-encoded and base64-encoded
   string hash = 2;
 }
 
+// Key Access Object containing cryptographic material and metadata for TDF decryption
 message KeyAccess {
+  // Base64-encoded encrypted metadata containing additional key information
+  // Optional: Not used during KAS rewrap operations (client-side only)
+  // KAS service passes this through without processing or validation
   string encrypted_metadata = 1;
+  
+  // Policy binding ensuring cryptographic integrity between policy and wrapped key
+  // Required: ZTDF (contains hash and algorithm)
+  // Links the policy to the wrapped key cryptographically
   PolicyBinding policy_binding = 2;
+  
+  // Protocol identifier for the key access mechanism
+  // Optional: Defaults to 'kas'
+  // Typically: 'kas' for standard Key Access Service protocol
+  // Example: "kas"
   string protocol = 3;
+  
+  // Type of key wrapping used for the data encryption key
+  // Required: Always
+  // Values: 'wrapped' (RSA-wrapped for ZTDF), 'ec-wrapped' (experimental ECDH-wrapped)
   string key_type = 4 [json_name = "type"];
+  
+  // URL of the Key Access Server that can unwrap this key
+  // Optional: May be omitted if KAS URL is known from context
+  // Used to route rewrap requests to the correct KAS instance
+  // Example: "https://kas.example.com"
   string kas_url = 5 [json_name = "url"];
+  
+  // Key identifier for the KAS public key used for wrapping
+  // Optional: ZTDF (may specify which KAS key to use, required if present in the TDF)
+  // References a specific public key in the KAS key storage (either local keyring or KAS Registry service)
+  // Example: "k1", "ec-key-2024"
   string kid = 6;
+  
+  // Split identifier for key splitting scenarios
+  // Optional: ZTDF (used in advanced key splitting configurations)
+  // Used when keys are split across multiple parties for enhanced security
   string split_id = 7 [json_name = "sid"];
+  
+  // Client-generated data encryption key wrapped by KAS
+  // Required: Always
+  // Contains the actual DEK encrypted with KAS's public key
+  // This is the core cryptographic material needed for TDF decryption
   bytes wrapped_key = 8;
-  // header is only used for NanoTDFs
+  
+  // Complete NanoTDF header containing all metadata and policy information
+  // Required: NanoTDF only
+  // ZTDF: Omitted (policy and metadata are separate)
+  // Contains magic bytes, version, algorithm, policy, and ephemeral key information
   bytes header = 9;
-
-  // For wrapping with an ECDH derived key, when type=ec-wrapped.
-  // Should be a PEM-encoded PKCS#8 (asn.1) value.
+  
+  // Ephemeral public key for ECDH key derivation (ec-wrapped type only)
+  // Required: When key_type="ec-wrapped" (experimental ECDH-based ZTDF)
+  // Omitted: When key_type="wrapped" (RSA-based ZTDF)
+  // Should be a PEM-encoded PKCS#8 (ASN.1) formatted public key
+  // Used to derive the symmetric key for unwrapping the DEK
   string ephemeral_public_key = 10;
 }
 
+// Bulk-style Rewrap request structure that is serialized into JSON and signed
+// within a Rewrap flow. This message represents the unsigned payload that gets
+// embedded in a JWT as the 'requestBody' claim and signed with a DPoP key.
 message UnsignedRewrapRequest {
+  // Policy metadata and content for a group of KeyAccessObjects
   message WithPolicy {
+    // An identifier unique within the scope of the rewrap request
+    // Used for mapping between request and response items.
+    // Required: Always
+    // Example: "policy", "policy-0", "policy-1"
     string id = 1;
+    
+    // Policy content - format varies by TDF type:
+    // ZTDF: Base64-encoded JSON policy object containing attributes and other policy data
+    // Required: ZTDF (base64-encoded policy JSON)
     string body = 2;
   }
+  
+  // Key Access Object wrapper with identifier
   message WithKeyAccessObject {
+    // Ephemeral, unique identifier for this KAO within the request
+    // Required: Always
+    // Example: "kao-0", "kao-1", "key-access-object-uuid"
     string key_access_object_id = 1;
+    
+    // The actual Key Access Object containing cryptographic material and metadata
+    // Required: Always
     KeyAccess key_access_object = 2;
   }
 
+  // Request grouping policy with associated key access objects
   message WithPolicyRequest {
+    // List of Key Access Objects associated with this policy
+    // Required: Always (at least one)
+    // NanoTDF: Exactly one KAO per policy
+    // ZTDF: One or more KAOs per policy
     repeated WithKeyAccessObject key_access_objects = 1;
+    
+    // Policy information for this group of KAOs
+    // Required: Always
     WithPolicy policy = 2;
+    
+    // Cryptographic algorithm identifier for the TDF type
+    // Optional: Defaults to rsa:2048 if omitted
+    // Values: "ec:secp256r1" (NanoTDF), "rsa:2048" (ZTDF), "" (defaults to rsa:2048)
+    // Example: "ec:secp256r1"
     string algorithm = 3;
   }
 
+  // Client's public key in PEM format for establishing a session key
+  // Required: Always
+  // Used by KAS to generate an ephemeral session key for secure key exchange
   string client_public_key = 1;
+  
+  // List of policy requests to be processed
+  // Required: Always (at least one)
+  // Each request represents a policy with its associated key access objects
   repeated WithPolicyRequest requests = 2;
 
-  // Used for legacy non-bulk requests
+  // Deprecated: Legacy single Key Access Object
+  // Used for legacy non-bulk requests (v1 API)
+  // Modern clients should use the 'requests' field instead
   KeyAccess key_access = 3 [deprecated = true];
-  // Used for legacy non-bulk requests
+  
+  // Deprecated: Legacy single policy
+  // Used for legacy non-bulk requests (v1 API)
+  // Modern clients should use the 'requests' field instead
   string policy = 4 [deprecated = true];
-  // Used for legacy non-bulk requests
+  
+  // Deprecated: Legacy algorithm specification
+  // Used for legacy non-bulk requests (v1 API)  
+  // Modern clients should use the 'requests' field instead
   string algorithm = 5 [deprecated = true];
 }
 message PublicKeyRequest {
@@ -90,34 +193,84 @@ message PublicKeyResponse {
   string kid = 2;
 }
 
+// Request to rewrap (decrypt and re-encrypt) TDF keys for client access
 message RewrapRequest {
   reserved 2;
   reserved "bearer";
+
+  // A JWT signed by the DPoP (Demonstration of Proof of Possession) private key
+  // Required: Always
+  // Version differences:
+  // - v1 (legacy): Uses existing TDF spec schema in requestBody
+  // - v2 (bulk): Uses UnsignedRewrapRequest proto serialized as JSON in requestBody
   string signed_request_token = 1;
 }
 
 
+// Result of a key access object rewrap operation
 message KeyAccessRewrapResult {
+  // Metadata associated with this KAO result (e.g., required obligations)
+  // Optional: May contain obligation requirements or other policy metadata
+  // Common keys: "X-Required-Obligations" with array of obligation FQNs
   map<string, google.protobuf.Value> metadata = 1;
+  
+  // Identifier matching the key_access_object_id from the request
+  // Required: Always matches the ID from UnsignedRewrapRequest_WithKeyAccessObject
   string key_access_object_id = 2;
+  
+  // Status of the rewrap operation for this KAO
+  // Required: Always
+  // Values: "permit" (success), "fail" (failure)
   string status = 3;
+  
+  // Result of the rewrap operation - either success or error
   oneof result {
+    // Successfully rewrapped key encrypted with the session key
+    // Present when status="permit"
+    // Contains the DEK encrypted with the ephemeral session key
     bytes kas_wrapped_key = 4;
+    
+    // Error message when rewrap failed
+    // Present when status="fail"
+    // Human-readable description of the failure reason
     string error = 5;
   }
 }
 
+// Result for all KAOs associated with a single policy
 message PolicyRewrapResult {
+  // Policy identifier matching the policy.id from the request
+  // Required: Always matches the ID from UnsignedRewrapRequest_WithPolicy
   string policy_id = 1;
+  
+  // Results for each KAO under this policy
+  // Required: One result per KAO in the original request
   repeated KeyAccessRewrapResult results = 2;
 }
 
+// Response containing rewrapped keys and session information
 message RewrapResponse {
+  // Deprecated: Legacy metadata field
+  // Modern responses use metadata in individual KeyAccessRewrapResult
   map<string, google.protobuf.Value> metadata = 1 [deprecated = true];
+  
+  // Deprecated: Legacy single entity wrapped key
+  // Modern responses use kas_wrapped_key in KeyAccessRewrapResult
   bytes entity_wrapped_key = 2 [deprecated = true];
+  
+  // KAS's ephemeral session public key in PEM format
+  // Required: For EC-based operations (NanoTDF and ZTDF with key_type="ec-wrapped")
+  // Optional: Empty for RSA-based ZTDF (key_type="wrapped")
+  // Used by client to perform ECDH key agreement and decrypt the kas_wrapped_key values
   string session_public_key = 3;
+  
+  // Deprecated: Legacy schema version identifier
+  // Modern responses use implicit versioning
   string schema_version = 4 [deprecated = true];
-  // New Rewrap API changes
+  
+  // Policy-grouped rewrap results for the bulk API
+  // Required: Modern v2 API responses
+  // Each PolicyRewrapResult contains results for all KAOs under that policy
   repeated PolicyRewrapResult responses = 5;
 }
 

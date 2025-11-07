@@ -259,9 +259,6 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 	fqns := []string{fmt.Sprintf("https://%s/attr/%s/value/%s", gotAttr.GetNamespace().GetName(), createdAttr.GetName(), gotAttr.GetValues()[0].GetValue())}
 	req := &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: fqns,
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	}
 	resp, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, req)
 	s.Require().NoError(err)
@@ -563,6 +560,85 @@ func (s *AttributesSuite) Test_ListAttributes_ByNamespaceIdOrName() {
 	}
 }
 
+func (s *AttributesSuite) Test_ListAttributes_MultipleAttributes_Succeeds() {
+	// Create two test namespaces
+	createdNS := make([]*policy.Namespace, 2)
+	ns1, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-list-ns1.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(ns1)
+	createdNS[0] = ns1
+
+	ns2, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-list-ns2.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(ns2)
+	createdNS[1] = ns2
+
+	// Cleanup function
+	defer func() {
+		// Delete namespaces (this will cascade delete attributes)
+		for _, ns := range createdNS {
+			_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, ns, ns.GetFqn())
+			s.Require().NoError(err)
+		}
+	}()
+
+	// Create one attribute in each namespace
+	attr1, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test_attr_1",
+		NamespaceId: ns1.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values:      []string{"value1", "value2"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(attr1)
+
+	attr2, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test_attr_2",
+		NamespaceId: ns2.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"valueA", "valueB"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(attr2)
+
+	// Test 1: List attributes from first namespace
+	listReq := &attributes.ListAttributesRequest{
+		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+		Namespace: ns1.GetId(),
+	}
+	listResp, err := s.db.PolicyClient.ListAttributes(s.ctx, listReq)
+	s.Require().NoError(err)
+	s.NotNil(listResp)
+
+	listedAttrs := listResp.GetAttributes()
+	s.Require().Len(listedAttrs, 1, "Should list one attribute from first namespace")
+	s.Require().Equal(attr1.GetId(), listedAttrs[0].GetId())
+	s.Require().Equal(ns1.GetId(), listedAttrs[0].GetNamespace().GetId())
+	s.Require().NotEmpty(listedAttrs[0].GetFqn())
+	s.Require().Equal(int32(1), listResp.GetPagination().GetTotal())
+	s.Require().Equal(int32(0), listResp.GetPagination().GetNextOffset())
+	s.Require().Equal(int32(0), listResp.GetPagination().GetCurrentOffset())
+
+	// Test 2: List attributes from second namespace
+	listReq.Namespace = ns2.GetId()
+	listResp, err = s.db.PolicyClient.ListAttributes(s.ctx, listReq)
+	s.Require().NoError(err)
+	s.NotNil(listResp)
+
+	listedAttrs = listResp.GetAttributes()
+	s.Require().Len(listedAttrs, 1, "Should list one attribute from second namespace")
+	s.Require().Equal(attr2.GetId(), listedAttrs[0].GetId())
+	s.Require().Equal(ns2.GetId(), listedAttrs[0].GetNamespace().GetId())
+	s.Require().NotEmpty(listedAttrs[0].GetFqn())
+	s.Require().Equal(int32(1), listResp.GetPagination().GetTotal())
+	s.Require().Equal(int32(0), listResp.GetPagination().GetNextOffset())
+	s.Require().Equal(int32(0), listResp.GetPagination().GetCurrentOffset())
+}
+
 func (s *AttributesSuite) Test_UpdateAttribute() {
 	fixedLabel := "fixed label"
 	updateLabel := "update label"
@@ -695,9 +771,6 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRuleAndNameAndReorderin
 
 		val, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 			Fqns: []string{fqn},
-			WithValue: &policy.AttributeValueSelector{
-				WithSubjectMaps: true,
-			},
 		})
 		s.Require().NoError(err)
 		s.NotNil(val)
@@ -787,9 +860,6 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithNewName() {
 	}
 	req := &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: fqns,
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	}
 	retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, req)
 	s.Require().NoError(err)
@@ -934,9 +1004,6 @@ func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
 		fqns := []string{fmt.Sprintf("https://%s/attr/%s/value/%s", ns.GetName(), name, v.GetValue())}
 		req := &attributes.GetAttributeValuesByFqnsRequest{
 			Fqns: fqns,
-			WithValue: &policy.AttributeValueSelector{
-				WithSubjectMaps: true,
-			},
 		}
 		retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, req)
 		s.Require().Error(err)

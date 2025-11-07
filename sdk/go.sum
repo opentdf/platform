@@ -38,8 +38,8 @@ github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 h1:NMZiJj8QnKe1LgsbDayM4UoHwbvw
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0/go.mod h1:ZXNYxsqcloTdSy/rNShjYzMhyjf0LaoftYK0p+A3h40=
 github.com/distribution/reference v0.6.0 h1:0IXCQ5g4/QMHHkarYzh5l+u8T3t73zM5QvfrDyIgxBk=
 github.com/distribution/reference v0.6.0/go.mod h1:BbU0aIcezP1/5jX/8MP0YiH4SdvB5Y4f/wlDRiLyi3E=
-github.com/docker/docker v28.2.2+incompatible h1:CjwRSksz8Yo4+RmQ339Dp/D2tGO5JxwYeqtMOEe0LDw=
-github.com/docker/docker v28.2.2+incompatible/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
+github.com/docker/docker v28.3.3+incompatible h1:Dypm25kh4rmk49v1eiVbsAtpAsYURjYkaKubwuBdxEI=
+github.com/docker/docker v28.3.3+incompatible/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
 github.com/docker/go-connections v0.5.0 h1:USnMq7hx7gwdVZq1L49hLXaFtUdTADjXGp+uj1Br63c=
 github.com/docker/go-connections v0.5.0/go.mod h1:ov60Kzw0kKElRwhNs9UlUHAE/F9Fe6GLaXnqyDdmEXc=
 github.com/docker/go-units v0.5.0 h1:69rxXcBk27SvSaaxTtLh/8llcHD8vYHT7WSdRZ/jvr4=
@@ -124,10 +124,10 @@ github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJw
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
 github.com/opentdf/platform/lib/fixtures v0.3.0 h1:pgEm9ynMDIFH7Wd/lre2tfvtura8LfaV3iA1w1m7D3Q=
 github.com/opentdf/platform/lib/fixtures v0.3.0/go.mod h1:K/r0REv5MYClnkuiCxCOT1LTXbuIDP0kqixlGmPQzXc=
-github.com/opentdf/platform/lib/ocrypto v0.3.0 h1:/nHlIj6kqZ9XT9M45vAbzoMV8USeCj7GRuhFR6JH+RA=
-github.com/opentdf/platform/lib/ocrypto v0.3.0/go.mod h1:VuVHTye/smLiRZ5Ls4sZ14R+PtN9Egwj8D1Hv5X9iP0=
-github.com/opentdf/platform/protocol/go v0.6.2 h1:seLTEP4xBRF2BG1vbuWzQqNo58g3wtkzCV+Z4ExRXnM=
-github.com/opentdf/platform/protocol/go v0.6.2/go.mod h1:FwoNd0HJaxGCZf74de/yFpVP4HEjkUMoF6Br79W0TBk=
+github.com/opentdf/platform/lib/ocrypto v0.7.0 h1:uBZJXisuXU3V8681aP8FVMJkyWBrwWOqrsYFzb3yZfY=
+github.com/opentdf/platform/lib/ocrypto v0.7.0/go.mod h1:sYhoBL1bQYgQVSSNpxU13RsrE5JAk8BABT1hfr9L3j8=
+github.com/opentdf/platform/protocol/go v0.13.0 h1:vrOOHyhYDPzJgNenz/1g0M5nWtkOYKkPggMNHKzeMcs=
+github.com/opentdf/platform/protocol/go v0.13.0/go.mod h1:GRycoDGDxaz91sOvGZFWVEKJLluZFg2wM3NJmhucDHo=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=

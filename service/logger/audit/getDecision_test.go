@@ -112,19 +112,30 @@ func TestBuildActorAttributes(t *testing.T) {
 }
 
 func TestBuildEventMetadata(t *testing.T) {
-	expectedMarshal := "{\"entities\":[{\"id\":\"test-entity-id\",\"decision\":\"permit\",\"entitlements\":[\"test-entitlement\"]},{\"id\":\"test-entity-id-2\",\"decision\":\"permit\",\"entitlements\":[\"test-entitlement-2\"]}]}"
 	entityDecisions := []EntityDecision{
 		{EntityID: "test-entity-id", Decision: GetDecisionResultPermit.String(), Entitlements: []string{"test-entitlement"}},
 		{EntityID: "test-entity-id-2", Decision: GetDecisionResultPermit.String(), Entitlements: []string{"test-entitlement-2"}},
 	}
 
 	actual := buildEventMetadata(entityDecisions)
-	actualMarshal, err := json.Marshal(actual)
-	if err != nil {
-		t.Fatalf("error marshalling event metadata: %v", err)
+
+	// Verify the structure matches expected
+	expected := auditEventMetadata{
+		"entities": []map[string]any{
+			{
+				"id":           "test-entity-id",
+				"decision":     "permit",
+				"entitlements": []string{"test-entitlement"},
+			},
+			{
+				"id":           "test-entity-id-2",
+				"decision":     "permit",
+				"entitlements": []string{"test-entitlement-2"},
+			},
+		},
 	}
 
-	if string(actualMarshal) != expectedMarshal {
-		t.Fatalf("event metadata did not match expected: got %s, want %s", actualMarshal, expectedMarshal)
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("event metadata did not match expected: got %+v, want %+v", actual, expected)
 	}
 }

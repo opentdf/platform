@@ -46,22 +46,61 @@ func Start(f ...StartOptions) error {
 	ctx := context.Background()
 
 	slog.Debug("loading configuration from environment")
-	cfg, err := config.LoadConfig(ctx, startConfig.ConfigKey, startConfig.ConfigFile)
-	if err != nil {
-		return fmt.Errorf("could not load config: %w", err)
+	loaderOrder := []string{
+		config.LoaderNameLegacy,
+		config.LoaderNameDefaultSettings,
+	}
+	if startConfig.configLoaderOrder != nil {
+		loaderOrder = startConfig.configLoaderOrder
+	} else if startConfig.configLoaders != nil {
+		for _, loader := range startConfig.configLoaders {
+			loaderOrder = append(loaderOrder, loader.Name())
+		}
 	}
 
-	if startConfig.configLoaders != nil {
-		slog.Debug("loading configuration from additional provided loaders")
+	additionalLoaderMap := make(map[string]config.Loader, len(startConfig.configLoaders))
+	for _, loader := range startConfig.configLoaders {
+		additionalLoaderMap[loader.Name()] = loader
+	}
 
-		for _, loader := range startConfig.configLoaders {
-			slog.Debug("loading config for loader", slog.String("loader", loader.Name()))
-			err := loader.Load(cfg)
+	loaders := make([]config.Loader, len(loaderOrder))
+
+	for idx, loaderName := range loaderOrder {
+		var loader config.Loader
+		var err error
+		switch loaderName {
+		case config.LoaderNameEnvironmentValue:
+			loader, err = config.NewEnvironmentValueLoader(startConfig.ConfigKey, nil)
 			if err != nil {
-				return fmt.Errorf("failed load config with loader %s: %w", loader.Name(), err)
+				return err
 			}
-			cfg.AddLoader(loader)
+		case config.LoaderNameFile:
+			loader, err = config.NewConfigFileLoader(startConfig.ConfigKey, startConfig.ConfigFile)
+			if err != nil {
+				return err
+			}
+		case config.LoaderNameDefaultSettings:
+			loader, err = config.NewDefaultSettingsLoader()
+			if err != nil {
+				return err
+			}
+		case config.LoaderNameLegacy:
+			loader, err = config.NewLegacyLoader(startConfig.ConfigKey, startConfig.ConfigFile)
+			if err != nil {
+				return err
+			}
+		default:
+			mappedLoader, ok := additionalLoaderMap[loaderName]
+			if !ok {
+				return fmt.Errorf("loader not found: %s", loaderName)
+			}
+			loader = mappedLoader
 		}
+		loaders[idx] = loader
+	}
+	cfg, err := config.Load(ctx, loaders...)
+	if err != nil {
+		return fmt.Errorf("could not load config: %w", err)
 	}
 
 	if cfg.DevMode {
@@ -139,16 +178,15 @@ func Start(f ...StartOptions) error {
 
 	// Register essential services every service needs (e.g. health check)
 	logger.Debug("registering essential services")
-	if err := registerEssentialServices(svcRegistry); err != nil {
+	if err := RegisterEssentialServices(svcRegistry); err != nil {
 		logger.Error("could not register essential services", slog.String("error", err.Error()))
 		return fmt.Errorf("could not register essential services: %w", err)
 	}
 
 	logger.Debug("registering services")
 
-	var registeredCoreServices []string
-
-	registeredCoreServices, err = registerCoreServices(svcRegistry, cfg.Mode)
+	var registeredServices []string
+	registeredServices, err = svcRegistry.RegisterServicesFromConfiguration(cfg.Mode, getServiceConfigurations())
 	if err != nil {
 		logger.Error("could not register core services", slog.String("error", err.Error()))
 		return fmt.Errorf("could not register core services: %w", err)
@@ -158,7 +196,7 @@ func Start(f ...StartOptions) error {
 	if len(startConfig.extraCoreServices) > 0 {
 		logger.Debug("registering extra core services")
 		for _, service := range startConfig.extraCoreServices {
-			err := svcRegistry.RegisterCoreService(service)
+			err := svcRegistry.RegisterService(service, serviceregistry.ModeCore)
 			if err != nil {
 				logger.Error("could not register extra core service", slog.String("error", err.Error()))
 				return fmt.Errorf("could not register extra core service: %w", err)
@@ -170,7 +208,7 @@ func Start(f ...StartOptions) error {
 	if len(startConfig.extraServices) > 0 {
 		logger.Debug("registering extra services")
 		for _, service := range startConfig.extraServices {
-			err := svcRegistry.RegisterService(service, service.GetNamespace())
+			err := svcRegistry.RegisterService(service, serviceregistry.ModeName(service.GetNamespace()))
 			if err != nil {
 				logger.Error("could not register extra service",
 					slog.String("namespace", service.GetNamespace()),
@@ -181,7 +219,7 @@ func Start(f ...StartOptions) error {
 		}
 	}
 
-	logger.Info("registered the following core services", slog.Any("core_services", registeredCoreServices))
+	logger.Info("registered the following services", slog.Any("services", registeredServices))
 
 	var (
 		sdkOptions []sdk.Option
@@ -189,15 +227,10 @@ func Start(f ...StartOptions) error {
 		oidcconfig *auth.OIDCConfiguration
 	)
 
-	// If the mode is not all, does not include both core and entityresolution, or is not entityresolution on its own, we need to have a valid SDK config
-	// entityresolution does not connect to other services and can run on its own
-	// core only connects to entityresolution
-	if !(slices.Contains(cfg.Mode, "all") || // no config required for all mode
-		(slices.Contains(cfg.Mode, "core") && slices.Contains(cfg.Mode, "entityresolution")) || // or core and entityresolution modes togethor
-		(slices.Contains(cfg.Mode, "entityresolution") && len(cfg.Mode) == 1)) && // or entityresolution on its own
-		cfg.SDKConfig == (config.SDKConfig{}) {
-		logger.Error("mode is not all, entityresolution, or a combination of core and entityresolution, but no sdk config provided")
-		return errors.New("mode is not all, entityresolution, or a combination of core and entityresolution, but no sdk config provided")
+	// Check if SDK config is required for the current mode combination
+	if modeRequiresSdkConfig(cfg) && cfg.SDKConfig == (config.SDKConfig{}) {
+		logger.Error("no sdk config provided")
+		return errors.New("no sdk config provided")
 	}
 
 	// If client credentials are provided, use them
@@ -213,103 +246,27 @@ func Start(f ...StartOptions) error {
 		sdkOptions = append(sdkOptions, sdk.WithTokenEndpoint(oidcconfig.TokenEndpoint))
 	}
 
-	// If the mode is all, use IPC for the SDK client
-	if slices.Contains(cfg.Mode, "all") || //nolint:nestif // Need to handle all config options
-		slices.Contains(cfg.Mode, "entityresolution") || // ERS does not connect to anything so it can also use IPC mode
-		slices.Contains(cfg.Mode, "core") {
-		// Use IPC for the SDK client
-		sdkOptions = append(sdkOptions, sdk.WithIPC())
-		sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.ConnectRPCInProcess.Conn()))
-
-		// handle ERS connection for core mode
-		if slices.Contains(cfg.Mode, "core") && !slices.Contains(cfg.Mode, "entityresolution") {
-			logger.Info("core mode")
-
-			if cfg.SDKConfig.EntityResolutionConnection.Endpoint == "" {
-				return errors.New("entityresolution endpoint must be provided in core mode")
-			}
-
-			ersConnectRPCConn := sdk.ConnectRPCConnection{}
-
-			var tlsConfig *tls.Config
-			if cfg.SDKConfig.EntityResolutionConnection.Insecure {
-				tlsConfig = &tls.Config{
-					MinVersion:         tls.VersionTLS12,
-					InsecureSkipVerify: true, // #nosec G402
-				}
-				ersConnectRPCConn.Client = httputil.SafeHTTPClientWithTLSConfig(tlsConfig)
-			}
-			if cfg.SDKConfig.EntityResolutionConnection.Plaintext {
-				tlsConfig = &tls.Config{}
-				ersConnectRPCConn.Client = httputil.SafeHTTPClient()
-			}
-
-			if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
-				if oidcconfig.Issuer == "" {
-					// this should not occur, it will have been set above if this block is entered
-					return errors.New("cannot add token interceptor: oidcconfig is empty")
-				}
-
-				rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
-				if err != nil {
-					return fmt.Errorf("could not generate RSA Key: %w", err)
-				}
-				ts, err := sdk.NewIDPAccessTokenSource(
-					oauth.ClientCredentials{ClientID: cfg.SDKConfig.ClientID, ClientAuth: cfg.SDKConfig.ClientSecret},
-					oidcconfig.TokenEndpoint,
-					nil,
-					&rsaKeyPair,
-				)
-				if err != nil {
-					return fmt.Errorf("error creating ERS tokensource: %w", err)
-				}
-
-				interceptor := sdkauth.NewTokenAddingInterceptorWithClient(ts,
-					httputil.SafeHTTPClientWithTLSConfig(tlsConfig))
-
-				ersConnectRPCConn.Options = append(ersConnectRPCConn.Options, connect.WithInterceptors(interceptor.AddCredentialsConnect()))
-			}
-
-			if sdk.IsPlatformEndpointMalformed(cfg.SDKConfig.EntityResolutionConnection.Endpoint) {
-				return fmt.Errorf("entityresolution endpoint is malformed: %s", cfg.SDKConfig.EntityResolutionConnection.Endpoint)
-			}
-			ersConnectRPCConn.Endpoint = cfg.SDKConfig.EntityResolutionConnection.Endpoint
-
-			sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(&ersConnectRPCConn))
-			logger.Info("added with custom ers connection", slog.String("ers_connection_endpoint", ersConnectRPCConn.Endpoint))
-		}
-
-		client, err = sdk.New("", sdkOptions...)
-		if err != nil {
-			logger.Error("issue creating sdk client", slog.Any("error", err))
-			return fmt.Errorf("issue creating sdk client: %w", err)
-		}
+	// Configure SDK based on mode
+	if modeRequiresIpc(cfg) {
+		client, err = setupIPCSDK(cfg, oidcconfig, otdf, logger, sdkOptions)
 	} else {
-		// Use the provided SDK config
-		if cfg.SDKConfig.CorePlatformConnection.Insecure {
-			sdkOptions = append(sdkOptions, sdk.WithInsecureSkipVerifyConn())
-		}
-		if cfg.SDKConfig.CorePlatformConnection.Plaintext {
-			sdkOptions = append(sdkOptions, sdk.WithInsecurePlaintextConn())
-		}
-		client, err = sdk.New(cfg.SDKConfig.CorePlatformConnection.Endpoint, sdkOptions...)
-		if err != nil {
-			logger.Error("issue creating sdk client", slog.String("error", err.Error()))
-			return fmt.Errorf("issue creating sdk client: %w", err)
-		}
+		client, err = setupExternalSDK(cfg, logger, sdkOptions)
+	}
+	if err != nil {
+		return err
 	}
 
 	defer client.Close()
 
 	logger.Info("starting services")
 	gatewayCleanup, err := startServices(ctx, startServicesParams{
-		cfg:                 cfg,
-		otdf:                otdf,
-		client:              client,
-		keyManagerFactories: startConfig.trustKeyManagers,
-		logger:              logger,
-		reg:                 svcRegistry,
-		cacheManager:        cacheManager,
+		cfg:                    cfg,
+		otdf:                   otdf,
+		client:                 client,
+		keyManagerCtxFactories: startConfig.trustKeyManagerCtxs,
+		logger:                 logger,
+		reg:                    svcRegistry,
+		cacheManager:           cacheManager,
 	})
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
@@ -341,4 +298,163 @@ func waitForShutdownSignal() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	<-sigs
+}
+
+func modeRequiresSdkConfig(cfg *config.Config) bool {
+	// No SDK config required for 'all' mode
+	if slices.Contains(cfg.Mode, serviceregistry.ModeALL.String()) {
+		return false
+	}
+
+	// No SDK config required for entityresolution-only mode (runs standalone)
+	if slices.Contains(cfg.Mode, serviceregistry.ModeERS.String()) && len(cfg.Mode) == 1 {
+		return false
+	}
+
+	// No SDK config required when both core and entityresolution modes are present
+	if slices.Contains(cfg.Mode, serviceregistry.ModeCore.String()) && slices.Contains(cfg.Mode, serviceregistry.ModeERS.String()) {
+		return false
+	}
+
+	// All other mode combinations require SDK config
+	return true
+}
+
+func modeRequiresIpc(cfg *config.Config) bool {
+	// Use IPC for 'all' mode (everything runs in process)
+	if slices.Contains(cfg.Mode, serviceregistry.ModeALL.String()) {
+		return true
+	}
+
+	// Use IPC for entityresolution mode (does not connect to external services)
+	if slices.Contains(cfg.Mode, serviceregistry.ModeERS.String()) {
+		return true
+	}
+
+	// Use IPC for core mode (can use in-process connections)
+	if slices.Contains(cfg.Mode, serviceregistry.ModeCore.String()) {
+		return true
+	}
+
+	// All other modes use external SDK connections
+	return false
+}
+
+// setupERSConnection creates an ERS connection configuration for core mode
+func setupERSConnection(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, logger *logger.Logger) (*sdk.ConnectRPCConnection, error) {
+	if cfg.SDKConfig.EntityResolutionConnection.Endpoint == "" {
+		return nil, errors.New("entityresolution endpoint must be provided in core mode")
+	}
+
+	ersConnectRPCConn := &sdk.ConnectRPCConnection{}
+
+	// Configure TLS
+	tlsConfig := configureTLSForERS(cfg, ersConnectRPCConn)
+
+	// Configure authentication if credentials are provided
+	if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
+		if err := configureERSAuthentication(cfg, oidcconfig, tlsConfig, ersConnectRPCConn); err != nil {
+			return nil, err
+		}
+	}
+
+	// Validate and set endpoint
+	if sdk.IsPlatformEndpointMalformed(cfg.SDKConfig.EntityResolutionConnection.Endpoint) {
+		return nil, fmt.Errorf("entityresolution endpoint is malformed: %s", cfg.SDKConfig.EntityResolutionConnection.Endpoint)
+	}
+	ersConnectRPCConn.Endpoint = cfg.SDKConfig.EntityResolutionConnection.Endpoint
+
+	logger.Info("added with custom ers connection", slog.String("ers_connection_endpoint", ersConnectRPCConn.Endpoint))
+	return ersConnectRPCConn, nil
+}
+
+// configureTLSForERS configures TLS settings for ERS connection
+func configureTLSForERS(cfg *config.Config, ersConnectRPCConn *sdk.ConnectRPCConnection) *tls.Config {
+	var tlsConfig *tls.Config
+	ersConn := &cfg.SDKConfig.EntityResolutionConnection
+
+	if ersConn.Insecure {
+		tlsConfig = &tls.Config{
+			MinVersion:         tls.VersionTLS12,
+			InsecureSkipVerify: true, // #nosec G402
+		}
+		ersConnectRPCConn.Client = httputil.SafeHTTPClientWithTLSConfig(tlsConfig)
+	} else if ersConn.Plaintext {
+		tlsConfig = &tls.Config{}
+		ersConnectRPCConn.Client = httputil.SafeHTTPClient()
+	}
+
+	return tlsConfig
+}
+
+// configureERSAuthentication sets up authentication for ERS connection
+func configureERSAuthentication(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, tlsConfig *tls.Config, ersConn *sdk.ConnectRPCConnection) error {
+	if oidcconfig.Issuer == "" {
+		return errors.New("cannot add token interceptor: oidcconfig is empty")
+	}
+
+	rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
+	if err != nil {
+		return fmt.Errorf("could not generate RSA Key: %w", err)
+	}
+
+	ts, err := sdk.NewIDPAccessTokenSource(
+		oauth.ClientCredentials{ClientID: cfg.SDKConfig.ClientID, ClientAuth: cfg.SDKConfig.ClientSecret},
+		oidcconfig.TokenEndpoint,
+		nil,
+		&rsaKeyPair,
+	)
+	if err != nil {
+		return fmt.Errorf("error creating ERS tokensource: %w", err)
+	}
+
+	interceptor := sdkauth.NewTokenAddingInterceptorWithClient(ts,
+		httputil.SafeHTTPClientWithTLSConfig(tlsConfig))
+
+	ersConn.Options = append(ersConn.Options, connect.WithInterceptors(interceptor.AddCredentialsConnect()))
+	return nil
+}
+
+// setupIPCSDK configures and creates SDK client for IPC mode
+func setupIPCSDK(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, otdf *server.OpenTDFServer, logger *logger.Logger, sdkOptions []sdk.Option) (*sdk.SDK, error) {
+	// Use IPC for the SDK client
+	sdkOptions = append(sdkOptions, sdk.WithIPC())
+	sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.ConnectRPCInProcess.Conn()))
+
+	// handle ERS connection for core mode
+	if slices.Contains(cfg.Mode, serviceregistry.ModeCore.String()) && !slices.Contains(cfg.Mode, serviceregistry.ModeERS.String()) {
+		logger.Info("core mode")
+
+		ersConnectRPCConn, err := setupERSConnection(cfg, oidcconfig, logger)
+		if err != nil {
+			return nil, err
+		}
+
+		sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(ersConnectRPCConn))
+	}
+
+	client, err := sdk.New("", sdkOptions...)
+	if err != nil {
+		logger.Error("issue creating sdk client", slog.Any("error", err))
+		return nil, fmt.Errorf("issue creating sdk client: %w", err)
+	}
+
+	return client, nil
+}
+
+// setupExternalSDK configures and creates SDK client for external mode
+func setupExternalSDK(cfg *config.Config, logger *logger.Logger, sdkOptions []sdk.Option) (*sdk.SDK, error) {
+	// Use the provided SDK config
+	if cfg.SDKConfig.CorePlatformConnection.Insecure {
+		sdkOptions = append(sdkOptions, sdk.WithInsecureSkipVerifyConn())
+	}
+	if cfg.SDKConfig.CorePlatformConnection.Plaintext {
+		sdkOptions = append(sdkOptions, sdk.WithInsecurePlaintextConn())
+	}
+	client, err := sdk.New(cfg.SDKConfig.CorePlatformConnection.Endpoint, sdkOptions...)
+	if err != nil {
+		logger.Error("issue creating sdk client", slog.String("error", err.Error()))
+		return nil, fmt.Errorf("issue creating sdk client: %w", err)
+	}
+	return client, nil
 }

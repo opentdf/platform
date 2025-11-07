@@ -1,0 +1,80 @@
+# Test groups for Entity Resolution Service LDAP provider
+# Organizational groups and team memberships
+
+# Engineering Department Group
+dn: cn=engineering,ou=groups,dc=opentdf,dc=test
+objectClass: groupOfNames
+cn: engineering
+description: Engineering Department - Software Development Teams
+member: uid=alice,ou=users,dc=opentdf,dc=test
+member: uid=diana,ou=users,dc=opentdf,dc=test
+member: uid=test-service,ou=users,dc=opentdf,dc=test
+
+# Marketing Department Group
+dn: cn=marketing,ou=groups,dc=opentdf,dc=test
+objectClass: groupOfNames
+cn: marketing
+description: Marketing Department - Product and Marketing Teams
+member: uid=bob,ou=users,dc=opentdf,dc=test
+
+# Security Department Group
+dn: cn=security,ou=groups,dc=opentdf,dc=test
+objectClass: groupOfNames
+cn: security
+description: Security Department - Information Security Teams
+member: uid=charlie,ou=users,dc=opentdf,dc=test
+
+# Operations Department Group
+dn: cn=operations,ou=groups,dc=opentdf,dc=test
+objectClass: groupOfNames
+cn: operations
+description: Operations Department - Infrastructure and DevOps Teams
+member: uid=eve,ou=users,dc=opentdf,dc=test
+
+# Frontend Development Team
+dn: cn=frontend-team,ou=engineering,ou=groups,dc=opentdf,dc=test
+objectClass: groupOfNames
+cn: frontend-team
+description: Frontend Development Team - UI/UX Specialists
+member: uid=alice,ou=users,dc=opentdf,dc=test
+
+# Backend Development Team
+dn: cn=backend-team,ou=engineering,ou=groups,dc=opentdf,dc=test
+objectClass: groupOfNames
+cn: backend-team
+description: Backend Development Team - API and Service Specialists
+member: uid=diana,ou=users,dc=opentdf,dc=test
+member: uid=test-service,ou=users,dc=opentdf,dc=test
+
+# DevOps Team
+dn: cn=devops-team,ou=operations,ou=groups,dc=opentdf,dc=test
+objectClass: groupOfNames
+cn: devops-team
+description: DevOps Team - Infrastructure and Automation Specialists
+member: uid=eve,ou=users,dc=opentdf,dc=test
+
+# Executives Group
+dn: cn=executives,ou=groups,dc=opentdf,dc=test
+objectClass: groupOfNames
+cn: executives
+description: Executive Leadership Team
+member: uid=charlie,ou=users,dc=opentdf,dc=test
+member: uid=grace,ou=users,dc=opentdf,dc=test
+member: uid=henry,ou=users,dc=opentdf,dc=test
+
+# Admin Group (for testing administrative access)
+dn: cn=admins,ou=groups,dc=opentdf,dc=test
+objectClass: groupOfNames
+cn: admins
+description: System Administrators
+member: uid=charlie,ou=users,dc=opentdf,dc=test
+member: uid=eve,ou=users,dc=opentdf,dc=test
+
+# Developers Group (cross-functional)
+dn: cn=developers,ou=groups,dc=opentdf,dc=test
+objectClass: groupOfNames
+cn: developers
+description: All Software Developers
+member: uid=alice,ou=users,dc=opentdf,dc=test
+member: uid=diana,ou=users,dc=opentdf,dc=test
+member: uid=test-service,ou=users,dc=opentdf,dc=test

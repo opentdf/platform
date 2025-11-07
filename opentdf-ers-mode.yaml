@@ -28,6 +28,8 @@ server:
       default: #"role:standard"
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)
       claim: # realm_access.roles
+      # Claim the represents the idP client ID 
+      client_id_claim: # azp
       ## Maps the external role to the opentdf role
       ## Note: left side is used in the policy, right side is the external role
       map:

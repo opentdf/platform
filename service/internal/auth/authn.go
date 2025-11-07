@@ -22,10 +22,10 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"google.golang.org/grpc/metadata"
 
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/logger"
+	"google.golang.org/grpc/metadata"
 
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 )
@@ -62,6 +62,14 @@ var (
 		jwa.PS384: true,
 		jwa.PS512: true,
 	}
+
+	// Exported error variables for client ID processing
+	ErrClientIDClaimNotConfigured = errors.New("no client ID claim configured")
+	ErrClientIDClaimNotFound      = errors.New("client ID claim not found")
+	ErrClientIDClaimNotString     = errors.New("client ID claim is not a string")
+
+	canonicalIPCHeaderClientID    = http.CanonicalHeaderKey("x-ipc-auth-client-id")
+	canonicalIPCHeaderAccessToken = http.CanonicalHeaderKey("x-ipc-access-token")
 )
 
 const (
@@ -164,7 +172,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 
 	// Try an register oidc issuer to wellknown service but don't return an error if it fails
 	if err := wellknownRegistration("platform_issuer", cfg.Issuer); err != nil {
-		logger.Warn("failed to register platform issuer", slog.String("error", err.Error()))
+		logger.Warn("failed to register platform issuer", slog.Any("error", err))
 	}
 
 	var oidcConfigMap map[string]any
@@ -180,7 +188,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	}
 
 	if err := wellknownRegistration("idp", oidcConfigMap); err != nil {
-		logger.Warn("failed to register platform idp information", slog.String("error", err.Error()))
+		logger.Warn("failed to register platform idp information", slog.Any("error", err))
 	}
 
 	return a, nil
@@ -212,6 +220,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		}
 
 		dp := r.Header.Values("Dpop")
+		log := a.logger
 
 		// Verify the token
 		header := r.Header["Authorization"]
@@ -228,12 +237,12 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 				origin = "http://" + strings.TrimSuffix(origin, ":80")
 			}
 		}
-		accessTok, ctxWithJWK, err := a.checkToken(r.Context(), header, receiverInfo{
+		accessTok, ctx, err := a.checkToken(r.Context(), header, receiverInfo{
 			u: []string{normalizeURL(origin, r.URL)},
 			m: []string{r.Method},
 		}, dp)
 		if err != nil {
-			slog.WarnContext(r.Context(),
+			log.WarnContext(ctx,
 				"unauthenticated",
 				slog.Any("error", err),
 				slog.Any("dpop", dp),
@@ -242,12 +251,19 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		md, ok := metadata.FromIncomingContext(ctxWithJWK)
-		if !ok {
-			md = metadata.New(nil)
+		clientID, err := a.getClientIDFromToken(ctx, accessTok)
+		if err != nil {
+			log.WarnContext(
+				ctx,
+				"could not determine client ID from token",
+				slog.Any("err", err),
+			)
+		} else {
+			log = log.
+				With("client_id", clientID).
+				With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
+			ctx = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctx, log, clientID)
 		}
-		md.Append("access_token", ctxAuth.GetRawAccessTokenFromContext(ctxWithJWK, nil))
-		ctxWithJWK = metadata.NewIncomingContext(ctxWithJWK, md)
 
 		// Check if the token is allowed to access the resource
 		var action string
@@ -263,7 +279,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		}
 		if allow, err := a.enforcer.Enforce(accessTok, r.URL.Path, action); err != nil {
 			if err.Error() == "permission denied" {
-				a.logger.WarnContext(r.Context(),
+				log.WarnContext(
+					ctx,
 					"permission denied",
 					slog.String("azp", accessTok.Subject()),
 					slog.Any("error", err),
@@ -274,12 +291,16 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		} else if !allow {
-			a.logger.WarnContext(r.Context(), "permission denied", slog.String("azp", accessTok.Subject()))
+			log.WarnContext(
+				ctx,
+				"permission denied",
+				slog.String("azp", accessTok.Subject()),
+			)
 			http.Error(w, "permission denied", http.StatusForbidden)
 			return
 		}
 
-		r = r.WithContext(ctxWithJWK)
+		r = r.WithContext(ctx)
 		handler.ServeHTTP(w, r)
 	})
 }
@@ -292,9 +313,11 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
 			// if the token is already in the context, skip the interceptor
-			if ctxAuth.GetAccessTokenFromContext(ctx, nil) != nil {
+			if ctxAuth.GetAccessTokenFromContext(ctx, a.logger) != nil {
 				return next(ctx, req)
 			}
+
+			log := a.logger
 
 			ri := receiverInfo{
 				u: []string{req.Spec().Procedure},
@@ -319,7 +342,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			resource := p[1] + "/" + p[2]
 			action := getAction(p[2])
 
-			token, newCtx, err := a.checkToken(
+			token, ctxWithJWK, err := a.checkToken(
 				ctx,
 				header,
 				ri,
@@ -329,10 +352,26 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 
+			clientID, err := a.getClientIDFromToken(ctxWithJWK, token)
+			if err != nil {
+				log.WarnContext(
+					ctxWithJWK,
+					"could not determine client ID from token",
+					slog.Any("err", err),
+				)
+			} else {
+				log = log.
+					With("client_id", clientID).
+					With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
+				ctxWithJWK = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, log, clientID)
+			}
+
 			// Check if the token is allowed to access the resource
 			if allowed, err := a.enforcer.Enforce(token, resource, action); err != nil {
 				if err.Error() == "permission denied" {
-					a.logger.Warn("permission denied",
+					log.WarnContext(
+						ctxWithJWK,
+						"permission denied",
 						slog.String("azp", token.Subject()),
 						slog.Any("error", err),
 					)
@@ -340,24 +379,74 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				}
 				return nil, err
 			} else if !allowed {
-				a.logger.Warn("permission denied", slog.String("azp", token.Subject()))
+				log.WarnContext(ctxWithJWK, "permission denied", slog.String("azp", token.Subject()))
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 			}
 
-			return next(newCtx, req)
+			return next(ctxWithJWK, req)
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)
 }
 
-// IPCReauthInterceptor is a grpc interceptor that verifies the token in the metadata
-// and reauthorizes the token if the route is in the list
+// IPCMetadataClientInterceptor transfers gRPC outgoing metadata to Connect request headers for IPC calls
+func IPCMetadataClientInterceptor(log *logger.Logger) connect.UnaryInterceptorFunc {
+	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return connect.UnaryFunc(func(
+			ctx context.Context,
+			req connect.AnyRequest,
+		) (connect.AnyResponse, error) {
+			// Only apply to outgoing client requests
+			if !req.Spec().IsClient {
+				return next(ctx, req)
+			}
+
+			incoming := true
+			clientID, err := ctxAuth.GetClientIDFromContext(ctx, incoming)
+			if err != nil {
+				// metadata will not always be found over IPC - log other errors
+				if !errors.Is(err, ctxAuth.ErrNoMetadataFound) {
+					log.ErrorContext(ctx, "IPCMetadataClientInterceptor", slog.Any("error", err))
+				}
+			} else {
+				req.Header().Add(canonicalIPCHeaderClientID, clientID)
+			}
+
+			authToken := ctxAuth.GetRawAccessTokenFromContext(ctx, log)
+			if authToken != "" {
+				req.Header().Add(canonicalIPCHeaderAccessToken, authToken)
+			}
+
+			return next(ctx, req)
+		})
+	})
+}
+
+// IPCUnaryServerInterceptor is a grpc interceptor that:
+// 1. verifies the token in the metadata
+// 2. reauthorizes the token if the route is in the list
+// 3. translates known IPC Connect request headers back to context metadata for downstream consumers
 func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
+			incomingMD, hasIncoming := metadata.FromIncomingContext(ctx)
+
+			// Transfer metadata from headers to context for IPC calls due to Connect/IPC limitations
+			md := metadata.New(map[string]string{})
+			if clientID := req.Header().Get(canonicalIPCHeaderClientID); clientID != "" {
+				md.Set(ctxAuth.ClientIDKey, clientID)
+			}
+			if authToken := req.Header().Get(canonicalIPCHeaderAccessToken); authToken != "" {
+				md.Set(ctxAuth.AccessTokenKey, authToken)
+			}
+			if hasIncoming {
+				md = metadata.Join(md, incomingMD.Copy())
+			}
+			ctx = metadata.NewIncomingContext(ctx, md)
+
 			nextCtx, err := a.ipcReauthCheck(ctx, req.Spec().Procedure, req.Header())
 			if err != nil {
 				return nil, err
@@ -399,7 +488,7 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 	case strings.HasPrefix(authHeader[0], "Bearer "):
 		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
 	default:
-		a.logger.Warn("failed to validate authentication header: not of type bearer or dpop", slog.String("header", authHeader[0]))
+		a.logger.WarnContext(ctx, "failed to validate authentication header: not of type bearer or dpop", slog.String("header", authHeader[0]))
 		return nil, nil, errors.New("not of type bearer or dpop")
 	}
 
@@ -431,12 +520,12 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 		ctx = ctxAuth.ContextWithAuthNInfo(ctx, nil, accessToken, tokenRaw)
 		return accessToken, ctx, nil
 	}
-	key, err := a.validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader)
+	dpopKey, err := a.validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader)
 	if err != nil {
 		a.logger.Warn("failed to validate dpop", slog.Any("err", err))
 		return nil, nil, err
 	}
-	ctx = ctxAuth.ContextWithAuthNInfo(ctx, key, accessToken, tokenRaw)
+	ctx = ctxAuth.ContextWithAuthNInfo(ctx, dpopKey, accessToken, tokenRaw)
 	return accessToken, ctx, nil
 }
 
@@ -668,7 +757,7 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 			u = append(u, a.lookupGatewayPaths(ctx, path, header)...)
 
 			// Validate the token and create a JWT token
-			_, nextCtx, err := a.checkToken(ctx, authHeader, receiverInfo{
+			token, ctxWithJWK, err := a.checkToken(ctx, authHeader, receiverInfo{
 				u: u,
 				m: []string{http.MethodPost},
 			}, header["Dpop"])
@@ -677,8 +766,33 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 			}
 
 			// Return the next context with the token
-			return nextCtx, nil
+			clientID, err := a.getClientIDFromToken(ctxWithJWK, token)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+			}
+			return ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, a.logger, clientID), nil
 		}
 	}
 	return ctx, nil
+}
+
+// getClientIDFromToken returns the client ID from the token if found (dot notation)
+func (a *Authentication) getClientIDFromToken(ctx context.Context, tok jwt.Token) (string, error) {
+	clientIDClaim := a.oidcConfiguration.Policy.ClientIDClaim
+	if clientIDClaim == "" {
+		return "", ErrClientIDClaimNotConfigured
+	}
+	claimsMap, err := tok.AsMap(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse token as a map and find claim at [%s]: %w", clientIDClaim, err)
+	}
+	found := dotNotation(claimsMap, clientIDClaim)
+	if found == nil {
+		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotFound, clientIDClaim)
+	}
+	clientID, isString := found.(string)
+	if !isString {
+		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotString, clientIDClaim)
+	}
+	return clientID, nil
 }

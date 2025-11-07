@@ -186,41 +186,85 @@ components:
         encryptedMetadata:
           type: string
           title: encrypted_metadata
+          description: |-
+            Base64-encoded encrypted metadata containing additional key information
+             Optional: Not used during KAS rewrap operations (client-side only)
+             KAS service passes this through without processing or validation
         policyBinding:
           title: policy_binding
+          description: |-
+            Policy binding ensuring cryptographic integrity between policy and wrapped key
+             Required: ZTDF (contains hash and algorithm)
+             Links the policy to the wrapped key cryptographically
           $ref: '#/components/schemas/kas.PolicyBinding'
         protocol:
           type: string
           title: protocol
+          description: |-
+            Protocol identifier for the key access mechanism
+             Optional: Defaults to 'kas'
+             Typically: 'kas' for standard Key Access Service protocol
+             Example: "kas"
         type:
           type: string
           title: key_type
+          description: |-
+            Type of key wrapping used for the data encryption key
+             Required: Always
+             Values: 'wrapped' (RSA-wrapped for ZTDF), 'ec-wrapped' (experimental ECDH-wrapped)
         url:
           type: string
           title: kas_url
+          description: |-
+            URL of the Key Access Server that can unwrap this key
+             Optional: May be omitted if KAS URL is known from context
+             Used to route rewrap requests to the correct KAS instance
+             Example: "https://kas.example.com"
         kid:
           type: string
           title: kid
+          description: |-
+            Key identifier for the KAS public key used for wrapping
+             Optional: ZTDF (may specify which KAS key to use, required if present in the TDF)
+             References a specific public key in the KAS key storage (either local keyring or KAS Registry service)
+             Example: "k1", "ec-key-2024"
         sid:
           type: string
           title: split_id
+          description: |-
+            Split identifier for key splitting scenarios
+             Optional: ZTDF (used in advanced key splitting configurations)
+             Used when keys are split across multiple parties for enhanced security
         wrappedKey:
           type: string
           title: wrapped_key
           format: byte
+          description: |-
+            Client-generated data encryption key wrapped by KAS
+             Required: Always
+             Contains the actual DEK encrypted with KAS's public key
+             This is the core cryptographic material needed for TDF decryption
         header:
           type: string
           title: header
           format: byte
-          description: header is only used for NanoTDFs
+          description: |-
+            Complete NanoTDF header containing all metadata and policy information
+             Required: NanoTDF only
+             ZTDF: Omitted (policy and metadata are separate)
+             Contains magic bytes, version, algorithm, policy, and ephemeral key information
         ephemeralPublicKey:
           type: string
           title: ephemeral_public_key
           description: |-
-            For wrapping with an ECDH derived key, when type=ec-wrapped.
-             Should be a PEM-encoded PKCS#8 (asn.1) value.
+            Ephemeral public key for ECDH key derivation (ec-wrapped type only)
+             Required: When key_type="ec-wrapped" (experimental ECDH-based ZTDF)
+             Omitted: When key_type="wrapped" (RSA-based ZTDF)
+             Should be a PEM-encoded PKCS#8 (ASN.1) formatted public key
+             Used to derive the symmetric key for unwrapping the DEK
       title: KeyAccess
       additionalProperties: false
+      description: Key Access Object containing cryptographic material and metadata for TDF decryption
     kas.KeyAccessRewrapResult:
       type: object
       oneOf:
@@ -228,6 +272,10 @@ components:
             error:
               type: string
               title: error
+              description: |-
+                Error message when rewrap failed
+                 Present when status="fail"
+                 Human-readable description of the failure reason
           title: error
           required:
             - error
@@ -236,6 +284,10 @@ components:
               type: string
               title: kas_wrapped_key
               format: byte
+              description: |-
+                Successfully rewrapped key encrypted with the session key
+                 Present when status="permit"
+                 Contains the DEK encrypted with the ephemeral session key
           title: kas_wrapped_key
           required:
             - kasWrappedKey
@@ -246,14 +298,26 @@ components:
           additionalProperties:
             title: value
             $ref: '#/components/schemas/google.protobuf.Value'
+          description: |-
+            Metadata associated with this KAO result (e.g., required obligations)
+             Optional: May contain obligation requirements or other policy metadata
+             Common keys: "X-Required-Obligations" with array of obligation FQNs
         keyAccessObjectId:
           type: string
           title: key_access_object_id
+          description: |-
+            Identifier matching the key_access_object_id from the request
+             Required: Always matches the ID from UnsignedRewrapRequest_WithKeyAccessObject
         status:
           type: string
           title: status
+          description: |-
+            Status of the rewrap operation for this KAO
+             Required: Always
+             Values: "permit" (success), "fail" (failure)
       title: KeyAccessRewrapResult
       additionalProperties: false
+      description: Result of a key access object rewrap operation
     kas.KeyAccessRewrapResult.MetadataEntry:
       type: object
       properties:
@@ -279,24 +343,45 @@ components:
         alg:
           type: string
           title: algorithm
+          description: |-
+            Cryptographic hashing algorithm used for policy binding
+             Optional: ZTDF (when policy_binding is an object)
+             Value: Always "HS256" (HMAC-SHA256) - other algorithms not supported
+             Example: "HS256"
         hash:
           type: string
           title: hash
+          description: |-
+            HMAC-SHA256 hash of the base64-encoded policy using the DEK as the secret key
+             4.2.2 TDFs are hex and base64 encoded before HMAC computation
+             Required: ZTDF (when policy_binding is an object)
+             Links the policy content to the wrapped DEK cryptographically via HMAC
+             Computed as HMAC-SHA256(DEK, base64_policy) then hex-encoded and base64-encoded
       title: PolicyBinding
       additionalProperties: false
+      description: |-
+        Policy binding ensures cryptographic integrity between policy and wrapped key
+         Prevents policy tampering by binding the policy hash to the encrypted key
     kas.PolicyRewrapResult:
       type: object
       properties:
         policyId:
           type: string
           title: policy_id
+          description: |-
+            Policy identifier matching the policy.id from the request
+             Required: Always matches the ID from UnsignedRewrapRequest_WithPolicy
         results:
           type: array
           items:
             $ref: '#/components/schemas/kas.KeyAccessRewrapResult'
           title: results
+          description: |-
+            Results for each KAO under this policy
+             Required: One result per KAO in the original request
       title: PolicyRewrapResult
       additionalProperties: false
+      description: Result for all KAOs associated with a single policy
     kas.PublicKeyRequest:
       type: object
       properties:
@@ -328,8 +413,15 @@ components:
         signedRequestToken:
           type: string
           title: signed_request_token
+          description: |-
+            A JWT signed by the DPoP (Demonstration of Proof of Possession) private key
+             Required: Always
+             Version differences:
+             - v1 (legacy): Uses existing TDF spec schema in requestBody
+             - v2 (bulk): Uses UnsignedRewrapRequest proto serialized as JSON in requestBody
       title: RewrapRequest
       additionalProperties: false
+      description: Request to rewrap (decrypt and re-encrypt) TDF keys for client access
     kas.RewrapResponse:
       type: object
       properties:
@@ -339,27 +431,45 @@ components:
           additionalProperties:
             title: value
             $ref: '#/components/schemas/google.protobuf.Value'
+          description: |-
+            Deprecated: Legacy metadata field
+             Modern responses use metadata in individual KeyAccessRewrapResult
           deprecated: true
         entityWrappedKey:
           type: string
           title: entity_wrapped_key
           format: byte
+          description: |-
+            Deprecated: Legacy single entity wrapped key
+             Modern responses use kas_wrapped_key in KeyAccessRewrapResult
           deprecated: true
         sessionPublicKey:
           type: string
           title: session_public_key
+          description: |-
+            KAS's ephemeral session public key in PEM format
+             Required: For EC-based operations (NanoTDF and ZTDF with key_type="ec-wrapped")
+             Optional: Empty for RSA-based ZTDF (key_type="wrapped")
+             Used by client to perform ECDH key agreement and decrypt the kas_wrapped_key values
         schemaVersion:
           type: string
           title: schema_version
+          description: |-
+            Deprecated: Legacy schema version identifier
+             Modern responses use implicit versioning
           deprecated: true
         responses:
           type: array
           items:
             $ref: '#/components/schemas/kas.PolicyRewrapResult'
           title: responses
-          description: New Rewrap API changes
+          description: |-
+            Policy-grouped rewrap results for the bulk API
+             Required: Modern v2 API responses
+             Each PolicyRewrapResult contains results for all KAOs under that policy
       title: RewrapResponse
       additionalProperties: false
+      description: Response containing rewrapped keys and session information
     kas.RewrapResponse.MetadataEntry:
       type: object
       properties:
@@ -377,50 +487,86 @@ components:
         clientPublicKey:
           type: string
           title: client_public_key
+          description: |-
+            Client's public key in PEM format for establishing a session key
+             Required: Always
+             Used by KAS to generate an ephemeral session key for secure key exchange
         requests:
           type: array
           items:
             $ref: '#/components/schemas/kas.UnsignedRewrapRequest.WithPolicyRequest'
           title: requests
+          description: |-
+            List of policy requests to be processed
+             Required: Always (at least one)
+             Each request represents a policy with its associated key access objects
         keyAccess:
           title: key_access
-          description: Used for legacy non-bulk requests
+          description: |-
+            Deprecated: Legacy single Key Access Object
+             Used for legacy non-bulk requests (v1 API)
+             Modern clients should use the 'requests' field instead
           deprecated: true
           $ref: '#/components/schemas/kas.KeyAccess'
         policy:
           type: string
           title: policy
-          description: Used for legacy non-bulk requests
+          description: |-
+            Deprecated: Legacy single policy
+             Used for legacy non-bulk requests (v1 API)
+             Modern clients should use the 'requests' field instead
           deprecated: true
         algorithm:
           type: string
           title: algorithm
-          description: Used for legacy non-bulk requests
+          description: "Deprecated: Legacy algorithm specification\n Used for legacy non-bulk requests (v1 API)  \n Modern clients should use the 'requests' field instead"
           deprecated: true
       title: UnsignedRewrapRequest
       additionalProperties: false
+      description: |-
+        Bulk-style Rewrap request structure that is serialized into JSON and signed
+         within a Rewrap flow. This message represents the unsigned payload that gets
+         embedded in a JWT as the 'requestBody' claim and signed with a DPoP key.
     kas.UnsignedRewrapRequest.WithKeyAccessObject:
       type: object
       properties:
         keyAccessObjectId:
           type: string
           title: key_access_object_id
+          description: |-
+            Ephemeral, unique identifier for this KAO within the request
+             Required: Always
+             Example: "kao-0", "kao-1", "key-access-object-uuid"
         keyAccessObject:
           title: key_access_object
+          description: |-
+            The actual Key Access Object containing cryptographic material and metadata
+             Required: Always
           $ref: '#/components/schemas/kas.KeyAccess'
       title: WithKeyAccessObject
       additionalProperties: false
+      description: Key Access Object wrapper with identifier
     kas.UnsignedRewrapRequest.WithPolicy:
       type: object
       properties:
         id:
           type: string
           title: id
+          description: |-
+            An identifier unique within the scope of the rewrap request
+             Used for mapping between request and response items.
+             Required: Always
+             Example: "policy", "policy-0", "policy-1"
         body:
           type: string
           title: body
+          description: |-
+            Policy content - format varies by TDF type:
+             ZTDF: Base64-encoded JSON policy object containing attributes and other policy data
+             Required: ZTDF (base64-encoded policy JSON)
       title: WithPolicy
       additionalProperties: false
+      description: Policy metadata and content for a group of KeyAccessObjects
     kas.UnsignedRewrapRequest.WithPolicyRequest:
       type: object
       properties:
@@ -429,14 +575,28 @@ components:
           items:
             $ref: '#/components/schemas/kas.UnsignedRewrapRequest.WithKeyAccessObject'
           title: key_access_objects
+          description: |-
+            List of Key Access Objects associated with this policy
+             Required: Always (at least one)
+             NanoTDF: Exactly one KAO per policy
+             ZTDF: One or more KAOs per policy
         policy:
           title: policy
+          description: |-
+            Policy information for this group of KAOs
+             Required: Always
           $ref: '#/components/schemas/kas.UnsignedRewrapRequest.WithPolicy'
         algorithm:
           type: string
           title: algorithm
+          description: |-
+            Cryptographic algorithm identifier for the TDF type
+             Optional: Defaults to rsa:2048 if omitted
+             Values: "ec:secp256r1" (NanoTDF), "rsa:2048" (ZTDF), "" (defaults to rsa:2048)
+             Example: "ec:secp256r1"
       title: WithPolicyRequest
       additionalProperties: false
+      description: Request grouping policy with associated key access objects
     connect-protocol-version:
       type: number
       title: Connect-Protocol-Version

@@ -51,6 +51,10 @@ var clientsToGenerateList = []runner.ClientsToGenerate{
 		GrpcPackagePath:     "github.com/opentdf/platform/protocol/go/policy/namespaces",
 	},
 	{
+		GrpcClientInterface: "ServiceClient",
+		GrpcPackagePath:     "github.com/opentdf/platform/protocol/go/policy/obligations",
+	},
+	{
 		GrpcClientInterface: "RegisteredResourcesServiceClient",
 		GrpcPackagePath:     "github.com/opentdf/platform/protocol/go/policy/registeredresources",
 	},

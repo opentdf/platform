@@ -105,7 +105,8 @@ func (s *KeyIndexTestSuite) SetupTest() {
 				},
 				ProviderConfig: &policy.KeyProviderConfig{
 					Id:         "test-provider-id",
-					Name:       "openbao",
+					Name:       "openbao-west",
+					Manager:    "openbao",
 					ConfigJson: []byte("config"),
 				},
 			},
@@ -189,7 +190,6 @@ func (s *KeyIndexTestSuite) TestListKeysWith() {
 	}, nil)
 
 	mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
-		//nolint:staticcheck // Legacy optional flag should not be set
 		return req.Legacy == nil
 	})).Return(&kasregistry.ListKeysResponse{
 		KasKeys: []*policy.KasKey{
@@ -255,7 +255,6 @@ func (s *KeyIndexTestSuite) TestFindKeyByAlgorithm() {
 	}
 
 	mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
-		//nolint:staticcheck // Legacy optional flag should not be set
 		return req.GetKeyAlgorithm() == policy.Algorithm_ALGORITHM_RSA_2048 && (req.Legacy != nil && req.GetLegacy() == false)
 	})).Return(&kasregistry.ListKeysResponse{
 		KasKeys: []*policy.KasKey{
@@ -270,7 +269,6 @@ func (s *KeyIndexTestSuite) TestFindKeyByAlgorithm() {
 	}, nil)
 
 	mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
-		//nolint:staticcheck // Legacy optional flag should not be set
 		return req.GetKeyAlgorithm() == policy.Algorithm_ALGORITHM_RSA_2048 && req.Legacy == nil
 	})).Return(&kasregistry.ListKeysResponse{
 		KasKeys: []*policy.KasKey{

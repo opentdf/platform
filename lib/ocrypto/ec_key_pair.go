@@ -446,7 +446,7 @@ func ECPrivateKeyInPemFormat(privateKey ecdsa.PrivateKey) (string, error) {
 
 // ECPublicKeyInPemFormat Returns public key in pem format.
 func ECPublicKeyInPemFormat(publicKey ecdsa.PublicKey) (string, error) {
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(publicKey)
+	pkb, err := x509.MarshalPKIXPublicKey(publicKey)
 	if err != nil {
 		return "", fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)
 	}
@@ -454,7 +454,7 @@ func ECPublicKeyInPemFormat(publicKey ecdsa.PublicKey) (string, error) {
 	publicKeyPem := pem.EncodeToMemory(
 		&pem.Block{
 			Type:  "PUBLIC KEY",
-			Bytes: publicKeyBytes,
+			Bytes: pkb,
 		},
 	)
 

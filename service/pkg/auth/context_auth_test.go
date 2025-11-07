@@ -8,6 +8,8 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/metadata"
 )
 
 func TestContextWithAuthNInfo(t *testing.T) {
@@ -69,4 +71,131 @@ func TestGetContextDetailsInvalidType(t *testing.T) {
 	// Assert that GetJWKFromContext handles the invalid type correctly
 	retrievedJWK := GetJWKFromContext(ctx, logger.CreateTestLogger())
 	assert.Nil(t, retrievedJWK, "JWK should be nil when context value is invalid")
+}
+
+func TestEnrichIncomingContextMetadataWithAuthn(t *testing.T) {
+	mockClientID := "test-client-id"
+	l := logger.CreateTestLogger()
+
+	t.Run("should add access token and client id to metadata", func(t *testing.T) {
+		ctx := ContextWithAuthNInfo(t.Context(), nil, nil, "raw-token-string")
+		enrichedCtx := EnrichIncomingContextMetadataWithAuthn(ctx, l, mockClientID)
+
+		md, ok := metadata.FromIncomingContext(enrichedCtx)
+		require.True(t, ok)
+
+		accessToken := md.Get(AccessTokenKey)
+		require.Len(t, accessToken, 1)
+		assert.Equal(t, "raw-token-string", accessToken[0])
+
+		clientIDs := md.Get(ClientIDKey)
+		require.Len(t, clientIDs, 1)
+		assert.Equal(t, mockClientID, clientIDs[0])
+	})
+
+	t.Run("should not set client id if empty", func(t *testing.T) {
+		ctx := ContextWithAuthNInfo(t.Context(), nil, nil, "raw-token-string")
+		enrichedCtx := EnrichIncomingContextMetadataWithAuthn(ctx, l, "")
+
+		md, ok := metadata.FromIncomingContext(enrichedCtx)
+		require.True(t, ok)
+
+		clientIDs := md.Get(ClientIDKey)
+		assert.Empty(t, clientIDs)
+	})
+
+	t.Run("should preserve existing metadata", func(t *testing.T) {
+		originalMD := metadata.New(map[string]string{"original-key": "original-value"})
+		ctx := metadata.NewIncomingContext(t.Context(), originalMD)
+		ctx = ContextWithAuthNInfo(ctx, nil, nil, "raw-token-string")
+		enrichedCtx := EnrichIncomingContextMetadataWithAuthn(ctx, l, mockClientID)
+
+		md, ok := metadata.FromIncomingContext(enrichedCtx)
+		require.True(t, ok)
+
+		originalValue := md.Get("original-key")
+		require.Len(t, originalValue, 1)
+		assert.Equal(t, "original-value", originalValue[0])
+
+		clientIDs := md.Get(ClientIDKey)
+		require.Len(t, clientIDs, 1)
+		assert.Equal(t, mockClientID, clientIDs[0])
+	})
+}
+
+func TestGetClientIDFromContext(t *testing.T) {
+	mockClientID := "test-client-id"
+
+	t.Run("good - should retrieve client id from incoming context", func(t *testing.T) {
+		md := metadata.New(map[string]string{ClientIDKey: mockClientID})
+		ctx := metadata.NewIncomingContext(t.Context(), md)
+
+		incoming := true
+		clientID, err := GetClientIDFromContext(ctx, incoming)
+		require.NoError(t, err)
+		assert.Equal(t, mockClientID, clientID)
+	})
+
+	t.Run("bad - should return error if clientID key is not present in incoming context", func(t *testing.T) {
+		md := metadata.New(map[string]string{"other-key": "other-value"})
+		ctx := metadata.NewIncomingContext(t.Context(), md)
+
+		incoming := true
+		_, err := GetClientIDFromContext(ctx, incoming)
+		require.Error(t, err)
+		require.ErrorIs(t, err, ErrMissingClientID)
+	})
+
+	t.Run("bad - should return error if no metadata in incoming context", func(t *testing.T) {
+		incoming := true
+		_, err := GetClientIDFromContext(t.Context(), incoming)
+		require.Error(t, err)
+		require.ErrorIs(t, err, ErrNoMetadataFound)
+	})
+
+	t.Run("bad - should return error if more than one metadata clientID key in incoming context", func(t *testing.T) {
+		md := metadata.Pairs(ClientIDKey, "id-1", ClientIDKey, "id-2")
+		ctx := metadata.NewIncomingContext(t.Context(), md)
+		incoming := true
+
+		_, err := GetClientIDFromContext(ctx, incoming)
+		require.Error(t, err)
+		require.ErrorIs(t, err, ErrConflictClientID)
+	})
+	t.Run("good - should retrieve client id from outgoing context", func(t *testing.T) {
+		md := metadata.New(map[string]string{ClientIDKey: mockClientID})
+		ctx := metadata.NewOutgoingContext(t.Context(), md)
+
+		incoming := false
+		clientID, err := GetClientIDFromContext(ctx, incoming)
+		require.NoError(t, err)
+		assert.Equal(t, mockClientID, clientID)
+	})
+
+	t.Run("bad - should return error if clientID key is not present in outgoing context", func(t *testing.T) {
+		md := metadata.New(map[string]string{"other-key": "other-value"})
+		ctx := metadata.NewOutgoingContext(t.Context(), md)
+
+		incoming := false
+		_, err := GetClientIDFromContext(ctx, incoming)
+		require.Error(t, err)
+		require.ErrorIs(t, err, ErrMissingClientID)
+	})
+
+	t.Run("bad - should return error if no metadata in outgoing context", func(t *testing.T) {
+		incoming := false
+		_, err := GetClientIDFromContext(t.Context(), incoming)
+		require.Error(t, err)
+		require.ErrorIs(t, err, ErrNoMetadataFound)
+	})
+
+	t.Run("bad - should return error if more than one metadata client_id key in outgoing context", func(t *testing.T) {
+		md := metadata.Pairs(ClientIDKey, "id-1", ClientIDKey, "id-2")
+		ctx := metadata.NewOutgoingContext(t.Context(), md)
+		incoming := false
+
+		_, err := GetClientIDFromContext(ctx, incoming)
+		require.Error(t, err)
+		require.ErrorIs(t, err, ErrConflictClientID)
+	})
 }

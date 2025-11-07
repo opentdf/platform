@@ -46,21 +46,20 @@ func (aesGcm AesGcm) Encrypt(data []byte) ([]byte, error) {
 	cipherText := gcm.Seal(nonce, nonce, data, nil)
 	return cipherText, nil
 }
-func (aesGcm AesGcm) EncryptWithDestination(data []byte, dst []byte) ([]byte, error) {
+
+func (aesGcm AesGcm) EncryptInPlace(data []byte) ([]byte, []byte, error) {
 	nonce, err := RandomBytes(GcmStandardNonceSize)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	copy(dst[:GcmStandardNonceSize], nonce)
-
 
 	gcm, err := cipher.NewGCMWithNonceSize(aesGcm.block, GcmStandardNonceSize)
 	if err != nil {
-		return nil, fmt.Errorf("cipher.NewGCMWithNonceSize failed: %w", err)
+		return nil, nil, fmt.Errorf("cipher.NewGCMWithNonceSize failed: %w", err)
 	}
 
-	cipherText := gcm.Seal(dst[:GcmStandardNonceSize], nonce, data, nil)
-	return cipherText, nil
+	cipherText := gcm.Seal(data[:0], nonce, data, nil)
+	return cipherText, nonce, nil
 }
 
 // EncryptWithIV encrypts data with symmetric key.

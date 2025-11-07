@@ -86,7 +86,6 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byt
 
 	// Create segment buffer for this segment's output
 	buffer := &bytes.Buffer{}
-	offset := 100
 
 	// Deterministic behavior: segment 0 gets ZIP header, others get raw data
 	if index == 0 {
@@ -94,14 +93,8 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byt
 		if err := sw.writeLocalFileHeader(buffer); err != nil {
 			return nil, &Error{Op: "write-segment", Type: "segment", Err: err}
 		}
-		offset = 100 - buffer.Len()
-		buffer.Write(data[offset:]) // Write remaining data after header
 	}
 
-	// All segments: write the encrypted data
-	if _, err := buffer.Write(data); err != nil {
-		return nil, &Error{Op: "write-segment", Type: "segment", Err: err}
-	}
 
 	// Record segment metadata only (no payload retention). Payload bytes are returned
 	// to the caller and may be uploaded; we keep only CRC and size for finalize.
@@ -114,7 +107,7 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byt
 	sw.payloadEntry.CompressedSize += uint64(len(data)) // Encrypted size
 
 	// Return the bytes for this segment
-	return data[offset:], nil
+	return buffer.Bytes(), nil
 }
 
 // Finalize completes the TDF creation with manifest and ZIP structures

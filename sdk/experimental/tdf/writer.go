@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"sort"
 	"sync"
@@ -33,7 +34,8 @@ const (
 
 // SegmentResult contains the result of writing a segment
 type SegmentResult struct {
-	Data          []byte `json:"data"`          // Encrypted segment bytes (for streaming)
+	Data          []byte `json:"data"` // Encrypted segment bytes (for streaming)
+	TDFData       io.Reader
 	Index         int    `json:"index"`         // Segment index
 	Hash          string `json:"hash"`          // Base64-encoded integrity hash
 	PlaintextSize int64  `json:"plaintextSize"` // Original data size
@@ -253,13 +255,11 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 	}
 	w.mutex.Unlock()
 
-	segmentBlock := make([]byte, 100+len(data)+ 100)
 	// Encrypt directly without unnecessary copying - the archive layer will handle copying if needed
-	segmentCipher, err := w.block.EncryptWithDestination(data, segmentBlock[:100])
+	segmentCipher, nonce, err := w.block.EncryptInPlace(data)
 	if err != nil {
 		return nil, err
 	}
-	segmentBlock = segmentBlock[:100+len(segmentCipher)]
 	segmentSig, err := calculateSignature(segmentCipher, w.dek, w.segmentIntegrityAlgorithm, false) // Don't ever hex encode new tdf's
 	if err != nil {
 		return nil, err
@@ -272,13 +272,20 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 		EncryptedSize: int64(len(segmentCipher)),
 	}
 
-	zipBytes, err := w.archiveWriter.WriteSegment(ctx, index, segmentBlock)
+	zipBytes, err := w.archiveWriter.WriteSegment(ctx, index, segmentCipher)
 	if err != nil {
 		return nil, err
+	}
+	var reader io.Reader
+	if len(zipBytes) != 0 {
+		reader = io.MultiReader(bytes.NewReader(nonce), bytes.NewReader(segmentCipher), bytes.NewReader(zipBytes))
+	} else {
+		reader = io.MultiReader(bytes.NewReader(nonce), bytes.NewReader(segmentCipher))
 	}
 
 	return &SegmentResult{
 		Data:          zipBytes,
+		TDFData:       reader,
 		Index:         index,
 		Hash:          segmentHash,
 		PlaintextSize: int64(len(data)),

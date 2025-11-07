@@ -394,22 +394,23 @@ jobs:
       contents: read
     runs-on: ubuntu-22.04
     outputs:
-      platform_ref: ${{ steps.compute.outputs.platform_ref }}
-      sdk_ref: ${{ steps.compute.outputs.sdk_ref }}
+      platform_ref: ${{ steps.compute.outputs.platform_ref || steps.set_refs.outputs.platform_ref }}
+      sdk_ref: ${{ steps.set_refs.outputs.sdk_ref }}
     steps:
       - name: Detect SDK backport branch
         id: detect
         shell: bash
         run: |
           BRANCH_NAME="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-          echo "$BRANCH_NAME"
+          echo "BRANCH_NAME=$BRANCH_NAME"
           # Determine base branch of PR if available
           BASE_REF="${GITHUB_BASE_REF:-}"
           if [ -z "$BASE_REF" ] && [ -n "$GITHUB_EVENT_PATH" ] && [ -f "$GITHUB_EVENT_PATH" ]; then
             BASE_REF=$(jq -r '.pull_request.base.ref // empty' "$GITHUB_EVENT_PATH" 2>/dev/null || true)
           fi
-          echo "$BASE_REF"
+          echo "BASE_REF=$BASE_REF"
 
+          IS_SDK_BACKPORT_BRANCH=false
           IS_SDK_RELEASE_BRANCH_AS_BASE=false
           if echo "$BRANCH_NAME" | grep -Eq '^backport-[0-9]+-to-release/sdk/v[0-9]+\.[0-9]+(\.[0-9]+)?$'; then IS_SDK_BACKPORT_BRANCH=true; fi
           if [ -n "$BASE_REF" ] && echo "$BASE_REF" | grep -Eq '^release/sdk/v[0-9]+\.[0-9]+(\.[0-9]+)?$'; then IS_SDK_RELEASE_BRANCH_AS_BASE=true; fi
@@ -440,12 +441,9 @@ jobs:
             const path = require('path');
             const { execSync } = require('child_process');
 
-            // derive sdk_ref from the triggering branch
-            const sdkRef = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME || '';
-            core.info(`sdkRef=${sdkRef}`);
-            if (process.env.GITHUB_ENV) {
-              fs.appendFileSync(process.env.GITHUB_ENV, `SDK_REF=${sdkRef}\n`);
-            }
+            // Determine HEAD SHA for this run (PR head when available)
+            const headSha = (context.payload && context.payload.pull_request && context.payload.pull_request.head && context.payload.pull_request.head.sha) || context.sha;
+            core.info(`headSha=${headSha}`);
 
             let platformRef = 'main';
             try {
@@ -462,9 +460,10 @@ jobs:
                   const tag = `service/v${serviceVer}`;
                   core.info(`candidate tag=${tag}`);
                   try {
-                    execSync(`git rev-parse -q --verify refs/tags/${tag}`, { stdio: 'ignore' });
-                    platformRef = tag;
-                    core.info(`verified tag exists, platformRef=${platformRef}`);
+                    // Resolve annotated or lightweight tag to its peeled commit SHA
+                    const tagSha = execSync(`git rev-parse -q --verify refs/tags/${tag}^{}`, { encoding: 'utf8' }).trim();
+                    platformRef = tagSha || platformRef;
+                    core.info(`resolved tag to commit SHA, tagSha=${tagSha}`);
                   } catch (_) {
                     // No matching tag found; keep default of 'main'
                     core.info('no matching tag found; using main');
@@ -475,12 +474,8 @@ jobs:
               core.info(`Falling back to main due to error: ${e.message}`);
             }
 
-            if (process.env.GITHUB_ENV) {
-              fs.appendFileSync(process.env.GITHUB_ENV, `PLATFORM_REF=${platformRef}\n`);
-            }
-
             core.setOutput('platform_ref', platformRef);
-            core.setOutput('sdk_ref', sdkRef);
+            core.setOutput('sdk_ref', headSha);
 
   platform-xtest:
     needs:

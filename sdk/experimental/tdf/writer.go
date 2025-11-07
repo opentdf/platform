@@ -111,7 +111,7 @@ type Writer struct {
 
 	// segments stores segment metadata using sparse map for memory efficiency
 	// Maps segment index to Segment metadata (hash, size information)
-	segments map[int]Segment
+	segments map[int]*Segment
 	// maxSegmentIndex tracks the highest segment index written
 	maxSegmentIndex int
 
@@ -184,7 +184,7 @@ func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error
 		WriterConfig:      *config,
 		archiveWriter:     archiveWriter,
 		dek:               dek,
-		segments:          make(map[int]Segment), // Initialize sparse storage
+		segments:          make(map[int]*Segment), // Initialize sparse storage
 		block:             block,
 		initialAttributes: config.initialAttributes,
 		initialDefaultKAS: config.initialDefaultKAS,
@@ -253,6 +253,9 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 	if index > w.maxSegmentIndex {
 		w.maxSegmentIndex = index
 	}
+	seg := &Segment{}
+	w.segments[index] = seg
+
 	w.mutex.Unlock()
 
 	// Encrypt directly without unnecessary copying - the archive layer will handle copying if needed
@@ -266,11 +269,9 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 	}
 
 	segmentHash := string(ocrypto.Base64Encode([]byte(segmentSig)))
-	w.segments[index] = Segment{
-		Hash:          segmentHash,
-		Size:          int64(len(data)), // Use original data length
-		EncryptedSize: int64(len(segmentCipher)),
-	}
+	seg.Size = int64(len(data))
+	seg.EncryptedSize = int64(len(segmentCipher)) + int64(len(nonce))
+	seg.Hash = segmentHash
 
 	zipBytes, err := w.archiveWriter.WriteSegment(ctx, index, segmentCipher)
 	if err != nil {
@@ -511,7 +512,7 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 	// Copy segments to manifest in finalize order (pack densely)
 	for i, idx := range order {
 		if segment, exists := w.segments[idx]; exists {
-			encryptInfo.Segments[i] = segment
+			encryptInfo.Segments[i] = *segment
 		}
 	}
 

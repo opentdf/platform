@@ -80,9 +80,9 @@ Feature: Obligations Decisioning E2E Tests
       | obligation_name | obligation_value | action | attribute_value                                      |
       | drm             | prevent_download | read   | https://example.com/attr/classification/value/secret |
     Then the response should be successful
-    Given there is a "user_name" subject entity with value "charlie" and referenced as "charlie"
+    Given there is a "user_name" subject entity with value "bob" and referenced as "bob"
     And there is a "client_id" environment entity with value "other-client" and referenced as "client2"
-    When I send a decision request for entity chain "charlie,client2" for "read" action on resource "https://example.com/attr/classification/value/secret"
+    When I send a decision request for entity chain "bob,client2" for "read" action on resource "https://example.com/attr/classification/value/secret"
     Then the response should be successful
     And I should get a "PERMIT" decision response
     And the decision response should not contain obligation "https://example.com/obl/drm/value/prevent_download"

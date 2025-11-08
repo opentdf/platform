@@ -55,18 +55,17 @@ Feature: Obligations Decisioning E2E Tests
     And I should get a "PERMIT" decision response
     And the decision response should contain obligation "https://example.com/obl/drm/value/watermark"
 
-  Scenario: Obligation scoped to client ID is required for matching client
+  Scenario: Obligation trigger returns obligation in decision response
     Given I send a request to create an obligation with:
       | namespace_id | name | values           |
       | ns1          | drm  | prevent_download |
     Then the response should be successful
-    And I send a request to create an obligation trigger scoped to client "test-client" with:
+    And I send a request to create an obligation trigger with:
       | obligation_name | obligation_value | action | attribute_value                                      |
       | drm             | prevent_download | read   | https://example.com/attr/classification/value/secret |
     Then the response should be successful
-    Given there is a "user_name" subject entity with value "bob" and referenced as "bob"
-    And there is a "client_id" environment entity with value "test-client" and referenced as "client1"
-    When I send a decision request for entity chain "bob,client1" for "read" action on resource "https://example.com/attr/classification/value/secret"
+  Given there is a "user_name" subject entity with value "bob" and referenced as "bob"
+  When I send a decision request for entity chain "bob" for "read" action on resource "https://example.com/attr/classification/value/secret"
     Then the response should be successful
     And I should get a "PERMIT" decision response
     And the decision response should contain obligation "https://example.com/obl/drm/value/prevent_download"

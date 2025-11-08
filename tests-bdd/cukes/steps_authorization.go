@@ -118,28 +118,13 @@ func (s *AuthorizationServiceStepDefinitions) thereIsASubjectEntityWithValueAndR
 func (s *AuthorizationServiceStepDefinitions) iSendADecisionRequestForEntityChainForActionOnResource(ctx context.Context, entityChainID, action, resource string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 
-	// Try v2 API first (supports obligations)
+	// Send decision request using v2 API (with obligations support)
 	err := s.sendDecisionRequestV2(ctx, scenarioContext, entityChainID, action, resource)
-	if err == nil {
-		// v2 API succeeded, mark that we're using it
-		scenarioContext.RecordObject("api_version", "v2")
-		return ctx, nil
+	if err != nil {
+		return ctx, err
 	}
 
-	// Check if it's an "unimplemented" or "not found" error indicating v2 API is unavailable
-	// If so, fall back to v1 API
-	errStr := err.Error()
-	if strings.Contains(errStr, "Unimplemented") ||
-		strings.Contains(errStr, "not found") ||
-		strings.Contains(errStr, "404") ||
-		strings.Contains(errStr, "unimplemented") {
-		fmt.Printf("⚠️  Authorization v2 API not available, falling back to v1 (obligations not supported)\n")
-		scenarioContext.RecordObject("api_version", "v1")
-		return s.sendDecisionRequestV1(ctx, scenarioContext, entityChainID, action, resource)
-	}
-
-	// If it's a different error, return it
-	return ctx, err
+	return ctx, nil
 }
 
 // Send decision request using v2 API (with obligations support)
@@ -222,46 +207,6 @@ func (s *AuthorizationServiceStepDefinitions) sendDecisionRequestV2(ctx context.
 	return nil
 }
 
-// Send decision request using v1 API (legacy, no obligations support)
-func (s *AuthorizationServiceStepDefinitions) sendDecisionRequestV1(ctx context.Context, scenarioContext *PlatformScenarioContext, entityChainID string, action string, resource string) (context.Context, error) {
-	entityChain := &authorization.EntityChain{
-		Entities: []*authorization.Entity{},
-	}
-
-	for _, entityID := range strings.Split(entityChainID, ",") {
-		entity, ok := scenarioContext.GetObject(strings.TrimSpace(entityID)).(*authorization.Entity)
-		if !ok {
-			return ctx, fmt.Errorf("object not of expected type Entity")
-		}
-		entityChain.Entities = append(entityChain.Entities, entity)
-	}
-
-	var resourceFQNs []string
-	for r := range strings.SplitSeq(resource, ",") {
-		resourceFQNs = append(resourceFQNs, strings.TrimSpace(r))
-	}
-
-	resp, err := scenarioContext.SDK.Authorization.GetDecisions(ctx, &authorization.GetDecisionsRequest{
-		DecisionRequests: []*authorization.DecisionRequest{
-			{
-				Actions: GetActionsFromValues(&action, nil),
-				EntityChains: []*authorization.EntityChain{
-					entityChain,
-				},
-				ResourceAttributes: []*authorization.ResourceAttribute{
-					{
-						AttributeValueFqns: resourceFQNs,
-					},
-				},
-			},
-		},
-	})
-
-	scenarioContext.SetError(err)
-	scenarioContext.RecordObject(decisionResponse, resp)
-	return ctx, nil
-}
-
 // Helper to get all obligation value FQNs from the scenario context
 func getAllObligationsFromScenario(scenarioContext *PlatformScenarioContext) []string {
 	var obligationFQNs []string
@@ -318,64 +263,7 @@ func (s *AuthorizationServiceStepDefinitions) iShouldGetADecisionResponse(ctx co
 		return ctx, nil
 	}
 
-	// Fall back to v1 response
-	getDecisionsResponse, ok := scenarioContext.GetObject(decisionResponse).(*authorization.GetDecisionsResponse)
-	if !ok {
-		return ctx, fmt.Errorf("object not of expected type getDecisionsResponse (v1 or v2)")
-	}
-	expectedResponse = "DECISION_" + expectedResponse
-	if expectedResponse != getDecisionsResponse.GetDecisionResponses()[0].GetDecision().String() {
-		return ctx, fmt.Errorf("unexpected response: %s instead of %s", getDecisionsResponse.GetDecisionResponses()[0].GetDecision().String(), expectedResponse)
-	}
-	return ctx, nil
-}
-
-// When I send a decision request with action "<action>" for resource "<resource>" and entity chain of "<subj_type>" "<subj_value>" and "<env_type>" and "<env_value>"
-func (s *AuthorizationServiceStepDefinitions) iSendADecisionRequestWithActionForResAndEChainOfSubjAndEnv(ctx context.Context,
-	action, resource, subjectType, subjectValue, envType, envValue string,
-) (context.Context, error) {
-	scenarioContext := GetPlatformScenarioContext(ctx)
-	entityChain := &authorization.EntityChain{
-		Id:       "entity_chain_1",
-		Entities: []*authorization.Entity{},
-	}
-	scenarioContext.ClearError()
-	if strings.TrimSpace(subjectType) != "" {
-		entity, err := s.createEntity("s1", "SUBJECT", subjectType, subjectValue)
-		if err != nil {
-			return ctx, err
-		}
-		entityChain.Entities = append(entityChain.Entities, entity)
-	}
-	if strings.TrimSpace(envType) != "" {
-		entity, err := s.createEntity("e1", "ENVIRONMENT", envType, envValue)
-		if err != nil {
-			return ctx, err
-		}
-		entityChain.Entities = append(entityChain.Entities, entity)
-	}
-	var resourceFQNs []string
-	for _, r := range strings.Split(resource, ",") {
-		resourceFQNs = append(resourceFQNs, strings.TrimSpace(r))
-	}
-	resp, err := scenarioContext.SDK.Authorization.GetDecisions(ctx, &authorization.GetDecisionsRequest{
-		DecisionRequests: []*authorization.DecisionRequest{
-			{
-				Actions: GetActionsFromValues(&action, nil),
-				EntityChains: []*authorization.EntityChain{
-					entityChain,
-				},
-				ResourceAttributes: []*authorization.ResourceAttribute{
-					{
-						AttributeValueFqns: resourceFQNs,
-					},
-				},
-			},
-		},
-	})
-	scenarioContext.SetError(err)
-	scenarioContext.RecordObject(decisionResponse, resp)
-	return ctx, nil
+	return ctx, fmt.Errorf("decision response not found or invalid")
 }
 
 func RegisterAuthorizationStepDefinitions(ctx *godog.ScenarioContext) {
@@ -384,5 +272,4 @@ func RegisterAuthorizationStepDefinitions(ctx *godog.ScenarioContext) {
 	ctx.Step(`^there is a "([^"]*)" environment entity with value "([^"]*)" and referenced as "([^"]*)"$`, stepDefinitions.thereIsAEnvEntityWithValueAndReferencedAs)
 	ctx.Step(`^I send a decision request for entity chain "([^"]*)" for "([^"]*)" action on resource "([^"]*)"$`, stepDefinitions.iSendADecisionRequestForEntityChainForActionOnResource)
 	ctx.Step(`^I should get a "([^"]*)" decision response$`, stepDefinitions.iShouldGetADecisionResponse)
-	ctx.Step(`^I send a decision request with action "([^"]*)" for resource "([^"]*)" and entity chain of "([^"]*)" with "([^"]*)" and "([^"]*)" with "([^"]*)"$`, stepDefinitions.iSendADecisionRequestWithActionForResAndEChainOfSubjAndEnv)
 }

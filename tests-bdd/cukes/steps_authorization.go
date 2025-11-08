@@ -295,10 +295,23 @@ func convertEntityCategoryToV2(v1Cat authorization.Entity_Category) entity.Entit
 func (s *AuthorizationServiceStepDefinitions) iShouldGetADecisionResponse(ctx context.Context, expectedResponse string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 
-	// Try v2 response first
+	// Try v2 single-resource response first
 	if getDecisionsResponseV2, ok := scenarioContext.GetObject(decisionResponse).(*authzV2.GetDecisionResponse); ok {
 		expectedResponse = "DECISION_" + expectedResponse
 		actualDecision := getDecisionsResponseV2.GetDecision().GetDecision().String()
+		if expectedResponse != actualDecision {
+			return ctx, fmt.Errorf("unexpected response: %s instead of %s", actualDecision, expectedResponse)
+		}
+		return ctx, nil
+	}
+
+	// Try v2 multi-resource response (check first resource decision)
+	if getDecisionsResponseV2Multi, ok := scenarioContext.GetObject(decisionResponse).(*authzV2.GetDecisionMultiResourceResponse); ok {
+		if len(getDecisionsResponseV2Multi.GetResourceDecisions()) == 0 {
+			return ctx, fmt.Errorf("no resource decisions found in multi-resource response")
+		}
+		expectedResponse = "DECISION_" + expectedResponse
+		actualDecision := getDecisionsResponseV2Multi.GetResourceDecisions()[0].GetDecision().String()
 		if expectedResponse != actualDecision {
 			return ctx, fmt.Errorf("unexpected response: %s instead of %s", actualDecision, expectedResponse)
 		}

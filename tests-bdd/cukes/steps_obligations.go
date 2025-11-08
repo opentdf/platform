@@ -214,7 +214,7 @@ func (s *ObligationsStepDefinitions) theDecisionResponseShouldContainObligation(
 		return ctx, nil
 	}
 	
-	// Try v2 response first (which has obligations support)
+	// Try v2 single-resource response first
 	if decisionRespV2, ok := scenarioContext.GetObject("decisionResponse").(*authzV2.GetDecisionResponse); ok {
 		obligations := decisionRespV2.GetDecision().GetRequiredObligations()
 		for _, obl := range obligations {
@@ -225,7 +225,21 @@ func (s *ObligationsStepDefinitions) theDecisionResponseShouldContainObligation(
 		return ctx, fmt.Errorf("obligation %s not found in decision response. Found: %v", obligationFQN, obligations)
 	}
 	
-	// Fall back to v1 response (which also should have obligations in newer versions)
+	// Try v2 multi-resource response
+	if decisionRespV2Multi, ok := scenarioContext.GetObject("decisionResponse").(*authzV2.GetDecisionMultiResourceResponse); ok {
+		if len(decisionRespV2Multi.GetResourceDecisions()) == 0 {
+			return ctx, fmt.Errorf("no resource decisions found")
+		}
+		obligations := decisionRespV2Multi.GetResourceDecisions()[0].GetRequiredObligations()
+		for _, obl := range obligations {
+			if obl == obligationFQN {
+				return ctx, nil
+			}
+		}
+		return ctx, fmt.Errorf("obligation %s not found in decision response. Found: %v", obligationFQN, obligations)
+	}
+	
+	// Fall back to v1 response
 	decisionResp, ok := scenarioContext.GetObject("decisionResponse").(*authorization.GetDecisionsResponse)
 	if !ok {
 		return ctx, fmt.Errorf("decision response not found or invalid")
@@ -518,8 +532,17 @@ func (s *ObligationsStepDefinitions) theDecisionResponseShouldContainObligations
 				actualObligations[obl] = true
 			}
 		}
+	} else if decisionRespV2Multi, ok := scenarioContext.GetObject("decisionResponse").(*authzV2.GetDecisionMultiResourceResponse); ok {
+		// Try v2 multi-resource response
+		if len(decisionRespV2Multi.GetResourceDecisions()) == 0 {
+			return ctx, fmt.Errorf("no resource decisions found")
+		}
+		actualObligations = make(map[string]bool)
+		for _, obl := range decisionRespV2Multi.GetResourceDecisions()[0].GetRequiredObligations() {
+			actualObligations[obl] = true
+		}
 	} else if decisionResp, ok := scenarioContext.GetObject("decisionResponse").(*authorization.GetDecisionsResponse); ok {
-		// Try multi-resource response
+		// Try v1 multi-resource response
 		if len(decisionResp.GetDecisionResponses()) == 0 {
 			return ctx, fmt.Errorf("no decision responses found")
 		}

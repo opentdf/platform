@@ -208,12 +208,6 @@ func (s *ObligationsStepDefinitions) createObligationTrigger(ctx context.Context
 func (s *ObligationsStepDefinitions) theDecisionResponseShouldContainObligation(ctx context.Context, obligationFQN string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	
-	// Check if v1 API is being used (no obligations support)
-	if apiVersion, ok := scenarioContext.GetObject("api_version").(string); ok && apiVersion == "v1" {
-		fmt.Printf("⚠️  Skipping obligation check (v1 API in use, obligations not supported)\n")
-		return ctx, nil
-	}
-	
 	// Try v2 single-resource response first
 	if decisionRespV2, ok := scenarioContext.GetObject("decisionResponse").(*authzV2.GetDecisionResponse); ok {
 		obligations := decisionRespV2.GetDecision().GetRequiredObligations()
@@ -239,37 +233,14 @@ func (s *ObligationsStepDefinitions) theDecisionResponseShouldContainObligation(
 		return ctx, fmt.Errorf("obligation %s not found in decision response. Found: %v", obligationFQN, obligations)
 	}
 	
-	// Fall back to v1 response
-	decisionResp, ok := scenarioContext.GetObject("decisionResponse").(*authorization.GetDecisionsResponse)
-	if !ok {
-		return ctx, fmt.Errorf("decision response not found or invalid")
-	}
-
-	if len(decisionResp.GetDecisionResponses()) == 0 {
-		return ctx, fmt.Errorf("no decision responses found")
-	}
-
-	obligations := decisionResp.GetDecisionResponses()[0].GetObligations()
-	for _, obl := range obligations {
-		if obl == obligationFQN {
-			return ctx, nil
-		}
-	}
-
-	return ctx, fmt.Errorf("obligation %s not found in decision response. Found: %v", obligationFQN, obligations)
+	return ctx, fmt.Errorf("decision response not found or invalid")
 }
 
 // Step: the decision response should not contain obligation "fqn"
 func (s *ObligationsStepDefinitions) theDecisionResponseShouldNotContainObligation(ctx context.Context, obligationFQN string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	
-	// Check if v1 API is being used (no obligations support)
-	if apiVersion, ok := scenarioContext.GetObject("api_version").(string); ok && apiVersion == "v1" {
-		fmt.Printf("⚠️  Skipping obligation check (v1 API in use, obligations not supported)\n")
-		return ctx, nil
-	}
-	
-	// Try v2 response first (which has obligations support)
+	// Try v2 single-resource response first
 	if decisionRespV2, ok := scenarioContext.GetObject("decisionResponse").(*authzV2.GetDecisionResponse); ok {
 		obligations := decisionRespV2.GetDecision().GetRequiredObligations()
 		for _, obl := range obligations {
@@ -280,24 +251,7 @@ func (s *ObligationsStepDefinitions) theDecisionResponseShouldNotContainObligati
 		return ctx, nil
 	}
 	
-	// Fall back to v1 response
-	decisionResp, ok := scenarioContext.GetObject("decisionResponse").(*authorization.GetDecisionsResponse)
-	if !ok {
-		return ctx, fmt.Errorf("decision response not found or invalid")
-	}
-
-	if len(decisionResp.GetDecisionResponses()) == 0 {
-		return ctx, fmt.Errorf("no decision responses found")
-	}
-
-	obligations := decisionResp.GetDecisionResponses()[0].GetObligations()
-	for _, obl := range obligations {
-		if obl == obligationFQN {
-			return ctx, fmt.Errorf("obligation %s should not be in decision response", obligationFQN)
-		}
-	}
-
-	return ctx, nil
+	return ctx, fmt.Errorf("decision response not found or invalid")
 }
 
 // Step: I send a multi-resource decision request for entity chain "id" for "action" action on resources: (table)
@@ -399,22 +353,13 @@ func (s *ObligationsStepDefinitions) iSendAMultiResourceDecisionRequestForEntity
 func (s *ObligationsStepDefinitions) iShouldGetNDecisionResponses(ctx context.Context, count int) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	
-	// Try v2 multi-resource response first
-	if decisionRespV2, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authzV2.GetDecisionMultiResourceResponse); ok {
-		actualCount := len(decisionRespV2.GetResourceDecisions())
-		if actualCount != count {
-			return ctx, fmt.Errorf("expected %d decision responses, got %d", count, actualCount)
-		}
-		return ctx, nil
-	}
-	
-	// Fall back to v1 response
-	decisionResp, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authorization.GetDecisionsResponse)
+	// Check v2 multi-resource response
+	decisionRespV2, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authzV2.GetDecisionMultiResourceResponse)
 	if !ok {
 		return ctx, fmt.Errorf("multi-decision response not found or invalid")
 	}
 
-	actualCount := len(decisionResp.GetDecisionResponses())
+	actualCount := len(decisionRespV2.GetResourceDecisions())
 	if actualCount != count {
 		return ctx, fmt.Errorf("expected %d decision responses, got %d", count, actualCount)
 	}
@@ -426,49 +371,27 @@ func (s *ObligationsStepDefinitions) iShouldGetNDecisionResponses(ctx context.Co
 func (s *ObligationsStepDefinitions) theDecisionResponseForResourceShouldContainObligation(ctx context.Context, resourceFQN string, obligationFQN string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	
-	// Check if v1 API is being used (no obligations support)
-	if apiVersion, ok := scenarioContext.GetObject("api_version").(string); ok && apiVersion == "v1" {
-		fmt.Printf("⚠️  Skipping obligation check (v1 API in use, obligations not supported)\n")
-		return ctx, nil
-	}
-	
-	// Try v2 multi-resource response first
-	if decisionRespV2, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authzV2.GetDecisionMultiResourceResponse); ok {
-		// Get the FQN map to find the ephemeral ID for this resource
-		resourceFQNMap, _ := scenarioContext.GetObject("resourceFQNMap").(map[string]string)
-		
-		// Find the resource decision by matching FQN
-		for _, rd := range decisionRespV2.GetResourceDecisions() {
-			// Check if this resource decision matches our FQN
-			if fqn, exists := resourceFQNMap[rd.GetEphemeralResourceId()]; exists && fqn == resourceFQN {
-				for _, obl := range rd.GetRequiredObligations() {
-					if obl == obligationFQN {
-						return ctx, nil
-					}
-				}
-				return ctx, fmt.Errorf("obligation %s not found for resource %s. Found: %v", obligationFQN, resourceFQN, rd.GetRequiredObligations())
-			}
-		}
-		return ctx, fmt.Errorf("resource %s not found in decision responses", resourceFQN)
-	}
-	
-	// Fall back to v1 response
-	decisionResp, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authorization.GetDecisionsResponse)
+	// Check v2 multi-resource response
+	decisionRespV2, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authzV2.GetDecisionMultiResourceResponse)
 	if !ok {
 		return ctx, fmt.Errorf("multi-decision response not found or invalid")
 	}
 
-	for _, dr := range decisionResp.GetDecisionResponses() {
-		if dr.GetResourceAttributesId() == resourceFQN {
-			for _, obl := range dr.GetObligations() {
+	// Get the FQN map to find the ephemeral ID for this resource
+	resourceFQNMap, _ := scenarioContext.GetObject("resourceFQNMap").(map[string]string)
+	
+	// Find the resource decision by matching FQN
+	for _, rd := range decisionRespV2.GetResourceDecisions() {
+		// Check if this resource decision matches our FQN
+		if fqn, exists := resourceFQNMap[rd.GetEphemeralResourceId()]; exists && fqn == resourceFQN {
+			for _, obl := range rd.GetRequiredObligations() {
 				if obl == obligationFQN {
 					return ctx, nil
 				}
 			}
-			return ctx, fmt.Errorf("obligation %s not found for resource %s. Found: %v", obligationFQN, resourceFQN, dr.GetObligations())
+			return ctx, fmt.Errorf("obligation %s not found for resource %s. Found: %v", obligationFQN, resourceFQN, rd.GetRequiredObligations())
 		}
 	}
-
 	return ctx, fmt.Errorf("resource %s not found in decision responses", resourceFQN)
 }
 
@@ -476,45 +399,25 @@ func (s *ObligationsStepDefinitions) theDecisionResponseForResourceShouldContain
 func (s *ObligationsStepDefinitions) theDecisionResponseForResourceShouldNotContainAnyObligations(ctx context.Context, resourceFQN string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	
-	// Check if v1 API is being used (no obligations support)
-	if apiVersion, ok := scenarioContext.GetObject("api_version").(string); ok && apiVersion == "v1" {
-		fmt.Printf("⚠️  Skipping obligation check (v1 API in use, obligations not supported)\n")
-		return ctx, nil
-	}
-	
-	// Try v2 multi-resource response first
-	if decisionRespV2, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authzV2.GetDecisionMultiResourceResponse); ok {
-		// Get the FQN map to find the ephemeral ID for this resource
-		resourceFQNMap, _ := scenarioContext.GetObject("resourceFQNMap").(map[string]string)
-		
-		// Find the resource decision by matching FQN
-		for _, rd := range decisionRespV2.GetResourceDecisions() {
-			// Check if this resource decision matches our FQN
-			if fqn, exists := resourceFQNMap[rd.GetEphemeralResourceId()]; exists && fqn == resourceFQN {
-				if len(rd.GetRequiredObligations()) > 0 {
-					return ctx, fmt.Errorf("expected no obligations for resource %s, but found: %v", resourceFQN, rd.GetRequiredObligations())
-				}
-				return ctx, nil
-			}
-		}
-		return ctx, fmt.Errorf("resource %s not found in decision responses", resourceFQN)
-	}
-	
-	// Fall back to v1 response
-	decisionResp, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authorization.GetDecisionsResponse)
+	// Check v2 multi-resource response
+	decisionRespV2, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authzV2.GetDecisionMultiResourceResponse)
 	if !ok {
 		return ctx, fmt.Errorf("multi-decision response not found or invalid")
 	}
 
-	for _, dr := range decisionResp.GetDecisionResponses() {
-		if dr.GetResourceAttributesId() == resourceFQN {
-			if len(dr.GetObligations()) > 0 {
-				return ctx, fmt.Errorf("expected no obligations for resource %s, but found: %v", resourceFQN, dr.GetObligations())
+	// Get the FQN map to find the ephemeral ID for this resource
+	resourceFQNMap, _ := scenarioContext.GetObject("resourceFQNMap").(map[string]string)
+	
+	// Find the resource decision by matching FQN
+	for _, rd := range decisionRespV2.GetResourceDecisions() {
+		// Check if this resource decision matches our FQN
+		if fqn, exists := resourceFQNMap[rd.GetEphemeralResourceId()]; exists && fqn == resourceFQN {
+			if len(rd.GetRequiredObligations()) > 0 {
+				return ctx, fmt.Errorf("expected no obligations for resource %s, but found: %v", resourceFQN, rd.GetRequiredObligations())
 			}
 			return ctx, nil
 		}
 	}
-
 	return ctx, fmt.Errorf("resource %s not found in decision responses", resourceFQN)
 }
 
@@ -539,15 +442,6 @@ func (s *ObligationsStepDefinitions) theDecisionResponseShouldContainObligations
 		}
 		actualObligations = make(map[string]bool)
 		for _, obl := range decisionRespV2Multi.GetResourceDecisions()[0].GetRequiredObligations() {
-			actualObligations[obl] = true
-		}
-	} else if decisionResp, ok := scenarioContext.GetObject("decisionResponse").(*authorization.GetDecisionsResponse); ok {
-		// Try v1 multi-resource response
-		if len(decisionResp.GetDecisionResponses()) == 0 {
-			return ctx, fmt.Errorf("no decision responses found")
-		}
-		actualObligations = make(map[string]bool)
-		for _, obl := range decisionResp.GetDecisionResponses()[0].GetObligations() {
 			actualObligations[obl] = true
 		}
 	} else {

@@ -84,8 +84,9 @@ type kaoResult struct {
 	EphemeralPublicKey  []byte
 	RequiredObligations []string
 
-	// Only populated for Nano auditing, since policy is encrypted
-	KeyID string
+	// Only populated for Nano auditing
+	KeyID         string
+	PolicyBinding string
 }
 
 // From policy ID to KAO ID to result
@@ -901,11 +902,12 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 			}
 
 			auditEventParams := audit.RewrapAuditEventParams{
-				Policy:    kasPolicy,
-				IsSuccess: access,
-				TDFFormat: "Nano",
-				Algorithm: req.GetAlgorithm(),
-				KeyID:     kaoInfo.KeyID,
+				Policy:        kasPolicy,
+				IsSuccess:     access,
+				TDFFormat:     "Nano",
+				Algorithm:     req.GetAlgorithm(),
+				KeyID:         kaoInfo.KeyID,
+				PolicyBinding: kaoInfo.PolicyBinding,
 			}
 
 			if !access {
@@ -986,9 +988,15 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 		}
 
 		// check the policy binding
-		verify, err := header.VerifyPolicyBinding()
+		binding, err := header.PolicyBinding()
 		if err != nil {
-			failedKAORewrap(results, kao, fmt.Errorf("failed to verify policy binding: %w", err))
+			failedKAORewrap(results, kao, fmt.Errorf("failed to retrieve policy binding: %w", err))
+			return nil, results
+		}
+
+		verify, err := binding.Verify()
+		if err != nil {
+			failedKAORewrap(results, kao, fmt.Errorf("error verifying policy binding: %w", err))
 			return nil, results
 		}
 
@@ -997,9 +1005,10 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 			return nil, results
 		}
 		results[kao.GetKeyAccessObjectId()] = kaoResult{
-			ID:    kao.GetKeyAccessObjectId(),
-			DEK:   symmetricKey,
-			KeyID: kid,
+			ID:            kao.GetKeyAccessObjectId(),
+			DEK:           symmetricKey,
+			KeyID:         kid,
+			PolicyBinding: binding.String(),
 		}
 		return policy, results
 	}

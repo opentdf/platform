@@ -54,8 +54,8 @@ type ObligationPolicyDecision struct {
 	AllObligationsSatisfied bool
 	// The Set of obligations required across all resources in the decision
 	RequiredObligationValueFQNs []string
-	// The Set of obligations required on each indexed resource
-	RequiredObligationValueFQNsPerResource []PerResourceDecision
+	// Individual decisions indexed to each resource
+	PerResourceDecisions []PerResourceDecision
 }
 
 func NewObligationsPolicyDecisionPoint(
@@ -148,11 +148,11 @@ func (p *ObligationsPolicyDecisionPoint) GetAllTriggeredObligationsAreFulfilled(
 		return ObligationPolicyDecision{}, err
 	}
 
-	perResourceDecisions, allFulfilled := p.rollupResourceObligationDecisions(ctx, action, perResourceTriggered, pepFulfillableObligationValueFQNs, decisionRequestContext)
+	perPerResourceDecisions, allFulfilled := p.rollupResourceObligationDecisions(ctx, action, perResourceTriggered, pepFulfillableObligationValueFQNs, decisionRequestContext)
 	return ObligationPolicyDecision{
-		AllObligationsSatisfied:                allFulfilled,
-		RequiredObligationValueFQNs:            allTriggered,
-		RequiredObligationValueFQNsPerResource: perResourceDecisions,
+		AllObligationsSatisfied:     allFulfilled,
+		RequiredObligationValueFQNs: allTriggered,
+		PerResourceDecisions:        perPerResourceDecisions,
 	}, nil
 }
 

@@ -2,10 +2,6 @@
 Feature: Obligations Decisioning E2E Tests
   E2E tests for obligations decisioning feature covering obligation definition,
   value triggers, multi-resource decisions, entity chains, and ABAC scenarios.
-  
-  NOTE: Each scenario creates its own isolated platform instance.
-  In DEBUG mode, only run ONE scenario at a time using specific scenario line numbers.
-  For full test suite execution, use containerized mode (without PLATFORM_IMAGE=DEBUG).
 
   Background:
     Given a user exists with username "alice" and email "alice@example.com" and the following attributes:
@@ -64,8 +60,8 @@ Feature: Obligations Decisioning E2E Tests
       | obligation_name | obligation_value | action | attribute_value                                      |
       | drm             | prevent_download | read   | https://example.com/attr/classification/value/secret |
     Then the response should be successful
-  Given there is a "user_name" subject entity with value "bob" and referenced as "bob"
-  When I send a decision request for entity chain "bob" for "read" action on resource "https://example.com/attr/classification/value/secret"
+    Given there is a "user_name" subject entity with value "bob" and referenced as "bob"
+    When I send a decision request for entity chain "bob" for "read" action on resource "https://example.com/attr/classification/value/secret"
     Then the response should be successful
     And I should get a "PERMIT" decision response
     And the decision response should contain obligation "https://example.com/obl/drm/value/prevent_download"

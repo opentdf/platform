@@ -73,8 +73,8 @@ func (p *MagicWordAssertionProvider) Bind(_ context.Context, m sdk.Manifest) (sd
 	// Create HMAC-based cryptographic binding
 	// Bind to both the manifest root signature and the assertion content
 	bindingHMAC := hmac.New(sha256.New, []byte(p.MagicWord))
-	bindingHMAC.Write([]byte(m.RootSignature.Signature)) // Bind to manifest
-	bindingHMAC.Write(assertionHash)                     // Bind to assertion content
+	bindingHMAC.Write([]byte(m.Signature)) // Bind to manifest
+	bindingHMAC.Write(assertionHash)       // Bind to assertion content
 	signature := hex.EncodeToString(bindingHMAC.Sum(nil))
 
 	assertion.Binding = sdk.Binding{
@@ -113,7 +113,7 @@ func (p *MagicWordAssertionProvider) Verify(_ context.Context, a sdk.Assertion, 
 
 	manifest := r.Manifest()
 	bindingHMAC := hmac.New(sha256.New, []byte(p.MagicWord))
-	bindingHMAC.Write([]byte(manifest.RootSignature.Signature))
+	bindingHMAC.Write([]byte(manifest.Signature))
 	bindingHMAC.Write(assertionHash)
 	expectedSignature := hex.EncodeToString(bindingHMAC.Sum(nil))
 

@@ -103,7 +103,7 @@ func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, erro
 	}
 
 	// Compute aggregate hash from manifest segments
-	aggregateHashBytes, err := ComputeAggregateHash(m.EncryptionInformation.IntegrityInformation.Segments)
+	aggregateHashBytes, err := ComputeAggregateHash(m.Segments)
 	if err != nil {
 		return assertion, fmt.Errorf("failed to compute aggregate hash: %w", err)
 	}
@@ -179,7 +179,7 @@ func (p KeyAssertionValidator) Verify(_ context.Context, a Assertion, r Reader) 
 	if err != nil {
 		return fmt.Errorf("%w: failed to get hash of assertion: %w", ErrAssertionFailure{ID: a.ID}, err)
 	}
-	manifestSignature := r.Manifest().RootSignature.Signature
+	manifestSignature := r.Manifest().Signature
 
 	if string(assertionHash) != verifiedAssertionHash {
 		return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: a.ID})

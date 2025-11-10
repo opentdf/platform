@@ -331,7 +331,7 @@ func signAssertionWithDEK(assertion Assertion, manifest Manifest, payloadKey []b
 	}
 
 	// Compute aggregate hash from manifest segments
-	aggregateHashBytes, err := ComputeAggregateHash(manifest.EncryptionInformation.IntegrityInformation.Segments)
+	aggregateHashBytes, err := ComputeAggregateHash(manifest.Segments)
 	if err != nil {
 		return assertion, err
 	}

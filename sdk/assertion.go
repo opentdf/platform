@@ -539,7 +539,7 @@ func VerifyAssertionSignatureFormat(
 	manifest Manifest,
 ) error {
 	// Compute aggregate hash from manifest segments
-	aggregateHashBytes, err := ComputeAggregateHash(manifest.EncryptionInformation.IntegrityInformation.Segments)
+	aggregateHashBytes, err := ComputeAggregateHash(manifest.Segments)
 	if err != nil {
 		return fmt.Errorf("%w: failed to compute aggregate hash: %w", ErrAssertionFailure{ID: assertionID}, err)
 	}

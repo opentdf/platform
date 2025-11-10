@@ -256,7 +256,7 @@ func (b *configBasedAssertionBinder) Bind(_ context.Context, m Manifest) (Assert
 	}
 
 	// Compute aggregate hash from manifest segments
-	aggregateHashBytes, err := ComputeAggregateHash(m.EncryptionInformation.IntegrityInformation.Segments)
+	aggregateHashBytes, err := ComputeAggregateHash(m.IntegrityInformation.Segments)
 	if err != nil {
 		return Assertion{}, fmt.Errorf("failed to compute aggregate hash: %w", err)
 	}

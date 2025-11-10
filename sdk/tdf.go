@@ -170,7 +170,7 @@ func (t *TDFObject) AppendAssertion(_ context.Context, assertionConfig Assertion
 	// 1. Assertions cannot be moved between different TDFs (payload binding)
 	// 2. Assertions cannot be added/removed without detection (integrity)
 	// 3. The assertion applies to the exact payload state at assertion creation time
-	rootSignature := t.manifest.RootSignature.Signature
+	rootSignature := t.manifest.Signature
 
 	// Sign the assertion using the provided signing builder
 	if err := assertion.Sign(assertionHash, rootSignature, key); err != nil {
@@ -379,7 +379,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			}
 
 			// Compute aggregate hash from manifest segments
-			aggregateHashBytes, err := ComputeAggregateHash(tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments)
+			aggregateHashBytes, err := ComputeAggregateHash(tdfObject.manifest.Segments)
 			if err != nil {
 				return nil, fmt.Errorf("failed to compute aggregate hash: %w", err)
 			}
@@ -1518,7 +1518,7 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		return errors.Join(v...)
 	}
 
-	aggregateHashBytes, err := ComputeAggregateHash(r.manifest.EncryptionInformation.IntegrityInformation.Segments)
+	aggregateHashBytes, err := ComputeAggregateHash(r.manifest.IntegrityInformation.Segments)
 	if err != nil {
 		return fmt.Errorf("ComputeAggregateHash failed:%w", err)
 	}
@@ -1747,8 +1747,8 @@ func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLe
 
 // validate the root signature
 func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (bool, error) {
-	rootSigAlg := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm
-	rootSigValue := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature
+	rootSigAlg := manifest.Algorithm
+	rootSigValue := manifest.Signature
 	isLegacyTDF := ShouldUseHexEncoding(manifest)
 
 	sigAlg := HS256

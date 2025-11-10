@@ -154,7 +154,7 @@ func TestDEKAssertionBinding_WrongSignatureFormat(t *testing.T) {
 	require.NoError(t, err)
 
 	// WRONG: Use manifest.RootSignature.Signature (this was the bug)
-	wrongSig := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature
+	wrongSig := manifest.Signature
 
 	// Sign with the WRONG signature format
 	dekKey := AssertionKey{

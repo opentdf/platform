@@ -569,10 +569,25 @@ func (s *TDFSuite) Test_SystemMetadataAssertions() {
 		if assertion.ID == SystemMetadataAssertionID { // Ensure `ID` exists
 			found = true
 
-			// Validate JSON in Statement.Value
+			// Validate JSON in Statement.Value (supports v1 string and v2 object)
 			var metadata map[string]interface{}
-			err := json.Unmarshal([]byte(assertion.Statement.Value), &metadata) // Ensure `Statement.Value` exists
-			s.Require().NoError(err, "Statement Value is not valid JSON")
+			switch v := assertion.Statement.Value.(type) {
+			case string:
+				// v1: JSON encoded as string
+				err := json.Unmarshal([]byte(v), &metadata)
+				s.Require().NoError(err, "Statement Value (string) is not valid JSON")
+			case map[string]interface{}:
+				metadata = v
+			case json.RawMessage:
+				err := json.Unmarshal(v, &metadata)
+				s.Require().NoError(err, "Statement Value (raw) is not valid JSON")
+			default:
+				// Fallback: attempt to coerce via marshal/unmarshal
+				b, err := json.Marshal(v)
+				s.Require().NoError(err, "Statement Value (marshal) failed")
+				err = json.Unmarshal(b, &metadata)
+				s.Require().NoError(err, "Statement Value (coerced) is not valid JSON")
+			}
 
 			// Check JSON fields
 			s.Equal(TDFSpecVersion, metadata["tdf_spec_version"], "tdf_spec_version mismatch")

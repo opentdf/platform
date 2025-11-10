@@ -34,7 +34,7 @@ func TestSystemMetadataAssertion_SchemaVersionDetection(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Check if the schema is supported
 			// This mimics the logic in SystemMetadataAssertionProvider.Verify()
-			isValidSchema := tt.schema == SystemMetadataSchemaV1 || tt.schema == ""
+			isValidSchema := tt.schema == SystemMetadataSchemaV1 || tt.schema == SystemMetadataSchemaV2 || tt.schema == ""
 
 			assert.Equal(t, tt.isSupported, isValidSchema,
 				"%s: %s", tt.name, tt.description)
@@ -50,7 +50,7 @@ func TestGetSystemMetadataAssertionConfig_DefaultsToCurrentSchema(t *testing.T) 
 
 	assert.Equal(t, SystemMetadataAssertionID, config.ID,
 		"Assertion ID should be 'system-metadata'")
-	assert.Equal(t, SystemMetadataSchemaV1, config.Statement.Schema,
+	assert.Equal(t, SystemMetadataSchemaV2, config.Statement.Schema,
 		"New assertions should use current schema for cross-SDK compatibility")
 	// Verify statement format (string comparison, not JSON)
 	if config.Statement.Format != StatementFormatJSON {
@@ -71,8 +71,8 @@ func TestSystemMetadataAssertionProvider_Bind_SchemaSelection(t *testing.T) {
 		tdfVersion     string // Set TDFVersion to control useHex behavior
 		expectedSchema string
 	}{
-		{"modern TDF (useHex=false) uses current schema", "4.3.0", SystemMetadataSchemaV1},
-		{"legacy TDF (useHex=true) uses current schema", "", SystemMetadataSchemaV1},
+		{"modern TDF (useHex=false) uses current schema", "4.3.0", SystemMetadataSchemaV2},
+		{"legacy TDF (useHex=true) uses current schema", "", SystemMetadataSchemaV2},
 	}
 
 	for _, tc := range testCases {
@@ -295,8 +295,8 @@ func TestSystemMetadataAssertionProvider_TamperedStatement_Legacy(t *testing.T) 
 	originalAssertion, err := provider.Bind(t.Context(), manifest)
 	require.NoError(t, err, "Binding assertion should succeed")
 
-	// Verify it uses the current schema
-	assert.Equal(t, SystemMetadataSchemaV1, originalAssertion.Statement.Schema,
+	// Verify it uses the current schema (V2)
+	assert.Equal(t, SystemMetadataSchemaV2, originalAssertion.Statement.Schema,
 		"Legacy TDF format should use current schema")
 
 	// Sign the assertion with DEK (simulating what tdf.go does)

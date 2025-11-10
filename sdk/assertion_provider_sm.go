@@ -4,7 +4,6 @@ package sdk
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"runtime"
 	"time"
@@ -46,7 +45,7 @@ func (p *SystemMetadataAssertionProvider) SetVerificationMode(mode AssertionVeri
 // Schema returns the schema URI this validator handles.
 // Returns the current schema for cross-SDK compatibility with Java and JS.
 func (p *SystemMetadataAssertionProvider) Schema() string {
-	return SystemMetadataSchemaV1
+	return SystemMetadataSchemaV2
 }
 
 func (p SystemMetadataAssertionProvider) Bind(_ context.Context, _ Manifest) (Assertion, error) {
@@ -74,15 +73,16 @@ func (p SystemMetadataAssertionProvider) Bind(_ context.Context, _ Manifest) (As
 }
 
 func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, r Reader) error {
-	// SECURITY: Validate schema is the supported schema
+	// SECURITY: Validate schema is a supported schema
 	// This prevents routing assertions with unknown schemas to this validator
 	// Defense in depth: checked here AND via hash verification later
 	isValidSchema := a.Statement.Schema == SystemMetadataSchemaV1 ||
+		a.Statement.Schema == SystemMetadataSchemaV2 ||
 		a.Statement.Schema == "" // Empty schema for legacy compatibility
 
 	if !isValidSchema {
-		return fmt.Errorf("%w: unsupported schema %q (expected %q)",
-			ErrAssertionFailure{ID: a.ID}, a.Statement.Schema, SystemMetadataSchemaV1)
+		return fmt.Errorf("%w: unsupported schema %q (expected %q or %q)",
+			ErrAssertionFailure{ID: a.ID}, a.Statement.Schema, SystemMetadataSchemaV1, SystemMetadataSchemaV2)
 	}
 
 	// Use shared DEK-based verification logic
@@ -121,12 +121,6 @@ func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
 		Architecture:   runtime.GOARCH,
 	}
 
-	// Marshal the metadata to JSON
-	metadataJSON, err := json.Marshal(metadata)
-	if err != nil {
-		return AssertionConfig{}, fmt.Errorf("failed to marshal system metadata: %w", err)
-	}
-
 	return AssertionConfig{
 		ID:             SystemMetadataAssertionID,
 		Type:           BaseAssertion,
@@ -134,8 +128,8 @@ func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
 		AppliesToState: Unencrypted,
 		Statement: Statement{
 			Format: StatementFormatJSON,
-			Schema: SystemMetadataSchemaV1,
-			Value:  string(metadataJSON),
+			Schema: SystemMetadataSchemaV2,
+			Value:  metadata,
 		},
 	}, nil
 }

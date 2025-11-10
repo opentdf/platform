@@ -955,14 +955,9 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 	}
 }
 
-// Test_evaluateResourceAttributeValues_AllFQNsNotFound tests that when all attribute FQNs
-// in a resource don't exist in accessibleAttributeValues, the resource is DENIED (not error).
-// This ensures fine-grained decisions where individual resources with non-existent FQNs
-// are denied without failing the entire request.
 func (s *EvaluateTestSuite) Test_evaluateResourceAttributeValues_AllFQNsNotFound() {
-	// Create FQNs that don't exist in the system
-	nonExistentFQN1 := createAttrValueFQN(baseNamespace, "classification", "topsecret")
-	nonExistentFQN2 := createAttrValueFQN(baseNamespace, "classification", "secret")
+	nonExistentFQN1 := createAttrValueFQN(baseNamespace, "significance", "critical")
+	nonExistentFQN2 := createAttrValueFQN(baseNamespace, "significance", "major")
 
 	resourceAttributeValues := &authz.Resource_AttributeValues{
 		Fqns: []string{
@@ -988,27 +983,24 @@ func (s *EvaluateTestSuite) Test_evaluateResourceAttributeValues_AllFQNsNotFound
 		emptyAccessibleAttributes,
 	)
 
-	// Should NOT return an error - should return DENY decision
-	s.Require().NoError(err, "Should not return error when FQNs not found")
-	s.Require().NotNil(decision, "Decision should not be nil")
-	s.False(decision.Entitled, "Resource should be DENIED when all FQNs not found")
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+	s.False(decision.Entitled)
 	s.Equal("resource-1", decision.ResourceID)
 }
 
-// Test_evaluateResourceAttributeValues_PartialFQNsNotFound tests that when some (but not all)
-// attribute FQNs don't exist, the resource is DENIED (not evaluated with partial data).
 func (s *EvaluateTestSuite) Test_evaluateResourceAttributeValues_PartialFQNsNotFound() {
-	nonExistentFQN := createAttrValueFQN(baseNamespace, "classification", "topsecret")
+	nonExistentFQN := createAttrValueFQN(baseNamespace, "significance", "high")
 
 	resourceAttributeValues := &authz.Resource_AttributeValues{
 		Fqns: []string{
-			levelMidFQN,        // This exists
-			nonExistentFQN,     // This doesn't exist
-			levelHighestFQN,    // This exists
+			levelMidFQN,     // Exists
+			nonExistentFQN,  // Eoesn't exist
+			levelHighestFQN, // Exists
 		},
 	}
 
-	// Entity is entitled to the existing FQNs
+	// Entitled to the existing FQNs
 	entitlements := subjectmappingbuiltin.AttributeValueFQNsToActions{
 		levelMidFQN:     []*policy.Action{actionRead},
 		levelHighestFQN: []*policy.Action{actionRead},
@@ -1025,19 +1017,16 @@ func (s *EvaluateTestSuite) Test_evaluateResourceAttributeValues_PartialFQNsNotF
 		s.accessibleAttrValues,
 	)
 
-	// Should NOT return an error - but should DENY the resource (any missing FQN = DENY)
-	s.Require().NoError(err, "Should not return error with partial FQNs missing")
-	s.Require().NotNil(decision, "Decision should not be nil")
-	// ANY missing FQN means DENY - we don't evaluate with partial data
-	s.False(decision.Entitled, "Resource should be DENIED when ANY FQN is missing")
+	// No error but deny
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+	s.False(decision.Entitled)
 	s.Equal("resource-2", decision.ResourceID)
 }
 
-// Test_getResourceDecision_AttributeValueFQNsNotFound tests the full flow through
-// getResourceDecision when attribute value FQNs don't exist.
 func (s *EvaluateTestSuite) Test_getResourceDecision_AttributeValueFQNsNotFound() {
-	nonExistentFQN1 := createAttrValueFQN(baseNamespace, "clearance", "cosmic")
-	nonExistentFQN2 := createAttrValueFQN(baseNamespace, "clearance", "ultrasecret")
+	nonExistentFQN1 := createAttrValueFQN(baseNamespace, "space", "cosmic")
+	nonExistentFQN2 := createAttrValueFQN(baseNamespace, "space", "planetary")
 
 	resource := &authz.Resource{
 		Resource: &authz.Resource_AttributeValues_{
@@ -1061,18 +1050,15 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_AttributeValueFQNsNotFound(
 		resource,
 	)
 
-	// Should NOT error - should return DENY decision
-	s.Require().NoError(err, "getResourceDecision should not error on missing FQNs")
-	s.Require().NotNil(decision, "Decision should not be nil")
-	s.False(decision.Entitled, "Resource with missing FQNs should be DENIED")
+	// No error but deny
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+	s.False(decision.Entitled)
 	s.Equal("resource-with-missing-fqns", decision.ResourceID)
 }
 
-// Test_getResourceDecision_RegisteredResourceValueFQNNotFound verifies that when a
-// registered resource value FQN doesn't exist, the resource is DENIED (not error).
-// This pattern should be consistent with attribute value FQN handling.
 func (s *EvaluateTestSuite) Test_getResourceDecision_RegisteredResourceValueFQNNotFound() {
-	nonExistentRegResFQN := createRegisteredResourceValueFQN("secret-system", "classified")
+	nonExistentRegResFQN := createRegisteredResourceValueFQN("special-system", "classified")
 
 	resource := &authz.Resource{
 		Resource: &authz.Resource_RegisteredResourceValueFqn{
@@ -1095,19 +1081,16 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_RegisteredResourceValueFQNN
 		resource,
 	)
 
-	// Should NOT error - should return DENY decision
-	s.Require().NoError(err, "getResourceDecision should not error on missing registered resource FQN")
-	s.Require().NotNil(decision, "Decision should not be nil")
-	s.False(decision.Entitled, "Resource with missing registered resource FQN should be DENIED")
+	// No error but deny
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+	s.False(decision.Entitled)
 	s.Equal("resource-with-missing-reg-res", decision.ResourceID)
 	s.Equal(nonExistentRegResFQN, decision.ResourceName)
 }
 
-// Test_getResourceDecision_MixedResources_IndividualDenials tests that in a batch of
-// resources, those with missing FQNs are individually denied without affecting others.
-// This validates fine-grained decision-making.
 func (s *EvaluateTestSuite) Test_getResourceDecision_MixedResources_IndividualDenials() {
-	nonExistentFQN := createAttrValueFQN(baseNamespace, "clearance", "cosmic")
+	nonExistentFQN := createAttrValueFQN(baseNamespace, "space", "cosmic")
 
 	// Resource 1: Valid FQN, entity is entitled
 	resource1 := &authz.Resource{
@@ -1144,7 +1127,6 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_MixedResources_IndividualDe
 		levelMidFQN:     []*policy.Action{actionRead},
 	}
 
-	// Process each resource individually (simulating batch processing)
 	testCases := []struct {
 		name             string
 		resource         *authz.Resource
@@ -1157,16 +1139,10 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_MixedResources_IndividualDe
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			// For resource 2, we need empty accessible attributes to simulate FQN not found
-			accessibleAttrs := s.accessibleAttrValues
-			if tc.resource.GetEphemeralId() == "invalid-resource-2" {
-				accessibleAttrs = make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
-			}
-
 			decision, err := getResourceDecision(
 				s.T().Context(),
 				s.logger,
-				accessibleAttrs,
+				s.accessibleAttrValues,
 				s.accessibleRegisteredResourceValues,
 				entitlements,
 				s.action,

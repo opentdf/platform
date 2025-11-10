@@ -430,10 +430,9 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_UnknownRegisteredReso
 	decisionRequestContext := emptyDecisionRequestContext
 
 	perResource, all, err := s.pdp.getTriggeredObligations(s.T().Context(), actionRead, resources, decisionRequestContext)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, ErrUnknownRegisteredResourceValue)
-	s.Contains(err.Error(), badRegResValFQN, "error should contain the FQN that was not found")
-	s.Empty(perResource)
+	s.Require().NoError(err, "none triggered if FQN not found")
+	s.Len(perResource, 1)
+	s.Empty(perResource[0])
 	s.Empty(all)
 }
 
@@ -776,103 +775,245 @@ func (s *ObligationsPDPSuite) Test_getTriggeredObligations_CustomAction_MixedRes
 	s.Contains(all, mockObligationFQN4)
 }
 
-func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_MoreFulfilledThanTriggered() {
-	allTriggeredObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN2}
-	pepFulfillableObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN2, mockObligationFQN3}
+func (s *ObligationsPDPSuite) Test_rollupResourceObligationDecisions_AllResourcesFulfilled() {
+	perResourceTriggered := [][]string{
+		{mockObligationFQN1},
+		{mockObligationFQN2},
+	}
+	pepFulfillable := []string{mockObligationFQN1, mockObligationFQN2, mockObligationFQN3}
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), actionRead, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, emptyDecisionRequestContext)
-	s.True(fulfilled)
+	perResource, allFulfilled := s.pdp.rollupResourceObligationDecisions(
+		s.T().Context(),
+		actionRead,
+		perResourceTriggered,
+		pepFulfillable,
+		emptyDecisionRequestContext,
+	)
+
+	s.True(allFulfilled)
+	s.Len(perResource, 2)
+	s.True(perResource[0].ObligationsSatisfied)
+	s.Equal([]string{mockObligationFQN1}, perResource[0].RequiredObligationValueFQNs)
+	s.True(perResource[1].ObligationsSatisfied)
+	s.Equal([]string{mockObligationFQN2}, perResource[1].RequiredObligationValueFQNs)
 }
 
-func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_ExactMatch() {
-	allTriggeredObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN2}
-	pepFulfillableObligationValueFQNs := []string{mockObligationFQN2, mockObligationFQN1}
+func (s *ObligationsPDPSuite) Test_rollupResourceObligationDecisions_SomeResourcesUnfulfilled() {
+	perResourceTriggered := [][]string{
+		{mockObligationFQN1},
+		{mockObligationFQN2},
+		{mockObligationFQN3},
+	}
+	pepFulfillable := []string{mockObligationFQN1, mockObligationFQN2}
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), actionRead, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, emptyDecisionRequestContext)
-	s.True(fulfilled)
+	perResource, allFulfilled := s.pdp.rollupResourceObligationDecisions(
+		s.T().Context(),
+		actionRead,
+		perResourceTriggered,
+		pepFulfillable,
+		emptyDecisionRequestContext,
+	)
+
+	s.False(allFulfilled)
+	s.Len(perResource, 3)
+	s.True(perResource[0].ObligationsSatisfied)
+	s.Equal([]string{mockObligationFQN1}, perResource[0].RequiredObligationValueFQNs)
+	s.True(perResource[1].ObligationsSatisfied)
+	s.Equal([]string{mockObligationFQN2}, perResource[1].RequiredObligationValueFQNs)
+	s.False(perResource[2].ObligationsSatisfied)
+	s.Equal([]string{mockObligationFQN3}, perResource[2].RequiredObligationValueFQNs)
 }
 
-func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_CasingMismatchFQNs() {
-	allTriggeredObligationValueFQNs := []string{strings.ToUpper(mockObligationFQN1), mockObligationFQN2}
-	pepFulfillableObligationValueFQNs := []string{strings.ToUpper(mockObligationFQN2), mockObligationFQN1}
+func (s *ObligationsPDPSuite) Test_rollupResourceObligationDecisions_CasingMismatch() {
+	perResourceTriggered := [][]string{
+		{strings.ToUpper(mockObligationFQN1)},
+		{mockObligationFQN2},
+	}
+	pepFulfillable := []string{strings.ToUpper(mockObligationFQN2), mockObligationFQN1}
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), actionRead, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, emptyDecisionRequestContext)
-	s.True(fulfilled)
+	perResource, allFulfilled := s.pdp.rollupResourceObligationDecisions(
+		s.T().Context(),
+		actionRead,
+		perResourceTriggered,
+		pepFulfillable,
+		emptyDecisionRequestContext,
+	)
+
+	s.True(allFulfilled)
+	s.Len(perResource, 2)
+	s.True(perResource[0].ObligationsSatisfied)
+	s.True(perResource[1].ObligationsSatisfied)
 }
 
-func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_MissingObligation() {
-	allTriggeredObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN3}
-	pepFulfillableObligationValueFQNs := []string{mockObligationFQN1}
+func (s *ObligationsPDPSuite) Test_rollupResourceObligationDecisions_EmptyTriggered() {
+	perResourceTriggered := [][]string{{}, {}}
+	pepFulfillable := []string{mockObligationFQN1, mockObligationFQN2}
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), actionRead, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, emptyDecisionRequestContext)
+	perResource, allFulfilled := s.pdp.rollupResourceObligationDecisions(
+		s.T().Context(),
+		actionRead,
+		perResourceTriggered,
+		pepFulfillable,
+		emptyDecisionRequestContext,
+	)
 
-	s.False(fulfilled)
+	s.True(allFulfilled)
+	s.Len(perResource, 2)
+	s.True(perResource[0].ObligationsSatisfied)
+	s.Empty(perResource[0].RequiredObligationValueFQNs)
+	s.True(perResource[1].ObligationsSatisfied)
+	s.Empty(perResource[1].RequiredObligationValueFQNs)
 }
 
-func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_EmptyTriggered() {
-	allTriggeredObligationValueFQNs := []string{}
-	pepFulfillableObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN2}
+func (s *ObligationsPDPSuite) Test_rollupResourceObligationDecisions_EmptyFulfillable() {
+	perResourceTriggered := [][]string{
+		{mockObligationFQN1},
+	}
+	pepFulfillable := []string{}
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), actionRead, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, emptyDecisionRequestContext)
-	s.True(fulfilled)
+	perResource, allFulfilled := s.pdp.rollupResourceObligationDecisions(
+		s.T().Context(),
+		actionRead,
+		perResourceTriggered,
+		pepFulfillable,
+		emptyDecisionRequestContext,
+	)
+
+	s.False(allFulfilled)
+	s.Len(perResource, 1)
+	s.False(perResource[0].ObligationsSatisfied)
+	s.Equal([]string{mockObligationFQN1}, perResource[0].RequiredObligationValueFQNs)
 }
 
-func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_EmptyFulfillable() {
-	allTriggeredObligationValueFQNs := []string{mockObligationFQN1}
-	pepFulfillableObligationValueFQNs := []string{}
+func (s *ObligationsPDPSuite) Test_rollupResourceObligationDecisions_NoResources() {
+	perResourceTriggered := [][]string{}
+	pepFulfillable := []string{mockObligationFQN1}
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), actionRead, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, emptyDecisionRequestContext)
+	perResource, allFulfilled := s.pdp.rollupResourceObligationDecisions(
+		s.T().Context(),
+		actionRead,
+		perResourceTriggered,
+		pepFulfillable,
+		emptyDecisionRequestContext,
+	)
 
-	s.False(fulfilled)
+	s.True(allFulfilled)
+	s.Empty(perResource)
 }
 
-func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_BothEmpty() {
-	allTriggeredObligationValueFQNs := []string{}
-	pepFulfillableObligationValueFQNs := []string{}
+func (s *ObligationsPDPSuite) Test_rollupResourceObligationDecisions_SingleResourceFulfilled() {
+	perResourceTriggered := [][]string{
+		{mockObligationFQN1},
+	}
+	pepFulfillable := []string{mockObligationFQN1}
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), actionRead, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, emptyDecisionRequestContext)
-	s.True(fulfilled)
+	perResource, allFulfilled := s.pdp.rollupResourceObligationDecisions(
+		s.T().Context(),
+		actionRead,
+		perResourceTriggered,
+		pepFulfillable,
+		emptyDecisionRequestContext,
+	)
+
+	s.True(allFulfilled)
+	s.Len(perResource, 1)
+	s.True(perResource[0].ObligationsSatisfied)
+	s.Equal([]string{mockObligationFQN1}, perResource[0].RequiredObligationValueFQNs)
 }
 
-func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_SingleObligation_Fulfilled() {
-	allTriggeredObligationValueFQNs := []string{mockObligationFQN1}
-	pepFulfillableObligationValueFQNs := []string{mockObligationFQN1}
+func (s *ObligationsPDPSuite) Test_rollupResourceObligationDecisions_SingleResourceUnfulfilled() {
+	perResourceTriggered := [][]string{
+		{mockObligationFQN3},
+	}
+	pepFulfillable := []string{mockObligationFQN2}
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), actionRead, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, emptyDecisionRequestContext)
-	s.True(fulfilled)
+	perResource, allFulfilled := s.pdp.rollupResourceObligationDecisions(
+		s.T().Context(),
+		actionRead,
+		perResourceTriggered,
+		pepFulfillable,
+		emptyDecisionRequestContext,
+	)
+
+	s.False(allFulfilled)
+	s.Len(perResource, 1)
+	s.False(perResource[0].ObligationsSatisfied)
+	s.Equal([]string{mockObligationFQN3}, perResource[0].RequiredObligationValueFQNs)
 }
 
-func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_SingleObligation_NotFulfilled() {
-	allTriggeredObligationValueFQNs := []string{mockObligationFQN3}
-	pepFulfillableObligationValueFQNs := []string{mockObligationFQN2}
+func (s *ObligationsPDPSuite) Test_rollupResourceObligationDecisions_MultipleObligationsPerResource() {
+	perResourceTriggered := [][]string{
+		{mockObligationFQN1, mockObligationFQN2},
+		{mockObligationFQN3, mockObligationFQN4},
+	}
+	pepFulfillable := []string{mockObligationFQN1, mockObligationFQN2, mockObligationFQN3, mockObligationFQN4}
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), actionRead, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, emptyDecisionRequestContext)
+	perResource, allFulfilled := s.pdp.rollupResourceObligationDecisions(
+		s.T().Context(),
+		actionRead,
+		perResourceTriggered,
+		pepFulfillable,
+		emptyDecisionRequestContext,
+	)
 
-	s.False(fulfilled)
+	s.True(allFulfilled)
+	s.Len(perResource, 2)
+	s.True(perResource[0].ObligationsSatisfied)
+	s.ElementsMatch([]string{mockObligationFQN1, mockObligationFQN2}, perResource[0].RequiredObligationValueFQNs)
+	s.True(perResource[1].ObligationsSatisfied)
+	s.ElementsMatch([]string{mockObligationFQN3, mockObligationFQN4}, perResource[1].RequiredObligationValueFQNs)
 }
 
-func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_DuplicateTriggered() {
-	allTriggeredObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN1, mockObligationFQN2}
-	pepFulfillableObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN2}
+func (s *ObligationsPDPSuite) Test_rollupResourceObligationDecisions_MixedFulfillment() {
+	perResourceTriggered := [][]string{
+		{mockObligationFQN1},
+		{mockObligationFQN2, mockObligationFQN3},
+		{mockObligationFQN4},
+	}
+	pepFulfillable := []string{mockObligationFQN1, mockObligationFQN2}
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), actionRead, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, emptyDecisionRequestContext)
-	s.True(fulfilled)
+	perResource, allFulfilled := s.pdp.rollupResourceObligationDecisions(
+		s.T().Context(),
+		actionRead,
+		perResourceTriggered,
+		pepFulfillable,
+		emptyDecisionRequestContext,
+	)
+
+	s.False(allFulfilled)
+	s.Len(perResource, 3)
+	s.True(perResource[0].ObligationsSatisfied)
+	s.Equal([]string{mockObligationFQN1}, perResource[0].RequiredObligationValueFQNs)
+	s.False(perResource[1].ObligationsSatisfied)
+	s.ElementsMatch([]string{mockObligationFQN2, mockObligationFQN3}, perResource[1].RequiredObligationValueFQNs)
+	s.False(perResource[2].ObligationsSatisfied)
+	s.Equal([]string{mockObligationFQN4}, perResource[2].RequiredObligationValueFQNs)
 }
 
-func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_DuplicateFulfillable() {
-	allTriggeredObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN2}
-	pepFulfillableObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN1, mockObligationFQN2, mockObligationFQN2}
+func (s *ObligationsPDPSuite) Test_rollupResourceObligationDecisions_WithClientID() {
+	perResourceTriggered := [][]string{
+		{mockObligationFQN1},
+		{mockObligationFQN2},
+	}
+	pepFulfillable := []string{mockObligationFQN1, mockObligationFQN2}
+	decisionRequestContext := &policy.RequestContext{
+		Pep: &policy.PolicyEnforcementPoint{
+			ClientId: mockClientID,
+		},
+	}
 
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), actionRead, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, emptyDecisionRequestContext)
-	s.True(fulfilled)
-}
+	perResource, allFulfilled := s.pdp.rollupResourceObligationDecisions(
+		s.T().Context(),
+		actionRead,
+		perResourceTriggered,
+		pepFulfillable,
+		decisionRequestContext,
+	)
 
-func (s *ObligationsPDPSuite) Test_getAllObligationsAreFulfilled_AllObligations_Fulfilled() {
-	allTriggeredObligationValueFQNs := []string{mockObligationFQN1, mockObligationFQN2, mockObligationFQN3, mockObligationFQN4}
-	pepFulfillableObligationValueFQNs := []string{mockObligationFQN4, mockObligationFQN3, mockObligationFQN2, mockObligationFQN1}
-
-	fulfilled := s.pdp.getAllObligationsAreFulfilled(s.T().Context(), actionRead, allTriggeredObligationValueFQNs, pepFulfillableObligationValueFQNs, emptyDecisionRequestContext)
-	s.True(fulfilled)
+	s.True(allFulfilled)
+	s.Len(perResource, 2)
+	s.True(perResource[0].ObligationsSatisfied)
+	s.True(perResource[1].ObligationsSatisfied)
 }
 
 func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke() {
@@ -886,7 +1027,8 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 		name             string
 		args             args
 		wantAllFulfilled bool
-		wantPerResource  [][]string
+		wantPerResource  []PerResourceDecision
+		wantOverall      []string
 	}{
 		{
 			name: "fulfilled - attributes",
@@ -900,11 +1042,33 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 							},
 						},
 					},
+					{
+						Resource: &authz.Resource_AttributeValues_{
+							AttributeValues: &authz.Resource_AttributeValues{
+								Fqns: []string{mockAttrValFQN2},
+							},
+						},
+					},
 				},
-				pepFulfillable: []string{mockObligationFQN1},
+				decisionRequestContext: &policy.RequestContext{
+					Pep: &policy.PolicyEnforcementPoint{
+						ClientId: mockClientID,
+					},
+				},
+				pepFulfillable: []string{mockObligationFQN1, mockObligationFQN2, mockObligationFQN3},
 			},
 			wantAllFulfilled: true,
-			wantPerResource:  [][]string{{mockObligationFQN1}},
+			wantPerResource: []PerResourceDecision{
+				{
+					ObligationsSatisfied:        true,
+					RequiredObligationValueFQNs: []string{mockObligationFQN1},
+				},
+				{
+					ObligationsSatisfied:        true,
+					RequiredObligationValueFQNs: []string{mockObligationFQN2},
+				},
+			},
+			wantOverall: []string{mockObligationFQN1, mockObligationFQN2},
 		},
 		{
 			name: "fulfilled - registered resource",
@@ -920,7 +1084,13 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 				pepFulfillable: []string{mockObligationFQN1},
 			},
 			wantAllFulfilled: true,
-			wantPerResource:  [][]string{{mockObligationFQN1}},
+			wantPerResource: []PerResourceDecision{
+				{
+					ObligationsSatisfied:        true,
+					RequiredObligationValueFQNs: []string{mockObligationFQN1},
+				},
+			},
+			wantOverall: []string{mockObligationFQN1},
 		},
 		{
 			name: "fulfilled - registered resource client scoped",
@@ -941,7 +1111,13 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 				pepFulfillable: []string{mockObligationFQN2},
 			},
 			wantAllFulfilled: true,
-			wantPerResource:  [][]string{{mockObligationFQN2}},
+			wantPerResource: []PerResourceDecision{
+				{
+					ObligationsSatisfied:        true,
+					RequiredObligationValueFQNs: []string{mockObligationFQN2},
+				},
+			},
+			wantOverall: []string{mockObligationFQN2},
 		},
 		{
 			name: "fulfilled - casing mismatches",
@@ -961,7 +1137,13 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 				pepFulfillable: []string{strings.ToUpper(mockObligationFQN1)},
 			},
 			wantAllFulfilled: true,
-			wantPerResource:  [][]string{{mockObligationFQN1}},
+			wantPerResource: []PerResourceDecision{
+				{
+					ObligationsSatisfied:        true,
+					RequiredObligationValueFQNs: []string{mockObligationFQN1},
+				},
+			},
+			wantOverall: []string{mockObligationFQN1},
 		},
 		{
 			name: "unfulfilled - attributes",
@@ -979,7 +1161,13 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 				pepFulfillable: []string{mockObligationFQN2},
 			},
 			wantAllFulfilled: false,
-			wantPerResource:  [][]string{{mockObligationFQN1}},
+			wantPerResource: []PerResourceDecision{
+				{
+					ObligationsSatisfied:        false,
+					RequiredObligationValueFQNs: []string{mockObligationFQN1},
+				},
+			},
+			wantOverall: []string{mockObligationFQN1},
 		},
 		{
 			name: "unfulfilled - registered resource",
@@ -995,7 +1183,13 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 				pepFulfillable: []string{mockObligationFQN2},
 			},
 			wantAllFulfilled: false,
-			wantPerResource:  [][]string{{mockObligationFQN1}},
+			wantPerResource: []PerResourceDecision{
+				{
+					ObligationsSatisfied:        false,
+					RequiredObligationValueFQNs: []string{mockObligationFQN1},
+				},
+			},
+			wantOverall: []string{mockObligationFQN1},
 		},
 		{
 			name: "no obligations triggered",
@@ -1012,15 +1206,21 @@ func (s *ObligationsPDPSuite) Test_GetAllTriggeredObligationsAreFulfilled_Smoke(
 				},
 			},
 			wantAllFulfilled: true,
-			wantPerResource:  [][]string{{}},
+			wantPerResource: []PerResourceDecision{
+				{
+					ObligationsSatisfied:        true,
+					RequiredObligationValueFQNs: []string{},
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
 		s.T().Run(tt.name, func(t *testing.T) {
-			gotAllFulfilled, gotPerResource, err := s.pdp.GetAllTriggeredObligationsAreFulfilled(t.Context(), tt.args.resources, tt.args.action, tt.args.decisionRequestContext, tt.args.pepFulfillable)
+			decision, err := s.pdp.GetAllTriggeredObligationsAreFulfilled(t.Context(), tt.args.resources, tt.args.action, tt.args.decisionRequestContext, tt.args.pepFulfillable)
 			s.Require().NoError(err)
-			s.Equal(tt.wantAllFulfilled, gotAllFulfilled, tt.name)
-			s.Equal(tt.wantPerResource, gotPerResource, tt.name)
+			s.Equal(tt.wantAllFulfilled, decision.AllObligationsSatisfied, tt.name)
+			s.Equal(tt.wantPerResource, decision.PerResourceDecisions, tt.name)
+			s.Equal(tt.wantOverall, decision.RequiredObligationValueFQNs, tt.name)
 		})
 	}
 }

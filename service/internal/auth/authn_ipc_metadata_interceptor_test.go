@@ -179,7 +179,7 @@ func (m *mockAnyRequest) Peer() connect.Peer {
 }
 
 func (m *mockAnyRequest) Any() any {
-	return m.Request.Msg
+	return m.Msg
 }
 
 func TestIPCUnaryServerInterceptor(t *testing.T) {

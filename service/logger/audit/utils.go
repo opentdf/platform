@@ -14,18 +14,20 @@ const (
 	defaultNone = "None"
 )
 
+type auditEventMetadata map[string]any
+
 // event
 type EventObject struct {
-	Object        auditEventObject `json:"object"`
-	Action        eventAction      `json:"action"`
-	Actor         auditEventActor  `json:"actor"`
-	EventMetaData interface{}      `json:"eventMetaData"`
-	ClientInfo    eventClientInfo  `json:"clientInfo"`
+	Object        auditEventObject   `json:"object"`
+	Action        eventAction        `json:"action"`
+	Actor         auditEventActor    `json:"actor"`
+	EventMetaData auditEventMetadata `json:"eventMetaData"`
+	ClientInfo    eventClientInfo    `json:"clientInfo"`
 
-	Original  map[string]interface{} `json:"original,omitempty"`
-	Updated   map[string]interface{} `json:"updated,omitempty"`
-	RequestID uuid.UUID              `json:"requestId"`
-	Timestamp string                 `json:"timestamp"`
+	Original  map[string]any `json:"original,omitempty"`
+	Updated   map[string]any `json:"updated,omitempty"`
+	RequestID uuid.UUID      `json:"requestId"`
+	Timestamp string         `json:"timestamp"`
 }
 
 func (e EventObject) LogValue() slog.Value {
@@ -85,8 +87,8 @@ func (e eventAction) LogValue() slog.Value {
 
 // event.actor
 type auditEventActor struct {
-	ID         string        `json:"id"`
-	Attributes []interface{} `json:"attributes"`
+	ID         string `json:"id"`
+	Attributes []any  `json:"attributes"`
 }
 
 func (e auditEventActor) LogValue() slog.Value {

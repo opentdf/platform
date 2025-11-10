@@ -134,7 +134,7 @@ func (as *Service) Close() {
 func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[authzV2.GetEntitlementsRequest]) (*connect.Response[authzV2.GetEntitlementsResponse], error) {
 	as.logger.DebugContext(ctx, "getting entitlements")
 
-	ctx, span := as.Tracer.Start(ctx, "GetEntitlements")
+	ctx, span := as.Start(ctx, "GetEntitlements")
 	defer span.End()
 
 	// Extract trace context from the incoming request
@@ -165,7 +165,7 @@ func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[aut
 func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2.GetDecisionRequest]) (*connect.Response[authzV2.GetDecisionResponse], error) {
 	as.logger.DebugContext(ctx, "getting decision")
 
-	ctx, span := as.Tracer.Start(ctx, "GetDecision")
+	ctx, span := as.Start(ctx, "GetDecision")
 	defer span.End()
 
 	// Extract trace context from the incoming request
@@ -188,7 +188,7 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 		return nil, statusifyError(ctx, as.logger, err)
 	}
 
-	decisions, permitted, err := pdp.GetDecision(
+	decision, err := pdp.GetDecision(
 		ctx,
 		entityIdentifier,
 		action,
@@ -199,9 +199,14 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, err)
 	}
-	resp, err := rollupSingleResourceDecision(permitted, decisions)
+
+	resourceDecisions, err := rollupResourceDecisions(decision)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, err)
+	}
+
+	resp := &authzV2.GetDecisionResponse{
+		Decision: resourceDecisions[0],
 	}
 	return connect.NewResponse(resp), nil
 }
@@ -210,7 +215,7 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Request[authzV2.GetDecisionMultiResourceRequest]) (*connect.Response[authzV2.GetDecisionMultiResourceResponse], error) {
 	as.logger.DebugContext(ctx, "getting decision multi resource")
 
-	ctx, span := as.Tracer.Start(ctx, "GetDecisionMultiResource")
+	ctx, span := as.Start(ctx, "GetDecisionMultiResource")
 	defer span.End()
 
 	// Extract trace context from the incoming request
@@ -232,7 +237,7 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 		return nil, statusifyError(ctx, as.logger, err)
 	}
 
-	decisions, allPermitted, err := pdp.GetDecision(
+	decision, err := pdp.GetDecision(
 		ctx,
 		entityIdentifier,
 		action,
@@ -244,14 +249,14 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToGetDecision, err))
 	}
 
-	resourceDecisions, err := rollupMultiResourceDecisions(decisions)
+	resourceDecisions, err := rollupResourceDecisions(decision)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, err)
 	}
 
 	resp := &authzV2.GetDecisionMultiResourceResponse{
 		AllPermitted: &wrapperspb.BoolValue{
-			Value: allPermitted,
+			Value: decision.AllPermitted,
 		},
 		ResourceDecisions: resourceDecisions,
 	}
@@ -263,7 +268,7 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[authzV2.GetDecisionBulkRequest]) (*connect.Response[authzV2.GetDecisionBulkResponse], error) {
 	as.logger.DebugContext(ctx, "getting decision bulk")
 
-	ctx, span := as.Tracer.Start(ctx, "GetDecisionBulk")
+	ctx, span := as.Start(ctx, "GetDecisionBulk")
 	defer span.End()
 
 	// Extract trace context from the incoming request
@@ -291,19 +296,19 @@ func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[aut
 		resources := request.GetResources()
 		fulfillableObligations := request.GetFulfillableObligationFqns()
 
-		decisions, allPermitted, err := pdp.GetDecision(ctx, entityIdentifier, action, resources, reqContext, fulfillableObligations)
+		decision, err := pdp.GetDecision(ctx, entityIdentifier, action, resources, reqContext, fulfillableObligations)
 		if err != nil {
 			return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToGetDecision, err))
 		}
 
-		resourceDecisions, err := rollupMultiResourceDecisions(decisions)
+		resourceDecisions, err := rollupResourceDecisions(decision)
 		if err != nil {
 			return nil, statusifyError(ctx, as.logger, err, slog.Int("index", idx))
 		}
 
 		decisionResponse := &authzV2.GetDecisionMultiResourceResponse{
 			AllPermitted: &wrapperspb.BoolValue{
-				Value: allPermitted,
+				Value: decision.AllPermitted,
 			},
 			ResourceDecisions: resourceDecisions,
 		}

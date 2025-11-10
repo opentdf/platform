@@ -281,8 +281,8 @@ func TestNewRegistration(t *testing.T) {
 	registration := NewRegistration()
 
 	assert.NotNil(t, registration)
-	assert.Equal(t, "wellknown", registration.ServiceOptions.Namespace)
-	assert.NotNil(t, registration.ServiceOptions.ServiceDesc)
-	assert.NotNil(t, registration.ServiceOptions.ConnectRPCFunc)
-	assert.NotNil(t, registration.ServiceOptions.RegisterFunc)
+	assert.Equal(t, "wellknown", registration.Namespace)
+	assert.NotNil(t, registration.ServiceDesc)
+	assert.NotNil(t, registration.ConnectRPCFunc)
+	assert.NotNil(t, registration.RegisterFunc)
 }

@@ -480,6 +480,7 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Kas
 	if key.ProviderConfigID.Valid {
 		providerConfig = &policy.KeyProviderConfig{}
 		providerConfig.Id = UUIDToString(key.ProviderConfigID)
+		providerConfig.Manager = key.PcManager.String
 		providerConfig.Name = key.ProviderName.String
 		providerConfig.ConfigJson = key.PcConfig
 		providerConfig.Metadata = &common.Metadata{}
@@ -550,7 +551,7 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 	algo := pgtypeInt4(int32(r.GetKeyAlgorithm()), r.GetKeyAlgorithm() != policy.Algorithm_ALGORITHM_UNSPECIFIED)
 
 	var legacy pgtype.Bool
-	//nolint:staticcheck // Need to check if the legacy field is set.
+
 	if r.Legacy == nil {
 		legacy = pgtype.Bool{Valid: false}
 	} else {

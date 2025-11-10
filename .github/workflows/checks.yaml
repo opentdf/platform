@@ -485,7 +485,7 @@ jobs:
       packages: read
       pull-requests: write
       checks: write
-    uses: opentdf/tests/.github/workflows/xtest.yml@2821dfae118e86aec33fe03e7e2a674c84b20635
+    uses: opentdf/tests/.github/workflows/xtest.yml@36b863843b2239966ad79f9edf0102f77209acc2
     with:
       focus-sdk: go
       go-sdk-ref: ${{ needs.prepare-sdk-platform-ref.outputs.sdk_ref || null }}

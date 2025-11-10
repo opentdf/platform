@@ -3305,9 +3305,6 @@ func findResourceDecision(decision *Decision, resourceID string) *ResourceDecisi
 	return nil
 }
 
-// Test_GetDecision_NonExistentAttributeFQN tests that when a resource contains
-// an attribute FQN that doesn't exist in the system, the resource is individually
-// denied without failing the entire request.
 func (s *PDPTestSuite) Test_GetDecision_NonExistentAttributeFQN() {
 	f := s.fixtures
 
@@ -3327,8 +3324,7 @@ func (s *PDPTestSuite) Test_GetDecision_NonExistentAttributeFQN() {
 			"clearance": "ts",
 		})
 
-		// Create resource with FQN that doesn't exist in the system
-		nonExistentFQN := createAttrValueFQN(testBaseNamespace, "clearance", "cosmic")
+		nonExistentFQN := createAttrValueFQN(testBaseNamespace, "space", "cosmic")
 		resources := []*authz.Resource{
 			{
 				Resource: &authz.Resource_AttributeValues_{
@@ -3342,17 +3338,15 @@ func (s *PDPTestSuite) Test_GetDecision_NonExistentAttributeFQN() {
 
 		decision, entitlements, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 
-		// Should NOT error - should return decision with resource denied
-		s.Require().NoError(err, "GetDecision should not error on non-existent FQN")
+		// No error, but deny decision
+		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.AllPermitted, "AllPermitted should be false")
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 1)
 
-		// Verify the resource is denied
-		s.False(decision.Results[0].Entitled, "Resource with non-existent FQN should be DENIED")
+		// Resource is denied
+		s.False(decision.Results[0].Entitled)
 		s.Equal("resource-with-missing-fqn", decision.Results[0].ResourceID)
-
-		// Entitlements should still be returned (for the entity's entitled values)
 		s.Require().NotNil(entitlements)
 	})
 
@@ -3362,7 +3356,7 @@ func (s *PDPTestSuite) Test_GetDecision_NonExistentAttributeFQN() {
 		})
 
 		// Create resources: 2 valid, 1 with non-existent FQN
-		nonExistentFQN := createAttrValueFQN(testBaseNamespace, "clearance", "ultrasecret")
+		nonExistentFQNBadDefinition := createAttrValueFQN(testBaseNamespace, "severity", "high")
 		resources := []*authz.Resource{
 			{
 				Resource: &authz.Resource_AttributeValues_{
@@ -3375,7 +3369,7 @@ func (s *PDPTestSuite) Test_GetDecision_NonExistentAttributeFQN() {
 			{
 				Resource: &authz.Resource_AttributeValues_{
 					AttributeValues: &authz.Resource_AttributeValues{
-						Fqns: []string{nonExistentFQN}, // Invalid - doesn't exist
+						Fqns: []string{nonExistentFQNBadDefinition}, // Invalid - doesn't exist
 					},
 				},
 				EphemeralId: "invalid-resource-2",
@@ -3393,9 +3387,9 @@ func (s *PDPTestSuite) Test_GetDecision_NonExistentAttributeFQN() {
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 
 		// Should NOT error
-		s.Require().NoError(err, "GetDecision should not error with mixed FQNs")
+		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.AllPermitted, "AllPermitted should be false (one resource denied)")
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 3)
 
 		// Verify individual resource decisions
@@ -3413,8 +3407,6 @@ func (s *PDPTestSuite) Test_GetDecision_NonExistentAttributeFQN() {
 	})
 }
 
-// Test_GetDecision_PartialFQNsInResource tests that when a resource contains
-// some valid and some non-existent FQNs, the resource is DENIED (not evaluated with partial data).
 func (s *PDPTestSuite) Test_GetDecision_PartialFQNsInResource() {
 	f := s.fixtures
 
@@ -3434,16 +3426,15 @@ func (s *PDPTestSuite) Test_GetDecision_PartialFQNsInResource() {
 			"clearance": "ts",
 		})
 
-		// Create resource with 2 valid FQNs and 1 non-existent FQN
-		nonExistentFQN := createAttrValueFQN(testBaseNamespace, "classification", "cosmic")
+		nonExistentValueFQNBadNamespace := createAttrValueFQN("does.notexist", "classification", "cosmic")
 		resources := []*authz.Resource{
 			{
 				Resource: &authz.Resource_AttributeValues_{
 					AttributeValues: &authz.Resource_AttributeValues{
 						Fqns: []string{
-							testClassSecretFQN,    // Valid
-							nonExistentFQN,        // Non-existent - causes DENY
-							testClassTopSecretFQN, // Valid
+							testClassSecretFQN,              // Valid
+							nonExistentValueFQNBadNamespace, // Non-existent - causes DENY
+							testClassTopSecretFQN,           // Valid
 						},
 					},
 				},
@@ -3453,19 +3444,16 @@ func (s *PDPTestSuite) Test_GetDecision_PartialFQNsInResource() {
 
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 
-		// Should NOT error - but should DENY the resource (ANY missing FQN = DENY)
-		s.Require().NoError(err, "GetDecision should not error with partial invalid FQNs")
+		// No error, but deny decision
+		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.Len(decision.Results, 1)
 
-		// ANY missing FQN means DENY - we don't evaluate with partial data
-		s.False(decision.AllPermitted, "AllPermitted should be false")
-		s.False(decision.Results[0].Entitled, "Resource should be DENIED when ANY FQN is missing")
+		s.False(decision.AllPermitted)
+		s.False(decision.Results[0].Entitled)
 	})
 }
 
-// Test_GetDecisionRegisteredResource_NonExistentFQN tests that when a registered
-// resource value FQN doesn't exist, the resource is denied without error.
 func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_NonExistentFQN() {
 	f := s.fixtures
 
@@ -3485,8 +3473,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_NonExistentFQN() {
 			"clearance": "secret",
 		})
 
-		// Create resource with registered resource FQN that doesn't exist
-		nonExistentRegResFQN := createRegisteredResourceValueFQN("secret-system", "classified")
+		nonExistentRegResFQN := createRegisteredResourceValueFQN("special-system", "classified")
 		resources := []*authz.Resource{
 			{
 				Resource: &authz.Resource_RegisteredResourceValueFqn{
@@ -3498,14 +3485,14 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_NonExistentFQN() {
 
 		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 
-		// Should NOT error - should return DENY decision
-		s.Require().NoError(err, "GetDecision should not error on non-existent registered resource FQN")
+		// No error, but deny decision
+		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 1)
 
-		// Verify the resource is denied
-		s.False(decision.Results[0].Entitled, "Resource with non-existent registered resource FQN should be DENIED")
+		// Resource is denied
+		s.False(decision.Results[0].Entitled)
 		s.Equal("missing-reg-res", decision.Results[0].ResourceID)
 		s.Equal(nonExistentRegResFQN, decision.Results[0].ResourceName)
 	})
@@ -3536,26 +3523,25 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_NonExistentFQN() {
 		// Should NOT error
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.AllPermitted, "AllPermitted should be false (one resource denied)")
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 2)
 
 		// Verify individual decisions
 		for _, result := range decision.Results {
-			if result.ResourceID == "valid-reg-res" {
-				s.True(result.Entitled, "Valid registered resource should be PERMITTED")
-			} else if result.ResourceID == "invalid-reg-res" {
-				s.False(result.Entitled, "Non-existent registered resource should be DENIED")
-			} else {
+			switch result.ResourceID {
+			case "valid-reg-res":
+				s.True(result.Entitled)
+			case "invalid-reg-res":
+				s.False(result.Entitled)
+			default:
 				s.Fail("Unexpected resource ID: %s", result.ResourceID)
 			}
 		}
 	})
 }
 
-// Test_GetDecision_NoPolicies tests that when no policies exist in the system,
-// all resources are denied without errors.
 func (s *PDPTestSuite) Test_GetDecision_NoPolicies() {
-	// Create a PDP with NO attributes, NO mappings, NO registered resources
+	// Empty PDP with no attributes, subject mappings, or registered resources
 	pdp, err := NewPolicyDecisionPoint(
 		s.T().Context(),
 		s.logger,
@@ -3566,7 +3552,7 @@ func (s *PDPTestSuite) Test_GetDecision_NoPolicies() {
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
 
-	s.Run("No policies in database - should DENY all resources", func() {
+	s.Run("No policy found - should DENY all resources", func() {
 		entity := s.createEntityWithProps("test-user", map[string]interface{}{
 			"clearance": "ts",
 		})
@@ -3592,19 +3578,18 @@ func (s *PDPTestSuite) Test_GetDecision_NoPolicies() {
 
 		decision, entitlements, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 
-		// Should NOT error - should return DENY decisions
-		s.Require().NoError(err, "GetDecision should not error with no policies")
+		// No error, but deny decision
+		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.False(decision.AllPermitted, "AllPermitted should be false with no policies")
+		s.False(decision.AllPermitted)
 		s.Len(decision.Results, 2)
 
-		// All resources should be denied
 		for _, result := range decision.Results {
-			s.False(result.Entitled, "All resources should be DENIED with no policies")
+			s.False(result.Entitled)
 		}
 
-		// Entitlements should be empty (no subject mappings)
+		// Empty entitlements without available policy
 		s.Require().NotNil(entitlements)
-		s.Empty(entitlements, "Entitlements should be empty with no policies")
+		s.Empty(entitlements)
 	})
 }

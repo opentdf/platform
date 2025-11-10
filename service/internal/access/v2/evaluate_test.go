@@ -751,17 +751,30 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 			expectError:      false,
 		},
 		{
-			name: "unknown attribute value FQN",
+			name: "partial FQNs not found - should DENY",
 			resourceAttrs: &authz.Resource_AttributeValues{
 				Fqns: []string{
 					levelMidFQN,
-					"https://namespace.com/attr/department/value/unknown", // This FQN doesn't exist in accessibleAttributeValues
+					"https://namespace.com/attr/department/value/unknown",
 				},
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
 				levelMidFQN: []*policy.Action{actionRead},
 			},
 			// Should NOT error - but should DENY resource (ANY missing FQN = DENY)
+			expectAccessible: false,
+			expectError:      false,
+		},
+		{
+			name: "all FQNs not found - should DENY",
+			resourceAttrs: &authz.Resource_AttributeValues{
+				Fqns: []string{
+					createAttrValueFQN(baseNamespace, "significance", "critical"),
+					createAttrValueFQN(baseNamespace, "significance", "major"),
+				},
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			// Should NOT error - but should DENY resource (no FQNs exist)
 			expectAccessible: false,
 			expectError:      false,
 		},
@@ -899,7 +912,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			expectPass:  false,
 		},
 		{
-			name: "nonexistent registered resource value",
+			name: "nonexistent registered resource value - should DENY",
 			resource: &authz.Resource{
 				Resource: &authz.Resource_RegisteredResourceValueFqn{
 					RegisteredResourceValueFqn: nonExistentRegResValueFQN,
@@ -909,6 +922,73 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
 			expectError:  false,
 			expectPass:   false,
+		},
+		{
+			name: "attribute value FQNs not found, namespace & definition exist - should DENY",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{
+							createAttrValueFQN(baseNamespace, "department", "doesnotexist"),
+						},
+					},
+				},
+				EphemeralId: "test-attr-missing-fqns",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			expectError:  false,
+			expectPass:   false,
+		},
+		{
+			name: "attribute value FQNs not found, namespace exists - should DENY",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{
+							createAttrValueFQN(baseNamespace, "unknown", "doesnotexist"),
+						},
+					},
+				},
+				EphemeralId: "test-attr-missing-fqns",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			expectError:  false,
+			expectPass:   false,
+		},
+		{
+			name: "attribute value FQNs not found, namespace does not exist - should DENY",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{
+							"https://doesnot.exist/attr/severity/value/high",
+						},
+					},
+				},
+				EphemeralId: "test-attr-missing-fqns",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			expectError:  false,
+			expectPass:   false,
+		},
+		{
+			name: "attribute value FQNs partially exist - should DENY",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{
+							levelMidFQN,
+							"https://doesnot.exist/attr/severity/value/high",
+						},
+					},
+				},
+				EphemeralId: "test-attr-values-partially-exist",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				levelMidFQN: []*policy.Action{actionRead},
+			},
+			expectError: false,
+			expectPass:  false,
 		},
 		{
 			name:         "invalid nil resource",
@@ -956,139 +1036,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 	}
 }
 
-func (s *EvaluateTestSuite) Test_evaluateResourceAttributeValues_AllFQNsNotFound() {
-	nonExistentFQN1 := createAttrValueFQN(baseNamespace, "significance", "critical")
-	nonExistentFQN2 := createAttrValueFQN(baseNamespace, "significance", "major")
-
-	resourceAttributeValues := &authz.Resource_AttributeValues{
-		Fqns: []string{
-			nonExistentFQN1,
-			nonExistentFQN2,
-		},
-	}
-
-	emptyAccessibleAttributes := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
-
-	entitlements := subjectmappingbuiltin.AttributeValueFQNsToActions{}
-
-	decision, err := evaluateResourceAttributeValues(
-		s.T().Context(),
-		s.logger,
-		resourceAttributeValues,
-		"resource-1",
-		"",
-		s.action,
-		entitlements,
-		emptyAccessibleAttributes,
-	)
-
-	s.Require().NoError(err)
-	s.Require().NotNil(decision)
-	s.False(decision.Entitled)
-	s.Equal("resource-1", decision.ResourceID)
-}
-
-func (s *EvaluateTestSuite) Test_evaluateResourceAttributeValues_PartialFQNsNotFound() {
-	nonExistentFQN := createAttrValueFQN(baseNamespace, "significance", "high")
-
-	resourceAttributeValues := &authz.Resource_AttributeValues{
-		Fqns: []string{
-			levelMidFQN,     // Exists
-			nonExistentFQN,  // Eoesn't exist
-			levelHighestFQN, // Exists
-		},
-	}
-
-	// Entitled to the existing FQNs
-	entitlements := subjectmappingbuiltin.AttributeValueFQNsToActions{
-		levelMidFQN:     []*policy.Action{actionRead},
-		levelHighestFQN: []*policy.Action{actionRead},
-	}
-
-	decision, err := evaluateResourceAttributeValues(
-		s.T().Context(),
-		s.logger,
-		resourceAttributeValues,
-		"resource-2",
-		"",
-		s.action,
-		entitlements,
-		s.accessibleAttrValues,
-	)
-
-	// No error, but deny decision
-	s.Require().NoError(err)
-	s.Require().NotNil(decision)
-	s.False(decision.Entitled)
-	s.Equal("resource-2", decision.ResourceID)
-}
-
-func (s *EvaluateTestSuite) Test_getResourceDecision_AttributeValueFQNsNotFound() {
-	nonExistentFQN1 := createAttrValueFQN(baseNamespace, "space", "cosmic")
-	nonExistentFQN2 := createAttrValueFQN(baseNamespace, "space", "planetary")
-
-	resource := &authz.Resource{
-		Resource: &authz.Resource_AttributeValues_{
-			AttributeValues: &authz.Resource_AttributeValues{
-				Fqns: []string{nonExistentFQN1, nonExistentFQN2},
-			},
-		},
-		EphemeralId: "resource-with-missing-fqns",
-	}
-
-	emptyAccessibleAttributes := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
-	entitlements := subjectmappingbuiltin.AttributeValueFQNsToActions{}
-
-	decision, err := getResourceDecision(
-		s.T().Context(),
-		s.logger,
-		emptyAccessibleAttributes,
-		s.accessibleRegisteredResourceValues,
-		entitlements,
-		s.action,
-		resource,
-	)
-
-	// No error, but deny decision
-	s.Require().NoError(err)
-	s.Require().NotNil(decision)
-	s.False(decision.Entitled)
-	s.Equal("resource-with-missing-fqns", decision.ResourceID)
-}
-
-func (s *EvaluateTestSuite) Test_getResourceDecision_RegisteredResourceValueFQNNotFound() {
-	nonExistentRegResFQN := createRegisteredResourceValueFQN("special-system", "classified")
-
-	resource := &authz.Resource{
-		Resource: &authz.Resource_RegisteredResourceValueFqn{
-			RegisteredResourceValueFqn: nonExistentRegResFQN,
-		},
-		EphemeralId: "resource-with-missing-reg-res",
-	}
-
-	entitlements := subjectmappingbuiltin.AttributeValueFQNsToActions{
-		levelHighestFQN: []*policy.Action{actionRead},
-	}
-
-	decision, err := getResourceDecision(
-		s.T().Context(),
-		s.logger,
-		s.accessibleAttrValues,
-		s.accessibleRegisteredResourceValues,
-		entitlements,
-		s.action,
-		resource,
-	)
-
-	// No error, but deny decision
-	s.Require().NoError(err)
-	s.Require().NotNil(decision)
-	s.False(decision.Entitled)
-	s.Equal("resource-with-missing-reg-res", decision.ResourceID)
-	s.Equal(nonExistentRegResFQN, decision.ResourceName)
-}
-
-func (s *EvaluateTestSuite) Test_getResourceDecision_MixedResources_IndividualDenials() {
+func (s *EvaluateTestSuite) Test_getResourceDecision_MultiResources_GranularDenials() {
 	nonExistentFQN := createAttrValueFQN(baseNamespace, "space", "cosmic")
 
 	// Resource 1: Valid FQN, entity is entitled

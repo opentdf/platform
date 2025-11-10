@@ -761,8 +761,9 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
 				levelMidFQN: []*policy.Action{actionRead},
 			},
+			// Should NOT error - but should DENY resource (ANY missing FQN = DENY)
 			expectAccessible: false,
-			expectError:      true,
+			expectError:      false,
 		},
 	}
 
@@ -788,13 +789,23 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 				s.Equal(tc.expectAccessible, resourceDecision.Entitled)
 
 				// Check results array has the correct length based on grouping by definition
+				// If ANY FQN is missing, DataRuleResults should be empty (resource is denied without evaluation)
 				definitions := make(map[string]bool)
+				allFQNsExist := true
 				for _, fqn := range tc.resourceAttrs.GetFqns() {
 					if attrAndValue, ok := s.accessibleAttrValues[fqn]; ok {
 						definitions[attrAndValue.GetAttribute().GetFqn()] = true
+					} else {
+						allFQNsExist = false
 					}
 				}
-				s.Len(resourceDecision.DataRuleResults, len(definitions))
+
+				if allFQNsExist {
+					s.Len(resourceDecision.DataRuleResults, len(definitions))
+				} else {
+					// Any missing FQN means DENY without evaluation
+					s.Len(resourceDecision.DataRuleResults, 0)
+				}
 			}
 		})
 	}
@@ -940,6 +951,231 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				s.Equal(tc.expectPass, decision.Entitled, "Decision entitlement status didn't match")
 				s.Equal(tc.resource.GetEphemeralId(), decision.ResourceID, "Resource ID didn't match")
 			}
+		})
+	}
+}
+
+// Test_evaluateResourceAttributeValues_AllFQNsNotFound tests that when all attribute FQNs
+// in a resource don't exist in accessibleAttributeValues, the resource is DENIED (not error).
+// This ensures fine-grained decisions where individual resources with non-existent FQNs
+// are denied without failing the entire request.
+func (s *EvaluateTestSuite) Test_evaluateResourceAttributeValues_AllFQNsNotFound() {
+	// Create FQNs that don't exist in the system
+	nonExistentFQN1 := createAttrValueFQN(baseNamespace, "classification", "topsecret")
+	nonExistentFQN2 := createAttrValueFQN(baseNamespace, "classification", "secret")
+
+	resourceAttributeValues := &authz.Resource_AttributeValues{
+		Fqns: []string{
+			nonExistentFQN1,
+			nonExistentFQN2,
+		},
+	}
+
+	// Empty accessible attributes map simulating FQNs not found
+	emptyAccessibleAttributes := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
+
+	entitlements := subjectmappingbuiltin.AttributeValueFQNsToActions{}
+
+	// Call evaluateResourceAttributeValues
+	decision, err := evaluateResourceAttributeValues(
+		s.T().Context(),
+		s.logger,
+		resourceAttributeValues,
+		"resource-1",
+		"",
+		s.action,
+		entitlements,
+		emptyAccessibleAttributes,
+	)
+
+	// Should NOT return an error - should return DENY decision
+	s.Require().NoError(err, "Should not return error when FQNs not found")
+	s.Require().NotNil(decision, "Decision should not be nil")
+	s.False(decision.Entitled, "Resource should be DENIED when all FQNs not found")
+	s.Equal("resource-1", decision.ResourceID)
+}
+
+// Test_evaluateResourceAttributeValues_PartialFQNsNotFound tests that when some (but not all)
+// attribute FQNs don't exist, the resource is DENIED (not evaluated with partial data).
+func (s *EvaluateTestSuite) Test_evaluateResourceAttributeValues_PartialFQNsNotFound() {
+	nonExistentFQN := createAttrValueFQN(baseNamespace, "classification", "topsecret")
+
+	resourceAttributeValues := &authz.Resource_AttributeValues{
+		Fqns: []string{
+			levelMidFQN,        // This exists
+			nonExistentFQN,     // This doesn't exist
+			levelHighestFQN,    // This exists
+		},
+	}
+
+	// Entity is entitled to the existing FQNs
+	entitlements := subjectmappingbuiltin.AttributeValueFQNsToActions{
+		levelMidFQN:     []*policy.Action{actionRead},
+		levelHighestFQN: []*policy.Action{actionRead},
+	}
+
+	decision, err := evaluateResourceAttributeValues(
+		s.T().Context(),
+		s.logger,
+		resourceAttributeValues,
+		"resource-2",
+		"",
+		s.action,
+		entitlements,
+		s.accessibleAttrValues,
+	)
+
+	// Should NOT return an error - but should DENY the resource (any missing FQN = DENY)
+	s.Require().NoError(err, "Should not return error with partial FQNs missing")
+	s.Require().NotNil(decision, "Decision should not be nil")
+	// ANY missing FQN means DENY - we don't evaluate with partial data
+	s.False(decision.Entitled, "Resource should be DENIED when ANY FQN is missing")
+	s.Equal("resource-2", decision.ResourceID)
+}
+
+// Test_getResourceDecision_AttributeValueFQNsNotFound tests the full flow through
+// getResourceDecision when attribute value FQNs don't exist.
+func (s *EvaluateTestSuite) Test_getResourceDecision_AttributeValueFQNsNotFound() {
+	nonExistentFQN1 := createAttrValueFQN(baseNamespace, "clearance", "cosmic")
+	nonExistentFQN2 := createAttrValueFQN(baseNamespace, "clearance", "ultrasecret")
+
+	resource := &authz.Resource{
+		Resource: &authz.Resource_AttributeValues_{
+			AttributeValues: &authz.Resource_AttributeValues{
+				Fqns: []string{nonExistentFQN1, nonExistentFQN2},
+			},
+		},
+		EphemeralId: "resource-with-missing-fqns",
+	}
+
+	emptyAccessibleAttributes := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
+	entitlements := subjectmappingbuiltin.AttributeValueFQNsToActions{}
+
+	decision, err := getResourceDecision(
+		s.T().Context(),
+		s.logger,
+		emptyAccessibleAttributes,
+		s.accessibleRegisteredResourceValues,
+		entitlements,
+		s.action,
+		resource,
+	)
+
+	// Should NOT error - should return DENY decision
+	s.Require().NoError(err, "getResourceDecision should not error on missing FQNs")
+	s.Require().NotNil(decision, "Decision should not be nil")
+	s.False(decision.Entitled, "Resource with missing FQNs should be DENIED")
+	s.Equal("resource-with-missing-fqns", decision.ResourceID)
+}
+
+// Test_getResourceDecision_RegisteredResourceValueFQNNotFound verifies that when a
+// registered resource value FQN doesn't exist, the resource is DENIED (not error).
+// This pattern should be consistent with attribute value FQN handling.
+func (s *EvaluateTestSuite) Test_getResourceDecision_RegisteredResourceValueFQNNotFound() {
+	nonExistentRegResFQN := createRegisteredResourceValueFQN("secret-system", "classified")
+
+	resource := &authz.Resource{
+		Resource: &authz.Resource_RegisteredResourceValueFqn{
+			RegisteredResourceValueFqn: nonExistentRegResFQN,
+		},
+		EphemeralId: "resource-with-missing-reg-res",
+	}
+
+	entitlements := subjectmappingbuiltin.AttributeValueFQNsToActions{
+		levelHighestFQN: []*policy.Action{actionRead},
+	}
+
+	decision, err := getResourceDecision(
+		s.T().Context(),
+		s.logger,
+		s.accessibleAttrValues,
+		s.accessibleRegisteredResourceValues,
+		entitlements,
+		s.action,
+		resource,
+	)
+
+	// Should NOT error - should return DENY decision
+	s.Require().NoError(err, "getResourceDecision should not error on missing registered resource FQN")
+	s.Require().NotNil(decision, "Decision should not be nil")
+	s.False(decision.Entitled, "Resource with missing registered resource FQN should be DENIED")
+	s.Equal("resource-with-missing-reg-res", decision.ResourceID)
+	s.Equal(nonExistentRegResFQN, decision.ResourceName)
+}
+
+// Test_getResourceDecision_MixedResources_IndividualDenials tests that in a batch of
+// resources, those with missing FQNs are individually denied without affecting others.
+// This validates fine-grained decision-making.
+func (s *EvaluateTestSuite) Test_getResourceDecision_MixedResources_IndividualDenials() {
+	nonExistentFQN := createAttrValueFQN(baseNamespace, "clearance", "cosmic")
+
+	// Resource 1: Valid FQN, entity is entitled
+	resource1 := &authz.Resource{
+		Resource: &authz.Resource_AttributeValues_{
+			AttributeValues: &authz.Resource_AttributeValues{
+				Fqns: []string{levelHighestFQN},
+			},
+		},
+		EphemeralId: "valid-resource-1",
+	}
+
+	// Resource 2: Non-existent FQN
+	resource2 := &authz.Resource{
+		Resource: &authz.Resource_AttributeValues_{
+			AttributeValues: &authz.Resource_AttributeValues{
+				Fqns: []string{nonExistentFQN},
+			},
+		},
+		EphemeralId: "invalid-resource-2",
+	}
+
+	// Resource 3: Valid FQN, entity is entitled
+	resource3 := &authz.Resource{
+		Resource: &authz.Resource_AttributeValues_{
+			AttributeValues: &authz.Resource_AttributeValues{
+				Fqns: []string{levelMidFQN},
+			},
+		},
+		EphemeralId: "valid-resource-3",
+	}
+
+	entitlements := subjectmappingbuiltin.AttributeValueFQNsToActions{
+		levelHighestFQN: []*policy.Action{actionRead},
+		levelMidFQN:     []*policy.Action{actionRead},
+	}
+
+	// Process each resource individually (simulating batch processing)
+	testCases := []struct {
+		name             string
+		resource         *authz.Resource
+		expectedEntitled bool
+	}{
+		{"valid resource 1", resource1, true},
+		{"invalid resource 2 (missing FQN)", resource2, false},
+		{"valid resource 3", resource3, true},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// For resource 2, we need empty accessible attributes to simulate FQN not found
+			accessibleAttrs := s.accessibleAttrValues
+			if tc.resource.GetEphemeralId() == "invalid-resource-2" {
+				accessibleAttrs = make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
+			}
+
+			decision, err := getResourceDecision(
+				s.T().Context(),
+				s.logger,
+				accessibleAttrs,
+				s.accessibleRegisteredResourceValues,
+				entitlements,
+				s.action,
+				tc.resource,
+			)
+
+			s.Require().NoError(err, "Should not error for resource: %s", tc.name)
+			s.Require().NotNil(decision)
+			s.Equal(tc.expectedEntitled, decision.Entitled, "Entitlement mismatch for: %s", tc.name)
 		})
 	}
 }

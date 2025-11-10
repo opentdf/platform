@@ -783,29 +783,30 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 
 			if tc.expectError {
 				s.Require().Error(err)
-			} else {
-				s.Require().NoError(err)
-				s.NotNil(resourceDecision)
-				s.Equal(tc.expectAccessible, resourceDecision.Entitled)
+				return
+			}
 
-				// Check results array has the correct length based on grouping by definition
-				// If ANY FQN is missing, DataRuleResults should be empty (resource is denied without evaluation)
-				definitions := make(map[string]bool)
-				allFQNsExist := true
-				for _, fqn := range tc.resourceAttrs.GetFqns() {
-					if attrAndValue, ok := s.accessibleAttrValues[fqn]; ok {
-						definitions[attrAndValue.GetAttribute().GetFqn()] = true
-					} else {
-						allFQNsExist = false
-					}
-				}
+			s.Require().NoError(err)
+			s.NotNil(resourceDecision)
+			s.Equal(tc.expectAccessible, resourceDecision.Entitled)
 
-				if allFQNsExist {
-					s.Len(resourceDecision.DataRuleResults, len(definitions))
+			// Check results array has the correct length based on grouping by definition
+			// If ANY FQN is missing, DataRuleResults should be empty (resource is denied without evaluation)
+			definitions := make(map[string]bool)
+			allFQNsExist := true
+			for _, fqn := range tc.resourceAttrs.GetFqns() {
+				if attrAndValue, ok := s.accessibleAttrValues[fqn]; ok {
+					definitions[attrAndValue.GetAttribute().GetFqn()] = true
 				} else {
-					// Any missing FQN means DENY without evaluation
-					s.Len(resourceDecision.DataRuleResults, 0)
+					allFQNsExist = false
 				}
+			}
+
+			if allFQNsExist {
+				s.Len(resourceDecision.DataRuleResults, len(definitions))
+			} else {
+				// Any missing FQN means DENY without evaluation
+				s.Empty(resourceDecision.DataRuleResults)
 			}
 		})
 	}

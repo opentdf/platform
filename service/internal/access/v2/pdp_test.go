@@ -3148,50 +3148,6 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 	})
 }
 
-// Helper functions for all tests
-
-// assertDecisionResult is a helper function to assert that a decision result for a given FQN matches the expected pass/fail state
-func (s *PDPTestSuite) assertDecisionResult(decision *Decision, fqn string, shouldPass bool) {
-	resourceDecision := findResourceDecision(decision, fqn)
-	s.Require().NotNil(resourceDecision, "No result found for FQN: "+fqn)
-	s.Equal(shouldPass, resourceDecision.Entitled, "Unexpected result for FQN %s. Expected (%t), got (%t)", fqn, shouldPass, resourceDecision.Entitled)
-}
-
-// assertAllDecisionResults tests all FQNs in a map of FQN to expected pass/fail state
-func (s *PDPTestSuite) assertAllDecisionResults(decision *Decision, expectedResults map[string]bool) {
-	for fqn, shouldPass := range expectedResults {
-		s.assertDecisionResult(decision, fqn, shouldPass)
-	}
-	// Verify we didn't miss any results
-	s.Len(decision.Results, len(expectedResults), "Number of results doesn't match expected count")
-}
-
-// createEntityWithProps creates an entity representation with the specified properties
-func (s *PDPTestSuite) createEntityWithProps(entityID string, props map[string]interface{}) *entityresolutionV2.EntityRepresentation {
-	propsStruct := &structpb.Struct{
-		Fields: make(map[string]*structpb.Value),
-	}
-
-	for k, v := range props {
-		value, err := structpb.NewValue(v)
-		if err != nil {
-			panic(fmt.Sprintf("Failed to convert value %v to structpb.Value: %v", v, err))
-		}
-		propsStruct.Fields[k] = value
-	}
-
-	return &entityresolutionV2.EntityRepresentation{
-		OriginalId: entityID,
-		AdditionalProps: []*structpb.Struct{
-			{
-				Fields: map[string]*structpb.Value{
-					"properties": structpb.NewStructValue(propsStruct),
-				},
-			},
-		},
-	}
-}
-
 // createAttributeValueResource creates a resource with attribute values
 func createAttributeValueResource(ephemeralID string, attributeValueFQNs ...string) *authz.Resource {
 	return &authz.Resource{
@@ -3534,7 +3490,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_NonExistentFQN() {
 			case "invalid-reg-res":
 				s.False(result.Entitled)
 			default:
-				s.Fail("Unexpected resource ID: %s", result.ResourceID)
+				s.Failf("Unexpected resource ID: %s", result.ResourceID)
 			}
 		}
 	})
@@ -3592,4 +3548,48 @@ func (s *PDPTestSuite) Test_GetDecision_NoPolicies() {
 		s.Require().NotNil(entitlements)
 		s.Empty(entitlements)
 	})
+}
+
+// Helper functions for all tests
+
+// assertDecisionResult is a helper function to assert that a decision result for a given FQN matches the expected pass/fail state
+func (s *PDPTestSuite) assertDecisionResult(decision *Decision, fqn string, shouldPass bool) {
+	resourceDecision := findResourceDecision(decision, fqn)
+	s.Require().NotNil(resourceDecision, "No result found for FQN: "+fqn)
+	s.Equal(shouldPass, resourceDecision.Entitled, "Unexpected result for FQN %s. Expected (%t), got (%t)", fqn, shouldPass, resourceDecision.Entitled)
+}
+
+// assertAllDecisionResults tests all FQNs in a map of FQN to expected pass/fail state
+func (s *PDPTestSuite) assertAllDecisionResults(decision *Decision, expectedResults map[string]bool) {
+	for fqn, shouldPass := range expectedResults {
+		s.assertDecisionResult(decision, fqn, shouldPass)
+	}
+	// Verify we didn't miss any results
+	s.Len(decision.Results, len(expectedResults), "Number of results doesn't match expected count")
+}
+
+// createEntityWithProps creates an entity representation with the specified properties
+func (s *PDPTestSuite) createEntityWithProps(entityID string, props map[string]interface{}) *entityresolutionV2.EntityRepresentation {
+	propsStruct := &structpb.Struct{
+		Fields: make(map[string]*structpb.Value),
+	}
+
+	for k, v := range props {
+		value, err := structpb.NewValue(v)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to convert value %v to structpb.Value: %v", v, err))
+		}
+		propsStruct.Fields[k] = value
+	}
+
+	return &entityresolutionV2.EntityRepresentation{
+		OriginalId: entityID,
+		AdditionalProps: []*structpb.Struct{
+			{
+				Fields: map[string]*structpb.Value{
+					"properties": structpb.NewStructValue(propsStruct),
+				},
+			},
+		},
+	}
 }

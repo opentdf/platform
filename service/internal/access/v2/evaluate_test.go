@@ -966,12 +966,10 @@ func (s *EvaluateTestSuite) Test_evaluateResourceAttributeValues_AllFQNsNotFound
 		},
 	}
 
-	// Empty accessible attributes map simulating FQNs not found
 	emptyAccessibleAttributes := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 
 	entitlements := subjectmappingbuiltin.AttributeValueFQNsToActions{}
 
-	// Call evaluateResourceAttributeValues
 	decision, err := evaluateResourceAttributeValues(
 		s.T().Context(),
 		s.logger,
@@ -1017,7 +1015,7 @@ func (s *EvaluateTestSuite) Test_evaluateResourceAttributeValues_PartialFQNsNotF
 		s.accessibleAttrValues,
 	)
 
-	// No error but deny
+	// No error, but deny decision
 	s.Require().NoError(err)
 	s.Require().NotNil(decision)
 	s.False(decision.Entitled)
@@ -1050,7 +1048,7 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_AttributeValueFQNsNotFound(
 		resource,
 	)
 
-	// No error but deny
+	// No error, but deny decision
 	s.Require().NoError(err)
 	s.Require().NotNil(decision)
 	s.False(decision.Entitled)
@@ -1081,7 +1079,7 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_RegisteredResourceValueFQNN
 		resource,
 	)
 
-	// No error but deny
+	// No error, but deny decision
 	s.Require().NoError(err)
 	s.Require().NotNil(decision)
 	s.False(decision.Entitled)

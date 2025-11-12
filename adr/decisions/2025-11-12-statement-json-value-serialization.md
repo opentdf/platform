@@ -21,6 +21,7 @@ When `Statement.Format` is `"json"`, the `Statement.Value` MUST be serialized as
 - Producers MUST JSON-encode the structured value into a string and place that string in `Statement.Value`.
 - Consumers MUST treat the `Statement.Value` as a JSON string and, when needed, decode it once to obtain the structured JSON value.
 - This rule applies uniformly across SDKs (Go, Java, JavaScript) and any other producer/consumer of TDF manifests.
+- Security preference: The string representation is preferred for security because it yields a stable byte sequence for signatures/bindings and avoids parser differential, whitespace, and key-ordering issues that can be exploited or cause verification drift.
 
 ### Example
 

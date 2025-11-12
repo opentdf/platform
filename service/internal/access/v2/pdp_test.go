@@ -3146,50 +3146,6 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 	})
 }
 
-// Helper functions for all tests
-
-// assertDecisionResult is a helper function to assert that a decision result for a given FQN matches the expected pass/fail state
-func (s *PDPTestSuite) assertDecisionResult(decision *Decision, fqn string, shouldPass bool) {
-	resourceDecision := findResourceDecision(decision, fqn)
-	s.Require().NotNil(resourceDecision, "No result found for FQN: "+fqn)
-	s.Equal(shouldPass, resourceDecision.Entitled, "Unexpected result for FQN %s. Expected (%t), got (%t)", fqn, shouldPass, resourceDecision.Entitled)
-}
-
-// assertAllDecisionResults tests all FQNs in a map of FQN to expected pass/fail state
-func (s *PDPTestSuite) assertAllDecisionResults(decision *Decision, expectedResults map[string]bool) {
-	for fqn, shouldPass := range expectedResults {
-		s.assertDecisionResult(decision, fqn, shouldPass)
-	}
-	// Verify we didn't miss any results
-	s.Len(decision.Results, len(expectedResults), "Number of results doesn't match expected count")
-}
-
-// createEntityWithProps creates an entity representation with the specified properties
-func (s *PDPTestSuite) createEntityWithProps(entityID string, props map[string]interface{}) *entityresolutionV2.EntityRepresentation {
-	propsStruct := &structpb.Struct{
-		Fields: make(map[string]*structpb.Value),
-	}
-
-	for k, v := range props {
-		value, err := structpb.NewValue(v)
-		if err != nil {
-			panic(fmt.Sprintf("Failed to convert value %v to structpb.Value: %v", v, err))
-		}
-		propsStruct.Fields[k] = value
-	}
-
-	return &entityresolutionV2.EntityRepresentation{
-		OriginalId: entityID,
-		AdditionalProps: []*structpb.Struct{
-			{
-				Fields: map[string]*structpb.Value{
-					"properties": structpb.NewStructValue(propsStruct),
-				},
-			},
-		},
-	}
-}
-
 // createAttributeValueResource creates a resource with attribute values
 func createAttributeValueResource(ephemeralID string, attributeValueFQNs ...string) *authz.Resource {
 	return &authz.Resource{
@@ -3301,4 +3257,337 @@ func findResourceDecision(decision *Decision, resourceID string) *ResourceDecisi
 		}
 	}
 	return nil
+}
+
+func (s *PDPTestSuite) Test_GetDecision_NonExistentAttributeFQN() {
+	f := s.fixtures
+
+	// Create a PDP with only classification attribute
+	pdp, err := NewPolicyDecisionPoint(
+		s.T().Context(),
+		s.logger,
+		[]*policy.Attribute{f.classificationAttr},
+		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping},
+		[]*policy.RegisteredResource{},
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	s.Run("Single resource with non-existent FQN - should DENY", func() {
+		entity := s.createEntityWithProps("test-user", map[string]interface{}{
+			"clearance": "ts",
+		})
+
+		nonExistentFQN := createAttrValueFQN(testBaseNamespace, "space", "cosmic")
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{nonExistentFQN},
+					},
+				},
+				EphemeralId: "resource-with-missing-fqn",
+			},
+		}
+
+		decision, entitlements, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
+
+		// No error, but deny decision
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.AllPermitted)
+		s.Len(decision.Results, 1)
+
+		// Resource is denied
+		s.False(decision.Results[0].Entitled)
+		s.Equal("resource-with-missing-fqn", decision.Results[0].ResourceID)
+		s.Require().NotNil(entitlements)
+	})
+
+	s.Run("Multiple resources with mixed valid/invalid FQNs - fine-grained denial", func() {
+		entity := s.createEntityWithProps("test-user", map[string]interface{}{
+			"clearance": "ts",
+		})
+
+		// Create resources: 2 valid, 1 with non-existent FQN
+		nonExistentFQNBadDefinition := createAttrValueFQN(testBaseNamespace, "severity", "high")
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{testClassSecretFQN}, // Valid - entity is entitled
+					},
+				},
+				EphemeralId: "valid-resource-1",
+			},
+			{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{nonExistentFQNBadDefinition}, // Invalid - doesn't exist
+					},
+				},
+				EphemeralId: "invalid-resource-2",
+			},
+			{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{testClassTopSecretFQN}, // Valid - entity is entitled
+					},
+				},
+				EphemeralId: "valid-resource-3",
+			},
+		}
+
+		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
+
+		// Should NOT error
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.AllPermitted)
+		s.Len(decision.Results, 3)
+
+		// Verify individual resource decisions
+		expectedResults := map[string]bool{
+			"valid-resource-1":   true,  // Entitled
+			"invalid-resource-2": false, // Denied due to non-existent FQN
+			"valid-resource-3":   true,  // Entitled
+		}
+
+		for _, result := range decision.Results {
+			expected, exists := expectedResults[result.ResourceID]
+			s.Require().True(exists, "Unexpected resource ID: %s", result.ResourceID)
+			s.Equal(expected, result.Entitled, "Entitlement mismatch for resource: %s", result.ResourceID)
+		}
+	})
+}
+
+func (s *PDPTestSuite) Test_GetDecision_PartialFQNsInResource() {
+	f := s.fixtures
+
+	// Create a PDP with classification attribute (hierarchical rule)
+	pdp, err := NewPolicyDecisionPoint(
+		s.T().Context(),
+		s.logger,
+		[]*policy.Attribute{f.classificationAttr},
+		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping, f.confidentialMapping},
+		[]*policy.RegisteredResource{},
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	s.Run("Resource with mix of valid and invalid FQNs - DENIED", func() {
+		entity := s.createEntityWithProps("test-user", map[string]interface{}{
+			"clearance": "ts",
+		})
+
+		nonExistentValueFQNBadNamespace := createAttrValueFQN("does.notexist", "classification", "cosmic")
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{
+							testClassSecretFQN,              // Valid
+							nonExistentValueFQNBadNamespace, // Non-existent - causes DENY
+							testClassTopSecretFQN,           // Valid
+						},
+					},
+				},
+				EphemeralId: "mixed-fqn-resource",
+			},
+		}
+
+		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
+
+		// No error, but deny decision
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.Len(decision.Results, 1)
+
+		s.False(decision.AllPermitted)
+		s.False(decision.Results[0].Entitled)
+	})
+}
+
+func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_NonExistentFQN() {
+	f := s.fixtures
+
+	// Create a PDP with classification attribute
+	pdp, err := NewPolicyDecisionPoint(
+		s.T().Context(),
+		s.logger,
+		[]*policy.Attribute{f.classificationAttr},
+		[]*policy.SubjectMapping{f.secretMapping},
+		[]*policy.RegisteredResource{f.classificationRegRes}, // Only classification registered resource
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	s.Run("Registered resource with non-existent FQN - should DENY", func() {
+		entity := s.createEntityWithProps("test-user", map[string]interface{}{
+			"clearance": "secret",
+		})
+
+		nonExistentRegResFQN := createRegisteredResourceValueFQN("special-system", "classified")
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: nonExistentRegResFQN,
+				},
+				EphemeralId: "missing-reg-res",
+			},
+		}
+
+		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
+
+		// No error, but deny decision
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.AllPermitted)
+		s.Len(decision.Results, 1)
+
+		// Resource is denied
+		s.False(decision.Results[0].Entitled)
+		s.Equal("missing-reg-res", decision.Results[0].ResourceID)
+		s.Equal(nonExistentRegResFQN, decision.Results[0].ResourceName)
+	})
+
+	s.Run("Mix of valid registered resource and non-existent FQN - fine-grained", func() {
+		entity := s.createEntityWithProps("test-user", map[string]interface{}{
+			"clearance": "secret",
+		})
+
+		nonExistentRegResFQN := createRegisteredResourceValueFQN("secret-system", "classified")
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: testClassSecretRegResFQN, // Valid
+				},
+				EphemeralId: "valid-reg-res",
+			},
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: nonExistentRegResFQN, // Non-existent
+				},
+				EphemeralId: "invalid-reg-res",
+			},
+		}
+
+		decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
+
+		// Should NOT error
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.AllPermitted)
+		s.Len(decision.Results, 2)
+
+		// Verify individual decisions
+		for _, result := range decision.Results {
+			switch result.ResourceID {
+			case "valid-reg-res":
+				s.True(result.Entitled)
+			case "invalid-reg-res":
+				s.False(result.Entitled)
+			default:
+				s.Failf("Unexpected resource ID: %s", result.ResourceID)
+			}
+		}
+	})
+}
+
+func (s *PDPTestSuite) Test_GetDecision_NoPolicies() {
+	// Empty PDP with no attributes, subject mappings, or registered resources
+	pdp, err := NewPolicyDecisionPoint(
+		s.T().Context(),
+		s.logger,
+		[]*policy.Attribute{},
+		[]*policy.SubjectMapping{},
+		[]*policy.RegisteredResource{},
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	s.Run("No policy found - should DENY all resources", func() {
+		entity := s.createEntityWithProps("test-user", map[string]interface{}{
+			"clearance": "ts",
+		})
+
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{testClassSecretFQN},
+					},
+				},
+				EphemeralId: "resource-1",
+			},
+			{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{testClassTopSecretFQN},
+					},
+				},
+				EphemeralId: "resource-2",
+			},
+		}
+
+		decision, entitlements, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
+
+		// No error, but deny decision
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.AllPermitted)
+		s.Len(decision.Results, 2)
+
+		for _, result := range decision.Results {
+			s.False(result.Entitled)
+		}
+
+		// Empty entitlements without available policy
+		s.Require().NotNil(entitlements)
+		s.Empty(entitlements)
+	})
+}
+
+// Helper functions for all tests
+
+// assertDecisionResult is a helper function to assert that a decision result for a given FQN matches the expected pass/fail state
+func (s *PDPTestSuite) assertDecisionResult(decision *Decision, fqn string, shouldPass bool) {
+	resourceDecision := findResourceDecision(decision, fqn)
+	s.Require().NotNil(resourceDecision, "No result found for FQN: "+fqn)
+	s.Equal(shouldPass, resourceDecision.Entitled, "Unexpected result for FQN %s. Expected (%t), got (%t)", fqn, shouldPass, resourceDecision.Entitled)
+}
+
+// assertAllDecisionResults tests all FQNs in a map of FQN to expected pass/fail state
+func (s *PDPTestSuite) assertAllDecisionResults(decision *Decision, expectedResults map[string]bool) {
+	for fqn, shouldPass := range expectedResults {
+		s.assertDecisionResult(decision, fqn, shouldPass)
+	}
+	// Verify we didn't miss any results
+	s.Len(decision.Results, len(expectedResults), "Number of results doesn't match expected count")
+}
+
+// createEntityWithProps creates an entity representation with the specified properties
+func (s *PDPTestSuite) createEntityWithProps(entityID string, props map[string]interface{}) *entityresolutionV2.EntityRepresentation {
+	propsStruct := &structpb.Struct{
+		Fields: make(map[string]*structpb.Value),
+	}
+
+	for k, v := range props {
+		value, err := structpb.NewValue(v)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to convert value %v to structpb.Value: %v", v, err))
+		}
+		propsStruct.Fields[k] = value
+	}
+
+	return &entityresolutionV2.EntityRepresentation{
+		OriginalId: entityID,
+		AdditionalProps: []*structpb.Struct{
+			{
+				Fields: map[string]*structpb.Value{
+					"properties": structpb.NewStructValue(propsStruct),
+				},
+			},
+		},
+	}
 }

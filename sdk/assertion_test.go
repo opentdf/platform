@@ -76,7 +76,7 @@ func TestTDFWithAssertionJsonObject(t *testing.T) {
 	}
 
 	var obj map[string]interface{}
-	err := json.Unmarshal([]byte(assertionConfig.Statement.Value), &obj)
+	err := json.Unmarshal([]byte(assertionConfig.Statement.Value.(string)), &obj)
 	require.NoError(t, err, "Unmarshaling the Value into a map should succeed")
 
 	ocl, ok := obj["ocl"].(map[string]interface{})
@@ -154,7 +154,9 @@ func TestDeserializingAssertionWithJSONInStatementValue(t *testing.T) {
             "@base": "urn:nato:stanag:5636:A:1:elements:json"
           }
         }`))
-	actualAssertionValue, err := jcs.Transform([]byte(assertion.Statement.Value))
+	valueBytes, err := json.Marshal(assertion.Statement.Value)
+	require.NoError(t, err, "Error marshalling assertion statement value to bytes")
+	actualAssertionValue, err := jcs.Transform(valueBytes)
 	require.NoError(t, err, "Error transforming the assertion statement value")
 	assert.Equal(t, expectedAssertionValue, actualAssertionValue)
 }
@@ -181,4 +183,94 @@ func TestDeserializingAssertionWithStringInStatementValue(t *testing.T) {
 	require.NoError(t, err, "Error deserializing the assertion with a JSON object in the statement value")
 
 	assert.Equal(t, "this is a value", assertion.Statement.Value)
+}
+
+func TestStatementSchemaAwareMarshalling(t *testing.T) {
+	jsonValue := map[string]interface{}{"key": "value", "number": float64(123)}
+	jsonValueString := `{"key":"value","number":123}`
+
+	t.Run("Marshal V1 Schema - Value as JSON object", func(t *testing.T) {
+		statement := Statement{
+			Format: StatementFormatJSON,
+			Schema: SystemMetadataSchemaV1,
+			Value:  jsonValue,
+		}
+
+		marshaledJSON, err := json.Marshal(statement)
+		require.NoError(t, err)
+
+		var unmarshaled map[string]interface{}
+		err = json.Unmarshal(marshaledJSON, &unmarshaled)
+		require.NoError(t, err)
+
+		// Expect the value field to be an escaped string for V1 schema
+		valueField, ok := unmarshaled["value"].(string)
+		require.True(t, ok, "value field should be a string for V1 schema, but was %T", unmarshaled["value"])
+		assert.Equal(t, jsonValueString, valueField, "V1 schema should marshal value as an escaped string")
+	})
+
+	t.Run("Marshal V2 Schema - Value as JSON object", func(t *testing.T) {
+		statement := Statement{
+			Format: StatementFormatJSON,
+			Schema: SystemMetadataSchemaV2,
+			Value:  jsonValue,
+		}
+
+		marshaledJSON, err := json.Marshal(statement)
+		require.NoError(t, err)
+
+		var unmarshaled map[string]interface{}
+		err = json.Unmarshal(marshaledJSON, &unmarshaled)
+		require.NoError(t, err)
+
+		// Expect the value field to be a JSON object for V2 schema
+		valueField, ok := unmarshaled["value"].(map[string]interface{})
+		require.True(t, ok, "value field should be a JSON object for V2 schema, but was %T", unmarshaled["value"])
+		assert.Equal(t, jsonValue, valueField, "V2 schema should marshal value as a JSON object")
+	})
+
+	t.Run("Unmarshal V1 Schema - Value as escaped string", func(t *testing.T) {
+		jsonInput := `{"format":"json","schema":"` + SystemMetadataSchemaV1 + `","value":"{\"key\":\"value\",\"number\":123}"}`
+		var statement Statement
+		err := json.Unmarshal([]byte(jsonInput), &statement)
+		require.NoError(t, err)
+
+		assert.Equal(t, StatementFormatJSON, statement.Format)
+		assert.Equal(t, SystemMetadataSchemaV1, statement.Schema)
+
+		// Expect the value to be a string after unmarshalling V1 format
+		valueField, ok := statement.Value.(string)
+		require.True(t, ok, "unmarshalled value should be a string for V1 schema, but was %T", statement.Value)
+		assert.Equal(t, jsonValueString, valueField, "V1 schema unmarshal should store value as a string")
+	})
+
+	t.Run("Unmarshal V2 Schema - Value as JSON object", func(t *testing.T) {
+		jsonInput := `{"format":"json","schema":"` + SystemMetadataSchemaV2 + `","value":{"key":"value","number":123}}`
+		var statement Statement
+		err := json.Unmarshal([]byte(jsonInput), &statement)
+		require.NoError(t, err)
+
+		assert.Equal(t, StatementFormatJSON, statement.Format)
+		assert.Equal(t, SystemMetadataSchemaV2, statement.Schema)
+
+		// Expect the value to be a map[string]interface{} after unmarshalling V2 format
+		valueField, ok := statement.Value.(map[string]interface{})
+		require.True(t, ok, "unmarshalled value should be a map for V2 schema, but was %T", statement.Value)
+		assert.Equal(t, jsonValue, valueField, "V2 schema unmarshal should store value as a map")
+	})
+
+	t.Run("Unmarshal V1 Schema - Value as plain string", func(t *testing.T) {
+		plainString := "just a plain string"
+		jsonInput := `{"format":"string","schema":"` + SystemMetadataSchemaV1 + `","value":"` + plainString + `"}`
+		var statement Statement
+		err := json.Unmarshal([]byte(jsonInput), &statement)
+		require.NoError(t, err)
+
+		assert.Equal(t, StatementFormatString, statement.Format)
+		assert.Equal(t, SystemMetadataSchemaV1, statement.Schema)
+
+		valueField, ok := statement.Value.(string)
+		require.True(t, ok, "unmarshalled value should be a string, but was %T", statement.Value)
+		assert.Equal(t, plainString, valueField, "plain string value should be unmarshalled correctly")
+	})
 }

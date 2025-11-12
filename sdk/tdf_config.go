@@ -271,6 +271,7 @@ type TDFReaderConfig struct {
 	kasAllowlist              AllowList // KAS URLs that are allowed to be used for reading TDFs
 	ignoreAllowList           bool      // If true, the kasAllowlist will be ignored, and all KAS URLs will be allowed
 	fulfillableObligationFQNs []string
+	maxManifestSize           int64
 }
 
 type AllowList map[string]bool
@@ -344,6 +345,7 @@ func (a AllowList) Add(kasURL string) error {
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
+		maxManifestSize:              10*1024*1024, // 10 MB
 	}
 
 	for _, o := range opt {
@@ -362,6 +364,13 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	}
 
 	return c, nil
+}
+
+func WithMaxManifestSize(size int64) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.maxManifestSize = size
+		return nil
+	}
 }
 
 func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption {

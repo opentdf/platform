@@ -34,13 +34,12 @@ const (
 
 // SegmentResult contains the result of writing a segment
 type SegmentResult struct {
-	Data          []byte `json:"data"` // Encrypted segment bytes (for streaming)
-	TDFData       io.Reader
-	Index         int    `json:"index"`         // Segment index
-	Hash          string `json:"hash"`          // Base64-encoded integrity hash
-	PlaintextSize int64  `json:"plaintextSize"` // Original data size
-	EncryptedSize int64  `json:"encryptedSize"` // Encrypted data size
-	CRC32         uint32 `json:"crc32"`         // CRC32 checksum
+	TDFData       io.Reader // Reader for the full TDF segment (nonce + encrypted data + zip structures)
+	Data          []byte    `json:"data"`          // Encrypted segment bytes
+	Index         int       `json:"index"`         // Segment index
+	Hash          string    `json:"hash"`          // Base64-encoded integrity hash
+	PlaintextSize int64     `json:"plaintextSize"` // Original data size
+	EncryptedSize int64     `json:"encryptedSize"` // Encrypted data size
 }
 
 // FinalizeResult contains the complete TDF creation result
@@ -273,24 +272,24 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 	seg.EncryptedSize = int64(len(segmentCipher)) + int64(len(nonce))
 	seg.Hash = segmentHash
 
-	zipBytes, err := w.archiveWriter.WriteSegment(ctx, index, segmentCipher)
+	header, err := w.archiveWriter.WriteSegment(ctx, index, segmentCipher)
 	if err != nil {
 		return nil, err
 	}
 	var reader io.Reader
-	if len(zipBytes) != 0 {
-		reader = io.MultiReader(bytes.NewReader(nonce), bytes.NewReader(segmentCipher), bytes.NewReader(zipBytes))
-	} else {
+	if len(header) != 0 {
 		reader = io.MultiReader(bytes.NewReader(nonce), bytes.NewReader(segmentCipher))
+	} else {
+		reader = io.MultiReader(bytes.NewReader(header), bytes.NewReader(nonce), bytes.NewReader(segmentCipher))
 	}
 
 	return &SegmentResult{
-		Data:          zipBytes,
 		TDFData:       reader,
+		Data:          segmentCipher,
 		Index:         index,
-		Hash:          segmentHash,
-		PlaintextSize: int64(len(data)),
-		EncryptedSize: int64(len(zipBytes)),
+		Hash:          seg.Hash,
+		PlaintextSize: seg.Size,
+		EncryptedSize: seg.EncryptedSize,
 	}, nil
 }
 

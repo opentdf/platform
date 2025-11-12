@@ -1,6 +1,6 @@
 # ADR: Serialization of `Statement.Value` when `Statement.Format` is `"json"`
 
-- Status: accepted
+- Status: proposed
 - Date: 2025-11-12
 
 ## Context and Problem Statement

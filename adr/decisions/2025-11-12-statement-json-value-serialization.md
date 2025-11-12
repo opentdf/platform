@@ -1,4 +1,4 @@
-# ADR: Serialization of `Statement.Value` when `Statement.Format` is `"json"`
+# ADR: Statement.Value Must Be JSON String When Statement.Format is "json"
 
 - Status: proposed
 - Date: 2025-11-12

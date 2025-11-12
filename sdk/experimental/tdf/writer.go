@@ -277,7 +277,7 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 		return nil, err
 	}
 	var reader io.Reader
-	if len(header) != 0 {
+	if len(header) == 0 {
 		reader = io.MultiReader(bytes.NewReader(nonce), bytes.NewReader(segmentCipher))
 	} else {
 		reader = io.MultiReader(bytes.NewReader(header), bytes.NewReader(nonce), bytes.NewReader(segmentCipher))

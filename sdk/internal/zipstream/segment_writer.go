@@ -11,6 +11,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/opentdf/platform/lib/ocrypto"
 )
 
 // segmentWriter implements the SegmentWriter interface for out-of-order segment writing
@@ -82,7 +84,7 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byt
 	default:
 	}
 
-	originalSize := uint64(len(data))
+	originalSize := uint64(len(data)) + ocrypto.GcmStandardNonceSize
 
 	// Create segment buffer for this segment's output
 	buffer := &bytes.Buffer{}
@@ -104,7 +106,7 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byt
 
 	// Update payload entry metadata
 	sw.payloadEntry.Size += originalSize
-	sw.payloadEntry.CompressedSize += uint64(len(data)) // Encrypted size
+	sw.payloadEntry.CompressedSize += originalSize // Encrypted size
 
 	// Return the bytes for this segment
 	return buffer.Bytes(), nil

@@ -10,7 +10,7 @@ import "google/protobuf/wrappers.proto";
 message SimpleKasPublicKey {
   Algorithm algorithm = 1;
   string kid = 2;
-  string pem = 4;
+  string pem = 3;
 }
 
 message SimpleKasKey {
@@ -476,7 +476,9 @@ message RegisteredResourceValue {
 }
 
 message PolicyEnforcementPoint {
-  string client_id = 1 [(buf.validate.field).string = {min_len: 1}];
+  string client_id = 1 [
+    (buf.validate.field).string = {min_len: 1}
+  ];
 }
 
 // Holds the context needed for obligation fulfillment

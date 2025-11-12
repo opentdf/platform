@@ -55,11 +55,6 @@ func getResourceDecision(
 		slog.Any("resource", resource.GetResource()),
 	)
 
-	if len(accessibleAttributeValues) == 0 {
-		l.WarnContext(ctx, "resource is not able to be entitled", slog.Any("resource", resource.GetResource()))
-		return failure, nil
-	}
-
 	switch resource.GetResource().(type) {
 	case *authz.Resource_RegisteredResourceValueFqn:
 		registeredResourceValueFQN = strings.ToLower(resource.GetRegisteredResourceValueFqn())
@@ -110,6 +105,12 @@ func getResourceDecision(
 		return nil, fmt.Errorf("unsupported resource type: %w", ErrInvalidResource)
 	}
 
+	// Cannot entitle any resource
+	if len(accessibleAttributeValues) == 0 {
+		l.WarnContext(ctx, "resource is not able to be entitled", slog.Any("resource", resource.GetResource()))
+		return failure, nil
+	}
+
 	return evaluateResourceAttributeValues(ctx, l, resourceAttributeValues, resourceID, registeredResourceValueFQN, action, entitlements, accessibleAttributeValues)
 }
 
@@ -128,15 +129,32 @@ func evaluateResourceAttributeValues(
 	// Group value FQNs by parent definition
 	definitionFqnToValueFqns := make(map[string][]string)
 	definitionsLookup := make(map[string]*policy.Attribute)
+	notFoundFQNs := make([]string, 0)
 
 	for _, valueFQN := range resourceAttributeValues.GetFqns() {
 		attributeAndValue, ok := accessibleAttributeValues[valueFQN]
 		if !ok {
-			return nil, fmt.Errorf("%w: %s", ErrFQNNotFound, valueFQN)
+			notFoundFQNs = append(notFoundFQNs, valueFQN)
+			continue
 		}
 		definition := attributeAndValue.GetAttribute()
 		definitionFqnToValueFqns[definition.GetFqn()] = append(definitionFqnToValueFqns[definition.GetFqn()], valueFQN)
 		definitionsLookup[definition.GetFqn()] = definition
+	}
+
+	// If ANY FQNs are missing, DENY the resource
+	if len(notFoundFQNs) > 0 {
+		l.WarnContext(ctx, "attribute value FQN(s) not found - denying access to resource",
+			slog.Any("not_found_fqns", notFoundFQNs),
+			slog.String("resource_id", resourceID))
+		result := &ResourceDecision{
+			Entitled:   false,
+			ResourceID: resourceID,
+		}
+		if resourceName != "" {
+			result.ResourceName = resourceName
+		}
+		return result, nil
 	}
 
 	// Evaluate each definition by rule, resource attributes, action, and entitlements

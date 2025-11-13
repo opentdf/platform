@@ -501,21 +501,52 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 }
 
 func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.UnsignedRewrapRequest_WithPolicyRequest) (*Policy, map[string]kaoResult, error) {
-	ctx, span := p.Start(ctx, "tdf3Rewrap")
-	defer span.End()
+	// Safe tracer handling - only start span if tracer is available
+	var span trace.Span
+	if p.Tracer != nil {
+		ctx, span = p.Start(ctx, "tdf3Rewrap")
+		defer span.End()
+	}
 
 	results := make(map[string]kaoResult)
 	anyValidKAOs := false
+	policy := &Policy{}
+
+	// Check if req is nil
+	if req == nil {
+		p.Logger.WarnContext(ctx, "request is nil")
+		return policy, results, errors.New("request is nil")
+	}
+
+	// Check if policy is nil
+	if req.GetPolicy() == nil {
+		p.Logger.WarnContext(ctx, "policy is nil")
+		return policy, results, errors.New("policy is nil")
+	}
 
 	p.Logger.DebugContext(ctx, "extracting policy", slog.Any("policy", req.GetPolicy()))
 	sDecPolicy, policyErr := base64.StdEncoding.DecodeString(req.GetPolicy().GetBody())
-	policy := &Policy{}
 	if policyErr == nil {
 		policyErr = json.Unmarshal(sDecPolicy, policy)
 	}
 
 	for _, kao := range req.GetKeyAccessObjects() {
 		if policyErr != nil {
+			failedKAORewrap(results, kao, err400("bad request"))
+			continue
+		}
+
+		// Check if KeyAccessObject is nil
+		if kao.GetKeyAccessObject() == nil {
+			p.Logger.WarnContext(ctx, "key access object is nil", slog.String("kao_id", kao.GetKeyAccessObjectId()))
+			failedKAORewrap(results, kao, err400("bad request"))
+			continue
+		}
+
+		// Check if wrapped key is empty
+		wrappedKey := kao.GetKeyAccessObject().GetWrappedKey()
+		if len(wrappedKey) == 0 {
+			p.Logger.WarnContext(ctx, "wrapped key is empty", slog.String("kao_id", kao.GetKeyAccessObjectId()))
 			failedKAORewrap(results, kao, err400("bad request"))
 			continue
 		}
@@ -624,10 +655,25 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				}
 				dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), nil)
 			}
+		default:
+			// handle unsupported key types
+			keyType := kao.GetKeyAccessObject().GetKeyType()
+			p.Logger.WarnContext(ctx, "unsupported key type",
+				slog.String("key_type", keyType),
+				slog.String("kao_id", kao.GetKeyAccessObjectId()))
+			failedKAORewrap(results, kao, err400("bad request"))
+			continue
 		}
 		if err != nil {
 			p.Logger.WarnContext(ctx, "failure to decrypt dek", slog.Any("error", err))
 			failedKAORewrap(results, kao, err400("bad request"))
+			continue
+		}
+
+		// Check if policy binding is nil
+		if kao.GetKeyAccessObject().GetPolicyBinding() == nil {
+			p.Logger.WarnContext(ctx, "policy binding is nil", slog.String("kao_id", kao.GetKeyAccessObjectId()))
+			failedKAORewrap(results, kao, err400("missing policy binding"))
 			continue
 		}
 
@@ -714,6 +760,10 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 	var policies []*Policy
 	policyReqs := make(map[*Policy]*kaspb.UnsignedRewrapRequest_WithPolicyRequest)
 	for _, req := range requests {
+		if req == nil || req.GetPolicy() == nil {
+			p.Logger.WarnContext(ctx, "rewrap: nil request or policy")
+			continue
+		}
 		policy, kaoResults, err := p.verifyRewrapRequests(ctx, req)
 		policyID := req.GetPolicy().GetId()
 		results[policyID] = kaoResults

@@ -370,6 +370,32 @@ jobs:
         env:
           BENCHMARK_MARKDOWN: ${{ needs.benchmark.outputs.markdown }}
 
+  changes:
+    permissions:
+      contents: read
+    runs-on: ubuntu-22.04
+    outputs:
+      proto: ${{ steps.check.outputs.proto }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check for proto file changes
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            if git diff --name-only "$BASE_SHA" HEAD | grep -q '\.proto$'; then
+              echo "proto=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "proto=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            # For non-PR events (push, merge_group), always run
+            echo "proto=true" >> "$GITHUB_OUTPUT"
+          fi
+
   image:
     permissions:
       contents: read
@@ -480,6 +506,8 @@ jobs:
           TESTRAIL_PASS: ${{ secrets.TESTRAIL_PASS }}
 
   buflint:
+    needs: changes
+    if: needs.changes.outputs.proto == 'true' || github.event_name != 'pull_request'
     permissions:
       contents: read
     name: Protocol Buffer Lint and Gencode Up-to-date check

@@ -115,7 +115,9 @@ func TestSegmentWriter_OutOfOrder(t *testing.T) {
 			assert.Empty(t, bytes, "Segment %d should have no zip bytes", index)
 		}
 
-		allBytes := append(bytes, data...)
+		var allBytes []byte
+		allBytes = append(allBytes, bytes...)
+		allBytes = append(allBytes, data...)
 		segmentBytes[index] = allBytes
 	}
 
@@ -193,7 +195,9 @@ func TestSegmentWriter_SparseIndices_InOrder(t *testing.T) {
 		} else {
 			assert.Empty(t, bytes, "segment %d should have no zip bytes", index)
 		}
-		totalBytes := append(bytes, data...)
+		var totalBytes []byte
+		totalBytes = append(totalBytes, bytes...)
+		totalBytes = append(totalBytes, data...)
 		segmentBytes[index] = totalBytes
 	}
 
@@ -253,7 +257,9 @@ func TestSegmentWriter_SparseIndices_OutOfOrder(t *testing.T) {
 		crc := crc32.ChecksumIEEE(data)
 		bytes, err := writer.WriteSegment(ctx, index, uint64(len(data)), crc)
 		require.NoError(t, err, "write segment %d failed", index)
-		totalBytes := append(bytes, data...)
+		var totalBytes []byte
+		totalBytes = append(totalBytes, bytes...)
+		totalBytes = append(totalBytes, data...)
 		segmentBytes[index] = totalBytes
 	}
 

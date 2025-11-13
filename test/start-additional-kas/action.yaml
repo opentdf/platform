@@ -19,7 +19,7 @@ inputs:
     type: boolean
   key-management:
     default: false
-    description:  'Whether or not key_management is enabled for this KAS'
+    description: 'Whether or not key_management is enabled for this KAS'
     type: boolean
   root-key:
     default: ''
@@ -29,6 +29,12 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Validate inputs
+      if: ${{ inputs.key-management == 'true' && inputs.root-key == '' }}
+      shell: bash
+      run: |
+        echo "Error: root-key is required when key-management is true."
+        exit 1
     - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635 # v1.0.7
       name: Start another KAS server in background
       with:
@@ -39,7 +45,7 @@ runs:
             | (.services.kas.preview.ec_tdf_enabled = ${{ inputs.ec-tdf-enabled }})
             | (.services.kas.preview.key_management = ${{ inputs.key-management }})
             | (.services.kas.registered_kas_uri = "http://localhost:${{ inputs.kas-port }}")
-            | (.services.kas.root_key = "${{ inputs.root-key }}" )
+            | (.services.kas.root_key = "${{ inputs.root-key }}")
             | (.sdk_config = {"client_id":"opentdf","client_secret":"secret","core":{"endpoint":"http://localhost:8080","plaintext":true}})
           '
           && .github/scripts/watch.sh opentdf-${{ inputs.kas-name }}.yaml ./opentdf --config-file ./opentdf-${{ inputs.kas-name }}.yaml start

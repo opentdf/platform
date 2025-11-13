@@ -760,7 +760,7 @@ func allowListFromKASRegistry(ctx context.Context, logger *slog.Logger, kasRegis
 func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, error) {
 	config, err := newTDFReaderConfig(opts...)
 	if err != nil {
-		return nil, fmt.Errorf("newAssertionConfig failed: %w", err)
+		return nil, fmt.Errorf("newTDFReaderConfig failed: %w", err)
 	}
 
 	// create tdf reader

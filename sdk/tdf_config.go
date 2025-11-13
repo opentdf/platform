@@ -345,7 +345,7 @@ func (a AllowList) Add(kasURL string) error {
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
-		maxManifestSize:              10*1024*1024, // 10 MB
+		maxManifestSize:              10 * 1024 * 1024, // 10 MB
 	}
 
 	for _, o := range opt {

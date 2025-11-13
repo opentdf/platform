@@ -36,7 +36,6 @@ func NewTDFReader(readSeeker io.ReadSeeker, opt ...TDFReaderOptions) (TDFReader,
 		o(&tdfArchiveReader)
 	}
 
-
 	return tdfArchiveReader, nil
 }
 

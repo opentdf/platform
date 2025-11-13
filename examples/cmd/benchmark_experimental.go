@@ -3,8 +3,8 @@ package cmd
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -19,7 +19,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var payloadSize int
+var (
+	payloadSize  int
+	segmentChunk int
+)
 
 func init() {
 	benchmarkCmd := &cobra.Command{
@@ -28,13 +31,17 @@ func init() {
 		Long:  `Benchmark the experimental TDF writer with configurable payload size.`,
 		RunE:  runExperimentalWriterBenchmark,
 	}
-	benchmarkCmd.Flags().IntVar(&payloadSize, "payload-size", 1024*1024, "Payload size in bytes") // Default 1MB
+	benchmarkCmd.Flags().IntVar(&payloadSize, "payload-size", 1024*1024, "Payload size in bytes") // Default 1MB //nolint
+	benchmarkCmd.Flags().IntVar(&segmentChunk, "segment-chunks", 16*1024, "segment chunks ize")   // Default 16 segments //nolint
 	ExamplesCmd.AddCommand(benchmarkCmd)
 }
 
 func runExperimentalWriterBenchmark(_ *cobra.Command, _ []string) error {
 	payload := make([]byte, payloadSize)
-	rand.Read(payload)
+	_, err := rand.Read(payload)
+	if err != nil {
+		return fmt.Errorf("failed to generate random payload: %w", err)
+	}
 
 	http := httputil.SafeHTTPClient()
 	fmt.Println("endpoint:", platformEndpoint)
@@ -43,7 +50,6 @@ func runExperimentalWriterBenchmark(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get public key from KAS: %w", err)
 	}
-	attr := "https://example.com/attr/attr1/value/value1"
 	var attrs []*policy.Value
 
 	simpleyKey := &policy.SimpleKasKey{
@@ -61,7 +67,6 @@ func runExperimentalWriterBenchmark(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create writer: %w", err)
 	}
-	segmentChunk := 64 * 1024 // 64KB chunks
 	i := 0
 	wg := sync.WaitGroup{}
 	segs := len(payload) / segmentChunk

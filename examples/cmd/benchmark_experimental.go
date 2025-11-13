@@ -31,8 +31,10 @@ func init() {
 		Long:  `Benchmark the experimental TDF writer with configurable payload size.`,
 		RunE:  runExperimentalWriterBenchmark,
 	}
-	benchmarkCmd.Flags().IntVar(&payloadSize, "payload-size", 1024*1024, "Payload size in bytes") // Default 1MB //nolint
-	benchmarkCmd.Flags().IntVar(&segmentChunk, "segment-chunks", 16*1024, "segment chunks ize")   // Default 16 segments //nolint
+	//nolint: mnd 
+	benchmarkCmd.Flags().IntVar(&payloadSize, "payload-size", 1024*1024, "Payload size in bytes") // Default 1MB
+	//nolint: mnd 
+	benchmarkCmd.Flags().IntVar(&segmentChunk, "segment-chunks", 16*1024, "segment chunks ize") // Default 16 segments
 	ExamplesCmd.AddCommand(benchmarkCmd)
 }
 
@@ -56,8 +58,8 @@ func runExperimentalWriterBenchmark(_ *cobra.Command, _ []string) error {
 		KasUri: platformEndpoint,
 		KasId:  "id",
 		PublicKey: &policy.SimpleKasPublicKey{
-			Kid:       resp.Msg.Kid,
-			Pem:       resp.Msg.PublicKey,
+			Kid:       resp.Msg.GetKid(),
+			Pem:       resp.Msg.GetPublicKey(),
 			Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
 		},
 	}

@@ -406,6 +406,7 @@ func (reg *Registry) RegisterServicesFromConfiguration(modes []string, configura
 	for _, config := range configurations {
 		// Check if this service is explicitly excluded
 		if slices.Contains(excludedServices, config.Name.String()) {
+			slog.Debug("skipping excluded service", slog.String("service", config.Name.String()))
 			continue
 		}
 

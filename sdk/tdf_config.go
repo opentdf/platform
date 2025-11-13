@@ -13,7 +13,8 @@ import (
 
 const (
 	tdf3KeySize        = 2048
-	defaultSegmentSize = 2 * 1024 * 1024 // 2mb
+	defaultMaxManifestSize     = 10 * 1024 * 1024 // 10 MB
+	defaultSegmentSize = 2 * 1024 * 1024  // 2mb
 	maxSegmentSize     = defaultSegmentSize * 2
 	minSegmentSize     = 16 * 1024
 	DefaultRSAKeySize  = 2048
@@ -345,7 +346,7 @@ func (a AllowList) Add(kasURL string) error {
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
-		maxManifestSize:              10 * 1024 * 1024, // 10 MB
+		maxManifestSize:              defaultMaxManifestSize,
 	}
 
 	for _, o := range opt {

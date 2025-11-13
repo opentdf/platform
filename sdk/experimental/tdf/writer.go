@@ -36,7 +36,6 @@ const (
 // SegmentResult contains the result of writing a segment
 type SegmentResult struct {
 	TDFData       io.Reader // Reader for the full TDF segment (nonce + encrypted data + zip structures)
-	Data          []byte    `json:"data"`          // Encrypted segment bytes
 	Index         int       `json:"index"`         // Segment index
 	Hash          string    `json:"hash"`          // Base64-encoded integrity hash
 	PlaintextSize int64     `json:"plaintextSize"` // Original data size
@@ -253,7 +252,9 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 	if index > w.maxSegmentIndex {
 		w.maxSegmentIndex = index
 	}
-	seg := &Segment{}
+	seg := &Segment{
+		Size: -1, // indicates not filled yet
+	}
 	w.segments[index] = seg
 
 	w.mutex.Unlock()
@@ -269,9 +270,11 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 	}
 
 	segmentHash := string(ocrypto.Base64Encode([]byte(segmentSig)))
+	w.mutex.Lock()
 	seg.Size = int64(len(data))
 	seg.EncryptedSize = int64(len(segmentCipher)) + int64(len(nonce))
 	seg.Hash = segmentHash
+	w.mutex.Unlock()
 
 	crc := crc32.NewIEEE()
 	_, err = crc.Write(nonce)
@@ -295,7 +298,6 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 
 	return &SegmentResult{
 		TDFData:       reader,
-		Data:          segmentCipher,
 		Index:         index,
 		Hash:          seg.Hash,
 		PlaintextSize: seg.Size,
@@ -540,7 +542,8 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 	var totalPlaintextSize, totalEncryptedSize int64
 	for _, i := range order {
 		segment, exists := w.segments[i]
-		if !exists {
+		// if size is negative, segment was not written, finalized has been called too early
+		if !exists || w.segments[i].Size < 0 {
 			return nil, 0, 0, fmt.Errorf("segment %d not written; cannot finalize", i)
 		}
 		if segment.Hash != "" {

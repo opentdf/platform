@@ -70,6 +70,22 @@ func getServiceConfigurations() []serviceregistry.ServiceConfiguration {
 	}
 }
 
+func getServiceConfigurationsFromIServices(services []serviceregistry.IService, extraModes []serviceregistry.ModeName, individualModes bool) []serviceregistry.ServiceConfiguration {
+	var configs []serviceregistry.ServiceConfiguration
+	for _, svc := range services {
+		modes := append([]serviceregistry.ModeName{serviceregistry.ModeALL}, extraModes...)
+		if individualModes {
+			modes = append(modes, serviceregistry.ModeName(svc.GetNamespace()))
+		}
+		configs = append(configs, serviceregistry.ServiceConfiguration{
+			Name:     ServiceName(svc.GetNamespace()),
+			Modes:    modes,
+			Services: []serviceregistry.IService{svc},
+		})
+	}
+	return configs
+}
+
 // RegisterEssentialServices registers the essential services directly
 func RegisterEssentialServices(reg *serviceregistry.Registry) error {
 	essentialServices := []serviceregistry.IService{

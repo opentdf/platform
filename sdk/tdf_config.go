@@ -12,15 +12,15 @@ import (
 )
 
 const (
-	tdf3KeySize        = 2048
-	defaultMaxManifestSize     = 10 * 1024 * 1024 // 10 MB
-	defaultSegmentSize = 2 * 1024 * 1024  // 2mb
-	maxSegmentSize     = defaultSegmentSize * 2
-	minSegmentSize     = 16 * 1024
-	DefaultRSAKeySize  = 2048
-	ECKeySize256       = 256
-	ECKeySize384       = 384
-	ECKeySize521       = 521
+	tdf3KeySize            = 2048
+	defaultMaxManifestSize = 10 * 1024 * 1024 // 10 MB
+	defaultSegmentSize     = 2 * 1024 * 1024  // 2mb
+	maxSegmentSize         = defaultSegmentSize * 2
+	minSegmentSize         = 16 * 1024
+	DefaultRSAKeySize      = 2048
+	ECKeySize256           = 256
+	ECKeySize384           = 384
+	ECKeySize521           = 521
 )
 
 type TDFFormat = int

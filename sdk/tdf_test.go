@@ -42,6 +42,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
 	wellknownpb "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	wellknownconnect "github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnect"
+	"github.com/opentdf/platform/sdk/internal/archive"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
@@ -3100,6 +3101,7 @@ func TestGetKasErrorToReturn(t *testing.T) {
 		require.Equal(t, defaultError, result)
 	})
 }
+
 func (s *TDFSuite) Test_LargeManifest_WithMaxManifest() {
 	const maxManifestSize = 1024 * 1024 // 1MB
 
@@ -3111,25 +3113,42 @@ func (s *TDFSuite) Test_LargeManifest_WithMaxManifest() {
 			},
 			"tdf_spec_version": TDFSpecVersion,
 		}
-		b, _ := json.Marshal(manifest)
+		b, err := json.Marshal(manifest)
+		s.Require().NoError(err)
 		return b
+	}
+
+	// Helper to create a TDF file in memory for testing
+	createTestTDF := func(manifest []byte, payload []byte) *bytes.Reader {
+		tdfBuffer := new(bytes.Buffer)
+		tdfWriter := archive.NewTDFWriter(tdfBuffer)
+
+		// Add payload
+		err := tdfWriter.SetPayloadSize(int64(len(payload)))
+		s.Require().NoError(err)
+		err = tdfWriter.AppendPayload(payload)
+		s.Require().NoError(err)
+
+		// Add manifest
+		err = tdfWriter.AppendManifest(string(manifest))
+		s.Require().NoError(err)
+
+		_, err = tdfWriter.Finish()
+		s.Require().NoError(err)
+
+		return bytes.NewReader(tdfBuffer.Bytes())
 	}
 
 	// Case 1: Manifest just below the limit
 	manifestBelow := createLargeManifest(maxManifestSize - 100)
-	err := os.WriteFile("0.manifest.json", manifestBelow, 0644)
-	s.Require().NoError(err)
-	defer os.Remove("0.manifest.json")
-
-	_, err = s.sdk.LoadTDF(bytes.NewReader(manifestBelow), WithMaxManifestSize(maxManifestSize))
+	tdfBelow := createTestTDF(manifestBelow, []byte("payload"))
+	_, err := s.sdk.LoadTDF(tdfBelow, WithMaxManifestSize(maxManifestSize))
 	s.Require().NoError(err, "Manifest below max size should load successfully")
 
 	// Case 2: Manifest just above the limit
 	manifestAbove := createLargeManifest(maxManifestSize + 100)
-	err = os.WriteFile("0.manifest.json", manifestAbove, 0644)
-	s.Require().NoError(err)
-	defer os.Remove("0.manifest.json")
-
-	_, err = s.sdk.LoadTDF(bytes.NewReader(manifestAbove), WithMaxManifestSize(maxManifestSize))
+	tdfAbove := createTestTDF(manifestAbove, []byte("payload"))
+	_, err = s.sdk.LoadTDF(tdfAbove, WithMaxManifestSize(maxManifestSize))
 	s.Require().Error(err, "Manifest above max size should fail to load")
+	s.Require().ErrorContains(err, "size too large")
 }

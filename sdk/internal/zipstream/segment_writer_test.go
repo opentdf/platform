@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"testing"
 
@@ -32,21 +33,22 @@ func TestSegmentWriter_SequentialOrder(t *testing.T) {
 
 	// Write segments in sequential order
 	for i, data := range testSegments {
-		segmentBytes, err := writer.WriteSegment(ctx, i, data)
+		crc := crc32.ChecksumIEEE(data)
+		segmentBytes, err := writer.WriteSegment(ctx, i, uint64(len(data)), crc)
 		require.NoError(t, err, "Failed to write segment %d", i)
-		assert.NotEmpty(t, segmentBytes, "Segment %d should have bytes", i)
 
 		t.Logf("Sequential segment %d: %d bytes", i, len(segmentBytes))
 
 		if i == 0 {
 			// Segment 0 should be larger due to ZIP header
-			assert.Greater(t, len(segmentBytes), len(data), "Segment 0 should include ZIP header")
+			assert.NotEmpty(t, segmentBytes, "Segment 0 should include ZIP header")
 		} else {
 			// Other segments should be approximately the size of the data
-			assert.Len(t, data, len(segmentBytes), "Segment %d should be raw data", i)
+			assert.Empty(t, segmentBytes, "Segment %d should have no zip bytes", i)
 		}
 
 		allBytes = append(allBytes, segmentBytes...)
+		allBytes = append(allBytes, data...)
 	}
 
 	t.Logf("Sequential total payload bytes before finalization: %d", len(allBytes))
@@ -102,16 +104,19 @@ func TestSegmentWriter_OutOfOrder(t *testing.T) {
 
 	for _, index := range writeOrder {
 		data := testSegments[index]
-		bytes, err := writer.WriteSegment(ctx, index, data)
+		crc := crc32.ChecksumIEEE(data)
+		bytes, err := writer.WriteSegment(ctx, index, uint64(len(data)), crc)
 		require.NoError(t, err, "Failed to write segment %d out of order", index)
-		assert.NotEmpty(t, bytes, "Segment %d should have bytes", index)
 
 		if index == 0 {
 			// Segment 0 should always include ZIP header, regardless of write order
-			assert.Greater(t, len(bytes), len(data), "Segment 0 should include ZIP header even when written out of order")
+			assert.NotEmpty(t, bytes, "Segment 0 should include ZIP header")
+		} else {
+			assert.Empty(t, bytes, "Segment %d should have no zip bytes", index)
 		}
 
-		segmentBytes[index] = bytes
+		allBytes := append(bytes, data...)
+		segmentBytes[index] = allBytes
 	}
 
 	// Reassemble in logical order (as S3 would do)
@@ -180,15 +185,16 @@ func TestSegmentWriter_SparseIndices_InOrder(t *testing.T) {
 	segmentBytes := make(map[int][]byte)
 	for _, index := range order {
 		data := testSegments[index]
-		bytes, err := writer.WriteSegment(ctx, index, data)
+		crc := crc32.ChecksumIEEE(data)
+		bytes, err := writer.WriteSegment(ctx, index, uint64(len(data)), crc)
 		require.NoError(t, err, "write segment %d failed", index)
-		assert.NotEmpty(t, bytes, "segment %d should yield bytes", index)
 		if index == 0 {
-			assert.Greater(t, len(bytes), len(data), "segment 0 should include ZIP header")
+			assert.NotEmpty(t, bytes, "segment 0 should include ZIP header")
 		} else {
-			assert.Len(t, bytes, len(data), "non-zero segments are raw payload bytes")
+			assert.Empty(t, bytes, "segment %d should have no zip bytes", index)
 		}
-		segmentBytes[index] = bytes
+		totalBytes := append(bytes, data...)
+		segmentBytes[index] = totalBytes
 	}
 
 	// Assemble full file: concatenate segment bytes in ascending index order
@@ -244,10 +250,11 @@ func TestSegmentWriter_SparseIndices_OutOfOrder(t *testing.T) {
 	segmentBytes := make(map[int][]byte)
 	for _, index := range writeOrder {
 		data := testSegments[index]
-		bytes, err := writer.WriteSegment(ctx, index, data)
+		crc := crc32.ChecksumIEEE(data)
+		bytes, err := writer.WriteSegment(ctx, index, uint64(len(data)), crc)
 		require.NoError(t, err, "write segment %d failed", index)
-		assert.NotEmpty(t, bytes, "segment %d should yield bytes", index)
-		segmentBytes[index] = bytes
+		totalBytes := append(bytes, data...)
+		segmentBytes[index] = totalBytes
 	}
 
 	// Assemble full file in final (ascending) order regardless of write order
@@ -285,10 +292,10 @@ func TestSegmentWriter_DuplicateSegments(t *testing.T) {
 	ctx := t.Context()
 
 	// Write segment 1 twice
-	_, err := writer.WriteSegment(ctx, 1, []byte("first"))
+	_, err := writer.WriteSegment(ctx, 1, 10, crc32.ChecksumIEEE([]byte("first write")))
 	require.NoError(t, err, "First write of segment 1 should succeed")
 
-	_, err = writer.WriteSegment(ctx, 1, []byte("duplicate"))
+	_, err = writer.WriteSegment(ctx, 1, 10, crc32.ChecksumIEEE([]byte("second write")))
 	require.Error(t, err, "Duplicate segment should fail")
 	assert.Contains(t, err.Error(), "duplicate", "Error should mention duplicate")
 
@@ -310,7 +317,7 @@ func TestSegmentWriter_InvalidSegmentIndex(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := writer.WriteSegment(ctx, tc.index, []byte("test"))
+			_, err := writer.WriteSegment(ctx, tc.index, 10, crc32.ChecksumIEEE([]byte("test")))
 			require.Error(t, err, "Negative segment index should fail")
 			assert.Contains(t, err.Error(), "invalid", "Error should mention invalid")
 		})
@@ -318,7 +325,7 @@ func TestSegmentWriter_InvalidSegmentIndex(t *testing.T) {
 
 	// Test that large indices are actually allowed (dynamic expansion)
 	t.Run("large_index_allowed", func(t *testing.T) {
-		_, err := writer.WriteSegment(ctx, 100, []byte("test"))
+		_, err := writer.WriteSegment(ctx, 100, 10, crc32.ChecksumIEEE([]byte("large index")))
 		require.NoError(t, err, "Large segment index should be allowed for dynamic expansion")
 	})
 
@@ -331,13 +338,13 @@ func TestSegmentWriter_AllowsGapsOnFinalize(t *testing.T) {
 	ctx := t.Context()
 
 	// Write only segments 0, 1, 3 (2 is missing)
-	_, err := writer.WriteSegment(ctx, 0, []byte("first"))
+	_, err := writer.WriteSegment(ctx, 0, 5, crc32.ChecksumIEEE([]byte("first")))
 	require.NoError(t, err)
 
-	_, err = writer.WriteSegment(ctx, 1, []byte("second"))
+	_, err = writer.WriteSegment(ctx, 1, 6, crc32.ChecksumIEEE([]byte("second")))
 	require.NoError(t, err)
 
-	_, err = writer.WriteSegment(ctx, 3, []byte("fourth"))
+	_, err = writer.WriteSegment(ctx, 3, 5, crc32.ChecksumIEEE([]byte("fourth")))
 	require.NoError(t, err)
 
 	// Finalize should succeed (auto-dense behavior)
@@ -356,7 +363,7 @@ func TestSegmentWriter_CleanupSegment(t *testing.T) {
 	testData := []byte("test data for cleanup")
 
 	// Write a segment
-	_, err := writer.WriteSegment(ctx, 1, testData)
+	_, err := writer.WriteSegment(ctx, 1, uint64(len(testData)), crc32.ChecksumIEEE(testData))
 	require.NoError(t, err)
 
 	// Verify segment exists before cleanup
@@ -385,7 +392,7 @@ func TestSegmentWriter_ContextCancellation(t *testing.T) {
 	cancel()
 
 	// Try to write segment with cancelled context
-	_, err := writer.WriteSegment(ctx, 0, []byte("test"))
+	_, err := writer.WriteSegment(ctx, 0, 10, crc32.ChecksumIEEE([]byte("data")))
 	require.Error(t, err, "Should fail with cancelled context")
 	assert.Contains(t, err.Error(), "context", "Error should mention context")
 
@@ -408,7 +415,7 @@ func TestSegmentWriter_LargeNumberOfSegments(t *testing.T) {
 
 	// Write all segments in reverse order
 	for i := segmentCount - 1; i >= 0; i-- {
-		bytes, err := writer.WriteSegment(ctx, i, testSegments[i])
+		bytes, err := writer.WriteSegment(ctx, i, uint64(len(testSegments[i])), crc32.ChecksumIEEE(testSegments[i]))
 		require.NoError(t, err, "Failed to write segment %d", i)
 
 		// Store in logical order for final assembly
@@ -439,13 +446,13 @@ func TestSegmentWriter_EmptySegments(t *testing.T) {
 	ctx := t.Context()
 
 	// Write segments with empty data
-	_, err := writer.WriteSegment(ctx, 0, []byte(""))
+	_, err := writer.WriteSegment(ctx, 0, 0, 0)
 	require.NoError(t, err, "Should handle empty segment 0")
 
-	_, err = writer.WriteSegment(ctx, 1, []byte("non-empty"))
+	_, err = writer.WriteSegment(ctx, 1, 10, crc32.ChecksumIEEE([]byte("not empty")))
 	require.NoError(t, err, "Should handle non-empty segment")
 
-	_, err = writer.WriteSegment(ctx, 2, []byte(""))
+	_, err = writer.WriteSegment(ctx, 2, 0, 0)
 	require.NoError(t, err, "Should handle empty segment 2")
 
 	// Finalize
@@ -500,7 +507,9 @@ func benchmarkSegmentWriter(b *testing.B, name string, writeOrder []int) {
 
 			// Write segments in specified order
 			for _, index := range writeOrder {
-				_, err := writer.WriteSegment(ctx, index, testSegments[index])
+				data := testSegments[index]
+				crc := crc32.ChecksumIEEE(data)
+				_, err := writer.WriteSegment(ctx, index, uint64(len(data)), crc)
 				if err != nil {
 					b.Fatal(err)
 				}

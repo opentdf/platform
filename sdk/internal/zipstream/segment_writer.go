@@ -11,8 +11,6 @@ import (
 	"sort"
 	"sync"
 	"time"
-
-	"github.com/opentdf/platform/lib/ocrypto"
 )
 
 // segmentWriter implements the SegmentWriter interface for out-of-order segment writing
@@ -51,10 +49,7 @@ func NewSegmentTDFWriter(expectedSegments int, opts ...Option) SegmentWriter {
 }
 
 // WriteSegment writes a segment with deterministic output based on segment index
-func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byte) ([]byte, error) {
-	// CRC32 over stored segment bytes (what goes into the ZIP entry)
-	originalCRC := crc32.ChecksumIEEE(data)
-
+func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, size uint64, crc32 uint32) ([]byte, error) {
 	sw.mu.Lock()
 	defer sw.mu.Unlock()
 
@@ -84,7 +79,7 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byt
 	default:
 	}
 
-	originalSize := uint64(len(data)) + ocrypto.GcmStandardNonceSize
+	originalSize := size
 
 	// Create segment buffer for this segment's output
 	buffer := &bytes.Buffer{}
@@ -97,10 +92,9 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byt
 		}
 	}
 
-
 	// Record segment metadata only (no payload retention). Payload bytes are returned
 	// to the caller and may be uploaded; we keep only CRC and size for finalize.
-	if err := sw.metadata.AddSegment(index, data, originalSize, originalCRC); err != nil {
+	if err := sw.metadata.AddSegment(index, size, crc32); err != nil {
 		return nil, &Error{Op: "write-segment", Type: "segment", Err: err}
 	}
 

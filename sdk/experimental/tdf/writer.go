@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"log/slog"
 	"sort"
@@ -272,7 +273,16 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 	seg.EncryptedSize = int64(len(segmentCipher)) + int64(len(nonce))
 	seg.Hash = segmentHash
 
-	header, err := w.archiveWriter.WriteSegment(ctx, index, segmentCipher)
+	crc := crc32.NewIEEE()
+	_, err = crc.Write(nonce)
+	if err != nil {
+		return nil, err
+	}
+	_, err = crc.Write(segmentCipher)
+	if err != nil {
+		return nil, err
+	}
+	header, err := w.archiveWriter.WriteSegment(ctx, index, uint64(seg.EncryptedSize), crc.Sum32())
 	if err != nil {
 		return nil, err
 	}

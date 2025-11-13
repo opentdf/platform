@@ -31,9 +31,9 @@ func init() {
 		Long:  `Benchmark the experimental TDF writer with configurable payload size.`,
 		RunE:  runExperimentalWriterBenchmark,
 	}
-	//nolint: mnd
+	//nolint: mnd // no magic number, this is just default value for payload size
 	benchmarkCmd.Flags().IntVar(&payloadSize, "payload-size", 1024*1024, "Payload size in bytes") // Default 1MB
-	//nolint: mnd
+	//nolint: mnd  // same as above
 	benchmarkCmd.Flags().IntVar(&segmentChunk, "segment-chunks", 16*1024, "segment chunks ize") // Default 16 segments
 	ExamplesCmd.AddCommand(benchmarkCmd)
 }

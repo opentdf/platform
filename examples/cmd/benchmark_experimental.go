@@ -77,7 +77,7 @@ func runExperimentalWriterBenchmark(_ *cobra.Command, _ []string) error {
 	start := time.Now()
 	for i < segs {
 		segment := i
-		func() {
+		go func() {
 			start := i * segmentChunk
 			end := min(start+segmentChunk, len(payload))
 			_, err = writer.WriteSegment(context.Background(), segment, payload[start:end])

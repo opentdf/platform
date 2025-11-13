@@ -5,10 +5,9 @@ go 1.24.0
 toolchain go1.24.9
 
 require (
-	connectrpc.com/connect v1.18.1
 	github.com/opentdf/platform/lib/ocrypto v0.7.0
 	github.com/opentdf/platform/protocol/go v0.13.0
-	github.com/opentdf/platform/sdk v0.10.1
+	github.com/opentdf/platform/sdk v0.7.0
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.73.0
@@ -17,6 +16,7 @@ require (
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250603165357-b52ab10f4468.1 // indirect
+	connectrpc.com/connect v1.18.1 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.6 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect

@@ -3100,3 +3100,36 @@ func TestGetKasErrorToReturn(t *testing.T) {
 		require.Equal(t, defaultError, result)
 	})
 }
+func (s *TDFSuite) Test_LargeManifest_WithMaxManifest() {
+	const maxManifestSize = 1024 * 1024 // 1MB
+
+	// Helper to create a large manifest JSON string
+	createLargeManifest := func(size int) []byte {
+		manifest := map[string]interface{}{
+			"payload": map[string]interface{}{
+				"data": string(bytes.Repeat([]byte{'a'}, size)),
+			},
+			"tdf_spec_version": TDFSpecVersion,
+		}
+		b, _ := json.Marshal(manifest)
+		return b
+	}
+
+	// Case 1: Manifest just below the limit
+	manifestBelow := createLargeManifest(maxManifestSize - 100)
+	err := os.WriteFile("0.manifest.json", manifestBelow, 0644)
+	s.Require().NoError(err)
+	defer os.Remove("0.manifest.json")
+
+	_, err = s.sdk.LoadTDF(bytes.NewReader(manifestBelow), WithMaxManifestSize(maxManifestSize))
+	s.Require().NoError(err, "Manifest below max size should load successfully")
+
+	// Case 2: Manifest just above the limit
+	manifestAbove := createLargeManifest(maxManifestSize + 100)
+	err = os.WriteFile("0.manifest.json", manifestAbove, 0644)
+	s.Require().NoError(err)
+	defer os.Remove("0.manifest.json")
+
+	_, err = s.sdk.LoadTDF(bytes.NewReader(manifestAbove), WithMaxManifestSize(maxManifestSize))
+	s.Require().Error(err, "Manifest above max size should fail to load")
+}

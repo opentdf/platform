@@ -63,6 +63,16 @@ type fakeKeyIndex struct {
 	err  error
 }
 
+func (f *fakeKeyIndex) String() string {
+	return "fakeKeyIndex"
+}
+
+func (f *fakeKeyIndex) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("Indexer", f.String()),
+	)
+}
+
 func (f *fakeKeyIndex) FindKeyByAlgorithm(context.Context, string, bool) (trust.KeyDetails, error) {
 	return nil, errors.New("not implemented")
 }

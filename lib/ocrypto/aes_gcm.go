@@ -47,6 +47,21 @@ func (aesGcm AesGcm) Encrypt(data []byte) ([]byte, error) {
 	return cipherText, nil
 }
 
+func (aesGcm AesGcm) EncryptInPlace(data []byte) ([]byte, []byte, error) {
+	nonce, err := RandomBytes(GcmStandardNonceSize)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	gcm, err := cipher.NewGCMWithNonceSize(aesGcm.block, GcmStandardNonceSize)
+	if err != nil {
+		return nil, nil, fmt.Errorf("cipher.NewGCMWithNonceSize failed: %w", err)
+	}
+
+	cipherText := gcm.Seal(data[:0], nonce, data, nil)
+	return cipherText, nonce, nil
+}
+
 // EncryptWithIV encrypts data with symmetric key.
 // NOTE: This method use default auth tag as aes block size(16 bytes)
 // and expects iv of 16 bytes.

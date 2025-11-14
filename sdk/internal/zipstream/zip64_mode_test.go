@@ -5,6 +5,7 @@ package zipstream
 import (
 	"archive/zip"
 	"bytes"
+	"hash/crc32"
 	"io"
 	"testing"
 )
@@ -24,16 +25,18 @@ func TestZip64Mode_Auto_Small_UsesZip32(t *testing.T) {
 	w := NewSegmentTDFWriter(2, WithZip64Mode(Zip64Auto))
 
 	var parts [][]byte
-	p0, err := w.WriteSegment(t.Context(), 0, []byte("hello "))
+	p0, err := w.WriteSegment(t.Context(), 0, 5, crc32.ChecksumIEEE([]byte("hello")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	parts = append(parts, p0)
-	p1, err := w.WriteSegment(t.Context(), 1, []byte("world"))
+	parts = append(parts, []byte("hello"))
+	p1, err := w.WriteSegment(t.Context(), 1, 5, crc32.ChecksumIEEE([]byte("world")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	parts = append(parts, p1)
+	parts = append(parts, []byte("world"))
 
 	fin, err := w.Finalize(t.Context(), []byte(`{"m":1}`))
 	if err != nil {
@@ -75,7 +78,7 @@ func TestZip64Mode_Auto_Small_UsesZip32(t *testing.T) {
 func TestZip64Mode_Always_Small_UsesZip64(t *testing.T) {
 	w := NewSegmentTDFWriter(1, WithZip64Mode(Zip64Always))
 
-	seg, err := w.WriteSegment(t.Context(), 0, []byte("data"))
+	seg, err := w.WriteSegment(t.Context(), 0, 4, crc32.ChecksumIEEE([]byte("data")))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +88,7 @@ func TestZip64Mode_Always_Small_UsesZip64(t *testing.T) {
 	}
 	w.Close()
 
-	data := buildZip(t, [][]byte{seg}, fin)
+	data := buildZip(t, [][]byte{seg, []byte("data")}, fin)
 	// Basic open check; many readers accept ZIP64 regardless of size.
 	if _, err := zip.NewReader(bytes.NewReader(data), int64(len(data))); err != nil {
 		t.Fatalf("zip open failed (zip64 always): %v", err)
@@ -101,7 +104,7 @@ func TestZip64Mode_Never_Overflow_Fails(t *testing.T) {
 		t.Fatal("writer type assertion failed")
 	}
 	// Write minimal segment to initialize structures
-	if _, err := w.WriteSegment(t.Context(), 0, []byte("x")); err != nil {
+	if _, err := w.WriteSegment(t.Context(), 0, 1, crc32.ChecksumIEEE([]byte("x"))); err != nil {
 		t.Fatal(err)
 	}
 	sw.payloadEntry.Size = uint64(^uint32(0)) + 1 // exceed 32-bit

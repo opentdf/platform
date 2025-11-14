@@ -55,7 +55,7 @@ func NewSegmentMetadata(expectedCount int) *SegmentMetadata {
 }
 
 // AddSegment records metadata for a segment (size + CRC) without retaining payload bytes.
-func (sm *SegmentMetadata) AddSegment(index int, _ []byte, originalSize uint64, originalCRC32 uint32) error {
+func (sm *SegmentMetadata) AddSegment(index int, originalSize uint64, originalCRC32 uint32) error {
 	if index < 0 {
 		return ErrInvalidSegment
 	}

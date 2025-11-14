@@ -22,7 +22,7 @@ type Writer interface {
 // SegmentWriter handles out-of-order segments with deterministic output
 type SegmentWriter interface {
 	Writer
-	WriteSegment(ctx context.Context, index int, data []byte) ([]byte, error)
+	WriteSegment(ctx context.Context, index int, size uint64, crc32 uint32) ([]byte, error)
 	Finalize(ctx context.Context, manifest []byte) ([]byte, error)
 	// CleanupSegment removes the presence marker for a segment index.
 	// Calling this before Finalize will cause IsComplete() to fail for that index.

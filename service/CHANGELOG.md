@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.4](https://github.com/opentdf/platform/compare/service/v0.11.3...service/v0.11.4) (2025-11-14)
+
+
+### Features
+
+* **kas:** add configurable SRT skew tolerance and diagnostics [backport to release/service/v0.11] ([#2913](https://github.com/opentdf/platform/issues/2913)) ([cac20cd](https://github.com/opentdf/platform/commit/cac20cdc728f81fddb0428b5e95381da422b209b))
+
+
+### Bug Fixes
+
+* **authz:** deny resources granularly when attribute value FQNs not found [backport to release/service/v0.11] ([#2897](https://github.com/opentdf/platform/issues/2897)) ([225627d](https://github.com/opentdf/platform/commit/225627d5f6cb52d008c6249079b09793a84a6c47))
+* **core:** add obligations X-Rewrap-Additional-Context to default CORS allowed headers [backport to release/service/v0.11] ([#2902](https://github.com/opentdf/platform/issues/2902)) ([b9586b4](https://github.com/opentdf/platform/commit/b9586b4a2b3bffd1d6e72bc73b6568a7bb088868))
+
 ## [0.11.3](https://github.com/opentdf/platform/compare/service/v0.11.2...service/v0.11.3) (2025-11-07)
 
 

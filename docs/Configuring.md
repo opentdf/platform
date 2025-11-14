@@ -240,6 +240,16 @@ For OTLP provider:
 - `trace.provider.otlp.insecure`: Whether to use an insecure connection
 - `trace.provider.otlp.headers`: Headers to include in OTLP requests
 
+## Security Configuration
+
+Root level key `security`
+
+| Field                       | Description                                                                                     | Default |
+|-----------------------------|-------------------------------------------------------------------------------------------------|---------|
+| `unsafe.clock_skew`         | Platform-wide maximum tolerated clock skew for token verification (Go duration, use cautiously) | `1m`    |
+
+> **Warning:** Increasing `unsafe.clock_skew` weakens token freshness guarantees. Only raise this value temporarily while you correct clock drift.
+
 ## Services Configuration
 
 Root level key `services`
@@ -262,6 +272,11 @@ Environment Variable: `OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:204
 Example:
 
 ```yaml
+security:
+  unsafe:
+    # Increase only when diagnosing clock drift issues
+    # clock_skew: 90s
+
 services:
   kas:
     keyring:

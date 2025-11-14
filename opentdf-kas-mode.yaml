@@ -11,6 +11,10 @@ logger:
   level: debug
   type: text
   output: stdout
+security:
+  unsafe:
+    # Increase only when diagnosing clock drift issues; default is 1m
+    # clock_skew: 90s
 services:
   kas:
     registered_kas_uri: http://localhost:8080 # Should match what you have registered for *this* KAS in the policy db.

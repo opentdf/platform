@@ -36,6 +36,16 @@ updates:
     schedule:
       interval: daily
   - package-ecosystem: gomod
+    directory: "/tests-bdd"
+    commit-message:
+      prefix: "fix(ci)"
+    groups:
+      external:
+        exclude-patterns:
+          - "github.com/opentdf/*"
+    schedule:
+      interval: daily
+  - package-ecosystem: gomod
     directory: "/service"
     commit-message:
       prefix: "fix(deps)"

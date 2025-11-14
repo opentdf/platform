@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/opentdf/platform/compare/lib/fixtures/v0.3.0...lib/fixtures/v0.4.0) (2025-11-14)
+
+
+### Bug Fixes
+
+* **deps:** bump toolchain to go1.24.9 for CVEs found by govulncheck ([#2849](https://github.com/opentdf/platform/issues/2849)) ([23f76c0](https://github.com/opentdf/platform/commit/23f76c034cfb4c325d868eb96c95ba616e362db4))
+
 ## [0.3.0](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.10...lib/fixtures/v0.3.0) (2025-05-20)
 
 

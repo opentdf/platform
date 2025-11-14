@@ -141,7 +141,7 @@ func (a *InProcessProvider) String() string {
 
 // Implement slog.LogValuer for slog logging.
 func (a *InProcessProvider) LogValue() slog.Value {
-	return slog.StringValue(inProcessSystemName)
+	return slog.StringValue(a.String())
 }
 
 // FindKeyByAlgorithm finds a key by algorithm using the underlying CryptoProvider.

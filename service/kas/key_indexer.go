@@ -9,6 +9,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -83,6 +84,10 @@ func convertAlgToEnum(alg string) (policy.Algorithm, error) {
 
 func (p *KeyIndexer) String() string {
 	return fmt.Sprintf("PlatformKeyIndexer[%s]", p.kasURI)
+}
+
+func (p *KeyIndexer) LogValue() slog.Value {
+	return slog.StringValue(p.String())
 }
 
 func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (trust.KeyDetails, error) {

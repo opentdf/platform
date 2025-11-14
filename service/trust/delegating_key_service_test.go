@@ -3,6 +3,7 @@ package trust
 import (
 	"context"
 	"crypto/elliptic"
+	"log/slog"
 	"testing"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -52,6 +53,16 @@ func (m *MockKeyManager) Close() {
 // MockKeyIndex is a mock implementation of the KeyIndex interface
 type MockKeyIndex struct {
 	mock.Mock
+}
+
+func (m *MockKeyIndex) String() string {
+	return "mockKeyIndex"
+}
+
+func (m *MockKeyIndex) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("Indexer", m.String()),
+	)
 }
 
 func (m *MockKeyIndex) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (KeyDetails, error) {

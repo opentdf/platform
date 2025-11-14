@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"log/slog"
 	"math/big"
 	"os"
 	"testing"
@@ -96,6 +97,14 @@ func NewMockSecurityProvider() *MockSecurityProvider {
 	return &MockSecurityProvider{
 		keys: make(map[trust.KeyIdentifier]*MockKeyDetails),
 	}
+}
+
+func (m *MockSecurityProvider) String() string {
+	return "MockSecurityProvider"
+}
+
+func (m *MockSecurityProvider) LogValue() slog.Value {
+	return slog.StringValue(m.String())
 }
 
 func (m *MockSecurityProvider) AddKey(key *MockKeyDetails) {

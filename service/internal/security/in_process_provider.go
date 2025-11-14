@@ -134,6 +134,16 @@ func (a *InProcessProvider) WithLogger(logger *slog.Logger) *InProcessProvider {
 	return a
 }
 
+// Implement fmt.Stringer so Index's default to our String() method
+func (a *InProcessProvider) String() string {
+	return inProcessSystemName
+}
+
+// Implement slog.LogValuer for slog logging.
+func (a *InProcessProvider) LogValue() slog.Value {
+	return slog.StringValue(inProcessSystemName)
+}
+
 // FindKeyByAlgorithm finds a key by algorithm using the underlying CryptoProvider.
 // This will only return default keys if legacy is false.
 // If legacy is true, it will return the first legacy key found that matches the algorithm.

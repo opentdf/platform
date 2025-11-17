@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.5](https://github.com/opentdf/platform/compare/service/v0.11.4...service/v0.11.5) (2025-11-17)
+
+
+### Bug Fixes
+
+* **kas:** Do not log index object [backport to release/service/v0.11] ([#2914](https://github.com/opentdf/platform/issues/2914)) ([a3639f9](https://github.com/opentdf/platform/commit/a3639f931ef08e917b38d27e19da002bd24c3495))
+
 ## [0.11.4](https://github.com/opentdf/platform/compare/service/v0.11.3...service/v0.11.4) (2025-11-14)
 
 

@@ -397,7 +397,7 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_WithNegation() {
 			registeredServices, err := RegisterCoreServices(registry, tc.modes)
 
 			if tc.shouldError {
-				require.Error(suite.T(), err)
+				suite.Require().Error(, err)
 				if tc.expectedErrorContains != "" {
 					suite.Contains(err.Error(), tc.expectedErrorContains)
 				}
@@ -409,13 +409,13 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_WithNegation() {
 				modeStrings[i] = m.String()
 			}
 
-			require.NoError(suite.T(), err)
+			suite.Require().NoError(err)
 			suite.ElementsMatch(tc.expectedServices, registeredServices)
 
 			// Verify expected services ARE registered in the registry
 			for _, expectedService := range tc.expectedServices {
 				ns, err := registry.GetNamespace(expectedService)
-				require.NoError(suite.T(), err, "Expected service '%s' should be registered", expectedService)
+				suite.Require().NoError(err, "Expected service '%s' should be registered", expectedService)
 				if err == nil {
 					suite.NotEmpty(ns.Services, "Service '%s' should have implementations", expectedService)
 				}
@@ -424,7 +424,7 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_WithNegation() {
 			// Verify excluded services are NOT in the registry
 			for _, excludedService := range tc.excludedServices {
 				_, err := registry.GetNamespace(excludedService)
-				require.Error(suite.T(), err, "Service '%s' should NOT be registered", excludedService)
+				suite.Require().Error(err, "Service '%s' should NOT be registered", excludedService)
 				if err != nil {
 					suite.Contains(err.Error(), "namespace not found",
 						"Should get 'namespace not found' for excluded service '%s'", excludedService)
@@ -495,13 +495,13 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_BackwardCompatibility() 
 
 			registeredServices, err := RegisterCoreServices(registry, tc.mode)
 
-			require.NoError(suite.T(), err)
+			suite.Require().NoError(err)
 			suite.ElementsMatch(tc.expectedServices, registeredServices)
 
 			// Verify expected services ARE registered
 			for _, expectedService := range tc.expectedServices {
 				ns, err := registry.GetNamespace(expectedService)
-				require.NoError(suite.T(), err, "Expected service '%s' should be registered", expectedService)
+				suite.Require().NoError(err, "Expected service '%s' should be registered", expectedService)
 				if err == nil {
 					suite.NotEmpty(ns.Services, "Service '%s' should have implementations", expectedService)
 				}
@@ -510,7 +510,7 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_BackwardCompatibility() 
 			// Verify excluded services are NOT registered
 			for _, excludedService := range tc.excludedServices {
 				_, err := registry.GetNamespace(excludedService)
-				require.Error(suite.T(), err, "Service '%s' should NOT be registered", excludedService)
+				suite.Require().Error(err, "Service '%s' should NOT be registered", excludedService)
 				if err != nil {
 					suite.Contains(err.Error(), "namespace not found")
 				}
@@ -651,16 +651,16 @@ func (suite *ServiceTestSuite) TestStartServices_StartsInRegistrationOrder() {
 			startOrderTracker: &startOrderTracker,
 		}
 		err := registry.RegisterService(mockSvc, s.mode)
-		require.NoError(suite.T(), err)
+		suite.Require().NoError(err)
 	}
 
 	// Prepare to call startServices
 	otdf, err := mockOpenTDFServer()
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 	defer otdf.Stop()
 
 	newLogger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 	cleanup, err := startServices(ctx, startServicesParams{
 		cfg: &config.Config{
 			Mode: []string{"test"}, // Enable the mode for our test services
@@ -674,7 +674,7 @@ func (suite *ServiceTestSuite) TestStartServices_StartsInRegistrationOrder() {
 		logger: newLogger,
 		reg:    registry,
 	})
-	require.NoError(suite.T(), err)
+	suite.Require().NoError(err)
 	defer cleanup()
 
 	// The startServices function iterates through namespaces in the order they were first registered,
@@ -685,7 +685,7 @@ func (suite *ServiceTestSuite) TestStartServices_StartsInRegistrationOrder() {
 	// Services in namespace3: ServiceD
 	expectedStartOrder := []string{"ServiceA", "ServiceC", "ServiceB", "ServiceE", "ServiceD"}
 
-	require.Equal(suite.T(), expectedStartOrder, startOrderTracker, "Services should start in the order they were registered, grouped by namespace")
+	suite.Require().Equal(expectedStartOrder, startOrderTracker, "Services should start in the order they were registered, grouped by namespace")
 
 	// call close function
 	registry.Shutdown()
@@ -827,11 +827,11 @@ func (suite *ServiceTestSuite) Test_Extra_Services_With_Mode_Negation() {
 
 			// Register essential services
 			err := RegisterEssentialServices(registry)
-			require.NoError(suite.T(), err, "Failed to register essential services")
+			suite.Require().NoError(err, "Failed to register essential services")
 
 			// Register core services with the specified modes
 			_, err = RegisterCoreServices(registry, tc.modes)
-			require.NoError(suite.T(), err, "Failed to register core services")
+			suite.Require().NoError(err, "Failed to register core services")
 			// Create extra core services if needed (inherit from core/all modes)
 			var extraCoreServices []serviceregistry.IService
 			if tc.useExtraCoreServices {
@@ -892,10 +892,10 @@ func (suite *ServiceTestSuite) Test_Extra_Services_With_Mode_Negation() {
 			if tc.useExtraCoreServices {
 				ns, err := registry.GetNamespace(tc.extraCoreNamespace)
 				if tc.expectExtraCoreService {
-					require.NoError(suite.T(), err, "Extra core service namespace should exist when expected")
+					suite.Require().NoError(err, "Extra core service namespace should exist when expected")
 					suite.NotEmpty(ns.Services, "Extra core service should be registered")
 				} else {
-					require.Error(suite.T(), err, "Extra core service namespace should not exist when excluded")
+					suite.Require().Error(err, "Extra core service namespace should not exist when excluded")
 					suite.Contains(err.Error(), "namespace not found", "Should get 'namespace not found' error")
 				}
 			}
@@ -904,10 +904,10 @@ func (suite *ServiceTestSuite) Test_Extra_Services_With_Mode_Negation() {
 			if tc.useExtraServices {
 				ns, err := registry.GetNamespace(tc.extraServiceNamespace)
 				if tc.expectExtraService {
-					require.NoError(suite.T(), err, "Extra service namespace should exist when expected")
+					suite.Require().NoError(err, "Extra service namespace should exist when expected")
 					suite.NotEmpty(ns.Services, "Extra service should be registered")
 				} else {
-					require.Error(suite.T(), err, "Extra service namespace should not exist when excluded")
+					suite.Require().Error(err, "Extra service namespace should not exist when excluded")
 					suite.Contains(err.Error(), "namespace not found", "Should get 'namespace not found' error")
 				}
 			}

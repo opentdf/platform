@@ -372,6 +372,9 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 // Use this option to override the default limit; the size parameter specifies the maximum size in bytes.
 func WithMaxManifestSize(size int64) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
+		if size <= 0 {
+			return errors.New("max manifest size must be greater than 0")
+		}
 		c.maxManifestSize = size
 		return nil
 	}

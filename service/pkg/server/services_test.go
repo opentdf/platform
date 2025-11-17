@@ -390,7 +390,6 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_WithNegation() {
 
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
-			t := suite.T()
 			registry := serviceregistry.NewServiceRegistry()
 
 			registeredServices, err := RegisterCoreServices(registry, tc.modes)

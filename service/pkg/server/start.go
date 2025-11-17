@@ -198,8 +198,8 @@ func Start(f ...StartOptions) error {
 		extraCoreServiceConfigs := getServiceConfigurationsFromIServices(startConfig.extraCoreServices, []serviceregistry.ModeName{serviceregistry.ModeCore}, false)
 		extraCoreRegisteredServices, err := svcRegistry.RegisterServicesFromConfiguration(cfg.Mode, extraCoreServiceConfigs)
 		if err != nil {
-			logger.Error("could not register core services", slog.String("error", err.Error()))
-			return fmt.Errorf("could not register core services: %w", err)
+			logger.Error("could not register extra core services", slog.String("error", err.Error()))
+			return fmt.Errorf("could not register extra core services: %w", err)
 		}
 		registeredServices = append(registeredServices, extraCoreRegisteredServices...)
 	}

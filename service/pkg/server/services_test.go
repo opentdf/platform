@@ -415,20 +415,15 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_WithNegation() {
 			for _, expectedService := range tc.expectedServices {
 				ns, err := registry.GetNamespace(expectedService)
 				suite.Require().NoError(err, "Expected service '%s' should be registered", expectedService)
-				if err == nil {
-					suite.NotEmpty(ns.Services, "Service '%s' should have implementations", expectedService)
-				}
+				suite.NotEmpty(ns.Services, "Service '%s' should have implementations", expectedService)
 			}
 
 			// Verify excluded services are NOT in the registry
 			for _, excludedService := range tc.excludedServices {
 				_, err := registry.GetNamespace(excludedService)
 				suite.Require().Error(err, "Service '%s' should NOT be registered", excludedService)
-				if err != nil {
-					suite.Contains(err.Error(), "namespace not found",
-						"Should get 'namespace not found' for excluded service '%s'", excludedService)
-					t.Logf("✓ Service '%s' correctly excluded", excludedService)
-				}
+				suite.Contains(err.Error(), "namespace not found",
+					"Should get 'namespace not found' for excluded service '%s'", excludedService)
 			}
 
 			// check that registered namespaces are enabled
@@ -501,18 +496,14 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_BackwardCompatibility() 
 			for _, expectedService := range tc.expectedServices {
 				ns, err := registry.GetNamespace(expectedService)
 				suite.Require().NoError(err, "Expected service '%s' should be registered", expectedService)
-				if err == nil {
-					suite.NotEmpty(ns.Services, "Service '%s' should have implementations", expectedService)
-				}
+				suite.NotEmpty(ns.Services, "Service '%s' should have implementations", expectedService)
 			}
 
 			// Verify excluded services are NOT registered
 			for _, excludedService := range tc.excludedServices {
 				_, err := registry.GetNamespace(excludedService)
 				suite.Require().Error(err, "Service '%s' should NOT be registered", excludedService)
-				if err != nil {
-					suite.Contains(err.Error(), "namespace not found")
-				}
+				suite.Contains(err.Error(), "namespace not found")
 			}
 
 			modeStrings := make([]string, len(tc.mode))

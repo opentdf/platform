@@ -71,7 +71,7 @@ func getServiceConfigurations() []serviceregistry.ServiceConfiguration {
 }
 
 func getServiceConfigurationsFromIServices(services []serviceregistry.IService, extraModes []serviceregistry.ModeName, individualModes bool) []serviceregistry.ServiceConfiguration {
-	var configs []serviceregistry.ServiceConfiguration
+	configs := make([]serviceregistry.ServiceConfiguration, 0, len(services))
 	for _, svc := range services {
 		modes := append([]serviceregistry.ModeName{serviceregistry.ModeALL}, extraModes...)
 		if individualModes {

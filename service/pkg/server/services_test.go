@@ -11,7 +11,6 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 )
@@ -397,7 +396,7 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_WithNegation() {
 			registeredServices, err := RegisterCoreServices(registry, tc.modes)
 
 			if tc.shouldError {
-				suite.Require().Error(, err)
+				suite.Require().Error(err)
 				if tc.expectedErrorContains != "" {
 					suite.Contains(err.Error(), tc.expectedErrorContains)
 				}

@@ -1436,11 +1436,13 @@ func TestVerifyNanoRewrapRequests(t *testing.T) {
 	testLogger := logger.CreateTestLogger()
 
 	tests := []struct {
-		name          string
-		setupProvider func() *Provider
-		request       *kaspb.UnsignedRewrapRequest_WithPolicyRequest
-		expectError   bool
-		errorMessage  string
+		name                string
+		setupProvider       func() *Provider
+		request             *kaspb.UnsignedRewrapRequest_WithPolicyRequest
+		expectError         bool
+		errorMessage        string
+		checkResultErrors   bool // Whether to check for errors in the results map
+		expectedResultCount int  // Expected number of results when checkResultErrors is true
 	}{
 		{
 			name: "nil request should return error",
@@ -1449,9 +1451,11 @@ func TestVerifyNanoRewrapRequests(t *testing.T) {
 					Logger: testLogger,
 				}
 			},
-			request:      nil,
-			expectError:  true,
-			errorMessage: "request is nil",
+			request:             nil,
+			expectError:         true,
+			errorMessage:        "request is nil",
+			checkResultErrors:   false,
+			expectedResultCount: 0,
 		},
 		{
 			name: "nil policy should return error",
@@ -1472,8 +1476,10 @@ func TestVerifyNanoRewrapRequests(t *testing.T) {
 					},
 				},
 			},
-			expectError:  true,
-			errorMessage: "policy is nil",
+			expectError:         true,
+			errorMessage:        "policy is nil",
+			checkResultErrors:   false,
+			expectedResultCount: 0,
 		},
 		{
 			name: "multiple KAOs should return error",
@@ -1502,8 +1508,10 @@ func TestVerifyNanoRewrapRequests(t *testing.T) {
 					},
 				},
 			},
-			expectError:  false, // Error goes into results, not returned directly
-			errorMessage: "NanoTDFs should not have multiple KAOs per Policy",
+			expectError:         false, // Error goes into results, not returned directly
+			errorMessage:        "NanoTDFs should not have multiple KAOs per Policy",
+			checkResultErrors:   true, // Check for errors in the results map
+			expectedResultCount: 2,    // Should have two KAO results with errors
 		},
 		{
 			name: "invalid NanoTDF header should fail gracefully",
@@ -1526,8 +1534,10 @@ func TestVerifyNanoRewrapRequests(t *testing.T) {
 					},
 				},
 			},
-			expectError:  false, // Function returns nil, results, nil (fails gracefully)
-			errorMessage: "",
+			expectError:         false, // Function returns nil, results, nil (fails gracefully)
+			errorMessage:        "",
+			checkResultErrors:   false,
+			expectedResultCount: 0,
 		},
 	}
 
@@ -1549,9 +1559,9 @@ func TestVerifyNanoRewrapRequests(t *testing.T) {
 				assert.Contains(t, err.Error(), tt.errorMessage, "Error message should contain expected text: "+tt.errorMessage)
 			} else {
 				assert.NotNil(t, results, "Results should not be nil")
-				if tt.name == "multiple KAOs should return error" {
-					// Special case: multiple KAOs should result in error stored in results
-					assert.Len(t, results, 2, "Should have two KAO results with errors")
+				if tt.checkResultErrors {
+					// Check for errors stored in results map
+					assert.Len(t, results, tt.expectedResultCount, "Should have expected number of KAO results with errors")
 					for _, result := range results {
 						require.Error(t, result.Error, "KAO result should contain error")
 						assert.Contains(t, result.Error.Error(), tt.errorMessage, "Error should contain expected message")

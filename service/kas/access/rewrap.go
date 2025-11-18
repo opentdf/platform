@@ -655,13 +655,13 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 	// Check if req is nil
 	if req == nil {
 		p.Logger.WarnContext(ctx, "request is nil")
-		return policy, results, errors.New("request is nil")
+		return nil, results, errors.New("request is nil")
 	}
 
 	// Check if policy is nil
 	if req.GetPolicy() == nil {
 		p.Logger.WarnContext(ctx, "policy is nil")
-		return policy, results, errors.New("policy is nil")
+		return nil, results, errors.New("policy is nil")
 	}
 
 	p.Logger.DebugContext(ctx, "extracting policy", slog.Any("policy", req.GetPolicy()))
@@ -906,7 +906,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		}
 		policy, kaoResults, err := p.verifyRewrapRequests(ctx, req)
 		if err != nil && !errors.Is(err, errNoValidKeyAccessObjects) {
-			return "", results, err400("invalid request")
+			return "", nil, err400("invalid request")
 		}
 		policyID := req.GetPolicy().GetId()
 		results[policyID] = kaoResults
@@ -1040,7 +1040,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 	for _, req := range requests {
 		policy, kaoResults, err := p.verifyNanoRewrapRequests(ctx, req)
 		if err != nil {
-			return "", results, err400("invalid request")
+			return "", nil, err400("invalid request")
 		}
 		results[req.GetPolicy().GetId()] = kaoResults
 		if policy != nil {

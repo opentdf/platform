@@ -24,6 +24,44 @@ type ServicesMap map[string]ServiceConfig
 // Config structure holding a single service.
 type ServiceConfig map[string]any
 
+func (cfg ServiceConfig) String() string {
+	// Create a shallow copy so we don't mutate the original map.
+	redacted := make(map[string]any, len(cfg))
+
+	for k, v := range cfg {
+		if k == "root_key" {
+			if s, ok := v.(string); ok && s != "" {
+				redacted[k] = fmt.Sprintf("REDACTED: len=%d", len(s))
+			} else {
+				redacted[k] = "REDACTED"
+			}
+			continue
+		}
+		redacted[k] = v
+	}
+
+	return fmt.Sprintf("%v", redacted)
+}
+
+func (cfg ServiceConfig) LogValue() slog.Value {
+	attrs := make([]slog.Attr, 0, len(cfg))
+
+	for k, v := range cfg {
+		if k == "root_key" {
+			if s, ok := v.(string); ok && s != "" {
+				attrs = append(attrs, slog.String(k, fmt.Sprintf("REDACTED: len=%d", len(s))))
+			} else {
+				attrs = append(attrs, slog.String(k, "REDACTED"))
+			}
+			continue
+		}
+
+		attrs = append(attrs, slog.Any(k, v))
+	}
+
+	return slog.GroupValue(attrs...)
+}
+
 // Config represents the configuration settings for the service.
 type Config struct {
 	// DevMode specifies whether the service is running in development mode.

@@ -1458,30 +1458,6 @@ func TestVerifyNanoRewrapRequests(t *testing.T) {
 			expectedResultCount: 0,
 		},
 		{
-			name: "nil policy should return error",
-			setupProvider: func() *Provider {
-				return &Provider{
-					Logger: testLogger,
-				}
-			},
-			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
-				Policy: nil, // nil policy
-				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
-					{
-						KeyAccessObjectId: "test-kao",
-						KeyAccessObject: &kaspb.KeyAccess{
-							KeyType: "wrapped",
-							Kid:     "test-kid",
-						},
-					},
-				},
-			},
-			expectError:         true,
-			errorMessage:        "policy is nil",
-			checkResultErrors:   false,
-			expectedResultCount: 0,
-		},
-		{
 			name: "multiple KAOs should return error",
 			setupProvider: func() *Provider {
 				return &Provider{

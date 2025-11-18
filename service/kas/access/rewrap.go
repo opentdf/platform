@@ -1139,12 +1139,6 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 		return nil, nil, errors.New("request is nil")
 	}
 
-	// Check if policy is nil
-	if req.GetPolicy() == nil {
-		p.Logger.WarnContext(ctx, "policy is nil")
-		return nil, nil, errors.New("policy is nil")
-	}
-
 	for _, kao := range req.GetKeyAccessObjects() {
 		// there should never be multiple KAOs in policy
 		if len(req.GetKeyAccessObjects()) != 1 {

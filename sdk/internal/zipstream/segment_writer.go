@@ -49,7 +49,7 @@ func NewSegmentTDFWriter(expectedSegments int, opts ...Option) SegmentWriter {
 }
 
 // WriteSegment writes a segment with deterministic output based on segment index
-func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byte) ([]byte, error) {
+func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, size uint64, crc32 uint32) ([]byte, error) {
 	sw.mu.Lock()
 	defer sw.mu.Unlock()
 
@@ -79,9 +79,7 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byt
 	default:
 	}
 
-	// CRC32 over stored segment bytes (what goes into the ZIP entry)
-	originalCRC := crc32.ChecksumIEEE(data)
-	originalSize := uint64(len(data))
+	originalSize := size
 
 	// Create segment buffer for this segment's output
 	buffer := &bytes.Buffer{}
@@ -94,20 +92,15 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byt
 		}
 	}
 
-	// All segments: write the encrypted data
-	if _, err := buffer.Write(data); err != nil {
-		return nil, &Error{Op: "write-segment", Type: "segment", Err: err}
-	}
-
 	// Record segment metadata only (no payload retention). Payload bytes are returned
 	// to the caller and may be uploaded; we keep only CRC and size for finalize.
-	if err := sw.metadata.AddSegment(index, data, originalSize, originalCRC); err != nil {
+	if err := sw.metadata.AddSegment(index, size, crc32); err != nil {
 		return nil, &Error{Op: "write-segment", Type: "segment", Err: err}
 	}
 
 	// Update payload entry metadata
 	sw.payloadEntry.Size += originalSize
-	sw.payloadEntry.CompressedSize += uint64(len(data)) // Encrypted size
+	sw.payloadEntry.CompressedSize += originalSize // Encrypted size
 
 	// Return the bytes for this segment
 	return buffer.Bytes(), nil

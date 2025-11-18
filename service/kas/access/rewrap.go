@@ -3,6 +3,7 @@ package access
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/hmac"
 	"crypto/rsa"
@@ -16,6 +17,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -134,29 +136,149 @@ func generateHMACDigest(ctx context.Context, msg, key []byte, logger logger.Logg
 	return mac.Sum(nil), nil
 }
 
-var acceptableSkew = 30 * time.Second
-
-func verifySRT(ctx context.Context, srt string, dpopJWK jwk.Key, logger logger.Logger) (string, error) {
-	token, err := jwt.Parse([]byte(srt), jwt.WithKey(jwa.RS256, dpopJWK), jwt.WithAcceptableSkew(acceptableSkew))
-	if err != nil {
-		logger.WarnContext(ctx,
-			"unable to verify request token",
-			slog.String("srt", srt),
-			slog.Any("jwk", dpopJWK),
-			slog.Any("err", err),
-		)
-		return "", err401("unable to verify request token")
+func jwkThumbprintAttr(key jwk.Key) slog.Attr {
+	if key == nil {
+		return slog.String("jwk_thumbprint", "none")
 	}
-	return justRequestBody(ctx, token, logger)
+	thumbprint, err := key.Thumbprint(crypto.SHA256)
+	if err != nil {
+		return slog.String("jwk_thumbprint_error", err.Error())
+	}
+	return slog.String("jwk_thumbprint", base64.RawURLEncoding.EncodeToString(thumbprint))
 }
 
-func noverify(ctx context.Context, srt string, logger logger.Logger) (string, error) {
-	token, err := jwt.Parse([]byte(srt), jwt.WithVerify(false), jwt.WithAcceptableSkew(acceptableSkew))
-	if err != nil {
-		logger.WarnContext(ctx, "unable to validate or parse token", slog.Any("error", err))
-		return "", err401("could not parse token")
+// logSRTParseFailure emits contextual details when an SRT cannot be parsed, adjusting
+// verbosity depending on whether signature verification was required.
+func (p *Provider) logSRTParseFailure(ctx context.Context, srt string, requireVerification bool, err error) {
+	attrs := []any{slog.Any("error", err)}
+	if requireVerification {
+		attrs = append(attrs, slog.String("srt", srt))
+		p.Logger.WarnContext(ctx, "unable to verify request token", attrs...)
+		return
 	}
-	return justRequestBody(ctx, token, logger)
+
+	p.Logger.WarnContext(ctx, "unable to validate or parse token", attrs...)
+}
+
+// parseSRT parses the JWT payload without validation, returning the token and embedded
+// request body string while translating parse errors into client-facing status codes.
+func (p *Provider) parseSRT(ctx context.Context, srt string, requireVerification bool) (jwt.Token, string, error) {
+	token, err := jwt.Parse([]byte(srt), jwt.WithVerify(false), jwt.WithValidate(false))
+	if err != nil {
+		p.logSRTParseFailure(ctx, srt, requireVerification, err)
+		if requireVerification {
+			return nil, "", err401("unable to verify request token")
+		}
+		return nil, "", err401("could not parse token")
+	}
+
+	rbString, err := justRequestBody(ctx, token, *p.Logger)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return token, rbString, nil
+}
+
+// logSRTValidationFailure collects claim timestamps and skew details to aid debugging when
+// validation fails after parsing the SRT.
+func (p *Provider) logSRTValidationFailure(ctx context.Context, token jwt.Token, message string, err error) {
+	now := time.Now().UTC()
+
+	fields := []any{
+		slog.Any("error", err),
+		slog.Time("server_time", now),
+		slog.Duration("acceptable_skew", p.acceptableSkew()),
+	}
+
+	failureClaims := map[string]struct{}{}
+
+	issuedAt := token.IssuedAt()
+	if !issuedAt.IsZero() {
+		fields = append(fields,
+			slog.Time("iat", issuedAt),
+			slog.Duration("iat_delta", issuedAt.Sub(now)),
+		)
+		if errors.Is(err, jwt.ErrInvalidIssuedAt()) {
+			failureClaims["iat"] = struct{}{}
+		}
+	}
+
+	expires := token.Expiration()
+	if !expires.IsZero() {
+		fields = append(fields,
+			slog.Time("exp", expires),
+			slog.Duration("exp_delta", now.Sub(expires)),
+		)
+		if errors.Is(err, jwt.ErrTokenExpired()) {
+			failureClaims["exp"] = struct{}{}
+		}
+	}
+
+	notBefore := token.NotBefore()
+	if !notBefore.IsZero() {
+		fields = append(fields,
+			slog.Time("nbf", notBefore),
+			slog.Duration("nbf_delta", notBefore.Sub(now)),
+		)
+	}
+
+	if errors.Is(err, jwt.ErrTokenNotYetValid()) {
+		failureClaims["nbf"] = struct{}{}
+	}
+
+	if len(failureClaims) > 0 {
+		names := make([]string, 0, len(failureClaims))
+		for claim := range failureClaims {
+			names = append(names, claim)
+		}
+		sort.Strings(names)
+		fields = append(fields, slog.Any("validation_failure_claims", names))
+	}
+
+	fields = append(fields, slog.String("failure_reason", message))
+	p.Logger.WarnContext(ctx, "srt validation failure", fields...)
+}
+
+// validateSRTClaims enforces temporal constraints on the parsed SRT, incorporating the
+// configured acceptable skew and translating failures into user-friendly errors.
+func (p *Provider) validateSRTClaims(ctx context.Context, token jwt.Token, requireVerification bool) error {
+	err := jwt.Validate(token, jwt.WithAcceptableSkew(p.acceptableSkew()))
+	if err == nil {
+		return nil
+	}
+
+	message := "unable to validate or parse token"
+	userErr := err401("could not parse token")
+	if requireVerification {
+		message = "unable to verify request token"
+		userErr = err401("unable to verify request token")
+	}
+
+	p.logSRTValidationFailure(ctx, token, message, err)
+	return userErr
+}
+
+// verifySRTSignature validates the SRT signature against the supplied DPoP key when
+// verification is required.
+func (p *Provider) verifySRTSignature(ctx context.Context, srt string, dpopJWK jwk.Key) error {
+	_, err := jwt.Parse(
+		[]byte(srt),
+		jwt.WithKey(jwa.RS256, dpopJWK),
+		jwt.WithValidate(false),
+	)
+	if err != nil {
+		if p.Logger != nil {
+			p.Logger.WarnContext(ctx,
+				"unable to verify request token",
+				slog.String("srt", srt),
+				jwkThumbprintAttr(dpopJWK),
+				slog.Any("error", err),
+			)
+		}
+		return err401("unable to verify request token")
+	}
+	return nil
 }
 
 func justRequestBody(ctx context.Context, token jwt.Token, logger logger.Logger) (string, error) {
@@ -217,44 +339,52 @@ func extractAndConvertV1SRTBody(body []byte) (kaspb.UnsignedRewrapRequest, error
 	}, nil
 }
 
-func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRequest, logger logger.Logger) (*kaspb.UnsignedRewrapRequest, bool, error) {
+func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRequest) (*kaspb.UnsignedRewrapRequest, bool, error) {
 	isV1 := false
 	// First load legacy method for verifying SRT
 	if vpk, ok := headers["X-Virtrupubkey"]; ok && len(vpk) == 1 {
-		logger.InfoContext(ctx, "legacy Client: Processing X-Virtrupubkey")
+		p.Logger.InfoContext(ctx, "legacy Client: Processing X-Virtrupubkey")
 	}
 
 	// get dpop public key from context
-	dpopJWK := ctxAuth.GetJWKFromContext(ctx, &logger)
+	dpopJWK := ctxAuth.GetJWKFromContext(ctx, p.Logger)
 
-	var err error
-	var rbString string
 	srt := in.GetSignedRequestToken()
-	if dpopJWK == nil {
-		logger.InfoContext(ctx, "no DPoP key provided")
+	requireVerification := dpopJWK != nil
+	if !requireVerification {
+		p.Logger.InfoContext(ctx, "no DPoP key provided")
 		// if we have no DPoP key it's for one of two reasons:
 		// 1. auth is disabled so we can't get a DPoP JWK
 		// 2. auth is enabled _but_ we aren't requiring DPoP
 		// in either case letting the request through makes sense
-		rbString, err = noverify(ctx, srt, logger)
-		if err != nil {
-			logger.ErrorContext(ctx, "unable to load RSA verifier", slog.Any("error", err))
-			return nil, false, err
+	}
+
+	token, rbString, parseErr := p.parseSRT(ctx, srt, requireVerification)
+	if parseErr != nil {
+		if !requireVerification {
+			p.Logger.ErrorContext(ctx, "srt parsing failed (signature verification skipped)", slog.Any("error", parseErr))
 		}
-	} else {
-		// verify and validate the request token
-		var err error
-		rbString, err = verifySRT(ctx, srt, dpopJWK, logger)
-		if err != nil {
+		return nil, false, parseErr
+	}
+
+	if validateErr := p.validateSRTClaims(ctx, token, requireVerification); validateErr != nil {
+		if !requireVerification {
+			p.Logger.ErrorContext(ctx, "srt validation failed (signature verification skipped)", slog.Any("error", validateErr))
+		}
+		return nil, false, validateErr
+	}
+
+	if requireVerification {
+		if err := p.verifySRTSignature(ctx, srt, dpopJWK); err != nil {
 			return nil, false, err
 		}
 	}
 
 	var requestBody kaspb.UnsignedRewrapRequest
-	err = protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal([]byte(rbString), &requestBody)
+	err := protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal([]byte(rbString), &requestBody)
 	// if there are no requests then it could be a v1 request
 	if err != nil {
-		logger.WarnContext(ctx,
+		p.Logger.WarnContext(ctx,
 			"invalid SRT",
 			slog.Any("err_v2", err),
 			slog.String("srt", rbString),
@@ -262,11 +392,11 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 		return nil, false, err400("invalid request body")
 	}
 	if len(requestBody.GetRequests()) == 0 {
-		logger.DebugContext(ctx, "legacy v1 SRT")
+		p.Logger.DebugContext(ctx, "legacy v1 SRT")
 		var errv1 error
 
 		if requestBody, errv1 = extractAndConvertV1SRTBody([]byte(rbString)); errv1 != nil {
-			logger.WarnContext(ctx,
+			p.Logger.WarnContext(ctx,
 				"invalid SRT",
 				slog.Any("err_v1", errv1),
 				slog.String("srt", rbString),
@@ -277,7 +407,7 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 		isV1 = true
 	}
 	// TODO: this log is too big and should be reconsidered or removed
-	logger.DebugContext(ctx,
+	p.Logger.DebugContext(ctx,
 		"extracted request body",
 		slog.String("rewrap_body", requestBody.String()),
 		slog.String("rewrap_srt", rbString),
@@ -285,14 +415,14 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 
 	block, _ := pem.Decode([]byte(requestBody.GetClientPublicKey()))
 	if block == nil {
-		logger.WarnContext(ctx, "missing clientPublicKey")
+		p.Logger.WarnContext(ctx, "missing clientPublicKey")
 		return nil, isV1, err400("clientPublicKey failure")
 	}
 
 	// Try to parse the clientPublicKey
 	clientPublicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		logger.WarnContext(ctx, "failure to parse clientPublicKey", slog.Any("error", err))
+		p.Logger.WarnContext(ctx, "failure to parse clientPublicKey", slog.Any("error", err))
 		return nil, isV1, err400("clientPublicKey parse failure")
 	}
 	// Check to make sure the clientPublicKey is a supported key type
@@ -302,7 +432,7 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 	case *ecdsa.PublicKey:
 		return &requestBody, isV1, nil
 	default:
-		logger.WarnContext(ctx, "unsupported clientPublicKey type", slog.String("type", fmt.Sprintf("%T", clientPublicKey)))
+		p.Logger.WarnContext(ctx, "unsupported clientPublicKey type", slog.String("type", fmt.Sprintf("%T", clientPublicKey)))
 		return nil, isV1, err400("clientPublicKey unsupported type")
 	}
 }
@@ -433,7 +563,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	in := req.Msg
 	p.Logger.DebugContext(ctx, "REWRAP")
 
-	body, isV1, err := extractSRTBody(ctx, req.Header(), in, *p.Logger)
+	body, isV1, err := p.extractSRTBody(ctx, req.Header(), in)
 	if err != nil {
 		p.Logger.DebugContext(ctx, "unverifiable srt", slog.Any("error", err))
 		return nil, err

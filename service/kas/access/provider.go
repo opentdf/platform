@@ -2,6 +2,7 @@ package access
 
 import (
 	"context"
+	"log/slog"
 	"net/url"
 	"time"
 
@@ -29,6 +30,7 @@ type Provider struct {
 	Logger         *logger.Logger
 	Config         *config.ServiceConfig
 	KASConfig
+	securityConfig *config.SecurityConfig
 	trace.Tracer
 }
 
@@ -71,6 +73,36 @@ func (p *Provider) IsReady(ctx context.Context) error {
 	// TODO: Not sure what we want to check here?
 	p.Logger.TraceContext(ctx, "checking readiness of kas service")
 	return nil
+}
+
+// ApplyConfig stores the latest KAS configuration, tracks the associated security
+// overrides, and emits a warning when the configured clock skew exceeds the default.
+func (p *Provider) ApplyConfig(cfg KASConfig, securityCfg *config.SecurityConfig) {
+	p.KASConfig = cfg
+	p.securityConfig = securityCfg
+
+	if p.Logger != nil {
+		if skew := p.acceptableSkew(); skew > config.DefaultUnsafeClockSkew {
+			p.Logger.Warn("configured SRT acceptable skew exceeds default",
+				slog.Duration("configured_skew", skew),
+				slog.Duration("default_skew", config.DefaultUnsafeClockSkew),
+			)
+		}
+	}
+}
+
+// SecurityConfig exposes the most recent security configuration captured via ApplyConfig.
+func (p *Provider) SecurityConfig() *config.SecurityConfig {
+	return p.securityConfig
+}
+
+// acceptableSkew returns the tolerated clock skew for SRT validation, falling back to the
+// global unsafe default when no override is present.
+func (p *Provider) acceptableSkew() time.Duration {
+	if p.securityConfig == nil {
+		return config.DefaultUnsafeClockSkew
+	}
+	return p.securityConfig.ClockSkew()
 }
 
 func (kasCfg *KASConfig) UpgradeMapToKeyring(c *security.StandardCrypto) {

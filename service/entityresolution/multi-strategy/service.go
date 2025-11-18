@@ -60,9 +60,9 @@ func (s *Service) GetConfig() types.MultiStrategyConfig {
 }
 
 // ResolveEntity resolves entity information using the configured strategies
-func (s *Service) ResolveEntity(ctx context.Context, entityID string, jwtClaims types.JWTClaims) (*types.EntityResult, error) {
+func (s *Service) ResolveEntity(ctx context.Context, entityID string, claimsMap types.JWTClaims) (*types.EntityResult, error) {
 	// Get all matching strategies based on JWT claims
-	strategies, err := s.strategyMatcher.SelectStrategies(ctx, jwtClaims)
+	strategies, err := s.strategyMatcher.SelectStrategies(ctx, claimsMap)
 	if err != nil {
 		return nil, types.WrapMultiStrategyError(
 			types.ErrorTypeStrategy,
@@ -70,7 +70,7 @@ func (s *Service) ResolveEntity(ctx context.Context, entityID string, jwtClaims 
 			err,
 			map[string]interface{}{
 				"entity_id":  entityID,
-				"jwt_claims": extractClaimNames(jwtClaims),
+				"entity_map": extractClaimNames(claimsMap),
 			},
 		)
 	}
@@ -88,7 +88,7 @@ func (s *Service) ResolveEntity(ctx context.Context, entityID string, jwtClaims 
 	for _, strategy := range strategies {
 		attemptedStrategies = append(attemptedStrategies, strategy.Name)
 
-		result, err := s.executeStrategy(ctx, entityID, jwtClaims, strategy)
+		result, err := s.executeStrategy(ctx, entityID, claimsMap, strategy)
 		if err != nil {
 			lastError = err
 
@@ -130,7 +130,7 @@ func (s *Service) ResolveEntity(ctx context.Context, entityID string, jwtClaims 
 			"entity_id":            entityID,
 			"failure_strategy":     failureStrategy,
 			"attempted_strategies": attemptedStrategies,
-			"jwt_claims":           extractClaimNames(jwtClaims),
+			"entity_map":           extractClaimNames(claimsMap),
 		},
 	)
 }

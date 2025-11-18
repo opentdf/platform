@@ -2,6 +2,8 @@ package trust
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -63,6 +65,8 @@ type KeyDetails interface {
 
 // KeyIndex provides methods to locate keys by various criteria
 type KeyIndex interface {
+	fmt.Stringer
+	slog.LogValuer
 	// FindKeyByAlgorithm returns a key for the specified algorithm
 	// If includeLegacy is true, legacy keys will be included in the search
 	FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (KeyDetails, error)

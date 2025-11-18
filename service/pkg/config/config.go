@@ -42,6 +42,9 @@ type Config struct {
 	// By default, it runs all services.
 	Mode []string `mapstructure:"mode" json:"mode" default:"[\"all\"]"`
 
+	// Security holds platform-wide security overrides.
+	Security SecurityConfig `mapstructure:"security" json:"security"`
+
 	// SDKConfig represents the configuration settings for the SDK.
 	SDKConfig SDKConfig `mapstructure:"sdk_config" json:"sdk_config"`
 
@@ -101,6 +104,7 @@ func (c *Config) LogValue() slog.Value {
 		slog.Any("db", c.DB),
 		slog.Any("logger", c.Logger),
 		slog.Any("mode", c.Mode),
+		slog.Any("security", c.Security),
 		slog.Any("sdk_config", c.SDKConfig),
 		slog.Any("server", c.Server),
 	)
@@ -250,6 +254,15 @@ func (c *Config) Reload(ctx context.Context) error {
 	if err := validator.New().Struct(c); err != nil {
 		return errors.Join(err, ErrUnmarshallingConfig)
 	}
+
+	if skew := c.Security.ClockSkew(); skew > DefaultUnsafeClockSkew {
+		slog.WarnContext(ctx,
+			"unsafe clock skew override active",
+			slog.Duration("clock_skew", skew),
+			slog.Duration("default_clock_skew", DefaultUnsafeClockSkew),
+		)
+	}
+
 	return nil
 }
 

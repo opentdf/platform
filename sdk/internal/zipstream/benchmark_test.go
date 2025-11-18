@@ -3,6 +3,7 @@
 package zipstream
 
 import (
+	"hash/crc32"
 	"testing"
 )
 
@@ -55,7 +56,8 @@ func BenchmarkSegmentWriter_CRC32ContiguousProcessing(b *testing.B) {
 
 				// Write segments in specified order
 				for _, segIdx := range writeOrder {
-					_, err := writer.WriteSegment(ctx, segIdx, segmentData)
+					crc := crc32.ChecksumIEEE(segmentData)
+					_, err := writer.WriteSegment(ctx, segIdx, uint64(len(segmentData)), crc)
 					if err != nil {
 						b.Fatal(err)
 					}
@@ -99,7 +101,8 @@ func BenchmarkSegmentWriter_SparseIndices(b *testing.B) {
 		// Write sparse indices in order
 		for k := 0; k < n; k++ {
 			idx := k * stride
-			if _, err := w.WriteSegment(ctx, idx, data); err != nil {
+			crc := crc32.ChecksumIEEE(data)
+			if _, err := w.WriteSegment(ctx, idx, uint64(len(data)), crc); err != nil {
 				b.Fatal(err)
 			}
 		}
@@ -153,7 +156,8 @@ func BenchmarkSegmentWriter_VariableSegmentSizes(b *testing.B) {
 						segmentData[j] = byte((segIdx * j) % 256)
 					}
 
-					_, err := writer.WriteSegment(ctx, segIdx, segmentData)
+					crc := crc32.ChecksumIEEE(segmentData)
+					_, err := writer.WriteSegment(ctx, segIdx, uint64(len(segmentData)), crc)
 					if err != nil {
 						b.Fatal(err)
 					}
@@ -234,7 +238,8 @@ func BenchmarkSegmentWriter_MemoryPressure(b *testing.B) {
 						segmentData[j] = byte((orderIdx * j) % 256)
 					}
 
-					_, err := writer.WriteSegment(ctx, segIdx, segmentData)
+					crc := crc32.ChecksumIEEE(segmentData)
+					_, err := writer.WriteSegment(ctx, segIdx, uint64(len(segmentData)), crc)
 					if err != nil {
 						b.Fatal(err)
 					}
@@ -305,7 +310,8 @@ func BenchmarkSegmentWriter_ZIPGeneration(b *testing.B) {
 
 				// Write all segments
 				for segIdx := 0; segIdx < tc.segmentCount; segIdx++ {
-					_, err := writer.WriteSegment(ctx, segIdx, segmentData)
+					crc := crc32.ChecksumIEEE(segmentData)
+					_, err := writer.WriteSegment(ctx, segIdx, uint64(len(segmentData)), crc)
 					if err != nil {
 						b.Fatal(err)
 					}

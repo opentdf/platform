@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"embed"
+	"net/http"
 	"testing"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -315,6 +316,7 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_WithNegation() {
 		name                  string
 		modes                 []serviceregistry.ModeName
 		expectedServices      []string
+		excludedServices      []string // Services that MUST NOT be in the registry
 		shouldError           bool
 		expectedErrorContains string
 	}{
@@ -322,16 +324,55 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_WithNegation() {
 			name:             "All_Minus_KAS",
 			modes:            []serviceregistry.ModeName{"all", "-kas"},
 			expectedServices: []string{"policy", "authorization", "wellknown", "entityresolution"},
+			excludedServices: []string{"kas"},
 		},
 		{
 			name:             "All_Minus_EntityResolution",
 			modes:            []serviceregistry.ModeName{"all", "-entityresolution"},
 			expectedServices: []string{"policy", "authorization", "kas", "wellknown"},
+			excludedServices: []string{"entityresolution"},
 		},
 		{
 			name:             "All_Minus_Multiple_Services",
 			modes:            []serviceregistry.ModeName{"all", "-kas", "-entityresolution"},
 			expectedServices: []string{"policy", "authorization", "wellknown"},
+			excludedServices: []string{"kas", "entityresolution"},
+		},
+		{
+			name:             "Core_Minus_Policy",
+			modes:            []serviceregistry.ModeName{"core", "-policy"},
+			expectedServices: []string{"authorization", "wellknown"},
+			excludedServices: []string{"policy", "kas", "entityresolution"},
+		},
+		{
+			name:             "Core_Minus_Authorization",
+			modes:            []serviceregistry.ModeName{"core", "-authorization"},
+			expectedServices: []string{"policy", "wellknown"},
+			excludedServices: []string{"authorization", "kas", "entityresolution"},
+		},
+		{
+			name:             "Core_Minus_WellKnown",
+			modes:            []serviceregistry.ModeName{"core", "-wellknown"},
+			expectedServices: []string{"policy", "authorization"},
+			excludedServices: []string{"wellknown", "kas", "entityresolution"},
+		},
+		{
+			name:             "All_Minus_Policy_And_Authorization",
+			modes:            []serviceregistry.ModeName{"all", "-policy", "-authorization"},
+			expectedServices: []string{"kas", "wellknown", "entityresolution"},
+			excludedServices: []string{"policy", "authorization"},
+		},
+		{
+			name:             "All_Minus_Three_Services",
+			modes:            []serviceregistry.ModeName{"all", "-kas", "-entityresolution", "-policy"},
+			expectedServices: []string{"authorization", "wellknown"},
+			excludedServices: []string{"kas", "entityresolution", "policy"},
+		},
+		{
+			name:             "Core_Minus_Multiple_Services",
+			modes:            []serviceregistry.ModeName{"core", "-policy", "-wellknown"},
+			expectedServices: []string{"authorization"},
+			excludedServices: []string{"policy", "wellknown", "kas", "entityresolution"},
 		},
 		{
 			name:                  "Negation_Without_Base_Mode",
@@ -354,7 +395,7 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_WithNegation() {
 			registeredServices, err := RegisterCoreServices(registry, tc.modes)
 
 			if tc.shouldError {
-				suite.Error(err)
+				suite.Require().Error(err)
 				if tc.expectedErrorContains != "" {
 					suite.Contains(err.Error(), tc.expectedErrorContains)
 				}
@@ -368,6 +409,22 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_WithNegation() {
 
 			suite.Require().NoError(err)
 			suite.ElementsMatch(tc.expectedServices, registeredServices)
+
+			// Verify expected services ARE registered in the registry
+			for _, expectedService := range tc.expectedServices {
+				ns, err := registry.GetNamespace(expectedService)
+				suite.Require().NoError(err, "Expected service '%s' should be registered", expectedService)
+				suite.NotEmpty(ns.Services, "Service '%s' should have implementations", expectedService)
+			}
+
+			// Verify excluded services are NOT in the registry
+			for _, excludedService := range tc.excludedServices {
+				_, err := registry.GetNamespace(excludedService)
+				suite.Require().Error(err, "Service '%s' should NOT be registered", excludedService)
+				suite.Contains(err.Error(), "namespace not found",
+					"Should get 'namespace not found' for excluded service '%s'", excludedService)
+			}
+
 			// check that registered namespaces are enabled
 			for _, namespace := range registry.GetNamespaces() {
 				suite.Contains(tc.expectedServices, namespace.Name)
@@ -385,31 +442,43 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_BackwardCompatibility() 
 		name             string
 		mode             []serviceregistry.ModeName
 		expectedServices []string
+		excludedServices []string
 	}{
 		{
 			name:             "All_Mode_No_Negation",
 			mode:             []serviceregistry.ModeName{"all"},
 			expectedServices: []string{ServicePolicy.String(), ServiceAuthorization.String(), ServiceKAS.String(), ServiceWellKnown.String(), ServiceEntityResolution.String()},
+			excludedServices: []string{},
 		},
 		{
 			name:             "Core_Mode_No_Negation",
 			mode:             []serviceregistry.ModeName{"core"},
 			expectedServices: []string{ServicePolicy.String(), ServiceAuthorization.String(), ServiceWellKnown.String()},
+			excludedServices: []string{ServiceKAS.String(), ServiceEntityResolution.String()},
 		},
 		{
 			name:             "KAS_Mode_No_Negation",
 			mode:             []serviceregistry.ModeName{"kas"},
 			expectedServices: []string{ServiceKAS.String()},
+			excludedServices: []string{ServicePolicy.String(), ServiceAuthorization.String(), ServiceWellKnown.String(), ServiceEntityResolution.String()},
 		},
 		{
 			name:             "EntityResolution_Mode_No_Negation",
 			mode:             []serviceregistry.ModeName{"entityresolution"},
 			expectedServices: []string{ServiceEntityResolution.String()},
+			excludedServices: []string{ServicePolicy.String(), ServiceAuthorization.String(), ServiceWellKnown.String(), ServiceKAS.String()},
 		},
 		{
-			name:             "Mixed_Modes_No_Negation",
+			name:             "Core_Plus_KAS",
 			mode:             []serviceregistry.ModeName{"core", "kas"},
 			expectedServices: []string{ServicePolicy.String(), ServiceAuthorization.String(), ServiceWellKnown.String(), ServiceKAS.String()},
+			excludedServices: []string{ServiceEntityResolution.String()},
+		},
+		{
+			name:             "Core_Plus_EntityResolution",
+			mode:             []serviceregistry.ModeName{"core", "entityresolution"},
+			expectedServices: []string{ServicePolicy.String(), ServiceAuthorization.String(), ServiceWellKnown.String(), ServiceEntityResolution.String()},
+			excludedServices: []string{ServiceKAS.String()},
 		},
 	}
 
@@ -421,6 +490,20 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_BackwardCompatibility() 
 
 			suite.Require().NoError(err)
 			suite.ElementsMatch(tc.expectedServices, registeredServices)
+
+			// Verify expected services ARE registered
+			for _, expectedService := range tc.expectedServices {
+				ns, err := registry.GetNamespace(expectedService)
+				suite.Require().NoError(err, "Expected service '%s' should be registered", expectedService)
+				suite.NotEmpty(ns.Services, "Service '%s' should have implementations", expectedService)
+			}
+
+			// Verify excluded services are NOT registered
+			for _, excludedService := range tc.excludedServices {
+				_, err := registry.GetNamespace(excludedService)
+				suite.Require().Error(err, "Service '%s' should NOT be registered", excludedService)
+				suite.Contains(err.Error(), "namespace not found")
+			}
 
 			modeStrings := make([]string, len(tc.mode))
 			for i, m := range tc.mode {
@@ -567,7 +650,6 @@ func (suite *ServiceTestSuite) TestStartServices_StartsInRegistrationOrder() {
 
 	newLogger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
 	suite.Require().NoError(err)
-
 	cleanup, err := startServices(ctx, startServicesParams{
 		cfg: &config.Config{
 			Mode: []string{"test"}, // Enable the mode for our test services
@@ -596,4 +678,228 @@ func (suite *ServiceTestSuite) TestStartServices_StartsInRegistrationOrder() {
 
 	// call close function
 	registry.Shutdown()
+}
+
+// Test_Extra_Services_With_Mode_Negation validates that extra services (both extra core services
+// and standalone extra services) behave correctly with mode negation
+func (suite *ServiceTestSuite) Test_Extra_Services_With_Mode_Negation() {
+	testCases := []struct {
+		name                   string
+		modes                  []serviceregistry.ModeName
+		useExtraCoreServices   bool
+		useExtraServices       bool
+		extraCoreNamespace     string
+		extraServiceNamespace  string
+		expectExtraCoreService bool
+		expectExtraService     bool
+		description            string
+	}{
+		{
+			name:                   "All_Mode_With_Extra_Core_Service",
+			modes:                  []serviceregistry.ModeName{serviceregistry.ModeALL},
+			useExtraCoreServices:   true,
+			useExtraServices:       false,
+			extraCoreNamespace:     "extracore",
+			expectExtraCoreService: true,
+			expectExtraService:     false,
+			description:            "All mode should register extra core services",
+		},
+		{
+			name:                   "Core_Mode_With_Extra_Core_Service",
+			modes:                  []serviceregistry.ModeName{serviceregistry.ModeCore},
+			useExtraCoreServices:   true,
+			useExtraServices:       false,
+			extraCoreNamespace:     "extracore",
+			expectExtraCoreService: true,
+			expectExtraService:     false,
+			description:            "Core mode should register extra core services",
+		},
+		{
+			name:                   "All_Mode_With_Extra_Service",
+			modes:                  []serviceregistry.ModeName{serviceregistry.ModeALL},
+			useExtraCoreServices:   false,
+			useExtraServices:       true,
+			extraServiceNamespace:  "extraservice",
+			expectExtraCoreService: false,
+			expectExtraService:     true,
+			description:            "All mode should register extra services",
+		},
+		{
+			name:                   "Extra_Service_Needs_Individual_Mode",
+			modes:                  []serviceregistry.ModeName{"test", "extraservice"},
+			useExtraCoreServices:   false,
+			useExtraServices:       true,
+			extraServiceNamespace:  "extraservice",
+			expectExtraCoreService: false,
+			expectExtraService:     true,
+			description:            "Extra services need their individual mode included to be active",
+		},
+		{
+			name:                   "All_Minus_ExtraCore_Excludes_Extra_Core_Service",
+			modes:                  []serviceregistry.ModeName{serviceregistry.ModeALL, "-extracore"},
+			useExtraCoreServices:   true,
+			useExtraServices:       false,
+			extraCoreNamespace:     "extracore",
+			expectExtraCoreService: false,
+			expectExtraService:     false,
+			description:            "Service negation should exclude extra core services",
+		},
+		{
+			name:                   "Core_Minus_ExtraCore_Excludes_Extra_Core_Service",
+			modes:                  []serviceregistry.ModeName{serviceregistry.ModeCore, "-extracore"},
+			useExtraCoreServices:   true,
+			useExtraServices:       false,
+			extraCoreNamespace:     "extracore",
+			expectExtraCoreService: false,
+			expectExtraService:     false,
+			description:            "Core mode with negation should exclude extra core services",
+		},
+		{
+			name:                   "All_Minus_ExtraService_With_Extra_Services",
+			modes:                  []serviceregistry.ModeName{serviceregistry.ModeALL, "extraservice", "-extraservice"},
+			useExtraCoreServices:   false,
+			useExtraServices:       true,
+			extraServiceNamespace:  "extraservice",
+			expectExtraCoreService: false,
+			expectExtraService:     false,
+			description:            "Negating an extra service should exclude it even if its mode is included",
+		},
+		{
+			name:                   "All_With_Both_Extra_Types",
+			modes:                  []serviceregistry.ModeName{serviceregistry.ModeALL, "extraservice"},
+			useExtraCoreServices:   true,
+			useExtraServices:       true,
+			extraCoreNamespace:     "extracore",
+			extraServiceNamespace:  "extraservice",
+			expectExtraCoreService: true,
+			expectExtraService:     true,
+			description:            "All mode should register both extra core and extra services",
+		},
+		{
+			name:                   "All_Minus_ExtraCore_With_ExtraService",
+			modes:                  []serviceregistry.ModeName{serviceregistry.ModeALL, "-extracore", "extraservice"},
+			useExtraCoreServices:   true,
+			useExtraServices:       true,
+			extraCoreNamespace:     "extracore",
+			extraServiceNamespace:  "extraservice",
+			expectExtraCoreService: false,
+			expectExtraService:     true,
+			description:            "Service negation excludes extra core services; extra services need their mode included",
+		},
+		{
+			name:                   "Core_With_Both_Extra_Types",
+			modes:                  []serviceregistry.ModeName{serviceregistry.ModeCore, "extraservice"},
+			useExtraCoreServices:   true,
+			useExtraServices:       true,
+			extraCoreNamespace:     "extracore",
+			extraServiceNamespace:  "extraservice",
+			expectExtraCoreService: true,
+			expectExtraService:     true,
+			description:            "Both extra core services (inherit core) and extra services (need individual mode) should register",
+		},
+		{
+			name:                   "All_Minus_Multiple_Including_ExtraCore",
+			modes:                  []serviceregistry.ModeName{serviceregistry.ModeALL, "-kas", "-extracore"},
+			useExtraCoreServices:   true,
+			useExtraServices:       false,
+			extraCoreNamespace:     "extracore",
+			expectExtraCoreService: false,
+			expectExtraService:     false,
+			description:            "Multiple negations including extra core service should exclude all specified services",
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			// Create service registry
+			registry := serviceregistry.NewServiceRegistry()
+
+			// Register essential services
+			err := RegisterEssentialServices(registry)
+			suite.Require().NoError(err, "Failed to register essential services")
+
+			// Register core services with the specified modes
+			_, err = RegisterCoreServices(registry, tc.modes)
+			suite.Require().NoError(err, "Failed to register core services")
+			// Create extra core services if needed (inherit from core/all modes)
+			var extraCoreServices []serviceregistry.IService
+			if tc.useExtraCoreServices {
+				extraCoreService, _ := mockTestServiceRegistry(mockTestServiceOptions{
+					namespace:     tc.extraCoreNamespace,
+					serviceName:   "ExtraCoreService",
+					serviceObject: TestService{},
+					serviceHandler: func(_ context.Context, mux *runtime.ServeMux) error {
+						return mux.HandlePath(http.MethodGet, "/extracore/status", TestService{}.TestHandler)
+					},
+				})
+				extraCoreServices = append(extraCoreServices, extraCoreService)
+			}
+
+			// Create extra services if needed (need individual mode specified)
+			var extraServices []serviceregistry.IService
+			if tc.useExtraServices {
+				extraService, _ := mockTestServiceRegistry(mockTestServiceOptions{
+					namespace:     tc.extraServiceNamespace,
+					serviceName:   "ExtraService",
+					serviceObject: TestService{},
+					serviceHandler: func(_ context.Context, mux *runtime.ServeMux) error {
+						return mux.HandlePath(http.MethodGet, "/extraservice/status", TestService{}.TestHandler)
+					},
+				})
+				extraServices = append(extraServices, extraService)
+			}
+
+			// Convert ModeName slice to string slice for RegisterServicesFromConfiguration
+			modeStrings := make([]string, len(tc.modes))
+			for i, m := range tc.modes {
+				modeStrings[i] = string(m)
+			}
+
+			// Register extra core services if provided (inherit from core/all modes)
+			if len(extraCoreServices) > 0 {
+				extraCoreServiceConfigs := getServiceConfigurationsFromIServices(
+					extraCoreServices,
+					[]serviceregistry.ModeName{serviceregistry.ModeCore}, // Inherit core mode
+					false, // Don't create individual modes
+				)
+				_, err := registry.RegisterServicesFromConfiguration(modeStrings, extraCoreServiceConfigs)
+				suite.Require().NoError(err, "Failed to register extra core services")
+			}
+
+			// Register extra services if provided (need individual mode)
+			if len(extraServices) > 0 {
+				extraServiceConfigs := getServiceConfigurationsFromIServices(
+					extraServices,
+					nil,  // Don't inherit any modes
+					true, // Create individual mode for each service
+				)
+				_, err := registry.RegisterServicesFromConfiguration(modeStrings, extraServiceConfigs)
+				suite.Require().NoError(err, "Failed to register extra services")
+			}
+
+			// Verify extra core service registration
+			if tc.useExtraCoreServices {
+				ns, err := registry.GetNamespace(tc.extraCoreNamespace)
+				if tc.expectExtraCoreService {
+					suite.Require().NoError(err, "Extra core service namespace should exist when expected")
+					suite.NotEmpty(ns.Services, "Extra core service should be registered")
+				} else {
+					suite.Require().Error(err, "Extra core service namespace should not exist when excluded")
+					suite.Contains(err.Error(), "namespace not found", "Should get 'namespace not found' error")
+				}
+			}
+
+			// Verify extra service registration
+			if tc.useExtraServices {
+				ns, err := registry.GetNamespace(tc.extraServiceNamespace)
+				if tc.expectExtraService {
+					suite.Require().NoError(err, "Extra service namespace should exist when expected")
+					suite.NotEmpty(ns.Services, "Extra service should be registered")
+				} else {
+					suite.Require().Error(err, "Extra service namespace should not exist when excluded")
+					suite.Contains(err.Error(), "namespace not found", "Should get 'namespace not found' error")
+				}
+			}
+		})
+	}
 }

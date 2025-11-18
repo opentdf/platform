@@ -1409,7 +1409,7 @@ func TestVerifyRewrapRequests(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			provider := tt.setupProvider()
-			ctx := context.Background()
+			ctx := t.Context()
 
 			// Test that the function doesn't panic and returns appropriate errors
 			var err error
@@ -1421,10 +1421,10 @@ func TestVerifyRewrapRequests(t *testing.T) {
 			}, "Function should not panic: "+tt.name)
 
 			if tt.expectError {
-				assert.Error(t, err, "Expected error but got none: "+tt.name)
+				require.Error(t, err, "Expected error but got none: "+tt.name)
 				assert.Contains(t, err.Error(), tt.errorMessage, "Error message should contain expected text: "+tt.errorMessage)
 			} else {
-				assert.NoError(t, err, "Unexpected error: "+tt.name)
+				require.NoError(t, err, "Unexpected error: "+tt.name)
 				assert.NotNil(t, policy, "Policy should not be nil on success")
 				assert.NotNil(t, results, "Results should not be nil on success")
 			}
@@ -1534,7 +1534,7 @@ func TestVerifyNanoRewrapRequests(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			provider := tt.setupProvider()
-			ctx := context.Background()
+			ctx := t.Context()
 
 			// Test that the function doesn't panic and returns appropriate errors
 			var err error
@@ -1545,7 +1545,7 @@ func TestVerifyNanoRewrapRequests(t *testing.T) {
 			}, "Function should not panic: "+tt.name)
 
 			if tt.expectError {
-				assert.Error(t, err, "Expected error but got none: "+tt.name)
+				require.Error(t, err, "Expected error but got none: "+tt.name)
 				assert.Contains(t, err.Error(), tt.errorMessage, "Error message should contain expected text: "+tt.errorMessage)
 			} else {
 				assert.NotNil(t, results, "Results should not be nil")
@@ -1553,7 +1553,7 @@ func TestVerifyNanoRewrapRequests(t *testing.T) {
 					// Special case: multiple KAOs should result in error stored in results
 					assert.Len(t, results, 2, "Should have two KAO results with errors")
 					for _, result := range results {
-						assert.Error(t, result.Error, "KAO result should contain error")
+						require.Error(t, result.Error, "KAO result should contain error")
 						assert.Contains(t, result.Error.Error(), tt.errorMessage, "Error should contain expected message")
 					}
 				}

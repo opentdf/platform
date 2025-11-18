@@ -1280,3 +1280,270 @@ func TestAddResultsToResponse(t *testing.T) {
 		})
 	}
 }
+
+func TestVerifyRewrapRequests(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+
+	// Valid policy for testing
+	validPolicy := &Policy{
+		UUID: uuid.New(),
+		Body: PolicyBody{
+			DataAttributes: []Attribute{
+				{
+					URI:  "https://example.com/attr/test",
+					Name: "test",
+				},
+			},
+		},
+	}
+	validPolicyJSON, _ := json.Marshal(validPolicy)
+	validPolicyB64 := base64.StdEncoding.EncodeToString(validPolicyJSON)
+
+	tests := []struct {
+		name          string
+		setupProvider func() *Provider
+		request       *kaspb.UnsignedRewrapRequest_WithPolicyRequest
+		expectError   bool
+		errorMessage  string
+	}{
+		{
+			name: "nil request should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request:      nil,
+			expectError:  true,
+			errorMessage: "request is nil",
+		},
+		{
+			name: "nil policy should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: nil, // nil policy
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao",
+						KeyAccessObject: &kaspb.KeyAccess{
+							KeyType: "wrapped",
+							Kid:     "test-kid",
+						},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "policy is nil", // The function returns "policy is nil" for nil policy
+		},
+		{
+			name: "nil policy body should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+					Id:   "test-policy",
+					Body: "", // empty body will cause JSON decode to fail
+				},
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao",
+						KeyAccessObject: &kaspb.KeyAccess{
+							KeyType: "wrapped",
+							Kid:     "test-kid",
+						},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "unexpected end of JSON input", // Actual error from JSON decode
+		},
+		{
+			name: "nil key access object should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger:       testLogger,
+					KeyDelegator: &trust.DelegatingKeyService{}, // Use minimal implementation
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+					Id:   "test-policy",
+					Body: validPolicyB64,
+				},
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao",
+						KeyAccessObject:   nil, // nil key access object
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "no valid KAOs", // Actual error message
+		},
+		{
+			name: "empty key access objects should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+					Id:   "test-policy",
+					Body: validPolicyB64,
+				},
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{}, // empty slice
+			},
+			expectError:  true,
+			errorMessage: "no valid KAOs", // Actual error message
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := tt.setupProvider()
+			ctx := t.Context()
+
+			// Test that the function doesn't panic and returns appropriate errors
+			var err error
+			var policy *Policy
+			var results map[string]kaoResult
+
+			assert.NotPanics(t, func() {
+				policy, results, err = provider.verifyRewrapRequests(ctx, tt.request)
+			}, "Function should not panic: "+tt.name)
+
+			if tt.expectError {
+				require.Error(t, err, "Expected error but got none: "+tt.name)
+				assert.Contains(t, err.Error(), tt.errorMessage, "Error message should contain expected text: "+tt.errorMessage)
+			} else {
+				require.NoError(t, err, "Unexpected error: "+tt.name)
+				assert.NotNil(t, policy, "Policy should not be nil on success")
+				assert.NotNil(t, results, "Results should not be nil on success")
+			}
+		})
+	}
+}
+
+func TestVerifyNanoRewrapRequests(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+
+	tests := []struct {
+		name                string
+		setupProvider       func() *Provider
+		request             *kaspb.UnsignedRewrapRequest_WithPolicyRequest
+		expectError         bool
+		errorMessage        string
+		checkResultErrors   bool // Whether to check for errors in the results map
+		expectedResultCount int  // Expected number of results when checkResultErrors is true
+	}{
+		{
+			name: "nil request should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request:             nil,
+			expectError:         true,
+			errorMessage:        "request is nil",
+			checkResultErrors:   false,
+			expectedResultCount: 0,
+		},
+		{
+			name: "multiple KAOs should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+					Id:   "test-policy",
+					Body: "test-body",
+				},
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao-1",
+						KeyAccessObject: &kaspb.KeyAccess{
+							Header: []byte("fake-header-1"),
+						},
+					},
+					{
+						KeyAccessObjectId: "test-kao-2",
+						KeyAccessObject: &kaspb.KeyAccess{
+							Header: []byte("fake-header-2"),
+						},
+					},
+				},
+			},
+			expectError:         false, // Error goes into results, not returned directly
+			errorMessage:        "NanoTDFs should not have multiple KAOs per Policy",
+			checkResultErrors:   true, // Check for errors in the results map
+			expectedResultCount: 2,    // Should have two KAO results with errors
+		},
+		{
+			name: "invalid NanoTDF header should fail gracefully",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+					Id:   "test-policy",
+					Body: "test-body",
+				},
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao",
+						KeyAccessObject: &kaspb.KeyAccess{
+							Header: []byte("invalid-nano-header"), // Invalid header that will fail parsing
+						},
+					},
+				},
+			},
+			expectError:         false, // Function returns nil, results, nil (fails gracefully)
+			errorMessage:        "",
+			checkResultErrors:   false,
+			expectedResultCount: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := tt.setupProvider()
+			ctx := t.Context()
+
+			// Test that the function doesn't panic and returns appropriate errors
+			var err error
+			var results map[string]kaoResult
+
+			assert.NotPanics(t, func() {
+				_, results, err = provider.verifyNanoRewrapRequests(ctx, tt.request)
+			}, "Function should not panic: "+tt.name)
+
+			if tt.expectError {
+				require.Error(t, err, "Expected error but got none: "+tt.name)
+				assert.Contains(t, err.Error(), tt.errorMessage, "Error message should contain expected text: "+tt.errorMessage)
+			} else {
+				assert.NotNil(t, results, "Results should not be nil")
+				if tt.checkResultErrors {
+					// Check for errors stored in results map
+					assert.Len(t, results, tt.expectedResultCount, "Should have expected number of KAO results with errors")
+					for _, result := range results {
+						require.Error(t, result.Error, "KAO result should contain error")
+						assert.Contains(t, result.Error.Error(), tt.errorMessage, "Error should contain expected message")
+					}
+				}
+			}
+		})
+	}
+}

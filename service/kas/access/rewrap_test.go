@@ -1305,7 +1305,6 @@ func TestVerifyRewrapRequests(t *testing.T) {
 		request       *kaspb.UnsignedRewrapRequest_WithPolicyRequest
 		expectError   bool
 		errorMessage  string
-		description   string
 	}{
 		{
 			name: "nil request should return error",
@@ -1317,7 +1316,6 @@ func TestVerifyRewrapRequests(t *testing.T) {
 			request:      nil,
 			expectError:  true,
 			errorMessage: "request is nil",
-			description:  "nil request should return bad request instead of panicking",
 		},
 		{
 			name: "nil policy should return error",
@@ -1340,7 +1338,6 @@ func TestVerifyRewrapRequests(t *testing.T) {
 			},
 			expectError:  true,
 			errorMessage: "policy is nil", // The function returns "policy is nil" for nil policy
-			description:  "nil policy should return bad request instead of panicking",
 		},
 		{
 			name: "nil policy body should return error",
@@ -1366,7 +1363,6 @@ func TestVerifyRewrapRequests(t *testing.T) {
 			},
 			expectError:  true,
 			errorMessage: "unexpected end of JSON input", // Actual error from JSON decode
-			description:  "empty policy body should return JSON decode error instead of panicking",
 		},
 		{
 			name: "nil key access object should return error",
@@ -1390,7 +1386,6 @@ func TestVerifyRewrapRequests(t *testing.T) {
 			},
 			expectError:  true,
 			errorMessage: "no valid KAOs", // Actual error message
-			description:  "nil key access object should return no valid KAOs error instead of panicking",
 		},
 		{
 			name: "empty key access objects should return error",
@@ -1408,7 +1403,6 @@ func TestVerifyRewrapRequests(t *testing.T) {
 			},
 			expectError:  true,
 			errorMessage: "no valid KAOs", // Actual error message
-			description:  "empty key access objects should return no valid KAOs error instead of panicking",
 		},
 	}
 
@@ -1424,16 +1418,145 @@ func TestVerifyRewrapRequests(t *testing.T) {
 
 			assert.NotPanics(t, func() {
 				policy, results, err = provider.verifyRewrapRequests(ctx, tt.request)
-			}, "Function should not panic: "+tt.description)
+			}, "Function should not panic: "+tt.name)
 
 			if tt.expectError {
-				assert.Error(t, err, "Expected error but got none: "+tt.description)
-				slog.Info("Received error as expected", "error", err.Error())
-				assert.Contains(t, err.Error(), tt.errorMessage, "Error message should contain expected text: "+tt.description)
+				assert.Error(t, err, "Expected error but got none: "+tt.name)
+				assert.Contains(t, err.Error(), tt.errorMessage, "Error message should contain expected text: "+tt.errorMessage)
 			} else {
-				assert.NoError(t, err, "Unexpected error: "+tt.description)
+				assert.NoError(t, err, "Unexpected error: "+tt.name)
 				assert.NotNil(t, policy, "Policy should not be nil on success")
 				assert.NotNil(t, results, "Results should not be nil on success")
+			}
+		})
+	}
+}
+
+func TestVerifyNanoRewrapRequests(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+
+	tests := []struct {
+		name          string
+		setupProvider func() *Provider
+		request       *kaspb.UnsignedRewrapRequest_WithPolicyRequest
+		expectError   bool
+		errorMessage  string
+	}{
+		{
+			name: "nil request should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request:      nil,
+			expectError:  true,
+			errorMessage: "request is nil",
+		},
+		{
+			name: "nil policy should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: nil, // nil policy
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao",
+						KeyAccessObject: &kaspb.KeyAccess{
+							KeyType: "wrapped",
+							Kid:     "test-kid",
+						},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "policy is nil",
+		},
+		{
+			name: "multiple KAOs should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+					Id:   "test-policy",
+					Body: "test-body",
+				},
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao-1",
+						KeyAccessObject: &kaspb.KeyAccess{
+							Header: []byte("fake-header-1"),
+						},
+					},
+					{
+						KeyAccessObjectId: "test-kao-2",
+						KeyAccessObject: &kaspb.KeyAccess{
+							Header: []byte("fake-header-2"),
+						},
+					},
+				},
+			},
+			expectError:  false, // Error goes into results, not returned directly
+			errorMessage: "NanoTDFs should not have multiple KAOs per Policy",
+		},
+		{
+			name: "invalid NanoTDF header should fail gracefully",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+					Id:   "test-policy",
+					Body: "test-body",
+				},
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao",
+						KeyAccessObject: &kaspb.KeyAccess{
+							Header: []byte("invalid-nano-header"), // Invalid header that will fail parsing
+						},
+					},
+				},
+			},
+			expectError:  false, // Function returns nil, results, nil (fails gracefully)
+			errorMessage: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := tt.setupProvider()
+			ctx := context.Background()
+
+			// Test that the function doesn't panic and returns appropriate errors
+			var err error
+			var results map[string]kaoResult
+
+			assert.NotPanics(t, func() {
+				_, results, err = provider.verifyNanoRewrapRequests(ctx, tt.request)
+			}, "Function should not panic: "+tt.name)
+
+			if tt.expectError {
+				assert.Error(t, err, "Expected error but got none: "+tt.name)
+				assert.Contains(t, err.Error(), tt.errorMessage, "Error message should contain expected text: "+tt.errorMessage)
+			} else {
+				assert.NotNil(t, results, "Results should not be nil")
+				if tt.name == "multiple KAOs should return error" {
+					// Special case: multiple KAOs should result in error stored in results
+					assert.Len(t, results, 2, "Should have two KAO results with errors")
+					for _, result := range results {
+						assert.Error(t, result.Error, "KAO result should contain error")
+						assert.Contains(t, result.Error.Error(), tt.errorMessage, "Error should contain expected message")
+					}
+				}
 			}
 		})
 	}

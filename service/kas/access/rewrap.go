@@ -108,6 +108,8 @@ const (
 	ErrInternal        = Error("internal error")
 
 	ErrNanoTDFPolicyModeUnsupported = Error("unsupported policy mode")
+
+	errNoValidKeyAccessObjects = Error("no valid KAOs")
 )
 
 func err400(s string) error {
@@ -597,10 +599,18 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 		return nil, err400(err.Error())
 	}
 	if len(tdf3Reqs) > 0 {
-		resp.SessionPublicKey, results = p.tdf3Rewrap(ctx, tdf3Reqs, body.GetClientPublicKey(), entityInfo, additionalRewrapContext)
+		resp.SessionPublicKey, results, err = p.tdf3Rewrap(ctx, tdf3Reqs, body.GetClientPublicKey(), entityInfo, additionalRewrapContext)
+		if err != nil {
+			p.Logger.WarnContext(ctx, "status 400, tdf3 rewrap failure", slog.Any("error", err))
+			return nil, err
+		}
 		addResultsToResponse(resp, results)
 	} else {
-		resp.SessionPublicKey, results = p.nanoTDFRewrap(ctx, nanoReqs, body.GetClientPublicKey(), entityInfo, additionalRewrapContext)
+		resp.SessionPublicKey, results, err = p.nanoTDFRewrap(ctx, nanoReqs, body.GetClientPublicKey(), entityInfo, additionalRewrapContext)
+		if err != nil {
+			p.Logger.WarnContext(ctx, "status 400, nanoTDF rewrap failure", slog.Any("error", err))
+			return nil, err
+		}
 		addResultsToResponse(resp, results)
 	}
 
@@ -847,7 +857,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 
 	if !anyValidKAOs {
 		p.Logger.WarnContext(ctx, "no valid KAOs found")
-		return policy, results, errors.New("no valid KAOs")
+		return policy, results, errNoValidKeyAccessObjects
 	}
 
 	return policy, results, nil
@@ -879,7 +889,7 @@ func (p *Provider) listLegacyKeys(ctx context.Context) []trust.KeyIdentifier {
 	return kidsToCheck
 }
 
-func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo, additionalRewrapContext *AdditionalRewrapContext) (string, policyKAOResults) {
+func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo, additionalRewrapContext *AdditionalRewrapContext) (string, policyKAOResults, error) {
 	if p.Tracer != nil {
 		var span trace.Span
 		ctx, span = p.Start(ctx, "rewrap-tdf3")
@@ -890,11 +900,14 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 	var policies []*Policy
 	policyReqs := make(map[*Policy]*kaspb.UnsignedRewrapRequest_WithPolicyRequest)
 	for _, req := range requests {
-		if req == nil || req.GetPolicy() == nil {
+		if req == nil || req.GetPolicy() == nil || req.GetPolicy().GetId() == "" {
 			p.Logger.WarnContext(ctx, "rewrap: nil request or policy")
 			continue
 		}
 		policy, kaoResults, err := p.verifyRewrapRequests(ctx, req)
+		if err != nil && !errors.Is(err, errNoValidKeyAccessObjects) {
+			return "", results, err400("invalid request")
+		}
 		policyID := req.GetPolicy().GetId()
 		results[policyID] = kaoResults
 		if err != nil {
@@ -922,14 +935,14 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			slog.Any("error", accessErr),
 		)
 		failAllKaos(requests, results, err500("could not perform access"))
-		return "", results
+		return "", results, nil
 	}
 
 	asymEncrypt, err := ocrypto.FromPublicPEMWithSalt(clientPublicKey, security.TDFSalt(), nil)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "ocrypto.NewAsymEncryption", slog.Any("error", err))
 		failAllKaos(requests, results, err400("invalid request"))
-		return "", results
+		return "", results, nil
 	}
 	encap := security.OCEncapsulator{PublicKeyEncryptor: asymEncrypt}
 
@@ -940,12 +953,12 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			p.Logger.ErrorContext(ctx, "unable to serialize ephemeral key", slog.Any("error", err))
 			// This may be a 500, but could also be caused by a bad clientPublicKey
 			failAllKaos(requests, results, err400("invalid request"))
-			return "", results
+			return "", results, nil
 		}
 		if !p.ECTDFEnabled && !p.Preview.ECTDFEnabled {
 			p.Logger.ErrorContext(ctx, "ec rewrap not enabled")
 			failAllKaos(requests, results, err400("invalid request"))
-			return "", results
+			return "", results, nil
 		}
 	}
 
@@ -1012,10 +1025,10 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
 		}
 	}
-	return sessionKey, results
+	return sessionKey, results, nil
 }
 
-func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo, additionalRewrapContext *AdditionalRewrapContext) (string, policyKAOResults) {
+func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo, additionalRewrapContext *AdditionalRewrapContext) (string, policyKAOResults, error) {
 	ctx, span := p.Start(ctx, "nanoTDFRewrap")
 	defer span.End()
 
@@ -1025,7 +1038,10 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 	policyReqs := make(map[*Policy]*kaspb.UnsignedRewrapRequest_WithPolicyRequest)
 
 	for _, req := range requests {
-		policy, kaoResults := p.verifyNanoRewrapRequests(ctx, req)
+		policy, kaoResults, err := p.verifyNanoRewrapRequests(ctx, req)
+		if err != nil {
+			return "", results, err400("invalid request")
+		}
 		results[req.GetPolicy().GetId()] = kaoResults
 		if policy != nil {
 			policies = append(policies, policy)
@@ -1041,20 +1057,20 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies, additionalRewrapContext.Obligations.FulfillableFQNs)
 	if accessErr != nil {
 		failAllKaos(requests, results, err500("could not perform access"))
-		return "", results
+		return "", results, nil
 	}
 
 	sessionKey, err := p.KeyDelegator.GenerateECSessionKey(ctx, clientPublicKey)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failure in GenerateNanoTDFSessionKey", slog.Any("error", err))
 		failAllKaos(requests, results, err400("keypair mismatch"))
-		return "", results
+		return "", results, nil
 	}
 	sessionKeyPEM, err := sessionKey.PublicKeyAsPEM()
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failure in PublicKeyToPem", slog.Any("error", err))
 		failAllKaos(requests, results, err500(""))
-		return "", results
+		return "", results, nil
 	}
 
 	for _, pdpAccess := range pdpAccessResults {
@@ -1111,11 +1127,23 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
 		}
 	}
-	return sessionKeyPEM, results
+	return sessionKeyPEM, results, nil
 }
 
-func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.UnsignedRewrapRequest_WithPolicyRequest) (*Policy, map[string]kaoResult) {
+func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.UnsignedRewrapRequest_WithPolicyRequest) (*Policy, map[string]kaoResult, error) {
 	results := make(map[string]kaoResult)
+
+	// Check if req is nil
+	if req == nil {
+		p.Logger.WarnContext(ctx, "request is nil")
+		return nil, nil, errors.New("request is nil")
+	}
+
+	// Check if policy is nil
+	if req.GetPolicy() == nil {
+		p.Logger.WarnContext(ctx, "policy is nil")
+		return nil, nil, errors.New("policy is nil")
+	}
 
 	for _, kao := range req.GetKeyAccessObjects() {
 		// there should never be multiple KAOs in policy
@@ -1128,7 +1156,7 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 		header, _, err := sdk.NewNanoTDFHeaderFromReader(headerReader)
 		if err != nil {
 			failedKAORewrap(results, kao, fmt.Errorf("failed to parse NanoTDF header: %w", err))
-			return nil, results
+			return nil, results, nil
 		}
 		// Lookup KID from nano header
 		kid, err := header.GetKasURL().GetIdentifier()
@@ -1151,38 +1179,38 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 		ecCurve, err := header.ECCurve()
 		if err != nil {
 			failedKAORewrap(results, kao, fmt.Errorf("ECCurve failed: %w", err))
-			return nil, results
+			return nil, results, nil
 		}
 
 		symmetricKey, err := p.KeyDelegator.DeriveKey(ctx, trust.KeyIdentifier(kid), header.EphemeralKey, ecCurve)
 		if err != nil {
 			failedKAORewrap(results, kao, fmt.Errorf("failed to generate symmetric key: %w", err))
-			return nil, results
+			return nil, results, nil
 		}
 
 		// extract the policy
 		policy, err := extractNanoPolicy(symmetricKey, header)
 		if err != nil {
 			failedKAORewrap(results, kao, fmt.Errorf("Error extracting policy: %w", err))
-			return nil, results
+			return nil, results, nil
 		}
 
 		// check the policy binding
 		binding, err := header.PolicyBinding()
 		if err != nil {
 			failedKAORewrap(results, kao, fmt.Errorf("failed to retrieve policy binding: %w", err))
-			return nil, results
+			return nil, results, nil
 		}
 
 		verify, err := binding.Verify()
 		if err != nil {
 			failedKAORewrap(results, kao, fmt.Errorf("error verifying policy binding: %w", err))
-			return nil, results
+			return nil, results, nil
 		}
 
 		if !verify {
 			failedKAORewrap(results, kao, errors.New("policy binding verification failed"))
-			return nil, results
+			return nil, results, nil
 		}
 		results[kao.GetKeyAccessObjectId()] = kaoResult{
 			ID:            kao.GetKeyAccessObjectId(),
@@ -1190,9 +1218,9 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 			KeyID:         kid,
 			PolicyBinding: binding.String(),
 		}
-		return policy, results
+		return policy, results, nil
 	}
-	return nil, results
+	return nil, results, nil
 }
 
 func extractNanoPolicy(symmetricKey ocrypto.ProtectedKey, header sdk.NanoTDFHeader) (*Policy, error) {

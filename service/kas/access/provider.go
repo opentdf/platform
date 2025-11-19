@@ -2,6 +2,8 @@ package access
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 	"net/url"
 	"time"
 
@@ -101,6 +103,41 @@ func (kasCfg *KASConfig) UpgradeMapToKeyring(c *security.StandardCrypto) {
 	default:
 		kasCfg.Keyring = append(kasCfg.Keyring, inferLegacyKeys(kasCfg.Keyring)...)
 	}
+}
+
+func (kasCfg KASConfig) String() string {
+	rootKeySummary := ""
+	if kasCfg.RootKey != "" {
+		rootKeySummary = fmt.Sprintf("[REDACTED len=%d]", len(kasCfg.RootKey))
+	}
+
+	return fmt.Sprintf(
+		"KASConfig{Keyring:%v, ECCertID:%q, RSACertID:%q, RootKey:%s, KeyCacheExpiration:%s, ECTDFEnabled:%t, Preview:%+v}",
+		kasCfg.Keyring,
+		kasCfg.ECCertID,
+		kasCfg.RSACertID,
+		rootKeySummary,
+		kasCfg.KeyCacheExpiration,
+		kasCfg.ECTDFEnabled,
+		kasCfg.Preview,
+	)
+}
+
+func (kasCfg KASConfig) LogValue() slog.Value {
+	rootKeyVal := ""
+	if kasCfg.RootKey != "" {
+		rootKeyVal = fmt.Sprintf("[REDACTED len=%d]", len(kasCfg.RootKey))
+	}
+
+	return slog.GroupValue(
+		slog.Any("keyring", kasCfg.Keyring),
+		slog.String("eccertid", kasCfg.ECCertID),
+		slog.String("rsacertid", kasCfg.RSACertID),
+		slog.String("root_key", rootKeyVal),
+		slog.Duration("key_cache_expiration", kasCfg.KeyCacheExpiration),
+		slog.Bool("ec_tdf_enabled", kasCfg.ECTDFEnabled),
+		slog.Any("preview", kasCfg.Preview),
+	)
 }
 
 // If there exists *any* legacy keys, returns empty list.

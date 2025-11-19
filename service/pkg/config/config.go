@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/opentdf/platform/service/internal/server"
@@ -10,6 +11,8 @@ import (
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/tracing"
 )
+
+const rootKeyField = "root_key"
 
 // ChangeHook is a function invoked when the configuration changes.
 type ChangeHook func(configServices ServicesMap) error
@@ -19,6 +22,43 @@ type ServicesMap map[string]ServiceConfig
 
 // Config structure holding a single service.
 type ServiceConfig map[string]any
+
+func (cfg ServiceConfig) String() string {
+	// Create a shallow copy so we don't mutate the original map.
+	redacted := make(map[string]any, len(cfg))
+
+	for k, v := range cfg {
+		if k == rootKeyField {
+			redacted[k] = redactRootKeyValue(v)
+			continue
+		}
+		redacted[k] = v
+	}
+
+	return fmt.Sprintf("%v", redacted)
+}
+
+func (cfg ServiceConfig) LogValue() slog.Value {
+	attrs := make([]slog.Attr, 0, len(cfg))
+
+	for k, v := range cfg {
+		if k == rootKeyField {
+			attrs = append(attrs, slog.String(k, redactRootKeyValue(v)))
+			continue
+		}
+
+		attrs = append(attrs, slog.Any(k, v))
+	}
+
+	return slog.GroupValue(attrs...)
+}
+
+func redactRootKeyValue(v any) string {
+	if s, ok := v.(string); ok && s != "" {
+		return fmt.Sprintf("REDACTED: len=%d", len(s))
+	}
+	return "REDACTED"
+}
 
 // Config represents the configuration settings for the service.
 type Config struct {

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.6](https://github.com/opentdf/platform/compare/service/v0.11.5...service/v0.11.6) (2025-11-19)
+
+
+### Bug Fixes
+
+* **kas:** Ensure root key is not logged. [backport to release/service/v0.11] ([#2919](https://github.com/opentdf/platform/issues/2919)) ([2374a51](https://github.com/opentdf/platform/commit/2374a51e564eb6a628c11ef9a5886ce0ca92d5f2))
+
 ## [0.11.5](https://github.com/opentdf/platform/compare/service/v0.11.4...service/v0.11.5) (2025-11-17)
 
 

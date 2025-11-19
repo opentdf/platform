@@ -15,6 +15,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const rootKeyField = "root_key"
+
 // ChangeHook is a function invoked when the configuration changes.
 type ChangeHook func(configServices ServicesMap) error
 
@@ -29,12 +31,8 @@ func (cfg ServiceConfig) String() string {
 	redacted := make(map[string]any, len(cfg))
 
 	for k, v := range cfg {
-		if k == "root_key" {
-			if s, ok := v.(string); ok && s != "" {
-				redacted[k] = fmt.Sprintf("REDACTED: len=%d", len(s))
-			} else {
-				redacted[k] = "REDACTED"
-			}
+		if k == rootKeyField {
+			redacted[k] = redactRootKeyValue(v)
 			continue
 		}
 		redacted[k] = v
@@ -47,12 +45,8 @@ func (cfg ServiceConfig) LogValue() slog.Value {
 	attrs := make([]slog.Attr, 0, len(cfg))
 
 	for k, v := range cfg {
-		if k == "root_key" {
-			if s, ok := v.(string); ok && s != "" {
-				attrs = append(attrs, slog.String(k, fmt.Sprintf("REDACTED: len=%d", len(s))))
-			} else {
-				attrs = append(attrs, slog.String(k, "REDACTED"))
-			}
+		if k == rootKeyField {
+			attrs = append(attrs, slog.String(k, redactRootKeyValue(v)))
 			continue
 		}
 
@@ -60,6 +54,13 @@ func (cfg ServiceConfig) LogValue() slog.Value {
 	}
 
 	return slog.GroupValue(attrs...)
+}
+
+func redactRootKeyValue(v any) string {
+	if s, ok := v.(string); ok && s != "" {
+		return fmt.Sprintf("REDACTED: len=%d", len(s))
+	}
+	return "REDACTED"
 }
 
 // Config represents the configuration settings for the service.

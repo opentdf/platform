@@ -139,7 +139,7 @@ func (kasCfg *KASConfig) UpgradeMapToKeyring(c *security.StandardCrypto) {
 func (kasCfg KASConfig) String() string {
 	rootKeySummary := ""
 	if kasCfg.RootKey != "" {
-		rootKeySummary = fmt.Sprintf("[redacted len=%d]", len(kasCfg.RootKey))
+		rootKeySummary = fmt.Sprintf("[REDACTED len=%d]", len(kasCfg.RootKey))
 	}
 
 	return fmt.Sprintf(
@@ -156,16 +156,16 @@ func (kasCfg KASConfig) String() string {
 }
 
 func (kasCfg KASConfig) LogValue() slog.Value {
-	rootKeyField := slog.String("root_key", "")
+	rootKeyVal := ""
 	if kasCfg.RootKey != "" {
-		rootKeyField = slog.String("root_key", fmt.Sprintf("[redacted len=%d]", len(kasCfg.RootKey)))
+		rootKeyVal = fmt.Sprintf("[REDACTED len=%d]", len(kasCfg.RootKey))
 	}
 
 	return slog.GroupValue(
 		slog.Any("keyring", kasCfg.Keyring),
 		slog.String("eccertid", kasCfg.ECCertID),
 		slog.String("rsacertid", kasCfg.RSACertID),
-		rootKeyField,
+		slog.String("root_key", rootKeyVal),
 		slog.Duration("key_cache_expiration", kasCfg.KeyCacheExpiration),
 		slog.Bool("ec_tdf_enabled", kasCfg.ECTDFEnabled),
 		slog.Any("preview", kasCfg.Preview),

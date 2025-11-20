@@ -387,6 +387,8 @@ jobs:
     permissions:
       contents: read
       packages: read
+      pull-requests: write
+      checks: write
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: go

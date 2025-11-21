@@ -40,6 +40,14 @@ func TestWithMetaData(t *testing.T) {
 	assert.Equal(t, md, cfg.metaData)
 }
 
+func TestWithDissems(t *testing.T) {
+	dissems := []string{"user1@example.com", "user2@example.com"}
+
+	cfg := makeConfig(t, WithDissems(dissems...))
+
+	assert.Equal(t, dissems, cfg.dissem)
+}
+
 func TestWithMimeType(t *testing.T) {
 	mt := "foo"
 	cfg := makeConfig(t, WithMimeType(mt))

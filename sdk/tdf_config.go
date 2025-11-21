@@ -71,6 +71,7 @@ type TDFConfig struct {
 	assertions                 []AssertionConfig
 	attributes                 []AttributeValueFQN
 	attributeValues            []*policy.Value
+	dissem                     []string
 	kasInfoList                []KASInfo
 	kaoTemplate                []kaoTpl
 	splitPlan                  []keySplitStep
@@ -135,6 +136,14 @@ func WithDataAttributeValues(attributes ...*policy.Value) TDFOption {
 			}
 			c.attributes[i] = afqn
 		}
+		return nil
+	}
+}
+
+// WithDissems sets the dissemination list on the bound policy.
+func WithDissems(entities ...string) TDFOption {
+	return func(c *TDFConfig) error {
+		c.dissem = append([]string(nil), entities...)
 		return nil
 	}
 }

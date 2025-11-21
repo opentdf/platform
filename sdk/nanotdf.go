@@ -650,7 +650,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	totalBytes += uint32(l)
 
 	// Create policy object
-	policyObj, err := createPolicyObject(config.attributes)
+	policyObj, err := createPolicyObject(config.attributes, config.dissem)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("fail to create policy object:%w", err)
 	}

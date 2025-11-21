@@ -483,7 +483,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 
 	manifest.EncryptionInformation.KeyAccessType = kSplitKeyType
 
-	policyObj, err := createPolicyObject(tdfConfig.attributes)
+	policyObj, err := createPolicyObject(tdfConfig.attributes, tdfConfig.dissem)
 	if err != nil {
 		return fmt.Errorf("fail to create policy object:%w", err)
 	}
@@ -710,20 +710,21 @@ func generateWrapKeyWithRSA(publicKey string, symKey []byte) (string, error) {
 }
 
 // create policy object
-func createPolicyObject(attributes []AttributeValueFQN) (PolicyObject, error) {
+func createPolicyObject(attributes []AttributeValueFQN, dissem []string) (PolicyObject, error) {
 	uuidObj, err := uuid.NewUUID()
 	if err != nil {
 		return PolicyObject{}, fmt.Errorf("uuid.NewUUID failed: %w", err)
 	}
 
-	policyObj := PolicyObject{}
-	policyObj.UUID = uuidObj.String()
+	policyObj := PolicyObject{
+		UUID: uuidObj.String(),
+	}
+	policyObj.Body.Dissem = append([]string(nil), dissem...)
 
 	for _, attribute := range attributes {
 		attributeObj := attributeObject{}
 		attributeObj.Attribute = attribute.String()
 		policyObj.Body.DataAttributes = append(policyObj.Body.DataAttributes, attributeObj)
-		policyObj.Body.Dissem = make([]string, 0)
 	}
 
 	return policyObj, nil

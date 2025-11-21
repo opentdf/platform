@@ -160,3 +160,13 @@ func TestSetPolicyMode(t *testing.T) {
 		assert.NotEqual(t, PolicyType(99), conf.policyMode)
 	})
 }
+
+func TestWithNanoDissems(t *testing.T) {
+	dissems := []string{"user1@example.com", "user2@example.com"}
+
+	conf := &NanoTDFConfig{}
+	err := WithNanoDissems(dissems...)(conf)
+
+	require.NoError(t, err)
+	assert.Equal(t, dissems, conf.dissem)
+}

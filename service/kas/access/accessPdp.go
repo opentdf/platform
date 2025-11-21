@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"strings"
 
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -32,10 +34,29 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 	var res []PDPAccessResult
 	var resources []*authzV2.Resource
 	idPolicyMap := make(map[string]*Policy)
+	var requester string
+
+	needsDissemCheck := false
+	for _, policy := range policies {
+		if len(policy.Body.Dissem) > 0 {
+			needsDissemCheck = true
+			break
+		}
+	}
+
+	if needsDissemCheck {
+		subject, err := extractSubject(token.GetJwt())
+		if err != nil {
+			return nil, errors.Join(ErrPolicyDissemInvalid, err)
+		}
+		requester = subject
+	}
 	for i, policy := range policies {
 		if len(policy.Body.Dissem) > 0 {
-			// TODO: Move dissems check to the getdecisions endpoint
-			p.Logger.Error("dissems check is not enabled in v2 platform kas")
+			if !dissemAllowed(policy.Body.Dissem, requester) {
+				res = append(res, PDPAccessResult{Access: false, Policy: policy})
+				continue
+			}
 		}
 		if len(policy.Body.DataAttributes) > 0 {
 			id := "rewrap-" + strconv.Itoa(i)
@@ -82,6 +103,39 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 	}
 
 	return res, nil
+}
+
+func extractSubject(rawToken string) (string, error) {
+	tok, err := jwt.ParseString(rawToken, jwt.WithVerify(false), jwt.WithValidate(false))
+	if err != nil {
+		return "", err
+	}
+
+	if sub, ok := tok.Get("sub"); ok {
+		if asString, ok := sub.(string); ok && asString != "" {
+			return asString, nil
+		}
+	}
+
+	if email, ok := tok.Get("email"); ok {
+		if asString, ok := email.(string); ok && asString != "" {
+			return asString, nil
+		}
+	}
+
+	return "", errors.New("missing subject")
+}
+
+func dissemAllowed(dissems []string, subject string) bool {
+	if subject == "" {
+		return false
+	}
+	for _, d := range dissems {
+		if strings.EqualFold(d, subject) {
+			return true
+		}
+	}
+	return false
 }
 
 // checkAttributes makes authorization service GetDecision requests to check access to resources

@@ -27,6 +27,7 @@ type NanoTDFConfig struct {
 	bindCfg       bindingConfig
 	collectionCfg *collectionConfig
 	policyMode    PolicyType // Added field for policy mode
+	dissem        []string
 }
 
 type NanoTDFOption func(*NanoTDFConfig) error
@@ -118,6 +119,14 @@ func WithNanoDataAttributes(attributes ...string) NanoTDFOption {
 func WithECDSAPolicyBinding() NanoTDFOption {
 	return func(c *NanoTDFConfig) error {
 		c.bindCfg.useEcdsaBinding = true
+		return nil
+	}
+}
+
+// WithNanoDissems sets the dissemination list on the bound policy for nanoTDFs.
+func WithNanoDissems(entities ...string) NanoTDFOption {
+	return func(c *NanoTDFConfig) error {
+		c.dissem = append([]string(nil), entities...)
 		return nil
 	}
 }

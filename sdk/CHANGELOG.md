@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.11.0](https://github.com/opentdf/platform/compare/sdk/v0.10.0...sdk/v0.11.0) (2025-11-21)
+
+
+### Features
+
+* **sdk:** adds configurable max manifest sizes  ([#2906](https://github.com/opentdf/platform/issues/2906)) ([e418a4b](https://github.com/opentdf/platform/commit/e418a4b675f34c0cc3aafbe5ca4c8c9ba93187b5))
+* **sdk:** Expose policy binding hash from Nano. ([#2857](https://github.com/opentdf/platform/issues/2857)) ([5221cf4](https://github.com/opentdf/platform/commit/5221cf41079fc43a3966e17c6f3e0d3cf8a16730))
+
+
+### Bug Fixes
+
+* **deps:** bump toolchain to go1.24.9 for CVEs found by govulncheck ([#2849](https://github.com/opentdf/platform/issues/2849)) ([23f76c0](https://github.com/opentdf/platform/commit/23f76c034cfb4c325d868eb96c95ba616e362db4))
+* **sdk:** more efficient encryption in experiment TDF Writer ([#2904](https://github.com/opentdf/platform/issues/2904)) ([3ec0518](https://github.com/opentdf/platform/commit/3ec05180ab567e78def51be90b10dd137f3a1f61))
+
 ## [0.10.0](https://github.com/opentdf/platform/compare/sdk/v0.9.0...sdk/v0.10.0) (2025-10-21)
 
 

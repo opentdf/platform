@@ -124,7 +124,7 @@ func (s *SubjectMappingsStepDefinitions) aConditionGroup(ctx context.Context, re
 				case "selector_value":
 					condition.SubjectExternalSelectorValue = c.Value
 				case "operator":
-					condition.Operator = policy.SubjectMappingOperatorEnum(policy.SubjectMappingOperatorEnum_value[fmt.Sprintf("SUBJECT_MAPPING_OPERATOR_ENUM_%s", strings.ToUpper(strings.TrimSpace(c.Value)))])
+					condition.Operator = policy.SubjectMappingOperatorEnum(policy.SubjectMappingOperatorEnum_value["SUBJECT_MAPPING_OPERATOR_ENUM_"+strings.ToUpper(strings.TrimSpace(c.Value))])
 				case "values":
 					values := strings.Split(c.Value, ",")
 					valueList := []string{}

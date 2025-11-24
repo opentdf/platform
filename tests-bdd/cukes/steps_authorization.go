@@ -3,6 +3,7 @@ package cukes
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -68,7 +69,7 @@ func GetActionsFromValues(standardActions *string, customActions *string) []*pol
 func (s *AuthorizationServiceStepDefinitions) createEntity(referenceID string, entityCategory string, entityIDType string, entityIDValue string) (*authorization.Entity, error) {
 	entity := &authorization.Entity{
 		Id:       referenceID,
-		Category: authorization.Entity_Category(authorization.Entity_Category_value[fmt.Sprintf("CATEGORY_%s", entityCategory)]),
+		Category: authorization.Entity_Category(authorization.Entity_Category_value["CATEGORY_"+entityCategory]),
 	}
 	// email_address|user_name|remote_claims_url|uuid|claims|custom|client_id
 	switch entityIDType {
@@ -134,7 +135,7 @@ func (s *AuthorizationServiceStepDefinitions) sendDecisionRequestV2(ctx context.
 	for _, entityID := range strings.Split(entityChainID, ",") {
 		v1Entity, ok := scenarioContext.GetObject(strings.TrimSpace(entityID)).(*authorization.Entity)
 		if !ok {
-			return fmt.Errorf("object not of expected type Entity")
+			return errors.New("object not of expected type Entity")
 		}
 
 		// Convert v1 Entity to v2 entity.Entity
@@ -232,6 +233,8 @@ func convertEntityCategoryToV2(v1Cat authorization.Entity_Category) entity.Entit
 		return entity.Entity_CATEGORY_SUBJECT
 	case authorization.Entity_CATEGORY_ENVIRONMENT:
 		return entity.Entity_CATEGORY_ENVIRONMENT
+	case authorization.Entity_CATEGORY_UNSPECIFIED:
+		return entity.Entity_CATEGORY_UNSPECIFIED
 	default:
 		return entity.Entity_CATEGORY_UNSPECIFIED
 	}
@@ -253,7 +256,7 @@ func (s *AuthorizationServiceStepDefinitions) iShouldGetADecisionResponse(ctx co
 	// Try v2 multi-resource response (check first resource decision)
 	if getDecisionsResponseV2Multi, ok := scenarioContext.GetObject(decisionResponse).(*authzV2.GetDecisionMultiResourceResponse); ok {
 		if len(getDecisionsResponseV2Multi.GetResourceDecisions()) == 0 {
-			return ctx, fmt.Errorf("no resource decisions found in multi-resource response")
+			return ctx, errors.New("no resource decisions found in multi-resource response")
 		}
 		expectedResponse = "DECISION_" + expectedResponse
 		actualDecision := getDecisionsResponseV2Multi.GetResourceDecisions()[0].GetDecision().String()
@@ -263,7 +266,7 @@ func (s *AuthorizationServiceStepDefinitions) iShouldGetADecisionResponse(ctx co
 		return ctx, nil
 	}
 
-	return ctx, fmt.Errorf("decision response not found or invalid")
+	return ctx, errors.New("decision response not found or invalid")
 }
 
 func RegisterAuthorizationStepDefinitions(ctx *godog.ScenarioContext) {

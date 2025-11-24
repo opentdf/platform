@@ -75,7 +75,7 @@ func (s *ObligationsStepDefinitions) iSendARequestToCreateAnObligationWith(ctx c
 // Step: the obligation "name" should exist with values "value1,value2"
 func (s *ObligationsStepDefinitions) theObligationShouldExistWithValues(ctx context.Context, name string, valuesStr string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
-	
+
 	obligationObj := scenarioContext.GetObject(name)
 	if obligationObj == nil {
 		return ctx, fmt.Errorf("obligation %s not found", name)
@@ -207,7 +207,7 @@ func (s *ObligationsStepDefinitions) createObligationTrigger(ctx context.Context
 // Step: the decision response should contain obligation "fqn"
 func (s *ObligationsStepDefinitions) theDecisionResponseShouldContainObligation(ctx context.Context, obligationFQN string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
-	
+
 	// Try v2 single-resource response first
 	if decisionRespV2, ok := scenarioContext.GetObject("decisionResponse").(*authzV2.GetDecisionResponse); ok {
 		obligations := decisionRespV2.GetDecision().GetRequiredObligations()
@@ -218,7 +218,7 @@ func (s *ObligationsStepDefinitions) theDecisionResponseShouldContainObligation(
 		}
 		return ctx, fmt.Errorf("obligation %s not found in decision response. Found: %v", obligationFQN, obligations)
 	}
-	
+
 	// Try v2 multi-resource response
 	if decisionRespV2Multi, ok := scenarioContext.GetObject("decisionResponse").(*authzV2.GetDecisionMultiResourceResponse); ok {
 		if len(decisionRespV2Multi.GetResourceDecisions()) == 0 {
@@ -232,14 +232,14 @@ func (s *ObligationsStepDefinitions) theDecisionResponseShouldContainObligation(
 		}
 		return ctx, fmt.Errorf("obligation %s not found in decision response. Found: %v", obligationFQN, obligations)
 	}
-	
+
 	return ctx, fmt.Errorf("decision response not found or invalid")
 }
 
 // Step: the decision response should not contain obligation "fqn"
 func (s *ObligationsStepDefinitions) theDecisionResponseShouldNotContainObligation(ctx context.Context, obligationFQN string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
-	
+
 	// Try v2 single-resource response first
 	if decisionRespV2, ok := scenarioContext.GetObject("decisionResponse").(*authzV2.GetDecisionResponse); ok {
 		obligations := decisionRespV2.GetDecision().GetRequiredObligations()
@@ -250,7 +250,7 @@ func (s *ObligationsStepDefinitions) theDecisionResponseShouldNotContainObligati
 		}
 		return ctx, nil
 	}
-	
+
 	return ctx, fmt.Errorf("decision response not found or invalid")
 }
 
@@ -343,7 +343,7 @@ func (s *ObligationsStepDefinitions) iSendAMultiResourceDecisionRequestForEntity
 
 	scenarioContext.SetError(err)
 	scenarioContext.RecordObject(multiDecisionResponseKey, resp)
-	scenarioContext.RecordObject("decisionResponse", resp) // Also store as single response for compatibility
+	scenarioContext.RecordObject("decisionResponse", resp)         // Also store as single response for compatibility
 	scenarioContext.RecordObject("resourceFQNMap", resourceFQNMap) // Store mapping for validation
 
 	return ctx, nil
@@ -352,7 +352,7 @@ func (s *ObligationsStepDefinitions) iSendAMultiResourceDecisionRequestForEntity
 // Step: I should get N decision responses
 func (s *ObligationsStepDefinitions) iShouldGetNDecisionResponses(ctx context.Context, count int) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
-	
+
 	// Check v2 multi-resource response
 	decisionRespV2, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authzV2.GetDecisionMultiResourceResponse)
 	if !ok {
@@ -370,7 +370,7 @@ func (s *ObligationsStepDefinitions) iShouldGetNDecisionResponses(ctx context.Co
 // Step: the decision response for resource "fqn" should contain obligation "obligation_fqn"
 func (s *ObligationsStepDefinitions) theDecisionResponseForResourceShouldContainObligation(ctx context.Context, resourceFQN string, obligationFQN string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
-	
+
 	// Check v2 multi-resource response
 	decisionRespV2, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authzV2.GetDecisionMultiResourceResponse)
 	if !ok {
@@ -379,7 +379,7 @@ func (s *ObligationsStepDefinitions) theDecisionResponseForResourceShouldContain
 
 	// Get the FQN map to find the ephemeral ID for this resource
 	resourceFQNMap, _ := scenarioContext.GetObject("resourceFQNMap").(map[string]string)
-	
+
 	// Find the resource decision by matching FQN
 	for _, rd := range decisionRespV2.GetResourceDecisions() {
 		// Check if this resource decision matches our FQN
@@ -398,7 +398,7 @@ func (s *ObligationsStepDefinitions) theDecisionResponseForResourceShouldContain
 // Step: the decision response for resource "fqn" should not contain any obligations
 func (s *ObligationsStepDefinitions) theDecisionResponseForResourceShouldNotContainAnyObligations(ctx context.Context, resourceFQN string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
-	
+
 	// Check v2 multi-resource response
 	decisionRespV2, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authzV2.GetDecisionMultiResourceResponse)
 	if !ok {
@@ -407,7 +407,7 @@ func (s *ObligationsStepDefinitions) theDecisionResponseForResourceShouldNotCont
 
 	// Get the FQN map to find the ephemeral ID for this resource
 	resourceFQNMap, _ := scenarioContext.GetObject("resourceFQNMap").(map[string]string)
-	
+
 	// Find the resource decision by matching FQN
 	for _, rd := range decisionRespV2.GetResourceDecisions() {
 		// Check if this resource decision matches our FQN
@@ -424,9 +424,9 @@ func (s *ObligationsStepDefinitions) theDecisionResponseForResourceShouldNotCont
 // Step: the decision response should contain obligations: (table)
 func (s *ObligationsStepDefinitions) theDecisionResponseShouldContainObligations(ctx context.Context, tbl *godog.Table) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
-	
+
 	var actualObligations map[string]bool
-	
+
 	// Try v2 single-resource response first
 	if decisionRespV2, ok := scenarioContext.GetObject("decisionResponse").(*authzV2.GetDecisionResponse); ok {
 		actualObligations = make(map[string]bool)
@@ -467,20 +467,20 @@ func (s *ObligationsStepDefinitions) theDecisionResponseShouldContainObligations
 
 func RegisterObligationsStepDefinitions(ctx *godog.ScenarioContext, platformContext *PlatformTestSuiteContext) {
 	stepDefinitions := ObligationsStepDefinitions{}
-	
+
 	// Obligation creation steps
 	ctx.Step(`^I send a request to create an obligation with:$`, stepDefinitions.iSendARequestToCreateAnObligationWith)
 	ctx.Step(`^the obligation "([^"]*)" should exist with values "([^"]*)"$`, stepDefinitions.theObligationShouldExistWithValues)
-	
+
 	// Obligation trigger creation steps
 	ctx.Step(`^I send a request to create an obligation trigger with:$`, stepDefinitions.iSendARequestToCreateAnObligationTriggerWith)
 	ctx.Step(`^I send a request to create an obligation trigger scoped to client "([^"]*)" with:$`, stepDefinitions.iSendARequestToCreateAnObligationTriggerScopedToClientWith)
-	
+
 	// Decision response validation steps
 	ctx.Step(`^the decision response should contain obligation "([^"]*)"$`, stepDefinitions.theDecisionResponseShouldContainObligation)
 	ctx.Step(`^the decision response should not contain obligation "([^"]*)"$`, stepDefinitions.theDecisionResponseShouldNotContainObligation)
 	ctx.Step(`^the decision response should contain obligations:$`, stepDefinitions.theDecisionResponseShouldContainObligations)
-	
+
 	// Multi-resource decision steps
 	ctx.Step(`^I send a multi-resource decision request for entity chain "([^"]*)" for "([^"]*)" action on resources:$`, stepDefinitions.iSendAMultiResourceDecisionRequestForEntityChainForActionOnResources)
 	ctx.Step(`^I should get (\d+) decision responses$`, stepDefinitions.iShouldGetNDecisionResponses)

@@ -430,14 +430,14 @@ func (s *ObligationsStepDefinitions) theDecisionResponseShouldContainObligations
 	var actualObligations map[string]bool
 
 	// Try v2 single-resource response first
-	if decisionRespV2, ok := scenarioContext.GetObject("decisionResponse").(*authzV2.GetDecisionResponse); ok {
+	if decisionRespV2, singleOK := scenarioContext.GetObject("decisionResponse").(*authzV2.GetDecisionResponse); singleOK {
 		actualObligations = make(map[string]bool)
 		if decisionRespV2.GetDecision() != nil {
 			for _, obl := range decisionRespV2.GetDecision().GetRequiredObligations() {
 				actualObligations[obl] = true
 			}
 		}
-	} else if decisionRespV2Multi, ok := scenarioContext.GetObject("decisionResponse").(*authzV2.GetDecisionMultiResourceResponse); ok {
+	} else if decisionRespV2Multi, multiOK := scenarioContext.GetObject("decisionResponse").(*authzV2.GetDecisionMultiResourceResponse); multiOK {
 		// Try v2 multi-resource response
 		if len(decisionRespV2Multi.GetResourceDecisions()) == 0 {
 			return ctx, errors.New("no resource decisions found")

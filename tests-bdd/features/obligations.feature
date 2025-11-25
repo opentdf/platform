@@ -32,8 +32,8 @@ Feature: Obligations Decisioning E2E Tests
     And I send a request to create a subject condition set referenced as "scs_clearance_secret" containing subject sets "ss_s_clearance"
     And I send a request to create a subject mapping with:
       | reference_id                | attribute_value                                         | condition_set_name      | standard actions | custom actions |
-      | sm_classification_topsecret | https://example.com/attr/classification/value/topsecret | scs_clearance_topsecret | read,transmit    |                |
-      | sm_classification_secret    | https://example.com/attr/classification/value/secret    | scs_clearance_secret    | read,transmit    |                |
+      | sm_classification_topsecret | https://example.com/attr/classification/value/topsecret | scs_clearance_topsecret | read,update      |                |
+      | sm_classification_secret    | https://example.com/attr/classification/value/secret    | scs_clearance_secret    | read,update      |                |
 
   Scenario: Create obligation definition with value and verify in decision response
     Given I send a request to create an obligation with:
@@ -126,8 +126,8 @@ Feature: Obligations Decisioning E2E Tests
       | ns1          | drm  | watermark,prevent_download |
     Then the response should be successful
     And I send a request to create an obligation trigger with:
-      | obligation_name | obligation_value | action   | attribute_value                                         |
-      | drm             | watermark        | transmit | https://example.com/attr/classification/value/topsecret |
+      | obligation_name | obligation_value | action | attribute_value                                         |
+      | drm             | watermark        | update | https://example.com/attr/classification/value/topsecret |
     And I send a request to create an obligation trigger with:
       | obligation_name | obligation_value | action | attribute_value                                         |
       | drm             | prevent_download | read   | https://example.com/attr/classification/value/topsecret |
@@ -140,7 +140,7 @@ Feature: Obligations Decisioning E2E Tests
     And I should get 1 decision responses
     And I should get a "PERMIT" decision response
     And the decision response should contain obligation "https://example.com/obl/drm/value/prevent_download"
-    When I send a multi-resource decision request for entity chain "alice" for "transmit" action on resources:
+    When I send a multi-resource decision request for entity chain "alice" for "update" action on resources:
       | resource                                                |
       | https://example.com/attr/classification/value/topsecret |
     Then the response should be successful

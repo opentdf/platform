@@ -7,6 +7,16 @@
 
 OpenTDF manifests (TDF) include policy statements that carry a `Format` and a `Value`. We observed ambiguity and cross-SDK inconsistencies when `Statement.Format == "json"` and the `Value` field is embedded as structured JSON (object/array) versus a JSON string.
 
+### Schema and Format Relationship
+
+The `Statement` object has two complementary fields that work together:
+
+- **`Schema`**: An optional URI identifying *what* the content represents—the standard or specification that defines the structure and semantics of the value. For example, `urn:nato:stanag:4774:confidentialitymetadatalabel:1:0` indicates the value conforms to a NATO STANAG confidentiality label specification.
+
+- **`Format`**: Specifies *how* the value is encoded—the serialization format. Common values include `json`, `json-structured`, `base64binary`, and `string`.
+
+Together, `Schema` tells consumers how to interpret the data (what vocabulary and rules apply), while `Format` tells them how to decode it (what parsing/decoding steps are needed). A consumer might use the `Schema` URI to select the appropriate validator or handler, and use `Format` to determine the deserialization approach before validation.
+
 Problems encountered:
 - Variation across producers: some SDKs serialized `Value` as an object/array, others as a JSON-encoded string.
 - Parsing ambiguity for consumers/validators, especially in streaming or schema-less contexts.

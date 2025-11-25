@@ -73,7 +73,7 @@ func (s *ObligationsStepDefinitions) iSendARequestToCreateAnObligationWith(ctx c
 	return ctx, nil
 }
 
-// Step: the obligation "name" should exist with values "value1,value2"
+// Step: the obligation name should exist with values "value1,value2"
 func (s *ObligationsStepDefinitions) theObligationShouldExistWithValues(ctx context.Context, name string, valuesStr string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 

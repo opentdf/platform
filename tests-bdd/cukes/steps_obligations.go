@@ -252,6 +252,20 @@ func (s *ObligationsStepDefinitions) theDecisionResponseShouldNotContainObligati
 		return ctx, nil
 	}
 
+	// Try v2 multi-resource response
+	if decisionRespV2Multi, ok := scenarioContext.GetObject("decisionResponse").(*authzV2.GetDecisionMultiResourceResponse); ok {
+		if len(decisionRespV2Multi.GetResourceDecisions()) > 0 {
+			// NOTE: This only checks the first resource decision.
+			obligations := decisionRespV2Multi.GetResourceDecisions()[0].GetRequiredObligations()
+			for _, obl := range obligations {
+				if obl == obligationFQN {
+					return ctx, fmt.Errorf("obligation %s should not be in decision response for first resource", obligationFQN)
+				}
+			}
+		}
+		return ctx, nil
+	}
+
 	return ctx, errors.New("decision response not found or invalid")
 }
 

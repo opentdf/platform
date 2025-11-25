@@ -180,13 +180,12 @@ func getAllObligationsFromScenario(scenarioContext *PlatformScenarioContext) []s
 	var obligationFQNs []string
 
 	// Get all obligations stored in the scenario context
-	for key, obj := range scenarioContext.objects {
+	for _, obj := range scenarioContext.objects {
 		if obligation, ok := obj.(*policy.Obligation); ok {
 			// For each obligation, add all its value FQNs
 			for _, ov := range obligation.GetValues() {
 				obligationFQNs = append(obligationFQNs, ov.GetFqn())
 			}
-			_ = key // unused
 		}
 	}
 

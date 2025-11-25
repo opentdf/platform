@@ -2,6 +2,7 @@ package cukes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -145,6 +146,8 @@ func (s *SubjectMappingsStepDefinitions) aConditionGroup(ctx context.Context, re
 		boper = policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR
 	case "and":
 		boper = policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND
+	default:
+		return ctx, errors.New("unsupported boolean operator: " + operator)
 	}
 	conditionGroup := &policy.ConditionGroup{
 		BooleanOperator: boper,

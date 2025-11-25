@@ -36,7 +36,9 @@ The `<ContentType>` prefix indicates the semantic type of the data:
 - `json`
 - `xml`
 - `text`
-- `binary` (or specific types like `image`, `pdf`, etc.)
+- `binary` (generic), or specific binary types: `image`, `pdf`, `audio`, `video`
+- Structured binary: `protobuf`, `cbor`, `msgpack`
+- Compressed: `gzip`
 
 ### 2. Standardized Formats
 
@@ -62,6 +64,17 @@ Producers and Consumers MUST support the following combinations:
 #### C. Binary Formats
 - **`binary-base64`**: Generic binary data (equivalent to `application/octet-stream`) in `assertions[].statement.value`.
 - **`image-base64`**: Image data (e.g., PNG/JPG bytes) in `assertions[].statement.value`.
+- **`pdf-base64`**: PDF document bytes in `assertions[].statement.value`.
+- **`audio-base64`**: Audio data (e.g., WAV/MP3 bytes) in `assertions[].statement.value`.
+- **`video-base64`**: Video data (e.g., MP4/WebM bytes) in `assertions[].statement.value`.
+
+#### D. Structured Binary Formats
+- **`protobuf-base64`**: Protocol Buffers serialized message as Base64 in `assertions[].statement.value`.
+- **`cbor-base64`**: CBOR (Concise Binary Object Representation) encoded data as Base64 in `assertions[].statement.value`.
+- **`msgpack-base64`**: MessagePack encoded data as Base64 in `assertions[].statement.value`.
+
+#### E. Compressed Formats
+- **`gzip-base64`**: Gzip-compressed data as Base64 in `assertions[].statement.value`. The underlying content type should be documented in the `assertions[].statement.schema` field.
 
 ### 3. Examples
 
@@ -134,13 +147,86 @@ Producers and Consumers MUST support the following combinations:
    - *Pros:* Human readable, easy to parse, explicit.
    - *Cons:* Non-standard (custom to OpenTDF), requires registry of allowed prefixes.
 
+## Edge Cases and Assertion Handling
+
+### Format Validation Edge Cases
+
+| Scenario | Expected Behavior |
+| :--- | :--- |
+| **Empty `format` field** | MUST fail validation. Format is required. |
+| **Unknown format suffix** (e.g., `json-unknown`) | SHOULD fail validation or be handled per verification mode (see below). |
+| **Unknown content type prefix** (e.g., `custom-base64`) | MAY be accepted if the encoding suffix is valid; consumer treats content as opaque bytes. |
+| **Empty `value` field** | Valid only if the format explicitly allows empty content (e.g., `text-string` with empty text). For `*-base64`, empty string decodes to zero bytes. |
+| **Null `value` field** | MUST fail validation. Value is required when format is specified. |
+| **Whitespace-only `value`** | For `-string`: Valid (whitespace is content). For `-base64`: Invalid if not valid Base64. For `-object`: Invalid JSON. |
+
+### Encoding Edge Cases
+
+| Scenario | Expected Behavior |
+| :--- | :--- |
+| **Invalid Base64 in `-base64` format** | MUST fail during decode. Consumers MUST NOT silently skip. |
+| **Base64 with padding vs without** | Both standard (with `=` padding) and unpadded Base64 SHOULD be accepted for interoperability. |
+| **Base64 URL-safe vs standard alphabet** | Producers SHOULD use standard Base64 (RFC 4648 §4). Consumers MAY accept URL-safe (RFC 4648 §5) for compatibility. |
+| **UTF-8 BOM in `-string` values** | Producers SHOULD NOT include BOM. Consumers SHOULD handle BOM gracefully if present. |
+| **Non-UTF-8 text in `-string`** | Invalid. All `-string` values MUST be valid UTF-8. Use `-base64` for arbitrary byte sequences. |
+
+### JSON-Specific Edge Cases
+
+| Scenario | Expected Behavior |
+| :--- | :--- |
+| **`json-object` with duplicate keys** | Behavior is undefined per JSON spec. Producers MUST NOT emit duplicate keys. Consumers MAY reject or use last-value-wins. |
+| **`json-object` key ordering** | Order is NOT guaranteed. For signing, use JCS (RFC 8785) canonicalization or prefer `json-string`/`json-base64`. |
+| **`json-string` with pretty-printed JSON** | Valid. The string is the exact byte sequence. Whitespace is preserved. |
+| **`json-string` double-encoding** | Invalid. Producers MUST NOT double-encode. Value should decode to valid JSON in one step. |
+| **`json-object` with non-JSON values** (e.g., `undefined`, `NaN`) | Invalid. MUST be valid JSON per RFC 8259. |
+
+### Assertion Binding Edge Cases
+
+| Scenario | Expected Behavior |
+| :--- | :--- |
+| **Missing `binding` on assertion** | MUST fail in FailFast and Strict modes. May warn in Permissive mode but signature verification is skipped. |
+| **Empty `binding.signature`** | MUST fail. Assertions with empty signatures are treated as unsigned. |
+| **Signature over wrong hash** | MUST fail verification. Indicates tampering or format mismatch. |
+| **Assertion with unknown `schema`** | Behavior depends on verification mode: Strict fails, FailFast/Permissive skip with warning. |
+| **Multiple assertions with same `id`** | SHOULD fail validation. Assertion IDs MUST be unique within a manifest. |
+
+### Verification Mode Behavior
+
+Consumers MUST respect the configured verification mode when handling edge cases:
+
+| Mode | Unknown Format | Validation Failure | Missing Binding |
+| :--- | :--- | :--- | :--- |
+| **Permissive** | Skip + warn | Log + continue | **FAIL** |
+| **FailFast** (default) | Skip + warn | **FAIL** | **FAIL** |
+| **Strict** | **FAIL** | **FAIL** | **FAIL** |
+
 ## Test Guidance
 
-- **Parser Logic:**
-    1. Check `assertions[].statement.format`.
-    2. If ends with `-object`: Assert `assertions[].statement.value` is JSON Object/Array. Return `assertions[].statement.value`.
-    3. If ends with `-string`: Assert `assertions[].statement.value` is String. Return `assertions[].statement.value`.
-    4. If ends with `-base64`: Assert `assertions[].statement.value` is String. Decode Base64. Return Bytes.
-- **Validation:**
-    - Create a manifest with `json-object` and ensure it fails if `assertions[].statement.value` is a string.
-    - Create a manifest with `json-string` and ensure it fails if `assertions[].statement.value` is a raw object.
+### Parser Logic Tests
+1. Check `assertions[].statement.format`.
+2. If ends with `-object`: Assert `assertions[].statement.value` is JSON Object/Array. Return `assertions[].statement.value`.
+3. If ends with `-string`: Assert `assertions[].statement.value` is String. Return `assertions[].statement.value`.
+4. If ends with `-base64`: Assert `assertions[].statement.value` is String. Decode Base64. Return Bytes.
+
+### Format/Encoding Validation Tests
+- Create a manifest with `json-object` and ensure it fails if `assertions[].statement.value` is a string.
+- Create a manifest with `json-string` and ensure it fails if `assertions[].statement.value` is a raw object.
+- Verify `json-base64` correctly decodes to the original JSON bytes.
+- Verify invalid Base64 in `*-base64` formats produces a clear error.
+
+### Edge Case Tests
+- **Empty value**: Test that `text-string` accepts empty string, `json-object` rejects empty.
+- **Null value**: Test that all formats reject null value.
+- **Double-encoding**: Test that `json-string` with `"\"{\\\"key\\\":\\\"value\\\"}\""` is detected or handled consistently.
+- **Invalid UTF-8**: Test that `-string` formats reject invalid UTF-8 byte sequences.
+- **Large payloads**: Test Base64 encoding/decoding of payloads >1MB to ensure no truncation.
+
+### Canonicalization Tests
+- Verify that `json-object` values produce consistent hashes when using JCS canonicalization.
+- Verify that `json-string` byte sequences are used directly for hash computation (no re-serialization).
+- Test that key ordering differences in `json-object` produce different raw hashes but identical JCS-canonicalized hashes.
+
+### Assertion Binding Tests
+- Verify signature computation uses the correct byte representation per format.
+- Test that modifying `assertions[].statement.value` invalidates the binding signature.
+- Test cross-SDK compatibility: assertion signed in Go SDK verifies in Java/JS SDKs and vice versa.

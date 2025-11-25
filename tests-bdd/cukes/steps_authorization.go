@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/cucumber/godog"
-	"github.com/opentdf/platform/protocol/go/authorization"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -66,34 +65,29 @@ func GetActionsFromValues(standardActions *string, customActions *string) []*pol
 	return actions
 }
 
-func (s *AuthorizationServiceStepDefinitions) createEntity(referenceID string, entityCategory string, entityIDType string, entityIDValue string) (*authorization.Entity, error) {
-	entity := &authorization.Entity{
-		Id:       referenceID,
-		Category: authorization.Entity_Category(authorization.Entity_Category_value["CATEGORY_"+entityCategory]),
+func (s *AuthorizationServiceStepDefinitions) createEntity(referenceID string, entityCategory string, entityIDType string, entityIDValue string) (*entity.Entity, error) {
+	ent := &entity.Entity{
+		EphemeralId: referenceID,
+		Category:    entity.Entity_Category(entity.Entity_Category_value["CATEGORY_"+entityCategory]),
 	}
-	// email_address|user_name|remote_claims_url|uuid|claims|custom|client_id
+	// v2 entity types: email_address|user_name|claims|client_id
 	switch entityIDType {
 	case "email_address":
-		entity.EntityType = &authorization.Entity_EmailAddress{EmailAddress: entityIDValue}
+		ent.EntityType = &entity.Entity_EmailAddress{EmailAddress: entityIDValue}
 	case "user_name":
-		entity.EntityType = &authorization.Entity_UserName{UserName: entityIDValue}
-	case "remote_claims_url":
-		entity.EntityType = &authorization.Entity_RemoteClaimsUrl{RemoteClaimsUrl: entityIDValue}
-	case "uuid":
-		entity.EntityType = &authorization.Entity_Uuid{Uuid: entityIDValue}
+		ent.EntityType = &entity.Entity_UserName{UserName: entityIDValue}
 	case "claims":
 		claims, err := ConvertInterfaceToAny([]byte(entityIDValue))
 		if err != nil {
-			return entity, err
+			return ent, err
 		}
-		entity.EntityType = &authorization.Entity_Claims{Claims: claims}
-	case "custom":
-		// todo implement this
-		entity.EntityType = &authorization.Entity_Custom{Custom: &authorization.EntityCustom{}}
+		ent.EntityType = &entity.Entity_Claims{Claims: claims}
 	case "client_id":
-		entity.EntityType = &authorization.Entity_ClientId{ClientId: entityIDValue}
+		ent.EntityType = &entity.Entity_ClientId{ClientId: entityIDValue}
+	default:
+		return ent, fmt.Errorf("unsupported entity type: %s (v2 only supports: email_address, user_name, claims, client_id)", entityIDType)
 	}
-	return entity, nil
+	return ent, nil
 }
 
 func (s *AuthorizationServiceStepDefinitions) thereIsAEnvEntityWithValueAndReferencedAs(ctx context.Context, entityIDType string, entityIDValue string, referenceID string) (context.Context, error) {
@@ -130,41 +124,14 @@ func (s *AuthorizationServiceStepDefinitions) iSendADecisionRequestForEntityChai
 
 // Send decision request using v2 API (with obligations support)
 func (s *AuthorizationServiceStepDefinitions) sendDecisionRequestV2(ctx context.Context, scenarioContext *PlatformScenarioContext, entityChainID string, action string, resource string) error {
-	// Build entity chain for v2 API
+	// Build entity chain from stored v2 entities
 	var entities []*entity.Entity
 	for _, entityID := range strings.Split(entityChainID, ",") {
-		v1Entity, ok := scenarioContext.GetObject(strings.TrimSpace(entityID)).(*authorization.Entity)
+		ent, ok := scenarioContext.GetObject(strings.TrimSpace(entityID)).(*entity.Entity)
 		if !ok {
 			return errors.New("object not of expected type Entity")
 		}
-
-		// Convert v1 Entity to v2 entity.Entity
-		v2Entity := &entity.Entity{
-			EphemeralId: v1Entity.GetId(),
-			Category:    entity.Entity_Category(v1Entity.GetCategory()),
-		}
-
-		// Convert entity type
-		switch et := v1Entity.GetEntityType().(type) {
-		case *authorization.Entity_EmailAddress:
-			v2Entity.EntityType = &entity.Entity_EmailAddress{
-				EmailAddress: et.EmailAddress,
-			}
-		case *authorization.Entity_UserName:
-			v2Entity.EntityType = &entity.Entity_UserName{
-				UserName: et.UserName,
-			}
-		case *authorization.Entity_Claims:
-			v2Entity.EntityType = &entity.Entity_Claims{
-				Claims: et.Claims,
-			}
-		case *authorization.Entity_ClientId:
-			v2Entity.EntityType = &entity.Entity_ClientId{
-				ClientId: et.ClientId,
-			}
-		}
-
-		entities = append(entities, v2Entity)
+		entities = append(entities, ent)
 	}
 
 	entityChain := &entity.EntityChain{

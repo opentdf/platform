@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/cucumber/godog"
-	"github.com/opentdf/platform/protocol/go/authorization"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/entity"
@@ -261,41 +260,14 @@ func (s *ObligationsStepDefinitions) iSendAMultiResourceDecisionRequestForEntity
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	scenarioContext.ClearError()
 
-	// Build entity chain for v2 API
+	// Build entity chain from stored v2 entities
 	var entities []*entity.Entity
 	for _, entityID := range strings.Split(entityChainID, ",") {
-		v1Entity, ok := scenarioContext.GetObject(strings.TrimSpace(entityID)).(*authorization.Entity)
+		ent, ok := scenarioContext.GetObject(strings.TrimSpace(entityID)).(*entity.Entity)
 		if !ok {
 			return ctx, fmt.Errorf("entity %s not found or invalid type", entityID)
 		}
-
-		// Convert v1 Entity to v2 entity.Entity
-		v2Entity := &entity.Entity{
-			EphemeralId: v1Entity.GetId(),
-			Category:    entity.Entity_Category(v1Entity.GetCategory()),
-		}
-
-		// Convert entity type
-		switch et := v1Entity.GetEntityType().(type) {
-		case *authorization.Entity_EmailAddress:
-			v2Entity.EntityType = &entity.Entity_EmailAddress{
-				EmailAddress: et.EmailAddress,
-			}
-		case *authorization.Entity_UserName:
-			v2Entity.EntityType = &entity.Entity_UserName{
-				UserName: et.UserName,
-			}
-		case *authorization.Entity_Claims:
-			v2Entity.EntityType = &entity.Entity_Claims{
-				Claims: et.Claims,
-			}
-		case *authorization.Entity_ClientId:
-			v2Entity.EntityType = &entity.Entity_ClientId{
-				ClientId: et.ClientId,
-			}
-		}
-
-		entities = append(entities, v2Entity)
+		entities = append(entities, ent)
 	}
 
 	entityChain := &entity.EntityChain{
@@ -369,7 +341,7 @@ func (s *ObligationsStepDefinitions) iShouldGetNDecisionResponses(ctx context.Co
 	return ctx, nil
 }
 
-// Step: the decision response for resource FQN should contain obligation "obligation_fqn"
+// Step: the decision response for resource FQN should contain obligation
 func (s *ObligationsStepDefinitions) theDecisionResponseForResourceShouldContainObligation(ctx context.Context, resourceFQN string, obligationFQN string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 

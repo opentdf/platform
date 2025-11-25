@@ -2,7 +2,6 @@ package cukes
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -22,12 +21,6 @@ const (
 )
 
 func ConvertInterfaceToAny(jsonData []byte) (*anypb.Any, error) {
-	// Parse the JSON to get the type
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(jsonData, &rawMsg); err != nil {
-		return nil, err
-	}
-
 	// Create an empty Any
 	anyMsg := &anypb.Any{}
 

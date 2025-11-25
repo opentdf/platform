@@ -410,13 +410,15 @@ func (s *ObligationsStepDefinitions) theDecisionResponseShouldContainObligations
 			}
 		}
 	} else if decisionRespV2Multi, multiOK := scenarioContext.GetObject("decisionResponse").(*authzV2.GetDecisionMultiResourceResponse); multiOK {
-		// Try v2 multi-resource response
+		// For multi-resource responses, validate obligations across ALL resource decisions
 		if len(decisionRespV2Multi.GetResourceDecisions()) == 0 {
 			return ctx, errors.New("no resource decisions found")
 		}
 		actualObligations = make(map[string]bool)
-		for _, obl := range decisionRespV2Multi.GetResourceDecisions()[0].GetRequiredObligations() {
-			actualObligations[obl] = true
+		for _, rd := range decisionRespV2Multi.GetResourceDecisions() {
+			for _, obl := range rd.GetRequiredObligations() {
+				actualObligations[obl] = true
+			}
 		}
 	} else {
 		return ctx, errors.New("decision response not found or invalid")

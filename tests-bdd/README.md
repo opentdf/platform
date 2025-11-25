@@ -177,7 +177,7 @@ You can use the `--godog.tags` option to run subsets of scenarios based on their
 go test ./tests-bdd/platform_test.go -v --tags=cukes --godog.tags="@fast,@unit"
 ```
 
-This will run only scenarios that have either the `@fast` or `@unit` tag. You can use complex expressions with `and`, `or`, and `not` operators:
+This will run scenarios that have either the `@fast` or `@unit` tag (the comma acts as an OR operator). You can use complex expressions with `and`, `or`, and `not` operators:
 
 ```shell
 go test ./tests-bdd/platform_test.go -v --tags=cukes --godog.tags="@fast and not @slow"

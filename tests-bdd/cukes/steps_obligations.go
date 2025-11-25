@@ -206,7 +206,7 @@ func (s *ObligationsStepDefinitions) createObligationTrigger(ctx context.Context
 	return ctx, nil
 }
 
-// Step: the decision response should contain obligation "fqn"
+// Step: the decision response should contain obligation FQN
 func (s *ObligationsStepDefinitions) theDecisionResponseShouldContainObligation(ctx context.Context, obligationFQN string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 
@@ -238,7 +238,7 @@ func (s *ObligationsStepDefinitions) theDecisionResponseShouldContainObligation(
 	return ctx, errors.New("decision response not found or invalid")
 }
 
-// Step: the decision response should not contain obligation "fqn"
+// Step: the decision response should not contain obligation FQN
 func (s *ObligationsStepDefinitions) theDecisionResponseShouldNotContainObligation(ctx context.Context, obligationFQN string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 
@@ -369,7 +369,7 @@ func (s *ObligationsStepDefinitions) iShouldGetNDecisionResponses(ctx context.Co
 	return ctx, nil
 }
 
-// Step: the decision response for resource "fqn" should contain obligation "obligation_fqn"
+// Step: the decision response for resource FQN should contain obligation "obligation_fqn"
 func (s *ObligationsStepDefinitions) theDecisionResponseForResourceShouldContainObligation(ctx context.Context, resourceFQN string, obligationFQN string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 
@@ -397,7 +397,7 @@ func (s *ObligationsStepDefinitions) theDecisionResponseForResourceShouldContain
 	return ctx, fmt.Errorf("resource %s not found in decision responses", resourceFQN)
 }
 
-// Step: the decision response for resource "fqn" should not contain any obligations
+// Step: the decision response for resource FQN should not contain any obligations
 func (s *ObligationsStepDefinitions) theDecisionResponseForResourceShouldNotContainAnyObligations(ctx context.Context, resourceFQN string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 

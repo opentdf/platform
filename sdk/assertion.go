@@ -191,39 +191,90 @@ func (a Assertion) GetHash() ([]byte, error) {
 	return ocrypto.SHA256AsHex(transformedJSON), nil
 }
 
+const (
+	// SystemMetadataSchemaV2 is the schema for system metadata assertions (v2).
+	// This version marshals the value as a JSON object instead of an escaped string.
+	SystemMetadataSchemaV2 = "system-metadata-v2"
+)
+
+// UnmarshalJSON implements custom JSON unmarshalling for Statement.
+// It handles the value being either a JSON object or a string.
 func (s *Statement) UnmarshalJSON(data []byte) error {
-	// Define a custom struct for deserialization
-	type Alias Statement
+	type statementAlias Statement
 	aux := &struct {
 		Value json.RawMessage `json:"value,omitempty"`
-		*Alias
+		*statementAlias
 	}{
-		Alias: (*Alias)(s),
+		statementAlias: (*statementAlias)(s),
 	}
-
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
 
-	// Attempt to decode Value as an object
-	var temp map[string]interface{}
-	if json.Unmarshal(aux.Value, &temp) == nil {
-		// Re-encode the object as a string and assign to Value
-		objAsString, err := json.Marshal(temp)
-		if err != nil {
-			return err
-		}
-		s.Value = string(objAsString)
-	} else {
-		// Assign raw string to Value
-		var str string
-		if err := json.Unmarshal(aux.Value, &str); err != nil {
-			return fmt.Errorf("value is neither a valid JSON object nor a string: %s", string(aux.Value))
-		}
-		s.Value = str
+	var obj map[string]interface{}
+	if err := json.Unmarshal(aux.Value, &obj); err == nil {
+		s.Value = obj
+		return nil
 	}
 
-	return nil
+	var str string
+	if err := json.Unmarshal(aux.Value, &str); err == nil {
+		s.Value = str
+		return nil
+	}
+
+	return fmt.Errorf("statement value is not a valid JSON object or string: %s", string(aux.Value))
+}
+
+// MarshalJSON implements custom JSON marshaling for Statement.
+// If the schema is v2, it marshals the value as a raw JSON object.
+// Otherwise, it marshals it as a string to preserve backward compatibility.
+func (s Statement) MarshalJSON() ([]byte, error) {
+	type statementAlias Statement
+
+	// For v2 schemas, marshal the value as-is. If Value is a map, it becomes a JSON object.
+	if s.Schema == SystemMetadataSchemaV2 {
+		return json.Marshal(&struct {
+			*statementAlias
+		}{
+			statementAlias: (*statementAlias)(&s),
+		})
+	}
+
+	// For older schemas, ensure the value is marshalled as a string for backward compatibility.
+	valueStr, err := s.valueAsString()
+	if err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(&struct {
+		Format string `json:"format,omitempty"`
+		Schema string `json:"schema,omitempty"`
+		Value  string `json:"value,omitempty"`
+	}{
+		Format: s.Format,
+		Schema: s.Schema,
+		Value:  valueStr,
+	})
+}
+
+// valueAsString converts the interface{} value to its string representation.
+func (s *Statement) valueAsString() (string, error) {
+	if s.Value == nil {
+		return "", nil
+	}
+
+	switch v := s.Value.(type) {
+	case string:
+		return v, nil
+	default:
+		// For non-string types (like map[string]interface{}), marshal them to a JSON string.
+		jsonBytes, err := json.Marshal(v)
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal statement value to string: %w", err)
+		}
+		return string(jsonBytes), nil
+	}
 }
 
 const (
@@ -240,7 +291,7 @@ type Statement struct {
 	// Schema URI identifying the schema or standard that defines the structure and semantics of the value.
 	Schema string `json:"schema,omitempty" validate:"required"`
 	// Value is the payload of the assertion.
-	Value string `json:"value,omitempty"  validate:"required"`
+	Value interface{} `json:"value,omitempty"  validate:"required"`
 }
 
 // Binding enforces cryptographic integrity of the assertion.
@@ -488,7 +539,7 @@ func VerifyAssertionSignatureFormat(
 	manifest Manifest,
 ) error {
 	// Compute aggregate hash from manifest segments
-	aggregateHashBytes, err := ComputeAggregateHash(manifest.EncryptionInformation.IntegrityInformation.Segments)
+	aggregateHashBytes, err := ComputeAggregateHash(manifest.Segments)
 	if err != nil {
 		return fmt.Errorf("%w: failed to compute aggregate hash: %w", ErrAssertionFailure{ID: assertionID}, err)
 	}

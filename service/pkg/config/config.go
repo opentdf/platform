@@ -270,11 +270,7 @@ func (c SDKConfig) LogValue() slog.Value {
 
 // Deprecated: Use the `Load` method with your preferred loaders
 func LoadConfig(ctx context.Context, key, file string) (*Config, error) {
-	envLoader, err := NewEnvironmentValueLoader(key, nil)
-	if err != nil {
-		return nil, fmt.Errorf("could not load config: %w", err)
-	}
-	configFileLoader, err := NewConfigFileLoader(key, file)
+	legacyLoader, err := NewLegacyLoader(key, file)
 	if err != nil {
 		return nil, fmt.Errorf("could not load config: %w", err)
 	}
@@ -284,8 +280,7 @@ func LoadConfig(ctx context.Context, key, file string) (*Config, error) {
 	}
 	return Load(
 		ctx,
-		envLoader,
-		configFileLoader,
+		legacyLoader,
 		defaultSettingsLoader,
 	)
 }

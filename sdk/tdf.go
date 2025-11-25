@@ -170,7 +170,7 @@ func (t *TDFObject) AppendAssertion(_ context.Context, assertionConfig Assertion
 	// 1. Assertions cannot be moved between different TDFs (payload binding)
 	// 2. Assertions cannot be added/removed without detection (integrity)
 	// 3. The assertion applies to the exact payload state at assertion creation time
-	rootSignature := t.manifest.RootSignature.Signature
+	rootSignature := t.manifest.Signature
 
 	// Sign the assertion using the provided signing builder
 	if err := assertion.Sign(assertionHash, rootSignature, key); err != nil {
@@ -305,7 +305,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			EncryptedSize: int64(len(cipherData)),
 		}
 
-		tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments = append(tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments, segmentInfo)
+		tdfObject.manifest.Segments = append(tdfObject.manifest.Segments, segmentInfo)
 
 		totalSegments--
 		readPos += readSize
@@ -318,35 +318,35 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	}
 
 	sig := string(ocrypto.Base64Encode([]byte(rootSignature)))
-	tdfObject.manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature = sig
+	tdfObject.manifest.Signature = sig
 
 	integrityAlgStr := gmacIntegrityAlgorithm
 	if tdfConfig.integrityAlgorithm == HS256 {
 		integrityAlgStr = hmacIntegrityAlgorithm
 	}
-	tdfObject.manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm = integrityAlgStr
+	tdfObject.manifest.Algorithm = integrityAlgStr
 
-	tdfObject.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize = segmentSize
-	tdfObject.manifest.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize = encryptedSegmentSize
+	tdfObject.manifest.DefaultSegmentSize = segmentSize
+	tdfObject.manifest.DefaultEncryptedSegSize = encryptedSegmentSize
 
 	segIntegrityAlgStr := gmacIntegrityAlgorithm
 	if tdfConfig.segmentIntegrityAlgorithm == HS256 {
 		segIntegrityAlgStr = hmacIntegrityAlgorithm
 	}
 
-	tdfObject.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm = segIntegrityAlgStr
-	tdfObject.manifest.EncryptionInformation.Method.IsStreamable = true
+	tdfObject.manifest.SegmentHashAlgorithm = segIntegrityAlgStr
+	tdfObject.manifest.Method.IsStreamable = true
 
 	// add payload info
 	mimeType := tdfConfig.mimeType
 	if mimeType == "" {
 		mimeType = defaultMimeType
 	}
-	tdfObject.manifest.Payload.MimeType = mimeType
-	tdfObject.manifest.Payload.Protocol = tdfAsZip
-	tdfObject.manifest.Payload.Type = tdfZipReference
-	tdfObject.manifest.Payload.URL = archive.TDFPayloadFileName
-	tdfObject.manifest.Payload.IsEncrypted = true
+	tdfObject.manifest.MimeType = mimeType
+	tdfObject.manifest.Protocol = tdfAsZip
+	tdfObject.manifest.Type = tdfZipReference
+	tdfObject.manifest.URL = archive.TDFPayloadFileName
+	tdfObject.manifest.IsEncrypted = true
 
 	// if addSystemMetadataAssertion is true, register a system metadata assertion binder
 	if tdfConfig.addSystemMetadataAssertion {
@@ -379,7 +379,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			}
 
 			// Compute aggregate hash from manifest segments
-			aggregateHashBytes, err := ComputeAggregateHash(tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments)
+			aggregateHashBytes, err := ComputeAggregateHash(tdfObject.manifest.Segments)
 			if err != nil {
 				return nil, fmt.Errorf("failed to compute aggregate hash: %w", err)
 			}
@@ -542,7 +542,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		return fmt.Errorf("no key access template specified or inferred in initKAOTemplate: %w", errInvalidKasInfo)
 	}
 
-	manifest.EncryptionInformation.KeyAccessType = kSplitKeyType
+	manifest.KeyAccessType = kSplitKeyType
 
 	policyObj, err := createPolicyObject(tdfConfig.attributes)
 	if err != nil {
@@ -622,12 +622,12 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 				return err
 			}
 
-			manifest.EncryptionInformation.KeyAccessObjs = append(manifest.EncryptionInformation.KeyAccessObjs, keyAccess)
+			manifest.KeyAccessObjs = append(manifest.KeyAccessObjs, keyAccess)
 		}
 	}
 
-	manifest.EncryptionInformation.Policy = string(base64PolicyObject)
-	manifest.EncryptionInformation.Method.Algorithm = kGCMCipherAlgorithm
+	manifest.Policy = string(base64PolicyObject)
+	manifest.Method.Algorithm = kGCMCipherAlgorithm
 
 	// create the payload key by XOR all the keys in key access object.
 	for _, symKey := range symKeys {
@@ -860,7 +860,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 	}
 
 	var payloadSize int64
-	for _, seg := range manifestObj.EncryptionInformation.IntegrityInformation.Segments {
+	for _, seg := range manifestObj.Segments {
 		payloadSize += seg.Size
 	}
 
@@ -937,7 +937,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 	var totalBytes int64
 	var payloadReadOffset int64
 	var decryptedDataOffset int64
-	for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
+	for _, seg := range r.manifest.Segments {
 		if decryptedDataOffset+seg.Size < r.cursor {
 			decryptedDataOffset += seg.Size
 			payloadReadOffset += seg.EncryptedSize
@@ -953,7 +953,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 			return totalBytes, ErrSegSizeMismatch
 		}
 
-		segHashAlg := r.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
+		segHashAlg := r.manifest.SegmentHashAlgorithm
 		sigAlg := HS256
 		if strings.EqualFold(gmacIntegrityAlgorithm, segHashAlg) {
 			sigAlg = GMAC
@@ -1013,7 +1013,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		return 0, ErrTDFPayloadInvalidOffset
 	}
 
-	defaultSegmentSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
+	defaultSegmentSize := r.manifest.DefaultSegmentSize
 	start := offset / defaultSegmentSize
 	end := (offset + int64(len(buf)) + defaultSegmentSize - 1) / defaultSegmentSize // rounds up
 
@@ -1030,7 +1030,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 	isLegacyTDF := ShouldUseHexEncoding(r.manifest)
 	var decryptedBuf bytes.Buffer
 	var payloadReadOffset int64
-	for index, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
+	for index, seg := range r.manifest.Segments {
 		// finish segments to decrypt
 		if int64(index) == lastSegment {
 			break
@@ -1050,7 +1050,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 			return 0, ErrSegSizeMismatch
 		}
 
-		segHashAlg := r.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
+		segHashAlg := r.manifest.SegmentHashAlgorithm
 		sigAlg := HS256
 		if strings.EqualFold(gmacIntegrityAlgorithm, segHashAlg) {
 			sigAlg = GMAC
@@ -1384,7 +1384,7 @@ func WriteTDFWithUpdatedManifest(inPath, outPath string, manifest Manifest) erro
 
 func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
 	kasReqs := make(map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest)
-	for i, kao := range r.manifest.EncryptionInformation.KeyAccessObjs {
+	for i, kao := range r.manifest.KeyAccessObjs {
 		kaoID := fmt.Sprintf("kao-%d", i)
 
 		key, err := ocrypto.Base64Decode([]byte(kao.WrappedKey))
@@ -1433,7 +1433,7 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.Unsigned
 		} else {
 			rewrapReq := kas.UnsignedRewrapRequest_WithPolicyRequest{
 				Policy: &kas.UnsignedRewrapRequest_WithPolicy{
-					Body: r.manifest.EncryptionInformation.Policy,
+					Body: r.manifest.Policy,
 					Id:   "policy",
 				},
 				KeyAccessObjects: []*kas.UnsignedRewrapRequest_WithKeyAccessObject{kaoReq},
@@ -1518,7 +1518,7 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		return errors.Join(v...)
 	}
 
-	aggregateHashBytes, err := ComputeAggregateHash(r.manifest.EncryptionInformation.IntegrityInformation.Segments)
+	aggregateHashBytes, err := ComputeAggregateHash(r.manifest.IntegrityInformation.Segments)
 	if err != nil {
 		return fmt.Errorf("ComputeAggregateHash failed:%w", err)
 	}
@@ -1532,8 +1532,8 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		return fmt.Errorf("%w: %w", ErrRootSignatureFailure, ErrRootSigValidation)
 	}
 
-	segSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
-	encryptedSegSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize
+	segSize := r.manifest.DefaultSegmentSize
+	encryptedSegSize := r.manifest.DefaultEncryptedSegSize
 
 	if segSize != encryptedSegSize-(gcmIvSize+aesBlockSize) {
 		return ErrSegSizeMismatch
@@ -1747,8 +1747,8 @@ func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLe
 
 // validate the root signature
 func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (bool, error) {
-	rootSigAlg := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm
-	rootSigValue := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature
+	rootSigAlg := manifest.Algorithm
+	rootSigValue := manifest.Signature
 	isLegacyTDF := ShouldUseHexEncoding(manifest)
 
 	sigAlg := HS256

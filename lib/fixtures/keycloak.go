@@ -454,13 +454,13 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 				if customUser.Copies < 1 {
 					continue
 				}
-				baseUserName := *customUser.User.Username
-				baseEmail := *customUser.User.Email
+				baseUserName := *customUser.Username
+				baseEmail := *customUser.Email
 				numDigits := int(math.Log10(float64(customUser.Copies-1))) + 1
 				padFormat := fmt.Sprintf("%%s-%%%dd", numDigits)
 				for i := 0; i < customUser.Copies; i++ {
-					customUser.User.Username = gocloak.StringP(fmt.Sprintf(padFormat, baseUserName, i))
-					customUser.User.Email = gocloak.StringP(fmt.Sprintf("%d-%s", i, baseEmail))
+					customUser.Username = gocloak.StringP(fmt.Sprintf(padFormat, baseUserName, i))
+					customUser.Email = gocloak.StringP(fmt.Sprintf("%d-%s", i, baseEmail))
 					_, err = createUser(ctx, client, token, &kcConnectParams, customUser.User)
 					if err != nil {
 						return err
@@ -899,7 +899,7 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 		Type:  &policyType,
 	}
 	policyClients := []string{startClientID}
-	realmMgmtExchangePolicyRepresentation.ClientPolicyRepresentation.Clients = &policyClients
+	realmMgmtExchangePolicyRepresentation.Clients = &policyClients
 
 	realmMgmtPolicy, err := client.CreatePolicy(ctx, token.AccessToken, connectParams.Realm,
 		*realmManagementClientID, realmMgmtExchangePolicyRepresentation)

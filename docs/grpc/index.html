@@ -6201,7 +6201,7 @@ i.e. https://&lt;namespace&gt;/obl/&lt;definition name&gt;/value/&lt;value&gt; <
         
       
         <h3 id="kas.KeyAccess">KeyAccess</h3>
-        <p></p>
+        <p>Key Access Object containing cryptographic material and metadata for TDF decryption</p>
 
         
           <table class="field-table">
@@ -6214,71 +6214,97 @@ i.e. https://&lt;namespace&gt;/obl/&lt;definition name&gt;/value/&lt;value&gt; <
                   <td>encrypted_metadata</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Base64-encoded encrypted metadata containing additional key information
+Optional: Not used during KAS rewrap operations (client-side only)
+KAS service passes this through without processing or validation </p></td>
                 </tr>
               
                 <tr>
                   <td>policy_binding</td>
                   <td><a href="#kas.PolicyBinding">PolicyBinding</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Policy binding ensuring cryptographic integrity between policy and wrapped key
+Required: ZTDF (contains hash and algorithm)
+Links the policy to the wrapped key cryptographically </p></td>
                 </tr>
               
                 <tr>
                   <td>protocol</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Protocol identifier for the key access mechanism
+Optional: Defaults to &#39;kas&#39;
+Typically: &#39;kas&#39; for standard Key Access Service protocol
+Example: &#34;kas&#34; </p></td>
                 </tr>
               
                 <tr>
                   <td>key_type</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Type of key wrapping used for the data encryption key
+Required: Always
+Values: &#39;wrapped&#39; (RSA-wrapped for ZTDF), &#39;ec-wrapped&#39; (experimental ECDH-wrapped) </p></td>
                 </tr>
               
                 <tr>
                   <td>kas_url</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>URL of the Key Access Server that can unwrap this key
+Optional: May be omitted if KAS URL is known from context
+Used to route rewrap requests to the correct KAS instance
+Example: &#34;https://kas.example.com&#34; </p></td>
                 </tr>
               
                 <tr>
                   <td>kid</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Key identifier for the KAS public key used for wrapping
+Optional: ZTDF (may specify which KAS key to use, required if present in the TDF)
+References a specific public key in the KAS key storage (either local keyring or KAS Registry service)
+Example: &#34;k1&#34;, &#34;ec-key-2024&#34; </p></td>
                 </tr>
               
                 <tr>
                   <td>split_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Split identifier for key splitting scenarios
+Optional: ZTDF (used in advanced key splitting configurations)
+Used when keys are split across multiple parties for enhanced security </p></td>
                 </tr>
               
                 <tr>
                   <td>wrapped_key</td>
                   <td><a href="#bytes">bytes</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Client-generated data encryption key wrapped by KAS
+Required: Always
+Contains the actual DEK encrypted with KAS&#39;s public key
+This is the core cryptographic material needed for TDF decryption </p></td>
                 </tr>
               
                 <tr>
                   <td>header</td>
                   <td><a href="#bytes">bytes</a></td>
                   <td></td>
-                  <td><p>header is only used for NanoTDFs </p></td>
+                  <td><p>Complete NanoTDF header containing all metadata and policy information
+Required: NanoTDF only
+ZTDF: Omitted (policy and metadata are separate)
+Contains magic bytes, version, algorithm, policy, and ephemeral key information </p></td>
                 </tr>
               
                 <tr>
                   <td>ephemeral_public_key</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>For wrapping with an ECDH derived key, when type=ec-wrapped.
-Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
+                  <td><p>Ephemeral public key for ECDH key derivation (ec-wrapped type only)
+Required: When key_type=&#34;ec-wrapped&#34; (experimental ECDH-based ZTDF)
+Omitted: When key_type=&#34;wrapped&#34; (RSA-based ZTDF)
+Should be a PEM-encoded PKCS#8 (ASN.1) formatted public key
+Used to derive the symmetric key for unwrapping the DEK </p></td>
                 </tr>
               
             </tbody>
@@ -6289,7 +6315,7 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
         
       
         <h3 id="kas.KeyAccessRewrapResult">KeyAccessRewrapResult</h3>
-        <p></p>
+        <p>Result of a key access object rewrap operation</p>
 
         
           <table class="field-table">
@@ -6302,35 +6328,44 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
                   <td>metadata</td>
                   <td><a href="#kas.KeyAccessRewrapResult.MetadataEntry">KeyAccessRewrapResult.MetadataEntry</a></td>
                   <td>repeated</td>
-                  <td><p> </p></td>
+                  <td><p>Metadata associated with this KAO result (e.g., required obligations)
+Optional: May contain obligation requirements or other policy metadata
+Common keys: &#34;X-Required-Obligations&#34; with array of obligation FQNs </p></td>
                 </tr>
               
                 <tr>
                   <td>key_access_object_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Identifier matching the key_access_object_id from the request
+Required: Always matches the ID from UnsignedRewrapRequest_WithKeyAccessObject </p></td>
                 </tr>
               
                 <tr>
                   <td>status</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Status of the rewrap operation for this KAO
+Required: Always
+Values: &#34;permit&#34; (success), &#34;fail&#34; (failure) </p></td>
                 </tr>
               
                 <tr>
                   <td>kas_wrapped_key</td>
                   <td><a href="#bytes">bytes</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Successfully rewrapped key encrypted with the session key
+Present when status=&#34;permit&#34;
+Contains the DEK encrypted with the ephemeral session key </p></td>
                 </tr>
               
                 <tr>
                   <td>error</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Error message when rewrap failed
+Present when status=&#34;fail&#34;
+Human-readable description of the failure reason </p></td>
                 </tr>
               
             </tbody>
@@ -6396,7 +6431,7 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
         
       
         <h3 id="kas.PolicyBinding">PolicyBinding</h3>
-        <p></p>
+        <p>Policy binding ensures cryptographic integrity between policy and wrapped key</p><p>Prevents policy tampering by binding the policy hash to the encrypted key</p>
 
         
           <table class="field-table">
@@ -6409,14 +6444,21 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
                   <td>algorithm</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Cryptographic hashing algorithm used for policy binding
+Optional: ZTDF (when policy_binding is an object)
+Value: Always &#34;HS256&#34; (HMAC-SHA256) - other algorithms not supported
+Example: &#34;HS256&#34; </p></td>
                 </tr>
               
                 <tr>
                   <td>hash</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>HMAC-SHA256 hash of the base64-encoded policy using the DEK as the secret key
+4.2.2 TDFs are hex and base64 encoded before HMAC computation
+Required: ZTDF (when policy_binding is an object)
+Links the policy content to the wrapped DEK cryptographically via HMAC
+Computed as HMAC-SHA256(DEK, base64_policy) then hex-encoded and base64-encoded </p></td>
                 </tr>
               
             </tbody>
@@ -6427,7 +6469,7 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
         
       
         <h3 id="kas.PolicyRewrapResult">PolicyRewrapResult</h3>
-        <p></p>
+        <p>Result for all KAOs associated with a single policy</p>
 
         
           <table class="field-table">
@@ -6440,14 +6482,16 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
                   <td>policy_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Policy identifier matching the policy.id from the request
+Required: Always matches the ID from UnsignedRewrapRequest_WithPolicy </p></td>
                 </tr>
               
                 <tr>
                   <td>results</td>
                   <td><a href="#kas.KeyAccessRewrapResult">KeyAccessRewrapResult</a></td>
                   <td>repeated</td>
-                  <td><p> </p></td>
+                  <td><p>Results for each KAO under this policy
+Required: One result per KAO in the original request </p></td>
                 </tr>
               
             </tbody>
@@ -6527,7 +6571,7 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
         
       
         <h3 id="kas.RewrapRequest">RewrapRequest</h3>
-        <p></p>
+        <p>Request to rewrap (decrypt and re-encrypt) TDF keys for client access</p>
 
         
           <table class="field-table">
@@ -6540,7 +6584,11 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
                   <td>signed_request_token</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>A JWT signed by the DPoP (Demonstration of Proof of Possession) private key
+Required: Always
+Version differences:
+- v1 (legacy): Uses existing TDF spec schema in requestBody
+- v2 (bulk): Uses UnsignedRewrapRequest proto serialized as JSON in requestBody </p></td>
                 </tr>
               
             </tbody>
@@ -6551,7 +6599,7 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
         
       
         <h3 id="kas.RewrapResponse">RewrapResponse</h3>
-        <p></p>
+        <p>Response containing rewrapped keys and session information</p>
 
         
           <table class="field-table">
@@ -6564,35 +6612,43 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
                   <td>metadata</td>
                   <td><a href="#kas.RewrapResponse.MetadataEntry">RewrapResponse.MetadataEntry</a></td>
                   <td>repeated</td>
-                  <td><p><strong>Deprecated.</strong>  </p></td>
+                  <td><p><strong>Deprecated.</strong> Deprecated: Legacy metadata field
+Modern responses use metadata in individual KeyAccessRewrapResult </p></td>
                 </tr>
               
                 <tr>
                   <td>entity_wrapped_key</td>
                   <td><a href="#bytes">bytes</a></td>
                   <td></td>
-                  <td><p><strong>Deprecated.</strong>  </p></td>
+                  <td><p><strong>Deprecated.</strong> Deprecated: Legacy single entity wrapped key
+Modern responses use kas_wrapped_key in KeyAccessRewrapResult </p></td>
                 </tr>
               
                 <tr>
                   <td>session_public_key</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>KAS&#39;s ephemeral session public key in PEM format
+Required: For EC-based operations (NanoTDF and ZTDF with key_type=&#34;ec-wrapped&#34;)
+Optional: Empty for RSA-based ZTDF (key_type=&#34;wrapped&#34;)
+Used by client to perform ECDH key agreement and decrypt the kas_wrapped_key values </p></td>
                 </tr>
               
                 <tr>
                   <td>schema_version</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p><strong>Deprecated.</strong>  </p></td>
+                  <td><p><strong>Deprecated.</strong> Deprecated: Legacy schema version identifier
+Modern responses use implicit versioning </p></td>
                 </tr>
               
                 <tr>
                   <td>responses</td>
                   <td><a href="#kas.PolicyRewrapResult">PolicyRewrapResult</a></td>
                   <td>repeated</td>
-                  <td><p>New Rewrap API changes </p></td>
+                  <td><p>Policy-grouped rewrap results for the bulk API
+Required: Modern v2 API responses
+Each PolicyRewrapResult contains results for all KAOs under that policy </p></td>
                 </tr>
               
             </tbody>
@@ -6665,7 +6721,7 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
         
       
         <h3 id="kas.UnsignedRewrapRequest">UnsignedRewrapRequest</h3>
-        <p></p>
+        <p>Bulk-style Rewrap request structure that is serialized into JSON and signed</p><p>within a Rewrap flow. This message represents the unsigned payload that gets</p><p>embedded in a JWT as the 'requestBody' claim and signed with a DPoP key.</p>
 
         
           <table class="field-table">
@@ -6678,35 +6734,45 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
                   <td>client_public_key</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Client&#39;s public key in PEM format for establishing a session key
+Required: Always
+Used by KAS to generate an ephemeral session key for secure key exchange </p></td>
                 </tr>
               
                 <tr>
                   <td>requests</td>
                   <td><a href="#kas.UnsignedRewrapRequest.WithPolicyRequest">UnsignedRewrapRequest.WithPolicyRequest</a></td>
                   <td>repeated</td>
-                  <td><p> </p></td>
+                  <td><p>List of policy requests to be processed
+Required: Always (at least one)
+Each request represents a policy with its associated key access objects </p></td>
                 </tr>
               
                 <tr>
                   <td>key_access</td>
                   <td><a href="#kas.KeyAccess">KeyAccess</a></td>
                   <td></td>
-                  <td><p><strong>Deprecated.</strong> Used for legacy non-bulk requests </p></td>
+                  <td><p><strong>Deprecated.</strong> Deprecated: Legacy single Key Access Object
+Used for legacy non-bulk requests (v1 API)
+Modern clients should use the &#39;requests&#39; field instead </p></td>
                 </tr>
               
                 <tr>
                   <td>policy</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p><strong>Deprecated.</strong> Used for legacy non-bulk requests </p></td>
+                  <td><p><strong>Deprecated.</strong> Deprecated: Legacy single policy
+Used for legacy non-bulk requests (v1 API)
+Modern clients should use the &#39;requests&#39; field instead </p></td>
                 </tr>
               
                 <tr>
                   <td>algorithm</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p><strong>Deprecated.</strong> Used for legacy non-bulk requests </p></td>
+                  <td><p><strong>Deprecated.</strong> Deprecated: Legacy algorithm specification
+Used for legacy non-bulk requests (v1 API)  
+Modern clients should use the &#39;requests&#39; field instead </p></td>
                 </tr>
               
             </tbody>
@@ -6748,7 +6814,7 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
         
       
         <h3 id="kas.UnsignedRewrapRequest.WithKeyAccessObject">UnsignedRewrapRequest.WithKeyAccessObject</h3>
-        <p></p>
+        <p>Key Access Object wrapper with identifier</p>
 
         
           <table class="field-table">
@@ -6761,14 +6827,17 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
                   <td>key_access_object_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Ephemeral, unique identifier for this KAO within the request
+Required: Always
+Example: &#34;kao-0&#34;, &#34;kao-1&#34;, &#34;key-access-object-uuid&#34; </p></td>
                 </tr>
               
                 <tr>
                   <td>key_access_object</td>
                   <td><a href="#kas.KeyAccess">KeyAccess</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>The actual Key Access Object containing cryptographic material and metadata
+Required: Always </p></td>
                 </tr>
               
             </tbody>
@@ -6779,7 +6848,7 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
         
       
         <h3 id="kas.UnsignedRewrapRequest.WithPolicy">UnsignedRewrapRequest.WithPolicy</h3>
-        <p></p>
+        <p>Policy metadata and content for a group of KeyAccessObjects</p>
 
         
           <table class="field-table">
@@ -6792,14 +6861,19 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>An identifier unique within the scope of the rewrap request
+Used for mapping between request and response items.
+Required: Always
+Example: &#34;policy&#34;, &#34;policy-0&#34;, &#34;policy-1&#34; </p></td>
                 </tr>
               
                 <tr>
                   <td>body</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Policy content - format varies by TDF type:
+ZTDF: Base64-encoded JSON policy object containing attributes and other policy data
+Required: ZTDF (base64-encoded policy JSON) </p></td>
                 </tr>
               
             </tbody>
@@ -6810,7 +6884,7 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
         
       
         <h3 id="kas.UnsignedRewrapRequest.WithPolicyRequest">UnsignedRewrapRequest.WithPolicyRequest</h3>
-        <p></p>
+        <p>Request grouping policy with associated key access objects</p>
 
         
           <table class="field-table">
@@ -6823,21 +6897,28 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
                   <td>key_access_objects</td>
                   <td><a href="#kas.UnsignedRewrapRequest.WithKeyAccessObject">UnsignedRewrapRequest.WithKeyAccessObject</a></td>
                   <td>repeated</td>
-                  <td><p> </p></td>
+                  <td><p>List of Key Access Objects associated with this policy
+Required: Always (at least one)
+NanoTDF: Exactly one KAO per policy
+ZTDF: One or more KAOs per policy </p></td>
                 </tr>
               
                 <tr>
                   <td>policy</td>
                   <td><a href="#kas.UnsignedRewrapRequest.WithPolicy">UnsignedRewrapRequest.WithPolicy</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Policy information for this group of KAOs
+Required: Always </p></td>
                 </tr>
               
                 <tr>
                   <td>algorithm</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Cryptographic algorithm identifier for the TDF type
+Optional: Defaults to rsa:2048 if omitted
+Values: &#34;ec:secp256r1&#34; (NanoTDF), &#34;rsa:2048&#34; (ZTDF), &#34;&#34; (defaults to rsa:2048)
+Example: &#34;ec:secp256r1&#34; </p></td>
                 </tr>
               
             </tbody>

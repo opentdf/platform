@@ -50,7 +50,7 @@ func ExampleWriter() {
 		return
 	}
 
-	fmt.Printf("TDF finalized with %d key access object(s).\n", len(finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs))
+	fmt.Printf("TDF finalized with %d key access object(s).\n", len(finalizeResult.Manifest.KeyAccessObjs))
 	// Output:
 	// TDF writer created and 2 segments written.
 	// TDF finalized with 1 key access object(s).
@@ -115,7 +115,7 @@ func ExampleWriter_withAttributes() {
 		log.Println(err)
 	}
 
-	fmt.Printf("TDF finalized with %d key access object(s) for %d attribute(s).\n", len(finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs), len(attributes))
+	fmt.Printf("TDF finalized with %d key access object(s) for %d attribute(s).\n", len(finalizeResult.Manifest.KeyAccessObjs), len(attributes))
 	// Output:
 	// TDF with 2 attributes configured.
 	// TDF finalized with 1 key access object(s) for 2 attribute(s).
@@ -226,7 +226,7 @@ func ExampleWriter_outOfOrder() {
 		log.Println(err)
 	}
 
-	fmt.Printf("Finalized TDF with %d segment(s).\n", len(finalizeResult.Manifest.EncryptionInformation.IntegrityInformation.Segments))
+	fmt.Printf("Finalized TDF with %d segment(s).\n", len(finalizeResult.Manifest.Segments))
 	// Output:
 	// Wrote segment 2
 	// Wrote segment 0
@@ -277,7 +277,7 @@ func ExampleWriter_largeFile() {
 		log.Println(err)
 	}
 
-	fmt.Printf("Finalized large file with %d segment(s).\n", len(finalizeResult.Manifest.EncryptionInformation.IntegrityInformation.Segments))
+	fmt.Printf("Finalized large file with %d segment(s).\n", len(finalizeResult.Manifest.Segments))
 	// Output:
 	// Processed segment 0: 1048576 bytes
 	// Processed segment 1: 1048576 bytes

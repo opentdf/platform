@@ -155,7 +155,7 @@ func (e *OCEncapsulator) Encapsulate(dek ocrypto.ProtectedKey) ([]byte, error) {
 }
 
 func (e *OCEncapsulator) PublicKeyAsPEM() (string, error) {
-	return e.PublicKeyEncryptor.PublicKeyInPemFormat()
+	return e.PublicKeyInPemFormat()
 }
 
 func (b *BasicManager) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (ocrypto.Encapsulator, error) {

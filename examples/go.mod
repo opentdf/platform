@@ -2,7 +2,7 @@ module github.com/opentdf/platform/examples
 
 go 1.24.0
 
-toolchain go1.24.6
+toolchain go1.24.9
 
 require (
 	github.com/opentdf/platform/lib/ocrypto v0.7.0

@@ -384,7 +384,7 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 	return &FinalizeResult{
 		Data:          finalBytes,
 		Manifest:      manifest,
-		TotalSegments: len(manifest.EncryptionInformation.IntegrityInformation.Segments),
+		TotalSegments: len(manifest.Segments),
 		TotalSize:     totalPlaintextSize,
 		EncryptedSize: totalEncryptedSize,
 	}, nil
@@ -505,19 +505,19 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 	// Copy segments to manifest in finalize order (pack densely)
 	for i, idx := range order {
 		if segment, exists := w.segments[idx]; exists {
-			encryptInfo.IntegrityInformation.Segments[i] = segment
+			encryptInfo.Segments[i] = segment
 		}
 	}
 
 	// Set default segment sizes for reader compatibility
 	// Use the first segment as the default (streaming TDFs have variable segment sizes)
 	if firstSegment, exists := w.segments[0]; exists {
-		encryptInfo.IntegrityInformation.DefaultSegmentSize = firstSegment.Size
-		encryptInfo.IntegrityInformation.DefaultEncryptedSegSize = firstSegment.EncryptedSize
+		encryptInfo.DefaultSegmentSize = firstSegment.Size
+		encryptInfo.DefaultEncryptedSegSize = firstSegment.EncryptedSize
 	}
 
 	// Set segment hash algorithm
-	encryptInfo.IntegrityInformation.SegmentHashAlgorithm = w.segmentIntegrityAlgorithm.String()
+	encryptInfo.SegmentHashAlgorithm = w.segmentIntegrityAlgorithm.String()
 
 	var aggregateHash bytes.Buffer
 	// Calculate totals and iterate through segments in finalize order
@@ -578,11 +578,11 @@ func cloneManifest(in *Manifest) *Manifest {
 	out := *in // copy by value
 
 	// Copy slices to new backing arrays
-	if in.EncryptionInformation.KeyAccessObjs != nil {
-		out.EncryptionInformation.KeyAccessObjs = append([]KeyAccess(nil), in.EncryptionInformation.KeyAccessObjs...)
+	if in.KeyAccessObjs != nil {
+		out.KeyAccessObjs = append([]KeyAccess(nil), in.KeyAccessObjs...)
 	}
-	if in.EncryptionInformation.Segments != nil {
-		out.EncryptionInformation.Segments = append([]Segment(nil), in.EncryptionInformation.Segments...)
+	if in.Segments != nil {
+		out.Segments = append([]Segment(nil), in.Segments...)
 	}
 	if in.Assertions != nil {
 		out.Assertions = append([]Assertion(nil), in.Assertions...)

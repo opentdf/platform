@@ -32,14 +32,15 @@ func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateSubjectMapping(ctx
 				case "attribute_value":
 					av, err := scenarioContext.GetAttributeValue(ctx, strings.TrimSpace(c.Value))
 					if err != nil {
-						return nil, err
+						return ctx, err
 					}
 					subjectMappingRequest.AttributeValueId = av.GetId()
 				case "condition_set_name":
 					scs, ok := scenarioContext.GetObject(strings.TrimSpace(c.Value)).(*policy.SubjectConditionSet)
 					if !ok {
-						return nil, fmt.Errorf("unable to get condition set for %s", c.Value)
+						return ctx, fmt.Errorf("unable to get condition set for %s", c.Value)
 					}
+
 					subjectMappingRequest.ExistingSubjectConditionSetId = scs.GetId()
 				case "standard actions":
 					standardActions = &c.Value

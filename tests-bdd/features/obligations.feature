@@ -13,7 +13,7 @@ Feature: Obligations Decisioning E2E Tests
     And a user exists with username "charlie" and email "charlie@example.com" and the following attributes:
       | name      | value |
       | clearance | ["C"] |
-    And a empty local platform
+    And an empty local platform
     And I submit a request to create a namespace with name "example.com" and reference id "ns1"
     And I send a request to create an attribute with:
       | namespace_id | name           | rule      | values                                     |

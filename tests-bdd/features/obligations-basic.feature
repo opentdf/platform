@@ -6,7 +6,7 @@ Feature: Obligations Decisioning Basic Smoke Test
     Given a user exists with username "alice" and email "alice@example.com" and the following attributes:
       | name      | value  |
       | clearance | ["TS"] |
-    And a empty local platform
+    And an empty local platform
     And I submit a request to create a namespace with name "example.com" and reference id "ns1"
     And I send a request to create an attribute with:
       | namespace_id | name           | rule      | values    |

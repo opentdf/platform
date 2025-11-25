@@ -272,7 +272,7 @@ func (s *ObligationsStepDefinitions) iSendAMultiResourceDecisionRequestForEntity
 		// Convert v1 Entity to v2 entity.Entity
 		v2Entity := &entity.Entity{
 			EphemeralId: v1Entity.GetId(),
-			Category:    convertEntityCategoryToV2(v1Entity.GetCategory()),
+			Category:    entity.Entity_Category(v1Entity.GetCategory()),
 		}
 
 		// Convert entity type

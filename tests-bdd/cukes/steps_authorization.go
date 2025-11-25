@@ -141,7 +141,7 @@ func (s *AuthorizationServiceStepDefinitions) sendDecisionRequestV2(ctx context.
 		// Convert v1 Entity to v2 entity.Entity
 		v2Entity := &entity.Entity{
 			EphemeralId: v1Entity.GetId(),
-			Category:    convertEntityCategoryToV2(v1Entity.GetCategory()),
+			Category:    entity.Entity_Category(v1Entity.GetCategory()),
 		}
 
 		// Convert entity type
@@ -224,20 +224,6 @@ func getAllObligationsFromScenario(scenarioContext *PlatformScenarioContext) []s
 	}
 
 	return obligationFQNs
-}
-
-// Helper function to convert v1 Entity Category to v2
-func convertEntityCategoryToV2(v1Cat authorization.Entity_Category) entity.Entity_Category {
-	switch v1Cat {
-	case authorization.Entity_CATEGORY_SUBJECT:
-		return entity.Entity_CATEGORY_SUBJECT
-	case authorization.Entity_CATEGORY_ENVIRONMENT:
-		return entity.Entity_CATEGORY_ENVIRONMENT
-	case authorization.Entity_CATEGORY_UNSPECIFIED:
-		return entity.Entity_CATEGORY_UNSPECIFIED
-	default:
-		return entity.Entity_CATEGORY_UNSPECIFIED
-	}
 }
 
 func (s *AuthorizationServiceStepDefinitions) iShouldGetADecisionResponse(ctx context.Context, expectedResponse string) (context.Context, error) {

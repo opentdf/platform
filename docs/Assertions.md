@@ -338,7 +338,7 @@ The SDK supports multiple schema versions for system metadata assertions to main
   "id": "system-metadata",
   "statement": {
     "schema": "system-metadata-v1",  // or omitted entirely
-    "format": "json",
+    "format": "json-structured",
     "value": "{...}"
   },
   "binding": {
@@ -361,24 +361,9 @@ where `aggregateHash` is the raw concatenation of all segment hashes.
 
 The SDK automatically detects the assertion schema version and applies the appropriate validation logic:
 
-```go
-// V2 validation (current)
-if assertion.Statement.Schema == "system-metadata-v2" {
-    // Verify signature against rootSignature
-    if assertionSig != manifest.RootSignature.Signature {
-        return ErrAssertionFailure
-    }
-}
+- **validation (legacy)**: Verifies the signature against the concatenated `aggregateHash + assertionHash`
 
-// V1 validation (legacy)
-if assertion.Statement.Schema == "system-metadata-v1" || assertion.Statement.Schema == "" {
-    // Verify signature against aggregateHash + assertionHash
-    expectedSig := base64(aggregateHash + assertionHash)
-    if assertionSig != expectedSig {
-        return ErrAssertionFailure
-    }
-}
-```
+For SDK implementation details, see [Assertions-Developer.md](./Assertions-Developer.md).
 
 ### Migration Guide
 
@@ -404,13 +389,9 @@ new-sdk decrypt old.tdf  # ✅ Works automatically
 
 To ensure maximum compatibility during a migration period:
 
-1. **Default Behavior** (Recommended): New SDK creates TDFs with v2 schema
-   ```go
-   sdk.CreateTDF(output, input, WithSystemMetadataAssertion())
-   // Uses system-metadata-v2
-   ```
+1. **Default Behavior** (Recommended): New SDK creates TDFs with v2 schema by default when system metadata assertions are enabled.
 
-2. **All Consumers Must Upgrade**: Plan for coordinated upgrade when using v2 schema
+2. **All Consumers Must Upgrade**: Plan for coordinated upgrade when using v2 schema.
 
 3. **Phased Migration**:
    - Phase 1: Upgrade all readers to SDK v2.0+ (can read both v1 and v2)
@@ -430,20 +411,12 @@ To ensure maximum compatibility during a migration period:
 
 The SDK determines the schema version using this logic:
 
-1. **Explicit v2**: `statement.schema == "system-metadata-v2"` → Use v2 validation
-2. **Explicit v1**: `statement.schema == "system-metadata-v1"` → Use v1 validation
+2. **Explicit v1**: `statement.schema == "system-metadata-v1"` → Use legacy validation
 3. **Empty/Missing**: `statement.schema == ""` → Use v1 validation (backwards compatible)
 
 ### Testing Backwards Compatibility
 
-```go
-// Unit tests verify dual-mode validation
-func TestSystemMetadataAssertion_SchemaVersionDetection(t *testing.T) {
-    // Tests v1, v2, and empty schema validation paths
-}
-```
-
-See `sdk/assertion_provider_sm_test.go` for complete test coverage.
+The SDK includes unit tests that verify dual-mode validation for v1, v2, and empty schema validation paths. See `sdk/assertion_provider_sm_test.go` for complete test coverage.
 
 ## References
 

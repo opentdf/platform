@@ -37,6 +37,23 @@ Project layout:
 - `features`: folder containing Gherkin feature files
 - `tests-bdd`: contains cucumber test suites.
 
+### Authorization Testing Coverage
+
+The BDD tests cover the following entity and resource types:
+
+**Entity Types:**
+- ✅ **Entity Chains** - One or more entities (PE/NPE) combined for authorization decisioning
+  - Supported entity types: `user_name`, `email_address`, `client_id`, `claims`
+  - Examples: single user entity, user + client_id chain, multiple chained entities
+- ❌ **Registered Resource Values as Entities** - Not currently tested
+- ❌ **Token (JWT)** - Entity derived from access token - Not currently tested  
+- ❌ **Request Token** - Entity derived from request's authorization header - Not currently tested
+
+**Resource Types:**
+- ✅ **Attribute Values** - Sets of attribute value FQNs (e.g., on a TDF)
+  - Single and multi-resource decision requests
+- ❌ **Registered Resource Values** - Not currently tested
+
 ### Platform Test Suite
 This test suite exercises platform level cukes tests.  The [Platform Test](./platform_test.go) initializes the test suite
 and registers Step Definitions.
@@ -112,6 +129,22 @@ component or feature testing should use new test suites and new step definitions
 
 Leverage tooling to help generate and author tests.
 
+### Expanding Test Coverage
+
+To expand authorization testing to cover additional entity and resource types:
+
+1. **Add Step Definitions** for creating entities/resources of the new type:
+   - Example: `thereIsATokenEntityWithValueAndReferencedAs()` for JWT token entities
+   - Example: `thereIsARegisteredResourceValueReferencedAs()` for registered resources
+
+2. **Update Entity/Resource Creation** in [steps_authorization.go](cukes/steps_authorization.go):
+   - Extend `createEntity()` or add new helper functions to support new entity identifier types
+   - Add support for registered resource value FQNs in decision request steps
+
+3. **Add Test Scenarios** covering the new types in feature files
+
+See [authorization v2 API](../service/authorization/v2/authorization.proto) for the complete entity and resource type definitions.
+
 ### Scenario Generation
 AI can be useful to generate scenarios from service descriptions.  
 
@@ -141,14 +174,16 @@ TBD
 You can use the `--godog.tags` option to run subsets of scenarios based on their tags. For example:
 
 ```shell
-go test ./tests-bdd/platform_test.go -v --tags=cukes --godog.tags="@fast or @unit"
+go test ./tests-bdd/platform_test.go -v --tags=cukes --godog.tags="@fast,@unit"
 ```
 
-This will run only scenarios that have either the `@fast` or `@unit` tag. You can use complex expressions with `and`, `or`, and `not` operators:
+This will run scenarios that have either the `@fast` or `@unit` tag (the comma acts as an OR operator). You can use complex expressions with `and`, `or`, and `not` operators:
 
 ```shell
 go test ./tests-bdd/platform_test.go -v --tags=cukes --godog.tags="@fast and not @slow"
 ```
+
+Note: Godog uses commas (`,`) for OR logic, the word `and` for AND logic, and `not` for negation.
 
 The tags option works with any of the test files, allowing you to run specific subsets of scenarios across different test groups.
 

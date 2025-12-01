@@ -39,7 +39,7 @@ func TestKeyAssertionValidator_EmptyKeys_PermissiveMode(t *testing.T) {
 	}
 
 	// Create minimal reader
-	reader := &Reader{
+	reader := &TDFReader{
 		manifest: Manifest{
 			EncryptionInformation: EncryptionInformation{
 				IntegrityInformation: IntegrityInformation{
@@ -85,7 +85,7 @@ func TestKeyAssertionValidator_EmptyKeys_FailFast(t *testing.T) {
 	}
 
 	// Create minimal reader
-	reader := &Reader{
+	reader := &TDFReader{
 		manifest: Manifest{
 			EncryptionInformation: EncryptionInformation{
 				IntegrityInformation: IntegrityInformation{
@@ -133,7 +133,7 @@ func TestKeyAssertionValidator_EmptyKeys_StrictMode(t *testing.T) {
 	}
 
 	// Create minimal reader
-	reader := &Reader{
+	reader := &TDFReader{
 		manifest: Manifest{
 			EncryptionInformation: EncryptionInformation{
 				IntegrityInformation: IntegrityInformation{
@@ -204,7 +204,7 @@ func TestKeyAssertionValidator_MissingBinding_AllModes(t *testing.T) {
 			}
 
 			// Create minimal reader
-			reader := &Reader{
+			reader := &TDFReader{
 				manifest: Manifest{
 					EncryptionInformation: EncryptionInformation{
 						IntegrityInformation: IntegrityInformation{
@@ -253,7 +253,7 @@ func TestKeyAssertionValidator_DefaultMode(t *testing.T) {
 	}
 
 	// Create minimal reader
-	reader := &Reader{
+	reader := &TDFReader{
 		manifest: Manifest{
 			EncryptionInformation: EncryptionInformation{
 				IntegrityInformation: IntegrityInformation{

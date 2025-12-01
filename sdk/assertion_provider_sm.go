@@ -73,7 +73,7 @@ func (p SystemMetadataAssertionProvider) Bind(_ context.Context, _ Manifest) (As
 	return assertion, nil
 }
 
-func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, r Reader) error {
+func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, r TDFReader) error {
 	// SECURITY: Validate schema is the supported schema
 	// This prevents routing assertions with unknown schemas to this validator
 	// Defense in depth: checked here AND via hash verification later
@@ -95,7 +95,7 @@ func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion
 }
 
 // Validate does nothing.
-func (p SystemMetadataAssertionProvider) Validate(_ context.Context, _ Assertion, _ Reader) error {
+func (p SystemMetadataAssertionProvider) Validate(_ context.Context, _ Assertion, _ TDFReader) error {
 	return nil
 }
 

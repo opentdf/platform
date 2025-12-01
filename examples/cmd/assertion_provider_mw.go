@@ -86,7 +86,7 @@ func (p *MagicWordAssertionProvider) Bind(_ context.Context, m sdk.Manifest) (sd
 }
 
 // Verify assertion is well-formed and bound
-func (p *MagicWordAssertionProvider) Verify(_ context.Context, a sdk.Assertion, r sdk.Reader) error {
+func (p *MagicWordAssertionProvider) Verify(_ context.Context, a sdk.Assertion, r sdk.TDFReader) error {
 	// 1. Verify the statement value (HMAC of magic word)
 	h := hmac.New(sha256.New, []byte(p.MagicWord))
 	h.Write([]byte(p.MagicWord))
@@ -125,7 +125,7 @@ func (p *MagicWordAssertionProvider) Verify(_ context.Context, a sdk.Assertion, 
 }
 
 // Validate does nothing.
-func (p *MagicWordAssertionProvider) Validate(_ context.Context, _ sdk.Assertion, _ sdk.Reader) error {
+func (p *MagicWordAssertionProvider) Validate(_ context.Context, _ sdk.Assertion, _ sdk.TDFReader) error {
 	return nil
 }
 

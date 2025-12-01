@@ -6,7 +6,7 @@ sidebar_position: 2
 
 This guide explains how to implement and use assertions with the OpenTDF SDK. It provides practical code examples, type definitions, and implementation patterns for developers integrating assertions into their applications.
 
-For conceptual information about assertions (structure, lifecycle, security features), see [Assertions.md](./Assertions.md).
+For conceptual information about assertions (structure, lifecycle, security features), see [Assertions](./Assertions).
 
 ## Creating a simple assertion
 
@@ -24,7 +24,7 @@ package main
 
 import (
     "encoding/json"
-    "log"
+    "fmt"
 
     "github.com/google/uuid"
     sdk "github.com/opentdf/platform/sdk"
@@ -36,7 +36,7 @@ type DocClassification struct {
     Owner          string `json:"owner"`
 }
 
-func buildAssertionConfig() sdk.AssertionConfig {
+func buildAssertionConfig() (sdk.AssertionConfig, error) {
     // 2) Serialize your payload
     classification := DocClassification{
         Classification: "internal",
@@ -45,7 +45,7 @@ func buildAssertionConfig() sdk.AssertionConfig {
 
     payloadBytes, err := json.Marshal(classification)
     if err != nil {
-        log.Fatalf("marshal classification: %v", err)
+        return sdk.AssertionConfig{}, fmt.Errorf("failed to marshal classification: %w", err)
     }
 
     // 3) Build AssertionConfig (no SigningKey in this minimal example)
@@ -55,18 +55,42 @@ func buildAssertionConfig() sdk.AssertionConfig {
         Scope:          sdk.PayloadScope,      // applies to the payload
         AppliesToState: sdk.Unencrypted,       // or sdk.Encrypted
         Statement: sdk.Statement{
-            Format: "json",
+            Format: sdk.StatementFormatJSON,  // Use constants: StatementFormatJSON or StatementFormatString
             Schema: "urn:myorg:doc-classification-schema:v2",
             Value:  string(payloadBytes),
         },
         // Optional: SigningKey if you want a cryptographic binding
         // SigningKey: sdk.AssertionKey{ Alg: sdk.AssertionKeyAlgRS256, Key: myPrivateKey },
     }
-    return cfg
+    return cfg, nil
 }
 ```
 
-Once you have the config, pass it to the SDK where you create the TDF or attach assertions. The exact function varies by SDK surface; look for creation options or APIs that accept `AssertionConfig` or a list of assertion configs.
+Once you have the config, pass it to the SDK when creating your TDF:
+
+```go
+func createTDFWithAssertion(client *sdk.SDK, plaintext []byte) error {
+    cfg := buildAssertionConfig()
+    
+    var buf bytes.Buffer
+    _, err := client.CreateTDF(
+        &buf,
+        bytes.NewReader(plaintext),
+        sdk.WithAssertions(cfg),  // Pass assertion config(s) here
+    )
+    return err
+}
+```
+
+You can pass multiple assertion configs to `WithAssertions`:
+
+```go
+_, err := client.CreateTDF(
+    &buf,
+    bytes.NewReader(plaintext),
+    sdk.WithAssertions(classificationAssertion, retentionAssertion, auditAssertion),
+)
+```
 
 ---
 
@@ -161,6 +185,8 @@ type Statement struct {
 }
 ```
 
+> **Note:** The `omitempty` tag controls JSON serialization (omit if empty), while `validate:"required"` is for runtime validation. Both are used together: `omitempty` for cleaner JSON output, `required` to ensure the field is set before use.
+
 | Field | Description |
 |-------|-------------|
 | `Format` | How `Value` is encoded, for example `"json"` or `"string"`. Use `sdk.StatementFormatJSON` or `sdk.StatementFormatString` constants. |
@@ -176,6 +202,54 @@ type AssertionKey struct {
     Alg AssertionKeyAlg  // Algorithm: sdk.AssertionKeyAlgRS256 or sdk.AssertionKeyAlgHS256
     Key interface{}      // The key value (e.g., *rsa.PrivateKey for RS256)
 }
+```
+
+### Binding
+
+The `Binding` struct enforces cryptographic integrity of the assertion, ensuring it cannot be modified or copied to another TDF. This is set automatically by the SDK when you provide a `SigningKey`.
+
+```go
+type Binding struct {
+    Method    string `json:"method,omitempty"`    // Signature method used (e.g., "jws")
+    Signature string `json:"signature,omitempty"` // The cryptographic signature
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `Method` | The binding method used, typically `"jws"` for JSON Web Signature |
+| `Signature` | The cryptographic signature binding the assertion to the TDF |
+
+### GetHash()
+
+The `GetHash()` method on `Assertion` returns a canonical hash of the assertion content (excluding the binding). This hash is used for cryptographic binding.
+
+```go
+// GetHash returns the hash of the assertion in hex format.
+// The binding field is excluded from the hash calculation.
+func (a Assertion) GetHash() ([]byte, error)
+```
+
+The hash is computed by:
+1. Marshaling the assertion to JSON (excluding the `binding` field)
+2. Transforming to JSON Canonical form (JCS)
+3. Computing SHA-256 and returning as hex-encoded bytes
+
+### RootSignature
+
+The `RootSignature` is part of the manifest's integrity information. It contains the signed aggregate hash of all payload segments, binding assertions to the specific payload content.
+
+```go
+type RootSignature struct {
+    Algorithm string `json:"alg"` // Hash algorithm used (e.g., "HS256")
+    Signature string `json:"sig"` // Base64-encoded signature
+}
+```
+
+Access it via the manifest:
+
+```go
+manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature
 ```
 
 ---
@@ -229,9 +303,9 @@ cfg := sdk.AssertionConfig{
     AppliesToState: sdk.Unencrypted,             // or Encrypted
 
     Statement: sdk.Statement{
-        Format: "json",                         // payload is JSON
+        Format: sdk.StatementFormatJSON,        // payload is JSON (use constants)
         Schema: "doc-classification-schema-v1", // your schema name/version
-        Value:  string(payloadBytes),            // JSON as string
+        Value:  string(payloadBytes),           // JSON as string
     },
 
     // Optional: add signing key if you want this assertion cryptographically bound
@@ -281,11 +355,41 @@ The `AssertionValidator` interface allows you to verify and validate assertions 
 // AssertionValidator verifies and validates assertions during TDF reading
 type AssertionValidator interface {
     // Verify checks the cryptographic binding of the assertion
-    Verify(ctx context.Context, assertion Assertion, reader Reader) error
+    Verify(ctx context.Context, assertion Assertion, reader TDFReader) error
     // Validate performs business logic validation on the assertion
-    Validate(ctx context.Context, assertion Assertion, reader Reader) error
+    Validate(ctx context.Context, assertion Assertion, reader TDFReader) error
     // Schema returns the schema URI this validator handles
     Schema() string
+}
+```
+
+### TDFReader
+
+The `TDFReader` struct provides access to TDF content during assertion validation. It is returned by `sdk.LoadTDF()` and provides methods for reading TDF data and metadata.
+
+```go
+// TDFReader loads and reads ZTDF files
+type TDFReader struct {
+    // internal fields...
+}
+
+// Key methods:
+func (r *TDFReader) Manifest() Manifest           // Returns the TDF manifest
+func (r *TDFReader) Read(p []byte) (int, error)   // Reads decrypted payload
+func (r *TDFReader) UnencryptedMetadata() ([]byte, error)  // Returns unencrypted metadata
+```
+
+Use `TDFReader.Manifest()` to access assertions and integrity information:
+
+```go
+reader, err := client.LoadTDF(tdfFile)
+if err != nil {
+    return err
+}
+
+manifest := reader.Manifest()
+for _, assertion := range manifest.Assertions {
+    // Process each assertion
 }
 ```
 
@@ -304,12 +408,14 @@ import (
     "encoding/json"
     "errors"
     "fmt"
+    "time"
 
     "github.com/opentdf/platform/sdk"
 )
 
 const (
     CustomAssertionSchema = "urn:myorg:custom:assertion:v1"
+    CustomAssertionID     = "custom-assertion"
 )
 
 // CustomAssertionProvider implements AssertionBinder and AssertionValidator
@@ -364,7 +470,7 @@ func (p *CustomAssertionProvider) Bind(ctx context.Context, m sdk.Manifest) (sdk
 }
 
 // Verify checks the cryptographic binding
-func (p *CustomAssertionProvider) Verify(ctx context.Context, a sdk.Assertion, r sdk.Reader) error {
+func (p *CustomAssertionProvider) Verify(ctx context.Context, a sdk.Assertion, r sdk.TDFReader) error {
     if a.Binding.Signature == "" {
         return errors.New("assertion has no cryptographic binding")
     }
@@ -389,7 +495,7 @@ func (p *CustomAssertionProvider) Verify(ctx context.Context, a sdk.Assertion, r
 }
 
 // Validate performs business logic validation
-func (p *CustomAssertionProvider) Validate(ctx context.Context, a sdk.Assertion, r sdk.Reader) error {
+func (p *CustomAssertionProvider) Validate(ctx context.Context, a sdk.Assertion, r sdk.TDFReader) error {
     // Add your custom validation logic here
     return nil
 }
@@ -399,6 +505,85 @@ func (p *CustomAssertionProvider) Schema() string {
     return CustomAssertionSchema
 }
 ```
+
+---
+
+## Reading and verifying assertions
+
+When consuming a TDF, you can read assertions from the manifest and process them according to your application's needs.
+
+### Basic example: Reading assertions
+
+```go
+func readAssertions(client *sdk.SDK, tdfFile io.ReadSeeker) error {
+    // Load the TDF
+    reader, err := client.LoadTDF(tdfFile)
+    if err != nil {
+        return fmt.Errorf("failed to load TDF: %w", err)
+    }
+
+    // Access assertions from the manifest
+    manifest := reader.Manifest()
+    for _, assertion := range manifest.Assertions {
+        fmt.Printf("Found assertion: %s (type: %s, scope: %s)\n", 
+            assertion.ID, assertion.Type, assertion.Scope)
+
+        // Parse JSON statement values
+        if assertion.Statement.Format == sdk.StatementFormatJSON {
+            var payload map[string]interface{}
+            if err := json.Unmarshal([]byte(assertion.Statement.Value), &payload); err != nil {
+                return fmt.Errorf("failed to parse assertion payload: %w", err)
+            }
+            fmt.Printf("  Payload: %+v\n", payload)
+        }
+
+        // Check if assertion has cryptographic binding
+        if assertion.Binding.Signature != "" {
+            fmt.Printf("  Binding: %s (method: %s)\n", 
+                assertion.Binding.Signature[:16]+"...", assertion.Binding.Method)
+        }
+    }
+
+    return nil
+}
+```
+
+### Filtering assertions by type or schema
+
+```go
+func findHandlingAssertions(manifest sdk.Manifest) []sdk.Assertion {
+    var handling []sdk.Assertion
+    for _, a := range manifest.Assertions {
+        if a.Type == sdk.HandlingAssertion {
+            handling = append(handling, a)
+        }
+    }
+    return handling
+}
+
+func findAssertionBySchema(manifest sdk.Manifest, schema string) *sdk.Assertion {
+    for _, a := range manifest.Assertions {
+        if a.Statement.Schema == schema {
+            return &a
+        }
+    }
+    return nil
+}
+```
+
+---
+
+## Choosing your implementation approach
+
+Use this decision matrix to determine which approach fits your use case:
+
+| Scenario | Approach |
+|----------|----------|
+| Simple static metadata | `AssertionConfig` with no signing |
+| Policy/security assertions | `AssertionConfig` with `SigningKey` |
+| Dynamic assertions based on content | Implement `AssertionBinder` |
+| Custom verification logic | Implement `AssertionValidator` |
+| Third-party assertion validation | Implement `AssertionValidator` |
 
 ---
 
@@ -443,7 +628,51 @@ When implementing a custom `AssertionValidator`:
 
 ---
 
+## Troubleshooting
+
+### "assertion binding verification failed"
+
+- Ensure you're using the same key for signing and verification
+- Check that the assertion wasn't modified after signing
+- Verify that the TDF payload hasn't been altered (changes invalidate bindings)
+
+### "unknown assertion schema"
+
+- Register a validator for the schema using `WithAssertionValidators()`
+- Check for typos in the schema URI
+- Ensure the validator's `Schema()` method returns the exact schema string
+
+### Assertion not appearing in manifest
+
+- Verify the assertion was passed to `WithAssertions()` during TDF creation
+- Check for serialization errors in your payload (invalid JSON)
+- Ensure `AssertionConfig` has all required fields set
+
+### "hash claim not found" or "signature claim not found"
+
+- The assertion binding JWT is malformed or was tampered with
+- Ensure the signing key algorithm matches the verification key algorithm
+
+---
+
+## Constraints and limits
+
+- **Thread safety:** `AssertionConfig` structs are safe to share across goroutines; `AssertionBinder` implementations should be thread-safe if used concurrently
+- **Supported signing algorithms:** `RS256` (RSA), `HS256` (HMAC-SHA256)
+- **Statement value:** Should be a valid string; for JSON format, ensure proper serialization
+- **Schema URIs:** Use stable, versioned URIs (e.g., `urn:myorg:schema:v1`)
+
+---
+
+## Compatibility
+
+- **SDK Version:** Compatible with OpenTDF Platform SDK
+- **TDF Spec Version:** OpenTDF 4.x
+- **Go Version:** Requires Go 1.21+
+
+---
+
 ## Related documentation
 
-- [Assertions](./Assertions.md) - Complete assertions format and lifecycle documentation
+- [Assertions](./Assertions) - Complete assertions format and lifecycle documentation
 - [Assertion Specification](https://github.com/opentdf/spec/blob/main/schema/OpenTDF/assertion.md)

@@ -256,17 +256,8 @@ func (b *configBasedAssertionBinder) Bind(_ context.Context, m Manifest) (Assert
 		return assertion, nil
 	}
 
-	// Compute aggregate hash from manifest segments
-	aggregateHashBytes, err := ComputeAggregateHash(m.EncryptionInformation.IntegrityInformation.Segments)
-	if err != nil {
-		return Assertion{}, fmt.Errorf("failed to compute aggregate hash: %w", err)
-	}
-
-	// Determine encoding format from manifest
-	useHex := ShouldUseHexEncoding(m)
-
-	// Compute assertion signature using standard format
-	assertionSignature, err := ComputeAssertionSignature(string(aggregateHashBytes), assertionHashBytes, useHex)
+	// Compute assertion signature using manifest method
+	assertionSignature, err := m.ComputeAssertionSignature(assertionHashBytes)
 	if err != nil {
 		return Assertion{}, fmt.Errorf("failed to compute assertion signature: %w", err)
 	}

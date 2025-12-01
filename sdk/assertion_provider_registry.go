@@ -56,7 +56,7 @@ func (r *AssertionRegistry) GetValidationProvider(schema string) (AssertionValid
 // --- AssertionValidator Implementation ---
 
 // Validate finds the correct validator for the assertion and delegates the validation call.
-func (r *AssertionRegistry) Validate(ctx context.Context, assertion Assertion, t Reader) error {
+func (r *AssertionRegistry) Validate(ctx context.Context, assertion Assertion, t TDFReader) error {
 	provider, err := r.GetValidationProvider(assertion.Statement.Schema)
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func (r *AssertionRegistry) Validate(ctx context.Context, assertion Assertion, t
 }
 
 // Verify finds the correct validator for the assertion and delegates the verification call.
-func (r *AssertionRegistry) Verify(ctx context.Context, assertion Assertion, t Reader) error {
+func (r *AssertionRegistry) Verify(ctx context.Context, assertion Assertion, t TDFReader) error {
 	provider, err := r.GetValidationProvider(assertion.Statement.Schema)
 	if err != nil {
 		return err

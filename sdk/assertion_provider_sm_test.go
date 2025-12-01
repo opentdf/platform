@@ -149,7 +149,7 @@ func TestSystemMetadataAssertionProvider_MissingBinding_AllModes(t *testing.T) {
 			}
 
 			// Create minimal reader
-			reader := Reader{
+			reader := TDFReader{
 				manifest: Manifest{
 					EncryptionInformation: EncryptionInformation{
 						IntegrityInformation: IntegrityInformation{
@@ -244,7 +244,7 @@ func TestSystemMetadataAssertionProvider_TamperedStatement(t *testing.T) {
 	require.NoError(t, err, "Signing assertion should succeed")
 
 	// Verify original assertion passes
-	reader := Reader{
+	reader := TDFReader{
 		manifest: manifest,
 	}
 	err = provider.Verify(t.Context(), originalAssertion, reader)
@@ -304,7 +304,7 @@ func TestSystemMetadataAssertionProvider_TamperedStatement_Legacy(t *testing.T) 
 	require.NoError(t, err, "Signing assertion should succeed")
 
 	// Verify original assertion passes
-	reader := Reader{
+	reader := TDFReader{
 		manifest: manifest,
 	}
 	err = provider.Verify(t.Context(), originalAssertion, reader)
@@ -330,17 +330,8 @@ func signAssertionWithDEK(assertion Assertion, manifest Manifest, payloadKey []b
 		return assertion, err
 	}
 
-	// Compute aggregate hash from manifest segments
-	aggregateHashBytes, err := ComputeAggregateHash(manifest.EncryptionInformation.IntegrityInformation.Segments)
-	if err != nil {
-		return assertion, err
-	}
-
-	// Determine encoding format from manifest
-	useHex := ShouldUseHexEncoding(manifest)
-
-	// Compute assertion signature using standard format
-	assertionSignature, err := ComputeAssertionSignature(string(aggregateHashBytes), assertionHashBytes, useHex)
+	// Compute assertion signature using manifest method
+	assertionSignature, err := manifest.ComputeAssertionSignature(assertionHashBytes)
 	if err != nil {
 		return assertion, err
 	}

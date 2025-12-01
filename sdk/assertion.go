@@ -1,8 +1,6 @@
 package sdk
 
 import (
-	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -365,103 +363,6 @@ func (k AssertionVerificationKeys) IsEmpty() bool {
 	return k.DefaultKey.IsEmpty() && len(k.Keys) == 0
 }
 
-// ComputeAggregateHash computes the aggregate hash by concatenating all segment hashes.
-// This is used as input to assertion signature calculation.
-//
-// The aggregate hash is computed by:
-//  1. Base64 decoding each segment hash
-//  2. Concatenating all decoded hashes in order
-//
-// Parameters:
-//   - segments: Array of segment information from manifest
-//
-// Returns the aggregate hash as bytes, or error if base64 decoding fails.
-func ComputeAggregateHash(segments []Segment) ([]byte, error) {
-	aggregateHash := &bytes.Buffer{}
-	for _, segment := range segments {
-		decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode segment hash: %w", err)
-		}
-		aggregateHash.Write(decodedHash)
-	}
-	return aggregateHash.Bytes(), nil
-}
-
-// ComputeAssertionSignature computes the assertion signature in standard format.
-// This is the format used across all SDKs (Java/JS/Go).
-//
-// Format: base64(aggregateHash + assertionHash)
-//
-// The signature is computed by:
-//  1. Decoding the hex assertion hash to raw bytes
-//  2. Choosing between hex or raw bytes based on useHex flag
-//  3. Concatenating aggregateHash string + chosen hash bytes
-//  4. Base64 encoding the result
-//
-// Parameters:
-//   - aggregateHash: The aggregate hash string
-//   - assertionHashHex: The assertion hash as hex-encoded bytes
-//   - useHex: Whether to use hex encoding (true for TDF 4.2.2, false for TDF 4.3.0+)
-//
-// Returns the base64-encoded signature string, or error if hex decoding fails.
-func ComputeAssertionSignature(aggregateHash string, assertionHashHex []byte, useHex bool) (string, error) {
-	// Decode hex assertion hash to raw bytes
-	hashOfAssertion := make([]byte, hex.DecodedLen(len(assertionHashHex)))
-	_, err := hex.Decode(hashOfAssertion, assertionHashHex)
-	if err != nil {
-		return "", fmt.Errorf("error decoding hex string: %w", err)
-	}
-
-	// Use raw bytes or hex based on useHex flag (legacy TDF compatibility)
-	var hashToUse []byte
-	if useHex {
-		hashToUse = assertionHashHex
-	} else {
-		hashToUse = hashOfAssertion
-	}
-
-	// Combine aggregate hash with assertion hash
-	var completeHashBuilder bytes.Buffer
-	completeHashBuilder.WriteString(aggregateHash)
-	completeHashBuilder.Write(hashToUse)
-
-	return string(ocrypto.Base64Encode(completeHashBuilder.Bytes())), nil
-}
-
-// ShouldUseHexEncoding determines whether to use hex encoding for assertion signatures
-// based on the TDF format version.
-//
-// Legacy TDFs (versions < 4.3.0) use hex encoding, while modern TDFs (4.3.0+) use raw bytes.
-// This function should be used by custom AssertionBinder and AssertionValidator
-// implementations to determine the correct encoding format when calling
-// ComputeAssertionSignature().
-//
-// SECURITY NOTE: The TDFVersion field is part of the manifest and is not
-// integrity-protected in legacy TDFs. An attacker could potentially modify
-// this field to cause format confusion. This function should ONLY be used
-// for determining encoding formats (hex vs raw bytes), NOT for making
-// security decisions. Always verify cryptographic bindings and signatures
-// regardless of the TDF version.
-//
-// Parameters:
-//   - m: The manifest to check
-//
-// Returns true if hex encoding should be used (useHex=true for legacy TDFs),
-// false if raw bytes should be used (useHex=false for modern TDFs).
-//
-// Example usage in custom AssertionBinder:
-//
-//	func (b *MyBinder) Bind(ctx context.Context, m Manifest) (Assertion, error) {
-//	    useHex := ShouldUseHexEncoding(m)
-//	    aggregateHash, _ := ComputeAggregateHash(m.EncryptionInformation.IntegrityInformation.Segments)
-//	    sig, _ := ComputeAssertionSignature(string(aggregateHash), assertionHash, useHex)
-//	    // ... use sig for binding
-//	}
-func ShouldUseHexEncoding(m Manifest) bool {
-	return m.TDFVersion == ""
-}
-
 // VerifyAssertionSignatureFormat validates that the assertion signature matches the expected format.
 // This is the standard format used across all SDKs: base64(aggregateHash + assertionHash).
 //
@@ -487,17 +388,8 @@ func VerifyAssertionSignatureFormat(
 	assertionHash []byte,
 	manifest Manifest,
 ) error {
-	// Compute aggregate hash from manifest segments
-	aggregateHashBytes, err := ComputeAggregateHash(manifest.EncryptionInformation.IntegrityInformation.Segments)
-	if err != nil {
-		return fmt.Errorf("%w: failed to compute aggregate hash: %w", ErrAssertionFailure{ID: assertionID}, err)
-	}
-
-	// Determine encoding format from manifest
-	useHex := ShouldUseHexEncoding(manifest)
-
-	// Compute expected signature using standard format
-	expectedSig, err := ComputeAssertionSignature(string(aggregateHashBytes), assertionHash, useHex)
+	// Compute expected signature using manifest method
+	expectedSig, err := manifest.ComputeAssertionSignature(assertionHash)
 	if err != nil {
 		return fmt.Errorf("%w: failed to compute assertion signature: %w", ErrAssertionFailure{ID: assertionID}, err)
 	}

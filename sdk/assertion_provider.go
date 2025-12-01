@@ -13,13 +13,9 @@ type AssertionBinder interface {
 	// Bind creates and signs an assertion, binding it to the given manifest.
 	// The implementation is responsible for both configuring the assertion and binding it.
 	//
-	// Custom implementations should use ShouldUseHexEncoding(m) to determine the correct
-	// encoding format when calling ComputeAssertionSignature().
-	//
 	// Example:
-	//   useHex := ShouldUseHexEncoding(m)
-	//   aggregateHash, _ := ComputeAggregateHash(m.EncryptionInformation.IntegrityInformation.Segments)
-	//   sig, _ := ComputeAssertionSignature(string(aggregateHash), assertionHash, useHex)
+	//   assertionHash, _ := assertion.GetHash()
+	//   sig, _ := m.ComputeAssertionSignature(assertionHash)
 	Bind(ctx context.Context, m Manifest) (Assertion, error)
 }
 
@@ -31,15 +27,12 @@ type AssertionValidator interface {
 
 	// Verify checks the assertion's cryptographic binding.
 	//
-	// Custom implementations should use ShouldUseHexEncoding(r.Manifest()) to determine the
-	// correct encoding format when calling ComputeAssertionSignature().
-	//
 	// Example:
-	//   useHex := ShouldUseHexEncoding(r.Manifest())
-	//   aggregateHash, _ := ComputeAggregateHash(r.Manifest().EncryptionInformation.IntegrityInformation.Segments)
-	//   expectedSig, _ := ComputeAssertionSignature(string(aggregateHash), assertionHash, useHex)
-	Verify(ctx context.Context, a Assertion, r Reader) error
+	//   assertionHash, _ := a.GetHash()
+	//   manifest := r.Manifest()
+	//   expectedSig, _ := manifest.ComputeAssertionSignature(assertionHash)
+	Verify(ctx context.Context, a Assertion, r TDFReader) error
 
 	// Validate checks the assertion's policy and trust requirements
-	Validate(ctx context.Context, a Assertion, r Reader) error
+	Validate(ctx context.Context, a Assertion, r TDFReader) error
 }

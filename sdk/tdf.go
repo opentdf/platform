@@ -67,7 +67,7 @@ const (
 )
 
 // Loads and reads ZTDF files
-type Reader struct {
+type TDFReader struct {
 	tokenSource         auth.AccessTokenSource
 	httpClient          *http.Client
 	connectOptions      []connect.ClientOption
@@ -96,7 +96,7 @@ type TDFObject struct {
 
 type tdf3DecryptHandler struct {
 	writer io.Writer
-	reader *Reader
+	reader *TDFReader
 }
 
 type ecKeyWrappedKeyInfo struct {
@@ -390,17 +390,8 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 				return nil, fmt.Errorf("failed to get assertion hash: %w", err)
 			}
 
-			// Compute aggregate hash from manifest segments
-			aggregateHashBytes, err := ComputeAggregateHash(tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments)
-			if err != nil {
-				return nil, fmt.Errorf("failed to compute aggregate hash: %w", err)
-			}
-
-			// Determine encoding format from manifest
-			useHex := ShouldUseHexEncoding(tdfObject.manifest)
-
-			// Compute assertion signature using standard format: base64(aggregateHash + assertionHash)
-			assertionSignature, err := ComputeAssertionSignature(string(aggregateHashBytes), assertionHashBytes, useHex)
+			// Compute assertion signature using manifest method
+			assertionSignature, err := tdfObject.manifest.ComputeAssertionSignature(assertionHashBytes)
 			if err != nil {
 				return nil, fmt.Errorf("failed to compute assertion signature: %w", err)
 			}
@@ -538,7 +529,7 @@ func (t *TDFObject) Manifest() Manifest {
 	return t.manifest
 }
 
-func (r *Reader) Manifest() Manifest {
+func (r *TDFReader) Manifest() Manifest {
 	return r.manifest
 }
 
@@ -824,7 +815,7 @@ func allowListFromKASRegistry(ctx context.Context, logger *slog.Logger, kasRegis
 }
 
 // LoadTDF loads the tdf and prepare for reading the payload from TDF
-func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, error) {
+func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*TDFReader, error) {
 	config, err := newTDFReaderConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("newTDFReaderConfig failed: %w", err)
@@ -876,7 +867,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		payloadSize += seg.Size
 	}
 
-	return &Reader{
+	return &TDFReader{
 		tokenSource:    s.tokenSource,
 		httpClient:     s.conn.Client,
 		connectOptions: s.conn.Options,
@@ -890,7 +881,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 
 // Do any network based operations required.
 // This allows making the requests cancellable
-func (r *Reader) Init(ctx context.Context) error {
+func (r *TDFReader) Init(ctx context.Context) error {
 	if r.payloadKey != nil {
 		return nil
 	}
@@ -900,7 +891,7 @@ func (r *Reader) Init(ctx context.Context) error {
 // Read reads up to len(p) bytes into p. It returns the number of bytes
 // read (0 <= n <= len(p)) and any error encountered. It returns an
 // io.EOF error when the stream ends.
-func (r *Reader) Read(p []byte) (int, error) {
+func (r *TDFReader) Read(p []byte) (int, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap(context.Background())
 		if err != nil {
@@ -914,7 +905,7 @@ func (r *Reader) Read(p []byte) (int, error) {
 }
 
 // Seek updates cursor to `Read` or `WriteTo` at an offset.
-func (r *Reader) Seek(offset int64, whence int) (int64, error) {
+func (r *TDFReader) Seek(offset int64, whence int) (int64, error) {
 	var newPos int64
 	switch whence {
 	case io.SeekStart:
@@ -936,7 +927,7 @@ func (r *Reader) Seek(offset int64, whence int) (int64, error) {
 
 // WriteTo writes data to writer until there's no more data to write or
 // when an error occurs. This implements the io.WriterTo interface.
-func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
+func (r *TDFReader) WriteTo(writer io.Writer) (int64, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap(context.Background())
 		if err != nil {
@@ -944,7 +935,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 		}
 	}
 
-	isLegacyTDF := ShouldUseHexEncoding(r.manifest)
+	isLegacyTDF := r.manifest.TDFVersion == ""
 
 	var totalBytes int64
 	var payloadReadOffset int64
@@ -1013,7 +1004,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 // of bytes read (0 <= n <= len(p)) and any error encountered. It returns an
 // io.EOF error when the stream ends.
 // NOTE: For larger tdf sizes use sdk.GetTDFPayload for better performance
-func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen, gocognit // Better readability keeping it as is for now
+func (r *TDFReader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen, gocognit // Better readability keeping it as is for now
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap(context.Background())
 		if err != nil {
@@ -1039,7 +1030,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		return 0, ErrTDFPayloadReadFail
 	}
 
-	isLegacyTDF := ShouldUseHexEncoding(r.manifest)
+	isLegacyTDF := r.manifest.TDFVersion == ""
 	var decryptedBuf bytes.Buffer
 	var payloadReadOffset int64
 	for index, seg := range r.manifest.Segments {
@@ -1107,7 +1098,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 }
 
 // UnencryptedMetadata return decrypted metadata in manifest.
-func (r *Reader) UnencryptedMetadata() ([]byte, error) {
+func (r *TDFReader) UnencryptedMetadata() ([]byte, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap(context.Background())
 		if err != nil {
@@ -1120,7 +1111,7 @@ func (r *Reader) UnencryptedMetadata() ([]byte, error) {
 
 // Policy returns a copy of the policy object in manifest, if it is valid.
 // Otherwise, returns an error.
-func (r *Reader) Policy() (PolicyObject, error) {
+func (r *TDFReader) Policy() (PolicyObject, error) {
 	policyObj := PolicyObject{}
 	policy, err := ocrypto.Base64Decode([]byte(r.manifest.Policy))
 	if err != nil {
@@ -1136,7 +1127,7 @@ func (r *Reader) Policy() (PolicyObject, error) {
 }
 
 // DataAttributes return the data attributes present in tdf.
-func (r *Reader) DataAttributes() ([]string, error) {
+func (r *TDFReader) DataAttributes() ([]string, error) {
 	policy, err := ocrypto.Base64Decode([]byte(r.manifest.Policy))
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
@@ -1164,7 +1155,7 @@ func (r *Reader) DataAttributes() ([]string, error) {
 * which will result in a rewrap call.
 *
  */
-func (r *Reader) Obligations(ctx context.Context) (RequiredObligations, error) {
+func (r *TDFReader) Obligations(ctx context.Context) (RequiredObligations, error) {
 	if r.requiredObligations != nil {
 		return *r.requiredObligations, nil
 	}
@@ -1189,7 +1180,7 @@ OUTPUTS:
   - []byte - Byte array containing the DEK.
   - error - If an error occurred while processing
 */
-func (r *Reader) UnsafePayloadKeyRetrieval() ([]byte, error) {
+func (r *TDFReader) UnsafePayloadKeyRetrieval() ([]byte, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap(context.Background())
 		if err != nil {
@@ -1213,7 +1204,7 @@ func (r *Reader) UnsafePayloadKeyRetrieval() ([]byte, error) {
 //
 // Note: This method modifies the TDF's manifest in place. The assertion should be
 // cryptographically bound to the TDF.
-func (r *Reader) AppendAssertion(_ context.Context, assertion Assertion) error {
+func (r *TDFReader) AppendAssertion(_ context.Context, assertion Assertion) error {
 	// pre-check - can marshal
 	manifestBytes, err := json.Marshal(r.manifest)
 	if err != nil {
@@ -1251,7 +1242,7 @@ func (r *Reader) AppendAssertion(_ context.Context, assertion Assertion) error {
 //	reader, _ := sdk.LoadTDF(file)
 //	reader.AppendAssertion(ctx, assertion)
 //	err := reader.WriteTDFWithUpdatedManifest("input.tdf", "output.tdf")
-func (r *Reader) WriteTDFWithUpdatedManifest(inPath, outPath string) error {
+func (r *TDFReader) WriteTDFWithUpdatedManifest(inPath, outPath string) error {
 	return WriteTDFWithUpdatedManifest(inPath, outPath, r.manifest)
 }
 
@@ -1394,7 +1385,7 @@ func WriteTDFWithUpdatedManifest(inPath, outPath string, manifest Manifest) erro
 	return nil
 }
 
-func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
+func createRewrapRequest(_ context.Context, r *TDFReader) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
 	kasReqs := make(map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest)
 	for i, kao := range r.manifest.KeyAccessObjs {
 		kaoID := fmt.Sprintf("kao-%d", i)
@@ -1462,7 +1453,7 @@ func getIdx(kaoID string) int {
 	return idx
 }
 
-func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
+func (r *TDFReader) buildKey(ctx context.Context, results []kaoResult) error {
 	var unencryptedMetadata []byte
 	var payloadKey [kKeySize]byte
 	knownSplits := make(map[string]bool)
@@ -1530,7 +1521,7 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		return errors.Join(v...)
 	}
 
-	aggregateHashBytes, err := ComputeAggregateHash(r.manifest.Segments)
+	aggregateHashBytes, err := r.manifest.ComputeAggregateHash()
 	if err != nil {
 		return fmt.Errorf("ComputeAggregateHash failed:%w", err)
 	}
@@ -1684,7 +1675,7 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 }
 
 // handleAssertionVerificationError handles errors from assertion verification
-func (r *Reader) handleAssertionVerificationError(assertionID string, err error) error {
+func (r *TDFReader) handleAssertionVerificationError(assertionID string, err error) error {
 	if errors.Is(err, errAssertionVerifyKeyFailure) {
 		return fmt.Errorf("assertion verification failed: %w", err)
 	}
@@ -1692,7 +1683,7 @@ func (r *Reader) handleAssertionVerificationError(assertionID string, err error)
 }
 
 // Unwraps the payload key, if possible, using the access service
-func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocognit // Better readability keeping it as is
+func (r *TDFReader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocognit // Better readability keeping it as is
 	kasClient := newKASClient(r.httpClient, r.connectOptions, r.tokenSource, r.kasSessionKey, r.config.fulfillableObligationFQNs)
 
 	var kaoResults []kaoResult
@@ -1761,7 +1752,7 @@ func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLe
 func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (bool, error) {
 	rootSigAlg := manifest.Algorithm
 	rootSigValue := manifest.Signature
-	isLegacyTDF := ShouldUseHexEncoding(manifest)
+	isLegacyTDF := manifest.TDFVersion == ""
 
 	sigAlg := HS256
 	if strings.EqualFold(gmacIntegrityAlgorithm, rootSigAlg) {

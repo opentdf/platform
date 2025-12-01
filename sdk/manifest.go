@@ -1,5 +1,13 @@
 package sdk
 
+import (
+	"bytes"
+	"encoding/hex"
+	"fmt"
+
+	"github.com/opentdf/platform/lib/ocrypto"
+)
+
 type Segment struct {
 	Hash          string `json:"hash"`
 	Size          int64  `json:"segmentSize"`
@@ -86,4 +94,72 @@ type PolicyObject struct {
 type EncryptedMetadata struct {
 	Cipher string `json:"ciphertext"`
 	Iv     string `json:"iv"`
+}
+
+// ComputeAggregateHash computes the aggregate hash from all segment hashes.
+// This is used as input to assertion signature calculation.
+//
+// The aggregate hash is computed by:
+//  1. Base64 decoding each segment hash
+//  2. Concatenating all decoded hashes in order
+//
+// Returns the aggregate hash as bytes, or error if base64 decoding fails.
+func (m *Manifest) ComputeAggregateHash() ([]byte, error) {
+	aggregateHash := &bytes.Buffer{}
+	for _, segment := range m.EncryptionInformation.IntegrityInformation.Segments {
+		decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode segment hash: %w", err)
+		}
+		aggregateHash.Write(decodedHash)
+	}
+	return aggregateHash.Bytes(), nil
+}
+
+// ComputeAssertionSignature computes the assertion signature binding.
+// Automatically determines the correct encoding format from the manifest.
+//
+// Format: base64(aggregateHash + assertionHash)
+//
+// The signature is computed by:
+//  1. Computing the aggregate hash from manifest segments
+//  2. Determining encoding format (hex vs raw bytes) from TDF version
+//  3. Decoding the hex assertion hash to raw bytes
+//  4. Concatenating aggregateHash + chosen hash bytes
+//  5. Base64 encoding the result
+//
+// Parameters:
+//   - assertionHash: The assertion hash as hex-encoded bytes
+//
+// Returns the base64-encoded signature string, or error if computation fails.
+func (m *Manifest) ComputeAssertionSignature(assertionHash []byte) (string, error) {
+	aggregateHash, err := m.ComputeAggregateHash()
+	if err != nil {
+		return "", err
+	}
+
+	// Determine encoding format from manifest
+	useHex := m.TDFVersion == ""
+
+	// Decode hex assertion hash to raw bytes
+	hashOfAssertion := make([]byte, hex.DecodedLen(len(assertionHash)))
+	_, err = hex.Decode(hashOfAssertion, assertionHash)
+	if err != nil {
+		return "", fmt.Errorf("error decoding hex string: %w", err)
+	}
+
+	// Use raw bytes or hex based on useHex flag (legacy TDF compatibility)
+	var hashToUse []byte
+	if useHex {
+		hashToUse = assertionHash
+	} else {
+		hashToUse = hashOfAssertion
+	}
+
+	// Combine aggregate hash with assertion hash
+	var completeHashBuilder bytes.Buffer
+	completeHashBuilder.Write(aggregateHash)
+	completeHashBuilder.Write(hashToUse)
+
+	return string(ocrypto.Base64Encode(completeHashBuilder.Bytes())), nil
 }

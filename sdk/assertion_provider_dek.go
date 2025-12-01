@@ -37,13 +37,13 @@ func (v *DEKAssertionValidator) Schema() string {
 }
 
 // Verify checks the cryptographic binding of an assertion signed with the DEK.
-func (v *DEKAssertionValidator) Verify(ctx context.Context, a Assertion, r Reader) error {
+func (v *DEKAssertionValidator) Verify(ctx context.Context, a Assertion, r TDFReader) error {
 	// Use shared DEK-based verification logic
 	return verifyDEKSignedAssertion(ctx, a, v.dekKey, r.Manifest())
 }
 
 // Validate does nothing - DEK-based validation doesn't check trust/policy.
-func (v *DEKAssertionValidator) Validate(_ context.Context, _ Assertion, _ Reader) error {
+func (v *DEKAssertionValidator) Validate(_ context.Context, _ Assertion, _ TDFReader) error {
 	return nil
 }
 

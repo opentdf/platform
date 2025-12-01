@@ -65,7 +65,7 @@ func TestVerificationMode_MissingKeys(t *testing.T) {
 			}
 
 			// Create minimal reader
-			reader := Reader{
+			reader := TDFReader{
 				manifest: Manifest{
 					EncryptionInformation: EncryptionInformation{
 						IntegrityInformation: IntegrityInformation{
@@ -243,7 +243,7 @@ func TestVerificationMode_VerificationFailure(t *testing.T) {
 			validator := NewKeyAssertionValidator(verificationKeys)
 			validator.SetVerificationMode(tt.mode)
 
-			reader := Reader{
+			reader := TDFReader{
 				manifest: Manifest{
 					EncryptionInformation: EncryptionInformation{
 						IntegrityInformation: IntegrityInformation{
@@ -315,7 +315,7 @@ func TestVerificationMode_MissingCryptographicBinding(t *testing.T) {
 			validator := NewKeyAssertionValidator(keys)
 			validator.SetVerificationMode(m.mode)
 
-			reader := Reader{
+			reader := TDFReader{
 				manifest: Manifest{
 					EncryptionInformation: EncryptionInformation{
 						IntegrityInformation: IntegrityInformation{

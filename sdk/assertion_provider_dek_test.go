@@ -74,15 +74,12 @@ func TestDEKAssertionBinding(t *testing.T) {
 			assertionHashBytes, err := assertion.GetHash()
 			require.NoError(t, err)
 
-			// Compute aggregate hash
-			aggregateHashBytes, err := ComputeAggregateHash(segments)
-			require.NoError(t, err)
-
-			// Compute expected assertion signature (the correct format)
-			useHex := ShouldUseHexEncoding(manifest)
+			// Verify legacy TDF detection matches expectation
+			useHex := manifest.TDFVersion == ""
 			assert.Equal(t, tc.useHex, useHex, "useHex flag should match test case")
 
-			expectedSig, err := ComputeAssertionSignature(string(aggregateHashBytes), assertionHashBytes, useHex)
+			// Compute expected assertion signature using manifest method
+			expectedSig, err := manifest.ComputeAssertionSignature(assertionHashBytes)
 			require.NoError(t, err)
 
 			// Sign the assertion with DEK (simulating what CreateTDF does)
@@ -101,7 +98,7 @@ func TestDEKAssertionBinding(t *testing.T) {
 
 			// Verify the assertion can be validated with the DEK
 			validator := NewDEKAssertionValidator(dekKey)
-			reader := Reader{manifest: manifest}
+			reader := TDFReader{manifest: manifest}
 
 			err = validator.Verify(t.Context(), assertion, reader)
 			assert.NoError(t, err, "DEK validator should successfully verify the assertion")
@@ -167,7 +164,7 @@ func TestDEKAssertionBinding_WrongSignatureFormat(t *testing.T) {
 
 	// Verify the assertion - this SHOULD FAIL because we used the wrong signature format
 	validator := NewDEKAssertionValidator(dekKey)
-	reader := Reader{manifest: manifest}
+	reader := TDFReader{manifest: manifest}
 
 	err = validator.Verify(t.Context(), assertion, reader)
 	require.Error(t, err, "Verification should fail with wrong signature format")

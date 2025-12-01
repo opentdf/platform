@@ -102,17 +102,8 @@ func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, erro
 		return assertion, fmt.Errorf("failed to set jwk in headers: %w", err)
 	}
 
-	// Compute aggregate hash from manifest segments
-	aggregateHashBytes, err := ComputeAggregateHash(m.EncryptionInformation.IntegrityInformation.Segments)
-	if err != nil {
-		return assertion, fmt.Errorf("failed to compute aggregate hash: %w", err)
-	}
-
-	// Determine encoding format from manifest
-	useHex := ShouldUseHexEncoding(m)
-
-	// Compute assertion signature using standard format
-	assertionSignature, err := ComputeAssertionSignature(string(aggregateHashBytes), assertionHash, useHex)
+	// Compute assertion signature using manifest method
+	assertionSignature, err := m.ComputeAssertionSignature(assertionHash)
 	if err != nil {
 		return assertion, fmt.Errorf("failed to compute assertion signature: %w", err)
 	}
@@ -124,7 +115,7 @@ func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, erro
 	return assertion, nil
 }
 
-func (p KeyAssertionValidator) Verify(_ context.Context, a Assertion, r Reader) error {
+func (p KeyAssertionValidator) Verify(_ context.Context, a Assertion, r TDFReader) error {
 	// NOTE: This validator uses a wildcard schema pattern to match any assertion
 	// when verification keys are provided. Schema validation is still performed
 	// via the JWT's assertionSchema claim verification below.
@@ -195,7 +186,7 @@ func (p KeyAssertionValidator) Verify(_ context.Context, a Assertion, r Reader) 
 	return nil
 }
 
-func (p KeyAssertionValidator) Validate(_ context.Context, a Assertion, _ Reader) error {
+func (p KeyAssertionValidator) Validate(_ context.Context, a Assertion, _ TDFReader) error {
 	if p.publicKeys.IsEmpty() {
 		return errors.New("no verification keys are trusted")
 	}

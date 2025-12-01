@@ -669,7 +669,7 @@ func testErrorConditions(t *testing.T) {
 		require.NoError(t, err)
 
 		// Manually corrupt segment hash to test error handling
-		writer.segments[0] = Segment{Hash: "", Size: 10, EncryptedSize: 26}
+		writer.segments[0] = &Segment{Hash: "", Size: 10, EncryptedSize: 26}
 		writer.maxSegmentIndex = 0
 
 		attributes := []*policy.Value{

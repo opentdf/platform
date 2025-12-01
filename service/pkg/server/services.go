@@ -70,6 +70,22 @@ func getServiceConfigurations() []serviceregistry.ServiceConfiguration {
 	}
 }
 
+func getServiceConfigurationsFromIServices(services []serviceregistry.IService, extraModes []serviceregistry.ModeName, individualModes bool) []serviceregistry.ServiceConfiguration {
+	configs := make([]serviceregistry.ServiceConfiguration, 0, len(services))
+	for _, svc := range services {
+		modes := append([]serviceregistry.ModeName{serviceregistry.ModeALL}, extraModes...)
+		if individualModes {
+			modes = append(modes, serviceregistry.ModeName(svc.GetNamespace()))
+		}
+		configs = append(configs, serviceregistry.ServiceConfiguration{
+			Name:     ServiceName(svc.GetNamespace()),
+			Modes:    modes,
+			Services: []serviceregistry.IService{svc},
+		})
+	}
+	return configs
+}
+
 // RegisterEssentialServices registers the essential services directly
 func RegisterEssentialServices(reg *serviceregistry.Registry) error {
 	essentialServices := []serviceregistry.IService{
@@ -204,6 +220,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 
 			err = svc.Start(ctx, serviceregistry.RegistrationParams{
 				Config:                 cfg.Services[svc.GetNamespace()],
+				Security:               &cfg.Security,
 				Logger:                 svcLogger,
 				DBClient:               svcDBClient,
 				SDK:                    client,

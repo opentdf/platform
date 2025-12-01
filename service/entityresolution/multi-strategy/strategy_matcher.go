@@ -31,16 +31,16 @@ func (sm *StrategyMatcher) SelectStrategy(_ context.Context, claims types.JWTCla
 
 	return nil, types.NewStrategyError("no matching strategy found", map[string]interface{}{
 		"available_strategies": len(sm.strategies),
-		"jwt_claims":           extractClaimNames(claims),
+		"entity_map":           extractClaimNames(claims),
 	})
 }
 
 // SelectStrategies returns all strategies that match the JWT claims in configuration order
-func (sm *StrategyMatcher) SelectStrategies(_ context.Context, claims types.JWTClaims) ([]*types.MappingStrategy, error) {
+func (sm *StrategyMatcher) SelectStrategies(_ context.Context, claimsMap types.JWTClaims) ([]*types.MappingStrategy, error) {
 	var matchingStrategies []*types.MappingStrategy
 
 	for _, strategy := range sm.strategies {
-		if sm.matchesConditions(claims, strategy.Conditions) {
+		if sm.matchesConditions(claimsMap, strategy.Conditions) {
 			matchingStrategies = append(matchingStrategies, &strategy)
 		}
 	}
@@ -48,7 +48,7 @@ func (sm *StrategyMatcher) SelectStrategies(_ context.Context, claims types.JWTC
 	if len(matchingStrategies) == 0 {
 		return nil, types.NewStrategyError("no matching strategy found", map[string]interface{}{
 			"available_strategies": len(sm.strategies),
-			"jwt_claims":           extractClaimNames(claims),
+			"entity_map":           extractClaimNames(claimsMap),
 		})
 	}
 
@@ -56,9 +56,9 @@ func (sm *StrategyMatcher) SelectStrategies(_ context.Context, claims types.JWTC
 }
 
 // matchesConditions checks if JWT claims match strategy conditions
-func (sm *StrategyMatcher) matchesConditions(claims types.JWTClaims, conditions types.StrategyConditions) bool {
+func (sm *StrategyMatcher) matchesConditions(claimsMap types.JWTClaims, conditions types.StrategyConditions) bool {
 	for _, claimCondition := range conditions.JWTClaims {
-		if !sm.matchesClaimCondition(claims, claimCondition) {
+		if !sm.matchesClaimCondition(claimsMap, claimCondition) {
 			return false
 		}
 	}

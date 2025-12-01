@@ -15,6 +15,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const rootKeyField = "root_key"
+
 // ChangeHook is a function invoked when the configuration changes.
 type ChangeHook func(configServices ServicesMap) error
 
@@ -23,6 +25,43 @@ type ServicesMap map[string]ServiceConfig
 
 // Config structure holding a single service.
 type ServiceConfig map[string]any
+
+func (cfg ServiceConfig) String() string {
+	// Create a shallow copy so we don't mutate the original map.
+	redacted := make(map[string]any, len(cfg))
+
+	for k, v := range cfg {
+		if k == rootKeyField {
+			redacted[k] = redactRootKeyValue(v)
+			continue
+		}
+		redacted[k] = v
+	}
+
+	return fmt.Sprintf("%v", redacted)
+}
+
+func (cfg ServiceConfig) LogValue() slog.Value {
+	attrs := make([]slog.Attr, 0, len(cfg))
+
+	for k, v := range cfg {
+		if k == rootKeyField {
+			attrs = append(attrs, slog.String(k, redactRootKeyValue(v)))
+			continue
+		}
+
+		attrs = append(attrs, slog.Any(k, v))
+	}
+
+	return slog.GroupValue(attrs...)
+}
+
+func redactRootKeyValue(v any) string {
+	if s, ok := v.(string); ok && s != "" {
+		return fmt.Sprintf("REDACTED: len=%d", len(s))
+	}
+	return "REDACTED"
+}
 
 // Config represents the configuration settings for the service.
 type Config struct {
@@ -41,6 +80,9 @@ type Config struct {
 	// Mode specifies which services to run.
 	// By default, it runs all services.
 	Mode []string `mapstructure:"mode" json:"mode" default:"[\"all\"]"`
+
+	// Security holds platform-wide security overrides.
+	Security SecurityConfig `mapstructure:"security" json:"security"`
 
 	// SDKConfig represents the configuration settings for the SDK.
 	SDKConfig SDKConfig `mapstructure:"sdk_config" json:"sdk_config"`
@@ -101,6 +143,7 @@ func (c *Config) LogValue() slog.Value {
 		slog.Any("db", c.DB),
 		slog.Any("logger", c.Logger),
 		slog.Any("mode", c.Mode),
+		slog.Any("security", c.Security),
 		slog.Any("sdk_config", c.SDKConfig),
 		slog.Any("server", c.Server),
 	)
@@ -250,6 +293,15 @@ func (c *Config) Reload(ctx context.Context) error {
 	if err := validator.New().Struct(c); err != nil {
 		return errors.Join(err, ErrUnmarshallingConfig)
 	}
+
+	if skew := c.Security.ClockSkew(); skew > DefaultUnsafeClockSkew {
+		slog.WarnContext(ctx,
+			"unsafe clock skew override active",
+			slog.Duration("clock_skew", skew),
+			slog.Duration("default_clock_skew", DefaultUnsafeClockSkew),
+		)
+	}
+
 	return nil
 }
 

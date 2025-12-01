@@ -2,6 +2,8 @@ package access
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 	"net/url"
 	"time"
 
@@ -29,6 +31,7 @@ type Provider struct {
 	Logger         *logger.Logger
 	Config         *config.ServiceConfig
 	KASConfig
+	securityConfig *config.SecurityConfig
 	trace.Tracer
 }
 
@@ -73,6 +76,36 @@ func (p *Provider) IsReady(ctx context.Context) error {
 	return nil
 }
 
+// ApplyConfig stores the latest KAS configuration, tracks the associated security
+// overrides, and emits a warning when the configured clock skew exceeds the default.
+func (p *Provider) ApplyConfig(cfg KASConfig, securityCfg *config.SecurityConfig) {
+	p.KASConfig = cfg
+	p.securityConfig = securityCfg
+
+	if p.Logger != nil {
+		if skew := p.acceptableSkew(); skew > config.DefaultUnsafeClockSkew {
+			p.Logger.Warn("configured SRT acceptable skew exceeds default",
+				slog.Duration("configured_skew", skew),
+				slog.Duration("default_skew", config.DefaultUnsafeClockSkew),
+			)
+		}
+	}
+}
+
+// SecurityConfig exposes the most recent security configuration captured via ApplyConfig.
+func (p *Provider) SecurityConfig() *config.SecurityConfig {
+	return p.securityConfig
+}
+
+// acceptableSkew returns the tolerated clock skew for SRT validation, falling back to the
+// global unsafe default when no override is present.
+func (p *Provider) acceptableSkew() time.Duration {
+	if p.securityConfig == nil {
+		return config.DefaultUnsafeClockSkew
+	}
+	return p.securityConfig.ClockSkew()
+}
+
 func (kasCfg *KASConfig) UpgradeMapToKeyring(c *security.StandardCrypto) {
 	switch {
 	case kasCfg.ECCertID != "" && len(kasCfg.Keyring) > 0:
@@ -101,6 +134,43 @@ func (kasCfg *KASConfig) UpgradeMapToKeyring(c *security.StandardCrypto) {
 	default:
 		kasCfg.Keyring = append(kasCfg.Keyring, inferLegacyKeys(kasCfg.Keyring)...)
 	}
+}
+
+func (kasCfg KASConfig) String() string {
+	rootKeySummary := ""
+	if kasCfg.RootKey != "" {
+		rootKeySummary = fmt.Sprintf("[REDACTED len=%d]", len(kasCfg.RootKey))
+	}
+
+	return fmt.Sprintf(
+		"KASConfig{Keyring:%v, ECCertID:%q, RSACertID:%q, RootKey:%s, KeyCacheExpiration:%s, ECTDFEnabled:%t, Preview:%+v, RegisteredKASURI:%q}",
+		kasCfg.Keyring,
+		kasCfg.ECCertID,
+		kasCfg.RSACertID,
+		rootKeySummary,
+		kasCfg.KeyCacheExpiration,
+		kasCfg.ECTDFEnabled,
+		kasCfg.Preview,
+		kasCfg.RegisteredKASURI,
+	)
+}
+
+func (kasCfg KASConfig) LogValue() slog.Value {
+	rootKeyVal := ""
+	if kasCfg.RootKey != "" {
+		rootKeyVal = fmt.Sprintf("[REDACTED len=%d]", len(kasCfg.RootKey))
+	}
+
+	return slog.GroupValue(
+		slog.Any("keyring", kasCfg.Keyring),
+		slog.String("eccertid", kasCfg.ECCertID),
+		slog.String("rsacertid", kasCfg.RSACertID),
+		slog.String("root_key", rootKeyVal),
+		slog.Duration("key_cache_expiration", kasCfg.KeyCacheExpiration),
+		slog.Bool("ec_tdf_enabled", kasCfg.ECTDFEnabled),
+		slog.Any("preview", kasCfg.Preview),
+		slog.String("registered_kas_uri", kasCfg.RegisteredKASURI),
+	)
 }
 
 // If there exists *any* legacy keys, returns empty list.

@@ -124,7 +124,7 @@ type CORSConfig struct {
 	Enabled          bool     `mapstructure:"enabled" json:"enabled" default:"true"`
 	AllowedOrigins   []string `mapstructure:"allowedorigins" json:"allowedorigins"`
 	AllowedMethods   []string `mapstructure:"allowedmethods" json:"allowedmethods" default:"[\"GET\",\"POST\",\"PATCH\",\"DELETE\",\"OPTIONS\"]"`
-	AllowedHeaders   []string `mapstructure:"allowedheaders" json:"allowedheaders" default:"[\"Accept\",\"Content-Type\",\"Content-Length\",\"Accept-Encoding\",\"X-CSRF-Token\",\"Authorization\",\"X-Requested-With\",\"Dpop\",\"Connect-Protocol-Version\"]"`
+	AllowedHeaders   []string `mapstructure:"allowedheaders" json:"allowedheaders" default:"[\"Accept\",\"Accept-Encoding\",\"Authorization\",\"Connect-Protocol-Version\",\"Content-Length\",\"Content-Type\",\"Dpop\",\"X-CSRF-Token\",\"X-Requested-With\",\"X-Rewrap-Additional-Context\"]"`
 	ExposedHeaders   []string `mapstructure:"exposedheaders" json:"exposedheaders"`
 	AllowCredentials bool     `mapstructure:"allowcredentials" json:"allowcredentials" default:"true"`
 	MaxAge           int      `mapstructure:"maxage" json:"maxage" default:"3600"`

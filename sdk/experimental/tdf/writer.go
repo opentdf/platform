@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/crc32"
+	"io"
 	"log/slog"
 	"sort"
 	"sync"
@@ -34,12 +35,11 @@ const (
 
 // SegmentResult contains the result of writing a segment
 type SegmentResult struct {
-	Data          []byte `json:"data"`          // Encrypted segment bytes (for streaming)
-	Index         int    `json:"index"`         // Segment index
-	Hash          string `json:"hash"`          // Base64-encoded integrity hash
-	PlaintextSize int64  `json:"plaintextSize"` // Original data size
-	EncryptedSize int64  `json:"encryptedSize"` // Encrypted data size
-	CRC32         uint32 `json:"crc32"`         // CRC32 checksum
+	TDFData       io.Reader // Reader for the full TDF segment (nonce + encrypted data + zip structures)
+	Index         int       `json:"index"`         // Segment index
+	Hash          string    `json:"hash"`          // Base64-encoded integrity hash
+	PlaintextSize int64     `json:"plaintextSize"` // Original data size
+	EncryptedSize int64     `json:"encryptedSize"` // Encrypted data size
 }
 
 // FinalizeResult contains the complete TDF creation result
@@ -110,7 +110,7 @@ type Writer struct {
 
 	// segments stores segment metadata using sparse map for memory efficiency
 	// Maps segment index to Segment metadata (hash, size information)
-	segments map[int]Segment
+	segments map[int]*Segment
 	// maxSegmentIndex tracks the highest segment index written
 	maxSegmentIndex int
 
@@ -183,7 +183,7 @@ func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error
 		WriterConfig:      *config,
 		archiveWriter:     archiveWriter,
 		dek:               dek,
-		segments:          make(map[int]Segment), // Initialize sparse storage
+		segments:          make(map[int]*Segment), // Initialize sparse storage
 		block:             block,
 		initialAttributes: config.initialAttributes,
 		initialDefaultKAS: config.initialDefaultKAS,
@@ -232,58 +232,76 @@ func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error
 //	uploadToS3(segment1, "part-001")
 func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*SegmentResult, error) {
 	w.mutex.Lock()
-	defer w.mutex.Unlock()
 
 	if w.finalized {
+		w.mutex.Unlock()
 		return nil, ErrAlreadyFinalized
 	}
 
 	if index < 0 {
+		w.mutex.Unlock()
 		return nil, ErrInvalidSegmentIndex
 	}
 
 	// Check for duplicate segments using map lookup
 	if _, exists := w.segments[index]; exists {
+		w.mutex.Unlock()
 		return nil, ErrSegmentAlreadyWritten
 	}
 
 	if index > w.maxSegmentIndex {
 		w.maxSegmentIndex = index
 	}
+	seg := &Segment{
+		Size: -1, // indicates not filled yet
+	}
+	w.segments[index] = seg
 
-	// Calculate CRC32 before encryption for integrity tracking
-	crc32Checksum := crc32.ChecksumIEEE(data)
+	w.mutex.Unlock()
 
 	// Encrypt directly without unnecessary copying - the archive layer will handle copying if needed
-	segmentCipher, err := w.block.Encrypt(data)
+	segmentCipher, nonce, err := w.block.EncryptInPlace(data)
 	if err != nil {
 		return nil, err
 	}
-
 	segmentSig, err := calculateSignature(segmentCipher, w.dek, w.segmentIntegrityAlgorithm, false) // Don't ever hex encode new tdf's
 	if err != nil {
 		return nil, err
 	}
 
 	segmentHash := string(ocrypto.Base64Encode([]byte(segmentSig)))
-	w.segments[index] = Segment{
-		Hash:          segmentHash,
-		Size:          int64(len(data)), // Use original data length
-		EncryptedSize: int64(len(segmentCipher)),
-	}
+	w.mutex.Lock()
+	seg.Size = int64(len(data))
+	seg.EncryptedSize = int64(len(segmentCipher)) + int64(len(nonce))
+	seg.Hash = segmentHash
+	w.mutex.Unlock()
 
-	zipBytes, err := w.archiveWriter.WriteSegment(ctx, index, segmentCipher)
+	crc := crc32.NewIEEE()
+	_, err = crc.Write(nonce)
 	if err != nil {
 		return nil, err
 	}
+	_, err = crc.Write(segmentCipher)
+	if err != nil {
+		return nil, err
+	}
+	header, err := w.archiveWriter.WriteSegment(ctx, index, uint64(seg.EncryptedSize), crc.Sum32())
+	if err != nil {
+		return nil, err
+	}
+	var reader io.Reader
+	if len(header) == 0 {
+		reader = io.MultiReader(bytes.NewReader(nonce), bytes.NewReader(segmentCipher))
+	} else {
+		reader = io.MultiReader(bytes.NewReader(header), bytes.NewReader(nonce), bytes.NewReader(segmentCipher))
+	}
 
 	return &SegmentResult{
-		Data:          zipBytes,
+		TDFData:       reader,
 		Index:         index,
-		Hash:          segmentHash,
-		PlaintextSize: int64(len(data)),
-		EncryptedSize: int64(len(segmentCipher)),
-		CRC32:         crc32Checksum,
+		Hash:          seg.Hash,
+		PlaintextSize: seg.Size,
+		EncryptedSize: seg.EncryptedSize,
 	}, nil
 }
 
@@ -505,7 +523,7 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 	// Copy segments to manifest in finalize order (pack densely)
 	for i, idx := range order {
 		if segment, exists := w.segments[idx]; exists {
-			encryptInfo.Segments[i] = segment
+			encryptInfo.Segments[i] = *segment
 		}
 	}
 
@@ -524,7 +542,8 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 	var totalPlaintextSize, totalEncryptedSize int64
 	for _, i := range order {
 		segment, exists := w.segments[i]
-		if !exists {
+		// if size is negative, segment was not written, finalized has been called too early
+		if !exists || w.segments[i].Size < 0 {
 			return nil, 0, 0, fmt.Errorf("segment %d not written; cannot finalize", i)
 		}
 		if segment.Hash != "" {

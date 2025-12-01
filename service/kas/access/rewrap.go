@@ -3,6 +3,7 @@ package access
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/hmac"
 	"crypto/rsa"
@@ -16,6 +17,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -106,6 +108,8 @@ const (
 	ErrInternal        = Error("internal error")
 
 	ErrNanoTDFPolicyModeUnsupported = Error("unsupported policy mode")
+
+	errNoValidKeyAccessObjects = Error("no valid KAOs")
 )
 
 func err400(s string) error {
@@ -134,29 +138,149 @@ func generateHMACDigest(ctx context.Context, msg, key []byte, logger logger.Logg
 	return mac.Sum(nil), nil
 }
 
-var acceptableSkew = 30 * time.Second
-
-func verifySRT(ctx context.Context, srt string, dpopJWK jwk.Key, logger logger.Logger) (string, error) {
-	token, err := jwt.Parse([]byte(srt), jwt.WithKey(jwa.RS256, dpopJWK), jwt.WithAcceptableSkew(acceptableSkew))
-	if err != nil {
-		logger.WarnContext(ctx,
-			"unable to verify request token",
-			slog.String("srt", srt),
-			slog.Any("jwk", dpopJWK),
-			slog.Any("err", err),
-		)
-		return "", err401("unable to verify request token")
+func jwkThumbprintAttr(key jwk.Key) slog.Attr {
+	if key == nil {
+		return slog.String("jwk_thumbprint", "none")
 	}
-	return justRequestBody(ctx, token, logger)
+	thumbprint, err := key.Thumbprint(crypto.SHA256)
+	if err != nil {
+		return slog.String("jwk_thumbprint_error", err.Error())
+	}
+	return slog.String("jwk_thumbprint", base64.RawURLEncoding.EncodeToString(thumbprint))
 }
 
-func noverify(ctx context.Context, srt string, logger logger.Logger) (string, error) {
-	token, err := jwt.Parse([]byte(srt), jwt.WithVerify(false), jwt.WithAcceptableSkew(acceptableSkew))
-	if err != nil {
-		logger.WarnContext(ctx, "unable to validate or parse token", slog.Any("error", err))
-		return "", err401("could not parse token")
+// logSRTParseFailure emits contextual details when an SRT cannot be parsed, adjusting
+// verbosity depending on whether signature verification was required.
+func (p *Provider) logSRTParseFailure(ctx context.Context, srt string, requireVerification bool, err error) {
+	attrs := []any{slog.Any("error", err)}
+	if requireVerification {
+		attrs = append(attrs, slog.String("srt", srt))
+		p.Logger.WarnContext(ctx, "unable to verify request token", attrs...)
+		return
 	}
-	return justRequestBody(ctx, token, logger)
+
+	p.Logger.WarnContext(ctx, "unable to validate or parse token", attrs...)
+}
+
+// parseSRT parses the JWT payload without validation, returning the token and embedded
+// request body string while translating parse errors into client-facing status codes.
+func (p *Provider) parseSRT(ctx context.Context, srt string, requireVerification bool) (jwt.Token, string, error) {
+	token, err := jwt.Parse([]byte(srt), jwt.WithVerify(false), jwt.WithValidate(false))
+	if err != nil {
+		p.logSRTParseFailure(ctx, srt, requireVerification, err)
+		if requireVerification {
+			return nil, "", err401("unable to verify request token")
+		}
+		return nil, "", err401("could not parse token")
+	}
+
+	rbString, err := justRequestBody(ctx, token, *p.Logger)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return token, rbString, nil
+}
+
+// logSRTValidationFailure collects claim timestamps and skew details to aid debugging when
+// validation fails after parsing the SRT.
+func (p *Provider) logSRTValidationFailure(ctx context.Context, token jwt.Token, message string, err error) {
+	now := time.Now().UTC()
+
+	fields := []any{
+		slog.Any("error", err),
+		slog.Time("server_time", now),
+		slog.Duration("acceptable_skew", p.acceptableSkew()),
+	}
+
+	failureClaims := map[string]struct{}{}
+
+	issuedAt := token.IssuedAt()
+	if !issuedAt.IsZero() {
+		fields = append(fields,
+			slog.Time("iat", issuedAt),
+			slog.Duration("iat_delta", issuedAt.Sub(now)),
+		)
+		if errors.Is(err, jwt.ErrInvalidIssuedAt()) {
+			failureClaims["iat"] = struct{}{}
+		}
+	}
+
+	expires := token.Expiration()
+	if !expires.IsZero() {
+		fields = append(fields,
+			slog.Time("exp", expires),
+			slog.Duration("exp_delta", now.Sub(expires)),
+		)
+		if errors.Is(err, jwt.ErrTokenExpired()) {
+			failureClaims["exp"] = struct{}{}
+		}
+	}
+
+	notBefore := token.NotBefore()
+	if !notBefore.IsZero() {
+		fields = append(fields,
+			slog.Time("nbf", notBefore),
+			slog.Duration("nbf_delta", notBefore.Sub(now)),
+		)
+	}
+
+	if errors.Is(err, jwt.ErrTokenNotYetValid()) {
+		failureClaims["nbf"] = struct{}{}
+	}
+
+	if len(failureClaims) > 0 {
+		names := make([]string, 0, len(failureClaims))
+		for claim := range failureClaims {
+			names = append(names, claim)
+		}
+		sort.Strings(names)
+		fields = append(fields, slog.Any("validation_failure_claims", names))
+	}
+
+	fields = append(fields, slog.String("failure_reason", message))
+	p.Logger.WarnContext(ctx, "srt validation failure", fields...)
+}
+
+// validateSRTClaims enforces temporal constraints on the parsed SRT, incorporating the
+// configured acceptable skew and translating failures into user-friendly errors.
+func (p *Provider) validateSRTClaims(ctx context.Context, token jwt.Token, requireVerification bool) error {
+	err := jwt.Validate(token, jwt.WithAcceptableSkew(p.acceptableSkew()))
+	if err == nil {
+		return nil
+	}
+
+	message := "unable to validate or parse token"
+	userErr := err401("could not parse token")
+	if requireVerification {
+		message = "unable to verify request token"
+		userErr = err401("unable to verify request token")
+	}
+
+	p.logSRTValidationFailure(ctx, token, message, err)
+	return userErr
+}
+
+// verifySRTSignature validates the SRT signature against the supplied DPoP key when
+// verification is required.
+func (p *Provider) verifySRTSignature(ctx context.Context, srt string, dpopJWK jwk.Key) error {
+	_, err := jwt.Parse(
+		[]byte(srt),
+		jwt.WithKey(jwa.RS256, dpopJWK),
+		jwt.WithValidate(false),
+	)
+	if err != nil {
+		if p.Logger != nil {
+			p.Logger.WarnContext(ctx,
+				"unable to verify request token",
+				slog.String("srt", srt),
+				jwkThumbprintAttr(dpopJWK),
+				slog.Any("error", err),
+			)
+		}
+		return err401("unable to verify request token")
+	}
+	return nil
 }
 
 func justRequestBody(ctx context.Context, token jwt.Token, logger logger.Logger) (string, error) {
@@ -217,44 +341,52 @@ func extractAndConvertV1SRTBody(body []byte) (kaspb.UnsignedRewrapRequest, error
 	}, nil
 }
 
-func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRequest, logger logger.Logger) (*kaspb.UnsignedRewrapRequest, bool, error) {
+func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRequest) (*kaspb.UnsignedRewrapRequest, bool, error) {
 	isV1 := false
 	// First load legacy method for verifying SRT
 	if vpk, ok := headers["X-Virtrupubkey"]; ok && len(vpk) == 1 {
-		logger.InfoContext(ctx, "legacy Client: Processing X-Virtrupubkey")
+		p.Logger.InfoContext(ctx, "legacy Client: Processing X-Virtrupubkey")
 	}
 
 	// get dpop public key from context
-	dpopJWK := ctxAuth.GetJWKFromContext(ctx, &logger)
+	dpopJWK := ctxAuth.GetJWKFromContext(ctx, p.Logger)
 
-	var err error
-	var rbString string
 	srt := in.GetSignedRequestToken()
-	if dpopJWK == nil {
-		logger.InfoContext(ctx, "no DPoP key provided")
+	requireVerification := dpopJWK != nil
+	if !requireVerification {
+		p.Logger.InfoContext(ctx, "no DPoP key provided")
 		// if we have no DPoP key it's for one of two reasons:
 		// 1. auth is disabled so we can't get a DPoP JWK
 		// 2. auth is enabled _but_ we aren't requiring DPoP
 		// in either case letting the request through makes sense
-		rbString, err = noverify(ctx, srt, logger)
-		if err != nil {
-			logger.ErrorContext(ctx, "unable to load RSA verifier", slog.Any("error", err))
-			return nil, false, err
+	}
+
+	token, rbString, parseErr := p.parseSRT(ctx, srt, requireVerification)
+	if parseErr != nil {
+		if !requireVerification {
+			p.Logger.ErrorContext(ctx, "srt parsing failed (signature verification skipped)", slog.Any("error", parseErr))
 		}
-	} else {
-		// verify and validate the request token
-		var err error
-		rbString, err = verifySRT(ctx, srt, dpopJWK, logger)
-		if err != nil {
+		return nil, false, parseErr
+	}
+
+	if validateErr := p.validateSRTClaims(ctx, token, requireVerification); validateErr != nil {
+		if !requireVerification {
+			p.Logger.ErrorContext(ctx, "srt validation failed (signature verification skipped)", slog.Any("error", validateErr))
+		}
+		return nil, false, validateErr
+	}
+
+	if requireVerification {
+		if err := p.verifySRTSignature(ctx, srt, dpopJWK); err != nil {
 			return nil, false, err
 		}
 	}
 
 	var requestBody kaspb.UnsignedRewrapRequest
-	err = protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal([]byte(rbString), &requestBody)
+	err := protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal([]byte(rbString), &requestBody)
 	// if there are no requests then it could be a v1 request
 	if err != nil {
-		logger.WarnContext(ctx,
+		p.Logger.WarnContext(ctx,
 			"invalid SRT",
 			slog.Any("err_v2", err),
 			slog.String("srt", rbString),
@@ -262,11 +394,11 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 		return nil, false, err400("invalid request body")
 	}
 	if len(requestBody.GetRequests()) == 0 {
-		logger.DebugContext(ctx, "legacy v1 SRT")
+		p.Logger.DebugContext(ctx, "legacy v1 SRT")
 		var errv1 error
 
 		if requestBody, errv1 = extractAndConvertV1SRTBody([]byte(rbString)); errv1 != nil {
-			logger.WarnContext(ctx,
+			p.Logger.WarnContext(ctx,
 				"invalid SRT",
 				slog.Any("err_v1", errv1),
 				slog.String("srt", rbString),
@@ -277,7 +409,7 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 		isV1 = true
 	}
 	// TODO: this log is too big and should be reconsidered or removed
-	logger.DebugContext(ctx,
+	p.Logger.DebugContext(ctx,
 		"extracted request body",
 		slog.String("rewrap_body", requestBody.String()),
 		slog.String("rewrap_srt", rbString),
@@ -285,14 +417,14 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 
 	block, _ := pem.Decode([]byte(requestBody.GetClientPublicKey()))
 	if block == nil {
-		logger.WarnContext(ctx, "missing clientPublicKey")
+		p.Logger.WarnContext(ctx, "missing clientPublicKey")
 		return nil, isV1, err400("clientPublicKey failure")
 	}
 
 	// Try to parse the clientPublicKey
 	clientPublicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		logger.WarnContext(ctx, "failure to parse clientPublicKey", slog.Any("error", err))
+		p.Logger.WarnContext(ctx, "failure to parse clientPublicKey", slog.Any("error", err))
 		return nil, isV1, err400("clientPublicKey parse failure")
 	}
 	// Check to make sure the clientPublicKey is a supported key type
@@ -302,7 +434,7 @@ func extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRe
 	case *ecdsa.PublicKey:
 		return &requestBody, isV1, nil
 	default:
-		logger.WarnContext(ctx, "unsupported clientPublicKey type", slog.String("type", fmt.Sprintf("%T", clientPublicKey)))
+		p.Logger.WarnContext(ctx, "unsupported clientPublicKey type", slog.String("type", fmt.Sprintf("%T", clientPublicKey)))
 		return nil, isV1, err400("clientPublicKey unsupported type")
 	}
 }
@@ -433,7 +565,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	in := req.Msg
 	p.Logger.DebugContext(ctx, "REWRAP")
 
-	body, isV1, err := extractSRTBody(ctx, req.Header(), in, *p.Logger)
+	body, isV1, err := p.extractSRTBody(ctx, req.Header(), in)
 	if err != nil {
 		p.Logger.DebugContext(ctx, "unverifiable srt", slog.Any("error", err))
 		return nil, err
@@ -467,10 +599,18 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 		return nil, err400(err.Error())
 	}
 	if len(tdf3Reqs) > 0 {
-		resp.SessionPublicKey, results = p.tdf3Rewrap(ctx, tdf3Reqs, body.GetClientPublicKey(), entityInfo, additionalRewrapContext)
+		resp.SessionPublicKey, results, err = p.tdf3Rewrap(ctx, tdf3Reqs, body.GetClientPublicKey(), entityInfo, additionalRewrapContext)
+		if err != nil {
+			p.Logger.WarnContext(ctx, "status 400, tdf3 rewrap failure", slog.Any("error", err))
+			return nil, err
+		}
 		addResultsToResponse(resp, results)
 	} else {
-		resp.SessionPublicKey, results = p.nanoTDFRewrap(ctx, nanoReqs, body.GetClientPublicKey(), entityInfo, additionalRewrapContext)
+		resp.SessionPublicKey, results, err = p.nanoTDFRewrap(ctx, nanoReqs, body.GetClientPublicKey(), entityInfo, additionalRewrapContext)
+		if err != nil {
+			p.Logger.WarnContext(ctx, "status 400, nanoTDF rewrap failure", slog.Any("error", err))
+			return nil, err
+		}
 		addResultsToResponse(resp, results)
 	}
 
@@ -501,21 +641,52 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 }
 
 func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.UnsignedRewrapRequest_WithPolicyRequest) (*Policy, map[string]kaoResult, error) {
-	ctx, span := p.Start(ctx, "tdf3Rewrap")
-	defer span.End()
+	// Safe tracer handling - only start span if tracer is available
+	var span trace.Span
+	if p.Tracer != nil {
+		ctx, span = p.Start(ctx, "tdf3Rewrap")
+		defer span.End()
+	}
 
 	results := make(map[string]kaoResult)
 	anyValidKAOs := false
+	policy := &Policy{}
+
+	// Check if req is nil
+	if req == nil {
+		p.Logger.WarnContext(ctx, "request is nil")
+		return nil, results, errors.New("request is nil")
+	}
+
+	// Check if policy is nil
+	if req.GetPolicy() == nil {
+		p.Logger.WarnContext(ctx, "policy is nil")
+		return nil, results, errors.New("policy is nil")
+	}
 
 	p.Logger.DebugContext(ctx, "extracting policy", slog.Any("policy", req.GetPolicy()))
 	sDecPolicy, policyErr := base64.StdEncoding.DecodeString(req.GetPolicy().GetBody())
-	policy := &Policy{}
 	if policyErr == nil {
 		policyErr = json.Unmarshal(sDecPolicy, policy)
 	}
 
 	for _, kao := range req.GetKeyAccessObjects() {
 		if policyErr != nil {
+			failedKAORewrap(results, kao, err400("bad request"))
+			continue
+		}
+
+		// Check if KeyAccessObject is nil
+		if kao.GetKeyAccessObject() == nil {
+			p.Logger.WarnContext(ctx, "key access object is nil", slog.String("kao_id", kao.GetKeyAccessObjectId()))
+			failedKAORewrap(results, kao, err400("bad request"))
+			continue
+		}
+
+		// Check if wrapped key is empty
+		wrappedKey := kao.GetKeyAccessObject().GetWrappedKey()
+		if len(wrappedKey) == 0 {
+			p.Logger.WarnContext(ctx, "wrapped key is empty", slog.String("kao_id", kao.GetKeyAccessObjectId()))
 			failedKAORewrap(results, kao, err400("bad request"))
 			continue
 		}
@@ -624,10 +795,25 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				}
 				dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), nil)
 			}
+		default:
+			// handle unsupported key types
+			keyType := kao.GetKeyAccessObject().GetKeyType()
+			p.Logger.WarnContext(ctx, "unsupported key type",
+				slog.String("key_type", keyType),
+				slog.String("kao_id", kao.GetKeyAccessObjectId()))
+			failedKAORewrap(results, kao, err400("bad request"))
+			continue
 		}
 		if err != nil {
 			p.Logger.WarnContext(ctx, "failure to decrypt dek", slog.Any("error", err))
 			failedKAORewrap(results, kao, err400("bad request"))
+			continue
+		}
+
+		// Check if policy binding is nil
+		if kao.GetKeyAccessObject().GetPolicyBinding() == nil {
+			p.Logger.WarnContext(ctx, "policy binding is nil", slog.String("kao_id", kao.GetKeyAccessObjectId()))
+			failedKAORewrap(results, kao, err400("missing policy binding"))
 			continue
 		}
 
@@ -671,7 +857,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 
 	if !anyValidKAOs {
 		p.Logger.WarnContext(ctx, "no valid KAOs found")
-		return policy, results, errors.New("no valid KAOs")
+		return policy, results, errNoValidKeyAccessObjects
 	}
 
 	return policy, results, nil
@@ -703,7 +889,7 @@ func (p *Provider) listLegacyKeys(ctx context.Context) []trust.KeyIdentifier {
 	return kidsToCheck
 }
 
-func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo, additionalRewrapContext *AdditionalRewrapContext) (string, policyKAOResults) {
+func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo, additionalRewrapContext *AdditionalRewrapContext) (string, policyKAOResults, error) {
 	if p.Tracer != nil {
 		var span trace.Span
 		ctx, span = p.Start(ctx, "rewrap-tdf3")
@@ -714,7 +900,14 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 	var policies []*Policy
 	policyReqs := make(map[*Policy]*kaspb.UnsignedRewrapRequest_WithPolicyRequest)
 	for _, req := range requests {
+		if req == nil || req.GetPolicy() == nil || req.GetPolicy().GetId() == "" {
+			p.Logger.WarnContext(ctx, "rewrap: nil request or policy")
+			continue
+		}
 		policy, kaoResults, err := p.verifyRewrapRequests(ctx, req)
+		if err != nil && !errors.Is(err, errNoValidKeyAccessObjects) {
+			return "", nil, err400("invalid request")
+		}
 		policyID := req.GetPolicy().GetId()
 		results[policyID] = kaoResults
 		if err != nil {
@@ -742,14 +935,14 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			slog.Any("error", accessErr),
 		)
 		failAllKaos(requests, results, err500("could not perform access"))
-		return "", results
+		return "", results, nil
 	}
 
 	asymEncrypt, err := ocrypto.FromPublicPEMWithSalt(clientPublicKey, security.TDFSalt(), nil)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "ocrypto.NewAsymEncryption", slog.Any("error", err))
 		failAllKaos(requests, results, err400("invalid request"))
-		return "", results
+		return "", results, nil
 	}
 	encap := security.OCEncapsulator{PublicKeyEncryptor: asymEncrypt}
 
@@ -760,12 +953,12 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			p.Logger.ErrorContext(ctx, "unable to serialize ephemeral key", slog.Any("error", err))
 			// This may be a 500, but could also be caused by a bad clientPublicKey
 			failAllKaos(requests, results, err400("invalid request"))
-			return "", results
+			return "", results, nil
 		}
 		if !p.ECTDFEnabled && !p.Preview.ECTDFEnabled {
 			p.Logger.ErrorContext(ctx, "ec rewrap not enabled")
 			failAllKaos(requests, results, err400("invalid request"))
-			return "", results
+			return "", results, nil
 		}
 	}
 
@@ -832,10 +1025,10 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
 		}
 	}
-	return sessionKey, results
+	return sessionKey, results, nil
 }
 
-func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo, additionalRewrapContext *AdditionalRewrapContext) (string, policyKAOResults) {
+func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo, additionalRewrapContext *AdditionalRewrapContext) (string, policyKAOResults, error) {
 	ctx, span := p.Start(ctx, "nanoTDFRewrap")
 	defer span.End()
 
@@ -845,7 +1038,10 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 	policyReqs := make(map[*Policy]*kaspb.UnsignedRewrapRequest_WithPolicyRequest)
 
 	for _, req := range requests {
-		policy, kaoResults := p.verifyNanoRewrapRequests(ctx, req)
+		policy, kaoResults, err := p.verifyNanoRewrapRequests(ctx, req)
+		if err != nil {
+			return "", nil, err400("invalid request")
+		}
 		results[req.GetPolicy().GetId()] = kaoResults
 		if policy != nil {
 			policies = append(policies, policy)
@@ -861,20 +1057,20 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies, additionalRewrapContext.Obligations.FulfillableFQNs)
 	if accessErr != nil {
 		failAllKaos(requests, results, err500("could not perform access"))
-		return "", results
+		return "", results, nil
 	}
 
 	sessionKey, err := p.KeyDelegator.GenerateECSessionKey(ctx, clientPublicKey)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failure in GenerateNanoTDFSessionKey", slog.Any("error", err))
 		failAllKaos(requests, results, err400("keypair mismatch"))
-		return "", results
+		return "", results, nil
 	}
 	sessionKeyPEM, err := sessionKey.PublicKeyAsPEM()
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failure in PublicKeyToPem", slog.Any("error", err))
 		failAllKaos(requests, results, err500(""))
-		return "", results
+		return "", results, nil
 	}
 
 	for _, pdpAccess := range pdpAccessResults {
@@ -931,11 +1127,17 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
 		}
 	}
-	return sessionKeyPEM, results
+	return sessionKeyPEM, results, nil
 }
 
-func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.UnsignedRewrapRequest_WithPolicyRequest) (*Policy, map[string]kaoResult) {
+func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.UnsignedRewrapRequest_WithPolicyRequest) (*Policy, map[string]kaoResult, error) {
 	results := make(map[string]kaoResult)
+
+	// Check if req is nil
+	if req == nil {
+		p.Logger.WarnContext(ctx, "request is nil")
+		return nil, nil, errors.New("request is nil")
+	}
 
 	for _, kao := range req.GetKeyAccessObjects() {
 		// there should never be multiple KAOs in policy
@@ -948,7 +1150,7 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 		header, _, err := sdk.NewNanoTDFHeaderFromReader(headerReader)
 		if err != nil {
 			failedKAORewrap(results, kao, fmt.Errorf("failed to parse NanoTDF header: %w", err))
-			return nil, results
+			return nil, results, nil
 		}
 		// Lookup KID from nano header
 		kid, err := header.GetKasURL().GetIdentifier()
@@ -971,38 +1173,38 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 		ecCurve, err := header.ECCurve()
 		if err != nil {
 			failedKAORewrap(results, kao, fmt.Errorf("ECCurve failed: %w", err))
-			return nil, results
+			return nil, results, nil
 		}
 
 		symmetricKey, err := p.KeyDelegator.DeriveKey(ctx, trust.KeyIdentifier(kid), header.EphemeralKey, ecCurve)
 		if err != nil {
 			failedKAORewrap(results, kao, fmt.Errorf("failed to generate symmetric key: %w", err))
-			return nil, results
+			return nil, results, nil
 		}
 
 		// extract the policy
 		policy, err := extractNanoPolicy(symmetricKey, header)
 		if err != nil {
 			failedKAORewrap(results, kao, fmt.Errorf("Error extracting policy: %w", err))
-			return nil, results
+			return nil, results, nil
 		}
 
 		// check the policy binding
 		binding, err := header.PolicyBinding()
 		if err != nil {
 			failedKAORewrap(results, kao, fmt.Errorf("failed to retrieve policy binding: %w", err))
-			return nil, results
+			return nil, results, nil
 		}
 
 		verify, err := binding.Verify()
 		if err != nil {
 			failedKAORewrap(results, kao, fmt.Errorf("error verifying policy binding: %w", err))
-			return nil, results
+			return nil, results, nil
 		}
 
 		if !verify {
 			failedKAORewrap(results, kao, errors.New("policy binding verification failed"))
-			return nil, results
+			return nil, results, nil
 		}
 		results[kao.GetKeyAccessObjectId()] = kaoResult{
 			ID:            kao.GetKeyAccessObjectId(),
@@ -1010,9 +1212,9 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 			KeyID:         kid,
 			PolicyBinding: binding.String(),
 		}
-		return policy, results
+		return policy, results, nil
 	}
-	return nil, results
+	return nil, results, nil
 }
 
 func extractNanoPolicy(symmetricKey ocrypto.ProtectedKey, header sdk.NanoTDFHeader) (*Policy, error) {

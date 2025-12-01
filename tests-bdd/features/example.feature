@@ -4,13 +4,11 @@ Feature: Example Default Platform Feature
   and platform provisioning
 
   Background:
-    Given a empty local platform
+    Given an empty local platform
     And I submit a request to create a namespace with name "example.com" and reference id "ns1"
-    
 
   Scenario: Create Attribute With Initial Values
     When I send a request to create an attribute with:
-      | namespace_id                           | name      | rule     | values                  |
-      | ns1                                    | age-group | anyOf    | 18-24,25-34,35-44,45-54 |
+      | namespace_id | name      | rule  | values                  |
+      | ns1          | age-group | anyOf | 18-24,25-34,35-44,45-54 |
     Then the response should be successful
-

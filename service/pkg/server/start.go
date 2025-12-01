@@ -195,28 +195,25 @@ func Start(f ...StartOptions) error {
 	// Register Extra Core Services
 	if len(startConfig.extraCoreServices) > 0 {
 		logger.Debug("registering extra core services")
-		for _, service := range startConfig.extraCoreServices {
-			err := svcRegistry.RegisterService(service, serviceregistry.ModeCore)
-			if err != nil {
-				logger.Error("could not register extra core service", slog.String("error", err.Error()))
-				return fmt.Errorf("could not register extra core service: %w", err)
-			}
+		extraCoreServiceConfigs := getServiceConfigurationsFromIServices(startConfig.extraCoreServices, []serviceregistry.ModeName{serviceregistry.ModeCore}, false)
+		extraCoreRegisteredServices, err := svcRegistry.RegisterServicesFromConfiguration(cfg.Mode, extraCoreServiceConfigs)
+		if err != nil {
+			logger.Error("could not register extra core services", slog.String("error", err.Error()))
+			return fmt.Errorf("could not register extra core services: %w", err)
 		}
+		registeredServices = append(registeredServices, extraCoreRegisteredServices...)
 	}
 
 	// Register extra services
 	if len(startConfig.extraServices) > 0 {
 		logger.Debug("registering extra services")
-		for _, service := range startConfig.extraServices {
-			err := svcRegistry.RegisterService(service, serviceregistry.ModeName(service.GetNamespace()))
-			if err != nil {
-				logger.Error("could not register extra service",
-					slog.String("namespace", service.GetNamespace()),
-					slog.Any("error", err),
-				)
-				return fmt.Errorf("could not register extra service: %w", err)
-			}
+		extraServiceConfigs := getServiceConfigurationsFromIServices(startConfig.extraServices, nil, true)
+		extraRegisteredServices, err := svcRegistry.RegisterServicesFromConfiguration(cfg.Mode, extraServiceConfigs)
+		if err != nil {
+			logger.Error("could not register extra services", slog.String("error", err.Error()))
+			return fmt.Errorf("could not register extra services: %w", err)
 		}
+		registeredServices = append(registeredServices, extraRegisteredServices...)
 	}
 
 	logger.Info("registered the following services", slog.Any("services", registeredServices))

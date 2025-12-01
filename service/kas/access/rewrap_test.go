@@ -1,6 +1,7 @@
 package access
 
 import (
+	"bytes"
 	"context"
 	"crypto/rsa"
 	"crypto/x509"
@@ -11,7 +12,9 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"testing"
+	"time"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -24,6 +27,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/service/logger"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/trust"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,6 +67,16 @@ type fakeKeyIndex struct {
 	err  error
 }
 
+func (f *fakeKeyIndex) String() string {
+	return "fakeKeyIndex"
+}
+
+func (f *fakeKeyIndex) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("Indexer", f.String()),
+	)
+}
+
 func (f *fakeKeyIndex) FindKeyByAlgorithm(context.Context, string, bool) (trust.KeyDetails, error) {
 	return nil, errors.New("not implemented")
 }
@@ -86,6 +100,42 @@ func (f *fakeKeyIndex) ListKeysWith(_ context.Context, opts trust.ListKeyOptions
 		return legacyKeys, f.err
 	}
 	return f.keys, f.err
+}
+
+func newBufferLogger() (*logger.Logger, *bytes.Buffer) {
+	buf := &bytes.Buffer{}
+	handler := slog.NewJSONHandler(buf, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})
+	return &logger.Logger{
+		Logger: slog.New(handler),
+	}, buf
+}
+
+func extractLastLogRecord(t *testing.T, buf *bytes.Buffer) map[string]any {
+	t.Helper()
+	data := strings.TrimSpace(buf.String())
+	require.NotEmpty(t, data)
+	lines := strings.Split(data, "\n")
+	var record map[string]any
+	require.NoError(t, json.Unmarshal([]byte(lines[len(lines)-1]), &record))
+	return record
+}
+
+func toStringSlice(t *testing.T, raw any) []string {
+	t.Helper()
+	if raw == nil {
+		return nil
+	}
+	interfaceSlice, ok := raw.([]any)
+	require.True(t, ok)
+	result := make([]string, 0, len(interfaceSlice))
+	for _, v := range interfaceSlice {
+		str, strOK := v.(string)
+		require.True(t, strOK)
+		result = append(result, str)
+	}
+	return result
 }
 
 func TestListLegacyKeys_KeyringPopulated(t *testing.T) {
@@ -148,6 +198,26 @@ func TestListLegacyKeys_KeyIndexError(t *testing.T) {
 	}
 	kids := p.listLegacyKeys(t.Context())
 	assert.Empty(t, kids)
+}
+
+func TestProviderApplyConfig_DefaultAndWarning(t *testing.T) {
+	log, buf := newBufferLogger()
+	p := &Provider{
+		Logger: log,
+	}
+
+	security := &config.SecurityConfig{}
+	p.ApplyConfig(KASConfig{}, security)
+	require.Equal(t, config.DefaultUnsafeClockSkew, p.acceptableSkew())
+	require.Empty(t, strings.TrimSpace(buf.String()))
+
+	buf.Reset()
+
+	custom := 2 * time.Minute
+	security.Unsafe.ClockSkew = custom
+	p.ApplyConfig(KASConfig{}, security)
+	require.Equal(t, custom, p.acceptableSkew())
+	require.Contains(t, buf.String(), "configured SRT acceptable skew exceeds default")
 }
 
 const (
@@ -475,15 +545,17 @@ func TestParseAndVerifyRequest(t *testing.T) {
 			md := metadata.New(map[string]string{"token": bearer})
 			ctx = metadata.NewIncomingContext(ctx, md)
 
-			logger := logger.CreateTestLogger()
+			testLogger := logger.CreateTestLogger()
+			p := &Provider{
+				Logger: testLogger,
+			}
 
-			verified, _, err := extractSRTBody(
+			verified, _, err := p.extractSRTBody(
 				ctx,
 				http.Header{},
 				&kaspb.RewrapRequest{
 					SignedRequestToken: string(tt.body),
 				},
-				*logger,
 			)
 			if tt.goodDPoP {
 				require.NoError(t, err, "failed to parse srt=[%s], tok=[%s]", tt.body, bearer)
@@ -491,7 +563,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 				require.NotNil(t, verified.GetClientPublicKey(), "unable to load public key")
 
 				for _, req := range verified.GetRequests() {
-					err := verifyPolicyBinding(t.Context(), []byte(req.GetPolicy().GetBody()), req.GetKeyAccessObjects()[0], []byte(plainKey), *logger)
+					err := verifyPolicyBinding(t.Context(), []byte(req.GetPolicy().GetBody()), req.GetKeyAccessObjects()[0], []byte(plainKey), *testLogger)
 					if !tt.shouldError {
 						require.NoError(t, err, "failed to verify policy body=[%v]", tt.body)
 					} else {
@@ -517,16 +589,77 @@ func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 	md := metadata.New(map[string]string{"token": string(jwtWrongKey(t))})
 	ctx = metadata.NewIncomingContext(ctx, md)
 
-	verified, _, err := extractSRTBody(
+	badLogger := logger.CreateTestLogger()
+	p := &Provider{
+		Logger: badLogger,
+	}
+	verified, _, err := p.extractSRTBody(
 		ctx,
 		http.Header{},
 		&kaspb.RewrapRequest{
 			SignedRequestToken: string(makeRewrapBody(t, fauxPolicyBytes(t), false)),
 		},
-		*logger.CreateTestLogger(),
 	)
 	require.Error(t, err)
 	require.Nil(t, verified)
+}
+
+func TestValidateSRTClaims_LogsFutureIAT(t *testing.T) {
+	log, buf := newBufferLogger()
+	p := &Provider{Logger: log}
+
+	token := jwt.New()
+	future := time.Now().Add(2 * time.Minute)
+	require.NoError(t, token.Set(jwt.IssuedAtKey, future))
+
+	err := p.validateSRTClaims(t.Context(), token, false)
+	require.Error(t, err)
+
+	record := extractLastLogRecord(t, buf)
+	require.Equal(t, "srt validation failure", record["msg"])
+	require.NotNil(t, record["iat"])
+	require.NotNil(t, record["iat_delta"])
+	require.Equal(t, "unable to validate or parse token", record["failure_reason"])
+
+	claims := toStringSlice(t, record["validation_failure_claims"])
+	assert.Contains(t, claims, "iat")
+}
+
+func TestValidateSRTClaims_LogsExpired(t *testing.T) {
+	log, buf := newBufferLogger()
+	p := &Provider{Logger: log}
+
+	token := jwt.New()
+	past := time.Now().Add(-2 * time.Minute)
+	require.NoError(t, token.Set(jwt.ExpirationKey, past))
+
+	err := p.validateSRTClaims(t.Context(), token, false)
+	require.Error(t, err)
+
+	record := extractLastLogRecord(t, buf)
+	require.Equal(t, "srt validation failure", record["msg"])
+	require.NotNil(t, record["exp"])
+	require.NotNil(t, record["exp_delta"])
+	require.Equal(t, "unable to validate or parse token", record["failure_reason"])
+
+	claims := toStringSlice(t, record["validation_failure_claims"])
+	assert.Contains(t, claims, "exp")
+}
+
+func TestValidateSRTClaims_CustomSkewAllowsFutureIAT(t *testing.T) {
+	log, _ := newBufferLogger()
+	p := &Provider{Logger: log}
+	custom := 3 * time.Minute
+	security := &config.SecurityConfig{}
+	security.Unsafe.ClockSkew = custom
+	p.ApplyConfig(KASConfig{}, security)
+
+	token := jwt.New()
+	future := time.Now().Add(2 * time.Minute)
+	require.NoError(t, token.Set(jwt.IssuedAtKey, future))
+
+	err := p.validateSRTClaims(t.Context(), token, false)
+	require.NoError(t, err)
 }
 
 func Test_GetEntityInfo_When_Missing_MD_Expect_Error(t *testing.T) {
@@ -1141,6 +1274,273 @@ func TestAddResultsToResponse(t *testing.T) {
 					} else if actualKAO.GetMetadata() != nil {
 						// If no metadata is expected, actualKAO.Metadata should be nil or empty
 						require.Empty(t, actualKAO.GetMetadata(), "Unexpected metadata for KAO %s", kaoID)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestVerifyRewrapRequests(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+
+	// Valid policy for testing
+	validPolicy := &Policy{
+		UUID: uuid.New(),
+		Body: PolicyBody{
+			DataAttributes: []Attribute{
+				{
+					URI:  "https://example.com/attr/test",
+					Name: "test",
+				},
+			},
+		},
+	}
+	validPolicyJSON, _ := json.Marshal(validPolicy)
+	validPolicyB64 := base64.StdEncoding.EncodeToString(validPolicyJSON)
+
+	tests := []struct {
+		name          string
+		setupProvider func() *Provider
+		request       *kaspb.UnsignedRewrapRequest_WithPolicyRequest
+		expectError   bool
+		errorMessage  string
+	}{
+		{
+			name: "nil request should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request:      nil,
+			expectError:  true,
+			errorMessage: "request is nil",
+		},
+		{
+			name: "nil policy should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: nil, // nil policy
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao",
+						KeyAccessObject: &kaspb.KeyAccess{
+							KeyType: "wrapped",
+							Kid:     "test-kid",
+						},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "policy is nil", // The function returns "policy is nil" for nil policy
+		},
+		{
+			name: "nil policy body should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+					Id:   "test-policy",
+					Body: "", // empty body will cause JSON decode to fail
+				},
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao",
+						KeyAccessObject: &kaspb.KeyAccess{
+							KeyType: "wrapped",
+							Kid:     "test-kid",
+						},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "unexpected end of JSON input", // Actual error from JSON decode
+		},
+		{
+			name: "nil key access object should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger:       testLogger,
+					KeyDelegator: &trust.DelegatingKeyService{}, // Use minimal implementation
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+					Id:   "test-policy",
+					Body: validPolicyB64,
+				},
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao",
+						KeyAccessObject:   nil, // nil key access object
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "no valid KAOs", // Actual error message
+		},
+		{
+			name: "empty key access objects should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+					Id:   "test-policy",
+					Body: validPolicyB64,
+				},
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{}, // empty slice
+			},
+			expectError:  true,
+			errorMessage: "no valid KAOs", // Actual error message
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := tt.setupProvider()
+			ctx := t.Context()
+
+			// Test that the function doesn't panic and returns appropriate errors
+			var err error
+			var policy *Policy
+			var results map[string]kaoResult
+
+			assert.NotPanics(t, func() {
+				policy, results, err = provider.verifyRewrapRequests(ctx, tt.request)
+			}, "Function should not panic: "+tt.name)
+
+			if tt.expectError {
+				require.Error(t, err, "Expected error but got none: "+tt.name)
+				assert.Contains(t, err.Error(), tt.errorMessage, "Error message should contain expected text: "+tt.errorMessage)
+			} else {
+				require.NoError(t, err, "Unexpected error: "+tt.name)
+				assert.NotNil(t, policy, "Policy should not be nil on success")
+				assert.NotNil(t, results, "Results should not be nil on success")
+			}
+		})
+	}
+}
+
+func TestVerifyNanoRewrapRequests(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+
+	tests := []struct {
+		name                string
+		setupProvider       func() *Provider
+		request             *kaspb.UnsignedRewrapRequest_WithPolicyRequest
+		expectError         bool
+		errorMessage        string
+		checkResultErrors   bool // Whether to check for errors in the results map
+		expectedResultCount int  // Expected number of results when checkResultErrors is true
+	}{
+		{
+			name: "nil request should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request:             nil,
+			expectError:         true,
+			errorMessage:        "request is nil",
+			checkResultErrors:   false,
+			expectedResultCount: 0,
+		},
+		{
+			name: "multiple KAOs should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+					Id:   "test-policy",
+					Body: "test-body",
+				},
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao-1",
+						KeyAccessObject: &kaspb.KeyAccess{
+							Header: []byte("fake-header-1"),
+						},
+					},
+					{
+						KeyAccessObjectId: "test-kao-2",
+						KeyAccessObject: &kaspb.KeyAccess{
+							Header: []byte("fake-header-2"),
+						},
+					},
+				},
+			},
+			expectError:         false, // Error goes into results, not returned directly
+			errorMessage:        "NanoTDFs should not have multiple KAOs per Policy",
+			checkResultErrors:   true, // Check for errors in the results map
+			expectedResultCount: 2,    // Should have two KAO results with errors
+		},
+		{
+			name: "invalid NanoTDF header should fail gracefully",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+					Id:   "test-policy",
+					Body: "test-body",
+				},
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao",
+						KeyAccessObject: &kaspb.KeyAccess{
+							Header: []byte("invalid-nano-header"), // Invalid header that will fail parsing
+						},
+					},
+				},
+			},
+			expectError:         false, // Function returns nil, results, nil (fails gracefully)
+			errorMessage:        "",
+			checkResultErrors:   false,
+			expectedResultCount: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := tt.setupProvider()
+			ctx := t.Context()
+
+			// Test that the function doesn't panic and returns appropriate errors
+			var err error
+			var results map[string]kaoResult
+
+			assert.NotPanics(t, func() {
+				_, results, err = provider.verifyNanoRewrapRequests(ctx, tt.request)
+			}, "Function should not panic: "+tt.name)
+
+			if tt.expectError {
+				require.Error(t, err, "Expected error but got none: "+tt.name)
+				assert.Contains(t, err.Error(), tt.errorMessage, "Error message should contain expected text: "+tt.errorMessage)
+			} else {
+				assert.NotNil(t, results, "Results should not be nil")
+				if tt.checkResultErrors {
+					// Check for errors stored in results map
+					assert.Len(t, results, tt.expectedResultCount, "Should have expected number of KAO results with errors")
+					for _, result := range results {
+						require.Error(t, result.Error, "KAO result should contain error")
+						assert.Contains(t, result.Error.Error(), tt.errorMessage, "Error should contain expected message")
 					}
 				}
 			}

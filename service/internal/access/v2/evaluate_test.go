@@ -751,18 +751,32 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 			expectError:      false,
 		},
 		{
-			name: "unknown attribute value FQN",
+			name: "partial FQNs not found - should DENY",
 			resourceAttrs: &authz.Resource_AttributeValues{
 				Fqns: []string{
 					levelMidFQN,
-					"https://namespace.com/attr/department/value/unknown", // This FQN doesn't exist in accessibleAttributeValues
+					"https://namespace.com/attr/department/value/unknown",
 				},
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
 				levelMidFQN: []*policy.Action{actionRead},
 			},
+			// Should NOT error - but should DENY resource (ANY missing FQN = DENY)
 			expectAccessible: false,
-			expectError:      true,
+			expectError:      false,
+		},
+		{
+			name: "all FQNs not found - should DENY",
+			resourceAttrs: &authz.Resource_AttributeValues{
+				Fqns: []string{
+					createAttrValueFQN(baseNamespace, "significance", "critical"),
+					createAttrValueFQN(baseNamespace, "significance", "major"),
+				},
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			// Should NOT error - but should DENY resource (no FQNs exist)
+			expectAccessible: false,
+			expectError:      false,
 		},
 	}
 
@@ -782,19 +796,30 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 
 			if tc.expectError {
 				s.Require().Error(err)
-			} else {
-				s.Require().NoError(err)
-				s.NotNil(resourceDecision)
-				s.Equal(tc.expectAccessible, resourceDecision.Entitled)
+				return
+			}
 
-				// Check results array has the correct length based on grouping by definition
-				definitions := make(map[string]bool)
-				for _, fqn := range tc.resourceAttrs.GetFqns() {
-					if attrAndValue, ok := s.accessibleAttrValues[fqn]; ok {
-						definitions[attrAndValue.GetAttribute().GetFqn()] = true
-					}
+			s.Require().NoError(err)
+			s.NotNil(resourceDecision)
+			s.Equal(tc.expectAccessible, resourceDecision.Entitled)
+
+			// Check results array has the correct length based on grouping by definition
+			// If ANY FQN is missing, DataRuleResults should be empty (resource is denied without evaluation)
+			definitions := make(map[string]bool)
+			allFQNsExist := true
+			for _, fqn := range tc.resourceAttrs.GetFqns() {
+				if attrAndValue, ok := s.accessibleAttrValues[fqn]; ok {
+					definitions[attrAndValue.GetAttribute().GetFqn()] = true
+				} else {
+					allFQNsExist = false
 				}
+			}
+
+			if allFQNsExist {
 				s.Len(resourceDecision.DataRuleResults, len(definitions))
+			} else {
+				// Any missing FQN means DENY without evaluation
+				s.Empty(resourceDecision.DataRuleResults)
 			}
 		})
 	}
@@ -887,7 +912,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			expectPass:  false,
 		},
 		{
-			name: "nonexistent registered resource value",
+			name: "nonexistent registered resource value - should DENY",
 			resource: &authz.Resource{
 				Resource: &authz.Resource_RegisteredResourceValueFqn{
 					RegisteredResourceValueFqn: nonExistentRegResValueFQN,
@@ -897,6 +922,73 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
 			expectError:  false,
 			expectPass:   false,
+		},
+		{
+			name: "attribute value FQNs not found, namespace & definition exist - should DENY",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{
+							createAttrValueFQN(baseNamespace, "department", "doesnotexist"),
+						},
+					},
+				},
+				EphemeralId: "test-attr-missing-fqns",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			expectError:  false,
+			expectPass:   false,
+		},
+		{
+			name: "attribute value FQNs not found, namespace exists - should DENY",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{
+							createAttrValueFQN(baseNamespace, "unknown", "doesnotexist"),
+						},
+					},
+				},
+				EphemeralId: "test-attr-missing-fqns",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			expectError:  false,
+			expectPass:   false,
+		},
+		{
+			name: "attribute value FQNs not found, namespace does not exist - should DENY",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{
+							"https://doesnot.exist/attr/severity/value/high",
+						},
+					},
+				},
+				EphemeralId: "test-attr-missing-fqns",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			expectError:  false,
+			expectPass:   false,
+		},
+		{
+			name: "attribute value FQNs partially exist - should DENY",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{
+							levelMidFQN,
+							"https://doesnot.exist/attr/severity/value/high",
+						},
+					},
+				},
+				EphemeralId: "test-attr-values-partially-exist",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				levelMidFQN: []*policy.Action{actionRead},
+			},
+			expectError: false,
+			expectPass:  false,
 		},
 		{
 			name:         "invalid nil resource",
@@ -940,6 +1032,73 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				s.Equal(tc.expectPass, decision.Entitled, "Decision entitlement status didn't match")
 				s.Equal(tc.resource.GetEphemeralId(), decision.ResourceID, "Resource ID didn't match")
 			}
+		})
+	}
+}
+
+func (s *EvaluateTestSuite) Test_getResourceDecision_MultiResources_GranularDenials() {
+	nonExistentFQN := createAttrValueFQN(baseNamespace, "space", "cosmic")
+
+	// Resource 1: Valid FQN, entity is entitled
+	resource1 := &authz.Resource{
+		Resource: &authz.Resource_AttributeValues_{
+			AttributeValues: &authz.Resource_AttributeValues{
+				Fqns: []string{levelHighestFQN},
+			},
+		},
+		EphemeralId: "valid-resource-1",
+	}
+
+	// Resource 2: Non-existent FQN
+	resource2 := &authz.Resource{
+		Resource: &authz.Resource_AttributeValues_{
+			AttributeValues: &authz.Resource_AttributeValues{
+				Fqns: []string{nonExistentFQN},
+			},
+		},
+		EphemeralId: "invalid-resource-2",
+	}
+
+	// Resource 3: Valid FQN, entity is entitled
+	resource3 := &authz.Resource{
+		Resource: &authz.Resource_AttributeValues_{
+			AttributeValues: &authz.Resource_AttributeValues{
+				Fqns: []string{levelMidFQN},
+			},
+		},
+		EphemeralId: "valid-resource-3",
+	}
+
+	entitlements := subjectmappingbuiltin.AttributeValueFQNsToActions{
+		levelHighestFQN: []*policy.Action{actionRead},
+		levelMidFQN:     []*policy.Action{actionRead},
+	}
+
+	testCases := []struct {
+		name             string
+		resource         *authz.Resource
+		expectedEntitled bool
+	}{
+		{"valid resource 1", resource1, true},
+		{"invalid resource 2 (missing FQN)", resource2, false},
+		{"valid resource 3", resource3, true},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			decision, err := getResourceDecision(
+				s.T().Context(),
+				s.logger,
+				s.accessibleAttrValues,
+				s.accessibleRegisteredResourceValues,
+				entitlements,
+				s.action,
+				tc.resource,
+			)
+
+			s.Require().NoError(err, "Should not error for resource: %s", tc.name)
+			s.Require().NotNil(decision)
+			s.Equal(tc.expectedEntitled, decision.Entitled, "Entitlement mismatch for: %s", tc.name)
 		})
 	}
 }

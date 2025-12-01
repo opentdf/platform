@@ -410,7 +410,7 @@ func RegisterLocalPlatformStepDefinitions(ctx *godog.ScenarioContext, x *Platfor
 	platformStepDefinitions := LocalPlatformStepDefinitions{
 		PlatformCukesContext: x,
 	}
-	ctx.Step(`^a empty local platform$`, platformStepDefinitions.aEmptyLocalPlatform)
+	ctx.Step(`^an empty local platform$`, platformStepDefinitions.aEmptyLocalPlatform)
 	ctx.Step(`^a user exists with username "([^"]*)" and email "([^"]*)" and the following attributes:$`, platformStepDefinitions.aUser)
 	ctx.Step(`^a local platform with platform template "([^"]*)" and keycloak template "([^"]*)"$`, platformStepDefinitions.aLocalPlatformWithTemplates)
 }

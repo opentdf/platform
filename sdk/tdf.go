@@ -758,6 +758,10 @@ func allowListFromKASRegistry(ctx context.Context, logger *slog.Logger, kasRegis
 
 // LoadTDF loads the tdf and prepare for reading the payload from TDF
 func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, error) {
+	if s.kasSessionKey != nil {
+		opts = append([]TDFReaderOption{withSessionKey(s.kasSessionKey)}, opts...)
+	}
+
 	config, err := newTDFReaderConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("newTDFReaderConfig failed: %w", err)
@@ -768,11 +772,6 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 	if err != nil {
 		return nil, fmt.Errorf("archive.NewTDFReader failed: %w", err)
 	}
-
-	if s.kasSessionKey != nil {
-		opts = append([]TDFReaderOption{withSessionKey(s.kasSessionKey)}, opts...)
-	}
-
 	useGlobalFulfillableObligations := len(config.fulfillableObligationFQNs) == 0 && len(s.fulfillableObligationFQNs) > 0
 	if useGlobalFulfillableObligations {
 		config.fulfillableObligationFQNs = s.fulfillableObligationFQNs

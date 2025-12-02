@@ -145,7 +145,7 @@ func signWithCryptoSigner(tok jwt.Token, signer crypto.Signer, alg AssertionKeyA
 	// The jwt library can work directly with crypto.Signer
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(alg.String()), signer))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to sign with crypto.Signer: %w", err)
 	}
 	return signedTok, nil
 }

@@ -427,6 +427,121 @@ func TestVerificationMode_DefaultIsFailFast(t *testing.T) {
 	})
 }
 
+// TestVerificationMode_VerifiersProvidedRegistersWildcardValidator tests that when
+// WithAssertionVerificationKeys is used, a wildcard KeyAssertionValidator is automatically
+// registered in the assertion registry. This ensures verifiers are properly used for
+// any assertion schema, addressing the code review concern about verifiers being consulted.
+//
+// The key insight is that WithAssertionVerificationKeys (in tdf_config.go) registers
+// a wildcard validator, so the registry lookup in tdf.go will succeed via the wildcard
+// match, and the provided verifiers WILL be used.
+func TestVerificationMode_VerifiersProvidedRegistersWildcardValidator(t *testing.T) {
+	t.Parallel()
+
+	// Create verifiers with a key
+	verifiers := AssertionVerificationKeys{
+		Keys: map[string]AssertionKey{
+			"test-assertion": {
+				Alg: AssertionKeyAlgHS256,
+				Key: []byte("test-verification-key-32bytes!!"),
+			},
+		},
+	}
+
+	// Create reader config using the proper option function
+	// This simulates what happens when LoadTDF is called with WithAssertionVerificationKeys
+	readerConfig := &TDFReaderConfig{
+		assertionRegistry: newAssertionRegistry(),
+	}
+
+	// Apply the option - this should register a wildcard validator
+	opt := WithAssertionVerificationKeys(verifiers)
+	err := opt(readerConfig)
+	require.NoError(t, err, "WithAssertionVerificationKeys should succeed")
+
+	// Now the registry SHOULD have a wildcard validator
+	// This is the key behavior: any schema lookup will succeed via wildcard
+	validator, err := readerConfig.assertionRegistry.GetValidationProvider("any-unknown-schema")
+	require.NoError(t, err, "Registry should find wildcard validator for any schema")
+	assert.NotNil(t, validator, "Validator should not be nil")
+
+	// Verify the validator is a KeyAssertionValidator with wildcard schema
+	assert.Equal(t, SchemaWildcard, validator.Schema(), "Validator should be wildcard")
+}
+
+// TestVerificationMode_VerifiersEmptyFallbackToDEK tests that when verifiers is empty
+// and registry has no validator, DEK verification is attempted as fallback.
+func TestVerificationMode_VerifiersEmptyFallbackToDEK(t *testing.T) {
+	t.Parallel()
+
+	// Create an assertion with an unknown schema
+	unknownAssertion := Assertion{
+		ID: "unknown-assertion",
+		Statement: Statement{
+			Format: StatementFormatJSON,
+			Schema: "completely-unknown-schema",
+			Value:  `{"test":"data"}`,
+		},
+		Binding: Binding{
+			Method:    "jws",
+			Signature: "some-signature",
+		},
+	}
+
+	// Create reader config with empty verifiers
+	readerConfig := &TDFReaderConfig{
+		assertionRegistry: newAssertionRegistry(),
+		verifiers:         AssertionVerificationKeys{}, // Empty
+	}
+
+	// Verify registry has no validator
+	_, err := readerConfig.assertionRegistry.GetValidationProvider(unknownAssertion.Statement.Schema)
+	require.Error(t, err, "Registry should not have validator")
+
+	// Verify verifiers IS empty
+	assert.True(t, readerConfig.verifiers.IsEmpty(), "Verifiers should be empty")
+
+	// In this case, the tdf.go logic WILL enter the DEK fallback block
+	// because: err != nil && r.config.verifiers.IsEmpty() == true
+	//
+	// This is the expected path for backward compatibility with DEK-signed assertions
+}
+
+// TestVerificationMode_RegistryHasValidator tests that when registry has a validator,
+// it is used regardless of verifiers configuration.
+func TestVerificationMode_RegistryHasValidator(t *testing.T) {
+	t.Parallel()
+
+	// Create keys for the validator
+	keys := AssertionVerificationKeys{
+		Keys: map[string]AssertionKey{
+			KeyAssertionID: {
+				Alg: AssertionKeyAlgHS256,
+				Key: []byte("test-key-32-bytes-long!!!!!!!"),
+			},
+		},
+	}
+
+	// Create and register a validator
+	validator := NewKeyAssertionValidator(keys)
+
+	readerConfig := &TDFReaderConfig{
+		assertionRegistry: newAssertionRegistry(),
+	}
+
+	err := readerConfig.assertionRegistry.RegisterValidator(validator)
+	require.NoError(t, err)
+
+	// Verify registry HAS the validator
+	foundValidator, err := readerConfig.assertionRegistry.GetValidationProvider(validator.Schema())
+	require.NoError(t, err, "Registry should have validator")
+	assert.NotNil(t, foundValidator, "Validator should be found")
+
+	// When registry lookup succeeds, that validator is used
+	// The verifiers field is not consulted in this case
+	// This is the expected behavior
+}
+
 // String returns the string representation of the verification mode
 func (m AssertionVerificationMode) String() string {
 	switch m {

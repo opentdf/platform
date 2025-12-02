@@ -1011,7 +1011,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 
 			buf := make([]byte, 8)
 
-			var r *Reader
+			var r *TDFReader
 			if test.verifiers == nil {
 				r, err = s.sdk.LoadTDF(readSeeker, WithDisableAssertionVerification(test.disableAssertionVerification), WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]}))
 			} else {
@@ -1239,7 +1239,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 
 			buf := make([]byte, 8)
 
-			var r *Reader
+			var r *TDFReader
 			if test.verifiers == nil {
 				r, err = s.sdk.LoadTDF(readSeeker)
 			} else {
@@ -1254,6 +1254,98 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 		}
 		_ = os.Remove(tdfFilename)
 	}
+}
+
+// Test_TDFWithAssertionVerifiersProvided tests that when WithAssertionVerificationKeys
+// is used, the provided verifiers are properly used for assertions with custom schemas.
+//
+// This works because WithAssertionVerificationKeys (in tdf_config.go) registers a
+// wildcard KeyAssertionValidator in the assertion registry. When tdf.go looks up
+// a validator for any schema, the wildcard validator is found and used.
+//
+// This test uses StrictMode to ensure the assertion MUST be verified (not skipped as unknown).
+// The test validates that verifiers work correctly for custom schemas not explicitly registered.
+func (s *TDFSuite) Test_TDFWithAssertionVerifiersProvided() {
+	// Generate signing key
+	hs256Key := make([]byte, 32)
+	_, err := rand.Read(hs256Key)
+	s.Require().NoError(err)
+
+	signingKey := AssertionKey{
+		Alg: AssertionKeyAlgHS256,
+		Key: hs256Key,
+	}
+
+	// Create assertion with a custom schema that is NOT registered in the assertion registry
+	assertions := []AssertionConfig{
+		{
+			ID:             "custom-assertion",
+			Type:           BaseAssertion,
+			Scope:          TrustedDataObjScope,
+			AppliesToState: Unencrypted,
+			Statement: Statement{
+				Format: StatementFormatJSON,
+				Schema: "urn:example:custom-schema:v1", // Custom schema - NOT in registry
+				Value:  `{"custom":"data","version":1}`,
+			},
+			SigningKey: signingKey,
+		},
+	}
+
+	// Provide verifiers with the matching key
+	verifiers := AssertionVerificationKeys{
+		Keys: map[string]AssertionKey{
+			"custom-assertion": signingKey, // Same key for symmetric verification
+		},
+	}
+
+	plainText := "hello world - testing verifiers provided scenario"
+	tdfFilename := "test-verifiers-provided.tdf"
+
+	// Create TDF with assertion
+	{
+		bufReader := strings.NewReader(plainText)
+		fileWriter, err := os.Create(tdfFilename)
+		s.Require().NoError(err)
+		defer fileWriter.Close()
+
+		_, err = s.sdk.CreateTDF(fileWriter, bufReader,
+			WithKasInformation(KASInfo{
+				URL:       s.kasTestURLLookup["https://a.kas/"],
+				PublicKey: "",
+			}),
+			WithAssertions(assertions...),
+		)
+		s.Require().NoError(err)
+	}
+
+	// Load TDF with verifiers in StrictMode
+	// Before fix: This would fail with "unknown assertion type in strict mode"
+	// because verifiers were not consulted when registry lookup failed
+	// After fix: KeyAssertionValidator is created with the provided verifiers
+	{
+		readSeeker, err := os.Open(tdfFilename)
+		s.Require().NoError(err)
+		defer readSeeker.Close()
+
+		r, err := s.sdk.LoadTDF(readSeeker,
+			WithAssertionVerificationKeys(verifiers),
+			WithAssertionVerificationMode(StrictMode), // Must verify, can't skip
+			WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]}),
+		)
+		s.Require().NoError(err, "LoadTDF should succeed - verifiers should be used for custom schema")
+
+		// Read the payload to trigger assertion verification
+		buf := make([]byte, len(plainText))
+		_, err = r.ReadAt(buf, 0)
+		if err != nil && err != io.EOF {
+			s.Require().NoError(err, "ReadAt should succeed after assertion verification")
+		}
+
+		s.Equal(plainText, string(buf[:len(plainText)]))
+	}
+
+	_ = os.Remove(tdfFilename)
 }
 
 func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing tdf

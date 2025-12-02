@@ -25,6 +25,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Entity Entitlements that do not require subject mappings (experimental)
 type DirectEntitlement struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -88,7 +89,7 @@ type EntityRepresentation struct {
 	// ephemeral entity id from the request
 	OriginalId      string             `protobuf:"bytes,1,opt,name=original_id,json=originalId,proto3" json:"original_id,omitempty"`
 	AdditionalProps []*structpb.Struct `protobuf:"bytes,2,rep,name=additional_props,json=additionalProps,proto3" json:"additional_props,omitempty"`
-	// FQN to actions entitlements that do not require subject mappings
+	// direct entitlements applied to Entity (experimental)
 	DirectEntitlements []*DirectEntitlement `protobuf:"bytes,3,rep,name=direct_entitlements,json=directEntitlements,proto3" json:"direct_entitlements,omitempty"`
 }
 
@@ -317,8 +318,9 @@ type CreateEntityChainsFromTokensRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Tokens    []*entity.Token `protobuf:"bytes,1,rep,name=tokens,proto3" json:"tokens,omitempty"`
-	Resources []*v2.Resource  `protobuf:"bytes,2,rep,name=resources,proto3" json:"resources,omitempty"`
+	Tokens []*entity.Token `protobuf:"bytes,1,rep,name=tokens,proto3" json:"tokens,omitempty"`
+	// resources to consider for direct entitlements (experimental)
+	Resources []*v2.Resource `protobuf:"bytes,2,rep,name=resources,proto3" json:"resources,omitempty"`
 }
 
 func (x *CreateEntityChainsFromTokensRequest) Reset() {

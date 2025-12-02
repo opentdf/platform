@@ -222,6 +222,7 @@ components:
           items:
             $ref: '#/components/schemas/authorization.v2.Resource'
           title: resources
+          description: resources to consider for direct entitlements (experimental)
       title: CreateEntityChainsFromTokensRequest
       additionalProperties: false
       description: Create an entity chain for each token (JWT) in the request.
@@ -248,6 +249,7 @@ components:
           title: actions
       title: DirectEntitlement
       additionalProperties: false
+      description: Entity Entitlements that do not require subject mappings (experimental)
     entityresolution.v2.EntityNotFoundError:
       type: object
       properties:
@@ -285,7 +287,7 @@ components:
           items:
             $ref: '#/components/schemas/entityresolution.v2.DirectEntitlement'
           title: direct_entitlements
-          description: FQN to actions entitlements that do not require subject mappings
+          description: direct entitlements applied to Entity (experimental)
       title: EntityRepresentation
       additionalProperties: false
     entityresolution.v2.ResolveEntitiesRequest:

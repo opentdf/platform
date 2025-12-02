@@ -14,8 +14,12 @@ type EntitlementPolicyCacheConfig struct {
 }
 
 type Config struct {
-	AllowDirectEntitlements bool                         `mapstructure:"allow_direct_entitlements" json:"allow_direct_entitlements" default:"false"`
-	Cache                   EntitlementPolicyCacheConfig `mapstructure:"entitlement_policy_cache" json:"entitlement_policy_cache"`
+	Cache EntitlementPolicyCacheConfig `mapstructure:"entitlement_policy_cache" json:"entitlement_policy_cache"`
+
+	// experimental features
+
+	// enable entity direct entitlements that do not require subject mappings
+	AllowDirectEntitlements bool `mapstructure:"allow_direct_entitlements" json:"allow_direct_entitlements" default:"false"`
 }
 
 // Validate tests for a sensible configuration

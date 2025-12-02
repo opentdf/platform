@@ -1,17 +1,27 @@
 package sdk
 
 import (
+	"context"
+	"crypto"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"runtime"
 	"time"
 
 	"github.com/gowebpki/jcs"
 	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 )
+
+// AssertionSigner is an interface for external key providers (HSM, KMS, etc.)
+// that can perform signing operations without exposing the key material.
+type AssertionSigner interface {
+	Sign(ctx context.Context, data []byte) ([]byte, error)
+}
 
 const (
 	SystemMetadataAssertionID = "system-metadata"
@@ -40,10 +50,12 @@ type Assertion struct {
 
 var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with provided key")
 
-// Sign signs the assertion with the given hash and signature using the key.
+// SignWithContext signs the assertion with the given hash and signature using the key.
+// It supports external key providers (HSM, KMS, etc.) through the AssertionSigner interface,
+// standard Go crypto.Signer interface, and raw key material.
 // It returns an error if the signing fails.
 // The assertion binding is updated with the method and the signature.
-func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
+func (a *Assertion) SignWithContext(ctx context.Context, hash, sig string, key AssertionKey) error {
 	tok := jwt.New()
 	if err := tok.Set(kAssertionHash, hash); err != nil {
 		return fmt.Errorf("failed to set assertion hash: %w", err)
@@ -52,8 +64,21 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 		return fmt.Errorf("failed to set assertion signature: %w", err)
 	}
 
-	// sign the hash and signature
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key))
+	var signedTok []byte
+	var err error
+
+	switch k := key.Key.(type) {
+	case AssertionSigner:
+		// External key provider (KMS, Vault, etc.)
+		signedTok, err = signWithAssertionSigner(ctx, tok, k, key.Alg)
+	case crypto.Signer:
+		// Standard Go HSM interface
+		signedTok, err = signWithCryptoSigner(tok, k, key.Alg)
+	default:
+		// Existing in-memory key path (raw key material)
+		signedTok, err = jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key))
+	}
+
 	if err != nil {
 		return fmt.Errorf("signing assertion failed: %w", err)
 	}
@@ -63,6 +88,66 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 	a.Binding.Signature = string(signedTok)
 
 	return nil
+}
+
+// Sign signs the assertion with the given hash and signature using the key.
+// It returns an error if the signing fails.
+// The assertion binding is updated with the method and the signature.
+// For external key providers that require context, use SignWithContext instead.
+func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
+	return a.SignWithContext(context.Background(), hash, sig, key)
+}
+
+// signWithAssertionSigner signs the JWT using an AssertionSigner (external key provider).
+func signWithAssertionSigner(ctx context.Context, tok jwt.Token, signer AssertionSigner, alg AssertionKeyAlg) ([]byte, error) {
+	// Serialize the token headers and payload
+	hdrs := jws.NewHeaders()
+	if err := hdrs.Set(jws.AlgorithmKey, jwa.KeyAlgorithmFrom(alg.String())); err != nil {
+		return nil, fmt.Errorf("failed to set algorithm header: %w", err)
+	}
+	if err := hdrs.Set(jws.TypeKey, "JWT"); err != nil {
+		return nil, fmt.Errorf("failed to set type header: %w", err)
+	}
+
+	// Sign the token using jws.Sign with a custom signer
+	payload, err := json.Marshal(tok)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal token: %w", err)
+	}
+
+	// Create the signing input (header.payload)
+	signed, err := jws.Sign(payload, jws.WithKey(jwa.KeyAlgorithmFrom(alg.String()), &assertionSignerAdapter{ctx: ctx, signer: signer}, jws.WithProtectedHeaders(hdrs)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign with assertion signer: %w", err)
+	}
+
+	return signed, nil
+}
+
+// assertionSignerAdapter adapts an AssertionSigner to work with the jws.Sign function.
+type assertionSignerAdapter struct {
+	ctx    context.Context
+	signer AssertionSigner
+}
+
+// Sign implements the crypto.Signer interface for assertionSignerAdapter.
+func (a *assertionSignerAdapter) Sign(_ io.Reader, digest []byte, _ crypto.SignerOpts) ([]byte, error) {
+	return a.signer.Sign(a.ctx, digest)
+}
+
+// Public returns nil as we don't expose the public key for external signers.
+func (a *assertionSignerAdapter) Public() crypto.PublicKey {
+	return nil
+}
+
+// signWithCryptoSigner signs the JWT using a crypto.Signer (standard Go HSM interface).
+func signWithCryptoSigner(tok jwt.Token, signer crypto.Signer, alg AssertionKeyAlg) ([]byte, error) {
+	// The jwt library can work directly with crypto.Signer
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(alg.String()), signer))
+	if err != nil {
+		return nil, err
+	}
+	return signedTok, nil
 }
 
 // Verify checks the binding signature of the assertion and

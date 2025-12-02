@@ -1,7 +1,13 @@
 package sdk
 
 import (
+	"context"
+	"crypto"
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
+	"errors"
+	"io"
 	"testing"
 
 	"github.com/gowebpki/jcs"
@@ -182,3 +188,73 @@ func TestDeserializingAssertionWithStringInStatementValue(t *testing.T) {
 
 	assert.Equal(t, "this is a value", assertion.Statement.Value)
 }
+
+// mockAssertionSigner is a mock implementation of AssertionSigner for testing.
+type mockAssertionSigner struct {
+	privateKey *rsa.PrivateKey
+	err        error
+}
+
+func (m *mockAssertionSigner) Sign(ctx context.Context, data []byte) ([]byte, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	hash := crypto.SHA256
+	hashed := hash.New()
+	hashed.Write(data)
+	return m.privateKey.Sign(rand.Reader, hashed.Sum(nil), &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash, Hash: hash})
+}
+
+func TestSignWithAssertionSigner(t *testing.T) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	signer := &mockAssertionSigner{privateKey: privateKey}
+	assertion := Assertion{
+		ID:    "test-id",
+		Type:  BaseAssertion,
+		Scope: PayloadScope,
+	}
+
+	key := AssertionKey{Alg: AssertionKeyAlgRS256, Key: signer}
+	err = assertion.SignWithContext(context.Background(), "testhash", "testsig", key)
+	require.NoError(t, err)
+	assert.NotEmpty(t, assertion.Binding.Signature)
+	assert.Equal(t, JWS.String(), assertion.Binding.Method)
+}
+
+func TestSignWithCryptoSigner(t *testing.T) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	assertion := Assertion{
+		ID:    "test-id",
+		Type:  BaseAssertion,
+		Scope: PayloadScope,
+	}
+
+	// crypto.Signer is implemented by *rsa.PrivateKey
+	var signer crypto.Signer = privateKey
+	key := AssertionKey{Alg: AssertionKeyAlgRS256, Key: signer}
+	err = assertion.Sign("testhash", "testsig", key)
+	require.NoError(t, err)
+	assert.NotEmpty(t, assertion.Binding.Signature)
+
+	// Verify with public key
+	verifyKey := AssertionKey{Alg: AssertionKeyAlgRS256, Key: &privateKey.PublicKey}
+	hash, sig, err := assertion.Verify(verifyKey)
+	require.NoError(t, err)
+	assert.Equal(t, "testhash", hash)
+	assert.Equal(t, "testsig", sig)
+}
+
+func TestSignWithAssertionSignerError(t *testing.T) {
+	signer := &mockAssertionSigner{err: errors.New("signing failed")}
+	assertion := Assertion{ID: "test-id", Type: BaseAssertion, Scope: PayloadScope}
+	key := AssertionKey{Alg: AssertionKeyAlgRS256, Key: signer}
+	err := assertion.Sign("hash", "sig", key)
+	require.Error(t, err)
+}
+
+// Ensure io import is used
+var _ io.Reader = rand.Reader

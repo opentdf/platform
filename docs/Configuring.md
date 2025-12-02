@@ -148,6 +148,48 @@ server:
           cert: kas-ec-cert.pem
 ```
 
+### CORS Configuration
+
+Root level key `server.cors`
+
+| Field                     | Description                                                              | Default                                                                                                                                   | Environment Variable                        |
+|---------------------------|--------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------|
+| `enabled`                 | Enable CORS for the server                                               | `true`                                                                                                                                    | OPENTDF_SERVER_CORS_ENABLED                 |
+| `allowedorigins`          | List of allowed origins (`*` for any)                                    | `[]`                                                                                                                                      | OPENTDF_SERVER_CORS_ALLOWEDORIGINS          |
+| `allowedmethods`          | List of allowed HTTP methods                                             | `["GET","POST","PATCH","DELETE","OPTIONS"]`                                                                                               | OPENTDF_SERVER_CORS_ALLOWEDMETHODS          |
+| `allowedheaders`          | List of allowed request headers                                          | `["Accept","Accept-Encoding","Authorization","Connect-Protocol-Version","Content-Length","Content-Type","Dpop","X-CSRF-Token","X-Requested-With","X-Rewrap-Additional-Context"]` | OPENTDF_SERVER_CORS_ALLOWEDHEADERS          |
+| `exposedheaders`          | List of response headers browsers can access                             | `[]`                                                                                                                                      | OPENTDF_SERVER_CORS_EXPOSEDHEADERS          |
+| `allowcredentials`        | Whether credentials are included in CORS requests                        | `true`                                                                                                                                    | OPENTDF_SERVER_CORS_ALLOWCREDENTIALS        |
+| `maxage`                  | Maximum age (seconds) of preflight cache                                 | `3600`                                                                                                                                    | OPENTDF_SERVER_CORS_MAXAGE                  |
+| `additionalmethods`       | Additional methods to append to defaults                                 | `[]`                                                                                                                                      | OPENTDF_SERVER_CORS_ADDITIONALMETHODS       |
+| `additionalheaders`       | Additional headers to append to defaults                                 | `[]`                                                                                                                                      | OPENTDF_SERVER_CORS_ADDITIONALHEADERS       |
+| `additionalexposedheaders`| Additional exposed headers to append                                     | `[]`                                                                                                                                      | OPENTDF_SERVER_CORS_ADDITIONALEXPOSEDHEADERS|
+
+#### Additive Configuration
+
+The `additional*` fields allow operators to extend the default lists without replacing them entirely:
+
+```yaml
+server:
+  cors:
+    enabled: true
+    # Add custom headers without copying all defaults
+    additionalheaders:
+      - X-Custom-Header
+      - X-Another-Header
+```
+
+To completely replace defaults, use the base fields directly:
+
+```yaml
+server:
+  cors:
+    allowedheaders:
+      - Authorization
+      - Content-Type
+      # Only these headers will be allowed
+```
+
 ### Crypto Provider
 
 To configure the Key Access Server,

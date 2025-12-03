@@ -565,6 +565,8 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	in := req.Msg
 	p.Logger.DebugContext(ctx, "REWRAP")
 
+	p.Logger.Info("[INTERNAL REWRAP] running")
+
 	body, isV1, err := p.extractSRTBody(ctx, req.Header(), in)
 	if err != nil {
 		p.Logger.DebugContext(ctx, "unverifiable srt", slog.Any("error", err))
@@ -895,6 +897,8 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		ctx, span = p.Start(ctx, "rewrap-tdf3")
 		defer span.End()
 	}
+
+	p.Logger.Info("[INTERNAL REWRAP] tdf3Rewrap")
 
 	results := make(policyKAOResults)
 	var policies []*Policy

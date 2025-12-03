@@ -3,6 +3,7 @@ package access
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strconv"
 
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -30,6 +31,8 @@ type PDPAccessResult struct {
 }
 
 func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies []*Policy, fulfillableObligationFQNs []string) ([]PDPAccessResult, error) {
+	p.Logger.Info("[INTERNAL REWRAP] tdf3Rewrap > canAccess")
+
 	var res []PDPAccessResult
 	var resources []*authzV2.Resource
 	idPolicyMap := make(map[string]*Policy)
@@ -57,6 +60,8 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 			res = append(res, PDPAccessResult{Access: true, Policy: policy})
 		}
 	}
+
+	p.Logger.Info("[INTERNAL REWRAP] tdf3Rewrap > canAccess found resources", slog.Any("resources", resources))
 
 	// If no data attributes were found in any policies, return early with the results
 	// instead of roundtripping to get a decision on no resources

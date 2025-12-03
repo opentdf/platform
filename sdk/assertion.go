@@ -126,6 +126,7 @@ func signWithAssertionSigner(ctx context.Context, tok jwt.Token, signer Assertio
 
 // assertionSignerAdapter adapts an AssertionSigner to work with the jws.Sign function.
 type assertionSignerAdapter struct {
+	//nolint:containedctx // Required to pass context through crypto.Signer interface which doesn't support context
 	ctx    context.Context
 	signer AssertionSigner
 }

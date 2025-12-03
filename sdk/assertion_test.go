@@ -195,7 +195,7 @@ type mockAssertionSigner struct {
 	err        error
 }
 
-func (m *mockAssertionSigner) Sign(ctx context.Context, data []byte) ([]byte, error) {
+func (m *mockAssertionSigner) Sign(_ context.Context, data []byte) ([]byte, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -217,7 +217,7 @@ func TestSignWithAssertionSigner(t *testing.T) {
 	}
 
 	key := AssertionKey{Alg: AssertionKeyAlgRS256, Key: signer}
-	err = assertion.SignWithContext(context.Background(), "testhash", "testsig", key)
+	err = assertion.SignWithContext(t.Context(), "testhash", "testsig", key)
 	require.NoError(t, err)
 	assert.NotEmpty(t, assertion.Binding.Signature)
 	assert.Equal(t, JWS.String(), assertion.Binding.Method)

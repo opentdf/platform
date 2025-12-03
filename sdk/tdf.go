@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"crypto/sha256"
@@ -11,17 +12,18 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/Masterminds/semver/v3"
+	"github.com/google/uuid"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
-
-	"github.com/google/uuid"
-	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/archive"
 	"github.com/opentdf/platform/sdk/sdkconnect"
@@ -29,30 +31,43 @@ import (
 )
 
 const (
-	keyAccessSchemaVersion = "1.0"
-	maxFileSizeSupported   = 68719476736 // 64gb
-	defaultMimeType        = "application/octet-stream"
-	tdfAsZip               = "zip"
-	gcmIvSize              = 12
-	aesBlockSize           = 16
-	hmacIntegrityAlgorithm = "HS256"
-	gmacIntegrityAlgorithm = "GMAC"
-	tdfZipReference        = "reference"
-	kKeySize               = 32
-	kWrapped               = "wrapped"
-	kECWrapped             = "ec-wrapped"
-	kKasProtocol           = "kas"
-	kSplitKeyType          = "split"
-	kGCMCipherAlgorithm    = "AES-256-GCM"
-	kGMACPayloadLength     = 16
-	kAssertionSignature    = "assertionSig"
-	kAssertionHash         = "assertionHash"
-	hexSemverThreshold     = "4.3.0"
-	readActionName         = "read"
+	keyAccessSchemaVersion  = "1.0"
+	maxFileSizeSupported    = 68719476736 // 64gb
+	defaultMimeType         = "application/octet-stream"
+	tdfAsZip                = "zip"
+	gcmIvSize               = 12
+	aesBlockSize            = 16
+	hmacIntegrityAlgorithm  = "HS256"
+	gmacIntegrityAlgorithm  = "GMAC"
+	tdfZipReference         = "reference"
+	kKeySize                = 32
+	kWrapped                = "wrapped"
+	kECWrapped              = "ec-wrapped"
+	kKasProtocol            = "kas"
+	kSplitKeyType           = "split"
+	kGCMCipherAlgorithm     = "AES-256-GCM"
+	kGMACPayloadLength      = 16
+	kAssertionSignature     = "assertionSig"
+	kAssertionHash          = "assertionHash"
+	kClientPublicKey        = "clientPublicKey"
+	kSignedRequestToken     = "signedRequestToken"
+	kKasURL                 = "url"
+	kRewrapV2               = "/v2/rewrap"
+	kAuthorizationKey       = "Authorization"
+	kContentTypeKey         = "Content-Type"
+	kAcceptKey              = "Accept"
+	kContentTypeJSONValue   = "application/json"
+	kEntityWrappedKey       = "entityWrappedKey"
+	kPolicy                 = "policy"
+	kHmacIntegrityAlgorithm = "HS256"
+	kGmacIntegrityAlgorithm = "GMAC"
+	hexSemverThreshold      = "4.3.0"
+	manifestFileName        = "0.manifest.json"
+	readActionName          = "read"
 )
 
 // Loads and reads ZTDF files
-type Reader struct {
+type TDFReader struct {
 	tokenSource         auth.AccessTokenSource
 	httpClient          *http.Client
 	connectOptions      []connect.ClientOption
@@ -81,7 +96,7 @@ type TDFObject struct {
 
 type tdf3DecryptHandler struct {
 	writer io.Writer
-	reader *Reader
+	reader *TDFReader
 }
 
 type ecKeyWrappedKeyInfo struct {
@@ -121,6 +136,63 @@ func (s SDK) createTDF3DecryptHandler(writer io.Writer, reader io.ReadSeeker, op
 
 func (t TDFObject) Size() int64 {
 	return t.size
+}
+
+// AppendAssertion adds a new assertion to the TDF object after creation.
+// This method handles the cryptographic binding of the assertion to the TDF's payload.
+// The assertion will be signed using the provided signing builder.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout
+//   - assertionConfig: Configuration for the new assertion to add
+//   - signingProvider: Provider to handle the cryptographic signing of the assertion
+//
+// Returns:
+//   - error: Any error that occurred during the append operation
+//
+// Note: This method modifies the TDF's manifest in place. The assertion will be
+// cryptographically bound to the TDF's payload using the aggregate hash.
+func (t *TDFObject) AppendAssertion(_ context.Context, assertionConfig AssertionConfig, key AssertionKey) error {
+	// Configure the assertion from config
+	assertion := Assertion{
+		ID:             assertionConfig.ID,
+		Type:           assertionConfig.Type,
+		Scope:          assertionConfig.Scope,
+		AppliesToState: assertionConfig.AppliesToState,
+		Statement:      assertionConfig.Statement,
+	}
+
+	// Get the hash of the assertion
+	assertionHashBytes, err := assertion.GetHash()
+	if err != nil {
+		return fmt.Errorf("failed to get assertion hash: %w", err)
+	}
+	assertionHash := string(assertionHashBytes)
+
+	// Cryptographic Binding Strategy:
+	// The assertion is bound to the TDF payload using the manifest's root signature.
+	// This creates a chain of integrity: payload -> segments -> aggregate hash -> root signature -> assertion
+	//
+	// The rootSignature is the signed and base64-encoded aggregate hash of all payload segments.
+	// By including it in the assertion signature, we cryptographically bind the assertion to the
+	// specific payload content. Any modification to the payload will change the root signature,
+	// which will cause assertion verification to fail.
+	//
+	// This approach ensures:
+	// 1. Assertions cannot be moved between different TDFs (payload binding)
+	// 2. Assertions cannot be added/removed without detection (integrity)
+	// 3. The assertion applies to the exact payload state at assertion creation time
+	rootSignature := t.manifest.RootSignature.Signature
+
+	// Sign the assertion using the provided signing builder
+	if err := assertion.Sign(assertionHash, rootSignature, key); err != nil {
+		return fmt.Errorf("failed to sign assertion: %w", err)
+	}
+
+	// Add the signed assertion to the manifest
+	t.manifest.Assertions = append(t.manifest.Assertions, assertion)
+
+	return nil
 }
 
 func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) {
@@ -288,64 +360,50 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	tdfObject.manifest.URL = archive.TDFPayloadFileName
 	tdfObject.manifest.IsEncrypted = true
 
-	var signedAssertion []Assertion
-	if tdfConfig.addDefaultAssertion {
-		systemMeta, err := GetSystemMetadataAssertionConfig()
-		if err != nil {
-			return nil, err
-		}
-		tdfConfig.assertions = append(tdfConfig.assertions, systemMeta)
+	// if addSystemMetadataAssertion is true, register a system metadata assertion binder
+	if tdfConfig.addSystemMetadataAssertion {
+		systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(tdfObject.payloadKey[:])
+		tdfConfig.assertionRegistry.RegisterBinder(systemMetadataAssertionProvider)
 	}
 
-	for _, assertion := range tdfConfig.assertions {
-		// Store a temporary assertion
-		tmpAssertion := Assertion{}
-
-		tmpAssertion.ID = assertion.ID
-		tmpAssertion.Type = assertion.Type
-		tmpAssertion.Scope = assertion.Scope
-		tmpAssertion.Statement = assertion.Statement
-		tmpAssertion.AppliesToState = assertion.AppliesToState
-
-		hashOfAssertionAsHex, err := tmpAssertion.GetHash()
-		if err != nil {
-			return nil, err
+	var boundAssertions []Assertion
+	// Bind Assertions
+	for _, registered := range tdfConfig.assertionRegistry.binders {
+		boundAssertion, er := registered.Bind(ctx, tdfObject.manifest)
+		if er != nil {
+			return nil, fmt.Errorf("failed to bind assertion: %w", er)
 		}
-
-		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
-		if err != nil {
-			return nil, fmt.Errorf("error decoding hex string: %w", err)
-		}
-
-		var completeHashBuilder strings.Builder
-		completeHashBuilder.WriteString(aggregateHash)
-		if tdfConfig.useHex {
-			completeHashBuilder.Write(hashOfAssertionAsHex)
-		} else {
-			completeHashBuilder.Write(hashOfAssertion)
-		}
-
-		encoded := ocrypto.Base64Encode([]byte(completeHashBuilder.String()))
-
-		assertionSigningKey := AssertionKey{}
-
-		// Set default to HS256 and payload key
-		assertionSigningKey.Alg = AssertionKeyAlgHS256
-		assertionSigningKey.Key = tdfObject.payloadKey[:]
-
-		if !assertion.SigningKey.IsEmpty() {
-			assertionSigningKey = assertion.SigningKey
-		}
-
-		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), string(encoded), assertionSigningKey); err != nil {
-			return nil, fmt.Errorf("failed to sign assertion: %w", err)
-		}
-
-		signedAssertion = append(signedAssertion, tmpAssertion)
+		boundAssertions = append(boundAssertions, boundAssertion)
 	}
 
-	tdfObject.manifest.Assertions = signedAssertion
+	// Sign any unsigned assertions with the DEK (payload key)
+	// All assertions MUST have cryptographic bindings for security
+	dekKey := AssertionKey{
+		Alg: AssertionKeyAlgHS256,
+		Key: tdfObject.payloadKey[:],
+	}
+	for i := range boundAssertions {
+		if boundAssertions[i].Binding.IsEmpty() {
+			// Get the hash of the assertion
+			assertionHashBytes, err := boundAssertions[i].GetHash()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get assertion hash: %w", err)
+			}
+
+			// Compute assertion signature using manifest method
+			assertionSignature, err := tdfObject.manifest.ComputeAssertionSignature(assertionHashBytes)
+			if err != nil {
+				return nil, fmt.Errorf("failed to compute assertion signature: %w", err)
+			}
+
+			// Sign with DEK
+			if err := boundAssertions[i].Sign(string(assertionHashBytes), assertionSignature, dekKey); err != nil {
+				return nil, fmt.Errorf("failed to sign assertion %q with DEK: %w", boundAssertions[i].ID, err)
+			}
+		}
+	}
+
+	tdfObject.manifest.Assertions = boundAssertions
 
 	manifestAsStr, err := json.Marshal(tdfObject.manifest)
 	if err != nil {
@@ -471,7 +529,7 @@ func (t *TDFObject) Manifest() Manifest {
 	return t.manifest
 }
 
-func (r *Reader) Manifest() Manifest {
+func (r *TDFReader) Manifest() Manifest {
 	return r.manifest
 }
 
@@ -757,7 +815,7 @@ func allowListFromKASRegistry(ctx context.Context, logger *slog.Logger, kasRegis
 }
 
 // LoadTDF loads the tdf and prepare for reading the payload from TDF
-func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, error) {
+func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*TDFReader, error) {
 	config, err := newTDFReaderConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("newTDFReaderConfig failed: %w", err)
@@ -809,7 +867,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		payloadSize += seg.Size
 	}
 
-	return &Reader{
+	return &TDFReader{
 		tokenSource:    s.tokenSource,
 		httpClient:     s.conn.Client,
 		connectOptions: s.conn.Options,
@@ -823,7 +881,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 
 // Do any network based operations required.
 // This allows making the requests cancellable
-func (r *Reader) Init(ctx context.Context) error {
+func (r *TDFReader) Init(ctx context.Context) error {
 	if r.payloadKey != nil {
 		return nil
 	}
@@ -833,7 +891,7 @@ func (r *Reader) Init(ctx context.Context) error {
 // Read reads up to len(p) bytes into p. It returns the number of bytes
 // read (0 <= n <= len(p)) and any error encountered. It returns an
 // io.EOF error when the stream ends.
-func (r *Reader) Read(p []byte) (int, error) {
+func (r *TDFReader) Read(p []byte) (int, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap(context.Background())
 		if err != nil {
@@ -847,7 +905,7 @@ func (r *Reader) Read(p []byte) (int, error) {
 }
 
 // Seek updates cursor to `Read` or `WriteTo` at an offset.
-func (r *Reader) Seek(offset int64, whence int) (int64, error) {
+func (r *TDFReader) Seek(offset int64, whence int) (int64, error) {
 	var newPos int64
 	switch whence {
 	case io.SeekStart:
@@ -869,7 +927,7 @@ func (r *Reader) Seek(offset int64, whence int) (int64, error) {
 
 // WriteTo writes data to writer until there's no more data to write or
 // when an error occurs. This implements the io.WriterTo interface.
-func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
+func (r *TDFReader) WriteTo(writer io.Writer) (int64, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap(context.Background())
 		if err != nil {
@@ -946,7 +1004,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 // of bytes read (0 <= n <= len(p)) and any error encountered. It returns an
 // io.EOF error when the stream ends.
 // NOTE: For larger tdf sizes use sdk.GetTDFPayload for better performance
-func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen, gocognit // Better readability keeping it as is for now
+func (r *TDFReader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen, gocognit // Better readability keeping it as is for now
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap(context.Background())
 		if err != nil {
@@ -1040,7 +1098,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 }
 
 // UnencryptedMetadata return decrypted metadata in manifest.
-func (r *Reader) UnencryptedMetadata() ([]byte, error) {
+func (r *TDFReader) UnencryptedMetadata() ([]byte, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap(context.Background())
 		if err != nil {
@@ -1053,7 +1111,7 @@ func (r *Reader) UnencryptedMetadata() ([]byte, error) {
 
 // Policy returns a copy of the policy object in manifest, if it is valid.
 // Otherwise, returns an error.
-func (r *Reader) Policy() (PolicyObject, error) {
+func (r *TDFReader) Policy() (PolicyObject, error) {
 	policyObj := PolicyObject{}
 	policy, err := ocrypto.Base64Decode([]byte(r.manifest.Policy))
 	if err != nil {
@@ -1069,7 +1127,7 @@ func (r *Reader) Policy() (PolicyObject, error) {
 }
 
 // DataAttributes return the data attributes present in tdf.
-func (r *Reader) DataAttributes() ([]string, error) {
+func (r *TDFReader) DataAttributes() ([]string, error) {
 	policy, err := ocrypto.Base64Decode([]byte(r.manifest.Policy))
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
@@ -1097,7 +1155,7 @@ func (r *Reader) DataAttributes() ([]string, error) {
 * which will result in a rewrap call.
 *
  */
-func (r *Reader) Obligations(ctx context.Context) (RequiredObligations, error) {
+func (r *TDFReader) Obligations(ctx context.Context) (RequiredObligations, error) {
 	if r.requiredObligations != nil {
 		return *r.requiredObligations, nil
 	}
@@ -1122,7 +1180,7 @@ OUTPUTS:
   - []byte - Byte array containing the DEK.
   - error - If an error occurred while processing
 */
-func (r *Reader) UnsafePayloadKeyRetrieval() ([]byte, error) {
+func (r *TDFReader) UnsafePayloadKeyRetrieval() ([]byte, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap(context.Background())
 		if err != nil {
@@ -1133,7 +1191,201 @@ func (r *Reader) UnsafePayloadKeyRetrieval() ([]byte, error) {
 	return r.payloadKey, nil
 }
 
-func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
+// AppendAssertion adds a new assertion to the loaded TDF reader after creation.
+// This method handles the cryptographic binding of the assertion to the TDF's payload.
+// The assertion will be signed using the provided signing builder.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout
+//   - assertion: the assertion
+//
+// Returns:
+//   - error: Any error that occurred during the append operation
+//
+// Note: This method modifies the TDF's manifest in place. The assertion should be
+// cryptographically bound to the TDF.
+func (r *TDFReader) AppendAssertion(_ context.Context, assertion Assertion) error {
+	// pre-check - can marshal
+	manifestBytes, err := json.Marshal(r.manifest)
+	if err != nil {
+		return fmt.Errorf("failed to marshal manifest: %w", err)
+	}
+	// pre-check - can unmarshal
+	_ = json.Unmarshal(manifestBytes, &Manifest{})
+	// Add the assertion to the manifest
+	r.manifest.Assertions = append(r.manifest.Assertions, assertion)
+	// post-check - can marshal
+	manifestBytes, err = json.Marshal(r.manifest)
+	if err != nil {
+		return fmt.Errorf("failed to marshal manifest: %w", err)
+	}
+	// post-check - can unmarshal
+	return json.Unmarshal(manifestBytes, &Manifest{})
+}
+
+// WriteTDFWithUpdatedManifest writes the TDF to a new file with the updated manifest.
+// This is useful for adding assertions to an existing TDF without decrypting/re-encrypting the payload.
+//
+// The function copies the original TDF ZIP verbatim while replacing only the manifest entry,
+// which avoids the expensive operation of re-encrypting the payload and preserves all other
+// entries byte-for-byte.
+//
+// Parameters:
+//   - inPath: Path to the input TDF file
+//   - outPath: Path to the output TDF file
+//
+// Returns:
+//   - error: Any error that occurred during the write operation
+//
+// Example:
+//
+//	reader, _ := sdk.LoadTDF(file)
+//	reader.AppendAssertion(ctx, assertion)
+//	err := reader.WriteTDFWithUpdatedManifest("input.tdf", "output.tdf")
+func (r *TDFReader) WriteTDFWithUpdatedManifest(inPath, outPath string) error {
+	return WriteTDFWithUpdatedManifest(inPath, outPath, r.manifest)
+}
+
+// WriteTDFWithUpdatedManifest copies an existing TDF ZIP file while replacing only the manifest entry.
+// This avoids re-encrypting the payload by preserving all other entries byte-for-byte.
+//
+// Parameters:
+//   - inPath: Path to the input TDF file
+//   - outPath: Path to the output TDF file
+//   - manifest: The updated manifest to write
+//
+// Returns:
+//   - error: Any error that occurred during the operation
+func WriteTDFWithUpdatedManifest(inPath, outPath string, manifest Manifest) error {
+	// Prepare updated manifest JSON without re-encrypting payload
+	updatedManifestBytes, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated manifest: %w", err)
+	}
+
+	inF, err := os.Open(inPath)
+	if err != nil {
+		return fmt.Errorf("failed to open input TDF: %w", err)
+	}
+	defer inF.Close()
+
+	stat, err := inF.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat input TDF: %w", err)
+	}
+
+	zr, err := zip.NewReader(inF, stat.Size())
+	if err != nil {
+		return fmt.Errorf("failed to open TDF as zip: %w", err)
+	}
+
+	outF, err := os.Create(outPath)
+	if err != nil {
+		return fmt.Errorf("failed to create output TDF: %w", err)
+	}
+	defer func() {
+		// Ensure the file is closed even if zip writer close fails
+		_ = outF.Close()
+	}()
+
+	zw := zip.NewWriter(outF)
+
+	// Track if we replaced an existing manifest
+	replaced := false
+
+	for _, f := range zr.File {
+		isManifest := f.Name == manifestFileName || f.Name == "manifest.json"
+
+		// Clone header for faithful copy
+		hdr := &zip.FileHeader{
+			Name:           f.Name,
+			Comment:        f.Comment,
+			Method:         f.Method,
+			NonUTF8:        f.NonUTF8,
+			Modified:       f.Modified,
+			ExternalAttrs:  f.ExternalAttrs,
+			CreatorVersion: f.CreatorVersion,
+			ReaderVersion:  f.ReaderVersion,
+			Extra:          append([]byte(nil), f.Extra...),
+		}
+
+		if isManifest {
+			// Replace the manifest contents
+			// Use Deflate for manifest to keep typical compression; preserve Modified timestamp if present
+			if hdr.Method == 0 {
+				// If the original was stored (rare for manifest), keep it; else deflate by default
+				hdr.Method = zip.Store
+			}
+			ww, err := zw.CreateHeader(hdr)
+			if err != nil {
+				_ = zw.Close()
+				return fmt.Errorf("failed to create manifest entry in output TDF: %w", err)
+			}
+			// Ensure deterministic-ish timestamp if missing
+			if hdr.Modified.IsZero() {
+				hdr.SetModTime(time.Now().UTC())
+			}
+			if _, err := ww.Write(updatedManifestBytes); err != nil {
+				_ = zw.Close()
+				return fmt.Errorf("failed to write updated manifest: %w", err)
+			}
+			replaced = true
+			continue
+		}
+
+		// Copy other entries byte-for-byte
+		// Preserve compression method and metadata
+		rc, err := f.Open()
+		if err != nil {
+			_ = zw.Close()
+			return fmt.Errorf("failed to open input entry %q: %w", f.Name, err)
+		}
+
+		ww, err := zw.CreateHeader(hdr)
+		if err != nil {
+			rc.Close()
+			_ = zw.Close()
+			return fmt.Errorf("failed to create output entry %q: %w", f.Name, err)
+		}
+
+		//nolint:gosec // G110: Decompression bomb warning expected when unpacking ZIP files
+		if _, err := io.Copy(ww, rc); err != nil {
+			rc.Close()
+			_ = zw.Close()
+			return fmt.Errorf("failed to copy entry %q: %w", f.Name, err)
+		}
+		rc.Close()
+	}
+
+	if !replaced {
+		// If no manifest was found, add one as 0.manifest.json
+		hdr := &zip.FileHeader{
+			Name:     manifestFileName,
+			Method:   zip.Deflate,
+			Modified: time.Now().UTC(),
+		}
+		ww, err := zw.CreateHeader(hdr)
+		if err != nil {
+			_ = zw.Close()
+			return fmt.Errorf("failed to create new manifest entry: %w", err)
+		}
+		if _, err := ww.Write(updatedManifestBytes); err != nil {
+			_ = zw.Close()
+			return fmt.Errorf("failed to write new manifest: %w", err)
+		}
+	}
+
+	if err := zw.Close(); err != nil {
+		return fmt.Errorf("failed to finalize output TDF: %w", err)
+	}
+	if err := outF.Close(); err != nil {
+		return fmt.Errorf("failed to close output TDF: %w", err)
+	}
+
+	return nil
+}
+
+func createRewrapRequest(_ context.Context, r *TDFReader) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
 	kasReqs := make(map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest)
 	for i, kao := range r.manifest.KeyAccessObjs {
 		kaoID := fmt.Sprintf("kao-%d", i)
@@ -1201,7 +1453,7 @@ func getIdx(kaoID string) int {
 	return idx
 }
 
-func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
+func (r *TDFReader) buildKey(ctx context.Context, results []kaoResult) error {
 	var unencryptedMetadata []byte
 	var payloadKey [kKeySize]byte
 	knownSplits := make(map[string]bool)
@@ -1269,17 +1521,12 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 		return errors.Join(v...)
 	}
 
-	aggregateHash := &bytes.Buffer{}
-	for _, segment := range r.manifest.Segments {
-		decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
-		if err != nil {
-			return fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
-		}
-
-		aggregateHash.Write(decodedHash)
+	aggregateHashBytes, err := r.manifest.ComputeAggregateHash()
+	if err != nil {
+		return fmt.Errorf("ComputeAggregateHash failed:%w", err)
 	}
 
-	res, err := validateRootSignature(r.manifest, aggregateHash.Bytes(), payloadKey[:])
+	res, err := validateRootSignature(r.manifest, aggregateHashBytes, payloadKey[:])
 	if err != nil {
 		return fmt.Errorf("%w: splitKey.validateRootSignature failed: %w", ErrRootSignatureFailure, err)
 	}
@@ -1295,68 +1542,124 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 		return ErrSegSizeMismatch
 	}
 
-	// Validate assertions
+	// Register DEK default system metadata assertion validator
+	if r.config.disableAssertionVerification {
+		// Skip all assertion verification setup
+		gcm, err := ocrypto.NewAESGcm(payloadKey[:])
+		if err != nil {
+			return fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
+		}
+
+		r.unencryptedMetadata = unencryptedMetadata
+		r.payloadKey = payloadKey[:]
+		r.aesGcm = gcm
+
+		return nil
+	}
+
+	// Propagate verification mode to all registered validators
+	// This ensures validators respect the configured verification mode
+	for _, validator := range r.config.assertionRegistry.validators {
+		if setter, ok := validator.(interface {
+			SetVerificationMode(AssertionVerificationMode)
+		}); ok {
+			setter.SetVerificationMode(r.config.assertionVerificationMode)
+		}
+	}
+
+	// Register system metadata assertion validator
+	systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(payloadKey[:])
+	systemMetadataAssertionProvider.SetVerificationMode(r.config.assertionVerificationMode)
+	// if already registered, ignore
+	_ = r.config.assertionRegistry.RegisterValidator(systemMetadataAssertionProvider)
+
+	// Create DEK-based validator for fallback verification (not registered with wildcard)
+	// This will be used as a last resort for unknown assertions that might be DEK-signed
+	dekKey := AssertionKey{
+		Alg: AssertionKeyAlgHS256,
+		Key: payloadKey[:],
+	}
+	dekAssertionValidator := NewDEKAssertionValidator(dekKey)
+	dekAssertionValidator.SetVerificationMode(r.config.assertionVerificationMode)
+
+	// Validate assertions based on configured verification mode
 	for _, assertion := range r.manifest.Assertions {
-		// Skip assertion verification if disabled
-		if r.config.disableAssertionVerification {
-			continue
+		// SECURITY: Assertions without cryptographic bindings cannot be verified and must fail
+		// This prevents unsigned assertions from being tampered with
+		// Unsigned assertions represent a security risk and should not be accepted
+		if assertion.Binding.Signature == "" {
+			return fmt.Errorf("%w: assertion has no cryptographic binding - unsigned assertions are not allowed",
+				ErrAssertionFailure{ID: assertion.ID})
 		}
 
-		assertionKey := AssertionKey{}
-		// Set default to HS256
-		assertionKey.Alg = AssertionKeyAlgHS256
-		assertionKey.Key = payloadKey[:]
-
-		if !r.config.verifiers.IsEmpty() {
-			// Look up the key for the assertion
-			foundKey, err := r.config.verifiers.Get(assertion.ID)
-
-			if err != nil {
-				return fmt.Errorf("%w: %w", ErrAssertionFailure{ID: assertion.ID}, err)
-			} else if !foundKey.IsEmpty() {
-				assertionKey.Alg = foundKey.Alg
-				assertionKey.Key = foundKey.Key
+		validator, err := r.config.assertionRegistry.GetValidationProvider(assertion.Statement.Schema)
+		if err != nil && r.config.verifiers.IsEmpty() {
+			// No schema-specific validator found, and no explicit verification keys provided
+			// Try DEK-based verification as a fallback (for assertions signed with DEK during encryption)
+			dekVerifyErr := dekAssertionValidator.Verify(ctx, assertion, *r)
+			switch {
+			case dekVerifyErr == nil:
+				// DEK verification succeeded - assertion was signed with DEK
+				// Continue to validation phase
+				validator = dekAssertionValidator
+			case errors.Is(dekVerifyErr, errAssertionVerifyKeyFailure):
+				// JWT signature verification failed with DEK - assertion not signed with DEK
+				// Treat as unknown assertion (forward compatibility)
+				validator = nil
+			default:
+				// DEK verification failed for other reason (hash mismatch, binding mismatch, etc.)
+				// This indicates tampering of a DEK-signed assertion - FAIL immediately
+				return r.handleAssertionVerificationError(assertion.ID, dekVerifyErr)
 			}
 		}
 
-		assertionHash, assertionSig, err := assertion.Verify(assertionKey)
-		if err != nil {
-			if errors.Is(err, errAssertionVerifyKeyFailure) {
-				return fmt.Errorf("assertion verification failed: %w", err)
+		// If we still don't have a validator, handle as unknown assertion
+		if err != nil && validator == nil {
+			// Unknown assertion handling depends on verification mode
+			switch r.config.assertionVerificationMode {
+			case PermissiveMode, FailFast:
+				// Skip unknown assertions with warning (forward compatibility)
+				continue
+			case StrictMode:
+				// Fail on unknown assertions
+				return fmt.Errorf("%w: unknown assertion type in strict mode", ErrAssertionFailure{ID: assertion.ID})
 			}
-			return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: assertion.ID}, err)
 		}
 
-		// Get the hash of the assertion
-		hashOfAssertionAsHex, err := assertion.GetHash()
+		// Verify integrity and binding
+		slog.DebugContext(ctx, "verifying assertion integrity and binding",
+			slog.String("assertion_id", assertion.ID))
+		err = validator.Verify(ctx, assertion, *r)
 		if err != nil {
-			return fmt.Errorf("%w: failed to get hash of assertion: %w", ErrAssertionFailure{ID: assertion.ID}, err)
+			// Verification errors are always treated as potential tampering
+			slog.ErrorContext(ctx, "assertion verification failed",
+				slog.String("assertion_id", assertion.ID),
+				slog.String("assertion_schema", assertion.Statement.Schema),
+				slog.Any("error", err))
+			return r.handleAssertionVerificationError(assertion.ID, err)
 		}
+		slog.DebugContext(ctx, "assertion verification succeeded",
+			slog.String("assertion_id", assertion.ID))
 
-		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
+		// Validate trust
+		err = validator.Validate(ctx, assertion, *r)
 		if err != nil {
-			return fmt.Errorf("error decoding hex string: %w", err)
+			// Trust validation errors may be handled based on mode
+			switch r.config.assertionVerificationMode {
+			case PermissiveMode:
+				// Log validation errors but continue
+				slog.ErrorContext(ctx, "assertion validation failed, continuing in permissive mode",
+					slog.String("assertion_id", assertion.ID),
+					slog.Any("error", err))
+				// This could be reported as a tamper event in the future
+				continue
+			case StrictMode, FailFast:
+				// StrictMode and FailFast both fail on validation errors
+				return r.handleAssertionVerificationError(assertion.ID, err)
+			}
 		}
-
-		isLegacyTDF := r.manifest.TDFVersion == ""
-		if isLegacyTDF {
-			hashOfAssertion = hashOfAssertionAsHex
-		}
-
-		var completeHashBuilder bytes.Buffer
-		completeHashBuilder.Write(aggregateHash.Bytes())
-		completeHashBuilder.Write(hashOfAssertion)
-
-		base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
-
-		if string(hashOfAssertionAsHex) != assertionHash {
-			return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: assertion.ID})
-		}
-
-		if assertionSig != string(base64Hash) {
-			return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: assertion.ID})
-		}
+		slog.DebugContext(ctx, "assertion validation complete",
+			slog.String("assertion_id", assertion.ID))
 	}
 
 	gcm, err := ocrypto.NewAESGcm(payloadKey[:])
@@ -1371,8 +1674,16 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 	return nil
 }
 
+// handleAssertionVerificationError handles errors from assertion verification
+func (r *TDFReader) handleAssertionVerificationError(assertionID string, err error) error {
+	if errors.Is(err, errAssertionVerifyKeyFailure) {
+		return fmt.Errorf("assertion verification failed: %w", err)
+	}
+	return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: assertionID}, err)
+}
+
 // Unwraps the payload key, if possible, using the access service
-func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocognit // Better readability keeping it as is
+func (r *TDFReader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocognit // Better readability keeping it as is
 	kasClient := newKASClient(r.httpClient, r.connectOptions, r.tokenSource, r.kasSessionKey, r.config.fulfillableObligationFQNs)
 
 	var kaoResults []kaoResult

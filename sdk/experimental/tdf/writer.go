@@ -5,7 +5,6 @@ package tdf
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -648,17 +647,21 @@ func (w *Writer) buildAssertions(aggregateHash []byte, assertions []AssertionCon
 			return nil, err
 		}
 
-		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
-		if err != nil {
-			return nil, fmt.Errorf("error decoding hex string: %w", err)
+		// Compute assertion signature using standard format: base64(aggregateHash + assertionHash)
+		// Note: experimental TDF uses raw bytes (modern format, not hex)
+		hashOfAssertion := make([]byte, len(hashOfAssertionAsHex)/2)
+		for i := 0; i < len(hashOfAssertion); i++ {
+			var b byte
+			_, err := fmt.Sscanf(string(hashOfAssertionAsHex[i*2:i*2+2]), "%02x", &b)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decode hex assertion hash: %w", err)
+			}
+			hashOfAssertion[i] = b
 		}
-
-		var completeHashBuilder bytes.Buffer
-		completeHashBuilder.Write(aggregateHash)
-		completeHashBuilder.Write(hashOfAssertion)
-
-		encoded := ocrypto.Base64Encode(completeHashBuilder.Bytes())
+		var completeHash bytes.Buffer
+		completeHash.Write(aggregateHash)
+		completeHash.Write(hashOfAssertion)
+		encoded := string(ocrypto.Base64Encode(completeHash.Bytes()))
 
 		assertionSigningKey := AssertionKey{}
 
@@ -670,7 +673,7 @@ func (w *Writer) buildAssertions(aggregateHash []byte, assertions []AssertionCon
 			assertionSigningKey = assertion.SigningKey
 		}
 
-		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), string(encoded), assertionSigningKey); err != nil {
+		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), encoded, assertionSigningKey); err != nil {
 			return nil, fmt.Errorf("failed to sign assertion: %w", err)
 		}
 

@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -69,7 +70,7 @@ type TDFConfig struct {
 	mimeType                   string
 	integrityAlgorithm         IntegrityAlgorithm
 	segmentIntegrityAlgorithm  IntegrityAlgorithm
-	assertions                 []AssertionConfig
+	assertionConfigs           []AssertionConfig
 	attributes                 []AttributeValueFQN
 	attributeValues            []*policy.Value
 	kasInfoList                []KASInfo
@@ -78,18 +79,21 @@ type TDFConfig struct {
 	preferredKeyWrapAlg        ocrypto.KeyType
 	useHex                     bool
 	excludeVersionFromManifest bool
-	addDefaultAssertion        bool
+	addSystemMetadataAssertion bool
+	// assertionRegistry allows custom assertions
+	assertionRegistry *AssertionRegistry
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	c := &TDFConfig{
-		autoconfigure:             true,
-		defaultSegmentSize:        defaultSegmentSize,
-		enableEncryption:          true,
-		tdfFormat:                 JSONFormat,
-		integrityAlgorithm:        HS256,
-		segmentIntegrityAlgorithm: GMAC,
-		addDefaultAssertion:       false,
+		autoconfigure:              true,
+		defaultSegmentSize:         defaultSegmentSize,
+		enableEncryption:           true,
+		tdfFormat:                  JSONFormat,
+		integrityAlgorithm:         HS256,
+		segmentIntegrityAlgorithm:  GMAC,
+		addSystemMetadataAssertion: false,
+		assertionRegistry:          newAssertionRegistry(),
 	}
 
 	for _, o := range opt {
@@ -194,20 +198,76 @@ func WithSegmentSize(size int64) TDFOption {
 	}
 }
 
-// WithDefaultAssertion returns an Option that adds a default assertion to the TDF.
+// WithSystemMetadataAssertion returns an Option that enables public key assertions.
 func WithSystemMetadataAssertion() TDFOption {
 	return func(c *TDFConfig) error {
-		c.addDefaultAssertion = true
+		c.addSystemMetadataAssertion = true
 		return nil
 	}
 }
 
-// WithAssertions returns an Option that add assertions to TDF.
+// WithAssertions returns an Option that adds public key assertion configs.
+// Each assertion config will be bound to the TDF during creation using the
+// signing key specified in the config.
 func WithAssertions(assertionList ...AssertionConfig) TDFOption {
 	return func(c *TDFConfig) error {
-		c.assertions = append(c.assertions, assertionList...)
+		// Register a binder for each assertion config
+		for _, assertionConfig := range assertionList {
+			// Add to assertionConfigs slice for backward compatibility
+			c.assertionConfigs = append(c.assertionConfigs, assertionConfig)
+
+			// Create a binder that will bind this specific assertion
+			binder := &configBasedAssertionBinder{config: assertionConfig}
+			c.assertionRegistry.RegisterBinder(binder)
+		}
 		return nil
 	}
+}
+
+// configBasedAssertionBinder creates an assertion from an AssertionConfig.
+// It implements the AssertionBinder interface.
+type configBasedAssertionBinder struct {
+	config AssertionConfig
+}
+
+func (b *configBasedAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, error) {
+	// Configure the assertion from config
+	assertion := Assertion{
+		ID:             b.config.ID,
+		Type:           b.config.Type,
+		Scope:          b.config.Scope,
+		Statement:      b.config.Statement,
+		AppliesToState: b.config.AppliesToState,
+	}
+
+	// Get the hash of the assertion
+	assertionHashBytes, err := assertion.GetHash()
+	if err != nil {
+		return Assertion{}, fmt.Errorf("failed to get assertion hash: %w", err)
+	}
+	assertionHash := string(assertionHashBytes)
+
+	// Determine signing key
+	signingKey := b.config.SigningKey
+	if signingKey.IsEmpty() {
+		// No explicit signing key provided - use the payload key (DEK)
+		// This is handled by passing the payload key from the TDF creation context
+		// For now, return the unsigned assertion - it will be signed by a DEK-based binder
+		return assertion, nil
+	}
+
+	// Compute assertion signature using manifest method
+	assertionSignature, err := m.ComputeAssertionSignature(assertionHashBytes)
+	if err != nil {
+		return Assertion{}, fmt.Errorf("failed to compute assertion signature: %w", err)
+	}
+
+	// Sign the assertion with the explicit key
+	if err := assertion.Sign(assertionHash, assertionSignature, signingKey); err != nil {
+		return Assertion{}, fmt.Errorf("failed to sign assertion: %w", err)
+	}
+
+	return assertion, nil
 }
 
 // WithAutoconfigure toggles inferring KAS info for encrypt from data attributes.
@@ -251,6 +311,15 @@ func WithTargetMode(mode string) TDFOption {
 	}
 }
 
+// WithAssertionBinder registers a custom assertion binder for TDF creation.
+// The binder will be called during TDF creation to bind assertions to the manifest.
+func WithAssertionBinder(binder AssertionBinder) TDFOption {
+	return func(c *TDFConfig) error {
+		c.assertionRegistry.RegisterBinder(binder)
+		return nil
+	}
+}
+
 // Schema Validation where 0 = none (skip), 1 = lax (allowing novel entries, 'falsy' values for unkowns), 2 = strict (rejecting novel entries, strict match to manifest schema)
 type SchemaValidationIntensity int
 
@@ -261,11 +330,74 @@ const (
 	unreasonable = 100
 )
 
+// AssertionVerificationMode defines how assertion verification errors are handled during TDF reading.
+//
+// The mode determines behavior when encountering unknown assertions, missing validators, or verification failures.
+// Each mode provides different security guarantees and compatibility trade-offs:
+//
+// ## PermissiveMode (Least Secure, Most Compatible)
+// Best for: Development, testing, forward compatibility with evolving TDF formats
+//   - Unknown assertions: SKIP with warning (allows newer TDF versions)
+//   - Missing verification keys: SKIP with warning (allows partial key configuration)
+//   - Verification failures: LOG error but continue (attempt best-effort validation)
+//   - Validation failures: LOG error but continue
+//
+// Security Impact: May allow tampered assertions to go undetected. Use only in non-production environments.
+//
+// ## FailFast (DEFAULT - Balanced Security)
+// Best for: Production with well-defined assertion requirements
+//   - Unknown assertions: SKIP with warning (forward compatible with new assertion types)
+//   - Missing verification keys: FAIL (prevents bypass via unconfigured keys)
+//   - Verification failures: FAIL immediately (cryptographic binding check failed)
+//   - Validation failures: FAIL immediately (trust/policy check failed)
+//
+// Security Impact: Secure against tampering but allows unknown assertion types for forward compatibility.
+//
+// ## StrictMode (Most Secure, Least Compatible)
+// Best for: High-security environments, regulated data, zero-tolerance for unknowns
+//   - Unknown assertions: FAIL (no surprises, every assertion must be explicitly validated)
+//   - Missing verification keys: FAIL (explicit trust required for all assertions)
+//   - Verification failures: FAIL immediately (cryptographic binding check failed)
+//   - Validation failures: FAIL immediately (trust/policy check failed)
+//
+// Security Impact: Maximum security but may break on new TDF formats or assertion types.
+//
+// ## Security Considerations
+//   - Missing cryptographic bindings ALWAYS fail regardless of mode (security requirement)
+//   - Permissive mode should NEVER be used in production for sensitive data
+//   - FailFast (default) provides the best balance for most production use cases
+//   - StrictMode is recommended for high-security environments where all TDF formats are controlled
+type AssertionVerificationMode int
+
+const (
+	// FailFast stops at the first assertion verification error (default, recommended for production).
+	// Provides balanced security while maintaining forward compatibility with unknown assertion types.
+	// Missing verification keys will cause verification to fail (fail-secure behavior).
+	FailFast AssertionVerificationMode = iota
+
+	// PermissiveMode allows best-effort validation, logging failures but continuing decryption.
+	// Should only be used in development/testing. NOT RECOMMENDED for production use.
+	// Missing verification keys will be skipped with warnings.
+	PermissiveMode
+
+	// StrictMode requires all assertions to be known and successfully verified with configured keys.
+	// Provides maximum security but may break on new TDF formats or assertion types.
+	// Any unknown assertion or missing key causes immediate failure.
+	StrictMode
+)
+
 type TDFReaderOption func(*TDFReaderConfig) error
 
 type TDFReaderConfig struct {
-	verifiers                    AssertionVerificationKeys
+	// verifiers verification public keys
+	verifiers AssertionVerificationKeys
+	// disableAssertionVerification disables all assertion verification (not recommended for production)
 	disableAssertionVerification bool
+	// assertionVerificationMode defines how assertion verification errors are handled
+	// Default is FailFast (most secure). See AssertionVerificationMode for details.
+	assertionVerificationMode AssertionVerificationMode
+	// assertionRegistry allows custom verification and validation implementation
+	assertionRegistry *AssertionRegistry
 
 	schemaValidationIntensity SchemaValidationIntensity
 	kasSessionKey             ocrypto.KeyPair
@@ -347,6 +479,8 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
 		maxManifestSize:              defaultMaxManifestSize,
+		assertionVerificationMode:    FailFast, // Default to FailFast mode (most secure, recommended for production)
+		assertionRegistry:            newAssertionRegistry(),
 	}
 
 	for _, o := range opt {
@@ -385,7 +519,28 @@ func WithMaxManifestSize(size int64) TDFReaderOption {
 func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.verifiers = keys
+
+		// ONLY register wildcard validator if assertion verification is enabled
+		// This maintains backward compatibility with the disableAssertionVerification flag
+		if !c.disableAssertionVerification {
+			// Register a wildcard KeyAssertionValidator that handles any schema
+			// when verification keys are provided
+			validator := NewKeyAssertionValidator(keys)
+			if err := c.assertionRegistry.RegisterValidator(validator); err != nil {
+				return fmt.Errorf("failed to register key assertion validator: %w", err)
+			}
+		}
+
 		return nil
+	}
+}
+
+// WithAssertionValidator registers a custom assertion validator for TDF reading.
+// The validator will be called during TDF reading to validate assertions with matching schema URIs.
+// The schema URI is determined by the validator's Schema() method.
+func WithAssertionValidator(validator AssertionValidator) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		return c.assertionRegistry.RegisterValidator(validator)
 	}
 }
 
@@ -396,9 +551,24 @@ func WithSchemaValidation(intensity SchemaValidationIntensity) TDFReaderOption {
 	}
 }
 
+// WithDisableAssertionVerification disables system metadata assertion verification for reading.
+// Not recommended for production use.
 func WithDisableAssertionVerification(disable bool) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.disableAssertionVerification = disable
+		return nil
+	}
+}
+
+// WithAssertionVerificationMode sets the assertion verification error handling mode.
+// Default is FailFast (most secure). See AssertionVerificationMode for mode descriptions.
+//
+// Example:
+//
+//	client.LoadTDF(file, sdk.WithAssertionVerificationMode(sdk.PermissiveMode))
+func WithAssertionVerificationMode(mode AssertionVerificationMode) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.assertionVerificationMode = mode
 		return nil
 	}
 }

@@ -4,18 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"runtime"
-	"time"
 
 	"github.com/gowebpki/jcs"
 	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
-)
-
-const (
-	SystemMetadataAssertionID = "system-metadata"
-	SystemMetadataSchemaV1    = "system-metadata-v1"
 )
 
 // AssertionConfig is a shadow of Assertion with the addition of the signing key.
@@ -38,22 +32,71 @@ type Assertion struct {
 	Binding        Binding        `json:"binding,omitempty"`
 }
 
+// MarshalJSON implements custom JSON marshaling for Assertion.
+// It omits the binding field entirely when it's empty, rather than including it as {}.
+func (a Assertion) MarshalJSON() ([]byte, error) {
+	type Alias Assertion
+	if a.Binding.IsEmpty() {
+		// Marshal without the binding field
+		return json.Marshal(&struct {
+			*Alias
+			Binding *Binding `json:"binding,omitempty"`
+		}{
+			Alias:   (*Alias)(&a),
+			Binding: nil,
+		})
+	}
+	// Marshal normally with binding
+	return json.Marshal(&struct {
+		*Alias
+	}{
+		Alias: (*Alias)(&a),
+	})
+}
+
 var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with provided key")
 
 // Sign signs the assertion with the given hash and signature using the key.
 // It returns an error if the signing fails.
 // The assertion binding is updated with the method and the signature.
-func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
+// Optional JWS protected headers can be passed (e.g., for including public key as jwk).
+func (a *Assertion) Sign(hash, sig string, key AssertionKey, headers ...jws.Headers) error {
+	if key.IsEmpty() {
+		return errors.New("signing key not configured")
+	}
+	// Configure JWT with assertion hash and signature claims
 	tok := jwt.New()
 	if err := tok.Set(kAssertionHash, hash); err != nil {
 		return fmt.Errorf("failed to set assertion hash: %w", err)
 	}
+	// Note: sig is already base64-encoded when it comes from manifest.RootSignature.Signature
+	// so we store it directly without additional encoding
 	if err := tok.Set(kAssertionSignature, sig); err != nil {
 		return fmt.Errorf("failed to set assertion signature: %w", err)
 	}
 
-	// sign the hash and signature
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key))
+	// TODO SECURITY: Add schema claim to cryptographically bind schema to assertion
+	// This prevents schema substitution attacks where an attacker changes Statement.Schema
+	// to route the assertion to a different validator with weaker security checks.
+	// The schema is included in both the JWT (signed) and the Statement (hashed),
+	// providing defense-in-depth against tampering.
+	// if err := tok.Set("assertionSchema", a.Statement.Schema); err != nil {
+	// 	return fmt.Errorf("failed to set assertion schema: %w", err)
+	// }
+
+	// Build signing options
+	alg := jwa.KeyAlgorithmFrom(key.Alg.String())
+	var signOpts []jwt.SignOption
+	signOpts = append(signOpts, jwt.WithKey(alg, key.Key))
+
+	// Add protected headers if provided (e.g., public key as jwk for RSA/ECC)
+	if len(headers) > 0 {
+		signOpts = append(signOpts, jwt.WithKey(alg, key.Key, jws.WithProtectedHeaders(headers[0])))
+		signOpts = signOpts[1:] // Remove the first WithKey, keep only the one with headers
+	}
+
+	// Sign the token with the configured key
+	signedTok, err := jwt.Sign(tok, signOpts...)
 	if err != nil {
 		return fmt.Errorf("signing assertion failed: %w", err)
 	}
@@ -66,52 +109,69 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 }
 
 // Verify checks the binding signature of the assertion and
-// returns the hash and the signature. It returns an error if the verification fails.
-func (a Assertion) Verify(key AssertionKey) (string, string, error) {
+// returns the hash, signature, and schema. It returns an error if the verification fails.
+// The schema return value will be empty string for legacy assertions without schema claim.
+func (a *Assertion) Verify(key AssertionKey) (string, string, string, error) {
 	tok, err := jwt.Parse([]byte(a.Binding.Signature),
 		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key),
 	)
 	if err != nil {
-		return "", "", fmt.Errorf("%w: %w", errAssertionVerifyKeyFailure, err)
+		return "", "", "", fmt.Errorf("%w: %w", errAssertionVerifyKeyFailure, err)
 	}
 	hashClaim, found := tok.Get(kAssertionHash)
 	if !found {
-		return "", "", errors.New("hash claim not found")
+		return "", "", "", errors.New("hash claim not found")
 	}
-	hash, ok := hashClaim.(string)
+	verifiedHash, ok := hashClaim.(string)
 	if !ok {
-		return "", "", errors.New("hash claim is not a string")
+		return "", "", "", errors.New("hash claim is not a string")
 	}
 
 	sigClaim, found := tok.Get(kAssertionSignature)
 	if !found {
-		return "", "", errors.New("signature claim not found")
+		return "", "", "", errors.New("signature claim not found")
 	}
-	sig, ok := sigClaim.(string)
+	verifiedSignature, ok := sigClaim.(string)
 	if !ok {
-		return "", "", errors.New("signature claim is not a string")
+		return "", "", "", errors.New("signature claim is not a string")
 	}
-	return hash, sig, nil
+
+	// SECURITY: Extract schema claim for validation
+	// This ensures the schema in the JWT matches the schema in Statement,
+	// preventing schema substitution attacks.
+	// For backward compatibility with legacy assertions, the schema claim
+	// may not be present. In that case, we return empty string and validators should
+	// skip schema claim verification.
+	verifiedSchema := ""
+	schemaClaim, found := tok.Get("assertionSchema")
+	if found {
+		verifiedSchema, ok = schemaClaim.(string)
+		if !ok {
+			return "", "", "", errors.New("schema claim is not a string")
+		}
+	}
+
+	// Note: signature is stored as base64-encoded string (matching manifest.RootSignature.Signature format)
+	// so we return it directly without decoding
+	return verifiedHash, verifiedSignature, verifiedSchema, nil
 }
 
 // GetHash returns the hash of the assertion in hex format.
+// The binding field is excluded from the hash calculation.
 func (a Assertion) GetHash() ([]byte, error) {
-	// Clear out the binding
-	a.Binding = Binding{}
-
-	// Marshal the assertion to JSON
+	// Marshal the assertion to JSON (custom MarshalJSON handles binding omission)
 	assertionJSON, err := json.Marshal(a)
 	if err != nil {
 		return nil, fmt.Errorf("json.Marshal failed: %w", err)
 	}
 
-	// Unmarshal the JSON into a map to manipulate it
+	// Unmarshal the JSON into a map to ensure binding is removed
 	var jsonObject map[string]interface{}
 	if err := json.Unmarshal(assertionJSON, &jsonObject); err != nil {
 		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
 	}
 
-	// Remove the binding key
+	// Explicitly remove the binding key if present
 	delete(jsonObject, "binding")
 
 	// Marshal the map back to JSON
@@ -164,12 +224,18 @@ func (s *Statement) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+const (
+	// StatementFormatJSON is a marshaled JSON object into a string
+	StatementFormatJSON   = "json"
+	StatementFormatString = "string"
+)
+
 // Statement includes information applying to the scope of the assertion.
 // It could contain rights, handling instructions, or general metadata.
 type Statement struct {
-	// Format describes the payload encoding format. (e.g. json)
+	// Format describes the payload encoding format. (e.g. json-structured, string)
 	Format string `json:"format,omitempty" validate:"required"`
-	// Schema describes the schema of the payload. (e.g. tdf)
+	// Schema URI identifying the schema or standard that defines the structure and semantics of the value.
 	Schema string `json:"schema,omitempty" validate:"required"`
 	// Value is the payload of the assertion.
 	Value string `json:"value,omitempty"  validate:"required"`
@@ -184,11 +250,17 @@ type Binding struct {
 	Signature string `json:"signature,omitempty"`
 }
 
-// AssertionType represents the type of the assertion.
+// IsEmpty returns true if both Method and Signature are empty.
+func (b Binding) IsEmpty() bool {
+	return b.Method == "" && b.Signature == ""
+}
+
+// AssertionType represents the type of the assertion.  Categorizes the assertion's purpose. Common values include handling (e.g., caveats, dissemination controls) or metadata (general information).
 type AssertionType string
 
 const (
 	HandlingAssertion AssertionType = "handling"
+	MetadataAssertion AssertionType = "metadata"
 	BaseAssertion     AssertionType = "other"
 )
 
@@ -291,43 +363,40 @@ func (k AssertionVerificationKeys) IsEmpty() bool {
 	return k.DefaultKey.IsEmpty() && len(k.Keys) == 0
 }
 
-// GetSystemMetadataAssertionConfig returns a default assertion configuration with predefined values.
-func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
-	// Define the JSON structure
-	type Metadata struct {
-		TDFSpecVersion string `json:"tdf_spec_version,omitempty"`
-		CreationDate   string `json:"creation_date,omitempty"`
-		OS             string `json:"operating_system,omitempty"`
-		SDKVersion     string `json:"sdk_version,omitempty"`
-		GoVersion      string `json:"go_version,omitempty"`
-		Architecture   string `json:"architecture,omitempty"`
-	}
-
-	// Populate the metadata
-	metadata := Metadata{
-		TDFSpecVersion: TDFSpecVersion,
-		CreationDate:   time.Now().Format(time.RFC3339),
-		OS:             runtime.GOOS,
-		SDKVersion:     "Go-" + Version,
-		GoVersion:      runtime.Version(),
-		Architecture:   runtime.GOARCH,
-	}
-
-	// Marshal the metadata to JSON
-	metadataJSON, err := json.Marshal(metadata)
+// VerifyAssertionSignatureFormat validates that the assertion signature matches the expected format.
+// This is the standard format used across all SDKs: base64(aggregateHash + assertionHash).
+//
+// This function is a convenience helper that:
+//  1. Computes the aggregate hash from manifest segments
+//  2. Determines the encoding format (hex vs raw bytes) from the TDF version
+//  3. Computes the expected signature using the standard format
+//  4. Compares it against the verified signature from the JWT
+//
+// Parameters:
+//   - assertionID: The assertion ID for error reporting
+//   - verifiedSignature: The signature claim extracted from the verified JWT
+//   - assertionHash: The hash of the assertion (hex-encoded bytes)
+//   - manifest: The TDF manifest containing segments and version info
+//
+// Returns an error if the signature format is invalid (tampering detected), nil if valid.
+//
+// This function is used by custom AssertionValidator implementations to verify
+// assertion signatures after JWT verification.
+func VerifyAssertionSignatureFormat(
+	assertionID string,
+	verifiedSignature string,
+	assertionHash []byte,
+	manifest Manifest,
+) error {
+	// Compute expected signature using manifest method
+	expectedSig, err := manifest.ComputeAssertionSignature(assertionHash)
 	if err != nil {
-		return AssertionConfig{}, fmt.Errorf("failed to marshal system metadata: %w", err)
+		return fmt.Errorf("%w: failed to compute assertion signature: %w", ErrAssertionFailure{ID: assertionID}, err)
 	}
 
-	return AssertionConfig{
-		ID:             SystemMetadataAssertionID,
-		Type:           BaseAssertion,
-		Scope:          PayloadScope,
-		AppliesToState: Unencrypted,
-		Statement: Statement{
-			Format: "json",
-			Schema: SystemMetadataSchemaV1,
-			Value:  string(metadataJSON),
-		},
-	}, nil
+	if verifiedSignature != expectedSig {
+		return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: assertionID})
+	}
+
+	return nil
 }

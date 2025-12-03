@@ -165,7 +165,7 @@ func WithSessionEncryptionRSA(key *rsa.PrivateKey) Option {
 	}
 }
 
-// The DPoP key pair is used to implement sender constrained tokens from the identity provider,
+// The DPoP key pair is used to implement sender constrained tokens from the identity builder,
 // and should be associated with the lifetime of a session for a given identity.
 // Please use with caution.
 func WithSessionSignerRSA(key *rsa.PrivateKey) Option {

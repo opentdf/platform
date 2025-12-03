@@ -91,9 +91,9 @@ func TestWithAssertions(t *testing.T) {
 	id2 := "2"
 	cfg := makeConfig(t, WithAssertions(AssertionConfig{ID: id1}, AssertionConfig{ID: id2}))
 
-	require.Len(t, cfg.assertions, 2)
-	assert.Equal(t, id1, cfg.assertions[0].ID)
-	assert.Equal(t, id2, cfg.assertions[1].ID)
+	require.Len(t, cfg.assertionConfigs, 2)
+	assert.Equal(t, id1, cfg.assertionConfigs[0].ID)
+	assert.Equal(t, id2, cfg.assertionConfigs[1].ID)
 }
 
 func TestWithTargetMode(t *testing.T) {

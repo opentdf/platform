@@ -26,16 +26,18 @@ var (
 	collection     int
 	alg            string
 	policyMode     string
+	magicWord      string
+	privateKeyPath string
 )
 
 func init() {
 	encryptCmd := cobra.Command{
 		Use:   "encrypt",
-		Short: "Create encrypted TDF",
+		Short: "Configure encrypted TDF",
 		RunE:  encrypt,
 		Args:  cobra.MinimumNArgs(1),
 	}
-	encryptCmd.Flags().StringSliceVarP(&dataAttributes, "data-attributes", "a", []string{"https://example.com/attr/attr1/value/value1"}, "space separated list of data attributes")
+	encryptCmd.Flags().StringSliceVarP(&dataAttributes, "data-attributes", "a", []string{}, "space separated list of data attributes")
 	encryptCmd.Flags().BoolVar(&nanoFormat, "nano", false, "Output in nanoTDF format")
 	encryptCmd.Flags().BoolVar(&autoconfigure, "autoconfigure", true, "Use attribute grants to select kases")
 	encryptCmd.Flags().BoolVar(&noKIDInKAO, "no-kid-in-kao", false, "[deprecated] Disable storing key identifiers in TDF KAOs")
@@ -44,7 +46,8 @@ func init() {
 	encryptCmd.Flags().StringVarP(&alg, "key-encapsulation-algorithm", "A", "rsa:2048", "Key wrap algorithm algorithm:parameters")
 	encryptCmd.Flags().IntVarP(&collection, "collection", "c", 0, "number of nano's to create for collection. If collection >0 (default) then output will be <iteration>_<output>")
 	encryptCmd.Flags().StringVar(&policyMode, "policy-mode", "", "Store policy as encrypted instead of plaintext (nanoTDF only) [plaintext|encrypted]")
-
+	encryptCmd.Flags().StringVar(&magicWord, "magic-word", "", "Magic word shared secret for assertion signing")
+	encryptCmd.Flags().StringVar(&privateKeyPath, "private-key-path", "", "Path to private key file for assertion signing")
 	ExamplesCmd.AddCommand(&encryptCmd)
 }
 
@@ -97,6 +100,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	if !nanoFormat {
 		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
+		autoconfigure = false
 		if !autoconfigure {
 			opts = append(opts, sdk.WithAutoconfigure(autoconfigure))
 			opts = append(opts, sdk.WithKasInformation(
@@ -105,6 +109,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 					PublicKey: "",
 				}))
 		}
+		// Deprecated: WithWrappingKeyAlg sets the key type for the TDF wrapping key for both storage and transit.
 		if alg != "" {
 			kt, err := keyTypeForKeyType(alg)
 			if err != nil {
@@ -112,7 +117,43 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			}
 			opts = append(opts, sdk.WithWrappingKeyAlg(kt))
 		}
-		tdf, err := client.CreateTDF(out, in, opts...)
+		// Magic word provider
+		if magicWord != "" {
+			// constructor with word works in a simple CLI
+			magicWordProvider := NewMagicWordAssertionProvider(magicWord)
+			opts = append(opts, sdk.WithAssertionBinder(magicWordProvider))
+		}
+		// Key provider
+		if privateKeyPath != "" {
+			privateKey, err := getAssertionKeyPrivate(privateKeyPath)
+			if err != nil {
+				return fmt.Errorf("failed to load assertion key: %w", err)
+			}
+			publicKey, err := getAssertionKeyPublic(privateKeyPath)
+			if err != nil {
+				return fmt.Errorf("failed to load public key: %w", err)
+			}
+
+			// Create statement value with public key information
+			statement := struct {
+				Algorithm string `json:"algorithm"`
+				Key       any    `json:"key"`
+			}{
+				Algorithm: publicKey.Alg.String(),
+				Key:       publicKey.Key,
+			}
+			statementJSON, err := json.Marshal(statement)
+			if err != nil {
+				return fmt.Errorf("failed to marshal statement: %w", err)
+			}
+
+			// The SDK automatically determines the correct encoding format based on TDF version
+			keyBinder := sdk.NewKeyAssertionBinder(privateKey, publicKey, string(statementJSON))
+			opts = append(opts, sdk.WithAssertionBinder(keyBinder))
+		}
+		// Add system metadata assertion (uses DEK)
+		opts = append(opts, sdk.WithSystemMetadataAssertion())
+		tdf, err := client.CreateTDFContext(cmd.Context(), out, in, opts...)
 		if err != nil {
 			return err
 		}

@@ -161,6 +161,21 @@ func Start(f ...StartOptions) error {
 		cfg.Server.Auth.Policy.Adapter = startConfig.casbinAdapter
 	}
 
+	// Apply additional CORS configuration from programmatic options
+	// These are appended to the YAML config values; deduplication happens in Effective*() methods
+	if len(startConfig.additionalCORSHeaders) > 0 {
+		logger.Info("additional CORS headers added via options", slog.Any("headers", startConfig.additionalCORSHeaders))
+		cfg.Server.CORS.AdditionalHeaders = append(cfg.Server.CORS.AdditionalHeaders, startConfig.additionalCORSHeaders...)
+	}
+	if len(startConfig.additionalCORSMethods) > 0 {
+		logger.Info("additional CORS methods added via options", slog.Any("methods", startConfig.additionalCORSMethods))
+		cfg.Server.CORS.AdditionalMethods = append(cfg.Server.CORS.AdditionalMethods, startConfig.additionalCORSMethods...)
+	}
+	if len(startConfig.additionalCORSExposedHeaders) > 0 {
+		logger.Info("additional CORS exposed headers added via options", slog.Any("headers", startConfig.additionalCORSExposedHeaders))
+		cfg.Server.CORS.AdditionalExposedHeaders = append(cfg.Server.CORS.AdditionalExposedHeaders, startConfig.additionalCORSExposedHeaders...)
+	}
+
 	// Create new server for grpc & http. Also will support in process grpc potentially too
 	logger.Debug("initializing opentdf server")
 	cfg.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration

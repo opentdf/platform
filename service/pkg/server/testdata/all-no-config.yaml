@@ -98,6 +98,10 @@ server:
     allowcredentials: true
     # Sets the maximum age (in seconds) of a specific CORS preflight request
     maxage: 3600
+    # Additive fields - append to base lists without replacing defaults
+    additionalmethods: []
+    additionalheaders: []
+    additionalexposedheaders: []
   grpc:
     reflectionEnabled: true # Default is false
   port: 8080

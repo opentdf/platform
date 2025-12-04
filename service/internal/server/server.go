@@ -129,6 +129,89 @@ type CORSConfig struct {
 	AllowCredentials bool     `mapstructure:"allowcredentials" json:"allowcredentials" default:"true"`
 	MaxAge           int      `mapstructure:"maxage" json:"maxage" default:"3600"`
 	Debug            bool     `mapstructure:"debug" json:"debug"`
+
+	// Additive fields - appended to base lists at runtime without replacing defaults
+	AdditionalMethods        []string `mapstructure:"additionalmethods" json:"additionalmethods"`
+	AdditionalHeaders        []string `mapstructure:"additionalheaders" json:"additionalheaders"`
+	AdditionalExposedHeaders []string `mapstructure:"additionalexposedheaders" json:"additionalexposedheaders"`
+}
+
+// mergeStringSlices combines base and additional slices, removing duplicates.
+// The order is: base items first, then additional items (preserving order within each).
+// Comparison is case-sensitive.
+func mergeStringSlices(base, additional []string) []string {
+	if len(additional) == 0 {
+		return base
+	}
+	if len(base) == 0 {
+		return additional
+	}
+
+	seen := make(map[string]struct{}, len(base)+len(additional))
+	result := make([]string, 0, len(base)+len(additional))
+
+	for _, v := range base {
+		if _, exists := seen[v]; !exists {
+			seen[v] = struct{}{}
+			result = append(result, v)
+		}
+	}
+	for _, v := range additional {
+		if _, exists := seen[v]; !exists {
+			seen[v] = struct{}{}
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+// mergeHeaderSlices combines base and additional HTTP header slices with case-insensitive
+// deduplication. HTTP headers are case-insensitive per RFC 7230, so "Authorization" and
+// "authorization" are treated as duplicates. The first occurrence's original casing is preserved.
+func mergeHeaderSlices(base, additional []string) []string {
+	if len(additional) == 0 {
+		return base
+	}
+	if len(base) == 0 {
+		return additional
+	}
+
+	// Use canonical header keys for case-insensitive comparison
+	seen := make(map[string]struct{}, len(base)+len(additional))
+	result := make([]string, 0, len(base)+len(additional))
+
+	for _, v := range base {
+		canonical := textproto.CanonicalMIMEHeaderKey(v)
+		if _, exists := seen[canonical]; !exists {
+			seen[canonical] = struct{}{}
+			result = append(result, v) // Preserve original casing
+		}
+	}
+	for _, v := range additional {
+		canonical := textproto.CanonicalMIMEHeaderKey(v)
+		if _, exists := seen[canonical]; !exists {
+			seen[canonical] = struct{}{}
+			result = append(result, v) // Preserve original casing
+		}
+	}
+	return result
+}
+
+// EffectiveMethods returns AllowedMethods merged with AdditionalMethods.
+func (c CORSConfig) EffectiveMethods() []string {
+	return mergeStringSlices(c.AllowedMethods, c.AdditionalMethods)
+}
+
+// EffectiveHeaders returns AllowedHeaders merged with AdditionalHeaders.
+// Uses case-insensitive deduplication since HTTP headers are case-insensitive per RFC 7230.
+func (c CORSConfig) EffectiveHeaders() []string {
+	return mergeHeaderSlices(c.AllowedHeaders, c.AdditionalHeaders)
+}
+
+// EffectiveExposedHeaders returns ExposedHeaders merged with AdditionalExposedHeaders.
+// Uses case-insensitive deduplication since HTTP headers are case-insensitive per RFC 7230.
+func (c CORSConfig) EffectiveExposedHeaders() []string {
+	return mergeHeaderSlices(c.ExposedHeaders, c.AdditionalExposedHeaders)
 }
 
 type ConnectRPC struct {
@@ -314,6 +397,19 @@ func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.H
 	// Note: The grpc-gateway handlers are getting chained together in reverse. So the last handler is the first to be called.
 	// CORS
 	if c.CORS.Enabled {
+		// Compute effective values by merging base and additional lists
+		effectiveMethods := c.CORS.EffectiveMethods()
+		effectiveHeaders := c.CORS.EffectiveHeaders()
+		effectiveExposed := c.CORS.EffectiveExposedHeaders()
+
+		// Log effective CORS config for operator visibility
+		l.Info("CORS middleware enabled",
+			slog.Any("allowed_origins", c.CORS.AllowedOrigins),
+			slog.Any("effective_methods", effectiveMethods),
+			slog.Any("effective_headers", effectiveHeaders),
+			slog.Any("effective_exposed_headers", effectiveExposed),
+		)
+
 		corsHandler := cors.New(cors.Options{
 			AllowOriginFunc: func(_ *http.Request, origin string) bool {
 				for _, allowedOrigin := range c.CORS.AllowedOrigins {
@@ -326,9 +422,9 @@ func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.H
 				}
 				return false
 			},
-			AllowedMethods:   c.CORS.AllowedMethods,
-			AllowedHeaders:   c.CORS.AllowedHeaders,
-			ExposedHeaders:   c.CORS.ExposedHeaders,
+			AllowedMethods:   effectiveMethods,
+			AllowedHeaders:   effectiveHeaders,
+			ExposedHeaders:   effectiveExposed,
 			AllowCredentials: c.CORS.AllowCredentials,
 			MaxAge:           c.CORS.MaxAge,
 			Debug:            c.CORS.Debug,

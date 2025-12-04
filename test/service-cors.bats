@@ -110,3 +110,25 @@ fi
   # Verify Connect-Protocol-Version is in allowed headers
   [[ "$output" =~ [Aa]ccess-[Cc]ontrol-[Aa]llow-[Hh]eaders:.*[Cc]onnect-[Pp]rotocol-[Vv]ersion ]]
 }
+
+@test "CORS: verify all default headers are allowed" {
+  # Tests that all default headers from CORSConfig are allowed
+  # Default headers: Accept, Accept-Encoding, Authorization, Connect-Protocol-Version,
+  # Content-Length, Content-Type, Dpop, X-CSRF-Token, X-Requested-With, X-Rewrap-Additional-Context
+  # Note: Additional headers can be added via 'additionalheaders' config without replacing defaults
+  run curl -i -X OPTIONS $CURL_OPTIONS \
+    -H "Origin: http://localhost:3000" \
+    -H "Access-Control-Request-Method: POST" \
+    -H "Access-Control-Request-Headers: accept,authorization,content-type,dpop,x-csrf-token" \
+    ${BASE_URL}/policy.namespaces.NamespaceService/GetNamespace
+
+  echo "$output"
+
+  # Verify 200 OK response
+  [[ "$output" =~ "HTTP/2 200" ]] || [[ "$output" =~ "HTTP/1.1 200 OK" ]]
+
+  # Verify key default headers are in allowed headers
+  [[ "$output" =~ [Aa]ccess-[Cc]ontrol-[Aa]llow-[Hh]eaders:.*[Aa]uthorization ]]
+  [[ "$output" =~ [Aa]ccess-[Cc]ontrol-[Aa]llow-[Hh]eaders:.*[Cc]ontent-[Tt]ype ]]
+  [[ "$output" =~ [Aa]ccess-[Cc]ontrol-[Aa]llow-[Hh]eaders:.*[Dd]pop ]]
+}

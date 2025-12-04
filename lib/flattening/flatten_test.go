@@ -344,7 +344,8 @@ func TestFlattenInterfaceNoPanic(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			require.NotPanics(t, func() {
-				_, _ = flattenInterface(tc.value)
+				idx := make(map[string][]interface{})
+				_, _ = flattenInterface(tc.value, idx)
 			})
 		})
 	}

@@ -14,8 +14,8 @@ The platform leverages [viper](https://github.com/spf13/viper) to help load conf
       - [Additive Configuration](#additive-configuration)
       - [Programmatic Configuration](#programmatic-configuration)
     - [Crypto Provider](#crypto-provider)
-  - [Database Configuration](#database-configuration)
     - [Tracing Configuration](#tracing-configuration)
+  - [Database Configuration](#database-configuration)
   - [Security Configuration](#security-configuration)
   - [Services Configuration](#services-configuration)
     - [Key Access Server (KAS)](#key-access-server-kas)
@@ -252,6 +252,43 @@ Environment Variable: `OPENTDF_SERVER_CRYPTOPROVIDER_STANDARD='[{"alg":"rsa:2048
 | `cryptoProvider.standard.*.private` | Path to the private key as a PEM file.                                    |            |
 | `cryptoProvider.standard.*.cert`    | (Optional) Path to a public cert for the keypair.                         |            |
 
+### Tracing Configuration
+
+Root level key `server.trace`
+
+| Field                        | Description                     | Default | Environment Variable               |
+| ---------------------------- | ------------------------------- | ------- | ---------------------------------- |
+| `server.trace.enabled`       | Enable distributed tracing      | `false` | OPENTDF_SERVER_TRACE_ENABLED       |
+| `server.trace.provider.name` | Tracing provider (file or otlp) | `otlp`  | OPENTDF_SERVER_TRACE_PROVIDER_NAME |
+
+For file provider:
+- `server.trace.provider.file.path`: Path to trace file output
+- `server.trace.provider.file.prettyPrint`: Enable pretty-printed JSON
+- `server.trace.provider.file.maxSize`: Maximum file size in MB
+- `server.trace.provider.file.maxBackups`: Maximum number of backup files
+- `server.trace.provider.file.maxAge`: Maximum age of files in days
+- `server.trace.provider.file.compress`: Enable compression of trace files
+
+For OTLP provider:
+- `server.trace.provider.otlp.protocol`: Protocol to use (grpc or http/protobuf)
+- `server.trace.provider.otlp.endpoint`: Endpoint URL for the collector
+- `server.trace.provider.otlp.insecure`: Whether to use an insecure connection
+- `server.trace.provider.otlp.headers`: Headers to include in OTLP requests
+
+Example:
+
+```yaml
+server:
+  trace:
+    enabled: true
+    provider:
+      name: otlp
+      otlp:
+        protocol: grpc
+        endpoint: "localhost:4317"
+        insecure: true
+```
+
 ## Database Configuration
 
 The database configuration is used to define how the application connects to its database.
@@ -301,27 +338,6 @@ db:
     max_connection_idle_seconds: 1800
     health_check_period_seconds: 60
 ```
-
-### Tracing Configuration
-
-| Field                 | Description                     | Default | Environment Variable               |
-| --------------------- | ------------------------------- | ------- | ---------------------------------- |
-| `trace.enabled`       | Enable distributed tracing      | `false` | OPENTDF_SERVER_TRACE_ENABLED       |
-| `trace.provider.name` | Tracing provider (file or otlp) | `otlp`  | OPENTDF_SERVER_TRACE_PROVIDER_NAME |
-
-For file provider:
-- `trace.provider.file.path`: Path to trace file output
-- `trace.provider.file.prettyPrint`: Enable pretty-printed JSON
-- `trace.provider.file.maxSize`: Maximum file size in MB
-- `trace.provider.file.maxBackups`: Maximum number of backup files
-- `trace.provider.file.maxAge`: Maximum age of files in days
-- `trace.provider.file.compress`: Enable compression of trace files
-
-For OTLP provider:
-- `trace.provider.otlp.protocol`: Protocol to use (grpc or http/protobuf)
-- `trace.provider.otlp.endpoint`: Endpoint URL for the collector
-- `trace.provider.otlp.insecure`: Whether to use an insecure connection
-- `trace.provider.otlp.headers`: Headers to include in OTLP requests
 
 ## Security Configuration
 

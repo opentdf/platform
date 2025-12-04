@@ -48,15 +48,12 @@ We implement separate `AssertionBinder` (for signing) and `AssertionValidator` (
 **Interfaces**:
 ```go
 type AssertionBinder interface {
-    // Bind creates and signs an assertion, binding it to the manifest.
-    // Use ShouldUseHexEncoding(m) for format compatibility.
-    Bind(ctx context.Context, manifest Manifest) (Assertion, error)
+    Bind(ctx context.Context, payloadHash []byte) (Assertion, error)
 }
 
 type AssertionValidator interface {
-    Schema() string  // Returns schema URI or "*" for wildcard
-    Verify(ctx context.Context, assertion Assertion, reader Reader) error    // Crypto check
-    Validate(ctx context.Context, assertion Assertion, reader Reader) error  // Policy check
+    Verify(ctx context.Context, assertion Assertion, reader Reader) error
+    Validate(ctx context.Context, assertion Assertion, reader Reader) error
 }
 ```
 

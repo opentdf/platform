@@ -34,7 +34,7 @@ type Assertion struct {
 
 // MarshalJSON implements custom JSON marshaling for Assertion.
 // It omits the binding field entirely when it's empty, rather than including it as {}.
-func (a Assertion) MarshalJSON() ([]byte, error) {
+func (a *Assertion) MarshalJSON() ([]byte, error) {
 	type Alias Assertion
 	if a.Binding.IsEmpty() {
 		// Marshal without the binding field
@@ -42,7 +42,7 @@ func (a Assertion) MarshalJSON() ([]byte, error) {
 			*Alias
 			Binding *Binding `json:"binding,omitempty"`
 		}{
-			Alias:   (*Alias)(&a),
+			Alias:   (*Alias)(a),
 			Binding: nil,
 		})
 	}
@@ -50,7 +50,7 @@ func (a Assertion) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		*Alias
 	}{
-		Alias: (*Alias)(&a),
+		Alias: (*Alias)(a),
 	})
 }
 
@@ -158,7 +158,7 @@ func (a *Assertion) Verify(key AssertionKey) (string, string, string, error) {
 
 // GetHash returns the hash of the assertion in hex format.
 // The binding field is excluded from the hash calculation.
-func (a Assertion) GetHash() ([]byte, error) {
+func (a *Assertion) GetHash() ([]byte, error) {
 	// Marshal the assertion to JSON (custom MarshalJSON handles binding omission)
 	assertionJSON, err := json.Marshal(a)
 	if err != nil {

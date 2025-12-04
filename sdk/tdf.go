@@ -366,10 +366,16 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		tdfConfig.assertionRegistry.RegisterBinder(systemMetadataAssertionProvider)
 	}
 
+	// Compute aggregate hash from manifest segments for assertion binding
+	payloadHash, err := tdfObject.manifest.ComputeAggregateHash()
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute aggregate hash: %w", err)
+	}
+
 	var boundAssertions []Assertion
 	// Bind Assertions
 	for _, registered := range tdfConfig.assertionRegistry.binders {
-		boundAssertion, er := registered.Bind(ctx, tdfObject.manifest)
+		boundAssertion, er := registered.Bind(ctx, payloadHash)
 		if er != nil {
 			return nil, fmt.Errorf("failed to bind assertion: %w", er)
 		}

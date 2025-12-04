@@ -60,7 +60,9 @@ func appendAssertion(cmd *cobra.Command, _ []string) error {
 	// Construct Assertion Provider
 	assertionProvider := NewMagicWordAssertionProvider(magicWordAA)
 	// Create (Bind) Assertion
-	assertion, err := assertionProvider.Bind(cmd.Context(), tdfReader.Manifest())
+	manifest := tdfReader.Manifest()
+	payloadHash, _ := manifest.ComputeAggregateHash()
+	assertion, err := assertionProvider.Bind(cmd.Context(), payloadHash)
 	if err != nil {
 		return fmt.Errorf("failed to bind assertion: %w", err)
 	}

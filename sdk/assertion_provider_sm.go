@@ -49,7 +49,7 @@ func (p *SystemMetadataAssertionProvider) Schema() string {
 	return SystemMetadataSchemaV1
 }
 
-func (p SystemMetadataAssertionProvider) Bind(_ context.Context, _ Manifest) (Assertion, error) {
+func (p SystemMetadataAssertionProvider) Bind(_ context.Context, _ []byte) (Assertion, error) {
 	// Get the assertion config
 	ac, err := GetSystemMetadataAssertionConfig()
 	if err != nil {

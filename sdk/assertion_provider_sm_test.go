@@ -98,7 +98,10 @@ func TestSystemMetadataAssertionProvider_Bind_SchemaSelection(t *testing.T) {
 				},
 			}
 
-			assertion, err := provider.Bind(t.Context(), manifest)
+			payloadHash, err := manifest.ComputeAggregateHash()
+			require.NoError(t, err)
+
+			assertion, err := provider.Bind(t.Context(), payloadHash)
 			require.NoError(t, err)
 
 			assert.Equal(t, SystemMetadataAssertionID, assertion.ID)
@@ -236,7 +239,10 @@ func TestSystemMetadataAssertionProvider_TamperedStatement(t *testing.T) {
 	}
 
 	// Create and bind an assertion with original statement
-	originalAssertion, err := provider.Bind(t.Context(), manifest)
+	payloadHash, err := manifest.ComputeAggregateHash()
+	require.NoError(t, err, "Computing aggregate hash should succeed")
+
+	originalAssertion, err := provider.Bind(t.Context(), payloadHash)
 	require.NoError(t, err, "Binding assertion should succeed")
 
 	// Sign the assertion with DEK (simulating what tdf.go does)
@@ -292,7 +298,10 @@ func TestSystemMetadataAssertionProvider_TamperedStatement_Legacy(t *testing.T) 
 	}
 
 	// Create and bind an assertion with original statement
-	originalAssertion, err := provider.Bind(t.Context(), manifest)
+	payloadHash, err := manifest.ComputeAggregateHash()
+	require.NoError(t, err, "Computing aggregate hash should succeed")
+
+	originalAssertion, err := provider.Bind(t.Context(), payloadHash)
 	require.NoError(t, err, "Binding assertion should succeed")
 
 	// Verify it uses the current schema

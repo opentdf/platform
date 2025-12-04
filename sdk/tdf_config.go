@@ -230,41 +230,15 @@ type configBasedAssertionBinder struct {
 	config AssertionConfig
 }
 
-func (b *configBasedAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, error) {
-	// Configure the assertion from config
+func (b *configBasedAssertionBinder) Bind(_ context.Context, _ []byte) (Assertion, error) {
+	// Configure the assertion from config without signing.
+	// The caller is responsible for signing the assertion after binding.
 	assertion := Assertion{
 		ID:             b.config.ID,
 		Type:           b.config.Type,
 		Scope:          b.config.Scope,
 		Statement:      b.config.Statement,
 		AppliesToState: b.config.AppliesToState,
-	}
-
-	// Get the hash of the assertion
-	assertionHashBytes, err := assertion.GetHash()
-	if err != nil {
-		return Assertion{}, fmt.Errorf("failed to get assertion hash: %w", err)
-	}
-	assertionHash := string(assertionHashBytes)
-
-	// Determine signing key
-	signingKey := b.config.SigningKey
-	if signingKey.IsEmpty() {
-		// No explicit signing key provided - use the payload key (DEK)
-		// This is handled by passing the payload key from the TDF creation context
-		// For now, return the unsigned assertion - it will be signed by a DEK-based binder
-		return assertion, nil
-	}
-
-	// Compute assertion signature using manifest method
-	assertionSignature, err := m.ComputeAssertionSignature(assertionHashBytes)
-	if err != nil {
-		return Assertion{}, fmt.Errorf("failed to compute assertion signature: %w", err)
-	}
-
-	// Sign the assertion with the explicit key
-	if err := assertion.Sign(assertionHash, assertionSignature, signingKey); err != nil {
-		return Assertion{}, fmt.Errorf("failed to sign assertion: %w", err)
 	}
 
 	return assertion, nil

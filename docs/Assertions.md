@@ -29,7 +29,7 @@ flowchart TD
 
     %% Binding Process
     G --> H[For Each Registered Binder]
-    H --> I[Call Binder Bind with manifest]
+    H --> I[Call Binder Bind with payloadHash]
     I --> J[Create Assertion Structure]
     J --> K[Generate Statement Content]
     K --> L[Compute Assertion Hash]

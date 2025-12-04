@@ -343,9 +343,11 @@ The `AssertionBinder` interface allows you to create custom assertions during TD
 ```go
 // AssertionBinder creates assertions during TDF creation
 type AssertionBinder interface {
-    Bind(ctx context.Context, manifest Manifest) (Assertion, error)
+    Bind(ctx context.Context, payloadHash []byte) (Assertion, error)
 }
 ```
+
+The `payloadHash` parameter is the aggregate hash computed from the manifest segments via `manifest.ComputeAggregateHash()`. The returned assertion should be unsigned - the TDF creation process will sign all unbound assertions with the DEK (Data Encryption Key).
 
 ### AssertionValidator interface
 
@@ -423,8 +425,11 @@ type CustomAssertionProvider struct {
     SecretKey []byte
 }
 
-// Bind creates the assertion during TDF creation
-func (p *CustomAssertionProvider) Bind(ctx context.Context, m sdk.Manifest) (sdk.Assertion, error) {
+// Bind creates the assertion during TDF creation.
+// The payloadHash is the aggregate hash computed from manifest segments.
+// The returned assertion should be unsigned - the TDF creation process
+// will sign all unbound assertions with the DEK (Data Encryption Key).
+func (p *CustomAssertionProvider) Bind(ctx context.Context, payloadHash []byte) (sdk.Assertion, error) {
     // Create your custom payload
     payload := map[string]interface{}{
         "timestamp": time.Now().UTC().Format(time.RFC3339),
@@ -436,8 +441,9 @@ func (p *CustomAssertionProvider) Bind(ctx context.Context, m sdk.Manifest) (sdk
         return sdk.Assertion{}, fmt.Errorf("failed to marshal payload: %w", err)
     }
 
-    // Build the assertion
-    assertion := sdk.Assertion{
+    // Build and return the unsigned assertion.
+    // The TDF creation process will sign it with the DEK.
+    return sdk.Assertion{
         ID:             CustomAssertionID,
         Type:           sdk.MetadataAssertion,
         Scope:          sdk.PayloadScope,
@@ -447,26 +453,7 @@ func (p *CustomAssertionProvider) Bind(ctx context.Context, m sdk.Manifest) (sdk
             Schema: CustomAssertionSchema,
             Value:  string(payloadBytes),
         },
-    }
-
-    // Get the assertion hash for binding
-    assertionHash, err := assertion.GetHash()
-    if err != nil {
-        return sdk.Assertion{}, fmt.Errorf("failed to get assertion hash: %w", err)
-    }
-
-    // Create cryptographic binding (bind to manifest and assertion content)
-    bindingHMAC := hmac.New(sha256.New, p.SecretKey)
-    bindingHMAC.Write([]byte(m.RootSignature.Signature))
-    bindingHMAC.Write(assertionHash)
-    signature := hex.EncodeToString(bindingHMAC.Sum(nil))
-
-    assertion.Binding = sdk.Binding{
-        Method:    "hmac-sha256",
-        Signature: signature,
-    }
-
-    return assertion, nil
+    }, nil
 }
 
 // Verify checks the cryptographic binding

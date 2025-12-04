@@ -232,8 +232,8 @@ openssl rsa -in private-key.pem -text -noout | grep "Private-Key"
 ### 3. Test Assertion Provider Independently
 
 ```go
-// Test signing
-assertion, err := binder.Bind(ctx, manifest)
+// Test signing (payloadHash is computed from manifest.ComputeAggregateHash())
+assertion, err := binder.Bind(ctx, payloadHash)
 if err != nil {
     log.Printf("Binding failed: %v", err)
 }

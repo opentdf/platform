@@ -10,13 +10,15 @@ const (
 )
 
 type AssertionBinder interface {
-	// Bind creates and signs an assertion, binding it to the given manifest.
-	// The implementation is responsible for both configuring the assertion and binding it.
+	// Bind creates an assertion without cryptographic binding.
+	// The caller is responsible for signing the assertion after binding.
 	//
-	// Example:
-	//   assertionHash, _ := assertion.GetHash()
-	//   sig, _ := m.ComputeAssertionSignature(assertionHash)
-	Bind(ctx context.Context, m Manifest) (Assertion, error)
+	// Parameters:
+	//   - ctx: Context for the operation
+	//   - payloadHash: The aggregate hash computed from manifest segments via ComputeAggregateHash()
+	//
+	// Returns assertion. If unsigned assertion, then signed with DEK.
+	Bind(ctx context.Context, payloadHash []byte) (Assertion, error)
 }
 
 type AssertionValidator interface {

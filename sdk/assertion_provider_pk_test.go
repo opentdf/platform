@@ -5,8 +5,6 @@ import (
 	"crypto/rsa"
 	"testing"
 
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -274,7 +272,8 @@ func TestKeyAssertionValidator_DefaultMode(t *testing.T) {
 }
 
 // TestKeyAssertionBinder_CreatesValidAssertion verifies that KeyAssertionBinder
-// creates assertions with proper structure and includes public key in JWS headers
+// creates assertions with proper structure. The assertion is returned unsigned
+// and the caller is responsible for signing it.
 func TestKeyAssertionBinder_CreatesValidAssertion(t *testing.T) {
 	t.Parallel()
 
@@ -292,9 +291,7 @@ func TestKeyAssertionBinder_CreatesValidAssertion(t *testing.T) {
 		Key: &privateKey.PublicKey,
 	}
 
-	// Public key is now stored in JWS headers, not in statement value
 	// Statement value can be empty or contain custom data
-	// Key-based assertions use standard format with aggregation hash computed from manifest
 	binder := NewKeyAssertionBinder(assertionKey, publicKey, "")
 
 	// Create a minimal manifest
@@ -309,8 +306,12 @@ func TestKeyAssertionBinder_CreatesValidAssertion(t *testing.T) {
 		},
 	}
 
-	// Bind the assertion
-	assertion, err := binder.Bind(t.Context(), manifest)
+	// Compute payload hash from manifest
+	payloadHash, err := manifest.ComputeAggregateHash()
+	require.NoError(t, err)
+
+	// Bind the assertion (returns unsigned assertion)
+	assertion, err := binder.Bind(t.Context(), payloadHash)
 	require.NoError(t, err)
 
 	// Verify assertion structure
@@ -318,20 +319,8 @@ func TestKeyAssertionBinder_CreatesValidAssertion(t *testing.T) {
 	assert.Equal(t, BaseAssertion, assertion.Type)
 	assert.Equal(t, PayloadScope, assertion.Scope)
 	assert.Equal(t, Unencrypted, assertion.AppliesToState)
-	assert.NotEmpty(t, assertion.Binding.Signature, "Assertion should have a signature")
-	assert.Equal(t, "jws", assertion.Binding.Method)
+	assert.Equal(t, KeyAssertionSchema, assertion.Statement.Schema)
 
-	// Verify the JWS contains the public key in the protected headers
-	parsedJWS, err := jws.Parse([]byte(assertion.Binding.Signature))
-	require.NoError(t, err, "Should be able to parse JWS")
-	require.Len(t, parsedJWS.Signatures(), 1, "Should have exactly one signature")
-
-	sig := parsedJWS.Signatures()[0]
-	jwkHeader, ok := sig.ProtectedHeaders().Get("jwk")
-	require.True(t, ok, "JWS should have jwk header with public key")
-	require.NotNil(t, jwkHeader, "jwk header should not be nil")
-
-	// Verify it's a valid JWK
-	_, ok = jwkHeader.(jwk.Key)
-	require.True(t, ok, "jwk header should be a valid JWK key")
+	// Bind returns unsigned assertions - caller is responsible for signing
+	assert.True(t, assertion.Binding.IsEmpty(), "Assertion should be unsigned after Bind")
 }

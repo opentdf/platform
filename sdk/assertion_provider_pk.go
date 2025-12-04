@@ -4,9 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
 )
 
 const (
@@ -62,8 +59,9 @@ func (p *KeyAssertionValidator) Schema() string {
 	return SchemaWildcard
 }
 
-func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, error) {
-	// Build the assertion
+func (p KeyAssertionBinder) Bind(_ context.Context, _ []byte) (Assertion, error) {
+	// Build the assertion without signing.
+	// The caller is responsible for signing the assertion after binding.
 	assertion := Assertion{
 		ID:             KeyAssertionID,
 		Type:           BaseAssertion,
@@ -74,42 +72,6 @@ func (p KeyAssertionBinder) Bind(_ context.Context, m Manifest) (Assertion, erro
 			Schema: KeyAssertionSchema,
 			Value:  p.statementValue,
 		},
-	}
-
-	// Get the hash and sign the assertion
-	assertionHash, err := assertion.GetHash()
-	if err != nil {
-		return assertion, fmt.Errorf("failed to get hash of assertion: %w", err)
-	}
-
-	// Convert public key to JWK format for inclusion in JWS headers
-	publicKeyJWK, err := jwk.FromRaw(p.publicKey.Key)
-	if err != nil {
-		return assertion, fmt.Errorf("failed to convert public key to JWK: %w", err)
-	}
-
-	// Set the algorithm on the JWK
-	if err := publicKeyJWK.Set(jwk.AlgorithmKey, p.publicKey.Alg.String()); err != nil {
-		return assertion, fmt.Errorf("failed to set algorithm on JWK: %w", err)
-	}
-
-	// Create JWS protected headers with the public key
-	headers := jws.NewHeaders()
-	if err := headers.Set(jwk.KeyIDKey, p.publicKey.Alg.String()); err != nil {
-		return assertion, fmt.Errorf("failed to set key ID in headers: %w", err)
-	}
-	if err := headers.Set("jwk", publicKeyJWK); err != nil {
-		return assertion, fmt.Errorf("failed to set jwk in headers: %w", err)
-	}
-
-	// Compute assertion signature using manifest method
-	assertionSignature, err := m.ComputeAssertionSignature(assertionHash)
-	if err != nil {
-		return assertion, fmt.Errorf("failed to compute assertion signature: %w", err)
-	}
-
-	if err := assertion.Sign(string(assertionHash), assertionSignature, p.privateKey, headers); err != nil {
-		return assertion, fmt.Errorf("failed to sign assertion: %w", err)
 	}
 
 	return assertion, nil

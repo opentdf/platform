@@ -125,28 +125,16 @@ func TestVerificationMode_UnknownAssertion(t *testing.T) {
 		t.Run(tt.modeName, func(t *testing.T) {
 			t.Parallel()
 
-			// Create a TDF config with an unknown assertion
-			unknownAssertion := Assertion{
-				Statement: Statement{
-					Format: StatementFormatJSON,
-					Schema: "unknown-schema-v1",
-					Value:  `{"unknown":"data"}`,
-				},
-				Binding: Binding{
-					Method:    "jws",
-					Signature: "some-signature",
-				},
-			}
-
 			// Create a reader config with verification mode but NO validator for this assertion type
 			readerConfig := &TDFReaderConfig{
 				assertionRegistry: newAssertionRegistry(),
 			}
 
 			// Simulate the assertion verification logic from tdf.go
-			_, err := readerConfig.assertionRegistry.GetValidationProvider(unknownAssertion.Statement.Schema)
+			// With no validators registered, the registry should be empty
+			hasValidators := len(readerConfig.assertionRegistry.validators) > 0
 
-			if err != nil {
+			if !hasValidators {
 				// No validator registered for this assertion
 				switch tt.mode {
 				case StrictMode:
@@ -366,8 +354,7 @@ func TestVerificationMode_ValidatorRegistration(t *testing.T) {
 
 			validator := NewKeyAssertionValidator(keys)
 
-			err := readerConfig.assertionRegistry.RegisterValidator(validator)
-			require.NoError(t, err)
+			readerConfig.assertionRegistry.RegisterValidator(validator)
 
 			// Verify the mode is set correctly in the validator
 			// Note: This tests the internal state, which normally would be done through behavior
@@ -454,19 +441,18 @@ func TestVerificationMode_VerifiersProvidedRegistersWildcardValidator(t *testing
 		assertionRegistry: newAssertionRegistry(),
 	}
 
-	// Apply the option - this should register a wildcard validator
+	// Apply the option - this should register a validator
 	opt := WithAssertionVerificationKeys(verifiers)
 	err := opt(readerConfig)
 	require.NoError(t, err, "WithAssertionVerificationKeys should succeed")
 
-	// Now the registry SHOULD have a wildcard validator
-	// This is the key behavior: any schema lookup will succeed via wildcard
-	validator, err := readerConfig.assertionRegistry.GetValidationProvider("any-unknown-schema")
-	require.NoError(t, err, "Registry should find wildcard validator for any schema")
-	assert.NotNil(t, validator, "Validator should not be nil")
+	// Now the registry SHOULD have a validator registered
+	// This is the key behavior: validators are iterated through to find one that can handle the assertion
+	assert.Equal(t, 1, len(readerConfig.assertionRegistry.validators), "Registry should have one validator")
 
-	// Verify the validator is a KeyAssertionValidator with wildcard schema
-	assert.Equal(t, SchemaWildcard, validator.Schema(), "Validator should be wildcard")
+	// Verify the validator is a KeyAssertionValidator
+	_, ok := readerConfig.assertionRegistry.validators[0].(*KeyAssertionValidator)
+	assert.True(t, ok, "Validator should be a KeyAssertionValidator")
 }
 
 // TestVerificationMode_VerifiersEmptyFallbackToDEK tests that when verifiers is empty
@@ -494,12 +480,14 @@ func TestVerificationMode_VerifiersEmptyFallbackToDEK(t *testing.T) {
 		verifiers:         AssertionVerificationKeys{}, // Empty
 	}
 
-	// Verify registry has no validator
-	_, err := readerConfig.assertionRegistry.GetValidationProvider(unknownAssertion.Statement.Schema)
-	require.Error(t, err, "Registry should not have validator")
+	// Verify registry has no validators
+	assert.Equal(t, 0, len(readerConfig.assertionRegistry.validators), "Registry should have no validators")
 
 	// Verify verifiers IS empty
 	assert.True(t, readerConfig.verifiers.IsEmpty(), "Verifiers should be empty")
+
+	// Use unknownAssertion to avoid unused variable warning
+	_ = unknownAssertion
 
 	// In this case, the tdf.go logic WILL enter the DEK fallback block
 	// because: err != nil && r.config.verifiers.IsEmpty() == true
@@ -529,15 +517,13 @@ func TestVerificationMode_RegistryHasValidator(t *testing.T) {
 		assertionRegistry: newAssertionRegistry(),
 	}
 
-	err := readerConfig.assertionRegistry.RegisterValidator(validator)
-	require.NoError(t, err)
+	readerConfig.assertionRegistry.RegisterValidator(validator)
 
 	// Verify registry HAS the validator
-	foundValidator, err := readerConfig.assertionRegistry.GetValidationProvider(validator.Schema())
-	require.NoError(t, err, "Registry should have validator")
-	assert.NotNil(t, foundValidator, "Validator should be found")
+	assert.Equal(t, 1, len(readerConfig.assertionRegistry.validators), "Registry should have one validator")
+	assert.Equal(t, validator, readerConfig.assertionRegistry.validators[0], "Validator should be found")
 
-	// When registry lookup succeeds, that validator is used
+	// When iterating through validators, the registered validator is used
 	// The verifiers field is not consulted in this case
 	// This is the expected behavior
 }

@@ -1576,10 +1576,9 @@ func (r *TDFReader) buildKey(ctx context.Context, results []kaoResult) error {
 	// Register system metadata assertion validator
 	systemMetadataAssertionProvider := NewSystemMetadataAssertionProvider(payloadKey[:])
 	systemMetadataAssertionProvider.SetVerificationMode(r.config.assertionVerificationMode)
-	// if already registered, ignore
-	_ = r.config.assertionRegistry.RegisterValidator(systemMetadataAssertionProvider)
+	r.config.assertionRegistry.RegisterValidator(systemMetadataAssertionProvider)
 
-	// Create DEK-based validator for fallback verification (not registered with wildcard)
+	// Create DEK-based validator for fallback verification
 	// This will be used as a last resort for unknown assertions that might be DEK-signed
 	dekKey := AssertionKey{
 		Alg: AssertionKeyAlgHS256,
@@ -1598,15 +1597,30 @@ func (r *TDFReader) buildKey(ctx context.Context, results []kaoResult) error {
 				ErrAssertionFailure{ID: assertion.ID})
 		}
 
-		validator, err := r.config.assertionRegistry.GetValidationProvider(assertion.Statement.Schema)
-		if err != nil && r.config.verifiers.IsEmpty() {
-			// No schema-specific validator found, and no explicit verification keys provided
-			// Try DEK-based verification as a fallback (for assertions signed with DEK during encryption)
+		// Iterate through registered validators to find one that can verify this assertion
+		var validator AssertionValidator
+		var verifyErr error
+		for _, v := range r.config.assertionRegistry.validators {
+			verifyErr = v.Verify(ctx, assertion, *r)
+			if verifyErr == nil {
+				// Validator successfully verified the assertion
+				validator = v
+				break
+			}
+			// If verification failed due to key mismatch, try next validator
+			if !errors.Is(verifyErr, errAssertionVerifyKeyFailure) {
+				// Verification failed for other reason (hash mismatch, binding mismatch, etc.)
+				// This indicates tampering - FAIL immediately
+				return r.handleAssertionVerificationError(assertion.ID, verifyErr)
+			}
+		}
+
+		// If no registered validator succeeded, try DEK-based verification as fallback
+		if validator == nil && r.config.verifiers.IsEmpty() {
 			dekVerifyErr := dekAssertionValidator.Verify(ctx, assertion, *r)
 			switch {
 			case dekVerifyErr == nil:
 				// DEK verification succeeded - assertion was signed with DEK
-				// Continue to validation phase
 				validator = dekAssertionValidator
 			case errors.Is(dekVerifyErr, errAssertionVerifyKeyFailure):
 				// JWT signature verification failed with DEK - assertion not signed with DEK
@@ -1620,7 +1634,7 @@ func (r *TDFReader) buildKey(ctx context.Context, results []kaoResult) error {
 		}
 
 		// If we still don't have a validator, handle as unknown assertion
-		if err != nil && validator == nil {
+		if validator == nil {
 			// Unknown assertion handling depends on verification mode
 			switch r.config.assertionVerificationMode {
 			case PermissiveMode, FailFast:
@@ -1632,23 +1646,11 @@ func (r *TDFReader) buildKey(ctx context.Context, results []kaoResult) error {
 			}
 		}
 
-		// Verify integrity and binding
-		slog.DebugContext(ctx, "verifying assertion integrity and binding",
-			slog.String("assertion_id", assertion.ID))
-		err = validator.Verify(ctx, assertion, *r)
-		if err != nil {
-			// Verification errors are always treated as potential tampering
-			slog.ErrorContext(ctx, "assertion verification failed",
-				slog.String("assertion_id", assertion.ID),
-				slog.String("assertion_schema", assertion.Statement.Schema),
-				slog.Any("error", err))
-			return r.handleAssertionVerificationError(assertion.ID, err)
-		}
 		slog.DebugContext(ctx, "assertion verification succeeded",
 			slog.String("assertion_id", assertion.ID))
 
 		// Validate trust
-		err = validator.Validate(ctx, assertion, *r)
+		err := validator.Validate(ctx, assertion, *r)
 		if err != nil {
 			// Trust validation errors may be handled based on mode
 			switch r.config.assertionVerificationMode {

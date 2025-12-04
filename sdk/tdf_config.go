@@ -494,15 +494,12 @@ func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOpti
 	return func(c *TDFReaderConfig) error {
 		c.verifiers = keys
 
-		// ONLY register wildcard validator if assertion verification is enabled
+		// ONLY register validator if assertion verification is enabled
 		// This maintains backward compatibility with the disableAssertionVerification flag
 		if !c.disableAssertionVerification {
-			// Register a wildcard KeyAssertionValidator that handles any schema
-			// when verification keys are provided
+			// Register a KeyAssertionValidator when verification keys are provided
 			validator := NewKeyAssertionValidator(keys)
-			if err := c.assertionRegistry.RegisterValidator(validator); err != nil {
-				return fmt.Errorf("failed to register key assertion validator: %w", err)
-			}
+			c.assertionRegistry.RegisterValidator(validator)
 		}
 
 		return nil
@@ -510,11 +507,12 @@ func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOpti
 }
 
 // WithAssertionValidator registers a custom assertion validator for TDF reading.
-// The validator will be called during TDF reading to validate assertions with matching schema URIs.
-// The schema URI is determined by the validator's Schema() method.
+// The validator will be called during TDF reading to validate assertions.
+// Validators are iterated through to find one that can verify each assertion.
 func WithAssertionValidator(validator AssertionValidator) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
-		return c.assertionRegistry.RegisterValidator(validator)
+		c.assertionRegistry.RegisterValidator(validator)
+		return nil
 	}
 }
 

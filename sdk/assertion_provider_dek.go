@@ -31,11 +31,6 @@ func (v *DEKAssertionValidator) SetVerificationMode(mode AssertionVerificationMo
 	v.verificationMode = mode
 }
 
-// Schema returns the wildcard pattern to match any assertion schema.
-func (v *DEKAssertionValidator) Schema() string {
-	return SchemaWildcard
-}
-
 // Verify checks the cryptographic binding of an assertion signed with the DEK.
 func (v *DEKAssertionValidator) Verify(ctx context.Context, a Assertion, r TDFReader) error {
 	// Use shared DEK-based verification logic

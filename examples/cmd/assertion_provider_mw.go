@@ -128,8 +128,3 @@ func (p *MagicWordAssertionProvider) Verify(_ context.Context, a sdk.Assertion, 
 func (p *MagicWordAssertionProvider) Validate(_ context.Context, _ sdk.Assertion, _ sdk.TDFReader) error {
 	return nil
 }
-
-// Schema returns the schema URI this validator handles.
-func (p *MagicWordAssertionProvider) Schema() string {
-	return MagicWordAssertionSchema
-}

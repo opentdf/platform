@@ -43,12 +43,6 @@ func (p *SystemMetadataAssertionProvider) SetVerificationMode(mode AssertionVeri
 	p.verificationMode = mode
 }
 
-// Schema returns the schema URI this validator handles.
-// Returns the current schema for cross-SDK compatibility with Java and JS.
-func (p *SystemMetadataAssertionProvider) Schema() string {
-	return SystemMetadataSchemaV1
-}
-
 func (p SystemMetadataAssertionProvider) Bind(_ context.Context, _ []byte) (Assertion, error) {
 	// Get the assertion config
 	ac, err := GetSystemMetadataAssertionConfig()
@@ -57,7 +51,7 @@ func (p SystemMetadataAssertionProvider) Bind(_ context.Context, _ []byte) (Asse
 	}
 
 	// Override schema
-	ac.Statement.Schema = p.Schema()
+	ac.Statement.Schema = SystemMetadataSchemaV1
 
 	// Build the assertion WITHOUT binding.
 	// The TDF creation process (tdf.go) will uniformly sign all unbound assertions with the DEK.

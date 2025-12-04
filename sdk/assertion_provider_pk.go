@@ -53,12 +53,6 @@ func (p *KeyAssertionValidator) SetVerificationMode(mode AssertionVerificationMo
 	p.verificationMode = mode
 }
 
-// Schema returns the schema URI this validator handles.
-// Returns wildcard to match any assertion schema when verification keys are provided.
-func (p *KeyAssertionValidator) Schema() string {
-	return SchemaWildcard
-}
-
 func (p KeyAssertionBinder) Bind(_ context.Context, _ []byte) (Assertion, error) {
 	// Build the assertion without signing.
 	// The caller is responsible for signing the assertion after binding.

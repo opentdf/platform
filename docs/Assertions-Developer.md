@@ -360,8 +360,6 @@ type AssertionValidator interface {
     Verify(ctx context.Context, assertion Assertion, reader TDFReader) error
     // Validate performs business logic validation on the assertion
     Validate(ctx context.Context, assertion Assertion, reader TDFReader) error
-    // Schema returns the schema URI this validator handles
-    Schema() string
 }
 ```
 
@@ -485,11 +483,6 @@ func (p *CustomAssertionProvider) Verify(ctx context.Context, a sdk.Assertion, r
 func (p *CustomAssertionProvider) Validate(ctx context.Context, a sdk.Assertion, r sdk.TDFReader) error {
     // Add your custom validation logic here
     return nil
-}
-
-// Schema returns the schema URI this validator handles
-func (p *CustomAssertionProvider) Schema() string {
-    return CustomAssertionSchema
 }
 ```
 

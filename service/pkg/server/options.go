@@ -25,6 +25,11 @@ type StartConfig struct {
 	configLoaderOrder     []string
 
 	trustKeyManagerCtxs []trust.NamedKeyManagerCtxFactory
+
+	// CORS additive configuration - appended to YAML/env config values
+	additionalCORSHeaders        []string
+	additionalCORSMethods        []string
+	additionalCORSExposedHeaders []string
 }
 
 // Deprecated: Use WithConfigKey
@@ -159,6 +164,56 @@ func WithTrustKeyManagerFactories(factories ...trust.NamedKeyManagerFactory) Sta
 func WithTrustKeyManagerCtxFactories(factories ...trust.NamedKeyManagerCtxFactory) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.trustKeyManagerCtxs = append(c.trustKeyManagerCtxs, factories...)
+		return c
+	}
+}
+
+// WithAdditionalCORSHeaders appends additional request headers to allow via CORS.
+// These are merged with headers from YAML config (server.cors.allowedheaders and
+// server.cors.additionalheaders). Deduplication is handled automatically with
+// case-insensitive comparison per RFC 7230.
+//
+// Example:
+//
+//	server.Start(
+//	    server.WithAdditionalCORSHeaders("X-Custom-Header", "X-Another-Header"),
+//	)
+func WithAdditionalCORSHeaders(headers ...string) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.additionalCORSHeaders = append(c.additionalCORSHeaders, headers...)
+		return c
+	}
+}
+
+// WithAdditionalCORSMethods appends additional HTTP methods to allow via CORS.
+// These are merged with methods from YAML config (server.cors.allowedmethods and
+// server.cors.additionalmethods). Deduplication is handled automatically.
+//
+// Example:
+//
+//	server.Start(
+//	    server.WithAdditionalCORSMethods("CUSTOM", "SPECIAL"),
+//	)
+func WithAdditionalCORSMethods(methods ...string) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.additionalCORSMethods = append(c.additionalCORSMethods, methods...)
+		return c
+	}
+}
+
+// WithAdditionalCORSExposedHeaders appends additional response headers to expose via CORS.
+// These are merged with headers from YAML config (server.cors.exposedheaders and
+// server.cors.additionalexposedheaders). Deduplication is handled automatically with
+// case-insensitive comparison per RFC 7230.
+//
+// Example:
+//
+//	server.Start(
+//	    server.WithAdditionalCORSExposedHeaders("X-Request-Id", "X-Trace-Id"),
+//	)
+func WithAdditionalCORSExposedHeaders(headers ...string) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.additionalCORSExposedHeaders = append(c.additionalCORSExposedHeaders, headers...)
 		return c
 	}
 }

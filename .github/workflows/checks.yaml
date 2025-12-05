@@ -273,28 +273,6 @@ jobs:
             echo "$OUTPUT";
             echo "EODECISIONV2"
           } >> "$GITHUB_ENV"
-      - name: run complex decision benchmark tests
-        run: |
-          OUTPUT=$(./examples/examples benchmark-decision-complex --resources 500 --attrs 5)
-          echo "--- Complex Decision Benchmark Output ---"
-          echo "$OUTPUT"
-          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
-          {
-            echo "BENCHMARK_DECISION_COMPLEX_OUTPUT<<EODECISIONCOMPLEX";
-            echo "$OUTPUT";
-            echo "EODECISIONCOMPLEX"
-          } >> "$GITHUB_ENV"
-      - name: run complex decision v1 benchmark tests
-        run: |
-          OUTPUT=$(./examples/examples benchmark-decision-v1-complex --resources 500 --attrs 5)
-          echo "--- Complex Decision v1 Benchmark Output ---"
-          echo "$OUTPUT"
-          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
-          {
-            echo "BENCHMARK_DECISION_V1_COMPLEX_OUTPUT<<EODECISIONV1COMPLEX";
-            echo "$OUTPUT";
-            echo "EODECISIONV1COMPLEX"
-          } >> "$GITHUB_ENV"
       - name: run tdf3 benchmark tests
         run: |
           OUTPUT=$(./examples/examples benchmark --count=5000 --concurrent=50)
@@ -344,8 +322,6 @@ jobs:
 
             h2 "${BENCHMARK_DECISION_OUTPUT}" "Decision Benchmark"
             h2 "${BENCHMARK_DECISION_V2_OUTPUT}" "Decision Benchmark v2"
-            h2 "${BENCHMARK_DECISION_COMPLEX_OUTPUT}" "Complex Decision Benchmark"
-            h2 "${BENCHMARK_DECISION_V1_COMPLEX_OUTPUT}" "Complex Decision v1 Benchmark"
             h2 "${BENCHMARK_METRICS_OUTPUT}" "Standard Benchmark Metrics"
             h2 "${BENCHMARK_BULK_OUTPUT}" "Bulk Benchmark"
             h2 "${BENCHMARK_TDF3_OUTPUT}" "TDF3 Benchmark"

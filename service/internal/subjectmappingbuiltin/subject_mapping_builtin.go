@@ -18,6 +18,10 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+// smallSetThreshold is the maximum size for which we use linear search instead of a map.
+// For small sets, nested loops are faster than map allocation + lookup.
+const smallSetThreshold = 4
+
 func SubjectMappingBuiltin() {
 	rego.RegisterBuiltin2(&rego.Function{
 		Name:             "subjectmapping.resolve",
@@ -146,6 +150,7 @@ func EvaluateSubjectMappings(attributeMappings map[string]*attributes.GetAttribu
 }
 
 // evaluateSubjectSetCached evaluates a subject set with caching keyed by pointer identity.
+// Used internally where subject sets may repeat across mappings.
 func evaluateSubjectSetCached(subjectSet *policy.SubjectSet, entity flattening.Flattened, subjectSetCache map[*policy.SubjectSet]bool, condGroupCache map[*policy.ConditionGroup]bool) (bool, error) {
 	if res, ok := subjectSetCache[subjectSet]; ok {
 		return res, nil
@@ -170,16 +175,47 @@ func evaluateSubjectSetCached(subjectSet *policy.SubjectSet, entity flattening.F
 	return subjectSetConditionResult, nil
 }
 
-func EvaluateSubjectSet(subjectSet *policy.SubjectSet, entity flattening.Flattened) (bool, error) {
-	// Create ephemeral caches for a single-call path
-	return evaluateSubjectSetCached(subjectSet, entity, make(map[*policy.SubjectSet]bool), make(map[*policy.ConditionGroup]bool))
+// evaluateSubjectSetNoCache evaluates a subject set without any memoization.
+// Used for single-call paths where caching overhead isn't worth it.
+func evaluateSubjectSetNoCache(subjectSet *policy.SubjectSet, entity flattening.Flattened) (bool, error) {
+	// condition groups anded together
+	subjectSetConditionResult := true
+	for _, conditionGroup := range subjectSet.GetConditionGroups() {
+		conditionGroupResult, err := evaluateConditionGroupNoCache(conditionGroup, entity)
+		if err != nil {
+			return false, err
+		}
+		subjectSetConditionResult = subjectSetConditionResult && conditionGroupResult
+		if !subjectSetConditionResult {
+			break
+		}
+	}
+	return subjectSetConditionResult, nil
 }
 
+// EvaluateSubjectSet evaluates a subject set against a flattened entity.
+// For single evaluations; does not use caching.
+func EvaluateSubjectSet(subjectSet *policy.SubjectSet, entity flattening.Flattened) (bool, error) {
+	return evaluateSubjectSetNoCache(subjectSet, entity)
+}
+
+// evaluateConditionGroupCached evaluates a condition group with caching.
 func evaluateConditionGroupCached(conditionGroup *policy.ConditionGroup, entity flattening.Flattened, condGroupCache map[*policy.ConditionGroup]bool) (bool, error) {
 	if res, ok := condGroupCache[conditionGroup]; ok {
 		return res, nil
 	}
 
+	res, err := evaluateConditionGroupNoCache(conditionGroup, entity)
+	if err != nil {
+		return false, err
+	}
+
+	condGroupCache[conditionGroup] = res
+	return res, nil
+}
+
+// evaluateConditionGroupNoCache evaluates a condition group without memoization.
+func evaluateConditionGroupNoCache(conditionGroup *policy.ConditionGroup, entity flattening.Flattened) (bool, error) {
 	// get boolean operator for condition group
 	var conditionGroupResult bool
 	switch conditionGroup.GetBooleanOperator() {
@@ -223,12 +259,13 @@ ConditionEval:
 		}
 	}
 
-	condGroupCache[conditionGroup] = conditionGroupResult
 	return conditionGroupResult, nil
 }
 
+// EvaluateConditionGroup evaluates a condition group against a flattened entity.
+// For single evaluations; does not use caching.
 func EvaluateConditionGroup(conditionGroup *policy.ConditionGroup, entity flattening.Flattened) (bool, error) {
-	return evaluateConditionGroupCached(conditionGroup, entity, make(map[*policy.ConditionGroup]bool))
+	return evaluateConditionGroupNoCache(conditionGroup, entity)
 }
 
 func EvaluateCondition(condition *policy.Condition, entity flattening.Flattened) (bool, error) {
@@ -236,41 +273,10 @@ func EvaluateCondition(condition *policy.Condition, entity flattening.Flattened)
 
 	switch condition.GetOperator() {
 	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN:
-		// Build set of possible values for O(1) lookup
-		possible := condition.GetSubjectExternalValues()
-		if len(possible) == 0 || len(mappedValues) == 0 {
-			return false, nil
-		}
-		possibleSet := make(map[string]struct{}, len(possible))
-		for _, pv := range possible {
-			possibleSet[pv] = struct{}{}
-		}
-		for _, mv := range mappedValues {
-			if s, ok := mv.(string); ok {
-				if _, found := possibleSet[s]; found {
-					return true, nil
-				}
-			}
-		}
-		return false, nil
+		return evaluateIN(condition.GetSubjectExternalValues(), mappedValues)
 
 	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN:
-		possible := condition.GetSubjectExternalValues()
-		if len(possible) == 0 {
-			return true, nil
-		}
-		possibleSet := make(map[string]struct{}, len(possible))
-		for _, pv := range possible {
-			possibleSet[pv] = struct{}{}
-		}
-		for _, mv := range mappedValues {
-			if s, ok := mv.(string); ok {
-				if _, found := possibleSet[s]; found {
-					return false, nil
-				}
-			}
-		}
-		return true, nil
+		return evaluateNotIN(condition.GetSubjectExternalValues(), mappedValues)
 
 	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS:
 		// Fast-path for string mapped values; fallback to fmt.Sprint only when necessary
@@ -297,4 +303,84 @@ func EvaluateCondition(condition *policy.Condition, entity flattening.Flattened)
 	default:
 		return false, errors.New("unsupported subject mapping operator: " + condition.GetOperator().String())
 	}
+}
+
+// evaluateIN checks if any mapped value is in the possible values set.
+// Uses linear search for small sets to avoid map allocation overhead.
+func evaluateIN(possible []string, mappedValues []interface{}) (bool, error) {
+	if len(possible) == 0 || len(mappedValues) == 0 {
+		return false, nil
+	}
+
+	// Small set: use nested loops to avoid map allocation
+	if len(possible) <= smallSetThreshold {
+		for _, mv := range mappedValues {
+			s, ok := mv.(string)
+			if !ok {
+				continue
+			}
+			for _, pv := range possible {
+				if s == pv {
+					return true, nil
+				}
+			}
+		}
+		return false, nil
+	}
+
+	// Larger set: use map for O(1) lookups
+	possibleSet := make(map[string]struct{}, len(possible))
+	for _, pv := range possible {
+		possibleSet[pv] = struct{}{}
+	}
+	for _, mv := range mappedValues {
+		if s, ok := mv.(string); ok {
+			if _, found := possibleSet[s]; found {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
+// evaluateNotIN checks that no mapped value is in the possible values set.
+// Uses linear search for small sets to avoid map allocation overhead.
+func evaluateNotIN(possible []string, mappedValues []interface{}) (bool, error) {
+	if len(possible) == 0 {
+		return true, nil
+	}
+	if len(mappedValues) == 0 {
+		// No mapped values means none are in the forbidden set
+		return true, nil
+	}
+
+	// Small set: use nested loops to avoid map allocation
+	if len(possible) <= smallSetThreshold {
+		for _, mv := range mappedValues {
+			s, ok := mv.(string)
+			if !ok {
+				continue
+			}
+			for _, pv := range possible {
+				if s == pv {
+					return false, nil
+				}
+			}
+		}
+		return true, nil
+	}
+
+	// Larger set: use map for O(1) lookups
+	possibleSet := make(map[string]struct{}, len(possible))
+	for _, pv := range possible {
+		possibleSet[pv] = struct{}{}
+	}
+	for _, mv := range mappedValues {
+		if s, ok := mv.(string); ok {
+			if _, found := possibleSet[s]; found {
+				return false, nil
+			}
+		}
+	}
+	return true, nil
 }

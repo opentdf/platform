@@ -195,7 +195,8 @@ func getResourceDecisionableAttributes(
 	logger *logger.Logger,
 	accessibleRegisteredResourceValues map[string]*policy.RegisteredResourceValue,
 	entitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
-	allAttributesByDefinitionFQN map[string]*policy.Attribute,
+	// this is needed to support direct entitlement ad-hoc attribute values
+	entitleableAttributesByDefinitionFQN map[string]*policy.Attribute,
 	// action *policy.Action,
 	resources []*authz.Resource,
 	allowDirectEntitlements bool,
@@ -252,13 +253,11 @@ func getResourceDecisionableAttributes(
 		if !ok {
 			notFoundFQNs = append(notFoundFQNs, attrValueFQN)
 
-			if !allowDirectEntitlements {
-				continue
-			} else {
-				// If enabled, process direct entitlements
+			if allowDirectEntitlements {
+				// If enabled, process direct entitlements that only exist at the attribute definition level (values are adhoc)
 
 				// Try to find the definition by extracting partial FQN for adhoc attributes
-				parentDefinition, err := getDefinition(attrValueFQN, allAttributesByDefinitionFQN)
+				parentDefinition, err := getDefinition(attrValueFQN, entitleableAttributesByDefinitionFQN)
 				if err != nil {
 					return nil, fmt.Errorf("resource attribute value FQN not found in memory and no definition found [%s]: %w", attrValueFQN, err)
 				}

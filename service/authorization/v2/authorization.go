@@ -187,8 +187,6 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	resource := request.GetResource()
 	fulfillableObligations := request.GetFulfillableObligationFqns()
 
-	as.logger.Info("[authv2.GetDecision] request", slog.Any("req.msg", request))
-
 	reqContext, err := as.getDecisionRequestContext(ctx)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, err)

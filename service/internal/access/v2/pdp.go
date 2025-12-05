@@ -208,7 +208,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 
 	if p.allowDirectEntitlements {
 		p.logger.InfoContext(ctx, "setting direct entitlements on entity representation",
-			slog.Any("entityID", entityRepresentation.GetOriginalId()),
+			slog.Any("entity_id", entityRepresentation.GetOriginalId()),
 		)
 
 		for _, directEntitlement := range entityRepresentation.GetDirectEntitlements() {

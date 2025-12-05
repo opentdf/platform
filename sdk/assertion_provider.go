@@ -18,11 +18,6 @@ type AssertionBinder interface {
 
 type AssertionValidator interface {
 	// Verify checks the assertion's cryptographic binding.
-	//
-	// Example:
-	//   assertionHash, _ := a.GetHash()
-	//   manifest := r.Manifest()
-	//   computedSignature, _ := manifest.ComputeAssertionSignature(assertionHash)
 	Verify(ctx context.Context, a Assertion, computedSignature []byte) error
 
 	// Validate checks the assertion's policy and trust requirements

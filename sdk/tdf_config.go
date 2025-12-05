@@ -231,8 +231,9 @@ type configBasedAssertionBinder struct {
 }
 
 func (b *configBasedAssertionBinder) Bind(_ context.Context, _ []byte) (Assertion, error) {
-	// Configure the assertion from config without signing.
-	// The caller is responsible for signing the assertion after binding.
+	// Configure the assertion from config.
+	// If SigningKey is provided, it will be used during the signing phase.
+	// Otherwise, the assertion will be signed with DEK.
 	assertion := Assertion{
 		ID:             b.config.ID,
 		Type:           b.config.Type,
@@ -242,6 +243,11 @@ func (b *configBasedAssertionBinder) Bind(_ context.Context, _ []byte) (Assertio
 	}
 
 	return assertion, nil
+}
+
+// SigningKey returns the signing key for this binder, if configured.
+func (b *configBasedAssertionBinder) SigningKey() AssertionKey {
+	return b.config.SigningKey
 }
 
 // WithAutoconfigure toggles inferring KAS info for encrypt from data attributes.

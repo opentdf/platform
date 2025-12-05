@@ -104,12 +104,18 @@ func (p KeyAssertionValidator) Verify(_ context.Context, a Assertion, r TDFReade
 	}
 	// Look up the key for the assertion
 	key, err := p.publicKeys.Get(a.ID)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrAssertionFailure{ID: a.ID}, err)
+	if err != nil || key.IsEmpty() {
+		// Key not found for this assertion ID - let another validator try
+		return errAssertionVerifyKeyFailure
 	}
 	// Verify the JWT with key (now returns schema claim)
 	verifiedAssertionHash, verifiedManifestSignature, verifiedSchema, err := a.Verify(key)
 	if err != nil {
+		// JWT signature verification failed - this key doesn't match
+		// Let another validator try with a different key
+		if errors.Is(err, errAssertionVerifyKeyFailure) {
+			return errAssertionVerifyKeyFailure
+		}
 		return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: a.ID}, err)
 	}
 

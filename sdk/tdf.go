@@ -372,26 +372,24 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		return nil, fmt.Errorf("failed to compute aggregate hash: %w", err)
 	}
 
-	var boundAssertions []Assertion
-	// Bind Assertions
-	for _, registered := range tdfConfig.assertionRegistry.binders {
-		boundAssertion, er := registered.Bind(ctx, payloadHash)
-		if er != nil {
-			return nil, fmt.Errorf("failed to bind assertion: %w", er)
-		}
-		boundAssertions = append(boundAssertions, boundAssertion)
-	}
-
-	// Sign any unsigned assertions with the DEK (payload key)
+	// Bind and sign assertions
 	// All assertions MUST have cryptographic bindings for security
 	dekKey := AssertionKey{
 		Alg: AssertionKeyAlgHS256,
 		Key: tdfObject.payloadKey[:],
 	}
-	for i := range boundAssertions {
-		if boundAssertions[i].Binding.IsEmpty() {
+
+	var boundAssertions []Assertion
+	for _, registered := range tdfConfig.assertionRegistry.binders {
+		boundAssertion, er := registered.Bind(ctx, payloadHash)
+		if er != nil {
+			return nil, fmt.Errorf("failed to bind assertion: %w", er)
+		}
+
+		// Sign unsigned assertions
+		if boundAssertion.Binding.IsEmpty() {
 			// Get the hash of the assertion
-			assertionHashBytes, err := boundAssertions[i].GetHash()
+			assertionHashBytes, err := boundAssertion.GetHash()
 			if err != nil {
 				return nil, fmt.Errorf("failed to get assertion hash: %w", err)
 			}
@@ -402,11 +400,21 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 				return nil, fmt.Errorf("failed to compute assertion signature: %w", err)
 			}
 
-			// Sign with DEK
-			if err := boundAssertions[i].Sign(string(assertionHashBytes), assertionSignature, dekKey); err != nil {
-				return nil, fmt.Errorf("failed to sign assertion %q with DEK: %w", boundAssertions[i].ID, err)
+			// Check if binder has a custom signing key
+			signingKey := dekKey
+			if keyProvider, ok := registered.(interface{ SigningKey() AssertionKey }); ok {
+				if customKey := keyProvider.SigningKey(); !customKey.IsEmpty() {
+					signingKey = customKey
+				}
+			}
+
+			// Sign the assertion
+			if err := boundAssertion.Sign(string(assertionHashBytes), assertionSignature, signingKey); err != nil {
+				return nil, fmt.Errorf("failed to sign assertion %q: %w", boundAssertion.ID, err)
 			}
 		}
+
+		boundAssertions = append(boundAssertions, boundAssertion)
 	}
 
 	tdfObject.manifest.Assertions = boundAssertions
@@ -1600,8 +1608,13 @@ func (r *TDFReader) buildKey(ctx context.Context, results []kaoResult) error {
 		// Iterate through registered validators to find one that can verify this assertion
 		var validator AssertionValidator
 		var verifyErr error
-		for _, v := range r.config.assertionRegistry.validators {
+		fmt.Printf("DEBUG: starting validator iteration num_validators=%d assertion_id=%s assertion_schema=%s\n",
+			len(r.config.assertionRegistry.validators), assertion.ID, assertion.Statement.Schema)
+		for i, v := range r.config.assertionRegistry.validators {
+			fmt.Printf("DEBUG: trying validator index=%d validator_type=%T\n", i, v)
 			verifyErr = v.Verify(ctx, assertion, *r)
+			fmt.Printf("DEBUG: validator result index=%d error=%v is_key_failure=%v\n",
+				i, verifyErr, errors.Is(verifyErr, errAssertionVerifyKeyFailure))
 			if verifyErr == nil {
 				// Validator successfully verified the assertion
 				validator = v

@@ -68,15 +68,14 @@ func (p SystemMetadataAssertionProvider) Bind(_ context.Context, _ []byte) (Asse
 }
 
 func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, r TDFReader) error {
-	// SECURITY: Validate schema is the supported schema
-	// This prevents routing assertions with unknown schemas to this validator
-	// Defense in depth: checked here AND via hash verification later
+	// Check if this validator can handle the assertion based on schema
+	// Return errAssertionVerifyKeyFailure to signal that another validator should try
 	isValidSchema := a.Statement.Schema == SystemMetadataSchemaV1 ||
 		a.Statement.Schema == "" // Empty schema for legacy compatibility
 
 	if !isValidSchema {
-		return fmt.Errorf("%w: unsupported schema %q (expected %q)",
-			ErrAssertionFailure{ID: a.ID}, a.Statement.Schema, SystemMetadataSchemaV1)
+		// This validator doesn't handle this schema - let another validator try
+		return errAssertionVerifyKeyFailure
 	}
 
 	// Use shared DEK-based verification logic

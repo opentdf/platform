@@ -34,6 +34,8 @@ func GetFromFlattened(flat Flattened, selector string) []interface{} {
 	return itemsToReturn
 }
 
+// Flatten returns a Flattened struct with an index for O(1) lookups via GetFromFlattened.
+// Use this when you will perform lookups by selector.
 func Flatten(m map[string]interface{}) (Flattened, error) {
 	idx := make(map[string][]interface{})
 	items, err := flattenInterface(m, idx)
@@ -58,7 +60,9 @@ func flattenInterface(i interface{}, idx map[string][]interface{}) ([]Item, erro
 			for _, item := range nm {
 				key := "." + k + item.Key
 				o = append(o, Item{Key: key, Value: item.Value})
-				idx[key] = append(idx[key], item.Value)
+				if idx != nil {
+					idx[key] = append(idx[key], item.Value)
+				}
 			}
 		}
 	case []interface{}:
@@ -74,13 +78,17 @@ func flattenInterface(i interface{}, idx map[string][]interface{}) ([]Item, erro
 				keyAny := kAny + it.Key
 				o = append(o, Item{Key: keyIdx, Value: it.Value})
 				o = append(o, Item{Key: keyAny, Value: it.Value})
-				idx[keyIdx] = append(idx[keyIdx], it.Value)
-				idx[keyAny] = append(idx[keyAny], it.Value)
+				if idx != nil {
+					idx[keyIdx] = append(idx[keyIdx], it.Value)
+					idx[keyAny] = append(idx[keyAny], it.Value)
+				}
 			}
 		}
 	case bool, int, string, float64, float32:
 		o = append(o, Item{Key: "", Value: child})
-		idx[""] = append(idx[""], child)
+		if idx != nil {
+			idx[""] = append(idx[""], child)
+		}
 	default:
 		return nil, errors.New("unrecognized item in json")
 	}

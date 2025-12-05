@@ -86,7 +86,7 @@ func (p *MagicWordAssertionProvider) Bind(_ context.Context, payloadHash []byte)
 }
 
 // Verify assertion is well-formed and bound
-func (p *MagicWordAssertionProvider) Verify(_ context.Context, a sdk.Assertion, r sdk.TDFReader) error {
+func (p *MagicWordAssertionProvider) Verify(_ context.Context, a sdk.Assertion, payloadHash []byte) error {
 	// 1. Verify the statement value (HMAC of magic word)
 	h := hmac.New(sha256.New, []byte(p.MagicWord))
 	h.Write([]byte(p.MagicWord))
@@ -111,9 +111,8 @@ func (p *MagicWordAssertionProvider) Verify(_ context.Context, a sdk.Assertion, 
 		return fmt.Errorf("failed to get assertion hash: %w", err)
 	}
 
-	manifest := r.Manifest()
 	bindingHMAC := hmac.New(sha256.New, []byte(p.MagicWord))
-	bindingHMAC.Write([]byte(manifest.RootSignature.Signature))
+	bindingHMAC.Write(payloadHash)
 	bindingHMAC.Write(assertionHash)
 	expectedSignature := hex.EncodeToString(bindingHMAC.Sum(nil))
 

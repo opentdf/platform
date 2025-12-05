@@ -409,7 +409,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			}
 
 			// Sign the assertion
-			if err := boundAssertion.Sign(string(assertionHashBytes), assertionSignature, signingKey); err != nil {
+			if err := boundAssertion.Sign(string(assertionHashBytes), string(assertionSignature), signingKey); err != nil {
 				return nil, fmt.Errorf("failed to sign assertion %q: %w", boundAssertion.ID, err)
 			}
 		}
@@ -1604,17 +1604,17 @@ func (r *TDFReader) buildKey(ctx context.Context, results []kaoResult) error {
 			return fmt.Errorf("%w: assertion has no cryptographic binding - unsigned assertions are not allowed",
 				ErrAssertionFailure{ID: assertion.ID})
 		}
+		computedHash, err := assertion.GetHash()
+		if err != nil {
+			return fmt.Errorf("%w: assertion.GetHash failed: %w", ErrAssertionFailure{ID: assertion.ID}, err)
+		}
+		computedSignature, err := r.manifest.ComputeAssertionSignature(computedHash)
 
 		// Iterate through registered validators to find one that can verify this assertion
 		var validator AssertionValidator
 		var verifyErr error
-		fmt.Printf("DEBUG: starting validator iteration num_validators=%d assertion_id=%s assertion_schema=%s\n",
-			len(r.config.assertionRegistry.validators), assertion.ID, assertion.Statement.Schema)
-		for i, v := range r.config.assertionRegistry.validators {
-			fmt.Printf("DEBUG: trying validator index=%d validator_type=%T\n", i, v)
-			verifyErr = v.Verify(ctx, assertion, *r)
-			fmt.Printf("DEBUG: validator result index=%d error=%v is_key_failure=%v\n",
-				i, verifyErr, errors.Is(verifyErr, errAssertionVerifyKeyFailure))
+		for _, v := range r.config.assertionRegistry.validators {
+			verifyErr = v.Verify(ctx, assertion, computedSignature)
 			if verifyErr == nil {
 				// Validator successfully verified the assertion
 				validator = v
@@ -1630,7 +1630,7 @@ func (r *TDFReader) buildKey(ctx context.Context, results []kaoResult) error {
 
 		// If no registered validator succeeded, try DEK-based verification as fallback
 		if validator == nil && r.config.verifiers.IsEmpty() {
-			dekVerifyErr := dekAssertionValidator.Verify(ctx, assertion, *r)
+			dekVerifyErr := dekAssertionValidator.Verify(ctx, assertion, computedSignature)
 			switch {
 			case dekVerifyErr == nil:
 				// DEK verification succeeded - assertion was signed with DEK
@@ -1663,7 +1663,7 @@ func (r *TDFReader) buildKey(ctx context.Context, results []kaoResult) error {
 			slog.String("assertion_id", assertion.ID))
 
 		// Validate trust
-		err := validator.Validate(ctx, assertion, *r)
+		err = validator.Validate(ctx, assertion, *r)
 		if err != nil {
 			// Trust validation errors may be handled based on mode
 			switch r.config.assertionVerificationMode {

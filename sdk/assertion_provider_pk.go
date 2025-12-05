@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -71,11 +72,7 @@ func (p KeyAssertionBinder) Bind(_ context.Context, _ []byte) (Assertion, error)
 	return assertion, nil
 }
 
-func (p KeyAssertionValidator) Verify(_ context.Context, a Assertion, r TDFReader) error {
-	// NOTE: This validator uses a wildcard schema pattern to match any assertion
-	// when verification keys are provided. Schema validation is still performed
-	// via the JWT's assertionSchema claim verification below.
-	//
+func (p KeyAssertionValidator) Verify(_ context.Context, a Assertion, computedSignature []byte) error {
 	// SECURITY: The JWS may contain a 'jwk' header with the public key, but we
 	// ALWAYS use the configured verification keys instead of the key from the header.
 	// This prevents attackers from bypassing verification by providing their own keys.
@@ -109,42 +106,28 @@ func (p KeyAssertionValidator) Verify(_ context.Context, a Assertion, r TDFReade
 		return errAssertionVerifyKeyFailure
 	}
 	// Verify the JWT with key (now returns schema claim)
-	verifiedAssertionHash, verifiedManifestSignature, verifiedSchema, err := a.Verify(key)
+	verifiedHash, verifiedSignature, err := a.Verify(key)
 	if err != nil {
 		// JWT signature verification failed - this key doesn't match
-		// Let another validator try with a different key
 		if errors.Is(err, errAssertionVerifyKeyFailure) {
 			return errAssertionVerifyKeyFailure
 		}
 		return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: a.ID}, err)
 	}
 
-	// SECURITY: Verify schema claim matches Statement.Schema (if claim exists)
-	// This prevents schema substitution after JWT signing
-	// For legacy assertions, verifiedSchema will be empty string - skip check
-	if verifiedSchema != "" && verifiedSchema != a.Statement.Schema {
-		return fmt.Errorf("%w: schema claim mismatch - JWT contains %q but Statement has %q (tampering detected)",
-			ErrAssertionFailure{ID: a.ID}, verifiedSchema, a.Statement.Schema)
-	}
-
 	// Get the hash of the assertion
-	assertionHash, err := a.GetHash()
+	computedHash, err := a.GetHash()
 	if err != nil {
 		return fmt.Errorf("%w: failed to get hash of assertion: %w", ErrAssertionFailure{ID: a.ID}, err)
 	}
-	manifestSignature := r.Manifest().RootSignature.Signature
 
-	if string(assertionHash) != verifiedAssertionHash {
+	if !bytes.Equal(verifiedHash, computedHash) {
 		return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: a.ID})
 	}
 
-	// Verify binding format: assertionSig = base64(aggregateHash + assertionHash)
-	// This is the standard format for all assertions across all SDKs (Java/JS/Go)
-	if err := VerifyAssertionSignatureFormat(a.ID, verifiedManifestSignature, assertionHash, r.Manifest()); err != nil {
-		return err
+	if !bytes.Equal(verifiedSignature, computedSignature) {
+		return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: a.ID})
 	}
-
-	_ = manifestSignature // Not used in this validator (signature verification done via JWT and VerifyAssertionSignatureFormat)
 	return nil
 }
 

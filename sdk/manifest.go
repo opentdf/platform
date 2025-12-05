@@ -116,7 +116,7 @@ func (m *Manifest) ComputeAggregateHash() ([]byte, error) {
 	return aggregateHash.Bytes(), nil
 }
 
-// ComputeAssertionSignature computes the assertion signature binding.
+// ComputeAssertionSignature computes the assertion binding signature.
 // Automatically determines the correct encoding format from the manifest.
 //
 // Format: base64(aggregateHash + assertionHash)
@@ -131,11 +131,11 @@ func (m *Manifest) ComputeAggregateHash() ([]byte, error) {
 // Parameters:
 //   - assertionHash: The assertion hash as hex-encoded bytes
 //
-// Returns the base64-encoded signature string, or error if computation fails.
-func (m *Manifest) ComputeAssertionSignature(assertionHash []byte) (string, error) {
+// Returns the base64-encoded signature []byte, or error if computation fails.
+func (m *Manifest) ComputeAssertionSignature(assertionHash []byte) ([]byte, error) {
 	aggregateHash, err := m.ComputeAggregateHash()
 	if err != nil {
-		return "", err
+		return []byte{}, err
 	}
 
 	// Determine encoding format from manifest
@@ -145,7 +145,7 @@ func (m *Manifest) ComputeAssertionSignature(assertionHash []byte) (string, erro
 	hashOfAssertion := make([]byte, hex.DecodedLen(len(assertionHash)))
 	_, err = hex.Decode(hashOfAssertion, assertionHash)
 	if err != nil {
-		return "", fmt.Errorf("error decoding hex string: %w", err)
+		return []byte{}, fmt.Errorf("error decoding hex string: %w", err)
 	}
 
 	// Use raw bytes or hex based on useHex flag (legacy TDF compatibility)
@@ -161,5 +161,5 @@ func (m *Manifest) ComputeAssertionSignature(assertionHash []byte) (string, erro
 	completeHashBuilder.Write(aggregateHash)
 	completeHashBuilder.Write(hashToUse)
 
-	return string(ocrypto.Base64Encode(completeHashBuilder.Bytes())), nil
+	return ocrypto.Base64Encode(completeHashBuilder.Bytes()), nil
 }

@@ -67,7 +67,7 @@ func (p SystemMetadataAssertionProvider) Bind(_ context.Context, _ []byte) (Asse
 	return assertion, nil
 }
 
-func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, r TDFReader) error {
+func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion, computedSignature []byte) error {
 	// Check if this validator can handle the assertion based on schema
 	// Return errAssertionVerifyKeyFailure to signal that another validator should try
 	isValidSchema := a.Statement.Schema == SystemMetadataSchemaV1 ||
@@ -83,8 +83,7 @@ func (p SystemMetadataAssertionProvider) Verify(ctx context.Context, a Assertion
 		Alg: AssertionKeyAlgHS256,
 		Key: p.payloadKey,
 	}
-
-	return verifyDEKSignedAssertion(ctx, a, assertionKey, r.Manifest())
+	return verifyDEKSignedAssertion(ctx, a, assertionKey, computedSignature)
 }
 
 // Validate does nothing.

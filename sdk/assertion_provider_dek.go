@@ -4,6 +4,7 @@ package sdk
 // Provides fallback validation for assertions signed with the Data Encryption Key (DEK)
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -32,9 +33,9 @@ func (v *DEKAssertionValidator) SetVerificationMode(mode AssertionVerificationMo
 }
 
 // Verify checks the cryptographic binding of an assertion signed with the DEK.
-func (v *DEKAssertionValidator) Verify(ctx context.Context, a Assertion, r TDFReader) error {
+func (v *DEKAssertionValidator) Verify(ctx context.Context, a Assertion, payloadHash []byte) error {
 	// Use shared DEK-based verification logic
-	return verifyDEKSignedAssertion(ctx, a, v.dekKey, r.Manifest())
+	return verifyDEKSignedAssertion(ctx, a, v.dekKey, payloadHash)
 }
 
 // Validate does nothing - DEK-based validation doesn't check trust/policy.
@@ -49,24 +50,22 @@ func (v *DEKAssertionValidator) Validate(_ context.Context, _ Assertion, _ TDFRe
 //   - ctx: Context for the operation
 //   - assertion: The assertion to verify
 //   - dekKey: The DEK (payload key) used for verification
-//   - manifest: The TDF manifest containing segments and version info
+//   - computedSignature: The computed signature of the assertion
 //
 // Returns error if verification fails (tampering detected), nil if verification succeeds.
 func verifyDEKSignedAssertion(
-	ctx context.Context,
+	_ context.Context,
 	assertion Assertion,
 	dekKey AssertionKey,
-	manifest Manifest,
+	computedSignature []byte,
 ) error {
-	_ = ctx // unused context
-
 	// Assertions without cryptographic bindings cannot be verified
 	if assertion.Binding.Signature == "" {
 		return fmt.Errorf("%w: assertion has no cryptographic binding", ErrAssertionFailure{ID: assertion.ID})
 	}
 
 	// Verify the JWT with the DEK
-	assertionHash, assertionSig, _, err := assertion.Verify(dekKey)
+	verifiedHash, verifiedSignature, err := assertion.Verify(dekKey)
 	if err != nil {
 		if errors.Is(err, errAssertionVerifyKeyFailure) {
 			return fmt.Errorf("assertion verification failed: %w", err)
@@ -75,14 +74,15 @@ func verifyDEKSignedAssertion(
 	}
 
 	// Get the hash of the assertion
-	hashOfAssertionAsHex, err := assertion.GetHash()
+	computedHash, err := assertion.GetHash()
 	if err != nil {
 		return fmt.Errorf("%w: failed to get hash of assertion: %w", ErrAssertionFailure{ID: assertion.ID}, err)
 	}
-	if string(hashOfAssertionAsHex) != assertionHash {
+	if !bytes.Equal(verifiedHash, computedHash) {
 		return fmt.Errorf("%w: assertion hash mismatch", ErrAssertionFailure{ID: assertion.ID})
 	}
-
-	// Verify signature format: base64(aggregateHash + assertionHash)
-	return VerifyAssertionSignatureFormat(assertion.ID, assertionSig, hashOfAssertionAsHex, manifest)
+	if !bytes.Equal(verifiedSignature, computedSignature) {
+		return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: assertion.ID})
+	}
+	return nil
 }

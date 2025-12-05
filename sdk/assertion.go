@@ -108,52 +108,35 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey, headers ...jws.Head
 	return nil
 }
 
-// Verify checks the binding signature of the assertion and
-// returns the hash, signature, and schema. It returns an error if the verification fails.
-// The schema return value will be empty string for legacy assertions without schema claim.
-func (a *Assertion) Verify(key AssertionKey) (string, string, string, error) {
+// Verify verifies the assertion binding signature using the given key.
+// It returns the hash and signature claims from the assertion binding.
+func (a *Assertion) Verify(key AssertionKey) ([]byte, []byte, error) {
 	tok, err := jwt.Parse([]byte(a.Binding.Signature),
 		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key),
 	)
 	if err != nil {
-		return "", "", "", fmt.Errorf("%w: %w", errAssertionVerifyKeyFailure, err)
+		return nil, nil, fmt.Errorf("%w: %w", errAssertionVerifyKeyFailure, err)
 	}
 	hashClaim, found := tok.Get(kAssertionHash)
 	if !found {
-		return "", "", "", errors.New("hash claim not found")
+		return nil, nil, errors.New("hash claim not found")
 	}
 	verifiedHash, ok := hashClaim.(string)
 	if !ok {
-		return "", "", "", errors.New("hash claim is not a string")
+		return nil, nil, errors.New("hash claim is not a string")
 	}
 
 	sigClaim, found := tok.Get(kAssertionSignature)
 	if !found {
-		return "", "", "", errors.New("signature claim not found")
+		return nil, nil, errors.New("signature claim not found")
 	}
 	verifiedSignature, ok := sigClaim.(string)
 	if !ok {
-		return "", "", "", errors.New("signature claim is not a string")
+		return nil, nil, errors.New("signature claim is not a string")
 	}
-
-	// SECURITY: Extract schema claim for validation
-	// This ensures the schema in the JWT matches the schema in Statement,
-	// preventing schema substitution attacks.
-	// For backward compatibility with legacy assertions, the schema claim
-	// may not be present. In that case, we return empty string and validators should
-	// skip schema claim verification.
-	verifiedSchema := ""
-	schemaClaim, found := tok.Get("assertionSchema")
-	if found {
-		verifiedSchema, ok = schemaClaim.(string)
-		if !ok {
-			return "", "", "", errors.New("schema claim is not a string")
-		}
-	}
-
 	// Note: signature is stored as base64-encoded string (matching manifest.RootSignature.Signature format)
 	// so we return it directly without decoding
-	return verifiedHash, verifiedSignature, verifiedSchema, nil
+	return []byte(verifiedHash), []byte(verifiedSignature), nil
 }
 
 // GetHash returns the hash of the assertion in hex format.
@@ -361,42 +344,4 @@ func (k AssertionVerificationKeys) Get(assertionID string) (AssertionKey, error)
 // IsEmpty returns true if the default key and the keys map are empty.
 func (k AssertionVerificationKeys) IsEmpty() bool {
 	return k.DefaultKey.IsEmpty() && len(k.Keys) == 0
-}
-
-// VerifyAssertionSignatureFormat validates that the assertion signature matches the expected format.
-// This is the standard format used across all SDKs: base64(aggregateHash + assertionHash).
-//
-// This function is a convenience helper that:
-//  1. Computes the aggregate hash from manifest segments
-//  2. Determines the encoding format (hex vs raw bytes) from the TDF version
-//  3. Computes the expected signature using the standard format
-//  4. Compares it against the verified signature from the JWT
-//
-// Parameters:
-//   - assertionID: The assertion ID for error reporting
-//   - verifiedSignature: The signature claim extracted from the verified JWT
-//   - assertionHash: The hash of the assertion (hex-encoded bytes)
-//   - manifest: The TDF manifest containing segments and version info
-//
-// Returns an error if the signature format is invalid (tampering detected), nil if valid.
-//
-// This function is used by custom AssertionValidator implementations to verify
-// assertion signatures after JWT verification.
-func VerifyAssertionSignatureFormat(
-	assertionID string,
-	verifiedSignature string,
-	assertionHash []byte,
-	manifest Manifest,
-) error {
-	// Compute expected signature using manifest method
-	expectedSig, err := manifest.ComputeAssertionSignature(assertionHash)
-	if err != nil {
-		return fmt.Errorf("%w: failed to compute assertion signature: %w", ErrAssertionFailure{ID: assertionID}, err)
-	}
-
-	if verifiedSignature != expectedSig {
-		return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: assertionID})
-	}
-
-	return nil
 }

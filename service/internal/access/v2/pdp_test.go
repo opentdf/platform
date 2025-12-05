@@ -1362,6 +1362,7 @@ func (s *PDPTestSuite) Test_GetDecision_ReturnsDecisionRelatedEntitlements() {
 		[]*policy.Attribute{f.classificationAttr, f.departmentAttr},
 		[]*policy.SubjectMapping{f.topSecretMapping, f.engineeringMapping},
 		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -3285,6 +3286,7 @@ func (s *PDPTestSuite) Test_GetDecision_NonExistentAttributeFQN() {
 		[]*policy.Attribute{f.classificationAttr},
 		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping},
 		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -3387,6 +3389,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialFQNsInResource() {
 		[]*policy.Attribute{f.classificationAttr},
 		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping, f.confidentialMapping},
 		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -3434,6 +3437,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_NonExistentFQN() {
 		[]*policy.Attribute{f.classificationAttr},
 		[]*policy.SubjectMapping{f.secretMapping},
 		[]*policy.RegisteredResource{f.classificationRegRes}, // Only classification registered resource
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -3518,6 +3522,7 @@ func (s *PDPTestSuite) Test_GetDecision_NoPolicies() {
 		[]*policy.Attribute{},
 		[]*policy.SubjectMapping{},
 		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)

@@ -71,5 +71,3 @@ func BenchmarkFlatten_NestedEntity(b *testing.B) {
 		}
 	}
 }
-
-

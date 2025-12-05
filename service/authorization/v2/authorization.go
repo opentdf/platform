@@ -110,6 +110,10 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				// 	logger.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 				// }
 
+				if authZCfg.AllowDirectEntitlements {
+					l.Info("direct entitlements are enabled for authorization service")
+				}
+
 				return as, nil
 			},
 		},

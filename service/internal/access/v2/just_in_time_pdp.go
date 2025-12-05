@@ -162,15 +162,12 @@ func (p *JustInTimePDP) GetDecision(
 
 	switch entityIdentifier.GetIdentifier().(type) {
 	case *authzV2.EntityIdentifier_EntityChain:
-		p.logger.Info("[JustInTimePDP.GetDecision] entity identifier type is EntityChain")
 		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
 
 	case *authzV2.EntityIdentifier_Token:
-		p.logger.Info("[JustInTimePDP.GetDecision] entity identifier type is Token")
 		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, resources)
 
 	case *authzV2.EntityIdentifier_WithRequestToken:
-		p.logger.Info("[JustInTimePDP.GetDecision] entity identifier type is WithRequestToken")
 		entityRepresentations, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, resources)
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:

@@ -255,6 +255,7 @@ func getResourceDecisionableAttributes(
 
 			if allowDirectEntitlements {
 				// If enabled, process direct entitlements that only exist at the attribute definition level (values are adhoc)
+				logger.InfoContext(ctx, "processing direct entitlement for resource decisionable attribute value", slog.String("fqn", attrValueFQN))
 
 				// Try to find the definition by extracting partial FQN for adhoc attributes
 				parentDefinition, err := getDefinition(attrValueFQN, entitleableAttributesByDefinitionFQN)

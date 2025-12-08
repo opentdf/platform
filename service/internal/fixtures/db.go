@@ -28,13 +28,13 @@ type DBInterface struct {
 	LimitMax     int32
 }
 
-func NewDBInterface(cfg config.Config) DBInterface {
+func NewDBInterface(ctx context.Context, cfg config.Config) DBInterface {
 	config := cfg.DB
 	config.Schema = cfg.DB.Schema
 	logCfg := cfg.Logger
 	tracer := otel.Tracer(tracing.ServiceName)
 
-	c, err := db.New(context.Background(), config, logCfg, &tracer)
+	c, err := db.New(ctx, config, logCfg, &tracer)
 	if err != nil {
 		slog.Error("issue creating database client", slog.String("error", err.Error()))
 		panic(err)
@@ -65,7 +65,7 @@ func (d *DBInterface) TableName(v string) string {
 
 // ExecInsert inserts multiple rows into a table using parameterized queries.
 // Each row's values are passed as interface{} types, allowing pgx to handle type conversion.
-func (d *DBInterface) ExecInsert(table string, columns []string, values ...[]interface{}) (int64, error) {
+func (d *DBInterface) ExecInsert(ctx context.Context, table string, columns []string, values ...[]interface{}) (int64, error) {
 	if len(values) == 0 {
 		return 0, nil
 	}
@@ -98,7 +98,7 @@ func (d *DBInterface) ExecInsert(table string, columns []string, values ...[]int
 		" (" + strings.Join(columns, ",") + ")" +
 		" VALUES " + strings.Join(placeholders, ",")
 
-	pconn, err := d.Client.Pgx.Exec(context.Background(), sql, allArgs...)
+	pconn, err := d.Client.Pgx.Exec(ctx, sql, allArgs...)
 	if err != nil {
 		slog.Error("insert error",
 			slog.String("stmt", sql),
@@ -109,9 +109,9 @@ func (d *DBInterface) ExecInsert(table string, columns []string, values ...[]int
 	return pconn.RowsAffected(), err
 }
 
-func (d *DBInterface) DropSchema() error {
+func (d *DBInterface) DropSchema(ctx context.Context) error {
 	sql := "DROP SCHEMA IF EXISTS " + d.Schema + " CASCADE"
-	_, err := d.Client.Pgx.Exec(context.Background(), sql)
+	_, err := d.Client.Pgx.Exec(ctx, sql)
 	if err != nil {
 		slog.Error("drop error",
 			slog.String("stmt", sql),

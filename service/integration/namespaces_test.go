@@ -41,15 +41,15 @@ func (s *NamespacesSuite) SetupSuite() {
 	s.ctx = context.Background()
 	c := *Config
 	c.DB.Schema = "test_opentdf_namespaces"
-	s.db = fixtures.NewDBInterface(c)
+	s.db = fixtures.NewDBInterface(s.ctx, c)
 	s.f = fixtures.NewFixture(s.db)
-	s.f.Provision()
+	s.f.Provision(s.ctx)
 	deactivatedNsID, deactivatedAttrID, deactivatedAttrValueID = setupCascadeDeactivateNamespace(s)
 }
 
 func (s *NamespacesSuite) TearDownSuite() {
 	slog.Info("tearing down db.Namespaces test suite")
-	s.f.TearDown()
+	s.f.TearDown(s.ctx)
 }
 
 func (s *NamespacesSuite) Test_CreateNamespace() {

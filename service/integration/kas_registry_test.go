@@ -32,14 +32,14 @@ func (s *KasRegistrySuite) SetupSuite() {
 	s.ctx = context.Background()
 	c := *Config
 	c.DB.Schema = "test_opentdf_kas_registry"
-	s.db = fixtures.NewDBInterface(c)
+	s.db = fixtures.NewDBInterface(s.ctx, c)
 	s.f = fixtures.NewFixture(s.db)
-	s.f.Provision()
+	s.f.Provision(s.ctx)
 }
 
 func (s *KasRegistrySuite) TearDownSuite() {
 	slog.Info("tearing down db.KasRegistry test suite")
-	s.f.TearDown()
+	s.f.TearDown(s.ctx)
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_NoPagination_Succeeds() {

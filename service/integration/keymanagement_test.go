@@ -41,9 +41,9 @@ func (s *KeyManagementSuite) SetupSuite() {
 	s.ctx = context.Background()
 	c := *Config
 	c.DB.Schema = "test_opentdf_provider_config"
-	s.db = fixtures.NewDBInterface(c)
+	s.db = fixtures.NewDBInterface(s.ctx, c)
 	s.f = fixtures.NewFixture(s.db)
-	s.f.Provision()
+	s.f.Provision(s.ctx)
 }
 
 func (s *KeyManagementSuite) SetupTest() {
@@ -52,7 +52,7 @@ func (s *KeyManagementSuite) SetupTest() {
 
 func (s *KeyManagementSuite) TearDownSuite() {
 	slog.Info("tearing down db.KeyManagement test suite")
-	s.f.TearDown()
+	s.f.TearDown(s.ctx)
 }
 
 func (s *KeyManagementSuite) Test_CreateProviderConfig_NoMetada_Succeeds() {

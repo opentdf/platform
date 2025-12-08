@@ -42,15 +42,15 @@ func (s *AttributesSuite) SetupSuite() {
 	fixtureKeyAccessServerID = s.f.GetKasRegistryKey("key_access_server_1").ID
 	c := *Config
 	c.DB.Schema = "test_opentdf_attribute_definitions"
-	s.db = fixtures.NewDBInterface(c)
+	s.db = fixtures.NewDBInterface(s.ctx, c)
 	s.f = fixtures.NewFixture(s.db)
-	s.f.Provision()
+	s.f.Provision(s.ctx)
 	stillActiveNsID, deactivatedAttrID, deactivatedAttrValueID = setupCascadeDeactivateAttribute(s)
 }
 
 func (s *AttributesSuite) TearDownSuite() {
 	slog.Info("tearing down db.Attributes test suite")
-	s.f.TearDown()
+	s.f.TearDown(s.ctx)
 }
 
 func (s *AttributesSuite) Test_CreateAttribute_NoMetadataSucceeds() {

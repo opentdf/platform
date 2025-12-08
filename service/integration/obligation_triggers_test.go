@@ -59,9 +59,9 @@ func (s *ObligationTriggersSuite) SetupSuite() {
 	s.ctx = context.Background()
 	c := *Config
 	c.DB.Schema = "test_opentdf_obligation_triggers"
-	s.db = fixtures.NewDBInterface(c)
+	s.db = fixtures.NewDBInterface(s.ctx, c)
 	s.f = fixtures.NewFixture(s.db)
-	s.f.Provision()
+	s.f.Provision(s.ctx)
 
 	var err error
 

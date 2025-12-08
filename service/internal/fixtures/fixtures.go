@@ -502,10 +502,10 @@ func (f *Fixtures) TearDown(ctx context.Context) {
 }
 
 func (f *Fixtures) provisionNamespace(ctx context.Context) int64 {
-	values := make([][]interface{}, 0, len(fixtureData.Namespaces.Data))
+	values := make([][]any, 0, len(fixtureData.Namespaces.Data))
 	for _, d := range fixtureData.Namespaces.Data {
 		values = append(values,
-			[]interface{}{
+			[]any{
 				d.ID,
 				d.Name,
 				d.Active,
@@ -516,9 +516,9 @@ func (f *Fixtures) provisionNamespace(ctx context.Context) int64 {
 }
 
 func (f *Fixtures) provisionAttribute(ctx context.Context) int64 {
-	values := make([][]interface{}, 0, len(fixtureData.Attributes.Data))
+	values := make([][]any, 0, len(fixtureData.Attributes.Data))
 	for _, d := range fixtureData.Attributes.Data {
-		values = append(values, []interface{}{
+		values = append(values, []any{
 			d.ID,
 			d.NamespaceID,
 			d.Name,
@@ -530,9 +530,9 @@ func (f *Fixtures) provisionAttribute(ctx context.Context) int64 {
 }
 
 func (f *Fixtures) provisionAttributeValues(ctx context.Context) int64 {
-	values := make([][]interface{}, 0, len(fixtureData.AttributeValues.Data))
+	values := make([][]any, 0, len(fixtureData.AttributeValues.Data))
 	for _, d := range fixtureData.AttributeValues.Data {
-		values = append(values, []interface{}{
+		values = append(values, []any{
 			d.ID,
 			d.AttributeDefinitionID,
 			d.Value,
@@ -544,7 +544,7 @@ func (f *Fixtures) provisionAttributeValues(ctx context.Context) int64 {
 
 //nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provisionSubjectConditionSet(ctx context.Context) int64 {
-	values := make([][]interface{}, 0, len(fixtureData.SubjectConditionSet.Data))
+	values := make([][]any, 0, len(fixtureData.SubjectConditionSet.Data))
 	for _, d := range fixtureData.SubjectConditionSet.Data {
 		conditionJSON, err := json.Marshal(d.Condition.SubjectSets)
 		if err != nil {
@@ -552,7 +552,7 @@ func (f *Fixtures) provisionSubjectConditionSet(ctx context.Context) int64 {
 			panic("issue with subject condition set JSON")
 		}
 
-		values = append(values, []interface{}{
+		values = append(values, []any{
 			d.ID,
 			conditionJSON,
 		})
@@ -561,9 +561,9 @@ func (f *Fixtures) provisionSubjectConditionSet(ctx context.Context) int64 {
 }
 
 func (f *Fixtures) provisionSubjectMappings(ctx context.Context) int64 {
-	values := make([][]interface{}, 0, len(fixtureData.SubjectMappings.Data))
+	values := make([][]any, 0, len(fixtureData.SubjectMappings.Data))
 	for _, d := range fixtureData.SubjectMappings.Data {
-		values = append(values, []interface{}{
+		values = append(values, []any{
 			d.ID,
 			d.AttributeValueID,
 			d.SubjectConditionSetID,
@@ -573,9 +573,9 @@ func (f *Fixtures) provisionSubjectMappings(ctx context.Context) int64 {
 }
 
 func (f *Fixtures) provisionCustomActions(ctx context.Context) int64 {
-	values := make([][]interface{}, 0, len(fixtureData.CustomActions.Data))
+	values := make([][]any, 0, len(fixtureData.CustomActions.Data))
 	for _, d := range fixtureData.CustomActions.Data {
-		values = append(values, []interface{}{
+		values = append(values, []any{
 			d.ID,
 			d.Name,
 			d.IsStandard,
@@ -585,7 +585,7 @@ func (f *Fixtures) provisionCustomActions(ctx context.Context) int64 {
 }
 
 func (f *Fixtures) provisionSubjectMappingActionsRelations(ctx context.Context) int64 {
-	values := make([][]interface{}, 0, len(fixtureData.SubjectMappingActions.Data))
+	values := make([][]any, 0, len(fixtureData.SubjectMappingActions.Data))
 	for _, d := range fixtureData.SubjectMappingActions.Data {
 		var actionID string
 		if id, ok := f.MigratedData.StandardActions[d.ActionName]; ok {
@@ -594,7 +594,7 @@ func (f *Fixtures) provisionSubjectMappingActionsRelations(ctx context.Context) 
 			actionID = f.GetCustomActionKey(d.ActionName).ID
 		}
 		values = append(values,
-			[]interface{}{
+			[]any{
 				d.SubjectMappingID,
 				actionID,
 			},
@@ -604,9 +604,9 @@ func (f *Fixtures) provisionSubjectMappingActionsRelations(ctx context.Context) 
 }
 
 func (f *Fixtures) provisionResourceMappingGroups(ctx context.Context) int64 {
-	values := make([][]interface{}, 0, len(fixtureData.ResourceMappingGroups.Data))
+	values := make([][]any, 0, len(fixtureData.ResourceMappingGroups.Data))
 	for _, d := range fixtureData.ResourceMappingGroups.Data {
-		values = append(values, []interface{}{
+		values = append(values, []any{
 			d.ID,
 			d.NamespaceID,
 			d.Name,
@@ -616,9 +616,9 @@ func (f *Fixtures) provisionResourceMappingGroups(ctx context.Context) int64 {
 }
 
 func (f *Fixtures) provisionResourceMappings(ctx context.Context) int64 {
-	values := make([][]interface{}, 0, len(fixtureData.ResourceMappings.Data))
+	values := make([][]any, 0, len(fixtureData.ResourceMappings.Data))
 	for _, d := range fixtureData.ResourceMappings.Data {
-		values = append(values, []interface{}{
+		values = append(values, []any{
 			d.ID,
 			d.AttributeValueID,
 			d.Terms,
@@ -630,7 +630,7 @@ func (f *Fixtures) provisionResourceMappings(ctx context.Context) int64 {
 
 //nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provisionKasRegistry(ctx context.Context) int64 {
-	values := make([][]interface{}, 0, len(fixtureData.KasRegistries.Data))
+	values := make([][]any, 0, len(fixtureData.KasRegistries.Data))
 	for _, d := range fixtureData.KasRegistries.Data {
 		pubKeyJSON, err := json.Marshal(d.PubKey)
 		if err != nil {
@@ -638,7 +638,7 @@ func (f *Fixtures) provisionKasRegistry(ctx context.Context) int64 {
 			panic("issue with KAS registry public key JSON")
 		}
 
-		values = append(values, []interface{}{
+		values = append(values, []any{
 			d.ID,
 			d.URI,
 			d.Name,
@@ -649,9 +649,9 @@ func (f *Fixtures) provisionKasRegistry(ctx context.Context) int64 {
 }
 
 func (f *Fixtures) provisionAttributeKeyAccessServer(ctx context.Context) int64 {
-	values := make([][]interface{}, 0, len(fixtureData.AttributeKeyAccessServer))
+	values := make([][]any, 0, len(fixtureData.AttributeKeyAccessServer))
 	for _, d := range fixtureData.AttributeKeyAccessServer {
-		values = append(values, []interface{}{
+		values = append(values, []any{
 			d.AttributeID,
 			d.KeyAccessServerID,
 		})
@@ -660,9 +660,9 @@ func (f *Fixtures) provisionAttributeKeyAccessServer(ctx context.Context) int64 
 }
 
 func (f *Fixtures) provisionAttributeValueKeyAccessServer(ctx context.Context) int64 {
-	values := make([][]interface{}, 0, len(fixtureData.AttributeValueKeyAccessServer))
+	values := make([][]any, 0, len(fixtureData.AttributeValueKeyAccessServer))
 	for _, d := range fixtureData.AttributeValueKeyAccessServer {
-		values = append(values, []interface{}{
+		values = append(values, []any{
 			d.ValueID,
 			d.KeyAccessServerID,
 		})
@@ -672,14 +672,14 @@ func (f *Fixtures) provisionAttributeValueKeyAccessServer(ctx context.Context) i
 
 //nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provisionProviderConfigs(ctx context.Context) int64 {
-	values := make([][]interface{}, 0, len(fixtureData.ProviderConfigs.Data))
+	values := make([][]any, 0, len(fixtureData.ProviderConfigs.Data))
 	for _, d := range fixtureData.ProviderConfigs.Data {
 		providerConfigJSON, err := base64.StdEncoding.DecodeString(d.ProviderConfig)
 		if err != nil {
 			slog.Error("⛔️ 📦 issue with provider config JSON - check policy_fixtures.yaml for issues")
 			panic("issue with provider config JSON")
 		}
-		values = append(values, []interface{}{
+		values = append(values, []any{
 			d.ID,
 			d.ProviderName,
 			d.Manager,
@@ -692,7 +692,7 @@ func (f *Fixtures) provisionProviderConfigs(ctx context.Context) int64 {
 
 //nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provisionKasRegistryKeys(ctx context.Context) int64 {
-	values := make([][]interface{}, 0, len(fixtureData.KasRegistryKeys.Data))
+	values := make([][]any, 0, len(fixtureData.KasRegistryKeys.Data))
 	for _, d := range fixtureData.KasRegistryKeys.Data {
 		pubCtx, err := base64.StdEncoding.DecodeString(d.PublicKeyCtx)
 		if err != nil {
@@ -705,14 +705,14 @@ func (f *Fixtures) provisionKasRegistryKeys(ctx context.Context) int64 {
 			panic("issue with kas registry private key context")
 		}
 
-		var providerConfigID interface{}
+		var providerConfigID any
 		if d.ProviderConfigID != nil {
 			providerConfigID = *d.ProviderConfigID
 		} else {
 			providerConfigID = nil
 		}
 
-		values = append(values, []interface{}{
+		values = append(values, []any{
 			d.ID,
 			d.KeyAccessServerID,
 			d.KeyAlgorithm,
@@ -728,9 +728,9 @@ func (f *Fixtures) provisionKasRegistryKeys(ctx context.Context) int64 {
 }
 
 func (f *Fixtures) provisionRegisteredResources(ctx context.Context) int64 {
-	values := make([][]interface{}, 0, len(fixtureData.RegisteredResources.Data))
+	values := make([][]any, 0, len(fixtureData.RegisteredResources.Data))
 	for _, d := range fixtureData.RegisteredResources.Data {
-		values = append(values, []interface{}{
+		values = append(values, []any{
 			d.ID,
 			d.Name,
 		})
@@ -739,9 +739,9 @@ func (f *Fixtures) provisionRegisteredResources(ctx context.Context) int64 {
 }
 
 func (f *Fixtures) provisionRegisteredResourceValues(ctx context.Context) int64 {
-	values := make([][]interface{}, 0, len(fixtureData.RegisteredResourceValues.Data))
+	values := make([][]any, 0, len(fixtureData.RegisteredResourceValues.Data))
 	for _, d := range fixtureData.RegisteredResourceValues.Data {
-		values = append(values, []interface{}{
+		values = append(values, []any{
 			d.ID,
 			d.RegisteredResourceID,
 			d.Value,
@@ -751,7 +751,7 @@ func (f *Fixtures) provisionRegisteredResourceValues(ctx context.Context) int64 
 }
 
 func (f *Fixtures) provisionRegisteredResourceActionAttributeValues(ctx context.Context) int64 {
-	values := make([][]interface{}, 0, len(fixtureData.RegisteredResourceActionAttributeValues.Data))
+	values := make([][]any, 0, len(fixtureData.RegisteredResourceActionAttributeValues.Data))
 	for _, d := range fixtureData.RegisteredResourceActionAttributeValues.Data {
 		var actionID string
 		if id, ok := f.MigratedData.StandardActions[d.ActionName]; ok {
@@ -759,7 +759,7 @@ func (f *Fixtures) provisionRegisteredResourceActionAttributeValues(ctx context.
 		} else {
 			actionID = f.GetCustomActionKey(d.ActionName).ID
 		}
-		values = append(values, []interface{}{
+		values = append(values, []any{
 			d.ID,
 			d.RegisteredResourceValueID,
 			actionID,
@@ -770,7 +770,7 @@ func (f *Fixtures) provisionRegisteredResourceActionAttributeValues(ctx context.
 }
 
 //nolint:sloglint // preserve emoji usage
-func (f *Fixtures) provision(ctx context.Context, t string, c []string, v [][]interface{}) int64 {
+func (f *Fixtures) provision(ctx context.Context, t string, c []string, v [][]any) int64 {
 	rows, err := f.db.ExecInsert(ctx, t, c, v...)
 	if err != nil {
 		slog.Error("⛔️ 📦 issue with insert into table - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Any("err", err))

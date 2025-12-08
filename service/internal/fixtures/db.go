@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -59,13 +60,14 @@ func NewDBInterface(ctx context.Context, cfg config.Config) DBInterface {
 	}
 }
 
+// TableName returns a sanitized fully-qualified table name.
 func (d *DBInterface) TableName(v string) string {
-	return d.Schema + "." + v
+	return pgx.Identifier{d.Schema, v}.Sanitize()
 }
 
 // ExecInsert inserts multiple rows into a table using parameterized queries.
-// Each row's values are passed as interface{} types, allowing pgx to handle type conversion.
-func (d *DBInterface) ExecInsert(ctx context.Context, table string, columns []string, values ...[]interface{}) (int64, error) {
+// Each row's values are passed as any types, allowing pgx to handle type conversion.
+func (d *DBInterface) ExecInsert(ctx context.Context, table string, columns []string, values ...[]any) (int64, error) {
 	if len(values) == 0 {
 		return 0, nil
 	}
@@ -73,7 +75,7 @@ func (d *DBInterface) ExecInsert(ctx context.Context, table string, columns []st
 	// Build the INSERT statement with placeholders
 	numColumns := len(columns)
 	var placeholders []string
-	var allArgs []interface{}
+	var allArgs []any
 
 	placeholderNum := 1
 	for _, row := range values {
@@ -94,8 +96,17 @@ func (d *DBInterface) ExecInsert(ctx context.Context, table string, columns []st
 		placeholders = append(placeholders, "("+strings.Join(rowPlaceholders, ",")+")")
 	}
 
-	sql := "INSERT INTO " + d.TableName(table) +
-		" (" + strings.Join(columns, ",") + ")" +
+	// Safely sanitize table name using pgx.Identifier
+	tableName := pgx.Identifier{d.Schema, table}.Sanitize()
+
+	// Safely sanitize column names using pgx.Identifier
+	sanitizedColumns := make([]string, len(columns))
+	for i, col := range columns {
+		sanitizedColumns[i] = pgx.Identifier{col}.Sanitize()
+	}
+
+	sql := "INSERT INTO " + tableName +
+		" (" + strings.Join(sanitizedColumns, ",") + ")" +
 		" VALUES " + strings.Join(placeholders, ",")
 
 	pconn, err := d.Client.Pgx.Exec(ctx, sql, allArgs...)
@@ -110,7 +121,7 @@ func (d *DBInterface) ExecInsert(ctx context.Context, table string, columns []st
 }
 
 func (d *DBInterface) DropSchema(ctx context.Context) error {
-	sql := "DROP SCHEMA IF EXISTS " + d.Schema + " CASCADE"
+	sql := "DROP SCHEMA IF EXISTS " + pgx.Identifier{d.Schema}.Sanitize() + " CASCADE"
 	_, err := d.Client.Pgx.Exec(ctx, sql)
 	if err != nil {
 		slog.Error("drop error",

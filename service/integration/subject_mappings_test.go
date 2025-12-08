@@ -31,12 +31,11 @@ type SubjectMappingsSuite struct {
 
 func (s *SubjectMappingsSuite) SetupSuite() {
 	slog.Info("setting up db.SubjectMappings test suite")
+	s.ctx = context.Background()
 	c := *Config
 	c.DB.Schema = "test_opentdf_subject_mappings"
 	s.db = fixtures.NewDBInterface(s.ctx, c)
-	s.ctx = context.Background()
 	s.f = fixtures.NewFixture(s.db)
-	s.ctx = context.Background()
 	s.f.Provision(s.ctx)
 }
 

@@ -2,8 +2,8 @@ package fixtures
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
-	"strconv"
 	"strings"
 
 	"github.com/opentdf/platform/service/logger"
@@ -59,59 +59,49 @@ func NewDBInterface(cfg config.Config) DBInterface {
 	}
 }
 
-func (d *DBInterface) StringArrayWrap(values []string) string {
-	// if len(values) == 0 {
-	// 	return "null"
-	// }
-	var vs []string
-	for _, v := range values {
-		vs = append(vs, d.StringWrap(v))
-	}
-	return "ARRAY [" + strings.Join(vs, ",") + "]"
-}
-
-func (d *DBInterface) UUIDArrayWrap(v []string) string {
-	return "(" + d.StringArrayWrap(v) + ")" + "::uuid[]"
-}
-
-func (d *DBInterface) StringWrap(v string) string {
-	escaped := strings.ReplaceAll(v, "'", "''")
-	return "'" + escaped + "'"
-}
-
-func (d *DBInterface) OptionalStringWrap(v string) string {
-	if v == "" {
-		return "NULL"
-	}
-	return d.StringWrap(v)
-}
-
-func (d *DBInterface) BoolWrap(b bool) string {
-	return strconv.FormatBool(b)
-}
-
-func (d *DBInterface) UUIDWrap(v string) string {
-	return "(" + d.StringWrap(v) + ")" + "::uuid"
-}
-
 func (d *DBInterface) TableName(v string) string {
 	return d.Schema + "." + v
 }
 
-func (d *DBInterface) ExecInsert(table string, columns []string, values ...[]string) (int64, error) {
+// ExecInsert inserts multiple rows into a table using parameterized queries.
+// Each row's values are passed as interface{} types, allowing pgx to handle type conversion.
+func (d *DBInterface) ExecInsert(table string, columns []string, values ...[]interface{}) (int64, error) {
+	if len(values) == 0 {
+		return 0, nil
+	}
+
+	// Build the INSERT statement with placeholders
+	numColumns := len(columns)
+	var placeholders []string
+	var allArgs []interface{}
+
+	placeholderNum := 1
+	for _, row := range values {
+		if len(row) != numColumns {
+			slog.Error("column count mismatch",
+				slog.Int("expected", numColumns),
+				slog.Int("got", len(row)),
+			)
+			return 0, fmt.Errorf("column count mismatch: expected %d, got %d", numColumns, len(row))
+		}
+
+		var rowPlaceholders []string
+		for _, arg := range row {
+			rowPlaceholders = append(rowPlaceholders, fmt.Sprintf("$%d", placeholderNum))
+			placeholderNum++
+			allArgs = append(allArgs, arg)
+		}
+		placeholders = append(placeholders, "("+strings.Join(rowPlaceholders, ",")+")")
+	}
+
 	sql := "INSERT INTO " + d.TableName(table) +
 		" (" + strings.Join(columns, ",") + ")" +
-		" VALUES "
-	for i, v := range values {
-		if i > 0 {
-			sql += ","
-		}
-		sql += " (" + strings.Join(v, ",") + ")"
-	}
-	pconn, err := d.Client.Pgx.Exec(context.Background(), sql)
+		" VALUES " + strings.Join(placeholders, ",")
+
+	pconn, err := d.Client.Pgx.Exec(context.Background(), sql, allArgs...)
 	if err != nil {
 		slog.Error("insert error",
-			slog.Any("stmt", sql),
+			slog.String("stmt", sql),
 			slog.Any("err", err),
 		)
 		return 0, err

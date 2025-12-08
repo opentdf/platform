@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/opentdf/platform/service/internal/fixtures"
@@ -36,6 +35,7 @@ to run this command in a clean database. This command is intended for local deve
 ** Teardown or Issues **
 You can clear/recycle your database with 'docker compose down' and 'docker compose up' to start fresh.`,
 		Run: func(cmd *cobra.Command, _ []string) {
+			ctx := cmd.Context()
 			configFile, _ := cmd.Flags().GetString(configFileFlag)
 			configKey, _ := cmd.Flags().GetString(configKeyFlag)
 			legacyLoader, err := config.NewLegacyLoader(configKey, configFile)
@@ -47,7 +47,7 @@ You can clear/recycle your database with 'docker compose down' and 'docker compo
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
 			cfg, err := config.Load(
-				cmd.Context(),
+				ctx,
 				legacyLoader,
 				defaultSettingsLoader,
 			)
@@ -55,7 +55,7 @@ You can clear/recycle your database with 'docker compose down' and 'docker compo
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
 
-			dbClient, err := db.New(context.Background(), cfg.DB, cfg.Logger, nil)
+			dbClient, err := db.New(ctx, cfg.DB, cfg.Logger, nil)
 			if err != nil {
 				panic(fmt.Errorf("issue creating database client: %w", err))
 			}
@@ -64,10 +64,10 @@ You can clear/recycle your database with 'docker compose down' and 'docker compo
 			// update the schema
 			cfg.DB.Schema += "_policy"
 
-			dbI := fixtures.NewDBInterface(*cfg)
+			dbI := fixtures.NewDBInterface(ctx, *cfg)
 			f := fixtures.NewFixture(dbI)
 			fixtures.LoadFixtureData("./service/internal/fixtures/policy_fixtures.yaml")
-			f.Provision()
+			f.Provision(ctx)
 
 			cmd.Print("fixtures provision fully applied\n")
 		},

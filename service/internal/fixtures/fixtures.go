@@ -496,7 +496,7 @@ func (f *Fixtures) Provision(ctx context.Context) {
 func (f *Fixtures) TearDown(ctx context.Context) {
 	slog.Info("🗑  dropping schema", slog.String("schema", f.db.Schema))
 	if err := f.db.DropSchema(ctx); err != nil {
-		slog.Error("could not truncate tables", slog.String("error", err.Error()))
+		slog.Error("could not truncate tables", slog.Any("error", err))
 		panic(err)
 	}
 }
@@ -792,20 +792,20 @@ func (f *Fixtures) loadMigratedStandardActions(ctx context.Context) {
 	actions := make(map[string]string)
 	rows, err := f.db.Client.Query(ctx, "SELECT id, name FROM actions WHERE is_standard = TRUE", nil)
 	if err != nil {
-		slog.Error("could not get standard actions", slog.String("error", err.Error()))
+		slog.Error("could not get standard actions", slog.Any("error", err))
 		panic("could not get standard actions")
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var id, name string
 		if err := rows.Scan(&id, &name); err != nil {
-			slog.Error("could not scan standard actions", slog.String("error", err.Error()))
+			slog.Error("could not scan standard actions", slog.Any("error", err))
 			panic("could not scan standard actions")
 		}
 		actions[name] = id
 	}
 	if err := rows.Err(); err != nil {
-		slog.Error("could not get standard actions", slog.String("error", err.Error()))
+		slog.Error("could not get standard actions", slog.Any("error", err))
 		panic("could not get standard actions")
 	}
 	if len(actions) == 0 {

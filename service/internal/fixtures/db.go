@@ -36,7 +36,7 @@ func NewDBInterface(ctx context.Context, cfg config.Config) DBInterface {
 
 	c, err := db.New(ctx, config, logCfg, &tracer)
 	if err != nil {
-		slog.Error("issue creating database client", slog.String("error", err.Error()))
+		slog.Error("issue creating database client", slog.Any("error", err))
 		panic(err)
 	}
 
@@ -46,7 +46,7 @@ func NewDBInterface(ctx context.Context, cfg config.Config) DBInterface {
 		Type:   cfg.Logger.Type,
 	})
 	if err != nil {
-		slog.Error("issue creating logger", slog.String("error", err.Error()))
+		slog.Error("issue creating logger", slog.Any("error", err))
 		panic(err)
 	}
 

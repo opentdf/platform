@@ -1609,6 +1609,9 @@ func (r *TDFReader) buildKey(ctx context.Context, results []kaoResult) error {
 			return fmt.Errorf("%w: assertion.GetHash failed: %w", ErrAssertionFailure{ID: assertion.ID}, err)
 		}
 		computedSignature, err := r.manifest.ComputeAssertionSignature(computedHash)
+		if err != nil {
+			return fmt.Errorf("%w: manifest.ComputeAssertionSignature failed: %w", ErrAssertionFailure{ID: assertion.ID}, err)
+		}
 
 		// Iterate through registered validators to find one that can verify this assertion
 		var validator AssertionValidator

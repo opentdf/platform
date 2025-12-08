@@ -5,14 +5,7 @@ import (
 )
 
 type AssertionBinder interface {
-	// Bind creates an assertion without cryptographic binding.
-	// The caller is responsible for signing the assertion after binding.
-	//
-	// Parameters:
-	//   - ctx: Context for the operation
-	//   - payloadHash: The aggregate hash computed from manifest segments via ComputeAggregateHash()
-	//
-	// Returns assertion. If unsigned assertion, then signed with DEK.
+	// Bind creates an assertion with cryptographic binding to the payloadHash.
 	Bind(ctx context.Context, payloadHash []byte) (Assertion, error)
 }
 

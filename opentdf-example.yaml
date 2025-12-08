@@ -17,6 +17,13 @@ db:
 #     max_connection_lifetime_seconds: 3600
 #     max_connection_idle_seconds: 1800
 #     health_check_period_seconds: 60
+#   # Horizontal scaling with read replicas
+#   # Uncomment to enable read replica load balancing:
+#   read_replicas:
+#     - host: opentdfdb-replica1
+#       port: 5432
+#     - host: opentdfdb-replica2
+#       port: 5432
 # mode: all
 services:
   kas:

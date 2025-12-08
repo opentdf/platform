@@ -314,10 +314,39 @@ Root level key `db`
 | `pool.max_connection_idle_seconds`     | Maximum seconds allowed for idle connection.  | `1800`      | OPENTDF_DB_POOL_MAX_CONNECTION_IDLE_SECONDS     |
 | `pool.health_check_period_seconds`     | Interval seconds per health check.            | `60`        | OPENTDF_DB_POOL_HEALTH_CHECK_PERIOD_SECONDS     |
 
+### Read Replicas (Horizontal Scaling)
 
+The platform supports PostgreSQL read replicas for horizontal scaling. When configured, read operations (SELECT queries) are automatically load-balanced across replicas using round-robin, while write operations (INSERT/UPDATE/DELETE) go to the primary database.
 
+**Read Replica Configuration:**
 
-Example:
+| Field                    | Description                                    | Default | Environment Variables |
+| ------------------------ | ---------------------------------------------- | ------- | --------------------- |
+| `read_replicas`          | Array of read replica configurations           | `[]`    | (see note below)      |
+| `read_replicas[].host`   | The host address for the read replica          |         |                       |
+| `read_replicas[].port`   | The port number for the read replica           |         |                       |
+
+> **Note**: Read replicas use the same `user`, `password`, `database`, `sslmode`, and other connection settings as the primary database. Only `host` and `port` differ per replica.
+
+> **Security Best Practice**: For production, create a dedicated read-only database user for replicas:
+> ```sql
+> CREATE USER readonly_user WITH PASSWORD 'secure_password';
+> GRANT CONNECT ON DATABASE opentdf TO readonly_user;
+> GRANT USAGE ON SCHEMA opentdf TO readonly_user;
+> GRANT SELECT ON ALL TABLES IN SCHEMA opentdf TO readonly_user;
+> ALTER DEFAULT PRIVILEGES IN SCHEMA opentdf GRANT SELECT ON TABLES TO readonly_user;
+> ```
+> Then configure: `user: readonly_user` in your database configuration.
+
+**Behavior:**
+- **Without replicas**: All queries go to the primary database (backward compatible)
+- **With replicas**: Read queries load-balanced across replicas, writes to primary
+- **Concurrency-safe**: Round-robin selection uses atomic operations
+- **Automatic failover**: If a replica query fails, consider it unhealthy (application-level handling required)
+
+### Examples
+
+**Basic Configuration (Single Primary):**
 
 ```yaml
 db:
@@ -337,6 +366,56 @@ db:
     min_idle_connections_count: 0
     max_connection_idle_seconds: 1800
     health_check_period_seconds: 60
+```
+
+**Horizontally Scaled Configuration (Primary + Replicas):**
+
+```yaml
+db:
+  host: primary.db.example.com
+  port: 5432
+  database: opentdf
+  user: postgres
+  password: changeme
+  sslmode: require
+  schema: opentdf
+  pool:
+    max_connection_count: 4
+  # Read replicas for horizontal scaling
+  read_replicas:
+    - host: replica1.db.example.com
+      port: 5432
+    - host: replica2.db.example.com
+      port: 5432
+```
+
+**Local Development with Docker Compose:**
+
+```yaml
+db:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: changeme
+  read_replicas:
+    - host: localhost
+      port: 5433  # First replica
+    - host: localhost
+      port: 5434  # Second replica
+```
+
+**Testing:**
+
+Comprehensive integration tests with automatic database setup are available in `service/integration/db_read_replicas_testcontainers_test.go`. These tests use testcontainers to automatically spin up PostgreSQL primary and replica instances:
+
+```bash
+cd service/integration
+
+# Run comprehensive tests (automatically creates primary + 2 replicas)
+go test -run TestReadReplicasWithTestcontainers -v
+
+# Run performance benchmarks
+go test -bench BenchmarkReadReplicaPerformance -v
 ```
 
 ## Security Configuration

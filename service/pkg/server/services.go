@@ -142,18 +142,6 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 	cacheManager := params.cacheManager
 	keyManagerCtxFactories := params.keyManagerCtxFactories
 
-	// Create a copy of the key manager factories as the context version for legacy services that don't load the new version with context
-	var keyManagerFactories []trust.NamedKeyManagerFactory
-	for _, factory := range keyManagerCtxFactories {
-		keyManagerFactories = append(keyManagerFactories, trust.NamedKeyManagerFactory{
-			Name: factory.Name,
-			//nolint:contextcheck // This is called later, so will be in a new context
-			Factory: func(opts *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
-				return factory.Factory(context.Background(), opts)
-			},
-		})
-	}
-
 	// Iterate through the registered namespaces
 	for _, nsInfo := range reg.GetNamespaces() {
 		ns := nsInfo.Name
@@ -229,7 +217,6 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				OTDF:                   otdf, // TODO: REMOVE THIS
 				Tracer:                 tracer,
 				NewCacheClient:         createCacheClient,
-				KeyManagerFactories:    keyManagerFactories,
 				KeyManagerCtxFactories: keyManagerCtxFactories,
 			})
 			if err != nil {

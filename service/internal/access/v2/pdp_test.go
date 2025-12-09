@@ -3582,7 +3582,7 @@ func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements() {
 			},
 		},
 	}
-	attr1ValueFQN := attr1.Values[0].Fqn
+	attr1ValueFQN := attr1.GetValues()[0].GetFqn()
 
 	attr2 := &policy.Attribute{
 		Fqn:  "https://demo.com/attr/adhoc_2",
@@ -3594,7 +3594,7 @@ func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements() {
 			},
 		},
 	}
-	attr2ValueFQN := attr2.Values[0].Fqn
+	attr2ValueFQN := attr2.GetValues()[0].GetFqn()
 
 	resAttr1ValueFqn := createAttributeValueResource(attr1ValueFQN, attr1ValueFQN)
 	resAttr2ValueFqn := createAttributeValueResource(attr2ValueFQN, attr2ValueFQN)

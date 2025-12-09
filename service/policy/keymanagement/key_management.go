@@ -67,12 +67,8 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				ksvc.config = cfg
 				ksvc.dbClient = policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 
-				// Register key managers in well-known configuration
-				ksvc.keyManagerFactories = make([]registeredManagers, 0, len(srp.KeyManagerFactories))
-				if len(srp.KeyManagerFactories) > 0 {
-					srp.Logger.Error("keymanagement: ignoring legacy KeyManagerFactories; using KeyManagerCtxFactories instead")
-				}
 				managersMap := make(map[string]any)
+				ksvc.keyManagerFactories = make([]registeredManagers, 0, len(srp.KeyManagerCtxFactories))
 				for i, factory := range srp.KeyManagerCtxFactories {
 					rm := registeredManagers{
 						Name:        factory.Name,

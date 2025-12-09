@@ -75,9 +75,6 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 
 					// Configure new delegation service
 					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURL.String(), srp.Logger), srp.Logger, cacheClient)
-					if len(srp.KeyManagerFactories) > 0 {
-						srp.Logger.Error("kas service ignores legacy KeyManagerFactories; using KeyManagerCtxFactories instead")
-					}
 					for _, manager := range srp.KeyManagerCtxFactories {
 						p.KeyDelegator.RegisterKeyManagerCtx(manager.Name, manager.Factory)
 						kmgrs = append(kmgrs, manager.Name)

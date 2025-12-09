@@ -33,14 +33,14 @@ func (s *RegisteredResourcesSuite) SetupSuite() {
 	s.ctx = context.Background()
 	c := *Config
 	c.DB.Schema = "test_opentdf_registered_resources"
-	s.db = fixtures.NewDBInterface(c)
+	s.db = fixtures.NewDBInterface(s.ctx, c)
 	s.f = fixtures.NewFixture(s.db)
-	s.f.Provision()
+	s.f.Provision(s.ctx)
 }
 
 func (s *RegisteredResourcesSuite) TearDownSuite() {
 	slog.Info("tearing down db.RegisteredResources test suite")
-	s.f.TearDown()
+	s.f.TearDown(s.ctx)
 }
 
 func TestRegisteredResourcesSuite(t *testing.T) {

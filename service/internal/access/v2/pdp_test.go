@@ -3569,6 +3569,138 @@ func (s *PDPTestSuite) Test_GetDecision_NoPolicies() {
 	})
 }
 
+func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements() {
+	ctx := s.T().Context()
+
+	attr1 := &policy.Attribute{
+		Fqn:  "https://demo.com/attr/adhoc",
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values: []*policy.Value{
+			{
+				Fqn:   "https://demo.com/attr/adhoc/value/direct_entitlement_1",
+				Value: "direct_entitlement_1",
+			},
+		},
+	}
+	attr1ValueFQN := attr1.Values[0].Fqn
+
+	attr2 := &policy.Attribute{
+		Fqn:  "https://demo.com/attr/adhoc_2",
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values: []*policy.Value{
+			{
+				Fqn:   "https://demo.com/attr/adhoc_2/value/direct_entitlement_2",
+				Value: "direct_entitlement_2",
+			},
+		},
+	}
+	attr2ValueFQN := attr2.Values[0].Fqn
+
+	resAttr1ValueFqn := createAttributeValueResource(attr1ValueFQN, attr1ValueFQN)
+	resAttr2ValueFqn := createAttributeValueResource(attr2ValueFQN, attr2ValueFQN)
+
+	pdp, err := NewPolicyDecisionPoint(
+		ctx,
+		s.logger,
+		[]*policy.Attribute{attr1, attr2},
+		[]*policy.SubjectMapping{},
+		[]*policy.RegisteredResource{},
+		true, // Allow direct entitlements
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	s.Run("entitled to all resources", func() {
+		entityRep := &entityresolutionV2.EntityRepresentation{
+			DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
+				{
+					Fqn:     attr1ValueFQN,
+					Actions: []string{actions.ActionNameCreate, actions.ActionNameDelete},
+				},
+				{
+					Fqn:     attr2ValueFQN,
+					Actions: []string{actions.ActionNameCreate, actions.ActionNameRead},
+				},
+			},
+		}
+
+		decision, entitlements, err := pdp.GetDecision(ctx, entityRep, testActionCreate, []*authz.Resource{
+			resAttr1ValueFqn,
+			resAttr2ValueFqn,
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.Require().NotNil(entitlements)
+
+		s.Require().Contains(entitlements, attr1ValueFQN)
+		s.Require().Contains(entitlements, attr2ValueFQN)
+		s.Require().Contains(entitlements[attr1ValueFQN], testActionCreate)
+		s.Require().Contains(entitlements[attr2ValueFQN], testActionCreate)
+
+		s.assertAllDecisionResults(decision, map[string]bool{
+			attr1ValueFQN: true,
+			attr2ValueFQN: true,
+		})
+	})
+
+	s.Run("entitled to some resources", func() {
+		entityRep := &entityresolutionV2.EntityRepresentation{
+			DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
+				{
+					Fqn:     attr1ValueFQN,
+					Actions: []string{actions.ActionNameCreate, actions.ActionNameUpdate},
+				},
+			},
+		}
+
+		decision, entitlements, err := pdp.GetDecision(ctx, entityRep, testActionCreate, []*authz.Resource{
+			resAttr1ValueFqn,
+			resAttr2ValueFqn,
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.Require().NotNil(entitlements)
+
+		s.Require().Contains(entitlements, attr1ValueFQN)
+		s.Require().Contains(entitlements[attr1ValueFQN], testActionCreate)
+
+		s.assertAllDecisionResults(decision, map[string]bool{
+			attr1ValueFQN: true,
+			// not entitled to FQN
+			attr2ValueFQN: false,
+		})
+	})
+
+	s.Run("entitled to no resources", func() {
+		entityRep := &entityresolutionV2.EntityRepresentation{
+			DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
+				{
+					Fqn:     attr1ValueFQN,
+					Actions: []string{actions.ActionNameCreate, actions.ActionNameRead},
+				},
+			},
+		}
+
+		decision, entitlements, err := pdp.GetDecision(ctx, entityRep, testActionDelete, []*authz.Resource{
+			resAttr1ValueFqn,
+			resAttr2ValueFqn,
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.Require().NotNil(entitlements)
+
+		s.Require().Contains(entitlements, attr1ValueFQN)
+		s.Require().Contains(entitlements[attr1ValueFQN], testActionCreate)
+
+		s.assertAllDecisionResults(decision, map[string]bool{
+			// entitled to FQN, but not action
+			attr1ValueFQN: false,
+			// not entitled to FQN
+			attr2ValueFQN: false,
+		})
+	})
+}
+
 // Helper functions for all tests
 
 // assertDecisionResult is a helper function to assert that a decision result for a given FQN matches the expected pass/fail state

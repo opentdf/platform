@@ -31,18 +31,17 @@ type SubjectMappingsSuite struct {
 
 func (s *SubjectMappingsSuite) SetupSuite() {
 	slog.Info("setting up db.SubjectMappings test suite")
+	s.ctx = context.Background()
 	c := *Config
 	c.DB.Schema = "test_opentdf_subject_mappings"
-	s.db = fixtures.NewDBInterface(c)
-	s.ctx = context.Background()
+	s.db = fixtures.NewDBInterface(s.ctx, c)
 	s.f = fixtures.NewFixture(s.db)
-	s.ctx = context.Background()
-	s.f.Provision()
+	s.f.Provision(s.ctx)
 }
 
 func (s *SubjectMappingsSuite) TearDownSuite() {
 	slog.Info("tearing down db.SubjectMappings test suite")
-	s.f.TearDown()
+	s.f.TearDown(s.ctx)
 }
 
 // a set of easily accessible actions for use in tests

@@ -2,10 +2,11 @@ package fixtures
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
-	"strconv"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -28,15 +29,15 @@ type DBInterface struct {
 	LimitMax     int32
 }
 
-func NewDBInterface(cfg config.Config) DBInterface {
+func NewDBInterface(ctx context.Context, cfg config.Config) DBInterface {
 	config := cfg.DB
 	config.Schema = cfg.DB.Schema
 	logCfg := cfg.Logger
 	tracer := otel.Tracer(tracing.ServiceName)
 
-	c, err := db.New(context.Background(), config, logCfg, &tracer)
+	c, err := db.New(ctx, config, logCfg, &tracer)
 	if err != nil {
-		slog.Error("issue creating database client", slog.String("error", err.Error()))
+		slog.Error("issue creating database client", slog.Any("error", err))
 		panic(err)
 	}
 
@@ -46,7 +47,7 @@ func NewDBInterface(cfg config.Config) DBInterface {
 		Type:   cfg.Logger.Type,
 	})
 	if err != nil {
-		slog.Error("issue creating logger", slog.String("error", err.Error()))
+		slog.Error("issue creating logger", slog.Any("error", err))
 		panic(err)
 	}
 
@@ -59,59 +60,59 @@ func NewDBInterface(cfg config.Config) DBInterface {
 	}
 }
 
-func (d *DBInterface) StringArrayWrap(values []string) string {
-	// if len(values) == 0 {
-	// 	return "null"
-	// }
-	var vs []string
-	for _, v := range values {
-		vs = append(vs, d.StringWrap(v))
-	}
-	return "ARRAY [" + strings.Join(vs, ",") + "]"
-}
-
-func (d *DBInterface) UUIDArrayWrap(v []string) string {
-	return "(" + d.StringArrayWrap(v) + ")" + "::uuid[]"
-}
-
-func (d *DBInterface) StringWrap(v string) string {
-	escaped := strings.ReplaceAll(v, "'", "''")
-	return "'" + escaped + "'"
-}
-
-func (d *DBInterface) OptionalStringWrap(v string) string {
-	if v == "" {
-		return "NULL"
-	}
-	return d.StringWrap(v)
-}
-
-func (d *DBInterface) BoolWrap(b bool) string {
-	return strconv.FormatBool(b)
-}
-
-func (d *DBInterface) UUIDWrap(v string) string {
-	return "(" + d.StringWrap(v) + ")" + "::uuid"
-}
-
+// TableName returns a sanitized fully-qualified table name.
 func (d *DBInterface) TableName(v string) string {
-	return d.Schema + "." + v
+	return pgx.Identifier{d.Schema, v}.Sanitize()
 }
 
-func (d *DBInterface) ExecInsert(table string, columns []string, values ...[]string) (int64, error) {
-	sql := "INSERT INTO " + d.TableName(table) +
-		" (" + strings.Join(columns, ",") + ")" +
-		" VALUES "
-	for i, v := range values {
-		if i > 0 {
-			sql += ","
-		}
-		sql += " (" + strings.Join(v, ",") + ")"
+// ExecInsert inserts multiple rows into a table using parameterized queries.
+// Each row's values are passed as any types, allowing pgx to handle type conversion.
+func (d *DBInterface) ExecInsert(ctx context.Context, table string, columns []string, values ...[]any) (int64, error) {
+	if len(values) == 0 {
+		return 0, nil
 	}
-	pconn, err := d.Client.Pgx.Exec(context.Background(), sql)
+
+	// Build the INSERT statement with placeholders
+	numColumns := len(columns)
+	var placeholders []string
+	var allArgs []any
+
+	placeholderNum := 1
+	for _, row := range values {
+		if len(row) != numColumns {
+			slog.Error("column count mismatch",
+				slog.Int("expected", numColumns),
+				slog.Int("got", len(row)),
+			)
+			return 0, fmt.Errorf("column count mismatch: expected %d, got %d", numColumns, len(row))
+		}
+
+		var rowPlaceholders []string
+		for _, arg := range row {
+			rowPlaceholders = append(rowPlaceholders, fmt.Sprintf("$%d", placeholderNum))
+			placeholderNum++
+			allArgs = append(allArgs, arg)
+		}
+		placeholders = append(placeholders, "("+strings.Join(rowPlaceholders, ",")+")")
+	}
+
+	// Safely sanitize table name using pgx.Identifier
+	tableName := pgx.Identifier{d.Schema, table}.Sanitize()
+
+	// Safely sanitize column names using pgx.Identifier
+	sanitizedColumns := make([]string, len(columns))
+	for i, col := range columns {
+		sanitizedColumns[i] = pgx.Identifier{col}.Sanitize()
+	}
+
+	sql := "INSERT INTO " + tableName +
+		" (" + strings.Join(sanitizedColumns, ",") + ")" +
+		" VALUES " + strings.Join(placeholders, ",")
+
+	pconn, err := d.Client.Pgx.Exec(ctx, sql, allArgs...)
 	if err != nil {
 		slog.Error("insert error",
-			slog.Any("stmt", sql),
+			slog.String("stmt", sql),
 			slog.Any("err", err),
 		)
 		return 0, err
@@ -119,9 +120,9 @@ func (d *DBInterface) ExecInsert(table string, columns []string, values ...[]str
 	return pconn.RowsAffected(), err
 }
 
-func (d *DBInterface) DropSchema() error {
-	sql := "DROP SCHEMA IF EXISTS " + d.Schema + " CASCADE"
-	_, err := d.Client.Pgx.Exec(context.Background(), sql)
+func (d *DBInterface) DropSchema(ctx context.Context) error {
+	sql := "DROP SCHEMA IF EXISTS " + pgx.Identifier{d.Schema}.Sanitize() + " CASCADE"
+	_, err := d.Client.Pgx.Exec(ctx, sql)
 	if err != nil {
 		slog.Error("drop error",
 			slog.String("stmt", sql),

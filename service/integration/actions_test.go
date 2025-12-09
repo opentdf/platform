@@ -28,14 +28,14 @@ func (s *ActionsSuite) SetupSuite() {
 	c := *Config
 
 	c.DB.Schema = "test_opentdf_actions"
-	s.db = fixtures.NewDBInterface(c)
+	s.db = fixtures.NewDBInterface(s.ctx, c)
 	s.f = fixtures.NewFixture(s.db)
-	s.f.Provision()
+	s.f.Provision(s.ctx)
 }
 
 func (s *ActionsSuite) TearDownSuite() {
 	slog.Info("tearing down db.Actions test suite")
-	s.f.TearDown()
+	s.f.TearDown(s.ctx)
 }
 
 func (s *ActionsSuite) Test_ListActions_NoPagination_Succeeds() {

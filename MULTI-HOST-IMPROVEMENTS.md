@@ -137,6 +137,112 @@ db:
 - Simple setup for testing replica logic locally
 - Health checking still active
 
+### Configuration Validation
+
+**Cannot use both `host` and `primary_hosts`:**
+```yaml
+# ❌ INVALID - Will throw error
+db:
+  host: localhost           # Single host
+  primary_hosts:            # Multi-host
+    - host: primary1
+      port: 5432
+```
+
+The configuration loader validates and rejects ambiguous setups with a clear error:
+```
+invalid configuration: cannot specify both 'host' and 'primary_hosts' - use one or the other
+```
+
+## Local Development with Docker Compose
+
+The `docker-compose.yaml` provides three commented-out scenarios for testing horizontal scaling locally:
+
+### SCENARIO 1: Single Primary (Default)
+```yaml
+# Active by default - opentdfdb service only
+# Configuration: host: opentdfdb
+```
+- No horizontal scaling
+- Simplest setup for basic development
+- No additional containers needed
+
+### SCENARIO 2: Primary + Read Replicas
+```yaml
+# Uncomment: opentdfdb-replica1, opentdfdb-replica2
+# Uncomment: corresponding volumes
+# Configuration:
+db:
+  host: opentdfdb
+  read_replicas:
+    - host: opentdfdb-replica1
+      port: 5432
+    - host: opentdfdb-replica2
+      port: 5432
+```
+- Tests horizontal read scaling
+- Circuit breaker behavior
+- Round-robin load balancing
+
+### SCENARIO 3: Multi-Host Primary + Read Replicas (Full HA)
+```yaml
+# Uncomment: opentdfdb-primary2, opentdfdb-replica1, opentdfdb-replica2
+# Uncomment: corresponding volumes
+# Configuration:
+db:
+  primary_hosts:
+    - host: opentdfdb
+      port: 5432
+    - host: opentdfdb-primary2
+      port: 5432
+  read_replicas:
+    - host: opentdfdb-replica1
+      port: 5432
+    - host: opentdfdb-replica2
+      port: 5432
+```
+- Tests complete high availability setup
+- Primary failover + read scaling
+- Full circuit breaker and health checking
+
+**To activate a scenario:**
+1. Uncomment desired services in `docker-compose.yaml`
+2. Uncomment corresponding volumes at bottom of file
+3. Update `opentdf-example.yaml` with matching configuration
+4. Run: `docker-compose up -d`
+
+## Production PostgreSQL Configuration
+
+The docker-compose PostgreSQL replication setup includes production-ready settings:
+
+### WAL Retention
+```yaml
+wal_keep_size=1024  # 1GB prevents replication breaks during replica lag
+```
+- Prevents WAL deletion if replicas lag behind
+- 1GB buffer handles temporary network issues or maintenance
+- Critical for preventing permanent replication failures
+
+### Network Security
+```yaml
+# Restricts replication connections to Docker network only
+echo "host replication replicator opentdf_platform md5"
+```
+- Replaces overly permissive `0.0.0.0/0` access
+- Follows principle of least privilege
+- Prevents external replication connection attempts
+
+### Streaming Replication Parameters
+```yaml
+-c wal_level=replica
+-c max_wal_senders=10
+-c max_replication_slots=10
+-c hot_standby=on
+```
+- Enables up to 10 concurrent replicas
+- Hot standby allows reads on replicas
+- Standard PostgreSQL streaming replication
+
 ## API Usage
 
 ### Basic Usage (No Changes Required)
@@ -279,7 +385,17 @@ db_query_errors_total{replica="replica1", error_type="timeout"}
 ### Unit Tests
 
 ```bash
-go test ./service/pkg/db -run "TestMultiHost|TestContextForce|TestReplicaHealth" -v
+# Multi-host primary configuration
+go test ./service/pkg/db -run TestMultiHostPrimaryConfig -v
+
+# Context-based primary routing
+go test ./service/pkg/db -run TestContextForcePrimary -v
+
+# Circuit breaker logic
+go test ./service/pkg/db -run TestReplicaCircuitBreaker -v
+
+# Configuration validation (host vs primary_hosts)
+go test ./service/pkg/db -run TestConfigValidation -v
 ```
 
 ### Integration Tests (with Testcontainers)
@@ -378,8 +494,21 @@ client.Query(ctx, "SELECT ...", args)  // Guaranteed to see the write
 - ✅ Circuit breaker health checking (sony/gobreaker)
 - ✅ Context-based primary routing (`WithForcePrimary`)
 - ✅ Automatic fallback to primary when replicas fail
+- ✅ Configuration validation (prevents ambiguous host/primary_hosts setup)
+- ✅ Three docker-compose scenarios for local development testing
+- ✅ Production-ready PostgreSQL replication settings
 - ✅ Comprehensive integration tests with testcontainers
 
 **Backward Compatibility:**
 - ✅ Existing single-database configs work without changes
 - ✅ All features are opt-in via configuration
+
+**Local Development:**
+- ✅ Three commented-out docker-compose scenarios (single/replicas/full-HA)
+- ✅ Easy activation via uncommenting services + volumes
+- ✅ Aligned with opentdf-example.yaml configuration
+
+**Production Ready:**
+- ✅ 1GB WAL retention prevents replication breaks
+- ✅ Network-restricted replication access (Docker network only)
+- ✅ Proper streaming replication parameters

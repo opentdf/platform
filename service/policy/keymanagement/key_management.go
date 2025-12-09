@@ -68,6 +68,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				ksvc.dbClient = policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 
 				managersMap := make(map[string]any)
+				ksvc.keyManagerFactories = make([]registeredManagers, 0, len(srp.KeyManagerCtxFactories))
 				for i, factory := range srp.KeyManagerCtxFactories {
 					rm := registeredManagers{
 						Name:        factory.Name,

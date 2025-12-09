@@ -3574,7 +3574,7 @@ func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements() {
 
 	attr1 := &policy.Attribute{
 		Fqn:  "https://demo.com/attr/adhoc",
-		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 		Values: []*policy.Value{
 			{
 				Fqn:   "https://demo.com/attr/adhoc/value/direct_entitlement_1",
@@ -3586,7 +3586,7 @@ func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements() {
 
 	attr2 := &policy.Attribute{
 		Fqn:  "https://demo.com/attr/adhoc_2",
-		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 		Values: []*policy.Value{
 			{
 				Fqn:   "https://demo.com/attr/adhoc_2/value/direct_entitlement_2",

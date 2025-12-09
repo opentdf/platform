@@ -251,24 +251,22 @@ func getResourceDecisionableAttributes(
 		attributeAndValue, ok := entitleableAttributesByValueFQN[attrValueFQN]
 
 		if !ok {
-			notFoundFQNs = append(notFoundFQNs, attrValueFQN)
-
-			// experimental: direct entitlements support
-			// direct entitlements only exist at the attribute definition level (values are adhoc)
-			// if the attribute value FQN is not found, then we should process it for direct entitlements (if enabled)
-
+			// if the attribute value FQN is not found, then check if direct entitlements with synthetic values are enabled (experimental)
 			if !allowDirectEntitlements {
-				// if disabled, skip to next attribute value FQN
+				// if disabled, add to not found list and skip to next attribute value FQN
+				notFoundFQNs = append(notFoundFQNs, attrValueFQN)
 				continue
 			}
 
-			// If enabled, process direct entitlements
+			// now process direct entitlement that only exists at attribute definition level
 			logger.InfoContext(ctx, "processing direct entitlement for resource decisionable attribute value", slog.String("fqn", attrValueFQN))
 
-			// Try to find the definition by extracting partial FQN for adhoc attributes
+			// try to find the definition by extracting partial FQN from direct entitlement synthetic value FQN
 			parentDefinition, err := getDefinition(attrValueFQN, entitleableAttributesByDefinitionFQN)
 			if err != nil {
-				return nil, fmt.Errorf("resource attribute value FQN not found in memory and no definition found [%s]: %w", attrValueFQN, err)
+				// if definition not found, add to not found list and skip to next attribute value FQN
+				notFoundFQNs = append(notFoundFQNs, attrValueFQN)
+				continue
 			}
 
 			// Extract the value part from the FQN

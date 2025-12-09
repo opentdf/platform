@@ -318,6 +318,16 @@ Root level key `db`
 
 The platform supports PostgreSQL read replicas for horizontal scaling. When configured, read operations (SELECT queries) are automatically load-balanced across replicas using round-robin, while write operations (INSERT/UPDATE/DELETE) go to the primary database.
 
+**Primary Failover Configuration:**
+
+| Field                    | Description                                    | Default | Environment Variables |
+| ------------------------ | ---------------------------------------------- | ------- | --------------------- |
+| `primary_hosts`          | Array of primary hosts for automatic failover  | `[]`    | (see note below)      |
+| `primary_hosts[].host`   | The host address for a primary database        |         |                       |
+| `primary_hosts[].port`   | The port number for a primary database         |         |                       |
+
+> **Note**: When `primary_hosts` is configured, pgx automatically tries each host in order using `target_session_attrs=primary` until one accepts writes. If empty, uses `host` and `port` fields instead.
+
 **Read Replica Configuration:**
 
 | Field                    | Description                                    | Default | Environment Variables |
@@ -340,9 +350,10 @@ The platform supports PostgreSQL read replicas for horizontal scaling. When conf
 
 **Behavior:**
 - **Without replicas**: All queries go to the primary database (backward compatible)
-- **With replicas**: Read queries load-balanced across replicas, writes to primary
+- **With replicas**: Read queries load-balanced across replicas using round-robin with circuit breaker health checking
+- **Primary failover**: When `primary_hosts` configured, pgx automatically tries each host until one accepts writes
+- **Circuit breaker**: Automatically detects and bypasses unhealthy replicas, falls back to primary if all replicas fail
 - **Concurrency-safe**: Round-robin selection uses atomic operations
-- **Automatic failover**: If a replica query fails, consider it unhealthy (application-level handling required)
 
 ### Examples
 
@@ -402,6 +413,30 @@ db:
       port: 5433  # First replica
     - host: localhost
       port: 5434  # Second replica
+```
+
+**High Availability (Multi-Host Primary + Replicas):**
+
+```yaml
+db:
+  # Multi-host primary for automatic failover
+  primary_hosts:
+    - host: primary1.db.example.com
+      port: 5432
+    - host: primary2.db.example.com
+      port: 5432
+  database: opentdf
+  user: postgres
+  password: changeme
+  sslmode: require
+  pool:
+    max_connection_count: 4
+  # Read replicas for horizontal scaling
+  read_replicas:
+    - host: replica1.db.example.com
+      port: 5432
+    - host: replica2.db.example.com
+      port: 5432
 ```
 
 **Testing:**

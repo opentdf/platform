@@ -115,12 +115,14 @@ services:
             \$$\$$;
             GRANT CONNECT ON DATABASE $$POSTGRES_DB TO replicator;
         EOSQL
-        echo "host replication replicator 0.0.0.0/0 md5" >> "$${PGDATA}/pg_hba.conf"
+        # Restrict replication connections to Docker network for security
+        echo "host replication replicator opentdf_platform md5" >> "$${PGDATA}/pg_hba.conf"
         echo "Replication user configured"
         EOF
         chmod +x /docker-entrypoint-initdb.d/01-replication-setup.sh
         # Start postgres with replication config
-        exec docker-entrypoint.sh postgres -c wal_level=replica -c max_wal_senders=10 -c max_replication_slots=10 -c hot_standby=on -c wal_keep_size=64
+        # wal_keep_size=1024 (1GB) prevents WAL deletion if replicas lag
+        exec docker-entrypoint.sh postgres -c wal_level=replica -c max_wal_senders=10 -c max_replication_slots=10 -c hot_standby=on -c wal_keep_size=1024
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -129,123 +131,205 @@ services:
     ports:
       - "${POSTGRES_EXPOSE_PORT:-5432}:5432"
 
-  # PostgreSQL Read Replica 1
+  # ============================================================================
+  # HORIZONTAL SCALING SCENARIOS (Optional - Comment/Uncomment as needed)
+  # ============================================================================
+  #
+  # SCENARIO 1: Single Primary (Default - No scaling)
+  #   - Use: opentdfdb only (already configured above)
+  #   - opentdf-example.yaml: Use 'host: opentdfdb'
+  #
+  # SCENARIO 2: Primary + Read Replicas (Horizontal read scaling)
+  #   - Uncomment: opentdfdb-replica1, opentdfdb-replica2 below
+  #   - Uncomment: opentdfdb_replica1_data, opentdfdb_replica2_data volumes
+  #   - opentdf-example.yaml:
+  #       host: opentdfdb
+  #       read_replicas:
+  #         - host: opentdfdb-replica1
+  #           port: 5432
+  #         - host: opentdfdb-replica2
+  #           port: 5432
+  #
+  # SCENARIO 3: Multi-Host Primary + Read Replicas (Full HA)
+  #   - Uncomment: opentdfdb-primary2, opentdfdb-replica1, opentdfdb-replica2
+  #   - Uncomment: corresponding volumes
+  #   - opentdf-example.yaml (remove 'host', add 'primary_hosts'):
+  #       primary_hosts:
+  #         - host: opentdfdb
+  #           port: 5432
+  #         - host: opentdfdb-primary2
+  #           port: 5432
+  #       read_replicas:
+  #         - host: opentdfdb-replica1
+  #           port: 5432
+  #         - host: opentdfdb-replica2
+  #           port: 5432
+  # ============================================================================
+
+  # PostgreSQL Read Replica 1 (SCENARIO 2 & 3)
   # Replicates from primary using streaming replication
   # Handles read-only queries for horizontal scaling
-  opentdfdb-replica1:
-    image: postgres:15-alpine
-    restart: always
-    user: postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: changeme
-      POSTGRES_DB: opentdf
-      PRIMARY_HOST: opentdfdb
-      PGDATA: /var/lib/postgresql/data
-    volumes:
-      - opentdfdb_replica1_data:/var/lib/postgresql/data
-    depends_on:
-      opentdfdb:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    ports:
-      - "5433:5432"
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        # Wait for primary to be ready
-        until pg_isready -h opentdfdb -p 5432 -U postgres; do
-          echo "Waiting for primary database..."
-          sleep 2
-        done
+  # UNCOMMENT THE BLOCK BELOW TO ENABLE:
+  # opentdfdb-replica1:
+  #   image: postgres:15-alpine
+  #   restart: always
+  #   user: postgres
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: changeme
+  #     POSTGRES_DB: opentdf
+  #     PRIMARY_HOST: opentdfdb
+  #     PGDATA: /var/lib/postgresql/data
+  #   volumes:
+  #     - opentdfdb_replica1_data:/var/lib/postgresql/data
+  #   depends_on:
+  #     opentdfdb:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 10
+  #   ports:
+  #     - "5433:5432"
+  #   entrypoint: ["/bin/sh", "-c"]
+  #   command:
+  #     - |
+  #       # Wait for primary to be ready
+  #       until pg_isready -h opentdfdb -p 5432 -U postgres; do
+  #         echo "Waiting for primary database..."
+  #         sleep 2
+  #       done
+  #
+  #       # Check if data directory is empty (first run)
+  #       if [ ! -s "$$PGDATA/PG_VERSION" ]; then
+  #         echo "Initializing replica from primary..."
+  #         rm -rf $$PGDATA/*
+  #
+  #         # Clone primary database
+  #         PGPASSWORD='replicator_password' pg_basebackup \
+  #           -h opentdfdb \
+  #           -D $$PGDATA \
+  #           -U replicator \
+  #           -v \
+  #           -P \
+  #           -X stream \
+  #           -R
+  #
+  #         # Fix permissions for PostgreSQL
+  #         chmod 700 $$PGDATA
+  #         chown -R postgres:postgres $$PGDATA
+  #
+  #         echo "Replica initialized successfully"
+  #       fi
+  #
+  #       # Start PostgreSQL
+  #       exec postgres
 
-        # Check if data directory is empty (first run)
-        if [ ! -s "$$PGDATA/PG_VERSION" ]; then
-          echo "Initializing replica from primary..."
-          rm -rf $$PGDATA/*
-
-          # Clone primary database
-          PGPASSWORD='replicator_password' pg_basebackup \
-            -h opentdfdb \
-            -D $$PGDATA \
-            -U replicator \
-            -v \
-            -P \
-            -X stream \
-            -R
-
-          # Fix permissions for PostgreSQL
-          chmod 700 $$PGDATA
-          chown -R postgres:postgres $$PGDATA
-
-          echo "Replica initialized successfully"
-        fi
-
-        # Start PostgreSQL
-        exec postgres
-
-  # PostgreSQL Read Replica 2
+  # PostgreSQL Read Replica 2 (SCENARIO 2 & 3)
   # Replicates from primary using streaming replication
   # Handles read-only queries for horizontal scaling
-  opentdfdb-replica2:
-    image: postgres:15-alpine
-    restart: always
-    user: postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: changeme
-      POSTGRES_DB: opentdf
-      PRIMARY_HOST: opentdfdb
-      PGDATA: /var/lib/postgresql/data
-    volumes:
-      - opentdfdb_replica2_data:/var/lib/postgresql/data
-    depends_on:
-      opentdfdb:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    ports:
-      - "5434:5432"
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        # Wait for primary to be ready
-        until pg_isready -h opentdfdb -p 5432 -U postgres; do
-          echo "Waiting for primary database..."
-          sleep 2
-        done
+  # UNCOMMENT THE BLOCK BELOW TO ENABLE:
+  # opentdfdb-replica2:
+  #   image: postgres:15-alpine
+  #   restart: always
+  #   user: postgres
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: changeme
+  #     POSTGRES_DB: opentdf
+  #     PRIMARY_HOST: opentdfdb
+  #     PGDATA: /var/lib/postgresql/data
+  #   volumes:
+  #     - opentdfdb_replica2_data:/var/lib/postgresql/data
+  #   depends_on:
+  #     opentdfdb:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 10
+  #   ports:
+  #     - "5434:5432"
+  #   entrypoint: ["/bin/sh", "-c"]
+  #   command:
+  #     - |
+  #       # Wait for primary to be ready
+  #       until pg_isready -h opentdfdb -p 5432 -U postgres; do
+  #         echo "Waiting for primary database..."
+  #         sleep 2
+  #       done
+  #
+  #       # Check if data directory is empty (first run)
+  #       if [ ! -s "$$PGDATA/PG_VERSION" ]; then
+  #         echo "Initializing replica from primary..."
+  #         rm -rf $$PGDATA/*
+  #
+  #         # Clone primary database
+  #         PGPASSWORD='replicator_password' pg_basebackup \
+  #           -h opentdfdb \
+  #           -D $$PGDATA \
+  #           -U replicator \
+  #           -v \
+  #           -P \
+  #           -X stream \
+  #           -R
+  #
+  #         # Fix permissions for PostgreSQL
+  #         chmod 700 $$PGDATA
+  #         chown -R postgres:postgres $$PGDATA
+  #
+  #         echo "Replica initialized successfully"
+  #       fi
+  #
+  #       # Start PostgreSQL
+  #       exec postgres
 
-        # Check if data directory is empty (first run)
-        if [ ! -s "$$PGDATA/PG_VERSION" ]; then
-          echo "Initializing replica from primary..."
-          rm -rf $$PGDATA/*
-
-          # Clone primary database
-          PGPASSWORD='replicator_password' pg_basebackup \
-            -h opentdfdb \
-            -D $$PGDATA \
-            -U replicator \
-            -v \
-            -P \
-            -X stream \
-            -R
-
-          # Fix permissions for PostgreSQL
-          chmod 700 $$PGDATA
-          chown -R postgres:postgres $$PGDATA
-
-          echo "Replica initialized successfully"
-        fi
-
-        # Start PostgreSQL
-        exec postgres
+  # PostgreSQL Primary 2 (SCENARIO 3 ONLY - Multi-Host Primary Failover)
+  # Second primary database for automatic failover
+  # UNCOMMENT THE BLOCK BELOW TO ENABLE:
+  # opentdfdb-primary2:
+  #   image: postgres:15-alpine
+  #   restart: always
+  #   user: postgres
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: changeme
+  #     POSTGRES_DB: opentdf
+  #   volumes:
+  #     - opentdfdb_primary2_data:/var/lib/postgresql/data
+  #   entrypoint: ["/bin/sh", "-c"]
+  #   command:
+  #     - |
+  #       # Setup replication user on first init
+  #       cat > /docker-entrypoint-initdb.d/01-replication-setup.sh << 'EOF'
+  #       #!/bin/bash
+  #       set -e
+  #       echo "Setting up replication user..."
+  #       psql -v ON_ERROR_STOP=1 --username "$$POSTGRES_USER" --dbname "$$POSTGRES_DB" <<-EOSQL
+  #           DO \$$\$$
+  #           BEGIN
+  #               IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'replicator') THEN
+  #                   CREATE ROLE replicator WITH REPLICATION PASSWORD 'replicator_password' LOGIN;
+  #               END IF;
+  #           END
+  #           \$$\$$;
+  #           GRANT CONNECT ON DATABASE $$POSTGRES_DB TO replicator;
+  #       EOSQL
+  #       echo "host replication replicator 0.0.0.0/0 md5" >> "$${PGDATA}/pg_hba.conf"
+  #       echo "Replication user configured"
+  #       EOF
+  #       chmod +x /docker-entrypoint-initdb.d/01-replication-setup.sh
+  #       # Start postgres with replication config
+  #       exec docker-entrypoint.sh postgres -c wal_level=replica -c max_wal_senders=10 -c max_replication_slots=10 -c hot_standby=on -c wal_keep_size=64
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 10
+  #   ports:
+  #     - "5435:5432"
 
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -356,10 +440,14 @@ volumes:
   # OpenTDF Database Volumes
   opentdfdb_primary_data:
     name: opentdfdb_primary_data
-  opentdfdb_replica1_data:
-    name: opentdfdb_replica1_data
-  opentdfdb_replica2_data:
-    name: opentdfdb_replica2_data
+  # SCENARIO 2 & 3: Uncomment replica volumes when enabling read replicas
+  # opentdfdb_replica1_data:
+  #   name: opentdfdb_replica1_data
+  # opentdfdb_replica2_data:
+  #   name: opentdfdb_replica2_data
+  # SCENARIO 3: Uncomment primary2 volume when enabling multi-host primary
+  # opentdfdb_primary2_data:
+  #   name: opentdfdb_primary2_data
   # ERS Test Volumes
   ers_postgres_data:
     name: ers_test_postgres_data

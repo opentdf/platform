@@ -26,6 +26,7 @@ package integration
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"sync"
@@ -56,6 +57,7 @@ type testingHelper interface {
 	Logf(format string, args ...interface{})
 	Errorf(format string, args ...interface{})
 	FailNow()
+	Cleanup(func())
 }
 
 // setupPrimaryContainer creates a PostgreSQL primary database with replication configured
@@ -81,9 +83,9 @@ func setupPrimaryContainer(ctx context.Context, t testingHelper) (tc.Container, 
 			GRANT CONNECT ON DATABASE %s TO %s;
 		EOSQL
 		echo "host replication %s 0.0.0.0/0 md5" >> "$PGDATA/pg_hba.conf"
-		pg_ctl reload
+		psql -v ON_ERROR_STOP=1 --username "%s" --dbname "%s" -c "SELECT pg_reload_conf();"
 		echo "Replication user configured"
-	`, postgresUser, postgresDB, replicatorUser, replicatorUser, replicatorPass, postgresDB, replicatorUser, replicatorUser)
+	`, postgresUser, postgresDB, replicatorUser, replicatorUser, replicatorPass, postgresDB, replicatorUser, replicatorUser, postgresUser, postgresDB)
 
 	req := tc.GenericContainerRequest{
 		ContainerRequest: tc.ContainerRequest{
@@ -122,6 +124,13 @@ func setupPrimaryContainer(ctx context.Context, t testingHelper) (tc.Container, 
 		t.FailNow()
 	}
 
+	// Register cleanup immediately after container creation
+	t.Cleanup(func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Logf("Failed to terminate primary container: %v", err)
+		}
+	})
+
 	port, err := container.MappedPort(ctx, "5432/tcp")
 	if err != nil {
 		t.Errorf("Failed to get primary port: %v", err)
@@ -132,13 +141,20 @@ func setupPrimaryContainer(ctx context.Context, t testingHelper) (tc.Container, 
 	time.Sleep(2 * time.Second)
 
 	// Execute replication setup
-	exitCode, output, err := container.Exec(ctx, []string{"sh", "-c", replicationSetup})
+	exitCode, reader, err := container.Exec(ctx, []string{"sh", "-c", replicationSetup})
 	if err != nil {
-		t.Logf("Replication setup output: %s", output)
 		t.Errorf("Failed to execute replication setup: %v", err)
 		t.FailNow()
 	}
+
+	// Read output from reader
+	output, readErr := io.ReadAll(reader)
+	if readErr != nil {
+		t.Logf("Failed to read replication setup output: %v", readErr)
+	}
+
 	if exitCode != 0 {
+		t.Logf("Replication setup output: %s", string(output))
 		t.Errorf("Replication setup failed with exit code %d", exitCode)
 		t.FailNow()
 	}
@@ -224,6 +240,13 @@ func setupReplicaContainer(ctx context.Context, t testingHelper, primaryHost str
 		t.FailNow()
 	}
 
+	// Register cleanup immediately after container creation
+	t.Cleanup(func() {
+		if err := container.Terminate(ctx); err != nil {
+			t.Logf("Failed to terminate replica %d container: %v", replicaNum, err)
+		}
+	})
+
 	port, err := container.MappedPort(ctx, "5432/tcp")
 	if err != nil {
 		t.Errorf("Failed to get replica %d port: %v", replicaNum, err)
@@ -243,32 +266,16 @@ func TestReadReplicasWithTestcontainers(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Start primary database
+	// Start primary database (cleanup handled by setupPrimaryContainer)
 	primaryContainer, primaryPort := setupPrimaryContainer(ctx, t)
-	defer func() {
-		if err := primaryContainer.Terminate(ctx); err != nil {
-			t.Logf("Failed to terminate primary container: %v", err)
-		}
-	}()
 
 	// Get primary host (for replica connection)
 	primaryHost, err := primaryContainer.Host(ctx)
 	require.NoError(t, err)
 
-	// Start replica databases
-	replica1Container, replica1Port := setupReplicaContainer(ctx, t, primaryHost, 5432, 1)
-	defer func() {
-		if err := replica1Container.Terminate(ctx); err != nil {
-			t.Logf("Failed to terminate replica1 container: %v", err)
-		}
-	}()
-
-	replica2Container, replica2Port := setupReplicaContainer(ctx, t, primaryHost, 5432, 2)
-	defer func() {
-		if err := replica2Container.Terminate(ctx); err != nil {
-			t.Logf("Failed to terminate replica2 container: %v", err)
-		}
-	}()
+	// Start replica databases (cleanup handled by setupReplicaContainer)
+	_, replica1Port := setupReplicaContainer(ctx, t, primaryHost, 5432, 1)
+	_, replica2Port := setupReplicaContainer(ctx, t, primaryHost, 5432, 2)
 
 	// Configure database client with replicas
 	config := db.Config{
@@ -449,15 +456,13 @@ func BenchmarkReadReplicaPerformance(b *testing.B) {
 
 	ctx := context.Background()
 
-	// Start primary database
+	// Start primary database (cleanup handled by setupPrimaryContainer)
 	primaryContainer, primaryPort := setupPrimaryContainer(ctx, b)
-	defer primaryContainer.Terminate(ctx)
 
 	primaryHost, _ := primaryContainer.Host(ctx)
 
-	// Start one replica
-	replica1Container, replica1Port := setupReplicaContainer(ctx, b, primaryHost, 5432, 1)
-	defer replica1Container.Terminate(ctx)
+	// Start one replica (cleanup handled by setupReplicaContainer)
+	_, replica1Port := setupReplicaContainer(ctx, b, primaryHost, 5432, 1)
 
 	config := db.Config{
 		Host:           "localhost",

@@ -26,6 +26,18 @@ type ResourceLocator struct {
 	identifier string
 }
 
+func (rl ResourceLocator) Write(w io.Writer) error {
+	return rl.writeResourceLocator(w)
+}
+
+func (rl ResourceLocator) Len() int {
+	// single bytes: rl.protocol, len(rl.body)
+	result := 1 + 1
+	result += len(rl.body)
+	result += len(rl.identifier)
+	return result
+}
+
 // protocolHeader - shorthand for protocol prefix on fully qualified url
 // also specifies the optional resource identifier - current usage is a key identifier
 type protocolHeader uint8

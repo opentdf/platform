@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/sdk/nanobuilder"
 )
 
 // ============================================================================================================
@@ -16,6 +17,20 @@ import (
 //
 // ============================================================================================================
 
+type policyInfo struct {
+	body PolicyBody
+	//	binding *eccSignature
+}
+
+const (
+	kCipher64AuthTagSize  = 8
+	kCipher96AuthTagSize  = 12
+	kCipher104AuthTagSize = 13
+	kCipher112AuthTagSize = 14
+	kCipher120AuthTagSize = 15
+	kCipher128AuthTagSize = 16
+)
+
 type NanoTDFConfig struct {
 	keyPair       ocrypto.ECKeyPair
 	kasPublicKey  *ecdh.PublicKey
@@ -26,7 +41,7 @@ type NanoTDFConfig struct {
 	policy        policyInfo
 	bindCfg       bindingConfig
 	collectionCfg *collectionConfig
-	policyMode    PolicyType // Added field for policy mode
+	policyMode    nanobuilder.PolicyType // Added field for policy mode
 }
 
 type NanoTDFOption func(*NanoTDFConfig) error
@@ -56,7 +71,7 @@ func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 			useCollection: false,
 			header:        []byte{},
 		},
-		policyMode: NanoTDFPolicyModeDefault,
+		policyMode: nanobuilder.PolicyModeDefault,
 	}
 
 	return c, nil
@@ -92,7 +107,7 @@ func (config *NanoTDFConfig) EnableCollection() {
 }
 
 // SetPolicyMode sets whether the policy should be encrypted or plaintext
-func (config *NanoTDFConfig) SetPolicyMode(mode PolicyType) error {
+func (config *NanoTDFConfig) SetPolicyMode(mode nanobuilder.PolicyType) error {
 	if err := validNanoTDFPolicyMode(mode); err != nil {
 		return err
 	}
@@ -126,6 +141,7 @@ type NanoTDFReaderConfig struct {
 	kasAllowlist              AllowList
 	ignoreAllowList           bool
 	fulfillableObligationFQNs []string
+	rewrapper                 nanobuilder.Rewrapper
 }
 
 func newNanoTDFReaderConfig(opt ...NanoTDFReaderOption) (*NanoTDFReaderConfig, error) {
@@ -157,6 +173,13 @@ func WithNanoKasAllowlist(kasList []string) NanoTDFReaderOption {
 func withNanoKasAllowlist(allowlist AllowList) NanoTDFReaderOption {
 	return func(c *NanoTDFReaderConfig) error {
 		c.kasAllowlist = allowlist
+		return nil
+	}
+}
+
+func WithRewrapper(rewrapper nanobuilder.Rewrapper) NanoTDFReaderOption {
+	return func(c *NanoTDFReaderConfig) error {
+		c.rewrapper = rewrapper
 		return nil
 	}
 }

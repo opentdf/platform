@@ -3,6 +3,7 @@ package sdk
 import (
 	"testing"
 
+	"github.com/opentdf/platform/sdk/nanobuilder"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -135,9 +136,10 @@ func TestSetPolicyMode(t *testing.T) {
 		conf, err := s.NewNanoTDFConfig()
 		require.NoError(t, err)
 
-		err = conf.SetPolicyMode(NanoTDFPolicyModePlainText)
+		// Refactor Fix: Use nanobuilder type
+		err = conf.SetPolicyMode(nanobuilder.PolicyModePlainText)
 		require.NoError(t, err)
-		assert.Equal(t, NanoTDFPolicyModePlainText, conf.policyMode)
+		assert.Equal(t, nanobuilder.PolicyModePlainText, conf.policyMode)
 	})
 
 	t.Run("Set to encrypted", func(t *testing.T) {
@@ -145,9 +147,10 @@ func TestSetPolicyMode(t *testing.T) {
 		conf, err := s.NewNanoTDFConfig()
 		require.NoError(t, err)
 
-		err = conf.SetPolicyMode(NanoTDFPolicyModeEncrypted)
+		// Refactor Fix: Use nanobuilder type
+		err = conf.SetPolicyMode(nanobuilder.PolicyModeEncrypted)
 		require.NoError(t, err)
-		assert.Equal(t, NanoTDFPolicyModeEncrypted, conf.policyMode)
+		assert.Equal(t, nanobuilder.PolicyModeEncrypted, conf.policyMode)
 	})
 
 	t.Run("Set to invalid mode", func(t *testing.T) {
@@ -155,8 +158,9 @@ func TestSetPolicyMode(t *testing.T) {
 		conf, err := s.NewNanoTDFConfig()
 		require.NoError(t, err)
 
-		err = conf.SetPolicyMode(PolicyType(99)) // Assuming 99 is an invalid policyType
+		// Refactor Fix: Use nanobuilder type
+		err = conf.SetPolicyMode(nanobuilder.PolicyType(99))
 		require.Error(t, err)
-		assert.NotEqual(t, PolicyType(99), conf.policyMode)
+		assert.NotEqual(t, nanobuilder.PolicyType(99), conf.policyMode)
 	})
 }

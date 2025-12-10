@@ -7,22 +7,7 @@ import (
 	"io"
 
 	"github.com/opentdf/platform/lib/ocrypto"
-)
-
-// ============================================================================================================
-// Support for nanoTDF policy operations
-//
-// ============================================================================================================
-
-type PolicyType uint8
-
-const (
-	NanoTDFPolicyModeRemote PolicyType = iota
-	NanoTDFPolicyModePlainText
-	NanoTDFPolicyModeEncrypted
-	NanoTDFPolicyModeEncryptedPolicyKeyAccess
-
-	NanoTDFPolicyModeDefault = NanoTDFPolicyModeEncrypted
+	"github.com/opentdf/platform/sdk/nanobuilder"
 )
 
 var (
@@ -31,43 +16,26 @@ var (
 )
 
 type PolicyBody struct {
-	mode PolicyType
+	mode nanobuilder.PolicyType
 	rp   remotePolicy
 	ep   embeddedPolicy
 }
 
-// getLength - size in bytes of the serialized content of this object
-// func (pb *PolicyBody) getLength() uint16 { // nolint:unused future use
-//	var result uint16
-//
-//	result = 1 /* policy mode byte */
-//
-//	if pb.mode == policyTypeRemotePolicy {
-//		result += pb.rp.getLength()
-//	} else {
-//		// If it's not remote, assume embedded policy
-//		result += pb.ep.getLength()
-//	}
-//
-//	return result
-// }
-
-// readPolicyBody - helper function to decode input data into a PolicyBody object
 func (pb *PolicyBody) readPolicyBody(reader io.Reader) error {
-	var mode PolicyType
+	var mode nanobuilder.PolicyType
 	if err := binary.Read(reader, binary.BigEndian, &mode); err != nil {
 		return err
 	}
 	switch mode {
-	case NanoTDFPolicyModeRemote:
+	case nanobuilder.PolicyModeRemote:
 		var rl ResourceLocator
 		if err := rl.readResourceLocator(reader); err != nil {
 			return errors.Join(ErrNanoTDFHeaderRead, err)
 		}
 		pb.rp = remotePolicy{url: rl}
-	case NanoTDFPolicyModeEncrypted:
-	case NanoTDFPolicyModeEncryptedPolicyKeyAccess:
-	case NanoTDFPolicyModePlainText:
+	case nanobuilder.PolicyModeEncrypted:
+	case nanobuilder.PolicyModeEncryptedPolicyKeyAccess:
+	case nanobuilder.PolicyModePlainText:
 		var ep embeddedPolicy
 		if err := ep.readEmbeddedPolicy(reader); err != nil {
 			return errors.Join(ErrNanoTDFHeaderRead, err)
@@ -84,7 +52,7 @@ func (pb *PolicyBody) writePolicyBody(writer io.Writer) error {
 	var err error
 
 	switch pb.mode {
-	case NanoTDFPolicyModeRemote: // remote policy - resource locator
+	case nanobuilder.PolicyModeRemote: // remote policy - resource locator
 		if err = binary.Write(writer, binary.BigEndian, pb.mode); err != nil {
 			return err
 		}
@@ -92,9 +60,9 @@ func (pb *PolicyBody) writePolicyBody(writer io.Writer) error {
 			return err
 		}
 		return nil
-	case NanoTDFPolicyModeEncrypted:
-	case NanoTDFPolicyModeEncryptedPolicyKeyAccess:
-	case NanoTDFPolicyModePlainText:
+	case nanobuilder.PolicyModeEncrypted:
+	case nanobuilder.PolicyModeEncryptedPolicyKeyAccess:
+	case nanobuilder.PolicyModePlainText:
 		// embedded policy - inline
 		if err = binary.Write(writer, binary.BigEndian, pb.mode); err != nil {
 			return err
@@ -108,11 +76,11 @@ func (pb *PolicyBody) writePolicyBody(writer io.Writer) error {
 	return nil
 }
 
-func validNanoTDFPolicyMode(mode PolicyType) error {
+func validNanoTDFPolicyMode(mode nanobuilder.PolicyType) error {
 	switch mode {
-	case NanoTDFPolicyModePlainText, NanoTDFPolicyModeEncrypted:
+	case nanobuilder.PolicyModePlainText, nanobuilder.PolicyModeEncrypted:
 		return nil
-	case NanoTDFPolicyModeRemote, NanoTDFPolicyModeEncryptedPolicyKeyAccess:
+	case nanobuilder.PolicyModeRemote, nanobuilder.PolicyModeEncryptedPolicyKeyAccess:
 		return ErrNanoTDFUnsupportedPolicyMode
 	default:
 		return ErrNanoTDFInvalidPolicyMode
@@ -121,7 +89,7 @@ func validNanoTDFPolicyMode(mode PolicyType) error {
 
 // createEmbeddedPolicy creates an embedded policy object, encrypting it if required by the policy mode
 func createNanoTDFEmbeddedPolicy(symmetricKey []byte, policyObjectAsStr []byte, config NanoTDFConfig) (embeddedPolicy, error) {
-	if config.policyMode == NanoTDFPolicyModeEncrypted {
+	if config.policyMode == nanobuilder.PolicyModeEncrypted {
 		aesGcm, err := ocrypto.NewAESGcm(symmetricKey)
 		if err != nil {
 			return embeddedPolicy{}, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)

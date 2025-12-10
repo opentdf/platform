@@ -7,6 +7,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/opentdf/platform/sdk/nanobuilder"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,7 +21,7 @@ const (
 // TestNanoTDFPolicyWrite - Create a new policy, write it to a buffer
 func TestNanoTDFPolicy(t *testing.T) {
 	pb := &PolicyBody{
-		mode: NanoTDFPolicyModeRemote,
+		mode: nanobuilder.PolicyModeRemote,
 		rp: remotePolicy{
 			url: ResourceLocator{
 				protocol: 1,
@@ -57,7 +58,7 @@ func TestCreateEmbeddedPolicy(t *testing.T) {
 	t.Run("plaintext policy", func(t *testing.T) {
 		config, err := new(SDK).NewNanoTDFConfig()
 		require.NoError(t, err)
-		err = config.SetPolicyMode(NanoTDFPolicyModePlainText)
+		err = config.SetPolicyMode(nanobuilder.PolicyModePlainText)
 		require.NoError(t, err)
 
 		policy, err := createNanoTDFEmbeddedPolicy(make([]byte, 32), policyData, *config)

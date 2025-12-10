@@ -25,6 +25,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
+	"github.com/opentdf/platform/sdk/nanobuilder"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -47,19 +48,19 @@ type mockTransport struct {
 }
 
 // nanotdfEqual compares two nanoTdf structures for equality.
-func nanoTDFEqual(a, b *NanoTDFHeader) bool {
+func nanoTDFEqual(a, b *nanobuilder.NanoTDFHeader) bool {
 	// Compare kasURL field
-	if a.kasURL.protocol != b.kasURL.protocol || a.kasURL.getLength() != b.kasURL.getLength() || a.kasURL.body != b.kasURL.body {
+	if a.GetKasURL() != b.GetKasURL() {
 		return false
 	}
 
 	// Compare binding field
-	if a.bindCfg.useEcdsaBinding != b.bindCfg.useEcdsaBinding || a.bindCfg.eccMode != b.bindCfg.eccMode {
+	if a.BindCfg.UseEcdsaBinding != b.BindCfg.UseEcdsaBinding || a.BindCfg.EccMode != b.BindCfg.EccMode {
 		return false
 	}
 
 	// Compare sigCfg field
-	if a.sigCfg.hasSignature != b.sigCfg.hasSignature || a.sigCfg.signatureMode != b.sigCfg.signatureMode || a.sigCfg.cipher != b.sigCfg.cipher {
+	if a.SigCfg.HasSignature != b.SigCfg.HasSignature || a.SigCfg.SignatureMode != b.SigCfg.SignatureMode || a.SigCfg.Cipher != b.SigCfg.Cipher {
 		return false
 	}
 
@@ -119,19 +120,19 @@ func init() {
 
 func NotTestReadNanoTDFHeader(t *testing.T) {
 	// Prepare a sample nanoTdf structure
-	goodHeader := NanoTDFHeader{
-		kasURL: ResourceLocator{
+	goodHeader := nanobuilder.NanoTDFHeader{
+		KasURL: ResourceLocator{
 			protocol: urlProtocolHTTPS,
 			body:     "kas.virtru.com",
 		},
-		bindCfg: bindingConfig{
-			useEcdsaBinding: true,
-			eccMode:         ocrypto.ECCModeSecp256r1,
+		BindCfg: nanobuilder.BindingConfig{
+			UseEcdsaBinding: true,
+			EccMode:         ocrypto.ECCModeSecp256r1,
 		},
-		sigCfg: signatureConfig{
-			hasSignature:  true,
-			signatureMode: ocrypto.ECCModeSecp256r1,
-			cipher:        cipherModeAes256gcm64Bit,
+		SigCfg: nanobuilder.SignatureConfig{
+			HasSignature:  true,
+			SignatureMode: ocrypto.ECCModeSecp256r1,
+			Cipher:        nanobuilder.CipherModeAes256gcm64Bit,
 		},
 		// PolicyBinding: policyInfo{
 		//	body: PolicyBody{
@@ -175,7 +176,7 @@ func NotTestReadNanoTDFHeader(t *testing.T) {
 	}
 
 	// Compare the result with the original nanoTdf structure
-	if !nanoTDFEqual(&resultHeader, &goodHeader) {
+	if !nanoTDFEqual(resultHeader, &goodHeader) {
 		t.Error("Result does not match the expected nanoTdf structure.")
 	}
 }
@@ -378,7 +379,8 @@ func TestDataSet(t *testing.T) {
 
 	getHeaderAndSymKey := func(cfg *NanoTDFConfig) ([]byte, []byte) {
 		out := &bytes.Buffer{}
-		symKey, _, _, err := writeNanoTDFHeader(out, *cfg)
+		headerWriter := StandardHeaderWriter{}
+		symKey, _, _, err := headerWriter.Write(out, *cfg)
 		if err != nil {
 			t.Fatal()
 		}
@@ -716,44 +718,53 @@ func (s *NanoSuite) Test_NanoTDFReader_LoadNanoTDF() {
 	nanoReader, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoIgnoreAllowlist(true))
 	s.Require().NoError(err)
 	s.Require().NotNil(nanoReader)
-	s.Require().Equal(reader, nanoReader.reader)
-	s.Require().NotNil(nanoReader.config)
-	s.Require().True(nanoReader.config.ignoreAllowList)
-	s.Require().Len(nanoReader.config.fulfillableObligationFQNs, 1)
-	s.Require().Equal("https://example.com/obl/value/obl1", nanoReader.config.fulfillableObligationFQNs[0])
+	s.Require().Equal(reader, nanoReader.internal.Reader)
+	s.Require().NotNil(nanoReader.internal)
+	s.Require().True(nanoReader.internal.Config.ignoreAllowList)
+	s.Require().Len(nanoReader.internal.Config.fulfillableObligationFQNs, 1)
+	s.Require().Equal("https://example.com/obl/value/obl1", nanoReader.internal.Config.fulfillableObligationFQNs[0])
 
 	// Test with KAS allowlist
 	allowedURLs := []string{"https://kas.example.com"}
-	reader = bytes.NewReader(nanoTDFData) // Reset reader
+	reader = bytes.NewReader(nanoTDFData)
 	nanoReader2, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoKasAllowlist(allowedURLs))
 	s.Require().NoError(err)
-	s.Require().NotNil(nanoReader2.config.kasAllowlist)
-	s.Require().True(nanoReader2.config.kasAllowlist.IsAllowed("https://kas.example.com"))
+	s.Require().NotNil(nanoReader2.internal.Config.kasAllowlist)
+	s.Require().True(nanoReader2.internal.Config.kasAllowlist.IsAllowed("https://kas.example.com"))
 
 	// Test with fulfillable obligations
 	obligations := []string{"obligation1", "obligation2"}
-	reader = bytes.NewReader(nanoTDFData) // Reset reader
+	reader = bytes.NewReader(nanoTDFData)
 	nanoReader3, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoTDFFulfillableObligationFQNs(obligations), WithNanoIgnoreAllowlist(true))
 	s.Require().NoError(err)
-	s.Require().Equal(obligations, nanoReader3.config.fulfillableObligationFQNs)
+	s.Require().Equal(obligations, nanoReader3.internal.Config.fulfillableObligationFQNs)
 
 	// Test with invalid reader (nil)
 	_, err = sdk.LoadNanoTDF(s.T().Context(), nil)
 	s.Require().Error(err)
 }
 
+type TestRewrapper struct {
+	key         []byte
+	obligations []string
+}
+
+func (t TestRewrapper) Rewrap(ctx context.Context, header []byte, kasURL string) (key []byte, obligations []string, err error) {
+	return t.key, t.obligations, nil
+}
+
 func (s *NanoSuite) Test_NanoTDFReader_Init_WithPayloadKeySet() {
+	// Test that calling Init twice doesn't cause issues when payloadKey is set
 	// Create a real NanoTDF for testing
 	sdk, err := s.createTestSDK()
 	s.Require().NoError(err)
 	nanoTDFData, err := s.createRealNanoTDF(sdk)
 	s.Require().NoError(err)
 	reader := bytes.NewReader(nanoTDFData)
-	nanoReader, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoIgnoreAllowlist(true))
+
+	nanoReader, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoIgnoreAllowlist(true), WithRewrapper(TestRewrapper{key: []byte("mock-key")}))
 	s.Require().NoError(err)
 
-	// Test that calling Init twice doesn't cause issues when payloadKey is set
-	nanoReader.payloadKey = []byte("mock-key")
 	err = nanoReader.Init(s.T().Context())
 	s.Require().NoError(err) // Should return early since payloadKey is set
 }
@@ -810,7 +821,7 @@ func (s *NanoSuite) Test_NanoTDFReader_DecryptNanoTDF() {
 	nanoReader, err := sdk.LoadNanoTDF(s.T().Context(), reader, WithNanoIgnoreAllowlist(true))
 	s.Require().NoError(err)
 
-	_, err = nanoReader.DecryptNanoTDF(s.T().Context(), writer)
+	_, err = nanoReader.Decrypt(s.T().Context(), writer)
 	s.Require().NoError(err)
 	s.Require().Equal([]byte("Virtru!!!!"), writer.Bytes())
 }
@@ -851,21 +862,25 @@ func (s *NanoSuite) Test_NanoTDFReader_RealWorkflow() {
 	s.Require().NoError(err)
 	s.Require().NotNil(nanoReader)
 
-	// Step 3: Validate the header (it should be loaded automatically)
-	s.Require().NotNil(nanoReader.headerBuf)
-	s.Require().NotEmpty(nanoReader.headerBuf)
+	// Validate Header
+	// We need to type assert the interface to access concrete fields for testing
+	header, ok := nanoReader.internal.Header.(*nanobuilder.NanoTDFHeader)
+	s.Require().True(ok, "Header should be of type *nanobuilder.NanoTDFHeader")
+
+	s.Require().NotNil(nanoReader.internal.HeaderBuf)
+	s.Require().NotEmpty(nanoReader.internal.HeaderBuf)
 
 	// Check KAS URL
-	kasURL, err := nanoReader.header.kasURL.GetURL()
+	kasURL, err := header.GetKasURL()
 	s.Require().NoError(err)
 	s.Require().Equal("https://kas.example.com", kasURL)
 
-	// Check policy mode and other header fields
-	s.Require().Equal(PolicyType(2), nanoReader.header.PolicyMode) // Embedded encrypted policy
-	s.Require().NotNil(nanoReader.header.PolicyBody)
-	s.Require().NotEmpty(nanoReader.header.PolicyBody)
-	s.Require().NotNil(nanoReader.header.EphemeralKey)
-	s.Require().Len(nanoReader.header.EphemeralKey, 33) // secp256r1 compressed key
+	// Check policy mode (Updated to use nanobuilder type)
+	s.Require().Equal(nanobuilder.PolicyModeEncrypted, header.PolicyMode)
+	s.Require().NotNil(header.PolicyBody)
+	s.Require().NotEmpty(header.PolicyBody)
+	s.Require().NotNil(header.EphemeralKey)
+	s.Require().Len(header.EphemeralKey, 33)
 
 	_, err = nanoReader.Obligations(s.T().Context())
 	s.Require().NoError(err)
@@ -906,14 +921,14 @@ func (s *NanoSuite) Test_NanoTDF_Obligations() {
 			s.Require().NoError(err)
 			// Check that it has fulfillable obligations set
 			if len(tc.fulfillableObligations) > 0 {
-				s.Require().NotNil(nanoReader.config.fulfillableObligationFQNs)
-				s.Require().Equal(tc.fulfillableObligations, nanoReader.config.fulfillableObligationFQNs)
+				s.Require().NotNil(nanoReader.internal.Config.fulfillableObligationFQNs)
+				s.Require().Equal(tc.fulfillableObligations, nanoReader.internal.Config.fulfillableObligationFQNs)
 			} else {
-				s.Require().Empty(nanoReader.config.fulfillableObligationFQNs)
+				s.Require().Empty(nanoReader.internal.Config.fulfillableObligationFQNs)
 			}
 
 			if tc.populateObligations != nil {
-				nanoReader.requiredObligations = &RequiredObligations{FQNs: tc.populateObligations}
+				nanoReader.internal.requiredObligations = &RequiredObligations{FQNs: tc.populateObligations}
 			}
 
 			// Initialize the reader (this will parse the header)
@@ -936,19 +951,20 @@ func (s *NanoSuite) Test_NanoTDF_Obligations() {
 }
 
 func (s *NanoSuite) Test_PolicyBinding_GMAC() {
+	headerInfo := nanobuilder.NanoTDFHeader{}
 	// Create test policy data
-	policyData := []byte(`{"body":{"dataAttributes":["https://example.com/attr/classification/value/secret"]}}`)
+	headerInfo.PolicyBody = []byte(`{"body":{"dataAttributes":["https://example.com/attr/classification/value/secret"]}}`)
 
 	// Create GMAC binding - need to simulate having GMAC at end of the digest
-	gmacBytes := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}
+	headerInfo.GmacPolicyBinding = []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}
 	// Append GMAC to the digest to simulate real scenario
-	policyData = append(policyData, gmacBytes...)
+	headerInfo.PolicyBody = append(headerInfo.PolicyBody, headerInfo.GmacPolicyBinding...)
 
-	digest := ocrypto.CalculateSHA256(policyData)
+	digest := ocrypto.CalculateSHA256(headerInfo.PolicyBody)
 
 	// For testing, we will use the last bytes as the GMAC binding
-	gmacBytes = digest[len(digest)-len(gmacBytes):]
-
+	headerInfo.GmacPolicyBinding = digest[len(digest)-len(headerInfo.GmacPolicyBinding):]
+	headerInfo.
 	binding := &gmacPolicyBinding{
 		binding: gmacBytes,
 		digest:  digest,
@@ -1135,7 +1151,7 @@ func (s *NanoSuite) createRealNanoTDF(sdk *SDK) ([]byte, error) {
 		return nil, err
 	}
 
-	err = config.SetPolicyMode(NanoTDFPolicyModeDefault)
+	err = config.SetPolicyMode(nanobuilder.PolicyModeDefault)
 	if err != nil {
 		return nil, err
 	}

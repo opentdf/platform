@@ -355,7 +355,7 @@ func TestReadReplicasWithTestcontainers(t *testing.T) {
 
 		// Read from replicas using client.Query (should use round-robin)
 		for i := 0; i < 6; i++ {
-			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM replica_test", []interface{}{})
+			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM replica_test")
 			require.NoError(t, err, "Read query should succeed")
 
 			var count int
@@ -372,7 +372,7 @@ func TestReadReplicasWithTestcontainers(t *testing.T) {
 		// Perform many reads to verify round-robin works
 		const numQueries = 100
 		for i := 0; i < numQueries; i++ {
-			rows, err := client.Query(ctx, "SELECT 1", []interface{}{})
+			rows, err := client.Query(ctx, "SELECT 1")
 			require.NoError(t, err)
 			rows.Close()
 		}
@@ -393,7 +393,7 @@ func TestReadReplicasWithTestcontainers(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				for j := 0; j < queriesPerGoroutine; j++ {
-					rows, err := client.Query(ctx, "SELECT COUNT(*) FROM replica_test", []interface{}{})
+					rows, err := client.Query(ctx, "SELECT COUNT(*) FROM replica_test")
 					if err != nil {
 						errChan <- err
 						return
@@ -428,7 +428,7 @@ func TestReadReplicasWithTestcontainers(t *testing.T) {
 
 		// Verify write succeeded
 		time.Sleep(100 * time.Millisecond)
-		rows, err := client.Query(ctx, "SELECT COUNT(*) FROM replica_test WHERE data = $1", []interface{}{"write test"})
+		rows, err := client.Query(ctx, "SELECT COUNT(*) FROM replica_test WHERE data = $1", "write test")
 		require.NoError(t, err)
 
 		var count int
@@ -504,7 +504,7 @@ func BenchmarkReadReplicaPerformance(b *testing.B) {
 
 	b.Run("read_queries", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM bench_test", []interface{}{})
+			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM bench_test")
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -515,7 +515,7 @@ func BenchmarkReadReplicaPerformance(b *testing.B) {
 	b.Run("concurrent_reads", func(b *testing.B) {
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
-				rows, err := client.Query(ctx, "SELECT COUNT(*) FROM bench_test", []interface{}{})
+				rows, err := client.Query(ctx, "SELECT COUNT(*) FROM bench_test")
 				if err != nil {
 					b.Fatal(err)
 				}

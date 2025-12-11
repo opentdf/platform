@@ -78,11 +78,11 @@ func TestMultiHostPrimaryFailover(t *testing.T) {
 		require.NoError(t, err, "Should create table")
 
 		// Write data
-		err = client.Exec(ctx, "INSERT INTO failover_test (data) VALUES ($1)", []interface{}{"test1"})
+		_, err = client.Exec(ctx, "INSERT INTO failover_test (data) VALUES ($1)", "test1")
 		require.NoError(t, err, "Write should succeed")
 
 		// Read data
-		rows, err := client.Query(ctx, "SELECT COUNT(*) FROM failover_test", []interface{}{})
+		rows, err := client.Query(ctx, "SELECT COUNT(*) FROM failover_test")
 		require.NoError(t, err, "Read should succeed")
 		rows.Close()
 	})
@@ -136,7 +136,7 @@ func TestMultiHostPrimaryFailover(t *testing.T) {
 		`)
 		require.NoError(t, err, "Should write to failover primary")
 
-		err = client.Exec(ctx, "INSERT INTO failover_test2 (data) VALUES ($1)", []interface{}{"failover-test"})
+		_, err = client.Exec(ctx, "INSERT INTO failover_test2 (data) VALUES ($1)", "failover-test")
 		require.NoError(t, err, "Write should succeed on failover primary")
 	})
 }
@@ -207,7 +207,7 @@ func TestMultiHostPrimaryWithReadReplicas(t *testing.T) {
 	require.NoError(t, err)
 
 	// Write to primary
-	err = client.Exec(ctx, "INSERT INTO combined_test (data) VALUES ($1), ($2)", []interface{}{"test1", "test2"})
+	_, err = client.Exec(ctx, "INSERT INTO combined_test (data) VALUES ($1), ($2)", "test1", "test2")
 	require.NoError(t, err, "Writes should go to primary")
 
 	// Allow replication
@@ -216,7 +216,7 @@ func TestMultiHostPrimaryWithReadReplicas(t *testing.T) {
 	t.Run("reads_use_replica_with_multihost_primary", func(t *testing.T) {
 		// Reads should use replica (not affected by multi-host primary config)
 		for i := 0; i < 5; i++ {
-			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM combined_test", []interface{}{})
+			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM combined_test")
 			require.NoError(t, err, "Reads should succeed via replica")
 
 			var count int
@@ -230,14 +230,14 @@ func TestMultiHostPrimaryWithReadReplicas(t *testing.T) {
 
 	t.Run("writes_use_primary_with_replicas", func(t *testing.T) {
 		// Writes should still go to primary
-		err := client.Exec(ctx, "INSERT INTO combined_test (data) VALUES ($1)", []interface{}{"test3"})
+		_, err := client.Exec(ctx, "INSERT INTO combined_test (data) VALUES ($1)", "test3")
 		require.NoError(t, err, "Writes should go to primary")
 
 		// Allow replication
 		time.Sleep(300 * time.Millisecond)
 
 		// Verify via read
-		rows, err := client.Query(ctx, "SELECT COUNT(*) FROM combined_test", []interface{}{})
+		rows, err := client.Query(ctx, "SELECT COUNT(*) FROM combined_test")
 		require.NoError(t, err)
 
 		var count int

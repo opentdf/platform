@@ -96,7 +96,7 @@ func TestCircuitBreakerWithFailingReplica(t *testing.T) {
 	t.Run("reads_work_with_healthy_replicas", func(t *testing.T) {
 		// Query multiple times to verify replicas work
 		for i := 0; i < 10; i++ {
-			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM circuit_test", []interface{}{})
+			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM circuit_test")
 			require.NoError(t, err, "Query should succeed with healthy replicas")
 			rows.Close()
 		}
@@ -111,7 +111,7 @@ func TestCircuitBreakerWithFailingReplica(t *testing.T) {
 		// Allow circuit breaker to detect failure (try multiple queries)
 		failureCount := 0
 		for i := 0; i < 10; i++ {
-			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM circuit_test", []interface{}{})
+			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM circuit_test")
 			if err != nil {
 				failureCount++
 				t.Logf("Query %d failed (expected during circuit opening): %v", i, err)
@@ -129,7 +129,7 @@ func TestCircuitBreakerWithFailingReplica(t *testing.T) {
 		// With replica1 down (circuit open), replica2 should handle queries
 		successCount := 0
 		for i := 0; i < 10; i++ {
-			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM circuit_test", []interface{}{})
+			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM circuit_test")
 			if err == nil {
 				successCount++
 				rows.Close()
@@ -153,7 +153,7 @@ func TestCircuitBreakerWithFailingReplica(t *testing.T) {
 		// Queries should still succeed via primary fallback
 		successCount := 0
 		for i := 0; i < 10; i++ {
-			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM circuit_test", []interface{}{})
+			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM circuit_test")
 			if err == nil {
 				successCount++
 				var count int
@@ -240,8 +240,7 @@ func TestContextBasedRouting(t *testing.T) {
 		// Immediately read with forced primary (avoids replication lag)
 		forcedCtx := db.WithForcePrimary(ctx)
 
-		row, err := client.QueryRow(forcedCtx, "SELECT data FROM context_test WHERE id = $1", []interface{}{insertedID})
-		require.NoError(t, err)
+		row := client.QueryRow(forcedCtx, "SELECT data FROM context_test WHERE id = $1", insertedID)
 
 		var retrievedData string
 		err = row.Scan(&retrievedData)
@@ -260,7 +259,7 @@ func TestContextBasedRouting(t *testing.T) {
 		time.Sleep(500 * time.Millisecond) // Allow replication
 
 		// Normal query (may hit replica)
-		rows, err := client.Query(ctx, "SELECT COUNT(*) FROM context_test", []interface{}{})
+		rows, err := client.Query(ctx, "SELECT COUNT(*) FROM context_test")
 		require.NoError(t, err)
 
 		var count int
@@ -324,12 +323,12 @@ func TestSingleDatabaseWithoutReplicas(t *testing.T) {
 	require.NoError(t, err, "Should create table on primary")
 
 	t.Run("writes_work_without_replicas", func(t *testing.T) {
-		err := client.Exec(ctx, "INSERT INTO single_db_test (data) VALUES ($1)", []interface{}{"test1"})
+		_, err := client.Exec(ctx, "INSERT INTO single_db_test (data) VALUES ($1)", "test1")
 		require.NoError(t, err, "Writes should work")
 	})
 
 	t.Run("reads_work_without_replicas", func(t *testing.T) {
-		rows, err := client.Query(ctx, "SELECT COUNT(*) FROM single_db_test", []interface{}{})
+		rows, err := client.Query(ctx, "SELECT COUNT(*) FROM single_db_test")
 		require.NoError(t, err, "Reads should work (go to primary)")
 
 		var count int

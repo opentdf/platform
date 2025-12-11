@@ -318,6 +318,16 @@ func (c *Client) Close() {
 	}
 }
 
+// errRow implements pgx.Row and returns an error when Scan is called
+// Used to wrap circuit breaker errors in QueryRow
+type errRow struct {
+	err error
+}
+
+func (e errRow) Scan(dest ...interface{}) error {
+	return e.err
+}
+
 // getReadConnection returns a connection pool and replica index for read operations.
 // It implements intelligent routing with circuit breaker protection and context awareness:
 // - Checks context for forced primary routing (for read-after-write consistency)
@@ -461,23 +471,30 @@ func (c Config) buildReplicaConfig(replica ReplicaConfig) (*pgxpool.Config, erro
 
 // Common function for all queryRow calls
 // Routes read queries to read replicas if configured, with circuit breaker protection and context awareness
-func (c *Client) QueryRow(ctx context.Context, sql string, args []interface{}) (pgx.Row, error) {
+// Implements DBTX interface (returns pgx.Row, errors are embedded in the row)
+func (c *Client) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
 	c.Logger.TraceContext(ctx, "sql", slog.String("sql", sql), slog.Any("args", args))
 
 	_, replicaIdx := c.getReadConnection(ctx)
 
 	// If using a replica with circuit breaker, execute through circuit breaker
 	if replicaIdx >= 0 && c.replicaCBs != nil {
-		return c.replicaCBs.executeQueryRow(ctx, replicaIdx, sql, args)
+		row, err := c.replicaCBs.executeQueryRow(ctx, replicaIdx, sql, args)
+		if err != nil {
+			// Return an error row that will fail when scanned
+			return errRow{err: err}
+		}
+		return row
 	}
 
 	// Otherwise use primary
-	return c.Pgx.QueryRow(ctx, sql, args...), nil
+	return c.Pgx.QueryRow(ctx, sql, args...)
 }
 
 // Common function for all query calls
 // Routes read queries to read replicas if configured, with circuit breaker protection and context awareness
-func (c *Client) Query(ctx context.Context, sql string, args []interface{}) (pgx.Rows, error) {
+// Implements DBTX interface
+func (c *Client) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
 	c.Logger.TraceContext(ctx, "sql", slog.String("sql", sql), slog.Any("args", args))
 
 	_, replicaIdx := c.getReadConnection(ctx)
@@ -506,18 +523,21 @@ func (c *Client) Query(ctx context.Context, sql string, args []interface{}) (pgx
 }
 
 // Common function for all exec calls
-func (c *Client) Exec(ctx context.Context, sql string, args []interface{}) error {
+// Implements DBTX interface (returns CommandTag)
+func (c *Client) Exec(ctx context.Context, sql string, args ...interface{}) (pgconn.CommandTag, error) {
 	c.Logger.TraceContext(ctx, "sql", slog.String("sql", sql), slog.Any("args", args))
 	tag, err := c.Pgx.Exec(ctx, sql, args...)
 	if err != nil {
-		return WrapIfKnownInvalidQueryErr(err)
+		return tag, WrapIfKnownInvalidQueryErr(err)
 	}
+	return tag, nil
+}
 
-	if tag.RowsAffected() == 0 {
-		return WrapIfKnownInvalidQueryErr(pgx.ErrNoRows)
-	}
-
-	return nil
+// CopyFrom performs bulk copy operations (always goes to primary database)
+// Implements DBTX interface
+func (c *Client) CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error) {
+	c.Logger.TraceContext(ctx, "copy_from", slog.Any("table", tableName), slog.Any("columns", columnNames))
+	return c.Pgx.CopyFrom(ctx, tableName, columnNames, rowSrc)
 }
 
 //

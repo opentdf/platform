@@ -239,9 +239,9 @@ components:
     entityresolution.v2.DirectEntitlement:
       type: object
       properties:
-        fqn:
+        attributeValueFqn:
           type: string
-          title: fqn
+          title: attribute_value_fqn
         actions:
           type: array
           items:

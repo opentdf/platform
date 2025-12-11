@@ -3614,12 +3614,12 @@ func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements() {
 		entityRep := &entityresolutionV2.EntityRepresentation{
 			DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
 				{
-					Fqn:     attr1ValueFQN,
-					Actions: []string{actions.ActionNameCreate, actions.ActionNameDelete},
+					AttributeValueFqn: attr1ValueFQN,
+					Actions:           []string{actions.ActionNameCreate, actions.ActionNameDelete},
 				},
 				{
-					Fqn:     attr2ValueFQN,
-					Actions: []string{actions.ActionNameCreate, actions.ActionNameRead},
+					AttributeValueFqn: attr2ValueFQN,
+					Actions:           []string{actions.ActionNameCreate, actions.ActionNameRead},
 				},
 			},
 		}
@@ -3647,8 +3647,8 @@ func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements() {
 		entityRep := &entityresolutionV2.EntityRepresentation{
 			DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
 				{
-					Fqn:     attr1ValueFQN,
-					Actions: []string{actions.ActionNameCreate, actions.ActionNameUpdate},
+					AttributeValueFqn: attr1ValueFQN,
+					Actions:           []string{actions.ActionNameCreate, actions.ActionNameUpdate},
 				},
 			},
 		}
@@ -3675,8 +3675,8 @@ func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements() {
 		entityRep := &entityresolutionV2.EntityRepresentation{
 			DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
 				{
-					Fqn:     attr1ValueFQN,
-					Actions: []string{actions.ActionNameCreate, actions.ActionNameRead},
+					AttributeValueFqn: attr1ValueFQN,
+					Actions:           []string{actions.ActionNameCreate, actions.ActionNameRead},
 				},
 			},
 		}

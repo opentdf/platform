@@ -212,7 +212,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 		)
 
 		for _, directEntitlement := range entityRepresentation.GetDirectEntitlements() {
-			fqn := directEntitlement.GetFqn()
+			fqn := directEntitlement.GetAttributeValueFqn()
 			actionNames := directEntitlement.GetActions()
 
 			actions := make([]*policy.Action, len(actionNames))

@@ -10,7 +10,7 @@ import "authorization/v2/authorization.proto";
 
 // Entity Entitlements that do not require subject mappings (experimental)
 message DirectEntitlement {
-  string fqn = 1;
+  string attribute_value_fqn = 1;
   repeated string actions = 2;
 }
 

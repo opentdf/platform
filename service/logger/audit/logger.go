@@ -14,6 +14,12 @@ const (
 	LevelAuditStr = "AUDIT"
 )
 
+// pendingEvent represents a single audit event waiting to be logged
+type pendingEvent struct {
+	verb  string
+	event *EventObject
+}
+
 var logLevelNames = map[slog.Leveler]string{
 	LevelAudit: LevelAuditStr,
 }
@@ -54,6 +60,37 @@ func (a *Logger) With(key string, value string) *Logger {
 	}
 }
 
+// addEvent appends a pending audit event to the transaction
+func (tx *auditTransaction) addEvent(verb string, event *EventObject) {
+	// TK: Use a channel if concurrency becomes an issue
+	tx.events = append(tx.events, pendingEvent{
+		verb:  verb,
+		event: event,
+	})
+}
+
+// logClose completes an audit transaction and emits all recorded events.
+// If success is false or err is not nil, events are logged as "cancelled" with the error attached.
+// Otherwise, events are logged with their originally recorded success/failure status.
+func (tx *auditTransaction) logClose(ctx context.Context, logger *slog.Logger, success bool, err error) {
+	for _, event := range tx.events {
+		auditEvent := event.event
+
+		if !success {
+			auditEvent.Action.Result = ActionResultCancel
+		}
+
+		if err != nil {
+			if auditEvent.EventMetaData == nil {
+				auditEvent.EventMetaData = make(auditEventMetadata)
+			}
+			auditEvent.EventMetaData["cancellation_error"] = err.Error()
+		}
+
+		logger.Log(ctx, LevelAudit, event.verb, slog.Any("audit", *auditEvent))
+	}
+}
+
 func (a *Logger) RewrapSuccess(ctx context.Context, eventParams RewrapAuditEventParams) {
 	eventParams.IsSuccess = true
 	a.rewrapBase(ctx, eventParams)
@@ -77,8 +114,7 @@ func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventPa
 		a.logger.ErrorContext(ctx, "error creating get decision audit event", slog.Any("error", err))
 		return
 	}
-
-	a.logger.Log(ctx, LevelAudit, "decision", slog.Any("audit", *auditEvent))
+	LogAuditEvent(ctx, "decision", auditEvent)
 }
 
 func (a *Logger) GetDecisionV2(ctx context.Context, eventParams GetDecisionV2EventParams) {
@@ -87,7 +123,18 @@ func (a *Logger) GetDecisionV2(ctx context.Context, eventParams GetDecisionV2Eve
 		a.logger.ErrorContext(ctx, "error creating v2 get decision audit event", slog.Any("error", err))
 		return
 	}
-	a.logger.Log(ctx, LevelAudit, "decision", slog.Any("audit", *event))
+	LogAuditEvent(ctx, "decision", event)
+}
+
+func LogAuditEvent(ctx context.Context, verb string, event *EventObject) {
+	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
+	if !ok {
+		panic("audit transaction missing from context")
+	}
+	if event == nil {
+		panic("nil audit event provided")
+	}
+	tx.addEvent(verb, event)
 }
 
 func (a *Logger) rewrapBase(ctx context.Context, eventParams RewrapAuditEventParams) {
@@ -97,7 +144,7 @@ func (a *Logger) rewrapBase(ctx context.Context, eventParams RewrapAuditEventPar
 		return
 	}
 
-	a.logger.Log(ctx, LevelAudit, "rewrap", slog.Any("audit", *auditEvent))
+	LogAuditEvent(ctx, "rewrap", auditEvent)
 }
 
 func (a *Logger) policyCrudBase(ctx context.Context, isSuccess bool, eventParams PolicyEventParams) {
@@ -106,6 +153,5 @@ func (a *Logger) policyCrudBase(ctx context.Context, isSuccess bool, eventParams
 		a.logger.ErrorContext(ctx, "error creating policy attribute audit event", slog.Any("error", err))
 		return
 	}
-
-	a.logger.Log(ctx, LevelAudit, "policy crud", slog.Any("audit", *auditEvent))
+	LogAuditEvent(ctx, "policy crud", auditEvent)
 }

@@ -2,6 +2,7 @@ package audit
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -96,12 +97,36 @@ func extractLogEntry(t *testing.T, logBuffer *bytes.Buffer) (logEntryStructure, 
 	return entry, entryTime
 }
 
-func TestAuditRewrapSuccess(t *testing.T) {
+func doWithLogger(t *testing.T, testFunc func(ctx context.Context, l *Logger)) (ls logEntryStructure, lt time.Time) {
 	l, buf := createTestLogger()
+	ctx := createTestContext(t)
+	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
+	if !ok {
+		t.Fatal("audit transaction missing from context")
+	}
 
-	l.RewrapSuccess(createTestContext(), rewrapParams)
+	defer func() {
+		if r := recover(); r != nil {
+			if err, ok := r.(error); ok {
+				tx.logClose(ctx, l.logger, false, err)
+			} else {
+				tx.logClose(ctx, l.logger, false, nil)
+			}
+		} else {
+			tx.logClose(ctx, l.logger, true, nil)
+		}
+		ls, lt = extractLogEntry(t, buf)
+	}()
 
-	logEntry, logEntryTime := extractLogEntry(t, buf)
+	testFunc(ctx, l)
+
+	return ls, lt
+}
+
+func TestAuditRewrapSuccess(t *testing.T) {
+	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		l.RewrapSuccess(ctx, rewrapParams)
+	})
 
 	expectedAuditLog := fmt.Sprintf(
 		`{
@@ -163,11 +188,9 @@ func TestAuditRewrapSuccess(t *testing.T) {
 }
 
 func TestAuditRewrapFailure(t *testing.T) {
-	l, buf := createTestLogger()
-
-	l.RewrapFailure(createTestContext(), rewrapParams)
-
-	logEntry, logEntryTime := extractLogEntry(t, buf)
+	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		l.RewrapFailure(ctx, rewrapParams)
+	})
 
 	expectedAuditLog := fmt.Sprintf(
 		`{
@@ -229,11 +252,9 @@ func TestAuditRewrapFailure(t *testing.T) {
 }
 
 func TestPolicyCRUDSuccess(t *testing.T) {
-	l, buf := createTestLogger()
-
-	l.PolicyCRUDSuccess(createTestContext(), policyCRUDParams)
-
-	logEntry, logEntryTime := extractLogEntry(t, buf)
+	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
+	})
 
 	expectedAuditLog := fmt.Sprintf(
 		`{
@@ -286,11 +307,9 @@ func TestPolicyCRUDSuccess(t *testing.T) {
 }
 
 func TestPolicyCrudFailure(t *testing.T) {
-	l, buf := createTestLogger()
-
-	l.PolicyCRUDFailure(createTestContext(), policyCRUDParams)
-
-	logEntry, logEntryTime := extractLogEntry(t, buf)
+	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		l.PolicyCRUDFailure(ctx, policyCRUDParams)
+	})
 
 	expectedAuditLog := fmt.Sprintf(
 		`{
@@ -342,9 +361,190 @@ func TestPolicyCrudFailure(t *testing.T) {
 	}
 }
 
-func TestGetDecision(t *testing.T) {
-	l, buf := createTestLogger()
+func TestDeferredRewrapSuccess(t *testing.T) {
+	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		l.RewrapSuccess(ctx, rewrapParams)
+	})
 
+	expectedAuditLog := fmt.Sprintf(
+		`{
+			"object": {
+				"type": "key_object",
+				"id": "%s",
+				"name": "",
+				"attributes": {
+            		"assertions": [],
+            		"attrs": %s,
+            		"permissions": []
+        		}
+			},
+			"action": {
+			  "type": "rewrap",
+				"result": "success"
+			},
+			"actor": {
+			  "id": "%s",
+				"attributes": []
+			},
+			"eventMetaData": {
+			  "algorithm": "%s",
+				"keyID": "%s",
+				"policyBinding": "%s",
+				"tdfFormat": "%s"
+			},
+			"clientInfo": {
+			  "userAgent": "%s",
+				"platform": "kas",
+				"requestIP": "%s"
+			},
+			"original": null,
+			"updated": null,
+			"requestID": "%s",
+			"timestamp": "%s"
+	  }
+		`,
+		rewrapParams.Policy.UUID.String(),
+		rewrapAttrsJSON,
+		TestActorID,
+		rewrapParams.Algorithm,
+		rewrapParams.KeyID,
+		rewrapParams.PolicyBinding,
+		rewrapParams.TDFFormat,
+		TestUserAgent,
+		TestRequestIP,
+		TestRequestID,
+		logEntryTime.Format(time.RFC3339),
+	)
+
+	expectedAuditLog = removeWhitespace(expectedAuditLog)
+	loggedMessage := removeWhitespace(string(logEntry.Audit))
+
+	if expectedAuditLog != loggedMessage {
+		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
+	}
+}
+
+func TestDeferredRewrapCancelled(t *testing.T) {
+	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		l.RewrapSuccess(ctx, rewrapParams)
+		panic(errors.New("operation failed"))
+	})
+
+	expectedAuditLog := fmt.Sprintf(
+		`{
+			"object": {
+				"type": "key_object",
+				"id": "%s",
+				"name": "",
+				"attributes": {
+            		"assertions": [],
+            		"attrs": %s,
+            		"permissions": []
+        		}
+			},
+			"action": {
+			  "type": "rewrap",
+				"result": "cancel"
+			},
+			"actor": {
+			  "id": "%s",
+				"attributes": []
+			},
+			"eventMetaData": {
+			  "algorithm": "%s",
+				"cancellation_error": "%s",
+				"keyID": "%s",
+				"policyBinding": "%s",
+				"tdfFormat": "%s"
+			},
+			"clientInfo": {
+			  "userAgent": "%s",
+				"platform": "kas",
+				"requestIP": "%s"
+			},
+			"original": null,
+			"updated": null,
+			"requestID": "%s",
+			"timestamp": "%s"
+	  }
+		`,
+		rewrapParams.Policy.UUID.String(),
+		rewrapAttrsJSON,
+		TestActorID,
+		rewrapParams.Algorithm,
+		"operation failed",
+		rewrapParams.KeyID,
+		rewrapParams.PolicyBinding,
+		rewrapParams.TDFFormat,
+		TestUserAgent,
+		TestRequestIP,
+		TestRequestID,
+		logEntryTime.Format(time.RFC3339),
+	)
+
+	expectedAuditLog = removeWhitespace(expectedAuditLog)
+	loggedMessage := removeWhitespace(string(logEntry.Audit))
+
+	if expectedAuditLog != loggedMessage {
+		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
+	}
+}
+
+func TestDeferredPolicyCRUDSuccess(t *testing.T) {
+	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
+	})
+
+	expectedAuditLog := fmt.Sprintf(
+		`{
+		  "object": {
+			  "type": "%s",
+				"id": "%s",
+				"name": "",
+				"attributes": {
+            		"assertions": null,
+            		"attrs": null,
+            		"permissions": null
+        		}
+			},
+			"action": {
+			  "type": "%s",
+				"result": "success"
+			},
+			"actor": {
+				"id": "%s",
+				"attributes": []
+			},
+			"eventMetaData": null,
+			"clientInfo": {
+				"userAgent": "%s",
+				"platform": "policy",
+				"requestIP": "%s"
+			},
+			"original": null,
+			"updated": null,
+			"requestID": "%s",
+			"timestamp": "%s"
+		}`,
+		ObjectTypeKeyObject.String(),
+		policyCRUDParams.ObjectID,
+		ActionTypeUpdate.String(),
+		TestActorID,
+		TestUserAgent,
+		TestRequestIP,
+		TestRequestID,
+		logEntryTime.Format(time.RFC3339),
+	)
+
+	expectedAuditLog = removeWhitespace(expectedAuditLog)
+	loggedMessage := removeWhitespace(string(logEntry.Audit))
+
+	if expectedAuditLog != loggedMessage {
+		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
+	}
+}
+
+func TestGetDecision(t *testing.T) {
 	params := GetDecisionEventParams{
 		Decision: GetDecisionResultPermit,
 		EntityChainEntitlements: []EntityChainEntitlement{
@@ -358,10 +558,9 @@ func TestGetDecision(t *testing.T) {
 		FQNs:                []string{"test-fqn"},
 	}
 
-	l.GetDecision(createTestContext(), params)
-
-	logEntry, logEntryTime := extractLogEntry(t, buf)
-
+	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		l.GetDecision(ctx, params)
+	})
 	expectedAuditLog := fmt.Sprintf(
 		`{
 				"object": {

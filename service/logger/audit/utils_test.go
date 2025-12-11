@@ -2,45 +2,42 @@ package audit
 
 import (
 	"context"
-	"log/slog"
 	"net"
 	"testing"
 
 	"github.com/google/uuid"
-	sdkAudit "github.com/opentdf/platform/sdk/audit"
-	"github.com/opentdf/platform/service/internal/server/realip"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetAuditDataFromContextHappyPath(t *testing.T) {
 	ctx := t.Context()
-	testRequestID := uuid.New()
-	testUserAgent := "test-user-agent"
-	testRequestIP := net.ParseIP("192.168.0.1")
-	testActorID := "test-actor-id"
 
-	// Set relevant context keys
-	ctx = context.WithValue(ctx, sdkAudit.RequestIDContextKey, testRequestID)
-	ctx = context.WithValue(ctx, sdkAudit.UserAgentContextKey, testUserAgent)
-	ctx = context.WithValue(ctx, realip.ClientIP{}, testRequestIP)
-	ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, testActorID)
-
-	slog.Info("test", slog.Any("test", ctx.Value(sdkAudit.RequestIDContextKey)))
+	tx := auditTransaction{
+		ContextData: ContextData{
+			RequestID: TestRequestID,
+			UserAgent: "test-user-agent",
+			RequestIP: net.ParseIP("192.168.0.1").String(),
+			ActorID:   "test-actor-id",
+		},
+		events: make([]pendingEvent, 0),
+	}
+	ctx = context.WithValue(ctx, contextKey{}, &tx)
 
 	auditData := GetAuditDataFromContext(ctx)
 
-	if auditData.RequestID.String() != testRequestID.String() {
+	if auditData.RequestID.String() != tx.RequestID.String() {
 		t.Fatalf("RequestID did not match: %v", auditData.RequestID)
 	}
 
-	if auditData.UserAgent != testUserAgent {
+	if auditData.UserAgent != "test-user-agent" {
 		t.Fatalf("UserAgent did not match: %v", auditData.UserAgent)
 	}
 
-	if auditData.RequestIP != testRequestIP.String() {
+	if auditData.RequestIP != net.ParseIP("192.168.0.1").String() {
 		t.Fatalf("RequestIP did not match: %v", auditData.RequestIP)
 	}
 
-	if auditData.ActorID != testActorID {
+	if auditData.ActorID != "test-actor-id" {
 		t.Fatalf("ActorID did not match: %v", auditData.ActorID)
 	}
 }
@@ -90,42 +87,20 @@ func TestGetAuditDataFromContextWithNoKeys(t *testing.T) {
 
 func TestGetAuditDataFromContextWithPartialKeys(t *testing.T) {
 	ctx := t.Context()
-	testUserAgent := "partial-user-agent"
-	testActorID := "partial-actor-id"
-
-	// Set relevant context keys
-	ctx = context.WithValue(ctx, sdkAudit.UserAgentContextKey, testUserAgent)
-	ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, testActorID)
+	tx := auditTransaction{
+		ContextData: ContextData{
+			UserAgent: "partial-user-agent",
+			RequestIP: "None",
+			ActorID:   "partial-actor-id",
+		},
+		events: make([]pendingEvent, 0),
+	}
+	ctx = context.WithValue(ctx, contextKey{}, &tx)
 
 	auditData := GetAuditDataFromContext(ctx)
 
-	if auditData.RequestID != uuid.Nil {
-		t.Fatalf("RequestID did not match: %v", auditData.RequestID)
-	}
-
-	if auditData.UserAgent != testUserAgent {
-		t.Fatalf("UserAgent did not match: %v", auditData.UserAgent)
-	}
-
-	if auditData.RequestIP != "None" {
-		t.Fatalf("RequestIP did not match: %v", auditData.RequestIP)
-	}
-
-	if auditData.ActorID != testActorID {
-		t.Fatalf("ActorID did not match: %v", auditData.ActorID)
-	}
-}
-
-func TestGetAuditDataFromContextWrongType(t *testing.T) {
-	ctx := t.Context()
-	testActorID := 12345
-
-	// Set relevant context keys
-	ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, testActorID)
-
-	auditData := GetAuditDataFromContext(ctx)
-
-	if auditData.ActorID != "None" {
-		t.Fatalf("ActorID did not match: %v", auditData.ActorID)
-	}
+	assert.Equal(t, uuid.Nil, auditData.RequestID)
+	assert.Equal(t, "partial-user-agent", auditData.UserAgent)
+	assert.Equal(t, "None", auditData.RequestIP)
+	assert.Equal(t, "partial-actor-id", auditData.ActorID)
 }

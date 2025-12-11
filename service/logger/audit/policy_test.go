@@ -24,7 +24,7 @@ var originalPolicyObject = &TestPolicyObject{
 }
 
 func runWithUpdatedTest(t *testing.T, params PolicyEventParams, expectedAuditUpdatedObject map[string]interface{}) {
-	event, err := CreatePolicyEvent(createTestContext(), true, params)
+	event, err := CreatePolicyEvent(createTestContext(t), true, params)
 	require.NoError(t, err)
 	require.True(t,
 		reflect.DeepEqual(event.Updated, expectedAuditUpdatedObject),
@@ -41,7 +41,7 @@ func Test_CreatePolicyEvent_HappyPath(t *testing.T) {
 		Updated:    nil,
 	}
 
-	event, err := CreatePolicyEvent(createTestContext(), true, params)
+	event, err := CreatePolicyEvent(createTestContext(t), true, params)
 	if err != nil {
 		t.Fatalf("error creating policy audit event: %v", err)
 	}
@@ -97,7 +97,7 @@ func Test_CreatePolicyEvent_WithOriginal(t *testing.T) {
 		Original:   originalPolicyObject,
 	}
 
-	event, err := CreatePolicyEvent(createTestContext(), true, params)
+	event, err := CreatePolicyEvent(createTestContext(t), true, params)
 	if err != nil {
 		t.Fatalf("error creating policy audit event: %v", err)
 	}

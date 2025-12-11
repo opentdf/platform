@@ -25,6 +25,7 @@ import (
 
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"google.golang.org/grpc/metadata"
 
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
@@ -507,10 +508,10 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 
 	// Get actor ID (sub) from unverified token for audit and add to context
 	// Only set the actor ID if it is not already defined
-	existingActorID := ctx.Value(sdkAudit.ActorIDContextKey)
-	if existingActorID == nil {
+	existingActorID := audit.GetAuditDataFromContext(ctx).ActorID
+	if existingActorID == "" {
 		actorID := accessToken.Subject()
-		ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, actorID)
+		ctx = audit.ContextWithActorID(ctx, actorID)
 	}
 
 	_, tokenHasCNF := accessToken.Get("cnf")

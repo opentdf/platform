@@ -348,6 +348,7 @@ SELECT
     )
   ) AS metadata,
   pc.provider_name,
+  pc.manager,
   pc.config AS provider_config,
   JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata,
   kask.legacy

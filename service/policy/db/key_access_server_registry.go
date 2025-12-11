@@ -580,6 +580,7 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		if key.ProviderConfigID.Valid {
 			providerConfig = &policy.KeyProviderConfig{}
 			providerConfig.Id = UUIDToString(key.ProviderConfigID)
+			providerConfig.Manager = key.Manager.String
 			providerConfig.Name = key.ProviderName.String
 			providerConfig.ConfigJson = key.ProviderConfig
 			providerConfig.Metadata = &common.Metadata{}

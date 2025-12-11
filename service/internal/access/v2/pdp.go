@@ -207,7 +207,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 	l.DebugContext(ctx, "evaluated subject mappings", slog.Any("entitled_value_fqns_to_actions", entitledFQNsToActions))
 
 	if p.allowDirectEntitlements {
-		p.logger.InfoContext(ctx, "setting direct entitlements on entity representation",
+		p.logger.DebugContext(ctx, "setting direct entitlements on entity representation",
 			slog.Any("entity_id", entityRepresentation.GetOriginalId()),
 		)
 

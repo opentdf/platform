@@ -259,7 +259,7 @@ func getResourceDecisionableAttributes(
 			}
 
 			// now process direct entitlement that only exists at attribute definition level
-			logger.InfoContext(ctx, "processing direct entitlement for resource decisionable attribute value", slog.String("fqn", attrValueFQN))
+			logger.DebugContext(ctx, "processing direct entitlement for resource decisionable attribute value", slog.String("attribute_value_fqn", attrValueFQN))
 
 			// try to find the definition by extracting partial FQN from direct entitlement synthetic value FQN
 			parentDefinition, err := getDefinition(attrValueFQN, entitleableAttributesByDefinitionFQN)

@@ -11,7 +11,6 @@ import (
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
-	"github.com/opentdf/platform/service/tracing"
 	"github.com/spf13/viper"
 )
 
@@ -89,9 +88,6 @@ type Config struct {
 
 	// Services represents the configuration settings for the services.
 	Services ServicesMap `mapstructure:"services" json:"services"`
-
-	// Trace is for configuring open telemetry based tracing.
-	Trace tracing.Config `mapstructure:"trace" json:"trace"`
 
 	// onConfigChangeHooks is a list of functions to call when the configuration changes.
 	onConfigChangeHooks []ChangeHook

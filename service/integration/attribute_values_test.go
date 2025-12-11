@@ -38,9 +38,9 @@ func (s *AttributeValuesSuite) SetupSuite() {
 	fixtureKeyAccessServerID = s.f.GetKasRegistryKey("key_access_server_1").ID
 	c := *Config
 	c.DB.Schema = "test_opentdf_attribute_values"
-	s.db = fixtures.NewDBInterface(c)
+	s.db = fixtures.NewDBInterface(s.ctx, c)
 	s.f = fixtures.NewFixture(s.db)
-	s.f.Provision()
+	s.f.Provision(s.ctx)
 	stillActiveNsID, stillActiveAttributeID, deactivatedAttrValueID = setupDeactivateAttributeValue(s)
 }
 
@@ -65,7 +65,7 @@ func (s *AttributeValuesSuite) TearDownTest() {
 
 func (s *AttributeValuesSuite) TearDownSuite() {
 	slog.Info("tearing down db.AttributeValues test suite")
-	s.f.TearDown()
+	s.f.TearDown(s.ctx)
 }
 
 func (s *AttributeValuesSuite) Test_ListAttributeValues_WithAttributeID_Succeeds() {

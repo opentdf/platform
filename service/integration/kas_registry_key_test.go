@@ -51,16 +51,16 @@ func (s *KasRegistryKeySuite) SetupSuite() {
 	s.ctx = context.Background()
 	c := *Config
 	c.DB.Schema = "test_opentdf_kas_keys"
-	s.db = fixtures.NewDBInterface(c)
+	s.db = fixtures.NewDBInterface(s.ctx, c)
 	s.f = fixtures.NewFixture(s.db)
-	s.f.Provision()
+	s.f.Provision(s.ctx)
 	s.kasFixtures = s.getKasRegistryFixtures()
 	s.kasKeys = s.getKasRegistryServerKeysFixtures()
 }
 
 func (s *KasRegistryKeySuite) TearDownSuite() {
 	slog.Info("tearing down db.KasKeys test suite")
-	s.f.TearDown()
+	s.f.TearDown(s.ctx)
 }
 
 func TestKasRegistryKeysSuite(t *testing.T) {

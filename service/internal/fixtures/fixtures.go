@@ -424,49 +424,49 @@ func (f *Fixtures) GetRegisteredResourceValueKey(key string) FixtureDataRegister
 }
 
 //nolint:sloglint // preserve emoji usage
-func (f *Fixtures) Provision() {
+func (f *Fixtures) Provision(ctx context.Context) {
 	slog.Info("📦 running migrations in schema", slog.String("schema", f.db.Schema))
-	_, err := f.db.Client.RunMigrations(context.Background(), policy.Migrations)
+	_, err := f.db.Client.RunMigrations(ctx, policy.Migrations)
 	if err != nil {
 		panic(err)
 	}
 
 	slog.Info("📦 retrieving migration-inserted standard actions")
-	f.loadMigratedStandardActions()
+	f.loadMigratedStandardActions(ctx)
 	slog.Info("📦 provisioning namespace data")
-	n := f.provisionNamespace()
+	n := f.provisionNamespace(ctx)
 	slog.Info("📦 provisioning attribute data")
-	a := f.provisionAttribute()
+	a := f.provisionAttribute(ctx)
 	slog.Info("📦 provisioning attribute value data")
-	aV := f.provisionAttributeValues()
+	aV := f.provisionAttributeValues(ctx)
 	slog.Info("📦 provisioning subject condition set data")
-	sc := f.provisionSubjectConditionSet()
+	sc := f.provisionSubjectConditionSet(ctx)
 	slog.Info("📦 provisioning subject mapping data")
-	sM := f.provisionSubjectMappings()
+	sM := f.provisionSubjectMappings(ctx)
 	slog.Info("📦 provisioning resource mapping group data")
-	rmg := f.provisionResourceMappingGroups()
+	rmg := f.provisionResourceMappingGroups(ctx)
 	slog.Info("📦 provisioning custom actions data")
-	actions := f.provisionCustomActions()
+	actions := f.provisionCustomActions(ctx)
 	slog.Info("📦 provisioning subject mapping actions relationships data")
-	relatedSmActions := f.provisionSubjectMappingActionsRelations()
+	relatedSmActions := f.provisionSubjectMappingActionsRelations(ctx)
 	slog.Info("📦 provisioning resource mapping data")
-	rm := f.provisionResourceMappings()
+	rm := f.provisionResourceMappings(ctx)
 	slog.Info("📦 provisioning kas registry data")
-	kas := f.provisionKasRegistry()
+	kas := f.provisionKasRegistry(ctx)
 	slog.Info("📦 provisioning attribute key access server data")
-	akas := f.provisionAttributeKeyAccessServer()
+	akas := f.provisionAttributeKeyAccessServer(ctx)
 	slog.Info("📦 provisioning attribute value key access server data")
-	avkas := f.provisionAttributeValueKeyAccessServer()
+	avkas := f.provisionAttributeValueKeyAccessServer(ctx)
 	slog.Info("📦 provisioning registered resources")
-	rr := f.provisionRegisteredResources()
+	rr := f.provisionRegisteredResources(ctx)
 	slog.Info("📦 provisioning registered resource values")
-	rrv := f.provisionRegisteredResourceValues()
+	rrv := f.provisionRegisteredResourceValues(ctx)
 	slog.Info("📦 provisioning registered resource action attribute values")
-	rraav := f.provisionRegisteredResourceActionAttributeValues()
+	rraav := f.provisionRegisteredResourceActionAttributeValues(ctx)
 	slog.Info("📦 provisioning provider configs")
-	pcs := f.provisionProviderConfigs()
+	pcs := f.provisionProviderConfigs(ctx)
 	slog.Info("📦 provisioning keys for kas registry")
-	kasKeys := f.provisionKasRegistryKeys()
+	kasKeys := f.provisionKasRegistryKeys(ctx)
 
 	slog.Info("📦 provisioned fixtures data",
 		slog.Int64("namespaces", n),
@@ -488,105 +488,104 @@ func (f *Fixtures) Provision() {
 		slog.Int64("kas_registry_keys", kasKeys),
 	)
 	slog.Info("📚 indexing FQNs for fixtures")
-	f.db.PolicyClient.AttrFqnReindex(context.Background())
+	f.db.PolicyClient.AttrFqnReindex(ctx)
 	slog.Info("📚 successfully indexed FQNs")
 }
 
 //nolint:sloglint // preserve emoji usage
-func (f *Fixtures) TearDown() {
+func (f *Fixtures) TearDown(ctx context.Context) {
 	slog.Info("🗑  dropping schema", slog.String("schema", f.db.Schema))
-	if err := f.db.DropSchema(); err != nil {
-		slog.Error("could not truncate tables", slog.String("error", err.Error()))
+	if err := f.db.DropSchema(ctx); err != nil {
+		slog.Error("could not truncate tables", slog.Any("error", err))
 		panic(err)
 	}
 }
 
-func (f *Fixtures) provisionNamespace() int64 {
-	values := make([][]string, 0, len(fixtureData.Namespaces.Data))
+func (f *Fixtures) provisionNamespace(ctx context.Context) int64 {
+	values := make([][]any, 0, len(fixtureData.Namespaces.Data))
 	for _, d := range fixtureData.Namespaces.Data {
 		values = append(values,
-			[]string{
-				f.db.StringWrap(d.ID),
-				f.db.StringWrap(d.Name),
-				f.db.BoolWrap(d.Active),
+			[]any{
+				d.ID,
+				d.Name,
+				d.Active,
 			},
 		)
 	}
-	return f.provision(fixtureData.Namespaces.Metadata.TableName, fixtureData.Namespaces.Metadata.Columns, values)
+	return f.provision(ctx, fixtureData.Namespaces.Metadata.TableName, fixtureData.Namespaces.Metadata.Columns, values)
 }
 
-func (f *Fixtures) provisionAttribute() int64 {
-	values := make([][]string, 0, len(fixtureData.Attributes.Data))
+func (f *Fixtures) provisionAttribute(ctx context.Context) int64 {
+	values := make([][]any, 0, len(fixtureData.Attributes.Data))
 	for _, d := range fixtureData.Attributes.Data {
-		values = append(values, []string{
-			f.db.StringWrap(d.ID),
-			f.db.StringWrap(d.NamespaceID),
-			f.db.StringWrap(d.Name),
-			f.db.StringWrap(d.Rule),
-			f.db.BoolWrap(d.Active),
+		values = append(values, []any{
+			d.ID,
+			d.NamespaceID,
+			d.Name,
+			d.Rule,
+			d.Active,
 		})
 	}
-	return f.provision(fixtureData.Attributes.Metadata.TableName, fixtureData.Attributes.Metadata.Columns, values)
+	return f.provision(ctx, fixtureData.Attributes.Metadata.TableName, fixtureData.Attributes.Metadata.Columns, values)
 }
 
-func (f *Fixtures) provisionAttributeValues() int64 {
-	values := make([][]string, 0, len(fixtureData.AttributeValues.Data))
+func (f *Fixtures) provisionAttributeValues(ctx context.Context) int64 {
+	values := make([][]any, 0, len(fixtureData.AttributeValues.Data))
 	for _, d := range fixtureData.AttributeValues.Data {
-		values = append(values, []string{
-			f.db.StringWrap(d.ID),
-			f.db.StringWrap(d.AttributeDefinitionID),
-			f.db.StringWrap(d.Value),
-			f.db.BoolWrap(d.Active),
+		values = append(values, []any{
+			d.ID,
+			d.AttributeDefinitionID,
+			d.Value,
+			d.Active,
 		})
 	}
-	return f.provision(fixtureData.AttributeValues.Metadata.TableName, fixtureData.AttributeValues.Metadata.Columns, values)
+	return f.provision(ctx, fixtureData.AttributeValues.Metadata.TableName, fixtureData.AttributeValues.Metadata.Columns, values)
 }
 
 //nolint:sloglint // preserve emoji usage
-func (f *Fixtures) provisionSubjectConditionSet() int64 {
-	values := make([][]string, 0, len(fixtureData.SubjectConditionSet.Data))
+func (f *Fixtures) provisionSubjectConditionSet(ctx context.Context) int64 {
+	values := make([][]any, 0, len(fixtureData.SubjectConditionSet.Data))
 	for _, d := range fixtureData.SubjectConditionSet.Data {
-		var conditionJSON []byte
 		conditionJSON, err := json.Marshal(d.Condition.SubjectSets)
 		if err != nil {
 			slog.Error("⛔️ 📦 issue with subject condition set JSON - check policy_fixtures.yaml for issues")
 			panic("issue with subject condition set JSON")
 		}
 
-		values = append(values, []string{
-			f.db.StringWrap(d.ID),
-			f.db.StringWrap(string(conditionJSON)),
+		values = append(values, []any{
+			d.ID,
+			conditionJSON,
 		})
 	}
-	return f.provision(fixtureData.SubjectConditionSet.Metadata.TableName, fixtureData.SubjectConditionSet.Metadata.Columns, values)
+	return f.provision(ctx, fixtureData.SubjectConditionSet.Metadata.TableName, fixtureData.SubjectConditionSet.Metadata.Columns, values)
 }
 
-func (f *Fixtures) provisionSubjectMappings() int64 {
-	values := make([][]string, 0, len(fixtureData.SubjectMappings.Data))
+func (f *Fixtures) provisionSubjectMappings(ctx context.Context) int64 {
+	values := make([][]any, 0, len(fixtureData.SubjectMappings.Data))
 	for _, d := range fixtureData.SubjectMappings.Data {
-		values = append(values, []string{
-			f.db.StringWrap(d.ID),
-			f.db.UUIDWrap(d.AttributeValueID),
-			f.db.UUIDWrap(d.SubjectConditionSetID),
+		values = append(values, []any{
+			d.ID,
+			d.AttributeValueID,
+			d.SubjectConditionSetID,
 		})
 	}
-	return f.provision(fixtureData.SubjectMappings.Metadata.TableName, fixtureData.SubjectMappings.Metadata.Columns, values)
+	return f.provision(ctx, fixtureData.SubjectMappings.Metadata.TableName, fixtureData.SubjectMappings.Metadata.Columns, values)
 }
 
-func (f *Fixtures) provisionCustomActions() int64 {
-	values := make([][]string, 0, len(fixtureData.CustomActions.Data))
+func (f *Fixtures) provisionCustomActions(ctx context.Context) int64 {
+	values := make([][]any, 0, len(fixtureData.CustomActions.Data))
 	for _, d := range fixtureData.CustomActions.Data {
-		values = append(values, []string{
-			f.db.StringWrap(d.ID),
-			f.db.StringWrap(d.Name),
-			f.db.BoolWrap(d.IsStandard),
+		values = append(values, []any{
+			d.ID,
+			d.Name,
+			d.IsStandard,
 		})
 	}
-	return f.provision(fixtureData.CustomActions.Metadata.TableName, fixtureData.CustomActions.Metadata.Columns, values)
+	return f.provision(ctx, fixtureData.CustomActions.Metadata.TableName, fixtureData.CustomActions.Metadata.Columns, values)
 }
 
-func (f *Fixtures) provisionSubjectMappingActionsRelations() int64 {
-	values := make([][]string, 0, len(fixtureData.SubjectMappingActions.Data))
+func (f *Fixtures) provisionSubjectMappingActionsRelations(ctx context.Context) int64 {
+	values := make([][]any, 0, len(fixtureData.SubjectMappingActions.Data))
 	for _, d := range fixtureData.SubjectMappingActions.Data {
 		var actionID string
 		if id, ok := f.MigratedData.StandardActions[d.ActionName]; ok {
@@ -595,107 +594,105 @@ func (f *Fixtures) provisionSubjectMappingActionsRelations() int64 {
 			actionID = f.GetCustomActionKey(d.ActionName).ID
 		}
 		values = append(values,
-			[]string{
-				f.db.StringWrap(d.SubjectMappingID),
-				f.db.StringWrap(actionID),
+			[]any{
+				d.SubjectMappingID,
+				actionID,
 			},
 		)
 	}
-	return f.provision(fixtureData.SubjectMappingActions.Metadata.TableName, fixtureData.SubjectMappingActions.Metadata.Columns, values)
+	return f.provision(ctx, fixtureData.SubjectMappingActions.Metadata.TableName, fixtureData.SubjectMappingActions.Metadata.Columns, values)
 }
 
-func (f *Fixtures) provisionResourceMappingGroups() int64 {
-	values := make([][]string, 0, len(fixtureData.ResourceMappingGroups.Data))
+func (f *Fixtures) provisionResourceMappingGroups(ctx context.Context) int64 {
+	values := make([][]any, 0, len(fixtureData.ResourceMappingGroups.Data))
 	for _, d := range fixtureData.ResourceMappingGroups.Data {
-		values = append(values, []string{
-			f.db.StringWrap(d.ID),
-			f.db.StringWrap(d.NamespaceID),
-			f.db.StringWrap(d.Name),
+		values = append(values, []any{
+			d.ID,
+			d.NamespaceID,
+			d.Name,
 		})
 	}
-	return f.provision(fixtureData.ResourceMappingGroups.Metadata.TableName, fixtureData.ResourceMappingGroups.Metadata.Columns, values)
+	return f.provision(ctx, fixtureData.ResourceMappingGroups.Metadata.TableName, fixtureData.ResourceMappingGroups.Metadata.Columns, values)
 }
 
-func (f *Fixtures) provisionResourceMappings() int64 {
-	values := make([][]string, 0, len(fixtureData.ResourceMappings.Data))
+func (f *Fixtures) provisionResourceMappings(ctx context.Context) int64 {
+	values := make([][]any, 0, len(fixtureData.ResourceMappings.Data))
 	for _, d := range fixtureData.ResourceMappings.Data {
-		values = append(values, []string{
-			f.db.StringWrap(d.ID),
-			f.db.StringWrap(d.AttributeValueID),
-			f.db.StringArrayWrap(d.Terms),
-			f.db.StringWrap(d.GroupID),
+		values = append(values, []any{
+			d.ID,
+			d.AttributeValueID,
+			d.Terms,
+			d.GroupID,
 		})
 	}
-	return f.provision(fixtureData.ResourceMappings.Metadata.TableName, fixtureData.ResourceMappings.Metadata.Columns, values)
+	return f.provision(ctx, fixtureData.ResourceMappings.Metadata.TableName, fixtureData.ResourceMappings.Metadata.Columns, values)
 }
 
 //nolint:sloglint // preserve emoji usage
-func (f *Fixtures) provisionKasRegistry() int64 {
-	values := make([][]string, 0, len(fixtureData.KasRegistries.Data))
+func (f *Fixtures) provisionKasRegistry(ctx context.Context) int64 {
+	values := make([][]any, 0, len(fixtureData.KasRegistries.Data))
 	for _, d := range fixtureData.KasRegistries.Data {
-		v := []string{
-			f.db.StringWrap(d.ID),
-			f.db.StringWrap(d.URI),
-			f.db.StringWrap(d.Name),
-		}
-
 		pubKeyJSON, err := json.Marshal(d.PubKey)
 		if err != nil {
 			slog.Error("⛔️ 📦 issue with KAS registry public key JSON - check policy_fixtures.yaml for issues")
 			panic("issue with KAS registry public key JSON")
 		}
-		v = append(v, f.db.StringWrap(string(pubKeyJSON)))
 
-		values = append(values, v)
+		values = append(values, []any{
+			d.ID,
+			d.URI,
+			d.Name,
+			pubKeyJSON,
+		})
 	}
-	return f.provision(fixtureData.KasRegistries.Metadata.TableName, fixtureData.KasRegistries.Metadata.Columns, values)
+	return f.provision(ctx, fixtureData.KasRegistries.Metadata.TableName, fixtureData.KasRegistries.Metadata.Columns, values)
 }
 
-func (f *Fixtures) provisionAttributeKeyAccessServer() int64 {
-	values := make([][]string, 0, len(fixtureData.AttributeKeyAccessServer))
+func (f *Fixtures) provisionAttributeKeyAccessServer(ctx context.Context) int64 {
+	values := make([][]any, 0, len(fixtureData.AttributeKeyAccessServer))
 	for _, d := range fixtureData.AttributeKeyAccessServer {
-		values = append(values, []string{
-			f.db.StringWrap(d.AttributeID),
-			f.db.StringWrap(d.KeyAccessServerID),
+		values = append(values, []any{
+			d.AttributeID,
+			d.KeyAccessServerID,
 		})
 	}
-	return f.provision("attribute_definition_key_access_grants", []string{"attribute_definition_id", "key_access_server_id"}, values)
+	return f.provision(ctx, "attribute_definition_key_access_grants", []string{"attribute_definition_id", "key_access_server_id"}, values)
 }
 
-func (f *Fixtures) provisionAttributeValueKeyAccessServer() int64 {
-	values := make([][]string, 0, len(fixtureData.AttributeValueKeyAccessServer))
+func (f *Fixtures) provisionAttributeValueKeyAccessServer(ctx context.Context) int64 {
+	values := make([][]any, 0, len(fixtureData.AttributeValueKeyAccessServer))
 	for _, d := range fixtureData.AttributeValueKeyAccessServer {
-		values = append(values, []string{
-			f.db.StringWrap(d.ValueID),
-			f.db.StringWrap(d.KeyAccessServerID),
+		values = append(values, []any{
+			d.ValueID,
+			d.KeyAccessServerID,
 		})
 	}
-	return f.provision("attribute_value_key_access_grants", []string{"attribute_value_id", "key_access_server_id"}, values)
+	return f.provision(ctx, "attribute_value_key_access_grants", []string{"attribute_value_id", "key_access_server_id"}, values)
 }
 
 //nolint:sloglint // preserve emoji usage
-func (f *Fixtures) provisionProviderConfigs() int64 {
-	values := make([][]string, 0, len(fixtureData.ProviderConfigs.Data))
+func (f *Fixtures) provisionProviderConfigs(ctx context.Context) int64 {
+	values := make([][]any, 0, len(fixtureData.ProviderConfigs.Data))
 	for _, d := range fixtureData.ProviderConfigs.Data {
 		providerConfigJSON, err := base64.StdEncoding.DecodeString(d.ProviderConfig)
 		if err != nil {
 			slog.Error("⛔️ 📦 issue with provider config JSON - check policy_fixtures.yaml for issues")
 			panic("issue with provider config JSON")
 		}
-		values = append(values, []string{
-			f.db.StringWrap(d.ID),
-			f.db.StringWrap(d.ProviderName),
-			f.db.StringWrap(d.Manager),
-			f.db.StringWrap(string(providerConfigJSON)),
+		values = append(values, []any{
+			d.ID,
+			d.ProviderName,
+			d.Manager,
+			providerConfigJSON,
 		})
 	}
 
-	return f.provision(fixtureData.ProviderConfigs.Metadata.TableName, fixtureData.ProviderConfigs.Metadata.Columns, values)
+	return f.provision(ctx, fixtureData.ProviderConfigs.Metadata.TableName, fixtureData.ProviderConfigs.Metadata.Columns, values)
 }
 
 //nolint:sloglint // preserve emoji usage
-func (f *Fixtures) provisionKasRegistryKeys() int64 {
-	values := make([][]string, 0, len(fixtureData.KasRegistryKeys.Data))
+func (f *Fixtures) provisionKasRegistryKeys(ctx context.Context) int64 {
+	values := make([][]any, 0, len(fixtureData.KasRegistryKeys.Data))
 	for _, d := range fixtureData.KasRegistryKeys.Data {
 		pubCtx, err := base64.StdEncoding.DecodeString(d.PublicKeyCtx)
 		if err != nil {
@@ -707,50 +704,54 @@ func (f *Fixtures) provisionKasRegistryKeys() int64 {
 			slog.Error("⛔️ 📦 issue with kas registry private key context - check policy_fixtures.yaml for issues")
 			panic("issue with kas registry private key context")
 		}
-		values = append(values, []string{
-			f.db.StringWrap(d.ID),
-			f.db.StringWrap(d.KeyAccessServerID),
-			f.db.StringWrap(d.KeyAlgorithm),
-			f.db.StringWrap(d.KeyID),
-			f.db.StringWrap(d.KeyMode),
-			f.db.StringWrap(d.KeyStatus),
-			f.db.StringWrap(string(privateCtx)),
-			f.db.StringWrap(string(pubCtx)),
-		})
-		providerConfigIDSQL := "NULL"
+
+		var providerConfigID any
 		if d.ProviderConfigID != nil {
-			providerConfigIDSQL = f.db.StringWrap(*d.ProviderConfigID)
+			providerConfigID = *d.ProviderConfigID
+		} else {
+			providerConfigID = nil
 		}
-		values[len(values)-1] = append(values[len(values)-1], providerConfigIDSQL)
+
+		values = append(values, []any{
+			d.ID,
+			d.KeyAccessServerID,
+			d.KeyAlgorithm,
+			d.KeyID,
+			d.KeyMode,
+			d.KeyStatus,
+			privateCtx,
+			pubCtx,
+			providerConfigID,
+		})
 	}
-	return f.provision(fixtureData.KasRegistryKeys.Metadata.TableName, fixtureData.KasRegistryKeys.Metadata.Columns, values)
+	return f.provision(ctx, fixtureData.KasRegistryKeys.Metadata.TableName, fixtureData.KasRegistryKeys.Metadata.Columns, values)
 }
 
-func (f *Fixtures) provisionRegisteredResources() int64 {
-	values := make([][]string, 0, len(fixtureData.RegisteredResources.Data))
+func (f *Fixtures) provisionRegisteredResources(ctx context.Context) int64 {
+	values := make([][]any, 0, len(fixtureData.RegisteredResources.Data))
 	for _, d := range fixtureData.RegisteredResources.Data {
-		values = append(values, []string{
-			f.db.StringWrap(d.ID),
-			f.db.StringWrap(d.Name),
+		values = append(values, []any{
+			d.ID,
+			d.Name,
 		})
 	}
-	return f.provision(fixtureData.RegisteredResources.Metadata.TableName, fixtureData.RegisteredResources.Metadata.Columns, values)
+	return f.provision(ctx, fixtureData.RegisteredResources.Metadata.TableName, fixtureData.RegisteredResources.Metadata.Columns, values)
 }
 
-func (f *Fixtures) provisionRegisteredResourceValues() int64 {
-	values := make([][]string, 0, len(fixtureData.RegisteredResourceValues.Data))
+func (f *Fixtures) provisionRegisteredResourceValues(ctx context.Context) int64 {
+	values := make([][]any, 0, len(fixtureData.RegisteredResourceValues.Data))
 	for _, d := range fixtureData.RegisteredResourceValues.Data {
-		values = append(values, []string{
-			f.db.StringWrap(d.ID),
-			f.db.StringWrap(d.RegisteredResourceID),
-			f.db.StringWrap(d.Value),
+		values = append(values, []any{
+			d.ID,
+			d.RegisteredResourceID,
+			d.Value,
 		})
 	}
-	return f.provision(fixtureData.RegisteredResourceValues.Metadata.TableName, fixtureData.RegisteredResourceValues.Metadata.Columns, values)
+	return f.provision(ctx, fixtureData.RegisteredResourceValues.Metadata.TableName, fixtureData.RegisteredResourceValues.Metadata.Columns, values)
 }
 
-func (f *Fixtures) provisionRegisteredResourceActionAttributeValues() int64 {
-	values := make([][]string, 0, len(fixtureData.RegisteredResourceActionAttributeValues.Data))
+func (f *Fixtures) provisionRegisteredResourceActionAttributeValues(ctx context.Context) int64 {
+	values := make([][]any, 0, len(fixtureData.RegisteredResourceActionAttributeValues.Data))
 	for _, d := range fixtureData.RegisteredResourceActionAttributeValues.Data {
 		var actionID string
 		if id, ok := f.MigratedData.StandardActions[d.ActionName]; ok {
@@ -758,19 +759,19 @@ func (f *Fixtures) provisionRegisteredResourceActionAttributeValues() int64 {
 		} else {
 			actionID = f.GetCustomActionKey(d.ActionName).ID
 		}
-		values = append(values, []string{
-			f.db.StringWrap(d.ID),
-			f.db.StringWrap(d.RegisteredResourceValueID),
-			f.db.StringWrap(actionID),
-			f.db.StringWrap(d.AttributeValueID),
+		values = append(values, []any{
+			d.ID,
+			d.RegisteredResourceValueID,
+			actionID,
+			d.AttributeValueID,
 		})
 	}
-	return f.provision(fixtureData.RegisteredResourceActionAttributeValues.Metadata.TableName, fixtureData.RegisteredResourceActionAttributeValues.Metadata.Columns, values)
+	return f.provision(ctx, fixtureData.RegisteredResourceActionAttributeValues.Metadata.TableName, fixtureData.RegisteredResourceActionAttributeValues.Metadata.Columns, values)
 }
 
 //nolint:sloglint // preserve emoji usage
-func (f *Fixtures) provision(t string, c []string, v [][]string) int64 {
-	rows, err := f.db.ExecInsert(t, c, v...)
+func (f *Fixtures) provision(ctx context.Context, t string, c []string, v [][]any) int64 {
+	rows, err := f.db.ExecInsert(ctx, t, c, v...)
 	if err != nil {
 		slog.Error("⛔️ 📦 issue with insert into table - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Any("err", err))
 		panic("issue with insert into table")
@@ -787,24 +788,24 @@ func (f *Fixtures) provision(t string, c []string, v [][]string) int64 {
 }
 
 // Migration adds standard actions [create, read, update, delete] to the database
-func (f *Fixtures) loadMigratedStandardActions() {
+func (f *Fixtures) loadMigratedStandardActions(ctx context.Context) {
 	actions := make(map[string]string)
-	rows, err := f.db.Client.Query(context.Background(), "SELECT id, name FROM actions WHERE is_standard = TRUE", nil)
+	rows, err := f.db.Client.Query(ctx, "SELECT id, name FROM actions WHERE is_standard = TRUE", nil)
 	if err != nil {
-		slog.Error("could not get standard actions", slog.String("error", err.Error()))
+		slog.Error("could not get standard actions", slog.Any("error", err))
 		panic("could not get standard actions")
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var id, name string
 		if err := rows.Scan(&id, &name); err != nil {
-			slog.Error("could not scan standard actions", slog.String("error", err.Error()))
+			slog.Error("could not scan standard actions", slog.Any("error", err))
 			panic("could not scan standard actions")
 		}
 		actions[name] = id
 	}
 	if err := rows.Err(); err != nil {
-		slog.Error("could not get standard actions", slog.String("error", err.Error()))
+		slog.Error("could not get standard actions", slog.Any("error", err))
 		panic("could not get standard actions")
 	}
 	if len(actions) == 0 {

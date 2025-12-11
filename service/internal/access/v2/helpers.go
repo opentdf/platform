@@ -195,8 +195,11 @@ func getResourceDecisionableAttributes(
 	logger *logger.Logger,
 	accessibleRegisteredResourceValues map[string]*policy.RegisteredResourceValue,
 	entitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
+	// this is needed to support direct entitlement ad-hoc attribute values
+	entitleableAttributesByDefinitionFQN map[string]*policy.Attribute,
 	// action *policy.Action,
 	resources []*authz.Resource,
+	allowDirectEntitlements bool,
 ) (map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	var (
 		decisionableAttributes = make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
@@ -246,9 +249,43 @@ func getResourceDecisionableAttributes(
 		}
 
 		attributeAndValue, ok := entitleableAttributesByValueFQN[attrValueFQN]
+
 		if !ok {
-			notFoundFQNs = append(notFoundFQNs, attrValueFQN)
-			continue
+			// if the attribute value FQN is not found, then check if direct entitlements with synthetic values are enabled (experimental)
+			if !allowDirectEntitlements {
+				// if disabled, add to not found list and skip to next attribute value FQN
+				notFoundFQNs = append(notFoundFQNs, attrValueFQN)
+				continue
+			}
+
+			// now process direct entitlement that only exists at attribute definition level
+			logger.DebugContext(ctx, "processing direct entitlement for resource decisionable attribute value", slog.String("attribute_value_fqn", attrValueFQN))
+
+			// try to find the definition by extracting partial FQN from direct entitlement synthetic value FQN
+			parentDefinition, err := getDefinition(attrValueFQN, entitleableAttributesByDefinitionFQN)
+			if err != nil {
+				// if definition not found, add to not found list and skip to next attribute value FQN
+				notFoundFQNs = append(notFoundFQNs, attrValueFQN)
+				continue
+			}
+
+			// Extract the value part from the FQN
+			// FQN format: https://<namespace>/attr/<name>/value/<value>
+			parsedAttrValueFQN, err := identifier.Parse[*identifier.FullyQualifiedAttribute](attrValueFQN)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse attribute value FQN [%s]: %w", attrValueFQN, err)
+			}
+
+			// Create synthetic AttributeAndValue for adhoc attribute
+			syntheticValue := &policy.Value{
+				Fqn:   attrValueFQN,
+				Value: parsedAttrValueFQN.Value,
+			}
+
+			attributeAndValue = &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+				Value:     syntheticValue,
+				Attribute: parentDefinition,
+			}
 		}
 
 		decisionableAttributes[attrValueFQN] = attributeAndValue

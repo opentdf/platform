@@ -14,9 +14,17 @@ const (
 	LevelAuditStr = "AUDIT"
 )
 
+type Verb string
+
+const (
+	VerbDecision   Verb = "decision"
+	VerbPolicyCRUD Verb = "policy crud"
+	VerbRewrap     Verb = "rewrap"
+)
+
 // pendingEvent represents a single audit event waiting to be logged
 type pendingEvent struct {
-	verb  string
+	verb  Verb
 	event *EventObject
 }
 
@@ -61,7 +69,7 @@ func (a *Logger) With(key string, value string) *Logger {
 }
 
 // addEvent appends a pending audit event to the transaction
-func (tx *auditTransaction) addEvent(verb string, event *EventObject) {
+func (tx *auditTransaction) addEvent(verb Verb, event *EventObject) {
 	tx.mu.Lock()
 	defer tx.mu.Unlock()
 	tx.events = append(tx.events, pendingEvent{
@@ -90,7 +98,7 @@ func (tx *auditTransaction) logClose(ctx context.Context, logger *slog.Logger, s
 			auditEvent.EventMetaData["cancellation_error"] = err.Error()
 		}
 
-		logger.Log(ctx, LevelAudit, event.verb, slog.Any("audit", *auditEvent))
+		logger.Log(ctx, LevelAudit, string(event.verb), slog.Any("audit", *auditEvent))
 	}
 }
 
@@ -117,7 +125,7 @@ func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventPa
 		a.logger.ErrorContext(ctx, "error creating get decision audit event", slog.Any("error", err))
 		return
 	}
-	LogAuditEvent(ctx, "decision", auditEvent)
+	LogAuditEvent(ctx, VerbDecision, auditEvent)
 }
 
 func (a *Logger) GetDecisionV2(ctx context.Context, eventParams GetDecisionV2EventParams) {
@@ -126,10 +134,10 @@ func (a *Logger) GetDecisionV2(ctx context.Context, eventParams GetDecisionV2Eve
 		a.logger.ErrorContext(ctx, "error creating v2 get decision audit event", slog.Any("error", err))
 		return
 	}
-	LogAuditEvent(ctx, "decision", event)
+	LogAuditEvent(ctx, VerbDecision, event)
 }
 
-func LogAuditEvent(ctx context.Context, verb string, event *EventObject) {
+func LogAuditEvent(ctx context.Context, verb Verb, event *EventObject) {
 	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
 	if !ok {
 		panic("audit transaction missing from context")
@@ -147,7 +155,7 @@ func (a *Logger) rewrapBase(ctx context.Context, eventParams RewrapAuditEventPar
 		return
 	}
 
-	LogAuditEvent(ctx, "rewrap", auditEvent)
+	LogAuditEvent(ctx, VerbRewrap, auditEvent)
 }
 
 func (a *Logger) policyCrudBase(ctx context.Context, isSuccess bool, eventParams PolicyEventParams) {
@@ -156,5 +164,5 @@ func (a *Logger) policyCrudBase(ctx context.Context, isSuccess bool, eventParams
 		a.logger.ErrorContext(ctx, "error creating policy attribute audit event", slog.Any("error", err))
 		return
 	}
-	LogAuditEvent(ctx, "policy crud", auditEvent)
+	LogAuditEvent(ctx, VerbPolicyCRUD, auditEvent)
 }

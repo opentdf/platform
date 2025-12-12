@@ -550,6 +550,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 
 	body, isV1, err := p.extractSRTBody(ctx, req.Header(), in)
 	if err != nil {
+		p.Logger.TraceContext(ctx, "srt extraction failure", slog.Any("srt", body), slog.Any("error", err))
 		p.Logger.DebugContext(ctx, "unverifiable srt", slog.Any("error", err))
 		return nil, err
 	}

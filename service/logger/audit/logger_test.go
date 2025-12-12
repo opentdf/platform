@@ -427,7 +427,7 @@ func TestDeferredRewrapSuccess(t *testing.T) {
 func TestDeferredRewrapCancelled(t *testing.T) {
 	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
 		l.RewrapSuccess(ctx, rewrapParams)
-		panic(errors.New("operation failed"))
+		panic(fmt.Errorf("operation failed"))
 	})
 
 	expectedAuditLog := fmt.Sprintf(

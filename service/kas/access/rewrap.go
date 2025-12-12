@@ -151,10 +151,15 @@ func jwkThumbprintAttr(key jwk.Key) slog.Attr {
 
 // parseSRT parses the JWT payload without validation, returning the token and embedded
 // request body string while translating parse errors into client-facing status codes.
-func (p *Provider) parseSRT(ctx context.Context, srt string, requireVerification bool) (jwt.Token, string, error) {
+func (p *Provider) parseSRT(ctx context.Context, srt string) (jwt.Token, string, error) {
 	token, err := jwt.Parse([]byte(srt), jwt.WithVerify(false), jwt.WithValidate(false))
 	if err != nil {
-		p.Logger.WarnContext(ctx, "unable to validate or parse token", slog.Any("error", err), slog.Int("srt_length", len(srt)), jwkThumbprintAttr(ctxAuth.GetJWKFromContext(ctx, p.Logger)))
+		p.Logger.WarnContext(
+			ctx,
+			"unable to validate or parse token",
+			slog.Any("error", err),
+			slog.Int("srt_length", len(srt)),
+			jwkThumbprintAttr(ctxAuth.GetJWKFromContext(ctx, p.Logger)))
 		return nil, "", err401("could not parse token")
 	}
 
@@ -345,7 +350,7 @@ func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *
 		// in either case letting the request through makes sense
 	}
 
-	token, rbString, parseErr := p.parseSRT(ctx, srt, requireVerification)
+	token, rbString, parseErr := p.parseSRT(ctx, srt)
 	if parseErr != nil {
 		return nil, false, parseErr
 	}
@@ -367,7 +372,7 @@ func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *
 		p.Logger.WarnContext(ctx,
 			"invalid SRT",
 			slog.Any("err_v2", err),
-			slog.Int("srt_length", len(srt)),
+			slog.Int("rb_string_length", len(rbString)),
 		)
 		return nil, false, err400("invalid request body")
 	}
@@ -379,7 +384,7 @@ func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *
 			p.Logger.WarnContext(ctx,
 				"invalid SRT",
 				slog.Any("err_v1", errv1),
-				slog.Int("srt_length", len(srt)),
+				slog.Int("rb_string_length", len(rbString)),
 				slog.Int("rewrap_body_length", len(requestBody.String())),
 			)
 			return nil, false, err400("invalid request body")

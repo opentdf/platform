@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -45,11 +47,6 @@ func validateRecentEventTimestamp(t *testing.T, event *EventObject) {
 	}
 
 	eventTime, err := time.Parse(time.RFC3339, event.Timestamp)
-	if err != nil {
-		t.Fatalf("error parsing timestamp: %v", err)
-	}
-
-	if time.Since(eventTime) > time.Second {
-		t.Fatalf("event timestamp is not recent: got %v, want less than 1 second", eventTime)
-	}
+	require.NoError(t, err, "error parsing timestamp [%v]", event.Timestamp)
+	assert.Greater(t, time.Since(eventTime), time.Second, "event timestamp is not recent: got %v, want less than 1 second", eventTime)
 }

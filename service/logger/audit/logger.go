@@ -98,6 +98,7 @@ func (tx *auditTransaction) logClose(ctx context.Context, logger *slog.Logger, s
 			auditEvent.EventMetaData["cancellation_error"] = err.Error()
 		}
 
+		//nolint:sloglint // audit message is always just the verb
 		logger.Log(ctx, LevelAudit, string(event.verb), slog.Any("audit", *auditEvent))
 	}
 }

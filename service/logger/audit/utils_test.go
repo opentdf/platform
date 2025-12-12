@@ -36,42 +36,19 @@ func TestGetAuditDataFromContextDefaultsPath(t *testing.T) {
 
 	auditData := GetAuditDataFromContext(ctx)
 
-	if auditData.RequestID != uuid.Nil {
-		t.Fatalf("RequestID did not match: %v", auditData.RequestID)
-	}
-
-	if auditData.UserAgent != defaultNone {
-		t.Fatalf("UserAgent did not match: %v", auditData.UserAgent)
-	}
-
-	if auditData.RequestIP != defaultNone {
-		t.Fatalf("RequestIP did not match: %v", auditData.RequestIP)
-	}
-
-	if auditData.ActorID != defaultNone {
-		t.Fatalf("ActorID did not match: %v", auditData.ActorID)
-	}
+	assert.Equal(t, uuid.Nil, auditData.RequestID)
+	assert.Equal(t, defaultNone, auditData.UserAgent)
+	assert.Equal(t, defaultNone, auditData.RequestIP)
+	assert.Equal(t, defaultNone, auditData.ActorID)
 }
 
 func TestGetAuditDataFromContextWithNoKeys(t *testing.T) {
-	ctx := t.Context()
-	auditData := GetAuditDataFromContext(ctx)
+	auditData := GetAuditDataFromContext(t.Context())
 
-	if auditData.RequestID != uuid.Nil {
-		t.Fatalf("RequestID did not match: %v", auditData.RequestID)
-	}
-
-	if auditData.UserAgent != "None" {
-		t.Fatalf("UserAgent did not match: %v", auditData.UserAgent)
-	}
-
-	if auditData.RequestIP != "None" {
-		t.Fatalf("RequestIP did not match: %v", auditData.RequestIP)
-	}
-
-	if auditData.ActorID != "None" {
-		t.Fatalf("ActorID did not match: %v", auditData.ActorID)
-	}
+	assert.Equal(t, uuid.Nil, auditData.RequestID)
+	assert.Equal(t, defaultNone, auditData.UserAgent)
+	assert.Equal(t, defaultNone, auditData.RequestIP)
+	assert.Equal(t, defaultNone, auditData.ActorID)
 }
 
 func TestGetAuditDataFromContextWithPartialKeys(t *testing.T) {

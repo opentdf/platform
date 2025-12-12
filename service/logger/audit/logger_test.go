@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Params
@@ -89,17 +91,15 @@ func extractLogEntry(t *testing.T, logBuffer *bytes.Buffer) (logEntryStructure, 
 	return entry, entryTime
 }
 
-func doWithLogger(t *testing.T, testFunc func(ctx context.Context, l *Logger)) (ls logEntryStructure, lt time.Time) {
+func doWithLogger(t *testing.T, testFunc func(ctx context.Context, l *Logger)) (ls logEntryStructure, lt time.Time) { //nolint:nonamedreturns // Required to rewrite on panics, right?
 	l, buf := createTestLogger()
 	ctx := createTestContext(t)
 	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
-	if !ok {
-		t.Fatal("audit transaction missing from context")
-	}
+	require.True(t, ok, "audit transaction missing from context")
 
 	defer func() {
 		if r := recover(); r != nil {
-			if err, ok := r.(error); ok {
+			if err, okerr := r.(error); okerr {
 				tx.logClose(ctx, l.logger, false, err)
 			} else {
 				tx.logClose(ctx, l.logger, false, nil)
@@ -127,10 +127,10 @@ func TestAuditRewrapSuccess(t *testing.T) {
 				"id": "%s",
 				"name": "",
 				"attributes": {
-            		"assertions": [],
-            		"attrs": %s,
-            		"permissions": []
-        		}
+					"assertions": [],
+					"attrs": %s,
+					"permissions": []
+				}
 			},
 			"action": {
 			  "type": "rewrap",
@@ -186,10 +186,10 @@ func TestAuditRewrapFailure(t *testing.T) {
 				"id": "%s",
 				"name": "",
 				"attributes": {
-            		"assertions": [],
-            		"attrs": %s,
-            		"permissions": []
-        		}
+					"assertions": [],
+					"attrs": %s,
+					"permissions": []
+				}
 			},
 			"action": {
 			  "type": "rewrap",
@@ -245,10 +245,10 @@ func TestPolicyCRUDSuccess(t *testing.T) {
 				"id": "%s",
 				"name": "",
 				"attributes": {
-            		"assertions": null,
-            		"attrs": null,
-            		"permissions": null
-        		}
+					"assertions": null,
+					"attrs": null,
+					"permissions": null
+				}
 			},
 			"action": {
 			  "type": "%s",
@@ -295,10 +295,10 @@ func TestPolicyCrudFailure(t *testing.T) {
 				"id": "%s",
 				"name": "",
 				"attributes": {
-            		"assertions": null,
-            		"attrs": null,
-            		"permissions": null
-        		}
+					"assertions": null,
+					"attrs": null,
+					"permissions": null
+}
 			},
 			"action": {
 			  "type": "%s",
@@ -345,10 +345,10 @@ func TestDeferredRewrapSuccess(t *testing.T) {
 				"id": "%s",
 				"name": "",
 				"attributes": {
-            		"assertions": [],
-            		"attrs": %s,
-            		"permissions": []
-        		}
+					"assertions": [],
+					"attrs": %s,
+					"permissions": []
+				}
 			},
 			"action": {
 			  "type": "rewrap",
@@ -395,7 +395,7 @@ func TestDeferredRewrapSuccess(t *testing.T) {
 func TestDeferredRewrapCancelled(t *testing.T) {
 	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
 		l.RewrapSuccess(ctx, rewrapParams)
-		panic(fmt.Errorf("operation failed"))
+		panic(errors.New("operation failed"))
 	})
 
 	expectedAuditLog := fmt.Sprintf(
@@ -405,10 +405,10 @@ func TestDeferredRewrapCancelled(t *testing.T) {
 				"id": "%s",
 				"name": "",
 				"attributes": {
-            		"assertions": [],
-            		"attrs": %s,
-            		"permissions": []
-        		}
+					"assertions": [],
+					"attrs": %s,
+					"permissions": []
+				}
 			},
 			"action": {
 			  "type": "rewrap",
@@ -466,10 +466,10 @@ func TestDeferredPolicyCRUDSuccess(t *testing.T) {
 				"id": "%s",
 				"name": "",
 				"attributes": {
-            		"assertions": null,
-            		"attrs": null,
-            		"permissions": null
-        		}
+					"assertions": null,
+					"attrs": null,
+					"permissions": null
+				}
 			},
 			"action": {
 			  "type": "%s",
@@ -528,10 +528,10 @@ func TestGetDecision(t *testing.T) {
 					"id": "%s",
 					"name": "",
 					"attributes": {
-            			"assertions": null,
-            			"attrs": %q,
-            			"permissions": null
-        			}
+						"assertions": null,
+						"attrs": %q,
+						"permissions": null
+					}
 				},
 				"action": {
 					"type": "%s",

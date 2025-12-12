@@ -32,7 +32,7 @@ func TestCreateGetDecisionEventHappyPathSuccess(t *testing.T) {
 		FQNs:                []string{"test-fqn"},
 	}
 
-	event, err := CreateGetDecisionEvent(createTestContext(), params)
+	event, err := CreateGetDecisionEvent(createTestContext(t), params)
 	if err != nil {
 		t.Fatalf("error creating get decision audit event: %v", err)
 	}

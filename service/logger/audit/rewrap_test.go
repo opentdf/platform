@@ -34,7 +34,7 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 		KeyID:         keyID,
 	}
 
-	event, err := CreateRewrapAuditEvent(createTestContext(), params)
+	event, err := CreateRewrapAuditEvent(createTestContext(t), params)
 	if err != nil {
 		t.Fatalf("error creating rewrap audit event: %v", err)
 	}

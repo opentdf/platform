@@ -2,16 +2,18 @@ package audit
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
-	"reflect"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Params
@@ -58,13 +60,6 @@ func createTestLogger() (*Logger, *bytes.Buffer) {
 	}, &buf
 }
 
-func removeWhitespace(s string) string {
-	trimmed := strings.ReplaceAll(s, " ", "")
-	trimmed = strings.ReplaceAll(trimmed, "\n", "")
-	trimmed = strings.ReplaceAll(trimmed, "\t", "")
-	return trimmed
-}
-
 type logEntryStructure struct {
 	Time  string          `json:"time"`
 	Level string          `json:"level"`
@@ -96,12 +91,34 @@ func extractLogEntry(t *testing.T, logBuffer *bytes.Buffer) (logEntryStructure, 
 	return entry, entryTime
 }
 
-func TestAuditRewrapSuccess(t *testing.T) {
+func doWithLogger(t *testing.T, testFunc func(ctx context.Context, l *Logger)) (ls logEntryStructure, lt time.Time) { //nolint:nonamedreturns // Required to rewrite on panics, right?
 	l, buf := createTestLogger()
+	ctx := createTestContext(t)
+	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
+	require.True(t, ok, "audit transaction missing from context")
 
-	l.RewrapSuccess(createTestContext(), rewrapParams)
+	defer func() {
+		if r := recover(); r != nil {
+			if err, okerr := r.(error); okerr {
+				tx.logClose(ctx, l.logger, false, err)
+			} else {
+				tx.logClose(ctx, l.logger, false, nil)
+			}
+		} else {
+			tx.logClose(ctx, l.logger, true, nil)
+		}
+		ls, lt = extractLogEntry(t, buf)
+	}()
 
-	logEntry, logEntryTime := extractLogEntry(t, buf)
+	testFunc(ctx, l)
+
+	return ls, lt
+}
+
+func TestAuditRewrapSuccess(t *testing.T) {
+	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		l.RewrapSuccess(ctx, rewrapParams)
+	})
 
 	expectedAuditLog := fmt.Sprintf(
 		`{
@@ -110,10 +127,10 @@ func TestAuditRewrapSuccess(t *testing.T) {
 				"id": "%s",
 				"name": "",
 				"attributes": {
-            		"assertions": [],
-            		"attrs": %s,
-            		"permissions": []
-        		}
+					"assertions": [],
+					"attrs": %s,
+					"permissions": []
+				}
 			},
 			"action": {
 			  "type": "rewrap",
@@ -153,21 +170,14 @@ func TestAuditRewrapSuccess(t *testing.T) {
 		logEntryTime.Format(time.RFC3339),
 	)
 
-	// Remove newlines and spaces from expected
-	expectedAuditLog = removeWhitespace(expectedAuditLog)
-	loggedMessage := removeWhitespace(string(logEntry.Audit))
-
-	if expectedAuditLog != loggedMessage {
-		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
-	}
+	loggedMessage := string(logEntry.Audit)
+	assert.JSONEq(t, expectedAuditLog, loggedMessage)
 }
 
 func TestAuditRewrapFailure(t *testing.T) {
-	l, buf := createTestLogger()
-
-	l.RewrapFailure(createTestContext(), rewrapParams)
-
-	logEntry, logEntryTime := extractLogEntry(t, buf)
+	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		l.RewrapFailure(ctx, rewrapParams)
+	})
 
 	expectedAuditLog := fmt.Sprintf(
 		`{
@@ -176,10 +186,10 @@ func TestAuditRewrapFailure(t *testing.T) {
 				"id": "%s",
 				"name": "",
 				"attributes": {
-            		"assertions": [],
-            		"attrs": %s,
-            		"permissions": []
-        		}
+					"assertions": [],
+					"attrs": %s,
+					"permissions": []
+				}
 			},
 			"action": {
 			  "type": "rewrap",
@@ -219,21 +229,14 @@ func TestAuditRewrapFailure(t *testing.T) {
 		logEntryTime.Format(time.RFC3339),
 	)
 
-	// Remove newlines and spaces from expected
-	expectedAuditLog = removeWhitespace(expectedAuditLog)
-	loggedMessage := removeWhitespace(string(logEntry.Audit))
-
-	if expectedAuditLog != loggedMessage {
-		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
-	}
+	loggedMessage := string(logEntry.Audit)
+	assert.JSONEq(t, expectedAuditLog, loggedMessage)
 }
 
 func TestPolicyCRUDSuccess(t *testing.T) {
-	l, buf := createTestLogger()
-
-	l.PolicyCRUDSuccess(createTestContext(), policyCRUDParams)
-
-	logEntry, logEntryTime := extractLogEntry(t, buf)
+	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
+	})
 
 	expectedAuditLog := fmt.Sprintf(
 		`{
@@ -242,10 +245,10 @@ func TestPolicyCRUDSuccess(t *testing.T) {
 				"id": "%s",
 				"name": "",
 				"attributes": {
-            		"assertions": null,
-            		"attrs": null,
-            		"permissions": null
-        		}
+					"assertions": null,
+					"attrs": null,
+					"permissions": null
+				}
 			},
 			"action": {
 			  "type": "%s",
@@ -276,21 +279,14 @@ func TestPolicyCRUDSuccess(t *testing.T) {
 		logEntryTime.Format(time.RFC3339),
 	)
 
-	// Remove newlines and spaces from expected
-	expectedAuditLog = removeWhitespace(expectedAuditLog)
-	loggedMessage := removeWhitespace(string(logEntry.Audit))
-
-	if expectedAuditLog != loggedMessage {
-		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
-	}
+	loggedMessage := string(logEntry.Audit)
+	assert.JSONEq(t, expectedAuditLog, loggedMessage)
 }
 
 func TestPolicyCrudFailure(t *testing.T) {
-	l, buf := createTestLogger()
-
-	l.PolicyCRUDFailure(createTestContext(), policyCRUDParams)
-
-	logEntry, logEntryTime := extractLogEntry(t, buf)
+	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		l.PolicyCRUDFailure(ctx, policyCRUDParams)
+	})
 
 	expectedAuditLog := fmt.Sprintf(
 		`{
@@ -299,10 +295,10 @@ func TestPolicyCrudFailure(t *testing.T) {
 				"id": "%s",
 				"name": "",
 				"attributes": {
-            		"assertions": null,
-            		"attrs": null,
-            		"permissions": null
-        		}
+					"assertions": null,
+					"attrs": null,
+					"permissions": null
+}
 			},
 			"action": {
 			  "type": "%s",
@@ -333,18 +329,182 @@ func TestPolicyCrudFailure(t *testing.T) {
 		logEntryTime.Format(time.RFC3339),
 	)
 
-	// Remove newlines and spaces from expected
-	expectedAuditLog = removeWhitespace(expectedAuditLog)
-	loggedMessage := removeWhitespace(string(logEntry.Audit))
+	loggedMessage := string(logEntry.Audit)
+	assert.JSONEq(t, expectedAuditLog, loggedMessage)
+}
 
-	if expectedAuditLog != loggedMessage {
-		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
-	}
+func TestDeferredRewrapSuccess(t *testing.T) {
+	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		l.RewrapSuccess(ctx, rewrapParams)
+	})
+
+	expectedAuditLog := fmt.Sprintf(
+		`{
+			"object": {
+				"type": "key_object",
+				"id": "%s",
+				"name": "",
+				"attributes": {
+					"assertions": [],
+					"attrs": %s,
+					"permissions": []
+				}
+			},
+			"action": {
+			  "type": "rewrap",
+				"result": "success"
+			},
+			"actor": {
+			  "id": "%s",
+				"attributes": []
+			},
+			"eventMetaData": {
+			  "algorithm": "%s",
+				"keyID": "%s",
+				"policyBinding": "%s",
+				"tdfFormat": "%s"
+			},
+			"clientInfo": {
+			  "userAgent": "%s",
+				"platform": "kas",
+				"requestIP": "%s"
+			},
+			"original": null,
+			"updated": null,
+			"requestID": "%s",
+			"timestamp": "%s"
+	  }
+		`,
+		rewrapParams.Policy.UUID.String(),
+		rewrapAttrsJSON,
+		TestActorID,
+		rewrapParams.Algorithm,
+		rewrapParams.KeyID,
+		rewrapParams.PolicyBinding,
+		rewrapParams.TDFFormat,
+		TestUserAgent,
+		TestRequestIP,
+		TestRequestID,
+		logEntryTime.Format(time.RFC3339),
+	)
+
+	loggedMessage := string(logEntry.Audit)
+	assert.JSONEq(t, expectedAuditLog, loggedMessage)
+}
+
+func TestDeferredRewrapCancelled(t *testing.T) {
+	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		l.RewrapSuccess(ctx, rewrapParams)
+		panic(errors.New("operation failed"))
+	})
+
+	expectedAuditLog := fmt.Sprintf(
+		`{
+			"object": {
+				"type": "key_object",
+				"id": "%s",
+				"name": "",
+				"attributes": {
+					"assertions": [],
+					"attrs": %s,
+					"permissions": []
+				}
+			},
+			"action": {
+			  "type": "rewrap",
+				"result": "cancel"
+			},
+			"actor": {
+			  "id": "%s",
+				"attributes": []
+			},
+			"eventMetaData": {
+			  "algorithm": "%s",
+				"cancellation_error": "%s",
+				"keyID": "%s",
+				"policyBinding": "%s",
+				"tdfFormat": "%s"
+			},
+			"clientInfo": {
+			  "userAgent": "%s",
+				"platform": "kas",
+				"requestIP": "%s"
+			},
+			"original": null,
+			"updated": null,
+			"requestID": "%s",
+			"timestamp": "%s"
+	  }
+		`,
+		rewrapParams.Policy.UUID.String(),
+		rewrapAttrsJSON,
+		TestActorID,
+		rewrapParams.Algorithm,
+		"operation failed",
+		rewrapParams.KeyID,
+		rewrapParams.PolicyBinding,
+		rewrapParams.TDFFormat,
+		TestUserAgent,
+		TestRequestIP,
+		TestRequestID,
+		logEntryTime.Format(time.RFC3339),
+	)
+
+	loggedMessage := string(logEntry.Audit)
+	assert.JSONEq(t, expectedAuditLog, loggedMessage)
+}
+
+func TestDeferredPolicyCRUDSuccess(t *testing.T) {
+	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
+	})
+
+	expectedAuditLog := fmt.Sprintf(
+		`{
+		  "object": {
+			  "type": "%s",
+				"id": "%s",
+				"name": "",
+				"attributes": {
+					"assertions": null,
+					"attrs": null,
+					"permissions": null
+				}
+			},
+			"action": {
+			  "type": "%s",
+				"result": "success"
+			},
+			"actor": {
+				"id": "%s",
+				"attributes": []
+			},
+			"eventMetaData": null,
+			"clientInfo": {
+				"userAgent": "%s",
+				"platform": "policy",
+				"requestIP": "%s"
+			},
+			"original": null,
+			"updated": null,
+			"requestID": "%s",
+			"timestamp": "%s"
+		}`,
+		ObjectTypeKeyObject.String(),
+		policyCRUDParams.ObjectID,
+		ActionTypeUpdate.String(),
+		TestActorID,
+		TestUserAgent,
+		TestRequestIP,
+		TestRequestID,
+		logEntryTime.Format(time.RFC3339),
+	)
+
+	loggedMessage := string(logEntry.Audit)
+	assert.JSONEq(t, expectedAuditLog, loggedMessage)
 }
 
 func TestGetDecision(t *testing.T) {
-	l, buf := createTestLogger()
-
 	params := GetDecisionEventParams{
 		Decision: GetDecisionResultPermit,
 		EntityChainEntitlements: []EntityChainEntitlement{
@@ -358,10 +518,9 @@ func TestGetDecision(t *testing.T) {
 		FQNs:                []string{"test-fqn"},
 	}
 
-	l.GetDecision(createTestContext(), params)
-
-	logEntry, logEntryTime := extractLogEntry(t, buf)
-
+	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		l.GetDecision(ctx, params)
+	})
 	expectedAuditLog := fmt.Sprintf(
 		`{
 				"object": {
@@ -369,10 +528,10 @@ func TestGetDecision(t *testing.T) {
 					"id": "%s",
 					"name": "",
 					"attributes": {
-            			"assertions": null,
-            			"attrs": %q,
-            			"permissions": null
-        			}
+						"assertions": null,
+						"attrs": %q,
+						"permissions": null
+					}
 				},
 				"action": {
 					"type": "%s",
@@ -434,10 +593,6 @@ func TestGetDecision(t *testing.T) {
 		t.Fatalf("Failed to unmarshal actual JSON: %v", err)
 	}
 
-	if !reflect.DeepEqual(expected, actual) {
-		// For better error messages, show the pretty-printed versions
-		expectedPretty, _ := json.MarshalIndent(expected, "", "  ")
-		actualPretty, _ := json.MarshalIndent(actual, "", "  ")
-		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedPretty, actualPretty)
-	}
+	loggedMessage := string(logEntry.Audit)
+	assert.JSONEq(t, expectedAuditLog, loggedMessage)
 }

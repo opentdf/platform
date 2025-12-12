@@ -62,7 +62,8 @@ func (a *Logger) With(key string, value string) *Logger {
 
 // addEvent appends a pending audit event to the transaction
 func (tx *auditTransaction) addEvent(verb string, event *EventObject) {
-	// TK: Use a channel if concurrency becomes an issue
+	tx.mu.Lock()
+	defer tx.mu.Unlock()
 	tx.events = append(tx.events, pendingEvent{
 		verb:  verb,
 		event: event,
@@ -73,6 +74,8 @@ func (tx *auditTransaction) addEvent(verb string, event *EventObject) {
 // If success is false or err is not nil, events are logged as "cancelled" with the error attached.
 // Otherwise, events are logged with their originally recorded success/failure status.
 func (tx *auditTransaction) logClose(ctx context.Context, logger *slog.Logger, success bool, err error) {
+	tx.mu.Lock()
+	defer tx.mu.Unlock()
 	for _, event := range tx.events {
 		auditEvent := event.event
 

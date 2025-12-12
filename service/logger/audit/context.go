@@ -2,6 +2,7 @@ package audit
 
 import (
 	"context"
+	sync "sync"
 
 	"github.com/google/uuid"
 )
@@ -13,9 +14,9 @@ type contextKey struct{}
 type auditTransaction struct {
 	ContextData
 	events []pendingEvent
+	mu     sync.Mutex
 }
 
-// ContextWithActorID returns a new context with the given actor ID set in audit data
 func ContextWithActorID(ctx context.Context, actorID string) context.Context {
 	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
 	if !ok || tx == nil {

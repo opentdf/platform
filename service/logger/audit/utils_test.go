@@ -25,21 +25,10 @@ func TestGetAuditDataFromContextHappyPath(t *testing.T) {
 
 	auditData := GetAuditDataFromContext(ctx)
 
-	if auditData.RequestID.String() != tx.RequestID.String() {
-		t.Fatalf("RequestID did not match: %v", auditData.RequestID)
-	}
-
-	if auditData.UserAgent != "test-user-agent" {
-		t.Fatalf("UserAgent did not match: %v", auditData.UserAgent)
-	}
-
-	if auditData.RequestIP != net.ParseIP("192.168.0.1").String() {
-		t.Fatalf("RequestIP did not match: %v", auditData.RequestIP)
-	}
-
-	if auditData.ActorID != "test-actor-id" {
-		t.Fatalf("ActorID did not match: %v", auditData.ActorID)
-	}
+	assert.Equal(t, tx.RequestID.String(), auditData.RequestID.String())
+	assert.Equal(t, "test-user-agent", auditData.UserAgent)
+	assert.Equal(t, net.ParseIP("192.168.0.1").String(), auditData.RequestIP)
+	assert.Equal(t, "test-actor-id", auditData.ActorID)
 }
 
 func TestGetAuditDataFromContextDefaultsPath(t *testing.T) {

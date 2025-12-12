@@ -6,13 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"reflect"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/stretchr/testify/assert"
 )
 
 // Params
@@ -57,13 +56,6 @@ func createTestLogger() (*Logger, *bytes.Buffer) {
 	return &Logger{
 		logger: logger,
 	}, &buf
-}
-
-func removeWhitespace(s string) string {
-	trimmed := strings.ReplaceAll(s, " ", "")
-	trimmed = strings.ReplaceAll(trimmed, "\n", "")
-	trimmed = strings.ReplaceAll(trimmed, "\t", "")
-	return trimmed
 }
 
 type logEntryStructure struct {
@@ -178,13 +170,8 @@ func TestAuditRewrapSuccess(t *testing.T) {
 		logEntryTime.Format(time.RFC3339),
 	)
 
-	// Remove newlines and spaces from expected
-	expectedAuditLog = removeWhitespace(expectedAuditLog)
-	loggedMessage := removeWhitespace(string(logEntry.Audit))
-
-	if expectedAuditLog != loggedMessage {
-		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
-	}
+	loggedMessage := string(logEntry.Audit)
+	assert.JSONEq(t, expectedAuditLog, loggedMessage)
 }
 
 func TestAuditRewrapFailure(t *testing.T) {
@@ -242,13 +229,8 @@ func TestAuditRewrapFailure(t *testing.T) {
 		logEntryTime.Format(time.RFC3339),
 	)
 
-	// Remove newlines and spaces from expected
-	expectedAuditLog = removeWhitespace(expectedAuditLog)
-	loggedMessage := removeWhitespace(string(logEntry.Audit))
-
-	if expectedAuditLog != loggedMessage {
-		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
-	}
+	loggedMessage := string(logEntry.Audit)
+	assert.JSONEq(t, expectedAuditLog, loggedMessage)
 }
 
 func TestPolicyCRUDSuccess(t *testing.T) {
@@ -297,13 +279,8 @@ func TestPolicyCRUDSuccess(t *testing.T) {
 		logEntryTime.Format(time.RFC3339),
 	)
 
-	// Remove newlines and spaces from expected
-	expectedAuditLog = removeWhitespace(expectedAuditLog)
-	loggedMessage := removeWhitespace(string(logEntry.Audit))
-
-	if expectedAuditLog != loggedMessage {
-		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
-	}
+	loggedMessage := string(logEntry.Audit)
+	assert.JSONEq(t, expectedAuditLog, loggedMessage)
 }
 
 func TestPolicyCrudFailure(t *testing.T) {
@@ -352,13 +329,8 @@ func TestPolicyCrudFailure(t *testing.T) {
 		logEntryTime.Format(time.RFC3339),
 	)
 
-	// Remove newlines and spaces from expected
-	expectedAuditLog = removeWhitespace(expectedAuditLog)
-	loggedMessage := removeWhitespace(string(logEntry.Audit))
-
-	if expectedAuditLog != loggedMessage {
-		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
-	}
+	loggedMessage := string(logEntry.Audit)
+	assert.JSONEq(t, expectedAuditLog, loggedMessage)
 }
 
 func TestDeferredRewrapSuccess(t *testing.T) {
@@ -416,18 +388,14 @@ func TestDeferredRewrapSuccess(t *testing.T) {
 		logEntryTime.Format(time.RFC3339),
 	)
 
-	expectedAuditLog = removeWhitespace(expectedAuditLog)
-	loggedMessage := removeWhitespace(string(logEntry.Audit))
-
-	if expectedAuditLog != loggedMessage {
-		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
-	}
+	loggedMessage := string(logEntry.Audit)
+	assert.JSONEq(t, expectedAuditLog, loggedMessage)
 }
 
 func TestDeferredRewrapCancelled(t *testing.T) {
 	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
 		l.RewrapSuccess(ctx, rewrapParams)
-		panic(fmt.Errorf("operation failed"))
+		panic(errors.New("operation failed"))
 	})
 
 	expectedAuditLog := fmt.Sprintf(
@@ -482,12 +450,8 @@ func TestDeferredRewrapCancelled(t *testing.T) {
 		logEntryTime.Format(time.RFC3339),
 	)
 
-	expectedAuditLog = removeWhitespace(expectedAuditLog)
-	loggedMessage := removeWhitespace(string(logEntry.Audit))
-
-	if expectedAuditLog != loggedMessage {
-		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
-	}
+	loggedMessage := string(logEntry.Audit)
+	assert.JSONEq(t, expectedAuditLog, loggedMessage)
 }
 
 func TestDeferredPolicyCRUDSuccess(t *testing.T) {
@@ -536,12 +500,8 @@ func TestDeferredPolicyCRUDSuccess(t *testing.T) {
 		logEntryTime.Format(time.RFC3339),
 	)
 
-	expectedAuditLog = removeWhitespace(expectedAuditLog)
-	loggedMessage := removeWhitespace(string(logEntry.Audit))
-
-	if expectedAuditLog != loggedMessage {
-		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedAuditLog, loggedMessage)
-	}
+	loggedMessage := string(logEntry.Audit)
+	assert.JSONEq(t, expectedAuditLog, loggedMessage)
 }
 
 func TestGetDecision(t *testing.T) {
@@ -633,10 +593,6 @@ func TestGetDecision(t *testing.T) {
 		t.Fatalf("Failed to unmarshal actual JSON: %v", err)
 	}
 
-	if !reflect.DeepEqual(expected, actual) {
-		// For better error messages, show the pretty-printed versions
-		expectedPretty, _ := json.MarshalIndent(expected, "", "  ")
-		actualPretty, _ := json.MarshalIndent(actual, "", "  ")
-		t.Errorf("Expected audit log:\n%s\nGot:\n%s", expectedPretty, actualPretty)
-	}
+	loggedMessage := string(logEntry.Audit)
+	assert.JSONEq(t, expectedAuditLog, loggedMessage)
 }

@@ -193,16 +193,6 @@ func (c Config) LogValue() slog.Value {
 	return slog.GroupValue(attrs...)
 }
 
-// errRow implements pgx.Row and returns an error when Scan is called
-// Used to wrap circuit breaker errors in QueryRow
-type errRow struct {
-	err error
-}
-
-func (e errRow) Scan(_ ...interface{}) error {
-	return e.err
-}
-
 func (c Config) buildConfig() (*pgxpool.Config, error) {
 	var u string
 
@@ -430,17 +420,18 @@ func (c *Client) Query(ctx context.Context, sql string, args ...interface{}) (pg
 	// If using a replica with circuit breaker, execute through circuit breaker
 	if replicaIdx >= 0 && c.replicaCBs != nil {
 		r, e := c.replicaCBs.executeQuery(ctx, replicaIdx, sql, args)
-		if e != nil {
-			// Circuit breaker error (open circuit, connection failure, etc.)
-			// Fall back to primary instead of returning error
-			c.Logger.WarnContext(ctx, "replica query failed, falling back to primary",
-				slog.Int("replica_index", replicaIdx),
-				slog.String("error", e.Error()))
-		} else if r.Err() != nil {
-			return nil, WrapIfKnownInvalidQueryErr(r.Err())
-		} else {
+		if e == nil {
+			// Query succeeded via replica
+			if r.Err() != nil {
+				return nil, WrapIfKnownInvalidQueryErr(r.Err())
+			}
 			return r, nil
 		}
+		// Circuit breaker error (open circuit, connection failure, etc.)
+		// Fall back to primary instead of returning error
+		c.Logger.WarnContext(ctx, "replica query failed, falling back to primary",
+			slog.Int("replica_index", replicaIdx),
+			slog.String("error", e.Error()))
 	}
 
 	// Use primary (either no replicas, all circuits open, or replica fallback)

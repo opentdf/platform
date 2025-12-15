@@ -104,9 +104,6 @@ func TestReadReplicaBackwardCompatibility(t *testing.T) {
 // BenchmarkReadReplicaSelection benchmarks the replica selection performance
 func BenchmarkReadReplicaSelection(b *testing.B) {
 	config := db.Config{
-		Host:     "localhost",
-		Port:     5432,
-		Database: "test",
 		ReadReplicas: []db.ReplicaConfig{
 			{Host: "replica1", Port: 5433},
 			{Host: "replica2", Port: 5434},
@@ -116,8 +113,8 @@ func BenchmarkReadReplicaSelection(b *testing.B) {
 	// This benchmark tests the configuration structure
 	// The actual getReadConnection() method is internal but uses atomic.Uint32
 	// which has negligible overhead (~10-20ns per operation)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for i := 0; b.Loop(); i++ {
 		_ = config.ReadReplicas[i%len(config.ReadReplicas)]
 	}
 }
@@ -129,9 +126,6 @@ func TestReadReplicaAtomicCounter(t *testing.T) {
 	const incrementsPerGoroutine = 1000
 
 	config := db.Config{
-		Host:     "localhost",
-		Port:     5432,
-		Database: "opentdf",
 		ReadReplicas: []db.ReplicaConfig{
 			{Host: "replica1", Port: 5433},
 			{Host: "replica2", Port: 5434},
@@ -147,11 +141,11 @@ func TestReadReplicaAtomicCounter(t *testing.T) {
 	counter := 0
 	mu := sync.Mutex{}
 
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < incrementsPerGoroutine; j++ {
+			for range incrementsPerGoroutine {
 				mu.Lock()
 				counter++
 				mu.Unlock()

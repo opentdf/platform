@@ -40,6 +40,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/network"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
@@ -67,7 +68,6 @@ func setupPrimaryContainer(ctx context.Context, t testingHelper) (tc.Container, 
 
 	randomSuffix := uuid.NewString()[:8]
 	containerName := "testcontainer-postgres-primary-" + randomSuffix
-	networkName := fmt.Sprintf("opentdf-test-%s", randomSuffix)
 
 	// Setup script to configure replication
 	replicationSetup := fmt.Sprintf(`
@@ -90,21 +90,19 @@ func setupPrimaryContainer(ctx context.Context, t testingHelper) (tc.Container, 
 	`, postgresUser, postgresDB, replicatorUser, replicatorUser, replicatorPass, postgresDB, replicatorUser, replicatorUser, postgresUser, postgresDB)
 
 	// Create a shared Docker network for replication
-	network, err := tc.GenericNetwork(ctx, tc.GenericNetworkRequest{
-		NetworkRequest: tc.NetworkRequest{
-			Name:           networkName,
-			CheckDuplicate: true,
-		},
-	})
+	dockerNetwork, err := network.New(ctx, network.WithDriver("bridge"))
 	if err != nil {
 		t.Errorf("Failed to create network: %v", err)
 		t.FailNow()
 	}
 
-	// Register network cleanup (use Background context since test context may be cancelled)
+	// Get the network name for use in container config
+	networkName := dockerNetwork.Name
+
+	//nolint:contextcheck // Intentionally using Background context for cleanup (test context may be cancelled)
 	t.Cleanup(func() {
 		cleanupCtx := context.Background()
-		if err := network.Remove(cleanupCtx); err != nil {
+		if err := dockerNetwork.Remove(cleanupCtx); err != nil {
 			t.Logf("Failed to remove network: %v", err)
 		}
 	})
@@ -147,7 +145,7 @@ func setupPrimaryContainer(ctx context.Context, t testingHelper) (tc.Container, 
 		t.FailNow()
 	}
 
-	// Register cleanup immediately after container creation (use Background context since test context may be cancelled)
+	//nolint:contextcheck // Intentionally using Background context for cleanup (test context may be cancelled)
 	t.Cleanup(func() {
 		cleanupCtx := context.Background()
 		if err := container.Terminate(cleanupCtx); err != nil {
@@ -266,7 +264,7 @@ func setupReplicaContainer(ctx context.Context, t testingHelper, primaryHost str
 		t.FailNow()
 	}
 
-	// Register cleanup immediately after container creation (use Background context since test context may be cancelled)
+	//nolint:contextcheck // Intentionally using Background context for cleanup (test context may be cancelled)
 	t.Cleanup(func() {
 		cleanupCtx := context.Background()
 		if err := container.Terminate(cleanupCtx); err != nil {

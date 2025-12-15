@@ -66,7 +66,7 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 		signedTok, err = signWithAssertionSigner(ctx, tok, k, key.Alg)
 	default:
 		// Existing in-memory key path (raw key material)
-		signedTok, err = jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key))
+		signedTok, err = jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.signingKey()))
 	}
 	if err != nil {
 		return fmt.Errorf("signing assertion failed: %w", err)

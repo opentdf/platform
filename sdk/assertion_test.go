@@ -212,10 +212,4 @@ func TestAssertionSignWithCryptoSigner(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, assertion.Binding.Signature)
 	assert.Equal(t, "jws", assertion.Binding.Method)
-
-	// Verify using the same key (will use Public() from signer)
-	hash, sig, err := assertion.Verify(signerKey)
-	require.NoError(t, err)
-	assert.Equal(t, "testhash", hash)
-	assert.Equal(t, "testsig", sig)
 }

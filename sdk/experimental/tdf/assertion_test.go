@@ -3,6 +3,9 @@
 package tdf
 
 import (
+	"crypto"
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
 	"testing"
 
@@ -183,4 +186,42 @@ func TestDeserializingAssertionWithStringInStatementValue(t *testing.T) {
 	require.NoError(t, err, "Error deserializing the assertion with a JSON object in the statement value")
 
 	assert.Equal(t, "this is a value", assertion.Statement.Value)
+}
+
+func TestAssertionSignWithCryptoSigner(t *testing.T) {
+	// Generate RSA key pair - *rsa.PrivateKey implements crypto.Signer
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	// Explicitly use crypto.Signer interface to demonstrate hardware key support
+	var signer crypto.Signer = privateKey
+
+	assertion := Assertion{
+		ID:             "test-assertion",
+		Type:           BaseAssertion,
+		Scope:          PayloadScope,
+		AppliesToState: Unencrypted,
+		Statement: Statement{
+			Format: "text",
+			Schema: "test",
+			Value:  "test value",
+		},
+	}
+
+	// Sign using crypto.Signer interface (simulates HSM/KMS usage)
+	signerKey := AssertionKey{
+		Alg: AssertionKeyAlgRS256,
+		Key: signer,
+	}
+
+	err = assertion.Sign("testhash", "testsig", signerKey)
+	require.NoError(t, err)
+	assert.NotEmpty(t, assertion.Binding.Signature)
+	assert.Equal(t, "jws", assertion.Binding.Method)
+
+	// Verify using the same crypto.Signer (will use Public() from signer)
+	hash, sig, err := assertion.Verify(signerKey)
+	require.NoError(t, err)
+	assert.Equal(t, "testhash", hash)
+	assert.Equal(t, "testsig", sig)
 }

@@ -354,7 +354,8 @@ func (a AssertionKeyAlg) String() string {
 type AssertionKey struct {
 	// Alg specifies the cryptographic algorithm for this key
 	Alg AssertionKeyAlg
-	// Key contains the actual key material (type depends on algorithm)
+	// Key contains the actual key material (type depends on algorithm).
+	// Can be raw key material or a crypto.Signer for hardware-backed keys (HSM/KMS).
 	Key interface{}
 }
 

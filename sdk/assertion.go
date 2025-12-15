@@ -252,7 +252,7 @@ func (a AssertionKeyAlg) String() string {
 type AssertionKey struct {
 	// Algorithm of the key.
 	Alg AssertionKeyAlg
-	// Key value.
+	// Key value. Can be raw key material or a crypto.Signer for hardware-backed keys (HSM/KMS).
 	Key interface{}
 }
 

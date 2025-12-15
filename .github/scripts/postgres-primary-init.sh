@@ -13,6 +13,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     GRANT CONNECT ON DATABASE $POSTGRES_DB TO replicator;
 EOSQL
 
-# Restrict replication connections to Docker network for security
-echo "host replication replicator opentdf_platform md5" >> "${PGDATA}/pg_hba.conf"
+# Allow replication from same Docker network using 'samenet' keyword
+# This automatically matches any address in subnets the server is connected to
+echo "host replication replicator samenet md5" >> "${PGDATA}/pg_hba.conf"
 echo "Replication user configured"

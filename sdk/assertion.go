@@ -1,7 +1,6 @@
 package sdk
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/gowebpki/jcs"
 	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 )
@@ -55,18 +53,7 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 	}
 
 	// sign the hash and signature
-	var signedTok []byte
-	var err error
-
-	switch k := key.Key.(type) {
-	case AssertionSigner:
-		// External key provider (KMS, Vault, etc.)
-		ctx := context.Background()
-		signedTok, err = signWithAssertionSigner(ctx, tok, k, key.Alg)
-	default:
-		// Existing in-memory key path (raw key material or crypto.Signer)
-		signedTok, err = jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key))
-	}
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key))
 	if err != nil {
 		return fmt.Errorf("signing assertion failed: %w", err)
 	}
@@ -76,37 +63,6 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 	a.Binding.Signature = string(signedTok)
 
 	return nil
-}
-
-func signWithAssertionSigner(ctx context.Context, tok jwt.Token, signer AssertionSigner, alg AssertionKeyAlg) ([]byte, error) {
-	// Serialize the token headers and payload
-	hdrs := jws.NewHeaders()
-	if err := hdrs.Set(jws.AlgorithmKey, jwa.KeyAlgorithmFrom(alg.String())); err != nil {
-		return nil, fmt.Errorf("failed to set algorithm header: %w", err)
-	}
-	if err := hdrs.Set(jws.TypeKey, "JWT"); err != nil {
-		return nil, fmt.Errorf("failed to set type header: %w", err)
-	}
-
-	// Sign the token using jws.Sign with a custom signer
-	payload, err := json.Marshal(tok)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal token: %w", err)
-	}
-
-	// Create the signing input (header.payload)
-	signed, err := jws.Sign(payload, jws.WithKey(jwa.KeyAlgorithmFrom(alg.String()), &assertionSignerAdapter{ctx: ctx, signer: signer}, jws.WithProtectedHeaders(hdrs)))
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign with assertion signer: %w", err)
-	}
-
-	return signed, nil
-}
-
-type assertionSignerAdapter struct {
-	//nolint:containedctx // Required to pass context through crypto.Signer interface which doesn't support context
-	ctx    context.Context
-	signer AssertionSigner
 }
 
 // Verify checks the binding signature of the assertion and
@@ -226,13 +182,6 @@ type Binding struct {
 	Method string `json:"method,omitempty"`
 	// Signature of the assertion.
 	Signature string `json:"signature,omitempty"`
-}
-
-// AssertionBindingSignature type for Assertion.Binding.Signature to be cast to string
-type AssertionBindingSignature []byte
-
-type AssertionSigner interface {
-	SignAssertion(ctx context.Context, token jwt.Token) (AssertionBindingSignature, error)
 }
 
 // AssertionType represents the type of the assertion.

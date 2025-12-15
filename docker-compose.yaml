@@ -164,33 +164,21 @@ services:
       <<: *postgres-env
     volumes:
       - opentdfdb_primary_data:/var/lib/postgresql/data
-    # Replication setup happens inline
-    entrypoint: ["/bin/sh", "-c"]
+      - ./.github/scripts/postgres-primary-init.sh:/docker-entrypoint-initdb.d/01-replication-setup.sh:ro
+    # Start postgres with replication config
+    # wal_keep_size=1024 (1GB) prevents WAL deletion if replicas lag
     command:
-      - |
-        # Setup replication user on first init
-        cat > /docker-entrypoint-initdb.d/01-replication-setup.sh << 'EOF'
-        #!/bin/bash
-        set -e
-        echo "Setting up replication user..."
-        psql -v ON_ERROR_STOP=1 --username "$$POSTGRES_USER" --dbname "$$POSTGRES_DB" <<-EOSQL
-            DO \$$\$$
-            BEGIN
-                IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'replicator') THEN
-                    CREATE ROLE replicator WITH REPLICATION PASSWORD 'replicator_password' LOGIN;
-                END IF;
-            END
-            \$$\$$;
-            GRANT CONNECT ON DATABASE $$POSTGRES_DB TO replicator;
-        EOSQL
-        # Restrict replication connections to Docker network for security
-        echo "host replication replicator opentdf_platform md5" >> "$${PGDATA}/pg_hba.conf"
-        echo "Replication user configured"
-        EOF
-        chmod +x /docker-entrypoint-initdb.d/01-replication-setup.sh
-        # Start postgres with replication config
-        # wal_keep_size=1024 (1GB) prevents WAL deletion if replicas lag
-        exec docker-entrypoint.sh postgres -c wal_level=replica -c max_wal_senders=10 -c max_replication_slots=10 -c hot_standby=on -c wal_keep_size=1024
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=10
+      - -c
+      - max_replication_slots=10
+      - -c
+      - hot_standby=on
+      - -c
+      - wal_keep_size=1024
     healthcheck:
       <<: *postgres-healthcheck
     ports:
@@ -280,31 +268,21 @@ services:
   #     <<: *postgres-env
   #   volumes:
   #     - opentdfdb_primary2_data:/var/lib/postgresql/data
-  #   entrypoint: ["/bin/sh", "-c"]
+  #     - ./.github/scripts/postgres-primary-init.sh:/docker-entrypoint-initdb.d/01-replication-setup.sh:ro
+  #   # Start postgres with replication config
+  #   # wal_keep_size=1024 (1GB) prevents WAL deletion if replicas lag
   #   command:
-  #     - |
-  #       # Setup replication user on first init
-  #       cat > /docker-entrypoint-initdb.d/01-replication-setup.sh << 'EOF'
-  #       #!/bin/bash
-  #       set -e
-  #       echo "Setting up replication user..."
-  #       psql -v ON_ERROR_STOP=1 --username "$$POSTGRES_USER" --dbname "$$POSTGRES_DB" <<-EOSQL
-  #           DO \$$\$$
-  #           BEGIN
-  #               IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'replicator') THEN
-  #                   CREATE ROLE replicator WITH REPLICATION PASSWORD 'replicator_password' LOGIN;
-  #               END IF;
-  #           END
-  #           \$$\$$;
-  #           GRANT CONNECT ON DATABASE $$POSTGRES_DB TO replicator;
-  #       EOSQL
-  #       # Restrict replication connections to Docker network for security
-  #       echo "host replication replicator opentdf_platform md5" >> "$${PGDATA}/pg_hba.conf"
-  #       echo "Replication user configured"
-  #       EOF
-  #       chmod +x /docker-entrypoint-initdb.d/01-replication-setup.sh
-  #       # Start postgres with replication config
-  #       exec docker-entrypoint.sh postgres -c wal_level=replica -c max_wal_senders=10 -c max_replication_slots=10 -c hot_standby=on -c wal_keep_size=64
+  #     - postgres
+  #     - -c
+  #     - wal_level=replica
+  #     - -c
+  #     - max_wal_senders=10
+  #     - -c
+  #     - max_replication_slots=10
+  #     - -c
+  #     - hot_standby=on
+  #     - -c
+  #     - wal_keep_size=1024
   #   healthcheck:
   #     <<: *postgres-healthcheck
   #   ports:

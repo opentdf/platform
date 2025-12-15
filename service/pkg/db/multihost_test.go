@@ -174,8 +174,12 @@ func TestQueryRowCircuitBreaker(t *testing.T) {
 
 		// Make some Query calls that fail
 		for range 2 {
-			_, err := mixedCB.executeQuery(ctx, 0, "SELECT * FROM test", nil)
+			rows, err := mixedCB.executeQuery(ctx, 0, "SELECT * FROM test", nil)
 			require.Error(t, err, "Query should fail")
+			if rows != nil {
+				_ = rows.Err() // Check rows error
+				rows.Close()
+			}
 		}
 
 		// Circuit not open yet (need 3+ requests with 60% failure)

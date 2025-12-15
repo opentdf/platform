@@ -41,8 +41,8 @@ func TestCircuitBreakerWithFailingReplica(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start TWO replicas (cleanup handled by setupReplicaContainer)
-	replica1Container, replica1Port := setupReplicaContainer(ctx, t, primaryHost, 5432, 1)
-	replica2Container, replica2Port := setupReplicaContainer(ctx, t, primaryHost, 5432, 2)
+	replica1Container, replica1Port := setupReplicaContainer(ctx, t, primaryHost, 1)
+	replica2Container, replica2Port := setupReplicaContainer(ctx, t, primaryHost, 2)
 
 	// Configure client with both replicas
 	config := db.Config{
@@ -188,7 +188,7 @@ func TestContextBasedRouting(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start one replica (cleanup handled by setupReplicaContainer)
-	_, replicaPort := setupReplicaContainer(ctx, t, primaryHost, 5432, 1)
+	_, replicaPort := setupReplicaContainer(ctx, t, primaryHost, 1)
 
 	config := db.Config{
 		Host:           "localhost",

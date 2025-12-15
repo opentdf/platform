@@ -158,7 +158,7 @@ func TestMultiHostPrimaryWithReadReplicas(t *testing.T) {
 	_, backupPrimaryPort := setupPrimaryContainer(ctx, t)
 
 	// Start read replica - cleanup handled by setupReplicaContainer
-	_, replicaPort := setupReplicaContainer(ctx, t, primaryHost, 5432, 1)
+	_, replicaPort := setupReplicaContainer(ctx, t, primaryHost, 1)
 
 	// Configure with BOTH multi-host primary AND read replicas
 	config := db.Config{

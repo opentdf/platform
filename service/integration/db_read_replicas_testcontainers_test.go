@@ -165,8 +165,9 @@ func setupPrimaryContainer(ctx context.Context, t testingHelper) (tc.Container, 
 }
 
 // setupReplicaContainer creates a PostgreSQL replica that replicates from the primary
-func setupReplicaContainer(ctx context.Context, t testingHelper, primaryHost string, primaryPort int, replicaNum int) (tc.Container, int) {
+func setupReplicaContainer(ctx context.Context, t testingHelper, primaryHost string, replicaNum int) (tc.Container, int) {
 	t.Helper()
+	primaryPort := 5432
 
 	randomSuffix := uuid.NewString()[:8]
 	containerName := fmt.Sprintf("testcontainer-postgres-replica%d-%s", replicaNum, randomSuffix)
@@ -275,8 +276,8 @@ func TestReadReplicasWithTestcontainers(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start replica databases (cleanup handled by setupReplicaContainer)
-	_, replica1Port := setupReplicaContainer(ctx, t, primaryHost, 5432, 1)
-	_, replica2Port := setupReplicaContainer(ctx, t, primaryHost, 5432, 2)
+	_, replica1Port := setupReplicaContainer(ctx, t, primaryHost, 1)
+	_, replica2Port := setupReplicaContainer(ctx, t, primaryHost, 2)
 
 	// Configure database client with replicas
 	config := db.Config{
@@ -463,7 +464,7 @@ func BenchmarkReadReplicaPerformance(b *testing.B) {
 	primaryHost, _ := primaryContainer.Host(ctx)
 
 	// Start one replica (cleanup handled by setupReplicaContainer)
-	_, replica1Port := setupReplicaContainer(ctx, b, primaryHost, 5432, 1)
+	_, replica1Port := setupReplicaContainer(ctx, b, primaryHost, 1)
 
 	config := db.Config{
 		Host:           "localhost",

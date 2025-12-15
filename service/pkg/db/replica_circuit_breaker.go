@@ -11,6 +11,12 @@ import (
 	"github.com/sony/gobreaker/v2"
 )
 
+const (
+	maxOpenRequests        = 3
+	circuitBreakerInterval = 30 * time.Second
+	circuitBreakerTimeout  = 60 * time.Second
+)
+
 // replicaCircuitBreakers manages circuit breakers for read replicas
 type replicaCircuitBreakers struct {
 	breakers     []*gobreaker.CircuitBreaker[pgx.Rows]
@@ -23,13 +29,12 @@ type replicaCircuitBreakers struct {
 func newReplicaCircuitBreakers(replicas []PgxIface, logger *slog.Logger) *replicaCircuitBreakers {
 	breakers := make([]*gobreaker.CircuitBreaker[pgx.Rows], len(replicas))
 
-	for i := range replicas {
-		idx := i
-		breakers[i] = gobreaker.NewCircuitBreaker[pgx.Rows](gobreaker.Settings{
-			Name:        fmt.Sprintf("replica-%d", i+1),
-			MaxRequests: 3, // Allow 3 requests in half-open state
-			Interval:    30 * time.Second,
-			Timeout:     60 * time.Second, // Time to wait in open state before trying again
+	for idx := range replicas {
+		breakers[idx] = gobreaker.NewCircuitBreaker[pgx.Rows](gobreaker.Settings{
+			Name:        fmt.Sprintf("replica-%d", idx+1),
+			MaxRequests: maxOpenRequests,
+			Interval:    circuitBreakerInterval,
+			Timeout:     circuitBreakerTimeout,
 			ReadyToTrip: func(counts gobreaker.Counts) bool {
 				// Open circuit after 3 consecutive failures
 				failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
@@ -80,7 +85,10 @@ func (rcb *replicaCircuitBreakers) executeQuery(ctx context.Context, replicaIdx 
 	}
 
 	// Execute query through circuit breaker
+	// Note: Caller is responsible for checking rows.Err() when iterating
+	//nolint:rowserrcheck // Rows.Err() checked by caller during iteration
 	return rcb.breakers[replicaIdx].Execute(func() (pgx.Rows, error) {
+		//nolint:rowserrcheck // Rows.Err() checked by caller during iteration
 		return rcb.pools[replicaIdx].Query(ctx, sql, args...)
 	})
 }
@@ -116,6 +124,7 @@ func (rcb *replicaCircuitBreakers) executeQueryRow(ctx context.Context, replicaI
 	}
 
 	// Execute Query through the circuit breaker (which properly tracks failures)
+	//nolint:rowserrcheck // Rows.Err() checked in rowsToRowAdapter.Scan()
 	rows, err := rcb.executeQuery(ctx, replicaIdx, sql, args)
 	if err != nil {
 		return nil, err

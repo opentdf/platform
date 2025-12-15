@@ -52,7 +52,7 @@ Industry-standard circuit breaker pattern using **[sony/gobreaker](https://githu
 ```go
 // Circuit breakers protect automatically
 // Failed replica is circuit-broken and skipped
-db.Query(ctx, "SELECT * FROM users", nil)  // Automatically routes around circuit-broken replicas
+db.Query(ctx, "SELECT * FROM users")  // Automatically routes around circuit-broken replicas
 ```
 
 **Why gobreaker?**
@@ -66,10 +66,10 @@ Avoid replication lag for read-after-write scenarios:
 
 ```go
 // Force next read to use primary (avoids replication lag)
-db.Exec(ctx, "INSERT INTO users (id, name) VALUES (1, 'Alice')", nil)
+db.Exec(ctx, "INSERT INTO users (id, name) VALUES ($1, $2)", 1, "Alice")
 
 ctx = db.WithForcePrimary(ctx)  // Force primary for this read
-db.Query(ctx, "SELECT * FROM users WHERE id = 1", nil)  // Guaranteed to see the write
+db.Query(ctx, "SELECT * FROM users WHERE id = $1", 1)  // Guaranteed to see the write
 ```
 
 ### 5. **Comprehensive Integration Tests**
@@ -256,7 +256,7 @@ defer client.Close()
 client.Exec(ctx, "INSERT INTO users ...", args)
 
 // Reads automatically load-balance across healthy replicas
-rows, _ := client.Query(ctx, "SELECT * FROM users", nil)
+rows, _ := client.Query(ctx, "SELECT * FROM users")
 ```
 
 ### Read-After-Write Pattern

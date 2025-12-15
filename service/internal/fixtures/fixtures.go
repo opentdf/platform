@@ -793,7 +793,7 @@ func (f *Fixtures) provision(ctx context.Context, t string, c []string, v [][]an
 // Migration adds standard actions [create, read, update, delete] to the database
 func (f *Fixtures) loadMigratedStandardActions(ctx context.Context) {
 	actions := make(map[string]string)
-	rows, err := f.db.Client.Query(ctx, "SELECT id, name FROM actions WHERE is_standard = TRUE", nil)
+	rows, err := f.db.Client.Query(ctx, "SELECT id, name FROM actions WHERE is_standard = TRUE")
 	if err != nil {
 		slog.Error("could not get standard actions", slog.Any("error", err))
 		panic("could not get standard actions")

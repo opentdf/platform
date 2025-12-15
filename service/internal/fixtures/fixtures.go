@@ -434,8 +434,8 @@ func (f *Fixtures) Provision(ctx context.Context) {
 
 	slog.Info("📦 retrieving migration-inserted standard actions")
 	// Force primary to avoid replication lag after migrations
-	ctxPrimary := db.WithForcePrimary(ctx)
-	f.loadMigratedStandardActions(ctxPrimary)
+	ctx = db.WithForcePrimary(ctx)
+	f.loadMigratedStandardActions(ctx)
 	slog.Info("📦 provisioning namespace data")
 	n := f.provisionNamespace(ctx)
 	slog.Info("📦 provisioning attribute data")

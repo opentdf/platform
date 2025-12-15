@@ -61,11 +61,13 @@ type testingHelper interface {
 }
 
 // setupPrimaryContainer creates a PostgreSQL primary database with replication configured
-func setupPrimaryContainer(ctx context.Context, t testingHelper) (tc.Container, int) {
+// Returns: container, port, networkName, containerName
+func setupPrimaryContainer(ctx context.Context, t testingHelper) (tc.Container, int, string, string) {
 	t.Helper()
 
 	randomSuffix := uuid.NewString()[:8]
 	containerName := "testcontainer-postgres-primary-" + randomSuffix
+	networkName := fmt.Sprintf("opentdf-test-%s", randomSuffix)
 
 	// Setup script to configure replication
 	replicationSetup := fmt.Sprintf(`
@@ -82,10 +84,30 @@ func setupPrimaryContainer(ctx context.Context, t testingHelper) (tc.Container, 
 			\$\$;
 			GRANT CONNECT ON DATABASE %s TO %s;
 		EOSQL
-		echo "host replication %s 0.0.0.0/0 md5" >> "$PGDATA/pg_hba.conf"
+		echo "host replication %s samenet md5" >> "$PGDATA/pg_hba.conf"
 		psql -v ON_ERROR_STOP=1 --username "%s" --dbname "%s" -c "SELECT pg_reload_conf();"
 		echo "Replication user configured"
 	`, postgresUser, postgresDB, replicatorUser, replicatorUser, replicatorPass, postgresDB, replicatorUser, replicatorUser, postgresUser, postgresDB)
+
+	// Create a shared Docker network for replication
+	network, err := tc.GenericNetwork(ctx, tc.GenericNetworkRequest{
+		NetworkRequest: tc.NetworkRequest{
+			Name:           networkName,
+			CheckDuplicate: true,
+		},
+	})
+	if err != nil {
+		t.Errorf("Failed to create network: %v", err)
+		t.FailNow()
+	}
+
+	// Register network cleanup (use Background context since test context may be cancelled)
+	t.Cleanup(func() {
+		cleanupCtx := context.Background()
+		if err := network.Remove(cleanupCtx); err != nil {
+			t.Logf("Failed to remove network: %v", err)
+		}
+	})
 
 	req := tc.GenericContainerRequest{
 		ContainerRequest: tc.ContainerRequest{
@@ -105,6 +127,7 @@ func setupPrimaryContainer(ctx context.Context, t testingHelper) (tc.Container, 
 				"-c", "hot_standby=on",
 				"-c", "wal_keep_size=64",
 			},
+			Networks: []string{networkName},
 			WaitingFor: wait.ForSQL(nat.Port("5432/tcp"), "pgx", func(host string, port nat.Port) string {
 				return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable",
 					postgresUser,
@@ -124,9 +147,10 @@ func setupPrimaryContainer(ctx context.Context, t testingHelper) (tc.Container, 
 		t.FailNow()
 	}
 
-	// Register cleanup immediately after container creation
+	// Register cleanup immediately after container creation (use Background context since test context may be cancelled)
 	t.Cleanup(func() {
-		if err := container.Terminate(ctx); err != nil {
+		cleanupCtx := context.Background()
+		if err := container.Terminate(cleanupCtx); err != nil {
 			t.Logf("Failed to terminate primary container: %v", err)
 		}
 	})
@@ -161,11 +185,11 @@ func setupPrimaryContainer(ctx context.Context, t testingHelper) (tc.Container, 
 
 	slog.Info("primary postgres container ready", slog.Int("port", port.Int()))
 
-	return container, port.Int()
+	return container, port.Int(), networkName, containerName
 }
 
 // setupReplicaContainer creates a PostgreSQL replica that replicates from the primary
-func setupReplicaContainer(ctx context.Context, t testingHelper, primaryHost string, replicaNum int) (tc.Container, int) {
+func setupReplicaContainer(ctx context.Context, t testingHelper, primaryHost string, replicaNum int, networkName string) (tc.Container, int) {
 	t.Helper()
 	primaryPort := 5432
 
@@ -206,8 +230,8 @@ func setupReplicaContainer(ctx context.Context, t testingHelper, primaryHost str
 			echo "Replica initialized successfully"
 		fi
 
-		# Start PostgreSQL
-		exec postgres
+		# Start PostgreSQL as postgres user
+		exec gosu postgres postgres
 	`, primaryHost, primaryPort, postgresUser, replicatorPass, primaryHost, primaryPort, replicatorUser)
 
 	req := tc.GenericContainerRequest{
@@ -222,6 +246,7 @@ func setupReplicaContainer(ctx context.Context, t testingHelper, primaryHost str
 				"PGDATA":            "/var/lib/postgresql/data",
 			},
 			Entrypoint: []string{"/bin/sh", "-c", replicaInit},
+			Networks:   []string{networkName},
 			WaitingFor: wait.ForSQL(nat.Port("5432/tcp"), "pgx", func(host string, port nat.Port) string {
 				return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable",
 					postgresUser,
@@ -241,9 +266,10 @@ func setupReplicaContainer(ctx context.Context, t testingHelper, primaryHost str
 		t.FailNow()
 	}
 
-	// Register cleanup immediately after container creation
+	// Register cleanup immediately after container creation (use Background context since test context may be cancelled)
 	t.Cleanup(func() {
-		if err := container.Terminate(ctx); err != nil {
+		cleanupCtx := context.Background()
+		if err := container.Terminate(cleanupCtx); err != nil {
 			t.Logf("Failed to terminate replica %d container: %v", replicaNum, err)
 		}
 	})
@@ -269,15 +295,11 @@ func TestReadReplicasWithTestcontainers(t *testing.T) {
 	ctx := t.Context()
 
 	// Start primary database (cleanup handled by setupPrimaryContainer)
-	primaryContainer, primaryPort := setupPrimaryContainer(ctx, t)
-
-	// Get primary host (for replica connection)
-	primaryHost, err := primaryContainer.Host(ctx)
-	require.NoError(t, err)
+	_, primaryPort, networkName, primaryContainerName := setupPrimaryContainer(ctx, t)
 
 	// Start replica databases (cleanup handled by setupReplicaContainer)
-	_, replica1Port := setupReplicaContainer(ctx, t, primaryHost, 1)
-	_, replica2Port := setupReplicaContainer(ctx, t, primaryHost, 2)
+	_, replica1Port := setupReplicaContainer(ctx, t, primaryContainerName, 1, networkName)
+	_, replica2Port := setupReplicaContainer(ctx, t, primaryContainerName, 2, networkName)
 
 	// Configure database client with replicas
 	config := db.Config{
@@ -319,8 +341,8 @@ func TestReadReplicasWithTestcontainers(t *testing.T) {
 	assert.Len(t, client.ReadReplicas, 2, "Should have 2 read replicas")
 
 	t.Run("verify_replication_status", func(t *testing.T) {
-		// Check replication status on primary
-		rows, err := client.Pgx.Query(ctx, "SELECT client_addr, state, sync_state FROM pg_stat_replication")
+		// Check replication status on primary (cast client_addr to text for scanning)
+		rows, err := client.Pgx.Query(ctx, "SELECT client_addr::text, state, sync_state FROM pg_stat_replication")
 		require.NoError(t, err)
 		defer rows.Close()
 
@@ -459,12 +481,10 @@ func BenchmarkReadReplicaPerformance(b *testing.B) {
 	ctx := b.Context()
 
 	// Start primary database (cleanup handled by setupPrimaryContainer)
-	primaryContainer, primaryPort := setupPrimaryContainer(ctx, b)
-
-	primaryHost, _ := primaryContainer.Host(ctx)
+	_, primaryPort, networkName, primaryContainerName := setupPrimaryContainer(ctx, b)
 
 	// Start one replica (cleanup handled by setupReplicaContainer)
-	_, replica1Port := setupReplicaContainer(ctx, b, primaryHost, 1)
+	_, replica1Port := setupReplicaContainer(ctx, b, primaryContainerName, 1, networkName)
 
 	config := db.Config{
 		Host:           "localhost",

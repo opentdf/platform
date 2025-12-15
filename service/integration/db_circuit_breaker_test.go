@@ -35,14 +35,13 @@ func TestCircuitBreakerWithFailingReplica(t *testing.T) {
 	ctx := t.Context()
 
 	// Start primary database (cleanup handled by setupPrimaryContainer)
-	primaryContainer, primaryPort := setupPrimaryContainer(ctx, t)
+	primaryContainer, primaryPort, networkName, primaryContainerName := setupPrimaryContainer(ctx, t)
 
-	primaryHost, err := primaryContainer.Host(ctx)
-	require.NoError(t, err)
+	_ = primaryContainer // Keep container reference for test
 
 	// Start TWO replicas (cleanup handled by setupReplicaContainer)
-	replica1Container, replica1Port := setupReplicaContainer(ctx, t, primaryHost, 1)
-	replica2Container, replica2Port := setupReplicaContainer(ctx, t, primaryHost, 2)
+	replica1Container, replica1Port := setupReplicaContainer(ctx, t, primaryContainerName, 1, networkName)
+	replica2Container, replica2Port := setupReplicaContainer(ctx, t, primaryContainerName, 2, networkName)
 
 	// Configure client with both replicas
 	config := db.Config{
@@ -182,13 +181,10 @@ func TestContextBasedRouting(t *testing.T) {
 	ctx := t.Context()
 
 	// Start primary (cleanup handled by setupPrimaryContainer)
-	primaryContainer, primaryPort := setupPrimaryContainer(ctx, t)
-
-	primaryHost, err := primaryContainer.Host(ctx)
-	require.NoError(t, err)
+	_, primaryPort, networkName, primaryContainerName := setupPrimaryContainer(ctx, t)
 
 	// Start one replica (cleanup handled by setupReplicaContainer)
-	_, replicaPort := setupReplicaContainer(ctx, t, primaryHost, 1)
+	_, replicaPort := setupReplicaContainer(ctx, t, primaryContainerName, 1, networkName)
 
 	config := db.Config{
 		Host:           "localhost",
@@ -281,7 +277,7 @@ func TestSingleDatabaseWithoutReplicas(t *testing.T) {
 	ctx := t.Context()
 
 	// Start ONLY primary (no replicas) - cleanup handled by setupPrimaryContainer
-	_, primaryPort := setupPrimaryContainer(ctx, t)
+	_, primaryPort, _, _ := setupPrimaryContainer(ctx, t)
 
 	config := db.Config{
 		Host:           "localhost",

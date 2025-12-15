@@ -405,13 +405,17 @@ func (c *Client) QueryRow(ctx context.Context, sql string, args ...interface{}) 
 	if replicaIdx >= 0 && c.replicaCBs != nil {
 		row, err := c.replicaCBs.executeQueryRow(ctx, replicaIdx, sql, args)
 		if err != nil {
-			// Return an error row that will fail when scanned
-			return errRow{err: err}
+			// Circuit breaker error (open circuit, connection failure, etc.)
+			// Fall back to primary instead of returning error row
+			c.Logger.WarnContext(ctx, "replica query failed, falling back to primary",
+				slog.Int("replica_index", replicaIdx),
+				slog.String("error", err.Error()))
+		} else {
+			return row
 		}
-		return row
 	}
 
-	// Otherwise use primary
+	// Use primary (either no replicas, all circuits open, or replica fallback)
 	return c.Pgx.QueryRow(ctx, sql, args...)
 }
 
@@ -427,15 +431,19 @@ func (c *Client) Query(ctx context.Context, sql string, args ...interface{}) (pg
 	if replicaIdx >= 0 && c.replicaCBs != nil {
 		r, e := c.replicaCBs.executeQuery(ctx, replicaIdx, sql, args)
 		if e != nil {
-			return nil, WrapIfKnownInvalidQueryErr(e)
-		}
-		if r.Err() != nil {
+			// Circuit breaker error (open circuit, connection failure, etc.)
+			// Fall back to primary instead of returning error
+			c.Logger.WarnContext(ctx, "replica query failed, falling back to primary",
+				slog.Int("replica_index", replicaIdx),
+				slog.String("error", e.Error()))
+		} else if r.Err() != nil {
 			return nil, WrapIfKnownInvalidQueryErr(r.Err())
+		} else {
+			return r, nil
 		}
-		return r, nil
 	}
 
-	// Otherwise use primary
+	// Use primary (either no replicas, all circuits open, or replica fallback)
 	r, e := c.Pgx.Query(ctx, sql, args...)
 	if e != nil {
 		return nil, WrapIfKnownInvalidQueryErr(e)

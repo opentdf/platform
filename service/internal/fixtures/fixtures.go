@@ -8,6 +8,7 @@ import (
 	"os"
 
 	policypb "github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/policy"
 	"gopkg.in/yaml.v2"
 )
@@ -432,7 +433,9 @@ func (f *Fixtures) Provision(ctx context.Context) {
 	}
 
 	slog.Info("📦 retrieving migration-inserted standard actions")
-	f.loadMigratedStandardActions(ctx)
+	// Force primary to avoid replication lag after migrations
+	ctxPrimary := db.WithForcePrimary(ctx)
+	f.loadMigratedStandardActions(ctxPrimary)
 	slog.Info("📦 provisioning namespace data")
 	n := f.provisionNamespace(ctx)
 	slog.Info("📦 provisioning attribute data")

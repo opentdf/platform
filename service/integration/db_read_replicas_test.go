@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"context"
 	"sync"
 	"testing"
 
@@ -88,7 +87,7 @@ func TestReadReplicaBackwardCompatibility(t *testing.T) {
 		Level:  "error",
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	client, err := db.New(ctx, config, logCfg, nil)
 	if err != nil {
 		t.Skip("Database not available - backward compatibility test skipped")

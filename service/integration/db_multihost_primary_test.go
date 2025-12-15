@@ -15,7 +15,6 @@
 package integration
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -31,7 +30,7 @@ func TestMultiHostPrimaryFailover(t *testing.T) {
 		t.Skip("Skipping testcontainer test in short mode")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Start TWO primaries for failover testing (cleanup handled by setupPrimaryContainer)
 	primary1Container, primary1Port := setupPrimaryContainer(ctx, t)
@@ -147,7 +146,7 @@ func TestMultiHostPrimaryWithReadReplicas(t *testing.T) {
 		t.Skip("Skipping testcontainer test in short mode")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Start primary (for replicas to replicate from) - cleanup handled by setupPrimaryContainer
 	primaryContainer, primaryPort := setupPrimaryContainer(ctx, t)
@@ -221,7 +220,8 @@ func TestMultiHostPrimaryWithReadReplicas(t *testing.T) {
 
 			var count int
 			if rows.Next() {
-				rows.Scan(&count)
+				err := rows.Scan(&count)
+				require.NoError(t, err)
 				assert.Equal(t, 2, count, "Should see replicated data")
 			}
 			rows.Close()
@@ -242,10 +242,10 @@ func TestMultiHostPrimaryWithReadReplicas(t *testing.T) {
 
 		var count int
 		if rows.Next() {
-			rows.Scan(&count)
+			err := rows.Scan(&count)
+			require.NoError(t, err)
 			assert.Equal(t, 3, count, "Should see all data")
 		}
 		rows.Close()
 	})
 }
-

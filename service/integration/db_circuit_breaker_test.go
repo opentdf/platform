@@ -16,7 +16,6 @@
 package integration
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -33,7 +32,7 @@ func TestCircuitBreakerWithFailingReplica(t *testing.T) {
 		t.Skip("Skipping testcontainer test in short mode")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Start primary database (cleanup handled by setupPrimaryContainer)
 	primaryContainer, primaryPort := setupPrimaryContainer(ctx, t)
@@ -152,13 +151,14 @@ func TestCircuitBreakerWithFailingReplica(t *testing.T) {
 
 		// Queries should still succeed via primary fallback
 		successCount := 0
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM circuit_test")
 			if err == nil {
 				successCount++
 				var count int
 				if rows.Next() {
-					rows.Scan(&count)
+					err := rows.Scan(&count)
+					require.NoError(t, err)
 					assert.Equal(t, 2, count, "Should still read data from primary")
 				}
 				rows.Close()
@@ -179,7 +179,7 @@ func TestContextBasedRouting(t *testing.T) {
 		t.Skip("Skipping testcontainer test in short mode")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Start primary (cleanup handled by setupPrimaryContainer)
 	primaryContainer, primaryPort := setupPrimaryContainer(ctx, t)
@@ -264,7 +264,8 @@ func TestContextBasedRouting(t *testing.T) {
 
 		var count int
 		if rows.Next() {
-			rows.Scan(&count)
+			err := rows.Scan(&count)
+			require.NoError(t, err)
 			assert.GreaterOrEqual(t, count, 1, "Should have data")
 		}
 		rows.Close()
@@ -277,20 +278,20 @@ func TestSingleDatabaseWithoutReplicas(t *testing.T) {
 		t.Skip("Skipping testcontainer test in short mode")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Start ONLY primary (no replicas) - cleanup handled by setupPrimaryContainer
 	_, primaryPort := setupPrimaryContainer(ctx, t)
 
 	config := db.Config{
-		Host:             "localhost",
-		Port:             primaryPort,
-		Database:         postgresDB,
-		User:             postgresUser,
-		Password:         postgresPassword,
-		SSLMode:          "disable",
-		Schema:           "public",
-		ConnectTimeout:   5,
+		Host:           "localhost",
+		Port:           primaryPort,
+		Database:       postgresDB,
+		User:           postgresUser,
+		Password:       postgresPassword,
+		SSLMode:        "disable",
+		Schema:         "public",
+		ConnectTimeout: 5,
 		Pool: db.PoolConfig{
 			MaxConns:          10,
 			HealthCheckPeriod: 5,
@@ -333,7 +334,8 @@ func TestSingleDatabaseWithoutReplicas(t *testing.T) {
 
 		var count int
 		if rows.Next() {
-			rows.Scan(&count)
+			err := rows.Scan(&count)
+			require.NoError(t, err)
 			assert.Equal(t, 1, count, "Should have 1 row")
 		}
 		rows.Close()

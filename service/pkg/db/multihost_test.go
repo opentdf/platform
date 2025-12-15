@@ -1,11 +1,11 @@
 package db
 
 import (
-	"io"
-	"log/slog"
+	"context"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/sony/gobreaker/v2"
 	"github.com/stretchr/testify/assert"
@@ -99,7 +99,7 @@ func TestReplicaCircuitBreaker(t *testing.T) {
 
 	t.Run("circuit breaker returns replica when closed", func(t *testing.T) {
 		mockPool := &mockPgxIface{}
-		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+		logger := logger.CreateTestLogger().Logger
 
 		cb := newReplicaCircuitBreakers([]PgxIface{mockPool}, logger)
 
@@ -111,7 +111,7 @@ func TestReplicaCircuitBreaker(t *testing.T) {
 
 	t.Run("stats are returned", func(t *testing.T) {
 		mockPool := &mockPgxIface{}
-		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+		logger := logger.CreateTestLogger().Logger
 
 		cb := newReplicaCircuitBreakers([]PgxIface{mockPool}, logger)
 
@@ -119,6 +119,75 @@ func TestReplicaCircuitBreaker(t *testing.T) {
 		assert.Equal(t, 1, stats["total_replicas"], "should have 1 replica")
 		assert.Equal(t, 1, stats["healthy_replicas"], "should have 1 healthy replica")
 		assert.Equal(t, 0, stats["open_circuit_breakers"], "should have 0 open circuit breakers")
+	})
+}
+
+// TestQueryRowCircuitBreaker verifies that QueryRow failures are tracked by the circuit breaker
+func TestQueryRowCircuitBreaker(t *testing.T) {
+	ctx := t.Context()
+
+	// Create a mock pool that simulates Query-level failures (connection errors, etc.)
+	// This ensures the circuit breaker sees the failures when Query() is called
+	mockPool := &mockFailingPgxIface{failQuery: true}
+	logger := logger.CreateTestLogger().Logger
+
+	cb := newReplicaCircuitBreakers([]PgxIface{mockPool}, logger)
+
+	t.Run("QueryRow_failures_trip_circuit_breaker", func(t *testing.T) {
+		// Initial state: circuit should be closed
+		assert.Equal(t, gobreaker.StateClosed, cb.breakers[0].State(), "circuit should start closed")
+
+		// Make 5 QueryRow calls that will fail at Query level
+		// Circuit breaker opens after 60% failure rate over 3+ requests
+		for range 5 {
+			_, err := cb.executeQueryRow(ctx, 0, "SELECT * FROM test", nil)
+			require.Error(t, err, "QueryRow should fail when underlying Query fails")
+		}
+
+		// Circuit breaker should now be open due to failures
+		assert.Equal(t, gobreaker.StateOpen, cb.breakers[0].State(),
+			"circuit should open after QueryRow failures")
+	})
+
+	t.Run("QueryRow_successes_keep_circuit_closed", func(t *testing.T) {
+		// Create a mock pool that succeeds
+		successPool := &mockFailingPgxIface{failQuery: false}
+		successCB := newReplicaCircuitBreakers([]PgxIface{successPool}, logger)
+
+		// Make multiple successful QueryRow calls
+		for range 10 {
+			row, err := successCB.executeQueryRow(ctx, 0, "SELECT * FROM test", nil)
+			require.NoError(t, err, "QueryRow should succeed")
+			require.NotNil(t, row, "Should return a row")
+		}
+
+		// Circuit should remain closed
+		assert.Equal(t, gobreaker.StateClosed, successCB.breakers[0].State(),
+			"circuit should stay closed with successful QueryRow calls")
+	})
+
+	t.Run("QueryRow_vs_Query_consistency", func(t *testing.T) {
+		// Verify that QueryRow and Query both contribute to the same circuit breaker
+
+		mixedPool := &mockFailingPgxIface{failQuery: true}
+		mixedCB := newReplicaCircuitBreakers([]PgxIface{mixedPool}, logger)
+
+		// Make some Query calls that fail
+		for range 2 {
+			_, err := mixedCB.executeQuery(ctx, 0, "SELECT * FROM test", nil)
+			require.Error(t, err, "Query should fail")
+		}
+
+		// Circuit not open yet (need 3+ requests with 60% failure)
+		assert.Equal(t, gobreaker.StateClosed, mixedCB.breakers[0].State())
+
+		// Add one more QueryRow call to trip the breaker
+		_, err := mixedCB.executeQueryRow(ctx, 0, "SELECT * FROM test", nil)
+		require.Error(t, err, "QueryRow should fail")
+
+		// Now circuit should be open (3 requests, 100% failure rate)
+		assert.Equal(t, gobreaker.StateOpen, mixedCB.breakers[0].State(),
+			"circuit should open when Query and QueryRow failures are combined")
 	})
 }
 
@@ -202,4 +271,69 @@ func TestConfigValidation(t *testing.T) {
 // mockPgxIface is a minimal mock for testing
 type mockPgxIface struct {
 	PgxIface
+}
+
+// mockFailingPgxIface simulates Query/QueryRow operations that can fail
+type mockFailingPgxIface struct {
+	PgxIface
+	failQuery    bool
+	failQueryRow bool
+}
+
+// Query implements PgxIface.Query
+func (m *mockFailingPgxIface) Query(_ context.Context, _ string, _ ...any) (pgx.Rows, error) {
+	if m.failQuery {
+		return nil, assert.AnError
+	}
+	return &mockRows{}, nil
+}
+
+// QueryRow implements PgxIface.QueryRow
+func (m *mockFailingPgxIface) QueryRow(_ context.Context, _ string, _ ...any) pgx.Row {
+	if m.failQueryRow {
+		return &mockRow{err: assert.AnError}
+	}
+	return &mockRow{}
+}
+
+// mockRows implements pgx.Rows for testing
+type mockRows struct {
+	called bool
+}
+
+func (m *mockRows) Close()                                       {}
+func (m *mockRows) Err() error                                   { return nil }
+func (m *mockRows) CommandTag() pgconn.CommandTag                { return pgconn.CommandTag{} }
+func (m *mockRows) FieldDescriptions() []pgconn.FieldDescription { return nil }
+func (m *mockRows) Next() bool {
+	if m.called {
+		return false
+	}
+	m.called = true
+	return true
+}
+
+func (m *mockRows) Scan(_ ...any) error {
+	return nil
+}
+
+func (m *mockRows) Values() ([]any, error) {
+	return nil, nil
+}
+
+func (m *mockRows) RawValues() [][]byte {
+	return nil
+}
+
+func (m *mockRows) Conn() *pgx.Conn {
+	return nil
+}
+
+// mockRow implements pgx.Row for testing
+type mockRow struct {
+	err error
+}
+
+func (m *mockRow) Scan(_ ...any) error {
+	return m.err
 }

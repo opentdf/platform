@@ -258,13 +258,12 @@ func setupReplicaContainer(ctx context.Context, t testingHelper, primaryHost str
 	return container, port.Int()
 }
 
-// TestReadReplicasWithTestcontainers is a comprehensive test using testcontainers
 func TestReadReplicasWithTestcontainers(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping testcontainer test in short mode")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Start primary database (cleanup handled by setupPrimaryContainer)
 	primaryContainer, primaryPort := setupPrimaryContainer(ctx, t)
@@ -354,7 +353,7 @@ func TestReadReplicasWithTestcontainers(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 
 		// Read from replicas using client.Query (should use round-robin)
-		for i := 0; i < 6; i++ {
+		for range 6 {
 			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM replica_test")
 			require.NoError(t, err, "Read query should succeed")
 
@@ -454,7 +453,7 @@ func BenchmarkReadReplicaPerformance(b *testing.B) {
 		b.Skip("Skipping benchmark in short mode")
 	}
 
-	ctx := context.Background()
+	ctx := b.Context()
 
 	// Start primary database (cleanup handled by setupPrimaryContainer)
 	primaryContainer, primaryPort := setupPrimaryContainer(ctx, b)

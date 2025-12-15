@@ -113,13 +113,8 @@ type assertionSignerAdapter struct {
 // Verify checks the binding signature of the assertion and
 // returns the hash and the signature. It returns an error if the verification fails.
 func (a Assertion) Verify(key AssertionKey) (string, string, error) {
-	verifyKey := key.Key
-	if key.Signer != nil {
-		verifyKey = key.Signer.Public()
-	}
-
 	tok, err := jwt.Parse([]byte(a.Binding.Signature),
-		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), verifyKey),
+		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key),
 	)
 	if err != nil {
 		return "", "", fmt.Errorf("%w: %w", errAssertionVerifyKeyFailure, err)

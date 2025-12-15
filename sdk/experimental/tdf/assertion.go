@@ -3,7 +3,6 @@
 package tdf
 
 import (
-	"crypto"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -100,7 +99,7 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 	}
 
 	// sign the hash and signature
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.signingKey()))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key))
 	if err != nil {
 		return fmt.Errorf("signing assertion failed: %w", err)
 	}
@@ -355,11 +354,9 @@ func (a AssertionKeyAlg) String() string {
 type AssertionKey struct {
 	// Alg specifies the cryptographic algorithm for this key
 	Alg AssertionKeyAlg
-	// Key contains the actual key material (type depends on algorithm)
+	// Key contains the actual key material (type depends on algorithm).
+	// Can be raw key material or a crypto.Signer for hardware-backed keys (HSM/KMS).
 	Key interface{}
-	// Signer is an optional crypto.Signer for hardware-backed keys (HSM/KMS).
-	// When set, used for signing instead of Key.
-	Signer crypto.Signer
 }
 
 // Algorithm returns the cryptographic algorithm of the key.
@@ -371,15 +368,6 @@ func (k AssertionKey) Algorithm() AssertionKeyAlg {
 // Used to check if a default signing key should be used instead.
 func (k AssertionKey) IsEmpty() bool {
 	return k.Key == nil && k.Alg == ""
-}
-
-// signingKey returns the key material for signing operations.
-// If Signer is set, returns Signer; otherwise returns Key.
-func (k AssertionKey) signingKey() interface{} {
-	if k.Signer != nil {
-		return k.Signer
-	}
-	return k.Key
 }
 
 // AssertionVerificationKeys represents the verification keys for assertions.

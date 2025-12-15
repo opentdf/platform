@@ -3,6 +3,7 @@
 package tdf
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
@@ -192,6 +193,9 @@ func TestAssertionSignWithCryptoSigner(t *testing.T) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
+	// Explicitly use crypto.Signer interface to demonstrate hardware key support
+	var signer crypto.Signer = privateKey
+
 	assertion := Assertion{
 		ID:             "test-assertion",
 		Type:           BaseAssertion,
@@ -204,10 +208,10 @@ func TestAssertionSignWithCryptoSigner(t *testing.T) {
 		},
 	}
 
-	// Sign using crypto.Signer (RSA private key implements crypto.Signer)
+	// Sign using crypto.Signer interface (simulates HSM/KMS usage)
 	signerKey := AssertionKey{
-		Alg:    AssertionKeyAlgRS256,
-		Signer: privateKey,
+		Alg: AssertionKeyAlgRS256,
+		Key: signer,
 	}
 
 	err = assertion.Sign("testhash", "testsig", signerKey)
@@ -215,7 +219,7 @@ func TestAssertionSignWithCryptoSigner(t *testing.T) {
 	assert.NotEmpty(t, assertion.Binding.Signature)
 	assert.Equal(t, "jws", assertion.Binding.Method)
 
-	// Verify using the same key (will use Public() from signer)
+	// Verify using the same crypto.Signer (will use Public() from signer)
 	hash, sig, err := assertion.Verify(signerKey)
 	require.NoError(t, err)
 	assert.Equal(t, "testhash", hash)

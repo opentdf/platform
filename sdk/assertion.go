@@ -2,7 +2,6 @@ package sdk
 
 import (
 	"context"
-	"crypto"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -65,8 +64,8 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 		ctx := context.Background()
 		signedTok, err = signWithAssertionSigner(ctx, tok, k, key.Alg)
 	default:
-		// Existing in-memory key path (raw key material)
-		signedTok, err = jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.signingKey()))
+		// Existing in-memory key path (raw key material or crypto.Signer)
+		signedTok, err = jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key))
 	}
 	if err != nil {
 		return fmt.Errorf("signing assertion failed: %w", err)
@@ -304,11 +303,8 @@ func (a AssertionKeyAlg) String() string {
 type AssertionKey struct {
 	// Algorithm of the key.
 	Alg AssertionKeyAlg
-	// Key value.
+	// Key value. Can be raw key material or a crypto.Signer for hardware-backed keys (HSM/KMS).
 	Key interface{}
-	// Signer is an optional crypto.Signer for hardware-backed keys (HSM/KMS).
-	// When set, used for signing instead of Key.
-	Signer crypto.Signer
 }
 
 // Algorithm returns the algorithm of the key.
@@ -319,15 +315,6 @@ func (k AssertionKey) Algorithm() AssertionKeyAlg {
 // IsEmpty returns true if the key and the algorithm are empty.
 func (k AssertionKey) IsEmpty() bool {
 	return k.Key == nil && k.Alg == ""
-}
-
-// signingKey returns the key material for signing operations.
-// If Signer is set, returns Signer; otherwise returns Key.
-func (k AssertionKey) signingKey() interface{} {
-	if k.Signer != nil {
-		return k.Signer
-	}
-	return k.Key
 }
 
 // AssertionVerificationKeys represents the verification keys for assertions.

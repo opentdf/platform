@@ -3,6 +3,7 @@
 package tdf
 
 import (
+	"crypto"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -99,7 +100,7 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 	}
 
 	// sign the hash and signature
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.signingKey()))
 	if err != nil {
 		return fmt.Errorf("signing assertion failed: %w", err)
 	}
@@ -114,8 +115,13 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 // Verify checks the binding signature of the assertion and
 // returns the hash and the signature. It returns an error if the verification fails.
 func (a Assertion) Verify(key AssertionKey) (string, string, error) {
+	verifyKey := key.Key
+	if key.Signer != nil {
+		verifyKey = key.Signer.Public()
+	}
+
 	tok, err := jwt.Parse([]byte(a.Binding.Signature),
-		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key),
+		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), verifyKey),
 	)
 	if err != nil {
 		return "", "", fmt.Errorf("%w: %w", errAssertionVerifyKeyFailure, err)
@@ -356,6 +362,9 @@ type AssertionKey struct {
 	Alg AssertionKeyAlg
 	// Key contains the actual key material (type depends on algorithm)
 	Key interface{}
+	// Signer is an optional crypto.Signer for hardware-backed keys (HSM/KMS).
+	// When set, used for signing instead of Key.
+	Signer crypto.Signer
 }
 
 // Algorithm returns the cryptographic algorithm of the key.
@@ -367,6 +376,15 @@ func (k AssertionKey) Algorithm() AssertionKeyAlg {
 // Used to check if a default signing key should be used instead.
 func (k AssertionKey) IsEmpty() bool {
 	return k.Key == nil && k.Alg == ""
+}
+
+// signingKey returns the key material for signing operations.
+// If Signer is set, returns Signer; otherwise returns Key.
+func (k AssertionKey) signingKey() interface{} {
+	if k.Signer != nil {
+		return k.Signer
+	}
+	return k.Key
 }
 
 // AssertionVerificationKeys represents the verification keys for assertions.

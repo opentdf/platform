@@ -3,6 +3,8 @@
 package tdf
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
 	"testing"
 
@@ -183,4 +185,77 @@ func TestDeserializingAssertionWithStringInStatementValue(t *testing.T) {
 	require.NoError(t, err, "Error deserializing the assertion with a JSON object in the statement value")
 
 	assert.Equal(t, "this is a value", assertion.Statement.Value)
+}
+
+func TestAssertionSignWithCryptoSigner(t *testing.T) {
+	// Generate RSA key pair - *rsa.PrivateKey implements crypto.Signer
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	assertion := Assertion{
+		ID:             "test-assertion",
+		Type:           BaseAssertion,
+		Scope:          PayloadScope,
+		AppliesToState: Unencrypted,
+		Statement: Statement{
+			Format: "text",
+			Schema: "test",
+			Value:  "test value",
+		},
+	}
+
+	// Sign using crypto.Signer (RSA private key implements crypto.Signer)
+	signerKey := AssertionKey{
+		Alg:    AssertionKeyAlgRS256,
+		Signer: privateKey,
+	}
+
+	err = assertion.Sign("testhash", "testsig", signerKey)
+	require.NoError(t, err)
+	assert.NotEmpty(t, assertion.Binding.Signature)
+	assert.Equal(t, "jws", assertion.Binding.Method)
+
+	// Verify using the same key (will use Public() from signer)
+	hash, sig, err := assertion.Verify(signerKey)
+	require.NoError(t, err)
+	assert.Equal(t, "testhash", hash)
+	assert.Equal(t, "testsig", sig)
+}
+
+func TestAssertionSignWithCryptoSignerVerifyWithPublicKey(t *testing.T) {
+	// Generate RSA key pair
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	assertion := Assertion{
+		ID:             "test-assertion",
+		Type:           BaseAssertion,
+		Scope:          PayloadScope,
+		AppliesToState: Unencrypted,
+		Statement: Statement{
+			Format: "text",
+			Schema: "test",
+			Value:  "test value",
+		},
+	}
+
+	// Sign using crypto.Signer
+	signerKey := AssertionKey{
+		Alg:    AssertionKeyAlgRS256,
+		Signer: privateKey,
+	}
+
+	err = assertion.Sign("testhash", "testsig", signerKey)
+	require.NoError(t, err)
+
+	// Verify using public key directly (typical verification scenario)
+	verifyKey := AssertionKey{
+		Alg: AssertionKeyAlgRS256,
+		Key: privateKey.PublicKey,
+	}
+
+	hash, sig, err := assertion.Verify(verifyKey)
+	require.NoError(t, err)
+	assert.Equal(t, "testhash", hash)
+	assert.Equal(t, "testsig", sig)
 }

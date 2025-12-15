@@ -48,5 +48,5 @@ func validateRecentEventTimestamp(t *testing.T, event *EventObject) {
 
 	eventTime, err := time.Parse(time.RFC3339, event.Timestamp)
 	require.NoError(t, err, "error parsing timestamp [%v]", event.Timestamp)
-	assert.Greater(t, time.Since(eventTime), time.Second, "event timestamp is not recent: got %v, want less than 1 second", eventTime)
+	assert.Greater(t, time.Second, time.Since(eventTime), "event timestamp is not recent: got %v, want less than 1 second", eventTime)
 }

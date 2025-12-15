@@ -298,7 +298,8 @@ services:
   #           \$$\$$;
   #           GRANT CONNECT ON DATABASE $$POSTGRES_DB TO replicator;
   #       EOSQL
-  #       echo "host replication replicator 0.0.0.0/0 md5" >> "$${PGDATA}/pg_hba.conf"
+  #       # Restrict replication connections to Docker network for security
+  #       echo "host replication replicator opentdf_platform md5" >> "$${PGDATA}/pg_hba.conf"
   #       echo "Replication user configured"
   #       EOF
   #       chmod +x /docker-entrypoint-initdb.d/01-replication-setup.sh

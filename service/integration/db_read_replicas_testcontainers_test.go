@@ -117,7 +117,7 @@ func setupPrimaryContainer(ctx context.Context, t testingHelper) (tc.Container, 
 		Started: true,
 	}
 
-	slog.Info("📀 starting primary postgres container")
+	slog.Info("starting primary postgres container")
 	container, err := tc.GenericContainer(ctx, req)
 	if err != nil {
 		t.Errorf("Failed to start primary container: %v", err)
@@ -159,7 +159,7 @@ func setupPrimaryContainer(ctx context.Context, t testingHelper) (tc.Container, 
 		t.FailNow()
 	}
 
-	slog.Info("✅ primary postgres container ready", slog.Int("port", port.Int()))
+	slog.Info("primary postgres container ready", slog.Int("port", port.Int()))
 
 	return container, port.Int()
 }
@@ -233,7 +233,7 @@ func setupReplicaContainer(ctx context.Context, t testingHelper, primaryHost str
 		Started: true,
 	}
 
-	slog.Info(fmt.Sprintf("📀 starting replica %d postgres container", replicaNum))
+	slog.Info("starting replica postgres container", slog.Int("replica", replicaNum))
 	container, err := tc.GenericContainer(ctx, req)
 	if err != nil {
 		t.Errorf("Failed to start replica %d container: %v", replicaNum, err)
@@ -253,7 +253,9 @@ func setupReplicaContainer(ctx context.Context, t testingHelper, primaryHost str
 		t.FailNow()
 	}
 
-	slog.Info(fmt.Sprintf("✅ replica %d postgres container ready", replicaNum), slog.Int("port", port.Int()))
+	slog.Info("replica postgres container ready",
+		slog.Int("replica", replicaNum),
+		slog.Int("port", port.Int()))
 
 	return container, port.Int()
 }
@@ -442,7 +444,7 @@ func TestReadReplicasWithTestcontainers(t *testing.T) {
 	t.Run("replica_is_read_only", func(t *testing.T) {
 		// Try to write directly to a replica (should fail)
 		_, err := client.ReadReplicas[0].Exec(ctx, "INSERT INTO replica_test (data) VALUES ($1)", "should fail")
-		assert.Error(t, err, "Write to replica should fail")
+		require.Error(t, err, "Write to replica should fail")
 		assert.Contains(t, err.Error(), "read-only", "Error should indicate read-only mode")
 	})
 }
@@ -495,8 +497,8 @@ func BenchmarkReadReplicaPerformance(b *testing.B) {
 	defer client.Close()
 
 	// Create test data
-	client.Pgx.Exec(ctx, "CREATE TABLE IF NOT EXISTS bench_test (id SERIAL PRIMARY KEY, data TEXT)")
-	client.Pgx.Exec(ctx, "INSERT INTO bench_test (data) SELECT 'data' FROM generate_series(1, 1000)")
+	_, _ = client.Pgx.Exec(ctx, "CREATE TABLE IF NOT EXISTS bench_test (id SERIAL PRIMARY KEY, data TEXT)")
+	_, _ = client.Pgx.Exec(ctx, "INSERT INTO bench_test (data) SELECT 'data' FROM generate_series(1, 1000)")
 	time.Sleep(1 * time.Second) // Allow replication
 
 	b.ResetTimer()

@@ -312,7 +312,7 @@ func TestSingleDatabaseWithoutReplicas(t *testing.T) {
 	defer client.Close()
 
 	// Verify no replicas
-	assert.Len(t, client.ReadReplicas, 0, "Should have no replicas")
+	assert.Empty(t, client.ReadReplicas, "Should have no replicas")
 
 	// Create test table
 	_, err = client.Pgx.Exec(ctx, `
@@ -345,7 +345,7 @@ func TestSingleDatabaseWithoutReplicas(t *testing.T) {
 		// WithForcePrimary should work even without replicas
 		forcedCtx := db.WithForcePrimary(ctx)
 
-		rows, err := client.Query(forcedCtx, "SELECT * FROM single_db_test", []interface{}{})
+		rows, err := client.Query(forcedCtx, "SELECT * FROM single_db_test")
 		require.NoError(t, err, "Forced primary should work")
 		rows.Close()
 	})

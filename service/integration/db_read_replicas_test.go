@@ -95,7 +95,7 @@ func TestReadReplicaBackwardCompatibility(t *testing.T) {
 	defer client.Close()
 
 	// Verify no replicas configured
-	assert.Len(t, client.ReadReplicas, 0, "Should have no read replicas")
+	assert.Empty(t, client.ReadReplicas, "Should have no read replicas")
 
 	// Client should still function normally (all ops go to primary)
 	assert.NotNil(t, client.Pgx, "Primary connection should exist")

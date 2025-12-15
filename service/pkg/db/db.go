@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -222,7 +223,7 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 
 	// Validate configuration: cannot specify both single host and multi-host primary
 	if len(config.PrimaryHosts) > 0 && config.Host != "" {
-		return nil, fmt.Errorf("invalid configuration: cannot specify both 'host' and 'primary_hosts' - use one or the other")
+		return nil, errors.New("invalid configuration: cannot specify both 'host' and 'primary_hosts' - use one or the other")
 	}
 
 	// Build primary database connection
@@ -324,7 +325,7 @@ type errRow struct {
 	err error
 }
 
-func (e errRow) Scan(dest ...interface{}) error {
+func (e errRow) Scan(_ ...interface{}) error {
 	return e.err
 }
 

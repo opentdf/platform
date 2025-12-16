@@ -16,6 +16,7 @@ import (
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -188,7 +189,8 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
-	resp, err := as.GetDecisions(t.Context(), &req)
+	ctx := audit.ContextWithActorID(t.Context(), "test-actor-id")
+	resp, err := as.GetDecisions(ctx, &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)

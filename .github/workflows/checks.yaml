@@ -495,7 +495,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y parallel
-      - uses: opentdf/platform/test/start-up-with-containers@main
+      - uses: opentdf/platform/test/start-up-with-containers@feat/horizontal-db
         with:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: opentdf/otdfctl/e2e@main

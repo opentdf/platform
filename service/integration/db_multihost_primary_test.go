@@ -5,12 +5,6 @@
 // - Automatic primary failover when first primary fails
 // - target_session_attrs=primary routing
 // - Failover with read replicas configured
-//
-// Requirements:
-// - Docker or Podman running locally
-//
-// Usage:
-//   go test -run TestMultiHostPrimary -v
 
 package integration
 

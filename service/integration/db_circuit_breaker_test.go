@@ -6,12 +6,6 @@
 // - Fallback to primary when replicas fail
 // - Circuit recovery and closure
 // - Context-based routing (WithForcePrimary)
-//
-// Requirements:
-// - Docker or Podman running locally
-//
-// Usage:
-//   go test -run TestCircuitBreaker -v
 
 package integration
 
@@ -133,8 +127,7 @@ func TestCircuitBreakerWithFailingReplica(t *testing.T) {
 			time.Sleep(50 * time.Millisecond)
 		}
 
-		// Most queries should succeed (routing to healthy replica2 or primary)
-		assert.GreaterOrEqual(t, successCount, 8, "Most queries should succeed with one replica down")
+		assert.Equal(t, successCount, 10, "All queries should succeed despite one replica down")
 	})
 
 	t.Run("all_replicas_down_falls_back_to_primary", func(t *testing.T) {
@@ -166,7 +159,7 @@ func TestCircuitBreakerWithFailingReplica(t *testing.T) {
 		}
 
 		// All queries should eventually succeed via primary
-		assert.GreaterOrEqual(t, successCount, 8, "Queries should succeed via primary fallback")
+		assert.Equal(t, successCount, 10, "Queries should succeed via primary fallback")
 	})
 }
 
@@ -178,10 +171,8 @@ func TestContextBasedRouting(t *testing.T) {
 
 	ctx := t.Context()
 
-	// Start primary (cleanup handled by setupPrimaryContainer)
 	_, primaryPort, networkName, primaryContainerName := setupPrimaryContainer(ctx, t)
 
-	// Start one replica (cleanup handled by setupReplicaContainer)
 	_, replicaPort := setupReplicaContainer(ctx, t, primaryContainerName, 1, networkName)
 
 	config := db.Config{

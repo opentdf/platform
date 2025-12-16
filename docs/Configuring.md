@@ -439,19 +439,6 @@ db:
       port: 5432
 ```
 
-**Testing:**
-
-Comprehensive integration tests with automatic database setup are available in `service/integration/db_read_replicas_testcontainers_test.go`. These tests use testcontainers to automatically spin up PostgreSQL primary and replica instances:
-
-```bash
-cd service/integration
-
-# Run comprehensive tests (automatically creates primary + 2 replicas)
-go test -run TestReadReplicasWithTestcontainers -v
-
-# Run performance benchmarks
-go test -bench BenchmarkReadReplicaPerformance -v
-```
 
 ## Security Configuration
 

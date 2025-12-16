@@ -85,7 +85,7 @@ func TestCircuitBreakerWithFailingReplica(t *testing.T) {
 
 	t.Run("reads_work_with_healthy_replicas", func(t *testing.T) {
 		// Query multiple times to verify replicas work
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM circuit_test")
 			require.NoError(t, err, "Query should succeed with healthy replicas")
 			rows.Close()
@@ -100,7 +100,7 @@ func TestCircuitBreakerWithFailingReplica(t *testing.T) {
 
 		// Allow circuit breaker to detect failure (try multiple queries)
 		failureCount := 0
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM circuit_test")
 			if err != nil {
 				failureCount++
@@ -117,17 +117,12 @@ func TestCircuitBreakerWithFailingReplica(t *testing.T) {
 
 	t.Run("queries_succeed_with_one_replica_down", func(t *testing.T) {
 		// With replica1 down (circuit open), replica2 should handle queries
-		successCount := 0
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM circuit_test")
-			if err == nil {
-				successCount++
-				rows.Close()
-			}
+			require.NoError(t, err, "Query %d should succeed via replica2 or primary fallback", i)
+			rows.Close()
 			time.Sleep(50 * time.Millisecond)
 		}
-
-		assert.Equal(t, successCount, 10, "All queries should succeed despite one replica down")
 	})
 
 	t.Run("all_replicas_down_falls_back_to_primary", func(t *testing.T) {
@@ -139,27 +134,20 @@ func TestCircuitBreakerWithFailingReplica(t *testing.T) {
 		// Allow circuit breaker to detect failure
 		time.Sleep(1 * time.Second)
 
-		// Queries should still succeed via primary fallback
-		successCount := 0
+		// All queries should succeed via primary fallback
 		for i := range 10 {
 			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM circuit_test")
-			if err == nil {
-				successCount++
-				var count int
-				if rows.Next() {
-					err := rows.Scan(&count)
-					require.NoError(t, err)
-					assert.Equal(t, 2, count, "Should still read data from primary")
-				}
-				rows.Close()
-			} else {
-				t.Logf("Query %d failed: %v", i, err)
+			require.NoError(t, err, "Query %d should succeed via primary fallback", i)
+
+			var count int
+			if rows.Next() {
+				err := rows.Scan(&count)
+				require.NoError(t, err)
+				assert.Equal(t, 2, count, "Should still read data from primary")
 			}
+			rows.Close()
 			time.Sleep(100 * time.Millisecond)
 		}
-
-		// All queries should eventually succeed via primary
-		assert.Equal(t, successCount, 10, "Queries should succeed via primary fallback")
 	})
 }
 
@@ -266,7 +254,11 @@ func TestSingleDatabaseWithoutReplicas(t *testing.T) {
 	ctx := t.Context()
 
 	// Start ONLY primary (no replicas) - cleanup handled by setupPrimaryContainer
-	_, primaryPort, _, _ := setupPrimaryContainer(ctx, t)
+	primaryContainer, primaryPort, networkName, containerName := setupPrimaryContainer(ctx, t)
+	// not needed
+	_ = primaryContainer
+	_ = networkName
+	_ = containerName
 
 	config := db.Config{
 		Host:           "localhost",

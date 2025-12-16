@@ -27,8 +27,14 @@ func TestMultiHostPrimaryFailover(t *testing.T) {
 	ctx := t.Context()
 
 	// Start TWO primaries for failover testing
-	primary1Container, primary1Port, _, _ := setupPrimaryContainer(ctx, t)
-	_, primary2Port, _, _ := setupPrimaryContainer(ctx, t)
+	primary1Container, primary1Port, networkName1, containerName1 := setupPrimaryContainer(ctx, t)
+	primary2Container, primary2Port, networkName2, containerName2 := setupPrimaryContainer(ctx, t)
+	// not needed for test
+	_ = primary2Container
+	_ = networkName1
+	_ = containerName1
+	_ = networkName2
+	_ = containerName2
 
 	t.Run("both_primaries_healthy", func(t *testing.T) {
 		// Configure with multi-host primary
@@ -146,7 +152,10 @@ func TestMultiHostPrimaryWithReadReplicas(t *testing.T) {
 	_, primaryPort, networkName, primaryContainerName := setupPrimaryContainer(ctx, t)
 
 	// Start backup primary
-	_, backupPrimaryPort, _, _ := setupPrimaryContainer(ctx, t)
+	backupPrimaryContainer, backupPrimaryPort, backupNetworkName, backupContainerName := setupPrimaryContainer(ctx, t)
+	_ = backupPrimaryContainer // Container cleanup handled by setupPrimaryContainer
+	_ = backupNetworkName      // Not needed for this test
+	_ = backupContainerName    // Not needed for this test
 
 	// Start read replica
 	_, replicaPort := setupReplicaContainer(ctx, t, primaryContainerName, 1, networkName)

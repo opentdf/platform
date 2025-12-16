@@ -257,7 +257,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 
 	as.eval = prepared
 
-	resp, err = as.GetDecisions(t.Context(), &req)
+	resp, err = as.GetDecisions(ctx, &req)
 	require.NoError(t, err)
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 2)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[0].GetDecision())
@@ -356,7 +356,8 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
-	resp, err := as.GetDecisions(t.Context(), &req)
+	ctx := audit.ContextWithActorID(t.Context(), "test-actor-id")
+	resp, err := as.GetDecisions(ctx, &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -456,7 +457,8 @@ func Test_GetDecisionsAllOfWithEnvironmental_Pass(t *testing.T) {
 		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
-	resp, err := as.GetDecisions(t.Context(), &req)
+	ctx := audit.ContextWithActorID(t.Context(), "test-actor-id")
+	resp, err := as.GetDecisions(ctx, &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -553,7 +555,8 @@ func Test_GetDecisionsAllOfWithEnvironmental_Fail(t *testing.T) {
 		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
-	resp, err := as.GetDecisions(t.Context(), &req)
+	ctx := audit.ContextWithActorID(t.Context(), "test-actor-id")
+	resp, err := as.GetDecisions(ctx, &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -1143,7 +1146,8 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 		},
 	}
 
-	resp, err := as.GetDecisions(t.Context(), &req)
+	ctx := audit.ContextWithActorID(t.Context(), "test-actor-id")
+	resp, err := as.GetDecisions(ctx, &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -1179,7 +1183,7 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 		},
 	}
 
-	resp, err = as.GetDecisions(t.Context(), &req)
+	resp, err = as.GetDecisions(ctx, &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -1215,7 +1219,7 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 		},
 	}
 
-	resp, err = as.GetDecisions(t.Context(), &req)
+	resp, err = as.GetDecisions(ctx, &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -1323,7 +1327,8 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
-	resp, err := as.GetDecisions(t.Context(), &req)
+	ctx := audit.ContextWithActorID(t.Context(), "test-actor-id")
+	resp, err := as.GetDecisions(ctx, &req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -1401,7 +1406,7 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 
 	as.eval = prepared
 
-	resp, err = as.GetDecisions(t.Context(), &req)
+	resp, err = as.GetDecisions(ctx, &req)
 	require.NoError(t, err)
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 6)
 
@@ -1470,7 +1475,7 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 
 	as.eval = prepared
 
-	resp, err = as.GetDecisions(t.Context(), &req)
+	resp, err = as.GetDecisions(ctx, &req)
 	require.NoError(t, err)
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 3)
 	assert.Equal(t, "ec1", resp.Msg.GetDecisionResponses()[0].GetEntityChainId())
@@ -1514,7 +1519,7 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 		},
 	}
 
-	resp, err = as.GetDecisions(t.Context(), &req)
+	resp, err = as.GetDecisions(ctx, &req)
 	require.NoError(t, err)
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 6)
 	assert.Equal(t, "ec1", resp.Msg.GetDecisionResponses()[0].GetEntityChainId())
@@ -1724,7 +1729,8 @@ func Test_GetDecisions_Empty_EC_RA(t *testing.T) {
 	///////////// Run tests /////////////////////
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			resp, err := as.GetDecisions(t.Context(), &tc.req)
+			ctx := audit.ContextWithActorID(t.Context(), "test-actor-id")
+			resp, err := as.GetDecisions(ctx, &tc.req)
 			require.NoError(t, err)
 			assert.NotNil(t, resp)
 			assert.Len(t, resp.Msg.GetDecisionResponses(), tc.numDecisions)

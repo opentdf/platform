@@ -214,7 +214,7 @@ func TestMultiHostPrimaryWithReadReplicas(t *testing.T) {
 
 	t.Run("reads_use_replica_with_multihost_primary", func(t *testing.T) {
 		// Reads should use replica (not affected by multi-host primary config)
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM combined_test")
 			require.NoError(t, err, "Reads should succeed via replica")
 

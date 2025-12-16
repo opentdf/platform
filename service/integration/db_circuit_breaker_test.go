@@ -98,21 +98,23 @@ func TestCircuitBreakerWithFailingReplica(t *testing.T) {
 		err := replica1Container.Stop(ctx, nil)
 		require.NoError(t, err)
 
-		// Allow circuit breaker to detect failure (try multiple queries)
-		failureCount := 0
+		// Give circuit breaker time to detect failure through health checks or query attempts
+		// During this phase, queries should succeed via replica2 or primary fallback
 		for i := range 10 {
 			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM circuit_test")
-			if err != nil {
-				failureCount++
-				t.Logf("Query %d failed (expected during circuit opening): %v", i, err)
-			} else {
-				rows.Close()
-			}
+			require.NoError(t, err, "Query %d should succeed via replica2 or primary fallback even during circuit breaker detection", i)
+			rows.Close()
 			time.Sleep(100 * time.Millisecond)
 		}
 
-		// After failures, queries should succeed via replica2 or primary fallback
-		t.Logf("Circuit breaker should have opened for replica1 after %d failures", failureCount)
+		// Verify circuit breaker has opened for replica1 by ensuring continued query success
+		// If circuit breaker is working, queries continue to succeed via healthy replica2
+		for i := range 5 {
+			rows, err := client.Query(ctx, "SELECT COUNT(*) FROM circuit_test")
+			require.NoError(t, err, "Query %d should succeed with replica1 circuit open", i)
+			rows.Close()
+			time.Sleep(50 * time.Millisecond)
+		}
 	})
 
 	t.Run("queries_succeed_with_one_replica_down", func(t *testing.T) {

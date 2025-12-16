@@ -9,10 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Note: Comprehensive read replica tests with actual databases are in
-// db_read_replicas_testcontainers_test.go which uses testcontainers to
-// automatically spin up primary and replica PostgreSQL instances.
-
 // TestReadReplicaConfigurationLoading verifies config parsing
 func TestReadReplicaConfigurationLoading(t *testing.T) {
 	tests := []struct {

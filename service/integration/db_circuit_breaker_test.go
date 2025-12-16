@@ -28,10 +28,10 @@ func TestCircuitBreakerWithFailingReplica(t *testing.T) {
 
 	ctx := t.Context()
 
-	// Start primary database (cleanup handled by setupPrimaryContainer)
+	// Start primary database
 	_, primaryPort, networkName, primaryContainerName := setupPrimaryContainer(ctx, t)
 
-	// Start TWO replicas (cleanup handled by setupReplicaContainer)
+	// Start TWO replicas
 	replica1Container, replica1Port := setupReplicaContainer(ctx, t, primaryContainerName, 1, networkName)
 	replica2Container, replica2Port := setupReplicaContainer(ctx, t, primaryContainerName, 2, networkName)
 
@@ -266,8 +266,7 @@ func TestSingleDatabaseWithoutReplicas(t *testing.T) {
 	ctx := t.Context()
 
 	// Start ONLY primary (no replicas) - cleanup handled by setupPrimaryContainer
-	_, primaryPort, netName, contName := setupPrimaryContainer(ctx, t)
-	_, _ = netName, contName // Not needed for this test
+	_, primaryPort, _, _ := setupPrimaryContainer(ctx, t)
 
 	config := db.Config{
 		Host:           "localhost",

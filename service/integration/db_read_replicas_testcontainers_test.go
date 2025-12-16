@@ -12,14 +12,6 @@
 // - Read-only enforcement on replicas
 // - Concurrent query safety
 // - Performance characteristics
-//
-// Requirements:
-// - Docker or Podman running locally
-// - See service/integration/main_test.go for testcontainers setup
-//
-// Usage:
-//   go test -run TestReadReplicasWithTestcontainers -v
-//   go test -bench BenchmarkReadReplicaPerformance -v
 
 package integration
 
@@ -292,10 +284,10 @@ func TestReadReplicasWithTestcontainers(t *testing.T) {
 
 	ctx := t.Context()
 
-	// Start primary database (cleanup handled by setupPrimaryContainer)
+	// Start primary database
 	_, primaryPort, networkName, primaryContainerName := setupPrimaryContainer(ctx, t)
 
-	// Start replica databases (cleanup handled by setupReplicaContainer)
+	// Start replica databases
 	_, replica1Port := setupReplicaContainer(ctx, t, primaryContainerName, 1, networkName)
 	_, replica2Port := setupReplicaContainer(ctx, t, primaryContainerName, 2, networkName)
 
@@ -478,10 +470,10 @@ func BenchmarkReadReplicaPerformance(b *testing.B) {
 
 	ctx := b.Context()
 
-	// Start primary database (cleanup handled by setupPrimaryContainer)
+	// Start primary database
 	_, primaryPort, networkName, primaryContainerName := setupPrimaryContainer(ctx, b)
 
-	// Start one replica (cleanup handled by setupReplicaContainer)
+	// Start one replica
 	_, replica1Port := setupReplicaContainer(ctx, b, primaryContainerName, 1, networkName)
 
 	config := db.Config{

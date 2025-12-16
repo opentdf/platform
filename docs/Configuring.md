@@ -410,9 +410,9 @@ db:
   password: changeme
   read_replicas:
     - host: localhost
-      port: 5433  # First replica
+      port: 5435
     - host: localhost
-      port: 5434  # Second replica
+      port: 5436
 ```
 
 **High Availability (Multi-Host Primary + Replicas):**

@@ -130,7 +130,7 @@ db:
   port: 5432
   read_replicas:
     - host: localhost
-      port: 5433
+      port: 5435
 ```
 
 **Behavior:**

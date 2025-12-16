@@ -444,15 +444,16 @@ func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.H
 		}
 	}
 
+	redirectingHandler := redirectMissingKASPrefixHandler(grpcGateway)
 	var handler http.Handler
 	if !c.TLS.Enabled {
-		handler = h2c.NewHandler(routeConnectRPCRequests(connectRPC, grpcGateway), &http2.Server{})
+		handler = h2c.NewHandler(routeConnectRPCRequests(connectRPC, redirectingHandler), &http2.Server{})
 	} else {
 		tc, err = loadTLSConfig(c.TLS)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load tls config: %w", err)
 		}
-		handler = routeConnectRPCRequests(connectRPC, grpcGateway)
+		handler = routeConnectRPCRequests(connectRPC, redirectingHandler)
 	}
 
 	if c.HTTPServerConfig.ReadTimeout == 0 {
@@ -506,6 +507,31 @@ func pprofHandler(h http.Handler) http.Handler {
 		} else {
 			h.ServeHTTP(w, r)
 		}
+	})
+}
+
+func redirectMissingKASPrefixHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Use regex to match KAS paths that should be redirected
+		pathsToRedirect := []string{
+			"/v2/kas_public_key",
+			"/kas_public_key",
+			"/v2/rewrap",
+		}
+
+		for _, path := range pathsToRedirect {
+			// Match the path with or without trailing slash
+			if r.URL.Path == path || r.URL.Path == path+"/" {
+				newPath := "/kas" + r.URL.Path
+				if r.URL.RawQuery != "" {
+					newPath += "?" + r.URL.RawQuery
+				}
+				http.Redirect(w, r, newPath, http.StatusMovedPermanently)
+				return
+			}
+		}
+		// If the path does not start with /kas, serve the request normally
+		h.ServeHTTP(w, r)
 	})
 }
 

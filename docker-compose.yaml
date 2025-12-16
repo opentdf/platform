@@ -196,27 +196,28 @@ services:
   #   - Uncomment: opentdfdb-replica1, opentdfdb-replica2 below
   #   - Uncomment: opentdfdb_replica1_data, opentdfdb_replica2_data volumes
   #   - opentdf-example.yaml:
-  #       host: opentdfdb
+  #       host: localhost
+  #       port: 5432
   #       read_replicas:
-  #         - host: opentdfdb-replica1
-  #           port: 5432
-  #         - host: opentdfdb-replica2
-  #           port: 5432
+  #         - host: localhost
+  #           port: 5435
+  #         - host: localhost
+  #           port: 5436
   #
   # SCENARIO 3: Multi-Host Primary + Read Replicas (Full HA)
   #   - Uncomment: opentdfdb-primary2, opentdfdb-replica1, opentdfdb-replica2
   #   - Uncomment: corresponding volumes
   #   - opentdf-example.yaml (remove 'host', add 'primary_hosts'):
   #       primary_hosts:
-  #         - host: opentdfdb
+  #         - host: localhost
   #           port: 5432
-  #         - host: opentdfdb-primary2
-  #           port: 5432
+  #         - host: localhost
+  #           port: 5437  # opentdfdb-primary2
   #       read_replicas:
-  #         - host: opentdfdb-replica1
-  #           port: 5432
-  #         - host: opentdfdb-replica2
-  #           port: 5432
+  #         - host: localhost
+  #           port: 5435
+  #         - host: localhost
+  #           port: 5436
   # ============================================================================
 
   # PostgreSQL Read Replica 1 (SCENARIO 2 & 3)
@@ -234,7 +235,7 @@ services:
     healthcheck:
       <<: *postgres-healthcheck-replica
     ports:
-      - "5433:5432"
+      - "5435:5432"
     entrypoint: ["/bin/sh", "-c"]
     command:
       - *replica-init-command
@@ -254,7 +255,7 @@ services:
     healthcheck:
       <<: *postgres-healthcheck-replica
     ports:
-      - "5434:5432"
+      - "5436:5432"
     entrypoint: ["/bin/sh", "-c"]
     command:
       - *replica-init-command
@@ -286,7 +287,7 @@ services:
   #   healthcheck:
   #     <<: *postgres-healthcheck
   #   ports:
-  #     - "5435:5432"
+  #     - "5437:5432"
 
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -308,7 +309,7 @@ services:
   #
   # Usage:
   #   docker-compose --profile ers-test up -d                    # Start ERS test services
-  #   docker-compose --profile ers-admin up -d                   # Include LDAP admin UI  
+  #   docker-compose --profile ers-admin up -d                   # Include LDAP admin UI
   #   ERS_TEST_POSTGRES_URL="postgres://ers_test_user:ers_test_pass@localhost:5433/ers_test?sslmode=disable" \
   #   ERS_TEST_LDAP_URL="ldap://localhost:1389" \
   #   go test ./service/entityresolution/integration -run TestMultiStrategy -v

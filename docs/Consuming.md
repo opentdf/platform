@@ -10,11 +10,6 @@ To contribute/develop, see [here](./Contributing.md).
 > This quickstart guide is intended for development and testing purposes only. The OpenTDF platform team does not
 > provide recommendations for production deployments.
 
-To get started with the OpenTDF platform make sure you are running the same Go version found in the `go.mod` file.
-
-<!-- markdownlint-disable MD034 github embedded sourcecode -->
-https://github.com/opentdf/platform/blob/main/service/go.mod#L3
-
 **Start Platform Services**
    
 Start all services including automated provisioning with [compose-spec](https://compose-spec.io).

@@ -4,27 +4,22 @@ networks:
 services:
   keycloak:
     volumes:
-    - ${KEYS_DIR:-./keys}/localhost.crt:/etc/x509/tls/localhost.crt
-    - ${KEYS_DIR:-./keys}/localhost.key:/etc/x509/tls/localhost.key
-    - ${KEYS_DIR:-./keys}/ca.jks:/truststore/truststore.jks
+    - keys:/keys:ro
     image: keycloak/keycloak:25.0
     restart: always
+    depends_on:
+      fix-keys-permissions:
+        condition: service_completed_successfully
     command:
     - "start-dev"
     - "--verbose"
     - "-Djavax.net.ssl.trustStorePassword=password"
     - "-Djavax.net.ssl.HostnameVerifier=AllowAll"
-    - "-Djavax.net.ssl.trustStore=/truststore/truststore.jks"
+    - "-Djavax.net.ssl.trustStore=/keys/ca.jks"
     - "--spi-truststore-file-hostname-verification-policy=ANY"
     environment:
       KC_PROXY: edge
       KC_HTTP_RELATIVE_PATH: /auth
-      KC_DB_VENDOR: postgres
-      KC_DB_URL_HOST: keycloakdb
-      KC_DB_URL_PORT: 5432
-      KC_DB_URL_DATABASE: keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: changeme
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
       KC_HOSTNAME_STRICT_HTTPS: "false"
@@ -38,9 +33,9 @@ services:
       KC_FEATURES: "preview,token-exchange"
       KC_HEALTH_ENABLED: "true"
       KC_HTTPS_KEY_STORE_PASSWORD: "password"
-      KC_HTTPS_KEY_STORE_FILE: "/truststore/truststore.jks"
-      KC_HTTPS_CERTIFICATE_FILE: "/etc/x509/tls/localhost.crt"
-      KC_HTTPS_CERTIFICATE_KEY_FILE: "/etc/x509/tls/localhost.key"
+      KC_HTTPS_KEY_STORE_FILE: "/keys/ca.jks"
+      KC_HTTPS_CERTIFICATE_FILE: "/keys/localhost.crt"
+      KC_HTTPS_CERTIFICATE_KEY_FILE: "/keys/localhost.key"
       KC_HTTPS_CLIENT_AUTH: "request"
       ###
       # The following environment variable resolves SIGILL with Code 134 when running Java processes on Apple M4 chips
@@ -204,7 +199,221 @@ services:
       ers-ldap:
         condition: service_healthy
 
+  # Provision Keycloak with initial configuration
+  platform-provision-keycloak:
+    image: registry.opentdf.io/platform:nightly
+    command: ["provision", "keycloak", "-e", "http://keycloak:8888/auth", "-f", "/configs/keycloak_data.yaml"]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      opentdfdb:
+        condition: service_healthy
+      download-platform-config:
+        condition: service_completed_successfully
+      download-keycloak-data:
+        condition: service_completed_successfully
+      generate-keys:
+        condition: service_completed_successfully
+    volumes:
+      - configs:/configs:ro
+      - keys:/keys:ro
+    environment:
+      - OPENTDF_CONFIG_FILE=/configs/opentdf.yaml
+    restart: "no"
+
+  # Prepare fixtures directory structure - create symlink to expected location
+  prepare-fixtures:
+    image: alpine:latest
+    volumes:
+      - configs:/configs
+    depends_on:
+      download-fixtures:
+        condition: service_completed_successfully
+    command:
+      - sh
+      - -c
+      - |
+        mkdir -p /configs/service/internal/fixtures
+        cd /configs
+        ln -sf /configs/service/internal/fixtures ./service
+    restart: "no"
+
+  # Add sample attributes and metadata  
+  platform-provision-fixtures:
+    image: registry.opentdf.io/platform:nightly
+    command: ["provision", "fixtures", "--config-file", "/configs/opentdf.yaml"]
+    working_dir: /configs
+    depends_on:
+      platform-provision-keycloak:
+        condition: service_completed_successfully
+      opentdfdb:
+        condition: service_healthy
+      prepare-fixtures:
+        condition: service_completed_successfully
+      generate-keys:
+        condition: service_completed_successfully
+    volumes:
+      - configs:/configs:ro
+      - keys:/keys:ro
+    restart: "no"
+
+  # Main OpenTDF Platform server
+  platform:
+    image: registry.opentdf.io/platform:nightly
+    command: ["start", "--config-file", "/configs/opentdf.yaml"]
+    depends_on:
+      platform-provision-fixtures:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+      opentdfdb:
+        condition: service_healthy
+      generate-keys:
+        condition: service_completed_successfully
+    ports:
+      - "8080:8080"
+    volumes:
+      - configs:/configs:ro
+      - keys:/keys:ro
+    restart: unless-stopped
+
+  # Initialize volume permissions
+  init-volumes:
+    image: alpine:latest
+    volumes:
+      - configs:/configs
+      - keys:/keys
+    command:
+      - sh
+      - -c
+      - |
+        chmod 777 /configs /keys
+        mkdir -p /configs/service/internal/fixtures
+        chmod -R 777 /configs
+    restart: "no"
+
+  # Fix keys permissions after generation
+  fix-keys-permissions:
+    image: alpine:latest
+    volumes:
+      - keys:/keys
+    depends_on:
+      generate-keys:
+        condition: service_completed_successfully
+    command:
+      - sh
+      - -c
+      - |
+        chmod -R 755 /keys
+        chmod 644 /keys/*
+    restart: "no"
+
+  # Download platform configuration file
+  download-platform-config:
+    image: curlimages/curl:latest
+    volumes:
+      - configs:/configs
+    depends_on:
+      init-volumes:
+        condition: service_completed_successfully
+    command: ['-o', '/configs/opentdf.yaml', 'https://raw.githubusercontent.com/opentdf/platform/main/opentdf-example.yaml']
+    restart: "no"
+
+  # Download Keycloak provisioning data
+  download-keycloak-data:
+    image: curlimages/curl:latest
+    volumes:
+      - configs:/configs
+    depends_on:
+      init-volumes:
+        condition: service_completed_successfully
+    command: ['-o', '/configs/keycloak_data.yaml', 'https://raw.githubusercontent.com/opentdf/platform/main/service/cmd/keycloak_data.yaml']
+    restart: "no"
+
+  # Download fixtures data
+  download-fixtures:
+    image: curlimages/curl:latest
+    volumes:
+      - configs:/configs
+    depends_on:
+      init-volumes:
+        condition: service_completed_successfully
+    command: ['-o', '/configs/service/internal/fixtures/policy_fixtures.yaml', 'https://raw.githubusercontent.com/opentdf/platform/main/service/internal/fixtures/policy_fixtures.yaml']
+    restart: "no"
+
+  # Download init-temp-keys script
+  download-init-script:
+    image: curlimages/curl:latest
+    volumes:
+      - configs:/configs
+    depends_on:
+      init-volumes:
+        condition: service_completed_successfully
+    command: ['-o', '/configs/init-temp-keys.sh', 'https://raw.githubusercontent.com/opentdf/platform/main/.github/scripts/init-temp-keys.sh']
+    restart: "no"
+
+  # Generate keys without Docker dependency
+  generate-keys:
+    image: alpine:latest
+    volumes:
+      - configs:/configs
+      - keys:/keys
+    depends_on:
+      download-init-script:
+        condition: service_completed_successfully
+      init-volumes:
+        condition: service_completed_successfully
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        apk add --no-cache openssl openjdk11-jre bash
+        cd /keys
+        
+        # Generate KAS RSA private key
+        openssl genpkey -algorithm RSA -out /keys/kas-private.pem -pkeyopt rsa_keygen_bits:2048
+        openssl rsa -in /keys/kas-private.pem -pubout -out /keys/kas-cert.pem
+        
+        # Generate ECC Key
+        openssl ecparam -name prime256v1 > /tmp/ecparams.tmp
+        openssl req -x509 -nodes -newkey ec:/tmp/ecparams.tmp -subj "/CN=kas" -keyout /keys/kas-ec-private.pem -out /keys/kas-ec-cert.pem -days 365
+        
+        # Generate CA
+        openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=ca" -keyout /keys/keycloak-ca-private.pem -out /keys/keycloak-ca.pem -days 365
+        
+        # Generate localhost certificate
+        printf "subjectAltName=DNS:localhost,IP:127.0.0.1" > /tmp/sanX509.conf
+        printf "[req]\ndistinguished_name=req_distinguished_name\n[req_distinguished_name]\n[alt_names]\nDNS.1=localhost\nIP.1=127.0.0.1" > /tmp/req.conf
+        openssl req -new -nodes -newkey rsa:2048 -keyout /keys/localhost.key -out /tmp/localhost.req -batch -subj "/CN=localhost" -config /tmp/req.conf
+        openssl x509 -req -in /tmp/localhost.req -CA /keys/keycloak-ca.pem -CAkey /keys/keycloak-ca-private.pem -CAcreateserial -out /keys/localhost.crt -days 3650 -sha256 -extfile /tmp/sanX509.conf
+        
+        # Generate sample user certificate
+        openssl req -new -nodes -newkey rsa:2048 -keyout /keys/sampleuser.key -out /tmp/sampleuser.req -batch -subj "/CN=sampleuser"
+        openssl x509 -req -in /tmp/sampleuser.req -CA /keys/keycloak-ca.pem -CAkey /keys/keycloak-ca-private.pem -CAcreateserial -out /keys/sampleuser.crt -days 3650
+        
+        # Convert to PKCS12
+        openssl pkcs12 -export -in /keys/keycloak-ca.pem -inkey /keys/keycloak-ca-private.pem -out /keys/ca.p12 -nodes -passout pass:password
+        
+        # Convert PKCS12 to JKS using keytool (no Docker needed)
+        keytool -importkeystore \
+          -srckeystore /keys/ca.p12 \
+          -srcstoretype PKCS12 \
+          -destkeystore /keys/ca.jks \
+          -deststoretype JKS \
+          -srcstorepass "password" \
+          -deststorepass "password" \
+          -noprompt
+        
+        echo "Keys generated successfully"
+    environment:
+      JAVA_OPTS_APPEND: "${JAVA_OPTS_APPEND:-}"
+    restart: "no"
+
 volumes:
+  keys:
+    name: opentdf_keys
+  configs:
+    name: opentdf_configs
   ers_postgres_data:
     name: ers_test_postgres_data
   ers_ldap_data:

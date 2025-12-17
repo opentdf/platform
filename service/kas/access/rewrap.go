@@ -149,28 +149,17 @@ func jwkThumbprintAttr(key jwk.Key) slog.Attr {
 	return slog.String("jwk_thumbprint", base64.RawURLEncoding.EncodeToString(thumbprint))
 }
 
-// logSRTParseFailure emits contextual details when an SRT cannot be parsed, adjusting
-// verbosity depending on whether signature verification was required.
-func (p *Provider) logSRTParseFailure(ctx context.Context, srt string, requireVerification bool, err error) {
-	attrs := []any{slog.Any("error", err)}
-	if requireVerification {
-		attrs = append(attrs, slog.String("srt", srt))
-		p.Logger.WarnContext(ctx, "unable to verify request token", attrs...)
-		return
-	}
-
-	p.Logger.WarnContext(ctx, "unable to validate or parse token", attrs...)
-}
-
 // parseSRT parses the JWT payload without validation, returning the token and embedded
 // request body string while translating parse errors into client-facing status codes.
-func (p *Provider) parseSRT(ctx context.Context, srt string, requireVerification bool) (jwt.Token, string, error) {
+func (p *Provider) parseSRT(ctx context.Context, srt string) (jwt.Token, string, error) {
 	token, err := jwt.Parse([]byte(srt), jwt.WithVerify(false), jwt.WithValidate(false))
 	if err != nil {
-		p.logSRTParseFailure(ctx, srt, requireVerification, err)
-		if requireVerification {
-			return nil, "", err401("unable to verify request token")
-		}
+		p.Logger.WarnContext(
+			ctx,
+			"unable to validate or parse token",
+			slog.Any("error", err),
+			slog.Int("srt_length", len(srt)),
+			jwkThumbprintAttr(ctxAuth.GetJWKFromContext(ctx, p.Logger)))
 		return nil, "", err401("could not parse token")
 	}
 
@@ -273,7 +262,7 @@ func (p *Provider) verifySRTSignature(ctx context.Context, srt string, dpopJWK j
 		if p.Logger != nil {
 			p.Logger.WarnContext(ctx,
 				"unable to verify request token",
-				slog.String("srt", srt),
+				slog.Int("srt_length", len(srt)),
 				jwkThumbprintAttr(dpopJWK),
 				slog.Any("error", err),
 			)
@@ -361,18 +350,12 @@ func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *
 		// in either case letting the request through makes sense
 	}
 
-	token, rbString, parseErr := p.parseSRT(ctx, srt, requireVerification)
+	token, rbString, parseErr := p.parseSRT(ctx, srt)
 	if parseErr != nil {
-		if !requireVerification {
-			p.Logger.ErrorContext(ctx, "srt parsing failed (signature verification skipped)", slog.Any("error", parseErr))
-		}
 		return nil, false, parseErr
 	}
 
 	if validateErr := p.validateSRTClaims(ctx, token, requireVerification); validateErr != nil {
-		if !requireVerification {
-			p.Logger.ErrorContext(ctx, "srt validation failed (signature verification skipped)", slog.Any("error", validateErr))
-		}
 		return nil, false, validateErr
 	}
 
@@ -389,7 +372,7 @@ func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *
 		p.Logger.WarnContext(ctx,
 			"invalid SRT",
 			slog.Any("err_v2", err),
-			slog.String("srt", rbString),
+			slog.Int("rb_string_length", len(rbString)),
 		)
 		return nil, false, err400("invalid request body")
 	}
@@ -401,8 +384,8 @@ func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *
 			p.Logger.WarnContext(ctx,
 				"invalid SRT",
 				slog.Any("err_v1", errv1),
-				slog.String("srt", rbString),
-				slog.String("rewrap.body", requestBody.String()),
+				slog.Int("rb_string_length", len(rbString)),
+				slog.Int("rewrap_body_length", len(requestBody.String())),
 			)
 			return nil, false, err400("invalid request body")
 		}
@@ -567,6 +550,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 
 	body, isV1, err := p.extractSRTBody(ctx, req.Header(), in)
 	if err != nil {
+		p.Logger.TraceContext(ctx, "srt extraction failure", slog.Any("srt", body), slog.Any("error", err))
 		p.Logger.DebugContext(ctx, "unverifiable srt", slog.Any("error", err))
 		return nil, err
 	}

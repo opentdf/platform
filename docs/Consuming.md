@@ -15,14 +15,6 @@ To get started with the OpenTDF platform make sure you are running the same Go v
 <!-- markdownlint-disable MD034 github embedded sourcecode -->
 https://github.com/opentdf/platform/blob/main/service/go.mod#L3
 
-> **Note for Apple M4 chip users:**  
-> If you are running on an Apple M4 chip, set the Java environment variable before running any commands:
-> ```sh
-> export JAVA_OPTS_APPEND="-XX:UseSVE=0"
-> ```
-> This resolves SIGILL with Code 134 errors when running Java processes.
-
-
 1. **Initialize Platform Configuration**
    ```shell
    cp opentdf-dev.yaml opentdf.yaml
@@ -40,25 +32,23 @@ https://github.com/opentdf/platform/blob/main/service/go.mod#L3
      ```shell
      sudo security delete-certificate -c "localhost"
      ```
-2. **Start Background Services**
+2. **Start Platform Services**
    
-   Start the required infrastructure with [compose-spec](https://compose-spec.io).
+   Start all services including automated provisioning with [compose-spec](https://compose-spec.io).
 
    ```shell
+   # If running on Apple M4 chip
+   JAVA_OPTS_APPEND="-XX:UseSVE=0" docker compose up
+
+   # Or on other architectures
    docker compose up
    ```
-3. **Provision Keycloak**
-   ```shell
-   go run ./service provision keycloak
-   ```
-4. **Add Sample Attributes and Metadata**
-   ```shell
-   go run ./service provision fixtures
-   ```
-5. **Start Server**
-   ```shell
-   go run ./service start
-   ```
+   
+   This will automatically:
+   - Start the background services (Keycloak, PostgreSQL)
+   - Provision Keycloak with initial configuration
+   - Add sample attributes and metadata
+   - Start the OpenTDF Platform server
 
 ## 🎉 Your platform is ready to use!
 

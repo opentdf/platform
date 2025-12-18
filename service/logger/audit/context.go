@@ -2,7 +2,7 @@ package audit
 
 import (
 	"context"
-	sync "sync"
+	"sync"
 
 	"github.com/google/uuid"
 )

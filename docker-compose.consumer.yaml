@@ -1,10 +1,91 @@
+networks:
+  default:
+    name: opentdf_platform
+
+configs:
+  caddy_config:
+    content: |
+      {
+        log {
+            level INFO
+            output stdout
+        }
+      }
+      https://keycloak.opentdf.local:9443 {
+        tls internal
+        reverse_proxy keycloak:8888
+      }
+      https://platform.opentdf.local:8443 {
+        tls internal
+        reverse_proxy {
+            to h2c://platform:8080
+            transport http {
+                versions h2c 2 1.1  # Enable gRPC proxying
+            }
+        }
+      }
+
 services:
+  caddy:
+    image: caddy:alpine
+    command: ['caddy','run', '--config', '/etc/caddy/Caddyfile']
+    configs:
+      - source: caddy_config
+        target: /etc/caddy/Caddyfile
+    ports:
+      - "8443:8443"
+      - "9443:9443"
+      - "2019:2019"
+    volumes:
+      - caddy_data:/data
+    depends_on:
+      ensure-permissions:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:2019/metrics"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  check-certs:
+    image: bash:latest
+    volumes:
+      - type: volume
+        source: caddy_data
+        target: /etc/ssl/certs
+        volume:
+          subpath: caddy/certificates/local/keycloak.opentdf.local/
+    command:
+      - bash
+      - -c
+      - |
+        echo "Checking certificates"
+        ls -alh /etc/ssl/certs
+        cat /etc/ssl/certs/keycloak.opentdf.local.crt
+    depends_on:
+      caddy:
+        condition: service_healthy
+      ensure-permissions:
+        condition: service_completed_successfully
+    restart: "no"
+
+  ensure-permissions:
+    image: alpine
+    command:
+    - 'sh'
+    - '-c'
+    - |
+      chmod -R 755 /data
+    volumes:
+      - caddy_data:/data
+    restart: "no"
+
   keycloak:
-    extends:
-      file: docker-compose.base.yaml
-      service: keycloak
     volumes:
     - keys:/keys:ro
+    image: keycloak/keycloak:25.0
+    restart: always
     depends_on:
       fix-keys-permissions:
         condition: service_completed_successfully
@@ -27,6 +108,7 @@ services:
       KC_HTTP_MANAGEMENT_PORT: "9001"
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: changeme
+      #KC_HOSTNAME_URL: http://localhost:8888/auth
       KC_FEATURES: "preview,token-exchange"
       KC_HEALTH_ENABLED: "true"
       KC_HTTPS_KEY_STORE_PASSWORD: "password"
@@ -34,43 +116,179 @@ services:
       KC_HTTPS_CERTIFICATE_FILE: "/keys/localhost.crt"
       KC_HTTPS_CERTIFICATE_KEY_FILE: "/keys/localhost.key"
       KC_HTTPS_CLIENT_AUTH: "request"
+      ###
+      # The following environment variable resolves SIGILL with Code 134 when running Java processes on Apple M4 chips
+      # 
+      # On Apple Silicon (M4 chip):
+      #   export JAVA_OPTS_APPEND="-XX:UseSVE=0"
+      #   docker-compose up
+      # 
+      # On other architectures:
+      #   export JAVA_OPTS_APPEND=""
+      #   docker-compose up
+      # 
+      # Or set directly: JAVA_OPTS_APPEND="-XX:UseSVE=0" docker-compose up
       JAVA_OPTS_APPEND: "${JAVA_OPTS_APPEND:-}"
-
+      ###
+    # ports:
+    #   - "${KC_EXPOSE_PORT:-8443}:8443"
+    #   - "${KC_EXPOSE_PORT_HTTP:-8888}:8888"
+    #   - "${KC_EXPOSE_PORT_MGMT:-9001}:9001"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - |
+          [ -f /tmp/HealthCheck.java ] || echo "public class HealthCheck { 
+            public static void main(String[] args) throws java.lang.Throwable { 
+              javax.net.ssl.HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true); 
+              javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance(\"SSL\"); 
+              sc.init(null, new javax.net.ssl.TrustManager[]{ 
+                new javax.net.ssl.X509TrustManager() { 
+                  public java.security.cert.X509Certificate[] getAcceptedIssuers() { return null; } 
+                  public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {} 
+                  public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {} 
+                } 
+              }, new java.security.SecureRandom()); 
+              javax.net.ssl.HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory()); 
+              java.net.HttpURLConnection conn = (java.net.HttpURLConnection)new java.net.URL(args[0]).openConnection(); 
+              System.exit(java.net.HttpURLConnection.HTTP_OK == conn.getResponseCode() ? 0 : 1); 
+            } 
+          }" > /tmp/HealthCheck.java && java ${JAVA_OPTS_APPEND} /tmp/HealthCheck.java http://localhost:8888/auth 2>/dev/null
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 3m
   opentdfdb:
-    extends:
-      file: docker-compose.base.yaml
-      service: opentdfdb
+    image: postgres:15-alpine
+    restart: always
+    user: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: opentdf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "${POSTGRES_EXPOSE_PORT:-5432}:5432"
 
   jaeger:
-    extends:
-      file: docker-compose.base.yaml
-      service: jaeger
+    image: jaegertracing/all-in-one:latest
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"   # Web UI
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+      - "14250:14250"   # Model/collector gRPC
+    profiles:
+      - tracing
+    restart: always
 
+  # Entity Resolution Service Testing Infrastructure
+  # 
+  # Provides PostgreSQL and OpenLDAP services for comprehensive ERS testing
+  # Enables full multi-strategy ERS testing with SQL and LDAP providers
+  #
+  # Usage:
+  #   docker-compose --profile ers-test up -d                    # Start ERS test services
+  #   docker-compose --profile ers-admin up -d                   # Include LDAP admin UI  
+  #   ERS_TEST_POSTGRES_URL="postgres://ers_test_user:ers_test_pass@localhost:5433/ers_test?sslmode=disable" \
+  #   ERS_TEST_LDAP_URL="ldap://localhost:1389" \
+  #   go test ./service/entityresolution/integration -run TestMultiStrategy -v
+  #
+  # Services:
+  #   - ers-postgres: PostgreSQL 16 on port 5433 with test schema and data
+  #   - ers-ldap: OpenLDAP on port 1389 with organizational test data
+  #   - ers-ldap-admin: phpLDAPadmin on port 6443 (ers-admin profile only)
+
+  # PostgreSQL for ERS SQL provider testing
   ers-postgres:
-    extends:
-      file: docker-compose.base.yaml
-      service: ers-postgres
+    image: postgres:16-alpine
+    container_name: ers_test_postgres
+    profiles:
+      - ers-test
+      - ers-admin
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts with main opentdfdb
+    environment:
+      POSTGRES_DB: ers_test
+      POSTGRES_USER: ers_test_user
+      POSTGRES_PASSWORD: ers_test_pass
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - ers_postgres_data:/var/lib/postgresql/data
+      - ./service/entityresolution/integration/sql_test_data:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ers_test_user -d ers_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
+  # OpenLDAP for ERS LDAP provider testing
   ers-ldap:
-    extends:
-      file: docker-compose.base.yaml
-      service: ers-ldap
+    image: osixia/openldap:1.5.0
+    container_name: ers_test_openldap
+    profiles:
+      - ers-test
+      - ers-admin
+    ports:
+      - "1389:389"   # LDAP port (different from standard 389)
+      - "1636:636"   # LDAPS port (different from standard 636)
+    environment:
+      LDAP_ORGANISATION: "OpenTDF Test"
+      LDAP_DOMAIN: "opentdf.test"
+      LDAP_ADMIN_PASSWORD: "admin_password"
+      LDAP_CONFIG_PASSWORD: "config_password"
+      LDAP_READONLY_USER: "true"
+      LDAP_READONLY_USER_USERNAME: "readonly"
+      LDAP_READONLY_USER_PASSWORD: "readonly_password"
+      LDAP_RFC2307BIS_SCHEMA: "false"
+      LDAP_BACKEND: "mdb"
+      LDAP_TLS: "true"
+      LDAP_TLS_ENFORCE: "false"
+      LDAP_REPLICATION: "false"
+      KEEP_EXISTING_CONFIG: "false"
+      LDAP_REMOVE_CONFIG_AFTER_SETUP: "true"
+    volumes:
+      - ers_ldap_data:/var/lib/ldap
+      - ers_ldap_config:/etc/ldap/slapd.d
+      - ./service/entityresolution/integration/ldap_test_data:/container/service/slapd/assets/config/bootstrap/ldif/custom
+    healthcheck:
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost:389 -b dc=opentdf,dc=test -D cn=admin,dc=opentdf,dc=test -w admin_password '(objectclass=*)' dn"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
+  # phpLDAPadmin for LDAP management (admin profile only)
   ers-ldap-admin:
-    extends:
-      file: docker-compose.base.yaml
-      service: ers-ldap-admin
+    image: osixia/phpldapadmin:latest
+    container_name: ers_ldap_admin
+    profiles:
+      - ers-admin  # Only available with --profile ers-admin
+    ports:
+      - "6443:443"
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: ers-ldap
+      PHPLDAPADMIN_HTTPS: "false"
+    depends_on:
+      ers-ldap:
+        condition: service_healthy
 
   # Provision Keycloak with initial configuration
   platform-provision-keycloak:
     image: registry.opentdf.io/platform:nightly
-    command: ["provision", "keycloak", "-e", "http://keycloak:8888/auth", "-f", "/configs/keycloak_data.yaml"]
+    command: ["provision", "keycloak", "-e", "https://keycloak.opentdf.local:9443/auth", "-f", "/configs/keycloak_data.yaml"]
     depends_on:
       keycloak:
         condition: service_healthy
       opentdfdb:
         condition: service_healthy
-      download-platform-config:
+      patch-platform-config:
         condition: service_completed_successfully
       download-keycloak-data:
         condition: service_completed_successfully
@@ -82,7 +300,8 @@ services:
     environment:
       - OPENTDF_CONFIG_FILE=/configs/opentdf.yaml
     restart: "no"
-
+    extra_hosts:
+      - "keycloak.opentdf.local:host-gateway"
   # Prepare fixtures directory structure - create symlink to expected location
   prepare-fixtures:
     image: alpine:latest
@@ -119,6 +338,34 @@ services:
       - keys:/keys:ro
     restart: "no"
 
+  # Prepare CA certificates bundle with Caddy cert
+  prepare-ca-certs:
+    image: alpine:latest
+    volumes:
+      - type: volume
+        source: caddy_data
+        target: /caddy-certs
+        read_only: true
+        volume:
+          subpath: caddy/certificates/local/keycloak.opentdf.local
+      - platform_certs:/etc/ssl/certs
+    depends_on:
+      caddy:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - |
+        # Install ca-certificates package
+        apk add --no-cache ca-certificates
+        # Copy Caddy certificate to CA bundle
+        cp /caddy-certs/keycloak.opentdf.local.crt /usr/local/share/ca-certificates/
+        update-ca-certificates
+        # Copy the updated CA bundle to shared volume
+        cp -r /etc/ssl/certs/* /etc/ssl/certs/
+        echo "CA certificates prepared successfully"
+    restart: "no"
+
   # Main OpenTDF Platform server
   platform:
     image: registry.opentdf.io/platform:nightly
@@ -132,11 +379,16 @@ services:
         condition: service_healthy
       generate-keys:
         condition: service_completed_successfully
+      prepare-ca-certs:
+        condition: service_completed_successfully
     ports:
       - "8080:8080"
     volumes:
       - configs:/configs:ro
       - keys:/keys:ro
+      - platform_certs:/etc/ssl/certs:ro
+    extra_hosts:
+      - "keycloak.opentdf.local:host-gateway"
     restart: unless-stopped
 
   # Initialize volume permissions
@@ -181,6 +433,23 @@ services:
     command: ['-o', '/configs/opentdf.yaml', 'https://raw.githubusercontent.com/opentdf/platform/main/opentdf-example.yaml']
     restart: "no"
 
+  # Patch platform configuration to use keycloak.opentdf.local:9443
+  patch-platform-config:
+    image: alpine:latest
+    volumes:
+      - configs:/configs
+    depends_on:
+      download-platform-config:
+        condition: service_completed_successfully
+    command:
+      - sh
+      - -c
+      - |
+        apk add --no-cache sed
+        sed -i 's|http://keycloak:8888|https://keycloak.opentdf.local:9443|g' /configs/opentdf.yaml
+        echo "Patched opentdf.yaml to use keycloak.opentdf.local:9443"
+    restart: "no"
+
   # Download Keycloak provisioning data
   download-keycloak-data:
     image: curlimages/curl:latest
@@ -189,7 +458,44 @@ services:
     depends_on:
       init-volumes:
         condition: service_completed_successfully
-    command: ['-o', '/configs/keycloak_data.yaml', 'https://raw.githubusercontent.com/opentdf/platform/main/service/cmd/keycloak_data.yaml']
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        URL='https://raw.githubusercontent.com/opentdf/platform/main/service/cmd/keycloak_data.yaml'
+        OUTPUT='/configs/keycloak_data.yaml'
+        MAX_ATTEMPTS=3
+        
+        for i in $$(seq 1 $$MAX_ATTEMPTS); do
+          echo "Attempt $$i of $$MAX_ATTEMPTS: Downloading keycloak_data.yaml..."
+          
+          if curl -f -o "$$OUTPUT" "$$URL"; then
+            echo "Download successful"
+            
+            # Validate the downloaded file
+            if [ -f "$$OUTPUT" ] && [ -s "$$OUTPUT" ]; then
+              if head -1 "$$OUTPUT" | grep -q -E '^(---|\w+:)'; then
+                echo "Validation passed: File exists, non-empty, and appears to be valid YAML"
+                exit 0
+              else
+                echo "Validation failed: File does not appear to be valid YAML"
+                rm -f "$$OUTPUT"
+              fi
+            else
+              echo "Validation failed: File is missing or empty"
+            fi
+          else
+            echo "Download failed (attempt $$i)"
+          fi
+          
+          if [ $$i -lt $$MAX_ATTEMPTS ]; then
+            echo "Retrying in 2 seconds..."
+            sleep 2
+          fi
+        done
+        
+        echo "ERROR: Failed to download and validate keycloak_data.yaml after $$MAX_ATTEMPTS attempts"
+        exit 1
     restart: "no"
 
   # Download fixtures data
@@ -211,7 +517,44 @@ services:
     depends_on:
       init-volumes:
         condition: service_completed_successfully
-    command: ['-o', '/configs/init-temp-keys.sh', 'https://raw.githubusercontent.com/opentdf/platform/main/.github/scripts/init-temp-keys.sh']
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        URL='https://raw.githubusercontent.com/opentdf/platform/main/.github/scripts/init-temp-keys.sh'
+        OUTPUT='/configs/init-temp-keys.sh'
+        MAX_ATTEMPTS=3
+        
+        for i in $$(seq 1 $$MAX_ATTEMPTS); do
+          echo "Attempt $$i of $$MAX_ATTEMPTS: Downloading init-temp-keys.sh..."
+          
+          if curl -f -o "$$OUTPUT" "$$URL"; then
+            echo "Download successful"
+            
+            # Validate the downloaded file
+            if [ -f "$$OUTPUT" ] && [ -s "$$OUTPUT" ]; then
+              if head -1 "$$OUTPUT" | grep -q '^#!/'; then
+                echo "Validation passed: File exists, non-empty, and appears to be a shell script"
+                exit 0
+              else
+                echo "Validation failed: File does not appear to be a valid shell script"
+                rm -f "$$OUTPUT"
+              fi
+            else
+              echo "Validation failed: File is missing or empty"
+            fi
+          else
+            echo "Download failed (attempt $$i)"
+          fi
+          
+          if [ $$i -lt $$MAX_ATTEMPTS ]; then
+            echo "Retrying in 2 seconds..."
+            sleep 2
+          fi
+        done
+        
+        echo "ERROR: Failed to download and validate init-temp-keys.sh after $$MAX_ATTEMPTS attempts"
+        exit 1
     restart: "no"
 
   # Generate keys without Docker dependency
@@ -276,9 +619,13 @@ volumes:
     name: opentdf_keys
   configs:
     name: opentdf_configs
+  caddy_data:
+  platform_certs:
+    name: opentdf_platform_certs
   ers_postgres_data:
     name: ers_test_postgres_data
   ers_ldap_data:
     name: ers_test_ldap_data
   ers_ldap_config:
     name: ers_test_ldap_config
+

@@ -68,7 +68,7 @@ sudo security delete-certificate -c "localhost"  # macOS
 ##  Next steps
 * Try out our CLI (`otdfctl`): https://github.com/opentdf/otdfctl
    ```sh
-   otdfctl auth client-credentials --host http://localhost:8080 --client-id opentdf --client-secret secret
+   otdfctl auth client-credentials --host https://platform.opentdf.local:8443 --tls-no-verify
    ```
 * Join our slack channel ([click here](https://join.slack.com/t/opentdf/shared_invite/zt-1e3jhnedw-wjviK~qRH_T1zG4dfaa~3A))
 * Connect with the team

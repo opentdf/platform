@@ -25,10 +25,10 @@ Start all services including automated provisioning with [compose-spec](https://
 
 ```shell
 # If running on Apple M4 chip
-JAVA_OPTS_APPEND="-XX:UseSVE=0" docker compose --file docker-compose.consumer.yaml up
+JAVA_OPTS_APPEND="-XX:UseSVE=0" docker compose --file docker-compose.consumer.yaml up -d
 
 # Or on other architectures
-docker compose --file docker-compose.consumer.yaml up
+docker compose --file docker-compose.consumer.yaml up -d
 ```
 
 This will automatically:

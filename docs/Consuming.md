@@ -10,6 +10,15 @@ To contribute/develop, see [here](./Contributing.md).
 > This quickstart guide is intended for development and testing purposes only. The OpenTDF platform team does not
 > provide recommendations for production deployments.
 
+**Update `/etc/hosts`**
+
+
+In order for the services to communicate correctly you will need to update your `/etc/hosts` file.
+
+```shell
+echo -e "127.0.0.1 platform.opentdf.local\n127.0.0.1 keycloak.opentdf.local" | sudo tee -a /etc/hosts
+```
+
 **Start Platform Services**
    
 Start all services including automated provisioning with [compose-spec](https://compose-spec.io).

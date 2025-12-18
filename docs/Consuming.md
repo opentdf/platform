@@ -41,7 +41,10 @@ This will automatically:
 
 ## 🎉 Your platform is ready to use!
 
-You can now access platform services at http://localhost:8080/ , and Keycloak at http://localhost:8888/auth/ .
+You can now access the platform services.
+
+* Find platform configuration at https://platform.opentdf.local:8443/.well-known/opentdf-configuration , and
+* Find Keycloak at https://keycloak.opentdf.local:9443/auth/ .
 
 ### Optional: Trust the Local Certificate
 
@@ -49,11 +52,11 @@ If you want to trust the auto-generated certificate on your host machine:
 
 ```shell
 # For macOS
-docker cp platform-keycloak-1:/keys/localhost.crt ./localhost.crt
+docker compose cp keycloak:/keys/localhost.crt ./
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./localhost.crt
 
 # For Linux
-docker cp platform-keycloak-1:/keys/localhost.crt ./localhost.crt
+docker compose cp keycloak:/keys/localhost.crt ./
 sudo cp ./localhost.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates
 ```
 

@@ -7,7 +7,7 @@ toolchain go1.24.11
 require (
 	connectrpc.com/connect v1.18.1
 	github.com/opentdf/platform/lib/ocrypto v0.7.0
-	github.com/opentdf/platform/protocol/go v0.13.0
+	github.com/opentdf/platform/protocol/go v0.14.0
 	github.com/opentdf/platform/sdk v0.10.1
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0

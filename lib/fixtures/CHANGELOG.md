@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/opentdf/platform/compare/lib/fixtures/v0.3.0...lib/fixtures/v0.4.0) (2025-12-19)
+
+
+### Features
+
+* Update Go toolchain version to 1.24.11 across all modules ([#2943](https://github.com/opentdf/platform/issues/2943)) ([a960eca](https://github.com/opentdf/platform/commit/a960eca78ab8870599f0aa2a315dbada355adf20))
+
+
+### Bug Fixes
+
+* **deps:** bump toolchain to go1.24.9 for CVEs found by govulncheck ([#2849](https://github.com/opentdf/platform/issues/2849)) ([23f76c0](https://github.com/opentdf/platform/commit/23f76c034cfb4c325d868eb96c95ba616e362db4))
+
 ## [0.3.0](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.10...lib/fixtures/v0.3.0) (2025-05-20)
 
 

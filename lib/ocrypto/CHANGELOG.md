@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.8.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.7.0...lib/ocrypto/v0.8.0) (2025-12-19)
+
+
+### Features
+
+* Update Go toolchain version to 1.24.11 across all modules ([#2943](https://github.com/opentdf/platform/issues/2943)) ([a960eca](https://github.com/opentdf/platform/commit/a960eca78ab8870599f0aa2a315dbada355adf20))
+
+
+### Bug Fixes
+
+* **deps:** bump toolchain to go1.24.9 for CVEs found by govulncheck ([#2849](https://github.com/opentdf/platform/issues/2849)) ([23f76c0](https://github.com/opentdf/platform/commit/23f76c034cfb4c325d868eb96c95ba616e362db4))
+* **sdk:** more efficient encryption in experiment TDF Writer ([#2904](https://github.com/opentdf/platform/issues/2904)) ([3ec0518](https://github.com/opentdf/platform/commit/3ec05180ab567e78def51be90b10dd137f3a1f61))
+
 ## [0.7.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.6.0...lib/ocrypto/v0.7.0) (2025-10-15)
 
 

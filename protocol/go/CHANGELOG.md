@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.14.0](https://github.com/opentdf/platform/compare/protocol/go/v0.13.0...protocol/go/v0.14.0) (2025-12-19)
+
+
+### Features
+
+* Update Go toolchain version to 1.24.11 across all modules ([#2943](https://github.com/opentdf/platform/issues/2943)) ([a960eca](https://github.com/opentdf/platform/commit/a960eca78ab8870599f0aa2a315dbada355adf20))
+
+
+### Bug Fixes
+
+* **deps:** bump toolchain to go1.24.9 for CVEs found by govulncheck ([#2849](https://github.com/opentdf/platform/issues/2849)) ([23f76c0](https://github.com/opentdf/platform/commit/23f76c034cfb4c325d868eb96c95ba616e362db4))
+* **kas:** document rewrap proto fields used in bulk flow ([#2826](https://github.com/opentdf/platform/issues/2826)) ([32a7e91](https://github.com/opentdf/platform/commit/32a7e919c57fd724f5c4f01148861ebccb1a9989))
+
 ## [0.13.0](https://github.com/opentdf/platform/compare/protocol/go/v0.12.0...protocol/go/v0.13.0) (2025-10-16)
 
 

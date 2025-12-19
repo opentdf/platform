@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	sdkAudit "github.com/opentdf/platform/sdk/audit"
-	"github.com/opentdf/platform/service/internal/server/realip"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -24,12 +24,20 @@ var TestRequestIP = net.ParseIP("192.168.1.1")
 
 var TestRequestID = uuid.New()
 
-func createTestContext() context.Context {
-	ctx := context.Background()
-	ctx = context.WithValue(ctx, sdkAudit.RequestIDContextKey, TestRequestID)
-	ctx = context.WithValue(ctx, sdkAudit.UserAgentContextKey, TestUserAgent)
-	ctx = context.WithValue(ctx, realip.ClientIP{}, TestRequestIP)
-	ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, TestActorID)
+func createTestContext(t *testing.T) context.Context {
+	ctx := t.Context()
+
+	tx := auditTransaction{
+		ContextData: ContextData{
+			RequestID: TestRequestID,
+			UserAgent: TestUserAgent,
+			RequestIP: TestRequestIP.String(),
+			ActorID:   TestActorID,
+		},
+		events: make([]pendingEvent, 0),
+	}
+	ctx = context.WithValue(ctx, contextKey{}, &tx)
+
 	return ctx
 }
 
@@ -39,11 +47,6 @@ func validateRecentEventTimestamp(t *testing.T, event *EventObject) {
 	}
 
 	eventTime, err := time.Parse(time.RFC3339, event.Timestamp)
-	if err != nil {
-		t.Fatalf("error parsing timestamp: %v", err)
-	}
-
-	if time.Since(eventTime) > time.Second {
-		t.Fatalf("event timestamp is not recent: got %v, want less than 1 second", eventTime)
-	}
+	require.NoError(t, err, "error parsing timestamp [%v]", event.Timestamp)
+	assert.Greater(t, time.Second, time.Since(eventTime), "event timestamp is not recent: got %v, want less than 1 second", eventTime)
 }

@@ -89,7 +89,7 @@ func (s *UnsafeService) UnsafeUpdateNamespace(ctx context.Context, req *connect.
 		ObjectID:   id,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		original, err := txClient.GetNamespace(ctx, id)
@@ -105,7 +105,7 @@ func (s *UnsafeService) UnsafeUpdateNamespace(ctx context.Context, req *connect.
 		auditParams.Original = original
 		auditParams.Updated = updated
 
-		auditEvent.Success(updated)
+		auditEvent.Success(ctx, updated)
 
 		rsp.Namespace = &policy.Namespace{
 			Id: id,
@@ -131,7 +131,7 @@ func (s *UnsafeService) UnsafeReactivateNamespace(ctx context.Context, req *conn
 		ObjectID:   id,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	original, err := s.dbClient.GetNamespace(ctx, id)
 	if err != nil {
@@ -146,7 +146,7 @@ func (s *UnsafeService) UnsafeReactivateNamespace(ctx context.Context, req *conn
 	auditParams.Original = original
 	auditParams.Updated = updated
 
-	auditEvent.Success(updated)
+	auditEvent.Success(ctx, updated)
 
 	rsp.Namespace = &policy.Namespace{
 		Id: id,
@@ -166,7 +166,7 @@ func (s *UnsafeService) UnsafeDeleteNamespace(ctx context.Context, req *connect.
 		ObjectID:   id,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	existing, err := s.dbClient.GetNamespace(ctx, id)
 	if err != nil {
@@ -178,7 +178,7 @@ func (s *UnsafeService) UnsafeDeleteNamespace(ctx context.Context, req *connect.
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", id))
 	}
 
-	auditEvent.Success(existing)
+	auditEvent.Success(ctx, existing)
 
 	rsp.Namespace = &policy.Namespace{
 		Id: id,
@@ -202,7 +202,7 @@ func (s *UnsafeService) UnsafeUpdateAttribute(ctx context.Context, req *connect.
 		ObjectID:   id,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		original, err := txClient.GetAttribute(ctx, id)
@@ -218,7 +218,7 @@ func (s *UnsafeService) UnsafeUpdateAttribute(ctx context.Context, req *connect.
 		auditParams.Original = original
 		auditParams.Updated = updated
 
-		auditEvent.Success(updated)
+		auditEvent.Success(ctx, updated)
 
 		rsp.Attribute = &policy.Attribute{
 			Id: id,
@@ -244,7 +244,7 @@ func (s *UnsafeService) UnsafeReactivateAttribute(ctx context.Context, req *conn
 		ObjectID:   id,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	original, err := s.dbClient.GetAttribute(ctx, id)
 	if err != nil {
@@ -259,7 +259,7 @@ func (s *UnsafeService) UnsafeReactivateAttribute(ctx context.Context, req *conn
 	auditParams.Original = original
 	auditParams.Updated = updated
 
-	auditEvent.Success(updated)
+	auditEvent.Success(ctx, updated)
 
 	rsp.Attribute = &policy.Attribute{
 		Id: id,
@@ -279,7 +279,7 @@ func (s *UnsafeService) UnsafeDeleteAttribute(ctx context.Context, req *connect.
 		ObjectID:   id,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	existing, err := s.dbClient.GetAttribute(ctx, id)
 	if err != nil {
@@ -291,7 +291,7 @@ func (s *UnsafeService) UnsafeDeleteAttribute(ctx context.Context, req *connect.
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", id))
 	}
 
-	auditEvent.Success(existing)
+	auditEvent.Success(ctx, existing)
 
 	rsp.Attribute = &policy.Attribute{
 		Id: id,
@@ -315,7 +315,7 @@ func (s *UnsafeService) UnsafeUpdateAttributeValue(ctx context.Context, req *con
 		ObjectID:   id,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		original, err := txClient.GetAttributeValue(ctx, id)
@@ -331,7 +331,7 @@ func (s *UnsafeService) UnsafeUpdateAttributeValue(ctx context.Context, req *con
 		auditParams.Original = original
 		auditParams.Updated = updated
 
-		auditEvent.Success(updated)
+		auditEvent.Success(ctx, updated)
 
 		rsp.Value = &policy.Value{
 			Id: id,
@@ -357,7 +357,7 @@ func (s *UnsafeService) UnsafeReactivateAttributeValue(ctx context.Context, req 
 		ObjectID:   id,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	original, err := s.dbClient.GetAttributeValue(ctx, id)
 	if err != nil {
@@ -372,7 +372,7 @@ func (s *UnsafeService) UnsafeReactivateAttributeValue(ctx context.Context, req 
 	auditParams.Original = original
 	auditParams.Updated = updated
 
-	auditEvent.Success(updated)
+	auditEvent.Success(ctx, updated)
 
 	rsp.Value = &policy.Value{
 		Id: id,
@@ -391,7 +391,7 @@ func (s *UnsafeService) UnsafeDeleteAttributeValue(ctx context.Context, req *con
 		ObjectID:   id,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	existing, err := s.dbClient.GetAttributeValue(ctx, id)
 	if err != nil {
@@ -403,7 +403,7 @@ func (s *UnsafeService) UnsafeDeleteAttributeValue(ctx context.Context, req *con
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", id))
 	}
 
-	auditEvent.Success(existing)
+	auditEvent.Success(ctx, existing)
 
 	rsp.Value = &policy.Value{
 		Id: id,
@@ -422,7 +422,7 @@ func (s *UnsafeService) UnsafeDeleteKasKey(ctx context.Context, req *connect.Req
 		ObjectID:   id,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		existing, err := txClient.GetKey(ctx, &kasregistry.GetKeyRequest_Id{Id: id})
@@ -443,7 +443,7 @@ func (s *UnsafeService) UnsafeDeleteKasKey(ctx context.Context, req *connect.Req
 			return db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", id))
 		}
 
-		auditEvent.Success(&policy.KasKey{
+		auditEvent.Success(ctx, &policy.KasKey{
 			KasUri: existing.GetKasUri(),
 			Key: &policy.AsymmetricKey{
 				Id:    existing.GetKey().GetId(),

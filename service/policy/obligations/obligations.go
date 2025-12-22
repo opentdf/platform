@@ -108,7 +108,7 @@ func (s *Service) CreateObligation(ctx context.Context, req *connect.Request[obl
 		ObjectType: audit.ObjectTypeObligationDefinition,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	s.logger.DebugContext(ctx, "creating obligation", slog.String("name", req.Msg.GetName()))
 
@@ -120,7 +120,7 @@ func (s *Service) CreateObligation(ctx context.Context, req *connect.Request[obl
 
 		auditParams.ObjectID = obl.GetId()
 		auditParams.Original = obl
-		auditEvent.Success(obl)
+		auditEvent.Success(ctx, obl)
 
 		rsp.Obligation = obl
 		return nil
@@ -170,7 +170,7 @@ func (s *Service) UpdateObligation(ctx context.Context, req *connect.Request[obl
 		ObjectID:   id,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	s.logger.DebugContext(ctx, "updating obligation", slog.String("id", id))
 
@@ -186,7 +186,7 @@ func (s *Service) UpdateObligation(ctx context.Context, req *connect.Request[obl
 		}
 
 		auditParams.Original = original
-		auditEvent.Success(updated)
+		auditEvent.Success(ctx, updated)
 
 		rsp.Obligation = updated
 		return nil
@@ -206,7 +206,7 @@ func (s *Service) DeleteObligation(ctx context.Context, req *connect.Request[obl
 		ObjectID:   id,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	s.logger.DebugContext(ctx, "deleting obligation", slog.String("id", id))
 
@@ -215,7 +215,7 @@ func (s *Service) DeleteObligation(ctx context.Context, req *connect.Request[obl
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("obligation", req.Msg.String()))
 	}
 
-	auditEvent.Success(deleted)
+	auditEvent.Success(ctx, deleted)
 
 	rsp := &obligations.DeleteObligationResponse{Obligation: deleted}
 	return connect.NewResponse(rsp), nil
@@ -229,7 +229,7 @@ func (s *Service) CreateObligationValue(ctx context.Context, req *connect.Reques
 		ObjectType: audit.ObjectTypeObligationValue,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	s.logger.DebugContext(ctx, "creating obligation value", slog.String("value", req.Msg.GetValue()))
 
@@ -241,7 +241,7 @@ func (s *Service) CreateObligationValue(ctx context.Context, req *connect.Reques
 
 		auditParams.ObjectID = val.GetId()
 		auditParams.Original = val
-		auditEvent.Success(val)
+		auditEvent.Success(ctx, val)
 
 		rsp.Value = val
 		return nil
@@ -292,7 +292,7 @@ func (s *Service) UpdateObligationValue(ctx context.Context, req *connect.Reques
 		ObjectID:   id,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	s.logger.DebugContext(ctx, "updating obligation value", slog.String("id", id))
 
@@ -308,7 +308,7 @@ func (s *Service) UpdateObligationValue(ctx context.Context, req *connect.Reques
 		}
 
 		auditParams.Original = original
-		auditEvent.Success(updated)
+		auditEvent.Success(ctx, updated)
 
 		rsp.Value = updated
 		return nil
@@ -328,7 +328,7 @@ func (s *Service) DeleteObligationValue(ctx context.Context, req *connect.Reques
 		ObjectID:   id,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	s.logger.DebugContext(ctx, "deleting obligation value", slog.String("id", id))
 
@@ -337,7 +337,7 @@ func (s *Service) DeleteObligationValue(ctx context.Context, req *connect.Reques
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("obligation value", req.Msg.String()))
 	}
 
-	auditEvent.Success(deleted)
+	auditEvent.Success(ctx, deleted)
 
 	rsp := &obligations.DeleteObligationValueResponse{Value: deleted}
 	return connect.NewResponse(rsp), nil
@@ -351,7 +351,7 @@ func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request
 		ObjectType: audit.ObjectTypeObligationTrigger,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	oblIdentifier := req.Msg.GetObligationValue()
 	oblVal := oblIdentifier.GetId()
@@ -385,7 +385,7 @@ func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request
 
 		auditParams.ObjectID = trigger.GetId()
 		auditParams.Original = trigger
-		auditEvent.Success(trigger)
+		auditEvent.Success(ctx, trigger)
 
 		rsp.Trigger = trigger
 		return nil
@@ -406,7 +406,7 @@ func (s *Service) RemoveObligationTrigger(ctx context.Context, req *connect.Requ
 		ObjectID:   id,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	s.logger.DebugContext(ctx, "removing obligation trigger", slog.String("id", id))
 
@@ -415,7 +415,7 @@ func (s *Service) RemoveObligationTrigger(ctx context.Context, req *connect.Requ
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("obligation trigger", req.Msg.String()))
 	}
 
-	auditEvent.Success(deleted)
+	auditEvent.Success(ctx, deleted)
 
 	rsp := &obligations.RemoveObligationTriggerResponse{Trigger: deleted}
 	return connect.NewResponse(rsp), nil

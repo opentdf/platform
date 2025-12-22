@@ -10,7 +10,6 @@ import (
 
 // deferred is the generic deferred audit implementation
 type deferred[T any] struct {
-	ctx           context.Context
 	params        T
 	onSuccess     func(context.Context, T)
 	onFailure     func(context.Context, T)
@@ -20,7 +19,7 @@ type deferred[T any] struct {
 }
 
 // markSuccess marks the event as successful (without logging yet)
-func (d *deferred[T]) markSuccess() {
+func (d *deferred[T]) markSuccess(ctx context.Context) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -29,11 +28,11 @@ func (d *deferred[T]) markSuccess() {
 	}
 	d.successCalled = true
 	d.completed = true
-	d.onSuccess(d.ctx, d.params)
+	d.onSuccess(ctx, d.params)
 }
 
 // markFailure marks the event as failed (without logging yet)
-func (d *deferred[T]) markFailure() {
+func (d *deferred[T]) markFailure(ctx context.Context) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -41,11 +40,11 @@ func (d *deferred[T]) markFailure() {
 		return
 	}
 	d.completed = true
-	d.onFailure(d.ctx, d.params)
+	d.onFailure(ctx, d.params)
 }
 
 // log must be called in a defer statement, invoked before any panic-able handler code
-func (d *deferred[T]) log() {
+func (d *deferred[T]) log(ctx context.Context) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -55,7 +54,7 @@ func (d *deferred[T]) log() {
 	d.completed = true
 
 	// If neither Success() nor Failure() was called, treat as failure
-	d.onFailure(d.ctx, d.params)
+	d.onFailure(ctx, d.params)
 }
 
 // PolicyCRUDEvent represents a policy CRUD audit event that will be logged
@@ -90,16 +89,15 @@ type GetDecisionV2Event struct {
 // Usage:
 //
 //	auditEvent := logger.PolicyCRUD(ctx, params)
-//	defer auditEvent.Log()
+//	defer auditEvent.Log(ctx)
 //	// ... perform operation ...
-//	auditEvent.Success(updatedObject)
+//	auditEvent.Success(ctx, updatedObject)
 func (a *Logger) PolicyCRUD(ctx context.Context, params PolicyEventParams) *PolicyCRUDEvent {
 	// Store a reference to params for mutation
 	paramsCopy := params
 	return &PolicyCRUDEvent{
 		params: &paramsCopy,
 		deferred: &deferred[PolicyEventParams]{
-			ctx:    ctx,
 			params: paramsCopy,
 			onSuccess: func(ctx context.Context, p PolicyEventParams) {
 				a.PolicyCRUDSuccess(ctx, p)
@@ -113,22 +111,22 @@ func (a *Logger) PolicyCRUD(ctx context.Context, params PolicyEventParams) *Poli
 
 // Success marks the audit event as successful and logs it immediately.
 // The updated parameter should contain the updated object state (can be nil for creates).
-func (d *PolicyCRUDEvent) Success(updated proto.Message) {
+func (d *PolicyCRUDEvent) Success(ctx context.Context, updated proto.Message) {
 	// Update the params with the updated object
 	d.params.Updated = updated
 	d.deferred.params = *d.params
-	d.deferred.markSuccess()
+	d.deferred.markSuccess(ctx)
 }
 
 // Failure marks the audit event as failed and logs it immediately.
-func (d *PolicyCRUDEvent) Failure() {
-	d.deferred.markFailure()
+func (d *PolicyCRUDEvent) Failure(ctx context.Context) {
+	d.deferred.markFailure(ctx)
 }
 
 // Log should be called in a defer statement. If neither Success() nor Failure()
 // was called, it will check the context for cancellation and log appropriately.
-func (d *PolicyCRUDEvent) Log() {
-	d.deferred.log()
+func (d *PolicyCRUDEvent) Log(ctx context.Context) {
+	d.deferred.log(ctx)
 }
 
 // DeferRewrap creates a deferred rewrap audit event.
@@ -136,13 +134,12 @@ func (d *PolicyCRUDEvent) Log() {
 // Usage:
 //
 //	auditEvent := logger.DeferRewrap(ctx, params)
-//	defer auditEvent.Log()
+//	defer auditEvent.Log(ctx)
 //	// ... perform operation ...
-//	auditEvent.Success()
+//	auditEvent.Success(ctx)
 func (a *Logger) DeferRewrap(ctx context.Context, params RewrapAuditEventParams) *RewrapEvent {
 	return &RewrapEvent{
 		deferred: &deferred[RewrapAuditEventParams]{
-			ctx:    ctx,
 			params: params,
 			onSuccess: func(ctx context.Context, p RewrapAuditEventParams) {
 				a.RewrapSuccess(ctx, p)
@@ -155,19 +152,19 @@ func (a *Logger) DeferRewrap(ctx context.Context, params RewrapAuditEventParams)
 }
 
 // Success marks the audit event as successful and logs it immediately.
-func (d *RewrapEvent) Success() {
-	d.deferred.markSuccess()
+func (d *RewrapEvent) Success(ctx context.Context) {
+	d.deferred.markSuccess(ctx)
 }
 
 // Failure marks the audit event as failed and logs it immediately.
-func (d *RewrapEvent) Failure() {
-	d.deferred.markFailure()
+func (d *RewrapEvent) Failure(ctx context.Context) {
+	d.deferred.markFailure(ctx)
 }
 
 // Log should be called in a defer statement. If neither Success() nor Failure()
 // was called, it will check the context for cancellation and log appropriately.
-func (d *RewrapEvent) Log() {
-	d.deferred.log()
+func (d *RewrapEvent) Log(ctx context.Context) {
+	d.deferred.log(ctx)
 }
 
 // Decision creates a deferred GetDecision audit event.
@@ -175,9 +172,9 @@ func (d *RewrapEvent) Log() {
 // Usage:
 //
 //	auditEvent := logger.Audit.Decision(ctx, entityChainID, resourceAttributeID, fqns)
-//	defer auditEvent.Log()
+//	defer auditEvent.Log(ctx)
 //	// ... perform operation, enriching with UpdateEntitlements/UpdateEntityDecisions ...
-//	auditEvent.Success(decision)
+//	auditEvent.Success(ctx, decision)
 func (a *Logger) Decision(ctx context.Context, entityChainID string, resourceAttributeID string, fqns []string) *GetDecisionEvent {
 	params := GetDecisionEventParams{
 		Decision:                GetDecisionResultDeny, // Default to deny on cancellation
@@ -192,7 +189,6 @@ func (a *Logger) Decision(ctx context.Context, entityChainID string, resourceAtt
 	return &GetDecisionEvent{
 		params: &paramsCopy,
 		deferred: &deferred[GetDecisionEventParams]{
-			ctx:    ctx,
 			params: paramsCopy,
 			onSuccess: func(ctx context.Context, p GetDecisionEventParams) {
 				a.getDecisionBase(ctx, p)
@@ -218,21 +214,21 @@ func (d *GetDecisionEvent) UpdateEntityDecisions(decisions []EntityDecision) {
 }
 
 // Success marks the audit event with the final decision and logs it immediately.
-func (d *GetDecisionEvent) Success(decision DecisionResult) {
+func (d *GetDecisionEvent) Success(ctx context.Context, decision DecisionResult) {
 	d.params.Decision = decision
 	d.deferred.params = *d.params
-	d.deferred.markSuccess()
+	d.deferred.markSuccess(ctx)
 }
 
 // Failure marks the audit event as failed (logs with deny decision)
-func (d *GetDecisionEvent) Failure() {
-	d.deferred.markFailure()
+func (d *GetDecisionEvent) Failure(ctx context.Context) {
+	d.deferred.markFailure(ctx)
 }
 
 // Log should be called in a defer statement. If neither Success() nor Failure()
 // was called, it will log with a deny decision.
-func (d *GetDecisionEvent) Log() {
-	d.deferred.log()
+func (d *GetDecisionEvent) Log(ctx context.Context) {
+	d.deferred.log(ctx)
 }
 
 // DecisionV2 creates a deferred GetDecisionV2 audit event.
@@ -240,9 +236,9 @@ func (d *GetDecisionEvent) Log() {
 // Usage:
 //
 //	auditEvent := logger.Audit.DecisionV2(ctx, entityID, actionName)
-//	defer auditEvent.Log()
+//	defer auditEvent.Log(ctx)
 //	// ... perform operation, enriching with UpdateEntitlements/UpdateResourceDecisions/UpdateObligations ...
-//	auditEvent.Success(decision)
+//	auditEvent.Success(ctx, decision)
 func (a *Logger) DecisionV2(ctx context.Context, entityID string, actionName string) *GetDecisionV2Event {
 	params := GetDecisionV2EventParams{
 		EntityID:                       entityID,
@@ -258,7 +254,6 @@ func (a *Logger) DecisionV2(ctx context.Context, entityID string, actionName str
 	return &GetDecisionV2Event{
 		params: &paramsCopy,
 		deferred: &deferred[GetDecisionV2EventParams]{
-			ctx:    ctx,
 			params: paramsCopy,
 			onSuccess: func(ctx context.Context, p GetDecisionV2EventParams) {
 				a.getDecisionV2Base(ctx, p)
@@ -292,19 +287,19 @@ func (d *GetDecisionV2Event) UpdateObligations(fulfillable []string, satisfied b
 }
 
 // Success marks the audit event with the final decision and logs it immediately.
-func (d *GetDecisionV2Event) Success(decision DecisionResult) {
+func (d *GetDecisionV2Event) Success(ctx context.Context, decision DecisionResult) {
 	d.params.Decision = decision
 	d.deferred.params = *d.params
-	d.deferred.markSuccess()
+	d.deferred.markSuccess(ctx)
 }
 
 // Failure marks the audit event as failed (logs with deny decision)
-func (d *GetDecisionV2Event) Failure() {
-	d.deferred.markFailure()
+func (d *GetDecisionV2Event) Failure(ctx context.Context) {
+	d.deferred.markFailure(ctx)
 }
 
 // Log should be called in a defer statement. If neither Success() nor Failure()
 // was called, it will log with a deny decision.
-func (d *GetDecisionV2Event) Log() {
-	d.deferred.log()
+func (d *GetDecisionV2Event) Log(ctx context.Context) {
+	d.deferred.log(ctx)
 }

@@ -623,7 +623,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 
 			// Start deferred audit event
 			auditEvent := as.logger.Audit.Decision(ctx, ec.GetId(), resourceAttrID, fqns)
-			defer auditEvent.Log()
+			defer auditEvent.Log(ctx)
 
 			//
 			// TODO: we should already have the subject mappings here and be able to just use OPA to trim down the known data attr values to the ones matched up with the entities
@@ -728,7 +728,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 			if decision == authorization.DecisionResponse_DECISION_PERMIT {
 				auditDecision = audit.GetDecisionResultPermit
 			}
-			auditEvent.Success(auditDecision)
+			auditEvent.Success(ctx, auditDecision)
 
 			response[responseIdx] = decisionResp
 		}

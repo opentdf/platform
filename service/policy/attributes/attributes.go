@@ -89,7 +89,7 @@ func (s *AttributesService) CreateAttribute(ctx context.Context,
 		ActionType: audit.ActionTypeCreate,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		item, err := txClient.CreateAttribute(ctx, req.Msg)
@@ -101,7 +101,7 @@ func (s *AttributesService) CreateAttribute(ctx context.Context,
 
 		auditParams.ObjectID = item.GetId()
 		auditParams.Original = item
-		auditEvent.Success(item)
+		auditEvent.Success(ctx, item)
 
 		rsp.Attribute = item
 		return nil
@@ -184,7 +184,7 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 		ObjectID:   attributeID,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	original, err := s.dbClient.GetAttribute(ctx, attributeID)
 	if err != nil {
@@ -198,7 +198,7 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 
 	auditParams.Original = original
 	auditParams.Updated = updated
-	auditEvent.Success(updated)
+	auditEvent.Success(ctx, updated)
 
 	rsp.Attribute = &policy.Attribute{
 		Id: attributeID,
@@ -219,7 +219,7 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 		ObjectID:   attributeID,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	original, err := s.dbClient.GetAttribute(ctx, attributeID)
 	if err != nil {
@@ -233,7 +233,7 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 
 	auditParams.Original = original
 	auditParams.Updated = updated
-	auditEvent.Success(updated)
+	auditEvent.Success(ctx, updated)
 
 	rsp.Attribute = &policy.Attribute{
 		Id: attributeID,
@@ -253,7 +253,7 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 		ActionType: audit.ActionTypeCreate,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		item, err := txClient.CreateAttributeValue(ctx, req.Msg.GetAttributeId(), req.Msg)
@@ -263,7 +263,7 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 
 		auditParams.ObjectID = item.GetId()
 		auditParams.Original = item
-		auditEvent.Success(item)
+		auditEvent.Success(ctx, item)
 
 		rsp.Value = item
 
@@ -322,7 +322,7 @@ func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *conne
 		ObjectID:   attributeID,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	original, err := s.dbClient.GetAttributeValue(ctx, attributeID)
 	if err != nil {
@@ -336,7 +336,7 @@ func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *conne
 
 	auditParams.Original = original
 	auditParams.Updated = updated
-	auditEvent.Success(updated)
+	auditEvent.Success(ctx, updated)
 
 	rsp.Value = &policy.Value{
 		Id: attributeID,
@@ -355,7 +355,7 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *c
 		ObjectID:   attributeID,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	original, err := s.dbClient.GetAttributeValue(ctx, attributeID)
 	if err != nil {
@@ -369,7 +369,7 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *c
 
 	auditParams.Original = original
 	auditParams.Updated = updated
-	auditEvent.Success(updated)
+	auditEvent.Success(ctx, updated)
 
 	rsp.Value = updated
 
@@ -388,7 +388,7 @@ func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Conte
 		ObjectType: audit.ObjectTypeKasAttributeDefinitionAssignment,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	attributeKas, err := s.dbClient.RemoveKeyAccessServerFromAttribute(ctx, req.Msg.GetAttributeKeyAccessServer())
 	if err != nil {
@@ -398,7 +398,7 @@ func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Conte
 	auditParams.ObjectID = attributeKas.GetAttributeId()
 	auditParams.Original = req.Msg.GetAttributeKeyAccessServer()
 	auditParams.Updated = attributeKas
-	auditEvent.Success(attributeKas)
+	auditEvent.Success(ctx, attributeKas)
 
 	rsp.AttributeKeyAccessServer = attributeKas
 
@@ -417,7 +417,7 @@ func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, 
 		ObjectType: audit.ObjectTypeKasAttributeValueAssignment,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	valueKas, err := s.dbClient.RemoveKeyAccessServerFromValue(ctx, req.Msg.GetValueKeyAccessServer())
 	if err != nil {
@@ -427,7 +427,7 @@ func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, 
 	auditParams.ObjectID = valueKas.GetValueId()
 	auditParams.Original = req.Msg.GetValueKeyAccessServer()
 	auditParams.Updated = valueKas
-	auditEvent.Success(valueKas)
+	auditEvent.Success(ctx, valueKas)
 
 	rsp.ValueKeyAccessServer = valueKas
 
@@ -441,7 +441,7 @@ func (s *AttributesService) AssignPublicKeyToAttribute(ctx context.Context, r *c
 		ObjectType: audit.ObjectTypeKasAttributeDefinitionKeyAssignment,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	ak, err := s.dbClient.AssignPublicKeyToAttribute(ctx, r.Msg.GetAttributeKey())
 	if err != nil {
@@ -450,7 +450,7 @@ func (s *AttributesService) AssignPublicKeyToAttribute(ctx context.Context, r *c
 
 	auditParams.ObjectID = ak.GetAttributeId()
 	auditParams.Original = ak
-	auditEvent.Success(ak)
+	auditEvent.Success(ctx, ak)
 
 	rsp.AttributeKey = ak
 
@@ -464,7 +464,7 @@ func (s *AttributesService) RemovePublicKeyFromAttribute(ctx context.Context, r 
 		ObjectType: audit.ObjectTypeKasAttributeDefinitionKeyAssignment,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	ak, err := s.dbClient.RemovePublicKeyFromAttribute(ctx, r.Msg.GetAttributeKey())
 	if err != nil {
@@ -474,7 +474,7 @@ func (s *AttributesService) RemovePublicKeyFromAttribute(ctx context.Context, r 
 	auditParams.ObjectID = ak.GetAttributeId()
 	auditParams.Original = r.Msg.GetAttributeKey()
 	auditParams.Updated = ak
-	auditEvent.Success(ak)
+	auditEvent.Success(ctx, ak)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -486,7 +486,7 @@ func (s *AttributesService) AssignPublicKeyToValue(ctx context.Context, r *conne
 		ObjectType: audit.ObjectTypeKasAttributeValueKeyAssignment,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	vk, err := s.dbClient.AssignPublicKeyToValue(ctx, r.Msg.GetValueKey())
 	if err != nil {
@@ -495,7 +495,7 @@ func (s *AttributesService) AssignPublicKeyToValue(ctx context.Context, r *conne
 
 	auditParams.ObjectID = vk.GetValueId()
 	auditParams.Original = vk
-	auditEvent.Success(vk)
+	auditEvent.Success(ctx, vk)
 
 	rsp.ValueKey = vk
 
@@ -509,7 +509,7 @@ func (s *AttributesService) RemovePublicKeyFromValue(ctx context.Context, r *con
 		ObjectType: audit.ObjectTypeKasAttributeValueKeyAssignment,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	vk, err := s.dbClient.RemovePublicKeyFromValue(ctx, r.Msg.GetValueKey())
 	if err != nil {
@@ -519,7 +519,7 @@ func (s *AttributesService) RemovePublicKeyFromValue(ctx context.Context, r *con
 	auditParams.ObjectID = vk.GetValueId()
 	auditParams.Original = r.Msg.GetValueKey()
 	auditParams.Updated = vk
-	auditEvent.Success(vk)
+	auditEvent.Success(ctx, vk)
 
 	return connect.NewResponse(rsp), nil
 }

@@ -983,7 +983,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				KeyID:         kao.GetKeyAccessObject().GetKid(),
 			}
 			auditEvent := p.Logger.Audit.DeferRewrap(ctx, auditEventParams)
-			defer auditEvent.Log()
+			defer auditEvent.Log(ctx)
 
 			if !access {
 				failedKAORewrapWithObligations(kaoResults, kao, err403("forbidden"), requiredObligationsForPolicy)
@@ -1005,7 +1005,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				RequiredObligations: requiredObligationsForPolicy,
 			}
 
-			auditEvent.Success()
+			auditEvent.Success(ctx)
 		}
 	}
 	return sessionKey, results, nil
@@ -1088,7 +1088,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 				PolicyBinding: kaoInfo.PolicyBinding,
 			}
 			auditEvent := p.Logger.Audit.DeferRewrap(ctx, auditEventParams)
-			defer auditEvent.Log()
+			defer auditEvent.Log(ctx)
 
 			if !access {
 				failedKAORewrapWithObligations(kaoResults, kao, err403("forbidden"), requiredObligationsForPolicy)
@@ -1106,7 +1106,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 				RequiredObligations: requiredObligationsForPolicy,
 			}
 
-			auditEvent.Success()
+			auditEvent.Success(ctx)
 		}
 	}
 	return sessionKeyPEM, results, nil

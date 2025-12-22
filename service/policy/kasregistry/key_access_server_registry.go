@@ -103,16 +103,17 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeKasRegistry,
 	}
+	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	ks, err := s.dbClient.CreateKeyAccessServer(ctx, req.Msg)
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("keyAccessServer", req.Msg.String()))
 	}
 
 	auditParams.ObjectID = ks.GetId()
 	auditParams.Original = ks
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	auditEvent.Success(ks)
 
 	rsp.KeyAccessServer = ks
 
@@ -165,22 +166,22 @@ func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 		ObjectType: audit.ObjectTypeKasRegistry,
 		ObjectID:   kasID,
 	}
+	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	original, err := s.dbClient.GetKeyAccessServer(ctx, kasID)
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", kasID))
 	}
 
 	updated, err := s.dbClient.UpdateKeyAccessServer(ctx, kasID, req.Msg)
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", kasID), slog.String("keyAccessServer", req.Msg.String()))
 	}
 
 	auditParams.Original = original
 	auditParams.Updated = updated
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	auditEvent.Success(updated)
 
 	rsp.KeyAccessServer = &policy.KeyAccessServer{
 		Id: kasID,
@@ -200,13 +201,16 @@ func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 		ObjectType: audit.ObjectTypeKasRegistry,
 		ObjectID:   kasID,
 	}
+	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	_, err := s.dbClient.DeleteKeyAccessServer(ctx, req.Msg.GetId())
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", req.Msg.GetId()))
 	}
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	auditEvent.Success(&policy.KeyAccessServer{
+		Id: kasID,
+	})
 
 	rsp.KeyAccessServer = &policy.KeyAccessServer{
 		Id: kasID,
@@ -234,12 +238,13 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, r *connect.Reque
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeKasRegistryKeys,
 	}
+	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		var err error
 		resp, err = txClient.CreateKey(ctx, r.Msg)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
@@ -262,7 +267,7 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, r *connect.Reque
 				Metadata: resp.GetKasKey().GetKey().GetMetadata(),
 			},
 		}
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+		auditEvent.Success(resp.GetKasKey())
 
 		return nil
 	})
@@ -282,19 +287,19 @@ func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Req
 		ObjectType: audit.ObjectTypeKasRegistryKeys,
 		ObjectID:   req.Msg.GetId(),
 	}
+	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	original, err := s.dbClient.GetKey(ctx, &kasr.GetKeyRequest_Id{
 		Id: req.Msg.GetId(),
 	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("keyAccessServer Keys", req.Msg.GetId()))
 	}
 
 	err = s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		updated, err := txClient.UpdateKey(ctx, req.Msg)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
@@ -309,7 +314,7 @@ func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Req
 			KeyStatus: updated.GetKey().GetKeyStatus(),
 			Metadata:  updated.GetKey().GetMetadata(),
 		}
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+		auditEvent.Success(updated.GetKey())
 
 		rsp.KasKey = updated
 		return nil
@@ -337,15 +342,16 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[
 		ActionType: audit.ActionTypeRead,
 		ObjectType: audit.ObjectTypeKasRegistryKeys,
 	}
+	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	key, err := s.dbClient.GetKey(ctx, r.Msg.GetIdentifier())
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("keyAccessServer Keys", r.Msg.String()))
 	}
 
 	auditParams.ObjectID = key.GetKey().GetKeyId()
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	auditEvent.Success(key)
 
 	rsp.KasKey = key
 
@@ -393,10 +399,11 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 		ObjectType: audit.ObjectTypeKasRegistryKeys,
 		ObjectID:   objectID,
 	}
+	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	original, err := s.dbClient.GetKey(ctx, identifier)
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("keyAccessServer Keys", objectID))
 	}
 
@@ -411,7 +418,6 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 	err = s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		resp, err = txClient.RotateKey(ctx, original, r.Msg.GetNewKey())
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
@@ -436,7 +442,7 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 				},
 			},
 		}
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+		auditEvent.Success(resp)
 
 		return nil
 	})
@@ -468,19 +474,20 @@ func (s KeyAccessServerRegistry) SetBaseKey(ctx context.Context, r *connect.Requ
 		ObjectType: audit.ObjectTypeKasRegistryKeys,
 		ObjectID:   objectID,
 	}
+	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		var err error
 		resp, err = txClient.SetBaseKey(ctx, r.Msg)
 		if err != nil {
 			s.logger.ErrorContext(ctx, "failed to set default key", slog.String("error", err.Error()))
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
 		auditParams.Original = resp.GetPreviousBaseKey()
 		auditParams.Updated = resp.GetNewBaseKey()
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+		auditEvent.Success(resp.GetNewBaseKey())
 
 		return nil
 	})

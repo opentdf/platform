@@ -91,6 +91,8 @@ func (s *RegisteredResourcesService) CreateRegisteredResource(ctx context.Contex
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeRegisteredResource,
 	}
+	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "creating registered resource", slog.String("name", req.Msg.GetName()))
 
@@ -102,13 +104,12 @@ func (s *RegisteredResourcesService) CreateRegisteredResource(ctx context.Contex
 
 		auditParams.ObjectID = resource.GetId()
 		auditParams.Original = resource
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+		auditEvent.Success(resource)
 
 		rsp.Resource = resource
 		return nil
 	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("registered resource", req.Msg.String()))
 	}
 
@@ -150,6 +151,8 @@ func (s *RegisteredResourcesService) UpdateRegisteredResource(ctx context.Contex
 		ObjectType: audit.ObjectTypeRegisteredResource,
 		ObjectID:   resourceID,
 	}
+	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "updating registered resource", slog.String("id", resourceID))
 
@@ -170,13 +173,12 @@ func (s *RegisteredResourcesService) UpdateRegisteredResource(ctx context.Contex
 
 		auditParams.Original = original
 		auditParams.Updated = updated
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+		auditEvent.Success(updated)
 
 		rsp.Resource = updated
 		return nil
 	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("registered resource", req.Msg.String()))
 	}
 
@@ -193,16 +195,17 @@ func (s *RegisteredResourcesService) DeleteRegisteredResource(ctx context.Contex
 		ObjectType: audit.ObjectTypeRegisteredResource,
 		ObjectID:   resourceID,
 	}
+	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "deleting registered resource", slog.String("id", resourceID))
 
 	deleted, err := s.dbClient.DeleteRegisteredResource(ctx, resourceID)
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("registered resource", req.Msg.String()))
 	}
 
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	auditEvent.Success(deleted)
 
 	rsp.Resource = deleted
 
@@ -218,6 +221,8 @@ func (s *RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.C
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeRegisteredResourceValue,
 	}
+	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "creating registered resource value", slog.String("value", req.Msg.GetValue()))
 
@@ -229,13 +234,12 @@ func (s *RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.C
 
 		auditParams.ObjectID = value.GetId()
 		auditParams.Original = value
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+		auditEvent.Success(value)
 
 		rsp.Value = value
 		return nil
 	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("registered resource value", req.Msg.String()))
 	}
 
@@ -293,6 +297,8 @@ func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.C
 		ObjectType: audit.ObjectTypeRegisteredResourceValue,
 		ObjectID:   valueID,
 	}
+	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "updating registered resource value", slog.String("id", valueID))
 
@@ -313,14 +319,13 @@ func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.C
 
 		auditParams.Original = original
 		auditParams.Updated = updated
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+		auditEvent.Success(updated)
 
 		rsp.Value = updated
 
 		return nil
 	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("registered resource value", req.Msg.String()))
 	}
 
@@ -337,16 +342,17 @@ func (s *RegisteredResourcesService) DeleteRegisteredResourceValue(ctx context.C
 		ObjectType: audit.ObjectTypeRegisteredResourceValue,
 		ObjectID:   valueID,
 	}
+	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "deleting registered resource value", slog.String("id", valueID))
 
 	deleted, err := s.dbClient.DeleteRegisteredResourceValue(ctx, valueID)
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("registered resource value", req.Msg.String()))
 	}
 
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	auditEvent.Success(deleted)
 
 	rsp.Value = deleted
 

@@ -982,7 +982,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				PolicyBinding: policyBinding,
 				KeyID:         kao.GetKeyAccessObject().GetKid(),
 			}
-			auditEvent := p.Logger.Audit.DeferRewrap(ctx, auditEventParams)
+			auditEvent := p.Logger.Audit.Rewrap(ctx, auditEventParams)
 			defer auditEvent.Log(ctx)
 
 			if !access {
@@ -1087,7 +1087,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 				KeyID:         kaoInfo.KeyID,
 				PolicyBinding: kaoInfo.PolicyBinding,
 			}
-			auditEvent := p.Logger.Audit.DeferRewrap(ctx, auditEventParams)
+			auditEvent := p.Logger.Audit.Rewrap(ctx, auditEventParams)
 			defer auditEvent.Log(ctx)
 
 			if !access {

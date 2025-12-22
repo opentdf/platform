@@ -171,6 +171,11 @@ func (p *JustInTimePDP) GetDecision(
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
+
+		// Start deferred audit event
+		auditEvent := p.logger.Audit.DecisionV2(ctx, regResValueFQN, action.GetName())
+		defer auditEvent.Log()
+
 		// Registered resources do not have entity representations, so only one decision is made
 		decision, entitlements, err := p.pdp.GetDecisionRegisteredResource(ctx, regResValueFQN, action, resources)
 		if err != nil {
@@ -190,10 +195,9 @@ func (p *JustInTimePDP) GetDecision(
 		decision.AllPermitted = entitledWithAnyObligationsSatisfied
 		decision.Results = resourceDecisions
 
-		p.auditDecision(
-			ctx,
-			regResValueFQN,
-			action,
+		// Enrich audit with computed information and mark as successful
+		p.enrichAuditDecision(
+			auditEvent,
 			entitledWithAnyObligationsSatisfied,
 			entitlements,
 			fulfillableObligationValueFQNs,
@@ -214,6 +218,10 @@ func (p *JustInTimePDP) GetDecision(
 	allPermitted := true
 
 	for _, entityRep := range entityRepresentations {
+		// Start deferred audit event for this entity representation
+		auditEvent := p.logger.Audit.DecisionV2(ctx, entityRep.GetOriginalId(), action.GetName())
+		defer auditEvent.Log()
+
 		entityRepresentationDecision, entitlements, err := p.pdp.GetDecision(ctx, entityRep, action, resources)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get decision for entityRepresentation with original id [%s]: %w", entityRep.GetOriginalId(), err)
@@ -239,12 +247,10 @@ func (p *JustInTimePDP) GetDecision(
 			return nil, fmt.Errorf("failed to apply obligations and consolidate for entity representation [%s]: %w", entityRep.GetOriginalId(), err)
 		}
 
-		// Audit decision for this entity representation
+		// Enrich audit for this entity representation with computed information and mark as successful
 		entityAllPermitted := entityRepresentationDecision.AllPermitted && allObligationsSatisfied
-		p.auditDecision(
-			ctx,
-			entityRep.GetOriginalId(),
-			action,
+		p.enrichAuditDecision(
+			auditEvent,
 			entityAllPermitted,
 			entitlements,
 			fulfillableObligationValueFQNs,
@@ -431,32 +437,28 @@ func (p *JustInTimePDP) resolveEntitiesFromRequestToken(
 	return p.resolveEntitiesFromToken(ctx, token, skipEnvironmentEntities)
 }
 
-// auditDecision logs a GetDecisionV2 audit event with obligation information.
+// enrichAuditDecision enriches a deferred audit event with computed information and marks it as successful.
 // The auditResourceDecisions parameter should contain the full obligation context including
 // for non-entitled resources, which is intentionally excluded from the actual response.
-func (p *JustInTimePDP) auditDecision(
-	ctx context.Context,
-	entityID string,
-	action *policy.Action,
+func (p *JustInTimePDP) enrichAuditDecision(
+	auditEvent *audit.GetDecisionV2Event,
 	allPermitted bool,
 	entitlements map[string][]*policy.Action,
 	fulfillableObligationValueFQNs []string,
 	obligationDecision obligations.ObligationPolicyDecision,
 	auditResourceDecisions []ResourceDecision,
 ) {
-	// Determine audit decision result
+	// Update audit with computed information
+	auditEvent.UpdateEntitlements(entitlements)
+	auditEvent.UpdateResourceDecisions(auditResourceDecisions)
+	auditEvent.UpdateObligations(fulfillableObligationValueFQNs, obligationDecision.AllObligationsSatisfied)
+
+	// Determine final audit decision result
 	auditDecision := audit.GetDecisionResultDeny
 	if allPermitted {
 		auditDecision = audit.GetDecisionResultPermit
 	}
 
-	p.logger.Audit.GetDecisionV2(ctx, audit.GetDecisionV2EventParams{
-		EntityID:                       entityID,
-		ActionName:                     action.GetName(),
-		Decision:                       auditDecision,
-		Entitlements:                   entitlements,
-		FulfillableObligationValueFQNs: fulfillableObligationValueFQNs,
-		ObligationsSatisfied:           obligationDecision.AllObligationsSatisfied,
-		ResourceDecisions:              auditResourceDecisions,
-	})
+	// Mark as successful with final decision
+	auditEvent.Success(auditDecision)
 }

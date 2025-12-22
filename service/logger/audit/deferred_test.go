@@ -236,3 +236,118 @@ func TestDeferredPolicyCRUD_UpdateWithOriginalAndUpdated(t *testing.T) {
 	assert.Contains(t, auditJSON, `"original-name"`, "should contain original name")
 	assert.Contains(t, auditJSON, `"updated-name"`, "should contain updated name")
 }
+
+func TestDeferredGetDecision_Success(t *testing.T) {
+	logEntry, _ := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		auditEvent := l.Decision(ctx, "test-entity-chain-id", "test-resource-attr-id", []string{"https://example.com/attr/test/value/value1"})
+		defer auditEvent.Log()
+
+		// Simulate successful operation
+		entitlements := []EntityChainEntitlement{
+			{
+				EntityID:                 "entity-1",
+				EntityCatagory:           "subject",
+				AttributeValueReferences: []string{"https://example.com/attr/test/value/value1"},
+			},
+		}
+		auditEvent.UpdateEntitlements(entitlements)
+
+		entityDecisions := []EntityDecision{
+			{
+				EntityID:     "entity-1",
+				Decision:     "permit",
+				Entitlements: []string{"https://example.com/attr/test/value/value1"},
+			},
+		}
+		auditEvent.UpdateEntityDecisions(entityDecisions)
+
+		auditEvent.Success(GetDecisionResultPermit)
+	})
+
+	auditJSON := string(logEntry.Audit)
+	// GetDecision events encode decision in action.result as success/failure
+	assert.Contains(t, auditJSON, `"result":"success"`, "should contain success result")
+	assert.Contains(t, auditJSON, `"test-entity-chain-id"`, "should contain entity chain ID")
+	assert.Contains(t, auditJSON, `entity-1`, "should contain entity ID in metadata")
+}
+
+func TestDeferredGetDecision_Failure(t *testing.T) {
+	logEntry, _ := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		auditEvent := l.Decision(ctx, "test-entity-chain-id", "test-resource-attr-id", []string{"https://example.com/attr/test/value/value1"})
+		defer auditEvent.Log()
+
+		// Simulate operation failure - don't call Success()
+		// This should default to deny decision (result=failure)
+	})
+
+	auditJSON := string(logEntry.Audit)
+	// GetDecision events encode deny as action.result = failure
+	assert.Contains(t, auditJSON, `"result":"failure"`, "should contain failure result (deny decision)")
+	assert.Contains(t, auditJSON, `"test-entity-chain-id"`, "should contain entity chain ID")
+}
+
+func TestDeferredGetDecisionV2_Success(t *testing.T) {
+	logEntry, _ := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		auditEvent := l.DecisionV2(ctx, "test-entity-id", "test-action")
+		defer auditEvent.Log()
+
+		// Simulate successful operation with entitlements
+		entitlements := make(map[string][]*policy.Action)
+		entitlements["https://example.com/attr/test/value/value1"] = []*policy.Action{
+			{Name: "test-action"},
+		}
+		auditEvent.UpdateEntitlements(entitlements)
+
+		// Add obligations
+		auditEvent.UpdateObligations([]string{"https://example.com/obligation/test"}, true)
+
+		// Add resource decisions
+		resourceDecisions := []map[string]interface{}{
+			{
+				"passed":                true,
+				"obligations_satisfied": true,
+				"entitled":              true,
+			},
+		}
+		auditEvent.UpdateResourceDecisions(resourceDecisions)
+
+		auditEvent.Success(GetDecisionResultPermit)
+	})
+
+	auditJSON := string(logEntry.Audit)
+	// GetDecisionV2 events encode permit decision as action.result = success
+	assert.Contains(t, auditJSON, `"result":"success"`, "should contain success result")
+	assert.Contains(t, auditJSON, `"test-entity-id"`, "should contain entity ID")
+	assert.Contains(t, auditJSON, `decisionRequest-test-action`, "should contain action name in object name")
+}
+
+func TestDeferredGetDecisionV2_Failure(t *testing.T) {
+	logEntry, _ := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		auditEvent := l.DecisionV2(ctx, "test-entity-id", "test-action")
+		defer auditEvent.Log()
+
+		// Simulate operation failure - don't call Success()
+		// This should default to deny decision (result=failure)
+	})
+
+	auditJSON := string(logEntry.Audit)
+	// GetDecisionV2 events encode deny as action.result = failure
+	assert.Contains(t, auditJSON, `"result":"failure"`, "should contain failure result (deny decision)")
+	assert.Contains(t, auditJSON, `"test-entity-id"`, "should contain entity ID")
+	assert.Contains(t, auditJSON, `decisionRequest-test-action`, "should contain action name in object name")
+}
+
+func TestDeferredGetDecisionV2_PanicRecovery(t *testing.T) {
+	logEntry, _ := doWithLogger(t, func(ctx context.Context, l *Logger) {
+		auditEvent := l.DecisionV2(ctx, "test-entity-id", "test-action")
+		defer auditEvent.Log()
+
+		// Simulate panic during operation
+		panic("test panic")
+	})
+
+	auditJSON := string(logEntry.Audit)
+	// Panics are marked as cancel by the interceptor
+	assert.Contains(t, auditJSON, `"result":"cancel"`, "should contain cancel result on panic")
+	assert.Contains(t, auditJSON, `"test-entity-id"`, "should contain entity ID")
+}

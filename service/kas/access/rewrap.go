@@ -888,9 +888,6 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 	auditEvents := make(map[auditEventKey]*audit.RewrapEvent)
 
 	for _, req := range requests {
-		if req == nil || req.GetPolicy() == nil || req.GetPolicy().GetId() == "" {
-			continue
-		}
 		policyID := req.GetPolicy().GetId()
 		for _, kao := range req.GetKeyAccessObjects() {
 			if kao == nil {
@@ -1063,7 +1060,6 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 	ctx, span := p.Start(ctx, "nanoTDFRewrap")
 	defer span.End()
 
-	// Pre-create audit events for all KAOs to ensure they're logged even if a panic occurs
 	type auditEventKey struct {
 		policyID string
 		kaoID    string
@@ -1071,15 +1067,8 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 	auditEvents := make(map[auditEventKey]*audit.RewrapEvent)
 
 	for _, req := range requests {
-		if req == nil || req.GetPolicy() == nil || req.GetPolicy().GetId() == "" {
-			continue
-		}
 		policyID := req.GetPolicy().GetId()
 		for _, kao := range req.GetKeyAccessObjects() {
-			if kao == nil {
-				continue
-			}
-
 			kaoID := kao.GetKeyAccessObjectId()
 
 			// For nano, we need to extract the header to get keyID and policyBinding
@@ -1161,7 +1150,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 		policyID := req.GetPolicy().GetId()
 		kaoResults, ok := results[policyID]
 		if !ok { // this should not happen
-			//nolint:sloglint // reference to key is intentional
+
 			p.Logger.WarnContext(ctx, "policy not found in policyReq response",
 				slog.String("policy_id", policyID),
 				slog.Any("policy.uuid", policy.UUID))
@@ -1181,9 +1170,6 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 					slog.String("policy_id", policyID),
 					slog.Any("policy.uuid", policy.UUID),
 					slog.String("kao_id", kaoID),
-					slog.Any("pdp_access_result", pdpAccess),
-					slog.Any("kao_info", kaoInfo),
-					slog.Any("audit_events", auditEvents),
 				)
 				continue
 			}

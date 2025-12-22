@@ -865,9 +865,6 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 	auditEvents := make(map[auditEventKey]*audit.RewrapEvent)
 
 	for _, req := range requests {
-		if req == nil || req.GetPolicy() == nil || req.GetPolicy().GetId() == "" {
-			continue
-		}
 		policyID := req.GetPolicy().GetId()
 		for _, kao := range req.GetKeyAccessObjects() {
 			if kao == nil {

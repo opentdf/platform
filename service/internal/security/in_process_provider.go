@@ -291,6 +291,8 @@ func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDet
 }
 
 // GenerateECSessionKey generates a session key for NanoTDF
+//
+//nolint:staticcheck // SA1019: trust.Encapsulator is deprecated but required for backward compatibility with legacy key generation
 func (a *InProcessProvider) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
 	pke, err := ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), nil)
 	if err != nil {

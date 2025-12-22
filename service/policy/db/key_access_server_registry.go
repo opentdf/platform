@@ -75,6 +75,7 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 
 		keyAccessServer.Id = kas.ID
 		keyAccessServer.Uri = kas.Uri
+		//nolint:staticcheck // Using deprecated protobuf field for backward compatibility
 		keyAccessServer.PublicKey = publicKey
 		keyAccessServer.Name = kas.KasName.String
 		keyAccessServer.Metadata = metadata
@@ -293,6 +294,7 @@ func (c PolicyDBClient) DeleteKeyAccessServer(ctx context.Context, id string) (*
 	}, nil
 }
 
+//nolint:staticcheck // Using deprecated protobuf field for backward compatibility
 func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) {
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 	maxLimit := c.listCfg.limitMax
@@ -349,6 +351,7 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 		total = int32(listRows[0].Total)
 		nextOffset = getNextOffset(offset, limit, total)
 	}
+	//nolint:staticcheck // Using deprecated protobuf field for backward compatibility
 	return &kasregistry.ListKeyAccessServerGrantsResponse{
 		Grants: grants,
 		Pagination: &policy.PageResponse{

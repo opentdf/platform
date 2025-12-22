@@ -1,3 +1,4 @@
+//nolint:revive,nolintlint // var-naming: package name "types" is generic but required for organizational clarity
 package types
 
 import (

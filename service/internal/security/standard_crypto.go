@@ -160,6 +160,7 @@ func loadKey(k KeyPairInfo) (any, error) {
 		if err != nil {
 			return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
 		}
+		//nolint:staticcheck // SA1019: NewAsymEncryption is deprecated but required for backward compatibility with legacy crypto operations
 		asymEncryption, err := ocrypto.NewAsymEncryption(string(certPEM))
 		if err != nil {
 			return nil, fmt.Errorf("ocrypto.NewAsymEncryption failed: %w", err)
@@ -201,6 +202,7 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 			return nil, fmt.Errorf("failed to rsa public key file: %w", err)
 		}
 
+		//nolint:staticcheck // SA1019: NewAsymEncryption is deprecated but required for backward compatibility with legacy crypto operations
 		asymEncryption, err := ocrypto.NewAsymEncryption(string(publicPemData))
 		if err != nil {
 			return nil, fmt.Errorf("ocrypto.NewAsymEncryption failed: %w", err)

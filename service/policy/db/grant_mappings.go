@@ -64,6 +64,7 @@ func mapKasKeysToGrants(keys []*policy.SimpleKasKey, existingGrants []*policy.Ke
 			// KAS URI already exists, merge/add the public key
 			if existingKas.GetPublicKey().GetCached() == nil {
 				// Initialize if PublicKey or Cached part is missing
+				//nolint:staticcheck // Using deprecated protobuf field for backward compatibility
 				existingKas.PublicKey = &policy.PublicKey{
 					PublicKey: &policy.PublicKey_Cached{
 						Cached: &policy.KasPublicKeySet{Keys: []*policy.KasPublicKey{}},

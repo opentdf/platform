@@ -74,6 +74,12 @@ func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventPa
 			// merge changes from PolicyEventParams, overwriting properties existing in Updated object
 			maps.Copy(auditEvent.Updated, auditEventUpdated)
 		}
+	} else if params.Updated != nil {
+		auditEventUpdated, err := marshallProtoToAuditObject(params.Updated)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal updated audit object: %w", err)
+		}
+		auditEvent.Updated = auditEventUpdated
 	}
 
 	return auditEvent, nil

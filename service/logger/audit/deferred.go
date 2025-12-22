@@ -160,7 +160,7 @@ func (a *Logger) Rewrap(ctx context.Context, params RewrapAuditEventParams) *Rew
 }
 
 func (d *RewrapEvent) UpdatePolicy(kasPolicy KasPolicy) {
-	d.deferred.params.Policy = kasPolicy
+	d.params.Policy = kasPolicy
 }
 
 // Success marks the audit event as successful and logs it immediately.

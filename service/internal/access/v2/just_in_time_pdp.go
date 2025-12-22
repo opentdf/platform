@@ -214,10 +214,6 @@ func (p *JustInTimePDP) GetDecision(
 		return nil, fmt.Errorf("failed to resolve entity identifier: %w", err)
 	}
 
-	// Pre-create audit events for all entities to ensure they're logged even if a panic occurs
-	type auditEventKey struct {
-		entityID string
-	}
 	auditEvents := make([]*audit.GetDecisionV2Event, 0, len(entityRepresentations))
 	for _, entityRep := range entityRepresentations {
 		auditEvent := p.logger.Audit.DecisionV2(ctx, entityRep.GetOriginalId(), action.GetName())

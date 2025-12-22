@@ -1113,8 +1113,9 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 				if auditEvent != nil {
 					auditEvent.UpdatePolicy(*kasPolicy)
 				} else {
-					p.Logger.WarnContext(ctx, "audit event not found for KAO in nano rewrap",
+					p.Logger.WarnContext(ctx, "audit event not found for policy KAO in nano rewrap",
 						slog.String("policy_id", policyID),
+						slog.Any("policy.uuid", policyObj.UUID),
 						slog.String("kao_id", kaoID))
 				}
 			}
@@ -1157,14 +1158,16 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 		if !ok { // this should not happen
 			continue
 		}
-		kaoResults, ok := results[req.GetPolicy().GetId()]
+		policyID := req.GetPolicy().GetId()
+		kaoResults, ok := results[policyID]
 		if !ok { // this should not happen
 			//nolint:sloglint // reference to key is intentional
-			p.Logger.WarnContext(ctx, "policy not found in policyReq response", "policy.uuid", policy.UUID)
+			p.Logger.WarnContext(ctx, "policy not found in policyReq response",
+				slog.String("policy_id", policyID),
+				slog.Any("policy.uuid", policy.UUID))
 			continue
 		}
 		access := pdpAccess.Access
-		policyID := req.GetPolicy().GetId()
 
 		for _, kao := range req.GetKeyAccessObjects() {
 			kaoID := kao.GetKeyAccessObjectId()
@@ -1176,6 +1179,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 			if !exists {
 				p.Logger.WarnContext(ctx, "audit event not found for KAO in nano rewrap",
 					slog.String("policy_id", policyID),
+					slog.Any("policy.uuid", policy.UUID),
 					slog.String("kao_id", kaoID))
 				continue
 			}

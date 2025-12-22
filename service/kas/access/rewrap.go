@@ -1016,7 +1016,9 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			eventKey := auditEventKey{policyID: policyID, kaoID: kaoID}
 			auditEvent, exists := auditEvents[eventKey]
 			if !exists {
-				p.Logger.WarnContext(ctx, "audit event not found for KAO", slog.String("policy_id", policyID), slog.String("kao_id", kaoID))
+				p.Logger.WarnContext(ctx, "audit event not found for KAO",
+					slog.String("policy_id", policyID),
+					slog.String("kao_id", kaoID))
 				continue
 			}
 
@@ -1162,7 +1164,9 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 			eventKey := auditEventKey{policyID: policyID, kaoID: kaoID}
 			auditEvent, exists := auditEvents[eventKey]
 			if !exists {
-				p.Logger.WarnContext(ctx, "audit event not found for KAO", slog.String("policy_id", policyID), slog.String("kao_id", kaoID))
+				p.Logger.WarnContext(ctx, "audit event not found for KAO",
+					slog.String("policy_id", policyID),
+					slog.String("kao_id", kaoID))
 				continue
 			}
 

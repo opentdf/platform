@@ -88,7 +88,7 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeSubjectMapping,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	// SM Creation may involve action creation or SCS creation, so utilize a transaction
@@ -153,7 +153,7 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 		ObjectType: audit.ObjectTypeSubjectMapping,
 		ObjectID:   subjectMappingID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	// SM Update may involve action update or SCS update, so utilize a transaction
@@ -195,7 +195,7 @@ func (s SubjectMappingService) DeleteSubjectMapping(ctx context.Context,
 		ObjectType: audit.ObjectTypeSubjectMapping,
 		ObjectID:   subjectMappingID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	_, err := s.dbClient.DeleteSubjectMapping(ctx, subjectMappingID)
@@ -270,7 +270,7 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeConditionSet,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	var conditionSet *policy.SubjectConditionSet
@@ -308,7 +308,7 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 		ObjectType: audit.ObjectTypeConditionSet,
 		ObjectID:   subjectConditionSetID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	var original, updated *policy.SubjectConditionSet
@@ -354,7 +354,7 @@ func (s SubjectMappingService) DeleteSubjectConditionSet(ctx context.Context,
 		ObjectType: audit.ObjectTypeConditionSet,
 		ObjectID:   conditionSetID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	_, err := s.dbClient.DeleteSubjectConditionSet(ctx, conditionSetID)
@@ -391,7 +391,7 @@ func (s SubjectMappingService) DeleteAllUnmappedSubjectConditionSets(ctx context
 	// Log each pruned subject condition set to audit
 	for _, scs := range deleted {
 		auditParams.ObjectID = scs.GetId()
-		auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+		auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 		auditEvent.Success(scs)
 		auditEvent.Log()
 	}

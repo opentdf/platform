@@ -107,7 +107,7 @@ func (s *Service) CreateObligation(ctx context.Context, req *connect.Request[obl
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeObligationDefinition,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "creating obligation", slog.String("name", req.Msg.GetName()))
@@ -169,7 +169,7 @@ func (s *Service) UpdateObligation(ctx context.Context, req *connect.Request[obl
 		ObjectType: audit.ObjectTypeObligationDefinition,
 		ObjectID:   id,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "updating obligation", slog.String("id", id))
@@ -205,7 +205,7 @@ func (s *Service) DeleteObligation(ctx context.Context, req *connect.Request[obl
 		ObjectType: audit.ObjectTypeObligationDefinition,
 		ObjectID:   id,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "deleting obligation", slog.String("id", id))
@@ -228,7 +228,7 @@ func (s *Service) CreateObligationValue(ctx context.Context, req *connect.Reques
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeObligationValue,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "creating obligation value", slog.String("value", req.Msg.GetValue()))
@@ -291,7 +291,7 @@ func (s *Service) UpdateObligationValue(ctx context.Context, req *connect.Reques
 		ObjectType: audit.ObjectTypeObligationValue,
 		ObjectID:   id,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "updating obligation value", slog.String("id", id))
@@ -327,7 +327,7 @@ func (s *Service) DeleteObligationValue(ctx context.Context, req *connect.Reques
 		ObjectType: audit.ObjectTypeObligationValue,
 		ObjectID:   id,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "deleting obligation value", slog.String("id", id))
@@ -350,7 +350,7 @@ func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeObligationTrigger,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	oblIdentifier := req.Msg.GetObligationValue()
@@ -405,7 +405,7 @@ func (s *Service) RemoveObligationTrigger(ctx context.Context, req *connect.Requ
 		ObjectType: audit.ObjectTypeObligationTrigger,
 		ObjectID:   id,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "removing obligation trigger", slog.String("id", id))

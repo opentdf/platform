@@ -120,7 +120,7 @@ func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Reque
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeKeyManagementProviderConfig,
 	}
-	auditEvent := ksvc.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := ksvc.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	err := ksvc.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
@@ -197,7 +197,7 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 		ObjectType: audit.ObjectTypeKeyManagementProviderConfig,
 		ObjectID:   providerConfigID,
 	}
-	auditEvent := ksvc.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := ksvc.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	original, err := ksvc.dbClient.GetProviderConfig(ctx, &keyMgmtProto.GetProviderConfigRequest_Id{
@@ -248,7 +248,7 @@ func (ksvc Service) DeleteProviderConfig(ctx context.Context, req *connect.Reque
 		ActionType: audit.ActionTypeDelete,
 		ObjectType: audit.ObjectTypeKeyManagementProviderConfig,
 	}
-	auditEvent := ksvc.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := ksvc.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	pc, err := ksvc.dbClient.DeleteProviderConfig(ctx, req.Msg.GetId())

@@ -116,7 +116,7 @@ func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[a
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeAction,
 	}
-	auditEvent := a.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := a.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 	rsp := &actions.CreateActionResponse{}
 
@@ -149,7 +149,7 @@ func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[a
 		ObjectType: audit.ObjectTypeAction,
 		ObjectID:   actionID,
 	}
-	auditEvent := a.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := a.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	err := a.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
@@ -190,7 +190,7 @@ func (a *ActionService) DeleteAction(ctx context.Context, req *connect.Request[a
 		ObjectType: audit.ObjectTypeAction,
 		ObjectID:   actionID,
 	}
-	auditEvent := a.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := a.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 	a.logger.DebugContext(ctx, "deleting action", slog.String("id", actionID))
 

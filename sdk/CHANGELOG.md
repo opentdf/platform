@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.11.0](https://github.com/opentdf/platform/compare/sdk/v0.10.0...sdk/v0.11.0) (2025-12-22)
+
+
+### Features
+
+* crypto.Signer in assertion signing ([#2956](https://github.com/opentdf/platform/issues/2956)) ([ab36c3a](https://github.com/opentdf/platform/commit/ab36c3a4f4f556dc504320e51216c0d90b848f0f))
+* **sdk:** adds configurable max manifest sizes  ([#2906](https://github.com/opentdf/platform/issues/2906)) ([e418a4b](https://github.com/opentdf/platform/commit/e418a4b675f34c0cc3aafbe5ca4c8c9ba93187b5))
+* **sdk:** Expose policy binding hash from Nano. ([#2857](https://github.com/opentdf/platform/issues/2857)) ([5221cf4](https://github.com/opentdf/platform/commit/5221cf41079fc43a3966e17c6f3e0d3cf8a16730))
+* Update Go toolchain version to 1.24.11 across all modules ([#2943](https://github.com/opentdf/platform/issues/2943)) ([a960eca](https://github.com/opentdf/platform/commit/a960eca78ab8870599f0aa2a315dbada355adf20))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/lib/fixtures from 0.3.0 to 0.4.0 in /sdk ([#2962](https://github.com/opentdf/platform/issues/2962)) ([fbb5985](https://github.com/opentdf/platform/commit/fbb598552764438fae94481d3fa653d244a17f41))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.13.0 to 0.14.0 in /sdk ([#2963](https://github.com/opentdf/platform/issues/2963)) ([3606421](https://github.com/opentdf/platform/commit/36064212ec7e74962b638e6e675973ad2c75b765))
+* **deps:** bump the external group across 1 directory with 5 updates ([#2950](https://github.com/opentdf/platform/issues/2950)) ([6dc3bca](https://github.com/opentdf/platform/commit/6dc3bca01facc22a51293292c337963feabdf417))
+* **deps:** bump toolchain to go1.24.9 for CVEs found by govulncheck ([#2849](https://github.com/opentdf/platform/issues/2849)) ([23f76c0](https://github.com/opentdf/platform/commit/23f76c034cfb4c325d868eb96c95ba616e362db4))
+* **sdk:** more efficient encryption in experiment TDF Writer ([#2904](https://github.com/opentdf/platform/issues/2904)) ([3ec0518](https://github.com/opentdf/platform/commit/3ec05180ab567e78def51be90b10dd137f3a1f61))
+* **sdk:** uses kas sessions key ([#2940](https://github.com/opentdf/platform/issues/2940)) ([736f250](https://github.com/opentdf/platform/commit/736f250bee9ced322aa0e96191d1659db7d1fe79))
+
 ## [0.10.0](https://github.com/opentdf/platform/compare/sdk/v0.9.0...sdk/v0.10.0) (2025-10-21)
 
 

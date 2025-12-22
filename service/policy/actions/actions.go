@@ -116,6 +116,8 @@ func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[a
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeAction,
 	}
+	auditEvent := a.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 	rsp := &actions.CreateActionResponse{}
 
 	err := a.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
@@ -126,13 +128,12 @@ func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[a
 
 		auditParams.ObjectID = action.GetId()
 		auditParams.Original = action
-		a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+		auditEvent.Success(action)
 
 		rsp.Action = action
 		return nil
 	})
 	if err != nil {
-		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextCreationFailed, slog.String("action", req.Msg.String()))
 	}
 	return connect.NewResponse(rsp), nil
@@ -148,6 +149,8 @@ func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[a
 		ObjectType: audit.ObjectTypeAction,
 		ObjectID:   actionID,
 	}
+	auditEvent := a.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	err := a.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		original, err := txClient.GetAction(ctx, &actions.GetActionRequest{
@@ -166,13 +169,12 @@ func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[a
 
 		auditParams.Original = original
 		auditParams.Updated = updated
-		a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+		auditEvent.Success(updated)
 
 		rsp.Action = updated
 		return nil
 	})
 	if err != nil {
-		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextUpdateFailed, slog.String("action", req.Msg.String()))
 	}
 
@@ -188,15 +190,16 @@ func (a *ActionService) DeleteAction(ctx context.Context, req *connect.Request[a
 		ObjectType: audit.ObjectTypeAction,
 		ObjectID:   actionID,
 	}
+	auditEvent := a.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 	a.logger.DebugContext(ctx, "deleting action", slog.String("id", actionID))
 
 	deleted, err := a.dbClient.DeleteAction(ctx, req.Msg)
 	if err != nil {
-		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextDeletionFailed, slog.String("action", req.Msg.String()))
 	}
 
-	a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	auditEvent.Success(deleted)
 	rsp.Action = deleted
 
 	return connect.NewResponse(rsp), nil

@@ -120,11 +120,12 @@ func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Reque
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeKeyManagementProviderConfig,
 	}
+	auditEvent := ksvc.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	err := ksvc.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		pc, err := txClient.CreateProviderConfig(ctx, req.Msg)
 		if err != nil {
-			ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
@@ -135,7 +136,7 @@ func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Reque
 			Manager:  pc.GetManager(),
 			Metadata: pc.GetMetadata(),
 		}
-		ksvc.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+		auditEvent.Success(pc)
 
 		rsp.ProviderConfig = pc
 		return nil
@@ -196,19 +197,19 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 		ObjectType: audit.ObjectTypeKeyManagementProviderConfig,
 		ObjectID:   providerConfigID,
 	}
+	auditEvent := ksvc.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	original, err := ksvc.dbClient.GetProviderConfig(ctx, &keyMgmtProto.GetProviderConfigRequest_Id{
 		Id: providerConfigID,
 	})
 	if err != nil {
-		ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", providerConfigID))
 	}
 
 	err = ksvc.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		pc, err := txClient.UpdateProviderConfig(ctx, req.Msg)
 		if err != nil {
-			ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
@@ -226,7 +227,7 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 			Manager:  pc.GetManager(),
 			Metadata: pc.GetMetadata(),
 		}
-		ksvc.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+		auditEvent.Success(pc)
 		rsp.ProviderConfig = pc
 
 		return nil
@@ -247,10 +248,11 @@ func (ksvc Service) DeleteProviderConfig(ctx context.Context, req *connect.Reque
 		ActionType: audit.ActionTypeDelete,
 		ObjectType: audit.ObjectTypeKeyManagementProviderConfig,
 	}
+	auditEvent := ksvc.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	defer auditEvent.Log()
 
 	pc, err := ksvc.dbClient.DeleteProviderConfig(ctx, req.Msg.GetId())
 	if err != nil {
-		ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextDeletionFailed, slog.String("keyManagementService", req.Msg.GetId()))
 	}
 
@@ -261,7 +263,7 @@ func (ksvc Service) DeleteProviderConfig(ctx context.Context, req *connect.Reque
 		Manager:  pc.GetManager(),
 		Metadata: pc.GetMetadata(),
 	}
-	ksvc.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	auditEvent.Success(pc)
 
 	rsp.ProviderConfig = pc
 

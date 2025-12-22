@@ -954,15 +954,15 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			policyBinding := kao.GetKeyAccessObject().GetPolicyBinding().GetHash()
 			auditEventParams := audit.RewrapAuditEventParams{
 				Policy:        kasPolicy,
-				IsSuccess:     access,
 				TDFFormat:     "tdf3",
 				Algorithm:     req.GetAlgorithm(),
 				PolicyBinding: policyBinding,
 				KeyID:         kao.GetKeyAccessObject().GetKid(),
 			}
+			auditEvent := p.Logger.Audit.DeferRewrap(ctx, auditEventParams)
+			defer auditEvent.Log()
 
 			if !access {
-				p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 				failedKAORewrapWithObligations(kaoResults, kao, err403("forbidden"), requiredObligationsForPolicy)
 				continue
 			}
@@ -972,7 +972,6 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			if err != nil {
 				//nolint:sloglint // reference to camelcase key is intentional
 				p.Logger.WarnContext(ctx, "rewrap: Export with encryptor failed", slog.String("clientPublicKey", clientPublicKey), slog.Any("error", err))
-				p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 				failedKAORewrap(kaoResults, kao, err400("bad key for rewrap"))
 				continue
 			}
@@ -983,7 +982,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				RequiredObligations: requiredObligationsForPolicy,
 			}
 
-			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
+			auditEvent.Success()
 		}
 	}
 	return sessionKey, results, nil

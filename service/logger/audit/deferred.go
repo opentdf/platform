@@ -92,7 +92,11 @@ type GetDecisionV2Event struct {
 //	defer auditEvent.Log(ctx)
 //	// ... perform operation ...
 //	auditEvent.Success(ctx, updatedObject)
-func (a *Logger) PolicyCRUD(_ context.Context, params PolicyEventParams) *PolicyCRUDEvent {
+func (a *Logger) PolicyCRUD(ctx context.Context, params PolicyEventParams) *PolicyCRUDEvent {
+	if _, ok := ctx.Value(contextKey{}).(*auditTransaction); !ok {
+		panic("audit transaction missing from context in PolicyCRUD")
+	}
+
 	// Store a reference to params for mutation
 	paramsCopy := params
 	return &PolicyCRUDEvent{
@@ -129,15 +133,19 @@ func (d *PolicyCRUDEvent) Log(ctx context.Context) {
 	d.log(ctx)
 }
 
-// DeferRewrap creates a deferred rewrap audit event.
+// Rewrap creates a deferred rewrap audit event.
 // The event will be logged as cancelled unless Success() or Failure() is called.
 // Usage:
 //
-//	auditEvent := logger.DeferRewrap(ctx, params)
+//	auditEvent := logger.Rewrap(ctx, params)
 //	defer auditEvent.Log(ctx)
 //	// ... perform operation ...
 //	auditEvent.Success(ctx)
-func (a *Logger) DeferRewrap(_ context.Context, params RewrapAuditEventParams) *RewrapEvent {
+func (a *Logger) Rewrap(ctx context.Context, params RewrapAuditEventParams) *RewrapEvent {
+	if _, ok := ctx.Value(contextKey{}).(*auditTransaction); !ok {
+		panic("audit transaction missing from context in Rewrap")
+	}
+
 	return &RewrapEvent{
 		deferred: &deferred[RewrapAuditEventParams]{
 			params: params,
@@ -175,7 +183,11 @@ func (d *RewrapEvent) Log(ctx context.Context) {
 //	defer auditEvent.Log(ctx)
 //	// ... perform operation, enriching with UpdateEntitlements/UpdateEntityDecisions ...
 //	auditEvent.Success(ctx, decision)
-func (a *Logger) Decision(_ context.Context, entityChainID string, resourceAttributeID string, fqns []string) *GetDecisionEvent {
+func (a *Logger) Decision(ctx context.Context, entityChainID string, resourceAttributeID string, fqns []string) *GetDecisionEvent {
+	if _, ok := ctx.Value(contextKey{}).(*auditTransaction); !ok {
+		panic("audit transaction missing from context in Decision")
+	}
+
 	params := GetDecisionEventParams{
 		Decision:                GetDecisionResultDeny, // Default to deny on cancellation
 		EntityChainID:           entityChainID,
@@ -239,7 +251,11 @@ func (d *GetDecisionEvent) Log(ctx context.Context) {
 //	defer auditEvent.Log(ctx)
 //	// ... perform operation, enriching with UpdateEntitlements/UpdateResourceDecisions/UpdateObligations ...
 //	auditEvent.Success(ctx, decision)
-func (a *Logger) DecisionV2(_ context.Context, entityID string, actionName string) *GetDecisionV2Event {
+func (a *Logger) DecisionV2(ctx context.Context, entityID string, actionName string) *GetDecisionV2Event {
+	if _, ok := ctx.Value(contextKey{}).(*auditTransaction); !ok {
+		panic("audit transaction missing from context in DecisionV2")
+	}
+
 	params := GetDecisionV2EventParams{
 		EntityID:                       entityID,
 		ActionName:                     actionName,

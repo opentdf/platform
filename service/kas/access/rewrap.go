@@ -959,7 +959,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				PolicyBinding: policyBinding,
 				KeyID:         kao.GetKeyAccessObject().GetKid(),
 			}
-			auditEvent := p.Logger.Audit.DeferRewrap(ctx, auditEventParams)
+			auditEvent := p.Logger.Audit.Rewrap(ctx, auditEventParams)
 			defer auditEvent.Log(ctx)
 
 			if !access {

@@ -132,7 +132,7 @@ func TestDeferredRewrap_Success(t *testing.T) {
 			KeyID:         "test-key-id",
 		}
 
-		auditEvent := l.DeferRewrap(ctx, auditParams)
+		auditEvent := l.Rewrap(ctx, auditParams)
 		defer auditEvent.Log(ctx)
 
 		// Simulate successful rewrap
@@ -163,7 +163,7 @@ func TestDeferredRewrap_Failure(t *testing.T) {
 			KeyID:         "test-key-id",
 		}
 
-		auditEvent := l.DeferRewrap(ctx, auditParams)
+		auditEvent := l.Rewrap(ctx, auditParams)
 		defer auditEvent.Log(ctx)
 
 		// Simulate failed rewrap - don't call Success()

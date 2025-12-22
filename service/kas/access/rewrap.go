@@ -980,6 +980,11 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		access := pdpAccess.Access
 		policyID := req.GetPolicy().GetId()
 
+		var kasPolicy *audit.KasPolicy
+		if policy != nil {
+			kasPolicy = ConvertToAuditKasPolicy(*policy)
+		}
+
 		for _, kao := range req.GetKeyAccessObjects() {
 			kaoID := kao.GetKeyAccessObjectId()
 			kaoRes := kaoResults[kaoID]
@@ -990,6 +995,10 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			if !exists {
 				p.Logger.WarnContext(ctx, "audit event not found for KAO", slog.String("policy_id", policyID), slog.String("kao_id", kaoID))
 				continue
+			}
+
+			if kasPolicy != nil {
+				auditEvent.UpdatePolicy(*kasPolicy)
 			}
 
 			if kaoRes.Error != nil {

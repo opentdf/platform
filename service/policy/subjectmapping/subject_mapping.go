@@ -89,7 +89,7 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 		ObjectType: audit.ObjectTypeSubjectMapping,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	// SM Creation may involve action creation or SCS creation, so utilize a transaction
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
@@ -100,7 +100,7 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 
 		auditParams.ObjectID = subjectMapping.GetId()
 		auditParams.Original = subjectMapping
-		auditEvent.Success(subjectMapping)
+		auditEvent.Success(ctx, subjectMapping)
 
 		rsp.SubjectMapping = subjectMapping
 
@@ -154,7 +154,7 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 		ObjectID:   subjectMappingID,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	// SM Update may involve action update or SCS update, so utilize a transaction
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
@@ -170,7 +170,7 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 
 		auditParams.Original = original
 		auditParams.Updated = updated
-		auditEvent.Success(updated)
+		auditEvent.Success(ctx, updated)
 
 		rsp.SubjectMapping = &policy.SubjectMapping{
 			Id: subjectMappingID,
@@ -196,14 +196,14 @@ func (s SubjectMappingService) DeleteSubjectMapping(ctx context.Context,
 		ObjectID:   subjectMappingID,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	_, err := s.dbClient.DeleteSubjectMapping(ctx, subjectMappingID)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", subjectMappingID))
 	}
 
-	auditEvent.Success(&policy.SubjectMapping{
+	auditEvent.Success(ctx, &policy.SubjectMapping{
 		Id: subjectMappingID,
 	})
 
@@ -271,7 +271,7 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 		ObjectType: audit.ObjectTypeConditionSet,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	var conditionSet *policy.SubjectConditionSet
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
@@ -289,7 +289,7 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 
 	auditParams.ObjectID = conditionSet.GetId()
 	auditParams.Original = conditionSet
-	auditEvent.Success(conditionSet)
+	auditEvent.Success(ctx, conditionSet)
 
 	rsp.SubjectConditionSet = conditionSet
 
@@ -309,7 +309,7 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 		ObjectID:   subjectConditionSetID,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	var original, updated *policy.SubjectConditionSet
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
@@ -337,7 +337,7 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 
 	auditParams.Original = original
 	auditParams.Updated = updated
-	auditEvent.Success(updated)
+	auditEvent.Success(ctx, updated)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -355,14 +355,14 @@ func (s SubjectMappingService) DeleteSubjectConditionSet(ctx context.Context,
 		ObjectID:   conditionSetID,
 	}
 	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	_, err := s.dbClient.DeleteSubjectConditionSet(ctx, conditionSetID)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", conditionSetID))
 	}
 
-	auditEvent.Success(&policy.SubjectConditionSet{
+	auditEvent.Success(ctx, &policy.SubjectConditionSet{
 		Id: conditionSetID,
 	})
 
@@ -392,8 +392,8 @@ func (s SubjectMappingService) DeleteAllUnmappedSubjectConditionSets(ctx context
 	for _, scs := range deleted {
 		auditParams.ObjectID = scs.GetId()
 		auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
-		auditEvent.Success(scs)
-		auditEvent.Log()
+		auditEvent.Success(ctx, scs)
+		auditEvent.Log(ctx)
 	}
 
 	rsp.SubjectConditionSets = deleted

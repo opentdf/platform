@@ -19,7 +19,7 @@ func TestDeferredPolicyCRUD_Success(t *testing.T) {
 		}
 
 		auditEvent := l.PolicyCRUD(ctx, auditParams)
-		defer auditEvent.Log()
+		defer auditEvent.Log(ctx)
 
 		// Simulate successful operation
 		created := &policy.Attribute{
@@ -27,7 +27,7 @@ func TestDeferredPolicyCRUD_Success(t *testing.T) {
 			Name: "test-attribute",
 		}
 		auditParams.Original = created
-		auditEvent.Success(created)
+		auditEvent.Success(ctx, created)
 	})
 
 	auditJSON := string(logEntry.Audit)
@@ -46,7 +46,7 @@ func TestDeferredPolicyCRUD_Failure(t *testing.T) {
 		}
 
 		auditEvent := l.PolicyCRUD(ctx, auditParams)
-		defer auditEvent.Log()
+		defer auditEvent.Log(ctx)
 
 		// Simulate operation failure - don't call Success()
 	})
@@ -67,7 +67,7 @@ func TestDeferredPolicyCRUD_PanicRecovery(t *testing.T) {
 		}
 
 		auditEvent := l.PolicyCRUD(ctx, auditParams)
-		defer auditEvent.Log()
+		defer auditEvent.Log(ctx)
 
 		// Simulate panic during operation
 		panic("test panic")
@@ -95,7 +95,7 @@ func TestDeferredPolicyCRUD_ContextCancellation(t *testing.T) {
 
 	func() {
 		auditEvent := l.PolicyCRUD(ctx, auditParams)
-		defer auditEvent.Log()
+		defer auditEvent.Log(ctx)
 
 		// Cancel the context to simulate network cancellation
 		cancel()
@@ -133,10 +133,10 @@ func TestDeferredRewrap_Success(t *testing.T) {
 		}
 
 		auditEvent := l.DeferRewrap(ctx, auditParams)
-		defer auditEvent.Log()
+		defer auditEvent.Log(ctx)
 
 		// Simulate successful rewrap
-		auditEvent.Success()
+		auditEvent.Success(ctx)
 	})
 
 	auditJSON := string(logEntry.Audit)
@@ -164,7 +164,7 @@ func TestDeferredRewrap_Failure(t *testing.T) {
 		}
 
 		auditEvent := l.DeferRewrap(ctx, auditParams)
-		defer auditEvent.Log()
+		defer auditEvent.Log(ctx)
 
 		// Simulate failed rewrap - don't call Success()
 	})
@@ -184,7 +184,7 @@ func TestDeferredPolicyCRUD_MultipleCallsIdempotent(t *testing.T) {
 		}
 
 		auditEvent := l.PolicyCRUD(ctx, auditParams)
-		defer auditEvent.Log()
+		defer auditEvent.Log(ctx)
 
 		created := &policy.Attribute{
 			Id:   "test-id",
@@ -193,9 +193,9 @@ func TestDeferredPolicyCRUD_MultipleCallsIdempotent(t *testing.T) {
 		auditParams.Original = created
 
 		// Call Success multiple times
-		auditEvent.Success(created)
-		auditEvent.Success(created)
-		auditEvent.Success(created)
+		auditEvent.Success(ctx, created)
+		auditEvent.Success(ctx, created)
+		auditEvent.Success(ctx, created)
 	})
 
 	auditJSON := string(logEntry.Audit)
@@ -222,10 +222,10 @@ func TestDeferredPolicyCRUD_UpdateWithOriginalAndUpdated(t *testing.T) {
 		}
 
 		auditEvent := l.PolicyCRUD(ctx, auditParams)
-		defer auditEvent.Log()
+		defer auditEvent.Log(ctx)
 
 		// Simulate successful update
-		auditEvent.Success(updated)
+		auditEvent.Success(ctx, updated)
 	})
 
 	auditJSON := string(logEntry.Audit)
@@ -240,7 +240,7 @@ func TestDeferredPolicyCRUD_UpdateWithOriginalAndUpdated(t *testing.T) {
 func TestDeferredGetDecision_Success(t *testing.T) {
 	logEntry, _ := doWithLogger(t, func(ctx context.Context, l *Logger) {
 		auditEvent := l.Decision(ctx, "test-entity-chain-id", "test-resource-attr-id", []string{"https://example.com/attr/test/value/value1"})
-		defer auditEvent.Log()
+		defer auditEvent.Log(ctx)
 
 		// Simulate successful operation
 		entitlements := []EntityChainEntitlement{
@@ -261,7 +261,7 @@ func TestDeferredGetDecision_Success(t *testing.T) {
 		}
 		auditEvent.UpdateEntityDecisions(entityDecisions)
 
-		auditEvent.Success(GetDecisionResultPermit)
+		auditEvent.Success(ctx, GetDecisionResultPermit)
 	})
 
 	auditJSON := string(logEntry.Audit)
@@ -274,7 +274,7 @@ func TestDeferredGetDecision_Success(t *testing.T) {
 func TestDeferredGetDecision_Failure(t *testing.T) {
 	logEntry, _ := doWithLogger(t, func(ctx context.Context, l *Logger) {
 		auditEvent := l.Decision(ctx, "test-entity-chain-id", "test-resource-attr-id", []string{"https://example.com/attr/test/value/value1"})
-		defer auditEvent.Log()
+		defer auditEvent.Log(ctx)
 
 		// Simulate operation failure - don't call Success()
 		// This should default to deny decision (result=failure)
@@ -289,7 +289,7 @@ func TestDeferredGetDecision_Failure(t *testing.T) {
 func TestDeferredGetDecisionV2_Success(t *testing.T) {
 	logEntry, _ := doWithLogger(t, func(ctx context.Context, l *Logger) {
 		auditEvent := l.DecisionV2(ctx, "test-entity-id", "test-action")
-		defer auditEvent.Log()
+		defer auditEvent.Log(ctx)
 
 		// Simulate successful operation with entitlements
 		entitlements := make(map[string][]*policy.Action)
@@ -311,7 +311,7 @@ func TestDeferredGetDecisionV2_Success(t *testing.T) {
 		}
 		auditEvent.UpdateResourceDecisions(resourceDecisions)
 
-		auditEvent.Success(GetDecisionResultPermit)
+		auditEvent.Success(ctx, GetDecisionResultPermit)
 	})
 
 	auditJSON := string(logEntry.Audit)
@@ -324,7 +324,7 @@ func TestDeferredGetDecisionV2_Success(t *testing.T) {
 func TestDeferredGetDecisionV2_Failure(t *testing.T) {
 	logEntry, _ := doWithLogger(t, func(ctx context.Context, l *Logger) {
 		auditEvent := l.DecisionV2(ctx, "test-entity-id", "test-action")
-		defer auditEvent.Log()
+		defer auditEvent.Log(ctx)
 
 		// Simulate operation failure - don't call Success()
 		// This should default to deny decision (result=failure)
@@ -340,7 +340,7 @@ func TestDeferredGetDecisionV2_Failure(t *testing.T) {
 func TestDeferredGetDecisionV2_PanicRecovery(t *testing.T) {
 	logEntry, _ := doWithLogger(t, func(ctx context.Context, l *Logger) {
 		auditEvent := l.DecisionV2(ctx, "test-entity-id", "test-action")
-		defer auditEvent.Log()
+		defer auditEvent.Log(ctx)
 
 		// Simulate panic during operation
 		panic("test panic")

@@ -175,7 +175,7 @@ func (p *JustInTimePDP) GetDecision(
 
 		// Start deferred audit event
 		auditEvent := p.logger.Audit.DecisionV2(ctx, regResValueFQN, action.GetName())
-		defer auditEvent.Log()
+		defer auditEvent.Log(ctx)
 
 		// Registered resources do not have entity representations, so only one decision is made
 		decision, entitlements, err := p.pdp.GetDecisionRegisteredResource(ctx, regResValueFQN, action, resources)
@@ -198,6 +198,7 @@ func (p *JustInTimePDP) GetDecision(
 
 		// Enrich audit with computed information and mark as successful
 		p.enrichAuditDecision(
+			ctx,
 			auditEvent,
 			entitledWithAnyObligationsSatisfied,
 			entitlements,
@@ -221,7 +222,7 @@ func (p *JustInTimePDP) GetDecision(
 	for _, entityRep := range entityRepresentations {
 		// Start deferred audit event for this entity representation
 		auditEvent := p.logger.Audit.DecisionV2(ctx, entityRep.GetOriginalId(), action.GetName())
-		defer auditEvent.Log()
+		defer auditEvent.Log(ctx)
 
 		entityRepresentationDecision, entitlements, err := p.pdp.GetDecision(ctx, entityRep, action, resources)
 		if err != nil {
@@ -251,6 +252,7 @@ func (p *JustInTimePDP) GetDecision(
 		// Enrich audit for this entity representation with computed information and mark as successful
 		entityAllPermitted := entityRepresentationDecision.AllPermitted && allObligationsSatisfied
 		p.enrichAuditDecision(
+			ctx,
 			auditEvent,
 			entityAllPermitted,
 			entitlements,
@@ -444,6 +446,7 @@ func (p *JustInTimePDP) resolveEntitiesFromRequestToken(
 // The auditResourceDecisions parameter should contain the full obligation context including
 // for non-entitled resources, which is intentionally excluded from the actual response.
 func (p *JustInTimePDP) enrichAuditDecision(
+	ctx context.Context,
 	auditEvent *audit.GetDecisionV2Event,
 	allPermitted bool,
 	entitlements map[string][]*policy.Action,
@@ -463,5 +466,5 @@ func (p *JustInTimePDP) enrichAuditDecision(
 	}
 
 	// Mark as successful with final decision
-	auditEvent.Success(auditDecision)
+	auditEvent.Success(ctx, auditDecision)
 }

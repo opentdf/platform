@@ -131,7 +131,7 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Re
 		ObjectType: audit.ObjectTypeNamespace,
 	}
 	auditEvent := ns.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 	rsp := &namespaces.CreateNamespaceResponse{}
 
 	err := ns.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
@@ -142,7 +142,7 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Re
 
 		auditParams.ObjectID = n.GetId()
 		auditParams.Original = n
-		auditEvent.Success(n)
+		auditEvent.Success(ctx, n)
 
 		ns.logger.DebugContext(ctx, "created new namespace", slog.String("name", req.Msg.GetName()))
 		rsp.Namespace = n
@@ -167,7 +167,7 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *connect.Re
 		ObjectID:   namespaceID,
 	}
 	auditEvent := ns.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	original, err := ns.dbClient.GetNamespace(ctx, namespaceID)
 	if err != nil {
@@ -182,7 +182,7 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *connect.Re
 	auditParams.Original = original
 	auditParams.Updated = updated
 
-	auditEvent.Success(updated)
+	auditEvent.Success(ctx, updated)
 	ns.logger.DebugContext(ctx, "updated namespace", slog.String("id", namespaceID))
 
 	rsp.Namespace = &policy.Namespace{
@@ -203,7 +203,7 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *connec
 		ObjectID:   namespaceID,
 	}
 	auditEvent := ns.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	original, err := ns.dbClient.GetNamespace(ctx, namespaceID)
 	if err != nil {
@@ -217,7 +217,7 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *connec
 
 	auditParams.Original = original
 	auditParams.Updated = updated
-	auditEvent.Success(updated)
+	auditEvent.Success(ctx, updated)
 	ns.logger.DebugContext(ctx, "soft-deleted namespace", slog.String("id", namespaceID))
 
 	return connect.NewResponse(rsp), nil
@@ -237,13 +237,13 @@ func (ns NamespacesService) RemoveKeyAccessServerFromNamespace(ctx context.Conte
 		ObjectID:   fmt.Sprintf("%s-%s", grant.GetNamespaceId(), grant.GetKeyAccessServerId()),
 	}
 	auditEvent := ns.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	namespaceKas, err := ns.dbClient.RemoveKeyAccessServerFromNamespace(ctx, grant)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextDeletionFailed, slog.String("namespaceKas", grant.String()))
 	}
-	auditEvent.Success(namespaceKas)
+	auditEvent.Success(ctx, namespaceKas)
 
 	rsp.NamespaceKeyAccessServer = namespaceKas
 
@@ -260,13 +260,13 @@ func (ns NamespacesService) AssignPublicKeyToNamespace(ctx context.Context, r *c
 		ObjectID:   fmt.Sprintf("%s:%s", key.GetNamespaceId(), key.GetKeyId()),
 	}
 	auditEvent := ns.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	namespaceKey, err := ns.dbClient.AssignPublicKeyToNamespace(ctx, key)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextCreationFailed, slog.String("namespaceKey", key.String()))
 	}
-	auditEvent.Success(namespaceKey)
+	auditEvent.Success(ctx, namespaceKey)
 
 	rsp.NamespaceKey = namespaceKey
 
@@ -283,13 +283,13 @@ func (ns NamespacesService) RemovePublicKeyFromNamespace(ctx context.Context, r 
 		ObjectID:   fmt.Sprintf("%s:%s", key.GetNamespaceId(), key.GetKeyId()),
 	}
 	auditEvent := ns.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	_, err := ns.dbClient.RemovePublicKeyFromNamespace(ctx, key)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextDeletionFailed, slog.String("namespaceKey", key.String()))
 	}
-	auditEvent.Success(key)
+	auditEvent.Success(ctx, key)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -313,7 +313,7 @@ func (ns NamespacesService) AssignCertificateToNamespace(ctx context.Context, r 
 		ObjectID:   auditObjectID,
 	}
 	auditEvent := ns.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	// Create the certificate metadata
 	metadataJSON, _, err := db.MarshalCreateMetadata(metadata)
@@ -328,7 +328,7 @@ func (ns NamespacesService) AssignCertificateToNamespace(ctx context.Context, r 
 		return nil, db.StatusifyError(ctx, ns.logger, err, "Failed to create and assign certificate")
 	}
 
-	auditEvent.Success(&namespaces.NamespaceCertificate{
+	auditEvent.Success(ctx, &namespaces.NamespaceCertificate{
 		Namespace:     namespaceIdentifier,
 		CertificateId: certID,
 	})
@@ -363,13 +363,13 @@ func (ns NamespacesService) RemoveCertificateFromNamespace(ctx context.Context, 
 		ObjectID:   fmt.Sprintf("%s:%s", auditNamespaceID, cert.GetCertificateId()),
 	}
 	auditEvent := ns.logger.Audit.PolicyCRUD(ctx, auditParams)
-	defer auditEvent.Log()
+	defer auditEvent.Log(ctx)
 
 	err := ns.dbClient.RemoveCertificateFromNamespace(ctx, namespaceIdentifier, cert.GetCertificateId())
 	if err != nil {
 		return nil, db.StatusifyError(ctx, ns.logger, err, "Failed to remove certificate from namespace")
 	}
-	auditEvent.Success(cert)
+	auditEvent.Success(ctx, cert)
 
 	rsp.NamespaceCertificate = cert
 

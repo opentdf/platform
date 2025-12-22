@@ -1180,7 +1180,11 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 				p.Logger.WarnContext(ctx, "audit event not found for KAO in nano rewrap",
 					slog.String("policy_id", policyID),
 					slog.Any("policy.uuid", policy.UUID),
-					slog.String("kao_id", kaoID))
+					slog.String("kao_id", kaoID),
+					slog.Any("pdp_access_result", pdpAccess),
+					slog.Any("kao_info", kaoInfo),
+					slog.Any("audit_events", auditEvents),
+				)
 				continue
 			}
 

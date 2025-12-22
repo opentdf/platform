@@ -993,7 +993,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			eventKey := auditEventKey{policyID: policyID, kaoID: kaoID}
 			auditEvent, exists := auditEvents[eventKey]
 			if !exists {
-				p.Logger.WarnContext(ctx, "audit event not found for KAO",
+				p.Logger.WarnContext(ctx, "audit event not found for tdf KAO",
 					slog.String("policy_id", policyID),
 					slog.String("kao_id", kaoID))
 				continue

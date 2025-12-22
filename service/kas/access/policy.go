@@ -16,8 +16,8 @@ type PolicyBody struct {
 }
 
 // Audit helper methods
-func ConvertToAuditKasPolicy(policy Policy) audit.KasPolicy {
-	return audit.KasPolicy{
+func ConvertToAuditKasPolicy(policy Policy) *audit.KasPolicy {
+	return &audit.KasPolicy{
 		UUID: policy.UUID,
 		Body: audit.KasPolicyBody{
 			DataAttributes: convertToAuditKasBodyDataAttributes(policy.Body.DataAttributes),

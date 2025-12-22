@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
 	"github.com/stretchr/testify/suite"
 )
@@ -36,7 +37,11 @@ func (s *RegisteredResourcesSuite) TestCreateRegisteredResource_NamespacedPolicy
 		config: &policyconfig.Config{NamespacedPolicy: true},
 	}
 
-	_, err := service.CreateRegisteredResource(s.T().Context(), connect.NewRequest(&registeredresources.CreateRegisteredResourceRequest{
+	// Deferred policy CRUD auditing requires an audit transaction on the context,
+	// which ContextServerInterceptor installs for real RPCs.
+	ctx := audit.ContextWithActorID(s.T().Context(), "test-actor")
+
+	_, err := service.CreateRegisteredResource(ctx, connect.NewRequest(&registeredresources.CreateRegisteredResourceRequest{
 		Name: validName,
 	}))
 

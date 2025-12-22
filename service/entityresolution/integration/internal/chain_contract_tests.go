@@ -1,9 +1,7 @@
 package internal
 
 import (
-	"errors"
 	"fmt"
-	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -182,40 +180,10 @@ func (suite *ChainContractTestSuite) executeChainRequest(t *testing.T, implement
 		return nil, err
 	}
 
-	if suite.handleConnectionErrors(t, err) {
-		return nil, err
-	}
-
 	require.NoError(t, err, "Unexpected error: %v", err)
 	require.NotNil(t, resp, "Response should not be nil")
 
 	return resp.Msg.GetEntityChains(), nil
-}
-
-//nolint:unparam // Return value is always false but kept for potential future use and consistency
-func (suite *ChainContractTestSuite) handleConnectionErrors(t *testing.T, err error) bool {
-	if err == nil {
-		return false
-	}
-
-	var connectErr *connect.Error
-	if !errors.As(err, &connectErr) {
-		return false
-	}
-
-	if connectErr.Code() != connect.CodeInternal {
-		return false
-	}
-
-	errorMsg := connectErr.Message()
-	if strings.Contains(errorMsg, "connection refused") ||
-		strings.Contains(errorMsg, "could not get token") ||
-		strings.Contains(errorMsg, "failed to login") {
-		t.Skipf("Service unavailable (likely connection issue): %v", errorMsg)
-		return true
-	}
-
-	return false
 }
 
 // validateSingleChain validates a single entity chain according to the validation rule

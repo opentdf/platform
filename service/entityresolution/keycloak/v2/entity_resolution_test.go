@@ -166,7 +166,8 @@ func Test_GetConnectorTokenRefresh(t *testing.T) {
 	service := &EntityResolutionServiceV2{
 		idpConfig: testConfig(server),
 		logger:    logger.CreateTestLogger(),
-		Tracer:    trace.NewNoopTracerProvider().Tracer("test"),
+		//nolint:staticcheck // SA1019: trace.NewNoopTracerProvider is deprecated but required for test setup
+		Tracer: trace.NewNoopTracerProvider().Tracer("test"),
 	}
 
 	// First call to trigger initial token acquisition

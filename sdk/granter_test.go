@@ -163,7 +163,7 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 	case MP.key:
 		g := make([]*policy.KeyAccessServer, 1)
 		g[0] = mockGrant(specifiedKas, "r1")
-		g[0].PublicKey = createPublicKey("r1", mockRSAPublicKey1, policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048)
+		g[0].PublicKey = createPublicKey("r1", mockRSAPublicKey1, policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048) //nolint:staticcheck // Using deprecated field for test compatibility with legacy protocol
 		return &policy.Attribute{
 			Id:        "MP",
 			Namespace: &nsOne,

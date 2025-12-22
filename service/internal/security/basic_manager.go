@@ -151,6 +151,7 @@ type OCEncapsulator struct {
 
 func (e *OCEncapsulator) Encapsulate(dek ocrypto.ProtectedKey) ([]byte, error) {
 	// Delegate to the ProtectedKey to avoid exposing raw key material
+	//nolint:staticcheck // SA1019: dek.Export is deprecated but required for backward compatibility with legacy key encapsulation
 	return dek.Export(e)
 }
 

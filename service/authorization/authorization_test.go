@@ -9,7 +9,7 @@ import (
 	"go.opentelemetry.io/otel/trace/noop"
 
 	"connectrpc.com/connect"
-	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/rego" //nolint:staticcheck // SA1019: v0.x compatibility package used for OPA rego functionality
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"

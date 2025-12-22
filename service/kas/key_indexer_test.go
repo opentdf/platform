@@ -39,6 +39,7 @@ func (m *MockKeyAccessServerRegistryClient) DeleteKeyAccessServer(context.Contex
 	return nil, errors.New("not implemented")
 }
 
+//nolint:staticcheck // SA1019: ListKeyAccessServerGrantsRequest is deprecated but used in test mock
 func (m *MockKeyAccessServerRegistryClient) ListKeyAccessServerGrants(context.Context, *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) {
 	return nil, errors.New("not implemented")
 }

@@ -1095,6 +1095,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 				failedKAORewrapWithObligations(kaoResults, kao, err403("forbidden"), requiredObligationsForPolicy)
 				continue
 			}
+			//nolint:staticcheck // SA1019: Export is deprecated but required for backward compatibility
 			cipherText, err := kaoInfo.DEK.Export(sessionKey)
 			if err != nil {
 				p.Logger.Audit.RewrapFailure(ctx, auditEventParams)

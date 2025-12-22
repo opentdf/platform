@@ -377,6 +377,7 @@ func (a *ClaimsTestAdapter) createTestJWT(clientID, username, email string, addi
 	_ = token.Set("email", email)
 
 	// Additional custom claims
+	//nolint:staticcheck // S1031: nil check is intentional for optional parameter handling
 	if additionalClaims != nil {
 		for key, value := range additionalClaims {
 			_ = token.Set(key, value)
@@ -417,6 +418,7 @@ func (a *ClaimsTestAdapter) createUnsignedTestJWT(clientID, username, email stri
 	}
 
 	// Add additional claims
+	//nolint:staticcheck // S1031: nil check is intentional for optional parameter handling
 	if additionalClaims != nil {
 		for key, value := range additionalClaims {
 			claims[key] = value

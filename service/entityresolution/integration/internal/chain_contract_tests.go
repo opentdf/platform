@@ -192,7 +192,7 @@ func (suite *ChainContractTestSuite) executeChainRequest(t *testing.T, implement
 	return resp.Msg.GetEntityChains(), nil
 }
 
-// handleConnectionErrors checks for connection-related errors and skips tests if service unavailable
+//nolint:unparam // Return value is always false but kept for potential future use and consistency
 func (suite *ChainContractTestSuite) handleConnectionErrors(t *testing.T, err error) bool {
 	if err == nil {
 		return false

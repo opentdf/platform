@@ -46,6 +46,7 @@ func getTokenSource(t *testing.T) FakeAccessTokenSource {
 	dpopPEM, _ := dpopKey.PrivateKeyInPemFormat()
 	decryption, _ := ocrypto.NewAsymDecryption(dpopPEM)
 	dpopPEMPublic, _ := dpopKey.PublicKeyInPemFormat()
+	//nolint:staticcheck // SA1019: NewAsymEncryption is deprecated but used in test code
 	encryption, _ := ocrypto.NewAsymEncryption(dpopPEMPublic)
 	dpopJWK, err := jwk.ParseKey([]byte(dpopPEM), jwk.WithPEM(true))
 	if err != nil {
@@ -115,6 +116,7 @@ func TestCreatingRequest(t *testing.T) {
 
 	require.NoError(t, protojson.Unmarshal([]byte(requestBodyJSON), &requestBody), "error unmarshaling request body")
 
+	//nolint:staticcheck // SA1019: NewAsymEncryption is deprecated but used in test code
 	_, err = ocrypto.NewAsymEncryption(requestBody.GetClientPublicKey())
 	require.NoError(t, err, "NewAsymEncryption failed, incorrect public key include")
 
@@ -465,6 +467,7 @@ func Test_processRSAResponse(t *testing.T) {
 	// Create a mock AsymEncryption to create the wrapped key
 	publicKeyPEM, err := mockPrivateKey.PublicKeyInPemFormat()
 	require.NoError(t, err)
+	//nolint:staticcheck // SA1019: NewAsymEncryption is deprecated but used in test code
 	mockEncryptor, err := ocrypto.NewAsymEncryption(publicKeyPEM)
 	require.NoError(t, err)
 

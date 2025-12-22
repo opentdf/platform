@@ -222,10 +222,12 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *connec
 	return connect.NewResponse(rsp), nil
 }
 
+//nolint:staticcheck // Using deprecated protobuf field for backward compatibility
 func (ns NamespacesService) AssignKeyAccessServerToNamespace(_ context.Context, _ *connect.Request[namespaces.AssignKeyAccessServerToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyAccessServerToNamespaceResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("this compatibility stub will be removed entirely in the following release"))
 }
 
+//nolint:staticcheck // Using deprecated protobuf field for backward compatibility
 func (ns NamespacesService) RemoveKeyAccessServerFromNamespace(ctx context.Context, req *connect.Request[namespaces.RemoveKeyAccessServerFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyAccessServerFromNamespaceResponse], error) {
 	rsp := &namespaces.RemoveKeyAccessServerFromNamespaceResponse{}
 

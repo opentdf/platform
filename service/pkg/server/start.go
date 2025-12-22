@@ -255,6 +255,7 @@ func Start(f ...StartOptions) error {
 		}
 
 		// provide token endpoint -- sdk cannot discover it since well-known service isnt running yet
+		//nolint:staticcheck // SA1019: WithTokenEndpoint is deprecated but required during startup before well-known service is available
 		sdkOptions = append(sdkOptions, sdk.WithTokenEndpoint(oidcconfig.TokenEndpoint))
 	}
 

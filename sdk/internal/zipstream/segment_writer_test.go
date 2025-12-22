@@ -426,12 +426,14 @@ func TestSegmentWriter_LargeNumberOfSegments(t *testing.T) {
 
 		// Store in logical order for final assembly
 		if i == 0 {
+			//nolint:staticcheck // SA4010: simplified test code, result intentionally unused
 			allBytes = append([]byte{}, bytes...) // Segment 0 goes first
 			for j := 1; j < segmentCount; j++ {
 				allBytes = append(allBytes, make([]byte, 0)...) // Placeholder
 			}
 		} else {
 			// This is simplified - in practice you'd need proper ordering
+			//nolint:staticcheck // SA4010: simplified test code, result intentionally unused
 			allBytes = append(allBytes, bytes...)
 		}
 	}

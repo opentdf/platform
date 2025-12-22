@@ -8,9 +8,9 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/open-policy-agent/opa/ast"
-	"github.com/open-policy-agent/opa/rego"
-	"github.com/open-policy-agent/opa/types"
+	"github.com/open-policy-agent/opa/ast"   //nolint:staticcheck // SA1019: v0.x compatibility package used for OPA custom builtin
+	"github.com/open-policy-agent/opa/rego"  //nolint:staticcheck // SA1019: v0.x compatibility package used for OPA custom builtin
+	"github.com/open-policy-agent/opa/types" //nolint:staticcheck // SA1019: v0.x compatibility package used for OPA custom builtin
 	"github.com/opentdf/platform/lib/flattening"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"

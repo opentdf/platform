@@ -110,7 +110,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			opts = append(opts, sdk.WithWrappingKeyAlg(kt))
+			opts = append(opts, sdk.WithWrappingKeyAlg(kt)) //nolint:staticcheck // Example code demonstrating legacy API usage
 		}
 		tdf, err := client.CreateTDF(out, in, opts...)
 		if err != nil {

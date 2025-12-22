@@ -95,8 +95,9 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				} else {
 					// Set up both the legacy CryptoProvider and the new SecurityProvider
 					kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)
+					//nolint:staticcheck // SA1019: CryptoProvider is deprecated but still supported for backward compatibility
 					p.CryptoProvider = srp.OTDF.CryptoProvider
-
+					//nolint:staticcheck // SA1019: CryptoProvider is deprecated but still supported for backward compatibility
 					inProcessService := initSecurityProviderAdapter(p.CryptoProvider, kasCfg, srp.Logger)
 
 					p.KeyDelegator = trust.NewDelegatingKeyService(inProcessService, srp.Logger, nil)

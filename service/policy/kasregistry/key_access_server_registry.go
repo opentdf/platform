@@ -215,6 +215,7 @@ func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 	return connect.NewResponse(rsp), nil
 }
 
+//nolint:staticcheck // Using deprecated protobuf field for backward compatibility
 func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
 	req *connect.Request[kasr.ListKeyAccessServerGrantsRequest],
 ) (*connect.Response[kasr.ListKeyAccessServerGrantsResponse], error) {

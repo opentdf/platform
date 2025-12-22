@@ -75,18 +75,22 @@ func (*myAttributesClient) DeactivateAttributeValue(_ context.Context, _ *attr.D
 	return &attr.DeactivateAttributeValueResponse{}, nil
 }
 
+//nolint:staticcheck // SA1019: AssignKeyAccessServerToAttribute is deprecated but required for test mock
 func (*myAttributesClient) AssignKeyAccessServerToAttribute(_ context.Context, _ *attr.AssignKeyAccessServerToAttributeRequest) (*attr.AssignKeyAccessServerToAttributeResponse, error) {
 	return &attr.AssignKeyAccessServerToAttributeResponse{}, nil
 }
 
+//nolint:staticcheck // SA1019: RemoveKeyAccessServerFromAttribute is deprecated but required for test mock
 func (*myAttributesClient) RemoveKeyAccessServerFromAttribute(_ context.Context, _ *attr.RemoveKeyAccessServerFromAttributeRequest) (*attr.RemoveKeyAccessServerFromAttributeResponse, error) {
 	return &attr.RemoveKeyAccessServerFromAttributeResponse{}, nil
 }
 
+//nolint:staticcheck // SA1019: AssignKeyAccessServerToValue is deprecated but required for test mock
 func (*myAttributesClient) AssignKeyAccessServerToValue(_ context.Context, _ *attr.AssignKeyAccessServerToValueRequest) (*attr.AssignKeyAccessServerToValueResponse, error) {
 	return &attr.AssignKeyAccessServerToValueResponse{}, nil
 }
 
+//nolint:staticcheck // SA1019: RemoveKeyAccessServerFromValue is deprecated but required for test mock
 func (*myAttributesClient) RemoveKeyAccessServerFromValue(_ context.Context, _ *attr.RemoveKeyAccessServerFromValueRequest) (*attr.RemoveKeyAccessServerFromValueResponse, error) {
 	return &attr.RemoveKeyAccessServerFromValueResponse{}, nil
 }
@@ -301,18 +305,22 @@ func (*paginatedMockAttributesClient) DeactivateAttributeValue(_ context.Context
 	return &attr.DeactivateAttributeValueResponse{}, nil
 }
 
+//nolint:staticcheck // SA1019: AssignKeyAccessServerToAttribute is deprecated but required for test mock
 func (*paginatedMockAttributesClient) AssignKeyAccessServerToAttribute(_ context.Context, _ *attr.AssignKeyAccessServerToAttributeRequest) (*attr.AssignKeyAccessServerToAttributeResponse, error) {
 	return &attr.AssignKeyAccessServerToAttributeResponse{}, nil
 }
 
+//nolint:staticcheck // SA1019: RemoveKeyAccessServerFromAttribute is deprecated but required for test mock
 func (*paginatedMockAttributesClient) RemoveKeyAccessServerFromAttribute(_ context.Context, _ *attr.RemoveKeyAccessServerFromAttributeRequest) (*attr.RemoveKeyAccessServerFromAttributeResponse, error) {
 	return &attr.RemoveKeyAccessServerFromAttributeResponse{}, nil
 }
 
+//nolint:staticcheck // SA1019: AssignKeyAccessServerToValue is deprecated but required for test mock
 func (*paginatedMockAttributesClient) AssignKeyAccessServerToValue(_ context.Context, _ *attr.AssignKeyAccessServerToValueRequest) (*attr.AssignKeyAccessServerToValueResponse, error) {
 	return &attr.AssignKeyAccessServerToValueResponse{}, nil
 }
 
+//nolint:staticcheck // SA1019: RemoveKeyAccessServerFromValue is deprecated but required for test mock
 func (*paginatedMockAttributesClient) RemoveKeyAccessServerFromValue(_ context.Context, _ *attr.RemoveKeyAccessServerFromValueRequest) (*attr.RemoveKeyAccessServerFromValueResponse, error) {
 	return &attr.RemoveKeyAccessServerFromValueResponse{}, nil
 }

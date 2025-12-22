@@ -350,6 +350,7 @@ func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, existing *pol
 	}, nil
 }
 
+//nolint:staticcheck // Using deprecated protobuf field for backward compatibility
 func (c PolicyDBClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, k *namespaces.NamespaceKeyAccessServer) (*namespaces.NamespaceKeyAccessServer, error) {
 	count, err := c.queries.removeKeyAccessServerFromNamespace(ctx, removeKeyAccessServerFromNamespaceParams{
 		NamespaceID:       k.GetNamespaceId(),

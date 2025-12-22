@@ -56,7 +56,7 @@ func newSDK() (*sdk.SDK, error) {
 		opts = append(opts, sdk.WithClientCredentials(clientCredentials[:i], clientCredentials[i+1:], nil))
 	}
 	if tokenEndpoint != "" {
-		opts = append(opts, sdk.WithTokenEndpoint(tokenEndpoint))
+		opts = append(opts, sdk.WithTokenEndpoint(tokenEndpoint)) //nolint:staticcheck // Example code demonstrating legacy API usage
 	}
 	if noKIDInKAO {
 		opts = append(opts, sdk.WithNoKIDInKAO())

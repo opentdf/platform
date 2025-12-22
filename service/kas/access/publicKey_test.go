@@ -154,6 +154,7 @@ func (m *MockSecurityProvider) DeriveKey(_ context.Context, _ trust.KeyDetails, 
 	return nil, errors.New("not implemented for tests")
 }
 
+//nolint:staticcheck // SA1019: Encapsulator is deprecated but used in test mock
 func (m *MockSecurityProvider) GenerateECSessionKey(_ context.Context, _ string) (trust.Encapsulator, error) {
 	return nil, errors.New("not implemented for tests")
 }

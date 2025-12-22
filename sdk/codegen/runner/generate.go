@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -120,7 +121,8 @@ func generateWrapper(interfaceName string, interfaceType *ast.InterfaceType, pac
 	connectPackageName := packageName + "connect"
 
 	// Start generating the wrapper code
-	wrapperCode := fmt.Sprintf(`// Wrapper for %s%s (generated code) DO NOT EDIT
+	var wrapperCode strings.Builder
+	wrapperCode.WriteString(fmt.Sprintf(`// Wrapper for %s%s (generated code) DO NOT EDIT
 package sdkconnect
 
 import (
@@ -158,30 +160,31 @@ func New%s%s%sConnectWrapper(httpClient connect.HTTPClient, baseURL string, opts
 		suffix,
 		interfaceName,
 		connectPackageName,
-		interfaceName)
+		interfaceName))
 
 	// Generate the interface type definition
-	wrapperCode += generateInterfaceType(interfaceName, methods, packageName, prefix, suffix)
+	wrapperCode.WriteString(generateInterfaceType(interfaceName, methods, packageName, prefix, suffix))
 	// Now generate a wrapper function for each method in the interface
 	for _, method := range methods {
-		wrapperCode += generateWrapperMethod(interfaceName, method, packageName, prefix, suffix)
+		wrapperCode.WriteString(generateWrapperMethod(interfaceName, method, packageName, prefix, suffix))
 	}
 
 	// Output the generated wrapper code
-	return wrapperCode
+	return wrapperCode.String()
 }
 
 func generateInterfaceType(interfaceName string, methods []string, packageName, prefix, suffix string) string {
 	// Generate the interface type definition
-	interfaceType := fmt.Sprintf(`
+	var interfaceType strings.Builder
+	interfaceType.WriteString(fmt.Sprintf(`
 type %s%s%s interface {
-`, prefix, interfaceName, suffix)
+`, prefix, interfaceName, suffix))
 	for _, method := range methods {
-		interfaceType += fmt.Sprintf(`	%s(ctx context.Context, req *%s.%sRequest) (*%s.%sResponse, error)
-`, method, packageName, method, packageName, method)
+		interfaceType.WriteString(fmt.Sprintf(`	%s(ctx context.Context, req *%s.%sRequest) (*%s.%sResponse, error)
+`, method, packageName, method, packageName, method))
 	}
-	interfaceType += "}\n"
-	return interfaceType
+	interfaceType.WriteString("}\n")
+	return interfaceType.String()
 }
 
 // Generate the wrapper method for a specific method in the interface

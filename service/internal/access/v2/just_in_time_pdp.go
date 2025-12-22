@@ -172,7 +172,6 @@ func (p *JustInTimePDP) GetDecision(
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
 
-		// Start deferred audit event
 		auditEvent := p.logger.Audit.DecisionV2(ctx, regResValueFQN, action.GetName())
 		defer auditEvent.Log(ctx)
 
@@ -214,14 +213,23 @@ func (p *JustInTimePDP) GetDecision(
 		return nil, fmt.Errorf("failed to resolve entity identifier: %w", err)
 	}
 
+	// Pre-create audit events for all entities to ensure they're logged even if a panic occurs
+	type auditEventKey struct {
+		entityID string
+	}
+	auditEvents := make([]*audit.GetDecisionV2Event, 0, len(entityRepresentations))
+	for _, entityRep := range entityRepresentations {
+		auditEvent := p.logger.Audit.DecisionV2(ctx, entityRep.GetOriginalId(), action.GetName())
+		defer auditEvent.Log(ctx)
+		auditEvents = append(auditEvents, auditEvent)
+	}
+
 	// Get a decision on each entity representation and consolidate into an overall decision
 	var resourceDecisionsAcrossAllEntityReps []ResourceDecision
 	allPermitted := true
 
-	for _, entityRep := range entityRepresentations {
-		// Start deferred audit event for this entity representation
-		auditEvent := p.logger.Audit.DecisionV2(ctx, entityRep.GetOriginalId(), action.GetName())
-		defer auditEvent.Log(ctx)
+	for i, entityRep := range entityRepresentations {
+		auditEvent := auditEvents[i]
 
 		entityRepresentationDecision, entitlements, err := p.pdp.GetDecision(ctx, entityRep, action, resources)
 		if err != nil {

@@ -1003,6 +1003,11 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		access := pdpAccess.Access
 		policyID := req.GetPolicy().GetId()
 
+		var kasPolicy *audit.KasPolicy
+		if policy != nil {
+			kasPolicy = ConvertToAuditKasPolicy(*policy)
+		}
+
 		for _, kao := range req.GetKeyAccessObjects() {
 			kaoID := kao.GetKeyAccessObjectId()
 			kaoRes := kaoResults[kaoID]
@@ -1013,6 +1018,10 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			if !exists {
 				p.Logger.WarnContext(ctx, "audit event not found for KAO", slog.String("policy_id", policyID), slog.String("kao_id", kaoID))
 				continue
+			}
+
+			if kasPolicy != nil {
+				auditEvent.UpdatePolicy(*kasPolicy)
 			}
 
 			if kaoRes.Error != nil {
@@ -1089,15 +1098,20 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 	policyReqs := make(map[*Policy]*kaspb.UnsignedRewrapRequest_WithPolicyRequest)
 
 	for _, req := range requests {
-		policy, kaoResults, err := p.verifyNanoRewrapRequests(ctx, req)
+		p, kaoResults, err := p.verifyNanoRewrapRequests(ctx, req)
+		if p != nil {
+			policies = append(policies, p)
+			kasPolicy := ConvertToAuditKasPolicy(*p)
+			auditEvent := auditEvents[auditEventKey{policyID: p.UUID.String(), kaoID: req.GetKeyAccessObjects()[0].GetKeyAccessObjectId()}]
+			if auditEvent != nil {
+				auditEvent.UpdatePolicy(*kasPolicy)
+			}
+			policyReqs[p] = req
+		}
 		if err != nil {
 			return "", nil, err400("invalid request")
 		}
 		results[req.GetPolicy().GetId()] = kaoResults
-		if policy != nil {
-			policies = append(policies, policy)
-			policyReqs[policy] = req
-		}
 	}
 	// do the access check
 	tok := &entity.Token{

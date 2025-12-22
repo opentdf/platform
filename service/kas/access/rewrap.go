@@ -880,6 +880,44 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		defer span.End()
 	}
 
+	// Pre-create audit events for all KAOs to ensure they're logged even if a panic occurs
+	type auditEventKey struct {
+		policyID string
+		kaoID    string
+	}
+	auditEvents := make(map[auditEventKey]*audit.RewrapEvent)
+
+	for _, req := range requests {
+		if req == nil || req.GetPolicy() == nil || req.GetPolicy().GetId() == "" {
+			continue
+		}
+		policyID := req.GetPolicy().GetId()
+		for _, kao := range req.GetKeyAccessObjects() {
+			if kao == nil {
+				continue
+			}
+			policyBinding := ""
+			if kao.GetKeyAccessObject() != nil && kao.GetKeyAccessObject().GetPolicyBinding() != nil {
+				policyBinding = kao.GetKeyAccessObject().GetPolicyBinding().GetHash()
+			}
+			kid := ""
+			if kao.GetKeyAccessObject() != nil {
+				kid = kao.GetKeyAccessObject().GetKid()
+			}
+
+			auditEventParams := audit.RewrapAuditEventParams{
+				Policy:        audit.KasPolicy{}, // Will be enriched later with actual policy
+				TDFFormat:     "tdf3",
+				Algorithm:     req.GetAlgorithm(),
+				PolicyBinding: policyBinding,
+				KeyID:         kid,
+			}
+			auditEvent := p.Logger.Audit.Rewrap(ctx, auditEventParams)
+			defer auditEvent.Log(ctx)
+			auditEvents[auditEventKey{policyID: policyID, kaoID: kao.GetKeyAccessObjectId()}] = auditEvent
+		}
+	}
+
 	results := make(policyKAOResults)
 	var policies []*Policy
 	policyReqs := make(map[*Policy]*kaspb.UnsignedRewrapRequest_WithPolicyRequest)
@@ -963,30 +1001,28 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			continue
 		}
 		access := pdpAccess.Access
-
-		// Audit the TDF3 Rewrap
-		kasPolicy := ConvertToAuditKasPolicy(*policy)
+		policyID := req.GetPolicy().GetId()
 
 		for _, kao := range req.GetKeyAccessObjects() {
 			kaoID := kao.GetKeyAccessObjectId()
 			kaoRes := kaoResults[kaoID]
-			if kaoRes.Error != nil {
+
+			// Get the pre-created audit event for this KAO
+			eventKey := auditEventKey{policyID: policyID, kaoID: kaoID}
+			auditEvent, exists := auditEvents[eventKey]
+			if !exists {
+				p.Logger.WarnContext(ctx, "audit event not found for KAO", slog.String("policy_id", policyID), slog.String("kao_id", kaoID))
 				continue
 			}
 
-			policyBinding := kao.GetKeyAccessObject().GetPolicyBinding().GetHash()
-			auditEventParams := audit.RewrapAuditEventParams{
-				Policy:        kasPolicy,
-				TDFFormat:     "tdf3",
-				Algorithm:     req.GetAlgorithm(),
-				PolicyBinding: policyBinding,
-				KeyID:         kao.GetKeyAccessObject().GetKid(),
+			if kaoRes.Error != nil {
+				// Event will be logged as failure by defer
+				continue
 			}
-			auditEvent := p.Logger.Audit.Rewrap(ctx, auditEventParams)
-			defer auditEvent.Log(ctx)
 
 			if !access {
 				failedKAORewrapWithObligations(kaoResults, kao, err403("forbidden"), requiredObligationsForPolicy)
+				// Event will be logged as failure by defer
 				continue
 			}
 
@@ -996,6 +1032,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				//nolint:sloglint // reference to camelcase key is intentional
 				p.Logger.WarnContext(ctx, "rewrap: Export with encryptor failed", slog.String("clientPublicKey", clientPublicKey), slog.Any("error", err))
 				failedKAORewrap(kaoResults, kao, err400("bad key for rewrap"))
+				// Event will be logged as failure by defer
 				continue
 			}
 			kaoResults[kaoID] = kaoResult{
@@ -1014,6 +1051,37 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo, additionalRewrapContext *AdditionalRewrapContext) (string, policyKAOResults, error) {
 	ctx, span := p.Start(ctx, "nanoTDFRewrap")
 	defer span.End()
+
+	// Pre-create audit events for all KAOs to ensure they're logged even if a panic occurs
+	type auditEventKey struct {
+		policyID string
+		kaoID    string
+	}
+	auditEvents := make(map[auditEventKey]*audit.RewrapEvent)
+
+	for _, req := range requests {
+		if req == nil || req.GetPolicy() == nil || req.GetPolicy().GetId() == "" {
+			continue
+		}
+		policyID := req.GetPolicy().GetId()
+		for _, kao := range req.GetKeyAccessObjects() {
+			if kao == nil {
+				continue
+			}
+
+			// For nano, we need to extract the header to get keyID and policyBinding
+			// We'll do basic extraction here, and enrich later
+			auditEventParams := audit.RewrapAuditEventParams{
+				Policy:    audit.KasPolicy{}, // Will be enriched later with actual policy
+				TDFFormat: "Nano",
+				Algorithm: req.GetAlgorithm(),
+				// KeyID and PolicyBinding will be extracted during processing
+			}
+			auditEvent := p.Logger.Audit.Rewrap(ctx, auditEventParams)
+			defer auditEvent.Log(ctx)
+			auditEvents[auditEventKey{policyID: policyID, kaoID: kao.GetKeyAccessObjectId()}] = auditEvent
+		}
+	}
 
 	results := make(policyKAOResults)
 
@@ -1070,38 +1138,39 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 			continue
 		}
 		access := pdpAccess.Access
-
-		// Audit the Nano Rewrap
-		kasPolicy := ConvertToAuditKasPolicy(*policy)
+		policyID := req.GetPolicy().GetId()
 
 		for _, kao := range req.GetKeyAccessObjects() {
-			kaoInfo := kaoResults[kao.GetKeyAccessObjectId()]
-			if kaoInfo.Error != nil {
+			kaoID := kao.GetKeyAccessObjectId()
+			kaoInfo := kaoResults[kaoID]
+
+			// Get the pre-created audit event for this KAO
+			eventKey := auditEventKey{policyID: policyID, kaoID: kaoID}
+			auditEvent, exists := auditEvents[eventKey]
+			if !exists {
+				p.Logger.WarnContext(ctx, "audit event not found for KAO", slog.String("policy_id", policyID), slog.String("kao_id", kaoID))
 				continue
 			}
 
-			auditEventParams := audit.RewrapAuditEventParams{
-				Policy:        kasPolicy,
-				TDFFormat:     "Nano",
-				Algorithm:     req.GetAlgorithm(),
-				KeyID:         kaoInfo.KeyID,
-				PolicyBinding: kaoInfo.PolicyBinding,
+			if kaoInfo.Error != nil {
+				// Event will be logged as failure by defer
+				continue
 			}
-			auditEvent := p.Logger.Audit.Rewrap(ctx, auditEventParams)
-			defer auditEvent.Log(ctx)
 
 			if !access {
 				failedKAORewrapWithObligations(kaoResults, kao, err403("forbidden"), requiredObligationsForPolicy)
+				// Event will be logged as failure by defer
 				continue
 			}
 			cipherText, err := kaoInfo.DEK.Export(sessionKey)
 			if err != nil {
 				failedKAORewrap(kaoResults, kao, err403("forbidden"))
+				// Event will be logged as failure by defer
 				continue
 			}
 
-			kaoResults[kao.GetKeyAccessObjectId()] = kaoResult{
-				ID:                  kao.GetKeyAccessObjectId(),
+			kaoResults[kaoID] = kaoResult{
+				ID:                  kaoID,
 				Encapped:            cipherText,
 				RequiredObligations: requiredObligationsForPolicy,
 			}

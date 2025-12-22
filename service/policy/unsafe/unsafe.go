@@ -88,7 +88,7 @@ func (s *UnsafeService) UnsafeUpdateNamespace(ctx context.Context, req *connect.
 		ObjectType: audit.ObjectTypeNamespace,
 		ObjectID:   id,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
@@ -130,7 +130,7 @@ func (s *UnsafeService) UnsafeReactivateNamespace(ctx context.Context, req *conn
 		ObjectType: audit.ObjectTypeNamespace,
 		ObjectID:   id,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	original, err := s.dbClient.GetNamespace(ctx, id)
@@ -165,7 +165,7 @@ func (s *UnsafeService) UnsafeDeleteNamespace(ctx context.Context, req *connect.
 		ObjectType: audit.ObjectTypeNamespace,
 		ObjectID:   id,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	existing, err := s.dbClient.GetNamespace(ctx, id)
@@ -201,7 +201,7 @@ func (s *UnsafeService) UnsafeUpdateAttribute(ctx context.Context, req *connect.
 		ObjectType: audit.ObjectTypeAttributeDefinition,
 		ObjectID:   id,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
@@ -243,7 +243,7 @@ func (s *UnsafeService) UnsafeReactivateAttribute(ctx context.Context, req *conn
 		ObjectType: audit.ObjectTypeAttributeDefinition,
 		ObjectID:   id,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	original, err := s.dbClient.GetAttribute(ctx, id)
@@ -278,7 +278,7 @@ func (s *UnsafeService) UnsafeDeleteAttribute(ctx context.Context, req *connect.
 		ObjectType: audit.ObjectTypeAttributeDefinition,
 		ObjectID:   id,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	existing, err := s.dbClient.GetAttribute(ctx, id)
@@ -314,7 +314,7 @@ func (s *UnsafeService) UnsafeUpdateAttributeValue(ctx context.Context, req *con
 		ObjectType: audit.ObjectTypeAttributeValue,
 		ObjectID:   id,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
@@ -356,7 +356,7 @@ func (s *UnsafeService) UnsafeReactivateAttributeValue(ctx context.Context, req 
 		ObjectType: audit.ObjectTypeAttributeValue,
 		ObjectID:   id,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	original, err := s.dbClient.GetAttributeValue(ctx, id)
@@ -390,7 +390,7 @@ func (s *UnsafeService) UnsafeDeleteAttributeValue(ctx context.Context, req *con
 		ObjectType: audit.ObjectTypeAttributeValue,
 		ObjectID:   id,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	existing, err := s.dbClient.GetAttributeValue(ctx, id)
@@ -421,7 +421,7 @@ func (s *UnsafeService) UnsafeDeleteKasKey(ctx context.Context, req *connect.Req
 		ObjectType: audit.ObjectTypeKasRegistryKeys,
 		ObjectID:   id,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {

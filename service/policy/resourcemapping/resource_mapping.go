@@ -107,7 +107,7 @@ func (s ResourceMappingService) CreateResourceMappingGroup(ctx context.Context, 
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeResourceMappingGroup,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	rmGroup, err := s.dbClient.CreateResourceMappingGroup(ctx, req.Msg)
@@ -134,7 +134,7 @@ func (s ResourceMappingService) UpdateResourceMappingGroup(ctx context.Context, 
 		ObjectType: audit.ObjectTypeResourceMappingGroup,
 		ObjectID:   id,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	originalRmGroup, err := s.dbClient.GetResourceMappingGroup(ctx, id)
@@ -169,7 +169,7 @@ func (s ResourceMappingService) DeleteResourceMappingGroup(ctx context.Context, 
 		ObjectType: audit.ObjectTypeResourceMappingGroup,
 		ObjectID:   id,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	_, err := s.dbClient.DeleteResourceMappingGroup(ctx, id)
@@ -244,7 +244,7 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeResourceMapping,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	rm, err := s.dbClient.CreateResourceMapping(ctx, req.Msg)
@@ -273,7 +273,7 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 		ObjectType: audit.ObjectTypeResourceMapping,
 		ObjectID:   resourceMappingID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	originalRM, err := s.dbClient.GetResourceMapping(ctx, resourceMappingID)
@@ -312,7 +312,7 @@ func (s ResourceMappingService) DeleteResourceMapping(ctx context.Context,
 		ObjectType: audit.ObjectTypeResourceMapping,
 		ObjectID:   resourceMappingID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	_, err := s.dbClient.DeleteResourceMapping(ctx, resourceMappingID)

@@ -103,7 +103,7 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeKasRegistry,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	ks, err := s.dbClient.CreateKeyAccessServer(ctx, req.Msg)
@@ -166,7 +166,7 @@ func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 		ObjectType: audit.ObjectTypeKasRegistry,
 		ObjectID:   kasID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	original, err := s.dbClient.GetKeyAccessServer(ctx, kasID)
@@ -201,7 +201,7 @@ func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 		ObjectType: audit.ObjectTypeKasRegistry,
 		ObjectID:   kasID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	_, err := s.dbClient.DeleteKeyAccessServer(ctx, req.Msg.GetId())
@@ -238,7 +238,7 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, r *connect.Reque
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeKasRegistryKeys,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
@@ -287,7 +287,7 @@ func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Req
 		ObjectType: audit.ObjectTypeKasRegistryKeys,
 		ObjectID:   req.Msg.GetId(),
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	original, err := s.dbClient.GetKey(ctx, &kasr.GetKeyRequest_Id{
@@ -342,7 +342,7 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[
 		ActionType: audit.ActionTypeRead,
 		ObjectType: audit.ObjectTypeKasRegistryKeys,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	key, err := s.dbClient.GetKey(ctx, r.Msg.GetIdentifier())
@@ -399,7 +399,7 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 		ObjectType: audit.ObjectTypeKasRegistryKeys,
 		ObjectID:   objectID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	original, err := s.dbClient.GetKey(ctx, identifier)
@@ -474,7 +474,7 @@ func (s KeyAccessServerRegistry) SetBaseKey(ctx context.Context, r *connect.Requ
 		ObjectType: audit.ObjectTypeKasRegistryKeys,
 		ObjectID:   objectID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {

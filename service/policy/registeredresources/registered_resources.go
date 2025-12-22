@@ -91,7 +91,7 @@ func (s *RegisteredResourcesService) CreateRegisteredResource(ctx context.Contex
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeRegisteredResource,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "creating registered resource", slog.String("name", req.Msg.GetName()))
@@ -151,7 +151,7 @@ func (s *RegisteredResourcesService) UpdateRegisteredResource(ctx context.Contex
 		ObjectType: audit.ObjectTypeRegisteredResource,
 		ObjectID:   resourceID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "updating registered resource", slog.String("id", resourceID))
@@ -195,7 +195,7 @@ func (s *RegisteredResourcesService) DeleteRegisteredResource(ctx context.Contex
 		ObjectType: audit.ObjectTypeRegisteredResource,
 		ObjectID:   resourceID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "deleting registered resource", slog.String("id", resourceID))
@@ -221,7 +221,7 @@ func (s *RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.C
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeRegisteredResourceValue,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "creating registered resource value", slog.String("value", req.Msg.GetValue()))
@@ -297,7 +297,7 @@ func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.C
 		ObjectType: audit.ObjectTypeRegisteredResourceValue,
 		ObjectID:   valueID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "updating registered resource value", slog.String("id", valueID))
@@ -342,7 +342,7 @@ func (s *RegisteredResourcesService) DeleteRegisteredResourceValue(ctx context.C
 		ObjectType: audit.ObjectTypeRegisteredResourceValue,
 		ObjectID:   valueID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	s.logger.DebugContext(ctx, "deleting registered resource value", slog.String("id", valueID))

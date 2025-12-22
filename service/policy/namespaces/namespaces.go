@@ -130,7 +130,7 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Re
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeNamespace,
 	}
-	auditEvent := ns.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := ns.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 	rsp := &namespaces.CreateNamespaceResponse{}
 
@@ -166,7 +166,7 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *connect.Re
 		ObjectType: audit.ObjectTypeNamespace,
 		ObjectID:   namespaceID,
 	}
-	auditEvent := ns.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := ns.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	original, err := ns.dbClient.GetNamespace(ctx, namespaceID)
@@ -202,7 +202,7 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *connec
 		ObjectType: audit.ObjectTypeNamespace,
 		ObjectID:   namespaceID,
 	}
-	auditEvent := ns.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := ns.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	original, err := ns.dbClient.GetNamespace(ctx, namespaceID)
@@ -236,7 +236,7 @@ func (ns NamespacesService) RemoveKeyAccessServerFromNamespace(ctx context.Conte
 		ObjectType: audit.ObjectTypeKasAttributeNamespaceAssignment,
 		ObjectID:   fmt.Sprintf("%s-%s", grant.GetNamespaceId(), grant.GetKeyAccessServerId()),
 	}
-	auditEvent := ns.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := ns.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	namespaceKas, err := ns.dbClient.RemoveKeyAccessServerFromNamespace(ctx, grant)
@@ -259,7 +259,7 @@ func (ns NamespacesService) AssignPublicKeyToNamespace(ctx context.Context, r *c
 		ObjectType: audit.ObjectTypeKasAttributeNamespaceKeyAssignment,
 		ObjectID:   fmt.Sprintf("%s:%s", key.GetNamespaceId(), key.GetKeyId()),
 	}
-	auditEvent := ns.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := ns.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	namespaceKey, err := ns.dbClient.AssignPublicKeyToNamespace(ctx, key)
@@ -282,7 +282,7 @@ func (ns NamespacesService) RemovePublicKeyFromNamespace(ctx context.Context, r 
 		ObjectType: audit.ObjectTypeKasAttributeNamespaceKeyAssignment,
 		ObjectID:   fmt.Sprintf("%s:%s", key.GetNamespaceId(), key.GetKeyId()),
 	}
-	auditEvent := ns.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := ns.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	_, err := ns.dbClient.RemovePublicKeyFromNamespace(ctx, key)
@@ -312,7 +312,7 @@ func (ns NamespacesService) AssignCertificateToNamespace(ctx context.Context, r 
 		ObjectType: audit.ObjectTypeNamespaceCertificate,
 		ObjectID:   auditObjectID,
 	}
-	auditEvent := ns.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := ns.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	// Create the certificate metadata
@@ -362,7 +362,7 @@ func (ns NamespacesService) RemoveCertificateFromNamespace(ctx context.Context, 
 		ObjectType: audit.ObjectTypeNamespaceCertificate,
 		ObjectID:   fmt.Sprintf("%s:%s", auditNamespaceID, cert.GetCertificateId()),
 	}
-	auditEvent := ns.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := ns.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	err := ns.dbClient.RemoveCertificateFromNamespace(ctx, namespaceIdentifier, cert.GetCertificateId())

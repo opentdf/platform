@@ -18,7 +18,7 @@ func TestDeferredPolicyCRUD_Success(t *testing.T) {
 			ObjectID:   "test-id",
 		}
 
-		auditEvent := l.DeferPolicyCRUD(ctx, auditParams)
+		auditEvent := l.PolicyCRUD(ctx, auditParams)
 		defer auditEvent.Log()
 
 		// Simulate successful operation
@@ -45,7 +45,7 @@ func TestDeferredPolicyCRUD_Failure(t *testing.T) {
 			ObjectID:   "test-id",
 		}
 
-		auditEvent := l.DeferPolicyCRUD(ctx, auditParams)
+		auditEvent := l.PolicyCRUD(ctx, auditParams)
 		defer auditEvent.Log()
 
 		// Simulate operation failure - don't call Success()
@@ -66,7 +66,7 @@ func TestDeferredPolicyCRUD_PanicRecovery(t *testing.T) {
 			ObjectID:   "test-id",
 		}
 
-		auditEvent := l.DeferPolicyCRUD(ctx, auditParams)
+		auditEvent := l.PolicyCRUD(ctx, auditParams)
 		defer auditEvent.Log()
 
 		// Simulate panic during operation
@@ -94,7 +94,7 @@ func TestDeferredPolicyCRUD_ContextCancellation(t *testing.T) {
 	}
 
 	func() {
-		auditEvent := l.DeferPolicyCRUD(ctx, auditParams)
+		auditEvent := l.PolicyCRUD(ctx, auditParams)
 		defer auditEvent.Log()
 
 		// Cancel the context to simulate network cancellation
@@ -183,7 +183,7 @@ func TestDeferredPolicyCRUD_MultipleCallsIdempotent(t *testing.T) {
 			ObjectID:   "test-id",
 		}
 
-		auditEvent := l.DeferPolicyCRUD(ctx, auditParams)
+		auditEvent := l.PolicyCRUD(ctx, auditParams)
 		defer auditEvent.Log()
 
 		created := &policy.Attribute{
@@ -221,7 +221,7 @@ func TestDeferredPolicyCRUD_UpdateWithOriginalAndUpdated(t *testing.T) {
 			Original:   original,
 		}
 
-		auditEvent := l.DeferPolicyCRUD(ctx, auditParams)
+		auditEvent := l.PolicyCRUD(ctx, auditParams)
 		defer auditEvent.Log()
 
 		// Simulate successful update

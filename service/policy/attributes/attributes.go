@@ -88,7 +88,7 @@ func (s *AttributesService) CreateAttribute(ctx context.Context,
 		ObjectType: audit.ObjectTypeAttributeDefinition,
 		ActionType: audit.ActionTypeCreate,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
@@ -183,7 +183,7 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 		ObjectType: audit.ObjectTypeAttributeDefinition,
 		ObjectID:   attributeID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	original, err := s.dbClient.GetAttribute(ctx, attributeID)
@@ -218,7 +218,7 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 		ActionType: audit.ActionTypeUpdate,
 		ObjectID:   attributeID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	original, err := s.dbClient.GetAttribute(ctx, attributeID)
@@ -252,7 +252,7 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 		ObjectType: audit.ObjectTypeAttributeValue,
 		ActionType: audit.ActionTypeCreate,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
@@ -321,7 +321,7 @@ func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *conne
 		ObjectType: audit.ObjectTypeAttributeValue,
 		ObjectID:   attributeID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	original, err := s.dbClient.GetAttributeValue(ctx, attributeID)
@@ -354,7 +354,7 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *c
 		ActionType: audit.ActionTypeDelete,
 		ObjectID:   attributeID,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	original, err := s.dbClient.GetAttributeValue(ctx, attributeID)
@@ -387,7 +387,7 @@ func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Conte
 		ActionType: audit.ActionTypeDelete,
 		ObjectType: audit.ObjectTypeKasAttributeDefinitionAssignment,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	attributeKas, err := s.dbClient.RemoveKeyAccessServerFromAttribute(ctx, req.Msg.GetAttributeKeyAccessServer())
@@ -416,7 +416,7 @@ func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, 
 		ActionType: audit.ActionTypeDelete,
 		ObjectType: audit.ObjectTypeKasAttributeValueAssignment,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	valueKas, err := s.dbClient.RemoveKeyAccessServerFromValue(ctx, req.Msg.GetValueKeyAccessServer())
@@ -440,7 +440,7 @@ func (s *AttributesService) AssignPublicKeyToAttribute(ctx context.Context, r *c
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeKasAttributeDefinitionKeyAssignment,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	ak, err := s.dbClient.AssignPublicKeyToAttribute(ctx, r.Msg.GetAttributeKey())
@@ -463,7 +463,7 @@ func (s *AttributesService) RemovePublicKeyFromAttribute(ctx context.Context, r 
 		ActionType: audit.ActionTypeDelete,
 		ObjectType: audit.ObjectTypeKasAttributeDefinitionKeyAssignment,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	ak, err := s.dbClient.RemovePublicKeyFromAttribute(ctx, r.Msg.GetAttributeKey())
@@ -485,7 +485,7 @@ func (s *AttributesService) AssignPublicKeyToValue(ctx context.Context, r *conne
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeKasAttributeValueKeyAssignment,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	vk, err := s.dbClient.AssignPublicKeyToValue(ctx, r.Msg.GetValueKey())
@@ -508,7 +508,7 @@ func (s *AttributesService) RemovePublicKeyFromValue(ctx context.Context, r *con
 		ActionType: audit.ActionTypeDelete,
 		ObjectType: audit.ObjectTypeKasAttributeValueKeyAssignment,
 	}
-	auditEvent := s.logger.Audit.DeferPolicyCRUD(ctx, auditParams)
+	auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
 	defer auditEvent.Log()
 
 	vk, err := s.dbClient.RemovePublicKeyFromValue(ctx, r.Msg.GetValueKey())

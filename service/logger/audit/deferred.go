@@ -94,11 +94,9 @@ func (a *Logger) PolicyCRUD(ctx context.Context, params PolicyEventParams) *Poli
 		panic("audit transaction missing from context in PolicyCRUD")
 	}
 
-	// Store a reference to params for mutation
-	paramsCopy := params
 	return &PolicyCRUDEvent{
 		deferred: &deferred[PolicyEventParams]{
-			params: paramsCopy,
+			params: params,
 			onSuccess: func(ctx context.Context, p PolicyEventParams) {
 				a.PolicyCRUDSuccess(ctx, p)
 			},
@@ -195,11 +193,10 @@ func (a *Logger) Decision(ctx context.Context, entityChainID string, resourceAtt
 		EntityChainEntitlements: []EntityChainEntitlement{},
 		EntityDecisions:         []EntityDecision{},
 	}
-	paramsCopy := params
 
 	return &GetDecisionEvent{
 		deferred: &deferred[GetDecisionEventParams]{
-			params: paramsCopy,
+			params: params,
 			onSuccess: func(ctx context.Context, p GetDecisionEventParams) {
 				a.getDecisionBase(ctx, p)
 			},
@@ -260,11 +257,10 @@ func (a *Logger) DecisionV2(ctx context.Context, entityID string, actionName str
 		ObligationsSatisfied:           false,
 		ResourceDecisions:              nil,
 	}
-	paramsCopy := params
 
 	return &GetDecisionV2Event{
 		deferred: &deferred[GetDecisionV2EventParams]{
-			params: paramsCopy,
+			params: params,
 			onSuccess: func(ctx context.Context, p GetDecisionV2EventParams) {
 				a.getDecisionV2Base(ctx, p)
 			},

@@ -1,0 +1,11 @@
+-- +goose Up
+-- +goose StatementBegin
+-- Note: Timestamp type changes not needed for SQLite (all timestamps are TEXT)
+-- Triggers already created in previous migration
+-- This migration kept as no-op for ordering consistency
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+-- No-op
+-- +goose StatementEnd

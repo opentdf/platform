@@ -1,0 +1,11 @@
+-- +goose Up
+-- +goose StatementBegin
+-- Note: client_id column already added in 20250703000000 for SQLite
+-- This migration is a no-op as we included the client_id column
+-- in the initial obligation_triggers table creation
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+-- No-op
+-- +goose StatementEnd

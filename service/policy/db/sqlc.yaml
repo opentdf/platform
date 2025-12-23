@@ -1,5 +1,6 @@
 version: '2'
 sql:
+  # PostgreSQL configuration (primary)
   - engine: postgresql
     queries: queries
     schema: migrations
@@ -15,3 +16,15 @@ sql:
           - db_type: uuid
             go_type:
               type: string
+
+  # SQLite configuration (alternative)
+  - engine: sqlite
+    queries: queries_sqlite
+    schema: migrations_sqlite
+    gen:
+      go:
+        package: sqlite
+        out: sqlite
+        emit_json_tags: true
+        emit_sql_as_comment: true
+        json_tags_case_style: snake

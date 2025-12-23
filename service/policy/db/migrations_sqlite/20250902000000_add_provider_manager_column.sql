@@ -1,0 +1,11 @@
+-- +goose Up
+-- +goose StatementBegin
+-- Note: manager column already added in 20250429000001 for SQLite
+-- This migration is a no-op as we included the manager column
+-- in the initial provider_config table creation
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+-- No-op
+-- +goose StatementEnd

@@ -1,0 +1,11 @@
+-- +goose Up
+-- +goose StatementBegin
+-- Note: PostgreSQL uses complex triggers to restrict key deletion
+-- For SQLite, this restriction is handled in the application layer
+-- The PolicyDBClient validates key mappings before allowing deletion
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+-- No-op
+-- +goose StatementEnd

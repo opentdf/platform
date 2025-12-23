@@ -1,0 +1,11 @@
+-- +goose Up
+-- +goose StatementBegin
+-- Note: legacy column and partial index already added in 20250429000001 for SQLite
+-- This migration is a no-op as we included it in the initial key_access_server_keys
+-- table creation for simplicity
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+-- No-op
+-- +goose StatementEnd

@@ -1,0 +1,11 @@
+-- +goose Up
+-- +goose StatementBegin
+-- Note: Unique constraint on (provider_name, manager) already added in 20250429000001
+-- This migration is a no-op for SQLite as we included the manager column
+-- and composite unique constraint in the initial table creation
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+-- No-op
+-- +goose StatementEnd

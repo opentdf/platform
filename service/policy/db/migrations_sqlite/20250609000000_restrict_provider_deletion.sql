@@ -1,0 +1,12 @@
+-- +goose Up
+-- +goose StatementBegin
+-- Note: PostgreSQL uses a trigger to restrict provider_config deletion
+-- when keys reference it. For SQLite:
+-- 1. The REFERENCES constraint on key_access_server_keys.provider_config_id handles this
+-- 2. Additional app layer validation in PolicyDBClient
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+-- No-op
+-- +goose StatementEnd

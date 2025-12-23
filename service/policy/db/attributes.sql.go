@@ -80,6 +80,11 @@ func (q *Queries) deleteAttribute(ctx context.Context, id string) (int64, error)
 }
 
 const getAttribute = `-- name: getAttribute :one
+WITH params AS (
+    SELECT
+        $1::uuid as id,
+        REGEXP_REPLACE($2::text, '^https?://', '') as fqn
+)
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -107,6 +112,7 @@ SELECT
     fqns.fqn,
     defk.keys as keys
 FROM attribute_definitions ad
+CROSS JOIN params
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 LEFT JOIN (
     SELECT
@@ -139,8 +145,8 @@ LEFT JOIN (
     INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
     GROUP BY k.definition_id
 ) defk ON ad.id = defk.definition_id
-WHERE ($1::uuid IS NULL OR ad.id = $1::uuid)
-  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
+WHERE (params.id IS NULL OR ad.id = params.id)
+  AND (params.fqn IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = params.fqn)
 GROUP BY ad.id, n.name, fqns.fqn, defk.keys
 `
 
@@ -165,6 +171,11 @@ type getAttributeRow struct {
 
 // getAttribute
 //
+//	WITH params AS (
+//	    SELECT
+//	        $1::uuid as id,
+//	        REGEXP_REPLACE($2::text, '^https?://', '') as fqn
+//	)
 //	SELECT
 //	    ad.id,
 //	    ad.name as attribute_name,
@@ -192,6 +203,7 @@ type getAttributeRow struct {
 //	    fqns.fqn,
 //	    defk.keys as keys
 //	FROM attribute_definitions ad
+//	CROSS JOIN params
 //	LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 //	LEFT JOIN (
 //	    SELECT
@@ -224,8 +236,8 @@ type getAttributeRow struct {
 //	    INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
 //	    GROUP BY k.definition_id
 //	) defk ON ad.id = defk.definition_id
-//	WHERE ($1::uuid IS NULL OR ad.id = $1::uuid)
-//	  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
+//	WHERE (params.id IS NULL OR ad.id = params.id)
+//	  AND (params.fqn IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = params.fqn)
 //	GROUP BY ad.id, n.name, fqns.fqn, defk.keys
 func (q *Queries) getAttribute(ctx context.Context, arg getAttributeParams) (getAttributeRow, error) {
 	row := q.db.QueryRow(ctx, getAttribute, arg.ID, arg.Fqn)
@@ -737,6 +749,11 @@ func (q *Queries) listAttributesByDefOrValueFqns(ctx context.Context, fqns []str
 
 const listAttributesDetail = `-- name: listAttributesDetail :many
 
+WITH params AS (
+    SELECT
+        NULLIF($4, '')::uuid as namespace_id,
+        NULLIF($5, '') as namespace_name
+)
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -756,6 +773,7 @@ SELECT
     fqns.fqn,
     COUNT(*) OVER() AS total
 FROM attribute_definitions ad
+CROSS JOIN params
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 LEFT JOIN (
   SELECT
@@ -769,19 +787,19 @@ LEFT JOIN (
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 WHERE
     ($1::BOOLEAN IS NULL OR ad.active = $1) AND
-    (NULLIF($2, '') IS NULL OR ad.namespace_id = $2::uuid) AND 
-    (NULLIF($3, '') IS NULL OR n.name = $3) 
+    (params.namespace_id IS NULL OR ad.namespace_id = params.namespace_id) AND 
+    (params.namespace_name IS NULL OR n.name = params.namespace_name) 
 GROUP BY ad.id, n.name, fqns.fqn
-LIMIT $5 
-OFFSET $4
+LIMIT $3 
+OFFSET $2
 `
 
 type listAttributesDetailParams struct {
 	Active        pgtype.Bool `json:"active"`
-	NamespaceID   interface{} `json:"namespace_id"`
-	NamespaceName interface{} `json:"namespace_name"`
 	Offset        int32       `json:"offset_"`
 	Limit         int32       `json:"limit_"`
+	NamespaceID   interface{} `json:"namespace_id"`
+	NamespaceName interface{} `json:"namespace_name"`
 }
 
 type listAttributesDetailRow struct {
@@ -801,6 +819,11 @@ type listAttributesDetailRow struct {
 // ATTRIBUTES
 // --------------------------------------------------------------
 //
+//	WITH params AS (
+//	    SELECT
+//	        NULLIF($4, '')::uuid as namespace_id,
+//	        NULLIF($5, '') as namespace_name
+//	)
 //	SELECT
 //	    ad.id,
 //	    ad.name as attribute_name,
@@ -820,6 +843,7 @@ type listAttributesDetailRow struct {
 //	    fqns.fqn,
 //	    COUNT(*) OVER() AS total
 //	FROM attribute_definitions ad
+//	CROSS JOIN params
 //	LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 //	LEFT JOIN (
 //	  SELECT
@@ -833,18 +857,18 @@ type listAttributesDetailRow struct {
 //	LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 //	WHERE
 //	    ($1::BOOLEAN IS NULL OR ad.active = $1) AND
-//	    (NULLIF($2, '') IS NULL OR ad.namespace_id = $2::uuid) AND
-//	    (NULLIF($3, '') IS NULL OR n.name = $3)
+//	    (params.namespace_id IS NULL OR ad.namespace_id = params.namespace_id) AND
+//	    (params.namespace_name IS NULL OR n.name = params.namespace_name)
 //	GROUP BY ad.id, n.name, fqns.fqn
-//	LIMIT $5
-//	OFFSET $4
+//	LIMIT $3
+//	OFFSET $2
 func (q *Queries) listAttributesDetail(ctx context.Context, arg listAttributesDetailParams) ([]listAttributesDetailRow, error) {
 	rows, err := q.db.Query(ctx, listAttributesDetail,
 		arg.Active,
-		arg.NamespaceID,
-		arg.NamespaceName,
 		arg.Offset,
 		arg.Limit,
+		arg.NamespaceID,
+		arg.NamespaceName,
 	)
 	if err != nil {
 		return nil, err

@@ -8,6 +8,11 @@ VALUES ($1, $2)
 RETURNING id;
 
 -- name: getRegisteredResource :one
+WITH params AS (
+    SELECT
+        NULLIF(@id, '')::UUID as id,
+        NULLIF(@name, '')::VARCHAR as name
+)
 SELECT
     r.id,
     r.name,
@@ -19,10 +24,11 @@ SELECT
         )
     ) FILTER (WHERE v.id IS NOT NULL) as values
 FROM registered_resources r
+CROSS JOIN params
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 WHERE
-    (NULLIF(@id, '') IS NULL OR r.id = @id::UUID) AND
-    (NULLIF(@name, '') IS NULL OR r.name = @name::VARCHAR)
+    (params.id IS NULL OR r.id = params.id) AND
+    (params.name IS NULL OR r.name = params.name)
 GROUP BY r.id;
 
 -- name: listRegisteredResources :many
@@ -94,6 +100,12 @@ VALUES ($1, $2, $3)
 RETURNING id;
 
 -- name: getRegisteredResourceValue :one
+WITH params AS (
+    SELECT
+        NULLIF(@id, '')::UUID as id,
+        NULLIF(@name, '')::VARCHAR as name,
+        NULLIF(@value, '')::VARCHAR as value
+)
 SELECT
     v.id,
     v.registered_resource_id,
@@ -113,23 +125,27 @@ SELECT
     	)
     ) FILTER (WHERE rav.id IS NOT NULL) as action_attribute_values
 FROM registered_resource_values v
+CROSS JOIN params
 JOIN registered_resources r ON v.registered_resource_id = r.id
 LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
 LEFT JOIN actions a on rav.action_id = a.id
 LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE
-    (NULLIF(@id, '') IS NULL OR v.id = @id::UUID) AND
-    (NULLIF(@name, '') IS NULL OR r.name = @name::VARCHAR) AND
-    (NULLIF(@value, '') IS NULL OR v.value = @value::VARCHAR)
+    (params.id IS NULL OR v.id = params.id) AND
+    (params.name IS NULL OR r.name = params.name) AND
+    (params.value IS NULL OR v.value = params.value)
 GROUP BY v.id;
 
 -- name: listRegisteredResourceValues :many
-WITH counted AS (
-    SELECT COUNT(id) AS total
-    FROM registered_resource_values
-    WHERE
-        NULLIF(@registered_resource_id, '') IS NULL OR registered_resource_id = @registered_resource_id::UUID
+WITH params AS (
+    SELECT NULLIF(@registered_resource_id, '')::UUID as registered_resource_id
+),
+counted AS (
+    SELECT COUNT(v.id) AS total
+    FROM registered_resource_values v
+    CROSS JOIN params
+    WHERE params.registered_resource_id IS NULL OR v.registered_resource_id = params.registered_resource_id
 )
 SELECT
     v.id,
@@ -151,6 +167,7 @@ SELECT
     ) FILTER (WHERE rav.id IS NOT NULL) as action_attribute_values,
     counted.total
 FROM registered_resource_values v
+CROSS JOIN params
 JOIN registered_resources r ON v.registered_resource_id = r.id
 LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
 LEFT JOIN actions a on rav.action_id = a.id
@@ -158,7 +175,7 @@ LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id  
 CROSS JOIN counted
 WHERE
-    NULLIF(@registered_resource_id, '') IS NULL OR v.registered_resource_id = @registered_resource_id::UUID
+    params.registered_resource_id IS NULL OR v.registered_resource_id = params.registered_resource_id
 GROUP BY v.id, counted.total
 LIMIT @limit_
 OFFSET @offset_;

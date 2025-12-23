@@ -106,6 +106,12 @@ func (q *Queries) deleteProviderConfig(ctx context.Context, id string) (int64, e
 }
 
 const getProviderConfig = `-- name: getProviderConfig :one
+WITH params AS (
+    SELECT
+        $1::uuid as id,
+        $2::text as name,
+        $3::text as manager
+)
 SELECT 
     pc.id,
     pc.provider_name,
@@ -113,9 +119,10 @@ SELECT
     pc.config,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS metadata
 FROM provider_config AS pc
-WHERE ($1::uuid IS NULL OR pc.id = $1::uuid)
-  AND ($2::text IS NULL OR pc.provider_name = $2::text)
-  AND ($3::text IS NULL OR pc.manager = $3::text)
+CROSS JOIN params
+WHERE (params.id IS NULL OR pc.id = params.id)
+  AND (params.name IS NULL OR pc.provider_name = params.name)
+  AND (params.manager IS NULL OR pc.manager = params.manager)
 `
 
 type getProviderConfigParams struct {
@@ -134,6 +141,12 @@ type getProviderConfigRow struct {
 
 // getProviderConfig
 //
+//	WITH params AS (
+//	    SELECT
+//	        $1::uuid as id,
+//	        $2::text as name,
+//	        $3::text as manager
+//	)
 //	SELECT
 //	    pc.id,
 //	    pc.provider_name,
@@ -141,9 +154,10 @@ type getProviderConfigRow struct {
 //	    pc.config,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS metadata
 //	FROM provider_config AS pc
-//	WHERE ($1::uuid IS NULL OR pc.id = $1::uuid)
-//	  AND ($2::text IS NULL OR pc.provider_name = $2::text)
-//	  AND ($3::text IS NULL OR pc.manager = $3::text)
+//	CROSS JOIN params
+//	WHERE (params.id IS NULL OR pc.id = params.id)
+//	  AND (params.name IS NULL OR pc.provider_name = params.name)
+//	  AND (params.manager IS NULL OR pc.manager = params.manager)
 func (q *Queries) getProviderConfig(ctx context.Context, arg getProviderConfigParams) (getProviderConfigRow, error) {
 	row := q.db.QueryRow(ctx, getProviderConfig, arg.ID, arg.Name, arg.Manager)
 	var i getProviderConfigRow

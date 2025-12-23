@@ -23,17 +23,16 @@ func TestDeferredPolicyCRUD_Success(t *testing.T) {
 
 		// Simulate successful operation
 		created := &policy.Attribute{
-			Id:   "test-id",
+			Id:   "test-id2",
 			Name: "test-attribute",
 		}
-		auditParams.Original = created
 		auditEvent.Success(ctx, created)
 	})
 
 	auditJSON := string(logEntry.Audit)
 	assert.Contains(t, auditJSON, `"type":"create"`, "should contain create action")
 	assert.Contains(t, auditJSON, `"result":"success"`, "should contain success result")
-	assert.Contains(t, auditJSON, `"id":"test-id"`, "should contain object ID")
+	assert.Contains(t, auditJSON, `"id":"test-id2"`, "should contain object ID")
 	assert.Contains(t, auditJSON, TestActorID, "should contain actor ID")
 }
 

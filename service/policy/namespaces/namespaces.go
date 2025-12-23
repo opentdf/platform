@@ -140,8 +140,8 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Re
 			return err
 		}
 
-		auditParams.ObjectID = n.GetId()
-		auditParams.Original = n
+		auditEvent.UpdateObjectID(n.GetId())
+		auditEvent.UpdateOriginal(n)
 		auditEvent.Success(ctx, n)
 
 		ns.logger.DebugContext(ctx, "created new namespace", slog.String("name", req.Msg.GetName()))
@@ -179,8 +179,7 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *connect.Re
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextUpdateFailed, slog.String("id", namespaceID))
 	}
 
-	auditParams.Original = original
-	auditParams.Updated = updated
+	auditEvent.UpdateOriginal(original)
 
 	auditEvent.Success(ctx, updated)
 	ns.logger.DebugContext(ctx, "updated namespace", slog.String("id", namespaceID))
@@ -215,8 +214,7 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *connec
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextDeletionFailed, slog.String("id", namespaceID))
 	}
 
-	auditParams.Original = original
-	auditParams.Updated = updated
+	auditEvent.UpdateOriginal(original)
 	auditEvent.Success(ctx, updated)
 	ns.logger.DebugContext(ctx, "soft-deleted namespace", slog.String("id", namespaceID))
 

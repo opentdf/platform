@@ -57,20 +57,22 @@ All deferred audit events follow a consistent three-step pattern:
 # Example: Policy CRUD Operation
 
 	func updateAttribute(ctx context.Context, logger *audit.Logger, id string, req *UpdateRequest) error {
+		// Create audit event with known parameters
+		auditEvent := logger.Audit.PolicyCRUD(ctx, audit.PolicyEventParams{
+			ActionType: audit.ActionTypeUpdate,
+			ObjectType: audit.ObjectTypeAttributeDefinition,
+			ObjectID:   id,
+		})
+		defer auditEvent.Log(ctx)
+
 		// Load the original object
 		original, err := loadAttribute(id)
 		if err != nil {
 			return err
 		}
 
-		// Create audit event with original state
-		auditEvent := logger.Audit.PolicyCRUD(ctx, audit.PolicyEventParams{
-			ActionType: audit.ActionTypeUpdate,
-			ObjectType: audit.ObjectTypeAttributeDefinition,
-			ObjectID:   id,
-			Original:   original,
-		})
-		defer auditEvent.Log(ctx)
+		// Update the event with the original state
+		auditEvent.UpdateOriginal(original)
 
 		// Apply updates
 		updated, err := applyUpdates(original, req)
@@ -244,11 +246,40 @@ func (a *Logger) PolicyCRUD(ctx context.Context, params PolicyEventParams) *Poli
 	}
 }
 
+// UpdateOriginal updates the original object state as it becomes available.
+// This should be called after the event is created if the original object wasn't available at creation time.
+func (d *PolicyCRUDEvent) UpdateOriginal(original proto.Message) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.completed {
+		panic(ErrAlreadyCompleted)
+	}
+
+	d.params.Original = original
+}
+
+// UpdateObjectID updates the object ID as it becomes available.
+// This should be called after the event is created if the object ID wasn't available at creation time.
+func (d *PolicyCRUDEvent) UpdateObjectID(objectID string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.completed {
+		panic(ErrAlreadyCompleted)
+	}
+
+	d.params.ObjectID = objectID
+}
+
 // Success marks the audit event as successful and logs it immediately.
 // The updated parameter should contain the updated object state (can be nil for creates).
 func (d *PolicyCRUDEvent) Success(ctx context.Context, updated proto.Message) {
+	d.mu.Lock()
 	// Update the params with the updated object
 	d.params.Updated = updated
+	d.mu.Unlock()
+
 	d.markSuccess(ctx)
 }
 

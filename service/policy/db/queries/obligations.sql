@@ -124,7 +124,7 @@ WITH counted AS (
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
-        (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = @namespace_id::UUID) AND
+        (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = NULLIF(@namespace_id::TEXT, '')::UUID) AND
         (NULLIF(@namespace_fqn::TEXT, '') IS NULL OR fqns.fqn = @namespace_fqn::VARCHAR)
 ),
 obligation_triggers_agg AS (
@@ -184,7 +184,7 @@ CROSS JOIN counted
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 WHERE
-    (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = @namespace_id::UUID) AND
+    (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = NULLIF(@namespace_id::TEXT, '')::UUID) AND
     (NULLIF(@namespace_fqn::TEXT, '') IS NULL OR fqns.fqn = @namespace_fqn::VARCHAR)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
 LIMIT @limit_
@@ -491,12 +491,12 @@ WITH ov_id AS (
     FROM obligation_values_standard ov
     JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
     WHERE
-        (NULLIF(@obligation_value_id::TEXT, '') IS NOT NULL AND ov.id = @obligation_value_id::UUID)
+        (NULLIF(@obligation_value_id::TEXT, '') IS NOT NULL AND ov.id = NULLIF(@obligation_value_id::TEXT, '')::UUID)
 ),
 a_id AS (
     SELECT id FROM actions
     WHERE
-        (NULLIF(@action_id::TEXT, '') IS NOT NULL AND id = @action_id::UUID)
+        (NULLIF(@action_id::TEXT, '') IS NOT NULL AND id = NULLIF(@action_id::TEXT, '')::UUID)
         OR
         (NULLIF(@action_name::TEXT, '') IS NOT NULL AND name = @action_name::TEXT)
 ),
@@ -507,7 +507,7 @@ av_id AS (
     JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
     LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
     WHERE
-        ((NULLIF(@attribute_value_id::TEXT, '') IS NOT NULL AND av.id = @attribute_value_id::UUID)
+        ((NULLIF(@attribute_value_id::TEXT, '') IS NOT NULL AND av.id = NULLIF(@attribute_value_id::TEXT, '')::UUID)
         OR
         (NULLIF(@attribute_value_fqn::TEXT, '') IS NOT NULL AND fqns.fqn = @attribute_value_fqn))
         AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
@@ -641,7 +641,7 @@ JOIN actions a ON ot.action_id = a.id
 JOIN attribute_values av ON ot.attribute_value_id = av.id
 LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 WHERE
-    (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = @namespace_id::UUID) AND
+    (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = NULLIF(@namespace_id::TEXT, '')::UUID) AND
     (NULLIF(@namespace_fqn::TEXT, '') IS NULL OR ns_fqns.fqn = @namespace_fqn::VARCHAR)
 ORDER BY ot.created_at DESC
 LIMIT @limit_

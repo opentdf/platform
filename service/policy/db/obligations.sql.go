@@ -151,12 +151,12 @@ WITH ov_id AS (
     FROM obligation_values_standard ov
     JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
     WHERE
-        (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = $1::UUID)
+        (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = NULLIF($1::TEXT, '')::UUID)
 ),
 a_id AS (
     SELECT id FROM actions
     WHERE
-        (NULLIF($2::TEXT, '') IS NOT NULL AND id = $2::UUID)
+        (NULLIF($2::TEXT, '') IS NOT NULL AND id = NULLIF($2::TEXT, '')::UUID)
         OR
         (NULLIF($3::TEXT, '') IS NOT NULL AND name = $3::TEXT)
 ),
@@ -166,7 +166,7 @@ av_id AS (
     JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
     LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
     WHERE
-        ((NULLIF($4::TEXT, '') IS NOT NULL AND av.id = $4::UUID)
+        ((NULLIF($4::TEXT, '') IS NOT NULL AND av.id = NULLIF($4::TEXT, '')::UUID)
         OR
         (NULLIF($5::TEXT, '') IS NOT NULL AND fqns.fqn = $5))
         AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
@@ -260,12 +260,12 @@ type createObligationTriggerRow struct {
 //	    FROM obligation_values_standard ov
 //	    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
 //	    WHERE
-//	        (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = $1::UUID)
+//	        (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = NULLIF($1::TEXT, '')::UUID)
 //	),
 //	a_id AS (
 //	    SELECT id FROM actions
 //	    WHERE
-//	        (NULLIF($2::TEXT, '') IS NOT NULL AND id = $2::UUID)
+//	        (NULLIF($2::TEXT, '') IS NOT NULL AND id = NULLIF($2::TEXT, '')::UUID)
 //	        OR
 //	        (NULLIF($3::TEXT, '') IS NOT NULL AND name = $3::TEXT)
 //	),
@@ -275,7 +275,7 @@ type createObligationTriggerRow struct {
 //	    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
 //	    LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
 //	    WHERE
-//	        ((NULLIF($4::TEXT, '') IS NOT NULL AND av.id = $4::UUID)
+//	        ((NULLIF($4::TEXT, '') IS NOT NULL AND av.id = NULLIF($4::TEXT, '')::UUID)
 //	        OR
 //	        (NULLIF($5::TEXT, '') IS NOT NULL AND fqns.fqn = $5))
 //	        AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
@@ -1351,7 +1351,7 @@ JOIN actions a ON ot.action_id = a.id
 JOIN attribute_values av ON ot.attribute_value_id = av.id
 LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 WHERE
-    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
+    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = NULLIF($1::TEXT, '')::UUID) AND
     (NULLIF($2::TEXT, '') IS NULL OR ns_fqns.fqn = $2::VARCHAR)
 ORDER BY ot.created_at DESC
 LIMIT $4
@@ -1428,7 +1428,7 @@ type listObligationTriggersRow struct {
 //	JOIN attribute_values av ON ot.attribute_value_id = av.id
 //	LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 //	WHERE
-//	    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
+//	    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = NULLIF($1::TEXT, '')::UUID) AND
 //	    (NULLIF($2::TEXT, '') IS NULL OR ns_fqns.fqn = $2::VARCHAR)
 //	ORDER BY ot.created_at DESC
 //	LIMIT $4
@@ -1465,7 +1465,7 @@ WITH counted AS (
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
-        (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
+        (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = NULLIF($1::TEXT, '')::UUID) AND
         (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
 ),
 obligation_triggers_agg AS (
@@ -1525,7 +1525,7 @@ CROSS JOIN counted
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 WHERE
-    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
+    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = NULLIF($1::TEXT, '')::UUID) AND
     (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
 LIMIT $4
@@ -1556,7 +1556,7 @@ type listObligationsRow struct {
 //	    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
 //	    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	    WHERE
-//	        (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
+//	        (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = NULLIF($1::TEXT, '')::UUID) AND
 //	        (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
 //	),
 //	obligation_triggers_agg AS (
@@ -1616,7 +1616,7 @@ type listObligationsRow struct {
 //	LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 //	LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 //	WHERE
-//	    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
+//	    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = NULLIF($1::TEXT, '')::UUID) AND
 //	    (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
 //	GROUP BY od.id, n.id, fqns.fqn, counted.total
 //	LIMIT $4

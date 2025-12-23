@@ -2,11 +2,14 @@ package audit
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/opentdf/platform/protocol/go/policy"
 	"google.golang.org/protobuf/proto"
 )
+
+var ErrAlreadyCompleted = errors.New("cannot update entitlements after event is completed")
 
 // deferred is the generic deferred audit implementation
 type deferred[T any] struct {
@@ -274,23 +277,55 @@ func (a *Logger) DecisionV2(ctx context.Context, entityID string, actionName str
 
 // UpdateEntitlements updates the entitlements as they are computed
 func (d *GetDecisionV2Event) UpdateEntitlements(entitlements map[string][]*policy.Action) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.completed {
+		panic(ErrAlreadyCompleted)
+	}
+
 	d.params.Entitlements = entitlements
 }
 
 // UpdateResourceDecisions updates the resource decisions as they are computed
 func (d *GetDecisionV2Event) UpdateResourceDecisions(resourceDecisions any) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.completed {
+		panic(ErrAlreadyCompleted)
+	}
+
 	d.params.ResourceDecisions = resourceDecisions
 }
 
 // UpdateObligations updates the obligation information as it is computed
 func (d *GetDecisionV2Event) UpdateObligations(fulfillable []string, satisfied bool) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.completed {
+		panic(ErrAlreadyCompleted)
+	}
+
 	d.params.FulfillableObligationValueFQNs = fulfillable
 	d.params.ObligationsSatisfied = satisfied
 }
 
-// Success marks the audit event with the final decision and logs it immediately.
-func (d *GetDecisionV2Event) Success(ctx context.Context, decision DecisionResult) {
+func (d *GetDecisionV2Event) UpdateDecisionResult(ctx context.Context, decision DecisionResult) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.completed {
+		panic(ErrAlreadyCompleted)
+	}
+
 	d.params.Decision = decision
+}
+
+// Success marks the audit event as successful with the final decision and logs it immediately.
+func (d *GetDecisionV2Event) Success(ctx context.Context, decision DecisionResult) {
+	d.UpdateDecisionResult(ctx, decision)
 	d.markSuccess(ctx)
 }
 

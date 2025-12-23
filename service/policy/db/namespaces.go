@@ -293,6 +293,12 @@ func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*po
 		return nil, db.ErrNotFound
 	}
 
+	// For SQLite: cascade deactivation to definitions and values
+	// (PostgreSQL handles this via trigger, this is a no-op for PostgreSQL)
+	if err := c.CascadeDeactivateNamespace(ctx, id); err != nil {
+		return nil, fmt.Errorf("failed to cascade deactivation: %w", err)
+	}
+
 	return &policy.Namespace{
 		Id:     id,
 		Active: &wrapperspb.BoolValue{Value: false},

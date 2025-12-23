@@ -74,6 +74,13 @@ func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	// For SQLite: extract and store selector values
+	// (PostgreSQL handles this via trigger, this is a no-op for PostgreSQL)
+	if err := c.UpdateSelectorValues(ctx, createdID, conditionJSON); err != nil {
+		c.logger.WarnContext(ctx, "failed to update selector values", "error", err)
+		// Don't fail the operation, just log the warning
+	}
+
 	return &policy.SubjectConditionSet{
 		Id:          createdID,
 		SubjectSets: subjectSets,
@@ -190,6 +197,15 @@ func (c PolicyDBClient) UpdateSubjectConditionSet(ctx context.Context, r *subjec
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
+	}
+
+	// For SQLite: extract and store selector values when condition is updated
+	// (PostgreSQL handles this via trigger, this is a no-op for PostgreSQL)
+	if conditionJSON != nil {
+		if err := c.UpdateSelectorValues(ctx, id, conditionJSON); err != nil {
+			c.logger.WarnContext(ctx, "failed to update selector values", "error", err)
+			// Don't fail the operation, just log the warning
+		}
 	}
 
 	return &policy.SubjectConditionSet{

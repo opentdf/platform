@@ -516,6 +516,12 @@ func (c PolicyDBClient) DeactivateAttribute(ctx context.Context, id string) (*po
 		return nil, db.ErrNotFound
 	}
 
+	// For SQLite: cascade deactivation to attribute values
+	// (PostgreSQL handles this via trigger, this is a no-op for PostgreSQL)
+	if err := c.CascadeDeactivateDefinition(ctx, id); err != nil {
+		return nil, fmt.Errorf("failed to cascade deactivation: %w", err)
+	}
+
 	return &policy.Attribute{
 		Id:     id,
 		Active: &wrapperspb.BoolValue{Value: false},

@@ -411,6 +411,13 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	// For SQLite: emulate key rotation trigger
+	// (PostgreSQL handles this via maintain_active_key trigger, this is a no-op for PostgreSQL)
+	if _, err := c.EmulateKeyRotation(ctx, id, kasID, int(algo)); err != nil {
+		c.logger.ErrorContext(ctx, "failed to emulate key rotation", "error", err)
+		// Don't fail the operation, just log the error (matching PostgreSQL trigger behavior)
+	}
+
 	key, err := c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{
 		Id: id,
 	})
@@ -645,6 +652,12 @@ func (c PolicyDBClient) UnsafeDeleteKey(ctx context.Context, toDelete *policy.Ka
 	}
 	if toDelete.GetKey().GetKeyId() != kid {
 		return nil, errors.Join(db.ErrKIDMismatch, fmt.Errorf("key ID mismatch: expected %s, got %s", toDelete.GetKey().GetKeyId(), kid))
+	}
+
+	// For SQLite: validate key is not mapped before deletion
+	// (PostgreSQL handles this via trigger, this is a no-op for PostgreSQL)
+	if err := c.ValidateKeyNotMapped(ctx, id); err != nil {
+		return nil, err
 	}
 
 	count, err := c.queries.deleteKey(ctx, id)

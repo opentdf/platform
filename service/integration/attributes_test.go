@@ -1472,7 +1472,7 @@ func (s *AttributesSuite) Test_GetAttribute_ByIdAndFqn_ReturnSameResult() {
 		s.Equal(attrByID.GetName(), attrByFQN.GetName(), "Name should match for FQN: %s", fqn)
 		s.Equal(attrByID.GetRule(), attrByFQN.GetRule(), "Rule should match for FQN: %s", fqn)
 		s.Equal(attrByID.GetNamespace().GetId(), attrByFQN.GetNamespace().GetId(), "Namespace ID should match for FQN: %s", fqn)
-		s.Equal(len(attrByID.GetValues()), len(attrByFQN.GetValues()), "Number of values should match for FQN: %s", fqn)
+		s.Len(attrByID.GetValues(), len(attrByFQN.GetValues()), "Number of values should match for FQN: %s", fqn)
 	}
 }
 

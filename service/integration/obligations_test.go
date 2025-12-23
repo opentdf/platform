@@ -1883,6 +1883,5 @@ func (s *ObligationsSuite) Test_GetObligation_ByIdAndFqn_ReturnSameResult() {
 	s.Equal(oblByID.GetId(), oblByFQN.GetId(), "ID should match")
 	s.Equal(oblByID.GetName(), oblByFQN.GetName(), "Name should match")
 	s.Equal(oblByID.GetNamespace().GetId(), oblByFQN.GetNamespace().GetId(), "Namespace ID should match")
-	s.Equal(len(oblByID.GetValues()), len(oblByFQN.GetValues()), "Number of values should match")
+	s.Len(oblByID.GetValues(), len(oblByFQN.GetValues()), "Number of values should match")
 }
-

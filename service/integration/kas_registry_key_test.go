@@ -2318,6 +2318,3 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_AllParameterCombinations() {
 	s.Require().NoError(err, "Should successfully query with KAS ID and key ID")
 	s.NotNil(mappingsByKeyID)
 }
-
-
-

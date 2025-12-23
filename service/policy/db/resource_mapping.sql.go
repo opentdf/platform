@@ -177,21 +177,25 @@ func (q *Queries) getResourceMappingGroup(ctx context.Context, id string) (getRe
 
 const listResourceMappingGroups = `-- name: listResourceMappingGroups :many
 
+WITH params AS (
+    SELECT NULLIF($3, '')::uuid as namespace_id
+)
 SELECT rmg.id,
     rmg.namespace_id,
     rmg.name,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', rmg.metadata -> 'labels', 'created_at', rmg.created_at, 'updated_at', rmg.updated_at)) as metadata,
     COUNT(*) OVER() AS total
 FROM resource_mapping_groups rmg
-WHERE (NULLIF($1, '') IS NULL OR rmg.namespace_id = $1::uuid) 
-LIMIT $3 
-OFFSET $2
+CROSS JOIN params
+WHERE (params.namespace_id IS NULL OR rmg.namespace_id = params.namespace_id) 
+LIMIT $2 
+OFFSET $1
 `
 
 type listResourceMappingGroupsParams struct {
-	NamespaceID interface{} `json:"namespace_id"`
 	Offset      int32       `json:"offset_"`
 	Limit       int32       `json:"limit_"`
+	NamespaceID interface{} `json:"namespace_id"`
 }
 
 type listResourceMappingGroupsRow struct {
@@ -206,17 +210,21 @@ type listResourceMappingGroupsRow struct {
 // RESOURCE MAPPING GROUPS
 // --------------------------------------------------------------
 //
+//	WITH params AS (
+//	    SELECT NULLIF($3, '')::uuid as namespace_id
+//	)
 //	SELECT rmg.id,
 //	    rmg.namespace_id,
 //	    rmg.name,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', rmg.metadata -> 'labels', 'created_at', rmg.created_at, 'updated_at', rmg.updated_at)) as metadata,
 //	    COUNT(*) OVER() AS total
 //	FROM resource_mapping_groups rmg
-//	WHERE (NULLIF($1, '') IS NULL OR rmg.namespace_id = $1::uuid)
-//	LIMIT $3
-//	OFFSET $2
+//	CROSS JOIN params
+//	WHERE (params.namespace_id IS NULL OR rmg.namespace_id = params.namespace_id)
+//	LIMIT $2
+//	OFFSET $1
 func (q *Queries) listResourceMappingGroups(ctx context.Context, arg listResourceMappingGroupsParams) ([]listResourceMappingGroupsRow, error) {
-	rows, err := q.db.Query(ctx, listResourceMappingGroups, arg.NamespaceID, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, listResourceMappingGroups, arg.Offset, arg.Limit, arg.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -243,6 +251,9 @@ func (q *Queries) listResourceMappingGroups(ctx context.Context, arg listResourc
 
 const listResourceMappings = `-- name: listResourceMappings :many
 
+WITH params AS (
+    SELECT NULLIF($3, '')::UUID as group_id
+)
 SELECT
     m.id,
     JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
@@ -256,20 +267,21 @@ SELECT
         )
     ) AS group,
     COUNT(*) OVER() AS total
-FROM resource_mappings m 
+FROM resource_mappings m
+CROSS JOIN params 
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
-WHERE (NULLIF($1, '') IS NULL OR m.group_id = $1::UUID)
+WHERE (params.group_id IS NULL OR m.group_id = params.group_id)
 GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id
-LIMIT $3 
-OFFSET $2
+LIMIT $2 
+OFFSET $1
 `
 
 type listResourceMappingsParams struct {
-	GroupID interface{} `json:"group_id"`
 	Offset  int32       `json:"offset_"`
 	Limit   int32       `json:"limit_"`
+	GroupID interface{} `json:"group_id"`
 }
 
 type listResourceMappingsRow struct {
@@ -285,6 +297,9 @@ type listResourceMappingsRow struct {
 // RESOURCE MAPPING
 // --------------------------------------------------------------
 //
+//	WITH params AS (
+//	    SELECT NULLIF($3, '')::UUID as group_id
+//	)
 //	SELECT
 //	    m.id,
 //	    JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
@@ -299,15 +314,16 @@ type listResourceMappingsRow struct {
 //	    ) AS group,
 //	    COUNT(*) OVER() AS total
 //	FROM resource_mappings m
+//	CROSS JOIN params
 //	LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 //	LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 //	LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
-//	WHERE (NULLIF($1, '') IS NULL OR m.group_id = $1::UUID)
+//	WHERE (params.group_id IS NULL OR m.group_id = params.group_id)
 //	GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id
-//	LIMIT $3
-//	OFFSET $2
+//	LIMIT $2
+//	OFFSET $1
 func (q *Queries) listResourceMappings(ctx context.Context, arg listResourceMappingsParams) ([]listResourceMappingsRow, error) {
-	rows, err := q.db.Query(ctx, listResourceMappings, arg.GroupID, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, listResourceMappings, arg.Offset, arg.Limit, arg.GroupID)
 	if err != nil {
 		return nil, err
 	}

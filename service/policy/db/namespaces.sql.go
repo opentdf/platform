@@ -213,6 +213,11 @@ func (q *Queries) getCertificateByPEM(ctx context.Context, pem string) (getCerti
 }
 
 const getNamespace = `-- name: getNamespace :one
+WITH params AS (
+    SELECT
+        $1::uuid as id,
+        REGEXP_REPLACE($2::text, '^https?://', '') as name
+)
 SELECT
     ns.id,
     ns.name,
@@ -228,6 +233,7 @@ SELECT
     nmp_keys.keys as keys,
     nmp_certs.certs as certs
 FROM attribute_namespaces ns
+CROSS JOIN params
 LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
 LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
@@ -264,8 +270,8 @@ LEFT JOIN (
     GROUP BY c.namespace_id
 ) nmp_certs ON ns.id = nmp_certs.namespace_id
 WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL
-  AND ($1::uuid IS NULL OR ns.id = $1::uuid)
-  AND ($2::text IS NULL OR ns.name = REGEXP_REPLACE($2::text, '^https?://', ''))
+  AND (params.id IS NULL OR ns.id = params.id)
+  AND (params.name IS NULL OR ns.name = params.name)
 GROUP BY ns.id, fqns.fqn, nmp_keys.keys, nmp_certs.certs
 `
 
@@ -287,6 +293,11 @@ type getNamespaceRow struct {
 
 // getNamespace
 //
+//	WITH params AS (
+//	    SELECT
+//	        $1::uuid as id,
+//	        REGEXP_REPLACE($2::text, '^https?://', '') as name
+//	)
 //	SELECT
 //	    ns.id,
 //	    ns.name,
@@ -302,6 +313,7 @@ type getNamespaceRow struct {
 //	    nmp_keys.keys as keys,
 //	    nmp_certs.certs as certs
 //	FROM attribute_namespaces ns
+//	CROSS JOIN params
 //	LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
 //	LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
 //	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
@@ -338,8 +350,8 @@ type getNamespaceRow struct {
 //	    GROUP BY c.namespace_id
 //	) nmp_certs ON ns.id = nmp_certs.namespace_id
 //	WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL
-//	  AND ($1::uuid IS NULL OR ns.id = $1::uuid)
-//	  AND ($2::text IS NULL OR ns.name = REGEXP_REPLACE($2::text, '^https?://', ''))
+//	  AND (params.id IS NULL OR ns.id = params.id)
+//	  AND (params.name IS NULL OR ns.name = params.name)
 //	GROUP BY ns.id, fqns.fqn, nmp_keys.keys, nmp_certs.certs
 func (q *Queries) getNamespace(ctx context.Context, arg getNamespaceParams) (getNamespaceRow, error) {
 	row := q.db.QueryRow(ctx, getNamespace, arg.ID, arg.Name)

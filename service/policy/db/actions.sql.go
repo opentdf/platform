@@ -167,15 +167,21 @@ func (q *Queries) deleteCustomAction(ctx context.Context, id string) (int64, err
 }
 
 const getAction = `-- name: getAction :one
+WITH params AS (
+    SELECT
+        $1::uuid as id,
+        $2::text as name
+)
 SELECT 
-    id,
-    name,
-    is_standard,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+    a.id,
+    a.name,
+    a.is_standard,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', a.metadata -> 'labels', 'created_at', a.created_at, 'updated_at', a.updated_at)) AS metadata
 FROM actions a
+CROSS JOIN params
 WHERE 
-  ($1::uuid IS NULL OR a.id = $1::uuid)
-  AND ($2::text IS NULL OR a.name = $2::text)
+  (params.id IS NULL OR a.id = params.id)
+  AND (params.name IS NULL OR a.name = params.name)
 `
 
 type getActionParams struct {
@@ -192,15 +198,21 @@ type getActionRow struct {
 
 // getAction
 //
+//	WITH params AS (
+//	    SELECT
+//	        $1::uuid as id,
+//	        $2::text as name
+//	)
 //	SELECT
-//	    id,
-//	    name,
-//	    is_standard,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+//	    a.id,
+//	    a.name,
+//	    a.is_standard,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', a.metadata -> 'labels', 'created_at', a.created_at, 'updated_at', a.updated_at)) AS metadata
 //	FROM actions a
+//	CROSS JOIN params
 //	WHERE
-//	  ($1::uuid IS NULL OR a.id = $1::uuid)
-//	  AND ($2::text IS NULL OR a.name = $2::text)
+//	  (params.id IS NULL OR a.id = params.id)
+//	  AND (params.name IS NULL OR a.name = params.name)
 func (q *Queries) getAction(ctx context.Context, arg getActionParams) (getActionRow, error) {
 	row := q.db.QueryRow(ctx, getAction, arg.ID, arg.Name)
 	var i getActionRow

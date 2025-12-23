@@ -1451,6 +1451,31 @@ func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureData
 
 // - Test that a Get/List attribute returns the Asymmetric Keys with the provider configs / add a key with no provider config
 
+// Test_GetAttribute_ByIdAndFqn_ReturnSameResult validates that getAttribute works correctly
+// with both ID and FQN lookups after params CTE optimization
+func (s *AttributesSuite) Test_GetAttribute_ByIdAndFqn_ReturnSameResult() {
+	fixtures := s.getAttributeFixtures()
+
+	for fqn, f := range fixtures {
+		// Get by ID
+		attrByID, err := s.db.PolicyClient.GetAttribute(s.ctx, f.ID)
+		s.Require().NoError(err, "Failed to get attribute by ID for FQN: %s", fqn)
+		s.Require().NotNil(attrByID)
+
+		// Get by FQN
+		attrByFQN, err := s.db.PolicyClient.GetAttribute(s.ctx, &attributes.GetAttributeRequest_Fqn{Fqn: fqn})
+		s.Require().NoError(err, "Failed to get attribute by FQN: %s", fqn)
+		s.Require().NotNil(attrByFQN)
+
+		// Verify both return the same attribute
+		s.Equal(attrByID.GetId(), attrByFQN.GetId(), "ID should match for FQN: %s", fqn)
+		s.Equal(attrByID.GetName(), attrByFQN.GetName(), "Name should match for FQN: %s", fqn)
+		s.Equal(attrByID.GetRule(), attrByFQN.GetRule(), "Rule should match for FQN: %s", fqn)
+		s.Equal(attrByID.GetNamespace().GetId(), attrByFQN.GetNamespace().GetId(), "Namespace ID should match for FQN: %s", fqn)
+		s.Equal(len(attrByID.GetValues()), len(attrByFQN.GetValues()), "Number of values should match for FQN: %s", fqn)
+	}
+}
+
 func TestAttributesSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping attributes integration tests")

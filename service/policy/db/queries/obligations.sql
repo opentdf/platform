@@ -51,7 +51,13 @@ LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
 GROUP BY io.id, io.name, io.metadata, n.id, fqns.fqn;
 
 -- name: getObligation :one
-WITH obligation_triggers_agg AS (
+WITH params AS (
+    SELECT
+        NULLIF(@id::TEXT, '')::UUID as id,
+        NULLIF(@namespace_fqn::TEXT, '') as namespace_fqn,
+        NULLIF(@name::TEXT, '') as name
+),
+obligation_triggers_agg AS (
     SELECT
         ot.obligation_value_id,
         JSON_AGG(
@@ -101,6 +107,7 @@ SELECT
         )
     ) FILTER (WHERE ov.id IS NOT NULL) as values
 FROM obligation_definitions od
+CROSS JOIN params
 JOIN attribute_namespaces n on od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
@@ -109,23 +116,29 @@ WHERE
     -- lookup by obligation id OR by namespace fqn + obligation name
     (
         -- lookup by obligation id
-        (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = NULLIF(@id::TEXT, '')::UUID)
+        (params.id IS NOT NULL AND od.id = params.id)
         OR
         -- lookup by namespace fqn + obligation name
-        (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL
-         AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR)
+        (params.namespace_fqn IS NOT NULL AND params.name IS NOT NULL
+         AND fqns.fqn = params.namespace_fqn AND od.name = params.name)
     )
 GROUP BY od.id, n.id, fqns.fqn;
 
 -- name: listObligations :many
-WITH counted AS (
+WITH params AS (
+    SELECT
+        NULLIF(@namespace_id::TEXT, '')::UUID as namespace_id,
+        NULLIF(@namespace_fqn::TEXT, '') as namespace_fqn
+),
+counted AS (
     SELECT COUNT(od.id) AS total
     FROM obligation_definitions od
+    CROSS JOIN params
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
-        (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = NULLIF(@namespace_id::TEXT, '')::UUID) AND
-        (NULLIF(@namespace_fqn::TEXT, '') IS NULL OR fqns.fqn = @namespace_fqn::VARCHAR)
+        (params.namespace_id IS NULL OR od.namespace_id = params.namespace_id) AND
+        (params.namespace_fqn IS NULL OR fqns.fqn = params.namespace_fqn)
 ),
 obligation_triggers_agg AS (
     SELECT
@@ -178,14 +191,15 @@ SELECT
     ) FILTER (WHERE ov.id IS NOT NULL) as values,
     counted.total
 FROM obligation_definitions od
+CROSS JOIN params
 JOIN attribute_namespaces n on od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 CROSS JOIN counted
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 WHERE
-    (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = NULLIF(@namespace_id::TEXT, '')::UUID) AND
-    (NULLIF(@namespace_fqn::TEXT, '') IS NULL OR fqns.fqn = @namespace_fqn::VARCHAR)
+    (params.namespace_id IS NULL OR od.namespace_id = params.namespace_id) AND
+    (params.namespace_fqn IS NULL OR fqns.fqn = params.namespace_fqn)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
 LIMIT @limit_
 OFFSET @offset_;
@@ -198,21 +212,28 @@ SET
 WHERE id = @id;
 
 -- name: deleteObligation :one
+WITH params AS (
+    SELECT
+        NULLIF(@id::TEXT, '')::UUID as id,
+        NULLIF(@namespace_fqn::TEXT, '') as namespace_fqn,
+        NULLIF(@name::TEXT, '') as name
+)
 DELETE FROM obligation_definitions 
 WHERE id IN (
     SELECT od.id
     FROM obligation_definitions od
+    CROSS JOIN params
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = NULLIF(@id::TEXT, '')::UUID)
+            (params.id IS NOT NULL AND od.id = params.id)
             OR
             -- lookup by namespace fqn + obligation name
-            (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL 
-             AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR)
+            (params.namespace_fqn IS NOT NULL AND params.name IS NOT NULL 
+             AND fqns.fqn = params.namespace_fqn AND od.name = params.name)
         )
 )
 RETURNING id;
@@ -292,20 +313,27 @@ GROUP BY
 ----------------------------------------------------------------
 
 -- name: createObligationValue :one
-WITH obligation_lookup AS (
+WITH params AS (
+    SELECT
+        NULLIF(@id::TEXT, '')::UUID as id,
+        NULLIF(@namespace_fqn::TEXT, '') as namespace_fqn,
+        NULLIF(@name::TEXT, '') as name
+),
+obligation_lookup AS (
     SELECT od.id, od.name, od.metadata
     FROM obligation_definitions od
+    CROSS JOIN params
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = NULLIF(@id::TEXT, '')::UUID)
+            (params.id IS NOT NULL AND od.id = params.id)
             OR
             -- lookup by namespace fqn + obligation name
-            (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL 
-             AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR)
+            (params.namespace_fqn IS NOT NULL AND params.name IS NOT NULL 
+             AND fqns.fqn = params.namespace_fqn AND od.name = params.name)
         )
 ),
 inserted_value AS (
@@ -331,7 +359,14 @@ JOIN attribute_namespaces n ON od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL;
 
 -- name: getObligationValue :one
-WITH obligation_triggers_agg AS (
+WITH params AS (
+    SELECT
+        NULLIF(@id::TEXT, '')::UUID as id,
+        NULLIF(@namespace_fqn::TEXT, '') as namespace_fqn,
+        NULLIF(@name::TEXT, '') as name,
+        NULLIF(@value::TEXT, '') as value
+),
+obligation_triggers_agg AS (
     SELECT
         ot.obligation_value_id,
         JSON_AGG(
@@ -377,6 +412,7 @@ SELECT
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ov.metadata -> 'labels', 'created_at', ov.created_at,'updated_at', ov.updated_at)) as metadata,
     COALESCE(ota.triggers, '[]'::JSON) as triggers
 FROM obligation_values_standard ov
+CROSS JOIN params
 JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
 JOIN attribute_namespaces n ON od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
@@ -385,11 +421,11 @@ WHERE
     -- lookup by value id OR by namespace fqn + obligation name + value name
     (
         -- lookup by value id
-        (NULLIF(@id::TEXT, '') IS NOT NULL AND ov.id = NULLIF(@id::TEXT, '')::UUID)
+        (params.id IS NOT NULL AND ov.id = params.id)
         OR
         -- lookup by namespace fqn + obligation name + value name
-        (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL AND NULLIF(@value::TEXT, '') IS NOT NULL
-         AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR AND ov.value = @value::VARCHAR)
+        (params.namespace_fqn IS NOT NULL AND params.name IS NOT NULL AND params.value IS NOT NULL
+         AND fqns.fqn = params.namespace_fqn AND od.name = params.name AND ov.value = params.value)
     );
 
 -- name: updateObligationValue :execrows
@@ -461,10 +497,18 @@ LEFT JOIN
     obligation_triggers_agg ota on ov.id = ota.obligation_value_id;
 
 -- name: deleteObligationValue :one
+WITH params AS (
+    SELECT
+        NULLIF(@id::TEXT, '')::UUID as id,
+        NULLIF(@namespace_fqn::TEXT, '') as namespace_fqn,
+        NULLIF(@name::TEXT, '') as name,
+        NULLIF(@value::TEXT, '') as value
+)
 DELETE FROM obligation_values_standard
 WHERE id IN (
     SELECT ov.id
     FROM obligation_values_standard ov
+    CROSS JOIN params
     JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
@@ -472,11 +516,11 @@ WHERE id IN (
         -- lookup by value id OR by namespace fqn + obligation name + value name
         (
             -- lookup by value id
-            (NULLIF(@id::TEXT, '') IS NOT NULL AND ov.id = NULLIF(@id::TEXT, '')::UUID)
+            (params.id IS NOT NULL AND ov.id = params.id)
             OR
             -- lookup by namespace fqn + obligation name + value name
-            (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL AND NULLIF(@value::TEXT, '') IS NOT NULL
-             AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR AND ov.value = @value::VARCHAR)
+            (params.namespace_fqn IS NOT NULL AND params.name IS NOT NULL AND params.value IS NOT NULL
+             AND fqns.fqn = params.namespace_fqn AND od.name = params.name AND ov.value = params.value)
         )
 )
 RETURNING id;
@@ -486,30 +530,41 @@ RETURNING id;
 ----------------------------------------------------------------
 
 -- name: createObligationTrigger :one
-WITH ov_id AS (
+WITH params AS (
+    SELECT
+        NULLIF(@obligation_value_id::TEXT, '')::UUID as obligation_value_id,
+        NULLIF(@action_id::TEXT, '')::UUID as action_id,
+        NULLIF(@action_name::TEXT, '') as action_name,
+        NULLIF(@attribute_value_id::TEXT, '')::UUID as attribute_value_id,
+        NULLIF(@attribute_value_fqn::TEXT, '') as attribute_value_fqn
+),
+ov_id AS (
     SELECT ov.id, od.namespace_id
     FROM obligation_values_standard ov
+    CROSS JOIN params
     JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
-    WHERE
-        (NULLIF(@obligation_value_id::TEXT, '') IS NOT NULL AND ov.id = NULLIF(@obligation_value_id::TEXT, '')::UUID)
+    WHERE params.obligation_value_id IS NOT NULL AND ov.id = params.obligation_value_id
 ),
 a_id AS (
-    SELECT id FROM actions
+    SELECT a.id
+    FROM actions a
+    CROSS JOIN params
     WHERE
-        (NULLIF(@action_id::TEXT, '') IS NOT NULL AND id = NULLIF(@action_id::TEXT, '')::UUID)
+        (params.action_id IS NOT NULL AND a.id = params.action_id)
         OR
-        (NULLIF(@action_name::TEXT, '') IS NOT NULL AND name = @action_name::TEXT)
+        (params.action_name IS NOT NULL AND a.name = params.action_name)
 ),
 -- Gets the attribute value, but also ensures that the attribute value belongs to the same namespace as the obligation, to which the obligation value belongs
 av_id AS (
     SELECT av.id
     FROM attribute_values av
+    CROSS JOIN params
     JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
     LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
     WHERE
-        ((NULLIF(@attribute_value_id::TEXT, '') IS NOT NULL AND av.id = NULLIF(@attribute_value_id::TEXT, '')::UUID)
+        ((params.attribute_value_id IS NOT NULL AND av.id = params.attribute_value_id)
         OR
-        (NULLIF(@attribute_value_fqn::TEXT, '') IS NOT NULL AND fqns.fqn = @attribute_value_fqn))
+        (params.attribute_value_fqn IS NOT NULL AND fqns.fqn = params.attribute_value_fqn))
         AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
 ),
 inserted AS (
@@ -586,6 +641,11 @@ WHERE id = $1
 RETURNING id;
 
 -- name: listObligationTriggers :many
+WITH params AS (
+    SELECT
+        NULLIF(@namespace_id::TEXT, '')::UUID as namespace_id,
+        NULLIF(@namespace_fqn::TEXT, '') as namespace_fqn
+)
 SELECT
     JSON_STRIP_NULLS(
         JSON_BUILD_OBJECT(
@@ -633,6 +693,7 @@ SELECT
     ) as metadata,
     COUNT(*) OVER() as total
 FROM obligation_triggers ot
+CROSS JOIN params
 JOIN obligation_values_standard ov ON ot.obligation_value_id = ov.id
 JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
 JOIN attribute_namespaces n ON od.namespace_id = n.id
@@ -641,8 +702,8 @@ JOIN actions a ON ot.action_id = a.id
 JOIN attribute_values av ON ot.attribute_value_id = av.id
 LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 WHERE
-    (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = NULLIF(@namespace_id::TEXT, '')::UUID) AND
-    (NULLIF(@namespace_fqn::TEXT, '') IS NULL OR ns_fqns.fqn = @namespace_fqn::VARCHAR)
+    (params.namespace_id IS NULL OR od.namespace_id = params.namespace_id) AND
+    (params.namespace_fqn IS NULL OR ns_fqns.fqn = params.namespace_fqn)
 ORDER BY ot.created_at DESC
 LIMIT @limit_
 OFFSET @offset_;

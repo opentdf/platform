@@ -321,6 +321,13 @@ func (a *Logger) Rewrap(ctx context.Context, params RewrapAuditEventParams) *Rew
 }
 
 func (d *RewrapEvent) UpdatePolicy(kasPolicy KasPolicy) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.completed {
+		panic(ErrAlreadyCompleted)
+	}
+
 	d.params.Policy = kasPolicy
 }
 
@@ -378,11 +385,25 @@ func (a *Logger) Decision(ctx context.Context, entityChainID string, resourceAtt
 
 // UpdateEntitlements updates the entity chain entitlements as they are computed
 func (d *GetDecisionEvent) UpdateEntitlements(entitlements []EntityChainEntitlement) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.completed {
+		panic(ErrAlreadyCompleted)
+	}
+
 	d.params.EntityChainEntitlements = entitlements
 }
 
 // UpdateEntityDecisions updates the entity decisions as they are computed
 func (d *GetDecisionEvent) UpdateEntityDecisions(decisions []EntityDecision) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.completed {
+		panic(ErrAlreadyCompleted)
+	}
+
 	d.params.EntityDecisions = decisions
 }
 

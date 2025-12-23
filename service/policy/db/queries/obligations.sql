@@ -212,28 +212,21 @@ SET
 WHERE id = @id;
 
 -- name: deleteObligation :one
-WITH params AS (
-    SELECT
-        NULLIF(@id::TEXT, '')::UUID as id,
-        NULLIF(@namespace_fqn::TEXT, '') as namespace_fqn,
-        NULLIF(@name::TEXT, '') as name
-)
 DELETE FROM obligation_definitions 
 WHERE id IN (
     SELECT od.id
     FROM obligation_definitions od
-    CROSS JOIN params
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (params.id IS NOT NULL AND od.id = params.id)
+            (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = NULLIF(@id::TEXT, '')::UUID)
             OR
             -- lookup by namespace fqn + obligation name
-            (params.namespace_fqn IS NOT NULL AND params.name IS NOT NULL 
-             AND fqns.fqn = params.namespace_fqn AND od.name = params.name)
+            (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL 
+             AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR)
         )
 )
 RETURNING id;
@@ -497,18 +490,10 @@ LEFT JOIN
     obligation_triggers_agg ota on ov.id = ota.obligation_value_id;
 
 -- name: deleteObligationValue :one
-WITH params AS (
-    SELECT
-        NULLIF(@id::TEXT, '')::UUID as id,
-        NULLIF(@namespace_fqn::TEXT, '') as namespace_fqn,
-        NULLIF(@name::TEXT, '') as name,
-        NULLIF(@value::TEXT, '') as value
-)
 DELETE FROM obligation_values_standard
 WHERE id IN (
     SELECT ov.id
     FROM obligation_values_standard ov
-    CROSS JOIN params
     JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
@@ -516,11 +501,11 @@ WHERE id IN (
         -- lookup by value id OR by namespace fqn + obligation name + value name
         (
             -- lookup by value id
-            (params.id IS NOT NULL AND ov.id = params.id)
+            (NULLIF(@id::TEXT, '') IS NOT NULL AND ov.id = NULLIF(@id::TEXT, '')::UUID)
             OR
             -- lookup by namespace fqn + obligation name + value name
-            (params.namespace_fqn IS NOT NULL AND params.name IS NOT NULL AND params.value IS NOT NULL
-             AND fqns.fqn = params.namespace_fqn AND od.name = params.name AND ov.value = params.value)
+            (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL AND NULLIF(@value::TEXT, '') IS NOT NULL
+             AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR AND ov.value = @value::VARCHAR)
         )
 )
 RETURNING id;

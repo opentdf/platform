@@ -1,3 +1,137 @@
+/*
+`audit` provides event logging for ABAC control operations.
+
+# Why Deferred Audit Events?
+
+Continuous monitoring of access events is one component of the zero trust paradigm.
+
+Deferred audit events provide a fail-safe mechanism to ensure that all operations are audited,
+even when errors, timeouts, and client connection cancellations occur during processing.
+This library uses go's `defer“ mechanism and explicit success/failure signal calls,
+which allows services to log all operations with the appropriate outcome.
+
+## A Note: Panicking and Errors
+
+> A key goal of OpenTDF is to enable zero trust systems,
+> so failures to properly log events block system functionality.
+
+# Basic Usage Pattern
+
+All deferred audit events follow a consistent three-step pattern:
+
+1. Create the audit event with initial parameters
+2. Register it with defer to ensure it's logged even on panic/error
+3. Mark success or failure when the operation completes
+
+# Example: Rewrap Operation
+
+	func handleRewrap(ctx context.Context, logger *audit.Logger) error {
+		// Step 1: Create the deferred audit event with initial parameters
+		auditEvent := logger.Audit.Rewrap(ctx, audit.RewrapAuditEventParams{
+			Policy:        kasPolicy,
+			TDFFormat:     "tdf3",
+			Algorithm:     "rsa-2048",
+			PolicyBinding: "binding-hash",
+			KeyID:         "key-123",
+		})
+
+		// Step 2: Register with defer - guarantees logging even on panic
+		defer auditEvent.Log(ctx)
+
+		// Step 3: Perform the rewrap operation (may panic)
+		result, err := performRewrap(ctx)
+		if err != nil {
+			// On error, return without calling Success()
+			// The deferred Log() will record this as a failure
+			return err
+		}
+
+		// Step 4: Update event with additional details as they become available
+		auditEvent.UpdatePolicy(enrichedPolicy)
+
+		// Step 5: Mark the operation as successful
+		auditEvent.Success(ctx)
+		return nil
+	}
+
+# Example: Policy CRUD Operation
+
+	func updateAttribute(ctx context.Context, logger *audit.Logger, id string, req *UpdateRequest) error {
+		// Load the original object
+		original, err := loadAttribute(id)
+		if err != nil {
+			return err
+		}
+
+		// Create audit event with original state
+		auditEvent := logger.Audit.PolicyCRUD(ctx, audit.PolicyEventParams{
+			ActionType: audit.ActionTypeUpdate,
+			ObjectType: audit.ObjectTypeAttributeDefinition,
+			ObjectID:   id,
+			Original:   original,
+		})
+		defer auditEvent.Log(ctx)
+
+		// Apply updates
+		updated, err := applyUpdates(original, req)
+		if err != nil {
+			// Log will record this as a failure
+			return err
+		}
+
+		// Persist the changes
+		if err := saveAttribute(updated); err != nil {
+			return err
+		}
+
+		// Mark success with the updated object
+		auditEvent.Success(ctx, updated)
+		return nil
+	}
+
+# Progressive Enrichment
+
+For operations that compute results progressively, events can be enriched as
+information becomes available using UpdateX methods:
+
+	auditEvent := logger.Audit.Decision(ctx, entityChainID, resourceAttrID, fqns)
+	defer auditEvent.Log(ctx)
+
+	// Enrich with entitlements as they're computed
+	entitlements := computeEntitlements()
+	auditEvent.UpdateEntitlements(entitlements)
+
+	// Enrich with entity decisions
+	decisions := evaluateEntities()
+	auditEvent.UpdateEntityDecisions(decisions)
+
+	// Finally, record the outcome
+	auditEvent.Success(ctx, finalDecision)
+
+# No Updates After Completion
+
+Once an event is completed
+(by calling Success(), Failure(), or allowing Log() to execute),
+the event is immutable.
+Attempting to call any UpdateX methods after completion will panic with ErrAlreadyCompleted.
+
+	auditEvent := logger.Audit.DecisionV2(ctx, entityID, actionName)
+	defer auditEvent.Log(ctx)
+
+	auditEvent.Success(ctx, decision) // Event is now completed
+
+	// THIS WILL PANIC:
+	auditEvent.UpdateEntitlements(newEntitlements)
+
+# Fail-Safe Default Behavior
+
+If neither Success() nor Failure() is explicitly called,
+the deferred Log() function will record the operation as failed.
+
+- Rewrap: Logged as failure if Success() not called
+- PolicyCRUD: Logged as failure/cancelled if Success() not called
+- Decision operations: Logged with DENY decision if Success() not called
+*/
 package audit
 
 import (
@@ -312,7 +446,7 @@ func (d *GetDecisionV2Event) UpdateObligations(fulfillable []string, satisfied b
 	d.params.ObligationsSatisfied = satisfied
 }
 
-func (d *GetDecisionV2Event) UpdateDecisionResult(ctx context.Context, decision DecisionResult) {
+func (d *GetDecisionV2Event) UpdateDecisionResult(_ context.Context, decision DecisionResult) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 

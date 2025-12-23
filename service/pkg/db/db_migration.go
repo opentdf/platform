@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"embed"
 	"errors"
 	"fmt"
@@ -18,15 +19,34 @@ func migrationInit(ctx context.Context, c *Client, migrations *embed.FS) (*goose
 		return nil, 0, nil, errors.New("migrations are disabled")
 	}
 
-	// Cast the pgxpool.Pool to a *sql.DB
-	pool, ok := c.Pgx.(*pgxpool.Pool)
-	if !ok || pool == nil {
-		return nil, 0, nil, errors.New("failed to cast pgxpool.Pool")
-	}
-	conn := stdlib.OpenDBFromPool(pool)
+	var conn *sql.DB
+	var dialect goose.Dialect
+	var closeFunc func()
 
-	// Create the goose provider
-	provider, err := goose.NewProvider(goose.DialectPostgres, conn, migrations)
+	switch c.config.Driver {
+	case DriverSQLite:
+		// For SQLite, use the existing SQLDB connection
+		conn = c.SQLDB
+		dialect = goose.DialectSQLite3
+		// Don't close SQLite connection here - it's managed by the Client
+		closeFunc = func() {}
+	default:
+		// For PostgreSQL, create a new connection from the pool
+		pool, ok := c.Pgx.(*pgxpool.Pool)
+		if !ok || pool == nil {
+			return nil, 0, nil, errors.New("failed to cast pgxpool.Pool")
+		}
+		conn = stdlib.OpenDBFromPool(pool)
+		dialect = goose.DialectPostgres
+		closeFunc = func() {
+			if err := conn.Close(); err != nil {
+				slog.Error("failed to close connection", slog.Any("err", err))
+			}
+		}
+	}
+
+	// Create the goose provider with the appropriate dialect
+	provider, err := goose.NewProvider(dialect, conn, migrations)
 	if err != nil {
 		return nil, 0, nil, fmt.Errorf("failed to create goose provider: %w", err)
 	}
@@ -36,39 +56,42 @@ func migrationInit(ctx context.Context, c *Client, migrations *embed.FS) (*goose
 	if e != nil {
 		return nil, 0, nil, errors.Join(errors.New("failed to get current version"), e)
 	}
-	slog.Info("migration db info", slog.Int64("current_version", v))
+	slog.Info("migration db info",
+		slog.Int64("current_version", v),
+		slog.String("dialect", string(dialect)),
+	)
 
-	// Return the provider, version, and close function
-	return provider, v, func() {
-		if err := conn.Close(); err != nil {
-			slog.Error("failed to close connection", slog.Any("err", err))
-		}
-	}, nil
+	return provider, v, closeFunc, nil
 }
 
 // RunMigrations runs the migrations for the schema
-// Schema will be created if it doesn't exist
+// For PostgreSQL, schema will be created if it doesn't exist.
+// For SQLite, schemas are not supported so this step is skipped.
 func (c *Client) RunMigrations(ctx context.Context, migrations *embed.FS) (int, error) {
 	if migrations == nil {
 		return 0, errors.New("migrations FS is required to run migrations")
 	}
 	slog.Info("running migration up",
 		slog.String("schema", c.config.Schema),
-		slog.String("database", c.config.Database),
+		slog.String("driver", string(c.config.Driver)),
 	)
 
-	// Create schema if it doesn't exist
-	q := "CREATE SCHEMA IF NOT EXISTS " + pgx.Identifier{c.config.Schema}.Sanitize()
-	tag, err := c.Pgx.Exec(ctx, q)
-	if err != nil {
-		slog.ErrorContext(ctx,
-			"error while running command",
-			slog.String("command", q),
-			slog.Any("error", err),
-		)
-		return 0, err
+	var applied int
+
+	// Create schema if needed (PostgreSQL only - SQLite doesn't support schemas)
+	if c.config.Driver != DriverSQLite {
+		q := "CREATE SCHEMA IF NOT EXISTS " + pgx.Identifier{c.config.Schema}.Sanitize()
+		tag, err := c.Pgx.Exec(ctx, q)
+		if err != nil {
+			slog.ErrorContext(ctx,
+				"error while running command",
+				slog.String("command", q),
+				slog.Any("error", err),
+			)
+			return 0, err
+		}
+		applied = int(tag.RowsAffected())
 	}
-	applied := int(tag.RowsAffected())
 
 	provider, version, closeProvider, err := migrationInit(ctx, c, migrations)
 	if err != nil {

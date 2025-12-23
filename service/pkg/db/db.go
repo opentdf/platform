@@ -6,16 +6,11 @@ import (
 	"embed"
 	"fmt"
 	"log/slog"
-	"net"
-	"net/url"
-	"strconv"
-	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/opentdf/platform/service/logger"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -89,6 +84,10 @@ type PoolConfig struct {
 }
 
 type Config struct {
+	// Driver specifies the database driver to use: "postgres" or "sqlite"
+	Driver DriverType `mapstructure:"driver" json:"driver" default:"postgres"`
+
+	// PostgreSQL-specific configuration
 	Host           string     `mapstructure:"host" json:"host" default:"localhost"`
 	Port           int        `mapstructure:"port" json:"port" default:"5432"`
 	Database       string     `mapstructure:"database" json:"database" default:"opentdf"`
@@ -99,64 +98,104 @@ type Config struct {
 	ConnectTimeout int        `mapstructure:"connect_timeout_seconds" json:"connect_timeout_seconds" default:"15"`
 	Pool           PoolConfig `mapstructure:"pool" json:"pool"`
 
+	// SQLite-specific configuration
+	SQLitePath string `mapstructure:"sqlite_path" json:"sqlite_path" default:":memory:"`
+	SQLiteMode string `mapstructure:"sqlite_mode" json:"sqlite_mode" default:"rwc"`
+
 	RunMigrations    bool      `mapstructure:"runMigrations" json:"runMigrations" default:"true"`
 	MigrationsFS     *embed.FS `mapstructure:"-" json:"-"`
 	VerifyConnection bool      `mapstructure:"verifyConnection" json:"verifyConnection" default:"true"`
 }
 
 func (c Config) LogValue() slog.Value {
-	return slog.GroupValue(
-		slog.String("host", c.Host),
-		slog.Int("port", c.Port),
-		slog.String("database", c.Database),
-		slog.String("user", c.User),
-		slog.String("password", "[REDACTED]"),
-		slog.String("sslmode", c.SSLMode),
+	attrs := []slog.Attr{
+		slog.String("driver", string(c.Driver)),
 		slog.String("schema", c.Schema),
-		slog.Int("connect_timeout_seconds", c.ConnectTimeout),
-		slog.Group("pool",
-			slog.Int("max_connection_count", int(c.Pool.MaxConns)),
-			slog.Int("min_connection_count", int(c.Pool.MinConns)),
-			slog.Int("max_connection_lifetime_seconds", c.Pool.MaxConnLifetime),
-			slog.Int("max_connection_idle_seconds", c.Pool.MaxConnIdleTime),
-			slog.Int("health_check_period_seconds", c.Pool.HealthCheckPeriod),
-		),
 		slog.Bool("runMigrations", c.RunMigrations),
 		slog.Bool("verifyConnection", c.VerifyConnection),
-	)
+	}
+
+	if c.Driver == DriverSQLite {
+		attrs = append(attrs,
+			slog.String("sqlite_path", c.SQLitePath),
+			slog.String("sqlite_mode", c.SQLiteMode),
+		)
+	} else {
+		attrs = append(attrs,
+			slog.String("host", c.Host),
+			slog.Int("port", c.Port),
+			slog.String("database", c.Database),
+			slog.String("user", c.User),
+			slog.String("password", "[REDACTED]"),
+			slog.String("sslmode", c.SSLMode),
+			slog.Int("connect_timeout_seconds", c.ConnectTimeout),
+			slog.Group("pool",
+				slog.Int("max_connection_count", int(c.Pool.MaxConns)),
+				slog.Int("min_connection_count", int(c.Pool.MinConns)),
+				slog.Int("max_connection_lifetime_seconds", c.Pool.MaxConnLifetime),
+				slog.Int("max_connection_idle_seconds", c.Pool.MaxConnIdleTime),
+				slog.Int("health_check_period_seconds", c.Pool.HealthCheckPeriod),
+			),
+		)
+	}
+
+	return slog.GroupValue(attrs...)
 }
 
 /*
-A wrapper around a pgxpool.Pool and sql.DB reference.
+A wrapper around a database connection pool.
 
 Each service should have a single instance of the Client to share a connection pool,
 schema (driven by the service namespace), and an embedded file system for migrations.
 
-The 'search_path' is set to the schema on connection to the database.
+For PostgreSQL, the 'search_path' is set to the schema on connection to the database.
 
 If the database config 'runMigrations' is set to true, the client will run migrations on startup,
 once per namespace (as there should only be one embedded migrations FS per namespace).
 
-Multiple pools, schemas, or migrations per service are not supported. Multiple databases per
-PostgreSQL instance or multiple PostgreSQL servers per platform instance are not supported.
+Supports both PostgreSQL and SQLite as database backends.
 */
 type Client struct {
-	Pgx           PgxIface
-	Logger        *logger.Logger
-	config        Config
+	// Pgx is the PostgreSQL connection pool (nil for SQLite)
+	Pgx PgxIface
+	// Driver is the underlying database driver
+	driver Driver
+	// Logger for database operations
+	Logger *logger.Logger
+	// config holds the database configuration
+	config Config
+	// ranMigrations tracks if migrations have been run
 	ranMigrations bool
-	// This is the stdlib connection that is used for transactions
+	// SQLDB is the stdlib connection for transactions and compatibility
 	SQLDB *sql.DB
 	trace.Tracer
 }
 
+// DriverType returns the type of database driver being used
+func (c *Client) DriverType() DriverType {
+	return c.config.Driver
+}
+
+// Config returns the database configuration
+func (c *Client) Config() Config {
+	return c.config
+}
+
 /*
-Connections and pools seems to be pulled in from env vars
-We should be able to tell the platform how to run
+New creates a new database client with the specified configuration.
+
+Supports both PostgreSQL and SQLite backends based on the Driver config field.
+For PostgreSQL (default), it creates a pgxpool connection.
+For SQLite, it creates a sql.DB connection with appropriate pragmas.
 */
 func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace.Tracer, o ...OptsFunc) (*Client, error) {
 	for _, f := range o {
 		config = f(config)
+	}
+
+	// Default to PostgreSQL if not specified
+	if config.Driver == "" {
+		config.Driver = DriverPostgres
 	}
 
 	c := Client{
@@ -175,38 +214,25 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 	if err != nil {
 		return nil, fmt.Errorf("failed to create logger: %w", err)
 	}
-	c.Logger = l.With("schema", config.Schema)
+	c.Logger = l.With("schema", config.Schema).With("driver", string(config.Driver))
 
-	dbConfig, err := config.buildConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
-	}
-
-	dbConfig.ConnConfig.OnNotice = func(_ *pgconn.PgConn, n *pgconn.Notice) {
-		switch n.Severity {
-		case "DEBUG":
-			c.Logger.Debug("database notice", slog.String("message", n.Message))
-		case "NOTICE":
-			c.Logger.Info("database notice", slog.String("message", n.Message))
-		case "WARNING":
-			c.Logger.Warn("database notice", slog.String("message", n.Message))
-		case "ERROR":
-			c.Logger.Error("database notice", slog.String("message", n.Message))
+	// Initialize the appropriate driver
+	switch config.Driver {
+	case DriverSQLite:
+		if err := c.initSQLite(ctx, config); err != nil {
+			return nil, err
 		}
+	case DriverPostgres:
+		if err := c.initPostgres(ctx, config); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", config.Driver)
 	}
 
-	slog.Info("opening new database pool", slog.String("schema", config.Schema))
-	pool, err := pgxpool.NewWithConfig(ctx, dbConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create pgxpool: %w", err)
-	}
-	c.Pgx = pool
-	// We need to create a stdlib connection for transactions
-	c.SQLDB = stdlib.OpenDBFromPool(pool)
-
-	// Connect to the database to verify the connection
+	// Verify the connection if requested
 	if c.config.VerifyConnection {
-		if err := c.Pgx.Ping(ctx); err != nil {
+		if err := c.driver.Ping(ctx); err != nil {
 			return nil, fmt.Errorf("failed to connect to database: %w", err)
 		}
 	}
@@ -214,56 +240,42 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 	return &c, nil
 }
 
+// initPostgres initializes a PostgreSQL connection
+func (c *Client) initPostgres(ctx context.Context, config Config) error {
+	pgDriver, err := NewPostgresDriver(ctx, config)
+	if err != nil {
+		return err
+	}
+
+	c.driver = pgDriver
+	c.Pgx = pgDriver.Pool()
+	c.SQLDB = pgDriver.DB()
+
+	return nil
+}
+
+// initSQLite initializes a SQLite connection
+func (c *Client) initSQLite(ctx context.Context, config Config) error {
+	sqliteDriver, err := NewSQLiteDriver(ctx, config)
+	if err != nil {
+		return err
+	}
+
+	c.driver = sqliteDriver
+	c.Pgx = nil // No pgx pool for SQLite
+	c.SQLDB = sqliteDriver.DB()
+
+	return nil
+}
+
 func (c *Client) Schema() string {
 	return c.config.Schema
 }
 
 func (c *Client) Close() {
-	c.Pgx.Close()
-	c.SQLDB.Close()
-}
-
-func (c Config) buildConfig() (*pgxpool.Config, error) {
-	u := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
-		c.User,
-		url.QueryEscape(c.Password),
-		net.JoinHostPort(c.Host, strconv.Itoa(c.Port)),
-		c.Database,
-		c.SSLMode,
-	)
-	parsed, err := pgxpool.ParseConfig(u)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
+	if c.driver != nil {
+		c.driver.Close()
 	}
-
-	// Apply connection and pool configurations
-	if c.Pool.MinConns > 0 {
-		parsed.MinConns = c.Pool.MinConns
-	}
-	if c.Pool.MinIdleConns > 0 {
-		parsed.MinIdleConns = c.Pool.MinIdleConns
-	}
-	// Non-zero defaults
-	parsed.ConnConfig.ConnectTimeout = time.Duration(c.ConnectTimeout) * time.Second
-	parsed.MaxConns = c.Pool.MaxConns
-	parsed.MaxConnLifetime = time.Duration(c.Pool.MaxConnLifetime) * time.Second
-	parsed.MaxConnIdleTime = time.Duration(c.Pool.MaxConnIdleTime) * time.Second
-	parsed.HealthCheckPeriod = time.Duration(c.Pool.HealthCheckPeriod) * time.Second
-
-	// Configure the search_path schema immediately on connection opening
-	parsed.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
-		_, err := conn.Exec(ctx, "SET search_path TO "+pgx.Identifier{c.Schema}.Sanitize())
-		if err != nil {
-			slog.Error("failed to set database client search_path",
-				slog.String("schema", c.Schema),
-				slog.Any("error", err),
-			)
-			return err
-		}
-		slog.Debug("successfully set database client search_path", slog.String("schema", c.Schema))
-		return nil
-	}
-	return parsed, nil
 }
 
 // Common function for all queryRow calls
@@ -304,7 +316,19 @@ func (c Client) Exec(ctx context.Context, sql string, args []interface{}) error 
 // Helper functions for building SQL
 //
 
-// Postgres uses $1, $2, etc. for placeholders
+// NewStatementBuilder returns a statement builder configured for PostgreSQL ($1, $2, etc.)
+// For backwards compatibility, this defaults to PostgreSQL placeholder format.
 func NewStatementBuilder() sq.StatementBuilderType {
 	return sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+}
+
+// NewStatementBuilderForDriver returns a statement builder configured for the specified driver.
+// PostgreSQL uses $1, $2, etc. while SQLite uses ?, ?, etc.
+func NewStatementBuilderForDriver(driver DriverType) sq.StatementBuilderType {
+	switch driver {
+	case DriverSQLite:
+		return sq.StatementBuilder.PlaceholderFormat(sq.Question)
+	default:
+		return sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+	}
 }

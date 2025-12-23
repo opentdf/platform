@@ -63,15 +63,16 @@ func ContextServerInterceptor(logger *slog.Logger) connect.UnaryInterceptorFunc 
 			ctx = context.WithValue(ctx, contextKey{}, &tx)
 
 			defer func() {
+				auditCtx := context.WithoutCancel(ctx)
 				if r := recover(); r != nil {
 					if err, ok := r.(error); ok {
-						tx.logClose(ctx, logger, false, err)
+						tx.logClose(auditCtx, logger, false, err)
 					} else {
-						tx.logClose(ctx, logger, false, nil)
+						tx.logClose(auditCtx, logger, false, nil)
 					}
 					panic(r)
 				}
-				tx.logClose(ctx, logger, true, nil)
+				tx.logClose(auditCtx, logger, true, nil)
 			}()
 
 			return next(ctx, req)

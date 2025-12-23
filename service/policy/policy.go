@@ -3,10 +3,12 @@ package policy
 import (
 	"embed"
 
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/opentdf/platform/service/policy/attributes"
 	"github.com/opentdf/platform/service/policy/db/migrations"
+	"github.com/opentdf/platform/service/policy/db/migrations_sqlite"
 	"github.com/opentdf/platform/service/policy/kasregistry"
 	"github.com/opentdf/platform/service/policy/keymanagement"
 	"github.com/opentdf/platform/service/policy/namespaces"
@@ -17,18 +19,39 @@ import (
 	"github.com/opentdf/platform/service/policy/unsafe"
 )
 
+// Migrations is the default PostgreSQL migrations filesystem.
+// Deprecated: Use MigrationsForDriver instead.
 var Migrations *embed.FS
+
+// MigrationsPostgres is the PostgreSQL migrations filesystem.
+var MigrationsPostgres *embed.FS
+
+// MigrationsSQLite is the SQLite migrations filesystem.
+var MigrationsSQLite *embed.FS
 
 func init() {
 	Migrations = &migrations.FS
+	MigrationsPostgres = &migrations.FS
+	MigrationsSQLite = &migrations_sqlite.FS
+}
+
+// MigrationsForDriver returns the appropriate migrations filesystem for the given driver type.
+func MigrationsForDriver(driver db.DriverType) *embed.FS {
+	switch driver {
+	case db.DriverSQLite:
+		return MigrationsSQLite
+	default:
+		return MigrationsPostgres
+	}
 }
 
 func NewRegistrations() []serviceregistry.IService {
 	registrations := []serviceregistry.IService{}
 	namespace := "policy"
 	dbRegister := serviceregistry.DBRegister{
-		Required:   true,
-		Migrations: Migrations,
+		Required:            true,
+		Migrations:          Migrations,
+		MigrationsForDriver: MigrationsForDriver,
 	}
 
 	registrations = append(registrations, []serviceregistry.IService{

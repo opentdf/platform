@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
@@ -590,8 +591,9 @@ func (m *mockOrderTrackingService) GetVersion() string   { return "v1" }
 func (m *mockOrderTrackingService) GetServiceDesc() *grpc.ServiceDesc {
 	return &grpc.ServiceDesc{ServiceName: m.serviceName}
 }
-func (m *mockOrderTrackingService) IsDBRequired() bool      { return false }
-func (m *mockOrderTrackingService) DBMigrations() *embed.FS { return nil }
+func (m *mockOrderTrackingService) IsDBRequired() bool                              { return false }
+func (m *mockOrderTrackingService) DBMigrations() *embed.FS                         { return nil }
+func (m *mockOrderTrackingService) DBMigrationsForDriver(_ db.DriverType) *embed.FS { return nil }
 func (m *mockOrderTrackingService) IsStarted() bool         { return true }
 func (m *mockOrderTrackingService) Shutdown() error         { return nil }
 func (m *mockOrderTrackingService) Start(_ context.Context, _ serviceregistry.RegistrationParams) error {

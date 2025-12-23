@@ -79,12 +79,20 @@ type DBRegister struct {
 	// Migrations is an embedded filesystem that contains the Goose SQL migrations for the service.
 	// This is required to support the `migrate` command or the `runMigrations` configuration option.
 	// More information on Goose can be found at https://github.com/pressly/goose
+	// Deprecated: Use MigrationsForDriver for multi-database support.
 	Migrations *embed.FS
+	// MigrationsForDriver returns the appropriate migrations filesystem for the given driver type.
+	// This allows services to provide different migrations for PostgreSQL vs SQLite.
+	// If nil, Migrations will be used as a fallback.
+	MigrationsForDriver func(driver db.DriverType) *embed.FS
 }
 
 type IService interface {
 	IsDBRequired() bool
 	DBMigrations() *embed.FS
+	// DBMigrationsForDriver returns migrations for the specified driver type.
+	// Returns nil if no driver-specific migrations are available.
+	DBMigrationsForDriver(driver db.DriverType) *embed.FS
 	GetNamespace() string
 	GetVersion() string
 	GetServiceDesc() *grpc.ServiceDesc
@@ -164,6 +172,14 @@ func (s Service[S]) DBMigrations() *embed.FS {
 	return s.DB.Migrations
 }
 
+func (s Service[S]) DBMigrationsForDriver(driver db.DriverType) *embed.FS {
+	if s.DB.MigrationsForDriver != nil {
+		return s.DB.MigrationsForDriver(driver)
+	}
+	// Fall back to default migrations if no driver-specific function is provided
+	return s.DB.Migrations
+}
+
 // Start starts the service and performs necessary initialization steps.
 // It returns an error if the service is already started or if there is an issue running database migrations.
 func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) error {
@@ -172,12 +188,15 @@ func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) error
 	}
 
 	if s.DB.Required && !params.DBClient.RanMigrations() && params.DBClient.MigrationsEnabled() {
-		appliedMigrations, err := params.DBClient.RunMigrations(ctx, s.DB.Migrations)
+		// Get driver-aware migrations if available, otherwise use default
+		migrations := s.DBMigrationsForDriver(params.DBClient.DriverType())
+		appliedMigrations, err := params.DBClient.RunMigrations(ctx, migrations)
 		if err != nil {
 			return fmt.Errorf("issue running database migrations: %w", err)
 		}
 		params.Logger.Info("database migrations complete",
 			slog.Int("applied", appliedMigrations),
+			slog.String("driver", string(params.DBClient.DriverType())),
 		)
 	}
 

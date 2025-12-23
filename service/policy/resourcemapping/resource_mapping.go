@@ -115,8 +115,8 @@ func (s ResourceMappingService) CreateResourceMappingGroup(ctx context.Context, 
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("resourceMappingGroup", req.Msg.String()))
 	}
 
-	auditParams.ObjectID = rmGroup.GetId()
-	auditParams.Original = rmGroup
+	auditEvent.UpdateObjectID(rmGroup.GetId())
+	auditEvent.UpdateOriginal(rmGroup)
 	auditEvent.Success(ctx, rmGroup)
 
 	rsp.ResourceMappingGroup = rmGroup
@@ -147,8 +147,7 @@ func (s ResourceMappingService) UpdateResourceMappingGroup(ctx context.Context, 
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id))
 	}
 
-	auditParams.Original = originalRmGroup
-	auditParams.Updated = updatedRmGroup
+	auditEvent.UpdateOriginal(originalRmGroup)
 
 	auditEvent.Success(ctx, updatedRmGroup)
 
@@ -252,8 +251,8 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("resourceMapping", req.Msg.String()))
 	}
 
-	auditParams.ObjectID = rm.GetId()
-	auditParams.Original = rm
+	auditEvent.UpdateObjectID(rm.GetId())
+	auditEvent.UpdateOriginal(rm)
 	auditEvent.Success(ctx, rm)
 
 	rsp.ResourceMapping = rm
@@ -289,8 +288,7 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 		)
 	}
 
-	auditParams.Original = originalRM
-	auditParams.Updated = updatedRM
+	auditEvent.UpdateOriginal(originalRM)
 	auditEvent.Success(ctx, updatedRM)
 
 	rsp.ResourceMapping = &policy.ResourceMapping{

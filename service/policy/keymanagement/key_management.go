@@ -129,13 +129,13 @@ func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Reque
 			return err
 		}
 
-		auditParams.ObjectID = pc.GetId()
-		auditParams.Original = &policy.KeyProviderConfig{
+		auditEvent.UpdateObjectID(pc.GetId())
+		auditEvent.UpdateOriginal(&policy.KeyProviderConfig{
 			Id:       pc.GetId(),
 			Name:     pc.GetName(),
 			Manager:  pc.GetManager(),
 			Metadata: pc.GetMetadata(),
-		}
+		})
 		auditEvent.Success(ctx, pc)
 
 		rsp.ProviderConfig = pc
@@ -215,18 +215,12 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 
 		// Lets not log the full provider config, leave off config json
 		// in case it contains sensitive information
-		auditParams.Original = &policy.KeyProviderConfig{
+		auditEvent.UpdateOriginal(&policy.KeyProviderConfig{
 			Id:       original.GetId(),
 			Name:     original.GetName(),
 			Manager:  original.GetManager(),
 			Metadata: original.GetMetadata(),
-		}
-		auditParams.Updated = &policy.KeyProviderConfig{
-			Id:       pc.GetId(),
-			Name:     pc.GetName(),
-			Manager:  pc.GetManager(),
-			Metadata: pc.GetMetadata(),
-		}
+		})
 		auditEvent.Success(ctx, pc)
 		rsp.ProviderConfig = pc
 
@@ -256,13 +250,13 @@ func (ksvc Service) DeleteProviderConfig(ctx context.Context, req *connect.Reque
 		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextDeletionFailed, slog.String("keyManagementService", req.Msg.GetId()))
 	}
 
-	auditParams.ObjectID = pc.GetId()
-	auditParams.Original = &policy.KeyProviderConfig{
+	auditEvent.UpdateObjectID(pc.GetId())
+	auditEvent.UpdateOriginal(&policy.KeyProviderConfig{
 		Id:       pc.GetId(),
 		Name:     pc.GetName(),
 		Manager:  pc.GetManager(),
 		Metadata: pc.GetMetadata(),
-	}
+	})
 	auditEvent.Success(ctx, pc)
 
 	rsp.ProviderConfig = pc

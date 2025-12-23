@@ -118,8 +118,8 @@ func (s *Service) CreateObligation(ctx context.Context, req *connect.Request[obl
 			return err
 		}
 
-		auditParams.ObjectID = obl.GetId()
-		auditParams.Original = obl
+		auditEvent.UpdateObjectID(obl.GetId())
+		auditEvent.UpdateOriginal(obl)
 		auditEvent.Success(ctx, obl)
 
 		rsp.Obligation = obl
@@ -185,7 +185,7 @@ func (s *Service) UpdateObligation(ctx context.Context, req *connect.Request[obl
 			return err
 		}
 
-		auditParams.Original = original
+		auditEvent.UpdateOriginal(original)
 		auditEvent.Success(ctx, updated)
 
 		rsp.Obligation = updated
@@ -239,8 +239,8 @@ func (s *Service) CreateObligationValue(ctx context.Context, req *connect.Reques
 			return err
 		}
 
-		auditParams.ObjectID = val.GetId()
-		auditParams.Original = val
+		auditEvent.UpdateObjectID(val.GetId())
+		auditEvent.UpdateOriginal(val)
 		auditEvent.Success(ctx, val)
 
 		rsp.Value = val
@@ -307,7 +307,7 @@ func (s *Service) UpdateObligationValue(ctx context.Context, req *connect.Reques
 			return err
 		}
 
-		auditParams.Original = original
+		auditEvent.UpdateOriginal(original)
 		auditEvent.Success(ctx, updated)
 
 		rsp.Value = updated
@@ -383,8 +383,8 @@ func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request
 			return err
 		}
 
-		auditParams.ObjectID = trigger.GetId()
-		auditParams.Original = trigger
+		auditEvent.UpdateObjectID(trigger.GetId())
+		auditEvent.UpdateOriginal(trigger)
 		auditEvent.Success(ctx, trigger)
 
 		rsp.Trigger = trigger

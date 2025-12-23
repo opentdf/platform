@@ -98,8 +98,8 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 			return err
 		}
 
-		auditParams.ObjectID = subjectMapping.GetId()
-		auditParams.Original = subjectMapping
+		auditEvent.UpdateObjectID(subjectMapping.GetId())
+		auditEvent.UpdateOriginal(subjectMapping)
 		auditEvent.Success(ctx, subjectMapping)
 
 		rsp.SubjectMapping = subjectMapping
@@ -168,8 +168,7 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 			return db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", req.Msg.GetId()), slog.String("subject_mapping_fields", req.Msg.String()))
 		}
 
-		auditParams.Original = original
-		auditParams.Updated = updated
+		auditEvent.UpdateOriginal(original)
 		auditEvent.Success(ctx, updated)
 
 		rsp.SubjectMapping = &policy.SubjectMapping{
@@ -287,8 +286,8 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 		return nil, err
 	}
 
-	auditParams.ObjectID = conditionSet.GetId()
-	auditParams.Original = conditionSet
+	auditEvent.UpdateObjectID(conditionSet.GetId())
+	auditEvent.UpdateOriginal(conditionSet)
 	auditEvent.Success(ctx, conditionSet)
 
 	rsp.SubjectConditionSet = conditionSet
@@ -335,8 +334,7 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 		return nil, err
 	}
 
-	auditParams.Original = original
-	auditParams.Updated = updated
+	auditEvent.UpdateOriginal(original)
 	auditEvent.Success(ctx, updated)
 
 	return connect.NewResponse(rsp), nil
@@ -390,8 +388,8 @@ func (s SubjectMappingService) DeleteAllUnmappedSubjectConditionSets(ctx context
 
 	// Log each pruned subject condition set to audit
 	for _, scs := range deleted {
-		auditParams.ObjectID = scs.GetId()
 		auditEvent := s.logger.Audit.PolicyCRUD(ctx, auditParams)
+		auditEvent.UpdateObjectID(scs.GetId())
 		auditEvent.Success(ctx, scs)
 		auditEvent.Log(ctx)
 	}

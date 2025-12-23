@@ -111,8 +111,8 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("keyAccessServer", req.Msg.String()))
 	}
 
-	auditParams.ObjectID = ks.GetId()
-	auditParams.Original = ks
+	auditEvent.UpdateObjectID(ks.GetId())
+	auditEvent.UpdateOriginal(ks)
 	auditEvent.Success(ctx, ks)
 
 	rsp.KeyAccessServer = ks
@@ -179,8 +179,7 @@ func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", kasID), slog.String("keyAccessServer", req.Msg.String()))
 	}
 
-	auditParams.Original = original
-	auditParams.Updated = updated
+	auditEvent.UpdateOriginal(original)
 	auditEvent.Success(ctx, updated)
 
 	rsp.KeyAccessServer = &policy.KeyAccessServer{
@@ -248,10 +247,10 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, r *connect.Reque
 			return err
 		}
 
-		auditParams.ObjectID = resp.GetKasKey().GetKey().GetId()
+		auditEvent.UpdateObjectID(resp.GetKasKey().GetKey().GetId())
 		// Leave off private key context and configjson from provider config
 		// For security reasons
-		auditParams.Original = &policy.KasKey{
+		auditEvent.UpdateOriginal(&policy.KasKey{
 			KasId: resp.GetKasKey().GetKasId(),
 			Key: &policy.AsymmetricKey{
 				KeyId:        resp.GetKasKey().GetKey().GetKeyId(),
@@ -266,7 +265,7 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, r *connect.Reque
 				},
 				Metadata: resp.GetKasKey().GetKey().GetMetadata(),
 			},
-		}
+		})
 
 		return nil
 	})
@@ -304,16 +303,11 @@ func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Req
 		}
 
 		// Only key status and metadata can be updated
-		auditParams.Original = &policy.AsymmetricKey{
+		auditEvent.UpdateOriginal(&policy.AsymmetricKey{
 			KeyId:     original.GetKey().GetKeyId(),
 			KeyStatus: original.GetKey().GetKeyStatus(),
 			Metadata:  original.GetKey().GetMetadata(),
-		}
-		auditParams.Updated = &policy.AsymmetricKey{
-			KeyId:     updated.GetKey().GetKeyId(),
-			KeyStatus: updated.GetKey().GetKeyStatus(),
-			Metadata:  updated.GetKey().GetMetadata(),
-		}
+		})
 
 		rsp.KasKey = updated
 		return nil
@@ -350,7 +344,7 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("keyAccessServer Keys", r.Msg.String()))
 	}
 
-	auditParams.ObjectID = key.GetKey().GetKeyId()
+	auditEvent.UpdateObjectID(key.GetKey().GetKeyId())
 	auditEvent.Success(ctx, key)
 
 	rsp.KasKey = key
@@ -407,40 +401,18 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("keyAccessServer Keys", objectID))
 	}
 
-	auditParams.Original = &policy.KasKey{
+	auditEvent.UpdateOriginal(&policy.KasKey{
 		KasId: original.GetKasId(),
 		Key: &policy.AsymmetricKey{
 			KeyId:     original.GetKey().GetKeyId(),
 			KeyStatus: original.GetKey().GetKeyStatus(),
 		},
-	}
+	})
 
 	err = s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		resp, err = txClient.RotateKey(ctx, original, r.Msg.GetNewKey())
 		if err != nil {
 			return err
-		}
-
-		auditParams.Updated = &kasr.RotateKeyResponse{
-			RotatedResources: &kasr.RotatedResources{
-				RotatedOutKey: &policy.KasKey{
-					KasId: resp.GetRotatedResources().GetRotatedOutKey().GetKasId(),
-					Key: &policy.AsymmetricKey{
-						KeyId:     resp.GetRotatedResources().GetRotatedOutKey().GetKey().GetKeyId(),
-						KeyStatus: resp.GetRotatedResources().GetRotatedOutKey().GetKey().GetKeyStatus(),
-					},
-				},
-				AttributeDefinitionMappings: resp.GetRotatedResources().GetAttributeDefinitionMappings(),
-				NamespaceMappings:           resp.GetRotatedResources().GetNamespaceMappings(),
-				AttributeValueMappings:      resp.GetRotatedResources().GetAttributeValueMappings(),
-			},
-			KasKey: &policy.KasKey{
-				KasId: resp.GetKasKey().GetKasId(),
-				Key: &policy.AsymmetricKey{
-					KeyId:     resp.GetKasKey().GetKey().GetKeyId(),
-					KeyStatus: resp.GetKasKey().GetKey().GetKeyStatus(),
-				},
-			},
 		}
 
 		return nil
@@ -484,8 +456,7 @@ func (s KeyAccessServerRegistry) SetBaseKey(ctx context.Context, r *connect.Requ
 			return err
 		}
 
-		auditParams.Original = resp.GetPreviousBaseKey()
-		auditParams.Updated = resp.GetNewBaseKey()
+		auditEvent.UpdateOriginal(resp.GetPreviousBaseKey())
 		auditEvent.Success(ctx, resp.GetNewBaseKey())
 
 		return nil

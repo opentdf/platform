@@ -102,8 +102,7 @@ func (s *UnsafeService) UnsafeUpdateNamespace(ctx context.Context, req *connect.
 			return err
 		}
 
-		auditParams.Original = original
-		auditParams.Updated = updated
+		auditEvent.UpdateOriginal(original)
 
 		auditEvent.Success(ctx, updated)
 
@@ -143,8 +142,7 @@ func (s *UnsafeService) UnsafeReactivateNamespace(ctx context.Context, req *conn
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id))
 	}
 
-	auditParams.Original = original
-	auditParams.Updated = updated
+	auditEvent.UpdateOriginal(original)
 
 	auditEvent.Success(ctx, updated)
 
@@ -215,8 +213,7 @@ func (s *UnsafeService) UnsafeUpdateAttribute(ctx context.Context, req *connect.
 			return err
 		}
 
-		auditParams.Original = original
-		auditParams.Updated = updated
+		auditEvent.UpdateOriginal(original)
 
 		auditEvent.Success(ctx, updated)
 
@@ -256,8 +253,7 @@ func (s *UnsafeService) UnsafeReactivateAttribute(ctx context.Context, req *conn
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id))
 	}
 
-	auditParams.Original = original
-	auditParams.Updated = updated
+	auditEvent.UpdateOriginal(original)
 
 	auditEvent.Success(ctx, updated)
 
@@ -328,8 +324,7 @@ func (s *UnsafeService) UnsafeUpdateAttributeValue(ctx context.Context, req *con
 			return err
 		}
 
-		auditParams.Original = original
-		auditParams.Updated = updated
+		auditEvent.UpdateOriginal(original)
 
 		auditEvent.Success(ctx, updated)
 
@@ -369,8 +364,7 @@ func (s *UnsafeService) UnsafeReactivateAttributeValue(ctx context.Context, req 
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id))
 	}
 
-	auditParams.Original = original
-	auditParams.Updated = updated
+	auditEvent.UpdateOriginal(original)
 
 	auditEvent.Success(ctx, updated)
 
@@ -430,13 +424,13 @@ func (s *UnsafeService) UnsafeDeleteKasKey(ctx context.Context, req *connect.Req
 			return db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 		}
 
-		auditParams.Original = &policy.KasKey{
+		auditEvent.UpdateOriginal(&policy.KasKey{
 			KasUri: existing.GetKasUri(),
 			Key: &policy.AsymmetricKey{
 				Id:    existing.GetKey().GetId(),
 				KeyId: existing.GetKey().GetKeyId(),
 			},
-		}
+		})
 
 		_, err = txClient.UnsafeDeleteKey(ctx, existing, req.Msg)
 		if err != nil {

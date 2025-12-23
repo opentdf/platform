@@ -99,8 +99,8 @@ func (s *AttributesService) CreateAttribute(ctx context.Context,
 
 		s.logger.DebugContext(ctx, "created new attribute definition", slog.String("name", req.Msg.GetName()))
 
-		auditParams.ObjectID = item.GetId()
-		auditParams.Original = item
+		auditEvent.UpdateObjectID(item.GetId())
+		auditEvent.UpdateOriginal(item)
 		auditEvent.Success(ctx, item)
 
 		rsp.Attribute = item
@@ -196,8 +196,7 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", req.Msg.GetId()), slog.String("attribute", req.Msg.String()))
 	}
 
-	auditParams.Original = original
-	auditParams.Updated = updated
+	auditEvent.UpdateOriginal(original)
 	auditEvent.Success(ctx, updated)
 
 	rsp.Attribute = &policy.Attribute{
@@ -231,8 +230,7 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeactivationFailed, slog.String("id", attributeID))
 	}
 
-	auditParams.Original = original
-	auditParams.Updated = updated
+	auditEvent.UpdateOriginal(original)
 	auditEvent.Success(ctx, updated)
 
 	rsp.Attribute = &policy.Attribute{
@@ -261,8 +259,8 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 			return err
 		}
 
-		auditParams.ObjectID = item.GetId()
-		auditParams.Original = item
+		auditEvent.UpdateObjectID(item.GetId())
+		auditEvent.UpdateOriginal(item)
 		auditEvent.Success(ctx, item)
 
 		rsp.Value = item
@@ -334,8 +332,7 @@ func (s *AttributesService) UpdateAttributeValue(ctx context.Context, req *conne
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", req.Msg.GetId()), slog.String("value", req.Msg.String()))
 	}
 
-	auditParams.Original = original
-	auditParams.Updated = updated
+	auditEvent.UpdateOriginal(original)
 	auditEvent.Success(ctx, updated)
 
 	rsp.Value = &policy.Value{
@@ -367,8 +364,7 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *c
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeactivationFailed, slog.String("id", attributeID))
 	}
 
-	auditParams.Original = original
-	auditParams.Updated = updated
+	auditEvent.UpdateOriginal(original)
 	auditEvent.Success(ctx, updated)
 
 	rsp.Value = updated
@@ -395,9 +391,8 @@ func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Conte
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("attributeKas", req.Msg.GetAttributeKeyAccessServer().String()))
 	}
 
-	auditParams.ObjectID = attributeKas.GetAttributeId()
-	auditParams.Original = req.Msg.GetAttributeKeyAccessServer()
-	auditParams.Updated = attributeKas
+	auditEvent.UpdateObjectID(attributeKas.GetAttributeId())
+	auditEvent.UpdateOriginal(req.Msg.GetAttributeKeyAccessServer())
 	auditEvent.Success(ctx, attributeKas)
 
 	rsp.AttributeKeyAccessServer = attributeKas
@@ -424,9 +419,8 @@ func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, 
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("attributeValueKas", req.Msg.GetValueKeyAccessServer().String()))
 	}
 
-	auditParams.ObjectID = valueKas.GetValueId()
-	auditParams.Original = req.Msg.GetValueKeyAccessServer()
-	auditParams.Updated = valueKas
+	auditEvent.UpdateObjectID(valueKas.GetValueId())
+	auditEvent.UpdateOriginal(req.Msg.GetValueKeyAccessServer())
 	auditEvent.Success(ctx, valueKas)
 
 	rsp.ValueKeyAccessServer = valueKas
@@ -448,8 +442,8 @@ func (s *AttributesService) AssignPublicKeyToAttribute(ctx context.Context, r *c
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("attributeKey", r.Msg.GetAttributeKey().String()))
 	}
 
-	auditParams.ObjectID = ak.GetAttributeId()
-	auditParams.Original = ak
+	auditEvent.UpdateObjectID(ak.GetAttributeId())
+	auditEvent.UpdateOriginal(ak)
 	auditEvent.Success(ctx, ak)
 
 	rsp.AttributeKey = ak
@@ -471,9 +465,8 @@ func (s *AttributesService) RemovePublicKeyFromAttribute(ctx context.Context, r 
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("attributeKey", r.Msg.GetAttributeKey().String()))
 	}
 
-	auditParams.ObjectID = ak.GetAttributeId()
-	auditParams.Original = r.Msg.GetAttributeKey()
-	auditParams.Updated = ak
+	auditEvent.UpdateObjectID(ak.GetAttributeId())
+	auditEvent.UpdateOriginal(r.Msg.GetAttributeKey())
 	auditEvent.Success(ctx, ak)
 
 	return connect.NewResponse(rsp), nil
@@ -493,8 +486,8 @@ func (s *AttributesService) AssignPublicKeyToValue(ctx context.Context, r *conne
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("attributeKey", r.Msg.GetValueKey().String()))
 	}
 
-	auditParams.ObjectID = vk.GetValueId()
-	auditParams.Original = vk
+	auditEvent.UpdateObjectID(vk.GetValueId())
+	auditEvent.UpdateOriginal(vk)
 	auditEvent.Success(ctx, vk)
 
 	rsp.ValueKey = vk
@@ -516,9 +509,8 @@ func (s *AttributesService) RemovePublicKeyFromValue(ctx context.Context, r *con
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("attributeKey", r.Msg.GetValueKey().String()))
 	}
 
-	auditParams.ObjectID = vk.GetValueId()
-	auditParams.Original = r.Msg.GetValueKey()
-	auditParams.Updated = vk
+	auditEvent.UpdateObjectID(vk.GetValueId())
+	auditEvent.UpdateOriginal(r.Msg.GetValueKey())
 	auditEvent.Success(ctx, vk)
 
 	return connect.NewResponse(rsp), nil

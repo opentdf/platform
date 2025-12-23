@@ -102,8 +102,8 @@ func (s *RegisteredResourcesService) CreateRegisteredResource(ctx context.Contex
 			return err
 		}
 
-		auditParams.ObjectID = resource.GetId()
-		auditParams.Original = resource
+		auditEvent.UpdateObjectID(resource.GetId())
+		auditEvent.UpdateOriginal(resource)
 		auditEvent.Success(ctx, resource)
 
 		rsp.Resource = resource
@@ -171,8 +171,7 @@ func (s *RegisteredResourcesService) UpdateRegisteredResource(ctx context.Contex
 			return err
 		}
 
-		auditParams.Original = original
-		auditParams.Updated = updated
+		auditEvent.UpdateOriginal(original)
 		auditEvent.Success(ctx, updated)
 
 		rsp.Resource = updated
@@ -232,8 +231,8 @@ func (s *RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.C
 			return err
 		}
 
-		auditParams.ObjectID = value.GetId()
-		auditParams.Original = value
+		auditEvent.UpdateObjectID(value.GetId())
+		auditEvent.UpdateOriginal(value)
 		auditEvent.Success(ctx, value)
 
 		rsp.Value = value
@@ -317,8 +316,7 @@ func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.C
 			return err
 		}
 
-		auditParams.Original = original
-		auditParams.Updated = updated
+		auditEvent.UpdateOriginal(original)
 		auditEvent.Success(ctx, updated)
 
 		rsp.Value = updated

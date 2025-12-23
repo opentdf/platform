@@ -126,8 +126,8 @@ func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[a
 			return err
 		}
 
-		auditParams.ObjectID = action.GetId()
-		auditParams.Original = action
+		auditEvent.UpdateObjectID(action.GetId())
+		auditEvent.UpdateOriginal(action)
 		auditEvent.Success(ctx, action)
 
 		rsp.Action = action
@@ -167,8 +167,7 @@ func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[a
 			return err
 		}
 
-		auditParams.Original = original
-		auditParams.Updated = updated
+		auditEvent.UpdateOriginal(original)
 		auditEvent.Success(ctx, updated)
 
 		rsp.Action = updated

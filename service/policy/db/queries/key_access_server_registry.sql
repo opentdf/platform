@@ -2,7 +2,13 @@
 -- KEY ACCESS SERVERS
 ----------------------------------------------------------------
 -- name: listKeyAccessServerGrants :many
-WITH listed AS (
+WITH params AS (
+    SELECT
+        NULLIF(@kas_id, '')::uuid as kas_id,
+        NULLIF(@kas_uri, '')::varchar as kas_uri,
+        NULLIF(@kas_name, '')::varchar as kas_name
+),
+listed AS (
     SELECT
         COUNT(*) OVER () AS total,
         kas.id AS kas_id,
@@ -27,6 +33,7 @@ WITH listed AS (
             'fqn', fqns_on_ns.fqn
         )) FILTER (WHERE nskag.namespace_id IS NOT NULL) AS namespace_grants
     FROM key_access_servers AS kas
+    CROSS JOIN params
     LEFT JOIN
         attribute_definition_key_access_grants AS attrkag
         ON kas.id = attrkag.key_access_server_id
@@ -47,9 +54,9 @@ WITH listed AS (
         attribute_fqns AS fqns_on_ns
             ON nskag.namespace_id = fqns_on_ns.namespace_id
         AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
-    WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid) 
-        AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri::varchar) 
-        AND (NULLIF(@kas_name, '') IS NULL OR kas.name = @kas_name::varchar) 
+    WHERE (params.kas_id IS NULL OR kas.id = params.kas_id) 
+        AND (params.kas_uri IS NULL OR kas.uri = params.kas_uri) 
+        AND (params.kas_name IS NULL OR kas.name = params.kas_name) 
     GROUP BY 
         kas.id
 )
@@ -104,6 +111,12 @@ LIMIT @limit_
 OFFSET @offset_; 
 
 -- name: getKeyAccessServer :one
+WITH params AS (
+    SELECT
+        sqlc.narg('id')::uuid as id,
+        sqlc.narg('name')::text as name,
+        sqlc.narg('uri')::text as uri
+)
 SELECT 
     kas.id,
     kas.uri, 
@@ -119,6 +132,7 @@ SELECT
     ) AS metadata,
     kask_keys.keys
 FROM key_access_servers AS kas
+CROSS JOIN params
 LEFT JOIN (
         SELECT
             kask.key_access_server_id,
@@ -137,9 +151,9 @@ LEFT JOIN (
         INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY kask.key_access_server_id
     ) kask_keys ON kas.id = kask_keys.key_access_server_id
-WHERE (sqlc.narg('id')::uuid IS NULL OR kas.id = sqlc.narg('id')::uuid)
-  AND (sqlc.narg('name')::text IS NULL OR kas.name = sqlc.narg('name')::text)
-  AND (sqlc.narg('uri')::text IS NULL OR kas.uri = sqlc.narg('uri')::text);
+WHERE (params.id IS NULL OR kas.id = params.id)
+  AND (params.name IS NULL OR kas.name = params.name)
+  AND (params.uri IS NULL OR kas.uri = params.uri);
 
 -- name: createKeyAccessServer :one
 INSERT INTO key_access_servers (uri, public_key, name, metadata, source_type)
@@ -170,6 +184,14 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING id;
 
 -- name: getKey :one
+WITH params AS (
+    SELECT
+        sqlc.narg('id')::uuid as id,
+        sqlc.narg('key_id')::text as key_id,
+        sqlc.narg('kas_id')::uuid as kas_id,
+        sqlc.narg('kas_uri')::text as kas_uri,
+        sqlc.narg('kas_name')::text as kas_name
+)
 SELECT 
   kask.id,
   kask.key_id,
@@ -194,18 +216,27 @@ SELECT
   JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata,
   kask.legacy
 FROM key_access_server_keys AS kask
+CROSS JOIN params
 LEFT JOIN 
     provider_config as pc ON kask.provider_config_id = pc.id
 INNER JOIN 
     key_access_servers AS kas ON kask.key_access_server_id = kas.id
-WHERE (sqlc.narg('id')::uuid IS NULL OR kask.id = sqlc.narg('id')::uuid)
-  AND (sqlc.narg('key_id')::text IS NULL OR kask.key_id = sqlc.narg('key_id')::text)
-  AND (sqlc.narg('kas_id')::uuid IS NULL OR kask.key_access_server_id = sqlc.narg('kas_id')::uuid)
-  AND (sqlc.narg('kas_uri')::text IS NULL OR kas.uri = sqlc.narg('kas_uri')::text)
-  AND (sqlc.narg('kas_name')::text IS NULL OR kas.name = sqlc.narg('kas_name')::text);
+WHERE (params.id IS NULL OR kask.id = params.id)
+  AND (params.key_id IS NULL OR kask.key_id = params.key_id)
+  AND (params.kas_id IS NULL OR kask.key_access_server_id = params.kas_id)
+  AND (params.kas_uri IS NULL OR kas.uri = params.kas_uri)
+  AND (params.kas_name IS NULL OR kas.name = params.kas_name);
 
 -- name: listKeyMappings :many
-WITH filtered_keys AS (
+WITH params AS (
+    SELECT
+        sqlc.narg('id')::uuid as id,
+        sqlc.narg('kid')::text as kid,
+        sqlc.narg('kas_id')::uuid as kas_id,
+        sqlc.narg('kas_name')::text as kas_name,
+        sqlc.narg('kas_uri')::text as kas_uri
+),
+filtered_keys AS (
     -- Get all keys matching the filter criteria
     SELECT
         kask.created_at,
@@ -214,24 +245,25 @@ WITH filtered_keys AS (
         kas.id AS kas_id,
         kas.uri AS kas_uri
     FROM key_access_server_keys kask
+    CROSS JOIN params
     INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
     WHERE (
         -- Case 1: Filter by system key ID if provided
-        (sqlc.narg('id')::uuid IS NOT NULL AND kask.id = sqlc.narg('id')::uuid)
+        (params.id IS NOT NULL AND kask.id = params.id)
         -- Case 2: Filter by KID + at least one KAS identifier
         OR (
-            sqlc.narg('kid')::text IS NOT NULL 
-            AND kask.key_id = sqlc.narg('kid')::text
+            params.kid IS NOT NULL 
+            AND kask.key_id = params.kid
             AND (
-                (sqlc.narg('kas_id')::uuid IS NOT NULL AND kas.id = sqlc.narg('kas_id')::uuid)
-                OR (sqlc.narg('kas_name')::text IS NOT NULL AND kas.name = sqlc.narg('kas_name')::text)
-                OR (sqlc.narg('kas_uri')::text IS NOT NULL AND kas.uri = sqlc.narg('kas_uri')::text)
+                (params.kas_id IS NOT NULL AND kas.id = params.kas_id)
+                OR (params.kas_name IS NOT NULL AND kas.name = params.kas_name)
+                OR (params.kas_uri IS NOT NULL AND kas.uri = params.kas_uri)
             )
         )
         -- Case 3: Return all keys if no filters are provided
         OR (
-            sqlc.narg('id')::uuid IS NULL 
-            AND sqlc.narg('kid')::text IS NULL
+            params.id IS NULL 
+            AND params.kid IS NULL
         )
     )
 ),
@@ -319,14 +351,23 @@ SET
 WHERE id = $1;
 
 -- name: listKeys :many
-WITH listed AS (
+WITH params AS (
+    SELECT
+        sqlc.narg('kas_id')::uuid as kas_id,
+        sqlc.narg('kas_name')::text as kas_name,
+        sqlc.narg('kas_uri')::text as kas_uri,
+        sqlc.narg('key_algorithm')::integer as key_algorithm,
+        sqlc.narg('legacy')::boolean as legacy
+),
+listed AS (
     SELECT
         kas.id AS kas_id,
         kas.uri AS kas_uri
     FROM key_access_servers AS kas
-    WHERE (sqlc.narg('kas_id')::uuid IS NULL OR kas.id = sqlc.narg('kas_id')::uuid)
-            AND (sqlc.narg('kas_name')::text IS NULL OR kas.name = sqlc.narg('kas_name')::text)
-            AND (sqlc.narg('kas_uri')::text IS NULL OR kas.uri = sqlc.narg('kas_uri')::text)
+    CROSS JOIN params
+    WHERE (params.kas_id IS NULL OR kas.id = params.kas_id)
+            AND (params.kas_name IS NULL OR kas.name = params.kas_name)
+            AND (params.kas_uri IS NULL OR kas.uri = params.kas_uri)
 )
 SELECT 
   COUNT(*) OVER () AS total,
@@ -352,13 +393,14 @@ SELECT
   JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata,
   kask.legacy
 FROM key_access_server_keys AS kask
+CROSS JOIN params
 INNER JOIN
     listed ON kask.key_access_server_id = listed.kas_id
 LEFT JOIN 
     provider_config as pc ON kask.provider_config_id = pc.id
 WHERE
-    (sqlc.narg('key_algorithm')::integer IS NULL OR kask.key_algorithm = sqlc.narg('key_algorithm')::integer)
-    AND (sqlc.narg('legacy')::boolean IS NULL OR kask.legacy = sqlc.narg('legacy')::boolean)
+    (params.key_algorithm IS NULL OR kask.key_algorithm = params.key_algorithm)
+    AND (params.legacy IS NULL OR kask.legacy = params.legacy)
 ORDER BY kask.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_;

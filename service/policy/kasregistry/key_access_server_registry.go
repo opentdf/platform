@@ -267,7 +267,6 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, r *connect.Reque
 				Metadata: resp.GetKasKey().GetKey().GetMetadata(),
 			},
 		}
-		auditEvent.Success(ctx, resp.GetKasKey())
 
 		return nil
 	})
@@ -275,6 +274,7 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, r *connect.Reque
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("keyAccessServer Keys", r.Msg.GetKasId()), slog.String("key id", r.Msg.GetKeyId()))
 	}
 
+	auditEvent.Success(ctx, resp.GetKasKey())
 	return connect.NewResponse(resp), nil
 }
 
@@ -314,7 +314,6 @@ func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Req
 			KeyStatus: updated.GetKey().GetKeyStatus(),
 			Metadata:  updated.GetKey().GetMetadata(),
 		}
-		auditEvent.Success(ctx, updated.GetKey())
 
 		rsp.KasKey = updated
 		return nil
@@ -323,6 +322,7 @@ func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Req
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("keyAccessServer Keys", req.Msg.GetId()))
 	}
 
+	auditEvent.Success(ctx, rsp.GetKasKey().GetKey())
 	return connect.NewResponse(rsp), nil
 }
 
@@ -442,7 +442,6 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 				},
 			},
 		}
-		auditEvent.Success(ctx, resp)
 
 		return nil
 	})
@@ -450,7 +449,7 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextKeyRotationFailed, slog.String("Active Key ID", objectID), slog.String("New Key ID", r.Msg.GetNewKey().GetKeyId()))
 	}
 
-	// Implementation for RotateKey
+	auditEvent.Success(ctx, resp)
 	return connect.NewResponse(resp), nil
 }
 

@@ -1,7 +1,7 @@
 # make
 # To run all lint checks: `LINT_OPTIONS= make lint`
 
-.PHONY: all build clean connect-wrapper-generate docker-build fix fmt go-lint license lint proto-generate proto-lint sdk/sdk test tidy toolcheck
+.PHONY: all build clean connect-wrapper-generate docker-build fix fmt go-lint license lint proto-generate proto-lint sdk/sdk test tidy toolcheck integration-test integration-test-sqlite integration-test-all
 
 MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
 HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
@@ -102,6 +102,17 @@ policy-erd-gen:
 
 test:
 	for m in $(HAND_MODS); do (cd $$m && go test ./... -race) || exit 1; done
+
+# Integration tests with PostgreSQL (default, requires Docker)
+integration-test:
+	cd service && go test ./integration/... -v -count=1
+
+# Integration tests with SQLite (no Docker required)
+integration-test-sqlite:
+	cd service && OPENTDF_TEST_DB=sqlite go test ./integration/... -v -count=1
+
+# Run all integration tests (both databases)
+integration-test-all: integration-test-sqlite integration-test
 
 fuzz:
 	cd sdk && go test ./... -fuzztime=2m

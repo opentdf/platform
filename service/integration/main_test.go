@@ -13,13 +13,14 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/service/internal/fixtures"
+	"github.com/opentdf/platform/service/pkg/config"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-const note = `
+const notePostgres = `
 ====================================================================================
- Integration Tests
+ Integration Tests (PostgreSQL)
  Testcontainers is used to run these integration tests. To get this working please
  ensure you have Docker/Podman installed and running.
  If using Podman, export these variables:
@@ -43,8 +44,21 @@ const note = `
 ====================================================================================
 `
 
+const noteSQLite = `
+====================================================================================
+ Integration Tests (SQLite)
+ Running tests with in-memory SQLite database.
+ No Docker/Podman required.
+ To switch to PostgreSQL, unset OPENTDF_TEST_DB or set it to 'postgres'.
+====================================================================================
+`
+
 func init() {
-	os.Stderr.Write([]byte(note))
+	if UseSQLite() {
+		os.Stderr.Write([]byte(noteSQLite))
+	} else {
+		os.Stderr.Write([]byte(notePostgres))
+	}
 }
 
 func TestMain(m *testing.M) {
@@ -56,6 +70,28 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
+	// For SQLite, we don't need to start a container
+	if UseSQLite() {
+		runSQLiteTests(m)
+		return
+	}
+
+	// PostgreSQL mode - start testcontainer
+	runPostgresTests(ctx, m, conf)
+}
+
+func runSQLiteTests(m *testing.M) {
+	//nolint:sloglint // emoji
+	slog.Info("🗄️ using SQLite in-memory database")
+
+	//nolint:sloglint // emoji
+	slog.Info("🏠 loading fixtures")
+	fixtures.LoadFixtureData("../internal/fixtures/policy_fixtures.yaml")
+
+	m.Run()
+}
+
+func runPostgresTests(ctx context.Context, m *testing.M, conf *config.Config) {
 	/*
 		For podman
 		export TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true; # needed to run Reaper (alternative disable it TESTCONTAINERS_RYUK_DISABLED=true)

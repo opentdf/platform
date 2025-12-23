@@ -29,6 +29,11 @@ type DBInterface struct {
 	LimitMax     int32
 }
 
+// IsSQLite returns true if the database is SQLite
+func (d *DBInterface) IsSQLite() bool {
+	return d.Client.DriverType() == db.DriverSQLite
+}
+
 func NewDBInterface(ctx context.Context, cfg config.Config) DBInterface {
 	config := cfg.DB
 	config.Schema = cfg.DB.Schema
@@ -62,6 +67,10 @@ func NewDBInterface(ctx context.Context, cfg config.Config) DBInterface {
 
 // TableName returns a sanitized fully-qualified table name.
 func (d *DBInterface) TableName(v string) string {
+	if d.IsSQLite() {
+		// SQLite doesn't use schemas, just quote the table name
+		return `"` + v + `"`
+	}
 	return pgx.Identifier{d.Schema, v}.Sanitize()
 }
 
@@ -77,6 +86,9 @@ func (d *DBInterface) ExecInsert(ctx context.Context, table string, columns []st
 	var placeholders []string
 	var allArgs []any
 
+	// Use different placeholder styles for PostgreSQL vs SQLite
+	useDollarPlaceholders := !d.IsSQLite()
+
 	placeholderNum := 1
 	for _, row := range values {
 		if len(row) != numColumns {
@@ -89,25 +101,45 @@ func (d *DBInterface) ExecInsert(ctx context.Context, table string, columns []st
 
 		var rowPlaceholders []string
 		for _, arg := range row {
-			rowPlaceholders = append(rowPlaceholders, fmt.Sprintf("$%d", placeholderNum))
+			if useDollarPlaceholders {
+				rowPlaceholders = append(rowPlaceholders, fmt.Sprintf("$%d", placeholderNum))
+			} else {
+				rowPlaceholders = append(rowPlaceholders, "?")
+			}
 			placeholderNum++
 			allArgs = append(allArgs, arg)
 		}
 		placeholders = append(placeholders, "("+strings.Join(rowPlaceholders, ",")+")")
 	}
 
-	// Safely sanitize table name using pgx.Identifier
-	tableName := pgx.Identifier{d.Schema, table}.Sanitize()
+	// Get table name based on database type
+	tableName := d.TableName(table)
 
-	// Safely sanitize column names using pgx.Identifier
+	// Safely sanitize column names
 	sanitizedColumns := make([]string, len(columns))
 	for i, col := range columns {
-		sanitizedColumns[i] = pgx.Identifier{col}.Sanitize()
+		if d.IsSQLite() {
+			sanitizedColumns[i] = `"` + col + `"`
+		} else {
+			sanitizedColumns[i] = pgx.Identifier{col}.Sanitize()
+		}
 	}
 
 	sql := "INSERT INTO " + tableName +
 		" (" + strings.Join(sanitizedColumns, ",") + ")" +
 		" VALUES " + strings.Join(placeholders, ",")
+
+	if d.IsSQLite() {
+		result, err := d.Client.SQLDB.ExecContext(ctx, sql, allArgs...)
+		if err != nil {
+			slog.Error("insert error",
+				slog.String("stmt", sql),
+				slog.Any("err", err),
+			)
+			return 0, err
+		}
+		return result.RowsAffected()
+	}
 
 	pconn, err := d.Client.Pgx.Exec(ctx, sql, allArgs...)
 	if err != nil {
@@ -121,6 +153,12 @@ func (d *DBInterface) ExecInsert(ctx context.Context, table string, columns []st
 }
 
 func (d *DBInterface) DropSchema(ctx context.Context) error {
+	if d.IsSQLite() {
+		// SQLite doesn't have schemas - drop all tables instead
+		// For in-memory databases, this is typically not needed
+		return nil
+	}
+
 	sql := "DROP SCHEMA IF EXISTS " + pgx.Identifier{d.Schema}.Sanitize() + " CASCADE"
 	_, err := d.Client.Pgx.Exec(ctx, sql)
 	if err != nil {

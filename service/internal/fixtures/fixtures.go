@@ -425,8 +425,9 @@ func (f *Fixtures) GetRegisteredResourceValueKey(key string) FixtureDataRegister
 
 //nolint:sloglint // preserve emoji usage
 func (f *Fixtures) Provision(ctx context.Context) {
-	slog.Info("📦 running migrations in schema", slog.String("schema", f.db.Schema))
-	_, err := f.db.Client.RunMigrations(ctx, policy.Migrations)
+	slog.Info("📦 running migrations in schema", slog.String("schema", f.db.Schema), slog.String("driver", string(f.db.Client.DriverType())))
+	migrations := policy.MigrationsForDriver(f.db.Client.DriverType())
+	_, err := f.db.Client.RunMigrations(ctx, migrations)
 	if err != nil {
 		panic(err)
 	}

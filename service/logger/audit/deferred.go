@@ -61,7 +61,6 @@ func (d *deferred[T]) log(ctx context.Context) {
 // as cancelled unless explicitly marked as success or failure
 type PolicyCRUDEvent struct {
 	*deferred[PolicyEventParams]
-	params *PolicyEventParams // Store pointer for mutation
 }
 
 // RewrapEvent represents a rewrap audit event that will be logged
@@ -74,14 +73,12 @@ type RewrapEvent struct {
 // as a deny decision unless explicitly marked with a final decision
 type GetDecisionEvent struct {
 	*deferred[GetDecisionEventParams]
-	params *GetDecisionEventParams // Store pointer for mutation
 }
 
 // GetDecisionV2Event represents a GetDecisionV2 audit event that will be logged
 // as a deny decision unless explicitly marked with a final decision
 type GetDecisionV2Event struct {
 	*deferred[GetDecisionV2EventParams]
-	params *GetDecisionV2EventParams // Store pointer for mutation
 }
 
 // PolicyCRUD creates a deferred policy CRUD audit event.
@@ -100,7 +97,6 @@ func (a *Logger) PolicyCRUD(ctx context.Context, params PolicyEventParams) *Poli
 	// Store a reference to params for mutation
 	paramsCopy := params
 	return &PolicyCRUDEvent{
-		params: &paramsCopy,
 		deferred: &deferred[PolicyEventParams]{
 			params: paramsCopy,
 			onSuccess: func(ctx context.Context, p PolicyEventParams) {
@@ -118,7 +114,6 @@ func (a *Logger) PolicyCRUD(ctx context.Context, params PolicyEventParams) *Poli
 func (d *PolicyCRUDEvent) Success(ctx context.Context, updated proto.Message) {
 	// Update the params with the updated object
 	d.params.Updated = updated
-	d.deferred.params = *d.params
 	d.markSuccess(ctx)
 }
 
@@ -203,7 +198,6 @@ func (a *Logger) Decision(ctx context.Context, entityChainID string, resourceAtt
 	paramsCopy := params
 
 	return &GetDecisionEvent{
-		params: &paramsCopy,
 		deferred: &deferred[GetDecisionEventParams]{
 			params: paramsCopy,
 			onSuccess: func(ctx context.Context, p GetDecisionEventParams) {
@@ -220,19 +214,16 @@ func (a *Logger) Decision(ctx context.Context, entityChainID string, resourceAtt
 // UpdateEntitlements updates the entity chain entitlements as they are computed
 func (d *GetDecisionEvent) UpdateEntitlements(entitlements []EntityChainEntitlement) {
 	d.params.EntityChainEntitlements = entitlements
-	d.deferred.params.EntityChainEntitlements = entitlements
 }
 
 // UpdateEntityDecisions updates the entity decisions as they are computed
 func (d *GetDecisionEvent) UpdateEntityDecisions(decisions []EntityDecision) {
 	d.params.EntityDecisions = decisions
-	d.deferred.params.EntityDecisions = decisions
 }
 
 // Success marks the audit event with the final decision and logs it immediately.
 func (d *GetDecisionEvent) Success(ctx context.Context, decision DecisionResult) {
 	d.params.Decision = decision
-	d.deferred.params = *d.params
 	d.markSuccess(ctx)
 }
 
@@ -272,7 +263,6 @@ func (a *Logger) DecisionV2(ctx context.Context, entityID string, actionName str
 	paramsCopy := params
 
 	return &GetDecisionV2Event{
-		params: &paramsCopy,
 		deferred: &deferred[GetDecisionV2EventParams]{
 			params: paramsCopy,
 			onSuccess: func(ctx context.Context, p GetDecisionV2EventParams) {
@@ -289,27 +279,22 @@ func (a *Logger) DecisionV2(ctx context.Context, entityID string, actionName str
 // UpdateEntitlements updates the entitlements as they are computed
 func (d *GetDecisionV2Event) UpdateEntitlements(entitlements map[string][]*policy.Action) {
 	d.params.Entitlements = entitlements
-	d.deferred.params.Entitlements = entitlements
 }
 
 // UpdateResourceDecisions updates the resource decisions as they are computed
 func (d *GetDecisionV2Event) UpdateResourceDecisions(resourceDecisions any) {
 	d.params.ResourceDecisions = resourceDecisions
-	d.deferred.params.ResourceDecisions = resourceDecisions
 }
 
 // UpdateObligations updates the obligation information as it is computed
 func (d *GetDecisionV2Event) UpdateObligations(fulfillable []string, satisfied bool) {
 	d.params.FulfillableObligationValueFQNs = fulfillable
 	d.params.ObligationsSatisfied = satisfied
-	d.deferred.params.FulfillableObligationValueFQNs = fulfillable
-	d.deferred.params.ObligationsSatisfied = satisfied
 }
 
 // Success marks the audit event with the final decision and logs it immediately.
 func (d *GetDecisionV2Event) Success(ctx context.Context, decision DecisionResult) {
 	d.params.Decision = decision
-	d.deferred.params = *d.params
 	d.markSuccess(ctx)
 }
 

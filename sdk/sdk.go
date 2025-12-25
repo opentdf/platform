@@ -526,3 +526,7 @@ func (s *SDK) StoreKASKeys(url string, keys *policy.KasPublicKeySet) error {
 	}
 	return nil
 }
+
+func (s *SDK) TokenSource() auth.AccessTokenSource {
+	return s.tokenSource
+}

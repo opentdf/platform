@@ -1,17 +1,91 @@
 # SQLite Implementation Guide
 
-This document outlines the steps required to support SQLite as a drop-in replacement for the current PostgreSQL implementation in the OpenTDF platform.
+This document describes SQLite support as a drop-in replacement for PostgreSQL in the OpenTDF platform.
 
-## Overview
+## Quick Start
 
-The current implementation is tightly coupled with PostgreSQL through:
-- **pgx driver** (`github.com/jackc/pgx/v5`) for connections
-- **sqlc** code generation configured for PostgreSQL (11 query files → 11 generated `.sql.go` files)
-- **Squirrel** query builder with `$` placeholder format
-- **38 migration files** using PostgreSQL-specific SQL features
-- **30 database triggers** (including complex PL/pgSQL functions)
-- **PostgreSQL-specific error handling** via `pgerrcode`
-- **pgtype.\*** wrappers for PostgreSQL types in Go models
+### Running with SQLite
+
+**Integration Tests (no Docker required):**
+```bash
+# Run integration tests with SQLite
+make integration-test-sqlite
+
+# Or directly:
+OPENTDF_TEST_DB=sqlite go test ./service/integration/... -v
+```
+
+**Configuration:**
+```yaml
+db:
+  driver: sqlite          # "postgres" (default) or "sqlite"
+  sqlitePath: ":memory:"  # File path or ":memory:" for in-memory
+```
+
+**Programmatic:**
+```go
+import "github.com/opentdf/platform/service/pkg/db"
+
+cfg := db.Config{
+    Driver:     db.DriverSQLite,
+    SQLitePath: "./opentdf.db",  // or ":memory:"
+}
+client, err := db.New(ctx, cfg, logCfg, &tracer)
+```
+
+### Makefile Targets
+
+```bash
+# Integration tests with SQLite (no Docker required)
+make integration-test-sqlite
+
+# Integration tests with PostgreSQL (requires Docker)
+make integration-test
+
+# Run both database backends
+make integration-test-all
+```
+
+---
+
+## Known Limitations
+
+SQLite has full feature parity with PostgreSQL for the OpenTDF platform, with these caveats:
+
+| Feature | PostgreSQL | SQLite | Notes |
+|---------|------------|--------|-------|
+| Concurrent writes | Full MVCC | Single-writer (WAL mode) | SQLite queues writes |
+| Connection pooling | Unlimited | Limited by file locks | Use `MaxOpenConns: 1` for writes |
+| JSON functions | Native JSONB | json1 extension | Requires SQLite 3.38+ |
+| Full-text search | `tsvector`/`tsquery` | Not implemented | Use external library if needed |
+| GIN indexes | Native | Not available | Standard indexes used instead |
+
+**Trigger Emulation:** Complex PostgreSQL triggers (key rotation, cascade deactivation) are implemented in Go in `triggers_emulation.go` rather than as database triggers.
+
+---
+
+## Architecture Overview
+
+SQLite support is implemented through:
+
+| Component | Location | Description |
+|-----------|----------|-------------|
+| Driver abstraction | `service/pkg/db/driver.go` | `DriverType` enum and interface |
+| SQLite driver | `service/pkg/db/driver_sqlite.go` | SQLite connection with WAL, foreign keys |
+| PostgreSQL driver | `service/pkg/db/driver_postgres.go` | Wraps existing pgx pool |
+| Query router | `service/policy/db/query_router.go` | Routes queries to correct driver |
+| SQLite migrations | `service/policy/db/migrations_sqlite/` | 38 SQLite-compatible migrations |
+| SQLite queries | `service/policy/db/queries_sqlite/` | 11 SQLite query files for sqlc |
+| Trigger emulation | `service/policy/db/triggers_emulation.go` | Go implementation of PL/pgSQL triggers |
+| Constraint emulation | `service/policy/db/constraints_sqlite.go` | EXCLUDE constraint validation |
+| Bulk insert | `service/policy/db/bulk_insert.go` | Replaces PostgreSQL COPY protocol |
+| Error mapping | `service/pkg/db/errors_sqlite.go` | SQLite error code mapping |
+
+---
+
+## Implementation Details
+
+The original PostgreSQL implementation uses:
 
 ### File Inventory
 
@@ -696,81 +770,83 @@ jobs:
 ## Implementation Checklist
 
 ### Prerequisites
-- [ ] Evaluate if SQLite feature limitations are acceptable for use case
-- [ ] Decide on migration strategy (parallel migrations vs. conditional)
-- [ ] Plan for trigger logic migration (application layer)
+- [x] Evaluate if SQLite feature limitations are acceptable for use case
+- [x] Decide on migration strategy (parallel migrations vs. conditional)
+- [x] Plan for trigger logic migration (application layer)
 
 ### Core Changes
-- [ ] Create driver abstraction interface (`service/pkg/db/driver.go`)
-- [ ] Implement SQLite connection wrapper
-- [ ] Update configuration to support driver selection
-- [ ] Modify Squirrel placeholder format based on driver
-- [ ] Create SQLite-specific error mapping
+- [x] Create driver abstraction interface (`service/pkg/db/driver.go`)
+- [x] Implement SQLite connection wrapper (`service/pkg/db/driver_sqlite.go`)
+- [x] Update configuration to support driver selection
+- [x] Modify Squirrel placeholder format based on driver
+- [x] Create SQLite-specific error mapping (`service/pkg/db/errors_sqlite.go`)
 
 ### Migration Files (38 files)
-- [ ] Create `migrations_sqlite/` directory
-- [ ] Convert 38 migration files to SQLite syntax
-- [ ] Replace 28 `gen_random_uuid()` calls with application-layer UUID generation
-- [ ] Convert 66 JSONB column definitions to TEXT/JSON
-- [ ] Replace 6 array columns with JSON or junction tables
-- [ ] Rewrite 30 triggers (15 simple, 15 complex requiring app logic)
-- [ ] Convert ENUM type to CHECK constraint
-- [ ] Handle `UNIQUE NULLS NOT DISTINCT` with partial indexes (20240213)
-- [ ] Handle `EXCLUDE` constraint with application logic (20241125)
+- [x] Create `migrations_sqlite/` directory
+- [x] Convert 38 migration files to SQLite syntax
+- [x] Replace 28 `gen_random_uuid()` calls with application-layer UUID generation
+- [x] Convert 66 JSONB column definitions to TEXT/JSON
+- [x] Replace 6 array columns with JSON or junction tables
+- [x] Rewrite 30 triggers (15 simple, 15 complex requiring app logic)
+- [x] Convert ENUM type to CHECK constraint
+- [x] Handle `UNIQUE NULLS NOT DISTINCT` with partial indexes (20240213)
+- [x] Handle `EXCLUDE` constraint with application logic (20241125)
 
 ### Query Layer (11 query files, 11 generated .sql.go files)
-- [ ] Audit all 11 sqlc query files in `queries/` for PostgreSQL syntax
-- [ ] Create SQLite-compatible query files in `queries_sqlite/`
-- [ ] Rewrite 479 JSON aggregation function calls
-- [ ] Replace `JSON_BUILD_OBJECT` with `json_object`
-- [ ] Replace `JSONB_AGG` with `json_group_array`
-- [ ] Handle `ANY(array)` → `IN (...)` conversion
-- [ ] Replace COPY protocol with batch inserts in `copyfrom.go`
-- [ ] Update `pgtype.*` usage in `models.go` to driver-agnostic types
+- [x] Audit all 11 sqlc query files in `queries/` for PostgreSQL syntax
+- [x] Create SQLite-compatible query files in `queries_sqlite/`
+- [x] Rewrite 479 JSON aggregation function calls
+- [x] Replace `JSON_BUILD_OBJECT` with `json_object`
+- [x] Replace `JSONB_AGG` with `json_group_array`
+- [x] Handle `ANY(array)` → `IN (...)` conversion
+- [x] Replace COPY protocol with batch inserts (`service/policy/db/bulk_insert.go`)
+- [x] Update `pgtype.*` usage in `models.go` to driver-agnostic types
 
 ### Testing
-- [ ] Create SQLite integration test suite
-- [ ] Add SQLite to CI test matrix
-- [ ] Validate data type conversions
+- [x] Create SQLite integration test suite
+- [x] Add SQLite to CI test matrix (Makefile targets)
+- [x] Validate data type conversions
 - [ ] Performance benchmarks
 
 ### Documentation
-- [ ] Update deployment documentation
-- [ ] Document SQLite-specific configuration
-- [ ] Document feature limitations
+- [x] Update deployment documentation
+- [x] Document SQLite-specific configuration
+- [x] Document feature limitations
 
 ---
 
-## Estimated Complexity
+## Implementation Summary
 
-| Component | Files Affected | Details | Complexity |
-|-----------|----------------|---------|------------|
-| Connection abstraction | 3-5 new files | New driver interface + factory | Medium |
-| Error handling | 1 file (`errors.go`) | Add SQLite error mapping | Low |
-| Query builder config | 1 file (`db.go`) | Placeholder format switch | Low |
-| Migration conversion | 38 SQL files | Full SQLite rewrites | High |
-| Trigger logic migration | 6-8 Go files | 30 triggers → app logic | High |
-| sqlc query rewrites | 22 files | 11 queries + 11 generated | High |
-| Type mapping layer | 2-3 files | `pgtype.*` → stdlib types | Medium |
-| Bulk insert replacement | 1 file (`copyfrom.go`) | COPY → batch INSERT | Medium |
-| Testing infrastructure | 5-10 files | Parallel test suites | Medium |
+### Files Added
 
-### Effort Breakdown by Trigger Complexity
+| Component | Files | Description |
+|-----------|-------|-------------|
+| Driver layer | 3 Go files | `driver.go`, `driver_sqlite.go`, `driver_postgres.go` |
+| SQLite migrations | 38 SQL files | `migrations_sqlite/*.sql` |
+| SQLite queries | 11 SQL files | `queries_sqlite/*.sql` |
+| Query router | 1 Go file | `query_router.go` |
+| Trigger emulation | 1 Go file | `triggers_emulation.go` |
+| Constraint emulation | 1 Go file | `constraints_sqlite.go` |
+| Bulk insert | 1 Go file | `bulk_insert.go` |
+| Error handling | 1 Go file | `errors_sqlite.go` |
 
-| Trigger Type | Count | Estimated Effort |
-|--------------|-------|------------------|
-| Simple `updated_at` | 15 | 1-2 hours (direct SQLite port) |
-| Cascade deactivation | 2 | 4-8 hours (split into multiple triggers) |
-| Key rotation | 1 | 16-24 hours (324-line function → Go) |
-| Key mapping | 3 | 8-12 hours (application logic) |
-| Value ordering | 2 | 4-6 hours (application logic) |
-| Selector extraction | 1 | 4-8 hours (JSONB parsing in Go) |
-| Other | 6 | 8-12 hours (case-by-case) |
+### Trigger Emulation Summary
 
-**Key Risk Areas:**
-1. **Key rotation trigger** (324 lines of PL/pgSQL) - Most complex single piece; handles active key transitions with mapping copies
-2. **JSONB operations** - 479 occurrences across 24 files; pervasive and requires thorough testing
-3. **Array type columns** - 6 columns need structural changes (junction tables or JSON serialization)
-4. **EXCLUDE constraint** - Cannot be replicated in SQLite; requires application-layer validation for unique active keys
-5. **UNIQUE NULLS NOT DISTINCT** - PostgreSQL 15+ feature; requires partial index or application logic in SQLite
-6. **pgtype.\* dependencies** - Models use PostgreSQL-specific type wrappers that need abstraction
+| Trigger Type | Count | Implementation |
+|--------------|-------|----------------|
+| Simple `updated_at` | 15 | SQLite AFTER UPDATE triggers |
+| Cascade deactivation | 2 | `triggers_emulation.go` Go functions |
+| Key rotation | 1 | `EmulateKeyRotation()` in Go |
+| Key mapping | 3 | Application-layer logic |
+| Value ordering | 2 | Application-layer logic |
+| Selector extraction | 1 | `ExtractSelectorValues()` in Go |
+| Other | 6 | Case-by-case SQLite triggers or Go |
+
+### Key Design Decisions
+
+1. **Key rotation trigger** (324 lines of PL/pgSQL) → Implemented as `EmulateKeyRotation()` in Go
+2. **JSONB operations** → Translated to SQLite json1 functions (`json_object`, `json_group_array`)
+3. **Array type columns** → Converted to JSON arrays with `json_each()` for iteration
+4. **EXCLUDE constraint** → Application-layer validation in `constraints_sqlite.go`
+5. **UNIQUE NULLS NOT DISTINCT** → Partial indexes covering NULL combinations
+6. **pgtype.\* dependencies** → Query router handles type conversion between drivers

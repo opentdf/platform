@@ -92,13 +92,17 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 
 func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObligationRequest) (*policy.Obligation, error) {
 	id := r.GetId()
-	if id != "" && !pgtypeUUID(id).Valid {
+	useID := len(id) > 0
+	parsedID := pgtypeUUID(id)
+	idIsValid := parsedID.Valid
+
+	if useID && !idIsValid {
 		return nil, db.ErrUUIDInvalid
 	}
 
 	nsFQN, oblName := identifier.BreakOblFQN(r.GetFqn())
 	queryParams := getObligationParams{
-		ID:           pgtypeUUID(id),
+		ID:           parsedID,
 		Name:         pgtypeText(oblName),
 		NamespaceFqn: pgtypeText(nsFQN),
 	}
@@ -191,7 +195,11 @@ func (c PolicyDBClient) GetObligationsByFQNs(ctx context.Context, r *obligations
 
 func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.ListObligationsRequest) ([]*policy.Obligation, *policy.PageResponse, error) {
 	namespaceID := r.GetNamespaceId()
-	if namespaceID != "" && !pgtypeUUID(namespaceID).Valid {
+	useID := len(namespaceID) > 0
+	parsedID := pgtypeUUID(namespaceID)
+	idIsValid := parsedID.Valid
+
+	if useID && !idIsValid {
 		return nil, nil, db.ErrUUIDInvalid
 	}
 
@@ -203,7 +211,7 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 	}
 
 	rows, err := c.queries.listObligations(ctx, listObligationsParams{
-		NamespaceID:  pgtypeUUID(namespaceID),
+		NamespaceID:  parsedID,
 		NamespaceFqn: pgtypeText(r.GetNamespaceFqn()),
 		Limit:        limit,
 		Offset:       offset,
@@ -335,7 +343,11 @@ func (c PolicyDBClient) DeleteObligation(ctx context.Context, r *obligations.Del
 
 func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligations.CreateObligationValueRequest) (*policy.ObligationValue, error) {
 	obligationID := r.GetObligationId()
-	if obligationID != "" && !pgtypeUUID(obligationID).Valid {
+	useID := len(obligationID) > 0
+	parsedID := pgtypeUUID(obligationID)
+	idIsValid := parsedID.Valid
+
+	if useID && !idIsValid {
 		return nil, db.ErrUUIDInvalid
 	}
 
@@ -347,7 +359,7 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 	}
 
 	queryParams := createObligationValueParams{
-		ID:           pgtypeUUID(obligationID),
+		ID:           parsedID,
 		Name:         pgtypeText(oblName),
 		NamespaceFqn: pgtypeText(nsFQN),
 		Value:        value,
@@ -411,13 +423,17 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 
 func (c PolicyDBClient) GetObligationValue(ctx context.Context, r *obligations.GetObligationValueRequest) (*policy.ObligationValue, error) {
 	id := r.GetId()
-	if id != "" && !pgtypeUUID(id).Valid {
+	useID := len(id) > 0
+	parsedID := pgtypeUUID(id)
+	idIsValid := parsedID.Valid
+
+	if useID && !idIsValid {
 		return nil, db.ErrUUIDInvalid
 	}
 
 	nsFQN, oblName, oblVal := identifier.BreakOblValFQN(r.GetFqn())
 	queryParams := getObligationValueParams{
-		ID:           pgtypeUUID(id),
+		ID:           parsedID,
 		Name:         pgtypeText(oblName),
 		Value:        pgtypeText(oblVal),
 		NamespaceFqn: pgtypeText(nsFQN),

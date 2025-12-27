@@ -4,7 +4,7 @@
 
 -- name: listResourceMappingGroups :many
 WITH params AS (
-    SELECT NULLIF(@namespace_id, '')::uuid as namespace_id
+    SELECT sqlc.narg('namespace_id')::uuid as namespace_id
 )
 SELECT rmg.id,
     rmg.namespace_id,
@@ -45,7 +45,7 @@ DELETE FROM resource_mapping_groups WHERE id = $1;
 
 -- name: listResourceMappings :many
 WITH params AS (
-    SELECT NULLIF(@group_id, '')::UUID as group_id
+    SELECT sqlc.narg('group_id')::uuid as group_id
 )
 SELECT
     m.id,

@@ -10,8 +10,8 @@ RETURNING id;
 -- name: getRegisteredResource :one
 WITH params AS (
     SELECT
-        NULLIF(@id, '')::UUID as id,
-        NULLIF(@name, '')::VARCHAR as name
+        sqlc.narg('id')::uuid as id,
+        sqlc.narg('name')::text as name
 )
 SELECT
     r.id,
@@ -102,9 +102,9 @@ RETURNING id;
 -- name: getRegisteredResourceValue :one
 WITH params AS (
     SELECT
-        NULLIF(@id, '')::UUID as id,
-        NULLIF(@name, '')::VARCHAR as name,
-        NULLIF(@value, '')::VARCHAR as value
+        sqlc.narg('id')::uuid as id,
+        sqlc.narg('name')::text as name,
+        sqlc.narg('value')::text as value
 )
 SELECT
     v.id,
@@ -139,7 +139,7 @@ GROUP BY v.id;
 
 -- name: listRegisteredResourceValues :many
 WITH params AS (
-    SELECT NULLIF(@registered_resource_id, '')::UUID as registered_resource_id
+    SELECT sqlc.narg('registered_resource_id')::uuid as registered_resource_id
 ),
 counted AS (
     SELECT COUNT(v.id) AS total

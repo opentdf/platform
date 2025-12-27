@@ -178,7 +178,7 @@ func (q *Queries) getResourceMappingGroup(ctx context.Context, id string) (getRe
 const listResourceMappingGroups = `-- name: listResourceMappingGroups :many
 
 WITH params AS (
-    SELECT NULLIF($3, '')::uuid as namespace_id
+    SELECT $3::uuid as namespace_id
 )
 SELECT rmg.id,
     rmg.namespace_id,
@@ -195,7 +195,7 @@ OFFSET $1
 type listResourceMappingGroupsParams struct {
 	Offset      int32       `json:"offset_"`
 	Limit       int32       `json:"limit_"`
-	NamespaceID interface{} `json:"namespace_id"`
+	NamespaceID pgtype.UUID `json:"namespace_id"`
 }
 
 type listResourceMappingGroupsRow struct {
@@ -211,7 +211,7 @@ type listResourceMappingGroupsRow struct {
 // --------------------------------------------------------------
 //
 //	WITH params AS (
-//	    SELECT NULLIF($3, '')::uuid as namespace_id
+//	    SELECT $3::uuid as namespace_id
 //	)
 //	SELECT rmg.id,
 //	    rmg.namespace_id,
@@ -252,7 +252,7 @@ func (q *Queries) listResourceMappingGroups(ctx context.Context, arg listResourc
 const listResourceMappings = `-- name: listResourceMappings :many
 
 WITH params AS (
-    SELECT NULLIF($3, '')::UUID as group_id
+    SELECT $3::uuid as group_id
 )
 SELECT
     m.id,
@@ -281,7 +281,7 @@ OFFSET $1
 type listResourceMappingsParams struct {
 	Offset  int32       `json:"offset_"`
 	Limit   int32       `json:"limit_"`
-	GroupID interface{} `json:"group_id"`
+	GroupID pgtype.UUID `json:"group_id"`
 }
 
 type listResourceMappingsRow struct {
@@ -298,7 +298,7 @@ type listResourceMappingsRow struct {
 // --------------------------------------------------------------
 //
 //	WITH params AS (
-//	    SELECT NULLIF($3, '')::UUID as group_id
+//	    SELECT $3::uuid as group_id
 //	)
 //	SELECT
 //	    m.id,

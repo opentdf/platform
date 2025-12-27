@@ -6,17 +6,17 @@
 WITH inserted_obligation AS (
     INSERT INTO obligation_definitions (namespace_id, name, metadata)
     SELECT 
-        COALESCE(NULLIF(@namespace_id::TEXT, '')::UUID, fqns.namespace_id),
+        COALESCE(sqlc.narg('namespace_id')::uuid, fqns.namespace_id),
         @name, 
         @metadata
     FROM (
         SELECT 
-            NULLIF(@namespace_id::TEXT, '')::UUID as direct_namespace_id
+            sqlc.narg('namespace_id')::uuid as direct_namespace_id
     ) direct
-    LEFT JOIN attribute_fqns fqns ON fqns.fqn = @namespace_fqn AND NULLIF(@namespace_id::TEXT, '') IS NULL
+    LEFT JOIN attribute_fqns fqns ON fqns.fqn = sqlc.narg('namespace_fqn')::text AND sqlc.narg('namespace_id')::text IS NULL
     WHERE 
-        (NULLIF(@namespace_id::TEXT, '') IS NOT NULL AND direct.direct_namespace_id IS NOT NULL) OR
-        (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND fqns.namespace_id IS NOT NULL)
+        (sqlc.narg('namespace_id')::text IS NOT NULL AND direct.direct_namespace_id IS NOT NULL) OR
+        (sqlc.narg('namespace_fqn')::text IS NOT NULL AND fqns.namespace_id IS NOT NULL)
     RETURNING id, namespace_id, name, metadata
 ),
 inserted_values AS (
@@ -53,9 +53,9 @@ GROUP BY io.id, io.name, io.metadata, n.id, fqns.fqn;
 -- name: getObligation :one
 WITH params AS (
     SELECT
-        NULLIF(@id::TEXT, '')::UUID as id,
-        NULLIF(@namespace_fqn::TEXT, '') as namespace_fqn,
-        NULLIF(@name::TEXT, '') as name
+        sqlc.narg('id')::uuid as id,
+        sqlc.narg('namespace_fqn')::text as namespace_fqn,
+        sqlc.narg('name')::text as name
 ),
 obligation_triggers_agg AS (
     SELECT
@@ -127,8 +127,8 @@ GROUP BY od.id, n.id, fqns.fqn;
 -- name: listObligations :many
 WITH params AS (
     SELECT
-        NULLIF(@namespace_id::TEXT, '')::UUID as namespace_id,
-        NULLIF(@namespace_fqn::TEXT, '') as namespace_fqn
+        sqlc.narg('namespace_id')::uuid as namespace_id,
+        sqlc.narg('namespace_fqn')::text as namespace_fqn
 ),
 counted AS (
     SELECT COUNT(od.id) AS total
@@ -207,8 +207,8 @@ OFFSET @offset_;
 -- name: updateObligation :execrows
 UPDATE obligation_definitions
 SET
-    name = COALESCE(NULLIF(@name::TEXT, ''), name),
-    metadata = COALESCE(@metadata, metadata)
+    name = COALESCE(sqlc.narg('name'), name),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
 WHERE id = @id;
 
 -- name: deleteObligation :one
@@ -222,11 +222,11 @@ WHERE id IN (
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = NULLIF(@id::TEXT, '')::UUID)
+            (sqlc.narg('id')::text IS NOT NULL AND od.id = sqlc.narg('id')::uuid)
             OR
             -- lookup by namespace fqn + obligation name
-            (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL 
-             AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR)
+            (sqlc.narg('namespace_fqn')::text IS NOT NULL AND sqlc.narg('name')::text IS NOT NULL 
+             AND fqns.fqn = sqlc.narg('namespace_fqn')::text AND od.name = sqlc.narg('name')::text)
         )
 )
 RETURNING id;
@@ -308,9 +308,9 @@ GROUP BY
 -- name: createObligationValue :one
 WITH params AS (
     SELECT
-        NULLIF(@id::TEXT, '')::UUID as id,
-        NULLIF(@namespace_fqn::TEXT, '') as namespace_fqn,
-        NULLIF(@name::TEXT, '') as name
+        sqlc.narg('id')::uuid as id,
+        sqlc.narg('namespace_fqn')::text as namespace_fqn,
+        sqlc.narg('name')::text as name
 ),
 obligation_lookup AS (
     SELECT od.id, od.name, od.metadata
@@ -354,10 +354,10 @@ LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id 
 -- name: getObligationValue :one
 WITH params AS (
     SELECT
-        NULLIF(@id::TEXT, '')::UUID as id,
-        NULLIF(@namespace_fqn::TEXT, '') as namespace_fqn,
-        NULLIF(@name::TEXT, '') as name,
-        NULLIF(@value::TEXT, '') as value
+        sqlc.narg('id')::uuid as id,
+        sqlc.narg('namespace_fqn')::text as namespace_fqn,
+        sqlc.narg('name')::text as name,
+        sqlc.narg('value')::text as value
 ),
 obligation_triggers_agg AS (
     SELECT
@@ -424,8 +424,8 @@ WHERE
 -- name: updateObligationValue :execrows
 UPDATE obligation_values_standard
 SET
-    value = COALESCE(NULLIF(@value::TEXT, ''), value),
-    metadata = COALESCE(@metadata, metadata)
+    value = COALESCE(sqlc.narg('value'), value),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
 WHERE id = @id;
 
 -- name: getObligationValuesByFQNs :many
@@ -501,11 +501,11 @@ WHERE id IN (
         -- lookup by value id OR by namespace fqn + obligation name + value name
         (
             -- lookup by value id
-            (NULLIF(@id::TEXT, '') IS NOT NULL AND ov.id = NULLIF(@id::TEXT, '')::UUID)
+            (sqlc.narg('id')::text IS NOT NULL AND ov.id = sqlc.narg('id')::uuid)
             OR
-            -- lookup by namespace fqn + obligation name + value name
-            (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL AND NULLIF(@value::TEXT, '') IS NOT NULL
-             AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR AND ov.value = @value::VARCHAR)
+            -- lookup by namespace fqn + obligation name + value
+            (sqlc.narg('namespace_fqn')::text IS NOT NULL AND sqlc.narg('name')::text IS NOT NULL AND sqlc.narg('value')::text IS NOT NULL
+             AND fqns.fqn = sqlc.narg('namespace_fqn')::text AND od.name = sqlc.narg('name')::text AND ov.value = sqlc.narg('value')::text)
         )
 )
 RETURNING id;
@@ -517,11 +517,11 @@ RETURNING id;
 -- name: createObligationTrigger :one
 WITH params AS (
     SELECT
-        NULLIF(@obligation_value_id::TEXT, '')::UUID as obligation_value_id,
-        NULLIF(@action_id::TEXT, '')::UUID as action_id,
-        NULLIF(@action_name::TEXT, '') as action_name,
-        NULLIF(@attribute_value_id::TEXT, '')::UUID as attribute_value_id,
-        NULLIF(@attribute_value_fqn::TEXT, '') as attribute_value_fqn
+        sqlc.narg('obligation_value_id')::uuid as obligation_value_id,
+        sqlc.narg('action_id')::uuid as action_id,
+        sqlc.narg('action_name')::text as action_name,
+        sqlc.narg('attribute_value_id')::uuid as attribute_value_id,
+        sqlc.narg('attribute_value_fqn')::text as attribute_value_fqn
 ),
 ov_id AS (
     SELECT ov.id, od.namespace_id
@@ -559,7 +559,7 @@ inserted AS (
         (SELECT id FROM a_id),
         (SELECT id FROM av_id),
         @metadata,
-        NULLIF(@client_id::TEXT, '')
+        sqlc.narg('client_id')::text
     RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at, client_id
 )
 SELECT
@@ -628,8 +628,8 @@ RETURNING id;
 -- name: listObligationTriggers :many
 WITH params AS (
     SELECT
-        NULLIF(@namespace_id::TEXT, '')::UUID as namespace_id,
-        NULLIF(@namespace_fqn::TEXT, '') as namespace_fqn
+        sqlc.narg('namespace_id')::uuid as namespace_id,
+        sqlc.narg('namespace_fqn')::text as namespace_fqn
 )
 SELECT
     JSON_STRIP_NULLS(

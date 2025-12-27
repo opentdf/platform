@@ -431,9 +431,9 @@ func (q *Queries) getKeyAccessServer(ctx context.Context, arg getKeyAccessServer
 const listKeyAccessServerGrants = `-- name: listKeyAccessServerGrants :many
 WITH params AS (
     SELECT
-        NULLIF($3, '')::uuid as kas_id,
-        NULLIF($4, '')::varchar as kas_uri,
-        NULLIF($5, '')::varchar as kas_name
+        $3::uuid as kas_id,
+        $4::text as kas_uri,
+        $5::text as kas_name
 ),
 listed AS (
     SELECT
@@ -505,9 +505,9 @@ OFFSET $1
 type listKeyAccessServerGrantsParams struct {
 	Offset  int32       `json:"offset_"`
 	Limit   int32       `json:"limit_"`
-	KasID   interface{} `json:"kas_id"`
-	KasUri  interface{} `json:"kas_uri"`
-	KasName interface{} `json:"kas_name"`
+	KasID   pgtype.UUID `json:"kas_id"`
+	KasUri  pgtype.Text `json:"kas_uri"`
+	KasName pgtype.Text `json:"kas_name"`
 }
 
 type listKeyAccessServerGrantsRow struct {
@@ -528,9 +528,9 @@ type listKeyAccessServerGrantsRow struct {
 //
 //	WITH params AS (
 //	    SELECT
-//	        NULLIF($3, '')::uuid as kas_id,
-//	        NULLIF($4, '')::varchar as kas_uri,
-//	        NULLIF($5, '')::varchar as kas_name
+//	        $3::uuid as kas_id,
+//	        $4::text as kas_uri,
+//	        $5::text as kas_name
 //	),
 //	listed AS (
 //	    SELECT

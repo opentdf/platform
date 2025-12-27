@@ -120,8 +120,8 @@ func (q *Queries) deleteRegisteredResourceValue(ctx context.Context, id string) 
 const getRegisteredResource = `-- name: getRegisteredResource :one
 WITH params AS (
     SELECT
-        NULLIF($1, '')::UUID as id,
-        NULLIF($2, '')::VARCHAR as name
+        $1::uuid as id,
+        $2::text as name
 )
 SELECT
     r.id,
@@ -143,8 +143,8 @@ GROUP BY r.id
 `
 
 type getRegisteredResourceParams struct {
-	ID   interface{} `json:"id"`
-	Name interface{} `json:"name"`
+	ID   pgtype.UUID `json:"id"`
+	Name pgtype.Text `json:"name"`
 }
 
 type getRegisteredResourceRow struct {
@@ -158,8 +158,8 @@ type getRegisteredResourceRow struct {
 //
 //	WITH params AS (
 //	    SELECT
-//	        NULLIF($1, '')::UUID as id,
-//	        NULLIF($2, '')::VARCHAR as name
+//	        $1::uuid as id,
+//	        $2::text as name
 //	)
 //	SELECT
 //	    r.id,
@@ -193,9 +193,9 @@ func (q *Queries) getRegisteredResource(ctx context.Context, arg getRegisteredRe
 const getRegisteredResourceValue = `-- name: getRegisteredResourceValue :one
 WITH params AS (
     SELECT
-        NULLIF($1, '')::UUID as id,
-        NULLIF($2, '')::VARCHAR as name,
-        NULLIF($3, '')::VARCHAR as value
+        $1::uuid as id,
+        $2::text as name,
+        $3::text as value
 )
 SELECT
     v.id,
@@ -230,9 +230,9 @@ GROUP BY v.id
 `
 
 type getRegisteredResourceValueParams struct {
-	ID    interface{} `json:"id"`
-	Name  interface{} `json:"name"`
-	Value interface{} `json:"value"`
+	ID    pgtype.UUID `json:"id"`
+	Name  pgtype.Text `json:"name"`
+	Value pgtype.Text `json:"value"`
 }
 
 type getRegisteredResourceValueRow struct {
@@ -247,9 +247,9 @@ type getRegisteredResourceValueRow struct {
 //
 //	WITH params AS (
 //	    SELECT
-//	        NULLIF($1, '')::UUID as id,
-//	        NULLIF($2, '')::VARCHAR as name,
-//	        NULLIF($3, '')::VARCHAR as value
+//	        $1::uuid as id,
+//	        $2::text as name,
+//	        $3::text as value
 //	)
 //	SELECT
 //	    v.id,
@@ -296,7 +296,7 @@ func (q *Queries) getRegisteredResourceValue(ctx context.Context, arg getRegiste
 
 const listRegisteredResourceValues = `-- name: listRegisteredResourceValues :many
 WITH params AS (
-    SELECT NULLIF($3, '')::UUID as registered_resource_id
+    SELECT $3::uuid as registered_resource_id
 ),
 counted AS (
     SELECT COUNT(v.id) AS total
@@ -341,7 +341,7 @@ OFFSET $1
 type listRegisteredResourceValuesParams struct {
 	Offset               int32       `json:"offset_"`
 	Limit                int32       `json:"limit_"`
-	RegisteredResourceID interface{} `json:"registered_resource_id"`
+	RegisteredResourceID pgtype.UUID `json:"registered_resource_id"`
 }
 
 type listRegisteredResourceValuesRow struct {
@@ -356,7 +356,7 @@ type listRegisteredResourceValuesRow struct {
 // listRegisteredResourceValues
 //
 //	WITH params AS (
-//	    SELECT NULLIF($3, '')::UUID as registered_resource_id
+//	    SELECT $3::uuid as registered_resource_id
 //	),
 //	counted AS (
 //	    SELECT COUNT(v.id) AS total

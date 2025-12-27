@@ -4,9 +4,9 @@
 -- name: listKeyAccessServerGrants :many
 WITH params AS (
     SELECT
-        NULLIF(@kas_id, '')::uuid as kas_id,
-        NULLIF(@kas_uri, '')::varchar as kas_uri,
-        NULLIF(@kas_name, '')::varchar as kas_name
+        sqlc.narg('kas_id')::uuid as kas_id,
+        sqlc.narg('kas_uri')::text as kas_uri,
+        sqlc.narg('kas_name')::text as kas_name
 ),
 listed AS (
     SELECT

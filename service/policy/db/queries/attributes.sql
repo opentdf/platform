@@ -5,8 +5,8 @@
 -- name: listAttributesDetail :many
 WITH params AS (
     SELECT
-        NULLIF(@namespace_id, '')::uuid as namespace_id,
-        NULLIF(@namespace_name, '') as namespace_name
+        sqlc.narg('namespace_id')::uuid as namespace_id,
+        sqlc.narg('namespace_name')::text as namespace_name
 )
 SELECT
     ad.id,

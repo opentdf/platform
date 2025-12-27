@@ -751,8 +751,8 @@ const listAttributesDetail = `-- name: listAttributesDetail :many
 
 WITH params AS (
     SELECT
-        NULLIF($4, '')::uuid as namespace_id,
-        NULLIF($5, '') as namespace_name
+        $4::uuid as namespace_id,
+        $5::text as namespace_name
 )
 SELECT
     ad.id,
@@ -798,8 +798,8 @@ type listAttributesDetailParams struct {
 	Active        pgtype.Bool `json:"active"`
 	Offset        int32       `json:"offset_"`
 	Limit         int32       `json:"limit_"`
-	NamespaceID   interface{} `json:"namespace_id"`
-	NamespaceName interface{} `json:"namespace_name"`
+	NamespaceID   pgtype.UUID `json:"namespace_id"`
+	NamespaceName pgtype.Text `json:"namespace_name"`
 }
 
 type listAttributesDetailRow struct {
@@ -821,8 +821,8 @@ type listAttributesDetailRow struct {
 //
 //	WITH params AS (
 //	    SELECT
-//	        NULLIF($4, '')::uuid as namespace_id,
-//	        NULLIF($5, '') as namespace_name
+//	        $4::uuid as namespace_id,
+//	        $5::text as namespace_name
 //	)
 //	SELECT
 //	    ad.id,

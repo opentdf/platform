@@ -15,7 +15,7 @@ FROM attribute_values av
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 WHERE (
     (sqlc.narg('active')::BOOLEAN IS NULL OR av.active = sqlc.narg('active')) AND
-    (NULLIF(@attribute_definition_id, '') IS NULL OR av.attribute_definition_id = @attribute_definition_id::UUID) 
+    (sqlc.narg('attribute_definition_id')::uuid IS NULL OR av.attribute_definition_id = sqlc.narg('attribute_definition_id')::uuid) 
 )
 LIMIT @limit_ 
 OFFSET @offset_; 

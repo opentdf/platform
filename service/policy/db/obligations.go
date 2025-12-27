@@ -29,12 +29,16 @@ func setOblValFQNs(values []*policy.ObligationValue, nsFQN, name string) []*poli
 func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.CreateObligationRequest) (*policy.Obligation, error) {
 	namespaceID := r.GetNamespaceId()
 	namespaceFqn := r.GetNamespaceFqn()
-	
+
+	useID := len(namespaceID) > 0
+	parsedID := pgtypeUUID(namespaceID)
+	idIsValid := parsedID.Valid
+
 	// At least one of namespace_id or namespace_fqn must be provided
-	if namespaceID != "" && !pgtypeUUID(namespaceID).Valid {
+	if useID && !idIsValid {
 		return nil, db.ErrUUIDInvalid
 	}
-	
+
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
@@ -91,7 +95,7 @@ func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObl
 	if id != "" && !pgtypeUUID(id).Valid {
 		return nil, db.ErrUUIDInvalid
 	}
-	
+
 	nsFQN, oblName := identifier.BreakOblFQN(r.GetFqn())
 	queryParams := getObligationParams{
 		ID:           pgtypeUUID(id),
@@ -190,7 +194,7 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 	if namespaceID != "" && !pgtypeUUID(namespaceID).Valid {
 		return nil, nil, db.ErrUUIDInvalid
 	}
-	
+
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 
 	maxLimit := c.listCfg.limitMax
@@ -334,7 +338,7 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 	if obligationID != "" && !pgtypeUUID(obligationID).Valid {
 		return nil, db.ErrUUIDInvalid
 	}
-	
+
 	nsFQN, oblName := identifier.BreakOblFQN(r.GetObligationFqn())
 	value := strings.ToLower(r.GetValue())
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
@@ -410,7 +414,7 @@ func (c PolicyDBClient) GetObligationValue(ctx context.Context, r *obligations.G
 	if id != "" && !pgtypeUUID(id).Valid {
 		return nil, db.ErrUUIDInvalid
 	}
-	
+
 	nsFQN, oblName, oblVal := identifier.BreakOblValFQN(r.GetFqn())
 	queryParams := getObligationValueParams{
 		ID:           pgtypeUUID(id),

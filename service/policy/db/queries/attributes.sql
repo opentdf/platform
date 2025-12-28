@@ -343,7 +343,7 @@ LEFT JOIN (
     GROUP BY k.definition_id
 ) defk ON ad.id = defk.definition_id
 WHERE (sqlc.narg('id')::uuid IS NULL OR ad.id = sqlc.narg('id')::uuid)
-  AND (sqlc.narg('fqn')::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE(sqlc.narg('fqn')::text, '^https?://', ''))
+  AND (sqlc.narg('fqn')::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE(sqlc.narg('fqn')::text, '^https://', ''))
 GROUP BY ad.id, n.name, fqns.fqn, defk.keys;
 
 -- name: createAttribute :one

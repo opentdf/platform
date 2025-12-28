@@ -137,7 +137,7 @@ LEFT JOIN (
 ) value_keys ON av.id = value_keys.value_id
 LEFT JOIN attribute_obligations ao ON av.id = ao.attribute_value_id
 WHERE (sqlc.narg('id')::uuid IS NULL OR av.id = sqlc.narg('id')::uuid)
-  AND (sqlc.narg('fqn')::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE(sqlc.narg('fqn')::text, '^https?://', ''))
+  AND (sqlc.narg('fqn')::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE(sqlc.narg('fqn')::text, '^https://', ''))
 GROUP BY av.id, fqns.fqn, value_keys.keys, ao.obligations;
 
 -- name: createAttributeValue :one

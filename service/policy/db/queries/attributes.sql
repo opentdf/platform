@@ -3,11 +3,6 @@
 ----------------------------------------------------------------
 
 -- name: listAttributesDetail :many
-WITH params AS (
-    SELECT
-        sqlc.narg('namespace_id')::uuid as namespace_id,
-        sqlc.narg('namespace_name')::text as namespace_name
-)
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -27,7 +22,6 @@ SELECT
     fqns.fqn,
     COUNT(*) OVER() AS total
 FROM attribute_definitions ad
-CROSS JOIN params
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 LEFT JOIN (
   SELECT
@@ -41,8 +35,8 @@ LEFT JOIN (
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 WHERE
     (sqlc.narg('active')::BOOLEAN IS NULL OR ad.active = sqlc.narg('active')) AND
-    (params.namespace_id IS NULL OR ad.namespace_id = params.namespace_id) AND 
-    (params.namespace_name IS NULL OR n.name = params.namespace_name) 
+    (sqlc.narg('namespace_id')::uuid IS NULL OR ad.namespace_id = sqlc.narg('namespace_id')::uuid) AND 
+    (sqlc.narg('namespace_name')::text IS NULL OR n.name = sqlc.narg('namespace_name')::text) 
 GROUP BY ad.id, n.name, fqns.fqn
 LIMIT @limit_ 
 OFFSET @offset_; 
@@ -289,11 +283,6 @@ LEFT JOIN values ON td.id = values.attribute_definition_id
 WHERE fqns.value_id IS NULL;
 
 -- name: getAttribute :one
-WITH params AS (
-    SELECT
-        sqlc.narg('id')::uuid as id,
-        REGEXP_REPLACE(sqlc.narg('fqn')::text, '^https?://', '') as fqn
-)
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -321,7 +310,6 @@ SELECT
     fqns.fqn,
     defk.keys as keys
 FROM attribute_definitions ad
-CROSS JOIN params
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 LEFT JOIN (
     SELECT
@@ -354,8 +342,8 @@ LEFT JOIN (
     INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
     GROUP BY k.definition_id
 ) defk ON ad.id = defk.definition_id
-WHERE (params.id IS NULL OR ad.id = params.id)
-  AND (params.fqn IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = params.fqn)
+WHERE (sqlc.narg('id')::uuid IS NULL OR ad.id = sqlc.narg('id')::uuid)
+  AND (sqlc.narg('fqn')::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE(sqlc.narg('fqn')::text, '^https?://', ''))
 GROUP BY ad.id, n.name, fqns.fqn, defk.keys;
 
 -- name: createAttribute :one

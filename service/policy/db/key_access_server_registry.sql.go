@@ -193,16 +193,15 @@ SELECT
   JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata,
   kask.legacy
 FROM key_access_server_keys AS kask
-CROSS JOIN params
 LEFT JOIN 
     provider_config as pc ON kask.provider_config_id = pc.id
 INNER JOIN 
     key_access_servers AS kas ON kask.key_access_server_id = kas.id
-WHERE (params.id IS NULL OR kask.id = params.id)
-  AND (params.key_id IS NULL OR kask.key_id = params.key_id)
-  AND (params.kas_id IS NULL OR kask.key_access_server_id = params.kas_id)
-  AND (params.kas_uri IS NULL OR kas.uri = params.kas_uri)
-  AND (params.kas_name IS NULL OR kas.name = params.kas_name)
+WHERE ($1::uuid IS NULL OR kask.id = $1::uuid)
+  AND ($2::text IS NULL OR kask.key_id = $2::text)
+  AND ($3::uuid IS NULL OR kask.key_access_server_id = $3::uuid)
+  AND ($4::text IS NULL OR kas.uri = $4::text)
+  AND ($5::text IS NULL OR kas.name = $5::text)
 `
 
 type getKeyParams struct {
@@ -266,16 +265,15 @@ type getKeyRow struct {
 //	  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata,
 //	  kask.legacy
 //	FROM key_access_server_keys AS kask
-//	CROSS JOIN params
 //	LEFT JOIN
 //	    provider_config as pc ON kask.provider_config_id = pc.id
 //	INNER JOIN
 //	    key_access_servers AS kas ON kask.key_access_server_id = kas.id
-//	WHERE (params.id IS NULL OR kask.id = params.id)
-//	  AND (params.key_id IS NULL OR kask.key_id = params.key_id)
-//	  AND (params.kas_id IS NULL OR kask.key_access_server_id = params.kas_id)
-//	  AND (params.kas_uri IS NULL OR kas.uri = params.kas_uri)
-//	  AND (params.kas_name IS NULL OR kas.name = params.kas_name)
+//	WHERE ($1::uuid IS NULL OR kask.id = $1::uuid)
+//	  AND ($2::text IS NULL OR kask.key_id = $2::text)
+//	  AND ($3::uuid IS NULL OR kask.key_access_server_id = $3::uuid)
+//	  AND ($4::text IS NULL OR kas.uri = $4::text)
+//	  AND ($5::text IS NULL OR kas.name = $5::text)
 func (q *Queries) getKey(ctx context.Context, arg getKeyParams) (getKeyRow, error) {
 	row := q.db.QueryRow(ctx, getKey,
 		arg.ID,
@@ -307,12 +305,6 @@ func (q *Queries) getKey(ctx context.Context, arg getKeyParams) (getKeyRow, erro
 }
 
 const getKeyAccessServer = `-- name: getKeyAccessServer :one
-WITH params AS (
-    SELECT
-        $1::uuid as id,
-        $2::text as name,
-        $3::text as uri
-)
 SELECT 
     kas.id,
     kas.uri, 
@@ -328,7 +320,6 @@ SELECT
     ) AS metadata,
     kask_keys.keys
 FROM key_access_servers AS kas
-CROSS JOIN params
 LEFT JOIN (
         SELECT
             kask.key_access_server_id,
@@ -347,9 +338,9 @@ LEFT JOIN (
         INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY kask.key_access_server_id
     ) kask_keys ON kas.id = kask_keys.key_access_server_id
-WHERE (params.id IS NULL OR kas.id = params.id)
-  AND (params.name IS NULL OR kas.name = params.name)
-  AND (params.uri IS NULL OR kas.uri = params.uri)
+WHERE ($1::uuid IS NULL OR kas.id = $1::uuid)
+  AND ($2::text IS NULL OR kas.name = $2::text)
+  AND ($3::text IS NULL OR kas.uri = $3::text)
 `
 
 type getKeyAccessServerParams struct {
@@ -370,12 +361,6 @@ type getKeyAccessServerRow struct {
 
 // getKeyAccessServer
 //
-//	WITH params AS (
-//	    SELECT
-//	        $1::uuid as id,
-//	        $2::text as name,
-//	        $3::text as uri
-//	)
 //	SELECT
 //	    kas.id,
 //	    kas.uri,
@@ -391,7 +376,6 @@ type getKeyAccessServerRow struct {
 //	    ) AS metadata,
 //	    kask_keys.keys
 //	FROM key_access_servers AS kas
-//	CROSS JOIN params
 //	LEFT JOIN (
 //	        SELECT
 //	            kask.key_access_server_id,
@@ -410,9 +394,9 @@ type getKeyAccessServerRow struct {
 //	        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
 //	        GROUP BY kask.key_access_server_id
 //	    ) kask_keys ON kas.id = kask_keys.key_access_server_id
-//	WHERE (params.id IS NULL OR kas.id = params.id)
-//	  AND (params.name IS NULL OR kas.name = params.name)
-//	  AND (params.uri IS NULL OR kas.uri = params.uri)
+//	WHERE ($1::uuid IS NULL OR kas.id = $1::uuid)
+//	  AND ($2::text IS NULL OR kas.name = $2::text)
+//	  AND ($3::text IS NULL OR kas.uri = $3::text)
 func (q *Queries) getKeyAccessServer(ctx context.Context, arg getKeyAccessServerParams) (getKeyAccessServerRow, error) {
 	row := q.db.QueryRow(ctx, getKeyAccessServer, arg.ID, arg.Name, arg.Uri)
 	var i getKeyAccessServerRow
@@ -738,15 +722,7 @@ func (q *Queries) listKeyAccessServers(ctx context.Context, arg listKeyAccessSer
 }
 
 const listKeyMappings = `-- name: listKeyMappings :many
-WITH params AS (
-    SELECT
-        $3::uuid as id,
-        $4::text as kid,
-        $5::uuid as kas_id,
-        $6::text as kas_name,
-        $7::text as kas_uri
-),
-filtered_keys AS (
+WITH filtered_keys AS (
     -- Get all keys matching the filter criteria
     SELECT
         kask.created_at,
@@ -755,25 +731,24 @@ filtered_keys AS (
         kas.id AS kas_id,
         kas.uri AS kas_uri
     FROM key_access_server_keys kask
-    CROSS JOIN params
     INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
     WHERE (
         -- Case 1: Filter by system key ID if provided
-        (params.id IS NOT NULL AND kask.id = params.id)
+        ($3::uuid IS NOT NULL AND kask.id = $3::uuid)
         -- Case 2: Filter by KID + at least one KAS identifier
         OR (
-            params.kid IS NOT NULL 
-            AND kask.key_id = params.kid
+            $4::text IS NOT NULL 
+            AND kask.key_id = $4::text
             AND (
-                (params.kas_id IS NOT NULL AND kas.id = params.kas_id)
-                OR (params.kas_name IS NOT NULL AND kas.name = params.kas_name)
-                OR (params.kas_uri IS NOT NULL AND kas.uri = params.kas_uri)
+                ($5::uuid IS NOT NULL AND kas.id = $5::uuid)
+                OR ($6::text IS NOT NULL AND kas.name = $6::text)
+                OR ($7::text IS NOT NULL AND kas.uri = $7::text)
             )
         )
         -- Case 3: Return all keys if no filters are provided
         OR (
-            params.id IS NULL 
-            AND params.kid IS NULL
+            $3::uuid IS NULL 
+            AND $4::text IS NULL
         )
     )
 ),
@@ -875,15 +850,7 @@ type listKeyMappingsRow struct {
 
 // listKeyMappings
 //
-//	WITH params AS (
-//	    SELECT
-//	        $3::uuid as id,
-//	        $4::text as kid,
-//	        $5::uuid as kas_id,
-//	        $6::text as kas_name,
-//	        $7::text as kas_uri
-//	),
-//	filtered_keys AS (
+//	WITH filtered_keys AS (
 //	    -- Get all keys matching the filter criteria
 //	    SELECT
 //	        kask.created_at,
@@ -892,25 +859,24 @@ type listKeyMappingsRow struct {
 //	        kas.id AS kas_id,
 //	        kas.uri AS kas_uri
 //	    FROM key_access_server_keys kask
-//	    CROSS JOIN params
 //	    INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
 //	    WHERE (
 //	        -- Case 1: Filter by system key ID if provided
-//	        (params.id IS NOT NULL AND kask.id = params.id)
+//	        ($3::uuid IS NOT NULL AND kask.id = $3::uuid)
 //	        -- Case 2: Filter by KID + at least one KAS identifier
 //	        OR (
-//	            params.kid IS NOT NULL
-//	            AND kask.key_id = params.kid
+//	            $4::text IS NOT NULL
+//	            AND kask.key_id = $4::text
 //	            AND (
-//	                (params.kas_id IS NOT NULL AND kas.id = params.kas_id)
-//	                OR (params.kas_name IS NOT NULL AND kas.name = params.kas_name)
-//	                OR (params.kas_uri IS NOT NULL AND kas.uri = params.kas_uri)
+//	                ($5::uuid IS NOT NULL AND kas.id = $5::uuid)
+//	                OR ($6::text IS NOT NULL AND kas.name = $6::text)
+//	                OR ($7::text IS NOT NULL AND kas.uri = $7::text)
 //	            )
 //	        )
 //	        -- Case 3: Return all keys if no filters are provided
 //	        OR (
-//	            params.id IS NULL
-//	            AND params.kid IS NULL
+//	            $3::uuid IS NULL
+//	            AND $4::text IS NULL
 //	        )
 //	    )
 //	),
@@ -1025,23 +991,14 @@ func (q *Queries) listKeyMappings(ctx context.Context, arg listKeyMappingsParams
 }
 
 const listKeys = `-- name: listKeys :many
-WITH params AS (
-    SELECT
-        $3::uuid as kas_id,
-        $4::text as kas_name,
-        $5::text as kas_uri,
-        $6::integer as key_algorithm,
-        $7::boolean as legacy
-),
-listed AS (
+WITH listed AS (
     SELECT
         kas.id AS kas_id,
         kas.uri AS kas_uri
     FROM key_access_servers AS kas
-    CROSS JOIN params
-    WHERE (params.kas_id IS NULL OR kas.id = params.kas_id)
-            AND (params.kas_name IS NULL OR kas.name = params.kas_name)
-            AND (params.kas_uri IS NULL OR kas.uri = params.kas_uri)
+    WHERE ($5::uuid IS NULL OR kas.id = $5::uuid)
+            AND ($6::text IS NULL OR kas.name = $6::text)
+            AND ($7::text IS NULL OR kas.uri = $7::text)
 )
 SELECT 
   COUNT(*) OVER () AS total,
@@ -1067,27 +1024,26 @@ SELECT
   JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata,
   kask.legacy
 FROM key_access_server_keys AS kask
-CROSS JOIN params
 INNER JOIN
     listed ON kask.key_access_server_id = listed.kas_id
 LEFT JOIN 
     provider_config as pc ON kask.provider_config_id = pc.id
 WHERE
-    (params.key_algorithm IS NULL OR kask.key_algorithm = params.key_algorithm)
-    AND (params.legacy IS NULL OR kask.legacy = params.legacy)
+    ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
+    AND ($2::boolean IS NULL OR kask.legacy = $2::boolean)
 ORDER BY kask.created_at DESC
-LIMIT $2 
-OFFSET $1
+LIMIT $4 
+OFFSET $3
 `
 
 type listKeysParams struct {
+	KeyAlgorithm pgtype.Int4 `json:"key_algorithm"`
+	Legacy       pgtype.Bool `json:"legacy"`
 	Offset       int32       `json:"offset_"`
 	Limit        int32       `json:"limit_"`
 	KasID        pgtype.UUID `json:"kas_id"`
 	KasName      pgtype.Text `json:"kas_name"`
 	KasUri       pgtype.Text `json:"kas_uri"`
-	KeyAlgorithm pgtype.Int4 `json:"key_algorithm"`
-	Legacy       pgtype.Bool `json:"legacy"`
 }
 
 type listKeysRow struct {
@@ -1111,23 +1067,14 @@ type listKeysRow struct {
 
 // listKeys
 //
-//	WITH params AS (
-//	    SELECT
-//	        $3::uuid as kas_id,
-//	        $4::text as kas_name,
-//	        $5::text as kas_uri,
-//	        $6::integer as key_algorithm,
-//	        $7::boolean as legacy
-//	),
-//	listed AS (
+//	WITH listed AS (
 //	    SELECT
 //	        kas.id AS kas_id,
 //	        kas.uri AS kas_uri
 //	    FROM key_access_servers AS kas
-//	    CROSS JOIN params
-//	    WHERE (params.kas_id IS NULL OR kas.id = params.kas_id)
-//	            AND (params.kas_name IS NULL OR kas.name = params.kas_name)
-//	            AND (params.kas_uri IS NULL OR kas.uri = params.kas_uri)
+//	    WHERE ($5::uuid IS NULL OR kas.id = $5::uuid)
+//	            AND ($6::text IS NULL OR kas.name = $6::text)
+//	            AND ($7::text IS NULL OR kas.uri = $7::text)
 //	)
 //	SELECT
 //	  COUNT(*) OVER () AS total,
@@ -1153,26 +1100,25 @@ type listKeysRow struct {
 //	  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata,
 //	  kask.legacy
 //	FROM key_access_server_keys AS kask
-//	CROSS JOIN params
 //	INNER JOIN
 //	    listed ON kask.key_access_server_id = listed.kas_id
 //	LEFT JOIN
 //	    provider_config as pc ON kask.provider_config_id = pc.id
 //	WHERE
-//	    (params.key_algorithm IS NULL OR kask.key_algorithm = params.key_algorithm)
-//	    AND (params.legacy IS NULL OR kask.legacy = params.legacy)
+//	    ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
+//	    AND ($2::boolean IS NULL OR kask.legacy = $2::boolean)
 //	ORDER BY kask.created_at DESC
-//	LIMIT $2
-//	OFFSET $1
+//	LIMIT $4
+//	OFFSET $3
 func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysRow, error) {
 	rows, err := q.db.Query(ctx, listKeys,
+		arg.KeyAlgorithm,
+		arg.Legacy,
 		arg.Offset,
 		arg.Limit,
 		arg.KasID,
 		arg.KasName,
 		arg.KasUri,
-		arg.KeyAlgorithm,
-		arg.Legacy,
 	)
 	if err != nil {
 		return nil, err

@@ -23,12 +23,6 @@ SELECT
 FROM inserted;
 
 -- name: getProviderConfig :one
-WITH params AS (
-    SELECT
-        sqlc.narg('id')::uuid as id,
-        sqlc.narg('name')::text as name,
-        sqlc.narg('manager')::text as manager
-)
 SELECT 
     pc.id,
     pc.provider_name,
@@ -36,10 +30,9 @@ SELECT
     pc.config,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS metadata
 FROM provider_config AS pc
-CROSS JOIN params
-WHERE (params.id IS NULL OR pc.id = params.id)
-  AND (params.name IS NULL OR pc.provider_name = params.name)
-  AND (params.manager IS NULL OR pc.manager = params.manager);
+WHERE (sqlc.narg('id')::uuid IS NULL OR pc.id = sqlc.narg('id')::uuid)
+  AND (sqlc.narg('name')::text IS NULL OR pc.provider_name = sqlc.narg('name')::text)
+  AND (sqlc.narg('manager')::text IS NULL OR pc.manager = sqlc.narg('manager')::text);
 
 
 -- name: listProviderConfigs :many

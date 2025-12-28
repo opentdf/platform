@@ -17,11 +17,6 @@ LIMIT @limit_
 OFFSET @offset_;
 
 -- name: getNamespace :one
-WITH params AS (
-    SELECT
-        sqlc.narg('id')::uuid as id,
-        REGEXP_REPLACE(sqlc.narg('name')::text, '^https?://', '') as name
-)
 SELECT
     ns.id,
     ns.name,
@@ -37,7 +32,6 @@ SELECT
     nmp_keys.keys as keys,
     nmp_certs.certs as certs
 FROM attribute_namespaces ns
-CROSS JOIN params
 LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
 LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
@@ -74,8 +68,8 @@ LEFT JOIN (
     GROUP BY c.namespace_id
 ) nmp_certs ON ns.id = nmp_certs.namespace_id
 WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL
-  AND (params.id IS NULL OR ns.id = params.id)
-  AND (params.name IS NULL OR ns.name = params.name)
+  AND (sqlc.narg('id')::uuid IS NULL OR ns.id = sqlc.narg('id')::uuid)
+  AND (sqlc.narg('name')::text IS NULL OR ns.name = REGEXP_REPLACE(sqlc.narg('name')::text, '^https?://', ''))
 GROUP BY ns.id, fqns.fqn, nmp_keys.keys, nmp_certs.certs;
 
 -- name: createNamespace :one

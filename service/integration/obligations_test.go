@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/proto"
 )
 
 type ObligationsSuite struct {
@@ -1880,8 +1881,5 @@ func (s *ObligationsSuite) Test_GetObligation_ByIdAndFqn_ReturnSameResult() {
 	s.NotNil(oblByFQN)
 
 	// Verify both return the same obligation
-	s.Equal(oblByID.GetId(), oblByFQN.GetId(), "ID should match")
-	s.Equal(oblByID.GetName(), oblByFQN.GetName(), "Name should match")
-	s.Equal(oblByID.GetNamespace().GetId(), oblByFQN.GetNamespace().GetId(), "Namespace ID should match")
-	s.Len(oblByID.GetValues(), len(oblByFQN.GetValues()), "Number of values should match")
+	s.True(proto.Equal(oblByID, oblByFQN))
 }

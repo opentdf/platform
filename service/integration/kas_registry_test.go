@@ -883,12 +883,8 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer_ByIdNameUri_ReturnSameResult(
 	s.Require().NotNil(kasByURI)
 
 	// Verify all three return the same KAS
-	s.Equal(kasByID.GetId(), kasByName.GetId(), "ID should match between ID and Name lookups")
-	s.Equal(kasByID.GetId(), kasByURI.GetId(), "ID should match between ID and URI lookups")
-	s.Equal(kasByID.GetName(), kasByName.GetName(), "Name should match")
-	s.Equal(kasByID.GetName(), kasByURI.GetName(), "Name should match")
-	s.Equal(kasByID.GetUri(), kasByName.GetUri(), "URI should match")
-	s.Equal(kasByID.GetUri(), kasByURI.GetUri(), "URI should match")
+	s.True(proto.Equal(kasByID, kasByName))
+	s.True(proto.Equal(kasByID, kasByURI))
 }
 
 func TestKasRegistrySuite(t *testing.T) {

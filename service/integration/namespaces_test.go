@@ -1112,9 +1112,7 @@ func (s *NamespacesSuite) Test_GetNamespace_ByIdAndName_ReturnSameResult() {
 		s.Require().NotNil(nsByName)
 
 		// Verify both return the same namespace
-		s.Equal(nsByID.GetId(), nsByName.GetId(), "ID should match for namespace: %s", test.Name)
-		s.Equal(nsByID.GetName(), nsByName.GetName(), "Name should match for namespace: %s", test.Name)
-		s.Equal(nsByID.GetActive(), nsByName.GetActive(), "Active status should match for namespace: %s", test.Name)
+		s.True(proto.Equal(nsByID, nsByName))
 	}
 }
 

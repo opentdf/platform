@@ -1452,7 +1452,7 @@ func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureData
 // - Test that a Get/List attribute returns the Asymmetric Keys with the provider configs / add a key with no provider config
 
 // Test_GetAttribute_ByIdAndFqn_ReturnSameResult validates that getAttribute works correctly
-// with both ID and FQN lookups after params CTE optimization
+// with both ID and FQN lookups
 func (s *AttributesSuite) Test_GetAttribute_ByIdAndFqn_ReturnSameResult() {
 	fixtures := s.getAttributeFixtures()
 

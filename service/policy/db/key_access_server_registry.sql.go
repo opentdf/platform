@@ -429,13 +429,7 @@ func (q *Queries) getKeyAccessServer(ctx context.Context, arg getKeyAccessServer
 }
 
 const listKeyAccessServerGrants = `-- name: listKeyAccessServerGrants :many
-WITH params AS (
-    SELECT
-        $3::uuid as kas_id,
-        $4::text as kas_uri,
-        $5::text as kas_name
-),
-listed AS (
+WITH listed AS (
     SELECT
         COUNT(*) OVER () AS total,
         kas.id AS kas_id,
@@ -460,7 +454,6 @@ listed AS (
             'fqn', fqns_on_ns.fqn
         )) FILTER (WHERE nskag.namespace_id IS NOT NULL) AS namespace_grants
     FROM key_access_servers AS kas
-    CROSS JOIN params
     LEFT JOIN
         attribute_definition_key_access_grants AS attrkag
         ON kas.id = attrkag.key_access_server_id
@@ -481,9 +474,9 @@ listed AS (
         attribute_fqns AS fqns_on_ns
             ON nskag.namespace_id = fqns_on_ns.namespace_id
         AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
-    WHERE (params.kas_id IS NULL OR kas.id = params.kas_id) 
-        AND (params.kas_uri IS NULL OR kas.uri = params.kas_uri) 
-        AND (params.kas_name IS NULL OR kas.name = params.kas_name) 
+    WHERE ($3::uuid IS NULL OR kas.id = $3::uuid) 
+        AND ($4::text IS NULL OR kas.uri = $4::text) 
+        AND ($5::text IS NULL OR kas.name = $5::text) 
     GROUP BY 
         kas.id
 )
@@ -526,13 +519,7 @@ type listKeyAccessServerGrantsRow struct {
 // KEY ACCESS SERVERS
 // --------------------------------------------------------------
 //
-//	WITH params AS (
-//	    SELECT
-//	        $3::uuid as kas_id,
-//	        $4::text as kas_uri,
-//	        $5::text as kas_name
-//	),
-//	listed AS (
+//	WITH listed AS (
 //	    SELECT
 //	        COUNT(*) OVER () AS total,
 //	        kas.id AS kas_id,
@@ -557,7 +544,6 @@ type listKeyAccessServerGrantsRow struct {
 //	            'fqn', fqns_on_ns.fqn
 //	        )) FILTER (WHERE nskag.namespace_id IS NOT NULL) AS namespace_grants
 //	    FROM key_access_servers AS kas
-//	    CROSS JOIN params
 //	    LEFT JOIN
 //	        attribute_definition_key_access_grants AS attrkag
 //	        ON kas.id = attrkag.key_access_server_id
@@ -578,9 +564,9 @@ type listKeyAccessServerGrantsRow struct {
 //	        attribute_fqns AS fqns_on_ns
 //	            ON nskag.namespace_id = fqns_on_ns.namespace_id
 //	        AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
-//	    WHERE (params.kas_id IS NULL OR kas.id = params.kas_id)
-//	        AND (params.kas_uri IS NULL OR kas.uri = params.kas_uri)
-//	        AND (params.kas_name IS NULL OR kas.name = params.kas_name)
+//	    WHERE ($3::uuid IS NULL OR kas.id = $3::uuid)
+//	        AND ($4::text IS NULL OR kas.uri = $4::text)
+//	        AND ($5::text IS NULL OR kas.name = $5::text)
 //	    GROUP BY
 //	        kas.id
 //	)

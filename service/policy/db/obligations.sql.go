@@ -148,40 +148,29 @@ func (q *Queries) createObligation(ctx context.Context, arg createObligationPara
 
 const createObligationTrigger = `-- name: createObligationTrigger :one
 
-WITH params AS (
-    SELECT
-        $1::uuid as obligation_value_id,
-        $2::uuid as action_id,
-        $3::text as action_name,
-        $4::uuid as attribute_value_id,
-        $5::text as attribute_value_fqn
-),
-ov_id AS (
+WITH ov_id AS (
     SELECT ov.id, od.namespace_id
     FROM obligation_values_standard ov
-    CROSS JOIN params
     JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
-    WHERE params.obligation_value_id IS NOT NULL AND ov.id = params.obligation_value_id
+    WHERE $1::uuid IS NOT NULL AND ov.id = $1::uuid
 ),
 a_id AS (
     SELECT a.id
     FROM actions a
-    CROSS JOIN params
     WHERE
-        (params.action_id IS NOT NULL AND a.id = params.action_id)
+        ($2::uuid IS NOT NULL AND a.id = $2::uuid)
         OR
-        (params.action_name IS NOT NULL AND a.name = params.action_name)
+        ($3::text IS NOT NULL AND a.name = $3::text)
 ),
 av_id AS (
     SELECT av.id
     FROM attribute_values av
-    CROSS JOIN params
     JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
     LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
     WHERE
-        ((params.attribute_value_id IS NOT NULL AND av.id = params.attribute_value_id)
+        (($4::uuid IS NOT NULL AND av.id = $4::uuid)
         OR
-        (params.attribute_value_fqn IS NOT NULL AND fqns.fqn = params.attribute_value_fqn))
+        ($5::text IS NOT NULL AND fqns.fqn = $5::text))
         AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
 ),
 inserted AS (
@@ -268,40 +257,29 @@ type createObligationTriggerRow struct {
 // --------------------------------------------------------------
 // Gets the attribute value, but also ensures that the attribute value belongs to the same namespace as the obligation, to which the obligation value belongs
 //
-//	WITH params AS (
-//	    SELECT
-//	        $1::uuid as obligation_value_id,
-//	        $2::uuid as action_id,
-//	        $3::text as action_name,
-//	        $4::uuid as attribute_value_id,
-//	        $5::text as attribute_value_fqn
-//	),
-//	ov_id AS (
+//	WITH ov_id AS (
 //	    SELECT ov.id, od.namespace_id
 //	    FROM obligation_values_standard ov
-//	    CROSS JOIN params
 //	    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
-//	    WHERE params.obligation_value_id IS NOT NULL AND ov.id = params.obligation_value_id
+//	    WHERE $1::uuid IS NOT NULL AND ov.id = $1::uuid
 //	),
 //	a_id AS (
 //	    SELECT a.id
 //	    FROM actions a
-//	    CROSS JOIN params
 //	    WHERE
-//	        (params.action_id IS NOT NULL AND a.id = params.action_id)
+//	        ($2::uuid IS NOT NULL AND a.id = $2::uuid)
 //	        OR
-//	        (params.action_name IS NOT NULL AND a.name = params.action_name)
+//	        ($3::text IS NOT NULL AND a.name = $3::text)
 //	),
 //	av_id AS (
 //	    SELECT av.id
 //	    FROM attribute_values av
-//	    CROSS JOIN params
 //	    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
 //	    LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
 //	    WHERE
-//	        ((params.attribute_value_id IS NOT NULL AND av.id = params.attribute_value_id)
+//	        (($4::uuid IS NOT NULL AND av.id = $4::uuid)
 //	        OR
-//	        (params.attribute_value_fqn IS NOT NULL AND fqns.fqn = params.attribute_value_fqn))
+//	        ($5::text IS NOT NULL AND fqns.fqn = $5::text))
 //	        AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
 //	),
 //	inserted AS (
@@ -383,27 +361,20 @@ func (q *Queries) createObligationTrigger(ctx context.Context, arg createObligat
 
 const createObligationValue = `-- name: createObligationValue :one
 
-WITH params AS (
-    SELECT
-        $1::uuid as id,
-        $2::text as namespace_fqn,
-        $3::text as name
-),
-obligation_lookup AS (
+WITH obligation_lookup AS (
     SELECT od.id, od.name, od.metadata
     FROM obligation_definitions od
-    CROSS JOIN params
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (params.id IS NOT NULL AND od.id = params.id)
+            ($1::uuid IS NOT NULL AND od.id = $1::uuid)
             OR
             -- lookup by namespace fqn + obligation name
-            (params.namespace_fqn IS NOT NULL AND params.name IS NOT NULL 
-             AND fqns.fqn = params.namespace_fqn AND od.name = params.name)
+            ($2::text IS NOT NULL AND $3::text IS NOT NULL 
+             AND fqns.fqn = $2::text AND od.name = $3::text)
         )
 ),
 inserted_value AS (
@@ -449,27 +420,20 @@ type createObligationValueRow struct {
 // OBLIGATION VALUES
 // --------------------------------------------------------------
 //
-//	WITH params AS (
-//	    SELECT
-//	        $1::uuid as id,
-//	        $2::text as namespace_fqn,
-//	        $3::text as name
-//	),
-//	obligation_lookup AS (
+//	WITH obligation_lookup AS (
 //	    SELECT od.id, od.name, od.metadata
 //	    FROM obligation_definitions od
-//	    CROSS JOIN params
 //	    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
 //	    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	    WHERE
 //	        -- lookup by obligation id OR by namespace fqn + obligation name
 //	        (
 //	            -- lookup by obligation id
-//	            (params.id IS NOT NULL AND od.id = params.id)
+//	            ($1::uuid IS NOT NULL AND od.id = $1::uuid)
 //	            OR
 //	            -- lookup by namespace fqn + obligation name
-//	            (params.namespace_fqn IS NOT NULL AND params.name IS NOT NULL
-//	             AND fqns.fqn = params.namespace_fqn AND od.name = params.name)
+//	            ($2::text IS NOT NULL AND $3::text IS NOT NULL
+//	             AND fqns.fqn = $2::text AND od.name = $3::text)
 //	        )
 //	),
 //	inserted_value AS (
@@ -663,13 +627,7 @@ func (q *Queries) deleteObligationValue(ctx context.Context, arg deleteObligatio
 }
 
 const getObligation = `-- name: getObligation :one
-WITH params AS (
-    SELECT
-        $1::uuid as id,
-        $2::text as namespace_fqn,
-        $3::text as name
-),
-obligation_triggers_agg AS (
+WITH obligation_triggers_agg AS (
     SELECT
         ot.obligation_value_id,
         JSON_AGG(
@@ -719,7 +677,6 @@ SELECT
         )
     ) FILTER (WHERE ov.id IS NOT NULL) as values
 FROM obligation_definitions od
-CROSS JOIN params
 JOIN attribute_namespaces n on od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
@@ -728,11 +685,11 @@ WHERE
     -- lookup by obligation id OR by namespace fqn + obligation name
     (
         -- lookup by obligation id
-        (params.id IS NOT NULL AND od.id = params.id)
+        ($1::uuid IS NOT NULL AND od.id = $1::uuid)
         OR
         -- lookup by namespace fqn + obligation name
-        (params.namespace_fqn IS NOT NULL AND params.name IS NOT NULL
-         AND fqns.fqn = params.namespace_fqn AND od.name = params.name)
+        ($2::text IS NOT NULL AND $3::text IS NOT NULL
+         AND fqns.fqn = $2::text AND od.name = $3::text)
     )
 GROUP BY od.id, n.id, fqns.fqn
 `
@@ -753,13 +710,7 @@ type getObligationRow struct {
 
 // getObligation
 //
-//	WITH params AS (
-//	    SELECT
-//	        $1::uuid as id,
-//	        $2::text as namespace_fqn,
-//	        $3::text as name
-//	),
-//	obligation_triggers_agg AS (
+//	WITH obligation_triggers_agg AS (
 //	    SELECT
 //	        ot.obligation_value_id,
 //	        JSON_AGG(
@@ -809,7 +760,6 @@ type getObligationRow struct {
 //	        )
 //	    ) FILTER (WHERE ov.id IS NOT NULL) as values
 //	FROM obligation_definitions od
-//	CROSS JOIN params
 //	JOIN attribute_namespaces n on od.namespace_id = n.id
 //	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
@@ -818,11 +768,11 @@ type getObligationRow struct {
 //	    -- lookup by obligation id OR by namespace fqn + obligation name
 //	    (
 //	        -- lookup by obligation id
-//	        (params.id IS NOT NULL AND od.id = params.id)
+//	        ($1::uuid IS NOT NULL AND od.id = $1::uuid)
 //	        OR
 //	        -- lookup by namespace fqn + obligation name
-//	        (params.namespace_fqn IS NOT NULL AND params.name IS NOT NULL
-//	         AND fqns.fqn = params.namespace_fqn AND od.name = params.name)
+//	        ($2::text IS NOT NULL AND $3::text IS NOT NULL
+//	         AND fqns.fqn = $2::text AND od.name = $3::text)
 //	    )
 //	GROUP BY od.id, n.id, fqns.fqn
 func (q *Queries) getObligation(ctx context.Context, arg getObligationParams) (getObligationRow, error) {
@@ -839,14 +789,7 @@ func (q *Queries) getObligation(ctx context.Context, arg getObligationParams) (g
 }
 
 const getObligationValue = `-- name: getObligationValue :one
-WITH params AS (
-    SELECT
-        $1::uuid as id,
-        $2::text as namespace_fqn,
-        $3::text as name,
-        $4::text as value
-),
-obligation_triggers_agg AS (
+WITH obligation_triggers_agg AS (
     SELECT
         ot.obligation_value_id,
         JSON_AGG(
@@ -892,7 +835,6 @@ SELECT
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ov.metadata -> 'labels', 'created_at', ov.created_at,'updated_at', ov.updated_at)) as metadata,
     COALESCE(ota.triggers, '[]'::JSON) as triggers
 FROM obligation_values_standard ov
-CROSS JOIN params
 JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
 JOIN attribute_namespaces n ON od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
@@ -901,11 +843,11 @@ WHERE
     -- lookup by value id OR by namespace fqn + obligation name + value name
     (
         -- lookup by value id
-        (params.id IS NOT NULL AND ov.id = params.id)
+        ($1::uuid IS NOT NULL AND ov.id = $1::uuid)
         OR
         -- lookup by namespace fqn + obligation name + value name
-        (params.namespace_fqn IS NOT NULL AND params.name IS NOT NULL AND params.value IS NOT NULL
-         AND fqns.fqn = params.namespace_fqn AND od.name = params.name AND ov.value = params.value)
+        ($2::text IS NOT NULL AND $3::text IS NOT NULL AND $4::text IS NOT NULL
+         AND fqns.fqn = $2::text AND od.name = $3::text AND ov.value = $4::text)
     )
 `
 
@@ -928,14 +870,7 @@ type getObligationValueRow struct {
 
 // getObligationValue
 //
-//	WITH params AS (
-//	    SELECT
-//	        $1::uuid as id,
-//	        $2::text as namespace_fqn,
-//	        $3::text as name,
-//	        $4::text as value
-//	),
-//	obligation_triggers_agg AS (
+//	WITH obligation_triggers_agg AS (
 //	    SELECT
 //	        ot.obligation_value_id,
 //	        JSON_AGG(
@@ -981,7 +916,6 @@ type getObligationValueRow struct {
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ov.metadata -> 'labels', 'created_at', ov.created_at,'updated_at', ov.updated_at)) as metadata,
 //	    COALESCE(ota.triggers, '[]'::JSON) as triggers
 //	FROM obligation_values_standard ov
-//	CROSS JOIN params
 //	JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
 //	JOIN attribute_namespaces n ON od.namespace_id = n.id
 //	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
@@ -990,11 +924,11 @@ type getObligationValueRow struct {
 //	    -- lookup by value id OR by namespace fqn + obligation name + value name
 //	    (
 //	        -- lookup by value id
-//	        (params.id IS NOT NULL AND ov.id = params.id)
+//	        ($1::uuid IS NOT NULL AND ov.id = $1::uuid)
 //	        OR
 //	        -- lookup by namespace fqn + obligation name + value name
-//	        (params.namespace_fqn IS NOT NULL AND params.name IS NOT NULL AND params.value IS NOT NULL
-//	         AND fqns.fqn = params.namespace_fqn AND od.name = params.name AND ov.value = params.value)
+//	        ($2::text IS NOT NULL AND $3::text IS NOT NULL AND $4::text IS NOT NULL
+//	         AND fqns.fqn = $2::text AND od.name = $3::text AND ov.value = $4::text)
 //	    )
 func (q *Queries) getObligationValue(ctx context.Context, arg getObligationValueParams) (getObligationValueRow, error) {
 	row := q.db.QueryRow(ctx, getObligationValue,
@@ -1364,11 +1298,6 @@ func (q *Queries) getObligationsByFQNs(ctx context.Context, arg getObligationsBy
 }
 
 const listObligationTriggers = `-- name: listObligationTriggers :many
-WITH params AS (
-    SELECT
-        $3::uuid as namespace_id,
-        $4::text as namespace_fqn
-)
 SELECT
     JSON_STRIP_NULLS(
         JSON_BUILD_OBJECT(
@@ -1416,7 +1345,6 @@ SELECT
     ) as metadata,
     COUNT(*) OVER() as total
 FROM obligation_triggers ot
-CROSS JOIN params
 JOIN obligation_values_standard ov ON ot.obligation_value_id = ov.id
 JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
 JOIN attribute_namespaces n ON od.namespace_id = n.id
@@ -1425,18 +1353,18 @@ JOIN actions a ON ot.action_id = a.id
 JOIN attribute_values av ON ot.attribute_value_id = av.id
 LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 WHERE
-    (params.namespace_id IS NULL OR od.namespace_id = params.namespace_id) AND
-    (params.namespace_fqn IS NULL OR ns_fqns.fqn = params.namespace_fqn)
+    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
+    ($2::text IS NULL OR ns_fqns.fqn = $2::text)
 ORDER BY ot.created_at DESC
-LIMIT $2
-OFFSET $1
+LIMIT $4
+OFFSET $3
 `
 
 type listObligationTriggersParams struct {
-	Offset       int32       `json:"offset_"`
-	Limit        int32       `json:"limit_"`
 	NamespaceID  pgtype.UUID `json:"namespace_id"`
 	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
+	Offset       int32       `json:"offset_"`
+	Limit        int32       `json:"limit_"`
 }
 
 type listObligationTriggersRow struct {
@@ -1447,11 +1375,6 @@ type listObligationTriggersRow struct {
 
 // listObligationTriggers
 //
-//	WITH params AS (
-//	    SELECT
-//	        $3::uuid as namespace_id,
-//	        $4::text as namespace_fqn
-//	)
 //	SELECT
 //	    JSON_STRIP_NULLS(
 //	        JSON_BUILD_OBJECT(
@@ -1499,7 +1422,6 @@ type listObligationTriggersRow struct {
 //	    ) as metadata,
 //	    COUNT(*) OVER() as total
 //	FROM obligation_triggers ot
-//	CROSS JOIN params
 //	JOIN obligation_values_standard ov ON ot.obligation_value_id = ov.id
 //	JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
 //	JOIN attribute_namespaces n ON od.namespace_id = n.id
@@ -1508,17 +1430,17 @@ type listObligationTriggersRow struct {
 //	JOIN attribute_values av ON ot.attribute_value_id = av.id
 //	LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 //	WHERE
-//	    (params.namespace_id IS NULL OR od.namespace_id = params.namespace_id) AND
-//	    (params.namespace_fqn IS NULL OR ns_fqns.fqn = params.namespace_fqn)
+//	    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
+//	    ($2::text IS NULL OR ns_fqns.fqn = $2::text)
 //	ORDER BY ot.created_at DESC
-//	LIMIT $2
-//	OFFSET $1
+//	LIMIT $4
+//	OFFSET $3
 func (q *Queries) listObligationTriggers(ctx context.Context, arg listObligationTriggersParams) ([]listObligationTriggersRow, error) {
 	rows, err := q.db.Query(ctx, listObligationTriggers,
-		arg.Offset,
-		arg.Limit,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
+		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
@@ -1539,20 +1461,14 @@ func (q *Queries) listObligationTriggers(ctx context.Context, arg listObligation
 }
 
 const listObligations = `-- name: listObligations :many
-WITH params AS (
-    SELECT
-        $3::uuid as namespace_id,
-        $4::text as namespace_fqn
-),
-counted AS (
+WITH counted AS (
     SELECT COUNT(od.id) AS total
     FROM obligation_definitions od
-    CROSS JOIN params
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
-        (params.namespace_id IS NULL OR od.namespace_id = params.namespace_id) AND
-        (params.namespace_fqn IS NULL OR fqns.fqn = params.namespace_fqn)
+        ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
+        ($2::text IS NULL OR fqns.fqn = $2::text)
 ),
 obligation_triggers_agg AS (
     SELECT
@@ -1605,25 +1521,24 @@ SELECT
     ) FILTER (WHERE ov.id IS NOT NULL) as values,
     counted.total
 FROM obligation_definitions od
-CROSS JOIN params
 JOIN attribute_namespaces n on od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 CROSS JOIN counted
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 WHERE
-    (params.namespace_id IS NULL OR od.namespace_id = params.namespace_id) AND
-    (params.namespace_fqn IS NULL OR fqns.fqn = params.namespace_fqn)
+    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
+    ($2::text IS NULL OR fqns.fqn = $2::text)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
-LIMIT $2
-OFFSET $1
+LIMIT $4
+OFFSET $3
 `
 
 type listObligationsParams struct {
-	Offset       int32       `json:"offset_"`
-	Limit        int32       `json:"limit_"`
 	NamespaceID  pgtype.UUID `json:"namespace_id"`
 	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
+	Offset       int32       `json:"offset_"`
+	Limit        int32       `json:"limit_"`
 }
 
 type listObligationsRow struct {
@@ -1637,20 +1552,14 @@ type listObligationsRow struct {
 
 // listObligations
 //
-//	WITH params AS (
-//	    SELECT
-//	        $3::uuid as namespace_id,
-//	        $4::text as namespace_fqn
-//	),
-//	counted AS (
+//	WITH counted AS (
 //	    SELECT COUNT(od.id) AS total
 //	    FROM obligation_definitions od
-//	    CROSS JOIN params
 //	    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
 //	    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	    WHERE
-//	        (params.namespace_id IS NULL OR od.namespace_id = params.namespace_id) AND
-//	        (params.namespace_fqn IS NULL OR fqns.fqn = params.namespace_fqn)
+//	        ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
+//	        ($2::text IS NULL OR fqns.fqn = $2::text)
 //	),
 //	obligation_triggers_agg AS (
 //	    SELECT
@@ -1703,24 +1612,23 @@ type listObligationsRow struct {
 //	    ) FILTER (WHERE ov.id IS NOT NULL) as values,
 //	    counted.total
 //	FROM obligation_definitions od
-//	CROSS JOIN params
 //	JOIN attribute_namespaces n on od.namespace_id = n.id
 //	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	CROSS JOIN counted
 //	LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 //	LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 //	WHERE
-//	    (params.namespace_id IS NULL OR od.namespace_id = params.namespace_id) AND
-//	    (params.namespace_fqn IS NULL OR fqns.fqn = params.namespace_fqn)
+//	    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
+//	    ($2::text IS NULL OR fqns.fqn = $2::text)
 //	GROUP BY od.id, n.id, fqns.fqn, counted.total
-//	LIMIT $2
-//	OFFSET $1
+//	LIMIT $4
+//	OFFSET $3
 func (q *Queries) listObligations(ctx context.Context, arg listObligationsParams) ([]listObligationsRow, error) {
 	rows, err := q.db.Query(ctx, listObligations,
-		arg.Offset,
-		arg.Limit,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
+		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err

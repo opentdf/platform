@@ -863,7 +863,7 @@ func (s *KasRegistrySuite) validateKasRegistryKeys(kasr *policy.KeyAccessServer)
 }
 
 // Test_GetKeyAccessServer_ByIdNameUri_ReturnSameResult validates that getKeyAccessServer works correctly
-// with ID, name, and URI lookups after params CTE optimization
+// with ID, name, and URI lookups
 func (s *KasRegistrySuite) Test_GetKeyAccessServer_ByIdNameUri_ReturnSameResult() {
 	remoteFixture := s.f.GetKasRegistryKey("key_access_server_1")
 

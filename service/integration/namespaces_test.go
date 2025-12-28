@@ -1096,7 +1096,7 @@ func (s *NamespacesSuite) Test_RemovePublicKeyFromNamespace_Not_Found_Fails() {
 }
 
 // Test_GetNamespace_ByIdAndName_ReturnSameResult validates that getNamespace works correctly
-// with both ID and name lookups after params CTE optimization
+// with both ID and name lookups
 func (s *NamespacesSuite) Test_GetNamespace_ByIdAndName_ReturnSameResult() {
 	testData := s.getActiveNamespaceFixtures()
 

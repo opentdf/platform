@@ -51,13 +51,7 @@ LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
 GROUP BY io.id, io.name, io.metadata, n.id, fqns.fqn;
 
 -- name: getObligation :one
-WITH params AS (
-    SELECT
-        sqlc.narg('id')::uuid as id,
-        sqlc.narg('namespace_fqn')::text as namespace_fqn,
-        sqlc.narg('name')::text as name
-),
-obligation_triggers_agg AS (
+WITH obligation_triggers_agg AS (
     SELECT
         ot.obligation_value_id,
         JSON_AGG(
@@ -107,7 +101,6 @@ SELECT
         )
     ) FILTER (WHERE ov.id IS NOT NULL) as values
 FROM obligation_definitions od
-CROSS JOIN params
 JOIN attribute_namespaces n on od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
@@ -116,29 +109,23 @@ WHERE
     -- lookup by obligation id OR by namespace fqn + obligation name
     (
         -- lookup by obligation id
-        (params.id IS NOT NULL AND od.id = params.id)
+        (sqlc.narg('id')::uuid IS NOT NULL AND od.id = sqlc.narg('id')::uuid)
         OR
         -- lookup by namespace fqn + obligation name
-        (params.namespace_fqn IS NOT NULL AND params.name IS NOT NULL
-         AND fqns.fqn = params.namespace_fqn AND od.name = params.name)
+        (sqlc.narg('namespace_fqn')::text IS NOT NULL AND sqlc.narg('name')::text IS NOT NULL
+         AND fqns.fqn = sqlc.narg('namespace_fqn')::text AND od.name = sqlc.narg('name')::text)
     )
 GROUP BY od.id, n.id, fqns.fqn;
 
 -- name: listObligations :many
-WITH params AS (
-    SELECT
-        sqlc.narg('namespace_id')::uuid as namespace_id,
-        sqlc.narg('namespace_fqn')::text as namespace_fqn
-),
-counted AS (
+WITH counted AS (
     SELECT COUNT(od.id) AS total
     FROM obligation_definitions od
-    CROSS JOIN params
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
-        (params.namespace_id IS NULL OR od.namespace_id = params.namespace_id) AND
-        (params.namespace_fqn IS NULL OR fqns.fqn = params.namespace_fqn)
+        (sqlc.narg('namespace_id')::uuid IS NULL OR od.namespace_id = sqlc.narg('namespace_id')::uuid) AND
+        (sqlc.narg('namespace_fqn')::text IS NULL OR fqns.fqn = sqlc.narg('namespace_fqn')::text)
 ),
 obligation_triggers_agg AS (
     SELECT
@@ -191,15 +178,14 @@ SELECT
     ) FILTER (WHERE ov.id IS NOT NULL) as values,
     counted.total
 FROM obligation_definitions od
-CROSS JOIN params
 JOIN attribute_namespaces n on od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 CROSS JOIN counted
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 WHERE
-    (params.namespace_id IS NULL OR od.namespace_id = params.namespace_id) AND
-    (params.namespace_fqn IS NULL OR fqns.fqn = params.namespace_fqn)
+    (sqlc.narg('namespace_id')::uuid IS NULL OR od.namespace_id = sqlc.narg('namespace_id')::uuid) AND
+    (sqlc.narg('namespace_fqn')::text IS NULL OR fqns.fqn = sqlc.narg('namespace_fqn')::text)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
 LIMIT @limit_
 OFFSET @offset_;
@@ -306,27 +292,20 @@ GROUP BY
 ----------------------------------------------------------------
 
 -- name: createObligationValue :one
-WITH params AS (
-    SELECT
-        sqlc.narg('id')::uuid as id,
-        sqlc.narg('namespace_fqn')::text as namespace_fqn,
-        sqlc.narg('name')::text as name
-),
-obligation_lookup AS (
+WITH obligation_lookup AS (
     SELECT od.id, od.name, od.metadata
     FROM obligation_definitions od
-    CROSS JOIN params
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (params.id IS NOT NULL AND od.id = params.id)
+            (sqlc.narg('id')::uuid IS NOT NULL AND od.id = sqlc.narg('id')::uuid)
             OR
             -- lookup by namespace fqn + obligation name
-            (params.namespace_fqn IS NOT NULL AND params.name IS NOT NULL 
-             AND fqns.fqn = params.namespace_fqn AND od.name = params.name)
+            (sqlc.narg('namespace_fqn')::text IS NOT NULL AND sqlc.narg('name')::text IS NOT NULL 
+             AND fqns.fqn = sqlc.narg('namespace_fqn')::text AND od.name = sqlc.narg('name')::text)
         )
 ),
 inserted_value AS (
@@ -352,14 +331,7 @@ JOIN attribute_namespaces n ON od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL;
 
 -- name: getObligationValue :one
-WITH params AS (
-    SELECT
-        sqlc.narg('id')::uuid as id,
-        sqlc.narg('namespace_fqn')::text as namespace_fqn,
-        sqlc.narg('name')::text as name,
-        sqlc.narg('value')::text as value
-),
-obligation_triggers_agg AS (
+WITH obligation_triggers_agg AS (
     SELECT
         ot.obligation_value_id,
         JSON_AGG(
@@ -405,7 +377,6 @@ SELECT
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ov.metadata -> 'labels', 'created_at', ov.created_at,'updated_at', ov.updated_at)) as metadata,
     COALESCE(ota.triggers, '[]'::JSON) as triggers
 FROM obligation_values_standard ov
-CROSS JOIN params
 JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
 JOIN attribute_namespaces n ON od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
@@ -414,11 +385,11 @@ WHERE
     -- lookup by value id OR by namespace fqn + obligation name + value name
     (
         -- lookup by value id
-        (params.id IS NOT NULL AND ov.id = params.id)
+        (sqlc.narg('id')::uuid IS NOT NULL AND ov.id = sqlc.narg('id')::uuid)
         OR
         -- lookup by namespace fqn + obligation name + value name
-        (params.namespace_fqn IS NOT NULL AND params.name IS NOT NULL AND params.value IS NOT NULL
-         AND fqns.fqn = params.namespace_fqn AND od.name = params.name AND ov.value = params.value)
+        (sqlc.narg('namespace_fqn')::text IS NOT NULL AND sqlc.narg('name')::text IS NOT NULL AND sqlc.narg('value')::text IS NOT NULL
+         AND fqns.fqn = sqlc.narg('namespace_fqn')::text AND od.name = sqlc.narg('name')::text AND ov.value = sqlc.narg('value')::text)
     );
 
 -- name: updateObligationValue :execrows
@@ -515,41 +486,30 @@ RETURNING id;
 ----------------------------------------------------------------
 
 -- name: createObligationTrigger :one
-WITH params AS (
-    SELECT
-        sqlc.narg('obligation_value_id')::uuid as obligation_value_id,
-        sqlc.narg('action_id')::uuid as action_id,
-        sqlc.narg('action_name')::text as action_name,
-        sqlc.narg('attribute_value_id')::uuid as attribute_value_id,
-        sqlc.narg('attribute_value_fqn')::text as attribute_value_fqn
-),
-ov_id AS (
+WITH ov_id AS (
     SELECT ov.id, od.namespace_id
     FROM obligation_values_standard ov
-    CROSS JOIN params
     JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
-    WHERE params.obligation_value_id IS NOT NULL AND ov.id = params.obligation_value_id
+    WHERE sqlc.narg('obligation_value_id')::uuid IS NOT NULL AND ov.id = sqlc.narg('obligation_value_id')::uuid
 ),
 a_id AS (
     SELECT a.id
     FROM actions a
-    CROSS JOIN params
     WHERE
-        (params.action_id IS NOT NULL AND a.id = params.action_id)
+        (sqlc.narg('action_id')::uuid IS NOT NULL AND a.id = sqlc.narg('action_id')::uuid)
         OR
-        (params.action_name IS NOT NULL AND a.name = params.action_name)
+        (sqlc.narg('action_name')::text IS NOT NULL AND a.name = sqlc.narg('action_name')::text)
 ),
 -- Gets the attribute value, but also ensures that the attribute value belongs to the same namespace as the obligation, to which the obligation value belongs
 av_id AS (
     SELECT av.id
     FROM attribute_values av
-    CROSS JOIN params
     JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
     LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
     WHERE
-        ((params.attribute_value_id IS NOT NULL AND av.id = params.attribute_value_id)
+        ((sqlc.narg('attribute_value_id')::uuid IS NOT NULL AND av.id = sqlc.narg('attribute_value_id')::uuid)
         OR
-        (params.attribute_value_fqn IS NOT NULL AND fqns.fqn = params.attribute_value_fqn))
+        (sqlc.narg('attribute_value_fqn')::text IS NOT NULL AND fqns.fqn = sqlc.narg('attribute_value_fqn')::text))
         AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
 ),
 inserted AS (
@@ -626,11 +586,6 @@ WHERE id = $1
 RETURNING id;
 
 -- name: listObligationTriggers :many
-WITH params AS (
-    SELECT
-        sqlc.narg('namespace_id')::uuid as namespace_id,
-        sqlc.narg('namespace_fqn')::text as namespace_fqn
-)
 SELECT
     JSON_STRIP_NULLS(
         JSON_BUILD_OBJECT(
@@ -678,7 +633,6 @@ SELECT
     ) as metadata,
     COUNT(*) OVER() as total
 FROM obligation_triggers ot
-CROSS JOIN params
 JOIN obligation_values_standard ov ON ot.obligation_value_id = ov.id
 JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
 JOIN attribute_namespaces n ON od.namespace_id = n.id
@@ -687,8 +641,8 @@ JOIN actions a ON ot.action_id = a.id
 JOIN attribute_values av ON ot.attribute_value_id = av.id
 LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 WHERE
-    (params.namespace_id IS NULL OR od.namespace_id = params.namespace_id) AND
-    (params.namespace_fqn IS NULL OR ns_fqns.fqn = params.namespace_fqn)
+    (sqlc.narg('namespace_id')::uuid IS NULL OR od.namespace_id = sqlc.narg('namespace_id')::uuid) AND
+    (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text)
 ORDER BY ot.created_at DESC
 LIMIT @limit_
 OFFSET @offset_;

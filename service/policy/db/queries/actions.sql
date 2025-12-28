@@ -22,21 +22,15 @@ LIMIT @limit_
 OFFSET @offset_;
 
 -- name: getAction :one
-WITH params AS (
-    SELECT
-        sqlc.narg('id')::uuid as id,
-        sqlc.narg('name')::text as name
-)
 SELECT 
     a.id,
     a.name,
     a.is_standard,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', a.metadata -> 'labels', 'created_at', a.created_at, 'updated_at', a.updated_at)) AS metadata
 FROM actions a
-CROSS JOIN params
 WHERE 
-  (params.id IS NULL OR a.id = params.id)
-  AND (params.name IS NULL OR a.name = params.name);
+  (sqlc.narg('id')::uuid IS NULL OR a.id = sqlc.narg('id')::uuid)
+  AND (sqlc.narg('name')::text IS NULL OR a.name = sqlc.narg('name')::text);
 
 -- name: createOrListActionsByName :many
 WITH input_actions AS (

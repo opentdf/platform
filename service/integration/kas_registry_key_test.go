@@ -2279,7 +2279,7 @@ func (s *KasRegistryKeySuite) createKeyAndKas() *policy.KasKey {
 }
 
 // Test_ListKeyMappings_AllParameterCombinations validates that listKeyMappings works correctly
-// with various combinations of optional parameters after params CTE optimization
+// with various combinations of optional parameters
 func (s *KasRegistryKeySuite) Test_ListKeyMappings_AllParameterCombinations() {
 	kas1 := s.kasFixtures[0]
 	key1 := s.kasKeys[0]
@@ -2290,7 +2290,7 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_AllParameterCombinations() {
 	s.NotNil(allMappings)
 	// No assertion on count - fixtures may not have any mappings
 
-	// Test 2: Filter by key with KAS URI (validates params CTE optimization works)
+	// Test 2: Filter by key with KAS URI
 	mappingsByKey, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &kasregistry.ListKeyMappingsRequest{
 		Identifier: &kasregistry.ListKeyMappingsRequest_Key{
 			Key: &kasregistry.KasKeyIdentifier{

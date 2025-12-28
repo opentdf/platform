@@ -1824,7 +1824,7 @@ func (s *ObligationsSuite) assertObligationValuesSpecificTriggers(obl *policy.Ob
 }
 
 // Test_ListObligations_EmptyNamespaceId_ReturnsAll validates that empty string parameters
-// are properly treated as NULL after params CTE optimization
+// are properly treated as NULL
 func (s *ObligationsSuite) Test_ListObligations_EmptyNamespaceId_ReturnsAll() {
 	// Create obligations in different namespaces
 	namespaceID1, _, _ := s.getNamespaceData(nsExampleCom)
@@ -1858,7 +1858,7 @@ func (s *ObligationsSuite) Test_ListObligations_EmptyNamespaceId_ReturnsAll() {
 }
 
 // Test_GetObligation_ByIdAndFqn_ReturnSameResult validates that getObligation works correctly
-// with both ID and FQN lookups after params CTE optimization
+// with both ID and FQN lookups
 func (s *ObligationsSuite) Test_GetObligation_ByIdAndFqn_ReturnSameResult() {
 	namespaceID, namespaceFQN, _ := s.getNamespaceData(nsExampleCom)
 	createdObl := s.createObligation(namespaceID, oblName+"-dual-lookup-test", oblVals)

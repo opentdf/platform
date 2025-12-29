@@ -68,6 +68,11 @@ func buildSQLiteDSN(config Config) string {
 		path = ":memory:"
 	}
 
+	// If path is already a full URI with parameters, use it as-is
+	if strings.HasPrefix(path, "file:") && strings.Contains(path, "?") {
+		return path
+	}
+
 	// Build connection string with mode
 	var params []string
 

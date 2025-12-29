@@ -91,7 +91,7 @@ SELECT
             'created_at', scs.created_at,
             'updated_at', scs.updated_at
         ),
-        'subject_sets', scs.condition
+        'subject_sets', json(scs.condition)
     ) AS subject_condition_set,
     json_object(
         'id', av.id,
@@ -136,7 +136,7 @@ SELECT
             'created_at', scs.created_at,
             'updated_at', scs.updated_at
         ),
-        'subject_sets', scs.condition
+        'subject_sets', json(scs.condition)
     ) AS subject_condition_set,
     json_object('id', av.id,'value', av.value,'active', av.active) AS attribute_value
 FROM subject_mappings sm
@@ -164,7 +164,7 @@ SELECT
     ) AS custom_actions,
     json_object(
         'id', scs.id,
-        'subject_sets', scs.condition
+        'subject_sets', json(scs.condition)
     ) AS subject_condition_set,
     json_object(
         'id', av.id,

@@ -68,12 +68,12 @@ func (c PolicyDBClient) CreateRegisteredResource(ctx context.Context, r *registe
 		return nil, err
 	}
 
-	createdID, err := c.queries.createRegisteredResource(ctx, createRegisteredResourceParams{
+	createdID, err := c.router.CreateRegisteredResource(ctx, UnifiedCreateRegisteredResourceParams{
 		Name:     name,
 		Metadata: metadataJSON,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	for _, v := range r.GetValues() {
@@ -95,7 +95,7 @@ func (c PolicyDBClient) CreateRegisteredResource(ctx context.Context, r *registe
 }
 
 func (c PolicyDBClient) GetRegisteredResource(ctx context.Context, r *registeredresources.GetRegisteredResourceRequest) (*policy.RegisteredResource, error) {
-	params := getRegisteredResourceParams{}
+	params := UnifiedGetRegisteredResourceParams{}
 
 	switch {
 	case r.GetId() != "":
@@ -106,9 +106,9 @@ func (c PolicyDBClient) GetRegisteredResource(ctx context.Context, r *registered
 		return nil, db.ErrSelectIdentifierInvalid
 	}
 
-	rr, err := c.queries.getRegisteredResource(ctx, params)
+	rr, err := c.router.GetRegisteredResource(ctx, params)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	metadata := &common.Metadata{}
@@ -137,12 +137,12 @@ func (c PolicyDBClient) ListRegisteredResources(ctx context.Context, r *register
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.queries.listRegisteredResources(ctx, listRegisteredResourcesParams{
+	list, err := c.router.ListRegisteredResources(ctx, UnifiedListRegisteredResourcesParams{
 		Limit:  limit,
 		Offset: offset,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	rrList := make([]*policy.RegisteredResource, len(list))
@@ -201,13 +201,13 @@ func (c PolicyDBClient) UpdateRegisteredResource(ctx context.Context, r *registe
 		return nil, err
 	}
 
-	count, err := c.queries.updateRegisteredResource(ctx, updateRegisteredResourceParams{
-		ID:       id,
-		Name:     pgtypeText(name),
-		Metadata: metadataJSON,
-	})
+	var namePtr *string
+	if name != "" {
+		namePtr = &name
+	}
+	count, err := c.router.UpdateRegisteredResource(ctx, id, namePtr, metadataJSON)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -221,9 +221,9 @@ func (c PolicyDBClient) UpdateRegisteredResource(ctx context.Context, r *registe
 }
 
 func (c PolicyDBClient) DeleteRegisteredResource(ctx context.Context, id string) (*policy.RegisteredResource, error) {
-	count, err := c.queries.deleteRegisteredResource(ctx, id)
+	count, err := c.router.DeleteRegisteredResource(ctx, id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -246,18 +246,18 @@ func (c PolicyDBClient) CreateRegisteredResourceValue(ctx context.Context, r *re
 		return nil, err
 	}
 
-	createdID, err := c.queries.createRegisteredResourceValue(ctx, createRegisteredResourceValueParams{
+	createdID, err := c.router.CreateRegisteredResourceValue(ctx, UnifiedCreateRegisteredResourceValueParams{
 		RegisteredResourceID: resourceID,
 		Value:                value,
 		Metadata:             metadataJSON,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	err = c.createRegisteredResourceActionAttributeValues(ctx, createdID, r.GetActionAttributeValues())
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	return c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
@@ -268,7 +268,7 @@ func (c PolicyDBClient) CreateRegisteredResourceValue(ctx context.Context, r *re
 }
 
 func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *registeredresources.GetRegisteredResourceValueRequest) (*policy.RegisteredResourceValue, error) {
-	params := getRegisteredResourceValueParams{}
+	params := UnifiedGetRegisteredResourceValueParams{}
 
 	switch {
 	case r.GetId() != "":
@@ -286,9 +286,9 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 		return nil, db.ErrSelectIdentifierInvalid
 	}
 
-	rv, err := c.queries.getRegisteredResourceValue(ctx, params)
+	rv, err := c.router.GetRegisteredResourceValue(ctx, params)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	metadata := &common.Metadata{}
@@ -330,7 +330,7 @@ func (c PolicyDBClient) GetRegisteredResourceValuesByFQNs(ctx context.Context, r
 				slog.String("fqn", fqn),
 				slog.Any("err", err),
 			)
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+			return nil, c.WrapError(err)
 		}
 
 		count++
@@ -354,13 +354,13 @@ func (c PolicyDBClient) ListRegisteredResourceValues(ctx context.Context, r *reg
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.queries.listRegisteredResourceValues(ctx, listRegisteredResourceValuesParams{
+	list, err := c.router.ListRegisteredResourceValues(ctx, UnifiedListRegisteredResourceValuesParams{
 		RegisteredResourceID: resourceID,
 		Limit:                limit,
 		Offset:               offset,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	rvList := make([]*policy.RegisteredResourceValue, len(list))
@@ -422,13 +422,13 @@ func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *re
 		return nil, err
 	}
 
-	count, err := c.queries.updateRegisteredResourceValue(ctx, updateRegisteredResourceValueParams{
-		ID:       id,
-		Value:    pgtypeText(value),
-		Metadata: metadataJSON,
-	})
+	var valuePtr *string
+	if value != "" {
+		valuePtr = &value
+	}
+	count, err := c.router.UpdateRegisteredResourceValue(ctx, id, valuePtr, metadataJSON)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -437,14 +437,14 @@ func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *re
 	actionAttrValues := r.GetActionAttributeValues()
 	if len(actionAttrValues) > 0 {
 		// update overwrites all action attribute values with those provided in the request, so clear all existing ones first
-		_, err = c.queries.deleteRegisteredResourceActionAttributeValues(ctx, id)
+		_, err = c.router.DeleteRegisteredResourceActionAttributeValues(ctx, id)
 		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+			return nil, c.WrapError(err)
 		}
 
 		err = c.createRegisteredResourceActionAttributeValues(ctx, id, actionAttrValues)
 		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+			return nil, c.WrapError(err)
 		}
 	}
 
@@ -456,9 +456,9 @@ func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *re
 }
 
 func (c PolicyDBClient) DeleteRegisteredResourceValue(ctx context.Context, id string) (*policy.RegisteredResourceValue, error) {
-	count, err := c.queries.deleteRegisteredResourceValue(ctx, id)
+	count, err := c.router.DeleteRegisteredResourceValue(ctx, id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -478,52 +478,42 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 		return nil
 	}
 
-	createActionAttributeValueParams := make([]createRegisteredResourceActionAttributeValuesParams, len(actionAttrValues))
 	var actionID, attributeValueID string
-	for i, aav := range actionAttrValues {
-		switch identifier := aav.GetActionIdentifier().(type) {
+	for _, aav := range actionAttrValues {
+		switch ident := aav.GetActionIdentifier().(type) {
 		case *registeredresources.ActionAttributeValue_ActionId:
-			actionID = identifier.ActionId
+			actionID = ident.ActionId
 		case *registeredresources.ActionAttributeValue_ActionName:
-			a, err := c.queries.getAction(ctx, getActionParams{
-				Name: pgtypeText(strings.ToLower(identifier.ActionName)),
+			a, err := c.router.GetAction(ctx, UnifiedGetActionParams{
+				Name: strings.ToLower(ident.ActionName),
 			})
 			if err != nil {
-				return db.WrapIfKnownInvalidQueryErr(err)
+				return c.WrapError(err)
 			}
 			actionID = a.ID
 		default:
 			return db.ErrSelectIdentifierInvalid
 		}
 
-		switch identifier := aav.GetAttributeValueIdentifier().(type) {
+		switch ident := aav.GetAttributeValueIdentifier().(type) {
 		case *registeredresources.ActionAttributeValue_AttributeValueId:
-			attributeValueID = identifier.AttributeValueId
+			attributeValueID = ident.AttributeValueId
 		case *registeredresources.ActionAttributeValue_AttributeValueFqn:
-			av, err := c.queries.getAttributeValue(ctx, getAttributeValueParams{
-				Fqn: pgtypeText(strings.ToLower(identifier.AttributeValueFqn)),
+			av, err := c.router.GetAttributeValueForRegisteredResource(ctx, UnifiedGetAttributeValueParams{
+				Fqn: strings.ToLower(ident.AttributeValueFqn),
 			})
 			if err != nil {
-				return db.WrapIfKnownInvalidQueryErr(err)
+				return c.WrapError(err)
 			}
 			attributeValueID = av.ID
 		default:
 			return db.ErrSelectIdentifierInvalid
 		}
 
-		createActionAttributeValueParams[i] = createRegisteredResourceActionAttributeValuesParams{
-			RegisteredResourceValueID: registeredResourceValueID,
-			ActionID:                  actionID,
-			AttributeValueID:          attributeValueID,
+		_, err := c.router.CreateRegisteredResourceActionAttributeValue(ctx, registeredResourceValueID, actionID, attributeValueID)
+		if err != nil {
+			return c.WrapError(err)
 		}
-	}
-
-	count, err := c.queries.createRegisteredResourceActionAttributeValues(ctx, createActionAttributeValueParams)
-	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
-	}
-	if count != int64(len(actionAttrValues)) {
-		return fmt.Errorf("failed to create all action attribute values, expected %d, got %d", len(actionAttrValues), count)
 	}
 
 	return nil

@@ -160,8 +160,8 @@ SELECT
     pem,
     json_object(
         'labels', json_extract(metadata, '$.labels'),
-        'created_at', created_at,
-        'updated_at', updated_at
+        'created_at', strftime('%Y-%m-%dT%H:%M:%SZ', created_at),
+        'updated_at', strftime('%Y-%m-%dT%H:%M:%SZ', updated_at)
     ) as metadata
 FROM certificates
 WHERE id = ?1
@@ -180,8 +180,8 @@ type getCertificateRow struct {
 //	    pem,
 //	    json_object(
 //	        'labels', json_extract(metadata, '$.labels'),
-//	        'created_at', created_at,
-//	        'updated_at', updated_at
+//	        'created_at', strftime('%Y-%m-%dT%H:%M:%SZ', created_at),
+//	        'updated_at', strftime('%Y-%m-%dT%H:%M:%SZ', updated_at)
 //	    ) as metadata
 //	FROM certificates
 //	WHERE id = ?1
@@ -198,8 +198,8 @@ SELECT
     pem,
     json_object(
         'labels', json_extract(metadata, '$.labels'),
-        'created_at', created_at,
-        'updated_at', updated_at
+        'created_at', strftime('%Y-%m-%dT%H:%M:%SZ', created_at),
+        'updated_at', strftime('%Y-%m-%dT%H:%M:%SZ', updated_at)
     ) as metadata
 FROM certificates
 WHERE pem = ?1
@@ -218,8 +218,8 @@ type getCertificateByPEMRow struct {
 //	    pem,
 //	    json_object(
 //	        'labels', json_extract(metadata, '$.labels'),
-//	        'created_at', created_at,
-//	        'updated_at', updated_at
+//	        'created_at', strftime('%Y-%m-%dT%H:%M:%SZ', created_at),
+//	        'updated_at', strftime('%Y-%m-%dT%H:%M:%SZ', updated_at)
 //	    ) as metadata
 //	FROM certificates
 //	WHERE pem = ?1
@@ -238,8 +238,8 @@ SELECT
     fqns.fqn,
     json_object(
         'labels', json_extract(ns.metadata, '$.labels'),
-        'created_at', ns.created_at,
-        'updated_at', ns.updated_at
+        'created_at', strftime('%Y-%m-%dT%H:%M:%SZ', ns.created_at),
+        'updated_at', strftime('%Y-%m-%dT%H:%M:%SZ', ns.updated_at)
     ) as metadata,
     -- Grants aggregation using json_group_array
     (
@@ -259,10 +259,13 @@ SELECT
     (
         SELECT json_group_array(
             json_object(
-                'kas_id', kas.id,
                 'kas_uri', kas.uri,
-                'key_id', kask.key_id,
-                'algorithm', kask.key_algorithm
+                'kas_id', kas.id,
+                'public_key', json_object(
+                    'algorithm', kask.key_algorithm,
+                    'kid', kask.key_id,
+                    'pem', json_extract(kask.public_key_ctx, '$.pem')
+                )
             )
         )
         FROM attribute_namespace_public_key_map k
@@ -315,8 +318,8 @@ type getNamespaceRow struct {
 //	    fqns.fqn,
 //	    json_object(
 //	        'labels', json_extract(ns.metadata, '$.labels'),
-//	        'created_at', ns.created_at,
-//	        'updated_at', ns.updated_at
+//	        'created_at', strftime('%Y-%m-%dT%H:%M:%SZ', ns.created_at),
+//	        'updated_at', strftime('%Y-%m-%dT%H:%M:%SZ', ns.updated_at)
 //	    ) as metadata,
 //	    -- Grants aggregation using json_group_array
 //	    (
@@ -336,10 +339,13 @@ type getNamespaceRow struct {
 //	    (
 //	        SELECT json_group_array(
 //	            json_object(
-//	                'kas_id', kas.id,
 //	                'kas_uri', kas.uri,
-//	                'key_id', kask.key_id,
-//	                'algorithm', kask.key_algorithm
+//	                'kas_id', kas.id,
+//	                'public_key', json_object(
+//	                    'algorithm', kask.key_algorithm,
+//	                    'kid', kask.key_id,
+//	                    'pem', json_extract(kask.public_key_ctx, '$.pem')
+//	                )
 //	            )
 //	        )
 //	        FROM attribute_namespace_public_key_map k
@@ -389,8 +395,8 @@ SELECT
     ns.active,
     json_object(
         'labels', json_extract(ns.metadata, '$.labels'),
-        'created_at', ns.created_at,
-        'updated_at', ns.updated_at
+        'created_at', strftime('%Y-%m-%dT%H:%M:%SZ', ns.created_at),
+        'updated_at', strftime('%Y-%m-%dT%H:%M:%SZ', ns.updated_at)
     ) as metadata,
     fqns.fqn
 FROM attribute_namespaces ns
@@ -426,8 +432,8 @@ type listNamespacesRow struct {
 //	    ns.active,
 //	    json_object(
 //	        'labels', json_extract(ns.metadata, '$.labels'),
-//	        'created_at', ns.created_at,
-//	        'updated_at', ns.updated_at
+//	        'created_at', strftime('%Y-%m-%dT%H:%M:%SZ', ns.created_at),
+//	        'updated_at', strftime('%Y-%m-%dT%H:%M:%SZ', ns.updated_at)
 //	    ) as metadata,
 //	    fqns.fqn
 //	FROM attribute_namespaces ns

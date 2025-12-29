@@ -14,52 +14,65 @@ import (
 // CascadeDeactivateNamespace deactivates all attribute definitions and their values
 // when a namespace is deactivated. This emulates the PostgreSQL trigger:
 // cascade_deactivation('attribute_definitions', 'namespace_id')
+// This method wraps the operation in a transaction for standalone use.
 func (c *PolicyDBClient) CascadeDeactivateNamespace(ctx context.Context, namespaceID string) error {
 	if !c.IsSQLite() {
 		return nil // PostgreSQL handles this via trigger
 	}
 
 	return c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
-		db := txClient.router.SQLDB()
-
-		// Get all definition IDs in this namespace
-		rows, err := db.QueryContext(ctx,
-			"SELECT id FROM attribute_definitions WHERE namespace_id = ?",
-			namespaceID)
-		if err != nil {
-			return fmt.Errorf("failed to query definitions for namespace: %w", err)
-		}
-		defer rows.Close()
-
-		var definitionIDs []string
-		for rows.Next() {
-			var id string
-			if err := rows.Scan(&id); err != nil {
-				return fmt.Errorf("failed to scan definition id: %w", err)
-			}
-			definitionIDs = append(definitionIDs, id)
-		}
-		if err := rows.Err(); err != nil {
-			return fmt.Errorf("error iterating definitions: %w", err)
-		}
-
-		// Deactivate all definitions in this namespace
-		_, err = db.ExecContext(ctx,
-			"UPDATE attribute_definitions SET active = 0 WHERE namespace_id = ?",
-			namespaceID)
-		if err != nil {
-			return fmt.Errorf("failed to deactivate definitions: %w", err)
-		}
-
-		// Deactivate all values for each definition
-		for _, defID := range definitionIDs {
-			if err := txClient.cascadeDeactivateDefinitionValues(ctx, defID); err != nil {
-				return err
-			}
-		}
-
-		return nil
+		return txClient.cascadeDeactivateNamespaceInternal(ctx, namespaceID)
 	})
+}
+
+// cascadeDeactivateNamespaceInTx is for use within an existing transaction.
+// It deactivates all attribute definitions and their values for a namespace.
+func (c *PolicyDBClient) cascadeDeactivateNamespaceInTx(ctx context.Context, namespaceID string) error {
+	return c.cascadeDeactivateNamespaceInternal(ctx, namespaceID)
+}
+
+// cascadeDeactivateNamespaceInternal performs the actual cascade deactivation.
+// This should only be called when already within a transaction.
+func (c *PolicyDBClient) cascadeDeactivateNamespaceInternal(ctx context.Context, namespaceID string) error {
+	exec := c.router.SQLExecutor()
+
+	// Get all definition IDs in this namespace
+	rows, err := exec.QueryContext(ctx,
+		"SELECT id FROM attribute_definitions WHERE namespace_id = ?",
+		namespaceID)
+	if err != nil {
+		return fmt.Errorf("failed to query definitions for namespace: %w", err)
+	}
+	defer rows.Close()
+
+	var definitionIDs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return fmt.Errorf("failed to scan definition id: %w", err)
+		}
+		definitionIDs = append(definitionIDs, id)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("error iterating definitions: %w", err)
+	}
+
+	// Deactivate all definitions in this namespace
+	_, err = exec.ExecContext(ctx,
+		"UPDATE attribute_definitions SET active = 0 WHERE namespace_id = ?",
+		namespaceID)
+	if err != nil {
+		return fmt.Errorf("failed to deactivate definitions: %w", err)
+	}
+
+	// Deactivate all values for each definition
+	for _, defID := range definitionIDs {
+		if err := c.cascadeDeactivateDefinitionValues(ctx, defID); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // CascadeDeactivateDefinition deactivates all attribute values when a definition
@@ -74,8 +87,8 @@ func (c *PolicyDBClient) CascadeDeactivateDefinition(ctx context.Context, defini
 }
 
 func (c *PolicyDBClient) cascadeDeactivateDefinitionValues(ctx context.Context, definitionID string) error {
-	db := c.router.SQLDB()
-	_, err := db.ExecContext(ctx,
+	exec := c.router.SQLExecutor()
+	_, err := exec.ExecContext(ctx,
 		"UPDATE attribute_values SET active = 0 WHERE attribute_definition_id = ?",
 		definitionID)
 	if err != nil {
@@ -104,11 +117,11 @@ func (c *PolicyDBClient) EmulateKeyRotation(ctx context.Context, newKeyID, kasID
 	var result KeyRotationResult
 
 	err := c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
-		db := txClient.router.SQLDB()
+		exec := txClient.router.SQLExecutor()
 
 		// Find existing active key for this KAS + algorithm
 		var currentActiveKeyID sql.NullString
-		err := db.QueryRowContext(ctx,
+		err := exec.QueryRowContext(ctx,
 			`SELECT id FROM key_access_server_keys
 			 WHERE key_access_server_id = ? AND key_algorithm = ? AND key_status = 1
 			 AND id != ?`,
@@ -120,7 +133,7 @@ func (c *PolicyDBClient) EmulateKeyRotation(ctx context.Context, newKeyID, kasID
 
 		// If no active key exists, just activate the new one
 		if !currentActiveKeyID.Valid {
-			_, err = db.ExecContext(ctx,
+			_, err = exec.ExecContext(ctx,
 				"UPDATE key_access_server_keys SET key_status = 1 WHERE id = ?",
 				newKeyID)
 			if err != nil {
@@ -132,7 +145,7 @@ func (c *PolicyDBClient) EmulateKeyRotation(ctx context.Context, newKeyID, kasID
 		result.PreviousActiveKeyID = currentActiveKeyID.String
 
 		// Copy namespace mappings
-		res, err := db.ExecContext(ctx,
+		res, err := exec.ExecContext(ctx,
 			`INSERT INTO attribute_namespace_public_key_map (namespace_id, key_id)
 			 SELECT namespace_id, ? FROM attribute_namespace_public_key_map WHERE key_id = ?`,
 			newKeyID, currentActiveKeyID.String)
@@ -143,7 +156,7 @@ func (c *PolicyDBClient) EmulateKeyRotation(ctx context.Context, newKeyID, kasID
 		result.MappingsCopied += int(count)
 
 		// Copy definition mappings
-		res, err = db.ExecContext(ctx,
+		res, err = exec.ExecContext(ctx,
 			`INSERT INTO attribute_definition_public_key_map (definition_id, key_id)
 			 SELECT definition_id, ? FROM attribute_definition_public_key_map WHERE key_id = ?`,
 			newKeyID, currentActiveKeyID.String)
@@ -154,7 +167,7 @@ func (c *PolicyDBClient) EmulateKeyRotation(ctx context.Context, newKeyID, kasID
 		result.MappingsCopied += int(count)
 
 		// Copy value mappings
-		res, err = db.ExecContext(ctx,
+		res, err = exec.ExecContext(ctx,
 			`INSERT INTO attribute_value_public_key_map (value_id, key_id)
 			 SELECT value_id, ? FROM attribute_value_public_key_map WHERE key_id = ?`,
 			newKeyID, currentActiveKeyID.String)
@@ -165,7 +178,7 @@ func (c *PolicyDBClient) EmulateKeyRotation(ctx context.Context, newKeyID, kasID
 		result.MappingsCopied += int(count)
 
 		// Deactivate old key
-		_, err = db.ExecContext(ctx,
+		_, err = exec.ExecContext(ctx,
 			"UPDATE key_access_server_keys SET key_status = 2 WHERE id = ?", // 2 = inactive
 			currentActiveKeyID.String)
 		if err != nil {
@@ -173,7 +186,7 @@ func (c *PolicyDBClient) EmulateKeyRotation(ctx context.Context, newKeyID, kasID
 		}
 
 		// Activate new key
-		_, err = db.ExecContext(ctx,
+		_, err = exec.ExecContext(ctx,
 			"UPDATE key_access_server_keys SET key_status = 1 WHERE id = ?", // 1 = active
 			newKeyID)
 		if err != nil {
@@ -196,8 +209,8 @@ func (c *PolicyDBClient) UpdateKeyWasMapped(ctx context.Context, keyID string) e
 		return nil // PostgreSQL handles this via trigger
 	}
 
-	db := c.router.SQLDB()
-	_, err := db.ExecContext(ctx,
+	exec := c.router.SQLExecutor()
+	_, err := exec.ExecContext(ctx,
 		"UPDATE key_access_server_keys SET legacy = 1 WHERE id = ?", // Using legacy as was_mapped equivalent
 		keyID)
 	if err != nil {
@@ -282,8 +295,8 @@ func (c *PolicyDBClient) UpdateSelectorValues(ctx context.Context, subjectCondit
 		return fmt.Errorf("failed to marshal selector values: %w", err)
 	}
 
-	db := c.router.SQLDB()
-	_, err = db.ExecContext(ctx,
+	exec := c.router.SQLExecutor()
+	_, err = exec.ExecContext(ctx,
 		"UPDATE subject_condition_set SET selector_values = ? WHERE id = ?",
 		string(valuesJSON), subjectConditionSetID)
 	if err != nil {

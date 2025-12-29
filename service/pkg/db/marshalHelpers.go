@@ -1,15 +1,53 @@
 package db
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"google.golang.org/protobuf/encoding/protojson"
 )
+
+// escapedJSONFieldRegex matches JSON fields that contain escaped JSON strings.
+// SQLite stores nested objects as escaped strings like "public_key":"{\"remote\":\"...\"}"
+// This regex captures the field name and the escaped JSON content to allow unescaping.
+var escapedJSONFieldRegex = regexp.MustCompile(`"(public_key|cached|remote)"\s*:\s*"(\{[^"]*(?:\\.[^"]*)*\})"`)
+
+// normalizeEscapedJSONFields converts fields containing escaped JSON strings to proper JSON objects.
+// This is needed for SQLite compatibility where nested objects are stored as escaped strings.
+func normalizeEscapedJSONFields(jsonBytes []byte) []byte {
+	if jsonBytes == nil {
+		return nil
+	}
+
+	// Replace escaped JSON string fields with actual JSON objects
+	result := escapedJSONFieldRegex.ReplaceAllFunc(jsonBytes, func(match []byte) []byte {
+		// Extract the field name and escaped JSON content
+		submatches := escapedJSONFieldRegex.FindSubmatch(match)
+		if len(submatches) != 3 {
+			return match
+		}
+
+		fieldName := string(submatches[1])
+		escapedJSON := string(submatches[2])
+
+		// Unescape the JSON string
+		var unescaped string
+		if err := json.Unmarshal([]byte(`"`+escapedJSON+`"`), &unescaped); err != nil {
+			return match
+		}
+
+		// Return the field with proper JSON object
+		return []byte(fmt.Sprintf(`"%s":%s`, fieldName, unescaped))
+	})
+
+	return result
+}
 
 // Marshal policy metadata is used by the MarshalCreateMetadata and MarshalUpdateMetadata functions to enable
 // the creation and update of policy metadata without exposing it to developers. Take note of the immutableMetadata and
@@ -75,7 +113,9 @@ func KeyAccessServerProtoJSON(keyAccessServerJSON []byte) ([]*policy.KeyAccessSe
 	}
 	for _, r := range raw {
 		kas := policy.KeyAccessServer{}
-		if err := protojson.Unmarshal(r, &kas); err != nil {
+		// Normalize escaped JSON fields for SQLite compatibility
+		normalized := normalizeEscapedJSONFields(r)
+		if err := protojson.Unmarshal(normalized, &kas); err != nil {
 			return nil, err
 		}
 		keyAccessServers = append(keyAccessServers, &kas)
@@ -190,6 +230,18 @@ func UnmarshalSimpleKasKey(keysJSON []byte) (*policy.SimpleKasKey, error) {
 		key = &policy.SimpleKasKey{}
 		if err := protojson.Unmarshal(keysJSON, key); err != nil {
 			return nil, err
+		}
+		// For SQLite compatibility: decode base64-encoded PEM if needed
+		// PostgreSQL decodes base64 in the query, but SQLite returns raw base64
+		if key.GetPublicKey() != nil && key.GetPublicKey().GetPem() != "" {
+			pem := key.GetPublicKey().GetPem()
+			// Check if the PEM looks like base64 (doesn't start with "-----BEGIN")
+			if len(pem) > 0 && pem[0] != '-' {
+				decoded, err := base64.StdEncoding.DecodeString(pem)
+				if err == nil {
+					key.PublicKey.Pem = string(decoded)
+				}
+			}
 		}
 	}
 	return key, nil

@@ -2,8 +2,12 @@ package fixtures
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -40,6 +44,20 @@ func NewDBInterface(ctx context.Context, cfg config.Config) DBInterface {
 	logCfg := cfg.Logger
 	tracer := otel.Tracer(tracing.ServiceName)
 
+	// For SQLite with in-memory database, use unique temp file per schema to enable parallel tests
+	if config.Driver == db.DriverSQLite && (config.SQLitePath == ":memory:" || config.SQLitePath == "") && config.Schema != "" {
+		tmpDir := os.TempDir()
+		dbFileName := fmt.Sprintf("opentdf_test_%s.db", config.Schema)
+		config.SQLitePath = filepath.Join(tmpDir, dbFileName)
+		slog.Info("using unique SQLite database file for test isolation",
+			slog.String("schema", config.Schema),
+			slog.String("path", config.SQLitePath))
+		// Remove any existing database file to start fresh
+		_ = os.Remove(config.SQLitePath)
+		_ = os.Remove(config.SQLitePath + "-wal")
+		_ = os.Remove(config.SQLitePath + "-shm")
+	}
+
 	c, err := db.New(ctx, config, logCfg, &tracer)
 	if err != nil {
 		slog.Error("issue creating database client", slog.Any("error", err))
@@ -62,6 +80,35 @@ func NewDBInterface(ctx context.Context, cfg config.Config) DBInterface {
 		PolicyClient: policydb.NewClient(c, logger, fixtureLimitMax, fixtureLimitDefault),
 		LimitDefault: fixtureLimitDefault,
 		LimitMax:     fixtureLimitMax,
+	}
+}
+
+// convertToSQLiteArg converts PostgreSQL-specific types to SQLite-compatible types.
+// Slices are converted to JSON strings since SQLite doesn't support array types.
+// Special case: []byte is treated as already-serialized JSON and converted directly to string.
+func convertToSQLiteArg(arg any) any {
+	if arg == nil {
+		return nil
+	}
+
+	// Special case: []byte is typically already-serialized JSON (e.g., from json.Marshal)
+	// Convert directly to string to avoid double-encoding (json.Marshal on []byte produces base64)
+	if b, ok := arg.([]byte); ok {
+		return string(b)
+	}
+
+	v := reflect.ValueOf(arg)
+	switch v.Kind() {
+	case reflect.Slice, reflect.Array:
+		// Convert slices/arrays to JSON strings for SQLite
+		jsonBytes, err := json.Marshal(arg)
+		if err != nil {
+			slog.Error("failed to marshal slice to JSON for SQLite", slog.Any("error", err))
+			return arg
+		}
+		return string(jsonBytes)
+	default:
+		return arg
 	}
 }
 
@@ -88,6 +135,7 @@ func (d *DBInterface) ExecInsert(ctx context.Context, table string, columns []st
 
 	// Use different placeholder styles for PostgreSQL vs SQLite
 	useDollarPlaceholders := !d.IsSQLite()
+	isSQLite := d.IsSQLite()
 
 	placeholderNum := 1
 	for _, row := range values {
@@ -107,6 +155,11 @@ func (d *DBInterface) ExecInsert(ctx context.Context, table string, columns []st
 				rowPlaceholders = append(rowPlaceholders, "?")
 			}
 			placeholderNum++
+
+			// For SQLite, convert slice types to JSON strings
+			if isSQLite {
+				arg = convertToSQLiteArg(arg)
+			}
 			allArgs = append(allArgs, arg)
 		}
 		placeholders = append(placeholders, "("+strings.Join(rowPlaceholders, ",")+")")
@@ -154,8 +207,54 @@ func (d *DBInterface) ExecInsert(ctx context.Context, table string, columns []st
 
 func (d *DBInterface) DropSchema(ctx context.Context) error {
 	if d.IsSQLite() {
-		// SQLite doesn't have schemas - drop all tables instead
-		// For in-memory databases, this is typically not needed
+		// SQLite doesn't have schemas - delete data from all tables except migration-related ones
+		// Get list of all tables, excluding system tables and migration tracking
+		rows, err := d.Client.SQLDB.QueryContext(ctx, `
+			SELECT name FROM sqlite_master
+			WHERE type='table'
+			AND name NOT LIKE 'sqlite_%'
+			AND name != 'goose_db_version'
+		`)
+		if err != nil {
+			slog.Error("failed to query tables", slog.Any("err", err))
+			return err
+		}
+		defer rows.Close()
+
+		var tables []string
+		for rows.Next() {
+			var name string
+			if err := rows.Scan(&name); err != nil {
+				return err
+			}
+			tables = append(tables, name)
+		}
+
+		// Disable foreign keys temporarily for clean deletion
+		if _, err := d.Client.SQLDB.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
+			return err
+		}
+
+		// Delete all data from tables (preserve schema for next test)
+		for _, table := range tables {
+			var sql string
+			if table == "actions" {
+				// Keep standard actions (inserted by migrations), delete only custom actions
+				sql = `DELETE FROM "actions" WHERE is_standard = 0`
+			} else {
+				sql = fmt.Sprintf("DELETE FROM \"%s\"", table)
+			}
+			if _, err := d.Client.SQLDB.ExecContext(ctx, sql); err != nil {
+				slog.Error("delete error", slog.String("table", table), slog.Any("err", err))
+				// Continue trying other tables
+			}
+		}
+
+		// Re-enable foreign keys
+		if _, err := d.Client.SQLDB.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
+			return err
+		}
+
 		return nil
 	}
 

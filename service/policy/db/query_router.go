@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -9,6 +10,13 @@ import (
 	"github.com/opentdf/platform/service/policy/db/sqlite"
 )
 
+// SQLExecutor is an interface that both *sql.DB and *sql.Tx implement.
+type SQLExecutor interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 // QueryRouter routes database queries to the appropriate backend (PostgreSQL or SQLite).
 // It provides a unified interface while handling the type differences between the two
 // sqlc-generated query packages.
@@ -16,7 +24,8 @@ type QueryRouter struct {
 	postgres   *Queries
 	sqlite     *sqlite.Queries
 	driverType db.DriverType
-	sqlDB      *sql.DB // For SQLite transactions
+	sqlDB      *sql.DB // For SQLite base connection
+	sqlTx      *sql.Tx // For SQLite transactions (nil when not in transaction)
 }
 
 // NewQueryRouter creates a new QueryRouter for the given database client.
@@ -84,11 +93,21 @@ func (r *QueryRouter) WithSQLTx(tx *sql.Tx) *QueryRouter {
 		sqlite:     r.sqlite.WithTx(tx),
 		driverType: r.driverType,
 		sqlDB:      r.sqlDB,
+		sqlTx:      tx,
 	}
 }
 
 // SQLDB returns the underlying *sql.DB for SQLite operations.
 func (r *QueryRouter) SQLDB() *sql.DB {
+	return r.sqlDB
+}
+
+// SQLExecutor returns the current SQL executor (transaction if active, otherwise the base DB).
+// This should be used for all raw SQL operations to ensure they participate in transactions.
+func (r *QueryRouter) SQLExecutor() SQLExecutor {
+	if r.sqlTx != nil {
+		return r.sqlTx
+	}
 	return r.sqlDB
 }
 

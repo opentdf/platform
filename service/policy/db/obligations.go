@@ -36,17 +36,17 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 	for idx, val := range values {
 		values[idx] = strings.ToLower(val)
 	}
-	queryParams := createObligationParams{
+	queryParams := UnifiedCreateObligationParams{
 		NamespaceID:  r.GetNamespaceId(),
 		NamespaceFqn: r.GetNamespaceFqn(),
 		Name:         name,
 		Metadata:     metadataJSON,
 		Values:       values,
 	}
-	row, err := c.queries.createObligation(ctx, queryParams)
+	row, err := c.router.CreateObligation(ctx, queryParams)
 	now := timestamppb.Now()
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	oblVals, err := unmarshalObligationValues(row.Values)
 	if err != nil {
@@ -80,15 +80,15 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 
 func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObligationRequest) (*policy.Obligation, error) {
 	nsFQN, oblName := identifier.BreakOblFQN(r.GetFqn())
-	queryParams := getObligationParams{
+	queryParams := UnifiedGetObligationParams{
 		ID:           r.GetId(),
 		Name:         oblName,
 		NamespaceFqn: nsFQN,
 	}
 
-	row, err := c.queries.getObligation(ctx, queryParams)
+	row, err := c.router.GetObligation(ctx, queryParams)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	name := row.Name
@@ -129,38 +129,33 @@ func (c PolicyDBClient) GetObligationsByFQNs(ctx context.Context, r *obligations
 		oblNames = append(oblNames, oblName)
 	}
 
-	queryParams := getObligationsByFQNsParams{
-		NamespaceFqns: nsFQNs,
-		Names:         oblNames,
-	}
-
-	list, err := c.queries.getObligationsByFQNs(ctx, queryParams)
+	list, err := c.router.GetObligationsByFQNs(ctx, nsFQNs, oblNames)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	obls := make([]*policy.Obligation, len(list))
 
-	for i, r := range list {
+	for i, row := range list {
 		metadata := &common.Metadata{}
-		if err = unmarshalMetadata(r.Metadata, metadata); err != nil {
+		if err = unmarshalMetadata(row.Metadata, metadata); err != nil {
 			return nil, err
 		}
 
 		namespace := &policy.Namespace{}
-		if err := unmarshalNamespace(r.Namespace, namespace); err != nil {
+		if err := unmarshalNamespace(row.Namespace, namespace); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
 		}
 
-		values, err := unmarshalObligationValues(r.Values)
+		values, err := unmarshalObligationValues(row.Values)
 		if err != nil {
 			return nil, err
 		}
-		name := r.Name
+		name := row.Name
 		nsFQN := namespace.GetFqn()
 		values = setOblValFQNs(values, nsFQN, name)
 
 		obls[i] = &policy.Obligation{
-			Id:        r.ID,
+			Id:        row.ID,
 			Name:      name,
 			Metadata:  metadata,
 			Namespace: namespace,
@@ -180,39 +175,39 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 		return nil, nil, db.ErrListLimitTooLarge
 	}
 
-	rows, err := c.queries.listObligations(ctx, listObligationsParams{
+	rows, err := c.router.ListObligations(ctx, UnifiedListObligationsParams{
 		NamespaceID:  r.GetNamespaceId(),
 		NamespaceFqn: r.GetNamespaceFqn(),
 		Limit:        limit,
 		Offset:       offset,
 	})
 	if err != nil {
-		return nil, nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, nil, c.WrapError(err)
 	}
 	obls := make([]*policy.Obligation, len(rows))
 
-	for i, r := range rows {
+	for i, row := range rows {
 		metadata := &common.Metadata{}
-		if err = unmarshalMetadata(r.Metadata, metadata); err != nil {
+		if err = unmarshalMetadata(row.Metadata, metadata); err != nil {
 			return nil, nil, err
 		}
 
 		namespace := &policy.Namespace{}
-		if err := unmarshalNamespace(r.Namespace, namespace); err != nil {
+		if err := unmarshalNamespace(row.Namespace, namespace); err != nil {
 			return nil, nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
 		}
 
-		values, err := unmarshalObligationValues(r.Values)
+		values, err := unmarshalObligationValues(row.Values)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		name := r.Name
+		name := row.Name
 		nsFQN := namespace.GetFqn()
 		values = setOblValFQNs(values, nsFQN, name)
 
 		obls[i] = &policy.Obligation{
-			Id:        r.ID,
+			Id:        row.ID,
 			Name:      name,
 			Metadata:  metadata,
 			Namespace: namespace,
@@ -254,14 +249,10 @@ func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.Upd
 		return nil, err
 	}
 
-	count, err := c.queries.updateObligation(ctx, updateObligationParams{
-		ID:       id,
-		Name:     name,
-		Metadata: metadataJSON,
-	})
+	count, err := c.router.UpdateObligation(ctx, id, name, metadataJSON)
 	now := timestamppb.Now()
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -288,15 +279,10 @@ func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.Upd
 
 func (c PolicyDBClient) DeleteObligation(ctx context.Context, r *obligations.DeleteObligationRequest) (*policy.Obligation, error) {
 	nsFQN, oblName := identifier.BreakOblFQN(r.GetFqn())
-	queryParams := deleteObligationParams{
-		ID:           r.GetId(),
-		NamespaceFqn: nsFQN,
-		Name:         oblName,
-	}
 
-	id, err := c.queries.deleteObligation(ctx, queryParams)
+	id, err := c.router.DeleteObligation(ctx, r.GetId(), nsFQN, oblName)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if id == "" {
 		return nil, db.ErrNotFound
@@ -319,18 +305,18 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 		return nil, err
 	}
 
-	queryParams := createObligationValueParams{
-		ID:           r.GetObligationId(),
+	queryParams := UnifiedCreateObligationValueParams{
+		ObligationID: r.GetObligationId(),
 		Name:         oblName,
 		NamespaceFqn: nsFQN,
 		Value:        value,
 		Metadata:     metadataJSON,
 	}
 
-	row, err := c.queries.createObligationValue(ctx, queryParams)
+	row, err := c.router.CreateObligationValue(ctx, queryParams)
 	now := timestamppb.Now()
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	// Create triggers for obligation value if provided
@@ -384,16 +370,16 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 
 func (c PolicyDBClient) GetObligationValue(ctx context.Context, r *obligations.GetObligationValueRequest) (*policy.ObligationValue, error) {
 	nsFQN, oblName, oblVal := identifier.BreakOblValFQN(r.GetFqn())
-	queryParams := getObligationValueParams{
+	queryParams := UnifiedGetObligationValueParams{
 		ID:           r.GetId(),
 		Name:         oblName,
 		Value:        oblVal,
 		NamespaceFqn: nsFQN,
 	}
 
-	row, err := c.queries.getObligationValue(ctx, queryParams)
+	row, err := c.router.GetObligationValue(ctx, queryParams)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	namespace := &policy.Namespace{}
@@ -442,46 +428,40 @@ func (c PolicyDBClient) GetObligationValuesByFQNs(ctx context.Context, r *obliga
 		oblVals = append(oblVals, oblVal)
 	}
 
-	queryParams := getObligationValuesByFQNsParams{
-		NamespaceFqns: nsFQNs,
-		Names:         oblNames,
-		Values:        oblVals,
-	}
-
-	list, err := c.queries.getObligationValuesByFQNs(ctx, queryParams)
+	list, err := c.router.GetObligationValuesByFQNs(ctx, nsFQNs, oblNames, oblVals)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	vals := make([]*policy.ObligationValue, len(list))
 
-	for i, r := range list {
+	for i, row := range list {
 		metadata := &common.Metadata{}
-		if err = unmarshalMetadata(r.Metadata, metadata); err != nil {
+		if err = unmarshalMetadata(row.Metadata, metadata); err != nil {
 			return nil, err
 		}
 
 		namespace := &policy.Namespace{}
-		if err := unmarshalNamespace(r.Namespace, namespace); err != nil {
+		if err := unmarshalNamespace(row.Namespace, namespace); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
 		}
 
-		triggers, err := unmarshalObligationTriggers(r.Triggers)
+		triggers, err := unmarshalObligationTriggers(row.Triggers)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal obligation triggers: %w", err)
 		}
 
-		name := r.Name
-		value := r.Value
+		name := row.Name
+		value := row.Value
 		nsFQN := namespace.GetFqn()
 		obl := &policy.Obligation{
-			Id:        r.ObligationID,
+			Id:        row.ObligationID,
 			Name:      name,
 			Namespace: namespace,
 			Fqn:       identifier.BuildOblFQN(nsFQN, name),
 		}
 
 		vals[i] = &policy.ObligationValue{
-			Id:         r.ID,
+			Id:         row.ID,
 			Value:      value,
 			Metadata:   metadata,
 			Obligation: obl,
@@ -510,14 +490,10 @@ func (c PolicyDBClient) UpdateObligationValue(ctx context.Context, r *obligation
 		return nil, err
 	}
 
-	count, err := c.queries.updateObligationValue(ctx, updateObligationValueParams{
-		ID:       id,
-		Value:    value,
-		Metadata: metadataJSON,
-	})
+	count, err := c.router.UpdateObligationValue(ctx, id, value, metadataJSON)
 	now := timestamppb.Now()
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -532,9 +508,9 @@ func (c PolicyDBClient) UpdateObligationValue(ctx context.Context, r *obligation
 	triggers := oblVal.GetTriggers()
 	if len(r.GetTriggers()) > 0 {
 		// Delete all existing triggers for this obligation value
-		_, err := c.queries.deleteAllObligationTriggersForValue(ctx, id)
+		_, err := c.router.DeleteAllObligationTriggersForValue(ctx, id)
 		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+			return nil, c.WrapError(err)
 		}
 
 		// Create new triggers
@@ -570,16 +546,10 @@ func (c PolicyDBClient) UpdateObligationValue(ctx context.Context, r *obligation
 
 func (c PolicyDBClient) DeleteObligationValue(ctx context.Context, r *obligations.DeleteObligationValueRequest) (*policy.ObligationValue, error) {
 	nsFQN, oblName, valName := identifier.BreakOblValFQN(r.GetFqn())
-	queryParams := deleteObligationValueParams{
-		ID:           r.GetId(),
-		NamespaceFqn: nsFQN,
-		Name:         oblName,
-		Value:        valName,
-	}
 
-	id, err := c.queries.deleteObligationValue(ctx, queryParams)
+	id, err := c.router.DeleteObligationValue(ctx, r.GetId(), nsFQN, oblName, valName)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if id == "" {
 		return nil, db.ErrNotFound
@@ -617,7 +587,7 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 		return nil, fmt.Errorf("failed to get obligation value: %w", err)
 	}
 
-	params := createObligationTriggerParams{
+	params := UnifiedCreateObligationTriggerParams{
 		ObligationValueID: oblVal.GetId(),
 		ActionName:        r.GetAction().GetName(),
 		ActionID:          r.GetAction().GetId(),
@@ -626,9 +596,9 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 		ClientID:          r.GetContext().GetPep().GetClientId(),
 		Metadata:          metadataJSON,
 	}
-	row, err := c.queries.createObligationTrigger(ctx, params)
+	row, err := c.router.CreateObligationTrigger(ctx, params)
 	if err != nil {
-		wrappedErr := db.WrapIfKnownInvalidQueryErr(err)
+		wrappedErr := c.WrapError(err)
 		if errors.Is(wrappedErr, db.ErrNotNullViolation) {
 			return nil, errors.Join(db.ErrInvalidOblTriParam, wrappedErr)
 		}
@@ -655,9 +625,9 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 }
 
 func (c PolicyDBClient) DeleteObligationTrigger(ctx context.Context, r *obligations.RemoveObligationTriggerRequest) (*policy.ObligationTrigger, error) {
-	id, err := c.queries.deleteObligationTrigger(ctx, r.GetId())
+	id, err := c.router.DeleteObligationTrigger(ctx, r.GetId())
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if id == "" {
 		return nil, db.ErrNotFound
@@ -676,14 +646,14 @@ func (c PolicyDBClient) ListObligationTriggers(ctx context.Context, r *obligatio
 		return nil, nil, db.ErrListLimitTooLarge
 	}
 
-	rows, err := c.queries.listObligationTriggers(ctx, listObligationTriggersParams{
+	rows, err := c.router.ListObligationTriggers(ctx, UnifiedListObligationTriggersParams{
 		NamespaceID:  r.GetNamespaceId(),
 		NamespaceFqn: r.GetNamespaceFqn(),
 		Offset:       offset,
 		Limit:        limit,
 	})
 	if err != nil {
-		return nil, nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, nil, c.WrapError(err)
 	}
 
 	var result []*policy.ObligationTrigger

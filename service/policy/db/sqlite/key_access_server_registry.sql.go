@@ -130,9 +130,11 @@ SELECT
     json_object(
        'kas_uri', kas.uri,
        'kas_id', kas.id,
-       'key_id', kask.key_id,
-       'algorithm', kask.key_algorithm,
-       'public_key_ctx', kask.public_key_ctx
+       'public_key', json_object(
+           'algorithm', kask.key_algorithm,
+           'kid', kask.key_id,
+           'pem', json_extract(kask.public_key_ctx, '$.pem')
+       )
     ) AS base_keys
 FROM base_keys bk
 INNER JOIN key_access_server_keys kask ON bk.key_access_server_key_id = kask.id
@@ -149,9 +151,11 @@ LIMIT 1
 //	    json_object(
 //	       'kas_uri', kas.uri,
 //	       'kas_id', kas.id,
-//	       'key_id', kask.key_id,
-//	       'algorithm', kask.key_algorithm,
-//	       'public_key_ctx', kask.public_key_ctx
+//	       'public_key', json_object(
+//	           'algorithm', kask.key_algorithm,
+//	           'kid', kask.key_id,
+//	           'pem', json_extract(kask.public_key_ctx, '$.pem')
+//	       )
 //	    ) AS base_keys
 //	FROM base_keys bk
 //	INNER JOIN key_access_server_keys kask ON bk.key_access_server_key_id = kask.id
@@ -314,9 +318,11 @@ SELECT
             json_object(
                 'kas_uri', kas.uri,
                 'kas_id', kas.id,
-                'key_id', kask.key_id,
-                'algorithm', kask.key_algorithm,
-                'public_key_ctx', kask.public_key_ctx
+                'public_key', json_object(
+                    'algorithm', kask.key_algorithm,
+                    'kid', kask.key_id,
+                    'pem', json_extract(kask.public_key_ctx, '$.pem')
+                )
             )
         )
         FROM key_access_server_keys kask
@@ -363,9 +369,11 @@ type getKeyAccessServerRow struct {
 //	            json_object(
 //	                'kas_uri', kas.uri,
 //	                'kas_id', kas.id,
-//	                'key_id', kask.key_id,
-//	                'algorithm', kask.key_algorithm,
-//	                'public_key_ctx', kask.public_key_ctx
+//	                'public_key', json_object(
+//	                    'algorithm', kask.key_algorithm,
+//	                    'kid', kask.key_id,
+//	                    'pem', json_extract(kask.public_key_ctx, '$.pem')
+//	                )
 //	            )
 //	        )
 //	        FROM key_access_server_keys kask
@@ -600,9 +608,11 @@ SELECT kas.id,
             json_object(
                 'kas_uri', kas.uri,
                 'kas_id', kas.id,
-                'key_id', kask.key_id,
-                'algorithm', kask.key_algorithm,
-                'public_key_ctx', kask.public_key_ctx
+                'public_key', json_object(
+                    'algorithm', kask.key_algorithm,
+                    'kid', kask.key_id,
+                    'pem', json_extract(kask.public_key_ctx, '$.pem')
+                )
             )
         )
         FROM key_access_server_keys kask
@@ -653,9 +663,11 @@ type listKeyAccessServersRow struct {
 //	            json_object(
 //	                'kas_uri', kas.uri,
 //	                'kas_id', kas.id,
-//	                'key_id', kask.key_id,
-//	                'algorithm', kask.key_algorithm,
-//	                'public_key_ctx', kask.public_key_ctx
+//	                'public_key', json_object(
+//	                    'algorithm', kask.key_algorithm,
+//	                    'kid', kask.key_id,
+//	                    'pem', json_extract(kask.public_key_ctx, '$.pem')
+//	                )
 //	            )
 //	        )
 //	        FROM key_access_server_keys kask

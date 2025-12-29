@@ -791,24 +791,49 @@ func (f *Fixtures) provision(ctx context.Context, t string, c []string, v [][]an
 // Migration adds standard actions [create, read, update, delete] to the database
 func (f *Fixtures) loadMigratedStandardActions(ctx context.Context) {
 	actions := make(map[string]string)
-	rows, err := f.db.Client.Query(ctx, "SELECT id, name FROM actions WHERE is_standard = TRUE", nil)
-	if err != nil {
-		slog.Error("could not get standard actions", slog.Any("error", err))
-		panic("could not get standard actions")
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id, name string
-		if err := rows.Scan(&id, &name); err != nil {
-			slog.Error("could not scan standard actions", slog.Any("error", err))
-			panic("could not scan standard actions")
+
+	if f.db.IsSQLite() {
+		// SQLite path - use SQLDB
+		rows, err := f.db.Client.SQLDB.QueryContext(ctx, "SELECT id, name FROM actions WHERE is_standard = 1")
+		if err != nil {
+			slog.Error("could not get standard actions", slog.Any("error", err))
+			panic("could not get standard actions")
 		}
-		actions[name] = id
+		defer rows.Close()
+		for rows.Next() {
+			var id, name string
+			if err := rows.Scan(&id, &name); err != nil {
+				slog.Error("could not scan standard actions", slog.Any("error", err))
+				panic("could not scan standard actions")
+			}
+			actions[name] = id
+		}
+		if err := rows.Err(); err != nil {
+			slog.Error("could not get standard actions", slog.Any("error", err))
+			panic("could not get standard actions")
+		}
+	} else {
+		// PostgreSQL path - use pgx
+		rows, err := f.db.Client.Query(ctx, "SELECT id, name FROM actions WHERE is_standard = TRUE", nil)
+		if err != nil {
+			slog.Error("could not get standard actions", slog.Any("error", err))
+			panic("could not get standard actions")
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var id, name string
+			if err := rows.Scan(&id, &name); err != nil {
+				slog.Error("could not scan standard actions", slog.Any("error", err))
+				panic("could not scan standard actions")
+			}
+			actions[name] = id
+		}
+		if err := rows.Err(); err != nil {
+			slog.Error("could not get standard actions", slog.Any("error", err))
+			panic("could not get standard actions")
+		}
 	}
-	if err := rows.Err(); err != nil {
-		slog.Error("could not get standard actions", slog.Any("error", err))
-		panic("could not get standard actions")
-	}
+
 	if len(actions) == 0 {
 		slog.Error("could not find standard actions")
 		panic("could not find standard actions")

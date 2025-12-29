@@ -131,6 +131,14 @@ func (c *PolicyDBClient) runInSQLiteTx(ctx context.Context, query func(txClient 
 	return nil
 }
 
+// WrapError wraps database errors with driver-appropriate error handling.
+// For PostgreSQL, it wraps with PostgreSQL-specific error codes.
+// For SQLite, it wraps with SQLite-specific error codes.
+// This ensures consistent error handling across both database backends.
+func (c PolicyDBClient) WrapError(err error) error {
+	return db.WrapIfKnownInvalidQueryErrForDriver(err, c.router.DriverType())
+}
+
 func getDBStateTypeTransformedEnum(state common.ActiveStateEnum) transformedState {
 	switch state.String() {
 	case common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE.String():

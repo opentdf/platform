@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -24,58 +23,51 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		return nil, err
 	}
 
-	createdID, err := c.queries.createAttributeValue(ctx, createAttributeValueParams{
+	createdID, err := c.router.CreateAttributeValue(ctx, UnifiedCreateAttributeValueParams{
 		AttributeDefinitionID: attributeID,
 		Value:                 value,
 		Metadata:              metadataJSON,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	// Update FQN
-	_, err = c.queries.upsertAttributeValueFqn(ctx, createdID)
+	err = c.router.UpsertAttributeValueFqn(ctx, createdID)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	return c.GetAttributeValue(ctx, createdID)
 }
 
 func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (*policy.Value, error) {
-	var (
-		av     getAttributeValueRow
-		err    error
-		params getAttributeValueParams
-	)
+	var params UnifiedGetAttributeValueParams
 
 	switch i := identifier.(type) {
 	case *attributes.GetAttributeValueRequest_ValueId:
-		id := pgtypeUUID(i.ValueId)
-		if !id.Valid {
+		if !isValidUUID(i.ValueId) {
 			return nil, db.ErrUUIDInvalid
 		}
-		params = getAttributeValueParams{ID: id}
+		params = UnifiedGetAttributeValueParams{ID: i.ValueId}
 	case *attributes.GetAttributeValueRequest_Fqn:
-		fqn := pgtypeText(i.Fqn)
-		if !fqn.Valid {
+		if i.Fqn == "" {
 			return nil, db.ErrSelectIdentifierInvalid
 		}
-		params = getAttributeValueParams{Fqn: fqn}
+		params = UnifiedGetAttributeValueParams{Fqn: i.Fqn}
 	case string:
-		id := pgtypeUUID(i)
-		if !id.Valid {
+		if !isValidUUID(i) {
 			return nil, db.ErrUUIDInvalid
 		}
-		params = getAttributeValueParams{ID: pgtypeUUID(i)}
+		params = UnifiedGetAttributeValueParams{ID: i}
 	default:
 		// unexpected type
 		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
 	}
 
-	av, err = c.queries.getAttributeValue(ctx, params)
+	av, err := c.router.GetAttributeValue(ctx, params)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	metadata := &common.Metadata{}
@@ -115,7 +107,7 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		Attribute: &policy.Attribute{
 			Id: av.AttributeDefinitionID,
 		},
-		Fqn:         av.Fqn.String,
+		Fqn:         av.Fqn,
 		Grants:      grants,
 		KasKeys:     keys,
 		Obligations: obligations,
@@ -131,22 +123,20 @@ func (c PolicyDBClient) ListAttributeValues(ctx context.Context, r *attributes.L
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	active := pgtype.Bool{
-		Valid: false,
-	}
-
+	var active *bool
 	if state != stateAny {
-		active = pgtypeBool(state == stateActive)
+		activeVal := state == stateActive
+		active = &activeVal
 	}
 
-	list, err := c.queries.listAttributeValues(ctx, listAttributeValuesParams{
+	list, err := c.router.ListAttributeValues(ctx, UnifiedListAttributeValuesParams{
 		AttributeDefinitionID: r.GetAttributeId(),
 		Active:                active,
 		Limit:                 limit,
 		Offset:                offset,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	attributeValues := make([]*policy.Value, len(list))
@@ -165,7 +155,7 @@ func (c PolicyDBClient) ListAttributeValues(ctx context.Context, r *attributes.L
 			Attribute: &policy.Attribute{
 				Id: av.AttributeDefinitionID,
 			},
-			Fqn: av.Fqn.String,
+			Fqn: av.Fqn,
 		}
 	}
 	var total int32
@@ -226,12 +216,9 @@ func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.
 		return nil, err
 	}
 
-	count, err := c.queries.updateAttributeValue(ctx, updateAttributeValueParams{
-		ID:       id,
-		Metadata: metadataJSON,
-	})
+	count, err := c.router.UpdateAttributeValue(ctx, id, nil, nil, metadataJSON)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -247,33 +234,28 @@ func (c PolicyDBClient) UnsafeUpdateAttributeValue(ctx context.Context, r *unsaf
 	id := r.GetId()
 	value := strings.ToLower(r.GetValue())
 
-	count, err := c.queries.updateAttributeValue(ctx, updateAttributeValueParams{
-		ID:    id,
-		Value: pgtypeText(value),
-	})
+	count, err := c.router.UpdateAttributeValue(ctx, id, &value, nil, nil)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
 	}
 
 	// Update FQN
-	_, err = c.queries.upsertAttributeValueFqn(ctx, id)
+	err = c.router.UpsertAttributeValueFqn(ctx, id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	return c.GetAttributeValue(ctx, id)
 }
 
 func (c PolicyDBClient) DeactivateAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
-	count, err := c.queries.updateAttributeValue(ctx, updateAttributeValueParams{
-		ID:     id,
-		Active: pgtypeBool(false),
-	})
+	active := false
+	count, err := c.router.UpdateAttributeValue(ctx, id, nil, &active, nil)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -286,12 +268,10 @@ func (c PolicyDBClient) DeactivateAttributeValue(ctx context.Context, id string)
 }
 
 func (c PolicyDBClient) UnsafeReactivateAttributeValue(ctx context.Context, id string) (*policy.Value, error) {
-	count, err := c.queries.updateAttributeValue(ctx, updateAttributeValueParams{
-		ID:     id,
-		Active: pgtypeBool(true),
-	})
+	active := true
+	count, err := c.router.UpdateAttributeValue(ctx, id, nil, &active, nil)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -311,9 +291,9 @@ func (c PolicyDBClient) UnsafeDeleteAttributeValue(ctx context.Context, toDelete
 		return nil, fmt.Errorf("fqn mismatch [%s]: %w", fqn, db.ErrNotFound)
 	}
 
-	count, err := c.queries.deleteAttributeValue(ctx, id)
+	count, err := c.router.DeleteAttributeValue(ctx, id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -325,12 +305,9 @@ func (c PolicyDBClient) UnsafeDeleteAttributeValue(ctx context.Context, toDelete
 }
 
 func (c PolicyDBClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
-	count, err := c.queries.removeKeyAccessServerFromAttributeValue(ctx, removeKeyAccessServerFromAttributeValueParams{
-		AttributeValueID:  k.GetValueId(),
-		KeyAccessServerID: k.GetKeyAccessServerId(),
-	})
+	count, err := c.router.RemoveKeyAccessServerFromAttributeValue(ctx, k.GetValueId(), k.GetKeyAccessServerId())
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -344,26 +321,20 @@ func (c PolicyDBClient) AssignPublicKeyToValue(ctx context.Context, k *attribute
 		return nil, err
 	}
 
-	vk, err := c.queries.assignPublicKeyToAttributeValue(ctx, assignPublicKeyToAttributeValueParams{
-		ValueID:              k.GetValueId(),
-		KeyAccessServerKeyID: k.GetKeyId(),
-	})
+	vk, err := c.router.AssignPublicKeyToAttributeValue(ctx, k.GetValueId(), k.GetKeyId())
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	return &attributes.ValueKey{
 		ValueId: vk.ValueID,
-		KeyId:   vk.KeyAccessServerKeyID,
+		KeyId:   vk.KeyID,
 	}, nil
 }
 
 func (c PolicyDBClient) RemovePublicKeyFromValue(ctx context.Context, k *attributes.ValueKey) (*attributes.ValueKey, error) {
-	count, err := c.queries.removePublicKeyFromAttributeValue(ctx, removePublicKeyFromAttributeValueParams{
-		ValueID:              k.GetValueId(),
-		KeyAccessServerKeyID: k.GetKeyId(),
-	})
+	count, err := c.router.RemovePublicKeyFromAttributeValue(ctx, k.GetValueId(), k.GetKeyId())
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound

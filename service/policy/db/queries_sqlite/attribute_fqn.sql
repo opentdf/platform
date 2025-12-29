@@ -6,6 +6,7 @@
 
 -- name: upsertAttributeValueFqn :one
 -- Note: ID generated in application layer
+-- Uses ON CONFLICT (fqn) since SQLite doesn't support UNIQUE NULLS NOT DISTINCT
 INSERT INTO attribute_fqns (id, namespace_id, attribute_id, value_id, fqn)
 SELECT
     @id,
@@ -17,12 +18,13 @@ FROM attribute_values av
 INNER JOIN attribute_definitions AS ad ON av.attribute_definition_id = ad.id
 INNER JOIN attribute_namespaces AS ns ON ad.namespace_id = ns.id
 WHERE av.id = @value_id
-ON CONFLICT (namespace_id, attribute_id, value_id)
-    DO UPDATE SET fqn = EXCLUDED.fqn
+ON CONFLICT (fqn)
+    DO UPDATE SET namespace_id = EXCLUDED.namespace_id, attribute_id = EXCLUDED.attribute_id, value_id = EXCLUDED.value_id
 RETURNING namespace_id, attribute_id, value_id, fqn;
 
 -- name: upsertAttributeDefinitionFqn :one
 -- Note: ID generated in application layer. Values FQNs inserted separately.
+-- Uses ON CONFLICT (fqn) since SQLite doesn't support UNIQUE NULLS NOT DISTINCT
 INSERT INTO attribute_fqns (id, namespace_id, attribute_id, value_id, fqn)
 SELECT
     @id,
@@ -33,12 +35,13 @@ SELECT
 FROM attribute_definitions ad
 JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
 WHERE ad.id = @attribute_id
-ON CONFLICT (namespace_id, attribute_id, value_id)
-    DO UPDATE SET fqn = EXCLUDED.fqn
+ON CONFLICT (fqn)
+    DO UPDATE SET namespace_id = EXCLUDED.namespace_id, attribute_id = EXCLUDED.attribute_id
 RETURNING namespace_id, attribute_id, COALESCE(value_id, '') AS value_id, fqn;
 
 -- name: upsertAttributeNamespaceFqn :one
 -- Note: ID generated in application layer. Definition/Value FQNs inserted separately.
+-- Uses ON CONFLICT (fqn) since SQLite doesn't support UNIQUE NULLS NOT DISTINCT
 INSERT INTO attribute_fqns (id, namespace_id, attribute_id, value_id, fqn)
 SELECT
     @id,
@@ -48,8 +51,8 @@ SELECT
     'https://' || ns.name
 FROM attribute_namespaces ns
 WHERE ns.id = @namespace_id
-ON CONFLICT (namespace_id, attribute_id, value_id)
-    DO UPDATE SET fqn = EXCLUDED.fqn
+ON CONFLICT (fqn)
+    DO UPDATE SET namespace_id = EXCLUDED.namespace_id
 RETURNING namespace_id, COALESCE(attribute_id, '') AS attribute_id, COALESCE(value_id, '') AS value_id, fqn;
 
 -- name: getValueFqnsByDefinition :many

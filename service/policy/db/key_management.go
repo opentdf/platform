@@ -23,14 +23,14 @@ func (c PolicyDBClient) CreateProviderConfig(ctx context.Context, r *keymanageme
 		return nil, err
 	}
 
-	providerConfig, err := c.queries.createProviderConfig(ctx, createProviderConfigParams{
+	providerConfig, err := c.router.CreateProviderConfig(ctx, UnifiedCreateProviderConfigParams{
 		ProviderName: name,
 		Manager:      manager,
 		Config:       config,
 		Metadata:     metadataJSON,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	metadata := &common.Metadata{}
@@ -48,29 +48,29 @@ func (c PolicyDBClient) CreateProviderConfig(ctx context.Context, r *keymanageme
 }
 
 func (c PolicyDBClient) GetProviderConfig(ctx context.Context, identifier any) (*policy.KeyProviderConfig, error) {
-	var params getProviderConfigParams
+	var params UnifiedGetProviderConfigParams
 
 	switch i := identifier.(type) {
 	case *keymanagement.GetProviderConfigRequest_Id:
-		id := pgtypeUUID(i.Id)
-		if !id.Valid {
+		// Validate UUID format
+		if !pgtypeUUID(i.Id).Valid {
 			return nil, db.ErrUUIDInvalid
 		}
-		params = getProviderConfigParams{ID: id}
+		params = UnifiedGetProviderConfigParams{ID: i.Id}
 	case *keymanagement.GetProviderConfigRequest_Name:
-		name := pgtypeText(strings.ToLower(i.Name))
-		if !name.Valid {
+		name := strings.ToLower(i.Name)
+		if name == "" {
 			return nil, db.ErrSelectIdentifierInvalid
 		}
-		params = getProviderConfigParams{Name: name}
+		params = UnifiedGetProviderConfigParams{Name: name}
 	default:
 		// unexpected type
 		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
 	}
 
-	pcRow, err := c.queries.getProviderConfig(ctx, params)
+	pcRow, err := c.router.GetProviderConfig(ctx, params)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	metadata := &common.Metadata{}
@@ -95,12 +95,12 @@ func (c PolicyDBClient) ListProviderConfigs(ctx context.Context, page *policy.Pa
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	providerConfigs, err := c.queries.listProviderConfigs(ctx, listProviderConfigsParams{
+	providerConfigs, err := c.router.ListProviderConfigs(ctx, UnifiedListProviderConfigsParams{
 		Limit:  limit,
 		Offset: offset,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	var pcs []*policy.KeyProviderConfig
@@ -156,15 +156,24 @@ func (c PolicyDBClient) UpdateProviderConfig(ctx context.Context, r *keymanageme
 		return nil, err
 	}
 
-	count, err := c.queries.updateProviderConfig(ctx, updateProviderConfigParams{
-		ID:           id,
-		ProviderName: pgtypeText(name),
-		Manager:      pgtypeText(manager),
-		Config:       config,
-		Metadata:     metadataJSON,
-	})
+	// Build update params with optional fields
+	updateParams := UnifiedUpdateProviderConfigParams{
+		ID:       id,
+		Metadata: metadataJSON,
+	}
+	if name != "" {
+		updateParams.ProviderName = &name
+	}
+	if manager != "" {
+		updateParams.Manager = &manager
+	}
+	if config != nil {
+		updateParams.Config = config
+	}
+
+	count, err := c.router.UpdateProviderConfig(ctx, updateParams)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	if count == 0 {
@@ -179,14 +188,14 @@ func (c PolicyDBClient) UpdateProviderConfig(ctx context.Context, r *keymanageme
 }
 
 func (c PolicyDBClient) DeleteProviderConfig(ctx context.Context, id string) (*policy.KeyProviderConfig, error) {
-	pgID := pgtypeUUID(id)
-	if !pgID.Valid {
+	// Validate UUID format
+	if !pgtypeUUID(id).Valid {
 		return nil, db.ErrUUIDInvalid
 	}
 
-	_, err := c.queries.deleteProviderConfig(ctx, id)
+	_, err := c.router.DeleteProviderConfig(ctx, id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	return &policy.KeyProviderConfig{

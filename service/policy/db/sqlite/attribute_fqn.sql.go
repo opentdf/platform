@@ -185,8 +185,8 @@ SELECT
 FROM attribute_definitions ad
 JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
 WHERE ad.id = ?2
-ON CONFLICT (namespace_id, attribute_id, value_id)
-    DO UPDATE SET fqn = EXCLUDED.fqn
+ON CONFLICT (fqn)
+    DO UPDATE SET namespace_id = EXCLUDED.namespace_id, attribute_id = EXCLUDED.attribute_id
 RETURNING namespace_id, attribute_id, COALESCE(value_id, '') AS value_id, fqn
 `
 
@@ -203,6 +203,7 @@ type upsertAttributeDefinitionFqnRow struct {
 }
 
 // Note: ID generated in application layer. Values FQNs inserted separately.
+// Uses ON CONFLICT (fqn) since SQLite doesn't support UNIQUE NULLS NOT DISTINCT
 //
 //	INSERT INTO attribute_fqns (id, namespace_id, attribute_id, value_id, fqn)
 //	SELECT
@@ -214,8 +215,8 @@ type upsertAttributeDefinitionFqnRow struct {
 //	FROM attribute_definitions ad
 //	JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
 //	WHERE ad.id = ?2
-//	ON CONFLICT (namespace_id, attribute_id, value_id)
-//	    DO UPDATE SET fqn = EXCLUDED.fqn
+//	ON CONFLICT (fqn)
+//	    DO UPDATE SET namespace_id = EXCLUDED.namespace_id, attribute_id = EXCLUDED.attribute_id
 //	RETURNING namespace_id, attribute_id, COALESCE(value_id, '') AS value_id, fqn
 func (q *Queries) upsertAttributeDefinitionFqn(ctx context.Context, arg upsertAttributeDefinitionFqnParams) (upsertAttributeDefinitionFqnRow, error) {
 	row := q.db.QueryRowContext(ctx, upsertAttributeDefinitionFqn, arg.ID, arg.AttributeID)
@@ -239,8 +240,8 @@ SELECT
     'https://' || ns.name
 FROM attribute_namespaces ns
 WHERE ns.id = ?2
-ON CONFLICT (namespace_id, attribute_id, value_id)
-    DO UPDATE SET fqn = EXCLUDED.fqn
+ON CONFLICT (fqn)
+    DO UPDATE SET namespace_id = EXCLUDED.namespace_id
 RETURNING namespace_id, COALESCE(attribute_id, '') AS attribute_id, COALESCE(value_id, '') AS value_id, fqn
 `
 
@@ -257,6 +258,7 @@ type upsertAttributeNamespaceFqnRow struct {
 }
 
 // Note: ID generated in application layer. Definition/Value FQNs inserted separately.
+// Uses ON CONFLICT (fqn) since SQLite doesn't support UNIQUE NULLS NOT DISTINCT
 //
 //	INSERT INTO attribute_fqns (id, namespace_id, attribute_id, value_id, fqn)
 //	SELECT
@@ -267,8 +269,8 @@ type upsertAttributeNamespaceFqnRow struct {
 //	    'https://' || ns.name
 //	FROM attribute_namespaces ns
 //	WHERE ns.id = ?2
-//	ON CONFLICT (namespace_id, attribute_id, value_id)
-//	    DO UPDATE SET fqn = EXCLUDED.fqn
+//	ON CONFLICT (fqn)
+//	    DO UPDATE SET namespace_id = EXCLUDED.namespace_id
 //	RETURNING namespace_id, COALESCE(attribute_id, '') AS attribute_id, COALESCE(value_id, '') AS value_id, fqn
 func (q *Queries) upsertAttributeNamespaceFqn(ctx context.Context, arg upsertAttributeNamespaceFqnParams) (upsertAttributeNamespaceFqnRow, error) {
 	row := q.db.QueryRowContext(ctx, upsertAttributeNamespaceFqn, arg.ID, arg.NamespaceID)
@@ -295,8 +297,8 @@ FROM attribute_values av
 INNER JOIN attribute_definitions AS ad ON av.attribute_definition_id = ad.id
 INNER JOIN attribute_namespaces AS ns ON ad.namespace_id = ns.id
 WHERE av.id = ?2
-ON CONFLICT (namespace_id, attribute_id, value_id)
-    DO UPDATE SET fqn = EXCLUDED.fqn
+ON CONFLICT (fqn)
+    DO UPDATE SET namespace_id = EXCLUDED.namespace_id, attribute_id = EXCLUDED.attribute_id, value_id = EXCLUDED.value_id
 RETURNING namespace_id, attribute_id, value_id, fqn
 `
 
@@ -318,6 +320,7 @@ type upsertAttributeValueFqnRow struct {
 // These queries use INSERT OR REPLACE for upsert semantics
 // --------------------------------------------------------------
 // Note: ID generated in application layer
+// Uses ON CONFLICT (fqn) since SQLite doesn't support UNIQUE NULLS NOT DISTINCT
 //
 //	INSERT INTO attribute_fqns (id, namespace_id, attribute_id, value_id, fqn)
 //	SELECT
@@ -330,8 +333,8 @@ type upsertAttributeValueFqnRow struct {
 //	INNER JOIN attribute_definitions AS ad ON av.attribute_definition_id = ad.id
 //	INNER JOIN attribute_namespaces AS ns ON ad.namespace_id = ns.id
 //	WHERE av.id = ?2
-//	ON CONFLICT (namespace_id, attribute_id, value_id)
-//	    DO UPDATE SET fqn = EXCLUDED.fqn
+//	ON CONFLICT (fqn)
+//	    DO UPDATE SET namespace_id = EXCLUDED.namespace_id, attribute_id = EXCLUDED.attribute_id, value_id = EXCLUDED.value_id
 //	RETURNING namespace_id, attribute_id, value_id, fqn
 func (q *Queries) upsertAttributeValueFqn(ctx context.Context, arg upsertAttributeValueFqnParams) (upsertAttributeValueFqnRow, error) {
 	row := q.db.QueryRowContext(ctx, upsertAttributeValueFqn, arg.ID, arg.ValueID)

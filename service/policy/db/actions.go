@@ -37,25 +37,25 @@ func (a ActionStandard) String() string {
 }
 
 func (c PolicyDBClient) GetAction(ctx context.Context, req *actions.GetActionRequest) (*policy.Action, error) {
-	getActionParams := getActionParams{}
+	params := UnifiedGetActionParams{}
 
 	switch {
 	case req.GetId() != "":
-		getActionParams.ID = pgtypeUUID(req.GetId())
+		params.ID = req.GetId()
 	case req.GetName() != "":
-		getActionParams.Name = pgtypeText(strings.ToLower(req.GetName()))
+		params.Name = strings.ToLower(req.GetName())
 	default:
 		return nil, db.ErrSelectIdentifierInvalid
 	}
 
-	got, err := c.queries.getAction(ctx, getActionParams)
+	got, err := c.router.GetAction(ctx, params)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	metadata := &common.Metadata{}
 	if err := protojson.Unmarshal(got.Metadata, metadata); err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	return &policy.Action{
@@ -73,12 +73,12 @@ func (c PolicyDBClient) ListActions(ctx context.Context, req *actions.ListAction
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.queries.listActions(ctx, listActionsParams{
+	list, err := c.router.ListActions(ctx, UnifiedListActionsParams{
 		Limit:  limit,
 		Offset: offset,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	var (
@@ -125,14 +125,13 @@ func (c PolicyDBClient) CreateAction(ctx context.Context, req *actions.CreateAct
 	if err != nil {
 		return nil, err
 	}
-	createParams := createCustomActionParams{
+
+	createdID, err := c.router.CreateCustomAction(ctx, UnifiedCreateCustomActionParams{
 		Name:     strings.ToLower(req.GetName()),
 		Metadata: metadataJSON,
-	}
-
-	createdID, err := c.queries.createCustomAction(ctx, createParams)
+	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	return c.GetAction(ctx, &actions.GetActionRequest{
@@ -160,15 +159,19 @@ func (c PolicyDBClient) UpdateAction(ctx context.Context, req *actions.UpdateAct
 	}
 
 	// Update what fields were patched to update
-	updateParams := updateCustomActionParams{
-		ID:       req.GetId(),
-		Name:     pgtypeText(strings.ToLower(req.GetName())),
-		Metadata: metadataJSON,
+	var name *string
+	if req.GetName() != "" {
+		loweredName := strings.ToLower(req.GetName())
+		name = &loweredName
 	}
 
-	count, err := c.queries.updateCustomAction(ctx, updateParams)
+	count, err := c.router.UpdateCustomAction(ctx, UnifiedUpdateCustomActionParams{
+		ID:       req.GetId(),
+		Name:     name,
+		Metadata: metadataJSON,
+	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -182,9 +185,9 @@ func (c PolicyDBClient) UpdateAction(ctx context.Context, req *actions.UpdateAct
 }
 
 func (c PolicyDBClient) DeleteAction(ctx context.Context, req *actions.DeleteActionRequest) (*policy.Action, error) {
-	count, err := c.queries.deleteCustomAction(ctx, req.GetId())
+	count, err := c.router.DeleteCustomAction(ctx, req.GetId())
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	// if did not delete, was either not found or was a standard action
 	if count == 0 {

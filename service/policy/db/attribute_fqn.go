@@ -37,9 +37,9 @@ func (c *PolicyDBClient) AttrFqnReindex(ctx context.Context) (res struct { //nol
 	}
 
 	// Reindex all namespaces
-	reindexedRecords := []upsertAttributeNamespaceFqnRow{}
+	reindexedRecords := []UnifiedFqnRow{}
 	for _, n := range ns.GetNamespaces() {
-		rows, err := c.queries.upsertAttributeNamespaceFqn(ctx, n.GetId())
+		rows, err := c.router.UpsertAttributeNamespaceFqn(ctx, n.GetId())
 		if err != nil {
 			panic(fmt.Errorf("could not update namespace [%s] FQN: %w", n.GetId(), err))
 		}

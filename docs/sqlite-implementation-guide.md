@@ -64,6 +64,44 @@ SQLite has full feature parity with PostgreSQL for the OpenTDF platform, with th
 
 ---
 
+## Data Migration Between Drivers
+
+### PostgreSQL → SQLite
+
+Export from PostgreSQL and import to SQLite:
+
+```bash
+# 1. Export PostgreSQL data to JSON/CSV
+pg_dump -h localhost -U postgres -d opentdf --data-only --format=plain > pg_data.sql
+
+# 2. Convert to SQLite-compatible format (manual process)
+# - Remove schema prefixes (opentdf.)
+# - Convert boolean TRUE/FALSE to 1/0
+# - Convert timestamp format if needed
+
+# 3. Import to SQLite
+sqlite3 opentdf.db < converted_data.sql
+```
+
+### SQLite → PostgreSQL
+
+```bash
+# 1. Export SQLite data
+sqlite3 opentdf.db .dump > sqlite_data.sql
+
+# 2. Convert to PostgreSQL format (manual process)
+# - Add schema prefixes (opentdf.)
+# - Convert 1/0 to TRUE/FALSE for booleans
+# - Ensure UUID format is valid
+
+# 3. Import to PostgreSQL
+psql -h localhost -U postgres -d opentdf < converted_data.sql
+```
+
+**Note:** Direct migration tooling is not yet implemented. For production migrations, consider using a data export/import tool that handles type conversions automatically.
+
+---
+
 ## Architecture Overview
 
 SQLite support is implemented through:

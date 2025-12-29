@@ -66,12 +66,12 @@ func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 		return nil, err
 	}
 
-	createdID, err := c.queries.createSubjectConditionSet(ctx, createSubjectConditionSetParams{
+	createdID, err := c.router.CreateSubjectConditionSet(ctx, UnifiedCreateSubjectConditionSetParams{
 		Condition: conditionJSON,
 		Metadata:  metadataJSON,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	// For SQLite: extract and store selector values
@@ -89,9 +89,9 @@ func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 }
 
 func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (*policy.SubjectConditionSet, error) {
-	cs, err := c.queries.getSubjectConditionSet(ctx, id)
+	cs, err := c.router.GetSubjectConditionSet(ctx, id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	metadata := &common.Metadata{}
@@ -119,12 +119,12 @@ func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context, r *subject
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.queries.listSubjectConditionSets(ctx, listSubjectConditionSetsParams{
+	list, err := c.router.ListSubjectConditionSets(ctx, UnifiedListSubjectConditionSetsParams{
 		Limit:  limit,
 		Offset: offset,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	setList := make([]*policy.SubjectConditionSet, len(list))
@@ -187,13 +187,13 @@ func (c PolicyDBClient) UpdateSubjectConditionSet(ctx context.Context, r *subjec
 		}
 	}
 
-	count, err := c.queries.updateSubjectConditionSet(ctx, updateSubjectConditionSetParams{
+	count, err := c.router.UpdateSubjectConditionSet(ctx, UnifiedUpdateSubjectConditionSetParams{
 		ID:        id,
 		Condition: conditionJSON,
 		Metadata:  metadataJSON,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -217,9 +217,9 @@ func (c PolicyDBClient) UpdateSubjectConditionSet(ctx context.Context, r *subjec
 
 // Deletes specified subject condition set and returns the id of the deleted
 func (c PolicyDBClient) DeleteSubjectConditionSet(ctx context.Context, id string) (*policy.SubjectConditionSet, error) {
-	count, err := c.queries.deleteSubjectConditionSet(ctx, id)
+	count, err := c.router.DeleteSubjectConditionSet(ctx, id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -232,9 +232,9 @@ func (c PolicyDBClient) DeleteSubjectConditionSet(ctx context.Context, id string
 
 // Deletes/prunes all subject condition sets not referenced within a subject mapping
 func (c PolicyDBClient) DeleteAllUnmappedSubjectConditionSets(ctx context.Context) ([]*policy.SubjectConditionSet, error) {
-	deletedIDs, err := c.queries.deleteAllUnmappedSubjectConditionSets(ctx)
+	deletedIDs, err := c.router.DeleteAllUnmappedSubjectConditionSets(ctx)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if len(deletedIDs) == 0 {
 		return nil, db.ErrNotFound
@@ -265,7 +265,7 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 
 	// Actions are required on Subject Mappings
 	if len(actions) == 0 {
-		return nil, db.WrapIfKnownInvalidQueryErr(
+		return nil, c.WrapError(
 			errors.Join(db.ErrMissingValue, errors.New("actions are required when creating a subject mapping")),
 		)
 	}
@@ -279,16 +279,16 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		case a.GetName() != "":
 			actionNames = append(actionNames, strings.ToLower(a.GetName()))
 		default:
-			return nil, db.WrapIfKnownInvalidQueryErr(
+			return nil, c.WrapError(
 				errors.Join(db.ErrMissingValue, fmt.Errorf("action at index %d missing required 'id' or 'name' when creating a subject mapping; action details: %+v", idx, a)),
 			)
 		}
 	}
 	// Create or list Actions for those provided by name
 	if len(actionNames) > 0 {
-		createdOrListedActions, err := c.queries.createOrListActionsByName(ctx, actionNames)
+		createdOrListedActions, err := c.router.CreateOrListActionsByName(ctx, actionNames)
 		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(
+			return nil, c.WrapError(
 				errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", actionNames, err)),
 			)
 		}
@@ -302,31 +302,31 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 	case s.GetExistingSubjectConditionSetId() != "":
 		scs, err = c.GetSubjectConditionSet(ctx, s.GetExistingSubjectConditionSetId())
 		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+			return nil, c.WrapError(err)
 		}
 	case s.GetNewSubjectConditionSet() != nil:
 		// create the new subject condition set
 		scs, err = c.CreateSubjectConditionSet(ctx, s.GetNewSubjectConditionSet())
 		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+			return nil, c.WrapError(err)
 		}
 	default:
-		return nil, db.WrapIfKnownInvalidQueryErr(errors.Join(db.ErrMissingValue, errors.New("either an existing Subject Condition Set ID or a new Subject Condition Set is required when creating a subject mapping")))
+		return nil, c.WrapError(errors.Join(db.ErrMissingValue, errors.New("either an existing Subject Condition Set ID or a new Subject Condition Set is required when creating a subject mapping")))
 	}
 
 	metadataJSON, metadata, err := db.MarshalCreateMetadata(s.GetMetadata())
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
-	createdID, err := c.queries.createSubjectMapping(ctx, createSubjectMappingParams{
+	createdID, err := c.router.CreateSubjectMapping(ctx, UnifiedCreateSubjectMappingParams{
 		AttributeValueID:      attributeValueID,
-		ActionIds:             actionIDs,
+		ActionIDs:             actionIDs,
 		Metadata:              metadataJSON,
-		SubjectConditionSetID: pgtypeUUID(scs.GetId()),
+		SubjectConditionSetID: scs.GetId(),
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	return &policy.SubjectMapping{
@@ -341,9 +341,9 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 }
 
 func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {
-	sm, err := c.queries.getSubjectMapping(ctx, id)
+	sm, err := c.router.GetSubjectMapping(ctx, id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	// ID was not found and we received an empty result set
 	if sm.ID == "" {
@@ -387,12 +387,12 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmappi
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.queries.listSubjectMappings(ctx, listSubjectMappingsParams{
+	list, err := c.router.ListSubjectMappings(ctx, UnifiedListSubjectMappingsParams{
 		Limit:  limit,
 		Offset: offset,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	mappings := make([]*policy.SubjectMapping, len(list))
@@ -407,20 +407,8 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmappi
 			return nil, err
 		}
 
-		stdActionsBytes, err := json.Marshal(sm.StandardActions)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal standard actions from interface{}: %w", err)
-		}
-		// If sm.StandardActions was nil, stdActionsBytes will be []byte("null").
-		// unmarshalAllActionsProto handles this by effectively treating it as an empty list.
-
-		customActionsBytes, err := json.Marshal(sm.CustomActions)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal custom actions from interface{}: %w", err)
-		}
-
 		a := []*policy.Action{}
-		if err = unmarshalAllActionsProto(stdActionsBytes, customActionsBytes, &a); err != nil {
+		if err = unmarshalAllActionsProto(sm.StandardActions, sm.CustomActions, &a); err != nil {
 			return nil, err
 		}
 
@@ -463,7 +451,7 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 
 	before, err := c.GetSubjectMapping(ctx, id)
 	if err != nil || before == nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	// if extend we need to merge the metadata
@@ -474,10 +462,10 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 		return nil, err
 	}
 
-	updateParams := updateSubjectMappingParams{
+	updateParams := UnifiedUpdateSubjectMappingParams{
 		ID:                    id,
 		Metadata:              metadataJSON,
-		SubjectConditionSetID: pgtypeUUID(subjectConditionSetID),
+		SubjectConditionSetID: subjectConditionSetID,
 	}
 
 	if actions != nil {
@@ -491,7 +479,7 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 			case a.GetName() != "":
 				actionNames = append(actionNames, strings.ToLower(a.GetName()))
 			default:
-				return nil, db.WrapIfKnownInvalidQueryErr(
+				return nil, c.WrapError(
 					errors.Join(db.ErrMissingValue, fmt.Errorf("action at index %d missing required 'id' or 'name' when creating a subject mapping; action details: %+v", idx, a)),
 				)
 			}
@@ -499,9 +487,9 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 
 		// Create or list Actions for those provided by name
 		if len(actionNames) > 0 {
-			createdOrListedActions, err := c.queries.createOrListActionsByName(ctx, actionNames)
+			createdOrListedActions, err := c.router.CreateOrListActionsByName(ctx, actionNames)
 			if err != nil {
-				return nil, db.WrapIfKnownInvalidQueryErr(
+				return nil, c.WrapError(
 					errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", actionNames, err)),
 				)
 			}
@@ -509,12 +497,12 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 				actionIDs = append(actionIDs, a.ID)
 			}
 		}
-		updateParams.ActionIds = actionIDs
+		updateParams.ActionIDs = actionIDs
 	}
 
-	_, err = c.queries.updateSubjectMapping(ctx, updateParams)
+	_, err = c.router.UpdateSubjectMapping(ctx, updateParams)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	return &policy.SubjectMapping{
@@ -529,9 +517,9 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 
 // Deletes specified subject mapping and returns the id of the deleted
 func (c PolicyDBClient) DeleteSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {
-	count, err := c.queries.deleteSubjectMapping(ctx, id)
+	count, err := c.router.DeleteSubjectMapping(ctx, id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -552,9 +540,9 @@ func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 	for _, sp := range properties {
 		selectors = append(selectors, sp.GetExternalSelectorValue())
 	}
-	list, err := c.queries.matchSubjectMappings(ctx, selectors)
+	list, err := c.router.MatchSubjectMappings(ctx, selectors)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	mappings := make([]*policy.SubjectMapping, len(list))
@@ -564,20 +552,8 @@ func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 			return nil, err
 		}
 
-		stdActionsBytes, err := json.Marshal(sm.StandardActions)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal standard actions from interface{}: %w", err)
-		}
-		// If sm.StandardActions was nil, stdActionsBytes will be []byte("null").
-		// unmarshalAllActionsProto handles this by effectively treating it as an empty list.
-
-		customActionsBytes, err := json.Marshal(sm.CustomActions)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal custom actions from interface{}: %w", err)
-		}
-
 		a := []*policy.Action{}
-		if err = unmarshalAllActionsProto(stdActionsBytes, customActionsBytes, &a); err != nil {
+		if err = unmarshalAllActionsProto(sm.StandardActions, sm.CustomActions, &a); err != nil {
 			return nil, err
 		}
 

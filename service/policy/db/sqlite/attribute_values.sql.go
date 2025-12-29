@@ -110,8 +110,11 @@ SELECT
             json_object(
                 'kas_uri', kas.uri,
                 'kas_id', kas.id,
-                'key_id', kask.key_id,
-                'algorithm', kask.key_algorithm
+                'public_key', json_object(
+                    'algorithm', kask.key_algorithm,
+                    'kid', kask.key_id,
+                    'pem', json_extract(kask.public_key_ctx, '$.pem')
+                )
             )
         )
         FROM attribute_value_public_key_map k
@@ -177,8 +180,11 @@ type getAttributeValueRow struct {
 //	            json_object(
 //	                'kas_uri', kas.uri,
 //	                'kas_id', kas.id,
-//	                'key_id', kask.key_id,
-//	                'algorithm', kask.key_algorithm
+//	                'public_key', json_object(
+//	                    'algorithm', kask.key_algorithm,
+//	                    'kid', kask.key_id,
+//	                    'pem', json_extract(kask.public_key_ctx, '$.pem')
+//	                )
 //	            )
 //	        )
 //	        FROM attribute_value_public_key_map k

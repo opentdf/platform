@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"log/slog"
@@ -1621,28 +1622,49 @@ func (s *AttributeFqnSuite) Test_GrantsAreReturned() {
 	s.NotNil(kas)
 
 	// Create NS Grant
-	// use Pgx.Exec because INSERT is only for testing and should not be part of PolicyDBClient
-	nsGrant, err := s.db.PolicyClient.Pgx.Exec(s.ctx,
-		`INSERT INTO attribute_namespace_key_access_grants (namespace_id, key_access_server_id) VALUES ($1, $2)`,
-		ns.GetId(), kas.GetId())
+	// use SQLDB.ExecContext for database-agnostic testing (works with both PostgreSQL and SQLite)
+	var nsGrantResult sql.Result
+	if s.db.PolicyClient.IsSQLite() {
+		nsGrantResult, err = s.db.PolicyClient.SQLDB.ExecContext(s.ctx,
+			`INSERT INTO attribute_namespace_key_access_grants (namespace_id, key_access_server_id) VALUES (?, ?)`,
+			ns.GetId(), kas.GetId())
+	} else {
+		nsGrantResult, err = s.db.PolicyClient.SQLDB.ExecContext(s.ctx,
+			`INSERT INTO attribute_namespace_key_access_grants (namespace_id, key_access_server_id) VALUES ($1, $2)`,
+			ns.GetId(), kas.GetId())
+	}
 	s.Require().NoError(err)
-	s.NotNil(nsGrant.RowsAffected())
+	s.NotNil(nsGrantResult)
 
 	// Create Attribute Grant
-	// use Pgx.Exec because INSERT is only for testing and should not be part of PolicyDBClient
-	attrGrant, err := s.db.PolicyClient.Pgx.Exec(s.ctx,
-		`INSERT INTO attribute_definition_key_access_grants (attribute_definition_id, key_access_server_id) VALUES ($1, $2)`,
-		attr.GetId(), kas.GetId())
+	// use SQLDB.ExecContext for database-agnostic testing
+	var attrGrantResult sql.Result
+	if s.db.PolicyClient.IsSQLite() {
+		attrGrantResult, err = s.db.PolicyClient.SQLDB.ExecContext(s.ctx,
+			`INSERT INTO attribute_definition_key_access_grants (attribute_definition_id, key_access_server_id) VALUES (?, ?)`,
+			attr.GetId(), kas.GetId())
+	} else {
+		attrGrantResult, err = s.db.PolicyClient.SQLDB.ExecContext(s.ctx,
+			`INSERT INTO attribute_definition_key_access_grants (attribute_definition_id, key_access_server_id) VALUES ($1, $2)`,
+			attr.GetId(), kas.GetId())
+	}
 	s.Require().NoError(err)
-	s.NotNil(attrGrant.RowsAffected())
+	s.NotNil(attrGrantResult)
 
 	// Create Value Grant
-	// use Pgx.Exec because INSERT is only for testing and should not be part of PolicyDBClient
-	valueGrant, err := s.db.PolicyClient.Pgx.Exec(s.ctx,
-		`INSERT INTO attribute_value_key_access_grants (attribute_value_id, key_access_server_id) VALUES ($1, $2)`,
-		attr.GetValues()[0].GetId(), kas.GetId())
+	// use SQLDB.ExecContext for database-agnostic testing
+	var valueGrantResult sql.Result
+	if s.db.PolicyClient.IsSQLite() {
+		valueGrantResult, err = s.db.PolicyClient.SQLDB.ExecContext(s.ctx,
+			`INSERT INTO attribute_value_key_access_grants (attribute_value_id, key_access_server_id) VALUES (?, ?)`,
+			attr.GetValues()[0].GetId(), kas.GetId())
+	} else {
+		valueGrantResult, err = s.db.PolicyClient.SQLDB.ExecContext(s.ctx,
+			`INSERT INTO attribute_value_key_access_grants (attribute_value_id, key_access_server_id) VALUES ($1, $2)`,
+			attr.GetValues()[0].GetId(), kas.GetId())
+	}
 	s.Require().NoError(err)
-	s.NotNil(valueGrant.RowsAffected())
+	s.NotNil(valueGrantResult)
 
 	// Get Namespace check for grant
 	nsGet, err := s.db.PolicyClient.GetNamespace(s.ctx, ns.GetId())

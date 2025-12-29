@@ -137,10 +137,13 @@ SELECT
     (
         SELECT json_group_array(
             json_object(
-                'kas_id', kas.id,
                 'kas_uri', kas.uri,
-                'key_id', kask.key_id,
-                'algorithm', kask.key_algorithm
+                'kas_id', kas.id,
+                'public_key', json_object(
+                    'algorithm', kask.key_algorithm,
+                    'kid', kask.key_id,
+                    'pem', json_extract(kask.public_key_ctx, '$.pem')
+                )
             )
         )
         FROM attribute_definition_public_key_map k
@@ -198,10 +201,13 @@ SELECT
     (
         SELECT json_group_array(
             json_object(
-                'kas_id', kas.id,
                 'kas_uri', kas.uri,
-                'key_id', kask.key_id,
-                'algorithm', kask.key_algorithm
+                'kas_id', kas.id,
+                'public_key', json_object(
+                    'algorithm', kask.key_algorithm,
+                    'kid', kask.key_id,
+                    'pem', json_extract(kask.public_key_ctx, '$.pem')
+                )
             )
         )
         FROM attribute_definition_public_key_map k

@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
@@ -19,11 +18,7 @@ import (
 )
 
 func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*policy.Namespace, error) {
-	var (
-		ns     getNamespaceRow
-		err    error
-		params getNamespaceParams
-	)
+	var params UnifiedGetNamespaceParams
 
 	switch i := identifier.(type) {
 	case *namespaces.GetNamespaceRequest_NamespaceId:
@@ -31,23 +26,23 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*poli
 		if !id.Valid {
 			return nil, db.ErrUUIDInvalid
 		}
-		params = getNamespaceParams{ID: id}
+		params = UnifiedGetNamespaceParams{ID: i.NamespaceId}
 	case *namespaces.GetNamespaceRequest_Fqn:
-		params = getNamespaceParams{Name: pgtypeText(i.Fqn)}
+		params = UnifiedGetNamespaceParams{Name: i.Fqn}
 	case string:
 		id := pgtypeUUID(i)
 		if !id.Valid {
 			return nil, db.ErrUUIDInvalid
 		}
-		params = getNamespaceParams{ID: id}
+		params = UnifiedGetNamespaceParams{ID: i}
 	default:
 		// unexpected type
 		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
 	}
 
-	ns, err = c.queries.getNamespace(ctx, params)
+	ns, err := c.router.GetNamespace(ctx, params)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	metadata := &common.Metadata{}
@@ -102,21 +97,20 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	active := pgtype.Bool{
-		Valid: false,
+	// Build unified params
+	params := UnifiedListNamespacesParams{
+		Limit:  limit,
+		Offset: offset,
 	}
 	state := getDBStateTypeTransformedEnum(r.GetState())
 	if state != stateAny {
-		active = pgtypeBool(state == stateActive)
+		activeVal := state == stateActive
+		params.Active = &activeVal
 	}
 
-	list, err := c.queries.listNamespaces(ctx, listNamespacesParams{
-		Active: active,
-		Limit:  limit,
-		Offset: offset,
-	})
+	list, err := c.router.ListNamespaces(ctx, params)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	nsList := make([]*policy.Namespace, len(list))
@@ -188,18 +182,18 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 		return nil, err
 	}
 
-	createdID, err := c.queries.createNamespace(ctx, createNamespaceParams{
+	createdID, err := c.router.CreateNamespace(ctx, UnifiedCreateNamespaceParams{
 		Name:     name,
 		Metadata: metadataJSON,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	// Update FQN
-	_, err = c.queries.upsertAttributeNamespaceFqn(ctx, createdID)
+	_, err = c.router.UpsertAttributeNamespaceFqn(ctx, createdID)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	return c.GetNamespace(ctx, createdID)
@@ -221,12 +215,9 @@ func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *names
 		return nil, err
 	}
 
-	count, err := c.queries.updateNamespace(ctx, updateNamespaceParams{
-		ID:       id,
-		Metadata: metadataJSON,
-	})
+	count, err := c.router.UpdateNamespace(ctx, id, nil, nil, metadataJSON)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -244,21 +235,18 @@ UNSAFE OPERATIONS
 func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, name string) (*policy.Namespace, error) {
 	name = strings.ToLower(name)
 
-	count, err := c.queries.updateNamespace(ctx, updateNamespaceParams{
-		ID:   id,
-		Name: pgtypeText(name),
-	})
+	count, err := c.router.UpdateNamespace(ctx, id, &name, nil, nil)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
 	}
 
 	// Update all FQNs that may contain the namespace name
-	_, err = c.queries.upsertAttributeNamespaceFqn(ctx, id)
+	_, err = c.router.UpsertAttributeNamespaceFqn(ctx, id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	return c.GetNamespace(ctx, id)
@@ -282,27 +270,35 @@ func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*po
 		c.logger.Warn("deactivating the namespace with existing attributes can affect access to related data. Please be aware and proceed accordingly.")
 	}
 
-	count, err := c.queries.updateNamespace(ctx, updateNamespaceParams{
-		ID:     id,
-		Active: pgtypeBool(false),
+	// Use transaction for atomicity - PostgreSQL triggers work within transactions,
+	// SQLite needs explicit cascade which is also wrapped in this transaction.
+	var result *policy.Namespace
+	err = c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
+		activeVal := false
+		count, err := txClient.router.UpdateNamespace(ctx, id, nil, &activeVal, nil)
+		if err != nil {
+			return c.WrapError(err)
+		}
+		if count == 0 {
+			return db.ErrNotFound
+		}
+
+		// For SQLite: cascade deactivation (no-op for PostgreSQL since trigger handles it)
+		if err := txClient.cascadeDeactivateNamespaceInTx(ctx, id); err != nil {
+			return fmt.Errorf("failed to cascade deactivation: %w", err)
+		}
+
+		result = &policy.Namespace{
+			Id:     id,
+			Active: &wrapperspb.BoolValue{Value: false},
+		}
+		return nil
 	})
+
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, err
 	}
-	if count == 0 {
-		return nil, db.ErrNotFound
-	}
-
-	// For SQLite: cascade deactivation to definitions and values
-	// (PostgreSQL handles this via trigger, this is a no-op for PostgreSQL)
-	if err := c.CascadeDeactivateNamespace(ctx, id); err != nil {
-		return nil, fmt.Errorf("failed to cascade deactivation: %w", err)
-	}
-
-	return &policy.Namespace{
-		Id:     id,
-		Active: &wrapperspb.BoolValue{Value: false},
-	}, nil
+	return result, nil
 }
 
 func (c PolicyDBClient) UnsafeReactivateNamespace(ctx context.Context, id string) (*policy.Namespace, error) {
@@ -315,12 +311,10 @@ func (c PolicyDBClient) UnsafeReactivateNamespace(ctx context.Context, id string
 		c.logger.Warn("reactivating the namespace with existing attributes can affect access to related data. Please be aware and proceed accordingly.")
 	}
 
-	count, err := c.queries.updateNamespace(ctx, updateNamespaceParams{
-		ID:     id,
-		Active: pgtypeBool(true),
-	})
+	activeVal := true
+	count, err := c.router.UpdateNamespace(ctx, id, nil, &activeVal, nil)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -343,9 +337,9 @@ func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, existing *pol
 
 	id := existing.GetId()
 
-	count, err := c.queries.deleteNamespace(ctx, id)
+	count, err := c.router.DeleteNamespace(ctx, id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -357,12 +351,9 @@ func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, existing *pol
 }
 
 func (c PolicyDBClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, k *namespaces.NamespaceKeyAccessServer) (*namespaces.NamespaceKeyAccessServer, error) {
-	count, err := c.queries.removeKeyAccessServerFromNamespace(ctx, removeKeyAccessServerFromNamespaceParams{
-		NamespaceID:       k.GetNamespaceId(),
-		KeyAccessServerID: k.GetKeyAccessServerId(),
-	})
+	count, err := c.router.RemoveKeyAccessServerFromNamespace(ctx, k.GetNamespaceId(), k.GetKeyAccessServerId())
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -376,12 +367,9 @@ func (c PolicyDBClient) AssignPublicKeyToNamespace(ctx context.Context, k *names
 		return nil, err
 	}
 
-	key, err := c.queries.assignPublicKeyToNamespace(ctx, assignPublicKeyToNamespaceParams{
-		NamespaceID:          k.GetNamespaceId(),
-		KeyAccessServerKeyID: k.GetKeyId(),
-	})
+	key, err := c.router.AssignPublicKeyToNamespace(ctx, k.GetNamespaceId(), k.GetKeyId())
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	return &namespaces.NamespaceKey{
 		NamespaceId: key.NamespaceID,
@@ -390,12 +378,9 @@ func (c PolicyDBClient) AssignPublicKeyToNamespace(ctx context.Context, k *names
 }
 
 func (c PolicyDBClient) RemovePublicKeyFromNamespace(ctx context.Context, k *namespaces.NamespaceKey) (*namespaces.NamespaceKey, error) {
-	count, err := c.queries.removePublicKeyFromNamespace(ctx, removePublicKeyFromNamespaceParams{
-		NamespaceID:          k.GetNamespaceId(),
-		KeyAccessServerKeyID: k.GetKeyId(),
-	})
+	count, err := c.router.RemovePublicKeyFromNamespace(ctx, k.GetNamespaceId(), k.GetKeyId())
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -469,12 +454,9 @@ func (c PolicyDBClient) CreateCertificate(ctx context.Context, pem string, metad
 		return nil, err
 	}
 
-	certID, err := c.queries.createCertificate(ctx, createCertificateParams{
-		Pem:      pem,
-		Metadata: metadata,
-	})
+	certID, err := c.router.CreateCertificate(ctx, pem, metadata)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	// Return the full certificate object
@@ -483,9 +465,9 @@ func (c PolicyDBClient) CreateCertificate(ctx context.Context, pem string, metad
 
 // GetCertificate retrieves a certificate by its ID
 func (c PolicyDBClient) GetCertificate(ctx context.Context, id string) (*policy.Certificate, error) {
-	cert, err := c.queries.getCertificate(ctx, id)
+	cert, err := c.router.GetCertificate(ctx, id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	metadata := &common.Metadata{}
@@ -502,9 +484,9 @@ func (c PolicyDBClient) GetCertificate(ctx context.Context, id string) (*policy.
 
 // DeleteCertificate removes a certificate from the database
 func (c PolicyDBClient) DeleteCertificate(ctx context.Context, id string) error {
-	count, err := c.queries.deleteCertificate(ctx, id)
+	count, err := c.router.DeleteCertificate(ctx, id)
 	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
+		return c.WrapError(err)
 	}
 	if count == 0 {
 		return db.ErrNotFound
@@ -549,12 +531,9 @@ func (c PolicyDBClient) AssignCertificateToNamespace(ctx context.Context, namesp
 		return err
 	}
 
-	_, err = c.queries.assignCertificateToNamespace(ctx, assignCertificateToNamespaceParams{
-		NamespaceID:   namespaceID,
-		CertificateID: certificateID,
-	})
+	_, err = c.router.AssignCertificateToNamespace(ctx, namespaceID, certificateID)
 	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
+		return c.WrapError(err)
 	}
 	return nil
 }
@@ -564,7 +543,7 @@ func (c PolicyDBClient) CreateAndAssignCertificateToNamespace(ctx context.Contex
 	var certID string
 	err := c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
 		// Check if certificate with same PEM already exists (inside transaction to avoid race condition)
-		existingCert, err := txClient.queries.getCertificateByPEM(ctx, pem)
+		existingCert, err := txClient.router.GetCertificateByPEM(ctx, pem)
 		if err == nil {
 			// Certificate exists, just assign it to namespace
 			certID = existingCert.ID
@@ -602,21 +581,18 @@ func (c PolicyDBClient) RemoveCertificateFromNamespace(ctx context.Context, name
 		return err
 	}
 
-	count, err := c.queries.removeCertificateFromNamespace(ctx, removeCertificateFromNamespaceParams{
-		NamespaceID:   namespaceID,
-		CertificateID: certificateID,
-	})
+	count, err := c.router.RemoveCertificateFromNamespace(ctx, namespaceID, certificateID)
 	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
+		return c.WrapError(err)
 	}
 	if count == 0 {
 		return db.ErrNotFound
 	}
 
 	// Check if the certificate is still assigned to any other namespaces
-	assignmentCount, err := c.queries.countCertificateNamespaceAssignments(ctx, certificateID)
+	assignmentCount, err := c.router.CountCertificateNamespaceAssignments(ctx, certificateID)
 	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
+		return c.WrapError(err)
 	}
 
 	// Only delete the certificate if it's not assigned to any other namespace

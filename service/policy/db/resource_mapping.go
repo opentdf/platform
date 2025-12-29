@@ -25,13 +25,13 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resour
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.queries.listResourceMappingGroups(ctx, listResourceMappingGroupsParams{
+	list, err := c.router.ListResourceMappingGroups(ctx, UnifiedListResourceMappingGroupsParams{
 		NamespaceID: r.GetNamespaceId(),
 		Limit:       limit,
 		Offset:      offset,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	rmGroups := make([]*policy.ResourceMappingGroup, len(list))
@@ -68,9 +68,9 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resour
 }
 
 func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) (*policy.ResourceMappingGroup, error) {
-	rmGroup, err := c.queries.getResourceMappingGroup(ctx, id)
+	rmGroup, err := c.router.GetResourceMappingGroup(ctx, id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	metadata := new(common.Metadata)
@@ -95,13 +95,13 @@ func (c PolicyDBClient) CreateResourceMappingGroup(ctx context.Context, r *resou
 		return nil, err
 	}
 
-	createdID, err := c.queries.createResourceMappingGroup(ctx, createResourceMappingGroupParams{
+	createdID, err := c.router.CreateResourceMappingGroup(ctx, UnifiedCreateResourceMappingGroupParams{
 		NamespaceID: namespaceID,
 		Name:        name,
 		Metadata:    metadataJSON,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	return &policy.ResourceMappingGroup{
@@ -127,14 +127,16 @@ func (c PolicyDBClient) UpdateResourceMappingGroup(ctx context.Context, id strin
 		return nil, err
 	}
 
-	count, err := c.queries.updateResourceMappingGroup(ctx, updateResourceMappingGroupParams{
-		ID:          id,
-		NamespaceID: pgtypeUUID(namespaceID),
-		Name:        pgtypeText(name),
-		Metadata:    metadataJSON,
-	})
+	var namespaceIDPtr, namePtr *string
+	if namespaceID != "" {
+		namespaceIDPtr = &namespaceID
+	}
+	if name != "" {
+		namePtr = &name
+	}
+	count, err := c.router.UpdateResourceMappingGroup(ctx, id, namespaceIDPtr, namePtr, metadataJSON)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -149,9 +151,9 @@ func (c PolicyDBClient) UpdateResourceMappingGroup(ctx context.Context, id strin
 }
 
 func (c PolicyDBClient) DeleteResourceMappingGroup(ctx context.Context, id string) (*policy.ResourceMappingGroup, error) {
-	count, err := c.queries.deleteResourceMappingGroup(ctx, id)
+	count, err := c.router.DeleteResourceMappingGroup(ctx, id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -174,13 +176,13 @@ func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemap
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.queries.listResourceMappings(ctx, listResourceMappingsParams{
+	list, err := c.router.ListResourceMappings(ctx, UnifiedListResourceMappingsParams{
 		GroupID: r.GetGroupId(),
 		Limit:   limit,
 		Offset:  offset,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	mappings := make([]*policy.ResourceMapping, len(list))
@@ -246,12 +248,12 @@ func (c PolicyDBClient) ListResourceMappingsByGroupFqns(ctx context.Context, fqn
 			continue
 		}
 
-		rows, err := c.queries.listResourceMappingsByFullyQualifiedGroup(ctx, listResourceMappingsByFullyQualifiedGroupParams{
+		rows, err := c.router.ListResourceMappingsByFullyQualifiedGroup(ctx, UnifiedListResourceMappingsByFullyQualifiedGroupParams{
 			NamespaceName: fullyQualifiedGroup.Namespace,
 			GroupName:     fullyQualifiedGroup.GroupName,
 		})
 		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+			return nil, c.WrapError(err)
 		}
 
 		if len(rows) == 0 {
@@ -304,9 +306,9 @@ func (c PolicyDBClient) ListResourceMappingsByGroupFqns(ctx context.Context, fqn
 }
 
 func (c PolicyDBClient) GetResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
-	rm, err := c.queries.getResourceMapping(ctx, id)
+	rm, err := c.router.GetResourceMapping(ctx, id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	var (
@@ -349,29 +351,29 @@ func (c PolicyDBClient) CreateResourceMapping(ctx context.Context, r *resourcema
 		// get the attribute value and resource mapping group, ensure the namesapce is the same
 		attrVal, err := c.GetAttributeValue(ctx, attributeValueID)
 		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+			return nil, c.WrapError(err)
 		}
 		attr, err := c.GetAttribute(ctx, attrVal.GetAttribute().GetId())
 		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+			return nil, c.WrapError(err)
 		}
 		group, err := c.GetResourceMappingGroup(ctx, groupID)
 		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+			return nil, c.WrapError(err)
 		}
 		if attr.GetNamespace().GetId() != group.GetNamespaceId() {
 			return nil, db.ErrNamespaceMismatch
 		}
 	}
 
-	createdID, err := c.queries.createResourceMapping(ctx, createResourceMappingParams{
+	createdID, err := c.router.CreateResourceMapping(ctx, UnifiedCreateResourceMappingParams{
 		AttributeValueID: attributeValueID,
 		Terms:            terms,
 		Metadata:         metadataJSON,
-		GroupID:          pgtypeUUID(groupID),
+		GroupID:          groupID,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 
 	rm := &policy.ResourceMapping{
@@ -395,7 +397,7 @@ func (c PolicyDBClient) UpdateResourceMapping(ctx context.Context, id string, r 
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		rm, err := c.GetResourceMapping(ctx, id)
 		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+			return nil, c.WrapError(err)
 		}
 		return rm.GetMetadata(), nil
 	})
@@ -407,30 +409,31 @@ func (c PolicyDBClient) UpdateResourceMapping(ctx context.Context, id string, r 
 		// get the attribute value and resource mapping group, ensure the namesapce is the same
 		attrVal, err := c.GetAttributeValue(ctx, attributeValueID)
 		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+			return nil, c.WrapError(err)
 		}
 		attr, err := c.GetAttribute(ctx, attrVal.GetAttribute().GetId())
 		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+			return nil, c.WrapError(err)
 		}
 		group, err := c.GetResourceMappingGroup(ctx, groupID)
 		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+			return nil, c.WrapError(err)
 		}
 		if attr.GetNamespace().GetId() != group.GetNamespaceId() {
 			return nil, db.ErrNamespaceMismatch
 		}
 	}
 
-	count, err := c.queries.updateResourceMapping(ctx, updateResourceMappingParams{
-		ID:               id,
-		AttributeValueID: pgtypeUUID(attributeValueID),
-		Terms:            terms,
-		Metadata:         metadataJSON,
-		GroupID:          pgtypeUUID(groupID),
-	})
+	var attributeValueIDPtr, groupIDPtr *string
+	if attributeValueID != "" {
+		attributeValueIDPtr = &attributeValueID
+	}
+	if groupID != "" {
+		groupIDPtr = &groupID
+	}
+	count, err := c.router.UpdateResourceMapping(ctx, id, attributeValueIDPtr, terms, metadataJSON, groupIDPtr)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound
@@ -454,9 +457,9 @@ func (c PolicyDBClient) UpdateResourceMapping(ctx context.Context, id string, r 
 }
 
 func (c PolicyDBClient) DeleteResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
-	count, err := c.queries.deleteResourceMapping(ctx, id)
+	count, err := c.router.DeleteResourceMapping(ctx, id)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, c.WrapError(err)
 	}
 	if count == 0 {
 		return nil, db.ErrNotFound

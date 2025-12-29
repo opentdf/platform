@@ -12,6 +12,11 @@ import (
 	"syscall"
 
 	"connectrpc.com/connect"
+	"github.com/casbin/casbin/v2/persist"
+	gormadapter "github.com/casbin/gorm-adapter/v3"
+	"github.com/opentdf/platform/service/pkg/db"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
@@ -159,6 +164,36 @@ func Start(f ...StartOptions) error {
 	// Set Casbin Adapter
 	if startConfig.casbinAdapter != nil {
 		cfg.Server.Auth.Policy.Adapter = startConfig.casbinAdapter
+	}
+
+	// Initialize SQL-backed Casbin adapter if opted in and no custom adapter provided
+	if cfg.Server.Auth.Policy.EnableSQLPolicy && cfg.Server.Auth.Policy.Adapter == nil {
+		logger.Info("initializing SQL-backed Casbin adapter (opt-in)")
+		// Create a DB client to reuse existing pool and schema
+		dbClient, err := db.New(ctx, cfg.DB, cfg.Logger, nil)
+		if err != nil {
+			logger.Error("could not create DB client for Casbin adapter", slog.Any("error", err))
+			return fmt.Errorf("could not create DB client for Casbin adapter: %w", err)
+		}
+		// Do not close dbClient here; keep it for adapter lifetime
+		gormDB, err := gorm.Open(postgres.New(postgres.Config{Conn: dbClient.SQLDB}), &gorm.Config{})
+		if err != nil {
+			logger.Error("could not open gorm DB for Casbin adapter", slog.Any("error", err))
+			return fmt.Errorf("could not open gorm DB for Casbin adapter: %w", err)
+		}
+		// Auto-migrate casbin_rule table into the configured schema (search_path already set)
+		if err := gormDB.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
+			logger.Error("failed to auto-migrate casbin_rule table", slog.Any("error", err))
+			return fmt.Errorf("failed to auto-migrate casbin_rule table: %w", err)
+		}
+		var casbinAdapter persist.Adapter
+		casbinAdapter, err = gormadapter.NewAdapterByDB(gormDB)
+		if err != nil {
+			logger.Error("failed to initialize gorm casbin adapter", slog.Any("error", err))
+			return fmt.Errorf("failed to initialize gorm casbin adapter: %w", err)
+		}
+		cfg.Server.Auth.Policy.Adapter = casbinAdapter
+		logger.Info("SQL-backed Casbin adapter configured", slog.String("schema", cfg.DB.Schema))
 	}
 
 	// Apply additional CORS configuration from programmatic options

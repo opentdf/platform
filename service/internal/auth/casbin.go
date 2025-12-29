@@ -112,6 +112,53 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		return nil, fmt.Errorf("failed to create casbin enforcer: %w", err)
 	}
 
+	// If using SQL policy storage (opt-in) and the adapter is empty, seed with standard policy
+	if c.EnableSQLPolicy {
+		// Try to load any existing policies from adapter; if none, perform seeding
+		if err := e.LoadPolicy(); err != nil {
+			logger.Warn("failed loading existing policy from adapter; attempting seed", slog.Any("error", err))
+		}
+		ep, _ := e.GetPolicy()
+		eg, _ := e.GetGroupingPolicy()
+		hasPolicies := len(ep) > 0 || len(eg) > 0
+		if !hasPolicies {
+			// Build a temporary enforcer using the combined CSV and then persist into SQL adapter
+			seedAdapter := stringadapter.NewAdapter(c.Csv)
+			seedEnf, seedErr := casbin.NewEnforcer(m, seedAdapter)
+			if seedErr != nil {
+				return nil, fmt.Errorf("failed to create seeding enforcer: %w", seedErr)
+			}
+			if loadErr := seedEnf.LoadPolicy(); loadErr != nil {
+				return nil, fmt.Errorf("failed to load seed policy: %w", loadErr)
+			}
+			// Copy policies and grouping policies
+			sp, _ := seedEnf.GetPolicy()
+			for _, p := range sp {
+				args := make([]any, len(p))
+				for i, v := range p {
+					args[i] = v
+				}
+				if _, addErr := e.AddPolicy(args...); addErr != nil {
+					logger.Warn("failed to add seed policy", slog.Any("policy", p), slog.Any("error", addErr))
+				}
+			}
+			sg, _ := seedEnf.GetGroupingPolicy()
+			for _, g := range sg {
+				args := make([]any, len(g))
+				for i, v := range g {
+					args[i] = v
+				}
+				if _, addErr := e.AddGroupingPolicy(args...); addErr != nil {
+					logger.Warn("failed to add seed grouping policy", slog.Any("grouping", g), slog.Any("error", addErr))
+				}
+			}
+			if saveErr := e.SavePolicy(); saveErr != nil {
+				return nil, fmt.Errorf("failed to persist seed policy to SQL adapter: %w", saveErr)
+			}
+			logger.Info("seeded SQL policy store with standard policy")
+		}
+	}
+
 	return &Enforcer{
 		Enforcer:        e,
 		Config:          c,

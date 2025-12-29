@@ -1119,6 +1119,8 @@ components:
           description: Common metadata
           $ref: '#/components/schemas/common.MetadataMutable'
       title: CreateKeyAccessServerRequest
+      required:
+        - name
       additionalProperties: false
     policy.kasregistry.CreateKeyAccessServerResponse:
       type: object

@@ -621,22 +621,6 @@ func (s *AuthnCasbinSuite) newTokenWithCilentID() (string, jwt.Token) {
 	return "", tok
 }
 
-// createTestSQLAdapter returns a GORM-backed Casbin adapter using an in-memory SQLite database.
-func (s *AuthnCasbinSuite) createTestSQLAdapter() *gormadapter.Adapter {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		s.T().Fatalf("failed to open sqlite gorm db: %v", err)
-	}
-	if err := db.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
-		s.T().Fatalf("failed to migrate casbin_rule: %v", err)
-	}
-	adp, err := gormadapter.NewAdapterByDB(db)
-	if err != nil {
-		s.T().Fatalf("failed to create gorm casbin adapter: %v", err)
-	}
-	return adp
-}
-
 func (s *AuthnCasbinSuite) Test_SQLPolicySeeding_Idempotent() {
 	adapter := s.createTestSQLAdapter()
 
@@ -671,4 +655,20 @@ func (s *AuthnCasbinSuite) Test_CSVMode_DefaultBehavior() {
 	p, _ := e.GetPolicy()
 	g, _ := e.GetGroupingPolicy()
 	s.Require().True(len(p) != 0 || len(g) != 0, "expected default CSV policies to be present")
+}
+
+// createTestSQLAdapter returns a GORM-backed Casbin adapter using an in-memory SQLite database.
+func (s *AuthnCasbinSuite) createTestSQLAdapter() *gormadapter.Adapter {
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		s.T().Fatalf("failed to open sqlite gorm db: %v", err)
+	}
+	if err := db.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
+		s.T().Fatalf("failed to migrate casbin_rule: %v", err)
+	}
+	adp, err := gormadapter.NewAdapterByDB(db)
+	if err != nil {
+		s.T().Fatalf("failed to create gorm casbin adapter: %v", err)
+	}
+	return adp
 }

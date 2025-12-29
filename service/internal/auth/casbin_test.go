@@ -642,7 +642,7 @@ func Test_SQLPolicySeeding_Idempotent(t *testing.T) {
 	adapter := createTestSQLAdapter(t)
 
 	cfg := CasbinConfig{PolicyConfig: PolicyConfig{}}
-	cfg.EnableSQLPolicy = true
+	cfg.EnableSQL = true
 	cfg.Adapter = adapter
 
 	e, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())

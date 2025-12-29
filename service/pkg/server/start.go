@@ -167,7 +167,7 @@ func Start(f ...StartOptions) error {
 	}
 
 	// Initialize SQL-backed Casbin adapter if opted in and no custom adapter provided
-	if cfg.Server.Auth.Policy.EnableSQLPolicy && cfg.Server.Auth.Policy.Adapter == nil {
+	if cfg.Server.Auth.Policy.EnableSQL && cfg.Server.Auth.Policy.Adapter == nil {
 		adapter, err := configureSQLCasbinAdapter(ctx, cfg, logger)
 		if err != nil {
 			return err

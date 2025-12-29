@@ -121,7 +121,7 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 	}
 
 	// If using SQL policy storage (opt-in), seed the store if empty
-	if c.EnableSQLPolicy {
+	if c.EnableSQL {
 		if err := enforcer.useSQLPolicy(m); err != nil {
 			return nil, err
 		}

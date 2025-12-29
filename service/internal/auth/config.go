@@ -47,10 +47,10 @@ type PolicyConfig struct {
 	Model     string `mapstructure:"model" json:"model"`
 	// Override the default string-adapter
 	Adapter persist.Adapter `mapstructure:"-" json:"-"`
-	// EnableSQLPolicy switches policy storage from CSV (default) to SQL.
+	// EnableSQL switches policy storage from CSV (default) to SQL.
 	// When enabled, an SQL Casbin adapter is expected to be provided via Adapter
 	// by the server initialization. Defaults to false for backwards compatibility.
-	EnableSQLPolicy bool `mapstructure:"enable_sql_policy" json:"enable_sql_policy" default:"false"`
+	EnableSQL bool `mapstructure:"enable_sql" json:"enable_sql" default:"false"`
 }
 
 func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {

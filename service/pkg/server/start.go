@@ -14,9 +14,6 @@ import (
 	"connectrpc.com/connect"
 	"github.com/casbin/casbin/v2/persist"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
-	"github.com/opentdf/platform/service/pkg/db"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
@@ -27,9 +24,12 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/tracing"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 const devModeMessage = `

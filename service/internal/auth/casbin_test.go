@@ -7,10 +7,13 @@ import (
 	"testing"
 
 	"github.com/casbin/casbin/v2/model"
+	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/creasty/defaults"
+	"github.com/glebarez/sqlite"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/suite"
+	"gorm.io/gorm"
 )
 
 func TestAuthnCasbinSuite(t *testing.T) {
@@ -616,4 +619,74 @@ func (s *AuthnCasbinSuite) newTokenWithCilentID() (string, jwt.Token) {
 		s.T().Fatal(err)
 	}
 	return "", tok
+}
+
+// createTestSQLAdapter returns a GORM-backed Casbin adapter using an in-memory SQLite database.
+func createTestSQLAdapter(t *testing.T) *gormadapter.Adapter {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("failed to open sqlite gorm db: %v", err)
+	}
+	if err := db.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
+		t.Fatalf("failed to migrate casbin_rule: %v", err)
+	}
+	adp, err := gormadapter.NewAdapterByDB(db)
+	if err != nil {
+		t.Fatalf("failed to create gorm casbin adapter: %v", err)
+	}
+	return adp
+}
+
+func Test_SQLPolicySeeding_Idempotent(t *testing.T) {
+	adapter := createTestSQLAdapter(t)
+
+	cfg := CasbinConfig{PolicyConfig: PolicyConfig{}}
+	cfg.EnableSQLPolicy = true
+	cfg.Adapter = adapter
+
+	e, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
+	if err != nil {
+		t.Fatalf("failed to create enforcer: %v", err)
+	}
+
+	if err := e.LoadPolicy(); err != nil {
+		t.Fatalf("failed to load policy: %v", err)
+	}
+	p1, _ := e.GetPolicy()
+	g1, _ := e.GetGroupingPolicy()
+	if len(p1) == 0 && len(g1) == 0 {
+		t.Fatalf("expected seeded policies but found none")
+	}
+
+	e2, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
+	if err != nil {
+		t.Fatalf("failed to create second enforcer: %v", err)
+	}
+	if err := e2.LoadPolicy(); err != nil {
+		t.Fatalf("failed to load policy on second enforcer: %v", err)
+	}
+	p2, _ := e2.GetPolicy()
+	g2, _ := e2.GetGroupingPolicy()
+
+	if len(p1) != len(p2) || len(g1) != len(g2) {
+		t.Fatalf("policy count changed on second initialization: policies %d->%d, grouping %d->%d", len(p1), len(p2), len(g1), len(g2))
+	}
+}
+
+func Test_CSVMode_DefaultBehavior(t *testing.T) {
+	cfg := CasbinConfig{PolicyConfig: PolicyConfig{}}
+	e, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
+	if err != nil {
+		t.Fatalf("failed to create enforcer: %v", err)
+	}
+
+	if err := e.LoadPolicy(); err != nil {
+		t.Fatalf("failed to load csv-backed policy: %v", err)
+	}
+	p, _ := e.GetPolicy()
+	g, _ := e.GetGroupingPolicy()
+	if len(p) == 0 && len(g) == 0 {
+		t.Fatalf("expected default CSV policies to be present")
+	}
 }

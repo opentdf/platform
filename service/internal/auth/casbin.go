@@ -248,6 +248,18 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	return roles
 }
 
+func (e *Enforcer) addSeed(entries [][]string, addFn func(...any) (bool, error), failMsg string, field string) {
+	for _, entry := range entries {
+		args := make([]any, len(entry))
+		for i, v := range entry {
+			args[i] = v
+		}
+		if _, err := addFn(args...); err != nil {
+			e.logger.Warn(failMsg, slog.Any(field, entry), slog.Any("error", err))
+		}
+	}
+}
+
 // useSQLPolicy loads existing policies from the configured adapter. If none are found,
 // it seeds the SQL store with the combined CSV policy in e.Config.Csv and persists it.
 func (e *Enforcer) useSQLPolicy(m casbinModel.Model) error {
@@ -278,26 +290,10 @@ func (e *Enforcer) useSQLPolicy(m casbinModel.Model) error {
 	}
 
 	sp, _ := seedEnf.GetPolicy()
-	for _, p := range sp {
-		args := make([]any, len(p))
-		for i, v := range p {
-			args[i] = v
-		}
-		if _, addErr := e.AddPolicy(args...); addErr != nil {
-			e.logger.Warn("failed to add seed policy", slog.Any("policy", p), slog.Any("error", addErr))
-		}
-	}
+	e.addSeed(sp, e.AddPolicy, "failed to add seed policy", "policy")
 
 	sg, _ := seedEnf.GetGroupingPolicy()
-	for _, g := range sg {
-		args := make([]any, len(g))
-		for i, v := range g {
-			args[i] = v
-		}
-		if _, addErr := e.AddGroupingPolicy(args...); addErr != nil {
-			e.logger.Warn("failed to add seed grouping policy", slog.Any("grouping", g), slog.Any("error", addErr))
-		}
-	}
+	e.addSeed(sg, e.AddGroupingPolicy, "failed to add seed grouping policy", "grouping")
 
 	if saveErr := e.SavePolicy(); saveErr != nil {
 		return fmt.Errorf("failed to persist seed policy to SQL adapter: %w", saveErr)

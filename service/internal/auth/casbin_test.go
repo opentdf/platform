@@ -9,7 +9,7 @@ import (
 	"github.com/casbin/casbin/v2/model"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/creasty/defaults"
-    "github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/suite"
 	"gorm.io/driver/sqlite"
@@ -623,52 +623,52 @@ func (s *AuthnCasbinSuite) newTokenWithCilentID() (string, jwt.Token) {
 
 // createTestSQLAdapter returns a GORM-backed Casbin adapter using an in-memory SQLite database.
 func (s *AuthnCasbinSuite) createTestSQLAdapter() *gormadapter.Adapter {
-    db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-    if err != nil {
-        s.T().Fatalf("failed to open sqlite gorm db: %v", err)
-    }
-    if err := db.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
-        s.T().Fatalf("failed to migrate casbin_rule: %v", err)
-    }
-    adp, err := gormadapter.NewAdapterByDB(db)
-    if err != nil {
-        s.T().Fatalf("failed to create gorm casbin adapter: %v", err)
-    }
-    return adp
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		s.T().Fatalf("failed to open sqlite gorm db: %v", err)
+	}
+	if err := db.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
+		s.T().Fatalf("failed to migrate casbin_rule: %v", err)
+	}
+	adp, err := gormadapter.NewAdapterByDB(db)
+	if err != nil {
+		s.T().Fatalf("failed to create gorm casbin adapter: %v", err)
+	}
+	return adp
 }
 
 func (s *AuthnCasbinSuite) Test_SQLPolicySeeding_Idempotent() {
-    adapter := s.createTestSQLAdapter()
+	adapter := s.createTestSQLAdapter()
 
-    cfg := CasbinConfig{PolicyConfig: PolicyConfig{}}
-    cfg.EnableSQL = true
-    cfg.Adapter = adapter
+	cfg := CasbinConfig{PolicyConfig: PolicyConfig{}}
+	cfg.EnableSQL = true
+	cfg.Adapter = adapter
 
-    e, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
-    s.Require().NoError(err, "failed to create enforcer")
+	e, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
+	s.Require().NoError(err, "failed to create enforcer")
 
-    s.Require().NoError(e.LoadPolicy(), "failed to load policy")
-    p1, _ := e.GetPolicy()
-    g1, _ := e.GetGroupingPolicy()
-    s.Require().True(len(p1) != 0 || len(g1) != 0, "expected seeded policies but found none")
+	s.Require().NoError(e.LoadPolicy(), "failed to load policy")
+	p1, _ := e.GetPolicy()
+	g1, _ := e.GetGroupingPolicy()
+	s.Require().True(len(p1) != 0 || len(g1) != 0, "expected seeded policies but found none")
 
-    e2, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
-    s.Require().NoError(err, "failed to create second enforcer")
-    s.Require().NoError(e2.LoadPolicy(), "failed to load policy on second enforcer")
-    p2, _ := e2.GetPolicy()
-    g2, _ := e2.GetGroupingPolicy()
+	e2, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
+	s.Require().NoError(err, "failed to create second enforcer")
+	s.Require().NoError(e2.LoadPolicy(), "failed to load policy on second enforcer")
+	p2, _ := e2.GetPolicy()
+	g2, _ := e2.GetGroupingPolicy()
 
-    s.Equal(len(p1), len(p2), "policy count changed on second initialization")
-    s.Equal(len(g1), len(g2), "grouping policy count changed on second initialization")
+	s.Len(p1, len(p2), "policy count changed on second initialization")
+	s.Len(g1, len(g2), "grouping policy count changed on second initialization")
 }
 
 func (s *AuthnCasbinSuite) Test_CSVMode_DefaultBehavior() {
-    cfg := CasbinConfig{PolicyConfig: PolicyConfig{}}
-    e, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
-    s.Require().NoError(err, "failed to create enforcer")
+	cfg := CasbinConfig{PolicyConfig: PolicyConfig{}}
+	e, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
+	s.Require().NoError(err, "failed to create enforcer")
 
-    s.Require().NoError(e.LoadPolicy(), "failed to load csv-backed policy")
-    p, _ := e.GetPolicy()
-    g, _ := e.GetGroupingPolicy()
-    s.Require().True(len(p) != 0 || len(g) != 0, "expected default CSV policies to be present")
+	s.Require().NoError(e.LoadPolicy(), "failed to load csv-backed policy")
+	p, _ := e.GetPolicy()
+	g, _ := e.GetGroupingPolicy()
+	s.Require().True(len(p) != 0 || len(g) != 0, "expected default CSV policies to be present")
 }

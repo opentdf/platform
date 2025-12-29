@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -275,7 +276,8 @@ func (c *Config) Reload(ctx context.Context) error {
 
 		// Unmarshal the merged configuration into the main config struct `c`
 		// so it's available for the next iteration of the dependency loop.
-		if err := orderedViper.Unmarshal(c); err != nil {
+		// TextUnmarshallerHookFunc enables custom types with UnmarshalText to decode from strings.
+		if err := orderedViper.Unmarshal(c, viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc())); err != nil {
 			return errors.Join(err, ErrUnmarshallingConfig)
 		}
 

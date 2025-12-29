@@ -558,6 +558,8 @@ server:
     audience: 'http://localhost:8080'
     issuer: http://keycloak:8888/auth/realms/opentdf
     policy:
+      # Opt-in SQL policy store
+      enable_sql: true
       
       ## Deprecated
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)

@@ -168,10 +168,11 @@ func Start(f ...StartOptions) error {
 
 	// Initialize SQL-backed Casbin adapter if opted in and no custom adapter provided
 	if cfg.Server.Auth.Policy.EnableSQL && cfg.Server.Auth.Policy.Adapter == nil {
-		adapter, err := configureSQLCasbinAdapter(ctx, cfg, logger)
+		adapter, cleanup, err := configureSQLCasbinAdapter(ctx, cfg, logger)
 		if err != nil {
 			return err
 		}
+		defer cleanup()
 		cfg.Server.Auth.Policy.Adapter = adapter
 	}
 
@@ -322,29 +323,34 @@ func Start(f ...StartOptions) error {
 // configureSQLCasbinAdapter initializes a GORM-backed Casbin adapter using the platform DB settings,
 // auto-migrates the casbin_rule table (respecting search_path schema), and returns the adapter.
 // It intentionally keeps the DB client open for the adapter's lifetime.
-func configureSQLCasbinAdapter(ctx context.Context, cfg *config.Config, logger *logger.Logger) (persist.Adapter, error) {
+func configureSQLCasbinAdapter(ctx context.Context, cfg *config.Config, logger *logger.Logger) (persist.Adapter, func(), error) {
 	logger.Info("initializing SQL-backed Casbin adapter (opt-in)")
 	dbClient, err := db.New(ctx, cfg.DB, cfg.Logger, nil)
 	if err != nil {
 		logger.Error("could not create DB client for Casbin adapter", slog.Any("error", err))
-		return nil, fmt.Errorf("could not create DB client for Casbin adapter: %w", err)
+		return nil, func() {}, fmt.Errorf("could not create DB client for Casbin adapter: %w", err)
 	}
+	cleanup := func() { dbClient.Close() }
+
 	gormDB, err := gorm.Open(postgres.New(postgres.Config{Conn: dbClient.SQLDB}), &gorm.Config{})
 	if err != nil {
+		cleanup()
 		logger.Error("could not open gorm DB for Casbin adapter", slog.Any("error", err))
-		return nil, fmt.Errorf("could not open gorm DB for Casbin adapter: %w", err)
+		return nil, func() {}, fmt.Errorf("could not open gorm DB for Casbin adapter: %w", err)
 	}
 	if err := gormDB.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
+		cleanup()
 		logger.Error("failed to auto-migrate casbin_rule table", slog.Any("error", err))
-		return nil, fmt.Errorf("failed to auto-migrate casbin_rule table: %w", err)
+		return nil, func() {}, fmt.Errorf("failed to auto-migrate casbin_rule table: %w", err)
 	}
 	casbinAdapter, err := gormadapter.NewAdapterByDB(gormDB)
 	if err != nil {
+		cleanup()
 		logger.Error("failed to initialize gorm casbin adapter", slog.Any("error", err))
-		return nil, fmt.Errorf("failed to initialize gorm casbin adapter: %w", err)
+		return nil, func() {}, fmt.Errorf("failed to initialize gorm casbin adapter: %w", err)
 	}
 	logger.Info("SQL-backed Casbin adapter configured", slog.String("schema", cfg.DB.Schema))
-	return casbinAdapter, nil
+	return casbinAdapter, cleanup, nil
 }
 
 // waitForShutdownSignal blocks until a SIGINT or SIGTERM is received.

@@ -255,8 +255,14 @@ func (e *Enforcer) useSQLPolicy(m casbinModel.Model) error {
 	if err := e.LoadPolicy(); err != nil {
 		e.logger.Warn("failed loading existing policy from adapter; attempting seed", slog.Any("error", err))
 	}
-	ep, _ := e.GetPolicy()
-	eg, _ := e.GetGroupingPolicy()
+	ep, err := e.GetPolicy()
+	if err != nil {
+		return fmt.Errorf("failed to get existing policy: %w", err)
+	}
+	eg, err := e.GetGroupingPolicy()
+	if err != nil {
+		return fmt.Errorf("failed to get existing grouping policy: %w", err)
+	}
 	if len(ep) > 0 || len(eg) > 0 {
 		e.logger.Debug("SQL policy store already contains policies; skipping seed")
 		return nil

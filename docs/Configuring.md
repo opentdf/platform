@@ -534,6 +534,43 @@ OpenTDF uses Casbin to manage authorization policies. This document provides an 
 4. **CSV**: The authorization policy in CSV format. This will override the builtin policy.
 5. **Model**: The Casbin policy model. This should only be set if you have a deep understanding of how casbin works.
 
+#### SQL Policy Storage (Opt-in)
+
+By default, Casbin policies are loaded from CSV. You can opt-in to SQL-backed policy storage to enable mutable policies managed at runtime. When enabled, the platform uses the GORM Casbin adapter against the configured database.
+
+| Field                                 | Description                                                                                  | Default | Environment Variable                              |
+| ------------------------------------- | -------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------- |
+| `server.auth.policy.enable_sql_policy`| Enable SQL-backed Casbin storage (uses platform `db` connection).                            | `false` | OPENTDF_SERVER_AUTH_POLICY_ENABLE_SQL_POLICY      |
+
+Behavior when `enable_sql_policy` is true:
+- **Migration:** Automatically creates the `casbin_rule` table (via GORM `AutoMigrate`) in your configured schema.
+- **Seeding:** On first run (empty table), seeds the standard built-in policy into the SQL store. Subsequent runs are idempotent and skip seeding.
+- **Backwards Compatibility:** CSV remains the default; turning the flag off returns to CSV behavior.
+
+Operational notes:
+- Policies are persisted in the database and enforced from SQL when enabled.
+- The initial seed populates only the standard built-in policy. Extend or modify policies using Casbin management APIs or administrative tooling as needed.
+
+Example:
+
+```yaml
+server:
+  auth:
+    enabled: true
+    issuer: https://example-idp
+    audience: https://example-app
+    policy:
+      # Opt-in to SQL-backed storage
+      enable_sql_policy: true
+
+      # Optional: continue to declare claims and extensions
+      username_claim: email
+      group_claim: realm_access.roles
+      extension: |
+        g, opentdf-admin, role:admin
+        g, opentdf-standard, role:standard
+```
+
 #### Configuration in opentdf-example.yaml
 
 Below is an example configuration snippet from

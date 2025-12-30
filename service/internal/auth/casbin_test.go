@@ -678,7 +678,7 @@ func (s *AuthnCasbinSuite) getAndAssertDefaultPolicies(e *Enforcer) ([][]string,
 
 	g, gErr := e.GetGroupingPolicy()
 	s.Require().NoError(gErr, "failed to get grouping policy")
-	s.Require().Greater(len(g), 0, "expected default CSV grouping policies to be present")
+	s.Require().NotEmpty(g, "expected default CSV grouping policies to be present")
 	s.Require().Equal([]string{"opentdf-admin", "role:admin"}, g[0])
 	s.Require().Equal([]string{"opentdf-standard", "role:standard"}, g[1])
 	return p, g

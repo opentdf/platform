@@ -540,9 +540,9 @@ By default, Casbin policies are loaded from CSV. You can opt-in to SQL-backed po
 
 | Field                                 | Description                                                                                  | Default | Environment Variable                              |
 | ------------------------------------- | -------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------- |
-| `server.auth.policy.enable_sql`| Enable SQL-backed Casbin storage (uses platform `db` connection).                                   | `false` | OPENTDF_SERVER_AUTH_POLICY_ENABLE_SQL            |
+| `server.auth.policy.adapter`| Choose method of Casbin storage ("CSV" or "SQL").                                   | `CSV` | OPENTDF_SERVER_AUTH_POLICY_ADAPTER            |
 
-When enabled, the adapter auto‑migrates the `casbin_rule` table and seeds the built‑in policy only if the store is empty. CSV remains the default when the flag is disabled.
+When the SQL adapter is chosen, it auto‑migrates the `casbin_rule` table and seeds the built‑in policy only if the store is empty. Otherwise, CSV is used as the default store.
 
 #### Configuration in opentdf-example.yaml
 
@@ -559,7 +559,7 @@ server:
     issuer: http://keycloak:8888/auth/realms/opentdf
     policy:
       # Opt-in SQL policy store
-      enable_sql: true
+      adapter: SQL
       
       ## Deprecated
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)

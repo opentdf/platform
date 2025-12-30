@@ -265,6 +265,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_DeprecatedProtoEnums_Fai
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrMissingValue)
 
+	//nolint:staticcheck // SA1019: Action.Value field is deprecated but tested here to ensure proper error handling
 	newSubjectMapping.GetActions()[0].Value = &policy.Action_Standard{
 		Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
 	}
@@ -420,6 +421,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions_DeprecatedProtoE
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrMissingValue)
 
+	//nolint:staticcheck // SA1019: Action.Value field is deprecated but tested here to ensure proper error handling
 	updateReq.Actions[0].Value = &policy.Action_Standard{
 		Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
 	}

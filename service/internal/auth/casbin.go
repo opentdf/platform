@@ -255,7 +255,11 @@ func (e *Enforcer) addSeed(entries [][]string, addFn func(...any) (bool, error),
 			args[i] = v
 		}
 		if _, err := addFn(args...); err != nil {
-			e.logger.Warn("failed to add seed entry", slog.Any(field, entry), slog.Any("error", err))
+			e.logger.Warn(
+				"failed to add seed entry",
+				slog.Any(field, entry),
+				slog.Any("error", err),
+			)
 		}
 	}
 }

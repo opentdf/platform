@@ -289,10 +289,16 @@ func (e *Enforcer) useSQLPolicy(m casbinModel.Model) error {
 		return fmt.Errorf("failed to load seed policy: %w", loadErr)
 	}
 
-	sp, _ := seedEnf.GetPolicy()
+	sp, spErr := seedEnf.GetPolicy()
+	if spErr != nil {
+		return fmt.Errorf("failed to get seed policy: %w", spErr)
+	}
 	e.addSeed(sp, e.AddPolicy, "failed to add seed policy", "policy")
 
-	sg, _ := seedEnf.GetGroupingPolicy()
+	sg, sgErr := seedEnf.GetGroupingPolicy()
+	if sgErr != nil {
+		return fmt.Errorf("failed to get seed grouping policy: %w", sgErr)
+	}
 	e.addSeed(sg, e.AddGroupingPolicy, "failed to add seed grouping policy", "grouping")
 
 	if saveErr := e.SavePolicy(); saveErr != nil {

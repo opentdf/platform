@@ -39,6 +39,7 @@ require (
 	github.com/opentdf/platform/protocol/go v0.14.0
 	github.com/opentdf/platform/sdk v0.10.1
 	github.com/pressly/goose/v3 v3.24.3
+	github.com/sony/gobreaker/v2 v2.3.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.11.1

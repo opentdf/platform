@@ -88,10 +88,10 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 	}
 
 	isDefaultAdapter := false
-	// If adapter is not provided, use the default string adapter
-	if c.Adapter == nil {
+	// If adapter instance is not provided, use the default string adapter
+	if c.AdapterInstance == nil {
 		isDefaultAdapter = true
-		c.Adapter = stringadapter.NewAdapter(c.Csv)
+		c.AdapterInstance = stringadapter.NewAdapter(c.Csv)
 	}
 
 	logger.Debug("creating casbin enforcer",
@@ -107,7 +107,7 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		return nil, fmt.Errorf("failed to create casbin model: %w", err)
 	}
 
-	e, err := casbin.NewEnforcer(m, c.Adapter)
+	e, err := casbin.NewEnforcer(m, c.AdapterInstance)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create casbin enforcer: %w", err)
 	}
@@ -120,8 +120,8 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		logger:          logger,
 	}
 
-	// If using SQL policy storage (opt-in), seed the store if empty
-	if c.EnableSQL {
+	// If using SQL policy storage, seed the store if empty
+	if c.Adapter == "sql" {
 		if err := enforcer.useSQLPolicy(m); err != nil {
 			return nil, err
 		}

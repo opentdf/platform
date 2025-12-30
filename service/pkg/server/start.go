@@ -163,17 +163,17 @@ func Start(f ...StartOptions) error {
 
 	// Set Casbin Adapter
 	if startConfig.casbinAdapter != nil {
-		cfg.Server.Auth.Policy.Adapter = startConfig.casbinAdapter
+		cfg.Server.Auth.Policy.AdapterInstance = startConfig.casbinAdapter
 	}
 
-	// Initialize SQL-backed Casbin adapter if opted in and no custom adapter provided
-	if cfg.Server.Auth.Policy.EnableSQL && cfg.Server.Auth.Policy.Adapter == nil {
+	// Initialize SQL-backed Casbin adapter if configured and no custom adapter provided
+	if cfg.Server.Auth.Policy.Adapter == "sql" && cfg.Server.Auth.Policy.AdapterInstance == nil {
 		adapter, cleanup, err := configureSQLCasbinAdapter(ctx, cfg, logger)
 		if err != nil {
 			return err
 		}
 		defer cleanup()
-		cfg.Server.Auth.Policy.Adapter = adapter
+		cfg.Server.Auth.Policy.AdapterInstance = adapter
 	}
 
 	// Apply additional CORS configuration from programmatic options

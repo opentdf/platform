@@ -625,8 +625,8 @@ func (s *AuthnCasbinSuite) Test_SQLPolicySeeding_Idempotent() {
 	adapter := s.createTestSQLAdapter()
 
 	cfg := CasbinConfig{PolicyConfig: PolicyConfig{}}
-	cfg.EnableSQL = true
-	cfg.Adapter = adapter
+	cfg.Adapter = "sql"
+	cfg.AdapterInstance = adapter
 
 	e, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
 	s.Require().NoError(err, "failed to create enforcer")

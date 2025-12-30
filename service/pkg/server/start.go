@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"slices"
+	"strings"
 	"syscall"
 
 	"connectrpc.com/connect"
@@ -158,17 +159,14 @@ func Start(f ...StartOptions) error {
 		cfg.Server.Auth.Policy.Builtin = startConfig.builtinPolicyOverride
 	}
 
-	// Set Casbin Adapter
-	if startConfig.casbinAdapter != nil {
-		cfg.Server.Auth.Policy.Adapter = startConfig.casbinAdapter
-	}
+	// Adapter selection is now string-based; programmatic adapter objects are deprecated.
 
 	// If SQL-backed policy storage is enabled and no custom adapter is provided,
 	// route a DB handle through the Authenticator constructor so Casbin configures
 	// its SQL adapter internally.
-	var authSQLCleanup func()
-	var authSQLDB *sql.DB
-	if cfg.Server.Auth.Policy.EnableSQL && cfg.Server.Auth.Policy.Adapter == nil {
+	var authSQLCleanup func() = func() {}
+	var authSQLDB *sql.DB = nil
+	if strings.ToUpper(cfg.Server.Auth.Policy.Adapter) == "SQL" {
 		dbClient, err := db.New(ctx, cfg.DB, cfg.Logger, nil)
 		if err != nil {
 			logger.Error("could not create DB client for Authenticator", slog.Any("error", err))
@@ -177,6 +175,7 @@ func Start(f ...StartOptions) error {
 		authSQLDB = dbClient.SQLDB
 		authSQLCleanup = func() { dbClient.Close() }
 	}
+	cfg.Server.Auth.SQLDB = authSQLDB
 
 	// Apply additional CORS configuration from programmatic options
 	// These are appended to the YAML config values; deduplication happens in Effective*() methods
@@ -196,19 +195,14 @@ func Start(f ...StartOptions) error {
 	// Create new server for grpc & http. Also will support in process grpc potentially too
 	logger.Debug("initializing opentdf server")
 	cfg.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
-	// Initialize OpenTDF server. Authenticator reads cfg.Server.Auth.SQLDB.
-	if authSQLDB != nil {
-		cfg.Server.Auth.SQLDB = authSQLDB
-	}
+	// Initialize OpenTDF server.
 	otdf, err := server.NewOpenTDFServer(cfg.Server, logger, cacheManager)
 	if err != nil {
 		logger.Error("issue creating opentdf server", slog.String("error", err.Error()))
 		return fmt.Errorf("issue creating opentdf server: %w", err)
 	}
 	defer otdf.Stop()
-	if authSQLCleanup != nil {
-		defer authSQLCleanup()
-	}
+	defer authSQLCleanup()
 
 	// Initialize the service registry
 	logger.Debug("initializing service registry")

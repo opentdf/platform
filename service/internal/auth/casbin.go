@@ -10,6 +10,7 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	casbinModel "github.com/casbin/casbin/v2/model"
+	"github.com/casbin/casbin/v2/persist"
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -93,26 +94,36 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		}, "\n")
 	}
 
+	// Determine adapter type from config: "csv" (default) or "sql"
+	adapterType := strings.ToUpper(c.Adapter)
+	if adapterType == "" {
+		adapterType = "CSV"
+	}
+
+	var adapterImpl persist.Adapter
 	isDefaultAdapter := false
-	// If adapter is not provided, choose based on SQL config
-	if c.Adapter == nil {
-		if c.EnableSQL && c.SQLDB != nil {
-			gdb, err := gorm.Open(postgres.New(postgres.Config{Conn: c.SQLDB}), &gorm.Config{})
-			if err != nil {
-				return nil, fmt.Errorf("failed to open gorm DB for casbin: %w", err)
-			}
-			if err := gdb.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
-				return nil, fmt.Errorf("failed to auto-migrate casbin_rule: %w", err)
-			}
-			adp, err := gormadapter.NewAdapterByDB(gdb)
-			if err != nil {
-				return nil, fmt.Errorf("failed to initialize gorm casbin adapter: %w", err)
-			}
-			c.Adapter = adp
-		} else {
-			isDefaultAdapter = true
-			c.Adapter = stringadapter.NewAdapter(c.Csv)
+	switch adapterType {
+	case "SQL":
+		if c.SQLDB == nil {
+			return nil, fmt.Errorf("sql adapter selected but SQLDB is nil")
 		}
+		gdb, err := gorm.Open(postgres.New(postgres.Config{Conn: c.SQLDB}), &gorm.Config{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to open gorm DB for casbin: %w", err)
+		}
+		if err := gdb.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
+			return nil, fmt.Errorf("failed to auto-migrate casbin_rule: %w", err)
+		}
+		adp, err := gormadapter.NewAdapterByDB(gdb)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize gorm casbin adapter: %w", err)
+		}
+		adapterImpl = adp
+	case "CSV":
+		isDefaultAdapter = true
+		adapterImpl = stringadapter.NewAdapter(c.Csv)
+	default:
+		return nil, fmt.Errorf("unknown adapter type: %s", adapterType)
 	}
 
 	logger.Debug("creating casbin enforcer",
@@ -128,7 +139,7 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		return nil, fmt.Errorf("failed to create casbin model: %w", err)
 	}
 
-	e, err := casbin.NewEnforcer(m, c.Adapter)
+	e, err := casbin.NewEnforcer(m, adapterImpl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create casbin enforcer: %w", err)
 	}
@@ -141,8 +152,8 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		logger:          logger,
 	}
 
-	// If using SQL policy storage (opt-in), seed the store if empty
-	if c.EnableSQL {
+	// If using SQL policy storage, seed the store if empty
+	if adapterType == "SQL" {
 		if err := enforcer.useSQLPolicy(m); err != nil {
 			return nil, err
 		}

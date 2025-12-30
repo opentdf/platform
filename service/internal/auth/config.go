@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/casbin/casbin/v2/persist"
 	"github.com/opentdf/platform/service/logger"
 )
 
@@ -48,12 +47,8 @@ type PolicyConfig struct {
 	// Extend the builtin policy with a custom policy
 	Extension string `mapstructure:"extension" json:"extension"`
 	Model     string `mapstructure:"model" json:"model"`
-	// Override the default string-adapter
-	Adapter persist.Adapter `mapstructure:"-" json:"-"`
-	// EnableSQL switches policy storage from CSV (default) to SQL.
-	// When enabled, an SQL Casbin adapter is expected to be provided via Adapter
-	// by the server initialization. Defaults to false for backwards compatibility.
-	EnableSQL bool `mapstructure:"enable_sql" json:"enable_sql" default:"false"`
+	// Adapter selects the policy storage backend: "CSV" (default) or "SQL".
+	Adapter string `mapstructure:"adapter" json:"adapter" default:"CSV"`
 }
 
 func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {

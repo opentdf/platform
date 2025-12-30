@@ -248,14 +248,14 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	return roles
 }
 
-func (e *Enforcer) addSeed(entries [][]string, addFn func(...any) (bool, error), failMsg string, field string) {
+func (e *Enforcer) addSeed(entries [][]string, addFn func(...any) (bool, error), field string) {
 	for _, entry := range entries {
 		args := make([]any, len(entry))
 		for i, v := range entry {
 			args[i] = v
 		}
 		if _, err := addFn(args...); err != nil {
-			e.logger.Warn(failMsg, slog.Any(field, entry), slog.Any("error", err))
+			e.logger.Warn("failed to add seed entry", slog.Any(field, entry), slog.Any("error", err))
 		}
 	}
 }
@@ -313,8 +313,8 @@ func (e *Enforcer) useSQLPolicy(m casbinModel.Model) error {
 	if getSeedErr != nil {
 		return fmt.Errorf("failed to get seed policies: %w", getSeedErr)
 	}
-	e.addSeed(sp, e.AddPolicy, "failed to add seed policy", "policy")
-	e.addSeed(sg, e.AddGroupingPolicy, "failed to add seed grouping policy", "grouping")
+	e.addSeed(sp, e.AddPolicy, "policy")
+	e.addSeed(sg, e.AddGroupingPolicy, "grouping")
 
 	if saveErr := e.SavePolicy(); saveErr != nil {
 		return fmt.Errorf("failed to persist seed policy to SQL adapter: %w", saveErr)

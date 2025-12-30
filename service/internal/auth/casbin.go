@@ -8,9 +8,12 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	casbinModel "github.com/casbin/casbin/v2/model"
+	"github.com/casbin/casbin/v2/persist"
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
+	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
+	"gorm.io/gorm"
 
 	_ "embed"
 )
@@ -40,58 +43,67 @@ type casbinSubject []string
 
 type CasbinConfig struct {
 	PolicyConfig
+	// Adapter is the runtime Casbin adapter instance to use. For adapter="csv",
+	// if not provided, a string adapter will be created from the CSV policy.
+	// For adapter="sql", this must be provided by the caller (e.g., server wiring).
+	Adapter persist.Adapter
 }
 
 // newCasbinEnforcer creates a new casbin enforcer
 func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error) {
-	// Set Casbin config defaults if not provided
+	// Normalize adapter selection
+	adapterMode := strings.ToLower(strings.TrimSpace(c.PolicyConfig.Adapter))
+	if adapterMode == "" {
+		adapterMode = "csv"
+	}
+
+	// Set Casbin config defaults depending on adapter mode
 	isDefaultModel := false
-	if c.Model == "" {
+	isDefaultPolicy := false
+	isPolicyExtended := false
+	isDefaultAdapter := false
+
+	if adapterMode == "sql" {
+		// Disregard model/csv/extension from config; always use defaultModel.
 		c.Model = defaultModel
 		isDefaultModel = true
-	}
 
-	isDefaultPolicy := false
-	if c.Csv == "" {
-		// Set the Builtin Policy if provided
-		if c.Builtin != "" {
-			c.Csv = c.Builtin
-		} else {
-			c.Csv = builtinPolicy
+		// Require a runtime adapter instance for SQL
+		if c.Adapter == nil {
+			return nil, fmt.Errorf("sql adapter requires a runtime adapter instance; none provided")
 		}
-		isDefaultPolicy = true
-	}
-
-	if c.RoleMap != nil {
-		for k, v := range c.RoleMap {
-			c.Csv = strings.Join([]string{
-				c.Csv,
-				strings.Join([]string{"g", v, "role:" + k}, ", "),
-			}, "\n")
+	} else {
+		// CSV mode: honor model/csv/extension/roleMap; set defaults when missing
+		if c.Model == "" {
+			c.Model = defaultModel
+			isDefaultModel = true
 		}
-	}
 
-	isPolicyExtended := false
-	if c.Extension != "" {
-		c.Csv = strings.Join([]string{c.Csv, c.Extension}, "\n")
-		isPolicyExtended = true
-	}
+		if c.Csv == "" {
+			if c.Builtin != "" {
+				c.Csv = c.Builtin
+			} else {
+				c.Csv = builtinPolicy
+			}
+			isDefaultPolicy = true
+		}
 
-	// Because we provided built in group mappings we need to add them
-	// if extensions and rolemap are not provided
-	if c.RoleMap == nil && c.Extension == "" {
-		c.Csv = strings.Join([]string{
-			c.Csv,
-			"g, opentdf-admin, role:admin",
-			"g, opentdf-standard, role:standard",
-		}, "\n")
-	}
+		if c.Extension != "" {
+			c.Csv = strings.Join([]string{c.Csv, c.Extension}, "\n")
+			isPolicyExtended = true
+		}
 
-	isDefaultAdapter := false
-	// If adapter is not provided, use the default string adapter
-	if c.Adapter == nil {
-		isDefaultAdapter = true
-		c.Adapter = stringadapter.NewAdapter(c.Csv)
+		// Append grouping policies derived from config (role map or defaults)
+		groupingLines := groupingCSVLines(composeGroupingEntries(c.PolicyConfig))
+		if len(groupingLines) > 0 {
+			c.Csv = strings.Join([]string{c.Csv, strings.Join(groupingLines, "\n")}, "\n")
+		}
+
+		// If adapter is not provided, use the default string adapter from CSV
+		if c.Adapter == nil {
+			isDefaultAdapter = true
+			c.Adapter = stringadapter.NewAdapter(c.Csv)
+		}
 	}
 
 	logger.Debug("creating casbin enforcer",
@@ -120,8 +132,8 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		logger:          logger,
 	}
 
-	// If using SQL policy storage (opt-in), seed the store if empty
-	if c.EnableSQL {
+	// If using SQL policy storage, seed the store if empty
+	if adapterMode == "sql" {
 		if err := enforcer.useSQLPolicy(m); err != nil {
 			return nil, err
 		}
@@ -169,21 +181,25 @@ func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 	info := casbinSubject{}
 
 	e.logger.Debug("building subject from token")
-	roles := e.extractRolesFromToken(t)
 
+	// If a username claim exists and is valid, prefer enforcing by username only
 	if claim, found := t.Get(e.Config.UserNameClaim); found {
 		sub, ok := claim.(string)
-		subject = sub
-		if !ok {
-			e.logger.Warn("username claim not of type string",
-				slog.String("claim", e.Config.UserNameClaim),
-				slog.Any("claims", claim),
-			)
-			subject = ""
+		if ok {
+			subject = sub
+			info = append(info, subject)
+			return info
 		}
+		e.logger.Warn("username claim not of type string",
+			slog.String("claim", e.Config.UserNameClaim),
+			slog.Any("claims", claim),
+		)
+		// fall through to role-based enforcement when username claim is invalid
 	}
+
+	// No valid username claim; enforce using roles extracted from the token
+	roles := e.extractRolesFromToken(t)
 	info = append(info, roles...)
-	info = append(info, subject)
 	return info
 }
 
@@ -304,7 +320,8 @@ func (e *Enforcer) useSQLPolicy(m casbinModel.Model) error {
 		return nil
 	}
 
-	seedAdapter := stringadapter.NewAdapter(e.Config.Csv)
+	// Seed from the builtin policy, then add grouping policies derived from config
+	seedAdapter := stringadapter.NewAdapter(builtinPolicy)
 	seedEnf, seedErr := casbin.NewEnforcer(m, seedAdapter)
 	if seedErr != nil {
 		return fmt.Errorf("failed to create seeding enforcer: %w", seedErr)
@@ -318,11 +335,61 @@ func (e *Enforcer) useSQLPolicy(m casbinModel.Model) error {
 		return fmt.Errorf("failed to get seed policies: %w", getSeedErr)
 	}
 	e.addSeed(sp, e.AddPolicy, "policy")
-	e.addSeed(sg, e.AddGroupingPolicy, "grouping")
+	// Add grouping policies derived from runtime config (role map or defaults)
+	derivedGrouping := composeGroupingEntries(e.Config.PolicyConfig)
+	if len(derivedGrouping) == 0 {
+		// fall back to any grouping policies present in the builtin seed
+		e.addSeed(sg, e.AddGroupingPolicy, "grouping")
+	} else {
+		e.addSeed(derivedGrouping, e.AddGroupingPolicy, "grouping")
+	}
 
 	if saveErr := e.SavePolicy(); saveErr != nil {
 		return fmt.Errorf("failed to persist seed policy to SQL adapter: %w", saveErr)
 	}
 	e.logger.Info("seeded SQL policy store with standard policy")
 	return nil
+}
+
+// composeGroupingEntries returns grouping policies derived from PolicyConfig.RoleMap only.
+// - If RoleMap is provided, it maps each external role to its internal role: g, <mapped>, role:<key>
+// - If RoleMap is nil or empty, it returns no entries; callers should rely on builtin policy defaults.
+func composeGroupingEntries(c PolicyConfig) [][]string {
+	entries := [][]string{}
+	if c.RoleMap == nil {
+		return entries
+	}
+	for k, v := range c.RoleMap {
+		entries = append(entries, []string{v, "role:" + k})
+	}
+	return entries
+}
+
+// groupingCSVLines converts grouping entries to CSV lines suitable for the string adapter
+func groupingCSVLines(entries [][]string) []string {
+	lines := []string{}
+	for _, e := range entries {
+		if len(e) != 2 {
+			continue
+		}
+		lines = append(lines, strings.Join([]string{"g", e[0], e[1]}, ", "))
+	}
+	return lines
+}
+
+// ConfigureSQLCasbinAdapter initializes a GORM-backed Casbin adapter using the platform DB settings,
+// auto-migrates the casbin_rule table (respecting search_path schema), and returns the adapter.
+// It intentionally keeps the DB client open for the adapter's lifetime.
+func ConfigureSQLCasbinAdapterWithGorm(gormDB *gorm.DB, logger *logger.Logger) (persist.Adapter, error) {
+	if err := gormDB.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
+		logger.Error("failed to auto-migrate casbin_rule table", slog.Any("error", err))
+		return nil, fmt.Errorf("failed to auto-migrate casbin_rule table: %w", err)
+	}
+	casbinAdapter, err := gormadapter.NewAdapterByDB(gormDB)
+	if err != nil {
+		logger.Error("failed to initialize gorm casbin adapter", slog.Any("error", err))
+		return nil, fmt.Errorf("failed to initialize gorm casbin adapter: %w", err)
+	}
+	logger.Info("SQL-backed Casbin adapter configured")
+	return casbinAdapter, nil
 }

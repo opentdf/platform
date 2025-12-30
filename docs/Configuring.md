@@ -536,13 +536,13 @@ OpenTDF uses Casbin to manage authorization policies. This document provides an 
 
 #### SQL Policy Storage (Opt-in)
 
-By default, Casbin policies are loaded from CSV. You can opt-in to SQL-backed policy storage to enable mutable policies managed at runtime. When enabled, the platform uses the GORM Casbin adapter against the configured database.
+By default, Casbin policies are loaded from CSV. You can opt in to SQL‑backed policy storage to enable mutable policies managed at runtime. When enabled, the platform uses the GORM Casbin adapter against the configured database.
 
-| Field                                 | Description                                                                                  | Default | Environment Variable                              |
-| ------------------------------------- | -------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------- |
-| `server.auth.policy.enable_sql`| Enable SQL-backed Casbin storage (uses platform `db` connection).                                   | `false` | OPENTDF_SERVER_AUTH_POLICY_ENABLE_SQL            |
+| Field                              | Description                                                                        | Default | Environment Variable                       |
+| ---------------------------------- | ---------------------------------------------------------------------------------- | ------- | ------------------------------------------ |
+| `server.auth.policy.adapter`       | Policy adapter mode: `csv` (default) or `sql` (SQL‑backed via platform database). | `csv`   | OPENTDF_SERVER_AUTH_POLICY_ADAPTER         |
 
-When enabled, the adapter auto‑migrates the `casbin_rule` table and seeds the built‑in policy only if the store is empty. CSV remains the default when the flag is disabled.
+When set to `sql`, the adapter auto‑migrates the `casbin_rule` table and seeds the built‑in policy only if the store is empty. Set back to `csv` to return to embedded CSV behavior.
 
 #### Configuration in opentdf-example.yaml
 
@@ -559,7 +559,7 @@ server:
     issuer: http://keycloak:8888/auth/realms/opentdf
     policy:
       # Opt-in SQL policy store
-      enable_sql: true
+      adapter: sql
       
       ## Deprecated
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)

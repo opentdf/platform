@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 
-	"github.com/casbin/casbin/v2/persist"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/trust"
@@ -20,7 +19,7 @@ type StartConfig struct {
 	builtinPolicyOverride string
 	extraCoreServices     []serviceregistry.IService
 	extraServices         []serviceregistry.IService
-	casbinAdapter         persist.Adapter
+	casbinAdapter         string
 	configLoaders         []config.Loader
 	configLoaderOrder     []string
 
@@ -120,7 +119,7 @@ func WithServices(services ...serviceregistry.IService) StartOptions {
 }
 
 // WithCasbinAdapter option sets the casbin adapter to be used for the casbin enforcer.
-func WithCasbinAdapter(adapter persist.Adapter) StartOptions {
+func WithCasbinAdapter(adapter string) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.casbinAdapter = adapter
 		return c

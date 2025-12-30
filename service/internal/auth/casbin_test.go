@@ -625,7 +625,7 @@ func (s *AuthnCasbinSuite) Test_SQLPolicySeeding_Idempotent() {
 	adapter := s.createTestSQLAdapter()
 
 	cfg := CasbinConfig{PolicyConfig: PolicyConfig{}}
-	cfg.EnableSQL = true
+	cfg.PolicyConfig.Adapter = "sql"
 	cfg.Adapter = adapter
 
 	e, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
@@ -645,6 +645,7 @@ func (s *AuthnCasbinSuite) Test_SQLPolicySeeding_Idempotent() {
 
 func (s *AuthnCasbinSuite) Test_CSVMode_DefaultBehavior() {
 	cfg := CasbinConfig{PolicyConfig: PolicyConfig{}}
+	cfg.PolicyConfig.Adapter = "csv"
 	e, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
 	s.Require().NoError(err, "failed to create enforcer")
 
@@ -673,13 +674,33 @@ func (s *AuthnCasbinSuite) getAndAssertDefaultPolicies(e *Enforcer) ([][]string,
 	p, pErr := e.GetPolicy()
 	s.Require().NoError(pErr, "failed to get policy")
 	s.Require().Greater(len(p), 10, "expected default CSV policies to be present")
-	s.Require().Equal([]string{"role:admin", "*", "*", "allow"}, p[0])
-	s.Require().Equal([]string{"role:standard", "policy.*", "read", "allow"}, p[1])
+	s.Require().True(containsRow(p, []string{"role:admin", "*", "*", "allow"}), "expected admin wildcard allow policy to be present")
+	s.Require().True(containsRow(p, []string{"role:standard", "policy.*", "read", "allow"}), "expected standard policy.read allow to be present")
 
 	g, gErr := e.GetGroupingPolicy()
 	s.Require().NoError(gErr, "failed to get grouping policy")
 	s.Require().NotEmpty(g, "expected default CSV grouping policies to be present")
-	s.Require().Equal([]string{"opentdf-admin", "role:admin"}, g[0])
-	s.Require().Equal([]string{"opentdf-standard", "role:standard"}, g[1])
+	s.Require().True(containsRow(g, []string{"opentdf-admin", "role:admin"}), "expected admin grouping policy to be present")
+	s.Require().True(containsRow(g, []string{"opentdf-standard", "role:standard"}), "expected standard grouping policy to be present")
 	return p, g
+}
+
+// containsRow returns true if rows contain an entry exactly matching expected
+func containsRow(rows [][]string, expected []string) bool {
+	for _, r := range rows {
+		if len(r) != len(expected) {
+			continue
+		}
+		match := true
+		for i := range expected {
+			if r[i] != expected[i] {
+				match = false
+				break
+			}
+		}
+		if match {
+			return true
+		}
+	}
+	return false
 }

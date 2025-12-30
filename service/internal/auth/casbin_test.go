@@ -7,10 +7,13 @@ import (
 	"testing"
 
 	"github.com/casbin/casbin/v2/model"
+	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/creasty/defaults"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/suite"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 func TestAuthnCasbinSuite(t *testing.T) {
@@ -619,7 +622,15 @@ func (s *AuthnCasbinSuite) newTokenWithCilentID() (string, jwt.Token) {
 }
 
 func (s *AuthnCasbinSuite) Test_SQLPolicySeeding_Idempotent() {
-	cfg := CasbinConfig{PolicyConfig: PolicyConfig{}}
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		s.T().Fatalf("failed to open sqlite gorm db: %v", err)
+	}
+	if err := db.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
+		s.T().Fatalf("failed to migrate casbin_rule: %v", err)
+	}
+
+	cfg := CasbinConfig{PolicyConfig: PolicyConfig{}, GormDB: db}
 	cfg.Adapter = "SQL"
 
 	e, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
@@ -646,22 +657,6 @@ func (s *AuthnCasbinSuite) Test_CSVMode_DefaultBehavior() {
 	s.Require().NoError(e.LoadPolicy(), "failed to load csv-backed policy")
 	_, _ = s.getAndAssertDefaultPolicies(e)
 }
-
-// createTestSQLAdapter returns a GORM-backed Casbin adapter using an in-memory SQLite database.
-// func (s *AuthnCasbinSuite) createTestSQLAdapter() *gormadapter.Adapter {
-// 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-// 	if err != nil {
-// 		s.T().Fatalf("failed to open sqlite gorm db: %v", err)
-// 	}
-// 	if err := db.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
-// 		s.T().Fatalf("failed to migrate casbin_rule: %v", err)
-// 	}
-// 	adp, err := gormadapter.NewAdapterByDB(db)
-// 	if err != nil {
-// 		s.T().Fatalf("failed to create gorm casbin adapter: %v", err)
-// 	}
-// 	return adp
-// }
 
 // getAndAssertDefaultPolicies retrieves policies and asserts they contain the default entries
 func (s *AuthnCasbinSuite) getAndAssertDefaultPolicies(e *Enforcer) ([][]string, [][]string) {

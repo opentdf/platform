@@ -1,11 +1,11 @@
 package auth
 
 import (
-	"database/sql"
 	"errors"
 	"time"
 
 	"github.com/opentdf/platform/service/logger"
+	"gorm.io/gorm"
 )
 
 // AuthConfig pulls AuthN and AuthZ together
@@ -16,7 +16,7 @@ type Config struct {
 	IPCReauthRoutes []string `mapstructure:"-" json:"-"`
 	AuthNConfig     `mapstructure:",squash"`
 	// Optional SQL DB handle routed from server startup; not loaded from config.
-	SQLDB *sql.DB `mapstructure:"-" json:"-"`
+	GormDB *gorm.DB `mapstructure:"-" json:"-"`
 }
 
 // AuthNConfig is the configuration need for the platform to validate tokens

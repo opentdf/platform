@@ -146,7 +146,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 
 	casbinConfig := CasbinConfig{
 		PolicyConfig: cfg.Policy,
-		SQLDB:        cfg.SQLDB,
+		GormDB:       cfg.GormDB,
 	}
 
 	logger.Info("initializing casbin enforcer")

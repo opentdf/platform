@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"crypto/tls"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -28,6 +27,8 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/tracing"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 const devModeMessage = `
@@ -165,17 +166,23 @@ func Start(f ...StartOptions) error {
 	// route a DB handle through the Authenticator constructor so Casbin configures
 	// its SQL adapter internally.
 	var authSQLCleanup func() = func() {}
-	var authSQLDB *sql.DB = nil
+	var authGormDB *gorm.DB = nil
 	if strings.ToUpper(cfg.Server.Auth.Policy.Adapter) == "SQL" {
 		dbClient, err := db.New(ctx, cfg.DB, cfg.Logger, nil)
 		if err != nil {
 			logger.Error("could not create DB client for Authenticator", slog.Any("error", err))
 			return fmt.Errorf("could not create DB client for Authenticator: %w", err)
 		}
-		authSQLDB = dbClient.SQLDB
+		gdb, err := gorm.Open(postgres.New(postgres.Config{Conn: dbClient.SQLDB}), &gorm.Config{})
+		if err != nil {
+			logger.Error("failed to open gorm DB for Authenticator", slog.Any("error", err))
+			dbClient.Close()
+			return fmt.Errorf("failed to open gorm DB for Authenticator: %w", err)
+		}
+		authGormDB = gdb
 		authSQLCleanup = func() { dbClient.Close() }
 	}
-	cfg.Server.Auth.SQLDB = authSQLDB
+	cfg.Server.Auth.GormDB = authGormDB
 
 	// Apply additional CORS configuration from programmatic options
 	// These are appended to the YAML config values; deduplication happens in Effective*() methods

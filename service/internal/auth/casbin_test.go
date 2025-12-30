@@ -622,11 +622,17 @@ func (s *AuthnCasbinSuite) newTokenWithCilentID() (string, jwt.Token) {
 }
 
 func (s *AuthnCasbinSuite) Test_SQLPolicySeeding_Idempotent() {
-	adapter := s.createTestSQLAdapter()
+	// adapter := s.createTestSQLAdapter()
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		s.T().Fatalf("failed to open sqlite gorm db: %v", err)
+	}
+	if err := db.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
+		s.T().Fatalf("failed to migrate casbin_rule: %v", err)
+	}
 
-	cfg := CasbinConfig{PolicyConfig: PolicyConfig{}}
-	cfg.EnableSQL = true
-	cfg.Adapter = adapter
+	cfg := CasbinConfig{PolicyConfig: PolicyConfig{}, SQLDB: db}
+	cfg.Adapter = "SQL"
 
 	e, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
 	s.Require().NoError(err, "failed to create enforcer")
@@ -653,20 +659,20 @@ func (s *AuthnCasbinSuite) Test_CSVMode_DefaultBehavior() {
 }
 
 // createTestSQLAdapter returns a GORM-backed Casbin adapter using an in-memory SQLite database.
-func (s *AuthnCasbinSuite) createTestSQLAdapter() *gormadapter.Adapter {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		s.T().Fatalf("failed to open sqlite gorm db: %v", err)
-	}
-	if err := db.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
-		s.T().Fatalf("failed to migrate casbin_rule: %v", err)
-	}
-	adp, err := gormadapter.NewAdapterByDB(db)
-	if err != nil {
-		s.T().Fatalf("failed to create gorm casbin adapter: %v", err)
-	}
-	return adp
-}
+// func (s *AuthnCasbinSuite) createTestSQLAdapter() *gormadapter.Adapter {
+// 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+// 	if err != nil {
+// 		s.T().Fatalf("failed to open sqlite gorm db: %v", err)
+// 	}
+// 	if err := db.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
+// 		s.T().Fatalf("failed to migrate casbin_rule: %v", err)
+// 	}
+// 	adp, err := gormadapter.NewAdapterByDB(db)
+// 	if err != nil {
+// 		s.T().Fatalf("failed to create gorm casbin adapter: %v", err)
+// 	}
+// 	return adp
+// }
 
 // getAndAssertDefaultPolicies retrieves policies and asserts they contain the default entries
 func (s *AuthnCasbinSuite) getAndAssertDefaultPolicies(e *Enforcer) ([][]string, [][]string) {

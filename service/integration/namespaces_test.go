@@ -1095,11 +1095,25 @@ func (s *NamespacesSuite) Test_RemovePublicKeyFromNamespace_Not_Found_Fails() {
 	s.NotNil(resp)
 }
 
-func TestNamespacesSuite(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping namespaces integration tests")
+// Test_GetNamespace_ByIdAndName_ReturnSameResult validates that getNamespace works correctly
+// with both ID and name lookups
+func (s *NamespacesSuite) Test_GetNamespace_ByIdAndName_ReturnSameResult() {
+	testData := s.getActiveNamespaceFixtures()
+
+	for _, test := range testData {
+		// Get by ID
+		nsByID, err := s.db.PolicyClient.GetNamespace(s.ctx, test.ID)
+		s.Require().NoError(err, "Failed to get namespace by ID: %s", test.ID)
+		s.Require().NotNil(nsByID)
+
+		// Get by FQN (name)
+		nsByName, err := s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_Fqn{Fqn: test.Name})
+		s.Require().NoError(err, "Failed to get namespace by name: %s", test.Name)
+		s.Require().NotNil(nsByName)
+
+		// Verify both return the same namespace
+		s.True(proto.Equal(nsByID, nsByName))
 	}
-	suite.Run(t, new(NamespacesSuite))
 }
 
 func (s *NamespacesSuite) getActiveNamespaceFixtures() []fixtures.FixtureDataNamespace {
@@ -1108,4 +1122,11 @@ func (s *NamespacesSuite) getActiveNamespaceFixtures() []fixtures.FixtureDataNam
 		s.f.GetNamespaceKey("example.net"),
 		s.f.GetNamespaceKey("example.org"),
 	}
+}
+
+func TestNamespacesSuite(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping namespaces integration tests")
+	}
+	suite.Run(t, new(NamespacesSuite))
 }

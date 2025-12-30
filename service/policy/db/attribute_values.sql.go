@@ -362,7 +362,7 @@ FROM attribute_values av
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 WHERE (
     ($1::BOOLEAN IS NULL OR av.active = $1) AND
-    (NULLIF($2, '') IS NULL OR av.attribute_definition_id = $2::UUID) 
+    ($2::uuid IS NULL OR av.attribute_definition_id = $2::uuid) 
 )
 LIMIT $4 
 OFFSET $3
@@ -370,7 +370,7 @@ OFFSET $3
 
 type listAttributeValuesParams struct {
 	Active                pgtype.Bool `json:"active"`
-	AttributeDefinitionID interface{} `json:"attribute_definition_id"`
+	AttributeDefinitionID pgtype.UUID `json:"attribute_definition_id"`
 	Offset                int32       `json:"offset_"`
 	Limit                 int32       `json:"limit_"`
 }
@@ -401,7 +401,7 @@ type listAttributeValuesRow struct {
 //	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 //	WHERE (
 //	    ($1::BOOLEAN IS NULL OR av.active = $1) AND
-//	    (NULLIF($2, '') IS NULL OR av.attribute_definition_id = $2::UUID)
+//	    ($2::uuid IS NULL OR av.attribute_definition_id = $2::uuid)
 //	)
 //	LIMIT $4
 //	OFFSET $3

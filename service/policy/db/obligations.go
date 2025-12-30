@@ -27,6 +27,18 @@ func setOblValFQNs(values []*policy.ObligationValue, nsFQN, name string) []*poli
 ///
 
 func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.CreateObligationRequest) (*policy.Obligation, error) {
+	namespaceID := r.GetNamespaceId()
+	namespaceFqn := r.GetNamespaceFqn()
+
+	useID := len(namespaceID) > 0
+	parsedID := pgtypeUUID(namespaceID)
+	idIsValid := parsedID.Valid
+
+	// At least one of namespace_id or namespace_fqn must be provided
+	if useID && !idIsValid {
+		return nil, db.ErrUUIDInvalid
+	}
+
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
@@ -37,8 +49,8 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 		values[idx] = strings.ToLower(val)
 	}
 	queryParams := createObligationParams{
-		NamespaceID:  r.GetNamespaceId(),
-		NamespaceFqn: r.GetNamespaceFqn(),
+		NamespaceID:  pgtypeUUID(namespaceID),
+		NamespaceFqn: pgtypeText(namespaceFqn),
 		Name:         name,
 		Metadata:     metadataJSON,
 		Values:       values,
@@ -79,11 +91,20 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 }
 
 func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObligationRequest) (*policy.Obligation, error) {
+	id := r.GetId()
+	useID := len(id) > 0
+	parsedID := pgtypeUUID(id)
+	idIsValid := parsedID.Valid
+
+	if useID && !idIsValid {
+		return nil, db.ErrUUIDInvalid
+	}
+
 	nsFQN, oblName := identifier.BreakOblFQN(r.GetFqn())
 	queryParams := getObligationParams{
-		ID:           r.GetId(),
-		Name:         oblName,
-		NamespaceFqn: nsFQN,
+		ID:           parsedID,
+		Name:         pgtypeText(oblName),
+		NamespaceFqn: pgtypeText(nsFQN),
 	}
 
 	row, err := c.queries.getObligation(ctx, queryParams)
@@ -173,6 +194,15 @@ func (c PolicyDBClient) GetObligationsByFQNs(ctx context.Context, r *obligations
 }
 
 func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.ListObligationsRequest) ([]*policy.Obligation, *policy.PageResponse, error) {
+	namespaceID := r.GetNamespaceId()
+	useID := len(namespaceID) > 0
+	parsedID := pgtypeUUID(namespaceID)
+	idIsValid := parsedID.Valid
+
+	if useID && !idIsValid {
+		return nil, nil, db.ErrUUIDInvalid
+	}
+
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 
 	maxLimit := c.listCfg.limitMax
@@ -181,8 +211,8 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 	}
 
 	rows, err := c.queries.listObligations(ctx, listObligationsParams{
-		NamespaceID:  r.GetNamespaceId(),
-		NamespaceFqn: r.GetNamespaceFqn(),
+		NamespaceID:  parsedID,
+		NamespaceFqn: pgtypeText(r.GetNamespaceFqn()),
 		Limit:        limit,
 		Offset:       offset,
 	})
@@ -256,7 +286,7 @@ func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.Upd
 
 	count, err := c.queries.updateObligation(ctx, updateObligationParams{
 		ID:       id,
-		Name:     name,
+		Name:     pgtypeText(name),
 		Metadata: metadataJSON,
 	})
 	now := timestamppb.Now()
@@ -289,9 +319,9 @@ func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.Upd
 func (c PolicyDBClient) DeleteObligation(ctx context.Context, r *obligations.DeleteObligationRequest) (*policy.Obligation, error) {
 	nsFQN, oblName := identifier.BreakOblFQN(r.GetFqn())
 	queryParams := deleteObligationParams{
-		ID:           r.GetId(),
-		NamespaceFqn: nsFQN,
-		Name:         oblName,
+		ID:           pgtypeText(r.GetId()),
+		NamespaceFqn: pgtypeText(nsFQN),
+		Name:         pgtypeText(oblName),
 	}
 
 	id, err := c.queries.deleteObligation(ctx, queryParams)
@@ -312,6 +342,15 @@ func (c PolicyDBClient) DeleteObligation(ctx context.Context, r *obligations.Del
 ///
 
 func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligations.CreateObligationValueRequest) (*policy.ObligationValue, error) {
+	obligationID := r.GetObligationId()
+	useID := len(obligationID) > 0
+	parsedID := pgtypeUUID(obligationID)
+	idIsValid := parsedID.Valid
+
+	if useID && !idIsValid {
+		return nil, db.ErrUUIDInvalid
+	}
+
 	nsFQN, oblName := identifier.BreakOblFQN(r.GetObligationFqn())
 	value := strings.ToLower(r.GetValue())
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
@@ -320,9 +359,9 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 	}
 
 	queryParams := createObligationValueParams{
-		ID:           r.GetObligationId(),
-		Name:         oblName,
-		NamespaceFqn: nsFQN,
+		ID:           parsedID,
+		Name:         pgtypeText(oblName),
+		NamespaceFqn: pgtypeText(nsFQN),
 		Value:        value,
 		Metadata:     metadataJSON,
 	}
@@ -383,12 +422,21 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 }
 
 func (c PolicyDBClient) GetObligationValue(ctx context.Context, r *obligations.GetObligationValueRequest) (*policy.ObligationValue, error) {
+	id := r.GetId()
+	useID := len(id) > 0
+	parsedID := pgtypeUUID(id)
+	idIsValid := parsedID.Valid
+
+	if useID && !idIsValid {
+		return nil, db.ErrUUIDInvalid
+	}
+
 	nsFQN, oblName, oblVal := identifier.BreakOblValFQN(r.GetFqn())
 	queryParams := getObligationValueParams{
-		ID:           r.GetId(),
-		Name:         oblName,
-		Value:        oblVal,
-		NamespaceFqn: nsFQN,
+		ID:           parsedID,
+		Name:         pgtypeText(oblName),
+		Value:        pgtypeText(oblVal),
+		NamespaceFqn: pgtypeText(nsFQN),
 	}
 
 	row, err := c.queries.getObligationValue(ctx, queryParams)
@@ -512,7 +560,7 @@ func (c PolicyDBClient) UpdateObligationValue(ctx context.Context, r *obligation
 
 	count, err := c.queries.updateObligationValue(ctx, updateObligationValueParams{
 		ID:       id,
-		Value:    value,
+		Value:    pgtypeText(value),
 		Metadata: metadataJSON,
 	})
 	now := timestamppb.Now()
@@ -571,10 +619,10 @@ func (c PolicyDBClient) UpdateObligationValue(ctx context.Context, r *obligation
 func (c PolicyDBClient) DeleteObligationValue(ctx context.Context, r *obligations.DeleteObligationValueRequest) (*policy.ObligationValue, error) {
 	nsFQN, oblName, valName := identifier.BreakOblValFQN(r.GetFqn())
 	queryParams := deleteObligationValueParams{
-		ID:           r.GetId(),
-		NamespaceFqn: nsFQN,
-		Name:         oblName,
-		Value:        valName,
+		ID:           pgtypeText(r.GetId()),
+		NamespaceFqn: pgtypeText(nsFQN),
+		Name:         pgtypeText(oblName),
+		Value:        pgtypeText(valName),
 	}
 
 	id, err := c.queries.deleteObligationValue(ctx, queryParams)
@@ -618,12 +666,12 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 	}
 
 	params := createObligationTriggerParams{
-		ObligationValueID: oblVal.GetId(),
-		ActionName:        r.GetAction().GetName(),
-		ActionID:          r.GetAction().GetId(),
-		AttributeValueID:  r.GetAttributeValue().GetId(),
-		AttributeValueFqn: r.GetAttributeValue().GetFqn(),
-		ClientID:          r.GetContext().GetPep().GetClientId(),
+		ObligationValueID: pgtypeUUID(oblVal.GetId()),
+		ActionName:        pgtypeText(r.GetAction().GetName()),
+		ActionID:          pgtypeUUID(r.GetAction().GetId()),
+		AttributeValueID:  pgtypeUUID(r.GetAttributeValue().GetId()),
+		AttributeValueFqn: pgtypeText(r.GetAttributeValue().GetFqn()),
+		ClientID:          pgtypeText(r.GetContext().GetPep().GetClientId()),
 		Metadata:          metadataJSON,
 	}
 	row, err := c.queries.createObligationTrigger(ctx, params)
@@ -677,8 +725,8 @@ func (c PolicyDBClient) ListObligationTriggers(ctx context.Context, r *obligatio
 	}
 
 	rows, err := c.queries.listObligationTriggers(ctx, listObligationTriggersParams{
-		NamespaceID:  r.GetNamespaceId(),
-		NamespaceFqn: r.GetNamespaceFqn(),
+		NamespaceID:  pgtypeUUID(r.GetNamespaceId()),
+		NamespaceFqn: pgtypeText(r.GetNamespaceFqn()),
 		Offset:       offset,
 		Limit:        limit,
 	})

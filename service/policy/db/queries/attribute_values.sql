@@ -15,7 +15,7 @@ FROM attribute_values av
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 WHERE (
     (sqlc.narg('active')::BOOLEAN IS NULL OR av.active = sqlc.narg('active')) AND
-    (NULLIF(@attribute_definition_id, '') IS NULL OR av.attribute_definition_id = @attribute_definition_id::UUID) 
+    (sqlc.narg('attribute_definition_id')::uuid IS NULL OR av.attribute_definition_id = sqlc.narg('attribute_definition_id')::uuid) 
 )
 LIMIT @limit_ 
 OFFSET @offset_; 
@@ -137,7 +137,7 @@ LEFT JOIN (
 ) value_keys ON av.id = value_keys.value_id
 LEFT JOIN attribute_obligations ao ON av.id = ao.attribute_value_id
 WHERE (sqlc.narg('id')::uuid IS NULL OR av.id = sqlc.narg('id')::uuid)
-  AND (sqlc.narg('fqn')::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE(sqlc.narg('fqn')::text, '^https?://', ''))
+  AND (sqlc.narg('fqn')::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE(sqlc.narg('fqn')::text, '^https://', ''))
 GROUP BY av.id, fqns.fqn, value_keys.keys, ao.obligations;
 
 -- name: createAttributeValue :one

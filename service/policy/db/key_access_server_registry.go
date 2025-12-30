@@ -301,9 +301,9 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 	}
 
 	params := listKeyAccessServerGrantsParams{
-		KasID:   r.GetKasId(),
-		KasUri:  r.GetKasUri(),
-		KasName: r.GetKasName(),
+		KasID:   pgtypeUUID(r.GetKasId()),
+		KasUri:  pgtypeText(r.GetKasUri()),
+		KasName: pgtypeText(r.GetKasName()),
 		Offset:  offset,
 		Limit:   limit,
 	}

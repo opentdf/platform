@@ -161,6 +161,14 @@ func (q *Queries) getBaseKey(ctx context.Context) ([]byte, error) {
 }
 
 const getKey = `-- name: getKey :one
+WITH params AS (
+    SELECT
+        $1::uuid as id,
+        $2::text as key_id,
+        $3::uuid as kas_id,
+        $4::text as kas_uri,
+        $5::text as kas_name
+)
 SELECT 
   kask.id,
   kask.key_id,
@@ -225,6 +233,14 @@ type getKeyRow struct {
 
 // getKey
 //
+//	WITH params AS (
+//	    SELECT
+//	        $1::uuid as id,
+//	        $2::text as key_id,
+//	        $3::uuid as kas_id,
+//	        $4::text as kas_uri,
+//	        $5::text as kas_name
+//	)
 //	SELECT
 //	  kask.id,
 //	  kask.key_id,
@@ -442,9 +458,9 @@ WITH listed AS (
         attribute_fqns AS fqns_on_ns
             ON nskag.namespace_id = fqns_on_ns.namespace_id
         AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
-    WHERE (NULLIF($3, '') IS NULL OR kas.id = $3::uuid) 
-        AND (NULLIF($4, '') IS NULL OR kas.uri = $4::varchar) 
-        AND (NULLIF($5, '') IS NULL OR kas.name = $5::varchar) 
+    WHERE ($3::uuid IS NULL OR kas.id = $3::uuid) 
+        AND ($4::text IS NULL OR kas.uri = $4::text) 
+        AND ($5::text IS NULL OR kas.name = $5::text) 
     GROUP BY 
         kas.id
 )
@@ -466,9 +482,9 @@ OFFSET $1
 type listKeyAccessServerGrantsParams struct {
 	Offset  int32       `json:"offset_"`
 	Limit   int32       `json:"limit_"`
-	KasID   interface{} `json:"kas_id"`
-	KasUri  interface{} `json:"kas_uri"`
-	KasName interface{} `json:"kas_name"`
+	KasID   pgtype.UUID `json:"kas_id"`
+	KasUri  pgtype.Text `json:"kas_uri"`
+	KasName pgtype.Text `json:"kas_name"`
 }
 
 type listKeyAccessServerGrantsRow struct {
@@ -532,9 +548,9 @@ type listKeyAccessServerGrantsRow struct {
 //	        attribute_fqns AS fqns_on_ns
 //	            ON nskag.namespace_id = fqns_on_ns.namespace_id
 //	        AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
-//	    WHERE (NULLIF($3, '') IS NULL OR kas.id = $3::uuid)
-//	        AND (NULLIF($4, '') IS NULL OR kas.uri = $4::varchar)
-//	        AND (NULLIF($5, '') IS NULL OR kas.name = $5::varchar)
+//	    WHERE ($3::uuid IS NULL OR kas.id = $3::uuid)
+//	        AND ($4::text IS NULL OR kas.uri = $4::text)
+//	        AND ($5::text IS NULL OR kas.name = $5::text)
 //	    GROUP BY
 //	        kas.id
 //	)

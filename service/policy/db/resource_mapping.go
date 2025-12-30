@@ -26,7 +26,7 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resour
 	}
 
 	list, err := c.queries.listResourceMappingGroups(ctx, listResourceMappingGroupsParams{
-		NamespaceID: r.GetNamespaceId(),
+		NamespaceID: pgtypeUUID(r.GetNamespaceId()),
 		Limit:       limit,
 		Offset:      offset,
 	})
@@ -175,7 +175,7 @@ func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemap
 	}
 
 	list, err := c.queries.listResourceMappings(ctx, listResourceMappingsParams{
-		GroupID: r.GetGroupId(),
+		GroupID: pgtypeUUID(r.GetGroupId()),
 		Limit:   limit,
 		Offset:  offset,
 	})

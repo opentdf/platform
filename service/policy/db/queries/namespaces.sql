@@ -69,7 +69,7 @@ LEFT JOIN (
 ) nmp_certs ON ns.id = nmp_certs.namespace_id
 WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL
   AND (sqlc.narg('id')::uuid IS NULL OR ns.id = sqlc.narg('id')::uuid)
-  AND (sqlc.narg('name')::text IS NULL OR ns.name = REGEXP_REPLACE(sqlc.narg('name')::text, '^https?://', ''))
+  AND (sqlc.narg('name')::text IS NULL OR ns.name = REGEXP_REPLACE(sqlc.narg('name')::text, '^https://', ''))
 GROUP BY ns.id, fqns.fqn, nmp_keys.keys, nmp_certs.certs;
 
 -- name: createNamespace :one

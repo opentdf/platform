@@ -168,10 +168,10 @@ func (q *Queries) deleteCustomAction(ctx context.Context, id string) (int64, err
 
 const getAction = `-- name: getAction :one
 SELECT 
-    id,
-    name,
-    is_standard,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+    a.id,
+    a.name,
+    a.is_standard,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', a.metadata -> 'labels', 'created_at', a.created_at, 'updated_at', a.updated_at)) AS metadata
 FROM actions a
 WHERE 
   ($1::uuid IS NULL OR a.id = $1::uuid)
@@ -193,10 +193,10 @@ type getActionRow struct {
 // getAction
 //
 //	SELECT
-//	    id,
-//	    name,
-//	    is_standard,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+//	    a.id,
+//	    a.name,
+//	    a.is_standard,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', a.metadata -> 'labels', 'created_at', a.created_at, 'updated_at', a.updated_at)) AS metadata
 //	FROM actions a
 //	WHERE
 //	  ($1::uuid IS NULL OR a.id = $1::uuid)

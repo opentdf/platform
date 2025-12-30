@@ -632,15 +632,19 @@ func (s *AuthnCasbinSuite) Test_SQLPolicySeeding_Idempotent() {
 	s.Require().NoError(err, "failed to create enforcer")
 
 	s.Require().NoError(e.LoadPolicy(), "failed to load policy")
-	p1, _ := e.GetPolicy()
-	g1, _ := e.GetGroupingPolicy()
+	p1, p1Err := e.GetPolicy()
+	s.Require().NoError(p1Err, "failed to get policy")
+	g1, g1Err := e.GetGroupingPolicy()
+	s.Require().NoError(g1Err, "failed to get grouping policy")
 	s.Require().True(len(p1) != 0 || len(g1) != 0, "expected seeded policies but found none")
 
 	e2, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
 	s.Require().NoError(err, "failed to create second enforcer")
 	s.Require().NoError(e2.LoadPolicy(), "failed to load policy on second enforcer")
-	p2, _ := e2.GetPolicy()
-	g2, _ := e2.GetGroupingPolicy()
+	p2, p2Err := e2.GetPolicy()
+	s.Require().NoError(p2Err, "failed to get policy on second enforcer")
+	g2, g2Err := e2.GetGroupingPolicy()
+	s.Require().NoError(g2Err, "failed to get grouping policy on second enforcer")
 
 	s.Len(p1, len(p2), "policy count changed on second initialization")
 	s.Len(g1, len(g2), "grouping policy count changed on second initialization")
@@ -652,8 +656,10 @@ func (s *AuthnCasbinSuite) Test_CSVMode_DefaultBehavior() {
 	s.Require().NoError(err, "failed to create enforcer")
 
 	s.Require().NoError(e.LoadPolicy(), "failed to load csv-backed policy")
-	p, _ := e.GetPolicy()
-	g, _ := e.GetGroupingPolicy()
+	p, pErr := e.GetPolicy()
+	s.Require().NoError(pErr, "failed to get csv-backed policy")
+	g, gErr := e.GetGroupingPolicy()
+	s.Require().NoError(gErr, "failed to get csv-backed grouping policy")
 	s.Require().True(len(p) != 0 || len(g) != 0, "expected default CSV policies to be present")
 }
 

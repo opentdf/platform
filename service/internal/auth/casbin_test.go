@@ -658,9 +658,15 @@ func (s *AuthnCasbinSuite) Test_CSVMode_DefaultBehavior() {
 	s.Require().NoError(e.LoadPolicy(), "failed to load csv-backed policy")
 	p, pErr := e.GetPolicy()
 	s.Require().NoError(pErr, "failed to get csv-backed policy")
+	s.Require().Greater(len(p), 10, "expected default CSV policies to be present")
+	s.Require().Equal([]string{"role:admin", "*", "*", "allow"}, p[0])
+	s.Require().Equal([]string{"role:standard", "policy.*", "read", "allow"}, p[1])
+
 	g, gErr := e.GetGroupingPolicy()
 	s.Require().NoError(gErr, "failed to get csv-backed grouping policy")
-	s.Require().True(len(p) != 0 || len(g) != 0, "expected default CSV policies to be present")
+	s.Require().Greater(len(g), 0, "expected default CSV grouping policies to be present")
+	s.Require().Equal([]string{"opentdf-admin", "role:admin"}, g[0])
+	s.Require().Equal([]string{"opentdf-standard", "role:standard"}, g[1])
 }
 
 // createTestSQLAdapter returns a GORM-backed Casbin adapter using an in-memory SQLite database.

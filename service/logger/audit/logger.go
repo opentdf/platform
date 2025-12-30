@@ -120,7 +120,17 @@ func (a *Logger) PolicyCRUDFailure(ctx context.Context, eventParams PolicyEventP
 	a.policyCrudBase(ctx, false, eventParams)
 }
 
+// Deprecated
 func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventParams) {
+	a.getDecisionBase(ctx, eventParams)
+}
+
+// Deprecated
+func (a *Logger) GetDecisionV2(ctx context.Context, eventParams GetDecisionV2EventParams) {
+	a.getDecisionV2Base(ctx, eventParams)
+}
+
+func (a *Logger) getDecisionBase(ctx context.Context, eventParams GetDecisionEventParams) {
 	auditEvent, err := CreateGetDecisionEvent(ctx, eventParams)
 	if err != nil {
 		a.logger.ErrorContext(ctx, "error creating get decision audit event", slog.Any("error", err))
@@ -129,7 +139,7 @@ func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventPa
 	LogAuditEvent(ctx, VerbDecision, auditEvent)
 }
 
-func (a *Logger) GetDecisionV2(ctx context.Context, eventParams GetDecisionV2EventParams) {
+func (a *Logger) getDecisionV2Base(ctx context.Context, eventParams GetDecisionV2EventParams) {
 	event, err := CreateV2GetDecisionEvent(ctx, eventParams)
 	if err != nil {
 		a.logger.ErrorContext(ctx, "error creating v2 get decision audit event", slog.Any("error", err))

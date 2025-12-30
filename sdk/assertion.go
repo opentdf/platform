@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gowebpki/jcs"
+	"github.com/lestrrat-go/jwx/v2/cert"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -74,12 +75,25 @@ func (a Assertion) Verify(key AssertionKey) (string, string, error) {
 	}
 
 	// Try to get a key from the JWS protected header if it exists
-	if decodedSig, err := jws.Parse([]byte(a.Binding.Signature)); err == nil && len(decodedSig.Signatures()) > 0 {
+	if decodedSig, err := jws.Parse([]byte(a.Binding.Signature)); err == nil && len(decodedSig.Signatures()) > 0 { //nolint:nestif // many keys
 		sig := decodedSig.Signatures()[0]
+		// First, try to get a JWK from the header
 		if jwkKey := sig.ProtectedHeaders().JWK(); jwkKey != nil {
 			var rawKey interface{}
 			if err := jwkKey.Raw(&rawKey); err == nil {
 				parseOptions = append(parseOptions, jwt.WithKey(sig.ProtectedHeaders().Algorithm(), rawKey))
+			}
+		}
+		// Also try to get a key from x5c (certificate chain) header
+		if x5cChain := sig.ProtectedHeaders().X509CertChain(); x5cChain != nil && x5cChain.Len() > 0 {
+			// Get the first certificate (the signing certificate)
+			certBytes, ok := x5cChain.Get(0)
+			if ok {
+				// Parse the certificate to extract the public key
+				x509Cert, err := cert.Parse(certBytes)
+				if err == nil && x509Cert != nil {
+					parseOptions = append(parseOptions, jwt.WithKey(sig.ProtectedHeaders().Algorithm(), x509Cert.PublicKey))
+				}
 			}
 		}
 	}

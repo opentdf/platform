@@ -146,11 +146,9 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 
 	casbinConfig := CasbinConfig{
 		PolicyConfig: cfg.Policy,
+		SQLDB:        cfg.SQLDB,
 	}
-	// If a top-level SQLDB is provided, route it into CasbinConfig
-	if cfg.SQLDB != nil {
-		casbinConfig.SQLDB = cfg.SQLDB
-	}
+
 	logger.Info("initializing casbin enforcer")
 	if a.enforcer, err = NewCasbinEnforcer(casbinConfig, a.logger); err != nil {
 		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)

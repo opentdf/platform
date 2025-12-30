@@ -260,6 +260,30 @@ func (e *Enforcer) addSeed(entries [][]string, addFn func(...any) (bool, error),
 	}
 }
 
+// policyGetter defines the subset of casbin enforcer methods used to retrieve policies
+type policyGetter interface {
+	GetPolicy() ([][]string, error)
+	GetGroupingPolicy() ([][]string, error)
+}
+
+// getPolicies returns both regular and grouping policies, or an error
+func getPolicies(pg policyGetter) ([][]string, [][]string, error) {
+	p, err := pg.GetPolicy()
+	if err != nil {
+		return nil, nil, err
+	}
+	g, err := pg.GetGroupingPolicy()
+	if err != nil {
+		return nil, nil, err
+	}
+	return p, g, nil
+}
+
+// hasAnyPolicies returns true if any policy or grouping policy exists
+func hasAnyPolicies(p, g [][]string) bool {
+	return len(p) > 0 || len(g) > 0
+}
+
 // useSQLPolicy loads existing policies from the configured adapter. If none are found,
 // it seeds the SQL store with the combined CSV policy in e.Config.Csv and persists it.
 func (e *Enforcer) useSQLPolicy(m casbinModel.Model) error {
@@ -267,15 +291,11 @@ func (e *Enforcer) useSQLPolicy(m casbinModel.Model) error {
 	if err := e.LoadPolicy(); err != nil {
 		e.logger.Warn("failed loading existing policy from adapter; attempting seed", slog.Any("error", err))
 	}
-	ep, err := e.GetPolicy()
+	ep, eg, err := getPolicies(e.Enforcer)
 	if err != nil {
-		return fmt.Errorf("failed to get existing policy: %w", err)
+		return fmt.Errorf("failed to get existing policies: %w", err)
 	}
-	eg, err := e.GetGroupingPolicy()
-	if err != nil {
-		return fmt.Errorf("failed to get existing grouping policy: %w", err)
-	}
-	if len(ep) > 0 || len(eg) > 0 {
+	if hasAnyPolicies(ep, eg) {
 		e.logger.Debug("SQL policy store already contains policies; skipping seed")
 		return nil
 	}
@@ -289,16 +309,11 @@ func (e *Enforcer) useSQLPolicy(m casbinModel.Model) error {
 		return fmt.Errorf("failed to load seed policy: %w", loadErr)
 	}
 
-	sp, spErr := seedEnf.GetPolicy()
-	if spErr != nil {
-		return fmt.Errorf("failed to get seed policy: %w", spErr)
+	sp, sg, getSeedErr := getPolicies(seedEnf)
+	if getSeedErr != nil {
+		return fmt.Errorf("failed to get seed policies: %w", getSeedErr)
 	}
 	e.addSeed(sp, e.AddPolicy, "failed to add seed policy", "policy")
-
-	sg, sgErr := seedEnf.GetGroupingPolicy()
-	if sgErr != nil {
-		return fmt.Errorf("failed to get seed grouping policy: %w", sgErr)
-	}
 	e.addSeed(sg, e.AddGroupingPolicy, "failed to add seed grouping policy", "grouping")
 
 	if saveErr := e.SavePolicy(); saveErr != nil {

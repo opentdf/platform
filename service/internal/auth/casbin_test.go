@@ -632,24 +632,12 @@ func (s *AuthnCasbinSuite) Test_SQLPolicySeeding_Idempotent() {
 	s.Require().NoError(err, "failed to create enforcer")
 
 	s.Require().NoError(e.LoadPolicy(), "failed to load policy")
-	p1, p1Err := e.GetPolicy()
-	s.Require().NoError(p1Err, "failed to get policy")
-	s.Require().Greater(len(p1), 10, "expected default CSV policies to be present")
-	s.Require().Equal([]string{"role:admin", "*", "*", "allow"}, p1[0])
-	s.Require().Equal([]string{"role:standard", "policy.*", "read", "allow"}, p1[1])
-	g1, g1Err := e.GetGroupingPolicy()
-	s.Require().NoError(g1Err, "failed to get grouping policy")
-	s.Require().Greater(len(g1), 0, "expected default CSV grouping policies to be present")
-	s.Require().Equal([]string{"opentdf-admin", "role:admin"}, g1[0])
-	s.Require().Equal([]string{"opentdf-standard", "role:standard"}, g1[1])
+	p1, g1 := s.getAndAssertDefaultPolicies(e)
 
 	e2, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
 	s.Require().NoError(err, "failed to create second enforcer")
 	s.Require().NoError(e2.LoadPolicy(), "failed to load policy on second enforcer")
-	p2, p2Err := e2.GetPolicy()
-	s.Require().NoError(p2Err, "failed to get policy on second enforcer")
-	g2, g2Err := e2.GetGroupingPolicy()
-	s.Require().NoError(g2Err, "failed to get grouping policy on second enforcer")
+	p2, g2 := s.getAndAssertDefaultPolicies(e2)
 
 	s.Len(p1, len(p2), "policy count changed on second initialization")
 	s.Len(g1, len(g2), "grouping policy count changed on second initialization")
@@ -661,17 +649,7 @@ func (s *AuthnCasbinSuite) Test_CSVMode_DefaultBehavior() {
 	s.Require().NoError(err, "failed to create enforcer")
 
 	s.Require().NoError(e.LoadPolicy(), "failed to load csv-backed policy")
-	p, pErr := e.GetPolicy()
-	s.Require().NoError(pErr, "failed to get csv-backed policy")
-	s.Require().Greater(len(p), 10, "expected default CSV policies to be present")
-	s.Require().Equal([]string{"role:admin", "*", "*", "allow"}, p[0])
-	s.Require().Equal([]string{"role:standard", "policy.*", "read", "allow"}, p[1])
-
-	g, gErr := e.GetGroupingPolicy()
-	s.Require().NoError(gErr, "failed to get csv-backed grouping policy")
-	s.Require().Greater(len(g), 0, "expected default CSV grouping policies to be present")
-	s.Require().Equal([]string{"opentdf-admin", "role:admin"}, g[0])
-	s.Require().Equal([]string{"opentdf-standard", "role:standard"}, g[1])
+	_, _ = s.getAndAssertDefaultPolicies(e)
 }
 
 // createTestSQLAdapter returns a GORM-backed Casbin adapter using an in-memory SQLite database.
@@ -688,4 +666,20 @@ func (s *AuthnCasbinSuite) createTestSQLAdapter() *gormadapter.Adapter {
 		s.T().Fatalf("failed to create gorm casbin adapter: %v", err)
 	}
 	return adp
+}
+
+// getAndAssertDefaultPolicies retrieves policies and asserts they contain the default entries
+func (s *AuthnCasbinSuite) getAndAssertDefaultPolicies(e *Enforcer) ([][]string, [][]string) {
+	p, pErr := e.GetPolicy()
+	s.Require().NoError(pErr, "failed to get policy")
+	s.Require().Greater(len(p), 10, "expected default CSV policies to be present")
+	s.Require().Equal([]string{"role:admin", "*", "*", "allow"}, p[0])
+	s.Require().Equal([]string{"role:standard", "policy.*", "read", "allow"}, p[1])
+
+	g, gErr := e.GetGroupingPolicy()
+	s.Require().NoError(gErr, "failed to get grouping policy")
+	s.Require().Greater(len(g), 0, "expected default CSV grouping policies to be present")
+	s.Require().Equal([]string{"opentdf-admin", "role:admin"}, g[0])
+	s.Require().Equal([]string{"opentdf-standard", "role:standard"}, g[1])
+	return p, g
 }

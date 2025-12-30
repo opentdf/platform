@@ -7,13 +7,10 @@ import (
 	"testing"
 
 	"github.com/casbin/casbin/v2/model"
-	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/creasty/defaults"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/suite"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
 func TestAuthnCasbinSuite(t *testing.T) {
@@ -622,16 +619,7 @@ func (s *AuthnCasbinSuite) newTokenWithCilentID() (string, jwt.Token) {
 }
 
 func (s *AuthnCasbinSuite) Test_SQLPolicySeeding_Idempotent() {
-	// adapter := s.createTestSQLAdapter()
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		s.T().Fatalf("failed to open sqlite gorm db: %v", err)
-	}
-	if err := db.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
-		s.T().Fatalf("failed to migrate casbin_rule: %v", err)
-	}
-
-	cfg := CasbinConfig{PolicyConfig: PolicyConfig{}, SQLDB: db}
+	cfg := CasbinConfig{PolicyConfig: PolicyConfig{}}
 	cfg.Adapter = "SQL"
 
 	e, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
@@ -651,6 +639,7 @@ func (s *AuthnCasbinSuite) Test_SQLPolicySeeding_Idempotent() {
 
 func (s *AuthnCasbinSuite) Test_CSVMode_DefaultBehavior() {
 	cfg := CasbinConfig{PolicyConfig: PolicyConfig{}}
+	cfg.Adapter = "CSV"
 	e, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
 	s.Require().NoError(err, "failed to create enforcer")
 

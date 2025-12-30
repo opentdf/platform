@@ -16,6 +16,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
 	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	_ "embed"
@@ -94,7 +95,7 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		}, "\n")
 	}
 
-	// Determine adapter type from config: "csv" (default) or "sql"
+	// Determine adapter type from config: "CSV" (default) or "SQL"
 	adapterType := strings.ToUpper(c.Adapter)
 	if adapterType == "" {
 		adapterType = "CSV"
@@ -104,12 +105,19 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 	isDefaultAdapter := false
 	switch adapterType {
 	case "SQL":
-		if c.SQLDB == nil {
-			return nil, fmt.Errorf("sql adapter selected but SQLDB is nil")
-		}
-		gdb, err := gorm.Open(postgres.New(postgres.Config{Conn: c.SQLDB}), &gorm.Config{})
-		if err != nil {
-			return nil, fmt.Errorf("failed to open gorm DB for casbin: %w", err)
+		var gdb *gorm.DB
+		if c.SQLDB != nil {
+			db, err := gorm.Open(postgres.New(postgres.Config{Conn: c.SQLDB}), &gorm.Config{})
+			if err != nil {
+				return nil, fmt.Errorf("failed to open gorm postgres DB for casbin: %w", err)
+			}
+			gdb = db
+		} else {
+			db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+			if err != nil {
+				return nil, fmt.Errorf("failed to open in-memory sqlite DB for casbin: %w", err)
+			}
+			gdb = db
 		}
 		if err := gdb.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
 			return nil, fmt.Errorf("failed to auto-migrate casbin_rule: %w", err)

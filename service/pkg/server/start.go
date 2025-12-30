@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,8 +13,6 @@ import (
 	"syscall"
 
 	"connectrpc.com/connect"
-	"github.com/casbin/casbin/v2/persist"
-	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
@@ -28,8 +27,6 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/tracing"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 const devModeMessage = `
@@ -166,14 +163,19 @@ func Start(f ...StartOptions) error {
 		cfg.Server.Auth.Policy.Adapter = startConfig.casbinAdapter
 	}
 
-	// Initialize SQL-backed Casbin adapter if opted in and no custom adapter provided
+	// If SQL-backed policy storage is enabled and no custom adapter is provided,
+	// route a DB handle through the Authenticator constructor so Casbin configures
+	// its SQL adapter internally.
+	var authSQLCleanup func()
+	var authSQLDB *sql.DB
 	if cfg.Server.Auth.Policy.EnableSQL && cfg.Server.Auth.Policy.Adapter == nil {
-		adapter, cleanup, err := configureSQLCasbinAdapter(ctx, cfg, logger)
+		dbClient, err := db.New(ctx, cfg.DB, cfg.Logger, nil)
 		if err != nil {
-			return err
+			logger.Error("could not create DB client for Authenticator", slog.Any("error", err))
+			return fmt.Errorf("could not create DB client for Authenticator: %w", err)
 		}
-		defer cleanup()
-		cfg.Server.Auth.Policy.Adapter = adapter
+		authSQLDB = dbClient.SQLDB
+		authSQLCleanup = func() { dbClient.Close() }
 	}
 
 	// Apply additional CORS configuration from programmatic options
@@ -194,12 +196,19 @@ func Start(f ...StartOptions) error {
 	// Create new server for grpc & http. Also will support in process grpc potentially too
 	logger.Debug("initializing opentdf server")
 	cfg.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
+	// Initialize OpenTDF server. Authenticator reads cfg.Server.Auth.SQLDB.
+	if authSQLDB != nil {
+		cfg.Server.Auth.SQLDB = authSQLDB
+	}
 	otdf, err := server.NewOpenTDFServer(cfg.Server, logger, cacheManager)
 	if err != nil {
 		logger.Error("issue creating opentdf server", slog.String("error", err.Error()))
 		return fmt.Errorf("issue creating opentdf server: %w", err)
 	}
 	defer otdf.Stop()
+	if authSQLCleanup != nil {
+		defer authSQLCleanup()
+	}
 
 	// Initialize the service registry
 	logger.Debug("initializing service registry")
@@ -318,39 +327,6 @@ func Start(f ...StartOptions) error {
 	}
 
 	return nil
-}
-
-// configureSQLCasbinAdapter initializes a GORM-backed Casbin adapter using the platform DB settings,
-// auto-migrates the casbin_rule table (respecting search_path schema), and returns the adapter.
-// It intentionally keeps the DB client open for the adapter's lifetime.
-func configureSQLCasbinAdapter(ctx context.Context, cfg *config.Config, logger *logger.Logger) (persist.Adapter, func(), error) {
-	logger.Info("initializing SQL-backed Casbin adapter (opt-in)")
-	dbClient, err := db.New(ctx, cfg.DB, cfg.Logger, nil)
-	if err != nil {
-		logger.Error("could not create DB client for Casbin adapter", slog.Any("error", err))
-		return nil, func() {}, fmt.Errorf("could not create DB client for Casbin adapter: %w", err)
-	}
-	cleanup := func() { dbClient.Close() }
-
-	gormDB, err := gorm.Open(postgres.New(postgres.Config{Conn: dbClient.SQLDB}), &gorm.Config{})
-	if err != nil {
-		cleanup()
-		logger.Error("could not open gorm DB for Casbin adapter", slog.Any("error", err))
-		return nil, func() {}, fmt.Errorf("could not open gorm DB for Casbin adapter: %w", err)
-	}
-	if err := gormDB.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
-		cleanup()
-		logger.Error("failed to auto-migrate casbin_rule table", slog.Any("error", err))
-		return nil, func() {}, fmt.Errorf("failed to auto-migrate casbin_rule table: %w", err)
-	}
-	casbinAdapter, err := gormadapter.NewAdapterByDB(gormDB)
-	if err != nil {
-		cleanup()
-		logger.Error("failed to initialize gorm casbin adapter", slog.Any("error", err))
-		return nil, func() {}, fmt.Errorf("failed to initialize gorm casbin adapter: %w", err)
-	}
-	logger.Info("SQL-backed Casbin adapter configured", slog.String("schema", cfg.DB.Schema))
-	return casbinAdapter, cleanup, nil
 }
 
 // waitForShutdownSignal blocks until a SIGINT or SIGTERM is received.

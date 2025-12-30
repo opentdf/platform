@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"database/sql"
 	"errors"
 	"time"
 
@@ -15,6 +16,8 @@ type Config struct {
 	// Used for re-authentication of IPC connections
 	IPCReauthRoutes []string `mapstructure:"-" json:"-"`
 	AuthNConfig     `mapstructure:",squash"`
+	// Optional SQL DB handle routed from server startup; not loaded from config.
+	SQLDB *sql.DB `mapstructure:"-" json:"-"`
 }
 
 // AuthNConfig is the configuration need for the platform to validate tokens

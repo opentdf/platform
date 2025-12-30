@@ -6,11 +6,16 @@ import (
 	"log/slog"
 	"strings"
 
+	"database/sql"
+
 	"github.com/casbin/casbin/v2"
 	casbinModel "github.com/casbin/casbin/v2/model"
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
+	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 
 	_ "embed"
 )
@@ -40,6 +45,7 @@ type casbinSubject []string
 
 type CasbinConfig struct {
 	PolicyConfig
+	SQLDB *sql.DB
 }
 
 // newCasbinEnforcer creates a new casbin enforcer
@@ -88,10 +94,25 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 	}
 
 	isDefaultAdapter := false
-	// If adapter is not provided, use the default string adapter
+	// If adapter is not provided, choose based on SQL config
 	if c.Adapter == nil {
-		isDefaultAdapter = true
-		c.Adapter = stringadapter.NewAdapter(c.Csv)
+		if c.EnableSQL && c.SQLDB != nil {
+			gdb, err := gorm.Open(postgres.New(postgres.Config{Conn: c.SQLDB}), &gorm.Config{})
+			if err != nil {
+				return nil, fmt.Errorf("failed to open gorm DB for casbin: %w", err)
+			}
+			if err := gdb.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
+				return nil, fmt.Errorf("failed to auto-migrate casbin_rule: %w", err)
+			}
+			adp, err := gormadapter.NewAdapterByDB(gdb)
+			if err != nil {
+				return nil, fmt.Errorf("failed to initialize gorm casbin adapter: %w", err)
+			}
+			c.Adapter = adp
+		} else {
+			isDefaultAdapter = true
+			c.Adapter = stringadapter.NewAdapter(c.Csv)
+		}
 	}
 
 	logger.Debug("creating casbin enforcer",

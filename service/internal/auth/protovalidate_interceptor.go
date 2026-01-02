@@ -54,8 +54,8 @@ func (p *ProtoAttrMapper) Interceptor(e *Enforcer) connect.UnaryInterceptorFunc 
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			// Validate proto message using protovalidate if available
-			if any := req.Any(); any != nil {
-				if m, ok := any.(proto.Message); ok {
+			if reqAny := req.Any(); reqAny != nil {
+				if m, ok := reqAny.(proto.Message); ok {
 					if p.Validate && p.validator != nil {
 						if err := p.validator.Validate(m); err != nil {
 							return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("protovalidate failed: %w", err))

@@ -102,7 +102,7 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 	switch adapterType {
 	case "SQL":
 		if c.GormDB == nil {
-			return nil, fmt.Errorf("SQL adapter selected but no GormDB provided")
+			return nil, errors.New("SQL adapter selected but no GormDB provided")
 		}
 		if err := c.GormDB.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
 			return nil, fmt.Errorf("failed to auto-migrate casbin_rule: %w", err)

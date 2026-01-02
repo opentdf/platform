@@ -165,8 +165,8 @@ func Start(f ...StartOptions) error {
 	// If SQL-backed policy storage is enabled and no custom adapter is provided,
 	// route a DB handle through the Authenticator constructor so Casbin configures
 	// its SQL adapter internally.
-	var authSQLCleanup func() = func() {}
-	var authGormDB *gorm.DB = nil
+	authSQLCleanup := func() {}
+	var authGormDB *gorm.DB
 	if strings.ToUpper(cfg.Server.Auth.Policy.Adapter) == "SQL" {
 		dbClient, err := db.New(ctx, cfg.DB, cfg.Logger, nil)
 		if err != nil {

@@ -27,7 +27,7 @@ func (s *ProtoAttrMapperSuite) Test_Interceptor() {
 	}
 
 	// create a no-op next handler that checks context for attrs
-	next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+	next := func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
 		v := ctx.Value(casbinContextKey("casbin_attrs"))
 		s.Require().NotNil(v)
 		m, ok := v.(map[string]string)
@@ -59,7 +59,7 @@ func (s *ProtoAttrMapperSuite) Test_RequiredFields_MissingFieldShouldFail() {
 		Name: "", // empty/missing
 	}
 
-	next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+	next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
 		s.T().Fatal("should not reach next handler")
 		return connect.NewResponse[any](nil), nil
 	}
@@ -86,7 +86,7 @@ func (s *ProtoAttrMapperSuite) Test_RequiredFields_AllPresentShouldSucceed() {
 		Name: "example",
 	}
 
-	next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+	next := func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
 		v := ctx.Value(casbinContextKey("casbin_attrs"))
 		s.Require().NotNil(v)
 		return connect.NewResponse[any](nil), nil
@@ -113,7 +113,7 @@ func (s *ProtoAttrMapperSuite) Test_WhitelistOnly() {
 		Name: "example",
 	}
 
-	next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+	next := func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
 		v := ctx.Value(casbinContextKey("casbin_attrs"))
 		s.Require().NotNil(v)
 		m, ok := v.(map[string]string)
@@ -146,7 +146,7 @@ func (s *ProtoAttrMapperSuite) Test_AttributeExtraction() {
 		Name: "test-resource",
 	}
 
-	next := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+	next := func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
 		v := ctx.Value(casbinContextKey("casbin_attrs"))
 		s.Require().NotNil(v)
 		attrs, ok := v.(map[string]string)

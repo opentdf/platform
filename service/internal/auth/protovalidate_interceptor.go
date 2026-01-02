@@ -139,8 +139,10 @@ func lookupProtoFieldString(m protoreflect.Message, path string) (string, bool) 
 }
 
 // context keys
-type casbinContextKey string
-type tokenContextKey struct{}
+type (
+	casbinContextKey string
+	tokenContextKey  struct{}
+)
 
 // GetCasbinAttrsFromContext retrieves the extracted proto attributes from the context.
 // Returns the attributes map and true if present, or nil and false if not found.

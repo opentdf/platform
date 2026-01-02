@@ -86,7 +86,7 @@ func (p *ProtoAttrMapper) Interceptor(e *Enforcer) connect.UnaryInterceptorFunc 
 	return connect.UnaryInterceptorFunc(interceptor)
 }
 
-// helper to lookup a dot-separated path on a protoreflect.Message and
+// helper to lookup a field on a protoreflect.Message and
 // return its string value if present.
 func lookupProtoFieldString(m protoreflect.Message, path string) (string, bool) {
 	// Only support single-level fields for now to keep simple

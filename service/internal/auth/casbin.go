@@ -8,9 +8,12 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	casbinModel "github.com/casbin/casbin/v2/model"
+	"github.com/casbin/casbin/v2/persist"
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
+	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
+	"gorm.io/gorm"
 
 	_ "embed"
 )
@@ -40,6 +43,7 @@ type casbinSubject []string
 
 type CasbinConfig struct {
 	PolicyConfig
+	GormDB *gorm.DB
 }
 
 // newCasbinEnforcer creates a new casbin enforcer
@@ -87,11 +91,32 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		}, "\n")
 	}
 
+	// Determine adapter type from config: "CSV" (default) or "SQL"
+	adapterType := strings.ToUpper(c.Adapter)
+	if adapterType == "" {
+		adapterType = "CSV"
+	}
+
+	var adapterImpl persist.Adapter
 	isDefaultAdapter := false
-	// If adapter is not provided, use the default string adapter
-	if c.Adapter == nil {
+	switch adapterType {
+	case "SQL":
+		if c.GormDB == nil {
+			return nil, errors.New("SQL adapter selected but no GormDB provided")
+		}
+		if err := c.GormDB.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
+			return nil, fmt.Errorf("failed to auto-migrate casbin_rule: %w", err)
+		}
+		adp, err := gormadapter.NewAdapterByDB(c.GormDB)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize gorm casbin adapter: %w", err)
+		}
+		adapterImpl = adp
+	case "CSV":
 		isDefaultAdapter = true
-		c.Adapter = stringadapter.NewAdapter(c.Csv)
+		adapterImpl = stringadapter.NewAdapter(c.Csv)
+	default:
+		return nil, fmt.Errorf("unknown adapter type: %s", adapterType)
 	}
 
 	logger.Debug("creating casbin enforcer",
@@ -107,19 +132,27 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		return nil, fmt.Errorf("failed to create casbin model: %w", err)
 	}
 
-	e, err := casbin.NewEnforcer(m, c.Adapter)
+	e, err := casbin.NewEnforcer(m, adapterImpl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create casbin enforcer: %w", err)
 	}
-
-	return &Enforcer{
+	enforcer := &Enforcer{
 		Enforcer:        e,
 		Config:          c,
 		Policy:          c.Csv,
 		isDefaultPolicy: isDefaultPolicy,
 		isDefaultModel:  isDefaultModel,
 		logger:          logger,
-	}, nil
+	}
+
+	// If using SQL policy storage, seed the store if empty
+	if adapterType == "SQL" {
+		if err := enforcer.useSQLPolicy(m); err != nil {
+			return nil, err
+		}
+	}
+
+	return enforcer, nil
 }
 
 // casbinEnforce is a helper function to enforce the policy with casbin
@@ -238,4 +271,83 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	}
 
 	return roles
+}
+
+func (e *Enforcer) addSeed(entries [][]string, addFn func(...any) (bool, error), field string) {
+	for _, entry := range entries {
+		args := make([]any, len(entry))
+		for i, v := range entry {
+			args[i] = v
+		}
+		if _, err := addFn(args...); err != nil {
+			e.logger.Warn(
+				"failed to add seed entry",
+				slog.Any(field, entry),
+				slog.Any("error", err),
+			)
+		}
+	}
+}
+
+// policyGetter defines the subset of casbin enforcer methods used to retrieve policies
+type policyGetter interface {
+	GetPolicy() ([][]string, error)
+	GetGroupingPolicy() ([][]string, error)
+}
+
+// getPolicies returns both regular and grouping policies, or an error
+func getPolicies(pg policyGetter) ([][]string, [][]string, error) {
+	p, err := pg.GetPolicy()
+	if err != nil {
+		return nil, nil, err
+	}
+	g, err := pg.GetGroupingPolicy()
+	if err != nil {
+		return nil, nil, err
+	}
+	return p, g, nil
+}
+
+// hasAnyPolicies returns true if any policy or grouping policy exists
+func hasAnyPolicies(p, g [][]string) bool {
+	return len(p) > 0 || len(g) > 0
+}
+
+// useSQLPolicy loads existing policies from the configured adapter. If none are found,
+// it seeds the SQL store with the combined CSV policy in e.Config.Csv and persists it.
+func (e *Enforcer) useSQLPolicy(m casbinModel.Model) error {
+	e.logger.Debug("checking SQL policy store for existing policies")
+	if err := e.LoadPolicy(); err != nil {
+		e.logger.Warn("failed loading existing policy from adapter; attempting seed", slog.Any("error", err))
+	}
+	ep, eg, err := getPolicies(e.Enforcer)
+	if err != nil {
+		return fmt.Errorf("failed to get existing policies: %w", err)
+	}
+	if hasAnyPolicies(ep, eg) {
+		e.logger.Debug("SQL policy store already contains policies; skipping seed")
+		return nil
+	}
+
+	seedAdapter := stringadapter.NewAdapter(e.Config.Csv)
+	seedEnf, seedErr := casbin.NewEnforcer(m, seedAdapter)
+	if seedErr != nil {
+		return fmt.Errorf("failed to create seeding enforcer: %w", seedErr)
+	}
+	if loadErr := seedEnf.LoadPolicy(); loadErr != nil {
+		return fmt.Errorf("failed to load seed policy: %w", loadErr)
+	}
+
+	sp, sg, getSeedErr := getPolicies(seedEnf)
+	if getSeedErr != nil {
+		return fmt.Errorf("failed to get seed policies: %w", getSeedErr)
+	}
+	e.addSeed(sp, e.AddPolicy, "policy")
+	e.addSeed(sg, e.AddGroupingPolicy, "grouping")
+
+	if saveErr := e.SavePolicy(); saveErr != nil {
+		return fmt.Errorf("failed to persist seed policy to SQL adapter: %w", saveErr)
+	}
+	e.logger.Info("seeded SQL policy store with standard policy")
+	return nil
 }

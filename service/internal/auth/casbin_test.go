@@ -7,10 +7,13 @@ import (
 	"testing"
 
 	"github.com/casbin/casbin/v2/model"
+	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/creasty/defaults"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/suite"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 func TestAuthnCasbinSuite(t *testing.T) {
@@ -616,4 +619,57 @@ func (s *AuthnCasbinSuite) newTokenWithCilentID() (string, jwt.Token) {
 		s.T().Fatal(err)
 	}
 	return "", tok
+}
+
+func (s *AuthnCasbinSuite) Test_SQLPolicySeeding_Idempotent() {
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		s.T().Fatalf("failed to open sqlite gorm db: %v", err)
+	}
+	if err := db.AutoMigrate(&gormadapter.CasbinRule{}); err != nil {
+		s.T().Fatalf("failed to migrate casbin_rule: %v", err)
+	}
+
+	cfg := CasbinConfig{PolicyConfig: PolicyConfig{}, GormDB: db}
+	cfg.Adapter = "SQL"
+
+	e, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
+	s.Require().NoError(err, "failed to create enforcer")
+
+	s.Require().NoError(e.LoadPolicy(), "failed to load policy")
+	p1, g1 := s.getAndAssertDefaultPolicies(e)
+
+	e2, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
+	s.Require().NoError(err, "failed to create second enforcer")
+	s.Require().NoError(e2.LoadPolicy(), "failed to load policy on second enforcer")
+	p2, g2 := s.getAndAssertDefaultPolicies(e2)
+
+	s.Len(p1, len(p2), "policy count changed on second initialization")
+	s.Len(g1, len(g2), "grouping policy count changed on second initialization")
+}
+
+func (s *AuthnCasbinSuite) Test_CSVMode_DefaultBehavior() {
+	cfg := CasbinConfig{PolicyConfig: PolicyConfig{}}
+	cfg.Adapter = "CSV"
+	e, err := NewCasbinEnforcer(cfg, logger.CreateTestLogger())
+	s.Require().NoError(err, "failed to create enforcer")
+
+	s.Require().NoError(e.LoadPolicy(), "failed to load csv-backed policy")
+	_, _ = s.getAndAssertDefaultPolicies(e)
+}
+
+// getAndAssertDefaultPolicies retrieves policies and asserts they contain the default entries
+func (s *AuthnCasbinSuite) getAndAssertDefaultPolicies(e *Enforcer) ([][]string, [][]string) {
+	p, pErr := e.GetPolicy()
+	s.Require().NoError(pErr, "failed to get policy")
+	s.Require().Greater(len(p), 10, "expected default CSV policies to be present")
+	s.Require().Equal([]string{"role:admin", "*", "*", "allow"}, p[0])
+	s.Require().Equal([]string{"role:standard", "policy.*", "read", "allow"}, p[1])
+
+	g, gErr := e.GetGroupingPolicy()
+	s.Require().NoError(gErr, "failed to get grouping policy")
+	s.Require().NotEmpty(g, "expected default CSV grouping policies to be present")
+	s.Require().Equal([]string{"opentdf-admin", "role:admin"}, g[0])
+	s.Require().Equal([]string{"opentdf-standard", "role:standard"}, g[1])
+	return p, g
 }

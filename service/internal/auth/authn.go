@@ -146,7 +146,9 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 
 	casbinConfig := CasbinConfig{
 		PolicyConfig: cfg.Policy,
+		GormDB:       cfg.GormDB,
 	}
+
 	logger.Info("initializing casbin enforcer")
 	if a.enforcer, err = NewCasbinEnforcer(casbinConfig, a.logger); err != nil {
 		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)

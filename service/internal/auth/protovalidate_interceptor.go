@@ -21,6 +21,29 @@ type ProtoAttrMapper struct {
 	RequiredFields []string
 	// Validate controls whether to run protovalidate on the incoming message
 	Validate bool
+	// validator is initialized once and reused across all requests
+	validator protovalidate.Validator
+}
+
+// NewProtoAttrMapper creates a new ProtoAttrMapper with the given configuration.
+// If Validate is true, it initializes the protovalidate validator and panics on failure
+// to prevent the service from running in a misconfigured state.
+func NewProtoAttrMapper(allowed []string, requiredFields []string, validate bool) *ProtoAttrMapper {
+	p := &ProtoAttrMapper{
+		Allowed:        allowed,
+		RequiredFields: requiredFields,
+		Validate:       validate,
+	}
+
+	if validate {
+		v, err := protovalidate.New()
+		if err != nil {
+			panic(fmt.Sprintf("failed to initialize protovalidate validator: %v", err))
+		}
+		p.validator = v
+	}
+
+	return p
 }
 
 // Interceptor returns a ConnectRPC unary interceptor that validates the
@@ -32,12 +55,9 @@ func (p *ProtoAttrMapper) Interceptor(e *Enforcer) connect.UnaryInterceptorFunc 
 			// Validate proto message using protovalidate if available
 			if any := req.Any(); any != nil {
 				if m, ok := any.(proto.Message); ok {
-					if p.Validate {
-						v, err := protovalidate.New()
-						if err == nil {
-							if err := v.Validate(m); err != nil {
-								return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("protovalidate failed: %w", err))
-							}
+					if p.Validate && p.validator != nil {
+						if err := p.validator.Validate(m); err != nil {
+							return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("protovalidate failed: %w", err))
 						}
 					}
 

@@ -11,7 +11,7 @@ import (
 )
 
 func Test_ProtoAttrMapper_Interceptor(t *testing.T) {
-	mapper := &ProtoAttrMapper{Allowed: []string{"name", "id"}, Validate: false}
+	mapper := NewProtoAttrMapper([]string{"name", "id"}, nil, false)
 
 	// create a simple proto message from policy namespace that has string fields
 	msg := &common.IdNameIdentifier{
@@ -41,11 +41,11 @@ func Test_ProtoAttrMapper_Interceptor(t *testing.T) {
 
 func Test_ProtoAttrMapper_RequiredFields(t *testing.T) {
 	t.Run("missing required field should fail", func(t *testing.T) {
-		mapper := &ProtoAttrMapper{
-			Allowed:        []string{"name", "id"},
-			RequiredFields: []string{"name", "id"},
-			Validate:       false,
-		}
+		mapper := NewProtoAttrMapper(
+			[]string{"name", "id"},
+			[]string{"name", "id"},
+			false,
+		)
 
 		// Message missing 'name' field (empty string)
 		msg := &common.IdNameIdentifier{
@@ -69,11 +69,11 @@ func Test_ProtoAttrMapper_RequiredFields(t *testing.T) {
 	})
 
 	t.Run("all required fields present should succeed", func(t *testing.T) {
-		mapper := &ProtoAttrMapper{
-			Allowed:        []string{"name", "id"},
-			RequiredFields: []string{"name"},
-			Validate:       false,
-		}
+		mapper := NewProtoAttrMapper(
+			[]string{"name", "id"},
+			[]string{"name"},
+			false,
+		)
 
 		msg := &common.IdNameIdentifier{
 			Id:   "abc",
@@ -98,10 +98,11 @@ func Test_ProtoAttrMapper_RequiredFields(t *testing.T) {
 func Test_ProtoAttrMapper_WhitelistOnly(t *testing.T) {
 	t.Run("only whitelisted fields should be in attrs", func(t *testing.T) {
 		// Only allow 'name', not 'id'
-		mapper := &ProtoAttrMapper{
-			Allowed:  []string{"name"},
-			Validate: false,
-		}
+		mapper := NewProtoAttrMapper(
+			[]string{"name"},
+			nil,
+			false,
+		)
 
 		msg := &common.IdNameIdentifier{
 			Id:   "secret-id-should-not-be-exposed",
@@ -193,11 +194,11 @@ g, regular-user, role:user
 	})
 
 	t.Run("interceptor extracts attrs for enforcement", func(t *testing.T) {
-		mapper := &ProtoAttrMapper{
-			Allowed:        []string{"name", "id"},
-			RequiredFields: []string{"id"},
-			Validate:       false,
-		}
+		mapper := NewProtoAttrMapper(
+			[]string{"name", "id"},
+			[]string{"id"},
+			false,
+		)
 
 		msg := &common.IdNameIdentifier{
 			Id:   "user123",
@@ -233,4 +234,3 @@ g, regular-user, role:user
 // the request Spec. The interceptor correctly blocks unauthorized requests when
 // an Enforcer is provided and returns connect.CodePermissionDenied for failed
 // authorization checks (see the security fix in protovalidate_interceptor.go).
-

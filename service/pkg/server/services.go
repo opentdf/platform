@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/service/entityresolution"
 	entityresolutionV2 "github.com/opentdf/platform/service/entityresolution/v2"
 	"github.com/opentdf/platform/service/health"
+	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/kas"
 	logging "github.com/opentdf/platform/service/logger"
@@ -125,6 +126,7 @@ type startServicesParams struct {
 	reg                    *serviceregistry.Registry
 	cacheManager           *cache.Manager
 	keyManagerCtxFactories []trust.NamedKeyManagerCtxFactory
+	authzResolverRegistry  *auth.AuthzResolverRegistry
 }
 
 // startServices iterates through the registered namespaces and starts the services
@@ -206,6 +208,13 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				return cacheClient, nil
 			}
 
+			// Create a scoped authz resolver registry for this service
+			// This ensures services can only register resolvers for their own methods
+			var scopedAuthzRegistry *auth.ScopedAuthzResolverRegistry
+			if params.authzResolverRegistry != nil {
+				scopedAuthzRegistry = params.authzResolverRegistry.ScopedForService(svc.GetServiceDesc())
+			}
+
 			err = svc.Start(ctx, serviceregistry.RegistrationParams{
 				Config:                 cfg.Services[svc.GetNamespace()],
 				Security:               &cfg.Security,
@@ -218,6 +227,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				Tracer:                 tracer,
 				NewCacheClient:         createCacheClient,
 				KeyManagerCtxFactories: keyManagerCtxFactories,
+				AuthzResolverRegistry:  scopedAuthzRegistry,
 			})
 			if err != nil {
 				return func() {}, err

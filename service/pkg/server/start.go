@@ -270,6 +270,10 @@ func Start(f ...StartOptions) error {
 
 	defer client.Close()
 
+	// Create the global authz resolver registry
+	// Services will receive scoped registries that can only register resolvers for their own methods
+	authzResolverRegistry := auth.NewAuthzResolverRegistry()
+
 	logger.Info("starting services")
 	gatewayCleanup, err := startServices(ctx, startServicesParams{
 		cfg:                    cfg,
@@ -279,6 +283,7 @@ func Start(f ...StartOptions) error {
 		logger:                 logger,
 		reg:                    svcRegistry,
 		cacheManager:           cacheManager,
+		authzResolverRegistry:  authzResolverRegistry,
 	})
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))

@@ -816,10 +816,10 @@ Dimensions use `&` as the AND delimiter (e.g., `namespace=hr&attr_id=123`).
 # ====================================================================
 
 # Finance admin: full access to finance namespace
-p, role:finance-admin, policy.*, *, namespace=finance, allow
+p, role:finance-admin, policy.*, *, namespace=finance.com, allow
 
 # HR admin: full access to hr namespace
-p, role:hr-admin, policy.*, *, namespace=hr, allow
+p, role:hr-admin, policy.*, *, namespace=hr.io, allow
 
 # Cross-namespace read-only auditor
 p, role:auditor, policy.*, read, *, allow

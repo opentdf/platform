@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"buf.build/go/protovalidate"
 	"connectrpc.com/connect"
@@ -65,7 +66,7 @@ func (p *ProtoAttrMapper) Interceptor(e *Enforcer) connect.UnaryInterceptorFunc 
 					attrs := map[string]string{}
 					mr := m.ProtoReflect()
 					for _, allow := range p.Allowed {
-						if val, ok := lookupProtoFieldString(mr, allow); ok {
+						if val, valOK := lookupProtoFieldString(mr, allow); valOK {
 							attrs[allow] = val
 						}
 					}
@@ -87,7 +88,7 @@ func (p *ProtoAttrMapper) Interceptor(e *Enforcer) connect.UnaryInterceptorFunc 
 
 					// Optionally perform synchronous enforcement: derive resource/action
 					if e != nil {
-						if tk, ok := ctx.Value(tokenContextKey{}).(jwt.Token); ok {
+						if tk, tkOK := ctx.Value(tokenContextKey{}).(jwt.Token); tkOK {
 							res := req.Spec().Procedure
 							act := req.Spec().Procedure
 							if allowed, err := e.Enforce(tk, res, act); !allowed {
@@ -128,11 +129,11 @@ func lookupProtoFieldString(m protoreflect.Message, path string) (string, bool) 
 		}
 		return s, true
 	case protoreflect.Int32Kind, protoreflect.Int64Kind:
-		return fmt.Sprintf("%d", v.Int()), true
+		return strconv.FormatInt(v.Int(), 10), true
 	case protoreflect.Uint32Kind, protoreflect.Uint64Kind:
-		return fmt.Sprintf("%d", v.Uint()), true
+		return strconv.FormatUint(v.Uint(), 10), true
 	case protoreflect.BoolKind:
-		return fmt.Sprintf("%t", v.Bool()), true
+		return strconv.FormatBool(v.Bool()), true
 	default:
 		// Unsupported field types (enums, bytes, messages, etc.) are not extracted
 		return "", false

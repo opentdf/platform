@@ -53,14 +53,6 @@ func NewAuthzResolverRegistry() *AuthzResolverRegistry {
 	}
 }
 
-// register is internal - adds a resolver for a specific full method path.
-// External callers should use ScopedAuthzResolverRegistry.
-func (r *AuthzResolverRegistry) register(fullMethodPath string, resolver AuthzResolverFunc) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.resolvers[fullMethodPath] = resolver
-}
-
 // Get returns the resolver for a method, if registered.
 func (r *AuthzResolverRegistry) Get(method string) (AuthzResolverFunc, bool) {
 	r.mu.RLock()
@@ -81,6 +73,14 @@ func (r *AuthzResolverRegistry) ScopedForService(serviceDesc *grpc.ServiceDesc) 
 		parent:      r,
 		serviceDesc: serviceDesc,
 	}
+}
+
+// register is internal - adds a resolver for a specific full method path.
+// External callers should use ScopedAuthzResolverRegistry.
+func (r *AuthzResolverRegistry) register(fullMethodPath string, resolver AuthzResolverFunc) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.resolvers[fullMethodPath] = resolver
 }
 
 // ScopedAuthzResolverRegistry is a namespace-scoped view of the registry.

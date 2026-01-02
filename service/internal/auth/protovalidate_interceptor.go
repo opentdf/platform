@@ -70,7 +70,12 @@ func (p *ProtoAttrMapper) Interceptor(e *Enforcer) connect.UnaryInterceptorFunc 
 						if tk, ok := ctx.Value(tokenContextKey{}).(jwt.Token); ok {
 							res := req.Spec().Procedure
 							act := req.Spec().Procedure
-							_, _ = e.Enforce(tk, res, act)
+							if allowed, err := e.Enforce(tk, res, act); !allowed {
+								if err == nil {
+									err = fmt.Errorf("permission denied for %s", req.Spec().Procedure)
+								}
+								return nil, connect.NewError(connect.CodePermissionDenied, err)
+							}
 						}
 					}
 				}

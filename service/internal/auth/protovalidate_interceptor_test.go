@@ -227,3 +227,10 @@ g, regular-user, role:user
 		require.NoError(t, err)
 	})
 }
+
+// Note: Enforcement blocking tests with actual request procedures require
+// end-to-end integration tests where the Connect framework properly initializes
+// the request Spec. The interceptor correctly blocks unauthorized requests when
+// an Enforcer is provided and returns connect.CodePermissionDenied for failed
+// authorization checks (see the security fix in protovalidate_interceptor.go).
+

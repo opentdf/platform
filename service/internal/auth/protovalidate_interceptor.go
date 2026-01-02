@@ -119,7 +119,7 @@ func lookupProtoFieldString(m protoreflect.Message, path string) (string, bool) 
 		return "", false
 	}
 	// Convert scalar to string if possible
-	switch fld.Kind() {
+	switch fld.Kind() { //nolint:exhaustive // only handle supported types
 	case protoreflect.StringKind:
 		s := v.String()
 		// Treat empty strings as missing for required field validation
@@ -134,6 +134,7 @@ func lookupProtoFieldString(m protoreflect.Message, path string) (string, bool) 
 	case protoreflect.BoolKind:
 		return fmt.Sprintf("%t", v.Bool()), true
 	default:
+		// Unsupported field types (enums, bytes, messages, etc.) are not extracted
 		return "", false
 	}
 }

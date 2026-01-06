@@ -17,7 +17,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 
-	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
@@ -75,12 +75,12 @@ type RegistrationParams struct {
 	//
 	// Example:
 	//   srp.AuthzResolverRegistry.MustRegister("UpdateAttribute",
-	//       func(ctx context.Context, req connect.AnyRequest) (auth.AuthzResolverContext, error) {
+	//       func(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
 	//           msg := req.Any().(*pb.UpdateAttributeRequest)
 	//           // ... resolve dimensions using db client ...
 	//       },
 	//   )
-	AuthzResolverRegistry *auth.ScopedAuthzResolverRegistry
+	AuthzResolverRegistry *authz.ScopedResolverRegistry
 }
 type (
 	HandlerServer       func(ctx context.Context, mux *runtime.ServeMux) error

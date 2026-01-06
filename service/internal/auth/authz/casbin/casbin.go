@@ -1,4 +1,5 @@
-package auth
+// Package casbin provides a Casbin-based authorization implementation.
+package casbin
 
 import (
 	"context"
@@ -12,19 +13,25 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	casbinModel "github.com/casbin/casbin/v2/model"
+	"github.com/casbin/casbin/v2/persist"
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/util"
 )
 
-//go:embed casbin_model_v2.conf
+//go:embed model.conf
 var modelV2 string
 
-//go:embed casbin_policy_v2.csv
+//go:embed policy.csv
 var builtinPolicyV2 string
 
 const (
+	// rolePrefix is the prefix for role subjects in casbin policies.
+	rolePrefix = "role:"
+	// defaultRole is the role assigned when no roles are found.
+	defaultRole = "unknown"
 	// defaultSubjectsCapacity is the default capacity for subjects/roles slices.
 	defaultSubjectsCapacity = 4
 	// dimensionMatchArgCount is the expected argument count for dimensionMatch function.
@@ -35,39 +42,42 @@ const (
 
 func init() {
 	// Register the Casbin authorizer factory
-	RegisterAuthorizer("casbin", NewCasbinAuthorizer)
+	authz.RegisterFactory("casbin", NewAuthorizer)
 }
 
-// CasbinAuthorizer implements Authorizer using Casbin.
+// Authorizer implements authz.Authorizer using Casbin.
 // It supports both v1 (path-based) and v2 (RPC+dimensions) authorization models.
-type CasbinAuthorizer struct {
+type Authorizer struct {
 	// version indicates which model is active ("v1" or "v2")
 	version string
 
 	// v1Enforcer handles legacy path-based authorization
 	// Used when version == "v1"
-	v1Enforcer *Enforcer
+	v1Enforcer authz.V1Enforcer
 
 	// v2Enforcer handles RPC+dimensions authorization
 	// Used when version == "v2"
 	v2Enforcer *casbin.Enforcer
 
 	logger *logger.Logger
-	config PolicyConfig
+	config authz.PolicyConfig
 
 	// groupClaimSelectors are precomputed selectors for extracting roles from JWT claims
 	// Used in v2-only mode when v1Enforcer is nil
 	groupClaimSelectors [][]string
 }
 
-// NewCasbinAuthorizer creates a new CasbinAuthorizer based on configuration.
-func NewCasbinAuthorizer(cfg AuthorizerConfig) (Authorizer, error) {
+// NewAuthorizer creates a new Casbin Authorizer based on configuration.
+func NewAuthorizer(cfg authz.Config) (authz.Authorizer, error) {
 	log, ok := cfg.Logger.(*logger.Logger)
 	if !ok || log == nil {
 		return nil, errors.New("logger is required for CasbinAuthorizer")
 	}
 
-	authorizer := &CasbinAuthorizer{
+	// Apply options
+	opts := authz.ApplyOptions(cfg.Options...)
+
+	authorizer := &Authorizer{
 		version: cfg.Version,
 		logger:  log,
 		config:  cfg.PolicyConfig,
@@ -75,12 +85,11 @@ func NewCasbinAuthorizer(cfg AuthorizerConfig) (Authorizer, error) {
 
 	switch cfg.Version {
 	case "v1", "":
-		// v1: Use existing Enforcer for backwards compatibility
-		enforcer, err := NewCasbinEnforcer(CasbinConfig{PolicyConfig: cfg.PolicyConfig}, log)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create v1 casbin enforcer: %w", err)
+		// v1: Use provided enforcer for backwards compatibility
+		if opts.V1Enforcer == nil {
+			return nil, errors.New("v1 enforcer is required for v1 authorization mode (use authz.WithV1Enforcer)")
 		}
-		authorizer.v1Enforcer = enforcer
+		authorizer.v1Enforcer = opts.V1Enforcer
 		authorizer.version = "v1"
 
 	case "v2":
@@ -92,8 +101,8 @@ func NewCasbinAuthorizer(cfg AuthorizerConfig) (Authorizer, error) {
 		authorizer.v2Enforcer = enforcer
 
 		// Precompute group claim selectors for v2-only role extraction
-		groupClaimSelectors := make([][]string, len(cfg.GroupsClaim))
-		for i, claim := range cfg.GroupsClaim {
+		groupClaimSelectors := make([][]string, len(cfg.PolicyConfig.GroupsClaim))
+		for i, claim := range cfg.PolicyConfig.GroupsClaim {
 			groupClaimSelectors[i] = strings.Split(claim, ".")
 		}
 		authorizer.groupClaimSelectors = groupClaimSelectors
@@ -111,11 +120,11 @@ func NewCasbinAuthorizer(cfg AuthorizerConfig) (Authorizer, error) {
 }
 
 // createV2Enforcer creates a Casbin enforcer for the v2 model.
-func createV2Enforcer(cfg AuthorizerConfig, log *logger.Logger) (*casbin.Enforcer, error) {
+func createV2Enforcer(cfg authz.Config, log *logger.Logger) (*casbin.Enforcer, error) {
 	// Use embedded v2 model or custom model from config
 	modelStr := modelV2
-	if cfg.Model != "" {
-		modelStr = cfg.Model
+	if cfg.PolicyConfig.Model != "" {
+		modelStr = cfg.PolicyConfig.Model
 	}
 
 	m, err := casbinModel.NewModelFromString(modelStr)
@@ -124,9 +133,9 @@ func createV2Enforcer(cfg AuthorizerConfig, log *logger.Logger) (*casbin.Enforce
 	}
 
 	// Build policy adapter
-	var adapter interface{}
-	if cfg.Adapter != nil {
-		adapter = cfg.Adapter
+	var adapter any
+	if cfg.PolicyConfig.Adapter != nil {
+		adapter = cfg.PolicyConfig.Adapter
 	} else {
 		// Build CSV policy for v2
 		csvPolicy := buildV2Policy(cfg.PolicyConfig)
@@ -134,7 +143,7 @@ func createV2Enforcer(cfg AuthorizerConfig, log *logger.Logger) (*casbin.Enforce
 		log.Debug("v2 policy loaded", slog.String("policy", csvPolicy))
 	}
 
-	e, err := casbin.NewEnforcer(m, adapter)
+	e, err := casbin.NewEnforcer(m, adapter.(persist.Adapter))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create v2 casbin enforcer: %w", err)
 	}
@@ -152,7 +161,7 @@ func createV2Enforcer(cfg AuthorizerConfig, log *logger.Logger) (*casbin.Enforce
 
 // buildV2Policy constructs the CSV policy for v2 model.
 // Uses embedded default policy unless overridden by configuration.
-func buildV2Policy(cfg PolicyConfig) string {
+func buildV2Policy(cfg authz.PolicyConfig) string {
 	var policies []string
 
 	if cfg.Csv != "" {
@@ -171,8 +180,8 @@ func buildV2Policy(cfg PolicyConfig) string {
 	return strings.Join(policies, "\n")
 }
 
-// Authorize implements Authorizer.Authorize.
-func (a *CasbinAuthorizer) Authorize(ctx context.Context, req *AuthorizationRequest) (*AuthorizationDecision, error) {
+// Authorize implements authz.Authorizer.Authorize.
+func (a *Authorizer) Authorize(ctx context.Context, req *authz.Request) (*authz.Decision, error) {
 	switch a.version {
 	case "v1":
 		return a.authorizeV1(ctx, req)
@@ -183,39 +192,49 @@ func (a *CasbinAuthorizer) Authorize(ctx context.Context, req *AuthorizationRequ
 	}
 }
 
-// Version implements Authorizer.Version.
-func (a *CasbinAuthorizer) Version() string {
+// Version implements authz.Authorizer.Version.
+func (a *Authorizer) Version() string {
 	return a.version
 }
 
-// SupportsResourceAuthorization implements Authorizer.SupportsResourceAuthorization.
-func (a *CasbinAuthorizer) SupportsResourceAuthorization() bool {
+// SupportsResourceAuthorization implements authz.Authorizer.SupportsResourceAuthorization.
+func (a *Authorizer) SupportsResourceAuthorization() bool {
 	return a.version == "v2"
 }
 
 // authorizeV1 performs legacy path-based authorization.
-func (a *CasbinAuthorizer) authorizeV1(_ context.Context, req *AuthorizationRequest) (*AuthorizationDecision, error) {
-	// Use existing Enforcer logic
-	// Resource format varies by origin:
-	// - gRPC paths (contain '.') need leading slash stripped: /kas.AccessService/Rewrap -> kas.AccessService/Rewrap
-	// - HTTP paths (no dots) keep leading slash: /attributes -> /attributes
+//
+// Path handling heuristic for v1 policy compatibility:
+// The v1 Casbin policy file (casbin_policy.csv) uses two different path formats:
+//   - gRPC paths WITHOUT leading slash: kas.AccessService/Rewrap, policy.*, authorization.AuthorizationService/GetDecisions
+//   - HTTP paths WITH leading slash: /kas/v2/rewrap, /attributes*, /namespaces*
+//
+// ConnectRPC always provides paths with a leading slash (e.g., /kas.AccessService/Rewrap).
+// We distinguish gRPC from HTTP paths using a simple heuristic: gRPC service names contain "."
+// (e.g., "kas.AccessService"), while HTTP paths do not (e.g., "/kas/v2/rewrap").
+//
+// This preserves full backwards compatibility with the existing v1 policy format.
+func (a *Authorizer) authorizeV1(_ context.Context, req *authz.Request) (*authz.Decision, error) {
 	resource := req.RPC
 	if strings.Contains(req.RPC, ".") {
-		// gRPC-style path: strip leading slash for v1 policy compatibility
+		// gRPC-style path (contains '.'): strip leading slash for v1 policy compatibility
+		// Example: /kas.AccessService/Rewrap -> kas.AccessService/Rewrap
 		resource = strings.TrimPrefix(req.RPC, "/")
 	}
+	// HTTP paths (no '.') keep their leading slash
+	// Example: /kas/v2/rewrap -> /kas/v2/rewrap
 
 	allowed := a.v1Enforcer.Enforce(req.Token, req.UserInfo, resource, req.Action)
 
-	return &AuthorizationDecision{
+	return &authz.Decision{
 		Allowed: allowed,
 		Reason:  fmt.Sprintf("v1: %s %s", req.Action, resource),
-		Mode:    AuthzModeV1,
+		Mode:    authz.ModeV1,
 	}, nil
 }
 
 // authorizeV2 performs RPC+dimensions authorization.
-func (a *CasbinAuthorizer) authorizeV2(_ context.Context, req *AuthorizationRequest) (*AuthorizationDecision, error) {
+func (a *Authorizer) authorizeV2(_ context.Context, req *authz.Request) (*authz.Decision, error) {
 	subjects := a.extractSubjects(req)
 
 	// If no subjects found, use default role
@@ -251,10 +270,10 @@ func (a *CasbinAuthorizer) authorizeV2(_ context.Context, req *AuthorizationRequ
 				slog.String("rpc", req.RPC),
 				slog.String("dims", dims),
 			)
-			return &AuthorizationDecision{
+			return &authz.Decision{
 				Allowed:       true,
 				Reason:        fmt.Sprintf("v2: %s on %s with dims=%s", subject, req.RPC, dims),
-				Mode:          AuthzModeV2,
+				Mode:          authz.ModeV2,
 				MatchedPolicy: subject,
 			}, nil
 		}
@@ -266,18 +285,18 @@ func (a *CasbinAuthorizer) authorizeV2(_ context.Context, req *AuthorizationRequ
 		slog.String("dims", dims),
 	)
 
-	return &AuthorizationDecision{
+	return &authz.Decision{
 		Allowed: false,
 		Reason:  fmt.Sprintf("v2: denied %s with dims=%s", req.RPC, dims),
-		Mode:    AuthzModeV2,
+		Mode:    authz.ModeV2,
 	}, nil
 }
 
 // extractSubjects extracts roles/username from JWT token and userInfo.
-func (a *CasbinAuthorizer) extractSubjects(req *AuthorizationRequest) []string {
+func (a *Authorizer) extractSubjects(req *authz.Request) []string {
 	if a.v1Enforcer != nil {
 		// Reuse v1 subject extraction logic
-		return a.v1Enforcer.buildSubjectFromTokenAndUserInfo(req.Token, req.UserInfo)
+		return a.v1Enforcer.BuildSubjectFromTokenAndUserInfo(req.Token, req.UserInfo)
 	}
 
 	// For v2-only mode, implement subject extraction
@@ -314,7 +333,7 @@ func (a *CasbinAuthorizer) extractSubjects(req *AuthorizationRequest) []string {
 }
 
 // extractRolesFromToken extracts roles from a jwt.Token based on the configured claim path.
-func (a *CasbinAuthorizer) extractRolesFromToken(token jwt.Token) []string {
+func (a *Authorizer) extractRolesFromToken(token jwt.Token) []string {
 	roles := make([]string, 0, defaultSubjectsCapacity)
 	for _, selectors := range a.groupClaimSelectors {
 		if len(selectors) == 0 {
@@ -325,7 +344,7 @@ func (a *CasbinAuthorizer) extractRolesFromToken(token jwt.Token) []string {
 			continue
 		}
 		if len(selectors) > 1 {
-			claimMap, ok := claim.(map[string]interface{})
+			claimMap, ok := claim.(map[string]any)
 			if !ok {
 				continue
 			}
@@ -338,7 +357,7 @@ func (a *CasbinAuthorizer) extractRolesFromToken(token jwt.Token) []string {
 		switch v := claim.(type) {
 		case string:
 			roles = append(roles, v)
-		case []interface{}:
+		case []any:
 			for _, rr := range v {
 				if r, ok := rr.(string); ok {
 					roles = append(roles, r)
@@ -352,12 +371,12 @@ func (a *CasbinAuthorizer) extractRolesFromToken(token jwt.Token) []string {
 }
 
 // extractRolesFromUserInfo extracts roles from a userInfo JSON ([]byte) based on the configured claim path.
-func (a *CasbinAuthorizer) extractRolesFromUserInfo(userInfo []byte) []string {
+func (a *Authorizer) extractRolesFromUserInfo(userInfo []byte) []string {
 	roles := make([]string, 0, defaultSubjectsCapacity)
 	if len(userInfo) == 0 {
 		return roles
 	}
-	var userInfoMap map[string]interface{}
+	var userInfoMap map[string]any
 	if err := json.Unmarshal(userInfo, &userInfoMap); err != nil {
 		return roles
 	}
@@ -372,7 +391,7 @@ func (a *CasbinAuthorizer) extractRolesFromUserInfo(userInfo []byte) []string {
 		switch v := claim.(type) {
 		case string:
 			roles = append(roles, v)
-		case []interface{}:
+		case []any:
 			for _, rr := range v {
 				if r, ok := rr.(string); ok {
 					roles = append(roles, r)
@@ -385,10 +404,10 @@ func (a *CasbinAuthorizer) extractRolesFromUserInfo(userInfo []byte) []string {
 	return roles
 }
 
-// serializeDimensions converts AuthzResolverContext to canonical dimension string.
+// serializeDimensions converts ResolverContext to canonical dimension string.
 // Format: key1=value1&key2=value2 (keys sorted alphabetically)
 // Returns "*" if no dimensions are present.
-func serializeDimensions(ctx *AuthzResolverContext) string {
+func serializeDimensions(ctx *authz.ResolverContext) string {
 	if ctx == nil || len(ctx.Resources) == 0 {
 		return "*"
 	}
@@ -429,7 +448,7 @@ func serializeDimensions(ctx *AuthzResolverContext) string {
 //
 // Policy format: "namespace=hr&attribute=*" (AND logic, * is wildcard)
 // Request format: "namespace=hr&attribute=classification"
-func dimensionMatchFunc(args ...interface{}) (interface{}, error) {
+func dimensionMatchFunc(args ...any) (any, error) {
 	if len(args) != dimensionMatchArgCount {
 		return false, fmt.Errorf("dimensionMatch requires %d arguments, got %d", dimensionMatchArgCount, len(args))
 	}

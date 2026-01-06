@@ -10,7 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
-	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -98,8 +98,8 @@ func (s *AttributesService) Close() {
 // --- CreateAttribute ---
 
 // createAttributeAuthzResolver resolves namespace from the request's namespace_id.
-func (s *AttributesService) createAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (auth.AuthzResolverContext, error) {
-	resolverCtx := auth.NewAuthzResolverContext()
+func (s *AttributesService) createAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
 	msg, ok := req.Any().(*attributes.CreateAttributeRequest)
 	if !ok {
 		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
@@ -153,8 +153,8 @@ func (s *AttributesService) CreateAttribute(ctx context.Context,
 // --- ListAttributes ---
 
 // listAttributesAuthzResolver resolves optional namespace filter.
-func (s *AttributesService) listAttributesAuthzResolver(_ context.Context, req connect.AnyRequest) (auth.AuthzResolverContext, error) {
-	resolverCtx := auth.NewAuthzResolverContext()
+func (s *AttributesService) listAttributesAuthzResolver(_ context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
 	msg, ok := req.Any().(*attributes.ListAttributesRequest)
 	if !ok {
 		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
@@ -189,8 +189,8 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 // --- GetAttribute ---
 
 // getAttributeAuthzResolver resolves namespace from attribute lookup.
-func (s *AttributesService) getAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (auth.AuthzResolverContext, error) {
-	resolverCtx := auth.NewAuthzResolverContext()
+func (s *AttributesService) getAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
 	msg, ok := req.Any().(*attributes.GetAttributeRequest)
 	if !ok {
 		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
@@ -262,8 +262,8 @@ func (s *AttributesService) GetAttributeValuesByFqns(ctx context.Context,
 // --- UpdateAttribute ---
 
 // updateAttributeAuthzResolver resolves namespace from attribute lookup.
-func (s *AttributesService) updateAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (auth.AuthzResolverContext, error) {
-	resolverCtx := auth.NewAuthzResolverContext()
+func (s *AttributesService) updateAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
 	msg, ok := req.Any().(*attributes.UpdateAttributeRequest)
 	if !ok {
 		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
@@ -319,8 +319,8 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 // --- DeactivateAttribute ---
 
 // deactivateAttributeAuthzResolver resolves namespace from attribute lookup.
-func (s *AttributesService) deactivateAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (auth.AuthzResolverContext, error) {
-	resolverCtx := auth.NewAuthzResolverContext()
+func (s *AttributesService) deactivateAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
 	msg, ok := req.Any().(*attributes.DeactivateAttributeRequest)
 	if !ok {
 		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())

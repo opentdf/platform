@@ -125,7 +125,7 @@ func (e *Enforcer) Enforce(token jwt.Token, userInfo []byte, resource, action st
 	}
 
 	// extract the role claim from the token and userInfo
-	s := e.buildSubjectFromTokenAndUserInfo(token, userInfo)
+	s := e.BuildSubjectFromTokenAndUserInfo(token, userInfo)
 
 	// Assign the default role if no roles are found
 	if len(s) == 0 {
@@ -146,8 +146,10 @@ func (e *Enforcer) Enforce(token jwt.Token, userInfo []byte, resource, action st
 	return false
 }
 
-// buildSubjectFromTokenAndUserInfo combines roles from both token and userInfo
-func (e *Enforcer) buildSubjectFromTokenAndUserInfo(t jwt.Token, userInfo []byte) casbinSubject {
+// BuildSubjectFromTokenAndUserInfo combines roles from both token and userInfo.
+// It extracts roles from both sources and adds the username claim if present.
+// This method implements authz.V1Enforcer interface.
+func (e *Enforcer) BuildSubjectFromTokenAndUserInfo(t jwt.Token, userInfo []byte) []string {
 	var subject string
 	info := casbinSubject{}
 

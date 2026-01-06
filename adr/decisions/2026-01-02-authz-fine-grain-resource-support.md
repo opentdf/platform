@@ -112,7 +112,6 @@ type AuthzContext struct {
     Action string
 
     // Dimensions contains service-specific authorization dimensions.
-    // Keys should match the dimension keys declared in the proto annotation.
     // Use "*" for wildcard/any matching.
     Dimensions map[string]string
 }
@@ -412,25 +411,6 @@ All authorization decisions are logged with the serialized dimensions:
 }
 ```
 
-For governance and compliance, the dimensions can also be logged as structured data:
-
-```json
-{
-  "level": "info",
-  "msg": "authorization decision",
-  "subject": "role:hr-admin",
-  "resource_type": "policy.attribute",
-  "action": "write",
-  "dimensions": {
-    "namespace": "hr",
-    "attribute": "classification"
-  },
-  "dimensions_serialized": "attribute=classification;namespace=hr",
-  "decision": "allow",
-  "policy_matched": "p, role:hr-admin, policy.*, *, namespace=hr, allow"
-}
-```
-
 ---
 
 ## Concerns & Mitigations
@@ -535,13 +515,10 @@ For governance and compliance, the dimensions can also be logged as structured d
 - [x] Authentication integration with Authorizer and ResolverRegistry
 - [x] Unit tests for dimension matching and policy evaluation
 
-**Deferred:**
+**Remaining:**
 
-- [ ] Proto annotations for authorization schema (requires proto changes)
 - [ ] Service-specific resolvers (policy, KAS, etc.)
-- [ ] Governance tooling (authz-matrix-gen)
-
-> **Note:** Proto annotation work has been explicitly deferred. The current implementation provides the infrastructure (Authorizer interface, resolver registry, v2 model) that future proto annotations can leverage.
+- [ ] Integration tests for resolver + authorizer flow
 
 ### Key Files
 
@@ -557,7 +534,6 @@ For governance and compliance, the dimensions can also be logged as structured d
 - [ ] Finalize answers to open questions (Q1-Q3)
 - [ ] Design caching strategy for resolver lookups
 - [ ] Define integration test patterns
-- [ ] Build governance tooling (authz-matrix-gen)
 - [ ] Performance benchmarks with resolver overhead
 
 ---

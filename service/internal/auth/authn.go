@@ -23,6 +23,8 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
+	"github.com/opentdf/platform/service/internal/auth/authz"
+	_ "github.com/opentdf/platform/service/internal/auth/authz/casbin" // Register casbin authorizer
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
@@ -88,12 +90,12 @@ type Authentication struct {
 	cachedKeySet jwk.Set
 	// openidConfigurations holds the openid configuration for the issuer
 	oidcConfiguration AuthNConfig
-	// Casbin enforcer (deprecated: use authorizer instead)
+	// Casbin enforcer for v1 authorization (implements authz.V1Enforcer)
 	enforcer *Enforcer
 	// authorizer is the pluggable authorization engine (v1, v2, etc.)
-	authorizer Authorizer
+	authorizer authz.Authorizer
 	// authzResolverRegistry holds per-method resolvers for extracting authorization dimensions
-	authzResolverRegistry *AuthzResolverRegistry
+	authzResolverRegistry *authz.ResolverRegistry
 	// Public Routes HTTP & gRPC
 	publicRoutes []string
 	// IPC Reauthorization Routes
@@ -110,7 +112,7 @@ type AuthenticatorOption func(*Authentication)
 
 // WithAuthzResolverRegistry sets the authorization resolver registry.
 // When set, the interceptors will call resolvers to extract authorization dimensions.
-func WithAuthzResolverRegistry(registry *AuthzResolverRegistry) AuthenticatorOption {
+func WithAuthzResolverRegistry(registry *authz.ResolverRegistry) AuthenticatorOption {
 	return func(a *Authentication) {
 		a.authzResolverRegistry = registry
 	}
@@ -173,13 +175,28 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	}
 
 	// Initialize the pluggable authorizer based on version
-	authzCfg := AuthorizerConfig{
+	// Convert auth.PolicyConfig to authz.PolicyConfig
+	authzPolicyCfg := authz.PolicyConfig{
+		Version:       cfg.Policy.Version,
+		UserNameClaim: cfg.Policy.UserNameClaim,
+		GroupsClaim:   []string(cfg.Policy.GroupsClaim),
+		ClientIDClaim: cfg.Policy.ClientIDClaim,
+		Csv:           cfg.Policy.Csv,
+		Extension:     cfg.Policy.Extension,
+		Model:         cfg.Policy.Model,
+		RoleMap:       cfg.Policy.RoleMap,
+		Adapter:       cfg.Policy.Adapter,
+	}
+	authzCfg := authz.Config{
 		Version:      cfg.Policy.Version,
-		PolicyConfig: cfg.Policy,
+		PolicyConfig: authzPolicyCfg,
 		Logger:       logger,
+		// Pass the v1 enforcer to break circular dependency
+		// The casbin authorizer will use this for v1 mode
+		Options: []authz.Option{authz.WithV1Enforcer(a.enforcer)},
 	}
 	logger.Info("initializing authorizer", slog.String("version", authzCfg.Version))
-	if a.authorizer, err = NewAuthorizer(authzCfg); err != nil {
+	if a.authorizer, err = authz.New(authzCfg); err != nil {
 		return nil, fmt.Errorf("failed to initialize authorizer: %w", err)
 	}
 
@@ -312,7 +329,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		// Build authorization request
 		// Note: HTTP handler uses path-based authorization (no dimension resolution)
 		// as it's primarily for legacy gRPC-Gateway support
-		authzReq := &AuthorizationRequest{
+		authzReq := &authz.Request{
 			Token:  accessTok,
 			RPC:    r.URL.Path,
 			Action: action,
@@ -403,7 +420,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			}
 
 			// Build authorization request
-			authzReq := &AuthorizationRequest{
+			authzReq := &authz.Request{
 				Token:  token,
 				RPC:    req.Spec().Procedure,
 				Action: action,

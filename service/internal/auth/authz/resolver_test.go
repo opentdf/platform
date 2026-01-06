@@ -1,4 +1,4 @@
-package auth
+package authz
 
 import (
 	"context"
@@ -12,39 +12,39 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Test suite for AuthzResolver functionality
-type AuthzResolverSuite struct {
+// Test suite for Resolver functionality
+type ResolverSuite struct {
 	suite.Suite
 }
 
-func TestAuthzResolverSuite(t *testing.T) {
-	suite.Run(t, new(AuthzResolverSuite))
+func TestResolverSuite(t *testing.T) {
+	suite.Run(t, new(ResolverSuite))
 }
 
-// --- AuthzResolverRegistry Tests ---
+// --- ResolverRegistry Tests ---
 
-func (s *AuthzResolverSuite) TestNewAuthzResolverRegistry() {
-	registry := NewAuthzResolverRegistry()
+func (s *ResolverSuite) TestNewResolverRegistry() {
+	registry := NewResolverRegistry()
 
 	s.NotNil(registry)
 	s.NotNil(registry.resolvers)
 	s.Empty(registry.resolvers)
 }
 
-func (s *AuthzResolverSuite) TestRegistry_Get_NotFound() {
-	registry := NewAuthzResolverRegistry()
+func (s *ResolverSuite) TestRegistry_Get_NotFound() {
+	registry := NewResolverRegistry()
 
 	resolver, ok := registry.Get("/service.Method")
 	s.False(ok)
 	s.Nil(resolver)
 }
 
-func (s *AuthzResolverSuite) TestRegistry_RegisterAndGet() {
-	registry := NewAuthzResolverRegistry()
+func (s *ResolverSuite) TestRegistry_RegisterAndGet() {
+	registry := NewResolverRegistry()
 	called := false
-	testResolver := func(_ context.Context, _ connect.AnyRequest) (AuthzResolverContext, error) {
+	testResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
 		called = true
-		return NewAuthzResolverContext(), nil
+		return NewResolverContext(), nil
 	}
 
 	// Use internal register method (normally called via scoped registry)
@@ -59,8 +59,8 @@ func (s *AuthzResolverSuite) TestRegistry_RegisterAndGet() {
 	s.True(called)
 }
 
-func (s *AuthzResolverSuite) TestRegistry_ThreadSafety() {
-	registry := NewAuthzResolverRegistry()
+func (s *ResolverSuite) TestRegistry_ThreadSafety() {
+	registry := NewResolverRegistry()
 	const numGoroutines = 100
 	const numOperations = 100
 
@@ -73,8 +73,8 @@ func (s *AuthzResolverSuite) TestRegistry_ThreadSafety() {
 			defer wg.Done()
 			for j := range numOperations {
 				methodPath := "/test.Service/Method" + string(rune('A'+id%26)) + string(rune('0'+j%10))
-				registry.register(methodPath, func(_ context.Context, _ connect.AnyRequest) (AuthzResolverContext, error) {
-					return NewAuthzResolverContext(), nil
+				registry.register(methodPath, func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+					return NewResolverContext(), nil
 				})
 			}
 		}(i)
@@ -94,18 +94,18 @@ func (s *AuthzResolverSuite) TestRegistry_ThreadSafety() {
 	wg.Wait()
 }
 
-// --- ScopedAuthzResolverRegistry Tests ---
+// --- ScopedResolverRegistry Tests ---
 
-func (s *AuthzResolverSuite) TestScopedForService_NilServiceDesc_Panics() {
-	registry := NewAuthzResolverRegistry()
+func (s *ResolverSuite) TestScopedForService_NilServiceDesc_Panics() {
+	registry := NewResolverRegistry()
 
 	s.Panics(func() {
 		registry.ScopedForService(nil)
 	})
 }
 
-func (s *AuthzResolverSuite) TestScopedForService_ValidServiceDesc() {
-	registry := NewAuthzResolverRegistry()
+func (s *ResolverSuite) TestScopedForService_ValidServiceDesc() {
+	registry := NewResolverRegistry()
 	serviceDesc := &grpc.ServiceDesc{
 		ServiceName: "test.TestService",
 		Methods: []grpc.MethodDesc{
@@ -121,8 +121,8 @@ func (s *AuthzResolverSuite) TestScopedForService_ValidServiceDesc() {
 	s.Same(registry, scoped.parent)
 }
 
-func (s *AuthzResolverSuite) TestScoped_Register_ValidMethod() {
-	registry := NewAuthzResolverRegistry()
+func (s *ResolverSuite) TestScoped_Register_ValidMethod() {
+	registry := NewResolverRegistry()
 	serviceDesc := &grpc.ServiceDesc{
 		ServiceName: "policy.AttributesService",
 		Methods: []grpc.MethodDesc{
@@ -132,8 +132,8 @@ func (s *AuthzResolverSuite) TestScoped_Register_ValidMethod() {
 	}
 	scoped := registry.ScopedForService(serviceDesc)
 
-	testResolver := func(_ context.Context, _ connect.AnyRequest) (AuthzResolverContext, error) {
-		return NewAuthzResolverContext(), nil
+	testResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+		return NewResolverContext(), nil
 	}
 
 	err := scoped.Register("CreateAttribute", testResolver)
@@ -146,8 +146,8 @@ func (s *AuthzResolverSuite) TestScoped_Register_ValidMethod() {
 	s.NotNil(resolver)
 }
 
-func (s *AuthzResolverSuite) TestScoped_Register_InvalidMethod() {
-	registry := NewAuthzResolverRegistry()
+func (s *ResolverSuite) TestScoped_Register_InvalidMethod() {
+	registry := NewResolverRegistry()
 	serviceDesc := &grpc.ServiceDesc{
 		ServiceName: "policy.AttributesService",
 		Methods: []grpc.MethodDesc{
@@ -156,8 +156,8 @@ func (s *AuthzResolverSuite) TestScoped_Register_InvalidMethod() {
 	}
 	scoped := registry.ScopedForService(serviceDesc)
 
-	testResolver := func(_ context.Context, _ connect.AnyRequest) (AuthzResolverContext, error) {
-		return NewAuthzResolverContext(), nil
+	testResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+		return NewResolverContext(), nil
 	}
 
 	err := scoped.Register("NonExistentMethod", testResolver)
@@ -170,8 +170,8 @@ func (s *AuthzResolverSuite) TestScoped_Register_InvalidMethod() {
 	s.False(ok)
 }
 
-func (s *AuthzResolverSuite) TestScoped_MustRegister_ValidMethod() {
-	registry := NewAuthzResolverRegistry()
+func (s *ResolverSuite) TestScoped_MustRegister_ValidMethod() {
+	registry := NewResolverRegistry()
 	serviceDesc := &grpc.ServiceDesc{
 		ServiceName: "policy.AttributesService",
 		Methods: []grpc.MethodDesc{
@@ -180,8 +180,8 @@ func (s *AuthzResolverSuite) TestScoped_MustRegister_ValidMethod() {
 	}
 	scoped := registry.ScopedForService(serviceDesc)
 
-	testResolver := func(_ context.Context, _ connect.AnyRequest) (AuthzResolverContext, error) {
-		return NewAuthzResolverContext(), nil
+	testResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+		return NewResolverContext(), nil
 	}
 
 	// Should not panic
@@ -195,8 +195,8 @@ func (s *AuthzResolverSuite) TestScoped_MustRegister_ValidMethod() {
 	s.NotNil(resolver)
 }
 
-func (s *AuthzResolverSuite) TestScoped_MustRegister_InvalidMethod_Panics() {
-	registry := NewAuthzResolverRegistry()
+func (s *ResolverSuite) TestScoped_MustRegister_InvalidMethod_Panics() {
+	registry := NewResolverRegistry()
 	serviceDesc := &grpc.ServiceDesc{
 		ServiceName: "policy.AttributesService",
 		Methods: []grpc.MethodDesc{
@@ -205,8 +205,8 @@ func (s *AuthzResolverSuite) TestScoped_MustRegister_InvalidMethod_Panics() {
 	}
 	scoped := registry.ScopedForService(serviceDesc)
 
-	testResolver := func(_ context.Context, _ connect.AnyRequest) (AuthzResolverContext, error) {
-		return NewAuthzResolverContext(), nil
+	testResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+		return NewResolverContext(), nil
 	}
 
 	s.Panics(func() {
@@ -214,8 +214,8 @@ func (s *AuthzResolverSuite) TestScoped_MustRegister_InvalidMethod_Panics() {
 	})
 }
 
-func (s *AuthzResolverSuite) TestScoped_MultipleServicesIsolation() {
-	registry := NewAuthzResolverRegistry()
+func (s *ResolverSuite) TestScoped_MultipleServicesIsolation() {
+	registry := NewResolverRegistry()
 
 	serviceA := &grpc.ServiceDesc{
 		ServiceName: "serviceA.ServiceA",
@@ -233,14 +233,14 @@ func (s *AuthzResolverSuite) TestScoped_MultipleServicesIsolation() {
 	scopedA := registry.ScopedForService(serviceA)
 	scopedB := registry.ScopedForService(serviceB)
 
-	resolverA := func(_ context.Context, _ connect.AnyRequest) (AuthzResolverContext, error) {
-		ctx := NewAuthzResolverContext()
+	resolverA := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+		ctx := NewResolverContext()
 		res := ctx.NewResource()
 		res.AddDimension("service", "A")
 		return ctx, nil
 	}
-	resolverB := func(_ context.Context, _ connect.AnyRequest) (AuthzResolverContext, error) {
-		ctx := NewAuthzResolverContext()
+	resolverB := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+		ctx := NewResolverContext()
 		res := ctx.NewResource()
 		res.AddDimension("service", "B")
 		return ctx, nil
@@ -277,17 +277,17 @@ func (s *AuthzResolverSuite) TestScoped_MultipleServicesIsolation() {
 	s.Equal("B", (*ctxB.Resources[0])["service"])
 }
 
-// --- AuthzResolverContext Tests ---
+// --- ResolverContext Tests ---
 
-func (s *AuthzResolverSuite) TestNewAuthzResolverContext() {
-	ctx := NewAuthzResolverContext()
+func (s *ResolverSuite) TestNewResolverContext() {
+	ctx := NewResolverContext()
 
 	s.NotNil(ctx)
 	s.Nil(ctx.Resources) // Should be nil initially, not empty slice
 }
 
-func (s *AuthzResolverSuite) TestAuthzResolverContext_NewResource() {
-	ctx := NewAuthzResolverContext()
+func (s *ResolverSuite) TestResolverContext_NewResource() {
+	ctx := NewResolverContext()
 
 	res1 := ctx.NewResource()
 	s.NotNil(res1)
@@ -301,8 +301,8 @@ func (s *AuthzResolverSuite) TestAuthzResolverContext_NewResource() {
 	s.NotSame(res1, res2)
 }
 
-func (s *AuthzResolverSuite) TestAuthzResolverContext_MultipleResources() {
-	ctx := NewAuthzResolverContext()
+func (s *ResolverSuite) TestResolverContext_MultipleResources() {
+	ctx := NewResolverContext()
 
 	// Simulate "move from namespace A to namespace B" scenario
 	source := ctx.NewResource()
@@ -318,10 +318,10 @@ func (s *AuthzResolverSuite) TestAuthzResolverContext_MultipleResources() {
 	s.Equal("ns-destination", (*ctx.Resources[1])["namespace"])
 }
 
-// --- AuthzResolverResource Tests ---
+// --- ResolverResource Tests ---
 
-func (s *AuthzResolverSuite) TestAuthzResolverResource_AddDimension() {
-	ctx := NewAuthzResolverContext()
+func (s *ResolverSuite) TestResolverResource_AddDimension() {
+	ctx := NewResolverContext()
 	res := ctx.NewResource()
 
 	res.AddDimension("namespace", "hr")
@@ -333,8 +333,8 @@ func (s *AuthzResolverSuite) TestAuthzResolverResource_AddDimension() {
 	s.Equal("attribute", (*res)["resource_type"])
 }
 
-func (s *AuthzResolverSuite) TestAuthzResolverResource_OverwriteDimension() {
-	ctx := NewAuthzResolverContext()
+func (s *ResolverSuite) TestResolverResource_OverwriteDimension() {
+	ctx := NewResolverContext()
 	res := ctx.NewResource()
 
 	res.AddDimension("namespace", "original")
@@ -343,8 +343,8 @@ func (s *AuthzResolverSuite) TestAuthzResolverResource_OverwriteDimension() {
 	s.Equal("updated", (*res)["namespace"])
 }
 
-func (s *AuthzResolverSuite) TestAuthzResolverResource_EmptyValues() {
-	ctx := NewAuthzResolverContext()
+func (s *ResolverSuite) TestResolverResource_EmptyValues() {
+	ctx := NewResolverContext()
 	res := ctx.NewResource()
 
 	res.AddDimension("", "empty-key")
@@ -356,9 +356,9 @@ func (s *AuthzResolverSuite) TestAuthzResolverResource_EmptyValues() {
 
 // --- Integration Tests ---
 
-func (s *AuthzResolverSuite) TestFullWorkflow_ServiceRegistration() {
+func (s *ResolverSuite) TestFullWorkflow_ServiceRegistration() {
 	// Simulates how a service would use the registry during initialization
-	registry := NewAuthzResolverRegistry()
+	registry := NewResolverRegistry()
 
 	// Service descriptor (normally from proto-generated code)
 	serviceDesc := &grpc.ServiceDesc{
@@ -376,16 +376,16 @@ func (s *AuthzResolverSuite) TestFullWorkflow_ServiceRegistration() {
 	scopedRegistry := registry.ScopedForService(serviceDesc)
 
 	// Service registers resolvers during initialization (like in RegisterFunc)
-	scopedRegistry.MustRegister("CreateAttribute", func(_ context.Context, _ connect.AnyRequest) (AuthzResolverContext, error) {
-		ctx := NewAuthzResolverContext()
+	scopedRegistry.MustRegister("CreateAttribute", func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+		ctx := NewResolverContext()
 		res := ctx.NewResource()
 		res.AddDimension("namespace", "test-ns")
 		res.AddDimension("action", "create")
 		return ctx, nil
 	})
 
-	scopedRegistry.MustRegister("GetAttribute", func(_ context.Context, _ connect.AnyRequest) (AuthzResolverContext, error) {
-		ctx := NewAuthzResolverContext()
+	scopedRegistry.MustRegister("GetAttribute", func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+		ctx := NewResolverContext()
 		res := ctx.NewResource()
 		res.AddDimension("namespace", "test-ns")
 		res.AddDimension("action", "read")
@@ -417,14 +417,14 @@ func (s *AuthzResolverSuite) TestFullWorkflow_ServiceRegistration() {
 
 // --- Additional Test Functions (non-suite) ---
 
-func TestAuthzResolverRegistry_Basic(t *testing.T) {
-	registry := NewAuthzResolverRegistry()
+func TestResolverRegistry_Basic(t *testing.T) {
+	registry := NewResolverRegistry()
 	require.NotNil(t, registry)
 	assert.Empty(t, registry.resolvers)
 }
 
 func TestScopedRegistry_ServiceName(t *testing.T) {
-	registry := NewAuthzResolverRegistry()
+	registry := NewResolverRegistry()
 	serviceDesc := &grpc.ServiceDesc{
 		ServiceName: "my.custom.Service",
 		Methods:     []grpc.MethodDesc{{MethodName: "DoSomething"}},
@@ -435,8 +435,8 @@ func TestScopedRegistry_ServiceName(t *testing.T) {
 	assert.Equal(t, "my.custom.Service", scoped.ServiceName())
 }
 
-func TestAuthzResolverContext_ResourceIndependence(t *testing.T) {
-	ctx := NewAuthzResolverContext()
+func TestResolverContext_ResourceIndependence(t *testing.T) {
+	ctx := NewResolverContext()
 
 	res1 := ctx.NewResource()
 	res1.AddDimension("key", "value1")

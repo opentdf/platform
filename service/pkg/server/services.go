@@ -13,7 +13,7 @@ import (
 	"github.com/opentdf/platform/service/entityresolution"
 	entityresolutionV2 "github.com/opentdf/platform/service/entityresolution/v2"
 	"github.com/opentdf/platform/service/health"
-	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/kas"
 	logging "github.com/opentdf/platform/service/logger"
@@ -126,7 +126,7 @@ type startServicesParams struct {
 	reg                    *serviceregistry.Registry
 	cacheManager           *cache.Manager
 	keyManagerCtxFactories []trust.NamedKeyManagerCtxFactory
-	authzResolverRegistry  *auth.AuthzResolverRegistry
+	authzResolverRegistry  *authz.ResolverRegistry
 }
 
 // startServices iterates through the registered namespaces and starts the services
@@ -210,7 +210,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 
 			// Create a scoped authz resolver registry for this service
 			// This ensures services can only register resolvers for their own methods
-			var scopedAuthzRegistry *auth.ScopedAuthzResolverRegistry
+			var scopedAuthzRegistry *authz.ScopedResolverRegistry
 			if params.authzResolverRegistry != nil {
 				scopedAuthzRegistry = params.authzResolverRegistry.ScopedForService(svc.GetServiceDesc())
 			}

@@ -4,7 +4,14 @@ package authz
 // This is a subset of the fields from auth.PolicyConfig that are relevant
 // for authorization engines.
 type PolicyConfig struct {
-	// Version specifies the authorization model version to use.
+	// Engine specifies the authorization engine to use.
+	// - "casbin" (default): Casbin policy engine
+	// - "cedar": AWS Cedar policy engine (future)
+	// - "opa": Open Policy Agent engine (future)
+	Engine string
+
+	// Version specifies the engine-specific authorization model version.
+	// For Casbin:
 	// - "v1" (default): Legacy path-based authorization (subject, resource, action)
 	// - "v2": RPC + dimensions authorization (subject, rpc, dimensions)
 	Version string

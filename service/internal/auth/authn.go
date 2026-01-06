@@ -174,9 +174,10 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)
 	}
 
-	// Initialize the pluggable authorizer based on version
+	// Initialize the pluggable authorizer based on engine and version
 	// Convert auth.PolicyConfig to authz.PolicyConfig
 	authzPolicyCfg := authz.PolicyConfig{
+		Engine:        cfg.Policy.Engine,
 		Version:       cfg.Policy.Version,
 		UserNameClaim: cfg.Policy.UserNameClaim,
 		GroupsClaim:   []string{cfg.Policy.GroupsClaim},
@@ -188,6 +189,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		Adapter:       cfg.Policy.Adapter,
 	}
 	authzCfg := authz.Config{
+		Engine:       cfg.Policy.Engine,
 		Version:      cfg.Policy.Version,
 		PolicyConfig: authzPolicyCfg,
 		Logger:       logger,
@@ -195,7 +197,10 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		// The casbin authorizer will use this for v1 mode
 		Options: []authz.Option{authz.WithV1Enforcer(a.enforcer)},
 	}
-	logger.Info("initializing authorizer", slog.String("version", authzCfg.Version))
+	logger.Info("initializing authorizer",
+		slog.String("engine", authzCfg.Engine),
+		slog.String("version", authzCfg.Version),
+	)
 	if a.authorizer, err = authz.New(authzCfg); err != nil {
 		return nil, fmt.Errorf("failed to initialize authorizer: %w", err)
 	}
@@ -359,6 +364,85 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	})
 }
 
+// authzResult holds the result of an authorization check
+type authzResult struct {
+	decision *authz.Decision
+	err      error
+	errCode  connect.Code
+}
+
+// resolveResourceContext attempts to resolve authorization dimensions using a registered resolver.
+// Returns nil if no resolver is registered or if resolvers are not supported.
+func (a *Authentication) resolveResourceContext(
+	ctx context.Context,
+	log *logger.Logger,
+	req connect.AnyRequest,
+) (*authz.ResolverContext, error) {
+	// Skip if resolver registry not available or authorizer doesn't support resource authorization
+	if a.authzResolverRegistry == nil || !a.authorizer.SupportsResourceAuthorization() {
+		return nil, nil
+	}
+
+	resolver, ok := a.authzResolverRegistry.Get(req.Spec().Procedure)
+	if !ok {
+		return nil, nil
+	}
+
+	resolvedCtx, err := resolver(ctx, req)
+	if err != nil {
+		log.WarnContext(ctx, "authz resolver failed",
+			slog.String("procedure", req.Spec().Procedure),
+			slog.Any("error", err),
+		)
+		return nil, err
+	}
+
+	return &resolvedCtx, nil
+}
+
+// authorize performs the full authorization check for a request.
+// It builds the authorization request, resolves resource context if applicable,
+// and returns the authorization decision.
+func (a *Authentication) authorize(
+	ctx context.Context,
+	log *logger.Logger,
+	token jwt.Token,
+	req connect.AnyRequest,
+	action string,
+) authzResult {
+	// Build authorization request
+	authzReq := &authz.Request{
+		Token:  token,
+		RPC:    req.Spec().Procedure,
+		Action: action,
+	}
+
+	// Try to resolve resource context for fine-grained authorization
+	resourceCtx, resolveErr := a.resolveResourceContext(ctx, log, req)
+	if resolveErr != nil {
+		return authzResult{
+			err:     errors.New("authorization context resolution failed"),
+			errCode: connect.CodePermissionDenied,
+		}
+	}
+	authzReq.ResourceContext = resourceCtx
+
+	// Perform authorization check
+	decision, authzErr := a.authorizer.Authorize(ctx, authzReq)
+	if authzErr != nil {
+		log.ErrorContext(ctx, "authorization error",
+			slog.Any("error", authzErr),
+			slog.String("procedure", req.Spec().Procedure),
+		)
+		return authzResult{
+			err:     errors.New("authorization system error"),
+			errCode: connect.CodeInternal,
+		}
+	}
+
+	return authzResult{decision: decision}
+}
+
 // UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
 func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
@@ -419,40 +503,13 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				ctxWithJWK = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, log, clientID)
 			}
 
-			// Build authorization request
-			authzReq := &authz.Request{
-				Token:  token,
-				RPC:    req.Spec().Procedure,
-				Action: action,
+			// Perform authorization check
+			result := a.authorize(ctxWithJWK, log, token, req, action)
+			if result.err != nil {
+				return nil, connect.NewError(result.errCode, result.err)
 			}
 
-			// Try to resolve authorization dimensions if registry is available
-			// and we're using v2+ authorization
-			if a.authzResolverRegistry != nil && a.authorizer.SupportsResourceAuthorization() {
-				if resolver, ok := a.authzResolverRegistry.Get(req.Spec().Procedure); ok {
-					resolvedCtx, resolveErr := resolver(ctxWithJWK, req)
-					if resolveErr != nil {
-						log.WarnContext(ctxWithJWK, "authz resolver failed",
-							slog.String("procedure", req.Spec().Procedure),
-							slog.Any("error", resolveErr),
-						)
-						// For v2, resolver failure means we can't authorize - deny
-						return nil, connect.NewError(connect.CodePermissionDenied, errors.New("authorization context resolution failed"))
-					}
-					authzReq.ResourceContext = &resolvedCtx
-				}
-			}
-
-			// Check if the token is allowed to access the resource
-			decision, authzErr := a.authorizer.Authorize(ctxWithJWK, authzReq)
-			if authzErr != nil {
-				log.ErrorContext(ctxWithJWK, "authorization error",
-					slog.Any("error", authzErr),
-					slog.String("procedure", req.Spec().Procedure),
-				)
-				return nil, connect.NewError(connect.CodeInternal, errors.New("authorization system error"))
-			}
-
+			decision := result.decision
 			if !decision.Allowed {
 				log.WarnContext(ctxWithJWK, "permission denied",
 					slog.String("azp", token.Subject()),
@@ -462,7 +519,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 			}
 
-			log.Debug("authorization granted",
+			log.DebugContext(ctxWithJWK, "authorization granted",
 				slog.String("mode", string(decision.Mode)),
 				slog.String("reason", decision.Reason),
 			)

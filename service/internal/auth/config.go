@@ -19,19 +19,24 @@ type Config struct {
 
 // AuthNConfig is the configuration need for the platform to validate tokens
 type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
-	EnforceDPoP    bool          `mapstructure:"enforceDPoP" json:"enforceDPoP" default:"false"`
-	Issuer         string        `mapstructure:"issuer" json:"issuer"`
-	Audience       string        `mapstructure:"audience" json:"audience"`
-	Policy         PolicyConfig  `mapstructure:"policy" json:"policy"`
-	CacheRefresh   string        `mapstructure:"cache_refresh_interval" json:"cache_refresh_interval"`
-	DPoPSkew       time.Duration `mapstructure:"dpopskew" json:"dpopskew" default:"1h"`
-	TokenSkew      time.Duration `mapstructure:"skew" json:"skew" default:"1m"`
-	PublicClientID string        `mapstructure:"public_client_id" json:"public_client_id,omitempty"`
+	EnforceDPoP  bool          `mapstructure:"enforceDPoP" json:"enforceDPoP" default:"false"`
+	Issuer       string        `mapstructure:"issuer" json:"issuer"`
+	Audience     string        `mapstructure:"audience" json:"audience"`
+	Policy       PolicyConfig  `mapstructure:"policy" json:"policy"`
+	CacheRefresh string        `mapstructure:"cache_refresh_interval" json:"cache_refresh_interval"`
+	DPoPSkew     time.Duration `mapstructure:"dpopskew" json:"dpopskew" default:"1h"`
+	TokenSkew    time.Duration `mapstructure:"skew" json:"skew" default:"1m"`
 }
 
 type PolicyConfig struct {
 	Builtin string `mapstructure:"-" json:"-"`
-	// Version specifies the authorization model version to use.
+	// Engine specifies the authorization engine to use.
+	// - "casbin" (default): Casbin policy engine
+	// - "cedar": AWS Cedar policy engine (future)
+	// - "opa": Open Policy Agent engine (future)
+	Engine string `mapstructure:"engine" json:"engine" default:"casbin"`
+	// Version specifies the engine-specific authorization model version.
+	// For Casbin:
 	// - "v1" (default): Legacy path-based authorization (subject, resource, action)
 	// - "v2": RPC + dimensions authorization (subject, rpc, dimensions)
 	// v2 enables fine-grained resource-level authorization using AuthzResolvers.
@@ -39,7 +44,7 @@ type PolicyConfig struct {
 	// Username claim to use for user information
 	UserNameClaim string `mapstructure:"username_claim" json:"username_claim" default:"preferred_username"`
 	// Claim to use for group/role information
-	GroupsClaim string `mapstructure:"groups_claim" json:"group_claim" default:"realm_access.roles"`
+	GroupsClaim string `mapstructure:"groups_claim" json:"groups_claim" default:"realm_access.roles"`
 	// Claim to use to reference idP clientID
 	ClientIDClaim string `mapstructure:"client_id_claim" json:"client_id_claim" default:"azp"`
 	// Deprecated: Use GroupsClaim instead
@@ -62,10 +67,6 @@ func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
 
 	if c.Audience == "" {
 		return errors.New("config Auth.Audience is required")
-	}
-
-	if c.PublicClientID == "" {
-		logger.Warn("config Auth.PublicClientID is empty and is required for discovery via well-known configuration.")
 	}
 
 	if !c.EnforceDPoP {

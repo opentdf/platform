@@ -60,7 +60,9 @@ type Authorizer struct {
 	v2Enforcer *casbin.Enforcer
 
 	logger *logger.Logger
-	config authz.PolicyConfig
+
+	// baseConfig holds common configuration extracted from adapter config
+	baseConfig authz.BaseAdapterConfig
 
 	// groupClaimSelectors are precomputed selectors for extracting roles from JWT claims
 	// Used in v2-only mode when v1Enforcer is nil
@@ -68,47 +70,38 @@ type Authorizer struct {
 }
 
 // NewAuthorizer creates a new Casbin Authorizer based on configuration.
+// It maps the external Config to the appropriate internal adapter config
+// (CasbinV1Config or CasbinV2Config) for cleaner separation of concerns.
 func NewAuthorizer(cfg authz.Config) (authz.Authorizer, error) {
 	log, ok := cfg.Logger.(*logger.Logger)
 	if !ok || log == nil {
 		return nil, errors.New("logger is required for CasbinAuthorizer")
 	}
 
-	// Apply options
-	opts := authz.ApplyOptions(cfg.Options...)
+	// Map external config to internal adapter config
+	adapterCfg := authz.AdapterConfigFromExternal(cfg)
 
-	authorizer := &Authorizer{
-		version: cfg.Version,
-		logger:  log,
-		config:  cfg.PolicyConfig,
+	switch typedCfg := adapterCfg.(type) {
+	case authz.CasbinV1Config:
+		return newCasbinV1Authorizer(typedCfg, log)
+	case authz.CasbinV2Config:
+		return newCasbinV2Authorizer(typedCfg, log)
+	default:
+		return nil, fmt.Errorf("unsupported adapter config type: %T", adapterCfg)
+	}
+}
+
+// newCasbinV1Authorizer creates a v1 (path-based) Casbin authorizer.
+func newCasbinV1Authorizer(cfg authz.CasbinV1Config, log *logger.Logger) (*Authorizer, error) {
+	if cfg.Enforcer == nil {
+		return nil, errors.New("v1 enforcer is required for v1 authorization mode (use authz.WithV1Enforcer)")
 	}
 
-	switch cfg.Version {
-	case "v1", "":
-		// v1: Use provided enforcer for backwards compatibility
-		if opts.V1Enforcer == nil {
-			return nil, errors.New("v1 enforcer is required for v1 authorization mode (use authz.WithV1Enforcer)")
-		}
-		authorizer.v1Enforcer = opts.V1Enforcer
-		authorizer.version = "v1"
-
-	case "v2":
-		// v2: Create new enforcer with RPC+dimensions model
-		enforcer, err := createV2Enforcer(cfg, log)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create v2 casbin enforcer: %w", err)
-		}
-		authorizer.v2Enforcer = enforcer
-
-		// Precompute group claim selectors for v2-only role extraction
-		groupClaimSelectors := make([][]string, len(cfg.PolicyConfig.GroupsClaim))
-		for i, claim := range cfg.PolicyConfig.GroupsClaim {
-			groupClaimSelectors[i] = strings.Split(claim, ".")
-		}
-		authorizer.groupClaimSelectors = groupClaimSelectors
-
-	default:
-		return nil, fmt.Errorf("unsupported authorization version: %s", cfg.Version)
+	authorizer := &Authorizer{
+		version:    "v1",
+		logger:     log,
+		baseConfig: cfg.BaseAdapterConfig,
+		v1Enforcer: cfg.Enforcer,
 	}
 
 	log.Info("casbin authorizer initialized",
@@ -119,12 +112,42 @@ func NewAuthorizer(cfg authz.Config) (authz.Authorizer, error) {
 	return authorizer, nil
 }
 
-// createV2Enforcer creates a Casbin enforcer for the v2 model.
-func createV2Enforcer(cfg authz.Config, log *logger.Logger) (*casbin.Enforcer, error) {
+// newCasbinV2Authorizer creates a v2 (RPC+dimensions) Casbin authorizer.
+func newCasbinV2Authorizer(cfg authz.CasbinV2Config, log *logger.Logger) (*Authorizer, error) {
+	enforcer, err := createV2EnforcerFromConfig(cfg, log)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create v2 casbin enforcer: %w", err)
+	}
+
+	// Precompute group claim selectors for v2 role extraction
+	groupClaimSelectors := make([][]string, len(cfg.GroupsClaims))
+	for i, claim := range cfg.GroupsClaims {
+		groupClaimSelectors[i] = strings.Split(claim, ".")
+	}
+
+	authorizer := &Authorizer{
+		version:             "v2",
+		logger:              log,
+		baseConfig:          cfg.BaseAdapterConfig,
+		v2Enforcer:          enforcer,
+		groupClaimSelectors: groupClaimSelectors,
+	}
+
+	log.Info("casbin authorizer initialized",
+		slog.String("version", authorizer.version),
+		slog.Bool("supportsResourceAuth", authorizer.SupportsResourceAuthorization()),
+	)
+
+	return authorizer, nil
+}
+
+// createV2EnforcerFromConfig creates a Casbin enforcer for the v2 model
+// using the internal CasbinV2Config type.
+func createV2EnforcerFromConfig(cfg authz.CasbinV2Config, log *logger.Logger) (*casbin.Enforcer, error) {
 	// Use embedded v2 model or custom model from config
 	modelStr := modelV2
-	if cfg.PolicyConfig.Model != "" {
-		modelStr = cfg.PolicyConfig.Model
+	if cfg.Model != "" {
+		modelStr = cfg.Model
 	}
 
 	m, err := casbinModel.NewModelFromString(modelStr)
@@ -133,17 +156,17 @@ func createV2Enforcer(cfg authz.Config, log *logger.Logger) (*casbin.Enforcer, e
 	}
 
 	// Build policy adapter
-	var adapter any
-	if cfg.PolicyConfig.Adapter != nil {
-		adapter = cfg.PolicyConfig.Adapter
+	var adapter persist.Adapter
+	if cfg.Adapter != nil {
+		adapter = cfg.Adapter
 	} else {
 		// Build CSV policy for v2
-		csvPolicy := buildV2Policy(cfg.PolicyConfig)
+		csvPolicy := buildV2PolicyFromConfig(cfg)
 		adapter = stringadapter.NewAdapter(csvPolicy)
 		log.Debug("v2 policy loaded", slog.String("policy", csvPolicy))
 	}
 
-	e, err := casbin.NewEnforcer(m, adapter.(persist.Adapter))
+	e, err := casbin.NewEnforcer(m, adapter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create v2 casbin enforcer: %w", err)
 	}
@@ -159,9 +182,9 @@ func createV2Enforcer(cfg authz.Config, log *logger.Logger) (*casbin.Enforcer, e
 	return e, nil
 }
 
-// buildV2Policy constructs the CSV policy for v2 model.
-// Uses embedded default policy unless overridden by configuration.
-func buildV2Policy(cfg authz.PolicyConfig) string {
+// buildV2PolicyFromConfig constructs the CSV policy for v2 model
+// using the internal CasbinV2Config type.
+func buildV2PolicyFromConfig(cfg authz.CasbinV2Config) string {
 	var policies []string
 
 	if cfg.Csv != "" {
@@ -312,7 +335,7 @@ func (a *Authorizer) extractSubjects(req *authz.Request) []string {
 		}
 
 		// Extract username claim
-		if claim, found := req.Token.Get(a.config.UserNameClaim); found {
+		if claim, found := req.Token.Get(a.baseConfig.UserNameClaim); found {
 			if username, ok := claim.(string); ok && username != "" {
 				subjects = append(subjects, username)
 			}

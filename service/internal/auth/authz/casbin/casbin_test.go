@@ -84,7 +84,9 @@ func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_V2() {
 	s.True(authorizer.SupportsResourceAuthorization())
 }
 
-func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_InvalidVersion() {
+func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_UnknownVersionFallsBackToV1() {
+	// Unknown versions default to v1, which requires a v1 enforcer.
+	// This maintains backwards compatibility while providing a clear error.
 	cfg := authz.Config{
 		Version: "v99",
 		PolicyConfig: authz.PolicyConfig{
@@ -96,7 +98,7 @@ func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_InvalidVersion() {
 	authorizer, err := NewAuthorizer(cfg)
 	s.Require().Error(err)
 	s.Nil(authorizer)
-	s.Contains(err.Error(), "unsupported authorization version")
+	s.Contains(err.Error(), "v1 enforcer is required")
 }
 
 func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_NilLogger() {

@@ -4,7 +4,6 @@ package authz
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 
@@ -95,7 +94,12 @@ type Factory func(cfg Config) (Authorizer, error)
 
 // Config provides configuration for authorization engine initialization.
 type Config struct {
+	// Engine specifies which authorization engine to use ("casbin", "cedar", "opa").
+	// Defaults to "casbin" if empty.
+	Engine string
+
 	// Version specifies which authorization model to use ("v1", "v2", etc.)
+	// This is engine-specific. For Casbin: "v1" (path-based) or "v2" (RPC+dimensions).
 	Version string
 
 	// Policy configuration (claims, CSV, adapter, etc.)
@@ -173,22 +177,33 @@ func GetFactory(name string) (Factory, bool) {
 	return factory, exists
 }
 
+// DefaultEngine is the default authorization engine when none is specified.
+const DefaultEngine = "casbin"
+
 // New creates an Authorizer based on configuration.
-// The engine is selected based on cfg.Version:
-//   - "v1": CasbinAuthorizer with legacy path-based model
-//   - "v2": CasbinAuthorizer with RPC+dimensions model
+// The engine is selected based on cfg.Engine:
+//   - "casbin" (default): Casbin policy engine
+//   - "cedar": AWS Cedar policy engine (future)
+//   - "opa": Open Policy Agent engine (future)
 //
-// Future versions may support OPA, Cedar, etc.
+// For Casbin, the version determines the authorization model:
+//   - "v1" (default): Legacy path-based model (subject, resource, action)
+//   - "v2": RPC+dimensions model (subject, rpc, dimensions)
 func New(cfg Config) (Authorizer, error) {
-	// Default to v1 for backwards compatibility
+	// Default engine to casbin for backwards compatibility
+	engine := cfg.Engine
+	if engine == "" {
+		engine = DefaultEngine
+	}
+
+	// Default version to v1 for backwards compatibility
 	if cfg.Version == "" {
 		cfg.Version = "v1"
 	}
 
-	// For now, all versions use Casbin; future versions may use different engines
-	factory, exists := GetFactory("casbin")
+	factory, exists := GetFactory(engine)
 	if !exists {
-		return nil, errors.New("casbin authorizer not registered")
+		return nil, fmt.Errorf("authorization engine %q not registered", engine)
 	}
 
 	return factory(cfg)

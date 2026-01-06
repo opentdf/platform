@@ -20,6 +20,10 @@ import (
 const (
 	testBaseNamespace      = "test.example.com"
 	testSecondaryNamespace = "secondary.example.org"
+
+	// todo: add tests for allowDirectEntitlements = true behavior
+	// using hard-coded false for now to keep existing tests passing
+	allowDirectEntitlements = false
 )
 
 // Helper function to create attribute definition FQNs
@@ -853,7 +857,8 @@ func (s *PDPTestSuite) TestNewPolicyDecisionPoint() {
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
-			pdp, err := NewPolicyDecisionPoint(s.T().Context(), s.logger, tc.attributes, tc.subjectMappings, tc.registeredResources)
+			pdp, err := NewPolicyDecisionPoint(
+				s.T().Context(), s.logger, tc.attributes, tc.subjectMappings, tc.registeredResources, allowDirectEntitlements)
 
 			if tc.expectError {
 				s.Require().Error(err)
@@ -877,6 +882,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		[]*policy.Attribute{f.classificationAttr, f.departmentAttr},
 		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping, f.confidentialMapping, f.publicMapping, f.rndMapping, f.engineeringMapping, f.financeMapping},
 		[]*policy.RegisteredResource{f.classificationRegRes, f.deptRegRes},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -1356,6 +1362,7 @@ func (s *PDPTestSuite) Test_GetDecision_ReturnsDecisionRelatedEntitlements() {
 		[]*policy.Attribute{f.classificationAttr, f.departmentAttr},
 		[]*policy.SubjectMapping{f.topSecretMapping, f.engineeringMapping},
 		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -1472,6 +1479,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			f.classificationRegRes, f.deptRegRes, f.projectRegRes,
 			readConfidentialRegRes, f.countryRegRes,
 		},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -1616,6 +1624,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			[]*policy.Attribute{f.classificationAttr},
 			[]*policy.SubjectMapping{allActionsPublicMapping, restrictedMapping},
 			[]*policy.RegisteredResource{f.classificationRegRes, restrictedRegRes},
+			allowDirectEntitlements,
 		)
 		s.Require().NoError(err)
 		s.Require().NotNil(classificationPDP)
@@ -1733,6 +1742,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 			f.usaMapping, f.ukMapping, f.projectAlphaMapping, f.platformCloudMapping,
 		},
 		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -2093,6 +2103,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 			f.usaMapping,
 		},
 		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -2446,6 +2457,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 		[]*policy.Attribute{f.classificationAttr, f.departmentAttr},
 		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping, f.confidentialMapping, f.publicMapping, f.engineeringMapping, f.financeMapping},
 		[]*policy.RegisteredResource{f.networkRegRes, regResS3BucketEntity},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -2619,6 +2631,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 			f.usaMapping,
 		},
 		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -2918,6 +2931,7 @@ func (s *PDPTestSuite) Test_GetEntitlements_AdvancedHierarchy() {
 			bottomMapping,
 		},
 		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -2996,6 +3010,7 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 		[]*policy.Attribute{f.classificationAttr},
 		[]*policy.SubjectMapping{},
 		[]*policy.RegisteredResource{f.regRes},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -3271,6 +3286,7 @@ func (s *PDPTestSuite) Test_GetDecision_NonExistentAttributeFQN() {
 		[]*policy.Attribute{f.classificationAttr},
 		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping},
 		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -3373,6 +3389,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialFQNsInResource() {
 		[]*policy.Attribute{f.classificationAttr},
 		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping, f.confidentialMapping},
 		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -3420,6 +3437,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_NonExistentFQN() {
 		[]*policy.Attribute{f.classificationAttr},
 		[]*policy.SubjectMapping{f.secretMapping},
 		[]*policy.RegisteredResource{f.classificationRegRes}, // Only classification registered resource
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -3504,6 +3522,7 @@ func (s *PDPTestSuite) Test_GetDecision_NoPolicies() {
 		[]*policy.Attribute{},
 		[]*policy.SubjectMapping{},
 		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -3547,6 +3566,138 @@ func (s *PDPTestSuite) Test_GetDecision_NoPolicies() {
 		// Empty entitlements without available policy
 		s.Require().NotNil(entitlements)
 		s.Empty(entitlements)
+	})
+}
+
+func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements() {
+	ctx := s.T().Context()
+
+	attr1 := &policy.Attribute{
+		Fqn:  "https://demo.com/attr/adhoc",
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values: []*policy.Value{
+			{
+				Fqn:   "https://demo.com/attr/adhoc/value/direct_entitlement_1",
+				Value: "direct_entitlement_1",
+			},
+		},
+	}
+	attr1ValueFQN := attr1.GetValues()[0].GetFqn()
+
+	attr2 := &policy.Attribute{
+		Fqn:  "https://demo.com/attr/adhoc_2",
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values: []*policy.Value{
+			{
+				Fqn:   "https://demo.com/attr/adhoc_2/value/direct_entitlement_2",
+				Value: "direct_entitlement_2",
+			},
+		},
+	}
+	attr2ValueFQN := attr2.GetValues()[0].GetFqn()
+
+	resAttr1ValueFqn := createAttributeValueResource(attr1ValueFQN, attr1ValueFQN)
+	resAttr2ValueFqn := createAttributeValueResource(attr2ValueFQN, attr2ValueFQN)
+
+	pdp, err := NewPolicyDecisionPoint(
+		ctx,
+		s.logger,
+		[]*policy.Attribute{attr1, attr2},
+		[]*policy.SubjectMapping{},
+		[]*policy.RegisteredResource{},
+		true, // Allow direct entitlements
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	s.Run("entitled to all resources", func() {
+		entityRep := &entityresolutionV2.EntityRepresentation{
+			DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
+				{
+					AttributeValueFqn: attr1ValueFQN,
+					Actions:           []string{actions.ActionNameCreate, actions.ActionNameDelete},
+				},
+				{
+					AttributeValueFqn: attr2ValueFQN,
+					Actions:           []string{actions.ActionNameCreate, actions.ActionNameRead},
+				},
+			},
+		}
+
+		decision, entitlements, err := pdp.GetDecision(ctx, entityRep, testActionCreate, []*authz.Resource{
+			resAttr1ValueFqn,
+			resAttr2ValueFqn,
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.Require().NotNil(entitlements)
+
+		s.Require().Contains(entitlements, attr1ValueFQN)
+		s.Require().Contains(entitlements, attr2ValueFQN)
+		s.Require().Contains(entitlements[attr1ValueFQN], testActionCreate)
+		s.Require().Contains(entitlements[attr2ValueFQN], testActionCreate)
+
+		s.assertAllDecisionResults(decision, map[string]bool{
+			attr1ValueFQN: true,
+			attr2ValueFQN: true,
+		})
+	})
+
+	s.Run("entitled to some resources", func() {
+		entityRep := &entityresolutionV2.EntityRepresentation{
+			DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
+				{
+					AttributeValueFqn: attr1ValueFQN,
+					Actions:           []string{actions.ActionNameCreate, actions.ActionNameUpdate},
+				},
+			},
+		}
+
+		decision, entitlements, err := pdp.GetDecision(ctx, entityRep, testActionCreate, []*authz.Resource{
+			resAttr1ValueFqn,
+			resAttr2ValueFqn,
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.Require().NotNil(entitlements)
+
+		s.Require().Contains(entitlements, attr1ValueFQN)
+		s.Require().Contains(entitlements[attr1ValueFQN], testActionCreate)
+
+		s.assertAllDecisionResults(decision, map[string]bool{
+			attr1ValueFQN: true,
+			// not entitled to FQN
+			attr2ValueFQN: false,
+		})
+	})
+
+	s.Run("entitled to no resources", func() {
+		entityRep := &entityresolutionV2.EntityRepresentation{
+			DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
+				{
+					AttributeValueFqn: attr1ValueFQN,
+					Actions:           []string{actions.ActionNameCreate, actions.ActionNameRead},
+				},
+			},
+		}
+
+		decision, entitlements, err := pdp.GetDecision(ctx, entityRep, testActionDelete, []*authz.Resource{
+			resAttr1ValueFqn,
+			resAttr2ValueFqn,
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.Require().NotNil(entitlements)
+
+		s.Require().Contains(entitlements, attr1ValueFQN)
+		s.Require().Contains(entitlements[attr1ValueFQN], testActionCreate)
+
+		s.assertAllDecisionResults(decision, map[string]bool{
+			// entitled to FQN, but not action
+			attr1ValueFQN: false,
+			// not entitled to FQN
+			attr2ValueFQN: false,
+		})
 	})
 }
 

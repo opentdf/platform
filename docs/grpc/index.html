@@ -641,6 +641,10 @@
                 </li>
               
                 <li>
+                  <a href="#entityresolution.v2.DirectEntitlement"><span class="badge">M</span>DirectEntitlement</a>
+                </li>
+              
+                <li>
                   <a href="#entityresolution.v2.EntityNotFoundError"><span class="badge">M</span>EntityNotFoundError</a>
                 </li>
               
@@ -5974,6 +5978,13 @@ i.e. https://&lt;namespace&gt;/obl/&lt;definition name&gt;/value/&lt;value&gt; <
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>resources</td>
+                  <td><a href="#authorization.v2.Resource">authorization.v2.Resource</a></td>
+                  <td>repeated</td>
+                  <td><p>resources to consider for direct entitlements (experimental) </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -5994,6 +6005,37 @@ i.e. https://&lt;namespace&gt;/obl/&lt;definition name&gt;/value/&lt;value&gt; <
                 <tr>
                   <td>entity_chains</td>
                   <td><a href="#entity.EntityChain">entity.EntityChain</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entityresolution.v2.DirectEntitlement">DirectEntitlement</h3>
+        <p>Entity Entitlements that do not require subject mappings (experimental)</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>attribute_value_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>actions</td>
+                  <td><a href="#string">string</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -6072,6 +6114,13 @@ i.e. https://&lt;namespace&gt;/obl/&lt;definition name&gt;/value/&lt;value&gt; <
                   <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>direct_entitlements</td>
+                  <td><a href="#entityresolution.v2.DirectEntitlement">DirectEntitlement</a></td>
+                  <td>repeated</td>
+                  <td><p>direct entitlements applied to Entity (experimental) </p></td>
                 </tr>
               
             </tbody>

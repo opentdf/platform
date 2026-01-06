@@ -1,6 +1,7 @@
 package access
 
 import (
+	"fmt"
 	"testing"
 
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -1109,4 +1110,95 @@ func Test_applyObligationsAndConsolidate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_getResourceDecisionableAttributes(t *testing.T) {
+	ctx := t.Context()
+	logger := logger.CreateTestLogger()
+
+	attr := &policy.Attribute{
+		Fqn:  "https://demo.com/attr/adhoc",
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	}
+	attrFQN := attr.GetFqn()
+
+	attrSyntheticValue := &policy.Value{
+		Fqn:   attrFQN + "/value/direct_entitlement_1",
+		Value: "direct_entitlement_1",
+	}
+	attrSyntheticValueFQN := attrSyntheticValue.GetFqn()
+
+	entitleableAttributesByDefinitionFQN := map[string]*policy.Attribute{
+		attrFQN: attr,
+	}
+
+	t.Run("direct entitlements - enabled, synthetic value found by definition and returned", func(t *testing.T) {
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{attrSyntheticValueFQN},
+					},
+				},
+			},
+		}
+
+		decisionableAttrs, err := getResourceDecisionableAttributes(ctx, logger,
+			nil, // registered resources are not used by direct entitlements
+			nil, // direct entitlements will not be in entitleableAttributesByValueFQN map, due to synthetic values
+			entitleableAttributesByDefinitionFQN,
+			resources,
+			true, // allow direct entitlements
+		)
+		require.NoError(t, err)
+		require.Len(t, decisionableAttrs, 1)
+		require.Contains(t, decisionableAttrs, attrSyntheticValueFQN)
+		require.Equal(t, attr, decisionableAttrs[attrSyntheticValueFQN].GetAttribute())
+		require.Equal(t, attrSyntheticValue, decisionableAttrs[attrSyntheticValueFQN].GetValue())
+	})
+
+	t.Run("direct entitlements - enabled, synthetic value NOT found by definition and error returned", func(t *testing.T) {
+		invalidAttrValueFQN := "https://invalid.com/attr/non_existent/value/direct_entitlement"
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{invalidAttrValueFQN},
+					},
+				},
+			},
+		}
+
+		decisionableAttrs, err := getResourceDecisionableAttributes(ctx, logger,
+			nil, // registered resources are not used by direct entitlements
+			nil, // direct entitlements will not be in entitleableAttributesByValueFQN map, due to synthetic values
+			entitleableAttributesByDefinitionFQN,
+			resources,
+			true, // allow direct entitlements
+		)
+		require.EqualError(t, err, fmt.Sprintf("resource FQNs not found in memory %v: %s", []string{invalidAttrValueFQN}, ErrFQNNotFound))
+		require.Empty(t, decisionableAttrs)
+	})
+
+	t.Run("direct entitlements - disabled, synthetic value NOT found by definition and error returned", func(t *testing.T) {
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{attrSyntheticValueFQN},
+					},
+				},
+			},
+		}
+
+		decisionableAttrs, err := getResourceDecisionableAttributes(ctx, logger,
+			nil, // registered resources are not used by direct entitlements
+			nil, // direct entitlements will not be in entitleableAttributesByValueFQN map, due to synthetic values
+			entitleableAttributesByDefinitionFQN,
+			resources,
+			false, // disable direct entitlements
+		)
+		require.EqualError(t, err, fmt.Sprintf("resource FQNs not found in memory %v: %s", []string{attrSyntheticValueFQN}, ErrFQNNotFound))
+		require.Empty(t, decisionableAttrs)
+	})
 }

@@ -1,12 +1,36 @@
 #!/usr/bin/env bash
-# Usage: watch.sh [cfg file] [app and command....]
+# Usage: watch.sh [options] [cfg file] [app and command....]
+#
+# Options:
+#   --tee-out-to FILE    Tee stdout to FILE
+#   --tee-err-to FILE    Tee stderr to FILE
 #
 
 quitter() {
-  kill "$PID"
+  kill "$PID" 2>/dev/null
   exit
 }
 trap quitter SIGINT
+
+# Parse optional tee arguments
+tee_stdout=""
+tee_stderr=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --tee-out-to)
+      tee_stdout="$2"
+      shift 2
+      ;;
+    --tee-err-to)
+      tee_stderr="$2"
+      shift 2
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
 
 file_to_watch="$1"
 shift
@@ -30,9 +54,30 @@ wait_for_change_to() {
 }
 
 while true; do
-  "$@" &
+  # Build command with optional tee for stdout/stderr
+  if [[ -n "$tee_stdout" ]] || [[ -n "$tee_stderr" ]]; then
+    # Ensure log directories exist
+    [[ -n "$tee_stdout" ]] && mkdir -p "$(dirname "$tee_stdout")"
+    [[ -n "$tee_stderr" ]] && mkdir -p "$(dirname "$tee_stderr")"
+
+    # Run command with tee for stdout and/or stderr
+    if [[ -n "$tee_stdout" ]] && [[ -n "$tee_stderr" ]]; then
+      # Both stdout and stderr tee
+      "$@" > >(tee -a "$tee_stdout") 2> >(tee -a "$tee_stderr" >&2) &
+    elif [[ -n "$tee_stdout" ]]; then
+      # Only stdout tee
+      "$@" > >(tee -a "$tee_stdout") &
+    else
+      # Only stderr tee
+      "$@" 2> >(tee -a "$tee_stderr" >&2) &
+    fi
+  else
+    # No tee, run normally
+    "$@" &
+  fi
+
   PID=$!
   wait_for_change_to "${file_to_watch}"
-  kill $PID
+  kill $PID 2>/dev/null
   echo "[INFO] restarting [${PID}] due to modified file"
 done

@@ -15,11 +15,22 @@ inputs:
     default: "false"
     description: 'Whether to enable ECC wrapping for TDFs'
     required: false
+  log-level:
+    default: "debug"
+    description: 'Log level for the platform (audit, debug, info, warn, error)'
+    required: false
+  log-type:
+    default: "text"
+    description: 'Log format type (text, json)'
+    required: false
 
 outputs:
   platform-working-dir:
     description: 'The working directory for the running platform instance'
     value: 'otdf-test-platform'
+  platform-log-file:
+    description: 'Path to the main platform/KAS log file'
+    value: ${{ steps.log-path.outputs.log-file }}
 
 runs:
   using: 'composite'
@@ -124,6 +135,12 @@ runs:
       run: |
         yq e '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml
       working-directory: otdf-test-platform
+    - name: Configure logging
+      shell: bash
+      run: |
+        yq e '.logger.level = "${{ inputs.log-level }}"' -i opentdf.yaml
+        yq e '.logger.type = "${{ inputs.log-type }}"' -i opentdf.yaml
+      working-directory: otdf-test-platform
     - name: Trust the generated certs
       shell: bash
       run: |
@@ -144,12 +161,19 @@ runs:
       shell: bash
       run: go run ./service provision fixtures
       working-directory: otdf-test-platform
+    - name: Set platform log file path
+      id: log-path
+      shell: bash
+      run: |
+        LOG_FILE="otdf-test-platform/logs/kas-main.log"
+        echo "log-file=$LOG_FILE" >> "$GITHUB_OUTPUT"
+        echo "Platform log file will be: $LOG_FILE"
     - name: Start platform server in background
       uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635 # v1.0.7
       with:
         run: >
           go build -o opentdf -v service/main.go
-          && .github/scripts/watch.sh opentdf.yaml ./opentdf start
+          && .github/scripts/watch.sh --tee-err-to logs/kas-main.log opentdf.yaml ./opentdf start
         wait-on: |
           tcp:localhost:8080
         log-output-if: true

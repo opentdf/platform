@@ -10,7 +10,7 @@ sdk_config:
 logger:
   level: debug
   type: text
-  output: stdout
+  output: stderr
 security:
   unsafe:
     # Increase only when diagnosing clock drift issues; default is 1m

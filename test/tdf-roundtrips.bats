@@ -129,7 +129,7 @@ downgrade_config() {
 logger:
   level: debug
   type: text
-  output: stdout
+  output: stderr
 services:
   kas:
     enabled: true
@@ -195,7 +195,7 @@ update_config() {
 logger:
   level: debug
   type: text
-  output: stdout
+  output: stderr
 services:
   kas:
     enabled: true

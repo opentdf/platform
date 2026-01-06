@@ -13,18 +13,28 @@ inputs:
     required: true
     description: 'The name for the additional KAS'
   ec-tdf-enabled:
-    default: false
+    default: "false"
     description: 'Whether to enable ECC wrapping for TDFs'
     required: false
-    type: boolean
   key-management:
-    default: false
+    default: "false"
     description: 'Whether or not key_management is enabled for this KAS'
-    type: boolean
   root-key:
     default: ''
     description: 'The root key to be used with key_management'
-    type: string
+  log-level:
+    default: "debug"
+    description: 'Log level for the KAS (audit, debug, info, warn, error)'
+    required: false
+  log-type:
+    default: "text"
+    description: 'Log format type (text, json)'
+    required: false
+
+outputs:
+  log-file:
+    description: 'Path to the KAS log file'
+    value: ${{ steps.log-path.outputs.log-file }}
 
 runs:
   using: 'composite'
@@ -35,7 +45,15 @@ runs:
       run: |
         echo "Error: root-key is required when key-management is true."
         exit 1
+    - name: Set log file path
+      id: log-path
+      shell: bash
+      run: |
+        LOG_FILE="otdf-test-platform/logs/kas-${{ inputs.kas-name }}.log"
+        echo "log-file=$LOG_FILE" >> "$GITHUB_OUTPUT"
+        echo "Log file will be: $LOG_FILE"
     - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635 # v1.0.7
+      id: start-kas
       name: Start another KAS server in background
       with:
         run: >
@@ -46,9 +64,11 @@ runs:
             | (.services.kas.preview.key_management = ${{ inputs.key-management }})
             | (.services.kas.registered_kas_uri = "http://localhost:${{ inputs.kas-port }}")
             | (.services.kas.root_key = "${{ inputs.root-key }}")
+            | (.logger.level = "${{ inputs.log-level }}")
+            | (.logger.type = "${{ inputs.log-type }}")
             | (.sdk_config = {"client_id":"opentdf","client_secret":"secret","core":{"endpoint":"http://localhost:8080","plaintext":true}})
           '
-          && .github/scripts/watch.sh opentdf-${{ inputs.kas-name }}.yaml ./opentdf --config-file ./opentdf-${{ inputs.kas-name }}.yaml start
+          && .github/scripts/watch.sh --tee-err-to logs/kas-${{ inputs.kas-name }}.log opentdf-${{ inputs.kas-name }}.yaml ./opentdf --config-file ./opentdf-${{ inputs.kas-name }}.yaml start
         wait-on: |
           tcp:localhost:${{ inputs.kas-port }}
         log-output-if: true

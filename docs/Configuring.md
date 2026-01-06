@@ -94,11 +94,11 @@ The logger configuration is used to define how the application logs its output.
 
 Root level key `logger`
 
-| Field    | Description                      | Default  | Environment Variable  |
-| -------- | -------------------------------- | -------- | --------------------- |
-| `level`  | The logging level.               | `info`   | OPENTDF_LOGGER_LEVEL  |
-| `type`   | The format of the log output.    | `json`   | OPENTDF_LOGGER_TYPE   |
-| `output` | The output destination for logs. | `stdout` | OPENTDF_LOGGER_OUTPUT |
+| Field    | Description                              | Default  | Environment Variable  |
+| -------- | ---------------------------------------- | -------- | --------------------- |
+| `level`  | The logging level.                       | `info`   | OPENTDF_LOGGER_LEVEL  |
+| `type`   | The format of the log output.            | `json`   | OPENTDF_LOGGER_TYPE   |
+| `output` | Stream output for logs, stderr or stdout | `stdout` | OPENTDF_LOGGER_OUTPUT |
 
 Example:
 
@@ -106,7 +106,7 @@ Example:
 logger:
   level: debug
   type: text
-  output: stdout
+  output: stderr
 ```
 
 ## Server Configuration

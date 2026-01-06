@@ -258,7 +258,7 @@ func TestLoadConfig_Success(t *testing.T) {
 logger:
   level: debug
   type: text
-  output: stdout
+  output: stderr
 mode: core
 db:
   host: opentdf

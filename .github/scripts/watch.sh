@@ -7,7 +7,11 @@
 #
 
 quitter() {
-  kill "$PID" 2>/dev/null
+  if [[ -n "$PID" ]] && kill -0 "$PID" 2>/dev/null; then
+    if ! kill "$PID" 2>/dev/null; then
+      echo "[WARN] Failed to kill process $PID" >&2
+    fi
+  fi
   exit
 }
 trap quitter SIGINT
@@ -78,6 +82,10 @@ while true; do
 
   PID=$!
   wait_for_change_to "${file_to_watch}"
-  kill $PID 2>/dev/null
+  if kill -0 $PID 2>/dev/null; then
+    if ! kill $PID 2>/dev/null; then
+      echo "[WARN] Failed to kill process $PID" >&2
+    fi
+  fi
   echo "[INFO] restarting [${PID}] due to modified file"
 done

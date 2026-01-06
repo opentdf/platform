@@ -62,6 +62,11 @@ func (g *GroupsClaimList) UnmarshalText(text []byte) error {
 
 type PolicyConfig struct {
 	Builtin string `mapstructure:"-" json:"-"`
+	// Version specifies the authorization model version to use.
+	// - "v1" (default): Legacy path-based authorization (subject, resource, action)
+	// - "v2": RPC + dimensions authorization (subject, rpc, dimensions)
+	// v2 enables fine-grained resource-level authorization using AuthzResolvers.
+	Version string `mapstructure:"version" json:"version" default:"v1"`
 	// Username claim to use for user information
 	UserNameClaim string `mapstructure:"username_claim" json:"username_claim" default:"preferred_username"`
 	// Claims to use for group/role information (supports multiple claims)

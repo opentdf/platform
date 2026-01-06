@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -27,15 +26,15 @@ var builtinPolicy string
 //go:embed casbin_model.conf
 var defaultModel string
 
-// Enforcer is the custom Casbin enforcer with additional functionality
+// Enforcer is the Casbin enforcer with platform-specific configuration
 type Enforcer struct {
 	*casbin.Enforcer
-	Config              CasbinConfig
-	Policy              string // CSV policy string (empty if using non-CSV adapter)
-	logger              *logger.Logger
-	isDefaultPolicy     bool
-	isDefaultModel      bool
-	groupClaimSelectors [][]string // precomputed selectors for GroupsClaim
+	Config CasbinConfig
+	Policy string
+	logger *logger.Logger
+
+	isDefaultPolicy bool
+	isDefaultModel  bool
 }
 
 type casbinSubject []string
@@ -44,8 +43,7 @@ type CasbinConfig struct {
 	PolicyConfig
 }
 
-// NewCasbinEnforcer creates a new Casbin enforcer with the provided configuration and logger.
-// It sets up the Casbin model, policy, and adapter, and returns an Enforcer instance.
+// NewCasbinEnforcer creates a new casbin enforcer
 func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error) {
 	// Set Casbin config defaults if not provided
 	isDefaultModel := false
@@ -54,23 +52,47 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		isDefaultModel = true
 	}
 
-	// Precompute group claim selectors for efficiency (adapter-agnostic)
-	groupClaimSelectors := make([][]string, len(c.GroupsClaim))
-	for i, claim := range c.GroupsClaim {
-		groupClaimSelectors[i] = strings.Split(claim, ".")
+	isDefaultPolicy := false
+	if c.Csv == "" {
+		// Set the Bultin Policy if provided
+		if c.Builtin != "" {
+			c.Csv = c.Builtin
+		} else {
+			c.Csv = builtinPolicy
+		}
+		isDefaultPolicy = true
 	}
 
-	// Track whether we're using the CSV string adapter (vs custom adapter like SQL)
-	usingCSVAdapter := c.Adapter == nil
-	isDefaultPolicy := false
-	isPolicyExtended := false
-	csvPolicy := ""
+	if c.RoleMap != nil {
+		for k, v := range c.RoleMap {
+			c.Csv = strings.Join([]string{
+				c.Csv,
+				strings.Join([]string{"g", v, "role:" + k}, ", "),
+			}, "\n")
+		}
+	}
 
-	// CSV policy building - only when using the default string adapter
-	// When a custom adapter (e.g., SQL) is provided, skip CSV-specific logic
-	if usingCSVAdapter {
-		csvPolicy, isDefaultPolicy, isPolicyExtended = buildCSVPolicy(c)
-		c.Adapter = stringadapter.NewAdapter(csvPolicy)
+	isPolicyExtended := false
+	if c.Extension != "" {
+		c.Csv = strings.Join([]string{c.Csv, c.Extension}, "\n")
+		isPolicyExtended = true
+	}
+
+	// Because we provided built in group mappings we need to add them
+	// if extensions and rolemap are not provided
+	if c.RoleMap == nil && c.Extension == "" {
+		c.Csv = strings.Join([]string{
+			c.Csv,
+			"g, opentdf-admin, role:admin",
+			"g, opentdf-standard, role:standard",
+		}, "\n")
+	}
+
+	isDefaultAdapter := false
+	// If adapter is not provided, use the default string adapter
+	if c.Adapter == nil {
+		isDefaultAdapter = true
+		c.Adapter = stringadapter.NewAdapter(c.Csv)
 	}
 
 	logger.Debug("creating casbin enforcer",
@@ -78,7 +100,7 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		slog.Bool("isDefaultModel", isDefaultModel),
 		slog.Bool("isBuiltinPolicy", isDefaultPolicy),
 		slog.Bool("isPolicyExtended", isPolicyExtended),
-		slog.Bool("usingCSVAdapter", usingCSVAdapter),
+		slog.Bool("isDefaultAdapter", isDefaultAdapter),
 	)
 
 	m, err := casbinModel.NewModelFromString(c.Model)
@@ -91,46 +113,29 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		return nil, fmt.Errorf("failed to create casbin enforcer: %w", err)
 	}
 
-	// Explicitly load the policy from the adapter
-	if err := e.LoadPolicy(); err != nil {
-		return nil, fmt.Errorf("failed to load casbin policy: %w", err)
-	}
-
-	// CSV validation - only for CSV/string adapters
-	// Skip validation for custom adapters (e.g., SQL) which have their own validation
-	if usingCSVAdapter {
-		if err := validateCSVPolicy(csvPolicy); err != nil {
-			return nil, err
-		}
-	}
-
 	return &Enforcer{
-		Enforcer:            e,
-		Config:              c,
-		Policy:              csvPolicy, // Empty string if using non-CSV adapter
-		isDefaultPolicy:     isDefaultPolicy,
-		isDefaultModel:      isDefaultModel,
-		logger:              logger,
-		groupClaimSelectors: groupClaimSelectors,
+		Enforcer:        e,
+		Config:          c,
+		Policy:          c.Csv,
+		isDefaultPolicy: isDefaultPolicy,
+		isDefaultModel:  isDefaultModel,
+		logger:          logger,
 	}, nil
 }
 
-// Enforce checks if the given token and userInfo are allowed to perform the action on the resource.
-// It extracts roles from both the token and userInfo, then checks against the Casbin policy.
-func (e *Enforcer) Enforce(token jwt.Token, userInfo []byte, resource, action string) bool {
+// Enforce checks if the token is allowed to perform the action on the resource.
+// The userInfo parameter is accepted for interface compatibility but not used in v1.
+// This method implements authz.V1Enforcer interface.
+func (e *Enforcer) Enforce(token jwt.Token, _ []byte, resource, action string) bool {
 	// Fail-safe: deny if resource or action is empty
 	if resource == "" || action == "" {
 		e.logger.Debug("permission denied: empty resource or action", slog.String("resource", resource), slog.String("action", action))
 		return false
 	}
 
-	// extract the role claim from the token and userInfo
-	s := e.BuildSubjectFromTokenAndUserInfo(token, userInfo)
-
-	// Assign the default role if no roles are found
-	if len(s) == 0 {
-		s = append(s, rolePrefix+defaultRole)
-	}
+	// extract the role claim from the token
+	s := e.buildSubjectFromToken(token)
+	s = append(s, rolePrefix+defaultRole)
 
 	for _, info := range s {
 		allowed, err := e.Enforcer.Enforce(info, resource, action)
@@ -146,22 +151,20 @@ func (e *Enforcer) Enforce(token jwt.Token, userInfo []byte, resource, action st
 	return false
 }
 
-// BuildSubjectFromTokenAndUserInfo combines roles from both token and userInfo.
-// It extracts roles from both sources and adds the username claim if present.
+// BuildSubjectFromTokenAndUserInfo builds the subject info from the token.
+// The userInfo parameter is accepted for interface compatibility but not used in v1.
 // This method implements authz.V1Enforcer interface.
-func (e *Enforcer) BuildSubjectFromTokenAndUserInfo(t jwt.Token, userInfo []byte) []string {
+func (e *Enforcer) BuildSubjectFromTokenAndUserInfo(token jwt.Token, _ []byte) []string {
+	return e.buildSubjectFromToken(token)
+}
+
+// buildSubjectFromToken extracts subject information from a JWT token
+func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 	var subject string
 	info := casbinSubject{}
 
-	e.logger.Debug("building subject from token and userInfo", slog.Any("token", t), slog.Any("userInfo", userInfo))
+	e.logger.Debug("building subject from token", slog.Any("token", t))
 	roles := e.extractRolesFromToken(t)
-	roles = append(roles, e.extractRolesFromUserInfo(userInfo)...)
-
-	for _, r := range roles {
-		if r != "" {
-			info = append(info, r)
-		}
-	}
 
 	if claim, found := t.Get(e.Config.UserNameClaim); found {
 		sub, ok := claim.(string)
@@ -171,86 +174,55 @@ func (e *Enforcer) BuildSubjectFromTokenAndUserInfo(t jwt.Token, userInfo []byte
 			subject = ""
 		}
 	}
+	info = append(info, roles...)
 	if subject != "" {
 		info = append(info, subject)
 	}
-	e.logger.Debug("built subject info", slog.Any("info", info))
 	return info
 }
 
-const (
-	// defaultRolesCapacity is the default capacity for roles slice in extractRolesFromToken
-	defaultRolesCapacity = 4
-)
-
 // extractRolesFromToken extracts roles from a jwt.Token based on the configured claim path
-func (e *Enforcer) extractRolesFromToken(token jwt.Token) []string {
-	roles := make([]string, 0, defaultRolesCapacity) // preallocate for common case
-	for _, selectors := range e.groupClaimSelectors {
-		if len(selectors) == 0 {
-			continue
-		}
-		claim, exists := token.Get(selectors[0])
-		if !exists {
-			continue // skip missing claim, don't log on hot path
-		}
-		if len(selectors) > 1 {
-			claimMap, ok := claim.(map[string]interface{})
-			if !ok {
-				continue // skip invalid type
-			}
-			claim = util.Dotnotation(claimMap, strings.Join(selectors[1:], "."))
-			if claim == nil {
-				continue
-			}
-		}
-		// Inline extractRolesFromClaim for efficiency
-		switch v := claim.(type) {
-		case string:
-			roles = append(roles, v)
-		case []interface{}:
-			for _, rr := range v {
-				if r, ok := rr.(string); ok {
-					roles = append(roles, r)
-				}
-			}
-		case []string:
-			roles = append(roles, v...)
-		}
-	}
-	return roles
-}
+func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
+	e.logger.Debug("extracting roles from token", slog.Any("token", t))
+	roles := []string{}
 
-// extractRolesFromUserInfo extracts roles from a userInfo JSON ([]byte) based on the configured claim path
-func (e *Enforcer) extractRolesFromUserInfo(userInfo []byte) []string {
-	roles := make([]string, 0, defaultRolesCapacity)
-	if userInfo == nil || len(userInfo) == 0 {
-		return roles
+	roleClaim := e.Config.GroupsClaim
+
+	selectors := strings.Split(roleClaim, ".")
+	claim, exists := t.Get(selectors[0])
+	if !exists {
+		e.logger.Warn("claim not found", slog.String("claim", roleClaim), slog.Any("token", t))
+		return nil
 	}
-	var userInfoMap map[string]interface{}
-	if err := json.Unmarshal(userInfo, &userInfoMap); err != nil {
-		return roles // skip logging on hot path
-	}
-	for _, selectors := range e.groupClaimSelectors {
-		if len(selectors) == 0 {
-			continue
+	e.logger.Debug("root claim found", slog.String("claim", roleClaim), slog.Any("claims", claim))
+	// use dotnotation if the claim is nested
+	if len(selectors) > 1 {
+		claimMap, ok := claim.(map[string]interface{})
+		if !ok {
+			e.logger.Warn("claim is not of type map[string]interface{}", slog.String("claim", roleClaim), slog.Any("claims", claim))
+			return nil
 		}
-		claim := util.Dotnotation(userInfoMap, strings.Join(selectors, "."))
+		claim = util.Dotnotation(claimMap, strings.Join(selectors[1:], "."))
 		if claim == nil {
-			continue
-		}
-		switch v := claim.(type) {
-		case string:
-			roles = append(roles, v)
-		case []interface{}:
-			for _, rr := range v {
-				if r, ok := rr.(string); ok {
-					roles = append(roles, r)
-				}
-			}
-		case []string:
-			roles = append(roles, v...)
+			e.logger.Warn("claim not found", slog.String("claim", roleClaim), slog.Any("claims", claim))
+			return nil
 		}
 	}
+
+	// check the type of the role claim
+	switch v := claim.(type) {
+	case string:
+		roles = append(roles, v)
+	case []interface{}:
+		for _, rr := range v {
+			if r, ok := rr.(string); ok {
+				roles = append(roles, r)
+			}
+		}
+	default:
+		e.logger.Warn("could not get claim type", slog.String("selector", roleClaim), slog.Any("claims", claim))
+		return nil
+	}
+
 	return roles
 }

@@ -179,7 +179,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	authzPolicyCfg := authz.PolicyConfig{
 		Version:       cfg.Policy.Version,
 		UserNameClaim: cfg.Policy.UserNameClaim,
-		GroupsClaim:   []string(cfg.Policy.GroupsClaim),
+		GroupsClaim:   []string{cfg.Policy.GroupsClaim},
 		ClientIDClaim: cfg.Policy.ClientIDClaim,
 		Csv:           cfg.Policy.Csv,
 		Extension:     cfg.Policy.Extension,

@@ -251,7 +251,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 
 		slog.Info("running test w/ custom claim", slog.String("name", name))
 
-		policyCfg.GroupsClaim = GroupsClaimList{"test.test_roles.roles"}
+		policyCfg.GroupsClaim = "test.test_roles.roles"
 
 		enforcer, err = NewCasbinEnforcer(CasbinConfig{
 			PolicyConfig: policyCfg,
@@ -271,7 +271,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 			"admin":    "test-admin",
 			"standard": "test-standard",
 		}
-		policyCfg.GroupsClaim = GroupsClaimList{"realm_access.roles"}
+		policyCfg.GroupsClaim = "realm_access.roles"
 
 		enforcer, err = NewCasbinEnforcer(CasbinConfig{
 			PolicyConfig: policyCfg,
@@ -359,8 +359,8 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
 				"g, opentdf-standard, role:standard",
 				"role:admin, new.service.DoSomething, *",
 			}, "\n"),
-			expectErr: true,  // now expect error due to malformed policy line
-			allowed:   false, // fail-safe: should deny
+			expectErr: false, // v1 casbin doesn't validate CSV format
+			allowed:   true,  // admin still has access via default policy + valid group mapping
 		},
 		{
 			name: "missing effect",
@@ -369,8 +369,8 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
 				"g, opentdf-standard, role:standard",
 				"p, role:admin, new.service.DoSomething, *",
 			}, "\n"),
-			expectErr: true,  // now expect error due to malformed policy line
-			allowed:   false, // fail-safe: should deny
+			expectErr: false, // v1 casbin doesn't validate CSV format
+			allowed:   true,  // admin still has access via default policy + valid group mapping
 		},
 		{
 			name: "missing role prefix",
@@ -379,8 +379,8 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
 				"g, opentdf-standard, standard",
 				"p, admin, new.service.DoSomething, *",
 			}, "\n"),
-			expectErr: true, // now expect error due to malformed policy line
-			allowed:   false,
+			expectErr: false, // v1 casbin doesn't validate CSV format
+			allowed:   false, // role mapping without prefix won't match
 		},
 	}
 
@@ -626,177 +626,10 @@ func (s *AuthnCasbinSuite) Test_Username_Claim_Enforcement() {
 	}
 }
 
-func (s *AuthnCasbinSuite) Test_Casbin_Claims_Matrix() {
-	type scenario struct {
-		name        string
-		groupsClaim GroupsClaimList
-		tokenClaims map[string]interface{}
-		userInfo    []byte
-		shouldAllow bool
-		description string
-	}
-
-	policyCfg := PolicyConfig{}
-	err := defaults.Set(&policyCfg)
-	s.Require().NoError(err)
-	policyCfg.Extension = "p, role:admin, resource, read, allow"
-
-	testMatrix := []scenario{
-		{
-			name:        "One claim supported (token)",
-			groupsClaim: GroupsClaimList{"realm_access.roles"},
-			tokenClaims: map[string]interface{}{"realm_access": map[string]interface{}{"roles": []interface{}{"admin"}}},
-			shouldAllow: true,
-			description: "Token with one supported claim should allow",
-		},
-		{
-			name:        "Multiple claims supported (token)",
-			groupsClaim: GroupsClaimList{"realm_access.roles", "custom.roles"},
-			tokenClaims: map[string]interface{}{"custom": map[string]interface{}{"roles": []interface{}{"admin"}}},
-			shouldAllow: true,
-			description: "Token with any supported claim should allow",
-		},
-		{
-			name:        "No claims in token or userInfo",
-			groupsClaim: GroupsClaimList{"realm_access.roles", "custom.roles"},
-			tokenClaims: map[string]interface{}{},
-			shouldAllow: false,
-			description: "No claims present should deny",
-		},
-		{
-			name:        "Access token contains claim",
-			groupsClaim: GroupsClaimList{"realm_access.roles"},
-			tokenClaims: map[string]interface{}{"realm_access": map[string]interface{}{"roles": []interface{}{"admin"}}},
-			shouldAllow: true,
-			description: "Access token contains claim should allow",
-		},
-		{
-			name:        "User info contains claim",
-			groupsClaim: GroupsClaimList{"realm_access.roles"},
-			tokenClaims: map[string]interface{}{},
-			userInfo:    []byte(`{"realm_access": {"roles": ["admin"]}}`),
-			shouldAllow: true,
-			description: "User info contains claim should allow",
-		},
-		{
-			name:        "Both token and userInfo have matching claim",
-			groupsClaim: GroupsClaimList{"realm_access.roles"},
-			tokenClaims: map[string]interface{}{"realm_access": map[string]interface{}{"roles": []interface{}{"admin"}}},
-			userInfo:    []byte(`{"realm_access": {"roles": ["admin"]}}`),
-			shouldAllow: true,
-			description: "Should allow if either token or userInfo matches",
-		},
-		{
-			name:        "Token has non-matching, userInfo has matching claim",
-			groupsClaim: GroupsClaimList{"realm_access.roles"},
-			tokenClaims: map[string]interface{}{"realm_access": map[string]interface{}{"roles": []interface{}{"other"}}},
-			userInfo:    []byte(`{"realm_access": {"roles": ["admin"]}}`),
-			shouldAllow: true,
-			description: "Should allow if userInfo matches even if token does not",
-		},
-		{
-			name:        "Both token and userInfo have non-matching claims",
-			groupsClaim: GroupsClaimList{"realm_access.roles"},
-			tokenClaims: map[string]interface{}{"realm_access": map[string]interface{}{"roles": []interface{}{"other"}}},
-			userInfo:    []byte(`{"realm_access": {"roles": ["other2"]}}`),
-			shouldAllow: false,
-			description: "Should deny if neither token nor userInfo matches",
-		},
-		{
-			name:        "Malformed userInfo JSON",
-			groupsClaim: GroupsClaimList{"realm_access.roles"},
-			tokenClaims: map[string]interface{}{},
-			userInfo:    []byte(`not-a-json`),
-			shouldAllow: false,
-			description: "Should deny and not panic on malformed userInfo JSON",
-		},
-		{
-			name:        "GroupsClaim with nested path that doesn't exist",
-			groupsClaim: GroupsClaimList{"nonexistent.path.roles"},
-			tokenClaims: map[string]interface{}{"realm_access": map[string]interface{}{"roles": []interface{}{"admin"}}},
-			shouldAllow: false,
-			description: "Should deny if claim path does not exist",
-		},
-		{
-			name:        "GroupsClaim as empty list",
-			groupsClaim: GroupsClaimList{},
-			tokenClaims: map[string]interface{}{"realm_access": map[string]interface{}{"roles": []interface{}{"admin"}}},
-			shouldAllow: false,
-			description: "Should deny if no groups claim configured",
-		},
-		{
-			name:        "GroupsClaim with multiple, only one matches",
-			groupsClaim: GroupsClaimList{"realm_access.roles", "custom.roles"},
-			tokenClaims: map[string]interface{}{"custom": map[string]interface{}{"roles": []interface{}{"admin"}}},
-			shouldAllow: true,
-			description: "Should allow if any claim in GroupsClaim matches",
-		},
-		{
-			name:        "GroupsClaim with multiple, all match",
-			groupsClaim: GroupsClaimList{"realm_access.roles", "custom.roles"},
-			tokenClaims: map[string]interface{}{
-				"realm_access": map[string]interface{}{"roles": []interface{}{"admin"}},
-				"custom":       map[string]interface{}{"roles": []interface{}{"admin"}},
-			},
-			shouldAllow: true,
-			description: "Should allow if all claims in GroupsClaim match",
-		},
-		{
-			name:        "UserInfo present but empty",
-			groupsClaim: GroupsClaimList{"realm_access.roles"},
-			tokenClaims: map[string]interface{}{},
-			userInfo:    []byte(`{}`),
-			shouldAllow: false,
-			description: "Should deny if userInfo is present but empty",
-		},
-		{
-			name:        "Token and UserInfo both empty",
-			groupsClaim: GroupsClaimList{"realm_access.roles"},
-			tokenClaims: map[string]interface{}{},
-			userInfo:    nil,
-			shouldAllow: false,
-			description: "Should deny if both token and userInfo are empty",
-		},
-		{
-			name:        "UserInfo nil or empty length",
-			groupsClaim: GroupsClaimList{"realm_access.roles"},
-			tokenClaims: map[string]interface{}{},
-			userInfo:    nil,
-			shouldAllow: false,
-			description: "Should deny if userInfo is nil",
-		},
-		{
-			name:        "UserInfo empty slice",
-			groupsClaim: GroupsClaimList{"realm_access.roles"},
-			tokenClaims: map[string]interface{}{},
-			userInfo:    []byte{},
-			shouldAllow: false,
-			description: "Should deny if userInfo is empty slice",
-		},
-	}
-
-	for _, tc := range testMatrix {
-		s.Run(tc.name, func() {
-			cfg := policyCfg
-			cfg.GroupsClaim = tc.groupsClaim
-			enforcer, err := NewCasbinEnforcer(CasbinConfig{PolicyConfig: cfg}, logger.CreateTestLogger())
-			s.Require().NoError(err)
-
-			tok := jwt.New()
-			for k, v := range tc.tokenClaims {
-				if err := tok.Set(k, v); err != nil {
-					s.Fail("Failed to set token claim", err)
-				}
-			}
-			allowed := enforcer.Enforce(tok, tc.userInfo, "resource", "read")
-			if tc.shouldAllow && allowed {
-				s.True(allowed, tc.description)
-			} else {
-				s.False(allowed, tc.description)
-			}
-		})
-	}
-}
+// Test_Casbin_Claims_Matrix was removed as it tested multi-claim and userInfo
+// features that are now v2-only. V1 casbin uses single GroupsClaim string and
+// ignores the userInfo parameter. These features are tested in
+// service/internal/auth/authz/casbin/casbin_test.go for v2.
 
 func (s *AuthnCasbinSuite) buildTokenRoles(admin bool, standard bool, roleMaps []string) []interface{} {
 	adminRole := "opentdf-admin"

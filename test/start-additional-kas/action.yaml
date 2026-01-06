@@ -40,35 +40,79 @@ runs:
   using: 'composite'
   steps:
     - name: Validate inputs
-      if: ${{ inputs.key-management == 'true' && inputs.root-key == '' }}
       shell: bash
+      env:
+        KEY_MANAGEMENT: ${{ inputs.key-management }}
+        ROOT_KEY: ${{ inputs.root-key }}
+        KAS_NAME: ${{ inputs.kas-name }}
+        LOG_LEVEL: ${{ inputs.log-level }}
+        LOG_TYPE: ${{ inputs.log-type }}
       run: |
-        echo "Error: root-key is required when key-management is true."
-        exit 1
+        # Validate key-management and root-key
+        if [[ "${KEY_MANAGEMENT}" == "true" && -z "${ROOT_KEY}" ]]; then
+          echo "Error: root-key is required when key-management is true."
+          exit 1
+        fi
+
+        # Validate kas-name (only alphanumeric and hyphens)
+        if [[ ! "${KAS_NAME}" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+          echo "Error: kas-name must contain only lowercase letters, numbers, and hyphens (e.g., 'alpha', 'kas-beta')."
+          exit 1
+        fi
+
+        # Validate log-level (only allowed values)
+        case "${LOG_LEVEL}" in
+          audit|debug|info|warn|error)
+            ;;
+          *)
+            echo "Error: log-level must be one of: audit, debug, info, warn, error."
+            exit 1
+            ;;
+        esac
+
+        # Validate log-type (only allowed values)
+        case "${LOG_TYPE}" in
+          text|json)
+            ;;
+          *)
+            echo "Error: log-type must be one of: text, json."
+            exit 1
+            ;;
+        esac
     - name: Set log file path
       id: log-path
       shell: bash
+      env:
+        KAS_NAME: ${{ inputs.kas-name }}
       run: |
-        LOG_FILE="otdf-test-platform/logs/kas-${{ inputs.kas-name }}.log"
+        LOG_FILE="otdf-test-platform/logs/kas-${KAS_NAME}.log"
         echo "log-file=$LOG_FILE" >> "$GITHUB_OUTPUT"
         echo "Log file will be: $LOG_FILE"
     - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635 # v1.0.7
       id: start-kas
       name: Start another KAS server in background
+      env:
+        KAS_NAME: ${{ inputs.kas-name }}
+        KAS_PORT: ${{ inputs.kas-port }}
+        EC_TDF_ENABLED: ${{ inputs.ec-tdf-enabled }}
+        KEY_MANAGEMENT: ${{ inputs.key-management }}
+        ROOT_KEY: ${{ inputs.root-key }}
+        LOG_LEVEL: ${{ inputs.log-level }}
+        LOG_TYPE: ${{ inputs.log-type }}
       with:
         run: >
-          <opentdf-dev.yaml >opentdf-${{ inputs.kas-name }}.yaml yq e '
-            (.server.port = ${{ inputs.kas-port }})
+          <opentdf-dev.yaml >opentdf-${KAS_NAME}.yaml yq e '
+            (.server.port = env(KAS_PORT))
             | (.mode = ["kas"])
-            | (.services.kas.preview.ec_tdf_enabled = ${{ inputs.ec-tdf-enabled }})
-            | (.services.kas.preview.key_management = ${{ inputs.key-management }})
-            | (.services.kas.registered_kas_uri = "http://localhost:${{ inputs.kas-port }}")
-            | (.services.kas.root_key = "${{ inputs.root-key }}")
-            | (.logger.level = "${{ inputs.log-level }}")
-            | (.logger.type = "${{ inputs.log-type }}")
+            | (.services.kas.preview.ec_tdf_enabled = env(EC_TDF_ENABLED))
+            | (.services.kas.preview.key_management = env(KEY_MANAGEMENT))
+            | (.services.kas.registered_kas_uri = "http://localhost:" + env(KAS_PORT))
+            | (.services.kas.root_key = env(ROOT_KEY))
+            | (.logger.level = env(LOG_LEVEL))
+            | (.logger.type = env(LOG_TYPE))
             | (.sdk_config = {"client_id":"opentdf","client_secret":"secret","core":{"endpoint":"http://localhost:8080","plaintext":true}})
           '
-          && .github/scripts/watch.sh --tee-err-to logs/kas-${{ inputs.kas-name }}.log opentdf-${{ inputs.kas-name }}.yaml ./opentdf --config-file ./opentdf-${{ inputs.kas-name }}.yaml start
+          && .github/scripts/watch.sh --tee-err-to logs/kas-${KAS_NAME}.log opentdf-${KAS_NAME}.yaml ./opentdf --config-file ./opentdf-${KAS_NAME}.yaml start
         wait-on: |
           tcp:localhost:${{ inputs.kas-port }}
         log-output-if: true

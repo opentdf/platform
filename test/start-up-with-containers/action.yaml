@@ -70,6 +70,17 @@ runs:
         fi
         # Older version commands output version to stderr; newer versions output to stdout
         PLATFORM_VERSION=$(go run ./service version 2>&1)
+
+        # Validate version format (semver: x.y.z with optional pre-release/build metadata)
+        if [[ ! "$PLATFORM_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$ ]]; then
+          echo "Warning: Platform version '$PLATFORM_VERSION' doesn't match expected semver format. Using sanitized version."
+          # Extract just the version numbers
+          PLATFORM_VERSION=$(echo "$PLATFORM_VERSION" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          if [[ -z "$PLATFORM_VERSION" ]]; then
+            PLATFORM_VERSION="0.0.0"
+          fi
+        fi
+
         echo "PLATFORM_VERSION=$PLATFORM_VERSION" >> "$GITHUB_ENV"
         echo "## Platform version output: [$PLATFORM_VERSION]"
       working-directory: otdf-test-platform
@@ -135,10 +146,38 @@ runs:
       run: |
         yq e '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml
       working-directory: otdf-test-platform
+    - name: Validate logging inputs
+      shell: bash
+      env:
+        LOG_LEVEL: ${{ inputs.log-level }}
+        LOG_TYPE: ${{ inputs.log-type }}
+      run: |
+        # Validate log-level (only allowed values)
+        case "${LOG_LEVEL}" in
+          audit|debug|info|warn|error)
+            ;;
+          *)
+            echo "Error: log-level must be one of: audit, debug, info, warn, error."
+            exit 1
+            ;;
+        esac
+
+        # Validate log-type (only allowed values)
+        case "${LOG_TYPE}" in
+          text|json)
+            ;;
+          *)
+            echo "Error: log-type must be one of: text, json."
+            exit 1
+            ;;
+        esac
     - name: Configure logging
       shell: bash
+      env:
+        LOG_LEVEL: ${{ inputs.log-level }}
+        LOG_TYPE: ${{ inputs.log-type }}
       run: |
-        yq e '(.logger.level = "${{ inputs.log-level }}") | (.logger.type = "${{ inputs.log-type }}")' -i opentdf.yaml
+        yq e '(.logger.level = env(LOG_LEVEL)) | (.logger.type = env(LOG_TYPE))' -i opentdf.yaml
       working-directory: otdf-test-platform
     - name: Trust the generated certs
       shell: bash

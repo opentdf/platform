@@ -82,8 +82,8 @@ while true; do
 
   PID=$!
   wait_for_change_to "${file_to_watch}"
-  if kill -0 $PID 2>/dev/null; then
-    if ! kill $PID 2>/dev/null; then
+  if kill -0 "$PID" 2>/dev/null; then
+    if ! kill "$PID" 2>/dev/null; then
       echo "[WARN] Failed to kill process $PID" >&2
     fi
   fi

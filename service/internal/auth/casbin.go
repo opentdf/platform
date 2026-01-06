@@ -135,25 +135,25 @@ func (e *Enforcer) Enforce(token jwt.Token, _ []byte, resource, action string) b
 		allowed, err := e.Enforcer.Enforce(info, resource, action)
 		if err != nil {
 			e.logger.Error("enforce by role error",
-				slog.String("subject info", info),
-				slog.String("resource", resource),
+				slog.String("subject_info", info),
 				slog.String("action", action),
+				slog.String("resource", resource),
 				slog.String("error", err.Error()),
 			)
 		}
 		if allowed {
 			e.logger.Debug("allowed by policy",
-				slog.String("subject info", info),
-				slog.String("resource", resource),
+				slog.String("subject_info", info),
 				slog.String("action", action),
+				slog.String("resource", resource),
 			)
 			return true
 		}
 	}
 	e.logger.Debug("permission denied by policy",
-		slog.Any("subject.info", s),
-		slog.String("resource", resource),
+		slog.Any("subject_info", s),
 		slog.String("action", action),
+		slog.String("resource", resource),
 	)
 	return false
 }
@@ -170,9 +170,7 @@ func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 	var subject string
 	info := casbinSubject{}
 
-	e.logger.Debug("building subject from token",
-		slog.Any("token", t),
-	)
+	e.logger.Debug("building subject from token")
 	roles := e.extractRolesFromToken(t)
 
 	if claim, found := t.Get(e.Config.UserNameClaim); found {
@@ -193,9 +191,7 @@ func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 
 // extractRolesFromToken extracts roles from a jwt.Token based on the configured claim path
 func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
-	e.logger.Debug("extracting roles from token",
-		slog.Any("token", t),
-	)
+	e.logger.Debug("extracting roles from token")
 	roles := []string{}
 
 	roleClaim := e.Config.GroupsClaim
@@ -205,7 +201,6 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	if !exists {
 		e.logger.Warn("claim not found",
 			slog.String("claim", roleClaim),
-			slog.Any("token", t),
 		)
 		return nil
 	}

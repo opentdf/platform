@@ -6,12 +6,17 @@
 #   --tee-err-to FILE    Tee stderr to FILE
 #
 
-quitter() {
-  if [[ -n "$PID" ]] && kill -0 "$PID" 2>/dev/null; then
-    if ! kill "$PID" 2>/dev/null; then
-      echo "[WARN] Failed to kill process $PID" >&2
+safe_kill() {
+  local pid=$1
+  if kill -0 "$pid" 2>/dev/null; then
+    if ! kill "$pid" 2>/dev/null; then
+      echo "[WARN] Failed to kill process $pid" >&2
     fi
   fi
+}
+
+quitter() {
+  safe_kill "$PID"
   exit
 }
 trap quitter SIGINT
@@ -82,10 +87,6 @@ while true; do
 
   PID=$!
   wait_for_change_to "${file_to_watch}"
-  if kill -0 "$PID" 2>/dev/null; then
-    if ! kill "$PID" 2>/dev/null; then
-      echo "[WARN] Failed to kill process $PID" >&2
-    fi
-  fi
+  safe_kill "$PID"
   echo "[INFO] restarting [${PID}] due to modified file"
 done

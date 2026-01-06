@@ -138,8 +138,7 @@ runs:
     - name: Configure logging
       shell: bash
       run: |
-        yq e '.logger.level = "${{ inputs.log-level }}"' -i opentdf.yaml
-        yq e '.logger.type = "${{ inputs.log-type }}"' -i opentdf.yaml
+        yq e '(.logger.level = "${{ inputs.log-level }}") | (.logger.type = "${{ inputs.log-type }}")' -i opentdf.yaml
       working-directory: otdf-test-platform
     - name: Trust the generated certs
       shell: bash

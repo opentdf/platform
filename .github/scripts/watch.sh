@@ -19,10 +19,18 @@ tee_stderr=""
 while [[ $# -gt 0 ]]; do
   case $1 in
     --tee-out-to)
+      if [[ -z "$2" || "$2" == --* ]]; then
+        echo "Error: --tee-out-to requires a file path argument." >&2
+        exit 1
+      fi
       tee_stdout="$2"
       shift 2
       ;;
     --tee-err-to)
+      if [[ -z "$2" || "$2" == --* ]]; then
+        echo "Error: --tee-err-to requires a file path argument." >&2
+        exit 1
+      fi
       tee_stderr="$2"
       shift 2
       ;;

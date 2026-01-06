@@ -25,8 +25,8 @@ type ListConfig struct {
 
 type PolicyDBClient struct {
 	*db.Client
-	logger *logger.Logger
-	*Queries
+	logger  *logger.Logger
+	queries *Queries
 	listCfg ListConfig
 }
 
@@ -35,12 +35,12 @@ func NewClient(c *db.Client, logger *logger.Logger, configuredListLimitMax, conf
 }
 
 func (c *PolicyDBClient) RunInTx(ctx context.Context, query func(txClient *PolicyDBClient) error) error {
-	tx, err := c.Client.Pgx.Begin(ctx)
+	tx, err := c.Pgx.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("%w: %w", db.ErrTxBeginFailed, err)
 	}
 
-	txClient := &PolicyDBClient{c.Client, c.logger, c.Queries.WithTx(tx), c.listCfg}
+	txClient := &PolicyDBClient{c.Client, c.logger, c.queries.WithTx(tx), c.listCfg}
 
 	err = query(txClient)
 	if err != nil {

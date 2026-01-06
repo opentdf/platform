@@ -6,15 +6,31 @@ The platform leverages [viper](https://github.com/spf13/viper) to help load conf
 
 - [Platform Configuration](#platform-configuration)
   - [Deployment Mode](#deployment-mode)
+    - [Service Negation](#service-negation)
   - [SDK Configuration](#sdk-configuration)
   - [Logger Configuration](#logger-configuration)
   - [Server Configuration](#server-configuration)
+    - [CORS Configuration](#cors-configuration)
+      - [Additive Configuration](#additive-configuration)
+      - [Programmatic Configuration](#programmatic-configuration)
     - [Crypto Provider](#crypto-provider)
-  - [Database Configuration](#database-configuration)
     - [Tracing Configuration](#tracing-configuration)
+  - [Database Configuration](#database-configuration)
+  - [Security Configuration](#security-configuration)
   - [Services Configuration](#services-configuration)
     - [Key Access Server (KAS)](#key-access-server-kas)
     - [Authorization](#authorization)
+      - [Shared Keys (v1 \& v2)](#shared-keys-v1--v2)
+      - [Authorization v1 Only](#authorization-v1-only)
+      - [Authorization v2 Only](#authorization-v2-only)
+      - [Example: Authorization v1](#example-authorization-v1)
+      - [Example: Authorization v2](#example-authorization-v2)
+    - [Entity Resolution](#entity-resolution)
+      - [Shared Keys (v1 \& v2)](#shared-keys-v1--v2-1)
+      - [Entity Resolution v1 Only](#entity-resolution-v1-only)
+      - [Entity Resolution v2 Only](#entity-resolution-v2-only)
+      - [Example: Entity Resolution v1](#example-entity-resolution-v1)
+      - [Example: Entity Resolution v2](#example-entity-resolution-v2)
     - [Policy](#policy)
     - [Casbin Endpoint Authorization](#casbin-endpoint-authorization)
       - [Key Aspects of Authorization Configuration](#key-aspects-of-authorization-configuration)
@@ -31,11 +47,29 @@ The platform is designed as a modular monolith, meaning that all services are bu
 - core: Runs essential services, including policy, authorization, and wellknown services.
 - kas: Runs the Key Access Server (KAS) service.
 
+### Service Negation
 
+You can exclude specific services from any mode using the negation syntax `-servicename`:
 
-| Field  | Description                                                                   | Default | Environment Variable |
-| ------ | ----------------------------------------------------------------------------- | ------- | -------------------- |
-| `mode` | Drives which services to run. Following modes are supported. (all, core, kas) | `all`   | OPENTDF_MODE         |
+- **Syntax**: `mode: <base-mode>,-<service1>,-<service2>`
+- **Constraint**: At least one positive mode must be specified (negation-only modes like `-kas` will result in an error)
+- **Available services**: `policy`, `authorization`, `kas`, `entityresolution`, `wellknown`
+
+**Examples:**
+```yaml
+# Run all services except Entity Resolution Service
+mode: all,-entityresolution
+
+# Run core services except Policy Service  
+mode: core,-policy
+
+# Run all services except both KAS and Entity Resolution
+mode: all,-kas,-entityresolution
+```
+
+| Field  | Description                                                                                                                                          | Default | Environment Variable |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------------------- |
+| `mode` | Drives which services to run. Supported modes: `all`, `core`, `kas`. Use `-servicename` to exclude specific services (e.g., `all,-entityresolution`) | `all`   | OPENTDF_MODE         |
 
 ## SDK Configuration
 
@@ -129,6 +163,74 @@ server:
           cert: kas-ec-cert.pem
 ```
 
+### CORS Configuration
+
+Root level key `server.cors`
+
+| Field                      | Description                                       | Default                                                                                                                                                                          | Environment Variable                         |
+| -------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `enabled`                  | Enable CORS for the server                        | `true`                                                                                                                                                                           | OPENTDF_SERVER_CORS_ENABLED                  |
+| `allowedorigins`           | List of allowed origins (`*` for any)             | `[]`                                                                                                                                                                             | OPENTDF_SERVER_CORS_ALLOWEDORIGINS           |
+| `allowedmethods`           | List of allowed HTTP methods                      | `["GET","POST","PATCH","DELETE","OPTIONS"]`                                                                                                                                      | OPENTDF_SERVER_CORS_ALLOWEDMETHODS           |
+| `allowedheaders`           | List of allowed request headers                   | `["Accept","Accept-Encoding","Authorization","Connect-Protocol-Version","Content-Length","Content-Type","Dpop","X-CSRF-Token","X-Requested-With","X-Rewrap-Additional-Context"]` | OPENTDF_SERVER_CORS_ALLOWEDHEADERS           |
+| `exposedheaders`           | List of response headers browsers can access      | `[]`                                                                                                                                                                             | OPENTDF_SERVER_CORS_EXPOSEDHEADERS           |
+| `allowcredentials`         | Whether credentials are included in CORS requests | `true`                                                                                                                                                                           | OPENTDF_SERVER_CORS_ALLOWCREDENTIALS         |
+| `maxage`                   | Maximum age (seconds) of preflight cache          | `3600`                                                                                                                                                                           | OPENTDF_SERVER_CORS_MAXAGE                   |
+| `additionalmethods`        | Additional methods to append to defaults          | `[]`                                                                                                                                                                             | OPENTDF_SERVER_CORS_ADDITIONALMETHODS        |
+| `additionalheaders`        | Additional headers to append to defaults          | `[]`                                                                                                                                                                             | OPENTDF_SERVER_CORS_ADDITIONALHEADERS        |
+| `additionalexposedheaders` | Additional exposed headers to append              | `[]`                                                                                                                                                                             | OPENTDF_SERVER_CORS_ADDITIONALEXPOSEDHEADERS |
+
+#### Additive Configuration
+
+The `additional*` fields allow operators to extend the default lists without replacing them entirely:
+
+```yaml
+server:
+  cors:
+    enabled: true
+    # Add custom headers without copying all defaults
+    additionalheaders:
+      - X-Custom-Header
+      - X-Another-Header
+```
+
+To completely replace defaults, use the base fields directly:
+
+```yaml
+server:
+  cors:
+    allowedheaders:
+      - Authorization
+      - Content-Type
+      # Only these headers will be allowed
+```
+
+#### Programmatic Configuration
+
+For applications embedding the OpenTDF platform, CORS can also be configured programmatically using functional options. These are applied after YAML/environment configuration and follow the same additive semantics:
+
+```go
+import "github.com/opentdf/platform/service/pkg/server"
+
+err := server.Start(
+    server.WithConfigFile("opentdf.yaml"),
+    // Add custom headers for your application
+    server.WithAdditionalCORSHeaders("X-Custom-Header", "X-App-Version"),
+    // Add custom methods if needed
+    server.WithAdditionalCORSMethods("CUSTOM"),
+    // Expose additional response headers to browsers
+    server.WithAdditionalCORSExposedHeaders("X-Request-Id", "X-Trace-Id"),
+)
+```
+
+**Configuration Precedence:**
+
+1. **Defaults** - Built-in default values
+2. **YAML/Environment** - Operator configuration via `server.cors.*` fields
+3. **Programmatic Options** - Developer overlays via `WithAdditionalCORS*` functions
+
+All layers are additive. Deduplication is handled automatically (case-insensitive for headers per RFC 7230, case-sensitive for methods per RFC 7231).
+
 ### Crypto Provider
 
 To configure the Key Access Server,
@@ -149,6 +251,43 @@ Environment Variable: `OPENTDF_SERVER_CRYPTOPROVIDER_STANDARD='[{"alg":"rsa:2048
 | `cryptoProvider.standard.*.kid`     | A short, globally unique, stable identifier for this keypair.             |            |
 | `cryptoProvider.standard.*.private` | Path to the private key as a PEM file.                                    |            |
 | `cryptoProvider.standard.*.cert`    | (Optional) Path to a public cert for the keypair.                         |            |
+
+### Tracing Configuration
+
+Root level key `server.trace`
+
+| Field                        | Description                     | Default | Environment Variable               |
+| ---------------------------- | ------------------------------- | ------- | ---------------------------------- |
+| `server.trace.enabled`       | Enable distributed tracing      | `false` | OPENTDF_SERVER_TRACE_ENABLED       |
+| `server.trace.provider.name` | Tracing provider (file or otlp) | `otlp`  | OPENTDF_SERVER_TRACE_PROVIDER_NAME |
+
+For file provider:
+- `server.trace.provider.file.path`: Path to trace file output
+- `server.trace.provider.file.prettyPrint`: Enable pretty-printed JSON
+- `server.trace.provider.file.maxSize`: Maximum file size in MB
+- `server.trace.provider.file.maxBackups`: Maximum number of backup files
+- `server.trace.provider.file.maxAge`: Maximum age of files in days
+- `server.trace.provider.file.compress`: Enable compression of trace files
+
+For OTLP provider:
+- `server.trace.provider.otlp.protocol`: Protocol to use (grpc or http/protobuf)
+- `server.trace.provider.otlp.endpoint`: Endpoint URL for the collector
+- `server.trace.provider.otlp.insecure`: Whether to use an insecure connection
+- `server.trace.provider.otlp.headers`: Headers to include in OTLP requests
+
+Example:
+
+```yaml
+server:
+  trace:
+    enabled: true
+    provider:
+      name: otlp
+      otlp:
+        protocol: grpc
+        endpoint: "localhost:4317"
+        insecure: true
+```
 
 ## Database Configuration
 
@@ -200,26 +339,15 @@ db:
     health_check_period_seconds: 60
 ```
 
-### Tracing Configuration
+## Security Configuration
 
-| Field                 | Description                     | Default | Environment Variable               |
-| --------------------- | ------------------------------- | ------- | ---------------------------------- |
-| `trace.enabled`       | Enable distributed tracing      | `false` | OPENTDF_SERVER_TRACE_ENABLED       |
-| `trace.provider.name` | Tracing provider (file or otlp) | `otlp`  | OPENTDF_SERVER_TRACE_PROVIDER_NAME |
+Root level key `security`
 
-For file provider:
-- `trace.provider.file.path`: Path to trace file output
-- `trace.provider.file.prettyPrint`: Enable pretty-printed JSON
-- `trace.provider.file.maxSize`: Maximum file size in MB
-- `trace.provider.file.maxBackups`: Maximum number of backup files
-- `trace.provider.file.maxAge`: Maximum age of files in days
-- `trace.provider.file.compress`: Enable compression of trace files
+| Field               | Description                                                                                     | Default |
+| ------------------- | ----------------------------------------------------------------------------------------------- | ------- |
+| `unsafe.clock_skew` | Platform-wide maximum tolerated clock skew for token verification (Go duration, use cautiously) | `1m`    |
 
-For OTLP provider:
-- `trace.provider.otlp.protocol`: Protocol to use (grpc or http/protobuf)
-- `trace.provider.otlp.endpoint`: Endpoint URL for the collector
-- `trace.provider.otlp.insecure`: Whether to use an insecure connection
-- `trace.provider.otlp.headers`: Headers to include in OTLP requests
+> **Warning:** Increasing `unsafe.clock_skew` weakens token freshness guarantees. Only raise this value temporarily while you correct clock drift.
 
 ## Services Configuration
 
@@ -231,19 +359,23 @@ Root level key `kas`
 
 Environment Variable: `OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:2048"},{"kid":"k2","alg":"ec:secp256r1"}]'`
 
-| Field                             | Description                                                                     | Default  |
-| --------------------------------- | ------------------------------------------------------------------------------- | -------- |
-| `keyring.*.kid`                   | Which key id this is binding                                                    |          |
-| `keyring.*.alg`                   | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |          |
-| `keyring.*.legacy`                | Indicates this may be used for TDFs with no key ID; default if all unspecified. | inferred |
-| `preview_features.ec_tdf_enabled` | Whether tdf based ecc support is enabled.                                       | `false`  |
-| `preview_features.key_management` | Whether new key management features are enabled.                                | `false`  |
-| `root_key`                        | Key needed when new key_management functionality is enabled.                    |          |
-
+| Field                    | Description                                                                     | Default  |
+| ------------------------ | ------------------------------------------------------------------------------- | -------- |
+| `keyring.*.kid`          | Which key id this is binding                                                    |          |
+| `keyring.*.alg`          | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |          |
+| `keyring.*.legacy`       | Indicates this may be used for TDFs with no key ID; default if all unspecified. | inferred |
+| `preview.ec_tdf_enabled` | Whether tdf based ecc support is enabled.                                       | `false`  |
+| `preview.key_management` | Whether new key management features are enabled.                                | `false`  |
+| `root_key`               | Key needed when new key_management functionality is enabled.                    |          |
 
 Example:
 
 ```yaml
+security:
+  unsafe:
+    # Increase only when diagnosing clock drift issues
+    # clock_skew: 90s
+
 services:
   kas:
     keyring:
@@ -263,12 +395,29 @@ services:
 
 Root level key `authorization`
 
-| Field        | Description                     | Default                                | Environment Variables                     |
-| ------------ | ------------------------------- | -------------------------------------- | ----------------------------------------- |
-| `rego.path`  | Path to rego policy file        | Leverages embedded rego policy         | OPENTDF_SERVICES_AUTHORIZATION_REGO_PATH  |
-| `rego.query` | Rego query to execute in policy | `data.opentdf.entitlements.attributes` | OPENTDF_SERVICES_AUTHORIZATION_REGO_QUERY |
+> **Note:** Both Authorization v1 and v2 use the same configuration section, but some keys are version-specific. See below for details.
 
-Example:
+#### Shared Keys (v1 & v2)
+
+| Field                                             | Description | Default | Environment Variables |
+| ------------------------------------------------- | ----------- | ------- | --------------------- |
+| *(none currently; all keys are version-specific)* |             |         |                       |
+
+#### Authorization v1 Only
+
+| Field        | Description              | Default                                | Environment Variables                     |
+| ------------ | ------------------------ | -------------------------------------- | ----------------------------------------- |
+| `rego.path`  | Path to rego policy file | Leverages embedded rego policy         | OPENTDF_SERVICES_AUTHORIZATION_REGO_PATH  |
+| `rego.query` | Rego query to execute    | `data.opentdf.entitlements.attributes` | OPENTDF_SERVICES_AUTHORIZATION_REGO_QUERY |
+
+#### Authorization v2 Only
+
+| Field                                       | Description                                                    | Default | Environment Variables |
+| ------------------------------------------- | -------------------------------------------------------------- | ------- | --------------------- |
+| `entitlement_policy_cache.enabled`          | Enable the entitlement policy cache                            | `false` |                       |
+| `entitlement_policy_cache.refresh_interval` | How often to refresh the entitlement policy cache (e.g. `30s`) |         |                       |
+
+#### Example: Authorization v1
 
 ```yaml
 services:
@@ -277,6 +426,82 @@ services:
       path: /path/to/policy.rego
       query: data.opentdf.entitlements.attributes
 ```
+
+#### Example: Authorization v2
+
+```yaml
+services:
+  authorization:
+    entitlement_policy_cache:
+      enabled: false
+      refresh_interval: 30s
+```
+
+### Entity Resolution
+
+Root level key `entityresolution`
+
+> **Note:** Both Entity Resolution v1 and v2 use the same configuration section. All configuration keys are shared between v1 and v2, except `cache_expiration`, which is only used in v2.
+
+#### Shared Keys (v1 & v2)
+
+| Field                   | Description                                                                                    | Default    | Environment Variable                                    |
+| ----------------------- | ---------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------- |
+| `mode`                  | The mode in which to run ERS (`keycloak` or `claims`)                                          | `keycloak` | OPENTDF_SERVICES_ENTITYRESOLUTION_MODE                  |
+| `url`                   | Endpoint URL for the entity resolution service (specific to `keycloak` mode)                   | `""`       | OPENTDF_SERVICES_ENTITYRESOLUTION_URL                   |
+| `clientid`              | Keycloak client ID for authentication (specific to `keycloak` mode)                            | `""`       | OPENTDF_SERVICES_ENTITYRESOLUTION_CLIENTID              |
+| `clientsecret`          | Keycloak client secret for authentication(specific to `keycloak` mode)                         | `""`       | OPENTDF_SERVICES_ENTITYRESOLUTION_CLIENTSECRET          |
+| `realm`                 | Keycloak realm for authentication (specific to `keycloak` mode)                                |            | OPENTDF_SERVICES_ENTITYRESOLUTION_REALM                 |
+| `legacykeycloak`        | Enables legacy Keycloak compatibility (`/auth` as base endpoint) (specific to `keycloak` mode) | `false`    | OPENTDF_SERVICES_ENTITYRESOLUTION_LEGACYKEYCLOAK        |
+| `inferid.from.email`    | Infer entity IDs from email addresses (specific to `keycloak` mode)                            | `false`    | OPENTDF_SERVICES_ENTITYRESOLUTION_INFERID_FROM_EMAIL    |
+| `inferid.from.username` | Infer entity IDs from usernames (specific to `keycloak` mode)                                  | `false`    | OPENTDF_SERVICES_ENTITYRESOLUTION_INFERID_FROM_USERNAME |
+| `inferid.from.clientid` | Infer entity IDs from client IDs (specific to `keycloak` mode)                                 | `false`    | OPENTDF_SERVICES_ENTITYRESOLUTION_INFERID_FROM_CLIENTID |
+
+#### Entity Resolution v1 Only
+
+| Field              | Description | Default | Environment Variables |
+| ------------------ | ----------- | ------- | --------------------- |
+| *(none currently)* |             |         |                       |
+
+#### Entity Resolution v2 Only
+
+| Field              | Description                                                                                                            | Default  | Environment Variable |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------- | -------- | -------------------- |
+| `cache_expiration` | Cache duration for entity resolution results (e.g., `30s`). Disabled if not set or zero. (specific to `keycloak` mode) | disabled |                      |
+
+#### Example: Entity Resolution v1
+
+```yaml
+services:
+  entityresolution:
+    url: http://localhost:8888/auth
+    clientid: "tdf-entity-resolution"
+    clientsecret: "secret"
+    realm: "opentdf"
+    legacykeycloak: true
+    inferid:
+      from:
+        email: true
+        username: true
+```
+
+#### Example: Entity Resolution v2
+
+```yaml
+services:
+  entityresolution:
+    url: http://localhost:8888/auth
+    clientid: "tdf-entity-resolution"
+    clientsecret: "secret"
+    realm: "opentdf"
+    legacykeycloak: true
+    inferid:
+      from:
+        email: true
+        username: true
+    cache_expiration: 30s
+```
+
 
 ### Policy
 
@@ -333,6 +558,9 @@ server:
 
       ## Dot notation is used to access the groups claim
       group_claim: "realm_access.roles"
+
+      # Dot notation is used to access the claim the represents the idP client ID 
+      client_id_claim: # azp
       
       ## Deprecated: Use standard casbin policy groupings (g, <user/group>, <role>)
       ## Maps the external role to the OpenTDF role
@@ -395,9 +623,9 @@ The platform supports a cache manager to improve performance for frequently acce
 
 Root level key `cache`
 
-| Field                    | Description                                                      | Default      |
-|--------------------------|------------------------------------------------------------------|--------------|
-| `ristretto.max_cost`      | Maximum cost for the cache (e.g. 100mb, 1gb)                     | `1gb`        |
+| Field                | Description                                  | Default |
+| -------------------- | -------------------------------------------- | ------- |
+| `ristretto.max_cost` | Maximum cost for the cache (e.g. 100mb, 1gb) | `1gb`   |
 
 Example:
 

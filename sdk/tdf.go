@@ -29,37 +29,26 @@ import (
 )
 
 const (
-	keyAccessSchemaVersion  = "1.0"
-	maxFileSizeSupported    = 68719476736 // 64gb
-	defaultMimeType         = "application/octet-stream"
-	tdfAsZip                = "zip"
-	gcmIvSize               = 12
-	aesBlockSize            = 16
-	hmacIntegrityAlgorithm  = "HS256"
-	gmacIntegrityAlgorithm  = "GMAC"
-	tdfZipReference         = "reference"
-	kKeySize                = 32
-	kWrapped                = "wrapped"
-	kECWrapped              = "ec-wrapped"
-	kKasProtocol            = "kas"
-	kSplitKeyType           = "split"
-	kGCMCipherAlgorithm     = "AES-256-GCM"
-	kGMACPayloadLength      = 16
-	kAssertionSignature     = "assertionSig"
-	kAssertionHash          = "assertionHash"
-	kClientPublicKey        = "clientPublicKey"
-	kSignedRequestToken     = "signedRequestToken"
-	kKasURL                 = "url"
-	kRewrapV2               = "/v2/rewrap"
-	kAuthorizationKey       = "Authorization"
-	kContentTypeKey         = "Content-Type"
-	kAcceptKey              = "Accept"
-	kContentTypeJSONValue   = "application/json"
-	kEntityWrappedKey       = "entityWrappedKey"
-	kPolicy                 = "policy"
-	kHmacIntegrityAlgorithm = "HS256"
-	kGmacIntegrityAlgorithm = "GMAC"
-	hexSemverThreshold      = "4.3.0"
+	keyAccessSchemaVersion = "1.0"
+	maxFileSizeSupported   = 68719476736 // 64gb
+	defaultMimeType        = "application/octet-stream"
+	tdfAsZip               = "zip"
+	gcmIvSize              = 12
+	aesBlockSize           = 16
+	hmacIntegrityAlgorithm = "HS256"
+	gmacIntegrityAlgorithm = "GMAC"
+	tdfZipReference        = "reference"
+	kKeySize               = 32
+	kWrapped               = "wrapped"
+	kECWrapped             = "ec-wrapped"
+	kKasProtocol           = "kas"
+	kSplitKeyType          = "split"
+	kGCMCipherAlgorithm    = "AES-256-GCM"
+	kGMACPayloadLength     = 16
+	kAssertionSignature    = "assertionSig"
+	kAssertionHash         = "assertionHash"
+	hexSemverThreshold     = "4.3.0"
+	readActionName         = "read"
 )
 
 // Loads and reads ZTDF files
@@ -76,6 +65,11 @@ type Reader struct {
 	payloadKey          []byte
 	kasSessionKey       ocrypto.KeyPair
 	config              TDFReaderConfig
+	requiredObligations *RequiredObligations
+}
+
+type RequiredObligations struct {
+	FQNs []string
 }
 
 type TDFObject struct {
@@ -174,47 +168,9 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
 	}
 
-	// At most one of the following should be true:
-	// - autoconfigure is true
-	// - splitPlan is set
-	// - kaoTemplate is set
-	if len(tdfConfig.splitPlan) > 0 && len(tdfConfig.kaoTemplate) > 0 {
-		return nil, errors.New("cannot set both splitPlan and kaoTemplate")
-	}
-	if tdfConfig.autoconfigure && (len(tdfConfig.splitPlan) > 0 || len(tdfConfig.kaoTemplate) > 0) {
-		return nil, errors.New("cannot set autoconfigure and splitPlan or kaoTemplate")
-	}
-
-	// * Get base key before autoconfigure to condition off of.
-	if tdfConfig.autoconfigure {
-		var g granter
-		var err error
-		g, err = s.newGranter(ctx, tdfConfig, err)
-		if err != nil {
-			return nil, err
-		}
-
-		switch g.typ {
-		case mappedFound:
-			tdfConfig.kaoTemplate, err = g.resolveTemplate(uuidSplitIDGenerator)
-		case grantsFound:
-			tdfConfig.kaoTemplate = nil
-			tdfConfig.splitPlan, err = g.plan(make([]string, 0), uuidSplitIDGenerator)
-		case noKeysFound:
-			var baseKey *policy.SimpleKasKey
-			baseKey, err = getBaseKeyFromWellKnown(ctx, s)
-			if err == nil {
-				err = populateKasInfoFromBaseKey(baseKey, tdfConfig)
-			} else {
-				slog.DebugContext(ctx, "error getting base key, falling back to default kas", slog.Any("error", err))
-				dk := s.defaultKases(tdfConfig)
-				tdfConfig.kaoTemplate = nil
-				tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)
-			}
-		}
-		if err != nil {
-			return nil, fmt.Errorf("failed generate plan: %w", err)
-		}
+	err = tdfConfig.initKAOTemplate(ctx, s)
+	if err != nil {
+		return nil, err
 	}
 
 	tdfObject := &TDFObject{}
@@ -289,7 +245,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			EncryptedSize: int64(len(cipherData)),
 		}
 
-		tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments = append(tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments, segmentInfo)
+		tdfObject.manifest.Segments = append(tdfObject.manifest.Segments, segmentInfo)
 
 		totalSegments--
 		readPos += readSize
@@ -302,35 +258,35 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	}
 
 	sig := string(ocrypto.Base64Encode([]byte(rootSignature)))
-	tdfObject.manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature = sig
+	tdfObject.manifest.Signature = sig
 
 	integrityAlgStr := gmacIntegrityAlgorithm
 	if tdfConfig.integrityAlgorithm == HS256 {
 		integrityAlgStr = hmacIntegrityAlgorithm
 	}
-	tdfObject.manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm = integrityAlgStr
+	tdfObject.manifest.Algorithm = integrityAlgStr
 
-	tdfObject.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize = segmentSize
-	tdfObject.manifest.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize = encryptedSegmentSize
+	tdfObject.manifest.DefaultSegmentSize = segmentSize
+	tdfObject.manifest.DefaultEncryptedSegSize = encryptedSegmentSize
 
 	segIntegrityAlgStr := gmacIntegrityAlgorithm
 	if tdfConfig.segmentIntegrityAlgorithm == HS256 {
 		segIntegrityAlgStr = hmacIntegrityAlgorithm
 	}
 
-	tdfObject.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm = segIntegrityAlgStr
-	tdfObject.manifest.EncryptionInformation.Method.IsStreamable = true
+	tdfObject.manifest.SegmentHashAlgorithm = segIntegrityAlgStr
+	tdfObject.manifest.Method.IsStreamable = true
 
 	// add payload info
 	mimeType := tdfConfig.mimeType
 	if mimeType == "" {
 		mimeType = defaultMimeType
 	}
-	tdfObject.manifest.Payload.MimeType = mimeType
-	tdfObject.manifest.Payload.Protocol = tdfAsZip
-	tdfObject.manifest.Payload.Type = tdfZipReference
-	tdfObject.manifest.Payload.URL = archive.TDFPayloadFileName
-	tdfObject.manifest.Payload.IsEncrypted = true
+	tdfObject.manifest.MimeType = mimeType
+	tdfObject.manifest.Protocol = tdfAsZip
+	tdfObject.manifest.Type = tdfZipReference
+	tdfObject.manifest.URL = archive.TDFPayloadFileName
+	tdfObject.manifest.IsEncrypted = true
 
 	var signedAssertion []Assertion
 	if tdfConfig.addDefaultAssertion {
@@ -409,14 +365,106 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	return tdfObject, nil
 }
 
-func (s SDK) newGranter(ctx context.Context, tdfConfig *TDFConfig, err error) (granter, error) {
-	var g granter
-	if len(tdfConfig.attributeValues) > 0 {
-		g, err = newGranterFromAttributes(s.kasKeyCache, tdfConfig.attributeValues...)
-	} else if len(tdfConfig.attributes) > 0 {
-		g, err = newGranterFromService(ctx, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
+// initKAOTemplate initializes the KAO template, from either the split plan, kaoTemplate, or autoconfigure based on tags.
+func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
+	// At most one of the following should be true:
+	// - autoconfigure is true
+	// - splitPlan is set
+	// - kaoTemplate is set
+	if len(tdfConfig.splitPlan) > 0 && len(tdfConfig.kaoTemplate) > 0 {
+		return errors.New("cannot set both splitPlan and kaoTemplate")
 	}
-	return g, err
+	if tdfConfig.autoconfigure && (len(tdfConfig.splitPlan) > 0 || len(tdfConfig.kaoTemplate) > 0) {
+		return errors.New("cannot set autoconfigure and splitPlan or kaoTemplate")
+	}
+
+	// * Get base key before autoconfigure to condition off of.
+	if tdfConfig.autoconfigure {
+		g, err := s.newGranter(ctx, tdfConfig)
+		if err != nil {
+			return err
+		}
+
+		switch g.typ {
+		case mappedFound:
+			tdfConfig.kaoTemplate, err = g.resolveTemplate(ctx, string(tdfConfig.preferredKeyWrapAlg), uuidSplitIDGenerator)
+		case grantsFound:
+			tdfConfig.kaoTemplate = nil
+			tdfConfig.splitPlan, err = g.plan(make([]string, 0), uuidSplitIDGenerator)
+		case noKeysFound:
+			var baseKey *policy.SimpleKasKey
+			baseKey, err = getBaseKeyFromWellKnown(ctx, s)
+			if err == nil {
+				err = populateKasInfoFromBaseKey(baseKey, tdfConfig)
+			} else {
+				s.Logger().Debug("cannot getting base key, falling back to default kas", slog.Any("error", err))
+				dk := s.defaultKases(tdfConfig)
+				tdfConfig.kaoTemplate = nil
+				tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)
+			}
+		}
+		if err != nil {
+			return fmt.Errorf("failed generate plan: %w", err)
+		}
+	}
+
+	switch {
+	case len(tdfConfig.kaoTemplate) > 0:
+		// use the kao template to create the key access objects
+		// This is the preferred behavior; the following options upgrade deprecated behaviors
+	case len(tdfConfig.splitPlan) > 0:
+		// Seed anything passed in manually
+		latestKASInfo := make(map[string]KASInfo)
+		for _, kasInfo := range tdfConfig.kasInfoList {
+			if kasInfo.PublicKey != "" {
+				latestKASInfo[kasInfo.URL] = kasInfo
+			}
+		}
+		// upgrade split plan to kao template
+		tdfConfig.kaoTemplate = make([]kaoTpl, len(tdfConfig.splitPlan))
+		for i, splitInfo := range tdfConfig.splitPlan {
+			kasInfo, ok := latestKASInfo[splitInfo.KAS]
+			if !ok {
+				k, err := s.getPublicKey(ctx, splitInfo.KAS, string(tdfConfig.preferredKeyWrapAlg), "")
+				if err != nil {
+					return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", splitInfo.KAS, err)
+				}
+				kasInfo = *k
+			}
+			if kasInfo.PublicKey == "" {
+				return fmt.Errorf("empty KAS key found for splitID:[%s], kas:[%s]: %w", splitInfo.SplitID, splitInfo.KAS, errKasPubKeyMissing)
+			}
+			tdfConfig.kaoTemplate[i] = kaoTpl{
+				splitInfo.KAS,
+				splitInfo.SplitID,
+				kasInfo.KID,
+				kasInfo.PublicKey,
+				ocrypto.KeyType(kasInfo.Algorithm),
+			}
+		}
+		tdfConfig.splitPlan = nil // clear split plan as we are using kaoTemplate now
+	case len(tdfConfig.kasInfoList) > 0:
+		// Default to split based on kasInfoList
+		// To remove. This has been deprecated for some time.
+		tdfConfig.kaoTemplate = createKaoTemplateFromKasInfo(tdfConfig.kasInfoList)
+	}
+
+	return nil
+}
+
+func (s SDK) newGranter(ctx context.Context, tdfConfig *TDFConfig) (granter, error) {
+	var g granter
+	var err error
+	if len(tdfConfig.attributeValues) > 0 {
+		g, err = newGranterFromAttributes(s.logger, s.kasKeyCache, tdfConfig.attributeValues...)
+	} else if len(tdfConfig.attributes) > 0 {
+		g, err = newGranterFromService(ctx, s.logger, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
+	}
+	if err != nil {
+		return g, err
+	}
+	g.keyInfoFetcher = s
+	return g, nil
 }
 
 func (t *TDFObject) Manifest() Manifest {
@@ -435,19 +483,11 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		manifest.TDFVersion = TDFSpecVersion
 	}
 
-	if len(tdfConfig.splitPlan) == 0 && len(tdfConfig.kasInfoList) == 0 && len(tdfConfig.kaoTemplate) == 0 {
-		return fmt.Errorf("%w: no key access template specified or inferred", errInvalidKasInfo)
+	if len(tdfConfig.kaoTemplate) == 0 {
+		return fmt.Errorf("no key access template specified or inferred in initKAOTemplate: %w", errInvalidKasInfo)
 	}
 
-	// Seed anything passed in manually
-	latestKASInfo := make(map[string]KASInfo)
-	for _, kasInfo := range tdfConfig.kasInfoList {
-		if kasInfo.PublicKey != "" {
-			latestKASInfo[kasInfo.URL] = kasInfo
-		}
-	}
-
-	manifest.EncryptionInformation.KeyAccessType = kSplitKeyType
+	manifest.KeyAccessType = kSplitKeyType
 
 	policyObj, err := createPolicyObject(tdfConfig.attributes)
 	if err != nil {
@@ -460,47 +500,30 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 	}
 
 	base64PolicyObject := ocrypto.Base64Encode(policyObjectAsStr)
-	switch {
-	case len(tdfConfig.kaoTemplate) > 0:
-		// use the kao template to create the split plan
-		// This is the preferred behavior; the following options upgrade deprecated behaviors
-	case len(tdfConfig.splitPlan) > 0:
-		// upgrade split plan to kao template
-		tdfConfig.kaoTemplate = make([]kaoTpl, len(tdfConfig.splitPlan))
-		for i, splitInfo := range tdfConfig.splitPlan {
-			tdfConfig.kaoTemplate[i] = kaoTpl{
-				keySplitStep{
-					KAS:     splitInfo.KAS,
-					SplitID: splitInfo.SplitID,
-				},
-				latestKASInfo[splitInfo.KAS].KID,
-			}
-		}
-		tdfConfig.splitPlan = nil // clear split plan as we are using kaoTemplate now
-	case len(tdfConfig.kasInfoList) > 0:
-		// Default to split based on kasInfoList
-		// To remove. This has been deprecated for some time.
-		tdfConfig.kaoTemplate = createKaoTemplateFromKasInfo(tdfConfig.kasInfoList)
-	}
 
 	conjunction := make(map[string][]KASInfo)
 	var splitIDs []string
 
-	keyAlgorithm := string(tdfConfig.keyType)
-
 	for _, tpl := range tdfConfig.kaoTemplate {
 		// Public key was passed in with kasInfoList
-		// TODO first look up in attribute information / add to split plan?
-		ki, ok := latestKASInfo[tpl.KAS]
-		if !ok || ki.PublicKey == "" || ki.KID != tpl.kid {
-			k, err := s.getPublicKey(ctx, tpl.KAS, keyAlgorithm, tpl.kid)
+		ki := KASInfo{
+			URL:       tpl.KAS,
+			KID:       tpl.kid,
+			PublicKey: tpl.pem,
+			Algorithm: string(tpl.algorithm),
+		}
+		if ki.PublicKey == "" {
+			a := ki.Algorithm
+			if a == "" {
+				a = string(tdfConfig.preferredKeyWrapAlg)
+			}
+			k, err := s.getPublicKey(ctx, tpl.KAS, a, tpl.kid)
 			if err != nil {
 				return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", tpl.KAS, err)
 			}
-			latestKASInfo[tpl.KAS] = *k
 			ki = *k
 		}
-		if _, ok = conjunction[tpl.SplitID]; ok {
+		if _, ok := conjunction[tpl.SplitID]; ok {
 			conjunction[tpl.SplitID] = append(conjunction[tpl.SplitID], ki)
 		} else {
 			conjunction[tpl.SplitID] = []KASInfo{ki}
@@ -539,17 +562,17 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 				return fmt.Errorf("splitID:[%s], kas:[%s]: %w", splitID, kasInfo.URL, errKasPubKeyMissing)
 			}
 
-			keyAccess, err := createKeyAccess(tdfConfig, kasInfo, symKey, policyBinding, encryptedMetadata, splitID)
+			keyAccess, err := createKeyAccess(kasInfo, symKey, policyBinding, encryptedMetadata, splitID)
 			if err != nil {
 				return err
 			}
 
-			manifest.EncryptionInformation.KeyAccessObjs = append(manifest.EncryptionInformation.KeyAccessObjs, keyAccess)
+			manifest.KeyAccessObjs = append(manifest.KeyAccessObjs, keyAccess)
 		}
 	}
 
-	manifest.EncryptionInformation.Policy = string(base64PolicyObject)
-	manifest.EncryptionInformation.Method.Algorithm = kGCMCipherAlgorithm
+	manifest.Policy = string(base64PolicyObject)
+	manifest.Method.Algorithm = kGCMCipherAlgorithm
 
 	// create the payload key by XOR all the keys in key access object.
 	for _, symKey := range symKeys {
@@ -592,7 +615,7 @@ func encryptMetadata(symKey []byte, metaData string) (string, error) {
 	return string(ocrypto.Base64Encode(metadataJSON)), nil
 }
 
-func createKeyAccess(tdfConfig TDFConfig, kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding, encryptedMetadata, splitID string) (KeyAccess, error) {
+func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding, encryptedMetadata, splitID string) (KeyAccess, error) {
 	keyAccess := KeyAccess{
 		KeyType:           kWrapped,
 		KasURL:            kasInfo.URL,
@@ -604,8 +627,9 @@ func createKeyAccess(tdfConfig TDFConfig, kasInfo KASInfo, symKey []byte, policy
 		SchemaVersion:     keyAccessSchemaVersion,
 	}
 
-	if ocrypto.IsECKeyType(tdfConfig.keyType) {
-		mode, err := ocrypto.ECKeyTypeToMode(tdfConfig.keyType)
+	ktype := ocrypto.KeyType(kasInfo.Algorithm)
+	if ocrypto.IsECKeyType(ktype) {
+		mode, err := ocrypto.ECKeyTypeToMode(ktype)
 		if err != nil {
 			return KeyAccess{}, err
 		}
@@ -711,7 +735,7 @@ func createPolicyObject(attributes []AttributeValueFQN) (PolicyObject, error) {
 	return policyObj, nil
 }
 
-func allowListFromKASRegistry(ctx context.Context, kasRegistryClient sdkconnect.KeyAccessServerRegistryServiceClient, platformURL string) (AllowList, error) {
+func allowListFromKASRegistry(ctx context.Context, logger *slog.Logger, kasRegistryClient sdkconnect.KeyAccessServerRegistryServiceClient, platformURL string) (AllowList, error) {
 	kases, err := kasRegistryClient.ListKeyAccessServers(ctx, &kasregistry.ListKeyAccessServersRequest{})
 	if err != nil {
 		return nil, fmt.Errorf("kasregistry.ListKeyAccessServers failed: %w", err)
@@ -724,7 +748,7 @@ func allowListFromKASRegistry(ctx context.Context, kasRegistryClient sdkconnect.
 		}
 	}
 	// grpc target does not have a scheme
-	slog.Debug("adding platform URL to KAS allowlist", slog.String("platform_url", platformURL))
+	logger.Debug("adding platform URL to KAS allowlist", slog.String("platform_url", platformURL))
 	err = kasAllowlist.Add(platformURL)
 	if err != nil {
 		return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)
@@ -734,37 +758,28 @@ func allowListFromKASRegistry(ctx context.Context, kasRegistryClient sdkconnect.
 
 // LoadTDF loads the tdf and prepare for reading the payload from TDF
 func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, error) {
-	// create tdf reader
-	tdfReader, err := archive.NewTDFReader(reader)
-	if err != nil {
-		return nil, fmt.Errorf("archive.NewTDFReader failed: %w", err)
-	}
-
 	if s.kasSessionKey != nil {
 		opts = append([]TDFReaderOption{withSessionKey(s.kasSessionKey)}, opts...)
 	}
 
 	config, err := newTDFReaderConfig(opts...)
 	if err != nil {
-		return nil, fmt.Errorf("newAssertionConfig failed: %w", err)
+		return nil, fmt.Errorf("newTDFReaderConfig failed: %w", err)
 	}
 
-	if len(config.kasAllowlist) == 0 && !config.ignoreAllowList { //nolint:nestif // handle the case where kasAllowlist is empty
-		if s.KeyAccessServerRegistry != nil {
-			// retrieve the registered kases if not provided
-			platformEndpoint, err := s.PlatformConfiguration.platformEndpoint()
-			if err != nil {
-				return nil, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
-			}
-			allowList, err := allowListFromKASRegistry(context.Background(), s.KeyAccessServerRegistry, platformEndpoint)
-			if err != nil {
-				return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
-			}
-			config.kasAllowlist = allowList
-		} else {
-			slog.Error("no KAS allowlist provided and no KeyAccessServerRegistry available")
-			return nil, errors.New("no KAS allowlist provided and no KeyAccessServerRegistry available")
-		}
+	// create tdf reader
+	tdfReader, err := archive.NewTDFReader(reader, archive.WithTDFManifestMaxSize(config.maxManifestSize))
+	if err != nil {
+		return nil, fmt.Errorf("archive.NewTDFReader failed: %w", err)
+	}
+	useGlobalFulfillableObligations := len(config.fulfillableObligationFQNs) == 0 && len(s.fulfillableObligationFQNs) > 0
+	if useGlobalFulfillableObligations {
+		config.fulfillableObligationFQNs = s.fulfillableObligationFQNs
+	}
+
+	config.kasAllowlist, err = getKasAllowList(context.Background(), config.kasAllowlist, s, config.ignoreAllowList)
+	if err != nil {
+		return nil, err
 	}
 
 	manifest, err := tdfReader.Manifest()
@@ -789,7 +804,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 	}
 
 	var payloadSize int64
-	for _, seg := range manifestObj.EncryptionInformation.IntegrityInformation.Segments {
+	for _, seg := range manifestObj.Segments {
 		payloadSize += seg.Size
 	}
 
@@ -866,7 +881,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 	var totalBytes int64
 	var payloadReadOffset int64
 	var decryptedDataOffset int64
-	for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
+	for _, seg := range r.manifest.Segments {
 		if decryptedDataOffset+seg.Size < r.cursor {
 			decryptedDataOffset += seg.Size
 			payloadReadOffset += seg.EncryptedSize
@@ -882,7 +897,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 			return totalBytes, ErrSegSizeMismatch
 		}
 
-		segHashAlg := r.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
+		segHashAlg := r.manifest.SegmentHashAlgorithm
 		sigAlg := HS256
 		if strings.EqualFold(gmacIntegrityAlgorithm, segHashAlg) {
 			sigAlg = GMAC
@@ -942,7 +957,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		return 0, ErrTDFPayloadInvalidOffset
 	}
 
-	defaultSegmentSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
+	defaultSegmentSize := r.manifest.DefaultSegmentSize
 	start := offset / defaultSegmentSize
 	end := (offset + int64(len(buf)) + defaultSegmentSize - 1) / defaultSegmentSize // rounds up
 
@@ -959,7 +974,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 	isLegacyTDF := r.manifest.TDFVersion == ""
 	var decryptedBuf bytes.Buffer
 	var payloadReadOffset int64
-	for index, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
+	for index, seg := range r.manifest.Segments {
 		// finish segments to decrypt
 		if int64(index) == lastSegment {
 			break
@@ -979,7 +994,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 			return 0, ErrSegSizeMismatch
 		}
 
-		segHashAlg := r.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm
+		segHashAlg := r.manifest.SegmentHashAlgorithm
 		sigAlg := HS256
 		if strings.EqualFold(gmacIntegrityAlgorithm, segHashAlg) {
 			sigAlg = GMAC
@@ -1075,6 +1090,28 @@ func (r *Reader) DataAttributes() ([]string, error) {
 }
 
 /*
+* Returns the obligations required for access to the TDF payload.
+*
+* If obligations are not populated we call Init() to populate them,
+* which will result in a rewrap call.
+*
+ */
+func (r *Reader) Obligations(ctx context.Context) (RequiredObligations, error) {
+	if r.requiredObligations != nil {
+		return *r.requiredObligations, nil
+	}
+
+	err := r.Init(ctx)
+	// Do not return error if we required obligations after Init()
+	// It's possible that an error was returned do to required obligations
+	if r.requiredObligations != nil && len(r.requiredObligations.FQNs) > 0 {
+		return *r.requiredObligations, nil
+	}
+
+	return RequiredObligations{FQNs: []string{}}, err
+}
+
+/*
 *WARNING:* Using this function is unsafe since KAS will no longer be able to prevent access to the key.
 
 Retrieve the payload key, either from performing an buildKey or from a previous buildKey,
@@ -1097,7 +1134,7 @@ func (r *Reader) UnsafePayloadKeyRetrieval() ([]byte, error) {
 
 func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
 	kasReqs := make(map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest)
-	for i, kao := range r.manifest.EncryptionInformation.KeyAccessObjs {
+	for i, kao := range r.manifest.KeyAccessObjs {
 		kaoID := fmt.Sprintf("kao-%d", i)
 
 		key, err := ocrypto.Base64Decode([]byte(kao.WrappedKey))
@@ -1146,7 +1183,7 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.Unsigned
 		} else {
 			rewrapReq := kas.UnsignedRewrapRequest_WithPolicyRequest{
 				Policy: &kas.UnsignedRewrapRequest_WithPolicy{
-					Body: r.manifest.EncryptionInformation.Policy,
+					Body: r.manifest.Policy,
 					Id:   "policy",
 				},
 				KeyAccessObjects: []*kas.UnsignedRewrapRequest_WithKeyAccessObject{kaoReq},
@@ -1185,13 +1222,7 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 
 		if err != nil {
 			errToReturn := fmt.Errorf("kao unwrap failed for split %v: %w", ss, err)
-			if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
-				errToReturn = fmt.Errorf("%w: %w", ErrRewrapBadRequest, errToReturn)
-			}
-			if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
-				errToReturn = fmt.Errorf("%w: %w", errRewrapForbidden, errToReturn)
-			}
-			skippedSplits[ss] = errToReturn
+			skippedSplits[ss] = getKasErrorToReturn(err, errToReturn)
 			continue
 		}
 
@@ -1238,7 +1269,7 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 	}
 
 	aggregateHash := &bytes.Buffer{}
-	for _, segment := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
+	for _, segment := range r.manifest.Segments {
 		decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
 		if err != nil {
 			return fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
@@ -1256,8 +1287,8 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 		return fmt.Errorf("%w: %w", ErrRootSignatureFailure, ErrRootSigValidation)
 	}
 
-	segSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
-	encryptedSegSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultEncryptedSegSize
+	segSize := r.manifest.DefaultSegmentSize
+	encryptedSegSize := r.manifest.DefaultEncryptedSegSize
 
 	if segSize != encryptedSegSize-(gcmIvSize+aesBlockSize) {
 		return ErrSegSizeMismatch
@@ -1341,7 +1372,7 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 
 // Unwraps the payload key, if possible, using the access service
 func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocognit // Better readability keeping it as is
-	kasClient := newKASClient(r.httpClient, r.connectOptions, r.tokenSource, r.kasSessionKey)
+	kasClient := newKASClient(r.httpClient, r.connectOptions, r.tokenSource, r.kasSessionKey, r.config.fulfillableObligationFQNs)
 
 	var kaoResults []kaoResult
 	reqFail := func(err error, req *kas.UnsignedRewrapRequest_WithPolicyRequest) {
@@ -1361,7 +1392,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		// if ignoreing allowlist then warn
 		// if kas url is not allowed then return error
 		if r.config.ignoreAllowList {
-			slog.WarnContext(ctx, "kasAllowlist is ignored, kas url is allowed", slog.String("kas_url", kasurl))
+			getLogger().WarnContext(ctx, "kasAllowlist is ignored, kas url is allowed", slog.String("kas_url", kasurl))
 		} else if !r.config.kasAllowlist.IsAllowed(kasurl) {
 			reqFail(fmt.Errorf("KasAllowlist: kas url %s is not allowed", kasurl), req)
 			continue
@@ -1380,6 +1411,8 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 			kaoResults = append(kaoResults, result...)
 		}
 	}
+	// Deduplicate obligations for all kao results
+	r.requiredObligations = &RequiredObligations{FQNs: dedupRequiredObligations(kaoResults)}
 
 	return r.buildKey(ctx, kaoResults)
 }
@@ -1405,8 +1438,8 @@ func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLe
 
 // validate the root signature
 func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (bool, error) {
-	rootSigAlg := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm
-	rootSigValue := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature
+	rootSigAlg := manifest.Algorithm
+	rootSigValue := manifest.Signature
 	isLegacyTDF := manifest.TDFVersion == ""
 
 	sigAlg := HS256
@@ -1460,13 +1493,13 @@ func populateKasInfoFromBaseKey(key *policy.SimpleKasKey, tdfConfig *TDFConfig) 
 	}
 
 	// ? Maybe we shouldn't overwrite the key type
-	if tdfConfig.keyType != ocrypto.KeyType(algoString) {
-		slog.Warn("base key is enabled, setting key type", slog.String("key_type", algoString))
+	if tdfConfig.preferredKeyWrapAlg != ocrypto.KeyType(algoString) {
+		getLogger().Warn("base key is enabled, setting key type", slog.String("key_type", algoString))
 	}
-	tdfConfig.keyType = ocrypto.KeyType(algoString)
+	tdfConfig.preferredKeyWrapAlg = ocrypto.KeyType(algoString)
 	tdfConfig.splitPlan = nil
 	if len(tdfConfig.kasInfoList) > 0 {
-		slog.Warn("base key is enabled, overwriting kasInfoList with base key info")
+		getLogger().Warn("base key is enabled, overwriting kasInfoList with base key info")
 	}
 	tdfConfig.kasInfoList = []KASInfo{
 		{
@@ -1487,13 +1520,65 @@ func createKaoTemplateFromKasInfo(kasInfoArr []KASInfo) []kaoTpl {
 			splitID = fmt.Sprintf("s-%d", i)
 		}
 		kaoTemplate[i] = kaoTpl{
-			keySplitStep{
-				KAS:     kasInfo.URL,
-				SplitID: splitID,
-			},
-			kasInfo.KID,
+			KAS:       kasInfo.URL,
+			SplitID:   splitID,
+			kid:       kasInfo.KID,
+			pem:       kasInfo.PublicKey,
+			algorithm: ocrypto.KeyType(kasInfo.Algorithm),
 		}
 	}
 
 	return kaoTemplate
+}
+
+func getKasErrorToReturn(err error, defaultError error) error {
+	errToReturn := defaultError
+	if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
+		errToReturn = errors.Join(ErrRewrapBadRequest, errToReturn)
+	} else if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
+		errToReturn = errors.Join(ErrRewrapForbidden, errToReturn)
+	}
+
+	return errToReturn
+}
+
+func getKasAllowList(ctx context.Context, kasAllowList AllowList, s SDK, ignoreAllowList bool) (AllowList, error) {
+	allowList := kasAllowList
+	if len(allowList) == 0 && !ignoreAllowList {
+		if s.KeyAccessServerRegistry == nil {
+			slog.Error("no KAS allowlist provided and no KeyAccessServerRegistry available")
+			return nil, errors.New("no KAS allowlist provided and no KeyAccessServerRegistry available")
+		}
+
+		// retrieve the registered kases if not provided
+		platformEndpoint, err := s.PlatformConfiguration.platformEndpoint()
+		if err != nil {
+			return nil, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
+		}
+		allowList, err = allowListFromKASRegistry(ctx, s.logger, s.KeyAccessServerRegistry, platformEndpoint)
+		if err != nil {
+			return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
+		}
+	}
+
+	return allowList, nil
+}
+
+func dedupRequiredObligations(kaoResults []kaoResult) []string {
+	seen := make(map[string]struct{})
+	dedupedOblgs := make([]string, 0)
+	for _, kao := range kaoResults {
+		for _, oblg := range kao.RequiredObligations {
+			normalizedOblg := strings.TrimSpace(strings.ToLower(oblg))
+			if len(normalizedOblg) == 0 {
+				continue
+			}
+			if _, ok := seen[normalizedOblg]; !ok {
+				seen[normalizedOblg] = struct{}{}
+				dedupedOblgs = append(dedupedOblgs, normalizedOblg)
+			}
+		}
+	}
+
+	return dedupedOblgs
 }

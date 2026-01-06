@@ -157,7 +157,7 @@ func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *co
 	propagator := otel.GetTextMapPropagator()
 	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
 
-	ctx, span := as.Tracer.Start(ctx, "GetDecisionsByToken")
+	ctx, span := as.Start(ctx, "GetDecisionsByToken")
 	defer span.End()
 
 	decisionsRequests := []*authorization.DecisionRequest{}
@@ -194,7 +194,7 @@ func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *co
 func (as *AuthorizationService) GetDecisions(ctx context.Context, req *connect.Request[authorization.GetDecisionsRequest]) (*connect.Response[authorization.GetDecisionsResponse], error) {
 	as.logger.DebugContext(ctx, "getting decisions")
 
-	ctx, span := as.Tracer.Start(ctx, "GetDecisions")
+	ctx, span := as.Start(ctx, "GetDecisions")
 	defer span.End()
 
 	// Temporary canned echo response with permit decision for all requested decision/entity/ra combos
@@ -245,7 +245,7 @@ func updateValsByFqnLookup(attribute *policy.Attribute, scopeMap map[string]bool
 	rule := attribute.GetRule()
 	for _, v := range attribute.GetValues() {
 		// if scope exists and current attribute value FQN is not in scope
-		if !(scopeMap == nil || scopeMap[v.GetFqn()]) {
+		if scopeMap != nil && !scopeMap[v.GetFqn()] {
 			// skip
 			continue
 		}
@@ -293,7 +293,7 @@ func makeScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error) {
 	as.logger.DebugContext(ctx, "getting entitlements")
 
-	ctx, span := as.Tracer.Start(ctx, "GetEntitlements")
+	ctx, span := as.Start(ctx, "GetEntitlements")
 	defer span.End()
 
 	var nextOffset int32
@@ -730,9 +730,6 @@ func retrieveAttributeDefinitions(ctx context.Context, attrFqns []string, sdk *o
 	}
 
 	resp, err := sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: false,
-		},
 		Fqns: attrFqns,
 	})
 	if err != nil {

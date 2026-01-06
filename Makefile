@@ -5,6 +5,7 @@
 
 MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
 HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
+REQUIRED_BUF_VERSION=1.56.0
 
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -17,9 +18,15 @@ all: toolcheck clean build lint license test
 toolcheck:
 	@echo "Checking for required tools..."
 	@which buf > /dev/null || (echo "buf not found, please install it from https://docs.buf.build/installation" && exit 1)
+	@BUF_VERSION=$$(buf --version | head -n 1 | awk '{print $$1}'); \
+	if [ "$$(printf '%s\n' '$(REQUIRED_BUF_VERSION)' "$$BUF_VERSION" | sort -V | head -n 1)" != "$(REQUIRED_BUF_VERSION)" ]; then \
+		echo "Error: buf version $(REQUIRED_BUF_VERSION) or later is required, but found $$BUF_VERSION."; \
+		echo "Please upgrade buf. See https://docs.buf.build/installation for instructions."; \
+		exit 1; \
+	fi
 	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.1.6'" && exit 1)
 	@which protoc-gen-doc > /dev/null || (echo "protoc-gen-doc not found, run 'go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1'" && exit 1)
-	@which protoc-gen-connect-openapi > /dev/null || (echo "protoc-gen-connect-openapi not found, run 'go install github.com/sudorandom/protoc-gen-connect-openapi@latest'" && exit 1)
+	@which protoc-gen-connect-openapi > /dev/null || (echo "protoc-gen-connect-openapi not found, run 'go install github.com/sudorandom/protoc-gen-connect-openapi@v0.18.0'" && exit 1)
 	@required_golangci_lint_version="2.1.0"; \
 	current_version=$$(golangci-lint --version | grep -Eo 'v?[0-9]+\.[0-9]+\.[0-9]+' | sed 's/^v//' | head -n 1); \
 	[ "$$(printf '%s\n' "$$required_golangci_lint_version" "$$current_version" | sort -V | head -n1)" = "$$required_golangci_lint_version" ] || \
@@ -65,8 +72,10 @@ govulncheck:
 	done; \
 	exit $$status
 
-proto-generate:
-	rm -rf protocol/go/[a-fh-z]* docs/grpc docs/openapi
+proto-generate: toolcheck
+	# remove all generated directories under protocol/go
+	find protocol/go -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +
+	rm -rf docs/grpc docs/openapi
 	buf generate service
 	buf generate service --template buf.gen.grpc.docs.yaml
 	buf generate service --template buf.gen.openapi.docs.yaml

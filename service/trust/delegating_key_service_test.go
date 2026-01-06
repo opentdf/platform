@@ -3,8 +3,10 @@ package trust
 import (
 	"context"
 	"crypto/elliptic"
+	"log/slog"
 	"testing"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/mock"
@@ -53,6 +55,16 @@ type MockKeyIndex struct {
 	mock.Mock
 }
 
+func (m *MockKeyIndex) String() string {
+	return "mockKeyIndex"
+}
+
+func (m *MockKeyIndex) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("Indexer", m.String()),
+	)
+}
+
 func (m *MockKeyIndex) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (KeyDetails, error) {
 	args := m.Called(ctx, algorithm, includeLegacy)
 	if a0, ok := args.Get(0).(KeyDetails); ok {
@@ -77,6 +89,14 @@ func (m *MockKeyIndex) ListKeys(ctx context.Context) ([]KeyDetails, error) {
 	return nil, args.Error(1)
 }
 
+func (m *MockKeyIndex) ListKeysWith(ctx context.Context, opts ListKeyOptions) ([]KeyDetails, error) {
+	args := m.Called(ctx, opts)
+	if a0, ok := args.Get(0).([]KeyDetails); ok {
+		return a0, args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 // MockKeyDetails is a mock implementation of the KeyDetails interface
 type MockKeyDetails struct {
 	mock.Mock
@@ -90,9 +110,9 @@ func (m *MockKeyDetails) ID() KeyIdentifier {
 	return KeyIdentifier("unknown")
 }
 
-func (m *MockKeyDetails) Algorithm() string {
+func (m *MockKeyDetails) Algorithm() ocrypto.KeyType {
 	args := m.Called()
-	return args.String(0)
+	return ocrypto.KeyType(args.String(0))
 }
 
 func (m *MockKeyDetails) IsLegacy() bool {
@@ -163,6 +183,14 @@ type MockEncapsulator struct {
 	mock.Mock
 }
 
+func (m *MockEncapsulator) Encapsulate(dek ProtectedKey) ([]byte, error) {
+	args := m.Called(dek)
+	if a0, ok := args.Get(0).([]byte); ok {
+		return a0, args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 func (m *MockEncapsulator) Encrypt(data []byte) ([]byte, error) {
 	args := m.Called(data)
 	if a0, ok := args.Get(0).([]byte); ok {
@@ -171,7 +199,7 @@ func (m *MockEncapsulator) Encrypt(data []byte) ([]byte, error) {
 	return nil, args.Error(1)
 }
 
-func (m *MockEncapsulator) PublicKeyInPemFormat() (string, error) {
+func (m *MockEncapsulator) PublicKeyAsPEM() (string, error) {
 	args := m.Called()
 	return args.String(0), args.Error(1)
 }
@@ -184,7 +212,7 @@ func (m *MockEncapsulator) EphemeralKey() []byte {
 	return nil
 }
 
-var _ Encapsulator = (*MockEncapsulator)(nil)
+var _ ocrypto.Encapsulator = (*MockEncapsulator)(nil)
 
 type DelegatingKeyServiceTestSuite struct {
 	suite.Suite
@@ -225,8 +253,24 @@ func (suite *DelegatingKeyServiceTestSuite) TestListKeys() {
 	suite.Len(keys, 1)
 }
 
+func (suite *DelegatingKeyServiceTestSuite) TestListKeysWith_Legacy() {
+	legacyKey := &MockKeyDetails{}
+	legacyKey.On("IsLegacy").Return(true)
+
+	nonLegacyKey := &MockKeyDetails{}
+	nonLegacyKey.On("IsLegacy").Return(false)
+
+	suite.mockIndex.On("ListKeysWith", mock.Anything, ListKeyOptions{LegacyOnly: true}).Return([]KeyDetails{legacyKey}, nil)
+
+	keys, err := suite.service.ListKeysWith(context.Background(), ListKeyOptions{LegacyOnly: true})
+	suite.Require().NoError(err)
+	suite.Len(keys, 1)
+	suite.True(keys[0].IsLegacy())
+}
+
 func (suite *DelegatingKeyServiceTestSuite) TestDecrypt() {
 	mockKeyDetails := &MockKeyDetails{}
+	mockKeyDetails.On("ProviderConfig").Return(&policy.KeyProviderConfig{Manager: "mockManager", Name: "mock-01"})
 	mockKeyDetails.On("System").Return("mockManager")
 	suite.mockIndex.On("FindKeyByID", mock.Anything, KeyIdentifier("key1")).Return(mockKeyDetails, nil)
 
@@ -234,7 +278,7 @@ func (suite *DelegatingKeyServiceTestSuite) TestDecrypt() {
 	mockProtectedKey.On("DecryptAESGCM", mock.Anything, mock.Anything, mock.Anything).Return([]byte("decrypted"), nil)
 	suite.mockManagerA.On("Decrypt", mock.Anything, mockKeyDetails, []byte("ciphertext"), []byte("ephemeralKey")).Return(mockProtectedKey, nil)
 
-	suite.service.RegisterKeyManager("mockManager", func(_ *KeyManagerFactoryOptions) (KeyManager, error) {
+	suite.service.RegisterKeyManagerCtx("mockManager", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
 		return suite.mockManagerA, nil
 	})
 
@@ -245,6 +289,7 @@ func (suite *DelegatingKeyServiceTestSuite) TestDecrypt() {
 
 func (suite *DelegatingKeyServiceTestSuite) TestDeriveKey() {
 	mockKeyDetails := &MockKeyDetails{}
+	mockKeyDetails.On("ProviderConfig").Return(&policy.KeyProviderConfig{Manager: "mockManager", Name: "mock-01"})
 	mockKeyDetails.On("System").Return("mockManager")
 	suite.mockIndex.On("FindKeyByID", mock.Anything, KeyIdentifier("key1")).Return(mockKeyDetails, nil)
 
@@ -252,7 +297,7 @@ func (suite *DelegatingKeyServiceTestSuite) TestDeriveKey() {
 	mockProtectedKey.On("Export", mock.Anything).Return([]byte("exported"), nil)
 	suite.mockManagerA.On("DeriveKey", mock.Anything, mockKeyDetails, []byte("ephemeralKey"), elliptic.P256()).Return(mockProtectedKey, nil)
 
-	suite.service.RegisterKeyManager("mockManager", func(_ *KeyManagerFactoryOptions) (KeyManager, error) {
+	suite.service.RegisterKeyManagerCtx("mockManager", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
 		return suite.mockManagerA, nil
 	})
 
@@ -262,10 +307,10 @@ func (suite *DelegatingKeyServiceTestSuite) TestDeriveKey() {
 }
 
 func (suite *DelegatingKeyServiceTestSuite) TestGenerateECSessionKey() {
-	suite.service.RegisterKeyManager("default", func(_ *KeyManagerFactoryOptions) (KeyManager, error) {
+	suite.service.RegisterKeyManagerCtx("default", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
 		return suite.mockManagerA, nil
 	})
-	suite.service.defaultMode = "default"
+	suite.service.defaultMode = keyManagerDesignation{Manager: "default"}
 	suite.mockManagerA.On("GenerateECSessionKey", mock.Anything, "ephemeralPublicKey").Return(&MockEncapsulator{}, nil)
 
 	encapsulator, err := suite.service.GenerateECSessionKey(context.Background(), "ephemeralPublicKey")

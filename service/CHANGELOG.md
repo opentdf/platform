@@ -1,5 +1,125 @@
 # Changelog
 
+## [0.11.0](https://github.com/opentdf/platform/compare/service/v0.10.0...service/v0.11.0) (2025-10-22)
+
+
+### Features
+
+* **authz:** add obligation fulfillment logic to obligation PDP ([#2740](https://github.com/opentdf/platform/issues/2740)) ([2f8d30d](https://github.com/opentdf/platform/commit/2f8d30d2c3de584b3603678fedec2fac9eb34d70))
+* **authz:** audit logs should properly handle obligations ([#2824](https://github.com/opentdf/platform/issues/2824)) ([874ec7b](https://github.com/opentdf/platform/commit/874ec7bd0cc6d8336d98d1a18e80ade1c3461db6))
+* **authz:** defer to request auth as decision/entitlements entity ([#2789](https://github.com/opentdf/platform/issues/2789)) ([feb34d8](https://github.com/opentdf/platform/commit/feb34d85a3cd9324a95cc7a2fac92a2e658170fe))
+* **authz:** obligations protos within auth service ([#2745](https://github.com/opentdf/platform/issues/2745)) ([41ee5a8](https://github.com/opentdf/platform/commit/41ee5a8c0caaa99d5b80d6ebb23696d13053938f))
+* **authz:** protovalidate tests for new authz obligations fields ([#2747](https://github.com/opentdf/platform/issues/2747)) ([73e6319](https://github.com/opentdf/platform/commit/73e63197ceceb88b66b9faa9b0ed076b4cc8db53))
+* **authz:** service logic to use request auth as entity identifier in PDP decisions/entitlements ([#2790](https://github.com/opentdf/platform/issues/2790)) ([6784e88](https://github.com/opentdf/platform/commit/6784e8813188f1db3af471c21be7ce87a6e86cdb))
+* **authz:** wire up obligations enforcement in auth service ([#2756](https://github.com/opentdf/platform/issues/2756)) ([11b3ea9](https://github.com/opentdf/platform/commit/11b3ea9460e1e73824cd421c91d67de26a1bfa57))
+* **core:** propagate token clientID on configured claim via interceptor into shared context metadata ([#2760](https://github.com/opentdf/platform/issues/2760)) ([0f77246](https://github.com/opentdf/platform/commit/0f772464dfd9209ef465da3ee3df5521ed660acf))
+* **kas:** Add required obligations to kao metadata.: ([#2806](https://github.com/opentdf/platform/issues/2806)) ([16fb26c](https://github.com/opentdf/platform/commit/16fb26c63d27cce8eba34674c5294c400f972546))
+* **policy:** add FQNs to obligation defs + vals ([#2749](https://github.com/opentdf/platform/issues/2749)) ([fa2585c](https://github.com/opentdf/platform/commit/fa2585c183c94fe004b5b5d767c2140dd028cf41))
+* **policy:** Add obligation support to KAS ([#2786](https://github.com/opentdf/platform/issues/2786)) ([bb1bca0](https://github.com/opentdf/platform/commit/bb1bca0b3dc472161a1322595e869df0e1353ee8))
+* **policy:** List obligation triggers rpc ([#2823](https://github.com/opentdf/platform/issues/2823)) ([206abe3](https://github.com/opentdf/platform/commit/206abe3ed266ac9533fcc4de504a5056e5856a56))
+* **policy:** namespace root certificates ([#2771](https://github.com/opentdf/platform/issues/2771)) ([beaff21](https://github.com/opentdf/platform/commit/beaff21de6c7fa90d7892fa6cff346f7c697d308))
+* **policy:** Proto - root certificates by namespace ([#2800](https://github.com/opentdf/platform/issues/2800)) ([0edb359](https://github.com/opentdf/platform/commit/0edb3591bc0c12b3ffb47b4e43d19b56dae3d016))
+* **policy:** Protos List obligation triggers ([#2803](https://github.com/opentdf/platform/issues/2803)) ([b32df81](https://github.com/opentdf/platform/commit/b32df81f6fe35f9db07e58f49ca71b43d7a02a13))
+* **policy:** Return built obligations fqns with triggers. ([#2830](https://github.com/opentdf/platform/issues/2830)) ([e843018](https://github.com/opentdf/platform/commit/e8430184089cfb513878dbbadc532117e47d14cf))
+* **policy:** Return obligations from GetAttributeValue calls ([#2742](https://github.com/opentdf/platform/issues/2742)) ([aa9b393](https://github.com/opentdf/platform/commit/aa9b393ac27522a3db69131a48409d8f297ebe56))
+
+
+### Bug Fixes
+
+* **core:** CORS ([#2787](https://github.com/opentdf/platform/issues/2787)) ([a030ac6](https://github.com/opentdf/platform/commit/a030ac6e7a1db1903c2eb32756bd5c476323baff))
+* **core:** deprecate policy WithValue selector not utilized by RPC ([#2794](https://github.com/opentdf/platform/issues/2794)) ([c573595](https://github.com/opentdf/platform/commit/c573595aba6c0e5223fc7fd924840c1bf34cd895))
+* **core:** deprecated stale protos and add better upgrade comments ([#2793](https://github.com/opentdf/platform/issues/2793)) ([f2678cc](https://github.com/opentdf/platform/commit/f2678cc6929824ae3d73d2c808ce8412086011ee))
+* **core:** Don't require known manager names ([#2792](https://github.com/opentdf/platform/issues/2792)) ([8a56a96](https://github.com/opentdf/platform/commit/8a56a965b934b85ba1a7530a249184e96967cde1))
+* **core:** Fix mode negation and core mode ([#2779](https://github.com/opentdf/platform/issues/2779)) ([de9807d](https://github.com/opentdf/platform/commit/de9807df7ce9ff4c2efb46cf3486261cff8470ab))
+* **core:** resolve environment loading issues ([#2827](https://github.com/opentdf/platform/issues/2827)) ([9af3184](https://github.com/opentdf/platform/commit/9af31842f8a0e36993cada6732d03b3447c62d21))
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.6.0 to 0.7.0 in /service ([#2812](https://github.com/opentdf/platform/issues/2812)) ([a6d180d](https://github.com/opentdf/platform/commit/a6d180d8999c34954581ae9e360cb3fa84e1789e))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.12.0 to 0.13.0 in /service ([#2814](https://github.com/opentdf/platform/issues/2814)) ([5e9c695](https://github.com/opentdf/platform/commit/5e9c6952a8c9ba453f93293a474e22f17679098d))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.7.0 to 0.9.0 in /service ([#2798](https://github.com/opentdf/platform/issues/2798)) ([d6bc9a8](https://github.com/opentdf/platform/commit/d6bc9a81eb450135e5b95629cf509fdbb4e4c641))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.9.0 to 0.10.0 in /service ([#2831](https://github.com/opentdf/platform/issues/2831)) ([412dfd1](https://github.com/opentdf/platform/commit/412dfd12b936d12df501b9e71c8beadb5ee9496a))
+* ECC key loading (deprecated) ([#2757](https://github.com/opentdf/platform/issues/2757)) ([49990eb](https://github.com/opentdf/platform/commit/49990eb5f7c9c0b35f1be3319f73992429d65a18))
+* **policy:** Change to nil ([#2746](https://github.com/opentdf/platform/issues/2746)) ([a449434](https://github.com/opentdf/platform/commit/a44943426e4ffcfb36ee2253c6554689ffa4a76f))
+
+## [0.10.0](https://github.com/opentdf/platform/compare/service/v0.9.0...service/v0.10.0) (2025-09-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** Add manager column to provider configuration for  multi-instance support ([#2601](https://github.com/opentdf/platform/issues/2601))
+
+### Features
+
+* **authz:** add obligation policy decision point ([#2706](https://github.com/opentdf/platform/issues/2706)) ([bb2a4f8](https://github.com/opentdf/platform/commit/bb2a4f89f4cc0c483ac7f60b4e24bf88cac10c7e))
+* **core:** add service negation for op mode ([#2680](https://github.com/opentdf/platform/issues/2680)) ([029db8c](https://github.com/opentdf/platform/commit/029db8c10af1cb8f50c2bb925d08ca0f5ddf7916))
+* **core:** Bump default write timeout. ([#2671](https://github.com/opentdf/platform/issues/2671)) ([6a233c1](https://github.com/opentdf/platform/commit/6a233c1f16c1a7ea3b059906eb0a489e06544134))
+* **core:** Encapsulate&gt;Encrypt ([#2676](https://github.com/opentdf/platform/issues/2676)) ([3c5a614](https://github.com/opentdf/platform/commit/3c5a6145c9bcac47001639bdcf2576a444493dd5))
+* **core:** Lets key manager factory take context ([#2715](https://github.com/opentdf/platform/issues/2715)) ([8d70993](https://github.com/opentdf/platform/commit/8d7099361c76d94682a91d86ec5ace7cce816cfa))
+* **policy:** add FQN of obligation definitions/values to protos ([#2703](https://github.com/opentdf/platform/issues/2703)) ([45ded0e](https://github.com/opentdf/platform/commit/45ded0e2717cca7ca8465e642c05e02ca4acd6c5))
+* **policy:** Add manager column to provider configuration for  multi-instance support ([#2601](https://github.com/opentdf/platform/issues/2601)) ([a5fc994](https://github.com/opentdf/platform/commit/a5fc994acc5491bf8cbf751b675302b459e1f3b0))
+* **policy:** Add obligation triggers ([#2675](https://github.com/opentdf/platform/issues/2675)) ([22d0837](https://github.com/opentdf/platform/commit/22d08378c06eef1ec5d59250d3e22f81d230c49d))
+* **policy:** add protovalidate for obligation defs + vals ([#2699](https://github.com/opentdf/platform/issues/2699)) ([af5c049](https://github.com/opentdf/platform/commit/af5c049435355646b7b59fd3a4b0191875a4b88d))
+* **policy:** Allow creation and update of triggers on Obligation Values ([#2691](https://github.com/opentdf/platform/issues/2691)) ([b1e7ba1](https://github.com/opentdf/platform/commit/b1e7ba14a34c719d711db45cc9401c332c1175a5))
+* **policy:** Allow for additional context to be added to obligation triggers ([#2705](https://github.com/opentdf/platform/issues/2705)) ([7025599](https://github.com/opentdf/platform/commit/7025599b30e76bb5b546f5d68f5fee9405f8a0b5))
+* **policy:** Include Triggers in GET/LISTable reqs ([#2704](https://github.com/opentdf/platform/issues/2704)) ([b4381d1](https://github.com/opentdf/platform/commit/b4381d1f6f9777ad9041196548d52bc6f769e779))
+* **policy:** obligations + values CRUD ([#2545](https://github.com/opentdf/platform/issues/2545)) ([c194e35](https://github.com/opentdf/platform/commit/c194e3522b9dfab74a5a21747d012f88a188f989))
+* use public AES protected key from lib/ocrypto ([#2600](https://github.com/opentdf/platform/issues/2600)) ([75d7590](https://github.com/opentdf/platform/commit/75d7590ec062f822045027d4eb0b59a48bdea465))
+
+
+### Bug Fixes
+
+* **core:** remove extraneous comment ([#2741](https://github.com/opentdf/platform/issues/2741)) ([ada8da6](https://github.com/opentdf/platform/commit/ada8da664012ef82708214108efe9ad722e32faa))
+* **core:** return services in the order they were registered ([#2733](https://github.com/opentdf/platform/issues/2733)) ([1d661db](https://github.com/opentdf/platform/commit/1d661dbc15cb14f335c3d1a93b379686da7c700d))
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.3.0 to 0.6.0 in /service ([#2714](https://github.com/opentdf/platform/issues/2714)) ([00354b3](https://github.com/opentdf/platform/commit/00354b3b37ea181fb007a9df390462989ef44b9c))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.7.0 to 0.9.0 in /service ([#2726](https://github.com/opentdf/platform/issues/2726)) ([9004368](https://github.com/opentdf/platform/commit/900436848bda92b7af735893e192e9ac5b343399))
+* **deps:** bump protocol/go to 0.10.0 in service ([#2734](https://github.com/opentdf/platform/issues/2734)) ([11e6201](https://github.com/opentdf/platform/commit/11e62012d1895fd148fe4bfcb2bd2e5132d5be1b))
+* **deps:** update protovalidate to v0.14.2 to use new buf validate MessageOneofRule ([#2698](https://github.com/opentdf/platform/issues/2698)) ([1cae18e](https://github.com/opentdf/platform/commit/1cae18e6b6f4a72869b0cdb65d775e108da07872))
+* **policy:** Registered Resources should consider actions correctly within Decision Requests ([#2681](https://github.com/opentdf/platform/issues/2681)) ([cf264a2](https://github.com/opentdf/platform/commit/cf264a2701aa529a188548c5288f55ae3c95d338))
+* sanitize db schema identifiers ([#2682](https://github.com/opentdf/platform/issues/2682)) ([0d3dd94](https://github.com/opentdf/platform/commit/0d3dd945078fd3b9696a3ab258d8e35c0f272345))
+
+## [0.9.0](https://github.com/opentdf/platform/compare/service/v0.8.0...service/v0.9.0) (2025-08-27)
+
+
+### Features
+
+* **core:** add multi-strategy ERS to support ldap and sql ([#2596](https://github.com/opentdf/platform/issues/2596)) ([855611d](https://github.com/opentdf/platform/commit/855611d58c36767e04dfa6efabb26e1bd2978fba))
+* **policy:** Add legacy keys. ([#2613](https://github.com/opentdf/platform/issues/2613)) ([57370b0](https://github.com/opentdf/platform/commit/57370b0f76605ec2ed375728ec9b60a829072d99))
+* **policy:** add values to CreateObligationRequest ([#2614](https://github.com/opentdf/platform/issues/2614)) ([94535cc](https://github.com/opentdf/platform/commit/94535cc0c1622b7499dad8e91a02a93f1eb1531b))
+* **policy:** Modify KAS indexer to support legacy keys. ([#2616](https://github.com/opentdf/platform/issues/2616)) ([ba96c18](https://github.com/opentdf/platform/commit/ba96c186330bce0b86cb3a3f275bb2863e532654))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/docker/docker from 28.2.2+incompatible to 28.3.3+incompatible in /service ([#2598](https://github.com/opentdf/platform/issues/2598)) ([3c392aa](https://github.com/opentdf/platform/commit/3c392aae4f52ed4f51e68738ee424e56fee23e6b))
+* **deps:** bump github.com/go-viper/mapstructure/v2 from 2.3.0 to 2.4.0 in /service ([#2649](https://github.com/opentdf/platform/issues/2649)) ([b838bbc](https://github.com/opentdf/platform/commit/b838bbcf8170c1d69e01617e75d8f08c3c38a339))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.5.0 to 0.7.0 in /service ([#2660](https://github.com/opentdf/platform/issues/2660)) ([2c998ac](https://github.com/opentdf/platform/commit/2c998acc00d95ffbf99a016faf4094ad26601ff7))
+* **kas:** Allow admin to set registered kas uri ([#2624](https://github.com/opentdf/platform/issues/2624)) ([6203fba](https://github.com/opentdf/platform/commit/6203fbaebcdd57b5b3437679465149f8ff395484))
+* updated generated sqlc ([#2609](https://github.com/opentdf/platform/issues/2609)) ([e44a569](https://github.com/opentdf/platform/commit/e44a56937453ebbdac1761f042003aa622e3a239))
+
+## [0.8.0](https://github.com/opentdf/platform/compare/service/v0.7.0...service/v0.8.0) (2025-07-29)
+
+
+### Features
+
+* **authz:** RR GetDecision improvements ([#2479](https://github.com/opentdf/platform/issues/2479)) ([443cedb](https://github.com/opentdf/platform/commit/443cedba49691e2ef5c2ea6824c0150feff8f056))
+* **authz:** sensible request limit upper bounds ([#2526](https://github.com/opentdf/platform/issues/2526)) ([b3093cc](https://github.com/opentdf/platform/commit/b3093cce2ffd1f1cdaec884967dc96a40caa2903))
+* **core:** Add the ability to configure the http server settings ([#2522](https://github.com/opentdf/platform/issues/2522)) ([b1472df](https://github.com/opentdf/platform/commit/b1472df8722768f2d00113481458e6eaa4c1247e))
+* **policy:** Add list key mappings rpc. ([#2533](https://github.com/opentdf/platform/issues/2533)) ([fbc2724](https://github.com/opentdf/platform/commit/fbc2724a066b5e4121838a958cb926a1ab5bdcde))
+* **policy:** add obligation protos ([#2579](https://github.com/opentdf/platform/issues/2579)) ([50882e1](https://github.com/opentdf/platform/commit/50882e10abff64e14548e0c51851a4b671ef8b11))
+* **policy:** add obligation tables ([#2532](https://github.com/opentdf/platform/issues/2532)) ([c7d7aa4](https://github.com/opentdf/platform/commit/c7d7aa4fd33397fe0c38abea1e89a21e1603f7e5))
+* **policy:** Add validation to delete keys ([#2576](https://github.com/opentdf/platform/issues/2576)) ([cc169d9](https://github.com/opentdf/platform/commit/cc169d969f0e3380a2341033bc53a1a0eece781a))
+* **policy:** Allow the deletion of a key. ([#2575](https://github.com/opentdf/platform/issues/2575)) ([82b96f0](https://github.com/opentdf/platform/commit/82b96f023662c0a6c76af6d1196f78ab28a6acf0))
+* **policy:** Change return type for delete key proto. ([#2566](https://github.com/opentdf/platform/issues/2566)) ([c1ae924](https://github.com/opentdf/platform/commit/c1ae924d55ec0d13fd79917f960dede66cef7705))
+* **policy:** sqlc queries refactor ([#2541](https://github.com/opentdf/platform/issues/2541)) ([e34680e](https://github.com/opentdf/platform/commit/e34680e3d3eeae5534a0ce1624a9e4386b100af1))
+
+
+### Bug Fixes
+
+* add back grants to listAttributesByDefOrValueFqns ([#2493](https://github.com/opentdf/platform/issues/2493)) ([2b47095](https://github.com/opentdf/platform/commit/2b47095a3f577063d48b67adac50a9fa59b8ace3))
+* **authz:** access pdp should use proto getter ([#2530](https://github.com/opentdf/platform/issues/2530)) ([f856212](https://github.com/opentdf/platform/commit/f85621280954f05701dba83a6a4cff729d21b029))
+* **core:** Allow 521 curve to be used ([#2485](https://github.com/opentdf/platform/issues/2485)) ([aaf43dc](https://github.com/opentdf/platform/commit/aaf43dc368b4cabbc9affa0a6075abd335aa57e3))
+* **core:** resolve 'built-in' typos ([#2548](https://github.com/opentdf/platform/issues/2548)) ([ccdfa96](https://github.com/opentdf/platform/commit/ccdfa9648786027be187f237daf2aa083109789a))
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.2.0 to 0.3.0 in /service ([#2504](https://github.com/opentdf/platform/issues/2504)) ([a9cc4dd](https://github.com/opentdf/platform/commit/a9cc4dd7db0fbb688d4000468cc2892b260609d2))
+* **sdk:** Prefer KID and Algorithm selection from key maps ([#2475](https://github.com/opentdf/platform/issues/2475)) ([98fd392](https://github.com/opentdf/platform/commit/98fd39230a3cc4bfa5ff5ffc1742dd5d15eaeb1c))
+
 ## [0.7.0](https://github.com/opentdf/platform/compare/service/v0.6.0...service/v0.7.0) (2025-06-24)
 
 

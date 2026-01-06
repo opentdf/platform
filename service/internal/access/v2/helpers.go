@@ -12,6 +12,7 @@ import (
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/service/internal/access/v2/obligations"
 	"github.com/opentdf/platform/service/logger"
 )
 
@@ -22,7 +23,7 @@ var (
 	ErrInvalidRegisteredResourceValue = errors.New("access: invalid registered resource value")
 )
 
-// getDefinition parses the value FQN and uses it to retrieve the definition from the provided definitions canmap
+// getDefinition parses the value FQN and uses it to retrieve the definition from the provided definitions map
 func getDefinition(valueFQN string, allDefinitionsByDefFQN map[string]*policy.Attribute) (*policy.Attribute, error) {
 	parsed, err := identifier.Parse[*identifier.FullyQualifiedAttribute](valueFQN)
 	if err != nil {
@@ -200,6 +201,7 @@ func getResourceDecisionableAttributes(
 	var (
 		decisionableAttributes = make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 		attrValueFQNs          = make([]string, 0)
+		notFoundFQNs           = make([]string, 0)
 	)
 
 	// Parse attribute value FQNs from various resource types
@@ -214,18 +216,10 @@ func getResourceDecisionableAttributes(
 			regResValueFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
 			regResValue, found := accessibleRegisteredResourceValues[regResValueFQN]
 			if !found {
-				return nil, fmt.Errorf("resource registered resource value FQN not found in memory [%s]: %w", regResValueFQN, ErrInvalidResource)
+				notFoundFQNs = append(notFoundFQNs, regResValueFQN)
 			}
 
 			for _, aav := range regResValue.GetActionAttributeValues() {
-				// TODO: DSPX-1295 - revisit this logic bc it is causing failures for attributes with missing actions
-				// slog.Info("processing action attribute value", slog.Any("aav", aav))
-				// aavAction := aav.GetAction()
-				// if aavAction.GetName() != action.GetName() {
-				// 	logger.DebugContext(ctx, "skipping action not matching Decision Request action", slog.String("action", aavAction.GetName()))
-				// 	continue
-				// }
-
 				attrValueFQNs = append(attrValueFQNs, aav.GetAttributeValue().GetFqn())
 			}
 
@@ -253,7 +247,8 @@ func getResourceDecisionableAttributes(
 
 		attributeAndValue, ok := entitleableAttributesByValueFQN[attrValueFQN]
 		if !ok {
-			return nil, fmt.Errorf("resource attribute value FQN not found in memory [%s]: %w", attrValueFQN, ErrInvalidResource)
+			notFoundFQNs = append(notFoundFQNs, attrValueFQN)
+			continue
 		}
 
 		decisionableAttributes[attrValueFQN] = attributeAndValue
@@ -263,5 +258,106 @@ func getResourceDecisionableAttributes(
 		}
 	}
 
+	if len(notFoundFQNs) > 0 {
+		return decisionableAttributes, fmt.Errorf("resource FQNs not found in memory %v: %w", notFoundFQNs, ErrFQNNotFound)
+	}
+
 	return decisionableAttributes, nil
+}
+
+// applyObligationsAndConsolidate:
+//
+// 1. IFF entitled to a resource on the passed in Decision, adds corresponding obligations and the obligations
+// satisfied state to the ResourceDecision
+// 2. Builds a list of ResourceDecisions for audit (which always should see obligation decision state)
+// 3. Merges the Decision's ResourceDecisions with those consolidated across the other entity representations
+func applyObligationsAndConsolidate(
+	consolidatedAcrossEntityRepresentations []ResourceDecision,
+	currentEntityRepresentationDecision *Decision,
+	obligationDecision obligations.ObligationPolicyDecision,
+) ([]ResourceDecision, []ResourceDecision, error) {
+	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
+	isFirstEntity := consolidatedAcrossEntityRepresentations == nil
+	numResourceDecisions := len(currentEntityRepresentationDecision.Results)
+	numObligationResourceDecisions := len(obligationDecision.PerResourceDecisions)
+
+	// First entity: validate both lists of decisions are equal length
+	if isFirstEntity && hasRequiredObligations {
+		if numResourceDecisions != numObligationResourceDecisions {
+			return nil, nil, fmt.Errorf(
+				"obligation decision count mismatch: expected %d but got %d",
+				numResourceDecisions, numObligationResourceDecisions,
+			)
+		}
+	}
+
+	// Subsequent entities: validate length matches consolidated
+	if !isFirstEntity && len(consolidatedAcrossEntityRepresentations) != numResourceDecisions {
+		return nil, nil, fmt.Errorf(
+			"%w: consolidatedAcrossEntityRepresentations has %d but currentEntityRepresentationDecision has %d",
+			ErrResourceDecisionLengthMismatch, len(consolidatedAcrossEntityRepresentations), numResourceDecisions,
+		)
+	}
+
+	consolidated := make([]ResourceDecision, numResourceDecisions)
+	resourceDecisionAuditRecords := make([]ResourceDecision, numResourceDecisions)
+
+	for resourceDecisionIdx := range currentEntityRepresentationDecision.Results {
+		currentResourceDecision := &currentEntityRepresentationDecision.Results[resourceDecisionIdx]
+
+		// Step 1: Apply obligations to each resource decision on the current decision
+		currentResourceDecision.ObligationsSatisfied = true
+		var obligationFQNs []string
+
+		if hasRequiredObligations {
+			obligationDecisionOnResource := obligationDecision.PerResourceDecisions[resourceDecisionIdx]
+			currentResourceDecision.ObligationsSatisfied = obligationDecisionOnResource.ObligationsSatisfied
+			obligationFQNs = obligationDecisionOnResource.RequiredObligationValueFQNs
+
+			// Only set obligations in response if entitled
+			if currentResourceDecision.Entitled {
+				currentResourceDecision.RequiredObligationValueFQNs = obligationFQNs
+			}
+		}
+
+		currentResourceDecision.Passed = currentResourceDecision.Entitled && currentResourceDecision.ObligationsSatisfied
+
+		// Step 2: Consolidate with accumulated (if not first entity)
+		var finalDecision ResourceDecision
+		if isFirstEntity {
+			finalDecision = *currentResourceDecision
+		} else {
+			resourceDecisionAllEntitiesSoFar := consolidatedAcrossEntityRepresentations[resourceDecisionIdx]
+
+			// Validate resource IDs match
+			if resourceDecisionAllEntitiesSoFar.ResourceID != currentResourceDecision.ResourceID {
+				return nil, nil, fmt.Errorf(
+					"%w at index %d: %q vs %q",
+					ErrResourceDecisionIDMismatch, resourceDecisionIdx, resourceDecisionAllEntitiesSoFar.ResourceID, currentResourceDecision.ResourceID,
+				)
+			}
+
+			// AND together: all entity representations must be entitled
+			finalDecision = ResourceDecision{
+				ResourceID:           resourceDecisionAllEntitiesSoFar.ResourceID,
+				ResourceName:         resourceDecisionAllEntitiesSoFar.ResourceName,
+				Entitled:             resourceDecisionAllEntitiesSoFar.Entitled && currentResourceDecision.Entitled,
+				Passed:               resourceDecisionAllEntitiesSoFar.Passed && currentResourceDecision.Passed,
+				ObligationsSatisfied: resourceDecisionAllEntitiesSoFar.ObligationsSatisfied && currentResourceDecision.ObligationsSatisfied,
+			}
+
+			// Keep obligations if entitled, clear if not
+			if finalDecision.Entitled {
+				finalDecision.RequiredObligationValueFQNs = resourceDecisionAllEntitiesSoFar.RequiredObligationValueFQNs
+			}
+		}
+
+		consolidated[resourceDecisionIdx] = finalDecision
+
+		// Step 3: Create audit snapshot (always includes obligation context)
+		resourceDecisionAuditRecords[resourceDecisionIdx] = *currentResourceDecision
+		resourceDecisionAuditRecords[resourceDecisionIdx].RequiredObligationValueFQNs = obligationFQNs
+	}
+
+	return consolidated, resourceDecisionAuditRecords, nil
 }

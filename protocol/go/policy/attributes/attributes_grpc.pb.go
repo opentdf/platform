@@ -62,15 +62,16 @@ type AttributesServiceClient interface {
 	UpdateAttributeValue(ctx context.Context, in *UpdateAttributeValueRequest, opts ...grpc.CallOption) (*UpdateAttributeValueResponse, error)
 	DeactivateAttributeValue(ctx context.Context, in *DeactivateAttributeValueRequest, opts ...grpc.CallOption) (*DeactivateAttributeValueResponse, error)
 	// Deprecated: Do not use.
-	// --------------------------------------*
-	// Attribute <> Key Access Server RPCs
-	// ---------------------------------------
+	// Deprecated: utilize AssignPublicKeyToAttribute
 	AssignKeyAccessServerToAttribute(ctx context.Context, in *AssignKeyAccessServerToAttributeRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToAttributeResponse, error)
 	// Deprecated: Do not use.
+	// Deprecated: utilize RemovePublicKeyFromAttribute
 	RemoveKeyAccessServerFromAttribute(ctx context.Context, in *RemoveKeyAccessServerFromAttributeRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromAttributeResponse, error)
 	// Deprecated: Do not use.
+	// Deprecated: utilize AssignPublicKeyToValue
 	AssignKeyAccessServerToValue(ctx context.Context, in *AssignKeyAccessServerToValueRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToValueResponse, error)
 	// Deprecated: Do not use.
+	// Deprecated: utilize RemovePublicKeyFromValue
 	RemoveKeyAccessServerFromValue(ctx context.Context, in *RemoveKeyAccessServerFromValueRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromValueResponse, error)
 	AssignPublicKeyToAttribute(ctx context.Context, in *AssignPublicKeyToAttributeRequest, opts ...grpc.CallOption) (*AssignPublicKeyToAttributeResponse, error)
 	RemovePublicKeyFromAttribute(ctx context.Context, in *RemovePublicKeyFromAttributeRequest, opts ...grpc.CallOption) (*RemovePublicKeyFromAttributeResponse, error)
@@ -283,15 +284,16 @@ type AttributesServiceServer interface {
 	UpdateAttributeValue(context.Context, *UpdateAttributeValueRequest) (*UpdateAttributeValueResponse, error)
 	DeactivateAttributeValue(context.Context, *DeactivateAttributeValueRequest) (*DeactivateAttributeValueResponse, error)
 	// Deprecated: Do not use.
-	// --------------------------------------*
-	// Attribute <> Key Access Server RPCs
-	// ---------------------------------------
+	// Deprecated: utilize AssignPublicKeyToAttribute
 	AssignKeyAccessServerToAttribute(context.Context, *AssignKeyAccessServerToAttributeRequest) (*AssignKeyAccessServerToAttributeResponse, error)
 	// Deprecated: Do not use.
+	// Deprecated: utilize RemovePublicKeyFromAttribute
 	RemoveKeyAccessServerFromAttribute(context.Context, *RemoveKeyAccessServerFromAttributeRequest) (*RemoveKeyAccessServerFromAttributeResponse, error)
 	// Deprecated: Do not use.
+	// Deprecated: utilize AssignPublicKeyToValue
 	AssignKeyAccessServerToValue(context.Context, *AssignKeyAccessServerToValueRequest) (*AssignKeyAccessServerToValueResponse, error)
 	// Deprecated: Do not use.
+	// Deprecated: utilize RemovePublicKeyFromValue
 	RemoveKeyAccessServerFromValue(context.Context, *RemoveKeyAccessServerFromValueRequest) (*RemoveKeyAccessServerFromValueResponse, error)
 	AssignPublicKeyToAttribute(context.Context, *AssignPublicKeyToAttributeRequest) (*AssignPublicKeyToAttributeResponse, error)
 	RemovePublicKeyFromAttribute(context.Context, *RemovePublicKeyFromAttributeRequest) (*RemovePublicKeyFromAttributeResponse, error)

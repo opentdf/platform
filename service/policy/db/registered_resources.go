@@ -68,7 +68,7 @@ func (c PolicyDBClient) CreateRegisteredResource(ctx context.Context, r *registe
 		return nil, err
 	}
 
-	createdID, err := c.Queries.createRegisteredResource(ctx, createRegisteredResourceParams{
+	createdID, err := c.queries.createRegisteredResource(ctx, createRegisteredResourceParams{
 		Name:     name,
 		Metadata: metadataJSON,
 	})
@@ -99,14 +99,14 @@ func (c PolicyDBClient) GetRegisteredResource(ctx context.Context, r *registered
 
 	switch {
 	case r.GetId() != "":
-		params.ID = r.GetId()
+		params.ID = pgtypeUUID(r.GetId())
 	case r.GetName() != "":
-		params.Name = strings.ToLower(r.GetName())
+		params.Name = pgtypeText(strings.ToLower(r.GetName()))
 	default:
 		return nil, db.ErrSelectIdentifierInvalid
 	}
 
-	rr, err := c.Queries.getRegisteredResource(ctx, params)
+	rr, err := c.queries.getRegisteredResource(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -137,7 +137,7 @@ func (c PolicyDBClient) ListRegisteredResources(ctx context.Context, r *register
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.Queries.listRegisteredResources(ctx, listRegisteredResourcesParams{
+	list, err := c.queries.listRegisteredResources(ctx, listRegisteredResourcesParams{
 		Limit:  limit,
 		Offset: offset,
 	})
@@ -201,7 +201,7 @@ func (c PolicyDBClient) UpdateRegisteredResource(ctx context.Context, r *registe
 		return nil, err
 	}
 
-	count, err := c.Queries.updateRegisteredResource(ctx, updateRegisteredResourceParams{
+	count, err := c.queries.updateRegisteredResource(ctx, updateRegisteredResourceParams{
 		ID:       id,
 		Name:     pgtypeText(name),
 		Metadata: metadataJSON,
@@ -221,7 +221,7 @@ func (c PolicyDBClient) UpdateRegisteredResource(ctx context.Context, r *registe
 }
 
 func (c PolicyDBClient) DeleteRegisteredResource(ctx context.Context, id string) (*policy.RegisteredResource, error) {
-	count, err := c.Queries.deleteRegisteredResource(ctx, id)
+	count, err := c.queries.deleteRegisteredResource(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -246,7 +246,7 @@ func (c PolicyDBClient) CreateRegisteredResourceValue(ctx context.Context, r *re
 		return nil, err
 	}
 
-	createdID, err := c.Queries.createRegisteredResourceValue(ctx, createRegisteredResourceValueParams{
+	createdID, err := c.queries.createRegisteredResourceValue(ctx, createRegisteredResourceValueParams{
 		RegisteredResourceID: resourceID,
 		Value:                value,
 		Metadata:             metadataJSON,
@@ -272,21 +272,21 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 
 	switch {
 	case r.GetId() != "":
-		params.ID = r.GetId()
+		params.ID = pgtypeUUID(r.GetId())
 	case r.GetFqn() != "":
 		fqn := strings.ToLower(r.GetFqn())
 		parsed, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](fqn)
 		if err != nil {
 			return nil, err
 		}
-		params.Name = parsed.Name
-		params.Value = parsed.Value
+		params.Name = pgtypeText(parsed.Name)
+		params.Value = pgtypeText(parsed.Value)
 	default:
 		// unexpected type
 		return nil, db.ErrSelectIdentifierInvalid
 	}
 
-	rv, err := c.Queries.getRegisteredResourceValue(ctx, params)
+	rv, err := c.queries.getRegisteredResourceValue(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -354,8 +354,8 @@ func (c PolicyDBClient) ListRegisteredResourceValues(ctx context.Context, r *reg
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.Queries.listRegisteredResourceValues(ctx, listRegisteredResourceValuesParams{
-		RegisteredResourceID: resourceID,
+	list, err := c.queries.listRegisteredResourceValues(ctx, listRegisteredResourceValuesParams{
+		RegisteredResourceID: pgtypeUUID(resourceID),
 		Limit:                limit,
 		Offset:               offset,
 	})
@@ -422,7 +422,7 @@ func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *re
 		return nil, err
 	}
 
-	count, err := c.Queries.updateRegisteredResourceValue(ctx, updateRegisteredResourceValueParams{
+	count, err := c.queries.updateRegisteredResourceValue(ctx, updateRegisteredResourceValueParams{
 		ID:       id,
 		Value:    pgtypeText(value),
 		Metadata: metadataJSON,
@@ -437,7 +437,7 @@ func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *re
 	actionAttrValues := r.GetActionAttributeValues()
 	if len(actionAttrValues) > 0 {
 		// update overwrites all action attribute values with those provided in the request, so clear all existing ones first
-		_, err = c.Queries.deleteRegisteredResourceActionAttributeValues(ctx, id)
+		_, err = c.queries.deleteRegisteredResourceActionAttributeValues(ctx, id)
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		}
@@ -456,7 +456,7 @@ func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *re
 }
 
 func (c PolicyDBClient) DeleteRegisteredResourceValue(ctx context.Context, id string) (*policy.RegisteredResourceValue, error) {
-	count, err := c.Queries.deleteRegisteredResourceValue(ctx, id)
+	count, err := c.queries.deleteRegisteredResourceValue(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -485,7 +485,7 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 		case *registeredresources.ActionAttributeValue_ActionId:
 			actionID = identifier.ActionId
 		case *registeredresources.ActionAttributeValue_ActionName:
-			a, err := c.Queries.getAction(ctx, getActionParams{
+			a, err := c.queries.getAction(ctx, getActionParams{
 				Name: pgtypeText(strings.ToLower(identifier.ActionName)),
 			})
 			if err != nil {
@@ -500,7 +500,7 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 		case *registeredresources.ActionAttributeValue_AttributeValueId:
 			attributeValueID = identifier.AttributeValueId
 		case *registeredresources.ActionAttributeValue_AttributeValueFqn:
-			av, err := c.Queries.GetAttributeValue(ctx, GetAttributeValueParams{
+			av, err := c.queries.getAttributeValue(ctx, getAttributeValueParams{
 				Fqn: pgtypeText(strings.ToLower(identifier.AttributeValueFqn)),
 			})
 			if err != nil {
@@ -518,7 +518,7 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 		}
 	}
 
-	count, err := c.Queries.createRegisteredResourceActionAttributeValues(ctx, createActionAttributeValueParams)
+	count, err := c.queries.createRegisteredResourceActionAttributeValues(ctx, createActionAttributeValueParams)
 	if err != nil {
 		return db.WrapIfKnownInvalidQueryErr(err)
 	}

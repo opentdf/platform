@@ -2,6 +2,7 @@
 package entityresolution
 
 import (
+	"log"
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -40,35 +41,40 @@ func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityRe
 				var inputConfig ERSConfig
 
 				if err := mapstructure.Decode(srp.Config, &inputConfig); err != nil {
-					panic(err)
+					srp.Logger.Error("Failed to decode entity resolution configuration", "error", err)
+					log.Fatalf("Failed to decode entity resolution configuration: %v", err)
 				}
-				if inputConfig.Mode == ClaimsMode {
-					claimsSVC, claimsHandler := claims.RegisterClaimsERS(srp.Config, srp.Logger)
-					claimsSVC.Tracer = srp.Tracer
-					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
-				}
+
+				// Set up cache if configured
 				var ersCache *cache.Cache
-				// default to no cache if no exipiration is set
+				// default to no cache if no expiration is set
 				if inputConfig.CacheExpiration != "" {
 					exp, err := time.ParseDuration(inputConfig.CacheExpiration)
 					if err != nil {
 						srp.Logger.Error("Failed to parse cache expiration duration", "error", err)
-						panic(err)
+						log.Fatalf("Invalid cache expiration duration '%s': %v", inputConfig.CacheExpiration, err)
 					}
 					ersCache, err = srp.NewCacheClient(cache.Options{
 						Expiration: exp,
 					})
 					if err != nil {
 						srp.Logger.Error("Failed to create cache for Entity Resolution Service", "error", err)
-						panic(err)
+						log.Fatalf("Failed to create cache client for Entity Resolution Service: %v", err)
 					}
 				}
 
-				// Default to keycloak ERS
-				kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger, ersCache)
-				kcSVC.Tracer = srp.Tracer
-
-				return EntityResolution{EntityResolutionServiceHandler: kcSVC, Tracer: srp.Tracer}, kcHandler
+				switch inputConfig.Mode {
+				case ClaimsMode:
+					// Claims ERS (works with any IdP)
+					claimsSVC, claimsHandler := claims.RegisterClaimsERS(srp.Config, srp.Logger)
+					claimsSVC.Tracer = srp.Tracer
+					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
+				default:
+					// Default to Keycloak ERS with cache support
+					kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger, ersCache)
+					kcSVC.Tracer = srp.Tracer
+					return EntityResolution{EntityResolutionServiceHandler: kcSVC, Tracer: srp.Tracer}, kcHandler
+				}
 			},
 		},
 	}

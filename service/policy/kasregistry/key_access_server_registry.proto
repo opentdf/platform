@@ -25,7 +25,7 @@ message GetKeyAccessServerRequest {
   // Deprecated
   string id = 1 [
     deprecated = true,
-    (buf.validate.field).ignore = IGNORE_IF_DEFAULT_VALUE,
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string.uuid = true
   ];
 
@@ -244,7 +244,7 @@ message ListPublicKeyMappingRequest {
   // Optional Public Key ID
   string public_key_id = 4 [
     (buf.validate.field).string.uuid = true,
-    (buf.validate.field).ignore = IGNORE_IF_DEFAULT_VALUE
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
   ];
 
   // Optional
@@ -403,7 +403,7 @@ message CreateKeyRequest {
   Algorithm key_algorithm = 3 [(buf.validate.field).cel = {
     id: "key_algorithm_defined"
     message: "The key_algorithm must be one of the defined values."
-    expression: "this in [1, 2, 3, 4]" // Allow ALGORITHM_EC_P256, ALGORITHM_RSA_2048, ALGORITHM_X25519, ALGORITHM_AES_256_GCM
+    expression: "this in [1, 2, 3, 4, 5]" // Allow ALGORITHM_RSA_2048, ALGORITHM_RSA_4096, ALGORITHM_EC_P256, ALGORITHM_EC_P384, ALGORITHM_EC_P521
   }]; // The algorithm to be used for the key
   // Required
   KeyMode key_mode = 4 [(buf.validate.field).cel = {
@@ -417,6 +417,8 @@ message CreateKeyRequest {
   PrivateKeyCtx private_key_ctx = 6; // Context or additional data specific to the private key, based on the key provider implementation
   // Optional
   string provider_config_id = 7; // Configuration ID for the key provider, if applicable
+  // Optional
+  bool legacy = 8; // Whether the key is a legacy key
   // Common metadata
   common.MetadataMutable metadata = 100; // Mutable metadata for the key
 }
@@ -445,7 +447,7 @@ message ListKeysRequest {
   Algorithm key_algorithm = 1 [(buf.validate.field).cel = {
     id: "key_algorithm_defined"
     message: "The key_algorithm must be one of the defined values."
-    expression: "this in [0, 1, 2, 3, 4]" // Allow ALGORITHM_EC_P256, ALGORITHM_RSA_2048, ALGORITHM_X25519, ALGORITHM_AES_256_GCM
+    expression: "this in [0, 1, 2, 3, 4, 5]" // Allow unspecified and object.Algorithm values for currently supported RSA bit sizes and EC curve types
   }]; // Filter keys by algorithm
 
   oneof kas_filter {
@@ -456,6 +458,9 @@ message ListKeysRequest {
       uri: true
     }]; // Filter keys by the KAS URI
   }
+
+  // Optional
+  optional bool legacy = 8; // Filter for legacy keys
 
   // Optional
   policy.PageRequest pagination = 10; // Pagination request for the list of keys
@@ -545,7 +550,7 @@ message RotateKeyRequest {
     Algorithm algorithm = 2 [(buf.validate.field).cel = {
       id: "key_algorithm_defined"
       message: "The key_algorithm must be one of the defined values."
-      expression: "this in [1, 2, 3, 4]" // Allow ALGORITHM_EC_P256, ALGORITHM_RSA_2048, ALGORITHM_X25519, ALGORITHM_AES_256_GCM
+      expression: "this in [1, 2, 3, 4, 5]" // Allow ALGORITHM_RSA_2048, ALGORITHM_RSA_4096, ALGORITHM_EC_P256, ALGORITHM_EC_P384, ALGORITHM_EC_P521
     }];
     // Required
     KeyMode key_mode = 3 [
@@ -553,7 +558,7 @@ message RotateKeyRequest {
       (buf.validate.field).cel = {
         id: "new_key_mode_defined"
         message: "The new key_mode must be one of the defined values (1-4)."
-        expression: "this in [1, 2, 3, 4]" // Allow all defined modes
+        expression: "this in [1, 2, 3, 4]" // Allow modes CONFIG_ROOT_KEY, PROVIDER_ROOT_KEY, REMOTE, PUBLIC_KEY_ONLY
       }
     ];
     // Required
@@ -617,6 +622,35 @@ message SetBaseKeyResponse {
   SimpleKasKey previous_base_key = 2; // The previous base key, if any
 }
 
+message MappedPolicyObject {
+  string id = 1; // The unique identifier of the policy object
+  string fqn = 2; // The fully qualified name of the policy object
+}
+
+message KeyMapping {
+  string kid = 1;
+  string kas_uri = 2;
+  repeated MappedPolicyObject namespace_mappings = 3; // List of namespaces mapped to the key
+  repeated MappedPolicyObject attribute_mappings = 4; // List of attribute definitions mapped to the key
+  repeated MappedPolicyObject value_mappings = 5; // List of attribute values mapped to the key
+}
+
+message ListKeyMappingsRequest {
+  oneof identifier {
+    option (buf.validate.oneof).required = false;
+    string id = 2 [(buf.validate.field).string.uuid = true]; // The unique identifier of the key to retrieve
+    KasKeyIdentifier key = 3;
+  }
+
+  policy.PageRequest pagination = 10; // Pagination request for the list of keys
+}
+
+message ListKeyMappingsResponse {
+  repeated KeyMapping key_mappings = 1; // The list of key mappings
+
+  policy.PageResponse pagination = 10; // Pagination response for the list of keys
+}
+
 service KeyAccessServerRegistryService {
   rpc ListKeyAccessServers(ListKeyAccessServersRequest) returns (ListKeyAccessServersResponse) {
     option (google.api.http) = {get: "/key-access-servers"};
@@ -660,4 +694,7 @@ service KeyAccessServerRegistryService {
 
   // Get Default kas keys
   rpc GetBaseKey(GetBaseKeyRequest) returns (GetBaseKeyResponse) {}
+
+  // Request to list key mappings in the Key Access Service.
+  rpc ListKeyMappings(ListKeyMappingsRequest) returns (ListKeyMappingsResponse) {}
 }

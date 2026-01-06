@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 var (
@@ -49,11 +50,17 @@ func Parse[T FullyQualified](identifier string) (T, error) {
 		parsed any
 		err    error
 	)
-
+	identifier = strings.ToLower(identifier)
 	// Use type assertion to determine the concrete type and call the appropriate parser
 	switch any(result).(type) {
 	case *FullyQualifiedAttribute:
 		parsed, err = parseAttributeFqn(identifier)
+		if err != nil {
+			return result, err
+		}
+
+	case *FullyQualifiedObligation:
+		parsed, err = parseObligationFqn(identifier)
 		if err != nil {
 			return result, err
 		}

@@ -38,11 +38,16 @@ server:
       - OPTIONS
     # List of headers that are allowed in a request
     allowedheaders:
-      - ACCEPT
+      - Accept
+      - Accept-Encoding
       - Authorization
       - Connect-Protocol-Version
+      - Content-Length
       - Content-Type
+      - Dpop
       - X-CSRF-Token
+      - X-Requested-With
+      - X-Rewrap-Additional-Context
     # List of response headers that browsers are allowed to access
     exposedheaders:
       - Link

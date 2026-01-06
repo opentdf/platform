@@ -479,6 +479,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.kasregistry.GetBaseKeyResponse'
+  /policy.kasregistry.KeyAccessServerRegistryService/ListKeyMappings:
+    post:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: ListKeyMappings
+      description: Request to list key mappings in the Key Access Service.
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.ListKeyMappings
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.ListKeyMappingsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.ListKeyMappingsResponse'
 components:
   schemas:
     common.MetadataUpdateEnum:
@@ -604,6 +640,9 @@ components:
          has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
+      examples:
+        - 1s
+        - 1.000340012s
       format: date-time
       description: |-
         A Timestamp represents a point in time independent of any time zone or local
@@ -730,6 +769,10 @@ components:
           title: provider_config
           description: Optional Configuration for the key provider
           $ref: '#/components/schemas/policy.KeyProviderConfig'
+        legacy:
+          type: boolean
+          title: legacy
+          description: Optional Indicates a key may be found in TDFs without key identifiers
         metadata:
           title: metadata
           description: Common metadata fields
@@ -836,7 +879,7 @@ components:
 
         publicKey:
           title: public_key
-          description: Deprecated
+          description: 'Deprecated: KAS can have multiple key pairs'
           $ref: '#/components/schemas/policy.PublicKey'
         sourceType:
           title: source_type
@@ -874,6 +917,9 @@ components:
           type: string
           title: config_json
           format: byte
+        manager:
+          type: string
+          title: manager
         metadata:
           title: metadata
           description: Common metadata
@@ -1101,7 +1147,7 @@ components:
             Required The algorithm to be used for the key
             The key_algorithm must be one of the defined values.:
             ```
-            this in [1, 2, 3, 4]
+            this in [1, 2, 3, 4, 5]
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'
@@ -1127,6 +1173,10 @@ components:
           type: string
           title: provider_config_id
           description: Optional Configuration ID for the key provider, if applicable
+        legacy:
+          type: boolean
+          title: legacy
+          description: Optional Whether the key is a legacy key
         metadata:
           title: metadata
           description: Common metadata Mutable metadata for the key
@@ -1421,6 +1471,35 @@ components:
       title: KeyAccessServerGrants
       additionalProperties: false
       description: Deprecated
+    policy.kasregistry.KeyMapping:
+      type: object
+      properties:
+        kid:
+          type: string
+          title: kid
+        kasUri:
+          type: string
+          title: kas_uri
+        namespaceMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.MappedPolicyObject'
+          title: namespace_mappings
+          description: List of namespaces mapped to the key
+        attributeMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.MappedPolicyObject'
+          title: attribute_mappings
+          description: List of attribute definitions mapped to the key
+        valueMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.MappedPolicyObject'
+          title: value_mappings
+          description: List of attribute values mapped to the key
+      title: KeyMapping
+      additionalProperties: false
     policy.kasregistry.ListKeyAccessServerGrantsRequest:
       type: object
       properties:
@@ -1512,6 +1591,47 @@ components:
           $ref: '#/components/schemas/policy.PageResponse'
       title: ListKeyAccessServersResponse
       additionalProperties: false
+    policy.kasregistry.ListKeyMappingsRequest:
+      type: object
+      oneOf:
+        - properties:
+            id:
+              type: string
+              title: id
+              format: uuid
+              description: The unique identifier of the key to retrieve
+          title: id
+          required:
+            - id
+        - properties:
+            key:
+              title: key
+              $ref: '#/components/schemas/policy.kasregistry.KasKeyIdentifier'
+          title: key
+          required:
+            - key
+      properties:
+        pagination:
+          title: pagination
+          description: Pagination request for the list of keys
+          $ref: '#/components/schemas/policy.PageRequest'
+      title: ListKeyMappingsRequest
+      additionalProperties: false
+    policy.kasregistry.ListKeyMappingsResponse:
+      type: object
+      properties:
+        keyMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.KeyMapping'
+          title: key_mappings
+          description: The list of key mappings
+        pagination:
+          title: pagination
+          description: Pagination response for the list of keys
+          $ref: '#/components/schemas/policy.PageResponse'
+      title: ListKeyMappingsResponse
+      additionalProperties: false
     policy.kasregistry.ListKeysRequest:
       type: object
       oneOf:
@@ -1550,10 +1670,15 @@ components:
             Filter keys by algorithm
             The key_algorithm must be one of the defined values.:
             ```
-            this in [0, 1, 2, 3, 4]
+            this in [0, 1, 2, 3, 4, 5]
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'
+        legacy:
+          type: boolean
+          title: legacy
+          description: Optional Filter for legacy keys
+          nullable: true
         pagination:
           title: pagination
           description: Optional Pagination request for the list of keys
@@ -1737,6 +1862,19 @@ components:
           $ref: '#/components/schemas/policy.PageResponse'
       title: ListPublicKeysResponse
       additionalProperties: false
+    policy.kasregistry.MappedPolicyObject:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: The unique identifier of the policy object
+        fqn:
+          type: string
+          title: fqn
+          description: The fully qualified name of the policy object
+      title: MappedPolicyObject
+      additionalProperties: false
     policy.kasregistry.RotateKeyRequest:
       type: object
       oneOf:
@@ -1794,7 +1932,7 @@ components:
             Required
             The key_algorithm must be one of the defined values.:
             ```
-            this in [1, 2, 3, 4]
+            this in [1, 2, 3, 4, 5]
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'

@@ -15,10 +15,9 @@ import (
 // Should match:
 // https://github.com/opentdf/platform/blob/main/service/wellknownconfiguration/wellknown_configuration.go#L25
 const (
-	baseKeyWellKnown   = "base_key"
-	baseKeyAlg         = "algorithm"
-	baseKeyPublicKey   = "public_key"
-	wellKnownConfigKey = "configuration"
+	baseKeyWellKnown = "base_key"
+	baseKeyAlg       = "algorithm"
+	baseKeyPublicKey = "public_key"
 )
 
 // TODO: Move this function to ocrypto?
@@ -26,7 +25,7 @@ func getKasKeyAlg(alg string) policy.Algorithm {
 	switch alg {
 	case string(ocrypto.RSA2048Key):
 		return policy.Algorithm_ALGORITHM_RSA_2048
-	case rsa4096:
+	case string(ocrypto.RSA4096Key):
 		return policy.Algorithm_ALGORITHM_RSA_4096
 	case string(ocrypto.EC256Key):
 		return policy.Algorithm_ALGORITHM_EC_P256
@@ -45,7 +44,7 @@ func formatAlg(alg policy.Algorithm) (string, error) {
 	case policy.Algorithm_ALGORITHM_RSA_2048:
 		return string(ocrypto.RSA2048Key), nil
 	case policy.Algorithm_ALGORITHM_RSA_4096:
-		return rsa4096, nil
+		return string(ocrypto.RSA4096Key), nil
 	case policy.Algorithm_ALGORITHM_EC_P256:
 		return string(ocrypto.EC256Key), nil
 	case policy.Algorithm_ALGORITHM_EC_P384:

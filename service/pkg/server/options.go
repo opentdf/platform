@@ -1,6 +1,8 @@
 package server
 
 import (
+	"context"
+
 	"github.com/casbin/casbin/v2/persist"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -15,13 +17,19 @@ type StartConfig struct {
 	WaitForShutdownSignal bool
 	PublicRoutes          []string
 	IPCReauthRoutes       []string
-	bultinPolicyOverride  string
+	builtinPolicyOverride string
 	extraCoreServices     []serviceregistry.IService
 	extraServices         []serviceregistry.IService
 	casbinAdapter         persist.Adapter
 	configLoaders         []config.Loader
+	configLoaderOrder     []string
 
-	trustKeyManagers []trust.NamedKeyManagerFactory
+	trustKeyManagerCtxs []trust.NamedKeyManagerCtxFactory
+
+	// CORS additive configuration - appended to YAML/env config values
+	additionalCORSHeaders        []string
+	additionalCORSMethods        []string
+	additionalCORSExposedHeaders []string
 }
 
 // Deprecated: Use WithConfigKey
@@ -85,7 +93,7 @@ func WithIPCReauthRoutes(routes []string) StartOptions {
 //		 }, "\n")),
 func WithBuiltinAuthZPolicy(policy string) StartOptions {
 	return func(c StartConfig) StartConfig {
-		c.bultinPolicyOverride = policy
+		c.builtinPolicyOverride = policy
 		return c
 	}
 }
@@ -127,10 +135,85 @@ func WithAdditionalConfigLoader(loader config.Loader) StartOptions {
 	}
 }
 
+// WithConfigLoaderOrder option is a slice of config.Loader names and is used as the priority of the loaders.
+func WithConfigLoaderOrder(loaderOrder []string) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.configLoaderOrder = loaderOrder
+		return c
+	}
+}
+
 // WithTrustKeyManagerFactories option provides factories for creating trust key managers.
+// Use WithTrustKeyManagerCtxFactories instead.
+// EXPERIMENTAL
 func WithTrustKeyManagerFactories(factories ...trust.NamedKeyManagerFactory) StartOptions {
 	return func(c StartConfig) StartConfig {
-		c.trustKeyManagers = append(c.trustKeyManagers, factories...)
+		for _, factory := range factories {
+			c.trustKeyManagerCtxs = append(c.trustKeyManagerCtxs, trust.NamedKeyManagerCtxFactory{
+				Name: factory.Name,
+				Factory: func(_ context.Context, opts *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+					return factory.Factory(opts)
+				},
+			})
+		}
+		return c
+	}
+}
+
+// WithTrustKeyManagerCtxFactories option provides factories for creating trust key managers.
+func WithTrustKeyManagerCtxFactories(factories ...trust.NamedKeyManagerCtxFactory) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.trustKeyManagerCtxs = append(c.trustKeyManagerCtxs, factories...)
+		return c
+	}
+}
+
+// WithAdditionalCORSHeaders appends additional request headers to allow via CORS.
+// These are merged with headers from YAML config (server.cors.allowedheaders and
+// server.cors.additionalheaders). Deduplication is handled automatically with
+// case-insensitive comparison per RFC 7230.
+//
+// Example:
+//
+//	server.Start(
+//	    server.WithAdditionalCORSHeaders("X-Custom-Header", "X-Another-Header"),
+//	)
+func WithAdditionalCORSHeaders(headers ...string) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.additionalCORSHeaders = append(c.additionalCORSHeaders, headers...)
+		return c
+	}
+}
+
+// WithAdditionalCORSMethods appends additional HTTP methods to allow via CORS.
+// These are merged with methods from YAML config (server.cors.allowedmethods and
+// server.cors.additionalmethods). Deduplication is handled automatically.
+//
+// Example:
+//
+//	server.Start(
+//	    server.WithAdditionalCORSMethods("CUSTOM", "SPECIAL"),
+//	)
+func WithAdditionalCORSMethods(methods ...string) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.additionalCORSMethods = append(c.additionalCORSMethods, methods...)
+		return c
+	}
+}
+
+// WithAdditionalCORSExposedHeaders appends additional response headers to expose via CORS.
+// These are merged with headers from YAML config (server.cors.exposedheaders and
+// server.cors.additionalexposedheaders). Deduplication is handled automatically with
+// case-insensitive comparison per RFC 7230.
+//
+// Example:
+//
+//	server.Start(
+//	    server.WithAdditionalCORSExposedHeaders("X-Request-Id", "X-Trace-Id"),
+//	)
+func WithAdditionalCORSExposedHeaders(headers ...string) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.additionalCORSExposedHeaders = append(c.additionalCORSExposedHeaders, headers...)
 		return c
 	}
 }

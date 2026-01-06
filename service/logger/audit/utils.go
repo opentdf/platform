@@ -5,8 +5,6 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
-	sdkAudit "github.com/opentdf/platform/sdk/audit"
-	"github.com/opentdf/platform/service/internal/server/realip"
 )
 
 // Common Strings
@@ -14,18 +12,20 @@ const (
 	defaultNone = "None"
 )
 
+type auditEventMetadata map[string]any
+
 // event
 type EventObject struct {
-	Object        auditEventObject `json:"object"`
-	Action        eventAction      `json:"action"`
-	Actor         auditEventActor  `json:"actor"`
-	EventMetaData interface{}      `json:"eventMetaData"`
-	ClientInfo    eventClientInfo  `json:"clientInfo"`
+	Object        auditEventObject   `json:"object"`
+	Action        eventAction        `json:"action"`
+	Actor         auditEventActor    `json:"actor"`
+	EventMetaData auditEventMetadata `json:"eventMetaData"`
+	ClientInfo    eventClientInfo    `json:"clientInfo"`
 
-	Original  map[string]interface{} `json:"original,omitempty"`
-	Updated   map[string]interface{} `json:"updated,omitempty"`
-	RequestID uuid.UUID              `json:"requestId"`
-	Timestamp string                 `json:"timestamp"`
+	Original  map[string]any `json:"original,omitempty"`
+	Updated   map[string]any `json:"updated,omitempty"`
+	RequestID uuid.UUID      `json:"requestId"`
+	Timestamp string         `json:"timestamp"`
 }
 
 func (e EventObject) LogValue() slog.Value {
@@ -85,8 +85,8 @@ func (e eventAction) LogValue() slog.Value {
 
 // event.actor
 type auditEventActor struct {
-	ID         string        `json:"id"`
-	Attributes []interface{} `json:"attributes"`
+	ID         string `json:"id"`
+	Attributes []any  `json:"attributes"`
 }
 
 func (e auditEventActor) LogValue() slog.Value {
@@ -126,39 +126,14 @@ func (c ContextData) LogValue() slog.Value {
 
 // GetAuditDataFromContext gets relevant audit data from the context object
 func GetAuditDataFromContext(ctx context.Context) ContextData {
-	// Extract the request ID from context
-
-	requestID, found := ctx.Value(sdkAudit.RequestIDContextKey).(uuid.UUID)
-	if !found {
-		requestID = uuid.Nil
+	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
+	if ok {
+		return tx.ContextData
 	}
-
 	return ContextData{
-		RequestID: requestID,
-		UserAgent: getContextValue(ctx, sdkAudit.UserAgentContextKey),
-		RequestIP: getRequestIPFromContext(ctx),
-		ActorID:   getContextValue(ctx, sdkAudit.ActorIDContextKey),
+		RequestID: uuid.Nil,
+		UserAgent: defaultNone,
+		RequestIP: defaultNone,
+		ActorID:   defaultNone,
 	}
-}
-
-// Gets a value from the context. If the value is not present or is an empty
-// string, it returns the default value.
-func getContextValue(ctx context.Context, key sdkAudit.ContextKey) string {
-	value, ok := ctx.Value(key).(string)
-	if !ok || value == "" {
-		return defaultNone
-	}
-	return value
-}
-
-// Gets the request IP from the context. It first checks the context key, as we
-// can pass the custom X-Forwarded-Request-IP header for internal requests. If
-// that is not present, it falls back to the realip package.
-func getRequestIPFromContext(ctx context.Context) string {
-	ip := realip.FromContext(ctx)
-	if ip.String() != "" && ip.String() != "<nil>" {
-		return ip.String()
-	}
-
-	return defaultNone
 }

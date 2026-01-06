@@ -9,8 +9,10 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/sdk"
@@ -44,27 +46,59 @@ func NewPlatformKeyIndexer(sdk *sdk.SDK, kasURI string, l *logger.Logger) *KeyIn
 	}
 }
 
+func convertEnumToAlg(alg policy.Algorithm) ocrypto.KeyType {
+	switch alg {
+	case policy.Algorithm_ALGORITHM_RSA_2048:
+		return ocrypto.RSA2048Key
+	case policy.Algorithm_ALGORITHM_RSA_4096:
+		return ocrypto.RSA4096Key
+	case policy.Algorithm_ALGORITHM_EC_P256:
+		return ocrypto.EC256Key
+	case policy.Algorithm_ALGORITHM_EC_P384:
+		return ocrypto.EC384Key
+	case policy.Algorithm_ALGORITHM_EC_P521:
+		return ocrypto.EC521Key
+	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
+		fallthrough
+	default:
+		return ""
+	}
+}
+
 func convertAlgToEnum(alg string) (policy.Algorithm, error) {
 	switch alg {
-	case "rsa:2048":
+	case string(ocrypto.RSA2048Key):
 		return policy.Algorithm_ALGORITHM_RSA_2048, nil
-	case "rsa:4096":
+	case string(ocrypto.RSA4096Key):
 		return policy.Algorithm_ALGORITHM_RSA_4096, nil
-	case "ec:secp256r1":
+	case string(ocrypto.EC256Key):
 		return policy.Algorithm_ALGORITHM_EC_P256, nil
-	case "ec:secp384r1":
+	case string(ocrypto.EC384Key):
 		return policy.Algorithm_ALGORITHM_EC_P384, nil
-	case "ec:secp521r1":
+	case string(ocrypto.EC521Key):
 		return policy.Algorithm_ALGORITHM_EC_P521, nil
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED, fmt.Errorf("unsupported algorithm: %s", alg)
 	}
 }
 
-func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, _ bool) (trust.KeyDetails, error) {
+func (p *KeyIndexer) String() string {
+	return fmt.Sprintf("PlatformKeyIndexer[%s]", p.kasURI)
+}
+
+func (p *KeyIndexer) LogValue() slog.Value {
+	return slog.StringValue(p.String())
+}
+
+func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (trust.KeyDetails, error) {
 	alg, err := convertAlgToEnum(algorithm)
 	if err != nil {
 		return nil, err
+	}
+
+	var legacy *bool
+	if !includeLegacy {
+		legacy = &includeLegacy
 	}
 
 	req := &kasregistry.ListKeysRequest{
@@ -72,6 +106,7 @@ func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, _
 		KasFilter: &kasregistry.ListKeysRequest_KasUri{
 			KasUri: p.kasURI,
 		},
+		Legacy: legacy,
 	}
 	resp, err := p.sdk.KeyAccessServerRegistry.ListKeys(ctx, req)
 	if err != nil {
@@ -120,10 +155,20 @@ func (p *KeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (t
 }
 
 func (p *KeyIndexer) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
+	return p.ListKeysWith(ctx, trust.ListKeyOptions{LegacyOnly: false})
+}
+
+func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
+	var legacyOnly *bool
+	if opts.LegacyOnly {
+		legacyOnly = &opts.LegacyOnly
+	}
+
 	req := &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasUri{
 			KasUri: p.kasURI,
 		},
+		Legacy: legacyOnly,
 	}
 	resp, err := p.sdk.KeyAccessServerRegistry.ListKeys(ctx, req)
 	if err != nil {
@@ -146,19 +191,19 @@ func (p *KeyAdapter) ID() trust.KeyIdentifier {
 }
 
 // Might need to convert this to a standard format
-func (p *KeyAdapter) Algorithm() string {
-	return p.key.GetKey().GetKeyAlgorithm().String()
+func (p *KeyAdapter) Algorithm() ocrypto.KeyType {
+	return convertEnumToAlg(p.key.GetKey().GetKeyAlgorithm())
 }
 
 func (p *KeyAdapter) IsLegacy() bool {
-	return false
+	return p.key.GetKey().GetLegacy()
 }
 
 // This will point to the correct "manager"
 func (p *KeyAdapter) System() string {
 	var mode string
 	if p.key.GetKey().GetProviderConfig() != nil {
-		mode = p.key.GetKey().GetProviderConfig().GetName()
+		mode = p.key.GetKey().GetProviderConfig().GetManager()
 	}
 	return mode
 }

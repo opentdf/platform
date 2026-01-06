@@ -2,17 +2,18 @@ package audit
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
+	"github.com/opentdf/platform/service/internal/server/realip"
 )
 
-// The audit unary server interceptor is a gRPC interceptor that adds metadata
-// to the context of incoming requests. This metadata is used to log audit
-// audit events.
-func ContextServerInterceptor() connect.UnaryInterceptorFunc {
+// ContextServerInterceptor allows audit events to track request state.
+// This is required for audit logging.
+func ContextServerInterceptor(logger *slog.Logger) connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			// Get metadata from the context
@@ -31,25 +32,47 @@ func ContextServerInterceptor() connect.UnaryInterceptorFunc {
 			} else {
 				requestID = uuid.New()
 			}
-			ctx = context.WithValue(ctx, sdkAudit.RequestIDContextKey, requestID)
-
-			// Get the request IP from the metadata header
+			tx := auditTransaction{
+				ContextData: ContextData{
+					RequestID: requestID,
+					UserAgent: "",
+					RequestIP: "",
+					ActorID:   "",
+				},
+				events: make([]pendingEvent, 0),
+			}
 			requestIPFromMetadata := headers[http.CanonicalHeaderKey(sdkAudit.RequestIPHeaderKey.String())]
 			if len(requestIPFromMetadata) > 0 {
-				ctx = context.WithValue(ctx, sdkAudit.RequestIPContextKey, requestIPFromMetadata[0])
+				tx.RequestIP = requestIPFromMetadata[0]
+			} else {
+				// FIXME AFAICT the RealIPUnaryInterceptor is not being used
+				// If we do use it, make sure it is added *before* this interceptor
+				ip := realip.FromContext(ctx)
+				if ip.String() != "" && ip.String() != "<nil>" {
+					tx.RequestIP = ip.String()
+				}
 			}
-
-			// Get the actor ID from the metadata header
 			actorIDFromMetadata := headers[http.CanonicalHeaderKey(sdkAudit.ActorIDHeaderKey.String())]
 			if len(actorIDFromMetadata) > 0 {
-				ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, actorIDFromMetadata[0])
+				tx.ActorID = actorIDFromMetadata[0]
 			}
-
-			// Sets the user agent header on the context if it is present in the metadata
 			userAgent := headers[http.CanonicalHeaderKey(sdkAudit.UserAgentHeaderKey.String())]
 			if len(userAgent) > 0 {
-				ctx = context.WithValue(ctx, sdkAudit.UserAgentContextKey, userAgent[0])
+				tx.UserAgent = userAgent[0]
 			}
+			ctx = context.WithValue(ctx, contextKey{}, &tx)
+
+			defer func() {
+				if r := recover(); r != nil {
+					if err, ok := r.(error); ok {
+						tx.logClose(ctx, logger, false, err)
+					} else {
+						tx.logClose(ctx, logger, false, nil)
+					}
+					panic(r)
+				}
+				tx.logClose(ctx, logger, true, nil)
+			}()
 
 			return next(ctx, req)
 		})

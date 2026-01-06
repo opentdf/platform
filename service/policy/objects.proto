@@ -5,6 +5,7 @@ package policy;
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/protobuf/wrappers.proto";
+// import "google/protobuf/struct.proto";
 
 message SimpleKasPublicKey {
   Algorithm algorithm = 1;
@@ -13,15 +14,16 @@ message SimpleKasPublicKey {
 }
 
 message SimpleKasKey {
-    string kas_uri = 1; // The URL of the Key Access Server
-    SimpleKasPublicKey public_key = 2; // The public key of the Key that belongs to the KAS
-    string kas_id = 3; // The ID of the Key Access Server
-};
+  string kas_uri = 1; // The URL of the Key Access Server
+  SimpleKasPublicKey public_key = 2; // The public key of the Key that belongs to the KAS
+  string kas_id = 3; // The ID of the Key Access Server
+}
 
 message KeyProviderConfig {
   string id = 1;
   string name = 2;
   bytes config_json = 3;
+  string manager = 4;
 
   // Common metadata
   common.Metadata metadata = 100;
@@ -46,6 +48,18 @@ message Namespace {
 
   // Keys for the namespace
   repeated SimpleKasKey kas_keys = 7;
+
+  // Root certificates for chain of trust
+  repeated Certificate root_certs = 8;
+}
+
+message Certificate {
+  // generated uuid in database
+  string id = 1;
+  // PEM format certificate
+  string pem = 2;
+  // Optional metadata.
+  common.Metadata metadata = 3;
 }
 
 message Attribute {
@@ -95,7 +109,7 @@ message Value {
 
   string value = 3;
 
-  // Deprecated
+  // Deprecated: no replacement
   reserved "members";
   reserved 4;
 
@@ -113,6 +127,8 @@ message Value {
   repeated SimpleKasKey kas_keys = 9;
 
   repeated ResourceMapping resource_mappings = 10;
+
+  repeated Obligation obligations = 11;
 
   // Common metadata
   common.Metadata metadata = 100;
@@ -134,7 +150,7 @@ message Action {
     // Migrate to 'create' action name
     STANDARD_ACTION_TRANSMIT = 2;
   }
-  // Deprecated
+  // Deprecated: use 'name' instead
   oneof value {
     // Deprecated
     StandardAction standard = 1;
@@ -327,7 +343,7 @@ message KeyAccessServer {
       ".*)?$')"
   }];
 
-  // Deprecated
+  // Deprecated: KAS can have multiple key pairs
   PublicKey public_key = 3;
 
   // The source of the KAS: (INTERNAL, EXTERNAL)
@@ -447,7 +463,6 @@ message RegisteredResourceValue {
     // Common metadata
     common.Metadata metadata = 100;
   }
-
   string id = 1;
 
   string value = 2;
@@ -459,6 +474,69 @@ message RegisteredResourceValue {
   // Common metadata
   common.Metadata metadata = 100;
 }
+
+message PolicyEnforcementPoint {
+  string client_id = 1 [
+    (buf.validate.field).string = {min_len: 1}
+  ];
+}
+
+// Holds the context needed for obligation fulfillment
+message RequestContext {
+  PolicyEnforcementPoint pep = 1 [(buf.validate.field).required = true];
+}
+
+message Obligation {
+  string id = 1;
+
+  Namespace namespace = 2;
+
+  string name = 3;
+
+  repeated ObligationValue values = 4;
+
+  string fqn = 5;
+
+  common.Metadata metadata = 100;
+}
+
+message ObligationValue {
+  string id = 1;
+
+  Obligation obligation = 2;
+
+  string value = 3;
+
+  repeated ObligationTrigger triggers = 4;
+
+  string fqn = 5;
+
+  common.Metadata metadata = 100;
+}
+
+message ObligationTrigger {
+  string id = 1;
+
+  ObligationValue obligation_value = 2;
+
+  Action action = 3;
+
+  Value attribute_value = 4;
+
+  repeated RequestContext context = 5;
+
+  common.Metadata metadata = 100;
+}
+
+// message ObligationFulfiller {
+//   string id = 1;
+
+//   ObligationValue obligation_value = 2;
+
+//   google.protobuf.Struct conditionals = 3;
+
+//   common.Metadata metadata = 100;
+// }
 
 // Supported key algorithms.
 enum Algorithm {
@@ -538,6 +616,8 @@ message AsymmetricKey {
   PrivateKeyCtx private_key_ctx = 7; // Specific structure based on key provider implementation
   // Optional
   KeyProviderConfig provider_config = 8; // Configuration for the key provider
+  // Optional
+  bool legacy = 9; // Indicates a key may be found in TDFs without key identifiers
 
   // Common metadata fields
   common.Metadata metadata = 100;

@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"golang.org/x/crypto/hkdf"
@@ -35,6 +36,9 @@ type PublicKeyEncryptor interface {
 
 	// Type required to use the scheme for encryption - notably, if it procduces extra metadata.
 	Type() SchemeType
+
+	// KeyType returns the key type, e.g. RSA or EC.
+	KeyType() KeyType
 
 	// For EC schemes, this method returns the public part of the ephemeral key.
 	// Otherwise, it returns nil.
@@ -85,7 +89,7 @@ func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyE
 		break
 	}
 
-	return nil, errors.New("not an supported type of public key")
+	return nil, errors.New("unsupported type of public key")
 }
 
 func newECIES(pub *ecdh.PublicKey, salt, info []byte) (ECEncryptor, error) {
@@ -108,7 +112,7 @@ func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
 		break
 	}
 
-	return AsymEncryption{}, errors.New("not an supported type of public key")
+	return AsymEncryption{}, fmt.Errorf("unsupported public key type: %T", pub)
 }
 
 func getPublicPart(publicKeyInPem string) (any, error) {
@@ -139,8 +143,36 @@ func (e AsymEncryption) Type() SchemeType {
 	return RSA
 }
 
+func (e AsymEncryption) KeyType() KeyType {
+	switch e.PublicKey.Size() {
+	case RSA2048Size / 8: //nolint:mnd // standard key size in bytes
+		return RSA2048Key
+	case RSA4096Size / 8: //nolint:mnd // large key size in bytes
+		return RSA4096Key
+	default:
+		bitlen := e.PublicKey.Size() * 8 //nolint:mnd // convert to bits
+		return KeyType("rsa:" + strconv.Itoa(bitlen))
+	}
+}
+
 func (e ECEncryptor) Type() SchemeType {
 	return EC
+}
+
+func (e ECEncryptor) KeyType() KeyType {
+	switch e.pub.Curve() {
+	case ecdh.P256():
+		return EC256Key
+	case ecdh.P384():
+		return EC384Key
+	case ecdh.P521():
+		return EC521Key
+	default:
+		if n, ok := e.pub.Curve().(fmt.Stringer); ok {
+			return KeyType("ec:" + n.String())
+		}
+		return KeyType("ec:[unknown]")
+	}
 }
 
 func (e AsymEncryption) EphemeralKey() []byte {
@@ -211,7 +243,7 @@ func (e ECEncryptor) Encrypt(data []byte) ([]byte, error) {
 
 	hkdfObj := hkdf.New(sha256.New, ikm, e.salt, e.info)
 
-	derivedKey := make([]byte, len(ikm))
+	derivedKey := make([]byte, 32) //nolint:mnd // AES-256 requires a 32-byte key
 	if _, err := io.ReadFull(hkdfObj, derivedKey); err != nil {
 		return nil, fmt.Errorf("hkdf failure: %w", err)
 	}

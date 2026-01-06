@@ -39,6 +39,10 @@ var (
 	projectAvengersFQN      = createAttrValueFQN(baseNamespace, "project", "avengers")
 	projectXmenFQN          = createAttrValueFQN(baseNamespace, "project", "xmen")
 	projectFantasicFourFQN  = createAttrValueFQN(baseNamespace, "project", "fantasticfour")
+
+	// Registered resource values
+	netRegResValFQN  = createRegisteredResourceValueFQN("network", "external")
+	platRegResValFQN = createRegisteredResourceValueFQN("platform", "internal")
 )
 
 var (
@@ -155,8 +159,53 @@ func (s *EvaluateTestSuite) SetupTest() {
 	}
 
 	// Setup accessible registered resource values map
-	// TODO: DSPX-1295
-	s.accessibleRegisteredResourceValues = map[string]*policy.RegisteredResourceValue{}
+	// Create the registered resource values with action attribute values
+	s.accessibleRegisteredResourceValues = map[string]*policy.RegisteredResourceValue{
+		netRegResValFQN: {
+			Id:    "network-registered-res-id",
+			Value: "external",
+			ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+				{
+					Id:     "network-action-attr-val-1",
+					Action: actionRead,
+					AttributeValue: &policy.Value{
+						Fqn:   levelHighestFQN,
+						Value: "highest",
+					},
+				},
+				{
+					Id:     "network-action-attr-val-2",
+					Action: actionCreate,
+					AttributeValue: &policy.Value{
+						Fqn:   levelMidFQN,
+						Value: "mid",
+					},
+				},
+			},
+		},
+		platRegResValFQN: {
+			Id:    "platform-registered-res-id",
+			Value: "internal",
+			ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+				{
+					Id:     "platform-action-attr-val-1",
+					Action: actionRead,
+					AttributeValue: &policy.Value{
+						Fqn:   projectAvengersFQN,
+						Value: "avengers",
+					},
+				},
+				{
+					Id:     "platform-action-attr-val-2",
+					Action: actionRead,
+					AttributeValue: &policy.Value{
+						Fqn:   projectJusticeLeagueFQN,
+						Value: "justiceleague",
+					},
+				},
+			},
+		},
+	}
 }
 
 func TestEvaluateSuite(t *testing.T) {
@@ -652,7 +701,7 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition() {
 			result, err := evaluateDefinition(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValues, tc.definition)
 
 			if tc.expectError {
-				s.Error(err)
+				s.Require().Error(err)
 			} else {
 				s.Require().NoError(err)
 				s.NotNil(result)
@@ -702,28 +751,44 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 			expectError:      false,
 		},
 		{
-			name: "unknown attribute value FQN",
+			name: "partial FQNs not found - should DENY",
 			resourceAttrs: &authz.Resource_AttributeValues{
 				Fqns: []string{
 					levelMidFQN,
-					"https://namespace.com/attr/department/value/unknown", // This FQN doesn't exist in accessibleAttributeValues
+					"https://namespace.com/attr/department/value/unknown",
 				},
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
 				levelMidFQN: []*policy.Action{actionRead},
 			},
+			// Should NOT error - but should DENY resource (ANY missing FQN = DENY)
 			expectAccessible: false,
-			expectError:      true,
+			expectError:      false,
+		},
+		{
+			name: "all FQNs not found - should DENY",
+			resourceAttrs: &authz.Resource_AttributeValues{
+				Fqns: []string{
+					createAttrValueFQN(baseNamespace, "significance", "critical"),
+					createAttrValueFQN(baseNamespace, "significance", "major"),
+				},
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			// Should NOT error - but should DENY resource (no FQNs exist)
+			expectAccessible: false,
+			expectError:      false,
 		},
 	}
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
+			notRegisteredResourceFQN := ""
 			resourceDecision, err := evaluateResourceAttributeValues(
 				s.T().Context(),
 				s.logger,
 				tc.resourceAttrs,
 				"test-resource-id",
+				notRegisteredResourceFQN,
 				s.action,
 				tc.entitlements,
 				s.accessibleAttrValues,
@@ -731,19 +796,30 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 
 			if tc.expectError {
 				s.Require().Error(err)
-			} else {
-				s.Require().NoError(err)
-				s.NotNil(resourceDecision)
-				s.Equal(tc.expectAccessible, resourceDecision.Passed)
+				return
+			}
 
-				// Check results array has the correct length based on grouping by definition
-				definitions := make(map[string]bool)
-				for _, fqn := range tc.resourceAttrs.GetFqns() {
-					if attrAndValue, ok := s.accessibleAttrValues[fqn]; ok {
-						definitions[attrAndValue.GetAttribute().GetFqn()] = true
-					}
+			s.Require().NoError(err)
+			s.NotNil(resourceDecision)
+			s.Equal(tc.expectAccessible, resourceDecision.Entitled)
+
+			// Check results array has the correct length based on grouping by definition
+			// If ANY FQN is missing, DataRuleResults should be empty (resource is denied without evaluation)
+			definitions := make(map[string]bool)
+			allFQNsExist := true
+			for _, fqn := range tc.resourceAttrs.GetFqns() {
+				if attrAndValue, ok := s.accessibleAttrValues[fqn]; ok {
+					definitions[attrAndValue.GetAttribute().GetFqn()] = true
+				} else {
+					allFQNsExist = false
 				}
+			}
+
+			if allFQNsExist {
 				s.Len(resourceDecision.DataRuleResults, len(definitions))
+			} else {
+				// Any missing FQN means DENY without evaluation
+				s.Empty(resourceDecision.DataRuleResults)
 			}
 		})
 	}
@@ -751,11 +827,14 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 
 // Test cases for getResourceDecision
 func (s *EvaluateTestSuite) TestGetResourceDecision() {
+	nonExistentRegResValueFQN := createRegisteredResourceValueFQN("nonexistent", "value")
+
 	tests := []struct {
 		name         string
 		resource     *authz.Resource
 		entitlements subjectmappingbuiltin.AttributeValueFQNsToActions
 		expectError  bool
+		expectPass   bool
 	}{
 		{
 			name: "attribute values resource",
@@ -765,17 +844,171 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 						Fqns: []string{levelMidFQN},
 					},
 				},
+				EphemeralId: "test-attr-values-id-1",
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
 				levelMidFQN: []*policy.Action{actionRead},
 			},
 			expectError: false,
+			expectPass:  true,
+		},
+		{
+			name: "registered resource value with all entitlements",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: netRegResValFQN,
+				},
+				EphemeralId: "test-reg-res-id-1",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				levelHighestFQN: []*policy.Action{actionRead},
+			},
+			expectError: false,
+			expectPass:  true,
+		},
+		{
+			name: "registered resource value with project values",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: platRegResValFQN,
+				},
+				EphemeralId: "test-reg-res-id-2",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				projectAvengersFQN:      []*policy.Action{actionRead},
+				projectJusticeLeagueFQN: []*policy.Action{actionRead},
+			},
+			expectError: false,
+			expectPass:  true,
+		},
+		{
+			name: "registered resource value with missing entitlements",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: platRegResValFQN,
+				},
+				EphemeralId: "test-reg-res-id-3",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				// Missing projectJusticeLeagueFQN
+				projectAvengersFQN: []*policy.Action{actionRead},
+			},
+			expectError: false,
+			expectPass:  false, // Missing entitlement for projectJusticeLeagueFQN
+		},
+		{
+			name: "registered resource value with wrong action",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: netRegResValFQN,
+				},
+				EphemeralId: "test-reg-res-id-4",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				// Wrong action
+				levelHighestFQN: []*policy.Action{actionCreate},
+			},
+			expectError: false,
+			expectPass:  false,
+		},
+		{
+			name: "nonexistent registered resource value - should DENY",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: nonExistentRegResValueFQN,
+				},
+				EphemeralId: "test-reg-res-id-5",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			expectError:  false,
+			expectPass:   false,
+		},
+		{
+			name: "attribute value FQNs not found, namespace & definition exist - should DENY",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{
+							createAttrValueFQN(baseNamespace, "department", "doesnotexist"),
+						},
+					},
+				},
+				EphemeralId: "test-attr-missing-fqns",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			expectError:  false,
+			expectPass:   false,
+		},
+		{
+			name: "attribute value FQNs not found, namespace exists - should DENY",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{
+							createAttrValueFQN(baseNamespace, "unknown", "doesnotexist"),
+						},
+					},
+				},
+				EphemeralId: "test-attr-missing-fqns",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			expectError:  false,
+			expectPass:   false,
+		},
+		{
+			name: "attribute value FQNs not found, namespace does not exist - should DENY",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{
+							"https://doesnot.exist/attr/severity/value/high",
+						},
+					},
+				},
+				EphemeralId: "test-attr-missing-fqns",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			expectError:  false,
+			expectPass:   false,
+		},
+		{
+			name: "attribute value FQNs partially exist - should DENY",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_AttributeValues_{
+					AttributeValues: &authz.Resource_AttributeValues{
+						Fqns: []string{
+							levelMidFQN,
+							"https://doesnot.exist/attr/severity/value/high",
+						},
+					},
+				},
+				EphemeralId: "test-attr-values-partially-exist",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				levelMidFQN: []*policy.Action{actionRead},
+			},
+			expectError: false,
+			expectPass:  false,
 		},
 		{
 			name:         "invalid nil resource",
 			resource:     nil,
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
 			expectError:  true,
+		},
+		{
+			name: "case insensitive registered resource value FQN",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: strings.ToUpper(netRegResValFQN), // Test case insensitivity
+				},
+				EphemeralId: "test-reg-res-id-6",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				levelHighestFQN: []*policy.Action{actionRead},
+			},
+			expectError: false,
+			expectPass:  true,
 		},
 	}
 
@@ -792,11 +1025,80 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			)
 
 			if tc.expectError {
-				s.Error(err)
+				s.Require().Error(err)
 			} else {
 				s.Require().NoError(err)
 				s.NotNil(decision)
+				s.Equal(tc.expectPass, decision.Entitled, "Decision entitlement status didn't match")
+				s.Equal(tc.resource.GetEphemeralId(), decision.ResourceID, "Resource ID didn't match")
 			}
+		})
+	}
+}
+
+func (s *EvaluateTestSuite) Test_getResourceDecision_MultiResources_GranularDenials() {
+	nonExistentFQN := createAttrValueFQN(baseNamespace, "space", "cosmic")
+
+	// Resource 1: Valid FQN, entity is entitled
+	resource1 := &authz.Resource{
+		Resource: &authz.Resource_AttributeValues_{
+			AttributeValues: &authz.Resource_AttributeValues{
+				Fqns: []string{levelHighestFQN},
+			},
+		},
+		EphemeralId: "valid-resource-1",
+	}
+
+	// Resource 2: Non-existent FQN
+	resource2 := &authz.Resource{
+		Resource: &authz.Resource_AttributeValues_{
+			AttributeValues: &authz.Resource_AttributeValues{
+				Fqns: []string{nonExistentFQN},
+			},
+		},
+		EphemeralId: "invalid-resource-2",
+	}
+
+	// Resource 3: Valid FQN, entity is entitled
+	resource3 := &authz.Resource{
+		Resource: &authz.Resource_AttributeValues_{
+			AttributeValues: &authz.Resource_AttributeValues{
+				Fqns: []string{levelMidFQN},
+			},
+		},
+		EphemeralId: "valid-resource-3",
+	}
+
+	entitlements := subjectmappingbuiltin.AttributeValueFQNsToActions{
+		levelHighestFQN: []*policy.Action{actionRead},
+		levelMidFQN:     []*policy.Action{actionRead},
+	}
+
+	testCases := []struct {
+		name             string
+		resource         *authz.Resource
+		expectedEntitled bool
+	}{
+		{"valid resource 1", resource1, true},
+		{"invalid resource 2 (missing FQN)", resource2, false},
+		{"valid resource 3", resource3, true},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			decision, err := getResourceDecision(
+				s.T().Context(),
+				s.logger,
+				s.accessibleAttrValues,
+				s.accessibleRegisteredResourceValues,
+				entitlements,
+				s.action,
+				tc.resource,
+			)
+
+			s.Require().NoError(err, "Should not error for resource: %s", tc.name)
+			s.Require().NotNil(decision)
+			s.Equal(tc.expectedEntitled, decision.Entitled, "Entitlement mismatch for: %s", tc.name)
 		})
 	}
 }

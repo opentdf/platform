@@ -12,15 +12,15 @@ import (
 )
 
 const (
-	tdf3KeySize        = 2048
-	defaultSegmentSize = 2 * 1024 * 1024 // 2mb
-	maxSegmentSize     = defaultSegmentSize * 2
-	minSegmentSize     = 16 * 1024
-	kasPublicKeyPath   = "/kas_public_key"
-	DefaultRSAKeySize  = 2048
-	ECKeySize256       = 256
-	ECKeySize384       = 384
-	ECKeySize521       = 521
+	tdf3KeySize            = 2048
+	defaultMaxManifestSize = 10 * 1024 * 1024 // 10 MB
+	defaultSegmentSize     = 2 * 1024 * 1024  // 2mb
+	maxSegmentSize         = defaultSegmentSize * 2
+	minSegmentSize         = 16 * 1024
+	DefaultRSAKeySize      = 2048
+	ECKeySize256           = 256
+	ECKeySize384           = 384
+	ECKeySize521           = 521
 )
 
 type TDFFormat = int
@@ -65,8 +65,6 @@ type TDFConfig struct {
 	defaultSegmentSize         int64
 	enableEncryption           bool
 	tdfFormat                  TDFFormat
-	tdfPublicKey               string // TODO: Remove it
-	tdfPrivateKey              string
 	metaData                   string
 	mimeType                   string
 	integrityAlgorithm         IntegrityAlgorithm
@@ -77,7 +75,7 @@ type TDFConfig struct {
 	kasInfoList                []KASInfo
 	kaoTemplate                []kaoTpl
 	splitPlan                  []keySplitStep
-	keyType                    ocrypto.KeyType
+	preferredKeyWrapAlg        ocrypto.KeyType
 	useHex                     bool
 	excludeVersionFromManifest bool
 	addDefaultAssertion        bool
@@ -91,7 +89,6 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		tdfFormat:                 JSONFormat,
 		integrityAlgorithm:        HS256,
 		segmentIntegrityAlgorithm: GMAC,
-		keyType:                   ocrypto.RSA2048Key, // default to RSA
 		addDefaultAssertion:       false,
 	}
 
@@ -102,31 +99,7 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		}
 	}
 
-	publicKey, privateKey, err := generateKeyPair(c.keyType)
-	if err != nil {
-		return nil, err
-	}
-
-	c.tdfPrivateKey = privateKey
-	c.tdfPublicKey = publicKey
-
 	return c, nil
-}
-
-func generateKeyPair(kt ocrypto.KeyType) (string, string, error) {
-	keyPair, err := ocrypto.NewKeyPair(kt)
-	if err != nil {
-		return "", "", fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
-	}
-	publicKey, err := keyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return "", "", fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
-	}
-	privateKey, err := keyPair.PrivateKeyInPemFormat()
-	if err != nil {
-		return "", "", fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
-	}
-	return publicKey, privateKey, nil
 }
 
 // WithDataAttributes appends the given data attributes to the bound policy
@@ -249,12 +222,13 @@ func WithAutoconfigure(enable bool) TDFOption {
 	}
 }
 
+// Deprecated: WithWrappingKeyAlg sets the key type for the TDF wrapping key for both storage and transit.
 func WithWrappingKeyAlg(keyType ocrypto.KeyType) TDFOption {
 	return func(c *TDFConfig) error {
-		if c.keyType == "" {
+		if keyType == "" {
 			return errors.New("key type missing")
 		}
-		c.keyType = keyType
+		c.preferredKeyWrapAlg = keyType
 		return nil
 	}
 }
@@ -297,6 +271,8 @@ type TDFReaderConfig struct {
 	kasSessionKey             ocrypto.KeyPair
 	kasAllowlist              AllowList // KAS URLs that are allowed to be used for reading TDFs
 	ignoreAllowList           bool      // If true, the kasAllowlist will be ignored, and all KAS URLs will be allowed
+	fulfillableObligationFQNs []string
+	maxManifestSize           int64
 }
 
 type AllowList map[string]bool
@@ -370,6 +346,7 @@ func (a AllowList) Add(kasURL string) error {
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
+		maxManifestSize:              defaultMaxManifestSize,
 	}
 
 	for _, o := range opt {
@@ -388,6 +365,21 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	}
 
 	return c, nil
+}
+
+// WithMaxManifestSize sets the maximum allowed manifest size for the TDF reader.
+// By default, the maximum manifest size is 10 MB.
+// The manifest size is proportional to the sum of the sizes of the policy and the number of segments in the payload.
+// Setting this limit helps prevent denial of service attacks due to large policies or overly segmented files.
+// Use this option to override the default limit; the size parameter specifies the maximum size in bytes.
+func WithMaxManifestSize(size int64) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		if size <= 0 {
+			return errors.New("max manifest size must be greater than 0")
+		}
+		c.maxManifestSize = size
+		return nil
+	}
 }
 
 func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption {
@@ -443,6 +435,13 @@ func withKasAllowlist(kasList AllowList) TDFReaderOption {
 func WithIgnoreAllowlist(ignore bool) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.ignoreAllowList = ignore
+		return nil
+	}
+}
+
+func WithTDFFulfillableObligationFQNs(fqns []string) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.fulfillableObligationFQNs = fqns
 		return nil
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -31,14 +32,14 @@ func (s *KasRegistrySuite) SetupSuite() {
 	s.ctx = context.Background()
 	c := *Config
 	c.DB.Schema = "test_opentdf_kas_registry"
-	s.db = fixtures.NewDBInterface(c)
+	s.db = fixtures.NewDBInterface(s.ctx, c)
 	s.f = fixtures.NewFixture(s.db)
-	s.f.Provision()
+	s.f.Provision(s.ctx)
 }
 
 func (s *KasRegistrySuite) TearDownSuite() {
 	slog.Info("tearing down db.KasRegistry test suite")
-	s.f.TearDown()
+	s.f.TearDown(s.ctx)
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_NoPagination_Succeeds() {
@@ -789,7 +790,11 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithChildKeys_Fails() {
 	s.Nil(deleted)
 
 	// Remove key to clean up
-	_, err = s.db.PolicyClient.DeleteKey(s.ctx, createdKey.GetKasKey().GetKey().GetId())
+	_, err = s.db.PolicyClient.UnsafeDeleteKey(s.ctx, createdKey.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{
+		Id:     createdKey.GetKasKey().GetKey().GetId(),
+		Kid:    createdKey.GetKasKey().GetKey().GetKeyId(),
+		KasUri: createdKey.GetKasKey().GetKasUri(),
+	})
 	s.Require().NoError(err)
 
 	// Delete the KAS
@@ -855,6 +860,31 @@ func (s *KasRegistrySuite) validateKasRegistryKeys(kasr *policy.KeyAccessServer)
 		}
 	}
 	s.Len(expectedKasKeys, matchingKeysCount)
+}
+
+// Test_GetKeyAccessServer_ByIdNameUri_ReturnSameResult validates that getKeyAccessServer works correctly
+// with ID, name, and URI lookups
+func (s *KasRegistrySuite) Test_GetKeyAccessServer_ByIdNameUri_ReturnSameResult() {
+	remoteFixture := s.f.GetKasRegistryKey("key_access_server_1")
+
+	// Get by ID
+	kasByID, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, remoteFixture.ID)
+	s.Require().NoError(err, "Failed to get KAS by ID")
+	s.Require().NotNil(kasByID)
+
+	// Get by Name
+	kasByName, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, &kasregistry.GetKeyAccessServerRequest_Name{Name: remoteFixture.Name})
+	s.Require().NoError(err, "Failed to get KAS by Name")
+	s.Require().NotNil(kasByName)
+
+	// Get by URI
+	kasByURI, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, &kasregistry.GetKeyAccessServerRequest_Uri{Uri: remoteFixture.URI})
+	s.Require().NoError(err, "Failed to get KAS by URI")
+	s.Require().NotNil(kasByURI)
+
+	// Verify all three return the same KAS
+	s.True(proto.Equal(kasByID, kasByName))
+	s.True(proto.Equal(kasByID, kasByURI))
 }
 
 func TestKasRegistrySuite(t *testing.T) {

@@ -182,10 +182,7 @@ paths:
       tags:
         - policy.namespaces.NamespaceService
       summary: AssignKeyAccessServerToNamespace
-      description: |-
-        --------------------------------------*
-         Namespace <> Key Access Server RPCs
-        ---------------------------------------
+      description: 'Deprecated: utilize AssignPublicKeyToNamespace'
       operationId: policy.namespaces.NamespaceService.AssignKeyAccessServerToNamespace
       parameters:
         - name: Connect-Protocol-Version
@@ -222,6 +219,7 @@ paths:
       tags:
         - policy.namespaces.NamespaceService
       summary: RemoveKeyAccessServerFromNamespace
+      description: 'Deprecated: utilize RemovePublicKeyFromNamespace'
       operationId: policy.namespaces.NamespaceService.RemoveKeyAccessServerFromNamespace
       parameters:
         - name: Connect-Protocol-Version
@@ -327,6 +325,77 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.namespaces.RemovePublicKeyFromNamespaceResponse'
+  /policy.namespaces.NamespaceService/AssignCertificateToNamespace:
+    post:
+      tags:
+        - policy.namespaces.NamespaceService
+      summary: AssignCertificateToNamespace
+      description: Namespace <> Certificate RPCs
+      operationId: policy.namespaces.NamespaceService.AssignCertificateToNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.namespaces.AssignCertificateToNamespaceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.namespaces.AssignCertificateToNamespaceResponse'
+  /policy.namespaces.NamespaceService/RemoveCertificateFromNamespace:
+    post:
+      tags:
+        - policy.namespaces.NamespaceService
+      summary: RemoveCertificateFromNamespace
+      operationId: policy.namespaces.NamespaceService.RemoveCertificateFromNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.namespaces.RemoveCertificateFromNamespaceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.namespaces.RemoveCertificateFromNamespaceResponse'
 components:
   schemas:
     common.ActiveStateEnum:
@@ -377,6 +446,20 @@ components:
         Describes whether this kas is managed by the organization or if they imported
          the kas information from an external party. These two modes are necessary in order
          to encrypt a tdf dek with an external parties kas public key.
+    common.IdFqnIdentifier:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
+      title: IdFqnIdentifier
+      additionalProperties: false
     common.Metadata:
       type: object
       properties:
@@ -443,6 +526,9 @@ components:
          has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
+      examples:
+        - 1s
+        - 1.000340012s
       format: date-time
       description: |-
         A Timestamp represents a point in time independent of any time zone or local
@@ -534,6 +620,23 @@ components:
          the Joda Time's [`ISODateTimeFormat.dateTime()`](
          http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()
          ) to obtain a formatter capable of generating timestamps in this format.
+    policy.Certificate:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: generated uuid in database
+        pem:
+          type: string
+          title: pem
+          description: PEM format certificate
+        metadata:
+          title: metadata
+          description: Optional metadata.
+          $ref: '#/components/schemas/common.Metadata'
+      title: Certificate
+      additionalProperties: false
     policy.KasPublicKey:
       type: object
       properties:
@@ -595,7 +698,7 @@ components:
 
         publicKey:
           title: public_key
-          description: Deprecated
+          description: 'Deprecated: KAS can have multiple key pairs'
           $ref: '#/components/schemas/policy.PublicKey'
         sourceType:
           title: source_type
@@ -655,6 +758,12 @@ components:
             $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Keys for the namespace
+        rootCerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Certificate'
+          title: root_certs
+          description: Root certificates for chain of trust
       title: Namespace
       additionalProperties: false
     policy.PageRequest:
@@ -758,6 +867,39 @@ components:
           title: pem
       title: SimpleKasPublicKey
       additionalProperties: false
+    policy.namespaces.AssignCertificateToNamespaceRequest:
+      type: object
+      properties:
+        namespace:
+          title: namespace
+          description: Required - namespace identifier (id or fqn)
+          $ref: '#/components/schemas/common.IdFqnIdentifier'
+        pem:
+          type: string
+          title: pem
+          description: Required - PEM format certificate
+        metadata:
+          title: metadata
+          description: Optional
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: AssignCertificateToNamespaceRequest
+      required:
+        - namespace
+        - pem
+      additionalProperties: false
+    policy.namespaces.AssignCertificateToNamespaceResponse:
+      type: object
+      properties:
+        namespaceCertificate:
+          title: namespace_certificate
+          description: The mapping of the namespace to the certificate.
+          $ref: '#/components/schemas/policy.namespaces.NamespaceCertificate'
+        certificate:
+          title: certificate
+          description: Return the full certificate object for convenience
+          $ref: '#/components/schemas/policy.Certificate'
+      title: AssignCertificateToNamespaceResponse
+      additionalProperties: false
     policy.namespaces.AssignKeyAccessServerToNamespaceRequest:
       type: object
       properties:
@@ -766,6 +908,7 @@ components:
           $ref: '#/components/schemas/policy.namespaces.NamespaceKeyAccessServer'
       title: AssignKeyAccessServerToNamespaceRequest
       additionalProperties: false
+      description: 'Deprecated: utilize AssignPublicKeyToNamespaceRequest'
     policy.namespaces.AssignKeyAccessServerToNamespaceResponse:
       type: object
       properties:
@@ -914,6 +1057,24 @@ components:
           $ref: '#/components/schemas/policy.PageResponse'
       title: ListNamespacesResponse
       additionalProperties: false
+    policy.namespaces.NamespaceCertificate:
+      type: object
+      properties:
+        namespace:
+          title: namespace
+          description: Required - namespace identifier (id or fqn)
+          $ref: '#/components/schemas/common.IdFqnIdentifier'
+        certificateId:
+          type: string
+          title: certificate_id
+          format: uuid
+          description: Required (The id from the Certificate object)
+      title: NamespaceCertificate
+      required:
+        - namespace
+        - certificateId
+      additionalProperties: false
+      description: Maps a namespace to a certificate (similar to NamespaceKey pattern)
     policy.namespaces.NamespaceKey:
       type: object
       properties:
@@ -948,6 +1109,26 @@ components:
       title: NamespaceKeyAccessServer
       additionalProperties: false
       description: Deprecated
+    policy.namespaces.RemoveCertificateFromNamespaceRequest:
+      type: object
+      properties:
+        namespaceCertificate:
+          title: namespace_certificate
+          description: The namespace and certificate to unassign.
+          $ref: '#/components/schemas/policy.namespaces.NamespaceCertificate'
+      title: RemoveCertificateFromNamespaceRequest
+      required:
+        - namespaceCertificate
+      additionalProperties: false
+    policy.namespaces.RemoveCertificateFromNamespaceResponse:
+      type: object
+      properties:
+        namespaceCertificate:
+          title: namespace_certificate
+          description: The unassigned namespace and certificate.
+          $ref: '#/components/schemas/policy.namespaces.NamespaceCertificate'
+      title: RemoveCertificateFromNamespaceResponse
+      additionalProperties: false
     policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest:
       type: object
       properties:
@@ -956,6 +1137,7 @@ components:
           $ref: '#/components/schemas/policy.namespaces.NamespaceKeyAccessServer'
       title: RemoveKeyAccessServerFromNamespaceRequest
       additionalProperties: false
+      description: 'Deprecated: utilize RemovePublicKeyFromNamespaceRequest'
     policy.namespaces.RemoveKeyAccessServerFromNamespaceResponse:
       type: object
       properties:

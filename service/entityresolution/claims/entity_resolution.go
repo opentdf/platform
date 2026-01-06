@@ -37,7 +37,7 @@ func (s ClaimsEntityResolutionService) ResolveEntities(ctx context.Context, req 
 }
 
 func (s ClaimsEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
-	ctx, span := s.Tracer.Start(ctx, "CreateEntityChainFromJwt")
+	ctx, span := s.Start(ctx, "CreateEntityChainFromJwt")
 	defer span.End()
 
 	resp, err := CreateEntityChainFromJwt(ctx, req.Msg, s.logger)

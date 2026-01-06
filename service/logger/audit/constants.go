@@ -11,6 +11,9 @@ const (
 	ObjectTypeResourceMapping
 	ObjectTypeAttributeDefinition
 	ObjectTypeAttributeValue
+	ObjectTypeObligationDefinition
+	ObjectTypeObligationValue
+	ObjectTypeObligationTrigger
 	ObjectTypeNamespace
 	ObjectTypeConditionSet
 	ObjectTypeKasRegistry
@@ -29,6 +32,7 @@ const (
 	ObjectTypeKasAttributeDefinitionKeyAssignment
 	ObjectTypeKasAttributeValueKeyAssignment
 	ObjectTypeKasAttributeNamespaceKeyAssignment
+	ObjectTypeNamespaceCertificate
 )
 
 func (ot ObjectType) String() string {
@@ -37,6 +41,9 @@ func (ot ObjectType) String() string {
 		"resource_mapping",
 		"attribute_definition",
 		"attribute_value",
+		"obligation_definition",
+		"obligation_value",
+		"obligation_trigger",
 		"namespace",
 		"condition_set",
 		"kas_registry",
@@ -55,6 +62,7 @@ func (ot ObjectType) String() string {
 		"kas_attribute_definition_key_assignment",
 		"kas_attribute_value_key_assignment",
 		"kas_attribute_namespace_key_assignment",
+		"namespace_certificate",
 	}[ot]
 }
 

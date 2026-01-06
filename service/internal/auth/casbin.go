@@ -11,7 +11,6 @@ import (
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/pkg/util"
 
 	_ "embed"
 )
@@ -54,7 +53,7 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 
 	isDefaultPolicy := false
 	if c.Csv == "" {
-		// Set the Bultin Policy if provided
+		// Set the Builtin Policy if provided
 		if c.Builtin != "" {
 			c.Csv = c.Builtin
 		} else {
@@ -210,7 +209,7 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 			)
 			return nil
 		}
-		claim = util.Dotnotation(claimMap, strings.Join(selectors[1:], "."))
+		claim = dotNotation(claimMap, strings.Join(selectors[1:], "."))
 		if claim == nil {
 			e.logger.Warn("claim not found",
 				slog.String("claim", roleClaim),

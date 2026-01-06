@@ -157,13 +157,24 @@ func (x *LegacyPublicKeyRequest) GetAlgorithm() string {
 	return ""
 }
 
+// Policy binding ensures cryptographic integrity between policy and wrapped key
+// Prevents policy tampering by binding the policy hash to the encrypted key
 type PolicyBinding struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Cryptographic hashing algorithm used for policy binding
+	// Optional: ZTDF (when policy_binding is an object)
+	// Value: Always "HS256" (HMAC-SHA256) - other algorithms not supported
+	// Example: "HS256"
 	Algorithm string `protobuf:"bytes,1,opt,name=algorithm,json=alg,proto3" json:"algorithm,omitempty"`
-	Hash      string `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
+	// HMAC-SHA256 hash of the base64-encoded policy using the DEK as the secret key
+	// 4.2.2 TDFs are hex and base64 encoded before HMAC computation
+	// Required: ZTDF (when policy_binding is an object)
+	// Links the policy content to the wrapped DEK cryptographically via HMAC
+	// Computed as HMAC-SHA256(DEK, base64_policy) then hex-encoded and base64-encoded
+	Hash string `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
 }
 
 func (x *PolicyBinding) Reset() {
@@ -212,23 +223,58 @@ func (x *PolicyBinding) GetHash() string {
 	return ""
 }
 
+// Key Access Object containing cryptographic material and metadata for TDF decryption
 type KeyAccess struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	EncryptedMetadata string         `protobuf:"bytes,1,opt,name=encrypted_metadata,json=encryptedMetadata,proto3" json:"encrypted_metadata,omitempty"`
-	PolicyBinding     *PolicyBinding `protobuf:"bytes,2,opt,name=policy_binding,json=policyBinding,proto3" json:"policy_binding,omitempty"`
-	Protocol          string         `protobuf:"bytes,3,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	KeyType           string         `protobuf:"bytes,4,opt,name=key_type,json=type,proto3" json:"key_type,omitempty"`
-	KasUrl            string         `protobuf:"bytes,5,opt,name=kas_url,json=url,proto3" json:"kas_url,omitempty"`
-	Kid               string         `protobuf:"bytes,6,opt,name=kid,proto3" json:"kid,omitempty"`
-	SplitId           string         `protobuf:"bytes,7,opt,name=split_id,json=sid,proto3" json:"split_id,omitempty"`
-	WrappedKey        []byte         `protobuf:"bytes,8,opt,name=wrapped_key,json=wrappedKey,proto3" json:"wrapped_key,omitempty"`
-	// header is only used for NanoTDFs
+	// Base64-encoded encrypted metadata containing additional key information
+	// Optional: Not used during KAS rewrap operations (client-side only)
+	// KAS service passes this through without processing or validation
+	EncryptedMetadata string `protobuf:"bytes,1,opt,name=encrypted_metadata,json=encryptedMetadata,proto3" json:"encrypted_metadata,omitempty"`
+	// Policy binding ensuring cryptographic integrity between policy and wrapped key
+	// Required: ZTDF (contains hash and algorithm)
+	// Links the policy to the wrapped key cryptographically
+	PolicyBinding *PolicyBinding `protobuf:"bytes,2,opt,name=policy_binding,json=policyBinding,proto3" json:"policy_binding,omitempty"`
+	// Protocol identifier for the key access mechanism
+	// Optional: Defaults to 'kas'
+	// Typically: 'kas' for standard Key Access Service protocol
+	// Example: "kas"
+	Protocol string `protobuf:"bytes,3,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	// Type of key wrapping used for the data encryption key
+	// Required: Always
+	// Values: 'wrapped' (RSA-wrapped for ZTDF), 'ec-wrapped' (experimental ECDH-wrapped)
+	KeyType string `protobuf:"bytes,4,opt,name=key_type,json=type,proto3" json:"key_type,omitempty"`
+	// URL of the Key Access Server that can unwrap this key
+	// Optional: May be omitted if KAS URL is known from context
+	// Used to route rewrap requests to the correct KAS instance
+	// Example: "https://kas.example.com"
+	KasUrl string `protobuf:"bytes,5,opt,name=kas_url,json=url,proto3" json:"kas_url,omitempty"`
+	// Key identifier for the KAS public key used for wrapping
+	// Optional: ZTDF (may specify which KAS key to use, required if present in the TDF)
+	// References a specific public key in the KAS key storage (either local keyring or KAS Registry service)
+	// Example: "k1", "ec-key-2024"
+	Kid string `protobuf:"bytes,6,opt,name=kid,proto3" json:"kid,omitempty"`
+	// Split identifier for key splitting scenarios
+	// Optional: ZTDF (used in advanced key splitting configurations)
+	// Used when keys are split across multiple parties for enhanced security
+	SplitId string `protobuf:"bytes,7,opt,name=split_id,json=sid,proto3" json:"split_id,omitempty"`
+	// Client-generated data encryption key wrapped by KAS
+	// Required: Always
+	// Contains the actual DEK encrypted with KAS's public key
+	// This is the core cryptographic material needed for TDF decryption
+	WrappedKey []byte `protobuf:"bytes,8,opt,name=wrapped_key,json=wrappedKey,proto3" json:"wrapped_key,omitempty"`
+	// Complete NanoTDF header containing all metadata and policy information
+	// Required: NanoTDF only
+	// ZTDF: Omitted (policy and metadata are separate)
+	// Contains magic bytes, version, algorithm, policy, and ephemeral key information
 	Header []byte `protobuf:"bytes,9,opt,name=header,proto3" json:"header,omitempty"`
-	// For wrapping with an ECDH derived key, when type=ec-wrapped.
-	// Should be a PEM-encoded PKCS#8 (asn.1) value.
+	// Ephemeral public key for ECDH key derivation (ec-wrapped type only)
+	// Required: When key_type="ec-wrapped" (experimental ECDH-based ZTDF)
+	// Omitted: When key_type="wrapped" (RSA-based ZTDF)
+	// Should be a PEM-encoded PKCS#8 (ASN.1) formatted public key
+	// Used to derive the symmetric key for unwrapping the DEK
 	EphemeralPublicKey string `protobuf:"bytes,10,opt,name=ephemeral_public_key,json=ephemeralPublicKey,proto3" json:"ephemeral_public_key,omitempty"`
 }
 
@@ -334,22 +380,37 @@ func (x *KeyAccess) GetEphemeralPublicKey() string {
 	return ""
 }
 
+// Bulk-style Rewrap request structure that is serialized into JSON and signed
+// within a Rewrap flow. This message represents the unsigned payload that gets
+// embedded in a JWT as the 'requestBody' claim and signed with a DPoP key.
 type UnsignedRewrapRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ClientPublicKey string                                     `protobuf:"bytes,1,opt,name=client_public_key,json=clientPublicKey,proto3" json:"client_public_key,omitempty"`
-	Requests        []*UnsignedRewrapRequest_WithPolicyRequest `protobuf:"bytes,2,rep,name=requests,proto3" json:"requests,omitempty"`
-	// Used for legacy non-bulk requests
+	// Client's public key in PEM format for establishing a session key
+	// Required: Always
+	// Used by KAS to generate an ephemeral session key for secure key exchange
+	ClientPublicKey string `protobuf:"bytes,1,opt,name=client_public_key,json=clientPublicKey,proto3" json:"client_public_key,omitempty"`
+	// List of policy requests to be processed
+	// Required: Always (at least one)
+	// Each request represents a policy with its associated key access objects
+	Requests []*UnsignedRewrapRequest_WithPolicyRequest `protobuf:"bytes,2,rep,name=requests,proto3" json:"requests,omitempty"`
+	// Deprecated: Legacy single Key Access Object
+	// Used for legacy non-bulk requests (v1 API)
+	// Modern clients should use the 'requests' field instead
 	//
 	// Deprecated: Marked as deprecated in kas/kas.proto.
 	KeyAccess *KeyAccess `protobuf:"bytes,3,opt,name=key_access,json=keyAccess,proto3" json:"key_access,omitempty"`
-	// Used for legacy non-bulk requests
+	// Deprecated: Legacy single policy
+	// Used for legacy non-bulk requests (v1 API)
+	// Modern clients should use the 'requests' field instead
 	//
 	// Deprecated: Marked as deprecated in kas/kas.proto.
 	Policy string `protobuf:"bytes,4,opt,name=policy,proto3" json:"policy,omitempty"`
-	// Used for legacy non-bulk requests
+	// Deprecated: Legacy algorithm specification
+	// Used for legacy non-bulk requests (v1 API)
+	// Modern clients should use the 'requests' field instead
 	//
 	// Deprecated: Marked as deprecated in kas/kas.proto.
 	Algorithm string `protobuf:"bytes,5,opt,name=algorithm,proto3" json:"algorithm,omitempty"`
@@ -543,11 +604,17 @@ func (x *PublicKeyResponse) GetKid() string {
 	return ""
 }
 
+// Request to rewrap (decrypt and re-encrypt) TDF keys for client access
 type RewrapRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// A JWT signed by the DPoP (Demonstration of Proof of Possession) private key
+	// Required: Always
+	// Version differences:
+	// - v1 (legacy): Uses existing TDF spec schema in requestBody
+	// - v2 (bulk): Uses UnsignedRewrapRequest proto serialized as JSON in requestBody
 	SignedRequestToken string `protobuf:"bytes,1,opt,name=signed_request_token,json=signedRequestToken,proto3" json:"signed_request_token,omitempty"`
 }
 
@@ -590,14 +657,25 @@ func (x *RewrapRequest) GetSignedRequestToken() string {
 	return ""
 }
 
+// Result of a key access object rewrap operation
 type KeyAccessRewrapResult struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Metadata          map[string]*structpb.Value `protobuf:"bytes,1,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	KeyAccessObjectId string                     `protobuf:"bytes,2,opt,name=key_access_object_id,json=keyAccessObjectId,proto3" json:"key_access_object_id,omitempty"`
-	Status            string                     `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	// Metadata associated with this KAO result (e.g., required obligations)
+	// Optional: May contain obligation requirements or other policy metadata
+	// Common keys: "X-Required-Obligations" with array of obligation FQNs
+	Metadata map[string]*structpb.Value `protobuf:"bytes,1,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// Identifier matching the key_access_object_id from the request
+	// Required: Always matches the ID from UnsignedRewrapRequest_WithKeyAccessObject
+	KeyAccessObjectId string `protobuf:"bytes,2,opt,name=key_access_object_id,json=keyAccessObjectId,proto3" json:"key_access_object_id,omitempty"`
+	// Status of the rewrap operation for this KAO
+	// Required: Always
+	// Values: "permit" (success), "fail" (failure)
+	Status string `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	// Result of the rewrap operation - either success or error
+	//
 	// Types that are assignable to Result:
 	//
 	//	*KeyAccessRewrapResult_KasWrappedKey
@@ -684,10 +762,16 @@ type isKeyAccessRewrapResult_Result interface {
 }
 
 type KeyAccessRewrapResult_KasWrappedKey struct {
+	// Successfully rewrapped key encrypted with the session key
+	// Present when status="permit"
+	// Contains the DEK encrypted with the ephemeral session key
 	KasWrappedKey []byte `protobuf:"bytes,4,opt,name=kas_wrapped_key,json=kasWrappedKey,proto3,oneof"`
 }
 
 type KeyAccessRewrapResult_Error struct {
+	// Error message when rewrap failed
+	// Present when status="fail"
+	// Human-readable description of the failure reason
 	Error string `protobuf:"bytes,5,opt,name=error,proto3,oneof"`
 }
 
@@ -695,13 +779,18 @@ func (*KeyAccessRewrapResult_KasWrappedKey) isKeyAccessRewrapResult_Result() {}
 
 func (*KeyAccessRewrapResult_Error) isKeyAccessRewrapResult_Result() {}
 
+// Result for all KAOs associated with a single policy
 type PolicyRewrapResult struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	PolicyId string                   `protobuf:"bytes,1,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
-	Results  []*KeyAccessRewrapResult `protobuf:"bytes,2,rep,name=results,proto3" json:"results,omitempty"`
+	// Policy identifier matching the policy.id from the request
+	// Required: Always matches the ID from UnsignedRewrapRequest_WithPolicy
+	PolicyId string `protobuf:"bytes,1,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
+	// Results for each KAO under this policy
+	// Required: One result per KAO in the original request
+	Results []*KeyAccessRewrapResult `protobuf:"bytes,2,rep,name=results,proto3" json:"results,omitempty"`
 }
 
 func (x *PolicyRewrapResult) Reset() {
@@ -750,19 +839,35 @@ func (x *PolicyRewrapResult) GetResults() []*KeyAccessRewrapResult {
 	return nil
 }
 
+// Response containing rewrapped keys and session information
 type RewrapResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Deprecated: Legacy metadata field
+	// Modern responses use metadata in individual KeyAccessRewrapResult
+	//
 	// Deprecated: Marked as deprecated in kas/kas.proto.
 	Metadata map[string]*structpb.Value `protobuf:"bytes,1,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// Deprecated: Legacy single entity wrapped key
+	// Modern responses use kas_wrapped_key in KeyAccessRewrapResult
+	//
 	// Deprecated: Marked as deprecated in kas/kas.proto.
 	EntityWrappedKey []byte `protobuf:"bytes,2,opt,name=entity_wrapped_key,json=entityWrappedKey,proto3" json:"entity_wrapped_key,omitempty"`
+	// KAS's ephemeral session public key in PEM format
+	// Required: For EC-based operations (NanoTDF and ZTDF with key_type="ec-wrapped")
+	// Optional: Empty for RSA-based ZTDF (key_type="wrapped")
+	// Used by client to perform ECDH key agreement and decrypt the kas_wrapped_key values
 	SessionPublicKey string `protobuf:"bytes,3,opt,name=session_public_key,json=sessionPublicKey,proto3" json:"session_public_key,omitempty"`
+	// Deprecated: Legacy schema version identifier
+	// Modern responses use implicit versioning
+	//
 	// Deprecated: Marked as deprecated in kas/kas.proto.
 	SchemaVersion string `protobuf:"bytes,4,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
-	// New Rewrap API changes
+	// Policy-grouped rewrap results for the bulk API
+	// Required: Modern v2 API responses
+	// Each PolicyRewrapResult contains results for all KAOs under that policy
 	Responses []*PolicyRewrapResult `protobuf:"bytes,5,rep,name=responses,proto3" json:"responses,omitempty"`
 }
 
@@ -836,12 +941,20 @@ func (x *RewrapResponse) GetResponses() []*PolicyRewrapResult {
 	return nil
 }
 
+// Policy metadata and content for a group of KeyAccessObjects
 type UnsignedRewrapRequest_WithPolicy struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id   string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// An identifier unique within the scope of the rewrap request
+	// Used for mapping between request and response items.
+	// Required: Always
+	// Example: "policy", "policy-0", "policy-1"
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Policy content - format varies by TDF type:
+	// ZTDF: Base64-encoded JSON policy object containing attributes and other policy data
+	// Required: ZTDF (base64-encoded policy JSON)
 	Body string `protobuf:"bytes,2,opt,name=body,proto3" json:"body,omitempty"`
 }
 
@@ -891,13 +1004,19 @@ func (x *UnsignedRewrapRequest_WithPolicy) GetBody() string {
 	return ""
 }
 
+// Key Access Object wrapper with identifier
 type UnsignedRewrapRequest_WithKeyAccessObject struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	KeyAccessObjectId string     `protobuf:"bytes,1,opt,name=key_access_object_id,json=keyAccessObjectId,proto3" json:"key_access_object_id,omitempty"`
-	KeyAccessObject   *KeyAccess `protobuf:"bytes,2,opt,name=key_access_object,json=keyAccessObject,proto3" json:"key_access_object,omitempty"`
+	// Ephemeral, unique identifier for this KAO within the request
+	// Required: Always
+	// Example: "kao-0", "kao-1", "key-access-object-uuid"
+	KeyAccessObjectId string `protobuf:"bytes,1,opt,name=key_access_object_id,json=keyAccessObjectId,proto3" json:"key_access_object_id,omitempty"`
+	// The actual Key Access Object containing cryptographic material and metadata
+	// Required: Always
+	KeyAccessObject *KeyAccess `protobuf:"bytes,2,opt,name=key_access_object,json=keyAccessObject,proto3" json:"key_access_object,omitempty"`
 }
 
 func (x *UnsignedRewrapRequest_WithKeyAccessObject) Reset() {
@@ -946,14 +1065,25 @@ func (x *UnsignedRewrapRequest_WithKeyAccessObject) GetKeyAccessObject() *KeyAcc
 	return nil
 }
 
+// Request grouping policy with associated key access objects
 type UnsignedRewrapRequest_WithPolicyRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// List of Key Access Objects associated with this policy
+	// Required: Always (at least one)
+	// NanoTDF: Exactly one KAO per policy
+	// ZTDF: One or more KAOs per policy
 	KeyAccessObjects []*UnsignedRewrapRequest_WithKeyAccessObject `protobuf:"bytes,1,rep,name=key_access_objects,json=keyAccessObjects,proto3" json:"key_access_objects,omitempty"`
-	Policy           *UnsignedRewrapRequest_WithPolicy            `protobuf:"bytes,2,opt,name=policy,proto3" json:"policy,omitempty"`
-	Algorithm        string                                       `protobuf:"bytes,3,opt,name=algorithm,proto3" json:"algorithm,omitempty"`
+	// Policy information for this group of KAOs
+	// Required: Always
+	Policy *UnsignedRewrapRequest_WithPolicy `protobuf:"bytes,2,opt,name=policy,proto3" json:"policy,omitempty"`
+	// Cryptographic algorithm identifier for the TDF type
+	// Optional: Defaults to rsa:2048 if omitted
+	// Values: "ec:secp256r1" (NanoTDF), "rsa:2048" (ZTDF), "" (defaults to rsa:2048)
+	// Example: "ec:secp256r1"
+	Algorithm string `protobuf:"bytes,3,opt,name=algorithm,proto3" json:"algorithm,omitempty"`
 }
 
 func (x *UnsignedRewrapRequest_WithPolicyRequest) Reset() {

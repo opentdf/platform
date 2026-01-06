@@ -73,6 +73,9 @@ const (
 	// KeyAccessServerRegistryServiceGetBaseKeyProcedure is the fully-qualified name of the
 	// KeyAccessServerRegistryService's GetBaseKey RPC.
 	KeyAccessServerRegistryServiceGetBaseKeyProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/GetBaseKey"
+	// KeyAccessServerRegistryServiceListKeyMappingsProcedure is the fully-qualified name of the
+	// KeyAccessServerRegistryService's ListKeyMappings RPC.
+	KeyAccessServerRegistryServiceListKeyMappingsProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/ListKeyMappings"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -91,6 +94,7 @@ var (
 	keyAccessServerRegistryServiceRotateKeyMethodDescriptor                 = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("RotateKey")
 	keyAccessServerRegistryServiceSetBaseKeyMethodDescriptor                = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("SetBaseKey")
 	keyAccessServerRegistryServiceGetBaseKeyMethodDescriptor                = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("GetBaseKey")
+	keyAccessServerRegistryServiceListKeyMappingsMethodDescriptor           = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("ListKeyMappings")
 )
 
 // KeyAccessServerRegistryServiceClient is a client for the
@@ -120,6 +124,8 @@ type KeyAccessServerRegistryServiceClient interface {
 	SetBaseKey(context.Context, *connect.Request[kasregistry.SetBaseKeyRequest]) (*connect.Response[kasregistry.SetBaseKeyResponse], error)
 	// Get Default kas keys
 	GetBaseKey(context.Context, *connect.Request[kasregistry.GetBaseKeyRequest]) (*connect.Response[kasregistry.GetBaseKeyResponse], error)
+	// Request to list key mappings in the Key Access Service.
+	ListKeyMappings(context.Context, *connect.Request[kasregistry.ListKeyMappingsRequest]) (*connect.Response[kasregistry.ListKeyMappingsResponse], error)
 }
 
 // NewKeyAccessServerRegistryServiceClient constructs a client for the
@@ -214,6 +220,12 @@ func NewKeyAccessServerRegistryServiceClient(httpClient connect.HTTPClient, base
 			connect.WithSchema(keyAccessServerRegistryServiceGetBaseKeyMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		listKeyMappings: connect.NewClient[kasregistry.ListKeyMappingsRequest, kasregistry.ListKeyMappingsResponse](
+			httpClient,
+			baseURL+KeyAccessServerRegistryServiceListKeyMappingsProcedure,
+			connect.WithSchema(keyAccessServerRegistryServiceListKeyMappingsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -232,6 +244,7 @@ type keyAccessServerRegistryServiceClient struct {
 	rotateKey                 *connect.Client[kasregistry.RotateKeyRequest, kasregistry.RotateKeyResponse]
 	setBaseKey                *connect.Client[kasregistry.SetBaseKeyRequest, kasregistry.SetBaseKeyResponse]
 	getBaseKey                *connect.Client[kasregistry.GetBaseKeyRequest, kasregistry.GetBaseKeyResponse]
+	listKeyMappings           *connect.Client[kasregistry.ListKeyMappingsRequest, kasregistry.ListKeyMappingsResponse]
 }
 
 // ListKeyAccessServers calls
@@ -306,6 +319,11 @@ func (c *keyAccessServerRegistryServiceClient) GetBaseKey(ctx context.Context, r
 	return c.getBaseKey.CallUnary(ctx, req)
 }
 
+// ListKeyMappings calls policy.kasregistry.KeyAccessServerRegistryService.ListKeyMappings.
+func (c *keyAccessServerRegistryServiceClient) ListKeyMappings(ctx context.Context, req *connect.Request[kasregistry.ListKeyMappingsRequest]) (*connect.Response[kasregistry.ListKeyMappingsResponse], error) {
+	return c.listKeyMappings.CallUnary(ctx, req)
+}
+
 // KeyAccessServerRegistryServiceHandler is an implementation of the
 // policy.kasregistry.KeyAccessServerRegistryService service.
 type KeyAccessServerRegistryServiceHandler interface {
@@ -333,6 +351,8 @@ type KeyAccessServerRegistryServiceHandler interface {
 	SetBaseKey(context.Context, *connect.Request[kasregistry.SetBaseKeyRequest]) (*connect.Response[kasregistry.SetBaseKeyResponse], error)
 	// Get Default kas keys
 	GetBaseKey(context.Context, *connect.Request[kasregistry.GetBaseKeyRequest]) (*connect.Response[kasregistry.GetBaseKeyResponse], error)
+	// Request to list key mappings in the Key Access Service.
+	ListKeyMappings(context.Context, *connect.Request[kasregistry.ListKeyMappingsRequest]) (*connect.Response[kasregistry.ListKeyMappingsResponse], error)
 }
 
 // NewKeyAccessServerRegistryServiceHandler builds an HTTP handler from the service implementation.
@@ -422,6 +442,12 @@ func NewKeyAccessServerRegistryServiceHandler(svc KeyAccessServerRegistryService
 		connect.WithSchema(keyAccessServerRegistryServiceGetBaseKeyMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	keyAccessServerRegistryServiceListKeyMappingsHandler := connect.NewUnaryHandler(
+		KeyAccessServerRegistryServiceListKeyMappingsProcedure,
+		svc.ListKeyMappings,
+		connect.WithSchema(keyAccessServerRegistryServiceListKeyMappingsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/policy.kasregistry.KeyAccessServerRegistryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case KeyAccessServerRegistryServiceListKeyAccessServersProcedure:
@@ -450,6 +476,8 @@ func NewKeyAccessServerRegistryServiceHandler(svc KeyAccessServerRegistryService
 			keyAccessServerRegistryServiceSetBaseKeyHandler.ServeHTTP(w, r)
 		case KeyAccessServerRegistryServiceGetBaseKeyProcedure:
 			keyAccessServerRegistryServiceGetBaseKeyHandler.ServeHTTP(w, r)
+		case KeyAccessServerRegistryServiceListKeyMappingsProcedure:
+			keyAccessServerRegistryServiceListKeyMappingsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -509,4 +537,8 @@ func (UnimplementedKeyAccessServerRegistryServiceHandler) SetBaseKey(context.Con
 
 func (UnimplementedKeyAccessServerRegistryServiceHandler) GetBaseKey(context.Context, *connect.Request[kasregistry.GetBaseKeyRequest]) (*connect.Response[kasregistry.GetBaseKeyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.kasregistry.KeyAccessServerRegistryService.GetBaseKey is not implemented"))
+}
+
+func (UnimplementedKeyAccessServerRegistryServiceHandler) ListKeyMappings(context.Context, *connect.Request[kasregistry.ListKeyMappingsRequest]) (*connect.Response[kasregistry.ListKeyMappingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.kasregistry.KeyAccessServerRegistryService.ListKeyMappings is not implemented"))
 }

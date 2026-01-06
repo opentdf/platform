@@ -47,9 +47,9 @@ func (m *MockKeyDetails) ID() trust.KeyIdentifier {
 	return ""
 }
 
-func (m *MockKeyDetails) Algorithm() string {
+func (m *MockKeyDetails) Algorithm() ocrypto.KeyType {
 	args := m.Called()
-	return args.String(0)
+	return ocrypto.KeyType(args.String(0))
 }
 
 func (m *MockKeyDetails) IsLegacy() bool {
@@ -110,6 +110,26 @@ func (m *MockEncapsulator) EphemeralKey() []byte {
 	if d, ok := args.Get(0).([]byte); ok {
 		return d
 	}
+	return nil
+}
+
+// noOpEncapsulator is a test encapsulator that returns raw key data without encryption
+type noOpEncapsulator struct{}
+
+func (n *noOpEncapsulator) Encapsulate(pk ocrypto.ProtectedKey) ([]byte, error) {
+	// Delegate to ProtectedKey to avoid accessing raw key directly
+	return pk.Export(n)
+}
+
+func (n *noOpEncapsulator) Encrypt(data []byte) ([]byte, error) {
+	return data, nil
+}
+
+func (n *noOpEncapsulator) PublicKeyAsPEM() (string, error) {
+	return "", nil
+}
+
+func (n *noOpEncapsulator) EphemeralKey() []byte {
 	return nil
 }
 
@@ -276,12 +296,12 @@ func TestBasicManager_Decrypt(t *testing.T) {
 	bm, err := NewBasicManager(log, testCache, rootKeyHex)
 	require.NoError(t, err)
 
-	samplePayload := []byte("secret payload")
+	samplePayload := []byte("secret payload16") // 16 bytes for valid AES key
 
 	t.Run("successful RSA decryption", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)
 		mockDetails.MID = "rsa-kid-decrypt"
-		mockDetails.MAlgorithm = policy.Algorithm_ALGORITHM_RSA_2048.String()
+		mockDetails.MAlgorithm = AlgorithmRSA2048
 		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedRSAPrivKeyStr}
 
 		// Set up mock expectations
@@ -298,7 +318,9 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, protectedKey)
 
-		decryptedPayload, err := protectedKey.Export(nil)
+		// Use noOpEncapsulator to get raw key data for testing
+		noOpEnc := &noOpEncapsulator{}
+		decryptedPayload, err := protectedKey.Export(noOpEnc)
 		require.NoError(t, err)
 		assert.Equal(t, samplePayload, decryptedPayload)
 	})
@@ -306,7 +328,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 	t.Run("successful EC decryption", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)
 		mockDetails.MID = "ec-kid-decrypt"
-		mockDetails.MAlgorithm = policy.Algorithm_ALGORITHM_EC_P256.String()
+		mockDetails.MAlgorithm = AlgorithmECP256R1
 		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedECPrivKeyStr}
 
 		// Set up mock expectations
@@ -324,7 +346,9 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, protectedKey)
 
-		decryptedPayload, err := protectedKey.Export(nil)
+		// Use noOpEncapsulator to get raw key data for testing
+		noOpEnc := &noOpEncapsulator{}
+		decryptedPayload, err := protectedKey.Export(noOpEnc)
 		require.NoError(t, err)
 		assert.Equal(t, samplePayload, decryptedPayload)
 	})
@@ -342,7 +366,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 	t.Run("fail unwrap", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)
 		mockDetails.MID = "fail-unwrap-decrypt"
-		mockDetails.MAlgorithm = policy.Algorithm_ALGORITHM_RSA_2048.String()
+		mockDetails.MAlgorithm = AlgorithmRSA2048
 		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: "invalid-base64-for-unwrap"}
 
 		// Set up mock expectations for ExportPrivateKey to return a valid wrapped key
@@ -359,7 +383,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 	t.Run("fail FromPrivatePEM", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)
 		mockDetails.MID = "fail-frompem-decrypt"
-		mockDetails.MAlgorithm = policy.Algorithm_ALGORITHM_RSA_2048.String()
+		mockDetails.MAlgorithm = AlgorithmRSA2048
 		invalidPEMWrapped, _ := wrapKeyWithAESGCM([]byte("-----BEGIN INVALID KEY-----..."), rootKey)
 		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: invalidPEMWrapped}
 
@@ -419,7 +443,7 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 	t.Run("successful key derivation", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)
 		mockDetails.MID = "ec-kid-derive"
-		mockDetails.MAlgorithm = policy.Algorithm_ALGORITHM_EC_P256.String()
+		mockDetails.MAlgorithm = AlgorithmECP256R1
 		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedECPrivKeyStr}
 
 		// Set up mock expectations
@@ -445,7 +469,9 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 		expectedDerivedKey, err := ocrypto.CalculateHKDF(NanoVersionSalt(), expectedSharedSecret)
 		require.NoError(t, err)
 
-		actualDerivedKey, err := protectedKey.Export(nil)
+		// Use noOpEncapsulator to get raw key data for testing
+		noOpEnc := &noOpEncapsulator{}
+		actualDerivedKey, err := protectedKey.Export(noOpEnc)
 		require.NoError(t, err)
 		assert.Equal(t, expectedDerivedKey, actualDerivedKey)
 	})

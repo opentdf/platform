@@ -42,15 +42,15 @@ func (s *AttributesSuite) SetupSuite() {
 	fixtureKeyAccessServerID = s.f.GetKasRegistryKey("key_access_server_1").ID
 	c := *Config
 	c.DB.Schema = "test_opentdf_attribute_definitions"
-	s.db = fixtures.NewDBInterface(c)
+	s.db = fixtures.NewDBInterface(s.ctx, c)
 	s.f = fixtures.NewFixture(s.db)
-	s.f.Provision()
+	s.f.Provision(s.ctx)
 	stillActiveNsID, deactivatedAttrID, deactivatedAttrValueID = setupCascadeDeactivateAttribute(s)
 }
 
 func (s *AttributesSuite) TearDownSuite() {
 	slog.Info("tearing down db.Attributes test suite")
-	s.f.TearDown()
+	s.f.TearDown(s.ctx)
 }
 
 func (s *AttributesSuite) Test_CreateAttribute_NoMetadataSucceeds() {
@@ -259,9 +259,6 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 	fqns := []string{fmt.Sprintf("https://%s/attr/%s/value/%s", gotAttr.GetNamespace().GetName(), createdAttr.GetName(), gotAttr.GetValues()[0].GetValue())}
 	req := &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: fqns,
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	}
 	resp, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, req)
 	s.Require().NoError(err)
@@ -563,6 +560,85 @@ func (s *AttributesSuite) Test_ListAttributes_ByNamespaceIdOrName() {
 	}
 }
 
+func (s *AttributesSuite) Test_ListAttributes_MultipleAttributes_Succeeds() {
+	// Create two test namespaces
+	createdNS := make([]*policy.Namespace, 2)
+	ns1, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-list-ns1.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(ns1)
+	createdNS[0] = ns1
+
+	ns2, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-list-ns2.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(ns2)
+	createdNS[1] = ns2
+
+	// Cleanup function
+	defer func() {
+		// Delete namespaces (this will cascade delete attributes)
+		for _, ns := range createdNS {
+			_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, ns, ns.GetFqn())
+			s.Require().NoError(err)
+		}
+	}()
+
+	// Create one attribute in each namespace
+	attr1, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test_attr_1",
+		NamespaceId: ns1.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values:      []string{"value1", "value2"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(attr1)
+
+	attr2, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test_attr_2",
+		NamespaceId: ns2.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"valueA", "valueB"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(attr2)
+
+	// Test 1: List attributes from first namespace
+	listReq := &attributes.ListAttributesRequest{
+		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+		Namespace: ns1.GetId(),
+	}
+	listResp, err := s.db.PolicyClient.ListAttributes(s.ctx, listReq)
+	s.Require().NoError(err)
+	s.NotNil(listResp)
+
+	listedAttrs := listResp.GetAttributes()
+	s.Require().Len(listedAttrs, 1, "Should list one attribute from first namespace")
+	s.Require().Equal(attr1.GetId(), listedAttrs[0].GetId())
+	s.Require().Equal(ns1.GetId(), listedAttrs[0].GetNamespace().GetId())
+	s.Require().NotEmpty(listedAttrs[0].GetFqn())
+	s.Require().Equal(int32(1), listResp.GetPagination().GetTotal())
+	s.Require().Equal(int32(0), listResp.GetPagination().GetNextOffset())
+	s.Require().Equal(int32(0), listResp.GetPagination().GetCurrentOffset())
+
+	// Test 2: List attributes from second namespace
+	listReq.Namespace = ns2.GetId()
+	listResp, err = s.db.PolicyClient.ListAttributes(s.ctx, listReq)
+	s.Require().NoError(err)
+	s.NotNil(listResp)
+
+	listedAttrs = listResp.GetAttributes()
+	s.Require().Len(listedAttrs, 1, "Should list one attribute from second namespace")
+	s.Require().Equal(attr2.GetId(), listedAttrs[0].GetId())
+	s.Require().Equal(ns2.GetId(), listedAttrs[0].GetNamespace().GetId())
+	s.Require().NotEmpty(listedAttrs[0].GetFqn())
+	s.Require().Equal(int32(1), listResp.GetPagination().GetTotal())
+	s.Require().Equal(int32(0), listResp.GetPagination().GetNextOffset())
+	s.Require().Equal(int32(0), listResp.GetPagination().GetCurrentOffset())
+}
+
 func (s *AttributesSuite) Test_UpdateAttribute() {
 	fixedLabel := "fixed label"
 	updateLabel := "update label"
@@ -695,9 +771,6 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRuleAndNameAndReorderin
 
 		val, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 			Fqns: []string{fqn},
-			WithValue: &policy.AttributeValueSelector{
-				WithSubjectMaps: true,
-			},
 		})
 		s.Require().NoError(err)
 		s.NotNil(val)
@@ -787,9 +860,6 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithNewName() {
 	}
 	req := &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: fqns,
-		WithValue: &policy.AttributeValueSelector{
-			WithSubjectMaps: true,
-		},
 	}
 	retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, req)
 	s.Require().NoError(err)
@@ -934,9 +1004,6 @@ func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
 		fqns := []string{fmt.Sprintf("https://%s/attr/%s/value/%s", ns.GetName(), name, v.GetValue())}
 		req := &attributes.GetAttributeValuesByFqnsRequest{
 			Fqns: fqns,
-			WithValue: &policy.AttributeValueSelector{
-				WithSubjectMaps: true,
-			},
 		}
 		retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, req)
 		s.Require().Error(err)
@@ -1222,11 +1289,15 @@ func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_Returns_Error_When_
 
 func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_NotActiveKey_Fail() {
 	var kasID string
-	keyIDs := make([]string, 0)
+	keys := make([]*policy.KasKey, 0)
 	defer func() {
-		for _, keyID := range keyIDs {
-			// delete the kas key
-			_, err := s.db.PolicyClient.DeleteKey(s.ctx, keyID)
+		for _, key := range keys {
+			r := &unsafe.UnsafeDeleteKasKeyRequest{
+				Id:     key.GetKey().GetId(),
+				Kid:    key.GetKey().GetKeyId(),
+				KasUri: key.GetKasUri(),
+			}
+			_, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, key, r)
 			s.Require().NoError(err)
 		}
 
@@ -1265,7 +1336,7 @@ func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_NotActiveKey_Fail()
 	toBeRotatedKey, err := s.db.PolicyClient.CreateKey(s.ctx, kasKey)
 	s.Require().NoError(err)
 	s.NotNil(toBeRotatedKey)
-	keyIDs = append(keyIDs, toBeRotatedKey.GetKasKey().GetKey().GetId())
+	keys = append(keys, toBeRotatedKey.GetKasKey())
 
 	// rotate the key
 	newKey := &kasregistry.RotateKeyRequest_NewKey{
@@ -1279,7 +1350,7 @@ func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_NotActiveKey_Fail()
 	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, toBeRotatedKey.GetKasKey(), newKey)
 	s.Require().NoError(err)
 	s.NotNil(rotatedInKey)
-	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
+	keys = append(keys, rotatedInKey.GetKasKey())
 
 	resp, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
 		AttributeId: s.f.GetAttributeKey("example.com/attr/attr1").ID,
@@ -1379,6 +1450,27 @@ func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureData
 }
 
 // - Test that a Get/List attribute returns the Asymmetric Keys with the provider configs / add a key with no provider config
+
+// Test_GetAttribute_ByIdAndFqn_ReturnSameResult validates that getAttribute works correctly
+// with both ID and FQN lookups
+func (s *AttributesSuite) Test_GetAttribute_ByIdAndFqn_ReturnSameResult() {
+	fixtures := s.getAttributeFixtures()
+
+	for fqn, f := range fixtures {
+		// Get by ID
+		attrByID, err := s.db.PolicyClient.GetAttribute(s.ctx, f.ID)
+		s.Require().NoError(err, "Failed to get attribute by ID for FQN: %s", fqn)
+		s.Require().NotNil(attrByID)
+
+		// Get by FQN
+		attrByFQN, err := s.db.PolicyClient.GetAttribute(s.ctx, &attributes.GetAttributeRequest_Fqn{Fqn: fqn})
+		s.Require().NoError(err, "Failed to get attribute by FQN: %s", fqn)
+		s.Require().NotNil(attrByFQN)
+
+		// Verify both return the same attribute
+		s.True(proto.Equal(attrByID, attrByFQN))
+	}
+}
 
 func TestAttributesSuite(t *testing.T) {
 	if testing.Short() {

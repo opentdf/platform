@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
@@ -50,16 +51,16 @@ func (s *KasRegistryKeySuite) SetupSuite() {
 	s.ctx = context.Background()
 	c := *Config
 	c.DB.Schema = "test_opentdf_kas_keys"
-	s.db = fixtures.NewDBInterface(c)
+	s.db = fixtures.NewDBInterface(s.ctx, c)
 	s.f = fixtures.NewFixture(s.db)
-	s.f.Provision()
+	s.f.Provision(s.ctx)
 	s.kasFixtures = s.getKasRegistryFixtures()
 	s.kasKeys = s.getKasRegistryServerKeysFixtures()
 }
 
 func (s *KasRegistryKeySuite) TearDownSuite() {
 	slog.Info("tearing down db.KasKeys test suite")
-	s.f.TearDown()
+	s.f.TearDown(s.ctx)
 }
 
 func TestKasRegistryKeysSuite(t *testing.T) {
@@ -150,8 +151,147 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_Success() {
 	s.Equal(validKeyID1, resp.GetKasKey().GetKey().GetPrivateKeyCtx().GetKeyId())
 	s.Nil(resp.GetKasKey().GetKey().GetProviderConfig())
 
-	_, err = s.db.PolicyClient.DeleteKey(s.ctx, resp.GetKasKey().GetKey().GetId())
+	_, err = s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{
+		Id:     resp.GetKasKey().GetKey().GetId(),
+		KasUri: resp.GetKasKey().GetKasUri(),
+		Kid:    resp.GetKasKey().GetKey().GetKeyId(),
+	})
 	s.Require().NoError(err)
+}
+
+func (s *KasRegistryKeySuite) Test_CreateKasKey_Legacy_Success() {
+	// Create KAS server
+	req := kasregistry.CreateKeyRequest{
+		KasId:        s.kasKeys[0].KeyAccessServerID,
+		KeyId:        "legacy_key_id",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+		Legacy: true,
+	}
+	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(resp)
+	s.True(resp.GetKasKey().GetKey().GetLegacy())
+
+	_, err = s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{
+		Id:     resp.GetKasKey().GetKey().GetId(),
+		KasUri: resp.GetKasKey().GetKasUri(),
+		Kid:    resp.GetKasKey().GetKey().GetKeyId(),
+	})
+	s.Require().NoError(err)
+}
+
+func (s *KasRegistryKeySuite) Test_CreateKasKey_Legacy_MultipleOnSameKas_Fail() {
+	// Create KAS server
+	req := kasregistry.CreateKeyRequest{
+		KasId:        s.kasKeys[0].KeyAccessServerID,
+		KeyId:        "legacy_key_id_1",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+		Legacy: true,
+	}
+	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(resp)
+	s.True(resp.GetKasKey().GetKey().GetLegacy())
+
+	defer func() {
+		_, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{
+			Id:     resp.GetKasKey().GetKey().GetId(),
+			KasUri: resp.GetKasKey().GetKasUri(),
+			Kid:    resp.GetKasKey().GetKey().GetKeyId(),
+		})
+		s.Require().NoError(err)
+	}()
+
+	req2 := kasregistry.CreateKeyRequest{
+		KasId:        s.kasKeys[0].KeyAccessServerID,
+		KeyId:        "legacy_key_id_2",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+		Legacy: true,
+	}
+	_, err = s.db.PolicyClient.CreateKey(s.ctx, &req2)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
+}
+
+func (s *KasRegistryKeySuite) Test_CreateKasKey_Legacy_MultipleOnDifferentKas_Success() {
+	// Create KAS server
+	req := kasregistry.CreateKeyRequest{
+		KasId:        s.kasKeys[0].KeyAccessServerID,
+		KeyId:        "legacy_key_id_1",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+		Legacy: true,
+	}
+	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(resp)
+	s.True(resp.GetKasKey().GetKey().GetLegacy())
+
+	defer func() {
+		_, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{
+			Id:     resp.GetKasKey().GetKey().GetId(),
+			KasUri: resp.GetKasKey().GetKasUri(),
+			Kid:    resp.GetKasKey().GetKey().GetKeyId(),
+		})
+		s.Require().NoError(err)
+	}()
+
+	// Create a new KAS server
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "test_kas_legacy_key",
+		Uri:  "https://test-kas-legacy-key.opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+
+	kasIDs := []string{kas.GetId()}
+	keyIDs := []string{}
+
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
+	req2 := kasregistry.CreateKeyRequest{
+		KasId:        kas.GetId(),
+		KeyId:        "legacy_key_id_2",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+		Legacy: true,
+	}
+	resp2, err := s.db.PolicyClient.CreateKey(s.ctx, &req2)
+	s.Require().NoError(err)
+	s.NotNil(resp2)
+	s.True(resp2.GetKasKey().GetKey().GetLegacy())
+	keyIDs = append(keyIDs, resp2.GetKasKey().GetKey().GetId())
 }
 
 func (s *KasRegistryKeySuite) Test_GetKasKey_InvalidId_Fail() {
@@ -399,15 +539,120 @@ func (s *KasRegistryKeySuite) Test_ListKeys_KasID_Limit_Success() {
 	s.Equal(int32(0), resp.GetPagination().GetCurrentOffset())
 }
 
+func (s *KasRegistryKeySuite) Test_ListKeys_Legacy_Success() {
+	kasIDs := make([]string, 0)
+	keyIDs := make([]string, 0)
+
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri:  "https://legacy-kas.opentdf.io",
+		Name: "Legacy KAS",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
+
+	legacyReq := kasregistry.CreateKeyRequest{
+		KasId:        kas.GetId(),
+		KeyId:        "legacy_key_id",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+		Legacy: true,
+	}
+	legacyResp, err := s.db.PolicyClient.CreateKey(s.ctx, &legacyReq)
+	s.Require().NoError(err)
+	s.NotNil(legacyResp)
+	s.True(legacyResp.GetKasKey().GetKey().GetLegacy())
+	keyIDs = append(keyIDs, legacyResp.GetKasKey().GetKey().GetId())
+
+	nonLegacyReq := kasregistry.CreateKeyRequest{
+		KasId:        kas.GetId(),
+		KeyId:        "non_legacy_key_id",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+	}
+	nonLegacyResp, err := s.db.PolicyClient.CreateKey(s.ctx, &nonLegacyReq)
+	s.Require().NoError(err)
+	s.Require().NotNil(nonLegacyResp)
+	s.Require().False(nonLegacyResp.GetKasKey().GetKey().GetLegacy())
+	keyIDs = append(keyIDs, nonLegacyResp.GetKasKey().GetKey().GetId())
+
+	// List legacy keys
+	legacyFilter := true
+	listResp, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		Legacy: &legacyFilter,
+		KasFilter: &kasregistry.ListKeysRequest_KasId{
+			KasId: kas.GetId(),
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listResp)
+	s.Len(listResp.GetKasKeys(), 1)
+	s.True(listResp.GetKasKeys()[0].GetKey().GetLegacy())
+	s.Equal(legacyResp.GetKasKey().GetKey().GetId(), listResp.GetKasKeys()[0].GetKey().GetId())
+
+	// Check that legacy key is included with non-legacy keys when filter is nil
+	listResp, err = s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{
+			KasId: kas.GetId(),
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listResp)
+	s.Len(listResp.GetKasKeys(), 2)
+	foundLegacy := false
+	foundNonLegacy := false
+	for _, key := range listResp.GetKasKeys() {
+		if key.GetKey().GetLegacy() {
+			s.Equal("legacy_key_id", key.GetKey().GetKeyId())
+			foundLegacy = true
+		} else {
+			foundNonLegacy = true
+		}
+	}
+	s.True(foundNonLegacy)
+	s.True(foundLegacy)
+
+	legacyFilter = false
+	listResp, err = s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		Legacy: &legacyFilter,
+		KasFilter: &kasregistry.ListKeysRequest_KasId{
+			KasId: kas.GetId(),
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listResp)
+	s.Len(listResp.GetKasKeys(), 1)
+
+	foundLegacy = false
+	for _, key := range listResp.GetKasKeys() {
+		if key.GetKey().GetLegacy() {
+			foundLegacy = true
+		}
+	}
+	s.False(foundLegacy)
+}
+
 func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespaces_Success() {
-	attrValueIDs := make([]string, 0)
-	attrDefIDs := make([]string, 0)
 	namespaceIDs := make([]string, 0)
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
 
 	defer func() {
-		s.cleanupAttrs(attrValueIDs, namespaceIDs, attrDefIDs)
+		s.cleanupNamespacesAndAttrsByIDs(namespaceIDs)
 		s.cleanupKeys(keyIDs, kasIDs)
 	}()
 
@@ -426,8 +671,6 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	namespaceMap := s.setupNamespaceForRotate(1, 1, keyMap[rotateKey].GetKey(), keyMap[nonRotateKey].GetKey())
 	namespaceIDs = append(namespaceIDs, namespaceMap[rotateKey][0].GetId(), namespaceMap[nonRotateKey][0].GetId())
 	attributeMap := s.setupAttributesForRotate(1, 1, 1, 1, namespaceMap, keyMap[rotateKey].GetKey(), keyMap[nonRotateKey].GetKey())
-	attrDefIDs = append(attrDefIDs, attributeMap[rotateKey][0].GetId(), attributeMap[nonRotateKey][0].GetId())
-	attrValueIDs = append(attrValueIDs, attributeMap[rotateKey][0].GetValues()[0].GetId(), attributeMap[nonRotateKey][0].GetValues()[0].GetId())
 
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
@@ -525,14 +768,12 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 }
 
 func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_AttributeValue_Success() {
-	attrValueIDs := make([]string, 0)
-	attrDefIDs := make([]string, 0)
 	namespaceIDs := make([]string, 0)
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
 
 	defer func() {
-		s.cleanupAttrs(attrValueIDs, namespaceIDs, attrDefIDs)
+		s.cleanupNamespacesAndAttrsByIDs(namespaceIDs)
 		s.cleanupKeys(keyIDs, kasIDs)
 	}()
 
@@ -551,7 +792,6 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 	namespaceMap := s.setupNamespaceForRotate(2, 2, keyMap[rotateKey].GetKey(), keyMap[nonRotateKey].GetKey())
 	namespaceIDs = append(namespaceIDs, namespaceMap[rotateKey][0].GetId(), namespaceMap[rotateKey][1].GetId(), namespaceMap[nonRotateKey][0].GetId(), namespaceMap[nonRotateKey][1].GetId())
 	attributeMap := s.setupAttributesForRotate(2, 2, 0, 0, namespaceMap, keyMap[rotateKey].GetKey(), keyMap[nonRotateKey].GetKey())
-	attrDefIDs = append(attrDefIDs, attributeMap[rotateKey][0].GetId(), attributeMap[nonRotateKey][0].GetId(), attributeMap[rotateKey][1].GetId(), attributeMap[nonRotateKey][1].GetId())
 
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
@@ -1108,6 +1348,538 @@ func (s *KasRegistryKeySuite) Test_RotateKey_MetadataUnchanged_Success() {
 	s.Require().Equal(labels, oldKey.GetKey().GetMetadata().GetLabels())
 }
 
+func (s *KasRegistryKeySuite) Test_ListKeyMappings_InvalidLimit_Fail() {
+	req := kasregistry.ListKeyMappingsRequest{
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax + 1,
+		},
+	}
+	resp, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &req)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrListLimitTooLarge)
+	s.Nil(resp)
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeyMappings_ByID_Invalid_UUID_Fail() {
+	req := kasregistry.ListKeyMappingsRequest{
+		Identifier: &kasregistry.ListKeyMappingsRequest_Id{
+			Id: "non_existent_key_id",
+		},
+	}
+	mappingsResp, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &req)
+	s.Require().Nil(mappingsResp)
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeyMappings_ByID_OneAttrValue_Success() {
+	kasKeys := make([]*policy.KasKey, 0)
+	kasIDs := make([]string, 0)
+	namespaces := make([]*policy.Namespace, 0)
+	attributeDefs := make([]*policy.Attribute, 0)
+	attrValues := make([]*policy.Value, 0)
+	defer func() {
+		keyIDs := make([]string, 0)
+		for _, key := range kasKeys {
+			keyIDs = append(keyIDs, key.GetKey().GetId())
+		}
+		s.cleanupKeys(keyIDs, kasIDs)
+		s.cleanupNamespacesAndAttrs(namespaces)
+	}()
+	kasKey := s.createKeyAndKas()
+	kasKeys = append(kasKeys, kasKey)
+	kasIDs = append(kasIDs, kasKey.GetKasId())
+	namespaces = append(namespaces, s.createNamespace())
+	attributeDefs = append(attributeDefs, s.createAttrDef(namespaces[0].GetId()))
+	attrValues = append(attrValues, s.createValue(attributeDefs[0].GetId()))
+	s.createValueMapping(kasKey.GetKey().GetId(), attrValues[0].GetId())
+
+	req := kasregistry.ListKeyMappingsRequest{
+		Identifier: &kasregistry.ListKeyMappingsRequest_Id{
+			Id: kasKey.GetKey().GetId(),
+		},
+	}
+	mappingsResp, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(mappingsResp)
+	s.Len(mappingsResp.GetKeyMappings(), 1)
+	s.validateKeyMapping(mappingsResp.GetKeyMappings()[0], kasKey, []*policy.Namespace{}, []*policy.Attribute{}, attrValues)
+	s.NotNil(mappingsResp.GetPagination())
+	s.Equal(int32(1), mappingsResp.GetPagination().GetTotal())
+	s.Equal(int32(0), mappingsResp.GetPagination().GetCurrentOffset())
+	s.Equal(int32(0), mappingsResp.GetPagination().GetNextOffset())
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeyMappings_By_Key_No_Kas_Identifier_Fail() {
+	req := kasregistry.ListKeyMappingsRequest{
+		Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+			Key: &kasregistry.KasKeyIdentifier{
+				Kid: "non_existent_key_id",
+			},
+		},
+	}
+	mappingsResp, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &req)
+	s.Require().Nil(mappingsResp)
+	s.Require().ErrorIs(err, db.ErrUnknownSelectIdentifier)
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeyMappings_By_Key_No_Key_Id_With_Kas_Identifier_Fail() {
+	req := kasregistry.ListKeyMappingsRequest{
+		Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+			Key: &kasregistry.KasKeyIdentifier{
+				Identifier: &kasregistry.KasKeyIdentifier_Uri{
+					Uri: "non_existent_key_uri",
+				},
+			},
+		},
+	}
+	mappingsResp, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &req)
+	s.Require().Nil(mappingsResp)
+	s.Require().ErrorIs(err, db.ErrSelectIdentifierInvalid)
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeyMappings_By_Key_Success() {
+	kasKeys := make([]*policy.KasKey, 0)
+	kasIDs := make([]string, 0)
+	namespaces := make([]*policy.Namespace, 0)
+	attributeDefs := make([]*policy.Attribute, 0)
+	attrValues := make([]*policy.Value, 0)
+	defer func() {
+		keyIDs := make([]string, 0)
+		for _, key := range kasKeys {
+			keyIDs = append(keyIDs, key.GetKey().GetId())
+		}
+		s.cleanupKeys(keyIDs, kasIDs)
+		s.cleanupNamespacesAndAttrs(namespaces)
+	}()
+	kasKey := s.createKeyAndKas()
+	kasKeys = append(kasKeys, kasKey)
+	kasIDs = append(kasIDs, kasKey.GetKasId())
+	namespaces = append(namespaces, s.createNamespace())
+	attributeDefs = append(attributeDefs, s.createAttrDef(namespaces[0].GetId()))
+	attrValues = append(attrValues, s.createValue(attributeDefs[0].GetId()))
+	s.createValueMapping(kasKey.GetKey().GetId(), attrValues[0].GetId())
+
+	// Create a second key on the same KAS
+	keyReqTwo := kasregistry.CreateKeyRequest{
+		KasId:        kasKey.GetKasId(),
+		KeyId:        "second-kas-key",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{
+			Pem: keyCtx,
+		},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			KeyId:      validKeyID1,
+			WrappedKey: keyCtx,
+		},
+	}
+	nonSearchedKey, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReqTwo)
+	s.Require().NoError(err)
+	s.NotNil(nonSearchedKey)
+	kasKeys = append(kasKeys, nonSearchedKey.GetKasKey())
+	s.createValueMapping(nonSearchedKey.GetKasKey().GetKey().GetId(), attrValues[0].GetId())
+
+	validateResp := func(resp *kasregistry.ListKeyMappingsResponse) {
+		s.Require().NoError(err)
+		s.NotNil(resp)
+		s.Len(resp.GetKeyMappings(), 1)
+		s.validateKeyMapping(resp.GetKeyMappings()[0], kasKey, []*policy.Namespace{}, []*policy.Attribute{}, attrValues)
+		s.NotNil(resp.GetPagination())
+		s.Equal(int32(1), resp.GetPagination().GetTotal())
+		s.Equal(int32(0), resp.GetPagination().GetCurrentOffset())
+		s.Equal(int32(0), resp.GetPagination().GetNextOffset())
+	}
+
+	req := kasregistry.ListKeyMappingsRequest{
+		Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+			Key: &kasregistry.KasKeyIdentifier{
+				Identifier: &kasregistry.KasKeyIdentifier_Uri{
+					Uri: kasKey.GetKasUri(),
+				},
+				Kid: kasKey.GetKey().GetKeyId(),
+			},
+		},
+	}
+	mappingsResp, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &req)
+	validateResp(mappingsResp)
+
+	req = kasregistry.ListKeyMappingsRequest{
+		Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+			Key: &kasregistry.KasKeyIdentifier{
+				Identifier: &kasregistry.KasKeyIdentifier_KasId{
+					KasId: kasKey.GetKasId(),
+				},
+				Kid: kasKey.GetKey().GetKeyId(),
+			},
+		},
+	}
+	mappingsResp, err = s.db.PolicyClient.ListKeyMappings(s.ctx, &req)
+	validateResp(mappingsResp)
+
+	// Get the kas name
+	kas, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, &kasregistry.GetKeyAccessServerRequest_KasId{
+		KasId: kasKey.GetKasId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(kas)
+	req = kasregistry.ListKeyMappingsRequest{
+		Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+			Key: &kasregistry.KasKeyIdentifier{
+				Identifier: &kasregistry.KasKeyIdentifier_Name{
+					Name: kas.GetName(),
+				},
+				Kid: kasKey.GetKey().GetKeyId(),
+			},
+		},
+	}
+	mappingsResp, err = s.db.PolicyClient.ListKeyMappings(s.ctx, &req)
+	validateResp(mappingsResp)
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeyMappings_SameKeyId_DifferentKas_Success() {
+	kasKeys := make([]*policy.KasKey, 0)
+	kasIDs := make([]string, 0)
+	namespaces := make([]*policy.Namespace, 0)
+	attributeDefs := make([]*policy.Attribute, 0)
+	attrValues := make([]*policy.Value, 0)
+	defer func() {
+		keyIDs := make([]string, 0)
+		for _, key := range kasKeys {
+			keyIDs = append(keyIDs, key.GetKey().GetId())
+		}
+		s.cleanupKeys(keyIDs, kasIDs)
+		s.cleanupNamespacesAndAttrs(namespaces)
+	}()
+
+	kasKey := s.createKeyAndKas()
+	s.NotNil(kasKey)
+	kasKeys = append(kasKeys, kasKey)
+	kasIDs = append(kasIDs, kasKey.GetKasId())
+	namespaces = append(namespaces, s.createNamespace())
+	attributeDefs = append(attributeDefs, s.createAttrDef(namespaces[0].GetId()))
+	attrValues = append(attrValues, s.createValue(attributeDefs[0].GetId()))
+	s.createValueMapping(kasKey.GetKey().GetId(), attrValues[0].GetId())
+
+	// Create another KAS
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "test_list_mapping_kas_2_" + uuid.NewString(),
+		Uri:  "https://test-list-mappings-2-" + uuid.NewString() + ".opentdf.io",
+	}
+	kasTwo, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kasTwo)
+	kasIDs = append(kasIDs, kasTwo.GetId())
+
+	keyReqTwo := kasregistry.CreateKeyRequest{
+		KasId:        kasTwo.GetId(),
+		KeyId:        kasKey.GetKey().GetKeyId(),
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{
+			Pem: keyCtx,
+		},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			KeyId:      validKeyID1,
+			WrappedKey: keyCtx,
+		},
+	}
+	nonSearchedKey, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReqTwo)
+	s.Require().NoError(err)
+	s.NotNil(nonSearchedKey)
+	kasKeys = append(kasKeys, nonSearchedKey.GetKasKey())
+	s.createValueMapping(nonSearchedKey.GetKasKey().GetKey().GetId(), attrValues[0].GetId())
+
+	listReq := kasregistry.ListKeyMappingsRequest{
+		Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+			Key: &kasregistry.KasKeyIdentifier{
+				Identifier: &kasregistry.KasKeyIdentifier_KasId{
+					KasId: kasKey.GetKasId(),
+				},
+				Kid: kasKey.GetKey().GetKeyId(),
+			},
+		},
+	}
+	mappingsResp, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &listReq)
+	s.Require().NoError(err)
+	s.NotNil(mappingsResp)
+	s.Len(mappingsResp.GetKeyMappings(), 1)
+	s.validateKeyMapping(mappingsResp.GetKeyMappings()[0], kasKey, []*policy.Namespace{}, []*policy.Attribute{}, attrValues)
+	s.NotNil(mappingsResp.GetPagination())
+	s.Equal(int32(1), mappingsResp.GetPagination().GetTotal())
+	s.Equal(int32(0), mappingsResp.GetPagination().GetCurrentOffset())
+	s.Equal(int32(0), mappingsResp.GetPagination().GetNextOffset())
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeyMappings_By_Key_Success_EmptyMappings() {
+	kasKeys := make([]*policy.KasKey, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		keyIDs := make([]string, 0)
+		for _, key := range kasKeys {
+			keyIDs = append(keyIDs, key.GetKey().GetId())
+		}
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+	kasKey := s.createKeyAndKas()
+	kasKeys = append(kasKeys, kasKey)
+	kasIDs = append(kasIDs, kasKey.GetKasId())
+
+	req := kasregistry.ListKeyMappingsRequest{
+		Identifier: &kasregistry.ListKeyMappingsRequest_Id{
+			Id: kasKey.GetKey().GetId(),
+		},
+	}
+	mappingsResp, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(mappingsResp)
+	s.Empty(mappingsResp.GetKeyMappings())
+	s.NotNil(mappingsResp.GetPagination())
+	s.Equal(int32(0), mappingsResp.GetPagination().GetTotal())
+	s.Equal(int32(0), mappingsResp.GetPagination().GetCurrentOffset())
+	s.Equal(int32(0), mappingsResp.GetPagination().GetNextOffset())
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeyMappings_Multiple_Keys_Pagination_Success() {
+	kasKeys := make([]*policy.KasKey, 0)
+	kasIDs := make([]string, 0)
+	namespaces := make([]*policy.Namespace, 0)
+	attributeDefs := make([]*policy.Attribute, 0)
+	attrValues := make([]*policy.Value, 0)
+	defer func() {
+		keyIDs := make([]string, 0)
+		for _, key := range kasKeys {
+			keyIDs = append(keyIDs, key.GetKey().GetId())
+		}
+		s.cleanupKeys(keyIDs, kasIDs)
+		s.cleanupNamespacesAndAttrs(namespaces)
+	}()
+	for i := range 2 {
+		kasKey := s.createKeyAndKas()
+		kasKeys = append(kasKeys, kasKey)
+		kasIDs = append(kasIDs, kasKey.GetKasId())
+		namespaces = append(namespaces, s.createNamespace())
+		attributeDefs = append(attributeDefs, s.createAttrDef(namespaces[i].GetId()))
+		attrValues = append(attrValues, s.createValue(attributeDefs[i].GetId()))
+		s.createNamespaceMapping(kasKey.GetKey().GetId(), namespaces[i].GetId())
+		s.createAttrDefMapping(kasKey.GetKey().GetId(), attributeDefs[i].GetId())
+		s.createValueMapping(kasKey.GetKey().GetId(), attrValues[i].GetId())
+	}
+
+	// List all key mappings without any identifier
+	req := kasregistry.ListKeyMappingsRequest{}
+	mappingsResp, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(mappingsResp)
+	s.Len(mappingsResp.GetKeyMappings(), 2)
+	s.validateKeyMapping(mappingsResp.GetKeyMappings()[0], kasKeys[0], []*policy.Namespace{namespaces[0]}, []*policy.Attribute{attributeDefs[0]}, []*policy.Value{attrValues[0]})
+	s.validateKeyMapping(mappingsResp.GetKeyMappings()[1], kasKeys[1], []*policy.Namespace{namespaces[1]}, []*policy.Attribute{attributeDefs[1]}, []*policy.Value{attrValues[1]})
+	s.NotNil(mappingsResp.GetPagination())
+	s.Equal(int32(2), mappingsResp.GetPagination().GetTotal())
+	s.Equal(int32(0), mappingsResp.GetPagination().GetCurrentOffset())
+	s.Equal(int32(0), mappingsResp.GetPagination().GetNextOffset())
+
+	req = kasregistry.ListKeyMappingsRequest{
+		Pagination: &policy.PageRequest{
+			Limit: 1,
+		},
+	}
+	mappingsResp, err = s.db.PolicyClient.ListKeyMappings(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(mappingsResp)
+	s.Len(mappingsResp.GetKeyMappings(), 1)
+	s.validateKeyMapping(mappingsResp.GetKeyMappings()[0], kasKeys[0], []*policy.Namespace{namespaces[0]}, []*policy.Attribute{attributeDefs[0]}, []*policy.Value{attrValues[0]})
+	s.NotNil(mappingsResp.GetPagination())
+	s.Equal(int32(2), mappingsResp.GetPagination().GetTotal())
+	s.Equal(int32(0), mappingsResp.GetPagination().GetCurrentOffset())
+	s.Equal(int32(1), mappingsResp.GetPagination().GetNextOffset())
+
+	req = kasregistry.ListKeyMappingsRequest{
+		Pagination: &policy.PageRequest{
+			Limit:  1,
+			Offset: mappingsResp.GetPagination().GetNextOffset(),
+		},
+	}
+	mappingsResp, err = s.db.PolicyClient.ListKeyMappings(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(mappingsResp)
+	s.Len(mappingsResp.GetKeyMappings(), 1)
+	s.validateKeyMapping(mappingsResp.GetKeyMappings()[0], kasKeys[1], []*policy.Namespace{namespaces[1]}, []*policy.Attribute{attributeDefs[1]}, []*policy.Value{attrValues[1]})
+	s.NotNil(mappingsResp.GetPagination())
+	s.Equal(int32(2), mappingsResp.GetPagination().GetTotal())
+	s.Equal(int32(1), mappingsResp.GetPagination().GetCurrentOffset())
+	s.Equal(int32(0), mappingsResp.GetPagination().GetNextOffset())
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeyMappings_Multiple_Mixed_Mappings() {
+	kasKeys := make([]*policy.KasKey, 0)
+	kasIDs := make([]string, 0)
+	namespaces := make([]*policy.Namespace, 0)
+	attributeDefs := make([]*policy.Attribute, 0)
+	attrValues := make([]*policy.Value, 0)
+	defer func() {
+		keyIDs := make([]string, 0)
+		for _, key := range kasKeys {
+			keyIDs = append(keyIDs, key.GetKey().GetId())
+		}
+		s.cleanupKeys(keyIDs, kasIDs)
+		s.cleanupNamespacesAndAttrs(namespaces)
+	}()
+
+	for range 3 {
+		kasKey := s.createKeyAndKas()
+		s.NotNil(kasKey)
+		kasKeys = append(kasKeys, kasKey)
+		kasIDs = append(kasIDs, kasKey.GetKasId())
+	}
+	for i := range 2 {
+		namespaces = append(namespaces, s.createNamespace())
+		attributeDefs = append(attributeDefs, s.createAttrDef(namespaces[i].GetId()))
+		attrValues = append(attrValues, s.createValue(attributeDefs[i].GetId()))
+		s.createNamespaceMapping(kasKeys[0].GetKey().GetId(), namespaces[i].GetId())
+		s.createAttrDefMapping(kasKeys[1].GetKey().GetId(), attributeDefs[i].GetId())
+		s.createValueMapping(kasKeys[0].GetKey().GetId(), attrValues[i].GetId())
+	}
+	req := kasregistry.ListKeyMappingsRequest{}
+	mappedResponse, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(mappedResponse)
+	s.Len(mappedResponse.GetKeyMappings(), 2)
+	s.validateKeyMapping(mappedResponse.GetKeyMappings()[0], kasKeys[0], namespaces, []*policy.Attribute{}, attrValues)
+	s.validateKeyMapping(mappedResponse.GetKeyMappings()[1], kasKeys[1], []*policy.Namespace{}, attributeDefs, []*policy.Value{})
+	s.NotNil(mappedResponse.GetPagination())
+	s.Equal(int32(2), mappedResponse.GetPagination().GetTotal())
+	s.Equal(int32(0), mappedResponse.GetPagination().GetCurrentOffset())
+	s.Equal(int32(0), mappedResponse.GetPagination().GetNextOffset())
+}
+
+func (s *KasRegistryKeySuite) Test_UnsafeDeleteKey_InvalidId_Fail() {
+	resp, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, &policy.KasKey{}, &unsafe.UnsafeDeleteKasKeyRequest{
+		Id: "invalid-uuid",
+	})
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().ErrorContains(err, db.ErrUUIDInvalid.Error())
+}
+
+func (s *KasRegistryKeySuite) Test_DeleteKey_WrongKasUriOrKid_Fail() {
+	// Create a key
+	req := kasregistry.CreateKeyRequest{
+		KasId:        s.kasKeys[0].KeyAccessServerID,
+		KeyId:        uuid.NewString(),
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+	}
+	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	defer func() {
+		r := unsafe.UnsafeDeleteKasKeyRequest{
+			Id:     resp.GetKasKey().GetKey().GetId(),
+			KasUri: resp.GetKasKey().GetKasUri(),
+			Kid:    resp.GetKasKey().GetKey().GetKeyId(),
+		}
+		_, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &r)
+		s.Require().NoError(err)
+	}()
+
+	// Attempt to delete with incorrect Kid
+	deleteResp, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{Id: resp.GetKasKey().GetKey().GetId(), KasUri: resp.GetKasKey().GetKasUri(), Kid: "wrong-KID"})
+	s.Require().Error(err)
+	s.Nil(deleteResp)
+	s.Require().ErrorIs(err, db.ErrKIDMismatch)
+
+	deleteResp, err = s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{Id: resp.GetKasKey().GetKey().GetId(), KasUri: "wrong-kas-uri", Kid: resp.GetKasKey().GetKey().GetKeyId()})
+	s.Require().Error(err)
+	s.Nil(deleteResp)
+	s.Require().ErrorIs(err, db.ErrKasURIMismatch)
+}
+
+func (s *KasRegistryKeySuite) Test_DeleteKey_Success() {
+	// Create KAS server
+	req := kasregistry.CreateKeyRequest{
+		KasId:        s.kasKeys[0].KeyAccessServerID,
+		KeyId:        uuid.NewString(),
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+	}
+	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	deleteResp, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{
+		Id:     resp.GetKasKey().GetKey().GetId(),
+		Kid:    resp.GetKasKey().GetKey().GetKeyId(),
+		KasUri: resp.GetKasKey().GetKasUri(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(deleteResp)
+	s.Equal(resp.GetKasKey().GetKey().GetId(), deleteResp.GetId())
+
+	// Verify it's deleted
+	getResp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{
+		Id: resp.GetKasKey().GetKey().GetId(),
+	})
+	s.Require().Error(err)
+	s.Nil(getResp)
+	s.Require().ErrorContains(err, db.ErrNotFound.Error())
+}
+
+func (s *KasRegistryKeySuite) validateKeyMapping(mapping *kasregistry.KeyMapping, expectedKey *policy.KasKey, expectedNamespace []*policy.Namespace, expectedAttrDef []*policy.Attribute, expectedValue []*policy.Value) {
+	s.Equal(expectedKey.GetKey().GetKeyId(), mapping.GetKid())
+	s.Equal(expectedKey.GetKasUri(), mapping.GetKasUri())
+	s.Len(mapping.GetNamespaceMappings(), len(expectedNamespace))
+	s.Len(mapping.GetAttributeMappings(), len(expectedAttrDef))
+	s.Len(mapping.GetValueMappings(), len(expectedValue))
+
+	if len(expectedNamespace) > 0 {
+		for _, ns := range expectedNamespace {
+			found := false
+			for _, nsMapping := range mapping.GetNamespaceMappings() {
+				if nsMapping.GetId() == ns.GetId() && nsMapping.GetFqn() == ns.GetFqn() {
+					found = true
+					break
+				}
+			}
+			s.True(found, "Namespace mapping not found: %s", ns.GetFqn())
+		}
+	}
+	if len(expectedAttrDef) > 0 {
+		for _, attr := range expectedAttrDef {
+			found := false
+			for _, attrMapping := range mapping.GetAttributeMappings() {
+				if attrMapping.GetId() == attr.GetId() && attrMapping.GetFqn() == attr.GetFqn() {
+					found = true
+					break
+				}
+			}
+			s.True(found, "Attribute mapping not found: %s", attr.GetFqn())
+		}
+	}
+	if len(expectedValue) > 0 {
+		for _, val := range expectedValue {
+			found := false
+			for _, valMapping := range mapping.GetValueMappings() {
+				if valMapping.GetId() == val.GetId() && valMapping.GetFqn() == val.GetFqn() {
+					found = true
+					break
+				}
+			}
+			s.True(found, "Value mapping not found: %s", val.GetFqn())
+		}
+	}
+}
+
 func (s *KasRegistryKeySuite) setupKeysForRotate(kasID string) map[string]*policy.KasKey {
 	// Create a key for the KAS
 	keyReq := kasregistry.CreateKeyRequest{
@@ -1297,27 +2069,23 @@ func (s *KasRegistryKeySuite) setupAttributesForRotate(numAttrsToRotate, numAttr
 	}
 }
 
-func (s *KasRegistryKeySuite) cleanupAttrs(attrValueIDs []string, namespaceIDs []string, attributeIDs []string) {
-	for _, id := range attrValueIDs {
-		_, err := s.db.PolicyClient.DeleteAttributeValue(s.ctx, id)
-		s.Require().NoError(err)
-	}
-	for _, id := range namespaceIDs {
-		_, err := s.db.PolicyClient.DeleteNamespace(s.ctx, id)
-		s.Require().NoError(err)
-	}
-	for _, id := range attributeIDs {
-		_, err := s.db.PolicyClient.DeleteAttribute(s.ctx, id)
-		s.Require().NoError(err)
-	}
-}
-
 func (s *KasRegistryKeySuite) cleanupKeys(keyIDs []string, keyAccessServerIDs []string) {
-	err := s.db.PolicyClient.DeleteAllBaseKeys(s.ctx)
+	// use Pgx.Exec because DELETE is only for testing and should not be part of PolicyDBClient
+	_, err := s.db.PolicyClient.Pgx.Exec(s.ctx, "DELETE FROM base_keys")
 	s.Require().NoError(err)
 
 	for _, id := range keyIDs {
-		_, err := s.db.PolicyClient.DeleteKey(s.ctx, id)
+		key, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{
+			Id: id,
+		})
+		s.Require().NoError(err)
+		s.NotNil(key)
+		r := unsafe.UnsafeDeleteKasKeyRequest{
+			Id:     key.GetKey().GetId(),
+			KasUri: key.GetKasUri(),
+			Kid:    key.GetKey().GetKeyId(),
+		}
+		_, err = s.db.PolicyClient.UnsafeDeleteKey(s.ctx, key, &r)
 		s.Require().NoError(err)
 	}
 	for _, id := range keyAccessServerIDs {
@@ -1395,4 +2163,158 @@ func validatePrivatePublicCtx(s *suite.Suite, expectedPrivCtx, expectedPubCtx []
 			Pem: actual.GetKey().GetPublicKeyCtx().GetPem(),
 		},
 	})
+}
+
+// cascade delete will remove namespaces and all associated attributes and values
+func (s *KasRegistryKeySuite) cleanupNamespacesAndAttrsByIDs(namespaceIDs []string) {
+	namespaces := make([]*policy.Namespace, len(namespaceIDs))
+	for i, id := range namespaceIDs {
+		ns, err := s.db.PolicyClient.GetNamespace(s.ctx, id)
+		s.Require().NoError(err)
+		s.NotNil(ns)
+		namespaces[i] = ns
+	}
+	s.cleanupNamespacesAndAttrs(namespaces)
+}
+
+// cascade delete will remove namespaces and all associated attributes and values
+func (s *KasRegistryKeySuite) cleanupNamespacesAndAttrs(namespaces []*policy.Namespace) {
+	for _, ns := range namespaces {
+		_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, ns, ns.GetFqn())
+		s.Require().NoError(err)
+	}
+}
+
+func (s *KasRegistryKeySuite) createNamespace() *policy.Namespace {
+	nsReq := namespaces.CreateNamespaceRequest{
+		Name: "test_namespace_" + uuid.NewString(),
+	}
+	namespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &nsReq)
+	s.Require().NoError(err)
+	s.NotNil(namespace)
+	return namespace
+}
+
+func (s *KasRegistryKeySuite) createAttrDef(namespaceID string) *policy.Attribute {
+	attrDefReq := attributes.CreateAttributeRequest{
+		Name:        "test_attr_def_" + uuid.NewString(),
+		NamespaceId: namespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	}
+	attrDef, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attrDefReq)
+	s.Require().NoError(err)
+	s.NotNil(attrDef)
+	return attrDef
+}
+
+func (s *KasRegistryKeySuite) createValue(definitionID string) *policy.Value {
+	valueReq := attributes.CreateAttributeValueRequest{
+		AttributeId: definitionID,
+		Value:       "test_value_" + uuid.NewString(),
+	}
+	value, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, definitionID, &valueReq)
+	s.Require().NoError(err)
+	s.NotNil(value)
+	return value
+}
+
+func (s *KasRegistryKeySuite) createAttrDefMapping(keyID, attrID string) {
+	attrDefMapping := &attributes.AttributeKey{
+		KeyId:       keyID,
+		AttributeId: attrID,
+	}
+	mapping, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, attrDefMapping)
+	s.Require().NoError(err)
+	s.NotNil(mapping)
+}
+
+func (s *KasRegistryKeySuite) createValueMapping(keyID, valueID string) {
+	valueMapping := &attributes.ValueKey{
+		KeyId:   keyID,
+		ValueId: valueID,
+	}
+	mapping, err := s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, valueMapping)
+	s.Require().NoError(err)
+	s.NotNil(mapping)
+}
+
+func (s *KasRegistryKeySuite) createNamespaceMapping(keyID, namespaceID string) {
+	namespaceMapping := &namespaces.NamespaceKey{
+		KeyId:       keyID,
+		NamespaceId: namespaceID,
+	}
+	mapping, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, namespaceMapping)
+	s.Require().NoError(err)
+	s.NotNil(mapping)
+}
+
+func (s *KasRegistryKeySuite) createKeyAndKas() *policy.KasKey {
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "test_list_mapping_kas_" + uuid.NewString(),
+		Uri:  "https://test-list-mappings-" + uuid.NewString() + ".opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+
+	// Create key
+	keyReq := kasregistry.CreateKeyRequest{
+		KasId:        kas.GetId(),
+		KeyId:        uuid.NewString(),
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{
+			Pem: keyCtx,
+		},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			KeyId:      validKeyID1,
+			WrappedKey: keyCtx,
+		},
+	}
+	keyResp, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
+	s.Require().NoError(err)
+	s.NotNil(keyResp)
+
+	return keyResp.GetKasKey()
+}
+
+// Test_ListKeyMappings_AllParameterCombinations validates that listKeyMappings works correctly
+// with various combinations of optional parameters
+func (s *KasRegistryKeySuite) Test_ListKeyMappings_AllParameterCombinations() {
+	kas1 := s.kasFixtures[0]
+	key1 := s.kasKeys[0]
+
+	// Test 1: No parameters - should return all mappings (may be 0)
+	allMappings, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &kasregistry.ListKeyMappingsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(allMappings)
+	// No assertion on count - fixtures may not have any mappings
+
+	// Test 2: Filter by key with KAS URI
+	mappingsByKey, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &kasregistry.ListKeyMappingsRequest{
+		Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+			Key: &kasregistry.KasKeyIdentifier{
+				Identifier: &kasregistry.KasKeyIdentifier_Uri{
+					Uri: kas1.URI,
+				},
+				Kid: key1.KeyID,
+			},
+		},
+	})
+	s.Require().NoError(err, "Should successfully query with KAS URI and key ID")
+	s.NotNil(mappingsByKey)
+
+	// Test 3: Filter by key with KAS ID (validates alternative params path)
+	mappingsByKeyID, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &kasregistry.ListKeyMappingsRequest{
+		Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+			Key: &kasregistry.KasKeyIdentifier{
+				Identifier: &kasregistry.KasKeyIdentifier_KasId{
+					KasId: key1.KeyAccessServerID,
+				},
+				Kid: key1.KeyID,
+			},
+		},
+	})
+	s.Require().NoError(err, "Should successfully query with KAS ID and key ID")
+	s.NotNil(mappingsByKeyID)
 }

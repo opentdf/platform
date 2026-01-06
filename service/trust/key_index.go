@@ -2,12 +2,21 @@ package trust
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
 // KeyType represents the format in which a key can be exported
 type KeyType int
+
+// Key Options to pass into ListKeysWith
+// when filtering keys
+type ListKeyOptions struct {
+	LegacyOnly bool
+}
 
 const (
 	// KeyTypeJWK represents a key in JWK format
@@ -32,7 +41,7 @@ type KeyDetails interface {
 	ID() KeyIdentifier
 
 	// Algorithm returns the algorithm used by the key
-	Algorithm() string
+	Algorithm() ocrypto.KeyType
 
 	// IsLegacy returns true if this is a legacy key that should only be used for decryption
 	IsLegacy() bool
@@ -56,6 +65,8 @@ type KeyDetails interface {
 
 // KeyIndex provides methods to locate keys by various criteria
 type KeyIndex interface {
+	fmt.Stringer
+	slog.LogValuer
 	// FindKeyByAlgorithm returns a key for the specified algorithm
 	// If includeLegacy is true, legacy keys will be included in the search
 	FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (KeyDetails, error)
@@ -65,4 +76,7 @@ type KeyIndex interface {
 
 	// ListKeys returns all available keys
 	ListKeys(ctx context.Context) ([]KeyDetails, error)
+
+	// List keys with options
+	ListKeysWith(ctx context.Context, opts ListKeyOptions) ([]KeyDetails, error)
 }

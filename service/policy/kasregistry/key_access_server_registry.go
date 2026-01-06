@@ -502,3 +502,17 @@ func (s KeyAccessServerRegistry) GetBaseKey(ctx context.Context, _ *connect.Requ
 	resp.BaseKey = key
 	return connect.NewResponse(resp), nil
 }
+
+func (s KeyAccessServerRegistry) ListKeyMappings(ctx context.Context, r *connect.Request[kasr.ListKeyMappingsRequest]) (*connect.Response[kasr.ListKeyMappingsResponse], error) {
+	if r.Msg.GetIdentifier() != nil {
+		s.logger.DebugContext(ctx, "listing key mappings with identifier", slog.Any("identifier", r.Msg.GetIdentifier()))
+	} else {
+		s.logger.DebugContext(ctx, "listing key mappings without identifier")
+	}
+
+	resp, err := s.dbClient.ListKeyMappings(ctx, r.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed)
+	}
+	return connect.NewResponse(resp), nil
+}

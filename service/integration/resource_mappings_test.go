@@ -8,6 +8,8 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -33,14 +35,14 @@ func (s *ResourceMappingsSuite) SetupSuite() {
 	s.ctx = context.Background()
 	c := *Config
 	c.DB.Schema = "test_opentdf_resource_mappings"
-	s.db = fixtures.NewDBInterface(c)
+	s.db = fixtures.NewDBInterface(s.ctx, c)
 	s.f = fixtures.NewFixture(s.db)
-	s.f.Provision()
+	s.f.Provision(s.ctx)
 }
 
 func (s *ResourceMappingsSuite) TearDownSuite() {
 	slog.Info("tearing down db.ResourceMappings test suite")
-	s.f.TearDown()
+	s.f.TearDown(s.ctx)
 }
 
 /*
@@ -134,6 +136,137 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_WithNamespaceId_S
 	s.Equal(scenarioDotComRmGroup.ID, list[0].GetId())
 	s.Equal(scenarioDotComRmGroup.NamespaceID, list[0].GetNamespaceId())
 	s.Equal(scenarioDotComRmGroup.Name, list[0].GetName())
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_MultipleNamespaces_Succeeds() {
+	createdNS := make([]*policy.Namespace, 2)
+	ns1, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-rmgroup-ns1.com",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(ns1)
+	createdNS[0] = ns1
+
+	ns2, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-rmgroup-ns2.com",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(ns2)
+	createdNS[1] = ns2
+
+	// Cleanup function
+	defer func() {
+		// Delete namespaces (this will cascade delete resource mapping groups)
+		for _, ns := range createdNS {
+			_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, ns, ns.GetFqn())
+			s.Require().NoError(err)
+		}
+	}()
+
+	// Create one resource mapping group in each namespace
+	rmGroup1, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, &resourcemapping.CreateResourceMappingGroupRequest{
+		NamespaceId: ns1.GetId(),
+		Name:        "test-group-1",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(rmGroup1)
+
+	rmGroup2, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, &resourcemapping.CreateResourceMappingGroupRequest{
+		NamespaceId: ns2.GetId(),
+		Name:        "test-group-2",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(rmGroup2)
+
+	// Test 1: List all resource mapping groups without namespace filter
+	allGroupsResp, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx, &resourcemapping.ListResourceMappingGroupsRequest{})
+	s.Require().NoError(err)
+	s.Require().NotNil(allGroupsResp)
+	allGroups := allGroupsResp.GetResourceMappingGroups()
+
+	// Check pagination object
+	pagination := allGroupsResp.GetPagination()
+	s.Require().NotNil(pagination)
+	s.Require().GreaterOrEqual(pagination.GetTotal(), int32(2), "should have at least 2 groups")
+	s.Require().Equal(int32(0), pagination.GetCurrentOffset())
+	s.Require().Equal(int32(0), pagination.GetNextOffset())
+
+	// Verify both created groups are in the response
+	found1, found2 := false, false
+	for _, group := range allGroups {
+		if group.GetId() == rmGroup1.GetId() {
+			found1 = true
+			s.Require().Equal(ns1.GetId(), group.GetNamespaceId())
+			s.Require().Equal("test-group-1", group.GetName())
+		}
+		if group.GetId() == rmGroup2.GetId() {
+			found2 = true
+			s.Require().Equal(ns2.GetId(), group.GetNamespaceId())
+			s.Require().Equal("test-group-2", group.GetName())
+		}
+	}
+	s.Require().True(found1, "expected to find resource mapping group 1")
+	s.Require().True(found2, "expected to find resource mapping group 2")
+
+	// Test 2: List resource mapping groups for namespace 1 only
+	ns1GroupsResp, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx, &resourcemapping.ListResourceMappingGroupsRequest{
+		NamespaceId: ns1.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(ns1GroupsResp)
+	ns1Groups := ns1GroupsResp.GetResourceMappingGroups()
+
+	// Check pagination object for namespace 1 filter
+	ns1Pagination := ns1GroupsResp.GetPagination()
+	s.Require().NotNil(ns1Pagination)
+	s.Require().Equal(int32(1), ns1Pagination.GetTotal(), "should have exactly 1 group for namespace 1")
+	s.Require().Equal(int32(0), ns1Pagination.GetCurrentOffset())
+	s.Require().Equal(int32(0), ns1Pagination.GetNextOffset())
+
+	// Should only contain group from namespace 1
+	found1, found2 = false, false
+	for _, group := range ns1Groups {
+		if group.GetId() == rmGroup1.GetId() {
+			found1 = true
+			s.Require().Equal(ns1.GetId(), group.GetNamespaceId())
+			s.Require().Equal("test-group-1", group.GetName())
+		}
+		if group.GetId() == rmGroup2.GetId() {
+			found2 = true
+		}
+	}
+	s.Require().True(found1, "expected to find resource mapping group 1 when filtering by namespace 1")
+	s.Require().False(found2, "should not find resource mapping group 2 when filtering by namespace 1")
+
+	// Test 3: List resource mapping groups for namespace 2 only
+	ns2GroupsResp, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx, &resourcemapping.ListResourceMappingGroupsRequest{
+		NamespaceId: ns2.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(ns2GroupsResp)
+	ns2Groups := ns2GroupsResp.GetResourceMappingGroups()
+
+	// Check pagination object for namespace 2 filter
+	ns2Pagination := ns2GroupsResp.GetPagination()
+	s.Require().NotNil(ns2Pagination)
+	s.Require().Equal(int32(1), ns2Pagination.GetTotal(), "should have exactly 1 group for namespace 2")
+	s.Require().Equal(int32(0), ns2Pagination.GetCurrentOffset())
+	s.Require().Equal(int32(0), ns2Pagination.GetNextOffset())
+
+	// Should only contain group from namespace 2
+	found1, found2 = false, false
+	for _, group := range ns2Groups {
+		if group.GetId() == rmGroup1.GetId() {
+			found1 = true
+		}
+		if group.GetId() == rmGroup2.GetId() {
+			found2 = true
+			s.Require().Equal(ns2.GetId(), group.GetNamespaceId())
+			s.Require().Equal("test-group-2", group.GetName())
+		}
+	}
+	s.Require().False(found1, "should not find resource mapping group 1 when filtering by namespace 2")
+	s.Require().True(found2, "expected to find resource mapping group 2 when filtering by namespace 2")
 }
 
 func (s *ResourceMappingsSuite) Test_GetResourceMappingGroup() {
@@ -557,6 +690,186 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings_Offset_Succeeds() {
 	for i, rm := range offsetListed {
 		s.True(proto.Equal(rm, listed[i+offset]))
 	}
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappings_WithMultipleGroups_Succeeds() {
+	// Create two namespaces for testing
+	createdNS := make([]*policy.Namespace, 2)
+	ns1, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-rmmapping-ns1.com",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(ns1)
+	createdNS[0] = ns1
+
+	ns2, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-rmmapping-ns2.com",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(ns2)
+	createdNS[1] = ns2
+
+	// Cleanup function
+	defer func() {
+		// Delete namespaces (this will cascade delete resource mapping groups and mappings)
+		for _, ns := range createdNS {
+			_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, ns, ns.GetFqn())
+			s.Require().NoError(err)
+		}
+	}()
+
+	// Create attributes and attribute values for each namespace
+	attr1, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: ns1.GetId(),
+		Name:        "test-attr1",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(attr1)
+
+	attr2, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: ns2.GetId(),
+		Name:        "test-attr2",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(attr2)
+
+	attrVal1, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attr1.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "test-value1",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(attrVal1)
+
+	attrVal2, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attr2.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "test-value2",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(attrVal2)
+
+	// Create one resource mapping group in each namespace
+	rmGroup1, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, &resourcemapping.CreateResourceMappingGroupRequest{
+		NamespaceId: ns1.GetId(),
+		Name:        "test-mapping-group-1",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(rmGroup1)
+
+	rmGroup2, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, &resourcemapping.CreateResourceMappingGroupRequest{
+		NamespaceId: ns2.GetId(),
+		Name:        "test-mapping-group-2",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(rmGroup2)
+
+	// Create one resource mapping in each group
+	mapping1, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrVal1.GetId(),
+		GroupId:          rmGroup1.GetId(),
+		Terms:            []string{"mapping1-term1", "mapping1-term2"},
+		Metadata:         &common.MetadataMutable{},
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(mapping1)
+
+	mapping2, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrVal2.GetId(),
+		GroupId:          rmGroup2.GetId(),
+		Terms:            []string{"mapping2-term1", "mapping2-term2"},
+		Metadata:         &common.MetadataMutable{},
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(mapping2)
+
+	// Test: List all resource mappings without filters
+	allMappingsResp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, &resourcemapping.ListResourceMappingsRequest{})
+	s.Require().NoError(err)
+	s.Require().NotNil(allMappingsResp)
+	allMappings := allMappingsResp.GetResourceMappings()
+
+	// Check pagination object
+	pagination := allMappingsResp.GetPagination()
+	s.Require().NotNil(pagination)
+	s.Require().GreaterOrEqual(pagination.GetTotal(), int32(2), "should have at least 2 mappings")
+	s.Require().Equal(int32(0), pagination.GetCurrentOffset())
+	s.Require().Equal(int32(0), pagination.GetNextOffset())
+
+	// Verify both created mappings are in the response
+	found1, found2 := false, false
+	for _, mapping := range allMappings {
+		if mapping.GetId() == mapping1.GetId() {
+			found1 = true
+			s.Require().Equal(rmGroup1.GetId(), mapping.GetGroup().GetId())
+			s.Require().Equal(attrVal1.GetId(), mapping.GetAttributeValue().GetId())
+			s.Require().Equal([]string{"mapping1-term1", "mapping1-term2"}, mapping.GetTerms())
+		}
+		if mapping.GetId() == mapping2.GetId() {
+			found2 = true
+			s.Require().Equal(rmGroup2.GetId(), mapping.GetGroup().GetId())
+			s.Require().Equal(attrVal2.GetId(), mapping.GetAttributeValue().GetId())
+			s.Require().Equal([]string{"mapping2-term1", "mapping2-term2"}, mapping.GetTerms())
+		}
+	}
+	s.Require().True(found1, "expected to find resource mapping 1")
+	s.Require().True(found2, "expected to find resource mapping 2")
+
+	// Test: List resource mappings filtered by group 1
+	group1MappingsResp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, &resourcemapping.ListResourceMappingsRequest{
+		GroupId: rmGroup1.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(group1MappingsResp)
+	group1Mappings := group1MappingsResp.GetResourceMappings()
+
+	// Check pagination object for group 1 filter
+	group1Pagination := group1MappingsResp.GetPagination()
+	s.Require().NotNil(group1Pagination)
+	s.Require().Equal(int32(1), group1Pagination.GetTotal(), "should have exactly 1 mapping for group 1")
+	s.Require().Equal(int32(0), group1Pagination.GetCurrentOffset())
+	s.Require().Equal(int32(0), group1Pagination.GetNextOffset())
+
+	// Should only contain mapping from group 1
+	found1, found2 = false, false
+	for _, mapping := range group1Mappings {
+		if mapping.GetId() == mapping1.GetId() {
+			found1 = true
+			s.Require().Equal(rmGroup1.GetId(), mapping.GetGroup().GetId())
+		}
+		if mapping.GetId() == mapping2.GetId() {
+			found2 = true
+		}
+	}
+	s.Require().True(found1, "expected to find resource mapping 1 when filtering by group 1")
+	s.Require().False(found2, "should not find resource mapping 2 when filtering by group 1")
+
+	// Test: List resource mappings filtered by group 2
+	group2MappingsResp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, &resourcemapping.ListResourceMappingsRequest{
+		GroupId: rmGroup2.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(group2MappingsResp)
+	group2Mappings := group2MappingsResp.GetResourceMappings()
+
+	// Check pagination object for group 2 filter
+	group2Pagination := group2MappingsResp.GetPagination()
+	s.Require().NotNil(group2Pagination)
+	s.Require().Equal(int32(1), group2Pagination.GetTotal(), "should have exactly 1 mapping for group 2")
+	s.Require().Equal(int32(0), group2Pagination.GetCurrentOffset())
+	s.Require().Equal(int32(0), group2Pagination.GetNextOffset())
+
+	// Should only contain mapping from group 2
+	found1, found2 = false, false
+	for _, mapping := range group2Mappings {
+		if mapping.GetId() == mapping1.GetId() {
+			found1 = true
+		}
+		if mapping.GetId() == mapping2.GetId() {
+			found2 = true
+			s.Require().Equal(rmGroup2.GetId(), mapping.GetGroup().GetId())
+		}
+	}
+	s.Require().False(found1, "should not find resource mapping 1 when filtering by group 2")
+	s.Require().True(found2, "expected to find resource mapping 2 when filtering by group 2")
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappings_ByGroupId_Succeeds() {

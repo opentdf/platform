@@ -28,6 +28,8 @@ server:
       default: #"role:standard"
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)
       claim: # realm_access.roles
+      # Claim the represents the idP client ID 
+      client_id_claim: # azp
       ## Maps the external role to the opentdf role
       ## Note: left side is used in the policy, right side is the external role
       map:
@@ -73,12 +75,16 @@ server:
       - OPTIONS
     # List of headers that are allowed in a request
     allowedheaders:
-      - ACCEPT
+      - Accept
+      - Accept-Encoding
       - Authorization
       - Connect-Protocol-Version
+      - Content-Length
       - Content-Type
+      - Dpop
       - X-CSRF-Token
-      - X-Request-ID
+      - X-Requested-With
+      - X-Rewrap-Additional-Context
     # List of response headers that browsers are allowed to access
     exposedheaders:
       - Link

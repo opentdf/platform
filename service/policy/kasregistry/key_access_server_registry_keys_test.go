@@ -13,11 +13,9 @@ const (
 	invalidUUID                        = "invalid-uuid"
 	validKeyID                         = "a-key"
 	errMessageID                       = "id"
-	errInvalidUUID                     = "invalid uuid"
 	errMessageIdentifier               = "identifier"
 	errMessageKeyID                    = "key_id"
 	errMessageKasID                    = "kas_id"
-	errMessageKeyStatus                = "key_status"
 	errMessageKeyKid                   = "key.kid"
 	errMessageKeyName                  = "key.name"
 	errMessageKeyURI                   = "key.uri"
@@ -27,15 +25,11 @@ const (
 	errMessagePrivateKeyCtx            = "The wrapped_key is required"            // This seems to be a generic message, CEL rules are more specific
 	errMessageProviderConfigID         = "provider_config_id_optionally_required" // Updated for CEL rule ID
 	errMessagePrivateKeyCtxKeyID       = "private_key_ctx.key_id"
-	errMessagePrivateKeyCtxWrappedKey  = "private_key_ctx.wrapped_key"
 	errMessageKeyIdentifier            = "identifier"
 	invalidKeyMode                     = -1
 	invalidAlgo                        = -1
-	invalidKeyStatus                   = -1
-	invalidPageLimit                   = 5001
 	validKeyCtx                        = "eyJrZXkiOiJ2YWx1ZSJ9Cg=="
 	errPrivateKeyCtxMessageID          = "private_key_ctx_optionally_required"
-	errKeystatusUpdateMessageID        = "key_status_cannot_update_to_unspecified"
 	errMetadataUpdateBehaviorMessageID = "metadata_update_behavior"
 	errMessageNewKeyKid                = "new_key.key_id"
 	errMessageNewKeyAlgo               = "new_key.algorithm"
@@ -92,6 +86,9 @@ var (
 		Metadata:         validMetadata,
 		ProviderConfigId: validUUID, // Required for this mode
 	}
+
+	legacyTrue  = true
+	legacyFalse = false
 )
 
 func Test_GetKeyAccessServer_Keys(t *testing.T) {
@@ -677,6 +674,24 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			expectError:  true,
 			errorMessage: "private_key_ctx must not be set",
 		},
+		{
+			name: "Valid request - legacy key",
+			req: &kasregistry.CreateKeyRequest{
+				KasId:        validUUID,
+				KeyId:        validKeyID,
+				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+				PublicKeyCtx: &policy.PublicKeyCtx{
+					Pem: validKeyCtx,
+				},
+				PrivateKeyCtx: &policy.PrivateKeyCtx{
+					KeyId:      validKeyID,
+					WrappedKey: validKeyCtx,
+				},
+				Legacy: true,
+			},
+			expectError: false,
+		},
 	}
 
 	v := getValidator() // Get the validator instance (assuming this is defined elsewhere)
@@ -854,6 +869,20 @@ func Test_ListKeyAccessServer_Keys(t *testing.T) {
 		{
 			name:        "Valid Request (no filters)",
 			req:         &kasregistry.ListKeysRequest{},
+			expectError: false,
+		},
+		{
+			name: "Valid Request (with legacy filter true)",
+			req: &kasregistry.ListKeysRequest{
+				Legacy: &legacyTrue,
+			},
+			expectError: false,
+		},
+		{
+			name: "Valid Request (with legacy filter false)",
+			req: &kasregistry.ListKeysRequest{
+				Legacy: &legacyFalse,
+			},
 			expectError: false,
 		},
 	}
@@ -1274,7 +1303,9 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 		{
 			name: "Invalid New Key - KEY_MODE_PUBLIC_KEY_ONLY - WrappedKey present",
 			req: &kasregistry.RotateKeyRequest{
-				ActiveKey: &kasregistry.RotateKeyRequest_Id{Id: validUUID},
+				ActiveKey: &kasregistry.RotateKeyRequest_Id{
+					Id: validUUID,
+				},
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
 					KeyId:        validKeyID,
 					Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
@@ -1294,7 +1325,9 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 		{
 			name: "Invalid New Key - KEY_MODE_PUBLIC_KEY_ONLY - ProviderConfigId present",
 			req: &kasregistry.RotateKeyRequest{
-				ActiveKey: &kasregistry.RotateKeyRequest_Id{Id: validUUID},
+				ActiveKey: &kasregistry.RotateKeyRequest_Id{
+					Id: validUUID,
+				},
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
 					KeyId:        validKeyID,
 					Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
@@ -1421,6 +1454,156 @@ func Test_SetDefault_Keys(t *testing.T) {
 				}
 			} else {
 				require.NoError(t, err, "Expected no error for test case: %s", tc.name)
+			}
+		})
+	}
+}
+
+func Test_ListKeyMappings(t *testing.T) {
+	testCases := []struct {
+		name         string
+		req          *kasregistry.ListKeyMappingsRequest
+		expectError  bool
+		errorMessage string
+	}{
+		{
+			name:        "No identifier",
+			req:         &kasregistry.ListKeyMappingsRequest{},
+			expectError: false,
+		},
+		{
+			name: "Valid ID",
+			req: &kasregistry.ListKeyMappingsRequest{
+				Identifier: &kasregistry.ListKeyMappingsRequest_Id{
+					Id: validUUID,
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Invalid ID",
+			req: &kasregistry.ListKeyMappingsRequest{
+				Identifier: &kasregistry.ListKeyMappingsRequest_Id{
+					Id: invalidUUID,
+				},
+			},
+			expectError:  true,
+			errorMessage: "id",
+		},
+		{
+			name: "Valid Key Identifier with kas_id",
+			req: &kasregistry.ListKeyMappingsRequest{
+				Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+					Key: &kasregistry.KasKeyIdentifier{
+						Identifier: &kasregistry.KasKeyIdentifier_KasId{
+							KasId: validUUID,
+						},
+						Kid: validKeyID,
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Invalid Key Identifier with invalid kas_id",
+			req: &kasregistry.ListKeyMappingsRequest{
+				Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+					Key: &kasregistry.KasKeyIdentifier{
+						Identifier: &kasregistry.KasKeyIdentifier_KasId{
+							KasId: invalidUUID,
+						},
+						Kid: validKeyID,
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "kas_id",
+		},
+		{
+			name: "Invalid Key Identifier with empty kid",
+			req: &kasregistry.ListKeyMappingsRequest{
+				Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+					Key: &kasregistry.KasKeyIdentifier{
+						Identifier: &kasregistry.KasKeyIdentifier_KasId{
+							KasId: validUUID,
+						},
+						Kid: "",
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "kid",
+		},
+		{
+			name: "Valid Key Identifier with name",
+			req: &kasregistry.ListKeyMappingsRequest{
+				Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+					Key: &kasregistry.KasKeyIdentifier{
+						Identifier: &kasregistry.KasKeyIdentifier_Name{
+							Name: "valid-name",
+						},
+						Kid: validKeyID,
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Invalid Key Identifier with empty name",
+			req: &kasregistry.ListKeyMappingsRequest{
+				Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+					Key: &kasregistry.KasKeyIdentifier{
+						Identifier: &kasregistry.KasKeyIdentifier_Name{
+							Name: "",
+						},
+						Kid: validKeyID,
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "name",
+		},
+		{
+			name: "Valid Key Identifier with uri",
+			req: &kasregistry.ListKeyMappingsRequest{
+				Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+					Key: &kasregistry.KasKeyIdentifier{
+						Identifier: &kasregistry.KasKeyIdentifier_Uri{
+							Uri: "https://example.com",
+						},
+						Kid: validKeyID,
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Invalid Key Identifier with invalid uri",
+			req: &kasregistry.ListKeyMappingsRequest{
+				Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+					Key: &kasregistry.KasKeyIdentifier{
+						Identifier: &kasregistry.KasKeyIdentifier_Uri{
+							Uri: "invalid-uri",
+						},
+						Kid: validKeyID,
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "uri",
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errorMessage)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}

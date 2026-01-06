@@ -10,7 +10,6 @@ var (
 	errWriteFailed      = errors.New("tdf: io.writer fail to write all bytes")
 	errInvalidKasInfo   = errors.New("tdf: kas information is missing")
 	errKasPubKeyMissing = errors.New("tdf: kas public key is missing")
-	errRewrapForbidden  = errors.New("tdf: rewrap request 403")
 
 	// Exposed tamper detection errors, Catch all possible tamper errors with errors.Is(ErrTampered)
 	ErrTampered                = errors.New("tamper detected")
@@ -21,6 +20,7 @@ var (
 	ErrTDFPayloadInvalidOffset = fmt.Errorf("[%w] sdk.Reader.ReadAt: negative offset", ErrTampered)
 	ErrRewrapBadRequest        = fmt.Errorf("[%w] tdf: rewrap request 400", ErrTampered)
 	ErrRootSignatureFailure    = fmt.Errorf("[%w] tdf: issue verifying root signature", ErrTampered)
+	ErrRewrapForbidden         = errors.New("tdf: rewrap request 403")
 )
 
 // Custom error struct for Assertion errors

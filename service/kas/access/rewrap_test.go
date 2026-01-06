@@ -1,6 +1,7 @@
 package access
 
 import (
+	"bytes"
 	"context"
 	"crypto/rsa"
 	"crypto/x509"
@@ -11,17 +12,22 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"testing"
+	"time"
 
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/service/logger"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/trust"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,8 +45,10 @@ type fakeKeyDetails struct {
 }
 
 func (f *fakeKeyDetails) ID() trust.KeyIdentifier { return f.id }
-func (f *fakeKeyDetails) Algorithm() string       { return f.algorithm }
-func (f *fakeKeyDetails) IsLegacy() bool          { return f.legacy }
+func (f *fakeKeyDetails) Algorithm() ocrypto.KeyType {
+	return ocrypto.KeyType(f.algorithm)
+}
+func (f *fakeKeyDetails) IsLegacy() bool { return f.legacy }
 func (f *fakeKeyDetails) ExportPrivateKey(_ context.Context) (*trust.PrivateKey, error) {
 	return &trust.PrivateKey{}, nil
 }
@@ -59,6 +67,16 @@ type fakeKeyIndex struct {
 	err  error
 }
 
+func (f *fakeKeyIndex) String() string {
+	return "fakeKeyIndex"
+}
+
+func (f *fakeKeyIndex) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("Indexer", f.String()),
+	)
+}
+
 func (f *fakeKeyIndex) FindKeyByAlgorithm(context.Context, string, bool) (trust.KeyDetails, error) {
 	return nil, errors.New("not implemented")
 }
@@ -66,7 +84,59 @@ func (f *fakeKeyIndex) FindKeyByAlgorithm(context.Context, string, bool) (trust.
 func (f *fakeKeyIndex) FindKeyByID(context.Context, trust.KeyIdentifier) (trust.KeyDetails, error) {
 	return nil, errors.New("not implemented")
 }
-func (f *fakeKeyIndex) ListKeys(context.Context) ([]trust.KeyDetails, error) { return f.keys, f.err }
+
+func (f *fakeKeyIndex) ListKeys(context.Context) ([]trust.KeyDetails, error) {
+	return f.keys, f.err
+}
+
+func (f *fakeKeyIndex) ListKeysWith(_ context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
+	if opts.LegacyOnly {
+		var legacyKeys []trust.KeyDetails
+		for _, key := range f.keys {
+			if key.IsLegacy() {
+				legacyKeys = append(legacyKeys, key)
+			}
+		}
+		return legacyKeys, f.err
+	}
+	return f.keys, f.err
+}
+
+func newBufferLogger() (*logger.Logger, *bytes.Buffer) {
+	buf := &bytes.Buffer{}
+	handler := slog.NewJSONHandler(buf, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})
+	return &logger.Logger{
+		Logger: slog.New(handler),
+	}, buf
+}
+
+func extractLastLogRecord(t *testing.T, buf *bytes.Buffer) map[string]any {
+	t.Helper()
+	data := strings.TrimSpace(buf.String())
+	require.NotEmpty(t, data)
+	lines := strings.Split(data, "\n")
+	var record map[string]any
+	require.NoError(t, json.Unmarshal([]byte(lines[len(lines)-1]), &record))
+	return record
+}
+
+func toStringSlice(t *testing.T, raw any) []string {
+	t.Helper()
+	if raw == nil {
+		return nil
+	}
+	interfaceSlice, ok := raw.([]any)
+	require.True(t, ok)
+	result := make([]string, 0, len(interfaceSlice))
+	for _, v := range interfaceSlice {
+		str, strOK := v.(string)
+		require.True(t, strOK)
+		result = append(result, str)
+	}
+	return result
+}
 
 func TestListLegacyKeys_KeyringPopulated(t *testing.T) {
 	testLogger := logger.CreateTestLogger()
@@ -128,6 +198,26 @@ func TestListLegacyKeys_KeyIndexError(t *testing.T) {
 	}
 	kids := p.listLegacyKeys(t.Context())
 	assert.Empty(t, kids)
+}
+
+func TestProviderApplyConfig_DefaultAndWarning(t *testing.T) {
+	log, buf := newBufferLogger()
+	p := &Provider{
+		Logger: log,
+	}
+
+	security := &config.SecurityConfig{}
+	p.ApplyConfig(KASConfig{}, security)
+	require.Equal(t, config.DefaultUnsafeClockSkew, p.acceptableSkew())
+	require.Empty(t, strings.TrimSpace(buf.String()))
+
+	buf.Reset()
+
+	custom := 2 * time.Minute
+	security.Unsafe.ClockSkew = custom
+	p.ApplyConfig(KASConfig{}, security)
+	require.Equal(t, custom, p.acceptableSkew())
+	require.Contains(t, buf.String(), "configured SRT acceptable skew exceeds default")
 }
 
 const (
@@ -455,15 +545,17 @@ func TestParseAndVerifyRequest(t *testing.T) {
 			md := metadata.New(map[string]string{"token": bearer})
 			ctx = metadata.NewIncomingContext(ctx, md)
 
-			logger := logger.CreateTestLogger()
+			testLogger := logger.CreateTestLogger()
+			p := &Provider{
+				Logger: testLogger,
+			}
 
-			verified, _, err := extractSRTBody(
+			verified, _, err := p.extractSRTBody(
 				ctx,
 				http.Header{},
 				&kaspb.RewrapRequest{
 					SignedRequestToken: string(tt.body),
 				},
-				*logger,
 			)
 			if tt.goodDPoP {
 				require.NoError(t, err, "failed to parse srt=[%s], tok=[%s]", tt.body, bearer)
@@ -471,7 +563,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 				require.NotNil(t, verified.GetClientPublicKey(), "unable to load public key")
 
 				for _, req := range verified.GetRequests() {
-					err := verifyPolicyBinding(t.Context(), []byte(req.GetPolicy().GetBody()), req.GetKeyAccessObjects()[0], []byte(plainKey), *logger)
+					err := verifyPolicyBinding(t.Context(), []byte(req.GetPolicy().GetBody()), req.GetKeyAccessObjects()[0], []byte(plainKey), *testLogger)
 					if !tt.shouldError {
 						require.NoError(t, err, "failed to verify policy body=[%v]", tt.body)
 					} else {
@@ -497,16 +589,77 @@ func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 	md := metadata.New(map[string]string{"token": string(jwtWrongKey(t))})
 	ctx = metadata.NewIncomingContext(ctx, md)
 
-	verified, _, err := extractSRTBody(
+	badLogger := logger.CreateTestLogger()
+	p := &Provider{
+		Logger: badLogger,
+	}
+	verified, _, err := p.extractSRTBody(
 		ctx,
 		http.Header{},
 		&kaspb.RewrapRequest{
 			SignedRequestToken: string(makeRewrapBody(t, fauxPolicyBytes(t), false)),
 		},
-		*logger.CreateTestLogger(),
 	)
 	require.Error(t, err)
 	require.Nil(t, verified)
+}
+
+func TestValidateSRTClaims_LogsFutureIAT(t *testing.T) {
+	log, buf := newBufferLogger()
+	p := &Provider{Logger: log}
+
+	token := jwt.New()
+	future := time.Now().Add(2 * time.Minute)
+	require.NoError(t, token.Set(jwt.IssuedAtKey, future))
+
+	err := p.validateSRTClaims(t.Context(), token, false)
+	require.Error(t, err)
+
+	record := extractLastLogRecord(t, buf)
+	require.Equal(t, "srt validation failure", record["msg"])
+	require.NotNil(t, record["iat"])
+	require.NotNil(t, record["iat_delta"])
+	require.Equal(t, "unable to validate or parse token", record["failure_reason"])
+
+	claims := toStringSlice(t, record["validation_failure_claims"])
+	assert.Contains(t, claims, "iat")
+}
+
+func TestValidateSRTClaims_LogsExpired(t *testing.T) {
+	log, buf := newBufferLogger()
+	p := &Provider{Logger: log}
+
+	token := jwt.New()
+	past := time.Now().Add(-2 * time.Minute)
+	require.NoError(t, token.Set(jwt.ExpirationKey, past))
+
+	err := p.validateSRTClaims(t.Context(), token, false)
+	require.Error(t, err)
+
+	record := extractLastLogRecord(t, buf)
+	require.Equal(t, "srt validation failure", record["msg"])
+	require.NotNil(t, record["exp"])
+	require.NotNil(t, record["exp_delta"])
+	require.Equal(t, "unable to validate or parse token", record["failure_reason"])
+
+	claims := toStringSlice(t, record["validation_failure_claims"])
+	assert.Contains(t, claims, "exp")
+}
+
+func TestValidateSRTClaims_CustomSkewAllowsFutureIAT(t *testing.T) {
+	log, _ := newBufferLogger()
+	p := &Provider{Logger: log}
+	custom := 3 * time.Minute
+	security := &config.SecurityConfig{}
+	security.Unsafe.ClockSkew = custom
+	p.ApplyConfig(KASConfig{}, security)
+
+	token := jwt.New()
+	future := time.Now().Add(2 * time.Minute)
+	require.NoError(t, token.Set(jwt.IssuedAtKey, future))
+
+	err := p.validateSRTClaims(t.Context(), token, false)
+	require.NoError(t, err)
 }
 
 func Test_GetEntityInfo_When_Missing_MD_Expect_Error(t *testing.T) {
@@ -532,4 +685,865 @@ func Test_GetEntityInfo_When_Authorization_MD_Invalid_Expect_Error(t *testing.T)
 	_, err := getEntityInfo(ctx, logger.CreateTestLogger())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing")
+}
+
+func TestGetAdditionalRewrapContext(t *testing.T) {
+	tests := []struct {
+		name           string
+		header         http.Header
+		expectedResult *AdditionalRewrapContext
+		expectedError  error
+		errorContains  string
+	}{
+		{
+			name:   "nil header",
+			header: nil,
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name:   "empty header",
+			header: make(http.Header),
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "header without obligations",
+			header: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "valid single watermark obligation",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark"]}}`))},
+			},
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{"https://demo.com/obl/test/value/watermark"},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "valid multiple obligations",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark","https://demo.com/obl/test/value/geofence"]}}`))},
+			},
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "mixed valid and invalid fqns",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark","https://example.com/attr/Classification/value/restricted","https://virtru.com/obl/test/value/audit"]}}`))},
+			},
+			expectedResult: nil,
+			expectedError:  identifier.ErrInvalidFQNFormat,
+			errorContains:  "https://example.com/attr/Classification/value/restricted",
+		},
+		{
+			name: "empty obligations array",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {"fulfillableFQNs": []}}`))},
+			},
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "no fulfillableFQNs array",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {}}`))},
+			},
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "no obligations array",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{}`))},
+			},
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "obligations with empty values filtered out",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark","","https://demo.com/obl/test/value/geofence"]}}`))},
+			},
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "obligations with whitespace trimmed",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {"fulfillableFQNs": [" https://demo.com/obl/test/value/watermark "," https://demo.com/obl/test/value/geofence "]}}`))},
+			},
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "invalid FQN format obligation",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {"fulfillableFQNs": ["invalid-obligation-format"]}}`))},
+			},
+			expectedResult: nil,
+			expectedError:  identifier.ErrInvalidFQNFormat,
+			errorContains:  "invalid-obligation-format",
+		},
+		{
+			name: "mixed invalid FQN format obligation",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark","invalid-obligation-format"]}}`))},
+			},
+			expectedResult: nil,
+			expectedError:  identifier.ErrInvalidFQNFormat,
+			errorContains:  "invalid-obligation-format",
+		},
+		{
+			name: "invalid base64 encoding",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{`{"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark","invalid-obligation-format"]}}`},
+			},
+			expectedResult: nil,
+			expectedError:  ErrDecodingRewrapContext,
+		},
+		{
+			name: "invalid JSON format",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{invalid json}`))},
+			},
+			expectedResult: nil,
+			expectedError:  ErrUnmarshalingRewrapContext,
+		},
+		{
+			name: "empty base64 string",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{""},
+			},
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{},
+				},
+			},
+			expectedError: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := getAdditionalRewrapContext(tt.header)
+
+			if tt.expectedError != nil {
+				require.Error(t, err)
+				require.ErrorIs(t, err, tt.expectedError)
+				if tt.errorContains != "" {
+					require.ErrorContains(t, err, tt.errorContains)
+				}
+				require.Nil(t, result)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedResult, result)
+			}
+		})
+	}
+}
+
+func TestCreateKAOMetadata(t *testing.T) {
+	tests := []struct {
+		name        string
+		obligations []string
+		expected    map[string]*structpb.Value
+	}{
+		{
+			name:        "single obligation",
+			obligations: []string{"https://demo.com/obl/test/value/watermark"},
+			expected: map[string]*structpb.Value{
+				requiredObligationsHeader: structpb.NewListValue(&structpb.ListValue{
+					Values: []*structpb.Value{
+						structpb.NewStringValue("https://demo.com/obl/test/value/watermark"),
+					},
+				}),
+			},
+		},
+		{
+			name: "multiple obligations",
+			obligations: []string{
+				"https://demo.com/obl/test/value/watermark",
+				"https://demo.com/obl/test/value/geofence",
+				"https://example.com/obl/test/value/mfa",
+			},
+			expected: map[string]*structpb.Value{
+				requiredObligationsHeader: structpb.NewListValue(&structpb.ListValue{
+					Values: []*structpb.Value{
+						structpb.NewStringValue("https://demo.com/obl/test/value/watermark"),
+						structpb.NewStringValue("https://demo.com/obl/test/value/geofence"),
+						structpb.NewStringValue("https://example.com/obl/test/value/mfa"),
+					},
+				}),
+			},
+		},
+		{
+			name:        "empty obligations list",
+			obligations: []string{},
+			expected: map[string]*structpb.Value{
+				requiredObligationsHeader: structpb.NewListValue(&structpb.ListValue{
+					Values: []*structpb.Value{},
+				}),
+			},
+		},
+		{
+			name:        "nil obligations list",
+			obligations: nil,
+			expected: map[string]*structpb.Value{
+				requiredObligationsHeader: structpb.NewListValue(&structpb.ListValue{
+					Values: []*structpb.Value{},
+				}),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := createKAOMetadata(tt.obligations)
+
+			// Verify the result has the correct structure
+			require.NotNil(t, result)
+			require.Contains(t, result, requiredObligationsHeader)
+
+			// Get the list value from both result and expected
+			resultList := result[requiredObligationsHeader].GetListValue()
+			expectedList := tt.expected[requiredObligationsHeader].GetListValue()
+
+			require.NotNil(t, resultList)
+			require.NotNil(t, expectedList)
+
+			// Verify the number of values matches
+			require.Len(t, resultList.GetValues(), len(expectedList.GetValues()))
+
+			// Verify each obligation value
+			for i, expectedValue := range expectedList.GetValues() {
+				actualValue := resultList.GetValues()[i]
+				require.Equal(t, expectedValue.GetStringValue(), actualValue.GetStringValue())
+			}
+		})
+	}
+}
+
+func TestAddResultsToResponse(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    policyKAOResults
+		expected *kaspb.RewrapResponse
+	}{
+		{
+			name: "single policy with successful KAO",
+			input: policyKAOResults{
+				"policy-1": {
+					"kao-1": kaoResult{
+						ID:                  "kao-1",
+						Encapped:            []byte("encrypted-key-data"),
+						RequiredObligations: []string{"https://demo.com/obl/test/value/watermark"},
+					},
+				},
+			},
+			expected: &kaspb.RewrapResponse{
+				Responses: []*kaspb.PolicyRewrapResult{
+					{
+						PolicyId: "policy-1",
+						Results: []*kaspb.KeyAccessRewrapResult{
+							{
+								KeyAccessObjectId: "kao-1",
+								Status:            kPermitStatus,
+								Result:            &kaspb.KeyAccessRewrapResult_KasWrappedKey{KasWrappedKey: []byte("encrypted-key-data")},
+								Metadata: map[string]*structpb.Value{
+									requiredObligationsHeader: structpb.NewListValue(&structpb.ListValue{
+										Values: []*structpb.Value{
+											structpb.NewStringValue("https://demo.com/obl/test/value/watermark"),
+										},
+									}),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "single policy with failed KAO and obligations",
+			input: policyKAOResults{
+				"policy-1": {
+					"kao-1": kaoResult{
+						ID:                  "kao-1",
+						Error:               errors.New("access denied"),
+						RequiredObligations: []string{"https://demo.com/obl/test/value/watermark"},
+					},
+				},
+			},
+			expected: &kaspb.RewrapResponse{
+				Responses: []*kaspb.PolicyRewrapResult{
+					{
+						PolicyId: "policy-1",
+						Results: []*kaspb.KeyAccessRewrapResult{
+							{
+								KeyAccessObjectId: "kao-1",
+								Status:            kFailedStatus,
+								Result:            &kaspb.KeyAccessRewrapResult_Error{Error: "access denied"},
+								Metadata: map[string]*structpb.Value{
+									requiredObligationsHeader: structpb.NewListValue(&structpb.ListValue{
+										Values: []*structpb.Value{
+											structpb.NewStringValue("https://demo.com/obl/test/value/watermark"),
+										},
+									}),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "single policy with failed KAO and no obligations",
+			input: policyKAOResults{
+				"policy-1": {
+					"kao-1": kaoResult{
+						ID:    "kao-1",
+						Error: errors.New("invalid key"),
+					},
+				},
+			},
+			expected: &kaspb.RewrapResponse{
+				Responses: []*kaspb.PolicyRewrapResult{
+					{
+						PolicyId: "policy-1",
+						Results: []*kaspb.KeyAccessRewrapResult{
+							{
+								KeyAccessObjectId: "kao-1",
+								Status:            kFailedStatus,
+								Result:            &kaspb.KeyAccessRewrapResult_Error{Error: "invalid key"},
+								Metadata: map[string]*structpb.Value{
+									requiredObligationsHeader: structpb.NewListValue(&structpb.ListValue{
+										Values: []*structpb.Value{},
+									}),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "single policy with unprocessed KAO",
+			input: policyKAOResults{
+				"policy-1": {
+					"kao-1": kaoResult{
+						ID: "kao-1",
+						// No Error and no Encapped data
+					},
+				},
+			},
+			expected: &kaspb.RewrapResponse{
+				Responses: []*kaspb.PolicyRewrapResult{
+					{
+						PolicyId: "policy-1",
+						Results: []*kaspb.KeyAccessRewrapResult{
+							{
+								KeyAccessObjectId: "kao-1",
+								Status:            kFailedStatus,
+								Result:            &kaspb.KeyAccessRewrapResult_Error{Error: "kao not processed by kas"},
+								Metadata: map[string]*structpb.Value{
+									requiredObligationsHeader: structpb.NewListValue(&structpb.ListValue{
+										Values: []*structpb.Value{},
+									}),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "multiple policies with mixed results",
+			input: policyKAOResults{
+				"policy-1": {
+					"kao-1": kaoResult{
+						ID:       "kao-1",
+						Encapped: []byte("encrypted-key-1"),
+					},
+					"kao-2": kaoResult{
+						ID:                  "kao-2",
+						Error:               errors.New("forbidden"),
+						RequiredObligations: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+					},
+				},
+				"policy-2": {
+					"kao-3": kaoResult{
+						ID:       "kao-3",
+						Encapped: []byte("encrypted-key-3"),
+					},
+				},
+			},
+			expected: &kaspb.RewrapResponse{
+				Responses: []*kaspb.PolicyRewrapResult{
+					{
+						PolicyId: "policy-1",
+						Results: []*kaspb.KeyAccessRewrapResult{
+							{
+								KeyAccessObjectId: "kao-1",
+								Status:            kPermitStatus,
+								Result:            &kaspb.KeyAccessRewrapResult_KasWrappedKey{KasWrappedKey: []byte("encrypted-key-1")},
+								Metadata: map[string]*structpb.Value{
+									requiredObligationsHeader: structpb.NewListValue(&structpb.ListValue{
+										Values: []*structpb.Value{},
+									}),
+								},
+							},
+							{
+								KeyAccessObjectId: "kao-2",
+								Status:            kFailedStatus,
+								Result:            &kaspb.KeyAccessRewrapResult_Error{Error: "forbidden"},
+								Metadata: map[string]*structpb.Value{
+									requiredObligationsHeader: structpb.NewListValue(&structpb.ListValue{
+										Values: []*structpb.Value{
+											structpb.NewStringValue("https://demo.com/obl/test/value/watermark"),
+											structpb.NewStringValue("https://demo.com/obl/test/value/geofence"),
+										},
+									}),
+								},
+							},
+						},
+					},
+					{
+						PolicyId: "policy-2",
+						Results: []*kaspb.KeyAccessRewrapResult{
+							{
+								KeyAccessObjectId: "kao-3",
+								Status:            kPermitStatus,
+								Result:            &kaspb.KeyAccessRewrapResult_KasWrappedKey{KasWrappedKey: []byte("encrypted-key-3")},
+								Metadata: map[string]*structpb.Value{
+									requiredObligationsHeader: structpb.NewListValue(&structpb.ListValue{
+										Values: []*structpb.Value{},
+									}),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:  "empty input",
+			input: policyKAOResults{},
+			expected: &kaspb.RewrapResponse{
+				Responses: []*kaspb.PolicyRewrapResult{},
+			},
+		},
+		{
+			name: "policy with empty KAO map",
+			input: policyKAOResults{
+				"policy-1": {},
+			},
+			expected: &kaspb.RewrapResponse{
+				Responses: []*kaspb.PolicyRewrapResult{
+					{
+						PolicyId: "policy-1",
+						Results:  []*kaspb.KeyAccessRewrapResult{},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			response := &kaspb.RewrapResponse{}
+			addResultsToResponse(response, tt.input)
+
+			// Verify the number of policy responses
+			require.Len(t, response.GetResponses(), len(tt.expected.GetResponses()))
+
+			// Sort both responses by PolicyId for consistent comparison
+			actualPolicies := make(map[string]*kaspb.PolicyRewrapResult)
+			for _, policyResult := range response.GetResponses() {
+				actualPolicies[policyResult.GetPolicyId()] = policyResult
+			}
+
+			expectedPolicies := make(map[string]*kaspb.PolicyRewrapResult)
+			for _, policyResult := range tt.expected.GetResponses() {
+				expectedPolicies[policyResult.GetPolicyId()] = policyResult
+			}
+
+			// Verify each policy response
+			for policyID, expectedPolicy := range expectedPolicies {
+				actualPolicy, exists := actualPolicies[policyID]
+				require.True(t, exists, "Expected policy %s not found in response", policyID)
+				require.Equal(t, expectedPolicy.GetPolicyId(), actualPolicy.GetPolicyId())
+
+				// Verify the number of KAO results
+				require.Len(t, actualPolicy.GetResults(), len(expectedPolicy.GetResults()))
+
+				// Sort KAO results by KeyAccessObjectId for consistent comparison
+				actualKAOs := make(map[string]*kaspb.KeyAccessRewrapResult)
+				for _, kaoResult := range actualPolicy.GetResults() {
+					actualKAOs[kaoResult.GetKeyAccessObjectId()] = kaoResult
+				}
+
+				expectedKAOs := make(map[string]*kaspb.KeyAccessRewrapResult)
+				for _, kaoResult := range expectedPolicy.GetResults() {
+					expectedKAOs[kaoResult.GetKeyAccessObjectId()] = kaoResult
+				}
+
+				// Verify each KAO result
+				for kaoID, expectedKAO := range expectedKAOs {
+					actualKAO, actualKAOExists := actualKAOs[kaoID]
+					require.True(t, actualKAOExists, "Expected KAO %s not found in policy %s", kaoID, policyID)
+
+					require.Equal(t, expectedKAO.GetKeyAccessObjectId(), actualKAO.GetKeyAccessObjectId())
+					require.Equal(t, expectedKAO.GetStatus(), actualKAO.GetStatus())
+
+					// Verify result content
+					switch expectedResult := expectedKAO.GetResult().(type) {
+					case *kaspb.KeyAccessRewrapResult_KasWrappedKey:
+						actualResult, ok := actualKAO.GetResult().(*kaspb.KeyAccessRewrapResult_KasWrappedKey)
+						require.True(t, ok, "Expected KasWrappedKey result for KAO %s", kaoID)
+						require.Equal(t, expectedResult.KasWrappedKey, actualResult.KasWrappedKey)
+					case *kaspb.KeyAccessRewrapResult_Error:
+						actualResult, ok := actualKAO.GetResult().(*kaspb.KeyAccessRewrapResult_Error)
+						require.True(t, ok, "Expected Error result for KAO %s", kaoID)
+						require.Equal(t, expectedResult.Error, actualResult.Error)
+					}
+
+					// Verify metadata if expected
+					if expectedKAO.GetMetadata() != nil {
+						require.NotNil(t, actualKAO.GetMetadata(), "Expected metadata for KAO %s", kaoID)
+
+						// Verify required obligations header
+						if expectedObligations, oblExists := expectedKAO.GetMetadata()[requiredObligationsHeader]; oblExists {
+							actualObligations, actualExists := actualKAO.GetMetadata()[requiredObligationsHeader]
+							require.True(t, actualExists, "Expected obligations header in metadata for KAO %s", kaoID)
+
+							expectedList := expectedObligations.GetListValue()
+							actualList := actualObligations.GetListValue()
+							require.NotNil(t, expectedList)
+							require.NotNil(t, actualList)
+							require.Len(t, actualList.GetValues(), len(expectedList.GetValues()))
+
+							for i, expectedValue := range expectedList.GetValues() {
+								actualValue := actualList.GetValues()[i]
+								require.Equal(t, expectedValue.GetStringValue(), actualValue.GetStringValue())
+							}
+						}
+					} else if actualKAO.GetMetadata() != nil {
+						// If no metadata is expected, actualKAO.Metadata should be nil or empty
+						require.Empty(t, actualKAO.GetMetadata(), "Unexpected metadata for KAO %s", kaoID)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestVerifyRewrapRequests(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+
+	// Valid policy for testing
+	validPolicy := &Policy{
+		UUID: uuid.New(),
+		Body: PolicyBody{
+			DataAttributes: []Attribute{
+				{
+					URI:  "https://example.com/attr/test",
+					Name: "test",
+				},
+			},
+		},
+	}
+	validPolicyJSON, _ := json.Marshal(validPolicy)
+	validPolicyB64 := base64.StdEncoding.EncodeToString(validPolicyJSON)
+
+	tests := []struct {
+		name          string
+		setupProvider func() *Provider
+		request       *kaspb.UnsignedRewrapRequest_WithPolicyRequest
+		expectError   bool
+		errorMessage  string
+	}{
+		{
+			name: "nil request should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request:      nil,
+			expectError:  true,
+			errorMessage: "request is nil",
+		},
+		{
+			name: "nil policy should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: nil, // nil policy
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao",
+						KeyAccessObject: &kaspb.KeyAccess{
+							KeyType: "wrapped",
+							Kid:     "test-kid",
+						},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "policy is nil", // The function returns "policy is nil" for nil policy
+		},
+		{
+			name: "nil policy body should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+					Id:   "test-policy",
+					Body: "", // empty body will cause JSON decode to fail
+				},
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao",
+						KeyAccessObject: &kaspb.KeyAccess{
+							KeyType: "wrapped",
+							Kid:     "test-kid",
+						},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "unexpected end of JSON input", // Actual error from JSON decode
+		},
+		{
+			name: "nil key access object should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger:       testLogger,
+					KeyDelegator: &trust.DelegatingKeyService{}, // Use minimal implementation
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+					Id:   "test-policy",
+					Body: validPolicyB64,
+				},
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao",
+						KeyAccessObject:   nil, // nil key access object
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "no valid KAOs", // Actual error message
+		},
+		{
+			name: "empty key access objects should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+					Id:   "test-policy",
+					Body: validPolicyB64,
+				},
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{}, // empty slice
+			},
+			expectError:  true,
+			errorMessage: "no valid KAOs", // Actual error message
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := tt.setupProvider()
+			ctx := t.Context()
+
+			// Test that the function doesn't panic and returns appropriate errors
+			var err error
+			var policy *Policy
+			var results map[string]kaoResult
+
+			assert.NotPanics(t, func() {
+				policy, results, err = provider.verifyRewrapRequests(ctx, tt.request)
+			}, "Function should not panic: "+tt.name)
+
+			if tt.expectError {
+				require.Error(t, err, "Expected error but got none: "+tt.name)
+				assert.Contains(t, err.Error(), tt.errorMessage, "Error message should contain expected text: "+tt.errorMessage)
+			} else {
+				require.NoError(t, err, "Unexpected error: "+tt.name)
+				assert.NotNil(t, policy, "Policy should not be nil on success")
+				assert.NotNil(t, results, "Results should not be nil on success")
+			}
+		})
+	}
+}
+
+func TestVerifyNanoRewrapRequests(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+
+	tests := []struct {
+		name                string
+		setupProvider       func() *Provider
+		request             *kaspb.UnsignedRewrapRequest_WithPolicyRequest
+		expectError         bool
+		errorMessage        string
+		checkResultErrors   bool // Whether to check for errors in the results map
+		expectedResultCount int  // Expected number of results when checkResultErrors is true
+	}{
+		{
+			name: "nil request should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request:             nil,
+			expectError:         true,
+			errorMessage:        "request is nil",
+			checkResultErrors:   false,
+			expectedResultCount: 0,
+		},
+		{
+			name: "multiple KAOs should return error",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+					Id:   "test-policy",
+					Body: "test-body",
+				},
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao-1",
+						KeyAccessObject: &kaspb.KeyAccess{
+							Header: []byte("fake-header-1"),
+						},
+					},
+					{
+						KeyAccessObjectId: "test-kao-2",
+						KeyAccessObject: &kaspb.KeyAccess{
+							Header: []byte("fake-header-2"),
+						},
+					},
+				},
+			},
+			expectError:         false, // Error goes into results, not returned directly
+			errorMessage:        "NanoTDFs should not have multiple KAOs per Policy",
+			checkResultErrors:   true, // Check for errors in the results map
+			expectedResultCount: 2,    // Should have two KAO results with errors
+		},
+		{
+			name: "invalid NanoTDF header should fail gracefully",
+			setupProvider: func() *Provider {
+				return &Provider{
+					Logger: testLogger,
+				}
+			},
+			request: &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+					Id:   "test-policy",
+					Body: "test-body",
+				},
+				KeyAccessObjects: []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+					{
+						KeyAccessObjectId: "test-kao",
+						KeyAccessObject: &kaspb.KeyAccess{
+							Header: []byte("invalid-nano-header"), // Invalid header that will fail parsing
+						},
+					},
+				},
+			},
+			expectError:         false, // Function returns nil, results, nil (fails gracefully)
+			errorMessage:        "",
+			checkResultErrors:   false,
+			expectedResultCount: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := tt.setupProvider()
+			ctx := t.Context()
+
+			// Test that the function doesn't panic and returns appropriate errors
+			var err error
+			var results map[string]kaoResult
+
+			assert.NotPanics(t, func() {
+				_, results, err = provider.verifyNanoRewrapRequests(ctx, tt.request)
+			}, "Function should not panic: "+tt.name)
+
+			if tt.expectError {
+				require.Error(t, err, "Expected error but got none: "+tt.name)
+				assert.Contains(t, err.Error(), tt.errorMessage, "Error message should contain expected text: "+tt.errorMessage)
+			} else {
+				assert.NotNil(t, results, "Results should not be nil")
+				if tt.checkResultErrors {
+					// Check for errors stored in results map
+					assert.Len(t, results, tt.expectedResultCount, "Should have expected number of KAO results with errors")
+					for _, result := range results {
+						require.Error(t, result.Error, "KAO result should contain error")
+						assert.Contains(t, result.Error.Error(), tt.errorMessage, "Error should contain expected message")
+					}
+				}
+			}
+		})
+	}
 }

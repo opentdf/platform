@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -13,15 +14,17 @@ import (
 type IDPTokenExchangeTokenSource struct {
 	IDPAccessTokenSource
 	oauth.TokenExchangeInfo
+	logger *slog.Logger
 }
 
-func NewIDPTokenExchangeTokenSource(exchangeInfo oauth.TokenExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string, key *ocrypto.RsaKeyPair) (*IDPTokenExchangeTokenSource, error) {
+func NewIDPTokenExchangeTokenSource(logger *slog.Logger, exchangeInfo oauth.TokenExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string, key *ocrypto.RsaKeyPair) (*IDPTokenExchangeTokenSource, error) {
 	idpSource, err := NewIDPAccessTokenSource(credentials, idpTokenEndpoint, scopes, key)
 	if err != nil {
 		return nil, err
 	}
 
 	exchangeSource := IDPTokenExchangeTokenSource{
+		logger:               logger,
 		IDPAccessTokenSource: *idpSource,
 		TokenExchangeInfo:    exchangeInfo,
 	}
@@ -30,19 +33,19 @@ func NewIDPTokenExchangeTokenSource(exchangeInfo oauth.TokenExchangeInfo, creden
 }
 
 func (i *IDPTokenExchangeTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error) {
-	i.IDPAccessTokenSource.tokenMutex.Lock()
-	defer i.IDPAccessTokenSource.tokenMutex.Unlock()
+	i.tokenMutex.Lock()
+	defer i.tokenMutex.Unlock()
 
-	if i.IDPAccessTokenSource.token == nil || i.IDPAccessTokenSource.token.Expired() {
+	if i.token == nil || i.token.Expired() {
 		tok, err := oauth.DoTokenExchange(ctx, client, i.idpTokenEndpoint.String(), i.scopes, i.credentials, i.TokenExchangeInfo, i.dpopKey)
 		if err != nil {
 			return "", err
 		}
 
-		i.IDPAccessTokenSource.token = tok
+		i.token = tok
 	}
 
-	return auth.AccessToken(i.IDPAccessTokenSource.token.AccessToken), nil
+	return auth.AccessToken(i.token.AccessToken), nil
 }
 
 func (i *IDPTokenExchangeTokenSource) MakeToken(keyMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {

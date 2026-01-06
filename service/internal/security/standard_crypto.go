@@ -149,13 +149,13 @@ func loadKey(k KeyPairInfo) (any, error) {
 		}
 	}
 	switch k.Algorithm {
-	case AlgorithmECP256R1:
+	case AlgorithmECP256R1, AlgorithmECP384R1, AlgorithmECP521R1:
 		return StandardECCrypto{
 			KeyPairInfo:      k,
 			ecPrivateKeyPem:  string(privatePEM),
 			ecCertificatePEM: string(certPEM),
 		}, nil
-	case AlgorithmRSA2048:
+	case AlgorithmRSA2048, AlgorithmRSA4096:
 		asymDecryption, err := ocrypto.NewAsymDecryption(string(privatePEM))
 		if err != nil {
 			return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
@@ -236,7 +236,7 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 		}
 		k := StandardECCrypto{
 			KeyPairInfo: KeyPairInfo{
-				Algorithm:   AlgorithmRSA2048,
+				Algorithm:   AlgorithmECP256R1,
 				KID:         id,
 				Private:     kasInfo.PrivateKeyPath,
 				Certificate: kasInfo.PublicKeyPath,
@@ -430,16 +430,17 @@ func NanoVersionSalt() []byte {
 }
 
 // ECDecrypt uses hybrid ECIES to decrypt the data.
-func (s *StandardCrypto) ECDecrypt(ctx context.Context, keyID string, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
+func (s *StandardCrypto) ECDecrypt(ctx context.Context, keyID string, ephemeralPublicKey, ciphertext []byte) (ocrypto.ProtectedKey, error) {
 	unwrappedKey, err := s.Decrypt(ctx, trust.KeyIdentifier(keyID), ciphertext, ephemeralPublicKey)
 	if err != nil {
 		return nil, err
 	}
-	return unwrappedKey.Export(nil)
+
+	return unwrappedKey, nil
 }
 
 // Decrypt implements the SecurityProvider Decrypt method
-func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
+func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ocrypto.ProtectedKey, error) {
 	kid := string(keyID)
 	ska, ok := s.keysByID[kid]
 	if !ok {
@@ -488,8 +489,5 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 		return nil, fmt.Errorf("unsupported key type for key ID [%s]", kid)
 	}
 
-	return &InProcessAESKey{
-		rawKey: rawKey,
-		logger: slog.Default(),
-	}, nil
+	return ocrypto.NewAESProtectedKey(rawKey)
 }

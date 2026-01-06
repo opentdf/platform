@@ -3,31 +3,17 @@ package trust
 import (
 	"context"
 	"crypto/elliptic"
+
+	"github.com/opentdf/platform/lib/ocrypto"
 )
 
-type Encapsulator interface {
-	// Encrypt wraps a secret key with the encapsulation key
-	Encrypt(data []byte) ([]byte, error)
-
-	// PublicKeyInPemFormat Returns public key in pem format, or the empty string if not present
-	PublicKeyInPemFormat() (string, error)
-
-	// For EC schemes, this method returns the public part of the ephemeral key.
-	// Otherwise, it returns nil.
-	EphemeralKey() []byte
-}
-
-// ProtectedKey represents a decrypted key with operations that can be performed on it
-type ProtectedKey interface {
-	// VerifyBinding checks if the policy binding matches the given policy data
-	VerifyBinding(ctx context.Context, policy, binding []byte) error
-
-	// Export returns the raw key data, optionally encrypting it with the provided encryptor
-	Export(encryptor Encapsulator) ([]byte, error)
-
-	// Used to decrypt encrypted policies and metadata
-	DecryptAESGCM(iv []byte, body []byte, tagSize int) ([]byte, error)
-}
+// Type aliases for backward compatibility - these interfaces are now defined in lib/ocrypto
+type (
+	// Deprecated: use ocrypto.Encapsulator
+	Encapsulator = ocrypto.Encapsulator
+	// Deprecated: use ocrypto.ProtectedKey
+	ProtectedKey = ocrypto.ProtectedKey
+)
 
 // KeyManager combines key lookup functionality with cryptographic operations
 type KeyManager interface {
@@ -59,7 +45,14 @@ type KeyService interface {
 }
 
 // NamedKeyManagerFactory pairs a KeyManagerFactory with its intended registration name.
+// Use NamedKeyManagerCtxFactory instead.
 type NamedKeyManagerFactory struct {
 	Name    string
 	Factory KeyManagerFactory
+}
+
+// NamedKeyManagerCtxFactory pairs a KeyManagerFactoryCtx with its intended registration name.
+type NamedKeyManagerCtxFactory struct {
+	Name    string
+	Factory KeyManagerFactoryCtx
 }

@@ -3,6 +3,7 @@ package sdk
 import (
 	"crypto/rsa"
 	"crypto/tls"
+	"log/slog"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -43,6 +44,8 @@ type config struct {
 	entityResolutionConn               *ConnectRPCConnection
 	collectionStore                    *collectionStore
 	shouldValidatePlatformConnectivity bool
+	fulfillableObligationFQNs          []string
+	logger                             *slog.Logger
 }
 
 // Options specific to TDF protocol features
@@ -228,5 +231,19 @@ func WithExtraClientOptions(opts ...connect.ClientOption) Option {
 func WithNoKIDInNano() Option {
 	return func(c *config) {
 		c.nanoFeatures.noKID = true
+	}
+}
+
+// WithFulfillableObligationFQNs sets the list of obligation FQNs that can
+func WithFulfillableObligationFQNs(fqns []string) Option {
+	return func(c *config) {
+		c.fulfillableObligationFQNs = fqns
+	}
+}
+
+// WithLogger returns an Option that sets a custom slog.Logger for all SDK logging.
+func WithLogger(logger *slog.Logger) Option {
+	return func(c *config) {
+		c.logger = logger
 	}
 }

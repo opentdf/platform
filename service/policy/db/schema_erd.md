@@ -54,6 +54,11 @@ erDiagram
         uuid value_id FK,UK "Foreign key to the attribute value"
     }
 
+    attribute_namespace_certificates {
+        uuid certificate_id PK,FK "Foreign key to the certificate"
+        uuid namespace_id PK,FK "Foreign key to the namespace"
+    }
+
     attribute_namespace_key_access_grants {
         uuid key_access_server_id PK,FK "Foreign key to the KAS registration"
         uuid namespace_id PK,FK "Foreign key to the namespace of the KAS grant"
@@ -98,6 +103,14 @@ erDiagram
         uuid key_access_server_key_id FK 
     }
 
+    certificates {
+        timestamp_with_time_zone created_at "Timestamp when the certificate was created"
+        uuid id PK "Unique identifier for the certificate"
+        jsonb metadata "Optional metadata for the certificate"
+        text pem "PEM format - Base64-encoded DER certificate (not PEM; no headers/footers)"
+        timestamp_with_time_zone updated_at "Timestamp when the certificate was last updated"
+    }
+
     goose_db_version {
         integer id PK 
         boolean is_applied 
@@ -114,6 +127,7 @@ erDiagram
         character_varying key_id UK 
         integer key_mode 
         integer key_status 
+        boolean legacy 
         jsonb metadata 
         jsonb private_key_ctx 
         uuid provider_config_id FK 
@@ -132,12 +146,51 @@ erDiagram
         character_varying uri UK "URI of the KAS"
     }
 
+    obligation_definitions {
+        timestamp_with_time_zone created_at 
+        uuid id PK 
+        jsonb metadata 
+        character_varying name UK 
+        uuid namespace_id FK,UK 
+        timestamp_with_time_zone updated_at 
+    }
+
+    obligation_fulfillers {
+        jsonb conditionals 
+        timestamp_with_time_zone created_at 
+        uuid id PK 
+        jsonb metadata 
+        uuid obligation_value_id FK 
+        timestamp_with_time_zone updated_at 
+    }
+
+    obligation_triggers {
+        uuid action_id FK,UK 
+        uuid attribute_value_id FK,UK 
+        text client_id "Holds the client_id associated with this trigger."
+        timestamp_with_time_zone created_at 
+        uuid id PK 
+        jsonb metadata 
+        uuid obligation_value_id FK,UK 
+        timestamp_with_time_zone updated_at 
+    }
+
+    obligation_values_standard {
+        timestamp_with_time_zone created_at 
+        uuid id PK 
+        jsonb metadata 
+        uuid obligation_definition_id FK,UK 
+        timestamp_with_time_zone updated_at 
+        character_varying value UK 
+    }
+
     provider_config {
         jsonb config "Configuration details for the key provider"
         timestamp_with_time_zone created_at "Timestamp when the provider configuration was created"
         uuid id PK "Unique identifier for the provider configuration"
+        character_varying manager UK "Type of key manager (e.g., opentdf.io/basic, aws, azure, gcp)"
         jsonb metadata "Additional metadata for the provider configuration"
-        character_varying provider_name UK "Unique name for the key provider."
+        character_varying provider_name UK "Name of the key provider instance."
         timestamp_with_time_zone updated_at "Timestamp when the provider configuration was last updated"
     }
 
@@ -223,6 +276,7 @@ erDiagram
         timestamp_with_time_zone updated_at "Timestamp when the key was last updated"
     }
 
+    obligation_triggers }o--|| actions : "action_id"
     registered_resource_action_attribute_values }o--|| actions : "action_id"
     subject_mapping_actions }o--|| actions : "action_id"
     asym_key }o--|| provider_config : "provider_config_id"
@@ -235,21 +289,28 @@ erDiagram
     attribute_values }o--|| attribute_definitions : "attribute_definition_id"
     attribute_fqns }o--|| attribute_namespaces : "namespace_id"
     attribute_fqns }o--|| attribute_values : "value_id"
+    attribute_namespace_certificates }o--|| attribute_namespaces : "namespace_id"
+    attribute_namespace_certificates }o--|| certificates : "certificate_id"
     attribute_namespace_key_access_grants }o--|| attribute_namespaces : "namespace_id"
     attribute_namespace_key_access_grants }o--|| key_access_servers : "key_access_server_id"
     attribute_namespace_public_key_map }o--|| attribute_namespaces : "namespace_id"
     attribute_namespace_public_key_map }o--|| key_access_server_keys : "key_access_server_key_id"
+    obligation_definitions }o--|| attribute_namespaces : "namespace_id"
     resource_mapping_groups }o--|| attribute_namespaces : "namespace_id"
     attribute_value_key_access_grants }o--|| attribute_values : "attribute_value_id"
     attribute_value_key_access_grants }o--|| key_access_servers : "key_access_server_id"
     attribute_value_public_key_map }o--|| attribute_values : "value_id"
     attribute_value_public_key_map }o--|| key_access_server_keys : "key_access_server_key_id"
+    obligation_triggers }o--|| attribute_values : "attribute_value_id"
     registered_resource_action_attribute_values }o--|| attribute_values : "attribute_value_id"
     resource_mappings }o--|| attribute_values : "attribute_value_id"
     subject_mappings }o--|| attribute_values : "attribute_value_id"
     base_keys }o--|| key_access_server_keys : "key_access_server_key_id"
     key_access_server_keys }o--|| key_access_servers : "key_access_server_id"
     key_access_server_keys }o--|| provider_config : "provider_config_id"
+    obligation_values_standard }o--|| obligation_definitions : "obligation_definition_id"
+    obligation_fulfillers }o--|| obligation_values_standard : "obligation_value_id"
+    obligation_triggers }o--|| obligation_values_standard : "obligation_value_id"
     sym_key }o--|| provider_config : "provider_config_id"
     registered_resource_action_attribute_values }o--|| registered_resource_values : "registered_resource_value_id"
     registered_resource_values }o--|| registered_resources : "registered_resource_id"

@@ -2,13 +2,25 @@ package auth
 
 import (
 	"context"
+	"errors"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
+	"google.golang.org/grpc/metadata"
 )
 
-var authnContextKey = authContextKey{}
+var (
+	authnContextKey     = authContextKey{}
+	ErrNoMetadataFound  = errors.New("no metadata found within context")
+	ErrMissingClientID  = errors.New("missing authn idP clientID")
+	ErrConflictClientID = errors.New("context metadata mistakenly has more than one authn idP clientID")
+)
+
+const (
+	AccessTokenKey = "access_token"
+	ClientIDKey    = "client_id"
+)
 
 type authContextKey struct{}
 
@@ -59,4 +71,54 @@ func GetRawAccessTokenFromContext(ctx context.Context, l *logger.Logger) string 
 		return c.rawToken
 	}
 	return ""
+}
+
+// EnrichIncomingContextMetadataWithAuthn adds the access token and client ID to incoming context metadata
+//
+// Adding the authn info to gRPC metadata propagates it across services rather than strictly
+// in-process within Go alone
+func EnrichIncomingContextMetadataWithAuthn(ctx context.Context, l *logger.Logger, clientID string) context.Context {
+	rawToken := GetRawAccessTokenFromContext(ctx, l)
+
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		md = metadata.New(nil)
+	} else {
+		md = md.Copy()
+	}
+	if rawToken != "" {
+		md.Set(AccessTokenKey, rawToken)
+	}
+
+	if clientID != "" {
+		md.Set(ClientIDKey, clientID)
+	}
+
+	return metadata.NewIncomingContext(ctx, md)
+}
+
+// GetClientIDFromContext retrieves the client ID from the metadata in the context
+func GetClientIDFromContext(ctx context.Context, incoming bool) (string, error) {
+	var (
+		md metadata.MD
+		ok bool
+	)
+	if incoming {
+		md, ok = metadata.FromIncomingContext(ctx)
+	} else {
+		md, ok = metadata.FromOutgoingContext(ctx)
+	}
+	if !ok {
+		return "", ErrNoMetadataFound
+	}
+
+	clientIDs := md.Get(ClientIDKey)
+	if len(clientIDs) == 0 {
+		return "", ErrMissingClientID
+	}
+	if len(clientIDs) > 1 {
+		return "", ErrConflictClientID
+	}
+
+	return clientIDs[0], nil
 }

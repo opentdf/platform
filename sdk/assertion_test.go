@@ -1,10 +1,17 @@
 package sdk
 
 import (
+	"crypto"
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
 	"testing"
 
 	"github.com/gowebpki/jcs"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -181,4 +188,82 @@ func TestDeserializingAssertionWithStringInStatementValue(t *testing.T) {
 	require.NoError(t, err, "Error deserializing the assertion with a JSON object in the statement value")
 
 	assert.Equal(t, "this is a value", assertion.Statement.Value)
+}
+
+func TestAssertionSignWithCryptoSigner(t *testing.T) {
+	// Generate RSA key pair - *rsa.PrivateKey implements crypto.Signer
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	// Explicitly use crypto.Signer interface to demonstrate hardware key support
+	var signer crypto.Signer = privateKey
+
+	assertion := Assertion{
+		ID:             "test-assertion",
+		Type:           BaseAssertion,
+		Scope:          PayloadScope,
+		AppliesToState: Unencrypted,
+		Statement: Statement{
+			Format: "text",
+			Schema: "test",
+			Value:  "test value",
+		},
+	}
+
+	// Sign using crypto.Signer interface (simulates HSM/KMS usage)
+	signerKey := AssertionKey{
+		Alg: AssertionKeyAlgRS256,
+		Key: signer,
+	}
+
+	err = assertion.Sign("testhash", "testsig", signerKey)
+	require.NoError(t, err)
+	assert.NotEmpty(t, assertion.Binding.Signature)
+	assert.Equal(t, "jws", assertion.Binding.Method)
+
+	// Verify using the same crypto.Signer (will use Public() from signer)
+	hash, sig, err := assertion.Verify(signerKey)
+	require.NoError(t, err)
+	assert.Equal(t, "testhash", hash)
+	assert.Equal(t, "testsig", sig)
+}
+
+func TestVerifyAssertionWithJWKInHeader(t *testing.T) {
+	// 1. Setup: Create an assertion signed with RS256 and JWK in header
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	publicKey, err := jwk.FromRaw(privateKey.Public())
+	require.NoError(t, err)
+	_ = publicKey.Set(jwk.AlgorithmKey, jwa.RS256)
+
+	tok := jwt.New()
+	_ = tok.Set(kAssertionHash, "testhash")
+	_ = tok.Set(kAssertionSignature, "testsig")
+
+	headers := jws.NewHeaders()
+	_ = headers.Set(jws.JWKKey, publicKey)
+
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, privateKey, jws.WithProtectedHeaders(headers)))
+	require.NoError(t, err)
+
+	assertion := Assertion{
+		Binding: Binding{
+			Method:    JWS.String(),
+			Signature: string(signedTok),
+		},
+	}
+
+	// 2. Try to verify with a dummy HS256 key (simulating default behavior in tdf.go)
+	dummyKey := AssertionKey{
+		Alg: AssertionKeyAlgHS256,
+		Key: []byte("dummy payload key"),
+	}
+
+	hash, sig, err := assertion.Verify(dummyKey)
+
+	// This should succeed after the fix
+	require.NoError(t, err)
+	require.Equal(t, "testhash", hash)
+	require.Equal(t, "testsig", sig)
 }

@@ -1,14 +1,13 @@
-go 1.24.0
-
-toolchain go1.24.4
+go 1.24.11
 
 use (
 	./examples
 	./lib/fixtures
 	./lib/flattening
-	./lib/ocrypto
 	./lib/identifier
+	./lib/ocrypto
 	./protocol/go
 	./sdk
 	./service
+	./tests-bdd
 )

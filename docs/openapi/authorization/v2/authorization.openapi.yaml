@@ -209,10 +209,10 @@ components:
             entityChain:
               title: entity_chain
               description: |+
-                chain of one or more entities
-                entities must be provided:
+                chain of one or more entities and at most 10
+                entities must be provided and between 1 and 10 in count:
                 ```
-                has(this.entities) && this.entities.size() > 0
+                has(this.entities) && this.entities.size() > 0 && this.entities.size() <= 10
                 ```
 
               $ref: '#/components/schemas/entity.EntityChain'
@@ -245,6 +245,20 @@ components:
           title: token
           required:
             - token
+        - properties:
+            withRequestToken:
+              title: with_request_token
+              description: |+
+                derive the entity from the request's authorization access token JWT, rather than passing in the body
+                with_request_token must be true when set:
+                ```
+                this == true
+                ```
+
+              $ref: '#/components/schemas/google.protobuf.BoolValue'
+          title: with_request_token
+          required:
+            - withRequestToken
       title: EntityIdentifier
       additionalProperties: false
       description: |-
@@ -259,6 +273,8 @@ components:
           items:
             $ref: '#/components/schemas/authorization.v2.GetDecisionMultiResourceRequest'
           title: decision_requests
+          maxItems: 200
+          minItems: 1
       title: GetDecisionBulkRequest
       additionalProperties: false
       description: |-
@@ -292,19 +308,41 @@ components:
           items:
             $ref: '#/components/schemas/authorization.v2.Resource'
           title: resources
+          maxItems: 1000
           minItems: 1
+        fulfillableObligationFqns:
+          type: array
+          items:
+            type: string
+            description: |+
+              if provided, fulfillable_obligation_fqns must be between 1 and 50 in count with all valid FQNs:
+              ```
+              this.size() == 0 || (this.size() <= 50 && this.all(item, item.isUri()))
+              ```
+
+          title: fulfillable_obligation_fqns
+          description: |+
+            obligations (fully qualified values) the requester is capable of fulfilling
+             i.e. https://<namespace>/obl/<definition name>/value/<value>
+            if provided, fulfillable_obligation_fqns must be between 1 and 50 in count with all valid FQNs:
+            ```
+            this.size() == 0 || (this.size() <= 50 && this.all(item, item.isUri()))
+            ```
+
       title: GetDecisionMultiResourceRequest
       required:
         - entityIdentifier
         - action
-        - resources
       additionalProperties: false
       description: |+
         Can the identified entity/entities access?
          1. one entity reference (actor)
          2. one action
          3. multiple resources
-         Note: this is a more performant bulk request for multiple resource decisions
+
+         If entitled, checks obligation policy: fulfillable obligations must satisfy all triggered.
+
+         Note: this is a more performant bulk request for multiple resource decisions, up to 1000 per request
         action.name must be provided:
         ```
         has(this.action.name)
@@ -339,6 +377,25 @@ components:
         resource:
           title: resource
           $ref: '#/components/schemas/authorization.v2.Resource'
+        fulfillableObligationFqns:
+          type: array
+          items:
+            type: string
+            description: |+
+              if provided, fulfillable_obligation_fqns must be between 1 and 50 in count with all valid FQNs:
+              ```
+              this.size() == 0 || (this.size() <= 50 && this.all(item, item.isUri()))
+              ```
+
+          title: fulfillable_obligation_fqns
+          description: |+
+            obligations (fully qualified values) the requester is capable of fulfilling
+             i.e. https://<namespace>/obl/<definition name>/value/<value>
+            if provided, fulfillable_obligation_fqns must be between 1 and 50 in count with all valid FQNs:
+            ```
+            this.size() == 0 || (this.size() <= 50 && this.all(item, item.isUri()))
+            ```
+
       title: GetDecisionRequest
       required:
         - entityIdentifier
@@ -350,6 +407,8 @@ components:
          1. one entity reference (actor)
          2. one action
          3. one resource
+
+         If entitled, checks obligation policy: fulfillable obligations must satisfy all triggered.
         action.name must be provided:
         ```
         has(this.action.name)
@@ -360,9 +419,7 @@ components:
       properties:
         decision:
           title: decision
-          description: |-
-            decision on the resource optional list of obligations represented in URI format
-             repeated string obligations = 2;
+          description: decision on the resource
           $ref: '#/components/schemas/authorization.v2.ResourceDecision'
       title: GetDecisionResponse
       additionalProperties: false
@@ -406,9 +463,10 @@ components:
             attributeValues:
               title: attribute_values
               description: |+
-                if provided, resource.attribute_values must not be empty:
+                a set of attribute value FQNs, such as those on a TDF, between 1 and 20 in count
+                if provided, resource.attribute_values must be between 1 and 20 in count with all valid FQNs:
                 ```
-                this.fqns.size() > 0 && this.fqns.all(item, item.isUri())
+                this.fqns.size() > 0 && this.fqns.size() <= 20 && this.fqns.all(item, item.isUri())
                 ```
 
               $ref: '#/components/schemas/authorization.v2.Resource.AttributeValues'
@@ -421,6 +479,7 @@ components:
               title: registered_resource_value_fqn
               minLength: 1
               format: uri
+              description: fully qualified name of the registered resource value stored in platform policy
           title: registered_resource_value_fqn
           required:
             - registeredResourceValueFqn
@@ -453,6 +512,14 @@ components:
           title: decision
           description: decision result
           $ref: '#/components/schemas/authorization.v2.Decision'
+        requiredObligations:
+          type: array
+          items:
+            type: string
+          title: required_obligations
+          description: |-
+            obligations (fully qualified values) the PEP is required to fulfill on the given resource
+             i.e. https://<namespace>/obl/<definition name>/value/<value>
       title: ResourceDecision
       additionalProperties: false
     common.Metadata:
@@ -584,6 +651,9 @@ components:
          has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
+      examples:
+        - 1s
+        - 1.000340012s
       format: date-time
       description: |-
         A Timestamp represents a point in time independent of any time zone or local

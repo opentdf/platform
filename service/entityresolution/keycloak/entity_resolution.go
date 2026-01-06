@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -69,11 +70,13 @@ func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger, svc
 	var inputIdpConfig KeycloakConfig
 
 	if err := defaults.Set(&inputIdpConfig); err != nil {
-		panic(err)
+		logger.Error("Failed to set Keycloak default configuration", "error", err)
+		log.Fatalf("Failed to set Keycloak default configuration: %v", err)
 	}
 
 	if err := mapstructure.Decode(config, &inputIdpConfig); err != nil {
-		panic(err)
+		logger.Error("Failed to decode Keycloak configuration", "error", err)
+		log.Fatalf("Failed to decode Keycloak configuration: %v", err)
 	}
 	logger.Debug("entity_resolution configuration", "config", inputIdpConfig)
 	keycloakSVC := &KeycloakEntityResolutionService{idpConfig: inputIdpConfig, logger: logger, svcCache: svcCache}
@@ -81,7 +84,7 @@ func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger, svc
 }
 
 func (s *KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, req *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
-	ctx, span := s.Tracer.Start(ctx, "ResolveEntities")
+	ctx, span := s.Start(ctx, "ResolveEntities")
 	defer span.End()
 
 	connector, err := s.getConnector(ctx, s.idpConfig.TokenBuffer)
@@ -95,7 +98,7 @@ func (s *KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, r
 }
 
 func (s *KeycloakEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
-	ctx, span := s.Tracer.Start(ctx, "CreateEntityChainFromJwt")
+	ctx, span := s.Start(ctx, "CreateEntityChainFromJwt")
 	defer span.End()
 
 	connector, err := s.getConnector(ctx, s.idpConfig.TokenBuffer)

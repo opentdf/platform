@@ -29,10 +29,10 @@ Migration checklist:
 
 Historically, queries have been written in Go with [squirrel](https://github.com/Masterminds/squirrel).
 
-However, the path going forward is to migrate existing queries and write all new queries directly in SQL (see [./query.sql](./query.sql)),
+However, the path going forward is to migrate existing queries and write all new queries directly in SQL (see [./queries](./queries)),
 and generate the Go type-safe functions to execute each query with the helpful tool [sqlc](https://github.com/sqlc-dev/sqlc).
 
-To generate the Go code when you've added or updated a SQL query in `query.sql`, [install sqlc](https://docs.sqlc.dev/en/latest/overview/install.html),
+To generate the Go code when you've added or updated a SQL query, [install sqlc](https://docs.sqlc.dev/en/latest/overview/install.html),
 then run the `generate` command.
 
 From repo root:

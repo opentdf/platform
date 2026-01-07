@@ -134,13 +134,13 @@ type OPAConfig struct {
 //   - "opa": Returns OPAConfig (future)
 func AdapterConfigFromExternal(cfg Config) any {
 	base := BaseAdapterConfig{
-		UserNameClaim: cfg.PolicyConfig.UserNameClaim,
-		GroupsClaims:  cfg.PolicyConfig.GroupsClaim,
-		ClientIDClaim: cfg.PolicyConfig.ClientIDClaim,
+		UserNameClaim: cfg.UserNameClaim,
+		GroupsClaims:  cfg.GroupsClaim,
+		ClientIDClaim: cfg.ClientIDClaim,
 		Logger:        cfg.Logger,
 	}
 
-	opts := ApplyOptions(cfg.Options...)
+	opts := applyOptions(cfg.Options...)
 
 	// Default engine to casbin for backwards compatibility
 	engine := cfg.Engine
@@ -168,20 +168,20 @@ func casbinConfigFromExternal(cfg Config, base BaseAdapterConfig, opts *optionCo
 	case "v2":
 		return CasbinV2Config{
 			BaseAdapterConfig: base,
-			Csv:               cfg.PolicyConfig.Csv,
-			Extension:         cfg.PolicyConfig.Extension,
-			Model:             cfg.PolicyConfig.Model,
-			RoleMap:           cfg.PolicyConfig.RoleMap,
-			Adapter:           adapterFromAny(cfg.PolicyConfig.Adapter),
+			Csv:               cfg.Csv,
+			Extension:         cfg.Extension,
+			Model:             cfg.Model,
+			RoleMap:           cfg.RoleMap,
+			Adapter:           adapterFromAny(cfg.Adapter),
 		}
 	default: // v1 or empty
 		return CasbinV1Config{
 			BaseAdapterConfig: base,
-			Csv:               cfg.PolicyConfig.Csv,
-			Extension:         cfg.PolicyConfig.Extension,
-			Model:             cfg.PolicyConfig.Model,
-			RoleMap:           cfg.PolicyConfig.RoleMap,
-			Adapter:           adapterFromAny(cfg.PolicyConfig.Adapter),
+			Csv:               cfg.Csv,
+			Extension:         cfg.Extension,
+			Model:             cfg.Model,
+			RoleMap:           cfg.RoleMap,
+			Adapter:           adapterFromAny(cfg.Adapter),
 			Enforcer:          opts.V1Enforcer,
 		}
 	}

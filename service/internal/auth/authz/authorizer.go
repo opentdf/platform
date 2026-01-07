@@ -143,8 +143,8 @@ func WithV1Enforcer(enforcer V1Enforcer) Option {
 	}
 }
 
-// ApplyOptions applies the given options and returns the resulting config.
-func ApplyOptions(opts ...Option) *optionConfig {
+// applyOptions applies the given options and returns the resulting config.
+func applyOptions(opts ...Option) *optionConfig {
 	cfg := &optionConfig{}
 	for _, opt := range opts {
 		opt(cfg)

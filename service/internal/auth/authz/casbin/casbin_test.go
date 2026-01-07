@@ -14,10 +14,8 @@ import (
 
 // mockV1Enforcer implements authz.V1Enforcer for testing
 type mockV1Enforcer struct {
-	enforceFunc   func(token jwt.Token, userInfo []byte, resource, action string) bool
-	extractFunc   func(token jwt.Token, userInfo []byte) []string
-	groupsClaim   []string
-	usernameClaim string
+	enforceFunc func(token jwt.Token, userInfo []byte, resource, action string) bool
+	extractFunc func(token jwt.Token, userInfo []byte) []string
 }
 
 func (m *mockV1Enforcer) Enforce(token jwt.Token, userInfo []byte, resource, action string) bool {

@@ -275,6 +275,13 @@ func (a *Authorizer) authorizeV2(_ context.Context, req *authz.Request) (*authz.
 	)
 
 	// Check each subject (role or username)
+	// Track if any enforcement succeeded without error to distinguish
+	// "all denied" from "all errored" (system failure)
+	var (
+		anyCheckedSuccessfully bool
+		lastErr                error
+	)
+
 	for _, subject := range subjects {
 		allowed, err := a.v2Enforcer.Enforce(subject, req.RPC, dims)
 		if err != nil {
@@ -284,8 +291,11 @@ func (a *Authorizer) authorizeV2(_ context.Context, req *authz.Request) (*authz.
 				slog.String("dims", dims),
 				slog.Any("error", err),
 			)
+			lastErr = err
 			continue
 		}
+
+		anyCheckedSuccessfully = true
 
 		if allowed {
 			a.logger.Debug("v2 authorization allowed",
@@ -300,6 +310,12 @@ func (a *Authorizer) authorizeV2(_ context.Context, req *authz.Request) (*authz.
 				MatchedPolicy: subject,
 			}, nil
 		}
+	}
+
+	// If ALL subjects failed with errors (none checked successfully),
+	// return a system error instead of a denial
+	if !anyCheckedSuccessfully && lastErr != nil {
+		return nil, fmt.Errorf("v2 authorization system error: %w", lastErr)
 	}
 
 	a.logger.Debug("v2 authorization denied",

@@ -331,6 +331,13 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			action = ActionUnsafe
 		}
 
+		// Defensive check: authorizer must be initialized
+		if a.authorizer == nil {
+			log.ErrorContext(ctx, "authorizer not initialized")
+			http.Error(w, "authorization system not configured", http.StatusInternalServerError)
+			return
+		}
+
 		// Build authorization request
 		// Note: HTTP handler uses path-based authorization (no dimension resolution)
 		// as it's primarily for legacy gRPC-Gateway support
@@ -379,7 +386,7 @@ func (a *Authentication) resolveResourceContext(
 	req connect.AnyRequest,
 ) (*authz.ResolverContext, error) {
 	// Skip if resolver registry not available or authorizer doesn't support resource authorization
-	if a.authzResolverRegistry == nil || !a.authorizer.SupportsResourceAuthorization() {
+	if a.authzResolverRegistry == nil || a.authorizer == nil || !a.authorizer.SupportsResourceAuthorization() {
 		return nil, nil
 	}
 
@@ -410,6 +417,15 @@ func (a *Authentication) authorize(
 	req connect.AnyRequest,
 	action string,
 ) authzResult {
+	// Defensive check: authorizer must be initialized
+	if a.authorizer == nil {
+		log.ErrorContext(ctx, "authorizer not initialized")
+		return authzResult{
+			err:     errors.New("authorization system not configured"),
+			errCode: connect.CodeInternal,
+		}
+	}
+
 	// Build authorization request
 	authzReq := &authz.Request{
 		Token:  token,

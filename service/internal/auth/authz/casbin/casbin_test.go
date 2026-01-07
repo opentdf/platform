@@ -615,8 +615,9 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_GRPCPathStripsLeadingSlash() {
 	// Create a mock enforcer that validates the resource path
 	var receivedResource string
 	mockEnforcer := &mockV1Enforcer{
-		enforceFunc: func(token jwt.Token, userInfo []byte, resource, action string) bool {
+		enforceFunc: func(_ jwt.Token, _ []byte, resource, action string) bool {
 			receivedResource = resource
+			_ = action // unused in this test
 			// Allow if resource matches expected stripped path
 			return resource == "kas.AccessService/Rewrap"
 		},
@@ -659,8 +660,9 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_HTTPPathKeepsLeadingSlash() {
 	// v1 policy: HTTP paths KEEP their leading slash
 	var receivedResource string
 	mockEnforcer := &mockV1Enforcer{
-		enforceFunc: func(token jwt.Token, userInfo []byte, resource, action string) bool {
+		enforceFunc: func(_ jwt.Token, _ []byte, resource, action string) bool {
 			receivedResource = resource
+			_ = action // unused in this test
 			// Allow if resource matches expected path with leading slash
 			return resource == "/kas/v2/rewrap"
 		},
@@ -678,7 +680,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_HTTPPathKeepsLeadingSlash() {
 	authorizer, err := NewAuthorizer(cfg)
 	s.Require().NoError(err)
 
-	token := createTestToken(s.T(), map[string]interface{}{
+	testToken := createTestToken(s.T(), map[string]interface{}{
 		"realm_access": map[string]interface{}{
 			"roles": []interface{}{"standard"},
 		},
@@ -686,7 +688,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_HTTPPathKeepsLeadingSlash() {
 
 	// HTTP paths should keep their leading slash for v1 policy matching
 	req := &authz.Request{
-		Token:  token,
+		Token:  testToken,
 		RPC:    "/kas/v2/rewrap",
 		Action: "write",
 	}
@@ -702,8 +704,9 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_PolicyServiceGRPCPath() {
 	// Test policy.* wildcard matching with gRPC path
 	var receivedResource string
 	mockEnforcer := &mockV1Enforcer{
-		enforceFunc: func(token jwt.Token, userInfo []byte, resource, action string) bool {
+		enforceFunc: func(_ jwt.Token, _ []byte, resource, action string) bool {
 			receivedResource = resource
+			_ = action // unused in this test
 			// Allow if resource starts with policy. (gRPC style, no leading slash)
 			return len(resource) > 7 && resource[:7] == "policy."
 		},
@@ -745,7 +748,8 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_PathHandlingHeuristic() {
 	// Test the specific heuristic: paths with "." are gRPC, others are HTTP
 	var receivedResources []string
 	mockEnforcer := &mockV1Enforcer{
-		enforceFunc: func(token jwt.Token, userInfo []byte, resource, action string) bool {
+		enforceFunc: func(_ jwt.Token, _ []byte, resource, action string) bool {
+			_ = action // unused in this test
 			receivedResources = append(receivedResources, resource)
 			return true
 		},

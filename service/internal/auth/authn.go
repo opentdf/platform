@@ -72,6 +72,10 @@ var (
 
 	canonicalIPCHeaderClientID    = http.CanonicalHeaderKey("x-ipc-auth-client-id")
 	canonicalIPCHeaderAccessToken = http.CanonicalHeaderKey("x-ipc-access-token")
+
+	// errNoResourceContext indicates no resolver is registered or resource authorization is not supported.
+	// This is not an error condition - it means resource-level authorization is not applicable.
+	errNoResourceContext = errors.New("no resource context")
 )
 
 const (
@@ -371,94 +375,6 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	})
 }
 
-// authzResult holds the result of an authorization check
-type authzResult struct {
-	decision *authz.Decision
-	err      error
-	errCode  connect.Code
-}
-
-// resolveResourceContext attempts to resolve authorization dimensions using a registered resolver.
-// Returns nil if no resolver is registered or if resolvers are not supported.
-func (a *Authentication) resolveResourceContext(
-	ctx context.Context,
-	log *logger.Logger,
-	req connect.AnyRequest,
-) (*authz.ResolverContext, error) {
-	// Skip if resolver registry not available or authorizer doesn't support resource authorization
-	if a.authzResolverRegistry == nil || a.authorizer == nil || !a.authorizer.SupportsResourceAuthorization() {
-		return nil, nil
-	}
-
-	resolver, ok := a.authzResolverRegistry.Get(req.Spec().Procedure)
-	if !ok {
-		return nil, nil
-	}
-
-	resolvedCtx, err := resolver(ctx, req)
-	if err != nil {
-		log.WarnContext(ctx, "authz resolver failed",
-			slog.String("procedure", req.Spec().Procedure),
-			slog.Any("error", err),
-		)
-		return nil, err
-	}
-
-	return &resolvedCtx, nil
-}
-
-// authorize performs the full authorization check for a request.
-// It builds the authorization request, resolves resource context if applicable,
-// and returns the authorization decision.
-func (a *Authentication) authorize(
-	ctx context.Context,
-	log *logger.Logger,
-	token jwt.Token,
-	req connect.AnyRequest,
-	action string,
-) authzResult {
-	// Defensive check: authorizer must be initialized
-	if a.authorizer == nil {
-		log.ErrorContext(ctx, "authorizer not initialized")
-		return authzResult{
-			err:     errors.New("authorization system not configured"),
-			errCode: connect.CodeInternal,
-		}
-	}
-
-	// Build authorization request
-	authzReq := &authz.Request{
-		Token:  token,
-		RPC:    req.Spec().Procedure,
-		Action: action,
-	}
-
-	// Try to resolve resource context for fine-grained authorization
-	resourceCtx, resolveErr := a.resolveResourceContext(ctx, log, req)
-	if resolveErr != nil {
-		return authzResult{
-			err:     errors.New("authorization context resolution failed"),
-			errCode: connect.CodePermissionDenied,
-		}
-	}
-	authzReq.ResourceContext = resourceCtx
-
-	// Perform authorization check
-	decision, authzErr := a.authorizer.Authorize(ctx, authzReq)
-	if authzErr != nil {
-		log.ErrorContext(ctx, "authorization error",
-			slog.Any("error", authzErr),
-			slog.String("procedure", req.Spec().Procedure),
-		)
-		return authzResult{
-			err:     errors.New("authorization system error"),
-			errCode: connect.CodeInternal,
-		}
-	}
-
-	return authzResult{decision: decision}
-}
-
 // UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
 func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
@@ -612,6 +528,97 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)
+}
+
+// authzResult holds the result of an authorization check
+type authzResult struct {
+	decision *authz.Decision
+	err      error
+	errCode  connect.Code
+}
+
+// resolveResourceContext attempts to resolve authorization dimensions using a registered resolver.
+// Returns errNoResourceContext if no resolver is registered or if resolvers are not supported.
+func (a *Authentication) resolveResourceContext(
+	ctx context.Context,
+	log *logger.Logger,
+	req connect.AnyRequest,
+) (*authz.ResolverContext, error) {
+	// Skip if resolver registry not available or authorizer doesn't support resource authorization
+	if a.authzResolverRegistry == nil || a.authorizer == nil || !a.authorizer.SupportsResourceAuthorization() {
+		return nil, errNoResourceContext
+	}
+
+	resolver, ok := a.authzResolverRegistry.Get(req.Spec().Procedure)
+	if !ok {
+		return nil, errNoResourceContext
+	}
+
+	resolvedCtx, err := resolver(ctx, req)
+	if err != nil {
+		log.WarnContext(ctx, "authz resolver failed",
+			slog.String("procedure", req.Spec().Procedure),
+			slog.Any("error", err),
+		)
+		return nil, err
+	}
+
+	return &resolvedCtx, nil
+}
+
+// authorize performs the full authorization check for a request.
+// It builds the authorization request, resolves resource context if applicable,
+// and returns the authorization decision.
+func (a *Authentication) authorize(
+	ctx context.Context,
+	log *logger.Logger,
+	token jwt.Token,
+	req connect.AnyRequest,
+	action string,
+) authzResult {
+	// Defensive check: authorizer must be initialized
+	if a.authorizer == nil {
+		log.ErrorContext(ctx, "authorizer not initialized")
+		return authzResult{
+			err:     errors.New("authorization system not configured"),
+			errCode: connect.CodeInternal,
+		}
+	}
+
+	// Build authorization request
+	authzReq := &authz.Request{
+		Token:  token,
+		RPC:    req.Spec().Procedure,
+		Action: action,
+	}
+
+	// Try to resolve resource context for fine-grained authorization
+	resourceCtx, resolveErr := a.resolveResourceContext(ctx, log, req)
+	if resolveErr != nil && !errors.Is(resolveErr, errNoResourceContext) {
+		return authzResult{
+			err:     errors.New("authorization context resolution failed"),
+			errCode: connect.CodePermissionDenied,
+		}
+	}
+	// Only set resource context if we actually resolved one (not errNoResourceContext)
+	if resolveErr == nil {
+		authzReq.ResourceContext = resourceCtx
+	}
+
+	// Perform authorization check
+	decision, authzErr := a.authorizer.Authorize(ctx, authzReq)
+	if authzErr != nil {
+		log.ErrorContext(ctx, "authorization error",
+			slog.Any("error", authzErr),
+			slog.String("procedure", req.Spec().Procedure),
+		)
+		return authzResult{
+			err:     errors.New("authorization system error"),
+			errCode: connect.CodeInternal,
+		}
+	}
+
+	return authzResult{decision: decision}
 }
 
 // getAction returns the action based on the rpc name

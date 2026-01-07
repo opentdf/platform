@@ -265,9 +265,8 @@ type KeyAccess struct {
 	// Contains the actual DEK encrypted with KAS's public key
 	// This is the core cryptographic material needed for TDF decryption
 	WrappedKey []byte `protobuf:"bytes,8,opt,name=wrapped_key,json=wrappedKey,proto3" json:"wrapped_key,omitempty"`
-	// Complete NanoTDF header containing all metadata and policy information
-	// Required: NanoTDF only
-	// ZTDF: Omitted (policy and metadata are separate)
+	// Complete header containing all metadata and policy information (for formats that embed it)
+	// Optional: Not used by ZTDF (policy and metadata are separate)
 	// Contains magic bytes, version, algorithm, policy, and ephemeral key information
 	Header []byte `protobuf:"bytes,9,opt,name=header,proto3" json:"header,omitempty"`
 	// Ephemeral public key for ECDH key derivation (ec-wrapped type only)
@@ -856,7 +855,7 @@ type RewrapResponse struct {
 	// Deprecated: Marked as deprecated in kas/kas.proto.
 	EntityWrappedKey []byte `protobuf:"bytes,2,opt,name=entity_wrapped_key,json=entityWrappedKey,proto3" json:"entity_wrapped_key,omitempty"`
 	// KAS's ephemeral session public key in PEM format
-	// Required: For EC-based operations (NanoTDF and ZTDF with key_type="ec-wrapped")
+	// Required: For EC-based operations (key_type="ec-wrapped")
 	// Optional: Empty for RSA-based ZTDF (key_type="wrapped")
 	// Used by client to perform ECDH key agreement and decrypt the kas_wrapped_key values
 	SessionPublicKey string `protobuf:"bytes,3,opt,name=session_public_key,json=sessionPublicKey,proto3" json:"session_public_key,omitempty"`
@@ -1073,15 +1072,14 @@ type UnsignedRewrapRequest_WithPolicyRequest struct {
 
 	// List of Key Access Objects associated with this policy
 	// Required: Always (at least one)
-	// NanoTDF: Exactly one KAO per policy
-	// ZTDF: One or more KAOs per policy
+	// Some formats require exactly one KAO per policy
 	KeyAccessObjects []*UnsignedRewrapRequest_WithKeyAccessObject `protobuf:"bytes,1,rep,name=key_access_objects,json=keyAccessObjects,proto3" json:"key_access_objects,omitempty"`
 	// Policy information for this group of KAOs
 	// Required: Always
 	Policy *UnsignedRewrapRequest_WithPolicy `protobuf:"bytes,2,opt,name=policy,proto3" json:"policy,omitempty"`
 	// Cryptographic algorithm identifier for the TDF type
 	// Optional: Defaults to rsa:2048 if omitted
-	// Values: "ec:secp256r1" (NanoTDF), "rsa:2048" (ZTDF), "" (defaults to rsa:2048)
+	// Values: "ec:secp256r1" (EC-based), "rsa:2048" (RSA-based), "" (defaults to rsa:2048)
 	// Example: "ec:secp256r1"
 	Algorithm string `protobuf:"bytes,3,opt,name=algorithm,proto3" json:"algorithm,omitempty"`
 }

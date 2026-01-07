@@ -98,6 +98,7 @@ func newECIES(pub *ecdh.PublicKey, salt, info []byte) (ECEncryptor, error) {
 }
 
 // NewAsymEncryption creates and returns a new AsymEncryption.
+//
 // Deprecated: Use FromPublicPEM instead.
 func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
 	pub, err := getPublicPart(publicKeyInPem)

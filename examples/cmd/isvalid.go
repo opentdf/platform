@@ -64,14 +64,6 @@ func isValid(cmd *cobra.Command, in io.ReadSeeker) []typeInfo {
 		return typeInfos
 	}
 
-	isValidNano, err := sdk.IsValidNanoTdf(in)
-	typeInfos = append(typeInfos, typeInfo{Valid: isValidNano, Error: err, Type: "NanoTDF"})
-
-	if _, err := in.Seek(0, io.SeekStart); err != nil {
-		cmd.PrintErrf("Error seeking to start of file: %v\n", err)
-		return typeInfos
-	}
-
 	tdfType := sdk.GetTdfType(in)
 	typeInfos = append(typeInfos, typeInfo{Valid: tdfType != sdk.Invalid, Error: nil, Type: tdfType.String()})
 

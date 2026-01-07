@@ -46,16 +46,6 @@ p, role:standard, /authorization.v2.AuthorizationService/*, *, allow
 p, role:standard, /entityresolution.EntityResolutionService/*, *, allow
 p, role:standard, /entityresolution.v2.EntityResolutionService/*, *, allow
 
-# Legacy HTTP routes (for gRPC-Gateway compatibility)
-p, role:standard, /attributes*, *, allow
-p, role:standard, /namespaces*, *, allow
-p, role:standard, /subject-mappings*, *, allow
-p, role:standard, /resource-mappings*, *, allow
-p, role:standard, /key-access-servers*, *, allow
-p, role:standard, /kas/v2/rewrap, *, allow
-p, role:standard, /v1/authorization, *, allow
-p, role:standard, /v1/token/authorization, *, allow
-
 # ============================================================================
 # Unknown Role - Unauthenticated/Public Access
 # ============================================================================

@@ -495,7 +495,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y parallel
-      - uses: opentdf/platform/test/start-up-with-containers@DSPX-2178-audion
+      - uses: opentdf/platform/test/start-up-with-containers@main
         with:
           log-type: json
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}

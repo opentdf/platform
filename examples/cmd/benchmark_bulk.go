@@ -1,4 +1,4 @@
-//nolint:forbidigo,nestif // We use Println here extensively because we are printing markdown.
+//nolint:forbidigo // We use fmt.Printf here extensively because we are printing markdown.
 package cmd
 
 import (
@@ -24,7 +24,6 @@ func init() {
 	}
 
 	benchmarkCmd.Flags().IntVar(&config.RequestCount, "count", 100, "Total number of requests") //nolint: mnd // This is output to the help with explanation
-	benchmarkCmd.Flags().Var(&config.TDFFormat, "tdf", "TDF format (tdf3 or nanotdf)")
 	ExamplesCmd.AddCommand(benchmarkCmd)
 }
 
@@ -51,68 +50,35 @@ func runBenchmarkBulk(cmd *cobra.Command, _ []string) error {
 	}()
 
 	dataAttributes := []string{"https://example.com/attr/attr1/value/value1"}
-	if config.TDFFormat == NanoTDF {
-		nanoTDFConfig, err := client.NewNanoTDFConfig()
-		if err != nil {
-			return err
-		}
-		err = nanoTDFConfig.SetAttributes(dataAttributes)
-		if err != nil {
-			return err
-		}
-		nanoTDFConfig.EnableECDSAPolicyBinding()
-		// if plaintext or platform endpoint is http, set kas url to http, otherwise https
-		if insecurePlaintextConn || strings.HasPrefix(platformEndpoint, "http://") {
-			err = nanoTDFConfig.SetKasURL(fmt.Sprintf("http://%s/kas", "localhost:8080"))
-		} else {
-			err = nanoTDFConfig.SetKasURL(fmt.Sprintf("https://%s/kas", "localhost:8080"))
-		}
-		if err != nil {
-			return err
-		}
-
-		_, err = client.CreateNanoTDF(out, in, *nanoTDFConfig)
-		if err != nil {
-			return err
-		}
-
-		if outputName != "-" {
-			err = cat(cmd, outputName)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...), sdk.WithAutoconfigure(false)}
-		if insecurePlaintextConn || strings.HasPrefix(platformEndpoint, "http://") {
-			opts = append(opts, sdk.WithKasInformation(
-				sdk.KASInfo{
-					URL:       "http://localhost:8080",
-					PublicKey: "",
-				}),
-			)
-		} else {
-			opts = append(opts, sdk.WithKasInformation(
-				sdk.KASInfo{
-					URL:       "https://localhost:8080",
-					PublicKey: "",
-				}),
-			)
-		}
-		tdf, err := client.CreateTDF(
-			out, in,
-			opts...,
+	opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...), sdk.WithAutoconfigure(false)}
+	if insecurePlaintextConn || strings.HasPrefix(platformEndpoint, "http://") {
+		opts = append(opts, sdk.WithKasInformation(
+			sdk.KASInfo{
+				URL:       "http://localhost:8080",
+				PublicKey: "",
+			}),
 		)
-		if err != nil {
-			return err
-		}
-
-		manifestJSON, err := json.MarshalIndent(tdf.Manifest(), "", "  ")
-		if err != nil {
-			return err
-		}
-		cmd.Println(string(manifestJSON))
+	} else {
+		opts = append(opts, sdk.WithKasInformation(
+			sdk.KASInfo{
+				URL:       "https://localhost:8080",
+				PublicKey: "",
+			}),
+		)
 	}
+	tdf, err := client.CreateTDF(
+		out, in,
+		opts...,
+	)
+	if err != nil {
+		return err
+	}
+
+	manifestJSON, err := json.MarshalIndent(tdf.Manifest(), "", "  ")
+	if err != nil {
+		return err
+	}
+	cmd.Println(string(manifestJSON))
 
 	var errors []error
 	var requestFailure error
@@ -131,15 +97,11 @@ func runBenchmarkBulk(cmd *cobra.Command, _ []string) error {
 			requestFailure = fmt.Errorf("file seek error: %w", err)
 		}
 
-		format := sdk.Nano
 		var bulkTdfs []*sdk.BulkTDF
-		if config.TDFFormat == "tdf3" {
-			format = sdk.Standard
-		}
 		for i := 0; i < config.RequestCount; i++ {
 			bulkTdfs = append(bulkTdfs, &sdk.BulkTDF{Reader: bytes.NewReader(cipher), Writer: io.Discard})
 		}
-		err = client.BulkDecrypt(context.Background(), sdk.WithTDFs(bulkTdfs...), sdk.WithTDFType(format))
+		err = client.BulkDecrypt(context.Background(), sdk.WithTDFs(bulkTdfs...), sdk.WithTDFType(sdk.Standard))
 		if err != nil {
 			if errList, ok := sdk.FromBulkErrors(err); ok {
 				errors = errList

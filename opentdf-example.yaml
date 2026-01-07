@@ -1,7 +1,7 @@
 logger:
   level: debug
   type: text
-  output: stdout
+  output: stderr
 # DB and Server configurations are defaulted for local development
 db:
   host: opentdfdb

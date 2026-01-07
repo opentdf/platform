@@ -13,7 +13,7 @@ For end-users/consumers, see [here](./Consuming.md).
 
 1.  Configure KAS and Keycloak keys: `.github/scripts/init-temp-keys.sh`. Creates temporary keys for the local KAS and Keycloak Certificate Exchange. 
 2. `docker compose up`. Starts both the local Postgres database (contains the ABAC policy configuration data) and Keycloak (the local IdP).
-   1. Note: You will have to add the ``localhost.crt`` as a trusted certificate to do TLS authentication at ``localhost:8443``.
+   1. Note: You will have to add the ``localhost.crt`` as a trusted certificate to do TLS authentication at ``localhost:8443``. On a mac, this is `security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./keys/localhost.crt`
 3. Create an OpenTDF config file: `opentdf.yaml`
    1. The `opentdf-dev.yaml` file is the more secure starting point, but you will likely need to modify it to match your environment. This configuration is recommended as it is more secure but it does require valid development keypairs.
    2. The `opentdf-core-mode.yaml` file is simpler to run but less secure. This file configures the platform to startup without a KAS instances, without a built-in ERS instance, and without endpoint authentication.

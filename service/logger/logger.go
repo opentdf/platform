@@ -101,6 +101,8 @@ func (l *Logger) With(key string, value string) *Logger {
 
 func getWriter(config Config) (io.Writer, error) {
 	switch config.Output {
+	case "stderr":
+		return os.Stderr, nil
 	case "stdout":
 		return os.Stdout, nil
 	default:

@@ -97,25 +97,6 @@ func (s *AttributesService) Close() {
 
 // --- CreateAttribute ---
 
-// createAttributeAuthzResolver resolves namespace from the request's namespace_id.
-func (s *AttributesService) createAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
-	resolverCtx := authz.NewResolverContext()
-	msg, ok := req.Any().(*attributes.CreateAttributeRequest)
-	if !ok {
-		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
-	}
-
-	ns, err := s.dbClient.GetNamespace(ctx, msg.GetNamespaceId())
-	if err != nil {
-		return resolverCtx, fmt.Errorf("failed to resolve namespace for authz: %w", err)
-	}
-
-	res := resolverCtx.NewResource()
-	res.AddDimension("namespace", ns.GetName())
-
-	return resolverCtx, nil
-}
-
 func (s *AttributesService) CreateAttribute(ctx context.Context,
 	req *connect.Request[attributes.CreateAttributeRequest],
 ) (*connect.Response[attributes.CreateAttributeResponse], error) {
@@ -152,23 +133,6 @@ func (s *AttributesService) CreateAttribute(ctx context.Context,
 
 // --- ListAttributes ---
 
-// listAttributesAuthzResolver resolves optional namespace filter.
-func (s *AttributesService) listAttributesAuthzResolver(_ context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
-	resolverCtx := authz.NewResolverContext()
-	msg, ok := req.Any().(*attributes.ListAttributesRequest)
-	if !ok {
-		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
-	}
-
-	res := resolverCtx.NewResource()
-	// Namespace filter is optional - empty means "all accessible namespaces"
-	if ns := msg.GetNamespace(); ns != "" {
-		res.AddDimension("namespace", ns)
-	}
-
-	return resolverCtx, nil
-}
-
 func (s *AttributesService) ListAttributes(ctx context.Context,
 	req *connect.Request[attributes.ListAttributesRequest],
 ) (*connect.Response[attributes.ListAttributesResponse], error) {
@@ -187,33 +151,6 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 }
 
 // --- GetAttribute ---
-
-// getAttributeAuthzResolver resolves namespace from attribute lookup.
-func (s *AttributesService) getAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
-	resolverCtx := authz.NewResolverContext()
-	msg, ok := req.Any().(*attributes.GetAttributeRequest)
-	if !ok {
-		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
-	}
-
-	var identifier any
-	if msg.GetId() != "" { //nolint:staticcheck // Id can still be used until removed
-		identifier = msg.GetId() //nolint:staticcheck // Id can still be used until removed
-	} else {
-		identifier = msg.GetIdentifier()
-	}
-
-	attr, err := s.dbClient.GetAttribute(ctx, identifier)
-	if err != nil {
-		return resolverCtx, fmt.Errorf("failed to resolve attribute for authz: %w", err)
-	}
-
-	res := resolverCtx.NewResource()
-	res.AddDimension("namespace", attr.GetNamespace().GetName())
-	res.AddDimension("attribute", attr.GetName())
-
-	return resolverCtx, nil
-}
 
 func (s *AttributesService) GetAttribute(ctx context.Context,
 	req *connect.Request[attributes.GetAttributeRequest],
@@ -261,26 +198,6 @@ func (s *AttributesService) GetAttributeValuesByFqns(ctx context.Context,
 
 // --- UpdateAttribute ---
 
-// updateAttributeAuthzResolver resolves namespace from attribute lookup.
-func (s *AttributesService) updateAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
-	resolverCtx := authz.NewResolverContext()
-	msg, ok := req.Any().(*attributes.UpdateAttributeRequest)
-	if !ok {
-		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
-	}
-
-	attr, err := s.dbClient.GetAttribute(ctx, msg.GetId())
-	if err != nil {
-		return resolverCtx, fmt.Errorf("failed to resolve attribute for authz: %w", err)
-	}
-
-	res := resolverCtx.NewResource()
-	res.AddDimension("namespace", attr.GetNamespace().GetName())
-	res.AddDimension("attribute", attr.GetName())
-
-	return resolverCtx, nil
-}
-
 func (s *AttributesService) UpdateAttribute(ctx context.Context,
 	req *connect.Request[attributes.UpdateAttributeRequest],
 ) (*connect.Response[attributes.UpdateAttributeResponse], error) {
@@ -317,26 +234,6 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 }
 
 // --- DeactivateAttribute ---
-
-// deactivateAttributeAuthzResolver resolves namespace from attribute lookup.
-func (s *AttributesService) deactivateAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
-	resolverCtx := authz.NewResolverContext()
-	msg, ok := req.Any().(*attributes.DeactivateAttributeRequest)
-	if !ok {
-		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
-	}
-
-	attr, err := s.dbClient.GetAttribute(ctx, msg.GetId())
-	if err != nil {
-		return resolverCtx, fmt.Errorf("failed to resolve attribute for authz: %w", err)
-	}
-
-	res := resolverCtx.NewResource()
-	res.AddDimension("namespace", attr.GetNamespace().GetName())
-	res.AddDimension("attribute", attr.GetName())
-
-	return resolverCtx, nil
-}
 
 func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 	req *connect.Request[attributes.DeactivateAttributeRequest],
@@ -646,4 +543,113 @@ func (s *AttributesService) RemovePublicKeyFromValue(ctx context.Context, r *con
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
+}
+
+///
+/// Authz Resolvers
+///
+/// These methods resolve authorization dimensions from requests.
+/// They are placed at the end of the file per linting rules (unexported methods after exported).
+
+// createAttributeAuthzResolver resolves namespace from the request's namespace_id.
+func (s *AttributesService) createAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*attributes.CreateAttributeRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	ns, err := s.dbClient.GetNamespace(ctx, msg.GetNamespaceId())
+	if err != nil {
+		return resolverCtx, fmt.Errorf("failed to resolve namespace for authz: %w", err)
+	}
+
+	res := resolverCtx.NewResource()
+	res.AddDimension("namespace", ns.GetName())
+
+	return resolverCtx, nil
+}
+
+// listAttributesAuthzResolver resolves optional namespace filter.
+func (s *AttributesService) listAttributesAuthzResolver(_ context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*attributes.ListAttributesRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	res := resolverCtx.NewResource()
+	// Namespace filter is optional - empty means "all accessible namespaces"
+	if ns := msg.GetNamespace(); ns != "" {
+		res.AddDimension("namespace", ns)
+	}
+
+	return resolverCtx, nil
+}
+
+// getAttributeAuthzResolver resolves namespace from attribute lookup.
+func (s *AttributesService) getAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*attributes.GetAttributeRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	var identifier any
+	if msg.GetId() != "" { //nolint:staticcheck // Id can still be used until removed
+		identifier = msg.GetId() //nolint:staticcheck // Id can still be used until removed
+	} else {
+		identifier = msg.GetIdentifier()
+	}
+
+	attr, err := s.dbClient.GetAttribute(ctx, identifier)
+	if err != nil {
+		return resolverCtx, fmt.Errorf("failed to resolve attribute for authz: %w", err)
+	}
+
+	res := resolverCtx.NewResource()
+	res.AddDimension("namespace", attr.GetNamespace().GetName())
+	res.AddDimension("attribute", attr.GetName())
+
+	return resolverCtx, nil
+}
+
+// updateAttributeAuthzResolver resolves namespace from attribute lookup.
+func (s *AttributesService) updateAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*attributes.UpdateAttributeRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	attr, err := s.dbClient.GetAttribute(ctx, msg.GetId())
+	if err != nil {
+		return resolverCtx, fmt.Errorf("failed to resolve attribute for authz: %w", err)
+	}
+
+	res := resolverCtx.NewResource()
+	res.AddDimension("namespace", attr.GetNamespace().GetName())
+	res.AddDimension("attribute", attr.GetName())
+
+	return resolverCtx, nil
+}
+
+// deactivateAttributeAuthzResolver resolves namespace from attribute lookup.
+func (s *AttributesService) deactivateAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*attributes.DeactivateAttributeRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	attr, err := s.dbClient.GetAttribute(ctx, msg.GetId())
+	if err != nil {
+		return resolverCtx, fmt.Errorf("failed to resolve attribute for authz: %w", err)
+	}
+
+	res := resolverCtx.NewResource()
+	res.AddDimension("namespace", attr.GetNamespace().GetName())
+	res.AddDimension("attribute", attr.GetName())
+
+	return resolverCtx, nil
 }

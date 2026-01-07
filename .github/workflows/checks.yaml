@@ -238,7 +238,7 @@ jobs:
         run: cd examples && go build -o examples .
       - name: run bulk rewrap benchmark tests
         run: |
-          OUTPUT=$(./examples/examples benchmark-bulk --tdf tdf3 --count 100)
+          OUTPUT=$(./examples/examples benchmark-bulk --count 100)
           echo "$OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
           {

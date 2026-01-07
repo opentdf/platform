@@ -43,11 +43,12 @@ runs:
         path: otdf-test-platform
         ref: ${{ inputs.platform-ref }}
         persist-credentials: false
-    - name: Download latest init-temp-keys.sh and docker-compose.yaml
+    - name: Download latest init-temp-keys.sh, docker-compose.yaml, and watch.sh
       shell: bash
       run: |
-        curl https://raw.githubusercontent.com/opentdf/platform/refs/tags/keycloak-image-fix/.github/scripts/init-temp-keys.sh > otdf-test-platform/.github/scripts/init-temp-keys.sh
-        curl https://raw.githubusercontent.com/opentdf/platform/refs/tags/keycloak-image-fix/docker-compose.yaml > otdf-test-platform/docker-compose.yaml
+        curl https://raw.githubusercontent.com/opentdf/platform/refs/tags/watch-sh-fix/.github/scripts/init-temp-keys.sh > otdf-test-platform/.github/scripts/init-temp-keys.sh
+        curl https://raw.githubusercontent.com/opentdf/platform/refs/tags/watch-sh-fix/docker-compose.yaml > otdf-test-platform/docker-compose.yaml
+        curl https://raw.githubusercontent.com/opentdf/platform/refs/tags/watch-sh-fix/.github/scripts/watch.sh > otdf-test-platform/.github/scripts/watch.sh
     - name: Set up go (platform's go version)
       id: setup-go
       uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0

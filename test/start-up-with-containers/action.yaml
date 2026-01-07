@@ -65,24 +65,37 @@ runs:
         if ! go run ./service version; then
           # NOTE: the version command was added in 0.4.37
           echo "Error: Unable to get platform version; defaulting to tag 0.3.0"
-          echo "PLATFORM_VERSION=0.3.0" >> "$GITHUB_ENV"
+          echo "semver=0.3.0" >> "$GITHUB_OUTPUT"
           exit
         fi
         # Older version commands output version to stderr; newer versions output to stdout
-        PLATFORM_VERSION=$(go run ./service version 2>&1)
+        raw_version=$(go run ./service version 2>&1)
+
+        # Sanitize: remove all characters except those allowed in semver (alphanumeric, dots, hyphens, plus)
+        # This prevents any potential code injection via the version string
+        sanitized_version=$(echo "$raw_version" | tr -cd '0-9a-zA-Z.+-')
 
         # Validate version format (semver: x.y.z with optional pre-release/build metadata)
-        if [[ ! "$PLATFORM_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$ ]]; then
-          echo "Warning: Platform version '$PLATFORM_VERSION' doesn't match expected semver format. Using sanitized version."
-          # Extract just the version numbers
-          PLATFORM_VERSION=$(echo "$PLATFORM_VERSION" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-          if [[ -z "$PLATFORM_VERSION" ]]; then
-            PLATFORM_VERSION="0.0.0"
-          fi
+        if [[ "$sanitized_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$ ]]; then
+          echo "semver=$sanitized_version" >> "$GITHUB_OUTPUT"
+          echo "## Platform version output: [$sanitized_version]"
+          exit 0
         fi
 
-        echo "PLATFORM_VERSION=$PLATFORM_VERSION" >> "$GITHUB_ENV"
-        echo "## Platform version output: [$PLATFORM_VERSION]"
+        echo "Warning: Platform version '$raw_version' doesn't match expected semver format. Extracting version numbers."
+        resanitized_version=$(echo "$sanitized_version" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+        if [[ -z "$resanitized_version" ]]; then
+          echo "## Error: Could not extract valid version, defaulting to 0.0.0"
+          echo "semver=0.0.0" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if [[ "$resanitized_version" =~ ^[0-9a-zA-Z.+-]+$ ]]; then
+          echo "semver=$resanitized_version" >> "$GITHUB_OUTPUT"
+          echo "## Platform version output: [$resanitized_version]"
+          exit 0
+        fi
+        echo "## Error: Version contains unsafe characters after sanitization. Using fallback 0.0.0."
+        echo "semver=0.0.0" >> "$GITHUB_OUTPUT"
       working-directory: otdf-test-platform
     - name: Provide the platform with keys
       shell: bash
@@ -92,6 +105,7 @@ runs:
       shell: bash
       env:
         EXTRA_KEYS: ${{ inputs.extra-keys }}
+        PLATFORM_VERSION: ${{ steps.platform-version.outputs.semver }}
       run: |
         set -e
         allowed_algorithms=(ec:secp256r1 rsa:2048)

@@ -238,7 +238,7 @@ jobs:
         run: cd examples && go build -o examples .
       - name: run bulk rewrap benchmark tests
         run: |
-          OUTPUT=$(./examples/examples benchmark-bulk --tdf tdf3 --count 100)
+          OUTPUT=$(./examples/examples benchmark-bulk --count 100)
           echo "$OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
           {
@@ -283,16 +283,6 @@ jobs:
             echo "$OUTPUT";
             echo "EOO"
           } >> "$GITHUB_ENV"
-      - name: run nanotdf benchmark tests
-        run: |
-          OUTPUT=$(./examples/examples benchmark --storeCollectionHeaders=false --tdf=nanotdf --count=5000 --concurrent=50)
-          echo "$OUTPUT"
-          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
-          {
-            echo "BENCHMARK_NANO_OUTPUT<<EOO";
-            echo "$OUTPUT"
-            echo "EOO"
-          } >> "$GITHUB_ENV"
       - name: collect the metrics from the benchmark tests
         run: |
           OUTPUT=$(./examples/examples metrics)
@@ -325,7 +315,6 @@ jobs:
             h2 "${BENCHMARK_METRICS_OUTPUT}" "Standard Benchmark Metrics"
             h2 "${BENCHMARK_BULK_OUTPUT}" "Bulk Benchmark"
             h2 "${BENCHMARK_TDF3_OUTPUT}" "TDF3 Benchmark"
-            h2 "${BENCHMARK_NANO_OUTPUT}" "Nano Benchmark"
 
             echo EOO
           } >>"$GITHUB_OUTPUT"
@@ -420,7 +409,8 @@ jobs:
       packages: read
       pull-requests: write
       checks: write
-    uses: opentdf/tests/.github/workflows/xtest.yml@main
+    # Temporary: point at PR branch to validate xct fix before it merges to opentdf/tests:main.
+    uses: opentdf/tests/.github/workflows/xtest.yml@strantalis/local-start-additional-kas
     with:
       focus-sdk: go
       # use commit instead of ref so we can "go get" specific sdk version

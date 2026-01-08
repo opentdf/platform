@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto"
 	"crypto/ecdh"
-	"crypto/elliptic"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/json"
@@ -17,10 +16,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/service/trust"
-)
-
-const (
-	kNanoTDFMagicStringAndVersion = "L1L"
 )
 
 type StandardConfig struct {
@@ -370,49 +365,6 @@ func (s StandardCrypto) RSAPublicKeyAsJSON(kid string) (string, error) {
 	return string(jsonPublicKey), nil
 }
 
-func (s StandardCrypto) GenerateNanoTDFSymmetricKey(kasKID string, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error) {
-	k, ok := s.keysByID[kasKID]
-	if !ok {
-		return nil, ErrKeyPairInfoNotFound
-	}
-	ec, ok := k.(StandardECCrypto)
-	if !ok {
-		return nil, ErrKeyPairInfoMalformed
-	}
-	privateKeyPEM := []byte(ec.ecPrivateKeyPem)
-
-	return DeriveNanoTDFSymmetricKey(curve, ephemeralPublicKeyBytes, privateKeyPEM)
-}
-
-func DeriveNanoTDFSymmetricKey(curve elliptic.Curve, clientEphemera []byte, privateKeyPEM []byte) ([]byte, error) {
-	ephemeralECDSAPublicKey, err := ocrypto.UncompressECPubKey(curve, clientEphemera)
-	if err != nil {
-		return nil, err
-	}
-
-	derBytes, err := x509.MarshalPKIXPublicKey(ephemeralECDSAPublicKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal ECDSA public key: %w", err)
-	}
-	pemBlock := &pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: derBytes,
-	}
-	ephemeralECDSAPublicKeyPEM := pem.EncodeToMemory(pemBlock)
-
-	symmetricKey, err := ocrypto.ComputeECDHKey(privateKeyPEM, ephemeralECDSAPublicKeyPEM)
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
-	}
-
-	key, err := ocrypto.CalculateHKDF(NanoVersionSalt(), symmetricKey)
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
-	}
-
-	return key, nil
-}
-
 func (s StandardCrypto) Close() {
 }
 
@@ -421,12 +373,6 @@ func TDFSalt() []byte {
 	digest.Write([]byte("TDF"))
 	salt := digest.Sum(nil)
 	return salt
-}
-
-func NanoVersionSalt() []byte {
-	digest := sha256.New()
-	digest.Write([]byte(kNanoTDFMagicStringAndVersion))
-	return digest.Sum(nil)
 }
 
 // ECDecrypt uses hybrid ECIES to decrypt the data.

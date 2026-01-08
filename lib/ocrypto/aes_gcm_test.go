@@ -127,8 +127,8 @@ func TestCreateAESGcm_WithDifferentAuthTags(t *testing.T) {
 		t.Fatalf("Fail to grenerate nonce %v", err)
 	}
 
-	authTagsForNanoTDF := []int{12, 13, 14, 15, 16}
-	for _, authTag := range authTagsForNanoTDF {
+	authTagsToTest := []int{12, 13, 14, 15, 16}
+	for _, authTag := range authTagsToTest {
 		cipherText, err := aesGcm.EncryptWithIVAndTagSize(nonce, []byte(plainText), authTag)
 		if err != nil {
 			t.Fatalf("Fail to encrypt with auth tag:%d err:%v", authTag, err)

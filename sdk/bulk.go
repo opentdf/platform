@@ -19,12 +19,11 @@ type BulkTDF struct {
 }
 
 type BulkDecryptRequest struct {
-	TDFs                  []*BulkTDF
-	TDF3DecryptOptions    []TDFReaderOption     // Options for TDF3 Decryptor
-	NanoTDFDecryptOptions []NanoTDFReaderOption // Options for Nano TDF Decryptor
-	TDFType               TdfType
-	kasAllowlist          AllowList
-	ignoreAllowList       bool
+	TDFs               []*BulkTDF
+	TDF3DecryptOptions []TDFReaderOption // Options for TDF3 Decryptor
+	TDFType            TdfType
+	kasAllowlist       AllowList
+	ignoreAllowList    bool
 }
 
 // BulkDecryptPrepared holds the prepared state for bulk decryption
@@ -97,13 +96,6 @@ func WithTDF3DecryptOptions(options ...TDFReaderOption) BulkDecryptOption {
 	}
 }
 
-func WithNanoTDFDecryptOptions(options ...NanoTDFReaderOption) BulkDecryptOption {
-	return func(request *BulkDecryptRequest) error {
-		request.NanoTDFDecryptOptions = append(request.NanoTDFDecryptOptions, options...)
-		return nil
-	}
-}
-
 func createBulkRewrapRequest(options ...BulkDecryptOption) (*BulkDecryptRequest, error) {
 	req := &BulkDecryptRequest{}
 	for _, opt := range options {
@@ -117,8 +109,6 @@ func createBulkRewrapRequest(options ...BulkDecryptOption) (*BulkDecryptRequest,
 
 func (s SDK) createDecryptor(tdf *BulkTDF, req *BulkDecryptRequest) (decryptor, error) {
 	switch req.TDFType {
-	case Nano:
-		return createNanoTDFDecryptHandler(tdf.Reader, tdf.Writer, req.NanoTDFDecryptOptions...)
 	case Standard:
 		return s.createTDF3DecryptHandler(tdf.Writer, tdf.Reader, req.TDF3DecryptOptions...)
 	case Invalid:
@@ -140,7 +130,6 @@ func (s SDK) setupKasAllowlist(ctx context.Context, bulkReq *BulkDecryptRequest)
 				return fmt.Errorf("failed to get allowlist from registry: %w", err)
 			}
 			bulkReq.kasAllowlist = allowlist
-			bulkReq.NanoTDFDecryptOptions = append(bulkReq.NanoTDFDecryptOptions, withNanoKasAllowlist(bulkReq.kasAllowlist))
 			bulkReq.TDF3DecryptOptions = append(bulkReq.TDF3DecryptOptions, withKasAllowlist(bulkReq.kasAllowlist))
 		} else {
 			s.Logger().Error("no KAS allowlist provided and no KeyAccessServerRegistry available")
@@ -204,12 +193,7 @@ func (s SDK) performRewraps(ctx context.Context, bulkReq *BulkDecryptRequest, ka
 		}
 
 		var rewrapResp map[string][]kaoResult
-		switch bulkReq.TDFType {
-		case Nano:
-			rewrapResp, err = kasClient.nanoUnwrap(ctx, rewrapRequests...)
-		case Standard, Invalid:
-			rewrapResp, err = kasClient.unwrap(ctx, rewrapRequests...)
-		}
+		rewrapResp, err = kasClient.unwrap(ctx, rewrapRequests...)
 
 		for id, res := range rewrapResp {
 			allRewrapResp[id] = append(allRewrapResp[id], res...)
@@ -322,8 +306,6 @@ func getFulfillableObligations(decryptor decryptor, logger *slog.Logger) []strin
 	switch d := decryptor.(type) {
 	case *tdf3DecryptHandler:
 		return d.reader.config.fulfillableObligationFQNs
-	case *NanoTDFDecryptHandler:
-		return d.config.fulfillableObligationFQNs
 	default:
 		logger.Warn("unknown decryptor type, cannot populate obligations", slog.String("type", fmt.Sprintf("%T", d)))
 		return make([]string, 0)

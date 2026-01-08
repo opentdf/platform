@@ -4,8 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/casbin/casbin/v2/persist"
 	"github.com/opentdf/platform/service/logger"
+	"gorm.io/gorm"
 )
 
 // AuthConfig pulls AuthN and AuthZ together
@@ -15,6 +15,8 @@ type Config struct {
 	// Used for re-authentication of IPC connections
 	IPCReauthRoutes []string `mapstructure:"-" json:"-"`
 	AuthNConfig     `mapstructure:",squash"`
+	// Optional SQL DB handle routed from server startup; not loaded from config.
+	GormDB *gorm.DB `mapstructure:"-" json:"-"`
 }
 
 // AuthNConfig is the configuration need for the platform to validate tokens
@@ -45,8 +47,8 @@ type PolicyConfig struct {
 	// Extend the builtin policy with a custom policy
 	Extension string `mapstructure:"extension" json:"extension"`
 	Model     string `mapstructure:"model" json:"model"`
-	// Override the default string-adapter
-	Adapter persist.Adapter `mapstructure:"-" json:"-"`
+	// Adapter selects the policy storage backend: "CSV" (default) or "SQL".
+	Adapter string `mapstructure:"adapter" json:"adapter" default:"CSV"`
 }
 
 func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {

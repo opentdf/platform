@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"slices"
+	"strings"
 	"syscall"
 
 	"connectrpc.com/connect"
@@ -22,9 +23,12 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/tracing"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 const devModeMessage = `
@@ -156,10 +160,29 @@ func Start(f ...StartOptions) error {
 		cfg.Server.Auth.Policy.Builtin = startConfig.builtinPolicyOverride
 	}
 
-	// Set Casbin Adapter
-	if startConfig.casbinAdapter != nil {
-		cfg.Server.Auth.Policy.Adapter = startConfig.casbinAdapter
+	// Adapter selection is now string-based; programmatic adapter objects are deprecated.
+
+	// If SQL-backed policy storage is enabled and no custom adapter is provided,
+	// route a DB handle through the Authenticator constructor so Casbin configures
+	// its SQL adapter internally.
+	authSQLCleanup := func() {}
+	var authGormDB *gorm.DB
+	if strings.ToUpper(cfg.Server.Auth.Policy.Adapter) == "SQL" {
+		dbClient, err := db.New(ctx, cfg.DB, cfg.Logger, nil)
+		if err != nil {
+			logger.Error("could not create DB client for Authenticator", slog.Any("error", err))
+			return fmt.Errorf("could not create DB client for Authenticator: %w", err)
+		}
+		gdb, err := gorm.Open(postgres.New(postgres.Config{Conn: dbClient.SQLDB}), &gorm.Config{})
+		if err != nil {
+			logger.Error("failed to open gorm DB for Authenticator", slog.Any("error", err))
+			dbClient.Close()
+			return fmt.Errorf("failed to open gorm DB for Authenticator: %w", err)
+		}
+		authGormDB = gdb
+		authSQLCleanup = func() { dbClient.Close() }
 	}
+	cfg.Server.Auth.GormDB = authGormDB
 
 	// Apply additional CORS configuration from programmatic options
 	// These are appended to the YAML config values; deduplication happens in Effective*() methods
@@ -179,12 +202,14 @@ func Start(f ...StartOptions) error {
 	// Create new server for grpc & http. Also will support in process grpc potentially too
 	logger.Debug("initializing opentdf server")
 	cfg.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
+	// Initialize OpenTDF server.
 	otdf, err := server.NewOpenTDFServer(cfg.Server, logger, cacheManager)
 	if err != nil {
 		logger.Error("issue creating opentdf server", slog.String("error", err.Error()))
 		return fmt.Errorf("issue creating opentdf server: %w", err)
 	}
 	defer otdf.Stop()
+	defer authSQLCleanup()
 
 	// Initialize the service registry
 	logger.Debug("initializing service registry")

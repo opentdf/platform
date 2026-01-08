@@ -534,6 +534,16 @@ OpenTDF uses Casbin to manage authorization policies. This document provides an 
 4. **CSV**: The authorization policy in CSV format. This will override the builtin policy.
 5. **Model**: The Casbin policy model. This should only be set if you have a deep understanding of how casbin works.
 
+#### SQL Policy Storage (Opt-in)
+
+By default, Casbin policies are loaded from CSV. You can opt-in to SQL-backed policy storage to enable mutable policies managed at runtime. When enabled, the platform uses the GORM Casbin adapter against the configured database.
+
+| Field                                 | Description                                                                                  | Default | Environment Variable                              |
+| ------------------------------------- | -------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------- |
+| `server.auth.policy.adapter`| Choose method of Casbin storage ("CSV" or "SQL").                                   | `CSV` | OPENTDF_SERVER_AUTH_POLICY_ADAPTER            |
+
+When the SQL adapter is chosen, it auto‑migrates the `casbin_rule` table and seeds the built‑in policy only if the store is empty. Otherwise, CSV is used as the default store.
+
 #### Configuration in opentdf-example.yaml
 
 Below is an example configuration snippet from
@@ -548,6 +558,8 @@ server:
     audience: 'http://localhost:8080'
     issuer: http://keycloak:8888/auth/realms/opentdf
     policy:
+      # Opt-in SQL policy store
+      adapter: SQL
       
       ## Deprecated
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)

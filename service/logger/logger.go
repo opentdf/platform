@@ -116,8 +116,12 @@ func getLevel(config Config) (slog.Leveler, error) {
 		return slog.LevelDebug, nil
 	case "info":
 		return slog.LevelInfo, nil
+	case "warn":
+		return slog.LevelWarn, nil
 	case "error":
 		return slog.LevelError, nil
+	case "audit":
+		return audit.LevelAudit, nil
 	case "trace":
 		return LevelTrace, nil
 	default:

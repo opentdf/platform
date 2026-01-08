@@ -118,6 +118,7 @@ type noOpEncapsulator struct{}
 
 func (n *noOpEncapsulator) Encapsulate(pk ocrypto.ProtectedKey) ([]byte, error) {
 	// Delegate to ProtectedKey to avoid accessing raw key directly
+	//nolint:staticcheck // SA1019: pk.Export is deprecated but required for test code
 	return pk.Export(n)
 }
 
@@ -309,6 +310,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
 		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
+		//nolint:staticcheck // SA1019: NewAsymEncryption is deprecated but used in test code
 		rsaEncryptor, err := ocrypto.NewAsymEncryption(rsaPubKey)
 		require.NoError(t, err)
 		ciphertext, err := rsaEncryptor.Encrypt(samplePayload)
@@ -320,6 +322,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 
 		// Use noOpEncapsulator to get raw key data for testing
 		noOpEnc := &noOpEncapsulator{}
+		//nolint:staticcheck // SA1019: protectedKey.Export is deprecated but required for test code
 		decryptedPayload, err := protectedKey.Export(noOpEnc)
 		require.NoError(t, err)
 		assert.Equal(t, samplePayload, decryptedPayload)
@@ -348,6 +351,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 
 		// Use noOpEncapsulator to get raw key data for testing
 		noOpEnc := &noOpEncapsulator{}
+		//nolint:staticcheck // SA1019: protectedKey.Export is deprecated but required for test code
 		decryptedPayload, err := protectedKey.Export(noOpEnc)
 		require.NoError(t, err)
 		assert.Equal(t, samplePayload, decryptedPayload)
@@ -471,6 +475,7 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 
 		// Use noOpEncapsulator to get raw key data for testing
 		noOpEnc := &noOpEncapsulator{}
+		//nolint:staticcheck // SA1019: protectedKey.Export is deprecated but required for test code
 		actualDerivedKey, err := protectedKey.Export(noOpEnc)
 		require.NoError(t, err)
 		assert.Equal(t, expectedDerivedKey, actualDerivedKey)

@@ -112,14 +112,18 @@ func getWriter(config Config) (io.Writer, error) {
 
 func getLevel(config Config) (slog.Leveler, error) {
 	switch config.Level {
+	case "trace":
+		return LevelTrace, nil
 	case "debug":
 		return slog.LevelDebug, nil
 	case "info":
 		return slog.LevelInfo, nil
+	case "warn":
+		return slog.LevelWarn, nil
 	case "error":
 		return slog.LevelError, nil
-	case "trace":
-		return LevelTrace, nil
+	case "audit":
+		return audit.LevelAudit, nil
 	default:
 		return nil, fmt.Errorf("invalid logger level: %s", config.Level)
 	}

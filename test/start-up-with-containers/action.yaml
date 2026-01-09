@@ -116,7 +116,7 @@ runs:
         fi
         keyring='[{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}]'
         keys='[{"kid":"e1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}]'
-        while IFS= read -r -d $'\0' key_json <&3; do
+        while IFS= read -r key_json; do
           printf 'processing %s\n' "${key_json}"
           alg="$(jq -r '.alg' <<< "${key_json}")"
           if [[ ! " ${allowed_algorithms[*]} " =~ " ${alg} " ]]; then
@@ -146,7 +146,7 @@ runs:
           keyring_obj="$(jq '{kid, alg}' <<< "${key_json}")"
           keyring="$(jq '. + [$keyring_obj]' --argjson keyring_obj "${keyring_obj}" <<< "${keyring}")"
 
-        done 3< <(jq -c --raw-output0 '.[]' <<< "${EXTRA_KEYS}")
+        done < <(jq -c '.[]' <<< "${EXTRA_KEYS}")
 
         printf 'adding the following keys:\n  [%s]\n[%s]  \n' "${keys}" "${keyring}"
 

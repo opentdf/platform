@@ -140,7 +140,7 @@ func (c PolicyDBClient) ListAttributeValues(ctx context.Context, r *attributes.L
 	}
 
 	list, err := c.queries.listAttributeValues(ctx, listAttributeValuesParams{
-		AttributeDefinitionID: r.GetAttributeId(),
+		AttributeDefinitionID: pgtypeUUID(r.GetAttributeId()),
 		Active:                active,
 		Limit:                 limit,
 		Offset:                offset,

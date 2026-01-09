@@ -99,9 +99,9 @@ func (c PolicyDBClient) GetRegisteredResource(ctx context.Context, r *registered
 
 	switch {
 	case r.GetId() != "":
-		params.ID = r.GetId()
+		params.ID = pgtypeUUID(r.GetId())
 	case r.GetName() != "":
-		params.Name = strings.ToLower(r.GetName())
+		params.Name = pgtypeText(strings.ToLower(r.GetName()))
 	default:
 		return nil, db.ErrSelectIdentifierInvalid
 	}
@@ -272,15 +272,15 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 
 	switch {
 	case r.GetId() != "":
-		params.ID = r.GetId()
+		params.ID = pgtypeUUID(r.GetId())
 	case r.GetFqn() != "":
 		fqn := strings.ToLower(r.GetFqn())
 		parsed, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](fqn)
 		if err != nil {
 			return nil, err
 		}
-		params.Name = parsed.Name
-		params.Value = parsed.Value
+		params.Name = pgtypeText(parsed.Name)
+		params.Value = pgtypeText(parsed.Value)
 	default:
 		// unexpected type
 		return nil, db.ErrSelectIdentifierInvalid
@@ -355,7 +355,7 @@ func (c PolicyDBClient) ListRegisteredResourceValues(ctx context.Context, r *reg
 	}
 
 	list, err := c.queries.listRegisteredResourceValues(ctx, listRegisteredResourceValuesParams{
-		RegisteredResourceID: resourceID,
+		RegisteredResourceID: pgtypeUUID(resourceID),
 		Limit:                limit,
 		Offset:               offset,
 	})

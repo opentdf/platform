@@ -769,8 +769,8 @@ LEFT JOIN (
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 WHERE
     ($1::BOOLEAN IS NULL OR ad.active = $1) AND
-    (NULLIF($2, '') IS NULL OR ad.namespace_id = $2::uuid) AND 
-    (NULLIF($3, '') IS NULL OR n.name = $3) 
+    ($2::uuid IS NULL OR ad.namespace_id = $2::uuid) AND 
+    ($3::text IS NULL OR n.name = $3::text) 
 GROUP BY ad.id, n.name, fqns.fqn
 LIMIT $5 
 OFFSET $4
@@ -778,8 +778,8 @@ OFFSET $4
 
 type listAttributesDetailParams struct {
 	Active        pgtype.Bool `json:"active"`
-	NamespaceID   interface{} `json:"namespace_id"`
-	NamespaceName interface{} `json:"namespace_name"`
+	NamespaceID   pgtype.UUID `json:"namespace_id"`
+	NamespaceName pgtype.Text `json:"namespace_name"`
 	Offset        int32       `json:"offset_"`
 	Limit         int32       `json:"limit_"`
 }
@@ -833,8 +833,8 @@ type listAttributesDetailRow struct {
 //	LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 //	WHERE
 //	    ($1::BOOLEAN IS NULL OR ad.active = $1) AND
-//	    (NULLIF($2, '') IS NULL OR ad.namespace_id = $2::uuid) AND
-//	    (NULLIF($3, '') IS NULL OR n.name = $3)
+//	    ($2::uuid IS NULL OR ad.namespace_id = $2::uuid) AND
+//	    ($3::text IS NULL OR n.name = $3::text)
 //	GROUP BY ad.id, n.name, fqns.fqn
 //	LIMIT $5
 //	OFFSET $4

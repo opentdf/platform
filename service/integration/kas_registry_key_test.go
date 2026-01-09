@@ -2277,3 +2277,44 @@ func (s *KasRegistryKeySuite) createKeyAndKas() *policy.KasKey {
 
 	return keyResp.GetKasKey()
 }
+
+// Test_ListKeyMappings_AllParameterCombinations validates that listKeyMappings works correctly
+// with various combinations of optional parameters
+func (s *KasRegistryKeySuite) Test_ListKeyMappings_AllParameterCombinations() {
+	kas1 := s.kasFixtures[0]
+	key1 := s.kasKeys[0]
+
+	// Test 1: No parameters - should return all mappings (may be 0)
+	allMappings, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &kasregistry.ListKeyMappingsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(allMappings)
+	// No assertion on count - fixtures may not have any mappings
+
+	// Test 2: Filter by key with KAS URI
+	mappingsByKey, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &kasregistry.ListKeyMappingsRequest{
+		Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+			Key: &kasregistry.KasKeyIdentifier{
+				Identifier: &kasregistry.KasKeyIdentifier_Uri{
+					Uri: kas1.URI,
+				},
+				Kid: key1.KeyID,
+			},
+		},
+	})
+	s.Require().NoError(err, "Should successfully query with KAS URI and key ID")
+	s.NotNil(mappingsByKey)
+
+	// Test 3: Filter by key with KAS ID (validates alternative params path)
+	mappingsByKeyID, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &kasregistry.ListKeyMappingsRequest{
+		Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+			Key: &kasregistry.KasKeyIdentifier{
+				Identifier: &kasregistry.KasKeyIdentifier_KasId{
+					KasId: key1.KeyAccessServerID,
+				},
+				Kid: key1.KeyID,
+			},
+		},
+	})
+	s.Require().NoError(err, "Should successfully query with KAS ID and key ID")
+	s.NotNil(mappingsByKeyID)
+}

@@ -6,17 +6,17 @@
 WITH inserted_obligation AS (
     INSERT INTO obligation_definitions (namespace_id, name, metadata)
     SELECT 
-        COALESCE(NULLIF(@namespace_id::TEXT, '')::UUID, fqns.namespace_id),
+        COALESCE(sqlc.narg('namespace_id')::uuid, fqns.namespace_id),
         @name, 
         @metadata
     FROM (
         SELECT 
-            NULLIF(@namespace_id::TEXT, '')::UUID as direct_namespace_id
+            sqlc.narg('namespace_id')::uuid as direct_namespace_id
     ) direct
-    LEFT JOIN attribute_fqns fqns ON fqns.fqn = @namespace_fqn AND NULLIF(@namespace_id::TEXT, '') IS NULL
+    LEFT JOIN attribute_fqns fqns ON fqns.fqn = sqlc.narg('namespace_fqn')::text AND sqlc.narg('namespace_id')::text IS NULL
     WHERE 
-        (NULLIF(@namespace_id::TEXT, '') IS NOT NULL AND direct.direct_namespace_id IS NOT NULL) OR
-        (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND fqns.namespace_id IS NOT NULL)
+        (sqlc.narg('namespace_id')::text IS NOT NULL AND direct.direct_namespace_id IS NOT NULL) OR
+        (sqlc.narg('namespace_fqn')::text IS NOT NULL AND fqns.namespace_id IS NOT NULL)
     RETURNING id, namespace_id, name, metadata
 ),
 inserted_values AS (
@@ -109,11 +109,11 @@ WHERE
     -- lookup by obligation id OR by namespace fqn + obligation name
     (
         -- lookup by obligation id
-        (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = NULLIF(@id::TEXT, '')::UUID)
+        (sqlc.narg('id')::uuid IS NOT NULL AND od.id = sqlc.narg('id')::uuid)
         OR
         -- lookup by namespace fqn + obligation name
-        (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL
-         AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR)
+        (sqlc.narg('namespace_fqn')::text IS NOT NULL AND sqlc.narg('name')::text IS NOT NULL
+         AND fqns.fqn = sqlc.narg('namespace_fqn')::text AND od.name = sqlc.narg('name')::text)
     )
 GROUP BY od.id, n.id, fqns.fqn;
 
@@ -124,8 +124,8 @@ WITH counted AS (
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
-        (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = @namespace_id::UUID) AND
-        (NULLIF(@namespace_fqn::TEXT, '') IS NULL OR fqns.fqn = @namespace_fqn::VARCHAR)
+        (sqlc.narg('namespace_id')::uuid IS NULL OR od.namespace_id = sqlc.narg('namespace_id')::uuid) AND
+        (sqlc.narg('namespace_fqn')::text IS NULL OR fqns.fqn = sqlc.narg('namespace_fqn')::text)
 ),
 obligation_triggers_agg AS (
     SELECT
@@ -184,8 +184,8 @@ CROSS JOIN counted
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 WHERE
-    (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = @namespace_id::UUID) AND
-    (NULLIF(@namespace_fqn::TEXT, '') IS NULL OR fqns.fqn = @namespace_fqn::VARCHAR)
+    (sqlc.narg('namespace_id')::uuid IS NULL OR od.namespace_id = sqlc.narg('namespace_id')::uuid) AND
+    (sqlc.narg('namespace_fqn')::text IS NULL OR fqns.fqn = sqlc.narg('namespace_fqn')::text)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
 LIMIT @limit_
 OFFSET @offset_;
@@ -193,8 +193,8 @@ OFFSET @offset_;
 -- name: updateObligation :execrows
 UPDATE obligation_definitions
 SET
-    name = COALESCE(NULLIF(@name::TEXT, ''), name),
-    metadata = COALESCE(@metadata, metadata)
+    name = COALESCE(sqlc.narg('name'), name),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
 WHERE id = @id;
 
 -- name: deleteObligation :one
@@ -208,11 +208,11 @@ WHERE id IN (
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = NULLIF(@id::TEXT, '')::UUID)
+            (sqlc.narg('id')::text IS NOT NULL AND od.id = sqlc.narg('id')::uuid)
             OR
             -- lookup by namespace fqn + obligation name
-            (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL 
-             AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR)
+            (sqlc.narg('namespace_fqn')::text IS NOT NULL AND sqlc.narg('name')::text IS NOT NULL 
+             AND fqns.fqn = sqlc.narg('namespace_fqn')::text AND od.name = sqlc.narg('name')::text)
         )
 )
 RETURNING id;
@@ -301,11 +301,11 @@ WITH obligation_lookup AS (
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = NULLIF(@id::TEXT, '')::UUID)
+            (sqlc.narg('id')::uuid IS NOT NULL AND od.id = sqlc.narg('id')::uuid)
             OR
             -- lookup by namespace fqn + obligation name
-            (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL 
-             AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR)
+            (sqlc.narg('namespace_fqn')::text IS NOT NULL AND sqlc.narg('name')::text IS NOT NULL 
+             AND fqns.fqn = sqlc.narg('namespace_fqn')::text AND od.name = sqlc.narg('name')::text)
         )
 ),
 inserted_value AS (
@@ -385,18 +385,18 @@ WHERE
     -- lookup by value id OR by namespace fqn + obligation name + value name
     (
         -- lookup by value id
-        (NULLIF(@id::TEXT, '') IS NOT NULL AND ov.id = NULLIF(@id::TEXT, '')::UUID)
+        (sqlc.narg('id')::uuid IS NOT NULL AND ov.id = sqlc.narg('id')::uuid)
         OR
         -- lookup by namespace fqn + obligation name + value name
-        (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL AND NULLIF(@value::TEXT, '') IS NOT NULL
-         AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR AND ov.value = @value::VARCHAR)
+        (sqlc.narg('namespace_fqn')::text IS NOT NULL AND sqlc.narg('name')::text IS NOT NULL AND sqlc.narg('value')::text IS NOT NULL
+         AND fqns.fqn = sqlc.narg('namespace_fqn')::text AND od.name = sqlc.narg('name')::text AND ov.value = sqlc.narg('value')::text)
     );
 
 -- name: updateObligationValue :execrows
 UPDATE obligation_values_standard
 SET
-    value = COALESCE(NULLIF(@value::TEXT, ''), value),
-    metadata = COALESCE(@metadata, metadata)
+    value = COALESCE(sqlc.narg('value'), value),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
 WHERE id = @id;
 
 -- name: getObligationValuesByFQNs :many
@@ -472,11 +472,11 @@ WHERE id IN (
         -- lookup by value id OR by namespace fqn + obligation name + value name
         (
             -- lookup by value id
-            (NULLIF(@id::TEXT, '') IS NOT NULL AND ov.id = NULLIF(@id::TEXT, '')::UUID)
+            (sqlc.narg('id')::text IS NOT NULL AND ov.id = sqlc.narg('id')::uuid)
             OR
-            -- lookup by namespace fqn + obligation name + value name
-            (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL AND NULLIF(@value::TEXT, '') IS NOT NULL
-             AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR AND ov.value = @value::VARCHAR)
+            -- lookup by namespace fqn + obligation name + value
+            (sqlc.narg('namespace_fqn')::text IS NOT NULL AND sqlc.narg('name')::text IS NOT NULL AND sqlc.narg('value')::text IS NOT NULL
+             AND fqns.fqn = sqlc.narg('namespace_fqn')::text AND od.name = sqlc.narg('name')::text AND ov.value = sqlc.narg('value')::text)
         )
 )
 RETURNING id;
@@ -490,15 +490,15 @@ WITH ov_id AS (
     SELECT ov.id, od.namespace_id
     FROM obligation_values_standard ov
     JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
-    WHERE
-        (NULLIF(@obligation_value_id::TEXT, '') IS NOT NULL AND ov.id = @obligation_value_id::UUID)
+    WHERE sqlc.narg('obligation_value_id')::uuid IS NOT NULL AND ov.id = sqlc.narg('obligation_value_id')::uuid
 ),
 a_id AS (
-    SELECT id FROM actions
+    SELECT a.id
+    FROM actions a
     WHERE
-        (NULLIF(@action_id::TEXT, '') IS NOT NULL AND id = @action_id::UUID)
+        (sqlc.narg('action_id')::uuid IS NOT NULL AND a.id = sqlc.narg('action_id')::uuid)
         OR
-        (NULLIF(@action_name::TEXT, '') IS NOT NULL AND name = @action_name::TEXT)
+        (sqlc.narg('action_name')::text IS NOT NULL AND a.name = sqlc.narg('action_name')::text)
 ),
 -- Gets the attribute value, but also ensures that the attribute value belongs to the same namespace as the obligation, to which the obligation value belongs
 av_id AS (
@@ -507,9 +507,9 @@ av_id AS (
     JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
     LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
     WHERE
-        ((NULLIF(@attribute_value_id::TEXT, '') IS NOT NULL AND av.id = @attribute_value_id::UUID)
+        ((sqlc.narg('attribute_value_id')::uuid IS NOT NULL AND av.id = sqlc.narg('attribute_value_id')::uuid)
         OR
-        (NULLIF(@attribute_value_fqn::TEXT, '') IS NOT NULL AND fqns.fqn = @attribute_value_fqn))
+        (sqlc.narg('attribute_value_fqn')::text IS NOT NULL AND fqns.fqn = sqlc.narg('attribute_value_fqn')::text))
         AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
 ),
 inserted AS (
@@ -519,7 +519,7 @@ inserted AS (
         (SELECT id FROM a_id),
         (SELECT id FROM av_id),
         @metadata,
-        NULLIF(@client_id::TEXT, '')
+        sqlc.narg('client_id')::text
     RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at, client_id
 )
 SELECT
@@ -641,8 +641,8 @@ JOIN actions a ON ot.action_id = a.id
 JOIN attribute_values av ON ot.attribute_value_id = av.id
 LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 WHERE
-    (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = @namespace_id::UUID) AND
-    (NULLIF(@namespace_fqn::TEXT, '') IS NULL OR ns_fqns.fqn = @namespace_fqn::VARCHAR)
+    (sqlc.narg('namespace_id')::uuid IS NULL OR od.namespace_id = sqlc.narg('namespace_id')::uuid) AND
+    (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text)
 ORDER BY ot.created_at DESC
 LIMIT @limit_
 OFFSET @offset_;

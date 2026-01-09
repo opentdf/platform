@@ -47,9 +47,9 @@ WITH listed AS (
         attribute_fqns AS fqns_on_ns
             ON nskag.namespace_id = fqns_on_ns.namespace_id
         AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
-    WHERE (NULLIF(@kas_id, '') IS NULL OR kas.id = @kas_id::uuid) 
-        AND (NULLIF(@kas_uri, '') IS NULL OR kas.uri = @kas_uri::varchar) 
-        AND (NULLIF(@kas_name, '') IS NULL OR kas.name = @kas_name::varchar) 
+    WHERE (sqlc.narg('kas_id')::uuid IS NULL OR kas.id = sqlc.narg('kas_id')::uuid) 
+        AND (sqlc.narg('kas_uri')::text IS NULL OR kas.uri = sqlc.narg('kas_uri')::text) 
+        AND (sqlc.narg('kas_name')::text IS NULL OR kas.name = sqlc.narg('kas_name')::text) 
     GROUP BY 
         kas.id
 )
@@ -170,6 +170,14 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING id;
 
 -- name: getKey :one
+WITH params AS (
+    SELECT
+        sqlc.narg('id')::uuid as id,
+        sqlc.narg('key_id')::text as key_id,
+        sqlc.narg('kas_id')::uuid as kas_id,
+        sqlc.narg('kas_uri')::text as kas_uri,
+        sqlc.narg('kas_name')::text as kas_name
+)
 SELECT 
   kask.id,
   kask.key_id,

@@ -101,6 +101,8 @@ func (l *Logger) With(key string, value string) *Logger {
 
 func getWriter(config Config) (io.Writer, error) {
 	switch config.Output {
+	case "stderr":
+		return os.Stderr, nil
 	case "stdout":
 		return os.Stdout, nil
 	default:
@@ -110,14 +112,18 @@ func getWriter(config Config) (io.Writer, error) {
 
 func getLevel(config Config) (slog.Leveler, error) {
 	switch config.Level {
+	case "trace":
+		return LevelTrace, nil
 	case "debug":
 		return slog.LevelDebug, nil
 	case "info":
 		return slog.LevelInfo, nil
+	case "warn":
+		return slog.LevelWarn, nil
 	case "error":
 		return slog.LevelError, nil
-	case "trace":
-		return LevelTrace, nil
+	case "audit":
+		return audit.LevelAudit, nil
 	default:
 		return nil, fmt.Errorf("invalid logger level: %s", config.Level)
 	}

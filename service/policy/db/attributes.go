@@ -146,8 +146,8 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 
 	list, err := c.queries.listAttributesDetail(ctx, listAttributesDetailParams{
 		Active:        active,
-		NamespaceID:   namespaceID,
-		NamespaceName: namespaceName,
+		NamespaceID:   pgtypeUUID(namespaceID),
+		NamespaceName: pgtypeText(namespaceName),
 		Limit:         limit,
 		Offset:        offset,
 	})

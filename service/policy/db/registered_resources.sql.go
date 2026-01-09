@@ -131,14 +131,14 @@ SELECT
 FROM registered_resources r
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 WHERE
-    (NULLIF($1, '') IS NULL OR r.id = $1::UUID) AND
-    (NULLIF($2, '') IS NULL OR r.name = $2::VARCHAR)
+    ($1::uuid IS NULL OR r.id = $1::uuid) AND
+    ($2::text IS NULL OR r.name = $2::text)
 GROUP BY r.id
 `
 
 type getRegisteredResourceParams struct {
-	ID   interface{} `json:"id"`
-	Name interface{} `json:"name"`
+	ID   pgtype.UUID `json:"id"`
+	Name pgtype.Text `json:"name"`
 }
 
 type getRegisteredResourceRow struct {
@@ -163,8 +163,8 @@ type getRegisteredResourceRow struct {
 //	FROM registered_resources r
 //	LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 //	WHERE
-//	    (NULLIF($1, '') IS NULL OR r.id = $1::UUID) AND
-//	    (NULLIF($2, '') IS NULL OR r.name = $2::VARCHAR)
+//	    ($1::uuid IS NULL OR r.id = $1::uuid) AND
+//	    ($2::text IS NULL OR r.name = $2::text)
 //	GROUP BY r.id
 func (q *Queries) getRegisteredResource(ctx context.Context, arg getRegisteredResourceParams) (getRegisteredResourceRow, error) {
 	row := q.db.QueryRow(ctx, getRegisteredResource, arg.ID, arg.Name)
@@ -204,16 +204,16 @@ LEFT JOIN actions a on rav.action_id = a.id
 LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE
-    (NULLIF($1, '') IS NULL OR v.id = $1::UUID) AND
-    (NULLIF($2, '') IS NULL OR r.name = $2::VARCHAR) AND
-    (NULLIF($3, '') IS NULL OR v.value = $3::VARCHAR)
+    ($1::uuid IS NULL OR v.id = $1::uuid) AND
+    ($2::text IS NULL OR r.name = $2::text) AND
+    ($3::text IS NULL OR v.value = $3::text)
 GROUP BY v.id
 `
 
 type getRegisteredResourceValueParams struct {
-	ID    interface{} `json:"id"`
-	Name  interface{} `json:"name"`
-	Value interface{} `json:"value"`
+	ID    pgtype.UUID `json:"id"`
+	Name  pgtype.Text `json:"name"`
+	Value pgtype.Text `json:"value"`
 }
 
 type getRegisteredResourceValueRow struct {
@@ -251,9 +251,9 @@ type getRegisteredResourceValueRow struct {
 //	LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
 //	LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 //	WHERE
-//	    (NULLIF($1, '') IS NULL OR v.id = $1::UUID) AND
-//	    (NULLIF($2, '') IS NULL OR r.name = $2::VARCHAR) AND
-//	    (NULLIF($3, '') IS NULL OR v.value = $3::VARCHAR)
+//	    ($1::uuid IS NULL OR v.id = $1::uuid) AND
+//	    ($2::text IS NULL OR r.name = $2::text) AND
+//	    ($3::text IS NULL OR v.value = $3::text)
 //	GROUP BY v.id
 func (q *Queries) getRegisteredResourceValue(ctx context.Context, arg getRegisteredResourceValueParams) (getRegisteredResourceValueRow, error) {
 	row := q.db.QueryRow(ctx, getRegisteredResourceValue, arg.ID, arg.Name, arg.Value)
@@ -270,10 +270,9 @@ func (q *Queries) getRegisteredResourceValue(ctx context.Context, arg getRegiste
 
 const listRegisteredResourceValues = `-- name: listRegisteredResourceValues :many
 WITH counted AS (
-    SELECT COUNT(id) AS total
-    FROM registered_resource_values
-    WHERE
-        NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
+    SELECT COUNT(v.id) AS total
+    FROM registered_resource_values v
+    WHERE $1::uuid IS NULL OR v.registered_resource_id = $1::uuid
 )
 SELECT
     v.id,
@@ -302,14 +301,14 @@ LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id  
 CROSS JOIN counted
 WHERE
-    NULLIF($1, '') IS NULL OR v.registered_resource_id = $1::UUID
+    $1::uuid IS NULL OR v.registered_resource_id = $1::uuid
 GROUP BY v.id, counted.total
 LIMIT $3
 OFFSET $2
 `
 
 type listRegisteredResourceValuesParams struct {
-	RegisteredResourceID interface{} `json:"registered_resource_id"`
+	RegisteredResourceID pgtype.UUID `json:"registered_resource_id"`
 	Offset               int32       `json:"offset_"`
 	Limit                int32       `json:"limit_"`
 }
@@ -326,10 +325,9 @@ type listRegisteredResourceValuesRow struct {
 // listRegisteredResourceValues
 //
 //	WITH counted AS (
-//	    SELECT COUNT(id) AS total
-//	    FROM registered_resource_values
-//	    WHERE
-//	        NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
+//	    SELECT COUNT(v.id) AS total
+//	    FROM registered_resource_values v
+//	    WHERE $1::uuid IS NULL OR v.registered_resource_id = $1::uuid
 //	)
 //	SELECT
 //	    v.id,
@@ -358,7 +356,7 @@ type listRegisteredResourceValuesRow struct {
 //	LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 //	CROSS JOIN counted
 //	WHERE
-//	    NULLIF($1, '') IS NULL OR v.registered_resource_id = $1::UUID
+//	    $1::uuid IS NULL OR v.registered_resource_id = $1::uuid
 //	GROUP BY v.id, counted.total
 //	LIMIT $3
 //	OFFSET $2

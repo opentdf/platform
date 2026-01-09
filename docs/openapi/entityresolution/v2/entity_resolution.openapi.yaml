@@ -91,6 +91,51 @@ components:
          `Value` type union.
 
          The JSON representation for `NullValue` is JSON `null`.
+    authorization.v2.Resource:
+      type: object
+      oneOf:
+        - properties:
+            attributeValues:
+              title: attribute_values
+              description: |+
+                a set of attribute value FQNs, such as those on a TDF, between 1 and 20 in count
+                if provided, resource.attribute_values must be between 1 and 20 in count with all valid FQNs:
+                ```
+                this.fqns.size() > 0 && this.fqns.size() <= 20 && this.fqns.all(item, item.isUri())
+                ```
+
+              $ref: '#/components/schemas/authorization.v2.Resource.AttributeValues'
+          title: attribute_values
+          required:
+            - attributeValues
+        - properties:
+            registeredResourceValueFqn:
+              type: string
+              title: registered_resource_value_fqn
+              minLength: 1
+              format: uri
+              description: fully qualified name of the registered resource value stored in platform policy
+          title: registered_resource_value_fqn
+          required:
+            - registeredResourceValueFqn
+      properties:
+        ephemeralId:
+          type: string
+          title: ephemeral_id
+          description: ephemeral id for tracking between request and response
+      title: Resource
+      additionalProperties: false
+      description: Either a set of attribute values (such as those on a TDF) or a registered resource value
+    authorization.v2.Resource.AttributeValues:
+      type: object
+      properties:
+        fqns:
+          type: array
+          items:
+            type: string
+          title: fqns
+      title: AttributeValues
+      additionalProperties: false
     entity.Entity:
       type: object
       oneOf:
@@ -172,6 +217,12 @@ components:
           items:
             $ref: '#/components/schemas/entity.Token'
           title: tokens
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/authorization.v2.Resource'
+          title: resources
+          description: resources to consider for direct entitlements (experimental)
       title: CreateEntityChainsFromTokensRequest
       additionalProperties: false
       description: Create an entity chain for each token (JWT) in the request.
@@ -185,6 +236,20 @@ components:
           title: entity_chains
       title: CreateEntityChainsFromTokensResponse
       additionalProperties: false
+    entityresolution.v2.DirectEntitlement:
+      type: object
+      properties:
+        attributeValueFqn:
+          type: string
+          title: attribute_value_fqn
+        actions:
+          type: array
+          items:
+            type: string
+          title: actions
+      title: DirectEntitlement
+      additionalProperties: false
+      description: Entity Entitlements that do not require subject mappings (experimental)
     entityresolution.v2.EntityNotFoundError:
       type: object
       properties:
@@ -217,6 +282,12 @@ components:
           items:
             $ref: '#/components/schemas/google.protobuf.Struct'
           title: additional_props
+        directEntitlements:
+          type: array
+          items:
+            $ref: '#/components/schemas/entityresolution.v2.DirectEntitlement'
+          title: direct_entitlements
+          description: direct entitlements applied to Entity (experimental)
       title: EntityRepresentation
       additionalProperties: false
     entityresolution.v2.ResolveEntitiesRequest:

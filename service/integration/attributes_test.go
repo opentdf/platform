@@ -1451,6 +1451,27 @@ func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureData
 
 // - Test that a Get/List attribute returns the Asymmetric Keys with the provider configs / add a key with no provider config
 
+// Test_GetAttribute_ByIdAndFqn_ReturnSameResult validates that getAttribute works correctly
+// with both ID and FQN lookups
+func (s *AttributesSuite) Test_GetAttribute_ByIdAndFqn_ReturnSameResult() {
+	fixtures := s.getAttributeFixtures()
+
+	for fqn, f := range fixtures {
+		// Get by ID
+		attrByID, err := s.db.PolicyClient.GetAttribute(s.ctx, f.ID)
+		s.Require().NoError(err, "Failed to get attribute by ID for FQN: %s", fqn)
+		s.Require().NotNil(attrByID)
+
+		// Get by FQN
+		attrByFQN, err := s.db.PolicyClient.GetAttribute(s.ctx, &attributes.GetAttributeRequest_Fqn{Fqn: fqn})
+		s.Require().NoError(err, "Failed to get attribute by FQN: %s", fqn)
+		s.Require().NotNil(attrByFQN)
+
+		// Verify both return the same attribute
+		s.True(proto.Equal(attrByID, attrByFQN))
+	}
+}
+
 func TestAttributesSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping attributes integration tests")

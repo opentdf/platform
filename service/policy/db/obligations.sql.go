@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createObligation = `-- name: createObligation :one
@@ -14,17 +16,17 @@ const createObligation = `-- name: createObligation :one
 WITH inserted_obligation AS (
     INSERT INTO obligation_definitions (namespace_id, name, metadata)
     SELECT 
-        COALESCE(NULLIF($1::TEXT, '')::UUID, fqns.namespace_id),
+        COALESCE($1::uuid, fqns.namespace_id),
         $2, 
         $3
     FROM (
         SELECT 
-            NULLIF($1::TEXT, '')::UUID as direct_namespace_id
+            $1::uuid as direct_namespace_id
     ) direct
-    LEFT JOIN attribute_fqns fqns ON fqns.fqn = $4 AND NULLIF($1::TEXT, '') IS NULL
+    LEFT JOIN attribute_fqns fqns ON fqns.fqn = $4::text AND $1::text IS NULL
     WHERE 
-        (NULLIF($1::TEXT, '') IS NOT NULL AND direct.direct_namespace_id IS NOT NULL) OR
-        (NULLIF($4::TEXT, '') IS NOT NULL AND fqns.namespace_id IS NOT NULL)
+        ($1::text IS NOT NULL AND direct.direct_namespace_id IS NOT NULL) OR
+        ($4::text IS NOT NULL AND fqns.namespace_id IS NOT NULL)
     RETURNING id, namespace_id, name, metadata
 ),
 inserted_values AS (
@@ -60,11 +62,11 @@ GROUP BY io.id, io.name, io.metadata, n.id, fqns.fqn
 `
 
 type createObligationParams struct {
-	NamespaceID  string   `json:"namespace_id"`
-	Name         string   `json:"name"`
-	Metadata     []byte   `json:"metadata"`
-	NamespaceFqn string   `json:"namespace_fqn"`
-	Values       []string `json:"values"`
+	NamespaceID  pgtype.UUID `json:"namespace_id"`
+	Name         string      `json:"name"`
+	Metadata     []byte      `json:"metadata"`
+	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
+	Values       []string    `json:"values"`
 }
 
 type createObligationRow struct {
@@ -82,17 +84,17 @@ type createObligationRow struct {
 //	WITH inserted_obligation AS (
 //	    INSERT INTO obligation_definitions (namespace_id, name, metadata)
 //	    SELECT
-//	        COALESCE(NULLIF($1::TEXT, '')::UUID, fqns.namespace_id),
+//	        COALESCE($1::uuid, fqns.namespace_id),
 //	        $2,
 //	        $3
 //	    FROM (
 //	        SELECT
-//	            NULLIF($1::TEXT, '')::UUID as direct_namespace_id
+//	            $1::uuid as direct_namespace_id
 //	    ) direct
-//	    LEFT JOIN attribute_fqns fqns ON fqns.fqn = $4 AND NULLIF($1::TEXT, '') IS NULL
+//	    LEFT JOIN attribute_fqns fqns ON fqns.fqn = $4::text AND $1::text IS NULL
 //	    WHERE
-//	        (NULLIF($1::TEXT, '') IS NOT NULL AND direct.direct_namespace_id IS NOT NULL) OR
-//	        (NULLIF($4::TEXT, '') IS NOT NULL AND fqns.namespace_id IS NOT NULL)
+//	        ($1::text IS NOT NULL AND direct.direct_namespace_id IS NOT NULL) OR
+//	        ($4::text IS NOT NULL AND fqns.namespace_id IS NOT NULL)
 //	    RETURNING id, namespace_id, name, metadata
 //	),
 //	inserted_values AS (
@@ -150,15 +152,15 @@ WITH ov_id AS (
     SELECT ov.id, od.namespace_id
     FROM obligation_values_standard ov
     JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
-    WHERE
-        (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = $1::UUID)
+    WHERE $1::uuid IS NOT NULL AND ov.id = $1::uuid
 ),
 a_id AS (
-    SELECT id FROM actions
+    SELECT a.id
+    FROM actions a
     WHERE
-        (NULLIF($2::TEXT, '') IS NOT NULL AND id = $2::UUID)
+        ($2::uuid IS NOT NULL AND a.id = $2::uuid)
         OR
-        (NULLIF($3::TEXT, '') IS NOT NULL AND name = $3::TEXT)
+        ($3::text IS NOT NULL AND a.name = $3::text)
 ),
 av_id AS (
     SELECT av.id
@@ -166,9 +168,9 @@ av_id AS (
     JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
     LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
     WHERE
-        ((NULLIF($4::TEXT, '') IS NOT NULL AND av.id = $4::UUID)
+        (($4::uuid IS NOT NULL AND av.id = $4::uuid)
         OR
-        (NULLIF($5::TEXT, '') IS NOT NULL AND fqns.fqn = $5))
+        ($5::text IS NOT NULL AND fqns.fqn = $5::text))
         AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
 ),
 inserted AS (
@@ -178,7 +180,7 @@ inserted AS (
         (SELECT id FROM a_id),
         (SELECT id FROM av_id),
         $6,
-        NULLIF($7::TEXT, '')
+        $7::text
     RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at, client_id
 )
 SELECT
@@ -236,13 +238,13 @@ LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 `
 
 type createObligationTriggerParams struct {
-	ObligationValueID string `json:"obligation_value_id"`
-	ActionID          string `json:"action_id"`
-	ActionName        string `json:"action_name"`
-	AttributeValueID  string `json:"attribute_value_id"`
-	AttributeValueFqn string `json:"attribute_value_fqn"`
-	Metadata          []byte `json:"metadata"`
-	ClientID          string `json:"client_id"`
+	ObligationValueID pgtype.UUID `json:"obligation_value_id"`
+	ActionID          pgtype.UUID `json:"action_id"`
+	ActionName        pgtype.Text `json:"action_name"`
+	AttributeValueID  pgtype.UUID `json:"attribute_value_id"`
+	AttributeValueFqn pgtype.Text `json:"attribute_value_fqn"`
+	Metadata          []byte      `json:"metadata"`
+	ClientID          pgtype.Text `json:"client_id"`
 }
 
 type createObligationTriggerRow struct {
@@ -259,15 +261,15 @@ type createObligationTriggerRow struct {
 //	    SELECT ov.id, od.namespace_id
 //	    FROM obligation_values_standard ov
 //	    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
-//	    WHERE
-//	        (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = $1::UUID)
+//	    WHERE $1::uuid IS NOT NULL AND ov.id = $1::uuid
 //	),
 //	a_id AS (
-//	    SELECT id FROM actions
+//	    SELECT a.id
+//	    FROM actions a
 //	    WHERE
-//	        (NULLIF($2::TEXT, '') IS NOT NULL AND id = $2::UUID)
+//	        ($2::uuid IS NOT NULL AND a.id = $2::uuid)
 //	        OR
-//	        (NULLIF($3::TEXT, '') IS NOT NULL AND name = $3::TEXT)
+//	        ($3::text IS NOT NULL AND a.name = $3::text)
 //	),
 //	av_id AS (
 //	    SELECT av.id
@@ -275,9 +277,9 @@ type createObligationTriggerRow struct {
 //	    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
 //	    LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
 //	    WHERE
-//	        ((NULLIF($4::TEXT, '') IS NOT NULL AND av.id = $4::UUID)
+//	        (($4::uuid IS NOT NULL AND av.id = $4::uuid)
 //	        OR
-//	        (NULLIF($5::TEXT, '') IS NOT NULL AND fqns.fqn = $5))
+//	        ($5::text IS NOT NULL AND fqns.fqn = $5::text))
 //	        AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
 //	),
 //	inserted AS (
@@ -287,7 +289,7 @@ type createObligationTriggerRow struct {
 //	        (SELECT id FROM a_id),
 //	        (SELECT id FROM av_id),
 //	        $6,
-//	        NULLIF($7::TEXT, '')
+//	        $7::text
 //	    RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at, client_id
 //	)
 //	SELECT
@@ -368,11 +370,11 @@ WITH obligation_lookup AS (
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
+            ($1::uuid IS NOT NULL AND od.id = $1::uuid)
             OR
             -- lookup by namespace fqn + obligation name
-            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL 
-             AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
+            ($2::text IS NOT NULL AND $3::text IS NOT NULL 
+             AND fqns.fqn = $2::text AND od.name = $3::text)
         )
 ),
 inserted_value AS (
@@ -399,11 +401,11 @@ LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id 
 `
 
 type createObligationValueParams struct {
-	ID           string `json:"id"`
-	NamespaceFqn string `json:"namespace_fqn"`
-	Name         string `json:"name"`
-	Value        string `json:"value"`
-	Metadata     []byte `json:"metadata"`
+	ID           pgtype.UUID `json:"id"`
+	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
+	Name         pgtype.Text `json:"name"`
+	Value        string      `json:"value"`
+	Metadata     []byte      `json:"metadata"`
 }
 
 type createObligationValueRow struct {
@@ -427,11 +429,11 @@ type createObligationValueRow struct {
 //	        -- lookup by obligation id OR by namespace fqn + obligation name
 //	        (
 //	            -- lookup by obligation id
-//	            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
+//	            ($1::uuid IS NOT NULL AND od.id = $1::uuid)
 //	            OR
 //	            -- lookup by namespace fqn + obligation name
-//	            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL
-//	             AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
+//	            ($2::text IS NOT NULL AND $3::text IS NOT NULL
+//	             AND fqns.fqn = $2::text AND od.name = $3::text)
 //	        )
 //	),
 //	inserted_value AS (
@@ -502,20 +504,20 @@ WHERE id IN (
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
+            ($1::text IS NOT NULL AND od.id = $1::uuid)
             OR
             -- lookup by namespace fqn + obligation name
-            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL 
-             AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
+            ($2::text IS NOT NULL AND $3::text IS NOT NULL 
+             AND fqns.fqn = $2::text AND od.name = $3::text)
         )
 )
 RETURNING id
 `
 
 type deleteObligationParams struct {
-	ID           string `json:"id"`
-	NamespaceFqn string `json:"namespace_fqn"`
-	Name         string `json:"name"`
+	ID           pgtype.Text `json:"id"`
+	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
+	Name         pgtype.Text `json:"name"`
 }
 
 // deleteObligation
@@ -530,11 +532,11 @@ type deleteObligationParams struct {
 //	        -- lookup by obligation id OR by namespace fqn + obligation name
 //	        (
 //	            -- lookup by obligation id
-//	            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
+//	            ($1::text IS NOT NULL AND od.id = $1::uuid)
 //	            OR
 //	            -- lookup by namespace fqn + obligation name
-//	            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL
-//	             AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
+//	            ($2::text IS NOT NULL AND $3::text IS NOT NULL
+//	             AND fqns.fqn = $2::text AND od.name = $3::text)
 //	        )
 //	)
 //	RETURNING id
@@ -574,21 +576,21 @@ WHERE id IN (
         -- lookup by value id OR by namespace fqn + obligation name + value name
         (
             -- lookup by value id
-            (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = NULLIF($1::TEXT, '')::UUID)
+            ($1::text IS NOT NULL AND ov.id = $1::uuid)
             OR
-            -- lookup by namespace fqn + obligation name + value name
-            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL AND NULLIF($4::TEXT, '') IS NOT NULL
-             AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR AND ov.value = $4::VARCHAR)
+            -- lookup by namespace fqn + obligation name + value
+            ($2::text IS NOT NULL AND $3::text IS NOT NULL AND $4::text IS NOT NULL
+             AND fqns.fqn = $2::text AND od.name = $3::text AND ov.value = $4::text)
         )
 )
 RETURNING id
 `
 
 type deleteObligationValueParams struct {
-	ID           string `json:"id"`
-	NamespaceFqn string `json:"namespace_fqn"`
-	Name         string `json:"name"`
-	Value        string `json:"value"`
+	ID           pgtype.Text `json:"id"`
+	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
+	Name         pgtype.Text `json:"name"`
+	Value        pgtype.Text `json:"value"`
 }
 
 // deleteObligationValue
@@ -604,11 +606,11 @@ type deleteObligationValueParams struct {
 //	        -- lookup by value id OR by namespace fqn + obligation name + value name
 //	        (
 //	            -- lookup by value id
-//	            (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = NULLIF($1::TEXT, '')::UUID)
+//	            ($1::text IS NOT NULL AND ov.id = $1::uuid)
 //	            OR
-//	            -- lookup by namespace fqn + obligation name + value name
-//	            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL AND NULLIF($4::TEXT, '') IS NOT NULL
-//	             AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR AND ov.value = $4::VARCHAR)
+//	            -- lookup by namespace fqn + obligation name + value
+//	            ($2::text IS NOT NULL AND $3::text IS NOT NULL AND $4::text IS NOT NULL
+//	             AND fqns.fqn = $2::text AND od.name = $3::text AND ov.value = $4::text)
 //	        )
 //	)
 //	RETURNING id
@@ -683,19 +685,19 @@ WHERE
     -- lookup by obligation id OR by namespace fqn + obligation name
     (
         -- lookup by obligation id
-        (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
+        ($1::uuid IS NOT NULL AND od.id = $1::uuid)
         OR
         -- lookup by namespace fqn + obligation name
-        (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL
-         AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
+        ($2::text IS NOT NULL AND $3::text IS NOT NULL
+         AND fqns.fqn = $2::text AND od.name = $3::text)
     )
 GROUP BY od.id, n.id, fqns.fqn
 `
 
 type getObligationParams struct {
-	ID           string `json:"id"`
-	NamespaceFqn string `json:"namespace_fqn"`
-	Name         string `json:"name"`
+	ID           pgtype.UUID `json:"id"`
+	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
+	Name         pgtype.Text `json:"name"`
 }
 
 type getObligationRow struct {
@@ -766,11 +768,11 @@ type getObligationRow struct {
 //	    -- lookup by obligation id OR by namespace fqn + obligation name
 //	    (
 //	        -- lookup by obligation id
-//	        (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = NULLIF($1::TEXT, '')::UUID)
+//	        ($1::uuid IS NOT NULL AND od.id = $1::uuid)
 //	        OR
 //	        -- lookup by namespace fqn + obligation name
-//	        (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL
-//	         AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
+//	        ($2::text IS NOT NULL AND $3::text IS NOT NULL
+//	         AND fqns.fqn = $2::text AND od.name = $3::text)
 //	    )
 //	GROUP BY od.id, n.id, fqns.fqn
 func (q *Queries) getObligation(ctx context.Context, arg getObligationParams) (getObligationRow, error) {
@@ -841,19 +843,19 @@ WHERE
     -- lookup by value id OR by namespace fqn + obligation name + value name
     (
         -- lookup by value id
-        (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = NULLIF($1::TEXT, '')::UUID)
+        ($1::uuid IS NOT NULL AND ov.id = $1::uuid)
         OR
         -- lookup by namespace fqn + obligation name + value name
-        (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL AND NULLIF($4::TEXT, '') IS NOT NULL
-         AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR AND ov.value = $4::VARCHAR)
+        ($2::text IS NOT NULL AND $3::text IS NOT NULL AND $4::text IS NOT NULL
+         AND fqns.fqn = $2::text AND od.name = $3::text AND ov.value = $4::text)
     )
 `
 
 type getObligationValueParams struct {
-	ID           string `json:"id"`
-	NamespaceFqn string `json:"namespace_fqn"`
-	Name         string `json:"name"`
-	Value        string `json:"value"`
+	ID           pgtype.UUID `json:"id"`
+	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
+	Name         pgtype.Text `json:"name"`
+	Value        pgtype.Text `json:"value"`
 }
 
 type getObligationValueRow struct {
@@ -922,11 +924,11 @@ type getObligationValueRow struct {
 //	    -- lookup by value id OR by namespace fqn + obligation name + value name
 //	    (
 //	        -- lookup by value id
-//	        (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = NULLIF($1::TEXT, '')::UUID)
+//	        ($1::uuid IS NOT NULL AND ov.id = $1::uuid)
 //	        OR
 //	        -- lookup by namespace fqn + obligation name + value name
-//	        (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL AND NULLIF($4::TEXT, '') IS NOT NULL
-//	         AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR AND ov.value = $4::VARCHAR)
+//	        ($2::text IS NOT NULL AND $3::text IS NOT NULL AND $4::text IS NOT NULL
+//	         AND fqns.fqn = $2::text AND od.name = $3::text AND ov.value = $4::text)
 //	    )
 func (q *Queries) getObligationValue(ctx context.Context, arg getObligationValueParams) (getObligationValueRow, error) {
 	row := q.db.QueryRow(ctx, getObligationValue,
@@ -1351,18 +1353,18 @@ JOIN actions a ON ot.action_id = a.id
 JOIN attribute_values av ON ot.attribute_value_id = av.id
 LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 WHERE
-    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
-    (NULLIF($2::TEXT, '') IS NULL OR ns_fqns.fqn = $2::VARCHAR)
+    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
+    ($2::text IS NULL OR ns_fqns.fqn = $2::text)
 ORDER BY ot.created_at DESC
 LIMIT $4
 OFFSET $3
 `
 
 type listObligationTriggersParams struct {
-	NamespaceID  string `json:"namespace_id"`
-	NamespaceFqn string `json:"namespace_fqn"`
-	Offset       int32  `json:"offset_"`
-	Limit        int32  `json:"limit_"`
+	NamespaceID  pgtype.UUID `json:"namespace_id"`
+	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
+	Offset       int32       `json:"offset_"`
+	Limit        int32       `json:"limit_"`
 }
 
 type listObligationTriggersRow struct {
@@ -1428,8 +1430,8 @@ type listObligationTriggersRow struct {
 //	JOIN attribute_values av ON ot.attribute_value_id = av.id
 //	LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 //	WHERE
-//	    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
-//	    (NULLIF($2::TEXT, '') IS NULL OR ns_fqns.fqn = $2::VARCHAR)
+//	    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
+//	    ($2::text IS NULL OR ns_fqns.fqn = $2::text)
 //	ORDER BY ot.created_at DESC
 //	LIMIT $4
 //	OFFSET $3
@@ -1465,8 +1467,8 @@ WITH counted AS (
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
-        (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
-        (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
+        ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
+        ($2::text IS NULL OR fqns.fqn = $2::text)
 ),
 obligation_triggers_agg AS (
     SELECT
@@ -1525,18 +1527,18 @@ CROSS JOIN counted
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 WHERE
-    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
-    (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
+    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
+    ($2::text IS NULL OR fqns.fqn = $2::text)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
 LIMIT $4
 OFFSET $3
 `
 
 type listObligationsParams struct {
-	NamespaceID  string `json:"namespace_id"`
-	NamespaceFqn string `json:"namespace_fqn"`
-	Offset       int32  `json:"offset_"`
-	Limit        int32  `json:"limit_"`
+	NamespaceID  pgtype.UUID `json:"namespace_id"`
+	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
+	Offset       int32       `json:"offset_"`
+	Limit        int32       `json:"limit_"`
 }
 
 type listObligationsRow struct {
@@ -1556,8 +1558,8 @@ type listObligationsRow struct {
 //	    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
 //	    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	    WHERE
-//	        (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
-//	        (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
+//	        ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
+//	        ($2::text IS NULL OR fqns.fqn = $2::text)
 //	),
 //	obligation_triggers_agg AS (
 //	    SELECT
@@ -1616,8 +1618,8 @@ type listObligationsRow struct {
 //	LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 //	LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 //	WHERE
-//	    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
-//	    (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
+//	    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
+//	    ($2::text IS NULL OR fqns.fqn = $2::text)
 //	GROUP BY od.id, n.id, fqns.fqn, counted.total
 //	LIMIT $4
 //	OFFSET $3
@@ -1656,22 +1658,22 @@ func (q *Queries) listObligations(ctx context.Context, arg listObligationsParams
 const updateObligation = `-- name: updateObligation :execrows
 UPDATE obligation_definitions
 SET
-    name = COALESCE(NULLIF($1::TEXT, ''), name),
+    name = COALESCE($1, name),
     metadata = COALESCE($2, metadata)
 WHERE id = $3
 `
 
 type updateObligationParams struct {
-	Name     string `json:"name"`
-	Metadata []byte `json:"metadata"`
-	ID       string `json:"id"`
+	Name     pgtype.Text `json:"name"`
+	Metadata []byte      `json:"metadata"`
+	ID       string      `json:"id"`
 }
 
 // updateObligation
 //
 //	UPDATE obligation_definitions
 //	SET
-//	    name = COALESCE(NULLIF($1::TEXT, ''), name),
+//	    name = COALESCE($1, name),
 //	    metadata = COALESCE($2, metadata)
 //	WHERE id = $3
 func (q *Queries) updateObligation(ctx context.Context, arg updateObligationParams) (int64, error) {
@@ -1685,22 +1687,22 @@ func (q *Queries) updateObligation(ctx context.Context, arg updateObligationPara
 const updateObligationValue = `-- name: updateObligationValue :execrows
 UPDATE obligation_values_standard
 SET
-    value = COALESCE(NULLIF($1::TEXT, ''), value),
+    value = COALESCE($1, value),
     metadata = COALESCE($2, metadata)
 WHERE id = $3
 `
 
 type updateObligationValueParams struct {
-	Value    string `json:"value"`
-	Metadata []byte `json:"metadata"`
-	ID       string `json:"id"`
+	Value    pgtype.Text `json:"value"`
+	Metadata []byte      `json:"metadata"`
+	ID       string      `json:"id"`
 }
 
 // updateObligationValue
 //
 //	UPDATE obligation_values_standard
 //	SET
-//	    value = COALESCE(NULLIF($1::TEXT, ''), value),
+//	    value = COALESCE($1, value),
 //	    metadata = COALESCE($2, metadata)
 //	WHERE id = $3
 func (q *Queries) updateObligationValue(ctx context.Context, arg updateObligationValueParams) (int64, error) {

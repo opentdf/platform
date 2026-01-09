@@ -2,7 +2,7 @@ mode: all
 logger:
   level: debug
   type: text
-  output: stdout
+  output: stderr
 services:
   kas:
     keyring:

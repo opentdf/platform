@@ -15,11 +15,22 @@ inputs:
     default: "false"
     description: 'Whether to enable ECC wrapping for TDFs'
     required: false
+  log-level:
+    default: "debug"
+    description: 'Log level for the platform (audit, debug, info, warn, error)'
+    required: false
+  log-type:
+    default: "text"
+    description: 'Log format type (text, json)'
+    required: false
 
 outputs:
   platform-working-dir:
     description: 'The working directory for the running platform instance'
     value: 'otdf-test-platform'
+  platform-log-file:
+    description: 'Path to the main platform/KAS log file'
+    value: ${{ steps.log-path.outputs.log-file }}
 
 runs:
   using: 'composite'
@@ -32,11 +43,12 @@ runs:
         path: otdf-test-platform
         ref: ${{ inputs.platform-ref }}
         persist-credentials: false
-    - name: Download latest init-temp-keys.sh and docker-compose.yaml
+    - name: Download latest init-temp-keys.sh, docker-compose.yaml, and watch.sh
       shell: bash
       run: |
-        curl https://raw.githubusercontent.com/opentdf/platform/refs/tags/keycloak-image-fix/.github/scripts/init-temp-keys.sh > otdf-test-platform/.github/scripts/init-temp-keys.sh
-        curl https://raw.githubusercontent.com/opentdf/platform/refs/tags/keycloak-image-fix/docker-compose.yaml > otdf-test-platform/docker-compose.yaml
+        curl https://raw.githubusercontent.com/opentdf/platform/refs/tags/watch-sh-fix/.github/scripts/init-temp-keys.sh > otdf-test-platform/.github/scripts/init-temp-keys.sh
+        curl https://raw.githubusercontent.com/opentdf/platform/refs/tags/watch-sh-fix/docker-compose.yaml > otdf-test-platform/docker-compose.yaml
+        curl https://raw.githubusercontent.com/opentdf/platform/refs/tags/watch-sh-fix/.github/scripts/watch.sh > otdf-test-platform/.github/scripts/watch.sh
     - name: Set up go (platform's go version)
       id: setup-go
       uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
@@ -54,13 +66,37 @@ runs:
         if ! go run ./service version; then
           # NOTE: the version command was added in 0.4.37
           echo "Error: Unable to get platform version; defaulting to tag 0.3.0"
-          echo "PLATFORM_VERSION=0.3.0" >> "$GITHUB_ENV"
+          echo "semver=0.3.0" >> "$GITHUB_OUTPUT"
           exit
         fi
         # Older version commands output version to stderr; newer versions output to stdout
-        PLATFORM_VERSION=$(go run ./service version 2>&1)
-        echo "PLATFORM_VERSION=$PLATFORM_VERSION" >> "$GITHUB_ENV"
-        echo "## Platform version output: [$PLATFORM_VERSION]"
+        raw_version=$(go run ./service version 2>&1)
+
+        # Sanitize: remove all characters except those allowed in semver (alphanumeric, dots, hyphens, plus)
+        # This prevents any potential code injection via the version string
+        sanitized_version=$(echo "$raw_version" | tr -cd '0-9a-zA-Z.+-')
+
+        # Validate version format (semver: x.y.z with optional pre-release/build metadata)
+        if [[ "$sanitized_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$ ]]; then
+          echo "semver=$sanitized_version" >> "$GITHUB_OUTPUT"
+          echo "## Platform version output: [$sanitized_version]"
+          exit 0
+        fi
+
+        echo "Warning: Platform version '$raw_version' doesn't match expected semver format. Extracting version numbers."
+        resanitized_version=$(echo "$sanitized_version" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+        if [[ -z "$resanitized_version" ]]; then
+          echo "## Error: Could not extract valid version, defaulting to 0.0.0"
+          echo "semver=0.0.0" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if [[ "$resanitized_version" =~ ^[0-9a-zA-Z.+-]+$ ]]; then
+          echo "semver=$resanitized_version" >> "$GITHUB_OUTPUT"
+          echo "## Platform version output: [$resanitized_version]"
+          exit 0
+        fi
+        echo "## Error: Version contains unsafe characters after sanitization. Using fallback 0.0.0."
+        echo "semver=0.0.0" >> "$GITHUB_OUTPUT"
       working-directory: otdf-test-platform
     - name: Provide the platform with keys
       shell: bash
@@ -70,6 +106,7 @@ runs:
       shell: bash
       env:
         EXTRA_KEYS: ${{ inputs.extra-keys }}
+        PLATFORM_VERSION: ${{ steps.platform-version.outputs.semver }}
       run: |
         set -e
         allowed_algorithms=(ec:secp256r1 rsa:2048)
@@ -124,6 +161,39 @@ runs:
       run: |
         yq e '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml
       working-directory: otdf-test-platform
+    - name: Validate logging inputs
+      shell: bash
+      env:
+        LOG_LEVEL: ${{ inputs.log-level }}
+        LOG_TYPE: ${{ inputs.log-type }}
+      run: |
+        # Validate log-level (only allowed values)
+        case "${LOG_LEVEL}" in
+          audit|debug|info|warn|error)
+            ;;
+          *)
+            echo "Error: log-level must be one of: audit, debug, info, warn, error."
+            exit 1
+            ;;
+        esac
+
+        # Validate log-type (only allowed values)
+        case "${LOG_TYPE}" in
+          text|json)
+            ;;
+          *)
+            echo "Error: log-type must be one of: text, json."
+            exit 1
+            ;;
+        esac
+    - name: Configure logging
+      shell: bash
+      env:
+        LOG_LEVEL: ${{ inputs.log-level }}
+        LOG_TYPE: ${{ inputs.log-type }}
+      run: |
+        yq e '(.logger.level = env(LOG_LEVEL)) | (.logger.type = env(LOG_TYPE))' -i opentdf.yaml
+      working-directory: otdf-test-platform
     - name: Trust the generated certs
       shell: bash
       run: |
@@ -144,12 +214,19 @@ runs:
       shell: bash
       run: go run ./service provision fixtures
       working-directory: otdf-test-platform
+    - name: Set platform log file path
+      id: log-path
+      shell: bash
+      run: |
+        LOG_FILE="otdf-test-platform/logs/kas-main.log"
+        echo "log-file=$LOG_FILE" >> "$GITHUB_OUTPUT"
+        echo "Platform log file will be: $LOG_FILE"
     - name: Start platform server in background
       uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635 # v1.0.7
       with:
         run: >
           go build -o opentdf -v service/main.go
-          && .github/scripts/watch.sh opentdf.yaml ./opentdf start
+          && .github/scripts/watch.sh --tee-err-to logs/kas-main.log opentdf.yaml ./opentdf start
         wait-on: |
           tcp:localhost:8080
         log-output-if: true

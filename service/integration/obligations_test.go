@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/proto"
 )
 
 type ObligationsSuite struct {
@@ -1821,4 +1822,64 @@ func (s *ObligationsSuite) assertObligationValuesSpecificTriggers(obl *policy.Ob
 			}
 		}
 	}
+}
+
+// Test_ListObligations_EmptyNamespaceId_ReturnsAll validates that empty string parameters
+// are properly treated as NULL
+func (s *ObligationsSuite) Test_ListObligations_EmptyNamespaceId_ReturnsAll() {
+	// Create obligations in different namespaces
+	namespaceID1, _, _ := s.getNamespaceData(nsExampleCom)
+	namespaceID2, _, _ := s.getNamespaceData(nsExampleNet)
+
+	obl1 := s.createObligation(namespaceID1, oblName+"-empty-test-1", nil)
+	obl2 := s.createObligation(namespaceID2, oblName+"-empty-test-2", nil)
+
+	defer s.deleteObligations([]string{obl1.GetId(), obl2.GetId()})
+
+	// List with empty namespace_id should return all obligations
+	allObligations, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		NamespaceId: "", // Empty string should be treated as NULL
+	})
+	s.Require().NoError(err)
+	s.NotNil(allObligations)
+	s.GreaterOrEqual(len(allObligations), 2, "Should return at least our two test obligations")
+
+	// Verify our test obligations are in the results
+	found1, found2 := false, false
+	for _, obl := range allObligations {
+		if obl.GetId() == obl1.GetId() {
+			found1 = true
+		}
+		if obl.GetId() == obl2.GetId() {
+			found2 = true
+		}
+	}
+	s.True(found1, "Should find obligation from namespace 1")
+	s.True(found2, "Should find obligation from namespace 2")
+}
+
+// Test_GetObligation_ByIdAndFqn_ReturnSameResult validates that getObligation works correctly
+// with both ID and FQN lookups
+func (s *ObligationsSuite) Test_GetObligation_ByIdAndFqn_ReturnSameResult() {
+	namespaceID, namespaceFQN, _ := s.getNamespaceData(nsExampleCom)
+	createdObl := s.createObligation(namespaceID, oblName+"-dual-lookup-test", oblVals)
+
+	defer s.deleteObligations([]string{createdObl.GetId()})
+
+	// Get by ID
+	oblByID, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
+		Id: createdObl.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblByID)
+
+	// Get by FQN
+	oblByFQN, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
+		Fqn: namespaceFQN + "/obl/" + oblName + "-dual-lookup-test",
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblByFQN)
+
+	// Verify both return the same obligation
+	s.True(proto.Equal(oblByID, oblByFQN))
 }

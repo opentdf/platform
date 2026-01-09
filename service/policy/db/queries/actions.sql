@@ -23,10 +23,10 @@ OFFSET @offset_;
 
 -- name: getAction :one
 SELECT 
-    id,
-    name,
-    is_standard,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+    a.id,
+    a.name,
+    a.is_standard,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', a.metadata -> 'labels', 'created_at', a.created_at, 'updated_at', a.updated_at)) AS metadata
 FROM actions a
 WHERE 
   (sqlc.narg('id')::uuid IS NULL OR a.id = sqlc.narg('id')::uuid)

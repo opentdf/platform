@@ -6,11 +6,20 @@ import "buf/validate/validate.proto";
 import "entity/entity.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/struct.proto";
+import "authorization/v2/authorization.proto";
+
+// Entity Entitlements that do not require subject mappings (experimental)
+message DirectEntitlement {
+  string attribute_value_fqn = 1;
+  repeated string actions = 2;
+}
 
 message EntityRepresentation {
   // ephemeral entity id from the request
   string original_id = 1;
   repeated google.protobuf.Struct additional_props = 2;
+  // direct entitlements applied to Entity (experimental)
+  repeated DirectEntitlement direct_entitlements = 3;
 }
 
 // Resolve a set of entities to their representations.
@@ -34,6 +43,8 @@ message EntityNotFoundError {
 // Create an entity chain for each token (JWT) in the request.
 message CreateEntityChainsFromTokensRequest {
   repeated entity.Token tokens = 1;
+  // resources to consider for direct entitlements (experimental)
+  repeated authorization.v2.Resource resources = 2;
 }
 
 message CreateEntityChainsFromTokensResponse {

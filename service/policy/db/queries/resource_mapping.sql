@@ -9,7 +9,7 @@ SELECT rmg.id,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', rmg.metadata -> 'labels', 'created_at', rmg.created_at, 'updated_at', rmg.updated_at)) as metadata,
     COUNT(*) OVER() AS total
 FROM resource_mapping_groups rmg
-WHERE (NULLIF(@namespace_id, '') IS NULL OR rmg.namespace_id = @namespace_id::uuid) 
+WHERE (sqlc.narg('namespace_id')::uuid IS NULL OR rmg.namespace_id = sqlc.narg('namespace_id')::uuid) 
 LIMIT @limit_ 
 OFFSET @offset_; 
 
@@ -53,11 +53,11 @@ SELECT
         )
     ) AS group,
     COUNT(*) OVER() AS total
-FROM resource_mappings m 
+FROM resource_mappings m
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
-WHERE (NULLIF(@group_id, '') IS NULL OR m.group_id = @group_id::UUID)
+WHERE (sqlc.narg('group_id')::uuid IS NULL OR m.group_id = sqlc.narg('group_id')::uuid)
 GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id
 LIMIT @limit_ 
 OFFSET @offset_; 

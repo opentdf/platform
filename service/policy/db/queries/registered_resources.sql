@@ -21,8 +21,8 @@ SELECT
 FROM registered_resources r
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 WHERE
-    (NULLIF(@id, '') IS NULL OR r.id = @id::UUID) AND
-    (NULLIF(@name, '') IS NULL OR r.name = @name::VARCHAR)
+    (sqlc.narg('id')::uuid IS NULL OR r.id = sqlc.narg('id')::uuid) AND
+    (sqlc.narg('name')::text IS NULL OR r.name = sqlc.narg('name')::text)
 GROUP BY r.id;
 
 -- name: listRegisteredResources :many
@@ -119,17 +119,16 @@ LEFT JOIN actions a on rav.action_id = a.id
 LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE
-    (NULLIF(@id, '') IS NULL OR v.id = @id::UUID) AND
-    (NULLIF(@name, '') IS NULL OR r.name = @name::VARCHAR) AND
-    (NULLIF(@value, '') IS NULL OR v.value = @value::VARCHAR)
+    (sqlc.narg('id')::uuid IS NULL OR v.id = sqlc.narg('id')::uuid) AND
+    (sqlc.narg('name')::text IS NULL OR r.name = sqlc.narg('name')::text) AND
+    (sqlc.narg('value')::text IS NULL OR v.value = sqlc.narg('value')::text)
 GROUP BY v.id;
 
 -- name: listRegisteredResourceValues :many
 WITH counted AS (
-    SELECT COUNT(id) AS total
-    FROM registered_resource_values
-    WHERE
-        NULLIF(@registered_resource_id, '') IS NULL OR registered_resource_id = @registered_resource_id::UUID
+    SELECT COUNT(v.id) AS total
+    FROM registered_resource_values v
+    WHERE sqlc.narg('registered_resource_id')::uuid IS NULL OR v.registered_resource_id = sqlc.narg('registered_resource_id')::uuid
 )
 SELECT
     v.id,
@@ -158,7 +157,7 @@ LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id  
 CROSS JOIN counted
 WHERE
-    NULLIF(@registered_resource_id, '') IS NULL OR v.registered_resource_id = @registered_resource_id::UUID
+    sqlc.narg('registered_resource_id')::uuid IS NULL OR v.registered_resource_id = sqlc.narg('registered_resource_id')::uuid
 GROUP BY v.id, counted.total
 LIMIT @limit_
 OFFSET @offset_;

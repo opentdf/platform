@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/opentdf/platform/compare/protocol/go/v0.14.0...protocol/go/v0.15.0) (2026-01-09)
+
+
+### Features
+
+* **core:** add direct entitlement support ([#2630](https://github.com/opentdf/platform/issues/2630)) ([cc8337a](https://github.com/opentdf/platform/commit/cc8337a4d4b6be4cb1f4117711109c2d8d599cb9))
+
 ## [0.14.0](https://github.com/opentdf/platform/compare/protocol/go/v0.13.0...protocol/go/v0.14.0) (2025-12-19)
 
 

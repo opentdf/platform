@@ -857,7 +857,7 @@ func (s *AuthSuite) Test_LookupGatewayPaths() {
 			header: http.Header{
 				"Grpcgateway-Origin": []string{"https://origin.com"},
 			},
-			expected: []string{"https://origin.com/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration", "https://origin.com/.well-known/opentdf-configuration", "https://origin.com/kas.AccessService/PublicKey", "https://origin.com/kas.AccessService/LegacyPublicKey", "https://origin.com/kas.AccessService/Info", "https://origin.com/kas/kas_public_key", "https://origin.com/kas/v2/kas_public_key", "https://origin.com/healthz", "https://origin.com/grpc.health.v1.Health/Check"},
+			expected: []string{"https://origin.com/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration", "https://origin.com/.well-known/opentdf-configuration", "https://origin.com/kas.AccessService/PublicKey", "https://origin.com/kas.AccessService/LegacyPublicKey", "https://origin.com/kas/kas_public_key", "https://origin.com/kas/v2/kas_public_key", "https://origin.com/healthz", "https://origin.com/grpc.health.v1.Health/Check"},
 		},
 		{
 			name: "Bad Path",

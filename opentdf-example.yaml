@@ -4,19 +4,36 @@ logger:
   output: stdout
 # DB and Server configurations are defaulted for local development
 db:
+  # Single primary database (default for local development)
   host: opentdfdb
-#   port: 5432
-#   user: postgres
-#   password: changeme
-#   sslmode: prefer
-#   connect_timeout_seconds: 15
-#   pool:
-#     max_connection_count: 4
-#     min_connection_count: 0
-#     min_idle_connections_count: 0
-#     max_connection_lifetime_seconds: 3600
-#     max_connection_idle_seconds: 1800
-#     health_check_period_seconds: 60
+  port: 5432
+  user: postgres
+  password: changeme
+  sslmode: prefer
+  connect_timeout_seconds: 15
+  pool:
+    max_connection_count: 4
+    min_connection_count: 0
+    min_idle_connections_count: 0
+    max_connection_lifetime_seconds: 3600
+    max_connection_idle_seconds: 1800
+    health_check_period_seconds: 60
+  # OPTION: Multi-host primary for automatic failover
+  # NOTE: Cannot use both 'host' and 'primary_hosts' - choose one
+  # Uncomment this and remove 'host' above for multi-host failover:
+  # primary_hosts:
+  #   - host: opentdfdb           # Primary 1 (already running above)
+  #     port: 5432
+  #   - host: opentdfdb-primary2  # Uncomment in docker-compose.yaml
+  #     port: 5432
+  # OPTION: Horizontal scaling with read replicas
+  # Enables read load balancing with circuit breaker health checking
+  # Uncomment this and the replica services in docker-compose.yaml:
+  # read_replicas:
+  #   - host: opentdfdb-replica1  # Uncomment in docker-compose.yaml
+  #     port: 5432
+  #   - host: opentdfdb-replica2  # Uncomment in docker-compose.yaml
+  #     port: 5432
 # mode: all
 services:
   kas:

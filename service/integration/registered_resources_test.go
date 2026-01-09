@@ -1350,10 +1350,9 @@ func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResourceValue_Succeeds()
 
 	// verify resource value action attribute values deleted
 	// using QueryRow directly since the registered resource value was just deleted and the get above will return a nil result
-	row, err := s.db.PolicyClient.QueryRow(s.ctx,
+	row := s.db.PolicyClient.QueryRow(s.ctx,
 		"SELECT COUNT(*) FROM registered_resource_action_attribute_values WHERE registered_resource_value_id = $1",
-		[]any{created.GetId()})
-	s.Require().NoError(err)
+		created.GetId())
 	var count int
 	err = row.Scan(&count)
 	s.Require().NoError(err)

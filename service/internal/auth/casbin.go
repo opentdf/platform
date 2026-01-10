@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/util"
 
 	_ "embed"
 )
@@ -26,6 +26,7 @@ var builtinPolicy string
 //go:embed casbin_model.conf
 var defaultModel string
 
+// Enforcer is the Casbin enforcer with platform-specific configuration
 type Enforcer struct {
 	*casbin.Enforcer
 	Config CasbinConfig
@@ -42,7 +43,7 @@ type CasbinConfig struct {
 	PolicyConfig
 }
 
-// newCasbinEnforcer creates a new casbin enforcer
+// NewCasbinEnforcer creates a new casbin enforcer
 func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error) {
 	// Set Casbin config defaults if not provided
 	isDefaultModel := false
@@ -122,9 +123,10 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 	}, nil
 }
 
-// casbinEnforce is a helper function to enforce the policy with casbin
-// TODO implement a common type so this can be used for both http and grpc
-func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, error) {
+// Enforce checks if the token is allowed to perform the action on the resource.
+// The userInfo parameter is accepted for interface compatibility but not used in v1.
+// This method implements authz.V1Enforcer interface.
+func (e *Enforcer) Enforce(token jwt.Token, _ []byte, resource, action string) bool {
 	// extract the role claim from the token
 	s := e.buildSubjectFromToken(token)
 	s = append(s, rolePrefix+defaultRole)
@@ -136,7 +138,7 @@ func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, erro
 				slog.String("subject_info", info),
 				slog.String("action", action),
 				slog.String("resource", resource),
-				slog.Any("error", err),
+				slog.String("error", err.Error()),
 			)
 		}
 		if allowed {
@@ -145,7 +147,7 @@ func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, erro
 				slog.String("action", action),
 				slog.String("resource", resource),
 			)
-			return true, nil
+			return true
 		}
 	}
 	e.logger.Debug("permission denied by policy",
@@ -153,9 +155,17 @@ func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, erro
 		slog.String("action", action),
 		slog.String("resource", resource),
 	)
-	return false, errors.New("permission denied")
+	return false
 }
 
+// BuildSubjectFromTokenAndUserInfo builds the subject info from the token.
+// The userInfo parameter is accepted for interface compatibility but not used in v1.
+// This method implements authz.V1Enforcer interface.
+func (e *Enforcer) BuildSubjectFromTokenAndUserInfo(token jwt.Token, _ []byte) []string {
+	return e.buildSubjectFromToken(token)
+}
+
+// buildSubjectFromToken extracts subject information from a JWT token
 func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 	var subject string
 	info := casbinSubject{}
@@ -179,19 +189,18 @@ func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 	return info
 }
 
+// extractRolesFromToken extracts roles from a jwt.Token based on the configured claim path
 func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	e.logger.Debug("extracting roles from token")
 	roles := []string{}
 
 	roleClaim := e.Config.GroupsClaim
-	// roleMap := e.Config.RoleMap
 
 	selectors := strings.Split(roleClaim, ".")
 	claim, exists := t.Get(selectors[0])
 	if !exists {
 		e.logger.Warn("claim not found",
 			slog.String("claim", roleClaim),
-			slog.Any("claims", claim),
 		)
 		return nil
 	}
@@ -209,7 +218,7 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 			)
 			return nil
 		}
-		claim = dotNotation(claimMap, strings.Join(selectors[1:], "."))
+		claim = util.Dotnotation(claimMap, strings.Join(selectors[1:], "."))
 		if claim == nil {
 			e.logger.Warn("claim not found",
 				slog.String("claim", roleClaim),

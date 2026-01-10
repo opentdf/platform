@@ -51,7 +51,7 @@ func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_V1() {
 	cfg := authz.Config{
 		Version: "v1",
 		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: []string{"realm_access.roles"},
+			GroupsClaim: "realm_access.roles",
 		},
 		Logger:  s.logger,
 		Options: []authz.Option{authz.WithV1Enforcer(mockEnforcer)},
@@ -69,7 +69,7 @@ func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_V2() {
 	cfg := authz.Config{
 		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: []string{"realm_access.roles"},
+			GroupsClaim: "realm_access.roles",
 		},
 		Logger: s.logger,
 	}
@@ -88,7 +88,7 @@ func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_UnknownVersionFallsBackT
 	cfg := authz.Config{
 		Version: "v99",
 		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: []string{"realm_access.roles"},
+			GroupsClaim: "realm_access.roles",
 		},
 		Logger: s.logger,
 	}
@@ -103,7 +103,7 @@ func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_NilLogger() {
 	cfg := authz.Config{
 		Version: "v1",
 		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: []string{"realm_access.roles"},
+			GroupsClaim: "realm_access.roles",
 		},
 		Logger: nil,
 	}
@@ -118,7 +118,7 @@ func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_V1_NoEnforcerError() {
 	cfg := authz.Config{
 		Version: "v1",
 		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: []string{"realm_access.roles"},
+			GroupsClaim: "realm_access.roles",
 		},
 		Logger: s.logger,
 		// No V1Enforcer option provided
@@ -135,7 +135,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_AdminWildcard() {
 	cfg := authz.Config{
 		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: []string{"realm_access.roles"},
+			GroupsClaim: "realm_access.roles",
 			Csv:         "p, role:admin, *, *, allow",
 		},
 		Logger: s.logger,
@@ -173,7 +173,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_NamespaceScopedAccess() {
 	cfg := authz.Config{
 		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: []string{"realm_access.roles"},
+			GroupsClaim: "realm_access.roles",
 			Csv: `p, role:hr-admin, /policy.attributes.AttributesService/*, namespace=hr, allow
 p, role:finance-admin, /policy.attributes.AttributesService/*, namespace=finance, allow`,
 		},
@@ -228,7 +228,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_MultipleDimensions() {
 	cfg := authz.Config{
 		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: []string{"realm_access.roles"},
+			GroupsClaim: "realm_access.roles",
 			Csv:         `p, role:classification-owner, /policy.attributes.AttributesService/Update*, namespace=hr&attribute=classification, allow`,
 		},
 		Logger: s.logger,
@@ -281,7 +281,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_WildcardDimension() {
 	cfg := authz.Config{
 		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: []string{"realm_access.roles"},
+			GroupsClaim: "realm_access.roles",
 			Csv:         `p, role:hr-viewer, /policy.attributes.AttributesService/Get*, namespace=hr&attribute=*, allow`,
 		},
 		Logger: s.logger,
@@ -318,7 +318,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_NoDimensions() {
 	cfg := authz.Config{
 		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: []string{"realm_access.roles"},
+			GroupsClaim: "realm_access.roles",
 			Csv:         `p, role:standard, /policy.attributes.AttributesService/Get*, *, allow`,
 		},
 		Logger: s.logger,
@@ -352,7 +352,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_KASRESTfulPathsAllowed() {
 	cfg := authz.Config{
 		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: []string{"realm_access.roles"},
+			GroupsClaim: "realm_access.roles",
 			Csv: `p, role:standard, /kas.AccessService/*, *, allow
 p, role:standard, /kas/v2/rewrap, *, allow
 p, role:unknown, /kas.AccessService/Rewrap, *, allow
@@ -578,7 +578,7 @@ func TestNewAuthorizer(t *testing.T) {
 			cfg := authz.Config{
 				Version: tc.version,
 				PolicyConfig: authz.PolicyConfig{
-					GroupsClaim: []string{"realm_access.roles"},
+					GroupsClaim: "realm_access.roles",
 				},
 				Logger: log,
 			}
@@ -626,7 +626,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_GRPCPathStripsLeadingSlash() {
 	cfg := authz.Config{
 		Version: "v1",
 		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: []string{"realm_access.roles"},
+			GroupsClaim: "realm_access.roles",
 		},
 		Logger:  s.logger,
 		Options: []authz.Option{authz.WithV1Enforcer(mockEnforcer)},
@@ -671,7 +671,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_HTTPPathKeepsLeadingSlash() {
 	cfg := authz.Config{
 		Version: "v1",
 		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: []string{"realm_access.roles"},
+			GroupsClaim: "realm_access.roles",
 		},
 		Logger:  s.logger,
 		Options: []authz.Option{authz.WithV1Enforcer(mockEnforcer)},
@@ -715,7 +715,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_PolicyServiceGRPCPath() {
 	cfg := authz.Config{
 		Version: "v1",
 		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: []string{"realm_access.roles"},
+			GroupsClaim: "realm_access.roles",
 		},
 		Logger:  s.logger,
 		Options: []authz.Option{authz.WithV1Enforcer(mockEnforcer)},
@@ -758,7 +758,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_PathHandlingHeuristic() {
 	cfg := authz.Config{
 		Version: "v1",
 		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: []string{"realm_access.roles"},
+			GroupsClaim: "realm_access.roles",
 		},
 		Logger:  s.logger,
 		Options: []authz.Option{authz.WithV1Enforcer(mockEnforcer)},

@@ -15,12 +15,12 @@ func TestEngineTypeConstants(t *testing.T) {
 func TestBaseAdapterConfig(t *testing.T) {
 	cfg := BaseAdapterConfig{
 		UserNameClaim: "preferred_username",
-		GroupsClaims:  []string{"realm_access.roles", "groups"},
+		GroupsClaim:   "realm_access.roles",
 		ClientIDClaim: "azp",
 	}
 
 	assert.Equal(t, "preferred_username", cfg.UserNameClaim)
-	assert.Len(t, cfg.GroupsClaims, 2)
+	assert.Equal(t, "realm_access.roles", cfg.GroupsClaim)
 	assert.Equal(t, "azp", cfg.ClientIDClaim)
 	assert.Nil(t, cfg.Logger)
 }
@@ -31,7 +31,7 @@ func TestAdapterConfigFromExternal_CasbinV1(t *testing.T) {
 		Version: "v1",
 		PolicyConfig: PolicyConfig{
 			UserNameClaim: "sub",
-			GroupsClaim:   []string{"roles"},
+			GroupsClaim:   "roles",
 			ClientIDClaim: "client_id",
 			Csv:           "p, role:admin, *, *, allow",
 			Extension:     "p, role:test, /test, read, allow",
@@ -45,7 +45,7 @@ func TestAdapterConfigFromExternal_CasbinV1(t *testing.T) {
 	v1Config, ok := result.(CasbinV1Config)
 	assert.True(t, ok, "Expected CasbinV1Config")
 	assert.Equal(t, "sub", v1Config.UserNameClaim)
-	assert.Equal(t, []string{"roles"}, v1Config.GroupsClaims)
+	assert.Equal(t, "roles", v1Config.GroupsClaim)
 	assert.Equal(t, "client_id", v1Config.ClientIDClaim)
 	assert.Equal(t, "p, role:admin, *, *, allow", v1Config.Csv)
 	assert.Equal(t, "p, role:test, /test, read, allow", v1Config.Extension)
@@ -61,7 +61,7 @@ func TestAdapterConfigFromExternal_CasbinV2(t *testing.T) {
 		Version: "v2",
 		PolicyConfig: PolicyConfig{
 			UserNameClaim: "sub",
-			GroupsClaim:   []string{"roles"},
+			GroupsClaim:   "roles",
 			ClientIDClaim: "client_id",
 			Csv:           "p, role:admin, *, *, allow",
 			Extension:     "p, role:test, /test, read, allow",
@@ -75,7 +75,7 @@ func TestAdapterConfigFromExternal_CasbinV2(t *testing.T) {
 	v2Config, ok := result.(CasbinV2Config)
 	assert.True(t, ok, "Expected CasbinV2Config")
 	assert.Equal(t, "sub", v2Config.UserNameClaim)
-	assert.Equal(t, []string{"roles"}, v2Config.GroupsClaims)
+	assert.Equal(t, "roles", v2Config.GroupsClaim)
 	assert.Equal(t, "client_id", v2Config.ClientIDClaim)
 	assert.Equal(t, "p, role:admin, *, *, allow", v2Config.Csv)
 	assert.Equal(t, "p, role:test, /test, read, allow", v2Config.Extension)

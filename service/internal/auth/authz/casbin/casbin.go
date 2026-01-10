@@ -119,10 +119,11 @@ func newCasbinV2Authorizer(cfg authz.CasbinV2Config, log *logger.Logger) (*Autho
 		return nil, fmt.Errorf("failed to create v2 casbin enforcer: %w", err)
 	}
 
-	// Precompute group claim selectors for v2 role extraction
-	groupClaimSelectors := make([][]string, len(cfg.GroupsClaims))
-	for i, claim := range cfg.GroupsClaims {
-		groupClaimSelectors[i] = strings.Split(claim, ".")
+	// Precompute group claim selector for v2 role extraction
+	// GroupsClaim is a dot-notation path like "realm_access.roles"
+	var groupClaimSelectors [][]string
+	if cfg.GroupsClaim != "" {
+		groupClaimSelectors = [][]string{strings.Split(cfg.GroupsClaim, ".")}
 	}
 
 	authorizer := &Authorizer{

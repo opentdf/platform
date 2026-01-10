@@ -9,7 +9,7 @@
 
 The current authorization system uses **path-based RBAC** via Casbin, where policies match on gRPC method paths and HTTP routes. This provides coarse-grained access control (e.g., "admins can access all policy endpoints") but lacks the ability to enforce **resource-level permissions** (e.g., "user A can only modify attributes in namespace X").
 
-### Current State
+### Current State (v1)
 
 ```
 Model: (subject, resource, action)
@@ -17,14 +17,14 @@ Model: (subject, resource, action)
        and subject = roles extracted from JWT claims
 ```
 
-### Desired State
+### Desired State (v2)
 
 ```
-Model: (subject, resource_type, action, dimensions)
+Model: (subject, rpc, dimensions)
        where:
-         - resource_type = service-defined type (e.g., "policy.attribute", "kas.key")
-         - action = operation (read, write, delete, rewrap, etc.)
-         - dimensions = service-specific key-value pairs (e.g., {"namespace": "hr"}, {"kas_id": "kas-1"})
+         - rpc = full gRPC method path (e.g., "/policy.attributes.AttributesService/UpdateAttribute")
+         - dimensions = service-specific key-value pairs (e.g., {"namespace": "hr", "attribute": "classification"})
+       The RPC method itself implies the action (Get* = read, Update* = write, etc.)
 ```
 
 ## Goals
@@ -92,100 +92,87 @@ Model: (subject, resource_type, action, dimensions)
 
 ## Implementation Concepts
 
-### 1. AuthzContext (Platform-Owned Contract)
+### 1. ResolverContext (Platform-Owned Contract)
 
 ```go
-// service/internal/auth/authz_context.go
+// service/internal/auth/authz/resolver.go
 
-// AuthzContext is the contract between service resolvers and the authorization enforcer.
-// Resolvers populate this struct; the enforcer passes it to Casbin.
-//
-// Uses a dynamic Dimensions map because different services have different resource hierarchies:
-//   - Policy service: namespace, attribute, value
-//   - KAS service: kas_id, key_id
-//   - Authorization service: (may have its own concepts)
-type AuthzContext struct {
-    // ResourceType identifies the kind of resource (e.g., "policy.attribute", "kas.key").
-    ResourceType string
+// ResolverResource represents a single resource's authorization dimensions.
+// Each key-value pair is a dimension (e.g., "namespace" -> "hr").
+type ResolverResource map[string]string
 
-    // Action is the operation (read, write, delete, unsafe, rewrap, etc.).
-    Action string
-
-    // Dimensions contains service-specific authorization dimensions.
-    // Use "*" for wildcard/any matching.
-    Dimensions map[string]string
+// ResolverContext holds the resolved authorization context for a request.
+// Multiple resources are supported for operations like "move from A to B"
+// where authorization is required for both source and destination.
+type ResolverContext struct {
+    Resources []*ResolverResource
 }
 
 // Key methods:
-// - NewAuthzContext(resourceType, action string) - creates with initialized Dimensions map
-// - SetDimension(key, value string) - sets dimension, uses "*" if value is empty
-// - GetDimension(key string) string - returns dimension value, defaults to "*"
-// - Validate() error - validates required fields are present
+// - NewResolverContext() - creates empty context
+// - NewResource() *ResolverResource - adds and returns a new resource
+// - AddDimension(key, value string) - adds dimension to a resource
 ```
 
 ### 2. Resolver Interface (Platform-Owned)
 
 ```go
-// service/internal/auth/resolver.go
+// service/internal/auth/authz/resolver.go
 
-// ResourceResolver is implemented by services to provide authorization context.
-// This follows the Inversion of Control pattern - the platform calls the service's
-// resolver during the authorization flow.
-type ResourceResolver interface {
-    // Resolve extracts and enriches authorization context from a request.
-    //
-    // The resolver may:
-    //   - Extract fields directly from the request (e.g., namespace_id)
-    //   - Perform DB lookups to resolve relationships (e.g., attribute → namespace)
-    //   - Return errors if the resource cannot be resolved (results in 403)
-    Resolve(ctx context.Context, method string, req proto.Message) (*AuthzContext, error)
+// ResolverFunc is the function signature for service-provided resolvers.
+// Services implement this to extract authorization dimensions from requests.
+//
+// Parameters:
+//   - ctx: Request context (includes auth info, can be used for DB calls)
+//   - req: The connect request (use type assertion to get typed proto)
+//
+// Returns:
+//   - ResolverContext with populated dimensions
+//   - Error if resolution fails (results in 403)
+type ResolverFunc func(ctx context.Context, req connect.AnyRequest) (ResolverContext, error)
+
+// ResolverRegistry holds resolver functions keyed by service method.
+// Thread-safe for concurrent read/write access.
+type ResolverRegistry struct {
+    resolvers map[string]ResolverFunc // full method path -> resolver
 }
 
-// ResolverRegistry manages resolver registrations per service namespace.
-// Provides Register(namespace, resolver) and Get(namespace) methods.
-type ResolverRegistry struct {
-    resolvers map[string]ResourceResolver  // namespace -> resolver
+// ScopedResolverRegistry provides a namespace-scoped view of the registry.
+// Validates method ownership against ServiceDesc to prevent cross-service registration.
+type ScopedResolverRegistry struct {
+    parent      *ResolverRegistry
+    serviceDesc grpc.ServiceDesc
 }
 ```
 
 ### 3. Service Resolver Implementation (Service-Owned)
 
-Service maintainers implement resolvers by:
-1. Type-switching on the request message type
-2. Extracting or looking up dimension values (e.g., namespace from attribute ID)
-3. Setting dimensions on the AuthzContext
+Service maintainers implement resolvers as methods on their service struct. Each method
+handles one RPC and extracts dimensions from the request (with DB lookups as needed).
 
-**Pseudo-code pattern:**
+**Implementation pattern (from service/policy/attributes/attributes.go):**
 
 ```go
-// service/policy/attributes/authz_resolver.go
-
-type AttributeResolver struct {
-    dbClient *db.PolicyDBClient
-}
-
-func (r *AttributeResolver) Resolve(ctx, method, req) (*AuthzContext, error) {
-    authzCtx := NewAuthzContext("policy.attribute", actionFromMethod(method))
-
-    switch v := req.(type) {
-    case *UpdateAttributeRequest:
-        // Enrichment: look up attribute to get its namespace
-        attr := r.dbClient.GetAttribute(ctx, v.GetId())
-        authzCtx.SetDimension("namespace", attr.GetNamespace().GetName())
-        authzCtx.SetDimension("attribute", attr.GetName())
-
-    case *CreateAttributeRequest:
-        // Namespace comes from request
-        ns := r.dbClient.GetNamespace(ctx, v.GetNamespaceId())
-        authzCtx.SetDimension("namespace", ns.GetName())
-
-    case *ListAttributesRequest:
-        // Optional filter - empty string becomes "*"
-        authzCtx.SetDimension("namespace", v.GetNamespace())
-
-    // ... other request types
+// updateAttributeAuthzResolver resolves namespace from attribute lookup.
+func (s *AttributesService) updateAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+    resolverCtx := authz.NewResolverContext()
+    msg, ok := req.Any().(*attributes.UpdateAttributeRequest)
+    if !ok {
+        return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
     }
-    return authzCtx, nil
+
+    // DB lookup to resolve attribute -> namespace relationship
+    attr, err := s.dbClient.GetAttribute(ctx, msg.GetId())
+    if err != nil {
+        return resolverCtx, fmt.Errorf("failed to resolve attribute for authz: %w", err)
+    }
+
+    // Populate dimensions
+    res := resolverCtx.NewResource()
+    res.AddDimension("namespace", attr.GetNamespace().GetName())
+    res.AddDimension("attribute", attr.GetName())
+
+    return resolverCtx, nil
 }
 ```
 
@@ -199,47 +186,57 @@ func (r *AttributeResolver) Resolve(ctx, method, req) (*AuthzContext, error) {
 
 ### 4. Service Registration (Service-Owned)
 
-Services register their resolvers during service startup via the `RegistrationParams`:
+Services register their resolvers during service startup via `RegistrationParams.AuthzResolverRegistry`:
 
 ```go
-// In service registration (e.g., service/policy/attributes/attributes.go)
+// In service registration (service/policy/attributes/attributes.go)
 RegisterFunc: func(srp serviceregistry.RegistrationParams) {
-    resolver := NewAttributeResolver(srp.DBClient.PolicyClient())
-    srp.AuthzResolverRegistry.Register("policy.attributes", resolver)
-    // ... rest of registration
+    // ... service setup ...
+
+    // Register authz resolvers per-method
+    if srp.AuthzResolverRegistry != nil {
+        srp.AuthzResolverRegistry.MustRegister("CreateAttribute", as.createAttributeAuthzResolver)
+        srp.AuthzResolverRegistry.MustRegister("GetAttribute", as.getAttributeAuthzResolver)
+        srp.AuthzResolverRegistry.MustRegister("GetAttributeValuesByFqns", as.getAttributeValuesByFqnsAuthzResolver)
+        srp.AuthzResolverRegistry.MustRegister("ListAttributes", as.listAttributesAuthzResolver)
+        srp.AuthzResolverRegistry.MustRegister("UpdateAttribute", as.updateAttributeAuthzResolver)
+        srp.AuthzResolverRegistry.MustRegister("DeactivateAttribute", as.deactivateAttributeAuthzResolver)
+    }
 }
 ```
 
+The `ScopedResolverRegistry` validates that method names match the service's `ServiceDesc`.
+
 ### 5. Casbin Model (Platform-Owned)
 
-The Casbin model must support dynamic dimensions since different services define different
-authorization dimensions. We use a **serialized dimensions** approach where the AuthzContext
-dimensions map is converted to a canonical string format for policy matching.
+The v2 Casbin model uses 3 fields: `(subject, rpc, dimensions)`. The RPC method path
+itself implies the action, simplifying the model compared to v1's 4-field format.
 
 ```conf
-# service/internal/auth/casbin_model_v2.conf
+# service/internal/auth/authz/casbin/model.conf
 
 [request_definition]
-# sub: subject (role or user)
-# resource_type: the resource type (e.g., "policy.attribute", "kas.key")
-# action: the operation (read, write, delete, etc.)
-# dimensions: serialized key=value pairs, sorted by key (e.g., "namespace=hr")
-r = sub, resource_type, action, dimensions
+# sub: subject (roles from JWT, or username)
+# rpc: full gRPC method path (e.g., /policy.attributes.AttributesService/UpdateAttribute)
+# dims: serialized key=value pairs, sorted by key (e.g., "namespace=hr&attribute=x")
+r = sub, rpc, dims
 
 [policy_definition]
 # Same structure as request, with eft (effect) for allow/deny
-p = sub, resource_type, action, dimensions, eft
+p = sub, rpc, dims, eft
 
 [role_definition]
 g = _, _
 
 [policy_effect]
+# Allow if any policy explicitly allows AND no policy explicitly denies
 e = some(where (p.eft == allow)) && !some(where (p.eft == deny))
 
 [matchers]
-# keyMatch supports wildcards: * matches any segment
-# dimensionMatch is a custom function that handles dynamic dimension matching
-m = g(r.sub, p.sub) && keyMatch(r.resource_type, p.resource_type) && keyMatch(r.action, p.action) && dimensionMatch(r.dimensions, p.dimensions)
+# g(r.sub, p.sub): role/group membership check
+# keyMatch(r.rpc, p.rpc): RPC path matching with wildcards
+# dimensionMatch(r.dims, p.dims): custom function for dimension matching
+m = g(r.sub, p.sub) && keyMatch(r.rpc, p.rpc) && dimensionMatch(r.dims, p.dims)
 ```
 
 #### Dimension Matching
@@ -366,19 +363,19 @@ p, role:hr-or-finance, policy.attribute, read, namespace=finance, allow
 
 | Responsibility | Artifacts |
 |----------------|-----------|
-| Define AuthzContext contract | `service/internal/auth/authz_context.go` |
-| Implement interceptor | `service/internal/auth/resource_interceptor.go` |
-| Define resolver interface | `service/internal/auth/resolver.go` |
-| Maintain Casbin model | `service/internal/auth/casbin_model_v2.conf` |
+| Define ResolverContext contract | `service/internal/auth/authz/resolver.go` |
+| Implement interceptor | `service/internal/auth/authn.go` (authorization flow) |
+| Define authorizer interface | `service/internal/auth/authz/authorizer.go` |
+| Maintain Casbin model | `service/internal/auth/authz/casbin/model.conf` |
 | Documentation | Architecture docs, migration guides |
 
 ### Service Maintainer
 
 | Responsibility | Artifacts |
 |----------------|-----------|
-| Implement resolver | `service/<ns>/authz_resolver.go` |
-| Register resolver at startup | In service registration |
-| Unit test resolver logic | `service/<ns>/authz_resolver_test.go` |
+| Implement resolver functions | Methods on service struct (e.g., `*AttributesService`) |
+| Register resolvers at startup | In service `RegisterFunc` via `AuthzResolverRegistry.MustRegister()` |
+| Unit test resolver logic | Service test file |
 
 ### Deployer / Operator
 
@@ -507,27 +504,32 @@ All authorization decisions are logged with the serialized dimensions:
 
 **Completed:**
 
-- [x] Authorizer interface with pluggable backends (`service/internal/auth/authorizer.go`)
-- [x] Casbin model v2 with `dimensionMatch` custom function (`casbin_model_v2.conf`)
+- [x] Authorizer interface with pluggable backends (`service/internal/auth/authz/authorizer.go`)
+- [x] ResolverRegistry and ResolverContext types (`service/internal/auth/authz/resolver.go`)
+- [x] Casbin model v2 with `dimensionMatch` custom function (`authz/casbin/model.conf`)
 - [x] CasbinAuthorizer supporting v1 (path-based) and v2 (RPC+dimensions) modes
-- [x] Default v2 policy with role-based access (`casbin_policy_v2.csv`)
+- [x] Default v2 policy with role-based access (`authz/casbin/policy.csv`)
 - [x] Config version flag (defaults to "v1" for backwards compatibility)
 - [x] Authentication integration with Authorizer and ResolverRegistry
 - [x] Unit tests for dimension matching and policy evaluation
+- [x] Attributes service resolvers (CreateAttribute, GetAttribute, GetAttributeValuesByFqns, ListAttributes, UpdateAttribute, DeactivateAttribute)
 
 **Remaining:**
 
-- [ ] Service-specific resolvers (policy, KAS, etc.)
+- [ ] Additional service resolvers (KAS, namespaces, etc.)
 - [ ] Integration tests for resolver + authorizer flow
 
 ### Key Files
 
 | File | Purpose |
 |------|---------|
-| `internal/auth/authorizer.go` | Authorizer interface and factory |
-| `internal/auth/casbin_authorizer.go` | CasbinAuthorizer with v1/v2 support |
-| `internal/auth/casbin_model_v2.conf` | Casbin model for v2 authorization |
-| `internal/auth/casbin_policy_v2.csv` | Default v2 policy (embedded) |
+| `internal/auth/authz/authorizer.go` | Authorizer interface and factory |
+| `internal/auth/authz/resolver.go` | ResolverRegistry and ResolverContext types |
+| `internal/auth/authz/policy.go` | PolicyConfig type |
+| `internal/auth/authz/casbin/casbin.go` | CasbinAuthorizer with v1/v2 support |
+| `internal/auth/authz/casbin/model.conf` | Casbin model for v2 authorization |
+| `internal/auth/authz/casbin/policy.csv` | Default v2 policy (embedded) |
+| `policy/attributes/attributes.go` | Example resolver implementations (lines 544-688) |
 
 ## Open Work
 

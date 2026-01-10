@@ -179,24 +179,22 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	}
 
 	// Initialize the pluggable authorizer based on engine and version
-	// Convert auth.PolicyConfig to authz.PolicyConfig
-	authzPolicyCfg := authz.PolicyConfig{
-		Engine:        cfg.Policy.Engine,
-		Version:       cfg.Policy.Version,
-		UserNameClaim: cfg.Policy.UserNameClaim,
-		GroupsClaim:   []string{cfg.Policy.GroupsClaim},
-		ClientIDClaim: cfg.Policy.ClientIDClaim,
-		Csv:           cfg.Policy.Csv,
-		Extension:     cfg.Policy.Extension,
-		Model:         cfg.Policy.Model,
-		RoleMap:       cfg.Policy.RoleMap,
-		Adapter:       cfg.Policy.Adapter,
-	}
 	authzCfg := authz.Config{
-		Engine:       cfg.Policy.Engine,
-		Version:      cfg.Policy.Version,
-		PolicyConfig: authzPolicyCfg,
-		Logger:       logger,
+		Engine:  cfg.Policy.Engine,
+		Version: cfg.Policy.Version,
+		PolicyConfig: authz.PolicyConfig{
+			Engine:        cfg.Policy.Engine,
+			Version:       cfg.Policy.Version,
+			UserNameClaim: cfg.Policy.UserNameClaim,
+			GroupsClaim:   cfg.Policy.GroupsClaim,
+			ClientIDClaim: cfg.Policy.ClientIDClaim,
+			Csv:           cfg.Policy.Csv,
+			Extension:     cfg.Policy.Extension,
+			Model:         cfg.Policy.Model,
+			RoleMap:       cfg.Policy.RoleMap,
+			Adapter:       cfg.Policy.Adapter,
+		},
+		Logger: logger,
 		// Pass the v1 enforcer to break circular dependency
 		// The casbin authorizer will use this for v1 mode
 		Options: []authz.Option{authz.WithV1Enforcer(a.enforcer)},

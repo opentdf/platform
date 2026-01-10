@@ -1,8 +1,8 @@
 package authz
 
 // PolicyConfig contains the policy configuration for authorization.
-// This is a subset of the fields from auth.PolicyConfig that are relevant
-// for authorization engines.
+// This mirrors auth.PolicyConfig to avoid circular imports while maintaining
+// the same field structure for consistent configuration.
 type PolicyConfig struct {
 	// Engine specifies the authorization engine to use.
 	// - "casbin" (default): Casbin policy engine
@@ -19,8 +19,8 @@ type PolicyConfig struct {
 	// Username claim to use for user information
 	UserNameClaim string
 
-	// Claims to use for group/role information (supports multiple claims)
-	GroupsClaim []string
+	// Claim to use for group/role information (dot notation supported, e.g., "realm_access.roles")
+	GroupsClaim string
 
 	// Claim to use to reference idP clientID
 	ClientIDClaim string

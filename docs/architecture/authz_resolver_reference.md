@@ -2,7 +2,7 @@
 
 **Purpose**: Track authorization resolver components and service registrations for drift detection.
 
-**Last Updated**: 2026-01-02
+**Last Updated**: 2026-01-09
 
 ---
 
@@ -12,36 +12,36 @@
 
 | Type | Location | Purpose |
 |------|----------|---------|
-| `AuthzResolverResource` | `service/internal/auth/authz_resolver.go:15` | `map[string]string` - Single resource's authorization dimensions (key=dimension name, value=dimension value) |
-| `AuthzResolverContext` | `service/internal/auth/authz_resolver.go:20-22` | Container for multiple resources; supports multi-resource operations (e.g., move from A to B) |
-| `AuthzResolverFunc` | `service/internal/auth/authz_resolver.go:40` | Function signature: `func(ctx context.Context, req connect.AnyRequest) (AuthzResolverContext, error)` |
-| `AuthzResolverRegistry` | `service/internal/auth/authz_resolver.go:45-48` | Global thread-safe registry; keyed by full method path |
-| `ScopedAuthzResolverRegistry` | `service/internal/auth/authz_resolver.go:88-91` | Namespace-scoped view; validates method ownership against ServiceDesc |
+| `ResolverResource` | `service/internal/auth/authz/resolver.go:15` | `map[string]string` - Single resource's authorization dimensions (key=dimension name, value=dimension value) |
+| `ResolverContext` | `service/internal/auth/authz/resolver.go:20-22` | Container for multiple resources; supports multi-resource operations (e.g., move from A to B) |
+| `ResolverFunc` | `service/internal/auth/authz/resolver.go:40` | Function signature: `func(ctx context.Context, req connect.AnyRequest) (ResolverContext, error)` |
+| `ResolverRegistry` | `service/internal/auth/authz/resolver.go:45-48` | Global thread-safe registry; keyed by full method path |
+| `ScopedResolverRegistry` | `service/internal/auth/authz/resolver.go:89-92` | Namespace-scoped view; validates method ownership against ServiceDesc |
 
 ### Factory Functions
 
 | Function | Location | Returns |
 |----------|----------|---------|
-| `NewAuthzResolverRegistry()` | `service/internal/auth/authz_resolver.go:50-54` | `*AuthzResolverRegistry` |
-| `NewAuthzResolverContext()` | `service/internal/auth/authz_resolver.go:126-128` | `AuthzResolverContext` (empty) |
+| `NewResolverRegistry()` | `service/internal/auth/authz/resolver.go:51-55` | `*ResolverRegistry` |
+| `NewResolverContext()` | `service/internal/auth/authz/resolver.go:127-129` | `ResolverContext` (empty) |
 
 ### Registry Methods
 
 | Method | Receiver | Purpose |
 |--------|----------|---------|
-| `register(fullMethodPath, resolver)` | `*AuthzResolverRegistry` | Internal - adds resolver for full method path |
-| `Get(method)` | `*AuthzResolverRegistry` | Returns resolver and existence flag for method |
-| `ScopedForService(serviceDesc)` | `*AuthzResolverRegistry` | Creates scoped registry for service; panics if serviceDesc is nil |
-| `Register(methodName, resolver)` | `*ScopedAuthzResolverRegistry` | Validates method exists in ServiceDesc, builds full path, delegates to parent |
-| `MustRegister(methodName, resolver)` | `*ScopedAuthzResolverRegistry` | Like Register but panics on error |
-| `ServiceName()` | `*ScopedAuthzResolverRegistry` | Returns scoped service name |
+| `register(fullMethodPath, resolver)` | `*ResolverRegistry` | Internal - adds resolver for full method path |
+| `Get(method)` | `*ResolverRegistry` | Returns resolver and existence flag for method |
+| `ScopedForService(serviceDesc)` | `*ResolverRegistry` | Creates scoped registry for service; panics if serviceDesc is nil |
+| `Register(methodName, resolver)` | `*ScopedResolverRegistry` | Validates method exists in ServiceDesc, builds full path, delegates to parent |
+| `MustRegister(methodName, resolver)` | `*ScopedResolverRegistry` | Like Register but panics on error |
+| `ServiceName()` | `*ScopedResolverRegistry` | Returns scoped service name |
 
 ### Context Methods
 
 | Method | Receiver | Purpose |
 |--------|----------|---------|
-| `NewResource()` | `*AuthzResolverContext` | Appends new resource to Resources slice, returns pointer |
-| `AddDimension(dimension, value)` | `*AuthzResolverResource` | Sets dimension key-value pair |
+| `NewResource()` | `*ResolverContext` | Appends new resource to Resources slice, returns pointer |
+| `AddDimension(dimension, value)` | `*ResolverResource` | Sets dimension key-value pair |
 
 ---
 
@@ -51,21 +51,21 @@
 
 | Location | Line | Action |
 |----------|------|--------|
-| `service/pkg/server/start.go` | 275 | Creates global `AuthzResolverRegistry` |
-| `service/pkg/server/start.go` | 286 | Passes registry to `startServicesParams` |
+| `service/pkg/server/start.go` | 276 | Creates global `ResolverRegistry` via `authz.NewResolverRegistry()` |
+| `service/pkg/server/start.go` | 287 | Passes registry to `startServicesParams` |
 
 ### Scoped Registry Creation
 
 | Location | Line | Action |
 |----------|------|--------|
-| `service/pkg/server/services.go` | 211-216 | Creates `ScopedAuthzResolverRegistry` per service via `ScopedForService()` |
+| `service/pkg/server/services.go` | 213-215 | Creates `ScopedResolverRegistry` per service via `ScopedForService()` |
 | `service/pkg/server/services.go` | 230 | Injects scoped registry into `RegistrationParams.AuthzResolverRegistry` |
 
 ### RegistrationParams Field
 
 | Location | Line | Field |
 |----------|------|-------|
-| `service/pkg/serviceregistry/serviceregistry.go` | 69-83 | `AuthzResolverRegistry *auth.ScopedAuthzResolverRegistry` |
+| `service/pkg/serviceregistry/serviceregistry.go` | 69-83 | `AuthzResolverRegistry *authz.ScopedResolverRegistry` |
 
 ---
 
@@ -75,17 +75,18 @@
 
 **File**: `service/policy/attributes/attributes.go`
 
-**Registration Location**: Lines 74-80 in `RegisterFunc`
+**Registration Location**: Lines 74-81 in `RegisterFunc`
 
 | Method | Resolver Function | Dimensions Resolved |
 |--------|-------------------|---------------------|
 | `CreateAttribute` | `createAttributeAuthzResolver` | `namespace` (via DB lookup from namespace_id) |
 | `GetAttribute` | `getAttributeAuthzResolver` | `namespace`, `attribute` (via DB lookup) |
+| `GetAttributeValuesByFqns` | `getAttributeValuesByFqnsAuthzResolver` | `namespace` (parsed from FQN URLs, multiple resources) |
 | `ListAttributes` | `listAttributesAuthzResolver` | `namespace` (optional, from request filter) |
 | `UpdateAttribute` | `updateAttributeAuthzResolver` | `namespace`, `attribute` (via DB lookup) |
 | `DeactivateAttribute` | `deactivateAttributeAuthzResolver` | `namespace`, `attribute` (via DB lookup) |
 
-**Resolver Functions Location**: Lines 100-339
+**Resolver Functions Location**: Lines 554-688
 
 ### Services Without Registrations
 
@@ -114,7 +115,7 @@ The following services do not currently register authz resolvers:
 
 | Dimension | Used By | Description |
 |-----------|---------|-------------|
-| `namespace` | Attributes | Policy namespace name (resolved from namespace_id or attribute lookup) |
+| `namespace` | Attributes | Policy namespace name (resolved from namespace_id, attribute lookup, or FQN parsing) |
 | `attribute` | Attributes | Attribute definition name |
 
 ### Expected Future Dimensions
@@ -130,7 +131,7 @@ The following services do not currently register authz resolvers:
 
 ### Method Validation
 
-`ScopedAuthzResolverRegistry.Register()` validates:
+`ScopedResolverRegistry.Register()` validates:
 1. Method name exists in `ServiceDesc.Methods`
 2. Builds full path as `/<ServiceName>/<MethodName>`
 

@@ -20,9 +20,9 @@ type BaseAdapterConfig struct {
 	// UserNameClaim is the JWT claim containing the username.
 	UserNameClaim string
 
-	// GroupsClaims are the JWT claims containing roles/groups.
-	// Multiple claims can be specified for flexibility across IdPs.
-	GroupsClaims []string
+	// GroupsClaim is the JWT claim containing roles/groups (dot notation supported).
+	// Example: "realm_access.roles" for Keycloak.
+	GroupsClaim string
 
 	// ClientIDClaim is the JWT claim containing the client ID.
 	ClientIDClaim string
@@ -135,7 +135,7 @@ type OPAConfig struct {
 func AdapterConfigFromExternal(cfg Config) any {
 	base := BaseAdapterConfig{
 		UserNameClaim: cfg.UserNameClaim,
-		GroupsClaims:  cfg.GroupsClaim,
+		GroupsClaim:   cfg.GroupsClaim,
 		ClientIDClaim: cfg.ClientIDClaim,
 		Logger:        cfg.Logger,
 	}

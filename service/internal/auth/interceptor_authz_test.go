@@ -627,7 +627,7 @@ func (s *InterceptorAuthzSuite) createV1Authorizer(policyCfg PolicyConfig) authz
 		Engine:        policyCfg.Engine,
 		Version:       "v1",
 		UserNameClaim: policyCfg.UserNameClaim,
-		GroupsClaim:   []string{policyCfg.GroupsClaim},
+		GroupsClaim:   policyCfg.GroupsClaim,
 		ClientIDClaim: policyCfg.ClientIDClaim,
 		Csv:           policyCfg.Csv,
 		Extension:     policyCfg.Extension,
@@ -652,7 +652,7 @@ func (s *InterceptorAuthzSuite) createV2Authorizer(csvPolicy string) authz.Autho
 	authzPolicyCfg := authz.PolicyConfig{
 		Engine:      "casbin",
 		Version:     "v2",
-		GroupsClaim: []string{"realm_access.roles"},
+		GroupsClaim: "realm_access.roles",
 		Csv:         csvPolicy,
 	}
 	authzCfg := authz.Config{

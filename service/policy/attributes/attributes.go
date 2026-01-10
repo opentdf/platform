@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -74,6 +75,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				if srp.AuthzResolverRegistry != nil {
 					srp.AuthzResolverRegistry.MustRegister("CreateAttribute", as.createAttributeAuthzResolver)
 					srp.AuthzResolverRegistry.MustRegister("GetAttribute", as.getAttributeAuthzResolver)
+					srp.AuthzResolverRegistry.MustRegister("GetAttributeValuesByFqns", as.getAttributeValuesByFqnsAuthzResolver)
 					srp.AuthzResolverRegistry.MustRegister("ListAttributes", as.listAttributesAuthzResolver)
 					srp.AuthzResolverRegistry.MustRegister("UpdateAttribute", as.updateAttributeAuthzResolver)
 					srp.AuthzResolverRegistry.MustRegister("DeactivateAttribute", as.deactivateAttributeAuthzResolver)
@@ -650,6 +652,38 @@ func (s *AttributesService) deactivateAttributeAuthzResolver(ctx context.Context
 	res := resolverCtx.NewResource()
 	res.AddDimension("namespace", attr.GetNamespace().GetName())
 	res.AddDimension("attribute", attr.GetName())
+
+	return resolverCtx, nil
+}
+
+// getAttributeValuesByFqnsAuthzResolver resolves namespaces from FQNs.
+// FQN format: https://<namespace>/attr/<attribute_name>/value/<value_name>
+// Since FQNs can span multiple namespaces, this creates a resource per unique namespace.
+func (s *AttributesService) getAttributeValuesByFqnsAuthzResolver(_ context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*attributes.GetAttributeValuesByFqnsRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	// Extract unique namespaces from FQNs
+	// FQN format: https://<namespace>/attr/<attribute_name>/value/<value_name>
+	namespaces := make(map[string]struct{})
+	for _, fqn := range msg.GetFqns() {
+		parsed, err := url.Parse(fqn)
+		if err != nil {
+			continue // Skip malformed FQNs; DB will validate later
+		}
+		if parsed.Host != "" {
+			namespaces[parsed.Host] = struct{}{}
+		}
+	}
+
+	// Create a resource for each unique namespace
+	for ns := range namespaces {
+		res := resolverCtx.NewResource()
+		res.AddDimension("namespace", ns)
+	}
 
 	return resolverCtx, nil
 }

@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
+	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -66,6 +68,19 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				as.logger = logger
 				as.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 				as.config = cfg
+
+				// Register authz resolvers per-method
+				// Each resolver extracts authorization dimensions from the request, performing DB lookups as needed.
+				// The resolver is called by the auth interceptor before the handler.
+				if srp.AuthzResolverRegistry != nil {
+					srp.AuthzResolverRegistry.MustRegister("CreateAttribute", as.createAttributeAuthzResolver)
+					srp.AuthzResolverRegistry.MustRegister("GetAttribute", as.getAttributeAuthzResolver)
+					srp.AuthzResolverRegistry.MustRegister("GetAttributeValuesByFqns", as.getAttributeValuesByFqnsAuthzResolver)
+					srp.AuthzResolverRegistry.MustRegister("ListAttributes", as.listAttributesAuthzResolver)
+					srp.AuthzResolverRegistry.MustRegister("UpdateAttribute", as.updateAttributeAuthzResolver)
+					srp.AuthzResolverRegistry.MustRegister("DeactivateAttribute", as.deactivateAttributeAuthzResolver)
+				}
+
 				return as, nil
 			},
 		},
@@ -77,6 +92,12 @@ func (s *AttributesService) Close() {
 	s.logger.Info("gracefully shutting down attributes service")
 	s.dbClient.Close()
 }
+
+///
+/// Attribute Definitions
+///
+
+// --- CreateAttribute ---
 
 func (s *AttributesService) CreateAttribute(ctx context.Context,
 	req *connect.Request[attributes.CreateAttributeRequest],
@@ -112,6 +133,8 @@ func (s *AttributesService) CreateAttribute(ctx context.Context,
 	return connect.NewResponse(rsp), nil
 }
 
+// --- ListAttributes ---
+
 func (s *AttributesService) ListAttributes(ctx context.Context,
 	req *connect.Request[attributes.ListAttributesRequest],
 ) (*connect.Response[attributes.ListAttributesResponse], error) {
@@ -129,6 +152,8 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 	return connect.NewResponse(rsp), nil
 }
 
+// --- GetAttribute ---
+
 func (s *AttributesService) GetAttribute(ctx context.Context,
 	req *connect.Request[attributes.GetAttributeRequest],
 ) (*connect.Response[attributes.GetAttributeResponse], error) {
@@ -137,8 +162,16 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 
 	rsp := &attributes.GetAttributeResponse{}
 
-	var identifier any
+	// Check if attribute was already fetched by authz resolver (avoid duplicate DB query)
+	if cached := authz.GetResolvedDataFromContext(ctx, ResolverCacheKeyAttribute); cached != nil {
+		if attr, ok := cached.(*policy.Attribute); ok {
+			rsp.Attribute = attr
+			return connect.NewResponse(rsp), nil
+		}
+	}
 
+	// Fallback to DB query if not cached (e.g., v1 authz mode or no resolver)
+	var identifier any
 	if req.Msg.GetId() != "" { //nolint:staticcheck // Id can still be used until removed
 		identifier = req.Msg.GetId() //nolint:staticcheck // Id can still be used until removed
 	} else {
@@ -151,8 +184,10 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 	}
 	rsp.Attribute = item
 
-	return connect.NewResponse(rsp), err
+	return connect.NewResponse(rsp), nil
 }
+
+// --- GetAttributeValuesByFqns ---
 
 func (s *AttributesService) GetAttributeValuesByFqns(ctx context.Context,
 	req *connect.Request[attributes.GetAttributeValuesByFqnsRequest],
@@ -171,6 +206,8 @@ func (s *AttributesService) GetAttributeValuesByFqns(ctx context.Context,
 	return connect.NewResponse(rsp), nil
 }
 
+// --- UpdateAttribute ---
+
 func (s *AttributesService) UpdateAttribute(ctx context.Context,
 	req *connect.Request[attributes.UpdateAttributeRequest],
 ) (*connect.Response[attributes.UpdateAttributeResponse], error) {
@@ -183,10 +220,20 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 		ObjectID:   attributeID,
 	}
 
-	original, err := s.dbClient.GetAttribute(ctx, attributeID)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
+	// Check if attribute was already fetched by authz resolver (avoid duplicate DB query)
+	var original *policy.Attribute
+	if cached := authz.GetResolvedDataFromContext(ctx, ResolverCacheKeyAttribute); cached != nil {
+		original, _ = cached.(*policy.Attribute)
+	}
+
+	// Fallback to DB query if not cached (e.g., v1 authz mode or no resolver)
+	if original == nil {
+		var err error
+		original, err = s.dbClient.GetAttribute(ctx, attributeID)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
+		}
 	}
 
 	updated, err := s.dbClient.UpdateAttribute(ctx, attributeID, req.Msg)
@@ -206,6 +253,8 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 	return connect.NewResponse(rsp), nil
 }
 
+// --- DeactivateAttribute ---
+
 func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 	req *connect.Request[attributes.DeactivateAttributeRequest],
 ) (*connect.Response[attributes.DeactivateAttributeResponse], error) {
@@ -218,10 +267,20 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 		ObjectID:   attributeID,
 	}
 
-	original, err := s.dbClient.GetAttribute(ctx, attributeID)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
+	// Check if attribute was already fetched by authz resolver (avoid duplicate DB query)
+	var original *policy.Attribute
+	if cached := authz.GetResolvedDataFromContext(ctx, ResolverCacheKeyAttribute); cached != nil {
+		original, _ = cached.(*policy.Attribute)
+	}
+
+	// Fallback to DB query if not cached (e.g., v1 authz mode or no resolver)
+	if original == nil {
+		var err error
+		original, err = s.dbClient.GetAttribute(ctx, attributeID)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
+		}
 	}
 
 	updated, err := s.dbClient.DeactivateAttribute(ctx, attributeID)
@@ -514,4 +573,158 @@ func (s *AttributesService) RemovePublicKeyFromValue(ctx context.Context, r *con
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
+}
+
+///
+/// Authz Resolvers
+///
+/// These methods resolve authorization dimensions from requests.
+/// They are placed at the end of the file per linting rules (unexported methods after exported).
+
+// ResolverCacheKeyAttribute is the key used to cache fetched attributes in the ResolverContext.
+// Handlers can retrieve the cached attribute via authz.GetResolvedDataFromContext(ctx, ResolverCacheKeyAttribute).
+const ResolverCacheKeyAttribute = "attribute"
+
+// createAttributeAuthzResolver resolves namespace from the request's namespace_id.
+func (s *AttributesService) createAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*attributes.CreateAttributeRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	ns, err := s.dbClient.GetNamespace(ctx, msg.GetNamespaceId())
+	if err != nil {
+		return resolverCtx, fmt.Errorf("failed to resolve namespace for authz: %w", err)
+	}
+
+	res := resolverCtx.NewResource()
+	res.AddDimension("namespace", ns.GetName())
+
+	return resolverCtx, nil
+}
+
+// listAttributesAuthzResolver resolves optional namespace filter.
+func (s *AttributesService) listAttributesAuthzResolver(_ context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*attributes.ListAttributesRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	res := resolverCtx.NewResource()
+	// Namespace filter is optional - empty means "all accessible namespaces"
+	if ns := msg.GetNamespace(); ns != "" {
+		res.AddDimension("namespace", ns)
+	}
+
+	return resolverCtx, nil
+}
+
+// getAttributeAuthzResolver resolves namespace from attribute lookup.
+func (s *AttributesService) getAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*attributes.GetAttributeRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	var identifier any
+	if msg.GetId() != "" { //nolint:staticcheck // Id can still be used until removed
+		identifier = msg.GetId() //nolint:staticcheck // Id can still be used until removed
+	} else {
+		identifier = msg.GetIdentifier()
+	}
+
+	attr, err := s.dbClient.GetAttribute(ctx, identifier)
+	if err != nil {
+		return resolverCtx, fmt.Errorf("failed to resolve attribute for authz: %w", err)
+	}
+
+	res := resolverCtx.NewResource()
+	res.AddDimension("namespace", attr.GetNamespace().GetName())
+	res.AddDimension("attribute", attr.GetName())
+
+	// Cache the fetched attribute for handler reuse (avoids duplicate DB query)
+	resolverCtx.SetResolvedData(ResolverCacheKeyAttribute, attr)
+
+	return resolverCtx, nil
+}
+
+// updateAttributeAuthzResolver resolves namespace from attribute lookup.
+func (s *AttributesService) updateAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*attributes.UpdateAttributeRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	attr, err := s.dbClient.GetAttribute(ctx, msg.GetId())
+	if err != nil {
+		return resolverCtx, fmt.Errorf("failed to resolve attribute for authz: %w", err)
+	}
+
+	res := resolverCtx.NewResource()
+	res.AddDimension("namespace", attr.GetNamespace().GetName())
+	res.AddDimension("attribute", attr.GetName())
+
+	// Cache the fetched attribute for handler reuse (avoids duplicate DB query)
+	resolverCtx.SetResolvedData(ResolverCacheKeyAttribute, attr)
+
+	return resolverCtx, nil
+}
+
+// deactivateAttributeAuthzResolver resolves namespace from attribute lookup.
+func (s *AttributesService) deactivateAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*attributes.DeactivateAttributeRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	attr, err := s.dbClient.GetAttribute(ctx, msg.GetId())
+	if err != nil {
+		return resolverCtx, fmt.Errorf("failed to resolve attribute for authz: %w", err)
+	}
+
+	res := resolverCtx.NewResource()
+	res.AddDimension("namespace", attr.GetNamespace().GetName())
+	res.AddDimension("attribute", attr.GetName())
+
+	// Cache the fetched attribute for handler reuse (avoids duplicate DB query)
+	resolverCtx.SetResolvedData(ResolverCacheKeyAttribute, attr)
+
+	return resolverCtx, nil
+}
+
+// getAttributeValuesByFqnsAuthzResolver resolves namespaces from FQNs.
+// FQN format: https://<namespace>/attr/<attribute_name>/value/<value_name>
+// Since FQNs can span multiple namespaces, this creates a resource per unique namespace.
+func (s *AttributesService) getAttributeValuesByFqnsAuthzResolver(_ context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*attributes.GetAttributeValuesByFqnsRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	// Extract unique namespaces from FQNs
+	// FQN format: https://<namespace>/attr/<attribute_name>/value/<value_name>
+	namespaces := make(map[string]struct{})
+	for _, fqn := range msg.GetFqns() {
+		parsed, err := url.Parse(fqn)
+		if err != nil {
+			continue // Skip malformed FQNs; DB will validate later
+		}
+		if parsed.Host != "" {
+			namespaces[parsed.Host] = struct{}{}
+		}
+	}
+
+	// Create a resource for each unique namespace
+	for ns := range namespaces {
+		res := resolverCtx.NewResource()
+		res.AddDimension("namespace", ns)
+	}
+
+	return resolverCtx, nil
 }

@@ -258,19 +258,24 @@ The matcher is registered with Casbin via `enforcer.AddFunction("dimensionMatch"
 
 ### 6. Interceptor Flow (Platform-Owned)
 
-The `ResourceAuthzInterceptor` orchestrates the authorization flow as a ConnectRPC interceptor:
+The authorization interceptor orchestrates the authorization flow as a ConnectRPC interceptor:
 
 ```
 1. Extract subject from JWT claims (e.g., "role:hr-admin")
 
-2. Call service resolver to get AuthzContext
+2. Call service resolver to get ResolverContext with dimensions
    └─ No resolver registered? Use empty dimensions (matches wildcard policies)
    └─ Resolution failure? Return 403 PermissionDenied
 
-3. Enforce policy via Casbin:
-   enforcer.Enforce(subject, resourceType, action, dimensions)
+3. Enforce policy via Casbin (v2 model):
+   enforcer.Enforce(subject, rpc, dimensions)
 
-4. Log authorization decision (subject, resource, action, dimensions, allow/deny)
+   Where:
+   - subject = roles extracted from JWT (e.g., "role:hr-admin")
+   - rpc = full method path (e.g., "/policy.attributes.AttributesService/UpdateAttribute")
+   - dimensions = serialized key=value pairs (e.g., "namespace=hr&attribute=classification")
+
+4. Log authorization decision (subject, rpc, dimensions, allow/deny)
 
 5. If allowed, proceed to handler; otherwise return 403
 ```
@@ -278,70 +283,79 @@ The `ResourceAuthzInterceptor` orchestrates the authorization flow as a ConnectR
 **Key behaviors:**
 - No resolver registered = empty dimensions (matches wildcard policies)
 - Resolver error = authorization failure (403)
-- Falls back to path-based authorization for unannotated methods (backwards compat)
+- Falls back to v1 path-based authorization when configured (backwards compat)
 
 ### 7. Example Policies (Deployer-Owned)
 
-Policies use the new 4-position format: `(subject, resource_type, action, dimensions)`.
-Dimensions use `&` as the AND delimiter (e.g., `namespace=hr&attr_id=123`).
+Policies use the v2 4-field format: `p, subject, rpc, dimensions, effect`.
+The RPC field is the full gRPC method path (e.g., `/policy.attributes.AttributesService/UpdateAttribute`).
+Dimensions use `&` as the AND delimiter (e.g., `namespace=hr&attribute=classification`).
 
 ```csv
-# ====================================================================
-# Policy Service - Namespace-scoped roles
-# ====================================================================
+# ============================================================================
+# Format: p, subject, rpc, dimensions, effect
+#   - subject: role:rolename or username
+#   - rpc: gRPC method path or HTTP path (supports * wildcard)
+#   - dimensions: namespace=value&attribute=value (supports * wildcard)
+#   - effect: allow or deny
+# ============================================================================
 
-# Finance admin: full access to finance namespace
-p, role:finance-admin, policy.*, *, namespace=finance.com, allow
+# ============================================================================
+# Global Admin - Full Access
+# ============================================================================
+p, role:admin, *, *, allow
+
+# ============================================================================
+# Policy Service - Namespace-scoped roles
+# ============================================================================
+
+# Finance admin: full access to finance namespace (all policy service methods)
+p, role:finance-admin, /policy.*, namespace=finance.com, allow
 
 # HR admin: full access to hr namespace
-p, role:hr-admin, policy.*, *, namespace=hr.io, allow
+p, role:hr-admin, /policy.*, namespace=hr.io, allow
 
-# Cross-namespace read-only auditor
-p, role:auditor, policy.*, read, *, allow
+# Cross-namespace read-only auditor (Get* and List* methods only)
+p, role:auditor, /policy.*/Get*, *, allow
+p, role:auditor, /policy.*/List*, *, allow
 
-# Standard role: read all namespaces, no write
-p, role:standard, policy.*, read, *, allow
+# Standard role: read all namespaces via policy services
+p, role:standard, /policy.attributes.AttributesService/Get*, *, allow
+p, role:standard, /policy.attributes.AttributesService/List*, *, allow
+p, role:standard, /policy.namespaces.NamespaceService/Get*, *, allow
+p, role:standard, /policy.namespaces.NamespaceService/List*, *, allow
 
-# Contractors cannot delete anything
-p, role:contractor, policy.*, delete, *, deny
+# Contractors cannot deactivate anything
+p, role:contractor, /policy.*/Deactivate*, *, deny
 
-# ====================================================================
+# ============================================================================
 # KAS Service - KAS instance scoped roles
-# ====================================================================
+# ============================================================================
 
 # KAS-1 admin: can manage KAS instance 1
-p, role:kas1-admin, kas.*, *, kas_id=kas-1, allow
+p, role:kas1-admin, /kas.AccessService/*, kas_id=kas-1, allow
 
 # KAS operator: read access to all KAS instances
-p, role:kas-operator, kas.*, read, *, allow
+p, role:kas-operator, /kas.AccessService/Get*, *, allow
+p, role:kas-operator, /kas.AccessService/List*, *, allow
 
-# KAS rewrap permission for specific instance
-p, role:kas1-rewrapper, kas.key, rewrap, kas_id=kas-1, allow
-
-# ====================================================================
-# Global roles (cross-service)
-# ====================================================================
-
-# Global admin: full access to everything
-p, role:admin, *, *, *, allow
-
-# ====================================================================
+# ============================================================================
 # Fine-grained policies (AND logic with &)
-# ====================================================================
+# ============================================================================
 
-# Specific user: must match BOTH namespace AND attribute
-p, user:alice@example.com, policy.attribute, write, namespace=hr&attribute=classification, allow
+# Specific user: must match BOTH namespace AND attribute dimensions
+p, user:alice@example.com, /policy.attributes.AttributesService/Update*, namespace=hr&attribute=classification, allow
 
-# Wildcard on specific dimension key
-p, role:ns-reader, policy.namespace, read, namespace=*, allow
+# Wildcard dimension value: allow any namespace
+p, role:ns-reader, /policy.namespaces.NamespaceService/Get*, namespace=*, allow
 
-# ====================================================================
+# ============================================================================
 # OR logic via multiple policies
-# ====================================================================
+# ============================================================================
 
 # User can access hr namespace OR finance namespace (two separate policies)
-p, role:hr-or-finance, policy.attribute, read, namespace=hr, allow
-p, role:hr-or-finance, policy.attribute, read, namespace=finance, allow
+p, role:hr-or-finance, /policy.attributes.AttributesService/*, namespace=hr, allow
+p, role:hr-or-finance, /policy.attributes.AttributesService/*, namespace=finance, allow
 ```
 
 #### Policy Format Reference
@@ -349,10 +363,11 @@ p, role:hr-or-finance, policy.attribute, read, namespace=finance, allow
 | Format | Meaning |
 |--------|---------|
 | `*` | Match any value (global wildcard) |
+| `/policy.*` | Match any RPC path starting with `/policy.` |
+| `/policy.*/Get*` | Match any Get method in any policy service |
 | `namespace=hr` | Match only when namespace dimension is "hr" |
-| `namespace=*` | Match any namespace value (but namespace must be present) |
-| `namespace=hr&attribute=classification` | Match both dimensions (AND logic) |
-| `policy.*` | Match any policy resource type (resource type wildcard) |
+| `namespace=*` | Match any namespace value (but dimension must be present) |
+| `namespace=hr&attribute=x` | Match both dimensions (AND logic) |
 | Multiple policies with same subject | OR logic across policies |
 
 ---

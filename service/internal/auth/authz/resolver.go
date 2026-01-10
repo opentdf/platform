@@ -19,6 +19,11 @@ type ResolverResource map[string]string
 // where authorization is required for both source and destination.
 type ResolverContext struct {
 	Resources []*ResolverResource
+
+	// ResolvedData stores data fetched during resolution (e.g., attributes, namespaces)
+	// to avoid duplicate DB queries in handlers. Keys are service-defined strings.
+	// Handlers can retrieve this data via GetResolvedDataFromContext().
+	ResolvedData map[string]any
 }
 
 // ResolverFunc is the function signature for service-provided resolvers.
@@ -139,4 +144,51 @@ func (a *ResolverContext) NewResource() *ResolverResource {
 // AddDimension adds a dimension to the resource.
 func (a *ResolverResource) AddDimension(dimension, value string) {
 	(*a)[dimension] = value
+}
+
+// SetResolvedData stores data in the resolver context cache.
+// Use this to cache fetched resources (e.g., attributes) for handler reuse.
+// The key should be a descriptive string (e.g., "attribute", "namespace").
+func (a *ResolverContext) SetResolvedData(key string, value any) {
+	if a.ResolvedData == nil {
+		a.ResolvedData = make(map[string]any)
+	}
+	a.ResolvedData[key] = value
+}
+
+// GetResolvedData retrieves cached data by key.
+// Returns nil if key not found. Caller should type-assert the result.
+func (a *ResolverContext) GetResolvedData(key string) any {
+	if a.ResolvedData == nil {
+		return nil
+	}
+	return a.ResolvedData[key]
+}
+
+// resolverContextKey is the context key for storing ResolverContext.
+type resolverContextKey struct{}
+
+// ContextWithResolverContext returns a new context with the ResolverContext attached.
+// This is called by the auth interceptor after resolution to make cached data
+// available to handlers.
+func ContextWithResolverContext(ctx context.Context, rc *ResolverContext) context.Context {
+	return context.WithValue(ctx, resolverContextKey{}, rc)
+}
+
+// ResolverContextFromContext retrieves the ResolverContext from the context.
+// Returns nil if not present (e.g., no resolver registered for the method).
+func ResolverContextFromContext(ctx context.Context) *ResolverContext {
+	rc, _ := ctx.Value(resolverContextKey{}).(*ResolverContext)
+	return rc
+}
+
+// GetResolvedDataFromContext is a convenience function to retrieve cached data
+// from the ResolverContext in the given context.
+// Returns nil if no ResolverContext or key not found.
+func GetResolvedDataFromContext(ctx context.Context, key string) any {
+	rc := ResolverContextFromContext(ctx)
+	if rc == nil {
+		return nil
+	}
+	return rc.GetResolvedData(key)
 }

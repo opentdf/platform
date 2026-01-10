@@ -162,8 +162,16 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 
 	rsp := &attributes.GetAttributeResponse{}
 
-	var identifier any
+	// Check if attribute was already fetched by authz resolver (avoid duplicate DB query)
+	if cached := authz.GetResolvedDataFromContext(ctx, ResolverCacheKeyAttribute); cached != nil {
+		if attr, ok := cached.(*policy.Attribute); ok {
+			rsp.Attribute = attr
+			return connect.NewResponse(rsp), nil
+		}
+	}
 
+	// Fallback to DB query if not cached (e.g., v1 authz mode or no resolver)
+	var identifier any
 	if req.Msg.GetId() != "" { //nolint:staticcheck // Id can still be used until removed
 		identifier = req.Msg.GetId() //nolint:staticcheck // Id can still be used until removed
 	} else {
@@ -176,7 +184,7 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 	}
 	rsp.Attribute = item
 
-	return connect.NewResponse(rsp), err
+	return connect.NewResponse(rsp), nil
 }
 
 // --- GetAttributeValuesByFqns ---
@@ -212,10 +220,20 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 		ObjectID:   attributeID,
 	}
 
-	original, err := s.dbClient.GetAttribute(ctx, attributeID)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
+	// Check if attribute was already fetched by authz resolver (avoid duplicate DB query)
+	var original *policy.Attribute
+	if cached := authz.GetResolvedDataFromContext(ctx, ResolverCacheKeyAttribute); cached != nil {
+		original, _ = cached.(*policy.Attribute)
+	}
+
+	// Fallback to DB query if not cached (e.g., v1 authz mode or no resolver)
+	if original == nil {
+		var err error
+		original, err = s.dbClient.GetAttribute(ctx, attributeID)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
+		}
 	}
 
 	updated, err := s.dbClient.UpdateAttribute(ctx, attributeID, req.Msg)
@@ -249,10 +267,20 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 		ObjectID:   attributeID,
 	}
 
-	original, err := s.dbClient.GetAttribute(ctx, attributeID)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
+	// Check if attribute was already fetched by authz resolver (avoid duplicate DB query)
+	var original *policy.Attribute
+	if cached := authz.GetResolvedDataFromContext(ctx, ResolverCacheKeyAttribute); cached != nil {
+		original, _ = cached.(*policy.Attribute)
+	}
+
+	// Fallback to DB query if not cached (e.g., v1 authz mode or no resolver)
+	if original == nil {
+		var err error
+		original, err = s.dbClient.GetAttribute(ctx, attributeID)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", attributeID))
+		}
 	}
 
 	updated, err := s.dbClient.DeactivateAttribute(ctx, attributeID)
@@ -553,6 +581,10 @@ func (s *AttributesService) RemovePublicKeyFromValue(ctx context.Context, r *con
 /// These methods resolve authorization dimensions from requests.
 /// They are placed at the end of the file per linting rules (unexported methods after exported).
 
+// ResolverCacheKeyAttribute is the key used to cache fetched attributes in the ResolverContext.
+// Handlers can retrieve the cached attribute via authz.GetResolvedDataFromContext(ctx, ResolverCacheKeyAttribute).
+const ResolverCacheKeyAttribute = "attribute"
+
 // createAttributeAuthzResolver resolves namespace from the request's namespace_id.
 func (s *AttributesService) createAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
 	resolverCtx := authz.NewResolverContext()
@@ -613,6 +645,9 @@ func (s *AttributesService) getAttributeAuthzResolver(ctx context.Context, req c
 	res.AddDimension("namespace", attr.GetNamespace().GetName())
 	res.AddDimension("attribute", attr.GetName())
 
+	// Cache the fetched attribute for handler reuse (avoids duplicate DB query)
+	resolverCtx.SetResolvedData(ResolverCacheKeyAttribute, attr)
+
 	return resolverCtx, nil
 }
 
@@ -633,6 +668,9 @@ func (s *AttributesService) updateAttributeAuthzResolver(ctx context.Context, re
 	res.AddDimension("namespace", attr.GetNamespace().GetName())
 	res.AddDimension("attribute", attr.GetName())
 
+	// Cache the fetched attribute for handler reuse (avoids duplicate DB query)
+	resolverCtx.SetResolvedData(ResolverCacheKeyAttribute, attr)
+
 	return resolverCtx, nil
 }
 
@@ -652,6 +690,9 @@ func (s *AttributesService) deactivateAttributeAuthzResolver(ctx context.Context
 	res := resolverCtx.NewResource()
 	res.AddDimension("namespace", attr.GetNamespace().GetName())
 	res.AddDimension("attribute", attr.GetName())
+
+	// Cache the fetched attribute for handler reuse (avoids duplicate DB query)
+	resolverCtx.SetResolvedData(ResolverCacheKeyAttribute, attr)
 
 	return resolverCtx, nil
 }

@@ -454,7 +454,14 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				slog.String("reason", decision.Reason),
 			)
 
-			return next(ctxWithJWK, req)
+			// Inject ResolverContext into handler context for cache reuse
+			// (avoids duplicate DB queries when resolver already fetched the data)
+			handlerCtx := ctxWithJWK
+			if result.resourceContext != nil {
+				handlerCtx = authz.ContextWithResolverContext(handlerCtx, result.resourceContext)
+			}
+
+			return next(handlerCtx, req)
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)
@@ -530,9 +537,10 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 
 // authzResult holds the result of an authorization check
 type authzResult struct {
-	decision *authz.Decision
-	err      error
-	errCode  connect.Code
+	decision        *authz.Decision
+	resourceContext *authz.ResolverContext // Cached resolver data for handler reuse
+	err             error
+	errCode         connect.Code
 }
 
 // resolveResourceContext attempts to resolve authorization dimensions using a registered resolver.
@@ -616,7 +624,10 @@ func (a *Authentication) authorize(
 		}
 	}
 
-	return authzResult{decision: decision}
+	return authzResult{
+		decision:        decision,
+		resourceContext: resourceCtx, // Pass resolved data to handler for cache reuse
+	}
 }
 
 // getAction returns the action based on the rpc name

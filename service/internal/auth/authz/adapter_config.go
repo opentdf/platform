@@ -1,6 +1,9 @@
 package authz
 
-import "github.com/casbin/casbin/v2/persist"
+import (
+	"github.com/casbin/casbin/v2/persist"
+	"gorm.io/gorm"
+)
 
 // EngineType identifies the authorization engine implementation.
 type EngineType string
@@ -92,6 +95,15 @@ type CasbinV2Config struct {
 	// Adapter is a custom policy adapter (e.g., SQL).
 	// If nil, uses string adapter with Csv content.
 	Adapter persist.Adapter
+
+	// GormDB is the GORM database connection for SQL adapter.
+	// If provided, uses SQL adapter for policy storage.
+	// Takes precedence over Adapter if both are set.
+	GormDB *gorm.DB
+
+	// Schema for casbin_rule table (defaults to DB search_path).
+	// Only used when GormDB is provided.
+	Schema string
 }
 
 // CedarConfig configures the AWS Cedar authorization engine (future).
@@ -173,6 +185,8 @@ func casbinConfigFromExternal(cfg Config, base BaseAdapterConfig, opts *optionCo
 			Model:             cfg.Model,
 			RoleMap:           cfg.RoleMap,
 			Adapter:           adapterFromAny(cfg.Adapter),
+			GormDB:            cfg.GormDB,
+			Schema:            cfg.Schema,
 		}
 	default: // v1 or empty
 		return CasbinV1Config{

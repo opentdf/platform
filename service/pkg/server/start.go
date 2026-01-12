@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -23,9 +24,13 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/tracing"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
+	"go.opentelemetry.io/otel"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 const devModeMessage = `
@@ -175,6 +180,34 @@ func Start(f ...StartOptions) error {
 	if len(startConfig.additionalCORSExposedHeaders) > 0 {
 		logger.Info("additional CORS exposed headers added via options", slog.Any("headers", startConfig.additionalCORSExposedHeaders))
 		cfg.Server.CORS.AdditionalExposedHeaders = append(cfg.Server.CORS.AdditionalExposedHeaders, startConfig.additionalCORSExposedHeaders...)
+	}
+
+	// Create DB connection for v2 authorization SQL adapter if needed
+	if cfg.Server.Auth.Policy.Version == "v2" && cfg.DB.Host != "" {
+		logger.Info("creating database connection for v2 authorization SQL adapter")
+		trace := otel.Tracer(tracing.ServiceName)
+		authDBClient, err := db.New(ctx, cfg.DB, cfg.Logger, &trace,
+			db.WithService("auth"),
+		)
+		if err != nil {
+			logger.Warn("failed to create database client for auth, falling back to CSV adapter",
+				slog.Any("error", err))
+		} else {
+			defer authDBClient.Close()
+			logger.Info("database connection created for v2 authorization")
+
+			// Create GORM wrapper for the SQL adapter
+			gormDB, err := createGormDBFromSQL(authDBClient.SQLDB, cfg.DB.Schema, logger)
+			if err != nil {
+				logger.Warn("failed to create GORM connection for auth, falling back to CSV adapter",
+					slog.Any("error", err))
+			} else {
+				// Set GORM DB in auth policy config for v2 SQL adapter
+				cfg.Server.Auth.Policy.GormDB = gormDB
+				cfg.Server.Auth.Policy.Schema = cfg.DB.Schema
+				logger.Info("GORM connection configured for v2 authorization SQL adapter")
+			}
+		}
 	}
 
 	// Create new server for grpc & http. Also will support in process grpc potentially too
@@ -475,4 +508,26 @@ func setupExternalSDK(cfg *config.Config, logger *logger.Logger, sdkOptions []sd
 		return nil, fmt.Errorf("issue creating sdk client: %w", err)
 	}
 	return client, nil
+}
+
+// createGormDBFromSQL creates a GORM DB instance from an existing *sql.DB connection.
+// This allows us to reuse the existing connection pool for the Casbin SQL adapter.
+func createGormDBFromSQL(sqlDB *sql.DB, schema string, log *logger.Logger) (*gorm.DB, error) {
+	// Wrap the existing *sql.DB connection with GORM
+	// PreferSimpleProtocol helps with compatibility
+	gormDB, err := gorm.Open(postgres.New(postgres.Config{
+		Conn:                 sqlDB,
+		PreferSimpleProtocol: true,
+	}), &gorm.Config{
+		// Disable default transaction for better performance
+		SkipDefaultTransaction: true,
+		// Use custom logger to integrate with platform logging
+		Logger: nil, // Use GORM's default logger for now
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GORM connection: %w", err)
+	}
+
+	log.Debug("GORM connection created from existing SQL connection")
+	return gormDB, nil
 }

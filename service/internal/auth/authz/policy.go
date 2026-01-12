@@ -1,5 +1,7 @@
 package authz
 
+import "gorm.io/gorm"
+
 // PolicyConfig contains the policy configuration for authorization.
 // This mirrors auth.PolicyConfig to avoid circular imports while maintaining
 // the same field structure for consistent configuration.
@@ -41,4 +43,12 @@ type PolicyConfig struct {
 	// Adapter is an optional custom policy adapter (e.g., SQL)
 	// If nil, the default CSV string adapter is used.
 	Adapter any
+
+	// GormDB is the GORM database connection for SQL adapter (v2 only).
+	// If provided, v2 authorization uses SQL adapter for policy storage.
+	GormDB *gorm.DB
+
+	// Schema for casbin_rule table (defaults to DB search_path).
+	// Only used when GormDB is provided for v2 authorization.
+	Schema string
 }

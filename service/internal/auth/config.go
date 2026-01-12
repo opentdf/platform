@@ -6,6 +6,7 @@ import (
 
 	"github.com/casbin/casbin/v2/persist"
 	"github.com/opentdf/platform/service/logger"
+	"gorm.io/gorm"
 )
 
 // AuthConfig pulls AuthN and AuthZ together
@@ -58,6 +59,11 @@ type PolicyConfig struct {
 	Model     string `mapstructure:"model" json:"model"`
 	// Override the default string-adapter
 	Adapter persist.Adapter `mapstructure:"-" json:"-"`
+	// GormDB is the GORM database connection for SQL adapter (v2 only).
+	// Populated automatically when v2 is enabled and DB is available.
+	GormDB *gorm.DB `mapstructure:"-" json:"-"`
+	// Schema for casbin_rule table (populated from DB config).
+	Schema string `mapstructure:"-" json:"-"`
 }
 
 func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {

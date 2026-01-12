@@ -533,6 +533,50 @@ OpenTDF uses Casbin to manage authorization policies. This document provides an 
 4. **Extension**: Policy that will extend the builtin policy
 4. **CSV**: The authorization policy in CSV format. This will override the builtin policy.
 5. **Model**: The Casbin policy model. This should only be set if you have a deep understanding of how casbin works.
+6. **Version**: The authorization model version (`v1` for legacy path-based, `v2` for RPC + dimensions).
+
+#### SQL Policy Storage (v2 Only)
+
+When using `version: v2` authorization, policies can be stored in PostgreSQL for runtime management instead of being embedded in the configuration file. This enables dynamic policy updates without server restarts.
+
+**Automatic Setup:**
+- When `version: v2` is configured and a database connection is available, SQL storage is used automatically
+- The `casbin_rule` table is created in the configured schema via auto-migration
+- Default policies are seeded from the embedded policy on first run
+- After seeding, the SQL database becomes the source of truth for policies
+
+**Configuration Example:**
+
+```yaml
+server:
+  auth:
+    policy:
+      version: v2  # Required for SQL storage
+      # Optional: Add custom policies that will be seeded on first run
+      extension: |
+        p, role:custom, /my.Service/*, *, allow
+        g, myuser@example.com, role:custom
+
+db:
+  host: localhost
+  port: 5432
+  database: opentdf
+  schema: opentdf  # casbin_rule table created in this schema
+```
+
+**Benefits:**
+- Runtime policy updates via direct database modifications
+- Policy persistence across restarts
+- No configuration file changes needed for policy updates
+- Supports standard SQL tools for policy management
+
+**Migration from v1 to v2:**
+1. Set `version: v2` in your configuration
+2. Configure database connection
+3. Start the platform - policies will be automatically seeded
+4. Optionally add new policies directly to the `casbin_rule` table
+
+**Note:** v1 authorization remains CSV-only for backward compatibility. SQL storage is exclusively a v2 feature.
 
 #### Configuration in opentdf-example.yaml
 

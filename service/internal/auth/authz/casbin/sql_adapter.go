@@ -15,11 +15,11 @@ import (
 )
 
 // CreateSQLAdapter creates a GORM-backed Casbin adapter.
-// The casbin_rule table must already exist (created by goose migrations).
+// The casbin_rule table is created in the specified schema before adapter initialization.
 //
 // Parameters:
-//   - gormDB: An existing GORM database connection with search_path set
-//   - schema: Database schema name (for logging)
+//   - gormDB: An existing GORM database connection
+//   - schema: Database schema name where the table will be created
 //   - log: Logger for operation logging
 //
 // Returns the adapter and any error encountered during creation.
@@ -32,9 +32,38 @@ func CreateSQLAdapter(gormDB *gorm.DB, schema string, log *logger.Logger) (persi
 		slog.String("schema", schema),
 	)
 
+	// Pre-create the schema and casbin_rule table
+	// This avoids the "no schema has been selected" error from gorm-adapter's AutoMigrate
+	if schema != "" {
+		// Create schema if it doesn't exist
+		createSchemaSQL := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema)
+		if err := gormDB.Exec(createSchemaSQL).Error; err != nil {
+			return nil, fmt.Errorf("failed to create schema: %w", err)
+		}
+		
+		// Create table in the schema
+		createTableSQL := fmt.Sprintf(`
+			CREATE TABLE IF NOT EXISTS %s.casbin_rule (
+				id bigserial PRIMARY KEY,
+				ptype varchar(100),
+				v0 varchar(100),
+				v1 varchar(100),
+				v2 varchar(100),
+				v3 varchar(100),
+				v4 varchar(100),
+				v5 varchar(100)
+			)
+		`, schema)
+		
+		if err := gormDB.Exec(createTableSQL).Error; err != nil {
+			return nil, fmt.Errorf("failed to create casbin_rule table: %w", err)
+		}
+		
+		log.Debug("casbin_rule table ensured in schema", slog.String("schema", schema))
+	}
+
 	// Create the GORM adapter
-	// The casbin_rule table is created by goose migrations
-	// NewAdapterByDB uses an existing GORM connection
+	// NewAdapterByDB will detect the existing table and use it
 	adapter, err := gormadapter.NewAdapterByDB(gormDB)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GORM casbin adapter: %w", err)

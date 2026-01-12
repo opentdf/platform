@@ -144,6 +144,11 @@ func newCasbinV2Authorizer(cfg authz.CasbinV2Config, log *logger.Logger) (*Autho
 
 // createV2EnforcerFromConfig creates a Casbin enforcer for the v2 model
 // using the internal CasbinV2Config type.
+//
+// Adapter selection priority:
+// 1. cfg.Adapter (custom adapter provided explicitly)
+// 2. cfg.GormDB (SQL adapter with automatic migration and seeding)
+// 3. CSV adapter (fallback using embedded policy + extensions)
 func createV2EnforcerFromConfig(cfg authz.CasbinV2Config, log *logger.Logger) (*casbin.Enforcer, error) {
 	// Use embedded v2 model or custom model from config
 	modelStr := modelV2
@@ -156,15 +161,28 @@ func createV2EnforcerFromConfig(cfg authz.CasbinV2Config, log *logger.Logger) (*
 		return nil, fmt.Errorf("failed to create v2 casbin model: %w", err)
 	}
 
-	// Build policy adapter
+	// Build policy adapter with priority: custom > SQL > CSV
 	var adapter persist.Adapter
+	var usingSQLAdapter bool
+
 	if cfg.Adapter != nil {
+		// 1. Use explicitly provided adapter
 		adapter = cfg.Adapter
+		log.Debug("v2 using custom adapter")
+	} else if cfg.GormDB != nil {
+		// 2. Use SQL adapter with GORM
+		sqlAdapter, err := CreateSQLAdapter(cfg.GormDB, cfg.Schema, log)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create SQL adapter: %w", err)
+		}
+		adapter = sqlAdapter
+		usingSQLAdapter = true
+		log.Info("v2 using SQL adapter", slog.String("schema", cfg.Schema))
 	} else {
-		// Build CSV policy for v2
+		// 3. Fallback to CSV adapter
 		csvPolicy := buildV2PolicyFromConfig(cfg)
 		adapter = stringadapter.NewAdapter(csvPolicy)
-		log.Debug("v2 policy loaded", slog.String("policy", csvPolicy))
+		log.Debug("v2 using CSV adapter", slog.String("policy", csvPolicy))
 	}
 
 	e, err := casbin.NewEnforcer(m, adapter)
@@ -175,6 +193,14 @@ func createV2EnforcerFromConfig(cfg authz.CasbinV2Config, log *logger.Logger) (*
 	// Load policy from adapter
 	if err := e.LoadPolicy(); err != nil {
 		return nil, fmt.Errorf("failed to load v2 casbin policy: %w", err)
+	}
+
+	// Seed SQL adapter with default policies if empty
+	if usingSQLAdapter {
+		csvPolicy := buildV2PolicyFromConfig(cfg)
+		if err := SeedPoliciesIfEmpty(e, csvPolicy, log); err != nil {
+			return nil, fmt.Errorf("failed to seed SQL policy store: %w", err)
+		}
 	}
 
 	// Register custom dimension matching function

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"slices"
+	"strings"
 	"syscall"
 
 	"connectrpc.com/connect"
@@ -19,13 +20,17 @@ import (
 	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/auth/authz"
+	authzdb "github.com/opentdf/platform/service/internal/auth/authz/db"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/tracing"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 const devModeMessage = `
@@ -160,6 +165,53 @@ func Start(f ...StartOptions) error {
 	// Set Casbin Adapter
 	if startConfig.casbinAdapter != nil {
 		cfg.Server.Auth.Policy.Adapter = startConfig.casbinAdapter
+	}
+
+	// Set up SQL-backed policy storage for v2 authorization
+	// When version is v2 and no explicit adapter is set, create a GORM connection
+	var authzDBCleanup func()
+	if strings.ToLower(cfg.Server.Auth.Policy.Version) == "v2" && cfg.Server.Auth.Policy.Adapter == nil {
+		logger.Info("initializing SQL-backed policy storage for v2 authorization")
+		dbClient, err := db.New(ctx, cfg.DB, cfg.Logger, nil,
+			db.WithService("authz"),
+			db.WithMigrations(&authzdb.Migrations),
+		)
+		if err != nil {
+			logger.Error("failed to create database client for authz", slog.String("error", err.Error()))
+			return fmt.Errorf("failed to create database client for authz: %w", err)
+		}
+		authzDBCleanup = func() { dbClient.Close() }
+
+		// Create GORM wrapper around the existing sql.DB connection
+		gormDB, err := gorm.Open(postgres.New(postgres.Config{
+			Conn:                 dbClient.SQLDB,
+			PreferSimpleProtocol: true, // Disable implicit prepared statement usage for connection pooling compatibility
+		}), &gorm.Config{})
+		if err != nil {
+			authzDBCleanup()
+			logger.Error("failed to create GORM connection for authz", slog.String("error", err.Error()))
+			return fmt.Errorf("failed to create GORM connection for authz: %w", err)
+		}
+
+		// Set search_path for GORM to use the correct schema
+		// The gorm-adapter internally creates tables and needs this set
+		schema := dbClient.Schema()
+		if schema != "" {
+			if err := gormDB.Exec("SET search_path TO " + schema).Error; err != nil {
+				authzDBCleanup()
+				logger.Error("failed to set search_path for authz", slog.String("error", err.Error()))
+				return fmt.Errorf("failed to set search_path for authz: %w", err)
+			}
+		}
+
+		cfg.Server.Auth.Policy.GormDB = gormDB
+		cfg.Server.Auth.Policy.Schema = schema
+		logger.Info("SQL-backed policy storage configured",
+			slog.String("schema", cfg.Server.Auth.Policy.Schema),
+		)
+	}
+	if authzDBCleanup != nil {
+		defer authzDBCleanup()
 	}
 
 	// Apply additional CORS configuration from programmatic options

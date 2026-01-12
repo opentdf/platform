@@ -68,7 +68,6 @@ server:
     audience: "http://localhost:8080"
     issuer: http://localhost:8888/auth/realms/opentdf
     policy:
-      version: 2
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)
       # Claim that represents the user (i.e. email)
       username_claim: # preferred_username

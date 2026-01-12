@@ -159,23 +159,9 @@ func createV2EnforcerFromConfig(cfg authz.CasbinV2Config, log *logger.Logger) (*
 	// Build policy adapter
 	var adapter persist.Adapter
 	if cfg.Adapter != nil {
-		// Use custom adapter if provided
 		adapter = cfg.Adapter
-	} else if cfg.GormDB != nil {
-		// SQL adapter - preferred when GormDB is available
-		sqlAdapter, err := createSQLAdapter(cfg.GormDB, cfg.Schema, log)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create SQL adapter: %w", err)
-		}
-		adapter = sqlAdapter
-
-		// Seed policies if the SQL store is empty
-		csvPolicy := buildV2PolicyFromConfig(cfg)
-		if err := seedPoliciesIfEmpty(sqlAdapter, csvPolicy, log); err != nil {
-			return nil, fmt.Errorf("failed to seed policies: %w", err)
-		}
 	} else {
-		// Fallback to CSV adapter
+		// Build CSV policy for v2
 		csvPolicy := buildV2PolicyFromConfig(cfg)
 		adapter = stringadapter.NewAdapter(csvPolicy)
 		log.Debug("v2 policy loaded", slog.String("policy", csvPolicy))

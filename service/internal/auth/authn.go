@@ -193,8 +193,6 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 			Model:         cfg.Policy.Model,
 			RoleMap:       cfg.Policy.RoleMap,
 			Adapter:       cfg.Policy.Adapter,
-			GormDB:        cfg.Policy.GormDB,
-			Schema:        cfg.Policy.Schema,
 		},
 		Logger: logger,
 		// Pass the v1 enforcer to break circular dependency

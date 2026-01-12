@@ -40,7 +40,7 @@ func CreateSQLAdapter(gormDB *gorm.DB, schema string, log *logger.Logger) (persi
 		if err := gormDB.Exec(createSchemaSQL).Error; err != nil {
 			return nil, fmt.Errorf("failed to create schema: %w", err)
 		}
-		
+
 		// Create table in the schema
 		createTableSQL := fmt.Sprintf(`
 			CREATE TABLE IF NOT EXISTS %s.casbin_rule (
@@ -54,11 +54,11 @@ func CreateSQLAdapter(gormDB *gorm.DB, schema string, log *logger.Logger) (persi
 				v5 varchar(100)
 			)
 		`, schema)
-		
+
 		if err := gormDB.Exec(createTableSQL).Error; err != nil {
 			return nil, fmt.Errorf("failed to create casbin_rule table: %w", err)
 		}
-		
+
 		log.Debug("casbin_rule table ensured in schema", slog.String("schema", schema))
 	}
 

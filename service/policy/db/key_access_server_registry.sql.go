@@ -412,6 +412,38 @@ func (q *Queries) getKeyAccessServer(ctx context.Context, arg getKeyAccessServer
 	return i, err
 }
 
+const keyAccessServerExists = `-- name: keyAccessServerExists :one
+SELECT EXISTS (
+    SELECT 1
+    FROM key_access_servers AS kas
+    WHERE ($1::uuid IS NULL OR kas.id = $1::uuid)
+        AND ($2::text IS NULL OR kas.name = $2::text)
+        AND ($3::text IS NULL OR kas.uri = $3::text)
+)
+`
+
+type keyAccessServerExistsParams struct {
+	KasID   pgtype.UUID `json:"kas_id"`
+	KasName pgtype.Text `json:"kas_name"`
+	KasUri  pgtype.Text `json:"kas_uri"`
+}
+
+// keyAccessServerExists
+//
+//	SELECT EXISTS (
+//	    SELECT 1
+//	    FROM key_access_servers AS kas
+//	    WHERE ($1::uuid IS NULL OR kas.id = $1::uuid)
+//	        AND ($2::text IS NULL OR kas.name = $2::text)
+//	        AND ($3::text IS NULL OR kas.uri = $3::text)
+//	)
+func (q *Queries) keyAccessServerExists(ctx context.Context, arg keyAccessServerExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, keyAccessServerExists, arg.KasID, arg.KasName, arg.KasUri)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const listKeyAccessServerGrants = `-- name: listKeyAccessServerGrants :many
 WITH listed AS (
     SELECT

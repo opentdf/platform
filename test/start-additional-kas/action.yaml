@@ -100,19 +100,21 @@ runs:
         LOG_LEVEL: ${{ inputs.log-level }}
         LOG_TYPE: ${{ inputs.log-type }}
       with:
-        run: >
-          <opentdf-dev.yaml >opentdf-${KAS_NAME}.yaml yq e '
+        run: |
+          yq e '
             (.server.port = env(KAS_PORT))
             | (.mode = ["kas"])
             | (.services.kas.preview.ec_tdf_enabled = env(EC_TDF_ENABLED))
             | (.services.kas.preview.key_management = env(KEY_MANAGEMENT))
             | (.services.kas.registered_kas_uri = "http://localhost:" + env(KAS_PORT))
-            | (.services.kas.root_key = env(ROOT_KEY))
             | (.logger.level = env(LOG_LEVEL))
             | (.logger.type = env(LOG_TYPE))
             | (.sdk_config = {"client_id":"opentdf","client_secret":"secret","core":{"endpoint":"http://localhost:8080","plaintext":true}})
-          '
-          && .github/scripts/watch.sh --tee-err-to logs/kas-${KAS_NAME}.log opentdf-${KAS_NAME}.yaml ./opentdf --config-file ./opentdf-${KAS_NAME}.yaml start
+          ' opentdf-dev.yaml > opentdf-${KAS_NAME}.yaml
+          if [ "${KEY_MANAGEMENT}" == "true" ]; then
+            yq e -i '.services.kas.root_key = env(ROOT_KEY)' opentdf-${KAS_NAME}.yaml
+          fi
+          .github/scripts/watch.sh --tee-err-to logs/kas-${KAS_NAME}.log opentdf-${KAS_NAME}.yaml ./opentdf --config-file ./opentdf-${KAS_NAME}.yaml start
         wait-on: |
           tcp:localhost:${{ inputs.kas-port }}
         log-output-if: true

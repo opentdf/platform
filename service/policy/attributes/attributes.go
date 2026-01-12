@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -14,6 +15,7 @@ import (
 	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -22,10 +24,19 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const (
+	// defaultResolverCacheExpiration is the default TTL for cross-request resolver cache entries.
+	// This cache stores frequently-accessed data (attributes, namespaces) to avoid repeated DB lookups.
+	defaultResolverCacheExpiration = 5 * time.Minute
+)
+
 type AttributesService struct { //nolint:revive // AttributesService is a valid name for this struct
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
 	config   *policyconfig.Config
+	// cache is the cross-request cache for resolver lookups (attributes, namespaces).
+	// Uses cache.Manager for memory-bounded storage with automatic eviction.
+	cache *cache.Cache
 	trace.Tracer
 }
 
@@ -68,6 +79,17 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				as.logger = logger
 				as.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 				as.config = cfg
+
+				// Create cross-request cache for resolver lookups
+				// This cache stores attributes and namespaces to avoid repeated DB queries across requests
+				resolverCache, err := srp.NewCacheClient(cache.Options{
+					Expiration: defaultResolverCacheExpiration,
+				})
+				if err != nil {
+					logger.Error("error creating resolver cache", slog.String("error", err.Error()))
+					panic(err)
+				}
+				as.cache = resolverCache
 
 				// Register authz resolvers per-method
 				// Each resolver extracts authorization dimensions from the request, performing DB lookups as needed.
@@ -242,6 +264,9 @@ func (s *AttributesService) UpdateAttribute(ctx context.Context,
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", req.Msg.GetId()), slog.String("attribute", req.Msg.String()))
 	}
 
+	// Invalidate cross-request cache after successful update
+	s.invalidateAttributeCache(ctx, attributeID)
+
 	auditParams.Original = original
 	auditParams.Updated = updated
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
@@ -288,6 +313,9 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeactivationFailed, slog.String("id", attributeID))
 	}
+
+	// Invalidate cross-request cache after successful deactivation
+	s.invalidateAttributeCache(ctx, attributeID)
 
 	auditParams.Original = original
 	auditParams.Updated = updated
@@ -585,6 +613,116 @@ func (s *AttributesService) RemovePublicKeyFromValue(ctx context.Context, r *con
 // Handlers can retrieve the cached attribute via authz.GetResolvedDataFromContext(ctx, ResolverCacheKeyAttribute).
 const ResolverCacheKeyAttribute = "attribute"
 
+// Cache key prefixes for cross-request caching
+const (
+	cacheKeyPrefixAttributeByID = "attr:id:"
+	cacheKeyPrefixNamespaceByID = "ns:id:"
+)
+
+// getAttributeFromCache attempts to get an attribute from the cross-request cache.
+// Returns nil if not found or on cache error (cache miss is not an error condition).
+func (s *AttributesService) getAttributeFromCache(ctx context.Context, id string) *policy.Attribute {
+	if s.cache == nil {
+		return nil
+	}
+	cached, err := s.cache.Get(ctx, cacheKeyPrefixAttributeByID+id)
+	if err != nil {
+		return nil // Cache miss - not an error
+	}
+	if attr, ok := cached.(*policy.Attribute); ok {
+		return attr
+	}
+	return nil
+}
+
+// setAttributeInCache stores an attribute in the cross-request cache.
+// Errors are logged but not returned (cache failures should not break the flow).
+func (s *AttributesService) setAttributeInCache(ctx context.Context, attr *policy.Attribute) {
+	if s.cache == nil || attr == nil || attr.GetId() == "" {
+		return
+	}
+	if err := s.cache.Set(ctx, cacheKeyPrefixAttributeByID+attr.GetId(), attr, nil); err != nil {
+		s.logger.WarnContext(ctx, "failed to cache attribute", slog.String("id", attr.GetId()), slog.Any("error", err))
+	}
+}
+
+// invalidateAttributeCache removes an attribute from the cross-request cache.
+// Called after mutations (update, deactivate) to ensure stale data is not served.
+func (s *AttributesService) invalidateAttributeCache(ctx context.Context, id string) {
+	if s.cache == nil || id == "" {
+		return
+	}
+	if err := s.cache.Delete(ctx, cacheKeyPrefixAttributeByID+id); err != nil {
+		s.logger.WarnContext(ctx, "failed to invalidate attribute cache", slog.String("id", id), slog.Any("error", err))
+	}
+}
+
+// getNamespaceFromCache attempts to get a namespace from the cross-request cache.
+func (s *AttributesService) getNamespaceFromCache(ctx context.Context, id string) *policy.Namespace {
+	if s.cache == nil {
+		return nil
+	}
+	cached, err := s.cache.Get(ctx, cacheKeyPrefixNamespaceByID+id)
+	if err != nil {
+		return nil
+	}
+	if ns, ok := cached.(*policy.Namespace); ok {
+		return ns
+	}
+	return nil
+}
+
+// setNamespaceInCache stores a namespace in the cross-request cache.
+func (s *AttributesService) setNamespaceInCache(ctx context.Context, ns *policy.Namespace) {
+	if s.cache == nil || ns == nil || ns.GetId() == "" {
+		return
+	}
+	if err := s.cache.Set(ctx, cacheKeyPrefixNamespaceByID+ns.GetId(), ns, nil); err != nil {
+		s.logger.WarnContext(ctx, "failed to cache namespace", slog.String("id", ns.GetId()), slog.Any("error", err))
+	}
+}
+
+// getAttributeCached retrieves an attribute, checking cross-request cache first, then DB.
+// On cache miss, the attribute is fetched from DB and stored in the cache.
+func (s *AttributesService) getAttributeCached(ctx context.Context, id string) (*policy.Attribute, error) {
+	// Check cross-request cache first
+	if attr := s.getAttributeFromCache(ctx, id); attr != nil {
+		s.logger.TraceContext(ctx, "resolver cache hit for attribute", slog.String("id", id))
+		return attr, nil
+	}
+
+	// Cache miss - fetch from DB
+	attr, err := s.dbClient.GetAttribute(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store in cross-request cache for future requests
+	s.setAttributeInCache(ctx, attr)
+
+	return attr, nil
+}
+
+// getNamespaceCached retrieves a namespace, checking cross-request cache first, then DB.
+func (s *AttributesService) getNamespaceCached(ctx context.Context, id string) (*policy.Namespace, error) {
+	// Check cross-request cache first
+	if ns := s.getNamespaceFromCache(ctx, id); ns != nil {
+		s.logger.TraceContext(ctx, "resolver cache hit for namespace", slog.String("id", id))
+		return ns, nil
+	}
+
+	// Cache miss - fetch from DB
+	ns, err := s.dbClient.GetNamespace(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store in cross-request cache for future requests
+	s.setNamespaceInCache(ctx, ns)
+
+	return ns, nil
+}
+
 // createAttributeAuthzResolver resolves namespace from the request's namespace_id.
 func (s *AttributesService) createAttributeAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
 	resolverCtx := authz.NewResolverContext()
@@ -593,7 +731,8 @@ func (s *AttributesService) createAttributeAuthzResolver(ctx context.Context, re
 		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
 	}
 
-	ns, err := s.dbClient.GetNamespace(ctx, msg.GetNamespaceId())
+	// Use cached namespace lookup
+	ns, err := s.getNamespaceCached(ctx, msg.GetNamespaceId())
 	if err != nil {
 		return resolverCtx, fmt.Errorf("failed to resolve namespace for authz: %w", err)
 	}
@@ -629,14 +768,34 @@ func (s *AttributesService) getAttributeAuthzResolver(ctx context.Context, req c
 		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
 	}
 
-	var identifier any
-	if msg.GetId() != "" { //nolint:staticcheck // Id can still be used until removed
-		identifier = msg.GetId() //nolint:staticcheck // Id can still be used until removed
-	} else {
-		identifier = msg.GetIdentifier()
+	// Determine the identifier (deprecated ID, new attribute_id, or FQN)
+	var id string
+	switch {
+	case msg.GetId() != "": //nolint:staticcheck // Id can still be used until removed
+		id = msg.GetId() //nolint:staticcheck // Id can still be used until removed
+	case msg.GetAttributeId() != "":
+		id = msg.GetAttributeId()
+	case msg.GetFqn() != "":
+		// FQN lookups can't use ID-based cache; fall back to DB
+		attr, err := s.dbClient.GetAttribute(ctx, msg.GetIdentifier())
+		if err != nil {
+			return resolverCtx, fmt.Errorf("failed to resolve attribute for authz: %w", err)
+		}
+		// Cache by ID for future lookups
+		s.setAttributeInCache(ctx, attr)
+
+		res := resolverCtx.NewResource()
+		res.AddDimension("namespace", attr.GetNamespace().GetName())
+		res.AddDimension("attribute", attr.GetName())
+		resolverCtx.SetResolvedData(ResolverCacheKeyAttribute, attr)
+		return resolverCtx, nil
+	default:
+		// No valid identifier provided
+		return resolverCtx, fmt.Errorf("no valid identifier provided for attribute lookup")
 	}
 
-	attr, err := s.dbClient.GetAttribute(ctx, identifier)
+	// Use cached attribute lookup (checks cross-request cache, then DB)
+	attr, err := s.getAttributeCached(ctx, id)
 	if err != nil {
 		return resolverCtx, fmt.Errorf("failed to resolve attribute for authz: %w", err)
 	}
@@ -645,7 +804,7 @@ func (s *AttributesService) getAttributeAuthzResolver(ctx context.Context, req c
 	res.AddDimension("namespace", attr.GetNamespace().GetName())
 	res.AddDimension("attribute", attr.GetName())
 
-	// Cache the fetched attribute for handler reuse (avoids duplicate DB query)
+	// Store in per-request cache for handler reuse (avoids duplicate DB query within same request)
 	resolverCtx.SetResolvedData(ResolverCacheKeyAttribute, attr)
 
 	return resolverCtx, nil
@@ -659,7 +818,8 @@ func (s *AttributesService) updateAttributeAuthzResolver(ctx context.Context, re
 		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
 	}
 
-	attr, err := s.dbClient.GetAttribute(ctx, msg.GetId())
+	// Use cached attribute lookup (checks cross-request cache, then DB)
+	attr, err := s.getAttributeCached(ctx, msg.GetId())
 	if err != nil {
 		return resolverCtx, fmt.Errorf("failed to resolve attribute for authz: %w", err)
 	}
@@ -668,7 +828,7 @@ func (s *AttributesService) updateAttributeAuthzResolver(ctx context.Context, re
 	res.AddDimension("namespace", attr.GetNamespace().GetName())
 	res.AddDimension("attribute", attr.GetName())
 
-	// Cache the fetched attribute for handler reuse (avoids duplicate DB query)
+	// Store in per-request cache for handler reuse (avoids duplicate DB query within same request)
 	resolverCtx.SetResolvedData(ResolverCacheKeyAttribute, attr)
 
 	return resolverCtx, nil
@@ -682,7 +842,8 @@ func (s *AttributesService) deactivateAttributeAuthzResolver(ctx context.Context
 		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
 	}
 
-	attr, err := s.dbClient.GetAttribute(ctx, msg.GetId())
+	// Use cached attribute lookup (checks cross-request cache, then DB)
+	attr, err := s.getAttributeCached(ctx, msg.GetId())
 	if err != nil {
 		return resolverCtx, fmt.Errorf("failed to resolve attribute for authz: %w", err)
 	}
@@ -691,7 +852,7 @@ func (s *AttributesService) deactivateAttributeAuthzResolver(ctx context.Context
 	res.AddDimension("namespace", attr.GetNamespace().GetName())
 	res.AddDimension("attribute", attr.GetName())
 
-	// Cache the fetched attribute for handler reuse (avoids duplicate DB query)
+	// Store in per-request cache for handler reuse (avoids duplicate DB query within same request)
 	resolverCtx.SetResolvedData(ResolverCacheKeyAttribute, attr)
 
 	return resolverCtx, nil

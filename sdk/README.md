@@ -59,6 +59,14 @@ func main() {
 }
 ```
 
+## Base key
+
+The platform may publish a base KAS public key in its well-known configuration. Retrieve it via:
+
+```go
+baseKey, err := s.GetBaseKey(ctx)
+```
+
 ## Development
 
 To test, run 

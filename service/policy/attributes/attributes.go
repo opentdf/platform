@@ -642,7 +642,12 @@ func (s *AttributesService) setAttributeInCache(ctx context.Context, attr *polic
 		return
 	}
 	if err := s.cache.Set(ctx, cacheKeyPrefixAttributeByID+attr.GetId(), attr, nil); err != nil {
-		s.logger.WarnContext(ctx, "failed to cache attribute", slog.String("id", attr.GetId()), slog.Any("error", err))
+		s.logger.WarnContext(
+			ctx,
+			"failed to cache attribute",
+			slog.String("id", attr.GetId()),
+			slog.Any("error", err),
+		)
 	}
 }
 
@@ -653,7 +658,12 @@ func (s *AttributesService) invalidateAttributeCache(ctx context.Context, id str
 		return
 	}
 	if err := s.cache.Delete(ctx, cacheKeyPrefixAttributeByID+id); err != nil {
-		s.logger.WarnContext(ctx, "failed to invalidate attribute cache", slog.String("id", id), slog.Any("error", err))
+		s.logger.WarnContext(
+			ctx,
+			"failed to invalidate attribute cache",
+			slog.String("id", id),
+			slog.Any("error", err),
+		)
 	}
 }
 
@@ -678,7 +688,12 @@ func (s *AttributesService) setNamespaceInCache(ctx context.Context, ns *policy.
 		return
 	}
 	if err := s.cache.Set(ctx, cacheKeyPrefixNamespaceByID+ns.GetId(), ns, nil); err != nil {
-		s.logger.WarnContext(ctx, "failed to cache namespace", slog.String("id", ns.GetId()), slog.Any("error", err))
+		s.logger.WarnContext(
+			ctx,
+			"failed to cache namespace",
+			slog.String("id", ns.GetId()),
+			slog.Any("error", err),
+		)
 	}
 }
 
@@ -791,7 +806,7 @@ func (s *AttributesService) getAttributeAuthzResolver(ctx context.Context, req c
 		return resolverCtx, nil
 	default:
 		// No valid identifier provided
-		return resolverCtx, fmt.Errorf("no valid identifier provided for attribute lookup")
+		return resolverCtx, errors.New("no valid identifier provided for attribute lookup")
 	}
 
 	// Use cached attribute lookup (checks cross-request cache, then DB)

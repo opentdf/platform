@@ -466,6 +466,14 @@ func (s *KasRegistryKeySuite) Test_ListKeys_InvalidLimit_Fail() {
 	s.Require().ErrorContains(err, db.ErrListLimitTooLarge.Error())
 }
 
+func (s *KasRegistryKeySuite) Test_ListKeys_NoKasFilter_Success() {
+	req := kasregistry.ListKeysRequest{}
+	resp, err := s.db.PolicyClient.ListKeys(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(resp)
+	s.NotEmpty(resp.GetKasKeys())
+}
+
 func (s *KasRegistryKeySuite) Test_ListKeys_KasID_Success() {
 	req := kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasId{

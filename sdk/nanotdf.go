@@ -1190,7 +1190,7 @@ func updateConfigWithBaseKey(ki *KASInfo, config *NanoTDFConfig) error {
 }
 
 func getNanoKasInfoFromBaseKey(s *SDK) (*KASInfo, error) {
-	baseKey, err := getBaseKey(context.Background(), *s)
+	baseKey, err := s.GetBaseKey(context.Background())
 	if err != nil {
 		return nil, err
 	}

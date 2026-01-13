@@ -393,7 +393,7 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
 			tdfConfig.splitPlan, err = g.plan(make([]string, 0), uuidSplitIDGenerator)
 		case noKeysFound:
 			var baseKey *policy.SimpleKasKey
-			baseKey, err = getBaseKeyFromWellKnown(ctx, s)
+			baseKey, err = s.GetBaseKey(ctx)
 			if err == nil {
 				err = populateKasInfoFromBaseKey(baseKey, tdfConfig)
 			} else {
@@ -1471,15 +1471,6 @@ func isLessThanSemver(version, target string) (bool, error) {
 	}
 	// Check if the provided version is less than the target version based on semantic versioning rules.
 	return v1.LessThan(v2), nil
-}
-
-func getBaseKeyFromWellKnown(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
-	key, err := getBaseKey(ctx, s)
-	if err != nil {
-		return nil, err
-	}
-
-	return key, nil
 }
 
 func populateKasInfoFromBaseKey(key *policy.SimpleKasKey, tdfConfig *TDFConfig) error {

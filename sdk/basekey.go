@@ -58,6 +58,12 @@ func formatAlg(alg policy.Algorithm) (string, error) {
 	}
 }
 
+// GetBaseKey retrieves the platform base KAS key from the well-known configuration.
+// The returned key material is expected to be public (algorithm, KID, PEM).
+func (s SDK) GetBaseKey(ctx context.Context) (*policy.SimpleKasKey, error) {
+	return getBaseKey(ctx, s)
+}
+
 func getBaseKey(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
 	req := &wellknownconfiguration.GetWellKnownConfigurationRequest{}
 	response, err := s.wellknownConfiguration.GetWellKnownConfiguration(ctx, req)

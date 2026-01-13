@@ -202,8 +202,8 @@ func (s *BaseKeyTestSuite) TestGetBaseKeySuccess() {
 	mockService := newMockWellKnownService(wellknownConfig, nil)
 	s.sdk.wellknownConfiguration = mockService
 
-	// Call getBaseKey
-	baseKey, err := getBaseKey(s.T().Context(), s.sdk)
+	// Call exported API
+	baseKey, err := s.sdk.GetBaseKey(s.T().Context())
 
 	// Validate result
 	s.Require().NoError(err)
@@ -221,8 +221,8 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyServiceError() {
 	mockService := newMockWellKnownService(nil, errors.New("service unavailable"))
 	s.sdk.wellknownConfiguration = mockService
 
-	// Call getBaseKey
-	baseKey, err := getBaseKey(s.T().Context(), s.sdk)
+	// Call exported API
+	baseKey, err := s.sdk.GetBaseKey(s.T().Context())
 
 	// Validate result
 	s.Require().True(mockService.called)
@@ -241,8 +241,8 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyMissingBaseKey() {
 	mockService := newMockWellKnownService(wellknownConfig, nil)
 	s.sdk.wellknownConfiguration = mockService
 
-	// Call getBaseKey
-	baseKey, err := getBaseKey(s.T().Context(), s.sdk)
+	// Call exported API
+	baseKey, err := s.sdk.GetBaseKey(s.T().Context())
 
 	// Validate result
 	s.Require().True(mockService.called)
@@ -259,8 +259,8 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyInvalidBaseKeyFormat() {
 	mockService := newMockWellKnownService(wellknownConfig, nil)
 	s.sdk.wellknownConfiguration = mockService
 
-	// Call getBaseKey
-	baseKey, err := getBaseKey(s.T().Context(), s.sdk)
+	// Call exported API
+	baseKey, err := s.sdk.GetBaseKey(s.T().Context())
 
 	// Validate result
 	s.Require().True(mockService.called)
@@ -278,8 +278,8 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyEmptyBaseKey() {
 	mockService := newMockWellKnownService(wellknownConfig, nil)
 	s.sdk.wellknownConfiguration = mockService
 
-	// Call getBaseKey
-	baseKey, err := getBaseKey(s.T().Context(), s.sdk)
+	// Call exported API
+	baseKey, err := s.sdk.GetBaseKey(s.T().Context())
 
 	// Validate result
 	s.Require().True(mockService.called)
@@ -300,8 +300,8 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyMissingPublicKey() {
 	mockService := newMockWellKnownService(wellknownConfig, nil)
 	s.sdk.wellknownConfiguration = mockService
 
-	// Call getBaseKey
-	baseKey, err := getBaseKey(s.T().Context(), s.sdk)
+	// Call exported API
+	baseKey, err := s.sdk.GetBaseKey(s.T().Context())
 
 	// Validate result
 	s.Require().True(mockService.called)
@@ -322,8 +322,8 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyInvalidPublicKey() {
 	mockService := newMockWellKnownService(wellknownConfig, nil)
 	s.sdk.wellknownConfiguration = mockService
 
-	// Call getBaseKey
-	baseKey, err := getBaseKey(s.T().Context(), s.sdk)
+	// Call exported API
+	baseKey, err := s.sdk.GetBaseKey(s.T().Context())
 
 	// Validate result
 	s.Require().True(mockService.called)

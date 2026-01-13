@@ -31,7 +31,7 @@ type PolicyDBClient struct {
 }
 
 func NewClient(c *db.Client, logger *logger.Logger, configuredListLimitMax, configuredListLimitDefault int32) PolicyDBClient {
-	return PolicyDBClient{c, logger, New(c.Pgx), ListConfig{limitDefault: configuredListLimitDefault, limitMax: configuredListLimitMax}}
+	return PolicyDBClient{c, logger, New(c), ListConfig{limitDefault: configuredListLimitDefault, limitMax: configuredListLimitMax}}
 }
 
 func (c *PolicyDBClient) RunInTx(ctx context.Context, query func(txClient *PolicyDBClient) error) error {

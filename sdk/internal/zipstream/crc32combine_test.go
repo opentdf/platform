@@ -3,17 +3,21 @@
 package zipstream
 
 import (
+	"crypto/rand"
 	"hash/crc32"
-	"math/rand"
+	mrand "math/rand"
 	"testing"
 )
 
 func TestCRC32CombineIEEE_Basic(t *testing.T) {
-	rand.Seed(42)
 	a := make([]byte, 1024)
 	b := make([]byte, 2048)
-	rand.Read(a)
-	rand.Read(b)
+	if _, err := rand.Read(a); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal(err)
+	}
 
 	crcA := crc32.ChecksumIEEE(a)
 	crcB := crc32.ChecksumIEEE(b)
@@ -28,12 +32,14 @@ func TestCRC32CombineIEEE_Basic(t *testing.T) {
 }
 
 func TestCRC32CombineIEEE_MultiChunks(t *testing.T) {
-	rand.Seed(42)
+	rng := mrand.New(mrand.NewSource(42))
 	chunks := make([][]byte, 10)
 	for i := range chunks {
-		n := 1 + rand.Intn(8192)
+		n := 1 + rng.Intn(8192)
 		chunks[i] = make([]byte, n)
-		rand.Read(chunks[i])
+		if _, err := rand.Read(chunks[i]); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	// Combine sequentially

@@ -155,6 +155,10 @@ func SeedPoliciesIfEmpty(enforcer *casbin.Enforcer, csvPolicy string, log *logge
 // parsePolicyCSV parses a CSV policy string into policies and grouping policies.
 // Returns separate slices for p (policies) and g (groupings) rules.
 func parsePolicyCSV(csv string) ([][]string, [][]string) {
+	var (
+		policies  [][]string
+		groupings [][]string
+	)
 	lines := strings.Split(csv, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)

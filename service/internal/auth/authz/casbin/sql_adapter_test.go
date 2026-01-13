@@ -54,20 +54,6 @@ func (casbinRuleForTest) TableName() string {
 	return "casbin_rule"
 }
 
-// createTestGormDB creates a file-based SQLite database for testing
-// Using file-based SQLite because in-memory SQLite doesn't share between connections
-func (s *SQLAdapterSuite) createTestGormDB() *gorm.DB {
-	dbPath := s.tempDir + "/test.db"
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
-	s.Require().NoError(err)
-
-	// Create casbin_rule table (normally done by goose migrations)
-	err = db.AutoMigrate(&casbinRuleForTest{})
-	s.Require().NoError(err)
-
-	return db
-}
-
 func (s *SQLAdapterSuite) TestCreateSQLAdapter_Success() {
 	gormDB := s.createTestGormDB()
 
@@ -297,4 +283,18 @@ g, standard-user, role:standard`
 		s.Equal(csvResult, sqlResult, "Enforcement results should match for subject=%s, rpc=%s", tc.subject, tc.rpc)
 		s.Equal(tc.allowed, csvResult, "Expected result for subject=%s, rpc=%s", tc.subject, tc.rpc)
 	}
+}
+
+// createTestGormDB creates a file-based SQLite database for testing
+// Using file-based SQLite because in-memory SQLite doesn't share between connections
+func (s *SQLAdapterSuite) createTestGormDB() *gorm.DB {
+	dbPath := s.tempDir + "/test.db"
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	s.Require().NoError(err)
+
+	// Create casbin_rule table (normally done by goose migrations)
+	err = db.AutoMigrate(&casbinRuleForTest{})
+	s.Require().NoError(err)
+
+	return db
 }

@@ -2,6 +2,7 @@
 package casbin
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -25,7 +26,7 @@ import (
 // Returns the adapter and any error encountered during creation.
 func CreateSQLAdapter(gormDB *gorm.DB, schema string, log *logger.Logger) (persist.Adapter, error) {
 	if gormDB == nil {
-		return nil, fmt.Errorf("gormDB is required for SQL adapter")
+		return nil, errors.New("gormDB is required for SQL adapter")
 	}
 
 	log.Info("initializing SQL-backed Casbin adapter",
@@ -36,7 +37,7 @@ func CreateSQLAdapter(gormDB *gorm.DB, schema string, log *logger.Logger) (persi
 	// This avoids the "no schema has been selected" error from gorm-adapter's AutoMigrate
 	if schema != "" {
 		// Create schema if it doesn't exist
-		createSchemaSQL := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema)
+		createSchemaSQL := "CREATE SCHEMA IF NOT EXISTS " + schema
 		if err := gormDB.Exec(createSchemaSQL).Error; err != nil {
 			return nil, fmt.Errorf("failed to create schema: %w", err)
 		}
@@ -153,7 +154,7 @@ func SeedPoliciesIfEmpty(enforcer *casbin.Enforcer, csvPolicy string, log *logge
 
 // parsePolicyCSV parses a CSV policy string into policies and grouping policies.
 // Returns separate slices for p (policies) and g (groupings) rules.
-func parsePolicyCSV(csv string) (policies [][]string, groupings [][]string) {
+func parsePolicyCSV(csv string) ([][]string, [][]string) {
 	lines := strings.Split(csv, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -162,8 +163,9 @@ func parsePolicyCSV(csv string) (policies [][]string, groupings [][]string) {
 			continue
 		}
 
+		numRuleParts := 2
 		parts := strings.Split(line, ",")
-		if len(parts) < 2 {
+		if len(parts) < numRuleParts {
 			continue
 		}
 

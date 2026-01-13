@@ -165,11 +165,13 @@ func createV2EnforcerFromConfig(cfg authz.CasbinV2Config, log *logger.Logger) (*
 	var adapter persist.Adapter
 	var usingSQLAdapter bool
 
-	if cfg.Adapter != nil {
+	switch {
+	case cfg.Adapter != nil:
 		// 1. Use explicitly provided adapter
 		adapter = cfg.Adapter
 		log.Debug("v2 using custom adapter")
-	} else if cfg.GormDB != nil {
+		break
+	case cfg.GormDB != nil:
 		// 2. Use SQL adapter with GORM
 		sqlAdapter, err := CreateSQLAdapter(cfg.GormDB, cfg.Schema, log)
 		if err != nil {
@@ -178,7 +180,8 @@ func createV2EnforcerFromConfig(cfg authz.CasbinV2Config, log *logger.Logger) (*
 		adapter = sqlAdapter
 		usingSQLAdapter = true
 		log.Info("v2 using SQL adapter", slog.String("schema", cfg.Schema))
-	} else {
+		break
+	default:
 		// 3. Fallback to CSV adapter
 		csvPolicy := buildV2PolicyFromConfig(cfg)
 		adapter = stringadapter.NewAdapter(csvPolicy)

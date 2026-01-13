@@ -37,6 +37,7 @@ The platform leverages [viper](https://github.com/spf13/viper) to help load conf
       - [Configuration in opentdf-example.yaml](#configuration-in-opentdf-exampleyaml)
       - [Role Permissions](#role-permissions)
       - [Managing Authorization Policy](#managing-authorization-policy)
+    - [SQL Policy Storage (v2 Only)](#sql-policy-storage-v2-only)
   - [Cache Configuration](#cache-configuration)
 
 ## Deployment Mode
@@ -616,6 +617,71 @@ server:
 #### Managing Authorization Policy
 
 Admins can manage the authorization policy directly in the YAML configuration file. For detailed configuration options, refer to the [Casbin documentation](https://casbin.org/docs/en/syntax-for-models).
+
+### SQL Policy Storage (v2 Only)
+
+When using authorization v2 (`server.auth.policy.version: v2`), Casbin policies can be stored in PostgreSQL instead of embedded CSV files. This enables runtime policy management without requiring restarts.
+
+#### How It Works
+
+1. **Automatic Setup**: When v2 authorization is enabled and a database is configured, SQL policy storage is automatically enabled.
+2. **Table Creation**: The `casbin_rule` table is created by goose migrations (requires `db.runMigration: true`).
+3. **Initial Seeding**: On first startup, the default policies are seeded from the embedded policy. After seeding, the SQL store becomes the source of truth.
+4. **Runtime Management**: Policies can be modified at runtime via direct database access.
+
+#### Configuration
+
+SQL policy storage is automatic for v2 - no additional configuration required:
+
+```yaml
+server:
+  auth:
+    policy:
+      version: v2  # Required for SQL storage
+
+db:
+  host: localhost
+  port: 5432
+  database: opentdf
+  schema: opentdf
+```
+
+When v2 is enabled:
+- Policies are stored in the `casbin_rule` table in your configured database schema
+- Default policies are seeded automatically on first run
+- The `extension` field still works - extensions are seeded along with defaults
+
+#### Behavior Differences from v1
+
+| Aspect | v1 (CSV) | v2 (SQL) |
+|--------|----------|----------|
+| Storage | Embedded CSV | PostgreSQL |
+| Runtime updates | Requires restart | Immediate |
+| Policy source | `csv` or `extension` config | Database (seeded from config on first run) |
+| Persistence | Configuration file | Database |
+
+#### Manual Policy Management
+
+After initial seeding, you can manage policies directly in the database:
+
+```sql
+-- View all policies
+SELECT * FROM opentdf.casbin_rule;
+
+-- Add a new policy
+INSERT INTO opentdf.casbin_rule (ptype, v0, v1, v2, v3)
+VALUES ('p', 'role:custom', '/my.Service/*', '*', 'allow');
+
+-- Add a role grouping
+INSERT INTO opentdf.casbin_rule (ptype, v0, v1)
+VALUES ('g', 'custom-user', 'role:custom');
+```
+
+> **Note**: Policy changes in the database take effect immediately. The enforcer automatically loads policies from the SQL store.
+
+#### Fallback Behavior
+
+If v2 is enabled but no database is configured, the system falls back to CSV adapter (same as v1). This ensures backward compatibility for development/testing scenarios.
 
 ## Cache Configuration
 

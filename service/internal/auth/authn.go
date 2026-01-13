@@ -23,11 +23,13 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
+	"github.com/opentdf/platform/service/internal/auth/authz"
+	_ "github.com/opentdf/platform/service/internal/auth/authz/casbin" // Register casbin authorizer
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
-	"google.golang.org/grpc/metadata"
-
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/pkg/util"
+	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -70,6 +72,10 @@ var (
 
 	canonicalIPCHeaderClientID    = http.CanonicalHeaderKey("x-ipc-auth-client-id")
 	canonicalIPCHeaderAccessToken = http.CanonicalHeaderKey("x-ipc-access-token")
+
+	// errNoResourceContext indicates no resolver is registered or resource authorization is not supported.
+	// This is not an error condition - it means resource-level authorization is not applicable.
+	errNoResourceContext = errors.New("no resource context")
 )
 
 const (
@@ -88,8 +94,12 @@ type Authentication struct {
 	cachedKeySet jwk.Set
 	// openidConfigurations holds the openid configuration for the issuer
 	oidcConfiguration AuthNConfig
-	// Casbin enforcer
+	// Casbin enforcer for v1 authorization (implements authz.V1Enforcer)
 	enforcer *Enforcer
+	// authorizer is the pluggable authorization engine (v1, v2, etc.)
+	authorizer authz.Authorizer
+	// authzResolverRegistry holds per-method resolvers for extracting authorization dimensions
+	authzResolverRegistry *authz.ResolverRegistry
 	// Public Routes HTTP & gRPC
 	publicRoutes []string
 	// IPC Reauthorization Routes
@@ -101,11 +111,27 @@ type Authentication struct {
 	_testCheckTokenFunc func(ctx context.Context, authHeader []string, dpopInfo receiverInfo, dpopHeader []string) (jwt.Token, context.Context, error)
 }
 
+// AuthenticatorOption is a functional option for configuring Authentication.
+type AuthenticatorOption func(*Authentication)
+
+// WithAuthzResolverRegistry sets the authorization resolver registry.
+// When set, the interceptors will call resolvers to extract authorization dimensions.
+func WithAuthzResolverRegistry(registry *authz.ResolverRegistry) AuthenticatorOption {
+	return func(a *Authentication) {
+		a.authzResolverRegistry = registry
+	}
+}
+
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error) (*Authentication, error) {
+func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error, opts ...AuthenticatorOption) (*Authentication, error) {
 	a := &Authentication{
 		enforceDPoP: cfg.EnforceDPoP,
 		logger:      logger,
+	}
+
+	// Apply options
+	for _, opt := range opts {
+		opt(a)
 	}
 
 	// validate the configuration
@@ -150,6 +176,37 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	logger.Info("initializing casbin enforcer")
 	if a.enforcer, err = NewCasbinEnforcer(casbinConfig, a.logger); err != nil {
 		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)
+	}
+
+	// Initialize the pluggable authorizer based on engine and version
+	authzCfg := authz.Config{
+		Engine:  cfg.Policy.Engine,
+		Version: cfg.Policy.Version,
+		PolicyConfig: authz.PolicyConfig{
+			Engine:        cfg.Policy.Engine,
+			Version:       cfg.Policy.Version,
+			UserNameClaim: cfg.Policy.UserNameClaim,
+			GroupsClaim:   cfg.Policy.GroupsClaim,
+			ClientIDClaim: cfg.Policy.ClientIDClaim,
+			Csv:           cfg.Policy.Csv,
+			Extension:     cfg.Policy.Extension,
+			Model:         cfg.Policy.Model,
+			RoleMap:       cfg.Policy.RoleMap,
+			Adapter:       cfg.Policy.Adapter,
+			GormDB:        cfg.Policy.GormDB,
+			Schema:        cfg.Policy.Schema,
+		},
+		Logger: logger,
+		// Pass the v1 enforcer to break circular dependency
+		// The casbin authorizer will use this for v1 mode
+		Options: []authz.Option{authz.WithV1Enforcer(a.enforcer)},
+	}
+	logger.Info("initializing authorizer",
+		slog.String("engine", authzCfg.Engine),
+		slog.String("version", authzCfg.Version),
+	)
+	if a.authorizer, err = authz.New(authzCfg); err != nil {
+		return nil, fmt.Errorf("failed to initialize authorizer: %w", err)
 	}
 
 	// Need to refresh the cache to verify jwks is available
@@ -277,24 +334,37 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		default:
 			action = ActionUnsafe
 		}
-		if allow, err := a.enforcer.Enforce(accessTok, r.URL.Path, action); err != nil {
-			if err.Error() == "permission denied" {
-				log.WarnContext(
-					ctx,
-					"permission denied",
-					slog.String("azp", accessTok.Subject()),
-					slog.Any("error", err),
-				)
-				http.Error(w, "permission denied", http.StatusForbidden)
-				return
-			}
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+
+		// Defensive check: authorizer must be initialized
+		if a.authorizer == nil {
+			log.ErrorContext(ctx, "authorizer not initialized")
+			http.Error(w, "authorization system not configured", http.StatusInternalServerError)
 			return
-		} else if !allow {
+		}
+
+		// Build authorization request
+		// Note: HTTP handler uses path-based authorization (no dimension resolution)
+		// as it's primarily for legacy gRPC-Gateway support
+		authzReq := &authz.Request{
+			Token:  accessTok,
+			RPC:    r.URL.Path,
+			Action: action,
+		}
+
+		decision, authzErr := a.authorizer.Authorize(ctx, authzReq)
+		if authzErr != nil {
+			log.ErrorContext(ctx, "authorization error", slog.Any("error", authzErr))
+			http.Error(w, "authorization system error", http.StatusInternalServerError)
+			return
+		}
+
+		if !decision.Allowed {
 			log.WarnContext(
 				ctx,
 				"permission denied",
 				slog.String("azp", accessTok.Subject()),
+				slog.String("mode", string(decision.Mode)),
+				slog.String("reason", decision.Reason),
 			)
 			http.Error(w, "permission denied", http.StatusForbidden)
 			return
@@ -337,9 +407,8 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
 			}
 
-			// parse the rpc method
+			// parse the rpc method to extract action
 			p := strings.Split(req.Spec().Procedure, "/")
-			resource := p[1] + "/" + p[2]
 			action := getAction(p[2])
 
 			token, ctxWithJWK, err := a.checkToken(
@@ -366,24 +435,35 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				ctxWithJWK = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, log, clientID)
 			}
 
-			// Check if the token is allowed to access the resource
-			if allowed, err := a.enforcer.Enforce(token, resource, action); err != nil {
-				if err.Error() == "permission denied" {
-					log.WarnContext(
-						ctxWithJWK,
-						"permission denied",
-						slog.String("azp", token.Subject()),
-						slog.Any("error", err),
-					)
-					return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
-				}
-				return nil, err
-			} else if !allowed {
-				log.WarnContext(ctxWithJWK, "permission denied", slog.String("azp", token.Subject()))
+			// Perform authorization check
+			result := a.authorize(ctxWithJWK, log, token, req, action)
+			if result.err != nil {
+				return nil, connect.NewError(result.errCode, result.err)
+			}
+
+			decision := result.decision
+			if !decision.Allowed {
+				log.WarnContext(ctxWithJWK, "permission denied",
+					slog.String("azp", token.Subject()),
+					slog.String("mode", string(decision.Mode)),
+					slog.String("reason", decision.Reason),
+				)
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 			}
 
-			return next(ctxWithJWK, req)
+			log.DebugContext(ctxWithJWK, "authorization granted",
+				slog.String("mode", string(decision.Mode)),
+				slog.String("reason", decision.Reason),
+			)
+
+			// Inject ResolverContext into handler context for cache reuse
+			// (avoids duplicate DB queries when resolver already fetched the data)
+			handlerCtx := ctxWithJWK
+			if result.resourceContext != nil {
+				handlerCtx = authz.ContextWithResolverContext(handlerCtx, result.resourceContext)
+			}
+
+			return next(handlerCtx, req)
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)
@@ -455,6 +535,101 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)
+}
+
+// authzResult holds the result of an authorization check
+type authzResult struct {
+	decision        *authz.Decision
+	resourceContext *authz.ResolverContext // Cached resolver data for handler reuse
+	err             error
+	errCode         connect.Code
+}
+
+// resolveResourceContext attempts to resolve authorization dimensions using a registered resolver.
+// Returns errNoResourceContext if no resolver is registered or if resolvers are not supported.
+func (a *Authentication) resolveResourceContext(
+	ctx context.Context,
+	log *logger.Logger,
+	req connect.AnyRequest,
+) (*authz.ResolverContext, error) {
+	// Skip if resolver registry not available or authorizer doesn't support resource authorization
+	if a.authzResolverRegistry == nil || a.authorizer == nil || !a.authorizer.SupportsResourceAuthorization() {
+		return nil, errNoResourceContext
+	}
+
+	resolver, ok := a.authzResolverRegistry.Get(req.Spec().Procedure)
+	if !ok {
+		return nil, errNoResourceContext
+	}
+
+	resolvedCtx, err := resolver(ctx, req)
+	if err != nil {
+		log.WarnContext(ctx, "authz resolver failed",
+			slog.String("procedure", req.Spec().Procedure),
+			slog.Any("error", err),
+		)
+		return nil, err
+	}
+
+	return &resolvedCtx, nil
+}
+
+// authorize performs the full authorization check for a request.
+// It builds the authorization request, resolves resource context if applicable,
+// and returns the authorization decision.
+func (a *Authentication) authorize(
+	ctx context.Context,
+	log *logger.Logger,
+	token jwt.Token,
+	req connect.AnyRequest,
+	action string,
+) authzResult {
+	// Defensive check: authorizer must be initialized
+	if a.authorizer == nil {
+		log.ErrorContext(ctx, "authorizer not initialized")
+		return authzResult{
+			err:     errors.New("authorization system not configured"),
+			errCode: connect.CodeInternal,
+		}
+	}
+
+	// Build authorization request
+	authzReq := &authz.Request{
+		Token:  token,
+		RPC:    req.Spec().Procedure,
+		Action: action,
+	}
+
+	// Try to resolve resource context for fine-grained authorization
+	resourceCtx, resolveErr := a.resolveResourceContext(ctx, log, req)
+	if resolveErr != nil && !errors.Is(resolveErr, errNoResourceContext) {
+		return authzResult{
+			err:     errors.New("authorization context resolution failed"),
+			errCode: connect.CodePermissionDenied,
+		}
+	}
+	// Only set resource context if we actually resolved one (not errNoResourceContext)
+	if resolveErr == nil {
+		authzReq.ResourceContext = resourceCtx
+	}
+
+	// Perform authorization check
+	decision, authzErr := a.authorizer.Authorize(ctx, authzReq)
+	if authzErr != nil {
+		log.ErrorContext(ctx, "authorization error",
+			slog.Any("error", authzErr),
+			slog.String("procedure", req.Spec().Procedure),
+		)
+		return authzResult{
+			err:     errors.New("authorization system error"),
+			errCode: connect.CodeInternal,
+		}
+	}
+
+	return authzResult{
+		decision:        decision,
+		resourceContext: resourceCtx, // Pass resolved data to handler for cache reuse
+	}
 }
 
 // getAction returns the action based on the rpc name
@@ -786,7 +961,7 @@ func (a *Authentication) getClientIDFromToken(ctx context.Context, tok jwt.Token
 	if err != nil {
 		return "", fmt.Errorf("failed to parse token as a map and find claim at [%s]: %w", clientIDClaim, err)
 	}
-	found := dotNotation(claimsMap, clientIDClaim)
+	found := util.Dotnotation(claimsMap, clientIDClaim)
 	if found == nil {
 		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotFound, clientIDClaim)
 	}

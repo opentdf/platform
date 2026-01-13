@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"slices"
+	"strings"
 	"syscall"
 
 	"connectrpc.com/connect"
@@ -18,6 +19,7 @@ import (
 	"github.com/opentdf/platform/sdk/auth/oauth"
 	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
@@ -161,6 +163,19 @@ func Start(f ...StartOptions) error {
 		cfg.Server.Auth.Policy.Adapter = startConfig.casbinAdapter
 	}
 
+	// Set up SQL-backed policy storage for v2 authorization
+	var authzDBCleanup func()
+	if strings.ToLower(cfg.Server.Auth.Policy.Version) == "v2" && cfg.Server.Auth.Policy.Adapter == nil {
+		var err error
+		authzDBCleanup, err = setupAuthzGORMConnection(ctx, cfg, logger)
+		if err != nil {
+			return err
+		}
+	}
+	if authzDBCleanup != nil {
+		defer authzDBCleanup()
+	}
+
 	// Apply additional CORS configuration from programmatic options
 	// These are appended to the YAML config values; deduplication happens in Effective*() methods
 	if len(startConfig.additionalCORSHeaders) > 0 {
@@ -270,6 +285,10 @@ func Start(f ...StartOptions) error {
 
 	defer client.Close()
 
+	// Create the global authz resolver registry
+	// Services will receive scoped registries that can only register resolvers for their own methods
+	authzResolverRegistry := authz.NewResolverRegistry()
+
 	logger.Info("starting services")
 	gatewayCleanup, err := startServices(ctx, startServicesParams{
 		cfg:                    cfg,
@@ -279,6 +298,7 @@ func Start(f ...StartOptions) error {
 		logger:                 logger,
 		reg:                    svcRegistry,
 		cacheManager:           cacheManager,
+		authzResolverRegistry:  authzResolverRegistry,
 	})
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))

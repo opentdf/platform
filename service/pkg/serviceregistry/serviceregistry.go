@@ -17,6 +17,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 
+	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
@@ -64,6 +65,22 @@ type RegistrationParams struct {
 	// service. This is useful for services that need to perform some initialization before they are
 	// ready to serve requests. This function should be called in the RegisterFunc function.
 	RegisterReadinessCheck func(namespace string, check func(context.Context) error) error
+
+	// AuthzResolverRegistry allows services to register authorization resolvers per-method.
+	// This registry is scoped to the service's namespace - services can only register
+	// resolvers for their own methods (validated against ServiceDesc).
+	//
+	// Services should register resolvers in RegisterFunc where db client and other dependencies
+	// are available. The resolver will be called by the auth interceptor at request time.
+	//
+	// Example:
+	//   srp.AuthzResolverRegistry.MustRegister("UpdateAttribute",
+	//       func(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	//           msg := req.Any().(*pb.UpdateAttributeRequest)
+	//           // ... resolve dimensions using db client ...
+	//       },
+	//   )
+	AuthzResolverRegistry *authz.ScopedResolverRegistry
 }
 type (
 	HandlerServer       func(ctx context.Context, mux *runtime.ServeMux) error

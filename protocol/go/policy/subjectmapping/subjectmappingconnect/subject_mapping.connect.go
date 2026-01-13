@@ -71,23 +71,6 @@ const (
 	SubjectMappingServiceDeleteAllUnmappedSubjectConditionSetsProcedure = "/policy.subjectmapping.SubjectMappingService/DeleteAllUnmappedSubjectConditionSets"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	subjectMappingServiceServiceDescriptor                                     = subjectmapping.File_policy_subjectmapping_subject_mapping_proto.Services().ByName("SubjectMappingService")
-	subjectMappingServiceMatchSubjectMappingsMethodDescriptor                  = subjectMappingServiceServiceDescriptor.Methods().ByName("MatchSubjectMappings")
-	subjectMappingServiceListSubjectMappingsMethodDescriptor                   = subjectMappingServiceServiceDescriptor.Methods().ByName("ListSubjectMappings")
-	subjectMappingServiceGetSubjectMappingMethodDescriptor                     = subjectMappingServiceServiceDescriptor.Methods().ByName("GetSubjectMapping")
-	subjectMappingServiceCreateSubjectMappingMethodDescriptor                  = subjectMappingServiceServiceDescriptor.Methods().ByName("CreateSubjectMapping")
-	subjectMappingServiceUpdateSubjectMappingMethodDescriptor                  = subjectMappingServiceServiceDescriptor.Methods().ByName("UpdateSubjectMapping")
-	subjectMappingServiceDeleteSubjectMappingMethodDescriptor                  = subjectMappingServiceServiceDescriptor.Methods().ByName("DeleteSubjectMapping")
-	subjectMappingServiceListSubjectConditionSetsMethodDescriptor              = subjectMappingServiceServiceDescriptor.Methods().ByName("ListSubjectConditionSets")
-	subjectMappingServiceGetSubjectConditionSetMethodDescriptor                = subjectMappingServiceServiceDescriptor.Methods().ByName("GetSubjectConditionSet")
-	subjectMappingServiceCreateSubjectConditionSetMethodDescriptor             = subjectMappingServiceServiceDescriptor.Methods().ByName("CreateSubjectConditionSet")
-	subjectMappingServiceUpdateSubjectConditionSetMethodDescriptor             = subjectMappingServiceServiceDescriptor.Methods().ByName("UpdateSubjectConditionSet")
-	subjectMappingServiceDeleteSubjectConditionSetMethodDescriptor             = subjectMappingServiceServiceDescriptor.Methods().ByName("DeleteSubjectConditionSet")
-	subjectMappingServiceDeleteAllUnmappedSubjectConditionSetsMethodDescriptor = subjectMappingServiceServiceDescriptor.Methods().ByName("DeleteAllUnmappedSubjectConditionSets")
-)
-
 // SubjectMappingServiceClient is a client for the policy.subjectmapping.SubjectMappingService
 // service.
 type SubjectMappingServiceClient interface {
@@ -116,81 +99,82 @@ type SubjectMappingServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewSubjectMappingServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SubjectMappingServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	subjectMappingServiceMethods := subjectmapping.File_policy_subjectmapping_subject_mapping_proto.Services().ByName("SubjectMappingService").Methods()
 	return &subjectMappingServiceClient{
 		matchSubjectMappings: connect.NewClient[subjectmapping.MatchSubjectMappingsRequest, subjectmapping.MatchSubjectMappingsResponse](
 			httpClient,
 			baseURL+SubjectMappingServiceMatchSubjectMappingsProcedure,
-			connect.WithSchema(subjectMappingServiceMatchSubjectMappingsMethodDescriptor),
+			connect.WithSchema(subjectMappingServiceMethods.ByName("MatchSubjectMappings")),
 			connect.WithClientOptions(opts...),
 		),
 		listSubjectMappings: connect.NewClient[subjectmapping.ListSubjectMappingsRequest, subjectmapping.ListSubjectMappingsResponse](
 			httpClient,
 			baseURL+SubjectMappingServiceListSubjectMappingsProcedure,
-			connect.WithSchema(subjectMappingServiceListSubjectMappingsMethodDescriptor),
+			connect.WithSchema(subjectMappingServiceMethods.ByName("ListSubjectMappings")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getSubjectMapping: connect.NewClient[subjectmapping.GetSubjectMappingRequest, subjectmapping.GetSubjectMappingResponse](
 			httpClient,
 			baseURL+SubjectMappingServiceGetSubjectMappingProcedure,
-			connect.WithSchema(subjectMappingServiceGetSubjectMappingMethodDescriptor),
+			connect.WithSchema(subjectMappingServiceMethods.ByName("GetSubjectMapping")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createSubjectMapping: connect.NewClient[subjectmapping.CreateSubjectMappingRequest, subjectmapping.CreateSubjectMappingResponse](
 			httpClient,
 			baseURL+SubjectMappingServiceCreateSubjectMappingProcedure,
-			connect.WithSchema(subjectMappingServiceCreateSubjectMappingMethodDescriptor),
+			connect.WithSchema(subjectMappingServiceMethods.ByName("CreateSubjectMapping")),
 			connect.WithClientOptions(opts...),
 		),
 		updateSubjectMapping: connect.NewClient[subjectmapping.UpdateSubjectMappingRequest, subjectmapping.UpdateSubjectMappingResponse](
 			httpClient,
 			baseURL+SubjectMappingServiceUpdateSubjectMappingProcedure,
-			connect.WithSchema(subjectMappingServiceUpdateSubjectMappingMethodDescriptor),
+			connect.WithSchema(subjectMappingServiceMethods.ByName("UpdateSubjectMapping")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteSubjectMapping: connect.NewClient[subjectmapping.DeleteSubjectMappingRequest, subjectmapping.DeleteSubjectMappingResponse](
 			httpClient,
 			baseURL+SubjectMappingServiceDeleteSubjectMappingProcedure,
-			connect.WithSchema(subjectMappingServiceDeleteSubjectMappingMethodDescriptor),
+			connect.WithSchema(subjectMappingServiceMethods.ByName("DeleteSubjectMapping")),
 			connect.WithClientOptions(opts...),
 		),
 		listSubjectConditionSets: connect.NewClient[subjectmapping.ListSubjectConditionSetsRequest, subjectmapping.ListSubjectConditionSetsResponse](
 			httpClient,
 			baseURL+SubjectMappingServiceListSubjectConditionSetsProcedure,
-			connect.WithSchema(subjectMappingServiceListSubjectConditionSetsMethodDescriptor),
+			connect.WithSchema(subjectMappingServiceMethods.ByName("ListSubjectConditionSets")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getSubjectConditionSet: connect.NewClient[subjectmapping.GetSubjectConditionSetRequest, subjectmapping.GetSubjectConditionSetResponse](
 			httpClient,
 			baseURL+SubjectMappingServiceGetSubjectConditionSetProcedure,
-			connect.WithSchema(subjectMappingServiceGetSubjectConditionSetMethodDescriptor),
+			connect.WithSchema(subjectMappingServiceMethods.ByName("GetSubjectConditionSet")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createSubjectConditionSet: connect.NewClient[subjectmapping.CreateSubjectConditionSetRequest, subjectmapping.CreateSubjectConditionSetResponse](
 			httpClient,
 			baseURL+SubjectMappingServiceCreateSubjectConditionSetProcedure,
-			connect.WithSchema(subjectMappingServiceCreateSubjectConditionSetMethodDescriptor),
+			connect.WithSchema(subjectMappingServiceMethods.ByName("CreateSubjectConditionSet")),
 			connect.WithClientOptions(opts...),
 		),
 		updateSubjectConditionSet: connect.NewClient[subjectmapping.UpdateSubjectConditionSetRequest, subjectmapping.UpdateSubjectConditionSetResponse](
 			httpClient,
 			baseURL+SubjectMappingServiceUpdateSubjectConditionSetProcedure,
-			connect.WithSchema(subjectMappingServiceUpdateSubjectConditionSetMethodDescriptor),
+			connect.WithSchema(subjectMappingServiceMethods.ByName("UpdateSubjectConditionSet")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteSubjectConditionSet: connect.NewClient[subjectmapping.DeleteSubjectConditionSetRequest, subjectmapping.DeleteSubjectConditionSetResponse](
 			httpClient,
 			baseURL+SubjectMappingServiceDeleteSubjectConditionSetProcedure,
-			connect.WithSchema(subjectMappingServiceDeleteSubjectConditionSetMethodDescriptor),
+			connect.WithSchema(subjectMappingServiceMethods.ByName("DeleteSubjectConditionSet")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteAllUnmappedSubjectConditionSets: connect.NewClient[subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest, subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse](
 			httpClient,
 			baseURL+SubjectMappingServiceDeleteAllUnmappedSubjectConditionSetsProcedure,
-			connect.WithSchema(subjectMappingServiceDeleteAllUnmappedSubjectConditionSetsMethodDescriptor),
+			connect.WithSchema(subjectMappingServiceMethods.ByName("DeleteAllUnmappedSubjectConditionSets")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -301,80 +285,81 @@ type SubjectMappingServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewSubjectMappingServiceHandler(svc SubjectMappingServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	subjectMappingServiceMethods := subjectmapping.File_policy_subjectmapping_subject_mapping_proto.Services().ByName("SubjectMappingService").Methods()
 	subjectMappingServiceMatchSubjectMappingsHandler := connect.NewUnaryHandler(
 		SubjectMappingServiceMatchSubjectMappingsProcedure,
 		svc.MatchSubjectMappings,
-		connect.WithSchema(subjectMappingServiceMatchSubjectMappingsMethodDescriptor),
+		connect.WithSchema(subjectMappingServiceMethods.ByName("MatchSubjectMappings")),
 		connect.WithHandlerOptions(opts...),
 	)
 	subjectMappingServiceListSubjectMappingsHandler := connect.NewUnaryHandler(
 		SubjectMappingServiceListSubjectMappingsProcedure,
 		svc.ListSubjectMappings,
-		connect.WithSchema(subjectMappingServiceListSubjectMappingsMethodDescriptor),
+		connect.WithSchema(subjectMappingServiceMethods.ByName("ListSubjectMappings")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	subjectMappingServiceGetSubjectMappingHandler := connect.NewUnaryHandler(
 		SubjectMappingServiceGetSubjectMappingProcedure,
 		svc.GetSubjectMapping,
-		connect.WithSchema(subjectMappingServiceGetSubjectMappingMethodDescriptor),
+		connect.WithSchema(subjectMappingServiceMethods.ByName("GetSubjectMapping")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	subjectMappingServiceCreateSubjectMappingHandler := connect.NewUnaryHandler(
 		SubjectMappingServiceCreateSubjectMappingProcedure,
 		svc.CreateSubjectMapping,
-		connect.WithSchema(subjectMappingServiceCreateSubjectMappingMethodDescriptor),
+		connect.WithSchema(subjectMappingServiceMethods.ByName("CreateSubjectMapping")),
 		connect.WithHandlerOptions(opts...),
 	)
 	subjectMappingServiceUpdateSubjectMappingHandler := connect.NewUnaryHandler(
 		SubjectMappingServiceUpdateSubjectMappingProcedure,
 		svc.UpdateSubjectMapping,
-		connect.WithSchema(subjectMappingServiceUpdateSubjectMappingMethodDescriptor),
+		connect.WithSchema(subjectMappingServiceMethods.ByName("UpdateSubjectMapping")),
 		connect.WithHandlerOptions(opts...),
 	)
 	subjectMappingServiceDeleteSubjectMappingHandler := connect.NewUnaryHandler(
 		SubjectMappingServiceDeleteSubjectMappingProcedure,
 		svc.DeleteSubjectMapping,
-		connect.WithSchema(subjectMappingServiceDeleteSubjectMappingMethodDescriptor),
+		connect.WithSchema(subjectMappingServiceMethods.ByName("DeleteSubjectMapping")),
 		connect.WithHandlerOptions(opts...),
 	)
 	subjectMappingServiceListSubjectConditionSetsHandler := connect.NewUnaryHandler(
 		SubjectMappingServiceListSubjectConditionSetsProcedure,
 		svc.ListSubjectConditionSets,
-		connect.WithSchema(subjectMappingServiceListSubjectConditionSetsMethodDescriptor),
+		connect.WithSchema(subjectMappingServiceMethods.ByName("ListSubjectConditionSets")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	subjectMappingServiceGetSubjectConditionSetHandler := connect.NewUnaryHandler(
 		SubjectMappingServiceGetSubjectConditionSetProcedure,
 		svc.GetSubjectConditionSet,
-		connect.WithSchema(subjectMappingServiceGetSubjectConditionSetMethodDescriptor),
+		connect.WithSchema(subjectMappingServiceMethods.ByName("GetSubjectConditionSet")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	subjectMappingServiceCreateSubjectConditionSetHandler := connect.NewUnaryHandler(
 		SubjectMappingServiceCreateSubjectConditionSetProcedure,
 		svc.CreateSubjectConditionSet,
-		connect.WithSchema(subjectMappingServiceCreateSubjectConditionSetMethodDescriptor),
+		connect.WithSchema(subjectMappingServiceMethods.ByName("CreateSubjectConditionSet")),
 		connect.WithHandlerOptions(opts...),
 	)
 	subjectMappingServiceUpdateSubjectConditionSetHandler := connect.NewUnaryHandler(
 		SubjectMappingServiceUpdateSubjectConditionSetProcedure,
 		svc.UpdateSubjectConditionSet,
-		connect.WithSchema(subjectMappingServiceUpdateSubjectConditionSetMethodDescriptor),
+		connect.WithSchema(subjectMappingServiceMethods.ByName("UpdateSubjectConditionSet")),
 		connect.WithHandlerOptions(opts...),
 	)
 	subjectMappingServiceDeleteSubjectConditionSetHandler := connect.NewUnaryHandler(
 		SubjectMappingServiceDeleteSubjectConditionSetProcedure,
 		svc.DeleteSubjectConditionSet,
-		connect.WithSchema(subjectMappingServiceDeleteSubjectConditionSetMethodDescriptor),
+		connect.WithSchema(subjectMappingServiceMethods.ByName("DeleteSubjectConditionSet")),
 		connect.WithHandlerOptions(opts...),
 	)
 	subjectMappingServiceDeleteAllUnmappedSubjectConditionSetsHandler := connect.NewUnaryHandler(
 		SubjectMappingServiceDeleteAllUnmappedSubjectConditionSetsProcedure,
 		svc.DeleteAllUnmappedSubjectConditionSets,
-		connect.WithSchema(subjectMappingServiceDeleteAllUnmappedSubjectConditionSetsMethodDescriptor),
+		connect.WithSchema(subjectMappingServiceMethods.ByName("DeleteAllUnmappedSubjectConditionSets")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/policy.subjectmapping.SubjectMappingService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -41,13 +41,6 @@ const (
 	EntityResolutionServiceCreateEntityChainsFromTokensProcedure = "/entityresolution.v2.EntityResolutionService/CreateEntityChainsFromTokens"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	entityResolutionServiceServiceDescriptor                            = v2.File_entityresolution_v2_entity_resolution_proto.Services().ByName("EntityResolutionService")
-	entityResolutionServiceResolveEntitiesMethodDescriptor              = entityResolutionServiceServiceDescriptor.Methods().ByName("ResolveEntities")
-	entityResolutionServiceCreateEntityChainsFromTokensMethodDescriptor = entityResolutionServiceServiceDescriptor.Methods().ByName("CreateEntityChainsFromTokens")
-)
-
 // EntityResolutionServiceClient is a client for the entityresolution.v2.EntityResolutionService
 // service.
 type EntityResolutionServiceClient interface {
@@ -65,17 +58,18 @@ type EntityResolutionServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewEntityResolutionServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) EntityResolutionServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	entityResolutionServiceMethods := v2.File_entityresolution_v2_entity_resolution_proto.Services().ByName("EntityResolutionService").Methods()
 	return &entityResolutionServiceClient{
 		resolveEntities: connect.NewClient[v2.ResolveEntitiesRequest, v2.ResolveEntitiesResponse](
 			httpClient,
 			baseURL+EntityResolutionServiceResolveEntitiesProcedure,
-			connect.WithSchema(entityResolutionServiceResolveEntitiesMethodDescriptor),
+			connect.WithSchema(entityResolutionServiceMethods.ByName("ResolveEntities")),
 			connect.WithClientOptions(opts...),
 		),
 		createEntityChainsFromTokens: connect.NewClient[v2.CreateEntityChainsFromTokensRequest, v2.CreateEntityChainsFromTokensResponse](
 			httpClient,
 			baseURL+EntityResolutionServiceCreateEntityChainsFromTokensProcedure,
-			connect.WithSchema(entityResolutionServiceCreateEntityChainsFromTokensMethodDescriptor),
+			connect.WithSchema(entityResolutionServiceMethods.ByName("CreateEntityChainsFromTokens")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -111,16 +105,17 @@ type EntityResolutionServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewEntityResolutionServiceHandler(svc EntityResolutionServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	entityResolutionServiceMethods := v2.File_entityresolution_v2_entity_resolution_proto.Services().ByName("EntityResolutionService").Methods()
 	entityResolutionServiceResolveEntitiesHandler := connect.NewUnaryHandler(
 		EntityResolutionServiceResolveEntitiesProcedure,
 		svc.ResolveEntities,
-		connect.WithSchema(entityResolutionServiceResolveEntitiesMethodDescriptor),
+		connect.WithSchema(entityResolutionServiceMethods.ByName("ResolveEntities")),
 		connect.WithHandlerOptions(opts...),
 	)
 	entityResolutionServiceCreateEntityChainsFromTokensHandler := connect.NewUnaryHandler(
 		EntityResolutionServiceCreateEntityChainsFromTokensProcedure,
 		svc.CreateEntityChainsFromTokens,
-		connect.WithSchema(entityResolutionServiceCreateEntityChainsFromTokensMethodDescriptor),
+		connect.WithSchema(entityResolutionServiceMethods.ByName("CreateEntityChainsFromTokens")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/entityresolution.v2.EntityResolutionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

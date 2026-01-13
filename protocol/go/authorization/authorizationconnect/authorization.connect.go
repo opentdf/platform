@@ -44,14 +44,6 @@ const (
 	AuthorizationServiceGetEntitlementsProcedure = "/authorization.AuthorizationService/GetEntitlements"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	authorizationServiceServiceDescriptor                   = authorization.File_authorization_authorization_proto.Services().ByName("AuthorizationService")
-	authorizationServiceGetDecisionsMethodDescriptor        = authorizationServiceServiceDescriptor.Methods().ByName("GetDecisions")
-	authorizationServiceGetDecisionsByTokenMethodDescriptor = authorizationServiceServiceDescriptor.Methods().ByName("GetDecisionsByToken")
-	authorizationServiceGetEntitlementsMethodDescriptor     = authorizationServiceServiceDescriptor.Methods().ByName("GetEntitlements")
-)
-
 // AuthorizationServiceClient is a client for the authorization.AuthorizationService service.
 type AuthorizationServiceClient interface {
 	GetDecisions(context.Context, *connect.Request[authorization.GetDecisionsRequest]) (*connect.Response[authorization.GetDecisionsResponse], error)
@@ -68,23 +60,24 @@ type AuthorizationServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewAuthorizationServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AuthorizationServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	authorizationServiceMethods := authorization.File_authorization_authorization_proto.Services().ByName("AuthorizationService").Methods()
 	return &authorizationServiceClient{
 		getDecisions: connect.NewClient[authorization.GetDecisionsRequest, authorization.GetDecisionsResponse](
 			httpClient,
 			baseURL+AuthorizationServiceGetDecisionsProcedure,
-			connect.WithSchema(authorizationServiceGetDecisionsMethodDescriptor),
+			connect.WithSchema(authorizationServiceMethods.ByName("GetDecisions")),
 			connect.WithClientOptions(opts...),
 		),
 		getDecisionsByToken: connect.NewClient[authorization.GetDecisionsByTokenRequest, authorization.GetDecisionsByTokenResponse](
 			httpClient,
 			baseURL+AuthorizationServiceGetDecisionsByTokenProcedure,
-			connect.WithSchema(authorizationServiceGetDecisionsByTokenMethodDescriptor),
+			connect.WithSchema(authorizationServiceMethods.ByName("GetDecisionsByToken")),
 			connect.WithClientOptions(opts...),
 		),
 		getEntitlements: connect.NewClient[authorization.GetEntitlementsRequest, authorization.GetEntitlementsResponse](
 			httpClient,
 			baseURL+AuthorizationServiceGetEntitlementsProcedure,
-			connect.WithSchema(authorizationServiceGetEntitlementsMethodDescriptor),
+			connect.WithSchema(authorizationServiceMethods.ByName("GetEntitlements")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -126,22 +119,23 @@ type AuthorizationServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewAuthorizationServiceHandler(svc AuthorizationServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	authorizationServiceMethods := authorization.File_authorization_authorization_proto.Services().ByName("AuthorizationService").Methods()
 	authorizationServiceGetDecisionsHandler := connect.NewUnaryHandler(
 		AuthorizationServiceGetDecisionsProcedure,
 		svc.GetDecisions,
-		connect.WithSchema(authorizationServiceGetDecisionsMethodDescriptor),
+		connect.WithSchema(authorizationServiceMethods.ByName("GetDecisions")),
 		connect.WithHandlerOptions(opts...),
 	)
 	authorizationServiceGetDecisionsByTokenHandler := connect.NewUnaryHandler(
 		AuthorizationServiceGetDecisionsByTokenProcedure,
 		svc.GetDecisionsByToken,
-		connect.WithSchema(authorizationServiceGetDecisionsByTokenMethodDescriptor),
+		connect.WithSchema(authorizationServiceMethods.ByName("GetDecisionsByToken")),
 		connect.WithHandlerOptions(opts...),
 	)
 	authorizationServiceGetEntitlementsHandler := connect.NewUnaryHandler(
 		AuthorizationServiceGetEntitlementsProcedure,
 		svc.GetEntitlements,
-		connect.WithSchema(authorizationServiceGetEntitlementsMethodDescriptor),
+		connect.WithSchema(authorizationServiceMethods.ByName("GetEntitlements")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/authorization.AuthorizationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

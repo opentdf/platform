@@ -498,39 +498,46 @@ func (s *KasRegistryKeySuite) Test_ListKeys_KasURI_Success() {
 
 func (s *KasRegistryKeySuite) Test_ListKeys_KasFilter_NotFound_Fails() {
 	tests := []struct {
-		name string
-		req  kasregistry.ListKeysRequest
+		name    string
+		makeReq func() *kasregistry.ListKeysRequest
 	}{
 		{
 			name: "by_kas_id",
-			req: kasregistry.ListKeysRequest{
-				KasFilter: &kasregistry.ListKeysRequest_KasId{
-					KasId: uuid.NewString(),
-				},
+			makeReq: func() *kasregistry.ListKeysRequest {
+				return &kasregistry.ListKeysRequest{
+					KasFilter: &kasregistry.ListKeysRequest_KasId{
+						KasId: uuid.NewString(),
+					},
+				}
 			},
 		},
 		{
 			name: "by_kas_name",
-			req: kasregistry.ListKeysRequest{
-				KasFilter: &kasregistry.ListKeysRequest_KasName{
-					KasName: "kas-name-does-not-exist",
-				},
+			makeReq: func() *kasregistry.ListKeysRequest {
+				return &kasregistry.ListKeysRequest{
+					KasFilter: &kasregistry.ListKeysRequest_KasName{
+						KasName: "kas-name-does-not-exist",
+					},
+				}
 			},
 		},
 		{
 			name: "by_kas_uri",
-			req: kasregistry.ListKeysRequest{
-				KasFilter: &kasregistry.ListKeysRequest_KasUri{
-					KasUri: "https://kas-uri-does-not-exist.opentdf.io",
-				},
+			makeReq: func() *kasregistry.ListKeysRequest {
+				return &kasregistry.ListKeysRequest{
+					KasFilter: &kasregistry.ListKeysRequest_KasUri{
+						KasUri: "https://kas-uri-does-not-exist.opentdf.io",
+					},
+				}
 			},
 		},
 	}
 
-	for _, tt := range tests {
-		tt := tt
-		s.Run(tt.name, func() {
-			resp, err := s.db.PolicyClient.ListKeys(s.ctx, &tt.req)
+	for _, tc := range tests {
+		tc := tc
+		s.Run(tc.name, func() {
+			req := tc.makeReq()
+			resp, err := s.db.PolicyClient.ListKeys(s.ctx, req)
 			s.Require().Error(err)
 			s.Nil(resp)
 			s.Require().ErrorContains(err, db.ErrNotFound.Error())

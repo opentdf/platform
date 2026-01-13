@@ -24,6 +24,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/tracing"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
@@ -167,17 +168,24 @@ func Start(f ...StartOptions) error {
 
 	// Set up SQL-backed policy storage for v2 authorization
 	// When version is v2 and no explicit adapter is set, create a GORM connection
-	// The casbin_rule table is created via policy service migrations
+	var authzDBCleanup func()
 	if strings.ToLower(cfg.Server.Auth.Policy.Version) == "v2" && cfg.Server.Auth.Policy.Adapter == nil {
 		logger.Info("initializing SQL-backed policy storage for v2 authorization")
-
-		// Get schema from config - default to "opentdf" if not set
-		dbSchema := cfg.DB.Schema
-		if dbSchema == "" {
-			dbSchema = "opentdf"
+		// Create DB client without migrations - GORM AutoMigrate handles table creation
+		dbClient, err := db.New(ctx, cfg.DB, cfg.Logger, nil,
+			db.WithService("authz"),
+		)
+		if err != nil {
+			logger.Error("failed to create database client for authz", slog.String("error", err.Error()))
+			return fmt.Errorf("failed to create database client for authz: %w", err)
 		}
+		authzDBCleanup = func() { dbClient.Close() }
 
-		// Build PostgreSQL DSN
+		// Get schema for GORM configuration
+		dbSchema := dbClient.Schema()
+
+		// Build PostgreSQL DSN with options parameter to set search_path
+		// This ensures AutoMigrate and all GORM operations use the correct schema
 		dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 			cfg.DB.Host,
 			cfg.DB.Port,
@@ -186,20 +194,27 @@ func Start(f ...StartOptions) error {
 			cfg.DB.Database,
 			cfg.DB.SSLMode,
 		)
+		if dbSchema != "" {
+			// Use options parameter to set search_path for all connections
+			dsn += fmt.Sprintf(" options='-c search_path=%s'", dbSchema)
+		}
 
-		// Create GORM connection
+		// Create GORM connection with search_path configured in DSN
 		gormDB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 			SkipDefaultTransaction: true,
 		})
 		if err != nil {
+			authzDBCleanup()
 			logger.Error("failed to create GORM connection for authz", slog.String("error", err.Error()))
 			return fmt.Errorf("failed to create GORM connection for authz: %w", err)
 		}
 
-		// Set search_path immediately after connection
-		if err := gormDB.Exec(fmt.Sprintf("SET search_path TO %s", dbSchema)).Error; err != nil {
-			logger.Error("failed to set search_path for authz", slog.String("error", err.Error()))
-			return fmt.Errorf("failed to set search_path for authz: %w", err)
+		// Verify search_path is set correctly
+		var currentSearchPath string
+		if err := gormDB.Raw("SHOW search_path").Scan(&currentSearchPath).Error; err != nil {
+			logger.Warn("failed to verify search_path", slog.String("error", err.Error()))
+		} else {
+			logger.Debug("verified GORM search_path", slog.String("search_path", currentSearchPath))
 		}
 
 		cfg.Server.Auth.Policy.GormDB = gormDB
@@ -207,6 +222,9 @@ func Start(f ...StartOptions) error {
 		logger.Info("SQL-backed policy storage configured",
 			slog.String("schema", cfg.Server.Auth.Policy.Schema),
 		)
+	}
+	if authzDBCleanup != nil {
+		defer authzDBCleanup()
 	}
 
 	// Apply additional CORS configuration from programmatic options

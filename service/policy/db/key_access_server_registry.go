@@ -551,22 +551,19 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		kasName pgtype.Text
 	)
 
-	if r.GetKasId() != "" {
-		kasID = pgtypeUUID(r.GetKasId())
+	switch f := r.GetKasFilter().(type) {
+	case *kasregistry.ListKeysRequest_KasId:
+		kasID = pgtypeUUID(f.KasId)
 		if !kasID.Valid {
 			return nil, db.ErrUUIDInvalid
 		}
-	}
-
-	if r.GetKasUri() != "" {
-		kasURI = pgtypeText(r.GetKasUri())
+	case *kasregistry.ListKeysRequest_KasUri:
+		kasURI = pgtypeText(f.KasUri)
 		if !kasURI.Valid {
 			return nil, db.ErrSelectIdentifierInvalid
 		}
-	}
-
-	if r.GetKasName() != "" {
-		kasName = pgtypeText(strings.ToLower(r.GetKasName()))
+	case *kasregistry.ListKeysRequest_KasName:
+		kasName = pgtypeText(strings.ToLower(f.KasName))
 		if !kasName.Valid {
 			return nil, db.ErrSelectIdentifierInvalid
 		}

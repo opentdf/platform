@@ -496,40 +496,46 @@ func (s *KasRegistryKeySuite) Test_ListKeys_KasURI_Success() {
 	s.validateListKeysResponse(resp, 2, err)
 }
 
-func (s *KasRegistryKeySuite) Test_ListKeys_KasID_NotFound_Fails() {
-	req := kasregistry.ListKeysRequest{
-		KasFilter: &kasregistry.ListKeysRequest_KasId{
-			KasId: uuid.NewString(),
+func (s *KasRegistryKeySuite) Test_ListKeys_KasFilter_NotFound_Fails() {
+	tests := []struct {
+		name string
+		req  kasregistry.ListKeysRequest
+	}{
+		{
+			name: "by_kas_id",
+			req: kasregistry.ListKeysRequest{
+				KasFilter: &kasregistry.ListKeysRequest_KasId{
+					KasId: uuid.NewString(),
+				},
+			},
+		},
+		{
+			name: "by_kas_name",
+			req: kasregistry.ListKeysRequest{
+				KasFilter: &kasregistry.ListKeysRequest_KasName{
+					KasName: "kas-name-does-not-exist",
+				},
+			},
+		},
+		{
+			name: "by_kas_uri",
+			req: kasregistry.ListKeysRequest{
+				KasFilter: &kasregistry.ListKeysRequest_KasUri{
+					KasUri: "https://kas-uri-does-not-exist.opentdf.io",
+				},
+			},
 		},
 	}
-	resp, err := s.db.PolicyClient.ListKeys(s.ctx, &req)
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorContains(err, db.ErrNotFound.Error())
-}
 
-func (s *KasRegistryKeySuite) Test_ListKeys_KasName_NotFound_Fails() {
-	req := kasregistry.ListKeysRequest{
-		KasFilter: &kasregistry.ListKeysRequest_KasName{
-			KasName: "kas-name-does-not-exist",
-		},
+	for _, tt := range tests {
+		tt := tt
+		s.Run(tt.name, func() {
+			resp, err := s.db.PolicyClient.ListKeys(s.ctx, &tt.req)
+			s.Require().Error(err)
+			s.Nil(resp)
+			s.Require().ErrorContains(err, db.ErrNotFound.Error())
+		})
 	}
-	resp, err := s.db.PolicyClient.ListKeys(s.ctx, &req)
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorContains(err, db.ErrNotFound.Error())
-}
-
-func (s *KasRegistryKeySuite) Test_ListKeys_KasURI_NotFound_Fails() {
-	req := kasregistry.ListKeysRequest{
-		KasFilter: &kasregistry.ListKeysRequest_KasUri{
-			KasUri: "https://kas-uri-does-not-exist.opentdf.io",
-		},
-	}
-	resp, err := s.db.PolicyClient.ListKeys(s.ctx, &req)
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorContains(err, db.ErrNotFound.Error())
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_FilterAlgo_NoKeysWithAlgo_Success() {

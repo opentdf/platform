@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"testing"
 
 	"github.com/opentdf/platform/service/internal/auth"
@@ -14,7 +13,7 @@ import (
 )
 
 func TestSetupAuthzGORMConnection(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("requires database configuration", func(t *testing.T) {
 		cfg := &config.Config{
@@ -37,9 +36,9 @@ func TestSetupAuthzGORMConnection(t *testing.T) {
 		require.NoError(t, err)
 
 		cleanup, err := setupAuthzGORMConnection(ctx, cfg, log)
-		
+
 		// Should fail due to missing database configuration
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Nil(t, cleanup)
 	})
 
@@ -66,9 +65,9 @@ func TestSetupAuthzGORMConnection(t *testing.T) {
 
 		// This will fail to connect (no real database) but we can verify error handling
 		cleanup, err := setupAuthzGORMConnection(ctx, cfg, log)
-		
+
 		// Should fail to connect but error should be about connection, not DSN building
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Nil(t, cleanup)
 		assert.Contains(t, err.Error(), "failed to create")
 	})
@@ -77,7 +76,7 @@ func TestSetupAuthzGORMConnection(t *testing.T) {
 		// This test verifies that cleanup is called on GORM failure
 		// In practice, this is hard to test without mocking, but the structure ensures
 		// that if db.New succeeds, cleanup will be defined and called on error
-		
+
 		cfg := &config.Config{
 			DB: db.Config{
 				Host:     "localhost",
@@ -99,9 +98,9 @@ func TestSetupAuthzGORMConnection(t *testing.T) {
 		require.NoError(t, err)
 
 		cleanup, err := setupAuthzGORMConnection(ctx, cfg, log)
-		
+
 		// Should fail (no real database)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Nil(t, cleanup)
 	})
 
@@ -128,9 +127,9 @@ func TestSetupAuthzGORMConnection(t *testing.T) {
 		require.NoError(t, err)
 
 		cleanup, err := setupAuthzGORMConnection(ctx, cfg, log)
-		
+
 		// Will fail to connect, but we verify it attempts with correct config
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Nil(t, cleanup)
 		assert.Contains(t, err.Error(), "failed to create")
 	})
@@ -141,7 +140,7 @@ func TestSetupAuthzGORMConnection(t *testing.T) {
 		// - cfg.Server.Auth.Policy.GormDB is set
 		// - cfg.Server.Auth.Policy.Schema matches expected schema
 		// - cleanup function properly closes connections
-		
+
 		cfg := &config.Config{
 			DB: db.Config{
 				Host:     "localhost",
@@ -170,10 +169,10 @@ func TestSetupAuthzGORMConnection(t *testing.T) {
 		require.NoError(t, err)
 
 		cleanup, err := setupAuthzGORMConnection(ctx, cfg, log)
-		
+
 		// Without a real database, this should fail at db.New or gorm.Open
-		assert.Error(t, err)
-		
+		require.Error(t, err)
+
 		// Cleanup should be nil on error
 		assert.Nil(t, cleanup)
 	})

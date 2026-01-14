@@ -1311,6 +1311,143 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedAt
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
+func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_MixedFoundAndMissingValue_DifferentDefinitions_Succeeds() {
+	// create a new namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-fqn-namespace.active",
+	})
+	s.Require().NoError(err)
+
+	// create attribute with one value (found)
+	attrFound, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "mixed_attr_found",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"value1"},
+	})
+	s.Require().NoError(err)
+
+	gotFound, err := s.db.PolicyClient.GetAttribute(s.ctx, attrFound.GetId())
+	s.Require().NoError(err)
+	s.Len(gotFound.GetValues(), 1)
+	foundValue := gotFound.GetValues()[0]
+
+	// create attribute with no values (missing)
+	attrMissing, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "mixed_attr_missing",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+	})
+	s.Require().NoError(err)
+
+	foundFqn := fqnBuilder(ns.GetName(), attrFound.GetName(), foundValue.GetValue())
+	missingFqn := fqnBuilder(ns.GetName(), attrMissing.GetName(), "missing_value")
+
+	retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{foundFqn, missingFqn},
+	})
+	s.Require().NoError(err)
+	s.Len(retrieved, 2)
+
+	found, ok := retrieved[foundFqn]
+	s.True(ok)
+	s.NotNil(found)
+	s.Equal(attrFound.GetId(), found.GetAttribute().GetId())
+	s.NotNil(found.GetValue())
+	s.Equal(foundValue.GetId(), found.GetValue().GetId())
+
+	missing, ok := retrieved[missingFqn]
+	s.True(ok)
+	s.NotNil(missing)
+	s.Equal(attrMissing.GetId(), missing.GetAttribute().GetId())
+	s.Nil(missing.GetValue())
+}
+
+func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_MixedMissingValue_InactiveDefinition_Fails() {
+	// create a new namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-fqn-namespace.inactive",
+	})
+	s.Require().NoError(err)
+
+	// give it an attribute with two values
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "inactive_attr",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"value1", "value2"},
+	})
+	s.Require().NoError(err)
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, attr.GetId())
+	s.Require().NoError(err)
+	s.Len(got.GetValues(), 2)
+	v1 := got.GetValues()[0]
+
+	// deactivate the attribute definition
+	_, err = s.db.PolicyClient.DeactivateAttribute(s.ctx, attr.GetId())
+	s.Require().NoError(err)
+
+	foundFqn := fqnBuilder(ns.GetName(), attr.GetName(), v1.GetValue())
+	missingFqn := fqnBuilder(ns.GetName(), attr.GetName(), "missing_value")
+
+	retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{foundFqn, missingFqn},
+	})
+	s.Require().Error(err)
+	s.Nil(retrieved)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_MissingValueAndDefinition() {
+	// create a new namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-missing-attr.example",
+	})
+	s.Require().NoError(err)
+
+	missingFqn := fqnBuilder(ns.GetName(), "missing_attr", "missing_value")
+	retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{missingFqn},
+	})
+	s.Require().Error(err)
+	s.Nil(retrieved)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithInactiveValue_ActiveDefinition() {
+	// create a new namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-fqn-namespace.inactive-value",
+	})
+	s.Require().NoError(err)
+
+	// create attribute with two values
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "inactive_value_attr",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"value1", "value2"},
+	})
+	s.Require().NoError(err)
+
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, attr.GetId())
+	s.Require().NoError(err)
+	s.Len(got.GetValues(), 2)
+	valueToDeactivate := got.GetValues()[0]
+
+	// deactivate a value while leaving the definition active
+	_, err = s.db.PolicyClient.DeactivateAttributeValue(s.ctx, valueToDeactivate.GetId())
+	s.Require().NoError(err)
+
+	fqn := fqnBuilder(ns.GetName(), attr.GetName(), valueToDeactivate.GetValue())
+	retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqn},
+	})
+	s.Require().Error(err)
+	s.Nil(retrieved)
+	s.Require().ErrorIs(err, db.ErrAttributeValueInactive)
+}
+
 func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedAttributeValue() {
 	// create a new namespace
 	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
@@ -1343,7 +1480,7 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithDeactivatedAt
 	})
 	s.Require().Error(err)
 	s.Nil(v)
-	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrAttributeValueInactive)
 
 	// get the attribute by the value fqn for v2
 	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{

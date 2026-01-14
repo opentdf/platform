@@ -51,9 +51,6 @@ func (k *AESProtectedKey) DecryptAESGCM(iv []byte, body []byte, tagSize int) ([]
 	// Use the pre-initialized AES-GCM cipher for better performance
 	decryptedData, err := k.aesGcm.DecryptWithIVAndTagSize(iv, body, tagSize)
 	if err != nil {
-		if errors.Is(err, ErrInvalidKeyData) {
-			return nil, fmt.Errorf("invalid key data: %w", err)
-		}
 		if errors.Is(err, ErrInvalidCiphertext) {
 			return nil, fmt.Errorf("invalid ciphertext or IV: %w", err)
 		}
@@ -64,6 +61,7 @@ func (k *AESProtectedKey) DecryptAESGCM(iv []byte, body []byte, tagSize int) ([]
 }
 
 // Export returns the raw key data, optionally encrypting it with the provided Encapsulator
+//
 // Deprecated: Use the Encapsulator's Encapsulate method instead
 func (k *AESProtectedKey) Export(encapsulator Encapsulator) ([]byte, error) {
 	if encapsulator == nil {

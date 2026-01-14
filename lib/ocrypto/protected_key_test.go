@@ -61,31 +61,24 @@ func TestAESProtectedKey_DecryptAESGCM_InvalidCiphertext(t *testing.T) {
 
 	// Test with invalid IV size (should be 12 bytes)
 	_, err = protectedKey.DecryptAESGCM([]byte{0x01, 0x02}, []byte("test"), 16)
-	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrInvalidCiphertext)
+	require.ErrorIs(t, err, ErrInvalidCiphertext)
 
 	// Test with empty ciphertext
 	iv := make([]byte, GcmStandardNonceSize)
 	_, err = protectedKey.DecryptAESGCM(iv, []byte{}, 16)
-	require.Error(t, err)
-	// Empty ciphertext should cause decryption to fail
-	assert.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidCiphertext)
 }
 
 func TestAESProtectedKey_DecryptAESGCM_InvalidKey(t *testing.T) {
 	// Empty key should fail
 	_, err := NewAESProtectedKey([]byte{})
-	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrEmptyKeyData)
+	require.ErrorIs(t, err, ErrEmptyKeyData)
 }
 
 func TestNewAESProtectedKey_InvalidKeyData(t *testing.T) {
 	// Test with key that causes NewAESGcm to return ErrInvalidKeyData
 	_, err := NewAESProtectedKey([]byte{})
-	require.Error(t, err)
-
-	// Should wrap ErrInvalidKeyData (or have it in the chain)
-	assert.ErrorIs(t, err, ErrEmptyKeyData)
+	require.ErrorIs(t, err, ErrEmptyKeyData)
 }
 
 func TestAESProtectedKey_Export_NoEncapsulator(t *testing.T) {
@@ -94,7 +87,6 @@ func TestAESProtectedKey_Export_NoEncapsulator(t *testing.T) {
 	require.NoError(t, err)
 
 	exported, err := protectedKey.Export(nil)
-	require.Error(t, err)
 	require.ErrorContains(t, err, "encapsulator cannot be nil")
 	assert.Nil(t, exported)
 }

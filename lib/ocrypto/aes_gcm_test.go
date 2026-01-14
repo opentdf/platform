@@ -188,12 +188,12 @@ func TestNewAESGcm_EmptyKey(t *testing.T) {
 func TestNewAESGcm_InvalidKeySize(t *testing.T) {
 	// AES only supports 16, 24, or 32 byte keys
 	invalidKeys := [][]byte{
-		[]byte{0x01},                                                   // 1 byte
-		[]byte{0x01, 0x02, 0x03},                                       // 3 bytes
-		make([]byte, 15),                                               // 15 bytes
-		make([]byte, 17),                                               // 17 bytes
-		make([]byte, 31),                                               // 31 bytes
-		make([]byte, 33),                                               // 33 bytes
+		{0x01},             // 1 byte
+		{0x01, 0x02, 0x03}, // 3 bytes
+		make([]byte, 15),   // 15 bytes
+		make([]byte, 17),   // 17 bytes
+		make([]byte, 31),   // 31 bytes
+		make([]byte, 33),   // 33 bytes
 	}
 
 	for _, key := range invalidKeys {
@@ -266,7 +266,7 @@ func TestEncryptWithIVAndTagSize_InvalidIVSize(t *testing.T) {
 
 	// Test various invalid IV sizes (should be 12 bytes for GCM standard)
 	invalidIVs := [][]byte{
-		[]byte{},
+		{},
 		make([]byte, 11),
 		make([]byte, 13),
 		make([]byte, 16),
@@ -289,7 +289,7 @@ func TestDecryptWithIVAndTagSize_InvalidIVSize(t *testing.T) {
 
 	// Test various invalid IV sizes (should be 12 bytes for GCM standard)
 	invalidIVs := [][]byte{
-		[]byte{},
+		{},
 		make([]byte, 11),
 		make([]byte, 13),
 		make([]byte, 16),

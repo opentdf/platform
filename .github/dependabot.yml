@@ -18,7 +18,7 @@ updates:
   - package-ecosystem: gomod
     directory: "/examples"
     commit-message:
-      prefix: "fix(deps)"
+      prefix: "chore(ci)"
     groups:
       external:
         exclude-patterns:
@@ -29,6 +29,16 @@ updates:
     directory: "/sdk"
     commit-message:
       prefix: "fix(deps)"
+    groups:
+      external:
+        exclude-patterns:
+          - "github.com/opentdf/*"
+    schedule:
+      interval: daily
+  - package-ecosystem: gomod
+    directory: "/tests-bdd"
+    commit-message:
+      prefix: "chore(ci)"
     groups:
       external:
         exclude-patterns:

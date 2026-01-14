@@ -211,7 +211,10 @@ func (b *BasicManager) unwrap(ctx context.Context, kid string, wrappedKey string
 	privKey, err := gcm.Decrypt(wk)
 	if err != nil {
 		if errors.Is(err, ocrypto.ErrInvalidKeyData) {
-			return nil, fmt.Errorf("basic key manager is not configured: invalid wrapped key data: %w", err)
+			return nil, fmt.Errorf("basic key manager is not configured: %w", err)
+		}
+		if errors.Is(err, ocrypto.ErrInvalidCiphertext) {
+			return nil, fmt.Errorf("wrapped key data is corrupted or invalid format: %w", err)
 		}
 		return nil, fmt.Errorf("failed to decrypt wrapped key: %w", err)
 	}

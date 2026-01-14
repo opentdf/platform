@@ -79,7 +79,7 @@ func (aesGcm AesGcm) EncryptWithIV(iv, data []byte) ([]byte, error) {
 // NOTE: This method expects gcm standard nonce size(12) of iv.
 func (aesGcm AesGcm) EncryptWithIVAndTagSize(iv, data []byte, authTagSize int) ([]byte, error) {
 	if len(iv) != GcmStandardNonceSize {
-		return nil, errors.New("invalid nonce size, expects GcmStandardNonceSize")
+		return nil, ErrInvalidCiphertext
 	}
 
 	gcm, err := cipher.NewGCMWithTagSize(aesGcm.block, authTagSize)
@@ -96,7 +96,7 @@ func (aesGcm AesGcm) EncryptWithIVAndTagSize(iv, data []byte, authTagSize int) (
 // also expects IV as preamble of data.
 func (aesGcm AesGcm) Decrypt(data []byte) ([]byte, error) { // extract nonce and cipherText
 	if len(data) == 0 || len(data) < GcmStandardNonceSize {
-		return nil, ErrInvalidKeyData
+		return nil, ErrInvalidCiphertext
 	}
 	nonce, cipherText := data[:GcmStandardNonceSize], data[GcmStandardNonceSize:]
 
@@ -117,7 +117,7 @@ func (aesGcm AesGcm) Decrypt(data []byte) ([]byte, error) { // extract nonce and
 // NOTE: This method expects gcm standard nonce size(12) of iv.
 func (aesGcm AesGcm) DecryptWithTagSize(data []byte, authTagSize int) ([]byte, error) {
 	if len(data) == 0 || len(data) < GcmStandardNonceSize {
-		return nil, ErrInvalidKeyData
+		return nil, ErrInvalidCiphertext
 	}
 	// extract nonce and cipherText
 	nonce, cipherText := data[:GcmStandardNonceSize], data[GcmStandardNonceSize:]
@@ -139,7 +139,7 @@ func (aesGcm AesGcm) DecryptWithTagSize(data []byte, authTagSize int) ([]byte, e
 // NOTE: This method expects gcm standard nonce size(12) of iv.
 func (aesGcm AesGcm) DecryptWithIVAndTagSize(iv, data []byte, authTagSize int) ([]byte, error) {
 	if len(iv) != GcmStandardNonceSize {
-		return nil, errors.New("invalid nonce size, expects GcmStandardNonceSize")
+		return nil, ErrInvalidCiphertext
 	}
 
 	gcm, err := cipher.NewGCMWithTagSize(aesGcm.block, authTagSize)

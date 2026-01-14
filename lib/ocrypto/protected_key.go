@@ -52,7 +52,10 @@ func (k *AESProtectedKey) DecryptAESGCM(iv []byte, body []byte, tagSize int) ([]
 	decryptedData, err := k.aesGcm.DecryptWithIVAndTagSize(iv, body, tagSize)
 	if err != nil {
 		if errors.Is(err, ErrInvalidKeyData) {
-			return nil, fmt.Errorf("invalid data for decryption: %w", err)
+			return nil, fmt.Errorf("invalid key data: %w", err)
+		}
+		if errors.Is(err, ErrInvalidCiphertext) {
+			return nil, fmt.Errorf("invalid ciphertext or IV: %w", err)
 		}
 		return nil, fmt.Errorf("AES-GCM decryption failed: %w", err)
 	}

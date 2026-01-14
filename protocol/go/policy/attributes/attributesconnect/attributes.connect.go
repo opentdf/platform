@@ -92,30 +92,6 @@ const (
 	AttributesServiceRemovePublicKeyFromValueProcedure = "/policy.attributes.AttributesService/RemovePublicKeyFromValue"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	attributesServiceServiceDescriptor                                  = attributes.File_policy_attributes_attributes_proto.Services().ByName("AttributesService")
-	attributesServiceListAttributesMethodDescriptor                     = attributesServiceServiceDescriptor.Methods().ByName("ListAttributes")
-	attributesServiceListAttributeValuesMethodDescriptor                = attributesServiceServiceDescriptor.Methods().ByName("ListAttributeValues")
-	attributesServiceGetAttributeMethodDescriptor                       = attributesServiceServiceDescriptor.Methods().ByName("GetAttribute")
-	attributesServiceGetAttributeValuesByFqnsMethodDescriptor           = attributesServiceServiceDescriptor.Methods().ByName("GetAttributeValuesByFqns")
-	attributesServiceCreateAttributeMethodDescriptor                    = attributesServiceServiceDescriptor.Methods().ByName("CreateAttribute")
-	attributesServiceUpdateAttributeMethodDescriptor                    = attributesServiceServiceDescriptor.Methods().ByName("UpdateAttribute")
-	attributesServiceDeactivateAttributeMethodDescriptor                = attributesServiceServiceDescriptor.Methods().ByName("DeactivateAttribute")
-	attributesServiceGetAttributeValueMethodDescriptor                  = attributesServiceServiceDescriptor.Methods().ByName("GetAttributeValue")
-	attributesServiceCreateAttributeValueMethodDescriptor               = attributesServiceServiceDescriptor.Methods().ByName("CreateAttributeValue")
-	attributesServiceUpdateAttributeValueMethodDescriptor               = attributesServiceServiceDescriptor.Methods().ByName("UpdateAttributeValue")
-	attributesServiceDeactivateAttributeValueMethodDescriptor           = attributesServiceServiceDescriptor.Methods().ByName("DeactivateAttributeValue")
-	attributesServiceAssignKeyAccessServerToAttributeMethodDescriptor   = attributesServiceServiceDescriptor.Methods().ByName("AssignKeyAccessServerToAttribute")
-	attributesServiceRemoveKeyAccessServerFromAttributeMethodDescriptor = attributesServiceServiceDescriptor.Methods().ByName("RemoveKeyAccessServerFromAttribute")
-	attributesServiceAssignKeyAccessServerToValueMethodDescriptor       = attributesServiceServiceDescriptor.Methods().ByName("AssignKeyAccessServerToValue")
-	attributesServiceRemoveKeyAccessServerFromValueMethodDescriptor     = attributesServiceServiceDescriptor.Methods().ByName("RemoveKeyAccessServerFromValue")
-	attributesServiceAssignPublicKeyToAttributeMethodDescriptor         = attributesServiceServiceDescriptor.Methods().ByName("AssignPublicKeyToAttribute")
-	attributesServiceRemovePublicKeyFromAttributeMethodDescriptor       = attributesServiceServiceDescriptor.Methods().ByName("RemovePublicKeyFromAttribute")
-	attributesServiceAssignPublicKeyToValueMethodDescriptor             = attributesServiceServiceDescriptor.Methods().ByName("AssignPublicKeyToValue")
-	attributesServiceRemovePublicKeyFromValueMethodDescriptor           = attributesServiceServiceDescriptor.Methods().ByName("RemovePublicKeyFromValue")
-)
-
 // AttributesServiceClient is a client for the policy.attributes.AttributesService service.
 type AttributesServiceClient interface {
 	// --------------------------------------*
@@ -166,124 +142,125 @@ type AttributesServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewAttributesServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AttributesServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	attributesServiceMethods := attributes.File_policy_attributes_attributes_proto.Services().ByName("AttributesService").Methods()
 	return &attributesServiceClient{
 		listAttributes: connect.NewClient[attributes.ListAttributesRequest, attributes.ListAttributesResponse](
 			httpClient,
 			baseURL+AttributesServiceListAttributesProcedure,
-			connect.WithSchema(attributesServiceListAttributesMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("ListAttributes")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		listAttributeValues: connect.NewClient[attributes.ListAttributeValuesRequest, attributes.ListAttributeValuesResponse](
 			httpClient,
 			baseURL+AttributesServiceListAttributeValuesProcedure,
-			connect.WithSchema(attributesServiceListAttributeValuesMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("ListAttributeValues")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getAttribute: connect.NewClient[attributes.GetAttributeRequest, attributes.GetAttributeResponse](
 			httpClient,
 			baseURL+AttributesServiceGetAttributeProcedure,
-			connect.WithSchema(attributesServiceGetAttributeMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("GetAttribute")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getAttributeValuesByFqns: connect.NewClient[attributes.GetAttributeValuesByFqnsRequest, attributes.GetAttributeValuesByFqnsResponse](
 			httpClient,
 			baseURL+AttributesServiceGetAttributeValuesByFqnsProcedure,
-			connect.WithSchema(attributesServiceGetAttributeValuesByFqnsMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("GetAttributeValuesByFqns")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createAttribute: connect.NewClient[attributes.CreateAttributeRequest, attributes.CreateAttributeResponse](
 			httpClient,
 			baseURL+AttributesServiceCreateAttributeProcedure,
-			connect.WithSchema(attributesServiceCreateAttributeMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("CreateAttribute")),
 			connect.WithClientOptions(opts...),
 		),
 		updateAttribute: connect.NewClient[attributes.UpdateAttributeRequest, attributes.UpdateAttributeResponse](
 			httpClient,
 			baseURL+AttributesServiceUpdateAttributeProcedure,
-			connect.WithSchema(attributesServiceUpdateAttributeMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("UpdateAttribute")),
 			connect.WithClientOptions(opts...),
 		),
 		deactivateAttribute: connect.NewClient[attributes.DeactivateAttributeRequest, attributes.DeactivateAttributeResponse](
 			httpClient,
 			baseURL+AttributesServiceDeactivateAttributeProcedure,
-			connect.WithSchema(attributesServiceDeactivateAttributeMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("DeactivateAttribute")),
 			connect.WithClientOptions(opts...),
 		),
 		getAttributeValue: connect.NewClient[attributes.GetAttributeValueRequest, attributes.GetAttributeValueResponse](
 			httpClient,
 			baseURL+AttributesServiceGetAttributeValueProcedure,
-			connect.WithSchema(attributesServiceGetAttributeValueMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("GetAttributeValue")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createAttributeValue: connect.NewClient[attributes.CreateAttributeValueRequest, attributes.CreateAttributeValueResponse](
 			httpClient,
 			baseURL+AttributesServiceCreateAttributeValueProcedure,
-			connect.WithSchema(attributesServiceCreateAttributeValueMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("CreateAttributeValue")),
 			connect.WithClientOptions(opts...),
 		),
 		updateAttributeValue: connect.NewClient[attributes.UpdateAttributeValueRequest, attributes.UpdateAttributeValueResponse](
 			httpClient,
 			baseURL+AttributesServiceUpdateAttributeValueProcedure,
-			connect.WithSchema(attributesServiceUpdateAttributeValueMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("UpdateAttributeValue")),
 			connect.WithClientOptions(opts...),
 		),
 		deactivateAttributeValue: connect.NewClient[attributes.DeactivateAttributeValueRequest, attributes.DeactivateAttributeValueResponse](
 			httpClient,
 			baseURL+AttributesServiceDeactivateAttributeValueProcedure,
-			connect.WithSchema(attributesServiceDeactivateAttributeValueMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("DeactivateAttributeValue")),
 			connect.WithClientOptions(opts...),
 		),
 		assignKeyAccessServerToAttribute: connect.NewClient[attributes.AssignKeyAccessServerToAttributeRequest, attributes.AssignKeyAccessServerToAttributeResponse](
 			httpClient,
 			baseURL+AttributesServiceAssignKeyAccessServerToAttributeProcedure,
-			connect.WithSchema(attributesServiceAssignKeyAccessServerToAttributeMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("AssignKeyAccessServerToAttribute")),
 			connect.WithClientOptions(opts...),
 		),
 		removeKeyAccessServerFromAttribute: connect.NewClient[attributes.RemoveKeyAccessServerFromAttributeRequest, attributes.RemoveKeyAccessServerFromAttributeResponse](
 			httpClient,
 			baseURL+AttributesServiceRemoveKeyAccessServerFromAttributeProcedure,
-			connect.WithSchema(attributesServiceRemoveKeyAccessServerFromAttributeMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("RemoveKeyAccessServerFromAttribute")),
 			connect.WithClientOptions(opts...),
 		),
 		assignKeyAccessServerToValue: connect.NewClient[attributes.AssignKeyAccessServerToValueRequest, attributes.AssignKeyAccessServerToValueResponse](
 			httpClient,
 			baseURL+AttributesServiceAssignKeyAccessServerToValueProcedure,
-			connect.WithSchema(attributesServiceAssignKeyAccessServerToValueMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("AssignKeyAccessServerToValue")),
 			connect.WithClientOptions(opts...),
 		),
 		removeKeyAccessServerFromValue: connect.NewClient[attributes.RemoveKeyAccessServerFromValueRequest, attributes.RemoveKeyAccessServerFromValueResponse](
 			httpClient,
 			baseURL+AttributesServiceRemoveKeyAccessServerFromValueProcedure,
-			connect.WithSchema(attributesServiceRemoveKeyAccessServerFromValueMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("RemoveKeyAccessServerFromValue")),
 			connect.WithClientOptions(opts...),
 		),
 		assignPublicKeyToAttribute: connect.NewClient[attributes.AssignPublicKeyToAttributeRequest, attributes.AssignPublicKeyToAttributeResponse](
 			httpClient,
 			baseURL+AttributesServiceAssignPublicKeyToAttributeProcedure,
-			connect.WithSchema(attributesServiceAssignPublicKeyToAttributeMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("AssignPublicKeyToAttribute")),
 			connect.WithClientOptions(opts...),
 		),
 		removePublicKeyFromAttribute: connect.NewClient[attributes.RemovePublicKeyFromAttributeRequest, attributes.RemovePublicKeyFromAttributeResponse](
 			httpClient,
 			baseURL+AttributesServiceRemovePublicKeyFromAttributeProcedure,
-			connect.WithSchema(attributesServiceRemovePublicKeyFromAttributeMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("RemovePublicKeyFromAttribute")),
 			connect.WithClientOptions(opts...),
 		),
 		assignPublicKeyToValue: connect.NewClient[attributes.AssignPublicKeyToValueRequest, attributes.AssignPublicKeyToValueResponse](
 			httpClient,
 			baseURL+AttributesServiceAssignPublicKeyToValueProcedure,
-			connect.WithSchema(attributesServiceAssignPublicKeyToValueMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("AssignPublicKeyToValue")),
 			connect.WithClientOptions(opts...),
 		),
 		removePublicKeyFromValue: connect.NewClient[attributes.RemovePublicKeyFromValueRequest, attributes.RemovePublicKeyFromValueResponse](
 			httpClient,
 			baseURL+AttributesServiceRemovePublicKeyFromValueProcedure,
-			connect.WithSchema(attributesServiceRemovePublicKeyFromValueMethodDescriptor),
+			connect.WithSchema(attributesServiceMethods.ByName("RemovePublicKeyFromValue")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -467,123 +444,124 @@ type AttributesServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewAttributesServiceHandler(svc AttributesServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	attributesServiceMethods := attributes.File_policy_attributes_attributes_proto.Services().ByName("AttributesService").Methods()
 	attributesServiceListAttributesHandler := connect.NewUnaryHandler(
 		AttributesServiceListAttributesProcedure,
 		svc.ListAttributes,
-		connect.WithSchema(attributesServiceListAttributesMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("ListAttributes")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceListAttributeValuesHandler := connect.NewUnaryHandler(
 		AttributesServiceListAttributeValuesProcedure,
 		svc.ListAttributeValues,
-		connect.WithSchema(attributesServiceListAttributeValuesMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("ListAttributeValues")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceGetAttributeHandler := connect.NewUnaryHandler(
 		AttributesServiceGetAttributeProcedure,
 		svc.GetAttribute,
-		connect.WithSchema(attributesServiceGetAttributeMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("GetAttribute")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceGetAttributeValuesByFqnsHandler := connect.NewUnaryHandler(
 		AttributesServiceGetAttributeValuesByFqnsProcedure,
 		svc.GetAttributeValuesByFqns,
-		connect.WithSchema(attributesServiceGetAttributeValuesByFqnsMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("GetAttributeValuesByFqns")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceCreateAttributeHandler := connect.NewUnaryHandler(
 		AttributesServiceCreateAttributeProcedure,
 		svc.CreateAttribute,
-		connect.WithSchema(attributesServiceCreateAttributeMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("CreateAttribute")),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceUpdateAttributeHandler := connect.NewUnaryHandler(
 		AttributesServiceUpdateAttributeProcedure,
 		svc.UpdateAttribute,
-		connect.WithSchema(attributesServiceUpdateAttributeMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("UpdateAttribute")),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceDeactivateAttributeHandler := connect.NewUnaryHandler(
 		AttributesServiceDeactivateAttributeProcedure,
 		svc.DeactivateAttribute,
-		connect.WithSchema(attributesServiceDeactivateAttributeMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("DeactivateAttribute")),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceGetAttributeValueHandler := connect.NewUnaryHandler(
 		AttributesServiceGetAttributeValueProcedure,
 		svc.GetAttributeValue,
-		connect.WithSchema(attributesServiceGetAttributeValueMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("GetAttributeValue")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceCreateAttributeValueHandler := connect.NewUnaryHandler(
 		AttributesServiceCreateAttributeValueProcedure,
 		svc.CreateAttributeValue,
-		connect.WithSchema(attributesServiceCreateAttributeValueMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("CreateAttributeValue")),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceUpdateAttributeValueHandler := connect.NewUnaryHandler(
 		AttributesServiceUpdateAttributeValueProcedure,
 		svc.UpdateAttributeValue,
-		connect.WithSchema(attributesServiceUpdateAttributeValueMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("UpdateAttributeValue")),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceDeactivateAttributeValueHandler := connect.NewUnaryHandler(
 		AttributesServiceDeactivateAttributeValueProcedure,
 		svc.DeactivateAttributeValue,
-		connect.WithSchema(attributesServiceDeactivateAttributeValueMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("DeactivateAttributeValue")),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceAssignKeyAccessServerToAttributeHandler := connect.NewUnaryHandler(
 		AttributesServiceAssignKeyAccessServerToAttributeProcedure,
 		svc.AssignKeyAccessServerToAttribute,
-		connect.WithSchema(attributesServiceAssignKeyAccessServerToAttributeMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("AssignKeyAccessServerToAttribute")),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceRemoveKeyAccessServerFromAttributeHandler := connect.NewUnaryHandler(
 		AttributesServiceRemoveKeyAccessServerFromAttributeProcedure,
 		svc.RemoveKeyAccessServerFromAttribute,
-		connect.WithSchema(attributesServiceRemoveKeyAccessServerFromAttributeMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("RemoveKeyAccessServerFromAttribute")),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceAssignKeyAccessServerToValueHandler := connect.NewUnaryHandler(
 		AttributesServiceAssignKeyAccessServerToValueProcedure,
 		svc.AssignKeyAccessServerToValue,
-		connect.WithSchema(attributesServiceAssignKeyAccessServerToValueMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("AssignKeyAccessServerToValue")),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceRemoveKeyAccessServerFromValueHandler := connect.NewUnaryHandler(
 		AttributesServiceRemoveKeyAccessServerFromValueProcedure,
 		svc.RemoveKeyAccessServerFromValue,
-		connect.WithSchema(attributesServiceRemoveKeyAccessServerFromValueMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("RemoveKeyAccessServerFromValue")),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceAssignPublicKeyToAttributeHandler := connect.NewUnaryHandler(
 		AttributesServiceAssignPublicKeyToAttributeProcedure,
 		svc.AssignPublicKeyToAttribute,
-		connect.WithSchema(attributesServiceAssignPublicKeyToAttributeMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("AssignPublicKeyToAttribute")),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceRemovePublicKeyFromAttributeHandler := connect.NewUnaryHandler(
 		AttributesServiceRemovePublicKeyFromAttributeProcedure,
 		svc.RemovePublicKeyFromAttribute,
-		connect.WithSchema(attributesServiceRemovePublicKeyFromAttributeMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("RemovePublicKeyFromAttribute")),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceAssignPublicKeyToValueHandler := connect.NewUnaryHandler(
 		AttributesServiceAssignPublicKeyToValueProcedure,
 		svc.AssignPublicKeyToValue,
-		connect.WithSchema(attributesServiceAssignPublicKeyToValueMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("AssignPublicKeyToValue")),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceRemovePublicKeyFromValueHandler := connect.NewUnaryHandler(
 		AttributesServiceRemovePublicKeyFromValueProcedure,
 		svc.RemovePublicKeyFromValue,
-		connect.WithSchema(attributesServiceRemovePublicKeyFromValueMethodDescriptor),
+		connect.WithSchema(attributesServiceMethods.ByName("RemovePublicKeyFromValue")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/policy.attributes.AttributesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

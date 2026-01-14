@@ -69,22 +69,6 @@ const (
 	RegisteredResourcesServiceDeleteRegisteredResourceValueProcedure = "/policy.registeredresources.RegisteredResourcesService/DeleteRegisteredResourceValue"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	registeredResourcesServiceServiceDescriptor                                 = registeredresources.File_policy_registeredresources_registered_resources_proto.Services().ByName("RegisteredResourcesService")
-	registeredResourcesServiceCreateRegisteredResourceMethodDescriptor          = registeredResourcesServiceServiceDescriptor.Methods().ByName("CreateRegisteredResource")
-	registeredResourcesServiceGetRegisteredResourceMethodDescriptor             = registeredResourcesServiceServiceDescriptor.Methods().ByName("GetRegisteredResource")
-	registeredResourcesServiceListRegisteredResourcesMethodDescriptor           = registeredResourcesServiceServiceDescriptor.Methods().ByName("ListRegisteredResources")
-	registeredResourcesServiceUpdateRegisteredResourceMethodDescriptor          = registeredResourcesServiceServiceDescriptor.Methods().ByName("UpdateRegisteredResource")
-	registeredResourcesServiceDeleteRegisteredResourceMethodDescriptor          = registeredResourcesServiceServiceDescriptor.Methods().ByName("DeleteRegisteredResource")
-	registeredResourcesServiceCreateRegisteredResourceValueMethodDescriptor     = registeredResourcesServiceServiceDescriptor.Methods().ByName("CreateRegisteredResourceValue")
-	registeredResourcesServiceGetRegisteredResourceValueMethodDescriptor        = registeredResourcesServiceServiceDescriptor.Methods().ByName("GetRegisteredResourceValue")
-	registeredResourcesServiceGetRegisteredResourceValuesByFQNsMethodDescriptor = registeredResourcesServiceServiceDescriptor.Methods().ByName("GetRegisteredResourceValuesByFQNs")
-	registeredResourcesServiceListRegisteredResourceValuesMethodDescriptor      = registeredResourcesServiceServiceDescriptor.Methods().ByName("ListRegisteredResourceValues")
-	registeredResourcesServiceUpdateRegisteredResourceValueMethodDescriptor     = registeredResourcesServiceServiceDescriptor.Methods().ByName("UpdateRegisteredResourceValue")
-	registeredResourcesServiceDeleteRegisteredResourceValueMethodDescriptor     = registeredResourcesServiceServiceDescriptor.Methods().ByName("DeleteRegisteredResourceValue")
-)
-
 // RegisteredResourcesServiceClient is a client for the
 // policy.registeredresources.RegisteredResourcesService service.
 type RegisteredResourcesServiceClient interface {
@@ -111,71 +95,72 @@ type RegisteredResourcesServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewRegisteredResourcesServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) RegisteredResourcesServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	registeredResourcesServiceMethods := registeredresources.File_policy_registeredresources_registered_resources_proto.Services().ByName("RegisteredResourcesService").Methods()
 	return &registeredResourcesServiceClient{
 		createRegisteredResource: connect.NewClient[registeredresources.CreateRegisteredResourceRequest, registeredresources.CreateRegisteredResourceResponse](
 			httpClient,
 			baseURL+RegisteredResourcesServiceCreateRegisteredResourceProcedure,
-			connect.WithSchema(registeredResourcesServiceCreateRegisteredResourceMethodDescriptor),
+			connect.WithSchema(registeredResourcesServiceMethods.ByName("CreateRegisteredResource")),
 			connect.WithClientOptions(opts...),
 		),
 		getRegisteredResource: connect.NewClient[registeredresources.GetRegisteredResourceRequest, registeredresources.GetRegisteredResourceResponse](
 			httpClient,
 			baseURL+RegisteredResourcesServiceGetRegisteredResourceProcedure,
-			connect.WithSchema(registeredResourcesServiceGetRegisteredResourceMethodDescriptor),
+			connect.WithSchema(registeredResourcesServiceMethods.ByName("GetRegisteredResource")),
 			connect.WithClientOptions(opts...),
 		),
 		listRegisteredResources: connect.NewClient[registeredresources.ListRegisteredResourcesRequest, registeredresources.ListRegisteredResourcesResponse](
 			httpClient,
 			baseURL+RegisteredResourcesServiceListRegisteredResourcesProcedure,
-			connect.WithSchema(registeredResourcesServiceListRegisteredResourcesMethodDescriptor),
+			connect.WithSchema(registeredResourcesServiceMethods.ByName("ListRegisteredResources")),
 			connect.WithClientOptions(opts...),
 		),
 		updateRegisteredResource: connect.NewClient[registeredresources.UpdateRegisteredResourceRequest, registeredresources.UpdateRegisteredResourceResponse](
 			httpClient,
 			baseURL+RegisteredResourcesServiceUpdateRegisteredResourceProcedure,
-			connect.WithSchema(registeredResourcesServiceUpdateRegisteredResourceMethodDescriptor),
+			connect.WithSchema(registeredResourcesServiceMethods.ByName("UpdateRegisteredResource")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteRegisteredResource: connect.NewClient[registeredresources.DeleteRegisteredResourceRequest, registeredresources.DeleteRegisteredResourceResponse](
 			httpClient,
 			baseURL+RegisteredResourcesServiceDeleteRegisteredResourceProcedure,
-			connect.WithSchema(registeredResourcesServiceDeleteRegisteredResourceMethodDescriptor),
+			connect.WithSchema(registeredResourcesServiceMethods.ByName("DeleteRegisteredResource")),
 			connect.WithClientOptions(opts...),
 		),
 		createRegisteredResourceValue: connect.NewClient[registeredresources.CreateRegisteredResourceValueRequest, registeredresources.CreateRegisteredResourceValueResponse](
 			httpClient,
 			baseURL+RegisteredResourcesServiceCreateRegisteredResourceValueProcedure,
-			connect.WithSchema(registeredResourcesServiceCreateRegisteredResourceValueMethodDescriptor),
+			connect.WithSchema(registeredResourcesServiceMethods.ByName("CreateRegisteredResourceValue")),
 			connect.WithClientOptions(opts...),
 		),
 		getRegisteredResourceValue: connect.NewClient[registeredresources.GetRegisteredResourceValueRequest, registeredresources.GetRegisteredResourceValueResponse](
 			httpClient,
 			baseURL+RegisteredResourcesServiceGetRegisteredResourceValueProcedure,
-			connect.WithSchema(registeredResourcesServiceGetRegisteredResourceValueMethodDescriptor),
+			connect.WithSchema(registeredResourcesServiceMethods.ByName("GetRegisteredResourceValue")),
 			connect.WithClientOptions(opts...),
 		),
 		getRegisteredResourceValuesByFQNs: connect.NewClient[registeredresources.GetRegisteredResourceValuesByFQNsRequest, registeredresources.GetRegisteredResourceValuesByFQNsResponse](
 			httpClient,
 			baseURL+RegisteredResourcesServiceGetRegisteredResourceValuesByFQNsProcedure,
-			connect.WithSchema(registeredResourcesServiceGetRegisteredResourceValuesByFQNsMethodDescriptor),
+			connect.WithSchema(registeredResourcesServiceMethods.ByName("GetRegisteredResourceValuesByFQNs")),
 			connect.WithClientOptions(opts...),
 		),
 		listRegisteredResourceValues: connect.NewClient[registeredresources.ListRegisteredResourceValuesRequest, registeredresources.ListRegisteredResourceValuesResponse](
 			httpClient,
 			baseURL+RegisteredResourcesServiceListRegisteredResourceValuesProcedure,
-			connect.WithSchema(registeredResourcesServiceListRegisteredResourceValuesMethodDescriptor),
+			connect.WithSchema(registeredResourcesServiceMethods.ByName("ListRegisteredResourceValues")),
 			connect.WithClientOptions(opts...),
 		),
 		updateRegisteredResourceValue: connect.NewClient[registeredresources.UpdateRegisteredResourceValueRequest, registeredresources.UpdateRegisteredResourceValueResponse](
 			httpClient,
 			baseURL+RegisteredResourcesServiceUpdateRegisteredResourceValueProcedure,
-			connect.WithSchema(registeredResourcesServiceUpdateRegisteredResourceValueMethodDescriptor),
+			connect.WithSchema(registeredResourcesServiceMethods.ByName("UpdateRegisteredResourceValue")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteRegisteredResourceValue: connect.NewClient[registeredresources.DeleteRegisteredResourceValueRequest, registeredresources.DeleteRegisteredResourceValueResponse](
 			httpClient,
 			baseURL+RegisteredResourcesServiceDeleteRegisteredResourceValueProcedure,
-			connect.WithSchema(registeredResourcesServiceDeleteRegisteredResourceValueMethodDescriptor),
+			connect.WithSchema(registeredResourcesServiceMethods.ByName("DeleteRegisteredResourceValue")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -284,70 +269,71 @@ type RegisteredResourcesServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewRegisteredResourcesServiceHandler(svc RegisteredResourcesServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	registeredResourcesServiceMethods := registeredresources.File_policy_registeredresources_registered_resources_proto.Services().ByName("RegisteredResourcesService").Methods()
 	registeredResourcesServiceCreateRegisteredResourceHandler := connect.NewUnaryHandler(
 		RegisteredResourcesServiceCreateRegisteredResourceProcedure,
 		svc.CreateRegisteredResource,
-		connect.WithSchema(registeredResourcesServiceCreateRegisteredResourceMethodDescriptor),
+		connect.WithSchema(registeredResourcesServiceMethods.ByName("CreateRegisteredResource")),
 		connect.WithHandlerOptions(opts...),
 	)
 	registeredResourcesServiceGetRegisteredResourceHandler := connect.NewUnaryHandler(
 		RegisteredResourcesServiceGetRegisteredResourceProcedure,
 		svc.GetRegisteredResource,
-		connect.WithSchema(registeredResourcesServiceGetRegisteredResourceMethodDescriptor),
+		connect.WithSchema(registeredResourcesServiceMethods.ByName("GetRegisteredResource")),
 		connect.WithHandlerOptions(opts...),
 	)
 	registeredResourcesServiceListRegisteredResourcesHandler := connect.NewUnaryHandler(
 		RegisteredResourcesServiceListRegisteredResourcesProcedure,
 		svc.ListRegisteredResources,
-		connect.WithSchema(registeredResourcesServiceListRegisteredResourcesMethodDescriptor),
+		connect.WithSchema(registeredResourcesServiceMethods.ByName("ListRegisteredResources")),
 		connect.WithHandlerOptions(opts...),
 	)
 	registeredResourcesServiceUpdateRegisteredResourceHandler := connect.NewUnaryHandler(
 		RegisteredResourcesServiceUpdateRegisteredResourceProcedure,
 		svc.UpdateRegisteredResource,
-		connect.WithSchema(registeredResourcesServiceUpdateRegisteredResourceMethodDescriptor),
+		connect.WithSchema(registeredResourcesServiceMethods.ByName("UpdateRegisteredResource")),
 		connect.WithHandlerOptions(opts...),
 	)
 	registeredResourcesServiceDeleteRegisteredResourceHandler := connect.NewUnaryHandler(
 		RegisteredResourcesServiceDeleteRegisteredResourceProcedure,
 		svc.DeleteRegisteredResource,
-		connect.WithSchema(registeredResourcesServiceDeleteRegisteredResourceMethodDescriptor),
+		connect.WithSchema(registeredResourcesServiceMethods.ByName("DeleteRegisteredResource")),
 		connect.WithHandlerOptions(opts...),
 	)
 	registeredResourcesServiceCreateRegisteredResourceValueHandler := connect.NewUnaryHandler(
 		RegisteredResourcesServiceCreateRegisteredResourceValueProcedure,
 		svc.CreateRegisteredResourceValue,
-		connect.WithSchema(registeredResourcesServiceCreateRegisteredResourceValueMethodDescriptor),
+		connect.WithSchema(registeredResourcesServiceMethods.ByName("CreateRegisteredResourceValue")),
 		connect.WithHandlerOptions(opts...),
 	)
 	registeredResourcesServiceGetRegisteredResourceValueHandler := connect.NewUnaryHandler(
 		RegisteredResourcesServiceGetRegisteredResourceValueProcedure,
 		svc.GetRegisteredResourceValue,
-		connect.WithSchema(registeredResourcesServiceGetRegisteredResourceValueMethodDescriptor),
+		connect.WithSchema(registeredResourcesServiceMethods.ByName("GetRegisteredResourceValue")),
 		connect.WithHandlerOptions(opts...),
 	)
 	registeredResourcesServiceGetRegisteredResourceValuesByFQNsHandler := connect.NewUnaryHandler(
 		RegisteredResourcesServiceGetRegisteredResourceValuesByFQNsProcedure,
 		svc.GetRegisteredResourceValuesByFQNs,
-		connect.WithSchema(registeredResourcesServiceGetRegisteredResourceValuesByFQNsMethodDescriptor),
+		connect.WithSchema(registeredResourcesServiceMethods.ByName("GetRegisteredResourceValuesByFQNs")),
 		connect.WithHandlerOptions(opts...),
 	)
 	registeredResourcesServiceListRegisteredResourceValuesHandler := connect.NewUnaryHandler(
 		RegisteredResourcesServiceListRegisteredResourceValuesProcedure,
 		svc.ListRegisteredResourceValues,
-		connect.WithSchema(registeredResourcesServiceListRegisteredResourceValuesMethodDescriptor),
+		connect.WithSchema(registeredResourcesServiceMethods.ByName("ListRegisteredResourceValues")),
 		connect.WithHandlerOptions(opts...),
 	)
 	registeredResourcesServiceUpdateRegisteredResourceValueHandler := connect.NewUnaryHandler(
 		RegisteredResourcesServiceUpdateRegisteredResourceValueProcedure,
 		svc.UpdateRegisteredResourceValue,
-		connect.WithSchema(registeredResourcesServiceUpdateRegisteredResourceValueMethodDescriptor),
+		connect.WithSchema(registeredResourcesServiceMethods.ByName("UpdateRegisteredResourceValue")),
 		connect.WithHandlerOptions(opts...),
 	)
 	registeredResourcesServiceDeleteRegisteredResourceValueHandler := connect.NewUnaryHandler(
 		RegisteredResourcesServiceDeleteRegisteredResourceValueProcedure,
 		svc.DeleteRegisteredResourceValue,
-		connect.WithSchema(registeredResourcesServiceDeleteRegisteredResourceValueMethodDescriptor),
+		connect.WithSchema(registeredResourcesServiceMethods.ByName("DeleteRegisteredResourceValue")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/policy.registeredresources.RegisteredResourcesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

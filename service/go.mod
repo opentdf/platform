@@ -6,7 +6,7 @@ toolchain go1.24.11
 
 require (
 	buf.build/go/protovalidate v0.13.1
-	connectrpc.com/connect v1.18.1
+	connectrpc.com/connect v1.19.1
 	connectrpc.com/grpchealth v1.4.0
 	connectrpc.com/grpcreflect v1.3.0
 	connectrpc.com/validate v0.3.0

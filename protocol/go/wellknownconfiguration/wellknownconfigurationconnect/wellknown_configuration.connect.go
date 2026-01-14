@@ -38,12 +38,6 @@ const (
 	WellKnownServiceGetWellKnownConfigurationProcedure = "/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	wellKnownServiceServiceDescriptor                         = wellknownconfiguration.File_wellknownconfiguration_wellknown_configuration_proto.Services().ByName("WellKnownService")
-	wellKnownServiceGetWellKnownConfigurationMethodDescriptor = wellKnownServiceServiceDescriptor.Methods().ByName("GetWellKnownConfiguration")
-)
-
 // WellKnownServiceClient is a client for the wellknownconfiguration.WellKnownService service.
 type WellKnownServiceClient interface {
 	GetWellKnownConfiguration(context.Context, *connect.Request[wellknownconfiguration.GetWellKnownConfigurationRequest]) (*connect.Response[wellknownconfiguration.GetWellKnownConfigurationResponse], error)
@@ -58,11 +52,12 @@ type WellKnownServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewWellKnownServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) WellKnownServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	wellKnownServiceMethods := wellknownconfiguration.File_wellknownconfiguration_wellknown_configuration_proto.Services().ByName("WellKnownService").Methods()
 	return &wellKnownServiceClient{
 		getWellKnownConfiguration: connect.NewClient[wellknownconfiguration.GetWellKnownConfigurationRequest, wellknownconfiguration.GetWellKnownConfigurationResponse](
 			httpClient,
 			baseURL+WellKnownServiceGetWellKnownConfigurationProcedure,
-			connect.WithSchema(wellKnownServiceGetWellKnownConfigurationMethodDescriptor),
+			connect.WithSchema(wellKnownServiceMethods.ByName("GetWellKnownConfiguration")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
@@ -92,10 +87,11 @@ type WellKnownServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewWellKnownServiceHandler(svc WellKnownServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	wellKnownServiceMethods := wellknownconfiguration.File_wellknownconfiguration_wellknown_configuration_proto.Services().ByName("WellKnownService").Methods()
 	wellKnownServiceGetWellKnownConfigurationHandler := connect.NewUnaryHandler(
 		WellKnownServiceGetWellKnownConfigurationProcedure,
 		svc.GetWellKnownConfiguration,
-		connect.WithSchema(wellKnownServiceGetWellKnownConfigurationMethodDescriptor),
+		connect.WithSchema(wellKnownServiceMethods.ByName("GetWellKnownConfiguration")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)

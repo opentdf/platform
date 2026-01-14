@@ -26,6 +26,9 @@ Prefer `make` targets at repo root:
 - Go formatting is enforced: run `make fmt` (uses `golangci-lint fmt`; Go uses tabs for indentation).
 - Imports should be goimports-compatible; keep package names lowercase; exported identifiers use `PascalCase`.
 - Protobuf changes must pass `buf lint` and should be regenerated via `make proto-generate`.
+- Always run `gofumpt` on Go files after making changes
+- The project uses `gofumpt` (stricter than `gofmt`) for formatting
+- Before completing Go-related tasks, run: `~/go/bin/gofumpt -w <files>`
 
 ## Testing Guidelines
 

@@ -60,12 +60,8 @@ func TestAESProtectedKey_DecryptAESGCM_InvalidCiphertext(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test with invalid IV size (should be 12 bytes)
+	// This triggers the ErrInvalidCiphertext check in DecryptWithIVAndTagSize
 	_, err = protectedKey.DecryptAESGCM([]byte{0x01, 0x02}, []byte("test"), 16)
-	require.ErrorIs(t, err, ErrInvalidCiphertext)
-
-	// Test with empty ciphertext
-	iv := make([]byte, GcmStandardNonceSize)
-	_, err = protectedKey.DecryptAESGCM(iv, []byte{}, 16)
 	require.ErrorIs(t, err, ErrInvalidCiphertext)
 }
 

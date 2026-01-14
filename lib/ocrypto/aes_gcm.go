@@ -19,12 +19,12 @@ const GcmStandardNonceSize = 12
 // NewAESGcm creates and returns a new AesGcm.
 func NewAESGcm(key []byte) (AesGcm, error) {
 	if len(key) == 0 {
-		return AesGcm{}, errors.New("invalid key size for gcm encryption")
+		return AesGcm{}, ErrInvalidKeyData
 	}
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return AesGcm{}, fmt.Errorf("aes.NewCipher failed: %w", err)
+		return AesGcm{}, fmt.Errorf("%w: %w", ErrInvalidKeyData, err)
 	}
 
 	return AesGcm{block: block}, nil
@@ -95,6 +95,9 @@ func (aesGcm AesGcm) EncryptWithIVAndTagSize(iv, data []byte, authTagSize int) (
 // NOTE: This method use nonce of 12 bytes and auth tag as aes block size(16 bytes)
 // also expects IV as preamble of data.
 func (aesGcm AesGcm) Decrypt(data []byte) ([]byte, error) { // extract nonce and cipherText
+	if len(data) == 0 || len(data) < GcmStandardNonceSize {
+		return nil, ErrInvalidKeyData
+	}
 	nonce, cipherText := data[:GcmStandardNonceSize], data[GcmStandardNonceSize:]
 
 	gcm, err := cipher.NewGCMWithNonceSize(aesGcm.block, GcmStandardNonceSize)
@@ -113,6 +116,9 @@ func (aesGcm AesGcm) Decrypt(data []byte) ([]byte, error) { // extract nonce and
 // DecryptWithTagSize decrypts data with symmetric key.
 // NOTE: This method expects gcm standard nonce size(12) of iv.
 func (aesGcm AesGcm) DecryptWithTagSize(data []byte, authTagSize int) ([]byte, error) {
+	if len(data) == 0 || len(data) < GcmStandardNonceSize {
+		return nil, ErrInvalidKeyData
+	}
 	// extract nonce and cipherText
 	nonce, cipherText := data[:GcmStandardNonceSize], data[GcmStandardNonceSize:]
 

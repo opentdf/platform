@@ -257,7 +257,7 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 
 func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string, includeInactiveValues bool) ([]*policy.Attribute, error) {
 	list, err := c.queries.listAttributesByDefOrValueFqns(ctx, listAttributesByDefOrValueFqnsParams{
-		Fqns:                 fqns,
+		Fqns:                  fqns,
 		IncludeInactiveValues: includeInactiveValues,
 	})
 	if err != nil {

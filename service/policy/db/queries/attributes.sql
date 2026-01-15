@@ -263,7 +263,7 @@ values AS (
         INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY k.value_id
     ) value_keys ON av.id = value_keys.value_id                        
-	WHERE av.active = TRUE
+	WHERE (av.active = TRUE OR sqlc.arg('include_inactive_values')::BOOLEAN = TRUE)
 	GROUP BY av.attribute_definition_id
 )
 SELECT

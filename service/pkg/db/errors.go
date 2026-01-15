@@ -20,6 +20,7 @@ var (
 	ErrForeignKeyViolation        = errors.New("ErrForeignKeyViolation: value is referenced by another table")
 	ErrRestrictViolation          = errors.New("ErrRestrictViolation: value cannot be deleted due to restriction")
 	ErrNotFound                   = errors.New("ErrNotFound: value not found")
+	ErrAttributeValueInactive     = errors.New("ErrAttributeValueInactive: attribute value inactive")
 	ErrEnumValueInvalid           = errors.New("ErrEnumValueInvalid: not a valid enum value")
 	ErrUUIDInvalid                = errors.New("ErrUUIDInvalid: value not a valid UUID")
 	ErrMissingValue               = errors.New("ErrMissingValue: value must be included")
@@ -136,6 +137,7 @@ const (
 	ErrorTextInvalidOblTrigParam        = "either the obligation value, attribute value, or action provided is invalid"
 	ErrorTextFqnMismatch                = "fqn mismatch"
 	ErrorTextInvalidCertificate         = "invalid certificate"
+	ErrorTextInactiveAttributeValue     = "inactive attribute value"
 )
 
 func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackErr string, logs ...any) error {
@@ -211,6 +213,10 @@ func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackEr
 	if errors.Is(err, ErrInvalidCertificate) {
 		l.ErrorContext(ctx, ErrorTextInvalidCertificate, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextInvalidCertificate))
+	}
+	if errors.Is(err, ErrAttributeValueInactive) {
+		l.ErrorContext(ctx, ErrorTextInactiveAttributeValue, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextInactiveAttributeValue))
 	}
 
 	l.ErrorContext(ctx, "request error", append(logs, slog.Any("error", err))...)

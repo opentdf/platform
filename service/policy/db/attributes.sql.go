@@ -140,7 +140,7 @@ LEFT JOIN (
     GROUP BY k.definition_id
 ) defk ON ad.id = defk.definition_id
 WHERE ($1::uuid IS NULL OR ad.id = $1::uuid)
-  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
+  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE($2::text, '^https://', ''))
 GROUP BY ad.id, n.name, fqns.fqn, defk.keys
 `
 
@@ -225,7 +225,7 @@ type getAttributeRow struct {
 //	    GROUP BY k.definition_id
 //	) defk ON ad.id = defk.definition_id
 //	WHERE ($1::uuid IS NULL OR ad.id = $1::uuid)
-//	  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
+//	  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE($2::text, '^https://', ''))
 //	GROUP BY ad.id, n.name, fqns.fqn, defk.keys
 func (q *Queries) getAttribute(ctx context.Context, arg getAttributeParams) (getAttributeRow, error) {
 	row := q.db.QueryRow(ctx, getAttribute, arg.ID, arg.Fqn)
@@ -450,7 +450,7 @@ values AS (
         INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY k.value_id
     ) value_keys ON av.id = value_keys.value_id                        
-	WHERE av.active = TRUE
+	WHERE (av.active = TRUE OR $2::BOOLEAN = TRUE)
 	GROUP BY av.attribute_definition_id
 )
 SELECT
@@ -469,6 +469,11 @@ INNER JOIN namespaces n ON td.namespace_id = n.id
 LEFT JOIN values ON td.id = values.attribute_definition_id
 WHERE fqns.value_id IS NULL
 `
+
+type listAttributesByDefOrValueFqnsParams struct {
+	Fqns                  []string `json:"fqns"`
+	IncludeInactiveValues bool     `json:"include_inactive_values"`
+}
 
 type listAttributesByDefOrValueFqnsRow struct {
 	ID        string                  `json:"id"`
@@ -687,7 +692,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //	        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
 //	        GROUP BY k.value_id
 //	    ) value_keys ON av.id = value_keys.value_id
-//		WHERE av.active = TRUE
+//		WHERE (av.active = TRUE OR $2::BOOLEAN = TRUE)
 //		GROUP BY av.attribute_definition_id
 //	)
 //	SELECT
@@ -705,8 +710,8 @@ type listAttributesByDefOrValueFqnsRow struct {
 //	INNER JOIN namespaces n ON td.namespace_id = n.id
 //	LEFT JOIN values ON td.id = values.attribute_definition_id
 //	WHERE fqns.value_id IS NULL
-func (q *Queries) listAttributesByDefOrValueFqns(ctx context.Context, fqns []string) ([]listAttributesByDefOrValueFqnsRow, error) {
-	rows, err := q.db.Query(ctx, listAttributesByDefOrValueFqns, fqns)
+func (q *Queries) listAttributesByDefOrValueFqns(ctx context.Context, arg listAttributesByDefOrValueFqnsParams) ([]listAttributesByDefOrValueFqnsRow, error) {
+	rows, err := q.db.Query(ctx, listAttributesByDefOrValueFqns, arg.Fqns, arg.IncludeInactiveValues)
 	if err != nil {
 		return nil, err
 	}

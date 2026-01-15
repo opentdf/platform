@@ -678,7 +678,8 @@ func Test_GetConnectorTokenRefresh(t *testing.T) {
 	service := &KeycloakEntityResolutionService{
 		idpConfig: kcconfig,
 		logger:    logger.CreateTestLogger(),
-		Tracer:    trace.NewNoopTracerProvider().Tracer("test"),
+		//nolint:staticcheck // SA1019: trace.NewNoopTracerProvider is deprecated but required for test setup
+		Tracer: trace.NewNoopTracerProvider().Tracer("test"),
 	}
 
 	req := &connect.Request[entityresolution.ResolveEntitiesRequest]{

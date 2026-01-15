@@ -205,7 +205,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	}
 
 	var readPos int64
-	var aggregateHash string
+	var aggregateHash strings.Builder
 	readBuf := bytes.NewBuffer(make([]byte, 0, tdfConfig.defaultSegmentSize))
 	for totalSegments != 0 { // adjust read size
 		readSize := segmentSize
@@ -238,7 +238,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
 
-		aggregateHash += segmentSig
+		aggregateHash.WriteString(segmentSig)
 		segmentInfo := Segment{
 			Hash:          string(ocrypto.Base64Encode([]byte(segmentSig))),
 			Size:          readSize,
@@ -251,7 +251,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		readPos += readSize
 	}
 
-	rootSignature, err := calculateSignature([]byte(aggregateHash), tdfObject.payloadKey[:],
+	rootSignature, err := calculateSignature([]byte(aggregateHash.String()), tdfObject.payloadKey[:],
 		tdfConfig.integrityAlgorithm, tdfConfig.useHex)
 	if err != nil {
 		return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
@@ -319,7 +319,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		}
 
 		var completeHashBuilder strings.Builder
-		completeHashBuilder.WriteString(aggregateHash)
+		completeHashBuilder.WriteString(aggregateHash.String())
 		if tdfConfig.useHex {
 			completeHashBuilder.Write(hashOfAssertionAsHex)
 		} else {
@@ -702,6 +702,7 @@ func generateWrapKeyWithEC(mode ocrypto.ECCMode, kasPublicKey string, symKey []b
 }
 
 func generateWrapKeyWithRSA(publicKey string, symKey []byte) (string, error) {
+	//nolint:staticcheck // SA1019: NewAsymEncryption is deprecated but required for backward compatibility with existing TDF files
 	asymEncrypt, err := ocrypto.NewAsymEncryption(publicKey)
 	if err != nil {
 		return "", fmt.Errorf("generateWrapKeyWithRSA: ocrypto.NewAsymEncryption failed:%w", err)

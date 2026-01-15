@@ -146,6 +146,7 @@ func isValidTemplateVariable(name string) bool {
 	}
 
 	// Must start with letter or underscore
+	//nolint:staticcheck // QF1001: De Morgan's law would make this less readable
 	if !((name[0] >= 'a' && name[0] <= 'z') || (name[0] >= 'A' && name[0] <= 'Z') || name[0] == '_') {
 		return false
 	}
@@ -153,6 +154,7 @@ func isValidTemplateVariable(name string) bool {
 	// Rest must be letters, digits, or underscores
 	for i := 1; i < len(name); i++ {
 		char := name[i]
+		//nolint:staticcheck // QF1001: De Morgan's law would make this less readable
 		if !((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || (char >= '0' && char <= '9') || char == '_') {
 			return false
 		}
@@ -169,12 +171,14 @@ func isValidLDAPAttribute(name string) bool {
 
 	// LDAP attribute names can contain letters, digits, and hyphens
 	// Must start with a letter
+	//nolint:staticcheck // QF1001: De Morgan's law would make this less readable
 	if !((name[0] >= 'a' && name[0] <= 'z') || (name[0] >= 'A' && name[0] <= 'Z')) {
 		return false
 	}
 
 	for i := 1; i < len(name); i++ {
 		char := name[i]
+		//nolint:staticcheck // QF1001: De Morgan's law would make this less readable
 		if !((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || (char >= '0' && char <= '9') || char == '-') {
 			return false
 		}

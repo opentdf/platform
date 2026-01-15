@@ -1028,6 +1028,61 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 	}
 }
 
+func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_FiltersInactiveValues() {
+	namespace := "filter_inactive_values.get"
+	attr := "test_attr"
+	value1 := "test_value"
+	value2 := "test_value_2"
+	fqn1 := fqnBuilder(namespace, attr, value1)
+
+	// Create namespace
+	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: namespace,
+	})
+	s.Require().NoError(err)
+
+	// Create attribute
+	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: n.GetId(),
+		Name:        attr,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+	})
+	s.Require().NoError(err)
+
+	// Create attribute values
+	v1, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: value1,
+	})
+	s.Require().NoError(err)
+
+	v2, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, a.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: value2,
+	})
+	s.Require().NoError(err)
+
+	// Deactivate the second value
+	deactivated, err := s.db.PolicyClient.DeactivateAttributeValue(s.ctx, v2.GetId())
+	s.Require().NoError(err)
+	s.NotNil(deactivated)
+
+	// Get attributes by FQN of the active value
+	attributeAndValue, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqn1},
+	})
+	s.Require().NoError(err)
+	s.Len(attributeAndValue, 1)
+
+	val, ok := attributeAndValue[fqn1]
+	s.True(ok)
+	s.Equal(a.GetId(), val.GetAttribute().GetId())
+	s.Equal(v1.GetId(), val.GetValue().GetId())
+
+	values := val.GetAttribute().GetValues()
+	s.Len(values, 1)
+	s.Equal(v1.GetId(), values[0].GetId())
+	s.Equal(v1.GetValue(), values[0].GetValue())
+}
+
 func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_NormalizesLowerCase() {
 	namespace := "TESTLOWERCASE.get"
 	attr := "test_attr"

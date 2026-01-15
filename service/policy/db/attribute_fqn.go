@@ -120,14 +120,17 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 			continue
 		}
 
-		if attr.GetFqn() != "" {
-			defByFqn[attr.GetFqn()] = attr
-		}
-
-		for _, val := range attr.GetValues() {
+		values := attr.GetValues()
+		// Ensure that only active values are within the attribute object
+		activeValues := make([]*policy.Value, 0)
+		for _, val := range values {
 			valFqn := val.GetFqn()
+			isActive := val.GetActive().GetValue()
+			if isActive {
+				activeValues = append(activeValues, val)
+			}
 			if _, ok := list[valFqn]; ok {
-				if !val.GetActive().GetValue() {
+				if !isActive {
 					return nil, fmt.Errorf("value fqn [%s] inactive: %w", valFqn, db.ErrAttributeValueInactive)
 				}
 				// update response map with attribute and value pair if value FQN found
@@ -136,6 +139,14 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 					Value:     val,
 				}
 			}
+		}
+
+		if len(activeValues) != len(values) {
+			attr.Values = activeValues
+		}
+
+		if attr.GetFqn() != "" {
+			defByFqn[attr.GetFqn()] = attr
 		}
 	}
 

@@ -560,7 +560,7 @@ func (s *AttributeValuesSuite) Test_UnsafeUpdateAttributeValue() {
 	})
 	s.Require().NoError(err)
 	s.Equal(attrDef.ID, retrieved[original].GetAttribute().GetId())
-	s.Nil(retrieved[original].Value)
+	s.Nil(retrieved[original].GetValue())
 
 	updated := "https://example.net/attr/attr1/value/new_value"
 	retrieved, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/opentdf/platform/compare/sdk/v0.11.0...sdk/v0.12.0) (2026-01-16)
+
+
+### Features
+
+* **sdk:** expose base key API ([#3000](https://github.com/opentdf/platform/issues/3000)) ([67de794](https://github.com/opentdf/platform/commit/67de794721ccb7e5f93454043409dff1619fe42c))
+
 ## [0.11.0](https://github.com/opentdf/platform/compare/sdk/v0.10.0...sdk/v0.11.0) (2026-01-06)
 
 

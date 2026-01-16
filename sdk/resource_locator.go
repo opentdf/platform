@@ -10,7 +10,7 @@ import (
 )
 
 // ============================================================================================================
-// Support for serializing/deserializing URLS for nano usage
+// Support for serializing/deserializing URLs in the compact/binary encoding
 //
 // If an URL is specified as "https://some.site.com/endpoint"
 // the storage format for this is to strip off the leading "https://" prefix and encode as 0 (or 1 for http)

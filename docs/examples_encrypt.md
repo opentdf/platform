@@ -11,7 +11,6 @@ examples encrypt [flags]
 ```
   -a, --data-attributes string   space separated list of data attributes (default "https://example.com/attr/attr1/value/value1")
   -h, --help                     help for encrypt
-      --nano                     Output in nanoTDF format
       --no-kid-in-kao            [deprecated] Disable storing key identifiers in TDF KAOs
   -o, --output string            name or path of output file; - for stdout (default "sensitive.txt.tdf")
 ```

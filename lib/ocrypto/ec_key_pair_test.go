@@ -68,7 +68,7 @@ func TestECKeyPair(t *testing.T) {
 	}
 }
 
-func TestNanoTDFRewrapKeyGenerate(t *testing.T) {
+func TestECRewrapKeyGenerate(t *testing.T) {
 	kasECKeyPair, err := NewECKeyPair(ECCModeSecp256r1)
 	require.NoError(t, err, "fail on NewECKeyPair")
 
@@ -92,7 +92,7 @@ func TestNanoTDFRewrapKeyGenerate(t *testing.T) {
 
 	// slat
 	digest := sha256.New()
-	digest.Write([]byte("L1L"))
+	digest.Write([]byte("TDF"))
 
 	kasSymmetricKey, err := CalculateHKDF(digest.Sum(nil), kasECDHKey)
 	require.NoError(t, err, "fail to calculate HKDF key")

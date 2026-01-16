@@ -466,7 +466,7 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 
 		expectedSharedSecret, err := ocrypto.ComputeECDHKeyFromECDHKeys(clientECDHPublicKey, ecdhPrivKey)
 		require.NoError(t, err)
-		expectedDerivedKey, err := ocrypto.CalculateHKDF(NanoVersionSalt(), expectedSharedSecret)
+		expectedDerivedKey, err := ocrypto.CalculateHKDF(TDFSalt(), expectedSharedSecret)
 		require.NoError(t, err)
 
 		// Use noOpEncapsulator to get raw key data for testing

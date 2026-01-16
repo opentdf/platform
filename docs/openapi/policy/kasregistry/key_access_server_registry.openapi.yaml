@@ -815,8 +815,8 @@ components:
           title: alg
           description: |-
             A known algorithm type with any additional parameters encoded.
-             To start, these may be `rsa:2048` for encrypting ZTDF files and
-             `ec:secp256r1` for nanoTDF, but more formats may be added as needed.
+             To start, these may be `rsa:2048` for RSA-based wrapping and
+             `ec:secp256r1` for EC-based wrapping, but more formats may be added as needed.
           $ref: '#/components/schemas/policy.KasPublicKeyAlgEnum'
       title: KasPublicKey
       additionalProperties: false

@@ -104,9 +104,9 @@ func GetECCurveFromECCMode(mode ECCMode) (elliptic.Curve, error) {
 		c = elliptic.P521()
 	case ECCModeSecp256k1:
 		// TODO FIXME - unsupported?
-		return nil, errors.New("unsupported nanoTDF ecc mode")
+		return nil, errors.New("unsupported ECC mode")
 	default:
-		return nil, fmt.Errorf("unsupported nanoTDF ecc mode %d", mode)
+		return nil, fmt.Errorf("unsupported ECC mode %d", mode)
 	}
 
 	return c, nil

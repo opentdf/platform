@@ -28,7 +28,7 @@ type KeyManager interface {
 	// Returns an UnwrappedKeyData interface for further operations
 	Decrypt(ctx context.Context, key KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error)
 
-	// DeriveKey computes an agreed upon secret key, which NanoTDF may directly as the DEK or a key split
+	// DeriveKey computes an agreed upon secret key derived from an ECDH exchange.
 	DeriveKey(ctx context.Context, key KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error)
 
 	// GenerateECSessionKey generates a private session key, for use with a client-provided ephemeral public key

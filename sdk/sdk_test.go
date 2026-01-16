@@ -112,37 +112,6 @@ func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {
 	assert.NotNil(t, s)
 }
 
-func TestNew_ShouldValidateGoodNanoTdf(t *testing.T) {
-	goodNanoTdfStr := "TDFMABJsb2NhbGhvc3Q6ODA4MC9rYXOAAQIA2qvjMRfg7b27lT2kf9SwHRkDIg8ZXtfRoiIvdMUHq/gL5AUMfmv4Di8sKCyLkmUm/WITVj5hDeV/z4JmQ0JL7ZxqSmgZoK6TAHvkKhUly4zMEWMRXH8IktKhFKy1+fD+3qwDopqWAO5Nm2nYQqi75atEFckstulpNKg3N+Ul22OHr/ZuR127oPObBDYNRfktBdzoZbEQcPlr8q1B57q6y5SPZFjEzL9weK+uS5bUJWkF3nsHASo2bZw7IPhTZxoFVmCDjwvj6MbxNa7zG6aClHJ162zKxLLnD9TtIHuZ59R7LgiSieipXeExj+ky9OgIw5DfwyUuxsQLtKpMIAFPmLY9Hy2naUJxke0MT1EUBgastCq+YtFGslV9LJo/A8FtrRqludwtM0O+Z9FlAkZ1oNL7M7uOkLrh7eRrv+C1AAAX6FaBQoOtqnmyu6Jp+VzkxDddEeLRUyI="
-	goodDecodedData, err := base64.StdEncoding.DecodeString(goodNanoTdfStr)
-	in := bytes.NewReader(goodDecodedData)
-
-	require.NoError(t, err)
-	// Decode the base64 string
-	isValid, err := sdk.IsValidNanoTdf(in)
-	require.NoError(t, err)
-
-	assert.True(t, isValid)
-
-	// Try again to see if the reader has been reset
-	isValid, err = sdk.IsValidNanoTdf(in)
-	require.NoError(t, err)
-
-	assert.True(t, isValid)
-}
-
-func TestNew_ShouldNotValidateBadNanoTdf(t *testing.T) {
-	badNanoTdfStr := "TDFMABfg7b27lT2kf9SwHRkDIg8ZXtfRoiIvdMUHq/gL5AUMfmv4Di8sKCyLkmUm/WITVj5hDeV/z4JmQ0JL7ZxqSmgZoK6TAHvkKhUly4zMEWMRXH8IktKhFKy1+fD+3qwDopqWAO5Nm2nYQqi75atEFckstulpNKg3N+Ul22OHr/ZuR127oPObBDYNRfktBdzoZbEQcPlr8q1B57q6y5SPZFjEzL9weK+uS5bUJWkF3nsHASo2bZw7IPhTZxoFVmCDjwvj6MbxNa7zG6aClHJ162zKxLLnD9TtIHuZ59R7LgiSieipXeExj+ky9OgIw5DfwyUuxsQLtKpMIAFPmLY9Hy2naUJxke0MT1EUBgastCq+YtFGslV9LJo/A8FtrRqludwtM0O+Z9FlAkZ1oNL7M7uOkLrh7eRrv+C1AAAX6FaBQoOtqnmyu6Jp+VzkxDddEeLRUyI="
-	badDecodedData, err := base64.StdEncoding.DecodeString(badNanoTdfStr)
-	in := bytes.NewReader(badDecodedData)
-
-	require.NoError(t, err)
-	// Decode the base64 string
-	isValid, _ := sdk.IsValidNanoTdf(in)
-	// Error is ok here, as it acts as a sort of reason for the nanotdf not being valid
-	assert.False(t, isValid)
-}
-
 func TestNew_ShouldValidateStandardTdf(t *testing.T) {
 	goodStandardTdf := "UEsDBC0ACAAAAJ2TFTEAAAAAAAAAAAAAAAAJAAAAMC5wYXlsb2Fktu4m+vdwl0mtjhY3U5e7TG2o1s8ifK+RAhFNjRjGTLJ7V3w5UEsHCGiY7skkAAAAJAAAAFBLAwQtAAgAAACdkxUxAAAAAAAAAAAAAAAADwAAADAubWFuaWZlc3QuanNvbnsiZW5jcnlwdGlvbkluZm9ybWF0aW9uIjp7InR5cGUiOiJzcGxpdCIsInBvbGljeSI6ImV5SjFkV2xrSWpvaU1HTTFORGsyWlRZdE5EYzRaaTB4TVdWbUxXSXlOakV0WWpJMVl6UmhORE14TjJFM0lpd2lZbTlrZVNJNmV5SmtZWFJoUVhSMGNtbGlkWFJsY3lJNlczc2lZWFIwY21saWRYUmxJam9pYUhSMGNITTZMeTlsZUdGdGNHeGxMbU52YlM5aGRIUnlMMkYwZEhJeEwzWmhiSFZsTDNaaGJIVmxNU0lzSW1ScGMzQnNZWGxPWVcxbElqb2lJaXdpYVhORVpXWmhkV3gwSWpwbVlXeHpaU3dpY0hWaVMyVjVJam9pSWl3aWEyRnpWVkpNSWpvaUluMWRMQ0prYVhOelpXMGlPbHRkZlgwPSIsImtleUFjY2VzcyI6W3sidHlwZSI6IndyYXBwZWQiLCJ1cmwiOiJodHRwOi8vbG9jYWxob3N0OjgwODAiLCJwcm90b2NvbCI6ImthcyIsIndyYXBwZWRLZXkiOiJ0VVMvUE9TaVBtOGV6OGhyL2dMVGN6Y1lOT0trcUNEclZiQTBWdHZna29QbHB0M1BDZVpTdDNndnlQNVZKZXBNMmNqdVBhUWJJUGlyMjlWdVJ2T1RXZmQzRUh1KzgyVCtFNEVZbEpBM25VbDdGQTRMUGZhUEtXWk1zTExHUkJJVUxZT0VhMWJma1MvUm9Xb0EwK283WlFFVkNhYmdJN2JFRDJKV2Q2aG1yam1iUnM2d0lwOVFXNUs4Q3dJWjZVZjlGMXEwRDViTmlrbGxHaCtiaVJsV1NucEwxbHBPaFdva1gxdUJsU0VRSDNvM2JtVXFTNVVaUjRmYUxuTW5xOGR0bS8wYnJjTjUwaFNiK0xTTlZkd2daTEszTTRHTmxEeGdzcDkxY0VuYjZoZktLemdSY0VCS0tMQTF1b3BXNHdCRG9BamFuWWplQlZVT3ZBZEI5ek45T3c9PSIsInBvbGljeUJpbmRpbmciOnsiYWxnIjoiSFMyNTYiLCJoYXNoIjoiWmpBek1HWXlZekl4WlRCbU16Tm1NamhoTWpGalpqSTJaRE5oWlRrMk5ERTNaREJoWlRrM05ESTJNREExTnpVMU1UVTFNV0ZpTTJSak9EUTFabU0yWWc9PSJ9LCJraWQiOiJyMSJ9XSwibWV0aG9kIjp7ImFsZ29yaXRobSI6IkFFUy0yNTYtR0NNIiwiaXYiOiIiLCJpc1N0cmVhbWFibGUiOnRydWV9LCJpbnRlZ3JpdHlJbmZvcm1hdGlvbiI6eyJyb290U2lnbmF0dXJlIjp7ImFsZyI6IkhTMjU2Iiwic2lnIjoiWkdWaFltRmtNRGhsTURCbU1UVm1ZekJtTVdFME0ySmhOamhrTmpBMVpUazFNVGRtWmpoa1pETmtNekk0Tldaa01XUXhOVFZsWXpjME1EVXhPRE13Tmc9PSJ9LCJzZWdtZW50SGFzaEFsZyI6IkdNQUMiLCJzZWdtZW50U2l6ZURlZmF1bHQiOjIwOTcxNTIsImVuY3J5cHRlZFNlZ21lbnRTaXplRGVmYXVsdCI6MjA5NzE4MCwic2VnbWVudHMiOlt7Imhhc2giOiJNakkzWTJGbU9URXdNakV4TkdRNFpERTRZelkwWTJJeU4ySTFOemRqTXprPSIsInNlZ21lbnRTaXplIjo4LCJlbmNyeXB0ZWRTZWdtZW50U2l6ZSI6MzZ9XX19LCJwYXlsb2FkIjp7InR5cGUiOiJyZWZlcmVuY2UiLCJ1cmwiOiIwLnBheWxvYWQiLCJwcm90b2NvbCI6InppcCIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtIiwiaXNFbmNyeXB0ZWQiOnRydWV9fVBLBwgwpFOlrwUAAK8FAABQSwECLQAtAAgAAACdkxUxaJjuySQAAAAkAAAACQAAAAAAAAAAAAAAAAAAAAAAMC5wYXlsb2FkUEsBAi0ALQAIAAAAnZMVMTCkU6WvBQAArwUAAA8AAAAAAAAAAAAAAAAAWwAAADAubWFuaWZlc3QuanNvblBLBQYAAAAAAgACAHQAAABHBgAAAAA="
 	goodDecodedData, err := base64.StdEncoding.DecodeString(goodStandardTdf)
@@ -170,7 +139,7 @@ func TestNew_ShouldNotValidateBadStandardTdf(t *testing.T) {
 	require.NoError(t, err)
 	// Decode the base64 string
 	isValid, err := sdk.IsValidTdf(in)
-	// Error is ok here, as it acts as a sort of reason for the nanotdf not being valid
+	// Error is ok here; it documents why the input is invalid.
 	assert.False(t, isValid)
 	require.Error(t, err)
 }
@@ -184,7 +153,7 @@ func TestIsInvalid_MissingRequiredManifestPayloadField(t *testing.T) {
 	require.NoError(t, err)
 	// Decode the base64 string
 	isValid, err := sdk.IsValidTdf(in)
-	// Error is ok here, as it acts as a sort of reason for the nanotdf not being valid
+	// Error is ok here; it documents why the input is invalid.
 	assert.False(t, isValid)
 	require.ErrorIs(t, err, sdk.ErrInvalidPerSchema)
 }
@@ -314,17 +283,6 @@ func TestIsPlatformEndpointMalformed(t *testing.T) {
 			assert.Equal(t, tt.expected, result, tt.description)
 		})
 	}
-}
-
-func Test_GetType_NanoTDF(t *testing.T) {
-	nano := "TDFMABJsb2NhbGhvc3Q6ODA4MC9rYXOAAQIA2qvjMRfg7b27lT2kf9SwHRkDIg8ZXtfRoiIvdMUHq/gL5AUMfmv4Di8sKCyLkmUm/WITVj5hDeV/z4JmQ0JL7ZxqSmgZoK6TAHvkKhUly4zMEWMRXH8IktKhFKy1+fD+3qwDopqWAO5Nm2nYQqi75atEFckstulpNKg3N+Ul22OHr/ZuR127oPObBDYNRfktBdzoZbEQcPlr8q1B57q6y5SPZFjEzL9weK+uS5bUJWkF3nsHASo2bZw7IPhTZxoFVmCDjwvj6MbxNa7zG6aClHJ162zKxLLnD9TtIHuZ59R7LgiSieipXeExj+ky9OgIw5DfwyUuxsQLtKpMIAFPmLY9Hy2naUJxke0MT1EUBgastCq+YtFGslV9LJo/A8FtrRqludwtM0O+Z9FlAkZ1oNL7M7uOkLrh7eRrv+C1AAAX6FaBQoOtqnmyu6Jp+VzkxDddEeLRUyI="
-	nanoDecoded, err := base64.StdEncoding.DecodeString(nano)
-	require.NoError(t, err)
-
-	in := bytes.NewReader(nanoDecoded)
-	tdfType := sdk.GetTdfType(in)
-
-	assert.Equal(t, sdk.Nano, tdfType)
 }
 
 func Test_GetType_TDF(t *testing.T) {

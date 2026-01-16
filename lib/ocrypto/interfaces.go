@@ -28,7 +28,7 @@ type ProtectedKey interface {
 
 	// Export returns the raw key data, optionally encrypting it with the provided encapsulator
 	//
-	// Deprecated: Use the Encapsulator's Encapsulate method instead
+	// Deprecated: Use the Encapsulator's Encapsulate method instead.
 	Export(encapsulator Encapsulator) ([]byte, error)
 
 	// DecryptAESGCM decrypts encrypted policies and metadata

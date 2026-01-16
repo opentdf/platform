@@ -107,6 +107,7 @@ runs:
             | (.services.kas.preview.ec_tdf_enabled = env(EC_TDF_ENABLED))
             | (.services.kas.preview.key_management = env(KEY_MANAGEMENT))
             | (.services.kas.registered_kas_uri = "http://localhost:" + env(KAS_PORT))
+            | (if env(KEY_MANAGEMENT) == "true" then (.services.kas.root_key = env(ROOT_KEY)) else del(.services.kas.root_key) end)
             | (.logger.level = env(LOG_LEVEL))
             | (.logger.type = env(LOG_TYPE))
             | (.sdk_config = {"client_id":"opentdf","client_secret":"secret","core":{"endpoint":"http://localhost:8080","plaintext":true}})

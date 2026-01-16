@@ -409,8 +409,7 @@ jobs:
       packages: read
       pull-requests: write
       checks: write
-    # Temporary: point at PR branch to validate xct fix before it merges to opentdf/tests:main.
-    uses: opentdf/tests/.github/workflows/xtest.yml@strantalis/local-start-additional-kas
+    uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: go
       # use commit instead of ref so we can "go get" specific sdk version

@@ -468,7 +468,7 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 			Valid:                   ruleString != "",
 		},
 		AllowTraversal: allowTraversal,
-		ValuesOrder: r.GetValuesOrder(),
+		ValuesOrder:    r.GetValuesOrder(),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

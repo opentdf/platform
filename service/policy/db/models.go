@@ -131,7 +131,8 @@ type AttributeDefinition struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 	// Order of value ids for the attribute (important for hierarchy rule)
-	ValuesOrder []string `json:"values_order"`
+	ValuesOrder    []string `json:"values_order"`
+	AllowTraversal bool     `json:"allow_traversal"`
 }
 
 // Table to store the grants of key access servers (KASs) to attribute definitions

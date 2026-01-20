@@ -2031,8 +2031,8 @@ type KasPublicKey struct {
 	// A unique string identifier for this key
 	Kid string `protobuf:"bytes,2,opt,name=kid,proto3" json:"kid,omitempty"`
 	// A known algorithm type with any additional parameters encoded.
-	// To start, these may be `rsa:2048` for encrypting ZTDF files and
-	// `ec:secp256r1` for nanoTDF, but more formats may be added as needed.
+	// To start, these may be `rsa:2048` for RSA-based wrapping and
+	// `ec:secp256r1` for EC-based wrapping, but more formats may be added as needed.
 	Alg KasPublicKeyAlgEnum `protobuf:"varint,3,opt,name=alg,proto3,enum=policy.KasPublicKeyAlgEnum" json:"alg,omitempty"`
 }
 

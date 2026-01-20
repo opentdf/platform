@@ -134,7 +134,7 @@ func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetail
 		return nil, fmt.Errorf("failed to compute ECDH key: %w", err)
 	}
 
-	key, err := ocrypto.CalculateHKDF(NanoVersionSalt(), symmetricKey)
+	key, err := ocrypto.CalculateHKDF(TDFSalt(), symmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate HKDF: %w", err)
 	}
@@ -159,7 +159,7 @@ func (e *OCEncapsulator) PublicKeyAsPEM() (string, error) {
 }
 
 func (b *BasicManager) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (ocrypto.Encapsulator, error) {
-	pke, err := ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), nil)
+	pke, err := ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, TDFSalt(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create public key encryptor: %w", err)
 	}

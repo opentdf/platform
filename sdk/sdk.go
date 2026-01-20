@@ -78,7 +78,6 @@ func setPackageLogger(logger *slog.Logger) {
 type SDK struct {
 	config
 	*kasKeyCache
-	*collectionStore
 	conn                    *ConnectRPCConnection
 	tokenSource             auth.AccessTokenSource
 	Actions                 sdkconnect.ActionServiceClient
@@ -216,7 +215,6 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	return &SDK{
 		config:                  *cfg,
-		collectionStore:         cfg.collectionStore,
 		kasKeyCache:             newKasKeyCache(),
 		conn:                    &ConnectRPCConnection{Client: platformConn.Client, Endpoint: platformConn.Endpoint, Options: platformConn.Options},
 		tokenSource:             accessTokenSource,
@@ -298,9 +296,6 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 }
 
 func (s SDK) Close() error {
-	if s.collectionStore != nil {
-		s.close()
-	}
 	return nil
 }
 
@@ -318,7 +313,6 @@ type TdfType string
 
 const (
 	Invalid  TdfType = "Invalid"
-	Nano     TdfType = "Nano"
 	Standard TdfType = "Standard"
 )
 
@@ -327,12 +321,8 @@ func (t TdfType) String() string {
 	return string(t)
 }
 
-var (
-	// ZIP file Signature
-	zipSignature = []byte{0x50, 0x4B, 0x03, 0x04}
-	// Nano TDF Signature
-	nanoSignature = []byte{0x4C, 0x31, 0x4C}
-)
+// ZIP file Signature
+var zipSignature = []byte{0x50, 0x4B, 0x03, 0x04}
 
 // GetTdfType returns the type of TDF based on the reader.
 // Reader is reset after the check.
@@ -357,11 +347,6 @@ func GetTdfType(reader io.ReadSeeker) TdfType {
 	// Check if the first 4 bytes match the ZIP signature
 	if bytes.Equal(buffer, zipSignature) {
 		return Standard
-	}
-
-	// Check if the first 3 bytes match the Nano signature
-	if bytes.Equal(buffer[:3], nanoSignature) {
-		return Nano
 	}
 
 	return Invalid
@@ -425,14 +410,6 @@ func isValidManifest(manifest string, intensity SchemaValidationIntensity) (bool
 	}
 
 	return true, nil
-}
-
-// IsValidNanoTdf detects whether, or not the reader is a valid Nano TDF.
-// Reader is reset after the check.
-func IsValidNanoTdf(reader io.ReadSeeker) (bool, error) {
-	_, _, err := NewNanoTDFHeaderFromReader(reader)
-	_, _ = reader.Seek(0, io.SeekStart) // Ignore the error as we're just checking if it's a valid nano TDF
-	return err == nil, err
 }
 
 // Test connectability to the platform and validate a healthy status

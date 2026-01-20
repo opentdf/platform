@@ -35,8 +35,8 @@ func (q *Queries) assignPublicKeyToAttributeDefinition(ctx context.Context, arg 
 }
 
 const createAttribute = `-- name: createAttribute :one
-INSERT INTO attribute_definitions (namespace_id, name, rule, metadata)
-VALUES ($1, $2, $3, $4) 
+INSERT INTO attribute_definitions (namespace_id, name, rule, metadata, allow_traversal)
+VALUES ($1, $2, $3, $4, $5) 
 RETURNING id
 `
 
@@ -45,12 +45,13 @@ type createAttributeParams struct {
 	Name        string                  `json:"name"`
 	Rule        AttributeDefinitionRule `json:"rule"`
 	Metadata    []byte                  `json:"metadata"`
+	AllowTraversal bool                 `json:"allow_traversal"`
 }
 
 // createAttribute
 //
-//	INSERT INTO attribute_definitions (namespace_id, name, rule, metadata)
-//	VALUES ($1, $2, $3, $4)
+//	INSERT INTO attribute_definitions (namespace_id, name, rule, metadata, allow_traversal)
+//	VALUES ($1, $2, $3, $4, $5)
 //	RETURNING id
 func (q *Queries) createAttribute(ctx context.Context, arg createAttributeParams) (string, error) {
 	row := q.db.QueryRow(ctx, createAttribute,
@@ -58,6 +59,7 @@ func (q *Queries) createAttribute(ctx context.Context, arg createAttributeParams
 		arg.Name,
 		arg.Rule,
 		arg.Metadata,
+		arg.AllowTraversal,
 	)
 	var id string
 	err := row.Scan(&id)
@@ -84,6 +86,7 @@ SELECT
     ad.id,
     ad.name as attribute_name,
     ad.rule,
+    ad.allow_traversal,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
     ad.namespace_id,
     ad.active,
@@ -153,6 +156,7 @@ type getAttributeRow struct {
 	ID            string                  `json:"id"`
 	AttributeName string                  `json:"attribute_name"`
 	Rule          AttributeDefinitionRule `json:"rule"`
+	AllowTraversal bool                   `json:"allow_traversal"`
 	Metadata      []byte                  `json:"metadata"`
 	NamespaceID   string                  `json:"namespace_id"`
 	Active        bool                    `json:"active"`
@@ -234,6 +238,7 @@ func (q *Queries) getAttribute(ctx context.Context, arg getAttributeParams) (get
 		&i.ID,
 		&i.AttributeName,
 		&i.Rule,
+		&i.AllowTraversal,
 		&i.Metadata,
 		&i.NamespaceID,
 		&i.Active,
@@ -253,6 +258,7 @@ WITH target_definition AS (
         ad.namespace_id,
         ad.name,
         ad.rule,
+        ad.allow_traversal,
         ad.active,
         ad.values_order,
         JSONB_AGG(
@@ -457,6 +463,7 @@ SELECT
 	td.id,
 	td.name,
     td.rule,
+    td.allow_traversal,
 	td.active,
 	n.namespace,
 	fqns.fqn,
@@ -474,6 +481,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 	ID        string                  `json:"id"`
 	Name      string                  `json:"name"`
 	Rule      AttributeDefinitionRule `json:"rule"`
+	AllowTraversal bool               `json:"allow_traversal"`
 	Active    bool                    `json:"active"`
 	Namespace []byte                  `json:"namespace"`
 	Fqn       string                  `json:"fqn"`
@@ -718,6 +726,7 @@ func (q *Queries) listAttributesByDefOrValueFqns(ctx context.Context, fqns []str
 			&i.ID,
 			&i.Name,
 			&i.Rule,
+			&i.AllowTraversal,
 			&i.Active,
 			&i.Namespace,
 			&i.Fqn,
@@ -741,6 +750,7 @@ SELECT
     ad.id,
     ad.name as attribute_name,
     ad.rule,
+    ad.allow_traversal,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
     ad.namespace_id,
     ad.active,
@@ -788,6 +798,7 @@ type listAttributesDetailRow struct {
 	ID            string                  `json:"id"`
 	AttributeName string                  `json:"attribute_name"`
 	Rule          AttributeDefinitionRule `json:"rule"`
+	AllowTraversal bool                   `json:"allow_traversal"`
 	Metadata      []byte                  `json:"metadata"`
 	NamespaceID   string                  `json:"namespace_id"`
 	Active        bool                    `json:"active"`
@@ -857,6 +868,7 @@ func (q *Queries) listAttributesDetail(ctx context.Context, arg listAttributesDe
 			&i.ID,
 			&i.AttributeName,
 			&i.Rule,
+			&i.AllowTraversal,
 			&i.Metadata,
 			&i.NamespaceID,
 			&i.Active,
@@ -880,6 +892,7 @@ SELECT
     ad.id,
     ad.name as attribute_name,
     ad.rule,
+    ad.allow_traversal,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
     ad.namespace_id,
     ad.active,
@@ -903,6 +916,7 @@ type listAttributesSummaryRow struct {
 	ID            string                  `json:"id"`
 	AttributeName string                  `json:"attribute_name"`
 	Rule          AttributeDefinitionRule `json:"rule"`
+	AllowTraversal bool                   `json:"allow_traversal"`
 	Metadata      []byte                  `json:"metadata"`
 	NamespaceID   string                  `json:"namespace_id"`
 	Active        bool                    `json:"active"`
@@ -940,6 +954,7 @@ func (q *Queries) listAttributesSummary(ctx context.Context, arg listAttributesS
 			&i.ID,
 			&i.AttributeName,
 			&i.Rule,
+			&i.AllowTraversal,
 			&i.Metadata,
 			&i.NamespaceID,
 			&i.Active,
@@ -1045,17 +1060,19 @@ SET
     rule = COALESCE($3, rule),
     values_order = COALESCE($4, values_order),
     metadata = COALESCE($5, metadata),
-    active = COALESCE($6, active)
+    active = COALESCE($6, active),
+    allow_traversal = COALESCE($7, allow_traversal)
 WHERE id = $1
 `
 
 type updateAttributeParams struct {
-	ID          string                      `json:"id"`
-	Name        pgtype.Text                 `json:"name"`
-	Rule        NullAttributeDefinitionRule `json:"rule"`
-	ValuesOrder []string                    `json:"values_order"`
-	Metadata    []byte                      `json:"metadata"`
-	Active      pgtype.Bool                 `json:"active"`
+	ID             string                      `json:"id"`
+	Name           pgtype.Text                 `json:"name"`
+	Rule           NullAttributeDefinitionRule `json:"rule"`
+	ValuesOrder    []string                    `json:"values_order"`
+	Metadata       []byte                      `json:"metadata"`
+	Active         pgtype.Bool                 `json:"active"`
+	AllowTraversal pgtype.Bool                 `json:"allow_traversal"`
 }
 
 // updateAttribute: Unsafe and Safe Updates both
@@ -1066,7 +1083,8 @@ type updateAttributeParams struct {
 //	    rule = COALESCE($3, rule),
 //	    values_order = COALESCE($4, values_order),
 //	    metadata = COALESCE($5, metadata),
-//	    active = COALESCE($6, active)
+//	    active = COALESCE($6, active),
+//	    allow_traversal = COALESCE($7, allow_traversal)
 //	WHERE id = $1
 func (q *Queries) updateAttribute(ctx context.Context, arg updateAttributeParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateAttribute,
@@ -1076,6 +1094,7 @@ func (q *Queries) updateAttribute(ctx context.Context, arg updateAttributeParams
 		arg.ValuesOrder,
 		arg.Metadata,
 		arg.Active,
+		arg.AllowTraversal,
 	)
 	if err != nil {
 		return 0, err

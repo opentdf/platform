@@ -19,6 +19,7 @@ import (
 	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type AttributesSuite struct {
@@ -98,6 +99,26 @@ func (s *AttributesSuite) Test_CreateAttribute_WithValueSucceeds() {
 	s.Equal(values, createdVals)
 	s.Require().NoError(err)
 	s.NotNil(createdAttr)
+}
+
+func (s *AttributesSuite) Test_CreateAttribute_WithAllowTraversal_Succeeds() {
+	attr := &attributes.CreateAttributeRequest{
+		Name:           "test__create_attribute_allow_traversal",
+		NamespaceId:    fixtureNamespaceID,
+		Rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		AllowTraversal: &wrapperspb.BoolValue{Value: true},
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+	s.Require().NotNil(createdAttr.GetAllowTraversal())
+	s.True(createdAttr.GetAllowTraversal().GetValue())
+
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Require().NotNil(got.GetAllowTraversal())
+	s.True(got.GetAllowTraversal().GetValue())
 }
 
 func (s *AttributesSuite) Test_CreateAttribute_WithMetadataSucceeds() {
@@ -270,6 +291,32 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 	s.Equal(values[0], gotVals[0].GetValue())
 	s.Equal(values[2], gotVals[1].GetValue())
 	s.Equal(values[3], gotVals[2].GetValue())
+}
+
+func (s *AttributesSuite) Test_GetAttributesByValueFqns_IncludesAllowTraversal() {
+	attr := &attributes.CreateAttributeRequest{
+		Name:           "test__get_attributes_by_value_fqns_allow_traversal",
+		NamespaceId:    fixtureNamespaceID,
+		Rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		AllowTraversal: &wrapperspb.BoolValue{Value: true},
+		Values:         []string{"allow_traversal_value"},
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+
+	valueFqn := fmt.Sprintf("https://%s/attr/%s/value/%s", createdAttr.GetNamespace().GetName(), createdAttr.GetName(), createdAttr.GetValues()[0].GetValue())
+	resp, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{valueFqn},
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+	s.Contains(resp, valueFqn)
+
+	gotAttr := resp[valueFqn].GetAttribute()
+	s.Require().NotNil(gotAttr)
+	s.Require().NotNil(gotAttr.GetAllowTraversal())
+	s.True(gotAttr.GetAllowTraversal().GetValue())
 }
 
 func (s *AttributesSuite) Test_GetAttribute() {
@@ -506,6 +553,47 @@ func (s *AttributesSuite) Test_ListAttributes_FqnsIncluded() {
 			s.Equal(fmt.Sprintf("https://%s/attr/%s/value/%s", a.GetNamespace().GetName(), a.GetName(), v.GetValue()), v.GetFqn())
 		}
 	}
+}
+
+func (s *AttributesSuite) Test_ListAttributes_IncludesAllowTraversal() {
+	attrTrue := &attributes.CreateAttributeRequest{
+		Name:           "test__list_attributes_allow_traversal_true",
+		NamespaceId:    fixtureNamespaceID,
+		Rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		AllowTraversal: &wrapperspb.BoolValue{Value: true},
+	}
+	attrFalse := &attributes.CreateAttributeRequest{
+		Name:        "test__list_attributes_allow_traversal_false",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	}
+	createdTrue, err := s.db.PolicyClient.CreateAttribute(s.ctx, attrTrue)
+	s.Require().NoError(err)
+	createdFalse, err := s.db.PolicyClient.CreateAttribute(s.ctx, attrFalse)
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: fixtureNamespaceID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	var foundTrue, foundFalse *policy.Attribute
+	for _, attr := range listRsp.GetAttributes() {
+		switch attr.GetId() {
+		case createdTrue.GetId():
+			foundTrue = attr
+		case createdFalse.GetId():
+			foundFalse = attr
+		}
+	}
+
+	s.Require().NotNil(foundTrue)
+	s.Require().NotNil(foundFalse)
+	s.Require().NotNil(foundTrue.GetAllowTraversal())
+	s.True(foundTrue.GetAllowTraversal().GetValue())
+	s.Require().NotNil(foundFalse.GetAllowTraversal())
+	s.False(foundFalse.GetAllowTraversal().GetValue())
 }
 
 func (s *AttributesSuite) Test_ListAttributes_ByNamespaceIdOrName() {
@@ -806,6 +894,34 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRule() {
 	s.Require().NoError(err)
 	s.NotNil(updated)
 	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, updated.GetRule())
+}
+
+func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithAllowTraversal() {
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "test__unsafe_update_attribute_allow_traversal",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+	}
+	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(created)
+	s.Require().NotNil(created.GetAllowTraversal())
+	s.False(created.GetAllowTraversal().GetValue())
+
+	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UnsafeUpdateAttributeRequest{
+		Id:             created.GetId(),
+		AllowTraversal: &wrapperspb.BoolValue{Value: true},
+	})
+	s.Require().NoError(err)
+	s.NotNil(updated)
+	s.Require().NotNil(updated.GetAllowTraversal())
+	s.True(updated.GetAllowTraversal().GetValue())
+
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Require().NotNil(got.GetAllowTraversal())
+	s.True(got.GetAllowTraversal().GetValue())
 }
 
 func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithNewName() {

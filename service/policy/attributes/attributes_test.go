@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func getValidator() protovalidate.Validator {
@@ -65,6 +66,20 @@ func TestCreateAttribute_WithValues_Valid_Succeeds(t *testing.T) {
 			validValue2,
 			validValue3,
 		},
+	}
+
+	v := getValidator()
+	err := v.Validate(req)
+
+	require.NoError(t, err)
+}
+
+func TestCreateAttribute_AllowTraversal_Valid_Succeeds(t *testing.T) {
+	req := &attributes.CreateAttributeRequest{
+		Name:           validName,
+		NamespaceId:    validUUID,
+		Rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		AllowTraversal: &wrapperspb.BoolValue{Value: true},
 	}
 
 	v := getValidator()

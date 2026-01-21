@@ -2552,6 +2552,13 @@ Indicates a key may be found in TDFs without key identifiers </p></td>
                 </tr>
               
                 <tr>
+                  <td>allow_traversal</td>
+                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
+                  <td></td>
+                  <td><p>Allow traversal of hierarchy rules. </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -8119,6 +8126,18 @@ Custom actions only: replaces the existing action name </p></td>
                   <td><p>Optional
 Attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
 The stored attribute value will be normalized to lower case. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>allow_traversal</td>
+                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
+                  <td></td>
+                  <td><p>Optional
+Setting allow_traversal=true allows TDF creation to be front-loaded, meaning a customer
+can create encrypted content with an attribute definitions key mapping before
+creating the attribute values needed to decrypt.
+Content will be able to be encrypted with missing attribute values,
+but will not be able to be decrypted until such attribute values exist. </p></td>
                 </tr>
               
                 <tr>
@@ -16864,6 +16883,17 @@ Updating the name of an Attribute will retroactively alter access to existing TD
                   <td><p>Optional
 WARNING!!
 Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>allow_traversal</td>
+                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
+                  <td></td>
+                  <td><p>Optional
+WARNING!!
+Updating allow_traversal allows TDF creation to be front-loaded, meaning a customer
+can create encrypted content with an attribute definitions key mapping before
+creating the attribute values needed to decrypt. </p></td>
                 </tr>
               
                 <tr>

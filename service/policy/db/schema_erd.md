@@ -36,6 +36,7 @@ erDiagram
 
     attribute_definitions {
         boolean active "Active/Inactive state"
+        boolean allow_traversal 
         timestamp_with_time_zone created_at 
         uuid id PK "Primary key for the table"
         jsonb metadata "Metadata for the attribute definition (see protos for structure)"

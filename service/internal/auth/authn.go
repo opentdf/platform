@@ -25,9 +25,9 @@ import (
 
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
-	"google.golang.org/grpc/metadata"
-
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/pkg/util"
+	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -276,20 +276,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		default:
 			action = ActionUnsafe
 		}
-		if allow, err := a.enforcer.Enforce(accessTok, r.URL.Path, action); err != nil {
-			if err.Error() == "permission denied" {
-				log.WarnContext(
-					ctx,
-					"permission denied",
-					slog.String("azp", accessTok.Subject()),
-					slog.Any("error", err),
-				)
-				http.Error(w, "permission denied", http.StatusForbidden)
-				return
-			}
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-			return
-		} else if !allow {
+		if !a.enforcer.Enforce(accessTok, nil, r.URL.Path, action) {
 			log.WarnContext(
 				ctx,
 				"permission denied",
@@ -366,18 +353,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			}
 
 			// Check if the token is allowed to access the resource
-			if allowed, err := a.enforcer.Enforce(token, resource, action); err != nil {
-				if err.Error() == "permission denied" {
-					log.WarnContext(
-						ctxWithJWK,
-						"permission denied",
-						slog.String("azp", token.Subject()),
-						slog.Any("error", err),
-					)
-					return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
-				}
-				return nil, err
-			} else if !allowed {
+			if !a.enforcer.Enforce(token, nil, resource, action) {
 				log.WarnContext(ctxWithJWK, "permission denied", slog.String("azp", token.Subject()))
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 			}
@@ -785,7 +761,7 @@ func (a *Authentication) getClientIDFromToken(ctx context.Context, tok jwt.Token
 	if err != nil {
 		return "", fmt.Errorf("failed to parse token as a map and find claim at [%s]: %w", clientIDClaim, err)
 	}
-	found := dotNotation(claimsMap, clientIDClaim)
+	found := util.Dotnotation(claimsMap, clientIDClaim)
 	if found == nil {
 		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotFound, clientIDClaim)
 	}

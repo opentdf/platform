@@ -4,11 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -88,6 +90,12 @@ type PoolConfig struct {
 	HealthCheckPeriod int `mapstructure:"health_check_period_seconds" json:"health_check_period_seconds" default:"60"`
 }
 
+// ReplicaConfig holds configuration for a single read replica
+type ReplicaConfig struct {
+	Host string `mapstructure:"host" json:"host"`
+	Port int    `mapstructure:"port" json:"port"`
+}
+
 type Config struct {
 	Host           string     `mapstructure:"host" json:"host" default:"localhost"`
 	Port           int        `mapstructure:"port" json:"port" default:"5432"`
@@ -99,13 +107,52 @@ type Config struct {
 	ConnectTimeout int        `mapstructure:"connect_timeout_seconds" json:"connect_timeout_seconds" default:"15"`
 	Pool           PoolConfig `mapstructure:"pool" json:"pool"`
 
+	// PrimaryHosts optionally specifies multiple primary database hosts for automatic failover.
+	// When configured, pgx will try each host in order using target_session_attrs=primary.
+	// If empty, uses Host and Port fields instead.
+	PrimaryHosts []ReplicaConfig `mapstructure:"primary_hosts" json:"primary_hosts"`
+
+	// ReadReplicas holds configuration for read replica databases
+	// If empty, all reads will go to the primary database
+	ReadReplicas []ReplicaConfig `mapstructure:"read_replicas" json:"read_replicas"`
+
 	RunMigrations    bool      `mapstructure:"runMigrations" json:"runMigrations" default:"true"`
 	MigrationsFS     *embed.FS `mapstructure:"-" json:"-"`
 	VerifyConnection bool      `mapstructure:"verifyConnection" json:"verifyConnection" default:"true"`
 }
 
+/*
+A wrapper around a pgxpool.Pool and sql.DB reference.
+
+Each service should have a single instance of the Client to share a connection pool,
+schema (driven by the service namespace), and an embedded file system for migrations.
+
+The 'search_path' is set to the schema on connection to the database.
+
+If the database config 'runMigrations' is set to true, the client will run migrations on startup,
+once per namespace (as there should only be one embedded migrations FS per namespace).
+
+The client supports read replicas for horizontal scaling. When configured with read replicas,
+write operations (Exec) go to the primary database, while read operations (Query, QueryRow)
+are load-balanced across read replicas using a round-robin strategy.
+*/
+type Client struct {
+	// Pgx is the primary database connection pool (used for writes and migrations)
+	Pgx PgxIface
+	// ReadReplicas holds connection pools to read replica databases
+	// If empty, all reads go to the primary (Pgx)
+	ReadReplicas  []PgxIface
+	replicaCBs    *replicaCircuitBreakers // Circuit breakers for read replicas (using gobreaker)
+	Logger        *logger.Logger
+	config        Config
+	ranMigrations bool
+	// This is the stdlib connection that is used for transactions
+	SQLDB *sql.DB
+	trace.Tracer
+}
+
 func (c Config) LogValue() slog.Value {
-	return slog.GroupValue(
+	attrs := []slog.Attr{
 		slog.String("host", c.Host),
 		slog.Int("port", c.Port),
 		slog.String("database", c.Database),
@@ -123,114 +170,57 @@ func (c Config) LogValue() slog.Value {
 		),
 		slog.Bool("runMigrations", c.RunMigrations),
 		slog.Bool("verifyConnection", c.VerifyConnection),
-	)
-}
-
-/*
-A wrapper around a pgxpool.Pool and sql.DB reference.
-
-Each service should have a single instance of the Client to share a connection pool,
-schema (driven by the service namespace), and an embedded file system for migrations.
-
-The 'search_path' is set to the schema on connection to the database.
-
-If the database config 'runMigrations' is set to true, the client will run migrations on startup,
-once per namespace (as there should only be one embedded migrations FS per namespace).
-
-Multiple pools, schemas, or migrations per service are not supported. Multiple databases per
-PostgreSQL instance or multiple PostgreSQL servers per platform instance are not supported.
-*/
-type Client struct {
-	Pgx           PgxIface
-	Logger        *logger.Logger
-	config        Config
-	ranMigrations bool
-	// This is the stdlib connection that is used for transactions
-	SQLDB *sql.DB
-	trace.Tracer
-}
-
-/*
-Connections and pools seems to be pulled in from env vars
-We should be able to tell the platform how to run
-*/
-func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace.Tracer, o ...OptsFunc) (*Client, error) {
-	for _, f := range o {
-		config = f(config)
 	}
 
-	c := Client{
-		config: config,
-	}
-
-	if tracer != nil {
-		c.Tracer = *tracer
-	}
-
-	l, err := logger.NewLogger(logger.Config{
-		Output: logCfg.Output,
-		Type:   logCfg.Type,
-		Level:  logCfg.Level,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create logger: %w", err)
-	}
-	c.Logger = l.With("schema", config.Schema)
-
-	dbConfig, err := config.buildConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
-	}
-
-	dbConfig.ConnConfig.OnNotice = func(_ *pgconn.PgConn, n *pgconn.Notice) {
-		switch n.Severity {
-		case "DEBUG":
-			c.Logger.Debug("database notice", slog.String("message", n.Message))
-		case "NOTICE":
-			c.Logger.Info("database notice", slog.String("message", n.Message))
-		case "WARNING":
-			c.Logger.Warn("database notice", slog.String("message", n.Message))
-		case "ERROR":
-			c.Logger.Error("database notice", slog.String("message", n.Message))
+	// Add primary hosts information if configured (for failover)
+	if len(c.PrimaryHosts) > 0 {
+		primaryAttrs := make([]slog.Attr, len(c.PrimaryHosts))
+		for i, primary := range c.PrimaryHosts {
+			primaryAttrs[i] = slog.String(fmt.Sprintf("primary_%d", i+1), fmt.Sprintf("%s:%d", primary.Host, primary.Port))
 		}
+		attrs = append(attrs, slog.Group("primary_hosts", slog.Any("hosts", primaryAttrs)))
 	}
 
-	slog.Info("opening new database pool", slog.String("schema", config.Schema))
-	pool, err := pgxpool.NewWithConfig(ctx, dbConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create pgxpool: %w", err)
-	}
-	c.Pgx = pool
-	// We need to create a stdlib connection for transactions
-	c.SQLDB = stdlib.OpenDBFromPool(pool)
-
-	// Connect to the database to verify the connection
-	if c.config.VerifyConnection {
-		if err := c.Pgx.Ping(ctx); err != nil {
-			return nil, fmt.Errorf("failed to connect to database: %w", err)
+	// Add read replicas information if configured
+	if len(c.ReadReplicas) > 0 {
+		replicaAttrs := make([]slog.Attr, len(c.ReadReplicas))
+		for i, replica := range c.ReadReplicas {
+			replicaAttrs[i] = slog.String(fmt.Sprintf("replica_%d", i+1), fmt.Sprintf("%s:%d", replica.Host, replica.Port))
 		}
+		attrs = append(attrs, slog.Group("read_replicas", slog.Any("replicas", replicaAttrs)))
 	}
 
-	return &c, nil
-}
-
-func (c *Client) Schema() string {
-	return c.config.Schema
-}
-
-func (c *Client) Close() {
-	c.Pgx.Close()
-	c.SQLDB.Close()
+	return slog.GroupValue(attrs...)
 }
 
 func (c Config) buildConfig() (*pgxpool.Config, error) {
-	u := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
-		c.User,
-		url.QueryEscape(c.Password),
-		net.JoinHostPort(c.Host, strconv.Itoa(c.Port)),
-		c.Database,
-		c.SSLMode,
-	)
+	var u string
+
+	// Build connection string with multi-host support for primary failover
+	if len(c.PrimaryHosts) > 0 {
+		// Use multi-host format with target_session_attrs=primary for automatic failover
+		hosts := make([]string, len(c.PrimaryHosts))
+		for i, h := range c.PrimaryHosts {
+			hosts[i] = net.JoinHostPort(h.Host, strconv.Itoa(h.Port))
+		}
+		u = fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s&target_session_attrs=primary",
+			c.User,
+			url.QueryEscape(c.Password),
+			strings.Join(hosts, ","),
+			c.Database,
+			c.SSLMode,
+		)
+	} else {
+		// Single host configuration (backward compatible)
+		u = fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
+			c.User,
+			url.QueryEscape(c.Password),
+			net.JoinHostPort(c.Host, strconv.Itoa(c.Port)),
+			c.Database,
+			c.SSLMode,
+		)
+	}
+
 	parsed, err := pgxpool.ParseConfig(u)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
@@ -252,29 +242,199 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 
 	// Configure the search_path schema immediately on connection opening
 	parsed.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
-		_, err := conn.Exec(ctx, "SET search_path TO "+pgx.Identifier{c.Schema}.Sanitize())
+		schema := pgx.Identifier{c.Schema}.Sanitize()
+		_, err := conn.Exec(ctx, "SET search_path TO "+schema)
 		if err != nil {
-			slog.Error("failed to set database client search_path",
-				slog.String("schema", c.Schema),
-				slog.Any("error", err),
-			)
 			return err
 		}
-		slog.Debug("successfully set database client search_path", slog.String("schema", c.Schema))
 		return nil
 	}
 	return parsed, nil
 }
 
+// buildReplicaConfig builds a pgxpool.Config for a read replica
+func (c Config) buildReplicaConfig(replica ReplicaConfig) (*pgxpool.Config, error) {
+	u := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
+		c.User,
+		url.QueryEscape(c.Password),
+		net.JoinHostPort(replica.Host, strconv.Itoa(replica.Port)),
+		c.Database,
+		c.SSLMode,
+	)
+	parsed, err := pgxpool.ParseConfig(u)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse replica pgx config: %w", err)
+	}
+
+	// Apply the same connection and pool configurations as primary
+	if c.Pool.MinConns > 0 {
+		parsed.MinConns = c.Pool.MinConns
+	}
+	if c.Pool.MinIdleConns > 0 {
+		parsed.MinIdleConns = c.Pool.MinIdleConns
+	}
+	parsed.ConnConfig.ConnectTimeout = time.Duration(c.ConnectTimeout) * time.Second
+	parsed.MaxConns = c.Pool.MaxConns
+	parsed.MaxConnLifetime = time.Duration(c.Pool.MaxConnLifetime) * time.Second
+	parsed.MaxConnIdleTime = time.Duration(c.Pool.MaxConnIdleTime) * time.Second
+	parsed.HealthCheckPeriod = time.Duration(c.Pool.HealthCheckPeriod) * time.Second
+
+	// Configure the search_path schema immediately on connection opening
+	parsed.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		_, err := conn.Exec(ctx, "SET search_path TO "+pgx.Identifier{c.Schema}.Sanitize())
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	return parsed, nil
+}
+
+/*
+Connections and pools seems to be pulled in from env vars
+We should be able to tell the platform how to run
+*/
+func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace.Tracer, o ...OptsFunc) (*Client, error) {
+	for _, f := range o {
+		config = f(config)
+	}
+
+	c := Client{
+		config:       config,
+		ReadReplicas: make([]PgxIface, 0),
+	}
+
+	if tracer != nil {
+		c.Tracer = *tracer
+	}
+
+	l, err := logger.NewLogger(logger.Config{
+		Output: logCfg.Output,
+		Type:   logCfg.Type,
+		Level:  logCfg.Level,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create logger: %w", err)
+	}
+	c.Logger = l.With("schema", config.Schema)
+
+	// Validate configuration: cannot specify both single host and multi-host primary
+	if len(config.PrimaryHosts) > 0 && config.Host != "" {
+		return nil, errors.New("invalid configuration: cannot specify both 'host' and 'primary_hosts' - use one or the other")
+	}
+
+	// Build primary database connection
+	dbConfig, err := config.buildConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
+	}
+
+	dbConfig.ConnConfig.OnNotice = func(_ *pgconn.PgConn, n *pgconn.Notice) {
+		switch n.Severity {
+		case "DEBUG":
+			c.Logger.Debug("database notice", slog.String("message", n.Message))
+		case "NOTICE":
+			c.Logger.Info("database notice", slog.String("message", n.Message))
+		case "WARNING":
+			c.Logger.Warn("database notice", slog.String("message", n.Message))
+		case "ERROR":
+			c.Logger.Error("database notice", slog.String("message", n.Message))
+		}
+	}
+
+	l.InfoContext(ctx, "opening primary database pool", slog.String("schema", config.Schema))
+	pool, err := pgxpool.NewWithConfig(ctx, dbConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create primary pgxpool: %w", err)
+	}
+	c.Pgx = pool
+	// We need to create a stdlib connection for transactions
+	c.SQLDB = stdlib.OpenDBFromPool(pool)
+
+	// Connect to the primary database to verify the connection
+	if c.config.VerifyConnection {
+		if err := c.Pgx.Ping(ctx); err != nil {
+			return nil, fmt.Errorf("failed to connect to primary database: %w", err)
+		}
+	}
+
+	// Set up read replica connections if configured
+	if len(config.ReadReplicas) > 0 {
+		if err := c.setupReadReplicas(ctx, config, dbConfig, l); err != nil {
+			return nil, err
+		}
+	}
+
+	return &c, nil
+}
+
+func (c *Client) Schema() string {
+	return c.config.Schema
+}
+
+func (c *Client) Close() {
+	c.Pgx.Close()
+	c.SQLDB.Close()
+
+	// Close all read replica connections
+	for i, replica := range c.ReadReplicas {
+		c.Logger.Debug("closing read replica connection", slog.Int("replica", i+1))
+		replica.Close()
+	}
+}
+
 // Common function for all queryRow calls
-func (c Client) QueryRow(ctx context.Context, sql string, args []interface{}) (pgx.Row, error) {
+// Routes read queries to read replicas if configured, with circuit breaker protection and context awareness
+// Implements DBTX interface (returns pgx.Row, errors are embedded in the row)
+func (c *Client) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
 	c.Logger.TraceContext(ctx, "sql", slog.String("sql", sql), slog.Any("args", args))
-	return c.Pgx.QueryRow(ctx, sql, args...), nil
+
+	replicaIdx := c.getReadConnection(ctx)
+
+	// If using a replica with circuit breaker, execute through circuit breaker
+	if replicaIdx >= 0 && c.replicaCBs != nil {
+		row, err := c.replicaCBs.executeQueryRow(ctx, replicaIdx, sql, args)
+		if err != nil {
+			// Circuit breaker error (open circuit, connection failure, etc.)
+			// Fall back to primary instead of returning error row
+			c.Logger.WarnContext(ctx, "replica query failed, falling back to primary",
+				slog.Int("replica_index", replicaIdx),
+				slog.String("error", err.Error()))
+		} else {
+			return row
+		}
+	}
+
+	// Use primary (either no replicas, all circuits open, or replica fallback)
+	return c.Pgx.QueryRow(ctx, sql, args...)
 }
 
 // Common function for all query calls
-func (c Client) Query(ctx context.Context, sql string, args []interface{}) (pgx.Rows, error) {
+// Routes read queries to read replicas if configured, with circuit breaker protection and context awareness
+// Implements DBTX interface
+func (c *Client) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
 	c.Logger.TraceContext(ctx, "sql", slog.String("sql", sql), slog.Any("args", args))
+
+	replicaIdx := c.getReadConnection(ctx)
+
+	// If using a replica with circuit breaker, execute through circuit breaker
+	if replicaIdx >= 0 && c.replicaCBs != nil {
+		r, e := c.replicaCBs.executeQuery(ctx, replicaIdx, sql, args)
+		if e == nil {
+			// Query succeeded via replica
+			if r.Err() != nil {
+				return nil, WrapIfKnownInvalidQueryErr(r.Err())
+			}
+			return r, nil
+		}
+		// Circuit breaker error (open circuit, connection failure, etc.)
+		// Fall back to primary instead of returning error
+		c.Logger.WarnContext(ctx, "replica query failed, falling back to primary",
+			slog.Int("replica_index", replicaIdx),
+			slog.String("error", e.Error()))
+	}
+
+	// Use primary (either no replicas, all circuits open, or replica fallback)
 	r, e := c.Pgx.Query(ctx, sql, args...)
 	if e != nil {
 		return nil, WrapIfKnownInvalidQueryErr(e)
@@ -286,18 +446,97 @@ func (c Client) Query(ctx context.Context, sql string, args []interface{}) (pgx.
 }
 
 // Common function for all exec calls
-func (c Client) Exec(ctx context.Context, sql string, args []interface{}) error {
+// Implements DBTX interface (returns CommandTag)
+func (c *Client) Exec(ctx context.Context, sql string, args ...interface{}) (pgconn.CommandTag, error) {
 	c.Logger.TraceContext(ctx, "sql", slog.String("sql", sql), slog.Any("args", args))
 	tag, err := c.Pgx.Exec(ctx, sql, args...)
 	if err != nil {
-		return WrapIfKnownInvalidQueryErr(err)
+		return tag, WrapIfKnownInvalidQueryErr(err)
+	}
+	return tag, nil
+}
+
+// CopyFrom performs bulk copy operations (always goes to primary database)
+// Implements DBTX interface
+func (c *Client) CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error) {
+	c.Logger.TraceContext(ctx, "copy_from", slog.Any("table", tableName), slog.Any("columns", columnNames))
+	return c.Pgx.CopyFrom(ctx, tableName, columnNames, rowSrc)
+}
+
+// setupReadReplicas initializes read replica connections with circuit breakers
+func (c *Client) setupReadReplicas(ctx context.Context, config Config, dbConfig *pgxpool.Config, l *logger.Logger) error {
+	l.InfoContext(ctx, "configuring read replicas", slog.Int("count", len(config.ReadReplicas)))
+
+	for i, replicaCfg := range config.ReadReplicas {
+		replicaConfig, err := config.buildReplicaConfig(replicaCfg)
+		if err != nil {
+			return fmt.Errorf("failed to parse replica %d config: %w", i+1, err)
+		}
+
+		// Use the same OnNotice handler for replicas
+		replicaConfig.ConnConfig.OnNotice = dbConfig.ConnConfig.OnNotice
+
+		l.InfoContext(ctx,
+			"opening read replica pool",
+			slog.Int("replica", i+1),
+			slog.String("host", replicaCfg.Host),
+			slog.Int("port", replicaCfg.Port),
+		)
+
+		replicaPool, err := pgxpool.NewWithConfig(ctx, replicaConfig)
+		if err != nil {
+			return fmt.Errorf("failed to create read replica %d pgxpool: %w", i+1, err)
+		}
+
+		// Verify replica connection if configured
+		if c.config.VerifyConnection {
+			if err := replicaPool.Ping(ctx); err != nil {
+				return fmt.Errorf("failed to connect to read replica %d: %w", i+1, err)
+			}
+		}
+
+		c.ReadReplicas = append(c.ReadReplicas, replicaPool)
 	}
 
-	if tag.RowsAffected() == 0 {
-		return WrapIfKnownInvalidQueryErr(pgx.ErrNoRows)
-	}
+	l.InfoContext(ctx, "read replicas configured successfully", slog.Int("count", len(c.ReadReplicas)))
 
+	// Initialize circuit breakers for replicas
+	c.replicaCBs = newReplicaCircuitBreakers(c.ReadReplicas, c.Logger.Logger)
 	return nil
+}
+
+// getReadConnection returns a replica index for read operations.
+// It implements intelligent routing with circuit breaker protection and context awareness:
+// - Checks context for forced primary routing (for read-after-write consistency)
+// - Uses circuit breaker-protected round-robin across replicas
+// - Falls back to primary if all circuit breakers are open
+// Returns -1 for primary, or replica index (>= 0) for a healthy replica.
+// This method is concurrency-safe and can be called from multiple goroutines.
+func (c *Client) getReadConnection(ctx context.Context) int {
+	// Check if context forces primary routing (e.g., for read-after-write)
+	if ctx != nil && shouldForcePrimary(ctx) {
+		return -1 // -1 indicates primary, not a replica
+	}
+
+	// No replicas configured, use primary for reads
+	if len(c.ReadReplicas) == 0 {
+		return -1
+	}
+
+	// If circuit breakers are enabled, get a healthy replica
+	if c.replicaCBs != nil {
+		_, idx := c.replicaCBs.getHealthyReplica()
+		if idx >= 0 {
+			return idx
+		}
+
+		// All circuit breakers open, fall back to primary
+		c.Logger.Warn("all read replica circuit breakers open, falling back to primary")
+		return -1
+	}
+
+	// Circuit breakers not enabled (shouldn't happen), use primary
+	return -1
 }
 
 //

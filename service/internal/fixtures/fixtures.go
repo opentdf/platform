@@ -8,6 +8,7 @@ import (
 	"os"
 
 	policypb "github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/policy"
 	"gopkg.in/yaml.v2"
 )
@@ -432,6 +433,8 @@ func (f *Fixtures) Provision(ctx context.Context) {
 	}
 
 	slog.Info("📦 retrieving migration-inserted standard actions")
+	// Force primary to avoid replication lag after migrations
+	ctx = db.WithForcePrimary(ctx)
 	f.loadMigratedStandardActions(ctx)
 	slog.Info("📦 provisioning namespace data")
 	n := f.provisionNamespace(ctx)
@@ -790,7 +793,7 @@ func (f *Fixtures) provision(ctx context.Context, t string, c []string, v [][]an
 // Migration adds standard actions [create, read, update, delete] to the database
 func (f *Fixtures) loadMigratedStandardActions(ctx context.Context) {
 	actions := make(map[string]string)
-	rows, err := f.db.Client.Query(ctx, "SELECT id, name FROM actions WHERE is_standard = TRUE", nil)
+	rows, err := f.db.Client.Query(ctx, "SELECT id, name FROM actions WHERE is_standard = TRUE")
 	if err != nil {
 		slog.Error("could not get standard actions", slog.Any("error", err))
 		panic("could not get standard actions")

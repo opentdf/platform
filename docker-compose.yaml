@@ -1,6 +1,78 @@
 networks:
   default:
     name: opentdf_platform
+
+# ============================================================================
+# YAML Anchors for DRY Configuration
+# ============================================================================
+x-postgres-base: &postgres-base
+  image: postgres:15-alpine
+  restart: always
+  user: postgres
+
+x-postgres-env: &postgres-env
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: changeme
+  POSTGRES_DB: opentdf
+
+x-postgres-healthcheck: &postgres-healthcheck
+  test: ["CMD-SHELL", "pg_isready -U postgres"]
+  interval: 5s
+  timeout: 5s
+  retries: 10
+
+x-postgres-healthcheck-replica: &postgres-healthcheck-replica
+  test: ["CMD-SHELL", "pg_isready -U postgres"]
+  interval: 10s
+  timeout: 5s
+  retries: 10
+
+x-replica-env: &replica-env
+  <<: *postgres-env
+  PRIMARY_HOST: opentdfdb
+  PGDATA: /var/lib/postgresql/data
+
+x-replica-depends-on: &replica-depends-on
+  opentdfdb:
+    condition: service_healthy
+
+x-replica-init-command: &replica-init-command |
+  # Wait for primary to be ready
+  until pg_isready -h opentdfdb -p 5432 -U postgres; do
+    echo "Waiting for primary database..."
+    sleep 2
+  done
+
+  # Check if data directory is empty (first run)
+  if [ ! -s "$$PGDATA/PG_VERSION" ]; then
+    echo "Initializing replica from primary..."
+    rm -rf $$PGDATA/*
+
+    # Clone primary database
+    PGPASSWORD='replicator_password' pg_basebackup \
+      -h opentdfdb \
+      -D $$PGDATA \
+      -U replicator \
+      -v \
+      -P \
+      -X stream \
+      -R
+
+    # Fix permissions for PostgreSQL
+    chmod 700 $$PGDATA
+    chown -R postgres:postgres $$PGDATA
+
+    echo "Replica initialized successfully"
+  fi
+
+  # Start PostgreSQL with query logging enabled
+  exec postgres \
+    -c log_statement=all \
+    -c log_min_duration_statement=0 \
+    -c log_connections=on \
+    -c log_disconnections=on \
+    -c log_line_prefix='%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+
 services:
   keycloak:
     volumes:
@@ -83,21 +155,139 @@ services:
       timeout: 10s
       retries: 3
       start_period: 2m
+  # PostgreSQL Primary Database (Writer)
+  # This is the main database that handles all write operations
+  # Streaming replication is configured to replicate to read replicas
   opentdfdb:
-    image: postgres:15-alpine
-    restart: always
-    user: postgres
+    <<: *postgres-base
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: changeme
-      POSTGRES_DB: opentdf
+      <<: *postgres-env
+    volumes:
+      - opentdfdb_primary_data:/var/lib/postgresql/data
+      - ./.github/scripts/postgres-primary-init.sh:/docker-entrypoint-initdb.d/01-replication-setup.sh:ro
+    # Start postgres with replication config
+    # wal_keep_size=1024 (1GB) prevents WAL deletion if replicas lag
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=10
+      - -c
+      - max_replication_slots=10
+      - -c
+      - hot_standby=on
+      - -c
+      - wal_keep_size=1024
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      <<: *postgres-healthcheck
     ports:
       - "${POSTGRES_EXPOSE_PORT:-5432}:5432"
+
+  # ============================================================================
+  # HORIZONTAL SCALING SCENARIOS (Optional - Comment/Uncomment as needed)
+  # ============================================================================
+  #
+  # SCENARIO 1: Single Primary (Default - No scaling)
+  #   - Use: opentdfdb only (already configured above)
+  #   - opentdf-example.yaml: Use 'host: opentdfdb'
+  #
+  # SCENARIO 2: Primary + Read Replicas (Horizontal read scaling)
+  #   - Uncomment: opentdfdb-replica1, opentdfdb-replica2 below
+  #   - Uncomment: opentdfdb_replica1_data, opentdfdb_replica2_data volumes
+  #   - opentdf-example.yaml:
+  #       host: localhost
+  #       port: 5432
+  #       read_replicas:
+  #         - host: localhost
+  #           port: 5435
+  #         - host: localhost
+  #           port: 5436
+  #
+  # SCENARIO 3: Multi-Host Primary + Read Replicas (Full HA)
+  #   - Uncomment: opentdfdb-primary2, opentdfdb-replica1, opentdfdb-replica2
+  #   - Uncomment: corresponding volumes
+  #   - opentdf-example.yaml (remove 'host', add 'primary_hosts'):
+  #       primary_hosts:
+  #         - host: localhost
+  #           port: 5432
+  #         - host: localhost
+  #           port: 5437  # opentdfdb-primary2
+  #       read_replicas:
+  #         - host: localhost
+  #           port: 5435
+  #         - host: localhost
+  #           port: 5436
+  # ============================================================================
+
+  # PostgreSQL Read Replica 1 (SCENARIO 2 & 3)
+  # Replicates from primary using streaming replication
+  # Handles read-only queries for horizontal scaling
+  # UNCOMMENT THE BLOCK BELOW TO ENABLE:
+  opentdfdb-replica1:
+    <<: *postgres-base
+    environment:
+      <<: *replica-env
+    volumes:
+      - opentdfdb_replica1_data:/var/lib/postgresql/data
+    depends_on:
+      <<: *replica-depends-on
+    healthcheck:
+      <<: *postgres-healthcheck-replica
+    ports:
+      - "5435:5432"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - *replica-init-command
+
+  # PostgreSQL Read Replica 2 (SCENARIO 2 & 3)
+  # Replicates from primary using streaming replication
+  # Handles read-only queries for horizontal scaling
+  # UNCOMMENT THE BLOCK BELOW TO ENABLE:
+  opentdfdb-replica2:
+    <<: *postgres-base
+    environment:
+      <<: *replica-env
+    volumes:
+      - opentdfdb_replica2_data:/var/lib/postgresql/data
+    depends_on:
+      <<: *replica-depends-on
+    healthcheck:
+      <<: *postgres-healthcheck-replica
+    ports:
+      - "5436:5432"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - *replica-init-command
+
+  # PostgreSQL Primary 2 (SCENARIO 3 ONLY - Multi-Host Primary Failover)
+  # Second primary database for automatic failover
+  # UNCOMMENT THE BLOCK BELOW TO ENABLE:
+  # opentdfdb-primary2:
+  #   <<: *postgres-base
+  #   environment:
+  #     <<: *postgres-env
+  #   volumes:
+  #     - opentdfdb_primary2_data:/var/lib/postgresql/data
+  #     - ./.github/scripts/postgres-primary-init.sh:/docker-entrypoint-initdb.d/01-replication-setup.sh:ro
+  #   # Start postgres with replication config
+  #   # wal_keep_size=1024 (1GB) prevents WAL deletion if replicas lag
+  #   command:
+  #     - postgres
+  #     - -c
+  #     - wal_level=replica
+  #     - -c
+  #     - max_wal_senders=10
+  #     - -c
+  #     - max_replication_slots=10
+  #     - -c
+  #     - hot_standby=on
+  #     - -c
+  #     - wal_keep_size=1024
+  #   healthcheck:
+  #     <<: *postgres-healthcheck
+  #   ports:
+  #     - "5437:5432"
 
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -119,7 +309,7 @@ services:
   #
   # Usage:
   #   docker-compose --profile ers-test up -d                    # Start ERS test services
-  #   docker-compose --profile ers-admin up -d                   # Include LDAP admin UI  
+  #   docker-compose --profile ers-admin up -d                   # Include LDAP admin UI
   #   ERS_TEST_POSTGRES_URL="postgres://ers_test_user:ers_test_pass@localhost:5433/ers_test?sslmode=disable" \
   #   ERS_TEST_LDAP_URL="ldap://localhost:1389" \
   #   go test ./service/entityresolution/integration -run TestMultiStrategy -v
@@ -205,6 +395,18 @@ services:
         condition: service_healthy
 
 volumes:
+  # OpenTDF Database Volumes
+  opentdfdb_primary_data:
+    name: opentdfdb_primary_data
+  # SCENARIO 2 & 3: Uncomment replica volumes when enabling read replicas
+  opentdfdb_replica1_data:
+    name: opentdfdb_replica1_data
+  opentdfdb_replica2_data:
+    name: opentdfdb_replica2_data
+  # SCENARIO 3: Uncomment primary2 volume when enabling multi-host primary
+  # opentdfdb_primary2_data:
+  #   name: opentdfdb_primary2_data
+  # ERS Test Volumes
   ers_postgres_data:
     name: ers_test_postgres_data
   ers_ldap_data:

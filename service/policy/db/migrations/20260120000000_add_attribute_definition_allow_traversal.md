@@ -5,7 +5,7 @@ This migration adds a boolean flag to attribute definitions so policy logic can 
 ## Schema Changes
 
 - **Table**: `attribute_definitions`
-- **Column added**: `allow_traversal BOOLEAN NOT NULL DEFAULT FALSE`
+- **Column added**: `allow_traversal BOOLEAN NOT NULL DEFAULT FALSE` (comment: "Whether or not to allow platform to return the definition key when encrypting, if the value specified is missing.")
 
 ## Behavior
 

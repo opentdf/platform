@@ -156,8 +156,10 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 			continue
 		}
 		if attr, ok := defByFqn[defFqn]; ok {
-			list[valueFqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-				Attribute: attr,
+			if attr.GetAllowTraversal().GetValue() {
+				list[valueFqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+					Attribute: attr,
+				}
 			}
 		}
 	}

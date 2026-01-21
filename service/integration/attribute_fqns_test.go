@@ -19,6 +19,7 @@ import (
 	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type AttributeFqnSuite struct {
@@ -1028,7 +1029,7 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns() {
 	}
 }
 
-func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_FiltersInactiveValues() {
+func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_FiltersInactiveValues_FromDefinition() {
 	namespace := "filter_inactive_values.get"
 	attr := "test_attr"
 	value1 := "test_value"
@@ -1043,9 +1044,10 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_FiltersInactiveValues()
 
 	// Create attribute
 	a, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		NamespaceId: n.GetId(),
-		Name:        attr,
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		NamespaceId:    n.GetId(),
+		Name:           attr,
+		Rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		AllowTraversal: wrapperspb.Bool(true),
 	})
 	s.Require().NoError(err)
 
@@ -1375,10 +1377,11 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_MixedFoundAndMissingVal
 
 	// create attribute with one value (found)
 	attrFound, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		NamespaceId: ns.GetId(),
-		Name:        "mixed_attr_found",
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-		Values:      []string{"value1"},
+		NamespaceId:    ns.GetId(),
+		Name:           "mixed_attr_found",
+		Rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:         []string{"value1"},
+		AllowTraversal: wrapperspb.Bool(true),
 	})
 	s.Require().NoError(err)
 
@@ -1389,9 +1392,10 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_MixedFoundAndMissingVal
 
 	// create attribute with no values (missing)
 	attrMissing, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		NamespaceId: ns.GetId(),
-		Name:        "mixed_attr_missing",
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		NamespaceId:    ns.GetId(),
+		Name:           "mixed_attr_missing",
+		Rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		AllowTraversal: wrapperspb.Bool(true),
 	})
 	s.Require().NoError(err)
 
@@ -1427,10 +1431,11 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_MixedMissingValue_Inact
 
 	// give it an attribute with two values
 	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		NamespaceId: ns.GetId(),
-		Name:        "inactive_attr",
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-		Values:      []string{"value1", "value2"},
+		NamespaceId:    ns.GetId(),
+		Name:           "inactive_attr",
+		Rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:         []string{"value1", "value2"},
+		AllowTraversal: wrapperspb.Bool(true),
 	})
 	s.Require().NoError(err)
 	got, err := s.db.PolicyClient.GetAttribute(s.ctx, attr.GetId())
@@ -1447,6 +1452,41 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_MixedMissingValue_Inact
 
 	retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{foundFqn, missingFqn},
+	})
+	s.Require().Error(err)
+	s.Nil(retrieved)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_MixedMissingValue_AllowTraversalMismatch_Fails() {
+	// create a new namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-fqn-namespace.mixed-traversal",
+	})
+	s.Require().NoError(err)
+
+	// create attribute with allow_traversal=true
+	attrAllow, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId:    ns.GetId(),
+		Name:           "mixed_attr_allow",
+		Rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		AllowTraversal: wrapperspb.Bool(true),
+	})
+	s.Require().NoError(err)
+
+	// create attribute with allow_traversal=false
+	attrDeny, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "mixed_attr_deny",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+	})
+	s.Require().NoError(err)
+
+	allowMissingFqn := fqnBuilder(ns.GetName(), attrAllow.GetName(), "missing_value")
+	denyMissingFqn := fqnBuilder(ns.GetName(), attrDeny.GetName(), "missing_value")
+
+	retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{allowMissingFqn, denyMissingFqn},
 	})
 	s.Require().Error(err)
 	s.Nil(retrieved)
@@ -1478,10 +1518,11 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithInactiveValue
 
 	// create attribute with two values
 	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		NamespaceId: ns.GetId(),
-		Name:        "inactive_value_attr",
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-		Values:      []string{"value1", "value2"},
+		NamespaceId:    ns.GetId(),
+		Name:           "inactive_value_attr",
+		Rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:         []string{"value1", "value2"},
+		AllowTraversal: wrapperspb.Bool(true),
 	})
 	s.Require().NoError(err)
 

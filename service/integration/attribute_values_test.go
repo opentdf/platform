@@ -558,9 +558,9 @@ func (s *AttributeValuesSuite) Test_UnsafeUpdateAttributeValue() {
 	retrieved, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: []string{original},
 	})
-	s.Require().NoError(err)
-	s.Equal(attrDef.ID, retrieved[original].GetAttribute().GetId())
-	s.Nil(retrieved[original].GetValue())
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(retrieved)
 
 	updated := "https://example.net/attr/attr1/value/new_value"
 	retrieved, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{

@@ -4,9 +4,8 @@ This guide provides details about the configuration setup for the platform, incl
 
 The platform leverages [viper](https://github.com/spf13/viper) to help load configuration.
 
-- [Platform Configuration](#platform-configuration)
-  - [Deployment Mode](#deployment-mode)
-    - [Service Negation](#service-negation)
+- [Deployment Mode](#deployment-mode)
+  - [Service Negation](#service-negation)
   - [SDK Configuration](#sdk-configuration)
   - [Logger Configuration](#logger-configuration)
   - [Server Configuration](#server-configuration)

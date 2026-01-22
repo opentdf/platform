@@ -90,7 +90,8 @@ message Attribute {
   //Keys associated with the attribute
   repeated SimpleKasKey kas_keys = 9;
 
-  // Allow traversal of hierarchy rules.
+  // Whether or we will use the attribute definition during encryption
+  // if the attribute value is missing.
   google.protobuf.BoolValue allow_traversal = 10;
 
   // Common metadata

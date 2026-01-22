@@ -925,7 +925,8 @@ type Attribute struct {
 	Active *wrapperspb.BoolValue `protobuf:"bytes,8,opt,name=active,proto3" json:"active,omitempty"`
 	// Keys associated with the attribute
 	KasKeys []*SimpleKasKey `protobuf:"bytes,9,rep,name=kas_keys,json=kasKeys,proto3" json:"kas_keys,omitempty"`
-	// Allow traversal of hierarchy rules.
+	// Whether or we will use the attribute definition during encryption
+	// if the attribute value is missing.
 	AllowTraversal *wrapperspb.BoolValue `protobuf:"bytes,10,opt,name=allow_traversal,json=allowTraversal,proto3" json:"allow_traversal,omitempty"`
 	// Common metadata
 	Metadata *common.Metadata `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`

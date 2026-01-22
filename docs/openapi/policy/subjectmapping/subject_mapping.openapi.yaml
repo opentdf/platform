@@ -731,7 +731,9 @@ components:
           description: Keys associated with the attribute
         allowTraversal:
           title: allow_traversal
-          description: Allow traversal of hierarchy rules.
+          description: |-
+            Whether or we will use the attribute definition during encryption
+             if the attribute value is missing.
           $ref: '#/components/schemas/google.protobuf.BoolValue'
         metadata:
           title: metadata

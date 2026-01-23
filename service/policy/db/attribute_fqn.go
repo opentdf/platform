@@ -157,7 +157,9 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 		}
 		if attr, ok := defByFqn[defFqn]; ok {
 			if attr.GetAllowTraversal().GetValue() {
-				c.logger.DebugContext(ctx, "value missing but allow_traversal is true, using definition", slog.String("value_fqn", valueFqn), slog.String("def_fqn", attr.GetFqn()))
+				c.logger.DebugContext(ctx, "value missing but allow_traversal is true, using definition",
+					slog.String("value_fqn", valueFqn),
+					slog.String("def_fqn", attr.GetFqn()))
 				list[valueFqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 					Attribute: attr,
 				}

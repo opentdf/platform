@@ -157,6 +157,7 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 		}
 		if attr, ok := defByFqn[defFqn]; ok {
 			if attr.GetAllowTraversal().GetValue() {
+				c.logger.DebugContext(ctx, "value missing but allow_traversal is true, using definition", slog.String("value fqn", valueFqn), slog.String("def fqn", attr.GetFqn()))
 				list[valueFqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 					Attribute: attr,
 				}
@@ -203,9 +204,11 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 }
 
 func definitionFqnFromValueFqn(valueFqn string) string {
-	hadHTTP := strings.HasPrefix(valueFqn, "http://")
+	httpPrefix := "http://"
+	httpsPrefix := "https://"
+	hadHTTP := strings.HasPrefix(valueFqn, httpPrefix)
 	if hadHTTP {
-		valueFqn = "https://" + strings.TrimPrefix(valueFqn, "http://")
+		valueFqn = httpsPrefix + strings.TrimPrefix(valueFqn, httpPrefix)
 	}
 	parsed, err := identifier.Parse[*identifier.FullyQualifiedAttribute](valueFqn)
 	if err != nil {
@@ -217,7 +220,7 @@ func definitionFqnFromValueFqn(valueFqn string) string {
 	parsed.Value = ""
 	defFqn := parsed.FQN()
 	if hadHTTP {
-		defFqn = "http://" + strings.TrimPrefix(defFqn, "https://")
+		defFqn = httpPrefix + strings.TrimPrefix(defFqn, httpsPrefix)
 	}
 	return defFqn
 }

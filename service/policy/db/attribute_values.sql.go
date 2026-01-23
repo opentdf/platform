@@ -190,7 +190,7 @@ LEFT JOIN (
 ) value_keys ON av.id = value_keys.value_id
 LEFT JOIN attribute_obligations ao ON av.id = ao.attribute_value_id
 WHERE ($1::uuid IS NULL OR av.id = $1::uuid)
-  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
+  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE($2::text, '^https://', ''))
 GROUP BY av.id, fqns.fqn, value_keys.keys, ao.obligations
 `
 
@@ -329,7 +329,7 @@ type getAttributeValueRow struct {
 //	) value_keys ON av.id = value_keys.value_id
 //	LEFT JOIN attribute_obligations ao ON av.id = ao.attribute_value_id
 //	WHERE ($1::uuid IS NULL OR av.id = $1::uuid)
-//	  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https?://', '') = REGEXP_REPLACE($2::text, '^https?://', ''))
+//	  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE($2::text, '^https://', ''))
 //	GROUP BY av.id, fqns.fqn, value_keys.keys, ao.obligations
 func (q *Queries) getAttributeValue(ctx context.Context, arg getAttributeValueParams) (getAttributeValueRow, error) {
 	row := q.db.QueryRow(ctx, getAttributeValue, arg.ID, arg.Fqn)

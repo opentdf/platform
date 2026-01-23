@@ -265,7 +265,7 @@ LEFT JOIN (
 ) nmp_certs ON ns.id = nmp_certs.namespace_id
 WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL
   AND ($1::uuid IS NULL OR ns.id = $1::uuid)
-  AND ($2::text IS NULL OR ns.name = REGEXP_REPLACE($2::text, '^https?://', ''))
+  AND ($2::text IS NULL OR ns.name = REGEXP_REPLACE($2::text, '^https://', ''))
 GROUP BY ns.id, fqns.fqn, nmp_keys.keys, nmp_certs.certs
 `
 
@@ -339,7 +339,7 @@ type getNamespaceRow struct {
 //	) nmp_certs ON ns.id = nmp_certs.namespace_id
 //	WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	  AND ($1::uuid IS NULL OR ns.id = $1::uuid)
-//	  AND ($2::text IS NULL OR ns.name = REGEXP_REPLACE($2::text, '^https?://', ''))
+//	  AND ($2::text IS NULL OR ns.name = REGEXP_REPLACE($2::text, '^https://', ''))
 //	GROUP BY ns.id, fqns.fqn, nmp_keys.keys, nmp_certs.certs
 func (q *Queries) getNamespace(ctx context.Context, arg getNamespaceParams) (getNamespaceRow, error) {
 	row := q.db.QueryRow(ctx, getNamespace, arg.ID, arg.Name)

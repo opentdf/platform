@@ -90,6 +90,10 @@ message Attribute {
   //Keys associated with the attribute
   repeated SimpleKasKey kas_keys = 9;
 
+  // Whether or not we will use the attribute definition during encryption
+  // if the attribute value is missing.
+  google.protobuf.BoolValue allow_traversal = 10;
+
   // Common metadata
   common.Metadata metadata = 100;
 }

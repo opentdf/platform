@@ -832,6 +832,12 @@ components:
             $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Keys associated with the attribute
+        allowTraversal:
+          title: allow_traversal
+          description: |-
+            Whether or not we will use the attribute definition during encryption
+             if the attribute value is missing.
+          $ref: '#/components/schemas/google.protobuf.BoolValue'
         metadata:
           title: metadata
           description: Common metadata

@@ -203,6 +203,10 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 }
 
 func definitionFqnFromValueFqn(valueFqn string) string {
+	hadHTTP := strings.HasPrefix(valueFqn, "http://")
+	if hadHTTP {
+		valueFqn = "https://" + strings.TrimPrefix(valueFqn, "http://")
+	}
 	parsed, err := identifier.Parse[*identifier.FullyQualifiedAttribute](valueFqn)
 	if err != nil {
 		return ""
@@ -211,5 +215,9 @@ func definitionFqnFromValueFqn(valueFqn string) string {
 		return ""
 	}
 	parsed.Value = ""
-	return parsed.FQN()
+	defFqn := parsed.FQN()
+	if hadHTTP {
+		defFqn = "http://" + strings.TrimPrefix(defFqn, "https://")
+	}
+	return defFqn
 }

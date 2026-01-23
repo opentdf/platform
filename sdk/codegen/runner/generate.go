@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -161,27 +162,30 @@ func New%s%s%sConnectWrapper(httpClient connect.HTTPClient, baseURL string, opts
 		interfaceName)
 
 	// Generate the interface type definition
-	wrapperCode += generateInterfaceType(interfaceName, methods, packageName, prefix, suffix)
+	var builder strings.Builder
+	builder.WriteString(wrapperCode)
+	builder.WriteString(generateInterfaceType(interfaceName, methods, packageName, prefix, suffix))
 	// Now generate a wrapper function for each method in the interface
 	for _, method := range methods {
-		wrapperCode += generateWrapperMethod(interfaceName, method, packageName, prefix, suffix)
+		builder.WriteString(generateWrapperMethod(interfaceName, method, packageName, prefix, suffix))
 	}
 
 	// Output the generated wrapper code
-	return wrapperCode
+	return builder.String()
 }
 
 func generateInterfaceType(interfaceName string, methods []string, packageName, prefix, suffix string) string {
 	// Generate the interface type definition
-	interfaceType := fmt.Sprintf(`
+	var builder strings.Builder
+	builder.WriteString(fmt.Sprintf(`
 type %s%s%s interface {
-`, prefix, interfaceName, suffix)
+`, prefix, interfaceName, suffix))
 	for _, method := range methods {
-		interfaceType += fmt.Sprintf(`	%s(ctx context.Context, req *%s.%sRequest) (*%s.%sResponse, error)
-`, method, packageName, method, packageName, method)
+		builder.WriteString(fmt.Sprintf(`	%s(ctx context.Context, req *%s.%sRequest) (*%s.%sResponse, error)
+`, method, packageName, method, packageName, method))
 	}
-	interfaceType += "}\n"
-	return interfaceType
+	builder.WriteString("}\n")
+	return builder.String()
 }
 
 // Generate the wrapper method for a specific method in the interface

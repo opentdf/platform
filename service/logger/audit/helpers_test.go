@@ -15,7 +15,7 @@ const (
 	TestUserAgent = "test-user-agent"
 	TestActorID   = "test-actor-id"
 
-	TestTDFFormat     = "nano"
+	TestTDFFormat     = "ztdf"
 	TestAlgorithm     = "rsa"
 	TestPolicyBinding = "test-policy-binding"
 )

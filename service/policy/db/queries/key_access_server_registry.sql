@@ -326,6 +326,15 @@ SET
     metadata = COALESCE(sqlc.narg('metadata'), metadata)
 WHERE id = $1;
 
+-- name: keyAccessServerExists :one
+SELECT EXISTS (
+    SELECT 1
+    FROM key_access_servers AS kas
+    WHERE (sqlc.narg('kas_id')::uuid IS NULL OR kas.id = sqlc.narg('kas_id')::uuid)
+        AND (sqlc.narg('kas_name')::text IS NULL OR kas.name = sqlc.narg('kas_name')::text)
+        AND (sqlc.narg('kas_uri')::text IS NULL OR kas.uri = sqlc.narg('kas_uri')::text)
+);
+
 -- name: listKeys :many
 WITH listed AS (
     SELECT

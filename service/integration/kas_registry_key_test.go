@@ -466,6 +466,14 @@ func (s *KasRegistryKeySuite) Test_ListKeys_InvalidLimit_Fail() {
 	s.Require().ErrorContains(err, db.ErrListLimitTooLarge.Error())
 }
 
+func (s *KasRegistryKeySuite) Test_ListKeys_NoKasFilter_Success() {
+	req := kasregistry.ListKeysRequest{}
+	resp, err := s.db.PolicyClient.ListKeys(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(resp)
+	s.NotEmpty(resp.GetKasKeys())
+}
+
 func (s *KasRegistryKeySuite) Test_ListKeys_KasID_Success() {
 	req := kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasId{
@@ -494,6 +502,55 @@ func (s *KasRegistryKeySuite) Test_ListKeys_KasURI_Success() {
 	}
 	resp, err := s.db.PolicyClient.ListKeys(s.ctx, &req)
 	s.validateListKeysResponse(resp, 2, err)
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_KasFilter_NotFound_Fails() {
+	tests := []struct {
+		name    string
+		makeReq func() *kasregistry.ListKeysRequest
+	}{
+		{
+			name: "by_kas_id",
+			makeReq: func() *kasregistry.ListKeysRequest {
+				return &kasregistry.ListKeysRequest{
+					KasFilter: &kasregistry.ListKeysRequest_KasId{
+						KasId: uuid.NewString(),
+					},
+				}
+			},
+		},
+		{
+			name: "by_kas_name",
+			makeReq: func() *kasregistry.ListKeysRequest {
+				return &kasregistry.ListKeysRequest{
+					KasFilter: &kasregistry.ListKeysRequest_KasName{
+						KasName: "kas-name-does-not-exist",
+					},
+				}
+			},
+		},
+		{
+			name: "by_kas_uri",
+			makeReq: func() *kasregistry.ListKeysRequest {
+				return &kasregistry.ListKeysRequest{
+					KasFilter: &kasregistry.ListKeysRequest_KasUri{
+						KasUri: "https://kas-uri-does-not-exist.opentdf.io",
+					},
+				}
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		s.Run(tc.name, func() {
+			req := tc.makeReq()
+			resp, err := s.db.PolicyClient.ListKeys(s.ctx, req)
+			s.Require().Error(err)
+			s.Nil(resp)
+			s.Require().ErrorContains(err, db.ErrNotFound.Error())
+		})
+	}
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_FilterAlgo_NoKeysWithAlgo_Success() {

@@ -925,7 +925,8 @@ type Attribute struct {
 	Active *wrapperspb.BoolValue `protobuf:"bytes,8,opt,name=active,proto3" json:"active,omitempty"`
 	// Keys associated with the attribute
 	KasKeys []*SimpleKasKey `protobuf:"bytes,9,rep,name=kas_keys,json=kasKeys,proto3" json:"kas_keys,omitempty"`
-	// Allow traversal of hierarchy rules.
+	// Whether or not we will use the attribute definition during encryption
+	// if the attribute value is missing.
 	AllowTraversal *wrapperspb.BoolValue `protobuf:"bytes,10,opt,name=allow_traversal,json=allowTraversal,proto3" json:"allow_traversal,omitempty"`
 	// Common metadata
 	Metadata *common.Metadata `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
@@ -2040,8 +2041,8 @@ type KasPublicKey struct {
 	// A unique string identifier for this key
 	Kid string `protobuf:"bytes,2,opt,name=kid,proto3" json:"kid,omitempty"`
 	// A known algorithm type with any additional parameters encoded.
-	// To start, these may be `rsa:2048` for encrypting ZTDF files and
-	// `ec:secp256r1` for nanoTDF, but more formats may be added as needed.
+	// To start, these may be `rsa:2048` for RSA-based wrapping and
+	// `ec:secp256r1` for EC-based wrapping, but more formats may be added as needed.
 	Alg KasPublicKeyAlgEnum `protobuf:"varint,3,opt,name=alg,proto3,enum=policy.KasPublicKeyAlgEnum" json:"alg,omitempty"`
 }
 

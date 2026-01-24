@@ -285,6 +285,19 @@ func CalculateHKDF(salt []byte, secret []byte) ([]byte, error) {
 	return derivedKey, nil
 }
 
+// CalculateHKDFWithSize generate a key using key derivation function with a specific size.
+func CalculateHKDFWithSize(salt []byte, secret []byte, keySize int) ([]byte, error) {
+	hkdfObj := hkdf.New(sha256.New, secret, salt, nil)
+
+	derivedKey := make([]byte, keySize)
+	_, err := io.ReadFull(hkdfObj, derivedKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to derive hkdf key: %w", err)
+	}
+
+	return derivedKey, nil
+}
+
 // ComputeECDSASig compute ecdsa signature
 func ComputeECDSASig(digest []byte, privKey *ecdsa.PrivateKey) ([]byte, []byte, error) {
 	r, s, err := ecdsa.Sign(rand.Reader, privKey, digest)

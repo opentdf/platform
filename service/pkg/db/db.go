@@ -146,7 +146,7 @@ type Client struct {
 	config        Config
 	ranMigrations bool
 	// This is the stdlib connection that is used for transactions
-	SQLDB *sql.DB
+	sqlDB *sql.DB
 	trace.Tracer
 }
 
@@ -202,7 +202,7 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 	}
 	c.Pgx = pool
 	// We need to create a stdlib connection for transactions
-	c.SQLDB = stdlib.OpenDBFromPool(pool)
+	c.sqlDB = stdlib.OpenDBFromPool(pool)
 
 	// Connect to the database to verify the connection
 	if c.config.VerifyConnection {
@@ -220,7 +220,14 @@ func (c *Client) Schema() string {
 
 func (c *Client) Close() {
 	c.Pgx.Close()
-	c.SQLDB.Close()
+	c.sqlDB.Close()
+}
+
+func (c *Client) PingContext(ctx context.Context) error {
+	if c.sqlDB == nil {
+		return fmt.Errorf("sqldb not initialized")
+	}
+	return c.sqlDB.PingContext(ctx)
 }
 
 func (c Config) buildConfig() (*pgxpool.Config, error) {

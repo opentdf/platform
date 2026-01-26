@@ -259,8 +259,11 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 	return policyAttr, nil
 }
 
-func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string) ([]*policy.Attribute, error) {
-	list, err := c.queries.listAttributesByDefOrValueFqns(ctx, fqns)
+func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string, includeInactiveValues bool) ([]*policy.Attribute, error) {
+	list, err := c.queries.listAttributesByDefOrValueFqns(ctx, listAttributesByDefOrValueFqnsParams{
+		Fqns:                  fqns,
+		IncludeInactiveValues: includeInactiveValues,
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -334,7 +337,7 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 }
 
 func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
-	list, err := c.ListAttributesByFqns(ctx, []string{strings.ToLower(fqn)})
+	list, err := c.ListAttributesByFqns(ctx, []string{strings.ToLower(fqn)}, false)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

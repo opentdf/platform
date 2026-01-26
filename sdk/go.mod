@@ -12,7 +12,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/lestrrat-go/jwx/v2 v2.1.6
 	github.com/opentdf/platform/lib/fixtures v0.4.0
-	github.com/opentdf/platform/lib/ocrypto v0.8.0
+	github.com/opentdf/platform/lib/ocrypto v0.9.0
 	github.com/opentdf/platform/protocol/go v0.14.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.40.0

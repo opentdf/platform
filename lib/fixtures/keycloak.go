@@ -23,6 +23,7 @@ const (
 	// Token refresh constants
 	defaultTokenBufferSeconds    = 120 // 2 minutes before expiration
 	defaultFallbackExpiryMinutes = 5   // Fallback when token doesn't provide ExpiresIn
+	adaptiveBufferDivisor        = 2   // Use 50% of token lifetime when buffer > lifetime
 )
 
 type KeycloakData struct {
@@ -609,7 +610,7 @@ func (tm *TokenManager) refreshToken(ctx context.Context) error {
 		// Adaptive buffer: if token lifetime is shorter than buffer, use 50% of lifetime instead
 		tokenLifetime := time.Duration(token.ExpiresIn) * time.Second
 		if tm.tokenBuffer >= tokenLifetime {
-			tm.tokenBuffer = tokenLifetime / 2
+			tm.tokenBuffer = tokenLifetime / adaptiveBufferDivisor
 			slog.InfoContext(ctx, "adjusted token buffer for short token lifetime",
 				slog.Duration("token_lifetime", tokenLifetime),
 				slog.Duration("adjusted_buffer", tm.tokenBuffer))

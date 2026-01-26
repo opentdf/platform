@@ -149,8 +149,8 @@ func TestTokenManager_PreemptiveRefresh(t *testing.T) {
 		AllowInsecureTLS: true,
 	}
 
-	// Use a very long token buffer to force immediate refresh
-	// Note: This test uses a 1-hour buffer which should be longer than typical token lifetimes (5-15 minutes).
+	// Use a token buffer that is longer than typical token lifetimes to exercise the refresh logic.
+	// With a 1-hour buffer, tokens with lifetimes shorter than 1 hour will trigger preemptive refresh.
 	// If the Keycloak instance has tokens that live longer than 1 hour, this test will not observe a refresh,
 	// which is expected behavior (no refresh needed if token is still valid beyond the buffer).
 	config := &TokenManagerConfig{

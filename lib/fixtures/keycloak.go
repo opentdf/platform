@@ -87,7 +87,7 @@ type TokenManagerConfig struct {
 
 // TokenManager manages automatic token refresh for Keycloak operations
 type TokenManager struct {
-	connectParams *KeycloakConnectParams
+	connectParams KeycloakConnectParams
 	client        *gocloak.GoCloak
 	token         *gocloak.JWT
 	expiresAt     time.Time
@@ -533,7 +533,7 @@ func NewTokenManager(ctx context.Context, connectParams *KeycloakConnectParams, 
 	}
 
 	tm := &TokenManager{
-		connectParams: connectParams,
+		connectParams: *connectParams,
 		tokenBuffer:   tokenBuffer,
 	}
 

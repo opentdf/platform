@@ -589,13 +589,22 @@ func (tm *TokenManager) refreshToken(ctx context.Context) error {
 	}
 
 	// Get new token from master realm
+	// Note: Admin tokens are ALWAYS obtained from the "master" realm in Keycloak,
+	// regardless of which realm is being managed. The token has admin permissions
+	// across all realms. This is standard Keycloak authentication behavior.
 	token, err := tm.client.LoginAdmin(ctx, tm.connectParams.Username, tm.connectParams.Password, "master")
 	if err != nil {
 		return fmt.Errorf("keycloak login failed: %w", err)
 	}
 
 	tm.token = token
-	tm.expiresAt = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
+	// Use the token's expiration time if available, otherwise calculate from ExpiresIn
+	if token.ExpiresIn > 0 {
+		tm.expiresAt = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
+	} else {
+		// Fallback to a reasonable default if ExpiresIn is not set
+		tm.expiresAt = time.Now().Add(5 * time.Minute)
+	}
 
 	return nil
 }
@@ -615,64 +624,12 @@ func keycloakLogin(ctx context.Context, connectParams *KeycloakConnectParams) (*
 }
 
 func createRealm(ctx context.Context, kcConnectParams KeycloakConnectParams, realm gocloak.RealmRepresentation) error {
-	// Create realm, if it does not exist.
-	client, token, err := keycloakLogin(ctx, &kcConnectParams)
+	// Create TokenManager and delegate to TokenManager version
+	tm, err := NewTokenManager(ctx, &kcConnectParams, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create token manager: %w", err)
 	}
-
-	// Create realm
-	r, err := client.GetRealm(ctx, token.AccessToken, *realm.Realm)
-	var kcErr *gocloak.APIError
-	if errors.As(err, &kcErr) {
-		switch kcErr.Code {
-		case http.StatusNotFound:
-			// yes
-		case http.StatusConflict:
-			slog.Info("realm already exists, skipping create", slog.String("realm", *realm.Realm))
-		default:
-			return err
-		}
-	} else if err != nil {
-		if kcErr.Code == http.StatusConflict {
-			slog.Info("realm already exists, skipping create", slog.String("realm", *realm.Realm))
-		} else if kcErr.Code != http.StatusNotFound {
-			return err
-		}
-	}
-
-	if r == nil {
-		if _, err := client.CreateRealm(ctx, token.AccessToken, realm); err != nil {
-			return err
-		}
-		//nolint:sloglint // allow existing emojis
-		slog.Info("✅ realm created", slog.String("realm", *realm.Realm))
-	} else {
-		//nolint:sloglint // allow existing emojis
-		slog.Info("⏭️ realm already exists", slog.String("realm", *realm.Realm))
-	}
-
-	// update realm users profile via upconfig
-	realmProfileURL := fmt.Sprintf("%s/admin/realms/%s/users/profile", kcConnectParams.BasePath, *realm.Realm)
-	realmUserProfileResp, err := client.GetRequestWithBearerAuth(ctx, token.AccessToken).Get(realmProfileURL)
-	if err != nil {
-		slog.Error("error retrieving realm users profile", slog.String("realm", *realm.Realm))
-		return err
-	}
-	var upConfig map[string]interface{}
-	err = json.Unmarshal([]byte(realmUserProfileResp.String()), &upConfig)
-	if err != nil {
-		return err
-	}
-	upConfig["unmanagedAttributePolicy"] = "ENABLED"
-	_, err = client.GetRequestWithBearerAuth(ctx, token.AccessToken).SetBody(upConfig).Put(realmProfileURL)
-	if err != nil {
-		return err
-	}
-	//nolint:sloglint // allow existing emojis
-	slog.Info("✅ realm users profile updated", slog.String("realm", *realm.Realm))
-
-	return nil
+	return createRealmWithTokenManager(ctx, kcConnectParams, realm, tm)
 }
 
 func createRealmWithTokenManager(ctx context.Context, kcConnectParams KeycloakConnectParams, realm gocloak.RealmRepresentation, tm *TokenManager) error {
@@ -685,20 +642,19 @@ func createRealmWithTokenManager(ctx context.Context, kcConnectParams KeycloakCo
 
 	// Create realm
 	r, err := client.GetRealm(ctx, token.AccessToken, *realm.Realm)
-	var kcErr *gocloak.APIError
-	if errors.As(err, &kcErr) {
-		switch kcErr.Code {
-		case http.StatusNotFound:
-			// yes
-		case http.StatusConflict:
-			slog.Info("realm already exists, skipping create", slog.String("realm", *realm.Realm))
-		default:
-			return err
-		}
-	} else if err != nil {
-		if kcErr.Code == http.StatusConflict {
-			slog.Info("realm already exists, skipping create", slog.String("realm", *realm.Realm))
-		} else if kcErr.Code != http.StatusNotFound {
+	if err != nil {
+		var kcErr *gocloak.APIError
+		if errors.As(err, &kcErr) {
+			switch kcErr.Code {
+			case http.StatusNotFound:
+				// Realm doesn't exist, we'll create it below
+			case http.StatusConflict:
+				slog.Info("realm already exists, skipping create", slog.String("realm", *realm.Realm))
+			default:
+				return err
+			}
+		} else {
+			// Non-Keycloak error
 			return err
 		}
 	}

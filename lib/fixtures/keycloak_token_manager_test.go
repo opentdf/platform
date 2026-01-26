@@ -150,8 +150,11 @@ func TestTokenManager_PreemptiveRefresh(t *testing.T) {
 	}
 
 	// Use a very long token buffer to force immediate refresh
+	// Note: This test uses a 1-hour buffer which should be longer than typical token lifetimes (5-15 minutes).
+	// If the Keycloak instance has tokens that live longer than 1 hour, this test will not observe a refresh,
+	// which is expected behavior (no refresh needed if token is still valid beyond the buffer).
 	config := &TokenManagerConfig{
-		TokenBuffer: 1 * time.Hour, // Buffer longer than token lifetime
+		TokenBuffer: 1 * time.Hour, // Buffer longer than typical token lifetime
 	}
 
 	tm, err := NewTokenManager(ctx, connectParams, config)
@@ -160,17 +163,24 @@ func TestTokenManager_PreemptiveRefresh(t *testing.T) {
 	}
 
 	firstToken := tm.token.AccessToken
+	firstExpiresAt := tm.expiresAt
 
-	// Get token should trigger refresh due to long buffer
+	// Get token should trigger refresh due to long buffer (if token lifetime < 1 hour)
 	_, err = tm.GetToken(ctx)
 	if err != nil {
 		t.Fatalf("Failed to get token: %v", err)
 	}
 
-	// Token should have been refreshed
+	// Check if token was refreshed
 	secondToken := tm.token.AccessToken
+	secondExpiresAt := tm.expiresAt
+
 	if firstToken == secondToken {
-		t.Log("Warning: Token was not refreshed, might be due to token lifetime > buffer")
+		// This is not necessarily a failure - it means the token lifetime is longer than our buffer
+		t.Logf("Token was not refreshed. This is expected if token lifetime > 1 hour. Token expires at: %v", firstExpiresAt)
+	} else {
+		// Token was refreshed as expected
+		t.Logf("Token was successfully refreshed. Old expiry: %v, New expiry: %v", firstExpiresAt, secondExpiresAt)
 	}
 }
 

@@ -21,8 +21,8 @@ const (
 	kcErrUnknown = -1
 
 	// Token refresh constants
-	defaultTokenBufferSeconds      = 120 // 2 minutes before expiration
-	defaultFallbackExpiryMinutes   = 5   // Fallback when token doesn't provide ExpiresIn
+	defaultTokenBufferSeconds    = 120 // 2 minutes before expiration
+	defaultFallbackExpiryMinutes = 5   // Fallback when token doesn't provide ExpiresIn
 )
 
 type KeycloakData struct {

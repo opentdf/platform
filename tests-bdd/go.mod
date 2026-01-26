@@ -192,7 +192,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/opentdf/platform/lib/flattening v0.1.3 // indirect
 	github.com/opentdf/platform/lib/identifier v0.0.2 // indirect
-	github.com/opentdf/platform/lib/ocrypto v0.2.0 // indirect
+	github.com/opentdf/platform/lib/ocrypto v0.9.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect

@@ -253,8 +253,8 @@ github.com/opentdf/platform/lib/flattening v0.1.3 h1:IuOm/wJVXNrzOV676Ticgr0wyBk
 github.com/opentdf/platform/lib/flattening v0.1.3/go.mod h1:Gs/T+6FGZKk9OAdz2Jf1R8CTGeNRYrq1lZGDeYT3hrY=
 github.com/opentdf/platform/lib/identifier v0.2.0 h1:lpz/QmkGwlli8PmBvDH2bPqWvpna0n0lbEX0+bH3P0o=
 github.com/opentdf/platform/lib/identifier v0.2.0/go.mod h1:/tHnLlSVOq3qmbIYSvKrtuZchQfagenv4wG5twl4oRs=
-github.com/opentdf/platform/lib/ocrypto v0.8.0 h1:rit/59go69mRHS3kAJQfX4zSbEgK7j5RMRCrx8UX6JA=
-github.com/opentdf/platform/lib/ocrypto v0.8.0/go.mod h1:/TtiJldbP/LO1cvX8bwhnd7SVHSUImBt1EfjG9qEo78=
+github.com/opentdf/platform/lib/ocrypto v0.9.0 h1:ZEJRFLR549unvP6aMWt2j3HT29wqBBhO9P7uudho6Ho=
+github.com/opentdf/platform/lib/ocrypto v0.9.0/go.mod h1:/TtiJldbP/LO1cvX8bwhnd7SVHSUImBt1EfjG9qEo78=
 github.com/opentdf/platform/protocol/go v0.15.0 h1:7m1iBCxklQy/inIonmGJnhfjkr4ZFLXVt1dL5aiO+sY=
 github.com/opentdf/platform/protocol/go v0.15.0/go.mod h1:m6hTbcBrtp2jRhsAstLvPSAnm8v055fUppveG3iI6tw=
 github.com/opentdf/platform/sdk v0.10.1 h1:kBrTK48xle7mdGc+atlr4kDh94f6kVj+0OB76K8rozI=

@@ -19,6 +19,10 @@ import (
 const (
 	kcErrNone    = 0
 	kcErrUnknown = -1
+
+	// Token refresh constants
+	defaultTokenBufferSeconds      = 120 // 2 minutes before expiration
+	defaultFallbackExpiryMinutes   = 5   // Fallback when token doesn't provide ExpiresIn
 )
 
 type KeycloakData struct {
@@ -488,13 +492,13 @@ func SetupCustomKeycloakWithConfig(ctx context.Context, kcParams KeycloakConnect
 				if customUser.Copies < 1 {
 					continue
 				}
-				baseUserName := *customUser.User.Username
-				baseEmail := *customUser.User.Email
+				baseUserName := *customUser.Username
+				baseEmail := *customUser.Email
 				numDigits := int(math.Log10(float64(customUser.Copies-1))) + 1
 				padFormat := fmt.Sprintf("%%s-%%%dd", numDigits)
 				for i := 0; i < customUser.Copies; i++ {
-					customUser.User.Username = gocloak.StringP(fmt.Sprintf(padFormat, baseUserName, i))
-					customUser.User.Email = gocloak.StringP(fmt.Sprintf("%d-%s", i, baseEmail))
+					customUser.Username = gocloak.StringP(fmt.Sprintf(padFormat, baseUserName, i))
+					customUser.Email = gocloak.StringP(fmt.Sprintf("%d-%s", i, baseEmail))
 					_, err = createUser(ctx, tm, &kcConnectParams, customUser.User)
 					if err != nil {
 						return err
@@ -523,7 +527,7 @@ func NewTokenManager(ctx context.Context, connectParams *KeycloakConnectParams, 
 	}
 
 	// Set default token buffer if not provided
-	tokenBuffer := 120 * time.Second
+	tokenBuffer := defaultTokenBufferSeconds * time.Second
 	if config != nil && config.TokenBuffer > 0 {
 		tokenBuffer = config.TokenBuffer
 	}
@@ -603,7 +607,7 @@ func (tm *TokenManager) refreshToken(ctx context.Context) error {
 		tm.expiresAt = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
 	} else {
 		// Fallback to a reasonable default if ExpiresIn is not set
-		tm.expiresAt = time.Now().Add(5 * time.Minute)
+		tm.expiresAt = time.Now().Add(defaultFallbackExpiryMinutes * time.Minute)
 	}
 
 	return nil
@@ -1112,7 +1116,7 @@ func createTokenExchangeWithTokenManager(ctx context.Context, connectParams *Key
 		Type:  &policyType,
 	}
 	policyClients := []string{startClientID}
-	realmMgmtExchangePolicyRepresentation.ClientPolicyRepresentation.Clients = &policyClients
+	realmMgmtExchangePolicyRepresentation.Clients = &policyClients
 
 	realmMgmtPolicy, err := client.CreatePolicy(ctx, token.AccessToken, connectParams.Realm,
 		*realmManagementClientID, realmMgmtExchangePolicyRepresentation)

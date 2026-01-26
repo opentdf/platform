@@ -457,7 +457,7 @@ values AS (
         INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY k.value_id
     ) value_keys ON av.id = value_keys.value_id                        
-	WHERE av.active = TRUE
+	WHERE (av.active = TRUE OR $2::BOOLEAN = TRUE)
 	GROUP BY av.attribute_definition_id
 )
 SELECT
@@ -477,6 +477,11 @@ INNER JOIN namespaces n ON td.namespace_id = n.id
 LEFT JOIN values ON td.id = values.attribute_definition_id
 WHERE fqns.value_id IS NULL
 `
+
+type listAttributesByDefOrValueFqnsParams struct {
+	Fqns                  []string `json:"fqns"`
+	IncludeInactiveValues bool     `json:"include_inactive_values"`
+}
 
 type listAttributesByDefOrValueFqnsRow struct {
 	ID             string                  `json:"id"`
@@ -697,7 +702,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //	        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
 //	        GROUP BY k.value_id
 //	    ) value_keys ON av.id = value_keys.value_id
-//		WHERE av.active = TRUE
+//		WHERE (av.active = TRUE OR $2::BOOLEAN = TRUE)
 //		GROUP BY av.attribute_definition_id
 //	)
 //	SELECT
@@ -716,8 +721,8 @@ type listAttributesByDefOrValueFqnsRow struct {
 //	INNER JOIN namespaces n ON td.namespace_id = n.id
 //	LEFT JOIN values ON td.id = values.attribute_definition_id
 //	WHERE fqns.value_id IS NULL
-func (q *Queries) listAttributesByDefOrValueFqns(ctx context.Context, fqns []string) ([]listAttributesByDefOrValueFqnsRow, error) {
-	rows, err := q.db.Query(ctx, listAttributesByDefOrValueFqns, fqns)
+func (q *Queries) listAttributesByDefOrValueFqns(ctx context.Context, arg listAttributesByDefOrValueFqnsParams) ([]listAttributesByDefOrValueFqnsRow, error) {
+	rows, err := q.db.Query(ctx, listAttributesByDefOrValueFqns, arg.Fqns, arg.IncludeInactiveValues)
 	if err != nil {
 		return nil, err
 	}

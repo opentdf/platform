@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.15.0](https://github.com/opentdf/platform/compare/protocol/go/v0.14.0...protocol/go/v0.15.0) (2026-01-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove nanotdf support ([#3013](https://github.com/opentdf/platform/issues/3013))
+
+### Features
+
+* **core:** add direct entitlement support ([#2630](https://github.com/opentdf/platform/issues/2630)) ([cc8337a](https://github.com/opentdf/platform/commit/cc8337a4d4b6be4cb1f4117711109c2d8d599cb9))
+* **policy:** add allow_traversal to attribute definitions ([#3014](https://github.com/opentdf/platform/issues/3014)) ([bbbe21b](https://github.com/opentdf/platform/commit/bbbe21bb671f5ffedd116a08ff15779ce7034fcb))
+
+
+### Bug Fixes
+
+* Connect RPC v1.19.1  ([#3009](https://github.com/opentdf/platform/issues/3009)) ([c354fd3](https://github.com/opentdf/platform/commit/c354fd387f2e17f764feacf302488d9afdbac5f0))
+* remove nanotdf support ([#3013](https://github.com/opentdf/platform/issues/3013)) ([90ff7ce](https://github.com/opentdf/platform/commit/90ff7ce50754a1f37ba1cc530507c1f6e15930a0))
+
 ## [0.14.0](https://github.com/opentdf/platform/compare/protocol/go/v0.13.0...protocol/go/v0.14.0) (2025-12-19)
 
 

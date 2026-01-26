@@ -605,6 +605,15 @@ func (tm *TokenManager) refreshToken(ctx context.Context) error {
 	// Use the token's expiration time if available, otherwise calculate from ExpiresIn
 	if token.ExpiresIn > 0 {
 		tm.expiresAt = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
+
+		// Adaptive buffer: if token lifetime is shorter than buffer, use 50% of lifetime instead
+		tokenLifetime := time.Duration(token.ExpiresIn) * time.Second
+		if tm.tokenBuffer >= tokenLifetime {
+			tm.tokenBuffer = tokenLifetime / 2
+			slog.InfoContext(ctx, "adjusted token buffer for short token lifetime",
+				slog.Duration("token_lifetime", tokenLifetime),
+				slog.Duration("adjusted_buffer", tm.tokenBuffer))
+		}
 	} else {
 		// Fallback to a reasonable default if ExpiresIn is not set
 		tm.expiresAt = time.Now().Add(defaultFallbackExpiryMinutes * time.Minute)

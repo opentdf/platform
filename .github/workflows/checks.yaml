@@ -87,6 +87,11 @@ jobs:
         working-directory: ${{ matrix.directory }}
       - if: matrix.directory == 'service'
         run: go test ./service/integration -race -failfast
+      - name: verify sqlc generate
+        if: matrix.directory == 'service'
+        run: |
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
+          make policy-sql-gen
       - name: check go fmt and go mod tidy
         run: |-
           go mod tidy

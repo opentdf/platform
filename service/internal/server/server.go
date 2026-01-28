@@ -278,12 +278,19 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
-	connectRPCIpc, err := newConnectRPC(config, authN.IPCUnaryServerInterceptor(), config.ExtraIPCInterceptors, logger)
+	var ipcAuthInt connect.Interceptor
+	var connectAuthInt connect.Interceptor
+	if config.Auth.Enabled && authN != nil {
+		ipcAuthInt = authN.IPCUnaryServerInterceptor()
+		connectAuthInt = authN.ConnectUnaryServerInterceptor()
+	}
+
+	connectRPCIpc, err := newConnectRPC(config, ipcAuthInt, config.ExtraIPCInterceptors, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc ipc server: %w", err)
 	}
 
-	connectRPC, err := newConnectRPC(config, authN.ConnectUnaryServerInterceptor(), config.ExtraConnectInterceptors, logger)
+	connectRPC, err := newConnectRPC(config, connectAuthInt, config.ExtraConnectInterceptors, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc server: %w", err)
 	}
@@ -516,9 +523,9 @@ func pprofHandler(h http.Handler) http.Handler {
 func newConnectRPC(c Config, authInt connect.Interceptor, ints []connect.Interceptor, logger *logger.Logger) (*ConnectRPC, error) {
 	interceptors := make([]connect.HandlerOption, 0)
 
-	if c.Auth.Enabled {
+	if c.Auth.Enabled && authInt != nil {
 		interceptors = append(interceptors, connect.WithInterceptors(authInt))
-	} else {
+	} else if !c.Auth.Enabled {
 		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
 	}
 

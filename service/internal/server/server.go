@@ -278,12 +278,12 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
-	connectRPCIpc, err := newConnectRPCIPC(config, authN, logger)
+	connectRPCIpc, err := newConnectRPC(config, authN.IPCUnaryServerInterceptor(), config.ExtraIPCInterceptors, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc ipc server: %w", err)
 	}
 
-	connectRPC, err := newConnectRPC(config, authN, logger)
+	connectRPC, err := newConnectRPC(config, authN.ConnectUnaryServerInterceptor(), config.ExtraConnectInterceptors, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc server: %w", err)
 	}
@@ -513,44 +513,17 @@ func pprofHandler(h http.Handler) http.Handler {
 	})
 }
 
-func newConnectRPCIPC(c Config, a *auth.Authentication, logger *logger.Logger) (*ConnectRPC, error) {
+func newConnectRPC(c Config, authInt connect.Interceptor, ints []connect.Interceptor, logger *logger.Logger) (*ConnectRPC, error) {
 	interceptors := make([]connect.HandlerOption, 0)
 
 	if c.Auth.Enabled {
-		interceptors = append(interceptors, connect.WithInterceptors(a.IPCUnaryServerInterceptor()))
+		interceptors = append(interceptors, connect.WithInterceptors(authInt))
 	} else {
 		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
 	}
 
-	if len(c.ExtraIPCInterceptors) > 0 {
-		interceptors = append(interceptors, connect.WithInterceptors(c.ExtraIPCInterceptors...))
-	}
-
-	// Add protovalidate interceptor
-	vaidationInterceptor, err := validate.NewInterceptor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create validation interceptor: %w", err)
-	}
-
-	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor(logger.Logger)))
-
-	return &ConnectRPC{
-		Interceptors: interceptors,
-		Mux:          http.NewServeMux(),
-	}, nil
-}
-
-func newConnectRPC(c Config, a *auth.Authentication, logger *logger.Logger) (*ConnectRPC, error) {
-	interceptors := make([]connect.HandlerOption, 0)
-
-	if c.Auth.Enabled {
-		interceptors = append(interceptors, connect.WithInterceptors(a.ConnectUnaryServerInterceptor()))
-	} else {
-		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
-	}
-
-	if len(c.ExtraConnectInterceptors) > 0 {
-		interceptors = append(interceptors, connect.WithInterceptors(c.ExtraConnectInterceptors...))
+	if len(ints) > 0 {
+		interceptors = append(interceptors, connect.WithInterceptors(ints...))
 	}
 
 	// Add protovalidate interceptor

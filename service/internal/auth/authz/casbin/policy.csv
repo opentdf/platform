@@ -1,0 +1,54 @@
+# Casbin Policy v2 - RPC + Dimensions Authorization
+#
+# Format: p, subject, rpc, dimensions, effect
+#   - subject: role:rolename or username
+#   - rpc: gRPC method path or HTTP path (supports * wildcard)
+#   - dimensions: namespace=value&attribute=value (supports * wildcard)
+#   - effect: allow or deny
+#
+# Note: HTTP routes are prefixed with / and use path patterns
+# gRPC routes follow package.Service/Method format
+
+# ============================================================================
+# Admin Role - Full Access
+# ============================================================================
+p, role:admin, *, *, allow
+
+# ============================================================================
+# Standard Role - Authenticated Users
+# ============================================================================
+
+# Discovery and health endpoints
+p, role:standard, /wellknownconfiguration.WellKnownService/*, *, allow
+p, role:standard, /grpc.health.v1.Health/*, *, allow
+
+# KAS (Key Access Service) - required for TDF operations
+p, role:standard, /kas.AccessService/*, *, allow
+
+# Policy services (read access via gRPC)
+p, role:standard, /policy.attributes.AttributesService/Get*, *, allow
+p, role:standard, /policy.attributes.AttributesService/List*, *, allow
+p, role:standard, /policy.namespaces.NamespaceService/Get*, *, allow
+p, role:standard, /policy.namespaces.NamespaceService/List*, *, allow
+p, role:standard, /policy.subjectmapping.SubjectMappingService/Get*, *, allow
+p, role:standard, /policy.subjectmapping.SubjectMappingService/List*, *, allow
+p, role:standard, /policy.subjectmapping.SubjectMappingService/Match*, *, allow
+p, role:standard, /policy.resourcemapping.ResourceMappingService/Get*, *, allow
+p, role:standard, /policy.resourcemapping.ResourceMappingService/List*, *, allow
+p, role:standard, /policy.kasregistry.KeyAccessServerRegistryService/Get*, *, allow
+p, role:standard, /policy.kasregistry.KeyAccessServerRegistryService/List*, *, allow
+
+# Authorization service
+p, role:standard, /authorization.AuthorizationService/*, *, allow
+p, role:standard, /authorization.v2.AuthorizationService/*, *, allow
+
+# Entity resolution service
+p, role:standard, /entityresolution.EntityResolutionService/*, *, allow
+p, role:standard, /entityresolution.v2.EntityResolutionService/*, *, allow
+
+# ============================================================================
+# Unknown Role - Unauthenticated/Public Access
+# ============================================================================
+# KAS rewrap is allowed for unknown roles (authentication enforced by KAS itself)
+p, role:unknown, /kas.AccessService/Rewrap, *, allow
+p, role:unknown, /kas/v2/rewrap, *, allow

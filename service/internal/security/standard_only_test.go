@@ -10,7 +10,7 @@ import (
 func TestNewCryptoProvider(t *testing.T) {
 	t.Run("hsm removed", func(t *testing.T) {
 		provider, err := NewCryptoProvider(Config{Type: "hsm"})
-		assert.ErrorIs(t, err, ErrHSMNotFound)
+		require.ErrorIs(t, err, ErrHSMNotFound)
 		assert.Nil(t, provider)
 	})
 

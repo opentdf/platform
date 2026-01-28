@@ -1,14 +1,12 @@
 package security
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
-	"io"
 	"log/slog"
 	"testing"
 
@@ -38,79 +36,83 @@ func TestKeyDetailsAdapter(t *testing.T) {
 	assert.Equal(t, ocrypto.KeyType(AlgorithmRSA2048), rsaAdapter.Algorithm())
 	assert.False(t, rsaAdapter.IsLegacy())
 
-	_, err := rsaAdapter.ExportPrivateKey(context.Background())
-	assert.Error(t, err)
+	_, err := rsaAdapter.ExportPrivateKey(t.Context())
+	require.Error(t, err)
 
-	jwk, err := rsaAdapter.ExportPublicKey(context.Background(), trust.KeyTypeJWK)
+	jwk, err := rsaAdapter.ExportPublicKey(t.Context(), trust.KeyTypeJWK)
 	require.NoError(t, err)
 	assert.True(t, json.Valid([]byte(jwk)))
 
-	pemKey, err := rsaAdapter.ExportPublicKey(context.Background(), trust.KeyTypePKCS8)
+	pemKey, err := rsaAdapter.ExportPublicKey(t.Context(), trust.KeyTypePKCS8)
 	require.NoError(t, err)
 	assert.Contains(t, pemKey, "PUBLIC KEY")
 
-	_, err = rsaAdapter.ExportCertificate(context.Background())
-	assert.Error(t, err)
+	_, err = rsaAdapter.ExportCertificate(t.Context())
+	require.Error(t, err)
 
-	_, err = ecAdapter.ExportPublicKey(context.Background(), trust.KeyTypeJWK)
-	assert.Error(t, err)
+	_, err = ecAdapter.ExportPublicKey(t.Context(), trust.KeyTypeJWK)
+	require.Error(t, err)
 
-	ecPublic, err := ecAdapter.ExportPublicKey(context.Background(), trust.KeyTypePKCS8)
+	ecPublic, err := ecAdapter.ExportPublicKey(t.Context(), trust.KeyTypePKCS8)
 	require.NoError(t, err)
 	assert.Contains(t, ecPublic, "PUBLIC KEY")
 
-	cert, err := ecAdapter.ExportCertificate(context.Background())
+	cert, err := ecAdapter.ExportCertificate(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, material.ecPublicPEM, cert)
 
 	cfg := ecAdapter.ProviderConfig()
 	require.NotNil(t, cfg)
-	assert.Equal(t, inProcessSystemName, cfg.Manager)
-	assert.Equal(t, "static", cfg.Name)
+	assert.Equal(t, inProcessSystemName, cfg.GetManager())
+	assert.Equal(t, "static", cfg.GetName())
 }
 
 func TestInProcessProviderMetadata(t *testing.T) {
 	cryptoProvider, _ := newStandardCryptoForTest(t, true, false)
-	provider := NewSecurityProviderAdapter(cryptoProvider, nil, nil).(*InProcessProvider)
+	providerIface := NewSecurityProviderAdapter(cryptoProvider, nil, nil)
+	provider, ok := providerIface.(*InProcessProvider)
+	require.True(t, ok)
 
 	assert.Equal(t, inProcessSystemName, provider.Name())
 	assert.Equal(t, inProcessSystemName, provider.String())
 	assert.Equal(t, slog.KindString, provider.LogValue().Kind())
 	assert.Equal(t, inProcessSystemName, provider.LogValue().String())
 
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := slog.New(slog.DiscardHandler)
 	assert.Same(t, provider, provider.WithLogger(logger))
 	assert.Same(t, logger, provider.logger)
 }
 
 func TestInProcessProviderKeyLookup(t *testing.T) {
 	cryptoProvider, material := newStandardCryptoForTest(t, true, true)
-	provider := NewSecurityProviderAdapter(
+	providerIface := NewSecurityProviderAdapter(
 		cryptoProvider,
 		[]string{material.rsaKid},
 		[]string{material.ecKid},
-	).(*InProcessProvider)
+	)
+	provider, ok := providerIface.(*InProcessProvider)
+	require.True(t, ok)
 
-	defaultKey, err := provider.FindKeyByAlgorithm(context.Background(), AlgorithmRSA2048, false)
+	defaultKey, err := provider.FindKeyByAlgorithm(t.Context(), AlgorithmRSA2048, false)
 	require.NoError(t, err)
 	assert.Equal(t, trust.KeyIdentifier(material.rsaKid), defaultKey.ID())
 
-	legacyKey, err := provider.FindKeyByAlgorithm(context.Background(), AlgorithmECP256R1, true)
+	legacyKey, err := provider.FindKeyByAlgorithm(t.Context(), AlgorithmECP256R1, true)
 	require.NoError(t, err)
 	assert.Equal(t, trust.KeyIdentifier(material.ecKid), legacyKey.ID())
 
-	byID, err := provider.FindKeyByID(context.Background(), trust.KeyIdentifier(material.rsaKid))
+	byID, err := provider.FindKeyByID(t.Context(), trust.KeyIdentifier(material.rsaKid))
 	require.NoError(t, err)
 	assert.Equal(t, ocrypto.KeyType(AlgorithmRSA2048), byID.Algorithm())
 
-	_, err = provider.FindKeyByID(context.Background(), trust.KeyIdentifier("missing"))
-	assert.ErrorIs(t, err, ErrCertNotFound)
+	_, err = provider.FindKeyByID(t.Context(), trust.KeyIdentifier("missing"))
+	require.ErrorIs(t, err, ErrCertNotFound)
 
-	keys, err := provider.ListKeys(context.Background())
+	keys, err := provider.ListKeys(t.Context())
 	require.NoError(t, err)
 	assert.Len(t, keys, 2)
 
-	legacyOnly, err := provider.ListKeysWith(context.Background(), trust.ListKeyOptions{LegacyOnly: true})
+	legacyOnly, err := provider.ListKeysWith(t.Context(), trust.ListKeyOptions{LegacyOnly: true})
 	require.NoError(t, err)
 	require.Len(t, legacyOnly, 1)
 	assert.Equal(t, trust.KeyIdentifier(material.ecKid), legacyOnly[0].ID())
@@ -118,30 +120,33 @@ func TestInProcessProviderKeyLookup(t *testing.T) {
 
 func TestInProcessProviderDecrypt(t *testing.T) {
 	cryptoProvider, material := newStandardCryptoForTest(t, true, true)
-	provider := NewSecurityProviderAdapter(
+	providerIface := NewSecurityProviderAdapter(
 		cryptoProvider,
 		[]string{material.rsaKid},
 		[]string{material.ecKid},
-	).(*InProcessProvider)
+	)
+	provider, ok := providerIface.(*InProcessProvider)
+	require.True(t, ok)
 
-	rsaDetails, err := provider.FindKeyByID(context.Background(), trust.KeyIdentifier(material.rsaKid))
+	rsaDetails, err := provider.FindKeyByID(t.Context(), trust.KeyIdentifier(material.rsaKid))
 	require.NoError(t, err)
 
-	rsaKey := cryptoProvider.keysByID[material.rsaKid].(StandardRSACrypto)
+	rsaKey, ok := cryptoProvider.keysByID[material.rsaKid].(StandardRSACrypto)
+	require.True(t, ok)
 	rawRSA := make([]byte, 32)
 	_, err = rand.Read(rawRSA)
 	require.NoError(t, err)
 	cipherRSA, err := rsaKey.asymEncryption.Encrypt(rawRSA)
 	require.NoError(t, err)
 
-	protected, err := provider.Decrypt(context.Background(), rsaDetails, cipherRSA, nil)
+	protected, err := provider.Decrypt(t.Context(), rsaDetails, cipherRSA, nil)
 	require.NoError(t, err)
 	assert.Equal(t, rawRSA, exportProtectedKey(t, protected))
 
-	_, err = provider.Decrypt(context.Background(), rsaDetails, cipherRSA, []byte("bad"))
-	assert.Error(t, err)
+	_, err = provider.Decrypt(t.Context(), rsaDetails, cipherRSA, []byte("bad"))
+	require.Error(t, err)
 
-	ecDetails, err := provider.FindKeyByID(context.Background(), trust.KeyIdentifier(material.ecKid))
+	ecDetails, err := provider.FindKeyByID(t.Context(), trust.KeyIdentifier(material.ecKid))
 	require.NoError(t, err)
 
 	encryptor, err := ocrypto.FromPublicPEMWithSalt(material.ecPublicPEM, TDFSalt(), nil)
@@ -152,26 +157,28 @@ func TestInProcessProviderDecrypt(t *testing.T) {
 	cipherEC, err := encryptor.Encrypt(rawEC)
 	require.NoError(t, err)
 
-	protected, err = provider.Decrypt(context.Background(), ecDetails, cipherEC, encryptor.EphemeralKey())
+	protected, err = provider.Decrypt(t.Context(), ecDetails, cipherEC, encryptor.EphemeralKey())
 	require.NoError(t, err)
 	assert.Equal(t, rawEC, exportProtectedKey(t, protected))
 
-	_, err = provider.Decrypt(context.Background(), ecDetails, cipherEC, nil)
-	assert.Error(t, err)
+	_, err = provider.Decrypt(t.Context(), ecDetails, cipherEC, nil)
+	require.Error(t, err)
 }
 
 func TestInProcessProviderDeriveKey(t *testing.T) {
 	cryptoProvider, material := newStandardCryptoForTest(t, false, true)
-	provider := NewSecurityProviderAdapter(cryptoProvider, nil, []string{material.ecKid}).(*InProcessProvider)
+	providerIface := NewSecurityProviderAdapter(cryptoProvider, nil, []string{material.ecKid})
+	provider, ok := providerIface.(*InProcessProvider)
+	require.True(t, ok)
 
-	ecDetails, err := provider.FindKeyByID(context.Background(), trust.KeyIdentifier(material.ecKid))
+	ecDetails, err := provider.FindKeyByID(t.Context(), trust.KeyIdentifier(material.ecKid))
 	require.NoError(t, err)
 
 	ephemeralKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
-	compressed := elliptic.MarshalCompressed(elliptic.P256(), ephemeralKey.PublicKey.X, ephemeralKey.PublicKey.Y)
+	compressed := elliptic.MarshalCompressed(elliptic.P256(), ephemeralKey.X, ephemeralKey.Y)
 
-	protected, err := provider.DeriveKey(context.Background(), ecDetails, compressed, elliptic.P256())
+	protected, err := provider.DeriveKey(t.Context(), ecDetails, compressed, elliptic.P256())
 	require.NoError(t, err)
 
 	publicDER, err := x509.MarshalPKIXPublicKey(&ephemeralKey.PublicKey)
@@ -188,9 +195,11 @@ func TestInProcessProviderDeriveKey(t *testing.T) {
 
 func TestInProcessProviderGenerateECSessionKey(t *testing.T) {
 	cryptoProvider, material := newStandardCryptoForTest(t, false, true)
-	provider := NewSecurityProviderAdapter(cryptoProvider, nil, nil).(*InProcessProvider)
+	providerIface := NewSecurityProviderAdapter(cryptoProvider, nil, nil)
+	provider, ok := providerIface.(*InProcessProvider)
+	require.True(t, ok)
 
-	encapsulator, err := provider.GenerateECSessionKey(context.Background(), material.ecPublicPEM)
+	encapsulator, err := provider.GenerateECSessionKey(t.Context(), material.ecPublicPEM)
 	require.NoError(t, err)
 
 	pemKey, err := encapsulator.PublicKeyAsPEM()
@@ -205,16 +214,18 @@ func TestInProcessProviderGenerateECSessionKey(t *testing.T) {
 
 func TestInProcessProviderDetermineKeyType(t *testing.T) {
 	cryptoProvider, material := newStandardCryptoForTest(t, true, true)
-	provider := NewSecurityProviderAdapter(cryptoProvider, nil, nil).(*InProcessProvider)
+	providerIface := NewSecurityProviderAdapter(cryptoProvider, nil, nil)
+	provider, ok := providerIface.(*InProcessProvider)
+	require.True(t, ok)
 
-	keyType, err := provider.determineKeyType(context.Background(), material.rsaKid)
+	keyType, err := provider.determineKeyType(t.Context(), material.rsaKid)
 	require.NoError(t, err)
 	assert.Equal(t, AlgorithmRSA2048, keyType)
 
-	keyType, err = provider.determineKeyType(context.Background(), material.ecKid)
+	keyType, err = provider.determineKeyType(t.Context(), material.ecKid)
 	require.NoError(t, err)
 	assert.Equal(t, AlgorithmECP256R1, keyType)
 
-	_, err = provider.determineKeyType(context.Background(), "missing")
-	assert.Error(t, err)
+	_, err = provider.determineKeyType(t.Context(), "missing")
+	require.Error(t, err)
 }

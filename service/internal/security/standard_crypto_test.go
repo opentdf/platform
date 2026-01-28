@@ -1,10 +1,8 @@
 package security
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/json"
-	"strings"
 	"testing"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -22,11 +20,11 @@ func TestStandardCryptoKeyLookup(t *testing.T) {
 	assert.Equal(t, material.rsaKid, kids[0])
 
 	_, err = cryptoProvider.ListKIDsByAlgorithm("nope")
-	assert.ErrorIs(t, err, ErrCertNotFound)
+	require.ErrorIs(t, err, ErrCertNotFound)
 
 	found := cryptoProvider.FindKID(AlgorithmRSA2048)
 	assert.Equal(t, material.rsaKid, found)
-	assert.Equal(t, "", cryptoProvider.FindKID("missing"))
+	assert.Empty(t, cryptoProvider.FindKID("missing"))
 }
 
 func TestStandardCryptoPublicKeys(t *testing.T) {
@@ -34,7 +32,7 @@ func TestStandardCryptoPublicKeys(t *testing.T) {
 
 	rsaPEM, err := cryptoProvider.RSAPublicKey(material.rsaKid)
 	require.NoError(t, err)
-	assert.True(t, strings.Contains(rsaPEM, "PUBLIC KEY"))
+	assert.Contains(t, rsaPEM, "PUBLIC KEY")
 
 	rsaJSON, err := cryptoProvider.RSAPublicKeyAsJSON(material.rsaKid)
 	require.NoError(t, err)
@@ -46,21 +44,22 @@ func TestStandardCryptoPublicKeys(t *testing.T) {
 
 	ecPEM, err := cryptoProvider.ECPublicKey(material.ecKid)
 	require.NoError(t, err)
-	assert.True(t, strings.Contains(ecPEM, "PUBLIC KEY"))
+	assert.Contains(t, ecPEM, "PUBLIC KEY")
 }
 
 func TestStandardCryptoDecrypt(t *testing.T) {
 	cryptoProvider, material := newStandardCryptoForTest(t, true, true)
 
 	t.Run("rsa decrypt", func(t *testing.T) {
-		rsaKey := cryptoProvider.keysByID[material.rsaKid].(StandardRSACrypto)
+		key, ok := cryptoProvider.keysByID[material.rsaKid].(StandardRSACrypto)
+		require.True(t, ok)
 		rawKey := make([]byte, 32)
 		_, err := rand.Read(rawKey)
 		require.NoError(t, err)
-		ciphertext, err := rsaKey.asymEncryption.Encrypt(rawKey)
+		ciphertext, err := key.asymEncryption.Encrypt(rawKey)
 		require.NoError(t, err)
 
-		protected, err := cryptoProvider.Decrypt(context.Background(), trust.KeyIdentifier(material.rsaKid), ciphertext, nil)
+		protected, err := cryptoProvider.Decrypt(t.Context(), trust.KeyIdentifier(material.rsaKid), ciphertext, nil)
 		require.NoError(t, err)
 		assert.Equal(t, rawKey, exportProtectedKey(t, protected))
 	})
@@ -75,24 +74,25 @@ func TestStandardCryptoDecrypt(t *testing.T) {
 		ciphertext, err := encryptor.Encrypt(rawKey)
 		require.NoError(t, err)
 
-		protected, err := cryptoProvider.Decrypt(context.Background(), trust.KeyIdentifier(material.ecKid), ciphertext, encryptor.EphemeralKey())
+		protected, err := cryptoProvider.Decrypt(t.Context(), trust.KeyIdentifier(material.ecKid), ciphertext, encryptor.EphemeralKey())
 		require.NoError(t, err)
 		assert.Equal(t, rawKey, exportProtectedKey(t, protected))
 	})
 
 	t.Run("missing key", func(t *testing.T) {
-		_, err := cryptoProvider.Decrypt(context.Background(), trust.KeyIdentifier("missing"), nil, nil)
-		assert.Error(t, err)
+		_, err := cryptoProvider.Decrypt(t.Context(), trust.KeyIdentifier("missing"), nil, nil)
+		require.Error(t, err)
 	})
 
 	t.Run("rsa with ephemeral key", func(t *testing.T) {
-		rsaKey := cryptoProvider.keysByID[material.rsaKid].(StandardRSACrypto)
+		key, ok := cryptoProvider.keysByID[material.rsaKid].(StandardRSACrypto)
+		require.True(t, ok)
 		rawKey := []byte("rsa-secret")
-		ciphertext, err := rsaKey.asymEncryption.Encrypt(rawKey)
+		ciphertext, err := key.asymEncryption.Encrypt(rawKey)
 		require.NoError(t, err)
 
-		_, err = cryptoProvider.Decrypt(context.Background(), trust.KeyIdentifier(material.rsaKid), ciphertext, []byte("nope"))
-		assert.Error(t, err)
+		_, err = cryptoProvider.Decrypt(t.Context(), trust.KeyIdentifier(material.rsaKid), ciphertext, []byte("nope"))
+		require.Error(t, err)
 	})
 
 	t.Run("ec without ephemeral key", func(t *testing.T) {
@@ -103,8 +103,8 @@ func TestStandardCryptoDecrypt(t *testing.T) {
 		ciphertext, err := encryptor.Encrypt(rawKey)
 		require.NoError(t, err)
 
-		_, err = cryptoProvider.Decrypt(context.Background(), trust.KeyIdentifier(material.ecKid), ciphertext, nil)
-		assert.Error(t, err)
+		_, err = cryptoProvider.Decrypt(t.Context(), trust.KeyIdentifier(material.ecKid), ciphertext, nil)
+		require.Error(t, err)
 	})
 }
 
@@ -120,7 +120,7 @@ func TestStandardCryptoLoadErrors(t *testing.T) {
 			},
 		}
 		_, err := NewStandardCrypto(cfg)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("unsupported algorithm", func(t *testing.T) {
@@ -130,7 +130,7 @@ func TestStandardCryptoLoadErrors(t *testing.T) {
 			},
 		}
 		_, err := NewStandardCrypto(cfg)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("mixed new and deprecated config", func(t *testing.T) {
@@ -139,7 +139,7 @@ func TestStandardCryptoLoadErrors(t *testing.T) {
 			RSAKeys: map[string]StandardKeyInfo{"legacy": {PrivateKeyPath: privatePath, PublicKeyPath: privatePath}},
 		}
 		_, err := NewStandardCrypto(cfg)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 }
 
@@ -190,8 +190,8 @@ func TestStandardCryptoRSAPublicKeyErrors(t *testing.T) {
 	cryptoProvider, material := newStandardCryptoForTest(t, true, true)
 
 	_, err := cryptoProvider.RSAPublicKey("missing")
-	assert.ErrorIs(t, err, ErrCertNotFound)
+	require.ErrorIs(t, err, ErrCertNotFound)
 
 	_, err = cryptoProvider.RSAPublicKey(material.ecKid)
-	assert.ErrorIs(t, err, ErrCertNotFound)
+	require.ErrorIs(t, err, ErrCertNotFound)
 }

@@ -85,7 +85,7 @@ func newStandardCryptoForTest(t *testing.T, includeRSA, includeEC bool) (*Standa
 
 func exportProtectedKey(t *testing.T, key ocrypto.ProtectedKey) []byte {
 	t.Helper()
-	raw, err := key.Export(&noOpEncapsulator{})
+	raw, err := (&noOpEncapsulator{}).Encapsulate(key)
 	require.NoError(t, err)
 	return raw
 }

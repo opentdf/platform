@@ -60,6 +60,10 @@ type Config struct {
 	TLS                     TLSConfig                                `mapstructure:"tls" json:"tls"`
 	CORS                    CORSConfig                               `mapstructure:"cors" json:"cors"`
 	WellKnownConfigRegister func(namespace string, config any) error `mapstructure:"-" json:"-"`
+
+	// Programmatic interceptors injected at startup (not loaded from config)
+	ExtraConnectInterceptors []connect.Interceptor `mapstructure:"-" json:"-"`
+	ExtraIPCInterceptors     []connect.Interceptor `mapstructure:"-" json:"-"`
 	// Port to listen on
 	Port           int    `mapstructure:"port" json:"port" default:"8080"`
 	Host           string `mapstructure:"host,omitempty" json:"host"`
@@ -518,6 +522,10 @@ func newConnectRPCIPC(c Config, a *auth.Authentication, logger *logger.Logger) (
 		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
 	}
 
+	if len(c.ExtraIPCInterceptors) > 0 {
+		interceptors = append(interceptors, connect.WithInterceptors(c.ExtraIPCInterceptors...))
+	}
+
 	// Add protovalidate interceptor
 	vaidationInterceptor, err := validate.NewInterceptor()
 	if err != nil {
@@ -539,6 +547,10 @@ func newConnectRPC(c Config, a *auth.Authentication, logger *logger.Logger) (*Co
 		interceptors = append(interceptors, connect.WithInterceptors(a.ConnectUnaryServerInterceptor()))
 	} else {
 		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
+	}
+
+	if len(c.ExtraConnectInterceptors) > 0 {
+		interceptors = append(interceptors, connect.WithInterceptors(c.ExtraConnectInterceptors...))
 	}
 
 	// Add protovalidate interceptor

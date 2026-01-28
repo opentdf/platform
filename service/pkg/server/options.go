@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 
+	"connectrpc.com/connect"
 	"github.com/casbin/casbin/v2/persist"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -23,6 +24,9 @@ type StartConfig struct {
 	casbinAdapter         persist.Adapter
 	configLoaders         []config.Loader
 	configLoaderOrder     []string
+
+	extraConnectInterceptors []connect.Interceptor
+	extraIPCInterceptors     []connect.Interceptor
 
 	trustKeyManagerCtxs []trust.NamedKeyManagerCtxFactory
 
@@ -139,6 +143,23 @@ func WithAdditionalConfigLoader(loader config.Loader) StartOptions {
 func WithConfigLoaderOrder(loaderOrder []string) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.configLoaderOrder = loaderOrder
+		return c
+	}
+}
+
+// WithConnectInterceptors appends additional Connect interceptors (server-side) applied to all RPCs.
+// These run after auth/validation/audit wiring.
+func WithConnectInterceptors(interceptors ...connect.Interceptor) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.extraConnectInterceptors = append(c.extraConnectInterceptors, interceptors...)
+		return c
+	}
+}
+
+// WithIPCInterceptors appends additional Connect interceptors for in-process IPC server.
+func WithIPCInterceptors(interceptors ...connect.Interceptor) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.extraIPCInterceptors = append(c.extraIPCInterceptors, interceptors...)
 		return c
 	}
 }

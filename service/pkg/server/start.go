@@ -151,6 +151,14 @@ func Start(f ...StartOptions) error {
 		cfg.Server.Auth.IPCReauthRoutes = startConfig.IPCReauthRoutes
 	}
 
+	// Programmatic Connect/IPC interceptors (not config-driven)
+	if len(startConfig.extraConnectInterceptors) > 0 {
+		cfg.Server.ExtraConnectInterceptors = append(cfg.Server.ExtraConnectInterceptors, startConfig.extraConnectInterceptors...)
+	}
+	if len(startConfig.extraIPCInterceptors) > 0 {
+		cfg.Server.ExtraIPCInterceptors = append(cfg.Server.ExtraIPCInterceptors, startConfig.extraIPCInterceptors...)
+	}
+
 	// Set Default Policy
 	if startConfig.builtinPolicyOverride != "" {
 		cfg.Server.Auth.Policy.Builtin = startConfig.builtinPolicyOverride

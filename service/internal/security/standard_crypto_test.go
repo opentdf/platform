@@ -112,29 +112,35 @@ func TestStandardCryptoLoadErrors(t *testing.T) {
 	dir := t.TempDir()
 	privatePath := writeTempFile(t, dir, "key.pem", "test")
 
-	cfg := StandardConfig{
-		Keys: []KeyPairInfo{
-			{Algorithm: AlgorithmRSA2048, KID: "dup", Private: privatePath, Certificate: privatePath},
-			{Algorithm: AlgorithmRSA2048, KID: "dup", Private: privatePath, Certificate: privatePath},
-		},
-	}
-	_, err := NewStandardCrypto(cfg)
-	assert.Error(t, err)
+	t.Run("duplicate kid", func(t *testing.T) {
+		cfg := StandardConfig{
+			Keys: []KeyPairInfo{
+				{Algorithm: AlgorithmRSA2048, KID: "dup", Private: privatePath, Certificate: privatePath},
+				{Algorithm: AlgorithmRSA2048, KID: "dup", Private: privatePath, Certificate: privatePath},
+			},
+		}
+		_, err := NewStandardCrypto(cfg)
+		assert.Error(t, err)
+	})
 
-	cfg = StandardConfig{
-		Keys: []KeyPairInfo{
-			{Algorithm: "unsupported", KID: "kid", Private: privatePath, Certificate: privatePath},
-		},
-	}
-	_, err = NewStandardCrypto(cfg)
-	assert.Error(t, err)
+	t.Run("unsupported algorithm", func(t *testing.T) {
+		cfg := StandardConfig{
+			Keys: []KeyPairInfo{
+				{Algorithm: "unsupported", KID: "kid", Private: privatePath, Certificate: privatePath},
+			},
+		}
+		_, err := NewStandardCrypto(cfg)
+		assert.Error(t, err)
+	})
 
-	cfg = StandardConfig{
-		Keys:    []KeyPairInfo{{Algorithm: AlgorithmRSA2048, KID: "kid", Private: privatePath, Certificate: privatePath}},
-		RSAKeys: map[string]StandardKeyInfo{"legacy": {PrivateKeyPath: privatePath, PublicKeyPath: privatePath}},
-	}
-	_, err = NewStandardCrypto(cfg)
-	assert.Error(t, err)
+	t.Run("mixed new and deprecated config", func(t *testing.T) {
+		cfg := StandardConfig{
+			Keys:    []KeyPairInfo{{Algorithm: AlgorithmRSA2048, KID: "kid", Private: privatePath, Certificate: privatePath}},
+			RSAKeys: map[string]StandardKeyInfo{"legacy": {PrivateKeyPath: privatePath, PublicKeyPath: privatePath}},
+		}
+		_, err := NewStandardCrypto(cfg)
+		assert.Error(t, err)
+	})
 }
 
 func TestStandardCryptoDeprecatedKeys(t *testing.T) {

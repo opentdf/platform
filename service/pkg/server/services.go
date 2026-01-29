@@ -125,6 +125,7 @@ type startServicesParams struct {
 	reg                    *serviceregistry.Registry
 	cacheManager           *cache.Manager
 	keyManagerCtxFactories []trust.NamedKeyManagerCtxFactory
+	dbClientFactory        DBClientFactory
 }
 
 // startServices iterates through the registered namespaces and starts the services
@@ -184,7 +185,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 			if svc.IsDBRequired() && svcDBClient == nil {
 				logger.Debug("creating database client", slog.String("namespace", ns))
 				var err error
-				svcDBClient, err = newServiceDBClient(ctx, cfg.Logger, cfg.DB, tracer, ns, svc.DBMigrations())
+				svcDBClient, err = newServiceDBClient(ctx, cfg.Logger, cfg.DB, tracer, ns, svc.DBMigrations(), params.dbClientFactory)
 				if err != nil {
 					return func() {}, err
 				}
@@ -290,8 +291,12 @@ func extractServiceLoggerConfig(cfg config.ServiceConfig) (string, error) {
 // newServiceDBClient creates a new database client for the specified namespace.
 // It initializes the client with the provided context, logger configuration, database configuration,
 // namespace, and migrations. It returns the created client and any error encountered during creation.
-func newServiceDBClient(ctx context.Context, logCfg logging.Config, dbCfg db.Config, trace trace.Tracer, ns string, migrations *embed.FS) (*db.Client, error) {
+func newServiceDBClient(ctx context.Context, logCfg logging.Config, dbCfg db.Config, trace trace.Tracer, ns string, migrations *embed.FS, factory DBClientFactory) (*db.Client, error) {
 	var err error
+
+	if factory != nil {
+		return factory(ctx, logCfg, dbCfg, trace, ns, migrations)
+	}
 
 	client, err := db.New(ctx, dbCfg, logCfg, &trace,
 		db.WithService(ns),

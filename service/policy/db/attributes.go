@@ -54,16 +54,17 @@ func attributesValuesProtojson(valuesJSON []byte) ([]*policy.Value, error) {
 }
 
 type attributeQueryRow struct {
-	id            string
-	name          string
-	rule          string
-	metadataJSON  []byte
-	namespaceID   string
-	active        bool
-	namespaceName string
-	valuesJSON    []byte
-	grantsJSON    []byte
-	fqn           sql.NullString
+	id             string
+	name           string
+	rule           string
+	allowTraversal bool
+	metadataJSON   []byte
+	namespaceID    string
+	active         bool
+	namespaceName  string
+	valuesJSON     []byte
+	grantsJSON     []byte
+	fqn            sql.NullString
 }
 
 func hydrateAttribute(row *attributeQueryRow) (*policy.Attribute, error) {
@@ -97,15 +98,16 @@ func hydrateAttribute(row *attributeQueryRow) (*policy.Attribute, error) {
 	}
 
 	attr := &policy.Attribute{
-		Id:        row.id,
-		Name:      row.name,
-		Rule:      attributesRuleTypeEnumTransformOut(row.rule),
-		Values:    values,
-		Active:    &wrapperspb.BoolValue{Value: row.active},
-		Metadata:  metadata,
-		Namespace: ns,
-		Grants:    grants,
-		Fqn:       row.fqn.String,
+		Id:             row.id,
+		Name:           row.name,
+		Rule:           attributesRuleTypeEnumTransformOut(row.rule),
+		Values:         values,
+		AllowTraversal: &wrapperspb.BoolValue{Value: row.allowTraversal},
+		Active:         &wrapperspb.BoolValue{Value: row.active},
+		Metadata:       metadata,
+		Namespace:      ns,
+		Grants:         grants,
+		Fqn:            row.fqn.String,
 	}
 
 	return attr, nil
@@ -159,15 +161,16 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 
 	for i, attr := range list {
 		policyAttributes[i], err = hydrateAttribute(&attributeQueryRow{
-			id:            attr.ID,
-			name:          attr.AttributeName,
-			rule:          string(attr.Rule),
-			active:        attr.Active,
-			metadataJSON:  attr.Metadata,
-			namespaceID:   attr.NamespaceID,
-			namespaceName: attr.NamespaceName.String,
-			valuesJSON:    attr.Values,
-			fqn:           sql.NullString(attr.Fqn),
+			id:             attr.ID,
+			name:           attr.AttributeName,
+			rule:           string(attr.Rule),
+			allowTraversal: attr.AllowTraversal,
+			active:         attr.Active,
+			metadataJSON:   attr.Metadata,
+			namespaceID:    attr.NamespaceID,
+			namespaceName:  attr.NamespaceName.String,
+			valuesJSON:     attr.Values,
+			fqn:            sql.NullString(attr.Fqn),
 		})
 		if err != nil {
 			return nil, err
@@ -228,16 +231,17 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 	}
 
 	policyAttr, err := hydrateAttribute(&attributeQueryRow{
-		id:            attr.ID,
-		name:          attr.AttributeName,
-		rule:          string(attr.Rule),
-		active:        attr.Active,
-		metadataJSON:  attr.Metadata,
-		namespaceID:   attr.NamespaceID,
-		namespaceName: attr.NamespaceName.String,
-		valuesJSON:    attr.Values,
-		grantsJSON:    attr.Grants,
-		fqn:           sql.NullString(attr.Fqn),
+		id:             attr.ID,
+		name:           attr.AttributeName,
+		rule:           string(attr.Rule),
+		allowTraversal: attr.AllowTraversal,
+		active:         attr.Active,
+		metadataJSON:   attr.Metadata,
+		namespaceID:    attr.NamespaceID,
+		namespaceName:  attr.NamespaceName.String,
+		valuesJSON:     attr.Values,
+		grantsJSON:     attr.Grants,
+		fqn:            sql.NullString(attr.Fqn),
 	})
 	if err != nil {
 		return nil, err
@@ -255,8 +259,11 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 	return policyAttr, nil
 }
 
-func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string) ([]*policy.Attribute, error) {
-	list, err := c.queries.listAttributesByDefOrValueFqns(ctx, fqns)
+func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string, includeInactiveValues bool) ([]*policy.Attribute, error) {
+	list, err := c.queries.listAttributesByDefOrValueFqns(ctx, listAttributesByDefOrValueFqnsParams{
+		Fqns:                  fqns,
+		IncludeInactiveValues: includeInactiveValues,
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -313,15 +320,16 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 		ns.Grants = nsGrants
 
 		attrs[i] = &policy.Attribute{
-			Id:        attr.ID,
-			Name:      attr.Name,
-			Rule:      attributesRuleTypeEnumTransformOut(string(attr.Rule)),
-			Fqn:       attr.Fqn,
-			Active:    &wrapperspb.BoolValue{Value: attr.Active},
-			Namespace: ns,
-			Grants:    grants,
-			Values:    values,
-			KasKeys:   keys,
+			Id:             attr.ID,
+			Name:           attr.Name,
+			Rule:           attributesRuleTypeEnumTransformOut(string(attr.Rule)),
+			AllowTraversal: &wrapperspb.BoolValue{Value: attr.AllowTraversal},
+			Fqn:            attr.Fqn,
+			Active:         &wrapperspb.BoolValue{Value: attr.Active},
+			Namespace:      ns,
+			Grants:         grants,
+			Values:         values,
+			KasKeys:        keys,
 		}
 	}
 
@@ -329,7 +337,7 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 }
 
 func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*policy.Attribute, error) {
-	list, err := c.ListAttributesByFqns(ctx, []string{strings.ToLower(fqn)})
+	list, err := c.ListAttributesByFqns(ctx, []string{strings.ToLower(fqn)}, false)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -354,13 +362,14 @@ func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceI
 
 	for i, attr := range list {
 		policyAttributes[i], err = hydrateAttribute(&attributeQueryRow{
-			id:            attr.ID,
-			name:          attr.AttributeName,
-			rule:          string(attr.Rule),
-			active:        attr.Active,
-			metadataJSON:  attr.Metadata,
-			namespaceID:   attr.NamespaceID,
-			namespaceName: attr.NamespaceName.String,
+			id:             attr.ID,
+			name:           attr.AttributeName,
+			rule:           string(attr.Rule),
+			allowTraversal: attr.AllowTraversal,
+			active:         attr.Active,
+			metadataJSON:   attr.Metadata,
+			namespaceID:    attr.NamespaceID,
+			namespaceName:  attr.NamespaceName.String,
 		})
 		if err != nil {
 			return nil, err
@@ -380,10 +389,11 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	ruleString := attributesRuleTypeEnumTransformIn(r.GetRule().String())
 
 	createdID, err := c.queries.createAttribute(ctx, createAttributeParams{
-		NamespaceID: namespaceID,
-		Name:        name,
-		Rule:        AttributeDefinitionRule(ruleString),
-		Metadata:    metadataJSON,
+		NamespaceID:    namespaceID,
+		Name:           name,
+		Rule:           AttributeDefinitionRule(ruleString),
+		Metadata:       metadataJSON,
+		AllowTraversal: r.GetAllowTraversal().GetValue(),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -414,6 +424,12 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 	id := r.GetId()
 	name := strings.ToLower(r.GetName())
 	rule := r.GetRule()
+	var allowTraversal pgtype.Bool
+	if r.GetAllowTraversal() == nil {
+		allowTraversal = pgtype.Bool{Valid: false}
+	} else {
+		allowTraversal = pgtypeBool(r.GetAllowTraversal().GetValue())
+	}
 	before, err := c.GetAttribute(ctx, id)
 	if err != nil {
 		return nil, err
@@ -454,7 +470,8 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 			AttributeDefinitionRule: AttributeDefinitionRule(ruleString),
 			Valid:                   ruleString != "",
 		},
-		ValuesOrder: r.GetValuesOrder(),
+		AllowTraversal: allowTraversal,
+		ValuesOrder:    r.GetValuesOrder(),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

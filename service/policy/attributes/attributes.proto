@@ -5,6 +5,7 @@ package policy.attributes;
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/api/annotations.proto";
+import "google/protobuf/wrappers.proto";
 import "policy/objects.proto";
 import "policy/selectors.proto";
 
@@ -144,6 +145,14 @@ message CreateAttributeRequest {
       }
     }
   }];
+
+  // Optional
+  // Setting allow_traversal=true allows TDF creation to be front-loaded, meaning a customer
+  // can create encrypted content with an attribute definitions key mapping before
+  // creating the attribute values needed to decrypt.
+  // Content will be able to be encrypted with missing attribute values,
+  // but will not be able to be decrypted until such attribute values exist.
+  google.protobuf.BoolValue allow_traversal = 5;
 
   // Optional
   common.MetadataMutable metadata = 100;

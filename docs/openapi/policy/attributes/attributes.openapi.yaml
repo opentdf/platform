@@ -1000,6 +1000,12 @@ components:
             $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Keys associated with the attribute
+        allowTraversal:
+          title: allow_traversal
+          description: |-
+            Whether or not we will use the attribute definition during encryption
+             if the attribute value is missing.
+          $ref: '#/components/schemas/google.protobuf.BoolValue'
         metadata:
           title: metadata
           description: Common metadata
@@ -1098,8 +1104,8 @@ components:
           title: alg
           description: |-
             A known algorithm type with any additional parameters encoded.
-             To start, these may be `rsa:2048` for encrypting ZTDF files and
-             `ec:secp256r1` for nanoTDF, but more formats may be added as needed.
+             To start, these may be `rsa:2048` for RSA-based wrapping and
+             `ec:secp256r1` for EC-based wrapping, but more formats may be added as needed.
           $ref: '#/components/schemas/policy.KasPublicKeyAlgEnum'
       title: KasPublicKey
       additionalProperties: false
@@ -1719,6 +1725,16 @@ components:
             Optional
              Attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
              The stored attribute value will be normalized to lower case.
+        allowTraversal:
+          title: allow_traversal
+          description: |-
+            Optional
+             Setting allow_traversal=true allows TDF creation to be front-loaded, meaning a customer
+             can create encrypted content with an attribute definitions key mapping before
+             creating the attribute values needed to decrypt.
+             Content will be able to be encrypted with missing attribute values,
+             but will not be able to be decrypted until such attribute values exist.
+          $ref: '#/components/schemas/google.protobuf.BoolValue'
         metadata:
           title: metadata
           description: Optional

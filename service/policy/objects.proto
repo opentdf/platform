@@ -90,6 +90,10 @@ message Attribute {
   //Keys associated with the attribute
   repeated SimpleKasKey kas_keys = 9;
 
+  // Whether or not we will use the attribute definition during encryption
+  // if the attribute value is missing.
+  google.protobuf.BoolValue allow_traversal = 10;
+
   // Common metadata
   common.Metadata metadata = 100;
 }
@@ -401,8 +405,8 @@ message KasPublicKey {
   }];
 
   // A known algorithm type with any additional parameters encoded.
-  // To start, these may be `rsa:2048` for encrypting ZTDF files and
-  // `ec:secp256r1` for nanoTDF, but more formats may be added as needed.
+  // To start, these may be `rsa:2048` for RSA-based wrapping and
+  // `ec:secp256r1` for EC-based wrapping, but more formats may be added as needed.
   KasPublicKeyAlgEnum alg = 3 [(buf.validate.field).enum = {
     defined_only: true
     not_in: [0]

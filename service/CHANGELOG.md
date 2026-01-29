@@ -1,5 +1,59 @@
 # Changelog
 
+## [0.12.0](https://github.com/opentdf/platform/compare/service/v0.11.0...service/v0.12.0) (2026-01-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove nanotdf support ([#3013](https://github.com/opentdf/platform/issues/3013))
+* **core:** DSPX-2090 Removes unnamed key mgrs ([#2952](https://github.com/opentdf/platform/issues/2952))
+
+### Features
+
+* **core:** Actually use KeyManager ProviderConfig ([#2837](https://github.com/opentdf/platform/issues/2837)) ([65ba2e0](https://github.com/opentdf/platform/commit/65ba2e002e30ac6624982e15c995dbd228a93541))
+* **core:** add additive CORS configuration fields ([#2941](https://github.com/opentdf/platform/issues/2941)) ([d45a34b](https://github.com/opentdf/platform/commit/d45a34b614eceab97a92b615578e92af8a8fc551))
+* **core:** add direct entitlement support ([#2630](https://github.com/opentdf/platform/issues/2630)) ([cc8337a](https://github.com/opentdf/platform/commit/cc8337a4d4b6be4cb1f4117711109c2d8d599cb9))
+* **deps:** Bump ocrypto to v0.9.0 ([#3024](https://github.com/opentdf/platform/issues/3024)) ([cd79950](https://github.com/opentdf/platform/commit/cd799509b15516f840436e6af20a14eebaa0556d))
+* **kas:** add configurable SRT skew tolerance and diagnostics ([#2886](https://github.com/opentdf/platform/issues/2886)) ([1a57227](https://github.com/opentdf/platform/commit/1a57227f6c4d9a02aecf68ca1b1b88bd265e49e0))
+* **kas:** Add nano policy binding to rewrap audit. ([#2870](https://github.com/opentdf/platform/issues/2870)) ([a12d1d4](https://github.com/opentdf/platform/commit/a12d1d4a69533cac9ac5581964c3053855584eb9))
+* **policy:** add allow_traversal to attribute definitions ([#3014](https://github.com/opentdf/platform/issues/3014)) ([bbbe21b](https://github.com/opentdf/platform/commit/bbbe21bb671f5ffedd116a08ff15779ce7034fcb))
+* **policy:** Create/Update scs to use transaction. ([#2882](https://github.com/opentdf/platform/issues/2882)) ([7493941](https://github.com/opentdf/platform/commit/74939411fc6f87aa3314873cfe5b1eb42e6f3d51))
+* **policy:** Return definition when attr value is missing ([#3012](https://github.com/opentdf/platform/issues/3012)) ([3967377](https://github.com/opentdf/platform/commit/3967377728cfc9dc8922d9327cf13bab5de2c38b))
+* Update Go toolchain version to 1.24.11 across all modules ([#2943](https://github.com/opentdf/platform/issues/2943)) ([a960eca](https://github.com/opentdf/platform/commit/a960eca78ab8870599f0aa2a315dbada355adf20))
+
+
+### Bug Fixes
+
+* **authz:** deny resources granularly when attribute value FQNs not found ([#2896](https://github.com/opentdf/platform/issues/2896)) ([802db02](https://github.com/opentdf/platform/commit/802db02f7542d7b24d61448a84f3a8b0aa38a09a))
+* **authz:** handle individual resource edge cases in decisions ([#2835](https://github.com/opentdf/platform/issues/2835)) ([fad4437](https://github.com/opentdf/platform/commit/fad443714c28f190cde723e5307451f481befd12))
+* **authz:** if entity identifier results in multiple representations, treat with AND in resource decision results ([#2860](https://github.com/opentdf/platform/issues/2860)) ([e869b35](https://github.com/opentdf/platform/commit/e869b35024bc2c752dfb89e9e7ad8a82608d8398))
+* **authz:** obligations should be logged to audit but not returned when not entitled ([#2847](https://github.com/opentdf/platform/issues/2847)) ([35da5e3](https://github.com/opentdf/platform/commit/35da5e3170780534b09f84308dc59d8af87224f9))
+* Connect RPC v1.19.1  ([#3009](https://github.com/opentdf/platform/issues/3009)) ([c354fd3](https://github.com/opentdf/platform/commit/c354fd387f2e17f764feacf302488d9afdbac5f0))
+* **core:** add obligations X-Rewrap-Additional-Context to default CORS allowed headers ([#2901](https://github.com/opentdf/platform/issues/2901)) ([d86868d](https://github.com/opentdf/platform/commit/d86868d6edb9d87e7c22c552e07dd218db98bc8d))
+* **core:** Add stderr log output option ([#2989](https://github.com/opentdf/platform/issues/2989)) ([7e01b2b](https://github.com/opentdf/platform/commit/7e01b2bae63627e13859cf5ec901561fdbc201b8))
+* **core:** DSPX-1944 Fix service negation for extra services ([#2905](https://github.com/opentdf/platform/issues/2905)) ([b07a4fe](https://github.com/opentdf/platform/commit/b07a4fe8de9085b72dc7c9569e71298be849b23e))
+* **core:** DSPX-2090 Removes unnamed key mgrs ([#2952](https://github.com/opentdf/platform/issues/2952)) ([ddd98db](https://github.com/opentdf/platform/commit/ddd98dbd6499c949f0a5ae4da42f50137ad5528b))
+* **core:** Let default basic keymanager work again ([#2858](https://github.com/opentdf/platform/issues/2858)) ([fb0b99d](https://github.com/opentdf/platform/commit/fb0b99dc6b4fd0cc5c243de474a683672df77b78))
+* **core:** remove duplicate root-level trace configuration ([#2944](https://github.com/opentdf/platform/issues/2944)) ([d323e85](https://github.com/opentdf/platform/commit/d323e856ec7cdb83d00fb29070ef105a457c5f1f))
+* **core:** Support audit and warn log levels ([#2996](https://github.com/opentdf/platform/issues/2996)) ([e789a64](https://github.com/opentdf/platform/commit/e789a64d52792bead961b8ec918f620e7c7c96ce))
+* **core:** Updates audit events when cancelled ([#2954](https://github.com/opentdf/platform/issues/2954)) ([808457e](https://github.com/opentdf/platform/commit/808457e8c8945cfe9d0318a19f7217a97874dfcb))
+* **deps:** bump github.com/opentdf/platform/lib/fixtures from 0.3.0 to 0.4.0 in /service ([#2964](https://github.com/opentdf/platform/issues/2964)) ([58512e2](https://github.com/opentdf/platform/commit/58512e23b4d51e1525516ba5c4a1d267b0a34551))
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.7.0 to 0.8.0 in /service ([#2976](https://github.com/opentdf/platform/issues/2976)) ([be970db](https://github.com/opentdf/platform/commit/be970db2cdd2c1c732e4d9ae3370b22aaf185b0d))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.13.0 to 0.14.0 in /service ([#2965](https://github.com/opentdf/platform/issues/2965)) ([6672550](https://github.com/opentdf/platform/commit/66725508ac9d611f38a68eec4bef2888cedf9437))
+* **deps:** bump the external group across 1 directory with 5 updates ([#2950](https://github.com/opentdf/platform/issues/2950)) ([6dc3bca](https://github.com/opentdf/platform/commit/6dc3bca01facc22a51293292c337963feabdf417))
+* **deps:** bump toolchain to go1.24.9 for CVEs found by govulncheck ([#2849](https://github.com/opentdf/platform/issues/2849)) ([23f76c0](https://github.com/opentdf/platform/commit/23f76c034cfb4c325d868eb96c95ba616e362db4))
+* **ers:** Do not use auth header jwt in MultiStrategy ERS ([#2862](https://github.com/opentdf/platform/issues/2862)) ([dd6256e](https://github.com/opentdf/platform/commit/dd6256ea89ceee83c3da85cda5e258031c43a0ed))
+* **kas:** Do not log index object ([#2910](https://github.com/opentdf/platform/issues/2910)) ([4f9b8b9](https://github.com/opentdf/platform/commit/4f9b8b9cff189d59583033e6451ff63557038e67))
+* **kas:** document rewrap proto fields used in bulk flow ([#2826](https://github.com/opentdf/platform/issues/2826)) ([32a7e91](https://github.com/opentdf/platform/commit/32a7e919c57fd724f5c4f01148861ebccb1a9989))
+* **kas:** Ensure root key is not logged. ([#2918](https://github.com/opentdf/platform/issues/2918)) ([de9a76e](https://github.com/opentdf/platform/commit/de9a76e403377816949365c7ac52e08a1e10ee40))
+* **kas:** Fix kas panics on bad requests ([#2916](https://github.com/opentdf/platform/issues/2916)) ([182b463](https://github.com/opentdf/platform/commit/182b4635c6a96881361ad65a9f9aa478c08cfe57))
+* **kas:** populate rewrap audit log ([#2861](https://github.com/opentdf/platform/issues/2861)) ([4fe97fd](https://github.com/opentdf/platform/commit/4fe97fd1ca6c05fb488833efb1397ab64ea0cfdf))
+* **policy:** ListKeys 404 on missing KAS ([#3001](https://github.com/opentdf/platform/issues/3001)) ([65a228b](https://github.com/opentdf/platform/commit/65a228b9222a812e8d9ab689875ebbb25ccc15d4))
+* **policy:** Return the correct total during list responses. ([#2836](https://github.com/opentdf/platform/issues/2836)) ([5c1ec9c](https://github.com/opentdf/platform/commit/5c1ec9c088e714e7a7f6f678cded31e4942b0a83))
+* **policy:** wrap SQL optional param type casts in null checks ([#2977](https://github.com/opentdf/platform/issues/2977)) ([4f6825e](https://github.com/opentdf/platform/commit/4f6825e3370f0617f443659ddeec8b1b0f751b15))
+* remove lingering kas info endpoint definition ([#2997](https://github.com/opentdf/platform/issues/2997)) ([b7e7a66](https://github.com/opentdf/platform/commit/b7e7a66d8a88847ce5c853685b53b03696b719b8))
+* remove nanotdf support ([#3013](https://github.com/opentdf/platform/issues/3013)) ([90ff7ce](https://github.com/opentdf/platform/commit/90ff7ce50754a1f37ba1cc530507c1f6e15930a0))
+
 ## [0.11.0](https://github.com/opentdf/platform/compare/service/v0.10.0...service/v0.11.0) (2025-10-22)
 
 

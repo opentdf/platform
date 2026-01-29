@@ -735,7 +735,21 @@ func retrieveAttributeDefinitions(ctx context.Context, attrFqns []string, sdk *o
 	if err != nil {
 		return nil, err
 	}
-	return resp.GetFqnAttributeValues(), nil
+	// If `allow_traversal` is true for an attribute definition
+	// it will return an attribute definition for a missing
+	// value. Where before you would receive a 404 error.
+	// Since v1 does not expect direct entitlements
+	// and expects a value, we fail if there is no
+	// value.
+	fqnAttrVals := resp.GetFqnAttributeValues()
+	for _, fqn := range attrFqns {
+		normalized := strings.ToLower(fqn)
+		attributeAndValue, ok := fqnAttrVals[normalized]
+		if !ok || attributeAndValue == nil || attributeAndValue.GetValue() == nil {
+			return nil, status.Error(codes.NotFound, db.ErrTextNotFound)
+		}
+	}
+	return fqnAttrVals, nil
 }
 
 func getComprehensiveHierarchy(attributesMap map[string]*policy.Attribute, avf *attr.GetAttributeValuesByFqnsResponse, entitlement string, as *AuthorizationService, entitlements []string) []string {

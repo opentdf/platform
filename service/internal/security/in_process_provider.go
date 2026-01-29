@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto"
 	"crypto/elliptic"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -277,22 +279,51 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 	return protectedKey, nil
 }
 
-// DeriveKey generates a symmetric key for NanoTDF
+// DeriveKey computes an ECDH shared secret and derives an AES key via HKDF.
 func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ocrypto.ProtectedKey, error) {
-	k, err := a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(keyDetails.ID()), ephemeralPublicKeyBytes, curve)
+	kid := string(keyDetails.ID())
+	k, ok := a.cryptoProvider.keysByID[kid]
+	if !ok {
+		return nil, ErrKeyPairInfoNotFound
+	}
+	ec, ok := k.(StandardECCrypto)
+	if !ok {
+		return nil, ErrKeyPairInfoMalformed
+	}
+
+	ephemeralECDSAPublicKey, err := ocrypto.UncompressECPubKey(curve, ephemeralPublicKeyBytes)
 	if err != nil {
 		return nil, err
 	}
-	protectedKey, err := ocrypto.NewAESProtectedKey(k)
+
+	derBytes, err := x509.MarshalPKIXPublicKey(ephemeralECDSAPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal ECDSA public key: %w", err)
+	}
+	ephemeralECDSAPublicKeyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: derBytes,
+	})
+
+	symmetricKey, err := ocrypto.ComputeECDHKey([]byte(ec.ecPrivateKeyPem), ephemeralECDSAPublicKeyPEM)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
+	}
+
+	key, err := ocrypto.CalculateHKDF(TDFSalt(), symmetricKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
+	}
+	protectedKey, err := ocrypto.NewAESProtectedKey(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create protected key: %w", err)
 	}
 	return protectedKey, nil
 }
 
-// GenerateECSessionKey generates a session key for NanoTDF
+// GenerateECSessionKey generates a session key for ECDH-based response encryption.
 func (a *InProcessProvider) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
-	pke, err := ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), nil)
+	pke, err := ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, TDFSalt(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("session key generation failed to create public key encryptor: %w", err)
 	}

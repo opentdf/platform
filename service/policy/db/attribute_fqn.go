@@ -6,7 +6,9 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -79,6 +81,8 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 	defer span.End()
 
 	list := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(fqns))
+	definitionFqns := make(map[string]string)
+	queryFqnsSet := make(map[string]struct{}, len(fqns))
 
 	for i, fqn := range fqns {
 		// normalize to lower case
@@ -89,23 +93,75 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 
 		// prepopulate response map for easy lookup
 		list[fqn] = nil
+
+		queryFqnsSet[fqn] = struct{}{}
+		if defFqn := definitionFqnFromValueFqn(fqn); defFqn != "" {
+			definitionFqns[fqn] = defFqn
+			queryFqnsSet[defFqn] = struct{}{}
+		}
 	}
 
-	// get all attribute values by FQN
-	attrs, err := c.ListAttributesByFqns(ctx, fqns)
+	queryFqns := make([]string, 0, len(queryFqnsSet))
+	for fqn := range queryFqnsSet {
+		queryFqns = append(queryFqns, fqn)
+	}
+
+	// get all attributes by value or definition FQN
+	attrs, err := c.ListAttributesByFqns(ctx, queryFqns, true)
 	if err != nil {
 		return nil, err
 	}
 
+	defByFqn := make(map[string]*policy.Attribute, len(attrs))
+
 	// loop through attributes to find values that match the requested FQNs
 	for _, attr := range attrs {
-		for _, val := range attr.GetValues() {
+		if attr == nil {
+			continue
+		}
+
+		values := attr.GetValues()
+		// Ensure that only active values are within the attribute object
+		activeValues := make([]*policy.Value, 0)
+		for _, val := range values {
 			valFqn := val.GetFqn()
+			isActive := val.GetActive().GetValue()
+			if isActive {
+				activeValues = append(activeValues, val)
+			}
 			if _, ok := list[valFqn]; ok {
+				if !isActive {
+					return nil, fmt.Errorf("value fqn [%s] inactive: %w", valFqn, db.ErrAttributeValueInactive)
+				}
 				// update response map with attribute and value pair if value FQN found
 				list[valFqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 					Attribute: attr,
 					Value:     val,
+				}
+			}
+		}
+
+		if len(activeValues) != len(values) {
+			attr.Values = activeValues
+		}
+
+		if attr.GetFqn() != "" {
+			defByFqn[attr.GetFqn()] = attr
+		}
+	}
+
+	// if value is missing, attempt to resolve the attribute definition
+	for valueFqn, defFqn := range definitionFqns {
+		if list[valueFqn] != nil {
+			continue
+		}
+		if attr, ok := defByFqn[defFqn]; ok {
+			if attr.GetAllowTraversal().GetValue() {
+				c.logger.DebugContext(ctx, "value missing but allow_traversal is true, using definition",
+					slog.String("value_fqn", valueFqn),
+					slog.String("def_fqn", attr.GetFqn()))
+				list[valueFqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+					Attribute: attr,
 				}
 			}
 		}
@@ -124,11 +180,13 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 		}
 		pair.GetAttribute().Grants = attrGrants
 
-		valGrants, err := mapKasKeysToGrants(pair.GetValue().GetKasKeys(), pair.GetValue().GetGrants(), c.logger)
-		if err != nil {
-			return nil, fmt.Errorf("could not map & merge value grants and keys: %w", err)
+		if pair.GetValue() != nil {
+			valGrants, err := mapKasKeysToGrants(pair.GetValue().GetKasKeys(), pair.GetValue().GetGrants(), c.logger)
+			if err != nil {
+				return nil, fmt.Errorf("could not map & merge value grants and keys: %w", err)
+			}
+			pair.GetValue().Grants = valGrants
 		}
-		pair.GetValue().Grants = valGrants
 
 		nsGrants, err := mapKasKeysToGrants(pair.GetAttribute().GetNamespace().GetKasKeys(), pair.GetAttribute().GetNamespace().GetGrants(), c.logger)
 		if err != nil {
@@ -145,4 +203,26 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 	}
 
 	return list, nil
+}
+
+func definitionFqnFromValueFqn(valueFqn string) string {
+	httpPrefix := "http://"
+	httpsPrefix := "https://"
+	hadHTTP := strings.HasPrefix(valueFqn, httpPrefix)
+	if hadHTTP {
+		valueFqn = httpsPrefix + strings.TrimPrefix(valueFqn, httpPrefix)
+	}
+	parsed, err := identifier.Parse[*identifier.FullyQualifiedAttribute](valueFqn)
+	if err != nil {
+		return ""
+	}
+	if parsed.Value == "" {
+		return ""
+	}
+	parsed.Value = ""
+	defFqn := parsed.FQN()
+	if hadHTTP {
+		defFqn = httpPrefix + strings.TrimPrefix(defFqn, httpsPrefix)
+	}
+	return defFqn
 }

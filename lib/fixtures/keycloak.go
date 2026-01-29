@@ -10,6 +10,8 @@ import (
 	"math"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/Nerzal/gocloak/v13"
 )
@@ -17,6 +19,11 @@ import (
 const (
 	kcErrNone    = 0
 	kcErrUnknown = -1
+
+	// Token refresh constants
+	defaultTokenBufferSeconds    = 120 // 2 minutes before expiration
+	defaultFallbackExpiryMinutes = 5   // Fallback when token doesn't provide ExpiresIn
+	adaptiveBufferDivisor        = 2   // Use 50% of token lifetime when buffer > lifetime
 )
 
 type KeycloakData struct {
@@ -72,12 +79,40 @@ type KeycloakConnectParams struct {
 	AllowInsecureTLS bool
 }
 
+// TokenManagerConfig allows configuring token refresh behavior
+type TokenManagerConfig struct {
+	// TokenBuffer is duration before expiration to trigger preemptive refresh
+	// Default: 120s (2 minutes)
+	TokenBuffer time.Duration
+}
+
+// TokenManager manages automatic token refresh for Keycloak operations
+type TokenManager struct {
+	connectParams KeycloakConnectParams
+	client        *gocloak.GoCloak
+	token         *gocloak.JWT
+	expiresAt     time.Time
+	tokenBuffer   time.Duration
+	mu            sync.Mutex
+}
+
 func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) error {
-	// Create realm, if it does not exist.
-	client, token, err := keycloakLogin(ctx, &kcConnectParams)
+	return SetupKeycloakWithConfig(ctx, kcConnectParams, nil)
+}
+
+func SetupKeycloakWithConfig(ctx context.Context, kcConnectParams KeycloakConnectParams, tmConfig *TokenManagerConfig) error {
+	// Create TokenManager
+	tm, err := NewTokenManager(ctx, &kcConnectParams, tmConfig)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create token manager: %w", err)
 	}
+
+	// Get token and client
+	token, err := tm.GetToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get token: %w", err)
+	}
+	client := tm.GetClient()
 
 	// Create realm
 	realm, err := client.GetRealm(ctx, token.AccessToken, kcConnectParams.Realm)
@@ -208,7 +243,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 
 	// Create OpenTDF Client
-	_, err = createClient(ctx, client, token, &kcConnectParams, gocloak.Client{
+	_, err = createClient(ctx, tm, &kcConnectParams, gocloak.Client{
 		ClientID:                gocloak.StringP(opentdfClientID),
 		Enabled:                 gocloak.BoolP(true),
 		Name:                    gocloak.StringP(opentdfClientID),
@@ -250,7 +285,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 
 	// Create TDF SDK Client
-	sdkNumericID, err := createClient(ctx, client, token, &kcConnectParams, gocloak.Client{
+	sdkNumericID, err := createClient(ctx, tm, &kcConnectParams, gocloak.Client{
 		ClientID: gocloak.StringP(opentdfSdkClientID),
 		Enabled:  gocloak.BoolP(true),
 		// OptionalClientScopes:    &[]string{"testscope"},
@@ -278,16 +313,16 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 
 	// Create TDF Entity Resolution Client
-	realmManagementClientID, err := getIDOfClient(ctx, client, token, &kcConnectParams, &realmMangementClientName)
+	realmManagementClientID, err := getIDOfClient(ctx, tm, &kcConnectParams, &realmMangementClientName)
 	if err != nil {
 		return err
 	}
-	clientRolesToAdd, addErr := getClientRolesByList(ctx, &kcConnectParams, client, token, *realmManagementClientID, []string{"view-clients", "query-clients", "view-users", "query-users"})
+	clientRolesToAdd, addErr := getClientRolesByList(ctx, &kcConnectParams, tm, *realmManagementClientID, []string{"view-clients", "query-clients", "view-users", "query-users"})
 	if addErr != nil {
 		slog.Error("error getting client roles", slog.Any("error", err))
 		return err
 	}
-	_, err = createClient(ctx, client, token, &kcConnectParams, gocloak.Client{
+	_, err = createClient(ctx, tm, &kcConnectParams, gocloak.Client{
 		ClientID:                gocloak.StringP(opentdfERSClientID),
 		Enabled:                 gocloak.BoolP(true),
 		Name:                    gocloak.StringP(opentdfERSClientID),
@@ -301,7 +336,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 
 	// Create TDF Authorization Svc Client
-	_, err = createClient(ctx, client, token, &kcConnectParams, gocloak.Client{
+	_, err = createClient(ctx, tm, &kcConnectParams, gocloak.Client{
 		ClientID:                gocloak.StringP(opentdfAuthorizationClientID),
 		Enabled:                 gocloak.BoolP(true),
 		Name:                    gocloak.StringP(opentdfAuthorizationClientID),
@@ -328,7 +363,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		Username:   gocloak.StringP("sampleuser"),
 		Attributes: &map[string][]string{"superhero_name": {"thor"}, "superhero_group": {"avengers"}},
 	}
-	_, err = createUser(ctx, client, token, &kcConnectParams, user)
+	_, err = createUser(ctx, tm, &kcConnectParams, user)
 	if err != nil {
 		panic("Oh no!, failed to create user :(")
 	}
@@ -345,6 +380,10 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 }
 
 func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, keycloakData KeycloakData) error {
+	return SetupCustomKeycloakWithConfig(ctx, kcParams, keycloakData, nil)
+}
+
+func SetupCustomKeycloakWithConfig(ctx context.Context, kcParams KeycloakConnectParams, keycloakData KeycloakData, tmConfig *TokenManagerConfig) error {
 	// for each realm to create
 	for _, realmToCreate := range keycloakData.Realms {
 		// login and try to create the realm
@@ -360,13 +399,13 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 			AllowInsecureTLS: true,
 		}
 
-		err := createRealm(ctx, kcConnectParams, realmToCreate.RealmRepresentation)
+		// Create TokenManager for this realm
+		tm, err := NewTokenManager(ctx, &kcConnectParams, tmConfig)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create token manager: %w", err)
 		}
 
-		// login to new realm
-		client, token, err := keycloakLogin(ctx, &kcConnectParams)
+		err = createRealmWithTokenManager(ctx, kcConnectParams, realmToCreate.RealmRepresentation, tm)
 		if err != nil {
 			return err
 		}
@@ -374,7 +413,7 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 		// create the custom realm roles
 		if realmToCreate.CustomRealmRoles != nil {
 			for _, customRole := range realmToCreate.CustomRealmRoles {
-				err = createRealmRole(ctx, client, token, *realmToCreate.RealmRepresentation.Realm, customRole)
+				err = createRealmRole(ctx, tm, *realmToCreate.RealmRepresentation.Realm, customRole)
 				if err != nil {
 					return err
 				}
@@ -384,7 +423,7 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 		// create the custom groups
 		if realmToCreate.CustomGroups != nil {
 			for _, customGroup := range realmToCreate.CustomGroups {
-				err = createGroup(ctx, client, token, *realmToCreate.RealmRepresentation.Realm, customGroup)
+				err = createGroup(ctx, tm, *realmToCreate.RealmRepresentation.Realm, customGroup)
 				if err != nil {
 					return err
 				}
@@ -394,23 +433,23 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 		// create the clients
 		if realmToCreate.Clients != nil { //nolint:nestif // need to create clients in order
 			for _, customClient := range realmToCreate.Clients {
-				realmRoles, err := getRealmRolesByList(ctx, kcConnectParams.Realm, client, token, customClient.SaRealmRoles)
+				realmRoles, err := getRealmRolesByList(ctx, kcConnectParams.Realm, tm, customClient.SaRealmRoles)
 				if err != nil {
 					return err
 				}
 				clientRoleMap := make(map[string][]gocloak.Role)
 				for clientID, roleString := range customClient.SaClientRoles {
-					longClientID, err := getIDOfClient(ctx, client, token, &kcConnectParams, &clientID)
+					longClientID, err := getIDOfClient(ctx, tm, &kcConnectParams, &clientID)
 					if err != nil {
 						return err
 					}
-					roleList, err := getClientRolesByList(ctx, &kcConnectParams, client, token, *longClientID, roleString)
+					roleList, err := getClientRolesByList(ctx, &kcConnectParams, tm, *longClientID, roleString)
 					if err != nil {
 						return err
 					}
 					clientRoleMap[*longClientID] = roleList
 				}
-				_, err = createClient(ctx, client, token, &kcConnectParams, customClient.Client, realmRoles, clientRoleMap)
+				_, err = createClient(ctx, tm, &kcConnectParams, customClient.Client, realmRoles, clientRoleMap)
 				if err != nil {
 					return err
 				}
@@ -424,7 +463,7 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 				for i := 0; i < customClient.Copies; i++ {
 					customClient.Client.ClientID = gocloak.StringP(fmt.Sprintf(padFormat, baseClientID, i))
 					customClient.Client.Name = gocloak.StringP(fmt.Sprintf(padFormat, baseClientName, i))
-					_, err = createClient(ctx, client, token, &kcConnectParams, customClient.Client, realmRoles, clientRoleMap)
+					_, err = createClient(ctx, tm, &kcConnectParams, customClient.Client, realmRoles, clientRoleMap)
 					if err != nil {
 						return err
 					}
@@ -436,7 +475,7 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 		if realmToCreate.CustomClientRoles != nil {
 			for clientID, customRoles := range realmToCreate.CustomClientRoles {
 				for _, customRole := range customRoles {
-					err = createClientRole(ctx, client, token, *realmToCreate.RealmRepresentation.Realm, clientID, customRole)
+					err = createClientRole(ctx, tm, *realmToCreate.RealmRepresentation.Realm, clientID, customRole)
 					if err != nil {
 						return err
 					}
@@ -447,7 +486,7 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 		// create the users
 		if realmToCreate.Users != nil {
 			for _, customUser := range realmToCreate.Users {
-				_, err = createUser(ctx, client, token, &kcConnectParams, customUser.User)
+				_, err = createUser(ctx, tm, &kcConnectParams, customUser.User)
 				if err != nil {
 					return err
 				}
@@ -461,7 +500,7 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 				for i := 0; i < customUser.Copies; i++ {
 					customUser.Username = gocloak.StringP(fmt.Sprintf(padFormat, baseUserName, i))
 					customUser.Email = gocloak.StringP(fmt.Sprintf("%d-%s", i, baseEmail))
-					_, err = createUser(ctx, client, token, &kcConnectParams, customUser.User)
+					_, err = createUser(ctx, tm, &kcConnectParams, customUser.User)
 					if err != nil {
 						return err
 					}
@@ -472,13 +511,115 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 		// create token exchanges
 		if realmToCreate.TokenExchanges != nil {
 			for _, tokenExchange := range realmToCreate.TokenExchanges {
-				err := createTokenExchange(ctx, &kcConnectParams, tokenExchange.StartClientID, tokenExchange.TargetClientID)
+				err := createTokenExchangeWithTokenManager(ctx, &kcConnectParams, tm, tokenExchange.StartClientID, tokenExchange.TargetClientID)
 				if err != nil {
 					return err
 				}
 			}
 		}
 	}
+	return nil
+}
+
+// NewTokenManager creates a new TokenManager with initial login
+func NewTokenManager(ctx context.Context, connectParams *KeycloakConnectParams, config *TokenManagerConfig) (*TokenManager, error) {
+	if connectParams == nil {
+		return nil, errors.New("connectParams cannot be nil")
+	}
+
+	// Set default token buffer if not provided
+	tokenBuffer := defaultTokenBufferSeconds * time.Second
+	if config != nil && config.TokenBuffer > 0 {
+		tokenBuffer = config.TokenBuffer
+	}
+
+	tm := &TokenManager{
+		connectParams: *connectParams,
+		tokenBuffer:   tokenBuffer,
+	}
+
+	// Perform initial login
+	if err := tm.refreshToken(ctx); err != nil {
+		return nil, fmt.Errorf("initial login failed: %w", err)
+	}
+
+	return tm, nil
+}
+
+// GetToken returns a valid token, refreshing if necessary
+func (tm *TokenManager) GetToken(ctx context.Context) (*gocloak.JWT, error) {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+
+	// Check if token needs refresh
+	if tm.needsRefresh() {
+		slog.InfoContext(ctx, "keycloak token expired or expiring soon - refreshing")
+		if err := tm.refreshToken(ctx); err != nil {
+			return nil, fmt.Errorf("failed to refresh token: %w", err)
+		}
+		slog.InfoContext(ctx, "successfully refreshed keycloak token",
+			slog.Int("expires_in_seconds", tm.token.ExpiresIn))
+	}
+
+	return tm.token, nil
+}
+
+// GetClient returns the GoCloak client
+func (tm *TokenManager) GetClient() *gocloak.GoCloak {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+	return tm.client
+}
+
+// needsRefresh checks if the token needs to be refreshed
+// Must be called with mutex locked
+func (tm *TokenManager) needsRefresh() bool {
+	if tm.token == nil || tm.client == nil {
+		return true
+	}
+	return time.Now().After(tm.expiresAt.Add(-tm.tokenBuffer))
+}
+
+// refreshToken performs the actual token refresh
+// Must be called with mutex locked
+func (tm *TokenManager) refreshToken(ctx context.Context) error {
+	// Create client if needed
+	if tm.client == nil {
+		client := gocloak.NewClient(tm.connectParams.BasePath)
+		restyClient := client.RestyClient()
+		restyClient.SetTLSClientConfig(&tls.Config{
+			InsecureSkipVerify: tm.connectParams.AllowInsecureTLS, //nolint:gosec // need insecure TLS option for testing and development
+		})
+		tm.client = client
+	}
+
+	// Get new token from master realm
+	// Note: Admin tokens are ALWAYS obtained from the "master" realm in Keycloak,
+	// regardless of which realm is being managed. The token has admin permissions
+	// across all realms. This is standard Keycloak authentication behavior.
+	token, err := tm.client.LoginAdmin(ctx, tm.connectParams.Username, tm.connectParams.Password, "master")
+	if err != nil {
+		return fmt.Errorf("keycloak login failed: %w", err)
+	}
+
+	tm.token = token
+	// Use the token's expiration time if available, otherwise calculate from ExpiresIn
+	if token.ExpiresIn > 0 {
+		tm.expiresAt = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
+
+		// Adaptive buffer: if token lifetime is shorter than buffer, use 50% of lifetime instead
+		tokenLifetime := time.Duration(token.ExpiresIn) * time.Second
+		if tm.tokenBuffer >= tokenLifetime {
+			tm.tokenBuffer = tokenLifetime / adaptiveBufferDivisor
+			slog.InfoContext(ctx, "adjusted token buffer for short token lifetime",
+				slog.Duration("token_lifetime", tokenLifetime),
+				slog.Duration("adjusted_buffer", tm.tokenBuffer))
+		}
+	} else {
+		// Fallback to a reasonable default if ExpiresIn is not set
+		tm.expiresAt = time.Now().Add(defaultFallbackExpiryMinutes * time.Minute)
+	}
+
 	return nil
 }
 
@@ -497,28 +638,37 @@ func keycloakLogin(ctx context.Context, connectParams *KeycloakConnectParams) (*
 }
 
 func createRealm(ctx context.Context, kcConnectParams KeycloakConnectParams, realm gocloak.RealmRepresentation) error {
-	// Create realm, if it does not exist.
-	client, token, err := keycloakLogin(ctx, &kcConnectParams)
+	// Create TokenManager and delegate to TokenManager version
+	tm, err := NewTokenManager(ctx, &kcConnectParams, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create token manager: %w", err)
 	}
+	return createRealmWithTokenManager(ctx, kcConnectParams, realm, tm)
+}
+
+func createRealmWithTokenManager(ctx context.Context, kcConnectParams KeycloakConnectParams, realm gocloak.RealmRepresentation, tm *TokenManager) error {
+	// Get fresh token
+	token, err := tm.GetToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get token: %w", err)
+	}
+	client := tm.GetClient()
 
 	// Create realm
 	r, err := client.GetRealm(ctx, token.AccessToken, *realm.Realm)
-	var kcErr *gocloak.APIError
-	if errors.As(err, &kcErr) {
-		switch kcErr.Code {
-		case http.StatusNotFound:
-			// yes
-		case http.StatusConflict:
-			slog.Info("realm already exists, skipping create", slog.String("realm", *realm.Realm))
-		default:
-			return err
-		}
-	} else if err != nil {
-		if kcErr.Code == http.StatusConflict {
-			slog.Info("realm already exists, skipping create", slog.String("realm", *realm.Realm))
-		} else if kcErr.Code != http.StatusNotFound {
+	if err != nil {
+		var kcErr *gocloak.APIError
+		if errors.As(err, &kcErr) {
+			switch kcErr.Code {
+			case http.StatusNotFound:
+				// Realm doesn't exist, we'll create it below
+			case http.StatusConflict:
+				slog.Info("realm already exists, skipping create", slog.String("realm", *realm.Realm))
+			default:
+				return err
+			}
+		} else {
+			// Non-Keycloak error
 			return err
 		}
 	}
@@ -557,11 +707,19 @@ func createRealm(ctx context.Context, kcConnectParams KeycloakConnectParams, rea
 	return nil
 }
 
-func createGroup(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, realmName string, group gocloak.Group) error {
+func createGroup(ctx context.Context, tm *TokenManager, realmName string, group gocloak.Group) error {
 	if group.Name == nil {
 		return errors.New("group does not have name")
 	}
-	_, err := client.CreateGroup(ctx, token.AccessToken, realmName, group)
+
+	// Get fresh token
+	token, err := tm.GetToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get token: %w", err)
+	}
+	client := tm.GetClient()
+
+	_, err = client.CreateGroup(ctx, token.AccessToken, realmName, group)
 	if err != nil {
 		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
 		if kcErr.Code == http.StatusConflict {
@@ -577,11 +735,19 @@ func createGroup(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JW
 	return nil
 }
 
-func createRealmRole(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, realmName string, role gocloak.Role) error {
+func createRealmRole(ctx context.Context, tm *TokenManager, realmName string, role gocloak.Role) error {
 	if role.Name == nil {
 		return errors.New("realm role does not have name")
 	}
-	_, err := client.CreateRealmRole(ctx, token.AccessToken, realmName, role)
+
+	// Get fresh token
+	token, err := tm.GetToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get token: %w", err)
+	}
+	client := tm.GetClient()
+
+	_, err = client.CreateRealmRole(ctx, token.AccessToken, realmName, role)
 	if err != nil {
 		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
 		if kcErr.Code == http.StatusConflict {
@@ -597,10 +763,18 @@ func createRealmRole(ctx context.Context, client *gocloak.GoCloak, token *gocloa
 	return nil
 }
 
-func createClientRole(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, realmName string, clientID string, role gocloak.Role) error {
+func createClientRole(ctx context.Context, tm *TokenManager, realmName string, clientID string, role gocloak.Role) error {
 	if role.Name == nil {
 		return errors.New("client role does not have name")
 	}
+
+	// Get fresh token
+	token, err := tm.GetToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get token: %w", err)
+	}
+	client := tm.GetClient()
+
 	results, err := client.GetClients(ctx, token.AccessToken, realmName, gocloak.GetClientsParams{ClientID: &clientID})
 	if err != nil || len(results) == 0 {
 		slog.Error("error getting client",
@@ -630,11 +804,18 @@ func createClientRole(ctx context.Context, client *gocloak.GoCloak, token *goclo
 	return nil
 }
 
-func createClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, connectParams *KeycloakConnectParams, newClient gocloak.Client, realmRoles []gocloak.Role, clientRoles map[string][]gocloak.Role) (string, error) {
+func createClient(ctx context.Context, tm *TokenManager, connectParams *KeycloakConnectParams, newClient gocloak.Client, realmRoles []gocloak.Role, clientRoles map[string][]gocloak.Role) (string, error) {
+	// Get fresh token
+	token, err := tm.GetToken(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get token: %w", err)
+	}
+	client := tm.GetClient()
+
 	var longClientID string
 
 	clientID := *newClient.ClientID
-	longClientID, err := client.CreateClient(ctx, token.AccessToken, connectParams.Realm, newClient)
+	longClientID, err = client.CreateClient(ctx, token.AccessToken, connectParams.Realm, newClient)
 	if err != nil {
 		switch kcErrCode(err) {
 		case http.StatusConflict:
@@ -719,19 +900,32 @@ func createClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.J
 	return longClientID, nil
 }
 
-func createUser(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, connectParams *KeycloakConnectParams, newUser gocloak.User) (*string, error) { //nolint:unparam // return var to be used in future
+func createUser(ctx context.Context, tm *TokenManager, connectParams *KeycloakConnectParams, newUser gocloak.User) (*string, error) { //nolint:unparam // return var to be used in future
+	// Get fresh token
+	token, err := tm.GetToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get token: %w", err)
+	}
+	client := tm.GetClient()
+
 	username := *newUser.Username
 	longUserID, err := client.CreateUser(ctx, token.AccessToken, connectParams.Realm, newUser)
 	if err != nil {
 		switch kcErrCode(err) {
 		case http.StatusConflict:
 			slog.Warn("user already exists", slog.String("username", username))
-			users, err := client.GetUsers(ctx, token.AccessToken, connectParams.Realm, gocloak.GetUsersParams{Username: newUser.Username})
+			users, err := client.GetUsers(ctx, token.AccessToken, connectParams.Realm, gocloak.GetUsersParams{
+				Username: newUser.Username,
+				Exact:    gocloak.BoolP(true),
+			})
 			if err != nil {
 				return nil, err
 			}
 			if len(users) == 1 {
 				longUserID = *users[0].ID
+			} else if len(users) > 1 {
+				err = fmt.Errorf("error, multiple users found with username %s", username)
+				return nil, err
 			} else {
 				err = fmt.Errorf("error, %s user not found", username)
 				return nil, err
@@ -751,7 +945,7 @@ func createUser(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT
 	// assign realm roles to user
 	// retrieve the roles by name
 	if newUser.RealmRoles != nil {
-		roles, err := getRealmRolesByList(ctx, connectParams.Realm, client, token, *newUser.RealmRoles)
+		roles, err := getRealmRolesByList(ctx, connectParams.Realm, tm, *newUser.RealmRoles)
 		if err != nil {
 			return nil, err
 		}
@@ -775,7 +969,7 @@ func createUser(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT
 			}
 			idOfClient := results[0].ID
 
-			clientRoles, err := getClientRolesByList(ctx, connectParams, client, token, *idOfClient, roles)
+			clientRoles, err := getClientRolesByList(ctx, connectParams, tm, *idOfClient, roles)
 			if err != nil {
 				slog.Error("error getting client roles", slog.Any("error", err))
 				return nil, err
@@ -799,7 +993,14 @@ func createUser(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT
 	return &longUserID, nil
 }
 
-func getRealmRolesByList(ctx context.Context, realmName string, client *gocloak.GoCloak, token *gocloak.JWT, rolesToAdd []string) ([]gocloak.Role, error) {
+func getRealmRolesByList(ctx context.Context, realmName string, tm *TokenManager, rolesToAdd []string) ([]gocloak.Role, error) {
+	// Get fresh token
+	token, err := tm.GetToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get token: %w", err)
+	}
+	client := tm.GetClient()
+
 	var roles []gocloak.Role
 	for _, roleName := range rolesToAdd {
 		role, err := client.GetRealmRole(
@@ -818,7 +1019,14 @@ func getRealmRolesByList(ctx context.Context, realmName string, client *gocloak.
 	return roles, nil
 }
 
-func getClientRolesByList(ctx context.Context, connectParams *KeycloakConnectParams, client *gocloak.GoCloak, token *gocloak.JWT, idClient string, roles []string) ([]gocloak.Role, error) {
+func getClientRolesByList(ctx context.Context, connectParams *KeycloakConnectParams, tm *TokenManager, idClient string, roles []string) ([]gocloak.Role, error) {
+	// Get fresh token
+	token, err := tm.GetToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get token: %w", err)
+	}
+	client := tm.GetClient()
+
 	var notFoundRoles []string
 	var clientRoles []gocloak.Role
 
@@ -845,7 +1053,14 @@ searchRole:
 	return clientRoles, nil
 }
 
-func getIDOfClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, connectParams *KeycloakConnectParams, clientName *string) (*string, error) {
+func getIDOfClient(ctx context.Context, tm *TokenManager, connectParams *KeycloakConnectParams, clientName *string) (*string, error) {
+	// Get fresh token
+	token, err := tm.GetToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get token: %w", err)
+	}
+	client := tm.GetClient()
+
 	results, err := client.GetClients(ctx, token.AccessToken, connectParams.Realm, gocloak.GetClientsParams{ClientID: clientName})
 	if err != nil || len(results) == 0 {
 		slog.Error("error getting realm management client", slog.Any("error", err))
@@ -856,12 +1071,24 @@ func getIDOfClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.
 }
 
 func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectParams, startClientID string, targetClientID string) error {
-	client, token, err := keycloakLogin(ctx, connectParams)
+	// Create TokenManager and delegate to TokenManager version
+	tm, err := NewTokenManager(ctx, connectParams, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create token manager: %w", err)
 	}
+	return createTokenExchangeWithTokenManager(ctx, connectParams, tm, startClientID, targetClientID)
+}
+
+func createTokenExchangeWithTokenManager(ctx context.Context, connectParams *KeycloakConnectParams, tm *TokenManager, startClientID string, targetClientID string) error {
+	// Get fresh token
+	token, err := tm.GetToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get token: %w", err)
+	}
+	client := tm.GetClient()
+
 	// Step 1- enable permissions for target client
-	idForTargetClientID, err := getIDOfClient(ctx, client, token, connectParams, &targetClientID)
+	idForTargetClientID, err := getIDOfClient(ctx, tm, connectParams, &targetClientID)
 	if err != nil {
 		return err
 	}
@@ -882,7 +1109,7 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 
 	slog.Debug("step 2 - get realm mgmt client id")
 	realmMangementClientName := "realm-management"
-	realmManagementClientID, err := getIDOfClient(ctx, client, token, connectParams, &realmMangementClientName)
+	realmManagementClientID, err := getIDOfClient(ctx, tm, connectParams, &realmMangementClientName)
 	if err != nil {
 		return err
 	}

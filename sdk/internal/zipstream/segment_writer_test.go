@@ -417,23 +417,10 @@ func TestSegmentWriter_LargeNumberOfSegments(t *testing.T) {
 		testSegments[i] = []byte(fmt.Sprintf("Segment %d data", i))
 	}
 
-	var allBytes []byte
-
 	// Write all segments in reverse order
 	for i := segmentCount - 1; i >= 0; i-- {
-		bytes, err := writer.WriteSegment(ctx, i, uint64(len(testSegments[i])), crc32.ChecksumIEEE(testSegments[i]))
+		_, err := writer.WriteSegment(ctx, i, uint64(len(testSegments[i])), crc32.ChecksumIEEE(testSegments[i]))
 		require.NoError(t, err, "Failed to write segment %d", i)
-
-		// Store in logical order for final assembly
-		if i == 0 {
-			allBytes = append([]byte{}, bytes...) // Segment 0 goes first
-			for j := 1; j < segmentCount; j++ {
-				allBytes = append(allBytes, make([]byte, 0)...) // Placeholder
-			}
-		} else {
-			// This is simplified - in practice you'd need proper ordering
-			allBytes = append(allBytes, bytes...)
-		}
 	}
 
 	// Finalize

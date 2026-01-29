@@ -7,6 +7,7 @@ SELECT
     ad.id,
     ad.name as attribute_name,
     ad.rule,
+    ad.allow_traversal,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
     ad.namespace_id,
     ad.active,
@@ -46,6 +47,7 @@ SELECT
     ad.id,
     ad.name as attribute_name,
     ad.rule,
+    ad.allow_traversal,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
     ad.namespace_id,
     ad.active,
@@ -66,6 +68,7 @@ WITH target_definition AS (
         ad.namespace_id,
         ad.name,
         ad.rule,
+        ad.allow_traversal,
         ad.active,
         ad.values_order,
         JSONB_AGG(
@@ -263,13 +266,14 @@ values AS (
         INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY k.value_id
     ) value_keys ON av.id = value_keys.value_id                        
-	WHERE av.active = TRUE
+	WHERE (av.active = TRUE OR sqlc.arg('include_inactive_values')::BOOLEAN = TRUE)
 	GROUP BY av.attribute_definition_id
 )
 SELECT
 	td.id,
 	td.name,
     td.rule,
+    td.allow_traversal,
 	td.active,
 	n.namespace,
 	fqns.fqn,
@@ -287,6 +291,7 @@ SELECT
     ad.id,
     ad.name as attribute_name,
     ad.rule,
+    ad.allow_traversal,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
     ad.namespace_id,
     ad.active,
@@ -347,8 +352,8 @@ WHERE (sqlc.narg('id')::uuid IS NULL OR ad.id = sqlc.narg('id')::uuid)
 GROUP BY ad.id, n.name, fqns.fqn, defk.keys;
 
 -- name: createAttribute :one
-INSERT INTO attribute_definitions (namespace_id, name, rule, metadata)
-VALUES (@namespace_id, @name, @rule, @metadata) 
+INSERT INTO attribute_definitions (namespace_id, name, rule, metadata, allow_traversal)
+VALUES (@namespace_id, @name, @rule, @metadata, @allow_traversal) 
 RETURNING id;
 
 -- updateAttribute: Unsafe and Safe Updates both
@@ -359,7 +364,8 @@ SET
     rule = COALESCE(sqlc.narg('rule'), rule),
     values_order = COALESCE(sqlc.narg('values_order'), values_order),
     metadata = COALESCE(sqlc.narg('metadata'), metadata),
-    active = COALESCE(sqlc.narg('active'), active)
+    active = COALESCE(sqlc.narg('active'), active),
+    allow_traversal = COALESCE(sqlc.narg('allow_traversal'), allow_traversal)
 WHERE id = $1;
 
 -- name: deleteAttribute :execrows

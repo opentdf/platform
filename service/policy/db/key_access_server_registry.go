@@ -545,9 +545,47 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	kasID := pgtypeUUID(r.GetKasId())
-	kasURI := pgtypeText(r.GetKasUri())
-	kasName := pgtypeText(strings.ToLower(r.GetKasName()))
+	var (
+		kasID   pgtype.UUID
+		kasURI  pgtype.Text
+		kasName pgtype.Text
+	)
+	hasKasFilter := false
+
+	switch f := r.GetKasFilter().(type) {
+	case *kasregistry.ListKeysRequest_KasId:
+		hasKasFilter = true
+		kasID = pgtypeUUID(f.KasId)
+		if !kasID.Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+	case *kasregistry.ListKeysRequest_KasUri:
+		hasKasFilter = true
+		kasURI = pgtypeText(f.KasUri)
+		if !kasURI.Valid {
+			return nil, db.ErrSelectIdentifierInvalid
+		}
+	case *kasregistry.ListKeysRequest_KasName:
+		hasKasFilter = true
+		kasName = pgtypeText(strings.ToLower(f.KasName))
+		if !kasName.Valid {
+			return nil, db.ErrSelectIdentifierInvalid
+		}
+	}
+
+	if hasKasFilter {
+		exists, err := c.queries.keyAccessServerExists(ctx, keyAccessServerExistsParams{
+			KasID:   kasID,
+			KasName: kasName,
+			KasUri:  kasURI,
+		})
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		if !exists {
+			return nil, db.ErrNotFound
+		}
+	}
 	algo := pgtypeInt4(int32(r.GetKeyAlgorithm()), r.GetKeyAlgorithm() != policy.Algorithm_ALGORITHM_UNSPECIFIED)
 
 	var legacy pgtype.Bool

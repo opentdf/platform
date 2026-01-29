@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/opentdf/platform/lib/fixtures v0.3.0
-	github.com/opentdf/platform/protocol/go v0.13.0
+	github.com/opentdf/platform/protocol/go v0.15.0
 	github.com/opentdf/platform/sdk v0.5.0
 	github.com/opentdf/platform/service v0.7.2
 	github.com/spf13/pflag v1.0.10
@@ -21,7 +21,7 @@ require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250613105001-9f2d3c737feb.1 // indirect
 	buf.build/go/protovalidate v0.13.1 // indirect
 	cel.dev/expr v0.24.0 // indirect
-	connectrpc.com/connect v1.18.1 // indirect
+	connectrpc.com/connect v1.19.1 // indirect
 	connectrpc.com/grpchealth v1.4.0 // indirect
 	connectrpc.com/grpcreflect v1.3.0 // indirect
 	connectrpc.com/validate v0.3.0 // indirect
@@ -192,7 +192,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/opentdf/platform/lib/flattening v0.1.3 // indirect
 	github.com/opentdf/platform/lib/identifier v0.0.2 // indirect
-	github.com/opentdf/platform/lib/ocrypto v0.2.0 // indirect
+	github.com/opentdf/platform/lib/ocrypto v0.9.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect

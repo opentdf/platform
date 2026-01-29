@@ -2552,6 +2552,14 @@ Indicates a key may be found in TDFs without key identifiers </p></td>
                 </tr>
               
                 <tr>
+                  <td>allow_traversal</td>
+                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
+                  <td></td>
+                  <td><p>Whether or not we will use the attribute definition during encryption
+if the attribute value is missing. </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -2742,8 +2750,8 @@ subject_external_selector_value on a flattened Entity Representation
                   <td><a href="#policy.KasPublicKeyAlgEnum">KasPublicKeyAlgEnum</a></td>
                   <td></td>
                   <td><p>A known algorithm type with any additional parameters encoded.
-To start, these may be `rsa:2048` for encrypting ZTDF files and
-`ec:secp256r1` for nanoTDF, but more formats may be added as needed. </p></td>
+To start, these may be `rsa:2048` for RSA-based wrapping and
+`ec:secp256r1` for EC-based wrapping, but more formats may be added as needed. </p></td>
                 </tr>
               
             </tbody>
@@ -6339,9 +6347,8 @@ This is the core cryptographic material needed for TDF decryption </p></td>
                   <td>header</td>
                   <td><a href="#bytes">bytes</a></td>
                   <td></td>
-                  <td><p>Complete NanoTDF header containing all metadata and policy information
-Required: NanoTDF only
-ZTDF: Omitted (policy and metadata are separate)
+                  <td><p>Complete header containing all metadata and policy information (for formats that embed it)
+Optional: Not used by ZTDF (policy and metadata are separate)
 Contains magic bytes, version, algorithm, policy, and ephemeral key information </p></td>
                 </tr>
               
@@ -6678,7 +6685,7 @@ Modern responses use kas_wrapped_key in KeyAccessRewrapResult </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>KAS&#39;s ephemeral session public key in PEM format
-Required: For EC-based operations (NanoTDF and ZTDF with key_type=&#34;ec-wrapped&#34;)
+Required: For EC-based operations (key_type=&#34;ec-wrapped&#34;)
 Optional: Empty for RSA-based ZTDF (key_type=&#34;wrapped&#34;)
 Used by client to perform ECDH key agreement and decrypt the kas_wrapped_key values </p></td>
                 </tr>
@@ -6948,8 +6955,7 @@ Required: ZTDF (base64-encoded policy JSON) </p></td>
                   <td>repeated</td>
                   <td><p>List of Key Access Objects associated with this policy
 Required: Always (at least one)
-NanoTDF: Exactly one KAO per policy
-ZTDF: One or more KAOs per policy </p></td>
+Some formats require exactly one KAO per policy </p></td>
                 </tr>
               
                 <tr>
@@ -6966,7 +6972,7 @@ Required: Always </p></td>
                   <td></td>
                   <td><p>Cryptographic algorithm identifier for the TDF type
 Optional: Defaults to rsa:2048 if omitted
-Values: &#34;ec:secp256r1&#34; (NanoTDF), &#34;rsa:2048&#34; (ZTDF), &#34;&#34; (defaults to rsa:2048)
+Values: &#34;ec:secp256r1&#34; (EC-based), &#34;rsa:2048&#34; (RSA-based), &#34;&#34; (defaults to rsa:2048)
 Example: &#34;ec:secp256r1&#34; </p></td>
                 </tr>
               
@@ -8119,6 +8125,18 @@ Custom actions only: replaces the existing action name </p></td>
                   <td><p>Optional
 Attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
 The stored attribute value will be normalized to lower case. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>allow_traversal</td>
+                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
+                  <td></td>
+                  <td><p>Optional
+Setting allow_traversal=true allows TDF creation to be front-loaded, meaning a customer
+can create encrypted content with an attribute definitions key mapping before
+creating the attribute values needed to decrypt.
+Content will be able to be encrypted with missing attribute values,
+but will not be able to be decrypted until such attribute values exist. </p></td>
                 </tr>
               
                 <tr>
@@ -16864,6 +16882,17 @@ Updating the name of an Attribute will retroactively alter access to existing TD
                   <td><p>Optional
 WARNING!!
 Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>allow_traversal</td>
+                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
+                  <td></td>
+                  <td><p>Optional
+WARNING!!
+Updating allow_traversal allows TDF creation to be front-loaded, meaning a customer
+can create encrypted content with an attribute definitions key mapping before
+creating the attribute values needed to decrypt. </p></td>
                 </tr>
               
                 <tr>

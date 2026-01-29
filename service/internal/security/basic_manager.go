@@ -134,7 +134,7 @@ func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetail
 		return nil, fmt.Errorf("failed to compute ECDH key: %w", err)
 	}
 
-	key, err := ocrypto.CalculateHKDF(NanoVersionSalt(), symmetricKey)
+	key, err := ocrypto.CalculateHKDF(TDFSalt(), symmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate HKDF: %w", err)
 	}
@@ -159,7 +159,7 @@ func (e *OCEncapsulator) PublicKeyAsPEM() (string, error) {
 }
 
 func (b *BasicManager) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (ocrypto.Encapsulator, error) {
-	pke, err := ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), nil)
+	pke, err := ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, TDFSalt(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create public key encryptor: %w", err)
 	}
@@ -202,11 +202,17 @@ func (b *BasicManager) unwrap(ctx context.Context, kid string, wrappedKey string
 
 	gcm, err := ocrypto.NewAESGcm(b.rootKey)
 	if err != nil {
+		if errors.Is(err, ocrypto.ErrInvalidKeyData) {
+			return nil, fmt.Errorf("basic key manager is not configured: %w", err)
+		}
 		return nil, fmt.Errorf("failed to create AES-GCM instance: %w", err)
 	}
 
 	privKey, err := gcm.Decrypt(wk)
 	if err != nil {
+		if errors.Is(err, ocrypto.ErrInvalidCiphertext) {
+			return nil, fmt.Errorf("wrapped key data is corrupted or invalid format: %w", err)
+		}
 		return nil, fmt.Errorf("failed to decrypt wrapped key: %w", err)
 	}
 

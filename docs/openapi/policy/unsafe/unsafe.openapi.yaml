@@ -707,6 +707,12 @@ components:
             $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Keys associated with the attribute
+        allowTraversal:
+          title: allow_traversal
+          description: |-
+            Whether or not we will use the attribute definition during encryption
+             if the attribute value is missing.
+          $ref: '#/components/schemas/google.protobuf.BoolValue'
         metadata:
           title: metadata
           description: Common metadata
@@ -819,8 +825,8 @@ components:
           title: alg
           description: |-
             A known algorithm type with any additional parameters encoded.
-             To start, these may be `rsa:2048` for encrypting ZTDF files and
-             `ec:secp256r1` for nanoTDF, but more formats may be added as needed.
+             To start, these may be `rsa:2048` for RSA-based wrapping and
+             `ec:secp256r1` for EC-based wrapping, but more formats may be added as needed.
           $ref: '#/components/schemas/policy.KasPublicKeyAlgEnum'
       title: KasPublicKey
       additionalProperties: false
@@ -1526,6 +1532,15 @@ components:
              WARNING!!
              Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.
           $ref: '#/components/schemas/policy.AttributeRuleTypeEnum'
+        allowTraversal:
+          title: allow_traversal
+          description: |-
+            Optional
+             WARNING!!
+             Updating allow_traversal allows TDF creation to be front-loaded, meaning a customer
+             can create encrypted content with an attribute definitions key mapping before
+             creating the attribute values needed to decrypt.
+          $ref: '#/components/schemas/google.protobuf.BoolValue'
         valuesOrder:
           type: array
           items:

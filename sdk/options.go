@@ -37,12 +37,10 @@ type config struct {
 	dpopKey                            *ocrypto.RsaKeyPair
 	ipc                                bool
 	tdfFeatures                        tdfFeatures
-	nanoFeatures                       nanoFeatures
 	customAccessTokenSource            auth.AccessTokenSource
 	oauthAccessTokenSource             oauth2.TokenSource
 	coreConn                           *ConnectRPCConnection
 	entityResolutionConn               *ConnectRPCConnection
-	collectionStore                    *collectionStore
 	shouldValidatePlatformConnectivity bool
 	fulfillableObligationFQNs          []string
 	logger                             *slog.Logger
@@ -51,12 +49,6 @@ type config struct {
 // Options specific to TDF protocol features
 type tdfFeatures struct {
 	// For backward compatibility, don't store the KID in the KAO.
-	noKID bool
-}
-
-// Options specific to NanoTDF protocol features
-type nanoFeatures struct {
-	// noKID For backward compatibility, don't store the KID in the KAS ResourceLocator.
 	noKID bool
 }
 
@@ -70,13 +62,6 @@ func WithInsecureSkipVerifyConn() Option {
 			InsecureSkipVerify: true, // #nosec G402
 		} // used by http client
 		c.httpClient = httputil.SafeHTTPClientWithTLSConfig(tlsConfig)
-	}
-}
-
-// WithStoreCollectionHeaders Experimental: returns an Option that sets up storing dataset keys for nTDFs
-func WithStoreCollectionHeaders() Option {
-	return func(c *config) {
-		c.collectionStore = newCollectionStore(kDefaultExpirationTime, kDefaultCleaningInterval)
 	}
 }
 
@@ -104,6 +89,7 @@ func WithTLSCredentials(tls *tls.Config, audience []string) Option {
 }
 
 // WithTokenEndpoint When we implement service discovery using a .well-known endpoint this option may become deprecated
+
 // Deprecated: SDK will discover the token endpoint from the platform configuration
 func WithTokenEndpoint(tokenEndpoint string) Option {
 	return func(c *config) {
@@ -223,14 +209,6 @@ func WithCustomCoreConnection(conn *ConnectRPCConnection) Option {
 func WithExtraClientOptions(opts ...connect.ClientOption) Option {
 	return func(c *config) {
 		c.extraClientOptions = opts
-	}
-}
-
-// WithNoKIDInNano disables storing the KID in the KAS ResourceLocator.
-// This allows generating NanoTDF files that are compatible with legacy file formats (no KID).
-func WithNoKIDInNano() Option {
-	return func(c *config) {
-		c.nanoFeatures.noKID = true
 	}
 }
 

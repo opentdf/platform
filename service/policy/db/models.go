@@ -132,6 +132,8 @@ type AttributeDefinition struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 	// Order of value ids for the attribute (important for hierarchy rule)
 	ValuesOrder []string `json:"values_order"`
+	// Whether or not to allow platform to return the definition key when encrypting, if the value specified is missing.
+	AllowTraversal bool `json:"allow_traversal"`
 }
 
 // Table to store the grants of key access servers (KASs) to attribute definitions

@@ -2,7 +2,7 @@ module github.com/opentdf/platform/sdk
 
 go 1.24.0
 
-toolchain go1.24.11
+toolchain go1.24.12
 
 require (
 	connectrpc.com/connect v1.19.1

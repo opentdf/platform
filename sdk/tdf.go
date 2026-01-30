@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"log/slog"
 	"net/http"
@@ -23,7 +24,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
-	"github.com/opentdf/platform/sdk/internal/archive"
+	"github.com/opentdf/platform/sdk/internal/zipstream"
 	"github.com/opentdf/platform/sdk/sdkconnect"
 	"google.golang.org/grpc/codes"
 )
@@ -32,6 +33,7 @@ const (
 	keyAccessSchemaVersion = "1.0"
 	maxFileSizeSupported   = 68719476736 // 64gb
 	defaultMimeType        = "application/octet-stream"
+	zip64MagicVal          = int64(^uint32(0))
 	tdfAsZip               = "zip"
 	gcmIvSize              = 12
 	aesBlockSize           = 16
@@ -58,7 +60,7 @@ type Reader struct {
 	connectOptions      []connect.ClientOption
 	manifest            Manifest
 	unencryptedMetadata []byte
-	tdfReader           archive.TDFReader
+	tdfReader           zipstream.TDFReader
 	cursor              int64
 	aesGcm              ocrypto.AesGcm
 	payloadSize         int64
@@ -77,6 +79,17 @@ type TDFObject struct {
 	size       int64
 	aesGcm     ocrypto.AesGcm
 	payloadKey [kKeySize]byte
+}
+
+type countingWriter struct {
+	writer  io.Writer
+	written int64
+}
+
+func (cw *countingWriter) Write(p []byte) (int, error) {
+	n, err := cw.writer.Write(p)
+	cw.written += int64(n)
+	return n, err
 }
 
 type tdf3DecryptHandler struct {
@@ -197,16 +210,29 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 	encryptedSegmentSize := segmentSize + gcmIvSize + aesBlockSize
 	payloadSize := inputSize + (totalSegments * (gcmIvSize + aesBlockSize))
-	tdfWriter := archive.NewTDFWriter(writer)
 
-	err = tdfWriter.SetPayloadSize(payloadSize)
-	if err != nil {
-		return nil, fmt.Errorf("archive.SetPayloadSize failed: %w", err)
+	zipMode := zipstream.Zip64Auto
+	if payloadSize >= zip64MagicVal {
+		zipMode = zipstream.Zip64Always
 	}
+
+	expectedSegments := int(totalSegments)
+	if expectedSegments < 1 {
+		expectedSegments = 1
+	}
+
+	archiveWriter := zipstream.NewSegmentTDFWriter(
+		expectedSegments,
+		zipstream.WithZip64Mode(zipMode),
+		zipstream.WithMaxSegments(expectedSegments),
+	)
+
+	outputWriter := &countingWriter{writer: writer}
 
 	var readPos int64
 	var aggregateHashBuilder strings.Builder
 	readBuf := bytes.NewBuffer(make([]byte, 0, tdfConfig.defaultSegmentSize))
+	segmentIndex := 0
 	for totalSegments != 0 { // adjust read size
 		readSize := segmentSize
 		if (inputSize - readPos) < segmentSize {
@@ -227,7 +253,20 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
 		}
 
-		err = tdfWriter.AppendPayload(cipherData)
+		crc := crc32.ChecksumIEEE(cipherData)
+		headerBytes, err := archiveWriter.WriteSegment(ctx, segmentIndex, uint64(len(cipherData)), crc)
+		if err != nil {
+			return nil, fmt.Errorf("zipstream.WriteSegment failed: %w", err)
+		}
+
+		if len(headerBytes) > 0 {
+			_, err = outputWriter.Write(headerBytes)
+			if err != nil {
+				return nil, fmt.Errorf("io.writer.Write failed: %w", err)
+			}
+		}
+
+		_, err = outputWriter.Write(cipherData)
 		if err != nil {
 			return nil, fmt.Errorf("io.writer.Write failed: %w", err)
 		}
@@ -249,6 +288,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 		totalSegments--
 		readPos += readSize
+		segmentIndex++
 	}
 
 	rootSignature, err := calculateSignature([]byte(aggregateHashBuilder.String()), tdfObject.payloadKey[:],
@@ -285,7 +325,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	tdfObject.manifest.MimeType = mimeType
 	tdfObject.manifest.Protocol = tdfAsZip
 	tdfObject.manifest.Type = tdfZipReference
-	tdfObject.manifest.URL = archive.TDFPayloadFileName
+	tdfObject.manifest.URL = zipstream.TDFPayloadFileName
 	tdfObject.manifest.IsEncrypted = true
 
 	var signedAssertion []Assertion
@@ -352,15 +392,21 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		return nil, fmt.Errorf("json.Marshal failed:%w", err)
 	}
 
-	err = tdfWriter.AppendManifest(string(manifestAsStr))
+	finalBytes, err := archiveWriter.Finalize(ctx, manifestAsStr)
 	if err != nil {
-		return nil, fmt.Errorf("TDFWriter.AppendManifest failed:%w", err)
+		return nil, fmt.Errorf("zipstream.Finalize failed: %w", err)
 	}
 
-	tdfObject.size, err = tdfWriter.Finish()
+	_, err = outputWriter.Write(finalBytes)
 	if err != nil {
-		return nil, fmt.Errorf("TDFWriter.Finish failed:%w", err)
+		return nil, fmt.Errorf("io.writer.Write failed: %w", err)
 	}
+
+	if err := archiveWriter.Close(); err != nil {
+		return nil, fmt.Errorf("zipstream.Close failed: %w", err)
+	}
+
+	tdfObject.size = outputWriter.written
 
 	return tdfObject, nil
 }
@@ -768,9 +814,9 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 	}
 
 	// create tdf reader
-	tdfReader, err := archive.NewTDFReader(reader, archive.WithTDFManifestMaxSize(config.maxManifestSize))
+	tdfReader, err := zipstream.NewTDFReader(reader, zipstream.WithTDFManifestMaxSize(config.maxManifestSize))
 	if err != nil {
-		return nil, fmt.Errorf("archive.NewTDFReader failed: %w", err)
+		return nil, fmt.Errorf("zipstream.NewTDFReader failed: %w", err)
 	}
 	useGlobalFulfillableObligations := len(config.fulfillableObligationFQNs) == 0 && len(s.fulfillableObligationFQNs) > 0
 	if useGlobalFulfillableObligations {

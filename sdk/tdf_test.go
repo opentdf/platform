@@ -16,6 +16,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"log/slog"
 	"net/http"
@@ -42,7 +43,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
 	wellknownpb "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	wellknownconnect "github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnect"
-	"github.com/opentdf/platform/sdk/internal/archive"
+	"github.com/opentdf/platform/sdk/internal/zipstream"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
@@ -448,9 +449,9 @@ func (s *TDFSuite) Test_SimpleTDF() {
 
 				s.Require().NoError(err)
 				if config.useHex {
-					s.InDelta(float64(expectedTdfSizeWithHex), float64(tdfObj.size), 36.0)
+					s.InDelta(float64(expectedTdfSizeWithHex), float64(tdfObj.size), 64.0)
 				} else {
-					s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 36.0)
+					s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 64.0)
 				}
 
 				// test meta data and build meta data
@@ -2452,20 +2453,22 @@ func (s *TDFSuite) Test_LargeManifest_WithMaxManifest() {
 	// Helper to create a TDF file in memory for testing
 	createTestTDF := func(manifest []byte, payload []byte) *bytes.Reader {
 		tdfBuffer := new(bytes.Buffer)
-		tdfWriter := archive.NewTDFWriter(tdfBuffer)
+		writer := zipstream.NewSegmentTDFWriter(1, zipstream.WithZip64Mode(zipstream.Zip64Auto))
 
-		// Add payload
-		err := tdfWriter.SetPayloadSize(int64(len(payload)))
+		segmentHeader, err := writer.WriteSegment(context.Background(), 0, uint64(len(payload)), crc32.ChecksumIEEE(payload))
 		s.Require().NoError(err)
-		err = tdfWriter.AppendPayload(payload)
+		if len(segmentHeader) > 0 {
+			_, err = tdfBuffer.Write(segmentHeader)
+			s.Require().NoError(err)
+		}
+		_, err = tdfBuffer.Write(payload)
 		s.Require().NoError(err)
 
-		// Add manifest
-		err = tdfWriter.AppendManifest(string(manifest))
+		finalBytes, err := writer.Finalize(context.Background(), manifest)
 		s.Require().NoError(err)
-
-		_, err = tdfWriter.Finish()
+		_, err = tdfBuffer.Write(finalBytes)
 		s.Require().NoError(err)
+		s.Require().NoError(writer.Close())
 
 		return bytes.NewReader(tdfBuffer.Bytes())
 	}

@@ -7,29 +7,41 @@ import (
 )
 
 type TDFReader struct {
-	archiveReader Reader
+	archiveReader   Reader
+	manifestMaxSize int64
 }
 
 const (
 	manifestMaxSize = 1024 * 1024 * 10 // 10 MB
 )
 
+type TDFReaderOptions func(*TDFReader)
+
+func WithTDFManifestMaxSize(size int64) TDFReaderOptions {
+	return func(tdfReader *TDFReader) {
+		tdfReader.manifestMaxSize = size
+	}
+}
+
 // NewTDFReader Create tdf reader instance.
-func NewTDFReader(readSeeker io.ReadSeeker) (TDFReader, error) {
+func NewTDFReader(readSeeker io.ReadSeeker, opt ...TDFReaderOptions) (TDFReader, error) {
 	archiveReader, err := NewReader(readSeeker)
 	if err != nil {
 		return TDFReader{}, err
 	}
 
-	tdfArchiveReader := TDFReader{}
+	tdfArchiveReader := TDFReader{manifestMaxSize: manifestMaxSize}
 	tdfArchiveReader.archiveReader = archiveReader
+	for _, o := range opt {
+		o(&tdfArchiveReader)
+	}
 
 	return tdfArchiveReader, nil
 }
 
 // Manifest Return the manifest of the tdf.
 func (tdfReader TDFReader) Manifest() (string, error) {
-	fileContent, err := tdfReader.archiveReader.ReadAllFileData(TDFManifestFileName, manifestMaxSize)
+	fileContent, err := tdfReader.archiveReader.ReadAllFileData(TDFManifestFileName, tdfReader.manifestMaxSize)
 	if err != nil {
 		return "", err
 	}

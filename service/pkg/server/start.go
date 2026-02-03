@@ -283,6 +283,7 @@ func Start(f ...StartOptions) error {
 		logger:                 logger,
 		reg:                    svcRegistry,
 		cacheManager:           cacheManager,
+		dbClientFactory:        startConfig.dbClientFactory,
 	})
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))

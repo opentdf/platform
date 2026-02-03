@@ -73,7 +73,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 // Without a database connection, the service is not ready.
 func (s *Service) IsReady(ctx context.Context) error {
 	s.logger.TraceContext(ctx, "checking readiness of obligations service")
-	if err := s.dbClient.SQLDB.PingContext(ctx); err != nil {
+	if err := s.dbClient.PingContext(ctx); err != nil {
 		return err
 	}
 

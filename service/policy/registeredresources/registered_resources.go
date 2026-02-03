@@ -69,7 +69,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 
 func (s *RegisteredResourcesService) IsReady(ctx context.Context) error {
 	s.logger.TraceContext(ctx, "checking readiness of registered resources service")
-	if err := s.dbClient.SQLDB.PingContext(ctx); err != nil {
+	if err := s.dbClient.PingContext(ctx); err != nil {
 		return err
 	}
 

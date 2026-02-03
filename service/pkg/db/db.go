@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -224,7 +225,7 @@ func (c *Client) Close() {
 
 func (c *Client) PingContext(ctx context.Context) error {
 	if c.sqlDB == nil {
-		return fmt.Errorf("sqldb not initialized")
+		return errors.New("sqlc connection not initialized")
 	}
 	return c.sqlDB.PingContext(ctx)
 }

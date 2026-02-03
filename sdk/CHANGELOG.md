@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.12.0](https://github.com/opentdf/platform/compare/sdk/v0.11.0...sdk/v0.12.0) (2026-01-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove nanotdf support ([#3013](https://github.com/opentdf/platform/issues/3013))
+
+### Features
+
+* **deps:** Bump ocrypto to v0.9.0 ([#3024](https://github.com/opentdf/platform/issues/3024)) ([cd79950](https://github.com/opentdf/platform/commit/cd799509b15516f840436e6af20a14eebaa0556d))
+* **sdk:** expose base key API ([#3000](https://github.com/opentdf/platform/issues/3000)) ([67de794](https://github.com/opentdf/platform/commit/67de794721ccb7e5f93454043409dff1619fe42c))
+
+
+### Bug Fixes
+
+* remove nanotdf support ([#3013](https://github.com/opentdf/platform/issues/3013)) ([90ff7ce](https://github.com/opentdf/platform/commit/90ff7ce50754a1f37ba1cc530507c1f6e15930a0))
+
 ## [0.11.0](https://github.com/opentdf/platform/compare/sdk/v0.10.0...sdk/v0.11.0) (2026-01-06)
 
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.9.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.8.0...lib/ocrypto/v0.9.0) (2026-01-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove nanotdf support ([#3013](https://github.com/opentdf/platform/issues/3013))
+
+### Bug Fixes
+
+* remove nanotdf support ([#3013](https://github.com/opentdf/platform/issues/3013)) ([90ff7ce](https://github.com/opentdf/platform/commit/90ff7ce50754a1f37ba1cc530507c1f6e15930a0))
+
 ## [0.8.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.7.0...lib/ocrypto/v0.8.0) (2025-12-19)
 
 

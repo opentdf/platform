@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/opentdf/platform/compare/lib/fixtures/v0.4.0...lib/fixtures/v0.5.0) (2026-01-28)
+
+
+### Features
+
+* **sdk:** add automatic token refresh for Keycloak operations ([#3019](https://github.com/opentdf/platform/issues/3019)) ([3b0834e](https://github.com/opentdf/platform/commit/3b0834e7e8f9b34666305b1b13b3d6df7d2c6bec))
+
 ## [0.4.0](https://github.com/opentdf/platform/compare/lib/fixtures/v0.3.0...lib/fixtures/v0.4.0) (2025-12-19)
 
 

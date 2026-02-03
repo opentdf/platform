@@ -106,7 +106,7 @@
 // The TDF writer uses a two-layer architecture:
 //
 //  1. TDF Layer (tdf.Writer): Handles encryption, assertions, and TDF protocol logic
-//  2. Archive Layer (internal/archive2): Manages ZIP file structure and segment assembly
+//  2. Archive Layer (internal/zipstream): Manages ZIP file structure and segment assembly
 //
 // This separation enables independent optimization of cryptographic operations
 // and file format handling.

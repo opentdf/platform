@@ -23,7 +23,7 @@ import (
 	"github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/httputil"
-	"github.com/opentdf/platform/sdk/internal/archive"
+	"github.com/opentdf/platform/sdk/internal/zipstream"
 	"github.com/opentdf/platform/sdk/sdkconnect"
 	"github.com/xeipuuv/gojsonschema"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -372,9 +372,9 @@ var manifestStrictSchema []byte
 // to validate against all previously known schema versions.
 func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	// create tdf reader
-	tdfReader, err := archive.NewTDFReader(reader)
+	tdfReader, err := zipstream.NewTDFReader(reader)
 	if err != nil {
-		return false, fmt.Errorf("archive.NewTDFReader failed: %w", err)
+		return false, fmt.Errorf("zipstream.NewTDFReader failed: %w", err)
 	}
 
 	manifest, err := tdfReader.Manifest()

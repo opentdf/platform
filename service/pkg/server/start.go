@@ -151,6 +151,10 @@ func Start(f ...StartOptions) error {
 		cfg.Server.Auth.IPCReauthRoutes = startConfig.IPCReauthRoutes
 	}
 
+	// Programmatic Connect/IPC interceptors (not config-driven)
+	cfg.Server.ExtraConnectInterceptors = append(cfg.Server.ExtraConnectInterceptors, startConfig.extraConnectInterceptors...)
+	cfg.Server.ExtraIPCInterceptors = append(cfg.Server.ExtraIPCInterceptors, startConfig.extraIPCInterceptors...)
+
 	// Set Default Policy
 	if startConfig.builtinPolicyOverride != "" {
 		cfg.Server.Auth.Policy.Builtin = startConfig.builtinPolicyOverride
@@ -279,6 +283,7 @@ func Start(f ...StartOptions) error {
 		logger:                 logger,
 		reg:                    svcRegistry,
 		cacheManager:           cacheManager,
+		dbClientFactory:        startConfig.dbClientFactory,
 	})
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))

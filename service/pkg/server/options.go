@@ -2,14 +2,21 @@ package server
 
 import (
 	"context"
+	"embed"
 
+	"connectrpc.com/connect"
 	"github.com/casbin/casbin/v2/persist"
+	logging "github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/trust"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type StartOptions func(StartConfig) StartConfig
+
+type DBClientFactory func(ctx context.Context, logCfg logging.Config, dbCfg db.Config, tracer trace.Tracer, ns string, migrations *embed.FS) (*db.Client, error)
 
 type StartConfig struct {
 	ConfigKey             string
@@ -23,6 +30,10 @@ type StartConfig struct {
 	casbinAdapter         persist.Adapter
 	configLoaders         []config.Loader
 	configLoaderOrder     []string
+	dbClientFactory       DBClientFactory
+
+	extraConnectInterceptors []connect.Interceptor
+	extraIPCInterceptors     []connect.Interceptor
 
 	trustKeyManagerCtxs []trust.NamedKeyManagerCtxFactory
 
@@ -143,6 +154,22 @@ func WithConfigLoaderOrder(loaderOrder []string) StartOptions {
 	}
 }
 
+// WithConnectInterceptors appends additional Connect interceptors (server-side) applied to all RPCs.
+func WithConnectInterceptors(interceptors ...connect.Interceptor) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.extraConnectInterceptors = append(c.extraConnectInterceptors, interceptors...)
+		return c
+	}
+}
+
+// WithIPCInterceptors appends additional Connect interceptors for in-process IPC server.
+func WithIPCInterceptors(interceptors ...connect.Interceptor) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.extraIPCInterceptors = append(c.extraIPCInterceptors, interceptors...)
+		return c
+	}
+}
+
 // WithTrustKeyManagerFactories option provides factories for creating trust key managers.
 // Use WithTrustKeyManagerCtxFactories instead.
 // EXPERIMENTAL
@@ -214,6 +241,15 @@ func WithAdditionalCORSMethods(methods ...string) StartOptions {
 func WithAdditionalCORSExposedHeaders(headers ...string) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.additionalCORSExposedHeaders = append(c.additionalCORSExposedHeaders, headers...)
+		return c
+	}
+}
+
+// WithDBClientFactory option sets a factory for creating database clients.
+// When set, the factory is responsible for all database client decisions.
+func WithDBClientFactory(factory DBClientFactory) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.dbClientFactory = factory
 		return c
 	}
 }

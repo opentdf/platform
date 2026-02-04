@@ -155,7 +155,6 @@ func WithConfigLoaderOrder(loaderOrder []string) StartOptions {
 }
 
 // WithConnectInterceptors appends additional Connect interceptors (server-side) applied to all RPCs.
-// These run after auth/validation/audit wiring.
 func WithConnectInterceptors(interceptors ...connect.Interceptor) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.extraConnectInterceptors = append(c.extraConnectInterceptors, interceptors...)

@@ -523,9 +523,12 @@ func pprofHandler(h http.Handler) http.Handler {
 func newConnectRPC(c Config, authInt connect.Interceptor, ints []connect.Interceptor, logger *logger.Logger) (*ConnectRPC, error) {
 	interceptors := make([]connect.HandlerOption, 0)
 
-	if c.Auth.Enabled && authInt != nil {
+	if c.Auth.Enabled {
+		if authInt == nil {
+			return nil, fmt.Errorf("authentication enabled but no interceptor provided")
+		}
 		interceptors = append(interceptors, connect.WithInterceptors(authInt))
-	} else if !c.Auth.Enabled {
+	} else {
 		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
 	}
 

@@ -41,7 +41,6 @@ var (
 	ErrInvalidOblTriParam         = errors.New("ErrInvalidOblTriParam: either the obligation value, attribute value, or action provided was not found")
 	ErrCheckViolation             = errors.New("ErrCheckViolation: check constraint violation")
 	ErrFqnMismatch                = errors.New("ErrFqnMismatch: FQN mismatch")
-	ErrInvalidCertificate         = errors.New("ErrInvalidCertificate: invalid certificate")
 )
 
 // Get helpful error message for PostgreSQL violation
@@ -136,7 +135,6 @@ const (
 	ErrorTextKIDMismatch                = "key id mismatch"
 	ErrorTextInvalidOblTrigParam        = "either the obligation value, attribute value, or action provided is invalid"
 	ErrorTextFqnMismatch                = "fqn mismatch"
-	ErrorTextInvalidCertificate         = "invalid certificate"
 	ErrorTextInactiveAttributeValue     = "inactive attribute value"
 )
 
@@ -209,10 +207,6 @@ func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackEr
 	if errors.Is(err, ErrFqnMismatch) {
 		l.ErrorContext(ctx, ErrorTextFqnMismatch, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextFqnMismatch))
-	}
-	if errors.Is(err, ErrInvalidCertificate) {
-		l.ErrorContext(ctx, ErrorTextInvalidCertificate, logs...)
-		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextInvalidCertificate))
 	}
 	if errors.Is(err, ErrAttributeValueInactive) {
 		l.ErrorContext(ctx, ErrorTextInactiveAttributeValue, logs...)

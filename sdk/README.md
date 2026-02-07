@@ -143,6 +143,12 @@ sdk.WithClientCredentials("client-id", "client-secret", []string{"scope1", "scop
 ```go
 import "crypto/tls"
 
+// Load your client certificate and key
+cert, err := tls.LoadX509KeyPair("client.crt", "client.key")
+if err != nil {
+	log.Fatal(err)
+}
+
 tlsConfig := &tls.Config{
 	Certificates: []tls.Certificate{cert},
 	MinVersion:   tls.VersionTLS12,

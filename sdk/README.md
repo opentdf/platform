@@ -46,7 +46,7 @@ func main() {
 	// Initialize SDK with platform endpoint and authentication
 	// Replace these values with your actual configuration:
 	platformEndpoint := "http://localhost:8080"           // Your platform URL
-	clientID := "tdf-client"                              // Your OAuth client ID
+	clientID := "opentdf"                                 // Your OAuth client ID
 	clientSecret := "secret"                              // Your OAuth client secret
 	keycloakURL := "http://localhost:8888/auth/realms/opentdf" // Your Keycloak realm URL
 
@@ -112,8 +112,8 @@ Replace these placeholder values with your actual configuration:
 | Variable | Default (Quickstart) | Description |
 |----------|---------------------|-------------|
 | `platformEndpoint` | `http://localhost:8080` | Your OpenTDF platform URL |
-| `clientID` | `tdf-client` | OAuth client ID (create in Keycloak) |
-| `clientSecret` | `secret` | OAuth client secret (from Keycloak) |
+| `clientID` | `opentdf` | OAuth client ID (from quickstart) |
+| `clientSecret` | `secret` | OAuth client secret (from quickstart) |
 | `keycloakURL` | `http://localhost:8888/auth/realms/opentdf` | Your Keycloak realm URL |
 | `dataAttribute` | `https://opentdf.io/attr/department/value/finance` | Data attribute FQN (created in quickstart) |
 

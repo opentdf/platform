@@ -13,6 +13,7 @@ The platform leverages [viper](https://github.com/spf13/viper) to help load conf
     - [CORS Configuration](#cors-configuration)
       - [Additive Configuration](#additive-configuration)
       - [Programmatic Configuration](#programmatic-configuration)
+    - [Custom Interceptors](#custom-interceptors)
     - [Crypto Provider](#crypto-provider)
     - [Tracing Configuration](#tracing-configuration)
   - [Database Configuration](#database-configuration)
@@ -230,6 +231,34 @@ err := server.Start(
 3. **Programmatic Options** - Developer overlays via `WithAdditionalCORS*` functions
 
 All layers are additive. Deduplication is handled automatically (case-insensitive for headers per RFC 7230, case-sensitive for methods per RFC 7231).
+
+### Custom Interceptors
+
+Applications that embed the OpenTDF platform can inject custom [Connect interceptors](https://connectrpc.com/docs/go/interceptors/) into the server at startup. These interceptors run on every RPC after the built-in auth, validation, and audit interceptors.
+
+Two option functions are available:
+
+| Option | Description |
+| --- | --- |
+| `WithConnectInterceptors(interceptors ...connect.Interceptor)` | Appends server-side interceptors to all external Connect RPCs. |
+| `WithIPCInterceptors(interceptors ...connect.Interceptor)` | Appends server-side interceptors to the in-process IPC server used by the SDK in `all`/`core` mode. |
+
+Both options are variadic and additive: calling them multiple times accumulates interceptors in order.
+
+```go
+import (
+    "connectrpc.com/connect"
+    "github.com/opentdf/platform/service/pkg/server"
+)
+
+err := server.Start(
+    server.WithConfigFile("opentdf.yaml"),
+    // Add a logging interceptor to all external RPCs
+    server.WithConnectInterceptors(loggingInterceptor),
+    // Add a metrics interceptor to in-process IPC calls
+    server.WithIPCInterceptors(metricsInterceptor),
+)
+```
 
 ### Crypto Provider
 

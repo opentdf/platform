@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/dgraph-io/ristretto"
+	"github.com/dgraph-io/ristretto/v2"
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/store"
 	ristretto_store "github.com/eko/gocache/store/ristretto/v4"
@@ -22,7 +22,7 @@ var (
 // Manager is a cache manager for any value.
 type Manager struct {
 	cache           *cache.Cache[any]
-	underlyingStore *ristretto.Cache
+	underlyingStore *ristretto.Cache[string, any]
 }
 
 // Cache is a cache implementation using gocache for any value type.
@@ -44,7 +44,7 @@ func NewCacheManager(maxCost int64) (*Manager, error) {
 	if err != nil {
 		return nil, err
 	}
-	config := &ristretto.Config{
+	config := &ristretto.Config[string, any]{
 		NumCounters: numCounters, // number of keys to track frequency of (10x max items)
 		MaxCost:     maxCost,     // maximum cost of cache (e.g., 1<<20 for 1MB)
 		BufferItems: bufferItems, // number of keys per Get buffer.
@@ -152,7 +152,7 @@ func TestCacheClient(expiration time.Duration) (*Cache, error) {
 	if err != nil {
 		return nil, err
 	}
-	config := &ristretto.Config{
+	config := &ristretto.Config[string, any]{
 		NumCounters: numCounters,
 		MaxCost:     testMaxCost,
 		BufferItems: bufferItems,

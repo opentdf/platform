@@ -9,11 +9,11 @@ We want to remove the `testcontainers` dependency from the `sdk` and `service` m
 ## Decision
 - Create a single root `tests/` Go module that contains all BDD and containerized integration tests.
 - Move SDK OAuth, Service integration, and ERS integration tests into `tests/`.
-- Make `lib/fixtures` repo-internal (unversioned) and move service fixture helpers into it.
+- Keep `lib/fixtures` versioned (for now) and move service fixture helpers into it for tests and quickstart workflows.
 - Use `go.work` for local module resolution across `sdk`, `service`, `protocol/go`, and `lib/fixtures`.
 
 ## Consequences
 - `sdk` and `service` drop `testcontainers` from their `go.mod` files.
 - Integration and BDD tests are run via `cd tests && go test ./...`.
-- `lib/fixtures` now depends on `service` and `protocol/go`, which is acceptable for repo-internal use but increases coupling.
+- `lib/fixtures` now depends on `service` and `protocol/go`, which increases coupling and should be monitored for release friction.
 - CI and documentation must point to the new `tests/` location.

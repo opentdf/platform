@@ -519,12 +519,9 @@ func newConnectRPCIPC(c Config, a *auth.Authentication, logger *logger.Logger) (
 	}
 
 	// Add protovalidate interceptor
-	vaidationInterceptor, err := validate.NewInterceptor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create validation interceptor: %w", err)
-	}
+	validationInterceptor := validate.NewInterceptor()
 
-	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor(logger.Logger)))
+	interceptors = append(interceptors, connect.WithInterceptors(validationInterceptor, audit.ContextServerInterceptor(logger.Logger)))
 
 	return &ConnectRPC{
 		Interceptors: interceptors,
@@ -542,12 +539,9 @@ func newConnectRPC(c Config, a *auth.Authentication, logger *logger.Logger) (*Co
 	}
 
 	// Add protovalidate interceptor
-	vaidationInterceptor, err := validate.NewInterceptor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create validation interceptor: %w", err)
-	}
+	validationInterceptor := validate.NewInterceptor()
 
-	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor(logger.Logger)))
+	interceptors = append(interceptors, connect.WithInterceptors(validationInterceptor, audit.ContextServerInterceptor(logger.Logger)))
 
 	return &ConnectRPC{
 		Interceptors: interceptors,

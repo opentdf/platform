@@ -125,6 +125,7 @@ type startServicesParams struct {
 	reg                    *serviceregistry.Registry
 	cacheManager           *cache.Manager
 	keyManagerCtxFactories []trust.NamedKeyManagerCtxFactory
+	kasURIResolver         trust.RegisteredKasURIResolver
 	dbClientFactory        DBClientFactory
 }
 
@@ -142,6 +143,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 	reg := params.reg
 	cacheManager := params.cacheManager
 	keyManagerCtxFactories := params.keyManagerCtxFactories
+	kasURIResolver := params.kasURIResolver
 
 	// Iterate through the registered namespaces
 	for _, nsInfo := range reg.GetNamespaces() {
@@ -208,17 +210,18 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 			}
 
 			err = svc.Start(ctx, serviceregistry.RegistrationParams{
-				Config:                 cfg.Services[svc.GetNamespace()],
-				Security:               &cfg.Security,
-				Logger:                 svcLogger,
-				DBClient:               svcDBClient,
-				SDK:                    client,
-				WellKnownConfig:        wellknown.RegisterConfiguration,
-				RegisterReadinessCheck: health.RegisterReadinessCheck,
-				OTDF:                   otdf, // TODO: REMOVE THIS
-				Tracer:                 tracer,
-				NewCacheClient:         createCacheClient,
-				KeyManagerCtxFactories: keyManagerCtxFactories,
+				Config:                   cfg.Services[svc.GetNamespace()],
+				Security:                 &cfg.Security,
+				Logger:                   svcLogger,
+				DBClient:                 svcDBClient,
+				SDK:                      client,
+				WellKnownConfig:          wellknown.RegisterConfiguration,
+				RegisterReadinessCheck:   health.RegisterReadinessCheck,
+				OTDF:                     otdf, // TODO: REMOVE THIS
+				Tracer:                   tracer,
+				NewCacheClient:           createCacheClient,
+				KeyManagerCtxFactories:   keyManagerCtxFactories,
+				RegisteredKasURIResolver: kasURIResolver,
 			})
 			if err != nil {
 				return func() {}, err

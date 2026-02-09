@@ -36,6 +36,7 @@ type StartConfig struct {
 	extraIPCInterceptors     []connect.Interceptor
 
 	trustKeyManagerCtxs []trust.NamedKeyManagerCtxFactory
+	kasURIResolver      trust.RegisteredKasURIResolver
 
 	// CORS additive configuration - appended to YAML/env config values
 	additionalCORSHeaders        []string
@@ -191,6 +192,14 @@ func WithTrustKeyManagerFactories(factories ...trust.NamedKeyManagerFactory) Sta
 func WithTrustKeyManagerCtxFactories(factories ...trust.NamedKeyManagerCtxFactory) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.trustKeyManagerCtxs = append(c.trustKeyManagerCtxs, factories...)
+		return c
+	}
+}
+
+// WithRegisteredKasURIResolver provides a resolver for the registered KAS URI.
+func WithRegisteredKasURIResolver(resolver trust.RegisteredKasURIResolver) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.kasURIResolver = resolver
 		return c
 	}
 }

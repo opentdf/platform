@@ -66,15 +66,23 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				if kasCfg.Preview.KeyManagement {
 					srp.Logger.Info("preview feature: key management is enabled")
 
-					kasURL, err := determineKASURL(srp, kasCfg)
-					if err != nil {
-						panic(fmt.Errorf("failed to determine KAS URL: %w", err))
+					resolver := srp.RegisteredKasURIResolver
+					if resolver == nil {
+						srp.Logger.Debug("registered kas resolver empty, using default")
+
+						kasURL, err := determineKASURL(srp, kasCfg)
+						if err != nil {
+							panic(fmt.Errorf("failed to determine KAS URL: %w", err))
+						}
+
+						resolver, err = NewStaticRegisteredKasURIResolver(kasURL.String())
+						if err != nil {
+							panic(err)
+						}
 					}
 
-					srp.Logger.Debug("determined KAS URL", slog.String("kas_url", kasURL.String()))
-
 					// Configure new delegation service
-					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURL.String(), srp.Logger), srp.Logger, cacheClient)
+					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, resolver, srp.Logger), srp.Logger, cacheClient)
 					for _, manager := range srp.KeyManagerCtxFactories {
 						p.KeyDelegator.RegisterKeyManagerCtx(manager.Name, manager.Factory)
 						kmgrs = append(kmgrs, manager.Name)
@@ -177,6 +185,8 @@ func determineKASURL(srp serviceregistry.RegistrationParams, kasCfg access.KASCo
 	if err != nil {
 		return nil, fmt.Errorf("invalid kas address [%s] %w", kasURLString, err)
 	}
+
+	srp.Logger.Debug("determined KAS URL", slog.String("kas_url", kasURL.String()))
 
 	return kasURL, nil
 }

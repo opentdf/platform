@@ -80,3 +80,10 @@ type KeyIndex interface {
 	// List keys with options
 	ListKeysWith(ctx context.Context, opts ListKeyOptions) ([]KeyDetails, error)
 }
+
+// RegisteredKasURIResolver resolves the registered KAS URI for KAS when running with key management.
+type RegisteredKasURIResolver interface {
+	ResolveURI() (string, error)
+	String() string
+	LogValue() slog.Value
+}

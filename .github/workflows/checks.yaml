@@ -39,7 +39,7 @@ jobs:
           - lib/fixtures
           - lib/flattening
           - lib/identifier
-          - tests-bdd
+          - tests
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
@@ -54,7 +54,7 @@ jobs:
             protocol/go/go.sum
             sdk/go.sum
             service/go.sum
-            tests-bdd/go.sum
+            tests/go.sum
       - if: env.IS_RELEASE_BRANCH == 'true'
         name: prevent depending on unreleased upstream changes
         run: ./.github/scripts/work-init.sh
@@ -85,7 +85,7 @@ jobs:
         run: .github/scripts/init-temp-keys.sh
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
-      - if: matrix.directory == 'service'
+      - if: matrix.directory == 'tests'
         run: go test ./service/integration -race -failfast
       - name: verify sqlc generate
         if: matrix.directory == 'service'
@@ -420,7 +420,7 @@ jobs:
       # use commit instead of ref so we can "go get" specific sdk version
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }} lts
 
-  tests-bdd:
+  tests:
     name: Cucumber BDD Tests
     runs-on: ubuntu-22.04
     strategy:
@@ -445,7 +445,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
-          go-version-file: ./tests-bdd/go.mod
+          go-version-file: ./tests/go.mod
           cache: false
 
       - name: Build local platform-cukes image for testing
@@ -453,7 +453,7 @@ jobs:
 
       - name: Run BDD Tests
         run: |
-          CUKES_LOG_HANDLER=console go test ./tests-bdd -v --tags=cukes --godog.random --godog.format="cucumber:$(pwd)/cukes_platform_report.json,pretty:$(pwd)/cukes_platform_report.log,pretty" ./features
+          CUKES_LOG_HANDLER=console go test ./tests -v --tags=cukes --godog.random --godog.format="cucumber:$(pwd)/cukes_platform_report.json,pretty:$(pwd)/cukes_platform_report.log,pretty" ./features
 
       - name: Check for undefined steps
         run: |
@@ -561,7 +561,7 @@ jobs:
       - benchmark
       - license
       - platform-xtest
-      - tests-bdd
+      - tests
       - otdfctl-test
     runs-on: ubuntu-22.04
     if: ${{ !cancelled() }}

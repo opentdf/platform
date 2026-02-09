@@ -122,7 +122,7 @@ services:
   #   docker-compose --profile ers-admin up -d                   # Include LDAP admin UI  
   #   ERS_TEST_POSTGRES_URL="postgres://ers_test_user:ers_test_pass@localhost:5433/ers_test?sslmode=disable" \
   #   ERS_TEST_LDAP_URL="ldap://localhost:1389" \
-  #   go test ./service/entityresolution/integration -run TestMultiStrategy -v
+  #   go test ./tests/service/entityresolution/integration -run TestMultiStrategy -v
   #
   # Services:
   #   - ers-postgres: PostgreSQL 16 on port 5433 with test schema and data
@@ -145,7 +145,7 @@ services:
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
     volumes:
       - ers_postgres_data:/var/lib/postgresql/data
-      - ./service/entityresolution/integration/sql_test_data:/docker-entrypoint-initdb.d
+      - ./tests/service/entityresolution/integration/sql_test_data:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ers_test_user -d ers_test"]
       interval: 5s
@@ -181,7 +181,7 @@ services:
     volumes:
       - ers_ldap_data:/var/lib/ldap
       - ers_ldap_config:/etc/ldap/slapd.d
-      - ./service/entityresolution/integration/ldap_test_data:/container/service/slapd/assets/config/bootstrap/ldif/custom
+      - ./tests/service/entityresolution/integration/ldap_test_data:/container/service/slapd/assets/config/bootstrap/ldif/custom
     healthcheck:
       test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost:389 -b dc=opentdf,dc=test -D cn=admin,dc=opentdf,dc=test -w admin_password '(objectclass=*)' dn"]
       interval: 10s

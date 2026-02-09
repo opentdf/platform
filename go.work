@@ -9,5 +9,5 @@ use (
 	./protocol/go
 	./sdk
 	./service
-	./tests-bdd
+	./tests
 )

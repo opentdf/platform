@@ -1,9 +1,9 @@
 # make
 # To run all lint checks: `LINT_OPTIONS= make lint`
 
-.PHONY: all build clean connect-wrapper-generate docker-build fix fmt go-lint license lint proto-generate proto-lint sdk/sdk test tidy toolcheck
+.PHONY: all build clean connect-wrapper-generate docker-build fix fmt go-lint license lint proto-generate proto-lint sdk/sdk test test-integration tidy toolcheck
 
-MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
+MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples tests
 HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
 REQUIRED_BUF_VERSION=1.56.0
 
@@ -102,6 +102,9 @@ policy-erd-gen:
 
 test:
 	for m in $(HAND_MODS); do (cd $$m && go test ./... -race) || exit 1; done
+
+test-integration:
+	cd tests && go test ./...
 
 fuzz:
 	cd sdk && go test ./... -fuzztime=2m

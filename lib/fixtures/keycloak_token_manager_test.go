@@ -39,8 +39,15 @@ func TestTokenManager_InitialLogin(t *testing.T) {
 		t.Fatal("ExpiresAt should be set after initial login")
 	}
 
-	if tm.tokenBuffer != 120*time.Second {
-		t.Errorf("Expected default token buffer of 120s, got %v", tm.tokenBuffer)
+	expectedBuffer := 120 * time.Second
+	if tm.token != nil && tm.token.ExpiresIn > 0 {
+		tokenLifetime := time.Duration(tm.token.ExpiresIn) * time.Second
+		if expectedBuffer >= tokenLifetime {
+			expectedBuffer = tokenLifetime / adaptiveBufferDivisor
+		}
+	}
+	if tm.tokenBuffer != expectedBuffer {
+		t.Errorf("Expected token buffer of %v, got %v", expectedBuffer, tm.tokenBuffer)
 	}
 }
 
@@ -69,8 +76,15 @@ func TestTokenManager_CustomTokenBuffer(t *testing.T) {
 		t.Fatalf("Failed to create TokenManager: %v", err)
 	}
 
-	if tm.tokenBuffer != customBuffer {
-		t.Errorf("Expected token buffer of %v, got %v", customBuffer, tm.tokenBuffer)
+	expectedBuffer := customBuffer
+	if tm.token != nil && tm.token.ExpiresIn > 0 {
+		tokenLifetime := time.Duration(tm.token.ExpiresIn) * time.Second
+		if expectedBuffer >= tokenLifetime {
+			expectedBuffer = tokenLifetime / adaptiveBufferDivisor
+		}
+	}
+	if tm.tokenBuffer != expectedBuffer {
+		t.Errorf("Expected token buffer of %v, got %v", expectedBuffer, tm.tokenBuffer)
 	}
 }
 

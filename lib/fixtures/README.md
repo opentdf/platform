@@ -1,4 +1,4 @@
 # Internal Module
 
-These modules are used by other http://github.com/opentdf/ projects, and
-are not intended for use elsewhere.
+This module provides fixtures used by tests and quickstart workflows across OpenTDF repositories.
+It is versioned and can be consumed like other internal libs.

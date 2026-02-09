@@ -599,7 +599,7 @@ mapping_strategies:
 ### Integration Testing
 ```bash
 # Test multi-strategy functionality
-cd service/entityresolution/integration
+cd tests/service/entityresolution/integration
 go test -v -run TestMultiStrategy
 
 # Test specific provider combinations

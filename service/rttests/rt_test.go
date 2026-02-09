@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -109,6 +111,10 @@ func (s *RoundtripSuite) SetupSuite() {
 	s.TestConfig = newTestConfig()
 	slog.Info("test config", slog.Any("config", s.TestConfig))
 
+	if err := ensurePlatformUp(s.PlatformEndpoint); err != nil {
+		s.T().Fatalf("platform not reachable at %s: %v. Start the platform before running rttests", s.PlatformEndpoint, err)
+	}
+
 	opts := []sdk.Option{}
 	if os.Getenv("TLS_ENABLED") == "" {
 		opts = append(opts, sdk.WithInsecurePlaintextConn())
@@ -125,6 +131,16 @@ func (s *RoundtripSuite) SetupSuite() {
 
 	err = s.CreateTestData()
 	s.Require().NoError(err)
+}
+
+func ensurePlatformUp(endpoint string) error {
+	const dialTimeout = 2 * time.Second
+	conn, err := net.DialTimeout("tcp", endpoint, dialTimeout)
+	if err != nil {
+		return err
+	}
+	_ = conn.Close()
+	return nil
 }
 
 func (s *RoundtripSuite) Tests() {

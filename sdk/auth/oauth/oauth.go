@@ -203,12 +203,14 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 		panic(err)
 	}
 
+	now := time.Now()
+
 	tokenBuilder := jwt.NewBuilder().
 		Claim("jti", uuid.NewString()).
 		Claim("htm", method).
 		Claim("htu", endpoint).
-		Claim("iat", time.Now().Unix()).
-		Claim("exp", time.Now().Add(expirationTime).Unix())
+		Claim("iat", now.Unix()).
+		Claim("exp", now.Add(expirationTime).Unix())
 
 	if nonce != "" {
 		tokenBuilder.Claim("nonce", nonce)

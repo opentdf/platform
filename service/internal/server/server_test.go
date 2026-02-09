@@ -1,12 +1,16 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/go-chi/cors"
+	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -519,6 +523,91 @@ func TestCORSMiddleware_SpecificOrigins(t *testing.T) {
 
 			gotOrigin := rr.Header().Get("Access-Control-Allow-Origin")
 			assert.Equal(t, tt.wantOrigin, gotOrigin)
+		})
+	}
+}
+
+// noopInterceptor returns a connect.UnaryInterceptorFunc that passes through.
+func noopInterceptor() connect.Interceptor {
+	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			return next(ctx, req)
+		}
+	})
+}
+
+func TestNewConnectRPC(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+
+	tests := []struct {
+		name             string
+		authEnabled      bool
+		authInt          connect.Interceptor
+		extraInts        []connect.Interceptor
+		wantIntLen       int
+		wantDescription  string
+	}{
+		{
+			name:            "auth enabled with extras",
+			authEnabled:     true,
+			authInt:         noopInterceptor(),
+			extraInts:       []connect.Interceptor{noopInterceptor(), noopInterceptor()},
+			wantIntLen:      3,
+			wantDescription: "1 auth + 1 extras + 1 validation/audit",
+		},
+		{
+			name:            "auth enabled no extras",
+			authEnabled:     true,
+			authInt:         noopInterceptor(),
+			extraInts:       nil,
+			wantIntLen:      2,
+			wantDescription: "1 auth + 1 validation/audit",
+		},
+		{
+			name:            "auth disabled no extras",
+			authEnabled:     false,
+			authInt:         nil,
+			extraInts:       nil,
+			wantIntLen:      1,
+			wantDescription: "1 validation/audit only",
+		},
+		{
+			name:            "auth disabled with extras",
+			authEnabled:     false,
+			authInt:         nil,
+			extraInts:       []connect.Interceptor{noopInterceptor()},
+			wantIntLen:      2,
+			wantDescription: "1 extras + 1 validation/audit",
+		},
+		{
+			name:            "auth enabled but nil authInt",
+			authEnabled:     true,
+			authInt:         nil,
+			extraInts:       nil,
+			wantIntLen:      1,
+			wantDescription: "1 validation/audit only (authInt nil despite enabled)",
+		},
+		{
+			name:            "auth enabled nil authInt with extras",
+			authEnabled:     true,
+			authInt:         nil,
+			extraInts:       []connect.Interceptor{noopInterceptor()},
+			wantIntLen:      2,
+			wantDescription: "1 extras + 1 validation/audit (authInt nil despite enabled)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := Config{
+				Auth: auth.Config{Enabled: tt.authEnabled},
+			}
+
+			result, err := newConnectRPC(cfg, tt.authInt, tt.extraInts, testLogger)
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			assert.NotNil(t, result.Mux, "Mux must be initialized")
+			assert.Len(t, result.Interceptors, tt.wantIntLen, tt.wantDescription)
 		})
 	}
 }

@@ -26,7 +26,7 @@ func StartPostgres(ctx context.Context, cfg PostgresConfig) (tc.Container, int, 
 		cfg.Image = "postgres:15-alpine"
 	}
 	if cfg.StartupTimeout == 0 {
-		cfg.StartupTimeout = 60 * time.Second
+		cfg.StartupTimeout = time.Minute
 	}
 	if cfg.ContainerName == "" {
 		randomSuffix := uuid.NewString()[:8]

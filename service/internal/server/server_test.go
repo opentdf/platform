@@ -540,12 +540,12 @@ func TestNewConnectRPC(t *testing.T) {
 	testLogger := logger.CreateTestLogger()
 
 	tests := []struct {
-		name             string
-		authEnabled      bool
-		authInt          connect.Interceptor
-		extraInts        []connect.Interceptor
-		wantIntLen       int
-		wantDescription  string
+		name            string
+		authEnabled     bool
+		authInt         connect.Interceptor
+		extraInts       []connect.Interceptor
+		wantIntLen      int
+		wantDescription string
 	}{
 		{
 			name:            "auth enabled with extras",

@@ -544,6 +544,7 @@ func TestNewConnectRPC(t *testing.T) {
 		authEnabled     bool
 		authInt         connect.Interceptor
 		extraInts       []connect.Interceptor
+		wantErr         bool
 		wantIntLen      int
 		wantDescription string
 	}{
@@ -580,20 +581,18 @@ func TestNewConnectRPC(t *testing.T) {
 			wantDescription: "1 extras + 1 validation/audit",
 		},
 		{
-			name:            "auth enabled but nil authInt",
-			authEnabled:     true,
-			authInt:         nil,
-			extraInts:       nil,
-			wantIntLen:      1,
-			wantDescription: "1 validation/audit only (authInt nil despite enabled)",
+			name:        "auth enabled but nil authInt returns error",
+			authEnabled: true,
+			authInt:     nil,
+			extraInts:   nil,
+			wantErr:     true,
 		},
 		{
-			name:            "auth enabled nil authInt with extras",
-			authEnabled:     true,
-			authInt:         nil,
-			extraInts:       []connect.Interceptor{noopInterceptor()},
-			wantIntLen:      2,
-			wantDescription: "1 extras + 1 validation/audit (authInt nil despite enabled)",
+			name:        "auth enabled nil authInt with extras returns error",
+			authEnabled: true,
+			authInt:     nil,
+			extraInts:   []connect.Interceptor{noopInterceptor()},
+			wantErr:     true,
 		},
 	}
 
@@ -604,6 +603,11 @@ func TestNewConnectRPC(t *testing.T) {
 			}
 
 			result, err := newConnectRPC(cfg, tt.authInt, tt.extraInts, testLogger)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Nil(t, result)
+				return
+			}
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			assert.NotNil(t, result.Mux, "Mux must be initialized")

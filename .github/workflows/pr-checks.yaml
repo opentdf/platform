@@ -58,6 +58,7 @@ jobs:
             ci
             deps
             docs
+            tests
             sdk
             policy
             ers

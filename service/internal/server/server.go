@@ -525,7 +525,7 @@ func newConnectRPC(c Config, authInt connect.Interceptor, ints []connect.Interce
 
 	if c.Auth.Enabled {
 		if authInt == nil {
-			return nil, fmt.Errorf("authentication enabled but no interceptor provided")
+			return nil, errors.New("authentication enabled but no interceptor provided")
 		}
 		interceptors = append(interceptors, connect.WithInterceptors(authInt))
 	} else {

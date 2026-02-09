@@ -29,6 +29,6 @@ func TestTokenExpiration_RespectsLeeway(t *testing.T) {
 	}
 
 	if !justOverBorderToken.Expired() {
-		t.Fatalf("token should not be expired")
+		t.Fatalf("token should be considered expired due to the expiration buffer")
 	}
 }

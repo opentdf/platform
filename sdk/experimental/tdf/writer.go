@@ -31,7 +31,27 @@ const (
 	tdfAsZip = "zip"
 	// tdfZipReference indicates the payload is stored as a reference in the ZIP
 	tdfZipReference = "reference"
+	// kGMACPayloadLength is the GCM auth tag size extracted for GMAC integrity
+	kGMACPayloadLength = 16
 )
+
+func calculateSignature(data, secret []byte, alg IntegrityAlgorithm, isLegacyTDF bool) (string, error) {
+	if alg == HS256 {
+		hmac := ocrypto.CalculateSHA256Hmac(secret, data)
+		if isLegacyTDF {
+			return hex.EncodeToString(hmac), nil
+		}
+		return string(hmac), nil
+	}
+	if kGMACPayloadLength > len(data) {
+		return "", errors.New("fail to create gmac signature")
+	}
+
+	if isLegacyTDF {
+		return hex.EncodeToString(data[len(data)-kGMACPayloadLength:]), nil
+	}
+	return string(data[len(data)-kGMACPayloadLength:]), nil
+}
 
 // SegmentResult contains the result of writing a segment
 type SegmentResult struct {

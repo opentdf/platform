@@ -2,17 +2,9 @@
 
 package tdf
 
-import (
-	"encoding/hex"
-	"errors"
-
-	"github.com/opentdf/platform/lib/ocrypto"
-)
-
 const (
-	kGMACPayloadLength = 16
-	kSplitKeyType      = "split"
-	kPolicyBindingAlg  = "HS256"
+	kSplitKeyType     = "split"
+	kPolicyBindingAlg = "HS256"
 )
 
 type RootSignature struct {
@@ -101,22 +93,4 @@ type PolicyBinding struct {
 type EncryptedMetadata struct {
 	Cipher string `json:"ciphertext"`
 	Iv     string `json:"iv"`
-}
-
-func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLegacyTDF bool) (string, error) {
-	if alg == HS256 {
-		hmac := ocrypto.CalculateSHA256Hmac(secret, data)
-		if isLegacyTDF {
-			return hex.EncodeToString(hmac), nil
-		}
-		return string(hmac), nil
-	}
-	if kGMACPayloadLength > len(data) {
-		return "", errors.New("fail to create gmac signature")
-	}
-
-	if isLegacyTDF {
-		return hex.EncodeToString(data[len(data)-kGMACPayloadLength:]), nil
-	}
-	return string(data[len(data)-kGMACPayloadLength:]), nil
 }

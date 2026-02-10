@@ -532,14 +532,15 @@ func newConnectRPC(c Config, authInt connect.Interceptor, ints []connect.Interce
 		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
 	}
 
-	if len(ints) > 0 {
-		interceptors = append(interceptors, connect.WithInterceptors(ints...))
-	}
-
 	// Add protovalidate interceptor
 	validationInterceptor := validate.NewInterceptor()
 
 	interceptors = append(interceptors, connect.WithInterceptors(validationInterceptor, audit.ContextServerInterceptor(logger.Logger)))
+
+	// Add any additional interceptors provided programmatically AFTER the default ones, so they have access needed context
+	if len(ints) > 0 {
+		interceptors = append(interceptors, connect.WithInterceptors(ints...))
+	}
 
 	return &ConnectRPC{
 		Interceptors: interceptors,

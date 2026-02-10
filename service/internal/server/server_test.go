@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 func TestMergeStringSlices(t *testing.T) {
@@ -612,6 +613,81 @@ func TestNewConnectRPC(t *testing.T) {
 			require.NotNil(t, result)
 			assert.NotNil(t, result.Mux, "Mux must be initialized")
 			assert.Len(t, result.Interceptors, tt.wantIntLen, tt.wantDescription)
+		})
+	}
+}
+
+func TestNewConnectRPC_InterceptorOrdering(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+
+	var callOrder []string
+
+	makeInterceptor := func(name string) connect.Interceptor {
+		return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+			return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+				callOrder = append(callOrder, name)
+				return next(ctx, req)
+			}
+		})
+	}
+
+	tests := []struct {
+		name        string
+		authEnabled bool
+		authInt     connect.Interceptor
+		extras      []connect.Interceptor
+		wantOrder   []string
+	}{
+		{
+			name:        "extras run after auth interceptor",
+			authEnabled: true,
+			authInt:     makeInterceptor("auth"),
+			extras:      []connect.Interceptor{makeInterceptor("extra1"), makeInterceptor("extra2")},
+			wantOrder:   []string{"auth", "extra1", "extra2"},
+		},
+		{
+			name:        "extras run after defaults without auth",
+			authEnabled: false,
+			extras:      []connect.Interceptor{makeInterceptor("extra1"), makeInterceptor("extra2")},
+			wantOrder:   []string{"extra1", "extra2"},
+		},
+		{
+			name:        "single extra runs after auth",
+			authEnabled: true,
+			authInt:     makeInterceptor("auth"),
+			extras:      []connect.Interceptor{makeInterceptor("extra1")},
+			wantOrder:   []string{"auth", "extra1"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			callOrder = nil
+
+			cfg := Config{Auth: auth.Config{Enabled: tt.authEnabled}}
+			result, err := newConnectRPC(cfg, tt.authInt, tt.extras, testLogger)
+			require.NoError(t, err)
+
+			// Register a minimal unary handler to exercise the interceptor chain
+			handler := connect.NewUnaryHandler(
+				"/test.v1.TestService/Method",
+				func(_ context.Context, _ *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error) {
+					return connect.NewResponse(&emptypb.Empty{}), nil
+				},
+				result.Interceptors...,
+			)
+			result.Mux.Handle("/test.v1.TestService/", handler)
+
+			// Send a connect-protocol unary request
+			req := httptest.NewRequest(http.MethodPost, "/test.v1.TestService/Method", strings.NewReader("{}"))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Connect-Protocol-Version", "1")
+			rr := httptest.NewRecorder()
+			result.Mux.ServeHTTP(rr, req)
+
+			require.Equal(t, http.StatusOK, rr.Code, "handler should succeed")
+			assert.Equal(t, tt.wantOrder, callOrder,
+				"extra interceptors must run after built-in interceptors")
 		})
 	}
 }

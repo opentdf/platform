@@ -1,14 +1,19 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/go-chi/cors"
+	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 func TestMergeStringSlices(t *testing.T) {
@@ -519,6 +524,170 @@ func TestCORSMiddleware_SpecificOrigins(t *testing.T) {
 
 			gotOrigin := rr.Header().Get("Access-Control-Allow-Origin")
 			assert.Equal(t, tt.wantOrigin, gotOrigin)
+		})
+	}
+}
+
+// noopInterceptor returns a connect.UnaryInterceptorFunc that passes through.
+func noopInterceptor() connect.Interceptor {
+	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			return next(ctx, req)
+		}
+	})
+}
+
+func TestNewConnectRPC(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+
+	tests := []struct {
+		name            string
+		authEnabled     bool
+		authInt         connect.Interceptor
+		extraInts       []connect.Interceptor
+		wantErr         bool
+		wantIntLen      int
+		wantDescription string
+	}{
+		{
+			name:            "auth enabled with extras",
+			authEnabled:     true,
+			authInt:         noopInterceptor(),
+			extraInts:       []connect.Interceptor{noopInterceptor(), noopInterceptor()},
+			wantIntLen:      3,
+			wantDescription: "1 auth + 1 extras + 1 validation/audit",
+		},
+		{
+			name:            "auth enabled no extras",
+			authEnabled:     true,
+			authInt:         noopInterceptor(),
+			extraInts:       nil,
+			wantIntLen:      2,
+			wantDescription: "1 auth + 1 validation/audit",
+		},
+		{
+			name:            "auth disabled no extras",
+			authEnabled:     false,
+			authInt:         nil,
+			extraInts:       nil,
+			wantIntLen:      1,
+			wantDescription: "1 validation/audit only",
+		},
+		{
+			name:            "auth disabled with extras",
+			authEnabled:     false,
+			authInt:         nil,
+			extraInts:       []connect.Interceptor{noopInterceptor()},
+			wantIntLen:      2,
+			wantDescription: "1 extras + 1 validation/audit",
+		},
+		{
+			name:        "auth enabled but nil authInt returns error",
+			authEnabled: true,
+			authInt:     nil,
+			extraInts:   nil,
+			wantErr:     true,
+		},
+		{
+			name:        "auth enabled nil authInt with extras returns error",
+			authEnabled: true,
+			authInt:     nil,
+			extraInts:   []connect.Interceptor{noopInterceptor()},
+			wantErr:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := Config{
+				Auth: auth.Config{Enabled: tt.authEnabled},
+			}
+
+			result, err := newConnectRPC(cfg, tt.authInt, tt.extraInts, testLogger)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Nil(t, result)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			assert.NotNil(t, result.Mux, "Mux must be initialized")
+			assert.Len(t, result.Interceptors, tt.wantIntLen, tt.wantDescription)
+		})
+	}
+}
+
+func TestNewConnectRPC_InterceptorOrdering(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+
+	var callOrder []string
+
+	makeInterceptor := func(name string) connect.Interceptor {
+		return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+			return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+				callOrder = append(callOrder, name)
+				return next(ctx, req)
+			}
+		})
+	}
+
+	tests := []struct {
+		name        string
+		authEnabled bool
+		authInt     connect.Interceptor
+		extras      []connect.Interceptor
+		wantOrder   []string
+	}{
+		{
+			name:        "extras run after auth interceptor",
+			authEnabled: true,
+			authInt:     makeInterceptor("auth"),
+			extras:      []connect.Interceptor{makeInterceptor("extra1"), makeInterceptor("extra2")},
+			wantOrder:   []string{"auth", "extra1", "extra2"},
+		},
+		{
+			name:        "extras run after defaults without auth",
+			authEnabled: false,
+			extras:      []connect.Interceptor{makeInterceptor("extra1"), makeInterceptor("extra2")},
+			wantOrder:   []string{"extra1", "extra2"},
+		},
+		{
+			name:        "single extra runs after auth",
+			authEnabled: true,
+			authInt:     makeInterceptor("auth"),
+			extras:      []connect.Interceptor{makeInterceptor("extra1")},
+			wantOrder:   []string{"auth", "extra1"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			callOrder = nil
+
+			cfg := Config{Auth: auth.Config{Enabled: tt.authEnabled}}
+			result, err := newConnectRPC(cfg, tt.authInt, tt.extras, testLogger)
+			require.NoError(t, err)
+
+			// Register a minimal unary handler to exercise the interceptor chain
+			handler := connect.NewUnaryHandler(
+				"/test.v1.TestService/Method",
+				func(_ context.Context, _ *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error) {
+					return connect.NewResponse(&emptypb.Empty{}), nil
+				},
+				result.Interceptors...,
+			)
+			result.Mux.Handle("/test.v1.TestService/", handler)
+
+			// Send a connect-protocol unary request
+			req := httptest.NewRequest(http.MethodPost, "/test.v1.TestService/Method", strings.NewReader("{}"))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Connect-Protocol-Version", "1")
+			rr := httptest.NewRecorder()
+			result.Mux.ServeHTTP(rr, req)
+
+			require.Equal(t, http.StatusOK, rr.Code, "handler should succeed")
+			assert.Equal(t, tt.wantOrder, callOrder,
+				"extra interceptors must run after built-in interceptors")
 		})
 	}
 }

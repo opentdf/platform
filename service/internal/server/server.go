@@ -60,6 +60,10 @@ type Config struct {
 	TLS                     TLSConfig                                `mapstructure:"tls" json:"tls"`
 	CORS                    CORSConfig                               `mapstructure:"cors" json:"cors"`
 	WellKnownConfigRegister func(namespace string, config any) error `mapstructure:"-" json:"-"`
+
+	// Programmatic interceptors injected at startup (not loaded from config)
+	ExtraConnectInterceptors []connect.Interceptor `mapstructure:"-" json:"-"`
+	ExtraIPCInterceptors     []connect.Interceptor `mapstructure:"-" json:"-"`
 	// Port to listen on
 	Port           int    `mapstructure:"port" json:"port" default:"8080"`
 	Host           string `mapstructure:"host,omitempty" json:"host"`
@@ -274,12 +278,19 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
-	connectRPCIpc, err := newConnectRPCIPC(config, authN, logger)
+	var ipcAuthInt connect.Interceptor
+	var connectAuthInt connect.Interceptor
+	if config.Auth.Enabled && authN != nil {
+		ipcAuthInt = authN.IPCUnaryServerInterceptor()
+		connectAuthInt = authN.ConnectUnaryServerInterceptor()
+	}
+
+	connectRPCIpc, err := newConnectRPC(config, ipcAuthInt, config.ExtraIPCInterceptors, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc ipc server: %w", err)
 	}
 
-	connectRPC, err := newConnectRPC(config, authN, logger)
+	connectRPC, err := newConnectRPC(config, connectAuthInt, config.ExtraConnectInterceptors, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc server: %w", err)
 	}
@@ -509,11 +520,14 @@ func pprofHandler(h http.Handler) http.Handler {
 	})
 }
 
-func newConnectRPCIPC(c Config, a *auth.Authentication, logger *logger.Logger) (*ConnectRPC, error) {
+func newConnectRPC(c Config, authInt connect.Interceptor, ints []connect.Interceptor, logger *logger.Logger) (*ConnectRPC, error) {
 	interceptors := make([]connect.HandlerOption, 0)
 
 	if c.Auth.Enabled {
-		interceptors = append(interceptors, connect.WithInterceptors(a.IPCUnaryServerInterceptor()))
+		if authInt == nil {
+			return nil, errors.New("authentication enabled but no interceptor provided")
+		}
+		interceptors = append(interceptors, connect.WithInterceptors(authInt))
 	} else {
 		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
 	}
@@ -523,25 +537,10 @@ func newConnectRPCIPC(c Config, a *auth.Authentication, logger *logger.Logger) (
 
 	interceptors = append(interceptors, connect.WithInterceptors(validationInterceptor, audit.ContextServerInterceptor(logger.Logger)))
 
-	return &ConnectRPC{
-		Interceptors: interceptors,
-		Mux:          http.NewServeMux(),
-	}, nil
-}
-
-func newConnectRPC(c Config, a *auth.Authentication, logger *logger.Logger) (*ConnectRPC, error) {
-	interceptors := make([]connect.HandlerOption, 0)
-
-	if c.Auth.Enabled {
-		interceptors = append(interceptors, connect.WithInterceptors(a.ConnectUnaryServerInterceptor()))
-	} else {
-		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
+	// Add any additional interceptors provided programmatically AFTER the default ones, so they have access needed context
+	if len(ints) > 0 {
+		interceptors = append(interceptors, connect.WithInterceptors(ints...))
 	}
-
-	// Add protovalidate interceptor
-	validationInterceptor := validate.NewInterceptor()
-
-	interceptors = append(interceptors, connect.WithInterceptors(validationInterceptor, audit.ContextServerInterceptor(logger.Logger)))
 
 	return &ConnectRPC{
 		Interceptors: interceptors,

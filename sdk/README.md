@@ -18,7 +18,7 @@ replace (
 )
 ```
 
-## Example code
+## Quick Start of the Go SDK
 
 This example demonstrates how to create and read TDF (Trusted Data Format) files using the OpenTDF SDK.
 

@@ -12,7 +12,15 @@ type RoleProvider interface {
 }
 
 // RoleProviderFactory constructs a RoleProvider at startup.
-type RoleProviderFactory func(ctx context.Context) (RoleProvider, error)
+type RoleProviderFactory func(ctx context.Context, cfg ProviderConfig) (RoleProvider, error)
+
+// ProviderConfig carries provider-specific configuration and claim selectors.
+type ProviderConfig struct {
+	Config        map[string]any
+	UsernameClaim string
+	GroupsClaim   string
+	ClientIDClaim string
+}
 
 // RoleRequest provides request context to role providers.
 type RoleRequest struct {

@@ -158,7 +158,7 @@ func TestWithAuthZRoleProvider(t *testing.T) {
 
 func TestWithAuthZRoleProviderFactory(t *testing.T) {
 	var cfg StartConfig
-	cfg = WithAuthZRoleProviderFactory("mock", func(_ context.Context) (authz.RoleProvider, error) {
+	cfg = WithAuthZRoleProviderFactory("mock", func(_ context.Context, _ authz.ProviderConfig) (authz.RoleProvider, error) {
 		return noopRoleProvider{}, nil
 	})(cfg)
 

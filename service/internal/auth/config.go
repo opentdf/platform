@@ -39,8 +39,8 @@ type PolicyConfig struct {
 	UserNameClaim string `mapstructure:"username_claim" json:"username_claim" default:"preferred_username"`
 	// Claim to use for group/role information
 	GroupsClaim string `mapstructure:"groups_claim" json:"groups_claim" default:"realm_access.roles"`
-	// Role provider name (resolved via StartOptions)
-	RolesProvider string `mapstructure:"roles_provider" json:"roles_provider"`
+	// Role provider configuration (resolved via StartOptions)
+	RolesProvider RolesProviderConfig `mapstructure:"roles_provider" json:"roles_provider"`
 	// Claim to use to reference idP clientID
 	ClientIDClaim string `mapstructure:"client_id_claim" json:"client_id_claim" default:"azp"`
 	// Deprecated: Use GroupClain instead
@@ -54,6 +54,11 @@ type PolicyConfig struct {
 	Model     string `mapstructure:"model" json:"model"`
 	// Override the default string-adapter
 	Adapter persist.Adapter `mapstructure:"-" json:"-"`
+}
+
+type RolesProviderConfig struct {
+	Name   string         `mapstructure:"name" json:"name"`
+	Config map[string]any `mapstructure:"config" json:"config"`
 }
 
 func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {

@@ -85,21 +85,27 @@ func (p *jwtClaimsRoleProvider) Roles(_ context.Context, token jwt.Token, _ auth
 }
 
 func resolveRoleProvider(ctx context.Context, cfg Config, logger *logger.Logger) (authz.RoleProvider, error) {
-	if cfg.Policy.RolesProvider != "" {
+	if cfg.Policy.RolesProvider.Name != "" {
 		if cfg.RoleProvider != nil && cfg.RoleProviderFactories != nil {
 			logger.Warn(
 				"role provider configured in start options is ignored because roles_provider is set",
-				slog.String("roles_provider", cfg.Policy.RolesProvider),
+				slog.String("roles_provider", cfg.Policy.RolesProvider.Name),
 			)
 		}
 		if cfg.RoleProviderFactories == nil {
-			return nil, fmt.Errorf("role provider not registered: %s", cfg.Policy.RolesProvider)
+			return nil, fmt.Errorf("role provider not registered: %s", cfg.Policy.RolesProvider.Name)
 		}
-		factory, ok := cfg.RoleProviderFactories[cfg.Policy.RolesProvider]
+		factory, ok := cfg.RoleProviderFactories[cfg.Policy.RolesProvider.Name]
 		if !ok {
-			return nil, fmt.Errorf("role provider not registered: %s", cfg.Policy.RolesProvider)
+			return nil, fmt.Errorf("role provider not registered: %s", cfg.Policy.RolesProvider.Name)
 		}
-		provider, err := factory(ctx)
+		providerCfg := authz.ProviderConfig{
+			Config:        cfg.Policy.RolesProvider.Config,
+			UsernameClaim: cfg.Policy.UserNameClaim,
+			GroupsClaim:   cfg.Policy.GroupsClaim,
+			ClientIDClaim: cfg.Policy.ClientIDClaim,
+		}
+		provider, err := factory(ctx, providerCfg)
 		if err != nil {
 			return nil, fmt.Errorf("role provider factory failed: %w", err)
 		}

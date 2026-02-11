@@ -33,11 +33,13 @@ func TestResolveRoleProviderNamed(t *testing.T) {
 	cfg := Config{
 		AuthNConfig: AuthNConfig{
 			Policy: PolicyConfig{
-				RolesProvider: "mock",
+				RolesProvider: RolesProviderConfig{
+					Name: "mock",
+				},
 			},
 		},
 		RoleProviderFactories: map[string]authz.RoleProviderFactory{
-			"mock": func(_ context.Context) (authz.RoleProvider, error) {
+			"mock": func(_ context.Context, _ authz.ProviderConfig) (authz.RoleProvider, error) {
 				return staticRoleProvider{roles: []string{"role:admin"}}, nil
 			},
 		},
@@ -52,7 +54,9 @@ func TestResolveRoleProviderMissingName(t *testing.T) {
 	cfg := Config{
 		AuthNConfig: AuthNConfig{
 			Policy: PolicyConfig{
-				RolesProvider: "missing",
+				RolesProvider: RolesProviderConfig{
+					Name: "missing",
+				},
 			},
 		},
 	}

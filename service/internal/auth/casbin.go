@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	rolePrefix  = "role:"
-	defaultRole = "unknown"
+	rolePrefix          = "role:"
+	defaultRole         = "unknown"
+	ErrPermissionDenied = errors.New("permission denied")
 )
 
 //go:embed casbin_policy.csv
@@ -139,7 +140,7 @@ func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, resource, actio
 	s, err := e.buildSubjectFromToken(ctx, token, req)
 	if err != nil {
 		e.logger.Warn("role provider error", slog.Any("error", err))
-		return false, errors.New("permission denied")
+		return false, ErrPermissionDenied
 	}
 	s = append(s, rolePrefix+defaultRole)
 
@@ -167,7 +168,7 @@ func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, resource, actio
 		slog.String("action", action),
 		slog.String("resource", resource),
 	)
-	return false, errors.New("permission denied")
+	return false, ErrPermissionDenied
 }
 
 func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req authz.RoleRequest) (casbinSubject, error) {

@@ -536,19 +536,6 @@ func (s *AuthnCasbinSuite) Test_ExternalRoleProvider() {
 	s.True(allowed)
 }
 
-func (s *AuthnCasbinSuite) enforce(enforcer *Enforcer, tok jwt.Token, resource, action string) (bool, error) {
-	return enforcer.Enforce(
-		context.Background(),
-		tok,
-		resource,
-		action,
-		authz.RoleRequest{
-			Resource: resource,
-			Action:   action,
-		},
-	)
-}
-
 func (s *AuthnCasbinSuite) Test_Override_Of_Username_Claim() {
 	policyCfg := PolicyConfig{}
 	err := defaults.Set(&policyCfg)
@@ -590,6 +577,19 @@ func (s *AuthnCasbinSuite) Test_Override_Of_Groups_Claim() {
 	allowed, err = s.enforce(enforcer, tok, "policy.attributes.List", "read")
 	s.Require().NoError(err)
 	s.True(allowed)
+}
+
+func (s *AuthnCasbinSuite) enforce(enforcer *Enforcer, tok jwt.Token, resource, action string) (bool, error) {
+	return enforcer.Enforce(
+		context.Background(),
+		tok,
+		resource,
+		action,
+		authz.RoleRequest{
+			Resource: resource,
+			Action:   action,
+		},
+	)
 }
 
 func (s *AuthnCasbinSuite) buildTokenRoles(admin bool, standard bool, roleMaps []string) []interface{} {

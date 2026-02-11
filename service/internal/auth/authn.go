@@ -256,8 +256,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		var clientID string
-		clientID, err = a.getClientIDFromToken(ctx, accessTok)
+		clientID, err := a.getClientIDFromToken(ctx, accessTok)
 		if err != nil {
 			log.WarnContext(
 				ctx,
@@ -289,7 +288,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			Action:   action,
 		}
 		if allow, err := a.enforcer.Enforce(ctx, accessTok, r.URL.Path, action, roleReq); err != nil {
-			if err.Error() == "permission denied" {
+			if errors.Is(err, ErrPermissionDenied) {
 				log.WarnContext(
 					ctx,
 					"permission denied",
@@ -363,8 +362,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 
-			var clientID string
-			clientID, err = a.getClientIDFromToken(ctxWithJWK, token)
+			clientID, err := a.getClientIDFromToken(ctxWithJWK, token)
 			if err != nil {
 				log.WarnContext(
 					ctxWithJWK,
@@ -385,7 +383,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				Action:   action,
 			}
 			if allowed, err := a.enforcer.Enforce(ctxWithJWK, token, resource, action, roleReq); err != nil {
-				if err.Error() == "permission denied" {
+				if errors.Is(err, ErrPermissionDenied) {
 					log.WarnContext(
 						ctxWithJWK,
 						"permission denied",

@@ -28,6 +28,7 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/pkg/authz"
 )
 
 var (
@@ -143,8 +144,13 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		return nil, err
 	}
 
+	roleProvider, err := resolveRoleProvider(ctx, cfg, logger)
+	if err != nil {
+		return nil, err
+	}
 	casbinConfig := CasbinConfig{
 		PolicyConfig: cfg.Policy,
+		RoleProvider: roleProvider,
 	}
 	logger.Info("initializing casbin enforcer")
 	if a.enforcer, err = NewCasbinEnforcer(casbinConfig, a.logger); err != nil {
@@ -250,7 +256,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		clientID, err := a.getClientIDFromToken(ctx, accessTok)
+		var clientID string
+		clientID, err = a.getClientIDFromToken(ctx, accessTok)
 		if err != nil {
 			log.WarnContext(
 				ctx,
@@ -276,7 +283,12 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		default:
 			action = ActionUnsafe
 		}
-		if allow, err := a.enforcer.Enforce(accessTok, r.URL.Path, action); err != nil {
+		roleReq := authz.RoleRequest{
+			Issuer:   a.oidcConfiguration.Issuer,
+			Resource: r.URL.Path,
+			Action:   action,
+		}
+		if allow, err := a.enforcer.Enforce(ctx, accessTok, r.URL.Path, action, roleReq); err != nil {
 			if err.Error() == "permission denied" {
 				log.WarnContext(
 					ctx,
@@ -351,7 +363,8 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 
-			clientID, err := a.getClientIDFromToken(ctxWithJWK, token)
+			var clientID string
+			clientID, err = a.getClientIDFromToken(ctxWithJWK, token)
 			if err != nil {
 				log.WarnContext(
 					ctxWithJWK,
@@ -366,7 +379,12 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			}
 
 			// Check if the token is allowed to access the resource
-			if allowed, err := a.enforcer.Enforce(token, resource, action); err != nil {
+			roleReq := authz.RoleRequest{
+				Issuer:   a.oidcConfiguration.Issuer,
+				Resource: resource,
+				Action:   action,
+			}
+			if allowed, err := a.enforcer.Enforce(ctxWithJWK, token, resource, action, roleReq); err != nil {
 				if err.Error() == "permission denied" {
 					log.WarnContext(
 						ctxWithJWK,

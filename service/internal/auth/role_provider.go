@@ -108,5 +108,5 @@ func resolveRoleProvider(ctx context.Context, cfg Config, logger *logger.Logger)
 	if cfg.RoleProvider != nil {
 		return cfg.RoleProvider, nil
 	}
-	return nil, nil
+	return newJWTClaimsRoleProvider(cfg.Policy.GroupsClaim, logger), nil
 }

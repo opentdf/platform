@@ -28,19 +28,6 @@ type AuthnCasbinSuite struct {
 	suite.Suite
 }
 
-func (s *AuthnCasbinSuite) enforce(enforcer *Enforcer, tok jwt.Token, resource, action string) (bool, error) {
-	return enforcer.Enforce(
-		context.Background(),
-		tok,
-		resource,
-		action,
-		authz.RoleRequest{
-			Resource: resource,
-			Action:   action,
-		},
-	)
-}
-
 func (s *AuthnCasbinSuite) SetupSuite() {
 }
 
@@ -547,6 +534,19 @@ func (s *AuthnCasbinSuite) Test_ExternalRoleProvider() {
 	allowed, err := s.enforce(enforcer, tok, "policy.attributes.List", "read")
 	s.Require().NoError(err)
 	s.True(allowed)
+}
+
+func (s *AuthnCasbinSuite) enforce(enforcer *Enforcer, tok jwt.Token, resource, action string) (bool, error) {
+	return enforcer.Enforce(
+		context.Background(),
+		tok,
+		resource,
+		action,
+		authz.RoleRequest{
+			Resource: resource,
+			Action:   action,
+		},
+	)
 }
 
 func (s *AuthnCasbinSuite) Test_Override_Of_Username_Claim() {

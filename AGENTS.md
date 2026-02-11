@@ -32,9 +32,29 @@ Prefer `make` targets at repo root:
 
 ## Testing Guidelines
 
-- Unit tests: `*_test.go` next to code; run `make test`.
-- BDD tests: run `cd tests-bdd && go test ./...` (requires Docker; feature files are `tests-bdd/features/*.feature`).
-- Integration tests may require the compose stack; follow module README(s) under `service/`.
+### Required Tests Before Committing
+
+**CRITICAL**: All Go code changes must pass these checks before being marked as complete:
+
+1. **Linting**: `golangci-lint run ./path/to/changed/files.go`
+   - Must pass with 0 issues
+   - Fixes common issues: formatting, shadowing, unused code, suspicious constructs
+   - Never let the user discover linting issues from CI
+
+2. **Unit Tests**: `go test ./...` (or `make test` from repo root)
+   - All existing tests must continue to pass
+   - Add tests for new functionality
+
+3. **README Code Block Tests**:
+   - SDK README examples: `cd sdk && go test -run TestREADMECodeBlocks`
+   - Ensures documentation examples remain compilable
+
+### Test Types
+
+- **Unit tests**: `*_test.go` next to code; run `make test`.
+- **BDD tests**: run `cd tests-bdd && go test ./...` (requires Docker; feature files are `tests-bdd/features/*.feature`).
+- **Integration tests** may require the compose stack; follow module README(s) under `service/`.
+- **README tests**: verify code examples in documentation compile and work correctly.
 
 ## Commit & Pull Request Guidelines
 

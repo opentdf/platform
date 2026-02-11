@@ -18,6 +18,7 @@ import (
 	"github.com/opentdf/platform/sdk/auth/oauth"
 	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
@@ -274,6 +275,10 @@ func Start(f ...StartOptions) error {
 
 	defer client.Close()
 
+	// Create the global authz resolver registry
+	// Services will receive scoped registries that can only register resolvers for their own methods
+	authzResolverRegistry := authz.NewResolverRegistry()
+
 	logger.Info("starting services")
 	gatewayCleanup, err := startServices(ctx, startServicesParams{
 		cfg:                    cfg,
@@ -283,6 +288,7 @@ func Start(f ...StartOptions) error {
 		logger:                 logger,
 		reg:                    svcRegistry,
 		cacheManager:           cacheManager,
+		authzResolverRegistry:  authzResolverRegistry,
 	})
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))

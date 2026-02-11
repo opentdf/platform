@@ -73,7 +73,7 @@ func formatBlockName(index int, code string) string {
 	}
 
 	// Try to find a meaningful identifier in the first few lines
-	for _, line := range lines[:min(5, len(lines))] {
+	for _, line := range lines[:minInt(5, len(lines))] {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "package ") {
 			return strings.TrimPrefix(line, "package ")
@@ -89,15 +89,11 @@ func formatBlockName(index int, code string) string {
 // testCodeBlock attempts to compile a code block.
 func testCodeBlock(t *testing.T, code string) error {
 	// Create a temporary directory
-	tmpDir, err := os.MkdirTemp("", "readme-test-*")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	// Write the code to main.go
 	mainPath := filepath.Join(tmpDir, "main.go")
-	if err := os.WriteFile(mainPath, []byte(code), 0644); err != nil {
+	if err := os.WriteFile(mainPath, []byte(code), 0o644); err != nil {
 		return err
 	}
 
@@ -111,7 +107,7 @@ func testCodeBlock(t *testing.T, code string) error {
 
 	// Get the absolute path to the platform directory
 	// When running from sdk directory, we need to go up one level
-	platformDir, err := filepath.Abs(filepath.Join(".."))
+	platformDir, err := filepath.Abs("..")
 	if err != nil {
 		return err
 	}
@@ -124,9 +120,9 @@ func testCodeBlock(t *testing.T, code string) error {
 	}
 
 	for _, replace := range replacements {
-		cmd := exec.Command("go", "mod", "edit", "-replace", replace)
-		cmd.Dir = tmpDir
-		if output, err := cmd.CombinedOutput(); err != nil {
+		editCmd := exec.Command("go", "mod", "edit", "-replace", replace)
+		editCmd.Dir = tmpDir
+		if output, err := editCmd.CombinedOutput(); err != nil {
 			t.Logf("go mod edit output: %s", output)
 			return err
 		}
@@ -153,7 +149,7 @@ func testCodeBlock(t *testing.T, code string) error {
 	return nil
 }
 
-func min(a, b int) int {
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}

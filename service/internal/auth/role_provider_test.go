@@ -24,7 +24,8 @@ func TestResolveRoleProviderDefault(t *testing.T) {
 	cfg := Config{}
 	provider, err := resolveRoleProvider(context.Background(), cfg, logger)
 	require.NoError(t, err)
-	require.Nil(t, provider)
+	require.NotNil(t, provider)
+	require.IsType(t, &jwtClaimsRoleProvider{}, provider)
 }
 
 func TestResolveRoleProviderNamed(t *testing.T) {

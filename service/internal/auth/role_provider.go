@@ -93,11 +93,11 @@ func resolveRoleProvider(ctx context.Context, cfg Config, logger *logger.Logger)
 			)
 		}
 		if cfg.RoleProviderFactories == nil {
-			return nil, fmt.Errorf("role provider not registered: %s", cfg.Policy.RolesProvider.Name)
+			return nil, fmt.Errorf("no role provider factories are registered, cannot create provider %q", cfg.Policy.RolesProvider.Name)
 		}
 		factory, ok := cfg.RoleProviderFactories[cfg.Policy.RolesProvider.Name]
 		if !ok {
-			return nil, fmt.Errorf("role provider not registered: %s", cfg.Policy.RolesProvider.Name)
+			return nil, fmt.Errorf("role provider factory not registered: %s", cfg.Policy.RolesProvider.Name)
 		}
 		providerCfg := authz.ProviderConfig{
 			Config:        cfg.Policy.RolesProvider.Config,

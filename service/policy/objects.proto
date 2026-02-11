@@ -48,18 +48,6 @@ message Namespace {
 
   // Keys for the namespace
   repeated SimpleKasKey kas_keys = 7;
-
-  // Root certificates for chain of trust
-  repeated Certificate root_certs = 8;
-}
-
-message Certificate {
-  // generated uuid in database
-  string id = 1;
-  // PEM format certificate
-  string pem = 2;
-  // Optional metadata.
-  common.Metadata metadata = 3;
 }
 
 message Attribute {

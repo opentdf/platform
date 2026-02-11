@@ -11,29 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const assignCertificateToNamespace = `-- name: assignCertificateToNamespace :one
-INSERT INTO attribute_namespace_certificates (namespace_id, certificate_id)
-VALUES ($1, $2)
-RETURNING namespace_id, certificate_id
-`
-
-type assignCertificateToNamespaceParams struct {
-	NamespaceID   string `json:"namespace_id"`
-	CertificateID string `json:"certificate_id"`
-}
-
-// assignCertificateToNamespace
-//
-//	INSERT INTO attribute_namespace_certificates (namespace_id, certificate_id)
-//	VALUES ($1, $2)
-//	RETURNING namespace_id, certificate_id
-func (q *Queries) assignCertificateToNamespace(ctx context.Context, arg assignCertificateToNamespaceParams) (AttributeNamespaceCertificate, error) {
-	row := q.db.QueryRow(ctx, assignCertificateToNamespace, arg.NamespaceID, arg.CertificateID)
-	var i AttributeNamespaceCertificate
-	err := row.Scan(&i.NamespaceID, &i.CertificateID)
-	return i, err
-}
-
 const assignPublicKeyToNamespace = `-- name: assignPublicKeyToNamespace :one
 INSERT INTO attribute_namespace_public_key_map (namespace_id, key_access_server_key_id)
 VALUES ($1, $2)
@@ -55,48 +32,6 @@ func (q *Queries) assignPublicKeyToNamespace(ctx context.Context, arg assignPubl
 	var i AttributeNamespacePublicKeyMap
 	err := row.Scan(&i.NamespaceID, &i.KeyAccessServerKeyID)
 	return i, err
-}
-
-const countCertificateNamespaceAssignments = `-- name: countCertificateNamespaceAssignments :one
-SELECT COUNT(*) FROM attribute_namespace_certificates
-WHERE certificate_id = $1
-`
-
-// countCertificateNamespaceAssignments
-//
-//	SELECT COUNT(*) FROM attribute_namespace_certificates
-//	WHERE certificate_id = $1
-func (q *Queries) countCertificateNamespaceAssignments(ctx context.Context, certificateID string) (int64, error) {
-	row := q.db.QueryRow(ctx, countCertificateNamespaceAssignments, certificateID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const createCertificate = `-- name: createCertificate :one
-
-INSERT INTO certificates (pem, metadata)
-VALUES ($1, $2)
-RETURNING id
-`
-
-type createCertificateParams struct {
-	Pem      string `json:"pem"`
-	Metadata []byte `json:"metadata"`
-}
-
-// --------------------------------------------------------------
-// CERTIFICATES
-// --------------------------------------------------------------
-//
-//	INSERT INTO certificates (pem, metadata)
-//	VALUES ($1, $2)
-//	RETURNING id
-func (q *Queries) createCertificate(ctx context.Context, arg createCertificateParams) (string, error) {
-	row := q.db.QueryRow(ctx, createCertificate, arg.Pem, arg.Metadata)
-	var id string
-	err := row.Scan(&id)
-	return id, err
 }
 
 const createNamespace = `-- name: createNamespace :one
@@ -122,21 +57,6 @@ func (q *Queries) createNamespace(ctx context.Context, arg createNamespaceParams
 	return id, err
 }
 
-const deleteCertificate = `-- name: deleteCertificate :execrows
-DELETE FROM certificates WHERE id = $1
-`
-
-// deleteCertificate
-//
-//	DELETE FROM certificates WHERE id = $1
-func (q *Queries) deleteCertificate(ctx context.Context, id string) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteCertificate, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const deleteNamespace = `-- name: deleteNamespace :execrows
 DELETE FROM attribute_namespaces WHERE id = $1
 `
@@ -152,66 +72,6 @@ func (q *Queries) deleteNamespace(ctx context.Context, id string) (int64, error)
 	return result.RowsAffected(), nil
 }
 
-const getCertificate = `-- name: getCertificate :one
-SELECT
-    id,
-    pem,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-FROM certificates
-WHERE id = $1
-`
-
-type getCertificateRow struct {
-	ID       string `json:"id"`
-	Pem      string `json:"pem"`
-	Metadata []byte `json:"metadata"`
-}
-
-// getCertificate
-//
-//	SELECT
-//	    id,
-//	    pem,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-//	FROM certificates
-//	WHERE id = $1
-func (q *Queries) getCertificate(ctx context.Context, id string) (getCertificateRow, error) {
-	row := q.db.QueryRow(ctx, getCertificate, id)
-	var i getCertificateRow
-	err := row.Scan(&i.ID, &i.Pem, &i.Metadata)
-	return i, err
-}
-
-const getCertificateByPEM = `-- name: getCertificateByPEM :one
-SELECT
-    id,
-    pem,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-FROM certificates
-WHERE pem = $1
-`
-
-type getCertificateByPEMRow struct {
-	ID       string `json:"id"`
-	Pem      string `json:"pem"`
-	Metadata []byte `json:"metadata"`
-}
-
-// getCertificateByPEM
-//
-//	SELECT
-//	    id,
-//	    pem,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-//	FROM certificates
-//	WHERE pem = $1
-func (q *Queries) getCertificateByPEM(ctx context.Context, pem string) (getCertificateByPEMRow, error) {
-	row := q.db.QueryRow(ctx, getCertificateByPEM, pem)
-	var i getCertificateByPEMRow
-	err := row.Scan(&i.ID, &i.Pem, &i.Metadata)
-	return i, err
-}
-
 const getNamespace = `-- name: getNamespace :one
 SELECT
     ns.id,
@@ -225,8 +85,7 @@ SELECT
         'name', kas.name,
         'public_key', kas.public_key
     )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants,
-    nmp_keys.keys as keys,
-    nmp_certs.certs as certs
+    nmp_keys.keys as keys
 FROM attribute_namespaces ns
 LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
 LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
@@ -250,23 +109,10 @@ LEFT JOIN (
     INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
     GROUP BY k.namespace_id
 ) nmp_keys ON ns.id = nmp_keys.namespace_id
-LEFT JOIN (
-    SELECT
-        c.namespace_id,
-        JSONB_AGG(
-            DISTINCT JSONB_BUILD_OBJECT(
-                'id', cert.id,
-                'pem', cert.pem
-            )
-        ) FILTER (WHERE cert.id IS NOT NULL) AS certs
-    FROM attribute_namespace_certificates c
-    INNER JOIN certificates cert ON c.certificate_id = cert.id
-    GROUP BY c.namespace_id
-) nmp_certs ON ns.id = nmp_certs.namespace_id
 WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL
   AND ($1::uuid IS NULL OR ns.id = $1::uuid)
   AND ($2::text IS NULL OR ns.name = REGEXP_REPLACE($2::text, '^https://', ''))
-GROUP BY ns.id, fqns.fqn, nmp_keys.keys, nmp_certs.certs
+GROUP BY ns.id, fqns.fqn, nmp_keys.keys
 `
 
 type getNamespaceParams struct {
@@ -282,7 +128,6 @@ type getNamespaceRow struct {
 	Metadata []byte      `json:"metadata"`
 	Grants   []byte      `json:"grants"`
 	Keys     []byte      `json:"keys"`
-	Certs    []byte      `json:"certs"`
 }
 
 // getNamespace
@@ -299,8 +144,7 @@ type getNamespaceRow struct {
 //	        'name', kas.name,
 //	        'public_key', kas.public_key
 //	    )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants,
-//	    nmp_keys.keys as keys,
-//	    nmp_certs.certs as certs
+//	    nmp_keys.keys as keys
 //	FROM attribute_namespaces ns
 //	LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
 //	LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
@@ -324,23 +168,10 @@ type getNamespaceRow struct {
 //	    INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
 //	    GROUP BY k.namespace_id
 //	) nmp_keys ON ns.id = nmp_keys.namespace_id
-//	LEFT JOIN (
-//	    SELECT
-//	        c.namespace_id,
-//	        JSONB_AGG(
-//	            DISTINCT JSONB_BUILD_OBJECT(
-//	                'id', cert.id,
-//	                'pem', cert.pem
-//	            )
-//	        ) FILTER (WHERE cert.id IS NOT NULL) AS certs
-//	    FROM attribute_namespace_certificates c
-//	    INNER JOIN certificates cert ON c.certificate_id = cert.id
-//	    GROUP BY c.namespace_id
-//	) nmp_certs ON ns.id = nmp_certs.namespace_id
 //	WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	  AND ($1::uuid IS NULL OR ns.id = $1::uuid)
 //	  AND ($2::text IS NULL OR ns.name = REGEXP_REPLACE($2::text, '^https://', ''))
-//	GROUP BY ns.id, fqns.fqn, nmp_keys.keys, nmp_certs.certs
+//	GROUP BY ns.id, fqns.fqn, nmp_keys.keys
 func (q *Queries) getNamespace(ctx context.Context, arg getNamespaceParams) (getNamespaceRow, error) {
 	row := q.db.QueryRow(ctx, getNamespace, arg.ID, arg.Name)
 	var i getNamespaceRow
@@ -352,7 +183,6 @@ func (q *Queries) getNamespace(ctx context.Context, arg getNamespaceParams) (get
 		&i.Metadata,
 		&i.Grants,
 		&i.Keys,
-		&i.Certs,
 	)
 	return i, err
 }
@@ -429,28 +259,6 @@ func (q *Queries) listNamespaces(ctx context.Context, arg listNamespacesParams) 
 		return nil, err
 	}
 	return items, nil
-}
-
-const removeCertificateFromNamespace = `-- name: removeCertificateFromNamespace :execrows
-DELETE FROM attribute_namespace_certificates
-WHERE namespace_id = $1 AND certificate_id = $2
-`
-
-type removeCertificateFromNamespaceParams struct {
-	NamespaceID   string `json:"namespace_id"`
-	CertificateID string `json:"certificate_id"`
-}
-
-// removeCertificateFromNamespace
-//
-//	DELETE FROM attribute_namespace_certificates
-//	WHERE namespace_id = $1 AND certificate_id = $2
-func (q *Queries) removeCertificateFromNamespace(ctx context.Context, arg removeCertificateFromNamespaceParams) (int64, error) {
-	result, err := q.db.Exec(ctx, removeCertificateFromNamespace, arg.NamespaceID, arg.CertificateID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
 }
 
 const removeKeyAccessServerFromNamespace = `-- name: removeKeyAccessServerFromNamespace :execrows

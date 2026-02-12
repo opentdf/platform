@@ -290,7 +290,7 @@ func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce strin
 	}
 
 	if len(scopes) > 0 {
-		data.Set("scopes", strings.Join(scopes, " "))
+		data.Set("scope", strings.Join(scopes, " "))
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, nil)

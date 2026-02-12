@@ -135,7 +135,7 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 
 // casbinEnforce is a helper function to enforce the policy with casbin
 // TODO implement a common type so this can be used for both http and grpc
-func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, resource, action string, req authz.RoleRequest) (bool, error) {
+func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleRequest) (bool, error) {
 	// extract the role claim from the token
 	s, err := e.buildSubjectFromToken(ctx, token, req)
 	if err != nil {
@@ -144,6 +144,8 @@ func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, resource, actio
 	}
 	s = append(s, rolePrefix+defaultRole)
 
+	resource := req.Resource
+	action := req.Action
 	for _, info := range s {
 		allowed, err := e.Enforcer.Enforce(info, resource, action)
 		if err != nil {

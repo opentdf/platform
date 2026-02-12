@@ -287,7 +287,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			Resource: r.URL.Path,
 			Action:   action,
 		}
-		if allow, err := a.enforcer.Enforce(ctx, accessTok, r.URL.Path, action, roleReq); err != nil {
+		if allow, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil {
 			if errors.Is(err, ErrPermissionDenied) {
 				log.WarnContext(
 					ctx,
@@ -382,7 +382,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				Resource: resource,
 				Action:   action,
 			}
-			if allowed, err := a.enforcer.Enforce(ctxWithJWK, token, resource, action, roleReq); err != nil {
+			if allowed, err := a.enforcer.Enforce(ctxWithJWK, token, roleReq); err != nil {
 				if errors.Is(err, ErrPermissionDenied) {
 					log.WarnContext(
 						ctxWithJWK,

@@ -308,7 +308,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 			PolicyConfig: policyCfg,
 		}, logger.CreateTestLogger())
 		s.Require().NoError(err, name)
-		_, tok = s.newTokenWithCilentID()
+		_, tok = s.newTokenWithClientID()
 		allowed, err = s.enforce(enforcer, tok, test.resource, test.action)
 		if !test.allowed {
 			s.Require().Error(err, name)
@@ -583,8 +583,6 @@ func (s *AuthnCasbinSuite) enforce(enforcer *Enforcer, tok jwt.Token, resource, 
 	return enforcer.Enforce(
 		context.Background(),
 		tok,
-		resource,
-		action,
 		authz.RoleRequest{
 			Resource: resource,
 			Action:   action,
@@ -655,7 +653,7 @@ func (s *AuthnCasbinSuite) newTokenWithCustomRoleMap(admin bool, standard bool) 
 	return "", tok
 }
 
-func (s *AuthnCasbinSuite) newTokenWithCilentID() (string, jwt.Token) {
+func (s *AuthnCasbinSuite) newTokenWithClientID() (string, jwt.Token) {
 	tok := jwt.New()
 	if err := tok.Set("client_id", "test"); err != nil {
 		s.T().Fatal(err)

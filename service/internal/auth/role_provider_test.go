@@ -4,20 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/stretchr/testify/require"
 )
-
-type staticRoleProvider struct {
-	roles []string
-	err   error
-}
-
-func (s staticRoleProvider) Roles(_ context.Context, _ jwt.Token, _ authz.RoleRequest) ([]string, error) {
-	return s.roles, s.err
-}
 
 func TestResolveRoleProviderDefault(t *testing.T) {
 	logger := logger.CreateTestLogger()
@@ -40,7 +30,7 @@ func TestResolveRoleProviderNamed(t *testing.T) {
 		},
 		RoleProviderFactories: map[string]authz.RoleProviderFactory{
 			"mock": func(_ context.Context, _ authz.ProviderConfig) (authz.RoleProvider, error) {
-				return staticRoleProvider{roles: []string{"role:admin"}}, nil
+				return staticProvider{roles: []string{"role:admin"}}, nil
 			},
 		},
 	}

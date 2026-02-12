@@ -396,77 +396,61 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		assert.Equal(t, samplePayload, decryptedPayload)
 	})
 
-	t.Run("successful EC decryption with compressed ephemeral key P384", func(t *testing.T) {
-		p384Key, err := generateECKeyAndPEM(ocrypto.ECCModeSecp384r1)
-		require.NoError(t, err)
-		p384PrivKey, err := p384Key.PrivateKeyInPemFormat()
-		require.NoError(t, err)
-		p384PubKey, err := p384Key.PublicKeyInPemFormat()
-		require.NoError(t, err)
+	for _, tc := range []struct {
+		name      string
+		mode      ocrypto.ECCMode
+		algorithm string
+		kid       string
+	}{
+		{
+			name:      "P384",
+			mode:      ocrypto.ECCModeSecp384r1,
+			algorithm: AlgorithmECP384R1,
+			kid:       "ec-kid-decrypt-p384",
+		},
+		{
+			name:      "P521",
+			mode:      ocrypto.ECCModeSecp521r1,
+			algorithm: AlgorithmECP521R1,
+			kid:       "ec-kid-decrypt-p521",
+		},
+	} {
+		t.Run("successful EC decryption with compressed ephemeral key "+tc.name, func(t *testing.T) {
+			ecKey, err := generateECKeyAndPEM(tc.mode)
+			require.NoError(t, err)
+			ecPrivKey, err := ecKey.PrivateKeyInPemFormat()
+			require.NoError(t, err)
+			ecPubKey, err := ecKey.PublicKeyInPemFormat()
+			require.NoError(t, err)
 
-		wrappedP384PrivKeyStr, err := wrapKeyWithAESGCM([]byte(p384PrivKey), rootKey)
-		require.NoError(t, err)
+			wrappedECPrivKeyStr, err := wrapKeyWithAESGCM([]byte(ecPrivKey), rootKey)
+			require.NoError(t, err)
 
-		mockDetails := new(MockKeyDetails)
-		mockDetails.MID = "ec-kid-decrypt-p384"
-		mockDetails.MAlgorithm = AlgorithmECP384R1
-		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedP384PrivKeyStr}
+			mockDetails := new(MockKeyDetails)
+			mockDetails.MID = tc.kid
+			mockDetails.MAlgorithm = tc.algorithm
+			mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedECPrivKeyStr}
 
-		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
-		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
-		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
+			mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
+			mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
+			mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
-		ecEncryptor, err := ocrypto.FromPublicPEM(p384PubKey)
-		require.NoError(t, err)
-		ciphertext, err := ecEncryptor.Encrypt(samplePayload)
-		require.NoError(t, err)
-		ephemeralPublicKey := compressEphemeralPublicKey(t, ecEncryptor.EphemeralKey())
+			ecEncryptor, err := ocrypto.FromPublicPEM(ecPubKey)
+			require.NoError(t, err)
+			ciphertext, err := ecEncryptor.Encrypt(samplePayload)
+			require.NoError(t, err)
+			ephemeralPublicKey := compressEphemeralPublicKey(t, ecEncryptor.EphemeralKey())
 
-		protectedKey, err := bm.Decrypt(t.Context(), mockDetails, ciphertext, ephemeralPublicKey)
-		require.NoError(t, err)
-		require.NotNil(t, protectedKey)
+			protectedKey, err := bm.Decrypt(t.Context(), mockDetails, ciphertext, ephemeralPublicKey)
+			require.NoError(t, err)
+			require.NotNil(t, protectedKey)
 
-		noOpEnc := &noOpEncapsulator{}
-		decryptedPayload, err := noOpEnc.Encapsulate(protectedKey)
-		require.NoError(t, err)
-		assert.Equal(t, samplePayload, decryptedPayload)
-	})
-
-	t.Run("successful EC decryption with compressed ephemeral key P521", func(t *testing.T) {
-		p521Key, err := generateECKeyAndPEM(ocrypto.ECCModeSecp521r1)
-		require.NoError(t, err)
-		p521PrivKey, err := p521Key.PrivateKeyInPemFormat()
-		require.NoError(t, err)
-		p521PubKey, err := p521Key.PublicKeyInPemFormat()
-		require.NoError(t, err)
-
-		wrappedP521PrivKeyStr, err := wrapKeyWithAESGCM([]byte(p521PrivKey), rootKey)
-		require.NoError(t, err)
-
-		mockDetails := new(MockKeyDetails)
-		mockDetails.MID = "ec-kid-decrypt-p521"
-		mockDetails.MAlgorithm = AlgorithmECP521R1
-		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedP521PrivKeyStr}
-
-		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
-		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
-		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
-
-		ecEncryptor, err := ocrypto.FromPublicPEM(p521PubKey)
-		require.NoError(t, err)
-		ciphertext, err := ecEncryptor.Encrypt(samplePayload)
-		require.NoError(t, err)
-		ephemeralPublicKey := compressEphemeralPublicKey(t, ecEncryptor.EphemeralKey())
-
-		protectedKey, err := bm.Decrypt(t.Context(), mockDetails, ciphertext, ephemeralPublicKey)
-		require.NoError(t, err)
-		require.NotNil(t, protectedKey)
-
-		noOpEnc := &noOpEncapsulator{}
-		decryptedPayload, err := noOpEnc.Encapsulate(protectedKey)
-		require.NoError(t, err)
-		assert.Equal(t, samplePayload, decryptedPayload)
-	})
+			noOpEnc := &noOpEncapsulator{}
+			decryptedPayload, err := noOpEnc.Encapsulate(protectedKey)
+			require.NoError(t, err)
+			assert.Equal(t, samplePayload, decryptedPayload)
+		})
+	}
 
 	t.Run("fail ExportPrivateKey", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)

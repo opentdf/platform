@@ -10,6 +10,8 @@ import (
 )
 
 func TestECDecryptWithCompressedEphemeralKey(t *testing.T) {
+	t.Parallel()
+
 	type testCase struct {
 		name string
 		mode ECCMode
@@ -92,8 +94,11 @@ func compressEphemeralKeyFromDER(der []byte) ([]byte, error) {
 
 	switch pub := pub.(type) {
 	case *ecdsa.PublicKey:
-		uncompressed := elliptic.Marshal(pub.Curve, pub.X, pub.Y)
-		return compressUncompressedPoint(uncompressed)
+		ecdhPub, err := pub.ECDH()
+		if err != nil {
+			return nil, err
+		}
+		return compressUncompressedPoint(ecdhPub.Bytes())
 	case *ecdh.PublicKey:
 		return compressUncompressedPoint(pub.Bytes())
 	default:

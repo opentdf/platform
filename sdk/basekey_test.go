@@ -310,6 +310,35 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyMissingPublicKey() {
 	s.Require().ErrorIs(err, ErrBaseKeyInvalidFormat)
 }
 
+// TestFormatAlg_GetKasKeyAlg_RoundTrip verifies that every supported algorithm
+// survives a round-trip through the SDK's own formatAlg → getKasKeyAlg path.
+// This locks in the SDK-side contract: formatAlg must produce strings that
+// getKasKeyAlg maps back to the original enum.
+func TestFormatAlg_GetKasKeyAlg_RoundTrip(t *testing.T) {
+	supportedAlgs := []struct {
+		name string
+		alg  policy.Algorithm
+	}{
+		{"RSA-2048", policy.Algorithm_ALGORITHM_RSA_2048},
+		{"RSA-4096", policy.Algorithm_ALGORITHM_RSA_4096},
+		{"EC-P256", policy.Algorithm_ALGORITHM_EC_P256},
+		{"EC-P384", policy.Algorithm_ALGORITHM_EC_P384},
+		{"EC-P521", policy.Algorithm_ALGORITHM_EC_P521},
+	}
+
+	for _, tc := range supportedAlgs {
+		t.Run(tc.name, func(t *testing.T) {
+			formatted, err := formatAlg(tc.alg)
+			require.NoError(t, err, "formatAlg should not error for %s", tc.name)
+
+			roundTripped := getKasKeyAlg(formatted)
+			assert.Equal(t, tc.alg, roundTripped,
+				"round-trip mismatch: formatAlg(%s) = %q → getKasKeyAlg returned %s, want %s",
+				tc.name, formatted, roundTripped, tc.alg)
+		})
+	}
+}
+
 func (s *BaseKeyTestSuite) TestGetBaseKeyInvalidPublicKey() {
 	// Create base key with invalid public_key (string instead of map)
 	wellknownConfig := map[string]interface{}{

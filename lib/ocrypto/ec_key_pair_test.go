@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -106,6 +107,96 @@ func TestECRewrapKeyGenerate(t *testing.T) {
 	if string(kasSymmetricKey) != string(sdkSymmetricKey) {
 		t.Fatalf("symmetric keys on both kas and sdk should be same kas:%s sdk:%s",
 			string(kasSymmetricKey), string(sdkSymmetricKey))
+	}
+}
+
+func TestUncompressECPubKey_CurvePreservation(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		mode ECCMode
+	}{
+		{"P-256", ECCModeSecp256r1},
+		{"P-384", ECCModeSecp384r1},
+		{"P-521", ECCModeSecp521r1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			keyPair, err := NewECKeyPair(tc.mode)
+			require.NoError(t, err)
+
+			curve, err := GetECCurveFromECCMode(tc.mode)
+			require.NoError(t, err)
+
+			original := keyPair.PrivateKey.PublicKey
+
+			compressed, err := CompressedECPublicKey(tc.mode, original)
+			require.NoError(t, err)
+
+			uncompressed, err := UncompressECPubKey(curve, compressed)
+			require.NoError(t, err)
+
+			// The returned key's curve must match the input curve
+			assert.Equal(t, curve.Params().Name, uncompressed.Curve.Params().Name,
+				"UncompressECPubKey returned wrong curve")
+
+			// Coordinates must survive the round-trip
+			assert.Equal(t, original.X, uncompressed.X, "X coordinate mismatch")
+			assert.Equal(t, original.Y, uncompressed.Y, "Y coordinate mismatch")
+
+			// The key must be usable for ECDH (validates point is on the declared curve)
+			_, err = uncompressed.ECDH()
+			assert.NoError(t, err, "ECDH conversion should succeed for a valid key on the correct curve")
+		})
+	}
+}
+
+// TestECRewrapKeyGenerateAllCurves verifies ECDH key agreement across all
+// supported curves. The existing TestECRewrapKeyGenerate only covers P-256.
+func TestECRewrapKeyGenerateAllCurves(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		mode ECCMode
+	}{
+		{"P-256", ECCModeSecp256r1},
+		{"P-384", ECCModeSecp384r1},
+		{"P-521", ECCModeSecp521r1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			kasKeyPair, err := NewECKeyPair(tc.mode)
+			require.NoError(t, err)
+
+			kasPubPEM, err := kasKeyPair.PublicKeyInPemFormat()
+			require.NoError(t, err)
+
+			kasPrivPEM, err := kasKeyPair.PrivateKeyInPemFormat()
+			require.NoError(t, err)
+
+			sdkKeyPair, err := NewECKeyPair(tc.mode)
+			require.NoError(t, err)
+
+			sdkPubPEM, err := sdkKeyPair.PublicKeyInPemFormat()
+			require.NoError(t, err)
+
+			sdkPrivPEM, err := sdkKeyPair.PrivateKeyInPemFormat()
+			require.NoError(t, err)
+
+			kasECDHKey, err := ComputeECDHKey([]byte(kasPrivPEM), []byte(sdkPubPEM))
+			require.NoError(t, err)
+
+			digest := sha256.New()
+			digest.Write([]byte("TDF"))
+
+			kasSymmetricKey, err := CalculateHKDF(digest.Sum(nil), kasECDHKey)
+			require.NoError(t, err)
+
+			sdkECDHKey, err := ComputeECDHKey([]byte(sdkPrivPEM), []byte(kasPubPEM))
+			require.NoError(t, err)
+
+			sdkSymmetricKey, err := CalculateHKDF(digest.Sum(nil), sdkECDHKey)
+			require.NoError(t, err)
+
+			assert.Equal(t, kasSymmetricKey, sdkSymmetricKey,
+				"KAS and SDK should derive the same symmetric key")
+		})
 	}
 }
 

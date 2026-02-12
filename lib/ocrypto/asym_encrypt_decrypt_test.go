@@ -1,8 +1,16 @@
 package ocrypto
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
 	"crypto/sha256"
+	"io"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/hkdf"
 )
 
 func salty(s string) []byte {
@@ -343,6 +351,72 @@ MJseKiCRhbMS8XoCOTogO4Au9SqpOKqHq2CFRb4=
 			if string(decryptedText) != plainText {
 				t.Error("Asym encrypt/decrypt failed")
 			}
+		})
+	}
+}
+
+// TestDecryptWithCompressedEphemeralKey reproduces issue #3070:
+// EC decrypt fails for P-384/P-521 when the ephemeral key is passed in
+// compressed form.
+func TestDecryptWithCompressedEphemeralKey(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		mode ECCMode
+	}{
+		{"P-256", ECCModeSecp256r1},
+		{"P-384", ECCModeSecp384r1},
+		{"P-521", ECCModeSecp521r1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			salt := salty("TDF")
+			plainText := "virtru"
+
+			// Generate KAS key pair
+			kasKeyPair, err := NewECKeyPair(tc.mode)
+			require.NoError(t, err)
+
+			kasPriv, err := kasKeyPair.PrivateKey.ECDH()
+			require.NoError(t, err)
+
+			kasPub := kasPriv.PublicKey()
+
+			// Generate ephemeral key pair, compress the public key directly
+			ephKeyPair, err := NewECKeyPair(tc.mode)
+			require.NoError(t, err)
+
+			ephPriv, err := ephKeyPair.PrivateKey.ECDH()
+			require.NoError(t, err)
+
+			compressedEphemeral, err := CompressedECPublicKey(tc.mode, ephKeyPair.PrivateKey.PublicKey)
+			require.NoError(t, err)
+
+			// Encrypt: ECDH → HKDF → AES-GCM (standard ECIES)
+			ikm, err := ephPriv.ECDH(kasPub)
+			require.NoError(t, err)
+
+			derivedKey := make([]byte, 32)
+			_, err = io.ReadFull(hkdf.New(sha256.New, ikm, salt, nil), derivedKey)
+			require.NoError(t, err)
+
+			block, err := aes.NewCipher(derivedKey)
+			require.NoError(t, err)
+
+			gcm, err := cipher.NewGCM(block)
+			require.NoError(t, err)
+
+			nonce := make([]byte, gcm.NonceSize())
+			_, err = io.ReadFull(rand.Reader, nonce)
+			require.NoError(t, err)
+
+			ciphertext := gcm.Seal(nonce, nonce, []byte(plainText), nil)
+
+			// Decrypt with compressed ephemeral key
+			ecDecryptor, err := NewSaltedECDecryptor(kasPriv, salt, nil)
+			require.NoError(t, err)
+
+			decrypted, err := ecDecryptor.DecryptWithEphemeralKey(ciphertext, compressedEphemeral)
+			require.NoError(t, err, "DecryptWithEphemeralKey should succeed for %s", tc.name)
+			assert.Equal(t, plainText, string(decrypted), "decrypted text should match plaintext")
 		})
 	}
 }

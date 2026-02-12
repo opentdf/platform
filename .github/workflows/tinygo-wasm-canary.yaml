@@ -100,9 +100,11 @@ jobs:
           SIZE_RAW=$(stat --format=%s canary.wasm)
           gzip -k -f canary.wasm
           SIZE_GZ=$(stat --format=%s canary.wasm.gz)
-          echo "### ${{ matrix.canary.name }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Raw: ${SIZE_RAW} bytes ($(( SIZE_RAW / 1024 )) KB)" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Gzipped: ${SIZE_GZ} bytes ($(( SIZE_GZ / 1024 )) KB)" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "### ${{ matrix.canary.name }}"
+            echo "- Raw: ${SIZE_RAW} bytes ($(( SIZE_RAW / 1024 )) KB)"
+            echo "- Gzipped: ${SIZE_GZ} bytes ($(( SIZE_GZ / 1024 )) KB)"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: "Run: execute with wasmtime"
         id: run
@@ -126,14 +128,16 @@ jobs:
           RUN="${{ steps.run.outcome }}"
           EXPECTED="${{ matrix.canary.expected }}"
 
-          echo "## ${{ matrix.canary.name }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Description:** ${{ matrix.canary.description }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Expected:** $EXPECTED" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Build:** $BUILD" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Run:** $RUN" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## ${{ matrix.canary.name }}"
+            echo "**Description:** ${{ matrix.canary.description }}"
+            echo "**Expected:** $EXPECTED"
+            echo "**Build:** $BUILD"
+            echo "**Run:** $RUN"
 
-          if [ "$BUILD" = "success" ] && [ "$RUN" != "failure" ]; then
-            echo "**Status: PASS**" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "**Status: FAIL**" >> "$GITHUB_STEP_SUMMARY"
-          fi
+            if [ "$BUILD" = "success" ] && [ "$RUN" != "failure" ]; then
+              echo "**Status: PASS**"
+            else
+              echo "**Status: FAIL**"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

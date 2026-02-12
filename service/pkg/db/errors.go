@@ -33,6 +33,7 @@ var (
 	ErrCannotUpdateToUnspecified  = errors.New("ErrCannotUpdateToUnspecified: cannot update to unspecified value")
 	ErrKeyRotationFailed          = errors.New("ErrTextKeyRotationFailed: key rotation failed")
 	ErrExpectedBase64EncodedValue = errors.New("ErrExpectedBase64EncodedValue: expected base64 encoded value")
+	ErrUnencryptedPrivateKey      = errors.New("ErrUnencryptedPrivateKey: unencrypted private key not allowed")
 	ErrMarshalValueFailed         = errors.New("ErrMashalValueFailed: failed to marshal value")
 	ErrUnmarshalValueFailed       = errors.New("ErrUnmarshalValueFailed: failed to unmarshal value")
 	ErrNamespaceMismatch          = errors.New("ErrNamespaceMismatch: namespace mismatch")
@@ -128,6 +129,7 @@ const (
 	ErrorTextUpdateToUnspecified        = "cannot update to unspecified value"
 	ErrTextKeyRotationFailed            = "key rotation failed"
 	ErrorTextExpectedBase64EncodedValue = "expected base64 encoded value"
+	ErrorTextUnencryptedPrivateKey      = "unencrypted private key not allowed"
 	ErrorTextMarshalFailed              = "failed to marshal value"
 	ErrorTextUnmarsalFailed             = "failed to unmarshal value"
 	ErrorTextNamespaceMismatch          = "namespace mismatch"
@@ -187,6 +189,10 @@ func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackEr
 	if errors.Is(err, ErrExpectedBase64EncodedValue) {
 		l.ErrorContext(ctx, ErrorTextExpectedBase64EncodedValue, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextExpectedBase64EncodedValue))
+	}
+	if errors.Is(err, ErrUnencryptedPrivateKey) {
+		l.ErrorContext(ctx, ErrorTextUnencryptedPrivateKey, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextUnencryptedPrivateKey))
 	}
 	if errors.Is(err, ErrMarshalValueFailed) {
 		l.ErrorContext(ctx, ErrorTextMarshalFailed, logs...)

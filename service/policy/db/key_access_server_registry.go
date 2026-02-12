@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -373,8 +374,18 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 	if !isValidBase64(r.GetPublicKeyCtx().GetPem()) {
 		return nil, errors.Join(errors.New("public key ctx"), db.ErrExpectedBase64EncodedValue)
 	}
-	if (mode == int32(policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY) || mode == int32(policy.KeyMode_KEY_MODE_PROVIDER_ROOT_KEY)) && !isValidBase64(r.GetPrivateKeyCtx().GetWrappedKey()) {
-		return nil, errors.Join(errors.New("private key ctx"), db.ErrExpectedBase64EncodedValue)
+	if mode == int32(policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY) || mode == int32(policy.KeyMode_KEY_MODE_PROVIDER_ROOT_KEY) {
+		wrappedKey := r.GetPrivateKeyCtx().GetWrappedKey()
+		if !isValidBase64(wrappedKey) {
+			return nil, errors.Join(errors.New("private key ctx"), db.ErrExpectedBase64EncodedValue)
+		}
+		decodedKey, err := base64.StdEncoding.DecodeString(wrappedKey)
+		if err != nil {
+			return nil, errors.Join(errors.New("private key ctx"), db.ErrExpectedBase64EncodedValue)
+		}
+		if ocrypto.IsPEMOrDERPrivateKey(decodedKey) {
+			return nil, errors.Join(errors.New("private key ctx"), db.ErrUnencryptedPrivateKey)
+		}
 	}
 
 	// Marshal private key and public key context

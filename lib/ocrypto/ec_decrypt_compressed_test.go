@@ -3,7 +3,6 @@ package ocrypto
 import (
 	"crypto/ecdh"
 	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/x509"
 	"errors"
 	"testing"

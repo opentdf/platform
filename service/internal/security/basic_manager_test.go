@@ -416,26 +416,26 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		},
 	} {
 		t.Run("successful EC decryption with compressed ephemeral key "+tc.name, func(t *testing.T) {
-			ecKey, err := generateECKeyAndPEM(tc.mode)
+			curveKey, err := generateECKeyAndPEM(tc.mode)
 			require.NoError(t, err)
-			ecPrivKey, err := ecKey.PrivateKeyInPemFormat()
+			curvePrivKey, err := curveKey.PrivateKeyInPemFormat()
 			require.NoError(t, err)
-			ecPubKey, err := ecKey.PublicKeyInPemFormat()
+			curvePubKey, err := curveKey.PublicKeyInPemFormat()
 			require.NoError(t, err)
 
-			wrappedECPrivKeyStr, err := wrapKeyWithAESGCM([]byte(ecPrivKey), rootKey)
+			wrappedCurvePrivKeyStr, err := wrapKeyWithAESGCM([]byte(curvePrivKey), rootKey)
 			require.NoError(t, err)
 
 			mockDetails := new(MockKeyDetails)
 			mockDetails.MID = tc.kid
 			mockDetails.MAlgorithm = tc.algorithm
-			mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedECPrivKeyStr}
+			mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedCurvePrivKeyStr}
 
 			mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
 			mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
 			mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
-			ecEncryptor, err := ocrypto.FromPublicPEM(ecPubKey)
+			ecEncryptor, err := ocrypto.FromPublicPEM(curvePubKey)
 			require.NoError(t, err)
 			ciphertext, err := ecEncryptor.Encrypt(samplePayload)
 			require.NoError(t, err)

@@ -10,8 +10,6 @@ import (
 )
 
 func TestECDecryptWithCompressedEphemeralKey(t *testing.T) {
-	t.Parallel()
-
 	type testCase struct {
 		name string
 		mode ECCMode
@@ -25,6 +23,8 @@ func TestECDecryptWithCompressedEphemeralKey(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
 			receiverKeys, err := NewECKeyPair(test.mode)
 			if err != nil {
 				t.Fatalf("NewECKeyPair failed: %v", err)
@@ -57,14 +57,9 @@ func TestECDecryptWithCompressedEphemeralKey(t *testing.T) {
 				t.Fatal("EphemeralKey returned empty data")
 			}
 
-			ephemeralECDSA, err := parseECDSAPublicKey(ephemeralDER)
+			compressed, err := compressEphemeralKeyFromDER(ephemeralDER)
 			if err != nil {
-				t.Fatalf("parseECDSAPublicKey failed: %v", err)
-			}
-
-			compressed, err := CompressedECPublicKey(test.mode, *ephemeralECDSA)
-			if err != nil {
-				t.Fatalf("CompressedECPublicKey failed: %v", err)
+				t.Fatalf("compressEphemeralKeyFromDER failed: %v", err)
 			}
 
 			decryptor, err := FromPrivatePEMWithSalt(privPEM, salt, nil)
@@ -89,7 +84,7 @@ func TestECDecryptWithCompressedEphemeralKey(t *testing.T) {
 	}
 }
 
-func parseECDSAPublicKey(der []byte) (*ecdsa.PublicKey, error) {
+func compressEphemeralKeyFromDER(der []byte) ([]byte, error) {
 	pub, err := x509.ParsePKIXPublicKey(der)
 	if err != nil {
 		return nil, err
@@ -97,31 +92,38 @@ func parseECDSAPublicKey(der []byte) (*ecdsa.PublicKey, error) {
 
 	switch pub := pub.(type) {
 	case *ecdsa.PublicKey:
-		return pub, nil
+		uncompressed := elliptic.Marshal(pub.Curve, pub.X, pub.Y)
+		return compressUncompressedPoint(uncompressed)
 	case *ecdh.PublicKey:
-		curve := convCurveForTest(pub.Curve())
-		if curve == nil {
-			return nil, errors.New("unsupported ecdh curve")
-		}
-		x, y := elliptic.Unmarshal(curve, pub.Bytes())
-		if x == nil {
-			return nil, errors.New("failed to unmarshal ecdh public key")
-		}
-		return &ecdsa.PublicKey{Curve: curve, X: x, Y: y}, nil
+		return compressUncompressedPoint(pub.Bytes())
 	default:
 		return nil, errors.New("unsupported public key type")
 	}
 }
 
-func convCurveForTest(c ecdh.Curve) elliptic.Curve {
-	switch c {
-	case ecdh.P256():
-		return elliptic.P256()
-	case ecdh.P384():
-		return elliptic.P384()
-	case ecdh.P521():
-		return elliptic.P521()
-	default:
-		return nil
+func compressUncompressedPoint(uncompressed []byte) ([]byte, error) {
+	if len(uncompressed) == 0 || uncompressed[0] != 4 {
+		return nil, errors.New("unexpected uncompressed key format")
 	}
+
+	if (len(uncompressed)-1)%2 != 0 {
+		return nil, errors.New("invalid uncompressed key length")
+	}
+
+	coordSize := (len(uncompressed) - 1) / 2
+	x := uncompressed[1 : 1+coordSize]
+	y := uncompressed[1+coordSize:]
+	if len(y) != coordSize {
+		return nil, errors.New("invalid coordinate sizes")
+	}
+
+	prefix := byte(2)
+	if y[coordSize-1]&1 == 1 {
+		prefix = 3
+	}
+
+	compressed := make([]byte, 1+coordSize)
+	compressed[0] = prefix
+	copy(compressed[1:], x)
+	return compressed, nil
 }

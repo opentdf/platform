@@ -615,11 +615,10 @@ func TestBasicManager_DeriveKey_ECAllCurves(t *testing.T) {
 		mode      ocrypto.ECCMode
 		algorithm string
 		curve     elliptic.Curve
-		ecdhCurve ecdh.Curve
 	}{
-		{"P-256", ocrypto.ECCModeSecp256r1, AlgorithmECP256R1, elliptic.P256(), ecdh.P256()},
-		{"P-384", ocrypto.ECCModeSecp384r1, AlgorithmECP384R1, elliptic.P384(), ecdh.P384()},
-		{"P-521", ocrypto.ECCModeSecp521r1, AlgorithmECP521R1, elliptic.P521(), ecdh.P521()},
+		{"P-256", ocrypto.ECCModeSecp256r1, AlgorithmECP256R1, elliptic.P256()},
+		{"P-384", ocrypto.ECCModeSecp384r1, AlgorithmECP384R1, elliptic.P384()},
+		{"P-521", ocrypto.ECCModeSecp521r1, AlgorithmECP521R1, elliptic.P521()},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// Generate KAS key pair for this curve
@@ -632,16 +631,9 @@ func TestBasicManager_DeriveKey_ECAllCurves(t *testing.T) {
 			require.NoError(t, err)
 
 			// Generate client ephemeral key pair and compress the public key
-			clientEphemeralKey, err := tc.ecdhCurve.GenerateKey(rand.Reader)
+			clientKeyPair, err := ocrypto.NewECKeyPair(tc.mode)
 			require.NoError(t, err)
-
-			pubKeyBytes, err := x509.MarshalPKIXPublicKey(clientEphemeralKey.PublicKey())
-			require.NoError(t, err)
-			parsedPubKey, err := x509.ParsePKIXPublicKey(pubKeyBytes)
-			require.NoError(t, err)
-			clientECDSAKey, ok := parsedPubKey.(*ecdsa.PublicKey)
-			require.True(t, ok)
-			compressedClientKey, err := ocrypto.CompressedECPublicKey(tc.mode, *clientECDSAKey)
+			compressedClientKey, err := ocrypto.CompressedECPublicKey(tc.mode, clientKeyPair.PrivateKey.PublicKey)
 			require.NoError(t, err)
 
 			mockDetails := new(MockKeyDetails)
@@ -663,7 +655,9 @@ func TestBasicManager_DeriveKey_ECAllCurves(t *testing.T) {
 			// Verify by computing expected key via direct ECDH (bypasses UncompressECPubKey)
 			kasPrivKey, err := ocrypto.ECPrivateKeyFromPem([]byte(ecPrivKey))
 			require.NoError(t, err)
-			expectedSharedSecret, err := kasPrivKey.ECDH(clientEphemeralKey.PublicKey())
+			clientPriv, err := clientKeyPair.PrivateKey.ECDH()
+			require.NoError(t, err)
+			expectedSharedSecret, err := kasPrivKey.ECDH(clientPriv.PublicKey())
 			require.NoError(t, err)
 			expectedDerivedKey, err := ocrypto.CalculateHKDF(TDFSalt(), expectedSharedSecret)
 			require.NoError(t, err)

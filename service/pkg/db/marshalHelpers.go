@@ -156,7 +156,7 @@ func FormatAlg(alg policy.Algorithm) (string, error) {
 	case policy.Algorithm_ALGORITHM_EC_P384:
 		return "ec:secp384r1", nil
 	case policy.Algorithm_ALGORITHM_EC_P521:
-		return "ec:secp512r1", nil
+		return "ec:secp521r1", nil
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:

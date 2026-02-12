@@ -293,8 +293,7 @@ func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce strin
 		data.Set("scopes", strings.Join(scopes, " "))
 	}
 
-	body := strings.NewReader(data.Encode())
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting HTTP request: %w", err)
 	}
@@ -309,6 +308,8 @@ func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce strin
 	if err != nil {
 		return nil, err
 	}
+
+	req.Body = io.NopCloser(strings.NewReader(data.Encode()))
 
 	return req, nil
 }
@@ -339,8 +340,7 @@ func getCertExchangeRequest(ctx context.Context, tokenEndpoint string, clientCre
 		data.Add("audience", a)
 	}
 
-	body := strings.NewReader(data.Encode())
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -355,6 +355,8 @@ func getCertExchangeRequest(ctx context.Context, tokenEndpoint string, clientCre
 	if err = setClientAuth(clientCredentials, &data, req, tokenEndpoint); err != nil {
 		return nil, err
 	}
+
+	req.Body = io.NopCloser(strings.NewReader(data.Encode()))
 
 	return req, nil
 }

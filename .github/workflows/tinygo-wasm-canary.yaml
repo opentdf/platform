@@ -54,6 +54,10 @@ jobs:
             path: sdk/experimental/tdf/wasm/tinyjson
             expected: pass
             description: "tinyjson codegen manifest + assertion round-trip (replaces encoding/json)"
+          - name: zipstream
+            path: sdk/experimental/tdf/wasm/zipstream
+            expected: pass
+            description: "production zipstream writer: TDF ZIP creation + CRC32 combine + ZIP64"
           - name: wasm
             path: sdk/experimental/tdf/wasm
             expected: fail

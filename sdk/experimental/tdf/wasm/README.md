@@ -58,6 +58,7 @@ curl https://wasmtime.dev/install.sh -sSf | bash
 | `base64hex/` | pass | `encoding/base64`, `encoding/hex` |
 | `zipwrite/` | pass | `encoding/binary`, `hash/crc32`, `bytes`, `sort`, `sync` |
 | `tinyjson/` | pass | tinyjson codegen manifest + assertion round-trip |
+| `zipstream/` | pass | production zipstream writer: TDF ZIP creation + CRC32 combine + ZIP64 |
 | `iocontext/` | fail | `io`, `context`, `strings`, `strconv`, `fmt`, `errors` |
 | `stdjson/` | fail | `encoding/json` (superseded by `tinyjson/`) |
 

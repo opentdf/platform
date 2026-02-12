@@ -4,13 +4,13 @@
 # See README.md for prerequisites.
 
 .PHONY: all toolcheck generate build run clean \
-        base64hex zipwrite tinyjson iocontext stdjson
+        base64hex zipwrite tinyjson zipstream iocontext stdjson
 
 TINYGO_FLAGS = -target=wasip1 -no-debug -scheduler=none -gc=leaking
 OUT_DIR      = _out
 
 # Canaries expected to pass (build + run)
-PASS_CANARIES = base64hex zipwrite tinyjson
+PASS_CANARIES = base64hex zipwrite tinyjson zipstream
 # Canaries expected to fail (build-only, allow failure)
 FAIL_CANARIES = iocontext stdjson
 
@@ -56,6 +56,9 @@ zipwrite: $(OUT_DIR)
 
 tinyjson: $(OUT_DIR)
 	cd tinyjson && GOWORK=off tinygo build $(TINYGO_FLAGS) -o ../$(OUT_DIR)/tinyjson.wasm .
+
+zipstream: $(OUT_DIR)
+	cd zipstream && GOWORK=off tinygo build $(TINYGO_FLAGS) -o ../$(OUT_DIR)/zipstream.wasm .
 
 iocontext: $(OUT_DIR)
 	-tinygo build $(TINYGO_FLAGS) -o $(OUT_DIR)/iocontext.wasm ./iocontext

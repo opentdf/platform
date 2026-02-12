@@ -64,28 +64,6 @@ type AssertionConfig struct {
 	SigningKey     AssertionKey
 }
 
-// Assertion represents a cryptographically signed assertion in the TDF manifest.
-//
-// Assertions provide integrity verification and handling instructions that are
-// cryptographically bound to the TDF. They cannot be modified or copied to
-// another TDF without detection due to the cryptographic binding.
-//
-// The assertion structure includes:
-//   - Metadata: ID, type, scope, and state applicability
-//   - Statement: The actual assertion content in structured format
-//   - Binding: Cryptographic signature ensuring integrity
-//
-// Assertions are verified during TDF reading to ensure they haven't been
-// tampered with since TDF creation.
-type Assertion struct {
-	ID             string         `json:"id"`
-	Type           AssertionType  `json:"type"`
-	Scope          Scope          `json:"scope"`
-	AppliesToState AppliesToState `json:"appliesToState,omitempty"`
-	Statement      Statement      `json:"statement"`
-	Binding        Binding        `json:"binding,omitempty"`
-}
-
 var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with provided key")
 
 // Sign signs the assertion with the given hash and signature using the key.
@@ -173,8 +151,8 @@ func (a Assertion) GetHash() ([]byte, error) {
 	// Clear out the binding
 	a.Binding = Binding{}
 
-	// Marshal the assertion to JSON
-	assertionJSON, err := json.Marshal(a)
+	// Marshal the assertion to JSON using tinyjson
+	assertionJSON, err := a.MarshalJSON()
 	if err != nil {
 		return nil, fmt.Errorf("json.Marshal failed: %w", err)
 	}
@@ -201,61 +179,6 @@ func (a Assertion) GetHash() ([]byte, error) {
 	}
 
 	return ocrypto.SHA256AsHex(transformedJSON), nil
-}
-
-func (s *Statement) UnmarshalJSON(data []byte) error {
-	// Define a custom struct for deserialization
-	type Alias Statement
-	aux := &struct {
-		Value json.RawMessage `json:"value,omitempty"`
-		*Alias
-	}{
-		Alias: (*Alias)(s),
-	}
-
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
-
-	// Attempt to decode Value as an object
-	var temp map[string]interface{}
-	if json.Unmarshal(aux.Value, &temp) == nil {
-		// Re-encode the object as a string and assign to Value
-		objAsString, err := json.Marshal(temp)
-		if err != nil {
-			return err
-		}
-		s.Value = string(objAsString)
-	} else {
-		// Assign raw string to Value
-		var str string
-		if err := json.Unmarshal(aux.Value, &str); err != nil {
-			return fmt.Errorf("value is neither a valid JSON object nor a string: %s", string(aux.Value))
-		}
-		s.Value = str
-	}
-
-	return nil
-}
-
-// Statement includes information applying to the scope of the assertion.
-// It could contain rights, handling instructions, or general metadata.
-type Statement struct {
-	// Format describes the payload encoding format. (e.g. json)
-	Format string `json:"format,omitempty" validate:"required"`
-	// Schema describes the schema of the payload. (e.g. tdf)
-	Schema string `json:"schema,omitempty" validate:"required"`
-	// Value is the payload of the assertion.
-	Value string `json:"value,omitempty"  validate:"required"`
-}
-
-// Binding enforces cryptographic integrity of the assertion.
-// So the can't be modified or copied to another tdf.
-type Binding struct {
-	// Method used to bind the assertion. (e.g. jws)
-	Method string `json:"method,omitempty"`
-	// Signature of the assertion.
-	Signature string `json:"signature,omitempty"`
 }
 
 // AssertionType represents the category of assertion being made.

@@ -451,11 +451,8 @@ func testKeySplittingWithMultipleAttributes(t *testing.T) {
 		assert.NotNil(t, keyAccess.PolicyBinding, "Key access %d should have policy binding", i)
 
 		// Verify policy binding structure
-		binding, ok := keyAccess.PolicyBinding.(PolicyBinding)
-		if ok {
-			assert.Equal(t, "HS256", binding.Alg, "Policy binding algorithm should be HS256")
-			assert.NotEmpty(t, binding.Hash, "Policy binding hash should not be empty")
-		}
+		assert.Equal(t, "HS256", keyAccess.PolicyBinding.Alg, "Policy binding algorithm should be HS256")
+		assert.NotEmpty(t, keyAccess.PolicyBinding.Hash, "Policy binding hash should not be empty")
 	}
 
 	// Test that we can theoretically reconstruct the key from splits

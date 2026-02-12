@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"hash/crc32"
@@ -402,7 +401,7 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 	if err != nil {
 		return nil, err
 	}
-	manifestBytes, err := json.Marshal(manifest)
+	manifestBytes, err := manifest.MarshalJSON()
 	if err != nil {
 		return nil, err
 	}
@@ -643,7 +642,7 @@ func buildPolicy(values []*policy.Value) ([]byte, error) {
 			Attribute: value.GetFqn(),
 		})
 	}
-	policyBytes, err := json.Marshal(policy)
+	policyBytes, err := policy.MarshalJSON()
 	if err != nil {
 		return nil, err
 	}

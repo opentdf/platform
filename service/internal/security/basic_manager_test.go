@@ -156,28 +156,46 @@ func generateECKeyAndPEM(curve ocrypto.ECCMode) (ocrypto.ECKeyPair, error) {
 	return ocrypto.NewECKeyPair(curve)
 }
 
-func compressEphemeralPublicKey(t *testing.T, mode ocrypto.ECCMode, der []byte) []byte {
+func compressEphemeralPublicKey(t *testing.T, der []byte) []byte {
 	t.Helper()
 
 	pub, err := x509.ParsePKIXPublicKey(der)
 	require.NoError(t, err)
 
-	var ecdsaPub *ecdsa.PublicKey
 	switch pub := pub.(type) {
 	case *ecdsa.PublicKey:
-		ecdsaPub = pub
-	case *ecdh.PublicKey:
-		curve, err := ocrypto.GetECCurveFromECCMode(mode)
+		ecdhPub, err := pub.ECDH()
 		require.NoError(t, err)
-		x, y := elliptic.Unmarshal(curve, pub.Bytes())
-		require.NotNil(t, x, "failed to unmarshal ecdh public key")
-		ecdsaPub = &ecdsa.PublicKey{Curve: curve, X: x, Y: y}
+		return compressUncompressedPoint(t, ecdhPub.Bytes())
+	case *ecdh.PublicKey:
+		return compressUncompressedPoint(t, pub.Bytes())
 	default:
 		t.Fatalf("unsupported public key type: %T", pub)
 	}
 
-	compressed, err := ocrypto.CompressedECPublicKey(mode, *ecdsaPub)
-	require.NoError(t, err)
+	return nil
+}
+
+func compressUncompressedPoint(t *testing.T, uncompressed []byte) []byte {
+	t.Helper()
+
+	require.NotEmpty(t, uncompressed, "unexpected uncompressed key format")
+	require.Equal(t, byte(4), uncompressed[0], "unexpected uncompressed key format")
+	require.Equal(t, 0, (len(uncompressed)-1)%2, "invalid uncompressed key length")
+
+	coordSize := (len(uncompressed) - 1) / 2
+	x := uncompressed[1 : 1+coordSize]
+	y := uncompressed[1+coordSize:]
+	require.Len(t, y, coordSize, "invalid coordinate sizes")
+
+	prefix := byte(2)
+	if y[coordSize-1]&1 == 1 {
+		prefix = 3
+	}
+
+	compressed := make([]byte, 1+coordSize)
+	compressed[0] = prefix
+	copy(compressed[1:], x)
 	return compressed
 }
 
@@ -379,73 +397,73 @@ func TestBasicManager_Decrypt(t *testing.T) {
 	})
 
 	t.Run("successful EC decryption with compressed ephemeral key P384", func(t *testing.T) {
-		ecKey, err := generateECKeyAndPEM(ocrypto.ECCModeSecp384r1)
+		p384Key, err := generateECKeyAndPEM(ocrypto.ECCModeSecp384r1)
 		require.NoError(t, err)
-		ecPrivKey, err := ecKey.PrivateKeyInPemFormat()
+		p384PrivKey, err := p384Key.PrivateKeyInPemFormat()
 		require.NoError(t, err)
-		ecPubKey, err := ecKey.PublicKeyInPemFormat()
+		p384PubKey, err := p384Key.PublicKeyInPemFormat()
 		require.NoError(t, err)
 
-		wrappedECPrivKeyStr, err := wrapKeyWithAESGCM([]byte(ecPrivKey), rootKey)
+		wrappedP384PrivKeyStr, err := wrapKeyWithAESGCM([]byte(p384PrivKey), rootKey)
 		require.NoError(t, err)
 
 		mockDetails := new(MockKeyDetails)
 		mockDetails.MID = "ec-kid-decrypt-p384"
 		mockDetails.MAlgorithm = AlgorithmECP384R1
-		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedECPrivKeyStr}
+		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedP384PrivKeyStr}
 
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
 		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
-		ecEncryptor, err := ocrypto.FromPublicPEM(ecPubKey)
+		ecEncryptor, err := ocrypto.FromPublicPEM(p384PubKey)
 		require.NoError(t, err)
 		ciphertext, err := ecEncryptor.Encrypt(samplePayload)
 		require.NoError(t, err)
-		ephemeralPublicKey := compressEphemeralPublicKey(t, ocrypto.ECCModeSecp384r1, ecEncryptor.EphemeralKey())
+		ephemeralPublicKey := compressEphemeralPublicKey(t, ecEncryptor.EphemeralKey())
 
 		protectedKey, err := bm.Decrypt(t.Context(), mockDetails, ciphertext, ephemeralPublicKey)
 		require.NoError(t, err)
 		require.NotNil(t, protectedKey)
 
 		noOpEnc := &noOpEncapsulator{}
-		decryptedPayload, err := protectedKey.Export(noOpEnc)
+		decryptedPayload, err := noOpEnc.Encapsulate(protectedKey)
 		require.NoError(t, err)
 		assert.Equal(t, samplePayload, decryptedPayload)
 	})
 
 	t.Run("successful EC decryption with compressed ephemeral key P521", func(t *testing.T) {
-		ecKey, err := generateECKeyAndPEM(ocrypto.ECCModeSecp521r1)
+		p521Key, err := generateECKeyAndPEM(ocrypto.ECCModeSecp521r1)
 		require.NoError(t, err)
-		ecPrivKey, err := ecKey.PrivateKeyInPemFormat()
+		p521PrivKey, err := p521Key.PrivateKeyInPemFormat()
 		require.NoError(t, err)
-		ecPubKey, err := ecKey.PublicKeyInPemFormat()
+		p521PubKey, err := p521Key.PublicKeyInPemFormat()
 		require.NoError(t, err)
 
-		wrappedECPrivKeyStr, err := wrapKeyWithAESGCM([]byte(ecPrivKey), rootKey)
+		wrappedP521PrivKeyStr, err := wrapKeyWithAESGCM([]byte(p521PrivKey), rootKey)
 		require.NoError(t, err)
 
 		mockDetails := new(MockKeyDetails)
 		mockDetails.MID = "ec-kid-decrypt-p521"
 		mockDetails.MAlgorithm = AlgorithmECP521R1
-		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedECPrivKeyStr}
+		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedP521PrivKeyStr}
 
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
 		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
-		ecEncryptor, err := ocrypto.FromPublicPEM(ecPubKey)
+		ecEncryptor, err := ocrypto.FromPublicPEM(p521PubKey)
 		require.NoError(t, err)
 		ciphertext, err := ecEncryptor.Encrypt(samplePayload)
 		require.NoError(t, err)
-		ephemeralPublicKey := compressEphemeralPublicKey(t, ocrypto.ECCModeSecp521r1, ecEncryptor.EphemeralKey())
+		ephemeralPublicKey := compressEphemeralPublicKey(t, ecEncryptor.EphemeralKey())
 
 		protectedKey, err := bm.Decrypt(t.Context(), mockDetails, ciphertext, ephemeralPublicKey)
 		require.NoError(t, err)
 		require.NotNil(t, protectedKey)
 
 		noOpEnc := &noOpEncapsulator{}
-		decryptedPayload, err := protectedKey.Export(noOpEnc)
+		decryptedPayload, err := noOpEnc.Encapsulate(protectedKey)
 		require.NoError(t, err)
 		assert.Equal(t, samplePayload, decryptedPayload)
 	})

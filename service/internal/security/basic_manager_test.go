@@ -519,3 +519,159 @@ func TestBasicManager_GenerateECSessionKey(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+// TestBasicManager_Decrypt_ECAllCurves reproduces issue #3070:
+// BasicManager.Decrypt with compressed ephemeral keys fails for P-384/P-521
+// because UncompressECPubKey hardcodes elliptic.P256() instead of the actual curve.
+//
+// The existing "successful EC decryption" test only covers P-256 and passes the
+// ephemeral key in DER/PKIX format (which bypasses UncompressECPubKey entirely).
+// This test uses compressed ephemeral keys to exercise the buggy code path.
+func TestBasicManager_Decrypt_ECAllCurves(t *testing.T) {
+	log := logger.CreateTestLogger()
+	testCache := newTestCache(t, log)
+	rootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+	rootKey, _ := hex.DecodeString(rootKeyHex)
+
+	bm, err := NewBasicManager(log, testCache, rootKeyHex)
+	require.NoError(t, err)
+
+	samplePayload := []byte("secret payload16") // 16 bytes for valid AES key
+
+	for _, tc := range []struct {
+		name      string
+		mode      ocrypto.ECCMode
+		algorithm string
+	}{
+		{"P-256", ocrypto.ECCModeSecp256r1, AlgorithmECP256R1},
+		{"P-384", ocrypto.ECCModeSecp384r1, AlgorithmECP384R1},
+		{"P-521", ocrypto.ECCModeSecp521r1, AlgorithmECP521R1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ecKey, err := generateECKeyAndPEM(tc.mode)
+			require.NoError(t, err)
+			ecPrivKey, err := ecKey.PrivateKeyInPemFormat()
+			require.NoError(t, err)
+			ecPubKey, err := ecKey.PublicKeyInPemFormat()
+			require.NoError(t, err)
+
+			wrappedECPrivKeyStr, err := wrapKeyWithAESGCM([]byte(ecPrivKey), rootKey)
+			require.NoError(t, err)
+
+			// Encrypt using the KAS public key (generates an internal ephemeral key)
+			ecEncryptor, err := ocrypto.FromPublicPEM(ecPubKey)
+			require.NoError(t, err)
+			ciphertext, err := ecEncryptor.Encrypt(samplePayload)
+			require.NoError(t, err)
+
+			// Get ephemeral key in DER format and compress it.
+			// This simulates what rewrap.go does: parse PEM → compress → pass to Decrypt.
+			ephemeralDER := ecEncryptor.EphemeralKey()
+			pub, err := x509.ParsePKIXPublicKey(ephemeralDER)
+			require.NoError(t, err)
+			ecPub, ok := pub.(*ecdsa.PublicKey)
+			require.True(t, ok)
+			compressedEphemeral, err := ocrypto.CompressedECPublicKey(tc.mode, *ecPub)
+			require.NoError(t, err)
+
+			mockDetails := new(MockKeyDetails)
+			kid := fmt.Sprintf("ec-%s-decrypt", tc.name)
+			mockDetails.MID = kid
+			mockDetails.MAlgorithm = tc.algorithm
+			mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedECPrivKeyStr}
+			mockDetails.On("ID").Return(trust.KeyIdentifier(kid))
+			mockDetails.On("Algorithm").Return(tc.algorithm)
+			mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{
+				WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()),
+				WrappedKey:    mockDetails.MPrivateKey.GetWrappedKey(),
+			}, nil)
+
+			protectedKey, err := bm.Decrypt(t.Context(), mockDetails, ciphertext, compressedEphemeral)
+			require.NoError(t, err, "Decrypt should succeed for %s with compressed ephemeral key", tc.name)
+			require.NotNil(t, protectedKey)
+
+			noOpEnc := &noOpEncapsulator{}
+			decryptedPayload, err := protectedKey.Export(noOpEnc)
+			require.NoError(t, err)
+			assert.Equal(t, samplePayload, decryptedPayload, "decrypted payload should match for %s", tc.name)
+		})
+	}
+}
+
+// TestBasicManager_DeriveKey_ECAllCurves reproduces issue #3070:
+// BasicManager.DeriveKey calls UncompressECPubKey directly (not via DecryptWithEphemeralKey),
+// so the hardcoded P-256 causes DeriveKey to fail for P-384/P-521.
+func TestBasicManager_DeriveKey_ECAllCurves(t *testing.T) {
+	log := logger.CreateTestLogger()
+	testCache := newTestCache(t, log)
+	rootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+	rootKey, _ := hex.DecodeString(rootKeyHex)
+
+	bm, err := NewBasicManager(log, testCache, rootKeyHex)
+	require.NoError(t, err)
+
+	for _, tc := range []struct {
+		name      string
+		mode      ocrypto.ECCMode
+		algorithm string
+		curve     elliptic.Curve
+		ecdhCurve ecdh.Curve
+	}{
+		{"P-256", ocrypto.ECCModeSecp256r1, AlgorithmECP256R1, elliptic.P256(), ecdh.P256()},
+		{"P-384", ocrypto.ECCModeSecp384r1, AlgorithmECP384R1, elliptic.P384(), ecdh.P384()},
+		{"P-521", ocrypto.ECCModeSecp521r1, AlgorithmECP521R1, elliptic.P521(), ecdh.P521()},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// Generate KAS key pair for this curve
+			ecKey, err := generateECKeyAndPEM(tc.mode)
+			require.NoError(t, err)
+			ecPrivKey, err := ecKey.PrivateKeyInPemFormat()
+			require.NoError(t, err)
+
+			wrappedECPrivKeyStr, err := wrapKeyWithAESGCM([]byte(ecPrivKey), rootKey)
+			require.NoError(t, err)
+
+			// Generate client ephemeral key pair and compress the public key
+			clientEphemeralKey, err := tc.ecdhCurve.GenerateKey(rand.Reader)
+			require.NoError(t, err)
+
+			pubKeyBytes, err := x509.MarshalPKIXPublicKey(clientEphemeralKey.PublicKey())
+			require.NoError(t, err)
+			parsedPubKey, err := x509.ParsePKIXPublicKey(pubKeyBytes)
+			require.NoError(t, err)
+			clientECDSAKey, ok := parsedPubKey.(*ecdsa.PublicKey)
+			require.True(t, ok)
+			compressedClientKey, err := ocrypto.CompressedECPublicKey(tc.mode, *clientECDSAKey)
+			require.NoError(t, err)
+
+			mockDetails := new(MockKeyDetails)
+			kid := fmt.Sprintf("ec-%s-derive", tc.name)
+			mockDetails.MID = kid
+			mockDetails.MAlgorithm = tc.algorithm
+			mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedECPrivKeyStr}
+			mockDetails.On("ID").Return(trust.KeyIdentifier(kid))
+			mockDetails.On("Algorithm").Return(tc.algorithm)
+			mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{
+				WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()),
+				WrappedKey:    mockDetails.MPrivateKey.GetWrappedKey(),
+			}, nil)
+
+			protectedKey, err := bm.DeriveKey(t.Context(), mockDetails, compressedClientKey, tc.curve)
+			require.NoError(t, err, "DeriveKey should succeed for %s", tc.name)
+			require.NotNil(t, protectedKey)
+
+			// Verify by computing expected key via direct ECDH (bypasses UncompressECPubKey)
+			kasPrivKey, err := ocrypto.ECPrivateKeyFromPem([]byte(ecPrivKey))
+			require.NoError(t, err)
+			expectedSharedSecret, err := kasPrivKey.ECDH(clientEphemeralKey.PublicKey())
+			require.NoError(t, err)
+			expectedDerivedKey, err := ocrypto.CalculateHKDF(TDFSalt(), expectedSharedSecret)
+			require.NoError(t, err)
+
+			noOpEnc := &noOpEncapsulator{}
+			actualDerivedKey, err := protectedKey.Export(noOpEnc)
+			require.NoError(t, err)
+			assert.Equal(t, expectedDerivedKey, actualDerivedKey, "derived key should match for %s", tc.name)
+		})
+	}
+}

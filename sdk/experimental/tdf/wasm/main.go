@@ -4,26 +4,19 @@
 //
 // This is the entry point for the hybrid WASM TDF engine. All crypto
 // operations are delegated to the host via the hostcrypto package;
-// the TDF logic (manifest construction, ZIP packaging, key splitting,
-// integrity) runs inside the WASM sandbox.
+// the TDF logic (manifest construction, ZIP packaging, integrity)
+// runs inside the WASM sandbox.
 //
-// EXPECTED TO FAIL under TinyGo until the spike work is complete.
 // See: docs/adr/spike-wasm-core-tinygo-hybrid.md
-//
-// Blockers:
-//   - lib/ocrypto → replaced by hostcrypto (go:wasmimport host functions)
-//   - github.com/google/uuid → generate on host or use TinyGo-compatible lib
-//   - protocol/go/policy → decouple from writer or provide lightweight types
-//   - log/slog → replace with minimal logger or remove
 package main
 
 import (
-	"context"
+	"strings"
 	"unsafe"
-
-	"github.com/opentdf/platform/sdk/experimental/tdf"
-	"github.com/opentdf/platform/sdk/experimental/tdf/wasm/hostcrypto"
 )
+
+// lastError holds the most recent error message for the host to retrieve.
+var lastError string
 
 // ── Exported WASM functions ─────────────────────────────────────────
 // Called by the host to perform TDF operations.
@@ -39,6 +32,21 @@ func wasmFree(_ uint32) {
 	// No-op with leaking GC; tracked for future improvement
 }
 
+//go:wasmexport get_error
+func getError(outPtr, outCapacity uint32) uint32 {
+	if lastError == "" {
+		return 0
+	}
+	msg := lastError
+	if uint32(len(msg)) > outCapacity {
+		msg = msg[:outCapacity]
+	}
+	dst := unsafe.Slice((*byte)(unsafe.Pointer(uintptr(outPtr))), len(msg))
+	copy(dst, msg)
+	lastError = ""
+	return uint32(len(msg))
+}
+
 //go:wasmexport tdf_encrypt
 func tdfEncrypt(
 	kasPubPtr, kasPubLen uint32,
@@ -47,23 +55,47 @@ func tdfEncrypt(
 	ptPtr, ptLen uint32,
 	outPtr, outCapacity uint32,
 ) uint32 {
-	// Stub — spike will implement the full encrypt path here
-	ctx := context.Background()
+	kasPubPEM := ptrToString(kasPubPtr, kasPubLen)
+	kasURL := ptrToString(kasURLPtr, kasURLLen)
 
-	// Validate that the tdf package is reachable
-	w, err := tdf.NewWriter(ctx)
-	if err != nil {
-		return 0
-	}
-	_ = w
-
-	// Validate that host crypto wrappers are linked
-	_, err = hostcrypto.RandomBytes(32)
-	if err != nil {
-		return 0
+	var attrs []string
+	if attrLen > 0 {
+		attrStr := ptrToString(attrPtr, attrLen)
+		attrs = strings.Split(attrStr, "\n")
 	}
 
-	return 0
+	plaintext := ptrToBytes(ptPtr, ptLen)
+
+	result, err := encrypt(kasPubPEM, kasURL, attrs, plaintext)
+	if err != nil {
+		lastError = err.Error()
+		return 0
+	}
+
+	if uint32(len(result)) > outCapacity {
+		lastError = "output buffer too small"
+		return 0
+	}
+
+	dst := unsafe.Slice((*byte)(unsafe.Pointer(uintptr(outPtr))), len(result))
+	copy(dst, result)
+	return uint32(len(result))
+}
+
+// ── WASM memory helpers ─────────────────────────────────────────────
+
+func ptrToString(ptr, length uint32) string {
+	if length == 0 {
+		return ""
+	}
+	return unsafe.String((*byte)(unsafe.Pointer(uintptr(ptr))), length)
+}
+
+func ptrToBytes(ptr, length uint32) []byte {
+	if length == 0 {
+		return nil
+	}
+	return unsafe.Slice((*byte)(unsafe.Pointer(uintptr(ptr))), length)
 }
 
 func main() {

@@ -124,6 +124,21 @@ func (x *XORSplitter) GenerateSplits(_ context.Context, attrs []*policy.Value, d
 	// 4. Collect all public keys from assignments
 	allKeys := collectAllPublicKeys(assignments)
 
+	// 5. Merge the default KAS public key if not already present.
+	// Attribute grants may reference the default KAS URL without including the public key
+	// (e.g., legacy grants with only a URI). The default KAS key fills this gap.
+	if x.config.defaultKAS != nil && x.config.defaultKAS.GetPublicKey() != nil {
+		kasURL := x.config.defaultKAS.GetKasUri()
+		if _, exists := allKeys[kasURL]; !exists {
+			allKeys[kasURL] = KASPublicKey{
+				URL:       kasURL,
+				KID:       x.config.defaultKAS.GetPublicKey().GetKid(),
+				PEM:       x.config.defaultKAS.GetPublicKey().GetPem(),
+				Algorithm: formatAlgorithm(x.config.defaultKAS.GetPublicKey().GetAlgorithm()),
+			}
+		}
+	}
+
 	slog.Debug("completed key split generation",
 		slog.Int("num_splits", len(splits)),
 		slog.Int("num_kas_keys", len(allKeys)))

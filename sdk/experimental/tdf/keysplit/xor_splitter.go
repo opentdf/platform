@@ -130,11 +130,12 @@ func (x *XORSplitter) GenerateSplits(_ context.Context, attrs []*policy.Value, d
 	if x.config.defaultKAS != nil && x.config.defaultKAS.GetPublicKey() != nil {
 		kasURL := x.config.defaultKAS.GetKasUri()
 		if _, exists := allKeys[kasURL]; !exists {
+			pubKey := x.config.defaultKAS.GetPublicKey()
 			allKeys[kasURL] = KASPublicKey{
 				URL:       kasURL,
-				KID:       x.config.defaultKAS.GetPublicKey().GetKid(),
-				PEM:       x.config.defaultKAS.GetPublicKey().GetPem(),
-				Algorithm: formatAlgorithm(x.config.defaultKAS.GetPublicKey().GetAlgorithm()),
+				KID:       pubKey.GetKid(),
+				PEM:       pubKey.GetPem(),
+				Algorithm: formatAlgorithm(pubKey.GetAlgorithm()),
 			}
 		}
 	}

@@ -18,12 +18,17 @@ import (
 // lastError holds the most recent error message for the host to retrieve.
 var lastError string
 
+// allocations keeps malloc'd buffers reachable so the GC doesn't reclaim
+// memory that the host has written data into between calls.
+var allocations [][]byte
+
 // ── Exported WASM functions ─────────────────────────────────────────
 // Called by the host to perform TDF operations.
 
 //go:wasmexport malloc
 func wasmMalloc(size uint32) uint32 {
 	buf := make([]byte, size)
+	allocations = append(allocations, buf)
 	return uint32(uintptr(unsafe.Pointer(&buf[0])))
 }
 
@@ -88,14 +93,20 @@ func ptrToString(ptr, length uint32) string {
 	if length == 0 {
 		return ""
 	}
-	return unsafe.String((*byte)(unsafe.Pointer(uintptr(ptr))), length)
+	// Copy into a Go-managed string so the result stays valid even if the
+	// original malloc'd buffer is reclaimed between host calls.
+	src := unsafe.Slice((*byte)(unsafe.Pointer(uintptr(ptr))), length)
+	return string(src)
 }
 
 func ptrToBytes(ptr, length uint32) []byte {
 	if length == 0 {
 		return nil
 	}
-	return unsafe.Slice((*byte)(unsafe.Pointer(uintptr(ptr))), length)
+	src := unsafe.Slice((*byte)(unsafe.Pointer(uintptr(ptr))), length)
+	dst := make([]byte, length)
+	copy(dst, src)
+	return dst
 }
 
 func main() {

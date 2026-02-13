@@ -65,6 +65,40 @@ curl https://wasmtime.dev/install.sh -sSf | bash
 The root `wasm/main.go` is the full WASM module stub (expected to fail until
 the spike is complete).
 
+## `hostcrypto/` — Host Function Wrappers
+
+The `hostcrypto` package provides typed Go wrappers for all WASM host-imported
+functions. It hides the raw pointer arithmetic (`uint32` ptr/len pairs) behind
+idiomatic Go APIs that accept `[]byte` and `string` and return `([]byte, error)`.
+
+All files are gated with `//go:build wasip1`.
+
+### Crypto wrappers (`hostcrypto.go`)
+
+| Function | Description |
+|----------|-------------|
+| `RandomBytes(n int)` | Cryptographically random bytes |
+| `AesGcmEncrypt(key, plaintext []byte)` | AES-256-GCM encrypt (returns nonce ‖ ciphertext ‖ tag) |
+| `AesGcmDecrypt(key, ciphertext []byte)` | AES-256-GCM decrypt |
+| `HmacSHA256(key, data []byte)` | HMAC-SHA256 (returns 32 bytes) |
+| `RsaOaepSha1Encrypt(pubPEM string, plaintext []byte)` | RSA-OAEP encrypt (SHA-1) |
+| `RsaOaepSha1Decrypt(privPEM string, ciphertext []byte)` | RSA-OAEP decrypt (SHA-1) |
+| `RsaGenerateKeypair(bits int)` | Generate RSA keypair (PEM-encoded) |
+
+### I/O wrappers (`hostio.go`)
+
+| Function | Description |
+|----------|-------------|
+| `ReadInput(buf []byte)` | Pull data from host input source (returns `io.EOF` at end) |
+| `WriteOutput(buf []byte)` | Push data to host output sink |
+
+### ABI conventions
+
+- Host functions return `uint32` result length on success, `0xFFFFFFFF` on error.
+- On error, `getLastError()` retrieves the UTF-8 message from the host.
+- Output buffers are pre-allocated based on known sizes from the ABI spec.
+- With `gc=leaking`, slice pointers are stable (no GC relocation).
+
 ## Building
 
 ```sh

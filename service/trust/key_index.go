@@ -83,7 +83,7 @@ type KeyIndex interface {
 
 // RegisteredKasURIResolver resolves the registered KAS URI for KAS when running with key management.
 type RegisteredKasURIResolver interface {
-	ResolveURI() (string, error)
-	String() string
-	LogValue() slog.Value
+	fmt.Stringer
+	slog.LogValuer
+	ResolveURI(ctx context.Context) (string, error)
 }

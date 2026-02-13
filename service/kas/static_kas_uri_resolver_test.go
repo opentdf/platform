@@ -1,6 +1,7 @@
 package kas
 
 import (
+	"context"
 	"log/slog"
 	"testing"
 
@@ -21,12 +22,12 @@ func TestStaticRegisteredKasURIResolverResolveURI(t *testing.T) {
 	resolver, err := NewStaticRegisteredKasURIResolver(testKasURI)
 	require.NoError(t, err)
 
-	uri, err := resolver.ResolveURI()
+	uri, err := resolver.ResolveURI(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, testKasURI, uri)
 
 	resolver = &StaticRegisteredKasURIResolver{}
-	uri, err = resolver.ResolveURI()
+	uri, err = resolver.ResolveURI(context.Background())
 	require.Error(t, err)
 	require.Empty(t, uri)
 }

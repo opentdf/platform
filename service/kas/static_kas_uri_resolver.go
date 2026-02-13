@@ -1,6 +1,7 @@
 package kas
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -28,7 +29,7 @@ func NewStaticRegisteredKasURIResolver(kasURI string) (*StaticRegisteredKasURIRe
 	}, nil
 }
 
-func (r *StaticRegisteredKasURIResolver) ResolveURI() (string, error) {
+func (r *StaticRegisteredKasURIResolver) ResolveURI(_ context.Context) (string, error) {
 	if r.kasURI == "" {
 		return "", fmt.Errorf("registered KAS URI is empty")
 	}

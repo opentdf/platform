@@ -83,7 +83,7 @@ func convertAlgToEnum(alg string) (policy.Algorithm, error) {
 }
 
 func (p *KeyIndexer) String() string {
-	kasURI, err := p.resolveKASURI()
+	kasURI, err := p.resolveKASURI(context.Background())
 	if err != nil {
 		return "PlatformKeyIndexer[unresolved]"
 	}
@@ -95,7 +95,7 @@ func (p *KeyIndexer) LogValue() slog.Value {
 }
 
 func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (trust.KeyDetails, error) {
-	kasURI, err := p.resolveKASURI()
+	kasURI, err := p.resolveKASURI(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, i
 }
 
 func (p *KeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
-	kasURI, err := p.resolveKASURI()
+	kasURI, err := p.resolveKASURI(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ func (p *KeyIndexer) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
 }
 
 func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
-	kasURI, err := p.resolveKASURI()
+	kasURI, err := p.resolveKASURI(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -317,9 +317,9 @@ func (p *KeyAdapter) ExportCertificate(_ context.Context) (string, error) {
 	return "", errors.New("not implemented")
 }
 
-func (p *KeyIndexer) resolveKASURI() (string, error) {
+func (p *KeyIndexer) resolveKASURI(ctx context.Context) (string, error) {
 	if p.resolver == nil {
 		return "", errors.New("missing registered KAS URI resolver")
 	}
-	return p.resolver.ResolveURI()
+	return p.resolver.ResolveURI(ctx)
 }

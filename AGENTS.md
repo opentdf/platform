@@ -8,7 +8,7 @@ This repo is a Go workspace (`go.work`) containing multiple Go modules:
 - `sdk/`: Go SDK and generated clients.
 - `lib/*/`: shared libraries (e.g., `lib/ocrypto`, `lib/identifier`).
 - `protocol/` and `service/`: protobuf sources; generated Go lives under `protocol/go/` and docs under `docs/grpc/` + `docs/openapi/`.
-- `tests-bdd/`: BDD/integration-style tests (Godog) and feature files (`tests-bdd/features/`).
+- `tests/`: BDD/integration-style tests (Godog) and feature files (`tests/features/`).
 - `docs/`, `examples/`, `adr/`: documentation, example code, and architecture decisions.
 
 ## Build, Test, and Development Commands
@@ -18,7 +18,7 @@ Prefer `make` targets at repo root:
 - `make toolcheck`: verifies required tooling (Buf, golangci-lint, generators).
 - `make build`: regenerates protos/codegen and builds `opentdf` + `sdk` + `examples`.
 - `make lint`: runs `buf lint`, `golangci-lint`, and `govulncheck` across modules.
-- `make test`: runs `go test ./... -race` across core modules (does **not** include `tests-bdd/`).
+- `make test`: runs `go test ./... -race` across core modules (does **not** include `tests/`).
 - `docker compose up`: brings up local infra (Postgres + Keycloak). See `docs/Contributing.md`.
 
 ## Coding Style & Naming Conventions
@@ -52,7 +52,7 @@ Prefer `make` targets at repo root:
 ### Test Types
 
 - **Unit tests**: `*_test.go` next to code; run `make test`.
-- **BDD tests**: run `cd tests-bdd && go test ./...` (requires Docker; feature files are `tests-bdd/features/*.feature`).
+- **BDD tests**: run `cd tests && go test ./...` (requires Docker; feature files are `tests/features/*.feature`).
 - **Integration tests** may require the compose stack; follow module README(s) under `service/`.
 - **README tests**: verify code examples in documentation compile and work correctly.
 

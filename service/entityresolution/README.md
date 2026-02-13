@@ -57,7 +57,7 @@ services:
 ### 3. Test Your Setup
 ```bash
 # Run integration tests
-cd service/entityresolution/integration
+cd tests/service/entityresolution/integration
 go test -v
 ```
 
@@ -145,7 +145,7 @@ ERS includes comprehensive integration testing with a contract testing framework
 
 ### Quick Start Testing
 ```bash
-cd service/entityresolution/integration
+cd tests/service/entityresolution/integration
 
 # Fast tests (no Docker)
 go test -v -short
@@ -196,7 +196,7 @@ See [`./integration/README_ADAPTER_PATTERN.md`](./integration/README_ADAPTER_PAT
 
 **Quick tests** (no Docker required):
 ```bash
-cd service/entityresolution/integration
+cd tests/service/entityresolution/integration
 go test -v -short  # Claims and SQLite only
 ```
 

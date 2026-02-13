@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/opentdf/platform/service/internal/fixtures"
+	"github.com/opentdf/platform/lib/fixtures"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/spf13/cobra"
@@ -66,7 +66,7 @@ You can clear/recycle your database with 'docker compose down' and 'docker compo
 
 			dbI := fixtures.NewDBInterface(ctx, *cfg)
 			f := fixtures.NewFixture(dbI)
-			fixtures.LoadFixtureData("./service/internal/fixtures/policy_fixtures.yaml")
+			fixtures.LoadFixtureDataFromDefault()
 			f.Provision(ctx)
 
 			cmd.Print("fixtures provision fully applied\n")

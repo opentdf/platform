@@ -264,7 +264,11 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 	if err != nil {
 		return nil, err
 	}
-	segmentSig, err := calculateSignature(segmentCipher, w.dek, w.segmentIntegrityAlgorithm, false) // Don't ever hex encode new tdf's
+	// Hash must cover nonce + cipher to match the standard SDK reader's verification.
+	// The standard SDK's Encrypt() returns nonce prepended to cipher and hashes that;
+	// EncryptInPlace() returns them separately, so we must concatenate for hashing.
+	segmentData := append(nonce, segmentCipher...) //nolint:gocritic // nonce cap == len, so always allocates
+	segmentSig, err := calculateSignature(segmentData, w.dek, w.segmentIntegrityAlgorithm, false)
 	if err != nil {
 		return nil, err
 	}

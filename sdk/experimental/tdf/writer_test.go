@@ -4,8 +4,12 @@ package tdf
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -14,6 +18,7 @@ import (
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/sdk/internal/zipstream"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xeipuuv/gojsonschema"
@@ -58,6 +63,8 @@ func TestWriterEndToEnd(t *testing.T) {
 		{"GetManifestIncludesInitialPolicy", testGetManifestIncludesInitialPolicy},
 		{"SparseIndicesInOrder", testSparseIndicesInOrder},
 		{"SparseIndicesOutOfOrder", testSparseIndicesOutOfOrder},
+		{"SegmentHashCoversNonceAndCipher", testSegmentHashCoversNonceAndCipher},
+		{"FinalizeWithURIOnlyGrant", testFinalizeWithURIOnlyGrant},
 	}
 
 	for _, tc := range testCases {
@@ -186,6 +193,95 @@ func testSparseIndicesOutOfOrder(t *testing.T) {
 		expectedPlain += sizes[idx]
 	}
 	assert.Equal(t, int64(expectedPlain), fin.TotalSize)
+}
+
+// testSegmentHashCoversNonceAndCipher is a regression test ensuring that the
+// HS256 segment hash covers nonce+ciphertext, not ciphertext alone.
+//
+// The standard SDK's Encrypt() returns nonce prepended to ciphertext and
+// hashes that combined blob; the experimental SDK's EncryptInPlace() returns
+// them separately, so the writer must concatenate before hashing.
+//
+// Only HS256 is tested because GMAC extracts the last 16 bytes of data as
+// the tag — stripping the nonce prefix doesn't change the tail, so GMAC is
+// structurally unable to detect a nonce-exclusion regression.
+func testSegmentHashCoversNonceAndCipher(t *testing.T) {
+	ctx := t.Context()
+
+	writer, err := NewWriter(ctx, WithSegmentIntegrityAlgorithm(HS256))
+	require.NoError(t, err)
+
+	testData := []byte("segment hash regression test payload")
+	result, err := writer.WriteSegment(ctx, 0, testData)
+	require.NoError(t, err)
+
+	// Read all bytes from the TDFData reader to get the full segment output.
+	allBytes, err := io.ReadAll(result.TDFData)
+	require.NoError(t, err)
+
+	// The last EncryptedSize bytes are the encrypted segment (nonce + cipher).
+	// Everything before that is the ZIP local file header.
+	encryptedData := allBytes[len(allBytes)-int(result.EncryptedSize):]
+
+	// Positive assertion: independently compute HMAC-SHA256 over nonce+cipher
+	// using crypto/hmac directly (not the production calculateSignature path)
+	// and verify it matches the stored hash.
+	mac := hmac.New(sha256.New, writer.dek)
+	mac.Write(encryptedData)
+	expectedHash := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	assert.Equal(t, expectedHash, result.Hash, "hash should equal independent HMAC-SHA256 over nonce+ciphertext")
+
+	// Negative / regression assertion: independently compute HMAC-SHA256 over
+	// cipher-only (stripping the 12-byte GCM nonce). If someone reverts the
+	// fix so only cipher is hashed, the stored hash would match this value.
+	cipherOnly := encryptedData[ocrypto.GcmStandardNonceSize:]
+	wrongMac := hmac.New(sha256.New, writer.dek)
+	wrongMac.Write(cipherOnly)
+	wrongHash := base64.StdEncoding.EncodeToString(wrongMac.Sum(nil))
+	assert.NotEqual(t, wrongHash, result.Hash, "hash must NOT match cipher-only (nonce must be included)")
+}
+
+// testFinalizeWithURIOnlyGrant is an end-to-end regression test ensuring
+// that Finalize succeeds when attribute grants reference a KAS URL without
+// embedding the public key (URI-only legacy grants). The default KAS must
+// supply the missing key information. Without the merge fix in
+// GenerateSplits, key wrapping fails with "no valid key access objects".
+func testFinalizeWithURIOnlyGrant(t *testing.T) {
+	ctx := t.Context()
+
+	defaultKAS := &policy.SimpleKasKey{
+		KasUri: testKAS1,
+		PublicKey: &policy.SimpleKasPublicKey{
+			Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+			Kid:       "default-kid",
+			Pem:       mockRSAPublicKey1,
+		},
+	}
+
+	writer, err := NewWriter(ctx, WithDefaultKASForWriter(defaultKAS))
+	require.NoError(t, err)
+
+	_, err = writer.WriteSegment(ctx, 0, []byte("uri-only grant test"))
+	require.NoError(t, err)
+
+	// Create attribute with a URI-only grant (no KasKeys / no embedded public key).
+	uriOnlyAttr := createTestAttributeWithRule(
+		"https://example.com/attr/Level/value/Secret",
+		"", "", // no KAS URL → no grants added by helper
+		policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	)
+	uriOnlyAttr.Grants = []*policy.KeyAccessServer{
+		{Uri: testKAS1}, // URI-only, no KasKeys
+	}
+
+	fin, err := writer.Finalize(ctx, WithAttributeValues([]*policy.Value{uriOnlyAttr}))
+	require.NoError(t, err, "Finalize must succeed when default KAS fills in missing key for URI-only grant")
+	require.NotNil(t, fin.Manifest)
+
+	// Verify the key access object references the right KAS
+	require.GreaterOrEqual(t, len(fin.Manifest.KeyAccessObjs), 1)
+	assert.Equal(t, testKAS1, fin.Manifest.KeyAccessObjs[0].KasURL)
+	assert.NotEmpty(t, fin.Manifest.KeyAccessObjs[0].WrappedKey)
 }
 
 // testInitialAttributesOnWriter verifies that attributes/KAS supplied at
@@ -992,6 +1088,196 @@ func BenchmarkTDFCreation(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
+		}
+	})
+}
+
+// TestCrossDecryptWithSharedDEK verifies that the experimental writer's
+// encryption format is compatible with the production SDK by injecting a
+// shared DEK into the experimental writer and cross-validating with the
+// same crypto primitives the production reader uses:
+//
+//   - ocrypto.AesGcm.Encrypt()  (production encrypt: returns nonce||ciphertext)
+//   - ocrypto.AesGcm.Decrypt()  (production decrypt: expects nonce||ciphertext)
+//   - HMAC-SHA256(dek, nonce||ciphertext)  (production segment hash verification)
+//
+// The test also assembles a complete TDF ZIP from the experimental writer
+// and parses it with zipstream.TDFReader (the same reader the production
+// SDK uses internally) to verify structural compatibility.
+func TestCrossDecryptWithSharedDEK(t *testing.T) {
+	ctx := t.Context()
+
+	sharedDEK, err := ocrypto.RandomBytes(kKeySize)
+	require.NoError(t, err)
+
+	t.Run("SingleSegment", func(t *testing.T) {
+		original := []byte("Cross-SDK format compatibility: single segment")
+
+		sharedCipher, err := ocrypto.NewAESGcm(sharedDEK)
+		require.NoError(t, err)
+
+		// --- Experimental writer with injected DEK ---
+		writer, err := NewWriter(ctx, WithSegmentIntegrityAlgorithm(HS256))
+		require.NoError(t, err)
+		writer.dek = sharedDEK
+		writer.block, err = ocrypto.NewAESGcm(sharedDEK)
+		require.NoError(t, err)
+
+		expInput := append([]byte(nil), original...)
+		expResult, err := writer.WriteSegment(ctx, 0, expInput)
+		require.NoError(t, err)
+
+		allBytes, err := io.ReadAll(expResult.TDFData)
+		require.NoError(t, err)
+		expEncrypted := allBytes[len(allBytes)-int(expResult.EncryptedSize):]
+
+		// --- Production-style encrypt with the same DEK ---
+		prodEncrypted, err := sharedCipher.Encrypt(original)
+		require.NoError(t, err)
+
+		// --- Cross-decrypt: production Decrypt() on experimental output ---
+		decryptedFromExp, err := sharedCipher.Decrypt(expEncrypted)
+		require.NoError(t, err, "production Decrypt must handle experimental output")
+		assert.Equal(t, decryptedFromExp, original)
+
+		// --- Cross-decrypt: Decrypt() on production output ---
+		decryptedFromProd, err := sharedCipher.Decrypt(prodEncrypted)
+		require.NoError(t, err)
+		assert.Equal(t, original, decryptedFromProd)
+
+		// --- Hash cross-verification ---
+		// The production reader computes HMAC-SHA256(payloadKey, encryptedSegment)
+		// and compares it against the manifest segment hash. Verify the
+		// experimental writer's stored hash matches this computation.
+		mac := hmac.New(sha256.New, sharedDEK)
+		mac.Write(expEncrypted)
+		independentHash := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+		assert.Equal(t, expResult.Hash, independentHash,
+			"experimental hash must equal production-style HMAC-SHA256")
+
+		// Verify production-encrypted data also hashes correctly
+		prodMac := hmac.New(sha256.New, sharedDEK)
+		prodMac.Write(prodEncrypted)
+		prodHash := base64.StdEncoding.EncodeToString(prodMac.Sum(nil))
+		assert.NotEmpty(t, prodHash)
+		// Both hashes are valid HMACs but differ because nonces are random
+		assert.NotEqual(t, independentHash, prodHash)
+	})
+
+	t.Run("MultiSegment", func(t *testing.T) {
+		sharedCipher, err := ocrypto.NewAESGcm(sharedDEK)
+		require.NoError(t, err)
+
+		writer, err := NewWriter(ctx, WithSegmentIntegrityAlgorithm(HS256))
+		require.NoError(t, err)
+		writer.dek = sharedDEK
+		writer.block, err = ocrypto.NewAESGcm(sharedDEK)
+		require.NoError(t, err)
+
+		segments := [][]byte{
+			[]byte("segment zero"),
+			[]byte("segment one with longer content for variety"),
+			[]byte("s2"),
+		}
+
+		for i, original := range segments {
+			input := append([]byte(nil), original...)
+			result, err := writer.WriteSegment(ctx, i, input)
+			require.NoError(t, err)
+
+			raw, err := io.ReadAll(result.TDFData)
+			require.NoError(t, err)
+			encrypted := raw[len(raw)-int(result.EncryptedSize):]
+
+			// Cross-decrypt each segment with production-style Decrypt
+			decrypted, err := sharedCipher.Decrypt(encrypted)
+			require.NoError(t, err, "segment %d cross-decrypt", i)
+			assert.Equal(t, original, decrypted, "segment %d plaintext", i)
+
+			// Verify hash matches independent HMAC
+			mac := hmac.New(sha256.New, sharedDEK)
+			mac.Write(encrypted)
+			assert.Equal(t,
+				base64.StdEncoding.EncodeToString(mac.Sum(nil)),
+				result.Hash, "segment %d hash", i)
+		}
+	})
+
+	t.Run("FullTDFAssembly", func(t *testing.T) {
+		// Assemble a complete TDF ZIP from the experimental writer and
+		// parse it with the same zipstream.TDFReader the production SDK uses.
+		writer, err := NewWriter(ctx, WithSegmentIntegrityAlgorithm(HS256))
+		require.NoError(t, err)
+		writer.dek = sharedDEK
+		writer.block, err = ocrypto.NewAESGcm(sharedDEK)
+		require.NoError(t, err)
+
+		plainSegments := [][]byte{
+			[]byte("first segment payload"),
+			[]byte("second segment payload - a bit longer"),
+		}
+		sharedCipher, err := ocrypto.NewAESGcm(sharedDEK)
+		require.NoError(t, err)
+
+		// Collect segment TDFData (ZIP local headers + encrypted data)
+		var tdfBuf bytes.Buffer
+		for i, original := range plainSegments {
+			input := append([]byte(nil), original...)
+			result, err := writer.WriteSegment(ctx, i, input)
+			require.NoError(t, err)
+			_, err = io.Copy(&tdfBuf, result.TDFData)
+			require.NoError(t, err)
+		}
+
+		// Finalize (adds central directory + manifest entry)
+		attrs := []*policy.Value{
+			createTestAttribute("https://example.com/attr/Cross/value/Test", testKAS1, "kid1"),
+		}
+		fin, err := writer.Finalize(ctx, WithAttributeValues(attrs))
+		require.NoError(t, err)
+		tdfBuf.Write(fin.Data)
+
+		// Parse with zipstream.TDFReader — the production SDK's ZIP parser
+		tdfReader, err := zipstream.NewTDFReader(bytes.NewReader(tdfBuf.Bytes()))
+		require.NoError(t, err, "production TDFReader must parse experimental TDF ZIP")
+
+		// Verify manifest is valid JSON with expected fields
+		manifestJSON, err := tdfReader.Manifest()
+		require.NoError(t, err)
+		assert.Contains(t, manifestJSON, `"algorithm":"AES-256-GCM"`)
+		assert.Contains(t, manifestJSON, `"isStreamable":true`)
+
+		var manifest Manifest
+		require.NoError(t, json.Unmarshal([]byte(manifestJSON), &manifest))
+		require.Len(t, manifest.Segments, len(plainSegments))
+		assert.Equal(t, "HS256", manifest.SegmentHashAlgorithm)
+		assert.NotEmpty(t, manifest.Signature, "root signature must be present")
+
+		// Verify payload is readable and each segment decrypts correctly
+		payloadSize, err := tdfReader.PayloadSize()
+		require.NoError(t, err)
+
+		var offset int64
+		for i, seg := range manifest.Segments {
+			require.LessOrEqual(t, offset+seg.EncryptedSize, payloadSize,
+				"segment %d exceeds payload bounds", i)
+
+			readBuf, err := tdfReader.ReadPayload(offset, seg.EncryptedSize)
+			require.NoError(t, err, "segment %d ReadPayload", i)
+
+			// This is exactly what the production reader does:
+			// 1. Verify segment hash
+			mac := hmac.New(sha256.New, sharedDEK)
+			mac.Write(readBuf)
+			computedHash := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+			assert.Equal(t, seg.Hash, computedHash, "segment %d hash verification", i)
+
+			// 2. Decrypt
+			decrypted, err := sharedCipher.Decrypt(readBuf)
+			require.NoError(t, err, "segment %d decrypt", i)
+			assert.Equal(t, plainSegments[i], decrypted, "segment %d plaintext", i)
+
+			offset += seg.EncryptedSize
 		}
 	})
 }

@@ -24,10 +24,10 @@ toolcheck:
 		echo "Please upgrade buf. See https://docs.buf.build/installation for instructions."; \
 		exit 1; \
 	fi
-	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.1.6'" && exit 1)
+	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0'" && exit 1)
 	@which protoc-gen-doc > /dev/null || (echo "protoc-gen-doc not found, run 'go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1'" && exit 1)
 	@which protoc-gen-connect-openapi > /dev/null || (echo "protoc-gen-connect-openapi not found, run 'go install github.com/sudorandom/protoc-gen-connect-openapi@v0.18.0'" && exit 1)
-	@required_golangci_lint_version="2.1.0"; \
+	@required_golangci_lint_version="2.8.0"; \
 	current_version=$$(golangci-lint --version | grep -Eo 'v?[0-9]+\.[0-9]+\.[0-9]+' | sed 's/^v//' | head -n 1); \
 	[ "$$(printf '%s\n' "$$required_golangci_lint_version" "$$current_version" | sort -V | head -n1)" = "$$required_golangci_lint_version" ] || \
 		(echo "golangci-lint version must be v$$required_golangci_lint_version or later [found: $$current_version]" && exit 1)

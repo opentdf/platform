@@ -280,6 +280,7 @@ func Start(f ...StartOptions) error {
 		otdf:                   otdf,
 		client:                 client,
 		keyManagerCtxFactories: startConfig.trustKeyManagerCtxs,
+		kasURIResolver:         startConfig.kasURIResolver,
 		logger:                 logger,
 		reg:                    svcRegistry,
 		cacheManager:           cacheManager,

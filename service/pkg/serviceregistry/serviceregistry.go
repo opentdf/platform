@@ -56,6 +56,10 @@ type RegistrationParams struct {
 	// EXPERIMENTAL
 	KeyManagerCtxFactories []trust.NamedKeyManagerCtxFactory
 
+	// RegisteredKasURIResolver resolves the KAS URI for registrations that need it when key management is on.
+	// Optional; services may fall back to configuration-based defaults.
+	RegisteredKasURIResolver trust.RegisteredKasURIResolver
+
 	////// The following functions are optional and intended to be called by the service //////
 
 	// RegisterWellKnownConfig is a function that can be used to register a well-known configuration
@@ -65,6 +69,7 @@ type RegistrationParams struct {
 	// ready to serve requests. This function should be called in the RegisterFunc function.
 	RegisterReadinessCheck func(namespace string, check func(context.Context) error) error
 }
+
 type (
 	HandlerServer       func(ctx context.Context, mux *runtime.ServeMux) error
 	RegisterFunc[S any] func(RegistrationParams) (impl S, HandlerServer HandlerServer)

@@ -421,7 +421,7 @@ func UncompressECPubKey(curve elliptic.Curve, compressedPubKey []byte) (*ecdsa.P
 	}
 	// Creating ecdsa.PublicKey from *big.Int
 	ephemeralECDSAPublicKey := &ecdsa.PublicKey{
-		Curve: elliptic.P256(),
+		Curve: curve,
 		X:     x,
 		Y:     y,
 	}

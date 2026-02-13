@@ -156,6 +156,49 @@ func generateECKeyAndPEM(curve ocrypto.ECCMode) (ocrypto.ECKeyPair, error) {
 	return ocrypto.NewECKeyPair(curve)
 }
 
+func compressEphemeralPublicKey(t *testing.T, der []byte) []byte {
+	t.Helper()
+
+	pub, err := x509.ParsePKIXPublicKey(der)
+	require.NoError(t, err)
+
+	switch pub := pub.(type) {
+	case *ecdsa.PublicKey:
+		ecdhPub, err := pub.ECDH()
+		require.NoError(t, err)
+		return compressUncompressedPoint(t, ecdhPub.Bytes())
+	case *ecdh.PublicKey:
+		return compressUncompressedPoint(t, pub.Bytes())
+	default:
+		t.Fatalf("unsupported public key type: %T", pub)
+	}
+
+	return nil
+}
+
+func compressUncompressedPoint(t *testing.T, uncompressed []byte) []byte {
+	t.Helper()
+
+	require.NotEmpty(t, uncompressed, "unexpected uncompressed key format")
+	require.Equal(t, byte(4), uncompressed[0], "unexpected uncompressed key format")
+	require.Equal(t, 0, (len(uncompressed)-1)%2, "invalid uncompressed key length")
+
+	coordSize := (len(uncompressed) - 1) / 2
+	x := uncompressed[1 : 1+coordSize]
+	y := uncompressed[1+coordSize:]
+	require.Len(t, y, coordSize, "invalid coordinate sizes")
+
+	prefix := byte(2)
+	if y[coordSize-1]&1 == 1 {
+		prefix = 3
+	}
+
+	compressed := make([]byte, 1+coordSize)
+	compressed[0] = prefix
+	copy(compressed[1:], x)
+	return compressed
+}
+
 // Helper to create a test cache
 func newTestCache(t *testing.T, log *logger.Logger) *cache.Cache {
 	t.Helper()
@@ -352,6 +395,62 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, samplePayload, decryptedPayload)
 	})
+
+	for _, tc := range []struct {
+		name      string
+		mode      ocrypto.ECCMode
+		algorithm string
+		kid       string
+	}{
+		{
+			name:      "P384",
+			mode:      ocrypto.ECCModeSecp384r1,
+			algorithm: AlgorithmECP384R1,
+			kid:       "ec-kid-decrypt-p384",
+		},
+		{
+			name:      "P521",
+			mode:      ocrypto.ECCModeSecp521r1,
+			algorithm: AlgorithmECP521R1,
+			kid:       "ec-kid-decrypt-p521",
+		},
+	} {
+		t.Run("successful EC decryption with compressed ephemeral key "+tc.name, func(t *testing.T) {
+			curveKey, err := generateECKeyAndPEM(tc.mode)
+			require.NoError(t, err)
+			curvePrivKey, err := curveKey.PrivateKeyInPemFormat()
+			require.NoError(t, err)
+			curvePubKey, err := curveKey.PublicKeyInPemFormat()
+			require.NoError(t, err)
+
+			wrappedCurvePrivKeyStr, err := wrapKeyWithAESGCM([]byte(curvePrivKey), rootKey)
+			require.NoError(t, err)
+
+			mockDetails := new(MockKeyDetails)
+			mockDetails.MID = tc.kid
+			mockDetails.MAlgorithm = tc.algorithm
+			mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedCurvePrivKeyStr}
+
+			mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
+			mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
+			mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
+
+			ecEncryptor, err := ocrypto.FromPublicPEM(curvePubKey)
+			require.NoError(t, err)
+			ciphertext, err := ecEncryptor.Encrypt(samplePayload)
+			require.NoError(t, err)
+			ephemeralPublicKey := compressEphemeralPublicKey(t, ecEncryptor.EphemeralKey())
+
+			protectedKey, err := bm.Decrypt(t.Context(), mockDetails, ciphertext, ephemeralPublicKey)
+			require.NoError(t, err)
+			require.NotNil(t, protectedKey)
+
+			noOpEnc := &noOpEncapsulator{}
+			decryptedPayload, err := noOpEnc.Encapsulate(protectedKey)
+			require.NoError(t, err)
+			assert.Equal(t, samplePayload, decryptedPayload)
+		})
+	}
 
 	t.Run("fail ExportPrivateKey", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)

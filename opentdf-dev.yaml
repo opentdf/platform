@@ -75,6 +75,10 @@ server:
       groups_claim: # realm_access.roles
       # Claim the represents the idP client ID
       client_id_claim: # azp
+      # Optional external role provider (name is resolved via StartOptions)
+      # roles_provider:
+      #   name: external
+      #   config: {} # provider-specific (any object)
       ## Extends the builtin policy
       extension: |
         g, opentdf-admin, role:admin

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -11,13 +12,15 @@ import (
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/authz"
 
 	_ "embed"
 )
 
 var (
-	rolePrefix  = "role:"
-	defaultRole = "unknown"
+	rolePrefix          = "role:"
+	defaultRole         = "unknown"
+	ErrPermissionDenied = errors.New("permission denied")
 )
 
 //go:embed casbin_policy.csv
@@ -34,12 +37,14 @@ type Enforcer struct {
 
 	isDefaultPolicy bool
 	isDefaultModel  bool
+	roleProvider    authz.RoleProvider
 }
 
 type casbinSubject []string
 
 type CasbinConfig struct {
 	PolicyConfig
+	RoleProvider authz.RoleProvider
 }
 
 // newCasbinEnforcer creates a new casbin enforcer
@@ -112,6 +117,11 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		return nil, fmt.Errorf("failed to create casbin enforcer: %w", err)
 	}
 
+	roleProvider := c.RoleProvider
+	if roleProvider == nil {
+		roleProvider = newJWTClaimsRoleProvider(c.GroupsClaim, logger)
+	}
+
 	return &Enforcer{
 		Enforcer:        e,
 		Config:          c,
@@ -119,16 +129,23 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		isDefaultPolicy: isDefaultPolicy,
 		isDefaultModel:  isDefaultModel,
 		logger:          logger,
+		roleProvider:    roleProvider,
 	}, nil
 }
 
 // casbinEnforce is a helper function to enforce the policy with casbin
 // TODO implement a common type so this can be used for both http and grpc
-func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, error) {
+func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleRequest) (bool, error) {
 	// extract the role claim from the token
-	s := e.buildSubjectFromToken(token)
+	s, err := e.buildSubjectFromToken(ctx, token, req)
+	if err != nil {
+		e.logger.Warn("role provider error", slog.Any("error", err))
+		return false, ErrPermissionDenied
+	}
 	s = append(s, rolePrefix+defaultRole)
 
+	resource := req.Resource
+	action := req.Action
 	for _, info := range s {
 		allowed, err := e.Enforcer.Enforce(info, resource, action)
 		if err != nil {
@@ -153,15 +170,18 @@ func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, erro
 		slog.String("action", action),
 		slog.String("resource", resource),
 	)
-	return false, errors.New("permission denied")
+	return false, ErrPermissionDenied
 }
 
-func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
+func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req authz.RoleRequest) (casbinSubject, error) {
 	var subject string
 	info := casbinSubject{}
 
 	e.logger.Debug("building subject from token")
-	roles := e.extractRolesFromToken(t)
+	roles, err := e.roleProvider.Roles(ctx, t, req)
+	if err != nil {
+		return nil, err
+	}
 
 	if claim, found := t.Get(e.Config.UserNameClaim); found {
 		sub, ok := claim.(string)
@@ -176,66 +196,5 @@ func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 	}
 	info = append(info, roles...)
 	info = append(info, subject)
-	return info
-}
-
-func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
-	e.logger.Debug("extracting roles from token")
-	roles := []string{}
-
-	roleClaim := e.Config.GroupsClaim
-	// roleMap := e.Config.RoleMap
-
-	selectors := strings.Split(roleClaim, ".")
-	claim, exists := t.Get(selectors[0])
-	if !exists {
-		e.logger.Warn("claim not found",
-			slog.String("claim", roleClaim),
-			slog.Any("claims", claim),
-		)
-		return nil
-	}
-	e.logger.Debug("root claim found",
-		slog.String("claim", roleClaim),
-		slog.Any("claims", claim),
-	)
-	// use dotnotation if the claim is nested
-	if len(selectors) > 1 {
-		claimMap, ok := claim.(map[string]interface{})
-		if !ok {
-			e.logger.Warn("claim is not of type map[string]interface{}",
-				slog.String("claim", roleClaim),
-				slog.Any("claims", claim),
-			)
-			return nil
-		}
-		claim = dotNotation(claimMap, strings.Join(selectors[1:], "."))
-		if claim == nil {
-			e.logger.Warn("claim not found",
-				slog.String("claim", roleClaim),
-				slog.Any("claims", claim),
-			)
-			return nil
-		}
-	}
-
-	// check the type of the role claim
-	switch v := claim.(type) {
-	case string:
-		roles = append(roles, v)
-	case []interface{}:
-		for _, rr := range v {
-			if r, ok := rr.(string); ok {
-				roles = append(roles, r)
-			}
-		}
-	default:
-		e.logger.Warn("could not get claim type",
-			slog.String("selector", roleClaim),
-			slog.Any("claims", claim),
-		)
-		return nil
-	}
-
-	return roles
+	return info, nil
 }

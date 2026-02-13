@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -138,4 +140,28 @@ func TestWithConnectAndIPCInterceptorsTogether(t *testing.T) {
 		&cfg.extraIPCInterceptors[0],
 		"connect and IPC interceptor slices must be independent",
 	)
+}
+
+type noopRoleProvider struct{}
+
+func (noopRoleProvider) Roles(_ context.Context, _ jwt.Token, _ authz.RoleRequest) ([]string, error) {
+	return nil, nil
+}
+
+func TestWithAuthZRoleProvider(t *testing.T) {
+	var cfg StartConfig
+	cfg = WithAuthZRoleProvider(noopRoleProvider{})(cfg)
+
+	require.NotNil(t, cfg.authzRoleProvider)
+	assert.Nil(t, cfg.authzRoleProviderFactories)
+}
+
+func TestWithAuthZRoleProviderFactory(t *testing.T) {
+	var cfg StartConfig
+	cfg = WithAuthZRoleProviderFactory("mock", func(_ context.Context, _ authz.ProviderConfig) (authz.RoleProvider, error) {
+		return noopRoleProvider{}, nil
+	})(cfg)
+
+	require.NotNil(t, cfg.authzRoleProviderFactories)
+	require.Contains(t, cfg.authzRoleProviderFactories, "mock")
 }

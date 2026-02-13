@@ -516,18 +516,80 @@ Profile time split: host functions vs TDF logic vs JSON marshal vs ZIP write.
 
 ---
 
+## I/O Architecture Decision
+
+### Spike: No I/O hooks (WASM is a pure in-memory transform)
+
+The spike passes entire plaintext and TDF output as flat buffers in WASM
+linear memory. The `tdf_encrypt` export takes `(plaintext_ptr, plaintext_len)`
+and writes the complete TDF to `(out_ptr, out_capacity)`. The host handles
+all data movement before and after the WASM call.
+
+This is sufficient for the spike's single-segment scope (max 4MB payload)
+and avoids I/O complexity in the WASM module entirely.
+
+### Options Considered for Production (M2+)
+
+Three I/O models were evaluated:
+
+| Model | Description | Verdict |
+|-------|-------------|---------|
+| **A: WASM drives I/O** | Host provides `read_input`, `write_output`, `kas_rewrap` imports. WASM orchestrates the full flow. | Rejected — puts KAS auth/retry/network inside WASM; browser async bridging (SharedArrayBuffer + Atomics) adds fragility. |
+| **B: Host drives, WASM transforms** | Host iterates segments, calls WASM per-segment (`encrypt_segment`, `build_manifest`). Host handles ZIP, streaming, KAS. | Current spike model. Works for single-segment. Duplicates TDF assembly logic per host for multi-segment. |
+| **C: Hybrid — WASM owns format, host owns bytes** | Host provides `read_input` / `write_output` for data movement only. KAS stays on the host side. WASM builds the full TDF structure (manifest, ZIP, segments) and streams through the I/O hooks. | **Recommended for M2.** |
+
+### Recommended M2 Evolution: Hybrid I/O (Option C)
+
+For multi-segment TDFs, WASM linear memory (32-bit, 4GB ceiling, practical
+limits lower) cannot hold the full input or output. Two I/O host functions
+let the WASM module stream segments through without buffering the entire file:
+
+```go
+// Host provides a readable source (file, network response, etc.).
+// WASM calls this to pull plaintext data segment by segment.
+//go:wasmimport io read_input
+func _read_input(buf_ptr, buf_capacity uint32) uint32
+
+// Host provides a writable sink (file, HTTP response body, etc.).
+// WASM calls this to push TDF output (ZIP entries, manifest, etc.).
+//go:wasmimport io write_output
+func _write_output(buf_ptr, buf_len uint32) uint32
+```
+
+KAS and authentication remain entirely on the host side. The host resolves
+keys (via `kas_rewrap` or equivalent) *before* invoking WASM and passes the
+unwrapped key material in. WASM never performs network calls.
+
+**Advantages:**
+- TDF format logic (manifest construction, ZIP layout, segment iteration)
+  lives in one place — the WASM module — avoiding per-host duplication
+- Streaming works for arbitrarily large files without linear memory pressure
+- Hosts implement two simple I/O callbacks plus their own KAS client
+- No network complexity inside WASM
+
+**Tradeoffs:**
+- Two additional host functions to implement per platform
+- WASM must manage internal buffering for ZIP streaming (already proven
+  by the zipstream canary)
+- Browser hosts still need a sync bridge for the I/O callbacks (same
+  complexity as crypto hooks — SharedArrayBuffer + Atomics or
+  pre-buffered segments)
+
+---
+
 ## Future ABI Evolution (Post-Spike)
 
-If spike passes, the ABI grows to support EC-wrapped TDFs:
+If spike passes, the ABI grows to support EC-wrapped TDFs and streaming I/O:
 
 ```
-Spike (8 functions):
+Spike (8 functions — crypto only):
   random_bytes, aes_gcm_encrypt, aes_gcm_decrypt, hmac_sha256,
   rsa_oaep_sha1_encrypt, rsa_oaep_sha1_decrypt,
   rsa_generate_keypair, get_last_error
 
-M2 adds EC support (+3 functions = 11 total):
-  ec_generate_keypair, ecdh_derive, hkdf_sha256
+M2 adds EC support (+3) and streaming I/O (+2) = 13 total:
+  ec_generate_keypair, ecdh_derive, hkdf_sha256,
+  read_input, write_output
 
 M3 may add (+1-2 functions):
   sha256 (for tdfSalt in EC path, unless hardcoded)

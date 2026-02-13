@@ -56,5 +56,6 @@ func (c *Config) LogValue() slog.Value {
 				slog.String("refresh_interval", c.Cache.RefreshInterval),
 			),
 		),
+		slog.Any("allow_direct_entitlements", c.AllowDirectEntitlements),
 	)
 }

@@ -82,6 +82,10 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				}
 				l.Debug("authorization service config", slog.Any("config", authZCfg.LogValue()))
 
+				if authZCfg.AllowDirectEntitlements {
+					l.Debug("direct entitlements are enabled for authorization service")
+				}
+
 				if !authZCfg.Cache.Enabled {
 					l.Debug("entitlement policy cache is disabled")
 					return as, nil
@@ -109,10 +113,6 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				// if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
 				// 	logger.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 				// }
-
-				if authZCfg.AllowDirectEntitlements {
-					l.Info("direct entitlements are enabled for authorization service")
-				}
 
 				return as, nil
 			},

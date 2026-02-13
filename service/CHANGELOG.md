@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.13.0](https://github.com/opentdf/platform/compare/service/v0.12.0...service/v0.13.0) (2026-02-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** remove namespace certificate feature ([#3051](https://github.com/opentdf/platform/issues/3051))
+
+### Features
+
+* **authz:** add casbin roleprovider interface ([#3069](https://github.com/opentdf/platform/issues/3069)) ([9d6b3f3](https://github.com/opentdf/platform/commit/9d6b3f3cc7ef8065e719345ef073bf31d87f3e22))
+* **core:** add interceptors to start options ([#3031](https://github.com/opentdf/platform/issues/3031)) ([e0b4e93](https://github.com/opentdf/platform/commit/e0b4e93ec9aa7d62d531997c432e66b10bdcab9d))
+
+
+### Bug Fixes
+
+* **deps:** vulnerability fix in connect-rpc validate and ristretto ([#3065](https://github.com/opentdf/platform/issues/3065)) ([8860fed](https://github.com/opentdf/platform/commit/8860fed95cd4dee60052bfeb0a3bfe7b609c455e))
+* Go 1.25 ([#3053](https://github.com/opentdf/platform/issues/3053)) ([65eb7c3](https://github.com/opentdf/platform/commit/65eb7c3d5fe1892de1e4fabb9b3b7894742c3f02))
+* **kas:** dont hardcode P-256 curve ([#3073](https://github.com/opentdf/platform/issues/3073)) ([826d857](https://github.com/opentdf/platform/commit/826d857cf11a1e83108e45773d794c334c2b2e09))
+* **kas:** Fix EC P-521 typo ([#3075](https://github.com/opentdf/platform/issues/3075)) ([abc088d](https://github.com/opentdf/platform/commit/abc088d6f5f55eab240813faad2e575d87df51c1))
+* **policy:** reject unencrypted private keys for modes 1/2 ([#3072](https://github.com/opentdf/platform/issues/3072)) ([e2dc6d8](https://github.com/opentdf/platform/commit/e2dc6d8d1e1d35ce6a241bce2a23fa2d128511fa))
+
+
+### Code Refactoring
+
+* **policy:** remove namespace certificate feature ([#3051](https://github.com/opentdf/platform/issues/3051)) ([48abb81](https://github.com/opentdf/platform/commit/48abb813ae7accbfcaa6e6ad4bb7071e3476716d))
+
 ## [0.12.0](https://github.com/opentdf/platform/compare/service/v0.11.0...service/v0.12.0) (2026-01-27)
 
 

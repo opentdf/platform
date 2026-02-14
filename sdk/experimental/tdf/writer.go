@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"hash/crc32"
@@ -31,7 +30,27 @@ const (
 	tdfAsZip = "zip"
 	// tdfZipReference indicates the payload is stored as a reference in the ZIP
 	tdfZipReference = "reference"
+	// kGMACPayloadLength is the GCM auth tag size extracted for GMAC integrity
+	kGMACPayloadLength = 16
 )
+
+func calculateSignature(data, secret []byte, alg IntegrityAlgorithm, isLegacyTDF bool) (string, error) {
+	if alg == HS256 {
+		hmac := ocrypto.CalculateSHA256Hmac(secret, data)
+		if isLegacyTDF {
+			return hex.EncodeToString(hmac), nil
+		}
+		return string(hmac), nil
+	}
+	if kGMACPayloadLength > len(data) {
+		return "", errors.New("fail to create gmac signature")
+	}
+
+	if isLegacyTDF {
+		return hex.EncodeToString(data[len(data)-kGMACPayloadLength:]), nil
+	}
+	return string(data[len(data)-kGMACPayloadLength:]), nil
+}
 
 // SegmentResult contains the result of writing a segment
 type SegmentResult struct {
@@ -382,7 +401,7 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 	if err != nil {
 		return nil, err
 	}
-	manifestBytes, err := json.Marshal(manifest)
+	manifestBytes, err := manifest.MarshalJSON()
 	if err != nil {
 		return nil, err
 	}
@@ -623,7 +642,7 @@ func buildPolicy(values []*policy.Value) ([]byte, error) {
 			Attribute: value.GetFqn(),
 		})
 	}
-	policyBytes, err := json.Marshal(policy)
+	policyBytes, err := policy.MarshalJSON()
 	if err != nil {
 		return nil, err
 	}

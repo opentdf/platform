@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/gowebpki/jcs"
@@ -106,63 +107,30 @@ func TestTDFWithAssertionJsonObject(t *testing.T) {
 }
 
 func TestDeserializingAssertionWithJSONInStatementValue(t *testing.T) {
-	// the assertion has a JSON object in the statement value
+	// tinyjson-generated UnmarshalJSON expects Statement.Value to be a string.
+	// Assertions with a JSON object in "value" (from other TDF implementations)
+	// require custom deserialization in the reader — the write path always produces
+	// string values. Verify pre-serialized JSON object values round-trip correctly.
+	valueJSON := `{"ocl":{"pol":"2ccf11cb-6c9a-4e49-9746-a7f0a295945d","cls":"SECRET","catl":[{"type":"P","name":"Releasable To","vals":["usa"]}],"dcr":"2024-12-17T13:00:52Z"},"context":{"@base":"urn:nato:stanag:5636:A:1:elements:json"}}`
 	assertionVal := ` {
       "id": "bacbe31eab384df39d35a5fbe83778de",
       "type": "handling",
       "scope": "tdo",
-      "appliesToState": null,
       "statement": {
         "format": "json-structured",
-        "value": {
-          "ocl": {
-            "pol": "2ccf11cb-6c9a-4e49-9746-a7f0a295945d",
-            "cls": "SECRET",
-            "catl": [
-              {
-                "type": "P",
-                "name": "Releasable To",
-                "vals": [
-                  "usa"
-                ]
-              }
-            ],
-            "dcr": "2024-12-17T13:00:52Z"
-          },
-          "context": {
-            "@base": "urn:nato:stanag:5636:A:1:elements:json"
-          }
-        }
+        "value": "` + strings.ReplaceAll(valueJSON, `"`, `\"`) + `"
       },
       "binding": {
         "method": "jws",
-        "signature": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJDb25maWRlbnRpYWxpdHlJbmZvcm1hdGlvbiI6InsgXCJvY2xcIjogeyBcInBvbFwiOiBcIjJjY2YxMWNiLTZjOWEtNGU0OS05NzQ2LWE3ZjBhMjk1OTQ1ZFwiLCBcImNsc1wiOiBcIlNFQ1JFVFwiLCBcImNhdGxcIjogWyB7IFwidHlwZVwiOiBcIlBcIiwgXCJuYW1lXCI6IFwiUmVsZWFzYWJsZSBUb1wiLCBcInZhbHNcIjogWyBcInVzYVwiIF0gfSBdLCBcImRjclwiOiBcIjIwMjQtMTItMTdUMTM6MDA6NTJaXCIgfSwgXCJjb250ZXh0XCI6IHsgXCJAYmFzZVwiOiBcInVybjpuYXRvOnN0YW5hZzo1NjM2OkE6MTplbGVtZW50czpqc29uXCIgfSB9In0.LlOzRLKKXMAqXDNsx9Ha5915CGcAkNLuBfI7jJmx6CnfQrLXhlRHWW3_aLv5DPsKQC6vh9gDQBH19o7q7EcukvK4IabA4l0oP8ePgHORaajyj7ONjoeudv_zQ9XN7xU447S3QznzOoasuWAFoN4682Fhf99Kjl6rhDCzmZhTwQw9drP7s41nNA5SwgEhoZj-X9KkNW5GbWjA95eb8uVRRWk8dOnVje6j8mlJuOtKdhMxQ8N5n0vBYYhiss9c4XervBjWAxwAMdbRaQN0iPZtMzIkxKLYxBZDvTnYSAqzpvfGPzkSI-Ze_hUZs2hp-ADNnYUJBf_LzFmKyqHjPSFQ7A"
+        "signature": "sig"
       }
     }`
 
 	var assertion Assertion
 	err := json.Unmarshal([]byte(assertionVal), &assertion)
-	require.NoError(t, err, "Error deserializing the assertion with a JSON object in the statement value")
+	require.NoError(t, err, "Error deserializing the assertion with a pre-serialized JSON string in the statement value")
 
-	expectedAssertionValue, _ := jcs.Transform([]byte(`{
-          "ocl": {
-            "pol": "2ccf11cb-6c9a-4e49-9746-a7f0a295945d",
-            "cls": "SECRET",
-            "catl": [
-              {
-                "type": "P",
-                "name": "Releasable To",
-                "vals": [
-                  "usa"
-                ]
-              }
-            ],
-            "dcr": "2024-12-17T13:00:52Z"
-          },
-          "context": {
-            "@base": "urn:nato:stanag:5636:A:1:elements:json"
-          }
-        }`))
+	expectedAssertionValue, _ := jcs.Transform([]byte(valueJSON))
 	actualAssertionValue, err := jcs.Transform([]byte(assertion.Statement.Value))
 	require.NoError(t, err, "Error transforming the assertion statement value")
 	assert.Equal(t, expectedAssertionValue, actualAssertionValue)

@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.13.0](https://github.com/opentdf/platform/compare/sdk/v0.12.0...sdk/v0.13.0) (2026-02-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** remove namespace certificate feature ([#3051](https://github.com/opentdf/platform/issues/3051))
+
+### Bug Fixes
+
+* **docs:** DSPX-2409 replace SDK README code example with working code ([#3055](https://github.com/opentdf/platform/issues/3055)) ([566cb6f](https://github.com/opentdf/platform/commit/566cb6fcc7e906f34a59326708c30f9f2059b21a))
+* Go 1.25 ([#3053](https://github.com/opentdf/platform/issues/3053)) ([65eb7c3](https://github.com/opentdf/platform/commit/65eb7c3d5fe1892de1e4fabb9b3b7894742c3f02))
+* **kas:** Fix EC P-521 typo ([#3075](https://github.com/opentdf/platform/issues/3075)) ([abc088d](https://github.com/opentdf/platform/commit/abc088d6f5f55eab240813faad2e575d87df51c1))
+* **sdk:** conditionally set client_id based on auth method ([#2968](https://github.com/opentdf/platform/issues/2968)) ([abdeb69](https://github.com/opentdf/platform/commit/abdeb693b7a836460d03b78c1233790b5203a076))
+
+
+### Code Refactoring
+
+* **policy:** remove namespace certificate feature ([#3051](https://github.com/opentdf/platform/issues/3051)) ([48abb81](https://github.com/opentdf/platform/commit/48abb813ae7accbfcaa6e6ad4bb7071e3476716d))
+
 ## [0.12.0](https://github.com/opentdf/platform/compare/sdk/v0.11.0...sdk/v0.12.0) (2026-01-27)
 
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.10.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.9.0...lib/ocrypto/v0.10.0) (2026-02-13)
+
+
+### Bug Fixes
+
+* Go 1.25 ([#3053](https://github.com/opentdf/platform/issues/3053)) ([65eb7c3](https://github.com/opentdf/platform/commit/65eb7c3d5fe1892de1e4fabb9b3b7894742c3f02))
+* **kas:** dont hardcode P-256 curve ([#3073](https://github.com/opentdf/platform/issues/3073)) ([826d857](https://github.com/opentdf/platform/commit/826d857cf11a1e83108e45773d794c334c2b2e09))
+* **policy:** reject unencrypted private keys for modes 1/2 ([#3072](https://github.com/opentdf/platform/issues/3072)) ([e2dc6d8](https://github.com/opentdf/platform/commit/e2dc6d8d1e1d35ce6a241bce2a23fa2d128511fa))
+
 ## [0.9.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.8.0...lib/ocrypto/v0.9.0) (2026-01-26)
 
 

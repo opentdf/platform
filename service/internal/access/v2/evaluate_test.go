@@ -630,6 +630,72 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 	}
 }
 
+// TestHierarchyRule_DefinitionMissingValues tests the defensive code path where
+// resourceValueFQNs contains values not present in attrDefinition.GetValues().
+// This guards against data inconsistency between the policy service and attribute definitions.
+func (s *EvaluateTestSuite) TestHierarchyRule_DefinitionMissingValues() {
+	tests := []struct {
+		name              string
+		attrDefinition    *policy.Attribute
+		resourceValueFQNs []string
+		entitlements      subjectmappingbuiltin.AttributeValueFQNsToActions
+		expectedFailures  int
+	}{
+		{
+			name: "empty definition values - all resource FQNs should fail",
+			attrDefinition: &policy.Attribute{
+				Fqn:    levelFQN,
+				Rule:   policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+				Values: []*policy.Value{}, // Empty - simulates data inconsistency
+			},
+			resourceValueFQNs: []string{levelMidFQN, levelLowerMidFQN},
+			entitlements:      subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			expectedFailures:  2,
+		},
+		{
+			name: "definition missing requested values",
+			attrDefinition: &policy.Attribute{
+				Fqn:  levelFQN,
+				Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+				Values: []*policy.Value{
+					// Only has highest - missing the values we're requesting
+					{Fqn: levelHighestFQN, Value: "highest"},
+				},
+			},
+			resourceValueFQNs: []string{levelMidFQN, levelLowerMidFQN}, // Not in definition
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				levelHighestFQN: []*policy.Action{actionRead},
+			},
+			expectedFailures: 2,
+		},
+	}
+
+	for _, tc := range tests {
+		s.Run(tc.name, func() {
+			failures := hierarchyRule(
+				s.T().Context(),
+				s.logger,
+				tc.entitlements,
+				s.action,
+				tc.resourceValueFQNs,
+				tc.attrDefinition,
+			)
+
+			s.Len(failures, tc.expectedFailures, "Expected %d failures but got %d", tc.expectedFailures, len(failures))
+
+			// Verify each resource FQN is reported as a failure
+			failedFQNs := make(map[string]bool)
+			for _, f := range failures {
+				failedFQNs[f.AttributeValueFQN] = true
+				s.Equal(s.action.GetName(), f.ActionName)
+			}
+			for _, fqn := range tc.resourceValueFQNs {
+				s.True(failedFQNs[fqn], "Expected FQN %s to be in failures", fqn)
+			}
+		})
+	}
+}
+
 // Test cases for evaluateDefinition
 func (s *EvaluateTestSuite) TestEvaluateDefinition() {
 	tests := []struct {

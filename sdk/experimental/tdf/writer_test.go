@@ -111,9 +111,9 @@ func testGetManifestIncludesInitialPolicy(t *testing.T) {
 	}
 	assert.True(t, found, "provisional policy should include initial attribute FQN")
 
-	// Pre-finalize manifest should include kaos based on initial attributes, and estimated root signature
+	// Pre-finalize manifest should include kaos based on initial attributes.
+	// Root signature is empty when no segments have been written (GMAC requires data).
 	assert.Len(t, m.KeyAccessObjs, 1)
-	assert.NotEmpty(t, m.Signature)
 }
 
 // Sparse indices end-to-end: write 0,1,2,5000,5001,5002 and verify manifest and totals.
@@ -503,7 +503,7 @@ func testMultiSegmentFlow(t *testing.T) {
 
 	// Verify root signature was calculated from all segments
 	assert.NotEmpty(t, finalizeResult.Manifest.Signature, "Root signature should be set")
-	assert.Equal(t, "HS256", finalizeResult.Manifest.Algorithm, "Root signature algorithm should be HS256")
+	assert.Equal(t, "GMAC", finalizeResult.Manifest.Algorithm, "Root signature algorithm should be GMAC")
 }
 
 // testKeySplittingWithMultipleAttributes tests XOR key splitting with complex attribute scenarios

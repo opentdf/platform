@@ -156,8 +156,8 @@ type Writer struct {
 func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error) {
 	// Initialize Config
 	config := &WriterConfig{
-		integrityAlgorithm:        HS256,
-		segmentIntegrityAlgorithm: HS256,
+		integrityAlgorithm:        GMAC,
+		segmentIntegrityAlgorithm: GMAC,
 	}
 
 	for _, opt := range opts {
@@ -566,13 +566,18 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 		return nil, 0, 0, errors.New("empty segment hash")
 	}
 
-	rootSignature, err := calculateSignature(aggregateHash.Bytes(), w.dek, w.integrityAlgorithm, false)
-	if err != nil {
-		return nil, 0, 0, err
-	}
-	encryptInfo.RootSignature = RootSignature{
-		Algorithm: w.integrityAlgorithm.String(),
-		Signature: string(ocrypto.Base64Encode([]byte(rootSignature))),
+	// Only compute root signature when segments have been written; stub
+	// manifests returned before any WriteSegment call leave the root
+	// signature empty.
+	if aggregateHash.Len() > 0 {
+		rootSignature, err := calculateSignature(aggregateHash.Bytes(), w.dek, w.integrityAlgorithm, false)
+		if err != nil {
+			return nil, 0, 0, err
+		}
+		encryptInfo.RootSignature = RootSignature{
+			Algorithm: w.integrityAlgorithm.String(),
+			Signature: string(ocrypto.Base64Encode([]byte(rootSignature))),
+		}
 	}
 
 	keyAccessList, err := buildKeyAccessObjects(result, policyBytes, cfg.encryptedMetadata)

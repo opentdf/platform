@@ -42,7 +42,7 @@ func NewSegmentTDFWriter(expectedSegments int, opts ...Option) SegmentWriter {
 			Name:        TDFPayloadFileName,
 			Offset:      0,
 			ModTime:     time.Now(),
-			IsStreaming: true, // Use data descriptor pattern
+			IsStreaming: expectedSegments > 1, // Only need data descriptors when total size is unknown at header time
 		},
 		finalized: false,
 	}
@@ -87,7 +87,7 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, size uint6
 	// Deterministic behavior: segment 0 gets ZIP header, others get raw data
 	if index == 0 {
 		// Segment 0: Write local file header + encrypted data
-		if err := sw.writeLocalFileHeader(buffer); err != nil {
+		if err := sw.writeLocalFileHeader(buffer, size, crc32); err != nil {
 			return nil, &Error{Op: "write-segment", Type: "segment", Err: err}
 		}
 	}
@@ -172,12 +172,14 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 		sw.payloadEntry.Size > uint64(max32) ||
 		sw.payloadEntry.CompressedSize > uint64(max32)
 
-	// 1. Write data descriptor for payload (fail if Zip64Never but required)
-	if sw.config.Zip64 == Zip64Never && needZip64ForPayload {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrZip64Required}
-	}
-	if err := sw.writeDataDescriptor(buffer, needZip64ForPayload); err != nil {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: err}
+	// 1. Write data descriptor for payload only when streaming (multi-segment)
+	if sw.payloadEntry.IsStreaming {
+		if sw.config.Zip64 == Zip64Never && needZip64ForPayload {
+			return nil, &Error{Op: "finalize", Type: "segment", Err: ErrZip64Required}
+		}
+		if err := sw.writeDataDescriptor(buffer, needZip64ForPayload); err != nil {
+			return nil, &Error{Op: "finalize", Type: "segment", Err: err}
+		}
 	}
 
 	// 2. Update payload entry CRC32 and add to central directory
@@ -308,20 +310,37 @@ func (sw *segmentWriter) getTimeDateInMSDosFormat(t time.Time) (uint16, uint16) 
 	return uint16(timeInDos), uint16(dateInDos)
 }
 
-// writeLocalFileHeader writes the ZIP local file header for the payload
-func (sw *segmentWriter) writeLocalFileHeader(buf *bytes.Buffer) error {
+// writeLocalFileHeader writes the ZIP local file header for the payload.
+// segSize and segCRC are the segment-0 size/CRC; for single-segment TDFs
+// these equal the total payload values and are written directly into the
+// header (no data descriptor needed).
+func (sw *segmentWriter) writeLocalFileHeader(buf *bytes.Buffer, segSize uint64, segCRC uint32) error {
 	fileTime, fileDate := sw.getTimeDateInMSDosFormat(sw.payloadEntry.ModTime)
+
+	var bitFlag uint16
+	var headerCRC uint32
+	var headerCompSize uint32
+	var headerUncompSize uint32
+
+	if sw.payloadEntry.IsStreaming {
+		bitFlag = dataDescriptorBitFlag
+		// Sizes and CRC deferred to data descriptor
+	} else {
+		headerCRC = segCRC
+		headerCompSize = uint32(segSize)
+		headerUncompSize = uint32(segSize)
+	}
 
 	header := LocalFileHeader{
 		Signature:             fileHeaderSignature,
 		Version:               zipVersion,
-		GeneralPurposeBitFlag: dataDescriptorBitFlag,
+		GeneralPurposeBitFlag: bitFlag,
 		CompressionMethod:     0, // No compression
 		LastModifiedTime:      fileTime,
 		LastModifiedDate:      fileDate,
-		Crc32:                 0, // Will be in data descriptor
-		CompressedSize:        0, // Will be in data descriptor
-		UncompressedSize:      0, // Will be in data descriptor
+		Crc32:                 headerCRC,
+		CompressedSize:        headerCompSize,
+		UncompressedSize:      headerUncompSize,
 		FilenameLength:        uint16(len(sw.payloadEntry.Name)),
 		ExtraFieldLength:      0,
 	}
@@ -345,11 +364,16 @@ func (sw *segmentWriter) writeLocalFileHeader(buf *bytes.Buffer) error {
 
 	// Write ZIP64 extra field if needed
 	if header.ExtraFieldLength > 0 {
+		var extraOrigSize, extraCompSize uint64
+		if !sw.payloadEntry.IsStreaming {
+			extraOrigSize = segSize
+			extraCompSize = segSize
+		}
 		zip64Extra := Zip64ExtendedLocalInfoExtraField{
 			Signature:      zip64ExternalID,
 			Size:           zip64ExtendedLocalInfoExtraFieldSize - extraFieldHeaderSize,
-			OriginalSize:   0, // Will be in data descriptor
-			CompressedSize: 0, // Will be in data descriptor
+			OriginalSize:   extraOrigSize,
+			CompressedSize: extraCompSize,
 		}
 		if err := binary.Write(buf, binary.LittleEndian, zip64Extra); err != nil {
 			return err

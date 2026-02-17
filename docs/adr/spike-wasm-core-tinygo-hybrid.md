@@ -69,6 +69,36 @@ that the existing Go SDK can consume.
 
 ---
 
+## FIPS Compliance Constraint
+
+**All cryptographic operations must be delegated to the host — never compiled
+into the WASM binary.**
+
+The host ABI is the FIPS pluggability boundary. At deployment time, the host
+binary can be compiled with a FIPS-validated crypto backend (e.g.,
+`GOEXPERIMENT=boringcrypto` for Go, or a platform-specific FIPS module for
+browser/Python hosts). If any crypto runs inside the WASM sandbox, it bypasses
+the host-side FIPS backend and cannot be swapped at deployment time.
+
+This applies to **all** crypto primitives, including those that TinyGo can
+compile natively (e.g., `crypto/hmac`, `crypto/sha256`, `crypto/rand`). Even
+though these could run inside WASM, they must remain host-delegated so that
+FIPS-compliant deployments use a single, validated crypto provider for every
+operation.
+
+**Implications:**
+
+- Do NOT import `crypto/*` packages in the WASM module source
+- Do NOT create shared sub-packages (e.g., `lib/ocrypto/cryptoutil`) for
+  WASM to import — Go's package-level compilation would pull in the crypto
+  implementations, defeating host delegation
+- The 8 host functions in the spike ABI are the **minimum** crypto surface;
+  any new crypto operation requires a new host function, not an in-WASM
+  implementation
+- Non-crypto operations (base64, hex, CRC32, ZIP, JSON) are fine inside WASM
+
+---
+
 ## Host Function ABI
 
 ### Conventions

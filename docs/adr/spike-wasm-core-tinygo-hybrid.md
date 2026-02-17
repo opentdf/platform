@@ -61,9 +61,9 @@ that the existing Go SDK can consume.
              ┌─────────────┼──────────────┐
              ▼             ▼              ▼
        ┌──────────┐  ┌──────────┐  ┌───────────┐
-       │ Browser  │  │ Wazero   │  │ wasmtime  │
-       │ host.js  │  │ host.go  │  │ host.py   │
-       │ (stretch)│  │ (spike)  │  │ (future)  │
+       │ Browser  │  │ Wazero   │  │ Chicory   │
+       │ host.mjs │  │ host.go  │  │ host.java │
+       │ (done)   │  │ (done)   │  │ (done)    │
        └──────────┘  └──────────┘  └───────────┘
 ```
 
@@ -352,9 +352,9 @@ func AesGcmEncrypt(key, plaintext []byte) ([]byte, error) {
   `lib/ocrypto` equivalent
 - **Deliverable:** All 8 host functions pass individual round-trip tests
 
-#### Task 2.3 — Implement browser host (JS) *(stretch goal)*
+#### Task 2.3 — Implement browser host (JS) *(done)*
 
-- `sdk/experimental/tdf/host/browser/host.js`
+- `opentdf/web-sdk: wasm-host/`
 - `random_bytes` → `crypto.getRandomValues()`
 - `aes_gcm_encrypt/decrypt` → `SubtleCrypto.encrypt/decrypt`
   with `AES-GCM` algorithm
@@ -364,12 +364,22 @@ func AesGcmEncrypt(key, plaintext []byte) ([]byte, error) {
 - `rsa_generate_keypair` → `SubtleCrypto.generateKey`
   with `RSA-OAEP`, 2048 bits, export as PEM via `exportKey("pkcs8")`
   and `exportKey("spki")`
-- Caveat: SubtleCrypto is async; host must use sync bridge
-  (SharedArrayBuffer + Atomics) or pre-compute
-- **Deliverable:** Browser host passes same unit tests as Wazero host
+- SubtleCrypto is async; uses Worker + SharedArrayBuffer + Atomics
+  sync bridge
+- **Result:** All 3 test cases pass (HS256, GMAC, error handling)
+
+#### Task 2.4 — Implement JVM host (Java) *(done)*
+
+- `opentdf/java-sdk: wasm-host/`
+- WASM runtime: [Chicory](https://chicory.dev/) 1.5.3 (pure Java, zero native deps)
+- Host crypto: Java SDK classes (`AesGcm`, `AsymEncryption`,
+  `AsymDecryption`, `CryptoUtils`)
+- WASI stubs: Chicory `WasiPreview1`
+- No async bridge needed — Java crypto is synchronous
+- **Result:** All 3 test cases pass (HS256, GMAC, error handling)
 
 **Day 6 checkpoint:** All 8 host functions verified individually in Wazero.
-Browser host stretch goal either done or documented as feasible.
+Browser and JVM hosts validated with same test cases.
 
 ---
 
@@ -492,6 +502,44 @@ Profile time split: host functions vs TDF logic vs JSON marshal vs ZIP write.
 
 ---
 
+## Cross-Platform Validation Results
+
+The same `tdfcore.wasm` binary (built once with TinyGo) was loaded and
+tested on three independent host runtimes. Each host implements the 8
+crypto host functions using its platform's native crypto APIs.
+
+| Host | Runtime | Crypto Provider | Repo | Tests |
+|------|---------|-----------------|------|-------|
+| Go | Wazero | `lib/ocrypto` (std Go crypto) | `opentdf/platform` `sdk/experimental/tdf/wasm/host/` | HS256, GMAC, error handling |
+| Browser | WebAssembly API | SubtleCrypto (async, Worker+SAB bridge) | `opentdf/web-sdk` `wasm-host/` | HS256, GMAC, error handling |
+| JVM | Chicory 1.5.3 (pure Java) | Java SDK (`AesGcm`, `AsymEncryption`, `CryptoUtils`) | `opentdf/java-sdk` `wasm-host/` | HS256, GMAC, error handling |
+
+**All hosts pass the same three test cases:**
+
+1. **HS256 round-trip** — encrypt → parse ZIP → unwrap DEK → AES-GCM
+   decrypt → assert plaintext matches. Validates manifest schema version
+   (`4.3.0`), algorithm (`AES-256-GCM`), and integrity algorithm (`HS256`).
+2. **GMAC round-trip** — encrypt with GMAC segment integrity → verify
+   segment hash equals GCM auth tag (last 16 bytes of ciphertext) →
+   decrypt → assert plaintext matches.
+3. **Error handling** — invalid PEM key → encrypt returns 0 → `get_error`
+   returns non-empty error string.
+
+**Key differences between hosts:**
+
+| Aspect | Go (Wazero) | Browser | JVM (Chicory) |
+|--------|-------------|---------|---------------|
+| Async crypto bridge | Not needed | Worker + SharedArrayBuffer + Atomics | Not needed |
+| WASI stubs | Manual | Manual | Chicory `WasiPreview1` |
+| ZIP parsing | `archive/zip` | Inline minimal parser | `java.util.zip.ZipInputStream` |
+| New dependencies | `wazero` (already in use) | None (browser APIs) | `chicory-runtime`, `chicory-wasi` |
+
+This validates the core portability claim: TDF format logic is written
+once in the WASM module, and each SDK only needs to implement the host
+crypto ABI using its platform's native primitives.
+
+---
+
 ## Explicitly Out of Scope
 
 | Excluded | Rationale |
@@ -502,9 +550,8 @@ Profile time split: host functions vs TDF logic vs JSON marshal vs ZIP write.
 | KAS communication | Out of WASM scope per architecture (host callback) |
 | Assertions | Optional manifest feature; doesn't affect core feasibility |
 | Multi-segment TDF | Single segment proves the pattern; multi is just a loop |
-| Browser host | Stretch goal; Wazero host sufficient for go/no-go |
 | Streaming AES-GCM | TDF code is one-shot per segment; WebCrypto has no streaming GCM |
-| Python/Java hosts | Future milestone; Wazero proves the embedding pattern |
+| Python host | Future milestone; Go, browser, and JVM hosts prove the embedding pattern |
 
 ---
 

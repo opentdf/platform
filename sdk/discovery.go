@@ -147,7 +147,7 @@ func (s SDK) GetEntityAttributes(ctx context.Context, entity *authorization.Enti
 			return e.GetAttributeValueFqns(), nil
 		}
 	}
-	return []string{}, nil
+	return nil, nil
 }
 
 // ValidateAttributeValue checks that a single attribute value FQN is valid in format

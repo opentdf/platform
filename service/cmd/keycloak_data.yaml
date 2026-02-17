@@ -77,8 +77,21 @@ realms:
           name: cli-client
           serviceAccountsEnabled: false
           publicClient: true
+          directAccessGrantsEnabled: true
           redirectUris:
             - 'http://localhost:*'
+          protocolMappers:
+            - *customAudMapper
+      - client:
+          clientID: opentdf-public
+          enabled: true
+          name: opentdf-public
+          serviceAccountsEnabled: false
+          publicClient: true
+          directAccessGrantsEnabled: true
+          redirectUris:
+            - 'http://localhost:*'
+            - 'http://127.0.0.1:*'
           protocolMappers:
             - *customAudMapper
     users:

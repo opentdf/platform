@@ -43,6 +43,7 @@ const (
 	ErrPlatformEndpointNotFound      = Error("platform_endpoint not found in well-known configuration")
 	ErrAccessTokenInvalid            = Error("access token is invalid")
 	ErrWellKnowConfigEmpty           = Error("well-known configuration is empty")
+	ErrAttributeNotFound             = Error("attribute not found")
 )
 
 var (

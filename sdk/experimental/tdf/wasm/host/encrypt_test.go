@@ -150,7 +150,7 @@ func newEncryptFixture(t *testing.T) *encryptFixture {
 
 func (f *encryptFixture) wasmMalloc(t *testing.T, size uint32) uint32 {
 	t.Helper()
-	results, err := f.mod.ExportedFunction("malloc").Call(f.ctx, uint64(size))
+	results, err := f.mod.ExportedFunction("tdf_malloc").Call(f.ctx, uint64(size))
 	if err != nil {
 		t.Fatalf("malloc(%d): %v", size, err)
 	}

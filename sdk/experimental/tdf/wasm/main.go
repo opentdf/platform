@@ -25,14 +25,14 @@ var allocations [][]byte
 // ── Exported WASM functions ─────────────────────────────────────────
 // Called by the host to perform TDF operations.
 
-//go:wasmexport malloc
+//go:wasmexport tdf_malloc
 func wasmMalloc(size uint32) uint32 {
 	buf := make([]byte, size)
 	allocations = append(allocations, buf)
 	return uint32(uintptr(unsafe.Pointer(&buf[0])))
 }
 
-//go:wasmexport free
+//go:wasmexport tdf_free
 func wasmFree(_ uint32) {
 	// No-op with leaking GC; tracked for future improvement
 }

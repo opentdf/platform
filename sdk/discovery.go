@@ -44,6 +44,11 @@ func (s SDK) ListAttributes(ctx context.Context, namespace ...string) ([]*policy
 		if err != nil {
 			return nil, fmt.Errorf("listing attributes: %w", err)
 		}
+		if pages == 0 {
+			if total := resp.GetPagination().GetTotal(); total > 0 {
+				result = make([]*policy.Attribute, 0, total)
+			}
+		}
 		result = append(result, resp.GetAttributes()...)
 
 		nextOffset := resp.GetPagination().GetNextOffset()
@@ -143,7 +148,7 @@ func (s SDK) GetEntityAttributes(ctx context.Context, entity *authorization.Enti
 
 	entityID := entity.GetId()
 	for _, e := range resp.GetEntitlements() {
-		if entityID == "" || e.GetEntityId() == entityID {
+		if e.GetEntityId() == entityID {
 			return e.GetAttributeValueFqns(), nil
 		}
 	}

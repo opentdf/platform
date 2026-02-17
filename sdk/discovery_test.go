@@ -344,6 +344,25 @@ func TestGetEntityAttributes_IDMismatch(t *testing.T) {
 	assert.Empty(t, result, "should return empty when no entitlement matches the requested entity ID")
 }
 
+func TestGetEntityAttributes_EmptyEntityID(t *testing.T) {
+	// An entity with no ID should not match entitlements belonging to another entity ID.
+	authzClient := &mockDiscoveryAuthzClient{
+		getEntitlementsFunc: func(_ context.Context, _ *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
+			return &authorization.GetEntitlementsResponse{
+				Entitlements: []*authorization.EntityEntitlements{
+					{EntityId: "some-entity", AttributeValueFqns: []string{"https://example.com/attr/a/value/x"}},
+				},
+			}, nil
+		},
+	}
+	s := newDiscoverySDK(nil, authzClient)
+
+	entity := &authorization.Entity{} // no ID set
+	result, err := s.GetEntityAttributes(context.Background(), entity)
+	require.NoError(t, err)
+	assert.Empty(t, result, "entity with empty ID should not receive entitlements belonging to another entity")
+}
+
 func TestGetEntityAttributes_ServiceError(t *testing.T) {
 	authzClient := &mockDiscoveryAuthzClient{
 		getEntitlementsFunc: func(_ context.Context, _ *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {

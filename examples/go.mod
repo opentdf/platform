@@ -6,7 +6,7 @@ toolchain go1.25.7
 
 require (
 	connectrpc.com/connect v1.19.1
-	github.com/opentdf/platform/lib/ocrypto v0.9.0
+	github.com/opentdf/platform/lib/ocrypto v0.10.0
 	github.com/opentdf/platform/protocol/go v0.15.0
 	github.com/opentdf/platform/sdk v0.12.0
 	github.com/spf13/cobra v1.10.2

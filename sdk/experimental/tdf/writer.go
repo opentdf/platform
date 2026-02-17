@@ -283,7 +283,11 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 	if err != nil {
 		return nil, err
 	}
-	segmentSig, err := calculateSignature(segmentCipher, w.dek, w.segmentIntegrityAlgorithm, false) // Don't ever hex encode new tdf's
+	// The standard SDK computes the segment signature over the full encrypted
+	// segment blob (nonce + ciphertext + tag). We must match that so that the
+	// standard SDK's LoadTDF can verify the segment hash on decrypt.
+	fullSegment := append(nonce, segmentCipher...) //nolint:gocritic // intentional new slice
+	segmentSig, err := calculateSignature(fullSegment, w.dek, w.segmentIntegrityAlgorithm, false)
 	if err != nil {
 		return nil, err
 	}

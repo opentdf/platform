@@ -188,6 +188,12 @@ func (f *encryptFixture) callGetError(t *testing.T) string {
 	return string(msg)
 }
 
+// Integrity algorithm constants matching the WASM module.
+const (
+	algHS256 = 0
+	algGMAC  = 1
+)
+
 // callEncryptRaw invokes tdf_encrypt and returns the raw result length.
 // Does NOT fail on error — caller decides how to handle resultLen == 0.
 func (f *encryptFixture) callEncryptRaw(
@@ -196,6 +202,7 @@ func (f *encryptFixture) callEncryptRaw(
 	attrs []string,
 	plaintext []byte,
 	outCapacity uint32,
+	integrityAlg, segIntegrityAlg uint32,
 ) (resultLen uint32, outPtr uint32) {
 	t.Helper()
 
@@ -216,6 +223,7 @@ func (f *encryptFixture) callEncryptRaw(
 		uint64(attrPtr), uint64(len(attrBytes)),
 		uint64(ptPtr), uint64(len(plaintext)),
 		uint64(outPtr), uint64(outCapacity),
+		uint64(integrityAlg), uint64(segIntegrityAlg),
 	)
 	if err != nil {
 		t.Fatalf("tdf_encrypt call failed: %v", err)
@@ -223,10 +231,26 @@ func (f *encryptFixture) callEncryptRaw(
 	return uint32(results[0]), outPtr
 }
 
-// mustEncrypt calls tdf_encrypt and fails the test if it returns 0.
+// mustEncryptWithAlgs calls tdf_encrypt with explicit integrity algorithms.
+func (f *encryptFixture) mustEncryptWithAlgs(t *testing.T, kasURL string, attrs []string, plaintext []byte, integrityAlg, segIntegrityAlg uint32) []byte {
+	t.Helper()
+	resultLen, outPtr := f.callEncryptRaw(t, f.pubPEM, kasURL, attrs, plaintext, 1024*1024, integrityAlg, segIntegrityAlg)
+	if resultLen == 0 {
+		t.Fatalf("tdf_encrypt returned 0: %s", f.callGetError(t))
+	}
+	tdfBytes, ok := f.mod.Memory().Read(outPtr, resultLen)
+	if !ok {
+		t.Fatal("read TDF output from WASM memory")
+	}
+	out := make([]byte, len(tdfBytes))
+	copy(out, tdfBytes)
+	return out
+}
+
+// mustEncrypt calls tdf_encrypt with default HS256/HS256 algorithms.
 func (f *encryptFixture) mustEncrypt(t *testing.T, kasURL string, attrs []string, plaintext []byte) []byte {
 	t.Helper()
-	resultLen, outPtr := f.callEncryptRaw(t, f.pubPEM, kasURL, attrs, plaintext, 1024*1024)
+	resultLen, outPtr := f.callEncryptRaw(t, f.pubPEM, kasURL, attrs, plaintext, 1024*1024, algHS256, algHS256)
 	if resultLen == 0 {
 		t.Fatalf("tdf_encrypt returned 0: %s", f.callGetError(t))
 	}
@@ -597,7 +621,7 @@ func TestTDFEncryptDeterministicSizes(t *testing.T) {
 func TestTDFEncryptErrorInvalidKey(t *testing.T) {
 	f := newEncryptFixture(t)
 
-	resultLen, _ := f.callEncryptRaw(t, "not-a-valid-pem", "https://kas.example.com", nil, []byte("test"), 1024*1024)
+	resultLen, _ := f.callEncryptRaw(t, "not-a-valid-pem", "https://kas.example.com", nil, []byte("test"), 1024*1024, algHS256, algHS256)
 	if resultLen != 0 {
 		t.Fatal("expected 0 for invalid PEM key")
 	}
@@ -610,7 +634,7 @@ func TestTDFEncryptErrorInvalidKey(t *testing.T) {
 func TestTDFEncryptErrorBufferTooSmall(t *testing.T) {
 	f := newEncryptFixture(t)
 
-	resultLen, _ := f.callEncryptRaw(t, f.pubPEM, "https://kas.example.com", nil, []byte("needs more space"), 10)
+	resultLen, _ := f.callEncryptRaw(t, f.pubPEM, "https://kas.example.com", nil, []byte("needs more space"), 10, algHS256, algHS256)
 	if resultLen != 0 {
 		t.Fatal("expected 0 for buffer too small")
 	}
@@ -624,7 +648,7 @@ func TestTDFEncryptGetErrorClearsAfterRead(t *testing.T) {
 	f := newEncryptFixture(t)
 
 	// Trigger an error
-	resultLen, _ := f.callEncryptRaw(t, "bad-key", "https://kas.example.com", nil, []byte("x"), 1024*1024)
+	resultLen, _ := f.callEncryptRaw(t, "bad-key", "https://kas.example.com", nil, []byte("x"), 1024*1024, algHS256, algHS256)
 	if resultLen != 0 {
 		t.Fatal("expected error")
 	}
@@ -639,5 +663,121 @@ func TestTDFEncryptGetErrorClearsAfterRead(t *testing.T) {
 	msg2 := f.callGetError(t)
 	if msg2 != "" {
 		t.Fatalf("expected empty after clear, got: %q", msg2)
+	}
+}
+
+// ── GMAC integrity tests ────────────────────────────────────────────
+
+const kGMACPayloadLength = 16
+
+func TestTDFEncryptGMACSegmentIntegrity(t *testing.T) {
+	f := newEncryptFixture(t)
+	plaintext := []byte("GMAC segment integrity test")
+
+	tdfBytes := f.mustEncryptWithAlgs(t, "https://kas.example.com", nil, plaintext, algHS256, algGMAC)
+	c := parseTDF(t, tdfBytes)
+	m := c.Manifest
+
+	// Manifest should report GMAC for segments, HS256 for root
+	if m.RootSignature.Algorithm != "HS256" {
+		t.Errorf("RootSignature.Algorithm: got %q, want %q", m.RootSignature.Algorithm, "HS256")
+	}
+	if m.SegmentHashAlgorithm != "GMAC" {
+		t.Errorf("SegmentHashAlgorithm: got %q, want %q", m.SegmentHashAlgorithm, "GMAC")
+	}
+
+	// GMAC segment hash = base64(last 16 bytes of cipher)
+	// cipher = payload[12:] (without nonce)
+	cipher := c.Payload[12:]
+	gmacTag := cipher[len(cipher)-kGMACPayloadLength:]
+	expectedSegHash := base64.StdEncoding.EncodeToString(gmacTag)
+	if m.Segments[0].Hash != expectedSegHash {
+		t.Fatalf("GMAC segment hash mismatch:\n  got:  %s\n  want: %s", m.Segments[0].Hash, expectedSegHash)
+	}
+
+	// Root is HS256 over the raw GMAC tag bytes
+	dek := unwrapDEK(t, m, f.privPEM)
+	rootMac := hmac.New(sha256.New, dek)
+	rootMac.Write(gmacTag)
+	expectedRootSig := base64.StdEncoding.EncodeToString(rootMac.Sum(nil))
+	if m.RootSignature.Signature != expectedRootSig {
+		t.Fatalf("root signature mismatch:\n  got:  %s\n  want: %s", m.RootSignature.Signature, expectedRootSig)
+	}
+
+	// Verify decryption still works
+	aesGcm, err := ocrypto.NewAESGcm(dek)
+	if err != nil {
+		t.Fatalf("create AES-GCM: %v", err)
+	}
+	decrypted, err := aesGcm.Decrypt(c.Payload)
+	if err != nil {
+		t.Fatalf("AES-GCM decrypt: %v", err)
+	}
+	if !bytes.Equal(decrypted, plaintext) {
+		t.Fatalf("round-trip mismatch:\n  got:  %q\n  want: %q", decrypted, plaintext)
+	}
+}
+
+func TestTDFEncryptGMACBothAlgorithms(t *testing.T) {
+	f := newEncryptFixture(t)
+	plaintext := []byte("GMAC root and segment test")
+
+	tdfBytes := f.mustEncryptWithAlgs(t, "https://kas.example.com", nil, plaintext, algGMAC, algGMAC)
+	c := parseTDF(t, tdfBytes)
+	m := c.Manifest
+
+	if m.RootSignature.Algorithm != "GMAC" {
+		t.Errorf("RootSignature.Algorithm: got %q, want %q", m.RootSignature.Algorithm, "GMAC")
+	}
+	if m.SegmentHashAlgorithm != "GMAC" {
+		t.Errorf("SegmentHashAlgorithm: got %q, want %q", m.SegmentHashAlgorithm, "GMAC")
+	}
+
+	// GMAC segment hash = last 16 bytes of cipher
+	cipher := c.Payload[12:]
+	gmacTag := cipher[len(cipher)-kGMACPayloadLength:]
+	expectedSegHash := base64.StdEncoding.EncodeToString(gmacTag)
+	if m.Segments[0].Hash != expectedSegHash {
+		t.Fatalf("GMAC segment hash mismatch:\n  got:  %s\n  want: %s", m.Segments[0].Hash, expectedSegHash)
+	}
+
+	// GMAC root = last 16 bytes of the segment sig (which is 16 bytes itself)
+	// So root sig == segment sig when both are GMAC on a single segment
+	expectedRootSig := base64.StdEncoding.EncodeToString(gmacTag)
+	if m.RootSignature.Signature != expectedRootSig {
+		t.Fatalf("GMAC root signature mismatch:\n  got:  %s\n  want: %s", m.RootSignature.Signature, expectedRootSig)
+	}
+}
+
+func TestTDFEncryptGMACRootHS256Segment(t *testing.T) {
+	f := newEncryptFixture(t)
+	plaintext := []byte("GMAC root HS256 segment test")
+
+	tdfBytes := f.mustEncryptWithAlgs(t, "https://kas.example.com", nil, plaintext, algGMAC, algHS256)
+	c := parseTDF(t, tdfBytes)
+	m := c.Manifest
+
+	if m.RootSignature.Algorithm != "GMAC" {
+		t.Errorf("RootSignature.Algorithm: got %q, want %q", m.RootSignature.Algorithm, "GMAC")
+	}
+	if m.SegmentHashAlgorithm != "HS256" {
+		t.Errorf("SegmentHashAlgorithm: got %q, want %q", m.SegmentHashAlgorithm, "HS256")
+	}
+
+	// Segment hash is HS256
+	dek := unwrapDEK(t, m, f.privPEM)
+	cipher := c.Payload[12:]
+	segMac := hmac.New(sha256.New, dek)
+	segMac.Write(cipher)
+	segmentSig := segMac.Sum(nil)
+	expectedSegHash := base64.StdEncoding.EncodeToString(segmentSig)
+	if m.Segments[0].Hash != expectedSegHash {
+		t.Fatalf("segment hash mismatch:\n  got:  %s\n  want: %s", m.Segments[0].Hash, expectedSegHash)
+	}
+
+	// Root is GMAC over the 32-byte HMAC → last 16 bytes
+	expectedRootSig := base64.StdEncoding.EncodeToString(segmentSig[len(segmentSig)-kGMACPayloadLength:])
+	if m.RootSignature.Signature != expectedRootSig {
+		t.Fatalf("GMAC root signature mismatch:\n  got:  %s\n  want: %s", m.RootSignature.Signature, expectedRootSig)
 	}
 }

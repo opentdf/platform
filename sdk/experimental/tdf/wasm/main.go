@@ -59,6 +59,7 @@ func tdfEncrypt(
 	attrPtr, attrLen uint32,
 	ptPtr, ptLen uint32,
 	outPtr, outCapacity uint32,
+	integrityAlg, segIntegrityAlg uint32,
 ) uint32 {
 	kasPubPEM := ptrToString(kasPubPtr, kasPubLen)
 	kasURL := ptrToString(kasURLPtr, kasURLLen)
@@ -71,7 +72,7 @@ func tdfEncrypt(
 
 	plaintext := ptrToBytes(ptPtr, ptLen)
 
-	result, err := encrypt(kasPubPEM, kasURL, attrs, plaintext)
+	result, err := encrypt(kasPubPEM, kasURL, attrs, plaintext, int(integrityAlg), int(segIntegrityAlg))
 	if err != nil {
 		lastError = err.Error()
 		return 0

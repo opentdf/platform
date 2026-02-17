@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"hash/crc32"
 
 	"github.com/opentdf/platform/sdk/experimental/tdf/wasm/hostcrypto"
@@ -14,10 +15,38 @@ import (
 	zs "github.com/opentdf/platform/sdk/experimental/tdf/wasm/zipstream/zipstream"
 )
 
+const (
+	algHS256           = 0
+	algGMAC            = 1
+	kGMACPayloadLength = 16
+)
+
+func algString(alg int) string {
+	if alg == algGMAC {
+		return "GMAC"
+	}
+	return "HS256"
+}
+
+// calculateSignature computes an integrity signature using the given algorithm.
+// For HS256: HMAC-SHA256(secret, data).
+// For GMAC: extracts the last 16 bytes of data (the GCM authentication tag).
+func calculateSignature(data, secret []byte, alg int) ([]byte, error) {
+	if alg == algHS256 {
+		return hostcrypto.HmacSHA256(secret, data)
+	}
+	if len(data) < kGMACPayloadLength {
+		return nil, errors.New("data too short for GMAC signature")
+	}
+	sig := make([]byte, kGMACPayloadLength)
+	copy(sig, data[len(data)-kGMACPayloadLength:])
+	return sig, nil
+}
+
 // encrypt performs a single-segment TDF3 encryption. All crypto is delegated
 // to the host via hostcrypto; manifest construction, integrity computation,
 // and ZIP assembly run inside the WASM sandbox.
-func encrypt(kasPubPEM, kasURL string, attrs []string, plaintext []byte) ([]byte, error) {
+func encrypt(kasPubPEM, kasURL string, attrs []string, plaintext []byte, integrityAlg, segIntegrityAlg int) ([]byte, error) {
 	// 1. Generate 32-byte AES-256 DEK
 	dek, err := hostcrypto.RandomBytes(32)
 	if err != nil {
@@ -63,16 +92,16 @@ func encrypt(kasPubPEM, kasURL string, attrs []string, plaintext []byte) ([]byte
 	// 8. cipher = fullCT[12:] (ciphertext+tag, without nonce)
 	cipher := fullCT[12:]
 
-	// 9. Segment integrity: HMAC-SHA256(dek, cipher) → base64
-	segmentSig, err := hostcrypto.HmacSHA256(dek, cipher)
+	// 9. Segment integrity: HS256 → HMAC-SHA256(dek, cipher), GMAC → last 16 bytes of cipher
+	segmentSig, err := calculateSignature(cipher, dek, segIntegrityAlg)
 	if err != nil {
 		return nil, err
 	}
 	segmentHash := base64.StdEncoding.EncodeToString(segmentSig)
 
-	// 10. Root signature: HMAC-SHA256(dek, raw_segment_hmac) → base64
-	// For single segment, input is the raw segment HMAC bytes directly
-	rootSig, err := hostcrypto.HmacSHA256(dek, segmentSig)
+	// 10. Root signature over aggregated segment hashes
+	// For single segment, input is the raw segment signature bytes directly
+	rootSig, err := calculateSignature(segmentSig, dek, integrityAlg)
 	if err != nil {
 		return nil, err
 	}
@@ -100,10 +129,10 @@ func encrypt(kasPubPEM, kasURL string, attrs []string, plaintext []byte) ([]byte
 			},
 			IntegrityInformation: types.IntegrityInformation{
 				RootSignature: types.RootSignature{
-					Algorithm: "HS256",
+					Algorithm: algString(integrityAlg),
 					Signature: rootSigB64,
 				},
-				SegmentHashAlgorithm:    "HS256",
+				SegmentHashAlgorithm:    algString(segIntegrityAlg),
 				DefaultSegmentSize:      int64(len(plaintext)),
 				DefaultEncryptedSegSize: int64(len(fullCT)),
 				Segments: []types.Segment{{

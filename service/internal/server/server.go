@@ -525,24 +525,22 @@ func newConnectRPC(c Config, authInt connect.Interceptor, ints []connect.Interce
 
 	if c.Auth.Enabled {
 		if authInt == nil {
-			return nil, fmt.Errorf("authentication enabled but no interceptor provided")
+			return nil, errors.New("authentication enabled but no interceptor provided")
 		}
 		interceptors = append(interceptors, connect.WithInterceptors(authInt))
 	} else {
 		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
 	}
 
+	// Add protovalidate interceptor
+	validationInterceptor := validate.NewInterceptor()
+
+	interceptors = append(interceptors, connect.WithInterceptors(validationInterceptor, audit.ContextServerInterceptor(logger.Logger)))
+
+	// Add any additional interceptors provided programmatically AFTER the default ones, so they have access needed context
 	if len(ints) > 0 {
 		interceptors = append(interceptors, connect.WithInterceptors(ints...))
 	}
-
-	// Add protovalidate interceptor
-	vaidationInterceptor, err := validate.NewInterceptor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create validation interceptor: %w", err)
-	}
-
-	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor(logger.Logger)))
 
 	return &ConnectRPC{
 		Interceptors: interceptors,

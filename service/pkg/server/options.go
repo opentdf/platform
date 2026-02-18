@@ -7,6 +7,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/casbin/casbin/v2/persist"
 	logging "github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -37,6 +38,9 @@ type StartConfig struct {
 
 	trustKeyManagerCtxs []trust.NamedKeyManagerCtxFactory
 	kasURIResolver      trust.RegisteredKasURIResolver
+
+	authzRoleProvider          authz.RoleProvider
+	authzRoleProviderFactories map[string]authz.RoleProviderFactory
 
 	// CORS additive configuration - appended to YAML/env config values
 	additionalCORSHeaders        []string
@@ -135,6 +139,25 @@ func WithServices(services ...serviceregistry.IService) StartOptions {
 func WithCasbinAdapter(adapter persist.Adapter) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.casbinAdapter = adapter
+		return c
+	}
+}
+
+// WithAuthZRoleProvider option sets a role provider directly.
+func WithAuthZRoleProvider(provider authz.RoleProvider) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.authzRoleProvider = provider
+		return c
+	}
+}
+
+// WithAuthZRoleProviderFactory option registers a named role provider factory.
+func WithAuthZRoleProviderFactory(name string, factory authz.RoleProviderFactory) StartOptions {
+	return func(c StartConfig) StartConfig {
+		if c.authzRoleProviderFactories == nil {
+			c.authzRoleProviderFactories = make(map[string]authz.RoleProviderFactory)
+		}
+		c.authzRoleProviderFactories[name] = factory
 		return c
 	}
 }

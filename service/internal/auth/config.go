@@ -6,6 +6,7 @@ import (
 
 	"github.com/casbin/casbin/v2/persist"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/authz"
 )
 
 // AuthConfig pulls AuthN and AuthZ together
@@ -15,6 +16,10 @@ type Config struct {
 	// Used for re-authentication of IPC connections
 	IPCReauthRoutes []string `mapstructure:"-" json:"-"`
 	AuthNConfig     `mapstructure:",squash"`
+
+	// Programmatic role provider overrides (not loaded from config)
+	RoleProvider          authz.RoleProvider                   `mapstructure:"-" json:"-"`
+	RoleProviderFactories map[string]authz.RoleProviderFactory `mapstructure:"-" json:"-"`
 }
 
 // AuthNConfig is the configuration need for the platform to validate tokens
@@ -34,6 +39,8 @@ type PolicyConfig struct {
 	UserNameClaim string `mapstructure:"username_claim" json:"username_claim" default:"preferred_username"`
 	// Claim to use for group/role information
 	GroupsClaim string `mapstructure:"groups_claim" json:"groups_claim" default:"realm_access.roles"`
+	// Role provider configuration (resolved via StartOptions)
+	RolesProvider RolesProviderConfig `mapstructure:"roles_provider" json:"roles_provider"`
 	// Claim to use to reference idP clientID
 	ClientIDClaim string `mapstructure:"client_id_claim" json:"client_id_claim" default:"azp"`
 	// Deprecated: Use GroupClain instead
@@ -47,6 +54,11 @@ type PolicyConfig struct {
 	Model     string `mapstructure:"model" json:"model"`
 	// Override the default string-adapter
 	Adapter persist.Adapter `mapstructure:"-" json:"-"`
+}
+
+type RolesProviderConfig struct {
+	Name   string         `mapstructure:"name" json:"name"`
+	Config map[string]any `mapstructure:"config" json:"config"`
 }
 
 func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {

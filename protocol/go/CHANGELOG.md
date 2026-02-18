@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.16.0](https://github.com/opentdf/platform/compare/protocol/go/v0.15.0...protocol/go/v0.16.0) (2026-02-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** remove namespace certificate feature ([#3051](https://github.com/opentdf/platform/issues/3051))
+
+### Bug Fixes
+
+* Go 1.25 ([#3053](https://github.com/opentdf/platform/issues/3053)) ([65eb7c3](https://github.com/opentdf/platform/commit/65eb7c3d5fe1892de1e4fabb9b3b7894742c3f02))
+
+
+### Code Refactoring
+
+* **policy:** remove namespace certificate feature ([#3051](https://github.com/opentdf/platform/issues/3051)) ([48abb81](https://github.com/opentdf/platform/commit/48abb813ae7accbfcaa6e6ad4bb7071e3476716d))
+
 ## [0.15.0](https://github.com/opentdf/platform/compare/protocol/go/v0.14.0...protocol/go/v0.15.0) (2026-01-26)
 
 

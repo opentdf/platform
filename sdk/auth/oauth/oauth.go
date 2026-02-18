@@ -71,7 +71,6 @@ func getAccessTokenRequest(tokenEndpoint, dpopNonce string, scopes []string, cli
 
 	formData := url.Values{}
 	formData.Set("grant_type", "client_credentials")
-	formData.Set("client_id", clientCredentials.ClientID)
 	if len(scopes) > 0 {
 		formData.Set("scope", strings.Join(scopes, " "))
 	}
@@ -95,6 +94,7 @@ func setClientAuth(cc ClientCredentials, formData *url.Values, req *http.Request
 		if err != nil {
 			return fmt.Errorf("error building signed auth token to authenticate with IDP: %w", err)
 		}
+		formData.Set("client_id", cc.ClientID)
 		formData.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
 		formData.Set("client_assertion", string(signedToken))
 	default:
@@ -290,11 +290,10 @@ func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce strin
 	}
 
 	if len(scopes) > 0 {
-		data.Set("scopes", strings.Join(scopes, " "))
+		data.Set("scope", strings.Join(scopes, " "))
 	}
 
-	body := strings.NewReader(data.Encode())
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting HTTP request: %w", err)
 	}
@@ -309,6 +308,8 @@ func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce strin
 	if err != nil {
 		return nil, err
 	}
+
+	req.Body = io.NopCloser(strings.NewReader(data.Encode()))
 
 	return req, nil
 }
@@ -333,14 +334,13 @@ func DoCertExchange(ctx context.Context, tokenEndpoint string, exchangeInfo Cert
 }
 
 func getCertExchangeRequest(ctx context.Context, tokenEndpoint string, clientCredentials ClientCredentials, exchangeInfo CertExchangeInfo, key jwk.Key) (*http.Request, error) {
-	data := url.Values{"grant_type": {"password"}, "client_id": {clientCredentials.ClientID}, "username": {""}, "password": {""}}
+	data := url.Values{"grant_type": {"password"}, "username": {""}, "password": {""}}
 
 	for _, a := range exchangeInfo.Audience {
 		data.Add("audience", a)
 	}
 
-	body := strings.NewReader(data.Encode())
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -355,6 +355,8 @@ func getCertExchangeRequest(ctx context.Context, tokenEndpoint string, clientCre
 	if err = setClientAuth(clientCredentials, &data, req, tokenEndpoint); err != nil {
 		return nil, err
 	}
+
+	req.Body = io.NopCloser(strings.NewReader(data.Encode()))
 
 	return req, nil
 }

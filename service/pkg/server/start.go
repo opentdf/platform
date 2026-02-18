@@ -165,6 +165,14 @@ func Start(f ...StartOptions) error {
 		cfg.Server.Auth.Policy.Adapter = startConfig.casbinAdapter
 	}
 
+	// Set AuthZ role provider overrides
+	if startConfig.authzRoleProvider != nil {
+		cfg.Server.Auth.RoleProvider = startConfig.authzRoleProvider
+	}
+	if startConfig.authzRoleProviderFactories != nil {
+		cfg.Server.Auth.RoleProviderFactories = startConfig.authzRoleProviderFactories
+	}
+
 	// Apply additional CORS configuration from programmatic options
 	// These are appended to the YAML config values; deduplication happens in Effective*() methods
 	if len(startConfig.additionalCORSHeaders) > 0 {

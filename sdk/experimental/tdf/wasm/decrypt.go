@@ -156,32 +156,35 @@ func parseTDFZip(data []byte) (manifestBytes, payloadBytes []byte, err error) {
 }
 
 // decrypt performs TDF3 decryption (single or multi-segment). The caller
-// provides the pre-unwrapped DEK (from host-side KAS rewrap). All crypto
-// is delegated to the host via hostcrypto; manifest parsing, integrity
+// provides the pre-unwrapped DEK (from host-side KAS rewrap) and a
+// pre-allocated output buffer. Decrypted segments are written directly
+// into outBuf to avoid accumulating the full plaintext in WASM memory.
+// Returns the total number of plaintext bytes written. All crypto is
+// delegated to the host via hostcrypto; manifest parsing, integrity
 // verification, and ZIP extraction run inside the WASM sandbox.
-func decrypt(tdfData, dek []byte) ([]byte, error) {
+func decrypt(tdfData, dek, outBuf []byte) (int, error) {
 	if len(dek) != 32 {
-		return nil, errors.New("DEK must be 32 bytes")
+		return 0, errors.New("DEK must be 32 bytes")
 	}
 
 	// 1. Parse ZIP to extract manifest and payload
 	manifestBytes, payloadBytes, err := parseTDFZip(tdfData)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	// 2. Unmarshal manifest via tinyjson
 	var manifest types.Manifest
 	if err := manifest.UnmarshalJSON(manifestBytes); err != nil {
-		return nil, errors.New("unmarshal manifest: " + err.Error())
+		return 0, errors.New("unmarshal manifest: " + err.Error())
 	}
 
 	// 3. Validate manifest fields
 	if manifest.Method.Algorithm != "AES-256-GCM" {
-		return nil, errors.New("unsupported algorithm: " + manifest.Method.Algorithm)
+		return 0, errors.New("unsupported algorithm: " + manifest.Method.Algorithm)
 	}
 	if len(manifest.Segments) == 0 {
-		return nil, errors.New("manifest has no segments")
+		return 0, errors.New("manifest has no segments")
 	}
 
 	// Validate total encrypted size matches payload
@@ -190,50 +193,57 @@ func decrypt(tdfData, dek []byte) ([]byte, error) {
 		totalEncSize += seg.EncryptedSize
 	}
 	if totalEncSize != int64(len(payloadBytes)) {
-		return nil, errors.New("payload size mismatch with manifest segments")
+		return 0, errors.New("payload size mismatch with manifest segments")
 	}
 
 	// 4. Determine integrity algorithms
 	segAlg, err := algFromString(manifest.SegmentHashAlgorithm)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	rootAlg, err := algFromString(manifest.RootSignature.Algorithm)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	// 5. Verify segment integrity and decrypt each segment
-	var plaintext []byte
+	// 5. Verify segment integrity and decrypt each segment.
+	// Decrypted data is written directly into outBuf to avoid accumulating
+	// the entire plaintext in WASM linear memory.
 	var aggregateHash []byte
 	payloadOffset := 0
+	outOffset := 0
 
 	for i, seg := range manifest.Segments {
 		encData := payloadBytes[payloadOffset : payloadOffset+int(seg.EncryptedSize)]
 		if len(encData) < 28 {
-			return nil, errors.New("segment too short for AES-GCM")
+			return 0, errors.New("segment too short for AES-GCM")
 		}
 
 		// Segment integrity — signature is over the full encrypted blob
 		// [nonce(12) || ciphertext || tag(16)], matching the standard SDK.
 		segmentSig, err := calculateSignature(encData, dek, segAlg)
 		if err != nil {
-			return nil, errors.New("calculate segment signature: " + err.Error())
+			return 0, errors.New("calculate segment signature: " + err.Error())
 		}
 		expectedSegHash := base64.StdEncoding.EncodeToString(segmentSig)
 		if seg.Hash != expectedSegHash {
-			return nil, errors.New("segment " + itoa(i) + " integrity check failed")
+			return 0, errors.New("segment " + itoa(i) + " integrity check failed")
 		}
 
 		// Accumulate raw signature bytes for root hash
 		aggregateHash = append(aggregateHash, segmentSig...)
 
-		// Decrypt segment
-		segPlaintext, err := hostcrypto.AesGcmDecrypt(dek, encData)
-		if err != nil {
-			return nil, err
+		// Decrypt segment directly into outBuf — no intermediate allocation.
+		// The host ABI writes plaintext into the provided WASM memory address.
+		ptLen := int(seg.EncryptedSize) - 28 // nonce(12) + tag(16)
+		if outOffset+ptLen > len(outBuf) {
+			return 0, errors.New("output buffer too small for decrypted payload")
 		}
-		plaintext = append(plaintext, segPlaintext...)
+		n, err := hostcrypto.AesGcmDecryptInto(dek, encData, outBuf[outOffset:outOffset+ptLen])
+		if err != nil {
+			return 0, err
+		}
+		outOffset += n
 
 		payloadOffset += int(seg.EncryptedSize)
 	}
@@ -241,14 +251,14 @@ func decrypt(tdfData, dek []byte) ([]byte, error) {
 	// 6. Verify root signature over aggregate hash
 	rootSig, err := calculateSignature(aggregateHash, dek, rootAlg)
 	if err != nil {
-		return nil, errors.New("calculate root signature: " + err.Error())
+		return 0, errors.New("calculate root signature: " + err.Error())
 	}
 	expectedRootSig := base64.StdEncoding.EncodeToString(rootSig)
 	if manifest.RootSignature.Signature != expectedRootSig {
-		return nil, errors.New("root signature verification failed")
+		return 0, errors.New("root signature verification failed")
 	}
 
-	return plaintext, nil
+	return outOffset, nil
 }
 
 // itoa converts a non-negative int to a string without fmt (TinyGo-safe).

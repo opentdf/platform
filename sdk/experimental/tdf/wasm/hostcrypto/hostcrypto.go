@@ -120,6 +120,29 @@ func AesGcmDecrypt(key, ciphertext []byte) ([]byte, error) {
 	return out[:result], nil
 }
 
+// AesGcmDecryptInto decrypts AES-256-GCM ciphertext directly into the
+// caller-provided output buffer, avoiding an intermediate allocation.
+// Returns the number of plaintext bytes written.
+// out must be at least len(ciphertext)-28 bytes.
+func AesGcmDecryptInto(key, ciphertext, out []byte) (int, error) {
+	if len(ciphertext) < 28 {
+		return 0, errors.New("hostcrypto: ciphertext too short for AES-GCM (need >= 28 bytes)")
+	}
+	needed := len(ciphertext) - 28
+	if len(out) < needed {
+		return 0, errors.New("hostcrypto: output buffer too small for AES-GCM decrypt")
+	}
+	result := _aes_gcm_decrypt(
+		slicePtr(key), uint32(len(key)),
+		slicePtr(ciphertext), uint32(len(ciphertext)),
+		slicePtr(out),
+	)
+	if result == errSentinel {
+		return 0, getLastError()
+	}
+	return int(result), nil
+}
+
 // HmacSHA256 computes HMAC-SHA256 over data using key.
 // Returns exactly 32 bytes.
 func HmacSHA256(key, data []byte) ([]byte, error) {

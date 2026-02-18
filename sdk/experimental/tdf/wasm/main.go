@@ -71,7 +71,7 @@ func tdfEncrypt(
 		attrs = strings.Split(attrStr, "\n")
 	}
 
-	plaintext := ptrToBytes(ptPtr, ptLen)
+	plaintext := ptrToSlice(ptPtr, ptLen)
 
 	result, err := encrypt(kasPubPEM, kasURL, attrs, plaintext, int(integrityAlg), int(segIntegrityAlg), int(segmentSize))
 	if err != nil {
@@ -95,23 +95,17 @@ func tdfDecrypt(
 	dekPtr, dekLen uint32,
 	outPtr, outCapacity uint32,
 ) uint32 {
-	tdfData := ptrToBytes(tdfPtr, tdfLen)
-	dek := ptrToBytes(dekPtr, dekLen)
+	tdfData := ptrToSlice(tdfPtr, tdfLen)
+	dek := ptrToSlice(dekPtr, dekLen)
+	outBuf := ptrToSlice(outPtr, outCapacity)
 
-	result, err := decrypt(tdfData, dek)
+	n, err := decrypt(tdfData, dek, outBuf)
 	if err != nil {
 		lastError = err.Error()
 		return 0
 	}
 
-	if uint32(len(result)) > outCapacity {
-		lastError = "output buffer too small"
-		return 0
-	}
-
-	dst := unsafe.Slice((*byte)(unsafe.Pointer(uintptr(outPtr))), len(result))
-	copy(dst, result)
-	return uint32(len(result))
+	return uint32(n)
 }
 
 // ── WASM memory helpers ─────────────────────────────────────────────
@@ -126,14 +120,14 @@ func ptrToString(ptr, length uint32) string {
 	return string(src)
 }
 
-func ptrToBytes(ptr, length uint32) []byte {
+// ptrToSlice returns a zero-copy []byte view over WASM linear memory.
+// Safe when the backing allocation stays live for the duration of the call
+// (e.g. tdf_malloc'd buffers pinned in allocations[]).
+func ptrToSlice(ptr, length uint32) []byte {
 	if length == 0 {
 		return nil
 	}
-	src := unsafe.Slice((*byte)(unsafe.Pointer(uintptr(ptr))), length)
-	dst := make([]byte, length)
-	copy(dst, src)
-	return dst
+	return unsafe.Slice((*byte)(unsafe.Pointer(uintptr(ptr))), length)
 }
 
 func main() {

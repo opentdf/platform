@@ -196,6 +196,7 @@ const (
 
 // callEncryptRaw invokes tdf_encrypt and returns the raw result length.
 // Does NOT fail on error — caller decides how to handle resultLen == 0.
+// segmentSize=0 means single segment (entire plaintext in one segment).
 func (f *encryptFixture) callEncryptRaw(
 	t *testing.T,
 	kasPubPEM, kasURL string,
@@ -203,6 +204,7 @@ func (f *encryptFixture) callEncryptRaw(
 	plaintext []byte,
 	outCapacity uint32,
 	integrityAlg, segIntegrityAlg uint32,
+	segmentSize uint32,
 ) (resultLen uint32, outPtr uint32) {
 	t.Helper()
 
@@ -224,6 +226,7 @@ func (f *encryptFixture) callEncryptRaw(
 		uint64(ptPtr), uint64(len(plaintext)),
 		uint64(outPtr), uint64(outCapacity),
 		uint64(integrityAlg), uint64(segIntegrityAlg),
+		uint64(segmentSize),
 	)
 	if err != nil {
 		t.Fatalf("tdf_encrypt call failed: %v", err)
@@ -231,10 +234,10 @@ func (f *encryptFixture) callEncryptRaw(
 	return uint32(results[0]), outPtr
 }
 
-// mustEncryptWithAlgs calls tdf_encrypt with explicit integrity algorithms.
+// mustEncryptWithAlgs calls tdf_encrypt with explicit integrity algorithms (single segment).
 func (f *encryptFixture) mustEncryptWithAlgs(t *testing.T, kasURL string, attrs []string, plaintext []byte, integrityAlg, segIntegrityAlg uint32) []byte {
 	t.Helper()
-	resultLen, outPtr := f.callEncryptRaw(t, f.pubPEM, kasURL, attrs, plaintext, 1024*1024, integrityAlg, segIntegrityAlg)
+	resultLen, outPtr := f.callEncryptRaw(t, f.pubPEM, kasURL, attrs, plaintext, 1024*1024, integrityAlg, segIntegrityAlg, 0)
 	if resultLen == 0 {
 		t.Fatalf("tdf_encrypt returned 0: %s", f.callGetError(t))
 	}
@@ -247,10 +250,26 @@ func (f *encryptFixture) mustEncryptWithAlgs(t *testing.T, kasURL string, attrs 
 	return out
 }
 
-// mustEncrypt calls tdf_encrypt with default HS256/HS256 algorithms.
+// mustEncrypt calls tdf_encrypt with default HS256/HS256 algorithms (single segment).
 func (f *encryptFixture) mustEncrypt(t *testing.T, kasURL string, attrs []string, plaintext []byte) []byte {
 	t.Helper()
-	resultLen, outPtr := f.callEncryptRaw(t, f.pubPEM, kasURL, attrs, plaintext, 1024*1024, algHS256, algHS256)
+	resultLen, outPtr := f.callEncryptRaw(t, f.pubPEM, kasURL, attrs, plaintext, 1024*1024, algHS256, algHS256, 0)
+	if resultLen == 0 {
+		t.Fatalf("tdf_encrypt returned 0: %s", f.callGetError(t))
+	}
+	tdfBytes, ok := f.mod.Memory().Read(outPtr, resultLen)
+	if !ok {
+		t.Fatal("read TDF output from WASM memory")
+	}
+	out := make([]byte, len(tdfBytes))
+	copy(out, tdfBytes)
+	return out
+}
+
+// mustEncryptMultiSeg calls tdf_encrypt with a specific segment size.
+func (f *encryptFixture) mustEncryptMultiSeg(t *testing.T, kasURL string, attrs []string, plaintext []byte, segmentSize uint32) []byte {
+	t.Helper()
+	resultLen, outPtr := f.callEncryptRaw(t, f.pubPEM, kasURL, attrs, plaintext, 2*1024*1024, algHS256, algHS256, segmentSize)
 	if resultLen == 0 {
 		t.Fatalf("tdf_encrypt returned 0: %s", f.callGetError(t))
 	}
@@ -485,15 +504,13 @@ func TestTDFEncryptSegmentIntegrity(t *testing.T) {
 	c := parseTDF(t, tdfBytes)
 	dek := unwrapDEK(t, c.Manifest, f.privPEM)
 
-	// cipher = payload[12:] (ciphertext+tag, without nonce)
+	// Segment hash: HMAC-SHA256(dek, fullPayload) → base64
+	// Signature is over the full encrypted blob [nonce || ciphertext || tag].
 	if len(c.Payload) < 28 {
 		t.Fatalf("payload too short: %d bytes", len(c.Payload))
 	}
-	cipher := c.Payload[12:]
-
-	// Segment hash: HMAC-SHA256(dek, cipher) → base64
 	segMac := hmac.New(sha256.New, dek)
-	segMac.Write(cipher)
+	segMac.Write(c.Payload)
 	segmentSig := segMac.Sum(nil)
 	expectedSegHash := base64.StdEncoding.EncodeToString(segmentSig)
 	if c.Manifest.Segments[0].Hash != expectedSegHash {
@@ -621,7 +638,7 @@ func TestTDFEncryptDeterministicSizes(t *testing.T) {
 func TestTDFEncryptErrorInvalidKey(t *testing.T) {
 	f := newEncryptFixture(t)
 
-	resultLen, _ := f.callEncryptRaw(t, "not-a-valid-pem", "https://kas.example.com", nil, []byte("test"), 1024*1024, algHS256, algHS256)
+	resultLen, _ := f.callEncryptRaw(t, "not-a-valid-pem", "https://kas.example.com", nil, []byte("test"), 1024*1024, algHS256, algHS256, 0)
 	if resultLen != 0 {
 		t.Fatal("expected 0 for invalid PEM key")
 	}
@@ -634,7 +651,7 @@ func TestTDFEncryptErrorInvalidKey(t *testing.T) {
 func TestTDFEncryptErrorBufferTooSmall(t *testing.T) {
 	f := newEncryptFixture(t)
 
-	resultLen, _ := f.callEncryptRaw(t, f.pubPEM, "https://kas.example.com", nil, []byte("needs more space"), 10, algHS256, algHS256)
+	resultLen, _ := f.callEncryptRaw(t, f.pubPEM, "https://kas.example.com", nil, []byte("needs more space"), 10, algHS256, algHS256, 0)
 	if resultLen != 0 {
 		t.Fatal("expected 0 for buffer too small")
 	}
@@ -648,7 +665,7 @@ func TestTDFEncryptGetErrorClearsAfterRead(t *testing.T) {
 	f := newEncryptFixture(t)
 
 	// Trigger an error
-	resultLen, _ := f.callEncryptRaw(t, "bad-key", "https://kas.example.com", nil, []byte("x"), 1024*1024, algHS256, algHS256)
+	resultLen, _ := f.callEncryptRaw(t, "bad-key", "https://kas.example.com", nil, []byte("x"), 1024*1024, algHS256, algHS256, 0)
 	if resultLen != 0 {
 		t.Fatal("expected error")
 	}
@@ -686,10 +703,10 @@ func TestTDFEncryptGMACSegmentIntegrity(t *testing.T) {
 		t.Errorf("SegmentHashAlgorithm: got %q, want %q", m.SegmentHashAlgorithm, "GMAC")
 	}
 
-	// GMAC segment hash = base64(last 16 bytes of cipher)
-	// cipher = payload[12:] (without nonce)
-	cipher := c.Payload[12:]
-	gmacTag := cipher[len(cipher)-kGMACPayloadLength:]
+	// GMAC segment hash = base64(last 16 bytes of payload)
+	// For GMAC, signature = last 16 bytes of the full encrypted blob.
+	// Since the tag is always at the end, payload[12:] and payload give the same last-16.
+	gmacTag := c.Payload[len(c.Payload)-kGMACPayloadLength:]
 	expectedSegHash := base64.StdEncoding.EncodeToString(gmacTag)
 	if m.Segments[0].Hash != expectedSegHash {
 		t.Fatalf("GMAC segment hash mismatch:\n  got:  %s\n  want: %s", m.Segments[0].Hash, expectedSegHash)
@@ -764,11 +781,10 @@ func TestTDFEncryptGMACRootHS256Segment(t *testing.T) {
 		t.Errorf("SegmentHashAlgorithm: got %q, want %q", m.SegmentHashAlgorithm, "HS256")
 	}
 
-	// Segment hash is HS256
+	// Segment hash is HS256 over the full encrypted blob [nonce || ciphertext || tag]
 	dek := unwrapDEK(t, m, f.privPEM)
-	cipher := c.Payload[12:]
 	segMac := hmac.New(sha256.New, dek)
-	segMac.Write(cipher)
+	segMac.Write(c.Payload)
 	segmentSig := segMac.Sum(nil)
 	expectedSegHash := base64.StdEncoding.EncodeToString(segmentSig)
 	if m.Segments[0].Hash != expectedSegHash {

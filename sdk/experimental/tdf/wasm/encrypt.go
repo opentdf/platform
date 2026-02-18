@@ -43,10 +43,13 @@ func calculateSignature(data, secret []byte, alg int) ([]byte, error) {
 	return sig, nil
 }
 
-// encrypt performs a single-segment TDF3 encryption. All crypto is delegated
-// to the host via hostcrypto; manifest construction, integrity computation,
-// and ZIP assembly run inside the WASM sandbox.
-func encrypt(kasPubPEM, kasURL string, attrs []string, plaintext []byte, integrityAlg, segIntegrityAlg int) ([]byte, error) {
+// encrypt performs TDF3 encryption (single or multi-segment). All crypto is
+// delegated to the host via hostcrypto; manifest construction, integrity
+// computation, and ZIP assembly run inside the WASM sandbox.
+//
+// segmentSize controls the plaintext chunk size per segment. If <= 0, the
+// entire plaintext is encrypted as a single segment (backward compatible).
+func encrypt(kasPubPEM, kasURL string, attrs []string, plaintext []byte, integrityAlg, segIntegrityAlg, segmentSize int) ([]byte, error) {
 	// 1. Generate 32-byte AES-256 DEK
 	dek, err := hostcrypto.RandomBytes(32)
 	if err != nil {
@@ -82,32 +85,72 @@ func encrypt(kasPubPEM, kasURL string, attrs []string, plaintext []byte, integri
 	}
 	bindingHash := base64.StdEncoding.EncodeToString([]byte(hex.EncodeToString(bindingHMAC)))
 
-	// 7. Encrypt plaintext with AES-256-GCM
-	// Returns [nonce(12) || ciphertext || tag(16)]
-	fullCT, err := hostcrypto.AesGcmEncrypt(dek, plaintext)
-	if err != nil {
-		return nil, err
+	// 7. Determine segment boundaries
+	ptLen := len(plaintext)
+	if ptLen == 0 {
+		// Empty plaintext → single segment of 0 bytes
+		segmentSize = 0
+	} else if segmentSize <= 0 || segmentSize >= ptLen {
+		segmentSize = ptLen
+	}
+	numSegments := 1
+	if segmentSize > 0 {
+		numSegments = ptLen / segmentSize
+		if ptLen%segmentSize != 0 {
+			numSegments++
+		}
 	}
 
-	// 8. cipher = fullCT[12:] (ciphertext+tag, without nonce)
-	cipher := fullCT[12:]
+	// Default sizes for manifest (based on full-sized segments)
+	defaultEncSegSize := int64(segmentSize + 28) // nonce(12) + tag(16)
 
-	// 9. Segment integrity: HS256 → HMAC-SHA256(dek, cipher), GMAC → last 16 bytes of cipher
-	segmentSig, err := calculateSignature(cipher, dek, segIntegrityAlg)
-	if err != nil {
-		return nil, err
+	// 8. Encrypt each segment and compute integrity
+	var segments []types.Segment
+	var ciphertexts [][]byte
+	var aggregateHash []byte
+
+	ptOffset := 0
+	for i := 0; i < numSegments; i++ {
+		chunkEnd := ptOffset + segmentSize
+		if chunkEnd > ptLen {
+			chunkEnd = ptLen
+		}
+		chunk := plaintext[ptOffset:chunkEnd]
+
+		// Encrypt with AES-256-GCM: returns [nonce(12) || ciphertext || tag(16)]
+		fullCT, err := hostcrypto.AesGcmEncrypt(dek, chunk)
+		if err != nil {
+			return nil, err
+		}
+		ciphertexts = append(ciphertexts, fullCT)
+
+		// Segment integrity — signature is over the full encrypted blob
+		// [nonce(12) || ciphertext || tag(16)], matching the standard SDK.
+		segmentSig, err := calculateSignature(fullCT, dek, segIntegrityAlg)
+		if err != nil {
+			return nil, err
+		}
+
+		// Accumulate raw signature bytes for root hash
+		aggregateHash = append(aggregateHash, segmentSig...)
+
+		segments = append(segments, types.Segment{
+			Hash:          base64.StdEncoding.EncodeToString(segmentSig),
+			Size:          int64(len(chunk)),
+			EncryptedSize: int64(len(fullCT)),
+		})
+
+		ptOffset = chunkEnd
 	}
-	segmentHash := base64.StdEncoding.EncodeToString(segmentSig)
 
-	// 10. Root signature over aggregated segment hashes
-	// For single segment, input is the raw segment signature bytes directly
-	rootSig, err := calculateSignature(segmentSig, dek, integrityAlg)
+	// 9. Root signature over aggregated segment hashes
+	rootSig, err := calculateSignature(aggregateHash, dek, integrityAlg)
 	if err != nil {
 		return nil, err
 	}
 	rootSigB64 := base64.StdEncoding.EncodeToString(rootSig)
 
-	// 11. Build manifest
+	// 10. Build manifest
 	manifest := types.Manifest{
 		TDFVersion: "4.3.0",
 		EncryptionInformation: types.EncryptionInformation{
@@ -133,13 +176,9 @@ func encrypt(kasPubPEM, kasURL string, attrs []string, plaintext []byte, integri
 					Signature: rootSigB64,
 				},
 				SegmentHashAlgorithm:    algString(segIntegrityAlg),
-				DefaultSegmentSize:      int64(len(plaintext)),
-				DefaultEncryptedSegSize: int64(len(fullCT)),
-				Segments: []types.Segment{{
-					Hash:          segmentHash,
-					Size:          int64(len(plaintext)),
-					EncryptedSize: int64(len(fullCT)),
-				}},
+				DefaultSegmentSize:      int64(segmentSize),
+				DefaultEncryptedSegSize: defaultEncSegSize,
+				Segments:                segments,
 			},
 		},
 		Payload: types.Payload{
@@ -156,26 +195,25 @@ func encrypt(kasPubPEM, kasURL string, attrs []string, plaintext []byte, integri
 		return nil, err
 	}
 
-	// 12. Assemble ZIP
-	crc32Sum := crc32.ChecksumIEEE(fullCT)
-	sw := zs.NewSegmentTDFWriter(1)
+	// 11. Assemble ZIP
+	sw := zs.NewSegmentTDFWriter(numSegments)
 	ctx := context.Background()
 
-	header, err := sw.WriteSegment(ctx, 0, uint64(len(fullCT)), crc32Sum)
-	if err != nil {
-		return nil, err
+	var result bytes.Buffer
+	for i, ct := range ciphertexts {
+		crc := crc32.ChecksumIEEE(ct)
+		header, err := sw.WriteSegment(ctx, i, uint64(len(ct)), crc)
+		if err != nil {
+			return nil, err
+		}
+		result.Write(header)
+		result.Write(ct)
 	}
 
 	tail, err := sw.Finalize(ctx, manifestJSON)
 	if err != nil {
 		return nil, err
 	}
-
-	// result = header + fullCT + tail
-	var result bytes.Buffer
-	result.Grow(len(header) + len(fullCT) + len(tail))
-	result.Write(header)
-	result.Write(fullCT)
 	result.Write(tail)
 
 	return result.Bytes(), nil

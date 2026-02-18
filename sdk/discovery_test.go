@@ -516,6 +516,14 @@ func TestValidateAttributeValue_AttributeNotFound(t *testing.T) {
 	require.ErrorIs(t, err, ErrAttributeNotFound)
 }
 
+func TestValidateAttributeValue_EmptyValue(t *testing.T) {
+	s := newDiscoverySDK(nil, nil)
+
+	err := s.ValidateAttributeValue(context.Background(), "https://example.com/attr/clearance", "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "must not be empty")
+}
+
 func TestValidateAttributeValue_InvalidFQN(t *testing.T) {
 	// Passing a value FQN (contains /value/) should be rejected as an invalid attribute FQN.
 	s := newDiscoverySDK(nil, nil)

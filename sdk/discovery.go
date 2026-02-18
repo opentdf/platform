@@ -155,7 +155,7 @@ func (s SDK) GetEntityAttributes(ctx context.Context, entity *authorization.Enti
 	return nil, nil
 }
 
-// ValidateAttributeValue checks that a single attribute value FQN is valid in format
+// ValidateAttributeExists checks that a single attribute value FQN is valid in format
 // and exists on the platform.
 //
 // fqn should be a full attribute value FQN in the form:
@@ -163,6 +163,50 @@ func (s SDK) GetEntityAttributes(ctx context.Context, entity *authorization.Enti
 //	https://<namespace>/attr/<attribute_name>/value/<value>
 //
 // This is a convenience wrapper around ValidateAttributes for the single-FQN case.
-func (s SDK) ValidateAttributeValue(ctx context.Context, fqn string) error {
+func (s SDK) ValidateAttributeExists(ctx context.Context, fqn string) error {
 	return s.ValidateAttributes(ctx, []string{fqn})
+}
+
+// ValidateAttributeValue checks that value is a permitted value for the attribute identified
+// by attributeFqn. This handles both enumerated and dynamic attribute types:
+//   - Enumerated attributes: value must match one of the pre-registered values (case-insensitive).
+//   - Dynamic attributes (no pre-registered values): any non-empty value is accepted.
+//
+// attributeFqn should be an attribute-level FQN in the form:
+//
+//	https://<namespace>/attr/<attribute_name>
+//
+// Returns ErrAttributeNotFound if the attribute does not exist, or if the attribute is
+// enumerated and value is not in the allowed set.
+//
+// Example:
+//
+//	err := sdk.ValidateAttributeValue(ctx, "https://example.com/attr/clearance", "secret")
+//	if err != nil {
+//	    log.Fatalf("value not permitted: %v", err)
+//	}
+func (s SDK) ValidateAttributeValue(ctx context.Context, attributeFqn string, value string) error {
+	if _, err := NewAttributeNameFQN(attributeFqn); err != nil {
+		return fmt.Errorf("invalid attribute FQN %q: %w", attributeFqn, err)
+	}
+
+	resp, err := s.Attributes.GetAttribute(ctx, &attributes.GetAttributeRequest{
+		Identifier: &attributes.GetAttributeRequest_Fqn{Fqn: attributeFqn},
+	})
+	if err != nil {
+		return fmt.Errorf("%w: %s", ErrAttributeNotFound, attributeFqn)
+	}
+
+	vals := resp.GetAttribute().GetValues()
+	if len(vals) == 0 {
+		// Dynamic attribute — any value is permitted.
+		return nil
+	}
+
+	for _, v := range vals {
+		if strings.EqualFold(v.GetValue(), value) {
+			return nil
+		}
+	}
+	return fmt.Errorf("%w: value %q not permitted for attribute %s", ErrAttributeNotFound, value, attributeFqn)
 }

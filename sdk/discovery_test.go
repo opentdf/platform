@@ -20,6 +20,7 @@ type mockDiscoveryAttributesClient struct {
 
 	listAttributesFunc           func(ctx context.Context, req *attributes.ListAttributesRequest) (*attributes.ListAttributesResponse, error)
 	getAttributeValuesByFqnsFunc func(ctx context.Context, req *attributes.GetAttributeValuesByFqnsRequest) (*attributes.GetAttributeValuesByFqnsResponse, error)
+	getAttributeFunc             func(ctx context.Context, req *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error)
 }
 
 func (m *mockDiscoveryAttributesClient) ListAttributes(ctx context.Context, req *attributes.ListAttributesRequest) (*attributes.ListAttributesResponse, error) {
@@ -28,6 +29,10 @@ func (m *mockDiscoveryAttributesClient) ListAttributes(ctx context.Context, req 
 
 func (m *mockDiscoveryAttributesClient) GetAttributeValuesByFqns(ctx context.Context, req *attributes.GetAttributeValuesByFqnsRequest) (*attributes.GetAttributeValuesByFqnsResponse, error) {
 	return m.getAttributeValuesByFqnsFunc(ctx, req)
+}
+
+func (m *mockDiscoveryAttributesClient) GetAttribute(ctx context.Context, req *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error) {
+	return m.getAttributeFunc(ctx, req)
 }
 
 // mockDiscoveryAuthzClient is a test double for AuthorizationServiceClient.
@@ -381,9 +386,9 @@ func TestGetEntityAttributes_ServiceError(t *testing.T) {
 	assert.Contains(t, err.Error(), "auth service unavailable")
 }
 
-// --- ValidateAttributeValue tests ---
+// --- ValidateAttributeExists tests ---
 
-func TestValidateAttributeValue_ValidAndExists(t *testing.T) {
+func TestValidateAttributeExists_ValidAndExists(t *testing.T) {
 	fqn := "https://example.com/attr/level/value/high"
 	attrClient := &mockDiscoveryAttributesClient{
 		getAttributeValuesByFqnsFunc: func(_ context.Context, _ *attributes.GetAttributeValuesByFqnsRequest) (*attributes.GetAttributeValuesByFqnsResponse, error) {
@@ -392,11 +397,11 @@ func TestValidateAttributeValue_ValidAndExists(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	err := s.ValidateAttributeValue(context.Background(), fqn)
+	err := s.ValidateAttributeExists(context.Background(), fqn)
 	require.NoError(t, err)
 }
 
-func TestValidateAttributeValue_ValidButMissing(t *testing.T) {
+func TestValidateAttributeExists_ValidButMissing(t *testing.T) {
 	fqn := "https://example.com/attr/level/value/nonexistent"
 	attrClient := &mockDiscoveryAttributesClient{
 		getAttributeValuesByFqnsFunc: func(_ context.Context, _ *attributes.GetAttributeValuesByFqnsRequest) (*attributes.GetAttributeValuesByFqnsResponse, error) {
@@ -405,15 +410,121 @@ func TestValidateAttributeValue_ValidButMissing(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	err := s.ValidateAttributeValue(context.Background(), fqn)
+	err := s.ValidateAttributeExists(context.Background(), fqn)
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrAttributeNotFound)
 }
 
-func TestValidateAttributeValue_InvalidFormat(t *testing.T) {
+func TestValidateAttributeExists_InvalidFormat(t *testing.T) {
 	s := newDiscoverySDK(nil, nil)
 
-	err := s.ValidateAttributeValue(context.Background(), "bad-fqn-format")
+	err := s.ValidateAttributeExists(context.Background(), "bad-fqn-format")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid attribute value FQN")
+}
+
+// --- ValidateAttributeValue tests ---
+
+func TestValidateAttributeValue_EnumeratedMatch(t *testing.T) {
+	attrFQN := "https://example.com/attr/clearance"
+	attrClient := &mockDiscoveryAttributesClient{
+		getAttributeFunc: func(_ context.Context, req *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error) {
+			assert.Equal(t, attrFQN, req.GetFqn())
+			return &attributes.GetAttributeResponse{
+				Attribute: &policy.Attribute{
+					Values: []*policy.Value{
+						{Value: "low"},
+						{Value: "secret"},
+						{Value: "top-secret"},
+					},
+				},
+			}, nil
+		},
+	}
+	s := newDiscoverySDK(attrClient, nil)
+
+	err := s.ValidateAttributeValue(context.Background(), attrFQN, "secret")
+	require.NoError(t, err)
+}
+
+func TestValidateAttributeValue_EnumeratedCaseInsensitive(t *testing.T) {
+	attrFQN := "https://example.com/attr/clearance"
+	attrClient := &mockDiscoveryAttributesClient{
+		getAttributeFunc: func(_ context.Context, _ *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error) {
+			return &attributes.GetAttributeResponse{
+				Attribute: &policy.Attribute{
+					Values: []*policy.Value{{Value: "Secret"}},
+				},
+			}, nil
+		},
+	}
+	s := newDiscoverySDK(attrClient, nil)
+
+	err := s.ValidateAttributeValue(context.Background(), attrFQN, "SECRET")
+	require.NoError(t, err)
+}
+
+func TestValidateAttributeValue_EnumeratedNotFound(t *testing.T) {
+	attrFQN := "https://example.com/attr/clearance"
+	attrClient := &mockDiscoveryAttributesClient{
+		getAttributeFunc: func(_ context.Context, _ *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error) {
+			return &attributes.GetAttributeResponse{
+				Attribute: &policy.Attribute{
+					Values: []*policy.Value{
+						{Value: "low"},
+						{Value: "secret"},
+					},
+				},
+			}, nil
+		},
+	}
+	s := newDiscoverySDK(attrClient, nil)
+
+	err := s.ValidateAttributeValue(context.Background(), attrFQN, "top-secret")
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrAttributeNotFound)
+	assert.Contains(t, err.Error(), "top-secret")
+}
+
+func TestValidateAttributeValue_Dynamic(t *testing.T) {
+	// Dynamic attribute: no pre-registered values — any string is valid.
+	attrFQN := "https://example.com/attr/tag"
+	attrClient := &mockDiscoveryAttributesClient{
+		getAttributeFunc: func(_ context.Context, _ *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error) {
+			return &attributes.GetAttributeResponse{
+				Attribute: &policy.Attribute{Values: nil},
+			}, nil
+		},
+	}
+	s := newDiscoverySDK(attrClient, nil)
+
+	err := s.ValidateAttributeValue(context.Background(), attrFQN, "anything-goes")
+	require.NoError(t, err)
+}
+
+func TestValidateAttributeValue_AttributeNotFound(t *testing.T) {
+	attrFQN := "https://example.com/attr/nonexistent"
+	attrClient := &mockDiscoveryAttributesClient{
+		getAttributeFunc: func(_ context.Context, _ *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error) {
+			return nil, errors.New("not_found: attribute does not exist")
+		},
+	}
+	s := newDiscoverySDK(attrClient, nil)
+
+	err := s.ValidateAttributeValue(context.Background(), attrFQN, "somevalue")
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrAttributeNotFound)
+}
+
+func TestValidateAttributeValue_InvalidFQN(t *testing.T) {
+	// Passing a value FQN (contains /value/) should be rejected as an invalid attribute FQN.
+	s := newDiscoverySDK(nil, nil)
+
+	err := s.ValidateAttributeValue(context.Background(), "https://example.com/attr/level/value/high", "high")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid attribute FQN")
+
+	err = s.ValidateAttributeValue(context.Background(), "not-a-fqn", "somevalue")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid attribute FQN")
 }

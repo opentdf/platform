@@ -88,6 +88,31 @@ func tdfEncrypt(
 	return uint32(len(result))
 }
 
+//go:wasmexport tdf_decrypt
+func tdfDecrypt(
+	tdfPtr, tdfLen uint32,
+	dekPtr, dekLen uint32,
+	outPtr, outCapacity uint32,
+) uint32 {
+	tdfData := ptrToBytes(tdfPtr, tdfLen)
+	dek := ptrToBytes(dekPtr, dekLen)
+
+	result, err := decrypt(tdfData, dek)
+	if err != nil {
+		lastError = err.Error()
+		return 0
+	}
+
+	if uint32(len(result)) > outCapacity {
+		lastError = "output buffer too small"
+		return 0
+	}
+
+	dst := unsafe.Slice((*byte)(unsafe.Pointer(uintptr(outPtr))), len(result))
+	copy(dst, result)
+	return uint32(len(result))
+}
+
 // ── WASM memory helpers ─────────────────────────────────────────────
 
 func ptrToString(ptr, length uint32) string {

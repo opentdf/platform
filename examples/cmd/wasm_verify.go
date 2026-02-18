@@ -458,7 +458,8 @@ func (w *wasmRuntime) decrypt(tdfBytes, dek []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("write DEK to WASM: %w", err)
 	}
-	const outCap = 1024 * 1024
+	// Output buffer sized to TDF input — plaintext is always smaller.
+	outCap := uint32(len(tdfBytes))
 	outPtr, err := w.malloc(outCap)
 	if err != nil {
 		return nil, fmt.Errorf("malloc output: %w", err)
@@ -485,6 +486,62 @@ func (w *wasmRuntime) decrypt(tdfBytes, dek []byte) ([]byte, error) {
 	}
 	out := make([]byte, len(ptBytes))
 	copy(out, ptBytes)
+	return out, nil
+}
+
+// encrypt calls the WASM tdf_encrypt export.
+func (w *wasmRuntime) encrypt(kasPubPEM, kasURL string, plaintext []byte, segmentSize uint32) ([]byte, error) {
+	kasPubPtr, err := w.writeToWASM([]byte(kasPubPEM))
+	if err != nil {
+		return nil, fmt.Errorf("write KAS pub PEM to WASM: %w", err)
+	}
+	kasURLPtr, err := w.writeToWASM([]byte(kasURL))
+	if err != nil {
+		return nil, fmt.Errorf("write KAS URL to WASM: %w", err)
+	}
+	ptPtr, err := w.writeToWASM(plaintext)
+	if err != nil {
+		return nil, fmt.Errorf("write plaintext to WASM: %w", err)
+	}
+
+	// Output buffer: TDF overhead is modest; 2x plaintext + 64KB should suffice.
+	outCap := uint32(len(plaintext)*2 + 65536) //nolint:mnd
+	outPtr, err := w.malloc(outCap)
+	if err != nil {
+		return nil, fmt.Errorf("malloc output: %w", err)
+	}
+
+	const (
+		algHS256     = 0
+		attrPtrZero  = 0
+		attrLenZero  = 0
+	)
+
+	results, callErr := w.mod.ExportedFunction("tdf_encrypt").Call(w.ctx,
+		uint64(kasPubPtr), uint64(len(kasPubPEM)),
+		uint64(kasURLPtr), uint64(len(kasURL)),
+		uint64(attrPtrZero), uint64(attrLenZero), // no attributes
+		uint64(ptPtr), uint64(len(plaintext)),
+		uint64(outPtr), uint64(outCap),
+		uint64(algHS256), uint64(algHS256), // HS256 for root + segment integrity
+		uint64(segmentSize),
+	)
+	if callErr != nil {
+		return nil, fmt.Errorf("tdf_encrypt call: %w", callErr)
+	}
+	resultLen := uint32(results[0])
+	if resultLen == 0 {
+		if errMsg := w.wasmGetError(); errMsg != "" {
+			return nil, fmt.Errorf("tdf_encrypt: %s", errMsg)
+		}
+		return nil, fmt.Errorf("tdf_encrypt returned 0 bytes with no error")
+	}
+	tdfBytes, ok := w.mod.Memory().Read(outPtr, resultLen)
+	if !ok {
+		return nil, fmt.Errorf("read TDF output from WASM memory")
+	}
+	out := make([]byte, len(tdfBytes))
+	copy(out, tdfBytes)
 	return out, nil
 }
 

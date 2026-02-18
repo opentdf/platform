@@ -637,15 +637,6 @@ func keycloakLogin(ctx context.Context, connectParams *KeycloakConnectParams) (*
 	return client, token, err
 }
 
-func createRealm(ctx context.Context, kcConnectParams KeycloakConnectParams, realm gocloak.RealmRepresentation) error {
-	// Create TokenManager and delegate to TokenManager version
-	tm, err := NewTokenManager(ctx, &kcConnectParams, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create token manager: %w", err)
-	}
-	return createRealmWithTokenManager(ctx, kcConnectParams, realm, tm)
-}
-
 func createRealmWithTokenManager(ctx context.Context, kcConnectParams KeycloakConnectParams, realm gocloak.RealmRepresentation, tm *TokenManager) error {
 	// Get fresh token
 	token, err := tm.GetToken(ctx)
@@ -911,30 +902,28 @@ func createUser(ctx context.Context, tm *TokenManager, connectParams *KeycloakCo
 	username := *newUser.Username
 	longUserID, err := client.CreateUser(ctx, token.AccessToken, connectParams.Realm, newUser)
 	if err != nil {
-		switch kcErrCode(err) {
-		case http.StatusConflict:
-			slog.Warn("user already exists", slog.String("username", username))
-			users, err := client.GetUsers(ctx, token.AccessToken, connectParams.Realm, gocloak.GetUsersParams{
-				Username: newUser.Username,
-				Exact:    gocloak.BoolP(true),
-			})
-			if err != nil {
-				return nil, err
-			}
-			if len(users) == 1 {
-				longUserID = *users[0].ID
-			} else if len(users) > 1 {
-				err = fmt.Errorf("error, multiple users found with username %s", username)
-				return nil, err
-			} else {
-				err = fmt.Errorf("error, %s user not found", username)
-				return nil, err
-			}
-		default:
+		if kcErrCode(err) != http.StatusConflict {
 			slog.Error("error creating user",
 				slog.String("username", username),
 				slog.Any("error", err))
 			return nil, err
+		}
+
+		slog.Warn("user already exists", slog.String("username", username))
+		users, err := client.GetUsers(ctx, token.AccessToken, connectParams.Realm, gocloak.GetUsersParams{
+			Username: newUser.Username,
+			Exact:    gocloak.BoolP(true),
+		})
+		if err != nil {
+			return nil, err
+		}
+		switch len(users) {
+		case 1:
+			longUserID = *users[0].ID
+		case 0:
+			return nil, fmt.Errorf("error, %s user not found", username)
+		default:
+			return nil, fmt.Errorf("error, multiple users found with username %s", username)
 		}
 	} else {
 		//nolint:sloglint // allow existing emojis

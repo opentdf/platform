@@ -669,21 +669,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_OrdersByCreatedAt_Succee
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
 	s.Require().NoError(err)
 
-	positions := map[string]int{}
-	for i, sm := range listRsp.GetSubjectMappings() {
-		id := sm.GetId()
-		if id == firstID || id == secondID || id == thirdID {
-			positions[id] = i
-		}
-	}
-
-	s.Require().Len(positions, 3)
-	first := positions[firstID]
-	second := positions[secondID]
-	third := positions[thirdID]
-
-	s.True(first < second)
-	s.True(second < third)
+	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, firstID, secondID, thirdID)
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Limit_Succeeds() {

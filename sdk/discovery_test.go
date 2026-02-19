@@ -78,7 +78,7 @@ func TestListAttributes_Empty(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	result, err := s.ListAttributes(context.Background())
+	result, err := s.ListAttributes(t.Context())
 	require.NoError(t, err)
 	assert.Empty(t, result)
 }
@@ -95,7 +95,7 @@ func TestListAttributes_SinglePage(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	result, err := s.ListAttributes(context.Background())
+	result, err := s.ListAttributes(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, expected, result)
 }
@@ -122,7 +122,7 @@ func TestListAttributes_MultiPage(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	result, err := s.ListAttributes(context.Background())
+	result, err := s.ListAttributes(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, 2, calls, "should have paginated twice")
 	assert.Equal(t, append(page1, page2...), result)
@@ -138,7 +138,7 @@ func TestListAttributes_NamespaceFilter(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	_, err := s.ListAttributes(context.Background(), "my-namespace")
+	_, err := s.ListAttributes(t.Context(), "my-namespace")
 	require.NoError(t, err)
 	assert.Equal(t, "my-namespace", capturedReq.GetNamespace())
 }
@@ -155,7 +155,7 @@ func TestListAttributes_PageLimitExceeded(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	_, err := s.ListAttributes(context.Background())
+	_, err := s.ListAttributes(t.Context())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "exceeded maximum page limit")
 }
@@ -168,7 +168,7 @@ func TestListAttributes_ServiceError(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	_, err := s.ListAttributes(context.Background())
+	_, err := s.ListAttributes(t.Context())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "listing attributes")
 	assert.Contains(t, err.Error(), "service unavailable")
@@ -178,10 +178,7 @@ func TestListAttributes_ServiceError(t *testing.T) {
 
 func TestValidateAttributes_Empty(t *testing.T) {
 	s := newDiscoverySDK(nil, nil)
-	err := s.ValidateAttributes(context.Background(), nil)
-	require.NoError(t, err)
-
-	err = s.ValidateAttributes(context.Background(), []string{})
+	err := s.ValidateAttributes(t.Context())
 	require.NoError(t, err)
 }
 
@@ -197,7 +194,7 @@ func TestValidateAttributes_AllFound(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	err := s.ValidateAttributes(context.Background(), fqns)
+	err := s.ValidateAttributes(t.Context(), fqns...)
 	require.NoError(t, err)
 }
 
@@ -216,7 +213,7 @@ func TestValidateAttributes_SomeMissing(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	err := s.ValidateAttributes(context.Background(), fqns)
+	err := s.ValidateAttributes(t.Context(), fqns...)
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrAttributeNotFound)
 	assert.Contains(t, err.Error(), "https://example.com/attr/type/value/missing")
@@ -234,7 +231,7 @@ func TestValidateAttributes_AllMissing(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	err := s.ValidateAttributes(context.Background(), fqns)
+	err := s.ValidateAttributes(t.Context(), fqns...)
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrAttributeNotFound)
 }
@@ -246,7 +243,7 @@ func TestValidateAttributes_TooManyFQNs(t *testing.T) {
 	}
 	s := newDiscoverySDK(nil, nil)
 
-	err := s.ValidateAttributes(context.Background(), fqns)
+	err := s.ValidateAttributes(t.Context(), fqns...)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "too many attribute FQNs")
 }
@@ -254,7 +251,7 @@ func TestValidateAttributes_TooManyFQNs(t *testing.T) {
 func TestValidateAttributes_InvalidFQNFormat(t *testing.T) {
 	s := newDiscoverySDK(nil, nil)
 
-	err := s.ValidateAttributes(context.Background(), []string{"not-a-valid-fqn"})
+	err := s.ValidateAttributes(t.Context(), "not-a-valid-fqn")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid attribute value FQN")
 	assert.Contains(t, err.Error(), "not-a-valid-fqn")
@@ -269,7 +266,7 @@ func TestValidateAttributes_ServiceError(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	err := s.ValidateAttributes(context.Background(), fqns)
+	err := s.ValidateAttributes(t.Context(), fqns...)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "validating attributes")
 	assert.Contains(t, err.Error(), "network error")
@@ -279,7 +276,7 @@ func TestValidateAttributes_ServiceError(t *testing.T) {
 
 func TestGetEntityAttributes_NilEntity(t *testing.T) {
 	s := newDiscoverySDK(nil, nil)
-	_, err := s.GetEntityAttributes(context.Background(), nil)
+	_, err := s.GetEntityAttributes(t.Context(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "entity must not be nil")
 }
@@ -305,7 +302,7 @@ func TestGetEntityAttributes_Found(t *testing.T) {
 		Id:         "e1",
 		EntityType: &authorization.Entity_EmailAddress{EmailAddress: "alice@example.com"},
 	}
-	result, err := s.GetEntityAttributes(context.Background(), entity)
+	result, err := s.GetEntityAttributes(t.Context(), entity)
 	require.NoError(t, err)
 	assert.Equal(t, expectedFQNs, result)
 }
@@ -322,7 +319,7 @@ func TestGetEntityAttributes_NoEntitlements(t *testing.T) {
 		Id:         "e1",
 		EntityType: &authorization.Entity_ClientId{ClientId: "my-service"},
 	}
-	result, err := s.GetEntityAttributes(context.Background(), entity)
+	result, err := s.GetEntityAttributes(t.Context(), entity)
 	require.NoError(t, err)
 	assert.Empty(t, result)
 }
@@ -344,7 +341,7 @@ func TestGetEntityAttributes_IDMismatch(t *testing.T) {
 		Id:         "e1",
 		EntityType: &authorization.Entity_EmailAddress{EmailAddress: "alice@example.com"},
 	}
-	result, err := s.GetEntityAttributes(context.Background(), entity)
+	result, err := s.GetEntityAttributes(t.Context(), entity)
 	require.NoError(t, err)
 	assert.Empty(t, result, "should return empty when no entitlement matches the requested entity ID")
 }
@@ -363,7 +360,7 @@ func TestGetEntityAttributes_EmptyEntityID(t *testing.T) {
 	s := newDiscoverySDK(nil, authzClient)
 
 	entity := &authorization.Entity{} // no ID set
-	result, err := s.GetEntityAttributes(context.Background(), entity)
+	result, err := s.GetEntityAttributes(t.Context(), entity)
 	require.NoError(t, err)
 	assert.Empty(t, result, "entity with empty ID should not receive entitlements belonging to another entity")
 }
@@ -380,7 +377,7 @@ func TestGetEntityAttributes_ServiceError(t *testing.T) {
 		Id:         "e1",
 		EntityType: &authorization.Entity_Uuid{Uuid: "550e8400-e29b-41d4-a716-446655440000"},
 	}
-	_, err := s.GetEntityAttributes(context.Background(), entity)
+	_, err := s.GetEntityAttributes(t.Context(), entity)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "getting entity attributes")
 	assert.Contains(t, err.Error(), "auth service unavailable")
@@ -397,7 +394,7 @@ func TestValidateAttributeExists_ValidAndExists(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	err := s.ValidateAttributeExists(context.Background(), fqn)
+	err := s.ValidateAttributeExists(t.Context(), fqn)
 	require.NoError(t, err)
 }
 
@@ -410,7 +407,7 @@ func TestValidateAttributeExists_ValidButMissing(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	err := s.ValidateAttributeExists(context.Background(), fqn)
+	err := s.ValidateAttributeExists(t.Context(), fqn)
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrAttributeNotFound)
 }
@@ -418,7 +415,7 @@ func TestValidateAttributeExists_ValidButMissing(t *testing.T) {
 func TestValidateAttributeExists_InvalidFormat(t *testing.T) {
 	s := newDiscoverySDK(nil, nil)
 
-	err := s.ValidateAttributeExists(context.Background(), "bad-fqn-format")
+	err := s.ValidateAttributeExists(t.Context(), "bad-fqn-format")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid attribute value FQN")
 }
@@ -443,7 +440,7 @@ func TestValidateAttributeValue_EnumeratedMatch(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	err := s.ValidateAttributeValue(context.Background(), attrFQN, "secret")
+	err := s.ValidateAttributeValue(t.Context(), attrFQN, "secret")
 	require.NoError(t, err)
 }
 
@@ -460,7 +457,7 @@ func TestValidateAttributeValue_EnumeratedCaseInsensitive(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	err := s.ValidateAttributeValue(context.Background(), attrFQN, "SECRET")
+	err := s.ValidateAttributeValue(t.Context(), attrFQN, "SECRET")
 	require.NoError(t, err)
 }
 
@@ -480,7 +477,7 @@ func TestValidateAttributeValue_EnumeratedNotFound(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	err := s.ValidateAttributeValue(context.Background(), attrFQN, "top-secret")
+	err := s.ValidateAttributeValue(t.Context(), attrFQN, "top-secret")
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrAttributeNotFound)
 	assert.Contains(t, err.Error(), "top-secret")
@@ -498,7 +495,7 @@ func TestValidateAttributeValue_Dynamic(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	err := s.ValidateAttributeValue(context.Background(), attrFQN, "anything-goes")
+	err := s.ValidateAttributeValue(t.Context(), attrFQN, "anything-goes")
 	require.NoError(t, err)
 }
 
@@ -511,7 +508,7 @@ func TestValidateAttributeValue_AttributeNotFound(t *testing.T) {
 	}
 	s := newDiscoverySDK(attrClient, nil)
 
-	err := s.ValidateAttributeValue(context.Background(), attrFQN, "somevalue")
+	err := s.ValidateAttributeValue(t.Context(), attrFQN, "somevalue")
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrAttributeNotFound)
 }
@@ -519,7 +516,7 @@ func TestValidateAttributeValue_AttributeNotFound(t *testing.T) {
 func TestValidateAttributeValue_EmptyValue(t *testing.T) {
 	s := newDiscoverySDK(nil, nil)
 
-	err := s.ValidateAttributeValue(context.Background(), "https://example.com/attr/clearance", "")
+	err := s.ValidateAttributeValue(t.Context(), "https://example.com/attr/clearance", "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "must not be empty")
 }
@@ -528,11 +525,11 @@ func TestValidateAttributeValue_InvalidFQN(t *testing.T) {
 	// Passing a value FQN (contains /value/) should be rejected as an invalid attribute FQN.
 	s := newDiscoverySDK(nil, nil)
 
-	err := s.ValidateAttributeValue(context.Background(), "https://example.com/attr/level/value/high", "high")
+	err := s.ValidateAttributeValue(t.Context(), "https://example.com/attr/level/value/high", "high")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid attribute FQN")
 
-	err = s.ValidateAttributeValue(context.Background(), "not-a-fqn", "somevalue")
+	err = s.ValidateAttributeValue(t.Context(), "not-a-fqn", "somevalue")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid attribute FQN")
 }

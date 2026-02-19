@@ -33,8 +33,11 @@ const (
 //	    fmt.Println(a.GetFqn())
 //	}
 func (s SDK) ListAttributes(ctx context.Context, namespace ...string) ([]*policy.Attribute, error) {
+	if len(namespace) > 1 {
+		return nil, fmt.Errorf("ListAttributes accepts at most one namespace filter, got %d", len(namespace))
+	}
 	req := &attributes.ListAttributesRequest{}
-	if len(namespace) > 0 {
+	if len(namespace) == 1 {
 		req.Namespace = namespace[0]
 	}
 
@@ -73,14 +76,14 @@ func (s SDK) ListAttributes(ctx context.Context, namespace ...string) ([]*policy
 //
 // Example:
 //
-//	err := sdk.ValidateAttributes(ctx, []string{
+//	err := sdk.ValidateAttributes(ctx,
 //	    "https://example.com/attr/classification/value/secret",
 //	    "https://example.com/attr/clearance/value/top-secret",
-//	})
+//	)
 //	if err != nil {
 //	    log.Fatalf("attributes not found: %v", err)
 //	}
-func (s SDK) ValidateAttributes(ctx context.Context, fqns []string) error {
+func (s SDK) ValidateAttributes(ctx context.Context, fqns ...string) error {
 	if len(fqns) == 0 {
 		return nil
 	}
@@ -146,6 +149,10 @@ func (s SDK) GetEntityAttributes(ctx context.Context, entity *authorization.Enti
 		return nil, fmt.Errorf("getting entity attributes: %w", err)
 	}
 
+	// GetEntitlements returns a slice of EntityEntitlements keyed by entity ID.
+	// Even though we only request one entity, we must match by ID to locate the
+	// correct entry — the response slice position is not guaranteed to correspond
+	// to the request slice position.
 	entityID := entity.GetId()
 	for _, e := range resp.GetEntitlements() {
 		if e.GetEntityId() == entityID {
@@ -164,7 +171,7 @@ func (s SDK) GetEntityAttributes(ctx context.Context, entity *authorization.Enti
 //
 // This is a convenience wrapper around ValidateAttributes for the single-FQN case.
 func (s SDK) ValidateAttributeExists(ctx context.Context, fqn string) error {
-	return s.ValidateAttributes(ctx, []string{fqn})
+	return s.ValidateAttributes(ctx, fqn)
 }
 
 // ValidateAttributeValue checks that value is a permitted value for the attribute identified

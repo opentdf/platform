@@ -452,7 +452,6 @@ WITH listed AS (
         kas.uri AS kas_uri,
         kas.name AS kas_name,
         kas.public_key AS kas_public_key,
-        kas.created_at AS kas_created_at,
         JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
             'labels', kas.metadata -> 'labels',
             'created_at', kas.created_at,
@@ -495,8 +494,7 @@ WITH listed AS (
         AND ($4::text IS NULL OR kas.uri = $4::text) 
         AND ($5::text IS NULL OR kas.name = $5::text) 
     GROUP BY 
-        kas.id,
-        kas.created_at
+        kas.id
 )
 SELECT 
     listed.kas_id,
@@ -544,7 +542,6 @@ type listKeyAccessServerGrantsRow struct {
 //	        kas.uri AS kas_uri,
 //	        kas.name AS kas_name,
 //	        kas.public_key AS kas_public_key,
-//	        kas.created_at AS kas_created_at,
 //	        JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
 //	            'labels', kas.metadata -> 'labels',
 //	            'created_at', kas.created_at,
@@ -587,8 +584,7 @@ type listKeyAccessServerGrantsRow struct {
 //	        AND ($4::text IS NULL OR kas.uri = $4::text)
 //	        AND ($5::text IS NULL OR kas.name = $5::text)
 //	    GROUP BY
-//	        kas.id,
-//	        kas.created_at
+//	        kas.id
 //	)
 //	SELECT
 //	    listed.kas_id,

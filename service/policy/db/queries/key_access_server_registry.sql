@@ -9,7 +9,6 @@ WITH listed AS (
         kas.uri AS kas_uri,
         kas.name AS kas_name,
         kas.public_key AS kas_public_key,
-        kas.created_at AS kas_created_at,
         JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
             'labels', kas.metadata -> 'labels',
             'created_at', kas.created_at,
@@ -52,8 +51,7 @@ WITH listed AS (
         AND (sqlc.narg('kas_uri')::text IS NULL OR kas.uri = sqlc.narg('kas_uri')::text) 
         AND (sqlc.narg('kas_name')::text IS NULL OR kas.name = sqlc.narg('kas_name')::text) 
     GROUP BY 
-        kas.id,
-        kas.created_at
+        kas.id
 )
 SELECT 
     listed.kas_id,

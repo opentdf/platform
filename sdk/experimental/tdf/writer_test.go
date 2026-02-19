@@ -503,7 +503,7 @@ func testMultiSegmentFlow(t *testing.T) {
 
 	// Verify root signature was calculated from all segments
 	assert.NotEmpty(t, finalizeResult.Manifest.Signature, "Root signature should be set")
-	assert.Equal(t, "GMAC", finalizeResult.Manifest.Algorithm, "Root signature algorithm should be GMAC")
+	assert.Equal(t, "HS256", finalizeResult.Manifest.Algorithm, "Root signature algorithm should be HS256")
 }
 
 // testKeySplittingWithMultipleAttributes tests XOR key splitting with complex attribute scenarios

@@ -156,7 +156,7 @@ type Writer struct {
 func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error) {
 	// Initialize Config
 	config := &WriterConfig{
-		integrityAlgorithm:        GMAC,
+		rootIntegrityAlgorithm:    HS256,
 		segmentIntegrityAlgorithm: GMAC,
 	}
 
@@ -570,12 +570,12 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 	// manifests returned before any WriteSegment call leave the root
 	// signature empty.
 	if aggregateHash.Len() > 0 {
-		rootSignature, err := calculateSignature(aggregateHash.Bytes(), w.dek, w.integrityAlgorithm, false)
+		rootSignature, err := calculateSignature(aggregateHash.Bytes(), w.dek, w.rootIntegrityAlgorithm, false)
 		if err != nil {
 			return nil, 0, 0, err
 		}
 		encryptInfo.RootSignature = RootSignature{
-			Algorithm: w.integrityAlgorithm.String(),
+			Algorithm: w.rootIntegrityAlgorithm.String(),
 			Signature: string(ocrypto.Base64Encode([]byte(rootSignature))),
 		}
 	}

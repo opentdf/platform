@@ -303,7 +303,7 @@ CROSS JOIN counted
 WHERE
     $1::uuid IS NULL OR v.registered_resource_id = $1::uuid
 GROUP BY v.id, counted.total
-ORDER BY v.created_at
+ORDER BY v.created_at DESC
 LIMIT $3
 OFFSET $2
 `
@@ -359,7 +359,7 @@ type listRegisteredResourceValuesRow struct {
 //	WHERE
 //	    $1::uuid IS NULL OR v.registered_resource_id = $1::uuid
 //	GROUP BY v.id, counted.total
-//	ORDER BY v.created_at
+//	ORDER BY v.created_at DESC
 //	LIMIT $3
 //	OFFSET $2
 func (q *Queries) listRegisteredResourceValues(ctx context.Context, arg listRegisteredResourceValuesParams) ([]listRegisteredResourceValuesRow, error) {
@@ -433,7 +433,7 @@ LEFT JOIN LATERAL (
     WHERE rav.registered_resource_value_id = v.id
 ) action_attrs ON true  -- required syntax for LATERAL joins
 GROUP BY r.id, counted.total
-ORDER BY r.created_at
+ORDER BY r.created_at DESC
 LIMIT $2 
 OFFSET $1
 `
@@ -496,7 +496,7 @@ type listRegisteredResourcesRow struct {
 //	    WHERE rav.registered_resource_value_id = v.id
 //	) action_attrs ON true  -- required syntax for LATERAL joins
 //	GROUP BY r.id, counted.total
-//	ORDER BY r.created_at
+//	ORDER BY r.created_at DESC
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listRegisteredResources(ctx context.Context, arg listRegisteredResourcesParams) ([]listRegisteredResourcesRow, error) {

@@ -661,7 +661,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_OrdersByCreatedAt_Succee
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
 	s.Require().NoError(err)
 
-	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, firstID, secondID, thirdID)
+	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Limit_Succeeds() {
@@ -971,7 +971,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_OrdersByCreatedAt_Su
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, firstID, secondID, thirdID)
+	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_Limit_Succeeds() {

@@ -342,7 +342,7 @@ func (s *ObligationTriggersSuite) Test_ListObligationTriggers_OrdersByCreatedAt_
 	s.Require().NoError(err)
 	s.NotNil(triggers)
 
-	assertIDsInOrder(s.T(), triggers, func(t *policy.ObligationTrigger) string { return t.GetId() }, first.GetId(), second.GetId(), third.GetId())
+	assertIDsInDescendingOrder(s.T(), triggers, func(t *policy.ObligationTrigger) string { return t.GetId() }, third.GetId(), second.GetId(), first.GetId())
 }
 
 func (s *ObligationTriggersSuite) Test_ListObligationTriggers_NoTriggersWithNamespaceId_Success() {

@@ -469,7 +469,7 @@ func (s *AttributesSuite) Test_ListAttributes_OrdersByCreatedAt_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, firstID, secondID, thirdID)
+	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *AttributesSuite) Test_ListAttributes_Limit_Succeeds() {

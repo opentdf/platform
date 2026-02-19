@@ -97,7 +97,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_OrdersByCreatedAt_Succeeds(
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, firstID, secondID, thirdID)
+	assertIDsInDescendingOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_Limit_Succeeds() {

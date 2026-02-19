@@ -222,7 +222,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_OrdersByCreatedAt_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(listNamespacesRsp)
 
-	assertIDsInOrder(s.T(), listNamespacesRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, firstID, secondID, thirdID)
+	assertIDsInDescendingOrder(s.T(), listNamespacesRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_Limit_Succeeds() {

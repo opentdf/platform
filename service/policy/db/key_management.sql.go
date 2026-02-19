@@ -171,7 +171,7 @@ SELECT
     counted.total
 FROM provider_config AS pc
 CROSS JOIN counted
-ORDER BY pc.created_at
+ORDER BY pc.created_at DESC
 LIMIT $2 
 OFFSET $1
 `
@@ -205,7 +205,7 @@ type listProviderConfigsRow struct {
 //	    counted.total
 //	FROM provider_config AS pc
 //	CROSS JOIN counted
-//	ORDER BY pc.created_at
+//	ORDER BY pc.created_at DESC
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listProviderConfigs(ctx context.Context, arg listProviderConfigsParams) ([]listProviderConfigsRow, error) {

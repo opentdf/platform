@@ -10,7 +10,7 @@ SELECT rmg.id,
     COUNT(*) OVER() AS total
 FROM resource_mapping_groups rmg
 WHERE (sqlc.narg('namespace_id')::uuid IS NULL OR rmg.namespace_id = sqlc.narg('namespace_id')::uuid) 
-ORDER BY rmg.created_at
+ORDER BY rmg.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_; 
 
@@ -60,7 +60,7 @@ LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
 WHERE (sqlc.narg('group_id')::uuid IS NULL OR m.group_id = sqlc.narg('group_id')::uuid)
 GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id
-ORDER BY m.created_at
+ORDER BY m.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_; 
 
@@ -93,7 +93,7 @@ FROM resource_mappings m
 JOIN groups_cte g ON m.group_id = g.id
 JOIN attribute_values av on m.attribute_value_id = av.id
 JOIN attribute_fqns fqns on av.id = fqns.value_id
-ORDER BY m.created_at;
+ORDER BY m.created_at DESC;
 
 -- name: getResourceMapping :one
 SELECT

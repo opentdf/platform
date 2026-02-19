@@ -184,7 +184,7 @@ SELECT rmg.id,
     COUNT(*) OVER() AS total
 FROM resource_mapping_groups rmg
 WHERE ($1::uuid IS NULL OR rmg.namespace_id = $1::uuid) 
-ORDER BY rmg.created_at
+ORDER BY rmg.created_at DESC
 LIMIT $3 
 OFFSET $2
 `
@@ -214,7 +214,7 @@ type listResourceMappingGroupsRow struct {
 //	    COUNT(*) OVER() AS total
 //	FROM resource_mapping_groups rmg
 //	WHERE ($1::uuid IS NULL OR rmg.namespace_id = $1::uuid)
-//	ORDER BY rmg.created_at
+//	ORDER BY rmg.created_at DESC
 //	LIMIT $3
 //	OFFSET $2
 func (q *Queries) listResourceMappingGroups(ctx context.Context, arg listResourceMappingGroupsParams) ([]listResourceMappingGroupsRow, error) {
@@ -264,7 +264,7 @@ LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
 WHERE ($1::uuid IS NULL OR m.group_id = $1::uuid)
 GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id
-ORDER BY m.created_at
+ORDER BY m.created_at DESC
 LIMIT $3 
 OFFSET $2
 `
@@ -307,7 +307,7 @@ type listResourceMappingsRow struct {
 //	LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
 //	WHERE ($1::uuid IS NULL OR m.group_id = $1::uuid)
 //	GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id
-//	ORDER BY m.created_at
+//	ORDER BY m.created_at DESC
 //	LIMIT $3
 //	OFFSET $2
 func (q *Queries) listResourceMappings(ctx context.Context, arg listResourceMappingsParams) ([]listResourceMappingsRow, error) {
@@ -365,7 +365,7 @@ FROM resource_mappings m
 JOIN groups_cte g ON m.group_id = g.id
 JOIN attribute_values av on m.attribute_value_id = av.id
 JOIN attribute_fqns fqns on av.id = fqns.value_id
-ORDER BY m.created_at
+ORDER BY m.created_at DESC
 `
 
 type listResourceMappingsByFullyQualifiedGroupParams struct {
@@ -410,7 +410,7 @@ type listResourceMappingsByFullyQualifiedGroupRow struct {
 //	JOIN groups_cte g ON m.group_id = g.id
 //	JOIN attribute_values av on m.attribute_value_id = av.id
 //	JOIN attribute_fqns fqns on av.id = fqns.value_id
-//	ORDER BY m.created_at
+//	ORDER BY m.created_at DESC
 func (q *Queries) listResourceMappingsByFullyQualifiedGroup(ctx context.Context, arg listResourceMappingsByFullyQualifiedGroupParams) ([]listResourceMappingsByFullyQualifiedGroupRow, error) {
 	rows, err := q.db.Query(ctx, listResourceMappingsByFullyQualifiedGroup, arg.NamespaceName, arg.GroupName)
 	if err != nil {

@@ -164,7 +164,7 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues_OrdersByCreatedAt_Succee
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInOrder(s.T(), listRsp.GetValues(), func(val *policy.Value) string { return val.GetId() }, firstID, secondID, thirdID)
+	assertIDsInDescendingOrder(s.T(), listRsp.GetValues(), func(val *policy.Value) string { return val.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *AttributeValuesSuite) Test_ListAttributeValues_Limit_Succeeds() {

@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func assertIDsInOrder[T any](tb testing.TB, items []T, getID func(T) string, ids ...string) {
+func assertIDsInDescendingOrder[T any](tb testing.TB, items []T, getID func(T) string, ids ...string) {
 	tb.Helper()
 
 	targets := make(map[string]struct{}, len(ids))

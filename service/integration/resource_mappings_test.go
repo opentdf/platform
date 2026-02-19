@@ -102,7 +102,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_OrdersByCreatedAt
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInOrder(s.T(), listRsp.GetResourceMappingGroups(), func(g *policy.ResourceMappingGroup) string { return g.GetId() }, firstID, secondID, thirdID)
+	assertIDsInDescendingOrder(s.T(), listRsp.GetResourceMappingGroups(), func(g *policy.ResourceMappingGroup) string { return g.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_Limit_Succeeds() {
@@ -730,7 +730,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings_OrdersByCreatedAt_Succ
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInOrder(s.T(), listRsp.GetResourceMappings(), func(rm *policy.ResourceMapping) string { return rm.GetId() }, firstID, secondID, thirdID)
+	assertIDsInDescendingOrder(s.T(), listRsp.GetResourceMappings(), func(rm *policy.ResourceMapping) string { return rm.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqns_OrdersByCreatedAt_Succeeds() {
@@ -793,7 +793,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqns_OrdersByCre
 	s.Require().True(ok)
 	s.Require().NotNil(groupMappings)
 
-	assertIDsInOrder(s.T(), groupMappings.GetMappings(), func(rm *policy.ResourceMapping) string { return rm.GetId() }, firstID, secondID, thirdID)
+	assertIDsInDescendingOrder(s.T(), groupMappings.GetMappings(), func(rm *policy.ResourceMapping) string { return rm.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappings_Limit_Succeeds() {

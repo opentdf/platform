@@ -102,7 +102,7 @@ LEFT JOIN (
         INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY kask.key_access_server_id
     ) kask_keys ON kas.id = kask_keys.key_access_server_id
-ORDER BY kas.created_at
+ORDER BY kas.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_; 
 
@@ -318,7 +318,7 @@ CROSS JOIN keys_with_mappings_count kwmc
 LEFT JOIN namespace_mappings nm ON fk.id = nm.key_id
 LEFT JOIN definition_mappings dm ON fk.id = dm.key_id
 LEFT JOIN value_mappings vm ON fk.id = vm.key_id
-ORDER BY fk.created_at
+ORDER BY fk.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_;
 
@@ -379,7 +379,7 @@ LEFT JOIN
 WHERE
     (sqlc.narg('key_algorithm')::integer IS NULL OR kask.key_algorithm = sqlc.narg('key_algorithm')::integer)
     AND (sqlc.narg('legacy')::boolean IS NULL OR kask.legacy = sqlc.narg('legacy')::boolean)
-ORDER BY kask.created_at
+ORDER BY kask.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_;
 

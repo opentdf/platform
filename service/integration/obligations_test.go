@@ -483,7 +483,7 @@ func (s *ObligationsSuite) Test_ListObligations_OrdersByCreatedAt_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(oblList)
 
-	assertIDsInOrder(s.T(), oblList, func(obl *policy.Obligation) string { return obl.GetId() }, first.GetId(), second.GetId(), third.GetId())
+	assertIDsInDescendingOrder(s.T(), oblList, func(obl *policy.Obligation) string { return obl.GetId() }, third.GetId(), second.GetId(), first.GetId())
 }
 
 func (s *ObligationsSuite) Test_ListObligations_Fails() {

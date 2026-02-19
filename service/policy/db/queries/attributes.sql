@@ -39,7 +39,7 @@ WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL OR ad.namespace_id = sqlc.narg('namespace_id')::uuid) AND 
     (sqlc.narg('namespace_name')::text IS NULL OR n.name = sqlc.narg('namespace_name')::text) 
 GROUP BY ad.id, n.name, fqns.fqn
-ORDER BY ad.created_at
+ORDER BY ad.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_; 
 
@@ -58,7 +58,7 @@ FROM attribute_definitions ad
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 WHERE ad.namespace_id = $1
 GROUP BY ad.id, n.name
-ORDER BY ad.created_at
+ORDER BY ad.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_; 
 
@@ -288,7 +288,7 @@ INNER JOIN attribute_fqns fqns ON td.id = fqns.attribute_id
 INNER JOIN namespaces n ON td.namespace_id = n.id
 LEFT JOIN values ON td.id = values.attribute_definition_id
 WHERE fqns.value_id IS NULL
-ORDER BY td.created_at;
+ORDER BY td.created_at DESC;
 
 -- name: getAttribute :one
 SELECT

@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/Nerzal/gocloak/v13"
 )
 
 // TestTokenManager_InitialLogin tests that a new TokenManager successfully performs initial login
@@ -39,8 +41,9 @@ func TestTokenManager_InitialLogin(t *testing.T) {
 		t.Fatal("ExpiresAt should be set after initial login")
 	}
 
-	if tm.tokenBuffer != 120*time.Second {
-		t.Errorf("Expected default token buffer of 120s, got %v", tm.tokenBuffer)
+	expectedBuffer := expectedTokenBuffer(tm.token, 120*time.Second)
+	if tm.tokenBuffer != expectedBuffer {
+		t.Errorf("Expected token buffer of %v, got %v", expectedBuffer, tm.tokenBuffer)
 	}
 }
 
@@ -69,8 +72,9 @@ func TestTokenManager_CustomTokenBuffer(t *testing.T) {
 		t.Fatalf("Failed to create TokenManager: %v", err)
 	}
 
-	if tm.tokenBuffer != customBuffer {
-		t.Errorf("Expected token buffer of %v, got %v", customBuffer, tm.tokenBuffer)
+	expectedBuffer := expectedTokenBuffer(tm.token, customBuffer)
+	if tm.tokenBuffer != expectedBuffer {
+		t.Errorf("Expected token buffer of %v, got %v", expectedBuffer, tm.tokenBuffer)
 	}
 }
 
@@ -182,6 +186,19 @@ func TestTokenManager_PreemptiveRefresh(t *testing.T) {
 		// Token was refreshed as expected
 		t.Logf("Token was successfully refreshed. Old expiry: %v, New expiry: %v", firstExpiresAt, secondExpiresAt)
 	}
+}
+
+func expectedTokenBuffer(token *gocloak.JWT, configured time.Duration) time.Duration {
+	if token == nil || token.ExpiresIn <= 0 {
+		return configured
+	}
+
+	tokenLifetime := time.Duration(token.ExpiresIn) * time.Second
+	if configured >= tokenLifetime {
+		return tokenLifetime / adaptiveBufferDivisor
+	}
+
+	return configured
 }
 
 // TestTokenManager_ConcurrentAccess tests thread safety of TokenManager

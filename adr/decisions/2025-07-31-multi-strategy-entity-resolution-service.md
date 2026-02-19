@@ -591,7 +591,7 @@ mapping_strategies:
 
 **Integration Tests**:
 ```
-service/entityresolution/integration/
+tests/service/entityresolution/integration/
 ├── multi_strategy_test.go           # Multi-strategy core integration tests
 ├── multi_strategy_sql_test.go       # SQL provider integration tests
 ├── multi_strategy_ldap_test.go      # LDAP provider integration tests

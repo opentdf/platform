@@ -12,7 +12,7 @@
 - [Multi-Strategy Entity Resolution Service](./ERS_TESTING.md)
 - [Development](#for-contributors)
 - [Policy Config Schema](./service/policy/db/schema_erd.md)
-- [Policy Config Testing Diagram](./service/integration/testing_diagram.png)
+- [Policy Config Testing Diagram](./tests/service/integration/testing_diagram.png)
 
 ### Prerequisites for Project Consumers & Contributors
 
@@ -95,7 +95,7 @@ Test the multi-strategy ERS functionality:
 
 ```sh
 # Run integration tests (Docker services provide the backends automatically)
-go test ./service/entityresolution/integration -run TestMultiStrategy -v
+go test ./tests/service/entityresolution/integration -run TestMultiStrategy -v
 ```
 
 #### Configuration Options
@@ -108,6 +108,11 @@ The multi-strategy ERS (preview) provides enterprise-grade identity resolution w
 ## For Contributors
 
 This section is focused on the development of the OpenTDF platform.
+
+### Testing
+
+- Unit/fast tests: `make test`
+- Integration + BDD tests (containers): `make test-integration`
 
 ### Libraries
 

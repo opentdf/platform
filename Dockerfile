@@ -8,7 +8,7 @@ COPY sdk/ sdk/
 COPY lib/ lib/
 COPY service/ service/
 COPY examples/ examples/
-COPY tests-bdd/ tests-bdd/
+COPY tests/ tests/
 COPY go.work ./
 RUN cd service \
     && go mod download \

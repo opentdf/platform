@@ -174,17 +174,19 @@ func (s SDK) ValidateAttributeExists(ctx context.Context, fqn string) error {
 	return s.ValidateAttributes(ctx, fqn)
 }
 
-// ValidateAttributeValue checks that value is a permitted value for the attribute identified
-// by attributeFqn. This handles both enumerated and dynamic attribute types:
-//   - Enumerated attributes: value must match one of the pre-registered values (case-insensitive).
-//   - Dynamic attributes (no pre-registered values): any non-empty value is accepted.
+// ValidateAttributeValue checks that value is registered on the attribute identified
+// by attributeFqn. The value must match one of the attribute's registered values
+// (case-insensitive), or the call fails.
+//
+// The attribute rule type (ANY_OF, ALL_OF, HIERARCHY) is not relevant here — it governs
+// access decisions at decryption time, not value registration.
 //
 // attributeFqn should be an attribute-level FQN in the form:
 //
 //	https://<namespace>/attr/<attribute_name>
 //
-// Returns ErrAttributeNotFound if the attribute does not exist, or if the attribute is
-// enumerated and value is not in the allowed set.
+// Returns ErrAttributeNotFound if the attribute does not exist or value is not among
+// its registered values.
 //
 // Example:
 //
@@ -194,7 +196,7 @@ func (s SDK) ValidateAttributeExists(ctx context.Context, fqn string) error {
 //	}
 func (s SDK) ValidateAttributeValue(ctx context.Context, attributeFqn string, value string) error {
 	if value == "" {
-		return errors.New("invalid attribute value: must not be empty")
+		return errors.New("attribute value must not be empty")
 	}
 	if _, err := NewAttributeNameFQN(attributeFqn); err != nil {
 		return fmt.Errorf("invalid attribute FQN %q: %w", attributeFqn, err)
@@ -208,15 +210,10 @@ func (s SDK) ValidateAttributeValue(ctx context.Context, attributeFqn string, va
 	}
 
 	vals := resp.GetAttribute().GetValues()
-	if len(vals) == 0 {
-		// Dynamic attribute — any value is permitted.
-		return nil
-	}
-
 	for _, v := range vals {
 		if strings.EqualFold(v.GetValue(), value) {
 			return nil
 		}
 	}
-	return fmt.Errorf("%w: value %q not permitted for attribute %s", ErrAttributeNotFound, value, attributeFqn)
+	return fmt.Errorf("%w: value %q not found for attribute %s", ErrAttributeNotFound, value, attributeFqn)
 }

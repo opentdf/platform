@@ -483,8 +483,8 @@ func TestValidateAttributeValue_EnumeratedNotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "top-secret")
 }
 
-func TestValidateAttributeValue_Dynamic(t *testing.T) {
-	// Dynamic attribute: no pre-registered values — any string is valid.
+func TestValidateAttributeValue_NoRegisteredValues(t *testing.T) {
+	// Attribute with no registered values — value cannot be found, so the call must fail.
 	attrFQN := "https://example.com/attr/tag"
 	attrClient := &mockDiscoveryAttributesClient{
 		getAttributeFunc: func(_ context.Context, _ *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error) {
@@ -496,7 +496,7 @@ func TestValidateAttributeValue_Dynamic(t *testing.T) {
 	s := newDiscoverySDK(attrClient, nil)
 
 	err := s.ValidateAttributeValue(t.Context(), attrFQN, "anything-goes")
-	require.NoError(t, err)
+	require.ErrorIs(t, err, ErrAttributeNotFound)
 }
 
 func TestValidateAttributeValue_AttributeNotFound(t *testing.T) {

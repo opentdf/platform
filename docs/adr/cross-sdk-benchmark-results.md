@@ -19,33 +19,35 @@
 
 ## Encrypt Performance (ms)
 
-| Payload | Go SDK | Go Writer | Go WASM | Java SDK | Java WASM | TS SDK | TS WASM |
-|---------|--------|-----------|---------|----------|-----------|--------|---------|
-| 256 B   | 2.2    | 0.1       | 0.3     | 17.3     | —         | 40.0   | —       |
-| 1 KB    | 0.4    | 0.1       | 0.2     | 4.1      | —         | 25.6   | —       |
-| 16 KB   | 0.1    | 0.1       | 0.2     | 4.6      | —         | 26.1   | —       |
-| 64 KB   | 0.4    | 0.1       | 0.9     | 4.4      | —         | 28.0   | —       |
-| 256 KB  | 0.2    | 0.3       | 1.6     | 8.3      | —         | 36.5   | —       |
-| 1 MB    | 0.6    | 1.2       | 4.5     | 22.5     | —         | 72.6   | —       |
-| 10 MB   | 5.8    | 3.3       | 47.1    | 188.6    | —         | 514.3  | —       |
-| 100 MB  | 48.7   | 19.7      | 485.3   | 1,799.0  | —         | 5,046.5| —       |
+| Payload | Go SDK | Go Writer | Go WASM | Java SDK | Java WASM† | TS SDK | TS WASM |
+|---------|--------|-----------|---------|----------|------------|--------|---------|
+| 256 B   | 2.2    | 0.1       | 0.3     | 17.3     | 57.7       | 40.0   | 0.7     |
+| 1 KB    | 0.4    | 0.1       | 0.2     | 4.1      | 49.3       | 25.6   | 0.2     |
+| 16 KB   | 0.1    | 0.1       | 0.2     | 4.6      | 6.9        | 26.1   | 0.2     |
+| 64 KB   | 0.4    | 0.1       | 0.9     | 4.4      | 15.2       | 28.0   | 0.3     |
+| 256 KB  | 0.2    | 0.3       | 1.6     | 8.3      | 40.5       | 36.5   | 0.8     |
+| 1 MB    | 0.6    | 1.2       | 4.5     | 22.5     | 145.3      | 72.6   | 2.8     |
+| 10 MB   | 5.8    | 3.3       | 47.1    | 188.6    | —          | 514.3  | —       |
+| 100 MB  | 48.7   | 19.7      | 485.3   | 1,799.0  | —          | 5,046.5| —       |
+
+† Chicory is a pure-Java WASM interpreter (no JIT), so WASM encrypt is slower than native Java SDK. A JIT-enabled runtime (e.g., GraalWasm) would be significantly faster.
 
 ## Decrypt Performance (ms)
 
 | Payload | Go SDK* | Go WASM** | Java SDK* | Java WASM** | TS SDK* | TS WASM** |
 |---------|---------|-----------|-----------|-------------|---------|-----------|
-| 256 B   | 32.9    | 1.4       | 58.7      | —           | 76.5    | —         |
-| 1 KB    | 22.6    | 1.3       | 22.5      | —           | 59.4    | —         |
-| 16 KB   | 23.8    | 1.4       | 26.0      | —           | 77.2    | —         |
-| 64 KB   | 21.3    | 1.3       | 27.2      | —           | 52.8    | —         |
-| 256 KB  | 22.9    | 1.5       | 26.4      | —           | 68.2    | —         |
-| 1 MB    | 25.8    | 4.4       | 41.5      | —           | 76.4    | —         |
-| 10 MB   | 24.5    | 19.6      | 205.0     | —           | 301.3   | —         |
-| 100 MB  | 81.5    | 385.0     | 1,781.7   | —           | 2,368.5 | —         |
+| 256 B   | 32.9    | 1.4       | 58.7      | ‡           | 76.5    | ‡         |
+| 1 KB    | 22.6    | 1.3       | 22.5      | ‡           | 59.4    | ‡         |
+| 16 KB   | 23.8    | 1.4       | 26.0      | ‡           | 77.2    | ‡         |
+| 64 KB   | 21.3    | 1.3       | 27.2      | ‡           | 52.8    | ‡         |
+| 256 KB  | 22.9    | 1.5       | 26.4      | ‡           | 68.2    | ‡         |
+| 1 MB    | 25.8    | 4.4       | 41.5      | ‡           | 76.4    | ‡         |
+| 10 MB   | 24.5    | 19.6      | 205.0     | ‡           | 301.3   | ‡         |
+| 100 MB  | 81.5    | 385.0     | 1,781.7   | ‡           | 2,368.5 | ‡         |
 
 \* Includes KAS rewrap network latency (~20-30ms per request)
 \*\* WASM decrypt uses local RSA-OAEP DEK unwrap (no network); in production the host would call KAS for rewrap
-— Java WASM and TS WASM columns pending; run benchmarks with `--wasm-binary` / `--wasmBinary` to populate
+‡ The pre-built `tdfcore.wasm` in java-sdk and web-sdk only exports `tdf_encrypt`; `tdf_decrypt` is not yet included. The Go benchmark compiles its own WASM binary from source which includes both. WASM decrypt benchmarks for Java and TypeScript require rebuilding the WASM binary with decrypt support.
 
 ## Key Takeaways
 
@@ -68,7 +70,13 @@ Even at 256 B, encrypt takes 40 ms in TypeScript vs 2.2 ms in Go and 17.3 ms in 
 **5. The WASM approach validates the host-delegation architecture.**
 WASM encrypt scales at ~10x the Go production SDK cost (expected given the host ABI call overhead), but decrypt without KAS is extremely fast, demonstrating that the WASM core engine can handle the TDF crypto pipeline efficiently once the DEK is available.
 
-**6. Java first-call warmup is visible.**
+**6. TypeScript WASM is remarkably fast — near Go WASM speeds.**
+Node.js V8 JIT-compiles WASM to native code, so TS WASM encrypt (0.2-2.8 ms) matches Go WASM via wazero (0.2-4.5 ms). This validates the architecture: the same `.wasm` binary achieves consistent performance across JIT-enabled hosts. The TS SDK's 25-73 ms overhead is entirely in the JavaScript SDK layer, not in the crypto.
+
+**7. Chicory (pure-Java interpreter) is the slowest WASM host.**
+Java WASM encrypt via Chicory (6.9-145.3 ms) is slower than even the native Java SDK (4.1-22.5 ms) at most sizes. This is expected for a pure interpreter with no JIT. A JIT-enabled WASM runtime (e.g., GraalWasm, Wasmtime-JNI) would likely match or beat the native SDK.
+
+**8. Java first-call warmup is visible.**
 Java 256 B encrypt (17.3 ms) is 4x slower than 1 KB (4.1 ms), reflecting JIT compilation warmup on the first iteration. Steady-state Java encrypt is roughly 4-5 ms for small payloads.
 
 ## Benchmark Sources

@@ -1587,19 +1587,6 @@ func (s *AttributesSuite) Test_RemovePublicKeyFromAttribute_Not_Found_Fails() {
 	s.NotNil(resp)
 }
 
-func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureDataAttribute {
-	return map[string]fixtures.FixtureDataAttribute{
-		"example.com/attr/attr1": s.f.GetAttributeKey("example.com/attr/attr1"),
-		"example.com/attr/attr2": s.f.GetAttributeKey("example.com/attr/attr2"),
-		"example.net/attr/attr1": s.f.GetAttributeKey("example.net/attr/attr1"),
-		"example.net/attr/attr2": s.f.GetAttributeKey("example.net/attr/attr2"),
-		"example.net/attr/attr3": s.f.GetAttributeKey("example.net/attr/attr3"),
-		"example.org/attr/attr1": s.f.GetAttributeKey("example.org/attr/attr1"),
-		"example.org/attr/attr2": s.f.GetAttributeKey("example.org/attr/attr2"),
-		"example.org/attr/attr3": s.f.GetAttributeKey("example.org/attr/attr3"),
-	}
-}
-
 // - Test that a Get/List attribute returns the Asymmetric Keys with the provider configs / add a key with no provider config
 
 // Test_GetAttribute_ByIdAndFqn_ReturnSameResult validates that getAttribute works correctly
@@ -1620,6 +1607,19 @@ func (s *AttributesSuite) Test_GetAttribute_ByIdAndFqn_ReturnSameResult() {
 
 		// Verify both return the same attribute
 		s.True(proto.Equal(attrByID, attrByFQN))
+	}
+}
+
+func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureDataAttribute {
+	return map[string]fixtures.FixtureDataAttribute{
+		"example.com/attr/attr1": s.f.GetAttributeKey("example.com/attr/attr1"),
+		"example.com/attr/attr2": s.f.GetAttributeKey("example.com/attr/attr2"),
+		"example.net/attr/attr1": s.f.GetAttributeKey("example.net/attr/attr1"),
+		"example.net/attr/attr2": s.f.GetAttributeKey("example.net/attr/attr2"),
+		"example.net/attr/attr3": s.f.GetAttributeKey("example.net/attr/attr3"),
+		"example.org/attr/attr1": s.f.GetAttributeKey("example.org/attr/attr1"),
+		"example.org/attr/attr2": s.f.GetAttributeKey("example.org/attr/attr2"),
+		"example.org/attr/attr3": s.f.GetAttributeKey("example.org/attr/attr3"),
 	}
 }
 

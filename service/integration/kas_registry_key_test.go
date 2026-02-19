@@ -486,7 +486,9 @@ func (s *KasRegistryKeySuite) Test_ListKeys_OrdersByCreatedAt_Succeeds() {
 
 	keyIDs := make([]string, 0, 3)
 	kasIDs := []string{kas.GetId()}
-	defer s.cleanupKeys(keyIDs, kasIDs)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
 
 	createKey := func() string {
 		keyReq := kasregistry.CreateKeyRequest{
@@ -1986,6 +1988,75 @@ func (s *KasRegistryKeySuite) Test_DeleteKey_Success() {
 	s.Require().ErrorContains(err, db.ErrNotFound.Error())
 }
 
+func validatePublicKeyCtx(s *suite.Suite, expectedPubCtx []byte, actual *policy.SimpleKasKey) {
+	decodedExpectedPubCtx, err := base64.StdEncoding.DecodeString(string(expectedPubCtx))
+	s.Require().NoError(err)
+
+	var expectedPub policy.PublicKeyCtx
+	err = protojson.Unmarshal(decodedExpectedPubCtx, &expectedPub)
+	s.Require().NoError(err)
+	s.Equal(expectedPub.GetPem(), actual.GetPublicKey().GetPem())
+}
+
+func validatePrivatePublicCtx(s *suite.Suite, expectedPrivCtx, expectedPubCtx []byte, actual *policy.KasKey) {
+	decodedExpectedPrivCtx, err := base64.StdEncoding.DecodeString(string(expectedPrivCtx))
+	s.Require().NoError(err)
+
+	var expectedPriv policy.PrivateKeyCtx
+	err = protojson.Unmarshal(decodedExpectedPrivCtx, &expectedPriv)
+	s.Require().NoError(err)
+
+	s.Equal(expectedPriv.GetKeyId(), actual.GetKey().GetPrivateKeyCtx().GetKeyId())
+	s.Equal(expectedPriv.GetWrappedKey(), actual.GetKey().GetPrivateKeyCtx().GetWrappedKey())
+	validatePublicKeyCtx(s, expectedPubCtx, &policy.SimpleKasKey{
+		KasUri: actual.GetKasUri(),
+		PublicKey: &policy.SimpleKasPublicKey{
+			Pem: actual.GetKey().GetPublicKeyCtx().GetPem(),
+		},
+	})
+}
+
+// Test_ListKeyMappings_AllParameterCombinations validates that listKeyMappings works correctly
+// with various combinations of optional parameters
+func (s *KasRegistryKeySuite) Test_ListKeyMappings_AllParameterCombinations() {
+	kas1 := s.kasFixtures[0]
+	key1 := s.kasKeys[0]
+
+	// Test 1: No parameters - should return all mappings (may be 0)
+	allMappings, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &kasregistry.ListKeyMappingsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(allMappings)
+	// No assertion on count - fixtures may not have any mappings
+
+	// Test 2: Filter by key with KAS URI
+	mappingsByKey, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &kasregistry.ListKeyMappingsRequest{
+		Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+			Key: &kasregistry.KasKeyIdentifier{
+				Identifier: &kasregistry.KasKeyIdentifier_Uri{
+					Uri: kas1.URI,
+				},
+				Kid: key1.KeyID,
+			},
+		},
+	})
+	s.Require().NoError(err, "Should successfully query with KAS URI and key ID")
+	s.NotNil(mappingsByKey)
+
+	// Test 3: Filter by key with KAS ID (validates alternative params path)
+	mappingsByKeyID, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &kasregistry.ListKeyMappingsRequest{
+		Identifier: &kasregistry.ListKeyMappingsRequest_Key{
+			Key: &kasregistry.KasKeyIdentifier{
+				Identifier: &kasregistry.KasKeyIdentifier_KasId{
+					KasId: key1.KeyAccessServerID,
+				},
+				Kid: key1.KeyID,
+			},
+		},
+	})
+	s.Require().NoError(err, "Should successfully query with KAS ID and key ID")
+	s.NotNil(mappingsByKeyID)
+}
+
 func (s *KasRegistryKeySuite) validateKeyMapping(mapping *kasregistry.KeyMapping, expectedKey *policy.KasKey, expectedNamespace []*policy.Namespace, expectedAttrDef []*policy.Attribute, expectedValue []*policy.Value) {
 	s.Equal(expectedKey.GetKey().GetKeyId(), mapping.GetKid())
 	s.Equal(expectedKey.GetKasUri(), mapping.GetKasUri())
@@ -2288,34 +2359,6 @@ func (s *KasRegistryKeySuite) validateListKeysResponse(resp *kasregistry.ListKey
 	}
 }
 
-func validatePublicKeyCtx(s *suite.Suite, expectedPubCtx []byte, actual *policy.SimpleKasKey) {
-	decodedExpectedPubCtx, err := base64.StdEncoding.DecodeString(string(expectedPubCtx))
-	s.Require().NoError(err)
-
-	var expectedPub policy.PublicKeyCtx
-	err = protojson.Unmarshal(decodedExpectedPubCtx, &expectedPub)
-	s.Require().NoError(err)
-	s.Equal(expectedPub.GetPem(), actual.GetPublicKey().GetPem())
-}
-
-func validatePrivatePublicCtx(s *suite.Suite, expectedPrivCtx, expectedPubCtx []byte, actual *policy.KasKey) {
-	decodedExpectedPrivCtx, err := base64.StdEncoding.DecodeString(string(expectedPrivCtx))
-	s.Require().NoError(err)
-
-	var expectedPriv policy.PrivateKeyCtx
-	err = protojson.Unmarshal(decodedExpectedPrivCtx, &expectedPriv)
-	s.Require().NoError(err)
-
-	s.Equal(expectedPriv.GetKeyId(), actual.GetKey().GetPrivateKeyCtx().GetKeyId())
-	s.Equal(expectedPriv.GetWrappedKey(), actual.GetKey().GetPrivateKeyCtx().GetWrappedKey())
-	validatePublicKeyCtx(s, expectedPubCtx, &policy.SimpleKasKey{
-		KasUri: actual.GetKasUri(),
-		PublicKey: &policy.SimpleKasPublicKey{
-			Pem: actual.GetKey().GetPublicKeyCtx().GetPem(),
-		},
-	})
-}
-
 // cascade delete will remove namespaces and all associated attributes and values
 func (s *KasRegistryKeySuite) cleanupNamespacesAndAttrsByIDs(namespaceIDs []string) {
 	namespaces := make([]*policy.Namespace, len(namespaceIDs))
@@ -2427,45 +2470,4 @@ func (s *KasRegistryKeySuite) createKeyAndKas() *policy.KasKey {
 	s.NotNil(keyResp)
 
 	return keyResp.GetKasKey()
-}
-
-// Test_ListKeyMappings_AllParameterCombinations validates that listKeyMappings works correctly
-// with various combinations of optional parameters
-func (s *KasRegistryKeySuite) Test_ListKeyMappings_AllParameterCombinations() {
-	kas1 := s.kasFixtures[0]
-	key1 := s.kasKeys[0]
-
-	// Test 1: No parameters - should return all mappings (may be 0)
-	allMappings, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &kasregistry.ListKeyMappingsRequest{})
-	s.Require().NoError(err)
-	s.NotNil(allMappings)
-	// No assertion on count - fixtures may not have any mappings
-
-	// Test 2: Filter by key with KAS URI
-	mappingsByKey, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &kasregistry.ListKeyMappingsRequest{
-		Identifier: &kasregistry.ListKeyMappingsRequest_Key{
-			Key: &kasregistry.KasKeyIdentifier{
-				Identifier: &kasregistry.KasKeyIdentifier_Uri{
-					Uri: kas1.URI,
-				},
-				Kid: key1.KeyID,
-			},
-		},
-	})
-	s.Require().NoError(err, "Should successfully query with KAS URI and key ID")
-	s.NotNil(mappingsByKey)
-
-	// Test 3: Filter by key with KAS ID (validates alternative params path)
-	mappingsByKeyID, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &kasregistry.ListKeyMappingsRequest{
-		Identifier: &kasregistry.ListKeyMappingsRequest_Key{
-			Key: &kasregistry.KasKeyIdentifier{
-				Identifier: &kasregistry.KasKeyIdentifier_KasId{
-					KasId: key1.KeyAccessServerID,
-				},
-				Kid: key1.KeyID,
-			},
-		},
-	})
-	s.Require().NoError(err, "Should successfully query with KAS ID and key ID")
-	s.NotNil(mappingsByKeyID)
 }

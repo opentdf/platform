@@ -852,6 +852,31 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithInvalidId_Fails() {
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 }
 
+// Test_GetKeyAccessServer_ByIdNameUri_ReturnSameResult validates that getKeyAccessServer works correctly
+// with ID, name, and URI lookups
+func (s *KasRegistrySuite) Test_GetKeyAccessServer_ByIdNameUri_ReturnSameResult() {
+	remoteFixture := s.f.GetKasRegistryKey("key_access_server_1")
+
+	// Get by ID
+	kasByID, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, remoteFixture.ID)
+	s.Require().NoError(err, "Failed to get KAS by ID")
+	s.Require().NotNil(kasByID)
+
+	// Get by Name
+	kasByName, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, &kasregistry.GetKeyAccessServerRequest_Name{Name: remoteFixture.Name})
+	s.Require().NoError(err, "Failed to get KAS by Name")
+	s.Require().NotNil(kasByName)
+
+	// Get by URI
+	kasByURI, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, &kasregistry.GetKeyAccessServerRequest_Uri{Uri: remoteFixture.URI})
+	s.Require().NoError(err, "Failed to get KAS by URI")
+	s.Require().NotNil(kasByURI)
+
+	// Verify all three return the same KAS
+	s.True(proto.Equal(kasByID, kasByName))
+	s.True(proto.Equal(kasByID, kasByURI))
+}
+
 func (s *KasRegistrySuite) getKasRegistryFixtures() []fixtures.FixtureDataKasRegistry {
 	return []fixtures.FixtureDataKasRegistry{
 		s.f.GetKasRegistryKey("key_access_server_1"),
@@ -896,31 +921,6 @@ func (s *KasRegistrySuite) validateKasRegistryKeys(kasr *policy.KeyAccessServer)
 		}
 	}
 	s.Len(expectedKasKeys, matchingKeysCount)
-}
-
-// Test_GetKeyAccessServer_ByIdNameUri_ReturnSameResult validates that getKeyAccessServer works correctly
-// with ID, name, and URI lookups
-func (s *KasRegistrySuite) Test_GetKeyAccessServer_ByIdNameUri_ReturnSameResult() {
-	remoteFixture := s.f.GetKasRegistryKey("key_access_server_1")
-
-	// Get by ID
-	kasByID, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, remoteFixture.ID)
-	s.Require().NoError(err, "Failed to get KAS by ID")
-	s.Require().NotNil(kasByID)
-
-	// Get by Name
-	kasByName, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, &kasregistry.GetKeyAccessServerRequest_Name{Name: remoteFixture.Name})
-	s.Require().NoError(err, "Failed to get KAS by Name")
-	s.Require().NotNil(kasByName)
-
-	// Get by URI
-	kasByURI, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, &kasregistry.GetKeyAccessServerRequest_Uri{Uri: remoteFixture.URI})
-	s.Require().NoError(err, "Failed to get KAS by URI")
-	s.Require().NotNil(kasByURI)
-
-	// Verify all three return the same KAS
-	s.True(proto.Equal(kasByID, kasByName))
-	s.True(proto.Equal(kasByID, kasByURI))
 }
 
 func TestKasRegistrySuite(t *testing.T) {

@@ -253,9 +253,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_DeprecatedProtoEnums_Fai
 		AttributeValueId: fixtureAttrVal.ID,
 		Actions: []*policy.Action{
 			{
-				Value: &policy.Action_Standard{
-					Standard: policy.Action_STANDARD_ACTION_DECRYPT,
-				},
+				Name: "",
 			},
 		},
 		ExistingSubjectConditionSetId: fixtureScs.ID,
@@ -266,9 +264,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_DeprecatedProtoEnums_Fai
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrMissingValue)
 
-	newSubjectMapping.GetActions()[0].Value = &policy.Action_Standard{
-		Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
-	}
+	newSubjectMapping.GetActions()[0].Name = ""
 
 	created, err = s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
 	s.Nil(created)
@@ -409,9 +405,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions_DeprecatedProtoE
 		Id: created.GetId(),
 		Actions: []*policy.Action{
 			{
-				Value: &policy.Action_Standard{
-					Standard: policy.Action_STANDARD_ACTION_DECRYPT,
-				},
+				Name: "",
 			},
 		},
 	}
@@ -421,9 +415,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions_DeprecatedProtoE
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrMissingValue)
 
-	updateReq.Actions[0].Value = &policy.Action_Standard{
-		Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
-	}
+	updateReq.Actions[0].Name = ""
 
 	updated, err = s.db.PolicyClient.UpdateSubjectMapping(s.ctx, updateReq)
 	s.Nil(updated)

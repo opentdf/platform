@@ -49,6 +49,7 @@ SELECT
     counted.total
 FROM provider_config AS pc
 CROSS JOIN counted
+ORDER BY pc.created_at
 LIMIT @limit_ 
 OFFSET @offset_;
 

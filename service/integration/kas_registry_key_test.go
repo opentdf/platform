@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/common"
@@ -472,6 +473,57 @@ func (s *KasRegistryKeySuite) Test_ListKeys_NoKasFilter_Success() {
 	s.Require().NoError(err)
 	s.NotNil(resp)
 	s.NotEmpty(resp.GetKasKeys())
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_OrdersByCreatedAt_Succeeds() {
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "order-test-kas-" + uuid.NewString(),
+		Uri:  "https://order-test-kas-" + uuid.NewString() + ".opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+
+	keyIDs := make([]string, 0, 3)
+	kasIDs := []string{kas.GetId()}
+	defer s.cleanupKeys(keyIDs, kasIDs)
+
+	createKey := func() string {
+		keyReq := kasregistry.CreateKeyRequest{
+			KasId:        kas.GetId(),
+			KeyId:        uuid.NewString(),
+			KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+			KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+			PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+			PrivateKeyCtx: &policy.PrivateKeyCtx{
+				KeyId:      validKeyID1,
+				WrappedKey: keyCtx,
+			},
+		}
+		resp, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
+		s.Require().NoError(err)
+		s.NotNil(resp)
+		return resp.GetKasKey().GetKey().GetId()
+	}
+
+	firstID := createKey()
+	keyIDs = append(keyIDs, firstID)
+	time.Sleep(5 * time.Millisecond)
+	secondID := createKey()
+	keyIDs = append(keyIDs, secondID)
+	time.Sleep(5 * time.Millisecond)
+	thirdID := createKey()
+	keyIDs = append(keyIDs, thirdID)
+
+	resp, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{
+			KasId: kas.GetId(),
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	assertIDsInOrder(s.T(), resp.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, firstID, secondID, thirdID)
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_KasID_Success() {
@@ -1415,6 +1467,48 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_InvalidLimit_Fail() {
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrListLimitTooLarge)
 	s.Nil(resp)
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeyMappings_OrdersByCreatedAt_Succeeds() {
+	kasKeys := make([]*policy.KasKey, 0, 2)
+	kasIDs := make([]string, 0, 2)
+	namespaces := make([]*policy.Namespace, 0, 1)
+	defer func() {
+		keyIDs := make([]string, 0, len(kasKeys))
+		for _, key := range kasKeys {
+			keyIDs = append(keyIDs, key.GetKey().GetId())
+		}
+		s.cleanupKeys(keyIDs, kasIDs)
+		s.cleanupNamespacesAndAttrs(namespaces)
+	}()
+
+	kasKey1 := s.createKeyAndKas()
+	kasKeys = append(kasKeys, kasKey1)
+	kasIDs = append(kasIDs, kasKey1.GetKasId())
+	time.Sleep(5 * time.Millisecond)
+	kasKey2 := s.createKeyAndKas()
+	kasKeys = append(kasKeys, kasKey2)
+	kasIDs = append(kasIDs, kasKey2.GetKasId())
+
+	ns := s.createNamespace()
+	namespaces = append(namespaces, ns)
+	attrDef := s.createAttrDef(ns.GetId())
+	val := s.createValue(attrDef.GetId())
+
+	s.createValueMapping(kasKey1.GetKey().GetId(), val.GetId())
+	s.createValueMapping(kasKey2.GetKey().GetId(), val.GetId())
+
+	resp, err := s.db.PolicyClient.ListKeyMappings(s.ctx, &kasregistry.ListKeyMappingsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	assertIDsInOrder(
+		s.T(),
+		resp.GetKeyMappings(),
+		func(m *kasregistry.KeyMapping) string { return m.GetKid() },
+		kasKey1.GetKey().GetKeyId(),
+		kasKey2.GetKey().GetKeyId(),
+	)
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeyMappings_ByID_Invalid_UUID_Fail() {

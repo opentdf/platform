@@ -452,6 +452,7 @@ WITH listed AS (
         kas.uri AS kas_uri,
         kas.name AS kas_name,
         kas.public_key AS kas_public_key,
+        kas.created_at AS kas_created_at,
         JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
             'labels', kas.metadata -> 'labels',
             'created_at', kas.created_at,
@@ -494,7 +495,8 @@ WITH listed AS (
         AND ($4::text IS NULL OR kas.uri = $4::text) 
         AND ($5::text IS NULL OR kas.name = $5::text) 
     GROUP BY 
-        kas.id
+        kas.id,
+        kas.created_at
 )
 SELECT 
     listed.kas_id,
@@ -507,6 +509,7 @@ SELECT
     listed.namespace_grants,
     listed.total  
 FROM listed
+ORDER BY listed.kas_created_at
 LIMIT $2 
 OFFSET $1
 `
@@ -542,6 +545,7 @@ type listKeyAccessServerGrantsRow struct {
 //	        kas.uri AS kas_uri,
 //	        kas.name AS kas_name,
 //	        kas.public_key AS kas_public_key,
+//	        kas.created_at AS kas_created_at,
 //	        JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
 //	            'labels', kas.metadata -> 'labels',
 //	            'created_at', kas.created_at,
@@ -584,7 +588,8 @@ type listKeyAccessServerGrantsRow struct {
 //	        AND ($4::text IS NULL OR kas.uri = $4::text)
 //	        AND ($5::text IS NULL OR kas.name = $5::text)
 //	    GROUP BY
-//	        kas.id
+//	        kas.id,
+//	        kas.created_at
 //	)
 //	SELECT
 //	    listed.kas_id,
@@ -597,6 +602,7 @@ type listKeyAccessServerGrantsRow struct {
 //	    listed.namespace_grants,
 //	    listed.total
 //	FROM listed
+//	ORDER BY listed.kas_created_at
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listKeyAccessServerGrants(ctx context.Context, arg listKeyAccessServerGrantsParams) ([]listKeyAccessServerGrantsRow, error) {
@@ -668,6 +674,7 @@ LEFT JOIN (
         INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY kask.key_access_server_id
     ) kask_keys ON kas.id = kask_keys.key_access_server_id
+ORDER BY kas.created_at
 LIMIT $2 
 OFFSET $1
 `
@@ -722,6 +729,7 @@ type listKeyAccessServersRow struct {
 //	        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
 //	        GROUP BY kask.key_access_server_id
 //	    ) kask_keys ON kas.id = kask_keys.key_access_server_id
+//	ORDER BY kas.created_at
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listKeyAccessServers(ctx context.Context, arg listKeyAccessServersParams) ([]listKeyAccessServersRow, error) {
@@ -1063,7 +1071,7 @@ LEFT JOIN
 WHERE
     ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
     AND ($2::boolean IS NULL OR kask.legacy = $2::boolean)
-ORDER BY kask.created_at DESC
+ORDER BY kask.created_at
 LIMIT $4 
 OFFSET $3
 `
@@ -1139,7 +1147,7 @@ type listKeysRow struct {
 //	WHERE
 //	    ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
 //	    AND ($2::boolean IS NULL OR kask.legacy = $2::boolean)
-//	ORDER BY kask.created_at DESC
+//	ORDER BY kask.created_at
 //	LIMIT $4
 //	OFFSET $3
 func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysRow, error) {

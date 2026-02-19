@@ -9,6 +9,7 @@ WITH listed AS (
         kas.uri AS kas_uri,
         kas.name AS kas_name,
         kas.public_key AS kas_public_key,
+        kas.created_at AS kas_created_at,
         JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
             'labels', kas.metadata -> 'labels',
             'created_at', kas.created_at,
@@ -51,7 +52,8 @@ WITH listed AS (
         AND (sqlc.narg('kas_uri')::text IS NULL OR kas.uri = sqlc.narg('kas_uri')::text) 
         AND (sqlc.narg('kas_name')::text IS NULL OR kas.name = sqlc.narg('kas_name')::text) 
     GROUP BY 
-        kas.id
+        kas.id,
+        kas.created_at
 )
 SELECT 
     listed.kas_id,
@@ -64,6 +66,7 @@ SELECT
     listed.namespace_grants,
     listed.total  
 FROM listed
+ORDER BY listed.kas_created_at
 LIMIT @limit_ 
 OFFSET @offset_; 
 
@@ -100,6 +103,7 @@ LEFT JOIN (
         INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY kask.key_access_server_id
     ) kask_keys ON kas.id = kask_keys.key_access_server_id
+ORDER BY kas.created_at
 LIMIT @limit_ 
 OFFSET @offset_; 
 
@@ -376,7 +380,7 @@ LEFT JOIN
 WHERE
     (sqlc.narg('key_algorithm')::integer IS NULL OR kask.key_algorithm = sqlc.narg('key_algorithm')::integer)
     AND (sqlc.narg('legacy')::boolean IS NULL OR kask.legacy = sqlc.narg('legacy')::boolean)
-ORDER BY kask.created_at DESC
+ORDER BY kask.created_at
 LIMIT @limit_ 
 OFFSET @offset_;
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -65,6 +66,43 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_NoPagination_Succ
 		}
 		s.True(found, "expected to find resource mapping group %s", testRmGroup.ID)
 	}
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_OrdersByCreatedAt_Succeeds() {
+	suffix := time.Now().UnixNano()
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("order-test-rmg-%d.com", suffix),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(ns)
+	defer func() {
+		_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, ns, ns.GetFqn())
+		s.Require().NoError(err)
+	}()
+
+	create := func(i int) string {
+		group, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, &resourcemapping.CreateResourceMappingGroupRequest{
+			Name:        fmt.Sprintf("order-test-group-%d-%d", i, suffix),
+			NamespaceId: ns.GetId(),
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(group)
+		return group.GetId()
+	}
+
+	firstID := create(1)
+	time.Sleep(5 * time.Millisecond)
+	secondID := create(2)
+	time.Sleep(5 * time.Millisecond)
+	thirdID := create(3)
+
+	listRsp, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx, &resourcemapping.ListResourceMappingGroupsRequest{
+		NamespaceId: ns.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetResourceMappingGroups(), func(g *policy.ResourceMappingGroup) string { return g.GetId() }, firstID, secondID, thirdID)
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_Limit_Succeeds() {
@@ -633,6 +671,129 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds(
 	}
 
 	s.Equal(testMappingCount, foundCount)
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappings_OrdersByCreatedAt_Succeeds() {
+	suffix := time.Now().UnixNano()
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("order-test-rm-%d.com", suffix),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(ns)
+	defer func() {
+		_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, ns, ns.GetFqn())
+		s.Require().NoError(err)
+	}()
+
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        fmt.Sprintf("order-test-attr-%d", suffix),
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(attr)
+
+	val, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attr.GetId(), &attributes.CreateAttributeValueRequest{
+		Value:       fmt.Sprintf("order-test-value-%d", suffix),
+		AttributeId: attr.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(val)
+
+	group, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, &resourcemapping.CreateResourceMappingGroupRequest{
+		Name:        fmt.Sprintf("order-test-group-%d", suffix),
+		NamespaceId: ns.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(group)
+
+	create := func(i int) string {
+		mapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+			AttributeValueId: val.GetId(),
+			Terms:            []string{fmt.Sprintf("term-%d-%d", i, suffix)},
+			GroupId:          group.GetId(),
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(mapping)
+		return mapping.GetId()
+	}
+
+	firstID := create(1)
+	time.Sleep(5 * time.Millisecond)
+	secondID := create(2)
+	time.Sleep(5 * time.Millisecond)
+	thirdID := create(3)
+
+	listRsp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, &resourcemapping.ListResourceMappingsRequest{
+		GroupId: group.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetResourceMappings(), func(rm *policy.ResourceMapping) string { return rm.GetId() }, firstID, secondID, thirdID)
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqns_OrdersByCreatedAt_Succeeds() {
+	suffix := time.Now().UnixNano()
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("order-test-rm-fqn-%d.com", suffix),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(ns)
+	defer func() {
+		_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, ns, ns.GetFqn())
+		s.Require().NoError(err)
+	}()
+
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        fmt.Sprintf("order-test-attr-fqn-%d", suffix),
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(attr)
+
+	val, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attr.GetId(), &attributes.CreateAttributeValueRequest{
+		Value:       fmt.Sprintf("order-test-value-fqn-%d", suffix),
+		AttributeId: attr.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(val)
+
+	group, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, &resourcemapping.CreateResourceMappingGroupRequest{
+		Name:        fmt.Sprintf("order-test-group-fqn-%d", suffix),
+		NamespaceId: ns.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(group)
+
+	create := func(i int) string {
+		mapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+			AttributeValueId: val.GetId(),
+			Terms:            []string{fmt.Sprintf("term-fqn-%d-%d", i, suffix)},
+			GroupId:          group.GetId(),
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(mapping)
+		return mapping.GetId()
+	}
+
+	firstID := create(1)
+	time.Sleep(5 * time.Millisecond)
+	secondID := create(2)
+	time.Sleep(5 * time.Millisecond)
+	thirdID := create(3)
+
+	fqn := fmt.Sprintf("https://%s/resourcemappinggroup/%s", ns.GetName(), group.GetName())
+	mappingsByGroup, err := s.db.PolicyClient.ListResourceMappingsByGroupFqns(s.ctx, []string{fqn})
+	s.Require().NoError(err)
+	s.NotNil(mappingsByGroup)
+
+	groupMappings, ok := mappingsByGroup[fqn]
+	s.Require().True(ok)
+	s.Require().NotNil(groupMappings)
+
+	assertIDsInOrder(s.T(), groupMappings.GetMappings(), func(rm *policy.ResourceMapping) string { return rm.GetId() }, firstID, secondID, thirdID)
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappings_Limit_Succeeds() {

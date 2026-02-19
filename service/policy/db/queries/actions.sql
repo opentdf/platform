@@ -18,6 +18,7 @@ SELECT
     counted.total
 FROM actions a
 CROSS JOIN counted
+ORDER BY a.created_at
 LIMIT @limit_ 
 OFFSET @offset_;
 

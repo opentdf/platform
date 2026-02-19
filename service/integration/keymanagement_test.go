@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/common"
@@ -196,6 +197,28 @@ func (s *KeyManagementSuite) Test_ListProviderConfig_No_Pagination_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(resp)
 	s.NotEmpty(resp.GetProviderConfigs())
+}
+
+func (s *KeyManagementSuite) Test_ListProviderConfig_OrdersByCreatedAt_Succeeds() {
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+
+	pc1 := s.createTestProviderConfig(s.getUniqueProviderName("order-test-provider-1"), validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc1.GetId())
+	time.Sleep(5 * time.Millisecond)
+	pc2 := s.createTestProviderConfig(s.getUniqueProviderName("order-test-provider-2"), validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc2.GetId())
+	time.Sleep(5 * time.Millisecond)
+	pc3 := s.createTestProviderConfig(s.getUniqueProviderName("order-test-provider-3"), validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc3.GetId())
+
+	resp, err := s.db.PolicyClient.ListProviderConfigs(s.ctx, &policy.PageRequest{})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	assertIDsInOrder(s.T(), resp.GetProviderConfigs(), func(pc *keymanagement.ProviderConfig) string { return pc.GetId() }, pc1.GetId(), pc2.GetId(), pc3.GetId())
 }
 
 func (s *KeyManagementSuite) Test_ListProviderConfig_PaginationLimit_Succeeds() {

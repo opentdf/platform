@@ -187,6 +187,7 @@ WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL OR od.namespace_id = sqlc.narg('namespace_id')::uuid) AND
     (sqlc.narg('namespace_fqn')::text IS NULL OR fqns.fqn = sqlc.narg('namespace_fqn')::text)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
+ORDER BY od.created_at
 LIMIT @limit_
 OFFSET @offset_;
 
@@ -643,7 +644,6 @@ LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL OR od.namespace_id = sqlc.narg('namespace_id')::uuid) AND
     (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text)
-ORDER BY ot.created_at DESC
+ORDER BY ot.created_at
 LIMIT @limit_
 OFFSET @offset_;
-

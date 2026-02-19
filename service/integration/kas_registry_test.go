@@ -2,9 +2,11 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -62,6 +64,77 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_NoPagination_Succeeds() {
 		}
 		s.True(found)
 	}
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_OrdersByCreatedAt_Succeeds() {
+	suffix := time.Now().UnixNano()
+	create := func(i int) string {
+		uri := fmt.Sprintf("https://order-test-kas-%d-%d.example.com", i, suffix)
+		name := fmt.Sprintf("order-test-kas-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+			Uri: uri,
+			PublicKey: &policy.PublicKey{
+				PublicKey: &policy.PublicKey_Remote{
+					Remote: fmt.Sprintf("https://order-test-key-%d-%d.example.com/key", i, suffix),
+				},
+			},
+			Metadata: &common.MetadataMutable{
+				Labels: map[string]string{"name": name},
+			},
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(created)
+		return created.GetId()
+	}
+
+	firstID := create(1)
+	time.Sleep(5 * time.Millisecond)
+	secondID := create(2)
+	time.Sleep(5 * time.Millisecond)
+	thirdID := create(3)
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, firstID, secondID, thirdID)
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_OrdersByCreatedAt_Succeeds() {
+	suffix := time.Now().UnixNano()
+	create := func(i int) string {
+		uri := fmt.Sprintf("https://order-test-grants-%d-%d.example.com", i, suffix)
+		created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+			Uri: uri,
+			PublicKey: &policy.PublicKey{
+				PublicKey: &policy.PublicKey_Remote{
+					Remote: fmt.Sprintf("https://order-test-grants-key-%d-%d.example.com/key", i, suffix),
+				},
+			},
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(created)
+		return created.GetId()
+	}
+
+	firstID := create(1)
+	time.Sleep(5 * time.Millisecond)
+	secondID := create(2)
+	time.Sleep(5 * time.Millisecond)
+	thirdID := create(3)
+
+	resp, err := s.db.PolicyClient.ListKeyAccessServerGrants(s.ctx, &kasregistry.ListKeyAccessServerGrantsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	assertIDsInOrder(
+		s.T(),
+		resp.GetGrants(),
+		func(grant *kasregistry.KeyAccessServerGrants) string { return grant.GetKeyAccessServer().GetId() },
+		firstID,
+		secondID,
+		thirdID,
+	)
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_Limit_Succeeds() {

@@ -1355,7 +1355,7 @@ LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 WHERE
     ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
     ($2::text IS NULL OR ns_fqns.fqn = $2::text)
-ORDER BY ot.created_at DESC
+ORDER BY ot.created_at
 LIMIT $4
 OFFSET $3
 `
@@ -1432,7 +1432,7 @@ type listObligationTriggersRow struct {
 //	WHERE
 //	    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
 //	    ($2::text IS NULL OR ns_fqns.fqn = $2::text)
-//	ORDER BY ot.created_at DESC
+//	ORDER BY ot.created_at
 //	LIMIT $4
 //	OFFSET $3
 func (q *Queries) listObligationTriggers(ctx context.Context, arg listObligationTriggersParams) ([]listObligationTriggersRow, error) {
@@ -1530,6 +1530,7 @@ WHERE
     ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
     ($2::text IS NULL OR fqns.fqn = $2::text)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
+ORDER BY od.created_at
 LIMIT $4
 OFFSET $3
 `
@@ -1621,6 +1622,7 @@ type listObligationsRow struct {
 //	    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
 //	    ($2::text IS NULL OR fqns.fqn = $2::text)
 //	GROUP BY od.id, n.id, fqns.fqn, counted.total
+//	ORDER BY od.created_at
 //	LIMIT $4
 //	OFFSET $3
 func (q *Queries) listObligations(ctx context.Context, arg listObligationsParams) ([]listObligationsRow, error) {

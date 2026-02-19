@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strconv"
 	"testing"
@@ -457,6 +458,32 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 
 	// Cleanup: Delete all created obligations
 	s.deleteObligations(createdOblIDs)
+}
+
+func (s *ObligationsSuite) Test_ListObligations_OrdersByCreatedAt_Succeeds() {
+	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
+	suffix := time.Now().UnixNano()
+
+	create := func(i int) *policy.Obligation {
+		name := fmt.Sprintf("order-test-obl-%d-%d", i, suffix)
+		return s.createObligation(namespaceID, name, nil)
+	}
+
+	first := create(1)
+	time.Sleep(5 * time.Millisecond)
+	second := create(2)
+	time.Sleep(5 * time.Millisecond)
+	third := create(3)
+
+	defer s.deleteObligations([]string{first.GetId(), second.GetId(), third.GetId()})
+
+	oblList, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		NamespaceId: namespaceID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblList)
+
+	assertIDsInOrder(s.T(), oblList, func(obl *policy.Obligation) string { return obl.GetId() }, first.GetId(), second.GetId(), third.GetId())
 }
 
 func (s *ObligationsSuite) Test_ListObligations_Fails() {

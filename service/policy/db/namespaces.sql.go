@@ -199,6 +199,7 @@ SELECT
 FROM attribute_namespaces ns
 LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
 WHERE ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
+ORDER BY ns.created_at
 LIMIT $3
 OFFSET $2
 `
@@ -232,6 +233,7 @@ type listNamespacesRow struct {
 //	FROM attribute_namespaces ns
 //	LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
 //	WHERE ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
+//	ORDER BY ns.created_at
 //	LIMIT $3
 //	OFFSET $2
 func (q *Queries) listNamespaces(ctx context.Context, arg listNamespacesParams) ([]listNamespacesRow, error) {

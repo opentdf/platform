@@ -1,8 +1,14 @@
 package ocrypto
 
 import (
+	"crypto/ecdsa"
 	"crypto/sha256"
+	"crypto/x509"
+	"errors"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func salty(s string) []byte {
@@ -345,4 +351,62 @@ MJseKiCRhbMS8XoCOTogO4Au9SqpOKqHq2CFRb4=
 			}
 		})
 	}
+}
+
+// TestDecryptWithCompressedEphemeralKey reproduces issue #3070:
+// EC decrypt fails for P-384/P-521 when the ephemeral key is passed in
+// compressed form, because UncompressECPubKey hardcodes P-256.
+func TestDecryptWithCompressedEphemeralKey(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		mode ECCMode
+	}{
+		{"P-256", ECCModeSecp256r1},
+		{"P-384", ECCModeSecp384r1},
+		{"P-521", ECCModeSecp521r1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			salt := salty("TDF")
+			plainText := "virtru"
+
+			kasKeyPair, err := NewECKeyPair(tc.mode)
+			require.NoError(t, err)
+			kasPubPEM, err := kasKeyPair.PublicKeyInPemFormat()
+			require.NoError(t, err)
+			kasPriv, err := kasKeyPair.PrivateKey.ECDH()
+			require.NoError(t, err)
+
+			// Encrypt with the library's encryptor (generates ephemeral key internally)
+			encryptor, err := FromPublicPEMWithSalt(kasPubPEM, salt, nil)
+			require.NoError(t, err)
+			ciphertext, err := encryptor.Encrypt([]byte(plainText))
+			require.NoError(t, err)
+
+			// Compress the encryptor's ephemeral key (this is what rewrap.go does)
+			ephDER := encryptor.EphemeralKey()
+			compressedEphemeral, err := compressEphemeralDER(tc.mode, ephDER)
+			require.NoError(t, err)
+
+			// Decrypt with compressed ephemeral key — exercises UncompressECPubKey
+			ecDecryptor, err := NewSaltedECDecryptor(kasPriv, salt, nil)
+			require.NoError(t, err)
+
+			decrypted, err := ecDecryptor.DecryptWithEphemeralKey(ciphertext, compressedEphemeral)
+			require.NoError(t, err, "DecryptWithEphemeralKey should succeed for %s", tc.name)
+			assert.Equal(t, plainText, string(decrypted), "decrypted text should match plaintext")
+		})
+	}
+}
+
+// compressEphemeralDER parses a DER-encoded public key and returns its compressed form.
+func compressEphemeralDER(mode ECCMode, der []byte) ([]byte, error) {
+	pub, err := x509.ParsePKIXPublicKey(der)
+	if err != nil {
+		return nil, err
+	}
+	ecPub, ok := pub.(*ecdsa.PublicKey)
+	if !ok {
+		return nil, errors.New("not an ECDSA public key")
+	}
+	return CompressedECPublicKey(mode, *ecPub)
 }

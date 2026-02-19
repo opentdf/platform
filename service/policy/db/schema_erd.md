@@ -140,7 +140,7 @@ erDiagram
         timestamp_with_time_zone created_at 
         uuid id PK "Primary key for the table"
         jsonb metadata "Metadata for the KAS (see protos for structure)"
-        character_varying name UK "Optional common name of the KAS"
+        character_varying name UK "Unique common name of the KAS"
         jsonb public_key "Public key of the KAS (see protos for structure/options)"
         character_varying source_type 
         timestamp_with_time_zone updated_at 

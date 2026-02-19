@@ -231,6 +231,7 @@ func (s *KeyManagementSuite) Test_ListProviderConfig_PaginationLimit_Succeeds() 
 
 	pc := s.createTestProviderConfig(s.testProvider, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
+
 	pc2 := s.createTestProviderConfig(testProvider2, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc2.GetId())
 

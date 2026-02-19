@@ -194,7 +194,7 @@ func (s SDK) ValidateAttributeExists(ctx context.Context, fqn string) error {
 //	}
 func (s SDK) ValidateAttributeValue(ctx context.Context, attributeFqn string, value string) error {
 	if value == "" {
-		return fmt.Errorf("invalid attribute value: must not be empty")
+		return errors.New("invalid attribute value: must not be empty")
 	}
 	if _, err := NewAttributeNameFQN(attributeFqn); err != nil {
 		return fmt.Errorf("invalid attribute FQN %q: %w", attributeFqn, err)

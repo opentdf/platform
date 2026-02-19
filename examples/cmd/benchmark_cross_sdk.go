@@ -242,8 +242,8 @@ func runBenchmarkCrossSDK(cmd *cobra.Command, _ []string) error {
 
 	fmt.Println()
 	fmt.Println("## Decrypt")
-	fmt.Println("| Payload | Production SDK* | WASM |")
-	fmt.Println("|---------|----------------|------|")
+	fmt.Println("| Payload | Production SDK* | WASM** |")
+	fmt.Println("|---------|----------------|--------|")
 	for _, r := range decResults {
 		wasmCol := fmtDurationMS(r.wasm)
 		if r.wasmErr != "" {
@@ -252,7 +252,8 @@ func runBenchmarkCrossSDK(cmd *cobra.Command, _ []string) error {
 		fmt.Printf("| %s | %s | %s |\n",
 			formatSize(r.size), fmtDurationMS(r.production), wasmCol)
 	}
-	fmt.Println("*Includes KAS rewrap network latency")
+	fmt.Println("*Production SDK: includes KAS rewrap network latency")
+	fmt.Println("**WASM: includes local RSA-OAEP DEK unwrap (no network); in production the host would call KAS for rewrap")
 
 	return nil
 }
@@ -376,16 +377,17 @@ func benchProductionDecrypt(client *sdk.SDK, tdfBytes []byte) (time.Duration, er
 }
 
 func benchWASMDecrypt(wrt *wasmRuntime, tdfBytes []byte, privPEM string) (time.Duration, error) {
-	// Unwrap the DEK from the TDF manifest using the local private key.
-	dek, err := unwrapDEKLocal(tdfBytes, privPEM)
-	if err != nil {
-		return 0, fmt.Errorf("unwrap DEK: %w", err)
-	}
-
 	var total time.Duration
 	for j := 0; j < benchCrossIterations; j++ {
 		start := time.Now()
-		_, err := wrt.decrypt(tdfBytes, dek)
+		// Unwrap DEK each iteration — in production the host would call KAS
+		// for rewrap; here we do local RSA-OAEP decrypt to measure the full
+		// host-side decrypt flow (unwrap + AES-GCM decrypt).
+		dek, err := unwrapDEKLocal(tdfBytes, privPEM)
+		if err != nil {
+			return 0, fmt.Errorf("unwrap DEK: %w", err)
+		}
+		_, err = wrt.decrypt(tdfBytes, dek)
 		total += time.Since(start)
 		if err != nil {
 			return 0, fmt.Errorf("wasm decrypt: %w", err)

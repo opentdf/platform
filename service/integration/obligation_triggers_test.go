@@ -324,14 +324,17 @@ func (s *ObligationTriggersSuite) Test_ListObligationTriggers_NoTriggersNoFilter
 }
 
 func (s *ObligationTriggersSuite) Test_ListObligationTriggers_OrdersByCreatedAt_Succeeds() {
-	first := s.createGenericTrigger()
+	first := s.createUniqueTrigger("ordered-first")
 	s.triggerIDsToClean = append(s.triggerIDsToClean, first.GetId())
+	s.obligationValueIDsToClean = append(s.obligationValueIDsToClean, first.GetObligationValue().GetId())
 	time.Sleep(5 * time.Millisecond)
-	second := s.createGenericTrigger()
+	second := s.createUniqueTrigger("ordered-second")
 	s.triggerIDsToClean = append(s.triggerIDsToClean, second.GetId())
+	s.obligationValueIDsToClean = append(s.obligationValueIDsToClean, second.GetObligationValue().GetId())
 	time.Sleep(5 * time.Millisecond)
-	third := s.createGenericTrigger()
+	third := s.createUniqueTrigger("ordered-third")
 	s.triggerIDsToClean = append(s.triggerIDsToClean, third.GetId())
+	s.obligationValueIDsToClean = append(s.obligationValueIDsToClean, third.GetObligationValue().GetId())
 
 	triggers, _, err := s.db.PolicyClient.ListObligationTriggers(s.ctx, &obligations.ListObligationTriggersRequest{
 		NamespaceId: s.namespace.GetId(),

@@ -66,7 +66,6 @@ SELECT
     listed.namespace_grants,
     listed.total  
 FROM listed
-ORDER BY listed.kas_created_at
 LIMIT @limit_ 
 OFFSET @offset_; 
 

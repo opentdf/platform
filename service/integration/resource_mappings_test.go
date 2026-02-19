@@ -784,7 +784,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingsByGroupFqns_OrdersByCre
 	time.Sleep(5 * time.Millisecond)
 	thirdID := create(3)
 
-	fqn := fmt.Sprintf("https://%s/resourcemappinggroup/%s", ns.GetName(), group.GetName())
+	fqn := fmt.Sprintf("https://%s/resm/%s", ns.GetName(), group.GetName())
 	mappingsByGroup, err := s.db.PolicyClient.ListResourceMappingsByGroupFqns(s.ctx, []string{fqn})
 	s.Require().NoError(err)
 	s.NotNil(mappingsByGroup)

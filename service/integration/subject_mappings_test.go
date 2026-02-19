@@ -652,10 +652,8 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_OrdersByCreatedAt_Succee
 
 		created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
 			AttributeValueId:       fixtureAttrValID,
-			SubjectConditionSet:    scs,
+			NewSubjectConditionSet: scs,
 			Actions:                []*policy.Action{actionRead},
-			OnlyExistingActions:    true,
-			AllowExistingCondition: true,
 		})
 		s.Require().NoError(err)
 		s.Require().NotEmpty(created.GetId())
@@ -956,19 +954,17 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_NoPagination_Succeed
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_OrdersByCreatedAt_Succeeds() {
 	create := func(email string) string {
-		req := &subjectmapping.CreateSubjectConditionSetRequest{
-			Condition: &subjectmapping.SubjectConditionSetCreate{
-				SubjectSets: []*policy.SubjectSet{
-					{
-						ConditionGroups: []*policy.ConditionGroup{
-							{
-								BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
-								Conditions: []*policy.Condition{
-									{
-										SubjectExternalSelectorValue: ".email",
-										Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-										SubjectExternalValues:        []string{email},
-									},
+		scs := &subjectmapping.SubjectConditionSetCreate{
+			SubjectSets: []*policy.SubjectSet{
+				{
+					ConditionGroups: []*policy.ConditionGroup{
+						{
+							BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+							Conditions: []*policy.Condition{
+								{
+									SubjectExternalSelectorValue: ".email",
+									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+									SubjectExternalValues:        []string{email},
 								},
 							},
 						},
@@ -976,7 +972,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_OrdersByCreatedAt_Su
 				},
 			},
 		}
-		created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, req)
+		created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, scs)
 		s.Require().NoError(err)
 		s.Require().NotNil(created)
 		return created.GetId()

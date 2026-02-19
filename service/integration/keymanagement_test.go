@@ -218,7 +218,7 @@ func (s *KeyManagementSuite) Test_ListProviderConfig_OrdersByCreatedAt_Succeeds(
 	s.Require().NoError(err)
 	s.NotNil(resp)
 
-	assertIDsInOrder(s.T(), resp.GetProviderConfigs(), func(pc *keymanagement.ProviderConfig) string { return pc.GetId() }, pc1.GetId(), pc2.GetId(), pc3.GetId())
+	assertIDsInOrder(s.T(), resp.GetProviderConfigs(), func(pc *policy.KeyProviderConfig) string { return pc.GetId() }, pc1.GetId(), pc2.GetId(), pc3.GetId())
 }
 
 func (s *KeyManagementSuite) Test_ListProviderConfig_PaginationLimit_Succeeds() {

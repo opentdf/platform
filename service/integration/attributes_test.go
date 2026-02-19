@@ -464,7 +464,7 @@ func (s *AttributesSuite) Test_ListAttributes_OrdersByCreatedAt_Succeeds() {
 	thirdID := create(3)
 
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
-		NamespaceId: ns.GetId(),
+		Namespace: ns.GetId(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(listRsp)

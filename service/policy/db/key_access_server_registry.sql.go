@@ -509,7 +509,6 @@ SELECT
     listed.namespace_grants,
     listed.total  
 FROM listed
-ORDER BY listed.kas_created_at
 LIMIT $2 
 OFFSET $1
 `
@@ -602,7 +601,6 @@ type listKeyAccessServerGrantsRow struct {
 //	    listed.namespace_grants,
 //	    listed.total
 //	FROM listed
-//	ORDER BY listed.kas_created_at
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listKeyAccessServerGrants(ctx context.Context, arg listKeyAccessServerGrantsParams) ([]listKeyAccessServerGrantsRow, error) {

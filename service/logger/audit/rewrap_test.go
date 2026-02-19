@@ -43,9 +43,11 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 		Type: ObjectTypeKeyObject,
 		ID:   kasPolicy.UUID.String(),
 		Attributes: eventObjectAttributes{
-			Assertions:  []string{},
-			Attrs:       attrs,
-			Permissions: []string{},
+			EventObjectAttributes: EventObjectAttributes{
+				Assertions:  []string{},
+				Attrs:       attrs,
+				Permissions: []string{},
+			},
 		},
 	}
 	if !reflect.DeepEqual(event.Object, expectedEventObject) {
@@ -53,16 +55,20 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 	}
 
 	expectedEventAction := eventAction{
-		Type:   ActionTypeRewrap,
-		Result: ActionResultSuccess,
+		EventObjectAction: EventObjectAction{
+			Type:   ActionTypeRewrap,
+			Result: ActionResultSuccess,
+		},
 	}
 	if !reflect.DeepEqual(event.Action, expectedEventAction) {
 		t.Fatalf("event action did not match expected: got %+v, want %+v", event.Action, expectedEventAction)
 	}
 
 	expectedEventActor := auditEventActor{
-		ID:         TestActorID,
-		Attributes: make([]interface{}, 0),
+		EventObjectActor: EventObjectActor{
+			ID:         TestActorID,
+			Attributes: make([]interface{}, 0),
+		},
 	}
 	if !reflect.DeepEqual(event.Actor, expectedEventActor) {
 		t.Fatalf("event actor did not match expected: got %+v, want %+v", event.Actor, expectedEventActor)
@@ -79,9 +85,11 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 	}
 
 	expectedClientInfo := eventClientInfo{
-		Platform:  "kas",
-		UserAgent: TestUserAgent,
-		RequestIP: TestRequestIP.String(),
+		EventClientInfo: EventClientInfo{
+			Platform:  "kas",
+			UserAgent: TestUserAgent,
+			RequestIP: TestRequestIP.String(),
+		},
 	}
 	if !reflect.DeepEqual(event.ClientInfo, expectedClientInfo) {
 		t.Fatalf("event client info did not match expected: got %+v, want %+v", event.ClientInfo, expectedClientInfo)

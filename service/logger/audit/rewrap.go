@@ -47,18 +47,24 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 			Type: ObjectTypeKeyObject,
 			ID:   params.Policy.UUID.String(),
 			Attributes: eventObjectAttributes{
-				Assertions:  []string{}, // Assertions aren't passed in the rewrap policy body
-				Attrs:       attrFQNS,
-				Permissions: []string{}, // Currently always empty
+				EventObjectAttributes: EventObjectAttributes{
+					Assertions:  []string{}, // Assertions aren't passed in the rewrap policy body
+					Attrs:       attrFQNS,
+					Permissions: []string{}, // Currently always empty
+				},
 			},
 		},
 		Action: eventAction{
-			Type:   ActionTypeRewrap,
-			Result: auditEventActionResult,
+			EventObjectAction: EventObjectAction{
+				Type:   ActionTypeRewrap,
+				Result: auditEventActionResult,
+			},
 		},
 		Actor: auditEventActor{
-			ID:         auditDataFromContext.ActorID,
-			Attributes: make([]any, 0),
+			EventObjectActor: EventObjectActor{
+				ID:         auditDataFromContext.ActorID,
+				Attributes: make([]any, 0),
+			},
 		},
 		EventMetaData: auditEventMetadata{
 			"keyID":         params.KeyID,
@@ -67,9 +73,11 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 			"algorithm":     params.Algorithm,
 		},
 		ClientInfo: eventClientInfo{
-			Platform:  "kas",
-			UserAgent: auditDataFromContext.UserAgent,
-			RequestIP: auditDataFromContext.RequestIP,
+			EventClientInfo: EventClientInfo{
+				Platform:  "kas",
+				UserAgent: auditDataFromContext.UserAgent,
+				RequestIP: auditDataFromContext.RequestIP,
+			},
 		},
 		RequestID: auditDataFromContext.RequestID,
 		Timestamp: time.Now().Format(time.RFC3339),

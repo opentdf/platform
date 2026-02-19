@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -61,6 +62,56 @@ func (s SDK) ListAttributes(ctx context.Context, namespace ...string) ([]*policy
 		req.Pagination = &policy.PageRequest{Offset: nextOffset}
 	}
 	return nil, fmt.Errorf("listing attributes: exceeded maximum page limit (%d)", maxListAttributesPages)
+}
+
+// AttributeExists reports whether the attribute definition identified by attributeFqn
+// exists on the platform.
+//
+// attributeFqn should be an attribute-level FQN (no /value/ segment):
+//
+//	https://<namespace>/attr/<attribute_name>
+//
+// Returns (true, nil) if the attribute exists, (false, nil) if it does not,
+// and (false, err) if a service error occurs.
+func (s SDK) AttributeExists(ctx context.Context, attributeFqn string) (bool, error) {
+	if _, err := NewAttributeNameFQN(attributeFqn); err != nil {
+		return false, fmt.Errorf("invalid attribute FQN %q: %w", attributeFqn, err)
+	}
+
+	_, err := s.Attributes.GetAttribute(ctx, &attributes.GetAttributeRequest{
+		Identifier: &attributes.GetAttributeRequest_Fqn{Fqn: attributeFqn},
+	})
+	if err != nil {
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			return false, nil
+		}
+		return false, fmt.Errorf("checking attribute existence: %w", err)
+	}
+	return true, nil
+}
+
+// AttributeValueExists reports whether the attribute value FQN exists on the platform.
+//
+// fqn should be a full attribute value FQN (with /value/ segment):
+//
+//	https://<namespace>/attr/<attribute_name>/value/<value>
+//
+// Returns (true, nil) if the value exists, (false, nil) if it does not,
+// and (false, err) if a service error occurs.
+func (s SDK) AttributeValueExists(ctx context.Context, fqn string) (bool, error) {
+	if _, err := NewAttributeValueFQN(fqn); err != nil {
+		return false, fmt.Errorf("invalid attribute value FQN %q: %w", fqn, err)
+	}
+
+	resp, err := s.Attributes.GetAttributeValuesByFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqn},
+	})
+	if err != nil {
+		return false, fmt.Errorf("checking attribute value existence: %w", err)
+	}
+
+	_, found := resp.GetFqnAttributeValues()[fqn]
+	return found, nil
 }
 
 // ValidateAttributes checks that all provided attribute value FQNs exist on the platform.
@@ -160,60 +211,4 @@ func (s SDK) GetEntityAttributes(ctx context.Context, entity *authorization.Enti
 		}
 	}
 	return nil, nil
-}
-
-// ValidateAttributeExists checks that a single attribute value FQN is valid in format
-// and exists on the platform.
-//
-// fqn should be a full attribute value FQN in the form:
-//
-//	https://<namespace>/attr/<attribute_name>/value/<value>
-//
-// This is a convenience wrapper around ValidateAttributes for the single-FQN case.
-func (s SDK) ValidateAttributeExists(ctx context.Context, fqn string) error {
-	return s.ValidateAttributes(ctx, fqn)
-}
-
-// ValidateAttributeValue checks that value is registered on the attribute identified
-// by attributeFqn. The value must match one of the attribute's registered values
-// (case-insensitive), or the call fails.
-//
-// The attribute rule type (ANY_OF, ALL_OF, HIERARCHY) is not relevant here — it governs
-// access decisions at decryption time, not value registration.
-//
-// attributeFqn should be an attribute-level FQN in the form:
-//
-//	https://<namespace>/attr/<attribute_name>
-//
-// Returns ErrAttributeNotFound if the attribute does not exist or value is not among
-// its registered values.
-//
-// Example:
-//
-//	err := sdk.ValidateAttributeValue(ctx, "https://example.com/attr/clearance", "secret")
-//	if err != nil {
-//	    log.Fatalf("value not permitted: %v", err)
-//	}
-func (s SDK) ValidateAttributeValue(ctx context.Context, attributeFqn string, value string) error {
-	if value == "" {
-		return errors.New("attribute value must not be empty")
-	}
-	if _, err := NewAttributeNameFQN(attributeFqn); err != nil {
-		return fmt.Errorf("invalid attribute FQN %q: %w", attributeFqn, err)
-	}
-
-	resp, err := s.Attributes.GetAttribute(ctx, &attributes.GetAttributeRequest{
-		Identifier: &attributes.GetAttributeRequest_Fqn{Fqn: attributeFqn},
-	})
-	if err != nil {
-		return fmt.Errorf("%w: %s", ErrAttributeNotFound, attributeFqn)
-	}
-
-	vals := resp.GetAttribute().GetValues()
-	for _, v := range vals {
-		if strings.EqualFold(v.GetValue(), value) {
-			return nil
-		}
-	}
-	return fmt.Errorf("%w: value %q not found for attribute %s", ErrAttributeNotFound, value, attributeFqn)
 }

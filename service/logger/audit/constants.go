@@ -36,8 +36,6 @@ const (
 	ObjectTypeKasAttributeNamespaceKeyAssignment
 )
 
-var auditTypeMu sync.RWMutex
-
 var objectTypeNames = map[ObjectType]string{
 	ObjectTypeSubjectMapping:                      "subject_mapping",
 	ObjectTypeResourceMapping:                     "resource_mapping",
@@ -66,10 +64,16 @@ var objectTypeNames = map[ObjectType]string{
 	ObjectTypeKasAttributeNamespaceKeyAssignment:  "kas_attribute_namespace_key_assignment",
 }
 
+var (
+	objectTypeNamesMu   sync.RWMutex
+	actionTypeNamesMu   sync.RWMutex
+	actionResultNamesMu sync.RWMutex
+)
+
 func (ot ObjectType) String() string {
-	auditTypeMu.RLock()
+	objectTypeNamesMu.RLock()
 	name, ok := objectTypeNames[ot]
-	auditTypeMu.RUnlock()
+	objectTypeNamesMu.RUnlock()
 	if ok {
 		return name
 	}
@@ -81,8 +85,8 @@ func (ot ObjectType) MarshalJSON() ([]byte, error) {
 }
 
 func RegisterObjectType(ot ObjectType, name string) {
-	auditTypeMu.Lock()
-	defer auditTypeMu.Unlock()
+	objectTypeNamesMu.Lock()
+	defer objectTypeNamesMu.Unlock()
 	objectTypeNames[ot] = name
 }
 
@@ -107,9 +111,9 @@ var actionTypeNames = map[ActionType]string{
 }
 
 func (at ActionType) String() string {
-	auditTypeMu.RLock()
+	actionTypeNamesMu.RLock()
 	name, ok := actionTypeNames[at]
-	auditTypeMu.RUnlock()
+	actionTypeNamesMu.RUnlock()
 	if ok {
 		return name
 	}
@@ -121,8 +125,8 @@ func (at ActionType) MarshalJSON() ([]byte, error) {
 }
 
 func RegisterActionType(at ActionType, name string) {
-	auditTypeMu.Lock()
-	defer auditTypeMu.Unlock()
+	actionTypeNamesMu.Lock()
+	defer actionTypeNamesMu.Unlock()
 	actionTypeNames[at] = name
 }
 
@@ -151,9 +155,9 @@ var actionResultNames = map[ActionResult]string{
 }
 
 func (ar ActionResult) String() string {
-	auditTypeMu.RLock()
+	actionResultNamesMu.RLock()
 	name, ok := actionResultNames[ar]
-	auditTypeMu.RUnlock()
+	actionResultNamesMu.RUnlock()
 	if ok {
 		return name
 	}
@@ -165,7 +169,7 @@ func (ar ActionResult) MarshalJSON() ([]byte, error) {
 }
 
 func RegisterActionResult(ar ActionResult, name string) {
-	auditTypeMu.Lock()
-	defer auditTypeMu.Unlock()
+	actionResultNamesMu.Lock()
+	defer actionResultNamesMu.Unlock()
 	actionResultNames[ar] = name
 }

@@ -303,4 +303,3 @@ func (ns NamespacesService) RemovePublicKeyFromNamespace(ctx context.Context, r 
 
 	return connect.NewResponse(rsp), nil
 }
-

@@ -2,9 +2,11 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -79,6 +81,31 @@ func (s *ActionsSuite) Test_ListActions_NoPagination_Succeeds() {
 	s.True(foundCreate)
 	s.True(foundUpdate)
 	s.True(foundDelete)
+}
+
+func (s *ActionsSuite) Test_ListActions_OrdersByCreatedAt_Succeeds() {
+	suffix := time.Now().UnixNano()
+	create := func(i int) string {
+		name := fmt.Sprintf("order-test-action-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+			Name: name,
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(created)
+		return created.GetId()
+	}
+
+	firstID := create(1)
+	time.Sleep(5 * time.Millisecond)
+	secondID := create(2)
+	time.Sleep(5 * time.Millisecond)
+	thirdID := create(3)
+
+	list, err := s.db.PolicyClient.ListActions(s.ctx, &actions.ListActionsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	assertIDsInDescendingOrder(s.T(), list.GetActionsCustom(), func(a *policy.Action) string { return a.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *ActionsSuite) Test_ListActions_Pagination_Succeeds() {

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -242,39 +243,6 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_BrandNewActionNames_Succ
 	s.True(foundNewActionTwo)
 }
 
-func (s *SubjectMappingsSuite) TestCreateSubjectMapping_DeprecatedProtoEnums_Fails() {
-	s.T().Skip("Skipping test while deprecation of proto actions is in flight")
-
-	fixtureAttrVal := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
-	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
-
-	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId: fixtureAttrVal.ID,
-		Actions: []*policy.Action{
-			{
-				Value: &policy.Action_Standard{
-					Standard: policy.Action_STANDARD_ACTION_DECRYPT,
-				},
-			},
-		},
-		ExistingSubjectConditionSetId: fixtureScs.ID,
-	}
-
-	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
-	s.Nil(created)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-
-	newSubjectMapping.GetActions()[0].Value = &policy.Action_Standard{
-		Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
-	}
-
-	created, err = s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
-	s.Nil(created)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-}
-
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 	// create a new one SM with actions, update it with different actions, and verify the update
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
@@ -384,50 +352,6 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions_NonExistentActio
 	s.Nil(updated)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
-}
-
-func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions_DeprecatedProtoEnums_Fails() {
-	s.T().Skip("Skipping test while deprecation of proto actions is in flight")
-
-	fixtureAttrVal := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value1")
-	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
-
-	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId: fixtureAttrVal.ID,
-		Actions: []*policy.Action{
-			{Name: policydb.ActionRead.String()},
-		},
-		ExistingSubjectConditionSetId: fixtureScs.ID,
-	}
-
-	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
-	s.NotNil(created)
-	s.Require().NoError(err)
-
-	updateReq := &subjectmapping.UpdateSubjectMappingRequest{
-		Id: created.GetId(),
-		Actions: []*policy.Action{
-			{
-				Value: &policy.Action_Standard{
-					Standard: policy.Action_STANDARD_ACTION_DECRYPT,
-				},
-			},
-		},
-	}
-
-	updated, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, updateReq)
-	s.Nil(updated)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-
-	updateReq.Actions[0].Value = &policy.Action_Standard{
-		Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
-	}
-
-	updated, err = s.db.PolicyClient.UpdateSubjectMapping(s.ctx, updateReq)
-	s.Nil(updated)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_SubjectConditionSetId() {
@@ -623,6 +547,52 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_NoPagination_Succeeds() 
 	s.True(found1)
 	s.True(found2)
 	s.True(found3)
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_OrdersByCreatedAt_Succeeds() {
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
+
+	createMapping := func(email string) string {
+		scs := &subjectmapping.SubjectConditionSetCreate{
+			SubjectSets: []*policy.SubjectSet{
+				{
+					ConditionGroups: []*policy.ConditionGroup{
+						{
+							BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+							Conditions: []*policy.Condition{
+								{
+									SubjectExternalSelectorValue: ".email",
+									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+									SubjectExternalValues:        []string{email},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+			AttributeValueId:       fixtureAttrValID,
+			NewSubjectConditionSet: scs,
+			Actions:                []*policy.Action{actionRead},
+		})
+		s.Require().NoError(err)
+		s.Require().NotEmpty(created.GetId())
+		return created.GetId()
+	}
+
+	firstID := createMapping("order-test-1@example.com")
+	time.Sleep(5 * time.Millisecond)
+	secondID := createMapping("order-test-2@example.com")
+	time.Sleep(5 * time.Millisecond)
+	thirdID := createMapping("order-test-3@example.com")
+
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
+	s.Require().NoError(err)
+
+	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Limit_Succeeds() {
@@ -889,6 +859,50 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_NoPagination_Succeed
 	s.True(found2)
 	s.True(found3)
 	s.True(found4)
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_OrdersByCreatedAt_Succeeds() {
+	create := func(email string) string {
+		scs := &subjectmapping.SubjectConditionSetCreate{
+			SubjectSets: []*policy.SubjectSet{
+				{
+					ConditionGroups: []*policy.ConditionGroup{
+						{
+							BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+							Conditions: []*policy.Condition{
+								{
+									SubjectExternalSelectorValue: ".email",
+									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+									SubjectExternalValues:        []string{email},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, scs)
+		s.Require().NoError(err)
+		s.Require().NotNil(created)
+		return created.GetId()
+	}
+
+	firstID := create("order-scs-1@example.com")
+	time.Sleep(5 * time.Millisecond)
+	secondID := create("order-scs-2@example.com")
+	time.Sleep(5 * time.Millisecond)
+	thirdID := create("order-scs-3@example.com")
+	defer func() {
+		_, _ = s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, firstID)
+		_, _ = s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, secondID)
+		_, _ = s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, thirdID)
+	}()
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(context.Background(), &subjectmapping.ListSubjectConditionSetsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_Limit_Succeeds() {

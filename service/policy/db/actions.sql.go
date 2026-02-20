@@ -230,6 +230,7 @@ SELECT
     counted.total
 FROM actions a
 CROSS JOIN counted
+ORDER BY a.created_at DESC
 LIMIT $2 
 OFFSET $1
 `
@@ -266,6 +267,7 @@ type listActionsRow struct {
 //	    counted.total
 //	FROM actions a
 //	CROSS JOIN counted
+//	ORDER BY a.created_at DESC
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listActions(ctx context.Context, arg listActionsParams) ([]listActionsRow, error) {

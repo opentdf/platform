@@ -17,6 +17,7 @@ WHERE (
     (sqlc.narg('active')::BOOLEAN IS NULL OR av.active = sqlc.narg('active')) AND
     (sqlc.narg('attribute_definition_id')::uuid IS NULL OR av.attribute_definition_id = sqlc.narg('attribute_definition_id')::uuid) 
 )
+ORDER BY av.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_; 
 

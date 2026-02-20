@@ -243,35 +243,6 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_BrandNewActionNames_Succ
 	s.True(foundNewActionTwo)
 }
 
-func (s *SubjectMappingsSuite) TestCreateSubjectMapping_DeprecatedProtoEnums_Fails() {
-	s.T().Skip("Skipping test while deprecation of proto actions is in flight")
-
-	fixtureAttrVal := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
-	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set2")
-
-	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId: fixtureAttrVal.ID,
-		Actions: []*policy.Action{
-			{
-				Name: "",
-			},
-		},
-		ExistingSubjectConditionSetId: fixtureScs.ID,
-	}
-
-	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
-	s.Nil(created)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-
-	newSubjectMapping.GetActions()[0].Name = ""
-
-	created, err = s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
-	s.Nil(created)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-}
-
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 	// create a new one SM with actions, update it with different actions, and verify the update
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
@@ -381,46 +352,6 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions_NonExistentActio
 	s.Nil(updated)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
-}
-
-func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions_DeprecatedProtoEnums_Fails() {
-	s.T().Skip("Skipping test while deprecation of proto actions is in flight")
-
-	fixtureAttrVal := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value1")
-	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
-
-	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId: fixtureAttrVal.ID,
-		Actions: []*policy.Action{
-			{Name: policydb.ActionRead.String()},
-		},
-		ExistingSubjectConditionSetId: fixtureScs.ID,
-	}
-
-	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
-	s.NotNil(created)
-	s.Require().NoError(err)
-
-	updateReq := &subjectmapping.UpdateSubjectMappingRequest{
-		Id: created.GetId(),
-		Actions: []*policy.Action{
-			{
-				Name: "",
-			},
-		},
-	}
-
-	updated, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, updateReq)
-	s.Nil(updated)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
-
-	updateReq.Actions[0].Name = ""
-
-	updated, err = s.db.PolicyClient.UpdateSubjectMapping(s.ctx, updateReq)
-	s.Nil(updated)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrMissingValue)
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_SubjectConditionSetId() {

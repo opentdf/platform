@@ -506,8 +506,8 @@ Go benchmark for runtime compilation) is larger but only used in development.
 | 16 KB   | 0.6    | 0.2              | 0.2          | 7.0                 | 0.3x             |
 | 64 KB   | 0.1    | 0.3              | 0.3          | 15.6                | 3.0x             |
 | 256 KB  | 0.2    | 1.6              | 0.7          | 51.3                | 8.0x             |
-| 1 MB    | 0.7    | 5.8              | 2.5          | 187.4               | 8.3x             |
-| 10 MB   | 5.8    | 44.1             | 21.0         | 1,728.9             | 7.6x             |
+| 1 MB    | 0.7    | 5.8              | 2.6          | 187.4               | 8.3x             |
+| 10 MB   | 5.8    | 44.1             | 21.3         | 1,728.9             | 7.6x             |
 | 100 MB  | 57.3   | 543.9            | OOM          | OOM                 | 9.5x             |
 
 Go WASM encrypt is ~8-10x slower than native Go at large sizes (within the 3x
@@ -516,22 +516,25 @@ host ABI call frequency (one call per AES-GCM segment + HMAC + ZIP write).
 
 ### Performance — Decrypt (ms, 3 iterations averaged)
 
-| Payload | Go SDK* | Go WASM** | TS WASM** | Java WASM** | Go WASM / Go SDK |
-|---------|---------|-----------|-----------|-------------|------------------|
-| 1 KB    | 18.7    | 1.2       | 1.0       | 3.3         | 0.06x (16x faster) |
-| 16 KB   | 18.2    | 1.3       | 1.0       | 3.1         | 0.07x (14x faster) |
-| 64 KB   | 17.8    | 1.2       | 1.0       | 4.5         | 0.07x (15x faster) |
-| 256 KB  | 17.6    | 1.6       | 1.2       | 8.8         | 0.09x (11x faster) |
-| 1 MB    | 17.9    | 2.5       | 2.7       | 26.8        | 0.14x (7x faster)  |
-| 10 MB   | 21.4    | 11.6      | 12.6      | 244.4       | 0.54x (1.8x faster)|
-| 100 MB  | 58.9    | 266.1     | 115.4     | 2,254.1     | 4.5x              |
+| Payload | Go SDK* | Go WASM** | TS WASM*** | Java WASM** | Go WASM / Go SDK |
+|---------|---------|-----------|------------|-------------|------------------|
+| 1 KB    | 18.7    | 1.2       | 57.6       | 3.3         | 0.06x (16x faster) |
+| 16 KB   | 18.2    | 1.3       | 59.9       | 3.1         | 0.07x (14x faster) |
+| 64 KB   | 17.8    | 1.2       | 46.0       | 4.5         | 0.07x (15x faster) |
+| 256 KB  | 17.6    | 1.6       | 83.6       | 8.8         | 0.09x (11x faster) |
+| 1 MB    | 17.9    | 2.5       | 76.1       | 26.8        | 0.14x (7x faster)  |
+| 10 MB   | 21.4    | 11.6      | 272.9      | 244.4       | 0.54x (1.8x faster)|
+| 100 MB  | 58.9    | 266.1     | 2,525.7    | 2,254.1     | 4.5x              |
 
 \* Native SDK includes KAS rewrap network latency (~18 ms).
-\*\* WASM decrypt uses local RSA-OAEP DEK unwrap (no KAS network call).
+\*\* Go/Java WASM decrypt uses local RSA-OAEP DEK unwrap (no KAS network call).
+\*\*\* TS WASM decrypt includes KAS rewrap over HTTP (~50-80 ms round-trip).
 
-WASM decrypt is **faster** than the native SDK for payloads up to ~10 MB
-because it avoids the KAS network round-trip. At 100 MB, raw crypto throughput
-matters more: Go WASM = ~376 MB/s, TS WASM = ~870 MB/s.
+Go/Java WASM decrypt is **faster** than their native SDKs for payloads up to
+~10 MB because local RSA unwrap avoids the KAS network round-trip. TS WASM
+decrypt includes KAS rewrap and roughly matches native TS SDK performance —
+the mandatory network call dominates in both paths. At 100 MB, raw compute
+throughput matters more: Go WASM = ~376 MB/s.
 
 ### Risks Identified
 

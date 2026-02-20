@@ -43,7 +43,7 @@ jobs:
 
       - name: 'Dependency Review'
         if: ${{ github.event_name != 'merge_group' }}
-        uses: actions/dependency-review-action@da24556b548a50705dd671f47852072ea4c105d9 # v4.7.1
+        uses: actions/dependency-review-action@05fe4576374b728f0c523d6a13d64c25081e0803 # v4.8.3
         with:
           fail-on-severity: ${{ inputs.fail-on-severity }}
           deny-licenses: >

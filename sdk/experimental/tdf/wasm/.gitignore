@@ -1,0 +1,3 @@
+_out/
+*.wasm
+*.wasm.gz

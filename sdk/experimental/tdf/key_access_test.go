@@ -235,11 +235,7 @@ func TestCreatePolicyBinding(t *testing.T) {
 
 		base64Policy := string(ocrypto.Base64Encode([]byte(testPolicyJSON)))
 
-		binding := createPolicyBinding(symKey, base64Policy)
-		require.IsType(t, PolicyBinding{}, binding, "Should return PolicyBinding type")
-
-		policyBinding, ok := binding.(PolicyBinding)
-		require.True(t, ok, "Policy binding should be PolicyBinding type")
+		policyBinding := createPolicyBinding(symKey, base64Policy)
 		assert.Equal(t, "HS256", policyBinding.Alg, "Should use HS256 algorithm")
 		assert.NotEmpty(t, policyBinding.Hash, "Should contain hash value")
 
@@ -257,13 +253,9 @@ func TestCreatePolicyBinding(t *testing.T) {
 		policy1 := string(ocrypto.Base64Encode([]byte(`{"policy": "test1"}`)))
 		policy2 := string(ocrypto.Base64Encode([]byte(`{"policy": "test2"}`)))
 
-		binding1 := createPolicyBinding(symKey, policy1)
-		binding2 := createPolicyBinding(symKey, policy2)
+		pb1 := createPolicyBinding(symKey, policy1)
+		pb2 := createPolicyBinding(symKey, policy2)
 
-		pb1, ok1 := binding1.(PolicyBinding)
-		require.True(t, ok1, "binding1 should be PolicyBinding type")
-		pb2, ok2 := binding2.(PolicyBinding)
-		require.True(t, ok2, "binding2 should be PolicyBinding type")
 		hash1 := pb1.Hash
 		hash2 := pb2.Hash
 		assert.NotEqual(t, hash1, hash2, "Different policies should produce different hashes")
@@ -280,13 +272,9 @@ func TestCreatePolicyBinding(t *testing.T) {
 
 		policy := string(ocrypto.Base64Encode([]byte(testPolicyJSON)))
 
-		binding1 := createPolicyBinding(symKey1, policy)
-		binding2 := createPolicyBinding(symKey2, policy)
+		pb1 := createPolicyBinding(symKey1, policy)
+		pb2 := createPolicyBinding(symKey2, policy)
 
-		pb1, ok1 := binding1.(PolicyBinding)
-		require.True(t, ok1, "binding1 should be PolicyBinding type")
-		pb2, ok2 := binding2.(PolicyBinding)
-		require.True(t, ok2, "binding2 should be PolicyBinding type")
 		hash1 := pb1.Hash
 		hash2 := pb2.Hash
 		assert.NotEqual(t, hash1, hash2, "Different keys should produce different hashes")

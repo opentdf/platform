@@ -1,0 +1,143 @@
+name: "TinyGo WASM Canary"
+
+# Informational only — NOT in the ci aggregation job.
+# Tracks TinyGo compatibility for the WASM core engine spike (SDK-WASM-1).
+# Expected to have failures until the spike work is complete.
+# See: docs/adr/spike-wasm-core-tinygo-hybrid.md
+
+on:
+  pull_request:
+    paths:
+      - "sdk/experimental/tdf/**"
+      - "sdk/internal/zipstream/**"
+      - "sdk/manifest.go"
+      - "lib/ocrypto/**"
+      - ".github/workflows/tinygo-wasm-canary.yaml"
+  push:
+    branches:
+      - main
+    paths:
+      - "sdk/experimental/tdf/**"
+      - "sdk/internal/zipstream/**"
+      - "sdk/manifest.go"
+      - "lib/ocrypto/**"
+      - ".github/workflows/tinygo-wasm-canary.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tinygo-canary:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        canary:
+          - name: base64hex
+            path: sdk/experimental/tdf/wasm/base64hex
+            expected: pass
+            description: "encoding/base64 + encoding/hex"
+          - name: zipwrite
+            path: sdk/experimental/tdf/wasm/zipwrite
+            expected: pass
+            description: "encoding/binary + hash/crc32 + bytes + sort + sync"
+          - name: iocontext
+            path: sdk/experimental/tdf/wasm/iocontext
+            expected: fail
+            description: "io + context + strings + strconv + fmt + errors"
+          - name: stdjson
+            path: sdk/experimental/tdf/wasm/stdjson
+            expected: fail
+            description: "encoding/json with TDF manifest structs (superseded by tinyjson canary)"
+          - name: tinyjson
+            path: sdk/experimental/tdf/wasm/tinyjson
+            expected: pass
+            description: "tinyjson codegen manifest + assertion round-trip (replaces encoding/json)"
+          - name: zipstream
+            path: sdk/experimental/tdf/wasm/zipstream
+            expected: pass
+            description: "production zipstream writer: TDF ZIP creation + CRC32 combine + ZIP64"
+          - name: wasm
+            path: sdk/experimental/tdf/wasm
+            expected: fail
+            description: "full WASM module — go:wasmimport host ABI + tdf package"
+    name: "${{ matrix.canary.name }} (${{ matrix.canary.expected }})"
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: sdk/go.mod
+          check-latest: false
+
+      - name: Install TinyGo
+        run: |
+          wget -q https://github.com/tinygo-org/tinygo/releases/download/v0.37.0/tinygo_0.37.0_amd64.deb
+          sudo dpkg -i tinygo_0.37.0_amd64.deb
+          tinygo version
+
+      - name: "Build: tinygo compile to WASM (wasip1)"
+        id: build
+        continue-on-error: true
+        run: |
+          # tinyjson canary has its own go.mod; disable workspace
+          export GOWORK=off
+          tinygo build \
+            -o canary.wasm \
+            -target=wasip1 \
+            -no-debug \
+            -scheduler=none \
+            -gc=leaking \
+            ./${{ matrix.canary.path }}
+
+      - name: "Build: measure binary size"
+        if: steps.build.outcome == 'success'
+        run: |
+          ls -la canary.wasm
+          SIZE_RAW=$(stat --format=%s canary.wasm)
+          gzip -k -f canary.wasm
+          SIZE_GZ=$(stat --format=%s canary.wasm.gz)
+          {
+            echo "### ${{ matrix.canary.name }}"
+            echo "- Raw: ${SIZE_RAW} bytes ($(( SIZE_RAW / 1024 )) KB)"
+            echo "- Gzipped: ${SIZE_GZ} bytes ($(( SIZE_GZ / 1024 )) KB)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "Run: execute with wasmtime"
+        id: run
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: |
+          # Skip execution for wasm canary (needs host crypto functions)
+          if [ "${{ matrix.canary.name }}" = "wasm" ]; then
+            echo "Skipping execution — wasm module needs host crypto functions"
+            exit 0
+          fi
+          # Install wasmtime for execution
+          curl https://wasmtime.dev/install.sh -sSf | bash
+          export PATH="$HOME/.wasmtime/bin:$PATH"
+          wasmtime canary.wasm
+
+      - name: "Report result"
+        if: always()
+        run: |
+          BUILD="${{ steps.build.outcome }}"
+          RUN="${{ steps.run.outcome }}"
+          EXPECTED="${{ matrix.canary.expected }}"
+
+          {
+            echo "## ${{ matrix.canary.name }}"
+            echo "**Description:** ${{ matrix.canary.description }}"
+            echo "**Expected:** $EXPECTED"
+            echo "**Build:** $BUILD"
+            echo "**Run:** $RUN"
+
+            if [ "$BUILD" = "success" ] && [ "$RUN" != "failure" ]; then
+              echo "**Status: PASS**"
+            else
+              echo "**Status: FAIL**"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

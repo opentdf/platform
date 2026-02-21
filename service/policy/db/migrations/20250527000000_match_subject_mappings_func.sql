@@ -60,11 +60,6 @@ ON attribute_values(active);
 
 -- +goose Down
 -- +goose StatementBegin
-
-ALTER TABLE subject_condition_set DROP COLUMN IF EXISTS selector_values;
-DROP TRIGGER IF EXISTS update_selector_values ON subject_condition_set;
-DROP FUNCTION IF EXISTS extract_selector_values;
-
 DROP INDEX IF EXISTS idx_subject_condition_set_selector_values;
 DROP INDEX IF EXISTS idx_subject_mappings_attribute_value_id;
 DROP INDEX IF EXISTS idx_subject_mappings_subject_condition_set_id;
@@ -74,5 +69,9 @@ DROP INDEX IF EXISTS idx_subject_mapping_actions_mapping_action;
 DROP INDEX IF EXISTS idx_attribute_namespaces_active;
 DROP INDEX IF EXISTS idx_attribute_definitions_active;
 DROP INDEX IF EXISTS idx_attribute_values_active;
+
+ALTER TABLE subject_condition_set DROP COLUMN IF EXISTS selector_values;
+DROP TRIGGER IF EXISTS update_selector_values ON subject_condition_set;
+DROP FUNCTION IF EXISTS extract_selector_values;
 
 -- +goose StatementEnd

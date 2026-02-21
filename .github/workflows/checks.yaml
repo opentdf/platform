@@ -599,3 +599,106 @@ jobs:
           "$(go env GOROOT)"/bin/go run github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
           check --disallowed_types=forbidden --include_tests
           ./examples
+  migrate:
+    name: "goose migrate up and down (⚠️ WARN: this could be a false positive)"
+    runs-on: ubuntu-22.04 # Consistently Linux
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+        ports:
+          - "5432:5432"
+        options: --health-cmd="pg_isready -U testuser -d testdb" --health-interval=10s --health-timeout=5s --health-retries=5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.4.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install goose
+        run: go install github.com/pressly/goose/v3/cmd/goose@v3.24.3
+
+      - name: Determine Go binary locations
+        id: go_paths
+        shell: bash
+        run: |
+          set -e # Ensure commands succeed
+          echo "gobin_path=$(go env GOBIN)" >> "$GITHUB_OUTPUT"
+          echo "gopath_bin_path=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
+
+      - name: Determine goose executable path
+        id: goose_exec
+        shell: bash
+        run: |
+          set -eo pipefail
+
+          goose_exe_name="goose" # Always Linux, so no .exe
+          determined_goose_path=""
+          
+          gobin_dir="${{ steps.go_paths.outputs.gobin_path }}"
+          gopath_bin_dir="${{ steps.go_paths.outputs.gopath_bin_path }}"
+
+          # Prefer GOBIN if set and goose is there
+          if [[ -n "$gobin_dir" && -x "$gobin_dir/$goose_exe_name" ]]; then
+            determined_goose_path="$gobin_dir/$goose_exe_name"
+          # Fallback to GOPATH/bin
+          elif [[ -x "$gopath_bin_dir/$goose_exe_name" ]]; then
+            determined_goose_path="$gopath_bin_dir/$goose_exe_name"
+          else
+            echo "Error: goose executable ('$goose_exe_name') not found in GOBIN ('$gobin_dir') or GOPATH/bin ('$gopath_bin_dir')." >&2
+            ls -la "$gobin_dir" || true # List contents for debugging
+            ls -la "$gopath_bin_dir" || true # List contents for debugging
+            exit 1
+          fi
+          echo "Found goose at: $determined_goose_path"
+          echo "goose_executable_path=${determined_goose_path}" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for Postgres
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_DB: testdb
+        shell: bash
+        run: |
+          set -eo pipefail
+          echo "Waiting for PostgreSQL to be ready..."
+          for i in {1..30}; do
+            if pg_isready -h localhost -U "$POSTGRES_USER" -d "$POSTGRES_DB" -q; then
+              echo "PostgreSQL is ready."
+              exit 0
+            fi
+            echo "Attempt $i/30: PostgreSQL not ready yet, sleeping for 1 second..."
+            sleep 1
+          done
+          echo "Error: PostgreSQL did not become ready after 30 attempts."
+          exit 1
+
+      - name: Run goose up
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+          GOOSE_EXECUTABLE: ${{ steps.goose_exec.outputs.goose_executable_path }}
+        shell: bash
+        run: |
+          set -eo pipefail
+          DB_DSN="host=localhost port=5432 user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB} sslmode=disable"
+          
+          echo "Running goose up migrations using ${GOOSE_EXECUTABLE}..."
+          "$GOOSE_EXECUTABLE" -dir ./service/policy/db/migrations postgres "$DB_DSN" up
+
+      - name: Run goose down
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+          GOOSE_EXECUTABLE: ${{ steps.goose_exec.outputs.goose_executable_path }}
+        shell: bash
+        run: |
+          set -eo pipefail
+          DB_DSN="host=localhost port=5432 user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB} sslmode=disable"
+          
+          echo "Running goose down migrations (all) using ${GOOSE_EXECUTABLE}..."
+          "$GOOSE_EXECUTABLE" -dir ./service/policy/db/migrations postgres "$DB_DSN" down-to 20230101000000

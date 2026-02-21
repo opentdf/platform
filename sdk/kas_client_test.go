@@ -141,8 +141,8 @@ func Test_StoreKASKeys(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	assert.Nil(t, s.kasKeyCache.get("https://localhost:8080", "ec:secp256r1", "e1"))
-	assert.Nil(t, s.kasKeyCache.get("https://localhost:8080", "rsa:2048", "r1"))
+	assert.Nil(t, s.get("https://localhost:8080", "ec:secp256r1", "e1"))
+	assert.Nil(t, s.get("https://localhost:8080", "rsa:2048", "r1"))
 
 	require.NoError(t, s.StoreKASKeys("https://localhost:8080", &policy.KasPublicKeySet{
 		Keys: []*policy.KasPublicKey{
@@ -150,10 +150,10 @@ func Test_StoreKASKeys(t *testing.T) {
 			{Pem: "sample", Kid: "r1", Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048},
 		},
 	}))
-	assert.Nil(t, s.kasKeyCache.get("https://nowhere", "alg:unknown", ""))
-	assert.Nil(t, s.kasKeyCache.get("https://localhost:8080", "alg:unknown", ""))
-	ecKey := s.kasKeyCache.get("https://localhost:8080", "ec:secp256r1", "e1")
-	rsaKey := s.kasKeyCache.get("https://localhost:8080", "rsa:2048", "r1")
+	assert.Nil(t, s.get("https://nowhere", "alg:unknown", ""))
+	assert.Nil(t, s.get("https://localhost:8080", "alg:unknown", ""))
+	ecKey := s.get("https://localhost:8080", "ec:secp256r1", "e1")
+	rsaKey := s.get("https://localhost:8080", "rsa:2048", "r1")
 	require.NotNil(t, ecKey)
 	require.Equal(t, "e1", ecKey.KID)
 	require.NotNil(t, rsaKey)

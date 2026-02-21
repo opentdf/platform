@@ -774,7 +774,17 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		// Check if policy binding is nil
 		if kao.GetKeyAccessObject().GetPolicyBinding() == nil {
 			p.Logger.WarnContext(ctx, "policy binding is nil", slog.String("kao_id", kao.GetKeyAccessObjectId()))
-			failedKAORewrap(results, kao, err400("missing policy binding"))
+			failedKAORewrap(results, kao, err403("forbidden"))
+			continue
+		}
+
+		// Validate policyBinding.alg — reject unknown values
+		bindingAlg := kao.GetKeyAccessObject().GetPolicyBinding().GetAlgorithm()
+		if bindingAlg != "" && bindingAlg != "HS256" {
+			p.Logger.WarnContext(ctx, "unsupported policy binding algorithm",
+				slog.String("alg", bindingAlg),
+				slog.String("kao_id", kao.GetKeyAccessObjectId()))
+			failedKAORewrap(results, kao, err403("forbidden"))
 			continue
 		}
 
@@ -798,9 +808,10 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		}
 
 		// Verify policy binding using the UnwrappedKeyData interface
+		// Use uniform 403 for binding failures to prevent oracle attacks (BaseTDF-SEC)
 		if err := dek.VerifyBinding(ctx, []byte(req.GetPolicy().GetBody()), policyBinding); err != nil {
 			p.Logger.WarnContext(ctx, "failure to verify policy binding", slog.Any("error", err))
-			failedKAORewrap(results, kao, err400("bad request"))
+			failedKAORewrap(results, kao, err403("forbidden"))
 			continue
 		}
 
@@ -897,6 +908,26 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		)
 		failAllKaos(requests, results, err500("could not perform access"))
 		return "", results, nil
+	}
+
+	// Enforce dissemination list: if dissem is non-empty, entity must be in the list
+	for i := range pdpAccessResults {
+		policy := pdpAccessResults[i].Policy
+		if pdpAccessResults[i].Access && len(policy.Body.Dissem) > 0 {
+			found := false
+			for _, d := range policy.Body.Dissem {
+				if strings.EqualFold(d, entityInfo.EntityID) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				p.Logger.InfoContext(ctx, "entity not in dissemination list",
+					slog.String("entity_id", entityInfo.EntityID),
+					slog.String("policy_uuid", policy.UUID.String()))
+				pdpAccessResults[i].Access = false
+			}
+		}
 	}
 
 	asymEncrypt, err := ocrypto.FromPublicPEMWithSalt(clientPublicKey, security.TDFSalt(), nil)

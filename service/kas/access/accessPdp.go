@@ -34,10 +34,6 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 	var resources []*authzV2.Resource
 	idPolicyMap := make(map[string]*Policy)
 	for i, policy := range policies {
-		if len(policy.Body.Dissem) > 0 {
-			// TODO: Move dissems check to the getdecisions endpoint
-			p.Logger.Error("dissems check is not enabled in v2 platform kas")
-		}
 		if len(policy.Body.DataAttributes) > 0 {
 			id := "rewrap-" + strconv.Itoa(i)
 			attrValueFqns := make([]string, len(policy.Body.DataAttributes))

@@ -503,22 +503,26 @@ Go benchmark for runtime compilation) is larger but only used in development.
 
 ### Performance — Encrypt (ms, 3 iterations averaged)
 
-| Payload | Go SDK† | Go WASM (wazero) | TS WASM (V8) | Java SDK† | Java WASM (Chicory) | Go WASM / Go SDK |
-|---------|---------|------------------|--------------|-----------|---------------------|------------------|
-| 16 KB   | 4.1     | 0.1              | 0.2          | 25.0      | 81.7                | 0.02x (41x faster) |
-| 64 KB   | 0.4     | 0.2              | 0.3          | 5.3       | 21.7                | 0.5x             |
-| 256 KB  | 0.3     | 0.7              | 0.7          | 8.1       | 41.0                | 2.3x             |
-| 1 MB    | 0.8     | 2.5              | 2.6          | 22.9      | 170.3               | 3.1x             |
-| 10 MB   | 7.9     | 17.6             | 21.3         | 184.9     | 1,618.9             | 2.2x             |
-| 100 MB  | 64.7    | 168.2            | OOM          | 1,812.8   | 14,228.1            | 2.6x             |
+| Payload | Go SDK† | Go WASM (wazero) | TS WASM (V8)†† | Java SDK† | Java WASM (Chicory) | Go WASM / Go SDK |
+|---------|---------|------------------|----------------|-----------|---------------------|------------------|
+| 16 KB   | 4.1     | 0.1              | 0.6            | 25.0      | 81.7                | 0.02x (41x faster) |
+| 64 KB   | 0.4     | 0.2              | 3.8            | 5.3       | 21.7                | 0.5x             |
+| 256 KB  | 0.3     | 0.7              | 3.2            | 8.1       | 41.0                | 2.3x             |
+| 1 MB    | 0.8     | 2.5              | 11.9           | 22.9      | 170.3               | 3.1x             |
+| 10 MB   | 7.9     | 17.6             | 117.4          | 184.9     | 1,618.9             | 2.2x             |
+| 100 MB  | 64.7    | 168.2            | —‡             | 1,812.8   | 14,228.1            | 2.6x             |
 
 † Go/Java SDK numbers include KAS network calls (platform at localhost:8080).
 Go WASM uses local RSA-OAEP key wrap (no KAS).
+†† TS WASM (V8) numbers are from headless Chromium via Playwright, TinyGo build.
+Includes Worker message overhead + SharedArrayBuffer crypto bridge latency.
+‡ 100 MB browser encrypt not tested; requires larger SharedArrayBuffer or
+streaming crypto bridge (current SAB supports segments up to ~2 MB).
 
 **TinyGo build (v0.40.1):** Go WASM encrypt is ~2-3x slower than native Go SDK
-at large sizes, well within the 3x threshold. This is a major improvement over
-the standard Go WASM build (~8-10x) thanks to TinyGo's smaller, more efficient
-binary and streaming I/O (`read_input`/`write_output`).
+at large sizes, well within the 3x threshold. TS/browser WASM is ~5-15x slower
+than Go WASM due to the async crypto bridge overhead (Worker→main thread→
+SubtleCrypto→Worker per AES-GCM/HMAC/RSA call via SharedArrayBuffer+Atomics).
 
 Java WASM 100 MB encrypt now works via streaming I/O. Java WASM is ~8x slower
 than Java SDK, consistent with Chicory's pure-Java interpreter overhead.
@@ -597,7 +601,7 @@ crypto host functions using its platform's native crypto APIs.
 | Host | Runtime | Crypto Provider | Repo | Tests |
 |------|---------|-----------------|------|-------|
 | Go | Wazero | `lib/ocrypto` (std Go crypto) | `opentdf/platform` `sdk/experimental/tdf/wasm/host/` | HS256, GMAC, error handling, streaming 1MB, 100MB benchmark (168ms enc, 224ms dec) |
-| Browser | WebAssembly API | SubtleCrypto (async, Worker+SAB bridge) | `opentdf/web-sdk` `wasm-host/` | HS256, GMAC, error handling |
+| Browser | WebAssembly API | SubtleCrypto (async, Worker+SAB bridge) | `opentdf/web-sdk` `wasm-host/` | HS256, GMAC, error handling, streaming 10MB (117ms enc) |
 | JVM | Chicory 1.5.3 (pure Java) | Java SDK (`AesGcm`, `AsymEncryption`, `CryptoUtils`) | `opentdf/java-sdk` `wasm-host/` | HS256, GMAC, error handling, streaming 1MB, 100MB benchmark |
 
 **All hosts pass the same three test cases:**

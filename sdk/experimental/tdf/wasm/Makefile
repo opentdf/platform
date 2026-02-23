@@ -3,7 +3,7 @@
 # Builds canary programs with TinyGo to validate WASM compatibility.
 # See README.md for prerequisites.
 
-.PHONY: all toolcheck generate build run clean \
+.PHONY: all toolcheck generate build run clean tdfcore \
         base64hex zipwrite tinyjson zipstream iocontext stdjson
 
 TINYGO_FLAGS = -target=wasip1 -no-debug -scheduler=none -gc=leaking
@@ -65,6 +65,14 @@ iocontext: $(OUT_DIR)
 
 stdjson: $(OUT_DIR)
 	-tinygo build $(TINYGO_FLAGS) -o $(OUT_DIR)/stdjson.wasm ./stdjson
+
+# ── TDF core WASM module ───────────────────────────────────
+# Built with TinyGo. Exports use //export (not //go:wasmexport)
+# to avoid post-_start traps in TinyGo's wasmexport wrapper.
+
+tdfcore: toolcheck $(OUT_DIR)
+	tinygo build $(TINYGO_FLAGS) -o $(OUT_DIR)/tdfcore.wasm .
+	@ls -la $(OUT_DIR)/tdfcore.wasm
 
 $(OUT_DIR):
 	mkdir -p $(OUT_DIR)

@@ -83,6 +83,7 @@ func compileWASM(t *testing.T) []byte {
 type encryptFixture struct {
 	ctx     context.Context
 	mod     api.Module
+	ioState *IOState
 	pubPEM  string
 	privPEM string
 }
@@ -101,7 +102,8 @@ func newEncryptFixture(t *testing.T) *encryptFixture {
 		t.Fatalf("register test WASI: %v", err)
 	}
 
-	if err := Register(ctx, rt, IOConfig{}); err != nil {
+	ioState := &IOState{}
+	if err := Register(ctx, rt, ioState); err != nil {
 		t.Fatalf("register host modules: %v", err)
 	}
 
@@ -145,7 +147,7 @@ func newEncryptFixture(t *testing.T) *encryptFixture {
 		t.Fatalf("private key PEM: %v", err)
 	}
 
-	return &encryptFixture{ctx: ctx, mod: mod, pubPEM: pub, privPEM: priv}
+	return &encryptFixture{ctx: ctx, mod: mod, ioState: ioState, pubPEM: pub, privPEM: priv}
 }
 
 func (f *encryptFixture) wasmMalloc(t *testing.T, size uint32) uint32 {
@@ -194,7 +196,9 @@ const (
 	algGMAC  = 1
 )
 
-// callEncryptRaw invokes tdf_encrypt and returns the raw result length.
+// callEncryptRaw invokes tdf_encrypt via streaming I/O and returns the raw
+// result length. Sets ioState.Input to a reader over plaintext and
+// ioState.Output to a buffer. Returns resultLen and the output buffer bytes.
 // Does NOT fail on error — caller decides how to handle resultLen == 0.
 // segmentSize=0 means single segment (entire plaintext in one segment).
 func (f *encryptFixture) callEncryptRaw(
@@ -202,11 +206,15 @@ func (f *encryptFixture) callEncryptRaw(
 	kasPubPEM, kasURL string,
 	attrs []string,
 	plaintext []byte,
-	outCapacity uint32,
 	integrityAlg, segIntegrityAlg uint32,
 	segmentSize uint32,
-) (resultLen uint32, outPtr uint32) {
+) (resultLen uint32, output []byte) {
 	t.Helper()
+
+	// Set up streaming I/O
+	f.ioState.Input = bytes.NewReader(plaintext)
+	var out bytes.Buffer
+	f.ioState.Output = &out
 
 	kasPubPtr := f.writeToWASM(t, []byte(kasPubPEM))
 	kasURLPtr := f.writeToWASM(t, []byte(kasURL))
@@ -216,70 +224,49 @@ func (f *encryptFixture) callEncryptRaw(
 		attrBytes = []byte(strings.Join(attrs, "\n"))
 	}
 	attrPtr := f.writeToWASM(t, attrBytes)
-	ptPtr := f.writeToWASM(t, plaintext)
-	outPtr = f.wasmMalloc(t, outCapacity)
 
 	results, err := f.mod.ExportedFunction("tdf_encrypt").Call(f.ctx,
 		uint64(kasPubPtr), uint64(len(kasPubPEM)),
 		uint64(kasURLPtr), uint64(len(kasURL)),
 		uint64(attrPtr), uint64(len(attrBytes)),
-		uint64(ptPtr), uint64(len(plaintext)),
-		uint64(outPtr), uint64(outCapacity),
+		uint64(len(plaintext)), // plaintextSize
 		uint64(integrityAlg), uint64(segIntegrityAlg),
 		uint64(segmentSize),
 	)
 	if err != nil {
 		t.Fatalf("tdf_encrypt call failed: %v", err)
 	}
-	return uint32(results[0]), outPtr
+	return uint32(results[0]), out.Bytes()
 }
 
 // mustEncryptWithAlgs calls tdf_encrypt with explicit integrity algorithms (single segment).
 func (f *encryptFixture) mustEncryptWithAlgs(t *testing.T, kasURL string, attrs []string, plaintext []byte, integrityAlg, segIntegrityAlg uint32) []byte {
 	t.Helper()
-	resultLen, outPtr := f.callEncryptRaw(t, f.pubPEM, kasURL, attrs, plaintext, 1024*1024, integrityAlg, segIntegrityAlg, 0)
+	resultLen, output := f.callEncryptRaw(t, f.pubPEM, kasURL, attrs, plaintext, integrityAlg, segIntegrityAlg, 0)
 	if resultLen == 0 {
 		t.Fatalf("tdf_encrypt returned 0: %s", f.callGetError(t))
 	}
-	tdfBytes, ok := f.mod.Memory().Read(outPtr, resultLen)
-	if !ok {
-		t.Fatal("read TDF output from WASM memory")
-	}
-	out := make([]byte, len(tdfBytes))
-	copy(out, tdfBytes)
-	return out
+	return output
 }
 
 // mustEncrypt calls tdf_encrypt with default HS256/HS256 algorithms (single segment).
 func (f *encryptFixture) mustEncrypt(t *testing.T, kasURL string, attrs []string, plaintext []byte) []byte {
 	t.Helper()
-	resultLen, outPtr := f.callEncryptRaw(t, f.pubPEM, kasURL, attrs, plaintext, 1024*1024, algHS256, algHS256, 0)
+	resultLen, output := f.callEncryptRaw(t, f.pubPEM, kasURL, attrs, plaintext, algHS256, algHS256, 0)
 	if resultLen == 0 {
 		t.Fatalf("tdf_encrypt returned 0: %s", f.callGetError(t))
 	}
-	tdfBytes, ok := f.mod.Memory().Read(outPtr, resultLen)
-	if !ok {
-		t.Fatal("read TDF output from WASM memory")
-	}
-	out := make([]byte, len(tdfBytes))
-	copy(out, tdfBytes)
-	return out
+	return output
 }
 
 // mustEncryptMultiSeg calls tdf_encrypt with a specific segment size.
 func (f *encryptFixture) mustEncryptMultiSeg(t *testing.T, kasURL string, attrs []string, plaintext []byte, segmentSize uint32) []byte {
 	t.Helper()
-	resultLen, outPtr := f.callEncryptRaw(t, f.pubPEM, kasURL, attrs, plaintext, 2*1024*1024, algHS256, algHS256, segmentSize)
+	resultLen, output := f.callEncryptRaw(t, f.pubPEM, kasURL, attrs, plaintext, algHS256, algHS256, segmentSize)
 	if resultLen == 0 {
 		t.Fatalf("tdf_encrypt returned 0: %s", f.callGetError(t))
 	}
-	tdfBytes, ok := f.mod.Memory().Read(outPtr, resultLen)
-	if !ok {
-		t.Fatal("read TDF output from WASM memory")
-	}
-	out := make([]byte, len(tdfBytes))
-	copy(out, tdfBytes)
-	return out
+	return output
 }
 
 // ── TDF parsing helpers ─────────────────────────────────────────────
@@ -638,7 +625,7 @@ func TestTDFEncryptDeterministicSizes(t *testing.T) {
 func TestTDFEncryptErrorInvalidKey(t *testing.T) {
 	f := newEncryptFixture(t)
 
-	resultLen, _ := f.callEncryptRaw(t, "not-a-valid-pem", "https://kas.example.com", nil, []byte("test"), 1024*1024, algHS256, algHS256, 0)
+	resultLen, _ := f.callEncryptRaw(t, "not-a-valid-pem", "https://kas.example.com", nil, []byte("test"), algHS256, algHS256, 0)
 	if resultLen != 0 {
 		t.Fatal("expected 0 for invalid PEM key")
 	}
@@ -648,24 +635,11 @@ func TestTDFEncryptErrorInvalidKey(t *testing.T) {
 	}
 }
 
-func TestTDFEncryptErrorBufferTooSmall(t *testing.T) {
-	f := newEncryptFixture(t)
-
-	resultLen, _ := f.callEncryptRaw(t, f.pubPEM, "https://kas.example.com", nil, []byte("needs more space"), 10, algHS256, algHS256, 0)
-	if resultLen != 0 {
-		t.Fatal("expected 0 for buffer too small")
-	}
-	errMsg := f.callGetError(t)
-	if !strings.Contains(errMsg, "buffer too small") {
-		t.Fatalf("expected 'buffer too small' error, got: %q", errMsg)
-	}
-}
-
 func TestTDFEncryptGetErrorClearsAfterRead(t *testing.T) {
 	f := newEncryptFixture(t)
 
 	// Trigger an error
-	resultLen, _ := f.callEncryptRaw(t, "bad-key", "https://kas.example.com", nil, []byte("x"), 1024*1024, algHS256, algHS256, 0)
+	resultLen, _ := f.callEncryptRaw(t, "bad-key", "https://kas.example.com", nil, []byte("x"), algHS256, algHS256, 0)
 	if resultLen != 0 {
 		t.Fatal("expected error")
 	}
@@ -795,5 +769,33 @@ func TestTDFEncryptGMACRootHS256Segment(t *testing.T) {
 	expectedRootSig := base64.StdEncoding.EncodeToString(segmentSig[len(segmentSig)-kGMACPayloadLength:])
 	if m.RootSignature.Signature != expectedRootSig {
 		t.Fatalf("GMAC root signature mismatch:\n  got:  %s\n  want: %s", m.RootSignature.Signature, expectedRootSig)
+	}
+}
+
+// ── Streaming-specific tests ────────────────────────────────────────
+
+func TestTDFEncryptStreamLargePayload(t *testing.T) {
+	f := newEncryptFixture(t)
+
+	// 1MB plaintext with 64KB segments = 16 segments
+	plaintext := make([]byte, 1024*1024)
+	for i := range plaintext {
+		plaintext[i] = byte(i % 251) // deterministic non-zero pattern
+	}
+
+	tdfBytes := f.mustEncryptMultiSeg(t, "https://kas.example.com", nil, plaintext, 64*1024)
+	c := parseTDF(t, tdfBytes)
+	m := c.Manifest
+
+	expectedSegments := 16
+	if len(m.Segments) != expectedSegments {
+		t.Fatalf("segment count: got %d, want %d", len(m.Segments), expectedSegments)
+	}
+
+	// Verify decryptability via WASM decrypt
+	dek := unwrapDEK(t, m, f.privPEM)
+	decrypted := f.mustDecrypt(t, tdfBytes, dek)
+	if !bytes.Equal(decrypted, plaintext) {
+		t.Fatalf("large payload round-trip mismatch: got %d bytes, want %d", len(decrypted), len(plaintext))
 	}
 }

@@ -18,19 +18,22 @@ import (
 // errSentinel is the uint32 value returned by host functions on error.
 const errSentinel = 0xFFFFFFFF
 
-// IOConfig holds the input/output sources for WASM I/O callbacks.
-type IOConfig struct {
+// IOState holds mutable input/output sources for WASM I/O callbacks.
+// Closures capture the pointer so the caller can swap Reader/Writer
+// between WASM calls (e.g. per-encrypt in tests).
+type IOState struct {
+	mu     sync.Mutex
 	Input  io.Reader
 	Output io.Writer
 }
 
 // Register registers both the "crypto" and "io" host modules on the given
 // wazero.Runtime. The caller is responsible for closing the runtime.
-func Register(ctx context.Context, rt wazero.Runtime, cfg IOConfig) error {
+func Register(ctx context.Context, rt wazero.Runtime, io *IOState) error {
 	if _, err := RegisterCrypto(ctx, rt); err != nil {
 		return fmt.Errorf("register crypto host module: %w", err)
 	}
-	if _, err := RegisterIO(ctx, rt, cfg); err != nil {
+	if _, err := RegisterIO(ctx, rt, io); err != nil {
 		return fmt.Errorf("register io host module: %w", err)
 	}
 	return nil

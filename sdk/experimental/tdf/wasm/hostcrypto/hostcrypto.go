@@ -100,6 +100,26 @@ func AesGcmEncrypt(key, plaintext []byte) ([]byte, error) {
 	return out[:result], nil
 }
 
+// AesGcmEncryptInto encrypts plaintext with AES-256-GCM directly into the
+// caller-provided output buffer, avoiding an intermediate allocation.
+// Returns the number of ciphertext bytes written (plaintext + 28).
+// out must be at least len(plaintext)+28 bytes.
+func AesGcmEncryptInto(key, plaintext, out []byte) (int, error) {
+	needed := len(plaintext) + 28 // 12 nonce + 16 tag
+	if len(out) < needed {
+		return 0, errors.New("hostcrypto: output buffer too small for AES-GCM encrypt")
+	}
+	result := _aes_gcm_encrypt(
+		slicePtr(key), uint32(len(key)),
+		slicePtr(plaintext), uint32(len(plaintext)),
+		slicePtr(out),
+	)
+	if result == errSentinel {
+		return 0, getLastError()
+	}
+	return int(result), nil
+}
+
 // AesGcmDecrypt decrypts AES-256-GCM ciphertext.
 // Input must be [nonce (12) || ciphertext || tag (16)].
 // Key must be 32 bytes (AES-256).

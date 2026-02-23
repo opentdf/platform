@@ -25,19 +25,19 @@ var allocations [][]byte
 // ── Exported WASM functions ─────────────────────────────────────────
 // Called by the host to perform TDF operations.
 
-//go:wasmexport tdf_malloc
+//export tdf_malloc
 func wasmMalloc(size uint32) uint32 {
 	buf := make([]byte, size)
 	allocations = append(allocations, buf)
 	return uint32(uintptr(unsafe.Pointer(&buf[0])))
 }
 
-//go:wasmexport tdf_free
+//export tdf_free
 func wasmFree(_ uint32) {
 	// No-op with leaking GC; tracked for future improvement
 }
 
-//go:wasmexport get_error
+//export get_error
 func getError(outPtr, outCapacity uint32) uint32 {
 	if lastError == "" {
 		return 0
@@ -52,13 +52,12 @@ func getError(outPtr, outCapacity uint32) uint32 {
 	return uint32(len(msg))
 }
 
-//go:wasmexport tdf_encrypt
+//export tdf_encrypt
 func tdfEncrypt(
 	kasPubPtr, kasPubLen uint32,
 	kasURLPtr, kasURLLen uint32,
 	attrPtr, attrLen uint32,
-	ptPtr, ptLen uint32,
-	outPtr, outCapacity uint32,
+	plaintextSize uint64,
 	integrityAlg, segIntegrityAlg uint32,
 	segmentSize uint32,
 ) uint32 {
@@ -71,25 +70,16 @@ func tdfEncrypt(
 		attrs = strings.Split(attrStr, "\n")
 	}
 
-	plaintext := ptrToSlice(ptPtr, ptLen)
-
-	result, err := encrypt(kasPubPEM, kasURL, attrs, plaintext, int(integrityAlg), int(segIntegrityAlg), int(segmentSize))
+	totalWritten, err := encryptStream(kasPubPEM, kasURL, attrs, int64(plaintextSize), int(integrityAlg), int(segIntegrityAlg), int(segmentSize))
 	if err != nil {
 		lastError = err.Error()
 		return 0
 	}
 
-	if uint32(len(result)) > outCapacity {
-		lastError = "output buffer too small"
-		return 0
-	}
-
-	dst := unsafe.Slice((*byte)(unsafe.Pointer(uintptr(outPtr))), len(result))
-	copy(dst, result)
-	return uint32(len(result))
+	return uint32(totalWritten)
 }
 
-//go:wasmexport tdf_decrypt
+//export tdf_decrypt
 func tdfDecrypt(
 	tdfPtr, tdfLen uint32,
 	dekPtr, dekLen uint32,

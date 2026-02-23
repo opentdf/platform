@@ -239,25 +239,19 @@ func TestTDFDecryptMultiSegmentAlgorithmCombos(t *testing.T) {
 
 	for _, combo := range combos {
 		t.Run(combo.name, func(t *testing.T) {
-			resultLen, outPtr := f.callEncryptRaw(t, f.pubPEM, "https://kas.example.com", nil,
-				plaintext, 2*1024*1024, combo.rootAlg, combo.segAlg, 25)
+			resultLen, output := f.callEncryptRaw(t, f.pubPEM, "https://kas.example.com", nil,
+				plaintext, combo.rootAlg, combo.segAlg, 25)
 			if resultLen == 0 {
 				t.Fatalf("tdf_encrypt returned 0: %s", f.callGetError(t))
 			}
-			tdfBytes, ok := f.mod.Memory().Read(outPtr, resultLen)
-			if !ok {
-				t.Fatal("read TDF output from WASM memory")
-			}
-			tdfCopy := make([]byte, len(tdfBytes))
-			copy(tdfCopy, tdfBytes)
 
-			c := parseTDF(t, tdfCopy)
+			c := parseTDF(t, output)
 			if len(c.Manifest.Segments) != 4 {
 				t.Fatalf("expected 4 segments, got %d", len(c.Manifest.Segments))
 			}
 
 			dek := unwrapDEK(t, c.Manifest, f.privPEM)
-			decrypted := f.mustDecrypt(t, tdfCopy, dek)
+			decrypted := f.mustDecrypt(t, output, dek)
 			if !bytes.Equal(decrypted, plaintext) {
 				t.Fatalf("round-trip mismatch: got len %d, want %d", len(decrypted), len(plaintext))
 			}

@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/hex"
@@ -43,52 +42,48 @@ func calculateSignature(data, secret []byte, alg int) ([]byte, error) {
 	return sig, nil
 }
 
-// encrypt performs TDF3 encryption (single or multi-segment). All crypto is
-// delegated to the host via hostcrypto; manifest construction, integrity
-// computation, and ZIP assembly run inside the WASM sandbox.
-//
-// segmentSize controls the plaintext chunk size per segment. If <= 0, the
-// entire plaintext is encrypted as a single segment (backward compatible).
-func encrypt(kasPubPEM, kasURL string, attrs []string, plaintext []byte, integrityAlg, segIntegrityAlg, segmentSize int) ([]byte, error) {
+// encryptStream performs TDF3 encryption using streaming I/O. Plaintext is
+// read via hostcrypto.ReadInput and the TDF output is written via
+// hostcrypto.WriteOutput. Two fixed buffers (ptBuf, ctBuf) are reused across
+// segments so memory usage is ~2x segmentSize regardless of total file size.
+func encryptStream(kasPubPEM, kasURL string, attrs []string, plaintextSize int64, integrityAlg, segIntegrityAlg, segmentSize int) (int64, error) {
 	// 1. Generate 32-byte AES-256 DEK
 	dek, err := hostcrypto.RandomBytes(32)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	// 2. RSA-OAEP wrap DEK with KAS public key
 	wrappedKey, err := hostcrypto.RsaOaepSha1Encrypt(kasPubPEM, dek)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	// 3. Generate pseudo-UUID for policy
 	uuid, err := generatePseudoUUID()
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	// 4. Build policy JSON using tinyjson types
 	policyJSON, err := buildPolicyJSON(uuid, attrs)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	// 5. Base64-encode policy
 	base64Policy := base64.StdEncoding.EncodeToString(policyJSON)
 
 	// 6. Policy binding: HMAC-SHA256(dek, base64Policy) → hex → base64
-	// Double-encoding required for Go SDK decrypt compatibility
 	bindingHMAC, err := hostcrypto.HmacSHA256(dek, []byte(base64Policy))
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	bindingHash := base64.StdEncoding.EncodeToString([]byte(hex.EncodeToString(bindingHMAC)))
 
 	// 7. Determine segment boundaries
-	ptLen := len(plaintext)
+	ptLen := int(plaintextSize)
 	if ptLen == 0 {
-		// Empty plaintext → single segment of 0 bytes
 		segmentSize = 0
 	} else if segmentSize <= 0 || segmentSize >= ptLen {
 		segmentSize = ptLen
@@ -101,56 +96,81 @@ func encrypt(kasPubPEM, kasURL string, attrs []string, plaintext []byte, integri
 		}
 	}
 
-	// Default sizes for manifest (based on full-sized segments)
-	defaultEncSegSize := int64(segmentSize + 28) // nonce(12) + tag(16)
+	defaultEncSegSize := int64(segmentSize + 28)
 
-	// 8. Encrypt each segment and compute integrity
+	// 8. Allocate reusable buffers
+	ptBuf := make([]byte, segmentSize)
+	ctBuf := make([]byte, segmentSize+28)
+
+	// 9. Create ZIP segment writer
+	sw := zs.NewSegmentTDFWriter(numSegments)
+	ctx := context.Background()
+
 	var segments []types.Segment
-	var ciphertexts [][]byte
 	var aggregateHash []byte
+	var totalWritten int64
 
-	ptOffset := 0
+	remaining := ptLen
 	for i := 0; i < numSegments; i++ {
-		chunkEnd := ptOffset + segmentSize
-		if chunkEnd > ptLen {
-			chunkEnd = ptLen
+		chunkSize := segmentSize
+		if chunkSize > remaining {
+			chunkSize = remaining
 		}
-		chunk := plaintext[ptOffset:chunkEnd]
 
-		// Encrypt with AES-256-GCM: returns [nonce(12) || ciphertext || tag(16)]
-		fullCT, err := hostcrypto.AesGcmEncrypt(dek, chunk)
+		// Read plaintext chunk via ReadInput (loop for partial reads)
+		if err := readFull(ptBuf[:chunkSize]); err != nil {
+			return 0, err
+		}
+
+		// Encrypt into reusable ctBuf
+		ctLen, err := hostcrypto.AesGcmEncryptInto(dek, ptBuf[:chunkSize], ctBuf)
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
-		ciphertexts = append(ciphertexts, fullCT)
 
-		// Segment integrity — signature is over the full encrypted blob
-		// [nonce(12) || ciphertext || tag(16)], matching the standard SDK.
-		segmentSig, err := calculateSignature(fullCT, dek, segIntegrityAlg)
+		// Segment integrity
+		segmentSig, err := calculateSignature(ctBuf[:ctLen], dek, segIntegrityAlg)
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
-
-		// Accumulate raw signature bytes for root hash
 		aggregateHash = append(aggregateHash, segmentSig...)
 
 		segments = append(segments, types.Segment{
 			Hash:          base64.StdEncoding.EncodeToString(segmentSig),
-			Size:          int64(len(chunk)),
-			EncryptedSize: int64(len(fullCT)),
+			Size:          int64(chunkSize),
+			EncryptedSize: int64(ctLen),
 		})
 
-		ptOffset = chunkEnd
+		// Get ZIP header bytes (non-empty for segment 0 only)
+		crc := crc32.ChecksumIEEE(ctBuf[:ctLen])
+		header, err := sw.WriteSegment(ctx, i, uint64(ctLen), crc)
+		if err != nil {
+			return 0, err
+		}
+
+		// Write header (if any) then ciphertext via WriteOutput
+		if len(header) > 0 {
+			if _, err := hostcrypto.WriteOutput(header); err != nil {
+				return 0, err
+			}
+			totalWritten += int64(len(header))
+		}
+		if _, err := hostcrypto.WriteOutput(ctBuf[:ctLen]); err != nil {
+			return 0, err
+		}
+		totalWritten += int64(ctLen)
+
+		remaining -= chunkSize
 	}
 
-	// 9. Root signature over aggregated segment hashes
+	// 10. Root signature over aggregated segment hashes
 	rootSig, err := calculateSignature(aggregateHash, dek, integrityAlg)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	rootSigB64 := base64.StdEncoding.EncodeToString(rootSig)
 
-	// 10. Build manifest
+	// 11. Build manifest
 	manifest := types.Manifest{
 		TDFVersion: "4.3.0",
 		EncryptionInformation: types.EncryptionInformation{
@@ -192,31 +212,37 @@ func encrypt(kasPubPEM, kasURL string, attrs []string, plaintext []byte, integri
 
 	manifestJSON, err := manifest.MarshalJSON()
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	// 11. Assemble ZIP
-	sw := zs.NewSegmentTDFWriter(numSegments)
-	ctx := context.Background()
-
-	var result bytes.Buffer
-	for i, ct := range ciphertexts {
-		crc := crc32.ChecksumIEEE(ct)
-		header, err := sw.WriteSegment(ctx, i, uint64(len(ct)), crc)
-		if err != nil {
-			return nil, err
-		}
-		result.Write(header)
-		result.Write(ct)
-	}
-
+	// 12. Finalize ZIP — get tail bytes (data descriptor + manifest entry + central dir)
 	tail, err := sw.Finalize(ctx, manifestJSON)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	result.Write(tail)
+	if _, err := hostcrypto.WriteOutput(tail); err != nil {
+		return 0, err
+	}
+	totalWritten += int64(len(tail))
 
-	return result.Bytes(), nil
+	return totalWritten, nil
+}
+
+// readFull reads exactly len(buf) bytes from ReadInput, looping to handle
+// partial reads. Returns an error if EOF is reached before the buffer is full.
+func readFull(buf []byte) error {
+	offset := 0
+	for offset < len(buf) {
+		n, err := hostcrypto.ReadInput(buf[offset:])
+		offset += n
+		if err != nil {
+			if offset < len(buf) {
+				return errors.New("unexpected EOF reading input")
+			}
+			return nil
+		}
+	}
+	return nil
 }
 
 // generatePseudoUUID generates a UUID v4-like string from 16 random bytes.

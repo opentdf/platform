@@ -155,7 +155,7 @@ func TestRegister(t *testing.T) {
 	rt := wazero.NewRuntime(ctx)
 	t.Cleanup(func() { rt.Close(ctx) })
 
-	err := Register(ctx, rt, IOConfig{})
+	err := Register(ctx, rt, &IOState{})
 	if err != nil {
 		t.Fatalf("Register: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestRegisterABIConformance(t *testing.T) {
 	t.Cleanup(func() { rt.Close(ctx) })
 
 	// Register host modules first.
-	if err := Register(ctx, rt, IOConfig{}); err != nil {
+	if err := Register(ctx, rt, &IOState{}); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
 
@@ -382,13 +382,13 @@ func TestReadWriteIO(t *testing.T) {
 	inputData := []byte("input stream data for WASM")
 	var outputBuf bytes.Buffer
 
-	cfg := IOConfig{
+	state := &IOState{
 		Input:  bytes.NewReader(inputData),
 		Output: &outputBuf,
 	}
 
-	readFn := newReadInput(cfg)
-	writeFn := newWriteOutput(cfg)
+	readFn := newReadInput(state)
+	writeFn := newWriteOutput(state)
 
 	// Test read_input: host reads from input into WASM memory at offset 0.
 	const readOff uint32 = 0
@@ -674,7 +674,7 @@ func TestHmacSHA256_OOBOutput(t *testing.T) {
 func TestReadInput_NilReader(t *testing.T) {
 	ctx, mod := setupTestModule(t)
 
-	readFn := newReadInput(IOConfig{Input: nil})
+	readFn := newReadInput(&IOState{Input: nil})
 	result := readFn(ctx, mod, 0, 128)
 	if result != 0 {
 		t.Fatalf("expected 0 (EOF) for nil reader, got %d", result)
@@ -688,7 +688,7 @@ func TestWriteOutput_NilWriter(t *testing.T) {
 		t.Fatal("write data")
 	}
 
-	writeFn := newWriteOutput(IOConfig{Output: nil})
+	writeFn := newWriteOutput(&IOState{Output: nil})
 	result := writeFn(ctx, mod, 0, 4)
 	if result != errSentinel {
 		t.Fatal("expected error sentinel for nil writer")

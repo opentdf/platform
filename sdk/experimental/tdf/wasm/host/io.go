@@ -9,23 +9,27 @@ import (
 )
 
 // RegisterIO instantiates the "io" host module on the given wazero.Runtime.
-// The IOConfig provides the input/output sources for WASM I/O callbacks.
-func RegisterIO(ctx context.Context, rt wazero.Runtime, cfg IOConfig) (api.Closer, error) {
+// The IOState pointer is captured by closures so the caller can swap
+// Input/Output between WASM calls.
+func RegisterIO(ctx context.Context, rt wazero.Runtime, state *IOState) (api.Closer, error) {
 	return rt.NewHostModuleBuilder("io").
-		NewFunctionBuilder().WithFunc(newReadInput(cfg)).Export("read_input").
-		NewFunctionBuilder().WithFunc(newWriteOutput(cfg)).Export("write_output").
+		NewFunctionBuilder().WithFunc(newReadInput(state)).Export("read_input").
+		NewFunctionBuilder().WithFunc(newWriteOutput(state)).Export("write_output").
 		Instantiate(ctx)
 }
 
-// newReadInput returns a host function that reads from cfg.Input into WASM memory.
+// newReadInput returns a host function that reads from state.Input into WASM memory.
 // Returns bytes read, 0 for EOF, errSentinel on error.
-func newReadInput(cfg IOConfig) func(context.Context, api.Module, uint32, uint32) uint32 {
+func newReadInput(state *IOState) func(context.Context, api.Module, uint32, uint32) uint32 {
 	return func(_ context.Context, mod api.Module, bufPtr, bufCapacity uint32) uint32 {
-		if cfg.Input == nil {
+		state.mu.Lock()
+		r := state.Input
+		state.mu.Unlock()
+		if r == nil {
 			return 0 // EOF
 		}
 		buf := make([]byte, bufCapacity)
-		n, err := cfg.Input.Read(buf)
+		n, err := r.Read(buf)
 		if n > 0 {
 			if !writeBytes(mod, bufPtr, buf[:n]) {
 				setLastError(errOOB)
@@ -41,11 +45,14 @@ func newReadInput(cfg IOConfig) func(context.Context, api.Module, uint32, uint32
 	}
 }
 
-// newWriteOutput returns a host function that writes from WASM memory to cfg.Output.
+// newWriteOutput returns a host function that writes from WASM memory to state.Output.
 // Returns bytes written or errSentinel on error.
-func newWriteOutput(cfg IOConfig) func(context.Context, api.Module, uint32, uint32) uint32 {
+func newWriteOutput(state *IOState) func(context.Context, api.Module, uint32, uint32) uint32 {
 	return func(_ context.Context, mod api.Module, bufPtr, bufLen uint32) uint32 {
-		if cfg.Output == nil {
+		state.mu.Lock()
+		w := state.Output
+		state.mu.Unlock()
+		if w == nil {
 			setLastError(hostErr("host: no output writer configured"))
 			return errSentinel
 		}
@@ -54,7 +61,7 @@ func newWriteOutput(cfg IOConfig) func(context.Context, api.Module, uint32, uint
 			setLastError(errOOB)
 			return errSentinel
 		}
-		n, err := cfg.Output.Write(data)
+		n, err := w.Write(data)
 		if err != nil {
 			setLastError(err)
 			return errSentinel

@@ -15,7 +15,7 @@ import (
 // callDecryptRaw invokes tdf_decrypt and returns the raw result length.
 // Does NOT fail on error — caller decides how to handle resultLen == 0.
 func (f *encryptFixture) callDecryptRaw(
-	t *testing.T,
+	t testing.TB,
 	tdfBytes, dek []byte,
 	outCapacity uint32,
 ) (resultLen uint32, outPtr uint32) {
@@ -39,9 +39,13 @@ func (f *encryptFixture) callDecryptRaw(
 // mustDecrypt calls tdf_decrypt and fails the test on error.
 // A 0-length result is valid (empty plaintext); errors are distinguished
 // by checking get_error.
-func (f *encryptFixture) mustDecrypt(t *testing.T, tdfBytes, dek []byte) []byte {
+func (f *encryptFixture) mustDecrypt(t testing.TB, tdfBytes, dek []byte) []byte {
 	t.Helper()
-	resultLen, outPtr := f.callDecryptRaw(t, tdfBytes, dek, 1024*1024)
+	outCap := uint32(len(tdfBytes))
+	if outCap < 1024*1024 {
+		outCap = 1024 * 1024
+	}
+	resultLen, outPtr := f.callDecryptRaw(t, tdfBytes, dek, outCap)
 	if resultLen == 0 {
 		if errMsg := f.callGetError(t); errMsg != "" {
 			t.Fatalf("tdf_decrypt returned 0 with error: %s", errMsg)

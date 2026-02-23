@@ -40,7 +40,7 @@ Writer, and the WASM module (via wazero). Results are printed as GFM markdown.`,
 		RunE: runBenchmarkCrossSDK,
 	}
 	cmd.Flags().IntVar(&benchCrossIterations, "iterations", 5, "Iterations per payload size to average") //nolint:mnd
-	cmd.Flags().StringVar(&benchCrossSizes, "sizes", "256,1024,16384,65536,262144,1048576", "Comma-separated payload sizes in bytes")
+	cmd.Flags().StringVar(&benchCrossSizes, "sizes", "256,1024,16384,65536,262144,1048576,10485760,104857600", "Comma-separated payload sizes in bytes")
 	ExamplesCmd.AddCommand(cmd)
 }
 
@@ -346,11 +346,20 @@ func benchWriterEncrypt(kasKey *policy.SimpleKasKey, payload []byte) (time.Durat
 }
 
 func benchWASMEncrypt(wrt *wasmRuntime, pubPEM string, payload []byte) (time.Duration, []byte, error) {
+	// Auto-select segment size for large payloads
+	var segSize uint32
+	switch {
+	case len(payload) > 10*1024*1024: //nolint:mnd
+		segSize = 1024 * 1024 // 1MB segments for >10MB
+	case len(payload) > 1024*1024: //nolint:mnd
+		segSize = 256 * 1024 //nolint:mnd // 256KB segments for 1-10MB
+	}
+
 	var lastTDF []byte
 	var total time.Duration
 	for j := 0; j < benchCrossIterations; j++ {
 		start := time.Now()
-		tdfBytes, err := wrt.encrypt(pubPEM, "https://kas.local", payload, 0)
+		tdfBytes, err := wrt.encrypt(pubPEM, "https://kas.local", payload, segSize)
 		total += time.Since(start)
 		if err != nil {
 			return 0, nil, fmt.Errorf("wasm encrypt: %w", err)

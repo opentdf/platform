@@ -60,10 +60,12 @@ func compileWASMBinary() ([]byte, error) {
 		tmpFile.Close()
 		defer os.Remove(tmpPath)
 
-		fmt.Print("   compiling WASM module ... ")
-		cmd := exec.Command("go", "build", "-o", tmpPath, "./sdk/experimental/tdf/wasm/")
-		cmd.Dir = dir
-		cmd.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm")
+		fmt.Print("   compiling WASM module (TinyGo) ... ")
+		wasmDir := filepath.Join(dir, "sdk", "experimental", "tdf", "wasm")
+		cmd := exec.Command("tinygo", "build",
+			"-target=wasip1", "-no-debug", "-scheduler=none", "-gc=leaking",
+			"-o", tmpPath, ".")
+		cmd.Dir = wasmDir
 		if output, err := cmd.CombinedOutput(); err != nil {
 			wasmBuildCacheErr = fmt.Errorf("go build: %v\n%s", err, output)
 			return
@@ -144,14 +146,58 @@ func registerCryptoHost(ctx context.Context, rt wazero.Runtime) error {
 	return err
 }
 
+// wasmIO holds mutable I/O state for streaming tdf_encrypt.
+// The caller sets Input/Output before calling tdf_encrypt; the host
+// callbacks read_input and write_output use these via closures.
+var wasmIO struct {
+	mu     sync.Mutex
+	input  io.Reader
+	output io.Writer
+}
+
 func registerIOHost(ctx context.Context, rt wazero.Runtime) error {
 	_, err := rt.NewHostModuleBuilder("io").
-		NewFunctionBuilder().WithFunc(func(context.Context, api.Module, uint32, uint32) uint32 {
-			return 0 // EOF — no input configured
-		}).Export("read_input").
-		NewFunctionBuilder().WithFunc(func(context.Context, api.Module, uint32, uint32) uint32 {
-			wasmSetLastError(wasmHostErr("host: no output writer configured"))
+		NewFunctionBuilder().WithFunc(func(_ context.Context, mod api.Module, bufPtr, bufCap uint32) uint32 {
+			wasmIO.mu.Lock()
+			r := wasmIO.input
+			wasmIO.mu.Unlock()
+			if r == nil {
+				return 0 // EOF
+			}
+			buf := make([]byte, bufCap)
+			n, err := r.Read(buf)
+			if n > 0 {
+				if !wasmWriteBytes(mod, bufPtr, buf[:n]) {
+					wasmSetLastError(wasmErrOOB)
+					return wasmErrSentinel
+				}
+				return uint32(n)
+			}
+			if err == io.EOF || err == nil {
+				return 0
+			}
+			wasmSetLastError(err)
 			return wasmErrSentinel
+		}).Export("read_input").
+		NewFunctionBuilder().WithFunc(func(_ context.Context, mod api.Module, bufPtr, bufLen uint32) uint32 {
+			wasmIO.mu.Lock()
+			w := wasmIO.output
+			wasmIO.mu.Unlock()
+			if w == nil {
+				wasmSetLastError(wasmHostErr("host: no output writer configured"))
+				return wasmErrSentinel
+			}
+			data := wasmReadBytes(mod, bufPtr, bufLen)
+			if data == nil && bufLen > 0 {
+				wasmSetLastError(wasmErrOOB)
+				return wasmErrSentinel
+			}
+			n, err := w.Write(data)
+			if err != nil {
+				wasmSetLastError(err)
+				return wasmErrSentinel
+			}
+			return uint32(n)
 		}).Export("write_output").
 		Instantiate(ctx)
 	return err
@@ -489,7 +535,8 @@ func (w *wasmRuntime) decrypt(tdfBytes, dek []byte) ([]byte, error) {
 	return out, nil
 }
 
-// encrypt calls the WASM tdf_encrypt export.
+// encrypt calls the WASM tdf_encrypt export using streaming I/O.
+// Plaintext is fed via read_input; TDF output is collected via write_output.
 func (w *wasmRuntime) encrypt(kasPubPEM, kasURL string, plaintext []byte, segmentSize uint32) ([]byte, error) {
 	kasPubPtr, err := w.writeToWASM([]byte(kasPubPEM))
 	if err != nil {
@@ -499,30 +546,26 @@ func (w *wasmRuntime) encrypt(kasPubPEM, kasURL string, plaintext []byte, segmen
 	if err != nil {
 		return nil, fmt.Errorf("write KAS URL to WASM: %w", err)
 	}
-	ptPtr, err := w.writeToWASM(plaintext)
-	if err != nil {
-		return nil, fmt.Errorf("write plaintext to WASM: %w", err)
-	}
 
-	// Output buffer: TDF overhead is modest; 2x plaintext + 64KB should suffice.
-	outCap := uint32(len(plaintext)*2 + 65536) //nolint:mnd
-	outPtr, err := w.malloc(outCap)
-	if err != nil {
-		return nil, fmt.Errorf("malloc output: %w", err)
-	}
+	// Set up streaming I/O state
+	var outBuf bytes.Buffer
+	outBuf.Grow(len(plaintext) + 65536) //nolint:mnd
+	wasmIO.mu.Lock()
+	wasmIO.input = bytes.NewReader(plaintext)
+	wasmIO.output = &outBuf
+	wasmIO.mu.Unlock()
 
 	const (
-		algHS256     = 0
-		attrPtrZero  = 0
-		attrLenZero  = 0
+		algHS256    = 0
+		attrPtrZero = 0
+		attrLenZero = 0
 	)
 
 	results, callErr := w.mod.ExportedFunction("tdf_encrypt").Call(w.ctx,
 		uint64(kasPubPtr), uint64(len(kasPubPEM)),
 		uint64(kasURLPtr), uint64(len(kasURL)),
 		uint64(attrPtrZero), uint64(attrLenZero), // no attributes
-		uint64(ptPtr), uint64(len(plaintext)),
-		uint64(outPtr), uint64(outCap),
+		uint64(len(plaintext)), // plaintextSize (i64)
 		uint64(algHS256), uint64(algHS256), // HS256 for root + segment integrity
 		uint64(segmentSize),
 	)
@@ -536,13 +579,7 @@ func (w *wasmRuntime) encrypt(kasPubPEM, kasURL string, plaintext []byte, segmen
 		}
 		return nil, fmt.Errorf("tdf_encrypt returned 0 bytes with no error")
 	}
-	tdfBytes, ok := w.mod.Memory().Read(outPtr, resultLen)
-	if !ok {
-		return nil, fmt.Errorf("read TDF output from WASM memory")
-	}
-	out := make([]byte, len(tdfBytes))
-	copy(out, tdfBytes)
-	return out, nil
+	return outBuf.Bytes(), nil
 }
 
 // ── TDF creation + DEK extraction helpers ────────────────────────────

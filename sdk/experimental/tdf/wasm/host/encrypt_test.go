@@ -33,7 +33,7 @@ var (
 	wasmBuildErr  error
 )
 
-func compileWASM(t *testing.T) []byte {
+func compileWASM(t testing.TB) []byte {
 	t.Helper()
 	wasmBuildOnce.Do(func() {
 		dir, err := os.Getwd()
@@ -62,11 +62,13 @@ func compileWASM(t *testing.T) []byte {
 		tmpFile.Close()
 		defer os.Remove(tmpPath)
 
-		cmd := exec.Command("go", "build", "-o", tmpPath, "./sdk/experimental/tdf/wasm/")
-		cmd.Dir = dir
-		cmd.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm")
+		wasmDir := filepath.Join(dir, "sdk", "experimental", "tdf", "wasm")
+		cmd := exec.Command("tinygo", "build",
+			"-target=wasip1", "-no-debug", "-scheduler=none", "-gc=leaking",
+			"-o", tmpPath, ".")
+		cmd.Dir = wasmDir
 		if output, err := cmd.CombinedOutput(); err != nil {
-			wasmBuildErr = fmt.Errorf("go build: %v\n%s", err, output)
+			wasmBuildErr = fmt.Errorf("tinygo build: %v\n%s", err, output)
 			return
 		}
 
@@ -150,7 +152,7 @@ func newEncryptFixture(t *testing.T) *encryptFixture {
 	return &encryptFixture{ctx: ctx, mod: mod, ioState: ioState, pubPEM: pub, privPEM: priv}
 }
 
-func (f *encryptFixture) wasmMalloc(t *testing.T, size uint32) uint32 {
+func (f *encryptFixture) wasmMalloc(t testing.TB, size uint32) uint32 {
 	t.Helper()
 	results, err := f.mod.ExportedFunction("tdf_malloc").Call(f.ctx, uint64(size))
 	if err != nil {
@@ -159,7 +161,7 @@ func (f *encryptFixture) wasmMalloc(t *testing.T, size uint32) uint32 {
 	return uint32(results[0])
 }
 
-func (f *encryptFixture) writeToWASM(t *testing.T, data []byte) uint32 {
+func (f *encryptFixture) writeToWASM(t testing.TB, data []byte) uint32 {
 	t.Helper()
 	if len(data) == 0 {
 		return 0
@@ -171,7 +173,7 @@ func (f *encryptFixture) writeToWASM(t *testing.T, data []byte) uint32 {
 	return ptr
 }
 
-func (f *encryptFixture) callGetError(t *testing.T) string {
+func (f *encryptFixture) callGetError(t testing.TB) string {
 	t.Helper()
 	const bufCap = 1024
 	bufPtr := f.wasmMalloc(t, bufCap)
@@ -202,7 +204,7 @@ const (
 // Does NOT fail on error — caller decides how to handle resultLen == 0.
 // segmentSize=0 means single segment (entire plaintext in one segment).
 func (f *encryptFixture) callEncryptRaw(
-	t *testing.T,
+	t testing.TB,
 	kasPubPEM, kasURL string,
 	attrs []string,
 	plaintext []byte,
@@ -240,7 +242,7 @@ func (f *encryptFixture) callEncryptRaw(
 }
 
 // mustEncryptWithAlgs calls tdf_encrypt with explicit integrity algorithms (single segment).
-func (f *encryptFixture) mustEncryptWithAlgs(t *testing.T, kasURL string, attrs []string, plaintext []byte, integrityAlg, segIntegrityAlg uint32) []byte {
+func (f *encryptFixture) mustEncryptWithAlgs(t testing.TB, kasURL string, attrs []string, plaintext []byte, integrityAlg, segIntegrityAlg uint32) []byte {
 	t.Helper()
 	resultLen, output := f.callEncryptRaw(t, f.pubPEM, kasURL, attrs, plaintext, integrityAlg, segIntegrityAlg, 0)
 	if resultLen == 0 {
@@ -250,7 +252,7 @@ func (f *encryptFixture) mustEncryptWithAlgs(t *testing.T, kasURL string, attrs 
 }
 
 // mustEncrypt calls tdf_encrypt with default HS256/HS256 algorithms (single segment).
-func (f *encryptFixture) mustEncrypt(t *testing.T, kasURL string, attrs []string, plaintext []byte) []byte {
+func (f *encryptFixture) mustEncrypt(t testing.TB, kasURL string, attrs []string, plaintext []byte) []byte {
 	t.Helper()
 	resultLen, output := f.callEncryptRaw(t, f.pubPEM, kasURL, attrs, plaintext, algHS256, algHS256, 0)
 	if resultLen == 0 {
@@ -260,7 +262,7 @@ func (f *encryptFixture) mustEncrypt(t *testing.T, kasURL string, attrs []string
 }
 
 // mustEncryptMultiSeg calls tdf_encrypt with a specific segment size.
-func (f *encryptFixture) mustEncryptMultiSeg(t *testing.T, kasURL string, attrs []string, plaintext []byte, segmentSize uint32) []byte {
+func (f *encryptFixture) mustEncryptMultiSeg(t testing.TB, kasURL string, attrs []string, plaintext []byte, segmentSize uint32) []byte {
 	t.Helper()
 	resultLen, output := f.callEncryptRaw(t, f.pubPEM, kasURL, attrs, plaintext, algHS256, algHS256, segmentSize)
 	if resultLen == 0 {
@@ -277,7 +279,7 @@ type tdfContent struct {
 	Payload     []byte
 }
 
-func parseTDF(t *testing.T, tdfBytes []byte) tdfContent {
+func parseTDF(t testing.TB, tdfBytes []byte) tdfContent {
 	t.Helper()
 	r, err := zip.NewReader(bytes.NewReader(tdfBytes), int64(len(tdfBytes)))
 	if err != nil {
@@ -317,7 +319,7 @@ func parseTDF(t *testing.T, tdfBytes []byte) tdfContent {
 }
 
 // unwrapDEK RSA-decrypts the wrapped key from the manifest to recover the DEK.
-func unwrapDEK(t *testing.T, m tdf.Manifest, privPEM string) []byte {
+func unwrapDEK(t testing.TB, m tdf.Manifest, privPEM string) []byte {
 	t.Helper()
 	if len(m.KeyAccessObjs) == 0 {
 		t.Fatal("no key access objects in manifest")

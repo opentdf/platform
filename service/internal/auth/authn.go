@@ -70,6 +70,8 @@ var (
 
 	canonicalIPCHeaderClientID    = http.CanonicalHeaderKey("x-ipc-auth-client-id")
 	canonicalIPCHeaderAccessToken = http.CanonicalHeaderKey("x-ipc-access-token")
+
+	ipcMetadataHeaderPrefix = "x-ipc-meta-"
 )
 
 const (
@@ -432,6 +434,19 @@ func IPCMetadataClientInterceptor(log *logger.Logger) connect.UnaryInterceptorFu
 				req.Header().Add(canonicalIPCHeaderAccessToken, authToken)
 			}
 
+			// Forward all remaining gRPC metadata as X-IPC-Meta-* headers
+			if md, ok := metadata.FromIncomingContext(ctx); ok {
+				for key, vals := range md {
+					// Skip keys already handled above
+					if key == ctxAuth.ClientIDKey || key == ctxAuth.AccessTokenKey {
+						continue
+					}
+					for _, v := range vals {
+						req.Header().Add(ipcMetadataHeaderPrefix+key, v)
+					}
+				}
+			}
+
 			return next(ctx, req)
 		})
 	})
@@ -457,6 +472,19 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 			if authToken := req.Header().Get(canonicalIPCHeaderAccessToken); authToken != "" {
 				md.Set(ctxAuth.AccessTokenKey, authToken)
 			}
+
+			// Restore generic metadata from X-IPC-Meta-* headers
+			canonicalPrefix := http.CanonicalHeaderKey(ipcMetadataHeaderPrefix)
+			for headerKey, vals := range req.Header() {
+				canonicalKey := http.CanonicalHeaderKey(headerKey)
+				if strings.HasPrefix(canonicalKey, canonicalPrefix) {
+					metaKey := headerKey[len(canonicalPrefix):]
+					if metaKey != "" {
+						md.Append(metaKey, vals...)
+					}
+				}
+			}
+
 			if hasIncoming {
 				md = metadata.Join(md, incomingMD.Copy())
 			}

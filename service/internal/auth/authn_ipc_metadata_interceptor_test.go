@@ -61,7 +61,7 @@ func TestIPCMetadataClientInterceptor(t *testing.T) {
 			expectedHeaders: map[string]string{},
 		},
 		{
-			name: "handles multiple metadata values",
+			name: "handles multiple metadata values including generic forwarding",
 			setupContext: func(ctx context.Context) context.Context {
 				md := metadata.New(map[string]string{
 					ctxAuth.ClientIDKey: mockClientID,
@@ -74,6 +74,7 @@ func TestIPCMetadataClientInterceptor(t *testing.T) {
 			expectedHeaders: map[string]string{
 				canonicalIPCHeaderClientID:    mockClientID,
 				canonicalIPCHeaderAccessToken: mockAccessToken,
+				"x-ipc-meta-custom-key":       "custom-value",
 			},
 		},
 	}
@@ -263,6 +264,144 @@ func TestIPCUnaryServerInterceptor(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func TestIPCMetadataClientInterceptor_ForwardsGenericMetadata(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+	interceptor := IPCMetadataClientInterceptor(testLogger)
+
+	// Set up incoming context with generic metadata (simulating what tenant interceptors set)
+	md := metadata.New(map[string]string{
+		"jwt_tenant_id":  "tenant-abc",
+		"host_tenant_id": "tenant-xyz",
+		"custom_key":     "custom_value",
+	})
+	ctx := metadata.NewIncomingContext(t.Context(), md)
+
+	req := connect.NewRequest(&kas.PublicKeyRequest{})
+	wrappedReq := &mockAnyRequest{Request: req, isClient: true}
+
+	_, err := interceptor(func(_ context.Context, r connect.AnyRequest) (connect.AnyResponse, error) {
+		assert.Equal(t, "tenant-abc", r.Header().Get("x-ipc-meta-jwt_tenant_id"))
+		assert.Equal(t, "tenant-xyz", r.Header().Get("x-ipc-meta-host_tenant_id"))
+		assert.Equal(t, "custom_value", r.Header().Get("x-ipc-meta-custom_key"))
+		return connect.NewResponse(&kas.PublicKeyResponse{}), nil
+	})(ctx, wrappedReq)
+
+	require.NoError(t, err)
+}
+
+func TestIPCMetadataClientInterceptor_SkipsClientIDAndAccessToken(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+	mockToken := jwt.New()
+	var mockJWK jwk.Key
+
+	// Set up context with client_id and access_token alongside other metadata
+	md := metadata.New(map[string]string{
+		ctxAuth.ClientIDKey:    "my-client",
+		ctxAuth.AccessTokenKey: "my-token",
+		"jwt_tenant_id":        "tenant-abc",
+	})
+	ctx := ctxAuth.ContextWithAuthNInfo(t.Context(), mockJWK, mockToken, "my-token")
+	ctx = metadata.NewIncomingContext(ctx, md)
+
+	interceptor := IPCMetadataClientInterceptor(testLogger)
+
+	req := connect.NewRequest(&kas.PublicKeyRequest{})
+	wrappedReq := &mockAnyRequest{Request: req, isClient: true}
+
+	_, err := interceptor(func(_ context.Context, r connect.AnyRequest) (connect.AnyResponse, error) {
+		// client_id and access_token should NOT be in x-ipc-meta-* headers (handled separately)
+		assert.Empty(t, r.Header().Get("x-ipc-meta-client_id"))
+		assert.Empty(t, r.Header().Get("x-ipc-meta-access_token"))
+		// jwt_tenant_id should be forwarded
+		assert.Equal(t, "tenant-abc", r.Header().Get("x-ipc-meta-jwt_tenant_id"))
+		return connect.NewResponse(&kas.PublicKeyResponse{}), nil
+	})(ctx, wrappedReq)
+
+	require.NoError(t, err)
+}
+
+func TestIPCUnaryServerInterceptor_RestoresGenericMetadata(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+	auth := &Authentication{
+		logger:          testLogger,
+		ipcReauthRoutes: []string{},
+	}
+
+	interceptor := auth.IPCUnaryServerInterceptor()
+
+	req := connect.NewRequest(&kas.PublicKeyRequest{})
+	req.Header().Set("x-ipc-meta-jwt_tenant_id", "tenant-abc")
+	req.Header().Set("x-ipc-meta-host_tenant_id", "tenant-xyz")
+	req.Header().Set("x-ipc-meta-custom_key", "custom_value")
+	wrappedReq := &mockAnyRequest{Request: req, isClient: false}
+
+	var capturedCtx context.Context
+	_, err := interceptor(func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		capturedCtx = ctx
+		return connect.NewResponse(&kas.PublicKeyResponse{}), nil
+	})(t.Context(), wrappedReq)
+
+	require.NoError(t, err)
+
+	md, ok := metadata.FromIncomingContext(capturedCtx)
+	require.True(t, ok)
+	assert.Equal(t, []string{"tenant-abc"}, md.Get("jwt_tenant_id"))
+	assert.Equal(t, []string{"tenant-xyz"}, md.Get("host_tenant_id"))
+	assert.Equal(t, []string{"custom_value"}, md.Get("custom_key"))
+}
+
+func TestIPCMetadata_RoundTrip(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+
+	// 1. Set up the original metadata (as set by tenant interceptors)
+	originalMD := metadata.New(map[string]string{
+		"jwt_tenant_id":  "tenant-jwt-123",
+		"host_tenant_id": "tenant-host-456",
+	})
+	ctx := metadata.NewIncomingContext(t.Context(), originalMD)
+
+	// 2. Run through client interceptor
+	clientInterceptor := IPCMetadataClientInterceptor(testLogger)
+
+	req := connect.NewRequest(&kas.PublicKeyRequest{})
+	wrappedReq := &mockAnyRequest{Request: req, isClient: true}
+
+	var capturedHeaders map[string][]string
+	_, err := clientInterceptor(func(_ context.Context, r connect.AnyRequest) (connect.AnyResponse, error) {
+		capturedHeaders = r.Header().Clone()
+		return connect.NewResponse(&kas.PublicKeyResponse{}), nil
+	})(ctx, wrappedReq)
+	require.NoError(t, err)
+
+	// 3. Simulate server side: create a request with the captured headers
+	auth := &Authentication{
+		logger:          testLogger,
+		ipcReauthRoutes: []string{},
+	}
+	serverInterceptor := auth.IPCUnaryServerInterceptor()
+
+	serverReq := connect.NewRequest(&kas.PublicKeyRequest{})
+	for key, vals := range capturedHeaders {
+		for _, v := range vals {
+			serverReq.Header().Add(key, v)
+		}
+	}
+	wrappedServerReq := &mockAnyRequest{Request: serverReq, isClient: false}
+
+	var finalCtx context.Context
+	_, err = serverInterceptor(func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		finalCtx = ctx
+		return connect.NewResponse(&kas.PublicKeyResponse{}), nil
+	})(t.Context(), wrappedServerReq)
+	require.NoError(t, err)
+
+	// 4. Verify the metadata round-tripped correctly
+	finalMD, ok := metadata.FromIncomingContext(finalCtx)
+	require.True(t, ok)
+	assert.Equal(t, []string{"tenant-jwt-123"}, finalMD.Get("jwt_tenant_id"))
+	assert.Equal(t, []string{"tenant-host-456"}, finalMD.Get("host_tenant_id"))
 }
 
 func TestIPCUnaryServerInterceptor_Integration(t *testing.T) {

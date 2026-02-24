@@ -436,10 +436,9 @@ func IPCMetadataClientInterceptor(log *logger.Logger) connect.UnaryInterceptorFu
 
 			// Forward all remaining gRPC metadata as x-ipc-meta-* headers.
 			// This is intentionally generic (no allow-list) so that the platform
-			// does not need to know about consumer-specific metadata keys like
-			// jwt_tenant_id or host_tenant_id. This is safe because IPC
-			// interceptors only run on in-process calls — external requests use
-			// ConnectUnaryServerInterceptor and never see these headers.
+			// does not need to know about consumer-specific metadata keys.
+			// This is safe because IPC interceptors only run on in-process calls
+			// — external requests use ConnectUnaryServerInterceptor and never see these headers.
 			if md, ok := metadata.FromIncomingContext(ctx); ok {
 				for key, vals := range md {
 					// Skip keys already handled above

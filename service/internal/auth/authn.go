@@ -434,7 +434,12 @@ func IPCMetadataClientInterceptor(log *logger.Logger) connect.UnaryInterceptorFu
 				req.Header().Add(canonicalIPCHeaderAccessToken, authToken)
 			}
 
-			// Forward all remaining gRPC metadata as X-IPC-Meta-* headers
+			// Forward all remaining gRPC metadata as x-ipc-meta-* headers.
+			// This is intentionally generic (no allow-list) so that the platform
+			// does not need to know about consumer-specific metadata keys like
+			// jwt_tenant_id or host_tenant_id. This is safe because IPC
+			// interceptors only run on in-process calls — external requests use
+			// ConnectUnaryServerInterceptor and never see these headers.
 			if md, ok := metadata.FromIncomingContext(ctx); ok {
 				for key, vals := range md {
 					// Skip keys already handled above
@@ -473,12 +478,13 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 				md.Set(ctxAuth.AccessTokenKey, authToken)
 			}
 
-			// Restore generic metadata from X-IPC-Meta-* headers
+			// Restore generic metadata from x-ipc-meta-* headers.
+			// req.Header() returns http.Header with already-canonicalized keys,
+			// so we only need to canonicalize the prefix once for comparison.
 			canonicalPrefix := http.CanonicalHeaderKey(ipcMetadataHeaderPrefix)
-			for headerKey, vals := range req.Header() {
-				canonicalKey := http.CanonicalHeaderKey(headerKey)
-				if strings.HasPrefix(canonicalKey, canonicalPrefix) {
-					metaKey := headerKey[len(canonicalPrefix):]
+			for key, vals := range req.Header() {
+				if strings.HasPrefix(key, canonicalPrefix) {
+					metaKey := key[len(canonicalPrefix):]
 					if metaKey != "" {
 						md.Append(metaKey, vals...)
 					}

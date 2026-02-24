@@ -12,6 +12,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -60,6 +61,7 @@ type Reader struct {
 	connectOptions      []connect.ClientOption
 	manifest            Manifest
 	unencryptedMetadata []byte
+	resourceMetadata    resourceMetadata
 	tdfReader           zipstream.TDFReader
 	cursor              int64
 	aesGcm              ocrypto.AesGcm
@@ -337,6 +339,15 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		tdfConfig.assertions = append(tdfConfig.assertions, systemMeta)
 	}
 
+	if !hasAssertionConfig(tdfConfig.assertions, ResourceMetadataAssertionID) {
+		fileName := readerFileName(reader)
+		resourceMeta, err := GetResourceMetadataAssertionConfig(fileName, inputSize)
+		if err != nil {
+			return nil, err
+		}
+		tdfConfig.assertions = append(tdfConfig.assertions, resourceMeta)
+	}
+
 	for _, assertion := range tdfConfig.assertions {
 		// Store a temporary assertion
 		tmpAssertion := Assertion{}
@@ -409,6 +420,51 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	tdfObject.size = outputWriter.written
 
 	return tdfObject, nil
+}
+
+func hasAssertionConfig(assertions []AssertionConfig, id string) bool {
+	for _, assertion := range assertions {
+		if assertion.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+func readerFileName(reader io.ReadSeeker) string {
+	type namer interface {
+		Name() string
+	}
+	if named, ok := reader.(namer); ok {
+		name := filepath.Base(named.Name())
+		if name != "." && name != string(filepath.Separator) {
+			return name
+		}
+	}
+	return ""
+}
+
+func resourceMetadataFromAssertions(assertions []Assertion) resourceMetadata {
+	for _, assertion := range assertions {
+		if assertion.ID != ResourceMetadataAssertionID {
+			continue
+		}
+		if assertion.Statement.Schema != "" && assertion.Statement.Schema != ResourceMetadataSchemaV1 {
+			continue
+		}
+		var metadata ResourceMetadataAssertion
+		if err := json.Unmarshal([]byte(assertion.Statement.Value), &metadata); err != nil {
+			continue
+		}
+		resource := resourceMetadata{
+			"byte_size": metadata.ByteSize,
+		}
+		if metadata.FileName != "" {
+			resource["file_name"] = metadata.FileName
+		}
+		return resource
+	}
+	return nil
 }
 
 // initKAOTemplate initializes the KAO template, from either the split plan, kaoTemplate, or autoconfigure based on tags.
@@ -855,14 +911,15 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 	}
 
 	return &Reader{
-		tokenSource:    s.tokenSource,
-		httpClient:     s.conn.Client,
-		connectOptions: s.conn.Options,
-		tdfReader:      tdfReader,
-		manifest:       *manifestObj,
-		kasSessionKey:  config.kasSessionKey,
-		config:         *config,
-		payloadSize:    payloadSize,
+		tokenSource:      s.tokenSource,
+		httpClient:       s.conn.Client,
+		connectOptions:   s.conn.Options,
+		tdfReader:        tdfReader,
+		manifest:         *manifestObj,
+		kasSessionKey:    config.kasSessionKey,
+		config:           *config,
+		payloadSize:      payloadSize,
+		resourceMetadata: resourceMetadataFromAssertions(manifestObj.Assertions),
 	}, nil
 }
 
@@ -1445,7 +1502,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		}
 
 		// if allowed then unwrap
-		policyRes, err := kasClient.unwrap(ctx, req)
+		policyRes, err := kasClient.unwrap(ctx, resourceMetadataByPolicy{"policy": r.resourceMetadata}, req)
 		if err != nil {
 			reqFail(err, req)
 		} else {

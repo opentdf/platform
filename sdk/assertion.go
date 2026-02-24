@@ -16,8 +16,10 @@ import (
 )
 
 const (
-	SystemMetadataAssertionID = "system-metadata"
-	SystemMetadataSchemaV1    = "system-metadata-v1"
+	SystemMetadataAssertionID   = "system-metadata"
+	SystemMetadataSchemaV1      = "system-metadata-v1"
+	ResourceMetadataAssertionID = "resource-metadata"
+	ResourceMetadataSchemaV1    = "resource-metadata-v1"
 )
 
 // AssertionConfig is a shadow of Assertion with the addition of the signing key.
@@ -355,6 +357,41 @@ func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
 		Statement: Statement{
 			Format: "json",
 			Schema: SystemMetadataSchemaV1,
+			Value:  string(metadataJSON),
+		},
+	}, nil
+}
+
+// ResourceMetadataAssertion captures basic resource metadata for rewrap context.
+type ResourceMetadataAssertion struct {
+	FileName string `json:"file_name,omitempty"`
+	ByteSize int64  `json:"byte_size"`
+}
+
+// GetResourceMetadataAssertionConfig returns an assertion configuration containing resource metadata.
+func GetResourceMetadataAssertionConfig(fileName string, byteSize int64) (AssertionConfig, error) {
+	if byteSize < 0 {
+		return AssertionConfig{}, errors.New("resource metadata byte size must be >= 0")
+	}
+
+	metadata := ResourceMetadataAssertion{
+		FileName: fileName,
+		ByteSize: byteSize,
+	}
+
+	metadataJSON, err := json.Marshal(metadata)
+	if err != nil {
+		return AssertionConfig{}, fmt.Errorf("failed to marshal resource metadata: %w", err)
+	}
+
+	return AssertionConfig{
+		ID:             ResourceMetadataAssertionID,
+		Type:           BaseAssertion,
+		Scope:          PayloadScope,
+		AppliesToState: Unencrypted,
+		Statement: Statement{
+			Format: "json",
+			Schema: ResourceMetadataSchemaV1,
 			Value:  string(metadataJSON),
 		},
 	}, nil

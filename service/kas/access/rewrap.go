@@ -92,7 +92,9 @@ type ObligationCtx struct {
 }
 
 type AdditionalRewrapContext struct {
-	Obligations ObligationCtx `json:"obligations"`
+	Obligations      ObligationCtx             `json:"obligations"`
+	Resource         map[string]any            `json:"resourceMetadata,omitempty"`
+	ResourceByPolicy map[string]map[string]any `json:"resourceMetadataByPolicy,omitempty"`
 }
 
 const (
@@ -1042,7 +1044,9 @@ func createKAOMetadata(obligations []string) map[string]*structpb.Value {
 Example:
 
 {
-	"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark","https://demo.com/obl/test/value/geofence"]}
+	"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark","https://demo.com/obl/test/value/geofence"]},
+	"resourceMetadata": {"file_name": "report.csv", "byte_size": 12345},
+	"resourceMetadataByPolicy": {"policy-1": {"file_name": "report.csv", "byte_size": 12345}}
 }
 
 */

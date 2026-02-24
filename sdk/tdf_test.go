@@ -587,6 +587,94 @@ func (s *TDFSuite) Test_SystemMetadataAssertions() {
 	s.True(found, "System metadata assertion not found")
 }
 
+func (s *TDFSuite) Test_ResourceMetadataAssertion_Bytes() {
+	attributes := []string{
+		"https://example.com/attr/Classification/value/S",
+	}
+
+	tdfOptions := []TDFOption{
+		WithKasInformation(KASInfo{
+			URL:       s.kasTestURLLookup["https://a.kas/"],
+			PublicKey: "",
+		}),
+		WithDataAttributes(attributes...),
+	}
+
+	var buf bytes.Buffer
+	plainText := "Test Data"
+	inBuf := bytes.NewReader([]byte(plainText))
+
+	tdfObj, err := s.sdk.CreateTDF(&buf, inBuf, tdfOptions...)
+	s.Require().NoError(err)
+	s.Require().NotNil(tdfObj)
+
+	assertions := tdfObj.Manifest().Assertions
+	s.Require().NotEmpty(assertions)
+
+	var found bool
+	for _, assertion := range assertions {
+		if assertion.ID != ResourceMetadataAssertionID {
+			continue
+		}
+		found = true
+		var metadata ResourceMetadataAssertion
+		err := json.Unmarshal([]byte(assertion.Statement.Value), &metadata)
+		s.Require().NoError(err, "Statement Value is not valid JSON")
+		s.Empty(metadata.FileName, "file_name should be empty for byte readers")
+		s.EqualValues(len(plainText), metadata.ByteSize, "byte_size mismatch")
+	}
+	s.True(found, "Resource metadata assertion not found")
+}
+
+func (s *TDFSuite) Test_ResourceMetadataAssertion_FileName() {
+	attributes := []string{
+		"https://example.com/attr/Classification/value/S",
+	}
+
+	tdfOptions := []TDFOption{
+		WithKasInformation(KASInfo{
+			URL:       s.kasTestURLLookup["https://a.kas/"],
+			PublicKey: "",
+		}),
+		WithDataAttributes(attributes...),
+	}
+
+	tmpFile, err := os.CreateTemp("", "tdf-resource-*.txt")
+	s.Require().NoError(err)
+	defer func() {
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpFile.Name())
+	}()
+
+	payload := []byte("file payload")
+	_, err = tmpFile.Write(payload)
+	s.Require().NoError(err)
+	_, err = tmpFile.Seek(0, io.SeekStart)
+	s.Require().NoError(err)
+
+	var buf bytes.Buffer
+	tdfObj, err := s.sdk.CreateTDF(&buf, tmpFile, tdfOptions...)
+	s.Require().NoError(err)
+	s.Require().NotNil(tdfObj)
+
+	assertions := tdfObj.Manifest().Assertions
+	s.Require().NotEmpty(assertions)
+
+	var found bool
+	for _, assertion := range assertions {
+		if assertion.ID != ResourceMetadataAssertionID {
+			continue
+		}
+		found = true
+		var metadata ResourceMetadataAssertion
+		err := json.Unmarshal([]byte(assertion.Statement.Value), &metadata)
+		s.Require().NoError(err, "Statement Value is not valid JSON")
+		s.Equal(filepath.Base(tmpFile.Name()), metadata.FileName, "file_name mismatch")
+		s.EqualValues(len(payload), metadata.ByteSize, "byte_size mismatch")
+	}
+	s.True(found, "Resource metadata assertion not found")
+}
+
 func (s *TDFSuite) Test_TDF_KAS_Allowlist() {
 	type TestConfig struct {
 		tdfOptions     []TDFOption

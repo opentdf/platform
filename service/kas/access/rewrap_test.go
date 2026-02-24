@@ -752,6 +752,24 @@ func TestGetAdditionalRewrapContext(t *testing.T) {
 			expectedError: nil,
 		},
 		{
+			name: "resource metadata by policy",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"resourceMetadataByPolicy": {"policy-1": {"file_name": "sample.txt", "byte_size": 123}}}`))},
+			},
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{},
+				},
+				ResourceByPolicy: map[string]map[string]any{
+					"policy-1": {
+						"file_name": "sample.txt",
+						"byte_size": float64(123),
+					},
+				},
+			},
+			expectedError: nil,
+		},
+		{
 			name: "mixed valid and invalid fqns",
 			header: http.Header{
 				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark","https://example.com/attr/Classification/value/restricted","https://virtru.com/obl/test/value/audit"]}}`))},

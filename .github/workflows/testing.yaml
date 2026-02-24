@@ -1,4 +1,4 @@
-name: Build Platform Container Image
+name: testing
 
 on:
   pull_request:
@@ -17,6 +17,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - run: |
+          echo ${{ vars.CENTRAL_WIF_PROVIDER }}
+
       - name: "Authenticate to Google Cloud (Push to Public registry)"
         id: "gcp-auth"
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
@@ -32,8 +35,5 @@ jobs:
           password: ${{ steps.gcp-auth.outputs.access_token }}
 
       - name: Sign the images with GitHub OIDC Token
-        env:
-          DIGEST: ${{ steps.build-and-push.outputs.digest }}
-          TAGS: ${{ steps.docker_meta.outputs.tags }}
         run: |
           docker pull us-docker.pkg.dev/prj-opentdf-4fc4/opentdf/platform:nightly

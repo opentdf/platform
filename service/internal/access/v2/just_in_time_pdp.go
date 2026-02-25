@@ -146,6 +146,8 @@ func (p *JustInTimePDP) GetDecision(
 		skipEnvironmentEntities = true
 	)
 
+	entityMetadata := entityMetadataFromIdentifier(entityIdentifier)
+
 	// Because there are three possible types of entities, check obligations first to more easily handle decisioning logic
 	obligationDecision, err := p.obligationsPDP.GetAllTriggeredObligationsAreFulfilled(
 		ctx,
@@ -200,6 +202,7 @@ func (p *JustInTimePDP) GetDecision(
 			fulfillableObligationValueFQNs,
 			obligationDecision,
 			auditResourceDecisions,
+			entityMetadata,
 		)
 		return decision, nil
 
@@ -251,6 +254,7 @@ func (p *JustInTimePDP) GetDecision(
 			fulfillableObligationValueFQNs,
 			obligationDecision,
 			auditResourceDecisions,
+			entityMetadata,
 		)
 	}
 
@@ -446,6 +450,7 @@ func (p *JustInTimePDP) auditDecision(
 	fulfillableObligationValueFQNs []string,
 	obligationDecision obligations.ObligationPolicyDecision,
 	auditResourceDecisions []ResourceDecision,
+	entityMetadata any,
 ) {
 	// Determine audit decision result
 	auditDecision := audit.GetDecisionResultDeny
@@ -461,5 +466,45 @@ func (p *JustInTimePDP) auditDecision(
 		FulfillableObligationValueFQNs: fulfillableObligationValueFQNs,
 		ObligationsSatisfied:           obligationDecision.AllObligationsSatisfied,
 		ResourceDecisions:              auditResourceDecisions,
+		EntityMetadata:                 entityMetadata,
 	})
+}
+
+func entityMetadataFromIdentifier(entityIdentifier *authzV2.EntityIdentifier) any {
+	if entityIdentifier == nil {
+		return nil
+	}
+	switch identifier := entityIdentifier.GetIdentifier().(type) {
+	case *authzV2.EntityIdentifier_Token:
+		if metadata := identifier.Token.GetMetadata(); len(metadata) > 0 {
+			return metadata
+		}
+	case *authzV2.EntityIdentifier_EntityChain:
+		return entityMetadataFromChain(identifier.EntityChain)
+	}
+	return nil
+}
+
+func entityMetadataFromChain(chain *entity.EntityChain) map[string]map[string]string {
+	if chain == nil {
+		return nil
+	}
+
+	entityMetadata := make(map[string]map[string]string)
+	for idx, ent := range chain.GetEntities() {
+		metadata := ent.GetMetadata()
+		if len(metadata) == 0 {
+			continue
+		}
+		entityID := ent.GetEphemeralId()
+		if entityID == "" {
+			entityID = fmt.Sprintf("entity-%d", idx)
+		}
+		entityMetadata[entityID] = metadata
+	}
+
+	if len(entityMetadata) == 0 {
+		return nil
+	}
+	return entityMetadata
 }

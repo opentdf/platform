@@ -52,6 +52,7 @@ type GetDecisionV2EventParams struct {
 	ObligationsSatisfied           bool
 	// Allow ResourceDecisions to be typed by the caller as structure is in-flight
 	ResourceDecisions any
+	EntityMetadata    any
 }
 
 func CreateGetDecisionEvent(ctx context.Context, params GetDecisionEventParams) (*EventObject, error) {
@@ -117,6 +118,9 @@ func CreateV2GetDecisionEvent(ctx context.Context, params GetDecisionV2EventPara
 		"resource_decisions":                params.ResourceDecisions,
 		"fulfillable_obligation_value_fqns": fulfillable,
 		"obligations_satisfied":             params.ObligationsSatisfied,
+	}
+	if params.EntityMetadata != nil {
+		eventMetadata["entity_metadata"] = params.EntityMetadata
 	}
 
 	return &EventObject{

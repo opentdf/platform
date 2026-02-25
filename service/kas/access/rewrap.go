@@ -1,6 +1,7 @@
 package access
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/ecdsa"
@@ -82,6 +83,7 @@ type kaoResult struct {
 	// Optional: Present for EC wrapped responses
 	EphemeralPublicKey  []byte
 	RequiredObligations []string
+	DecryptedMetadata   map[string]any
 }
 
 // From policy ID to KAO ID to result
@@ -806,9 +808,19 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			continue
 		}
 
+		decryptedMetadata, metaErr := decryptKAOEncryptedMetadata(dek, kao.GetKeyAccessObject().GetEncryptedMetadata())
+		if metaErr != nil {
+			p.Logger.WarnContext(ctx, "failed to decrypt encrypted metadata", slog.Any("error", metaErr))
+			decryptedMetadata = nil
+		}
+		if len(decryptedMetadata) == 0 {
+			decryptedMetadata = nil
+		}
+
 		results[kao.GetKeyAccessObjectId()] = kaoResult{
-			ID:  kao.GetKeyAccessObjectId(),
-			DEK: dek,
+			ID:                kao.GetKeyAccessObjectId(),
+			DEK:               dek,
+			DecryptedMetadata: decryptedMetadata,
 		}
 
 		anyValidKAOs = true
@@ -961,6 +973,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				Algorithm:     req.GetAlgorithm(),
 				PolicyBinding: policyBinding,
 				KeyID:         kao.GetKeyAccessObject().GetKid(),
+				Metadata:      kaoRes.DecryptedMetadata,
 			}
 
 			if !access {
@@ -1036,6 +1049,56 @@ func createKAOMetadata(obligations []string) map[string]*structpb.Value {
 	})
 
 	return metadata
+}
+
+type encryptedMetadataPayload struct {
+	Cipher string `json:"ciphertext"`
+	Iv     string `json:"iv"`
+}
+
+// TODO: should we always log all decrypted metadata to audit, or just pull off
+// the known keys like filename/bytesize and log them specifically
+func decryptKAOEncryptedMetadata(dek ocrypto.ProtectedKey, encryptedMetadata string) (map[string]any, error) {
+	if dek == nil || encryptedMetadata == "" {
+		return nil, nil
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(encryptedMetadata)
+	if err != nil {
+		return nil, fmt.Errorf("decode encrypted metadata: %w", err)
+	}
+
+	var payload encryptedMetadataPayload
+	if err := json.Unmarshal(decoded, &payload); err != nil {
+		return nil, fmt.Errorf("unmarshal encrypted metadata: %w", err)
+	}
+
+	iv, err := base64.StdEncoding.DecodeString(payload.Iv)
+	if err != nil {
+		return nil, fmt.Errorf("decode encrypted metadata iv: %w", err)
+	}
+
+	cipherBytes, err := base64.StdEncoding.DecodeString(payload.Cipher)
+	if err != nil {
+		return nil, fmt.Errorf("decode encrypted metadata cipher: %w", err)
+	}
+
+	cipherBody := cipherBytes
+	if len(cipherBytes) > ocrypto.GcmStandardNonceSize && bytes.HasPrefix(cipherBytes, iv) {
+		cipherBody = cipherBytes[ocrypto.GcmStandardNonceSize:]
+	}
+
+	plaintext, err := dek.DecryptAESGCM(iv, cipherBody, 16)
+	if err != nil {
+		return nil, fmt.Errorf("decrypt encrypted metadata: %w", err)
+	}
+
+	var metadata map[string]any
+	if err := json.Unmarshal(plaintext, &metadata); err == nil {
+		return metadata, nil
+	}
+
+	return map[string]any{"value": string(plaintext)}, nil
 }
 
 // Retrieve additional request context needed for rewrap processing

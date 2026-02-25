@@ -2,7 +2,14 @@
 
 package tdf
 
+import "maps"
+
 import "github.com/opentdf/platform/protocol/go/policy"
+
+// Names for special keys in the JSON object that is stringified and encrypted
+// within encrypted metadata
+const encMetadataKeyFileName = "file_name"
+const encMetadataKeyByteSize = "byte_size"
 
 // IntegrityAlgorithm specifies the cryptographic algorithm used for integrity verification.
 //
@@ -176,6 +183,12 @@ type WriterFinalizeConfig struct {
 	// successful attribute-based access control validation.
 	encryptedMetadata string
 
+	// resourceMetadata contains resource metadata to embed within encrypted metadata.
+	resourceMetadata map[string]any
+
+	// tracks if resource metadata has been set.
+	resourceMetadataSet bool
+
 	// payloadMimeType specifies the MIME type of the payload content.
 	// Used by readers to determine appropriate content handling.
 	payloadMimeType string
@@ -186,6 +199,7 @@ type WriterFinalizeConfig struct {
 	keepSegments []int
 }
 
+// Deprecated: use WithResourceMetadata
 // WithEncryptedMetadata includes encrypted metadata in the TDF.
 //
 // The metadata is encrypted and stored within key access objects, making it
@@ -204,6 +218,19 @@ type WriterFinalizeConfig struct {
 func WithEncryptedMetadata(metadata string) Option[*WriterFinalizeConfig] {
 	return func(c *WriterFinalizeConfig) {
 		c.encryptedMetadata = metadata
+	}
+}
+
+// WithResourceMetadata sets resource metadata fields for encrypted metadata.
+func WithResourceMetadata(fileName string, structuredMetadata map[string]any) Option[*WriterFinalizeConfig] {
+	return func(c *WriterFinalizeConfig) {
+		metadata := make(map[string]any, 2)
+		maps.Copy(metadata, structuredMetadata)
+		if fileName != "" {
+			metadata[encMetadataKeyFileName] = fileName
+		}
+		c.resourceMetadata = metadata
+		c.resourceMetadataSet = true
 	}
 }
 

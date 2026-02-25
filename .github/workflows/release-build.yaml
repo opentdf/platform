@@ -31,6 +31,10 @@ jobs:
       - name: "Set up Cloud SDK"
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
 
+      - name: "Configure gcloud as Docker credential helper"
+        run: |
+          gcloud auth configure-docker us-docker.pkg.dev --quiet
+
       - name: "Install Cosign"
         uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # 4.0.0
 

@@ -29,6 +29,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/entity"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	internalAuth "github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
@@ -72,6 +73,7 @@ type entityInfo struct {
 	EntityID string `json:"sub"`
 	ClientID string `json:"clientId"`
 	Token    string `json:"-"`
+	Metadata map[string]string
 }
 
 type kaoResult struct {
@@ -462,7 +464,7 @@ func extractPolicyBinding(policyBinding interface{}) (string, error) {
 	}
 }
 
-func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, error) {
+func getEntityInfo(ctx context.Context, logger *logger.Logger, auditedClaims []string) (*entityInfo, error) {
 	info := new(entityInfo)
 
 	token := ctxAuth.GetAccessTokenFromContext(ctx, logger)
@@ -482,8 +484,50 @@ func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, err
 	}
 
 	info.Token = ctxAuth.GetRawAccessTokenFromContext(ctx, logger)
+	info.Metadata = extractAuditedEntityMetadata(ctx, token, auditedClaims)
 
 	return info, nil
+}
+
+func extractAuditedEntityMetadata(ctx context.Context, token jwt.Token, auditedClaims []string) map[string]string {
+	if token == nil || len(auditedClaims) == 0 {
+		return nil
+	}
+
+	claimsMap, err := token.AsMap(ctx)
+	if err != nil {
+		return nil
+	}
+
+	metadata := make(map[string]string)
+	for _, claim := range auditedClaims {
+		if claim == "" {
+			continue
+		}
+		value := internalAuth.DotNotation(claimsMap, claim)
+		if value == nil {
+			continue
+		}
+		metadata[claim] = stringifyJWTClaimValue(value)
+	}
+
+	if len(metadata) == 0 {
+		return nil
+	}
+	return metadata
+}
+
+func stringifyJWTClaimValue(value any) string {
+	switch typed := value.(type) {
+	case string:
+		return typed
+	default:
+		encoded, err := json.Marshal(typed)
+		if err != nil {
+			return fmt.Sprint(typed)
+		}
+		return string(encoded)
+	}
 }
 
 func failedKAORewrapWithObligations(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest_WithKeyAccessObject, err error, requiredObligations []string) {
@@ -548,7 +592,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 		return nil, err
 	}
 
-	entityInfo, err := getEntityInfo(ctx, p.Logger)
+	entityInfo, err := getEntityInfo(ctx, p.Logger, p.KASConfig.AuditedEntityJWTClaims)
 	if err != nil {
 		p.Logger.DebugContext(ctx, "no entity info", slog.Any("error", err))
 		return nil, err
@@ -901,6 +945,9 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		EphemeralId: "rewrap-token",
 		Jwt:         entityInfo.Token,
 	}
+	if len(entityInfo.Metadata) > 0 {
+		tok.Metadata = entityInfo.Metadata
+	}
 
 	resourceMetadataByPolicy := buildResourceMetadataByPolicy(policyReqs, results)
 	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies, resourceMetadataByPolicy, additionalRewrapContext.Obligations.FulfillableFQNs)
@@ -968,13 +1015,14 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 
 			policyBinding := kao.GetKeyAccessObject().GetPolicyBinding().GetHash()
 			auditEventParams := audit.RewrapAuditEventParams{
-				Policy:        kasPolicy,
-				IsSuccess:     access,
-				TDFFormat:     "tdf3",
-				Algorithm:     req.GetAlgorithm(),
-				PolicyBinding: policyBinding,
-				KeyID:         kao.GetKeyAccessObject().GetKid(),
-				Metadata:      kaoRes.DecryptedMetadata,
+				Policy:         kasPolicy,
+				IsSuccess:      access,
+				TDFFormat:      "tdf3",
+				Algorithm:      req.GetAlgorithm(),
+				PolicyBinding:  policyBinding,
+				KeyID:          kao.GetKeyAccessObject().GetKid(),
+				Metadata:       kaoRes.DecryptedMetadata,
+				EntityMetadata: entityInfo.Metadata,
 			}
 
 			if !access {
@@ -1200,8 +1248,6 @@ Example:
 
 {
 	"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark","https://demo.com/obl/test/value/geofence"]},
-	"resourceMetadata": {"file_name": "report.csv", "byte_size": 12345},
-	"resourceMetadataByPolicy": {"policy-1": {"file_name": "report.csv", "byte_size": 12345}}
 }
 
 */

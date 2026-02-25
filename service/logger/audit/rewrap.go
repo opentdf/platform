@@ -20,13 +20,14 @@ type KasAttribute struct {
 }
 
 type RewrapAuditEventParams struct {
-	Policy        KasPolicy
-	IsSuccess     bool
-	TDFFormat     string
-	Algorithm     string
-	PolicyBinding string
-	KeyID         string
-	Metadata      map[string]any
+	Policy         KasPolicy
+	IsSuccess      bool
+	TDFFormat      string
+	Algorithm      string
+	PolicyBinding  string
+	KeyID          string
+	Metadata       map[string]any
+	EntityMetadata map[string]string
 }
 
 func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) (*EventObject, error) {
@@ -78,6 +79,9 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 
 	if len(params.Metadata) > 0 {
 		event.EventMetaData["decryptedMetadata"] = params.Metadata
+	}
+	if len(params.EntityMetadata) > 0 {
+		event.EventMetaData["entityMetadata"] = params.EntityMetadata
 	}
 
 	return event, nil

@@ -2,8 +2,8 @@ package auth
 
 import "strings"
 
-// dotNotation retrieves a value from a nested map using dot notation keys.
-func dotNotation(m map[string]any, key string) any {
+// DotNotation retrieves a value from a nested map using dot notation keys.
+func DotNotation(m map[string]any, key string) any {
 	keys := strings.Split(key, ".")
 	for i, k := range keys {
 		if i == len(keys)-1 {

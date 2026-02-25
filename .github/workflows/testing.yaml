@@ -30,10 +30,14 @@ jobs:
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v3"
 
-      - name: "Print the GitHub Actions OIDC claims"
-        uses: virtru-corp/.github/virtru-actions/security-actions/gha-oidc-debugger@main
+      - run: |
+          TOKEN_JSON=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE")
+          ID_TOKEN=$(echo "$TOKEN_JSON" | jq -r .value)
+          echo '```json' >>"$GITHUB_STEP_SUMMARY"
+          echo "$ID_TOKEN" | awk -F. '{print $2}' | base64 -d 2>/dev/null | jq -r | tee -a "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >>"$GITHUB_STEP_SUMMARY"
 
       - name: Sign the images with GitHub OIDC Token
         run: |
-          gcloud auth configure-docker us-docker.pkg.dev
+          gcloud auth configure-docker us-docker.pkg.dev --quiet
           docker pull us-docker.pkg.dev/prj-opentdf-4fc4/opentdf/platform:nightly

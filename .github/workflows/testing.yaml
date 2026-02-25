@@ -30,6 +30,8 @@ jobs:
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v3"
 
+      - name: "Print the GitHub Actions OIDC claims"
+        uses: virtru-corp/.github/virtru-actions/security-actions/gha-oidc-debugger@main
 
       - name: Sign the images with GitHub OIDC Token
         run: |

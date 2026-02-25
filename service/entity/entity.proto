@@ -31,6 +31,9 @@ message Entity {
     CATEGORY_ENVIRONMENT = 2;
   }
   Category category = 11;
+
+  // Optional metadata about the entity.
+  map<string, string> metadata = 12;
 }
 
 // A set of related PE and NPE

@@ -8,8 +8,10 @@ import "github.com/opentdf/platform/protocol/go/policy"
 
 // Names for special keys in the JSON object that is stringified and encrypted
 // within encrypted metadata
-const encMetadataKeyFileName = "file_name"
-const encMetadataKeyByteSize = "byte_size"
+const (
+	encMetadataKeyFileName = "file_name"
+	encMetadataKeyByteSize = "byte_size"
+)
 
 // IntegrityAlgorithm specifies the cryptographic algorithm used for integrity verification.
 //

@@ -902,7 +902,8 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		Jwt:         entityInfo.Token,
 	}
 
-	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies, additionalRewrapContext.Obligations.FulfillableFQNs)
+	resourceMetadataByPolicy := buildResourceMetadataByPolicy(policyReqs, results)
+	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies, resourceMetadataByPolicy, additionalRewrapContext.Obligations.FulfillableFQNs)
 	if accessErr != nil {
 		p.Logger.DebugContext(ctx,
 			"tdf3rewrap: cannot access policy",
@@ -1099,6 +1100,97 @@ func decryptKAOEncryptedMetadata(dek ocrypto.ProtectedKey, encryptedMetadata str
 	}
 
 	return map[string]any{"value": string(plaintext)}, nil
+}
+
+func buildResourceMetadataByPolicy(policyReqs map[*Policy]*kaspb.UnsignedRewrapRequest_WithPolicyRequest, results policyKAOResults) map[*Policy]map[string]string {
+	if len(policyReqs) == 0 || len(results) == 0 {
+		return nil
+	}
+
+	resourceMetadataByPolicy := make(map[*Policy]map[string]string)
+	for policy, req := range policyReqs {
+		if policy == nil || req == nil || req.GetPolicy() == nil {
+			continue
+		}
+		kaoResults := results[req.GetPolicy().GetId()]
+		resourceMetadata := resourceMetadataFromKAOResults(kaoResults)
+		if len(resourceMetadata) == 0 {
+			continue
+		}
+		resourceMetadataByPolicy[policy] = resourceMetadata
+	}
+	if len(resourceMetadataByPolicy) == 0 {
+		return nil
+	}
+	return resourceMetadataByPolicy
+}
+
+func resourceMetadataFromKAOResults(kaoResults map[string]kaoResult) map[string]string {
+	if len(kaoResults) == 0 {
+		return nil
+	}
+
+	kaoIDs := make([]string, 0, len(kaoResults))
+	for kaoID := range kaoResults {
+		kaoIDs = append(kaoIDs, kaoID)
+	}
+	sort.Strings(kaoIDs)
+
+	merged := make(map[string]any)
+	for _, kaoID := range kaoIDs {
+		metadata := extractResourceMetadata(kaoResults[kaoID].DecryptedMetadata)
+		if len(metadata) == 0 {
+			continue
+		}
+		for key, value := range metadata {
+			merged[key] = value
+		}
+	}
+
+	return stringifyResourceMetadata(merged)
+}
+
+func extractResourceMetadata(metadata map[string]any) map[string]any {
+	if len(metadata) == 0 {
+		return nil
+	}
+	if resourceMetadata, ok := metadata["resourceMetadata"]; ok {
+		resourceMetadataMap, ok := resourceMetadata.(map[string]any)
+		if !ok {
+			return nil
+		}
+		return resourceMetadataMap
+	}
+	return metadata
+}
+
+func stringifyResourceMetadata(metadata map[string]any) map[string]string {
+	if len(metadata) == 0 {
+		return nil
+	}
+
+	stringMetadata := make(map[string]string, len(metadata))
+	for key, value := range metadata {
+		if value == nil {
+			continue
+		}
+		switch typed := value.(type) {
+		case string:
+			stringMetadata[key] = typed
+		default:
+			encoded, err := json.Marshal(typed)
+			if err != nil {
+				stringMetadata[key] = fmt.Sprint(typed)
+				continue
+			}
+			stringMetadata[key] = string(encoded)
+		}
+	}
+
+	if len(stringMetadata) == 0 {
+		return nil
+	}
+	return stringMetadata
 }
 
 // Retrieve additional request context needed for rewrap processing

@@ -29,7 +29,7 @@ type PDPAccessResult struct {
 	RequiredObligations []string
 }
 
-func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies []*Policy, fulfillableObligationFQNs []string) ([]PDPAccessResult, error) {
+func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies []*Policy, resourceMetadataByPolicy map[*Policy]map[string]string, fulfillableObligationFQNs []string) ([]PDPAccessResult, error) {
 	var res []PDPAccessResult
 	var resources []*authzV2.Resource
 	idPolicyMap := make(map[string]*Policy)
@@ -44,14 +44,18 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 			for idx, attr := range policy.Body.DataAttributes {
 				attrValueFqns[idx] = attr.URI
 			}
-			resources = append(resources, &authzV2.Resource{
+			resource := &authzV2.Resource{
 				EphemeralId: id,
 				Resource: &authzV2.Resource_AttributeValues_{
 					AttributeValues: &authzV2.Resource_AttributeValues{
 						Fqns: attrValueFqns,
 					},
 				},
-			})
+			}
+			if metadata := resourceMetadataByPolicy[policy]; len(metadata) > 0 {
+				resource.Metadata = metadata
+			}
+			resources = append(resources, resource)
 			idPolicyMap[id] = policy
 		} else {
 			res = append(res, PDPAccessResult{Access: true, Policy: policy})

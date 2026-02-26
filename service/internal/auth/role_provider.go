@@ -53,7 +53,7 @@ func (p *jwtClaimsRoleProvider) Roles(_ context.Context, token jwt.Token, _ auth
 			)
 			return nil, nil
 		}
-		claim = dotNotation(claimMap, strings.Join(selectors[1:], "."))
+		claim = DotNotation(claimMap, strings.Join(selectors[1:], "."))
 		if claim == nil {
 			p.logger.Warn("claim not found",
 				slog.String("claim", p.groupsClaim),

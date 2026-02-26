@@ -3,6 +3,7 @@ package sdk
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"net"
 	"net/url"
 	"strings"
@@ -21,6 +22,9 @@ const (
 	ECKeySize256           = 256
 	ECKeySize384           = 384
 	ECKeySize521           = 521
+
+	encMetadataKeyFileName = "file_name"
+	encMetadataKeyByteSize = "byte_size"
 )
 
 type TDFFormat = int
@@ -79,6 +83,8 @@ type TDFConfig struct {
 	useHex                     bool
 	excludeVersionFromManifest bool
 	addDefaultAssertion        bool
+	resourceMetadata           map[string]any
+	resourceMetadataSet        bool
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -169,6 +175,20 @@ func withSplitPlan(p ...keySplitStep) TDFOption {
 func WithMetaData(metaData string) TDFOption {
 	return func(c *TDFConfig) error {
 		c.metaData = metaData
+		return nil
+	}
+}
+
+// WithResourceMetadata sets resource metadata fields for encrypted metadata.
+func WithResourceMetadata(fileName string, structuredMetadata map[string]any) TDFOption {
+	return func(c *TDFConfig) error {
+		metadata := make(map[string]any, 2)
+		maps.Copy(metadata, structuredMetadata)
+		if fileName != "" {
+			metadata[encMetadataKeyFileName] = fileName
+		}
+		c.resourceMetadata = metadata
+		c.resourceMetadataSet = true
 		return nil
 	}
 }

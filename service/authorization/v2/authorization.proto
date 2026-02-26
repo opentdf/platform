@@ -83,6 +83,9 @@ message Resource {
       uri: true
     }];
   }
+
+  // Optional metadata about the resource.
+  map<string, string> metadata = 4;
 }
 
 message ResourceDecision {

@@ -19,7 +19,7 @@ func TestDotNotation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := dotNotation(tt.input, tt.key)
+			result := DotNotation(tt.input, tt.key)
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}

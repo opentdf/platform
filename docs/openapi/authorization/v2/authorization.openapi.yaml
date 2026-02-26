@@ -488,6 +488,13 @@ components:
           type: string
           title: ephemeral_id
           description: ephemeral id for tracking between request and response
+        metadata:
+          type: object
+          title: metadata
+          additionalProperties:
+            type: string
+            title: value
+          description: Optional metadata about the resource.
       title: Resource
       additionalProperties: false
       description: Either a set of attribute values (such as those on a TDF) or a registered resource value
@@ -500,6 +507,17 @@ components:
             type: string
           title: fqns
       title: AttributeValues
+      additionalProperties: false
+    authorization.v2.Resource.MetadataEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: MetadataEntry
       additionalProperties: false
     authorization.v2.ResourceDecision:
       type: object
@@ -594,9 +612,27 @@ components:
         category:
           title: category
           $ref: '#/components/schemas/entity.Entity.Category'
+        metadata:
+          type: object
+          title: metadata
+          additionalProperties:
+            type: string
+            title: value
+          description: Optional metadata about the entity.
       title: Entity
       additionalProperties: false
       description: PE (Person Entity) or NPE (Non-Person Entity)
+    entity.Entity.MetadataEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: MetadataEntry
+      additionalProperties: false
     entity.EntityChain:
       type: object
       properties:

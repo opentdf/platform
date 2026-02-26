@@ -59,8 +59,14 @@ type obligationContext struct {
 	FulfillableFQNs []string `json:"fulfillableFQNs"`
 }
 
+type resourceMetadata map[string]any
+
+type resourceMetadataByPolicy map[string]resourceMetadata
+
 type additionalRewrapContext struct {
-	Obligations obligationContext `json:"obligations"`
+	Obligations      obligationContext        `json:"obligations"`
+	Resource         resourceMetadata         `json:"resourceMetadata,omitempty"`
+	ResourceByPolicy resourceMetadataByPolicy `json:"resourceMetadataByPolicy,omitempty"`
 }
 
 func newKASClient(httpClient *http.Client, options []connect.ClientOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.KeyPair, fulfillableObligations []string) *KASClient {
@@ -75,7 +81,7 @@ func newKASClient(httpClient *http.Client, options []connect.ClientOption, acces
 }
 
 // there is no connection caching as of now
-func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.UnsignedRewrapRequest_WithPolicyRequest, pubKey string) (*kas.RewrapResponse, error) {
+func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.UnsignedRewrapRequest_WithPolicyRequest, pubKey string, resourceMetadataByPolicy resourceMetadataByPolicy) (*kas.RewrapResponse, error) {
 	rewrapRequest, err := k.getRewrapRequest(requests, pubKey)
 	if err != nil {
 		return nil, err
@@ -88,7 +94,7 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.Unsig
 
 	serviceClient := kasconnect.NewAccessServiceClient(k.httpClient, parsedURL, k.connectOptions...)
 
-	rewrapReq, err := k.newConnectRewrapRequest(rewrapRequest)
+	rewrapReq, err := k.newConnectRewrapRequest(rewrapRequest, resourceMetadataByPolicy)
 	if err != nil {
 		return nil, fmt.Errorf("error creating rewrap request: %w", err)
 	}
@@ -102,12 +108,15 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.Unsig
 	return response.Msg, nil
 }
 
-func (k *KASClient) newConnectRewrapRequest(rewrapReq *kas.RewrapRequest) (*connect.Request[kas.RewrapRequest], error) {
+func (k *KASClient) newConnectRewrapRequest(rewrapReq *kas.RewrapRequest, resourceMetadataByPolicy resourceMetadataByPolicy) (*connect.Request[kas.RewrapRequest], error) {
 	req := connect.NewRequest(rewrapReq)
+	resourceMetadata := singleResourceMetadata(resourceMetadataByPolicy)
 	rewrapContext := &additionalRewrapContext{
 		Obligations: obligationContext{
 			FulfillableFQNs: k.fulfillableObligations,
 		},
+		Resource:         resourceMetadata,
+		ResourceByPolicy: resourceMetadataByPolicy,
 	}
 	rewrapContextJSON, err := json.Marshal(rewrapContext)
 	if err != nil {
@@ -170,7 +179,7 @@ func upgradeRewrapErrorV1(err error, requests []*kas.UnsignedRewrapRequest_WithP
 	}, nil
 }
 
-func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error) {
+func (k *KASClient) unwrap(ctx context.Context, resourceMetadataByPolicy resourceMetadataByPolicy, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error) {
 	if k.sessionKey == nil {
 		return nil, errors.New("session key is nil")
 	}
@@ -178,15 +187,61 @@ func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapR
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.PublicKeyInPermFormat failed: %w", err)
 	}
-	response, err := k.makeRewrapRequest(ctx, requests, pubKey)
+	response, err := k.makeRewrapRequest(ctx, requests, pubKey, resourceMetadataByPolicy)
 	if err != nil {
 		return nil, fmt.Errorf("error making rewrap request to kas: %w", err)
 	}
 
+	var policyResults map[string][]kaoResult
 	if ocrypto.IsECKeyType(k.sessionKey.GetKeyType()) {
-		return k.handleECKeyResponse(response)
+		policyResults, err = k.handleECKeyResponse(response)
+	} else {
+		policyResults, err = k.handleRSAKeyResponse(response)
 	}
-	return k.handleRSAKeyResponse(response)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(requests) == 1 {
+		return coalesceSinglePolicyResults(policyResults, requests[0]), nil
+	}
+	return policyResults, nil
+}
+
+func singleResourceMetadata(resourceMetadataByPolicy resourceMetadataByPolicy) resourceMetadata {
+	if len(resourceMetadataByPolicy) != 1 {
+		return nil
+	}
+	for _, metadata := range resourceMetadataByPolicy {
+		if len(metadata) > 0 {
+			return metadata
+		}
+	}
+	return nil
+}
+
+func coalesceSinglePolicyResults(results map[string][]kaoResult, req *kas.UnsignedRewrapRequest_WithPolicyRequest) map[string][]kaoResult {
+	if req == nil || req.GetPolicy() == nil {
+		return results
+	}
+	policyID := req.GetPolicy().GetId()
+	if policyID == "" {
+		return results
+	}
+	if len(results) == 0 {
+		return results
+	}
+	if len(results) == 1 {
+		if res, ok := results[policyID]; ok {
+			return map[string][]kaoResult{policyID: res}
+		}
+	}
+
+	merged := make([]kaoResult, 0, len(results))
+	for _, res := range results {
+		merged = append(merged, res...)
+	}
+	return map[string][]kaoResult{policyID: merged}
 }
 
 func (k *KASClient) handleECKeyResponse(response *kas.RewrapResponse) (map[string][]kaoResult, error) {

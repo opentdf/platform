@@ -11,6 +11,14 @@ logger:
   level: debug
   type: text
   output: stderr
+# Optional KAS-specific settings (unused in core mode).
+services:
+  kas:
+    # Optional list of JWT claim names to log in audit and forward to auth decisions.
+    # Supports dot notation for nested claims (e.g., realm_access.roles).
+    # audited_entity_jwt_claims:
+    #   - sub
+    #   - realm_access.roles
 # DB and Server configurations are defaulted for local development
 # db:
 #   host: localhost

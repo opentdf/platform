@@ -16,6 +16,7 @@ type BulkTDF struct {
 	Writer               io.Writer
 	Error                error
 	TriggeredObligations RequiredObligations
+	ResourceMetadata     resourceMetadata
 }
 
 type BulkDecryptRequest struct {
@@ -153,6 +154,12 @@ func (s SDK) prepareDecryptors(ctx context.Context, bulkReq *BulkDecryptRequest)
 			continue
 		}
 
+		if len(tdf.ResourceMetadata) == 0 {
+			if handler, ok := decryptor.(*tdf3DecryptHandler); ok && len(handler.reader.resourceMetadata) > 0 {
+				tdf.ResourceMetadata = handler.reader.resourceMetadata
+			}
+		}
+
 		req, err := decryptor.CreateRewrapRequest(ctx)
 		if err != nil {
 			tdf.Error = err
@@ -170,7 +177,7 @@ func (s SDK) prepareDecryptors(ctx context.Context, bulkReq *BulkDecryptRequest)
 }
 
 // performRewraps executes all rewrap requests with KAS servers
-func (s SDK) performRewraps(ctx context.Context, bulkReq *BulkDecryptRequest, kasRewrapRequests map[string][]*kas.UnsignedRewrapRequest_WithPolicyRequest, fulfillableObligations []string) (map[string][]kaoResult, error) {
+func (s SDK) performRewraps(ctx context.Context, bulkReq *BulkDecryptRequest, kasRewrapRequests map[string][]*kas.UnsignedRewrapRequest_WithPolicyRequest, fulfillableObligations []string, policyTDF map[string]*BulkTDF) (map[string][]kaoResult, error) {
 	kasClient := newKASClient(s.conn.Client, s.conn.Options, s.tokenSource, s.kasSessionKey, fulfillableObligations)
 	allRewrapResp := make(map[string][]kaoResult)
 	var err error
@@ -193,7 +200,7 @@ func (s SDK) performRewraps(ctx context.Context, bulkReq *BulkDecryptRequest, ka
 		}
 
 		var rewrapResp map[string][]kaoResult
-		rewrapResp, err = kasClient.unwrap(ctx, rewrapRequests...)
+		rewrapResp, err = kasClient.unwrap(ctx, buildResourceMetadataByPolicy(rewrapRequests, policyTDF), rewrapRequests...)
 
 		for id, res := range rewrapResp {
 			allRewrapResp[id] = append(allRewrapResp[id], res...)
@@ -205,6 +212,31 @@ func (s SDK) performRewraps(ctx context.Context, bulkReq *BulkDecryptRequest, ka
 	}
 
 	return allRewrapResp, nil
+}
+
+func buildResourceMetadataByPolicy(requests []*kas.UnsignedRewrapRequest_WithPolicyRequest, policyTDF map[string]*BulkTDF) resourceMetadataByPolicy {
+	if len(policyTDF) == 0 {
+		return nil
+	}
+	metadataByPolicy := make(resourceMetadataByPolicy)
+	for _, req := range requests {
+		if req == nil || req.GetPolicy() == nil {
+			continue
+		}
+		policyID := req.GetPolicy().GetId()
+		if policyID == "" {
+			continue
+		}
+		tdf, ok := policyTDF[policyID]
+		if !ok || len(tdf.ResourceMetadata) == 0 {
+			continue
+		}
+		metadataByPolicy[policyID] = tdf.ResourceMetadata
+	}
+	if len(metadataByPolicy) == 0 {
+		return nil
+	}
+	return metadataByPolicy
 }
 
 // PrepareBulkDecrypt does everything except decrypt from the Bulk Decrypt
@@ -233,7 +265,7 @@ func (s SDK) PrepareBulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) 
 	}
 
 	// Perform rewraps
-	allRewrapResp, err := s.performRewraps(ctx, bulkReq, kasRewrapRequests, fulfillableObligations)
+	allRewrapResp, err := s.performRewraps(ctx, bulkReq, kasRewrapRequests, fulfillableObligations, policyTDF)
 	if err != nil {
 		return nil, err
 	}

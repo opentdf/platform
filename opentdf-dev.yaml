@@ -23,6 +23,11 @@ services:
     preview:
       ec_tdf_enabled: false
       key_management: false
+    # Optional list of JWT claim names to log in audit and forward to auth decisions.
+    # Supports dot notation for nested claims (e.g., realm_access.roles).
+    # audited_entity_jwt_claims:
+    #   - sub
+    #   - realm_access.roles
     root_key: a8c4824daafcfa38ed0d13002e92b08720e6c4fcee67d52e954c1a6e045907d1 # For local development testing only
     keyring:
       - kid: e1

@@ -393,7 +393,7 @@ func TestKasKeyCache_Expiration(t *testing.T) {
 
 func Test_newConnectRewrapRequest(t *testing.T) {
 	c := newKASClient(nil, nil, nil, nil, []string{"https://example.com/attr/attr1/value/val1"})
-	req, err := c.newConnectRewrapRequest(&kaspb.RewrapRequest{})
+	req, err := c.newConnectRewrapRequest(&kaspb.RewrapRequest{}, nil)
 	require.NoError(t, err)
 	actualHeader := req.Header().Get(additionalRewrapContextHeader)
 	require.NotEmpty(t, actualHeader)
@@ -404,6 +404,79 @@ func Test_newConnectRewrapRequest(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, rewrapContext.Obligations.FulfillableFQNs, 1)
 	require.Equal(t, "https://example.com/attr/attr1/value/val1", rewrapContext.Obligations.FulfillableFQNs[0])
+}
+
+func Test_newConnectRewrapRequest_WithResourceMetadata(t *testing.T) {
+	c := newKASClient(nil, nil, nil, nil, nil)
+	metadataByPolicy := resourceMetadataByPolicy{
+		"policy": {
+			"file_name": "sample.txt",
+			"byte_size": int64(1234),
+		},
+	}
+	req, err := c.newConnectRewrapRequest(&kaspb.RewrapRequest{}, metadataByPolicy)
+	require.NoError(t, err)
+	actualHeader := req.Header().Get(additionalRewrapContextHeader)
+	require.NotEmpty(t, actualHeader)
+
+	decoded, err := base64.StdEncoding.DecodeString(actualHeader)
+	require.NoError(t, err)
+
+	var rewrapContext additionalRewrapContext
+	err = json.Unmarshal(decoded, &rewrapContext)
+	require.NoError(t, err)
+
+	require.NotNil(t, rewrapContext.Resource)
+	assert.Equal(t, "sample.txt", rewrapContext.Resource["file_name"])
+	assert.EqualValues(t, 1234, rewrapContext.Resource["byte_size"])
+}
+
+func Test_newConnectRewrapRequest_WithResourceMetadataByPolicy(t *testing.T) {
+	c := newKASClient(nil, nil, nil, nil, nil)
+	metadataByPolicy := resourceMetadataByPolicy{
+		"policy-1": {
+			"file_name": "sample.txt",
+			"byte_size": int64(42),
+		},
+	}
+	req, err := c.newConnectRewrapRequest(&kaspb.RewrapRequest{}, metadataByPolicy)
+	require.NoError(t, err)
+	actualHeader := req.Header().Get(additionalRewrapContextHeader)
+	require.NotEmpty(t, actualHeader)
+
+	decoded, err := base64.StdEncoding.DecodeString(actualHeader)
+	require.NoError(t, err)
+
+	var rewrapContext additionalRewrapContext
+	err = json.Unmarshal(decoded, &rewrapContext)
+	require.NoError(t, err)
+
+	require.NotNil(t, rewrapContext.ResourceByPolicy)
+	policyMetadata, ok := rewrapContext.ResourceByPolicy["policy-1"]
+	require.True(t, ok)
+	assert.Equal(t, "sample.txt", policyMetadata["file_name"])
+	assert.EqualValues(t, 42, policyMetadata["byte_size"])
+}
+
+func Test_coalesceSinglePolicyResults(t *testing.T) {
+	req := &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+		Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{
+			Id: "policy",
+		},
+	}
+	results := map[string][]kaoResult{
+		"other": {
+			{KeyAccessObjectID: "kao-1"},
+			{KeyAccessObjectID: "kao-2"},
+		},
+	}
+
+	coalesced := coalesceSinglePolicyResults(results, req)
+	require.Len(t, coalesced, 1)
+	policyResults := coalesced["policy"]
+	require.Len(t, policyResults, 2)
+	assert.Equal(t, "kao-1", policyResults[0].KeyAccessObjectID)
+	assert.Equal(t, "kao-2", policyResults[1].KeyAccessObjectID)
 }
 
 func Test_retrieveObligationsFromMetadata(t *testing.T) {

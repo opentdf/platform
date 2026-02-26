@@ -147,6 +147,7 @@ func (p *JustInTimePDP) GetDecision(
 	)
 
 	entityMetadata := entityMetadataFromIdentifier(entityIdentifier)
+	resourceMetadata := resourceMetadataFromResources(resources)
 
 	// Because there are three possible types of entities, check obligations first to more easily handle decisioning logic
 	obligationDecision, err := p.obligationsPDP.GetAllTriggeredObligationsAreFulfilled(
@@ -203,6 +204,7 @@ func (p *JustInTimePDP) GetDecision(
 			obligationDecision,
 			auditResourceDecisions,
 			entityMetadata,
+			resourceMetadata,
 		)
 		return decision, nil
 
@@ -255,6 +257,7 @@ func (p *JustInTimePDP) GetDecision(
 			obligationDecision,
 			auditResourceDecisions,
 			entityMetadata,
+			resourceMetadata,
 		)
 	}
 
@@ -451,6 +454,7 @@ func (p *JustInTimePDP) auditDecision(
 	obligationDecision obligations.ObligationPolicyDecision,
 	auditResourceDecisions []ResourceDecision,
 	entityMetadata any,
+	resourceMetadata any,
 ) {
 	// Determine audit decision result
 	auditDecision := audit.GetDecisionResultDeny
@@ -467,6 +471,7 @@ func (p *JustInTimePDP) auditDecision(
 		ObligationsSatisfied:           obligationDecision.AllObligationsSatisfied,
 		ResourceDecisions:              auditResourceDecisions,
 		EntityMetadata:                 entityMetadata,
+		ResourceMetadata:               resourceMetadata,
 	})
 }
 
@@ -507,4 +512,31 @@ func entityMetadataFromChain(chain *entity.EntityChain) map[string]map[string]st
 		return nil
 	}
 	return entityMetadata
+}
+
+func resourceMetadataFromResources(resources []*authzV2.Resource) map[string]map[string]string {
+	if len(resources) == 0 {
+		return nil
+	}
+
+	resourceMetadata := make(map[string]map[string]string)
+	for idx, resource := range resources {
+		if resource == nil {
+			continue
+		}
+		metadata := resource.GetMetadata()
+		if len(metadata) == 0 {
+			continue
+		}
+		resourceID := resource.GetEphemeralId()
+		if resourceID == "" {
+			resourceID = fmt.Sprintf("resource-%d", idx)
+		}
+		resourceMetadata[resourceID] = metadata
+	}
+
+	if len(resourceMetadata) == 0 {
+		return nil
+	}
+	return resourceMetadata
 }

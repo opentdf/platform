@@ -1275,10 +1275,11 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.Unsigned
 		kaoReq := &kas.UnsignedRewrapRequest_WithKeyAccessObject{
 			KeyAccessObjectId: kaoID,
 			KeyAccessObject: &kas.KeyAccess{
-				KeyType:  kao.KeyType,
-				KasUrl:   kao.KasURL,
-				Kid:      kao.KID,
-				Protocol: kao.Protocol,
+				EncryptedMetadata: kao.EncryptedMetadata,
+				KeyType:           kao.KeyType,
+				KasUrl:            kao.KasURL,
+				Kid:               kao.KID,
+				Protocol:          kao.Protocol,
 				PolicyBinding: &kas.PolicyBinding{
 					Hash:      hash,
 					Algorithm: alg,

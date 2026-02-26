@@ -59,3 +59,32 @@ func TestEntityMetadataFromIdentifierEntityChain(t *testing.T) {
 		},
 	}, metadata)
 }
+
+func TestResourceMetadataFromResources(t *testing.T) {
+	resources := []*authzV2.Resource{
+		{
+			EphemeralId: "resource-a",
+			Metadata: map[string]string{
+				"file_name": "a.txt",
+			},
+		},
+		{
+			Metadata: map[string]string{
+				"file_name": "b.txt",
+			},
+		},
+		{
+			EphemeralId: "resource-c",
+		},
+	}
+
+	metadata := resourceMetadataFromResources(resources)
+	require.Equal(t, map[string]map[string]string{
+		"resource-a": {
+			"file_name": "a.txt",
+		},
+		"resource-1": {
+			"file_name": "b.txt",
+		},
+	}, metadata)
+}

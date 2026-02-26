@@ -53,6 +53,7 @@ type GetDecisionV2EventParams struct {
 	// Allow ResourceDecisions to be typed by the caller as structure is in-flight
 	ResourceDecisions any
 	EntityMetadata    any
+	ResourceMetadata  any
 }
 
 func CreateGetDecisionEvent(ctx context.Context, params GetDecisionEventParams) (*EventObject, error) {
@@ -121,6 +122,9 @@ func CreateV2GetDecisionEvent(ctx context.Context, params GetDecisionV2EventPara
 	}
 	if params.EntityMetadata != nil {
 		eventMetadata["entity_metadata"] = params.EntityMetadata
+	}
+	if params.ResourceMetadata != nil {
+		eventMetadata["resource_metadata"] = params.ResourceMetadata
 	}
 
 	return &EventObject{

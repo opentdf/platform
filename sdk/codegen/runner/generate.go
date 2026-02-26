@@ -177,12 +177,12 @@ func New%s%s%sConnectWrapper(httpClient connect.HTTPClient, baseURL string, opts
 func generateInterfaceType(interfaceName string, methods []string, packageName, prefix, suffix string) string {
 	// Generate the interface type definition
 	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf(`
+	fmt.Fprintf(&builder, `
 type %s%s%s interface {
-`, prefix, interfaceName, suffix))
+`, prefix, interfaceName, suffix)
 	for _, method := range methods {
-		builder.WriteString(fmt.Sprintf(`	%s(ctx context.Context, req *%s.%sRequest) (*%s.%sResponse, error)
-`, method, packageName, method, packageName, method))
+		fmt.Fprintf(&builder, `	%s(ctx context.Context, req *%s.%sRequest) (*%s.%sResponse, error)
+`, method, packageName, method, packageName, method)
 	}
 	builder.WriteString("}\n")
 	return builder.String()

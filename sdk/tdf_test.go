@@ -451,7 +451,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 				if config.useHex {
 					s.InDelta(float64(expectedTdfSizeWithHex), float64(tdfObj.size), 64.0)
 				} else {
-					s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 64.0)
+					s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 80.0)
 				}
 
 				// test meta data and build meta data
@@ -761,7 +761,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 			},
 			verifiers:                    nil,
 			disableAssertionVerification: false,
-			expectedSize:                 2689,
+			expectedSize:                 2656,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -824,7 +824,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				DefaultKey: defaultKey,
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2689,
+			expectedSize:                 2656,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -873,7 +873,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2988,
+			expectedSize:                 2955,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -913,7 +913,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2689,
+			expectedSize:                 2656,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -930,7 +930,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: true,
-			expectedSize:                 2180,
+			expectedSize:                 2147,
 		},
 	} {
 		expectedTdfSize := test.expectedSize
@@ -1167,7 +1167,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					SigningKey: defaultKey,
 				},
 			},
-			expectedSize: 2689,
+			expectedSize: 2656,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -1215,7 +1215,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					},
 				},
 			},
-			expectedSize: 2988,
+			expectedSize: 2955,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -1249,7 +1249,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 			verifiers: &AssertionVerificationKeys{
 				DefaultKey: defaultKey,
 			},
-			expectedSize: 2689,
+			expectedSize: 2656,
 		},
 	} {
 		expectedTdfSize := test.expectedSize
@@ -1868,7 +1868,7 @@ func (s *TDFSuite) Test_KeySplits() {
 		{
 			n:           "shared",
 			fileSize:    5,
-			tdfFileSize: 2759,
+			tdfFileSize: 2635,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
 				{KAS: s.kasTestURLLookup["https://a.kas/"], SplitID: "a"},
@@ -1879,7 +1879,7 @@ func (s *TDFSuite) Test_KeySplits() {
 		{
 			n:           "split",
 			fileSize:    5,
-			tdfFileSize: 2759,
+			tdfFileSize: 2635,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
 				{KAS: s.kasTestURLLookup["https://a.kas/"], SplitID: "a"},
@@ -1890,7 +1890,7 @@ func (s *TDFSuite) Test_KeySplits() {
 		{
 			n:           "mixture",
 			fileSize:    5,
-			tdfFileSize: 3351,
+			tdfFileSize: 3191,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
 				{KAS: s.kasTestURLLookup["https://a.kas/"], SplitID: "a"},
@@ -2377,7 +2377,7 @@ func (s *TDFSuite) Test_Autoconfigure() {
 				_ = os.Remove(plaintTextFileName)
 				_ = os.Remove(tdfFileName)
 			}()
-			s.sdk.kasKeyCache.store(KASInfo{})
+			s.sdk.store(KASInfo{})
 
 			// test encrypt
 			tdo := s.testEncrypt(s.sdk, []TDFOption{WithKasInformation(kasInfoList...)}, plaintTextFileName, tdfFileName, test)

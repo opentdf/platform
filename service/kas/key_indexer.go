@@ -26,8 +26,8 @@ var ErrNoActiveKeyForAlgorithm = errors.New("no active key found for specified a
 type KeyIndexer struct {
 	// SDK is the SDK instance used to interact with the platform
 	sdk *sdk.SDK
-	// KasURI
-	kasURI string
+	// KAS URI resolver
+	resolver trust.RegisteredKasURIResolver
 	// Logger is the logger instance used for logging
 	log *logger.Logger
 }
@@ -38,11 +38,11 @@ type KeyAdapter struct {
 	log *logger.Logger
 }
 
-func NewPlatformKeyIndexer(sdk *sdk.SDK, kasURI string, l *logger.Logger) *KeyIndexer {
+func NewPlatformKeyIndexer(sdk *sdk.SDK, resolver trust.RegisteredKasURIResolver, l *logger.Logger) *KeyIndexer {
 	return &KeyIndexer{
-		sdk:    sdk,
-		kasURI: kasURI,
-		log:    l,
+		sdk:      sdk,
+		resolver: resolver,
+		log:      l,
 	}
 }
 
@@ -83,7 +83,11 @@ func convertAlgToEnum(alg string) (policy.Algorithm, error) {
 }
 
 func (p *KeyIndexer) String() string {
-	return fmt.Sprintf("PlatformKeyIndexer[%s]", p.kasURI)
+	kasURI, err := p.resolveKASURI(context.Background())
+	if err != nil {
+		return "PlatformKeyIndexer[unresolved]"
+	}
+	return fmt.Sprintf("PlatformKeyIndexer[%s], %s", kasURI, p.resolver.String())
 }
 
 func (p *KeyIndexer) LogValue() slog.Value {
@@ -91,6 +95,10 @@ func (p *KeyIndexer) LogValue() slog.Value {
 }
 
 func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (trust.KeyDetails, error) {
+	kasURI, err := p.resolveKASURI(ctx)
+	if err != nil {
+		return nil, err
+	}
 	alg, err := convertAlgToEnum(algorithm)
 	if err != nil {
 		return nil, err
@@ -104,7 +112,7 @@ func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, i
 	req := &kasregistry.ListKeysRequest{
 		KeyAlgorithm: alg,
 		KasFilter: &kasregistry.ListKeysRequest_KasUri{
-			KasUri: p.kasURI,
+			KasUri: kasURI,
 		},
 		Legacy: legacy,
 	}
@@ -132,11 +140,15 @@ func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, i
 }
 
 func (p *KeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
+	kasURI, err := p.resolveKASURI(ctx)
+	if err != nil {
+		return nil, err
+	}
 	req := &kasregistry.GetKeyRequest{
 		Identifier: &kasregistry.GetKeyRequest_Key{
 			Key: &kasregistry.KasKeyIdentifier{
 				Identifier: &kasregistry.KasKeyIdentifier_Uri{
-					Uri: p.kasURI,
+					Uri: kasURI,
 				},
 				Kid: string(id),
 			},
@@ -159,6 +171,10 @@ func (p *KeyIndexer) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
 }
 
 func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
+	kasURI, err := p.resolveKASURI(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var legacyOnly *bool
 	if opts.LegacyOnly {
 		legacyOnly = &opts.LegacyOnly
@@ -166,7 +182,7 @@ func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions
 
 	req := &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasUri{
-			KasUri: p.kasURI,
+			KasUri: kasURI,
 		},
 		Legacy: legacyOnly,
 	}
@@ -299,4 +315,11 @@ func (p *KeyAdapter) ExportPublicKey(ctx context.Context, format trust.KeyType) 
 
 func (p *KeyAdapter) ExportCertificate(_ context.Context) (string, error) {
 	return "", errors.New("not implemented")
+}
+
+func (p *KeyIndexer) resolveKASURI(ctx context.Context) (string, error) {
+	if p.resolver == nil {
+		return "", errors.New("missing registered KAS URI resolver")
+	}
+	return p.resolver.ResolveURI(ctx)
 }

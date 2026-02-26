@@ -288,9 +288,11 @@ func Start(f ...StartOptions) error {
 		otdf:                   otdf,
 		client:                 client,
 		keyManagerCtxFactories: startConfig.trustKeyManagerCtxs,
+		kasURIResolver:         startConfig.kasURIResolver,
 		logger:                 logger,
 		reg:                    svcRegistry,
 		cacheManager:           cacheManager,
+		dbClientFactory:        startConfig.dbClientFactory,
 	})
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))

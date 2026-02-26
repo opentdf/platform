@@ -2,16 +2,22 @@ package server
 
 import (
 	"context"
+	"embed"
 
 	"connectrpc.com/connect"
 	"github.com/casbin/casbin/v2/persist"
+	logging "github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/trust"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type StartOptions func(StartConfig) StartConfig
+
+type DBClientFactory func(ctx context.Context, logCfg logging.Config, dbCfg db.Config, tracer trace.Tracer, ns string, migrations *embed.FS) (*db.Client, error)
 
 type StartConfig struct {
 	ConfigKey             string
@@ -25,11 +31,13 @@ type StartConfig struct {
 	casbinAdapter         persist.Adapter
 	configLoaders         []config.Loader
 	configLoaderOrder     []string
+	dbClientFactory       DBClientFactory
 
 	extraConnectInterceptors []connect.Interceptor
 	extraIPCInterceptors     []connect.Interceptor
 
 	trustKeyManagerCtxs []trust.NamedKeyManagerCtxFactory
+	kasURIResolver      trust.RegisteredKasURIResolver
 
 	authzRoleProvider          authz.RoleProvider
 	authzRoleProviderFactories map[string]authz.RoleProviderFactory
@@ -211,6 +219,14 @@ func WithTrustKeyManagerCtxFactories(factories ...trust.NamedKeyManagerCtxFactor
 	}
 }
 
+// WithRegisteredKasURIResolver provides a resolver for the registered KAS URI.
+func WithRegisteredKasURIResolver(resolver trust.RegisteredKasURIResolver) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.kasURIResolver = resolver
+		return c
+	}
+}
+
 // WithAdditionalCORSHeaders appends additional request headers to allow via CORS.
 // These are merged with headers from YAML config (server.cors.allowedheaders and
 // server.cors.additionalheaders). Deduplication is handled automatically with
@@ -257,6 +273,15 @@ func WithAdditionalCORSMethods(methods ...string) StartOptions {
 func WithAdditionalCORSExposedHeaders(headers ...string) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.additionalCORSExposedHeaders = append(c.additionalCORSExposedHeaders, headers...)
+		return c
+	}
+}
+
+// WithDBClientFactory option sets a factory for creating database clients.
+// When set, the factory is responsible for all database client decisions.
+func WithDBClientFactory(factory DBClientFactory) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.dbClientFactory = factory
 		return c
 	}
 }

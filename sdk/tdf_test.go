@@ -468,7 +468,12 @@ func (s *TDFSuite) Test_SimpleTDF() {
 
 				unencryptedMetaData, err := r.UnencryptedMetadata()
 				s.Require().NoError(err)
-				s.Equal(metaData, unencryptedMetaData)
+				var metadata map[string]any
+				s.Require().NoError(json.Unmarshal(unencryptedMetaData, &metadata))
+				s.Equal("openTDF go sdk", metadata["displayName"])
+				resourceMetadata, ok := metadata["resourceMetadata"].(map[string]any)
+				s.Require().True(ok, "resourceMetadata missing")
+				s.Equal(float64(len(plainText)), resourceMetadata[encMetadataKeyByteSize])
 
 				dataAttributes, err := r.DataAttributes()
 				s.Require().NoError(err)

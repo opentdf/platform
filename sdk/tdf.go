@@ -183,6 +183,13 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
 	}
 
+	resourceMetadata := buildResourceMetadata(tdfConfig, inputSize)
+	mergedMetadata, err := mergeEncryptedMetadata(tdfConfig.metaData, resourceMetadata)
+	if err != nil {
+		return nil, fmt.Errorf("merge encrypted metadata failed: %w", err)
+	}
+	tdfConfig.metaData = mergedMetadata
+
 	err = tdfConfig.initKAOTemplate(ctx, s)
 	if err != nil {
 		return nil, err

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/opentdf/platform/compare/lib/identifier/v0.2.0...lib/identifier/v0.3.0) (2026-02-27)
+
+
+### Bug Fixes
+
+* Go 1.25 ([#3053](https://github.com/opentdf/platform/issues/3053)) ([65eb7c3](https://github.com/opentdf/platform/commit/65eb7c3d5fe1892de1e4fabb9b3b7894742c3f02))
+
 ## [0.2.0](https://github.com/opentdf/platform/compare/lib/identifier/v0.1.0...lib/identifier/v0.2.0) (2025-09-26)
 
 

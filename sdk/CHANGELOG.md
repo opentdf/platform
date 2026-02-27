@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.14.0](https://github.com/opentdf/platform/compare/sdk/v0.13.0...sdk/v0.14.0) (2026-02-27)
+
+
+### Features
+
+* **sdk:** DSPX-2418 add attribute discovery methods ([#3082](https://github.com/opentdf/platform/issues/3082)) ([aeeaadd](https://github.com/opentdf/platform/commit/aeeaaddc804ede0a19780b1a9c7a5261076faee7))
+
+
+### Bug Fixes
+
+* **policy:** order List* results by created_at ([#3088](https://github.com/opentdf/platform/issues/3088)) ([ea90ac2](https://github.com/opentdf/platform/commit/ea90ac279abbdf796d1cbe8efd8bac9c8c62de85))
+
 ## [0.13.0](https://github.com/opentdf/platform/compare/sdk/v0.12.0...sdk/v0.13.0) (2026-02-17)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/opentdf/platform/compare/service/v0.13.0...service/v0.14.0) (2026-02-27)
+
+
+### Bug Fixes
+
+* **policy:** order List* results by created_at ([#3088](https://github.com/opentdf/platform/issues/3088)) ([ea90ac2](https://github.com/opentdf/platform/commit/ea90ac279abbdf796d1cbe8efd8bac9c8c62de85))
+
 ## [0.13.0](https://github.com/opentdf/platform/compare/service/v0.12.0...service/v0.13.0) (2026-02-18)
 
 

@@ -8,6 +8,8 @@ use (
 	./lib/ocrypto
 	./protocol/go
 	./sdk
+	./sdk/experimental/tdf/wasm/tinyjson
+	./sdk/experimental/tdf/wasm/zipstream
 	./service
 	./tests-bdd
 )

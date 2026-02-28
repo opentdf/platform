@@ -5,7 +5,6 @@ package tdf
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -107,7 +106,7 @@ func buildKeyAccessObjects(result *keysplit.SplitResult, policyBytes []byte, met
 }
 
 // createPolicyBinding creates an HMAC binding between the key and policy
-func createPolicyBinding(symKey []byte, base64PolicyObject string) any {
+func createPolicyBinding(symKey []byte, base64PolicyObject string) PolicyBinding {
 	// Create HMAC hash of the policy using the symmetric key
 	hmacHash := ocrypto.CalculateSHA256Hmac(symKey, []byte(base64PolicyObject))
 
@@ -120,7 +119,6 @@ func createPolicyBinding(symKey []byte, base64PolicyObject string) any {
 		Hash: string(ocrypto.Base64Encode([]byte(hashHex))),
 	}
 
-	// Return as any to match KeyAccess.PolicyBinding field
 	return binding
 }
 
@@ -148,7 +146,7 @@ func encryptMetadata(symKey []byte, metadata string) (string, error) {
 	}
 
 	// Serialize to JSON and base64 encode
-	metadataJSON, err := json.Marshal(encMeta)
+	metadataJSON, err := encMeta.MarshalJSON()
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal encrypted metadata: %w", err)
 	}

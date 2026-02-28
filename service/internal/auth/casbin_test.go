@@ -660,3 +660,55 @@ func (s *AuthnCasbinSuite) newTokenWithClientID() (string, jwt.Token) {
 	}
 	return "", tok
 }
+
+func (s *AuthnCasbinSuite) Test_AttributeBasedPolicy() {
+	// Create a Casbin enforcer with an attribute-aware model
+	modelConf := `
+[request_definition]
+r = sub, res, act, owner
+
+[policy_definition]
+p = sub, res, act, owner, eft
+
+[role_definition]
+g = _, _
+
+[policy_effect]
+e = some(where (p.eft == allow)) && !some(where (p.eft == deny))
+
+[matchers]
+m = g(r.sub, p.sub) && keyMatch(r.res, p.res) && keyMatch(r.act, p.act) && (p.owner == "*" || r.owner == p.owner)
+`
+
+	policyCSV := `
+p, role:admin, /policy/*, read, *, allow
+p, role:user, /policy/*, read, user123, allow
+g, admin-user, role:admin
+g, regular-user, role:user
+`
+
+	casbinCfg := CasbinConfig{
+		PolicyConfig: PolicyConfig{
+			Model: modelConf,
+			Csv:   policyCSV,
+		},
+	}
+	enforcer, err := NewCasbinEnforcer(casbinCfg, logger.CreateTestLogger())
+	s.Require().NoError(err)
+	s.Require().NotNil(enforcer)
+
+	// Test 1: Admin can access any resource
+	allowed, err := enforcer.Enforcer.Enforce("role:admin", "/policy/attributes", "read", "*")
+	s.Require().NoError(err)
+	s.Require().True(allowed, "admin should have access")
+
+	// Test 2: User can only access their own resources
+	allowed, err = enforcer.Enforcer.Enforce("role:user", "/policy/attributes", "read", "user123")
+	s.Require().NoError(err)
+	s.Require().True(allowed, "user should have access to their own resource")
+
+	// Test 3: User cannot access other user's resources
+	allowed, err = enforcer.Enforcer.Enforce("role:user", "/policy/attributes", "read", "user456")
+	s.Require().NoError(err)
+	s.Require().False(allowed, "user should NOT have access to other user's resource")
+}

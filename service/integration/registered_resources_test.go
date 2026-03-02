@@ -53,16 +53,6 @@ func TestRegisteredResourcesSuite(t *testing.T) {
 
 const invalidID = "00000000-0000-0000-0000-000000000000"
 
-func (s *RegisteredResourcesSuite) getNamespaceID(key string) string {
-	ns := s.f.GetNamespaceKey(key)
-	return ns.ID
-}
-
-func (s *RegisteredResourcesSuite) getNamespaceFQN(key string) string {
-	ns := s.f.GetNamespaceKey(key)
-	return "https://" + ns.Name
-}
-
 ///
 /// Registered Resources
 ///
@@ -1946,4 +1936,14 @@ func (s *RegisteredResourcesSuite) Test_SameNamespaceEnforcement_SameNamespace_S
 	s.Require().NoError(err)
 	s.NotNil(resVal)
 	s.Require().Len(resVal.GetActionAttributeValues(), 1)
+}
+
+func (s *RegisteredResourcesSuite) getNamespaceID(key string) string {
+	ns := s.f.GetNamespaceKey(key)
+	return ns.ID
+}
+
+func (s *RegisteredResourcesSuite) getNamespaceFQN(key string) string {
+	ns := s.f.GetNamespaceKey(key)
+	return "https://" + ns.Name
 }

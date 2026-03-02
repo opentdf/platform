@@ -98,6 +98,8 @@ type AttributesServiceClient interface {
 	// Attribute RPCs
 	// ---------------------------------------
 	ListAttributes(context.Context, *connect.Request[attributes.ListAttributesRequest]) (*connect.Response[attributes.ListAttributesResponse], error)
+	// Deprecated
+	// Use GetAttribute
 	ListAttributeValues(context.Context, *connect.Request[attributes.ListAttributeValuesRequest]) (*connect.Response[attributes.ListAttributeValuesResponse], error)
 	GetAttribute(context.Context, *connect.Request[attributes.GetAttributeRequest]) (*connect.Response[attributes.GetAttributeResponse], error)
 	GetAttributeValuesByFqns(context.Context, *connect.Request[attributes.GetAttributeValuesByFqnsRequest]) (*connect.Response[attributes.GetAttributeValuesByFqnsResponse], error)
@@ -403,6 +405,8 @@ type AttributesServiceHandler interface {
 	// Attribute RPCs
 	// ---------------------------------------
 	ListAttributes(context.Context, *connect.Request[attributes.ListAttributesRequest]) (*connect.Response[attributes.ListAttributesResponse], error)
+	// Deprecated
+	// Use GetAttribute
 	ListAttributeValues(context.Context, *connect.Request[attributes.ListAttributeValuesRequest]) (*connect.Response[attributes.ListAttributeValuesResponse], error)
 	GetAttribute(context.Context, *connect.Request[attributes.GetAttributeRequest]) (*connect.Response[attributes.GetAttributeResponse], error)
 	GetAttributeValuesByFqns(context.Context, *connect.Request[attributes.GetAttributeValuesByFqnsRequest]) (*connect.Response[attributes.GetAttributeValuesByFqnsResponse], error)

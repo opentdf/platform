@@ -74,6 +74,7 @@ func (q *Queries) deleteAttributeValue(ctx context.Context, id string) (int64, e
 }
 
 const getAttributeValue = `-- name: getAttributeValue :one
+
 WITH obligation_triggers_agg AS (
     SELECT
         ot.obligation_value_id,
@@ -211,7 +212,9 @@ type getAttributeValueRow struct {
 	Obligations           []byte      `json:"obligations"`
 }
 
-// getAttributeValue
+// --------------------------------------------------------------
+// ATTRIBUTE VALUES
+// --------------------------------------------------------------
 //
 //	WITH obligation_triggers_agg AS (
 //	    SELECT
@@ -346,98 +349,6 @@ func (q *Queries) getAttributeValue(ctx context.Context, arg getAttributeValuePa
 		&i.Obligations,
 	)
 	return i, err
-}
-
-const listAttributeValues = `-- name: listAttributeValues :many
-
-SELECT
-    COUNT(*) OVER() AS total,
-    av.id,
-    av.value,
-    av.active,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
-    av.attribute_definition_id,
-    fqns.fqn
-FROM attribute_values av
-LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-WHERE (
-    ($1::BOOLEAN IS NULL OR av.active = $1) AND
-    ($2::uuid IS NULL OR av.attribute_definition_id = $2::uuid) 
-)
-ORDER BY av.created_at DESC
-LIMIT $4 
-OFFSET $3
-`
-
-type listAttributeValuesParams struct {
-	Active                pgtype.Bool `json:"active"`
-	AttributeDefinitionID pgtype.UUID `json:"attribute_definition_id"`
-	Offset                int32       `json:"offset_"`
-	Limit                 int32       `json:"limit_"`
-}
-
-type listAttributeValuesRow struct {
-	Total                 int64       `json:"total"`
-	ID                    string      `json:"id"`
-	Value                 string      `json:"value"`
-	Active                bool        `json:"active"`
-	Metadata              []byte      `json:"metadata"`
-	AttributeDefinitionID string      `json:"attribute_definition_id"`
-	Fqn                   pgtype.Text `json:"fqn"`
-}
-
-// --------------------------------------------------------------
-// ATTRIBUTE VALUES
-// --------------------------------------------------------------
-//
-//	SELECT
-//	    COUNT(*) OVER() AS total,
-//	    av.id,
-//	    av.value,
-//	    av.active,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
-//	    av.attribute_definition_id,
-//	    fqns.fqn
-//	FROM attribute_values av
-//	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-//	WHERE (
-//	    ($1::BOOLEAN IS NULL OR av.active = $1) AND
-//	    ($2::uuid IS NULL OR av.attribute_definition_id = $2::uuid)
-//	)
-//	ORDER BY av.created_at DESC
-//	LIMIT $4
-//	OFFSET $3
-func (q *Queries) listAttributeValues(ctx context.Context, arg listAttributeValuesParams) ([]listAttributeValuesRow, error) {
-	rows, err := q.db.Query(ctx, listAttributeValues,
-		arg.Active,
-		arg.AttributeDefinitionID,
-		arg.Offset,
-		arg.Limit,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []listAttributeValuesRow
-	for rows.Next() {
-		var i listAttributeValuesRow
-		if err := rows.Scan(
-			&i.Total,
-			&i.ID,
-			&i.Value,
-			&i.Active,
-			&i.Metadata,
-			&i.AttributeDefinitionID,
-			&i.Fqn,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const removeKeyAccessServerFromAttributeValue = `-- name: removeKeyAccessServerFromAttributeValue :execrows

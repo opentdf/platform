@@ -48,6 +48,8 @@ type AttributesServiceClient interface {
 	// Attribute RPCs
 	// ---------------------------------------
 	ListAttributes(ctx context.Context, in *ListAttributesRequest, opts ...grpc.CallOption) (*ListAttributesResponse, error)
+	// Deprecated
+	// Use GetAttribute
 	ListAttributeValues(ctx context.Context, in *ListAttributeValuesRequest, opts ...grpc.CallOption) (*ListAttributeValuesResponse, error)
 	GetAttribute(ctx context.Context, in *GetAttributeRequest, opts ...grpc.CallOption) (*GetAttributeResponse, error)
 	GetAttributeValuesByFqns(ctx context.Context, in *GetAttributeValuesByFqnsRequest, opts ...grpc.CallOption) (*GetAttributeValuesByFqnsResponse, error)
@@ -270,6 +272,8 @@ type AttributesServiceServer interface {
 	// Attribute RPCs
 	// ---------------------------------------
 	ListAttributes(context.Context, *ListAttributesRequest) (*ListAttributesResponse, error)
+	// Deprecated
+	// Use GetAttribute
 	ListAttributeValues(context.Context, *ListAttributeValuesRequest) (*ListAttributeValuesResponse, error)
 	GetAttribute(context.Context, *GetAttributeRequest) (*GetAttributeResponse, error)
 	GetAttributeValuesByFqns(context.Context, *GetAttributeValuesByFqnsRequest) (*GetAttributeValuesByFqnsResponse, error)

@@ -1279,6 +1279,8 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 				return !v.GetActive().GetValue()
 			case common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY:
 				return true
+			case common.ActiveStateEnum_ACTIVE_STATE_ENUM_UNSPECIFIED:
+				return v.GetActive().GetValue()
 			}
 		}
 		return false

@@ -346,7 +346,8 @@ type RegisteredResource struct {
 	// Timestamp when the record was created
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	// Timestamp when the record was last updated
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	NamespaceID pgtype.UUID        `json:"namespace_id"`
 }
 
 // Table to store the linkage of registered resource values to actions and attribute values

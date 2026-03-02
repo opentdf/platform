@@ -440,6 +440,8 @@ message RegisteredResource {
 
   repeated RegisteredResourceValue values = 3;
 
+  Namespace namespace = 4;
+
   // Common metadata
   common.Metadata metadata = 100;
 }

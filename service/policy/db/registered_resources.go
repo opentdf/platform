@@ -70,6 +70,12 @@ func hydrateNamespaceFromInterface(nsRaw interface{}) (*policy.Namespace, error)
 		nsBytes = v
 	case string:
 		nsBytes = []byte(v)
+	case map[string]interface{}:
+		var err error
+		nsBytes, err = json.Marshal(v)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal namespace map: %w", err)
+		}
 	default:
 		return nil, fmt.Errorf("unexpected namespace type: %T", nsRaw)
 	}

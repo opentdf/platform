@@ -20,7 +20,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-var ErrDeprecatedListAttributeValues = errors.New("ListAttributeValues is deprecated. Use GetAttribute instead.")
+var ErrDeprecatedListAttributeValues = errors.New("deprecated: ListAttributeValues has been removed. Use GetAttribute instead.")
 
 type AttributesService struct { //nolint:revive // AttributesService is a valid name for this struct
 	dbClient policydb.PolicyDBClient

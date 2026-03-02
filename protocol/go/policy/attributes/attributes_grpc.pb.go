@@ -48,6 +48,7 @@ type AttributesServiceClient interface {
 	// Attribute RPCs
 	// ---------------------------------------
 	ListAttributes(ctx context.Context, in *ListAttributesRequest, opts ...grpc.CallOption) (*ListAttributesResponse, error)
+	// Deprecated: Do not use.
 	// Deprecated
 	// Use GetAttribute
 	ListAttributeValues(ctx context.Context, in *ListAttributeValuesRequest, opts ...grpc.CallOption) (*ListAttributeValuesResponse, error)
@@ -98,6 +99,7 @@ func (c *attributesServiceClient) ListAttributes(ctx context.Context, in *ListAt
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *attributesServiceClient) ListAttributeValues(ctx context.Context, in *ListAttributeValuesRequest, opts ...grpc.CallOption) (*ListAttributeValuesResponse, error) {
 	out := new(ListAttributeValuesResponse)
 	err := c.cc.Invoke(ctx, AttributesService_ListAttributeValues_FullMethodName, in, out, opts...)
@@ -272,6 +274,7 @@ type AttributesServiceServer interface {
 	// Attribute RPCs
 	// ---------------------------------------
 	ListAttributes(context.Context, *ListAttributesRequest) (*ListAttributesResponse, error)
+	// Deprecated: Do not use.
 	// Deprecated
 	// Use GetAttribute
 	ListAttributeValues(context.Context, *ListAttributeValuesRequest) (*ListAttributeValuesResponse, error)

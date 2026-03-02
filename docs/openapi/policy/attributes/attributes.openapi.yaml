@@ -79,6 +79,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.ListAttributeValuesResponse'
+      deprecated: true
   /policy.attributes.AttributesService/GetAttribute:
     post:
       tags:

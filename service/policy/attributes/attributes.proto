@@ -415,6 +415,7 @@ service AttributesService {
   // Deprecated
   // Use GetAttribute
   rpc ListAttributeValues(ListAttributeValuesRequest) returns (ListAttributeValuesResponse) {
+    option deprecated = true;
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 

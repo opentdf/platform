@@ -1549,7 +1549,7 @@ func (s *RegisteredResourcesSuite) Test_DeleteAttributeValue_CascadeDeleteAction
 	s.Require().NotNil(attrVal)
 
 	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
-		NamespaceId: s.getNamespaceID("example.com"),
+		NamespaceId: ns.GetId(),
 		Name:        "test_delete_attr_value_res",
 	})
 	s.Require().NoError(err)

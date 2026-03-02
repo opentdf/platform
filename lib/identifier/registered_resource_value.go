@@ -22,57 +22,44 @@ var legacyRegisteredResourceValueFqnRegex = regexp.MustCompile(
 	`^https:\/\/reg_res\/(?P<name>[^\/]+)\/value\/(?P<value>[^\/]+)$`,
 )
 
+// matchFqnParts attempts to match fqn against re, extracts named groups, lowercases them,
+// and validates name/value with validObjectNameRegex. Returns nil if the regex doesn't match.
+func matchFqnParts(re *regexp.Regexp, fqn string, groups []string) (map[string]string, error) {
+	matches := re.FindStringSubmatch(fqn)
+	if len(matches) == 0 {
+		return nil, nil //nolint:nilnil // nil means no match, not an error
+	}
+	result := make(map[string]string, len(groups))
+	for _, g := range groups {
+		idx := re.SubexpIndex(g)
+		if idx == -1 || idx >= len(matches) {
+			return nil, fmt.Errorf("%w: missing group %s", ErrInvalidFQNFormat, g)
+		}
+		result[g] = strings.ToLower(matches[idx])
+	}
+	name, value := result["name"], result["value"]
+	if !validObjectNameRegex.MatchString(name) || !validObjectNameRegex.MatchString(value) {
+		return nil, fmt.Errorf("%w: found name %s with value %s", ErrInvalidFQNFormat, name, value)
+	}
+	return result, nil
+}
+
 // parseRegisteredResourceValueFqn parses a registered resource value FQN string into a FullyQualifiedRegisteredResourceValue struct.
 // Supports both the new format: https://<namespace>/rr/<name>/value/<value>
 // and the legacy format: https://reg_res/<name>/value/<value>
 func parseRegisteredResourceValueFqn(fqn string) (*FullyQualifiedRegisteredResourceValue, error) {
-	// Try new format first
-	matches := registeredResourceValueFqnRegex.FindStringSubmatch(fqn)
-	if len(matches) > 0 {
-		namespaceIdx := registeredResourceValueFqnRegex.SubexpIndex("namespace")
-		nameIdx := registeredResourceValueFqnRegex.SubexpIndex("name")
-		valueIdx := registeredResourceValueFqnRegex.SubexpIndex("value")
-
-		if namespaceIdx == -1 || nameIdx == -1 || valueIdx == -1 || len(matches) <= namespaceIdx || len(matches) <= nameIdx || len(matches) <= valueIdx {
-			return nil, fmt.Errorf("%w: valid FQN format of https://<namespace>/rr/<name>/value/<value> must be provided", ErrInvalidFQNFormat)
-		}
-
-		namespace := strings.ToLower(matches[namespaceIdx])
-		name := strings.ToLower(matches[nameIdx])
-		value := strings.ToLower(matches[valueIdx])
-
-		if !validObjectNameRegex.MatchString(name) || !validObjectNameRegex.MatchString(value) {
-			return nil, fmt.Errorf("%w: found name %s with value %s", ErrInvalidFQNFormat, name, value)
-		}
-
-		return &FullyQualifiedRegisteredResourceValue{
-			Namespace: namespace,
-			Name:      name,
-			Value:     value,
-		}, nil
+	// Try new format: https://<namespace>/rr/<name>/value/<value>
+	if parts, err := matchFqnParts(registeredResourceValueFqnRegex, fqn, []string{"namespace", "name", "value"}); err != nil {
+		return nil, err
+	} else if parts != nil {
+		return &FullyQualifiedRegisteredResourceValue{Namespace: parts["namespace"], Name: parts["name"], Value: parts["value"]}, nil
 	}
 
-	// Try legacy format
-	matches = legacyRegisteredResourceValueFqnRegex.FindStringSubmatch(fqn)
-	if len(matches) > 0 {
-		nameIdx := legacyRegisteredResourceValueFqnRegex.SubexpIndex("name")
-		valueIdx := legacyRegisteredResourceValueFqnRegex.SubexpIndex("value")
-
-		if nameIdx == -1 || valueIdx == -1 || len(matches) <= nameIdx || len(matches) <= valueIdx {
-			return nil, fmt.Errorf("%w: valid FQN format of https://reg_res/<name>/value/<value> must be provided", ErrInvalidFQNFormat)
-		}
-
-		name := strings.ToLower(matches[nameIdx])
-		value := strings.ToLower(matches[valueIdx])
-
-		if !validObjectNameRegex.MatchString(name) || !validObjectNameRegex.MatchString(value) {
-			return nil, fmt.Errorf("%w: found name %s with value %s", ErrInvalidFQNFormat, name, value)
-		}
-
-		return &FullyQualifiedRegisteredResourceValue{
-			Name:  name,
-			Value: value,
-		}, nil
+	// Try legacy format: https://reg_res/<name>/value/<value>
+	if parts, err := matchFqnParts(legacyRegisteredResourceValueFqnRegex, fqn, []string{"name", "value"}); err != nil {
+		return nil, err
+	} else if parts != nil {
+		return &FullyQualifiedRegisteredResourceValue{Name: parts["name"], Value: parts["value"]}, nil
 	}
 
 	return nil, fmt.Errorf("%w: FQN must be in format https://<namespace>/rr/<name>/value/<value>", ErrInvalidFQNFormat)

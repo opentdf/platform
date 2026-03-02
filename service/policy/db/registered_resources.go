@@ -603,31 +603,28 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 			return db.ErrSelectIdentifierInvalid
 		}
 
-		// Same-namespace enforcement: attribute value must belong to the same namespace as the registered resource
-		if resourceNamespaceID != "" {
-			attrVal, err := c.queries.getAttributeValue(ctx, getAttributeValueParams{
-				ID: pgtypeUUID(attributeValueID),
-			})
-			if err != nil {
-				return db.WrapIfKnownInvalidQueryErr(err)
-			}
-			// Get the attribute definition to check its namespace
-			attrDef, err := c.queries.getAttribute(ctx, getAttributeParams{
-				ID: pgtypeUUID(attrVal.AttributeDefinitionID),
-			})
-			if err != nil {
-				return db.WrapIfKnownInvalidQueryErr(err)
-			}
-			if attrDef.NamespaceID != resourceNamespaceID {
-				return fmt.Errorf("attribute value %s belongs to namespace %s, but registered resource belongs to namespace %s: %w",
-					attributeValueID, attrDef.NamespaceID, resourceNamespaceID, db.ErrForeignKeyViolation)
-			}
-		}
-
 		createActionAttributeValueParams[i] = createRegisteredResourceActionAttributeValuesParams{
 			RegisteredResourceValueID: registeredResourceValueID,
 			ActionID:                  actionID,
 			AttributeValueID:          attributeValueID,
+		}
+	}
+
+	// Same-namespace enforcement (batch): all attribute values must belong to the same namespace as the registered resource
+	if resourceNamespaceID != "" {
+		avIDs := make([]string, len(createActionAttributeValueParams))
+		for i, p := range createActionAttributeValueParams {
+			avIDs[i] = p.AttributeValueID
+		}
+		rows, err := c.queries.getAttributeValueNamespaceIDs(ctx, avIDs)
+		if err != nil {
+			return db.WrapIfKnownInvalidQueryErr(err)
+		}
+		for _, row := range rows {
+			if row.NamespaceID != resourceNamespaceID {
+				return fmt.Errorf("attribute value %s belongs to namespace %s, but registered resource belongs to namespace %s: %w",
+					row.AttributeValueID, row.NamespaceID, resourceNamespaceID, db.ErrForeignKeyViolation)
+			}
 		}
 	}
 

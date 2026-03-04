@@ -12,7 +12,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -419,29 +418,6 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 	return tdfObject, nil
 }
-
-func hasAssertionConfig(assertions []AssertionConfig, id string) bool {
-	for _, assertion := range assertions {
-		if assertion.ID == id {
-			return true
-		}
-	}
-	return false
-}
-
-func readerFileName(reader io.ReadSeeker) string {
-	type namer interface {
-		Name() string
-	}
-	if named, ok := reader.(namer); ok {
-		name := filepath.Base(named.Name())
-		if name != "." && name != string(filepath.Separator) {
-			return name
-		}
-	}
-	return ""
-}
-
 
 // initKAOTemplate initializes the KAO template, from either the split plan, kaoTemplate, or autoconfigure based on tags.
 func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
@@ -887,14 +863,14 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 	}
 
 	return &Reader{
-		tokenSource:      s.tokenSource,
-		httpClient:       s.conn.Client,
-		connectOptions:   s.conn.Options,
-		tdfReader:        tdfReader,
-		manifest:         *manifestObj,
-		kasSessionKey:    config.kasSessionKey,
-		config:           *config,
-		payloadSize:      payloadSize,
+		tokenSource:    s.tokenSource,
+		httpClient:     s.conn.Client,
+		connectOptions: s.conn.Options,
+		tdfReader:      tdfReader,
+		manifest:       *manifestObj,
+		kasSessionKey:  config.kasSessionKey,
+		config:         *config,
+		payloadSize:    payloadSize,
 	}, nil
 }
 

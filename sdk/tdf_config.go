@@ -84,7 +84,6 @@ type TDFConfig struct {
 	excludeVersionFromManifest bool
 	addDefaultAssertion        bool
 	resourceMetadata           map[string]any
-	resourceMetadataSet        bool
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -188,7 +187,6 @@ func WithResourceMetadata(fileName string, structuredMetadata map[string]any) TD
 			metadata[encMetadataKeyFileName] = fileName
 		}
 		c.resourceMetadata = metadata
-		c.resourceMetadataSet = true
 		return nil
 	}
 }

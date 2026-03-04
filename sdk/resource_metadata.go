@@ -8,9 +8,11 @@ import (
 func buildResourceMetadata(cfg *TDFConfig, totalPlaintextSize int64) map[string]any {
 	resourceMetadata := make(map[string]any)
 
-	if cfg.resourceMetadataSet {
+	if cfg.resourceMetadata != nil {
 		maps.Copy(resourceMetadata, cfg.resourceMetadata)
-	} else {
+	}
+
+	if _, ok := resourceMetadata[encMetadataKeyByteSize]; !ok {
 		resourceMetadata[encMetadataKeyByteSize] = totalPlaintextSize
 	}
 

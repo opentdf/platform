@@ -188,9 +188,6 @@ type WriterFinalizeConfig struct {
 	// resourceMetadata contains resource metadata to embed within encrypted metadata.
 	resourceMetadata map[string]any
 
-	// tracks if resource metadata has been set.
-	resourceMetadataSet bool
-
 	// payloadMimeType specifies the MIME type of the payload content.
 	// Used by readers to determine appropriate content handling.
 	payloadMimeType string
@@ -232,7 +229,6 @@ func WithResourceMetadata(fileName string, structuredMetadata map[string]any) Op
 			metadata[encMetadataKeyFileName] = fileName
 		}
 		c.resourceMetadata = metadata
-		c.resourceMetadataSet = true
 	}
 }
 

@@ -1,13 +1,12 @@
-// Experimental: This package is EXPERIMENTAL and may change or be removed at any time
+// Canary types for tinyjson codegen under TinyGo.
+// Copied from sdk/experimental/tdf/manifest.go and assertion_types.go.
+// These must stay in sync with the source structs.
 
-//go:generate tinyjson -all manifest.go
+//go:generate tinyjson -all types.go
 
-package tdf
+package types
 
-const (
-	kSplitKeyType     = "split"
-	kPolicyBindingAlg = "HS256"
-)
+// ── Manifest types ───────────────────────────────────────────
 
 type RootSignature struct {
 	Algorithm string `json:"alg"`
@@ -23,16 +22,16 @@ type IntegrityInformation struct {
 }
 
 type KeyAccess struct {
-	KeyType            string      `json:"type"`
-	KasURL             string      `json:"url"`
-	Protocol           string      `json:"protocol"`
-	WrappedKey         string      `json:"wrappedKey"`
+	KeyType            string        `json:"type"`
+	KasURL             string        `json:"url"`
+	Protocol           string        `json:"protocol"`
+	WrappedKey         string        `json:"wrappedKey"`
 	PolicyBinding      PolicyBinding `json:"policyBinding"`
-	EncryptedMetadata  string      `json:"encryptedMetadata,omitempty"`
-	KID                string      `json:"kid,omitempty"`
-	SplitID            string      `json:"sid,omitempty"`
-	SchemaVersion      string      `json:"schemaVersion,omitempty"`
-	EphemeralPublicKey string      `json:"ephemeralPublicKey,omitempty"`
+	EncryptedMetadata  string        `json:"encryptedMetadata,omitempty"`
+	KID                string        `json:"kid,omitempty"`
+	SplitID            string        `json:"sid,omitempty"`
+	SchemaVersion      string        `json:"schemaVersion,omitempty"`
+	EphemeralPublicKey string        `json:"ephemeralPublicKey,omitempty"`
 }
 
 type Method struct {
@@ -47,7 +46,6 @@ type Payload struct {
 	Protocol    string `json:"protocol"`
 	MimeType    string `json:"mimeType"`
 	IsEncrypted bool   `json:"isEncrypted"`
-	// IntegrityInformation IntegrityInformation `json:"integrityInformation"`
 }
 
 type EncryptionInformation struct {
@@ -88,11 +86,35 @@ type Segment struct {
 	Size          int64  `json:"segmentSize"`
 	EncryptedSize int64  `json:"encryptedSegmentSize"`
 }
+
 type PolicyBinding struct {
 	Alg  string `json:"alg"`
 	Hash string `json:"hash"`
 }
+
 type EncryptedMetadata struct {
 	Cipher string `json:"ciphertext"`
 	Iv     string `json:"iv"`
+}
+
+// ── Assertion types ──────────────────────────────────────────
+
+type Assertion struct {
+	ID             string    `json:"id"`
+	Type           string    `json:"type"`
+	Scope          string    `json:"scope"`
+	AppliesToState string    `json:"appliesToState,omitempty"`
+	Statement      Statement `json:"statement"`
+	Binding        Binding   `json:"binding,omitempty"`
+}
+
+type Statement struct {
+	Format string `json:"format,omitempty"`
+	Schema string `json:"schema,omitempty"`
+	Value  string `json:"value,omitempty"`
+}
+
+type Binding struct {
+	Method    string `json:"method,omitempty"`
+	Signature string `json:"signature,omitempty"`
 }

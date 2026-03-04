@@ -57,28 +57,74 @@ func unmarshalRegisteredResourceActionAttributeValuesProto(actionAttrValuesJSON 
 	return nil
 }
 
+// hydrateNamespaceFromInterface converts a nullable namespace interface{} (from CASE WHEN SQL)
+// to a *policy.Namespace. Returns an empty Namespace if the namespace is NULL (legacy RRs without namespace).
+func hydrateNamespaceFromInterface(nsRaw interface{}) (*policy.Namespace, error) {
+	if nsRaw == nil {
+		return nil, nil //nolint:nilnil // nil namespace is valid for legacy RRs without namespace
+	}
+
+	var nsBytes []byte
+	switch v := nsRaw.(type) {
+	case []byte:
+		nsBytes = v
+	case string:
+		nsBytes = []byte(v)
+	case map[string]interface{}:
+		var err error
+		nsBytes, err = json.Marshal(v)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal namespace map: %w", err)
+		}
+	default:
+		return nil, fmt.Errorf("unexpected namespace type: %T", nsRaw)
+	}
+
+	ns := &policy.Namespace{}
+	if err := unmarshalNamespace(nsBytes, ns); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal registered resource namespace: %w", err)
+	}
+	return ns, nil
+}
+
 ///
 /// Registered Resources
 ///
 
 func (c PolicyDBClient) CreateRegisteredResource(ctx context.Context, r *registeredresources.CreateRegisteredResourceRequest) (*policy.RegisteredResource, error) {
 	name := strings.ToLower(r.GetName())
+	namespaceID := r.GetNamespaceId()
+	namespaceFqn := r.GetNamespaceFqn()
+
+	useID := len(namespaceID) > 0
+	parsedID := pgtypeUUID(namespaceID)
+	if useID && !parsedID.Valid {
+		return nil, db.ErrUUIDInvalid
+	}
+
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
 
-	createdID, err := c.queries.createRegisteredResource(ctx, createRegisteredResourceParams{
-		Name:     name,
-		Metadata: metadataJSON,
+	row, err := c.queries.createRegisteredResource(ctx, createRegisteredResourceParams{
+		NamespaceID:  pgtypeUUID(namespaceID),
+		NamespaceFqn: pgtypeText(namespaceFqn),
+		Name:         name,
+		Metadata:     metadataJSON,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	namespace := &policy.Namespace{}
+	if err := unmarshalNamespace(row.Namespace, namespace); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal registered resource namespace: %w", err)
+	}
+
 	for _, v := range r.GetValues() {
 		req := &registeredresources.CreateRegisteredResourceValueRequest{
-			ResourceId: createdID,
+			ResourceId: row.ID,
 			Value:      v,
 		}
 		_, err := c.CreateRegisteredResourceValue(ctx, req)
@@ -89,7 +135,7 @@ func (c PolicyDBClient) CreateRegisteredResource(ctx context.Context, r *registe
 
 	return c.GetRegisteredResource(ctx, &registeredresources.GetRegisteredResourceRequest{
 		Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
-			Id: createdID,
+			Id: row.ID,
 		},
 	})
 }
@@ -102,6 +148,9 @@ func (c PolicyDBClient) GetRegisteredResource(ctx context.Context, r *registered
 		params.ID = pgtypeUUID(r.GetId())
 	case r.GetName() != "":
 		params.Name = pgtypeText(strings.ToLower(r.GetName()))
+		if r.GetNamespaceFqn() != "" {
+			params.NamespaceFqn = pgtypeText(r.GetNamespaceFqn())
+		}
 	default:
 		return nil, db.ErrSelectIdentifierInvalid
 	}
@@ -116,20 +165,33 @@ func (c PolicyDBClient) GetRegisteredResource(ctx context.Context, r *registered
 		return nil, err
 	}
 
+	namespace, err := hydrateNamespaceFromInterface(rr.Namespace)
+	if err != nil {
+		return nil, err
+	}
+
 	values := []*policy.RegisteredResourceValue{}
 	if err = unmarshalRegisteredResourceValuesProto(rr.Values, &values); err != nil {
 		return nil, err
 	}
 
 	return &policy.RegisteredResource{
-		Id:       rr.ID,
-		Name:     rr.Name,
-		Metadata: metadata,
-		Values:   values,
+		Id:        rr.ID,
+		Name:      rr.Name,
+		Metadata:  metadata,
+		Namespace: namespace,
+		Values:    values,
 	}, nil
 }
 
 func (c PolicyDBClient) ListRegisteredResources(ctx context.Context, r *registeredresources.ListRegisteredResourcesRequest) (*registeredresources.ListRegisteredResourcesResponse, error) {
+	namespaceID := r.GetNamespaceId()
+	useID := len(namespaceID) > 0
+	parsedID := pgtypeUUID(namespaceID)
+	if useID && !parsedID.Valid {
+		return nil, db.ErrUUIDInvalid
+	}
+
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 
 	maxLimit := c.listCfg.limitMax
@@ -138,8 +200,10 @@ func (c PolicyDBClient) ListRegisteredResources(ctx context.Context, r *register
 	}
 
 	list, err := c.queries.listRegisteredResources(ctx, listRegisteredResourcesParams{
-		Limit:  limit,
-		Offset: offset,
+		NamespaceID:  parsedID,
+		NamespaceFqn: pgtypeText(r.GetNamespaceFqn()),
+		Limit:        limit,
+		Offset:       offset,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -153,16 +217,22 @@ func (c PolicyDBClient) ListRegisteredResources(ctx context.Context, r *register
 			return nil, err
 		}
 
+		namespace, err := hydrateNamespaceFromInterface(r.Namespace)
+		if err != nil {
+			return nil, err
+		}
+
 		values := []*policy.RegisteredResourceValue{}
 		if err = unmarshalRegisteredResourceValuesProto(r.Values, &values); err != nil {
 			return nil, err
 		}
 
 		rrList[i] = &policy.RegisteredResource{
-			Id:       r.ID,
-			Name:     r.Name,
-			Metadata: metadata,
-			Values:   values,
+			Id:        r.ID,
+			Name:      r.Name,
+			Metadata:  metadata,
+			Namespace: namespace,
+			Values:    values,
 		}
 	}
 
@@ -281,6 +351,9 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 		}
 		params.Name = pgtypeText(parsed.Name)
 		params.Value = pgtypeText(parsed.Value)
+		if parsed.Namespace != "" {
+			params.NamespaceFqn = pgtypeText("https://" + parsed.Namespace)
+		}
 	default:
 		// unexpected type
 		return nil, db.ErrSelectIdentifierInvalid
@@ -296,6 +369,11 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 		return nil, err
 	}
 
+	namespace, err := hydrateNamespaceFromInterface(rv.Namespace)
+	if err != nil {
+		return nil, err
+	}
+
 	actionAttrValues := []*policy.RegisteredResourceValue_ActionAttributeValue{}
 	if err = unmarshalRegisteredResourceActionAttributeValuesProto(rv.ActionAttributeValues, &actionAttrValues); err != nil {
 		return nil, err
@@ -306,7 +384,9 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 		Value:    rv.Value,
 		Metadata: metadata,
 		Resource: &policy.RegisteredResource{
-			Id: rv.RegisteredResourceID,
+			Id:        rv.RegisteredResourceID,
+			Name:      rv.ResourceName,
+			Namespace: namespace,
 		},
 		ActionAttributeValues: actionAttrValues,
 	}, nil
@@ -371,6 +451,11 @@ func (c PolicyDBClient) ListRegisteredResourceValues(ctx context.Context, r *reg
 			return nil, err
 		}
 
+		namespace, err := hydrateNamespaceFromInterface(r.Namespace)
+		if err != nil {
+			return nil, err
+		}
+
 		actionAttrValues := []*policy.RegisteredResourceValue_ActionAttributeValue{}
 		if err = unmarshalRegisteredResourceActionAttributeValuesProto(r.ActionAttributeValues, &actionAttrValues); err != nil {
 			return nil, err
@@ -381,7 +466,9 @@ func (c PolicyDBClient) ListRegisteredResourceValues(ctx context.Context, r *reg
 			Value:    r.Value,
 			Metadata: metadata,
 			Resource: &policy.RegisteredResource{
-				Id: r.RegisteredResourceID,
+				Id:        r.RegisteredResourceID,
+				Name:      r.ResourceName,
+				Namespace: namespace,
 			},
 			ActionAttributeValues: actionAttrValues,
 		}
@@ -478,15 +565,26 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 		return nil
 	}
 
+	// Look up the namespace_id of the registered resource for same-namespace enforcement
+	rv, err := c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: registeredResourceValueID,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	resourceNamespaceID := rv.GetResource().GetNamespace().GetId()
+
 	createActionAttributeValueParams := make([]createRegisteredResourceActionAttributeValuesParams, len(actionAttrValues))
 	var actionID, attributeValueID string
 	for i, aav := range actionAttrValues {
-		switch identifier := aav.GetActionIdentifier().(type) {
+		switch ident := aav.GetActionIdentifier().(type) {
 		case *registeredresources.ActionAttributeValue_ActionId:
-			actionID = identifier.ActionId
+			actionID = ident.ActionId
 		case *registeredresources.ActionAttributeValue_ActionName:
 			a, err := c.queries.getAction(ctx, getActionParams{
-				Name: pgtypeText(strings.ToLower(identifier.ActionName)),
+				Name: pgtypeText(strings.ToLower(ident.ActionName)),
 			})
 			if err != nil {
 				return db.WrapIfKnownInvalidQueryErr(err)
@@ -496,12 +594,12 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 			return db.ErrSelectIdentifierInvalid
 		}
 
-		switch identifier := aav.GetAttributeValueIdentifier().(type) {
+		switch ident := aav.GetAttributeValueIdentifier().(type) {
 		case *registeredresources.ActionAttributeValue_AttributeValueId:
-			attributeValueID = identifier.AttributeValueId
+			attributeValueID = ident.AttributeValueId
 		case *registeredresources.ActionAttributeValue_AttributeValueFqn:
 			av, err := c.queries.getAttributeValue(ctx, getAttributeValueParams{
-				Fqn: pgtypeText(strings.ToLower(identifier.AttributeValueFqn)),
+				Fqn: pgtypeText(strings.ToLower(ident.AttributeValueFqn)),
 			})
 			if err != nil {
 				return db.WrapIfKnownInvalidQueryErr(err)
@@ -515,6 +613,24 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 			RegisteredResourceValueID: registeredResourceValueID,
 			ActionID:                  actionID,
 			AttributeValueID:          attributeValueID,
+		}
+	}
+
+	// Same-namespace enforcement (batch): all attribute values must belong to the same namespace as the registered resource
+	if resourceNamespaceID != "" {
+		avIDs := make([]string, len(createActionAttributeValueParams))
+		for i, p := range createActionAttributeValueParams {
+			avIDs[i] = p.AttributeValueID
+		}
+		rows, err := c.queries.getAttributeValueNamespaceIDs(ctx, avIDs)
+		if err != nil {
+			return db.WrapIfKnownInvalidQueryErr(err)
+		}
+		for _, row := range rows {
+			if row.NamespaceID != resourceNamespaceID {
+				return fmt.Errorf("attribute value %s belongs to namespace %s, but registered resource belongs to namespace %s: %w",
+					row.AttributeValueID, row.NamespaceID, resourceNamespaceID, db.ErrForeignKeyViolation)
+			}
 		}
 	}
 

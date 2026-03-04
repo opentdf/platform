@@ -492,9 +492,9 @@ jobs:
       - uses: opentdf/platform/test/start-up-with-containers@main
         with:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: opentdf/otdfctl/e2e@DSPX-2496-ns-rr
+      - uses: opentdf/otdfctl/e2e@main
         with:
-          otdfctl-ref: "DSPX-2496-ns-rr"
+          otdfctl-ref: "main"
         env:
           TESTRAIL_USER: ${{ secrets.TESTRAIL_USER }}
           TESTRAIL_PASS: ${{ secrets.TESTRAIL_PASS }}

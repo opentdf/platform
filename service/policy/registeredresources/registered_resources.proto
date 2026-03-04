@@ -14,15 +14,6 @@ import "policy/selectors.proto";
 
 message CreateRegisteredResourceRequest {
   // Required
-  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: true };
-  string namespace_id = 4 [(buf.validate.field).string.uuid = true];
-  string namespace_fqn = 5 [
-    (buf.validate.field).string = {
-      min_len : 1
-      uri : true
-    }
-  ];
-
   string name = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.max_len = 253,
@@ -47,6 +38,16 @@ message CreateRegisteredResourceRequest {
             pattern: "^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$"
           }
       },
+    }
+  ];
+
+  // Required
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: true };
+  string namespace_id = 3 [(buf.validate.field).string.uuid = true];
+  string namespace_fqn = 4 [
+    (buf.validate.field).string = {
+      min_len : 1
+      uri : true
     }
   ];
 

@@ -37,6 +37,11 @@ func matchFqnParts(re *regexp.Regexp, fqn string, groups []string) (map[string]s
 		}
 		result[g] = strings.ToLower(matches[idx])
 	}
+	if namespace, ok := result["namespace"]; ok {
+		if !validNamespaceRegex.MatchString(namespace) {
+			return nil, fmt.Errorf("%w: invalid namespace format %s", ErrInvalidFQNFormat, namespace)
+		}
+	}
 	name, value := result["name"], result["value"]
 	if !validObjectNameRegex.MatchString(name) || !validObjectNameRegex.MatchString(value) {
 		return nil, fmt.Errorf("%w: found name %s with value %s", ErrInvalidFQNFormat, name, value)
@@ -83,6 +88,9 @@ func (rrv *FullyQualifiedRegisteredResourceValue) FQN() string {
 }
 
 func (rrv *FullyQualifiedRegisteredResourceValue) Validate() error {
+	if rrv.Namespace != "" && !validNamespaceRegex.MatchString(rrv.Namespace) {
+		return fmt.Errorf("%w: invalid namespace format %s", ErrInvalidFQNFormat, rrv.Namespace)
+	}
 	if !validObjectNameRegex.MatchString(rrv.Name) {
 		return fmt.Errorf("%w: invalid resource name format %s", ErrInvalidFQNFormat, rrv.Name)
 	}

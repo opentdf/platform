@@ -282,6 +282,11 @@ func TestParseRegisteredResourceValueFqn(t *testing.T) {
 			fqn:     "somethinghttps://example.com/rr/test/value/something",
 			wantErr: true,
 		},
+		{
+			name:    "invalid namespace format",
+			fqn:     "https://not_a_valid_namespace/rr/test/value/something",
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

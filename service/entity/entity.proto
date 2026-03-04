@@ -10,6 +10,8 @@ message Token {
   string ephemeral_id = 1;
   // the token
   string jwt = 2 [(buf.validate.field).required = true];
+  // Optional metadata for the entity derived from this token.
+  map<string, string> metadata = 3;
 }
 
 // PE (Person Entity) or NPE (Non-Person Entity)
@@ -31,6 +33,9 @@ message Entity {
     CATEGORY_ENVIRONMENT = 2;
   }
   Category category = 11;
+
+  // Optional metadata about the entity.
+  map<string, string> metadata = 12;
 }
 
 // A set of related PE and NPE

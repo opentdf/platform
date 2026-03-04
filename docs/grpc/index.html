@@ -488,6 +488,10 @@
                 </li>
               
                 <li>
+                  <a href="#entity.Entity.MetadataEntry"><span class="badge">M</span>Entity.MetadataEntry</a>
+                </li>
+              
+                <li>
                   <a href="#entity.EntityChain"><span class="badge">M</span>EntityChain</a>
                 </li>
               
@@ -564,6 +568,10 @@
               
                 <li>
                   <a href="#authorization.v2.Resource.AttributeValues"><span class="badge">M</span>Resource.AttributeValues</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.Resource.MetadataEntry"><span class="badge">M</span>Resource.MetadataEntry</a>
                 </li>
               
                 <li>
@@ -4971,6 +4979,44 @@ string</p></td>
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#entity.Entity.MetadataEntry">Entity.MetadataEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional metadata about the entity. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entity.Entity.MetadataEntry">Entity.MetadataEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -5497,6 +5543,13 @@ down the hierarchical values instead of returning solely the value that is direc
                   <td><p>fully qualified name of the registered resource value stored in platform policy </p></td>
                 </tr>
               
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#authorization.v2.Resource.MetadataEntry">Resource.MetadataEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional metadata about the resource. </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -5518,6 +5571,37 @@ down the hierarchical values instead of returning solely the value that is direc
                   <td>fqns</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.Resource.MetadataEntry">Resource.MetadataEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               

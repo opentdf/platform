@@ -664,7 +664,7 @@ func TestValidateSRTClaims_CustomSkewAllowsFutureIAT(t *testing.T) {
 
 func Test_GetEntityInfo_When_Missing_MD_Expect_Error(t *testing.T) {
 	ctx := t.Context()
-	_, err := getEntityInfo(ctx, logger.CreateTestLogger())
+	_, err := getEntityInfo(ctx, logger.CreateTestLogger(), nil)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing")
 }
@@ -673,7 +673,7 @@ func Test_GetEntityInfo_When_Authorization_MD_Missing_Expect_Error(t *testing.T)
 	ctx := t.Context()
 	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{"token": "test"}))
 
-	_, err := getEntityInfo(ctx, logger.CreateTestLogger())
+	_, err := getEntityInfo(ctx, logger.CreateTestLogger(), nil)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing")
 }
@@ -682,9 +682,33 @@ func Test_GetEntityInfo_When_Authorization_MD_Invalid_Expect_Error(t *testing.T)
 	ctx := t.Context()
 	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{"authorization": "pop test"}))
 
-	_, err := getEntityInfo(ctx, logger.CreateTestLogger())
+	_, err := getEntityInfo(ctx, logger.CreateTestLogger(), nil)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing")
+}
+
+func Test_GetEntityInfo_AuditedClaims(t *testing.T) {
+	ctx := t.Context()
+	token := mockJWT(t)
+	require.NoError(t, token.Set("realm_access", map[string]any{
+		"roles": []string{"admin", "user"},
+	}))
+	require.NoError(t, token.Set("bool_claim", true))
+
+	ctx = ctxAuth.ContextWithAuthNInfo(ctx, nil, token, string(jwtStandard(t)))
+
+	info, err := getEntityInfo(ctx, logger.CreateTestLogger(), []string{
+		"sub",
+		"realm_access.roles",
+		"bool_claim",
+		"missing",
+	})
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{
+		"sub":                "testuser1",
+		"realm_access.roles": `["admin","user"]`,
+		"bool_claim":         "true",
+	}, info.Metadata)
 }
 
 func TestGetAdditionalRewrapContext(t *testing.T) {
@@ -747,6 +771,24 @@ func TestGetAdditionalRewrapContext(t *testing.T) {
 			expectedResult: &AdditionalRewrapContext{
 				Obligations: ObligationCtx{
 					FulfillableFQNs: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "resource metadata by policy",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"resourceMetadataByPolicy": {"policy-1": {"file_name": "sample.txt", "byte_size": 123}}}`))},
+			},
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{},
+				},
+				ResourceByPolicy: map[string]map[string]any{
+					"policy-1": {
+						"file_name": "sample.txt",
+						"byte_size": float64(123),
+					},
 				},
 			},
 			expectedError: nil,

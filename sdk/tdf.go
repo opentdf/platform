@@ -346,15 +346,6 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		tdfConfig.assertions = append(tdfConfig.assertions, systemMeta)
 	}
 
-	if !hasAssertionConfig(tdfConfig.assertions, ResourceMetadataAssertionID) {
-		fileName := readerFileName(reader)
-		resourceMeta, err := GetResourceMetadataAssertionConfig(fileName, inputSize)
-		if err != nil {
-			return nil, err
-		}
-		tdfConfig.assertions = append(tdfConfig.assertions, resourceMeta)
-	}
-
 	for _, assertion := range tdfConfig.assertions {
 		// Store a temporary assertion
 		tmpAssertion := Assertion{}
@@ -451,28 +442,6 @@ func readerFileName(reader io.ReadSeeker) string {
 	return ""
 }
 
-func resourceMetadataFromAssertions(assertions []Assertion) resourceMetadata {
-	for _, assertion := range assertions {
-		if assertion.ID != ResourceMetadataAssertionID {
-			continue
-		}
-		if assertion.Statement.Schema != "" && assertion.Statement.Schema != ResourceMetadataSchemaV1 {
-			continue
-		}
-		var metadata ResourceMetadataAssertion
-		if err := json.Unmarshal([]byte(assertion.Statement.Value), &metadata); err != nil {
-			continue
-		}
-		resource := resourceMetadata{
-			"byte_size": metadata.ByteSize,
-		}
-		if metadata.FileName != "" {
-			resource["file_name"] = metadata.FileName
-		}
-		return resource
-	}
-	return nil
-}
 
 // initKAOTemplate initializes the KAO template, from either the split plan, kaoTemplate, or autoconfigure based on tags.
 func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
@@ -926,7 +895,6 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		kasSessionKey:    config.kasSessionKey,
 		config:           *config,
 		payloadSize:      payloadSize,
-		resourceMetadata: resourceMetadataFromAssertions(manifestObj.Assertions),
 	}, nil
 }
 

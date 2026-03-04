@@ -561,85 +561,32 @@ func (c PolicyDBClient) DeleteRegisteredResourceValue(ctx context.Context, id st
 ///
 
 func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx context.Context, registeredResourceValueID string, actionAttrValues []*registeredresources.ActionAttributeValue) error {
-	if len(actionAttrValues) == 0 {
-		return nil
-	}
+	for _, aav := range actionAttrValues {
+		params := createRegisteredResourceActionAttributeValueParams{
+			RegisteredResourceValueID: registeredResourceValueID,
+		}
 
-	// Look up the namespace_id of the registered resource for same-namespace enforcement
-	rv, err := c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
-		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
-			Id: registeredResourceValueID,
-		},
-	})
-	if err != nil {
-		return err
-	}
-	resourceNamespaceID := rv.GetResource().GetNamespace().GetId()
-
-	createActionAttributeValueParams := make([]createRegisteredResourceActionAttributeValuesParams, len(actionAttrValues))
-	var actionID, attributeValueID string
-	for i, aav := range actionAttrValues {
 		switch ident := aav.GetActionIdentifier().(type) {
 		case *registeredresources.ActionAttributeValue_ActionId:
-			actionID = ident.ActionId
+			params.ActionID = pgtypeUUID(ident.ActionId)
 		case *registeredresources.ActionAttributeValue_ActionName:
-			a, err := c.queries.getAction(ctx, getActionParams{
-				Name: pgtypeText(strings.ToLower(ident.ActionName)),
-			})
-			if err != nil {
-				return db.WrapIfKnownInvalidQueryErr(err)
-			}
-			actionID = a.ID
+			params.ActionName = pgtypeText(strings.ToLower(ident.ActionName))
 		default:
 			return db.ErrSelectIdentifierInvalid
 		}
 
 		switch ident := aav.GetAttributeValueIdentifier().(type) {
 		case *registeredresources.ActionAttributeValue_AttributeValueId:
-			attributeValueID = ident.AttributeValueId
+			params.AttributeValueID = pgtypeUUID(ident.AttributeValueId)
 		case *registeredresources.ActionAttributeValue_AttributeValueFqn:
-			av, err := c.queries.getAttributeValue(ctx, getAttributeValueParams{
-				Fqn: pgtypeText(strings.ToLower(ident.AttributeValueFqn)),
-			})
-			if err != nil {
-				return db.WrapIfKnownInvalidQueryErr(err)
-			}
-			attributeValueID = av.ID
+			params.AttributeValueFqn = pgtypeText(strings.ToLower(ident.AttributeValueFqn))
 		default:
 			return db.ErrSelectIdentifierInvalid
 		}
 
-		createActionAttributeValueParams[i] = createRegisteredResourceActionAttributeValuesParams{
-			RegisteredResourceValueID: registeredResourceValueID,
-			ActionID:                  actionID,
-			AttributeValueID:          attributeValueID,
-		}
-	}
-
-	// Same-namespace enforcement (batch): all attribute values must belong to the same namespace as the registered resource
-	if resourceNamespaceID != "" {
-		avIDs := make([]string, len(createActionAttributeValueParams))
-		for i, p := range createActionAttributeValueParams {
-			avIDs[i] = p.AttributeValueID
-		}
-		rows, err := c.queries.getAttributeValueNamespaceIDs(ctx, avIDs)
-		if err != nil {
+		if _, err := c.queries.createRegisteredResourceActionAttributeValue(ctx, params); err != nil {
 			return db.WrapIfKnownInvalidQueryErr(err)
 		}
-		for _, row := range rows {
-			if row.NamespaceID != resourceNamespaceID {
-				return fmt.Errorf("attribute value %s belongs to namespace %s, but registered resource belongs to namespace %s: %w",
-					row.AttributeValueID, row.NamespaceID, resourceNamespaceID, db.ErrForeignKeyViolation)
-			}
-		}
-	}
-
-	count, err := c.queries.createRegisteredResourceActionAttributeValues(ctx, createActionAttributeValueParams)
-	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
-	}
-	if count != int64(len(actionAttrValues)) {
-		return fmt.Errorf("failed to create all action attribute values, expected %d, got %d", len(actionAttrValues), count)
 	}
 
 	return nil

@@ -251,9 +251,38 @@ DELETE FROM registered_resource_values WHERE id = $1;
 -- Registered Resource Action Attribute Values
 ----------------------------------------------------------------
 
--- name: createRegisteredResourceActionAttributeValues :copyfrom
+-- name: createRegisteredResourceActionAttributeValue :one
+WITH rr_ns AS (
+    SELECT rr.namespace_id
+    FROM registered_resources rr
+    JOIN registered_resource_values rrv ON rrv.registered_resource_id = rr.id
+    WHERE rrv.id = @registered_resource_value_id::uuid
+),
+a_id AS (
+    SELECT a.id
+    FROM actions a
+    WHERE
+        (sqlc.narg('action_id')::uuid IS NOT NULL AND a.id = sqlc.narg('action_id')::uuid)
+        OR
+        (sqlc.narg('action_name')::text IS NOT NULL AND a.name = sqlc.narg('action_name')::text)
+),
+av_id AS (
+    SELECT av.id
+    FROM attribute_values av
+    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+    LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
+    WHERE
+        ((sqlc.narg('attribute_value_id')::uuid IS NOT NULL AND av.id = sqlc.narg('attribute_value_id')::uuid)
+        OR
+        (sqlc.narg('attribute_value_fqn')::text IS NOT NULL AND fqns.fqn = sqlc.narg('attribute_value_fqn')::text))
+        AND (
+            (SELECT namespace_id FROM rr_ns) IS NULL
+            OR ad.namespace_id = (SELECT namespace_id FROM rr_ns)
+        )
+)
 INSERT INTO registered_resource_action_attribute_values (registered_resource_value_id, action_id, attribute_value_id)
-VALUES ($1, $2, $3);
+VALUES (@registered_resource_value_id, (SELECT id FROM a_id), (SELECT id FROM av_id))
+RETURNING registered_resource_value_id, action_id, attribute_value_id;
 
 -- name: deleteRegisteredResourceActionAttributeValues :execrows
 DELETE FROM registered_resource_action_attribute_values

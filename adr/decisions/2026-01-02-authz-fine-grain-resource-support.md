@@ -1,9 +1,10 @@
 # Resource-Level Authorization Specification
 
-**Status:** WIP / Draft
+**Status:** Proposed (active implementation)
 **Authors:** Platform Team
 **Created:** 2024-12-30
-**Last Updated:** 2025-01-02
+**Last Updated:** 2026-03-05
+**Record Date:** 2026-01-02 (ADR filename/index date)
 
 ## Problem Statement
 
@@ -33,7 +34,7 @@ Model: (subject, rpc, dimensions)
 2. **Governance & auditability** - Authorization decisions are logged with full context for compliance
 3. **Developer experience** - Service maintainers have clear patterns for implementing authorization
 4. **Extensibility** - Architecture supports future instance-level authorization
-5. **Backwards compatibility** - Existing path-based policies continue to work
+5. **Backwards compatibility via mode selection** - Existing path-based policies continue to work when running in v1 mode (`policy.version=v1`)
 
 ## Non-Goals (v1)
 
@@ -65,7 +66,7 @@ Model: (subject, rpc, dimensions)
 │  │  │    (IoC / "Hollywood Principle" - framework calls service)  │    │    │
 │  │  └─────────────────────────────────────────────────────────────┘    │    │
 │  │  ┌─────────────────────────────────────────────────────────────┐    │    │
-│  │  │ 3. Enforce → Casbin(sub, type, action, serialized_dims)     │    │    │
+│  │  │ 3. Enforce → Casbin(sub, rpc, serialized_dims)              │    │    │
 │  │  └─────────────────────────────────────────────────────────────┘    │    │
 │  └─────────────────────────────────────────────────────────────────────┘    │
 │       │                                                                      │
@@ -101,18 +102,37 @@ Model: (subject, rpc, dimensions)
 // Each key-value pair is a dimension (e.g., "namespace" -> "hr").
 type ResolverResource map[string]string
 
+// EvaluationMode controls how multiple resources are interpreted.
+type EvaluationMode string
+
+const (
+    // EvaluationModeAllOf requires every resource to be authorized.
+    EvaluationModeAllOf EvaluationMode = "all_of"
+    // EvaluationModeFilter keeps only authorized resources (used by List operations).
+    EvaluationModeFilter EvaluationMode = "filter"
+)
+
 // ResolverContext holds the resolved authorization context for a request.
 // Multiple resources are supported for operations like "move from A to B"
 // where authorization is required for both source and destination.
 type ResolverContext struct {
     Resources []*ResolverResource
+    Mode      EvaluationMode // defaults to EvaluationModeAllOf when empty
 }
 
 // Key methods:
 // - NewResolverContext() - creates empty context
 // - NewResource() *ResolverResource - adds and returns a new resource
 // - AddDimension(key, value string) - adds dimension to a resource
+// - SetEvaluationMode(mode) - sets all_of or filter semantics
 ```
+
+**Resource semantics:**
+- Each `ResolverResource` is an independent authorization target.
+- Resource dimensions are evaluated per-resource; they are not flattened across resources.
+- The same dimension key may appear in multiple resources with different values (e.g., source namespace and destination namespace).
+- `all_of` mode is the default for non-list RPCs and requires every resource to pass authorization.
+- `filter` mode is for list-style RPCs where unauthorized resources are dropped before handler execution.
 
 ### 2. Resolver Interface (Platform-Owned)
 
@@ -241,7 +261,18 @@ m = g(r.sub, p.sub) && keyMatch(r.rpc, p.rpc) && dimensionMatch(r.dims, p.dims)
 
 #### Dimension Matching
 
-The platform provides a custom Casbin matcher function `dimensionMatch` that compares request dimensions (`map[string]string`) against policy dimensions (string format).
+Dimension boundary contract (normative):
+- Resolver contract: `ResolverResource` is a service-owned `map[string]string`.
+- Authorizer boundary: each resource map is canonically serialized to a string.
+- Casbin request contract: `r.dims` is that serialized string.
+- Matcher contract: `dimensionMatch` compares request and policy dimension strings.
+
+Canonical serialization rules:
+- Sort keys lexicographically.
+- Serialize as `key=value&key2=value2`.
+- Empty dimensions serialize to `*`.
+
+The platform provides a custom Casbin matcher function `dimensionMatch` that compares request dimensions (serialized string) against policy dimensions (string format).
 
 **Policy dimension format:**
 - `*` - matches any dimensions (global wildcard)
@@ -267,23 +298,47 @@ The authorization interceptor orchestrates the authorization flow as a ConnectRP
    └─ No resolver registered? Use empty dimensions (matches wildcard policies)
    └─ Resolution failure? Return 403 PermissionDenied
 
-3. Enforce policy via Casbin (v2 model):
-   enforcer.Enforce(subject, rpc, dimensions)
+3. Enforce policy via Casbin (v2 model), per-resource:
+   For each resource in `ResolverContext.Resources` (or one empty resource if none):
+   - Build dimensions for that single resource
+   - Evaluate subjects against Casbin:
+     enforcer.Enforce(subject, rpc, resource_dimensions)
+   - Resource is allowed if any subject matches an allow policy and no deny policy matches
 
    Where:
    - subject = roles extracted from JWT (e.g., "role:hr-admin")
    - rpc = full method path (e.g., "/policy.attributes.AttributesService/UpdateAttribute")
-   - dimensions = serialized key=value pairs (e.g., "namespace=hr&attribute=classification")
+   - resource_dimensions = serialized key=value pairs for one resource
 
-4. Log authorization decision (subject, rpc, dimensions, allow/deny)
+4. Aggregate per-resource decisions by `ResolverContext.Mode`:
+   - `all_of` (default):
+     - Allow only if all resources are allowed
+     - Deny if any resource is denied (403)
+   - `filter` (list operations):
+     - Keep only resources that are allowed
+     - Continue with filtered resources (may be empty)
+   - Any resolver/enforcement evaluation error returns system error (500)
 
-5. If allowed, proceed to handler; otherwise return 403
+5. Log authorization decision (mode, subjects, rpc, per-resource dimensions, allow/deny)
+
+6. Proceed to handler:
+   - `all_of`: only if aggregate decision is allow
+   - `filter`: with authorized resources attached to context for handler filtering
 ```
 
+This flow describes **v2 mode**. In **v1 mode**, authorization uses the legacy path+action model and does not invoke resource resolvers.
+
 **Key behaviors:**
-- No resolver registered = empty dimensions (matches wildcard policies)
+- No resolver registered = empty dimensions serialized as `*` (matches wildcard policies)
 - Resolver error = authorization failure (403)
-- Falls back to v1 path-based authorization when configured (backwards compat)
+- Non-list multi-resource operations use ALL-OF request semantics (every resource must be authorized)
+- Resource evaluations are fail-closed (deny/error on any resource denies request progress)
+- Resource dimensions are not merged into a `map[string][]string`; each resource is evaluated independently
+- Resource evaluations may run in parallel for performance, but must use bounded concurrency and preserve the same fail-closed ALL-OF result
+- List operations use `filter` mode when resolver provides candidate resources; handlers must only return data within authorized resources
+- No per-request fallback between versions. `v1` and `v2` are mutually exclusive runtime modes selected by config.
+- Backwards compatibility is provided by selecting `policy.version=v1` during migration.
+- v1 authorization is Casbin-only.
 
 ### 7. Example Policies (Deployer-Owned)
 
@@ -406,20 +461,55 @@ p, role:hr-or-finance, /policy.attributes.AttributesService/*, namespace=finance
 
 ### Runtime Audit Logging
 
-All authorization decisions are logged with the serialized dimensions:
+Authorization logging is normative for v2 and SHOULD be emitted once per request decision.
+
+Required fields:
+
+| Field | Type | Derivation |
+|-------|------|------------|
+| `timestamp` | string (RFC3339) | Emission time |
+| `decision` | string | `allow`, `deny`, or `error` |
+| `mode` | string | Authorization mode (`v1` or `v2`) |
+| `evaluation_mode` | string | `all_of` or `filter` (v2; default `all_of`) |
+| `method` | string | Full RPC/HTTP method path |
+| `subjects` | array[string] | Evaluated subjects (`role:*` and/or username) |
+| `resource_count` | integer | Number of resources evaluated |
+| `resource_decisions` | array[object] | Per-resource decision objects: `{index, dimensions, decision}` |
+| `trace_id` | string | Request trace/correlation id |
+
+Optional fields:
+
+| Field | Type | Derivation |
+|-------|------|------------|
+| `matched_subject` | string | Subject that produced an allow decision (if applicable) |
+| `matched_policy` | string | Policy identifier/rule hint when available |
+| `action` | string | Derived from RPC method prefix (`Get/List` => read, etc.) |
+| `resource_type` | string | Service-defined resource label |
+| `reason` | string | Human-readable decision reason |
+| `error` | string | Error detail when `decision=error` |
+
+Dimensions in logs MUST use canonical `key=value&...` format (same as Casbin boundary serialization).
 
 ```json
 {
   "level": "info",
   "msg": "authorization decision",
-  "subject": "role:hr-admin",
-  "resource_type": "policy.attribute",
-  "action": "write",
-  "dimensions": "attribute=classification;namespace=hr",
+  "mode": "v2",
+  "evaluation_mode": "all_of",
+  "method": "/policy.attributes.AttributesService/UpdateAttribute",
+  "subjects": ["role:hr-admin", "alice@example.com"],
+  "resource_count": 1,
+  "resource_decisions": [
+    {
+      "index": 0,
+      "dimensions": "attribute=classification&namespace=hr",
+      "decision": "allow"
+    }
+  ],
   "decision": "allow",
-  "timestamp": "2024-12-30T12:00:00Z",
+  "matched_subject": "role:hr-admin",
   "trace_id": "abc123",
-  "method": "/policy.attributes.AttributesService/UpdateAttribute"
+  "timestamp": "2026-03-05T12:00:00Z"
 }
 ```
 
@@ -446,19 +536,21 @@ All authorization decisions are logged with the serialized dimensions:
 | D1 | Resolver follows IoC pattern (platform calls service) | Centralizes enforcement while allowing service-specific enrichment logic | 2024-12-30 |
 | D2 | Dynamic dimensions via `map[string]string` | Different services have different resource hierarchies (policy uses namespace, KAS uses kas_id). Fixed fields would impose platform concepts on all services. | 2024-12-30 |
 | D3 | Start with namespace-level granularity | Covers primary use case; instance-level can be added later | 2024-12-30 |
-| D4 | Pass dimensions map directly to Casbin matcher | Avoids request-side serialization; custom matcher receives `map[string]string` directly and parses policy string; simpler code with lower complexity | 2025-01-02 |
+| D4 | Use canonical string serialization at the Casbin boundary | Resolvers keep dynamic `map[string]string` dimensions, but authorizer serializes each resource to canonical `key=value&...` before `Enforce`. This keeps the service contract flexible while matching Casbin CSV/model expectations. | 2025-01-02 |
 | D5 | Use `&` as dimension AND delimiter in policies | Semantically correct (& means AND), visually distinct, enables future extensibility for `\|` OR logic within single policy line | 2025-01-02 |
 | D6 | Resolver registration per-service namespace | Service maintainers register resolvers for each RPC in their service; `ScopedAuthzResolverRegistry` ensures services can only register for their own methods (validated against `ServiceDesc`) | 2025-01-02 |
-| D7 | Empty resolver response treated as no dimensions | If no resolver is registered or resolver returns empty dimensions, Casbin evaluates with empty map. Policies expecting specific dimensions (non-wildcard) will deny; wildcard policies will allow. | 2025-01-02 |
+| D7 | Empty resolver response treated as no dimensions | If no resolver is registered or resolver returns empty dimensions, Casbin evaluates with wildcard dimensions (`*`). Policies expecting specific dimensions (non-wildcard) will deny; wildcard policies will allow. | 2025-01-02 |
 | D8 | Multiple resources supported in single AuthzContext | `AuthzResolverContext.Resources` is a slice of `*AuthzResolverResource`, supporting operations like "move from A to B" that require authorization on multiple resources | 2025-01-02 |
+| D9 | Version selection is deployment-time, not per-request fallback | `v1` and `v2` are mutually exclusive runtime modes selected by `policy.version`. Backwards compatibility comes from running v1 explicitly during migration. v1 remains Casbin-only. | 2025-01-02 |
+| D10 | Multi-resource authorization uses per-resource evaluation with mode-based aggregation | Each resource is enforced independently (preserving resource boundaries). `all_of` mode requires all resources allowed; `filter` mode produces an allowed subset for list responses. Any evaluation error returns 500 (fail-closed). | 2025-01-02 |
+| D11 | List authorization uses explicit filter evaluation mode | `ResolverContext.Mode=filter` allows interceptor enforcement to produce an authorized resource subset for handlers. This prevents list-result data leakage while preserving centralized policy enforcement. | 2025-01-02 |
 
 ### Open Questions
 
 | # | Question | Options | Leaning | Notes |
 |---|----------|---------|---------|-------|
-| Q1 | How to handle List operations with post-filtering? | A) Check namespace in resolver, service filters results<br>B) Return all namespaces user can access<br>C) No authz on list, filter in service | TBD | Service maintainer responsibility. Risk: inconsistent implementations across services. |
-| Q2 | How to test resolver implementations? | A) Provide mock DB client<br>B) Provide test harness<br>C) Integration tests only | TBD | DX concern |
-| Q3 | Caching strategy for resolved namespaces? | A) Resolver owns caching<br>B) Platform provides cache to resolver<br>C) No caching initially | TBD | Platform has `CacheManager` available. Also consider DB client caching since successful authz will repeat the same query in the handler. |
+| Q1 | How to test resolver implementations? | A) Provide mock DB client<br>B) Provide test harness<br>C) Integration tests only | TBD | DX concern |
+| Q2 | Caching strategy for resolved namespaces? | A) Resolver owns caching<br>B) Platform provides cache to resolver<br>C) No caching initially | TBD | Platform has `CacheManager` available. Also consider DB client caching since successful authz will repeat the same query in the handler. |
 
 ### Future Considerations
 
@@ -490,7 +582,7 @@ All authorization decisions are logged with the serialized dimensions:
 1. Implement AuthzContext and resolver interface
 2. Extend interceptor to support resource authorization
 3. Update Casbin model to support new dimensions
-4. Add fallback to path-based auth for methods without resolvers
+4. Document and validate mode selection semantics (`policy.version=v1` or `policy.version=v2`) with no mixed-mode fallback
 
 ### Phase 2: Pilot Service (Platform + Service)
 
@@ -548,7 +640,7 @@ All authorization decisions are logged with the serialized dimensions:
 
 ## Open Work
 
-- [ ] Finalize answers to open questions (Q1-Q3)
+- [ ] Finalize answers to open questions (Q1-Q2)
 - [ ] Design caching strategy for resolver lookups
 - [ ] Define integration test patterns
 - [ ] Performance benchmarks with resolver overhead
@@ -561,3 +653,19 @@ All authorization decisions are logged with the serialized dimensions:
 - [XACML Architecture](https://en.wikipedia.org/wiki/XACML) (PDP/PEP/PIP pattern)
 - [Google Zanzibar](https://research.google/pubs/pub48190/) (relationship-based access control)
 - Current implementation: `service/internal/auth/`
+
+---
+
+## TODO List
+
+- [ ] Define bounded concurrency defaults for multi-resource evaluation (and whether configurable)
+- [ ] Define cancellation behavior for parallel evaluation (early-stop on deny/error)
+- [ ] Define audit log schema for per-resource decisions plus aggregate request decision
+- [ ] Add conformance tests for canonical dimension serialization (`key` ordering, empty => `*`, invalid key rejection)
+- [ ] Implement `ResolverContext.Mode` (`all_of`/`filter`) in authz runtime path
+- [ ] Implement handler-context propagation of authorized resource subset for `filter` mode
+- [ ] Add shared helper for services to apply authorized-resource filtering in List handlers
+- [ ] Add conformance tests for list filter mode (scoped allow, scoped deny, unscoped filtered results, empty result set)
+- [ ] Finalize resolver testing strategy and test harness guidance (Q2)
+- [ ] Finalize resolver caching ownership/behavior (Q2)
+- [ ] Add conformance tests for multi-resource all-of semantics (allow, deny, system error)

@@ -485,14 +485,14 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Success() {
 		{
 			"core,entityresolution without sdk_config",
 			map[string]interface{}{
-				"mode": "core,entityresolution", "server.auth.issuer": discoveryEndpoint.URL,
+				"mode": []string{"core", "entityresolution"}, "server.auth.issuer": discoveryEndpoint.URL,
 			},
 			"all-no-config-*.yaml",
 		},
 		{
 			"core,entityresolution,kas without sdk_config",
 			map[string]interface{}{
-				"mode": "core,entityresolution,kas", "server.auth.issuer": discoveryEndpoint.URL,
+				"mode": []string{"core", "entityresolution", "kas"}, "server.auth.issuer": discoveryEndpoint.URL,
 			},
 			"all-no-config-*.yaml",
 		},

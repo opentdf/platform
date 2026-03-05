@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -142,11 +143,10 @@ PostgreSQL instance or multiple PostgreSQL servers per platform instance are not
 */
 type Client struct {
 	Pgx           PgxIface
-	Logger        *logger.Logger
+	logger        *logger.Logger
 	config        Config
 	ranMigrations bool
-	// This is the stdlib connection that is used for transactions
-	SQLDB *sql.DB
+	sqlDB         *sql.DB
 	trace.Tracer
 }
 
@@ -175,7 +175,7 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 	if err != nil {
 		return nil, fmt.Errorf("failed to create logger: %w", err)
 	}
-	c.Logger = l.With("schema", config.Schema)
+	c.logger = l.With("schema", config.Schema)
 
 	dbConfig, err := config.buildConfig()
 	if err != nil {
@@ -185,13 +185,13 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 	dbConfig.ConnConfig.OnNotice = func(_ *pgconn.PgConn, n *pgconn.Notice) {
 		switch n.Severity {
 		case "DEBUG":
-			c.Logger.Debug("database notice", slog.String("message", n.Message))
+			c.logger.Debug("database notice", slog.String("message", n.Message))
 		case "NOTICE":
-			c.Logger.Info("database notice", slog.String("message", n.Message))
+			c.logger.Info("database notice", slog.String("message", n.Message))
 		case "WARNING":
-			c.Logger.Warn("database notice", slog.String("message", n.Message))
+			c.logger.Warn("database notice", slog.String("message", n.Message))
 		case "ERROR":
-			c.Logger.Error("database notice", slog.String("message", n.Message))
+			c.logger.Error("database notice", slog.String("message", n.Message))
 		}
 	}
 
@@ -202,7 +202,7 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 	}
 	c.Pgx = pool
 	// We need to create a stdlib connection for transactions
-	c.SQLDB = stdlib.OpenDBFromPool(pool)
+	c.sqlDB = stdlib.OpenDBFromPool(pool)
 
 	// Connect to the database to verify the connection
 	if c.config.VerifyConnection {
@@ -220,7 +220,14 @@ func (c *Client) Schema() string {
 
 func (c *Client) Close() {
 	c.Pgx.Close()
-	c.SQLDB.Close()
+	c.sqlDB.Close()
+}
+
+func (c *Client) PingContext(ctx context.Context) error {
+	if c.sqlDB == nil {
+		return errors.New("sqlc connection not initialized")
+	}
+	return c.sqlDB.PingContext(ctx)
 }
 
 func (c Config) buildConfig() (*pgxpool.Config, error) {
@@ -268,13 +275,13 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 
 // Common function for all queryRow calls
 func (c Client) QueryRow(ctx context.Context, sql string, args []interface{}) (pgx.Row, error) {
-	c.Logger.TraceContext(ctx, "sql", slog.String("sql", sql), slog.Any("args", args))
+	c.logger.TraceContext(ctx, "sql", slog.String("sql", sql), slog.Any("args", args))
 	return c.Pgx.QueryRow(ctx, sql, args...), nil
 }
 
 // Common function for all query calls
 func (c Client) Query(ctx context.Context, sql string, args []interface{}) (pgx.Rows, error) {
-	c.Logger.TraceContext(ctx, "sql", slog.String("sql", sql), slog.Any("args", args))
+	c.logger.TraceContext(ctx, "sql", slog.String("sql", sql), slog.Any("args", args))
 	r, e := c.Pgx.Query(ctx, sql, args...)
 	if e != nil {
 		return nil, WrapIfKnownInvalidQueryErr(e)
@@ -287,7 +294,7 @@ func (c Client) Query(ctx context.Context, sql string, args []interface{}) (pgx.
 
 // Common function for all exec calls
 func (c Client) Exec(ctx context.Context, sql string, args []interface{}) error {
-	c.Logger.TraceContext(ctx, "sql", slog.String("sql", sql), slog.Any("args", args))
+	c.logger.TraceContext(ctx, "sql", slog.String("sql", sql), slog.Any("args", args))
 	tag, err := c.Pgx.Exec(ctx, sql, args...)
 	if err != nil {
 		return WrapIfKnownInvalidQueryErr(err)

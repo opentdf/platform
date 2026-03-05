@@ -24,7 +24,7 @@ message CreateRegisteredResourceRequest {
     }
   ];
 
-  // Optional 
+  // Optional
   // Registered Resource Values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
   // The stored value will be normalized to lower case.
   repeated string values = 2 [
@@ -32,12 +32,22 @@ message CreateRegisteredResourceRequest {
       min_items: 0,
       unique: true,
       items: {
-        string: 
+        string:
           {
             max_len: 253,
             pattern: "^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$"
           }
       },
+    }
+  ];
+
+  // Required
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: true };
+  string namespace_id = 3 [(buf.validate.field).string.uuid = true];
+  string namespace_fqn = 4 [
+    (buf.validate.field).string = {
+      min_len : 1
+      uri : true
     }
   ];
 
@@ -67,12 +77,32 @@ message GetRegisteredResourceRequest {
       }
     ];
   }
+
+  // Optional - namespace context for name-based lookups (since names are not globally unique for namespaced RRs)
+  string namespace_fqn = 3 [
+    (buf.validate.field).cel = {
+      id: "optional_namespace_fqn",
+      message: "Namespace FQN must be a valid URI if provided",
+      expression: "size(this) == 0 || this.isUri()"
+    }
+  ];
 }
 message GetRegisteredResourceResponse {
   policy.RegisteredResource resource = 1;
 }
 
 message ListRegisteredResourcesRequest {
+  // Optional
+  // Namespace ID or FQN
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+  string namespace_id = 1 [(buf.validate.field).string.uuid = true];
+  string namespace_fqn = 2 [
+    (buf.validate.field).string = {
+      min_len : 1
+      uri : true
+    }
+  ];
+
   // Optional
   policy.PageRequest pagination = 10;
 }

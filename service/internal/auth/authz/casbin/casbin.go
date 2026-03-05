@@ -30,6 +30,8 @@ var builtinPolicyV2 string
 const (
 	// rolePrefix is the prefix for role subjects in casbin policies.
 	rolePrefix = "role:"
+	// disallowedDimensionKeyChars are separators used in dimension serialization.
+	disallowedDimensionKeyChars = "=&"
 	// defaultRole is the role assigned when no roles are found.
 	defaultRole = "unknown"
 	// defaultSubjectsCapacity is the default capacity for subjects/roles slices.
@@ -267,7 +269,10 @@ func (a *Authorizer) authorizeV2(_ context.Context, req *authz.Request) (*authz.
 	}
 
 	// Serialize dimensions to canonical string
-	dims := serializeDimensions(req.ResourceContext)
+	dims, err := serializeDimensions(req.ResourceContext)
+	if err != nil {
+		return nil, fmt.Errorf("v2 authorization invalid resource dimensions: %w", err)
+	}
 
 	a.logger.Debug("v2 authorization check",
 		slog.Any("subjects", subjects),
@@ -352,10 +357,8 @@ func (a *Authorizer) extractSubjects(req *authz.Request) []string {
 		}
 
 		// Extract username claim
-		if claim, found := req.Token.Get(a.baseConfig.UserNameClaim); found {
-			if username, ok := claim.(string); ok && username != "" {
-				subjects = append(subjects, username)
-			}
+		if username := a.extractUsernameFromToken(req.Token); username != "" {
+			subjects = append(subjects, username)
 		}
 	}
 
@@ -370,6 +373,33 @@ func (a *Authorizer) extractSubjects(req *authz.Request) []string {
 	}
 
 	return subjects
+}
+
+// extractUsernameFromToken extracts and validates username subject from token.
+func (a *Authorizer) extractUsernameFromToken(token jwt.Token) string {
+	if token == nil || a.baseConfig.UserNameClaim == "" {
+		return ""
+	}
+
+	claim, found := token.Get(a.baseConfig.UserNameClaim)
+	if !found {
+		return ""
+	}
+
+	username, ok := claim.(string)
+	if !ok || username == "" {
+		return ""
+	}
+
+	if strings.HasPrefix(username, rolePrefix) {
+		a.logger.Warn("ignoring username subject with reserved role prefix",
+			slog.String("claim", a.baseConfig.UserNameClaim),
+			slog.String("prefix", rolePrefix),
+		)
+		return ""
+	}
+
+	return username
 }
 
 // extractRolesFromToken extracts roles from a jwt.Token based on the configured claim path.
@@ -447,9 +477,9 @@ func (a *Authorizer) extractRolesFromUserInfo(userInfo []byte) []string {
 // serializeDimensions converts ResolverContext to canonical dimension string.
 // Format: key1=value1&key2=value2 (keys sorted alphabetically)
 // Returns "*" if no dimensions are present.
-func serializeDimensions(ctx *authz.ResolverContext) string {
+func serializeDimensions(ctx *authz.ResolverContext) (string, error) {
 	if ctx == nil || len(ctx.Resources) == 0 {
-		return "*"
+		return "*", nil
 	}
 
 	// Collect all dimensions from all resources
@@ -459,12 +489,18 @@ func serializeDimensions(ctx *authz.ResolverContext) string {
 			continue
 		}
 		for k, v := range *resource {
+			if !isValidDimensionKey(k) {
+				return "", fmt.Errorf("invalid dimension key %q: keys must not contain any of %q", k, disallowedDimensionKeyChars)
+			}
+			if existing, exists := allDims[k]; exists && existing != v {
+				return "", fmt.Errorf("conflicting values for dimension key %q: %q != %q", k, existing, v)
+			}
 			allDims[k] = v
 		}
 	}
 
 	if len(allDims) == 0 {
-		return "*"
+		return "*", nil
 	}
 
 	// Sort keys for canonical ordering
@@ -480,7 +516,16 @@ func serializeDimensions(ctx *authz.ResolverContext) string {
 		parts = append(parts, fmt.Sprintf("%s=%s", k, allDims[k]))
 	}
 
-	return strings.Join(parts, "&")
+	return strings.Join(parts, "&"), nil
+}
+
+// isValidDimensionKey reports whether a dimension key can be safely serialized.
+func isValidDimensionKey(key string) bool {
+	if key == "" {
+		return false
+	}
+
+	return !strings.ContainsAny(key, disallowedDimensionKeyChars)
 }
 
 // dimensionMatchFunc is the Casbin custom function for dimension matching.
@@ -521,7 +566,10 @@ func dimensionMatch(reqDims, policyDims string) bool {
 	}
 
 	// Parse request dimensions into map
-	reqMap := parseDimensions(reqDims)
+	reqMap, ok := parseDimensions(reqDims)
+	if !ok {
+		return false
+	}
 
 	// Empty policy with non-wildcard request: check if request also empty
 	if policyDims == "" {
@@ -540,6 +588,9 @@ func dimensionMatch(reqDims, policyDims string) bool {
 			return false
 		}
 		key, policyVal := kv[0], kv[1]
+		if !isValidDimensionKey(key) {
+			return false
+		}
 
 		reqVal, exists := reqMap[key]
 		if !exists {
@@ -557,17 +608,25 @@ func dimensionMatch(reqDims, policyDims string) bool {
 }
 
 // parseDimensions parses a dimension string into a map.
-func parseDimensions(dims string) map[string]string {
+func parseDimensions(dims string) (map[string]string, bool) {
 	result := make(map[string]string)
 	if dims == "*" || dims == "" {
-		return result
+		return result, true
 	}
 
 	for _, pair := range strings.Split(dims, "&") {
-		kv := strings.SplitN(pair, "=", kvPairParts)
-		if len(kv) == kvPairParts {
-			result[kv[0]] = kv[1]
+		if pair == "" {
+			continue
 		}
+
+		kv := strings.SplitN(pair, "=", kvPairParts)
+		if len(kv) != kvPairParts {
+			return nil, false
+		}
+		if !isValidDimensionKey(kv[0]) {
+			return nil, false
+		}
+		result[kv[0]] = kv[1]
 	}
-	return result
+	return result, true
 }

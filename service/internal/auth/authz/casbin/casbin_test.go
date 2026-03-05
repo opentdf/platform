@@ -346,6 +346,33 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_NoDimensions() {
 	s.True(decision.Allowed, "should be allowed with nil resource context when policy has wildcard")
 }
 
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_UsernameWithRolePrefixIsIgnored() {
+	cfg := authz.Config{
+		Version: "v2",
+		PolicyConfig: authz.PolicyConfig{
+			UserNameClaim: "preferred_username",
+			Csv:           `p, role:admin, /policy.attributes.AttributesService/Get*, *, allow`,
+		},
+		Logger: s.logger,
+	}
+
+	authorizer, err := NewAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	token := createTestToken(s.T(), map[string]interface{}{
+		"preferred_username": "role:admin",
+	})
+
+	req := &authz.Request{
+		Token: token,
+		RPC:   "/policy.attributes.AttributesService/GetAttribute",
+	}
+
+	decision, err := authorizer.Authorize(context.Background(), req)
+	s.Require().NoError(err)
+	s.False(decision.Allowed, "username with reserved role prefix must not match role subjects")
+}
+
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_KASRESTfulPathsAllowed() {
 	// v2 uses leading slashes for ALL paths (both gRPC and HTTP)
 	// This test ensures KAS RESTful paths work in v2 authorization
@@ -473,6 +500,18 @@ func TestDimensionMatch(t *testing.T) {
 			policyDims: "",
 			expected:   true,
 		},
+		{
+			name:       "malformed request dimensions fail",
+			reqDims:    "name&space=hr",
+			policyDims: "space=hr",
+			expected:   false,
+		},
+		{
+			name:       "invalid policy key with separator fails",
+			reqDims:    "namespace=hr",
+			policyDims: "name&space=hr",
+			expected:   false,
+		},
 	}
 
 	for _, tc := range tests {
@@ -486,9 +525,10 @@ func TestDimensionMatch(t *testing.T) {
 // Test dimension serialization
 func TestSerializeDimensions(t *testing.T) {
 	tests := []struct {
-		name     string
-		ctx      *authz.ResolverContext
-		expected string
+		name      string
+		ctx       *authz.ResolverContext
+		expected  string
+		expectErr bool
 	}{
 		{
 			name:     "nil context",
@@ -528,11 +568,35 @@ func TestSerializeDimensions(t *testing.T) {
 			},
 			expected: "attribute=classification&namespace=hr",
 		},
+		{
+			name: "conflicting duplicate dimension key fails",
+			ctx: &authz.ResolverContext{
+				Resources: []*authz.ResolverResource{
+					{"namespace": "hr"},
+					{"namespace": "finance"},
+				},
+			},
+			expectErr: true,
+		},
+		{
+			name: "invalid key with separator fails",
+			ctx: &authz.ResolverContext{
+				Resources: []*authz.ResolverResource{
+					{"name=space": "hr"},
+				},
+			},
+			expectErr: true,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := serializeDimensions(tc.ctx)
+			result, err := serializeDimensions(tc.ctx)
+			if tc.expectErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
 			assert.Equal(t, tc.expected, result)
 		})
 	}

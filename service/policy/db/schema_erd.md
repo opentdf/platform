@@ -36,13 +36,13 @@ erDiagram
 
     attribute_definitions {
         boolean active "Active/Inactive state"
-        boolean allow_traversal 
+        boolean allow_traversal "Whether or not to allow platform to return the definition key when encrypting, if the value specified is missing."
         timestamp_with_time_zone created_at 
         uuid id PK "Primary key for the table"
         jsonb metadata "Metadata for the attribute definition (see protos for structure)"
         character_varying name UK "Name of the attribute (i.e. organization or classification), unique within the namespace"
         uuid namespace_id FK,UK "Foreign key to the parent namespace of the attribute definition"
-        attribute_definition_rule rule "<UNSPECIFIED,ALL_OF,ANY_OF,HIERARCHY> Rule for the attribute (see protos for options)"
+        attribute_definition_rule rule "<UNSPECIFIED,UNSPECIFIED,UNSPECIFIED,UNSPECIFIED,ALL_OF,ALL_OF,ALL_OF,ALL_OF,ANY_OF,ANY_OF,ANY_OF,ANY_OF,HIERARCHY,HIERARCHY,HIERARCHY,HIERARCHY> Rule for the attribute (see protos for options)"
         timestamp_with_time_zone updated_at 
         ARRAY values_order "Order of value ids for the attribute (important for hierarchy rule)"
     }
@@ -53,11 +53,6 @@ erDiagram
         uuid id PK "Primary key for the table"
         uuid namespace_id FK,UK "Foreign key to the namespace of the attribute"
         uuid value_id FK,UK "Foreign key to the attribute value"
-    }
-
-    attribute_namespace_certificates {
-        uuid certificate_id PK,FK "Foreign key to the certificate"
-        uuid namespace_id PK,FK "Foreign key to the namespace"
     }
 
     attribute_namespace_key_access_grants {
@@ -102,14 +97,6 @@ erDiagram
     base_keys {
         uuid id PK 
         uuid key_access_server_key_id FK 
-    }
-
-    certificates {
-        timestamp_with_time_zone created_at "Timestamp when the certificate was created"
-        uuid id PK "Unique identifier for the certificate"
-        jsonb metadata "Optional metadata for the certificate"
-        text pem "PEM format - Base64-encoded DER certificate (not PEM; no headers/footers)"
-        timestamp_with_time_zone updated_at "Timestamp when the certificate was last updated"
     }
 
     goose_db_version {
@@ -166,13 +153,13 @@ erDiagram
     }
 
     obligation_triggers {
-        uuid action_id FK,UK 
-        uuid attribute_value_id FK,UK 
+        uuid action_id FK 
+        uuid attribute_value_id FK 
         text client_id "Holds the client_id associated with this trigger."
         timestamp_with_time_zone created_at 
         uuid id PK 
         jsonb metadata 
-        uuid obligation_value_id FK,UK 
+        uuid obligation_value_id FK 
         timestamp_with_time_zone updated_at 
     }
 
@@ -280,43 +267,80 @@ erDiagram
     obligation_triggers }o--|| actions : "action_id"
     registered_resource_action_attribute_values }o--|| actions : "action_id"
     subject_mapping_actions }o--|| actions : "action_id"
+    obligation_triggers }o--|| actions : "action_id"
+    registered_resource_action_attribute_values }o--|| actions : "action_id"
+    subject_mapping_actions }o--|| actions : "action_id"
+    asym_key }o--|| provider_config : "provider_config_id"
     asym_key }o--|| provider_config : "provider_config_id"
     attribute_definition_key_access_grants }o--|| attribute_definitions : "attribute_definition_id"
     attribute_definition_key_access_grants }o--|| key_access_servers : "key_access_server_id"
+    attribute_definition_key_access_grants }o--|| attribute_definitions : "attribute_definition_id"
+    attribute_definition_key_access_grants }o--|| key_access_servers : "key_access_server_id"
+    attribute_definition_public_key_map }o--|| attribute_definitions : "definition_id"
+    attribute_definition_public_key_map }o--|| key_access_server_keys : "key_access_server_key_id"
     attribute_definition_public_key_map }o--|| attribute_definitions : "definition_id"
     attribute_definition_public_key_map }o--|| key_access_server_keys : "key_access_server_key_id"
     attribute_definitions }o--|| attribute_namespaces : "namespace_id"
     attribute_fqns }o--|| attribute_definitions : "attribute_id"
     attribute_values }o--|| attribute_definitions : "attribute_definition_id"
+    attribute_definitions }o--|| attribute_namespaces : "namespace_id"
+    attribute_fqns }o--|| attribute_definitions : "attribute_id"
+    attribute_values }o--|| attribute_definitions : "attribute_definition_id"
     attribute_fqns }o--|| attribute_namespaces : "namespace_id"
     attribute_fqns }o--|| attribute_values : "value_id"
-    attribute_namespace_certificates }o--|| attribute_namespaces : "namespace_id"
-    attribute_namespace_certificates }o--|| certificates : "certificate_id"
+    attribute_fqns }o--|| attribute_namespaces : "namespace_id"
+    attribute_fqns }o--|| attribute_values : "value_id"
+    attribute_namespace_key_access_grants }o--|| attribute_namespaces : "namespace_id"
+    attribute_namespace_key_access_grants }o--|| key_access_servers : "key_access_server_id"
     attribute_namespace_key_access_grants }o--|| attribute_namespaces : "namespace_id"
     attribute_namespace_key_access_grants }o--|| key_access_servers : "key_access_server_id"
     attribute_namespace_public_key_map }o--|| attribute_namespaces : "namespace_id"
     attribute_namespace_public_key_map }o--|| key_access_server_keys : "key_access_server_key_id"
+    attribute_namespace_public_key_map }o--|| attribute_namespaces : "namespace_id"
+    attribute_namespace_public_key_map }o--|| key_access_server_keys : "key_access_server_key_id"
+    obligation_definitions }o--|| attribute_namespaces : "namespace_id"
+    resource_mapping_groups }o--|| attribute_namespaces : "namespace_id"
     obligation_definitions }o--|| attribute_namespaces : "namespace_id"
     resource_mapping_groups }o--|| attribute_namespaces : "namespace_id"
     attribute_value_key_access_grants }o--|| attribute_values : "attribute_value_id"
     attribute_value_key_access_grants }o--|| key_access_servers : "key_access_server_id"
+    attribute_value_key_access_grants }o--|| attribute_values : "attribute_value_id"
+    attribute_value_key_access_grants }o--|| key_access_servers : "key_access_server_id"
+    attribute_value_public_key_map }o--|| attribute_values : "value_id"
+    attribute_value_public_key_map }o--|| key_access_server_keys : "key_access_server_key_id"
     attribute_value_public_key_map }o--|| attribute_values : "value_id"
     attribute_value_public_key_map }o--|| key_access_server_keys : "key_access_server_key_id"
     obligation_triggers }o--|| attribute_values : "attribute_value_id"
     registered_resource_action_attribute_values }o--|| attribute_values : "attribute_value_id"
     resource_mappings }o--|| attribute_values : "attribute_value_id"
     subject_mappings }o--|| attribute_values : "attribute_value_id"
+    obligation_triggers }o--|| attribute_values : "attribute_value_id"
+    registered_resource_action_attribute_values }o--|| attribute_values : "attribute_value_id"
+    resource_mappings }o--|| attribute_values : "attribute_value_id"
+    subject_mappings }o--|| attribute_values : "attribute_value_id"
+    base_keys }o--|| key_access_server_keys : "key_access_server_key_id"
     base_keys }o--|| key_access_server_keys : "key_access_server_key_id"
     key_access_server_keys }o--|| key_access_servers : "key_access_server_id"
     key_access_server_keys }o--|| provider_config : "provider_config_id"
+    key_access_server_keys }o--|| key_access_servers : "key_access_server_id"
+    key_access_server_keys }o--|| provider_config : "provider_config_id"
+    obligation_values_standard }o--|| obligation_definitions : "obligation_definition_id"
     obligation_values_standard }o--|| obligation_definitions : "obligation_definition_id"
     obligation_fulfillers }o--|| obligation_values_standard : "obligation_value_id"
+    obligation_fulfillers }o--|| obligation_values_standard : "obligation_value_id"
+    obligation_triggers }o--|| obligation_values_standard : "obligation_value_id"
     obligation_triggers }o--|| obligation_values_standard : "obligation_value_id"
     sym_key }o--|| provider_config : "provider_config_id"
+    sym_key }o--|| provider_config : "provider_config_id"
+    registered_resource_action_attribute_values }o--|| registered_resource_values : "registered_resource_value_id"
     registered_resource_action_attribute_values }o--|| registered_resource_values : "registered_resource_value_id"
     registered_resource_values }o--|| registered_resources : "registered_resource_id"
+    registered_resource_values }o--|| registered_resources : "registered_resource_id"
+    resource_mappings }o--|| resource_mapping_groups : "group_id"
     resource_mappings }o--|| resource_mapping_groups : "group_id"
     subject_mappings }o--|| subject_condition_set : "subject_condition_set_id"
+    subject_mappings }o--|| subject_condition_set : "subject_condition_set_id"
+    subject_mapping_actions }o--|| subject_mappings : "subject_mapping_id"
     subject_mapping_actions }o--|| subject_mappings : "subject_mapping_id"
 ```
 <style>div.mermaid{overflow-x:scroll;}div.mermaid>svg{width:250rem;}</style>

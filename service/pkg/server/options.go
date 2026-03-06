@@ -43,37 +43,6 @@ type StartConfig struct {
 	auditTypeRegistrations audit.TypeRegistrations
 }
 
-func mergeAuditTypeRegistrations(dst, src audit.TypeRegistrations) audit.TypeRegistrations {
-	if len(src.ObjectTypes) > 0 {
-		if dst.ObjectTypes == nil {
-			dst.ObjectTypes = make(map[audit.ObjectType]string)
-		}
-		for objectType, name := range src.ObjectTypes {
-			dst.ObjectTypes[objectType] = name
-		}
-	}
-
-	if len(src.ActionTypes) > 0 {
-		if dst.ActionTypes == nil {
-			dst.ActionTypes = make(map[audit.ActionType]string)
-		}
-		for actionType, name := range src.ActionTypes {
-			dst.ActionTypes[actionType] = name
-		}
-	}
-
-	if len(src.ActionResults) > 0 {
-		if dst.ActionResults == nil {
-			dst.ActionResults = make(map[audit.ActionResult]string)
-		}
-		for actionResult, name := range src.ActionResults {
-			dst.ActionResults[actionResult] = name
-		}
-	}
-
-	return dst
-}
-
 // Deprecated: Use WithConfigKey
 // WithConfigName option sets the configuration name.
 func WithConfigName(name string) StartOptions {

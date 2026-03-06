@@ -268,34 +268,39 @@ func WithAdditionalCORSExposedHeaders(headers ...string) StartOptions {
 // and seals the registration registry during startup to block runtime modifications.
 func WithAdditionalAuditTypeRegistrations(registrations audit.TypeRegistrations) StartOptions {
 	return func(c StartConfig) StartConfig {
-		if len(c.auditTypeRegistrations.ObjectTypes) > 0 {
-			if registrations.ObjectTypes == nil {
-				registrations.ObjectTypes = make(map[audit.ObjectType]string)
-			}
+		mergedRegistrations := audit.TypeRegistrations{}
+
+		if len(c.auditTypeRegistrations.ObjectTypes) > 0 || len(registrations.ObjectTypes) > 0 {
+			mergedRegistrations.ObjectTypes = make(map[audit.ObjectType]string)
 			for objectType, name := range c.auditTypeRegistrations.ObjectTypes {
-				registrations.ObjectTypes[objectType] = name
+				mergedRegistrations.ObjectTypes[objectType] = name
+			}
+			for objectType, name := range registrations.ObjectTypes {
+				mergedRegistrations.ObjectTypes[objectType] = name
 			}
 		}
 
-		if len(c.auditTypeRegistrations.ActionTypes) > 0 {
-			if registrations.ActionTypes == nil {
-				registrations.ActionTypes = make(map[audit.ActionType]string)
-			}
+		if len(c.auditTypeRegistrations.ActionTypes) > 0 || len(registrations.ActionTypes) > 0 {
+			mergedRegistrations.ActionTypes = make(map[audit.ActionType]string)
 			for actionType, name := range c.auditTypeRegistrations.ActionTypes {
-				registrations.ActionTypes[actionType] = name
+				mergedRegistrations.ActionTypes[actionType] = name
+			}
+			for actionType, name := range registrations.ActionTypes {
+				mergedRegistrations.ActionTypes[actionType] = name
 			}
 		}
 
-		if len(c.auditTypeRegistrations.ActionResults) > 0 {
-			if registrations.ActionResults == nil {
-				registrations.ActionResults = make(map[audit.ActionResult]string)
-			}
+		if len(c.auditTypeRegistrations.ActionResults) > 0 || len(registrations.ActionResults) > 0 {
+			mergedRegistrations.ActionResults = make(map[audit.ActionResult]string)
 			for actionResult, name := range c.auditTypeRegistrations.ActionResults {
-				registrations.ActionResults[actionResult] = name
+				mergedRegistrations.ActionResults[actionResult] = name
+			}
+			for actionResult, name := range registrations.ActionResults {
+				mergedRegistrations.ActionResults[actionResult] = name
 			}
 		}
 
-		c.auditTypeRegistrations = registrations
+		c.auditTypeRegistrations = mergedRegistrations
 		return c
 	}
 }

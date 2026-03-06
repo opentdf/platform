@@ -173,7 +173,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithIDs_Success()
 }
 
 func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_SameTupleDifferentClients_Success() {
-	firstTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
+	req := &obligations.AddObligationTriggerRequest{
 		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
 		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
 		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
@@ -182,21 +182,15 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_SameTupleDifferen
 				ClientId: clientID,
 			},
 		},
-	})
+	}
+
+	firstTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, req)
 	s.Require().NoError(err)
 	s.triggerIDsToClean = append(s.triggerIDsToClean, firstTrigger.GetId())
 	s.validateTriggerWithDefaults(firstTrigger, true)
 
-	secondTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
-		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
-		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
-		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
-		Context: &policy.RequestContext{
-			Pep: &policy.PolicyEnforcementPoint{
-				ClientId: secondClientID,
-			},
-		},
-	})
+	req.Context.Pep.ClientId = secondClientID
+	secondTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, req)
 	s.Require().NoError(err)
 	s.triggerIDsToClean = append(s.triggerIDsToClean, secondTrigger.GetId())
 	s.Require().NotEqual(firstTrigger.GetId(), secondTrigger.GetId())
@@ -205,7 +199,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_SameTupleDifferen
 }
 
 func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_SameTupleSameClient_Fails() {
-	firstTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
+	req := &obligations.AddObligationTriggerRequest{
 		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
 		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
 		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
@@ -214,20 +208,13 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_SameTupleSameClie
 				ClientId: clientID,
 			},
 		},
-	})
+	}
+
+	firstTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, req)
 	s.Require().NoError(err)
 	s.triggerIDsToClean = append(s.triggerIDsToClean, firstTrigger.GetId())
 
-	duplicateTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
-		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
-		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
-		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
-		Context: &policy.RequestContext{
-			Pep: &policy.PolicyEnforcementPoint{
-				ClientId: clientID,
-			},
-		},
-	})
+	duplicateTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, req)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
 	s.Nil(duplicateTrigger)

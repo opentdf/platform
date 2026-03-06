@@ -2,9 +2,12 @@ package audit
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 )
+
+var ErrAuditTypeRegistrationSealed = errors.New("audit type registrations are sealed")
 
 type ObjectType int
 
@@ -65,15 +68,14 @@ var objectTypeNames = map[ObjectType]string{
 }
 
 var (
-	objectTypeNamesMu   sync.RWMutex
-	actionTypeNamesMu   sync.RWMutex
-	actionResultNamesMu sync.RWMutex
+	auditTypeRegistryMu    sync.RWMutex
+	typeRegistrationSealed bool
 )
 
 func (ot ObjectType) String() string {
-	objectTypeNamesMu.RLock()
+	auditTypeRegistryMu.RLock()
 	name, ok := objectTypeNames[ot]
-	objectTypeNamesMu.RUnlock()
+	auditTypeRegistryMu.RUnlock()
 	if ok {
 		return name
 	}
@@ -84,10 +86,14 @@ func (ot ObjectType) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ot.String())
 }
 
-func RegisterObjectType(ot ObjectType, name string) {
-	objectTypeNamesMu.Lock()
-	defer objectTypeNamesMu.Unlock()
+func RegisterObjectType(ot ObjectType, name string) error {
+	auditTypeRegistryMu.Lock()
+	defer auditTypeRegistryMu.Unlock()
+	if typeRegistrationSealed {
+		return ErrAuditTypeRegistrationSealed
+	}
 	objectTypeNames[ot] = name
+	return nil
 }
 
 type ActionType int
@@ -111,9 +117,9 @@ var actionTypeNames = map[ActionType]string{
 }
 
 func (at ActionType) String() string {
-	actionTypeNamesMu.RLock()
+	auditTypeRegistryMu.RLock()
 	name, ok := actionTypeNames[at]
-	actionTypeNamesMu.RUnlock()
+	auditTypeRegistryMu.RUnlock()
 	if ok {
 		return name
 	}
@@ -124,10 +130,14 @@ func (at ActionType) MarshalJSON() ([]byte, error) {
 	return json.Marshal(at.String())
 }
 
-func RegisterActionType(at ActionType, name string) {
-	actionTypeNamesMu.Lock()
-	defer actionTypeNamesMu.Unlock()
+func RegisterActionType(at ActionType, name string) error {
+	auditTypeRegistryMu.Lock()
+	defer auditTypeRegistryMu.Unlock()
+	if typeRegistrationSealed {
+		return ErrAuditTypeRegistrationSealed
+	}
 	actionTypeNames[at] = name
+	return nil
 }
 
 type ActionResult int
@@ -155,9 +165,9 @@ var actionResultNames = map[ActionResult]string{
 }
 
 func (ar ActionResult) String() string {
-	actionResultNamesMu.RLock()
+	auditTypeRegistryMu.RLock()
 	name, ok := actionResultNames[ar]
-	actionResultNamesMu.RUnlock()
+	auditTypeRegistryMu.RUnlock()
 	if ok {
 		return name
 	}
@@ -168,8 +178,46 @@ func (ar ActionResult) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ar.String())
 }
 
-func RegisterActionResult(ar ActionResult, name string) {
-	actionResultNamesMu.Lock()
-	defer actionResultNamesMu.Unlock()
+func RegisterActionResult(ar ActionResult, name string) error {
+	auditTypeRegistryMu.Lock()
+	defer auditTypeRegistryMu.Unlock()
+	if typeRegistrationSealed {
+		return ErrAuditTypeRegistrationSealed
+	}
 	actionResultNames[ar] = name
+	return nil
+}
+
+type TypeRegistrations struct {
+	ObjectTypes   map[ObjectType]string
+	ActionTypes   map[ActionType]string
+	ActionResults map[ActionResult]string
+}
+
+func ApplyTypeRegistrations(reg TypeRegistrations) error {
+	for objectType, name := range reg.ObjectTypes {
+		if err := RegisterObjectType(objectType, name); err != nil {
+			return err
+		}
+	}
+
+	for actionType, name := range reg.ActionTypes {
+		if err := RegisterActionType(actionType, name); err != nil {
+			return err
+		}
+	}
+
+	for actionResult, name := range reg.ActionResults {
+		if err := RegisterActionResult(actionResult, name); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func SealTypeRegistrations() {
+	auditTypeRegistryMu.Lock()
+	defer auditTypeRegistryMu.Unlock()
+	typeRegistrationSealed = true
 }

@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -562,39 +561,81 @@ func (c PolicyDBClient) DeleteRegisteredResourceValue(ctx context.Context, id st
 ///
 
 func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx context.Context, registeredResourceValueID string, actionAttrValues []*registeredresources.ActionAttributeValue) error {
-	for _, aav := range actionAttrValues {
-		params := createRegisteredResourceActionAttributeValueParams{
-			RegisteredResourceValueID: registeredResourceValueID,
-		}
+	if len(actionAttrValues) == 0 {
+		return nil
+	}
 
+	// Look up the namespace_id of the registered resource for same-namespace enforcement
+	nsUUID, err := c.queries.getRegisteredResourceNamespaceIDByValueID(ctx, registeredResourceValueID)
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	resourceNamespaceID := UUIDToString(nsUUID)
+
+	createActionAttributeValueParams := make([]createRegisteredResourceActionAttributeValuesParams, len(actionAttrValues))
+	var actionID, attributeValueID string
+	for i, aav := range actionAttrValues {
 		switch ident := aav.GetActionIdentifier().(type) {
 		case *registeredresources.ActionAttributeValue_ActionId:
-			params.ActionID = pgtypeUUID(ident.ActionId)
+			actionID = ident.ActionId
 		case *registeredresources.ActionAttributeValue_ActionName:
-			params.ActionName = pgtypeText(strings.ToLower(ident.ActionName))
+			a, err := c.queries.getAction(ctx, getActionParams{
+				Name: pgtypeText(strings.ToLower(ident.ActionName)),
+			})
+			if err != nil {
+				return db.WrapIfKnownInvalidQueryErr(err)
+			}
+			actionID = a.ID
 		default:
 			return db.ErrSelectIdentifierInvalid
 		}
 
 		switch ident := aav.GetAttributeValueIdentifier().(type) {
 		case *registeredresources.ActionAttributeValue_AttributeValueId:
-			params.AttributeValueID = pgtypeUUID(ident.AttributeValueId)
+			attributeValueID = ident.AttributeValueId
 		case *registeredresources.ActionAttributeValue_AttributeValueFqn:
-			params.AttributeValueFqn = pgtypeText(strings.ToLower(ident.AttributeValueFqn))
+			av, err := c.queries.getAttributeValue(ctx, getAttributeValueParams{
+				Fqn: pgtypeText(strings.ToLower(ident.AttributeValueFqn)),
+			})
+			if err != nil {
+				return db.WrapIfKnownInvalidQueryErr(err)
+			}
+			attributeValueID = av.ID
 		default:
 			return db.ErrSelectIdentifierInvalid
 		}
 
-		if _, err := c.queries.createRegisteredResourceActionAttributeValue(ctx, params); err != nil {
-			err = db.WrapIfKnownInvalidQueryErr(err)
-			// The SQL uses subqueries to resolve action/attribute value identifiers.
-			// When the referenced entity doesn't exist, the subquery returns NULL,
-			// causing a not-null violation instead of a foreign key violation.
-			if errors.Is(err, db.ErrNotNullViolation) {
-				return db.ErrNotFound
-			}
-			return err
+		createActionAttributeValueParams[i] = createRegisteredResourceActionAttributeValuesParams{
+			RegisteredResourceValueID: registeredResourceValueID,
+			ActionID:                  actionID,
+			AttributeValueID:          attributeValueID,
 		}
+	}
+
+	// Same-namespace enforcement (batch): all attribute values must belong to the same namespace as the registered resource
+	if resourceNamespaceID != "" {
+		avIDs := make([]string, len(createActionAttributeValueParams))
+		for i, p := range createActionAttributeValueParams {
+			avIDs[i] = p.AttributeValueID
+		}
+		rows, err := c.queries.getAttributeValueNamespaceIDs(ctx, avIDs)
+		if err != nil {
+			return db.WrapIfKnownInvalidQueryErr(err)
+		}
+		for _, row := range rows {
+			if row.NamespaceID != resourceNamespaceID {
+				return fmt.Errorf("attribute value %s belongs to namespace %s, but registered resource belongs to namespace %s: %w",
+					row.AttributeValueID, row.NamespaceID, resourceNamespaceID, db.ErrForeignKeyViolation)
+			}
+		}
+	}
+
+	count, err := c.queries.createRegisteredResourceActionAttributeValues(ctx, createActionAttributeValueParams)
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count != int64(len(actionAttrValues)) {
+		return fmt.Errorf("failed to create all action attribute values, expected %d, got %d", len(actionAttrValues), count)
 	}
 
 	return nil

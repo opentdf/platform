@@ -348,6 +348,44 @@ func (q *Queries) getAttributeValue(ctx context.Context, arg getAttributeValuePa
 	return i, err
 }
 
+const getAttributeValueNamespaceIDs = `-- name: getAttributeValueNamespaceIDs :many
+SELECT av.id AS attribute_value_id, ad.namespace_id
+FROM attribute_values av
+JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+WHERE av.id = ANY($1::uuid[])
+`
+
+type getAttributeValueNamespaceIDsRow struct {
+	AttributeValueID string `json:"attribute_value_id"`
+	NamespaceID      string `json:"namespace_id"`
+}
+
+// getAttributeValueNamespaceIDs
+//
+//	SELECT av.id AS attribute_value_id, ad.namespace_id
+//	FROM attribute_values av
+//	JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+//	WHERE av.id = ANY($1::uuid[])
+func (q *Queries) getAttributeValueNamespaceIDs(ctx context.Context, ids []string) ([]getAttributeValueNamespaceIDsRow, error) {
+	rows, err := q.db.Query(ctx, getAttributeValueNamespaceIDs, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []getAttributeValueNamespaceIDsRow
+	for rows.Next() {
+		var i getAttributeValueNamespaceIDsRow
+		if err := rows.Scan(&i.AttributeValueID, &i.NamespaceID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAttributeValues = `-- name: listAttributeValues :many
 
 SELECT

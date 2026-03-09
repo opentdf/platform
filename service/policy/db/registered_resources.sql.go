@@ -106,101 +106,10 @@ func (q *Queries) createRegisteredResource(ctx context.Context, arg createRegist
 	return i, err
 }
 
-const createRegisteredResourceActionAttributeValue = `-- name: createRegisteredResourceActionAttributeValue :one
-
-WITH rr_ns AS (
-    SELECT rr.namespace_id
-    FROM registered_resources rr
-    JOIN registered_resource_values rrv ON rrv.registered_resource_id = rr.id
-    WHERE rrv.id = $1::uuid
-),
-a_id AS (
-    SELECT a.id
-    FROM actions a
-    WHERE
-        ($2::uuid IS NOT NULL AND a.id = $2::uuid)
-        OR
-        ($3::text IS NOT NULL AND a.name = $3::text)
-),
-av_id AS (
-    SELECT av.id
-    FROM attribute_values av
-    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
-    LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
-    WHERE
-        (($4::uuid IS NOT NULL AND av.id = $4::uuid)
-        OR
-        ($5::text IS NOT NULL AND fqns.fqn = $5::text))
-        AND (
-            (SELECT namespace_id FROM rr_ns) IS NULL
-            OR ad.namespace_id = (SELECT namespace_id FROM rr_ns)
-        )
-)
-INSERT INTO registered_resource_action_attribute_values (registered_resource_value_id, action_id, attribute_value_id)
-VALUES ($1, (SELECT id FROM a_id), (SELECT id FROM av_id))
-RETURNING registered_resource_value_id, action_id, attribute_value_id
-`
-
-type createRegisteredResourceActionAttributeValueParams struct {
-	RegisteredResourceValueID string      `json:"registered_resource_value_id"`
-	ActionID                  pgtype.UUID `json:"action_id"`
-	ActionName                pgtype.Text `json:"action_name"`
-	AttributeValueID          pgtype.UUID `json:"attribute_value_id"`
-	AttributeValueFqn         pgtype.Text `json:"attribute_value_fqn"`
-}
-
-type createRegisteredResourceActionAttributeValueRow struct {
+type createRegisteredResourceActionAttributeValuesParams struct {
 	RegisteredResourceValueID string `json:"registered_resource_value_id"`
 	ActionID                  string `json:"action_id"`
 	AttributeValueID          string `json:"attribute_value_id"`
-}
-
-// --------------------------------------------------------------
-// Registered Resource Action Attribute Values
-// --------------------------------------------------------------
-//
-//	WITH rr_ns AS (
-//	    SELECT rr.namespace_id
-//	    FROM registered_resources rr
-//	    JOIN registered_resource_values rrv ON rrv.registered_resource_id = rr.id
-//	    WHERE rrv.id = $1::uuid
-//	),
-//	a_id AS (
-//	    SELECT a.id
-//	    FROM actions a
-//	    WHERE
-//	        ($2::uuid IS NOT NULL AND a.id = $2::uuid)
-//	        OR
-//	        ($3::text IS NOT NULL AND a.name = $3::text)
-//	),
-//	av_id AS (
-//	    SELECT av.id
-//	    FROM attribute_values av
-//	    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
-//	    LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
-//	    WHERE
-//	        (($4::uuid IS NOT NULL AND av.id = $4::uuid)
-//	        OR
-//	        ($5::text IS NOT NULL AND fqns.fqn = $5::text))
-//	        AND (
-//	            (SELECT namespace_id FROM rr_ns) IS NULL
-//	            OR ad.namespace_id = (SELECT namespace_id FROM rr_ns)
-//	        )
-//	)
-//	INSERT INTO registered_resource_action_attribute_values (registered_resource_value_id, action_id, attribute_value_id)
-//	VALUES ($1, (SELECT id FROM a_id), (SELECT id FROM av_id))
-//	RETURNING registered_resource_value_id, action_id, attribute_value_id
-func (q *Queries) createRegisteredResourceActionAttributeValue(ctx context.Context, arg createRegisteredResourceActionAttributeValueParams) (createRegisteredResourceActionAttributeValueRow, error) {
-	row := q.db.QueryRow(ctx, createRegisteredResourceActionAttributeValue,
-		arg.RegisteredResourceValueID,
-		arg.ActionID,
-		arg.ActionName,
-		arg.AttributeValueID,
-		arg.AttributeValueFqn,
-	)
-	var i createRegisteredResourceActionAttributeValueRow
-	err := row.Scan(&i.RegisteredResourceValueID, &i.ActionID, &i.AttributeValueID)
-	return i, err
 }
 
 const createRegisteredResourceValue = `-- name: createRegisteredResourceValue :one
@@ -359,6 +268,29 @@ func (q *Queries) getRegisteredResource(ctx context.Context, arg getRegisteredRe
 		&i.Values,
 	)
 	return i, err
+}
+
+const getRegisteredResourceNamespaceIDByValueID = `-- name: getRegisteredResourceNamespaceIDByValueID :one
+
+SELECT rr.namespace_id
+FROM registered_resources rr
+JOIN registered_resource_values rrv ON rrv.registered_resource_id = rr.id
+WHERE rrv.id = $1
+`
+
+// --------------------------------------------------------------
+// Registered Resource Action Attribute Values
+// --------------------------------------------------------------
+//
+//	SELECT rr.namespace_id
+//	FROM registered_resources rr
+//	JOIN registered_resource_values rrv ON rrv.registered_resource_id = rr.id
+//	WHERE rrv.id = $1
+func (q *Queries) getRegisteredResourceNamespaceIDByValueID(ctx context.Context, id string) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getRegisteredResourceNamespaceIDByValueID, id)
+	var namespace_id pgtype.UUID
+	err := row.Scan(&namespace_id)
+	return namespace_id, err
 }
 
 const getRegisteredResourceValue = `-- name: getRegisteredResourceValue :one

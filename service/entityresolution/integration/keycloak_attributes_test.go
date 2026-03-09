@@ -62,7 +62,7 @@ func TestKeycloakUserAttributeSubjectMapping(t *testing.T) {
 		}, 60, time.Second)
 		require.NoError(t, retryErr, "Keycloak admin API not available after extended wait")
 	}
-	defer adapter.TeardownTestData(ctx) //nolint:errcheck
+	defer adapter.TeardownTestData(ctx) //nolint:errcheck // teardown is best-effort; failure doesn't affect test outcome
 
 	err := adapter.initializeKeycloakClient(ctx)
 	require.NoError(t, err)

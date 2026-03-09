@@ -1,6 +1,7 @@
-package utils
+package testhelpers
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -190,7 +191,7 @@ func generateJavaKeystore(outputPath string) {
 }
 
 func createJavaKeystore(certPath, keystorePath string) {
-	cmd := exec.Command("keytool", "-import", "-trustcacerts", "-noprompt",
+	cmd := exec.CommandContext(context.Background(), "keytool", "-import", "-trustcacerts", "-noprompt",
 		"-alias", "ca",
 		"-file", certPath,
 		"-keystore", keystorePath,

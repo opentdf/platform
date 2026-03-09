@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/opentdf/platform/lib/flattening"
@@ -48,27 +47,8 @@ func TestKeycloakUserAttributeSubjectMapping(t *testing.T) {
 
 	adapter := NewKeycloakTestAdapter()
 
-	// setupKeycloakContainer may return a "not ready" error if Keycloak needs
-	// more than the default 20s to initialize. The container URL is set before
-	// the readiness check, so we can continue retrying independently.
-	setupErr := adapter.setupKeycloakContainer(ctx)
-	if setupErr != nil {
-		require.NotEmpty(t, adapter.config.URL, "container failed to start: %v", setupErr)
-		t.Logf("initial readiness check timed out, retrying for up to 60s: %v", setupErr)
-		retryErr := internal.WaitForContainer(ctx, func() error {
-			client := gocloak.NewClient(adapter.config.URL)
-			_, err := client.LoginAdmin(ctx, adapter.config.AdminUser, adapter.config.AdminPass, "master")
-			return err
-		}, 60, time.Second)
-		require.NoError(t, retryErr, "Keycloak admin API not available after extended wait")
-	}
+	require.NoError(t, adapter.SetupTestData(ctx, &internal.ContractTestDataSet{}))
 	defer adapter.TeardownTestData(ctx) //nolint:errcheck // teardown is best-effort; failure doesn't affect test outcome
-
-	err := adapter.initializeKeycloakClient(ctx)
-	require.NoError(t, err)
-
-	err = adapter.createTestRealm(ctx)
-	require.NoError(t, err)
 
 	// Create a user with a 'department' Keycloak attribute — mirroring the scenario
 	// in https://github.com/orgs/opentdf/discussions/3115
@@ -81,7 +61,7 @@ func TestKeycloakUserAttributeSubjectMapping(t *testing.T) {
 		EmailVerified: gocloak.BoolP(true),
 		Attributes:    &dept,
 	}
-	_, err = adapter.keycloakClient.CreateUser(ctx, adapter.adminToken.AccessToken, adapter.config.Realm, keycloakUser)
+	_, err := adapter.keycloakClient.CreateUser(ctx, adapter.adminToken.AccessToken, adapter.config.Realm, keycloakUser)
 	require.NoError(t, err)
 
 	// Retrieve the user exactly as the Keycloak ERS does via GetUsers

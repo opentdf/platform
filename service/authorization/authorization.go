@@ -13,6 +13,7 @@ import (
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
 	"github.com/go-viper/mapstructure/v2"
+	"github.com/open-policy-agent/opa/v1/ast"
 	"github.com/open-policy-agent/opa/v1/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
@@ -502,6 +503,7 @@ func (as *AuthorizationService) loadRegoAndBuiltins(cfg *Config) error {
 	as.eval, err = rego.New(
 		rego.Query(cfg.Rego.Query),
 		rego.Module("entitlements.rego", string(entitlementRego)),
+		rego.SetRegoVersion(ast.RegoV0),
 		rego.StrictBuiltinErrors(true),
 	).PrepareForEval(context.Background())
 	if err != nil {

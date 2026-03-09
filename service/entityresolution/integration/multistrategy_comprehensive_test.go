@@ -374,11 +374,6 @@ func TestMultiStrategy_LDAPOnly(t *testing.T) {
 
 	ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
-		// Check if this is the expected LDAP stub error
-		if strings.Contains(err.Error(), "LDAP not implemented") {
-			t.Skipf("LDAP provider is not fully implemented yet (stub implementation): %v", err)
-			return
-		}
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
 
@@ -398,11 +393,6 @@ func TestMultiStrategy_LDAPOnly(t *testing.T) {
 
 	resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
 	if err != nil {
-		// LDAP lookup may fail if user doesn't exist, which is expected
-		if strings.Contains(err.Error(), "LDAP not implemented") {
-			t.Skipf("LDAP provider is stubbed and not fully implemented: %v", err)
-			return
-		}
 		t.Logf("LDAP lookup failed as expected (no test data): %v", err)
 		return
 	}

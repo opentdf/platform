@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -120,97 +119,6 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		KasKeys:     keys,
 		Obligations: obligations,
 	}, nil
-}
-
-func (c PolicyDBClient) ListAttributeValues(ctx context.Context, r *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error) {
-	state := getDBStateTypeTransformedEnum(r.GetState())
-	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
-
-	maxLimit := c.listCfg.limitMax
-	if maxLimit > 0 && limit > maxLimit {
-		return nil, db.ErrListLimitTooLarge
-	}
-
-	active := pgtype.Bool{
-		Valid: false,
-	}
-
-	if state != stateAny {
-		active = pgtypeBool(state == stateActive)
-	}
-
-	list, err := c.queries.listAttributeValues(ctx, listAttributeValuesParams{
-		AttributeDefinitionID: pgtypeUUID(r.GetAttributeId()),
-		Active:                active,
-		Limit:                 limit,
-		Offset:                offset,
-	})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	attributeValues := make([]*policy.Value, len(list))
-
-	for i, av := range list {
-		metadata := &common.Metadata{}
-		if err := unmarshalMetadata(av.Metadata, metadata); err != nil {
-			return nil, err
-		}
-
-		attributeValues[i] = &policy.Value{
-			Id:       av.ID,
-			Value:    av.Value,
-			Active:   &wrapperspb.BoolValue{Value: av.Active},
-			Metadata: metadata,
-			Attribute: &policy.Attribute{
-				Id: av.AttributeDefinitionID,
-			},
-			Fqn: av.Fqn.String,
-		}
-	}
-	var total int32
-	var nextOffset int32
-	if len(list) > 0 {
-		total = int32(list[0].Total)
-		nextOffset = getNextOffset(offset, limit, total)
-	}
-
-	return &attributes.ListAttributeValuesResponse{
-		Values: attributeValues,
-		Pagination: &policy.PageResponse{
-			CurrentOffset: offset,
-			Total:         total,
-			NextOffset:    nextOffset,
-		},
-	}, nil
-}
-
-// Loads all attribute values into memory by making iterative db roundtrip requests of defaultObjectListAllLimit size
-func (c PolicyDBClient) ListAllAttributeValues(ctx context.Context) ([]*policy.Value, error) {
-	var nextOffset int32
-	valsList := make([]*policy.Value, 0)
-
-	for {
-		listed, err := c.ListAttributeValues(ctx, &attributes.ListAttributeValuesRequest{
-			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
-			Pagination: &policy.PageRequest{
-				Limit:  c.listCfg.limitMax,
-				Offset: nextOffset,
-			},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to list all attributes: %w", err)
-		}
-
-		nextOffset = listed.GetPagination().GetNextOffset()
-		valsList = append(valsList, listed.GetValues()...)
-
-		// offset becomes zero when list is exhausted
-		if nextOffset <= 0 {
-			break
-		}
-	}
-	return valsList, nil
 }
 
 func (c PolicyDBClient) UpdateAttributeValue(ctx context.Context, r *attributes.UpdateAttributeValueRequest) (*policy.Value, error) {

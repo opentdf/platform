@@ -141,7 +141,7 @@ func TestKeycloakUserAttributeSubjectMapping(t *testing.T) {
 	})
 }
 
-func buildAttributeSubjectMapping(attrFQN, selector, value string) map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue {
+func buildAttributeSubjectMapping(attrFQN, selector, value string) map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue { //nolint:unparam // attrFQN is parameterized so callers can specify any attribute FQN
 	return map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 		attrFQN: {
 			Value: &policy.Value{

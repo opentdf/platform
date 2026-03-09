@@ -3293,6 +3293,13 @@ Base64 encoded public key in PEM format </p></td>
                 </tr>
               
                 <tr>
+                  <td>namespace</td>
+                  <td><a href="#policy.Namespace">Namespace</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -13772,9 +13779,23 @@ Common metadata </p></td>
                   <td>values</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
-                  <td><p>Optional 
+                  <td><p>Optional
 Registered Resource Values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
 The stored value will be normalized to lower case. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -14006,6 +14027,13 @@ Common metadata </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional - namespace context for name-based lookups (since names are not globally unique for namespaced RRs) </p></td>
                 </tr>
               
             </tbody>
@@ -14244,6 +14272,20 @@ Common metadata </p></td>
               <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
             </thead>
             <tbody>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
               
                 <tr>
                   <td>pagination</td>

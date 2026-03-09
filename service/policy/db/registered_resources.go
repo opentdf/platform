@@ -68,8 +68,6 @@ func hydrateNamespaceFromInterface(nsRaw interface{}) (*policy.Namespace, error)
 	switch v := nsRaw.(type) {
 	case []byte:
 		nsBytes = v
-	case string:
-		nsBytes = []byte(v)
 	case map[string]interface{}:
 		var err error
 		nsBytes, err = json.Marshal(v)

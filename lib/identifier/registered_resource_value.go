@@ -12,9 +12,9 @@ type FullyQualifiedRegisteredResourceValue struct {
 	Value     string
 }
 
-// New FQN format: https://<namespace>/rr/<name>/value/<value>
+// New FQN format: https://<namespace>/reg_res/<name>/value/<value>
 var registeredResourceValueFqnRegex = regexp.MustCompile(
-	`^https:\/\/(?P<namespace>[^\/]+)\/rr\/(?P<name>[^\/]+)\/value\/(?P<value>[^\/]+)$`,
+	`^https:\/\/(?P<namespace>[^\/]+)\/reg_res\/(?P<name>[^\/]+)\/value\/(?P<value>[^\/]+)$`,
 )
 
 // Legacy FQN format: https://reg_res/<name>/value/<value>
@@ -50,10 +50,10 @@ func matchFqnParts(re *regexp.Regexp, fqn string, groups []string) (map[string]s
 }
 
 // parseRegisteredResourceValueFqn parses a registered resource value FQN string into a FullyQualifiedRegisteredResourceValue struct.
-// Supports both the new format: https://<namespace>/rr/<name>/value/<value>
+// Supports both the new format: https://<namespace>/reg_res/<name>/value/<value>
 // and the legacy format: https://reg_res/<name>/value/<value>
 func parseRegisteredResourceValueFqn(fqn string) (*FullyQualifiedRegisteredResourceValue, error) {
-	// Try new format: https://<namespace>/rr/<name>/value/<value>
+	// Try new format: https://<namespace>/reg_res/<name>/value/<value>
 	if parts, err := matchFqnParts(registeredResourceValueFqnRegex, fqn, []string{"namespace", "name", "value"}); err != nil {
 		return nil, err
 	} else if parts != nil {
@@ -67,7 +67,7 @@ func parseRegisteredResourceValueFqn(fqn string) (*FullyQualifiedRegisteredResou
 		return &FullyQualifiedRegisteredResourceValue{Name: parts["name"], Value: parts["value"]}, nil
 	}
 
-	return nil, fmt.Errorf("%w: FQN must be in format https://<namespace>/rr/<name>/value/<value>", ErrInvalidFQNFormat)
+	return nil, fmt.Errorf("%w: FQN must be in format https://<namespace>/reg_res/<name>/value/<value>", ErrInvalidFQNFormat)
 }
 
 // Implementing FullyQualified interface for FullyQualifiedRegisteredResourceValue
@@ -76,7 +76,7 @@ func (rrv *FullyQualifiedRegisteredResourceValue) FQN() string {
 	if rrv.Namespace != "" {
 		builder.WriteString("https://")
 		builder.WriteString(rrv.Namespace)
-		builder.WriteString("/rr/")
+		builder.WriteString("/reg_res/")
 	} else {
 		// Legacy format for backward compatibility
 		builder.WriteString("https://reg_res/")

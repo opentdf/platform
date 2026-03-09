@@ -19,35 +19,35 @@ func TestRegisteredResourceValueFQN(t *testing.T) {
 			namespace: "example.com",
 			resName:   "resource",
 			value:     "value",
-			want:      "https://example.com/rr/resource/value/value",
+			want:      "https://example.com/reg_res/resource/value/value",
 		},
 		{
 			name:      "namespaced with hyphens",
 			namespace: "example.com",
 			resName:   "test-resource",
 			value:     "test-value",
-			want:      "https://example.com/rr/test-resource/value/test-value",
+			want:      "https://example.com/reg_res/test-resource/value/test-value",
 		},
 		{
 			name:      "namespaced with underscores",
 			namespace: "example.com",
 			resName:   "test_resource",
 			value:     "test_value",
-			want:      "https://example.com/rr/test_resource/value/test_value",
+			want:      "https://example.com/reg_res/test_resource/value/test_value",
 		},
 		{
 			name:      "namespaced with numbers",
 			namespace: "example.com",
 			resName:   "resource123",
 			value:     "value456",
-			want:      "https://example.com/rr/resource123/value/value456",
+			want:      "https://example.com/reg_res/resource123/value/value456",
 		},
 		{
 			name:      "namespaced lower case",
 			namespace: "EXAMPLE.COM",
 			resName:   "RESOURCE",
 			value:     "VALUE",
-			want:      "https://example.com/rr/resource/value/value",
+			want:      "https://example.com/reg_res/resource/value/value",
 		},
 		{
 			name:    "legacy no namespace",
@@ -177,7 +177,7 @@ func TestParseRegisteredResourceValueFqn(t *testing.T) {
 		// New format tests
 		{
 			name:          "valid namespaced basic",
-			fqn:           "https://example.com/rr/valid/value/test",
+			fqn:           "https://example.com/reg_res/valid/value/test",
 			wantNamespace: "example.com",
 			wantName:      "valid",
 			wantValue:     "test",
@@ -185,7 +185,7 @@ func TestParseRegisteredResourceValueFqn(t *testing.T) {
 		},
 		{
 			name:          "valid namespaced with hyphens",
-			fqn:           "https://example.com/rr/test-resource/value/test-value",
+			fqn:           "https://example.com/reg_res/test-resource/value/test-value",
 			wantNamespace: "example.com",
 			wantName:      "test-resource",
 			wantValue:     "test-value",
@@ -193,7 +193,7 @@ func TestParseRegisteredResourceValueFqn(t *testing.T) {
 		},
 		{
 			name:          "valid namespaced with underscores",
-			fqn:           "https://example.com/rr/test_resource/value/test_value",
+			fqn:           "https://example.com/reg_res/test_resource/value/test_value",
 			wantNamespace: "example.com",
 			wantName:      "test_resource",
 			wantValue:     "test_value",
@@ -201,7 +201,7 @@ func TestParseRegisteredResourceValueFqn(t *testing.T) {
 		},
 		{
 			name:          "valid namespaced with numbers",
-			fqn:           "https://example.com/rr/resource123/value/value456",
+			fqn:           "https://example.com/reg_res/resource123/value/value456",
 			wantNamespace: "example.com",
 			wantName:      "resource123",
 			wantValue:     "value456",
@@ -209,7 +209,7 @@ func TestParseRegisteredResourceValueFqn(t *testing.T) {
 		},
 		{
 			name:          "valid namespaced lower case",
-			fqn:           "https://EXAMPLE.COM/rr/RESOURce/value/valUE",
+			fqn:           "https://EXAMPLE.COM/reg_res/RESOURce/value/valUE",
 			wantNamespace: "example.com",
 			wantName:      "resource",
 			wantValue:     "value",
@@ -264,27 +264,27 @@ func TestParseRegisteredResourceValueFqn(t *testing.T) {
 		},
 		{
 			name:    "missing parts",
-			fqn:     "https://example.com/rr/valid",
+			fqn:     "https://example.com/reg_res/valid",
 			wantErr: true,
 		},
 		{
 			name:    "missing value segment",
-			fqn:     "https://example.com/rr/valid/value",
+			fqn:     "https://example.com/reg_res/valid/value",
 			wantErr: true,
 		},
 		{
 			name:    "wrong protocol",
-			fqn:     "http://example.com/rr/test/value/something",
+			fqn:     "http://example.com/reg_res/test/value/something",
 			wantErr: true,
 		},
 		{
 			name:    "extra prefix",
-			fqn:     "somethinghttps://example.com/rr/test/value/something",
+			fqn:     "somethinghttps://example.com/reg_res/test/value/something",
 			wantErr: true,
 		},
 		{
 			name:    "invalid namespace format",
-			fqn:     "https://not_a_valid_namespace/rr/test/value/something",
+			fqn:     "https://not_a_valid_namespace/reg_res/test/value/something",
 			wantErr: true,
 		},
 	}

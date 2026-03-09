@@ -1734,7 +1734,7 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_NamespacedFQN
 	s.NotNil(res)
 
 	// Get by namespaced FQN
-	fqn := fmt.Sprintf("https://example.com/rr/%s/value/%s", name, valueName)
+	fqn := fmt.Sprintf("https://example.com/reg_res/%s/value/%s", name, valueName)
 	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
 		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Fqn{
 			Fqn: fqn,
@@ -1762,8 +1762,8 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValuesByFQNs_Namesp
 	s.Require().NoError(err)
 	s.NotNil(res)
 
-	fqn1 := fmt.Sprintf("https://example.com/rr/%s/value/%s", name, val1)
-	fqn2 := fmt.Sprintf("https://example.com/rr/%s/value/%s", name, val2)
+	fqn1 := fmt.Sprintf("https://example.com/reg_res/%s/value/%s", name, val1)
+	fqn2 := fmt.Sprintf("https://example.com/reg_res/%s/value/%s", name, val2)
 
 	fqnMap, err := s.db.PolicyClient.GetRegisteredResourceValuesByFQNs(s.ctx, &registeredresources.GetRegisteredResourceValuesByFQNsRequest{
 		Fqns: []string{fqn1, fqn2},

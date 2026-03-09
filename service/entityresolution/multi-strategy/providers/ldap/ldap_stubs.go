@@ -21,10 +21,6 @@ func (stubBackend) DialTLS(_, _ string, _ *tls.Config) (Conn, error) {
 	return nil, errors.New("LDAP not implemented - stub backend")
 }
 
-func (stubBackend) NewSearchRequest(_ string, _, _, _, _ int, _ bool, _ string, _ []string) SearchRequest {
-	return struct{}{}
-}
-
 func (stubBackend) EscapeFilter(filter string) string {
 	return filter
 }

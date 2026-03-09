@@ -61,10 +61,6 @@ func dialTargetURL(scheme, network, addr string) (string, error) {
 	}).String(), nil
 }
 
-func (goLDAPBackend) NewSearchRequest(baseDN string, scope, derefAliases, sizeLimit, timeLimit int, typesOnly bool, filter string, attributes []string) SearchRequest {
-	return golangldap.NewSearchRequest(baseDN, scope, derefAliases, sizeLimit, timeLimit, typesOnly, filter, attributes, nil)
-}
-
 func (goLDAPBackend) EscapeFilter(filter string) string {
 	return golangldap.EscapeFilter(filter)
 }
@@ -82,10 +78,17 @@ func (c *goLDAPConn) Bind(username, password string) error {
 }
 
 func (c *goLDAPConn) Search(request SearchRequest) (*SearchResult, error) {
-	ldapReq, ok := request.(*golangldap.SearchRequest)
-	if !ok {
-		return nil, fmt.Errorf("unexpected search request type %T", request)
-	}
+	ldapReq := golangldap.NewSearchRequest(
+		request.BaseDN,
+		request.Scope,
+		request.DerefAliases,
+		request.SizeLimit,
+		request.TimeLimit,
+		request.TypesOnly,
+		request.Filter,
+		request.Attributes,
+		nil,
+	)
 
 	res, err := c.conn.Search(ldapReq)
 	if err != nil {

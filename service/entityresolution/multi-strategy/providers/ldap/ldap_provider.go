@@ -119,17 +119,16 @@ func (p *Provider) ResolveEntity(ctx context.Context, strategy types.MappingStra
 		)
 	}
 
-	// Create search request
-	searchRequest := p.backend.NewSearchRequest(
-		strategy.LDAPSearch.BaseDN,
-		scope,
-		NeverDerefAliases,
-		1, // Size limit - expect single entity
-		int(p.config.RequestTimeout.Seconds()),
-		false, // Types only
-		searchFilter,
-		strategy.LDAPSearch.Attributes,
-	)
+	searchRequest := SearchRequest{
+		BaseDN:       strategy.LDAPSearch.BaseDN,
+		Scope:        scope,
+		DerefAliases: NeverDerefAliases,
+		SizeLimit:    1,
+		TimeLimit:    int(p.config.RequestTimeout.Seconds()),
+		TypesOnly:    false,
+		Filter:       searchFilter,
+		Attributes:   append([]string(nil), strategy.LDAPSearch.Attributes...),
+	}
 
 	// Execute search with context timeout
 	searchCtx, cancel := context.WithTimeout(ctx, p.config.RequestTimeout)

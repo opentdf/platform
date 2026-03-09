@@ -12,12 +12,20 @@ type Conn interface {
 	SetTimeout(timeout time.Duration)
 }
 
-type SearchRequest interface{}
+type SearchRequest struct {
+	BaseDN       string
+	Scope        int
+	DerefAliases int
+	SizeLimit    int
+	TimeLimit    int
+	TypesOnly    bool
+	Filter       string
+	Attributes   []string
+}
 
 type Backend interface {
 	Dial(network, addr string) (Conn, error)
 	DialTLS(network, addr string, config *tls.Config) (Conn, error)
-	NewSearchRequest(baseDN string, scope, derefAliases, sizeLimit, timeLimit int, typesOnly bool, filter string, attributes []string) SearchRequest
 	EscapeFilter(filter string) string
 }
 

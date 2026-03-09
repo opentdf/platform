@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -585,7 +586,14 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 		}
 
 		if _, err := c.queries.createRegisteredResourceActionAttributeValue(ctx, params); err != nil {
-			return db.WrapIfKnownInvalidQueryErr(err)
+			err = db.WrapIfKnownInvalidQueryErr(err)
+			// The SQL uses subqueries to resolve action/attribute value identifiers.
+			// When the referenced entity doesn't exist, the subquery returns NULL,
+			// causing a not-null violation instead of a foreign key violation.
+			if errors.Is(err, db.ErrNotNullViolation) {
+				return db.ErrNotFound
+			}
+			return err
 		}
 	}
 

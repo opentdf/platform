@@ -39,14 +39,6 @@ func (m *Mapper) ExtractParameters(jwtClaims types.JWTClaims, inputMapping []typ
 		params[mapping.Parameter] = claimValue
 	}
 
-	// LDAP-specific parameter validation and sanitization
-	for paramName, paramValue := range params {
-		// Escape LDAP filter metacharacters in parameter values
-		if str, ok := paramValue.(string); ok {
-			params[paramName] = m.escapeLDAPFilter(str)
-		}
-	}
-
 	return params, nil
 }
 

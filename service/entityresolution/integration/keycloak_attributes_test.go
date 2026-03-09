@@ -120,23 +120,25 @@ func TestKeycloakUserAttributeSubjectMapping(t *testing.T) {
 
 	const attrFQN = "https://example.com/attr/department/value/finance"
 
-	// Test 1: correct selector — Keycloak attributes are nested under .attributes.<name>[]
-	entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappings(
-		buildAttributeSubjectMapping(attrFQN, ".attributes.department[]", "Finance"),
-		entityRepresentation,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, []string{attrFQN}, entitlements,
-		"selector '.attributes.department[]' should match Keycloak user attribute")
+	t.Run("correct selector matches Keycloak user attribute", func(t *testing.T) {
+		entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappings(
+			buildAttributeSubjectMapping(attrFQN, ".attributes.department[]", "Finance"),
+			entityRepresentation,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, []string{attrFQN}, entitlements,
+			"selector '.attributes.department[]' should match Keycloak user attribute")
+	})
 
-	// Test 2: wrong selector — matches JWT claim name but NOT the Keycloak user object structure
-	entitlements, err = subjectmappingbuiltin.EvaluateSubjectMappings(
-		buildAttributeSubjectMapping(attrFQN, ".department", "Finance"),
-		entityRepresentation,
-	)
-	require.NoError(t, err)
-	assert.Empty(t, entitlements,
-		"selector '.department' should NOT match: Keycloak ERS resolves user objects, not JWT claims")
+	t.Run("JWT claim name selector does not match Keycloak user object", func(t *testing.T) {
+		entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappings(
+			buildAttributeSubjectMapping(attrFQN, ".department", "Finance"),
+			entityRepresentation,
+		)
+		require.NoError(t, err)
+		assert.Empty(t, entitlements,
+			"selector '.department' should NOT match: Keycloak ERS resolves user objects, not JWT claims")
+	})
 }
 
 func buildAttributeSubjectMapping(attrFQN, selector, value string) map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue {

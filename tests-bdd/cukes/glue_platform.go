@@ -99,7 +99,7 @@ func (c *PlatformTestSuiteContext) InitializeScenario(scenarioContext *godog.Sce
 		}
 		scenarioID := uuid.New().String()
 		if !featureTracked || !statelessFeature {
-			platformPort := openPort()
+			platformPort := openPort(ctx)
 			platformDBName := strings.ReplaceAll("opentdf"+scenarioID, "-", "_")
 			platformScenarioContext = &PlatformScenarioContext{
 				ID:            scenarioID,
@@ -350,14 +350,14 @@ func (l *LocalDevPlatformGlue) Setup(platformCukesContext *PlatformTestSuiteCont
 		return err
 	}
 	logger.Info("setup temp keys")
-	testhelpers.GenerateTempKeys(l.Options.KeysDir)
+	testhelpers.GenerateTempKeys(ctx, l.Options.KeysDir)
 	err := changePermissions(l.Options.CukesDir, os.FileMode(0o755)) //nolint:mnd // mkdir dir ensure all files are readable by docker
 	if err != nil {
 		return err
 	}
 	// random open ports to expose
-	l.Options.keycloakPort = openPort()
-	l.Options.postgresPort = openPort()
+	l.Options.keycloakPort = openPort(l.Context)
+	l.Options.postgresPort = openPort(l.Context)
 
 	logger.Info("starting with ports",
 		slog.Int("keycloak_port", l.Options.keycloakPort),
@@ -411,13 +411,13 @@ func (l *LocalDevPlatformGlue) Setup(platformCukesContext *PlatformTestSuiteCont
 }
 
 func (l *LocalDevPlatformGlue) mkCert() error {
-	cmd := exec.CommandContext(context.Background(), "mkcert", "-install")
+	cmd := exec.CommandContext(l.Context, "mkcert", "-install")
 	cmd.Dir = l.Options.CukesDir
 	if err := cmd.Run(); err != nil {
 		return err
 	}
 	//nolint:gosec // G204
-	cmd = exec.CommandContext(context.Background(), "mkcert", "-cert-file",
+	cmd = exec.CommandContext(l.Context, "mkcert", "-cert-file",
 		path.Join(l.Options.KeysDir, l.Options.Hostname+".crt"), "-key-file",
 		path.Join(l.Options.KeysDir, l.Options.Hostname+".key"), l.Options.Hostname,
 		"*."+l.Options.Hostname,
@@ -475,9 +475,9 @@ func LogComposeServices(c interface{}, logger *slog.Logger) {
 	}
 }
 
-func openPort() int {
+func openPort(ctx context.Context) int {
 	lc := &net.ListenConfig{}
-	listener, err := lc.Listen(context.Background(), "tcp", ":0")
+	listener, err := lc.Listen(ctx, "tcp", ":0")
 	if err != nil {
 		log.Fatal(err)
 	}

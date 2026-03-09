@@ -820,7 +820,7 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithInvali
 					},
 				},
 			},
-			err: db.ErrNotFound,
+			err: db.ErrForeignKeyViolation,
 		},
 		{
 			name: "Invalid Action Name",
@@ -848,7 +848,7 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithInvali
 					},
 				},
 			},
-			err: db.ErrNotFound,
+			err: db.ErrForeignKeyViolation,
 		},
 		{
 			name: "Invalid Attribute Value FQN",

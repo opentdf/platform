@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/common"
@@ -320,6 +321,28 @@ func (s *ObligationTriggersSuite) Test_ListObligationTriggers_NoTriggersNoFilter
 	s.Require().Empty(triggers)
 	s.Require().NotNil(pageResult)
 	s.validatePageResponses(pageResult, 0, 0, 0)
+}
+
+func (s *ObligationTriggersSuite) Test_ListObligationTriggers_OrdersByCreatedAt_Succeeds() {
+	first := s.createUniqueTrigger("ordered-first")
+	s.triggerIDsToClean = append(s.triggerIDsToClean, first.GetId())
+	s.obligationValueIDsToClean = append(s.obligationValueIDsToClean, first.GetObligationValue().GetId())
+	time.Sleep(5 * time.Millisecond)
+	second := s.createUniqueTrigger("ordered-second")
+	s.triggerIDsToClean = append(s.triggerIDsToClean, second.GetId())
+	s.obligationValueIDsToClean = append(s.obligationValueIDsToClean, second.GetObligationValue().GetId())
+	time.Sleep(5 * time.Millisecond)
+	third := s.createUniqueTrigger("ordered-third")
+	s.triggerIDsToClean = append(s.triggerIDsToClean, third.GetId())
+	s.obligationValueIDsToClean = append(s.obligationValueIDsToClean, third.GetObligationValue().GetId())
+
+	triggers, _, err := s.db.PolicyClient.ListObligationTriggers(s.ctx, &obligations.ListObligationTriggersRequest{
+		NamespaceId: s.namespace.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(triggers)
+
+	assertIDsInDescendingOrder(s.T(), triggers, func(t *policy.ObligationTrigger) string { return t.GetId() }, third.GetId(), second.GetId(), first.GetId())
 }
 
 func (s *ObligationTriggersSuite) Test_ListObligationTriggers_NoTriggersWithNamespaceId_Success() {

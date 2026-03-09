@@ -1,14 +1,18 @@
-name: Build Platform Container Image
+name: "Build Platform Container Image"
 
 on:
   release:
     types: [published]
 
+defaults:
+  run:
+    shell: bash
+
 permissions: {}
 
 jobs:
   build:
-    if: startsWith(github.event.release.tag_name, 'service/')
+    if: ${{ startsWith(github.event.release.tag_name, 'service/') }}
     runs-on: ubuntu-22.04
     permissions:
       id-token: write
@@ -21,35 +25,34 @@ jobs:
         id: "gcp-auth"
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-          token_format: "access_token"
-          create_credentials_file: false
+          workload_identity_provider: ${{ vars.CENTRAL_WIF_PROVIDER }}
+          project_id: ${{ vars.CENTRAL_WIF_PROJECT_ID }}
 
-      - name: Install Cosign
+      - name: "Set up Cloud SDK"
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: "Configure gcloud as Docker credential helper"
+        run: |
+          gcloud auth configure-docker us-docker.pkg.dev --quiet
+
+      - name: "Install Cosign"
         uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # 4.0.0
 
-      - name: Install Trivy
+      - name: "Install Trivy"
         uses: aquasecurity/setup-trivy@9ea583eb67910444b1f64abf338bd2e105a0a93d # 0.2.3
         with:
           version: v0.57.1
 
-      - name: Set up QEMU
+      - name: "Set up QEMU"
         uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
 
-      - name: Set up Docker Buildx
+      - name: "Set up Docker Buildx"
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
         with:
           cache-binary: false
 
-      - name: "Docker login to Artifact Registry"
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
-        with:
-          registry: us-docker.pkg.dev
-          username: oauth2accesstoken
-          password: ${{ steps.gcp-auth.outputs.access_token }}
-
-      - id: docker_meta
+      - name: "Generate Docker metadata"
+        id: docker_meta
         uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
         with:
           images: ${{ secrets.DOCKER_REPO }}
@@ -60,7 +63,7 @@ jobs:
           labels: |
             org.opencontainers.image.documentation=https://docs.opentdf.io
 
-      - name: Build and Push container images
+      - name: "Build and Push container images"
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         id: build-and-push
         with:
@@ -68,31 +71,31 @@ jobs:
           push: true
           tags: ${{ steps.docker_meta.outputs.tags }}
 
-      - name: Sign the images with GitHub OIDC Token
+      - name: "Sign the images with GitHub OIDC Token"
         env:
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
           TAGS: ${{ steps.docker_meta.outputs.tags }}
         run: |
-            images=()
-            for tag in ${TAGS}; do
-              images+=("${tag}@${DIGEST}")
-            done
-            cosign sign --yes "${images[@]}"
+          images=()
+          for tag in ${TAGS}; do
+            images+=("${tag}@${DIGEST}")
+          done
+          cosign sign --yes "${images[@]}"
 
-      - name: Generate Reports
+      - name: "Generate Reports"
+        env:
+          REPO: ${{ secrets.DOCKER_REPO }}
+          DIGEST: ${{ steps.build-and-push.outputs.digest }}
         run: |
           trivy image --scanners vuln --format cyclonedx --output bom-cyclonedx.json "${REPO}@${DIGEST}"
           trivy image --format spdx-json --output bom-spdx.json "${REPO}@${DIGEST}"
           trivy image --format cosign-vuln --output cosign-vuln.json "${REPO}@${DIGEST}"
+
+      - name: "Cosign Attest SBOM"
         env:
           REPO: ${{ secrets.DOCKER_REPO }}
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
-
-      - name: Cosign Attest SBOM
         run: |
           cosign attest --type cyclonedx --predicate bom-cyclonedx.json "${REPO}@${DIGEST}"
           cosign attest --type spdxjson -predicate bom-spdx.json "${REPO}@${DIGEST}"
           cosign attest --type vuln --predicate cosign-vuln.json "${REPO}@${DIGEST}"
-        env:
-          REPO: ${{ secrets.DOCKER_REPO }}
-          DIGEST: ${{ steps.build-and-push.outputs.digest }}

@@ -364,6 +364,7 @@ WHERE (
     ($1::BOOLEAN IS NULL OR av.active = $1) AND
     ($2::uuid IS NULL OR av.attribute_definition_id = $2::uuid) 
 )
+ORDER BY av.created_at DESC
 LIMIT $4 
 OFFSET $3
 `
@@ -403,6 +404,7 @@ type listAttributeValuesRow struct {
 //	    ($1::BOOLEAN IS NULL OR av.active = $1) AND
 //	    ($2::uuid IS NULL OR av.attribute_definition_id = $2::uuid)
 //	)
+//	ORDER BY av.created_at DESC
 //	LIMIT $4
 //	OFFSET $3
 func (q *Queries) listAttributeValues(ctx context.Context, arg listAttributeValuesParams) ([]listAttributeValuesRow, error) {

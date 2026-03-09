@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -244,6 +245,31 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_NoPagination_Suc
 	}
 
 	s.Equal(2, foundCount)
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_OrdersByCreatedAt_Succeeds() {
+	suffix := time.Now().UnixNano()
+	create := func(i int) string {
+		name := fmt.Sprintf("order-test-resource-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+			Name: name,
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(created)
+		return created.GetId()
+	}
+
+	firstID := create(1)
+	time.Sleep(5 * time.Millisecond)
+	secondID := create(2)
+	time.Sleep(5 * time.Millisecond)
+	thirdID := create(3)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	assertIDsInDescendingOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_RegResValuesContainActionAttributeValues() {
@@ -1015,6 +1041,40 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_NoPaginatio
 	}
 
 	s.Equal(2, foundCount)
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_OrdersByCreatedAt_Succeeds() {
+	suffix := time.Now().UnixNano()
+	resource, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: fmt.Sprintf("order-test-res-%d", suffix),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(resource)
+
+	create := func(i int) string {
+		val := fmt.Sprintf("order-test-val-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+			ResourceId: resource.GetId(),
+			Value:      val,
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(created)
+		return created.GetId()
+	}
+
+	firstID := create(1)
+	time.Sleep(5 * time.Millisecond)
+	secondID := create(2)
+	time.Sleep(5 * time.Millisecond)
+	thirdID := create(3)
+
+	list, err := s.db.PolicyClient.ListRegisteredResourceValues(s.ctx, &registeredresources.ListRegisteredResourceValuesRequest{
+		ResourceId: resource.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	assertIDsInDescendingOrder(s.T(), list.GetValues(), func(v *policy.RegisteredResourceValue) string { return v.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_Limit_Succeeds() {

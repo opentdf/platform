@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -122,6 +123,48 @@ func (s *AttributeValuesSuite) Test_ListAttributeValues_NoPagination_Succeeds() 
 			s.Failf("failed to list fixture", fqn)
 		}
 	}
+}
+
+func (s *AttributeValuesSuite) Test_ListAttributeValues_OrdersByCreatedAt_Succeeds() {
+	suffix := time.Now().UnixNano()
+	nsName := fmt.Sprintf("order-test-vals-%d.com", suffix)
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: nsName})
+	s.Require().NoError(err)
+	s.Require().NotNil(ns)
+	s.namespaces = append(s.namespaces, ns)
+
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        fmt.Sprintf("order-test-attr-%d", suffix),
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(attr)
+
+	create := func(i int) string {
+		val := fmt.Sprintf("order-test-val-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attr.GetId(), &attributes.CreateAttributeValueRequest{
+			Value:       val,
+			AttributeId: attr.GetId(),
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(created)
+		return created.GetId()
+	}
+
+	firstID := create(1)
+	time.Sleep(5 * time.Millisecond)
+	secondID := create(2)
+	time.Sleep(5 * time.Millisecond)
+	thirdID := create(3)
+
+	listRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
+		AttributeId: attr.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInDescendingOrder(s.T(), listRsp.GetValues(), func(val *policy.Value) string { return val.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *AttributeValuesSuite) Test_ListAttributeValues_Limit_Succeeds() {

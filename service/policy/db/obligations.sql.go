@@ -1530,6 +1530,7 @@ WHERE
     ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
     ($2::text IS NULL OR fqns.fqn = $2::text)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
+ORDER BY od.created_at DESC
 LIMIT $4
 OFFSET $3
 `
@@ -1621,6 +1622,7 @@ type listObligationsRow struct {
 //	    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
 //	    ($2::text IS NULL OR fqns.fqn = $2::text)
 //	GROUP BY od.id, n.id, fqns.fqn, counted.total
+//	ORDER BY od.created_at DESC
 //	LIMIT $4
 //	OFFSET $3
 func (q *Queries) listObligations(ctx context.Context, arg listObligationsParams) ([]listObligationsRow, error) {

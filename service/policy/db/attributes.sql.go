@@ -262,6 +262,7 @@ WITH target_definition AS (
         ad.allow_traversal,
         ad.active,
         ad.values_order,
+        ad.created_at,
         JSONB_AGG(
 	        DISTINCT JSONB_BUILD_OBJECT(
 	            'id', kas.id,
@@ -296,7 +297,7 @@ WITH target_definition AS (
     ) defk ON ad.id = defk.definition_id
     WHERE fqns.fqn = ANY($1::TEXT[]) 
         AND ad.active = TRUE
-    GROUP BY ad.id, defk.keys
+    GROUP BY ad.id, ad.created_at, defk.keys
 ),
 namespaces AS (
 	SELECT
@@ -476,6 +477,7 @@ INNER JOIN attribute_fqns fqns ON td.id = fqns.attribute_id
 INNER JOIN namespaces n ON td.namespace_id = n.id
 LEFT JOIN values ON td.id = values.attribute_definition_id
 WHERE fqns.value_id IS NULL
+ORDER BY td.created_at DESC
 `
 
 type listAttributesByDefOrValueFqnsParams struct {
@@ -507,6 +509,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //	        ad.allow_traversal,
 //	        ad.active,
 //	        ad.values_order,
+//	        ad.created_at,
 //	        JSONB_AGG(
 //		        DISTINCT JSONB_BUILD_OBJECT(
 //		            'id', kas.id,
@@ -541,7 +544,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //	    ) defk ON ad.id = defk.definition_id
 //	    WHERE fqns.fqn = ANY($1::TEXT[])
 //	        AND ad.active = TRUE
-//	    GROUP BY ad.id, defk.keys
+//	    GROUP BY ad.id, ad.created_at, defk.keys
 //	),
 //	namespaces AS (
 //		SELECT
@@ -721,6 +724,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //	INNER JOIN namespaces n ON td.namespace_id = n.id
 //	LEFT JOIN values ON td.id = values.attribute_definition_id
 //	WHERE fqns.value_id IS NULL
+//	ORDER BY td.created_at DESC
 func (q *Queries) listAttributesByDefOrValueFqns(ctx context.Context, arg listAttributesByDefOrValueFqnsParams) ([]listAttributesByDefOrValueFqnsRow, error) {
 	rows, err := q.db.Query(ctx, listAttributesByDefOrValueFqns, arg.Fqns, arg.IncludeInactiveValues)
 	if err != nil {
@@ -790,6 +794,7 @@ WHERE
     ($2::uuid IS NULL OR ad.namespace_id = $2::uuid) AND 
     ($3::text IS NULL OR n.name = $3::text) 
 GROUP BY ad.id, n.name, fqns.fqn
+ORDER BY ad.created_at DESC
 LIMIT $5 
 OFFSET $4
 `
@@ -856,6 +861,7 @@ type listAttributesDetailRow struct {
 //	    ($2::uuid IS NULL OR ad.namespace_id = $2::uuid) AND
 //	    ($3::text IS NULL OR n.name = $3::text)
 //	GROUP BY ad.id, n.name, fqns.fqn
+//	ORDER BY ad.created_at DESC
 //	LIMIT $5
 //	OFFSET $4
 func (q *Queries) listAttributesDetail(ctx context.Context, arg listAttributesDetailParams) ([]listAttributesDetailRow, error) {
@@ -911,6 +917,7 @@ FROM attribute_definitions ad
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 WHERE ad.namespace_id = $1
 GROUP BY ad.id, n.name
+ORDER BY ad.created_at DESC
 LIMIT $3 
 OFFSET $2
 `
@@ -949,6 +956,7 @@ type listAttributesSummaryRow struct {
 //	LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 //	WHERE ad.namespace_id = $1
 //	GROUP BY ad.id, n.name
+//	ORDER BY ad.created_at DESC
 //	LIMIT $3
 //	OFFSET $2
 func (q *Queries) listAttributesSummary(ctx context.Context, arg listAttributesSummaryParams) ([]listAttributesSummaryRow, error) {

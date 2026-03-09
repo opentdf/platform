@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.17.0](https://github.com/opentdf/platform/compare/protocol/go/v0.16.0...protocol/go/v0.17.0) (2026-03-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** add namespace field to RegisteredResource proto ([#3110](https://github.com/opentdf/platform/issues/3110))
+
+### Features
+
+* **policy:** add namespace field to RegisteredResource proto ([#3110](https://github.com/opentdf/platform/issues/3110)) ([04fd85d](https://github.com/opentdf/platform/commit/04fd85d4b69b320f4dad9d21905864fba6708956))
+
 ## [0.16.0](https://github.com/opentdf/platform/compare/protocol/go/v0.15.0...protocol/go/v0.16.0) (2026-02-17)
 
 

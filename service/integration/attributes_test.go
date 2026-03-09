@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -435,6 +436,40 @@ func (s *AttributesSuite) Test_ListAttributes_NoPagination_Succeeds() {
 		}
 		s.True(found)
 	}
+}
+
+func (s *AttributesSuite) Test_ListAttributes_OrdersByCreatedAt_Succeeds() {
+	suffix := time.Now().UnixNano()
+	nsName := fmt.Sprintf("order-test-attrs-%d.com", suffix)
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: nsName})
+	s.Require().NoError(err)
+	s.Require().NotNil(ns)
+
+	create := func(i int) string {
+		name := fmt.Sprintf("order-test-attr-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        name,
+			NamespaceId: ns.GetId(),
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(created)
+		return created.GetId()
+	}
+
+	firstID := create(1)
+	time.Sleep(5 * time.Millisecond)
+	secondID := create(2)
+	time.Sleep(5 * time.Millisecond)
+	thirdID := create(3)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: ns.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *AttributesSuite) Test_ListAttributes_Limit_Succeeds() {
@@ -1552,19 +1587,6 @@ func (s *AttributesSuite) Test_RemovePublicKeyFromAttribute_Not_Found_Fails() {
 	s.NotNil(resp)
 }
 
-func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureDataAttribute {
-	return map[string]fixtures.FixtureDataAttribute{
-		"example.com/attr/attr1": s.f.GetAttributeKey("example.com/attr/attr1"),
-		"example.com/attr/attr2": s.f.GetAttributeKey("example.com/attr/attr2"),
-		"example.net/attr/attr1": s.f.GetAttributeKey("example.net/attr/attr1"),
-		"example.net/attr/attr2": s.f.GetAttributeKey("example.net/attr/attr2"),
-		"example.net/attr/attr3": s.f.GetAttributeKey("example.net/attr/attr3"),
-		"example.org/attr/attr1": s.f.GetAttributeKey("example.org/attr/attr1"),
-		"example.org/attr/attr2": s.f.GetAttributeKey("example.org/attr/attr2"),
-		"example.org/attr/attr3": s.f.GetAttributeKey("example.org/attr/attr3"),
-	}
-}
-
 // - Test that a Get/List attribute returns the Asymmetric Keys with the provider configs / add a key with no provider config
 
 // Test_GetAttribute_ByIdAndFqn_ReturnSameResult validates that getAttribute works correctly
@@ -1585,6 +1607,19 @@ func (s *AttributesSuite) Test_GetAttribute_ByIdAndFqn_ReturnSameResult() {
 
 		// Verify both return the same attribute
 		s.True(proto.Equal(attrByID, attrByFQN))
+	}
+}
+
+func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureDataAttribute {
+	return map[string]fixtures.FixtureDataAttribute{
+		"example.com/attr/attr1": s.f.GetAttributeKey("example.com/attr/attr1"),
+		"example.com/attr/attr2": s.f.GetAttributeKey("example.com/attr/attr2"),
+		"example.net/attr/attr1": s.f.GetAttributeKey("example.net/attr/attr1"),
+		"example.net/attr/attr2": s.f.GetAttributeKey("example.net/attr/attr2"),
+		"example.net/attr/attr3": s.f.GetAttributeKey("example.net/attr/attr3"),
+		"example.org/attr/attr1": s.f.GetAttributeKey("example.org/attr/attr1"),
+		"example.org/attr/attr2": s.f.GetAttributeKey("example.org/attr/attr2"),
+		"example.org/attr/attr3": s.f.GetAttributeKey("example.org/attr/attr3"),
 	}
 }
 

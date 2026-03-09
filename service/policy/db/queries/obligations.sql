@@ -187,6 +187,7 @@ WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL OR od.namespace_id = sqlc.narg('namespace_id')::uuid) AND
     (sqlc.narg('namespace_fqn')::text IS NULL OR fqns.fqn = sqlc.narg('namespace_fqn')::text)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
+ORDER BY od.created_at DESC
 LIMIT @limit_
 OFFSET @offset_;
 
@@ -646,4 +647,3 @@ WHERE
 ORDER BY ot.created_at DESC
 LIMIT @limit_
 OFFSET @offset_;
-

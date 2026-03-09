@@ -39,6 +39,7 @@ WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL OR ad.namespace_id = sqlc.narg('namespace_id')::uuid) AND 
     (sqlc.narg('namespace_name')::text IS NULL OR n.name = sqlc.narg('namespace_name')::text) 
 GROUP BY ad.id, n.name, fqns.fqn
+ORDER BY ad.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_; 
 
@@ -57,6 +58,7 @@ FROM attribute_definitions ad
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 WHERE ad.namespace_id = $1
 GROUP BY ad.id, n.name
+ORDER BY ad.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_; 
 
@@ -71,6 +73,7 @@ WITH target_definition AS (
         ad.allow_traversal,
         ad.active,
         ad.values_order,
+        ad.created_at,
         JSONB_AGG(
 	        DISTINCT JSONB_BUILD_OBJECT(
 	            'id', kas.id,
@@ -105,7 +108,7 @@ WITH target_definition AS (
     ) defk ON ad.id = defk.definition_id
     WHERE fqns.fqn = ANY(@fqns::TEXT[]) 
         AND ad.active = TRUE
-    GROUP BY ad.id, defk.keys
+    GROUP BY ad.id, ad.created_at, defk.keys
 ),
 namespaces AS (
 	SELECT
@@ -284,7 +287,8 @@ FROM target_definition td
 INNER JOIN attribute_fqns fqns ON td.id = fqns.attribute_id
 INNER JOIN namespaces n ON td.namespace_id = n.id
 LEFT JOIN values ON td.id = values.attribute_definition_id
-WHERE fqns.value_id IS NULL;
+WHERE fqns.value_id IS NULL
+ORDER BY td.created_at DESC;
 
 -- name: getAttribute :one
 SELECT

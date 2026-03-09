@@ -14,6 +14,7 @@ SELECT
     counted.total
 FROM subject_condition_set scs
 CROSS JOIN counted
+ORDER BY scs.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_; 
 
@@ -100,6 +101,7 @@ GROUP BY
     av.id, av.value, av.active, -- for attribute_value object
     fqns.fqn,
     counted.total
+ORDER BY sm.created_at DESC
 LIMIT @limit_
 OFFSET @offset_;
 

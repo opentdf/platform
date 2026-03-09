@@ -274,6 +274,7 @@ SELECT
     counted.total
 FROM subject_condition_set scs
 CROSS JOIN counted
+ORDER BY scs.created_at DESC
 LIMIT $2 
 OFFSET $1
 `
@@ -305,6 +306,7 @@ type listSubjectConditionSetsRow struct {
 //	    counted.total
 //	FROM subject_condition_set scs
 //	CROSS JOIN counted
+//	ORDER BY scs.created_at DESC
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listSubjectConditionSets(ctx context.Context, arg listSubjectConditionSetsParams) ([]listSubjectConditionSetsRow, error) {
@@ -384,6 +386,7 @@ GROUP BY
     av.id, av.value, av.active, -- for attribute_value object
     fqns.fqn,
     counted.total
+ORDER BY sm.created_at DESC
 LIMIT $2
 OFFSET $1
 `
@@ -457,6 +460,7 @@ type listSubjectMappingsRow struct {
 //	    av.id, av.value, av.active, -- for attribute_value object
 //	    fqns.fqn,
 //	    counted.total
+//	ORDER BY sm.created_at DESC
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listSubjectMappings(ctx context.Context, arg listSubjectMappingsParams) ([]listSubjectMappingsRow, error) {

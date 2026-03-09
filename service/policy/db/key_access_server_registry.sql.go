@@ -668,6 +668,7 @@ LEFT JOIN (
         INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY kask.key_access_server_id
     ) kask_keys ON kas.id = kask_keys.key_access_server_id
+ORDER BY kas.created_at DESC
 LIMIT $2 
 OFFSET $1
 `
@@ -722,6 +723,7 @@ type listKeyAccessServersRow struct {
 //	        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
 //	        GROUP BY kask.key_access_server_id
 //	    ) kask_keys ON kas.id = kask_keys.key_access_server_id
+//	ORDER BY kas.created_at DESC
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listKeyAccessServers(ctx context.Context, arg listKeyAccessServersParams) ([]listKeyAccessServersRow, error) {
@@ -856,7 +858,7 @@ CROSS JOIN keys_with_mappings_count kwmc
 LEFT JOIN namespace_mappings nm ON fk.id = nm.key_id
 LEFT JOIN definition_mappings dm ON fk.id = dm.key_id
 LEFT JOIN value_mappings vm ON fk.id = vm.key_id
-ORDER BY fk.created_at
+ORDER BY fk.created_at DESC
 LIMIT $2 
 OFFSET $1
 `
@@ -984,7 +986,7 @@ type listKeyMappingsRow struct {
 //	LEFT JOIN namespace_mappings nm ON fk.id = nm.key_id
 //	LEFT JOIN definition_mappings dm ON fk.id = dm.key_id
 //	LEFT JOIN value_mappings vm ON fk.id = vm.key_id
-//	ORDER BY fk.created_at
+//	ORDER BY fk.created_at DESC
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listKeyMappings(ctx context.Context, arg listKeyMappingsParams) ([]listKeyMappingsRow, error) {

@@ -3,6 +3,7 @@ package ldap
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"testing"
 	"time"
 
@@ -15,12 +16,26 @@ type ProviderSuite struct {
 	suite.Suite
 }
 
+type mockBackend struct{}
+
 type escapingBackend struct {
-	stubBackend
+	mockBackend
+}
+
+func (mockBackend) Dial(_, _ string) (Conn, error) {
+	return nil, errors.New("mock LDAP backend not configured")
+}
+
+func (mockBackend) DialTLS(_, _ string, _ *tls.Config) (Conn, error) {
+	return nil, errors.New("mock LDAP backend not configured")
 }
 
 func (escapingBackend) EscapeFilter(filter string) string {
 	return transformation.EscapeLDAPFilter(filter)
+}
+
+func (mockBackend) EscapeFilter(filter string) string {
+	return filter
 }
 
 func TestProviderSuite(t *testing.T) {

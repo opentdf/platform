@@ -9,7 +9,7 @@ import (
 	"go.opentelemetry.io/otel/trace/noop"
 
 	"connectrpc.com/connect"
-	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/v1/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"

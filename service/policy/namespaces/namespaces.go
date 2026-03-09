@@ -222,11 +222,11 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *connec
 	return connect.NewResponse(rsp), nil
 }
 
-func (ns NamespacesService) AssignKeyAccessServerToNamespace(_ context.Context, _ *connect.Request[namespaces.AssignKeyAccessServerToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyAccessServerToNamespaceResponse], error) {
+func (ns NamespacesService) AssignKeyAccessServerToNamespace(_ context.Context, _ *connect.Request[namespaces.AssignKeyAccessServerToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyAccessServerToNamespaceResponse], error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("this compatibility stub will be removed entirely in the following release"))
 }
 
-func (ns NamespacesService) RemoveKeyAccessServerFromNamespace(ctx context.Context, req *connect.Request[namespaces.RemoveKeyAccessServerFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyAccessServerFromNamespaceResponse], error) {
+func (ns NamespacesService) RemoveKeyAccessServerFromNamespace(ctx context.Context, req *connect.Request[namespaces.RemoveKeyAccessServerFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyAccessServerFromNamespaceResponse], error) { //nolint:staticcheck // Compatibility path for deprecated RPC.
 	rsp := &namespaces.RemoveKeyAccessServerFromNamespaceResponse{}
 
 	grant := req.Msg.GetNamespaceKeyAccessServer()

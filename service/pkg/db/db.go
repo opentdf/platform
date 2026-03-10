@@ -89,10 +89,11 @@ type PoolConfig struct {
 }
 
 type Config struct {
-	Host           string     `mapstructure:"host" json:"host" default:"localhost"`
-	Port           int        `mapstructure:"port" json:"port" default:"5432"`
-	Database       string     `mapstructure:"database" json:"database" default:"opentdf"`
-	User           string     `mapstructure:"user" json:"user" default:"postgres"`
+	Host     string `mapstructure:"host" json:"host" default:"localhost"`
+	Port     int    `mapstructure:"port" json:"port" default:"5432"`
+	Database string `mapstructure:"database" json:"database" default:"opentdf"`
+	User     string `mapstructure:"user" json:"user" default:"postgres"`
+	//nolint:gosec // configuration value
 	Password       string     `mapstructure:"password" json:"password" default:"changeme"`
 	SSLMode        string     `mapstructure:"sslmode" json:"sslmode" default:"prefer"`
 	Schema         string     `mapstructure:"schema" json:"schema" default:"opentdf"`
@@ -102,6 +103,8 @@ type Config struct {
 	RunMigrations    bool      `mapstructure:"runMigrations" json:"runMigrations" default:"true"`
 	MigrationsFS     *embed.FS `mapstructure:"-" json:"-"`
 	VerifyConnection bool      `mapstructure:"verifyConnection" json:"verifyConnection" default:"true"`
+
+	Embedded EmbeddedConfig `mapstructure:"embedded" json:"embedded"`
 }
 
 func (c Config) LogValue() slog.Value {
@@ -123,6 +126,7 @@ func (c Config) LogValue() slog.Value {
 		),
 		slog.Bool("runMigrations", c.RunMigrations),
 		slog.Bool("verifyConnection", c.VerifyConnection),
+		slog.Any("embedded", c.Embedded),
 	)
 }
 
@@ -148,6 +152,7 @@ type Client struct {
 	// This is the stdlib connection that is used for transactions
 	SQLDB *sql.DB
 	trace.Tracer
+	embeddedRelease func(context.Context) error
 }
 
 /*
@@ -177,8 +182,18 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 	}
 	c.Logger = l.With("schema", config.Schema)
 
-	dbConfig, err := config.buildConfig()
+	updatedConfig, embeddedRelease, err := maybeStartEmbedded(ctx, config, c.Logger)
 	if err != nil {
+		return nil, err
+	}
+	if embeddedRelease != nil {
+		c.embeddedRelease = embeddedRelease
+	}
+	c.config = updatedConfig
+
+	dbConfig, err := c.config.buildConfig()
+	if err != nil {
+		c.releaseEmbedded(ctx)
 		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
 	}
 
@@ -198,6 +213,7 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 	slog.Info("opening new database pool", slog.String("schema", config.Schema))
 	pool, err := pgxpool.NewWithConfig(ctx, dbConfig)
 	if err != nil {
+		c.releaseEmbedded(ctx)
 		return nil, fmt.Errorf("failed to create pgxpool: %w", err)
 	}
 	c.Pgx = pool
@@ -207,6 +223,7 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 	// Connect to the database to verify the connection
 	if c.config.VerifyConnection {
 		if err := c.Pgx.Ping(ctx); err != nil {
+			c.releaseEmbedded(ctx)
 			return nil, fmt.Errorf("failed to connect to database: %w", err)
 		}
 	}
@@ -221,6 +238,9 @@ func (c *Client) Schema() string {
 func (c *Client) Close() {
 	c.Pgx.Close()
 	c.SQLDB.Close()
+	stopCtx, cancel := context.WithTimeout(context.Background(), c.embeddedStopTimeout())
+	defer cancel()
+	c.releaseEmbedded(stopCtx)
 }
 
 func (c Config) buildConfig() (*pgxpool.Config, error) {
@@ -298,6 +318,34 @@ func (c Client) Exec(ctx context.Context, sql string, args []interface{}) error 
 	}
 
 	return nil
+}
+
+func (c *Client) releaseEmbedded(ctx context.Context) {
+	if c.embeddedRelease == nil {
+		return
+	}
+
+	stopCtx := ctx
+	var cancel context.CancelFunc
+	if _, ok := stopCtx.Deadline(); !ok {
+		stopCtx, cancel = context.WithTimeout(stopCtx, c.embeddedStopTimeout())
+	}
+	if cancel != nil {
+		defer cancel()
+	}
+
+	if err := c.embeddedRelease(stopCtx); err != nil {
+		c.Logger.Error("failed to stop embedded postgres", slog.String("error", err.Error()))
+	}
+	c.embeddedRelease = nil
+}
+
+func (c *Client) embeddedStopTimeout() time.Duration {
+	stopTimeout := defaultEmbeddedStopTimeout
+	if c.config.Embedded.StopTimeoutSeconds > 0 {
+		stopTimeout = time.Duration(c.config.Embedded.StopTimeoutSeconds) * time.Second
+	}
+	return stopTimeout
 }
 
 //

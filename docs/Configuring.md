@@ -324,6 +324,11 @@ The database configuration is used to define how the application connects to its
 
 Root level key `db`
 
+Embedded Postgres is used only when `db.embedded.enabled` is `true` and `db.host` is empty.
+Embedded Postgres version is fixed to PostgreSQL 15 to match the primary Compose database image (`postgres:15-alpine`).
+Embedded Postgres binaries are image-owned at `/opt/opentdf/embedded-postgres/binaries` (not volume-managed).
+`db.embedded.root_dir` is only for mutable runtime state managed by the app (`data`, `runtime`, `cache`).
+
 | Field                                  | Description                                   | Default     | Environment Variables                           |
 | -------------------------------------- | --------------------------------------------- | ----------- | ----------------------------------------------- |
 | `host`                                 | The host address for the database.            | `localhost` | OPENTDF_DB_HOST                                 |
@@ -342,6 +347,13 @@ Root level key `db`
 | `pool.min_idle_connections_count`      | Minimum number of idle connections per pool.  | `0`         | OPENTDF_DB_POOL_MIN_IDLE_CONNECTIONS_COUNT      |
 | `pool.max_connection_idle_seconds`     | Maximum seconds allowed for idle connection.  | `1800`      | OPENTDF_DB_POOL_MAX_CONNECTION_IDLE_SECONDS     |
 | `pool.health_check_period_seconds`     | Interval seconds per health check.            | `60`        | OPENTDF_DB_POOL_HEALTH_CHECK_PERIOD_SECONDS     |
+| `embedded`                             | Embedded Postgres settings.                   |             |                                                 |
+| `embedded.enabled`                     | Enable embedded Postgres.                     | `false`     | OPENTDF_DB_EMBEDDED_ENABLED                     |
+| `embedded.root_dir`                    | Root directory used by embedded Postgres.     |             | OPENTDF_DB_EMBEDDED_ROOT_DIR                    |
+| `embedded.port`                        | Embedded Postgres port (0 = auto).            | `0`         | OPENTDF_DB_EMBEDDED_PORT                        |
+| `embedded.start_timeout_seconds`       | Startup timeout for embedded Postgres.        | `30`        | OPENTDF_DB_EMBEDDED_START_TIMEOUT_SECONDS       |
+| `embedded.stop_timeout_seconds`        | Shutdown timeout for embedded Postgres.       | `10`        | OPENTDF_DB_EMBEDDED_STOP_TIMEOUT_SECONDS        |
+| `embedded.sslmode`                     | Override sslmode for embedded Postgres.       | `disable`   | OPENTDF_DB_EMBEDDED_SSLMODE                     |
 
 
 
@@ -366,6 +378,13 @@ db:
     min_idle_connections_count: 0
     max_connection_idle_seconds: 1800
     health_check_period_seconds: 60
+  embedded:
+    enabled: false
+    root_dir: /var/lib/opentdf/pg
+    port: 0
+    start_timeout_seconds: 30
+    stop_timeout_seconds: 10
+    sslmode: disable
 ```
 
 ## Security Configuration

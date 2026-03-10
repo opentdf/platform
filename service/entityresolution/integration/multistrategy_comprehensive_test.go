@@ -3,8 +3,10 @@ package integration
 import (
 	"database/sql"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -14,6 +16,7 @@ import (
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	multistrategyv2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
+	"github.com/opentdf/platform/service/internal/testdb"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -112,43 +115,29 @@ func TestMultiStrategy_SQLOnly(t *testing.T) {
 		t.Skip("Skipping SQL container tests in short mode")
 	}
 
-	// Start PostgreSQL container
+	// Start PostgreSQL provider (container by default, embedded if configured)
 	ctx := t.Context()
-	postgresContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: testcontainers.ContainerRequest{
-			Image:        "postgres:15",
-			ExposedPorts: []string{"5432/tcp"},
-			Env: map[string]string{
-				"POSTGRES_USER":     "testuser",
-				"POSTGRES_PASSWORD": "testpass",
-				"POSTGRES_DB":       "testdb",
-			},
-			WaitingFor: wait.ForLog("database system is ready to accept connections").WithOccurrence(2).WithStartupTimeout(30 * time.Second),
-		},
-		Started: true,
+	instance, err := testdb.StartPostgres(ctx, testdb.PostgresConfig{
+		User:     "testuser",
+		Password: "testpass",
+		Database: "testdb",
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), "Docker") || strings.Contains(err.Error(), "docker") {
+		if errors.Is(err, testdb.ErrContainerUnavailable) {
 			t.Skipf("Docker not available for container tests: %v", err)
 		} else {
-			t.Fatalf("Failed to start PostgreSQL container: %v", err)
+			t.Fatalf("Failed to start PostgreSQL for tests: %v", err)
 		}
 	}
-	defer func() { _ = postgresContainer.Terminate(ctx) }()
-
-	// Get container connection details
-	host, err := postgresContainer.Host(ctx)
-	if err != nil {
-		t.Fatalf("Failed to get container host: %v", err)
-	}
-
-	mappedPort, err := postgresContainer.MappedPort(ctx, "5432")
-	if err != nil {
-		t.Fatalf("Failed to get mapped port: %v", err)
-	}
+	defer func() { _ = instance.Stop(ctx) }()
 
 	// Connect to database and create test data
-	connStr := fmt.Sprintf("postgres://testuser:testpass@%s/testdb?sslmode=disable", net.JoinHostPort(host, mappedPort.Port()))
+	connStr := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable",
+		instance.User,
+		instance.Password,
+		net.JoinHostPort(instance.Host, strconv.Itoa(instance.Port)),
+		instance.Database,
+	)
 
 	// Retry connection to handle container startup timing
 	var db *sql.DB
@@ -186,8 +175,8 @@ func TestMultiStrategy_SQLOnly(t *testing.T) {
 				Type: "sql",
 				Connection: map[string]interface{}{
 					"driver":   "postgres",
-					"host":     host,
-					"port":     mappedPort.Int(),
+					"host":     instance.Host,
+					"port":     instance.Port,
 					"database": "testdb",
 					"username": "testuser",
 					"password": "testpass",

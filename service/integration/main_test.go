@@ -2,19 +2,15 @@ package integration
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log/slog"
-	"net"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/creasty/defaults"
-	"github.com/docker/go-connections/nat"
-	"github.com/google/uuid"
 	"github.com/opentdf/platform/service/internal/fixtures"
-	tc "github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/opentdf/platform/service/internal/testdb"
 )
 
 const note = `
@@ -34,6 +30,12 @@ const note = `
  Note: Colima does not run well on MacOS with Ryuk, so it is better to run with Ryuk disabled.
  This means you must more carefully ensure container termination.
  For more information please see: https://www.testcontainers.org/
+ To use embedded Postgres instead of containers:
+   export OPENTDF_TEST_DB_PROVIDER=embedded;
+   # Optional overrides:
+   export OPENTDF_TEST_DB_DATA_DIR=/path/to/pgdata;
+   export OPENTDF_TEST_DB_PORT=5433;
+   export OPENTDF_TEST_DB_BINARIES_DIR=/path/to/pgbin;
  ---------------------------------------------------------------------------------
  Test runner hanging at '📀 starting postgres container'?
  Try restarting Docker/Podman and running the tests again.
@@ -56,76 +58,34 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	/*
-		For podman
-		export TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true; # needed to run Reaper (alternative disable it TESTCONTAINERS_RYUK_DISABLED=true)
-		export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock; # needed to apply the bind with statfs
-	*/
-	var providerType tc.ProviderType
-
-	if os.Getenv("TESTCONTAINERS_PODMAN") == "true" {
-		providerType = tc.ProviderPodman
-	} else {
-		providerType = tc.ProviderDocker
-	}
-
-	randomSuffix := uuid.NewString()[:8]
-	containerName := "testcontainer-postgres-" + randomSuffix
-
-	req := tc.GenericContainerRequest{
-		ProviderType: providerType,
-		ContainerRequest: tc.ContainerRequest{
-			Image:        "postgres:15-alpine",
-			Name:         containerName,
-			ExposedPorts: []string{"5432/tcp"},
-			Env: map[string]string{
-				"POSTGRES_USER":     conf.DB.User,
-				"POSTGRES_PASSWORD": conf.DB.Password,
-				"POSTGRES_DB":       conf.DB.Database,
-			},
-			WaitingFor: wait.ForSQL(nat.Port("5432/tcp"), "pgx", func(host string, port nat.Port) string {
-				return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable",
-					conf.DB.User,
-					conf.DB.Password,
-					net.JoinHostPort(host, port.Port()),
-					conf.DB.Database,
-				)
-			}).WithStartupTimeout(time.Second * 60).WithQuery("SELECT 1"), // Increased timeout and simplified query
-		},
-		Started: true,
-	}
-
-	//nolint:sloglint // emoji
-	slog.Info("📀 starting postgres container")
-	postgres, err := tc.GenericContainer(context.Background(), req)
+	instance, err := testdb.StartPostgres(ctx, testdb.PostgresConfig{
+		User:     conf.DB.User,
+		Password: conf.DB.Password,
+		Database: conf.DB.Database,
+	})
 	if err != nil {
-		slog.Error("could not start postgres container", slog.String("error", err.Error()))
-		panic(err)
-	}
-
-	// Cleanup the container
-	defer func() {
-		if err := postgres.Terminate(ctx); err != nil {
-			slog.Error("could not stop postgres container", slog.String("error", err.Error()))
-			return
-		}
-
-		if err := recover(); err != nil {
+		if errors.Is(err, testdb.ErrContainerUnavailable) {
+			slog.Error("postgres container unavailable; set OPENTDF_TEST_DB_PROVIDER=embedded to run without docker", slog.String("error", err.Error()))
 			os.Exit(1)
 		}
-	}()
-
-	port, err := postgres.MappedPort(ctx, "5432/tcp")
-	if err != nil {
-		slog.Error("could not get postgres mapped port", slog.String("error", err.Error()))
-		panic(err)
+		slog.Error("could not start postgres for integration tests", slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 
-	conf.DB.Port = port.Int()
+	conf.DB.Host = instance.Host
+	conf.DB.Port = instance.Port
 
 	//nolint:sloglint // emoji
 	slog.Info("🏠 loading fixtures")
 	fixtures.LoadFixtureData("../internal/fixtures/policy_fixtures.yaml")
 
-	m.Run()
+	exitCode := m.Run()
+
+	stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	if err := instance.Stop(stopCtx); err != nil {
+		slog.Error("could not stop postgres", slog.String("error", err.Error()))
+	}
+	cancel()
+
+	os.Exit(exitCode)
 }

@@ -435,6 +435,10 @@ components:
         name:
           type: string
           title: name
+        namespace:
+          title: namespace
+          description: Namespace context for this action
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -1053,6 +1057,15 @@ components:
             this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
             ```
 
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
         metadata:
           title: metadata
           description: Optional
@@ -1116,6 +1129,16 @@ components:
           title: name
           required:
             - name
+      properties:
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
       title: GetActionRequest
       additionalProperties: false
     policy.actions.GetActionResponse:
@@ -1135,6 +1158,15 @@ components:
     policy.actions.ListActionsRequest:
       type: object
       properties:
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
         pagination:
           title: pagination
           description: Optional

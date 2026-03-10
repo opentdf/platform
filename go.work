@@ -11,5 +11,6 @@ use (
 	./protocol/go
 	./sdk
 	./service
+	./test/integration
 	./tests-bdd
 )

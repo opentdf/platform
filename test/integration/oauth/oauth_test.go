@@ -45,9 +45,7 @@ func TestOAuthTestSuite(t *testing.T) {
 func (s *OAuthSuite) SetupSuite() {
 	// Generate RSA Key to use for DPoP
 	dpopKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	if err != nil {
-		panic(err)
-	}
+	s.Require().NoError(err, "failed to generate dpop key")
 
 	dpopJWK, err := jwk.FromRaw(dpopKey)
 	s.Require().NoError(err)
@@ -76,9 +74,10 @@ func (s *OAuthSuite) TestCertExchangeFromKeycloak() {
 		ClientAuth: "secret",
 	}
 	cert, err := tls.LoadX509KeyPair("testdata/sampleuser.crt", "testdata/sampleuser.key")
-	rootCAs, _ := x509.SystemCertPool()
-	rootCAs.AppendCertsFromPEM(ca)
 	s.Require().NoError(err)
+	rootCAs, err := x509.SystemCertPool()
+	s.Require().NoError(err)
+	rootCAs.AppendCertsFromPEM(ca)
 	tlsConfig := &tls.Config{
 		MinVersion:   tls.VersionTLS12,
 		Certificates: []tls.Certificate{cert},
@@ -317,10 +316,11 @@ func (s *OAuthSuite) TestClientSecretWithNonce() {
 			s.T().Errorf("Nonce is not a string")
 		}
 
-		tok, _ := jwt.NewBuilder().
+		tok, err := jwt.NewBuilder().
 			Issuer("example.org/fake").
 			IssuedAt(time.Now()).
 			Build()
+		s.NoError(err)
 
 		responseBytes, err := json.Marshal(tok)
 		if err != nil {
@@ -406,10 +406,11 @@ func (s *OAuthSuite) TestSignedJWTWithNonce() {
 			s.T().Logf("didn't get nonce assertion")
 		}
 
-		tok, _ := jwt.NewBuilder().
+		tok, err := jwt.NewBuilder().
 			Issuer("example.org/fake").
 			IssuedAt(time.Now()).
 			Build()
+		s.NoError(err)
 
 		responseBytes, err := json.Marshal(tok)
 		if err != nil {
@@ -518,9 +519,9 @@ func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string, str
 			"--spi-truststore-file-hostname-verification-policy=ANY",
 		},
 		Files: []tc.ContainerFile{
-			{HostFilePath: "testdata/new-ca.jks", ContainerFilePath: "/truststore/truststore.jks", FileMode: int64(0o777)},
-			{HostFilePath: "testdata/localhost.crt", ContainerFilePath: "/etc/x509/tls/localhost.crt", FileMode: int64(0o777)},
-			{HostFilePath: "testdata/localhost.key", ContainerFilePath: "/etc/x509/tls/localhost.key", FileMode: int64(0o777)},
+			{HostFilePath: "testdata/new-ca.jks", ContainerFilePath: "/truststore/truststore.jks", FileMode: int64(0o644)},
+			{HostFilePath: "testdata/localhost.crt", ContainerFilePath: "/etc/x509/tls/localhost.crt", FileMode: int64(0o644)},
+			{HostFilePath: "testdata/localhost.key", ContainerFilePath: "/etc/x509/tls/localhost.key", FileMode: int64(0o600)},
 		},
 		Env: map[string]string{
 			"KEYCLOAK_ADMIN":                "admin",
@@ -551,10 +552,12 @@ func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string, str
 	if err != nil {
 		t.Fatalf("error starting keycloak container: %v", err)
 	}
-	port, _ := keycloak.MappedPort(ctx, "8082")
+	port, err := keycloak.MappedPort(ctx, "8082")
+	require.NoError(t, err)
 	keycloakBase := "http://localhost:" + port.Port()
 
-	httpPort, _ := keycloak.MappedPort(ctx, "8083")
+	httpPort, err := keycloak.MappedPort(ctx, "8083")
+	require.NoError(t, err)
 	keycloakHTTPSBase := "https://localhost:" + httpPort.Port()
 
 	realm := "test"

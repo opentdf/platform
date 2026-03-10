@@ -911,6 +911,35 @@ EOF
   cleanup_obligation_value "$obl_val_id"
 }
 
+@test "Create an obligation trigger - Same tuple different client IDs - Success" {
+  # setup an obligation value to use
+  run_otdfctl_obl_values create --obligation "$OBL_ID" --value "test_obl_val_for_multi_peps" --json
+  assert_success
+  obl_val_id=$(echo "$output" | jq -r '.id')
+
+  # create first client-scoped trigger
+  client_id_1="a-pep"
+  run_otdfctl_obl_triggers create --attribute-value "$ATTR_VAL_ID" --action "$ACTION_2_ID" --obligation-value "$obl_val_id" --client-id "$client_id_1" --json
+  assert_success
+  trigger_id_1=$(echo "$output" | jq -r '.id')
+  assert_not_equal "$trigger_id_1" "null"
+  assert_equal "$(echo "$output" | jq -r '.context[0].pep.client_id')" "$client_id_1"
+
+  # create second client-scoped trigger with same tuple but different client id
+  client_id_2="b-pep"
+  run_otdfctl_obl_triggers create --attribute-value "$ATTR_VAL_ID" --action "$ACTION_2_ID" --obligation-value "$obl_val_id" --client-id "$client_id_2" --json
+  assert_success
+  trigger_id_2=$(echo "$output" | jq -r '.id')
+  assert_not_equal "$trigger_id_2" "null"
+  assert_not_equal "$trigger_id_1" "$trigger_id_2"
+  assert_equal "$(echo "$output" | jq -r '.context[0].pep.client_id')" "$client_id_2"
+
+  # cleanup
+  cleanup_trigger "$trigger_id_1"
+  cleanup_trigger "$trigger_id_2"
+  cleanup_obligation_value "$obl_val_id"
+}
+
 @test "Create an obligation trigger - Bad" {
   # missing flags
   run_otdfctl_obl_triggers create --attribute-value "http://example.com/attr/attr_name/value/attr_value" --action "read" 

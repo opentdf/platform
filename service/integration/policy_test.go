@@ -9,7 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
-	"github.com/opentdf/platform/service/internal/fixtures"
+	"github.com/opentdf/platform/service/pkg/testutil/fixtures"
 	"github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 )

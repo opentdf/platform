@@ -6,7 +6,7 @@ import (
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
+	"github.com/opentdf/platform/service/pkg/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

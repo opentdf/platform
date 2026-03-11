@@ -13,8 +13,8 @@ import (
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/subjectmappingbuiltin"
 )
 
 // Decision represents the overall access decision for an entity.

@@ -13,7 +13,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/entityresolution/integration/internal"
-	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
+	"github.com/opentdf/platform/service/pkg/subjectmappingbuiltin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"

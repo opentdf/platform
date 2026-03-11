@@ -18,7 +18,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"google.golang.org/grpc/codes"
 )
 
@@ -678,7 +678,7 @@ func Test_GetConnectorTokenRefresh(t *testing.T) {
 	service := &KeycloakEntityResolutionService{
 		idpConfig: kcconfig,
 		logger:    logger.CreateTestLogger(),
-		Tracer:    trace.NewNoopTracerProvider().Tracer("test"),
+		Tracer:    noop.NewTracerProvider().Tracer("test"),
 	}
 
 	req := &connect.Request[entityresolution.ResolveEntitiesRequest]{

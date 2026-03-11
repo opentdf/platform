@@ -748,9 +748,9 @@ func generateWrapKeyWithEC(mode ocrypto.ECCMode, kasPublicKey string, symKey []b
 }
 
 func generateWrapKeyWithRSA(publicKey string, symKey []byte) (string, error) {
-	asymEncrypt, err := ocrypto.NewAsymEncryption(publicKey)
+	asymEncrypt, err := ocrypto.FromPublicPEM(publicKey)
 	if err != nil {
-		return "", fmt.Errorf("generateWrapKeyWithRSA: ocrypto.NewAsymEncryption failed:%w", err)
+		return "", fmt.Errorf("generateWrapKeyWithRSA: ocrypto.FromPublicPEM failed:%w", err)
 	}
 
 	wrappedKey, err := asymEncrypt.Encrypt(symKey)

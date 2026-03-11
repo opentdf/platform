@@ -232,7 +232,7 @@ func (c PolicyDBClient) UnsafeDeleteAttributeValue(ctx context.Context, toDelete
 	}, nil
 }
 
-func (c PolicyDBClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
+func (c PolicyDBClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) { //nolint:staticcheck // Compatibility path for deprecated protobuf type.
 	count, err := c.queries.removeKeyAccessServerFromAttributeValue(ctx, removeKeyAccessServerFromAttributeValueParams{
 		AttributeValueID:  k.GetValueId(),
 		KeyAccessServerID: k.GetKeyAccessServerId(),

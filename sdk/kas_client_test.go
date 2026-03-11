@@ -27,7 +27,7 @@ import (
 type FakeAccessTokenSource struct {
 	dpopKey        jwk.Key
 	asymDecryption ocrypto.AsymDecryption
-	asymEncryption ocrypto.AsymEncryption
+	asymEncryption ocrypto.PublicKeyEncryptor
 	accessToken    string
 }
 
@@ -44,7 +44,7 @@ func getTokenSource(t *testing.T) FakeAccessTokenSource {
 	dpopPEM, _ := dpopKey.PrivateKeyInPemFormat()
 	decryption, _ := ocrypto.NewAsymDecryption(dpopPEM)
 	dpopPEMPublic, _ := dpopKey.PublicKeyInPemFormat()
-	encryption, _ := ocrypto.NewAsymEncryption(dpopPEMPublic)
+	encryption, _ := ocrypto.FromPublicPEM(dpopPEMPublic)
 	dpopJWK, err := jwk.ParseKey([]byte(dpopPEM), jwk.WithPEM(true))
 	if err != nil {
 		t.Fatalf("error creating JWK: %v", err)
@@ -113,8 +113,8 @@ func TestCreatingRequest(t *testing.T) {
 
 	require.NoError(t, protojson.Unmarshal([]byte(requestBodyJSON), &requestBody), "error unmarshaling request body")
 
-	_, err = ocrypto.NewAsymEncryption(requestBody.GetClientPublicKey())
-	require.NoError(t, err, "NewAsymEncryption failed, incorrect public key include")
+	_, err = ocrypto.FromPublicPEM(requestBody.GetClientPublicKey())
+	require.NoError(t, err, "FromPublicPEM failed, incorrect public key include")
 
 	require.Len(t, requestBody.GetRequests(), 1)
 	require.Len(t, requestBody.GetRequests()[0].GetKeyAccessObjects(), 1)
@@ -141,8 +141,8 @@ func Test_StoreKASKeys(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	assert.Nil(t, s.kasKeyCache.get("https://localhost:8080", "ec:secp256r1", "e1"))
-	assert.Nil(t, s.kasKeyCache.get("https://localhost:8080", "rsa:2048", "r1"))
+	assert.Nil(t, s.get("https://localhost:8080", "ec:secp256r1", "e1"))
+	assert.Nil(t, s.get("https://localhost:8080", "rsa:2048", "r1"))
 
 	require.NoError(t, s.StoreKASKeys("https://localhost:8080", &policy.KasPublicKeySet{
 		Keys: []*policy.KasPublicKey{
@@ -150,10 +150,10 @@ func Test_StoreKASKeys(t *testing.T) {
 			{Pem: "sample", Kid: "r1", Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048},
 		},
 	}))
-	assert.Nil(t, s.kasKeyCache.get("https://nowhere", "alg:unknown", ""))
-	assert.Nil(t, s.kasKeyCache.get("https://localhost:8080", "alg:unknown", ""))
-	ecKey := s.kasKeyCache.get("https://localhost:8080", "ec:secp256r1", "e1")
-	rsaKey := s.kasKeyCache.get("https://localhost:8080", "rsa:2048", "r1")
+	assert.Nil(t, s.get("https://nowhere", "alg:unknown", ""))
+	assert.Nil(t, s.get("https://localhost:8080", "alg:unknown", ""))
+	ecKey := s.get("https://localhost:8080", "ec:secp256r1", "e1")
+	rsaKey := s.get("https://localhost:8080", "rsa:2048", "r1")
 	require.NotNil(t, ecKey)
 	require.Equal(t, "e1", ecKey.KID)
 	require.NotNil(t, rsaKey)
@@ -463,7 +463,7 @@ func Test_processRSAResponse(t *testing.T) {
 	// Create a mock AsymEncryption to create the wrapped key
 	publicKeyPEM, err := mockPrivateKey.PublicKeyInPemFormat()
 	require.NoError(t, err)
-	mockEncryptor, err := ocrypto.NewAsymEncryption(publicKeyPEM)
+	mockEncryptor, err := ocrypto.FromPublicPEM(publicKeyPEM)
 	require.NoError(t, err)
 
 	symmetricKey := []byte("supersecretkey")

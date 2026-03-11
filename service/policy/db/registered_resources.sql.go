@@ -211,13 +211,15 @@ LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 WHERE
     ($1::uuid IS NULL OR r.id = $1::uuid) AND
     ($2::text IS NULL OR r.name = $2::text) AND
-    ($3::text IS NULL OR ns_fqns.fqn = $3::text)
+    ($3::uuid IS NULL OR r.namespace_id = $3::uuid) AND
+    ($4::text IS NULL OR ns_fqns.fqn = $4::text)
 GROUP BY r.id, n.id, ns_fqns.fqn
 `
 
 type getRegisteredResourceParams struct {
 	ID           pgtype.UUID `json:"id"`
 	Name         pgtype.Text `json:"name"`
+	NamespaceID  pgtype.UUID `json:"namespace_id"`
 	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
 }
 
@@ -255,10 +257,16 @@ type getRegisteredResourceRow struct {
 //	WHERE
 //	    ($1::uuid IS NULL OR r.id = $1::uuid) AND
 //	    ($2::text IS NULL OR r.name = $2::text) AND
-//	    ($3::text IS NULL OR ns_fqns.fqn = $3::text)
+//	    ($3::uuid IS NULL OR r.namespace_id = $3::uuid) AND
+//	    ($4::text IS NULL OR ns_fqns.fqn = $4::text)
 //	GROUP BY r.id, n.id, ns_fqns.fqn
 func (q *Queries) getRegisteredResource(ctx context.Context, arg getRegisteredResourceParams) (getRegisteredResourceRow, error) {
-	row := q.db.QueryRow(ctx, getRegisteredResource, arg.ID, arg.Name, arg.NamespaceFqn)
+	row := q.db.QueryRow(ctx, getRegisteredResource,
+		arg.ID,
+		arg.Name,
+		arg.NamespaceID,
+		arg.NamespaceFqn,
+	)
 	var i getRegisteredResourceRow
 	err := row.Scan(
 		&i.ID,

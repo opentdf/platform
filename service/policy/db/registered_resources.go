@@ -146,7 +146,14 @@ func (c PolicyDBClient) GetRegisteredResource(ctx context.Context, r *registered
 		params.ID = pgtypeUUID(r.GetId())
 	case r.GetName() != "":
 		params.Name = pgtypeText(strings.ToLower(r.GetName()))
-		if r.GetNamespaceFqn() != "" {
+		namespaceID := r.GetNamespaceId()
+		if len(namespaceID) > 0 {
+			parsedID := pgtypeUUID(namespaceID)
+			if !parsedID.Valid {
+				return nil, db.ErrUUIDInvalid
+			}
+			params.NamespaceID = parsedID
+		} else if r.GetNamespaceFqn() != "" {
 			params.NamespaceFqn = pgtypeText(r.GetNamespaceFqn())
 		}
 	default:

@@ -57,6 +57,7 @@ LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 WHERE
     (sqlc.narg('id')::uuid IS NULL OR r.id = sqlc.narg('id')::uuid) AND
     (sqlc.narg('name')::text IS NULL OR r.name = sqlc.narg('name')::text) AND
+    (sqlc.narg('namespace_id')::uuid IS NULL OR r.namespace_id = sqlc.narg('namespace_id')::uuid) AND
     (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text)
 GROUP BY r.id, n.id, ns_fqns.fqn;
 

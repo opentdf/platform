@@ -1524,13 +1524,12 @@ components:
         namespaceFqn:
           type: string
           title: namespace_fqn
-          description: |+
-            Optional - namespace context for name-based lookups (since names are not globally unique for namespaced RRs)
-            Namespace FQN must be a valid URI if provided:
-            ```
-            size(this) == 0 || this.isUri()
-            ```
-
+          minLength: 1
+          format: uri
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
       title: GetRegisteredResourceRequest
       additionalProperties: false
     policy.registeredresources.GetRegisteredResourceResponse:

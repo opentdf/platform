@@ -241,6 +241,24 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResource_Valid_Succeeds() {
 				},
 			},
 		},
+		{
+			name: "Name with Namespace ID",
+			req: &registeredresources.GetRegisteredResourceRequest{
+				Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+					Name: validName,
+				},
+				NamespaceId: validUUID,
+			},
+		},
+		{
+			name: "Name with Namespace FQN",
+			req: &registeredresources.GetRegisteredResourceRequest{
+				Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+					Name: validName,
+				},
+				NamespaceFqn: validURI,
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -280,6 +298,37 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResource_Invalid_Fails() {
 				},
 			},
 			errMsg: errMsgNameFormat,
+		},
+		{
+			name: "Invalid Namespace ID (non-UUID)",
+			req: &registeredresources.GetRegisteredResourceRequest{
+				Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+					Name: validName,
+				},
+				NamespaceId: invalidUUID,
+			},
+			errMsg: errMsgUUID,
+		},
+		{
+			name: "Invalid Namespace FQN (non-URI)",
+			req: &registeredresources.GetRegisteredResourceRequest{
+				Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+					Name: validName,
+				},
+				NamespaceFqn: invalidURI,
+			},
+			errMsg: errMsgURI,
+		},
+		{
+			name: "Both Namespace ID and FQN provided (oneof violation)",
+			req: &registeredresources.GetRegisteredResourceRequest{
+				Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+					Name: validName,
+				},
+				NamespaceId:  validUUID,
+				NamespaceFqn: validURI,
+			},
+			errMsg: "oneof",
 		},
 	}
 

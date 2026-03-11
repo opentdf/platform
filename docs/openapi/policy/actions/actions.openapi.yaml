@@ -1061,11 +1061,13 @@ components:
           type: string
           title: namespace_id
           format: uuid
+          description: ID of the namespace. Required if namespace_fqn is not provided.
         namespaceFqn:
           type: string
           title: namespace_fqn
           minLength: 1
           format: uri
+          description: FQN of the namespace. Required if namespace_id is not provided.
         metadata:
           title: metadata
           description: Optional
@@ -1134,11 +1136,13 @@ components:
           type: string
           title: namespace_id
           format: uuid
+          description: ID of the namespace. Required if namespace_fqn is not provided.
         namespaceFqn:
           type: string
           title: namespace_fqn
           minLength: 1
           format: uri
+          description: FQN of the namespace. Required if namespace_id is not provided.
       title: GetActionRequest
       additionalProperties: false
     policy.actions.GetActionResponse:
@@ -1162,11 +1166,13 @@ components:
           type: string
           title: namespace_id
           format: uuid
+          description: ID of the namespace. Required if namespace_fqn is not provided.
         namespaceFqn:
           type: string
           title: namespace_fqn
           minLength: 1
           format: uri
+          description: FQN of the namespace. Required if namespace_id is not provided.
         pagination:
           title: pagination
           description: Optional

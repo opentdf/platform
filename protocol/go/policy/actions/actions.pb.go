@@ -34,9 +34,11 @@ type GetActionRequest struct {
 	//
 	//	*GetActionRequest_Id
 	//	*GetActionRequest_Name
-	Identifier   isGetActionRequest_Identifier `protobuf_oneof:"identifier"`
-	NamespaceId  string                        `protobuf:"bytes,10,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
-	NamespaceFqn string                        `protobuf:"bytes,11,opt,name=namespace_fqn,json=namespaceFqn,proto3" json:"namespace_fqn,omitempty"`
+	Identifier isGetActionRequest_Identifier `protobuf_oneof:"identifier"`
+	// ID of the namespace. Required if namespace_fqn is not provided.
+	NamespaceId string `protobuf:"bytes,10,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
+	// FQN of the namespace. Required if namespace_id is not provided.
+	NamespaceFqn string `protobuf:"bytes,11,opt,name=namespace_fqn,json=namespaceFqn,proto3" json:"namespace_fqn,omitempty"`
 }
 
 func (x *GetActionRequest) Reset() {
@@ -183,7 +185,9 @@ type ListActionsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	NamespaceId  string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
+	// ID of the namespace. Required if namespace_fqn is not provided.
+	NamespaceId string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
+	// FQN of the namespace. Required if namespace_id is not provided.
 	NamespaceFqn string `protobuf:"bytes,2,opt,name=namespace_fqn,json=namespaceFqn,proto3" json:"namespace_fqn,omitempty"`
 	// Optional
 	Pagination *policy.PageRequest `protobuf:"bytes,10,opt,name=pagination,proto3" json:"pagination,omitempty"`
@@ -313,8 +317,10 @@ type CreateActionRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Required
-	Name         string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	NamespaceId  string `protobuf:"bytes,2,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// ID of the namespace. Required if namespace_fqn is not provided.
+	NamespaceId string `protobuf:"bytes,2,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
+	// FQN of the namespace. Required if namespace_id is not provided.
 	NamespaceFqn string `protobuf:"bytes,3,opt,name=namespace_fqn,json=namespaceFqn,proto3" json:"namespace_fqn,omitempty"`
 	// Optional
 	Metadata *common.MetadataMutable `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`

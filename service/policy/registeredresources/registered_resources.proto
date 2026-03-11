@@ -79,13 +79,14 @@ message GetRegisteredResourceRequest {
   }
 
   // Optional - namespace context for name-based lookups (since names are not globally unique for namespaced RRs)
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
   string namespace_fqn = 3 [
-    (buf.validate.field).cel = {
-      id: "optional_namespace_fqn",
-      message: "Namespace FQN must be a valid URI if provided",
-      expression: "size(this) == 0 || this.isUri()"
+    (buf.validate.field).string = {
+      min_len : 1
+      uri : true
     }
   ];
+  string namespace_id = 4 [(buf.validate.field).string.uuid = true];
 }
 message GetRegisteredResourceResponse {
   policy.RegisteredResource resource = 1;

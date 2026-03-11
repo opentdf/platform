@@ -40,13 +40,13 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	if stat, err := os.Stat(tdfFile); err == nil && stat.IsDir() {
 		entries, err := os.ReadDir(tdfFile)
 		if err != nil {
-			return err
+			return fmt.Errorf("reading directory %s: %w", tdfFile, err)
 		}
 		for _, entry := range entries {
 			if !entry.IsDir() {
 				f, err := os.Open(filepath.Join(tdfFile, entry.Name()))
 				if err != nil {
-					return err
+					return fmt.Errorf("opening %s: %w", filepath.Join(tdfFile, entry.Name()), err)
 				}
 				opts := []sdk.TDFReaderOption{}
 				if alg != "" {
@@ -73,7 +73,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 
 	file, err := os.Open(tdfFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("opening %s: %w", tdfFile, err)
 	}
 	defer file.Close()
 

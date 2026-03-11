@@ -11,6 +11,9 @@ command:
     - name: name
       shorthand: n
       description: Name of the registered resource
+    - name: namespace
+      shorthand: s
+      description: Namespace FQN for name-based lookups (optional)
 ---
 
 Retrieve a registered resource along with its metadata and values.

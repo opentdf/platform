@@ -30,10 +30,11 @@ func policyCreateRegisteredResource(cmd *cobra.Command, args []string) {
 	defer h.Close()
 
 	name := c.Flags.GetRequiredString("name")
+	namespace := c.Flags.GetRequiredString("namespace")
 	registeredResourceValues = c.Flags.GetStringSlice("value", registeredResourceValues, cli.FlagsStringSliceOptions{})
 	metadataLabels = c.Flags.GetStringSlice("label", metadataLabels, cli.FlagsStringSliceOptions{Min: 0})
 
-	resource, err := h.CreateRegisteredResource(cmd.Context(), name, registeredResourceValues, getMetadataMutable(metadataLabels))
+	resource, err := h.CreateRegisteredResource(cmd.Context(), namespace, name, registeredResourceValues, getMetadataMutable(metadataLabels))
 	if err != nil {
 		cli.ExitWithError("Failed to create registered resource", err)
 	}
@@ -61,12 +62,13 @@ func policyGetRegisteredResource(cmd *cobra.Command, args []string) {
 
 	id := c.Flags.GetOptionalID("id")
 	name := c.Flags.GetOptionalString("name")
+	namespaceFqn := c.Flags.GetOptionalString("namespace")
 
 	if id == "" && name == "" {
 		cli.ExitWithError("Either 'id' or 'name' must be provided", nil)
 	}
 
-	resource, err := h.GetRegisteredResource(cmd.Context(), id, name)
+	resource, err := h.GetRegisteredResource(cmd.Context(), id, name, namespaceFqn)
 	if err != nil {
 		identifier := fmt.Sprintf("id: %s", id)
 		if id == "" {
@@ -96,10 +98,11 @@ func policyListRegisteredResources(cmd *cobra.Command, args []string) {
 	h := common.NewHandler(c)
 	defer h.Close()
 
+	namespace := c.Flags.GetOptionalString("namespace")
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
 
-	resp, err := h.ListRegisteredResources(cmd.Context(), limit, offset)
+	resp, err := h.ListRegisteredResources(cmd.Context(), limit, offset, namespace)
 	if err != nil {
 		cli.ExitWithError("Failed to list registered resources", err)
 	}
@@ -166,7 +169,7 @@ func policyDeleteRegisteredResource(cmd *cobra.Command, args []string) {
 	force := c.Flags.GetRequiredBool("force")
 	ctx := cmd.Context()
 
-	resource, err := h.GetRegisteredResource(ctx, id, "")
+	resource, err := h.GetRegisteredResource(ctx, id, "", "")
 	if err != nil {
 		errMsg := fmt.Sprintf("Failed to find registered resource (%s)", id)
 		cli.ExitWithError(errMsg, err)
@@ -207,11 +210,13 @@ func policyCreateRegisteredResourceValue(cmd *cobra.Command, args []string) {
 	actionAttributeValues = c.Flags.GetStringSlice("action-attribute-value", actionAttributeValues, cli.FlagsStringSliceOptions{Min: 0})
 	metadataLabels = c.Flags.GetStringSlice("label", metadataLabels, cli.FlagsStringSliceOptions{Min: 0})
 
+	namespace := c.Flags.GetOptionalString("namespace")
+
 	var resourceID string
 	if uuid.Validate(resource) == nil {
 		resourceID = resource
 	} else {
-		resourceByName, err := h.GetRegisteredResource(ctx, "", resource)
+		resourceByName, err := h.GetRegisteredResource(ctx, "", resource, namespace)
 		if err != nil {
 			cli.ExitWithError(fmt.Sprintf("Failed to find registered resource (name: %s)", resource), err)
 		}
@@ -284,6 +289,7 @@ func policyListRegisteredResourceValues(cmd *cobra.Command, args []string) {
 
 	ctx := cmd.Context()
 	resource := c.Flags.GetRequiredString("resource")
+	namespace := c.Flags.GetOptionalString("namespace")
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
 
@@ -291,7 +297,7 @@ func policyListRegisteredResourceValues(cmd *cobra.Command, args []string) {
 	if uuid.Validate(resource) == nil {
 		resourceID = resource
 	} else {
-		resourceByName, err := h.GetRegisteredResource(ctx, "", resource)
+		resourceByName, err := h.GetRegisteredResource(ctx, "", resource, namespace)
 		if err != nil {
 			cli.ExitWithError(fmt.Sprintf("Failed to find registered resource (name: %s)", resource), err)
 		}
@@ -465,9 +471,21 @@ func initRegisteredResourcesCommands() {
 		getDoc.GetDocFlag("name").Default,
 		getDoc.GetDocFlag("name").Description,
 	)
+	getDoc.Flags().StringP(
+		getDoc.GetDocFlag("namespace").Name,
+		getDoc.GetDocFlag("namespace").Shorthand,
+		getDoc.GetDocFlag("namespace").Default,
+		getDoc.GetDocFlag("namespace").Description,
+	)
 
 	listDoc := man.Docs.GetCommand("policy/registered-resources/list",
 		man.WithRun(policyListRegisteredResources),
+	)
+	listDoc.Flags().StringP(
+		listDoc.GetDocFlag("namespace").Name,
+		listDoc.GetDocFlag("namespace").Shorthand,
+		listDoc.GetDocFlag("namespace").Default,
+		listDoc.GetDocFlag("namespace").Description,
 	)
 	injectListPaginationFlags(listDoc)
 
@@ -479,6 +497,12 @@ func initRegisteredResourcesCommands() {
 		createDoc.GetDocFlag("name").Shorthand,
 		createDoc.GetDocFlag("name").Default,
 		createDoc.GetDocFlag("name").Description,
+	)
+	createDoc.Flags().StringP(
+		createDoc.GetDocFlag("namespace").Name,
+		createDoc.GetDocFlag("namespace").Shorthand,
+		createDoc.GetDocFlag("namespace").Default,
+		createDoc.GetDocFlag("namespace").Description,
 	)
 	createDoc.Flags().StringSliceVarP(
 		&registeredResourceValues,
@@ -548,6 +572,12 @@ func initRegisteredResourcesCommands() {
 		listValuesDoc.GetDocFlag("resource").Default,
 		listValuesDoc.GetDocFlag("resource").Description,
 	)
+	listValuesDoc.Flags().StringP(
+		listValuesDoc.GetDocFlag("namespace").Name,
+		listValuesDoc.GetDocFlag("namespace").Shorthand,
+		listValuesDoc.GetDocFlag("namespace").Default,
+		listValuesDoc.GetDocFlag("namespace").Description,
+	)
 	injectListPaginationFlags(listValuesDoc)
 
 	createValueDoc := man.Docs.GetCommand("policy/registered-resources/values/create",
@@ -564,6 +594,12 @@ func initRegisteredResourcesCommands() {
 		createValueDoc.GetDocFlag("value").Shorthand,
 		createValueDoc.GetDocFlag("value").Default,
 		createValueDoc.GetDocFlag("value").Description,
+	)
+	createValueDoc.Flags().StringP(
+		createValueDoc.GetDocFlag("namespace").Name,
+		createValueDoc.GetDocFlag("namespace").Shorthand,
+		createValueDoc.GetDocFlag("namespace").Default,
+		createValueDoc.GetDocFlag("namespace").Description,
 	)
 	createValueDoc.Flags().StringSliceVarP(
 		&actionAttributeValues,

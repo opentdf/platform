@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
@@ -12,12 +13,21 @@ import (
 // Registered Resources
 //
 
-func (h Handler) CreateRegisteredResource(ctx context.Context, name string, values []string, metadata *common.MetadataMutable) (*policy.RegisteredResource, error) {
-	resp, err := h.sdk.RegisteredResources.CreateRegisteredResource(ctx, &registeredresources.CreateRegisteredResourceRequest{
+func (h Handler) CreateRegisteredResource(ctx context.Context, namespace, name string, values []string, metadata *common.MetadataMutable) (*policy.RegisteredResource, error) {
+	req := &registeredresources.CreateRegisteredResourceRequest{
 		Name:     name,
 		Values:   values,
 		Metadata: metadata,
-	})
+	}
+
+	_, err := uuid.Parse(namespace)
+	if err != nil {
+		req.NamespaceFqn = namespace
+	} else {
+		req.NamespaceId = namespace
+	}
+
+	resp, err := h.sdk.RegisteredResources.CreateRegisteredResource(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +35,7 @@ func (h Handler) CreateRegisteredResource(ctx context.Context, name string, valu
 	return resp.GetResource(), nil
 }
 
-func (h Handler) GetRegisteredResource(ctx context.Context, id, name string) (*policy.RegisteredResource, error) {
+func (h Handler) GetRegisteredResource(ctx context.Context, id, name, namespaceFqn string) (*policy.RegisteredResource, error) {
 	req := &registeredresources.GetRegisteredResourceRequest{}
 	if id != "" {
 		req.Identifier = &registeredresources.GetRegisteredResourceRequest_Id{
@@ -36,6 +46,9 @@ func (h Handler) GetRegisteredResource(ctx context.Context, id, name string) (*p
 			Name: name,
 		}
 	}
+	if namespaceFqn != "" {
+		req.NamespaceFqn = namespaceFqn
+	}
 
 	resp, err := h.sdk.RegisteredResources.GetRegisteredResource(ctx, req)
 	if err != nil {
@@ -45,13 +58,22 @@ func (h Handler) GetRegisteredResource(ctx context.Context, id, name string) (*p
 	return resp.GetResource(), nil
 }
 
-func (h Handler) ListRegisteredResources(ctx context.Context, limit, offset int32) (*registeredresources.ListRegisteredResourcesResponse, error) {
-	return h.sdk.RegisteredResources.ListRegisteredResources(ctx, &registeredresources.ListRegisteredResourcesRequest{
+func (h Handler) ListRegisteredResources(ctx context.Context, limit, offset int32, namespace string) (*registeredresources.ListRegisteredResourcesResponse, error) {
+	req := &registeredresources.ListRegisteredResourcesRequest{
 		Pagination: &policy.PageRequest{
 			Limit:  limit,
 			Offset: offset,
 		},
-	})
+	}
+	if namespace != "" {
+		_, err := uuid.Parse(namespace)
+		if err != nil {
+			req.NamespaceFqn = namespace
+		} else {
+			req.NamespaceId = namespace
+		}
+	}
+	return h.sdk.RegisteredResources.ListRegisteredResources(ctx, req)
 }
 
 func (h Handler) UpdateRegisteredResource(ctx context.Context, id, name string, metadata *common.MetadataMutable, behavior common.MetadataUpdateEnum) (*policy.RegisteredResource, error) {
@@ -65,7 +87,7 @@ func (h Handler) UpdateRegisteredResource(ctx context.Context, id, name string, 
 		return nil, err
 	}
 
-	return h.GetRegisteredResource(ctx, id, "")
+	return h.GetRegisteredResource(ctx, id, "", "")
 }
 
 func (h Handler) DeleteRegisteredResource(ctx context.Context, id string) error {

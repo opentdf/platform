@@ -15,6 +15,9 @@ command:
       shorthand: v
       description: Value of the registered resource (i.e. 'value1', must be unique within the Registered Resource)
       required: true
+    - name: namespace
+      shorthand: s
+      description: "Namespace ID or FQN (required when --resource is a name)"
     - name: action-attribute-value
       shorthand: a
       description: "Optional action attribute values in the format: \"<action_id | action_name>;<attribute_value_id | attribute_value_fqn>\""

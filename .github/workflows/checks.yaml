@@ -86,7 +86,8 @@ jobs:
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
       - if: matrix.directory == 'service'
-        run: go test ./service/integration -race -failfast
+        run: go test ./policy/... -race -failfast
+        working-directory: test/integration
       - name: verify sqlc generate
         if: matrix.directory == 'service'
         run: |

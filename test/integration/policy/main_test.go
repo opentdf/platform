@@ -125,7 +125,7 @@ func TestMain(m *testing.M) {
 
 	//nolint:sloglint // emoji
 	slog.Info("🏠 loading fixtures")
-	fixtures.LoadFixtureData("../pkg/testutil/fixtures/policy_fixtures.yaml")
+	fixtures.LoadFixtureData("../../../service/pkg/testutil/fixtures/policy_fixtures.yaml")
 
 	m.Run()
 }

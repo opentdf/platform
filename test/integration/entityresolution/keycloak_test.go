@@ -13,10 +13,10 @@ import (
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/docker/docker/api/types/container"
-	"github.com/opentdf/platform/service/entityresolution/integration/internal"
 	keycloakv2 "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
+	"github.com/opentdf/platform/test/integration/entityresolution/internal"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"go.opentelemetry.io/otel/trace/noop"

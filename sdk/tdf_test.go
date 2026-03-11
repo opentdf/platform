@@ -2377,7 +2377,7 @@ func (s *TDFSuite) Test_Autoconfigure() {
 				_ = os.Remove(plaintTextFileName)
 				_ = os.Remove(tdfFileName)
 			}()
-			s.sdk.kasKeyCache.store(KASInfo{})
+			s.sdk.store(KASInfo{})
 
 			// test encrypt
 			tdo := s.testEncrypt(s.sdk, []TDFOption{WithKasInformation(kasInfoList...)}, plaintTextFileName, tdfFileName, test)
@@ -2926,8 +2926,8 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations
 				f.s.Require().NoError(err, "ocrypto.NewAsymDecryption failed")
 				symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
 				f.s.Require().NoError(err, "ocrypto.Decrypt failed for kao:[%s # %s (%s)] kas:[%s # %s (%s)]", kao.GetKasUrl(), kao.GetKid(), kao.GetSplitId(), f.URL, f.KID, f.Algorithm)
-				asymEncrypt, err := ocrypto.NewAsymEncryption(bodyData.GetClientPublicKey())
-				f.s.Require().NoError(err, "ocrypto.NewAsymEncryption failed")
+				asymEncrypt, err := ocrypto.FromPublicPEM(bodyData.GetClientPublicKey())
+				f.s.Require().NoError(err, "ocrypto.FromPublicPEM failed")
 				entityWrappedKey, err = asymEncrypt.Encrypt(symmetricKey)
 				f.s.Require().NoError(err, "ocrypto.encrypt failed")
 

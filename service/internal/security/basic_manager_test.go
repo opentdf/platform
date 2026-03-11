@@ -118,6 +118,7 @@ type noOpEncapsulator struct{}
 
 func (n *noOpEncapsulator) Encapsulate(pk ocrypto.ProtectedKey) ([]byte, error) {
 	// Delegate to ProtectedKey to avoid accessing raw key directly
+	//nolint:staticcheck // Export is used in tests until ProtectedKey deprecation is removed upstream.
 	return pk.Export(n)
 }
 
@@ -352,7 +353,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
 		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
-		rsaEncryptor, err := ocrypto.NewAsymEncryption(rsaPubKey)
+		rsaEncryptor, err := ocrypto.FromPublicPEM(rsaPubKey)
 		require.NoError(t, err)
 		ciphertext, err := rsaEncryptor.Encrypt(samplePayload)
 		require.NoError(t, err)
@@ -363,6 +364,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 
 		// Use noOpEncapsulator to get raw key data for testing
 		noOpEnc := &noOpEncapsulator{}
+		//nolint:staticcheck // Export is used in tests until ProtectedKey deprecation is removed upstream.
 		decryptedPayload, err := protectedKey.Export(noOpEnc)
 		require.NoError(t, err)
 		assert.Equal(t, samplePayload, decryptedPayload)
@@ -391,6 +393,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 
 		// Use noOpEncapsulator to get raw key data for testing
 		noOpEnc := &noOpEncapsulator{}
+		//nolint:staticcheck // Export is used in tests until ProtectedKey deprecation is removed upstream.
 		decryptedPayload, err := protectedKey.Export(noOpEnc)
 		require.NoError(t, err)
 		assert.Equal(t, samplePayload, decryptedPayload)
@@ -570,6 +573,7 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 
 		// Use noOpEncapsulator to get raw key data for testing
 		noOpEnc := &noOpEncapsulator{}
+		//nolint:staticcheck // Export is used in tests until ProtectedKey deprecation is removed upstream.
 		actualDerivedKey, err := protectedKey.Export(noOpEnc)
 		require.NoError(t, err)
 		assert.Equal(t, expectedDerivedKey, actualDerivedKey)

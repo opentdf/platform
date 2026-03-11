@@ -154,7 +154,7 @@ func (m *MockSecurityProvider) DeriveKey(_ context.Context, _ trust.KeyDetails, 
 	return nil, errors.New("not implemented for tests")
 }
 
-func (m *MockSecurityProvider) GenerateECSessionKey(_ context.Context, _ string) (trust.Encapsulator, error) {
+func (m *MockSecurityProvider) GenerateECSessionKey(_ context.Context, _ string) (ocrypto.Encapsulator, error) {
 	return nil, errors.New("not implemented for tests")
 }
 

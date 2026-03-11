@@ -1,6 +1,7 @@
-package utils
+package testhelpers
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -22,7 +23,7 @@ const (
 )
 
 // GenerateTempKeys creates a set of RSA and EC certificates and cosign keys in the specified outputPath.
-func GenerateTempKeys(outputPath string) {
+func GenerateTempKeys(ctx context.Context, outputPath string) {
 	// Create directory if it doesn't exist
 	err := os.MkdirAll(outputPath, 0o755)
 	if err != nil {
@@ -32,7 +33,7 @@ func GenerateTempKeys(outputPath string) {
 	generateRSACertificate(outputPath)
 	generateECParameters(outputPath)
 	generateECCertificate(outputPath)
-	generateJavaKeystore(outputPath)
+	generateJavaKeystore(ctx, outputPath)
 }
 
 // generateRSACertificate creates a self-signed RSA certificate and private key.
@@ -180,17 +181,17 @@ func generateECCertificate(outputPath string) {
 }
 
 // generateJavaKeystore creates a Java keystore (ca.jks) from the RSA certificate.
-func generateJavaKeystore(outputPath string) {
+func generateJavaKeystore(ctx context.Context, outputPath string) {
 	// Use keytool to create a Java keystore from the RSA certificate
 	certPath := path.Join(outputPath, "kas-cert.pem")
 	keystorePath := path.Join(outputPath, "ca.jks")
 
 	// Create keystore using keytool command
-	createJavaKeystore(certPath, keystorePath)
+	createJavaKeystore(ctx, certPath, keystorePath)
 }
 
-func createJavaKeystore(certPath, keystorePath string) {
-	cmd := exec.Command("keytool", "-import", "-trustcacerts", "-noprompt",
+func createJavaKeystore(ctx context.Context, certPath, keystorePath string) {
+	cmd := exec.CommandContext(ctx, "keytool", "-import", "-trustcacerts", "-noprompt",
 		"-alias", "ca",
 		"-file", certPath,
 		"-keystore", keystorePath,

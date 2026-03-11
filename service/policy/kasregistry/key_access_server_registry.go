@@ -216,8 +216,8 @@ func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 }
 
 func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
-	req *connect.Request[kasr.ListKeyAccessServerGrantsRequest],
-) (*connect.Response[kasr.ListKeyAccessServerGrantsResponse], error) {
+	req *connect.Request[kasr.ListKeyAccessServerGrantsRequest], //nolint:staticcheck // Compatibility path for deprecated RPC.
+) (*connect.Response[kasr.ListKeyAccessServerGrantsResponse], error) { //nolint:staticcheck // Compatibility path for deprecated RPC.
 	rsp, err := s.dbClient.ListKeyAccessServerGrants(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed)

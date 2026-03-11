@@ -365,12 +365,12 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *c
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *AttributesService) AssignKeyAccessServerToAttribute(_ context.Context, _ *connect.Request[attributes.AssignKeyAccessServerToAttributeRequest]) (*connect.Response[attributes.AssignKeyAccessServerToAttributeResponse], error) {
+func (s *AttributesService) AssignKeyAccessServerToAttribute(_ context.Context, _ *connect.Request[attributes.AssignKeyAccessServerToAttributeRequest]) (*connect.Response[attributes.AssignKeyAccessServerToAttributeResponse], error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("this compatibility stub will be removed entirely in the following release"))
 }
 
-func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Context, req *connect.Request[attributes.RemoveKeyAccessServerFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromAttributeResponse], error) {
-	rsp := &attributes.RemoveKeyAccessServerFromAttributeResponse{}
+func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Context, req *connect.Request[attributes.RemoveKeyAccessServerFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromAttributeResponse], error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
+	rsp := &attributes.RemoveKeyAccessServerFromAttributeResponse{} //nolint:staticcheck // Deprecated response retained for compatibility endpoint.
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeDelete,
@@ -393,12 +393,12 @@ func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Conte
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *AttributesService) AssignKeyAccessServerToValue(_ context.Context, _ *connect.Request[attributes.AssignKeyAccessServerToValueRequest]) (*connect.Response[attributes.AssignKeyAccessServerToValueResponse], error) {
+func (s *AttributesService) AssignKeyAccessServerToValue(_ context.Context, _ *connect.Request[attributes.AssignKeyAccessServerToValueRequest]) (*connect.Response[attributes.AssignKeyAccessServerToValueResponse], error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("this compatibility stub will be removed entirely in the following release"))
 }
 
-func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, req *connect.Request[attributes.RemoveKeyAccessServerFromValueRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromValueResponse], error) {
-	rsp := &attributes.RemoveKeyAccessServerFromValueResponse{}
+func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, req *connect.Request[attributes.RemoveKeyAccessServerFromValueRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromValueResponse], error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
+	rsp := &attributes.RemoveKeyAccessServerFromValueResponse{} //nolint:staticcheck // Deprecated response retained for compatibility endpoint.
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeDelete,

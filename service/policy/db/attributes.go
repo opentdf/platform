@@ -585,7 +585,7 @@ func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *pol
 /// Key Access Server assignments
 ///
 
-func (c PolicyDBClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
+func (c PolicyDBClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) { //nolint:staticcheck // Compatibility path for deprecated protobuf type.
 	count, err := c.queries.removeKeyAccessServerFromAttribute(ctx, removeKeyAccessServerFromAttributeParams{
 		AttributeDefinitionID: k.GetAttributeId(),
 		KeyAccessServerID:     k.GetKeyAccessServerId(),

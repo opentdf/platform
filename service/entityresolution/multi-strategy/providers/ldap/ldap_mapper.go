@@ -146,14 +146,14 @@ func isValidTemplateVariable(name string) bool {
 	}
 
 	// Must start with letter or underscore
-	if !((name[0] >= 'a' && name[0] <= 'z') || (name[0] >= 'A' && name[0] <= 'Z') || name[0] == '_') {
+	if (name[0] < 'a' || name[0] > 'z') && (name[0] < 'A' || name[0] > 'Z') && name[0] != '_' {
 		return false
 	}
 
 	// Rest must be letters, digits, or underscores
 	for i := 1; i < len(name); i++ {
 		char := name[i]
-		if !((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || (char >= '0' && char <= '9') || char == '_') {
+		if (char < 'a' || char > 'z') && (char < 'A' || char > 'Z') && (char < '0' || char > '9') && char != '_' {
 			return false
 		}
 	}
@@ -169,13 +169,13 @@ func isValidLDAPAttribute(name string) bool {
 
 	// LDAP attribute names can contain letters, digits, and hyphens
 	// Must start with a letter
-	if !((name[0] >= 'a' && name[0] <= 'z') || (name[0] >= 'A' && name[0] <= 'Z')) {
+	if (name[0] < 'a' || name[0] > 'z') && (name[0] < 'A' || name[0] > 'Z') {
 		return false
 	}
 
 	for i := 1; i < len(name); i++ {
 		char := name[i]
-		if !((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || (char >= '0' && char <= '9') || char == '-') {
+		if (char < 'a' || char > 'z') && (char < 'A' || char > 'Z') && (char < '0' || char > '9') && char != '-' {
 			return false
 		}
 	}

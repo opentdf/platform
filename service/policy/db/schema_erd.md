@@ -36,7 +36,7 @@ erDiagram
 
     attribute_definitions {
         boolean active "Active/Inactive state"
-        boolean allow_traversal 
+        boolean allow_traversal "Whether or not to allow platform to return the definition key when encrypting, if the value specified is missing."
         timestamp_with_time_zone created_at 
         uuid id PK "Primary key for the table"
         jsonb metadata "Metadata for the attribute definition (see protos for structure)"
@@ -53,11 +53,6 @@ erDiagram
         uuid id PK "Primary key for the table"
         uuid namespace_id FK,UK "Foreign key to the namespace of the attribute"
         uuid value_id FK,UK "Foreign key to the attribute value"
-    }
-
-    attribute_namespace_certificates {
-        uuid certificate_id PK,FK "Foreign key to the certificate"
-        uuid namespace_id PK,FK "Foreign key to the namespace"
     }
 
     attribute_namespace_key_access_grants {
@@ -102,14 +97,6 @@ erDiagram
     base_keys {
         uuid id PK 
         uuid key_access_server_key_id FK 
-    }
-
-    certificates {
-        timestamp_with_time_zone created_at "Timestamp when the certificate was created"
-        uuid id PK "Unique identifier for the certificate"
-        jsonb metadata "Optional metadata for the certificate"
-        text pem "PEM format - Base64-encoded DER certificate (not PEM; no headers/footers)"
-        timestamp_with_time_zone updated_at "Timestamp when the certificate was last updated"
     }
 
     goose_db_version {
@@ -166,13 +153,13 @@ erDiagram
     }
 
     obligation_triggers {
-        uuid action_id FK,UK 
-        uuid attribute_value_id FK,UK 
+        uuid action_id FK 
+        uuid attribute_value_id FK 
         text client_id "Holds the client_id associated with this trigger."
         timestamp_with_time_zone created_at 
         uuid id PK 
         jsonb metadata 
-        uuid obligation_value_id FK,UK 
+        uuid obligation_value_id FK 
         timestamp_with_time_zone updated_at 
     }
 
@@ -290,8 +277,6 @@ erDiagram
     attribute_values }o--|| attribute_definitions : "attribute_definition_id"
     attribute_fqns }o--|| attribute_namespaces : "namespace_id"
     attribute_fqns }o--|| attribute_values : "value_id"
-    attribute_namespace_certificates }o--|| attribute_namespaces : "namespace_id"
-    attribute_namespace_certificates }o--|| certificates : "certificate_id"
     attribute_namespace_key_access_grants }o--|| attribute_namespaces : "namespace_id"
     attribute_namespace_key_access_grants }o--|| key_access_servers : "key_access_server_id"
     attribute_namespace_public_key_map }o--|| attribute_namespaces : "namespace_id"

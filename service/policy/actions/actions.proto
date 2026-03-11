@@ -29,7 +29,9 @@ message GetActionRequest {
     ];
   }
 
+  // ID of the namespace. Required if namespace_fqn is not provided.
   string namespace_id = 10 [(buf.validate.field).string.uuid = true];
+  // FQN of the namespace. Required if namespace_id is not provided.
   string namespace_fqn = 11 [
     (buf.validate.field).string = {
       min_len : 1
@@ -48,7 +50,9 @@ message ListActionsRequest {
   // Required
   option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: true };
 
+  // ID of the namespace. Required if namespace_fqn is not provided.
   string namespace_id = 1 [(buf.validate.field).string.uuid = true];
+  // FQN of the namespace. Required if namespace_id is not provided.
   string namespace_fqn = 2 [
     (buf.validate.field).string = {
       min_len : 1
@@ -83,7 +87,9 @@ message CreateActionRequest {
     }
   ];
 
+  // ID of the namespace. Required if namespace_fqn is not provided.
   string namespace_id = 2 [(buf.validate.field).string.uuid = true];
+  // FQN of the namespace. Required if namespace_id is not provided.
   string namespace_fqn = 3 [
     (buf.validate.field).string = {
       min_len : 1

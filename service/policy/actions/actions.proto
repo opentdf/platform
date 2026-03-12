@@ -30,9 +30,9 @@ message GetActionRequest {
   }
 
   // ID of the namespace. Required if namespace_fqn is not provided.
-  string namespace_id = 10 [(buf.validate.field).string.uuid = true];
+  string namespace_id = 3 [(buf.validate.field).string.uuid = true];
   // FQN of the namespace. Required if namespace_id is not provided.
-  string namespace_fqn = 11 [
+  string namespace_fqn = 4 [
     (buf.validate.field).string = {
       min_len : 1
       uri : true

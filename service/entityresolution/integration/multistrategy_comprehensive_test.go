@@ -1,10 +1,14 @@
 package integration
 
 import (
+	"context"
 	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"net"
+	"path/filepath"
+	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -374,11 +378,6 @@ func TestMultiStrategy_LDAPOnly(t *testing.T) {
 
 	ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
-		// Check if this is the expected LDAP stub error
-		if strings.Contains(err.Error(), "LDAP not implemented - stub function") {
-			t.Skipf("LDAP provider is not fully implemented yet (stub implementation): %v", err)
-			return
-		}
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
 
@@ -398,17 +397,168 @@ func TestMultiStrategy_LDAPOnly(t *testing.T) {
 
 	resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
 	if err != nil {
-		// LDAP lookup may fail if user doesn't exist, which is expected
-		if strings.Contains(err.Error(), "LDAP not implemented - stub function") {
-			t.Skipf("LDAP provider is stubbed and not fully implemented: %v", err)
-			return
-		}
 		t.Logf("LDAP lookup failed as expected (no test data): %v", err)
 		return
 	}
 
 	if len(resp.Msg.GetEntityChains()) > 0 {
 		t.Logf("✅ LDAP-only multi-strategy test passed: Created %d entities", len(resp.Msg.GetEntityChains()[0].GetEntities()))
+	}
+}
+
+// Test 3b: Claims strategy fails, LDAP strategy succeeds
+func TestMultiStrategy_ClaimsThenLDAPFallback(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping LDAP container tests in short mode")
+	}
+	testcontainers.SkipIfProviderIsNotHealthy(t)
+
+	ctx := t.Context()
+	ldapContainer, host, port := startSeededLDAPContainer(ctx, t)
+	defer func() { _ = ldapContainer.Terminate(ctx) }()
+
+	config := types.MultiStrategyConfig{
+		FailureStrategy: types.FailureStrategyContinue,
+		Providers: map[string]types.ProviderConfig{
+			"jwt_claims": {
+				Type:       "claims",
+				Connection: map[string]interface{}{},
+			},
+			"ldap_directory": {
+				Type: "ldap",
+				Connection: map[string]interface{}{
+					"host":          host,
+					"port":          port,
+					"use_tls":       false,
+					"bind_dn":       "cn=admin,dc=opentdf,dc=test",
+					"bind_password": "admin123",
+					"timeout":       "30s",
+				},
+			},
+		},
+		MappingStrategies: []types.MappingStrategy{
+			{
+				Name:       "claims_direct_lookup",
+				Provider:   "jwt_claims",
+				EntityType: types.EntityTypeSubject,
+				Conditions: types.StrategyConditions{
+					JWTClaims: []types.JWTClaimCondition{
+						{
+							Claim:    "sub",
+							Operator: "exists",
+							Values:   []string{},
+						},
+					},
+				},
+				InputMapping: []types.InputMapping{
+					{
+						JWTClaim:  "username",
+						Parameter: "username",
+						Required:  true,
+					},
+				},
+				OutputMapping: []types.OutputMapping{
+					{
+						SourceClaim: "username",
+						ClaimName:   "username",
+					},
+					{
+						SourceClaim: "email",
+						ClaimName:   "email_address",
+					},
+				},
+			},
+			{
+				Name:       "ldap_directory_lookup",
+				Provider:   "ldap_directory",
+				EntityType: types.EntityTypeSubject,
+				Conditions: types.StrategyConditions{
+					JWTClaims: []types.JWTClaimCondition{
+						{
+							Claim:    "sub",
+							Operator: "exists",
+							Values:   []string{},
+						},
+					},
+				},
+				InputMapping: []types.InputMapping{
+					{
+						JWTClaim:  "sub",
+						Parameter: "username",
+						Required:  true,
+					},
+				},
+				LDAPSearch: &types.LDAPSearchConfig{
+					BaseDN:     "ou=users,dc=opentdf,dc=test",
+					Filter:     "(&(objectClass=inetOrgPerson)(uid={username}))",
+					Scope:      "subtree",
+					Attributes: []string{"uid", "mail", "cn"},
+				},
+				OutputMapping: []types.OutputMapping{
+					{
+						SourceAttribute: "uid",
+						ClaimName:       "username",
+					},
+					{
+						SourceAttribute: "mail",
+						ClaimName:       "email_address",
+					},
+					{
+						SourceAttribute: "cn",
+						ClaimName:       "display_name",
+					},
+				},
+			},
+		},
+	}
+
+	service, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
+	if err != nil {
+		t.Fatalf("Failed to create multi-strategy ERS with LDAP fallback: %v", err)
+	}
+
+	jwtClaims := types.JWTClaims{
+		"sub": "alice",
+	}
+	ctxWithClaims := context.WithValue(ctx, types.JWTClaimsContextKey, jwtClaims)
+
+	result, err := service.GetService().ResolveEntity(ctxWithClaims, "claims-ldap-failover", jwtClaims)
+	if err != nil {
+		t.Fatalf("Expected LDAP fallback to succeed, got error: %v", err)
+	}
+
+	if got := result.Claims["username"]; got != "alice" {
+		t.Fatalf("Expected username 'alice', got %v", got)
+	}
+
+	if got := result.Claims["email_address"]; got != "alice@opentdf.test" {
+		t.Fatalf("Expected email_address 'alice@opentdf.test', got %v", got)
+	}
+
+	if got := result.Claims["display_name"]; got != "Alice Johnson" {
+		t.Fatalf("Expected display_name 'Alice Johnson', got %v", got)
+	}
+
+	if got := result.Metadata["provider_type"]; got != "ldap" {
+		t.Fatalf("Expected provider_type 'ldap', got %v", got)
+	}
+
+	if got := result.Metadata["strategy_name"]; got != "ldap_directory_lookup" {
+		t.Fatalf("Expected strategy_name 'ldap_directory_lookup', got %v", got)
+	}
+
+	if got := result.Metadata["search_filter"]; got != "(&(objectClass=inetOrgPerson)(uid=alice))" {
+		t.Fatalf("Expected LDAP search_filter for alice, got %v", got)
+	}
+
+	attemptedStrategies, ok := result.Metadata["attempted_strategies"].([]string)
+	if !ok {
+		t.Fatalf("Expected attempted_strategies to be []string, got %T", result.Metadata["attempted_strategies"])
+	}
+
+	expectedStrategies := []string{"claims_direct_lookup", "ldap_directory_lookup"}
+	if !reflect.DeepEqual(attemptedStrategies, expectedStrategies) {
+		t.Fatalf("Expected attempted_strategies %v, got %v", expectedStrategies, attemptedStrategies)
 	}
 }
 
@@ -811,4 +961,64 @@ func createSQLTestData(db *sql.DB) error {
 	}
 
 	return nil
+}
+
+func startSeededLDAPContainer(ctx context.Context, t *testing.T) (testcontainers.Container, string, int) {
+	t.Helper()
+
+	containerRequest := testcontainers.ContainerRequest{
+		Image:        "osixia/openldap:1.5.0",
+		ExposedPorts: []string{"389/tcp"},
+		Env: map[string]string{
+			"LDAP_ORGANISATION":   "OpenTDF Test",
+			"LDAP_DOMAIN":         "opentdf.test",
+			"LDAP_ADMIN_PASSWORD": "admin123",
+		},
+		Cmd: []string{"--copy-service"},
+		Files: []testcontainers.ContainerFile{
+			{
+				HostFilePath:      ldapFixturePath("01_organizational_units.ldif"),
+				ContainerFilePath: "/container/service/slapd/assets/config/bootstrap/ldif/custom/01_organizational_units.ldif",
+				FileMode:          0o644,
+			},
+			{
+				HostFilePath:      ldapFixturePath("02_test_users.ldif"),
+				ContainerFilePath: "/container/service/slapd/assets/config/bootstrap/ldif/custom/02_test_users.ldif",
+				FileMode:          0o644,
+			},
+		},
+		WaitingFor: wait.ForListeningPort("389/tcp").WithStartupTimeout(60 * time.Second),
+	}
+
+	ldapContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: containerRequest,
+		Started:          true,
+	})
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "docker") {
+			t.Skipf("Docker not available for LDAP container test: %v", err)
+		}
+		t.Fatalf("Failed to start LDAP container: %v", err)
+	}
+
+	host, err := ldapContainer.Host(ctx)
+	if err != nil {
+		t.Fatalf("Failed to get LDAP container host: %v", err)
+	}
+
+	mappedPort, err := ldapContainer.MappedPort(ctx, "389")
+	if err != nil {
+		t.Fatalf("Failed to get LDAP container port: %v", err)
+	}
+
+	return ldapContainer, host, mappedPort.Int()
+}
+
+func ldapFixturePath(name string) string {
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("failed to determine LDAP fixture path")
+	}
+
+	return filepath.Join(filepath.Dir(filename), "ldap_test_data", name)
 }

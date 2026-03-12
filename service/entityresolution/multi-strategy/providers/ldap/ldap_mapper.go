@@ -39,14 +39,6 @@ func (m *Mapper) ExtractParameters(jwtClaims types.JWTClaims, inputMapping []typ
 		params[mapping.Parameter] = claimValue
 	}
 
-	// LDAP-specific parameter validation and sanitization
-	for paramName, paramValue := range params {
-		// Escape LDAP filter metacharacters in parameter values
-		if str, ok := paramValue.(string); ok {
-			params[paramName] = m.escapeLDAPFilter(str)
-		}
-	}
-
 	return params, nil
 }
 
@@ -146,14 +138,14 @@ func isValidTemplateVariable(name string) bool {
 	}
 
 	// Must start with letter or underscore
-	if (name[0] < 'a' || name[0] > 'z') && (name[0] < 'A' || name[0] > 'Z') && name[0] != '_' {
+	if !isASCIIAlpha(name[0]) && name[0] != '_' {
 		return false
 	}
 
 	// Rest must be letters, digits, or underscores
 	for i := 1; i < len(name); i++ {
 		char := name[i]
-		if (char < 'a' || char > 'z') && (char < 'A' || char > 'Z') && (char < '0' || char > '9') && char != '_' {
+		if !isASCIIAlphaNumeric(char) && char != '_' {
 			return false
 		}
 	}
@@ -169,13 +161,13 @@ func isValidLDAPAttribute(name string) bool {
 
 	// LDAP attribute names can contain letters, digits, and hyphens
 	// Must start with a letter
-	if (name[0] < 'a' || name[0] > 'z') && (name[0] < 'A' || name[0] > 'Z') {
+	if !isASCIIAlpha(name[0]) {
 		return false
 	}
 
 	for i := 1; i < len(name); i++ {
 		char := name[i]
-		if (char < 'a' || char > 'z') && (char < 'A' || char > 'Z') && (char < '0' || char > '9') && char != '-' {
+		if !isASCIIAlphaNumeric(char) && char != '-' {
 			return false
 		}
 	}
@@ -186,4 +178,12 @@ func isValidLDAPAttribute(name string) bool {
 // isTransformationSupported checks if a transformation is supported by LDAP mapper
 func (m *Mapper) isTransformationSupported(transformationName string) bool {
 	return transformation.IsSupportedByProvider(transformationName, "ldap")
+}
+
+func isASCIIAlpha(char byte) bool {
+	return (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z')
+}
+
+func isASCIIAlphaNumeric(char byte) bool {
+	return isASCIIAlpha(char) || (char >= '0' && char <= '9')
 }

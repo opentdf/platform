@@ -11,7 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/pkg/db"
-	"github.com/opentdf/platform/service/pkg/testutil/fixtures"
+	"github.com/opentdf/platform/test/fixtures"
 	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"

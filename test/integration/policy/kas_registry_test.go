@@ -14,7 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 
 	"github.com/opentdf/platform/service/pkg/db"
-	"github.com/opentdf/platform/service/pkg/testutil/fixtures"
+	"github.com/opentdf/platform/test/fixtures"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/stretchr/testify/suite"

@@ -12,8 +12,11 @@ import "policy/selectors.proto";
 */
 
 message GetActionRequest {
-  // Required
-  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: true };
+  option (buf.validate.message).cel = {
+    id: "namespace_required_for_name"
+    message: "Either namespace_id or namespace_fqn must be provided when getting an action by name"
+    expression: "!has(this.name) || this.namespace_id != '' || this.namespace_fqn != ''"
+  };
 
   // Required
   oneof identifier {
@@ -29,10 +32,14 @@ message GetActionRequest {
     ];
   }
 
-  // ID of the namespace. Required if namespace_fqn is not provided.
-  string namespace_id = 3 [(buf.validate.field).string.uuid = true];
-  // FQN of the namespace. Required if namespace_id is not provided.
+  // ID of the namespace. Required when identifier is set to name.
+  string namespace_id = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
+  // FQN of the namespace. Required when identifier is set to name.
   string namespace_fqn = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {
       min_len : 1
       uri : true

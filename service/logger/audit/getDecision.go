@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/opentdf/platform/service/pkg/subjectmappingbuiltin"
+	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 )
 
 type DecisionResult int

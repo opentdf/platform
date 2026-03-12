@@ -9,7 +9,7 @@ import (
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/service/pkg/subjectmappingbuiltin"
+	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 )
 
 var (

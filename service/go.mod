@@ -2,7 +2,7 @@ module github.com/opentdf/platform/service
 
 go 1.25.0
 
-toolchain go1.25.7
+toolchain go1.25.8
 
 require (
 	buf.build/go/protovalidate v1.0.0
@@ -36,7 +36,7 @@ require (
 	github.com/opentdf/platform/lib/flattening v0.1.3
 	github.com/opentdf/platform/lib/identifier v0.2.0
 	github.com/opentdf/platform/lib/ocrypto v0.10.0
-	github.com/opentdf/platform/protocol/go v0.16.0
+	github.com/opentdf/platform/protocol/go v0.17.0
 	github.com/opentdf/platform/sdk v0.13.0
 	github.com/pressly/goose/v3 v3.24.3
 	github.com/spf13/cobra v1.9.1

@@ -155,14 +155,18 @@ func loadKey(k KeyPairInfo) (any, error) {
 		if err != nil {
 			return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
 		}
-		asymEncryption, err := ocrypto.NewAsymEncryption(string(certPEM))
+		publicKeyEncryptor, err := ocrypto.FromPublicPEM(string(certPEM))
 		if err != nil {
-			return nil, fmt.Errorf("ocrypto.NewAsymEncryption failed: %w", err)
+			return nil, fmt.Errorf("ocrypto.FromPublicPEM failed: %w", err)
+		}
+		asymEncryption, ok := publicKeyEncryptor.(*ocrypto.AsymEncryption)
+		if !ok {
+			return nil, fmt.Errorf("unexpected public key encryptor type: %T", publicKeyEncryptor)
 		}
 		return StandardRSACrypto{
 			KeyPairInfo:    k,
 			asymDecryption: asymDecryption,
-			asymEncryption: asymEncryption,
+			asymEncryption: *asymEncryption,
 		}, nil
 	default:
 		return nil, errors.New("unsupported algorithm [" + k.Algorithm + "]")
@@ -196,9 +200,13 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 			return nil, fmt.Errorf("failed to rsa public key file: %w", err)
 		}
 
-		asymEncryption, err := ocrypto.NewAsymEncryption(string(publicPemData))
+		publicKeyEncryptor, err := ocrypto.FromPublicPEM(string(publicPemData))
 		if err != nil {
-			return nil, fmt.Errorf("ocrypto.NewAsymEncryption failed: %w", err)
+			return nil, fmt.Errorf("ocrypto.FromPublicPEM failed: %w", err)
+		}
+		asymEncryption, ok := publicKeyEncryptor.(*ocrypto.AsymEncryption)
+		if !ok {
+			return nil, fmt.Errorf("unexpected public key encryptor type: %T", publicKeyEncryptor)
 		}
 
 		k := StandardRSACrypto{
@@ -209,7 +217,7 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 				Certificate: kasInfo.PublicKeyPath,
 			},
 			asymDecryption: asymDecryption,
-			asymEncryption: asymEncryption,
+			asymEncryption: *asymEncryption,
 		}
 		keysByAlg[AlgorithmRSA2048][id] = k
 		keysByID[id] = k

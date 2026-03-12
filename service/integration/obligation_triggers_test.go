@@ -27,6 +27,7 @@ const (
 	obligationName     = "test-obligation"
 	obligationValue    = "test-obligation-value"
 	clientID           = "test-client-id"
+	secondClientID     = "test-client-id-2"
 )
 
 type ObligationTriggersSuite struct {
@@ -169,6 +170,54 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithIDs_Success()
 	s.Require().NoError(err)
 	s.validateTriggerWithDefaults(trigger, true)
 	s.Require().Equal("test", trigger.GetMetadata().GetLabels()["source"])
+}
+
+func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_SameTupleDifferentClients_Success() {
+	req := &obligations.AddObligationTriggerRequest{
+		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
+		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
+		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
+		Context: &policy.RequestContext{
+			Pep: &policy.PolicyEnforcementPoint{
+				ClientId: clientID,
+			},
+		},
+	}
+
+	firstTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, req)
+	s.Require().NoError(err)
+	s.triggerIDsToClean = append(s.triggerIDsToClean, firstTrigger.GetId())
+	s.validateTriggerWithDefaults(firstTrigger, true)
+
+	req.Context.Pep.ClientId = secondClientID
+	secondTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, req)
+	s.Require().NoError(err)
+	s.triggerIDsToClean = append(s.triggerIDsToClean, secondTrigger.GetId())
+	s.Require().NotEqual(firstTrigger.GetId(), secondTrigger.GetId())
+	s.Require().Len(secondTrigger.GetContext(), 1)
+	s.Require().Equal(secondClientID, secondTrigger.GetContext()[0].GetPep().GetClientId())
+}
+
+func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_SameTupleSameClient_Fails() {
+	req := &obligations.AddObligationTriggerRequest{
+		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
+		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
+		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
+		Context: &policy.RequestContext{
+			Pep: &policy.PolicyEnforcementPoint{
+				ClientId: clientID,
+			},
+		},
+	}
+
+	firstTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, req)
+	s.Require().NoError(err)
+	s.triggerIDsToClean = append(s.triggerIDsToClean, firstTrigger.GetId())
+
+	duplicateTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, req)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
+	s.Nil(duplicateTrigger)
 }
 
 func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_NoCtx_Success() {

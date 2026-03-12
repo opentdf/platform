@@ -14,7 +14,7 @@ import (
 func main() {
 	configFile := flag.String("config-file", "", "custom configuration file location")
 	configKey := flag.String("config-key", "opentdf", "configuration key name")
-	fixtureFile := flag.String("fixtures", "./test/fixtures/policy_fixtures.yaml", "path to policy_fixtures.yaml")
+	fixtureFile := flag.String("fixtures", "../fixtures/policy_fixtures.yaml", "path to policy_fixtures.yaml")
 	flag.Parse()
 
 	ctx := context.Background()

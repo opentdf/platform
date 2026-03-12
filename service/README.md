@@ -35,7 +35,7 @@ Provision default configurations.
 
 ```sh
 # Provision keycloak with the default configuration.
-go run ./service provision keycloak
+GOWORK=off go run -C test/integration ./cmd/provision-keycloak
 # Generate the temporary keys for KAS
 ./.github/scripts/init-temp-keys.sh
 ```
@@ -72,7 +72,7 @@ For convenience, the `make toolcheck` script checks if you have the necessary de
 
 ### Provisioning Custom Keycloak and Policy Data
 
-To provision a custom Keycloak setup, create a yaml following the format of [the sample Keycloak config](service/cmd/keycloak_data.yaml). You can create different realms with separate users, clients, roles, and groups. Run the provisioning with `go run ./service provision keycloak -f <path-to-your-yaml-file>`.
+To provision a custom Keycloak setup, create a yaml following the format of [the sample Keycloak config](cmd/keycloak_data.yaml). You can create different realms with separate users, clients, roles, and groups. Run the provisioning with `GOWORK=off go run -C test/integration ./cmd/provision-keycloak -file <path-to-your-yaml-file>`.
 
 ## Developing a new platform service
 

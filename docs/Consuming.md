@@ -49,11 +49,11 @@ https://github.com/opentdf/platform/blob/main/service/go.mod#L3
    ```
 3. **Provision Keycloak**
    ```shell
-   go run ./service provision keycloak
+   GOWORK=off go run -C test/integration ./cmd/provision-keycloak
    ```
 4. **Add Sample Attributes and Metadata**
    ```shell
-   go run ./service provision fixtures
+   GOWORK=off go run -C test/integration ./cmd/provision-fixtures
    ```
 5. **Start Server**
    ```shell

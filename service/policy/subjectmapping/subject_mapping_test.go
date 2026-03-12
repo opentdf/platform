@@ -21,7 +21,10 @@ const (
 	errMessageUUID         = "string.uuid"
 	errLessThanMinItems    = "repeated.min_items"
 	errMessageOptionalUUID = "optional_uuid_format"
+	errMessageOneof        = "message.oneof"
+	errMessageURI          = "string.uri"
 	fakeID                 = "cf75540a-cd58-4c6c-a502-7108be7a6edd"
+	validNamespaceFQN      = "https://example.com"
 )
 
 var validActions = []*policy.Action{
@@ -48,6 +51,7 @@ func Test_CreateSubjectMappingRequest_InvalidSubjectConditionSet_Fails(t *testin
 					AttributeValueId:       fakeID,
 					NewSubjectConditionSet: conditionSet,
 					Actions:                validActions,
+					NamespaceId:            fakeID,
 				}
 			},
 			expectedError:  errLessThanMinItems,
@@ -63,6 +67,7 @@ func Test_CreateSubjectMappingRequest_InvalidSubjectConditionSet_Fails(t *testin
 					AttributeValueId:       fakeID,
 					NewSubjectConditionSet: conditionSet,
 					Actions:                validActions,
+					NamespaceId:            fakeID,
 				}
 			},
 			expectedError:  errLessThanMinItems,
@@ -82,6 +87,7 @@ func Test_CreateSubjectMappingRequest_InvalidSubjectConditionSet_Fails(t *testin
 					AttributeValueId:       fakeID,
 					NewSubjectConditionSet: conditionSet,
 					Actions:                validActions,
+					NamespaceId:            fakeID,
 				}
 			},
 			expectedError:  errLessThanMinItems,
@@ -101,6 +107,7 @@ func Test_CreateSubjectMappingRequest_InvalidSubjectConditionSet_Fails(t *testin
 					AttributeValueId:       fakeID,
 					NewSubjectConditionSet: conditionSet,
 					Actions:                validActions,
+					NamespaceId:            fakeID,
 				}
 			},
 			expectedError:  errLessThanMinItems,
@@ -129,6 +136,7 @@ func Test_CreateSubjectMappingRequest_InvalidSubjectConditionSet_Fails(t *testin
 					AttributeValueId:       fakeID,
 					NewSubjectConditionSet: conditionSet,
 					Actions:                validActions,
+					NamespaceId:            fakeID,
 				}
 			},
 			expectedError: "operator",
@@ -157,6 +165,7 @@ func Test_CreateSubjectMappingRequest_InvalidSubjectConditionSet_Fails(t *testin
 					AttributeValueId:       fakeID,
 					NewSubjectConditionSet: conditionSet,
 					Actions:                validActions,
+					NamespaceId:            fakeID,
 				}
 			},
 			expectedError: "subject_external_selector_value",
@@ -185,6 +194,7 @@ func Test_CreateSubjectMappingRequest_InvalidSubjectConditionSet_Fails(t *testin
 					AttributeValueId:       fakeID,
 					NewSubjectConditionSet: conditionSet,
 					Actions:                validActions,
+					NamespaceId:            fakeID,
 				}
 			},
 			expectedError: "subject_external_values",
@@ -207,6 +217,7 @@ func Test_CreateSubjectMappingRequest_InvalidSubjectConditionSet_Fails(t *testin
 func Test_CreateSubjectMappingRequest_NilActionsArray_Fails(t *testing.T) {
 	req := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId: fakeID,
+		NamespaceId:      fakeID,
 	}
 
 	err := getValidator().Validate(req)
@@ -217,6 +228,7 @@ func Test_CreateSubjectMappingRequest_EmptyActionsArray_Fails(t *testing.T) {
 	req := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId: fakeID,
 		Actions:          []*policy.Action{},
+		NamespaceId:      fakeID,
 	}
 
 	err := getValidator().Validate(req)
@@ -233,6 +245,7 @@ func Test_CreateSubjectMappingRequest_NoActionNameProvided_Fails(t *testing.T) {
 				},
 			},
 		},
+		NamespaceId: fakeID,
 	}
 
 	err := getValidator().Validate(req)
@@ -247,6 +260,7 @@ func Test_CreateSubjectMappingRequest_PopulatedArray_BadValueID_Fails(t *testing
 				Name: "read",
 			},
 		},
+		NamespaceId: fakeID,
 	}
 
 	err := getValidator().Validate(req)
@@ -263,6 +277,7 @@ func Test_CreateSubjectMappingRequest_PopulatedArray_Succeeds(t *testing.T) {
 				Name: "create",
 			},
 		},
+		NamespaceId: fakeID,
 	}
 	err := getValidator().Validate(req)
 	require.NoError(t, err)
@@ -274,6 +289,19 @@ func Test_CreateSubjectMappingRequest_PopulatedArray_Succeeds(t *testing.T) {
 				Id: fakeID,
 			},
 		},
+		NamespaceId: fakeID,
+	}
+	err = getValidator().Validate(req)
+	require.NoError(t, err)
+
+	req = &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: fakeID,
+		Actions: []*policy.Action{
+			{
+				Name: "read",
+			},
+		},
+		NamespaceFqn: validNamespaceFQN,
 	}
 	err = getValidator().Validate(req)
 	require.NoError(t, err)
@@ -289,6 +317,7 @@ func Test_CreateSubjectMappingRequest_WithExistingSubjectConditionSetID_Succeeds
 			},
 		},
 		ExistingSubjectConditionSetId: fakeID,
+		NamespaceId:                   fakeID,
 	}
 
 	err := v.Validate(req)
@@ -298,6 +327,166 @@ func Test_CreateSubjectMappingRequest_WithExistingSubjectConditionSetID_Succeeds
 	err = v.Validate(req)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errMessageOptionalUUID)
+}
+
+func Test_CreateSubjectMappingRequest_MissingNamespace_Fails(t *testing.T) {
+	req := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: fakeID,
+		Actions: []*policy.Action{
+			{
+				Name: "read",
+			},
+		},
+	}
+
+	err := getValidator().Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageOneof)
+}
+
+func Test_CreateSubjectMappingRequest_InvalidNamespace_Fails(t *testing.T) {
+	testCases := []struct {
+		name          string
+		req           *subjectmapping.CreateSubjectMappingRequest
+		expectedError string
+	}{
+		{
+			name: "invalid namespace id",
+			req: &subjectmapping.CreateSubjectMappingRequest{
+				AttributeValueId: fakeID,
+				Actions: []*policy.Action{
+					{
+						Name: "read",
+					},
+				},
+				NamespaceId: "bad-namespace-id",
+			},
+			expectedError: errMessageUUID,
+		},
+		{
+			name: "invalid namespace fqn",
+			req: &subjectmapping.CreateSubjectMappingRequest{
+				AttributeValueId: fakeID,
+				Actions: []*policy.Action{
+					{
+						Name: "read",
+					},
+				},
+				NamespaceFqn: "not-a-uri",
+			},
+			expectedError: errMessageURI,
+		},
+		{
+			name: "both namespace id and fqn",
+			req: &subjectmapping.CreateSubjectMappingRequest{
+				AttributeValueId: fakeID,
+				Actions: []*policy.Action{
+					{
+						Name: "read",
+					},
+				},
+				NamespaceId:  fakeID,
+				NamespaceFqn: validNamespaceFQN,
+			},
+			expectedError: errMessageOneof,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := getValidator().Validate(tc.req)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.expectedError)
+		})
+	}
+}
+
+func Test_ListSubjectMappingsRequest_Succeeds(t *testing.T) {
+	testCases := []struct {
+		name string
+		req  *subjectmapping.ListSubjectMappingsRequest
+	}{
+		{
+			name: "no filters",
+			req:  &subjectmapping.ListSubjectMappingsRequest{},
+		},
+		{
+			name: "namespace id only",
+			req: &subjectmapping.ListSubjectMappingsRequest{
+				NamespaceId: fakeID,
+			},
+		},
+		{
+			name: "namespace fqn only",
+			req: &subjectmapping.ListSubjectMappingsRequest{
+				NamespaceFqn: validNamespaceFQN,
+			},
+		},
+		{
+			name: "pagination only",
+			req: &subjectmapping.ListSubjectMappingsRequest{
+				Pagination: &policy.PageRequest{
+					Limit:  10,
+					Offset: 5,
+				},
+			},
+		},
+		{
+			name: "namespace filter with pagination",
+			req: &subjectmapping.ListSubjectMappingsRequest{
+				NamespaceId: fakeID,
+				Pagination: &policy.PageRequest{
+					Limit: 20,
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := getValidator().Validate(tc.req)
+			require.NoError(t, err)
+		})
+	}
+}
+
+func Test_ListSubjectMappingsRequest_Fails(t *testing.T) {
+	testCases := []struct {
+		name          string
+		req           *subjectmapping.ListSubjectMappingsRequest
+		expectedError string
+	}{
+		{
+			name: "invalid namespace id",
+			req: &subjectmapping.ListSubjectMappingsRequest{
+				NamespaceId: "bad-namespace-id",
+			},
+			expectedError: errMessageUUID,
+		},
+		{
+			name: "invalid namespace fqn",
+			req: &subjectmapping.ListSubjectMappingsRequest{
+				NamespaceFqn: "not-a-uri",
+			},
+			expectedError: errMessageURI,
+		},
+		{
+			name: "both namespace id and fqn",
+			req: &subjectmapping.ListSubjectMappingsRequest{
+				NamespaceId:  fakeID,
+				NamespaceFqn: validNamespaceFQN,
+			},
+			expectedError: errMessageOneof,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := getValidator().Validate(tc.req)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.expectedError)
+		})
+	}
 }
 
 func Test_UpdateSubjectMappingRequest_Succeeds(t *testing.T) {

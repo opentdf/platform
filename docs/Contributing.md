@@ -17,13 +17,13 @@ For end-users/consumers, see [here](./Consuming.md).
 3. Create an OpenTDF config file: `opentdf.yaml`
    1. The `opentdf-dev.yaml` file is the more secure starting point, but you will likely need to modify it to match your environment. This configuration is recommended as it is more secure but it does require valid development keypairs.
    2. The `opentdf-core-mode.yaml` file is simpler to run but less secure. This file configures the platform to startup without a KAS instances, without a built-in ERS instance, and without endpoint authentication.
-4. Provision keycloak: `GOWORK=off go run -C test/integration ./cmd/provision-keycloak`. Updates the local Keycloak configuration for local testing and development by creating a realm, roles, a client, and users.
+4. Provision keycloak: `make provision-keycloak`. Updates the local Keycloak configuration for local testing and development by creating a realm, roles, a client, and users.
 5. Run the server: `go run github.com/opentdf/platform/service start`. Runs the OpenTDF platform capabilities as a monolithic service.
    1. _Alt_ use the hot-reload development environment `air`
 6. The server is now running on `localhost:8080` (or the port specified in the config file)
 
 Note: support was added to provision a set of fixture data into the database.
-Run `GOWORK=off go run -C test/integration ./cmd/provision-fixtures -h` for more information.
+Run `make provision-fixtures` to load policy fixture data, or pass flags via the underlying tool: `GOWORK=off go run -C test . provision fixtures -h`.
 
 ## Running with Distributed Tracing (OpenTelemetry)
 

@@ -11,11 +11,14 @@ import (
 	"github.com/opentdf/platform/test/fixtures"
 )
 
-func main() {
-	configFile := flag.String("config-file", "", "custom configuration file location")
-	configKey := flag.String("config-key", "opentdf", "configuration key name")
-	fixtureFile := flag.String("fixtures", "../fixtures/policy_fixtures.yaml", "path to policy_fixtures.yaml")
-	flag.Parse()
+func provisionFixtures(args []string) {
+	fs := flag.NewFlagSet("provision fixtures", flag.ExitOnError)
+	configFile := fs.String("config-file", "", "custom configuration file location")
+	configKey := fs.String("config-key", "opentdf", "configuration key name")
+	fixtureFile := fs.String("fixtures", "./fixtures/policy_fixtures.yaml", "path to policy_fixtures.yaml")
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
 
 	ctx := context.Background()
 
@@ -50,5 +53,5 @@ func main() {
 	fixtures.LoadFixtureData(*fixtureFile)
 	f.Provision(ctx)
 
-	fmt.Println("fixtures provision fully applied")
+	fmt.Fprintln(os.Stdout, "fixtures provision fully applied")
 }

@@ -87,7 +87,7 @@ jobs:
         working-directory: ${{ matrix.directory }}
       - if: matrix.directory == 'service'
         run: go test ./policy/... -race -failfast
-        working-directory: test/integration
+        working-directory: test
       - name: verify sqlc generate
         if: matrix.directory == 'service'
         run: |
@@ -148,8 +148,8 @@ jobs:
           sudo cp ./keys/localhost.crt /usr/local/share/ca-certificates
           sudo update-ca-certificates
       - run: docker compose up -d --wait --wait-timeout 240 || (docker compose logs && exit 1)
-      - run: GOWORK=off go run -C test/integration ./cmd/provision-keycloak
-      - run: GOWORK=off go run -C test/integration ./cmd/provision-fixtures
+      - run: GOWORK=off go run -C test . provision keycloak
+      - run: GOWORK=off go run -C test . provision fixtures
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635 # v1.0.7
         name: start server in background
         with:
@@ -228,8 +228,8 @@ jobs:
           sudo cp ./keys/localhost.crt /usr/local/share/ca-certificates
           sudo update-ca-certificates
       - run: docker compose up -d --wait --wait-timeout 240 || (docker compose logs && exit 1)
-      - run: GOWORK=off go run -C test/integration ./cmd/provision-keycloak
-      - run: GOWORK=off go run -C test/integration ./cmd/provision-fixtures
+      - run: GOWORK=off go run -C test . provision keycloak
+      - run: GOWORK=off go run -C test . provision fixtures
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635 # v1.0.7
         name: start server in background
         with:

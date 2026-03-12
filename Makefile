@@ -1,7 +1,7 @@
 # make
 # To run all lint checks: `LINT_OPTIONS= make lint`
 
-.PHONY: all build clean connect-wrapper-generate docker-build fix fmt go-lint license lint proto-generate proto-lint sdk/sdk test tidy toolcheck
+.PHONY: all build clean connect-wrapper-generate docker-build fix fmt go-lint license lint proto-generate proto-lint provision-fixtures provision-keycloak sdk/sdk test tidy toolcheck
 
 MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
 HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
@@ -123,6 +123,12 @@ sdk/sdk: $(shell find sdk)
 
 examples/examples: $(shell find examples)
 	(cd examples && go build -o examples .)
+
+provision-keycloak:
+	GOWORK=off go run -C test . provision keycloak
+
+provision-fixtures:
+	GOWORK=off go run -C test . provision fixtures
 
 docker-build: build
 	docker build -t opentdf .

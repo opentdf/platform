@@ -13,12 +13,15 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func main() {
-	endpoint := flag.String("endpoint", "http://localhost:8888/auth", "Keycloak endpoint")
-	username := flag.String("username", "admin", "Keycloak username")
-	password := flag.String("password", "changeme", "Keycloak password")
-	filename := flag.String("file", "../../service/cmd/keycloak_data.yaml", "Keycloak config file")
-	flag.Parse()
+func provisionKeycloak(args []string) {
+	fs := flag.NewFlagSet("provision keycloak", flag.ExitOnError)
+	endpoint := fs.String("endpoint", "http://localhost:8888/auth", "Keycloak endpoint")
+	username := fs.String("username", "admin", "Keycloak username")
+	password := fs.String("password", "changeme", "Keycloak password")
+	filename := fs.String("file", "./fixtures/keycloak_data.yaml", "Keycloak config file")
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
 
 	keycloakData := loadKeycloakData(*filename)
 	ctx := context.Background()
@@ -36,7 +39,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("keycloak provision fully applied")
+	fmt.Fprintln(os.Stdout, "keycloak provision fully applied")
 }
 
 func convert(i interface{}) interface{} {

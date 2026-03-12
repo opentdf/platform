@@ -8,8 +8,8 @@ package sdk
 // They are duplicated here so SDK consumers can reference standard action names
 // without importing the heavy service module.
 const (
-	ActionNameCreate = "create"
-	ActionNameRead   = "read"
-	ActionNameUpdate = "update"
-	ActionNameDelete = "delete"
+	PolicyActionNameCreate = "create"
+	PolicyActionNameRead   = "read"
+	PolicyActionNameUpdate = "update"
+	PolicyActionNameDelete = "delete"
 )

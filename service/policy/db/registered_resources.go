@@ -585,7 +585,8 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 			actionID = ident.ActionId
 		case *registeredresources.ActionAttributeValue_ActionName:
 			a, err := c.queries.getAction(ctx, getActionParams{
-				Name: pgtypeText(strings.ToLower(ident.ActionName)),
+				Name:        pgtypeText(strings.ToLower(ident.ActionName)),
+				NamespaceID: pgtypeUUID(resourceNamespaceID),
 			})
 			if err != nil {
 				return db.WrapIfKnownInvalidQueryErr(err)

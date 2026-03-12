@@ -13,6 +13,9 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+// ActionStandard represents a standard policy action name.
+// These values are duplicated in sdk/actions.go for lightweight consumption.
+// Any changes here MUST be mirrored there.
 type ActionStandard string
 
 const (

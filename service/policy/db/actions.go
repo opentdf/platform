@@ -13,9 +13,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-// ActionStandard represents a standard policy action name.
-// These values are duplicated in sdk/actions.go for lightweight consumption.
-// Any changes here MUST be mirrored there.
 type ActionStandard string
 
 const (
@@ -24,6 +21,10 @@ const (
 	ActionUpdate ActionStandard = "update"
 	ActionDelete ActionStandard = "delete"
 )
+
+// CONTRIBUTING: The ActionCreate/Read/Update/Delete values are duplicated in
+// sdk/actions.go (PolicyActionName* constants) for lightweight SDK consumption.
+// Changes to either set MUST be mirrored in the other.
 
 // Add a validation method
 func (a ActionStandard) IsValid() bool {

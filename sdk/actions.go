@@ -1,24 +1,29 @@
 package sdk
 
-// Standard policy action name constants (CRUD).
-// These values MUST match the canonical definitions in:
-//   - service/policy/db/actions.go (ActionStandard type + ActionCreate/Read/Update/Delete)
-//   - service/policy/actions/actions.go (ActionNameCreate/Read/Update/Delete re-exports)
-//
-// They are duplicated here so SDK consumers can reference standard action names
-// without importing the heavy service module.
-const (
-	PolicyActionNameCreate = "create"
-	PolicyActionNameRead   = "read"
-	PolicyActionNameUpdate = "update"
-	PolicyActionNameDelete = "delete"
-)
+// PolicyActionNameCreate is the standard "create" action in the Policy Service.
+const PolicyActionNameCreate = "create"
 
-// Decision action name aliases for use with the Authorization Decisions API.
-// These reference the same standard policy action names above.
-const (
-	DecisionActionNameCreate = PolicyActionNameCreate
-	DecisionActionNameRead   = PolicyActionNameRead
-	DecisionActionNameUpdate = PolicyActionNameUpdate
-	DecisionActionNameDelete = PolicyActionNameDelete
-)
+// PolicyActionNameRead is the standard "read" action in the Policy Service.
+const PolicyActionNameRead = "read"
+
+// PolicyActionNameUpdate is the standard "update" action in the Policy Service.
+const PolicyActionNameUpdate = "update"
+
+// PolicyActionNameDelete is the standard "delete" action in the Policy Service.
+const PolicyActionNameDelete = "delete"
+
+// DecisionActionNameCreate is the "create" action for the Authorization Decisions API.
+const DecisionActionNameCreate = PolicyActionNameCreate
+
+// DecisionActionNameRead is the "read" action for the Authorization Decisions API.
+const DecisionActionNameRead = PolicyActionNameRead
+
+// DecisionActionNameUpdate is the "update" action for the Authorization Decisions API.
+const DecisionActionNameUpdate = PolicyActionNameUpdate
+
+// DecisionActionNameDelete is the "delete" action for the Authorization Decisions API.
+const DecisionActionNameDelete = PolicyActionNameDelete
+
+// CONTRIBUTING: The PolicyActionName* values are duplicated from
+// service/policy/db/actions.go (ActionCreate/Read/Update/Delete).
+// Changes to either set MUST be mirrored in the other.

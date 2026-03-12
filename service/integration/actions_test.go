@@ -40,22 +40,6 @@ func (s *ActionsSuite) TearDownSuite() {
 	s.f.TearDown(s.ctx)
 }
 
-func (s *ActionsSuite) defaultNamespaceID() string {
-	return s.f.GetNamespaceKey("example.com").ID
-}
-
-func (s *ActionsSuite) otherNamespaceID() string {
-	return s.f.GetNamespaceKey("example.net").ID
-}
-
-func (s *ActionsSuite) defaultNamespaceFQN() string {
-	return "https://" + s.f.GetNamespaceKey("example.com").Name
-}
-
-func (s *ActionsSuite) otherNamespaceFQN() string {
-	return "https://" + s.f.GetNamespaceKey("example.net").Name
-}
-
 func (s *ActionsSuite) Test_ListActions_NoPagination_Succeeds() {
 	fixtureCustomAction1 := s.f.GetCustomActionKey("custom_action_1")
 	fixtureCustomAction2 := s.f.GetCustomActionKey("other_special_action")
@@ -583,6 +567,22 @@ func (s *ActionsSuite) Test_DeleteAction_StandardAction_Fails() {
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrRestrictViolation)
 	s.Contains(err.Error(), actionRead.GetName())
+}
+
+func (s *ActionsSuite) defaultNamespaceID() string {
+	return s.f.GetNamespaceKey("example.com").ID
+}
+
+func (s *ActionsSuite) otherNamespaceID() string {
+	return s.f.GetNamespaceKey("example.net").ID
+}
+
+func (s *ActionsSuite) defaultNamespaceFQN() string {
+	return "https://" + s.f.GetNamespaceKey("example.com").Name
+}
+
+func (s *ActionsSuite) otherNamespaceFQN() string {
+	return "https://" + s.f.GetNamespaceKey("example.net").Name
 }
 
 func TestActionsSuite(t *testing.T) {

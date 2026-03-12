@@ -86,7 +86,7 @@ jobs:
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
       - if: matrix.directory == 'service'
-        run: go test ./policy/... -race -failfast
+        run: GOWORK=off go test ./integration/policy/... -race -failfast
         working-directory: test
       - name: verify sqlc generate
         if: matrix.directory == 'service'
@@ -149,7 +149,7 @@ jobs:
           sudo update-ca-certificates
       - run: docker compose up -d --wait --wait-timeout 240 || (docker compose logs && exit 1)
       - run: GOWORK=off go run -C test . provision keycloak
-      - run: GOWORK=off go run -C test . provision fixtures
+      - run: GOWORK=off go run -C test . provision fixtures -config-file ../opentdf.yaml
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635 # v1.0.7
         name: start server in background
         with:
@@ -229,7 +229,7 @@ jobs:
           sudo update-ca-certificates
       - run: docker compose up -d --wait --wait-timeout 240 || (docker compose logs && exit 1)
       - run: GOWORK=off go run -C test . provision keycloak
-      - run: GOWORK=off go run -C test . provision fixtures
+      - run: GOWORK=off go run -C test . provision fixtures -config-file ../opentdf.yaml
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635 # v1.0.7
         name: start server in background
         with:

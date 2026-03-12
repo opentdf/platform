@@ -128,7 +128,7 @@ provision-keycloak:
 	GOWORK=off go run -C test . provision keycloak
 
 provision-fixtures:
-	GOWORK=off go run -C test . provision fixtures
+	GOWORK=off go run -C test . provision fixtures -config-file ../opentdf.yaml
 
 docker-build: build
 	docker build -t opentdf .

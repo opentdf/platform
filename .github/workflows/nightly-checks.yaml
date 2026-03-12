@@ -46,7 +46,7 @@ jobs:
         working-directory: platform
       - run: GOWORK=off go run -C test . provision keycloak
         working-directory: platform
-      - run: GOWORK=off go run -C test . provision fixtures
+      - run: GOWORK=off go run -C test . provision fixtures -config-file ../opentdf.yaml
         working-directory: platform
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635 # v1.0.7
         name: start server in background

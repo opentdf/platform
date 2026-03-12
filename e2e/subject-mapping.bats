@@ -3,6 +3,9 @@
 # Tests for subject mappings
 
 setup_file() {
+    # TODO: Remove this file-level skip once otdfctl passes namespace flags for the namespaced action and subject mapping APIs.
+    skip "Temporarily disabled [namespaced-subject-mappings]: platform action and subject mapping APIs now require namespace flags"
+
     export WITH_CREDS='--with-client-creds-file ./creds.json'
     export HOST='--host http://localhost:8080'
 

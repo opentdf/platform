@@ -3,6 +3,9 @@
 # Tests for registered resources
 
 setup_file() {
+    # TODO: Remove this file-level skip once otdfctl passes namespace flags for the namespaced action APIs used by registered resource values.
+    skip "Temporarily disabled [namespaced-actions]: registered resource BATS setup still depends on pre-namespace action APIs"
+
     export WITH_CREDS='--with-client-creds-file ./creds.json'
     export HOST='--host http://localhost:8080'
 

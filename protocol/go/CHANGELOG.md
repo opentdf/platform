@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.19.0](https://github.com/opentdf/platform/compare/protocol/go/v0.18.0...protocol/go/v0.19.0) (2026-03-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** only require namespace on GetAction if no id provided ([#3144](https://github.com/opentdf/platform/issues/3144))
+
+### Bug Fixes
+
+* **policy:** only require namespace on GetAction if no id provided ([#3144](https://github.com/opentdf/platform/issues/3144)) ([10d0c0f](https://github.com/opentdf/platform/commit/10d0c0f88cd7eff3620011bd75b6c2389aa4dfb8))
+
 ## [0.18.0](https://github.com/opentdf/platform/compare/protocol/go/v0.17.0...protocol/go/v0.18.0) (2026-03-12)
 
 

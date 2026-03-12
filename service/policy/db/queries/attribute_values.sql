@@ -157,3 +157,9 @@ UPDATE attribute_value_public_key_map
 SET key_access_server_key_id = sqlc.arg('new_key_id')::uuid
 WHERE (key_access_server_key_id = sqlc.arg('old_key_id')::uuid)
 RETURNING value_id;
+
+-- name: getAttributeValueNamespaceIDs :many
+SELECT av.id AS attribute_value_id, ad.namespace_id
+FROM attribute_values av
+JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+WHERE av.id = ANY(sqlc.arg('ids')::uuid[]);

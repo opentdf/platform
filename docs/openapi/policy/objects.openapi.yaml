@@ -248,6 +248,10 @@ components:
         name:
           type: string
           title: name
+        namespace:
+          title: namespace
+          description: Namespace context for this action
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'

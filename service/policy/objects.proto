@@ -152,6 +152,9 @@ message Action {
 
   string name = 4;
 
+  // Namespace context for this action
+  Namespace namespace = 5;
+
   common.Metadata metadata = 100;
 }
 

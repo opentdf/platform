@@ -13,11 +13,13 @@ import (
 
 const (
 	validUUID                  = "00000000-0000-0000-0000-000000000000"
+	validNamespaceFQN          = "https://example.com"
 	errMessageUUID             = "string.uuid"
 	errMessageMaxLength        = "string.max_len"
 	errMessageActionNameFormat = "action_name_format"
 	errMessageURI              = "string.uri"
 	errMessageRequired         = "required"
+	errMessageOneof            = "message.oneof"
 )
 
 var (
@@ -61,7 +63,8 @@ func (s *ActionSuite) Test_CreateActionRequest_Fails() {
 	for _, name := range actionNamesInvalidFormat {
 		s.Run(name, func() {
 			req := &actions.CreateActionRequest{
-				Name: name,
+				Name:        name,
+				NamespaceId: validUUID,
 			}
 			err := s.v.Validate(req)
 			s.Require().Error(err)
@@ -71,7 +74,8 @@ func (s *ActionSuite) Test_CreateActionRequest_Fails() {
 
 	// no name
 	req := &actions.CreateActionRequest{
-		Name: "",
+		Name:        "",
+		NamespaceId: validUUID,
 	}
 	err := s.v.Validate(req)
 	s.Require().Error(err)
@@ -79,18 +83,46 @@ func (s *ActionSuite) Test_CreateActionRequest_Fails() {
 
 	// too long
 	req = &actions.CreateActionRequest{
-		Name: strings.Repeat("a", 254),
+		Name:        strings.Repeat("a", 254),
+		NamespaceId: validUUID,
 	}
 	err = s.v.Validate(req)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), errMessageMaxLength)
+
+	// namespace required
+	req = &actions.CreateActionRequest{
+		Name: "valid_name",
+	}
+	err = s.v.Validate(req)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageOneof)
+
+	// invalid namespace id
+	req = &actions.CreateActionRequest{
+		Name:        "valid_name",
+		NamespaceId: "invalid-uuid",
+	}
+	err = s.v.Validate(req)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageUUID)
+
+	// invalid namespace fqn
+	req = &actions.CreateActionRequest{
+		Name:         "valid_name",
+		NamespaceFqn: "not-a-uri",
+	}
+	err = s.v.Validate(req)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageURI)
 }
 
 func (s *ActionSuite) Test_CreateActionRequest_Succeeds() {
 	for _, name := range validNames {
 		s.Run(name, func() {
 			req := &actions.CreateActionRequest{
-				Name: name,
+				Name:         name,
+				NamespaceFqn: validNamespaceFQN,
 			}
 			err := s.v.Validate(req)
 			s.Require().NoError(err)
@@ -99,7 +131,8 @@ func (s *ActionSuite) Test_CreateActionRequest_Succeeds() {
 
 	// with metadata
 	req := &actions.CreateActionRequest{
-		Name: "valid_name",
+		Name:        "valid_name",
+		NamespaceId: validUUID,
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{"key": "value"},
 		},
@@ -113,6 +146,7 @@ func (s *ActionSuite) Test_GetAction_Succeeds() {
 		Identifier: &actions.GetActionRequest_Id{
 			Id: validUUID,
 		},
+		NamespaceId: validUUID,
 	}
 	err := s.v.Validate(req)
 	s.Require().NoError(err)
@@ -123,6 +157,7 @@ func (s *ActionSuite) Test_GetAction_Succeeds() {
 				Identifier: &actions.GetActionRequest_Name{
 					Name: name,
 				},
+				NamespaceFqn: validNamespaceFQN,
 			}
 			err := s.v.Validate(req)
 			s.Require().NoError(err)
@@ -135,6 +170,7 @@ func (s *ActionSuite) Test_GetAction_Fails() {
 		Identifier: &actions.GetActionRequest_Id{
 			Id: "",
 		},
+		NamespaceId: validUUID,
 	}
 	err := s.v.Validate(req)
 	s.Require().Error(err)
@@ -143,7 +179,17 @@ func (s *ActionSuite) Test_GetAction_Fails() {
 	req = &actions.GetActionRequest{}
 	err = s.v.Validate(req)
 	s.Require().Error(err)
-	s.Require().Contains(err.Error(), errMessageRequired)
+	s.Require().Contains(err.Error(), errMessageOneof)
+
+	// missing namespace
+	req = &actions.GetActionRequest{
+		Identifier: &actions.GetActionRequest_Name{
+			Name: "valid_name",
+		},
+	}
+	err = s.v.Validate(req)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageOneof)
 
 	for _, name := range actionNamesInvalidFormat {
 		s.Run(name, func() {
@@ -151,6 +197,7 @@ func (s *ActionSuite) Test_GetAction_Fails() {
 				Identifier: &actions.GetActionRequest_Name{
 					Name: name,
 				},
+				NamespaceFqn: validNamespaceFQN,
 			}
 			err := s.v.Validate(req)
 			s.Require().Error(err)
@@ -163,14 +210,38 @@ func (s *ActionSuite) Test_GetAction_Fails() {
 		Identifier: &actions.GetActionRequest_Name{
 			Name: strings.Repeat("a", 254),
 		},
+		NamespaceId: validUUID,
 	}
 	err = s.v.Validate(req)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), errMessageMaxLength)
+
+	// invalid namespace id
+	req = &actions.GetActionRequest{
+		Identifier: &actions.GetActionRequest_Name{
+			Name: "valid_name",
+		},
+		NamespaceId: "invalid-uuid",
+	}
+	err = s.v.Validate(req)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageUUID)
+
+	// invalid namespace fqn
+	req = &actions.GetActionRequest{
+		Identifier: &actions.GetActionRequest_Name{
+			Name: "valid_name",
+		},
+		NamespaceFqn: "not-a-uri",
+	}
+	err = s.v.Validate(req)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageURI)
 }
 
 func (s *ActionSuite) Test_ListActions_Succeeds() {
 	reqPaginated := &actions.ListActionsRequest{
+		NamespaceId: validUUID,
 		Pagination: &policy.PageRequest{
 			Limit: 1,
 		},
@@ -182,9 +253,29 @@ func (s *ActionSuite) Test_ListActions_Succeeds() {
 	err = s.v.Validate(reqPaginated)
 	s.Require().NoError(err)
 
-	reqNoPagination := &actions.ListActionsRequest{}
+	reqNoPagination := &actions.ListActionsRequest{NamespaceFqn: validNamespaceFQN}
 	err = s.v.Validate(reqNoPagination)
 	s.Require().NoError(err)
+}
+
+func (s *ActionSuite) Test_ListActions_Fails() {
+	// missing namespace
+	req := &actions.ListActionsRequest{}
+	err := s.v.Validate(req)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageOneof)
+
+	// invalid namespace id
+	req = &actions.ListActionsRequest{NamespaceId: "invalid-uuid"}
+	err = s.v.Validate(req)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageUUID)
+
+	// invalid namespace fqn
+	req = &actions.ListActionsRequest{NamespaceFqn: "not-a-uri"}
+	err = s.v.Validate(req)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageURI)
 }
 
 func (s *ActionSuite) Test_UpdateActionRequest_Succeeds() {

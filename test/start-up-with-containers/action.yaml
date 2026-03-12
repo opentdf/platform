@@ -208,12 +208,17 @@ runs:
       working-directory: otdf-test-platform
     - name: Provision realms/clients/users into idP
       shell: bash
-      run: GOWORK=off go run -C test . provision keycloak
       working-directory: otdf-test-platform
+      run: |
+        # Try new location first, fall back to legacy service binary
+        GOWORK=off go run -C test . provision keycloak 2>/dev/null \
+          || go run ./service provision keycloak
     - name: Provision test fixture policy
       shell: bash
-      run: GOWORK=off go run -C test . provision fixtures -config-file ../opentdf.yaml
       working-directory: otdf-test-platform
+      run: |
+        GOWORK=off go run -C test . provision fixtures -config-file ../opentdf.yaml 2>/dev/null \
+          || go run ./service provision fixtures
     - name: Set platform log file path
       id: log-path
       shell: bash

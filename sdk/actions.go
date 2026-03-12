@@ -13,3 +13,12 @@ const (
 	PolicyActionNameUpdate = "update"
 	PolicyActionNameDelete = "delete"
 )
+
+// Decision action name aliases for use with the Authorization Decisions API.
+// These reference the same standard policy action names above.
+const (
+	DecisionActionNameCreate = PolicyActionNameCreate
+	DecisionActionNameRead   = PolicyActionNameRead
+	DecisionActionNameUpdate = PolicyActionNameUpdate
+	DecisionActionNameDelete = PolicyActionNameDelete
+)

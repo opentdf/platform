@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -248,14 +247,9 @@ func (c PolicyDBClient) DeleteAction(ctx context.Context, req *actions.DeleteAct
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	// if did not delete, was either not found or was a standard action
+	// if not deleted, it is a standard action because existence was verified above
 	if count == 0 {
-		// standard action
-		name := strings.ToLower(got.GetName())
-		if ActionStandard(name).IsValid() {
-			return nil, fmt.Errorf("cannot delete standard action %s: %w", name, db.ErrRestrictViolation)
-		}
-		return nil, errors.Join(db.ErrNotFound, fmt.Errorf("action id [%s]", req.GetId()))
+		return nil, fmt.Errorf("cannot delete standard action %s: %w", got.GetName(), db.ErrRestrictViolation)
 	}
 
 	return got, nil

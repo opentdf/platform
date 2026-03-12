@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
@@ -13,28 +14,15 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-type ActionStandard string
+// ActionStandard is an alias for identifier.PolicyActionStandard.
+type ActionStandard = identifier.PolicyActionStandard
 
 const (
-	ActionCreate ActionStandard = "create"
-	ActionRead   ActionStandard = "read"
-	ActionUpdate ActionStandard = "update"
-	ActionDelete ActionStandard = "delete"
+	ActionCreate = identifier.PolicyActionNameCreate
+	ActionRead   = identifier.PolicyActionNameRead
+	ActionUpdate = identifier.PolicyActionNameUpdate
+	ActionDelete = identifier.PolicyActionNameDelete
 )
-
-// Add a validation method
-func (a ActionStandard) IsValid() bool {
-	switch a {
-	case ActionCreate, ActionRead, ActionUpdate, ActionDelete:
-		return true
-	}
-	return false
-}
-
-// If needed, implement the Stringer interface explicitly
-func (a ActionStandard) String() string {
-	return string(a)
-}
 
 func (c PolicyDBClient) GetAction(ctx context.Context, req *actions.GetActionRequest) (*policy.Action, error) {
 	getActionParams := getActionParams{}

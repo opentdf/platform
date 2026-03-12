@@ -116,6 +116,7 @@ func testCodeBlock(t *testing.T, code string) error {
 	replacements := []string{
 		"github.com/opentdf/platform/sdk=" + filepath.Join(platformDir, "sdk"),
 		"github.com/opentdf/platform/lib/ocrypto=" + filepath.Join(platformDir, "lib/ocrypto"),
+		"github.com/opentdf/platform/lib/identifier=" + filepath.Join(platformDir, "lib/identifier"),
 		"github.com/opentdf/platform/protocol/go=" + filepath.Join(platformDir, "protocol/go"),
 	}
 

@@ -11,6 +11,7 @@ require (
 	github.com/gowebpki/jcs v1.0.1
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/lestrrat-go/jwx/v2 v2.1.6
+	github.com/opentdf/platform/lib/identifier v0.2.0
 	github.com/opentdf/platform/lib/ocrypto v0.10.0
 	github.com/opentdf/platform/protocol/go v0.16.0
 	github.com/stretchr/testify v1.11.1

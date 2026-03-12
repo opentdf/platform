@@ -6,7 +6,6 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
-	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
 	"github.com/opentdf/platform/protocol/go/policy/actions/actionsconnect"
 	"github.com/opentdf/platform/service/logger"
@@ -19,17 +18,16 @@ import (
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
-// Re-exported action names for consumers of ActionService protos.
-// Canonical definitions live in github.com/opentdf/platform/lib/identifier.
+// Re-exported action names for consumers of ActionService protos
 const (
 	// Stored name of the standard 'create' action
-	ActionNameCreate = string(identifier.PolicyActionNameCreate)
+	ActionNameCreate = string(policydb.ActionCreate)
 	// Stored name of the standard 'read' action
-	ActionNameRead = string(identifier.PolicyActionNameRead)
+	ActionNameRead = string(policydb.ActionRead)
 	// Stored name of the standard 'update' action
-	ActionNameUpdate = string(identifier.PolicyActionNameUpdate)
+	ActionNameUpdate = string(policydb.ActionUpdate)
 	// Stored name of the standard 'delete' action
-	ActionNameDelete = string(identifier.PolicyActionNameDelete)
+	ActionNameDelete = string(policydb.ActionDelete)
 )
 
 type ActionService struct {

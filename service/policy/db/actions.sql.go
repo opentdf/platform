@@ -12,21 +12,23 @@ import (
 )
 
 const createCustomAction = `-- name: createCustomAction :one
+WITH ns AS (
+    SELECT
+        $3::uuid AS id,
+        $4::text AS fqn
+)
 INSERT INTO actions (name, metadata, is_standard, namespace_id)
 SELECT
     $1,
     $2,
     FALSE,
-    COALESCE($3::uuid, fqns.namespace_id)
-FROM (
-    SELECT
-        $3::uuid as direct_namespace_id
-) direct
-LEFT JOIN attribute_fqns fqns ON fqns.fqn = $4::text AND $3::text IS NULL
+    COALESCE(ns.id, fqns.namespace_id)
+FROM ns
+LEFT JOIN attribute_fqns fqns ON fqns.fqn = ns.fqn AND ns.id IS NULL
 WHERE
-    ($3::text IS NOT NULL AND direct.direct_namespace_id IS NOT NULL)
+    (ns.id IS NOT NULL)
     OR
-    ($4::text IS NOT NULL AND fqns.namespace_id IS NOT NULL)
+    (ns.fqn IS NOT NULL AND fqns.namespace_id IS NOT NULL)
 RETURNING id
 `
 
@@ -39,21 +41,23 @@ type createCustomActionParams struct {
 
 // createCustomAction
 //
+//	WITH ns AS (
+//	    SELECT
+//	        $3::uuid AS id,
+//	        $4::text AS fqn
+//	)
 //	INSERT INTO actions (name, metadata, is_standard, namespace_id)
 //	SELECT
 //	    $1,
 //	    $2,
 //	    FALSE,
-//	    COALESCE($3::uuid, fqns.namespace_id)
-//	FROM (
-//	    SELECT
-//	        $3::uuid as direct_namespace_id
-//	) direct
-//	LEFT JOIN attribute_fqns fqns ON fqns.fqn = $4::text AND $3::text IS NULL
+//	    COALESCE(ns.id, fqns.namespace_id)
+//	FROM ns
+//	LEFT JOIN attribute_fqns fqns ON fqns.fqn = ns.fqn AND ns.id IS NULL
 //	WHERE
-//	    ($3::text IS NOT NULL AND direct.direct_namespace_id IS NOT NULL)
+//	    (ns.id IS NOT NULL)
 //	    OR
-//	    ($4::text IS NOT NULL AND fqns.namespace_id IS NOT NULL)
+//	    (ns.fqn IS NOT NULL AND fqns.namespace_id IS NOT NULL)
 //	RETURNING id
 func (q *Queries) createCustomAction(ctx context.Context, arg createCustomActionParams) (string, error) {
 	row := q.db.QueryRow(ctx, createCustomAction,
@@ -246,13 +250,15 @@ WHERE
     (
         $1::text IS NOT NULL
         AND a.name = $1::text
-        AND rn.id IS NOT NULL
-        AND (a.namespace_id = rn.id OR a.namespace_id IS NULL)
+        AND (
+            (rn.id IS NOT NULL AND (a.namespace_id = rn.id OR a.namespace_id IS NULL))
+            OR
+            (rn.id IS NULL AND a.namespace_id IS NULL)
+        )
     )
   )
 ORDER BY
     CASE
-        WHEN $1::text IS NULL THEN 0
         WHEN a.namespace_id = rn.id THEN 0
         WHEN a.is_standard = TRUE THEN 1
         ELSE 2
@@ -320,13 +326,15 @@ type getActionRow struct {
 //	    (
 //	        $1::text IS NOT NULL
 //	        AND a.name = $1::text
-//	        AND rn.id IS NOT NULL
-//	        AND (a.namespace_id = rn.id OR a.namespace_id IS NULL)
+//	        AND (
+//	            (rn.id IS NOT NULL AND (a.namespace_id = rn.id OR a.namespace_id IS NULL))
+//	            OR
+//	            (rn.id IS NULL AND a.namespace_id IS NULL)
+//	        )
 //	    )
 //	  )
 //	ORDER BY
 //	    CASE
-//	        WHEN $1::text IS NULL THEN 0
 //	        WHEN a.namespace_id = rn.id THEN 0
 //	        WHEN a.is_standard = TRUE THEN 1
 //	        ELSE 2

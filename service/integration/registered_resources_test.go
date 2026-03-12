@@ -1478,7 +1478,8 @@ func (s *RegisteredResourcesSuite) Test_DeleteAction_CascadeDeleteActionAttribut
 	// create action and resource value with action attribute values
 
 	action, err := s.db.PolicyClient.CreateAction(s.ctx, &pbActions.CreateActionRequest{
-		Name: "test_delete_action",
+		Name:        "test_delete_action",
+		NamespaceId: s.getNamespaceID("example.com"),
 	})
 	s.Require().NoError(err)
 

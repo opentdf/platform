@@ -97,13 +97,15 @@ WHERE
     (
         sqlc.narg('name')::text IS NOT NULL
         AND a.name = sqlc.narg('name')::text
-        AND rn.id IS NOT NULL
-        AND (a.namespace_id = rn.id OR a.namespace_id IS NULL)
+        AND (
+            (rn.id IS NOT NULL AND (a.namespace_id = rn.id OR a.namespace_id IS NULL))
+            OR
+            (rn.id IS NULL AND a.namespace_id IS NULL)
+        )
     )
   )
 ORDER BY
     CASE
-        WHEN sqlc.narg('name')::text IS NULL THEN 0
         WHEN a.namespace_id = rn.id THEN 0
         WHEN a.is_standard = TRUE THEN 1
         ELSE 2
@@ -153,21 +155,23 @@ FROM all_actions
 ORDER BY name;
 
 -- name: createCustomAction :one
+WITH ns AS (
+    SELECT
+        sqlc.narg('namespace_id')::uuid AS id,
+        sqlc.narg('namespace_fqn')::text AS fqn
+)
 INSERT INTO actions (name, metadata, is_standard, namespace_id)
 SELECT
     @name,
     @metadata,
     FALSE,
-    COALESCE(sqlc.narg('namespace_id')::uuid, fqns.namespace_id)
-FROM (
-    SELECT
-        sqlc.narg('namespace_id')::uuid as direct_namespace_id
-) direct
-LEFT JOIN attribute_fqns fqns ON fqns.fqn = sqlc.narg('namespace_fqn')::text AND sqlc.narg('namespace_id')::text IS NULL
+    COALESCE(ns.id, fqns.namespace_id)
+FROM ns
+LEFT JOIN attribute_fqns fqns ON fqns.fqn = ns.fqn AND ns.id IS NULL
 WHERE
-    (sqlc.narg('namespace_id')::text IS NOT NULL AND direct.direct_namespace_id IS NOT NULL)
+    (ns.id IS NOT NULL)
     OR
-    (sqlc.narg('namespace_fqn')::text IS NOT NULL AND fqns.namespace_id IS NOT NULL)
+    (ns.fqn IS NOT NULL AND fqns.namespace_id IS NOT NULL)
 RETURNING id;
 
 -- name: updateCustomAction :execrows

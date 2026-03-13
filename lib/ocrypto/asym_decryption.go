@@ -36,6 +36,10 @@ type MLKEMDecryptor768 struct {
 	decap *mlkem.DecapsulationKey768
 }
 
+type MLKEMDecryptor1024 struct {
+	decap *mlkem.DecapsulationKey1024
+}
+
 // FromPrivatePEM creates and returns a new AsymDecryption.
 func FromPrivatePEM(privateKeyInPem string) (PrivateKeyDecryptor, error) {
 	// TK Move salt and info out of library, into API option functions
@@ -53,11 +57,15 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 	}
 
 	if block.Type == "MLKEM DECAPSULATION KEY" {
-		decap, err := mlkem.NewDecapsulationKey768(block.Bytes)
-		if err != nil {
-			return nil, fmt.Errorf("mlkem.NewDecapsulationKey768 failed: %w", err)
+		decap768, err := mlkem.NewDecapsulationKey768(block.Bytes)
+		if err == nil {
+			return &MLKEMDecryptor768{decap: decap768}, nil
 		}
-		return &MLKEMDecryptor768{decap: decap}, nil
+		decap1024, err1024 := mlkem.NewDecapsulationKey1024(block.Bytes)
+		if err1024 != nil {
+			return nil, fmt.Errorf("mlkem.NewDecapsulationKey1024 failed after mlkem.NewDecapsulationKey768 failed: %w / %w", err, err1024)
+		}
+		return &MLKEMDecryptor1024{decap: decap1024}, nil
 	}
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
@@ -223,7 +231,48 @@ func (d MLKEMDecryptor768) Decrypt(_ []byte) ([]byte, error) {
 	return nil, errors.New("ciphertext encapsulation is required for ML-KEM decryption")
 }
 
+func (d MLKEMDecryptor1024) Decrypt(_ []byte) ([]byte, error) {
+	return nil, errors.New("ciphertext encapsulation is required for ML-KEM decryption")
+}
+
 func (d MLKEMDecryptor768) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
+	if d.decap == nil {
+		return nil, errors.New("mlkem decapsulation key is nil")
+	}
+	if len(ephemeral) == 0 {
+		return nil, errors.New("ciphertext encapsulation is required for ML-KEM decryption")
+	}
+
+	sharedSecret, err := d.decap.Decapsulate(ephemeral)
+	if err != nil {
+		return nil, fmt.Errorf("mlkem.Decapsulate failed: %w", err)
+	}
+
+	block, err := aes.NewCipher(sharedSecret)
+	if err != nil {
+		return nil, fmt.Errorf("aes.NewCipher failure: %w", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("cipher.NewGCM failure: %w", err)
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(data) < nonceSize {
+		return nil, errors.New("ciphertext too short")
+	}
+
+	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("gcm.Open failure: %w", err)
+	}
+
+	return plaintext, nil
+}
+
+func (d MLKEMDecryptor1024) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
 	if d.decap == nil {
 		return nil, errors.New("mlkem decapsulation key is nil")
 	}

@@ -688,7 +688,7 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 		keyAccess.KeyType = kECWrapped
 		keyAccess.WrappedKey = wrappedKeyInfo.wrappedKey
 		keyAccess.EphemeralPublicKey = wrappedKeyInfo.publicKey
-	case ktype == ocrypto.MLKEM768Key:
+	case ktype == ocrypto.MLKEM768Key, ktype == ocrypto.MLKEM1024Key:
 		wrappedKey, encapsulatedKey, err := generateWrapKeyWithMLKEM(kasInfo.PublicKey, symKey)
 		if err != nil {
 			return KeyAccess{}, err

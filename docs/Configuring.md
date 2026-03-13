@@ -325,7 +325,7 @@ The database configuration is used to define how the application connects to its
 Root level key `db`
 
 Embedded Postgres is used only when `db.embedded.enabled` is `true` and `db.host` is empty.
-Embedded Postgres version is fixed to PostgreSQL 15 to match the primary Compose database image (`postgres:15-alpine`).
+Embedded Postgres version is fixed to PostgreSQL 15 for local development compatibility.
 Embedded Postgres binaries are image-owned at `/opt/opentdf/embedded-postgres/binaries` (not volume-managed).
 `db.embedded.root_dir` is only for mutable runtime state managed by the app (`data`, `runtime`, `cache`).
 

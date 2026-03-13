@@ -12,13 +12,13 @@ For end-users/consumers, see [here](./Consuming.md).
 > (`go run github.com/opentdf/platform/service migrate up`).
 
 1.  Configure KAS and Keycloak keys: `.github/scripts/init-temp-keys.sh`. Creates temporary keys for the local KAS and Keycloak Certificate Exchange. 
-2. `docker compose up`. Starts both the local Postgres database (contains the ABAC policy configuration data) and Keycloak (the local IdP).
+2. `docker compose up`. Starts Keycloak (the local IdP) and any optional support services enabled via Compose profiles. The platform database is no longer a separate Compose service for local development.
    1. Note: You will have to add the ``localhost.crt`` as a trusted certificate to do TLS authentication at ``localhost:8443``. On a mac, this is `security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./keys/localhost.crt`
 3. Create an OpenTDF config file: `opentdf.yaml`
-   1. The `opentdf-dev.yaml` file is the more secure starting point, but you will likely need to modify it to match your environment. This configuration is recommended as it is more secure but it does require valid development keypairs.
+   1. The `opentdf-dev.yaml` file is the more secure starting point, and it enables embedded Postgres by default for local development. This configuration is recommended as it is more secure but it does require valid development keypairs.
    2. The `opentdf-core-mode.yaml` file is simpler to run but less secure. This file configures the platform to startup without a KAS instances, without a built-in ERS instance, and without endpoint authentication.
 4. Provision keycloak: `go run github.com/opentdf/platform/service provision keycloak`. Updates the local Keycloak configuration for local testing and development by creating a realm, roles, a client, and users.
-5. Run the server: `go run github.com/opentdf/platform/service start`. Runs the OpenTDF platform capabilities as a monolithic service.
+5. Run the server: `go run github.com/opentdf/platform/service start`. Runs the OpenTDF platform capabilities as a monolithic service and starts embedded Postgres from the platform process when `db.host` is empty and `db.embedded.enabled` is `true`.
    1. _Alt_ use the hot-reload development environment `air`
 6. The server is now running on `localhost:8080` (or the port specified in the config file)
 

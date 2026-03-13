@@ -78,21 +78,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 2m
-  opentdfdb:
-    image: postgres:15-alpine
-    restart: always
-    user: postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: changeme
-      POSTGRES_DB: opentdf
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    ports:
-      - "${POSTGRES_EXPOSE_PORT:-5432}:5432"
 
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -132,7 +117,7 @@ services:
       - ers-test
       - ers-admin
     ports:
-      - "5433:5432"  # Different port to avoid conflicts with main opentdfdb
+      - "5433:5432"  # Different port to avoid conflicts with the platform's embedded Postgres
     environment:
       POSTGRES_DB: ers_test
       POSTGRES_USER: ers_test_user

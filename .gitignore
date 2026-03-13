@@ -47,6 +47,7 @@ keys/
 /examples/sensitive.txt.ntdf
 sensitive.txt.ntdf
 traces/
+/.dev/embedded-postgres/
 
 # Cucumber / BDD log files
 *.log

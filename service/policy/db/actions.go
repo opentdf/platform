@@ -22,6 +22,10 @@ const (
 	ActionDelete ActionStandard = "delete"
 )
 
+// CONTRIBUTING: The ActionCreate/Read/Update/Delete values are duplicated in
+// sdk/actions.go (PolicyActionName* constants) for lightweight SDK consumption.
+// Changes to either set MUST be mirrored in the other.
+
 // Add a validation method
 func (a ActionStandard) IsValid() bool {
 	switch a {

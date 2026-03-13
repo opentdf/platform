@@ -60,6 +60,8 @@ func convertEnumToAlg(alg policy.Algorithm) ocrypto.KeyType {
 		return ocrypto.EC521Key
 	case policy.Algorithm_ALGORITHM_MLKEM_768:
 		return ocrypto.MLKEM768Key
+	case policy.Algorithm_ALGORITHM_MLKEM_1024:
+		return ocrypto.MLKEM1024Key
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:
@@ -81,6 +83,8 @@ func convertAlgToEnum(alg string) (policy.Algorithm, error) {
 		return policy.Algorithm_ALGORITHM_EC_P521, nil
 	case string(ocrypto.MLKEM768Key):
 		return policy.Algorithm_ALGORITHM_MLKEM_768, nil
+	case string(ocrypto.MLKEM1024Key):
+		return policy.Algorithm_ALGORITHM_MLKEM_1024, nil
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED, fmt.Errorf("unsupported algorithm: %s", alg)
 	}

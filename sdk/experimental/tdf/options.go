@@ -42,14 +42,14 @@ type BaseConfig struct{}
 // WriterConfig contains configuration options for TDF Writer creation.
 //
 // The configuration controls cryptographic algorithms and processing behavior:
-//   - integrityAlgorithm: Algorithm for root integrity signature calculation
+//   - rootIntegrityAlgorithm: Algorithm for root integrity signature calculation
 //   - segmentIntegrityAlgorithm: Algorithm for individual segment hash calculation
 //
 // These can be set independently to optimize for different security/performance requirements.
 type WriterConfig struct {
 	BaseConfig
-	// integrityAlgorithm specifies the algorithm for root integrity verification
-	integrityAlgorithm IntegrityAlgorithm
+	// rootIntegrityAlgorithm specifies the algorithm for root integrity verification
+	rootIntegrityAlgorithm IntegrityAlgorithm
 	// segmentIntegrityAlgorithm specifies the algorithm for segment-level integrity
 	segmentIntegrityAlgorithm IntegrityAlgorithm
 
@@ -95,7 +95,7 @@ type Option[T any] func(T)
 //	writer, err := NewWriter(ctx, WithIntegrityAlgorithm(GMAC))
 func WithIntegrityAlgorithm(algo IntegrityAlgorithm) Option[*WriterConfig] {
 	return func(c *WriterConfig) {
-		c.integrityAlgorithm = algo
+		c.rootIntegrityAlgorithm = algo
 	}
 }
 

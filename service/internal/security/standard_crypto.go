@@ -52,10 +52,10 @@ type StandardKeyInfo struct {
 	PublicKeyPath  string `mapstructure:"public_key_path" json:"public_key_path"`
 }
 
-type StandardRSACrypto struct {
+type PrivateKeyCrypto struct {
 	KeyPairInfo
-	asymDecryption ocrypto.AsymDecryption
-	asymEncryption ocrypto.AsymEncryption
+	dec ocrypto.PrivateKeyDecryptor
+	enc ocrypto.PublicKeyEncryptor
 }
 
 type StandardECCrypto struct {
@@ -150,23 +150,19 @@ func loadKey(k KeyPairInfo) (any, error) {
 			ecPrivateKeyPem:  string(privatePEM),
 			ecCertificatePEM: string(certPEM),
 		}, nil
-	case AlgorithmRSA2048, AlgorithmRSA4096:
-		asymDecryption, err := ocrypto.NewAsymDecryption(string(privatePEM))
+	case AlgorithmRSA2048, AlgorithmRSA4096, AlgorithmMLKEM768:
+		decrypter, err := ocrypto.FromPrivatePEM(string(privatePEM))
 		if err != nil {
-			return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
+			return nil, fmt.Errorf("ocrypto.FromPrivatePEM failed: %w", err)
 		}
 		publicKeyEncryptor, err := ocrypto.FromPublicPEM(string(certPEM))
 		if err != nil {
 			return nil, fmt.Errorf("ocrypto.FromPublicPEM failed: %w", err)
 		}
-		asymEncryption, ok := publicKeyEncryptor.(*ocrypto.AsymEncryption)
-		if !ok {
-			return nil, fmt.Errorf("unexpected public key encryptor type: %T", publicKeyEncryptor)
-		}
-		return StandardRSACrypto{
-			KeyPairInfo:    k,
-			asymDecryption: asymDecryption,
-			asymEncryption: *asymEncryption,
+		return PrivateKeyCrypto{
+			KeyPairInfo: k,
+			dec:         decrypter,
+			enc:         publicKeyEncryptor,
 		}, nil
 	default:
 		return nil, errors.New("unsupported algorithm [" + k.Algorithm + "]")
@@ -199,25 +195,20 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 		if err != nil {
 			return nil, fmt.Errorf("failed to rsa public key file: %w", err)
 		}
-
 		publicKeyEncryptor, err := ocrypto.FromPublicPEM(string(publicPemData))
 		if err != nil {
 			return nil, fmt.Errorf("ocrypto.FromPublicPEM failed: %w", err)
 		}
-		asymEncryption, ok := publicKeyEncryptor.(*ocrypto.AsymEncryption)
-		if !ok {
-			return nil, fmt.Errorf("unexpected public key encryptor type: %T", publicKeyEncryptor)
-		}
 
-		k := StandardRSACrypto{
+		k := PrivateKeyCrypto{
 			KeyPairInfo: KeyPairInfo{
 				Algorithm:   AlgorithmRSA2048,
 				KID:         id,
 				Private:     kasInfo.PrivateKeyPath,
 				Certificate: kasInfo.PublicKeyPath,
 			},
-			asymDecryption: asymDecryption,
-			asymEncryption: *asymEncryption,
+			dec: asymDecryption,
+			enc: publicKeyEncryptor,
 		}
 		keysByAlg[AlgorithmRSA2048][id] = k
 		keysByID[id] = k
@@ -266,22 +257,26 @@ func (s StandardCrypto) FindKID(alg string) string {
 	return ""
 }
 
-func (s StandardCrypto) RSAPublicKey(kid string) (string, error) {
+func (s StandardCrypto) PublicKey(kid string) (string, error) {
 	k, ok := s.keysByID[kid]
 	if !ok {
-		return "", fmt.Errorf("no rsa key with id [%s]: %w", kid, ErrCertNotFound)
+		return "", fmt.Errorf("no public key with id [%s]: %w", kid, ErrCertNotFound)
 	}
-	rsa, ok := k.(StandardRSACrypto)
-	if !ok {
-		return "", fmt.Errorf("key with id [%s] is not an RSA key: %w", kid, ErrCertNotFound)
+	switch key := k.(type) {
+	case PrivateKeyCrypto:
+		publicKeyPEM, err := key.enc.PublicKeyInPemFormat()
+		if err != nil {
+			return "", fmt.Errorf("failed to retrieve public key file: %w", err)
+		}
+		return publicKeyPEM, nil
+	case StandardECCrypto:
+		if key.ecCertificatePEM != "" {
+			return key.ecCertificatePEM, nil
+		}
+		return s.ECPublicKey(kid)
+	default:
+		return "", fmt.Errorf("key with id [%s] does not expose a public key: %w", kid, ErrCertNotFound)
 	}
-
-	pem, err := rsa.asymEncryption.PublicKeyInPemFormat()
-	if err != nil {
-		return "", fmt.Errorf("failed to retrieve rsa public key file: %w", err)
-	}
-
-	return pem, nil
 }
 
 func (s StandardCrypto) ECCertificate(kid string) (string, error) {
@@ -334,12 +329,12 @@ func (s StandardCrypto) RSADecrypt(_ crypto.Hash, kid string, _ string, cipherte
 	if !ok {
 		return nil, ErrCertNotFound
 	}
-	rsa, ok := k.(StandardRSACrypto)
+	rsa, ok := k.(PrivateKeyCrypto)
 	if !ok {
 		return nil, ErrCertNotFound
 	}
 
-	data, err := rsa.asymDecryption.Decrypt(ciphertext)
+	data, err := rsa.dec.Decrypt(ciphertext)
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting data: %w", err)
 	}
@@ -355,12 +350,17 @@ func (s StandardCrypto) RSAPublicKeyAsJSON(kid string) (string, error) {
 	if !ok {
 		return "", ErrCertNotFound
 	}
-	rsa, ok := k.(StandardRSACrypto)
+	rsa, ok := k.(PrivateKeyCrypto)
 	if !ok {
 		return "", ErrCertNotFound
 	}
 
-	rsaPublicKeyJwk, err := jwk.FromRaw(rsa.asymEncryption.PublicKey)
+	asymEncryption, ok := rsa.enc.(*ocrypto.AsymEncryption)
+	if !ok {
+		return "", fmt.Errorf("key with id [%s] does not support JWK export: %w", kid, ErrCertNotFound)
+	}
+
+	rsaPublicKeyJwk, err := jwk.FromRaw(asymEncryption.PublicKey)
 	if err != nil {
 		return "", fmt.Errorf("jwk.FromRaw: %w", err)
 	}
@@ -429,12 +429,8 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 			return nil, fmt.Errorf("failed to decrypt with ephemeral key: %w", err)
 		}
 
-	case StandardRSACrypto:
-		if len(ephemeralPublicKey) > 0 {
-			return nil, errors.New("ephemeral public key should not be provided for RSA decryption")
-		}
-
-		rawKey, err = key.asymDecryption.Decrypt(ciphertext)
+	case PrivateKeyCrypto:
+		rawKey, err = key.dec.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting data: %w", err)
 		}

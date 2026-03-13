@@ -34,12 +34,6 @@ jobs:
       - run: |
           ./.github/scripts/init-temp-keys.sh
           cp opentdf-dev.yaml opentdf.yaml
-          yq eval '
-            .db.host = "127.0.0.1" |
-            .db.port = 5432 |
-            .db.sslmode = "disable" |
-            .db.embedded.enabled = false
-          ' -i opentdf.yaml
         working-directory: platform
       - name: Added Trusted Certs
         run: |

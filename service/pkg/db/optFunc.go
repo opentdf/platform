@@ -20,3 +20,10 @@ func WithMigrations(fs *embed.FS) OptsFunc {
 		return c
 	}
 }
+
+func WithRuntime(runtime Runtime) OptsFunc {
+	return func(c Config) Config {
+		c.Runtime = runtime
+		return c
+	}
+}

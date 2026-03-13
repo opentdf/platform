@@ -107,21 +107,10 @@ jobs:
   integration:
     permissions:
       contents: read
-    name: integration tests (${{ matrix.name }})
+    name: integration tests
     runs-on: ubuntu-22.04
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: containerized postgres
-            db_provider: container
-            full_suite: true
-          - name: embedded postgres
-            db_provider: embedded
-            full_suite: false
     env:
       TLS_ENABLED: "true"
-      OTDF_E2E_DB_PROVIDER: ${{ matrix.db_provider }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
@@ -151,34 +140,13 @@ jobs:
           mkcert -cert-file ./keys/platform.crt -key-file ./keys/platform-key.pem localhost
           cp opentdf-dev.yaml opentdf.yaml
           yq eval '.server.tls.enabled = true' -i opentdf.yaml
-          if [ "${{ matrix.db_provider }}" = "container" ]; then
-            yq eval '
-              .db.host = "127.0.0.1" |
-              .db.port = 5432 |
-              .db.sslmode = "disable" |
-              .db.embedded.enabled = false
-            ' -i opentdf.yaml
-          else
-            rm -rf "${RUNNER_TEMP}/embedded-postgres"
-            yq eval '
-              .db.host = "" |
-              .db.port = 5432 |
-              .db.sslmode = "disable" |
-              .db.embedded.enabled = true |
-              .db.embedded.port = 5432 |
-              .db.embedded.root_dir = strenv(RUNNER_TEMP) + "/embedded-postgres"
-            ' -i opentdf.yaml
-          fi
       - name: Added Trusted Certs
         run: |
           sudo chmod -R 777 ./keys
           sudo apt-get install -y ca-certificates
           sudo cp ./keys/localhost.crt /usr/local/share/ca-certificates
           sudo update-ca-certificates
-      - if: matrix.db_provider == 'container'
-        run: docker compose up -d --wait --wait-timeout 240 || (docker compose logs && exit 1)
-      - if: matrix.db_provider == 'embedded'
-        run: docker compose up -d --wait --wait-timeout 240 keycloak || (docker compose logs && exit 1)
+      - run: docker compose up -d --wait --wait-timeout 240 || (docker compose logs && exit 1)
       - run: go run ./service provision keycloak
       - run: go run ./service provision fixtures
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635 # v1.0.7
@@ -195,38 +163,23 @@ jobs:
       - name: Setup Bats and bats libs
         uses: bats-core/bats-action@42fcc8700f773c075a16a90eb11674c0318ad507 # 3.0.1
       - run: test/service-start.bats
+      - run: test/service-cors.bats
+      - run: test/tdf-roundtrips.bats
       - run: test/policy-service.bats
-      - if: matrix.db_provider == 'embedded'
-        run: test/embedded-postgres-persistence.bats
-      - if: matrix.full_suite
-        run: test/service-cors.bats
-      - if: matrix.full_suite
-        run: test/tdf-roundtrips.bats
       - name: verify builtin casbin policy
-        if: matrix.full_suite
         run: test/builtin-casbin.bats
       - name: create roundtrip test data and run tests
-        if: matrix.full_suite
         run: go test ./service/rttests -v
       - name: enable static entitlements rego policy
-        if: matrix.full_suite
         run: yq eval '.services.authorization.rego.path = "./test/rego/static-entitlements.rego"' -i opentdf.yaml
-      - if: matrix.full_suite
-        run: sleep 30
+      - run: sleep 30
       - name: validate static rego policy
-        if: matrix.full_suite
         run: test/rego/static-entitlements.bats
       - name: enable custom entity rego policy
-        if: matrix.full_suite
         run: yq eval '.services.authorization.rego.path = "./test/rego/custom-entity.rego"' -i opentdf.yaml
-      - if: matrix.full_suite
-        run: sleep 30
+      - run: sleep 30
       - name: validate custom entity rego policy
-        if: matrix.full_suite
         run: test/rego/custom-entity.bats
-      - name: show compose logs on failure
-        if: failure() || cancelled()
-        run: docker compose logs
 
   benchmark:
     permissions:

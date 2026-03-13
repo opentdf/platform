@@ -1,5 +1,3 @@
-// Use the shared LoadKeycloakData from the CLI package
-
 package cukes
 
 import (
@@ -9,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -22,7 +21,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/opentdf/platform/lib/fixtures"
 	otdf "github.com/opentdf/platform/sdk"
-	"github.com/opentdf/platform/service/cmd"
 	"github.com/opentdf/platform/service/pkg/server"
 	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 	"gopkg.in/yaml.v2"
@@ -351,7 +349,7 @@ func provisionKeycloak(ctx context.Context, suiteOptions *LocalDevOptions, scena
 	if err != nil {
 		return err
 	}
-	kcData := cmd.LoadKeycloakData(tmpKcFile.Name())
+	kcData := loadKeycloakData(tmpKcFile.Name())
 	kcBasePath := fmt.Sprintf("http://%s/auth", net.JoinHostPort(suiteOptions.Hostname, strconv.Itoa(suiteOptions.keycloakPort)))
 	return fixtures.SetupCustomKeycloak(ctx, fixtures.KeycloakConnectParams{
 		BasePath:         kcBasePath,
@@ -413,4 +411,57 @@ func RegisterLocalPlatformStepDefinitions(ctx *godog.ScenarioContext, x *Platfor
 	ctx.Step(`^an empty local platform$`, platformStepDefinitions.aEmptyLocalPlatform)
 	ctx.Step(`^a user exists with username "([^"]*)" and email "([^"]*)" and the following attributes:$`, platformStepDefinitions.aUser)
 	ctx.Step(`^a local platform with platform template "([^"]*)" and keycloak template "([^"]*)"$`, platformStepDefinitions.aLocalPlatformWithTemplates)
+}
+
+func convertYAMLMapKeys(i interface{}) interface{} {
+	switch x := i.(type) {
+	case map[interface{}]interface{}:
+		m2 := map[string]interface{}{}
+		for k, v := range x {
+			sk, ok := k.(string)
+			if !ok {
+				panic(fmt.Errorf("key is not a string: %v", k))
+			}
+			m2[sk] = convertYAMLMapKeys(v)
+		}
+		return m2
+	case []interface{}:
+		for i, v := range x {
+			x[i] = convertYAMLMapKeys(v)
+		}
+	}
+	return i
+}
+
+func loadKeycloakData(file string) fixtures.KeycloakData {
+	yamlData := make(map[interface{}]interface{})
+
+	f, err := os.Open(file)
+	if err != nil {
+		panic(fmt.Errorf("error when opening YAML file: %w", err))
+	}
+
+	fileData, err := io.ReadAll(f)
+	if err != nil {
+		panic(fmt.Errorf("error reading YAML file: %w", err))
+	}
+
+	err = yaml.Unmarshal(fileData, &yamlData)
+	if err != nil {
+		panic(fmt.Errorf("error unmarshaling yaml file: %w", err))
+	}
+
+	cleanedYaml := convertYAMLMapKeys(yamlData)
+
+	kcData, err := json.Marshal(cleanedYaml)
+	if err != nil {
+		panic(fmt.Errorf("error converting yaml to json: %w", err))
+	}
+
+	var keycloakData fixtures.KeycloakData
+	if err := json.Unmarshal(kcData, &keycloakData); err != nil {
+		slog.Error("could not unmarshal json into data object", slog.String("error", err.Error()))
+		panic(err)
+	}
+	return keycloakData
 }

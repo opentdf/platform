@@ -15,9 +15,9 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
-	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/policy/actions"
+	"github.com/opentdf/platform/test/fixtures"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
 )

@@ -1,10 +1,11 @@
-package integration
+package subjectmappingbuiltin
 
 import (
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/entityresolution"
-	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
+	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -45,7 +46,7 @@ func TestClaimsERSSubjectMapping(t *testing.T) {
 		}
 
 		t.Run("string selector matches", func(t *testing.T) {
-			entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappings(
+			entitlements, err := EvaluateSubjectMappings(
 				buildAttributeSubjectMapping(attrFQN, ".department", "Finance"),
 				entity,
 			)
@@ -55,7 +56,7 @@ func TestClaimsERSSubjectMapping(t *testing.T) {
 		})
 
 		t.Run("array selector does not match", func(t *testing.T) {
-			entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappings(
+			entitlements, err := EvaluateSubjectMappings(
 				buildAttributeSubjectMapping(attrFQN, ".department[]", "Finance"),
 				entity,
 			)
@@ -78,7 +79,7 @@ func TestClaimsERSSubjectMapping(t *testing.T) {
 		}
 
 		t.Run("array selector matches", func(t *testing.T) {
-			entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappings(
+			entitlements, err := EvaluateSubjectMappings(
 				buildAttributeSubjectMapping(attrFQN, ".department[]", "Finance"),
 				entity,
 			)
@@ -88,7 +89,7 @@ func TestClaimsERSSubjectMapping(t *testing.T) {
 		})
 
 		t.Run("string selector does not match", func(t *testing.T) {
-			entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappings(
+			entitlements, err := EvaluateSubjectMappings(
 				buildAttributeSubjectMapping(attrFQN, ".department", "Finance"),
 				entity,
 			)
@@ -109,7 +110,7 @@ func TestClaimsERSSubjectMapping(t *testing.T) {
 			AdditionalProps: []*structpb.Struct{entityStruct},
 		}
 
-		entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappings(
+		entitlements, err := EvaluateSubjectMappings(
 			buildAttributeSubjectMapping(attrFQN, ".attributes.department[]", "Finance"),
 			entity,
 		)
@@ -117,4 +118,35 @@ func TestClaimsERSSubjectMapping(t *testing.T) {
 		assert.Empty(t, entitlements,
 			"selector '.attributes.department[]' should NOT match: claims entities are flat JWT claims, not Keycloak user objects")
 	})
+}
+
+func buildAttributeSubjectMapping(attrFQN, selector, value string) map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue { //nolint:unparam // attrFQN is parameterized so callers can specify any attribute FQN
+	return map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+		attrFQN: {
+			Value: &policy.Value{
+				SubjectMappings: []*policy.SubjectMapping{
+					{
+						SubjectConditionSet: &policy.SubjectConditionSet{
+							SubjectSets: []*policy.SubjectSet{
+								{
+									ConditionGroups: []*policy.ConditionGroup{
+										{
+											BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+											Conditions: []*policy.Condition{
+												{
+													SubjectExternalSelectorValue: selector,
+													Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+													SubjectExternalValues:        []string{value},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 }

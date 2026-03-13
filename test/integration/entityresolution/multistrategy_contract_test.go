@@ -3,10 +3,10 @@ package integration
 import (
 	"testing"
 
-	"github.com/opentdf/platform/service/entityresolution/integration/internal"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	multistrategyv2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/test/integration/entityresolution/internal"
 )
 
 // TestMultiStrategyContractValidation runs the complete contract test suite against

@@ -12,7 +12,7 @@ import (
 	"github.com/creasty/defaults"
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
-	"github.com/opentdf/platform/service/internal/fixtures"
+	"github.com/opentdf/platform/test/fixtures"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -125,7 +125,7 @@ func TestMain(m *testing.M) {
 
 	//nolint:sloglint // emoji
 	slog.Info("🏠 loading fixtures")
-	fixtures.LoadFixtureData("../internal/fixtures/policy_fixtures.yaml")
+	fixtures.LoadFixtureData("../../fixtures/policy_fixtures.yaml")
 
 	m.Run()
 }

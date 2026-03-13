@@ -18,7 +18,7 @@ To get started with the OpenTDF platform make sure you are running the same Go v
 <!-- markdownlint-disable MD034 github embedded sourcecode -->
 https://github.com/opentdf/platform/blob/main/service/go.mod#L3
 
-Start the required infrastructure with [compose-spec](https://compose-spec.io).
+Start the required infrastructure with [compose-spec](https://compose-spec.io). This starts the local Postgres database and Keycloak for the default development stack.
 
 ```sh
 # Note this might be `podman compose` on some systems

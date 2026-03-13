@@ -4,7 +4,6 @@ networks:
 services:
   keycloak:
     volumes:
-    - keycloak_data:/opt/keycloak/data
     - ${KEYS_DIR:-./keys}/localhost.crt:/etc/x509/tls/localhost.crt
     - ${KEYS_DIR:-./keys}/localhost.key:/etc/x509/tls/localhost.key
     - ${KEYS_DIR:-./keys}/ca.jks:/truststore/truststore.jks
@@ -20,6 +19,12 @@ services:
     environment:
       KC_PROXY: edge
       KC_HTTP_RELATIVE_PATH: /auth
+      KC_DB_VENDOR: postgres
+      KC_DB_URL_HOST: keycloakdb
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: changeme
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
       KC_HOSTNAME_STRICT_HTTPS: "false"
@@ -78,6 +83,21 @@ services:
       timeout: 10s
       retries: 3
       start_period: 2m
+  opentdfdb:
+    image: postgres:15-alpine
+    restart: always
+    user: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: opentdf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "${POSTGRES_EXPOSE_PORT:-5432}:5432"
 
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -117,7 +137,7 @@ services:
       - ers-test
       - ers-admin
     ports:
-      - "5433:5432"  # Different port to avoid conflicts with the platform's embedded Postgres
+      - "5433:5432"  # Different port to avoid conflicts with main opentdfdb
     environment:
       POSTGRES_DB: ers_test
       POSTGRES_USER: ers_test_user
@@ -185,7 +205,6 @@ services:
         condition: service_healthy
 
 volumes:
-  keycloak_data:
   ers_postgres_data:
     name: ers_test_postgres_data
   ers_ldap_data:

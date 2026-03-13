@@ -325,7 +325,7 @@ The database configuration is used to define how the application connects to its
 Root level key `db`
 
 Embedded Postgres is used only when `db.embedded.enabled` is `true` and `db.host` is empty.
-Embedded Postgres version is fixed to PostgreSQL 15 for local development compatibility.
+Embedded Postgres version is fixed to PostgreSQL 15 to match the primary Compose database image (`postgres:15-alpine`).
 Embedded Postgres binaries are image-owned at `/opt/opentdf/embedded-postgres/binaries` (not volume-managed).
 `db.embedded.root_dir` is only for mutable runtime state managed by the app (`data`, `runtime`, `cache`).
 
@@ -350,10 +350,8 @@ Embedded Postgres binaries are image-owned at `/opt/opentdf/embedded-postgres/bi
 | `embedded`                             | Embedded Postgres settings.                   |             |                                                 |
 | `embedded.enabled`                     | Enable embedded Postgres.                     | `false`     | OPENTDF_DB_EMBEDDED_ENABLED                     |
 | `embedded.root_dir`                    | Root directory used by embedded Postgres.     |             | OPENTDF_DB_EMBEDDED_ROOT_DIR                    |
-| `embedded.port`                        | Embedded Postgres port (0 = auto).            | `0`         | OPENTDF_DB_EMBEDDED_PORT                        |
 | `embedded.start_timeout_seconds`       | Startup timeout for embedded Postgres.        | `30`        | OPENTDF_DB_EMBEDDED_START_TIMEOUT_SECONDS       |
 | `embedded.stop_timeout_seconds`        | Shutdown timeout for embedded Postgres.       | `10`        | OPENTDF_DB_EMBEDDED_STOP_TIMEOUT_SECONDS        |
-| `embedded.sslmode`                     | Override sslmode for embedded Postgres.       | `disable`   | OPENTDF_DB_EMBEDDED_SSLMODE                     |
 
 
 
@@ -381,11 +379,11 @@ db:
   embedded:
     enabled: false
     root_dir: /var/lib/opentdf/pg
-    port: 0
     start_timeout_seconds: 30
     stop_timeout_seconds: 10
-    sslmode: disable
 ```
+
+When embedded Postgres is enabled, it inherits `db.port` and `db.sslmode` from the parent database config.
 
 ## Security Configuration
 

@@ -27,14 +27,10 @@ type EmbeddedConfig struct {
 	Enabled bool `mapstructure:"enabled" json:"enabled" default:"false"`
 	// RootDir is the single mounted directory used by embedded Postgres.
 	RootDir string `mapstructure:"root_dir" json:"root_dir"`
-	// Port selects the port for the embedded Postgres instance. Use 0 to auto-select.
-	Port int `mapstructure:"port" json:"port" default:"0"`
 	// StartTimeoutSeconds configures how long to wait for embedded Postgres to start.
 	StartTimeoutSeconds int `mapstructure:"start_timeout_seconds" json:"start_timeout_seconds" default:"30"`
 	// StopTimeoutSeconds configures how long to wait for embedded Postgres to stop.
 	StopTimeoutSeconds int `mapstructure:"stop_timeout_seconds" json:"stop_timeout_seconds" default:"10"`
-	// SSLMode overrides the default sslmode used with embedded Postgres.
-	SSLMode string `mapstructure:"sslmode" json:"sslmode" default:"disable"`
 }
 
 type embeddedInstance struct {
@@ -85,7 +81,7 @@ func maybeStartEmbedded(ctx context.Context, cfg Config, log *logger.Logger) (Co
 		return updated, embeddedState.instance.release, nil
 	}
 
-	port := cfg.Embedded.Port
+	port := cfg.Port
 	var err error
 	if port == 0 {
 		port, err = pickFreePort(ctx)
@@ -168,11 +164,6 @@ func maybeStartEmbedded(ctx context.Context, cfg Config, log *logger.Logger) (Co
 func applyEmbeddedConnection(cfg Config, host string, port int) Config {
 	cfg.Host = host
 	cfg.Port = port
-	if strings.TrimSpace(cfg.Embedded.SSLMode) != "" {
-		cfg.SSLMode = cfg.Embedded.SSLMode
-	} else {
-		cfg.SSLMode = "disable"
-	}
 	return cfg
 }
 
@@ -193,7 +184,7 @@ func ensureEmbeddedCompatible(cfg Config, running *embeddedInstance) error {
 		return errors.New("embedded postgres already running with different root_dir")
 	}
 
-	if cfg.Embedded.Port != 0 && cfg.Embedded.Port != running.port {
+	if cfg.Port != 0 && cfg.Port != running.port {
 		return errors.New("embedded postgres already running on a different port")
 	}
 

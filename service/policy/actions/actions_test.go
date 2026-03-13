@@ -240,13 +240,17 @@ func (s *ActionSuite) Test_GetAction_Fails() {
 }
 
 func (s *ActionSuite) Test_ListActions_Succeeds() {
+	reqNoNamespace := &actions.ListActionsRequest{}
+	err := s.v.Validate(reqNoNamespace)
+	s.Require().NoError(err)
+
 	reqPaginated := &actions.ListActionsRequest{
 		NamespaceId: validUUID,
 		Pagination: &policy.PageRequest{
 			Limit: 1,
 		},
 	}
-	err := s.v.Validate(reqPaginated)
+	err = s.v.Validate(reqPaginated)
 	s.Require().NoError(err)
 
 	reqPaginated.Pagination.Offset = 100
@@ -259,15 +263,9 @@ func (s *ActionSuite) Test_ListActions_Succeeds() {
 }
 
 func (s *ActionSuite) Test_ListActions_Fails() {
-	// missing namespace
-	req := &actions.ListActionsRequest{}
-	err := s.v.Validate(req)
-	s.Require().Error(err)
-	s.Require().Contains(err.Error(), errMessageOneof)
-
 	// invalid namespace id
-	req = &actions.ListActionsRequest{NamespaceId: "invalid-uuid"}
-	err = s.v.Validate(req)
+	req := &actions.ListActionsRequest{NamespaceId: "invalid-uuid"}
+	err := s.v.Validate(req)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), errMessageUUID)
 

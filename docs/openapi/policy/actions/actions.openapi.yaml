@@ -1172,13 +1172,13 @@ components:
           type: string
           title: namespace_id
           format: uuid
-          description: ID of the namespace. Required if namespace_fqn is not provided.
+          description: ID of the namespace to scope results. If omitted, returns actions across namespaces.
         namespaceFqn:
           type: string
           title: namespace_fqn
           minLength: 1
           format: uri
-          description: FQN of the namespace. Required if namespace_id is not provided.
+          description: FQN of the namespace to scope results. If omitted, returns actions across namespaces.
         pagination:
           title: pagination
           description: Optional

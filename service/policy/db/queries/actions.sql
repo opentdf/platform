@@ -15,16 +15,6 @@ WITH resolved_namespace AS (
         OR
         (sqlc.narg('namespace_fqn')::text IS NOT NULL AND fqns.fqn = sqlc.narg('namespace_fqn')::text)
     LIMIT 1
-),
-counted AS (
-    SELECT COUNT(a.id) AS total
-    FROM actions a
-    LEFT JOIN resolved_namespace rn ON TRUE
-    WHERE
-        rn.id IS NULL
-        OR a.is_standard = TRUE
-        OR a.namespace_id = rn.id
-        OR a.namespace_id IS NULL
 )
 SELECT 
     a.id,
@@ -48,12 +38,11 @@ SELECT
             'fqn', ns_fqns.fqn
         )
     END AS namespace,
-    counted.total
+    COUNT(*) OVER() as total
 FROM actions a
 LEFT JOIN resolved_namespace rn ON TRUE
 LEFT JOIN attribute_namespaces n ON a.namespace_id = n.id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
-CROSS JOIN counted
 WHERE
     (
         sqlc.narg('namespace_id')::uuid IS NULL

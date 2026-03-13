@@ -222,16 +222,15 @@ func (s *ActionsSuite) Test_ListActions_WithoutNamespace_ReturnsAcrossNamespaces
 	s.True(foundOther)
 }
 
-func (s *ActionsSuite) Test_ListActions_LegacyCustomAction_NamespaceProjection_Succeeds() {
+func (s *ActionsSuite) Test_ListActions_LegacyCustomAction_NamespaceUnset_Succeeds() {
 	legacy := s.f.GetCustomActionKey("custom_action_1")
-	assertLegacyProjected := func(list *actions.ListActionsResponse) {
+	assertLegacyUnset := func(list *actions.ListActionsResponse) {
 		s.T().Helper()
 		found := false
 		for _, action := range list.GetActionsCustom() {
 			if action.GetId() == legacy.ID {
 				found = true
-				s.Equal(s.defaultNamespaceID(), action.GetNamespace().GetId())
-				s.Equal(s.defaultNamespaceFQN(), action.GetNamespace().GetFqn())
+				s.Nil(action.GetNamespace())
 			}
 		}
 		s.True(found)
@@ -239,11 +238,11 @@ func (s *ActionsSuite) Test_ListActions_LegacyCustomAction_NamespaceProjection_S
 
 	listByID, err := s.db.PolicyClient.ListActions(s.ctx, &actions.ListActionsRequest{NamespaceId: s.defaultNamespaceID()})
 	s.Require().NoError(err)
-	assertLegacyProjected(listByID)
+	assertLegacyUnset(listByID)
 
 	listByFQN, err := s.db.PolicyClient.ListActions(s.ctx, &actions.ListActionsRequest{NamespaceFqn: s.defaultNamespaceFQN()})
 	s.Require().NoError(err)
-	assertLegacyProjected(listByFQN)
+	assertLegacyUnset(listByFQN)
 }
 
 func (s *ActionsSuite) Test_GetAction_Id_Succeeds() {
@@ -339,8 +338,7 @@ func (s *ActionsSuite) Test_GetAction_Name_LegacyCustomAction_Succeeds() {
 	assertLegacyGet := func(action *policy.Action) {
 		s.T().Helper()
 		s.Equal(legacy.ID, action.GetId())
-		s.Equal(s.defaultNamespaceID(), action.GetNamespace().GetId())
-		s.Equal(s.defaultNamespaceFQN(), action.GetNamespace().GetFqn())
+		s.Nil(action.GetNamespace())
 	}
 
 	byID, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{

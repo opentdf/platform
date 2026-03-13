@@ -227,11 +227,6 @@ SELECT
     a.is_standard,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', a.metadata -> 'labels', 'created_at', a.created_at, 'updated_at', a.updated_at)) AS metadata,
     CASE
-        WHEN a.namespace_id IS NULL AND $1::text IS NOT NULL THEN JSON_BUILD_OBJECT(
-            'id', rn.id,
-            'name', rn.name,
-            'fqn', rn.fqn
-        )
         WHEN a.namespace_id IS NULL THEN NULL
         ELSE JSON_BUILD_OBJECT(
             'id', n.id,
@@ -245,11 +240,11 @@ LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attr
 LEFT JOIN resolved_namespace rn ON TRUE
 WHERE 
   (
-    ($2::uuid IS NOT NULL AND a.id = $2::uuid)
+    ($1::uuid IS NOT NULL AND a.id = $1::uuid)
     OR
     (
-        $1::text IS NOT NULL
-        AND a.name = $1::text
+        $2::text IS NOT NULL
+        AND a.name = $2::text
         AND (
             (rn.id IS NOT NULL AND (a.namespace_id = rn.id OR a.namespace_id IS NULL))
             OR
@@ -268,8 +263,8 @@ LIMIT 1
 `
 
 type getActionParams struct {
-	Name         pgtype.Text `json:"name"`
 	ID           pgtype.UUID `json:"id"`
+	Name         pgtype.Text `json:"name"`
 	NamespaceID  pgtype.UUID `json:"namespace_id"`
 	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
 }
@@ -303,11 +298,6 @@ type getActionRow struct {
 //	    a.is_standard,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', a.metadata -> 'labels', 'created_at', a.created_at, 'updated_at', a.updated_at)) AS metadata,
 //	    CASE
-//	        WHEN a.namespace_id IS NULL AND $1::text IS NOT NULL THEN JSON_BUILD_OBJECT(
-//	            'id', rn.id,
-//	            'name', rn.name,
-//	            'fqn', rn.fqn
-//	        )
 //	        WHEN a.namespace_id IS NULL THEN NULL
 //	        ELSE JSON_BUILD_OBJECT(
 //	            'id', n.id,
@@ -321,11 +311,11 @@ type getActionRow struct {
 //	LEFT JOIN resolved_namespace rn ON TRUE
 //	WHERE
 //	  (
-//	    ($2::uuid IS NOT NULL AND a.id = $2::uuid)
+//	    ($1::uuid IS NOT NULL AND a.id = $1::uuid)
 //	    OR
 //	    (
-//	        $1::text IS NOT NULL
-//	        AND a.name = $1::text
+//	        $2::text IS NOT NULL
+//	        AND a.name = $2::text
 //	        AND (
 //	            (rn.id IS NOT NULL AND (a.namespace_id = rn.id OR a.namespace_id IS NULL))
 //	            OR
@@ -343,8 +333,8 @@ type getActionRow struct {
 //	LIMIT 1
 func (q *Queries) getAction(ctx context.Context, arg getActionParams) (getActionRow, error) {
 	row := q.db.QueryRow(ctx, getAction,
-		arg.Name,
 		arg.ID,
+		arg.Name,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
 	)
@@ -384,11 +374,6 @@ SELECT
     )) as metadata,
     a.is_standard,
     CASE
-        WHEN a.namespace_id IS NULL AND rn.id IS NOT NULL THEN JSON_BUILD_OBJECT(
-            'id', rn.id,
-            'name', rn.name,
-            'fqn', rn.fqn
-        )
         WHEN a.namespace_id IS NULL THEN NULL
         ELSE JSON_BUILD_OBJECT(
             'id', n.id,
@@ -457,11 +442,6 @@ type listActionsRow struct {
 //	    )) as metadata,
 //	    a.is_standard,
 //	    CASE
-//	        WHEN a.namespace_id IS NULL AND rn.id IS NOT NULL THEN JSON_BUILD_OBJECT(
-//	            'id', rn.id,
-//	            'name', rn.name,
-//	            'fqn', rn.fqn
-//	        )
 //	        WHEN a.namespace_id IS NULL THEN NULL
 //	        ELSE JSON_BUILD_OBJECT(
 //	            'id', n.id,

@@ -26,11 +26,6 @@ SELECT
     )) as metadata,
     a.is_standard,
     CASE
-        WHEN a.namespace_id IS NULL AND rn.id IS NOT NULL THEN JSON_BUILD_OBJECT(
-            'id', rn.id,
-            'name', rn.name,
-            'fqn', rn.fqn
-        )
         WHEN a.namespace_id IS NULL THEN NULL
         ELSE JSON_BUILD_OBJECT(
             'id', n.id,
@@ -75,11 +70,6 @@ SELECT
     a.is_standard,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', a.metadata -> 'labels', 'created_at', a.created_at, 'updated_at', a.updated_at)) AS metadata,
     CASE
-        WHEN a.namespace_id IS NULL AND sqlc.narg('name')::text IS NOT NULL THEN JSON_BUILD_OBJECT(
-            'id', rn.id,
-            'name', rn.name,
-            'fqn', rn.fqn
-        )
         WHEN a.namespace_id IS NULL THEN NULL
         ELSE JSON_BUILD_OBJECT(
             'id', n.id,

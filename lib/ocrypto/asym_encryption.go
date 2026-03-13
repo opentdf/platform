@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/ecdsa"
+	"crypto/mlkem"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1" //nolint:gosec // used for padding which is safe
@@ -23,8 +24,9 @@ import (
 type SchemeType string
 
 const (
-	RSA SchemeType = "wrapped"
-	EC  SchemeType = "ec-wrapped"
+	RSA   SchemeType = "wrapped"
+	EC    SchemeType = "ec-wrapped"
+	MLKEM SchemeType = "mlkem-wrapped"
 )
 
 type PublicKeyEncryptor interface {
@@ -59,6 +61,12 @@ type ECEncryptor struct {
 	info []byte
 }
 
+type MLKEMEncryptor768 struct {
+	pub          *mlkem.EncapsulationKey768
+	cipherText   []byte
+	sharedSecret []byte
+}
+
 func FromPublicPEM(publicKeyInPem string) (PublicKeyEncryptor, error) {
 	// TK Move salt and info out of library, into API option functions
 	digest := sha256.New()
@@ -85,6 +93,8 @@ func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyE
 		return newECIES(e, salt, info)
 	case *ecdh.PublicKey:
 		return newECIES(pub, salt, info)
+	case *mlkem.EncapsulationKey768:
+		return newMLKEM768(pub), nil
 	default:
 		break
 	}
@@ -95,6 +105,11 @@ func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyE
 func newECIES(pub *ecdh.PublicKey, salt, info []byte) (ECEncryptor, error) {
 	ek, err := pub.Curve().GenerateKey(rand.Reader)
 	return ECEncryptor{pub, ek, salt, info}, err
+}
+
+func newMLKEM768(pub *mlkem.EncapsulationKey768) *MLKEMEncryptor768 {
+	sharedSecret, cipherText := pub.Encapsulate()
+	return &MLKEMEncryptor768{pub: pub, cipherText: cipherText, sharedSecret: sharedSecret}
 }
 
 // NewAsymEncryption creates and returns a new AsymEncryption.
@@ -123,14 +138,21 @@ func getPublicPart(publicKeyInPem string) (any, error) {
 	}
 
 	var pub any
-	if strings.Contains(publicKeyInPem, "BEGIN CERTIFICATE") {
+	switch {
+	case strings.Contains(publicKeyInPem, "BEGIN CERTIFICATE"):
 		cert, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {
 			return nil, fmt.Errorf("x509.ParseCertificate failed: %w", err)
 		}
 
 		pub = cert.PublicKey
-	} else {
+	case block.Type == "MLKEM ENCAPSULATOR":
+		encap, err := mlkem.NewEncapsulationKey768(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("mlkem.NewEncapsulationKey768 failed: %w", err)
+		}
+		pub = encap
+	default:
 		var err error
 		pub, err = x509.ParsePKIXPublicKey(block.Bytes)
 		if err != nil {
@@ -160,6 +182,10 @@ func (e ECEncryptor) Type() SchemeType {
 	return EC
 }
 
+func (e MLKEMEncryptor768) Type() SchemeType {
+	return MLKEM
+}
+
 func (e ECEncryptor) KeyType() KeyType {
 	switch e.pub.Curve() {
 	case ecdh.P256():
@@ -176,6 +202,10 @@ func (e ECEncryptor) KeyType() KeyType {
 	}
 }
 
+func (e MLKEMEncryptor768) KeyType() KeyType {
+	return MLKEM768Key
+}
+
 func (e AsymEncryption) EphemeralKey() []byte {
 	return nil
 }
@@ -188,6 +218,10 @@ func (e ECEncryptor) EphemeralKey() []byte {
 	return publicKeyBytes
 }
 
+func (e MLKEMEncryptor768) EphemeralKey() []byte {
+	return e.cipherText
+}
+
 func (e AsymEncryption) Metadata() (map[string]string, error) {
 	return make(map[string]string), nil
 }
@@ -195,6 +229,12 @@ func (e AsymEncryption) Metadata() (map[string]string, error) {
 func (e ECEncryptor) Metadata() (map[string]string, error) {
 	m := make(map[string]string)
 	m["ephemeralPublicKey"] = string(e.EphemeralKey())
+	return m, nil
+}
+
+func (e MLKEMEncryptor768) Metadata() (map[string]string, error) {
+	m := make(map[string]string)
+	m["encapsulatedKey"] = string(e.EphemeralKey())
 	return m, nil
 }
 
@@ -269,7 +309,33 @@ func (e ECEncryptor) Encrypt(data []byte) ([]byte, error) {
 	return ciphertext, nil
 }
 
+func (e MLKEMEncryptor768) Encrypt(data []byte) ([]byte, error) {
+	block, err := aes.NewCipher(e.sharedSecret)
+	if err != nil {
+		return nil, fmt.Errorf("aes.NewCipher failed: %w", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("cipher.NewGCM failed: %w", err)
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, fmt.Errorf("nonce generation failed: %w", err)
+	}
+
+	return gcm.Seal(nonce, nonce, data, nil), nil
+}
+
 // PublicKeyInPemFormat Returns public key in pem format.
 func (e ECEncryptor) PublicKeyInPemFormat() (string, error) {
 	return publicKeyInPemFormat(e.ek.Public())
+}
+
+func (e MLKEMEncryptor768) PublicKeyInPemFormat() (string, error) {
+	return string(pem.EncodeToMemory(&pem.Block{
+		Type:  "MLKEM ENCAPSULATOR",
+		Bytes: e.pub.Bytes(),
+	})), nil
 }

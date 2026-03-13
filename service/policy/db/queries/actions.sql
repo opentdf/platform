@@ -45,7 +45,6 @@ WHERE
     )
     OR a.is_standard = TRUE
     OR a.namespace_id = rn.id
-    OR a.namespace_id IS NULL
 ORDER BY a.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_;

@@ -435,6 +435,10 @@ components:
         name:
           type: string
           title: name
+        namespace:
+          title: namespace
+          description: Namespace context for this action
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -1053,6 +1057,17 @@ components:
             this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
             ```
 
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+          description: ID of the namespace. Required if namespace_fqn is not provided.
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: FQN of the namespace. Required if namespace_id is not provided.
         metadata:
           title: metadata
           description: Optional
@@ -1116,8 +1131,26 @@ components:
           title: name
           required:
             - name
+      properties:
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+          description: ID of the namespace. Required when identifier is set to name.
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: FQN of the namespace. Required when identifier is set to name.
       title: GetActionRequest
       additionalProperties: false
+      description: |+
+        Either namespace_id or namespace_fqn must be provided when getting an action by name:
+        ```
+        !has(this.name) || this.namespace_id != '' || this.namespace_fqn != ''
+        ```
+
     policy.actions.GetActionResponse:
       type: object
       properties:
@@ -1135,6 +1168,17 @@ components:
     policy.actions.ListActionsRequest:
       type: object
       properties:
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+          description: ID of the namespace. Required if namespace_fqn is not provided.
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: FQN of the namespace. Required if namespace_id is not provided.
         pagination:
           title: pagination
           description: Optional

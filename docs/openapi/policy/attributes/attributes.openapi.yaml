@@ -46,6 +46,9 @@ paths:
       tags:
         - policy.attributes.AttributesService
       summary: ListAttributeValues
+      description: |-
+        Deprecated
+         Use GetAttribute
       operationId: policy.attributes.AttributesService.ListAttributeValues
       parameters:
         - name: Connect-Protocol-Version
@@ -76,6 +79,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.ListAttributeValuesResponse'
+      deprecated: true
   /policy.attributes.AttributesService/GetAttribute:
     post:
       tags:
@@ -952,6 +956,10 @@ components:
         name:
           type: string
           title: name
+        namespace:
+          title: namespace
+          description: Namespace context for this action
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'

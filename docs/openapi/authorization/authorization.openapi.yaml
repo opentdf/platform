@@ -60,7 +60,37 @@ paths:
           schema:
             type: string
             title: name
-        - name: decisionRequests.actions.metadata.createdAt.seconds
+        - name: decisionRequests.actions.namespace.id
+          in: query
+          description: generated uuid in database
+          schema:
+            type: string
+            title: id
+            description: generated uuid in database
+        - name: decisionRequests.actions.namespace.name
+          in: query
+          description: |-
+            used to partition Attribute Definitions, support by namespace AuthN and
+             enable federation
+          schema:
+            type: string
+            title: name
+            description: |-
+              used to partition Attribute Definitions, support by namespace AuthN and
+               enable federation
+        - name: decisionRequests.actions.namespace.fqn
+          in: query
+          schema:
+            type: string
+            title: fqn
+        - name: decisionRequests.actions.namespace.active.value
+          in: query
+          description: The bool value.
+          schema:
+            type: boolean
+            title: value
+            description: The bool value.
+        - name: decisionRequests.actions.namespace.metadata.createdAt.seconds
           in: query
           description: |-
             Represents seconds of UTC time since Unix epoch
@@ -76,7 +106,7 @@ paths:
               Represents seconds of UTC time since Unix epoch
                1970-01-01T00:00:00Z. Must be from 0001-01-01T00:00:00Z to
                9999-12-31T23:59:59Z inclusive.
-        - name: decisionRequests.actions.metadata.createdAt.nanos
+        - name: decisionRequests.actions.namespace.metadata.createdAt.nanos
           in: query
           description: |-
             Non-negative fractions of a second at nanosecond resolution. Negative
@@ -92,16 +122,128 @@ paths:
                second values with fractions must still have non-negative nanos values
                that count forward in time. Must be from 0 to 999,999,999
                inclusive.
-        - name: decisionRequests.actions.metadata.labels.key
+        - name: decisionRequests.actions.namespace.metadata.labels.key
           in: query
           schema:
             type: string
             title: key
-        - name: decisionRequests.actions.metadata.labels.value
+        - name: decisionRequests.actions.namespace.metadata.labels.value
           in: query
           schema:
             type: string
             title: value
+        - name: decisionRequests.actions.namespace.grants.id
+          in: query
+          schema:
+            type: string
+            title: id
+        - name: decisionRequests.actions.namespace.grants.uri
+          in: query
+          description: Address of a KAS instance
+          schema:
+            type: string
+            title: uri
+            description: |+
+              Address of a KAS instance
+              URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+              ```
+              this.matches('^https?://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')
+              ```
+
+        - name: decisionRequests.actions.namespace.grants.publicKey.remote
+          in: query
+          description: kas public key url - optional since can also be retrieved via public key
+          schema:
+            type: string
+            title: remote
+            description: |+
+              kas public key url - optional since can also be retrieved via public key
+              URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+              ```
+              this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')
+              ```
+
+        - name: decisionRequests.actions.namespace.grants.publicKey.cached.keys.pem
+          in: query
+          description: x509 ASN.1 content in PEM envelope, usually
+          schema:
+            type: string
+            title: pem
+            maxLength: 8192
+            minLength: 1
+            description: x509 ASN.1 content in PEM envelope, usually
+        - name: decisionRequests.actions.namespace.grants.publicKey.cached.keys.kid
+          in: query
+          description: A unique string identifier for this key
+          schema:
+            type: string
+            title: kid
+            maxLength: 32
+            minLength: 1
+            description: A unique string identifier for this key
+        - name: decisionRequests.actions.namespace.grants.publicKey.cached.keys.alg
+          in: query
+          description: |-
+            A known algorithm type with any additional parameters encoded.
+             To start, these may be `rsa:2048` for RSA-based wrapping and
+             `ec:secp256r1` for EC-based wrapping, but more formats may be added as needed.
+          schema:
+            not:
+              enum:
+                - 0
+            title: alg
+            description: |-
+              A known algorithm type with any additional parameters encoded.
+               To start, these may be `rsa:2048` for RSA-based wrapping and
+               `ec:secp256r1` for EC-based wrapping, but more formats may be added as needed.
+            $ref: '#/components/schemas/policy.KasPublicKeyAlgEnum'
+        - name: decisionRequests.actions.namespace.grants.sourceType
+          in: query
+          description: 'The source of the KAS: (INTERNAL, EXTERNAL)'
+          schema:
+            title: source_type
+            description: 'The source of the KAS: (INTERNAL, EXTERNAL)'
+            $ref: '#/components/schemas/policy.SourceType'
+        - name: decisionRequests.actions.namespace.grants.kasKeys.kasUri
+          in: query
+          description: The URL of the Key Access Server
+          schema:
+            type: string
+            title: kas_uri
+            description: The URL of the Key Access Server
+        - name: decisionRequests.actions.namespace.grants.kasKeys.publicKey.algorithm
+          in: query
+          schema:
+            title: algorithm
+            $ref: '#/components/schemas/policy.Algorithm'
+        - name: decisionRequests.actions.namespace.grants.kasKeys.publicKey.kid
+          in: query
+          schema:
+            type: string
+            title: kid
+        - name: decisionRequests.actions.namespace.grants.kasKeys.publicKey.pem
+          in: query
+          schema:
+            type: string
+            title: pem
+        - name: decisionRequests.actions.namespace.grants.kasKeys.kasId
+          in: query
+          description: The ID of the Key Access Server
+          schema:
+            type: string
+            title: kas_id
+            description: The ID of the Key Access Server
+        - name: decisionRequests.actions.namespace.grants.name
+          in: query
+          description: |-
+            Optional
+             Unique name of the KAS instance
+          schema:
+            type: string
+            title: name
+            description: |-
+              Optional
+               Unique name of the KAS instance
         - name: decisionRequests.tokens.id
           in: query
           description: ephemeral id for tracking between request and response
@@ -189,6 +331,38 @@ components:
         - STANDARD_ACTION_UNSPECIFIED
         - STANDARD_ACTION_DECRYPT
         - STANDARD_ACTION_TRANSMIT
+    policy.Algorithm:
+      type: string
+      title: Algorithm
+      enum:
+        - ALGORITHM_UNSPECIFIED
+        - ALGORITHM_RSA_2048
+        - ALGORITHM_RSA_4096
+        - ALGORITHM_EC_P256
+        - ALGORITHM_EC_P384
+        - ALGORITHM_EC_P521
+      description: Supported key algorithms.
+    policy.KasPublicKeyAlgEnum:
+      type: string
+      title: KasPublicKeyAlgEnum
+      enum:
+        - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+    policy.SourceType:
+      type: string
+      title: SourceType
+      enum:
+        - SOURCE_TYPE_UNSPECIFIED
+        - SOURCE_TYPE_INTERNAL
+        - SOURCE_TYPE_EXTERNAL
+      description: |-
+        Describes whether this kas is managed by the organization or if they imported
+         the kas information from an external party. These two modes are necessary in order
+         to encrypt a tdf dek with an external parties kas public key.
     authorization.DecisionRequest:
       type: object
       properties:
@@ -660,6 +834,15 @@ components:
           additionalProperties: true
       additionalProperties: true
       description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+    google.protobuf.BoolValue:
+      type: boolean
+      description: |-
+        Wrapper message for `bool`.
+
+         The JSON representation for `BoolValue` is JSON `true` and `false`.
+
+         Not recommended for use in new APIs, but still useful for legacy APIs and
+         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
       examples:
@@ -783,12 +966,198 @@ components:
         name:
           type: string
           title: name
+        namespace:
+          title: namespace
+          description: Namespace context for this action
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
       title: Action
       additionalProperties: false
       description: An action an entity can take
+    policy.KasPublicKey:
+      type: object
+      properties:
+        pem:
+          type: string
+          title: pem
+          maxLength: 8192
+          minLength: 1
+          description: x509 ASN.1 content in PEM envelope, usually
+        kid:
+          type: string
+          title: kid
+          maxLength: 32
+          minLength: 1
+          description: A unique string identifier for this key
+        alg:
+          not:
+            enum:
+              - 0
+          title: alg
+          description: |-
+            A known algorithm type with any additional parameters encoded.
+             To start, these may be `rsa:2048` for RSA-based wrapping and
+             `ec:secp256r1` for EC-based wrapping, but more formats may be added as needed.
+          $ref: '#/components/schemas/policy.KasPublicKeyAlgEnum'
+      title: KasPublicKey
+      additionalProperties: false
+      description: |-
+        Deprecated
+         A KAS public key and some associated metadata for further identifcation
+    policy.KasPublicKeySet:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.KasPublicKey'
+          title: keys
+      title: KasPublicKeySet
+      additionalProperties: false
+      description: |-
+        Deprecated
+         A list of known KAS public keys
+    policy.KeyAccessServer:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        uri:
+          type: string
+          title: uri
+          description: |+
+            Address of a KAS instance
+            URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+            ```
+            this.matches('^https?://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')
+            ```
+
+        publicKey:
+          title: public_key
+          description: 'Deprecated: KAS can have multiple key pairs'
+          $ref: '#/components/schemas/policy.PublicKey'
+        sourceType:
+          title: source_type
+          description: 'The source of the KAS: (INTERNAL, EXTERNAL)'
+          $ref: '#/components/schemas/policy.SourceType'
+        kasKeys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SimpleKasKey'
+          title: kas_keys
+          description: Kas keys associated with this KAS
+        name:
+          type: string
+          title: name
+          description: |-
+            Optional
+             Unique name of the KAS instance
+        metadata:
+          title: metadata
+          description: Common metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: KeyAccessServer
+      additionalProperties: false
+      description: Key Access Server Registry
+    policy.Namespace:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: generated uuid in database
+        name:
+          type: string
+          title: name
+          description: |-
+            used to partition Attribute Definitions, support by namespace AuthN and
+             enable federation
+        fqn:
+          type: string
+          title: fqn
+        active:
+          title: active
+          description: active by default until explicitly deactivated
+          $ref: '#/components/schemas/google.protobuf.BoolValue'
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+        grants:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.KeyAccessServer'
+          title: grants
+          description: Deprecated KAS grants for the namespace. Use kas_keys instead.
+        kasKeys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SimpleKasKey'
+          title: kas_keys
+          description: Keys for the namespace
+      title: Namespace
+      additionalProperties: false
+    policy.PublicKey:
+      type: object
+      oneOf:
+        - properties:
+            cached:
+              title: cached
+              description: public key with additional information. Current preferred version
+              $ref: '#/components/schemas/policy.KasPublicKeySet'
+          title: cached
+          required:
+            - cached
+        - properties:
+            remote:
+              type: string
+              title: remote
+              description: |+
+                kas public key url - optional since can also be retrieved via public key
+                URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+                ```
+                this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')
+                ```
+
+          title: remote
+          required:
+            - remote
+      title: PublicKey
+      additionalProperties: false
+      description: Deprecated
+    policy.SimpleKasKey:
+      type: object
+      properties:
+        kasUri:
+          type: string
+          title: kas_uri
+          description: The URL of the Key Access Server
+        publicKey:
+          title: public_key
+          description: The public key of the Key that belongs to the KAS
+          $ref: '#/components/schemas/policy.SimpleKasPublicKey'
+        kasId:
+          type: string
+          title: kas_id
+          description: The ID of the Key Access Server
+      title: SimpleKasKey
+      additionalProperties: false
+    policy.SimpleKasPublicKey:
+      type: object
+      properties:
+        algorithm:
+          title: algorithm
+          $ref: '#/components/schemas/policy.Algorithm'
+        kid:
+          type: string
+          title: kid
+        pem:
+          type: string
+          title: pem
+      title: SimpleKasPublicKey
+      additionalProperties: false
     connect-protocol-version:
       type: number
       title: Connect-Protocol-Version

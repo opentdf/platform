@@ -2344,6 +2344,13 @@
                 </tr>
               
                 <tr>
+                  <td>namespace</td>
+                  <td><a href="#policy.Namespace">Namespace</a></td>
+                  <td></td>
+                  <td><p>Namespace context for this action </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -3289,6 +3296,13 @@ Base64 encoded public key in PEM format </p></td>
                   <td>values</td>
                   <td><a href="#policy.RegisteredResourceValue">RegisteredResourceValue</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace</td>
+                  <td><a href="#policy.Namespace">Namespace</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
@@ -7424,6 +7438,20 @@ Empty when none remain after current page </p></td>
                 </tr>
               
                 <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ID of the namespace. Required if namespace_fqn is not provided. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>FQN of the namespace. Required if namespace_id is not provided. </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
@@ -7533,6 +7561,20 @@ Empty when none remain after current page </p></td>
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ID of the namespace. Required when identifier is set to name. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>FQN of the namespace. Required when identifier is set to name. </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -7580,6 +7622,20 @@ Empty when none remain after current page </p></td>
               <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
             </thead>
             <tbody>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ID of the namespace. Required if namespace_fqn is not provided. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>FQN of the namespace. Required if namespace_id is not provided. </p></td>
+                </tr>
               
                 <tr>
                   <td>pagination</td>
@@ -9091,7 +9147,8 @@ Attribute RPCs
                 <td>ListAttributeValues</td>
                 <td><a href="#policy.attributes.ListAttributeValuesRequest">ListAttributeValuesRequest</a></td>
                 <td><a href="#policy.attributes.ListAttributeValuesResponse">ListAttributeValuesResponse</a></td>
-                <td><p></p></td>
+                <td><p>Deprecated
+Use GetAttribute</p></td>
               </tr>
             
               <tr>
@@ -9230,6 +9287,11 @@ Value RPCs
               </tr>
             </thead>
             <tbody>
+            
+              <tr>
+                <td>ListAttributeValues</td>
+                <td><p>true</p></td>
+              </tr>
             
               <tr>
                 <td>AssignKeyAccessServerToAttribute</td>
@@ -13766,9 +13828,23 @@ Common metadata </p></td>
                   <td>values</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
-                  <td><p>Optional 
+                  <td><p>Optional
 Registered Resource Values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
 The stored value will be normalized to lower case. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -13997,6 +14073,20 @@ Common metadata </p></td>
               
                 <tr>
                   <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
@@ -14238,6 +14328,20 @@ Common metadata </p></td>
               <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
             </thead>
             <tbody>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
               
                 <tr>
                   <td>pagination</td>

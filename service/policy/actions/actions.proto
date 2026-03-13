@@ -12,6 +12,12 @@ import "policy/selectors.proto";
 */
 
 message GetActionRequest {
+  option (buf.validate.message).cel = {
+    id: "namespace_required_for_name"
+    message: "Either namespace_id or namespace_fqn must be provided when getting an action by name"
+    expression: "!has(this.name) || this.namespace_id != '' || this.namespace_fqn != ''"
+  };
+
   // Required
   oneof identifier {
     option (buf.validate.oneof).required = true;
@@ -25,6 +31,20 @@ message GetActionRequest {
       }
     ];
   }
+
+  // ID of the namespace. Required when identifier is set to name.
+  string namespace_id = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
+  // FQN of the namespace. Required when identifier is set to name.
+  string namespace_fqn = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len : 1
+      uri : true
+    }
+  ];
 }
 message GetActionResponse {
   policy.Action action = 1;
@@ -34,6 +54,19 @@ message GetActionResponse {
 }
 
 message ListActionsRequest {
+  // Required
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: true };
+
+  // ID of the namespace. Required if namespace_fqn is not provided.
+  string namespace_id = 1 [(buf.validate.field).string.uuid = true];
+  // FQN of the namespace. Required if namespace_id is not provided.
+  string namespace_fqn = 2 [
+    (buf.validate.field).string = {
+      min_len : 1
+      uri : true
+    }
+  ];
+
   // Optional
   policy.PageRequest pagination = 10;
 }
@@ -48,6 +81,9 @@ message ListActionsResponse {
 // Creation of Standard actions is not supported.
 message CreateActionRequest {
   // Required
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: true };
+
+  // Required
   string name = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.max_len = 253,
@@ -55,6 +91,16 @@ message CreateActionRequest {
       id: "action_name_format"
       message: "Action name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action name will be normalized to lower case."
       expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+
+  // ID of the namespace. Required if namespace_fqn is not provided.
+  string namespace_id = 2 [(buf.validate.field).string.uuid = true];
+  // FQN of the namespace. Required if namespace_id is not provided.
+  string namespace_fqn = 3 [
+    (buf.validate.field).string = {
+      min_len : 1
+      uri : true
     }
   ];
 

@@ -458,16 +458,22 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_Cascades_List() {
 	}
 
 	listValues := func(state common.ActiveStateEnum) bool {
-		listedValsRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
-			AttributeId: deactivatedAttrID,
-			State:       state,
-		})
+		gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, deactivatedAttrID)
 		s.Require().NoError(err)
-		s.NotNil(listedValsRsp)
-		listed := listedValsRsp.GetValues()
-		for _, v := range listed {
-			if deactivatedAttrValueID == v.GetId() {
+		s.NotNil(gotAttr)
+		for _, v := range gotAttr.GetValues() {
+			if deactivatedAttrValueID != v.GetId() {
+				continue
+			}
+			switch state {
+			case common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE:
+				return v.GetActive().GetValue()
+			case common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE:
+				return !v.GetActive().GetValue()
+			case common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY:
 				return true
+			case common.ActiveStateEnum_ACTIVE_STATE_ENUM_UNSPECIFIED:
+				return v.GetActive().GetValue()
 			}
 		}
 		return false

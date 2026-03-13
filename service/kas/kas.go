@@ -95,9 +95,9 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				} else {
 					// Set up both the legacy CryptoProvider and the new SecurityProvider
 					kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)
-					p.CryptoProvider = srp.OTDF.CryptoProvider
+					p.CryptoProvider = srp.OTDF.CryptoProvider //nolint:staticcheck // Legacy field retained during migration.
 
-					inProcessService := initSecurityProviderAdapter(p.CryptoProvider, kasCfg, srp.Logger)
+					inProcessService := initSecurityProviderAdapter(p.CryptoProvider, kasCfg, srp.Logger) //nolint:staticcheck // Legacy field retained during migration.
 
 					p.KeyDelegator = trust.NewDelegatingKeyService(inProcessService, srp.Logger, nil)
 					p.KeyDelegator.RegisterKeyManagerCtx(inProcessService.Name(), func(_ context.Context, _ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {

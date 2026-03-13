@@ -76,7 +76,7 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 
 		keyAccessServer.Id = kas.ID
 		keyAccessServer.Uri = kas.Uri
-		keyAccessServer.PublicKey = publicKey
+		keyAccessServer.PublicKey = publicKey //nolint:staticcheck // Legacy single-key field maintained for compatibility.
 		keyAccessServer.Name = kas.KasName.String
 		keyAccessServer.Metadata = metadata
 		keyAccessServer.KasKeys = keys
@@ -294,7 +294,7 @@ func (c PolicyDBClient) DeleteKeyAccessServer(ctx context.Context, id string) (*
 	}, nil
 }
 
-func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) {
+func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) { //nolint:staticcheck // Compatibility path for deprecated RPC.
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 	maxLimit := c.listCfg.limitMax
 	if maxLimit > 0 && limit > maxLimit {
@@ -350,7 +350,7 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 		total = int32(listRows[0].Total)
 		nextOffset = getNextOffset(offset, limit, total)
 	}
-	return &kasregistry.ListKeyAccessServerGrantsResponse{
+	return &kasregistry.ListKeyAccessServerGrantsResponse{ //nolint:staticcheck // Compatibility path for deprecated RPC.
 		Grants: grants,
 		Pagination: &policy.PageResponse{
 			CurrentOffset: params.Offset,

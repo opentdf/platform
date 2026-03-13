@@ -1,5 +1,46 @@
 # Changelog
 
+## [0.19.0](https://github.com/opentdf/platform/compare/protocol/go/v0.18.0...protocol/go/v0.19.0) (2026-03-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** only require namespace on GetAction if no id provided ([#3144](https://github.com/opentdf/platform/issues/3144))
+
+### Bug Fixes
+
+* **policy:** only require namespace on GetAction if no id provided ([#3144](https://github.com/opentdf/platform/issues/3144)) ([10d0c0f](https://github.com/opentdf/platform/commit/10d0c0f88cd7eff3620011bd75b6c2389aa4dfb8))
+
+## [0.18.0](https://github.com/opentdf/platform/compare/protocol/go/v0.17.0...protocol/go/v0.18.0) (2026-03-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** add namespace field to Actions proto ([#3130](https://github.com/opentdf/platform/issues/3130))
+* **policy:** namespace Registered Resources ([#3111](https://github.com/opentdf/platform/issues/3111))
+
+### Features
+
+* **policy:** add namespace field to Actions proto ([#3130](https://github.com/opentdf/platform/issues/3130)) ([bedc9b3](https://github.com/opentdf/platform/commit/bedc9b35366104460c5fa5965819578232a3cb01))
+* **policy:** namespace Registered Resources ([#3111](https://github.com/opentdf/platform/issues/3111)) ([6db1883](https://github.com/opentdf/platform/commit/6db188380d3c44f578b6170f123cb9cb1597f4d8))
+
+
+### Bug Fixes
+
+* **ci:** Upgrade toolchain version to 1.25.8 ([#3116](https://github.com/opentdf/platform/issues/3116)) ([e1b7882](https://github.com/opentdf/platform/commit/e1b78822c0380a106e6eec05af78dc1fc9e5701f))
+* **policy:** deprecate ListAttributeValues in favor of existing GetAttribute ([#3108](https://github.com/opentdf/platform/issues/3108)) ([7e17c2d](https://github.com/opentdf/platform/commit/7e17c2d5ade62fb3b13265d17d663f928ced2df5))
+
+## [0.17.0](https://github.com/opentdf/platform/compare/protocol/go/v0.16.0...protocol/go/v0.17.0) (2026-03-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** add namespace field to RegisteredResource proto ([#3110](https://github.com/opentdf/platform/issues/3110))
+
+### Features
+
+* **policy:** add namespace field to RegisteredResource proto ([#3110](https://github.com/opentdf/platform/issues/3110)) ([04fd85d](https://github.com/opentdf/platform/commit/04fd85d4b69b320f4dad9d21905864fba6708956))
+
 ## [0.16.0](https://github.com/opentdf/platform/compare/protocol/go/v0.15.0...protocol/go/v0.16.0) (2026-02-17)
 
 

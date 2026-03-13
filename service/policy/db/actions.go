@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -44,6 +43,17 @@ func (c PolicyDBClient) GetAction(ctx context.Context, req *actions.GetActionReq
 		getActionParams.ID = pgtypeUUID(req.GetId())
 	case req.GetName() != "":
 		getActionParams.Name = pgtypeText(strings.ToLower(req.GetName()))
+
+		namespaceID := req.GetNamespaceId()
+		if len(namespaceID) > 0 {
+			parsedID := pgtypeUUID(namespaceID)
+			if !parsedID.Valid {
+				return nil, db.ErrUUIDInvalid
+			}
+			getActionParams.NamespaceID = parsedID
+		} else if req.GetNamespaceFqn() != "" {
+			getActionParams.NamespaceFqn = pgtypeText(req.GetNamespaceFqn())
+		}
 	default:
 		return nil, db.ErrSelectIdentifierInvalid
 	}
@@ -58,10 +68,16 @@ func (c PolicyDBClient) GetAction(ctx context.Context, req *actions.GetActionReq
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	namespace, err := hydrateNamespaceFromInterface(got.Namespace)
+	if err != nil {
+		return nil, err
+	}
+
 	return &policy.Action{
-		Id:       got.ID,
-		Name:     got.Name,
-		Metadata: metadata,
+		Id:        got.ID,
+		Name:      got.Name,
+		Metadata:  metadata,
+		Namespace: namespace,
 	}, nil
 }
 
@@ -74,8 +90,10 @@ func (c PolicyDBClient) ListActions(ctx context.Context, req *actions.ListAction
 	}
 
 	list, err := c.queries.listActions(ctx, listActionsParams{
-		Limit:  limit,
-		Offset: offset,
+		NamespaceID:  pgtypeUUID(req.GetNamespaceId()),
+		NamespaceFqn: pgtypeText(req.GetNamespaceFqn()),
+		Limit:        limit,
+		Offset:       offset,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -90,10 +108,15 @@ func (c PolicyDBClient) ListActions(ctx context.Context, req *actions.ListAction
 		if err := unmarshalMetadata(a.Metadata, metadata); err != nil {
 			return nil, err
 		}
+		namespace, err := hydrateNamespaceFromInterface(a.Namespace)
+		if err != nil {
+			return nil, err
+		}
 		action := &policy.Action{
-			Id:       a.ID,
-			Name:     a.Name,
-			Metadata: metadata,
+			Id:        a.ID,
+			Name:      a.Name,
+			Metadata:  metadata,
+			Namespace: namespace,
 		}
 		if a.IsStandard {
 			actionsStandard = append(actionsStandard, action)
@@ -121,13 +144,27 @@ func (c PolicyDBClient) ListActions(ctx context.Context, req *actions.ListAction
 }
 
 func (c PolicyDBClient) CreateAction(ctx context.Context, req *actions.CreateActionRequest) (*policy.Action, error) {
+	name := strings.ToLower(req.GetName())
+	if ActionStandard(name).IsValid() {
+		return nil, fmt.Errorf("cannot create standard action %s: %w", name, db.ErrRestrictViolation)
+	}
+
+	namespaceID := req.GetNamespaceId()
+	useID := len(namespaceID) > 0
+	parsedID := pgtypeUUID(namespaceID)
+	if useID && !parsedID.Valid {
+		return nil, db.ErrUUIDInvalid
+	}
+
 	metadataJSON, _, err := db.MarshalCreateMetadata(req.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
 	createParams := createCustomActionParams{
-		Name:     strings.ToLower(req.GetName()),
-		Metadata: metadataJSON,
+		Name:         name,
+		Metadata:     metadataJSON,
+		NamespaceID:  parsedID,
+		NamespaceFqn: pgtypeText(req.GetNamespaceFqn()),
 	}
 
 	createdID, err := c.queries.createCustomAction(ctx, createParams)
@@ -143,6 +180,13 @@ func (c PolicyDBClient) CreateAction(ctx context.Context, req *actions.CreateAct
 }
 
 func (c PolicyDBClient) UpdateAction(ctx context.Context, req *actions.UpdateActionRequest) (*policy.Action, error) {
+	if req.GetName() != "" {
+		name := strings.ToLower(req.GetName())
+		if ActionStandard(name).IsValid() {
+			return nil, fmt.Errorf("cannot rename custom action to standard action %s: %w", name, db.ErrRestrictViolation)
+		}
+	}
+
 	// if extend we need to merge the metadata
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(req.GetMetadata(), req.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		a, err := c.GetAction(ctx, &actions.GetActionRequest{
@@ -174,38 +218,39 @@ func (c PolicyDBClient) UpdateAction(ctx context.Context, req *actions.UpdateAct
 		return nil, db.ErrNotFound
 	}
 
-	return &policy.Action{
-		Id:       req.GetId(),
-		Name:     req.GetName(),
-		Metadata: metadata,
-	}, nil
+	updated, err := c.GetAction(ctx, &actions.GetActionRequest{
+		Identifier: &actions.GetActionRequest_Id{
+			Id: req.GetId(),
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if metadata != nil {
+		updated.Metadata = metadata
+	}
+
+	return updated, nil
 }
 
 func (c PolicyDBClient) DeleteAction(ctx context.Context, req *actions.DeleteActionRequest) (*policy.Action, error) {
+	got, err := c.GetAction(ctx, &actions.GetActionRequest{
+		Identifier: &actions.GetActionRequest_Id{
+			Id: req.GetId(),
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	count, err := c.queries.deleteCustomAction(ctx, req.GetId())
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	// if did not delete, was either not found or was a standard action
+	// if not deleted, it is a standard action because existence was verified above
 	if count == 0 {
-		got, err := c.GetAction(ctx, &actions.GetActionRequest{
-			Identifier: &actions.GetActionRequest_Id{
-				Id: req.GetId(),
-			},
-		})
-		// not found
-		if err != nil && errors.Is(err, db.ErrNotFound) {
-			return nil, err
-		}
-		// standard action
-		name := strings.ToLower(got.GetName())
-		if ActionStandard(name).IsValid() {
-			return nil, fmt.Errorf("cannot delete standard action %s: %w", name, db.ErrRestrictViolation)
-		}
-		return nil, db.ErrNotFound
+		return nil, fmt.Errorf("cannot delete standard action %s: %w", got.GetName(), db.ErrRestrictViolation)
 	}
 
-	return &policy.Action{
-		Id: req.GetId(),
-	}, nil
+	return got, nil
 }

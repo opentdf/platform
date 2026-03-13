@@ -199,6 +199,8 @@ func formatAlgorithm(alg policy.Algorithm) string {
 		return "rsa:2048"
 	case policy.Algorithm_ALGORITHM_RSA_4096:
 		return "rsa:4096"
+	case policy.Algorithm_ALGORITHM_MLKEM_768:
+		return "mlkem:768"
 	default:
 		return unknownAlgorithm
 	}
@@ -217,6 +219,8 @@ func convertAlgEnum2Simple(a policy.KasPublicKeyAlgEnum) policy.Algorithm {
 		return policy.Algorithm_ALGORITHM_RSA_2048
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
 		return policy.Algorithm_ALGORITHM_RSA_4096
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768:
+		return policy.Algorithm_ALGORITHM_MLKEM_768
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED
 	default:

@@ -369,16 +369,20 @@ WITH resolved_namespace AS (
     FROM attribute_namespaces n
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
-        ($3::uuid IS NOT NULL AND n.id = $3::uuid)
+        ($1::uuid IS NOT NULL AND n.id = $1::uuid)
         OR
-        ($4::text IS NOT NULL AND fqns.fqn = $4::text)
+        ($2::text IS NOT NULL AND fqns.fqn = $2::text)
     LIMIT 1
 ),
 counted AS (
     SELECT COUNT(a.id) AS total
     FROM actions a
-    JOIN resolved_namespace rn ON TRUE
-    WHERE a.is_standard = TRUE OR a.namespace_id = rn.id OR a.namespace_id IS NULL
+    LEFT JOIN resolved_namespace rn ON TRUE
+    WHERE
+        rn.id IS NULL
+        OR a.is_standard = TRUE
+        OR a.namespace_id = rn.id
+        OR a.namespace_id IS NULL
 )
 SELECT 
     a.id,
@@ -390,11 +394,12 @@ SELECT
     )) as metadata,
     a.is_standard,
     CASE
-        WHEN a.namespace_id IS NULL THEN JSON_BUILD_OBJECT(
+        WHEN a.namespace_id IS NULL AND rn.id IS NOT NULL THEN JSON_BUILD_OBJECT(
             'id', rn.id,
             'name', rn.name,
             'fqn', rn.fqn
         )
+        WHEN a.namespace_id IS NULL THEN NULL
         ELSE JSON_BUILD_OBJECT(
             'id', n.id,
             'name', n.name,
@@ -403,21 +408,28 @@ SELECT
     END AS namespace,
     counted.total
 FROM actions a
-JOIN resolved_namespace rn ON TRUE
+LEFT JOIN resolved_namespace rn ON TRUE
 LEFT JOIN attribute_namespaces n ON a.namespace_id = n.id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 CROSS JOIN counted
-WHERE a.is_standard = TRUE OR a.namespace_id = rn.id OR a.namespace_id IS NULL
+WHERE
+    (
+        $1::uuid IS NULL
+        AND $2::text IS NULL
+    )
+    OR a.is_standard = TRUE
+    OR a.namespace_id = rn.id
+    OR a.namespace_id IS NULL
 ORDER BY a.created_at DESC
-LIMIT $2 
-OFFSET $1
+LIMIT $4 
+OFFSET $3
 `
 
 type listActionsParams struct {
-	Offset       int32       `json:"offset_"`
-	Limit        int32       `json:"limit_"`
 	NamespaceID  pgtype.UUID `json:"namespace_id"`
 	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
+	Offset       int32       `json:"offset_"`
+	Limit        int32       `json:"limit_"`
 }
 
 type listActionsRow struct {
@@ -441,16 +453,20 @@ type listActionsRow struct {
 //	    FROM attribute_namespaces n
 //	    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	    WHERE
-//	        ($3::uuid IS NOT NULL AND n.id = $3::uuid)
+//	        ($1::uuid IS NOT NULL AND n.id = $1::uuid)
 //	        OR
-//	        ($4::text IS NOT NULL AND fqns.fqn = $4::text)
+//	        ($2::text IS NOT NULL AND fqns.fqn = $2::text)
 //	    LIMIT 1
 //	),
 //	counted AS (
 //	    SELECT COUNT(a.id) AS total
 //	    FROM actions a
-//	    JOIN resolved_namespace rn ON TRUE
-//	    WHERE a.is_standard = TRUE OR a.namespace_id = rn.id OR a.namespace_id IS NULL
+//	    LEFT JOIN resolved_namespace rn ON TRUE
+//	    WHERE
+//	        rn.id IS NULL
+//	        OR a.is_standard = TRUE
+//	        OR a.namespace_id = rn.id
+//	        OR a.namespace_id IS NULL
 //	)
 //	SELECT
 //	    a.id,
@@ -462,11 +478,12 @@ type listActionsRow struct {
 //	    )) as metadata,
 //	    a.is_standard,
 //	    CASE
-//	        WHEN a.namespace_id IS NULL THEN JSON_BUILD_OBJECT(
+//	        WHEN a.namespace_id IS NULL AND rn.id IS NOT NULL THEN JSON_BUILD_OBJECT(
 //	            'id', rn.id,
 //	            'name', rn.name,
 //	            'fqn', rn.fqn
 //	        )
+//	        WHEN a.namespace_id IS NULL THEN NULL
 //	        ELSE JSON_BUILD_OBJECT(
 //	            'id', n.id,
 //	            'name', n.name,
@@ -475,20 +492,27 @@ type listActionsRow struct {
 //	    END AS namespace,
 //	    counted.total
 //	FROM actions a
-//	JOIN resolved_namespace rn ON TRUE
+//	LEFT JOIN resolved_namespace rn ON TRUE
 //	LEFT JOIN attribute_namespaces n ON a.namespace_id = n.id
 //	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 //	CROSS JOIN counted
-//	WHERE a.is_standard = TRUE OR a.namespace_id = rn.id OR a.namespace_id IS NULL
+//	WHERE
+//	    (
+//	        $1::uuid IS NULL
+//	        AND $2::text IS NULL
+//	    )
+//	    OR a.is_standard = TRUE
+//	    OR a.namespace_id = rn.id
+//	    OR a.namespace_id IS NULL
 //	ORDER BY a.created_at DESC
-//	LIMIT $2
-//	OFFSET $1
+//	LIMIT $4
+//	OFFSET $3
 func (q *Queries) listActions(ctx context.Context, arg listActionsParams) ([]listActionsRow, error) {
 	rows, err := q.db.Query(ctx, listActions,
-		arg.Offset,
-		arg.Limit,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
+		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err

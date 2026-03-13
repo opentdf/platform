@@ -19,8 +19,12 @@ WITH resolved_namespace AS (
 counted AS (
     SELECT COUNT(a.id) AS total
     FROM actions a
-    JOIN resolved_namespace rn ON TRUE
-    WHERE a.is_standard = TRUE OR a.namespace_id = rn.id OR a.namespace_id IS NULL
+    LEFT JOIN resolved_namespace rn ON TRUE
+    WHERE
+        rn.id IS NULL
+        OR a.is_standard = TRUE
+        OR a.namespace_id = rn.id
+        OR a.namespace_id IS NULL
 )
 SELECT 
     a.id,
@@ -32,11 +36,12 @@ SELECT
     )) as metadata,
     a.is_standard,
     CASE
-        WHEN a.namespace_id IS NULL THEN JSON_BUILD_OBJECT(
+        WHEN a.namespace_id IS NULL AND rn.id IS NOT NULL THEN JSON_BUILD_OBJECT(
             'id', rn.id,
             'name', rn.name,
             'fqn', rn.fqn
         )
+        WHEN a.namespace_id IS NULL THEN NULL
         ELSE JSON_BUILD_OBJECT(
             'id', n.id,
             'name', n.name,
@@ -45,11 +50,18 @@ SELECT
     END AS namespace,
     counted.total
 FROM actions a
-JOIN resolved_namespace rn ON TRUE
+LEFT JOIN resolved_namespace rn ON TRUE
 LEFT JOIN attribute_namespaces n ON a.namespace_id = n.id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 CROSS JOIN counted
-WHERE a.is_standard = TRUE OR a.namespace_id = rn.id OR a.namespace_id IS NULL
+WHERE
+    (
+        sqlc.narg('namespace_id')::uuid IS NULL
+        AND sqlc.narg('namespace_fqn')::text IS NULL
+    )
+    OR a.is_standard = TRUE
+    OR a.namespace_id = rn.id
+    OR a.namespace_id IS NULL
 ORDER BY a.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_;

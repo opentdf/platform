@@ -187,6 +187,41 @@ func (s *ActionsSuite) Test_ListActions_FiltersCustomActionsByNamespace_Succeeds
 	s.False(foundSecond)
 }
 
+func (s *ActionsSuite) Test_ListActions_WithoutNamespace_ReturnsAcrossNamespaces_Succeeds() {
+	name := fmt.Sprintf("global-list-action-%d", time.Now().UnixNano())
+
+	inDefault, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        name,
+		NamespaceId: s.defaultNamespaceID(),
+	})
+	s.Require().NoError(err)
+
+	inOther, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        name,
+		NamespaceId: s.otherNamespaceID(),
+	})
+	s.Require().NoError(err)
+
+	list, err := s.db.PolicyClient.ListActions(s.ctx, &actions.ListActionsRequest{})
+	s.Require().NoError(err)
+
+	foundDefault := false
+	foundOther := false
+	for _, action := range list.GetActionsCustom() {
+		if action.GetId() == inDefault.GetId() {
+			foundDefault = true
+			s.Equal(s.defaultNamespaceID(), action.GetNamespace().GetId())
+		}
+		if action.GetId() == inOther.GetId() {
+			foundOther = true
+			s.Equal(s.otherNamespaceID(), action.GetNamespace().GetId())
+		}
+	}
+
+	s.True(foundDefault)
+	s.True(foundOther)
+}
+
 func (s *ActionsSuite) Test_ListActions_LegacyCustomAction_NamespaceProjection_Succeeds() {
 	legacy := s.f.GetCustomActionKey("custom_action_1")
 	assertLegacyProjected := func(list *actions.ListActionsResponse) {

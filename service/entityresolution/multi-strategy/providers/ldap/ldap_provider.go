@@ -6,24 +6,32 @@ import (
 	"fmt"
 	"strings"
 
-	// "github.com/go-ldap/ldap/v3" // LDAP client library - using stubs for now
-
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
 
 // Provider implements the Provider interface for LDAP directories
 type Provider struct {
-	name   string
-	config Config
-	mapper types.Mapper
+	name    string
+	config  Config
+	mapper  types.Mapper
+	backend Backend
 }
 
 // NewProvider creates a new LDAP provider
 func NewProvider(ctx context.Context, name string, config Config) (*Provider, error) {
+	return newProviderWithBackend(ctx, name, config, NewGoLDAPBackend())
+}
+
+func newProviderWithBackend(ctx context.Context, name string, config Config, backend Backend) (*Provider, error) {
+	if backend == nil {
+		backend = NewGoLDAPBackend()
+	}
+
 	provider := &Provider{
-		name:   name,
-		config: config,
-		mapper: NewMapper(),
+		name:    name,
+		config:  config,
+		mapper:  NewMapper(),
+		backend: backend,
 	}
 
 	// Test the connection during initialization
@@ -111,18 +119,16 @@ func (p *Provider) ResolveEntity(ctx context.Context, strategy types.MappingStra
 		)
 	}
 
-	// Create search request
-	searchRequest := NewSearchRequest(
-		strategy.LDAPSearch.BaseDN,
-		scope,
-		NeverDerefAliases,
-		1, // Size limit - expect single entity
-		int(p.config.RequestTimeout.Seconds()),
-		false, // Types only
-		searchFilter,
-		strategy.LDAPSearch.Attributes,
-		nil, // Controls
-	)
+	searchRequest := SearchRequest{
+		BaseDN:       strategy.LDAPSearch.BaseDN,
+		Scope:        scope,
+		DerefAliases: NeverDerefAliases,
+		SizeLimit:    1,
+		TimeLimit:    int(p.config.RequestTimeout.Seconds()),
+		TypesOnly:    false,
+		Filter:       searchFilter,
+		Attributes:   append([]string(nil), strategy.LDAPSearch.Attributes...),
+	}
 
 	// Execute search with context timeout
 	searchCtx, cancel := context.WithTimeout(ctx, p.config.RequestTimeout)
@@ -247,19 +253,19 @@ func (p *Provider) Close() error {
 }
 
 // getConnection establishes an LDAP connection
-func (p *Provider) getConnection() (*Conn, error) {
+func (p *Provider) getConnection() (Conn, error) {
 	address := fmt.Sprintf("%s:%d", p.config.Host, p.config.Port)
 
-	var conn *Conn
+	var conn Conn
 	var err error
 
 	if p.config.UseTLS {
 		tlsConfig := &tls.Config{
 			InsecureSkipVerify: p.config.SkipVerify, //nolint:gosec // TLS verification can be disabled via configuration for testing environments
 		}
-		conn, err = DialTLS("tcp", address, tlsConfig)
+		conn, err = p.backend.DialTLS("tcp", address, tlsConfig)
 	} else {
-		conn, err = Dial("tcp", address)
+		conn, err = p.backend.Dial("tcp", address)
 	}
 
 	if err != nil {
@@ -275,7 +281,7 @@ func (p *Provider) getConnection() (*Conn, error) {
 	if p.config.BindDN != "" {
 		err = conn.Bind(p.config.BindDN, p.config.BindPassword)
 		if err != nil {
-			conn.Close()
+			_ = conn.Close()
 			return nil, err
 		}
 	}
@@ -293,7 +299,7 @@ func (p *Provider) buildSearchFilter(filterTemplate string, params map[string]in
 
 		// Convert parameter value to string and escape for LDAP
 		valueStr := fmt.Sprintf("%v", paramValue)
-		escapedValue := EscapeFilter(valueStr)
+		escapedValue := p.backend.EscapeFilter(valueStr)
 
 		filter = strings.ReplaceAll(filter, placeholder, escapedValue)
 	}

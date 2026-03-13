@@ -12,23 +12,60 @@ import (
 )
 
 const createCustomAction = `-- name: createCustomAction :one
-INSERT INTO actions (name, metadata, is_standard)
-VALUES ($1, $2, FALSE)
+WITH ns AS (
+    SELECT
+        $3::uuid AS id,
+        $4::text AS fqn
+)
+INSERT INTO actions (name, metadata, is_standard, namespace_id)
+SELECT
+    $1,
+    $2,
+    FALSE,
+    COALESCE(ns.id, fqns.namespace_id)
+FROM ns
+LEFT JOIN attribute_fqns fqns ON fqns.fqn = ns.fqn AND ns.id IS NULL
+WHERE
+    (ns.id IS NOT NULL)
+    OR
+    (ns.fqn IS NOT NULL AND fqns.namespace_id IS NOT NULL)
 RETURNING id
 `
 
 type createCustomActionParams struct {
-	Name     string `json:"name"`
-	Metadata []byte `json:"metadata"`
+	Name         string      `json:"name"`
+	Metadata     []byte      `json:"metadata"`
+	NamespaceID  pgtype.UUID `json:"namespace_id"`
+	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
 }
 
 // createCustomAction
 //
-//	INSERT INTO actions (name, metadata, is_standard)
-//	VALUES ($1, $2, FALSE)
+//	WITH ns AS (
+//	    SELECT
+//	        $3::uuid AS id,
+//	        $4::text AS fqn
+//	)
+//	INSERT INTO actions (name, metadata, is_standard, namespace_id)
+//	SELECT
+//	    $1,
+//	    $2,
+//	    FALSE,
+//	    COALESCE(ns.id, fqns.namespace_id)
+//	FROM ns
+//	LEFT JOIN attribute_fqns fqns ON fqns.fqn = ns.fqn AND ns.id IS NULL
+//	WHERE
+//	    (ns.id IS NOT NULL)
+//	    OR
+//	    (ns.fqn IS NOT NULL AND fqns.namespace_id IS NOT NULL)
 //	RETURNING id
 func (q *Queries) createCustomAction(ctx context.Context, arg createCustomActionParams) (string, error) {
-	row := q.db.QueryRow(ctx, createCustomAction, arg.Name, arg.Metadata)
+	row := q.db.QueryRow(ctx, createCustomAction,
+		arg.Name,
+		arg.Metadata,
+		arg.NamespaceID,
+		arg.NamespaceFqn,
+	)
 	var id string
 	err := row.Scan(&id)
 	return id, err
@@ -39,15 +76,16 @@ WITH input_actions AS (
     SELECT unnest($1::text[]) AS name
 ),
 new_actions AS (
-    INSERT INTO actions (name, is_standard)
+    INSERT INTO actions (name, is_standard, namespace_id)
     SELECT 
         input.name, 
-        FALSE -- custom actions
+        FALSE, -- custom actions
+        NULL
     FROM input_actions input
     WHERE NOT EXISTS (
-        SELECT 1 FROM actions a WHERE LOWER(a.name) = LOWER(input.name)
+        SELECT 1 FROM actions a WHERE LOWER(a.name) = LOWER(input.name) AND a.namespace_id IS NULL
     )
-    ON CONFLICT (name) DO NOTHING
+    ON CONFLICT (name) WHERE namespace_id IS NULL DO NOTHING
     RETURNING id, name, is_standard, created_at
 ),
 all_actions AS (
@@ -56,6 +94,7 @@ all_actions AS (
            TRUE AS pre_existing
     FROM actions a
     JOIN input_actions input ON LOWER(a.name) = LOWER(input.name)
+    WHERE a.namespace_id IS NULL
     
     UNION ALL
     
@@ -88,15 +127,16 @@ type createOrListActionsByNameRow struct {
 //	    SELECT unnest($1::text[]) AS name
 //	),
 //	new_actions AS (
-//	    INSERT INTO actions (name, is_standard)
+//	    INSERT INTO actions (name, is_standard, namespace_id)
 //	    SELECT
 //	        input.name,
-//	        FALSE -- custom actions
+//	        FALSE, -- custom actions
+//	        NULL
 //	    FROM input_actions input
 //	    WHERE NOT EXISTS (
-//	        SELECT 1 FROM actions a WHERE LOWER(a.name) = LOWER(input.name)
+//	        SELECT 1 FROM actions a WHERE LOWER(a.name) = LOWER(input.name) AND a.namespace_id IS NULL
 //	    )
-//	    ON CONFLICT (name) DO NOTHING
+//	    ON CONFLICT (name) WHERE namespace_id IS NULL DO NOTHING
 //	    RETURNING id, name, is_standard, created_at
 //	),
 //	all_actions AS (
@@ -105,6 +145,7 @@ type createOrListActionsByNameRow struct {
 //	           TRUE AS pre_existing
 //	    FROM actions a
 //	    JOIN input_actions input ON LOWER(a.name) = LOWER(input.name)
+//	    WHERE a.namespace_id IS NULL
 //
 //	    UNION ALL
 //
@@ -167,56 +208,177 @@ func (q *Queries) deleteCustomAction(ctx context.Context, id string) (int64, err
 }
 
 const getAction = `-- name: getAction :one
+WITH resolved_namespace AS (
+    SELECT
+        n.id,
+        n.name,
+        fqns.fqn
+    FROM attribute_namespaces n
+    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+    WHERE
+        ($3::uuid IS NOT NULL AND n.id = $3::uuid)
+        OR
+        ($4::text IS NOT NULL AND fqns.fqn = $4::text)
+    LIMIT 1
+)
 SELECT 
     a.id,
     a.name,
     a.is_standard,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', a.metadata -> 'labels', 'created_at', a.created_at, 'updated_at', a.updated_at)) AS metadata
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', a.metadata -> 'labels', 'created_at', a.created_at, 'updated_at', a.updated_at)) AS metadata,
+    CASE
+        WHEN a.namespace_id IS NULL AND $1::text IS NOT NULL THEN JSON_BUILD_OBJECT(
+            'id', rn.id,
+            'name', rn.name,
+            'fqn', rn.fqn
+        )
+        WHEN a.namespace_id IS NULL THEN NULL
+        ELSE JSON_BUILD_OBJECT(
+            'id', n.id,
+            'name', n.name,
+            'fqn', ns_fqns.fqn
+        )
+    END AS namespace
 FROM actions a
+LEFT JOIN attribute_namespaces n ON a.namespace_id = n.id
+LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+LEFT JOIN resolved_namespace rn ON TRUE
 WHERE 
-  ($1::uuid IS NULL OR a.id = $1::uuid)
-  AND ($2::text IS NULL OR a.name = $2::text)
+  (
+    ($2::uuid IS NOT NULL AND a.id = $2::uuid)
+    OR
+    (
+        $1::text IS NOT NULL
+        AND a.name = $1::text
+        AND (
+            (rn.id IS NOT NULL AND (a.namespace_id = rn.id OR a.namespace_id IS NULL))
+            OR
+            (rn.id IS NULL AND a.namespace_id IS NULL)
+        )
+    )
+  )
+ORDER BY
+    CASE
+        WHEN a.namespace_id = rn.id THEN 0
+        WHEN a.is_standard = TRUE THEN 1
+        ELSE 2
+    END,
+    a.created_at DESC
+LIMIT 1
 `
 
 type getActionParams struct {
-	ID   pgtype.UUID `json:"id"`
-	Name pgtype.Text `json:"name"`
+	Name         pgtype.Text `json:"name"`
+	ID           pgtype.UUID `json:"id"`
+	NamespaceID  pgtype.UUID `json:"namespace_id"`
+	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
 }
 
 type getActionRow struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	IsStandard bool   `json:"is_standard"`
-	Metadata   []byte `json:"metadata"`
+	ID         string      `json:"id"`
+	Name       string      `json:"name"`
+	IsStandard bool        `json:"is_standard"`
+	Metadata   []byte      `json:"metadata"`
+	Namespace  interface{} `json:"namespace"`
 }
 
 // getAction
 //
+//	WITH resolved_namespace AS (
+//	    SELECT
+//	        n.id,
+//	        n.name,
+//	        fqns.fqn
+//	    FROM attribute_namespaces n
+//	    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+//	    WHERE
+//	        ($3::uuid IS NOT NULL AND n.id = $3::uuid)
+//	        OR
+//	        ($4::text IS NOT NULL AND fqns.fqn = $4::text)
+//	    LIMIT 1
+//	)
 //	SELECT
 //	    a.id,
 //	    a.name,
 //	    a.is_standard,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', a.metadata -> 'labels', 'created_at', a.created_at, 'updated_at', a.updated_at)) AS metadata
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', a.metadata -> 'labels', 'created_at', a.created_at, 'updated_at', a.updated_at)) AS metadata,
+//	    CASE
+//	        WHEN a.namespace_id IS NULL AND $1::text IS NOT NULL THEN JSON_BUILD_OBJECT(
+//	            'id', rn.id,
+//	            'name', rn.name,
+//	            'fqn', rn.fqn
+//	        )
+//	        WHEN a.namespace_id IS NULL THEN NULL
+//	        ELSE JSON_BUILD_OBJECT(
+//	            'id', n.id,
+//	            'name', n.name,
+//	            'fqn', ns_fqns.fqn
+//	        )
+//	    END AS namespace
 //	FROM actions a
+//	LEFT JOIN attribute_namespaces n ON a.namespace_id = n.id
+//	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+//	LEFT JOIN resolved_namespace rn ON TRUE
 //	WHERE
-//	  ($1::uuid IS NULL OR a.id = $1::uuid)
-//	  AND ($2::text IS NULL OR a.name = $2::text)
+//	  (
+//	    ($2::uuid IS NOT NULL AND a.id = $2::uuid)
+//	    OR
+//	    (
+//	        $1::text IS NOT NULL
+//	        AND a.name = $1::text
+//	        AND (
+//	            (rn.id IS NOT NULL AND (a.namespace_id = rn.id OR a.namespace_id IS NULL))
+//	            OR
+//	            (rn.id IS NULL AND a.namespace_id IS NULL)
+//	        )
+//	    )
+//	  )
+//	ORDER BY
+//	    CASE
+//	        WHEN a.namespace_id = rn.id THEN 0
+//	        WHEN a.is_standard = TRUE THEN 1
+//	        ELSE 2
+//	    END,
+//	    a.created_at DESC
+//	LIMIT 1
 func (q *Queries) getAction(ctx context.Context, arg getActionParams) (getActionRow, error) {
-	row := q.db.QueryRow(ctx, getAction, arg.ID, arg.Name)
+	row := q.db.QueryRow(ctx, getAction,
+		arg.Name,
+		arg.ID,
+		arg.NamespaceID,
+		arg.NamespaceFqn,
+	)
 	var i getActionRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.IsStandard,
 		&i.Metadata,
+		&i.Namespace,
 	)
 	return i, err
 }
 
 const listActions = `-- name: listActions :many
 
-WITH counted AS (
-    SELECT COUNT(id) AS total FROM actions
+WITH resolved_namespace AS (
+    SELECT
+        n.id,
+        n.name,
+        fqns.fqn
+    FROM attribute_namespaces n
+    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+    WHERE
+        ($3::uuid IS NOT NULL AND n.id = $3::uuid)
+        OR
+        ($4::text IS NOT NULL AND fqns.fqn = $4::text)
+    LIMIT 1
+),
+counted AS (
+    SELECT COUNT(a.id) AS total
+    FROM actions a
+    JOIN resolved_namespace rn ON TRUE
+    WHERE a.is_standard = TRUE OR a.namespace_id = rn.id OR a.namespace_id IS NULL
 )
 SELECT 
     a.id,
@@ -227,33 +389,68 @@ SELECT
         'updated_at', a.updated_at
     )) as metadata,
     a.is_standard,
+    CASE
+        WHEN a.namespace_id IS NULL THEN JSON_BUILD_OBJECT(
+            'id', rn.id,
+            'name', rn.name,
+            'fqn', rn.fqn
+        )
+        ELSE JSON_BUILD_OBJECT(
+            'id', n.id,
+            'name', n.name,
+            'fqn', ns_fqns.fqn
+        )
+    END AS namespace,
     counted.total
 FROM actions a
+JOIN resolved_namespace rn ON TRUE
+LEFT JOIN attribute_namespaces n ON a.namespace_id = n.id
+LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 CROSS JOIN counted
+WHERE a.is_standard = TRUE OR a.namespace_id = rn.id OR a.namespace_id IS NULL
 ORDER BY a.created_at DESC
 LIMIT $2 
 OFFSET $1
 `
 
 type listActionsParams struct {
-	Offset int32 `json:"offset_"`
-	Limit  int32 `json:"limit_"`
+	Offset       int32       `json:"offset_"`
+	Limit        int32       `json:"limit_"`
+	NamespaceID  pgtype.UUID `json:"namespace_id"`
+	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
 }
 
 type listActionsRow struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	Metadata   []byte `json:"metadata"`
-	IsStandard bool   `json:"is_standard"`
-	Total      int64  `json:"total"`
+	ID         string      `json:"id"`
+	Name       string      `json:"name"`
+	Metadata   []byte      `json:"metadata"`
+	IsStandard bool        `json:"is_standard"`
+	Namespace  interface{} `json:"namespace"`
+	Total      int64       `json:"total"`
 }
 
 // --------------------------------------------------------------
 // ACTIONS
 // --------------------------------------------------------------
 //
-//	WITH counted AS (
-//	    SELECT COUNT(id) AS total FROM actions
+//	WITH resolved_namespace AS (
+//	    SELECT
+//	        n.id,
+//	        n.name,
+//	        fqns.fqn
+//	    FROM attribute_namespaces n
+//	    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+//	    WHERE
+//	        ($3::uuid IS NOT NULL AND n.id = $3::uuid)
+//	        OR
+//	        ($4::text IS NOT NULL AND fqns.fqn = $4::text)
+//	    LIMIT 1
+//	),
+//	counted AS (
+//	    SELECT COUNT(a.id) AS total
+//	    FROM actions a
+//	    JOIN resolved_namespace rn ON TRUE
+//	    WHERE a.is_standard = TRUE OR a.namespace_id = rn.id OR a.namespace_id IS NULL
 //	)
 //	SELECT
 //	    a.id,
@@ -264,14 +461,35 @@ type listActionsRow struct {
 //	        'updated_at', a.updated_at
 //	    )) as metadata,
 //	    a.is_standard,
+//	    CASE
+//	        WHEN a.namespace_id IS NULL THEN JSON_BUILD_OBJECT(
+//	            'id', rn.id,
+//	            'name', rn.name,
+//	            'fqn', rn.fqn
+//	        )
+//	        ELSE JSON_BUILD_OBJECT(
+//	            'id', n.id,
+//	            'name', n.name,
+//	            'fqn', ns_fqns.fqn
+//	        )
+//	    END AS namespace,
 //	    counted.total
 //	FROM actions a
+//	JOIN resolved_namespace rn ON TRUE
+//	LEFT JOIN attribute_namespaces n ON a.namespace_id = n.id
+//	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 //	CROSS JOIN counted
+//	WHERE a.is_standard = TRUE OR a.namespace_id = rn.id OR a.namespace_id IS NULL
 //	ORDER BY a.created_at DESC
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listActions(ctx context.Context, arg listActionsParams) ([]listActionsRow, error) {
-	rows, err := q.db.Query(ctx, listActions, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, listActions,
+		arg.Offset,
+		arg.Limit,
+		arg.NamespaceID,
+		arg.NamespaceFqn,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -284,6 +502,7 @@ func (q *Queries) listActions(ctx context.Context, arg listActionsParams) ([]lis
 			&i.Name,
 			&i.Metadata,
 			&i.IsStandard,
+			&i.Namespace,
 			&i.Total,
 		); err != nil {
 			return nil, err

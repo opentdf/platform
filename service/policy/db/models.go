@@ -64,9 +64,10 @@ type Action struct {
 	// Whether the action is standard (proto-enum) or custom (user-defined).
 	IsStandard bool `json:"is_standard"`
 	// Metadata for the action (see protos for structure)
-	Metadata  []byte             `json:"metadata"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	Metadata    []byte             `json:"metadata"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	NamespaceID pgtype.UUID        `json:"namespace_id"`
 }
 
 // View to retrieve active public keys mapped to attribute definitions

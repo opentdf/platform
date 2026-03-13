@@ -90,7 +90,8 @@ func (s *ObligationTriggersSuite) SetupSuite() {
 
 	// Create an action
 	s.action, err = s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
-		Name: actionName,
+		Name:        actionName,
+		NamespaceId: s.namespace.GetId(),
 	})
 	s.Require().NoError(err)
 

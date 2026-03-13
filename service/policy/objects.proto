@@ -196,6 +196,11 @@ message SubjectMapping {
   // The actions permitted by subjects in this mapping
   repeated Action actions = 4;
 
+  // the namespace containing this subject mapping
+  // possible this is empty. If so that means
+  // the Subject Mapping has not been migrated to a namespace.
+  Namespace namespace = 5;
+
   common.Metadata metadata = 100;
 }
 
@@ -246,6 +251,11 @@ message SubjectSet {
 */
 message SubjectConditionSet {
   string id = 1;
+
+  // the namespace containing this subject condition set
+  // possible this is empty in the case a subject condition set
+  // has not been migrated to a namespace.
+  Namespace namespace = 2;
 
   repeated SubjectSet subject_sets = 3 [(buf.validate.field).repeated.min_items = 1];
 

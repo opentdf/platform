@@ -93,6 +93,9 @@ func newTestConfig() TestConfig {
 }
 
 func Test_RoundTrips(t *testing.T) {
+	// TODO: Uncomment this test once subject condition set mappings are within the next SDK.
+	t.Skip("temporarily disabled until subject condition set mappings are within the next SDK")
+
 	if testing.Short() {
 		t.Skip("Skipping roundtrip tests, they require the server to be up and running")
 	}

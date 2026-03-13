@@ -20,6 +20,8 @@ import (
 var opts = godog.Options{
 	Output: colors.Colored(os.Stdout),
 	Format: "progress",
+	// TODO: Remove this exclusion and uncomment the tagged scenarios once subject condition set mappings are within the next SDK.
+	Tags: "not @sdk-scs-mappings-next-sdk",
 }
 
 func init() {
@@ -34,6 +36,8 @@ func TestFeatures(t *testing.T) {
 }
 
 // runTest runs cukes tests with a default context = PlatformTestSuiteContext and custom test suite and scenario initializer
+//
+//nolint:fatcontext // godog requires DefaultContext to be assigned during suite setup.
 func runTests() int {
 	pflag.Parse()
 

@@ -1281,6 +1281,13 @@ components:
         id:
           type: string
           title: id
+        namespace:
+          title: namespace
+          description: |-
+            the namespace containing this subject condition set
+             possible this is empty in the case a subject condition set
+             has not been migrated to a namespace.
+          $ref: '#/components/schemas/policy.Namespace'
         subjectSets:
           type: array
           items:
@@ -1318,6 +1325,13 @@ components:
             $ref: '#/components/schemas/policy.Action'
           title: actions
           description: The actions permitted by subjects in this mapping
+        namespace:
+          title: namespace
+          description: |-
+            the namespace containing this subject mapping
+             possible this is empty. If so that means
+             the Subject Mapping has not been migrated to a namespace.
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'

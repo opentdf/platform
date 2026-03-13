@@ -286,6 +286,10 @@ func convertAlgEnum2Simple(a policy.KasPublicKeyAlgEnum) policy.Algorithm {
 		return policy.Algorithm_ALGORITHM_RSA_2048
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
 		return policy.Algorithm_ALGORITHM_RSA_4096
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768:
+		return policy.Algorithm_ALGORITHM_MLKEM_768
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_1024:
+		return policy.Algorithm_ALGORITHM_MLKEM_1024
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED
 	default:
@@ -306,6 +310,10 @@ func convertStringToAlgorithm(alg string) policy.Algorithm {
 		return policy.Algorithm_ALGORITHM_RSA_2048
 	case ocrypto.RSA4096Key:
 		return policy.Algorithm_ALGORITHM_RSA_4096
+	case ocrypto.MLKEM768Key:
+		return policy.Algorithm_ALGORITHM_MLKEM_768
+	case ocrypto.MLKEM1024Key:
+		return policy.Algorithm_ALGORITHM_MLKEM_1024
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED
 	}
@@ -490,6 +498,10 @@ func algProto2String(e policy.KasPublicKeyAlgEnum) string {
 		return string(ocrypto.RSA2048Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
 		return string(ocrypto.RSA4096Key)
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768:
+		return string(ocrypto.MLKEM768Key)
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_1024:
+		return string(ocrypto.MLKEM1024Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
 		return ""
 	}
@@ -508,6 +520,10 @@ func algProto2OcryptoKeyType(e policy.Algorithm) ocrypto.KeyType {
 		return ocrypto.RSA2048Key
 	case policy.Algorithm_ALGORITHM_RSA_4096:
 		return ocrypto.RSA4096Key
+	case policy.Algorithm_ALGORITHM_MLKEM_768:
+		return ocrypto.MLKEM768Key
+	case policy.Algorithm_ALGORITHM_MLKEM_1024:
+		return ocrypto.MLKEM1024Key
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		return ocrypto.KeyType("")
 	default:

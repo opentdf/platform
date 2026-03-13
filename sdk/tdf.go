@@ -43,6 +43,7 @@ const (
 	kKeySize               = 32
 	kWrapped               = "wrapped"
 	kECWrapped             = "ec-wrapped"
+	kMLKEMWrapped          = "mlkem-wrapped"
 	kKasProtocol           = "kas"
 	kSplitKeyType          = "split"
 	kGCMCipherAlgorithm    = "AES-256-GCM"
@@ -674,7 +675,8 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 	}
 
 	ktype := ocrypto.KeyType(kasInfo.Algorithm)
-	if ocrypto.IsECKeyType(ktype) {
+	switch {
+	case ocrypto.IsECKeyType(ktype):
 		mode, err := ocrypto.ECKeyTypeToMode(ktype)
 		if err != nil {
 			return KeyAccess{}, err
@@ -686,7 +688,15 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 		keyAccess.KeyType = kECWrapped
 		keyAccess.WrappedKey = wrappedKeyInfo.wrappedKey
 		keyAccess.EphemeralPublicKey = wrappedKeyInfo.publicKey
-	} else {
+	case ktype == ocrypto.MLKEM768Key, ktype == ocrypto.MLKEM1024Key:
+		wrappedKey, encapsulatedKey, err := generateWrapKeyWithMLKEM(kasInfo.PublicKey, symKey)
+		if err != nil {
+			return KeyAccess{}, err
+		}
+		keyAccess.KeyType = kMLKEMWrapped
+		keyAccess.WrappedKey = wrappedKey
+		keyAccess.EphemeralPublicKey = encapsulatedKey
+	default:
 		wrappedKey, err := generateWrapKeyWithRSA(kasInfo.PublicKey, symKey)
 		if err != nil {
 			return KeyAccess{}, err
@@ -759,6 +769,25 @@ func generateWrapKeyWithRSA(publicKey string, symKey []byte) (string, error) {
 	}
 
 	return string(ocrypto.Base64Encode(wrappedKey)), nil
+}
+
+func generateWrapKeyWithMLKEM(publicKey string, symKey []byte) (string, string, error) {
+	publicKeyEncryptor, err := ocrypto.FromPublicPEM(publicKey)
+	if err != nil {
+		return "", "", fmt.Errorf("generateWrapKeyWithMLKEM: ocrypto.FromPublicPEM failed:%w", err)
+	}
+
+	wrappedKey, err := publicKeyEncryptor.Encrypt(symKey)
+	if err != nil {
+		return "", "", fmt.Errorf("generateWrapKeyWithMLKEM: encrypt failed:%w", err)
+	}
+
+	encapsulatedKey := publicKeyEncryptor.EphemeralKey()
+	if len(encapsulatedKey) == 0 {
+		return "", "", errors.New("generateWrapKeyWithMLKEM: encapsulated key missing")
+	}
+
+	return string(ocrypto.Base64Encode(wrappedKey)), string(ocrypto.Base64Encode(encapsulatedKey)), nil
 }
 
 // create policy object

@@ -15,12 +15,6 @@ WITH resolved_namespace AS (
         OR
         (sqlc.narg('namespace_fqn')::text IS NOT NULL AND fqns.fqn = sqlc.narg('namespace_fqn')::text)
     LIMIT 1
-),
-counted AS (
-    SELECT COUNT(a.id) AS total
-    FROM actions a
-    JOIN resolved_namespace rn ON TRUE
-    WHERE a.is_standard = TRUE OR a.namespace_id = rn.id OR a.namespace_id IS NULL
 )
 SELECT 
     a.id,
@@ -32,24 +26,25 @@ SELECT
     )) as metadata,
     a.is_standard,
     CASE
-        WHEN a.namespace_id IS NULL THEN JSON_BUILD_OBJECT(
-            'id', rn.id,
-            'name', rn.name,
-            'fqn', rn.fqn
-        )
+        WHEN a.namespace_id IS NULL THEN NULL
         ELSE JSON_BUILD_OBJECT(
             'id', n.id,
             'name', n.name,
             'fqn', ns_fqns.fqn
         )
     END AS namespace,
-    counted.total
+    COUNT(*) OVER() as total
 FROM actions a
-JOIN resolved_namespace rn ON TRUE
+LEFT JOIN resolved_namespace rn ON TRUE
 LEFT JOIN attribute_namespaces n ON a.namespace_id = n.id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
-CROSS JOIN counted
-WHERE a.is_standard = TRUE OR a.namespace_id = rn.id OR a.namespace_id IS NULL
+WHERE
+    (
+        sqlc.narg('namespace_id')::uuid IS NULL
+        AND sqlc.narg('namespace_fqn')::text IS NULL
+    )
+    OR a.is_standard = TRUE
+    OR a.namespace_id = rn.id
 ORDER BY a.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_;
@@ -74,11 +69,6 @@ SELECT
     a.is_standard,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', a.metadata -> 'labels', 'created_at', a.created_at, 'updated_at', a.updated_at)) AS metadata,
     CASE
-        WHEN a.namespace_id IS NULL AND sqlc.narg('name')::text IS NOT NULL THEN JSON_BUILD_OBJECT(
-            'id', rn.id,
-            'name', rn.name,
-            'fqn', rn.fqn
-        )
         WHEN a.namespace_id IS NULL THEN NULL
         ELSE JSON_BUILD_OBJECT(
             'id', n.id,
@@ -98,7 +88,7 @@ WHERE
         sqlc.narg('name')::text IS NOT NULL
         AND a.name = sqlc.narg('name')::text
         AND (
-            (rn.id IS NOT NULL AND (a.namespace_id = rn.id OR a.namespace_id IS NULL))
+            (rn.id IS NOT NULL AND a.namespace_id = rn.id)
             OR
             (rn.id IS NULL AND a.namespace_id IS NULL)
         )
@@ -169,6 +159,8 @@ SELECT
 FROM ns
 LEFT JOIN attribute_fqns fqns ON fqns.fqn = ns.fqn AND ns.id IS NULL
 WHERE
+    (ns.id IS NULL AND ns.fqn IS NULL)
+    OR
     (ns.id IS NOT NULL)
     OR
     (ns.fqn IS NOT NULL AND fqns.namespace_id IS NOT NULL)

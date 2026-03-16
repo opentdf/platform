@@ -15,11 +15,8 @@ type Config struct {
 	ListRequestLimitDefault int `mapstructure:"list_request_limit_default" default:"1000"`
 	// Maximum pagination list limit allowed by policy services
 	ListRequestLimitMax int `mapstructure:"list_request_limit_max" default:"2500"`
-	// --- BEGIN namespace-optional (remove when enforce_namespace flag is phased out) ---
-	// EnforceNamespace when true requires a namespace on policy object creation.
-	// When false (default), namespaces are optional on creation.
-	EnforceNamespace bool `mapstructure:"enforce_namespace" default:"false"`
-	// --- END namespace-optional ---
+	// Enable support for namespaced policies. If false, namespace fields are ignored and treated as null.
+	NamespacedPolicy bool `mapstructure:"namespaced_policy" default:"false"`
 }
 
 func (c Config) Validate() error {

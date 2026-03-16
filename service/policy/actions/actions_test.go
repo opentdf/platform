@@ -20,7 +20,6 @@ const (
 	errMessageURI              = "string.uri"
 	errMessageRequired         = "required"
 	errMessageOneof            = "message.oneof"
-	errMessageNamespaceByName  = "namespace_required_for_name"
 )
 
 var (
@@ -157,7 +156,6 @@ func (s *ActionSuite) Test_GetAction_Succeeds() {
 				Identifier: &actions.GetActionRequest_Name{
 					Name: name,
 				},
-				NamespaceFqn: validNamespaceFQN,
 			}
 			err := s.v.Validate(req)
 			s.Require().NoError(err)
@@ -180,16 +178,6 @@ func (s *ActionSuite) Test_GetAction_Fails() {
 	err = s.v.Validate(req)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), errMessageRequired)
-
-	// missing namespace
-	req = &actions.GetActionRequest{
-		Identifier: &actions.GetActionRequest_Name{
-			Name: "valid_name",
-		},
-	}
-	err = s.v.Validate(req)
-	s.Require().Error(err)
-	s.Require().Contains(err.Error(), errMessageNamespaceByName)
 
 	for _, name := range actionNamesInvalidFormat {
 		s.Run(name, func() {

@@ -297,30 +297,26 @@ func (s *ActionsSuite) Test_GetAction_Id_Succeeds() {
 }
 
 func (s *ActionsSuite) Test_GetAction_Name_Succeeds() {
-	customAction := s.f.GetCustomActionKey("other_special_action")
-	actionCreate := s.f.GetStandardAction(policydb.ActionCreate.String())
+	name := fmt.Sprintf("get-by-name-action-%d", time.Now().UnixNano())
+	customAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        name,
+		NamespaceId: s.defaultNamespaceID(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(customAction)
+
 	action, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
 		Identifier: &actions.GetActionRequest_Name{
-			Name: customAction.Name,
+			Name: customAction.GetName(),
 		},
 		NamespaceId: s.defaultNamespaceID(),
 	})
 	s.NotNil(action)
 	s.Require().NoError(err)
-	s.Equal(customAction.ID, action.GetId())
-	s.Equal(customAction.Name, action.GetName())
-	s.NotNil(action.GetMetadata())
-
-	action, err = s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
-		Identifier: &actions.GetActionRequest_Name{
-			Name: actionCreate.GetName(),
-		},
-		NamespaceId: s.defaultNamespaceID(),
-	})
-	s.NotNil(action)
-	s.Require().NoError(err)
-	s.Equal(actionCreate.GetName(), action.GetName())
-	s.Equal(actionCreate.GetId(), action.GetId())
+	s.Equal(customAction.GetId(), action.GetId())
+	s.Equal(customAction.GetName(), action.GetName())
+	s.Require().NotNil(action.GetNamespace())
+	s.Equal(s.defaultNamespaceID(), action.GetNamespace().GetId())
 	s.NotNil(action.GetMetadata())
 }
 
@@ -356,27 +352,47 @@ func (s *ActionsSuite) Test_GetAction_Name_ResolvesByNamespace_Succeeds() {
 	s.Equal(s.otherNamespaceID(), gotOther.GetNamespace().GetId())
 }
 
-func (s *ActionsSuite) Test_GetAction_Name_LegacyCustomAction_Succeeds() {
+func (s *ActionsSuite) Test_GetAction_Name_LegacyCustomAction_UnscopedSucceeds_ScopedFails() {
 	legacy := s.f.GetCustomActionKey("other_special_action")
-	assertLegacyGet := func(action *policy.Action) {
+
+	byUnscoped, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
+		Identifier: &actions.GetActionRequest_Name{Name: legacy.Name},
+	})
+	s.Require().NoError(err)
+	s.NotNil(byUnscoped)
+	s.Equal(legacy.ID, byUnscoped.GetId())
+	s.Nil(byUnscoped.GetNamespace())
+
+	assertLegacyGet := func(action *policy.Action, err error) {
 		s.T().Helper()
-		s.Equal(legacy.ID, action.GetId())
-		s.Nil(action.GetNamespace())
+		s.Nil(action)
+		s.Require().Error(err)
+		s.Require().ErrorIs(err, db.ErrNotFound)
 	}
 
 	byID, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
 		Identifier:  &actions.GetActionRequest_Name{Name: legacy.Name},
 		NamespaceId: s.defaultNamespaceID(),
 	})
-	s.Require().NoError(err)
-	assertLegacyGet(byID)
+	assertLegacyGet(byID, err)
 
 	byFQN, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
 		Identifier:   &actions.GetActionRequest_Name{Name: legacy.Name},
 		NamespaceFqn: s.defaultNamespaceFQN(),
 	})
-	s.Require().NoError(err)
-	assertLegacyGet(byFQN)
+	assertLegacyGet(byFQN, err)
+
+	byOtherID, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
+		Identifier:  &actions.GetActionRequest_Name{Name: legacy.Name},
+		NamespaceId: s.otherNamespaceID(),
+	})
+	assertLegacyGet(byOtherID, err)
+
+	byOtherFQN, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
+		Identifier:   &actions.GetActionRequest_Name{Name: legacy.Name},
+		NamespaceFqn: s.otherNamespaceFQN(),
+	})
+	assertLegacyGet(byOtherFQN, err)
 }
 
 func (s *ActionsSuite) Test_CreateListGetAction_WithNamespaceFQN_Succeeds() {

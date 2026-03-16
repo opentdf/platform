@@ -7565,14 +7565,16 @@ Empty when none remain after current page </p></td>
                   <td>namespace_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>ID of the namespace. Required when identifier is set to name. </p></td>
+                  <td><p>Optional namespace ID to scope name-based lookup.
+If omitted for name-based lookup, action search is limited to legacy (namespace_id = NULL) actions. </p></td>
                 </tr>
               
                 <tr>
                   <td>namespace_fqn</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>FQN of the namespace. Required when identifier is set to name. </p></td>
+                  <td><p>Optional namespace FQN to scope name-based lookup.
+If omitted for name-based lookup, action search is limited to legacy (namespace_id = NULL) actions. </p></td>
                 </tr>
               
             </tbody>

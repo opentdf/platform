@@ -88,7 +88,7 @@ WHERE
         sqlc.narg('name')::text IS NOT NULL
         AND a.name = sqlc.narg('name')::text
         AND (
-            (rn.id IS NOT NULL AND (a.namespace_id = rn.id OR a.namespace_id IS NULL))
+            (rn.id IS NOT NULL AND a.namespace_id = rn.id)
             OR
             (rn.id IS NULL AND a.namespace_id IS NULL)
         )

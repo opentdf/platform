@@ -246,7 +246,7 @@ WHERE
         $2::text IS NOT NULL
         AND a.name = $2::text
         AND (
-            (rn.id IS NOT NULL AND (a.namespace_id = rn.id OR a.namespace_id IS NULL))
+            (rn.id IS NOT NULL AND a.namespace_id = rn.id)
             OR
             (rn.id IS NULL AND a.namespace_id IS NULL)
         )
@@ -317,7 +317,7 @@ type getActionRow struct {
 //	        $2::text IS NOT NULL
 //	        AND a.name = $2::text
 //	        AND (
-//	            (rn.id IS NOT NULL AND (a.namespace_id = rn.id OR a.namespace_id IS NULL))
+//	            (rn.id IS NOT NULL AND a.namespace_id = rn.id)
 //	            OR
 //	            (rn.id IS NULL AND a.namespace_id IS NULL)
 //	        )

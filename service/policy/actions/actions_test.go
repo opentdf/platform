@@ -19,7 +19,6 @@ const (
 	errMessageActionNameFormat = "action_name_format"
 	errMessageURI              = "string.uri"
 	errMessageRequired         = "required"
-	errMessageOneof            = "message.oneof"
 )
 
 var (
@@ -90,14 +89,6 @@ func (s *ActionSuite) Test_CreateActionRequest_Fails() {
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), errMessageMaxLength)
 
-	// namespace required
-	req = &actions.CreateActionRequest{
-		Name: "valid_name",
-	}
-	err = s.v.Validate(req)
-	s.Require().Error(err)
-	s.Require().Contains(err.Error(), errMessageOneof)
-
 	// invalid namespace id
 	req = &actions.CreateActionRequest{
 		Name:        "valid_name",
@@ -129,15 +120,22 @@ func (s *ActionSuite) Test_CreateActionRequest_Succeeds() {
 		})
 	}
 
-	// with metadata
+	// with no namespace
 	req := &actions.CreateActionRequest{
+		Name: "valid_name",
+	}
+	err := s.v.Validate(req)
+	s.Require().NoError(err)
+
+	// with metadata
+	req = &actions.CreateActionRequest{
 		Name:        "valid_name",
 		NamespaceId: validUUID,
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{"key": "value"},
 		},
 	}
-	err := s.v.Validate(req)
+	err = s.v.Validate(req)
 	s.Require().NoError(err)
 }
 

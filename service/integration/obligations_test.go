@@ -269,7 +269,7 @@ func (s *ObligationsSuite) Test_GetObligationsByFQNs_WithTriggers_Succeeds() {
 
 	obl1Triggers := []*obligations.ValueTriggerRequest{
 		{
-			Action:         &common.IdNameFqnIdentifier{Name: "read"},
+			Action:         &common.IdNameIdentifier{Name: "read"},
 			AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value1"},
 			Context: &policy.RequestContext{
 				Pep: &policy.PolicyEnforcementPoint{
@@ -286,7 +286,7 @@ func (s *ObligationsSuite) Test_GetObligationsByFQNs_WithTriggers_Succeeds() {
 
 	obl2Triggers := []*obligations.ValueTriggerRequest{
 		{
-			Action:         &common.IdNameFqnIdentifier{Name: "create"},
+			Action:         &common.IdNameIdentifier{Name: "create"},
 			AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.net/attr/attr1/value/value1"},
 		},
 	}
@@ -504,7 +504,7 @@ func (s *ObligationsSuite) Test_ListObligations_WithTriggers_Succeeds() {
 	obl1 := s.createObligation(namespaceID, oblName+"-list-triggers-1", nil)
 	obl1Triggers := []*obligations.ValueTriggerRequest{
 		{
-			Action:         &common.IdNameFqnIdentifier{Name: "read"},
+			Action:         &common.IdNameIdentifier{Name: "read"},
 			AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value1"},
 			Context: &policy.RequestContext{
 				Pep: &policy.PolicyEnforcementPoint{
@@ -519,7 +519,7 @@ func (s *ObligationsSuite) Test_ListObligations_WithTriggers_Succeeds() {
 	obl2 := s.createObligation(namespaceID, oblName+"-list-triggers-2", nil)
 	obl2Triggers := []*obligations.ValueTriggerRequest{
 		{
-			Action:         &common.IdNameFqnIdentifier{Name: "update"},
+			Action:         &common.IdNameIdentifier{Name: "update"},
 			AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value2"},
 			Context: &policy.RequestContext{
 				Pep: &policy.PolicyEnforcementPoint{
@@ -534,7 +534,7 @@ func (s *ObligationsSuite) Test_ListObligations_WithTriggers_Succeeds() {
 	otherObl := s.createObligation(otherNamespaceID, oblName+"-other-list-triggers", nil)
 	otherOblTriggers := []*obligations.ValueTriggerRequest{
 		{
-			Action:         &common.IdNameFqnIdentifier{Name: "create"},
+			Action:         &common.IdNameIdentifier{Name: "create"},
 			AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.net/attr/attr1/value/value1"},
 		},
 	}
@@ -783,7 +783,7 @@ func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_IDs_Succeeds(
 		Value:        oblValPrefix + "test-1",
 		Triggers: []*obligations.ValueTriggerRequest{
 			{
-				Action:         &common.IdNameFqnIdentifier{Id: triggerSetup.action.GetId()},
+				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: triggerSetup.attributeValues[0].ID},
 				Context: &policy.RequestContext{
 					Pep: &policy.PolicyEnforcementPoint{
@@ -792,7 +792,7 @@ func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_IDs_Succeeds(
 				},
 			},
 			{
-				Action:         &common.IdNameFqnIdentifier{Id: triggerSetup.action.GetId()},
+				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: triggerSetup.attributeValues[1].ID},
 			},
 		},
@@ -832,7 +832,7 @@ func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_FQNsNames_Suc
 		Value:        oblValPrefix + "test-1",
 		Triggers: []*obligations.ValueTriggerRequest{
 			{
-				Action:         &common.IdNameFqnIdentifier{Name: triggerSetup.action.GetName()},
+				Action:         &common.IdNameIdentifier{Name: triggerSetup.action.GetName()},
 				AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value1"},
 				Context: &policy.RequestContext{
 					Pep: &policy.PolicyEnforcementPoint{
@@ -841,7 +841,7 @@ func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_FQNsNames_Suc
 				},
 			},
 			{
-				Action:         &common.IdNameFqnIdentifier{Name: triggerSetup.action.GetName()},
+				Action:         &common.IdNameIdentifier{Name: triggerSetup.action.GetName()},
 				AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value2"},
 			},
 		},
@@ -1134,7 +1134,7 @@ func (s *ObligationsSuite) Test_GetObligationValuesByFQNs_WithTriggers_Succeeds(
 	obl1 := s.createObligation(namespaceID1, oblName+"-vals-triggers-1", nil)
 	obl1Val1Triggers := []*obligations.ValueTriggerRequest{
 		{
-			Action:         &common.IdNameFqnIdentifier{Name: "read"},
+			Action:         &common.IdNameIdentifier{Name: "read"},
 			AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value1"},
 			Context: &policy.RequestContext{
 				Pep: &policy.PolicyEnforcementPoint{
@@ -1147,7 +1147,7 @@ func (s *ObligationsSuite) Test_GetObligationValuesByFQNs_WithTriggers_Succeeds(
 
 	obl1Val2Triggers := []*obligations.ValueTriggerRequest{
 		{
-			Action:         &common.IdNameFqnIdentifier{Name: "update"},
+			Action:         &common.IdNameIdentifier{Name: "update"},
 			AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value2"},
 			Context: &policy.RequestContext{
 				Pep: &policy.PolicyEnforcementPoint{
@@ -1161,7 +1161,7 @@ func (s *ObligationsSuite) Test_GetObligationValuesByFQNs_WithTriggers_Succeeds(
 	obl2 := s.createObligation(namespaceID2, oblName+"-vals-triggers-2", nil)
 	obl2Triggers := []*obligations.ValueTriggerRequest{
 		{
-			Action:         &common.IdNameFqnIdentifier{Name: "create"},
+			Action:         &common.IdNameIdentifier{Name: "create"},
 			AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.net/attr/attr1/value/value1"},
 		},
 	}
@@ -1387,7 +1387,7 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 		Value:        oblValPrefix + "test-1",
 		Triggers: []*obligations.ValueTriggerRequest{
 			{
-				Action:         &common.IdNameFqnIdentifier{Id: triggerSetup.action.GetId()},
+				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: triggerSetup.attributeValues[0].ID},
 				Context: &policy.RequestContext{
 					Pep: &policy.PolicyEnforcementPoint{
@@ -1396,7 +1396,7 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 				},
 			},
 			{
-				Action:         &common.IdNameFqnIdentifier{Id: triggerSetup.action.GetId()},
+				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: triggerSetup.attributeValues[1].ID},
 				Context: &policy.RequestContext{
 					Pep: &policy.PolicyEnforcementPoint{
@@ -1436,7 +1436,7 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 		Value: oblValPrefix + "test-1-updated",
 		Triggers: []*obligations.ValueTriggerRequest{
 			{
-				Action:         &common.IdNameFqnIdentifier{Id: triggerSetup.action.GetId()},
+				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: triggerSetup.attributeValues[0].ID},
 				Context: &policy.RequestContext{
 					Pep: &policy.PolicyEnforcementPoint{
@@ -1482,7 +1482,7 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 		Value: oblValPrefix + "test-1-updated",
 		Triggers: []*obligations.ValueTriggerRequest{
 			{
-				Action:         &common.IdNameFqnIdentifier{Name: "read"},
+				Action:         &common.IdNameIdentifier{Name: "read"},
 				AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value2"},
 			},
 		},
@@ -1819,7 +1819,7 @@ func (s *ObligationsSuite) createObligationValueWithTriggers(obligationID string
 
 		triggers = []*obligations.ValueTriggerRequest{
 			{
-				Action:         &common.IdNameFqnIdentifier{Id: triggerAction.GetId()},
+				Action:         &common.IdNameIdentifier{Id: triggerAction.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: triggerAttributeValue.ID},
 				Context: &policy.RequestContext{
 					Pep: &policy.PolicyEnforcementPoint{
@@ -1828,7 +1828,7 @@ func (s *ObligationsSuite) createObligationValueWithTriggers(obligationID string
 				},
 			},
 			{
-				Action:         &common.IdNameFqnIdentifier{Id: triggerAction.GetId()},
+				Action:         &common.IdNameIdentifier{Id: triggerAction.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: triggerAttributeValue2.ID},
 				Context: &policy.RequestContext{
 					Pep: &policy.PolicyEnforcementPoint{

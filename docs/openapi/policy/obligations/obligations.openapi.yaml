@@ -577,7 +577,7 @@ components:
           format: uri
       title: IdFqnIdentifier
       additionalProperties: false
-    common.IdNameFqnIdentifier:
+    common.IdNameIdentifier:
       type: object
       properties:
         id:
@@ -600,9 +600,8 @@ components:
           title: fqn
           minLength: 1
           format: uri
-      title: IdNameFqnIdentifier
+      title: IdNameIdentifier
       additionalProperties: false
-      description: Added for allow for backward compatibility with old objects that only had name or ID, but also now are namespaced and support FQN
     common.Metadata:
       type: object
       properties:
@@ -1411,7 +1410,7 @@ components:
         action:
           title: action
           description: Required
-          $ref: '#/components/schemas/common.IdNameFqnIdentifier'
+          $ref: '#/components/schemas/common.IdNameIdentifier'
         attributeValue:
           title: attribute_value
           description: Required
@@ -1878,7 +1877,7 @@ components:
         action:
           title: action
           description: Required. The ID of the action that will trigger this obligation value policy decisioning.
-          $ref: '#/components/schemas/common.IdNameFqnIdentifier'
+          $ref: '#/components/schemas/common.IdNameIdentifier'
         attributeValue:
           title: attribute_value
           description: Required. The attribute value ID that will trigger this obligation value policy decisioning.

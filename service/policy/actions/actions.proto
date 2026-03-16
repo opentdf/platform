@@ -26,7 +26,7 @@ message GetActionRequest {
         expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
       }
     ];
-    string fqn = 3 [
+    string fqn = 5 [
       (buf.validate.field).string = {
         min_len : 1
         uri : true
@@ -41,13 +41,13 @@ message GetActionRequest {
 
   // Optional namespace ID to scope name-based lookup.
   // If omitted for name-based lookup, action search is limited to legacy (namespace_id = NULL) actions.
-  string namespace_id = 4 [
+  string namespace_id = 3 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string.uuid = true
   ];
   // Optional namespace FQN to scope name-based lookup.
   // If omitted for name-based lookup, action search is limited to legacy (namespace_id = NULL) actions.
-  string namespace_fqn = 5 [
+  string namespace_fqn = 4 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {
       min_len : 1

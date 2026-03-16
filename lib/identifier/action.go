@@ -12,12 +12,10 @@ type FullyQualifiedAction struct {
 	Name      string
 }
 
-var (
-	// Regex for action definition FQN format: https://<namespace>/act/<name>
-	// The $ at the end ensures no extra segments after name
-	actionDefinitionFQNRegex = regexp.MustCompile(
-		`^https:\/\/(?<namespace>[^\/]+)\/act\/(?<name>[^\/]+)$`,
-	)
+// Regex for action definition FQN format: https://<namespace>/act/<name>
+// The $ at the end ensures no extra segments after name
+var actionDefinitionFQNRegex = regexp.MustCompile(
+	`^https:\/\/(?<namespace>[^\/]+)\/act\/(?<name>[^\/]+)$`,
 )
 
 // Implementing FullyQualified interface for FullyQualifiedAction

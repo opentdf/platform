@@ -966,7 +966,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_With_Two_Obligations_Succe
 		Value:        "obligation_value_1",
 		Triggers: []*obligations.ValueTriggerRequest{
 			{
-				Action:         &common.IdNameFqnIdentifier{Id: readAction.GetId()},
+				Action:         &common.IdNameIdentifier{Id: readAction.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: createdValue.GetId()},
 				Context: &policy.RequestContext{
 					Pep: &policy.PolicyEnforcementPoint{
@@ -975,7 +975,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_With_Two_Obligations_Succe
 				},
 			},
 			{
-				Action:         &common.IdNameFqnIdentifier{Id: updateAction.GetId()},
+				Action:         &common.IdNameIdentifier{Id: updateAction.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: createdValue.GetId()},
 				Context: &policy.RequestContext{
 					Pep: &policy.PolicyEnforcementPoint{
@@ -993,7 +993,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_With_Two_Obligations_Succe
 		Value:        "obligation_value_2",
 		Triggers: []*obligations.ValueTriggerRequest{
 			{
-				Action:         &common.IdNameFqnIdentifier{Id: readAction.GetId()},
+				Action:         &common.IdNameIdentifier{Id: readAction.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: createdValue.GetId()},
 				Context: &policy.RequestContext{
 					Pep: &policy.PolicyEnforcementPoint{
@@ -1019,7 +1019,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_With_Two_Obligations_Succe
 		Value:        "obligation_value_3",
 		Triggers: []*obligations.ValueTriggerRequest{
 			{
-				Action:         &common.IdNameFqnIdentifier{Id: updateAction.GetId()},
+				Action:         &common.IdNameIdentifier{Id: updateAction.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: createdValue.GetId()},
 				Context: &policy.RequestContext{
 					Pep: &policy.PolicyEnforcementPoint{

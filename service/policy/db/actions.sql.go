@@ -515,6 +515,33 @@ func (q *Queries) listActions(ctx context.Context, arg listActionsParams) ([]lis
 	return items, nil
 }
 
+const seedStandardActionsForNamespace = `-- name: seedStandardActionsForNamespace :execrows
+INSERT INTO actions (name, is_standard, namespace_id)
+VALUES
+    ('create', TRUE, $1),
+    ('read', TRUE, $1),
+    ('update', TRUE, $1),
+    ('delete', TRUE, $1)
+ON CONFLICT (namespace_id, name) WHERE namespace_id IS NOT NULL DO NOTHING
+`
+
+// seedStandardActionsForNamespace
+//
+//	INSERT INTO actions (name, is_standard, namespace_id)
+//	VALUES
+//	    ('create', TRUE, $1),
+//	    ('read', TRUE, $1),
+//	    ('update', TRUE, $1),
+//	    ('delete', TRUE, $1)
+//	ON CONFLICT (namespace_id, name) WHERE namespace_id IS NOT NULL DO NOTHING
+func (q *Queries) seedStandardActionsForNamespace(ctx context.Context, namespaceID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, seedStandardActionsForNamespace, namespaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const updateCustomAction = `-- name: updateCustomAction :execrows
 UPDATE actions
 SET

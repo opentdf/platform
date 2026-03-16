@@ -174,6 +174,15 @@ WHERE
     (ns.fqn IS NOT NULL AND fqns.namespace_id IS NOT NULL)
 RETURNING id;
 
+-- name: seedStandardActionsForNamespace :execrows
+INSERT INTO actions (name, is_standard, namespace_id)
+VALUES
+    ('create', TRUE, $1),
+    ('read', TRUE, $1),
+    ('update', TRUE, $1),
+    ('delete', TRUE, $1)
+ON CONFLICT (namespace_id, name) WHERE namespace_id IS NOT NULL DO NOTHING;
+
 -- name: updateCustomAction :execrows
 UPDATE actions
 SET

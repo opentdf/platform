@@ -80,7 +80,7 @@ message ListActionsResponse {
 // Create a new Custom action name with optional metadata.
 // Creation of Standard actions is not supported.
 message CreateActionRequest {
-  // Required
+  // Optional
   option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
 
   // Required
@@ -94,9 +94,11 @@ message CreateActionRequest {
     }
   ];
 
-  // ID of the namespace. Required if namespace_fqn is not provided.
+  // Optional namespace ID for the custom action.
+  // If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config.
   string namespace_id = 2 [(buf.validate.field).string.uuid = true];
-  // FQN of the namespace. Required if namespace_id is not provided.
+  // Optional namespace FQN for the custom action.
+  // If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config.
   string namespace_fqn = 3 [
     (buf.validate.field).string = {
       min_len : 1

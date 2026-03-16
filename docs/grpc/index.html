@@ -7441,14 +7441,16 @@ Empty when none remain after current page </p></td>
                   <td>namespace_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>ID of the namespace. Required if namespace_fqn is not provided. </p></td>
+                  <td><p>Optional namespace ID for the custom action.
+If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config. </p></td>
                 </tr>
               
                 <tr>
                   <td>namespace_fqn</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>FQN of the namespace. Required if namespace_id is not provided. </p></td>
+                  <td><p>Optional namespace FQN for the custom action.
+If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config. </p></td>
                 </tr>
               
                 <tr>

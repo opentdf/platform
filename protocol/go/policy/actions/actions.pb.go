@@ -320,9 +320,11 @@ type CreateActionRequest struct {
 
 	// Required
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// ID of the namespace. Required if namespace_fqn is not provided.
+	// Optional namespace ID for the custom action.
+	// If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config.
 	NamespaceId string `protobuf:"bytes,2,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
-	// FQN of the namespace. Required if namespace_id is not provided.
+	// Optional namespace FQN for the custom action.
+	// If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config.
 	NamespaceFqn string `protobuf:"bytes,3,opt,name=namespace_fqn,json=namespaceFqn,proto3" json:"namespace_fqn,omitempty"`
 	// Optional
 	Metadata *common.MetadataMutable `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`

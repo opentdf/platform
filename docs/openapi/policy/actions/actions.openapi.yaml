@@ -1061,13 +1061,17 @@ components:
           type: string
           title: namespace_id
           format: uuid
-          description: ID of the namespace. Required if namespace_fqn is not provided.
+          description: |-
+            Optional namespace ID for the custom action.
+             If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config.
         namespaceFqn:
           type: string
           title: namespace_fqn
           minLength: 1
           format: uri
-          description: FQN of the namespace. Required if namespace_id is not provided.
+          description: |-
+            Optional namespace FQN for the custom action.
+             If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config.
         metadata:
           title: metadata
           description: Optional

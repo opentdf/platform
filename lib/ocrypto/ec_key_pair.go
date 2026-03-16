@@ -4,6 +4,7 @@ import (
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/mlkem"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
@@ -22,11 +23,13 @@ type ECCMode uint8
 type KeyType string
 
 const (
-	RSA2048Key KeyType = "rsa:2048"
-	RSA4096Key KeyType = "rsa:4096"
-	EC256Key   KeyType = "ec:secp256r1"
-	EC384Key   KeyType = "ec:secp384r1"
-	EC521Key   KeyType = "ec:secp521r1"
+	RSA2048Key   KeyType = "rsa:2048"
+	RSA4096Key   KeyType = "rsa:4096"
+	EC256Key     KeyType = "ec:secp256r1"
+	EC384Key     KeyType = "ec:secp384r1"
+	EC521Key     KeyType = "ec:secp521r1"
+	MLKEM768Key  KeyType = "mlkem:768"
+	MLKEM1024Key KeyType = "mlkem:1024"
 )
 
 const (
@@ -64,6 +67,10 @@ func NewKeyPair(kt KeyType) (KeyPair, error) {
 			return nil, err
 		}
 		return NewECKeyPair(mode)
+	case MLKEM768Key:
+		return NewMLKEMKeyPair()
+	case MLKEM1024Key:
+		return NewMLKEM1024KeyPair()
 	default:
 		return nil, fmt.Errorf("unsupported key type: %v", kt)
 	}
@@ -71,6 +78,14 @@ func NewKeyPair(kt KeyType) (KeyPair, error) {
 
 type ECKeyPair struct {
 	PrivateKey *ecdsa.PrivateKey
+}
+
+type MLKEMKeyPair struct {
+	PrivateKey *mlkem.DecapsulationKey768
+}
+
+type MLKEM1024KeyPair struct {
+	PrivateKey *mlkem.DecapsulationKey1024
 }
 
 func IsECKeyType(kt KeyType) bool {
@@ -184,6 +199,24 @@ func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
 	return ecKeyPair, nil
 }
 
+func NewMLKEMKeyPair() (MLKEMKeyPair, error) {
+	privateKey, err := mlkem.GenerateKey768()
+	if err != nil {
+		return MLKEMKeyPair{}, fmt.Errorf("mlkem.GenerateKey768 failed: %w", err)
+	}
+
+	return MLKEMKeyPair{PrivateKey: privateKey}, nil
+}
+
+func NewMLKEM1024KeyPair() (MLKEM1024KeyPair, error) {
+	privateKey, err := mlkem.GenerateKey1024()
+	if err != nil {
+		return MLKEM1024KeyPair{}, fmt.Errorf("mlkem.GenerateKey1024 failed: %w", err)
+	}
+
+	return MLKEM1024KeyPair{PrivateKey: privateKey}, nil
+}
+
 // PrivateKeyInPemFormat Returns private key in pem format.
 func (keyPair ECKeyPair) PrivateKeyInPemFormat() (string, error) {
 	if keyPair.PrivateKey == nil {
@@ -222,6 +255,62 @@ func (keyPair ECKeyPair) PublicKeyInPemFormat() (string, error) {
 		},
 	)
 	return string(publicKeyPem), nil
+}
+
+func (keyPair MLKEMKeyPair) PrivateKeyInPemFormat() (string, error) {
+	if keyPair.PrivateKey == nil {
+		return "", errors.New("failed to generate PEM formatted private key")
+	}
+
+	privateKeyPEM := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "MLKEM DECAPSULATION KEY",
+			Bytes: keyPair.PrivateKey.Bytes(),
+		},
+	)
+	return string(privateKeyPEM), nil
+}
+
+func (keyPair MLKEMKeyPair) PublicKeyInPemFormat() (string, error) {
+	if keyPair.PrivateKey == nil {
+		return "", errors.New("failed to generate PEM formatted public key")
+	}
+
+	publicKeyPEM := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "MLKEM ENCAPSULATOR",
+			Bytes: keyPair.PrivateKey.EncapsulationKey().Bytes(),
+		},
+	)
+	return string(publicKeyPEM), nil
+}
+
+func (keyPair MLKEM1024KeyPair) PrivateKeyInPemFormat() (string, error) {
+	if keyPair.PrivateKey == nil {
+		return "", errors.New("failed to generate PEM formatted private key")
+	}
+
+	privateKeyPEM := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "MLKEM DECAPSULATION KEY",
+			Bytes: keyPair.PrivateKey.Bytes(),
+		},
+	)
+	return string(privateKeyPEM), nil
+}
+
+func (keyPair MLKEM1024KeyPair) PublicKeyInPemFormat() (string, error) {
+	if keyPair.PrivateKey == nil {
+		return "", errors.New("failed to generate PEM formatted public key")
+	}
+
+	publicKeyPEM := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "MLKEM ENCAPSULATOR",
+			Bytes: keyPair.PrivateKey.EncapsulationKey().Bytes(),
+		},
+	)
+	return string(publicKeyPEM), nil
 }
 
 // KeySize Return the size of this ec key pair.
@@ -493,4 +582,12 @@ func GetECKeySize(pemData []byte) (int, error) {
 // GetKeyType returns the key type (ECKey)
 func (keyPair ECKeyPair) GetKeyType() KeyType {
 	return EC256Key
+}
+
+func (keyPair MLKEMKeyPair) GetKeyType() KeyType {
+	return MLKEM768Key
+}
+
+func (keyPair MLKEM1024KeyPair) GetKeyType() KeyType {
+	return MLKEM1024Key
 }

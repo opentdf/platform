@@ -489,6 +489,15 @@ func (s *ActionsSuite) Test_CreateAction_Conflict_Fails() {
 	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
 }
 
+func (s *ActionsSuite) Test_CreateAction_MissingNamespace_SucceedsInLegacyMode() {
+	action, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name: fmt.Sprintf("missing-namespace-%d", time.Now().UnixNano()),
+	})
+	s.Require().NoError(err)
+	s.NotNil(action)
+	s.Nil(action.GetNamespace())
+}
+
 func (s *ActionsSuite) Test_CreateAction_NormalizesToLowerCase() {
 	newName := "New_Custom_Action_CreateAction_UPPER"
 	action, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{

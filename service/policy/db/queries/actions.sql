@@ -159,6 +159,8 @@ SELECT
 FROM ns
 LEFT JOIN attribute_fqns fqns ON fqns.fqn = ns.fqn AND ns.id IS NULL
 WHERE
+    (ns.id IS NULL AND ns.fqn IS NULL)
+    OR
     (ns.id IS NOT NULL)
     OR
     (ns.fqn IS NOT NULL AND fqns.namespace_id IS NOT NULL)

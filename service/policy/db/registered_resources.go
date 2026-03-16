@@ -115,9 +115,8 @@ func (c PolicyDBClient) CreateRegisteredResource(ctx context.Context, r *registe
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	namespace := &policy.Namespace{}
-	if err := unmarshalNamespace(row.Namespace, namespace); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal registered resource namespace: %w", err)
+	if _, err := hydrateNamespaceFromInterface(row.Namespace); err != nil {
+		return nil, err
 	}
 
 	for _, v := range r.GetValues() {

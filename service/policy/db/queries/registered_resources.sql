@@ -16,20 +16,23 @@ WITH inserted AS (
     LEFT JOIN attribute_fqns fqns ON fqns.fqn = sqlc.narg('namespace_fqn')::text AND sqlc.narg('namespace_id')::text IS NULL
     WHERE
         (sqlc.narg('namespace_id')::text IS NOT NULL AND direct.direct_namespace_id IS NOT NULL) OR
-        (sqlc.narg('namespace_fqn')::text IS NOT NULL AND fqns.namespace_id IS NOT NULL)
+        (sqlc.narg('namespace_fqn')::text IS NOT NULL AND fqns.namespace_id IS NOT NULL) OR
+        (sqlc.narg('namespace_id')::text IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL)
     RETURNING id, namespace_id, name, metadata
 )
 SELECT
     i.id,
     i.name,
     i.metadata,
-    JSON_BUILD_OBJECT(
-        'id', n.id,
-        'name', n.name,
-        'fqn', fqns.fqn
-    ) as namespace
+    CASE WHEN n.id IS NOT NULL THEN
+        JSON_BUILD_OBJECT(
+            'id', n.id,
+            'name', n.name,
+            'fqn', fqns.fqn
+        )
+    ELSE NULL END as namespace
 FROM inserted i
-JOIN attribute_namespaces n ON i.namespace_id = n.id
+LEFT JOIN attribute_namespaces n ON i.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL;
 
 -- name: getRegisteredResource :one

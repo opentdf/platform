@@ -236,6 +236,14 @@ func (s *ActionsSuite) Test_ListActions_WithoutNamespace_ReturnsAcrossNamespaces
 
 func (s *ActionsSuite) Test_ListActions_LegacyCustomAction_ScopedExcluded_UnscopedIncluded_Succeeds() {
 	legacy := s.f.GetCustomActionKey("custom_action_1")
+	scopedName := fmt.Sprintf("scoped-list-action-%d", time.Now().UnixNano())
+	scoped, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        scopedName,
+		NamespaceId: s.defaultNamespaceID(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(scoped)
+
 	assertLegacyAbsent := func(list *actions.ListActionsResponse) {
 		s.T().Helper()
 		found := false
@@ -259,13 +267,20 @@ func (s *ActionsSuite) Test_ListActions_LegacyCustomAction_ScopedExcluded_Unscop
 	s.Require().NoError(err)
 
 	foundUnscoped := false
+	foundScoped := false
 	for _, action := range listUnscoped.GetActionsCustom() {
 		if action.GetId() == legacy.ID {
 			foundUnscoped = true
 			s.Nil(action.GetNamespace())
 		}
+		if action.GetId() == scoped.GetId() {
+			foundScoped = true
+			s.Require().NotNil(action.GetNamespace())
+			s.Equal(s.defaultNamespaceID(), action.GetNamespace().GetId())
+		}
 	}
 	s.True(foundUnscoped)
+	s.True(foundScoped)
 }
 
 func (s *ActionsSuite) Test_GetAction_Id_Succeeds() {

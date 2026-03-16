@@ -591,6 +591,16 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 				return db.WrapIfKnownInvalidQueryErr(err)
 			}
 			actionID = a.ID
+		case *registeredresources.ActionAttributeValue_ActionFqn:
+			nsFQN, actName := identifier.BreakActFQN(ident.ActionFqn)
+			a, err := c.queries.getAction(ctx, getActionParams{
+				NamespaceFqn: pgtypeText(nsFQN),
+				Name:         pgtypeText(actName),
+			})
+			if err != nil {
+				return db.WrapIfKnownInvalidQueryErr(err)
+			}
+			actionID = a.ID
 		default:
 			return db.ErrSelectIdentifierInvalid
 		}

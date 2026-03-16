@@ -77,6 +77,12 @@ func Parse[T FullyQualified](identifier string) (T, error) {
 			return result, err
 		}
 
+	case *FullyQualifiedAction:
+		parsed, err = parseActionFqn(identifier)
+		if err != nil {
+			return result, err
+		}
+
 	default:
 		return result, fmt.Errorf("%w: %T", ErrUnsupportedFQNType, result)
 	}

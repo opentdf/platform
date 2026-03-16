@@ -277,6 +277,17 @@ func Test_CreateSubjectMappingRequest_PopulatedArray_Succeeds(t *testing.T) {
 	}
 	err = getValidator().Validate(req)
 	require.NoError(t, err)
+
+	req = &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: fakeID,
+		Actions: []*policy.Action{
+			{
+				Fqn: "https://example.com/act/read",
+			},
+		},
+	}
+	err = getValidator().Validate(req)
+	require.NoError(t, err)
 }
 
 func Test_CreateSubjectMappingRequest_WithExistingSubjectConditionSetID_Succeeds(t *testing.T) {
@@ -336,6 +347,14 @@ func Test_UpdateSubjectMappingRequest_Succeeds(t *testing.T) {
 	}
 	err = v.Validate(req)
 	require.NoError(t, err, "valid actions with action ID")
+
+	req.Actions = []*policy.Action{
+		{
+			Fqn: "https://example.com/act/read",
+		},
+	}
+	err = v.Validate(req)
+	require.NoError(t, err, "valid actions with action FQN")
 }
 
 func Test_UpdateSubjectMappingRequest_Fails(t *testing.T) {
@@ -385,7 +404,7 @@ func Test_UpdateSubjectMappingRequest_Fails(t *testing.T) {
 					},
 				}
 			},
-			expectedError: "action_name_or_id_not_empty",
+			expectedError: "action_name_or_id_or_fqn_not_empty",
 		},
 	}
 

@@ -685,6 +685,9 @@ components:
           title: namespace
           description: Namespace context for this action
           $ref: '#/components/schemas/policy.Namespace'
+        fqn:
+          type: string
+          title: fqn
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -1351,9 +1354,9 @@ components:
           description: |+
             Required
              The actions permitted by subjects in this mapping
-            Action name or ID must not be empty if provided:
+            Action name, ID, or FQN must not be empty if provided:
             ```
-            this.all(item, item.name != '' || item.id != '')
+            this.all(item, item.name != '' || item.id != '' || item.fqn != '')
             ```
 
         existingSubjectConditionSetId:
@@ -1628,9 +1631,9 @@ components:
           description: |+
             Optional
              Replaces entire list of actions permitted by subjects
-            Action name or ID must not be empty if provided:
+            Action name, ID, or FQN must not be empty if provided:
             ```
-            this.size() == 0 || this.all(item, item.name != '' || item.id != '')
+            this.size() == 0 || this.all(item, item.name != '' || item.id != '' || item.fqn != '')
             ```
 
         metadata:

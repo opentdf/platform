@@ -577,7 +577,7 @@ components:
           format: uri
       title: IdFqnIdentifier
       additionalProperties: false
-    common.IdNameIdentifier:
+    common.IdNameFqnIdentifier:
       type: object
       properties:
         id:
@@ -595,8 +595,14 @@ components:
             this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
             ```
 
-      title: IdNameIdentifier
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
+      title: IdNameFqnIdentifier
       additionalProperties: false
+      description: Added for allow for backward compatibility with old objects that only had name or ID, but also now are namespaced and support FQN
     common.Metadata:
       type: object
       properties:
@@ -788,6 +794,9 @@ components:
           title: namespace
           description: Namespace context for this action
           $ref: '#/components/schemas/policy.Namespace'
+        fqn:
+          type: string
+          title: fqn
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -1402,7 +1411,7 @@ components:
         action:
           title: action
           description: Required
-          $ref: '#/components/schemas/common.IdNameIdentifier'
+          $ref: '#/components/schemas/common.IdNameFqnIdentifier'
         attributeValue:
           title: attribute_value
           description: Required
@@ -1869,7 +1878,7 @@ components:
         action:
           title: action
           description: Required. The ID of the action that will trigger this obligation value policy decisioning.
-          $ref: '#/components/schemas/common.IdNameIdentifier'
+          $ref: '#/components/schemas/common.IdNameFqnIdentifier'
         attributeValue:
           title: attribute_value
           description: Required. The attribute value ID that will trigger this obligation value policy decisioning.

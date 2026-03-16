@@ -170,6 +170,18 @@ message ActionAttributeValue {
         expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
       }
     ];
+
+    string action_fqn = 5 [
+      (buf.validate.field).string = {
+        min_len : 1
+        uri : true
+      },
+      (buf.validate.field).cel = {
+        id: "action_fqn_format"
+        message: "Action FQN must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action FQN will be normalized to lower case."
+        expression: "this.matches('^https://([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?\\\\.)+[a-zA-Z]{2,}/act/[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+      }
+    ];
   }
 
   // Required

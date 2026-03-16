@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
@@ -41,6 +42,10 @@ func (c PolicyDBClient) GetAction(ctx context.Context, req *actions.GetActionReq
 	switch {
 	case req.GetId() != "":
 		getActionParams.ID = pgtypeUUID(req.GetId())
+	case req.GetFqn() != "":
+		nsFQN, actName := identifier.BreakActFQN(req.GetFqn())
+		getActionParams.NamespaceFqn = pgtypeText(nsFQN)
+		getActionParams.Name = pgtypeText(actName)
 	case req.GetName() != "":
 		getActionParams.Name = pgtypeText(strings.ToLower(req.GetName()))
 

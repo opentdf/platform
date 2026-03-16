@@ -665,10 +665,35 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 		return nil, fmt.Errorf("failed to get obligation value: %w", err)
 	}
 
+	var actionID string
+	switch {
+	case r.GetAction().GetId() != "":
+		actionID = r.GetAction().GetId()
+	case r.GetAction().GetFqn() != "":
+		nsFQN, actName := identifier.BreakActFQN(r.GetAction().GetFqn())
+		retrievedAction, err := c.queries.getAction(ctx, getActionParams{
+			NamespaceFqn: pgtypeText(nsFQN),
+			Name:         pgtypeText(actName),
+		})
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		actionID = retrievedAction.ID
+	case r.GetAction().GetName() != "":
+		a, err := c.queries.getAction(ctx, getActionParams{
+			Name: pgtypeText(strings.ToLower(r.GetAction().GetName())),
+		})
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		actionID = a.ID
+	default:
+		return nil, db.ErrSelectIdentifierInvalid
+	}
+
 	params := createObligationTriggerParams{
 		ObligationValueID: pgtypeUUID(oblVal.GetId()),
-		ActionName:        pgtypeText(r.GetAction().GetName()),
-		ActionID:          pgtypeUUID(r.GetAction().GetId()),
+		ActionID:          pgtypeUUID(actionID),
 		AttributeValueID:  pgtypeUUID(r.GetAttributeValue().GetId()),
 		AttributeValueFqn: pgtypeText(r.GetAttributeValue().GetFqn()),
 		ClientID:          pgtypeText(r.GetContext().GetPep().GetClientId()),

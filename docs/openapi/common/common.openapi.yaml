@@ -34,6 +34,32 @@ components:
           format: uri
       title: IdFqnIdentifier
       additionalProperties: false
+    common.IdNameFqnIdentifier:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+        name:
+          type: string
+          title: name
+          maxLength: 253
+          minLength: 1
+          description: |+
+            Name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.:
+            ```
+            this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
+            ```
+
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
+      title: IdNameFqnIdentifier
+      additionalProperties: false
+      description: Added for allow for backward compatibility with old objects that only had name or ID, but also now are namespaced and support FQN
     common.IdNameIdentifier:
       type: object
       properties:

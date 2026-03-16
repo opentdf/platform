@@ -13,10 +13,10 @@ import (
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
-	"github.com/opentdf/platform/service/entityresolution/integration/internal"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	multistrategyv2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/test/integration/entityresolution/internal"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )

@@ -1061,13 +1061,17 @@ components:
           type: string
           title: namespace_id
           format: uuid
-          description: ID of the namespace. Required if namespace_fqn is not provided.
+          description: |-
+            Optional namespace ID for the custom action.
+             If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config.
         namespaceFqn:
           type: string
           title: namespace_fqn
           minLength: 1
           format: uri
-          description: FQN of the namespace. Required if namespace_id is not provided.
+          description: |-
+            Optional namespace FQN for the custom action.
+             If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config.
         metadata:
           title: metadata
           description: Optional
@@ -1136,21 +1140,19 @@ components:
           type: string
           title: namespace_id
           format: uuid
-          description: ID of the namespace. Required when identifier is set to name.
+          description: |-
+            Optional namespace ID to scope name-based lookup.
+             If omitted for name-based lookup, action search is limited to legacy (namespace_id = NULL) actions.
         namespaceFqn:
           type: string
           title: namespace_fqn
           minLength: 1
           format: uri
-          description: FQN of the namespace. Required when identifier is set to name.
+          description: |-
+            Optional namespace FQN to scope name-based lookup.
+             If omitted for name-based lookup, action search is limited to legacy (namespace_id = NULL) actions.
       title: GetActionRequest
       additionalProperties: false
-      description: |+
-        Either namespace_id or namespace_fqn must be provided when getting an action by name:
-        ```
-        !has(this.name) || this.namespace_id != '' || this.namespace_fqn != ''
-        ```
-
     policy.actions.GetActionResponse:
       type: object
       properties:
@@ -1172,13 +1174,13 @@ components:
           type: string
           title: namespace_id
           format: uuid
-          description: ID of the namespace. Required if namespace_fqn is not provided.
+          description: ID of the namespace to scope results. If omitted, returns actions across namespaces.
         namespaceFqn:
           type: string
           title: namespace_fqn
           minLength: 1
           format: uri
-          description: FQN of the namespace. Required if namespace_id is not provided.
+          description: FQN of the namespace to scope results. If omitted, returns actions across namespaces.
         pagination:
           title: pagination
           description: Optional

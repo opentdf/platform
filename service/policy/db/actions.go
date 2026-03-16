@@ -150,6 +150,7 @@ func (c PolicyDBClient) CreateAction(ctx context.Context, req *actions.CreateAct
 	}
 
 	namespaceID := req.GetNamespaceId()
+	namespaceFQN := req.GetNamespaceFqn()
 	useID := len(namespaceID) > 0
 	parsedID := pgtypeUUID(namespaceID)
 	if useID && !parsedID.Valid {
@@ -164,7 +165,7 @@ func (c PolicyDBClient) CreateAction(ctx context.Context, req *actions.CreateAct
 		Name:         name,
 		Metadata:     metadataJSON,
 		NamespaceID:  parsedID,
-		NamespaceFqn: pgtypeText(req.GetNamespaceFqn()),
+		NamespaceFqn: pgtypeText(namespaceFQN),
 	}
 
 	createdID, err := c.queries.createCustomAction(ctx, createParams)

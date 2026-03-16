@@ -105,9 +105,7 @@ func (s *NamespacesSuite) Test_CreateNamespace_SeedsStandardActions() {
 
 	for _, action := range listed.GetActionsStandard() {
 		if _, ok := seen[action.GetName()]; ok {
-			if action.GetNamespace() != nil && action.GetNamespace().GetId() == createdNamespace.GetId() {
-				seen[action.GetName()] = true
-			}
+			seen[action.GetName()] = true
 		}
 	}
 

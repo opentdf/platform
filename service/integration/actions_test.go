@@ -41,8 +41,20 @@ func (s *ActionsSuite) TearDownSuite() {
 }
 
 func (s *ActionsSuite) Test_ListActions_NoPagination_Succeeds() {
-	fixtureCustomAction1 := s.f.GetCustomActionKey("custom_action_1")
-	fixtureCustomAction2 := s.f.GetCustomActionKey("other_special_action")
+	name1 := fmt.Sprintf("scoped-list-nopage-1-%d", time.Now().UnixNano())
+	name2 := fmt.Sprintf("scoped-list-nopage-2-%d", time.Now().UnixNano())
+
+	created1, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        name1,
+		NamespaceId: s.defaultNamespaceID(),
+	})
+	s.Require().NoError(err)
+
+	created2, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        name2,
+		NamespaceId: s.defaultNamespaceID(),
+	})
+	s.Require().NoError(err)
 
 	list, err := s.db.PolicyClient.ListActions(s.ctx, &actions.ListActionsRequest{NamespaceId: s.defaultNamespaceID()})
 	s.NotNil(list)
@@ -56,10 +68,10 @@ func (s *ActionsSuite) Test_ListActions_NoPagination_Succeeds() {
 	foundDelete := false
 
 	for _, action := range list.GetActionsCustom() {
-		switch action.GetName() {
-		case fixtureCustomAction1.Name:
+		switch action.GetId() {
+		case created1.GetId():
 			foundCustomAction1 = true
-		case fixtureCustomAction2.Name:
+		case created2.GetId():
 			foundCustomAction2 = true
 		}
 	}
@@ -187,28 +199,88 @@ func (s *ActionsSuite) Test_ListActions_FiltersCustomActionsByNamespace_Succeeds
 	s.False(foundSecond)
 }
 
-func (s *ActionsSuite) Test_ListActions_LegacyCustomAction_NamespaceProjection_Succeeds() {
+func (s *ActionsSuite) Test_ListActions_WithoutNamespace_ReturnsAcrossNamespaces_Succeeds() {
+	name := fmt.Sprintf("global-list-action-%d", time.Now().UnixNano())
+
+	inDefault, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        name,
+		NamespaceId: s.defaultNamespaceID(),
+	})
+	s.Require().NoError(err)
+
+	inOther, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        name,
+		NamespaceId: s.otherNamespaceID(),
+	})
+	s.Require().NoError(err)
+
+	list, err := s.db.PolicyClient.ListActions(s.ctx, &actions.ListActionsRequest{})
+	s.Require().NoError(err)
+
+	foundDefault := false
+	foundOther := false
+	for _, action := range list.GetActionsCustom() {
+		if action.GetId() == inDefault.GetId() {
+			foundDefault = true
+			s.Equal(s.defaultNamespaceID(), action.GetNamespace().GetId())
+		}
+		if action.GetId() == inOther.GetId() {
+			foundOther = true
+			s.Equal(s.otherNamespaceID(), action.GetNamespace().GetId())
+		}
+	}
+
+	s.True(foundDefault)
+	s.True(foundOther)
+}
+
+func (s *ActionsSuite) Test_ListActions_LegacyCustomAction_ScopedExcluded_UnscopedIncluded_Succeeds() {
 	legacy := s.f.GetCustomActionKey("custom_action_1")
-	assertLegacyProjected := func(list *actions.ListActionsResponse) {
+	scopedName := fmt.Sprintf("scoped-list-action-%d", time.Now().UnixNano())
+	scoped, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        scopedName,
+		NamespaceId: s.defaultNamespaceID(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(scoped)
+
+	assertLegacyAbsent := func(list *actions.ListActionsResponse) {
 		s.T().Helper()
 		found := false
 		for _, action := range list.GetActionsCustom() {
 			if action.GetId() == legacy.ID {
 				found = true
-				s.Equal(s.defaultNamespaceID(), action.GetNamespace().GetId())
-				s.Equal(s.defaultNamespaceFQN(), action.GetNamespace().GetFqn())
 			}
 		}
-		s.True(found)
+		s.False(found)
 	}
 
 	listByID, err := s.db.PolicyClient.ListActions(s.ctx, &actions.ListActionsRequest{NamespaceId: s.defaultNamespaceID()})
 	s.Require().NoError(err)
-	assertLegacyProjected(listByID)
+	assertLegacyAbsent(listByID)
 
 	listByFQN, err := s.db.PolicyClient.ListActions(s.ctx, &actions.ListActionsRequest{NamespaceFqn: s.defaultNamespaceFQN()})
 	s.Require().NoError(err)
-	assertLegacyProjected(listByFQN)
+	assertLegacyAbsent(listByFQN)
+
+	listUnscoped, err := s.db.PolicyClient.ListActions(s.ctx, &actions.ListActionsRequest{})
+	s.Require().NoError(err)
+
+	foundUnscoped := false
+	foundScoped := false
+	for _, action := range listUnscoped.GetActionsCustom() {
+		if action.GetId() == legacy.ID {
+			foundUnscoped = true
+			s.Nil(action.GetNamespace())
+		}
+		if action.GetId() == scoped.GetId() {
+			foundScoped = true
+			s.Require().NotNil(action.GetNamespace())
+			s.Equal(s.defaultNamespaceID(), action.GetNamespace().GetId())
+		}
+	}
+	s.True(foundUnscoped)
+	s.True(foundScoped)
 }
 
 func (s *ActionsSuite) Test_GetAction_Id_Succeeds() {
@@ -240,30 +312,26 @@ func (s *ActionsSuite) Test_GetAction_Id_Succeeds() {
 }
 
 func (s *ActionsSuite) Test_GetAction_Name_Succeeds() {
-	customAction := s.f.GetCustomActionKey("other_special_action")
-	actionCreate := s.f.GetStandardAction(policydb.ActionCreate.String())
+	name := fmt.Sprintf("get-by-name-action-%d", time.Now().UnixNano())
+	customAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        name,
+		NamespaceId: s.defaultNamespaceID(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(customAction)
+
 	action, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
 		Identifier: &actions.GetActionRequest_Name{
-			Name: customAction.Name,
+			Name: customAction.GetName(),
 		},
 		NamespaceId: s.defaultNamespaceID(),
 	})
 	s.NotNil(action)
 	s.Require().NoError(err)
-	s.Equal(customAction.ID, action.GetId())
-	s.Equal(customAction.Name, action.GetName())
-	s.NotNil(action.GetMetadata())
-
-	action, err = s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
-		Identifier: &actions.GetActionRequest_Name{
-			Name: actionCreate.GetName(),
-		},
-		NamespaceId: s.defaultNamespaceID(),
-	})
-	s.NotNil(action)
-	s.Require().NoError(err)
-	s.Equal(actionCreate.GetName(), action.GetName())
-	s.Equal(actionCreate.GetId(), action.GetId())
+	s.Equal(customAction.GetId(), action.GetId())
+	s.Equal(customAction.GetName(), action.GetName())
+	s.Require().NotNil(action.GetNamespace())
+	s.Equal(s.defaultNamespaceID(), action.GetNamespace().GetId())
 	s.NotNil(action.GetMetadata())
 }
 
@@ -299,28 +367,47 @@ func (s *ActionsSuite) Test_GetAction_Name_ResolvesByNamespace_Succeeds() {
 	s.Equal(s.otherNamespaceID(), gotOther.GetNamespace().GetId())
 }
 
-func (s *ActionsSuite) Test_GetAction_Name_LegacyCustomAction_Succeeds() {
+func (s *ActionsSuite) Test_GetAction_Name_LegacyCustomAction_UnscopedSucceeds_ScopedFails() {
 	legacy := s.f.GetCustomActionKey("other_special_action")
-	assertLegacyGet := func(action *policy.Action) {
+
+	byUnscoped, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
+		Identifier: &actions.GetActionRequest_Name{Name: legacy.Name},
+	})
+	s.Require().NoError(err)
+	s.NotNil(byUnscoped)
+	s.Equal(legacy.ID, byUnscoped.GetId())
+	s.Nil(byUnscoped.GetNamespace())
+
+	assertLegacyGet := func(action *policy.Action, err error) {
 		s.T().Helper()
-		s.Equal(legacy.ID, action.GetId())
-		s.Equal(s.defaultNamespaceID(), action.GetNamespace().GetId())
-		s.Equal(s.defaultNamespaceFQN(), action.GetNamespace().GetFqn())
+		s.Nil(action)
+		s.Require().Error(err)
+		s.Require().ErrorIs(err, db.ErrNotFound)
 	}
 
 	byID, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
 		Identifier:  &actions.GetActionRequest_Name{Name: legacy.Name},
 		NamespaceId: s.defaultNamespaceID(),
 	})
-	s.Require().NoError(err)
-	assertLegacyGet(byID)
+	assertLegacyGet(byID, err)
 
 	byFQN, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
 		Identifier:   &actions.GetActionRequest_Name{Name: legacy.Name},
 		NamespaceFqn: s.defaultNamespaceFQN(),
 	})
-	s.Require().NoError(err)
-	assertLegacyGet(byFQN)
+	assertLegacyGet(byFQN, err)
+
+	byOtherID, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
+		Identifier:  &actions.GetActionRequest_Name{Name: legacy.Name},
+		NamespaceId: s.otherNamespaceID(),
+	})
+	assertLegacyGet(byOtherID, err)
+
+	byOtherFQN, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
+		Identifier:   &actions.GetActionRequest_Name{Name: legacy.Name},
+		NamespaceFqn: s.otherNamespaceFQN(),
+	})
+	assertLegacyGet(byOtherFQN, err)
 }
 
 func (s *ActionsSuite) Test_CreateListGetAction_WithNamespaceFQN_Succeeds() {
@@ -415,6 +502,15 @@ func (s *ActionsSuite) Test_CreateAction_Conflict_Fails() {
 	s.Nil(action)
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
+}
+
+func (s *ActionsSuite) Test_CreateAction_MissingNamespace_SucceedsInLegacyMode() {
+	action, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name: fmt.Sprintf("missing-namespace-%d", time.Now().UnixNano()),
+	})
+	s.Require().NoError(err)
+	s.NotNil(action)
+	s.Nil(action.GetNamespace())
 }
 
 func (s *ActionsSuite) Test_CreateAction_NormalizesToLowerCase() {

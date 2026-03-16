@@ -12,11 +12,7 @@ import "policy/selectors.proto";
 */
 
 message GetActionRequest {
-  option (buf.validate.message).cel = {
-    id: "namespace_required_for_name"
-    message: "Either namespace_id or namespace_fqn must be provided when getting an action by name"
-    expression: "!has(this.name) || this.namespace_id != '' || this.namespace_fqn != ''"
-  };
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
 
   // Required
   oneof identifier {
@@ -32,12 +28,14 @@ message GetActionRequest {
     ];
   }
 
-  // ID of the namespace. Required when identifier is set to name.
+  // Optional namespace ID to scope name-based lookup.
+  // If omitted for name-based lookup, action search is limited to legacy (namespace_id = NULL) actions.
   string namespace_id = 3 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string.uuid = true
   ];
-  // FQN of the namespace. Required when identifier is set to name.
+  // Optional namespace FQN to scope name-based lookup.
+  // If omitted for name-based lookup, action search is limited to legacy (namespace_id = NULL) actions.
   string namespace_fqn = 4 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {
@@ -54,12 +52,14 @@ message GetActionResponse {
 }
 
 message ListActionsRequest {
-  // Required
-  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: true };
+  // Optional
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
 
-  // ID of the namespace. Required if namespace_fqn is not provided.
-  string namespace_id = 1 [(buf.validate.field).string.uuid = true];
-  // FQN of the namespace. Required if namespace_id is not provided.
+  // ID of the namespace to scope results. If omitted, returns actions across namespaces.
+  string namespace_id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+  // FQN of the namespace to scope results. If omitted, returns actions across namespaces.
   string namespace_fqn = 2 [
     (buf.validate.field).string = {
       min_len : 1
@@ -80,8 +80,8 @@ message ListActionsResponse {
 // Create a new Custom action name with optional metadata.
 // Creation of Standard actions is not supported.
 message CreateActionRequest {
-  // Required
-  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: true };
+  // Optional
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
 
   // Required
   string name = 1 [
@@ -94,9 +94,11 @@ message CreateActionRequest {
     }
   ];
 
-  // ID of the namespace. Required if namespace_fqn is not provided.
+  // Optional namespace ID for the custom action.
+  // If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config.
   string namespace_id = 2 [(buf.validate.field).string.uuid = true];
-  // FQN of the namespace. Required if namespace_id is not provided.
+  // Optional namespace FQN for the custom action.
+  // If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config.
   string namespace_fqn = 3 [
     (buf.validate.field).string = {
       min_len : 1

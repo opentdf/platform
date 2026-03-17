@@ -258,34 +258,6 @@ func Test_CreateSubjectConditionSetRequest_MissingNamespace_Succeeds(t *testing.
 	require.NoError(t, err)
 }
 
-func Test_CreateSubjectConditionSetRequest_MissingNamespace_Fails(t *testing.T) {
-	conditionSet := &subjectmapping.SubjectConditionSetCreate{
-		SubjectSets: []*policy.SubjectSet{
-			{
-				ConditionGroups: []*policy.ConditionGroup{
-					{
-						Conditions: []*policy.Condition{
-							{
-								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-								SubjectExternalSelectorValue: ".some_field",
-								SubjectExternalValues:        []string{"some_value"},
-							},
-						},
-						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
-					},
-				},
-			},
-		},
-	}
-	req := &subjectmapping.CreateSubjectConditionSetRequest{
-		SubjectConditionSet: conditionSet,
-	}
-
-	err := getValidator().Validate(req)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), errMessageOneof)
-}
-
 func Test_CreateSubjectConditionSetRequest_InvalidNamespace_Fails(t *testing.T) {
 	conditionSet := &subjectmapping.SubjectConditionSetCreate{
 		SubjectSets: []*policy.SubjectSet{

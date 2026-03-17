@@ -583,9 +583,17 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 		case *registeredresources.ActionAttributeValue_ActionId:
 			actionID = ident.ActionId
 		case *registeredresources.ActionAttributeValue_ActionName:
+			actionName := pgtypeText(strings.ToLower(ident.ActionName))
+			// Try namespace-scoped lookup first, then fall back to standard (non-namespaced) actions
 			a, err := c.queries.getAction(ctx, getActionParams{
-				Name: pgtypeText(strings.ToLower(ident.ActionName)),
+				Name:        actionName,
+				NamespaceID: pgtypeUUID(resourceNamespaceID),
 			})
+			if err != nil && resourceNamespaceID != "" {
+				a, err = c.queries.getAction(ctx, getActionParams{
+					Name: actionName,
+				})
+			}
 			if err != nil {
 				return db.WrapIfKnownInvalidQueryErr(err)
 			}

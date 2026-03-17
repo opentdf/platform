@@ -18,9 +18,12 @@ var (
 	ErrSegSigValidation        = fmt.Errorf("[%w] tdf: failed integrity check on segment hash", ErrTampered)
 	ErrTDFPayloadReadFail      = fmt.Errorf("[%w] tdf: fail to read payload from tdf", ErrTampered)
 	ErrTDFPayloadInvalidOffset = fmt.Errorf("[%w] sdk.Reader.ReadAt: negative offset", ErrTampered)
-	ErrRewrapBadRequest        = fmt.Errorf("[%w] tdf: rewrap request 400", ErrTampered)
 	ErrRootSignatureFailure    = fmt.Errorf("[%w] tdf: issue verifying root signature", ErrTampered)
-	ErrRewrapForbidden         = errors.New("tdf: rewrap request 403")
+
+	// KAS request errors — client/configuration issues, not integrity failures
+	ErrKASRequestError  = errors.New("tdf: KAS request error")
+	ErrRewrapBadRequest = fmt.Errorf("[%w] tdf: rewrap request 400", ErrKASRequestError)
+	ErrRewrapForbidden  = errors.New("tdf: rewrap request 403")
 )
 
 // Custom error struct for Assertion errors

@@ -2089,6 +2089,63 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_WithoutNamespac
 	s.True(found, "no-namespace resource should appear in unfiltered list")
 }
 
+func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_SameName_NoNamespaceAndNamespaced_Succeeds() {
+	name := "test_same_name_no_ns_and_ns"
+
+	// Create non-namespaced resource
+	created1, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: name,
+	})
+	s.Require().NoError(err)
+	s.NotNil(created1)
+	s.Nil(created1.GetNamespace())
+
+	// Create namespaced resource with the same name
+	nsID := s.getNamespaceID("example.com")
+	created2, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: nsID,
+		Name:        name,
+	})
+	s.Require().NoError(err)
+	s.NotNil(created2)
+	s.NotNil(created2.GetNamespace())
+	s.Equal(nsID, created2.GetNamespace().GetId())
+
+	// Both should exist with different IDs
+	s.NotEqual(created1.GetId(), created2.GetId())
+}
+
+func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_ByName_Ambiguous_ReturnsNonNamespaced() {
+	name := "test_ambiguous_name_lookup"
+
+	// Create non-namespaced resource
+	createdNoNS, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: name,
+	})
+	s.Require().NoError(err)
+	s.NotNil(createdNoNS)
+
+	// Create namespaced resource with the same name
+	nsID := s.getNamespaceID("example.com")
+	createdWithNS, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: nsID,
+		Name:        name,
+	})
+	s.Require().NoError(err)
+	s.NotNil(createdWithNS)
+
+	// Get by name only (no namespace filter) — should deterministically return the non-namespaced one
+	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+			Name: name,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(createdNoNS.GetId(), got.GetId())
+	s.Nil(got.GetNamespace())
+}
+
 // ┌─────────────────────────────────────────────────────────────────────────────┐
 // │ end namespace-optional tests                                                │
 // └─────────────────────────────────────────────────────────────────────────────┘

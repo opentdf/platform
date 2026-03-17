@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -583,16 +584,15 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 		case *registeredresources.ActionAttributeValue_ActionId:
 			actionID = ident.ActionId
 		case *registeredresources.ActionAttributeValue_ActionName:
-			actionName := pgtypeText(strings.ToLower(ident.ActionName))
-			// Try namespace-scoped lookup first, then fall back to standard (non-namespaced) actions
-			a, err := c.queries.getAction(ctx, getActionParams{
-				Name:        actionName,
-				NamespaceID: pgtypeUUID(resourceNamespaceID),
-			})
-			if err != nil && resourceNamespaceID != "" {
-				a, err = c.queries.getAction(ctx, getActionParams{
-					Name: actionName,
-				})
+			actionParams := getActionParams{
+				Name:        pgtypeText(strings.ToLower(ident.ActionName)),
+				NamespaceID: nsUUID,
+			}
+			a, err := c.queries.getAction(ctx, actionParams)
+			if err != nil && nsUUID.Valid {
+				// Fall back to standard (non-namespaced) action lookup
+				actionParams.NamespaceID = pgtype.UUID{}
+				a, err = c.queries.getAction(ctx, actionParams)
 			}
 			if err != nil {
 				return db.WrapIfKnownInvalidQueryErr(err)

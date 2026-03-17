@@ -2079,14 +2079,21 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_WithoutNamespac
 	s.Require().NoError(err)
 	s.NotNil(list)
 
-	found := false
+	foundNoNS := false
+	foundNamespaced := false
+	namespacedRes := s.f.GetRegisteredResourceKey("res_only")
 	for _, r := range list.GetResources() {
 		if r.GetId() == created.GetId() {
-			found = true
+			foundNoNS = true
 			s.Nil(r.GetNamespace())
 		}
+		if r.GetId() == namespacedRes.ID {
+			foundNamespaced = true
+			s.NotNil(r.GetNamespace())
+		}
 	}
-	s.True(found, "no-namespace resource should appear in unfiltered list")
+	s.True(foundNoNS, "no-namespace resource should appear in unfiltered list")
+	s.True(foundNamespaced, "namespaced resource should also appear in unfiltered list")
 }
 
 func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_SameName_NoNamespaceAndNamespaced_Succeeds() {

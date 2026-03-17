@@ -61,9 +61,10 @@ WHERE
     (sqlc.narg('id')::uuid IS NULL OR r.id = sqlc.narg('id')::uuid) AND
     (sqlc.narg('name')::text IS NULL OR r.name = sqlc.narg('name')::text) AND
     (sqlc.narg('namespace_id')::uuid IS NULL OR r.namespace_id = sqlc.narg('namespace_id')::uuid) AND
-    (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text) AND
-    (sqlc.narg('name')::text IS NULL OR sqlc.narg('namespace_id')::uuid IS NOT NULL OR sqlc.narg('namespace_fqn')::text IS NOT NULL OR r.namespace_id IS NULL)
-GROUP BY r.id, n.id, ns_fqns.fqn;
+    (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text)
+GROUP BY r.id, n.id, ns_fqns.fqn
+ORDER BY r.namespace_id NULLS FIRST
+LIMIT 1;
 
 -- name: listRegisteredResources :many
 WITH counted AS (

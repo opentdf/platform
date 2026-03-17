@@ -218,9 +218,10 @@ WHERE
     ($1::uuid IS NULL OR r.id = $1::uuid) AND
     ($2::text IS NULL OR r.name = $2::text) AND
     ($3::uuid IS NULL OR r.namespace_id = $3::uuid) AND
-    ($4::text IS NULL OR ns_fqns.fqn = $4::text) AND
-    ($2::text IS NULL OR $3::uuid IS NOT NULL OR $4::text IS NOT NULL OR r.namespace_id IS NULL)
+    ($4::text IS NULL OR ns_fqns.fqn = $4::text)
 GROUP BY r.id, n.id, ns_fqns.fqn
+ORDER BY r.namespace_id NULLS FIRST
+LIMIT 1
 `
 
 type getRegisteredResourceParams struct {
@@ -265,9 +266,10 @@ type getRegisteredResourceRow struct {
 //	    ($1::uuid IS NULL OR r.id = $1::uuid) AND
 //	    ($2::text IS NULL OR r.name = $2::text) AND
 //	    ($3::uuid IS NULL OR r.namespace_id = $3::uuid) AND
-//	    ($4::text IS NULL OR ns_fqns.fqn = $4::text) AND
-//	    ($2::text IS NULL OR $3::uuid IS NOT NULL OR $4::text IS NOT NULL OR r.namespace_id IS NULL)
+//	    ($4::text IS NULL OR ns_fqns.fqn = $4::text)
 //	GROUP BY r.id, n.id, ns_fqns.fqn
+//	ORDER BY r.namespace_id NULLS FIRST
+//	LIMIT 1
 func (q *Queries) getRegisteredResource(ctx context.Context, arg getRegisteredResourceParams) (getRegisteredResourceRow, error) {
 	row := q.db.QueryRow(ctx, getRegisteredResource,
 		arg.ID,

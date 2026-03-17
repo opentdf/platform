@@ -171,6 +171,7 @@ message ActionAttributeValue {
       }
     ];
 
+    // The fully qualified name of the action
     string action_fqn = 5 [
       (buf.validate.field).string = {
         min_len : 1

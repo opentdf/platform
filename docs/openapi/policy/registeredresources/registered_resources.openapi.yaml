@@ -652,6 +652,7 @@ components:
         fqn:
           type: string
           title: fqn
+          description: The fully qualified name of the action.
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -1331,6 +1332,7 @@ components:
                   minLength: 1
                   format: uri
                   description: |+
+                    The fully qualified name of the action
                     Action FQN must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action FQN will be normalized to lower case.:
                     ```
                     this.matches('^https://([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}/act/[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')

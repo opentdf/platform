@@ -260,7 +260,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ActionFQN_Succeeds() {
 	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId: fixtureAttrVal.ID,
 		Actions: []*policy.Action{
-			{Fqn: fmt.Sprintf("https://example.com/act/%s", actionName)},
+			{Fqn: "https://example.com/act/" + actionName},
 		},
 		ExistingSubjectConditionSetId: fixtureScs.ID,
 	}
@@ -380,7 +380,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions_WithFQN_Succeeds
 	updated, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, &subjectmapping.UpdateSubjectMappingRequest{
 		Id: created.GetId(),
 		Actions: []*policy.Action{
-			{Fqn: fmt.Sprintf("https://example.com/act/%s", actionName)},
+			{Fqn: "https://example.com/act/" + actionName},
 		},
 	})
 	s.Require().NoError(err)

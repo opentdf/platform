@@ -26,6 +26,7 @@ message GetActionRequest {
         expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
       }
     ];
+    // The fully qualified name of the action, e.g., https://example.com/act/read
     string fqn = 5 [
       (buf.validate.field).string = {
         min_len : 1

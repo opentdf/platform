@@ -24,7 +24,7 @@ func (act *FullyQualifiedAction) FQN() string {
 	builder.WriteString("https://")
 	builder.WriteString(act.Namespace)
 
-	// if name, must be valid
+	// if name is present, append it to the FQN
 	if act.Name != "" {
 		builder.WriteString("/act/")
 		builder.WriteString(act.Name)
@@ -99,10 +99,11 @@ func parseActionFqn(fqn string) (*FullyQualifiedAction, error) {
 }
 
 func BreakActFQN(fqn string) (string, string) {
-	nsFQN := strings.Split(fqn, "/act/")[0]
-	parts := strings.Split(fqn, "/")
-	actName := strings.ToLower(parts[len(parts)-1])
-	return nsFQN, actName
+	parts := strings.SplitN(fqn, "/act/", 2)
+	if len(parts) == 2 {
+		return parts[0], strings.ToLower(parts[1])
+	}
+	return fqn, ""
 }
 
 func BuildActFQN(nsFQN, actName string) string {

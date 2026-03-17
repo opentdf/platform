@@ -1115,9 +1115,10 @@ type Action struct {
 	Value isAction_Value `protobuf_oneof:"value"`
 	Name  string         `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	// Namespace context for this action
-	Namespace *Namespace       `protobuf:"bytes,5,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	Fqn       string           `protobuf:"bytes,6,opt,name=fqn,proto3" json:"fqn,omitempty"`
-	Metadata  *common.Metadata `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	Namespace *Namespace `protobuf:"bytes,5,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// The fully qualified name of the action.
+	Fqn      string           `protobuf:"bytes,6,opt,name=fqn,proto3" json:"fqn,omitempty"`
+	Metadata *common.Metadata `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
 }
 
 func (x *Action) Reset() {

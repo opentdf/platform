@@ -751,6 +751,7 @@ type ActionAttributeValue_ActionName struct {
 }
 
 type ActionAttributeValue_ActionFqn struct {
+	// The fully qualified name of the action
 	ActionFqn string `protobuf:"bytes,5,opt,name=action_fqn,json=actionFqn,proto3,oneof"`
 }
 

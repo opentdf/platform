@@ -131,6 +131,7 @@ type GetActionRequest_Name struct {
 }
 
 type GetActionRequest_Fqn struct {
+	// The fully qualified name of the action, e.g., https://example.com/act/read
 	Fqn string `protobuf:"bytes,5,opt,name=fqn,proto3,oneof"`
 }
 

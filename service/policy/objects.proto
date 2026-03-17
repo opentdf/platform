@@ -155,6 +155,7 @@ message Action {
   // Namespace context for this action
   Namespace namespace = 5;
 
+  // The fully qualified name of the action.
   string fqn = 6;
 
   common.Metadata metadata = 100;

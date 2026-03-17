@@ -1,5 +1,4 @@
-# TODO: Uncomment this BDD coverage once subject condition set mappings are within the next SDK.
-@sdk-scs-mappings-next-sdk @obligations
+@obligations
 Feature: Obligations Decisioning E2E Tests
   E2E tests for obligations decisioning feature covering obligation definition,
   value triggers, multi-resource decisions, entity chains, and ABAC scenarios.

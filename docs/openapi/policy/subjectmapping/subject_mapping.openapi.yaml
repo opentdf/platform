@@ -1399,7 +1399,7 @@ components:
           title: namespace_id
           format: uuid
           description: |-
-            Required
+            Optional
              Namespace ID or FQN for the subject mapping
         namespaceFqn:
           type: string

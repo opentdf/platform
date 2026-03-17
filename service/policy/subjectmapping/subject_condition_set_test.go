@@ -216,9 +216,15 @@ func Test_CreateSubjectConditionSetRequest_ValidSubjectConditionSet_Succeeds(t *
 	}
 	err = getValidator().Validate(req)
 	require.NoError(t, err)
+
+	req = &subjectmapping.CreateSubjectConditionSetRequest{
+		SubjectConditionSet: conditionSet,
+	}
+	err = getValidator().Validate(req)
+	require.NoError(t, err)
 }
 
-func Test_CreateSubjectConditionSetRequest_MissingNamespace_Fails(t *testing.T) {
+func Test_CreateSubjectConditionSetRequest_MissingNamespace_Succeeds(t *testing.T) {
 	conditionSet := &subjectmapping.SubjectConditionSetCreate{
 		SubjectSets: []*policy.SubjectSet{
 			{
@@ -242,8 +248,7 @@ func Test_CreateSubjectConditionSetRequest_MissingNamespace_Fails(t *testing.T) 
 	}
 
 	err := getValidator().Validate(req)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), errMessageOneof)
+	require.NoError(t, err)
 }
 
 func Test_CreateSubjectConditionSetRequest_InvalidNamespace_Fails(t *testing.T) {

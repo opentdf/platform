@@ -305,6 +305,17 @@ func Test_CreateSubjectMappingRequest_PopulatedArray_Succeeds(t *testing.T) {
 	}
 	err = getValidator().Validate(req)
 	require.NoError(t, err)
+
+	req = &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: fakeID,
+		Actions: []*policy.Action{
+			{
+				Name: "read",
+			},
+		},
+	}
+	err = getValidator().Validate(req)
+	require.NoError(t, err)
 }
 
 func Test_CreateSubjectMappingRequest_WithExistingSubjectConditionSetID_Succeeds(t *testing.T) {
@@ -329,7 +340,7 @@ func Test_CreateSubjectMappingRequest_WithExistingSubjectConditionSetID_Succeeds
 	require.Contains(t, err.Error(), errMessageOptionalUUID)
 }
 
-func Test_CreateSubjectMappingRequest_MissingNamespace_Fails(t *testing.T) {
+func Test_CreateSubjectMappingRequest_MissingNamespace_Succeeds(t *testing.T) {
 	req := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId: fakeID,
 		Actions: []*policy.Action{
@@ -340,8 +351,7 @@ func Test_CreateSubjectMappingRequest_MissingNamespace_Fails(t *testing.T) {
 	}
 
 	err := getValidator().Validate(req)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), errMessageOneof)
+	require.NoError(t, err)
 }
 
 func Test_CreateSubjectMappingRequest_InvalidNamespace_Fails(t *testing.T) {

@@ -23,7 +23,7 @@ var (
 	// KAS request errors — client/configuration issues, not integrity failures
 	ErrKASRequestError  = errors.New("tdf: KAS request error")
 	ErrRewrapBadRequest = fmt.Errorf("[%w] tdf: rewrap request 400", ErrKASRequestError)
-	ErrRewrapForbidden  = errors.New("tdf: rewrap request 403")
+	ErrRewrapForbidden  = fmt.Errorf("[%w] tdf: rewrap request 403", ErrKASRequestError)
 )
 
 // Custom error struct for Assertion errors

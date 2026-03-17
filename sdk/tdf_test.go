@@ -3139,7 +3139,9 @@ func TestGetKasErrorToReturn(t *testing.T) {
 		inputError := errors.New("rpc error: code = InvalidArgument desc = invalid request")
 		result := getKasErrorToReturn(inputError, defaultError)
 		require.ErrorIs(t, result, ErrRewrapBadRequest)
+		require.ErrorIs(t, result, ErrKASRequestError)
 		require.ErrorIs(t, result, defaultError)
+		require.NotErrorIs(t, result, ErrTampered, "KAS 400 must not match ErrTampered")
 	})
 
 	t.Run("PermissionDenied error returns ErrRewrapForbidden", func(t *testing.T) {

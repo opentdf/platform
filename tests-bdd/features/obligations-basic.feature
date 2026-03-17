@@ -1,5 +1,4 @@
-# TODO: Uncomment this BDD coverage once subject condition set mappings are within the next SDK.
-@sdk-scs-mappings-next-sdk @obligations @smoke-obligations
+@obligations @smoke-obligations
 Feature: Obligations Decisioning Basic Smoke Test
   Basic smoke test for obligations decisioning to verify the feature works e2e
 

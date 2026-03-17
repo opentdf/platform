@@ -13,9 +13,24 @@ import (
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/opentdf/platform/service/policy/actions"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
+
+func validateRegisteredResourceActionAttributeValues(namespacedPolicy bool, actionAttrValues []*registeredresources.ActionAttributeValue) error {
+	if !namespacedPolicy {
+		return nil
+	}
+
+	for _, value := range actionAttrValues {
+		if value.GetActionName() != "" && value.GetActionId() == "" && value.GetActionFqn() == "" {
+			return actions.ErrActionNameWithoutNamespace
+		}
+	}
+
+	return nil
+}
 
 type RegisteredResourcesService struct { //nolint:revive // RegisteredResourcesService is a valid name
 	dbClient policydb.PolicyDBClient
@@ -212,6 +227,10 @@ func (s *RegisteredResourcesService) DeleteRegisteredResource(ctx context.Contex
 /// Registered Resource Values Handlers
 
 func (s *RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.Context, req *connect.Request[registeredresources.CreateRegisteredResourceValueRequest]) (*connect.Response[registeredresources.CreateRegisteredResourceValueResponse], error) {
+	if err := validateRegisteredResourceActionAttributeValues(s.config.NamespacedPolicy, req.Msg.GetActionAttributeValues()); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	rsp := &registeredresources.CreateRegisteredResourceValueResponse{}
 
 	auditParams := audit.PolicyEventParams{
@@ -284,6 +303,10 @@ func (s *RegisteredResourcesService) ListRegisteredResourceValues(ctx context.Co
 }
 
 func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.Context, req *connect.Request[registeredresources.UpdateRegisteredResourceValueRequest]) (*connect.Response[registeredresources.UpdateRegisteredResourceValueResponse], error) {
+	if err := validateRegisteredResourceActionAttributeValues(s.config.NamespacedPolicy, req.Msg.GetActionAttributeValues()); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	valueID := req.Msg.GetId()
 
 	rsp := &registeredresources.UpdateRegisteredResourceValueResponse{}

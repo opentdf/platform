@@ -52,6 +52,11 @@ components:
             this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
             ```
 
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
       title: IdNameIdentifier
       additionalProperties: false
     common.Metadata:

@@ -618,6 +618,10 @@ components:
           title: namespace
           description: Namespace context for this action
           $ref: '#/components/schemas/policy.Namespace'
+        fqn:
+          type: string
+          title: fqn
+          description: The fully qualified name of the action.
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'

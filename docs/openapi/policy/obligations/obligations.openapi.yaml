@@ -595,6 +595,11 @@ components:
             this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
             ```
 
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
       title: IdNameIdentifier
       additionalProperties: false
     common.Metadata:
@@ -788,6 +793,10 @@ components:
           title: namespace
           description: Namespace context for this action
           $ref: '#/components/schemas/policy.Namespace'
+        fqn:
+          type: string
+          title: fqn
+          description: The fully qualified name of the action.
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'

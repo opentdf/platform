@@ -496,10 +496,8 @@ WITH ov_id AS (
 a_id AS (
     SELECT a.id
     FROM actions a
-    WHERE
-        (sqlc.narg('action_id')::uuid IS NOT NULL AND a.id = sqlc.narg('action_id')::uuid)
-        OR
-        (sqlc.narg('action_name')::text IS NOT NULL AND a.name = sqlc.narg('action_name')::text)
+    WHERE sqlc.narg('action_id')::uuid IS NOT NULL
+      AND a.id = sqlc.narg('action_id')::uuid
 ),
 -- Gets the attribute value, but also ensures that the attribute value belongs to the same namespace as the obligation, to which the obligation value belongs
 av_id AS (

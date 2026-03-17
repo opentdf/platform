@@ -6,7 +6,7 @@ import "google/protobuf/timestamp.proto";
 import "buf/validate/validate.proto";
 
 message IdNameIdentifier {
-    option (buf.validate.message).oneof = { fields: ["id", "name"], required: true };
+    option (buf.validate.message).oneof = { fields: ["id", "name", "fqn"], required: true };
     string id = 1 [(buf.validate.field).string.uuid = true];
     string name = 2 [
       (buf.validate.field).string.min_len = 1,
@@ -17,6 +17,10 @@ message IdNameIdentifier {
         expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
       }
     ];
+    string fqn = 3 [(buf.validate.field).string = {
+        min_len: 1
+        uri: true
+    }];
 }
 
 message IdFqnIdentifier {

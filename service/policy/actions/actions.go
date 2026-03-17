@@ -31,6 +31,11 @@ const (
 	ActionNameDelete = string(policydb.ActionDelete)
 )
 
+var (
+	ErrActionNameWithoutNamespace   = errors.New("action name without namespace is not allowed when namespaced policy is enabled; use action id or fqn")
+	errCreateActionWithoutNamespace = errors.New("creating an action without a namespace is not allowed when namespaced policy is enabled; either namespace_id or namespace_fqn must be provided")
+)
+
 type ActionService struct {
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
@@ -114,7 +119,7 @@ func (a *ActionService) ListActions(ctx context.Context, req *connect.Request[ac
 func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[actions.CreateActionRequest]) (*connect.Response[actions.CreateActionResponse], error) {
 	a.logger.DebugContext(ctx, "creating action", slog.String("name", req.Msg.GetName()))
 	if a.config.NamespacedPolicy && req.Msg.GetNamespaceId() == "" && req.Msg.GetNamespaceFqn() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("either namespace_id or namespace_fqn must be provided"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errCreateActionWithoutNamespace)
 	}
 
 	auditParams := audit.PolicyEventParams{

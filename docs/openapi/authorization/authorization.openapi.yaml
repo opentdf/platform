@@ -244,6 +244,13 @@ paths:
             description: |-
               Optional
                Unique name of the KAS instance
+        - name: decisionRequests.actions.fqn
+          in: query
+          description: The fully qualified name of the action.
+          schema:
+            type: string
+            title: fqn
+            description: The fully qualified name of the action.
         - name: decisionRequests.tokens.id
           in: query
           description: ephemeral id for tracking between request and response
@@ -970,6 +977,10 @@ components:
           title: namespace
           description: Namespace context for this action
           $ref: '#/components/schemas/policy.Namespace'
+        fqn:
+          type: string
+          title: fqn
+          description: The fully qualified name of the action.
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'

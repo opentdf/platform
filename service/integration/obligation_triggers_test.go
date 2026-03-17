@@ -167,8 +167,8 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithIDs_Success()
 			},
 		},
 	})
-	s.triggerIDsToClean = append(s.triggerIDsToClean, trigger.GetId())
 	s.Require().NoError(err)
+	s.triggerIDsToClean = append(s.triggerIDsToClean, trigger.GetId())
 	s.validateTriggerWithDefaults(trigger, true)
 	s.Require().Equal("test", trigger.GetMetadata().GetLabels()["source"])
 }
@@ -227,16 +227,16 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_NoCtx_Success() {
 		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
 		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
 	})
-	s.triggerIDsToClean = append(s.triggerIDsToClean, trigger.GetId())
 	s.Require().NoError(err)
+	s.triggerIDsToClean = append(s.triggerIDsToClean, trigger.GetId())
 	s.validateTriggerWithDefaults(trigger, false)
 }
 
-func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithNameFQN_Success() {
+func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithActionFQNs_Success() {
 	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
 		ObligationValue: &common.IdFqnIdentifier{Fqn: s.obligation.GetNamespace().GetFqn() + "/obl/" + s.obligationValue.GetObligation().GetName() + "/value/" + s.obligationValue.GetValue()},
 		AttributeValue:  &common.IdFqnIdentifier{Fqn: s.attributeValue.GetFqn()},
-		Action:          &common.IdNameIdentifier{Name: s.action.GetName()},
+		Action:          &common.IdNameIdentifier{Fqn: fmt.Sprintf("%s/act/%s", s.namespace.GetFqn(), s.action.GetName())},
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{"source": "test"},
 		},
@@ -246,10 +246,33 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithNameFQN_Succe
 			},
 		},
 	})
-	s.triggerIDsToClean = append(s.triggerIDsToClean, trigger.GetId())
 	s.Require().NoError(err)
+	s.triggerIDsToClean = append(s.triggerIDsToClean, trigger.GetId())
 	s.validateTriggerWithDefaults(trigger, true)
 	s.Require().Equal("test", trigger.GetMetadata().GetLabels()["source"])
+}
+
+func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithStandardActionName_UsesLegacyUnscopedAction() {
+	globalRead := s.f.GetStandardAction("read")
+
+	uniqueValue := fmt.Sprintf("trigger-read-action-%d", time.Now().UnixNano())
+	ov, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationId: s.obligation.GetId(),
+		Value:        uniqueValue,
+	})
+	s.Require().NoError(err)
+	s.obligationValueIDsToClean = append(s.obligationValueIDsToClean, ov.GetId())
+
+	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
+		ObligationValue: &common.IdFqnIdentifier{Id: ov.GetId()},
+		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
+		Action:          &common.IdNameIdentifier{Name: "read"},
+	})
+	s.Require().NoError(err)
+	s.triggerIDsToClean = append(s.triggerIDsToClean, trigger.GetId())
+
+	s.Equal(globalRead.GetId(), trigger.GetAction().GetId())
+	s.Equal("read", trigger.GetAction().GetName())
 }
 
 func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ObligationValueNotFound_Fails() {

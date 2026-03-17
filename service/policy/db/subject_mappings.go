@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
@@ -260,8 +261,19 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		switch {
 		case a.GetId() != "":
 			actionIDs = append(actionIDs, a.GetId())
+		case a.GetFqn() != "":
+			nsFQN, actName := identifier.BreakActFQN(a.GetFqn())
+			retrievedAction, err := c.queries.getAction(ctx, getActionParams{
+				NamespaceFqn: pgtypeText(nsFQN),
+				Name:         pgtypeText(actName),
+			})
+			if err != nil {
+				return nil, db.WrapIfKnownInvalidQueryErr(err)
+			}
+			actionIDs = append(actionIDs, retrievedAction.ID)
 		case a.GetName() != "":
 			actionNames = append(actionNames, strings.ToLower(a.GetName()))
+
 		default:
 			return nil, db.WrapIfKnownInvalidQueryErr(
 				errors.Join(db.ErrMissingValue, fmt.Errorf("action at index %d missing required 'id' or 'name' when creating a subject mapping; action details: %+v", idx, a)),
@@ -472,6 +484,16 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 			switch {
 			case a.GetId() != "":
 				actionIDs = append(actionIDs, a.GetId())
+			case a.GetFqn() != "":
+				nsFQN, actName := identifier.BreakActFQN(a.GetFqn())
+				retrievedAction, err := c.queries.getAction(ctx, getActionParams{
+					NamespaceFqn: pgtypeText(nsFQN),
+					Name:         pgtypeText(actName),
+				})
+				if err != nil {
+					return nil, db.WrapIfKnownInvalidQueryErr(err)
+				}
+				actionIDs = append(actionIDs, retrievedAction.ID)
 			case a.GetName() != "":
 				actionNames = append(actionNames, strings.ToLower(a.GetName()))
 			default:

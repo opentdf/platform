@@ -138,6 +138,43 @@ func TestParse_RegisteredResourceValueFqn(t *testing.T) {
 	}
 }
 
+func TestParse_ActionFqn(t *testing.T) {
+	// Test the generic Parse function with FullyQualifiedAction type
+	testCases := []struct {
+		name     string
+		fqn      string
+		wantErr  bool
+		checkFqn func(*testing.T, *FullyQualifiedAction)
+	}{
+		{
+			name:    "Valid action FQN",
+			fqn:     "https://example.org/act/read",
+			wantErr: false,
+			checkFqn: func(t *testing.T, fqa *FullyQualifiedAction) {
+				require.Equal(t, "example.org", fqa.Namespace)
+				require.Equal(t, "read", fqa.Name)
+			},
+		},
+		{
+			name:    "Invalid FQN format",
+			fqn:     "invalid",
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := Parse[*FullyQualifiedAction](tc.fqn)
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			tc.checkFqn(t, result)
+		})
+	}
+}
+
 type mockType struct{}
 
 func (m *mockType) FQN() string {

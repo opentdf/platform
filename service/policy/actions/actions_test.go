@@ -14,9 +14,11 @@ import (
 const (
 	validUUID                  = "00000000-0000-0000-0000-000000000000"
 	validNamespaceFQN          = "https://example.com"
+	validActionFQN             = "https://example.com/act/read"
 	errMessageUUID             = "string.uuid"
 	errMessageMaxLength        = "string.max_len"
 	errMessageActionNameFormat = "action_name_format"
+	errMessageFQNFormat        = "fqn_format"
 	errMessageURI              = "string.uri"
 	errMessageRequired         = "required"
 )
@@ -159,6 +161,12 @@ func (s *ActionSuite) Test_GetAction_Succeeds() {
 			s.Require().NoError(err)
 		})
 	}
+
+	req = &actions.GetActionRequest{
+		Identifier: &actions.GetActionRequest_Fqn{Fqn: validActionFQN},
+	}
+	err = s.v.Validate(req)
+	s.Require().NoError(err)
 }
 
 func (s *ActionSuite) Test_GetAction_Fails() {
@@ -223,6 +231,14 @@ func (s *ActionSuite) Test_GetAction_Fails() {
 	err = s.v.Validate(req)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), errMessageURI)
+
+	// invalid action fqn format
+	req = &actions.GetActionRequest{
+		Identifier: &actions.GetActionRequest_Fqn{Fqn: "https://example.com/not-act/read"},
+	}
+	err = s.v.Validate(req)
+	s.Require().Error(err)
+	s.Require().Contains(err.Error(), errMessageFQNFormat)
 }
 
 func (s *ActionSuite) Test_ListActions_Succeeds() {

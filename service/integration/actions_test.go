@@ -445,6 +445,27 @@ func (s *ActionsSuite) Test_CreateListGetAction_WithNamespaceFQN_Succeeds() {
 	s.Equal(s.otherNamespaceFQN(), got.GetNamespace().GetFqn())
 }
 
+func (s *ActionsSuite) Test_GetAction_FQN_Succeeds() {
+	name := fmt.Sprintf("get-by-fqn-action-%d", time.Now().UnixNano())
+	created, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        name,
+		NamespaceId: s.defaultNamespaceID(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	got, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
+		Identifier: &actions.GetActionRequest_Fqn{Fqn: fmt.Sprintf("%s/act/%s", s.defaultNamespaceFQN(), name)},
+	})
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(created.GetId(), got.GetId())
+	s.Equal(created.GetName(), got.GetName())
+	s.Require().NotNil(got.GetNamespace())
+	s.Equal(s.defaultNamespaceID(), got.GetNamespace().GetId())
+	s.Equal(s.defaultNamespaceFQN(), got.GetNamespace().GetFqn())
+}
+
 func (s *ActionsSuite) Test_GetAction_NonExistent_Fails() {
 	action, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
 		Identifier: &actions.GetActionRequest_Id{

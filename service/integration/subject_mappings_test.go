@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/actions"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -243,6 +245,38 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_BrandNewActionNames_Succ
 	s.True(foundNewActionTwo)
 }
 
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ActionFQN_Succeeds() {
+	fixtureAttrVal := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
+	actionName := fmt.Sprintf("sm-fqn-create-%d", time.Now().UnixNano())
+
+	createdAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        actionName,
+		NamespaceId: s.f.GetNamespaceKey("example.com").ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(createdAction)
+
+	newSubjectMapping := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: fixtureAttrVal.ID,
+		Actions: []*policy.Action{
+			{Fqn: "https://example.com/act/" + actionName},
+		},
+		ExistingSubjectConditionSetId: fixtureScs.ID,
+	}
+
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, newSubjectMapping)
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Require().Len(got.GetActions(), 1)
+	s.Equal(createdAction.GetId(), got.GetActions()[0].GetId())
+	s.Equal(createdAction.GetName(), got.GetActions()[0].GetName())
+}
+
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 	// create a new one SM with actions, update it with different actions, and verify the update
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
@@ -321,6 +355,43 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions() {
 	}
 	s.True(foundDelete)
 	s.True(foundNewAction)
+}
+
+func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions_WithFQN_Succeeds() {
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2").ID
+	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
+
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              fixtureAttrValID,
+		Actions:                       []*policy.Action{{Name: "read"}},
+		ExistingSubjectConditionSetId: fixtureScs.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	actionName := fmt.Sprintf("sm-fqn-update-%d", time.Now().UnixNano())
+	createdAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        actionName,
+		NamespaceId: s.f.GetNamespaceKey("example.com").ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(createdAction)
+
+	updated, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, &subjectmapping.UpdateSubjectMappingRequest{
+		Id: created.GetId(),
+		Actions: []*policy.Action{
+			{Fqn: "https://example.com/act/" + actionName},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(updated)
+
+	got, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Require().Len(got.GetActions(), 1)
+	s.Equal(createdAction.GetId(), got.GetActions()[0].GetId())
+	s.Equal(createdAction.GetName(), got.GetActions()[0].GetName())
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectMapping_Actions_NonExistentActionID_Fails() {

@@ -27,10 +27,11 @@ func TestRegisteredResourcesServiceProtos(t *testing.T) {
 }
 
 const (
-	validName  = "name"
-	validValue = "value"
-	validUUID  = "00000000-0000-0000-0000-000000000000"
-	validURI   = "https://ndr-uri"
+	validName      = "name"
+	validValue     = "value"
+	validUUID      = "00000000-0000-0000-0000-000000000000"
+	validURI       = "https://ndr-uri"
+	validActionFQN = "https://example.com/act/read"
 
 	invalidName = "invalid name"
 	invalidUUID = "not-uuid"
@@ -43,6 +44,7 @@ const (
 	errMsgURI              = "string.uri"
 	errMsgNameFormat       = "rr_name_format"
 	errMsgActionNameFormat = "action_name_format"
+	errMsgActionFQNFormat  = "action_fqn_format"
 	errMsgValueFormat      = "rr_value_format"
 	errMsgStringPattern    = "string.pattern"
 	errMsgStringMinLen     = "string.min_len"
@@ -487,6 +489,23 @@ func (s *RegisteredResourcesSuite) TestCreateRegisteredResourceValue_Valid_Succe
 				},
 			},
 		},
+		{
+			name: "Value with Action Attribute Values (Action FQN)",
+			req: &registeredresources.CreateRegisteredResourceValueRequest{
+				ResourceId: validUUID,
+				Value:      validValue,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{
+						ActionIdentifier: &registeredresources.ActionAttributeValue_ActionFqn{
+							ActionFqn: validActionFQN,
+						},
+						AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueId{
+							AttributeValueId: validUUID,
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -666,6 +685,24 @@ func (s *RegisteredResourcesSuite) TestCreateRegisteredResourceValue_Invalid_Suc
 				},
 			},
 			errMsg: errMsgActionNameFormat,
+		},
+		{
+			name: "Invalid Action Attribute Values (invalid Action FQN)",
+			req: &registeredresources.CreateRegisteredResourceValueRequest{
+				ResourceId: validUUID,
+				Value:      validValue,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{
+						ActionIdentifier: &registeredresources.ActionAttributeValue_ActionFqn{
+							ActionFqn: "https://example.com/not-act/read",
+						},
+						AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueId{
+							AttributeValueId: validUUID,
+						},
+					},
+				},
+			},
+			errMsg: errMsgActionFQNFormat,
 		},
 		{
 			name: "Invalid Action Attribute Values (invalid Attribute Value ID)",

@@ -439,6 +439,10 @@ components:
           title: namespace
           description: Namespace context for this action
           $ref: '#/components/schemas/policy.Namespace'
+        fqn:
+          type: string
+          title: fqn
+          description: The fully qualified name of the action.
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -1113,6 +1117,22 @@ components:
     policy.actions.GetActionRequest:
       type: object
       oneOf:
+        - properties:
+            fqn:
+              type: string
+              title: fqn
+              minLength: 1
+              format: uri
+              description: |+
+                The fully qualified name of the action, e.g., https://example.com/act/read
+                Action FQN must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action FQN will be normalized to lower case.:
+                ```
+                this.matches('^https://([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}/act/[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
+                ```
+
+          title: fqn
+          required:
+            - fqn
         - properties:
             id:
               type: string

@@ -31,8 +31,10 @@ const (
 	ActionNameDelete = string(policydb.ActionDelete)
 )
 
-var ErrActionNameWithoutNamespace = errors.New("action name without namespace is not allowed when namespaced policy is enabled; use action id or fqn")
-var errCreateActionWithoutNamespace = errors.New("creating an action without a namespace is not allowed when namespaced policy is enabled; either namespace_id or namespace_fqn must be provided")
+var (
+	ErrActionNameWithoutNamespace   = errors.New("action name without namespace is not allowed when namespaced policy is enabled; use action id or fqn")
+	errCreateActionWithoutNamespace = errors.New("creating an action without a namespace is not allowed when namespaced policy is enabled; either namespace_id or namespace_fqn must be provided")
+)
 
 type ActionService struct {
 	dbClient policydb.PolicyDBClient

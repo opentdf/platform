@@ -14,9 +14,24 @@ import (
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/opentdf/platform/service/policy/actions"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
+
+func validateSubjectMappingActions(namespacedPolicy bool, inputActions []*policy.Action) error {
+	if !namespacedPolicy {
+		return nil
+	}
+
+	for _, action := range inputActions {
+		if action.GetName() != "" && action.GetId() == "" && action.GetFqn() == "" {
+			return actions.ErrActionNameWithoutNamespace
+		}
+	}
+
+	return nil
+}
 
 type SubjectMappingService struct { //nolint:revive // SubjectMappingService is a valid name for this struct
 	dbClient policydb.PolicyDBClient
@@ -81,6 +96,10 @@ func (s *SubjectMappingService) Close() {
 func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 	req *connect.Request[sm.CreateSubjectMappingRequest],
 ) (*connect.Response[sm.CreateSubjectMappingResponse], error) {
+	if err := validateSubjectMappingActions(s.config.NamespacedPolicy, req.Msg.GetActions()); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	rsp := &sm.CreateSubjectMappingResponse{}
 	s.logger.DebugContext(ctx, "creating subject mapping")
 
@@ -142,6 +161,10 @@ func (s SubjectMappingService) GetSubjectMapping(ctx context.Context,
 func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 	req *connect.Request[sm.UpdateSubjectMappingRequest],
 ) (*connect.Response[sm.UpdateSubjectMappingResponse], error) {
+	if err := validateSubjectMappingActions(s.config.NamespacedPolicy, req.Msg.GetActions()); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	rsp := &sm.UpdateSubjectMappingResponse{}
 	subjectMappingID := req.Msg.GetId()
 

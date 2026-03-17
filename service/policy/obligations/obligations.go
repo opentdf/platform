@@ -7,6 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/lib/identifier"
+	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/obligations/obligationsconnect"
@@ -15,9 +16,36 @@ import (
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/opentdf/platform/service/policy/actions"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
+
+func validateObligationActionInput(namespacedPolicy bool, action *common.IdNameIdentifier) error {
+	if !namespacedPolicy || action == nil {
+		return nil
+	}
+
+	if action.GetName() != "" && action.GetId() == "" && action.GetFqn() == "" {
+		return actions.ErrActionNameWithoutNamespace
+	}
+
+	return nil
+}
+
+func validateObligationTriggerActions(namespacedPolicy bool, triggers []*obligations.ValueTriggerRequest) error {
+	if !namespacedPolicy {
+		return nil
+	}
+
+	for _, trigger := range triggers {
+		if err := validateObligationActionInput(true, trigger.GetAction()); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
 
 type Service struct {
 	dbClient policydb.PolicyDBClient
@@ -220,6 +248,10 @@ func (s *Service) DeleteObligation(ctx context.Context, req *connect.Request[obl
 }
 
 func (s *Service) CreateObligationValue(ctx context.Context, req *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error) {
+	if err := validateObligationTriggerActions(s.config.NamespacedPolicy, req.Msg.GetTriggers()); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	rsp := &obligations.CreateObligationValueResponse{}
 
 	auditParams := audit.PolicyEventParams{
@@ -279,6 +311,10 @@ func (s *Service) GetObligationValuesByFQNs(ctx context.Context, req *connect.Re
 }
 
 func (s *Service) UpdateObligationValue(ctx context.Context, req *connect.Request[obligations.UpdateObligationValueRequest]) (*connect.Response[obligations.UpdateObligationValueResponse], error) {
+	if err := validateObligationTriggerActions(s.config.NamespacedPolicy, req.Msg.GetTriggers()); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	id := req.Msg.GetId()
 
 	rsp := &obligations.UpdateObligationValueResponse{}
@@ -340,6 +376,10 @@ func (s *Service) DeleteObligationValue(ctx context.Context, req *connect.Reques
 }
 
 func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request[obligations.AddObligationTriggerRequest]) (*connect.Response[obligations.AddObligationTriggerResponse], error) {
+	if err := validateObligationActionInput(s.config.NamespacedPolicy, req.Msg.GetAction()); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	rsp := &obligations.AddObligationTriggerResponse{}
 
 	auditParams := audit.PolicyEventParams{

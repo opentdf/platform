@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const actionFQNSplitParts = 2
+
 // Structs and regexes for action FQNs
 type FullyQualifiedAction struct {
 	Namespace string
@@ -99,8 +101,8 @@ func parseActionFqn(fqn string) (*FullyQualifiedAction, error) {
 }
 
 func BreakActFQN(fqn string) (string, string) {
-	parts := strings.SplitN(fqn, "/act/", 2)
-	if len(parts) == 2 {
+	parts := strings.SplitN(fqn, "/act/", actionFQNSplitParts)
+	if len(parts) == actionFQNSplitParts {
 		return parts[0], strings.ToLower(parts[1])
 	}
 	return fqn, ""

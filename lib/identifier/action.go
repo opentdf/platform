@@ -56,6 +56,7 @@ func parseActionFqn(fqn string) (*FullyQualifiedAction, error) {
 
 	// First try to match against the action definition pattern
 	defMatches := actionDefinitionFQNRegex.FindStringSubmatch(fqn)
+	//nolint:nestif // Validation branches are intentionally explicit for clearer error messages.
 	if len(defMatches) > 0 {
 		namespaceIdx := actionDefinitionFQNRegex.SubexpIndex("namespace")
 		nameIdx := actionDefinitionFQNRegex.SubexpIndex("name")

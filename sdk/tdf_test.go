@@ -3148,6 +3148,7 @@ func TestGetKasErrorToReturn(t *testing.T) {
 		inputError := errors.New("rpc error: code = PermissionDenied desc = access denied")
 		result := getKasErrorToReturn(inputError, defaultError)
 		require.ErrorIs(t, result, ErrRewrapForbidden)
+		require.ErrorIs(t, result, ErrKASRequestError)
 		require.ErrorIs(t, result, defaultError)
 	})
 

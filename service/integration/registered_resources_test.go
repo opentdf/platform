@@ -2079,15 +2079,25 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_WithoutNamespac
 	s.Require().NoError(err)
 	s.NotNil(list)
 
+	// Also create a namespaced resource to verify both types appear in unfiltered list
+	namespacedRes, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: s.getNamespaceID("example.com"),
+		Name:        "test_ns_list",
+	})
+	s.Require().NoError(err)
+	s.NotNil(namespacedRes)
+
+	list, err = s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{})
+	s.Require().NoError(err)
+
 	foundNoNS := false
 	foundNamespaced := false
-	namespacedRes := s.f.GetRegisteredResourceKey("res_only")
 	for _, r := range list.GetResources() {
 		if r.GetId() == created.GetId() {
 			foundNoNS = true
 			s.Nil(r.GetNamespace())
 		}
-		if r.GetId() == namespacedRes.ID {
+		if r.GetId() == namespacedRes.GetId() {
 			foundNamespaced = true
 			s.NotNil(r.GetNamespace())
 		}

@@ -69,7 +69,12 @@ func parseActionFqn(fqn string) (*FullyQualifiedAction, error) {
 
 		isValid := validNamespaceRegex.MatchString(ns) && validObjectNameRegex.MatchString(name)
 		if !isValid {
-			return nil, fmt.Errorf("%w: found namespace %s with action name %s", ErrInvalidFQNFormat, ns, name)
+			if !validNamespaceRegex.MatchString(ns) {
+				return nil, fmt.Errorf("%w: invalid namespace format in FQN [%s]", ErrInvalidFQNFormat, ns)
+			}
+			if !validObjectNameRegex.MatchString(name) {
+				return nil, fmt.Errorf("%w: invalid action name format in FQN [%s]", ErrInvalidFQNFormat, name)
+			}
 		}
 
 		parsed.Namespace = ns

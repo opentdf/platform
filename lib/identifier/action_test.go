@@ -60,14 +60,14 @@ func TestActionFQN(t *testing.T) {
 		{
 			name:      "definition with hyphen",
 			namespace: "example.com",
-			actName:   "read-",
-			want:      "https://example.com/act/read-",
+			actName:   "read-test",
+			want:      "https://example.com/act/read-test",
 		},
 		{
 			name:      "definition with underscore",
 			namespace: "example.com",
-			actName:   "read_",
-			want:      "https://example.com/act/read_",
+			actName:   "read_test",
+			want:      "https://example.com/act/read_test",
 		},
 		{
 			name:      "definition with numbers",

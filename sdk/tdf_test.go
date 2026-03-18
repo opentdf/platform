@@ -3135,6 +3135,15 @@ func TestIsLessThanSemver(t *testing.T) {
 func TestGetKasErrorToReturn(t *testing.T) {
 	defaultError := errors.New("default KAS error")
 
+	t.Run("FailedPrecondition error returns ErrPolicyBindingFailure", func(t *testing.T) {
+		inputError := errors.New("rpc error: code = FailedPrecondition desc = policy binding mismatch")
+		result := getKasErrorToReturn(inputError, defaultError)
+		require.ErrorIs(t, result, ErrPolicyBindingFailure)
+		require.ErrorIs(t, result, ErrTampered, "policy binding failure must match ErrTampered")
+		require.NotErrorIs(t, result, ErrKASRequestError, "policy binding failure must not match ErrKASRequestError")
+		require.ErrorIs(t, result, defaultError)
+	})
+
 	t.Run("InvalidArgument error returns ErrRewrapBadRequest", func(t *testing.T) {
 		inputError := errors.New("rpc error: code = InvalidArgument desc = invalid request")
 		result := getKasErrorToReturn(inputError, defaultError)

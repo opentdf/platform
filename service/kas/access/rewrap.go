@@ -113,6 +113,10 @@ func err403(s string) error {
 	return connect.NewError(connect.CodePermissionDenied, errors.Join(ErrUser, status.Error(codes.PermissionDenied, s)))
 }
 
+func errPolicyBindingFailed(s string) error {
+	return connect.NewError(connect.CodeFailedPrecondition, errors.Join(ErrUser, status.Error(codes.FailedPrecondition, s)))
+}
+
 func err500(s string) error {
 	return connect.NewError(connect.CodeInternal, errors.Join(ErrInternal, status.Error(codes.Internal, s)))
 }
@@ -432,7 +436,7 @@ func verifyPolicyBinding(ctx context.Context, policy []byte, kao *kaspb.Unsigned
 	if !hmac.Equal(actualHMAC, expectedHMAC) {
 		//nolint:sloglint // usage of camelCase is intentional
 		logger.WarnContext(ctx, "policy hmac mismatch", slog.String("policyBinding", policyBinding))
-		return err400("bad request")
+		return errPolicyBindingFailed("policy binding mismatch")
 	}
 
 	return nil
@@ -800,7 +804,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		// Verify policy binding using the UnwrappedKeyData interface
 		if err := dek.VerifyBinding(ctx, []byte(req.GetPolicy().GetBody()), policyBinding); err != nil {
 			p.Logger.WarnContext(ctx, "failure to verify policy binding", slog.Any("error", err))
-			failedKAORewrap(results, kao, err400("bad request"))
+			failedKAORewrap(results, kao, errPolicyBindingFailed("policy binding mismatch"))
 			continue
 		}
 

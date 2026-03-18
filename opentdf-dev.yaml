@@ -3,11 +3,10 @@ logger:
   type: text
   output: stderr
 #
-# Database mode: choose ONE of the following db blocks.
+# Database mode: Docker Compose Postgres (default local development).
 #
-# Option A (default): Docker Compose Postgres
 # - Run `docker compose up`.
-# - Keep `db.host: localhost` and `db.embedded.enabled: false` (or omit `embedded`).
+# - Keep `db.host: localhost`.
 # db:
 #   host: localhost
 #   port: 5432
@@ -25,25 +24,6 @@ logger:
 #     max_connection_lifetime_seconds: 3600
 #     max_connection_idle_seconds: 1800
 #     health_check_period_seconds: 60
-#   embedded:
-#     enabled: false
-#
-# Option B: Embedded Postgres
-# - Do NOT rely on the compose Postgres service for OpenTDF.
-# - Set `db.host` to empty so the embedded runtime is selected.
-# - Keep `db.database`, `db.user`, and `db.password` set as usual.
-# db:
-#   host: ""
-#   port: 5432 # optional; set 0 for auto-select
-#   database: opentdf
-#   user: postgres
-#   password: changeme
-#   sslmode: disable
-#   start_timeout_seconds: 30
-#   stop_timeout_seconds: 10
-#   embedded:
-#     enabled: true
-#     root_dir: ./.dev/embedded-postgres
 services:
   kas:
     registered_kas_uri: http://localhost:8080 # Should match what you have registered for *this* KAS in the policy db.

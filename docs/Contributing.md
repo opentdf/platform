@@ -22,8 +22,6 @@ For end-users/consumers, see [here](./Consuming.md).
    1. _Alt_ use the hot-reload development environment `air`
 6. The server is now running on `localhost:8080` (or the port specified in the config file)
 
-Embedded Postgres remains available as an alternative for explicit test or local workflows, but it is not the default development stack.
-
 Note: support was added to provision a set of fixture data into the database.
 Run `go run github.com/opentdf/platform/service provision fixtures -h` for more information.
 

@@ -30,13 +30,6 @@ const note = `
  Note: Colima does not run well on MacOS with Ryuk, so it is better to run with Ryuk disabled.
  This means you must more carefully ensure container termination.
  For more information please see: https://www.testcontainers.org/
- To use embedded Postgres instead of containers:
-   export OPENTDF_TEST_DB_PROVIDER=embedded;
-   # Optional overrides:
-   export OPENTDF_TEST_DB_DATA_DIR=/tmp/opentdf-testdb/data;
-   export OPENTDF_TEST_DB_RUNTIME_DIR=/tmp/opentdf-testdb/runtime;
-   export OPENTDF_TEST_DB_PORT=5433;
-   export OPENTDF_TEST_DB_BINARIES_DIR=/tmp/opentdf-testdb/binaries;
  ---------------------------------------------------------------------------------
  Test runner hanging at '📀 starting postgres container'?
  Try restarting Docker/Podman and running the tests again.
@@ -66,7 +59,7 @@ func TestMain(m *testing.M) {
 	})
 	if err != nil {
 		if errors.Is(err, testdb.ErrContainerUnavailable) {
-			slog.Error("postgres container unavailable; set OPENTDF_TEST_DB_PROVIDER=embedded to run without docker", slog.String("error", err.Error()))
+			slog.Error("postgres container unavailable", slog.String("error", err.Error()))
 			os.Exit(1)
 		}
 		slog.Error("could not start postgres for integration tests", slog.String("error", err.Error()))

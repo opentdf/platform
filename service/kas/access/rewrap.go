@@ -640,7 +640,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 
 	for _, kao := range req.GetKeyAccessObjects() {
 		if policyErr != nil {
-			failedKAORewrap(results, kao, err400("invalid policy"))
+			failedKAORewrap(results, kao, err400("bad request")) // Generic: corrupted policy body may indicate tamper
 			continue
 		}
 
@@ -791,7 +791,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		n, err := base64.StdEncoding.Decode(policyBinding, []byte(policyBindingB64Encoded))
 		if err != nil {
 			p.Logger.WarnContext(ctx, "invalid policy binding encoding", slog.Any("error", err))
-			failedKAORewrap(results, kao, err400("invalid policy binding encoding"))
+			failedKAORewrap(results, kao, err400("bad request")) // Generic: malformed binding may indicate tamper
 			continue
 		}
 		if n == 64 { //nolint:mnd // 32 bytes of hex encoded data = 256 bit sha-2

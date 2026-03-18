@@ -33,9 +33,10 @@ const note = `
  To use embedded Postgres instead of containers:
    export OPENTDF_TEST_DB_PROVIDER=embedded;
    # Optional overrides:
-   export OPENTDF_TEST_DB_DATA_DIR=/path/to/pgdata;
+   export OPENTDF_TEST_DB_DATA_DIR=/tmp/opentdf-testdb/data;
+   export OPENTDF_TEST_DB_RUNTIME_DIR=/tmp/opentdf-testdb/runtime;
    export OPENTDF_TEST_DB_PORT=5433;
-   export OPENTDF_TEST_DB_BINARIES_DIR=/path/to/pgbin;
+   export OPENTDF_TEST_DB_BINARIES_DIR=/tmp/opentdf-testdb/binaries;
  ---------------------------------------------------------------------------------
  Test runner hanging at '📀 starting postgres container'?
  Try restarting Docker/Podman and running the tests again.

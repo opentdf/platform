@@ -101,6 +101,13 @@ const (
 	errNoValidKeyAccessObjects = Error("no valid KAOs")
 )
 
+// Error helpers for KAS rewrap responses.
+//
+// SECURITY: Policy binding verification and DEK decryption failures MUST use the
+// generic "bad request" message to avoid leaking information about computations
+// involving secret key material. Non-secret failures (malformed input, unsupported
+// key types, missing fields) SHOULD use descriptive messages so the SDK can
+// distinguish misconfiguration from potential tamper.
 func err400(s string) error {
 	return connect.NewError(connect.CodeInvalidArgument, errors.Join(ErrUser, status.Error(codes.InvalidArgument, s)))
 }
@@ -432,7 +439,7 @@ func verifyPolicyBinding(ctx context.Context, policy []byte, kao *kaspb.Unsigned
 	if !hmac.Equal(actualHMAC, expectedHMAC) {
 		//nolint:sloglint // usage of camelCase is intentional
 		logger.WarnContext(ctx, "policy hmac mismatch", slog.String("policyBinding", policyBinding))
-		return err400("bad request")
+		return err400("bad request") // Generic: involves secret key material
 	}
 
 	return nil
@@ -767,7 +774,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		}
 		if err != nil {
 			p.Logger.WarnContext(ctx, "failure to decrypt dek", slog.Any("error", err))
-			failedKAORewrap(results, kao, err400("bad request"))
+			failedKAORewrap(results, kao, err400("bad request")) // Generic: involves secret key material
 			continue
 		}
 
@@ -800,7 +807,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		// Verify policy binding using the UnwrappedKeyData interface
 		if err := dek.VerifyBinding(ctx, []byte(req.GetPolicy().GetBody()), policyBinding); err != nil {
 			p.Logger.WarnContext(ctx, "failure to verify policy binding", slog.Any("error", err))
-			failedKAORewrap(results, kao, err400("bad request"))
+			failedKAORewrap(results, kao, err400("bad request")) // Generic: involves secret key material
 			continue
 		}
 

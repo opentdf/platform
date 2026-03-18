@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.20.0](https://github.com/opentdf/platform/compare/protocol/go/v0.19.0...protocol/go/v0.20.0) (2026-03-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** Namespace subject mappings and subject condition sets. ([#3143](https://github.com/opentdf/platform/issues/3143))
+* **policy:** Optional namespace on actions protos, NamespacedPolicy feature flag ([#3155](https://github.com/opentdf/platform/issues/3155))
+
+### Features
+
+* **policy:** Namespace subject mappings and subject condition sets. ([#3143](https://github.com/opentdf/platform/issues/3143)) ([3006780](https://github.com/opentdf/platform/commit/3006780fea56f85b36223c134ae63a8afe109908))
+
+
+### Bug Fixes
+
+* **policy:** Optional namespace on actions protos, NamespacedPolicy feature flag ([#3155](https://github.com/opentdf/platform/issues/3155)) ([c20f039](https://github.com/opentdf/platform/commit/c20f039c6dc72bb7627075cf3cb330a6f03f2fec))
+
 ## [0.19.0](https://github.com/opentdf/platform/compare/protocol/go/v0.18.0...protocol/go/v0.19.0) (2026-03-12)
 
 

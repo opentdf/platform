@@ -3135,13 +3135,21 @@ func TestIsLessThanSemver(t *testing.T) {
 func TestGetKasErrorToReturn(t *testing.T) {
 	defaultError := errors.New("default KAS error")
 
-	t.Run("InvalidArgument error returns ErrRewrapBadRequest", func(t *testing.T) {
-		inputError := errors.New("rpc error: code = InvalidArgument desc = invalid request")
+	t.Run("generic InvalidArgument (bad request) is potential tamper", func(t *testing.T) {
+		inputError := errors.New("rpc error: code = InvalidArgument desc = bad request")
 		result := getKasErrorToReturn(inputError, defaultError)
 		require.ErrorIs(t, result, ErrRewrapBadRequest)
-		require.ErrorIs(t, result, ErrKASRequestError)
+		require.ErrorIs(t, result, ErrTampered, "generic bad request may be policy binding tamper")
+		require.NotErrorIs(t, result, ErrKASRequestError)
 		require.ErrorIs(t, result, defaultError)
-		require.NotErrorIs(t, result, ErrTampered, "KAS 400 must not match ErrTampered")
+	})
+
+	t.Run("specific InvalidArgument is misconfiguration", func(t *testing.T) {
+		inputError := errors.New("rpc error: code = InvalidArgument desc = unsupported key type")
+		result := getKasErrorToReturn(inputError, defaultError)
+		require.ErrorIs(t, result, ErrKASRequestError)
+		require.NotErrorIs(t, result, ErrTampered, "specific KAS 400 must not match ErrTampered")
+		require.ErrorIs(t, result, defaultError)
 	})
 
 	t.Run("PermissionDenied error returns ErrRewrapForbidden", func(t *testing.T) {

@@ -1570,9 +1570,18 @@ func createKaoTemplateFromKasInfo(kasInfoArr []KASInfo) []kaoTpl {
 
 func getKasErrorToReturn(err error, defaultError error) error {
 	errToReturn := defaultError
-	if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
-		errToReturn = errors.Join(ErrRewrapBadRequest, errToReturn)
-	} else if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
+	errStr := err.Error()
+
+	switch {
+	case strings.Contains(errStr, codes.InvalidArgument.String()):
+		// Generic "bad request" from KAS may indicate policy binding tamper;
+		// specific messages indicate client/configuration errors.
+		if strings.Contains(errStr, "bad request") {
+			errToReturn = errors.Join(ErrRewrapBadRequest, errToReturn)
+		} else {
+			errToReturn = errors.Join(ErrKASRequestError, errToReturn)
+		}
+	case strings.Contains(errStr, codes.PermissionDenied.String()):
 		errToReturn = errors.Join(ErrRewrapForbidden, errToReturn)
 	}
 

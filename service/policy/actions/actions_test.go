@@ -19,8 +19,6 @@ const (
 	errMessageActionNameFormat = "action_name_format"
 	errMessageURI              = "string.uri"
 	errMessageRequired         = "required"
-	errMessageOneof            = "message.oneof"
-	errMessageNamespaceByName  = "namespace_required_for_name"
 )
 
 var (
@@ -91,14 +89,6 @@ func (s *ActionSuite) Test_CreateActionRequest_Fails() {
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), errMessageMaxLength)
 
-	// namespace required
-	req = &actions.CreateActionRequest{
-		Name: "valid_name",
-	}
-	err = s.v.Validate(req)
-	s.Require().Error(err)
-	s.Require().Contains(err.Error(), errMessageOneof)
-
 	// invalid namespace id
 	req = &actions.CreateActionRequest{
 		Name:        "valid_name",
@@ -130,15 +120,22 @@ func (s *ActionSuite) Test_CreateActionRequest_Succeeds() {
 		})
 	}
 
-	// with metadata
+	// with no namespace
 	req := &actions.CreateActionRequest{
+		Name: "valid_name",
+	}
+	err := s.v.Validate(req)
+	s.Require().NoError(err)
+
+	// with metadata
+	req = &actions.CreateActionRequest{
 		Name:        "valid_name",
 		NamespaceId: validUUID,
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{"key": "value"},
 		},
 	}
-	err := s.v.Validate(req)
+	err = s.v.Validate(req)
 	s.Require().NoError(err)
 }
 
@@ -157,7 +154,6 @@ func (s *ActionSuite) Test_GetAction_Succeeds() {
 				Identifier: &actions.GetActionRequest_Name{
 					Name: name,
 				},
-				NamespaceFqn: validNamespaceFQN,
 			}
 			err := s.v.Validate(req)
 			s.Require().NoError(err)
@@ -180,16 +176,6 @@ func (s *ActionSuite) Test_GetAction_Fails() {
 	err = s.v.Validate(req)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), errMessageRequired)
-
-	// missing namespace
-	req = &actions.GetActionRequest{
-		Identifier: &actions.GetActionRequest_Name{
-			Name: "valid_name",
-		},
-	}
-	err = s.v.Validate(req)
-	s.Require().Error(err)
-	s.Require().Contains(err.Error(), errMessageNamespaceByName)
 
 	for _, name := range actionNamesInvalidFormat {
 		s.Run(name, func() {
@@ -240,13 +226,17 @@ func (s *ActionSuite) Test_GetAction_Fails() {
 }
 
 func (s *ActionSuite) Test_ListActions_Succeeds() {
+	reqNoNamespace := &actions.ListActionsRequest{}
+	err := s.v.Validate(reqNoNamespace)
+	s.Require().NoError(err)
+
 	reqPaginated := &actions.ListActionsRequest{
 		NamespaceId: validUUID,
 		Pagination: &policy.PageRequest{
 			Limit: 1,
 		},
 	}
-	err := s.v.Validate(reqPaginated)
+	err = s.v.Validate(reqPaginated)
 	s.Require().NoError(err)
 
 	reqPaginated.Pagination.Offset = 100
@@ -259,15 +249,9 @@ func (s *ActionSuite) Test_ListActions_Succeeds() {
 }
 
 func (s *ActionSuite) Test_ListActions_Fails() {
-	// missing namespace
-	req := &actions.ListActionsRequest{}
-	err := s.v.Validate(req)
-	s.Require().Error(err)
-	s.Require().Contains(err.Error(), errMessageOneof)
-
 	// invalid namespace id
-	req = &actions.ListActionsRequest{NamespaceId: "invalid-uuid"}
-	err = s.v.Validate(req)
+	req := &actions.ListActionsRequest{NamespaceId: "invalid-uuid"}
+	err := s.v.Validate(req)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), errMessageUUID)
 

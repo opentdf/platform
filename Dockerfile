@@ -30,6 +30,11 @@ RUN case "$TARGETARCH" in \
     JAR_URL="${BASE_URL}/${ARTIFACT}/${EMBEDDED_POSTGRES_VERSION}/${ARTIFACT}-${EMBEDDED_POSTGRES_VERSION}.jar" && \
     mkdir -p /tmp/embedded-pg /out && \
     curl -fsSL "$JAR_URL" -o /tmp/embedded-pg/binaries.jar && \
+    curl -fsSL "${JAR_URL}.sha256" -o /tmp/embedded-pg/binaries.jar.sha256 && \
+    EXPECTED_SHA="$(awk '{print $1}' /tmp/embedded-pg/binaries.jar.sha256 | tr -d '\r\n')" && \
+    ACTUAL_SHA="$(sha256sum /tmp/embedded-pg/binaries.jar | awk '{print $1}')" && \
+    test -n "$EXPECTED_SHA" && \
+    test "$EXPECTED_SHA" = "$ACTUAL_SHA" && \
     unzip -q /tmp/embedded-pg/binaries.jar -d /tmp/embedded-pg/jar && \
     TXZ="$(find /tmp/embedded-pg/jar -name '*.txz' | head -n 1)" && \
     test -n "$TXZ" && \

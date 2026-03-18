@@ -108,6 +108,10 @@ const (
 // involving secret key material. Non-secret failures (malformed input, unsupported
 // key types, missing fields) SHOULD use descriptive messages so the SDK can
 // distinguish misconfiguration from potential tamper.
+//
+// The SDK matches on the exact string "bad request" to identify potential tamper
+// (see sdk/tdferrors.go kasGenericBadRequest). Do not change this message without
+// updating the SDK constant.
 func err400(s string) error {
 	return connect.NewError(connect.CodeInvalidArgument, errors.Join(ErrUser, status.Error(codes.InvalidArgument, s)))
 }

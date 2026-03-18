@@ -1580,7 +1580,7 @@ func getKasErrorToReturn(err error, defaultError error) error {
 	case strings.Contains(errStr, codes.InvalidArgument.String()):
 		// Generic "bad request" from KAS may indicate policy binding tamper;
 		// specific messages indicate client/configuration errors.
-		if strings.Contains(errStr, "bad request") {
+		if strings.Contains(errStr, kasGenericBadRequest) {
 			errToReturn = errors.Join(ErrRewrapBadRequest, errToReturn)
 		} else {
 			errToReturn = errors.Join(ErrKASRequestError, errToReturn)

@@ -1796,37 +1796,6 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_MetadataVariations(
  *-------- Namespace Consistency Tests ----------------------------
  *----------------------------------------------------------------*/
 
-func (s *SubjectMappingsSuite) exampleComNsID() string {
-	return s.f.GetNamespaceKey("example.com").ID
-}
-
-func (s *SubjectMappingsSuite) exampleNetNsID() string {
-	return s.f.GetNamespaceKey("example.net").ID
-}
-
-func (s *SubjectMappingsSuite) newSCSInNamespace(nsID string) *policy.SubjectConditionSet {
-	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
-		SubjectSets: []*policy.SubjectSet{
-			{
-				ConditionGroups: []*policy.ConditionGroup{
-					{
-						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
-						Conditions: []*policy.Condition{
-							{
-								SubjectExternalSelectorValue: ".test_field",
-								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-								SubjectExternalValues:        []string{"test_value"},
-							},
-						},
-					},
-				},
-			},
-		},
-	}, nsID, "")
-	s.Require().NoError(err)
-	return scs
-}
-
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NamespacedById_AllSameNamespace_Succeeds() {
 	nsID := s.exampleComNsID()
 	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
@@ -1938,6 +1907,49 @@ func (s *SubjectMappingsSuite) TestCreateSubjectMapping_StandardActionById_Wrong
 	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
 }
 
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NamespacedSM_MixedExistingAndNewActions_Succeeds() {
+	nsID := s.exampleComNsID()
+	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	scs := s.newSCSInNamespace(nsID)
+
+	// Create two actions in the correct namespace (will be referenced by ID)
+	existingAction1, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "mixed_existing_one",
+		NamespaceId: nsID,
+	})
+	s.Require().NoError(err)
+
+	existingAction2, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "mixed_existing_two",
+		NamespaceId: nsID,
+	})
+	s.Require().NoError(err)
+
+	// Third action is passed by name — should be created in the SM's namespace
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: attrValID,
+		Actions: []*policy.Action{
+			{Id: existingAction1.GetId()},
+			{Id: existingAction2.GetId()},
+			{Name: "mixed_new_by_name"},
+		},
+		ExistingSubjectConditionSetId: scs.GetId(),
+		NamespaceId:                   nsID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.Equal(nsID, sm.GetNamespace().GetId())
+	s.Require().Len(sm.GetActions(), 3)
+
+	// Verify every action — including the one created by name — is in the correct namespace
+	for _, a := range sm.GetActions() {
+		s.Equal(nsID, a.GetNamespace().GetId(), "action %s should be in namespace %s", a.GetId(), nsID)
+	}
+}
+
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_UnnamespacedSM_NamespacedAttributeValue_Succeeds() {
 	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
 	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
@@ -1980,10 +1992,149 @@ func (s *SubjectMappingsSuite) TestCreateSubjectConditionSet_WithoutNamespace_Su
 	s.Nil(scs.GetNamespace())
 }
 
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NamespacedSM_UnnamespacedSCS_Fails() {
+	nsID := s.exampleComNsID()
+	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+
+	// Create an un-namespaced SCS
+	unnamespacedSCS, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: ".test_field",
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"test_value"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}, "", "")
+	s.Require().NoError(err)
+	s.Nil(unnamespacedSCS.GetNamespace())
+
+	// Attempt to create a namespaced SM with the un-namespaced SCS
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrValID,
+		Actions:                       []*policy.Action{{Name: "read"}},
+		ExistingSubjectConditionSetId: unnamespacedSCS.GetId(),
+		NamespaceId:                   nsID,
+	})
+	s.Require().Error(err)
+	s.Nil(created)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_UnnamespacedSM_NamespacedSCS_Fails() {
+	nsID := s.exampleComNsID()
+	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	namespacedSCS := s.newSCSInNamespace(nsID)
+
+	// Un-namespaced SM with a namespaced SCS should fail: SCS must be unnamespaced
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrValID,
+		Actions:                       []*policy.Action{{Name: "read"}},
+		ExistingSubjectConditionSetId: namespacedSCS.GetId(),
+	})
+	s.Require().Error(err)
+	s.Nil(created)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_UnnamespacedSM_NamespacedCustomAction_Fails() {
+	nsID := s.exampleComNsID()
+	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
+
+	// Create a namespaced custom action
+	customAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "unnamespaced_sm_ns_action",
+		NamespaceId: nsID,
+	})
+	s.Require().NoError(err)
+
+	// Un-namespaced SM with a namespaced action should fail
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrValID,
+		Actions:                       []*policy.Action{{Id: customAction.GetId()}},
+		ExistingSubjectConditionSetId: fixtureScs.ID,
+	})
+	s.Require().Error(err)
+	s.Nil(created)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NamespacedSM_MultipleActions_OneMismatch_Fails() {
+	comNsID := s.exampleComNsID()
+	netNsID := s.exampleNetNsID()
+	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	scs := s.newSCSInNamespace(comNsID)
+
+	// Create one action in the correct namespace and one in the wrong namespace
+	goodAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "good_action_multi",
+		NamespaceId: comNsID,
+	})
+	s.Require().NoError(err)
+
+	badAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "bad_action_multi",
+		NamespaceId: netNsID,
+	})
+	s.Require().NoError(err)
+
+	// Should fail because one of the actions belongs to a different namespace
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrValID,
+		Actions:                       []*policy.Action{{Id: goodAction.GetId()}, {Id: badAction.GetId()}},
+		ExistingSubjectConditionSetId: scs.GetId(),
+		NamespaceId:                   comNsID,
+	})
+	s.Require().Error(err)
+	s.Nil(created)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
+}
+
 func (s *SubjectMappingsSuite) TestCreateSubjectConditionSet_InvalidNamespaceId_Fails() {
 	_, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
 		SubjectSets: []*policy.SubjectSet{{}},
 	}, "not-a-uuid", "")
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+}
+
+func (s *SubjectMappingsSuite) exampleComNsID() string {
+	return s.f.GetNamespaceKey("example.com").ID
+}
+
+func (s *SubjectMappingsSuite) exampleNetNsID() string {
+	return s.f.GetNamespaceKey("example.net").ID
+}
+
+func (s *SubjectMappingsSuite) newSCSInNamespace(nsID string) *policy.SubjectConditionSet {
+	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: ".test_field",
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"test_value"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}, nsID, "")
+	s.Require().NoError(err)
+	return scs
 }

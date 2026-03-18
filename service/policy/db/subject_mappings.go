@@ -661,7 +661,7 @@ func (c PolicyDBClient) validateSubjectMappingNamespaceConsistency(
 		}
 		if attr.GetNamespace().GetId() != targetNsID {
 			return errors.Join(db.ErrNamespaceMismatch,
-				errors.New("attribute value namespace does not match the specified namespace"))
+				fmt.Errorf("attribute value namespace [%s] does not match the specified subject mapping namespace [%s]", attr.GetNamespace().GetId(), targetNsID))
 		}
 	}
 
@@ -672,9 +672,10 @@ func (c PolicyDBClient) validateSubjectMappingNamespaceConsistency(
 			return db.WrapIfKnownInvalidQueryErr(err)
 		}
 		for _, a := range actionRows {
-			if UUIDToString(a.NamespaceID) != targetNsID {
+			actionNsID := UUIDToString(a.NamespaceID)
+			if actionNsID != targetNsID {
 				return errors.Join(db.ErrNamespaceMismatch,
-					fmt.Errorf("action [%s] namespace does not match the specified namespace", a.ID))
+					fmt.Errorf("action [%s] namespace [%s] does not match the specified subject mapping namespace [%s]", a.ID, actionNsID, targetNsID))
 			}
 		}
 	}
@@ -682,7 +683,7 @@ func (c PolicyDBClient) validateSubjectMappingNamespaceConsistency(
 	// Subject condition set namespace
 	if scs.GetNamespace().GetId() != targetNsID {
 		return errors.Join(db.ErrNamespaceMismatch,
-			errors.New("subject condition set namespace does not match the specified namespace"))
+			fmt.Errorf("subject condition set [%s] namespace [%s] does not match the specified subject mapping namespace [%s]", scs.GetId(), scs.GetNamespace().GetId(), targetNsID))
 	}
 
 	return nil

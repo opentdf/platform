@@ -78,15 +78,25 @@ WITH subject_actions AS (
     SELECT
         sma.subject_mapping_id,
         COALESCE(
-            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name)) FILTER (WHERE a.is_standard = TRUE),
+            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
+                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                    ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+                END
+            )) FILTER (WHERE a.is_standard = TRUE),
             '[]'::JSONB
         ) AS standard_actions,
         COALESCE(
-            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name)) FILTER (WHERE a.is_standard = FALSE),
+            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
+                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                    ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+                END
+            )) FILTER (WHERE a.is_standard = FALSE),
             '[]'::JSONB
         ) AS custom_actions
     FROM subject_mapping_actions sma
     JOIN actions a ON sma.action_id = a.id
+    LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
+    LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
     GROUP BY sma.subject_mapping_id
 ), counted AS (
     SELECT COUNT(sm.id) AS total
@@ -156,15 +166,27 @@ OFFSET @offset_;
 SELECT
     sm.id,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
+            'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+            END
+        ))
         FROM actions a
         JOIN subject_mapping_actions sma ON sma.action_id = a.id
+        LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
+        LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
     ) AS standard_actions,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
+            'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+            END
+        ))
         FROM actions a
         JOIN subject_mapping_actions sma ON sma.action_id = a.id
+        LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
+        LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
     ) AS custom_actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
@@ -197,15 +219,25 @@ WITH subject_actions AS (
     SELECT
         sma.subject_mapping_id,
         COALESCE(
-            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name)) FILTER (WHERE a.is_standard = TRUE),
+            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
+                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                    ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+                END
+            )) FILTER (WHERE a.is_standard = TRUE),
             '[]'::JSONB
         ) AS standard_actions,
         COALESCE(
-            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name)) FILTER (WHERE a.is_standard = FALSE),
+            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
+                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                    ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+                END
+            )) FILTER (WHERE a.is_standard = FALSE),
             '[]'::JSONB
         ) AS custom_actions
     FROM subject_mapping_actions sma
     JOIN actions a ON sma.action_id = a.id
+    LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
+    LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
     GROUP BY sma.subject_mapping_id
 )
 SELECT

@@ -126,7 +126,7 @@ git config --global gpg.format openpgp
 If you already have an SSH key added to GitHub, you can reuse it for commit signing. See GitHub's guide on [SSH commit signature verification](https://docs.github.com/en/authentication/managing-commit-signature-verification/about-commit-signature-verification#ssh-commit-signature-verification), then configure Git:
 
 ```bash
-git config --global user.signingkey ~/.ssh/id_ed25519.pub
+git config --global user.signingkey ~/.ssh/id_ed25519.pub  # Replace with /path/to/your/public_key.pub if different
 git config --global gpg.format ssh
 ```
 

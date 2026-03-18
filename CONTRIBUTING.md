@@ -1,4 +1,4 @@
-# Contributing to OpenTDF Platform
+# Contributing to OpenTDF
 
 This project requires two things from every commit:
 

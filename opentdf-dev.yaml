@@ -2,8 +2,12 @@ logger:
   level: debug
   type: text
   output: stderr
-# Default local development DB: use the Postgres container from `docker compose up`.
-# Choose this for the standard repo workflow and parity with existing docs/CI.
+#
+# Database mode: choose ONE of the following db blocks.
+#
+# Option A (default): Docker Compose Postgres
+# - Run `docker compose up`.
+# - Keep `db.host: localhost` and `db.embedded.enabled: false` (or omit `embedded`).
 # db:
 #   host: localhost
 #   port: 5432
@@ -19,12 +23,20 @@ logger:
 #     max_connection_lifetime_seconds: 3600
 #     max_connection_idle_seconds: 1800
 #     health_check_period_seconds: 60
+#   embedded:
+#     enabled: false
 #
-# Embedded Postgres alternative: use this when you explicitly want the platform
-# process to own the database lifecycle instead of relying on the compose DB.
-# Start from the default block above, then change only these fields:
+# Option B: Embedded Postgres
+# - Do NOT rely on the compose Postgres service for OpenTDF.
+# - Set `db.host` to empty so the embedded runtime is selected.
+# - Keep `db.database`, `db.user`, and `db.password` set as usual.
 # db:
 #   host: ""
+#   port: 5432 # optional; set 0 for auto-select
+#   database: opentdf
+#   user: postgres
+#   password: changeme
+#   sslmode: disable
 #   embedded:
 #     enabled: true
 #     root_dir: ./.dev/embedded-postgres

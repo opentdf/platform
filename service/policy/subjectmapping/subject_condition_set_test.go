@@ -29,6 +29,7 @@ func Test_CreateSubjectConditionSetRequest_InvalidSubjectConditionSet_Fails(t *t
 				conditionSet := &subjectmapping.SubjectConditionSetCreate{}
 				return &subjectmapping.CreateSubjectConditionSetRequest{
 					SubjectConditionSet: conditionSet,
+					NamespaceId:         fakeID,
 				}
 			},
 			expectedError:  errLessThanMinItems,
@@ -42,6 +43,7 @@ func Test_CreateSubjectConditionSetRequest_InvalidSubjectConditionSet_Fails(t *t
 				}
 				return &subjectmapping.CreateSubjectConditionSetRequest{
 					SubjectConditionSet: conditionSet,
+					NamespaceId:         fakeID,
 				}
 			},
 			expectedError:  errLessThanMinItems,
@@ -59,6 +61,7 @@ func Test_CreateSubjectConditionSetRequest_InvalidSubjectConditionSet_Fails(t *t
 				}
 				return &subjectmapping.CreateSubjectConditionSetRequest{
 					SubjectConditionSet: conditionSet,
+					NamespaceId:         fakeID,
 				}
 			},
 			expectedError:  errLessThanMinItems,
@@ -76,6 +79,7 @@ func Test_CreateSubjectConditionSetRequest_InvalidSubjectConditionSet_Fails(t *t
 				}
 				return &subjectmapping.CreateSubjectConditionSetRequest{
 					SubjectConditionSet: conditionSet,
+					NamespaceId:         fakeID,
 				}
 			},
 			expectedError:  errLessThanMinItems,
@@ -102,6 +106,7 @@ func Test_CreateSubjectConditionSetRequest_InvalidSubjectConditionSet_Fails(t *t
 				}
 				return &subjectmapping.CreateSubjectConditionSetRequest{
 					SubjectConditionSet: conditionSet,
+					NamespaceId:         fakeID,
 				}
 			},
 			expectedError: "operator",
@@ -127,6 +132,7 @@ func Test_CreateSubjectConditionSetRequest_InvalidSubjectConditionSet_Fails(t *t
 				}
 				return &subjectmapping.CreateSubjectConditionSetRequest{
 					SubjectConditionSet: conditionSet,
+					NamespaceId:         fakeID,
 				}
 			},
 			expectedError: "subject_external_selector_value",
@@ -153,6 +159,7 @@ func Test_CreateSubjectConditionSetRequest_InvalidSubjectConditionSet_Fails(t *t
 				}
 				return &subjectmapping.CreateSubjectConditionSetRequest{
 					SubjectConditionSet: conditionSet,
+					NamespaceId:         fakeID,
 				}
 			},
 			expectedError: "subject_external_values",
@@ -197,8 +204,205 @@ func Test_CreateSubjectConditionSetRequest_ValidSubjectConditionSet_Succeeds(t *
 	}
 	req := &subjectmapping.CreateSubjectConditionSetRequest{
 		SubjectConditionSet: conditionSet,
+		NamespaceId:         fakeID,
 	}
 
 	err := getValidator().Validate(req)
 	require.NoError(t, err)
+
+	req = &subjectmapping.CreateSubjectConditionSetRequest{
+		SubjectConditionSet: conditionSet,
+		NamespaceFqn:        validNamespaceFQN,
+	}
+	err = getValidator().Validate(req)
+	require.NoError(t, err)
+
+	req = &subjectmapping.CreateSubjectConditionSetRequest{
+		SubjectConditionSet: conditionSet,
+	}
+	err = getValidator().Validate(req)
+	require.NoError(t, err)
+}
+
+func Test_CreateSubjectConditionSetRequest_MissingNamespace_Succeeds(t *testing.T) {
+	conditionSet := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						Conditions: []*policy.Condition{
+							{
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalSelectorValue: ".some_field",
+								SubjectExternalValues:        []string{"some_value"},
+							},
+						},
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
+					},
+				},
+			},
+		},
+	}
+	req := &subjectmapping.CreateSubjectConditionSetRequest{
+		SubjectConditionSet: conditionSet,
+	}
+
+	err := getValidator().Validate(req)
+	require.NoError(t, err)
+
+	req = &subjectmapping.CreateSubjectConditionSetRequest{
+		SubjectConditionSet: conditionSet,
+		NamespaceFqn:        validNamespaceFQN,
+	}
+	err = getValidator().Validate(req)
+	require.NoError(t, err)
+}
+
+func Test_CreateSubjectConditionSetRequest_InvalidNamespace_Fails(t *testing.T) {
+	conditionSet := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						Conditions: []*policy.Condition{
+							{
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalSelectorValue: ".some_field",
+								SubjectExternalValues:        []string{"some_value"},
+							},
+						},
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
+					},
+				},
+			},
+		},
+	}
+
+	testCases := []struct {
+		name          string
+		req           *subjectmapping.CreateSubjectConditionSetRequest
+		expectedError string
+	}{
+		{
+			name: "invalid namespace id",
+			req: &subjectmapping.CreateSubjectConditionSetRequest{
+				SubjectConditionSet: conditionSet,
+				NamespaceId:         "bad-namespace-id",
+			},
+			expectedError: errMessageUUID,
+		},
+		{
+			name: "invalid namespace fqn",
+			req: &subjectmapping.CreateSubjectConditionSetRequest{
+				SubjectConditionSet: conditionSet,
+				NamespaceFqn:        "not-a-uri",
+			},
+			expectedError: errMessageURI,
+		},
+		{
+			name: "both namespace id and fqn",
+			req: &subjectmapping.CreateSubjectConditionSetRequest{
+				SubjectConditionSet: conditionSet,
+				NamespaceId:         fakeID,
+				NamespaceFqn:        validNamespaceFQN,
+			},
+			expectedError: errMessageOneof,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := getValidator().Validate(tc.req)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.expectedError)
+		})
+	}
+}
+
+func Test_ListSubjectConditionSetsRequest_Succeeds(t *testing.T) {
+	testCases := []struct {
+		name string
+		req  *subjectmapping.ListSubjectConditionSetsRequest
+	}{
+		{
+			name: "no filters",
+			req:  &subjectmapping.ListSubjectConditionSetsRequest{},
+		},
+		{
+			name: "namespace id only",
+			req: &subjectmapping.ListSubjectConditionSetsRequest{
+				NamespaceId: fakeID,
+			},
+		},
+		{
+			name: "namespace fqn only",
+			req: &subjectmapping.ListSubjectConditionSetsRequest{
+				NamespaceFqn: validNamespaceFQN,
+			},
+		},
+		{
+			name: "pagination only",
+			req: &subjectmapping.ListSubjectConditionSetsRequest{
+				Pagination: &policy.PageRequest{
+					Limit:  10,
+					Offset: 5,
+				},
+			},
+		},
+		{
+			name: "namespace filter with pagination",
+			req: &subjectmapping.ListSubjectConditionSetsRequest{
+				NamespaceFqn: validNamespaceFQN,
+				Pagination: &policy.PageRequest{
+					Limit: 20,
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := getValidator().Validate(tc.req)
+			require.NoError(t, err)
+		})
+	}
+}
+
+func Test_ListSubjectConditionSetsRequest_Fails(t *testing.T) {
+	testCases := []struct {
+		name          string
+		req           *subjectmapping.ListSubjectConditionSetsRequest
+		expectedError string
+	}{
+		{
+			name: "invalid namespace id",
+			req: &subjectmapping.ListSubjectConditionSetsRequest{
+				NamespaceId: "bad-namespace-id",
+			},
+			expectedError: errMessageUUID,
+		},
+		{
+			name: "invalid namespace fqn",
+			req: &subjectmapping.ListSubjectConditionSetsRequest{
+				NamespaceFqn: "not-a-uri",
+			},
+			expectedError: errMessageURI,
+		},
+		{
+			name: "both namespace id and fqn",
+			req: &subjectmapping.ListSubjectConditionSetsRequest{
+				NamespaceId:  fakeID,
+				NamespaceFqn: validNamespaceFQN,
+			},
+			expectedError: errMessageOneof,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := getValidator().Validate(tc.req)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.expectedError)
+		})
+	}
 }

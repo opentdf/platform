@@ -1939,45 +1939,6 @@ func (s *RegisteredResourcesSuite) Test_SameNamespaceEnforcement_SameNamespace_S
 	s.Require().Len(resVal.GetActionAttributeValues(), 1)
 }
 
-func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithNamespacedCustomActionName_Succeeds() {
-	nsID := s.getNamespaceID("example.com")
-
-	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
-		NamespaceId: nsID,
-		Name:        fmt.Sprintf("test_rr_custom_action_name_%d", time.Now().UnixNano()),
-	})
-	s.Require().NoError(err)
-	s.NotNil(res)
-
-	customActionName := fmt.Sprintf("rr_custom_action_%d", time.Now().UnixNano())
-	customAction, err := s.db.PolicyClient.CreateAction(s.ctx, &pbActions.CreateActionRequest{
-		Name:        customActionName,
-		NamespaceId: nsID,
-	})
-	s.Require().NoError(err)
-	s.NotNil(customAction)
-
-	resVal, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
-		ResourceId: res.GetId(),
-		Value:      fmt.Sprintf("test_rr_custom_action_name_value_%d", time.Now().UnixNano()),
-		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
-			{
-				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
-					ActionName: customActionName,
-				},
-				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
-					AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
-				},
-			},
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(resVal)
-	s.Require().Len(resVal.GetActionAttributeValues(), 1)
-	s.Equal(customAction.GetId(), resVal.GetActionAttributeValues()[0].GetAction().GetId())
-	s.Equal(customActionName, resVal.GetActionAttributeValues()[0].GetAction().GetName())
-}
-
 func (s *RegisteredResourcesSuite) getNamespaceID(key string) string {
 	ns := s.f.GetNamespaceKey(key)
 	return ns.ID

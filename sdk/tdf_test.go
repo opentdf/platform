@@ -3145,11 +3145,30 @@ func TestGetKasErrorToReturn(t *testing.T) {
 	})
 
 	t.Run("specific InvalidArgument is misconfiguration", func(t *testing.T) {
-		inputError := errors.New("rpc error: code = InvalidArgument desc = unsupported key type")
+		for _, msg := range []string{
+			"unsupported key type",
+			"key access object is nil",
+			"ec-wrapped not enabled",
+			"wrapped key is empty",
+			"invalid ephemeral public key",
+		} {
+			t.Run(msg, func(t *testing.T) {
+				inputError := errors.New("rpc error: code = InvalidArgument desc = " + msg)
+				result := getKasErrorToReturn(inputError, defaultError)
+				require.ErrorIs(t, result, ErrKASRequestError)
+				require.NotErrorIs(t, result, ErrTampered, "specific KAS 400 must not match ErrTampered")
+				require.ErrorIs(t, result, defaultError)
+			})
+		}
+	})
+
+	t.Run("message containing bad request as substring is still tamper", func(t *testing.T) {
+		// A message like "bad request body" contains "bad request" as a substring,
+		// so it should be classified as potential tamper (conservative approach).
+		inputError := errors.New("rpc error: code = InvalidArgument desc = bad request body")
 		result := getKasErrorToReturn(inputError, defaultError)
-		require.ErrorIs(t, result, ErrKASRequestError)
-		require.NotErrorIs(t, result, ErrTampered, "specific KAS 400 must not match ErrTampered")
-		require.ErrorIs(t, result, defaultError)
+		require.ErrorIs(t, result, ErrRewrapBadRequest)
+		require.ErrorIs(t, result, ErrTampered, "substring match should err on side of tamper")
 	})
 
 	t.Run("PermissionDenied error returns ErrRewrapForbidden", func(t *testing.T) {

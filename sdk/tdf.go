@@ -1568,6 +1568,10 @@ func createKaoTemplateFromKasInfo(kasInfoArr []KASInfo) []kaoTpl {
 	return kaoTemplate
 }
 
+// getKasErrorToReturn classifies KAS rewrap errors. KAS intentionally uses a
+// generic "bad request" for policy binding and DEK failures to avoid leaking
+// information about secret key material. Descriptive messages indicate
+// client/configuration issues that are safe to surface as non-tamper errors.
 func getKasErrorToReturn(err error, defaultError error) error {
 	errToReturn := defaultError
 	errStr := err.Error()

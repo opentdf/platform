@@ -324,7 +324,9 @@ The database configuration is used to define how the application connects to its
 
 Root level key `db`
 
-Embedded Postgres is used only when `db.embedded.enabled` is `true` and `db.host` is empty.
+OpenTDF platform itself does not ship an embedded Postgres runtime implementation.
+Embedded runtime behavior is provided by integrators via the pluggable `db.Runtime` interface.
+When an embedded runtime is present, it is typically used only when `db.embedded.enabled` is `true` and `db.host` is empty.
 Embedded Postgres version is fixed to PostgreSQL 15 to match the primary Compose database image (`postgres:15-alpine`).
 Embedded Postgres binaries are image-owned at `/opt/opentdf/embedded-postgres/binaries` (not volume-managed).
 `db.embedded.root_dir` is only for mutable runtime state managed by the app (`data`, `runtime`, `cache`).
@@ -340,6 +342,8 @@ Embedded Postgres binaries are image-owned at `/opt/opentdf/embedded-postgres/bi
 | `schema`                               | The schema for the database.                  | `opentdf`   | OPENTDF_DB_SCHEMA                               |
 | `runMigration`                         | Whether to run the database migration or not. | `true`      | OPENTDF_DB_RUNMIGRATION                         |
 | `connect_timeout_seconds`              | Connection timeout duration (seconds).        | `15`        | OPENTDF_DB_CONNECT_TIMEOUT_SECONDS              |
+| `start_timeout_seconds`                | Runtime startup timeout in seconds.           | `30`        | OPENTDF_DB_START_TIMEOUT_SECONDS                |
+| `stop_timeout_seconds`                 | Runtime shutdown timeout in seconds.          | `10`        | OPENTDF_DB_STOP_TIMEOUT_SECONDS                 |
 | `pool`                                 | Pool configuration settings.                  |             |                                                 |
 | `pool.max_connection_count`            | Maximum number of connections per pool.       | `4`         | OPENTDF_DB_POOL_MAX_CONNECTION_COUNT            |
 | `pool.min_connection_count`            | Minimum number of connections per pool.       | `0`         | OPENTDF_DB_POOL_MIN_CONNECTION_COUNT            |
@@ -350,8 +354,6 @@ Embedded Postgres binaries are image-owned at `/opt/opentdf/embedded-postgres/bi
 | `embedded`                             | Embedded Postgres settings.                   |             |                                                 |
 | `embedded.enabled`                     | Enable embedded Postgres.                     | `false`     | OPENTDF_DB_EMBEDDED_ENABLED                     |
 | `embedded.root_dir`                    | Root directory used by embedded Postgres.     |             | OPENTDF_DB_EMBEDDED_ROOT_DIR                    |
-| `embedded.start_timeout_seconds`       | Startup timeout for embedded Postgres.        | `30`        | OPENTDF_DB_EMBEDDED_START_TIMEOUT_SECONDS       |
-| `embedded.stop_timeout_seconds`        | Shutdown timeout for embedded Postgres.       | `10`        | OPENTDF_DB_EMBEDDED_STOP_TIMEOUT_SECONDS        |
 
 
 
@@ -369,6 +371,8 @@ db:
   schema: opentdf
   runMigration: false
   connect_timeout_seconds: 15
+  start_timeout_seconds: 30
+  stop_timeout_seconds: 10
   pool:
     max_connection_count: 4
     min_connection_count: 0
@@ -379,11 +383,9 @@ db:
   embedded:
     enabled: false
     root_dir: /var/lib/opentdf/pg
-    start_timeout_seconds: 30
-    stop_timeout_seconds: 10
 ```
 
-When embedded Postgres is enabled, it inherits `db.port` and `db.sslmode` from the parent database config.
+When an embedded runtime is enabled, it inherits `db.port`, `db.sslmode`, `db.start_timeout_seconds`, and `db.stop_timeout_seconds` from the parent database config.
 
 ## Security Configuration
 

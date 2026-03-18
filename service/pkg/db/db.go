@@ -98,6 +98,8 @@ type Config struct {
 	SSLMode        string     `mapstructure:"sslmode" json:"sslmode" default:"prefer"`
 	Schema         string     `mapstructure:"schema" json:"schema" default:"opentdf"`
 	ConnectTimeout int        `mapstructure:"connect_timeout_seconds" json:"connect_timeout_seconds" default:"15"`
+	StartTimeout   int        `mapstructure:"start_timeout_seconds" json:"start_timeout_seconds" default:"30"`
+	StopTimeout    int        `mapstructure:"stop_timeout_seconds" json:"stop_timeout_seconds" default:"10"`
 	Pool           PoolConfig `mapstructure:"pool" json:"pool"`
 
 	RunMigrations    bool      `mapstructure:"runMigrations" json:"runMigrations" default:"true"`
@@ -118,6 +120,8 @@ func (c Config) LogValue() slog.Value {
 		slog.String("sslmode", c.SSLMode),
 		slog.String("schema", c.Schema),
 		slog.Int("connect_timeout_seconds", c.ConnectTimeout),
+		slog.Int("start_timeout_seconds", c.StartTimeout),
+		slog.Int("stop_timeout_seconds", c.StopTimeout),
 		slog.Group("pool",
 			slog.Int("max_connection_count", int(c.Pool.MaxConns)),
 			slog.Int("min_connection_count", int(c.Pool.MinConns)),

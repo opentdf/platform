@@ -16,6 +16,8 @@ logger:
 #   password: changeme
 #   sslmode: disable
 #   connect_timeout_seconds: 15
+#   start_timeout_seconds: 30
+#   stop_timeout_seconds: 10
 #   pool:
 #     max_connection_count: 4
 #     min_connection_count: 0
@@ -37,11 +39,11 @@ logger:
 #   user: postgres
 #   password: changeme
 #   sslmode: disable
+#   start_timeout_seconds: 30
+#   stop_timeout_seconds: 10
 #   embedded:
 #     enabled: true
 #     root_dir: ./.dev/embedded-postgres
-#     start_timeout_seconds: 30
-#     stop_timeout_seconds: 10
 services:
   kas:
     registered_kas_uri: http://localhost:8080 # Should match what you have registered for *this* KAS in the policy db.

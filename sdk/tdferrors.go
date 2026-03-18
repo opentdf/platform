@@ -19,7 +19,6 @@ var (
 	ErrTDFPayloadReadFail      = fmt.Errorf("[%w] tdf: fail to read payload from tdf", ErrTampered)
 	ErrTDFPayloadInvalidOffset = fmt.Errorf("[%w] sdk.Reader.ReadAt: negative offset", ErrTampered)
 	ErrRootSignatureFailure    = fmt.Errorf("[%w] tdf: issue verifying root signature", ErrTampered)
-	ErrPolicyBindingFailure    = fmt.Errorf("[%w] tdf: policy binding verification failed", ErrTampered)
 
 	// KAS request errors — client/configuration issues, not integrity failures
 	ErrKASRequestError  = errors.New("tdf: KAS request error")

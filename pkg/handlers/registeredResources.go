@@ -35,7 +35,7 @@ func (h Handler) CreateRegisteredResource(ctx context.Context, namespace, name s
 	return resp.GetResource(), nil
 }
 
-func (h Handler) GetRegisteredResource(ctx context.Context, id, name, namespaceFqn string) (*policy.RegisteredResource, error) {
+func (h Handler) GetRegisteredResource(ctx context.Context, id, name, namespace string) (*policy.RegisteredResource, error) {
 	req := &registeredresources.GetRegisteredResourceRequest{}
 	if id != "" {
 		req.Identifier = &registeredresources.GetRegisteredResourceRequest_Id{
@@ -46,8 +46,13 @@ func (h Handler) GetRegisteredResource(ctx context.Context, id, name, namespaceF
 			Name: name,
 		}
 	}
-	if namespaceFqn != "" {
-		req.NamespaceFqn = namespaceFqn
+	if namespace != "" {
+		_, err := uuid.Parse(namespace)
+		if err != nil {
+			req.NamespaceFqn = namespace
+		} else {
+			req.NamespaceId = namespace
+		}
 	}
 
 	resp, err := h.sdk.RegisteredResources.GetRegisteredResource(ctx, req)

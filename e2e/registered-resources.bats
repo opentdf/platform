@@ -121,6 +121,18 @@ teardown_file() {
     [ "$(echo "$output" | jq -r '.id')" = "$created_id" ]
     [ "$(echo "$output" | jq -r '.name')" = "test_get_rr" ]
 
+  # get by name + namespace ID
+  run_otdfctl_reg_res get --name test_get_rr --namespace "$NS_ID" --json
+    assert_success
+    [ "$(echo "$output" | jq -r '.id')" = "$created_id" ]
+    [ "$(echo "$output" | jq -r '.name')" = "test_get_rr" ]
+
+  # get by name + namespace FQN
+  run_otdfctl_reg_res get --name test_get_rr --namespace "https://$NS_NAME" --json
+    assert_success
+    [ "$(echo "$output" | jq -r '.id')" = "$created_id" ]
+    [ "$(echo "$output" | jq -r '.name')" = "test_get_rr" ]
+
   # cleanup
   run_otdfctl_reg_res delete --id $created_id --force
 }

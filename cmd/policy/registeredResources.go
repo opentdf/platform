@@ -62,13 +62,13 @@ func policyGetRegisteredResource(cmd *cobra.Command, args []string) {
 
 	id := c.Flags.GetOptionalID("id")
 	name := c.Flags.GetOptionalString("name")
-	namespaceFqn := c.Flags.GetOptionalString("namespace")
+	namespace := c.Flags.GetOptionalString("namespace")
 
 	if id == "" && name == "" {
 		cli.ExitWithError("Either 'id' or 'name' must be provided", nil)
 	}
 
-	resource, err := h.GetRegisteredResource(cmd.Context(), id, name, namespaceFqn)
+	resource, err := h.GetRegisteredResource(cmd.Context(), id, name, namespace)
 	if err != nil {
 		identifier := fmt.Sprintf("id: %s", id)
 		if id == "" {

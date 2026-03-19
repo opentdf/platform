@@ -168,6 +168,9 @@ func init() {
 	tdf.InitInspectCommand()
 	InitProfileCommands()
 
+	// Add migrate command
+	withMigrateSubcommand(RootCmd)
+
 	// Add interactive command
 	RootCmd.AddCommand(newInteractiveCmd())
 }

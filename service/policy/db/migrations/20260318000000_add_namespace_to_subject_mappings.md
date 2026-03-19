@@ -24,7 +24,6 @@ namespace association.
 ## Resulting Behavior
 
 - Existing records with `namespace_id = NULL` are unscoped and returned in all list queries where no namespace filter is given.
-  regardless of namespace filter.
 - New records can optionally be associated with a namespace at creation time (by ID or FQN).
 - List queries accept an optional namespace filter; when provided, only records matching that
   namespace are returned.

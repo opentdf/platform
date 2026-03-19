@@ -184,10 +184,9 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 	if err != nil {
 		return nil, fmt.Errorf("failed to create logger: %w", err)
 	}
-	c.Logger = l.With("schema", config.Schema)
 
 	runtime := resolveRuntime(config)
-	updatedConfig, runtimeRelease, err := runtime.Prepare(ctx, config, c.Logger)
+	updatedConfig, runtimeRelease, err := runtime.Prepare(ctx, config, l)
 	if err != nil {
 		return nil, err
 	}
@@ -195,6 +194,7 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 		c.runtimeRelease = runtimeRelease
 	}
 	c.config = updatedConfig
+	c.Logger = l.With("schema", c.config.Schema)
 
 	dbConfig, err := c.config.buildConfig()
 	if err != nil {
@@ -215,7 +215,7 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 		}
 	}
 
-	slog.Info("opening new database pool", slog.String("schema", config.Schema))
+	c.Logger.Info("opening new database pool")
 	pool, err := pgxpool.NewWithConfig(ctx, dbConfig)
 	if err != nil {
 		c.releaseRuntime(ctx)

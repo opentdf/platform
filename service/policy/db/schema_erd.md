@@ -5,7 +5,8 @@ erDiagram
         uuid id PK "Unique identifier for the action"
         boolean is_standard "Whether the action is standard (proto-enum) or custom (user-defined)."
         jsonb metadata "Metadata for the action (see protos for structure)"
-        character_varying name UK "Unique name of the action, e.g. read, write, etc."
+        character_varying name "Unique name of the action, e.g. read, write, etc."
+        uuid namespace_id FK 
         timestamp_with_time_zone updated_at 
     }
 
@@ -204,7 +205,8 @@ erDiagram
         timestamp_with_time_zone created_at "Timestamp when the record was created"
         uuid id PK "Primary key for the table"
         jsonb metadata "Metadata for the registered resource (see protos for structure)"
-        character_varying name UK "Name for the registered resource"
+        character_varying name "Name for the registered resource"
+        uuid namespace_id FK 
         timestamp_with_time_zone updated_at "Timestamp when the record was last updated"
     }
 
@@ -232,6 +234,7 @@ erDiagram
         timestamp_with_time_zone created_at 
         uuid id PK "Primary key for the table"
         jsonb metadata "Metadata for the condition set (see protos for structure)"
+        uuid namespace_id FK 
         ARRAY selector_values "Array of cached selector values extracted from the condition JSONB and maintained via trigger."
         timestamp_with_time_zone updated_at 
     }
@@ -247,6 +250,7 @@ erDiagram
         timestamp_with_time_zone created_at 
         uuid id PK "Primary key for the table"
         jsonb metadata "Metadata for the subject mapping (see protos for structure)"
+        uuid namespace_id FK 
         uuid subject_condition_set_id FK "Foreign key to the condition set that entitles the subject entity to the attribute value"
         timestamp_with_time_zone updated_at 
     }
@@ -264,6 +268,7 @@ erDiagram
         timestamp_with_time_zone updated_at "Timestamp when the key was last updated"
     }
 
+    actions }o--|| attribute_namespaces : "namespace_id"
     obligation_triggers }o--|| actions : "action_id"
     registered_resource_action_attribute_values }o--|| actions : "action_id"
     subject_mapping_actions }o--|| actions : "action_id"
@@ -282,7 +287,10 @@ erDiagram
     attribute_namespace_public_key_map }o--|| attribute_namespaces : "namespace_id"
     attribute_namespace_public_key_map }o--|| key_access_server_keys : "key_access_server_key_id"
     obligation_definitions }o--|| attribute_namespaces : "namespace_id"
+    registered_resources }o--|| attribute_namespaces : "namespace_id"
     resource_mapping_groups }o--|| attribute_namespaces : "namespace_id"
+    subject_condition_set }o--|| attribute_namespaces : "namespace_id"
+    subject_mappings }o--|| attribute_namespaces : "namespace_id"
     attribute_value_key_access_grants }o--|| attribute_values : "attribute_value_id"
     attribute_value_key_access_grants }o--|| key_access_servers : "key_access_server_id"
     attribute_value_public_key_map }o--|| attribute_values : "value_id"

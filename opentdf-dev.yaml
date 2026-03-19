@@ -2,21 +2,14 @@ logger:
   level: debug
   type: text
   output: stderr
-#
-# Database mode: Docker Compose Postgres (default local development).
-#
-# - Run `docker compose up`.
-# - Keep `db.host: localhost`.
+# DB and Server configurations are defaulted for local development
 # db:
 #   host: localhost
 #   port: 5432
-#   database: opentdf
 #   user: postgres
 #   password: changeme
-#   sslmode: disable
+#   sslmode: prefer
 #   connect_timeout_seconds: 15
-#   start_timeout_seconds: 30
-#   stop_timeout_seconds: 10
 #   pool:
 #     max_connection_count: 4
 #     min_connection_count: 0

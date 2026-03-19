@@ -189,6 +189,11 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	_, err = c.queries.seedStandardActionsForNamespace(ctx, pgtypeUUID(createdID))
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
 	return c.GetNamespace(ctx, createdID)
 }
 

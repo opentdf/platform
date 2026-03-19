@@ -10,6 +10,7 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/actions"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
@@ -82,6 +83,35 @@ func (s *NamespacesSuite) Test_CreateNamespace_NormalizeCasing() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(strings.ToLower(name), got.GetName(), createdNamespace.GetName())
+}
+
+func (s *NamespacesSuite) Test_CreateNamespace_SeedsStandardActions() {
+	createdNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("seed-actions-%d.com", time.Now().UnixNano()),
+	})
+	s.Require().NoError(err)
+	s.NotNil(createdNamespace)
+
+	listed, err := s.db.PolicyClient.ListActions(s.ctx, &actions.ListActionsRequest{NamespaceId: createdNamespace.GetId()})
+	s.Require().NoError(err)
+	s.NotNil(listed)
+
+	seen := map[string]bool{
+		"create": false,
+		"read":   false,
+		"update": false,
+		"delete": false,
+	}
+
+	for _, action := range listed.GetActionsStandard() {
+		if _, ok := seen[action.GetName()]; ok {
+			seen[action.GetName()] = true
+		}
+	}
+
+	for name, found := range seen {
+		s.True(found, "expected seeded standard action %s in new namespace", name)
+	}
 }
 
 func (s *NamespacesSuite) Test_GetNamespace() {

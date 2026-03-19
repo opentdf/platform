@@ -53,7 +53,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	if outputName != "-" {
 		out, err = os.Create(outputName)
 		if err != nil {
-			return err
+			return fmt.Errorf("creating output file %s: %w", outputName, err)
 		}
 		defer out.Close()
 	}

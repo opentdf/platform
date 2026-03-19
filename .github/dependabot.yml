@@ -22,7 +22,7 @@ updates:
       - "/examples"
       - "/tests-bdd"
     commit-message:
-      prefix: "fix(deps)"
+      prefix: "chore(ci)"
     groups:
       external:
         exclude-patterns:
@@ -57,6 +57,16 @@ updates:
     schedule:
       interval: daily
 
+  - package-ecosystem: gomod
+    directory: "/tests-bdd"
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      external:
+        exclude-patterns:
+          - "github.com/opentdf/*"
+    schedule:
+      interval: daily
   - package-ecosystem: gomod
     directory: "/service"
     commit-message:

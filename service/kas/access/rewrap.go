@@ -101,6 +101,17 @@ const (
 	errNoValidKeyAccessObjects = Error("no valid KAOs")
 )
 
+// Error helpers for KAS rewrap responses.
+//
+// SECURITY: Policy binding verification and DEK decryption failures MUST use the
+// generic "bad request" message to avoid leaking information about computations
+// involving secret key material. Non-secret failures (malformed input, unsupported
+// key types, missing fields) SHOULD use descriptive messages so the SDK can
+// distinguish misconfiguration from potential tamper.
+//
+// The SDK matches on the exact string "bad request" to identify potential tamper
+// (see sdk/tdferrors.go kasGenericBadRequest). Do not change this message without
+// updating the SDK constant.
 func err400(s string) error {
 	return connect.NewError(connect.CodeInvalidArgument, errors.Join(ErrUser, status.Error(codes.InvalidArgument, s)))
 }
@@ -432,7 +443,7 @@ func verifyPolicyBinding(ctx context.Context, policy []byte, kao *kaspb.Unsigned
 	if !hmac.Equal(actualHMAC, expectedHMAC) {
 		//nolint:sloglint // usage of camelCase is intentional
 		logger.WarnContext(ctx, "policy hmac mismatch", slog.String("policyBinding", policyBinding))
-		return err400("bad request")
+		return err400("bad request") // Generic: involves secret key material
 	}
 
 	return nil
@@ -633,14 +644,14 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 
 	for _, kao := range req.GetKeyAccessObjects() {
 		if policyErr != nil {
-			failedKAORewrap(results, kao, err400("bad request"))
+			failedKAORewrap(results, kao, err400("bad request")) // Generic: corrupted policy body may indicate tamper
 			continue
 		}
 
 		// Check if KeyAccessObject is nil
 		if kao.GetKeyAccessObject() == nil {
 			p.Logger.WarnContext(ctx, "key access object is nil", slog.String("kao_id", kao.GetKeyAccessObjectId()))
-			failedKAORewrap(results, kao, err400("bad request"))
+			failedKAORewrap(results, kao, err400("key access object is nil"))
 			continue
 		}
 
@@ -648,7 +659,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		wrappedKey := kao.GetKeyAccessObject().GetWrappedKey()
 		if len(wrappedKey) == 0 {
 			p.Logger.WarnContext(ctx, "wrapped key is empty", slog.String("kao_id", kao.GetKeyAccessObjectId()))
-			failedKAORewrap(results, kao, err400("bad request"))
+			failedKAORewrap(results, kao, err400("wrapped key is empty"))
 			continue
 		}
 
@@ -659,7 +670,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 
 			if !p.ECTDFEnabled && !p.Preview.ECTDFEnabled {
 				p.Logger.WarnContext(ctx, "ec-wrapped not enabled")
-				failedKAORewrap(results, kao, err400("bad request"))
+				failedKAORewrap(results, kao, err400("ec-wrapped not enabled"))
 				continue
 			}
 
@@ -674,7 +685,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 					slog.Any("kao", kao),
 					slog.Any("error", err),
 				)
-				failedKAORewrap(results, kao, err400("bad request"))
+				failedKAORewrap(results, kao, err400("invalid ephemeral public key"))
 				continue
 			}
 
@@ -685,7 +696,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 					slog.Any("kao", kao),
 					slog.Any("error", err),
 				)
-				failedKAORewrap(results, kao, err400("bad request"))
+				failedKAORewrap(results, kao, err400("unsupported EC key size"))
 				continue
 			}
 
@@ -697,7 +708,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 					slog.Any("kao", kao),
 					slog.Any("error", err),
 				)
-				failedKAORewrap(results, kao, err400("bad request"))
+				failedKAORewrap(results, kao, err400("invalid ephemeral public key PEM"))
 				continue
 			}
 
@@ -708,14 +719,14 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 					slog.Any("kao", kao),
 					slog.Any("error", err),
 				)
-				failedKAORewrap(results, kao, err400("bad request"))
+				failedKAORewrap(results, kao, err400("invalid ephemeral public key"))
 				continue
 			}
 
 			ecPub, ok := pub.(*ecdsa.PublicKey)
 			if !ok {
 				p.Logger.WarnContext(ctx, "not an EC public key", slog.Any("error", err))
-				failedKAORewrap(results, kao, err400("bad request"))
+				failedKAORewrap(results, kao, err400("ephemeral key is not EC"))
 				continue
 			}
 
@@ -723,7 +734,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			compressedKey, err := ocrypto.CompressedECPublicKey(mode, *ecPub)
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to compress public key", slog.Any("error", err))
-				failedKAORewrap(results, kao, err400("bad request"))
+				failedKAORewrap(results, kao, err400("invalid EC public key"))
 				continue
 			}
 
@@ -743,7 +754,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				kidsToCheck = p.listLegacyKeys(ctx)
 				if len(kidsToCheck) == 0 {
 					p.Logger.WarnContext(ctx, "failure to find legacy kids for rsa")
-					failedKAORewrap(results, kao, err400("bad request"))
+					failedKAORewrap(results, kao, err400("no legacy key IDs found"))
 					continue
 				}
 			}
@@ -762,12 +773,12 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			p.Logger.WarnContext(ctx, "unsupported key type",
 				slog.String("key_type", keyType),
 				slog.String("kao_id", kao.GetKeyAccessObjectId()))
-			failedKAORewrap(results, kao, err400("bad request"))
+			failedKAORewrap(results, kao, err400("unsupported key type"))
 			continue
 		}
 		if err != nil {
 			p.Logger.WarnContext(ctx, "failure to decrypt dek", slog.Any("error", err))
-			failedKAORewrap(results, kao, err400("bad request"))
+			failedKAORewrap(results, kao, err400("bad request")) // Generic: involves secret key material
 			continue
 		}
 
@@ -784,7 +795,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		n, err := base64.StdEncoding.Decode(policyBinding, []byte(policyBindingB64Encoded))
 		if err != nil {
 			p.Logger.WarnContext(ctx, "invalid policy binding encoding", slog.Any("error", err))
-			failedKAORewrap(results, kao, err400("bad request"))
+			failedKAORewrap(results, kao, err400("bad request")) // Generic: malformed binding may indicate tamper
 			continue
 		}
 		if n == 64 { //nolint:mnd // 32 bytes of hex encoded data = 256 bit sha-2
@@ -800,7 +811,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		// Verify policy binding using the UnwrappedKeyData interface
 		if err := dek.VerifyBinding(ctx, []byte(req.GetPolicy().GetBody()), policyBinding); err != nil {
 			p.Logger.WarnContext(ctx, "failure to verify policy binding", slog.Any("error", err))
-			failedKAORewrap(results, kao, err400("bad request"))
+			failedKAORewrap(results, kao, err400("bad request")) // Generic: involves secret key material
 			continue
 		}
 

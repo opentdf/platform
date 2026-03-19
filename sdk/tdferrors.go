@@ -18,9 +18,18 @@ var (
 	ErrSegSigValidation        = fmt.Errorf("[%w] tdf: failed integrity check on segment hash", ErrTampered)
 	ErrTDFPayloadReadFail      = fmt.Errorf("[%w] tdf: fail to read payload from tdf", ErrTampered)
 	ErrTDFPayloadInvalidOffset = fmt.Errorf("[%w] sdk.Reader.ReadAt: negative offset", ErrTampered)
-	ErrRewrapBadRequest        = fmt.Errorf("[%w] tdf: rewrap request 400", ErrTampered)
 	ErrRootSignatureFailure    = fmt.Errorf("[%w] tdf: issue verifying root signature", ErrTampered)
-	ErrRewrapForbidden         = errors.New("tdf: rewrap request 403")
+	ErrRewrapBadRequest        = fmt.Errorf("[%w] tdf: rewrap request 400", ErrTampered)
+
+	// kasGenericBadRequest is the exact message KAS uses for errors involving
+	// secret key material (policy binding, DEK decryption). If this string
+	// appears in a KAS 400 error, the SDK treats it as potential tamper.
+	// Must match the "bad request" message in service/kas/access/rewrap.go.
+	kasGenericBadRequest = "bad request"
+
+	// KAS request errors — client/configuration issues, not integrity failures
+	ErrKASRequestError = errors.New("tdf: KAS request error")
+	ErrRewrapForbidden = fmt.Errorf("[%w] tdf: rewrap request 403", ErrKASRequestError)
 )
 
 // Custom error struct for Assertion errors

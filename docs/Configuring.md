@@ -324,9 +324,10 @@ The database configuration is used to define how the application connects to its
 
 Root level key `db`
 
-OpenTDF platform itself does not ship an embedded Postgres runtime implementation.
-Runtime extension behavior is provided by integrators via the pluggable `db.Runtime` interface.
+OpenTDF platform uses a pluggable `db.Runtime` hook for database runtime behavior.
+Concrete runtime implementations are provided by integrators.
 This document covers the OpenTDF-supported database fields for the core platform binary.
+Extension-specific runtime settings are intentionally not documented here.
 
 | Field                                  | Description                                   | Default     | Environment Variables                           |
 | -------------------------------------- | --------------------------------------------- | ----------- | ----------------------------------------------- |

@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -132,10 +131,6 @@ func (c Config) LogValue() slog.Value {
 		),
 		slog.Bool("runMigrations", c.RunMigrations),
 		slog.Bool("verifyConnection", c.VerifyConnection),
-		slog.Group("embedded",
-			slog.Bool("enabled", c.Embedded.Enabled),
-			slog.Bool("root_dir_set", strings.TrimSpace(c.Embedded.RootDir) != ""),
-		),
 	)
 }
 

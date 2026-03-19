@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -211,6 +212,26 @@ func unmarshalNamespace(namespaceJSON []byte, namespace *policy.Namespace) error
 		}
 	}
 	return nil
+}
+
+// resolveNamespaceID returns the namespace ID for the given namespace identifier.
+// If namespaceID is non-empty it is returned directly.
+// If namespaceFQN is non-empty the namespace is looked up by FQN and its ID returned.
+// If both are empty "" is returned (unnamespaced).
+func resolveNamespaceID(ctx context.Context, c PolicyDBClient, namespaceID, namespaceFQN string) (string, error) {
+	if namespaceID != "" {
+		return namespaceID, nil
+	}
+	if namespaceFQN != "" {
+		ns, err := c.queries.getNamespace(ctx, getNamespaceParams{
+			Name: pgtypeText(namespaceFQN),
+		})
+		if err != nil {
+			return "", db.WrapIfKnownInvalidQueryErr(err)
+		}
+		return ns.ID, nil
+	}
+	return "", nil
 }
 
 func pgtypeUUID(s string) pgtype.UUID {

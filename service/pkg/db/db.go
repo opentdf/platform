@@ -106,8 +106,8 @@ type Config struct {
 	MigrationsFS     *embed.FS `mapstructure:"-" json:"-"`
 	VerifyConnection bool      `mapstructure:"verifyConnection" json:"verifyConnection" default:"true"`
 
-	Embedded EmbeddedConfig `mapstructure:"embedded" json:"embedded"`
-	Runtime  Runtime        `mapstructure:"-" json:"-"`
+	RuntimeConfig map[string]any `mapstructure:"runtime_config" json:"runtime_config"`
+	Runtime       Runtime        `mapstructure:"-" json:"-"`
 }
 
 func (c Config) LogValue() slog.Value {
@@ -131,6 +131,7 @@ func (c Config) LogValue() slog.Value {
 		),
 		slog.Bool("runMigrations", c.RunMigrations),
 		slog.Bool("verifyConnection", c.VerifyConnection),
+		slog.Bool("runtime_config_set", len(c.RuntimeConfig) > 0),
 	)
 }
 

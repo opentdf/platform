@@ -2,6 +2,7 @@ package obligations
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -24,8 +25,8 @@ import (
 )
 
 var (
-	errActionNamespaceMismatch         = fmt.Errorf("action namespace must match parent namespace when namespaced policy is enabled")
-	errAttributeValueNamespaceMismatch = fmt.Errorf("attribute value namespace must match parent namespace when namespaced policy is enabled")
+	errActionNamespaceMismatch         = errors.New("action namespace must match parent namespace when namespaced policy is enabled")
+	errAttributeValueNamespaceMismatch = errors.New("attribute value namespace must match parent namespace when namespaced policy is enabled")
 )
 
 func validateObligationActionInput(namespacedPolicy bool, action *common.IdNameIdentifier) error {
@@ -35,119 +36,6 @@ func validateObligationActionInput(namespacedPolicy bool, action *common.IdNameI
 
 	if action.GetName() != "" && action.GetId() == "" && action.GetFqn() == "" {
 		return actions.ErrActionNameWithoutNamespace
-	}
-
-	return nil
-}
-
-func (s *Service) resolveActionNamespaceID(ctx context.Context, action *common.IdNameIdentifier) (string, error) {
-	switch {
-	case action.GetId() != "":
-		got, err := s.dbClient.GetAction(ctx, &pbactions.GetActionRequest{
-			Identifier: &pbactions.GetActionRequest_Id{Id: action.GetId()},
-		})
-		if err != nil {
-			return "", err
-		}
-		if got.GetNamespace() == nil {
-			return "", nil
-		}
-		return got.GetNamespace().GetId(), nil
-	case action.GetFqn() != "":
-		nsFQN, actionName := identifier.BreakActFQN(action.GetFqn())
-		got, err := s.dbClient.GetAction(ctx, &pbactions.GetActionRequest{
-			Identifier:   &pbactions.GetActionRequest_Name{Name: actionName},
-			NamespaceFqn: nsFQN,
-		})
-		if err != nil {
-			return "", err
-		}
-		if got.GetNamespace() == nil {
-			return "", nil
-		}
-		return got.GetNamespace().GetId(), nil
-	default:
-		return "", nil
-	}
-}
-
-func (s *Service) validateActionInParentNamespace(ctx context.Context, parentNamespaceID string, action *common.IdNameIdentifier) error {
-	if err := validateObligationActionInput(s.config.NamespacedPolicy, action); err != nil {
-		return err
-	}
-	if !s.config.NamespacedPolicy {
-		return nil
-	}
-
-	actionNamespaceID, err := s.resolveActionNamespaceID(ctx, action)
-	if err != nil {
-		return err
-	}
-	if actionNamespaceID != parentNamespaceID {
-		return errActionNamespaceMismatch
-	}
-
-	return nil
-}
-
-func (s *Service) resolveAttributeValueNamespaceID(ctx context.Context, attributeValue *common.IdFqnIdentifier) (string, error) {
-	var (
-		value *policy.Value
-		err   error
-	)
-
-	switch {
-	case attributeValue.GetId() != "":
-		value, err = s.dbClient.GetAttributeValue(ctx, &pbattributes.GetAttributeValueRequest_ValueId{ValueId: attributeValue.GetId()})
-	case attributeValue.GetFqn() != "":
-		value, err = s.dbClient.GetAttributeValue(ctx, &pbattributes.GetAttributeValueRequest_Fqn{Fqn: attributeValue.GetFqn()})
-	default:
-		return "", nil
-	}
-	if err != nil {
-		return "", err
-	}
-
-	attr, err := s.dbClient.GetAttribute(ctx, value.GetAttribute().GetId())
-	if err != nil {
-		return "", err
-	}
-
-	if attr.GetNamespace() == nil {
-		return "", nil
-	}
-
-	return attr.GetNamespace().GetId(), nil
-}
-
-func (s *Service) validateAttributeValueInParentNamespace(ctx context.Context, parentNamespaceID string, attributeValue *common.IdFqnIdentifier) error {
-	if !s.config.NamespacedPolicy {
-		return nil
-	}
-
-	attributeNamespaceID, err := s.resolveAttributeValueNamespaceID(ctx, attributeValue)
-	if err != nil {
-		return err
-	}
-	if attributeNamespaceID != parentNamespaceID {
-		return errAttributeValueNamespaceMismatch
-	}
-
-	return nil
-}
-
-func (s *Service) validateTriggersInParentNamespace(ctx context.Context, parentNamespaceID string, triggers []*obligations.ValueTriggerRequest) error {
-	if !s.config.NamespacedPolicy {
-		return nil
-	}
-
-	for _, trigger := range triggers {
-		if err := s.validateActionInParentNamespace(ctx, parentNamespaceID, trigger.GetAction()); err != nil {
-			return err
-		}
-		if err := s.validateAttributeValueInParentNamespace(ctx, parentNamespaceID, trigger.GetAttributeValue()); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -606,6 +494,119 @@ func (s *Service) ListObligationTriggers(ctx context.Context, req *connect.Reque
 		Pagination: pr,
 	}
 	return connect.NewResponse(rsp), nil
+}
+
+func (s *Service) resolveActionNamespaceID(ctx context.Context, action *common.IdNameIdentifier) (string, error) {
+	switch {
+	case action.GetId() != "":
+		got, err := s.dbClient.GetAction(ctx, &pbactions.GetActionRequest{
+			Identifier: &pbactions.GetActionRequest_Id{Id: action.GetId()},
+		})
+		if err != nil {
+			return "", err
+		}
+		if got.GetNamespace() == nil {
+			return "", nil
+		}
+		return got.GetNamespace().GetId(), nil
+	case action.GetFqn() != "":
+		nsFQN, actionName := identifier.BreakActFQN(action.GetFqn())
+		got, err := s.dbClient.GetAction(ctx, &pbactions.GetActionRequest{
+			Identifier:   &pbactions.GetActionRequest_Name{Name: actionName},
+			NamespaceFqn: nsFQN,
+		})
+		if err != nil {
+			return "", err
+		}
+		if got.GetNamespace() == nil {
+			return "", nil
+		}
+		return got.GetNamespace().GetId(), nil
+	default:
+		return "", nil
+	}
+}
+
+func (s *Service) validateActionInParentNamespace(ctx context.Context, parentNamespaceID string, action *common.IdNameIdentifier) error {
+	if err := validateObligationActionInput(s.config.NamespacedPolicy, action); err != nil {
+		return err
+	}
+	if !s.config.NamespacedPolicy {
+		return nil
+	}
+
+	actionNamespaceID, err := s.resolveActionNamespaceID(ctx, action)
+	if err != nil {
+		return err
+	}
+	if actionNamespaceID != parentNamespaceID {
+		return errActionNamespaceMismatch
+	}
+
+	return nil
+}
+
+func (s *Service) resolveAttributeValueNamespaceID(ctx context.Context, attributeValue *common.IdFqnIdentifier) (string, error) {
+	var (
+		value *policy.Value
+		err   error
+	)
+
+	switch {
+	case attributeValue.GetId() != "":
+		value, err = s.dbClient.GetAttributeValue(ctx, &pbattributes.GetAttributeValueRequest_ValueId{ValueId: attributeValue.GetId()})
+	case attributeValue.GetFqn() != "":
+		value, err = s.dbClient.GetAttributeValue(ctx, &pbattributes.GetAttributeValueRequest_Fqn{Fqn: attributeValue.GetFqn()})
+	default:
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+
+	attr, err := s.dbClient.GetAttribute(ctx, value.GetAttribute().GetId())
+	if err != nil {
+		return "", err
+	}
+
+	if attr.GetNamespace() == nil {
+		return "", nil
+	}
+
+	return attr.GetNamespace().GetId(), nil
+}
+
+func (s *Service) validateAttributeValueInParentNamespace(ctx context.Context, parentNamespaceID string, attributeValue *common.IdFqnIdentifier) error {
+	if !s.config.NamespacedPolicy {
+		return nil
+	}
+
+	attributeNamespaceID, err := s.resolveAttributeValueNamespaceID(ctx, attributeValue)
+	if err != nil {
+		return err
+	}
+	if attributeNamespaceID != parentNamespaceID {
+		return errAttributeValueNamespaceMismatch
+	}
+
+	return nil
+}
+
+func (s *Service) validateTriggersInParentNamespace(ctx context.Context, parentNamespaceID string, triggers []*obligations.ValueTriggerRequest) error {
+	if !s.config.NamespacedPolicy {
+		return nil
+	}
+
+	for _, trigger := range triggers {
+		if err := s.validateActionInParentNamespace(ctx, parentNamespaceID, trigger.GetAction()); err != nil {
+			return err
+		}
+		if err := s.validateAttributeValueInParentNamespace(ctx, parentNamespaceID, trigger.GetAttributeValue()); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // func (s *Service) AddObligationFulfiller(_ context.Context, _ *connect.Request[obligations.AddObligationFulfillerRequest]) (*connect.Response[obligations.AddObligationFulfillerResponse], error) {

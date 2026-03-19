@@ -2,6 +2,7 @@ package registeredresources
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -23,100 +24,9 @@ import (
 )
 
 var (
-	errActionNamespaceMismatch         = fmt.Errorf("action namespace must match parent namespace when namespaced policy is enabled")
-	errAttributeValueNamespaceMismatch = fmt.Errorf("attribute value namespace must match parent namespace when namespaced policy is enabled")
+	errActionNamespaceMismatch         = errors.New("action namespace must match parent namespace when namespaced policy is enabled")
+	errAttributeValueNamespaceMismatch = errors.New("attribute value namespace must match parent namespace when namespaced policy is enabled")
 )
-
-func (s *RegisteredResourcesService) resolveActionNamespaceID(ctx context.Context, action *registeredresources.ActionAttributeValue) (string, error) {
-	switch {
-	case action.GetActionId() != "":
-		got, err := s.dbClient.GetAction(ctx, &pbactions.GetActionRequest{
-			Identifier: &pbactions.GetActionRequest_Id{Id: action.GetActionId()},
-		})
-		if err != nil {
-			return "", err
-		}
-		if got.GetNamespace() == nil {
-			return "", nil
-		}
-		return got.GetNamespace().GetId(), nil
-	case action.GetActionFqn() != "":
-		nsFQN, actionName := identifier.BreakActFQN(action.GetActionFqn())
-		got, err := s.dbClient.GetAction(ctx, &pbactions.GetActionRequest{
-			Identifier:   &pbactions.GetActionRequest_Name{Name: actionName},
-			NamespaceFqn: nsFQN,
-		})
-		if err != nil {
-			return "", err
-		}
-		if got.GetNamespace() == nil {
-			return "", nil
-		}
-		return got.GetNamespace().GetId(), nil
-	default:
-		return "", nil
-	}
-}
-
-func (s *RegisteredResourcesService) validateActionAttributeValuesInParentNamespace(ctx context.Context, parentNamespaceID string, actionAttrValues []*registeredresources.ActionAttributeValue) error {
-	if !s.config.NamespacedPolicy {
-		return nil
-	}
-
-	for _, action := range actionAttrValues {
-		if action.GetActionName() != "" && action.GetActionId() == "" && action.GetActionFqn() == "" {
-			return actions.ErrActionNameWithoutNamespace
-		}
-
-		actionNamespaceID, err := s.resolveActionNamespaceID(ctx, action)
-		if err != nil {
-			return err
-		}
-		if actionNamespaceID != parentNamespaceID {
-			return errActionNamespaceMismatch
-		}
-
-		attributeValueNamespaceID, err := s.resolveAttributeValueNamespaceID(ctx, action)
-		if err != nil {
-			return err
-		}
-		if attributeValueNamespaceID != parentNamespaceID {
-			return errAttributeValueNamespaceMismatch
-		}
-	}
-
-	return nil
-}
-
-func (s *RegisteredResourcesService) resolveAttributeValueNamespaceID(ctx context.Context, action *registeredresources.ActionAttributeValue) (string, error) {
-	var (
-		value *policy.Value
-		err   error
-	)
-
-	switch {
-	case action.GetAttributeValueId() != "":
-		value, err = s.dbClient.GetAttributeValue(ctx, &pbattributes.GetAttributeValueRequest_ValueId{ValueId: action.GetAttributeValueId()})
-	case action.GetAttributeValueFqn() != "":
-		value, err = s.dbClient.GetAttributeValue(ctx, &pbattributes.GetAttributeValueRequest_Fqn{Fqn: action.GetAttributeValueFqn()})
-	default:
-		return "", nil
-	}
-	if err != nil {
-		return "", err
-	}
-
-	attr, err := s.dbClient.GetAttribute(ctx, value.GetAttribute().GetId())
-	if err != nil {
-		return "", err
-	}
-
-	if attr.GetNamespace() == nil {
-		return "", nil
-	}
-
-	return attr.GetNamespace().GetId(), nil
-}
 
 type RegisteredResourcesService struct { //nolint:revive // RegisteredResourcesService is a valid name
 	dbClient policydb.PolicyDBClient
@@ -478,4 +388,95 @@ func (s *RegisteredResourcesService) DeleteRegisteredResourceValue(ctx context.C
 	rsp.Value = deleted
 
 	return connect.NewResponse(rsp), nil
+}
+
+func (s *RegisteredResourcesService) resolveActionNamespaceID(ctx context.Context, action *registeredresources.ActionAttributeValue) (string, error) {
+	switch {
+	case action.GetActionId() != "":
+		got, err := s.dbClient.GetAction(ctx, &pbactions.GetActionRequest{
+			Identifier: &pbactions.GetActionRequest_Id{Id: action.GetActionId()},
+		})
+		if err != nil {
+			return "", err
+		}
+		if got.GetNamespace() == nil {
+			return "", nil
+		}
+		return got.GetNamespace().GetId(), nil
+	case action.GetActionFqn() != "":
+		nsFQN, actionName := identifier.BreakActFQN(action.GetActionFqn())
+		got, err := s.dbClient.GetAction(ctx, &pbactions.GetActionRequest{
+			Identifier:   &pbactions.GetActionRequest_Name{Name: actionName},
+			NamespaceFqn: nsFQN,
+		})
+		if err != nil {
+			return "", err
+		}
+		if got.GetNamespace() == nil {
+			return "", nil
+		}
+		return got.GetNamespace().GetId(), nil
+	default:
+		return "", nil
+	}
+}
+
+func (s *RegisteredResourcesService) validateActionAttributeValuesInParentNamespace(ctx context.Context, parentNamespaceID string, actionAttrValues []*registeredresources.ActionAttributeValue) error {
+	if !s.config.NamespacedPolicy {
+		return nil
+	}
+
+	for _, action := range actionAttrValues {
+		if action.GetActionName() != "" && action.GetActionId() == "" && action.GetActionFqn() == "" {
+			return actions.ErrActionNameWithoutNamespace
+		}
+
+		actionNamespaceID, err := s.resolveActionNamespaceID(ctx, action)
+		if err != nil {
+			return err
+		}
+		if actionNamespaceID != parentNamespaceID {
+			return errActionNamespaceMismatch
+		}
+
+		attributeValueNamespaceID, err := s.resolveAttributeValueNamespaceID(ctx, action)
+		if err != nil {
+			return err
+		}
+		if attributeValueNamespaceID != parentNamespaceID {
+			return errAttributeValueNamespaceMismatch
+		}
+	}
+
+	return nil
+}
+
+func (s *RegisteredResourcesService) resolveAttributeValueNamespaceID(ctx context.Context, action *registeredresources.ActionAttributeValue) (string, error) {
+	var (
+		value *policy.Value
+		err   error
+	)
+
+	switch {
+	case action.GetAttributeValueId() != "":
+		value, err = s.dbClient.GetAttributeValue(ctx, &pbattributes.GetAttributeValueRequest_ValueId{ValueId: action.GetAttributeValueId()})
+	case action.GetAttributeValueFqn() != "":
+		value, err = s.dbClient.GetAttributeValue(ctx, &pbattributes.GetAttributeValueRequest_Fqn{Fqn: action.GetAttributeValueFqn()})
+	default:
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+
+	attr, err := s.dbClient.GetAttribute(ctx, value.GetAttribute().GetId())
+	if err != nil {
+		return "", err
+	}
+
+	if attr.GetNamespace() == nil {
+		return "", nil
+	}
+
+	return attr.GetNamespace().GetId(), nil
 }

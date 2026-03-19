@@ -89,12 +89,11 @@ type PoolConfig struct {
 }
 
 type Config struct {
-	Host     string `mapstructure:"host" json:"host" default:"localhost"`
-	Port     int    `mapstructure:"port" json:"port" default:"5432"`
-	Database string `mapstructure:"database" json:"database" default:"opentdf"`
-	User     string `mapstructure:"user" json:"user" default:"postgres"`
-	//nolint:gosec // configuration value
-	Password       string     `mapstructure:"password" json:"password" default:"changeme"`
+	Host           string     `mapstructure:"host" json:"host" default:"localhost"`
+	Port           int        `mapstructure:"port" json:"port" default:"5432"`
+	Database       string     `mapstructure:"database" json:"database" default:"opentdf"`
+	User           string     `mapstructure:"user" json:"user" default:"postgres"`
+	Password       string     `mapstructure:"password" json:"password" default:"changeme"` //nolint:gosec // configuration value
 	SSLMode        string     `mapstructure:"sslmode" json:"sslmode" default:"prefer"`
 	Schema         string     `mapstructure:"schema" json:"schema" default:"opentdf"`
 	ConnectTimeout int        `mapstructure:"connect_timeout_seconds" json:"connect_timeout_seconds" default:"15"`

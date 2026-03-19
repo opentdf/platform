@@ -506,6 +506,8 @@ a_id AS (
                     SELECT a.id
                     FROM actions a
                     WHERE a.name = sqlc.narg('action_name')::text
+                      -- TODO(namespaced-actions): Move action namespace resolution/enforcement to service level.
+                      -- This query currently assumes same-namespace action lookup before legacy unscoped fallback.
                       AND a.namespace_id = (SELECT namespace_id FROM ov_id)
                 ),
                 (

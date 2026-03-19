@@ -167,6 +167,8 @@ a_id AS (
                     SELECT a.id
                     FROM actions a
                     WHERE a.name = $3::text
+                      -- TODO(namespaced-actions): Move action namespace resolution/enforcement to service level.
+                      -- This query currently assumes same-namespace action lookup before legacy unscoped fallback.
                       AND a.namespace_id = (SELECT namespace_id FROM ov_id)
                 ),
                 (
@@ -292,6 +294,8 @@ type createObligationTriggerRow struct {
 //	                    SELECT a.id
 //	                    FROM actions a
 //	                    WHERE a.name = $3::text
+//	                      -- TODO(namespaced-actions): Move action namespace resolution/enforcement to service level.
+//	                      -- This query currently assumes same-namespace action lookup before legacy unscoped fallback.
 //	                      AND a.namespace_id = (SELECT namespace_id FROM ov_id)
 //	                ),
 //	                (

@@ -7,6 +7,7 @@ import (
 	"github.com/casbin/casbin/v2/persist"
 	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/trust"
 )
@@ -33,6 +34,7 @@ type StartConfig struct {
 
 	authzRoleProvider          authz.RoleProvider
 	authzRoleProviderFactories map[string]authz.RoleProviderFactory
+	dbRuntime                  db.Runtime
 
 	// CORS additive configuration - appended to YAML/env config values
 	additionalCORSHeaders        []string
@@ -207,6 +209,14 @@ func WithTrustKeyManagerFactories(factories ...trust.NamedKeyManagerFactory) Sta
 func WithTrustKeyManagerCtxFactories(factories ...trust.NamedKeyManagerCtxFactory) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.trustKeyManagerCtxs = append(c.trustKeyManagerCtxs, factories...)
+		return c
+	}
+}
+
+// WithDBRuntime sets a process-local DB runtime implementation used by db.New.
+func WithDBRuntime(runtime db.Runtime) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.dbRuntime = runtime
 		return c
 	}
 }

@@ -102,6 +102,9 @@ func Start(f ...StartOptions) error {
 	if err != nil {
 		return fmt.Errorf("could not load config: %w", err)
 	}
+	if startConfig.dbRuntime != nil {
+		cfg.DB.Runtime = startConfig.dbRuntime
+	}
 
 	if cfg.DevMode {
 		fmt.Print(devModeMessage) //nolint:forbidigo // This ascii art is only displayed in dev mode

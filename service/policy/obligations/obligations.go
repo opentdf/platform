@@ -2,6 +2,7 @@ package obligations
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	pbactions "github.com/opentdf/platform/protocol/go/policy/actions"
+	pbattributes "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/obligations/obligationsconnect"
 	"github.com/opentdf/platform/service/logger"
@@ -21,6 +24,11 @@ import (
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
+var (
+	errActionNamespaceMismatch         = errors.New("action namespace must match parent namespace when namespaced policy is enabled")
+	errAttributeValueNamespaceMismatch = errors.New("attribute value namespace must match parent namespace when namespaced policy is enabled")
+)
+
 func validateObligationActionInput(namespacedPolicy bool, action *common.IdNameIdentifier) error {
 	if !namespacedPolicy || action == nil {
 		return nil
@@ -28,20 +36,6 @@ func validateObligationActionInput(namespacedPolicy bool, action *common.IdNameI
 
 	if action.GetName() != "" && action.GetId() == "" && action.GetFqn() == "" {
 		return actions.ErrActionNameWithoutNamespace
-	}
-
-	return nil
-}
-
-func validateObligationTriggerActions(namespacedPolicy bool, triggers []*obligations.ValueTriggerRequest) error {
-	if !namespacedPolicy {
-		return nil
-	}
-
-	for _, trigger := range triggers {
-		if err := validateObligationActionInput(true, trigger.GetAction()); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -248,8 +242,20 @@ func (s *Service) DeleteObligation(ctx context.Context, req *connect.Request[obl
 }
 
 func (s *Service) CreateObligationValue(ctx context.Context, req *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error) {
-	if err := validateObligationTriggerActions(s.config.NamespacedPolicy, req.Msg.GetTriggers()); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	if s.config.NamespacedPolicy {
+		obligationReq := &obligations.GetObligationRequest{Id: req.Msg.GetObligationId()}
+		if req.Msg.GetObligationFqn() != "" {
+			obligationReq = &obligations.GetObligationRequest{Fqn: req.Msg.GetObligationFqn()}
+		}
+
+		obl, err := s.dbClient.GetObligation(ctx, obligationReq)
+		if err != nil {
+			return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed)
+		}
+
+		if err := s.validateTriggersInParentNamespace(ctx, obl.GetNamespace().GetId(), req.Msg.GetTriggers()); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
 	}
 
 	rsp := &obligations.CreateObligationValueResponse{}
@@ -311,8 +317,15 @@ func (s *Service) GetObligationValuesByFQNs(ctx context.Context, req *connect.Re
 }
 
 func (s *Service) UpdateObligationValue(ctx context.Context, req *connect.Request[obligations.UpdateObligationValueRequest]) (*connect.Response[obligations.UpdateObligationValueResponse], error) {
-	if err := validateObligationTriggerActions(s.config.NamespacedPolicy, req.Msg.GetTriggers()); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	if s.config.NamespacedPolicy {
+		oblValue, err := s.dbClient.GetObligationValue(ctx, &obligations.GetObligationValueRequest{Id: req.Msg.GetId()})
+		if err != nil {
+			return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed)
+		}
+
+		if err := s.validateTriggersInParentNamespace(ctx, oblValue.GetObligation().GetNamespace().GetId(), req.Msg.GetTriggers()); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
 	}
 
 	id := req.Msg.GetId()
@@ -376,8 +389,22 @@ func (s *Service) DeleteObligationValue(ctx context.Context, req *connect.Reques
 }
 
 func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request[obligations.AddObligationTriggerRequest]) (*connect.Response[obligations.AddObligationTriggerResponse], error) {
-	if err := validateObligationActionInput(s.config.NamespacedPolicy, req.Msg.GetAction()); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	if s.config.NamespacedPolicy {
+		oblValReq := &obligations.GetObligationValueRequest{Id: req.Msg.GetObligationValue().GetId()}
+		if req.Msg.GetObligationValue().GetFqn() != "" {
+			oblValReq = &obligations.GetObligationValueRequest{Fqn: req.Msg.GetObligationValue().GetFqn()}
+		}
+		oblValue, err := s.dbClient.GetObligationValue(ctx, oblValReq)
+		if err != nil {
+			return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed)
+		}
+
+		if err := s.validateActionInParentNamespace(ctx, oblValue.GetObligation().GetNamespace().GetId(), req.Msg.GetAction()); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		if err := s.validateAttributeValueInParentNamespace(ctx, oblValue.GetObligation().GetNamespace().GetId(), req.Msg.GetAttributeValue()); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
 	}
 
 	rsp := &obligations.AddObligationTriggerResponse{}
@@ -467,6 +494,119 @@ func (s *Service) ListObligationTriggers(ctx context.Context, req *connect.Reque
 		Pagination: pr,
 	}
 	return connect.NewResponse(rsp), nil
+}
+
+func (s *Service) resolveActionNamespaceID(ctx context.Context, action *common.IdNameIdentifier) (string, error) {
+	switch {
+	case action.GetId() != "":
+		got, err := s.dbClient.GetAction(ctx, &pbactions.GetActionRequest{
+			Identifier: &pbactions.GetActionRequest_Id{Id: action.GetId()},
+		})
+		if err != nil {
+			return "", err
+		}
+		if got.GetNamespace() == nil {
+			return "", nil
+		}
+		return got.GetNamespace().GetId(), nil
+	case action.GetFqn() != "":
+		nsFQN, actionName := identifier.BreakActFQN(action.GetFqn())
+		got, err := s.dbClient.GetAction(ctx, &pbactions.GetActionRequest{
+			Identifier:   &pbactions.GetActionRequest_Name{Name: actionName},
+			NamespaceFqn: nsFQN,
+		})
+		if err != nil {
+			return "", err
+		}
+		if got.GetNamespace() == nil {
+			return "", nil
+		}
+		return got.GetNamespace().GetId(), nil
+	default:
+		return "", nil
+	}
+}
+
+func (s *Service) validateActionInParentNamespace(ctx context.Context, parentNamespaceID string, action *common.IdNameIdentifier) error {
+	if err := validateObligationActionInput(s.config.NamespacedPolicy, action); err != nil {
+		return err
+	}
+	if !s.config.NamespacedPolicy {
+		return nil
+	}
+
+	actionNamespaceID, err := s.resolveActionNamespaceID(ctx, action)
+	if err != nil {
+		return err
+	}
+	if actionNamespaceID != parentNamespaceID {
+		return errActionNamespaceMismatch
+	}
+
+	return nil
+}
+
+func (s *Service) resolveAttributeValueNamespaceID(ctx context.Context, attributeValue *common.IdFqnIdentifier) (string, error) {
+	var (
+		value *policy.Value
+		err   error
+	)
+
+	switch {
+	case attributeValue.GetId() != "":
+		value, err = s.dbClient.GetAttributeValue(ctx, &pbattributes.GetAttributeValueRequest_ValueId{ValueId: attributeValue.GetId()})
+	case attributeValue.GetFqn() != "":
+		value, err = s.dbClient.GetAttributeValue(ctx, &pbattributes.GetAttributeValueRequest_Fqn{Fqn: attributeValue.GetFqn()})
+	default:
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+
+	attr, err := s.dbClient.GetAttribute(ctx, value.GetAttribute().GetId())
+	if err != nil {
+		return "", err
+	}
+
+	if attr.GetNamespace() == nil {
+		return "", nil
+	}
+
+	return attr.GetNamespace().GetId(), nil
+}
+
+func (s *Service) validateAttributeValueInParentNamespace(ctx context.Context, parentNamespaceID string, attributeValue *common.IdFqnIdentifier) error {
+	if !s.config.NamespacedPolicy {
+		return nil
+	}
+
+	attributeNamespaceID, err := s.resolveAttributeValueNamespaceID(ctx, attributeValue)
+	if err != nil {
+		return err
+	}
+	if attributeNamespaceID != parentNamespaceID {
+		return errAttributeValueNamespaceMismatch
+	}
+
+	return nil
+}
+
+func (s *Service) validateTriggersInParentNamespace(ctx context.Context, parentNamespaceID string, triggers []*obligations.ValueTriggerRequest) error {
+	if !s.config.NamespacedPolicy {
+		return nil
+	}
+
+	for _, trigger := range triggers {
+		if err := s.validateActionInParentNamespace(ctx, parentNamespaceID, trigger.GetAction()); err != nil {
+			return err
+		}
+		if err := s.validateAttributeValueInParentNamespace(ctx, parentNamespaceID, trigger.GetAttributeValue()); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // func (s *Service) AddObligationFulfiller(_ context.Context, _ *connect.Request[obligations.AddObligationFulfillerRequest]) (*connect.Response[obligations.AddObligationFulfillerResponse], error) {

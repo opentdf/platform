@@ -2,10 +2,15 @@ package registeredresources
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/lib/identifier"
+	"github.com/opentdf/platform/protocol/go/policy"
+	pbactions "github.com/opentdf/platform/protocol/go/policy/actions"
+	pbattributes "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources/registeredresourcesconnect"
 	"github.com/opentdf/platform/service/logger"
@@ -18,19 +23,10 @@ import (
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
-func validateRegisteredResourceActionAttributeValues(namespacedPolicy bool, actionAttrValues []*registeredresources.ActionAttributeValue) error {
-	if !namespacedPolicy {
-		return nil
-	}
-
-	for _, value := range actionAttrValues {
-		if value.GetActionName() != "" && value.GetActionId() == "" && value.GetActionFqn() == "" {
-			return actions.ErrActionNameWithoutNamespace
-		}
-	}
-
-	return nil
-}
+var (
+	errActionNamespaceMismatch         = errors.New("action namespace must match parent namespace when namespaced policy is enabled")
+	errAttributeValueNamespaceMismatch = errors.New("attribute value namespace must match parent namespace when namespaced policy is enabled")
+)
 
 type RegisteredResourcesService struct { //nolint:revive // RegisteredResourcesService is a valid name
 	dbClient policydb.PolicyDBClient
@@ -227,8 +223,17 @@ func (s *RegisteredResourcesService) DeleteRegisteredResource(ctx context.Contex
 /// Registered Resource Values Handlers
 
 func (s *RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.Context, req *connect.Request[registeredresources.CreateRegisteredResourceValueRequest]) (*connect.Response[registeredresources.CreateRegisteredResourceValueResponse], error) {
-	if err := validateRegisteredResourceActionAttributeValues(s.config.NamespacedPolicy, req.Msg.GetActionAttributeValues()); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	if s.config.NamespacedPolicy {
+		resource, err := s.dbClient.GetRegisteredResource(ctx, &registeredresources.GetRegisteredResourceRequest{
+			Identifier: &registeredresources.GetRegisteredResourceRequest_Id{Id: req.Msg.GetResourceId()},
+		})
+		if err != nil {
+			return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed)
+		}
+
+		if err := s.validateActionAttributeValuesInParentNamespace(ctx, resource.GetNamespace().GetId(), req.Msg.GetActionAttributeValues()); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
 	}
 
 	rsp := &registeredresources.CreateRegisteredResourceValueResponse{}
@@ -303,8 +308,17 @@ func (s *RegisteredResourcesService) ListRegisteredResourceValues(ctx context.Co
 }
 
 func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.Context, req *connect.Request[registeredresources.UpdateRegisteredResourceValueRequest]) (*connect.Response[registeredresources.UpdateRegisteredResourceValueResponse], error) {
-	if err := validateRegisteredResourceActionAttributeValues(s.config.NamespacedPolicy, req.Msg.GetActionAttributeValues()); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	if s.config.NamespacedPolicy {
+		value, err := s.dbClient.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
+			Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{Id: req.Msg.GetId()},
+		})
+		if err != nil {
+			return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed)
+		}
+
+		if err := s.validateActionAttributeValuesInParentNamespace(ctx, value.GetResource().GetNamespace().GetId(), req.Msg.GetActionAttributeValues()); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
 	}
 
 	valueID := req.Msg.GetId()
@@ -374,4 +388,95 @@ func (s *RegisteredResourcesService) DeleteRegisteredResourceValue(ctx context.C
 	rsp.Value = deleted
 
 	return connect.NewResponse(rsp), nil
+}
+
+func (s *RegisteredResourcesService) resolveActionNamespaceID(ctx context.Context, action *registeredresources.ActionAttributeValue) (string, error) {
+	switch {
+	case action.GetActionId() != "":
+		got, err := s.dbClient.GetAction(ctx, &pbactions.GetActionRequest{
+			Identifier: &pbactions.GetActionRequest_Id{Id: action.GetActionId()},
+		})
+		if err != nil {
+			return "", err
+		}
+		if got.GetNamespace() == nil {
+			return "", nil
+		}
+		return got.GetNamespace().GetId(), nil
+	case action.GetActionFqn() != "":
+		nsFQN, actionName := identifier.BreakActFQN(action.GetActionFqn())
+		got, err := s.dbClient.GetAction(ctx, &pbactions.GetActionRequest{
+			Identifier:   &pbactions.GetActionRequest_Name{Name: actionName},
+			NamespaceFqn: nsFQN,
+		})
+		if err != nil {
+			return "", err
+		}
+		if got.GetNamespace() == nil {
+			return "", nil
+		}
+		return got.GetNamespace().GetId(), nil
+	default:
+		return "", nil
+	}
+}
+
+func (s *RegisteredResourcesService) validateActionAttributeValuesInParentNamespace(ctx context.Context, parentNamespaceID string, actionAttrValues []*registeredresources.ActionAttributeValue) error {
+	if !s.config.NamespacedPolicy {
+		return nil
+	}
+
+	for _, action := range actionAttrValues {
+		if action.GetActionName() != "" && action.GetActionId() == "" && action.GetActionFqn() == "" {
+			return actions.ErrActionNameWithoutNamespace
+		}
+
+		actionNamespaceID, err := s.resolveActionNamespaceID(ctx, action)
+		if err != nil {
+			return err
+		}
+		if actionNamespaceID != parentNamespaceID {
+			return errActionNamespaceMismatch
+		}
+
+		attributeValueNamespaceID, err := s.resolveAttributeValueNamespaceID(ctx, action)
+		if err != nil {
+			return err
+		}
+		if attributeValueNamespaceID != parentNamespaceID {
+			return errAttributeValueNamespaceMismatch
+		}
+	}
+
+	return nil
+}
+
+func (s *RegisteredResourcesService) resolveAttributeValueNamespaceID(ctx context.Context, action *registeredresources.ActionAttributeValue) (string, error) {
+	var (
+		value *policy.Value
+		err   error
+	)
+
+	switch {
+	case action.GetAttributeValueId() != "":
+		value, err = s.dbClient.GetAttributeValue(ctx, &pbattributes.GetAttributeValueRequest_ValueId{ValueId: action.GetAttributeValueId()})
+	case action.GetAttributeValueFqn() != "":
+		value, err = s.dbClient.GetAttributeValue(ctx, &pbattributes.GetAttributeValueRequest_Fqn{Fqn: action.GetAttributeValueFqn()})
+	default:
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+
+	attr, err := s.dbClient.GetAttribute(ctx, value.GetAttribute().GetId())
+	if err != nil {
+		return "", err
+	}
+
+	if attr.GetNamespace() == nil {
+		return "", nil
+	}
+
+	return attr.GetNamespace().GetId(), nil
 }

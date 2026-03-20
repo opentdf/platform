@@ -571,7 +571,13 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 		Signature: string(ocrypto.Base64Encode([]byte(rootSignature))),
 	}
 
-	keyAccessList, err := buildKeyAccessObjects(result, policyBytes, cfg.encryptedMetadata)
+	resourceMetadata := buildResourceMetadata(cfg, totalPlaintextSize)
+	encryptedMetadata, err := mergeEncryptedMetadata(cfg.encryptedMetadata, resourceMetadata)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
+	keyAccessList, err := buildKeyAccessObjects(result, policyBytes, encryptedMetadata)
 	if err != nil {
 		return nil, 0, 0, err
 	}

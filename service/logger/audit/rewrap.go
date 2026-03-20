@@ -20,12 +20,14 @@ type KasAttribute struct {
 }
 
 type RewrapAuditEventParams struct {
-	Policy        KasPolicy
-	IsSuccess     bool
-	TDFFormat     string
-	Algorithm     string
-	PolicyBinding string
-	KeyID         string
+	Policy         KasPolicy
+	IsSuccess      bool
+	TDFFormat      string
+	Algorithm      string
+	PolicyBinding  string
+	KeyID          string
+	Metadata       map[string]any
+	EntityMetadata map[string]string
 }
 
 func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) (*EventObject, error) {
@@ -42,7 +44,7 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 		attrFQNS[i] = attr.URI
 	}
 
-	return &EventObject{
+	event := &EventObject{
 		Object: auditEventObject{
 			Type: ObjectTypeKeyObject,
 			ID:   params.Policy.UUID.String(),
@@ -73,5 +75,14 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 		},
 		RequestID: auditDataFromContext.RequestID,
 		Timestamp: time.Now().Format(time.RFC3339),
-	}, nil
+	}
+
+	if len(params.Metadata) > 0 {
+		event.EventMetaData["decryptedMetadata"] = params.Metadata
+	}
+	if len(params.EntityMetadata) > 0 {
+		event.EventMetaData["entityMetadata"] = params.EntityMetadata
+	}
+
+	return event, nil
 }

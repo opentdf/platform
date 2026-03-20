@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -115,9 +116,8 @@ func (c PolicyDBClient) CreateRegisteredResource(ctx context.Context, r *registe
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	namespace := &policy.Namespace{}
-	if err := unmarshalNamespace(row.Namespace, namespace); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal registered resource namespace: %w", err)
+	if _, err := hydrateNamespaceFromInterface(row.Namespace); err != nil {
+		return nil, err
 	}
 
 	for _, v := range r.GetValues() {
@@ -584,9 +584,16 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 		case *registeredresources.ActionAttributeValue_ActionId:
 			actionID = ident.ActionId
 		case *registeredresources.ActionAttributeValue_ActionName:
-			a, err := c.queries.getAction(ctx, getActionParams{
-				Name: pgtypeText(strings.ToLower(ident.ActionName)),
-			})
+			actionParams := getActionParams{
+				Name:        pgtypeText(strings.ToLower(ident.ActionName)),
+				NamespaceID: nsUUID,
+			}
+			a, err := c.queries.getAction(ctx, actionParams)
+			if err != nil && nsUUID.Valid {
+				// Fall back to standard (non-namespaced) action lookup
+				actionParams.NamespaceID = pgtype.UUID{}
+				a, err = c.queries.getAction(ctx, actionParams)
+			}
 			if err != nil {
 				return db.WrapIfKnownInvalidQueryErr(err)
 			}

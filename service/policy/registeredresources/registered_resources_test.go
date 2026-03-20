@@ -86,6 +86,14 @@ func (s *RegisteredResourcesSuite) TestCreateRegisteredResource_Valid_Succeeds()
 				},
 			},
 		},
+		// --- BEGIN namespace-optional (remove when enforce_namespace flag is phased out) ---
+		{
+			name: "Name without Namespace",
+			req: &registeredresources.CreateRegisteredResourceRequest{
+				Name: validName,
+			},
+		},
+		// --- END namespace-optional ---
 	}
 
 	for _, tc := range testCases {
@@ -107,13 +115,6 @@ func (s *RegisteredResourcesSuite) TestCreateRegisteredResource_Invalid_Fails() 
 			name:   "Missing Name and Namespace",
 			req:    &registeredresources.CreateRegisteredResourceRequest{},
 			errMsg: errMsgRequired,
-		},
-		{
-			name: "Missing Namespace",
-			req: &registeredresources.CreateRegisteredResourceRequest{
-				Name: validName,
-			},
-			errMsg: "oneof",
 		},
 		{
 			name: "Invalid Namespace ID",

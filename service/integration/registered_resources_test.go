@@ -1939,6 +1939,234 @@ func (s *RegisteredResourcesSuite) Test_SameNamespaceEnforcement_SameNamespace_S
 	s.Require().Len(resVal.GetActionAttributeValues(), 1)
 }
 
+func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithNamespacedCustomActionName_Succeeds() {
+	nsID := s.getNamespaceID("example.com")
+
+	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: nsID,
+		Name:        fmt.Sprintf("test_rr_custom_action_name_%d", time.Now().UnixNano()),
+	})
+	s.Require().NoError(err)
+	s.NotNil(res)
+
+	customActionName := fmt.Sprintf("rr_custom_action_%d", time.Now().UnixNano())
+	customAction, err := s.db.PolicyClient.CreateAction(s.ctx, &pbActions.CreateActionRequest{
+		Name:        customActionName,
+		NamespaceId: nsID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(customAction)
+
+	resVal, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: res.GetId(),
+		Value:      fmt.Sprintf("test_rr_custom_action_name_value_%d", time.Now().UnixNano()),
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: customActionName,
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(resVal)
+	s.Require().Len(resVal.GetActionAttributeValues(), 1)
+	s.Equal(customAction.GetId(), resVal.GetActionAttributeValues()[0].GetAction().GetId())
+	s.Equal(customActionName, resVal.GetActionAttributeValues()[0].GetAction().GetName())
+}
+
+// ┌─────────────────────────────────────────────────────────────────────────────┐
+// │ namespace-optional tests                                                    │
+// │ Remove this section when enforce_namespace flag is phased out               │
+// └─────────────────────────────────────────────────────────────────────────────┘
+
+func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_WithoutNamespace_Succeeds() {
+	req := &registeredresources.CreateRegisteredResourceRequest{
+		Name: "test_create_no_ns",
+	}
+
+	created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(created)
+	s.NotEmpty(created.GetId())
+	s.Equal("test_create_no_ns", created.GetName())
+	s.Nil(created.GetNamespace())
+}
+
+func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_WithoutNamespace_WithValues_Succeeds() {
+	req := &registeredresources.CreateRegisteredResourceRequest{
+		Name:   "test_create_no_ns_vals",
+		Values: []string{"val1", "val2"},
+	}
+
+	created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(created)
+	s.Nil(created.GetNamespace())
+	s.Require().Len(created.GetValues(), 2)
+}
+
+func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_WithoutNamespace_GetByID_Succeeds() {
+	req := &registeredresources.CreateRegisteredResourceRequest{
+		Name: "test_no_ns_get_by_id",
+	}
+
+	created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+			Id: created.GetId(),
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(created.GetId(), got.GetId())
+	s.Nil(got.GetNamespace())
+}
+
+func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_WithoutNamespace_GetByName_Succeeds() {
+	name := "test_no_ns_get_by_name"
+	req := &registeredresources.CreateRegisteredResourceRequest{
+		Name: name,
+	}
+
+	created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+			Name: name,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(created.GetId(), got.GetId())
+	s.Nil(got.GetNamespace())
+}
+
+func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_WithoutNamespace_DuplicateName_Fails() {
+	name := "test_no_ns_dup"
+	req := &registeredresources.CreateRegisteredResourceRequest{
+		Name: name,
+	}
+
+	created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	_, err = s.db.PolicyClient.CreateRegisteredResource(s.ctx, req)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
+}
+
+func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_WithoutNamespace_ListIncluded_Succeeds() {
+	name := "test_no_ns_list"
+	req := &registeredresources.CreateRegisteredResourceRequest{
+		Name: name,
+	}
+
+	created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// Also create a namespaced resource to verify both types appear in unfiltered list
+	namespacedRes, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: s.getNamespaceID("example.com"),
+		Name:        "test_ns_list",
+	})
+	s.Require().NoError(err)
+	s.NotNil(namespacedRes)
+
+	list, err = s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{})
+	s.Require().NoError(err)
+
+	foundNoNS := false
+	foundNamespaced := false
+	for _, r := range list.GetResources() {
+		if r.GetId() == created.GetId() {
+			foundNoNS = true
+			s.Nil(r.GetNamespace())
+		}
+		if r.GetId() == namespacedRes.GetId() {
+			foundNamespaced = true
+			s.NotNil(r.GetNamespace())
+		}
+	}
+	s.True(foundNoNS, "no-namespace resource should appear in unfiltered list")
+	s.True(foundNamespaced, "namespaced resource should also appear in unfiltered list")
+}
+
+func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_SameName_NoNamespaceAndNamespaced_Succeeds() {
+	name := "test_same_name_no_ns_and_ns"
+
+	// Create non-namespaced resource
+	created1, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: name,
+	})
+	s.Require().NoError(err)
+	s.NotNil(created1)
+	s.Nil(created1.GetNamespace())
+
+	// Create namespaced resource with the same name
+	nsID := s.getNamespaceID("example.com")
+	created2, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: nsID,
+		Name:        name,
+	})
+	s.Require().NoError(err)
+	s.NotNil(created2)
+	s.NotNil(created2.GetNamespace())
+	s.Equal(nsID, created2.GetNamespace().GetId())
+
+	// Both should exist with different IDs
+	s.NotEqual(created1.GetId(), created2.GetId())
+}
+
+func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_ByName_Ambiguous_ReturnsNonNamespaced() {
+	name := "test_ambiguous_name_lookup"
+
+	// Create non-namespaced resource
+	createdNoNS, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: name,
+	})
+	s.Require().NoError(err)
+	s.NotNil(createdNoNS)
+
+	// Create namespaced resource with the same name
+	nsID := s.getNamespaceID("example.com")
+	createdWithNS, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: nsID,
+		Name:        name,
+	})
+	s.Require().NoError(err)
+	s.NotNil(createdWithNS)
+
+	// Get by name only (no namespace filter) — should deterministically return the non-namespaced one
+	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+			Name: name,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(createdNoNS.GetId(), got.GetId())
+	s.Nil(got.GetNamespace())
+}
+
+// ┌─────────────────────────────────────────────────────────────────────────────┐
+// │ end namespace-optional tests                                                │
+// └─────────────────────────────────────────────────────────────────────────────┘
+
 func (s *RegisteredResourcesSuite) getNamespaceID(key string) string {
 	ns := s.f.GetNamespaceKey(key)
 	return ns.ID

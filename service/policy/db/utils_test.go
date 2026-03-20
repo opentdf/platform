@@ -93,6 +93,66 @@ func Test_GetNextOffset(t *testing.T) {
 	}
 }
 
+func Test_GetSortParams(t *testing.T) {
+	cases := []struct {
+		name          string
+		sort          []*policy.SortField
+		expectedField string
+		expectedDir   string
+	}{
+		{
+			name:          "nil sort returns empty strings",
+			sort:          nil,
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name:          "empty slice returns empty strings",
+			sort:          []*policy.SortField{},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name: "unspecified direction defaults to ASC",
+			sort: []*policy.SortField{
+				{Field: "name", Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+			},
+			expectedField: "name",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "explicit ASC",
+			sort: []*policy.SortField{
+				{Field: "created_at", Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "created_at",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "explicit DESC",
+			sort: []*policy.SortField{
+				{Field: "updated_at", Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "updated_at",
+			expectedDir:   "DESC",
+		},
+		{
+			name:          "nil-element pointer returns fallback",
+			sort:          []*policy.SortField{nil},
+			expectedField: "",
+			expectedDir:   "ASC",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			field, dir := GetSortParams(tc.sort)
+			assert.Equal(t, tc.expectedField, field)
+			assert.Equal(t, tc.expectedDir, dir)
+		})
+	}
+}
+
 func Test_UnmarshalAllActionsProto(t *testing.T) {
 	tests := []struct {
 		name              string

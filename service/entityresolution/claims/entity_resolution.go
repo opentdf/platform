@@ -110,6 +110,21 @@ func getEntitiesFromToken(jwtString string) ([]*authorization.Entity, error) {
 	}
 
 	claims := token.PrivateClaims()
+	// PrivateClaims() excludes standard registered JWT claims (sub, iss, aud, etc.)
+	// because the jwx library stores them as typed fields. Add them back so selectors
+	// like .sub work in subject mapping conditions.
+	if sub := token.Subject(); sub != "" {
+		claims["sub"] = sub
+	}
+	if iss := token.Issuer(); iss != "" {
+		claims["iss"] = iss
+	}
+	if jti := token.JwtID(); jti != "" {
+		claims["jti"] = jti
+	}
+	if aud := token.Audience(); len(aud) > 0 {
+		claims["aud"] = aud
+	}
 	entities := []*authorization.Entity{}
 
 	// Convert map[string]interface{} to *structpb.Struct

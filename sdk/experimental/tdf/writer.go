@@ -156,8 +156,8 @@ type Writer struct {
 func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error) {
 	// Initialize Config
 	config := &WriterConfig{
-		integrityAlgorithm:        HS256,
-		segmentIntegrityAlgorithm: HS256,
+		rootIntegrityAlgorithm:    HS256,
+		segmentIntegrityAlgorithm: GMAC,
 	}
 
 	for _, opt := range opts {
@@ -264,7 +264,11 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 	if err != nil {
 		return nil, err
 	}
-	segmentSig, err := calculateSignature(segmentCipher, w.dek, w.segmentIntegrityAlgorithm, false) // Don't ever hex encode new tdf's
+	// Hash must cover nonce + cipher to match the standard SDK reader's verification.
+	// The standard SDK's Encrypt() returns nonce prepended to cipher and hashes that;
+	// EncryptInPlace() returns them separately, so we must concatenate for hashing.
+	segmentData := append(nonce, segmentCipher...) //nolint:gocritic // nonce cap == len, so always allocates
+	segmentSig, err := calculateSignature(segmentData, w.dek, w.segmentIntegrityAlgorithm, false)
 	if err != nil {
 		return nil, err
 	}
@@ -562,13 +566,18 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 		return nil, 0, 0, errors.New("empty segment hash")
 	}
 
-	rootSignature, err := calculateSignature(aggregateHash.Bytes(), w.dek, w.integrityAlgorithm, false)
-	if err != nil {
-		return nil, 0, 0, err
-	}
-	encryptInfo.RootSignature = RootSignature{
-		Algorithm: w.integrityAlgorithm.String(),
-		Signature: string(ocrypto.Base64Encode([]byte(rootSignature))),
+	// Only compute root signature when segments have been written; stub
+	// manifests returned before any WriteSegment call leave the root
+	// signature empty.
+	if aggregateHash.Len() > 0 {
+		rootSignature, err := calculateSignature(aggregateHash.Bytes(), w.dek, w.rootIntegrityAlgorithm, false)
+		if err != nil {
+			return nil, 0, 0, err
+		}
+		encryptInfo.RootSignature = RootSignature{
+			Algorithm: w.rootIntegrityAlgorithm.String(),
+			Signature: string(ocrypto.Base64Encode([]byte(rootSignature))),
+		}
 	}
 
 	keyAccessList, err := buildKeyAccessObjects(result, policyBytes, cfg.encryptedMetadata)

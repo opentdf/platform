@@ -526,3 +526,73 @@ func TestXORSplitter_ComplexScenarios(t *testing.T) {
 		assert.True(t, found, "Should find split with multiple KAS URLs")
 	})
 }
+
+// TestXORSplitter_DefaultKASMergedForURIOnlyGrant is a regression test
+// ensuring that when an attribute grant references a KAS URL without
+// embedding the public key (URI-only legacy grant), the default KAS's
+// full public key info is merged into the result. Without the merge fix
+// in GenerateSplits, collectAllPublicKeys returns an incomplete map and
+// key wrapping fails.
+func TestXORSplitter_DefaultKASMergedForURIOnlyGrant(t *testing.T) {
+	defaultKAS := &policy.SimpleKasKey{
+		KasUri: kasUs,
+		PublicKey: &policy.SimpleKasPublicKey{
+			Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+			Kid:       "default-kid",
+			Pem:       mockRSAPublicKey1,
+		},
+	}
+	splitter := NewXORSplitter(WithDefaultKAS(defaultKAS))
+
+	dek := make([]byte, 32)
+	_, err := rand.Read(dek)
+	require.NoError(t, err)
+
+	// Create an attribute whose grant references kasUs by URI only (no KasKeys).
+	attr := createMockValue("https://test.com/attr/level/value/secret", "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
+	attr.Grants = []*policy.KeyAccessServer{
+		{Uri: kasUs}, // URI-only, no embedded public key
+	}
+
+	result, err := splitter.GenerateSplits(t.Context(), []*policy.Value{attr}, dek)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// The default KAS public key must be merged into the result.
+	require.Contains(t, result.KASPublicKeys, kasUs, "default KAS key should be merged for URI-only grant")
+	pubKey := result.KASPublicKeys[kasUs]
+	assert.Equal(t, "default-kid", pubKey.KID)
+	assert.Equal(t, mockRSAPublicKey1, pubKey.PEM)
+	assert.Equal(t, "rsa:2048", pubKey.Algorithm)
+}
+
+// TestXORSplitter_DefaultKASDoesNotOverwriteExistingKey verifies that when
+// an attribute grant already embeds a full public key for the same KAS URL
+// as the default, the grant's key is preserved and not overwritten.
+func TestXORSplitter_DefaultKASDoesNotOverwriteExistingKey(t *testing.T) {
+	defaultKAS := &policy.SimpleKasKey{
+		KasUri: kasUs,
+		PublicKey: &policy.SimpleKasPublicKey{
+			Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+			Kid:       "default-kid",
+			Pem:       mockRSAPublicKey1,
+		},
+	}
+	splitter := NewXORSplitter(WithDefaultKAS(defaultKAS))
+
+	dek := make([]byte, 32)
+	_, err := rand.Read(dek)
+	require.NoError(t, err)
+
+	// Create an attribute with a fully-embedded grant for the same KAS URL
+	// but with a different KID.
+	attr := createMockValue("https://test.com/attr/level/value/secret", kasUs, "grant-kid", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
+
+	result, err := splitter.GenerateSplits(t.Context(), []*policy.Value{attr}, dek)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	require.Contains(t, result.KASPublicKeys, kasUs)
+	pubKey := result.KASPublicKeys[kasUs]
+	assert.Equal(t, "grant-kid", pubKey.KID, "grant's key should not be overwritten by default KAS")
+}

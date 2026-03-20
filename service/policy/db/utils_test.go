@@ -167,6 +167,12 @@ func Test_GetNamespacesSortParams(t *testing.T) {
 			expectedField: "updated_at",
 			expectedDir:   "DESC",
 		},
+		{
+			name:          "nil-element pointer returns fallback",
+			sort:          []*policy.SortField{nil},
+			expectedField: "",
+			expectedDir:   "ASC",
+		},
 	}
 
 	for _, tc := range cases {

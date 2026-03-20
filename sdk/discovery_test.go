@@ -269,6 +269,20 @@ func TestAttributeValueExists_NotFound(t *testing.T) {
 	assert.False(t, exists)
 }
 
+func TestAttributeValueExists_NotFoundError(t *testing.T) {
+	fqn := "https://example.com/attr/department/value/finance"
+	attrClient := &mockDiscoveryAttributesClient{
+		getAttributeValuesByFqnsFunc: func(_ context.Context, _ *attributes.GetAttributeValuesByFqnsRequest) (*attributes.GetAttributeValuesByFqnsResponse, error) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("resource not found"))
+		},
+	}
+	s := newDiscoverySDK(attrClient, nil)
+
+	exists, err := s.AttributeValueExists(t.Context(), fqn)
+	require.NoError(t, err)
+	assert.False(t, exists)
+}
+
 func TestAttributeValueExists_ServiceError(t *testing.T) {
 	fqn := "https://example.com/attr/department/value/finance"
 	attrClient := &mockDiscoveryAttributesClient{

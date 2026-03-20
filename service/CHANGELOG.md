@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.14.0](https://github.com/opentdf/platform/compare/service/v0.13.0...service/v0.14.0) (2026-03-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** Namespace subject mappings and subject condition sets. ([#3143](https://github.com/opentdf/platform/issues/3143))
+* **policy:** Optional namespace on actions protos, NamespacedPolicy feature flag ([#3155](https://github.com/opentdf/platform/issues/3155))
+* **policy:** add namespaced actions schema and namespace-aware action queries ([#3154](https://github.com/opentdf/platform/issues/3154))
+* **policy:** only require namespace on GetAction if no id provided ([#3144](https://github.com/opentdf/platform/issues/3144))
+* **policy:** add namespace field to Actions proto ([#3130](https://github.com/opentdf/platform/issues/3130))
+* **policy:** namespace Registered Resources ([#3111](https://github.com/opentdf/platform/issues/3111))
+* **policy:** add namespace field to RegisteredResource proto ([#3110](https://github.com/opentdf/platform/issues/3110))
+
+### Features
+
+* **policy:** add namespace field to Actions proto ([#3130](https://github.com/opentdf/platform/issues/3130)) ([bedc9b3](https://github.com/opentdf/platform/commit/bedc9b35366104460c5fa5965819578232a3cb01))
+* **policy:** add namespace field to RegisteredResource proto ([#3110](https://github.com/opentdf/platform/issues/3110)) ([04fd85d](https://github.com/opentdf/platform/commit/04fd85d4b69b320f4dad9d21905864fba6708956))
+* **policy:** add namespaced actions schema and namespace-aware action queries ([#3154](https://github.com/opentdf/platform/issues/3154)) ([c0443f1](https://github.com/opentdf/platform/commit/c0443f1a031c7daff41eace6d6506f663a6856c3))
+* **policy:** namespace Registered Resources ([#3111](https://github.com/opentdf/platform/issues/3111)) ([6db1883](https://github.com/opentdf/platform/commit/6db188380d3c44f578b6170f123cb9cb1597f4d8))
+* **policy:** Namespace subject mappings and subject condition sets. ([#3143](https://github.com/opentdf/platform/issues/3143)) ([3006780](https://github.com/opentdf/platform/commit/3006780fea56f85b36223c134ae63a8afe109908))
+
+
+### Bug Fixes
+
+* **ci:** Upgrade toolchain version to 1.25.8 ([#3116](https://github.com/opentdf/platform/issues/3116)) ([e1b7882](https://github.com/opentdf/platform/commit/e1b78822c0380a106e6eec05af78dc1fc9e5701f))
+* **deps:** bump github.com/opentdf/platform/lib/identifier from 0.2.0 to 0.3.0 in /service ([#3162](https://github.com/opentdf/platform/issues/3162)) ([8bc5dcd](https://github.com/opentdf/platform/commit/8bc5dcd21b8b2948ffa91d060710c60da9eb0e8d))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.16.0 to 0.17.0 in /service ([#3125](https://github.com/opentdf/platform/issues/3125)) ([29fec61](https://github.com/opentdf/platform/commit/29fec6125c36c33c1f7a8b97d249a3203e241840))
+* **ers:** ldap multi-strategy ers ([#3117](https://github.com/opentdf/platform/issues/3117)) ([d3aaf1a](https://github.com/opentdf/platform/commit/d3aaf1a6bfafab2e4447a5f34b3b089f68dea14e))
+* **policy:** deprecate ListAttributeValues in favor of existing GetAttribute ([#3108](https://github.com/opentdf/platform/issues/3108)) ([7e17c2d](https://github.com/opentdf/platform/commit/7e17c2d5ade62fb3b13265d17d663f928ced2df5))
+* **policy:** make obligation trigger uniqueness client-aware ([#3114](https://github.com/opentdf/platform/issues/3114)) ([9265bc3](https://github.com/opentdf/platform/commit/9265bc3f2790cfc0f5ac1d33bc51bca95c522bcc))
+* **policy:** only require namespace on GetAction if no id provided ([#3144](https://github.com/opentdf/platform/issues/3144)) ([10d0c0f](https://github.com/opentdf/platform/commit/10d0c0f88cd7eff3620011bd75b6c2389aa4dfb8))
+* **policy:** Optional namespace on actions protos, NamespacedPolicy feature flag ([#3155](https://github.com/opentdf/platform/issues/3155)) ([c20f039](https://github.com/opentdf/platform/commit/c20f039c6dc72bb7627075cf3cb330a6f03f2fec))
+* **policy:** order List* results by created_at ([#3088](https://github.com/opentdf/platform/issues/3088)) ([ea90ac2](https://github.com/opentdf/platform/commit/ea90ac279abbdf796d1cbe8efd8bac9c8c62de85))
+* **sdk:** remove testcontainers from consumer dependency graph ([#3129](https://github.com/opentdf/platform/issues/3129)) ([f17dcdd](https://github.com/opentdf/platform/commit/f17dcdd77a0096eb3cfd9f7d15033e4f2074cc16))
+
 ## [0.13.0](https://github.com/opentdf/platform/compare/service/v0.12.0...service/v0.13.0) (2026-02-18)
 
 

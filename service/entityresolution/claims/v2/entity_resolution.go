@@ -123,7 +123,12 @@ func getEntitiesFromToken(jwtString string) ([]*entity.Entity, error) {
 		claims["jti"] = jti
 	}
 	if aud := token.Audience(); len(aud) > 0 {
-		claims["aud"] = aud
+		// Convert []string to []interface{} for structpb compatibility
+		audSlice := make([]interface{}, len(aud))
+		for i, a := range aud {
+			audSlice[i] = a
+		}
+		claims["aud"] = audSlice
 	}
 	entities := []*entity.Entity{}
 

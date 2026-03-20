@@ -39,9 +39,9 @@ jobs:
         uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # 4.0.0
 
       - name: "Install Trivy"
-        uses: aquasecurity/setup-trivy@9ea583eb67910444b1f64abf338bd2e105a0a93d # 0.2.3
+        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # 0.2.6
         with:
-          version: v0.57.1
+          version: v0.69.3
 
       - name: "Set up QEMU"
         uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0

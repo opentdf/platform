@@ -25,6 +25,22 @@ func getListLimit(limit int32, fallback int32) int32 {
 	return fallback
 }
 
+// GetSortParams extracts sort field and direction from PageRequest sort.
+// Returns empty strings when sort is nil or empty (backward compatible —
+// callers fall back to default ORDER BY created_at DESC).
+func GetSortParams(sort []*policy.SortField) (string, string) {
+	if len(sort) == 0 {
+		return "", ""
+	}
+	s := sort[0]
+	field := s.GetField()
+	direction := "ASC"
+	if s.GetDirection() == policy.SortDirection_SORT_DIRECTION_DESC {
+		direction = "DESC"
+	}
+	return field, direction
+}
+
 // Returns next page's offset if has not yet reached total, or else returns 0
 func getNextOffset(currentOffset, limit, total int32) int32 {
 	next := currentOffset + limit

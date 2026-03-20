@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package policy;
 
+import "buf/validate/validate.proto";
+
 // Deprecated: never utilized
 message AttributeNamespaceSelector {
   // Deprecated
@@ -52,6 +54,20 @@ message AttributeValueSelector {
   AttributeSelector with_attribute = 10;
 }
 
+enum SortDirection {
+  SORT_DIRECTION_UNSPECIFIED = 0; // defaults to ASC
+  SORT_DIRECTION_ASC = 1;
+  SORT_DIRECTION_DESC = 2;
+}
+
+message SortField {
+  // Field name to sort by (e.g. "name", "created_at", "updated_at")
+  // Valid values are resource-specific — validated at the service level
+  string field = 1;
+  // Sort direction; defaults to ASC when unspecified
+  SortDirection direction = 2;
+}
+
 message PageRequest {
   // Optional
   // Set to configured default limit if not provided
@@ -60,6 +76,9 @@ message PageRequest {
   // Optional
   // Defaulted if not provided
   int32 offset = 2;
+  // Optional: sort results. Array for future extensibility; max 1 via protovalidate for now.
+  // Falls back to created_at DESC when unset.
+  repeated SortField sort = 3 [(buf.validate.field).repeated.max_items = 1];
 }
 
 message PageResponse {

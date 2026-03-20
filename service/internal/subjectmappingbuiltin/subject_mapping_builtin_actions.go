@@ -2,8 +2,6 @@ package subjectmappingbuiltin
 
 import (
 	"fmt"
-	"maps"
-	"slices"
 	"strings"
 
 	"github.com/opentdf/platform/lib/flattening"
@@ -38,7 +36,10 @@ func EvaluateSubjectMappingsWithActions(
 	entityRepresentation *entityresolutionV2.EntityRepresentation,
 ) (AttributeValueFQNsToActions, error) {
 	jsonEntities := entityRepresentation.GetAdditionalProps()
-	entitlementsSet := make(map[string][]*policy.Action)
+
+	// Accumulator that deduplicates actions across all subject mappings per value FQN
+	type actionSet map[string]*policy.Action
+	entitlementsAcc := make(map[string]actionSet)
 
 	for _, entity := range jsonEntities {
 		flattenedEntity, err := flattening.Flatten(entity.AsMap())
@@ -46,18 +47,19 @@ func EvaluateSubjectMappingsWithActions(
 			return nil, fmt.Errorf("failure to flatten entity in subject mapping builtin: %w", err)
 		}
 
+		// Per-entity caches for subject set and condition group evaluations
+		subjectSetCache := make(map[*policy.SubjectSet]bool)
+		condGroupCache := make(map[*policy.ConditionGroup]bool)
+
 		for valueFQN, attributeAndValue := range resolveableAttributes {
-			// subject mapping results or-ed together
 			for _, subjectMapping := range attributeAndValue.GetValue().GetSubjectMappings() {
 				subjectMappingResult := true
 				for _, subjectSet := range subjectMapping.GetSubjectConditionSet().GetSubjectSets() {
-					subjectSetConditionResult, err := EvaluateSubjectSet(subjectSet, flattenedEntity)
+					subjectSetConditionResult, err := evaluateSubjectSetCached(subjectSet, flattenedEntity, subjectSetCache, condGroupCache)
 					if err != nil {
 						return nil, err
 					}
-					// update the result for the subject mapping
 					subjectMappingResult = subjectMappingResult && subjectSetConditionResult
-					// if one subject condition set fails, subject mapping fails
 					if !subjectSetConditionResult {
 						break
 					}
@@ -65,20 +67,23 @@ func EvaluateSubjectMappingsWithActions(
 
 				// each subject mapping that is true should permit the actions on the mapped value
 				if subjectMappingResult {
-					// add value FQN to the entitlements set
-					if _, ok := entitlementsSet[valueFQN]; !ok {
-						entitlementsSet[valueFQN] = make([]*policy.Action, 0)
+					if _, ok := entitlementsAcc[valueFQN]; !ok {
+						entitlementsAcc[valueFQN] = make(actionSet)
 					}
-					actions := subjectMapping.GetActions()
-
-					// Cache each action by name to deduplicate
-					m := make(map[string]*policy.Action, len(actions))
-					for _, action := range actions {
-						m[strings.ToLower(action.GetName())] = action
+					for _, action := range subjectMapping.GetActions() {
+						entitlementsAcc[valueFQN][strings.ToLower(action.GetName())] = action
 					}
-					entitlementsSet[valueFQN] = append(entitlementsSet[valueFQN], slices.Collect(maps.Values(m))...)
 				}
 			}
+		}
+	}
+
+	// Convert actionSet accumulator to final result shape
+	entitlementsSet := make(AttributeValueFQNsToActions, len(entitlementsAcc))
+	for fqn, aSet := range entitlementsAcc {
+		entitlementsSet[fqn] = make([]*policy.Action, 0, len(aSet))
+		for _, a := range aSet {
+			entitlementsSet[fqn] = append(entitlementsSet[fqn], a)
 		}
 	}
 

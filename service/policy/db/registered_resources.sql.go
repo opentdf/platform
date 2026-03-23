@@ -239,7 +239,7 @@ type getRegisteredResourceRow struct {
 	Values    []byte      `json:"values"`
 }
 
-// getRegisteredResource
+// prefer non-namespaced over namespaced results (to support legacy behavior)
 //
 //	SELECT
 //	    r.id,

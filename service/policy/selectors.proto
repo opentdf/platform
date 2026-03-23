@@ -68,7 +68,6 @@ message SortField {
   SortDirection direction = 2;
 }
 
-
 message PageRequest {
   // Optional
   // Set to configured default limit if not provided

@@ -60,7 +60,7 @@ func unmarshalRegisteredResourceActionAttributeValuesProto(actionAttrValuesJSON 
 }
 
 // hydrateNamespaceFromInterface converts a nullable namespace interface{} (from CASE WHEN SQL)
-// to a *policy.Namespace. Returns an empty Namespace if the namespace is NULL (legacy RRs without namespace).
+// to a *policy.Namespace. Returns nil if the namespace is NULL (legacy RRs without namespace).
 func hydrateNamespaceFromInterface(nsRaw interface{}) (*policy.Namespace, error) {
 	if nsRaw == nil {
 		return nil, nil //nolint:nilnil // nil namespace is valid for legacy RRs without namespace

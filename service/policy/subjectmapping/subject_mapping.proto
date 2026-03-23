@@ -31,6 +31,17 @@ message GetSubjectMappingResponse {
 
 message ListSubjectMappingsRequest {
   // Optional
+  // Namespace ID or FQN
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+  string namespace_id = 1 [(buf.validate.field).string.uuid = true];
+  string namespace_fqn = 2 [
+    (buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }
+  ];
+
+  // Optional
   policy.PageRequest pagination = 10;
 }
 message ListSubjectMappingsResponse {
@@ -40,6 +51,9 @@ message ListSubjectMappingsResponse {
 }
 
 message CreateSubjectMappingRequest {
+  // Optional
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+
   // Required
   // Attribute Value to be mapped to
   string attribute_value_id = 1 [(buf.validate.field).string.uuid = true];
@@ -63,6 +77,16 @@ message CreateSubjectMappingRequest {
   }];
   // Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
   SubjectConditionSetCreate new_subject_condition_set = 4;
+
+  // Optional
+  // Namespace ID or FQN for the subject mapping
+  string namespace_id = 5 [(buf.validate.field).string.uuid = true];
+  string namespace_fqn = 6 [
+    (buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }
+  ];
 
   // Optional
   common.MetadataMutable metadata = 100;
@@ -124,6 +148,17 @@ message GetSubjectConditionSetResponse {
 
 message ListSubjectConditionSetsRequest {
   // Optional
+  // Namespace ID or FQN
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+  string namespace_id = 1 [(buf.validate.field).string.uuid = true];
+  string namespace_fqn = 2 [
+    (buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }
+  ];
+
+  // Optional
   policy.PageRequest pagination = 10;
 }
 message ListSubjectConditionSetsResponse {
@@ -141,7 +176,17 @@ message SubjectConditionSetCreate {
   common.MetadataMutable metadata = 100;
 }
 message CreateSubjectConditionSetRequest {
+  // Optional
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+
   SubjectConditionSetCreate subject_condition_set = 1 [(buf.validate.field).required = true];
+  string namespace_id = 2 [(buf.validate.field).string.uuid = true];
+  string namespace_fqn = 3 [
+    (buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }
+  ];
 }
 message CreateSubjectConditionSetResponse {
   SubjectConditionSet subject_condition_set = 1;

@@ -116,6 +116,7 @@ func (c PolicyDBClient) CreateRegisteredResource(ctx context.Context, r *registe
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	// Validate namespace JSON is parseable (actual namespace retrieved via GetRegisteredResource below)
 	if _, err := hydrateNamespaceFromInterface(row.Namespace); err != nil {
 		return nil, err
 	}

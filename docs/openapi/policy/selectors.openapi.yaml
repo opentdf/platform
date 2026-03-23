@@ -4,6 +4,13 @@ info:
 paths: {}
 components:
   schemas:
+    policy.SortDirection:
+      type: string
+      title: SortDirection
+      enum:
+        - SORT_DIRECTION_UNSPECIFIED
+        - SORT_DIRECTION_ASC
+        - SORT_DIRECTION_DESC
     policy.AttributeDefinitionSelector:
       type: object
       properties:

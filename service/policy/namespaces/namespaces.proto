@@ -78,6 +78,19 @@ message GetNamespaceResponse {
   policy.Namespace namespace = 1;
 }
 
+enum SortNamespacesType {
+  SORT_NAMESPACES_TYPE_UNSPECIFIED = 0;
+  SORT_NAMESPACES_TYPE_NAME = 1;
+  SORT_NAMESPACES_TYPE_FQN = 2;
+  SORT_NAMESPACES_TYPE_CREATED_AT = 3;
+  SORT_NAMESPACES_TYPE_UPDATED_AT = 4;
+}
+
+message NamespacesSort {
+  SortNamespacesType field = 1;
+  policy.SortDirection direction = 2;
+}
+
 message ListNamespacesRequest {
   // Optional
   // ACTIVE by default when not specified
@@ -85,6 +98,9 @@ message ListNamespacesRequest {
 
   // Optional
   policy.PageRequest pagination = 10;
+
+  // Optional
+  repeated NamespacesSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 message ListNamespacesResponse {
   repeated policy.Namespace namespaces = 1;

@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package policy;
 
-import "buf/validate/validate.proto";
-
 // Deprecated: never utilized
 message AttributeNamespaceSelector {
   // Deprecated

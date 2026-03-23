@@ -591,13 +591,14 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 				NamespaceID: nsUUID,
 			}
 			a, err := c.queries.getAction(ctx, actionParams)
+			err = db.WrapIfKnownInvalidQueryErr(err)
 			if err != nil && nsUUID.Valid && errors.Is(err, db.ErrNotFound) {
 				// Fall back to standard (non-namespaced) action lookup only on not-found
 				actionParams.NamespaceID = pgtype.UUID{}
 				a, err = c.queries.getAction(ctx, actionParams)
 			}
 			if err != nil {
-				return db.WrapIfKnownInvalidQueryErr(err)
+				return err
 			}
 			actionID = a.ID
 		default:

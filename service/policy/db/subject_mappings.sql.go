@@ -16,24 +16,15 @@ INSERT INTO subject_condition_set (condition, metadata, namespace_id)
 VALUES (
     $1,
     $2,
-    COALESCE(
-        $3::uuid,
-        (
-            SELECT namespace_id FROM attribute_fqns
-            WHERE fqn = $4::text
-                AND attribute_id IS NULL AND value_id IS NULL
-            LIMIT 1
-        )
-    )
+    $3::uuid
 )
 RETURNING id
 `
 
 type createSubjectConditionSetParams struct {
-	Condition    []byte      `json:"condition"`
-	Metadata     []byte      `json:"metadata"`
-	NamespaceID  pgtype.UUID `json:"namespace_id"`
-	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
+	Condition   []byte      `json:"condition"`
+	Metadata    []byte      `json:"metadata"`
+	NamespaceID pgtype.UUID `json:"namespace_id"`
 }
 
 // createSubjectConditionSet
@@ -42,24 +33,11 @@ type createSubjectConditionSetParams struct {
 //	VALUES (
 //	    $1,
 //	    $2,
-//	    COALESCE(
-//	        $3::uuid,
-//	        (
-//	            SELECT namespace_id FROM attribute_fqns
-//	            WHERE fqn = $4::text
-//	                AND attribute_id IS NULL AND value_id IS NULL
-//	            LIMIT 1
-//	        )
-//	    )
+//	    $3::uuid
 //	)
 //	RETURNING id
 func (q *Queries) createSubjectConditionSet(ctx context.Context, arg createSubjectConditionSetParams) (string, error) {
-	row := q.db.QueryRow(ctx, createSubjectConditionSet,
-		arg.Condition,
-		arg.Metadata,
-		arg.NamespaceID,
-		arg.NamespaceFqn,
-	)
+	row := q.db.QueryRow(ctx, createSubjectConditionSet, arg.Condition, arg.Metadata, arg.NamespaceID)
 	var id string
 	err := row.Scan(&id)
 	return id, err
@@ -77,15 +55,7 @@ WITH inserted_mapping AS (
         $1,
         $2,
         $3,
-        COALESCE(
-            $4::uuid,
-            (
-                SELECT namespace_id FROM attribute_fqns
-                WHERE fqn = $5::text
-                    AND attribute_id IS NULL AND value_id IS NULL
-                LIMIT 1
-            )
-        )
+        $4::uuid
     )
     RETURNING id
 ),
@@ -93,7 +63,7 @@ inserted_actions AS (
     INSERT INTO subject_mapping_actions (subject_mapping_id, action_id)
     SELECT
         (SELECT id FROM inserted_mapping),
-        unnest($6::uuid[])
+        unnest($5::uuid[])
 )
 SELECT id FROM inserted_mapping
 `
@@ -103,7 +73,6 @@ type createSubjectMappingParams struct {
 	Metadata              []byte      `json:"metadata"`
 	SubjectConditionSetID pgtype.UUID `json:"subject_condition_set_id"`
 	NamespaceID           pgtype.UUID `json:"namespace_id"`
-	NamespaceFqn          pgtype.Text `json:"namespace_fqn"`
 	ActionIds             []string    `json:"action_ids"`
 }
 
@@ -120,15 +89,7 @@ type createSubjectMappingParams struct {
 //	        $1,
 //	        $2,
 //	        $3,
-//	        COALESCE(
-//	            $4::uuid,
-//	            (
-//	                SELECT namespace_id FROM attribute_fqns
-//	                WHERE fqn = $5::text
-//	                    AND attribute_id IS NULL AND value_id IS NULL
-//	                LIMIT 1
-//	            )
-//	        )
+//	        $4::uuid
 //	    )
 //	    RETURNING id
 //	),
@@ -136,7 +97,7 @@ type createSubjectMappingParams struct {
 //	    INSERT INTO subject_mapping_actions (subject_mapping_id, action_id)
 //	    SELECT
 //	        (SELECT id FROM inserted_mapping),
-//	        unnest($6::uuid[])
+//	        unnest($5::uuid[])
 //	)
 //	SELECT id FROM inserted_mapping
 func (q *Queries) createSubjectMapping(ctx context.Context, arg createSubjectMappingParams) (string, error) {
@@ -145,7 +106,6 @@ func (q *Queries) createSubjectMapping(ctx context.Context, arg createSubjectMap
 		arg.Metadata,
 		arg.SubjectConditionSetID,
 		arg.NamespaceID,
-		arg.NamespaceFqn,
 		arg.ActionIds,
 	)
 	var id string

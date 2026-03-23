@@ -42,15 +42,7 @@ INSERT INTO subject_condition_set (condition, metadata, namespace_id)
 VALUES (
     @condition,
     @metadata,
-    COALESCE(
-        sqlc.narg('namespace_id')::uuid,
-        (
-            SELECT namespace_id FROM attribute_fqns
-            WHERE fqn = sqlc.narg('namespace_fqn')::text
-                AND attribute_id IS NULL AND value_id IS NULL
-            LIMIT 1
-        )
-    )
+    sqlc.narg('namespace_id')::uuid
 )
 RETURNING id;
 
@@ -285,15 +277,7 @@ WITH inserted_mapping AS (
         @attribute_value_id,
         @metadata,
         @subject_condition_set_id,
-        COALESCE(
-            sqlc.narg('namespace_id')::uuid,
-            (
-                SELECT namespace_id FROM attribute_fqns
-                WHERE fqn = sqlc.narg('namespace_fqn')::text
-                    AND attribute_id IS NULL AND value_id IS NULL
-                LIMIT 1
-            )
-        )
+        sqlc.narg('namespace_id')::uuid
     )
     RETURNING id
 ),

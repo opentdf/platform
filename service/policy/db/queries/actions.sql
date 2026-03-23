@@ -148,11 +148,7 @@ ORDER BY name;
 WITH resolved_namespace AS (
     SELECT n.id
     FROM attribute_namespaces n
-    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
-    WHERE
-        (sqlc.narg('namespace_id')::uuid IS NOT NULL AND n.id = sqlc.narg('namespace_id')::uuid)
-        OR
-        (sqlc.narg('namespace_fqn')::text IS NOT NULL AND fqns.fqn = sqlc.narg('namespace_fqn')::text)
+    WHERE n.id = sqlc.arg('namespace_id')::uuid
     LIMIT 1
 ),
 input_actions AS (

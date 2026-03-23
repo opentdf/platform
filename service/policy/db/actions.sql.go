@@ -196,15 +196,11 @@ const createOrListActionsByNameInNamespace = `-- name: createOrListActionsByName
 WITH resolved_namespace AS (
     SELECT n.id
     FROM attribute_namespaces n
-    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
-    WHERE
-        ($1::uuid IS NOT NULL AND n.id = $1::uuid)
-        OR
-        ($2::text IS NOT NULL AND fqns.fqn = $2::text)
+    WHERE n.id = $1::uuid
     LIMIT 1
 ),
 input_actions AS (
-    SELECT unnest($3::text[]) AS name
+    SELECT unnest($2::text[]) AS name
 ),
 existing_actions AS (
     SELECT a.id, a.name, a.is_standard, a.created_at
@@ -229,9 +225,8 @@ ORDER BY name
 `
 
 type createOrListActionsByNameInNamespaceParams struct {
-	NamespaceID  pgtype.UUID `json:"namespace_id"`
-	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
-	ActionNames  []string    `json:"action_names"`
+	NamespaceID string   `json:"namespace_id"`
+	ActionNames []string `json:"action_names"`
 }
 
 type createOrListActionsByNameInNamespaceRow struct {
@@ -246,15 +241,11 @@ type createOrListActionsByNameInNamespaceRow struct {
 //	WITH resolved_namespace AS (
 //	    SELECT n.id
 //	    FROM attribute_namespaces n
-//	    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
-//	    WHERE
-//	        ($1::uuid IS NOT NULL AND n.id = $1::uuid)
-//	        OR
-//	        ($2::text IS NOT NULL AND fqns.fqn = $2::text)
+//	    WHERE n.id = $1::uuid
 //	    LIMIT 1
 //	),
 //	input_actions AS (
-//	    SELECT unnest($3::text[]) AS name
+//	    SELECT unnest($2::text[]) AS name
 //	),
 //	existing_actions AS (
 //	    SELECT a.id, a.name, a.is_standard, a.created_at
@@ -277,7 +268,7 @@ type createOrListActionsByNameInNamespaceRow struct {
 //	SELECT id, name, is_standard, created_at FROM new_actions
 //	ORDER BY name
 func (q *Queries) createOrListActionsByNameInNamespace(ctx context.Context, arg createOrListActionsByNameInNamespaceParams) ([]createOrListActionsByNameInNamespaceRow, error) {
-	rows, err := q.db.Query(ctx, createOrListActionsByNameInNamespace, arg.NamespaceID, arg.NamespaceFqn, arg.ActionNames)
+	rows, err := q.db.Query(ctx, createOrListActionsByNameInNamespace, arg.NamespaceID, arg.ActionNames)
 	if err != nil {
 		return nil, err
 	}

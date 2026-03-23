@@ -2415,6 +2415,31 @@ func (s *SubjectMappingsSuite) TestCreateSubjectConditionSet_InvalidNamespaceId_
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 }
 
+func (s *SubjectMappingsSuite) TestCreateSubjectConditionSet_InvalidNamespaceFqn_FailsWithoutInsert() {
+	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{{}},
+	}, "", "https://does-not-exist.example")
+	s.Require().Error(err)
+	s.Nil(created)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_InvalidNamespaceFqn_FailsWithoutInsert() {
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
+
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID,
+		Actions:          []*policy.Action{actionRead},
+		NamespaceFqn:     "https://does-not-exist.example",
+		NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
+			SubjectSets: []*policy.SubjectSet{{}},
+		},
+	})
+	s.Require().Error(err)
+	s.Nil(created)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
 func (s *SubjectMappingsSuite) exampleComNsID() string {
 	return s.f.GetNamespaceKey("example.com").ID
 }

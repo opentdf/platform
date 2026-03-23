@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	policynamespaces "github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -68,17 +69,15 @@ func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 		return nil, err
 	}
 
-	useID := len(namespaceID) > 0
-	parsedID := pgtypeUUID(namespaceID)
-	if useID && !parsedID.Valid {
-		return nil, db.ErrUUIDInvalid
+	resolvedNamespaceID, err := c.resolveNamespace(ctx, namespaceID, namespaceFQN)
+	if err != nil {
+		return nil, err
 	}
 
 	createdID, err := c.queries.createSubjectConditionSet(ctx, createSubjectConditionSetParams{
-		Condition:    conditionJSON,
-		Metadata:     metadataJSON,
-		NamespaceID:  parsedID,
-		NamespaceFqn: pgtypeText(namespaceFQN),
+		Condition:   conditionJSON,
+		Metadata:    metadataJSON,
+		NamespaceID: pgtypeUUID(resolvedNamespaceID),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -261,33 +260,25 @@ func (c PolicyDBClient) DeleteAllUnmappedSubjectConditionSets(ctx context.Contex
 // If a new subject condition set is provided, it will be created. The existing subject condition set id takes precedence.
 func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapping.CreateSubjectMappingRequest) (*policy.SubjectMapping, error) {
 	attributeValueID := s.GetAttributeValueId()
-	namespaceID := s.GetNamespaceId()
-	namespaceFQN := s.GetNamespaceFqn()
-
-	// Validate namespace ID format if provided
-	parsedNamespaceID := pgtypeUUID(namespaceID)
-	if len(namespaceID) > 0 && !parsedNamespaceID.Valid {
-		return nil, db.ErrUUIDInvalid
+	resolvedNamespaceID, err := c.resolveNamespace(ctx, s.GetNamespaceId(), s.GetNamespaceFqn())
+	if err != nil {
+		return nil, err
 	}
+	parsedNamespaceID := pgtypeUUID(resolvedNamespaceID)
 
 	// Resolve action IDs from the request (by id or by name)
-	actionIDs, err := c.resolveSubjectMappingActions(ctx, s.GetActions(), parsedNamespaceID, namespaceFQN)
+	actionIDs, err := c.resolveSubjectMappingActions(ctx, s.GetActions(), parsedNamespaceID)
 	if err != nil {
 		return nil, err
 	}
 
 	// Resolve or create the subject condition set
-	scs, err := c.resolveSubjectConditionSet(ctx, s, namespaceID, namespaceFQN)
+	scs, err := c.resolveSubjectConditionSet(ctx, s, resolvedNamespaceID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Resolve the target namespace ID and validate all entities are consistent
-	targetNsID, err := resolveNamespaceID(ctx, c, namespaceID, namespaceFQN)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	if err := c.validateSubjectMappingNamespaceConsistency(ctx, targetNsID, attributeValueID, actionIDs, scs); err != nil {
+	if err := c.validateSubjectMappingNamespaceConsistency(ctx, resolvedNamespaceID, attributeValueID, actionIDs, scs); err != nil {
 		return nil, err
 	}
 
@@ -302,7 +293,6 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		Metadata:              metadataJSON,
 		SubjectConditionSetID: pgtypeUUID(scs.GetId()),
 		NamespaceID:           parsedNamespaceID,
-		NamespaceFqn:          pgtypeText(namespaceFQN),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -584,7 +574,7 @@ func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 
 // resolveSubjectMappingActions parses the action list from a CreateSubjectMappingRequest,
 // resolving actions by name within the given namespace and collecting existing action IDs.
-func (c PolicyDBClient) resolveSubjectMappingActions(ctx context.Context, actions []*policy.Action, parsedNamespaceID pgtype.UUID, namespaceFQN string) ([]string, error) {
+func (c PolicyDBClient) resolveSubjectMappingActions(ctx context.Context, actions []*policy.Action, parsedNamespaceID pgtype.UUID) ([]string, error) {
 	if len(actions) == 0 {
 		return nil, db.WrapIfKnownInvalidQueryErr(
 			errors.Join(db.ErrMissingValue, errors.New("actions are required when creating a subject mapping")),
@@ -606,7 +596,7 @@ func (c PolicyDBClient) resolveSubjectMappingActions(ctx context.Context, action
 	}
 
 	if len(actionNames) > 0 {
-		ids, err := c.resolveActionNameIDs(ctx, actionNames, parsedNamespaceID, namespaceFQN)
+		ids, err := c.resolveActionNameIDs(ctx, actionNames, parsedNamespaceID)
 		if err != nil {
 			return nil, err
 		}
@@ -617,7 +607,7 @@ func (c PolicyDBClient) resolveSubjectMappingActions(ctx context.Context, action
 }
 
 // resolveSubjectConditionSet fetches an existing SCS or creates a new one for the subject mapping.
-func (c PolicyDBClient) resolveSubjectConditionSet(ctx context.Context, s *subjectmapping.CreateSubjectMappingRequest, namespaceID, namespaceFQN string) (*policy.SubjectConditionSet, error) {
+func (c PolicyDBClient) resolveSubjectConditionSet(ctx context.Context, s *subjectmapping.CreateSubjectMappingRequest, namespaceID string) (*policy.SubjectConditionSet, error) {
 	switch {
 	case s.GetExistingSubjectConditionSetId() != "":
 		scs, err := c.GetSubjectConditionSet(ctx, s.GetExistingSubjectConditionSetId())
@@ -626,7 +616,7 @@ func (c PolicyDBClient) resolveSubjectConditionSet(ctx context.Context, s *subje
 		}
 		return scs, nil
 	case s.GetNewSubjectConditionSet() != nil:
-		scs, err := c.CreateSubjectConditionSet(ctx, s.GetNewSubjectConditionSet(), namespaceID, namespaceFQN)
+		scs, err := c.CreateSubjectConditionSet(ctx, s.GetNewSubjectConditionSet(), namespaceID, "")
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		}
@@ -636,6 +626,27 @@ func (c PolicyDBClient) resolveSubjectConditionSet(ctx context.Context, s *subje
 			errors.Join(db.ErrMissingValue, errors.New("either an existing Subject Condition Set ID or a new Subject Condition Set is required when creating a subject mapping")),
 		)
 	}
+}
+
+func (c PolicyDBClient) resolveNamespace(ctx context.Context, namespaceID, namespaceFQN string) (string, error) {
+	if namespaceID != "" {
+		parsedNamespaceID := pgtypeUUID(namespaceID)
+		if !parsedNamespaceID.Valid {
+			return "", db.ErrUUIDInvalid
+		}
+		return namespaceID, nil
+	}
+
+	if namespaceFQN == "" {
+		return "", nil
+	}
+
+	ns, err := c.GetNamespace(ctx, &policynamespaces.GetNamespaceRequest_Fqn{Fqn: namespaceFQN})
+	if err != nil {
+		return "", db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return ns.GetId(), nil
 }
 
 // validateSubjectMappingNamespaceConsistency ensures that actions and subject condition set
@@ -692,12 +703,11 @@ func (c PolicyDBClient) validateSubjectMappingNamespaceConsistency(
 // resolveActionNameIDs creates or fetches action IDs for the given action names.
 // When namespaced is true, actions are created/fetched within the given namespace;
 // otherwise the legacy global (unnamespaced) path is used.
-func (c PolicyDBClient) resolveActionNameIDs(ctx context.Context, actionNames []string, namespaceID pgtype.UUID, namespaceFQN string) ([]string, error) {
-	if namespaceID.Valid || namespaceFQN != "" {
+func (c PolicyDBClient) resolveActionNameIDs(ctx context.Context, actionNames []string, namespaceID pgtype.UUID) ([]string, error) {
+	if namespaceID.Valid {
 		rows, err := c.queries.createOrListActionsByNameInNamespace(ctx, createOrListActionsByNameInNamespaceParams{
-			ActionNames:  actionNames,
-			NamespaceID:  namespaceID,
-			NamespaceFqn: pgtypeText(namespaceFQN),
+			ActionNames: actionNames,
+			NamespaceID: UUIDToString(namespaceID),
 		})
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(

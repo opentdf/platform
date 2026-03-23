@@ -63,6 +63,7 @@ WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL OR r.namespace_id = sqlc.narg('namespace_id')::uuid) AND
     (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text)
 GROUP BY r.id, n.id, ns_fqns.fqn
+-- prefer non-namespaced over namespaced results (to support legacy behavior)
 ORDER BY r.namespace_id NULLS FIRST
 LIMIT 1;
 

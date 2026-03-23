@@ -107,6 +107,9 @@ func (s SDK) AttributeValueExists(ctx context.Context, fqn string) (bool, error)
 		Fqns: []string{fqn},
 	})
 	if err != nil {
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			return false, nil
+		}
 		return false, fmt.Errorf("checking attribute value existence: %w", err)
 	}
 

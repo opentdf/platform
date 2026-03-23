@@ -598,6 +598,7 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 				a, err = c.queries.getAction(ctx, actionParams)
 			}
 			if err != nil {
+				err = db.WrapIfKnownInvalidQueryErr(err)
 				return err
 			}
 			actionID = a.ID

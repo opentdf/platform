@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -590,8 +591,8 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 				NamespaceID: nsUUID,
 			}
 			a, err := c.queries.getAction(ctx, actionParams)
-			if err != nil && nsUUID.Valid {
-				// Fall back to standard (non-namespaced) action lookup
+			if err != nil && nsUUID.Valid && errors.Is(err, db.ErrNotFound) {
+				// Fall back to standard (non-namespaced) action lookup only on not-found
 				actionParams.NamespaceID = pgtype.UUID{}
 				a, err = c.queries.getAction(ctx, actionParams)
 			}

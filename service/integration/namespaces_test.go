@@ -286,10 +286,8 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByName_ASC() {
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
-		Pagination: &policy.PageRequest{
-			Sort: []*policy.SortField{
-				{Field: "name", Direction: policy.SortDirection_SORT_DIRECTION_ASC},
-			},
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
 		},
 	})
 	s.Require().NoError(err)
@@ -315,10 +313,8 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByName_DESC() {
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
-		Pagination: &policy.PageRequest{
-			Sort: []*policy.SortField{
-				{Field: "name", Direction: policy.SortDirection_SORT_DIRECTION_DESC},
-			},
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
 		},
 	})
 	s.Require().NoError(err)
@@ -345,10 +341,8 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_ASC() {
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
-		Pagination: &policy.PageRequest{
-			Sort: []*policy.SortField{
-				{Field: "created_at", Direction: policy.SortDirection_SORT_DIRECTION_ASC},
-			},
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
 		},
 	})
 	s.Require().NoError(err)
@@ -374,10 +368,8 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_ASC() {
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
-		Pagination: &policy.PageRequest{
-			Sort: []*policy.SortField{
-				{Field: "fqn", Direction: policy.SortDirection_SORT_DIRECTION_ASC},
-			},
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
 		},
 	})
 	s.Require().NoError(err)
@@ -414,10 +406,8 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_DESC() {
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
-		Pagination: &policy.PageRequest{
-			Sort: []*policy.SortField{
-				{Field: "updated_at", Direction: policy.SortDirection_SORT_DIRECTION_DESC},
-			},
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
 		},
 	})
 	s.Require().NoError(err)
@@ -427,10 +417,10 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_DESC() {
 	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[2], ids[1])
 }
 
-func (s *NamespacesSuite) Test_ListNamespaces_SortByInvalidField_FallsBackToDefault() {
+func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedField_FallsBackToDefault() {
 	suffix := time.Now().UnixNano()
 	create := func(i int) string {
-		name := fmt.Sprintf("invalid-sort-ns-%d-%d.com", i, suffix)
+		name := fmt.Sprintf("unspecified-sort-ns-%d-%d.com", i, suffix)
 		created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
 		s.Require().NoError(err)
 		return created.GetId()
@@ -444,10 +434,8 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByInvalidField_FallsBackToDefa
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
-		Pagination: &policy.PageRequest{
-			Sort: []*policy.SortField{
-				{Field: "nonexistent", Direction: policy.SortDirection_SORT_DIRECTION_ASC},
-			},
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
 		},
 	})
 	s.Require().NoError(err)

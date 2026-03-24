@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -584,13 +585,13 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 		case *registeredresources.ActionAttributeValue_ActionId:
 			actionID = ident.ActionId
 		case *registeredresources.ActionAttributeValue_ActionName:
-			a, err := c.queries.getAction(ctx, getActionParams{
-				Name: pgtypeText(strings.ToLower(ident.ActionName)),
-			})
-			if err != nil {
-				return db.WrapIfKnownInvalidQueryErr(err)
+			createdOrListedActions, err := c.queries.createOrListActionsByName(ctx, []string{strings.ToLower(ident.ActionName)})
+			if err != nil || len(createdOrListedActions) == 0 {
+				return db.WrapIfKnownInvalidQueryErr(
+					errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", strings.ToLower(ident.ActionName), err)),
+				)
 			}
-			actionID = a.ID
+			actionID = createdOrListedActions[0].ID
 		default:
 			return db.ErrSelectIdentifierInvalid
 		}

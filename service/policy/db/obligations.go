@@ -665,10 +665,20 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 		return nil, fmt.Errorf("failed to get obligation value: %w", err)
 	}
 
+	actionID := r.GetAction().GetId()
+	if actionID == "" {
+		createdOrListedActions, err := c.queries.createOrListActionsByName(ctx, []string{r.GetAction().GetName()})
+		if err != nil || len(createdOrListedActions) == 0 {
+			return nil, db.WrapIfKnownInvalidQueryErr(
+				errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", strings.ToLower(r.GetAction().GetName()), err)),
+			)
+		}
+		actionID = createdOrListedActions[0].ID
+	}
+
 	params := createObligationTriggerParams{
 		ObligationValueID: pgtypeUUID(oblVal.GetId()),
-		ActionName:        pgtypeText(r.GetAction().GetName()),
-		ActionID:          pgtypeUUID(r.GetAction().GetId()),
+		ActionID:          pgtypeUUID(actionID),
 		AttributeValueID:  pgtypeUUID(r.GetAttributeValue().GetId()),
 		AttributeValueFqn: pgtypeText(r.GetAttributeValue().GetFqn()),
 		ClientID:          pgtypeText(r.GetContext().GetPep().GetClientId()),

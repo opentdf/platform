@@ -750,13 +750,6 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
-    policy.SortDirection:
-      type: string
-      title: SortDirection
-      enum:
-        - SORT_DIRECTION_UNSPECIFIED
-        - SORT_DIRECTION_ASC
-        - SORT_DIRECTION_DESC
     policy.SourceType:
       type: string
       title: SourceType
@@ -1296,15 +1289,6 @@ components:
           description: |-
             Optional
              Defaulted if not provided
-        sort:
-          type: array
-          items:
-            $ref: '#/components/schemas/policy.SortField'
-          title: sort
-          maxItems: 1
-          description: |-
-            Optional: sort results. Array for future extensibility; max 1 via protovalidate for now.
-             Falls back to created_at DESC when unset.
       title: PageRequest
       additionalProperties: false
     policy.PageResponse:
@@ -1462,21 +1446,6 @@ components:
           type: string
           title: pem
       title: SimpleKasPublicKey
-      additionalProperties: false
-    policy.SortField:
-      type: object
-      properties:
-        field:
-          type: string
-          title: field
-          description: |-
-            Field name to sort by (e.g. "name", "created_at", "updated_at")
-             Valid values are resource-specific — validated at the service level
-        direction:
-          title: direction
-          description: Sort direction; defaults to ASC when unspecified
-          $ref: '#/components/schemas/policy.SortDirection'
-      title: SortField
       additionalProperties: false
     policy.SubjectConditionSet:
       type: object

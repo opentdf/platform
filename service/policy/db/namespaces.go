@@ -97,7 +97,7 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 		active = pgtypeBool(state == stateActive)
 	}
 
-	sortField, sortDirection := GetSortParams(r.GetPagination().GetSort())
+	sortField, sortDirection := GetNamespacesSortParams(r.GetSort())
 
 	list, err := c.queries.listNamespaces(ctx, listNamespacesParams{
 		Active:        active,

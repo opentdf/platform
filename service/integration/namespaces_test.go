@@ -114,6 +114,29 @@ func (s *NamespacesSuite) Test_CreateNamespace_SeedsStandardActions() {
 	}
 }
 
+func (s *NamespacesSuite) Test_CreateNamespace_WithoutPublicKeys_DoesNotReturnKeys() {
+	name := fmt.Sprintf("no-namespace-children-%d.com", time.Now().UnixNano())
+	createdNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
+	s.Require().NoError(err)
+	s.Require().NotNil(createdNamespace)
+	defer func() {
+		_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, createdNamespace, createdNamespace.GetFqn())
+		s.Require().NoError(err)
+	}()
+
+	s.Empty(createdNamespace.GetKasKeys())
+
+	gotByID, err := s.db.PolicyClient.GetNamespace(s.ctx, createdNamespace.GetId())
+	s.Require().NoError(err)
+	s.Require().NotNil(gotByID)
+	s.Empty(gotByID.GetKasKeys())
+
+	gotByFQN, err := s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_Fqn{Fqn: createdNamespace.GetName()})
+	s.Require().NoError(err)
+	s.Require().NotNil(gotByFQN)
+	s.Empty(gotByFQN.GetKasKeys())
+}
+
 func (s *NamespacesSuite) Test_GetNamespace() {
 	testData := s.getActiveNamespaceFixtures()
 

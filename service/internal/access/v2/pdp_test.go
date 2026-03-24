@@ -871,6 +871,30 @@ func (s *PDPTestSuite) TestNewPolicyDecisionPoint() {
 	}
 }
 
+func (s *PDPTestSuite) TestNewPolicyDecisionPoint_AllowsAttributeDefinitionsWithoutValues() {
+	f := s.fixtures
+	emptyAttrFQN := createAttrFQN(testSecondaryNamespace, "empty")
+	emptyAttr := &policy.Attribute{
+		Fqn:  emptyAttrFQN,
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+	}
+
+	pdp, err := NewPolicyDecisionPoint(
+		s.T().Context(),
+		s.logger,
+		[]*policy.Attribute{f.classificationAttr, emptyAttr},
+		[]*policy.SubjectMapping{f.secretMapping},
+		nil,
+		allowDirectEntitlements,
+	)
+
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	s.Require().Contains(pdp.allAttributesByDefinitionFQN, emptyAttrFQN)
+	s.Require().NotContains(pdp.allEntitleableAttributesByValueFQN, emptyAttrFQN)
+}
+
 // Test_GetDecision_MultipleResources tests the GetDecision method with some generalized scenarios for multiple resources
 func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 	f := s.fixtures

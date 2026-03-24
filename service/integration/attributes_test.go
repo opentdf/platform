@@ -66,6 +66,42 @@ func (s *AttributesSuite) Test_CreateAttribute_NoMetadataSucceeds() {
 	s.NotNil(createdAttr)
 }
 
+func (s *AttributesSuite) Test_CreateAttribute_WithoutValues_DoesNotReturnEmptyValue() {
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "test__create_attribute_without_values",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+	}
+
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.Require().NotNil(createdAttr)
+	s.Empty(createdAttr.GetValues())
+
+	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.Require().NotNil(gotAttr)
+	s.Empty(gotAttr.GetValues())
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: fixtureNamespaceID,
+		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(listRsp)
+
+	for _, listedAttr := range listRsp.GetAttributes() {
+		if listedAttr.GetId() != createdAttr.GetId() {
+			continue
+		}
+
+		s.Empty(listedAttr.GetValues())
+		return
+	}
+
+	s.Failf("created attribute not found in list response", "attribute_id=%s", createdAttr.GetId())
+}
+
 func (s *AttributesSuite) Test_CreateAttribute_NormalizeName() {
 	name := "NaMe_12_ShOuLdBe-NoRmAlIzEd"
 	attr := &attributes.CreateAttributeRequest{

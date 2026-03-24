@@ -43,8 +43,20 @@ WHERE
         sqlc.narg('namespace_id')::uuid IS NULL
         AND sqlc.narg('namespace_fqn')::text IS NULL
     )
-    OR a.is_standard = TRUE
-    OR a.namespace_id = rn.id
+    OR (
+        a.namespace_id = rn.id
+        OR (
+            rn.id IS NOT NULL
+            AND a.is_standard = TRUE
+            AND a.namespace_id IS NULL
+            AND NOT EXISTS (
+                SELECT 1
+                FROM actions ax
+                WHERE ax.name = a.name
+                  AND ax.namespace_id = rn.id
+            )
+        )
+    )
 ORDER BY a.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_;
@@ -165,6 +177,15 @@ WHERE
     OR
     (ns.fqn IS NOT NULL AND fqns.namespace_id IS NOT NULL)
 RETURNING id;
+
+-- name: seedStandardActionsForNamespace :execrows
+INSERT INTO actions (name, is_standard, namespace_id)
+VALUES
+    ('create', TRUE, $1),
+    ('read', TRUE, $1),
+    ('update', TRUE, $1),
+    ('delete', TRUE, $1)
+ON CONFLICT (namespace_id, name) WHERE namespace_id IS NOT NULL DO NOTHING;
 
 -- name: updateCustomAction :execrows
 UPDATE actions

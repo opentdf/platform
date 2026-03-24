@@ -252,6 +252,41 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithNameFQN_Succe
 	s.Require().Equal("test", trigger.GetMetadata().GetLabels()["source"])
 }
 
+func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithStandardActionName_PrefersNamespaceScopedAction() {
+	globalRead := s.f.GetStandardAction("read")
+
+	listed, err := s.db.PolicyClient.ListActions(s.ctx, &actions.ListActionsRequest{NamespaceId: s.namespace.GetId()})
+	s.Require().NoError(err)
+
+	namespaceReadID := ""
+	for _, act := range listed.GetActionsStandard() {
+		if act.GetName() == "read" && act.GetId() != globalRead.GetId() && act.GetNamespace().GetId() == s.namespace.GetId() {
+			namespaceReadID = act.GetId()
+			break
+		}
+	}
+	s.Require().NotEmpty(namespaceReadID, "expected a namespace-scoped standard read action")
+
+	uniqueValue := fmt.Sprintf("trigger-read-action-%d", time.Now().UnixNano())
+	ov, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationId: s.obligation.GetId(),
+		Value:        uniqueValue,
+	})
+	s.Require().NoError(err)
+	s.obligationValueIDsToClean = append(s.obligationValueIDsToClean, ov.GetId())
+
+	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
+		ObligationValue: &common.IdFqnIdentifier{Id: ov.GetId()},
+		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
+		Action:          &common.IdNameIdentifier{Name: "read"},
+	})
+	s.Require().NoError(err)
+	s.triggerIDsToClean = append(s.triggerIDsToClean, trigger.GetId())
+
+	s.Equal(namespaceReadID, trigger.GetAction().GetId())
+	s.Equal("read", trigger.GetAction().GetName())
+}
+
 func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ObligationValueNotFound_Fails() {
 	randomID := uuid.NewString()
 	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{

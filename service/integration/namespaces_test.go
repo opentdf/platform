@@ -10,6 +10,7 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/actions"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
@@ -82,6 +83,27 @@ func (s *NamespacesSuite) Test_CreateNamespace_NormalizeCasing() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(strings.ToLower(name), got.GetName(), createdNamespace.GetName())
+}
+
+func (s *NamespacesSuite) Test_CreateNamespace_SeedsStandardActions() {
+	createdNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("seed-actions-%d.com", time.Now().UnixNano()),
+	})
+	s.Require().NoError(err)
+	s.NotNil(createdNamespace)
+
+	listed, err := s.db.PolicyClient.ListActions(s.ctx, &actions.ListActionsRequest{NamespaceId: createdNamespace.GetId()})
+	s.Require().NoError(err)
+	s.NotNil(listed)
+
+	scopedNames := make([]string, 0, 4)
+	for _, action := range listed.GetActionsStandard() {
+		if action.GetNamespace().GetId() == createdNamespace.GetId() {
+			scopedNames = append(scopedNames, action.GetName())
+		}
+	}
+
+	s.ElementsMatch([]string{"create", "read", "update", "delete"}, scopedNames)
 }
 
 func (s *NamespacesSuite) Test_CreateNamespace_WithoutPublicKeys_DoesNotReturnKeys() {

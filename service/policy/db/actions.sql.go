@@ -395,8 +395,20 @@ WHERE
         $1::uuid IS NULL
         AND $2::text IS NULL
     )
-    OR a.is_standard = TRUE
-    OR a.namespace_id = rn.id
+    OR (
+        a.namespace_id = rn.id
+        OR (
+            rn.id IS NOT NULL
+            AND a.is_standard = TRUE
+            AND a.namespace_id IS NULL
+            AND NOT EXISTS (
+                SELECT 1
+                FROM actions ax
+                WHERE ax.name = a.name
+                  AND ax.namespace_id = rn.id
+            )
+        )
+    )
 ORDER BY a.created_at DESC
 LIMIT $4 
 OFFSET $3
@@ -462,8 +474,20 @@ type listActionsRow struct {
 //	        $1::uuid IS NULL
 //	        AND $2::text IS NULL
 //	    )
-//	    OR a.is_standard = TRUE
-//	    OR a.namespace_id = rn.id
+//	    OR (
+//	        a.namespace_id = rn.id
+//	        OR (
+//	            rn.id IS NOT NULL
+//	            AND a.is_standard = TRUE
+//	            AND a.namespace_id IS NULL
+//	            AND NOT EXISTS (
+//	                SELECT 1
+//	                FROM actions ax
+//	                WHERE ax.name = a.name
+//	                  AND ax.namespace_id = rn.id
+//	            )
+//	        )
+//	    )
 //	ORDER BY a.created_at DESC
 //	LIMIT $4
 //	OFFSET $3
@@ -497,6 +521,33 @@ func (q *Queries) listActions(ctx context.Context, arg listActionsParams) ([]lis
 		return nil, err
 	}
 	return items, nil
+}
+
+const seedStandardActionsForNamespace = `-- name: seedStandardActionsForNamespace :execrows
+INSERT INTO actions (name, is_standard, namespace_id)
+VALUES
+    ('create', TRUE, $1),
+    ('read', TRUE, $1),
+    ('update', TRUE, $1),
+    ('delete', TRUE, $1)
+ON CONFLICT (namespace_id, name) WHERE namespace_id IS NOT NULL DO NOTHING
+`
+
+// seedStandardActionsForNamespace
+//
+//	INSERT INTO actions (name, is_standard, namespace_id)
+//	VALUES
+//	    ('create', TRUE, $1),
+//	    ('read', TRUE, $1),
+//	    ('update', TRUE, $1),
+//	    ('delete', TRUE, $1)
+//	ON CONFLICT (namespace_id, name) WHERE namespace_id IS NOT NULL DO NOTHING
+func (q *Queries) seedStandardActionsForNamespace(ctx context.Context, namespaceID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, seedStandardActionsForNamespace, namespaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateCustomAction = `-- name: updateCustomAction :execrows

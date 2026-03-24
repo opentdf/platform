@@ -155,12 +155,30 @@ WITH ov_id AS (
     WHERE $1::uuid IS NOT NULL AND ov.id = $1::uuid
 ),
 a_id AS (
-    SELECT a.id
-    FROM actions a
-    WHERE
-        ($2::uuid IS NOT NULL AND a.id = $2::uuid)
-        OR
-        ($3::text IS NOT NULL AND a.name = $3::text)
+    SELECT
+        CASE
+            WHEN $2::uuid IS NOT NULL THEN (
+                SELECT a.id
+                FROM actions a
+                WHERE a.id = $2::uuid
+            )
+            WHEN $3::text IS NOT NULL THEN COALESCE(
+                (
+                    SELECT a.id
+                    FROM actions a
+                    WHERE a.name = $3::text
+                      -- TODO(namespaced-actions): Move action namespace resolution/enforcement to service level.
+                      -- This query currently assumes same-namespace action lookup before legacy unscoped fallback.
+                      AND a.namespace_id = (SELECT namespace_id FROM ov_id)
+                ),
+                (
+                    SELECT a.id
+                    FROM actions a
+                    WHERE a.name = $3::text
+                      AND a.namespace_id IS NULL
+                )
+            )
+        END AS id
 ),
 av_id AS (
     SELECT av.id
@@ -264,12 +282,30 @@ type createObligationTriggerRow struct {
 //	    WHERE $1::uuid IS NOT NULL AND ov.id = $1::uuid
 //	),
 //	a_id AS (
-//	    SELECT a.id
-//	    FROM actions a
-//	    WHERE
-//	        ($2::uuid IS NOT NULL AND a.id = $2::uuid)
-//	        OR
-//	        ($3::text IS NOT NULL AND a.name = $3::text)
+//	    SELECT
+//	        CASE
+//	            WHEN $2::uuid IS NOT NULL THEN (
+//	                SELECT a.id
+//	                FROM actions a
+//	                WHERE a.id = $2::uuid
+//	            )
+//	            WHEN $3::text IS NOT NULL THEN COALESCE(
+//	                (
+//	                    SELECT a.id
+//	                    FROM actions a
+//	                    WHERE a.name = $3::text
+//	                      -- TODO(namespaced-actions): Move action namespace resolution/enforcement to service level.
+//	                      -- This query currently assumes same-namespace action lookup before legacy unscoped fallback.
+//	                      AND a.namespace_id = (SELECT namespace_id FROM ov_id)
+//	                ),
+//	                (
+//	                    SELECT a.id
+//	                    FROM actions a
+//	                    WHERE a.name = $3::text
+//	                      AND a.namespace_id IS NULL
+//	                )
+//	            )
+//	        END AS id
 //	),
 //	av_id AS (
 //	    SELECT av.id

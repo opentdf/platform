@@ -96,22 +96,14 @@ func (s *NamespacesSuite) Test_CreateNamespace_SeedsStandardActions() {
 	s.Require().NoError(err)
 	s.NotNil(listed)
 
-	seen := map[string]bool{
-		"create": false,
-		"read":   false,
-		"update": false,
-		"delete": false,
-	}
-
+	scopedNames := make([]string, 0, 4)
 	for _, action := range listed.GetActionsStandard() {
-		if _, ok := seen[action.GetName()]; ok {
-			seen[action.GetName()] = true
+		if action.GetNamespace().GetId() == createdNamespace.GetId() {
+			scopedNames = append(scopedNames, action.GetName())
 		}
 	}
 
-	for name, found := range seen {
-		s.True(found, "expected seeded standard action %s in new namespace", name)
-	}
+	s.ElementsMatch([]string{"create", "read", "update", "delete"}, scopedNames)
 }
 
 func (s *NamespacesSuite) Test_CreateNamespace_WithoutPublicKeys_DoesNotReturnKeys() {

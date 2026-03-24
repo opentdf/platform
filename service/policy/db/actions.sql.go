@@ -395,8 +395,20 @@ WHERE
         $1::uuid IS NULL
         AND $2::text IS NULL
     )
-    OR a.is_standard = TRUE
-    OR a.namespace_id = rn.id
+    OR (
+        a.namespace_id = rn.id
+        OR (
+            rn.id IS NOT NULL
+            AND a.is_standard = TRUE
+            AND a.namespace_id IS NULL
+            AND NOT EXISTS (
+                SELECT 1
+                FROM actions ax
+                WHERE ax.name = a.name
+                  AND ax.namespace_id = rn.id
+            )
+        )
+    )
 ORDER BY a.created_at DESC
 LIMIT $4 
 OFFSET $3
@@ -462,8 +474,20 @@ type listActionsRow struct {
 //	        $1::uuid IS NULL
 //	        AND $2::text IS NULL
 //	    )
-//	    OR a.is_standard = TRUE
-//	    OR a.namespace_id = rn.id
+//	    OR (
+//	        a.namespace_id = rn.id
+//	        OR (
+//	            rn.id IS NOT NULL
+//	            AND a.is_standard = TRUE
+//	            AND a.namespace_id IS NULL
+//	            AND NOT EXISTS (
+//	                SELECT 1
+//	                FROM actions ax
+//	                WHERE ax.name = a.name
+//	                  AND ax.namespace_id = rn.id
+//	            )
+//	        )
+//	    )
 //	ORDER BY a.created_at DESC
 //	LIMIT $4
 //	OFFSET $3

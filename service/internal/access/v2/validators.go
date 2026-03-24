@@ -93,17 +93,16 @@ func validateSubjectMapping(subjectMapping *policy.SubjectMapping) error {
 //
 //   - must not be nil
 //   - must have a non-empty FQN
-//   - must have non-empty values
-//   - must have non-empty values FQNs
+//   - if values are present, they must have non-empty values FQNs
+//
+// Attribute definitions may legitimately exist before any values have been created
+// for them, so an empty values list is allowed here.
 func validateAttribute(attribute *policy.Attribute) error {
 	if attribute == nil {
 		return fmt.Errorf("attribute is nil: %w", ErrInvalidAttributeDefinition)
 	}
 	if attribute.GetFqn() == "" {
 		return fmt.Errorf("attribute FQN is empty: %w", ErrInvalidAttributeDefinition)
-	}
-	if len(attribute.GetValues()) == 0 {
-		return fmt.Errorf("attribute values are empty: %w", ErrInvalidAttributeDefinition)
 	}
 	for _, value := range attribute.GetValues() {
 		if value == nil {

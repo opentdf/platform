@@ -19,7 +19,7 @@ SELECT
             'active', avt.active,
             'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
         ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
-    ) AS values,
+    ) FILTER (WHERE avt.id IS NOT NULL) AS values,
     fqns.fqn,
     COUNT(*) OVER() AS total
 FROM attribute_definitions ad
@@ -307,7 +307,7 @@ SELECT
             'active', avt.active,
             'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
         ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
-    ) AS values,
+    ) FILTER (WHERE avt.id IS NOT NULL) AS values,
     JSONB_AGG(
         DISTINCT JSONB_BUILD_OBJECT(
             'id', kas.id,

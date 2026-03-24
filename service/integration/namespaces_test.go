@@ -96,22 +96,37 @@ func (s *NamespacesSuite) Test_CreateNamespace_SeedsStandardActions() {
 	s.Require().NoError(err)
 	s.NotNil(listed)
 
-	seen := map[string]bool{
-		"create": false,
-		"read":   false,
-		"update": false,
-		"delete": false,
-	}
-
+	scopedNames := make([]string, 0, 4)
 	for _, action := range listed.GetActionsStandard() {
-		if _, ok := seen[action.GetName()]; ok {
-			seen[action.GetName()] = true
+		if action.GetNamespace().GetId() == createdNamespace.GetId() {
+			scopedNames = append(scopedNames, action.GetName())
 		}
 	}
 
-	for name, found := range seen {
-		s.True(found, "expected seeded standard action %s in new namespace", name)
-	}
+	s.ElementsMatch([]string{"create", "read", "update", "delete"}, scopedNames)
+}
+
+func (s *NamespacesSuite) Test_CreateNamespace_WithoutPublicKeys_DoesNotReturnKeys() {
+	name := fmt.Sprintf("no-namespace-children-%d.com", time.Now().UnixNano())
+	createdNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
+	s.Require().NoError(err)
+	s.Require().NotNil(createdNamespace)
+	defer func() {
+		_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, createdNamespace, createdNamespace.GetFqn())
+		s.Require().NoError(err)
+	}()
+
+	s.Empty(createdNamespace.GetKasKeys())
+
+	gotByID, err := s.db.PolicyClient.GetNamespace(s.ctx, createdNamespace.GetId())
+	s.Require().NoError(err)
+	s.Require().NotNil(gotByID)
+	s.Empty(gotByID.GetKasKeys())
+
+	gotByFQN, err := s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_Fqn{Fqn: createdNamespace.GetName()})
+	s.Require().NoError(err)
+	s.Require().NotNil(gotByFQN)
+	s.Empty(gotByFQN.GetKasKeys())
 }
 
 func (s *NamespacesSuite) Test_GetNamespace() {

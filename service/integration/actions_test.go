@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	policydb "github.com/opentdf/platform/service/policy/db"
@@ -197,6 +198,37 @@ func (s *ActionsSuite) Test_ListActions_FiltersCustomActionsByNamespace_Succeeds
 
 	s.True(foundFirst)
 	s.False(foundSecond)
+}
+
+func (s *ActionsSuite) Test_ListActions_WithNamespace_DoesNotLeakStandardActionsFromOtherNamespaces() {
+	createdNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "list-actions-standard-scope",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(createdNamespace)
+
+	list, err := s.db.PolicyClient.ListActions(s.ctx, &actions.ListActionsRequest{NamespaceId: createdNamespace.GetId()})
+	s.Require().NoError(err)
+	s.Require().NotNil(list)
+
+	expected := map[string]bool{
+		"create": false,
+		"read":   false,
+		"update": false,
+		"delete": false,
+	}
+
+	for _, action := range list.GetActionsStandard() {
+		s.Require().NotNil(action.GetNamespace())
+		s.Equal(createdNamespace.GetId(), action.GetNamespace().GetId())
+		if _, ok := expected[action.GetName()]; ok {
+			expected[action.GetName()] = true
+		}
+	}
+
+	for name, found := range expected {
+		s.True(found, "expected standard action %s scoped to namespace", name)
+	}
 }
 
 func (s *ActionsSuite) Test_ListActions_WithoutNamespace_ReturnsAcrossNamespaces_Succeeds() {

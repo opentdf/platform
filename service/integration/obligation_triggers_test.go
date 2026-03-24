@@ -260,7 +260,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithStandardActio
 
 	namespaceReadID := ""
 	for _, act := range listed.GetActionsStandard() {
-		if act.GetName() == "read" && act.GetId() != globalRead.GetId() {
+		if act.GetName() == "read" && act.GetId() != globalRead.GetId() && act.GetNamespace().GetId() == s.namespace.GetId() {
 			namespaceReadID = act.GetId()
 			break
 		}

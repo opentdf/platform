@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opentdf/otdfctl/pkg/handlers"
+	"github.com/opentdf/platform/otdfctl/pkg/handlers"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 )

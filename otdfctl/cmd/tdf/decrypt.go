@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/opentdf/otdfctl/cmd/common"
-	"github.com/opentdf/otdfctl/pkg/cli"
-	"github.com/opentdf/otdfctl/pkg/man"
-	"github.com/opentdf/otdfctl/pkg/utils"
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/otdfctl/cmd/common"
+	"github.com/opentdf/platform/otdfctl/pkg/cli"
+	"github.com/opentdf/platform/otdfctl/pkg/man"
+	"github.com/opentdf/platform/otdfctl/pkg/utils"
 	"github.com/spf13/cobra"
 )
 

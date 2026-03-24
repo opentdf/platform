@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/adrg/frontmatter"
-	docsEmbed "github.com/opentdf/otdfctl/docs"
+	docsEmbed "github.com/opentdf/platform/otdfctl/docs"
 	"github.com/spf13/cobra"
 )
 

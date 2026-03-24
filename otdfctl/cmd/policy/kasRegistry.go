@@ -4,17 +4,15 @@ import (
 	"fmt"
 
 	"github.com/evertras/bubble-table/table"
-	"github.com/opentdf/otdfctl/cmd/common"
-	"github.com/opentdf/otdfctl/pkg/cli"
-	"github.com/opentdf/otdfctl/pkg/handlers"
-	"github.com/opentdf/otdfctl/pkg/man"
+	"github.com/opentdf/platform/otdfctl/cmd/common"
+	"github.com/opentdf/platform/otdfctl/pkg/cli"
+	"github.com/opentdf/platform/otdfctl/pkg/handlers"
+	"github.com/opentdf/platform/otdfctl/pkg/man"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/spf13/cobra"
 )
 
-var (
-	KasRegistryCmd = man.Docs.GetCommand("policy/kas-registry")
-)
+var KasRegistryCmd = man.Docs.GetCommand("policy/kas-registry")
 
 func getKeyAccessRegistry(cmd *cobra.Command, args []string) {
 	c := cli.New(cmd, args)
@@ -77,7 +75,7 @@ func listKeyAccessRegistries(cmd *cobra.Command, args []string) {
 	)
 	rows := []table.Row{}
 	for _, kas := range resp.GetKeyAccessServers() {
-		//TODO: Remove in next release
+		// TODO: Remove in next release
 		key := policy.PublicKey{}
 		key.PublicKey = &policy.PublicKey_Cached{Cached: kas.GetPublicKey().GetCached()}
 		if kas.GetPublicKey().GetRemote() != "" {

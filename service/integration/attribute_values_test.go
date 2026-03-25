@@ -9,6 +9,7 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/actions"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
@@ -958,8 +959,8 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_With_Two_Obligations_Succe
 	s.obligations = append(s.obligations, obl1)
 
 	// Create first obligation value with two triggers
-	readAction := s.f.GetStandardAction("read")
-	updateAction := s.f.GetStandardAction("update")
+	readAction := s.getActionByNameInNamespace("read", ns.GetId())
+	updateAction := s.getActionByNameInNamespace("update", ns.GetId())
 
 	obl1Val1, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
 		ObligationId: obl1.GetId(),
@@ -1047,6 +1048,15 @@ func TestAttributeValuesSuite(t *testing.T) {
 		t.Skip("skipping attribute values integration tests")
 	}
 	suite.Run(t, new(AttributeValuesSuite))
+}
+
+func (s *AttributeValuesSuite) getActionByNameInNamespace(name string, namespaceID string) *policy.Action {
+	action, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
+		Identifier:  &actions.GetActionRequest_Name{Name: name},
+		NamespaceId: namespaceID,
+	})
+	s.Require().NoError(err)
+	return action
 }
 
 func (s *AttributeValuesSuite) assertObligations(expected, actual []*policy.Obligation) {

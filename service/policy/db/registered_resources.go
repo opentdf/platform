@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -579,67 +580,14 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 	resourceNamespaceID := UUIDToString(nsUUID)
 
 	createActionAttributeValueParams := make([]createRegisteredResourceActionAttributeValuesParams, len(actionAttrValues))
-	var actionID, attributeValueID string
 	for i, aav := range actionAttrValues {
-		switch ident := aav.GetActionIdentifier().(type) {
-		case *registeredresources.ActionAttributeValue_ActionId:
-			actionID = ident.ActionId
-			// if a valid namespace is provided for the RR, enforce that the action belongs to the same namespace (same-namespace enforcement)
-			// if a namespace is not provided for the RR, allow actions from any namespace (including no namespace) for backward compatibility with legacy RRs without namespaces
-			if nsUUID.Valid {
-				// Same-namespace enforcement (batch): all actions must belong to the same namespace as the registered resource
-				act, err := c.queries.getAction(ctx, getActionParams{
-					ID: pgtypeUUID(actionID),
-				})
-				if err != nil {
-					return errors.Join(db.ErrMissingValue, fmt.Errorf("failed to get action [%v]: %w", actionID, err))
-				}
-				namespace, err := hydrateNamespaceFromInterface(act.Namespace)
-				if err != nil {
-					return err
-				}
-				if namespace != nil && namespace.GetId() != resourceNamespaceID {
-					return db.ErrNamespaceMismatch
-				}
-			}
-		case *registeredresources.ActionAttributeValue_ActionName:
-			if nsUUID.Valid {
-				createdOrListedActions, err := c.queries.createOrListActionsByNameInNamespace(ctx, createOrListActionsByNameInNamespaceParams{
-					ActionNames: []string{strings.ToLower(ident.ActionName)},
-					NamespaceID: resourceNamespaceID,
-				})
-				if err != nil || len(createdOrListedActions) == 0 {
-					return db.WrapIfKnownInvalidQueryErr(
-						errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", strings.ToLower(ident.ActionName), err)),
-					)
-				}
-				actionID = createdOrListedActions[0].ID
-			} else {
-				createdOrListedActions, err := c.queries.createOrListActionsByName(ctx, []string{strings.ToLower(ident.ActionName)})
-				if err != nil || len(createdOrListedActions) == 0 {
-					return db.WrapIfKnownInvalidQueryErr(
-						errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", strings.ToLower(ident.ActionName), err)),
-					)
-				}
-				actionID = createdOrListedActions[0].ID
-			}
-		default:
-			return db.ErrSelectIdentifierInvalid
+		actionID, attributeValueID, err := c.resolveRegResAAV(ctx, aav, nsUUID)
+		if err != nil {
+			return err
 		}
-
-		switch ident := aav.GetAttributeValueIdentifier().(type) {
-		case *registeredresources.ActionAttributeValue_AttributeValueId:
-			attributeValueID = ident.AttributeValueId
-		case *registeredresources.ActionAttributeValue_AttributeValueFqn:
-			av, err := c.queries.getAttributeValue(ctx, getAttributeValueParams{
-				Fqn: pgtypeText(strings.ToLower(ident.AttributeValueFqn)),
-			})
-			if err != nil {
-				return db.WrapIfKnownInvalidQueryErr(err)
-			}
-			attributeValueID = av.ID
-		default:
-			return db.ErrSelectIdentifierInvalid
+		err = c.validateRRAAVNamespaceConsistency(ctx, resourceNamespaceID, attributeValueID, actionID)
+		if err != nil {
+			return err
 		}
 
 		createActionAttributeValueParams[i] = createRegisteredResourceActionAttributeValuesParams{
@@ -673,6 +621,91 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 	}
 	if count != int64(len(actionAttrValues)) {
 		return fmt.Errorf("failed to create all action attribute values, expected %d, got %d", len(actionAttrValues), count)
+	}
+
+	return nil
+}
+
+// resolveRegResAAV parses the action from a createRegisteredResourceActionAttributeValues input
+// resolving actions by name within the given namespace and collecting existing action ID.
+func (c PolicyDBClient) resolveRegResAAV(ctx context.Context, aav *registeredresources.ActionAttributeValue, parsedNamespaceID pgtype.UUID) (string, string, error) {
+	var actionID, attributeValueID string
+	switch ident := aav.GetActionIdentifier().(type) {
+	case *registeredresources.ActionAttributeValue_ActionId:
+		actionID = ident.ActionId
+	case *registeredresources.ActionAttributeValue_ActionName:
+		ids, err := c.resolveActionNameIDs(ctx, []string{strings.ToLower(ident.ActionName)}, parsedNamespaceID)
+		if err != nil {
+			return "", "", err
+		}
+		if len(ids) == 0 {
+			return "", "", db.ErrMissingValue
+		}
+		actionID = ids[0]
+	default:
+		return "", "", db.ErrSelectIdentifierInvalid
+	}
+
+	switch ident := aav.GetAttributeValueIdentifier().(type) {
+	case *registeredresources.ActionAttributeValue_AttributeValueId:
+		attributeValueID = ident.AttributeValueId
+	case *registeredresources.ActionAttributeValue_AttributeValueFqn:
+		av, err := c.queries.getAttributeValue(ctx, getAttributeValueParams{
+			Fqn: pgtypeText(strings.ToLower(ident.AttributeValueFqn)),
+		})
+		if err != nil {
+			return "", "", db.WrapIfKnownInvalidQueryErr(err)
+		}
+		attributeValueID = av.ID
+	default:
+		return "", "", db.ErrSelectIdentifierInvalid
+	}
+
+	return actionID, attributeValueID, nil
+}
+
+// validateRRAAVNamespaceConsistency ensures that action
+// belongs to the same namespace as the RR val being created. When the RR is namespaced,
+// the attribute value must also be in that namespace. When unnamespaced, the attribute value
+// may have any namespace, but actions must be unnamespaced.
+func (c PolicyDBClient) validateRRAAVNamespaceConsistency(
+	ctx context.Context,
+	targetNsID string,
+	attributeValueID string,
+	actionID string,
+) error {
+	// Attribute value namespace check only applies when the RR is namespaced
+	if targetNsID != "" {
+		av, err := c.GetAttributeValue(ctx, attributeValueID)
+		if err != nil {
+			return db.WrapIfKnownInvalidQueryErr(err)
+		}
+		attr, err := c.GetAttribute(ctx, av.GetAttribute().GetId())
+		if err != nil {
+			return db.WrapIfKnownInvalidQueryErr(err)
+		}
+		if attr.GetNamespace().GetId() != targetNsID {
+			return errors.Join(db.ErrNamespaceMismatch,
+				fmt.Errorf("attribute value namespace [%s] does not match the specified registered resource namespace [%s]", attr.GetNamespace().GetId(), targetNsID))
+		}
+	}
+
+	// Action namespace must match the RR namespace (or be unnamespaced when RR is unnamespaced).
+	if actionID != "" {
+		actionRows, err := c.queries.getActionsByIDs(ctx, []string{actionID})
+		if err != nil {
+			return db.WrapIfKnownInvalidQueryErr(err)
+		}
+		if len(actionRows) == 0 {
+			return errors.Join(db.ErrMissingValue, fmt.Errorf("action [%s] was not found", actionID))
+		}
+		for _, a := range actionRows {
+			actionNsID := UUIDToString(a.NamespaceID)
+			if actionNsID != targetNsID {
+				return errors.Join(db.ErrNamespaceMismatch,
+					fmt.Errorf("action [%s] namespace [%s] does not match the specified registered resource namespace [%s]", a.ID, actionNsID, targetNsID))
+			}
+		}
 	}
 
 	return nil

@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/actions"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -1527,10 +1528,15 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(updatedOblValue)
+	readAction, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
+		Identifier:  &actions.GetActionRequest_Name{Name: "read"},
+		NamespaceId: triggerSetup.namespace.ID,
+	})
+	s.Require().NoError(err)
 	s.assertObligationValueBasics(updatedOblValue, oblValPrefix+"test-1-updated", triggerSetup.namespace.ID, triggerSetup.namespace.Name, httpsPrefix+triggerSetup.namespace.Name)
 	s.assertTriggers(updatedOblValue, []*TriggerAssertion{
 		{
-			expectedAction:            triggerSetup.action,
+			expectedAction:            readAction,
 			expectedObligation:        triggerSetup.createdObl,
 			expectedAttributeValue:    triggerSetup.attributeValues[1],
 			expectedAttributeValueFQN: "https://example.com/attr/attr1/value/value2",
@@ -1766,7 +1772,11 @@ func (s *ObligationsSuite) assertObligationValueBasics(oblValue *policy.Obligati
 func (s *ObligationsSuite) setupTriggerTests() *TriggerSetup {
 	namespaceID, _, namespace := s.getNamespaceData(nsExampleCom)
 	createdObl := s.createObligation(namespaceID, oblName, nil)
-	triggerAction := s.f.GetStandardAction("read")
+	triggerAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        fmt.Sprintf("trigger-action-%d", time.Now().UnixNano()),
+		NamespaceId: namespaceID,
+	})
+	s.Require().NoError(err)
 	triggerAttributeValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 	triggerAttributeValue2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
 
@@ -1851,7 +1861,14 @@ func (s *ObligationsSuite) createObligationValueWithTriggers(obligationID string
 		triggers = customTriggers
 	} else {
 		// Default triggers for backward compatibility
-		triggerAction := s.f.GetStandardAction("read")
+		obl, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{Id: obligationID})
+		s.Require().NoError(err)
+
+		triggerAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+			Name:        fmt.Sprintf("trigger-action-%d", time.Now().UnixNano()),
+			NamespaceId: obl.GetNamespace().GetId(),
+		})
+		s.Require().NoError(err)
 		triggerAttributeValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 		triggerAttributeValue2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
 

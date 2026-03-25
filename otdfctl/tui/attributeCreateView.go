@@ -5,7 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
-	"github.com/opentdf/otdfctl/tui/constants"
+	"github.com/opentdf/platform/otdfctl/tui/constants"
 )
 
 type AttributeCreateModel struct {

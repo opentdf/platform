@@ -7,9 +7,9 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/opentdf/otdfctl/pkg/cli"
-	"github.com/opentdf/otdfctl/pkg/handlers"
-	"github.com/opentdf/otdfctl/tui/constants"
+	"github.com/opentdf/platform/otdfctl/pkg/cli"
+	"github.com/opentdf/platform/otdfctl/pkg/handlers"
+	"github.com/opentdf/platform/otdfctl/tui/constants"
 )
 
 // StartTea the entry point for the UI. Initializes the model.

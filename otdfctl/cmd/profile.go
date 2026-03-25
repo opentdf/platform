@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	osprofiles "github.com/jrschumacher/go-osprofiles"
-	"github.com/opentdf/otdfctl/pkg/cli"
-	"github.com/opentdf/otdfctl/pkg/config"
-	"github.com/opentdf/otdfctl/pkg/profiles"
-	"github.com/opentdf/otdfctl/pkg/utils"
+	"github.com/opentdf/platform/otdfctl/pkg/cli"
+	"github.com/opentdf/platform/otdfctl/pkg/config"
+	"github.com/opentdf/platform/otdfctl/pkg/profiles"
+	"github.com/opentdf/platform/otdfctl/pkg/utils"
 	"github.com/spf13/cobra"
 )
 

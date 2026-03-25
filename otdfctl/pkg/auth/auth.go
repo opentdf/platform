@@ -15,8 +15,8 @@ import (
 
 	"github.com/go-jose/go-jose/v3/jwt"
 	"github.com/google/uuid"
-	"github.com/opentdf/otdfctl/pkg/profiles"
-	"github.com/opentdf/otdfctl/pkg/utils"
+	"github.com/opentdf/platform/otdfctl/pkg/profiles"
+	"github.com/opentdf/platform/otdfctl/pkg/utils"
 	"github.com/opentdf/platform/sdk"
 	oidcrp "github.com/zitadel/oidc/v3/pkg/client/rp"
 	oidcCLI "github.com/zitadel/oidc/v3/pkg/client/rp/cli"

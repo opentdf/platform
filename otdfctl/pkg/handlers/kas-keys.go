@@ -90,7 +90,8 @@ func (h Handler) ListKasKeys(
 	limit, offset int32,
 	algorithm policy.Algorithm,
 	identifier KasIdentifier,
-	legacy *bool) (*kasregistry.ListKeysResponse, error) {
+	legacy *bool,
+) (*kasregistry.ListKeysResponse, error) {
 	req := kasregistry.ListKeysRequest{
 		Pagination: &policy.PageRequest{
 			Limit:  limit,

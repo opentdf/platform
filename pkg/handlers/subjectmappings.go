@@ -24,24 +24,28 @@ func (h Handler) GetSubjectMapping(ctx context.Context, id string) (*policy.Subj
 	return resp.GetSubjectMapping(), err
 }
 
-func (h Handler) ListSubjectMappings(ctx context.Context, limit, offset int32) (*subjectmapping.ListSubjectMappingsResponse, error) {
-	return h.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
+func (h Handler) ListSubjectMappings(ctx context.Context, limit, offset int32, namespace string) (*subjectmapping.ListSubjectMappingsResponse, error) {
+	req := &subjectmapping.ListSubjectMappingsRequest{
 		Pagination: &policy.PageRequest{
 			Limit:  limit,
 			Offset: offset,
 		},
-	})
+	}
+	req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
+	return h.sdk.SubjectMapping.ListSubjectMappings(ctx, req)
 }
 
 // Creates and returns the created subject mapping
-func (h Handler) CreateNewSubjectMapping(ctx context.Context, attrValID string, actions []*policy.Action, existingSCSId string, newScs *subjectmapping.SubjectConditionSetCreate, m *common.MetadataMutable) (*policy.SubjectMapping, error) {
-	resp, err := h.sdk.SubjectMapping.CreateSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
+func (h Handler) CreateNewSubjectMapping(ctx context.Context, attrValID string, actions []*policy.Action, existingSCSId string, newScs *subjectmapping.SubjectConditionSetCreate, m *common.MetadataMutable, namespace string) (*policy.SubjectMapping, error) {
+	req := &subjectmapping.CreateSubjectMappingRequest{
 		AttributeValueId:              attrValID,
 		Actions:                       actions,
 		ExistingSubjectConditionSetId: existingSCSId,
 		NewSubjectConditionSet:        newScs,
 		Metadata:                      m,
-	})
+	}
+	req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
+	resp, err := h.sdk.SubjectMapping.CreateSubjectMapping(ctx, req)
 	if err != nil {
 		return nil, err
 	}

@@ -58,6 +58,7 @@ func createSubjectConditionSet(cmd *cobra.Command, args []string) {
 	ssFlagJSON := c.Flags.GetOptionalString("subject-sets")
 	ssFileJSON := c.Flags.GetOptionalString("subject-sets-file-json")
 	metadataLabels = c.Flags.GetStringSlice("label", metadataLabels, cli.FlagsStringSliceOptions{Min: 0})
+	namespace := c.Flags.GetOptionalString("namespace")
 
 	// validate no flag conflicts
 	if ssFileJSON == "" && ssFlagJSON == "" {
@@ -88,7 +89,7 @@ func createSubjectConditionSet(cmd *cobra.Command, args []string) {
 		cli.ExitWithError("Error unmarshalling subject sets", err)
 	}
 
-	scs, err := h.CreateSubjectConditionSet(cmd.Context(), ss, getMetadataMutable(metadataLabels))
+	scs, err := h.CreateSubjectConditionSet(cmd.Context(), ss, getMetadataMutable(metadataLabels), namespace)
 	if err != nil {
 		cli.ExitWithError("Error creating subject condition set", err)
 	}
@@ -100,6 +101,7 @@ func createSubjectConditionSet(cmd *cobra.Command, args []string) {
 
 	rows := [][]string{
 		{"Id", scs.GetId()},
+		{"Namespace", scs.GetNamespace().GetFqn()},
 		{"SubjectSets", string(subjectSetsJSON)},
 	}
 
@@ -129,6 +131,7 @@ func getSubjectConditionSet(cmd *cobra.Command, args []string) {
 
 	rows := [][]string{
 		{"Id", scs.GetId()},
+		{"Namespace", scs.GetNamespace().GetFqn()},
 		{"SubjectSets", string(subjectSetsJSON)},
 	}
 	if mdRows := getMetadataRows(scs.GetMetadata()); mdRows != nil {
@@ -146,14 +149,16 @@ func listSubjectConditionSets(cmd *cobra.Command, args []string) {
 
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
+	namespace := c.Flags.GetOptionalString("namespace")
 
-	resp, err := h.ListSubjectConditionSets(cmd.Context(), limit, offset)
+	resp, err := h.ListSubjectConditionSets(cmd.Context(), limit, offset, namespace)
 	if err != nil {
 		cli.ExitWithError("Error listing subject condition sets", err)
 	}
 
 	t := cli.NewTable(
 		cli.NewUUIDColumn(),
+		table.NewFlexColumn("namespace", "Namespace", cli.FlexColumnWidthFour),
 		table.NewFlexColumn("subject_sets", "SubjectSets", cli.FlexColumnWidthFour),
 		table.NewFlexColumn("labels", "Labels", cli.FlexColumnWidthOne),
 		table.NewFlexColumn("created_at", "Created At", cli.FlexColumnWidthOne),
@@ -168,6 +173,7 @@ func listSubjectConditionSets(cmd *cobra.Command, args []string) {
 		metadata := cli.ConstructMetadata(scs.GetMetadata())
 		rows = append(rows, table.NewRow(table.RowData{
 			"id":           scs.GetId(),
+			"namespace":    scs.GetNamespace().GetFqn(),
 			"subject_sets": string(subjectSetsJSON),
 			"labels":       metadata["Labels"],
 			"created_at":   metadata["Created At"],
@@ -333,6 +339,12 @@ func initSubjectConditionSetsCommands() {
 		createDoc.GetDocFlag("subject-sets-file-json").Default,
 		createDoc.GetDocFlag("subject-sets-file-json").Description,
 	)
+	createDoc.Flags().StringP(
+		createDoc.GetDocFlag("namespace").Name,
+		createDoc.GetDocFlag("namespace").Shorthand,
+		createDoc.GetDocFlag("namespace").Default,
+		createDoc.GetDocFlag("namespace").Description,
+	)
 
 	getDoc := man.Docs.GetCommand("policy/subject-condition-sets/get",
 		man.WithRun(getSubjectConditionSet),
@@ -348,6 +360,12 @@ func initSubjectConditionSetsCommands() {
 		man.WithRun(listSubjectConditionSets),
 	)
 	injectListPaginationFlags(listDoc)
+	listDoc.Flags().StringP(
+		listDoc.GetDocFlag("namespace").Name,
+		listDoc.GetDocFlag("namespace").Shorthand,
+		listDoc.GetDocFlag("namespace").Default,
+		listDoc.GetDocFlag("namespace").Description,
+	)
 
 	updateDoc := man.Docs.GetCommand("policy/subject-condition-sets/update",
 		man.WithRun(updateSubjectConditionSet),

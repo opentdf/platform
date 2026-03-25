@@ -44,6 +44,7 @@ func policyGetSubjectMapping(cmd *cobra.Command, args []string) {
 
 	rows := [][]string{
 		{"Id", mapping.GetId()},
+		{"Namespace", mapping.GetNamespace().GetFqn()},
 		{"Attribute Value: Id", mapping.GetAttributeValue().GetId()},
 		{"Attribute Value: Value", mapping.GetAttributeValue().GetValue()},
 		{"Actions", string(actionsJSON)},
@@ -65,13 +66,15 @@ func policyListSubjectMappings(cmd *cobra.Command, args []string) {
 
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
+	namespace := c.Flags.GetOptionalString("namespace")
 
-	resp, err := h.ListSubjectMappings(cmd.Context(), limit, offset)
+	resp, err := h.ListSubjectMappings(cmd.Context(), limit, offset, namespace)
 	if err != nil {
 		cli.ExitWithError("Failed to get subject mappings", err)
 	}
 	t := cli.NewTable(
 		cli.NewUUIDColumn(),
+		table.NewFlexColumn("namespace", "Namespace", cli.FlexColumnWidthFour),
 		table.NewFlexColumn("value_id", "Attribute Value Id", cli.FlexColumnWidthFour),
 		table.NewFlexColumn("value_fqn", "Attibribute Value FQN", cli.FlexColumnWidthFour),
 		table.NewFlexColumn("actions", "Actions", cli.FlexColumnWidthTwo),
@@ -92,6 +95,7 @@ func policyListSubjectMappings(cmd *cobra.Command, args []string) {
 
 		rows = append(rows, table.NewRow(table.RowData{
 			"id":                       sm.GetId(),
+			"namespace":                sm.GetNamespace().GetFqn(),
 			"value_id":                 sm.GetAttributeValue().GetId(),
 			"value_fqn":                sm.GetAttributeValue().GetFqn(),
 			"actions":                  string(actionsJSON),
@@ -115,6 +119,7 @@ func policyCreateSubjectMapping(cmd *cobra.Command, args []string) {
 	existingSCSId := c.Flags.GetOptionalID("subject-condition-set-id")
 	// NOTE: labels within a new Subject Condition Set created on a SM creation are not supported
 	newScsJSON := c.Flags.GetOptionalString("subject-condition-set-new")
+	namespace := c.Flags.GetOptionalString("namespace")
 
 	// validations
 	if len(actionFlagValues) == 0 {
@@ -147,7 +152,7 @@ func policyCreateSubjectMapping(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	mapping, err := h.CreateNewSubjectMapping(cmd.Context(), attrValueID, actions, existingSCSId, scs, getMetadataMutable(metadataLabels))
+	mapping, err := h.CreateNewSubjectMapping(cmd.Context(), attrValueID, actions, existingSCSId, scs, getMetadataMutable(metadataLabels), namespace)
 	if err != nil {
 		cli.ExitWithError("Failed to create subject mapping", err)
 	}
@@ -166,6 +171,7 @@ func policyCreateSubjectMapping(cmd *cobra.Command, args []string) {
 
 	rows := [][]string{
 		{"Id", mapping.GetId()},
+		{"Namespace", mapping.GetNamespace().GetFqn()},
 		{"Attribute Value Id", mapping.GetAttributeValue().GetId()},
 		{"Actions", string(actionsJSON)},
 		{"Subject Condition Set: Id", mapping.GetSubjectConditionSet().GetId()},
@@ -244,7 +250,9 @@ func policyUpdateSubjectMapping(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cli.ExitWithError("Failed to update subject mapping", err)
 	}
-	rows := [][]string{{"Id", id}}
+	rows := [][]string{
+		{"Id", id},
+	}
 	if mdRows := getMetadataRows(updated.GetMetadata()); mdRows != nil {
 		rows = append(rows, mdRows...)
 	}
@@ -332,6 +340,12 @@ func initSubjectMappingsCommands() {
 		man.WithRun(policyListSubjectMappings),
 	)
 	injectListPaginationFlags(listDoc)
+	listDoc.Flags().StringP(
+		listDoc.GetDocFlag("namespace").Name,
+		listDoc.GetDocFlag("namespace").Shorthand,
+		listDoc.GetDocFlag("namespace").Default,
+		listDoc.GetDocFlag("namespace").Description,
+	)
 
 	createDoc := man.Docs.GetCommand("policy/subject-mappings/create",
 		man.WithRun(policyCreateSubjectMapping),
@@ -374,6 +388,12 @@ func initSubjectMappingsCommands() {
 		createDoc.GetDocFlag("subject-condition-set-new").Name,
 		createDoc.GetDocFlag("subject-condition-set-new").Default,
 		createDoc.GetDocFlag("subject-condition-set-new").Description,
+	)
+	createDoc.Flags().StringP(
+		createDoc.GetDocFlag("namespace").Name,
+		createDoc.GetDocFlag("namespace").Shorthand,
+		createDoc.GetDocFlag("namespace").Default,
+		createDoc.GetDocFlag("namespace").Description,
 	)
 	injectLabelFlags(&createDoc.Command, false)
 

@@ -19,23 +19,27 @@ func (h Handler) GetSubjectConditionSet(ctx context.Context, id string) (*policy
 	return resp.GetSubjectConditionSet(), nil
 }
 
-func (h Handler) ListSubjectConditionSets(ctx context.Context, limit, offset int32) (*subjectmapping.ListSubjectConditionSetsResponse, error) {
-	return h.sdk.SubjectMapping.ListSubjectConditionSets(ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+func (h Handler) ListSubjectConditionSets(ctx context.Context, limit, offset int32, namespace string) (*subjectmapping.ListSubjectConditionSetsResponse, error) {
+	req := &subjectmapping.ListSubjectConditionSetsRequest{
 		Pagination: &policy.PageRequest{
 			Limit:  limit,
 			Offset: offset,
 		},
-	})
+	}
+	req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
+	return h.sdk.SubjectMapping.ListSubjectConditionSets(ctx, req)
 }
 
 // Creates and returns the created subject condition set
-func (h Handler) CreateSubjectConditionSet(ctx context.Context, ss []*policy.SubjectSet, metadata *common.MetadataMutable) (*policy.SubjectConditionSet, error) {
-	resp, err := h.sdk.SubjectMapping.CreateSubjectConditionSet(ctx, &subjectmapping.CreateSubjectConditionSetRequest{
+func (h Handler) CreateSubjectConditionSet(ctx context.Context, ss []*policy.SubjectSet, metadata *common.MetadataMutable, namespace string) (*policy.SubjectConditionSet, error) {
+	req := &subjectmapping.CreateSubjectConditionSetRequest{
 		SubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
 			SubjectSets: ss,
 			Metadata:    metadata,
 		},
-	})
+	}
+	req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
+	resp, err := h.sdk.SubjectMapping.CreateSubjectConditionSet(ctx, req)
 	if err != nil {
 		return nil, err
 	}

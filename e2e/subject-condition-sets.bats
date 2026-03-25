@@ -3,12 +3,12 @@
 # Tests for subject condition sets
 
 setup_file() {
-
-  # TODO: Remove this file-level skip once otdfctl passes namespace flags for the namespaced subject condition set APIs.
-  skip "Temporarily disabled [namespaced-subject-mappings]: platform subject condition set creation now requires namespace flags"
-
   export WITH_CREDS='--with-client-creds-file ./creds.json'
   export HOST='--host http://localhost:8080'
+
+  export NS_NAME="subject-condition-sets.net"
+  export NS_FQN="https://$NS_NAME"
+  export NS_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes namespaces create -n "$NS_NAME" --json | jq -r '.id')
 
   export SCS_1='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["marketing"],"subject_external_selector_value":".org.name"},{"operator":1,"subject_external_values":["ShinyThing"],"subject_external_selector_value":".team.name"}],"boolean_operator":1}]}]'
   export SCS_2='[{"condition_groups":[{"conditions":[{"operator":3,"subject_external_values":["piedpiper.com","hooli.com"],"subject_external_selector_value":".emailAddress"},{"operator":1,"subject_external_values":["sales"],"subject_external_selector_value":".department"}],"boolean_operator":2}]}]'
@@ -26,15 +26,18 @@ setup() {
 
   run_delete_scs () {
      # Capture the first argument as the ID
-    local id="$1" 
+    local id="$1"
 
-    run sh -c "./otdfctl $HOST $WITH_CREDS policy scs delete --id $id --force" 
+    run sh -c "./otdfctl $HOST $WITH_CREDS policy scs delete --id $id --force"
   }
 }
 
 teardown_file() {
+  # remove the created namespace with all underneath upon test suite completion
+  ./otdfctl $HOST $WITH_CREDS policy attributes namespaces unsafe delete --force --id "$NS_ID"
+
   # clear out all test env vars
-  unset HOST WITH_CREDS NS_NAME NS_ID ATTR_NAME_RANDOM
+  unset HOST WITH_CREDS NS_NAME NS_FQN NS_ID SCS_1 SCS_2 SCS_3
 
   rm scs.json
 }
@@ -45,6 +48,7 @@ teardown_file() {
   run_otdfctl_scs create --subject-sets-file-json scs.json -l fromfile=true
   assert_success
   assert_output --partial "Id"
+  assert_output --partial "Namespace"
   assert_output --partial "SubjectSets"
   assert_output --partial ".org.name"
   assert_output --partial "SUBJECT_MAPPING_OPERATOR_ENUM_IN"
@@ -55,6 +59,7 @@ teardown_file() {
   run ./otdfctl $HOST $WITH_CREDS policy scs create --subject-sets "$SCS_2"
   assert_success
   assert_output --partial "Id"
+  assert_output --partial "Namespace"
   assert_output --partial "SubjectSets"
   assert_output --partial ".emailAddress"
   assert_output --partial "SUBJECT_MAPPING_OPERATOR_ENUM_IN"
@@ -65,6 +70,7 @@ teardown_file() {
   run_otdfctl_scs get --id "$CREATED_ID"
   assert_success
   assert_line --regexp "Id.*$CREATED_ID"
+  assert_output --partial "Namespace"
   assert_output --partial "Labels"
   assert_output --partial "hello: world"
   assert_output --partial "Created At"
@@ -130,6 +136,47 @@ teardown_file() {
   run_delete_scs "$CREATED_ID"
     assert_success
     assert_output --partial "$CREATED_ID"
+}
+
+@test "Create a SCS with namespace id" {
+  run ./otdfctl $HOST $WITH_CREDS policy scs create --subject-sets "$SCS_2" --namespace "$NS_ID"
+  assert_output --partial "Id"
+  assert_output --partial "Namespace"
+  assert_output --partial "SubjectSets"
+}
+
+@test "Create a SCS with namespace FQN" {
+  run ./otdfctl $HOST $WITH_CREDS policy scs create --subject-sets "$SCS_2" --namespace "$NS_FQN"
+  assert_output --partial "Id"
+  assert_output --partial "Namespace"
+  assert_output --partial "SubjectSets"
+}
+
+@test "List SCS with namespace filter" {
+  test_ns_name="scs-list-$BATS_TEST_NUMBER.net"
+  test_ns_fqn="https://$test_ns_name"
+  test_ns_id=$(./otdfctl $HOST $WITH_CREDS policy attributes namespaces create -n "$test_ns_name" --json | jq -r '.id')
+  CREATED_ID=$(./otdfctl $HOST $WITH_CREDS policy scs create --subject-sets "$SCS_2" --namespace "$test_ns_id" --json | jq -r '.id')
+
+  run_otdfctl_scs list --namespace "$test_ns_id"
+    assert_success
+    assert_output --partial "$CREATED_ID"
+    assert_output --partial "Total"
+
+  run_otdfctl_scs list --namespace "$test_ns_id" --json
+    assert_success
+    assert_equal "$(echo "$output" | jq -r --arg id "$CREATED_ID" '.subject_condition_sets[] | select(.id == $id) | .id')" "$CREATED_ID"
+    # Ensure only SCS from the filtered namespace are returned
+    assert_equal "$(echo "$output" | jq -r --arg ns "$test_ns_id" '[.subject_condition_sets[] | select(.namespace.id != $ns)] | length')" "0"
+
+  # Filter by namespace FQN
+  run_otdfctl_scs list --namespace "$test_ns_fqn" --json
+    assert_success
+    assert_equal "$(echo "$output" | jq -r --arg id "$CREATED_ID" '.subject_condition_sets[] | select(.id == $id) | .id')" "$CREATED_ID"
+    # Ensure only SCS from the filtered namespace are returned
+    assert_equal "$(echo "$output" | jq -r --arg ns "$test_ns_id" '[.subject_condition_sets[] | select(.namespace.id != $ns)] | length')" "0"
+
+  ./otdfctl $HOST $WITH_CREDS policy attributes namespaces unsafe delete --force --id "$test_ns_id"
 }
 
 @test "Prune SCS - deletes unmapped SCS alone" {

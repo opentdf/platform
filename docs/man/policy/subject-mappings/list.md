@@ -5,6 +5,9 @@ command:
   aliases:
     - l
   flags:
+    - name: namespace
+      shorthand: n
+      description: Namespace ID or FQN to filter results
     - name: limit
       shorthand: l
       description: Limit retrieved count
@@ -19,4 +22,6 @@ For more information about subject mappings, see the `subject-mappings` subcomma
 
 ```shell
 otdfctl policy subject-mappings list
+
+otdfctl policy subject-mappings list --namespace "https://example.com"
 ```

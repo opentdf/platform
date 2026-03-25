@@ -17,6 +17,9 @@ command:
       description: Known preexisting Subject Condition Set Id
     - name: subject-condition-set-new
       description: JSON array of Subject Sets to create a new Subject Condition Set associated with the created Subject Mapping
+    - name: namespace
+      description: Namespace ID or FQN
+      shorthand: n
     - name: label
       description: "Optional metadata 'labels' in the format: key=value"
       shorthand: l
@@ -40,6 +43,18 @@ For more information about actions, see the `actions` subcommand.
 For more information about subject mappings, see the `subject-mappings` subcommand.
 
 For more information about subject condition sets, see the `subject-condition-sets` subcommand.
+
+## Namespacing subject mappings
+
+The following rules must be applied when attempting to namespace a subject mapping:
+
+- Either all policy constructs (action, subject mappings, subject condition set, attribute value) are within the same
+  namespace
+- Subject mapping, subject condition set, action are all not within a namespace.
+
+You cannot, for example:
+
+- Create a subject mapping that is not within the same namespace as an action that is passed in
 
 ## Examples
 
@@ -71,4 +86,10 @@ otdfctl policy subject-mapping create --attribute-value-id 891cfe85-b381-4f85-96
     ]
   }
 ]'
+```
+
+Create a subject mapping under a namespace
+
+```shell
+otdfctl policy subject-mapping create --attribute-value-id 891cfe85-b381-4f85-9699-5f7dbfe2a9ab --action read --subject-condition-set-id 8dc98f65-5f0a-4444-bfd1-6a818dc7b447 --namespace "https://example.com"
 ```

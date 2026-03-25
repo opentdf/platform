@@ -18,6 +18,9 @@ command:
       shorthand: j
       default: ''
       required: false
+    - name: namespace
+      description: Namespace ID or FQN
+      shorthand: n
     - name: label
       description: "Optional metadata 'labels' in the format: key=value"
       shorthand: l
@@ -126,4 +129,7 @@ otdfctl policy subject-condition-set create --subject-sets '[
 You can perform the same action with the input contained in a file:
 ```shell
 otdfctl policy subject-condition-set create --subject-sets-file-json scs.json
+
+# Namespaced subject condition set creation
+otdfctl policy subject-condition-set create --subject-sets-file-json scs.json --namespace "https://example.com"
 ```

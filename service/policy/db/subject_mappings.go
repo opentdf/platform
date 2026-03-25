@@ -585,6 +585,24 @@ func (c PolicyDBClient) resolveSubjectMappingActions(ctx context.Context, action
 	for idx, a := range actions {
 		switch {
 		case a.GetId() != "":
+			// if a valid namespace was provided for the SM, ensure that any provided action IDs belong to that namespace.
+			// If the namespace is invalid or not provided, we allow any namespace for the action IDs.
+			if parsedNamespaceID.Valid {
+				action, err := c.queries.getAction(ctx, getActionParams{ID: pgtypeUUID(a.GetId())})
+				if err != nil {
+					return nil, db.WrapIfKnownInvalidQueryErr(
+						errors.Join(db.ErrMissingValue, fmt.Errorf("failed to get action by id [%v]: %w", a.GetId(), err)),
+					)
+				}
+				namespace, err := hydrateNamespaceFromInterface(action.Namespace)
+				if err != nil {
+					return nil, err
+				}
+				// only enforce namespace consistency if the action is already namespaced
+				if namespace.GetId() != "" && namespace.GetId() != parsedNamespaceID.String() {
+					return nil, db.ErrNamespaceMismatch
+				}
+			}
 			actionIDs = append(actionIDs, a.GetId())
 		case a.GetName() != "":
 			actionNames = append(actionNames, strings.ToLower(a.GetName()))

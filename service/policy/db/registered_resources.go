@@ -584,14 +584,45 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 		switch ident := aav.GetActionIdentifier().(type) {
 		case *registeredresources.ActionAttributeValue_ActionId:
 			actionID = ident.ActionId
-		case *registeredresources.ActionAttributeValue_ActionName:
-			createdOrListedActions, err := c.queries.createOrListActionsByName(ctx, []string{strings.ToLower(ident.ActionName)})
-			if err != nil || len(createdOrListedActions) == 0 {
-				return db.WrapIfKnownInvalidQueryErr(
-					errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", strings.ToLower(ident.ActionName), err)),
-				)
+			// if a valid namespace is provided for the RR, enforce that the action belongs to the same namespace (same-namespace enforcement)
+			// if a namespace is not provided for the RR, allow actions from any namespace (including no namespace) for backward compatibility with legacy RRs without namespaces
+			if nsUUID.Valid {
+				// Same-namespace enforcement (batch): all actions must belong to the same namespace as the registered resource
+				act, err := c.queries.getAction(ctx, getActionParams{
+					ID: pgtypeUUID(actionID),
+				})
+				if err != nil {
+					return errors.Join(db.ErrMissingValue, fmt.Errorf("failed to get action [%v]: %w", actionID, err))
+				}
+				namespace, err := hydrateNamespaceFromInterface(act.Namespace)
+				if err != nil {
+					return err
+				}
+				if namespace.GetId() != resourceNamespaceID {
+					return db.ErrNamespaceMismatch
+				}
 			}
-			actionID = createdOrListedActions[0].ID
+		case *registeredresources.ActionAttributeValue_ActionName:
+			if nsUUID.Valid {
+				createdOrListedActions, err := c.queries.createOrListActionsByNameInNamespace(ctx, createOrListActionsByNameInNamespaceParams{
+					ActionNames: []string{strings.ToLower(ident.ActionName)},
+					NamespaceID: resourceNamespaceID,
+				})
+				if err != nil || len(createdOrListedActions) == 0 {
+					return db.WrapIfKnownInvalidQueryErr(
+						errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", strings.ToLower(ident.ActionName), err)),
+					)
+				}
+				actionID = createdOrListedActions[0].ID
+			} else {
+				createdOrListedActions, err := c.queries.createOrListActionsByName(ctx, []string{strings.ToLower(ident.ActionName)})
+				if err != nil || len(createdOrListedActions) == 0 {
+					return db.WrapIfKnownInvalidQueryErr(
+						errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", strings.ToLower(ident.ActionName), err)),
+					)
+				}
+				actionID = createdOrListedActions[0].ID
+			}
 		default:
 			return db.ErrSelectIdentifierInvalid
 		}

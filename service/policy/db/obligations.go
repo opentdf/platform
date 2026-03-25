@@ -664,16 +664,41 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 	if err != nil {
 		return nil, fmt.Errorf("failed to get obligation value: %w", err)
 	}
+	namespace := oblVal.GetObligation().GetNamespace()
 
 	actionID := r.GetAction().GetId()
 	if actionID == "" {
-		createdOrListedActions, err := c.queries.createOrListActionsByName(ctx, []string{r.GetAction().GetName()})
+		if r.GetAction().GetName() == "" {
+			// this shouldnt be possible due to validation, but just in case
+			return nil, errors.New("action identifier must include either id or name")
+		}
+		createdOrListedActions, err := c.queries.createOrListActionsByNameInNamespace(ctx, createOrListActionsByNameInNamespaceParams{
+			ActionNames: []string{strings.ToLower(r.GetAction().GetName())},
+			NamespaceID: namespace.GetId(),
+		})
 		if err != nil || len(createdOrListedActions) == 0 {
 			return nil, db.WrapIfKnownInvalidQueryErr(
 				errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", strings.ToLower(r.GetAction().GetName()), err)),
 			)
 		}
 		actionID = createdOrListedActions[0].ID
+
+	} else {
+		// obligations are already namespaced so we enforce this
+		// get the action to ensure it has the same namespace as the obligation value
+		action, err := c.queries.getAction(ctx, getActionParams{ID: pgtypeUUID(actionID)})
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(
+				errors.Join(db.ErrMissingValue, fmt.Errorf("failed to get action by id [%v]: %w", actionID, err)),
+			)
+		}
+		namespace, err := hydrateNamespaceFromInterface(action.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		if namespace.GetId() != "" && namespace.GetId() != oblVal.GetObligation().GetNamespace().GetId() {
+			return nil, db.ErrNamespaceMismatch
+		}
 	}
 
 	params := createObligationTriggerParams{

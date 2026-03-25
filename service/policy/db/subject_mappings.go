@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	policynamespaces "github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -53,32 +55,35 @@ func unmarshalSubjectSetsProto(conditionJSON []byte) ([]*policy.SubjectSet, erro
 	Subject Condition Sets
 */
 
-// Creates a new subject condition set and returns it
-func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjectmapping.SubjectConditionSetCreate) (*policy.SubjectConditionSet, error) {
+// Creates a new subject condition set and returns it.
+// The namespaceID and namespaceFQN parameters are optional; if provided, the SCS is placed in that namespace.
+func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjectmapping.SubjectConditionSetCreate, namespaceID, namespaceFQN string) (*policy.SubjectConditionSet, error) {
 	subjectSets := s.GetSubjectSets()
 	conditionJSON, err := marshalSubjectSetsProto(subjectSets)
 	if err != nil {
 		return nil, err
 	}
 
-	metadataJSON, metadata, err := db.MarshalCreateMetadata(s.GetMetadata())
+	metadataJSON, _, err := db.MarshalCreateMetadata(s.GetMetadata())
+	if err != nil {
+		return nil, err
+	}
+
+	resolvedNamespaceID, err := c.resolveNamespace(ctx, namespaceID, namespaceFQN)
 	if err != nil {
 		return nil, err
 	}
 
 	createdID, err := c.queries.createSubjectConditionSet(ctx, createSubjectConditionSetParams{
-		Condition: conditionJSON,
-		Metadata:  metadataJSON,
+		Condition:   conditionJSON,
+		Metadata:    metadataJSON,
+		NamespaceID: pgtypeUUID(resolvedNamespaceID),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return &policy.SubjectConditionSet{
-		Id:          createdID,
-		SubjectSets: subjectSets,
-		Metadata:    metadata,
-	}, nil
+	return c.GetSubjectConditionSet(ctx, createdID)
 }
 
 func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (*policy.SubjectConditionSet, error) {
@@ -97,10 +102,16 @@ func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (
 		return nil, err
 	}
 
+	namespace, err := hydrateNamespaceFromInterface(cs.Namespace)
+	if err != nil {
+		return nil, err
+	}
+
 	return &policy.SubjectConditionSet{
 		Id:          id,
 		SubjectSets: sets,
 		Metadata:    metadata,
+		Namespace:   namespace,
 	}, nil
 }
 
@@ -113,8 +124,10 @@ func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context, r *subject
 	}
 
 	list, err := c.queries.listSubjectConditionSets(ctx, listSubjectConditionSetsParams{
-		Limit:  limit,
-		Offset: offset,
+		NamespaceID:  pgtypeUUID(r.GetNamespaceId()),
+		NamespaceFqn: pgtypeText(r.GetNamespaceFqn()),
+		Limit:        limit,
+		Offset:       offset,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -132,10 +145,16 @@ func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context, r *subject
 			return nil, err
 		}
 
+		namespace, err := hydrateNamespaceFromInterface(set.Namespace)
+		if err != nil {
+			return nil, err
+		}
+
 		setList[i] = &policy.SubjectConditionSet{
 			Id:          set.ID,
 			SubjectSets: sets,
 			Metadata:    metadata,
+			Namespace:   namespace,
 		}
 	}
 
@@ -240,65 +259,30 @@ func (c PolicyDBClient) DeleteAllUnmappedSubjectConditionSets(ctx context.Contex
 // Creates a new subject mapping and returns it. If an existing subject condition set id is provided, it will be used.
 // If a new subject condition set is provided, it will be created. The existing subject condition set id takes precedence.
 func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapping.CreateSubjectMappingRequest) (*policy.SubjectMapping, error) {
-	actions := s.GetActions()
 	attributeValueID := s.GetAttributeValueId()
-	var (
-		err error
-		scs *policy.SubjectConditionSet
-	)
+	resolvedNamespaceID, err := c.resolveNamespace(ctx, s.GetNamespaceId(), s.GetNamespaceFqn())
+	if err != nil {
+		return nil, err
+	}
+	parsedNamespaceID := pgtypeUUID(resolvedNamespaceID)
 
-	// Actions are required on Subject Mappings
-	if len(actions) == 0 {
-		return nil, db.WrapIfKnownInvalidQueryErr(
-			errors.Join(db.ErrMissingValue, errors.New("actions are required when creating a subject mapping")),
-		)
-	}
-	actionIDs := make([]string, 0)
-	actionNames := make([]string, 0)
-	// Check for provided existing Action IDs and existing/new Action Names
-	for idx, a := range actions {
-		switch {
-		case a.GetId() != "":
-			actionIDs = append(actionIDs, a.GetId())
-		case a.GetName() != "":
-			actionNames = append(actionNames, strings.ToLower(a.GetName()))
-		default:
-			return nil, db.WrapIfKnownInvalidQueryErr(
-				errors.Join(db.ErrMissingValue, fmt.Errorf("action at index %d missing required 'id' or 'name' when creating a subject mapping; action details: %+v", idx, a)),
-			)
-		}
-	}
-	// Create or list Actions for those provided by name
-	if len(actionNames) > 0 {
-		createdOrListedActions, err := c.queries.createOrListActionsByName(ctx, actionNames)
-		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(
-				errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", actionNames, err)),
-			)
-		}
-		for _, a := range createdOrListedActions {
-			actionIDs = append(actionIDs, a.ID)
-		}
+	// Resolve action IDs from the request (by id or by name)
+	actionIDs, err := c.resolveSubjectMappingActions(ctx, s.GetActions(), parsedNamespaceID)
+	if err != nil {
+		return nil, err
 	}
 
-	// Subject Condition Sets may be existing or new, and protos document preference for existing SCS IDs when both provided
-	switch {
-	case s.GetExistingSubjectConditionSetId() != "":
-		scs, err = c.GetSubjectConditionSet(ctx, s.GetExistingSubjectConditionSetId())
-		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
-		}
-	case s.GetNewSubjectConditionSet() != nil:
-		// create the new subject condition set
-		scs, err = c.CreateSubjectConditionSet(ctx, s.GetNewSubjectConditionSet())
-		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
-		}
-	default:
-		return nil, db.WrapIfKnownInvalidQueryErr(errors.Join(db.ErrMissingValue, errors.New("either an existing Subject Condition Set ID or a new Subject Condition Set is required when creating a subject mapping")))
+	// Resolve or create the subject condition set
+	scs, err := c.resolveSubjectConditionSet(ctx, s, resolvedNamespaceID)
+	if err != nil {
+		return nil, err
 	}
 
-	metadataJSON, metadata, err := db.MarshalCreateMetadata(s.GetMetadata())
+	if err := c.validateSubjectMappingNamespaceConsistency(ctx, resolvedNamespaceID, attributeValueID, actionIDs, scs); err != nil {
+		return nil, err
+	}
+
+	metadataJSON, _, err := db.MarshalCreateMetadata(s.GetMetadata())
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -308,20 +292,13 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		ActionIds:             actionIDs,
 		Metadata:              metadataJSON,
 		SubjectConditionSetID: pgtypeUUID(scs.GetId()),
+		NamespaceID:           parsedNamespaceID,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return &policy.SubjectMapping{
-		Id: createdID,
-		AttributeValue: &policy.Value{
-			Id: attributeValueID,
-		},
-		SubjectConditionSet: scs,
-		Actions:             actions,
-		Metadata:            metadata,
-	}, nil
+	return c.GetSubjectMapping(ctx, createdID)
 }
 
 func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {
@@ -354,12 +331,18 @@ func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*poli
 		return nil, err
 	}
 
+	namespace, err := hydrateNamespaceFromInterface(sm.Namespace)
+	if err != nil {
+		return nil, err
+	}
+
 	return &policy.SubjectMapping{
 		Id:                  id,
 		Metadata:            metadata,
 		AttributeValue:      av,
 		SubjectConditionSet: &scs,
 		Actions:             a,
+		Namespace:           namespace,
 	}, nil
 }
 
@@ -372,8 +355,10 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmappi
 	}
 
 	list, err := c.queries.listSubjectMappings(ctx, listSubjectMappingsParams{
-		Limit:  limit,
-		Offset: offset,
+		NamespaceID:  pgtypeUUID(r.GetNamespaceId()),
+		NamespaceFqn: pgtypeText(r.GetNamespaceFqn()),
+		Limit:        limit,
+		Offset:       offset,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -413,12 +398,18 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmappi
 			return nil, err
 		}
 
+		namespace, err := hydrateNamespaceFromInterface(sm.Namespace)
+		if err != nil {
+			return nil, err
+		}
+
 		mappings[i] = &policy.SubjectMapping{
 			Id:                  sm.ID,
 			Metadata:            metadata,
 			AttributeValue:      av,
 			SubjectConditionSet: &scs,
 			Actions:             a,
+			Namespace:           namespace,
 		}
 	}
 
@@ -579,4 +570,167 @@ func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 	}
 
 	return mappings, nil
+}
+
+// resolveSubjectMappingActions parses the action list from a CreateSubjectMappingRequest,
+// resolving actions by name within the given namespace and collecting existing action IDs.
+func (c PolicyDBClient) resolveSubjectMappingActions(ctx context.Context, actions []*policy.Action, parsedNamespaceID pgtype.UUID) ([]string, error) {
+	if len(actions) == 0 {
+		return nil, db.WrapIfKnownInvalidQueryErr(
+			errors.Join(db.ErrMissingValue, errors.New("actions are required when creating a subject mapping")),
+		)
+	}
+
+	var actionIDs, actionNames []string
+	for idx, a := range actions {
+		switch {
+		case a.GetId() != "":
+			actionIDs = append(actionIDs, a.GetId())
+		case a.GetName() != "":
+			actionNames = append(actionNames, strings.ToLower(a.GetName()))
+		default:
+			return nil, db.WrapIfKnownInvalidQueryErr(
+				errors.Join(db.ErrMissingValue, fmt.Errorf("action at index %d missing required 'id' or 'name'; action details: %+v", idx, a)),
+			)
+		}
+	}
+
+	if len(actionNames) > 0 {
+		ids, err := c.resolveActionNameIDs(ctx, actionNames, parsedNamespaceID)
+		if err != nil {
+			return nil, err
+		}
+		actionIDs = append(actionIDs, ids...)
+	}
+
+	return actionIDs, nil
+}
+
+// resolveSubjectConditionSet fetches an existing SCS or creates a new one for the subject mapping.
+func (c PolicyDBClient) resolveSubjectConditionSet(ctx context.Context, s *subjectmapping.CreateSubjectMappingRequest, namespaceID string) (*policy.SubjectConditionSet, error) {
+	switch {
+	case s.GetExistingSubjectConditionSetId() != "":
+		scs, err := c.GetSubjectConditionSet(ctx, s.GetExistingSubjectConditionSetId())
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		return scs, nil
+	case s.GetNewSubjectConditionSet() != nil:
+		scs, err := c.CreateSubjectConditionSet(ctx, s.GetNewSubjectConditionSet(), namespaceID, "")
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		return scs, nil
+	default:
+		return nil, db.WrapIfKnownInvalidQueryErr(
+			errors.Join(db.ErrMissingValue, errors.New("either an existing Subject Condition Set ID or a new Subject Condition Set is required when creating a subject mapping")),
+		)
+	}
+}
+
+func (c PolicyDBClient) resolveNamespace(ctx context.Context, namespaceID, namespaceFQN string) (string, error) {
+	if namespaceID != "" {
+		parsedNamespaceID := pgtypeUUID(namespaceID)
+		if !parsedNamespaceID.Valid {
+			return "", db.ErrUUIDInvalid
+		}
+		return namespaceID, nil
+	}
+
+	if namespaceFQN == "" {
+		return "", nil
+	}
+
+	ns, err := c.GetNamespace(ctx, &policynamespaces.GetNamespaceRequest_Fqn{Fqn: namespaceFQN})
+	if err != nil {
+		return "", db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return ns.GetId(), nil
+}
+
+// validateSubjectMappingNamespaceConsistency ensures that actions and subject condition set
+// belong to the same namespace as the subject mapping being created. When the SM is namespaced,
+// the attribute value must also be in that namespace. When unnamespaced, the attribute value
+// may have any namespace, but actions and SCS must be unnamespaced.
+func (c PolicyDBClient) validateSubjectMappingNamespaceConsistency(
+	ctx context.Context,
+	targetNsID string,
+	attributeValueID string,
+	actionIDs []string,
+	scs *policy.SubjectConditionSet,
+) error {
+	// Attribute value namespace check only applies when the SM is namespaced
+	if targetNsID != "" {
+		av, err := c.GetAttributeValue(ctx, attributeValueID)
+		if err != nil {
+			return db.WrapIfKnownInvalidQueryErr(err)
+		}
+		attr, err := c.GetAttribute(ctx, av.GetAttribute().GetId())
+		if err != nil {
+			return db.WrapIfKnownInvalidQueryErr(err)
+		}
+		if attr.GetNamespace().GetId() != targetNsID {
+			return errors.Join(db.ErrNamespaceMismatch,
+				fmt.Errorf("attribute value namespace [%s] does not match the specified subject mapping namespace [%s]", attr.GetNamespace().GetId(), targetNsID))
+		}
+	}
+
+	// All actions must be in the same namespace
+	if len(actionIDs) > 0 {
+		actionRows, err := c.queries.getActionsByIDs(ctx, actionIDs)
+		if err != nil {
+			return db.WrapIfKnownInvalidQueryErr(err)
+		}
+		for _, a := range actionRows {
+			actionNsID := UUIDToString(a.NamespaceID)
+			if actionNsID != targetNsID {
+				return errors.Join(db.ErrNamespaceMismatch,
+					fmt.Errorf("action [%s] namespace [%s] does not match the specified subject mapping namespace [%s]", a.ID, actionNsID, targetNsID))
+			}
+		}
+	}
+
+	// Subject condition set namespace
+	if scs.GetNamespace().GetId() != targetNsID {
+		return errors.Join(db.ErrNamespaceMismatch,
+			fmt.Errorf("subject condition set [%s] namespace [%s] does not match the specified subject mapping namespace [%s]", scs.GetId(), scs.GetNamespace().GetId(), targetNsID))
+	}
+
+	return nil
+}
+
+// resolveActionNameIDs creates or fetches action IDs for the given action names.
+// When namespaced is true, actions are created/fetched within the given namespace;
+// otherwise the legacy global (unnamespaced) path is used.
+func (c PolicyDBClient) resolveActionNameIDs(ctx context.Context, actionNames []string, namespaceID pgtype.UUID) ([]string, error) {
+	if namespaceID.Valid {
+		rows, err := c.queries.createOrListActionsByNameInNamespace(ctx, createOrListActionsByNameInNamespaceParams{
+			ActionNames: actionNames,
+			NamespaceID: UUIDToString(namespaceID),
+		})
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(
+				errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v] in namespace: %w", actionNames, err)),
+			)
+		}
+		ids := make([]string, len(rows))
+		for i, a := range rows {
+			ids[i] = a.ID
+		}
+		return ids, nil
+	}
+
+	// No namespace: use global unnamespaced actions (legacy behavior)
+	rows, err := c.queries.createOrListActionsByName(ctx, actionNames)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(
+			errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", actionNames, err)),
+		)
+	}
+	ids := make([]string, len(rows))
+	for i, a := range rows {
+		ids[i] = a.ID
+	}
+	return ids, nil
 }

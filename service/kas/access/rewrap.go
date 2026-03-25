@@ -109,9 +109,10 @@ const (
 // key types, missing fields) SHOULD use descriptive messages so the SDK can
 // distinguish misconfiguration from potential tamper.
 //
-// The SDK matches on the exact string "bad request" to identify potential tamper
-// (see sdk/tdferrors.go kasGenericBadRequest). Do not change this message without
-// updating the SDK constant.
+// The SDK matches on the substring "desc = bad request" in serialized per-KAO
+// errors to identify potential tamper (see sdk/tdferrors.go kasGenericBadRequest).
+// Do not change the generic "bad request" message without updating the SDK
+// constant, and do not use "bad request" in descriptive error messages.
 func err400(s string) error {
 	return connect.NewError(connect.CodeInvalidArgument, errors.Join(ErrUser, status.Error(codes.InvalidArgument, s)))
 }
@@ -577,7 +578,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	additionalRewrapContext, err := getAdditionalRewrapContext(req.Header())
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failed to get additional rewrap context", slog.Any("error", err))
-		return nil, err400(err.Error())
+		return nil, err400("failed to get additional rewrap context")
 	}
 	resp.SessionPublicKey, results, err = p.tdf3Rewrap(ctx, tdf3Reqs, body.GetClientPublicKey(), entityInfo, additionalRewrapContext)
 	if err != nil {

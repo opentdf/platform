@@ -803,13 +803,13 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithInvali
 	s.Require().NoError(err)
 	s.NotNil(res)
 
-		testCases := []struct {
-			name             string
-			actionAttrValues []*registeredresources.ActionAttributeValue
-			err              error
-		}{
-			{
-				name: "Invalid Action ID",
+	testCases := []struct {
+		name             string
+		actionAttrValues []*registeredresources.ActionAttributeValue
+		err              error
+	}{
+		{
+			name: "Invalid Action ID",
 			actionAttrValues: []*registeredresources.ActionAttributeValue{
 				{
 					ActionIdentifier: &registeredresources.ActionAttributeValue_ActionId{
@@ -820,10 +820,10 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithInvali
 					},
 				},
 			},
-				err: db.ErrMissingValue,
-			},
-			{
-				name: "Invalid Attribute Value ID",
+			err: db.ErrMissingValue,
+		},
+		{
+			name: "Invalid Attribute Value ID",
 			actionAttrValues: []*registeredresources.ActionAttributeValue{
 				{
 					ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
@@ -834,8 +834,8 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithInvali
 					},
 				},
 			},
-				err: db.ErrNotFound,
-			},
+			err: db.ErrNotFound,
+		},
 		{
 			name: "Invalid Attribute Value FQN",
 			actionAttrValues: []*registeredresources.ActionAttributeValue{

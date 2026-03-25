@@ -48,6 +48,8 @@ func GetNamespacesSortParams(sort []*namespaces.NamespacesSort) (string, string)
 		field = "updated_at"
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UNSPECIFIED:
 		return "", ""
+	default:
+		return "", ""
 	}
 
 	direction := "ASC"

@@ -423,7 +423,8 @@ type SubjectConditionSet struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 	// Array of cached selector values extracted from the condition JSONB and maintained via trigger.
-	SelectorValues []string `json:"selector_values"`
+	SelectorValues []string    `json:"selector_values"`
+	NamespaceID    pgtype.UUID `json:"namespace_id"`
 }
 
 // Table to store conditions that logically entitle subject entity representations to attribute values
@@ -438,6 +439,7 @@ type SubjectMapping struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 	// Foreign key to the condition set that entitles the subject entity to the attribute value
 	SubjectConditionSetID pgtype.UUID `json:"subject_condition_set_id"`
+	NamespaceID           pgtype.UUID `json:"namespace_id"`
 }
 
 type SubjectMappingAction struct {

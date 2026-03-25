@@ -192,6 +192,106 @@ func (q *Queries) createOrListActionsByName(ctx context.Context, actionNames []s
 	return items, nil
 }
 
+const createOrListActionsByNameInNamespace = `-- name: createOrListActionsByNameInNamespace :many
+WITH resolved_namespace AS (
+    SELECT n.id
+    FROM attribute_namespaces n
+    WHERE n.id = $1::uuid
+    LIMIT 1
+),
+input_actions AS (
+    SELECT unnest($2::text[]) AS name
+),
+existing_actions AS (
+    SELECT a.id, a.name, a.is_standard, a.created_at
+    FROM actions a
+    JOIN input_actions input ON LOWER(a.name) = LOWER(input.name)
+    WHERE a.namespace_id = (SELECT id FROM resolved_namespace)
+),
+new_actions AS (
+    INSERT INTO actions (name, is_standard, namespace_id)
+    SELECT input.name, FALSE, (SELECT id FROM resolved_namespace)
+    FROM input_actions input
+    WHERE NOT EXISTS (
+        SELECT 1 FROM existing_actions ea WHERE LOWER(ea.name) = LOWER(input.name)
+    )
+    ON CONFLICT (namespace_id, name) WHERE namespace_id IS NOT NULL DO NOTHING
+    RETURNING id, name, is_standard, created_at
+)
+SELECT id, name, is_standard, created_at FROM existing_actions
+UNION ALL
+SELECT id, name, is_standard, created_at FROM new_actions
+ORDER BY name
+`
+
+type createOrListActionsByNameInNamespaceParams struct {
+	NamespaceID string   `json:"namespace_id"`
+	ActionNames []string `json:"action_names"`
+}
+
+type createOrListActionsByNameInNamespaceRow struct {
+	ID         string             `json:"id"`
+	Name       string             `json:"name"`
+	IsStandard bool               `json:"is_standard"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
+// createOrListActionsByNameInNamespace
+//
+//	WITH resolved_namespace AS (
+//	    SELECT n.id
+//	    FROM attribute_namespaces n
+//	    WHERE n.id = $1::uuid
+//	    LIMIT 1
+//	),
+//	input_actions AS (
+//	    SELECT unnest($2::text[]) AS name
+//	),
+//	existing_actions AS (
+//	    SELECT a.id, a.name, a.is_standard, a.created_at
+//	    FROM actions a
+//	    JOIN input_actions input ON LOWER(a.name) = LOWER(input.name)
+//	    WHERE a.namespace_id = (SELECT id FROM resolved_namespace)
+//	),
+//	new_actions AS (
+//	    INSERT INTO actions (name, is_standard, namespace_id)
+//	    SELECT input.name, FALSE, (SELECT id FROM resolved_namespace)
+//	    FROM input_actions input
+//	    WHERE NOT EXISTS (
+//	        SELECT 1 FROM existing_actions ea WHERE LOWER(ea.name) = LOWER(input.name)
+//	    )
+//	    ON CONFLICT (namespace_id, name) WHERE namespace_id IS NOT NULL DO NOTHING
+//	    RETURNING id, name, is_standard, created_at
+//	)
+//	SELECT id, name, is_standard, created_at FROM existing_actions
+//	UNION ALL
+//	SELECT id, name, is_standard, created_at FROM new_actions
+//	ORDER BY name
+func (q *Queries) createOrListActionsByNameInNamespace(ctx context.Context, arg createOrListActionsByNameInNamespaceParams) ([]createOrListActionsByNameInNamespaceRow, error) {
+	rows, err := q.db.Query(ctx, createOrListActionsByNameInNamespace, arg.NamespaceID, arg.ActionNames)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []createOrListActionsByNameInNamespaceRow
+	for rows.Next() {
+		var i createOrListActionsByNameInNamespaceRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.IsStandard,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteCustomAction = `-- name: deleteCustomAction :execrows
 DELETE FROM actions
 WHERE id = $1
@@ -351,6 +451,51 @@ func (q *Queries) getAction(ctx context.Context, arg getActionParams) (getAction
 		&i.Namespace,
 	)
 	return i, err
+}
+
+const getActionsByIDs = `-- name: getActionsByIDs :many
+SELECT
+    a.id,
+    a.is_standard,
+    a.namespace_id
+FROM actions
+    a
+WHERE a.id = ANY($1::uuid[])
+`
+
+type getActionsByIDsRow struct {
+	ID          string      `json:"id"`
+	IsStandard  bool        `json:"is_standard"`
+	NamespaceID pgtype.UUID `json:"namespace_id"`
+}
+
+// getActionsByIDs
+//
+//	SELECT
+//	    a.id,
+//	    a.is_standard,
+//	    a.namespace_id
+//	FROM actions
+//	    a
+//	WHERE a.id = ANY($1::uuid[])
+func (q *Queries) getActionsByIDs(ctx context.Context, ids []string) ([]getActionsByIDsRow, error) {
+	rows, err := q.db.Query(ctx, getActionsByIDs, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []getActionsByIDsRow
+	for rows.Next() {
+		var i getActionsByIDsRow
+		if err := rows.Scan(&i.ID, &i.IsStandard, &i.NamespaceID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listActions = `-- name: listActions :many

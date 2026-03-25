@@ -9,6 +9,8 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/actions"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -666,6 +668,179 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Offset_Succeeds() {
 	}
 }
 
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_ByNamespaceId_Succeeds() {
+	comNsID := s.exampleComNsID()
+	netNsID := s.exampleNetNsID()
+	comAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	netAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").ID
+	comSCS := s.newSCSInNamespace(comNsID)
+	netSCS := s.newSCSInNamespace(netNsID)
+
+	comSM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              comAttrValID,
+		Actions:                       []*policy.Action{{Name: "list_by_ns_id_com"}},
+		ExistingSubjectConditionSetId: comSCS.GetId(),
+		NamespaceId:                   comNsID,
+	})
+	s.Require().NoError(err)
+
+	netSM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              netAttrValID,
+		Actions:                       []*policy.Action{{Name: "list_by_ns_id_net"}},
+		ExistingSubjectConditionSetId: netSCS.GetId(),
+		NamespaceId:                   netNsID,
+	})
+	s.Require().NoError(err)
+	defer func() {
+		_, _ = s.db.PolicyClient.DeleteSubjectMapping(s.ctx, comSM.GetId())
+		_, _ = s.db.PolicyClient.DeleteSubjectMapping(s.ctx, netSM.GetId())
+	}()
+
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		NamespaceId: comNsID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	listed := listRsp.GetSubjectMappings()
+	s.NotEmpty(listed)
+
+	foundCom := false
+	for _, sm := range listed {
+		s.Equal(comNsID, sm.GetNamespace().GetId())
+		if sm.GetId() == comSM.GetId() {
+			foundCom = true
+		}
+		s.NotEqual(netSM.GetId(), sm.GetId())
+	}
+	s.True(foundCom)
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_ByNamespaceFqn_Succeeds() {
+	comNsID := s.exampleComNsID()
+	netNsID := s.exampleNetNsID()
+	comAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2").ID
+	netAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
+	comSCS := s.newSCSInNamespace(comNsID)
+	netSCS := s.newSCSInNamespace(netNsID)
+
+	comSM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              comAttrValID,
+		Actions:                       []*policy.Action{{Name: "list_by_ns_fqn_com"}},
+		ExistingSubjectConditionSetId: comSCS.GetId(),
+		NamespaceFqn:                  "https://example.com",
+	})
+	s.Require().NoError(err)
+
+	netSM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              netAttrValID,
+		Actions:                       []*policy.Action{{Name: "list_by_ns_fqn_net"}},
+		ExistingSubjectConditionSetId: netSCS.GetId(),
+		NamespaceFqn:                  "https://example.net",
+	})
+	s.Require().NoError(err)
+	defer func() {
+		_, _ = s.db.PolicyClient.DeleteSubjectMapping(s.ctx, comSM.GetId())
+		_, _ = s.db.PolicyClient.DeleteSubjectMapping(s.ctx, netSM.GetId())
+	}()
+
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		NamespaceFqn: "https://example.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	listed := listRsp.GetSubjectMappings()
+	s.NotEmpty(listed)
+
+	foundCom := false
+	for _, sm := range listed {
+		s.Equal(comNsID, sm.GetNamespace().GetId())
+		if sm.GetId() == comSM.GetId() {
+			foundCom = true
+		}
+		s.NotEqual(netSM.GetId(), sm.GetId())
+	}
+	s.True(foundCom)
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_ByNamespaceId_NoResults_Succeeds() {
+	emptyNs, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "list-sm-no-results.example",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(emptyNs)
+
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		NamespaceId: emptyNs.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+	s.Empty(listRsp.GetSubjectMappings())
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_NoNamespaceFilter_ReturnsAllNamespaces() {
+	comNsID := s.exampleComNsID()
+	netNsID := s.exampleNetNsID()
+	comAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value1").ID
+	netAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").ID
+	comSCS := s.newSCSInNamespace(comNsID)
+	netSCS := s.newSCSInNamespace(netNsID)
+	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
+
+	comSM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              comAttrValID,
+		Actions:                       []*policy.Action{{Name: "list_no_filter_com"}},
+		ExistingSubjectConditionSetId: comSCS.GetId(),
+		NamespaceId:                   comNsID,
+	})
+	s.Require().NoError(err)
+
+	netSM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              netAttrValID,
+		Actions:                       []*policy.Action{{Name: "list_no_filter_net"}},
+		ExistingSubjectConditionSetId: netSCS.GetId(),
+		NamespaceId:                   netNsID,
+	})
+	s.Require().NoError(err)
+
+	unnamespacedSM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2").ID,
+		Actions:                       []*policy.Action{actionRead},
+		ExistingSubjectConditionSetId: fixtureScs.ID,
+	})
+	s.Require().NoError(err)
+	defer func() {
+		_, _ = s.db.PolicyClient.DeleteSubjectMapping(s.ctx, comSM.GetId())
+		_, _ = s.db.PolicyClient.DeleteSubjectMapping(s.ctx, netSM.GetId())
+		_, _ = s.db.PolicyClient.DeleteSubjectMapping(s.ctx, unnamespacedSM.GetId())
+	}()
+
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	listed := listRsp.GetSubjectMappings()
+	foundCom, foundNet, foundUnnamespaced := false, false, false
+	for _, sm := range listed {
+		switch sm.GetId() {
+		case comSM.GetId():
+			foundCom = true
+			s.Equal(comNsID, sm.GetNamespace().GetId())
+		case netSM.GetId():
+			foundNet = true
+			s.Equal(netNsID, sm.GetNamespace().GetId())
+		case unnamespacedSM.GetId():
+			foundUnnamespaced = true
+			s.Nil(sm.GetNamespace())
+		}
+	}
+	s.True(foundCom)
+	s.True(foundNet)
+	s.True(foundUnnamespaced)
+}
+
 func (s *SubjectMappingsSuite) TestDeleteSubjectMapping() {
 	// create a new subject mapping, delete it, and verify get fails with not found
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value1").ID
@@ -769,7 +944,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectConditionSet() {
 		},
 	}
 
-	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet)
+	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet, "", "")
 	s.Require().NoError(err)
 	s.NotNil(scs)
 }
@@ -794,7 +969,7 @@ func (s *SubjectMappingsSuite) TestCreateSubjectConditionSetContains() {
 		},
 	}
 
-	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet)
+	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet, "", "")
 	s.Require().NoError(err)
 	s.NotNil(scs)
 }
@@ -881,7 +1056,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_OrdersByCreatedAt_Su
 				},
 			},
 		}
-		created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, scs)
+		created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, scs, "", "")
 		s.Require().NoError(err)
 		s.Require().NotNil(created)
 		return created.GetId()
@@ -975,6 +1150,139 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_Offset_Succeeds() {
 	}
 }
 
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_ByNamespaceId_Succeeds() {
+	comNsID := s.exampleComNsID()
+	netNsID := s.exampleNetNsID()
+
+	comSCS1 := s.newSCSInNamespace(comNsID)
+	comSCS2 := s.newSCSInNamespace(comNsID)
+	netSCS := s.newSCSInNamespace(netNsID)
+	defer func() {
+		_, _ = s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, comSCS1.GetId())
+		_, _ = s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, comSCS2.GetId())
+		_, _ = s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, netSCS.GetId())
+	}()
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		NamespaceId: comNsID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	listed := listRsp.GetSubjectConditionSets()
+	s.NotEmpty(listed)
+
+	foundCom1, foundCom2 := false, false
+	for _, scs := range listed {
+		s.Equal(comNsID, scs.GetNamespace().GetId())
+		switch scs.GetId() {
+		case comSCS1.GetId():
+			foundCom1 = true
+		case comSCS2.GetId():
+			foundCom2 = true
+		}
+		s.NotEqual(netSCS.GetId(), scs.GetId())
+	}
+	s.True(foundCom1)
+	s.True(foundCom2)
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_ByNamespaceFqn_Succeeds() {
+	comNsID := s.exampleComNsID()
+	netNsID := s.exampleNetNsID()
+
+	comSCS := s.newSCSInNamespace(comNsID)
+	netSCS := s.newSCSInNamespace(netNsID)
+	defer func() {
+		_, _ = s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, comSCS.GetId())
+		_, _ = s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, netSCS.GetId())
+	}()
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		NamespaceFqn: "https://example.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	listed := listRsp.GetSubjectConditionSets()
+	s.NotEmpty(listed)
+
+	foundCom := false
+	for _, scs := range listed {
+		s.Equal(comNsID, scs.GetNamespace().GetId())
+		if scs.GetId() == comSCS.GetId() {
+			foundCom = true
+		}
+		s.NotEqual(netSCS.GetId(), scs.GetId())
+	}
+	s.True(foundCom)
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_ByNamespaceId_ExcludesUnnamespaced() {
+	comNsID := s.exampleComNsID()
+
+	namespacedSCS := s.newSCSInNamespace(comNsID)
+	unnamespacedSCS, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{{}},
+	}, "", "")
+	s.Require().NoError(err)
+	defer func() {
+		_, _ = s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, namespacedSCS.GetId())
+		_, _ = s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, unnamespacedSCS.GetId())
+	}()
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		NamespaceId: comNsID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	for _, scs := range listRsp.GetSubjectConditionSets() {
+		s.NotEqual(unnamespacedSCS.GetId(), scs.GetId())
+		s.NotNil(scs.GetNamespace())
+	}
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_NoNamespaceFilter_ReturnsAllNamespaces() {
+	comNsID := s.exampleComNsID()
+	netNsID := s.exampleNetNsID()
+
+	comSCS := s.newSCSInNamespace(comNsID)
+	netSCS := s.newSCSInNamespace(netNsID)
+	unnamespacedSCS, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{{}},
+	}, "", "")
+	s.Require().NoError(err)
+	defer func() {
+		_, _ = s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, comSCS.GetId())
+		_, _ = s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, netSCS.GetId())
+		_, _ = s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, unnamespacedSCS.GetId())
+	}()
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	listed := listRsp.GetSubjectConditionSets()
+	foundCom, foundNet, foundUnnamespaced := false, false, false
+	for _, scs := range listed {
+		switch scs.GetId() {
+		case comSCS.GetId():
+			foundCom = true
+			s.Equal(comNsID, scs.GetNamespace().GetId())
+		case netSCS.GetId():
+			foundNet = true
+			s.Equal(netNsID, scs.GetNamespace().GetId())
+		case unnamespacedSCS.GetId():
+			foundUnnamespaced = true
+			s.Nil(scs.GetNamespace())
+		}
+	}
+	s.True(foundCom)
+	s.True(foundNet)
+	s.True(foundUnnamespaced)
+}
+
 func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet() {
 	// create a new subject condition set, delete it, and verify get fails with not found
 	newConditionSet := &subjectmapping.SubjectConditionSetCreate{
@@ -996,7 +1304,7 @@ func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet() {
 		},
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet)
+	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet, "", "")
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -1036,11 +1344,11 @@ func (s *SubjectMappingsSuite) TestDeleteAllUnmappedSubjectConditionSets() {
 		},
 	}
 
-	unmapped, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newSCS)
+	unmapped, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newSCS, "", "")
 	s.Require().NoError(err)
 	s.NotNil(unmapped)
 
-	mapped, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newSCS)
+	mapped, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newSCS, "", "")
 	s.Require().NoError(err)
 	s.NotNil(mapped)
 
@@ -1083,7 +1391,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NewSubjectSets() {
 			{},
 		},
 	}
-	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet)
+	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet, "", "")
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -1139,7 +1447,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_AllAllowedFields() 
 		},
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet)
+	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet, "", "")
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -1205,7 +1513,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_ChangeOperator() {
 		},
 	}
 
-	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet)
+	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet, "", "")
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -1491,7 +1799,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_ConditionSetReusedB
 			},
 		},
 	}
-	createdSCS, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, toCreate)
+	createdSCS, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, toCreate, "", "")
 	s.Require().NoError(err)
 	s.NotNil(createdSCS)
 
@@ -1634,7 +1942,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_ResponsiveToUpdatio
 		},
 	}
 
-	createdSCS, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, subjectConditionSet)
+	createdSCS, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, subjectConditionSet, "", "")
 	s.Require().NoError(err)
 	s.NotNil(createdSCS)
 
@@ -1744,7 +2052,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_MetadataVariations(
 		Metadata: &common.MetadataMutable{
 			Labels: labels,
 		},
-	})
+	}, "", "")
 	s.Require().NoError(err)
 	s.NotNil(created)
 
@@ -1789,4 +2097,376 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_MetadataVariations(
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(labels, got.GetMetadata().GetLabels())
+}
+
+/*-----------------------------------------------------------------
+ *-------- Namespace Consistency Tests ----------------------------
+ *----------------------------------------------------------------*/
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NamespacedById_AllSameNamespace_Succeeds() {
+	nsID := s.exampleComNsID()
+	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	scs := s.newSCSInNamespace(nsID)
+
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrValID,
+		Actions:                       []*policy.Action{{Name: "read"}},
+		ExistingSubjectConditionSetId: scs.GetId(),
+		NamespaceId:                   nsID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.Equal(nsID, sm.GetNamespace().GetId())
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NamespacedByFqn_Succeeds() {
+	nsID := s.exampleComNsID()
+	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	scs := s.newSCSInNamespace(nsID)
+
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrValID,
+		Actions:                       []*policy.Action{{Name: "read"}},
+		ExistingSubjectConditionSetId: scs.GetId(),
+		NamespaceFqn:                  "https://example.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.Equal(nsID, sm.GetNamespace().GetId())
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_AttributeValueWrongNamespace_Fails() {
+	nsID := s.exampleComNsID()
+	attrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").ID
+	scs := s.newSCSInNamespace(nsID)
+
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrValID,
+		Actions:                       []*policy.Action{{Name: "read"}},
+		ExistingSubjectConditionSetId: scs.GetId(),
+		NamespaceId:                   nsID,
+	})
+	s.Require().Error(err)
+	s.Nil(created)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ExistingSCSWrongNamespace_Fails() {
+	comNsID := s.exampleComNsID()
+	netNsID := s.exampleNetNsID()
+	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	scsInNet := s.newSCSInNamespace(netNsID)
+
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrValID,
+		Actions:                       []*policy.Action{{Name: "read"}},
+		ExistingSubjectConditionSetId: scsInNet.GetId(),
+		NamespaceId:                   comNsID,
+	})
+	s.Require().Error(err)
+	s.Nil(created)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_CustomActionWrongNamespace_Fails() {
+	comNsID := s.exampleComNsID()
+	netNsID := s.exampleNetNsID()
+	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	scs := s.newSCSInNamespace(comNsID)
+
+	customAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "wrong_ns_action",
+		NamespaceId: netNsID,
+	})
+	s.Require().NoError(err)
+
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrValID,
+		Actions:                       []*policy.Action{{Id: customAction.GetId()}},
+		ExistingSubjectConditionSetId: scs.GetId(),
+		NamespaceId:                   comNsID,
+	})
+	s.Require().Error(err)
+	s.Nil(created)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_StandardActionById_WrongNamespace_Fails() {
+	nsID := s.exampleComNsID()
+	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	scs := s.newSCSInNamespace(nsID)
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
+
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrValID,
+		Actions:                       []*policy.Action{actionRead},
+		ExistingSubjectConditionSetId: scs.GetId(),
+		NamespaceId:                   nsID,
+	})
+	s.Require().Error(err)
+	s.Nil(created)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NamespacedSM_MixedExistingAndNewActions_Succeeds() {
+	nsID := s.exampleComNsID()
+	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	scs := s.newSCSInNamespace(nsID)
+
+	// Create two actions in the correct namespace (will be referenced by ID)
+	existingAction1, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "mixed_existing_one",
+		NamespaceId: nsID,
+	})
+	s.Require().NoError(err)
+
+	existingAction2, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "mixed_existing_two",
+		NamespaceId: nsID,
+	})
+	s.Require().NoError(err)
+
+	// Third action is passed by name — should be created in the SM's namespace
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: attrValID,
+		Actions: []*policy.Action{
+			{Id: existingAction1.GetId()},
+			{Id: existingAction2.GetId()},
+			{Name: "mixed_new_by_name"},
+		},
+		ExistingSubjectConditionSetId: scs.GetId(),
+		NamespaceId:                   nsID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	sm, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.Equal(nsID, sm.GetNamespace().GetId())
+	s.Require().Len(sm.GetActions(), 3)
+
+	// Verify every action — including the one created by name — is in the correct namespace
+	for _, a := range sm.GetActions() {
+		s.Equal(nsID, a.GetNamespace().GetId(), "action %s should be in namespace %s", a.GetId(), nsID)
+	}
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_UnnamespacedSM_NamespacedAttributeValue_Succeeds() {
+	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
+	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
+
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrValID,
+		Actions:                       []*policy.Action{actionRead},
+		ExistingSubjectConditionSetId: fixtureScs.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(created)
+	s.Nil(created.GetNamespace())
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectConditionSet_WithNamespaceId_Succeeds() {
+	nsID := s.exampleComNsID()
+	scs := s.newSCSInNamespace(nsID)
+	s.NotNil(scs)
+	s.Equal(nsID, scs.GetNamespace().GetId())
+	s.Equal("https://example.com", scs.GetNamespace().GetFqn())
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectConditionSet_WithNamespaceFqn_Succeeds() {
+	netNsID := s.exampleNetNsID()
+	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{{}},
+	}, "", "https://example.net")
+	s.Require().NoError(err)
+	s.NotNil(scs)
+	s.Equal(netNsID, scs.GetNamespace().GetId())
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectConditionSet_WithoutNamespace_Succeeds() {
+	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{{}},
+	}, "", "")
+	s.Require().NoError(err)
+	s.NotNil(scs)
+	s.Nil(scs.GetNamespace())
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NamespacedSM_UnnamespacedSCS_Fails() {
+	nsID := s.exampleComNsID()
+	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+
+	// Create an un-namespaced SCS
+	unnamespacedSCS, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: ".test_field",
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"test_value"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}, "", "")
+	s.Require().NoError(err)
+	s.Nil(unnamespacedSCS.GetNamespace())
+
+	// Attempt to create a namespaced SM with the un-namespaced SCS
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrValID,
+		Actions:                       []*policy.Action{{Name: "read"}},
+		ExistingSubjectConditionSetId: unnamespacedSCS.GetId(),
+		NamespaceId:                   nsID,
+	})
+	s.Require().Error(err)
+	s.Nil(created)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_UnnamespacedSM_NamespacedSCS_Fails() {
+	nsID := s.exampleComNsID()
+	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	namespacedSCS := s.newSCSInNamespace(nsID)
+
+	// Un-namespaced SM with a namespaced SCS should fail: SCS must be unnamespaced
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrValID,
+		Actions:                       []*policy.Action{{Name: "read"}},
+		ExistingSubjectConditionSetId: namespacedSCS.GetId(),
+	})
+	s.Require().Error(err)
+	s.Nil(created)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_UnnamespacedSM_NamespacedCustomAction_Fails() {
+	nsID := s.exampleComNsID()
+	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	fixtureScs := s.f.GetSubjectConditionSetKey("subject_condition_set1")
+
+	// Create a namespaced custom action
+	customAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "unnamespaced_sm_ns_action",
+		NamespaceId: nsID,
+	})
+	s.Require().NoError(err)
+
+	// Un-namespaced SM with a namespaced action should fail
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrValID,
+		Actions:                       []*policy.Action{{Id: customAction.GetId()}},
+		ExistingSubjectConditionSetId: fixtureScs.ID,
+	})
+	s.Require().Error(err)
+	s.Nil(created)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_NamespacedSM_MultipleActions_OneMismatch_Fails() {
+	comNsID := s.exampleComNsID()
+	netNsID := s.exampleNetNsID()
+	attrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	scs := s.newSCSInNamespace(comNsID)
+
+	// Create one action in the correct namespace and one in the wrong namespace
+	goodAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "good_action_multi",
+		NamespaceId: comNsID,
+	})
+	s.Require().NoError(err)
+
+	badAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "bad_action_multi",
+		NamespaceId: netNsID,
+	})
+	s.Require().NoError(err)
+
+	// Should fail because one of the actions belongs to a different namespace
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              attrValID,
+		Actions:                       []*policy.Action{{Id: goodAction.GetId()}, {Id: badAction.GetId()}},
+		ExistingSubjectConditionSetId: scs.GetId(),
+		NamespaceId:                   comNsID,
+	})
+	s.Require().Error(err)
+	s.Nil(created)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectConditionSet_InvalidNamespaceId_Fails() {
+	_, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{{}},
+	}, "not-a-uuid", "")
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectConditionSet_InvalidNamespaceFqn_FailsWithoutInsert() {
+	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{{}},
+	}, "", "https://does-not-exist.example")
+	s.Require().Error(err)
+	s.Nil(created)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *SubjectMappingsSuite) TestCreateSubjectMapping_InvalidNamespaceFqn_FailsWithoutInsert() {
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
+
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID,
+		Actions:          []*policy.Action{actionRead},
+		NamespaceFqn:     "https://does-not-exist.example",
+		NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
+			SubjectSets: []*policy.SubjectSet{{}},
+		},
+	})
+	s.Require().Error(err)
+	s.Nil(created)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *SubjectMappingsSuite) exampleComNsID() string {
+	return s.f.GetNamespaceKey("example.com").ID
+}
+
+func (s *SubjectMappingsSuite) exampleNetNsID() string {
+	return s.f.GetNamespaceKey("example.net").ID
+}
+
+func (s *SubjectMappingsSuite) newSCSInNamespace(nsID string) *policy.SubjectConditionSet {
+	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: ".test_field",
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"test_value"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}, nsID, "")
+	s.Require().NoError(err)
+	return scs
 }

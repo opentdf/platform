@@ -156,6 +156,37 @@ SELECT
 FROM all_actions
 ORDER BY name;
 
+-- name: createOrListActionsByNameInNamespace :many
+WITH resolved_namespace AS (
+    SELECT n.id
+    FROM attribute_namespaces n
+    WHERE n.id = sqlc.arg('namespace_id')::uuid
+    LIMIT 1
+),
+input_actions AS (
+    SELECT unnest(sqlc.arg('action_names')::text[]) AS name
+),
+existing_actions AS (
+    SELECT a.id, a.name, a.is_standard, a.created_at
+    FROM actions a
+    JOIN input_actions input ON LOWER(a.name) = LOWER(input.name)
+    WHERE a.namespace_id = (SELECT id FROM resolved_namespace)
+),
+new_actions AS (
+    INSERT INTO actions (name, is_standard, namespace_id)
+    SELECT input.name, FALSE, (SELECT id FROM resolved_namespace)
+    FROM input_actions input
+    WHERE NOT EXISTS (
+        SELECT 1 FROM existing_actions ea WHERE LOWER(ea.name) = LOWER(input.name)
+    )
+    ON CONFLICT (namespace_id, name) WHERE namespace_id IS NOT NULL DO NOTHING
+    RETURNING id, name, is_standard, created_at
+)
+SELECT id, name, is_standard, created_at FROM existing_actions
+UNION ALL
+SELECT id, name, is_standard, created_at FROM new_actions
+ORDER BY name;
+
 -- name: createCustomAction :one
 WITH ns AS (
     SELECT
@@ -194,6 +225,15 @@ SET
     metadata = COALESCE(sqlc.narg('metadata'), metadata)
 WHERE id = $1
   AND is_standard = FALSE;
+
+-- name: getActionsByIDs :many
+SELECT
+    a.id,
+    a.is_standard,
+    a.namespace_id
+FROM actions
+    a
+WHERE a.id = ANY(@ids::uuid[]);
 
 -- name: deleteCustomAction :execrows
 DELETE FROM actions

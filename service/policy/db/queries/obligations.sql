@@ -494,12 +494,30 @@ WITH ov_id AS (
     WHERE sqlc.narg('obligation_value_id')::uuid IS NOT NULL AND ov.id = sqlc.narg('obligation_value_id')::uuid
 ),
 a_id AS (
-    SELECT a.id
-    FROM actions a
-    WHERE
-        (sqlc.narg('action_id')::uuid IS NOT NULL AND a.id = sqlc.narg('action_id')::uuid)
-        OR
-        (sqlc.narg('action_name')::text IS NOT NULL AND a.name = sqlc.narg('action_name')::text)
+    SELECT
+        CASE
+            WHEN sqlc.narg('action_id')::uuid IS NOT NULL THEN (
+                SELECT a.id
+                FROM actions a
+                WHERE a.id = sqlc.narg('action_id')::uuid
+            )
+            WHEN sqlc.narg('action_name')::text IS NOT NULL THEN COALESCE(
+                (
+                    SELECT a.id
+                    FROM actions a
+                    WHERE a.name = sqlc.narg('action_name')::text
+                      -- TODO(namespaced-actions): Move action namespace resolution/enforcement to service level.
+                      -- This query currently assumes same-namespace action lookup before legacy unscoped fallback.
+                      AND a.namespace_id = (SELECT namespace_id FROM ov_id)
+                ),
+                (
+                    SELECT a.id
+                    FROM actions a
+                    WHERE a.name = sqlc.narg('action_name')::text
+                      AND a.namespace_id IS NULL
+                )
+            )
+        END AS id
 ),
 -- Gets the attribute value, but also ensures that the attribute value belongs to the same namespace as the obligation, to which the obligation value belongs
 av_id AS (

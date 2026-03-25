@@ -103,6 +103,44 @@ func (s *ObligationsSuite) Test_CreateObligation_Succeeds() {
 	s.deleteObligations([]string{obl.GetId()})
 }
 
+func (s *ObligationsSuite) Test_CreateObligation_WithoutValues_DoesNotReturnValues() {
+	namespaceID, namespaceFQN, namespace := s.getNamespaceData(nsExampleCom)
+	name := fmt.Sprintf("%s-no-values-%d", oblName, time.Now().UnixNano())
+
+	createdObl := s.createObligation(namespaceID, name, nil)
+	defer s.deleteObligations([]string{createdObl.GetId()})
+
+	s.assertObligationBasics(createdObl, name, namespaceID, namespace.Name, namespaceFQN)
+	s.Empty(createdObl.GetValues())
+
+	gotObl, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
+		Id: createdObl.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(gotObl)
+	s.assertObligationBasics(gotObl, name, namespaceID, namespace.Name, namespaceFQN)
+	s.Empty(gotObl.GetValues())
+
+	oblList, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		NamespaceId: namespaceID,
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(oblList)
+
+	found := false
+	for _, obl := range oblList {
+		if obl.GetId() != createdObl.GetId() {
+			continue
+		}
+
+		found = true
+		s.assertObligationBasics(obl, name, namespaceID, namespace.Name, namespaceFQN)
+		s.Empty(obl.GetValues())
+		break
+	}
+	s.True(found)
+}
+
 func (s *ObligationsSuite) Test_CreateObligation_Fails() {
 	// Invalid namespace ID
 	obl, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{

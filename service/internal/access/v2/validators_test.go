@@ -217,22 +217,22 @@ func TestValidateAttribute(t *testing.T) {
 			wantErr: ErrInvalidAttributeDefinition,
 		},
 		{
-			name: "Empty attribute values",
+			name: "Empty attribute values are allowed",
 			attribute: &policy.Attribute{
 				Fqn:    "https://example.org/attr/name",
 				Rule:   policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 				Values: []*policy.Value{},
 			},
-			wantErr: ErrInvalidAttributeDefinition,
+			wantErr: nil,
 		},
 		{
-			name: "Nil attribute values",
+			name: "Nil attribute values are allowed",
 			attribute: &policy.Attribute{
 				Fqn:    "https://example.org/attr/name",
 				Rule:   policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 				Values: nil,
 			},
-			wantErr: ErrInvalidAttributeDefinition,
+			wantErr: nil,
 		},
 		{
 			name: "Nil value in attribute values",

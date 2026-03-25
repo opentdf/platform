@@ -3,10 +3,12 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -58,7 +60,7 @@ func unmarshalRegisteredResourceActionAttributeValuesProto(actionAttrValuesJSON 
 }
 
 // hydrateNamespaceFromInterface converts a nullable namespace interface{} (from CASE WHEN SQL)
-// to a *policy.Namespace. Returns an empty Namespace if the namespace is NULL (legacy RRs without namespace).
+// to a *policy.Namespace. Returns nil if the namespace is NULL (legacy RRs without namespace).
 func hydrateNamespaceFromInterface(nsRaw interface{}) (*policy.Namespace, error) {
 	if nsRaw == nil {
 		return nil, nil //nolint:nilnil // nil namespace is valid for legacy RRs without namespace
@@ -115,9 +117,9 @@ func (c PolicyDBClient) CreateRegisteredResource(ctx context.Context, r *registe
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	namespace := &policy.Namespace{}
-	if err := unmarshalNamespace(row.Namespace, namespace); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal registered resource namespace: %w", err)
+	// Validate namespace JSON is parseable (actual namespace retrieved via GetRegisteredResource below)
+	if _, err := hydrateNamespaceFromInterface(row.Namespace); err != nil {
+		return nil, err
 	}
 
 	for _, v := range r.GetValues() {
@@ -584,11 +586,20 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 		case *registeredresources.ActionAttributeValue_ActionId:
 			actionID = ident.ActionId
 		case *registeredresources.ActionAttributeValue_ActionName:
-			a, err := c.queries.getAction(ctx, getActionParams{
-				Name: pgtypeText(strings.ToLower(ident.ActionName)),
-			})
+			actionParams := getActionParams{
+				Name:        pgtypeText(strings.ToLower(ident.ActionName)),
+				NamespaceID: nsUUID,
+			}
+			a, err := c.queries.getAction(ctx, actionParams)
+			err = db.WrapIfKnownInvalidQueryErr(err)
+			if err != nil && nsUUID.Valid && errors.Is(err, db.ErrNotFound) {
+				// Fall back to standard (non-namespaced) action lookup only on not-found
+				actionParams.NamespaceID = pgtype.UUID{}
+				a, err = c.queries.getAction(ctx, actionParams)
+			}
 			if err != nil {
-				return db.WrapIfKnownInvalidQueryErr(err)
+				err = db.WrapIfKnownInvalidQueryErr(err)
+				return err
 			}
 			actionID = a.ID
 		default:

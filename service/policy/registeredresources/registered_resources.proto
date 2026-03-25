@@ -41,8 +41,8 @@ message CreateRegisteredResourceRequest {
     }
   ];
 
-  // Required
-  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: true };
+  // Optional (yet to be enforced)
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
   string namespace_id = 3 [(buf.validate.field).string.uuid = true];
   string namespace_fqn = 4 [
     (buf.validate.field).string = {

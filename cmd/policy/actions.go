@@ -17,12 +17,14 @@ func policyGetAction(cmd *cobra.Command, args []string) {
 
 	id := c.Flags.GetOptionalID("id")
 	name := c.Flags.GetOptionalString("name")
+	// TODO: switch to required namespace if id not provided once namespacing is required by policy
+	namespace := c.Flags.GetOptionalString("namespace")
 
 	if id == "" && name == "" {
 		cli.ExitWithError("Either 'id' or 'name' must be provided", nil)
 	}
 
-	action, err := h.GetAction(cmd.Context(), id, name)
+	action, err := h.GetAction(cmd.Context(), id, name, namespace)
 	if err != nil {
 		identifier := fmt.Sprintf("id: %s", id)
 		if id == "" {
@@ -35,6 +37,7 @@ func policyGetAction(cmd *cobra.Command, args []string) {
 	rows := [][]string{
 		{"Id", action.GetId()},
 		{"Name", action.GetName()},
+		{"Namespace", action.GetNamespace().GetFqn()},
 	}
 	if mdRows := getMetadataRows(action.GetMetadata()); mdRows != nil {
 		rows = append(rows, mdRows...)
@@ -51,8 +54,9 @@ func policyListActions(cmd *cobra.Command, args []string) {
 
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
+	namespace := c.Flags.GetOptionalString("namespace")
 
-	resp, err := h.ListActions(cmd.Context(), limit, offset)
+	resp, err := h.ListActions(cmd.Context(), limit, offset, namespace)
 	if err != nil {
 		cli.ExitWithError("Failed to list actions", err)
 	}
@@ -60,6 +64,7 @@ func policyListActions(cmd *cobra.Command, args []string) {
 		cli.NewUUIDColumn(),
 		table.NewFlexColumn("name", "Name", cli.FlexColumnWidthFour),
 		table.NewFlexColumn("action_type", "Action Type", cli.FlexColumnWidthFour),
+		table.NewFlexColumn("namespace", "Namespace", cli.FlexColumnWidthFour),
 	)
 	rows := []table.Row{}
 	for _, a := range resp.GetActionsStandard() {
@@ -67,13 +72,16 @@ func policyListActions(cmd *cobra.Command, args []string) {
 			"id":          a.GetId(),
 			"action_type": "standard",
 			"name":        a.GetName(),
+			"namespace":   a.GetNamespace().GetFqn(),
 		}))
 	}
+
 	for _, a := range resp.GetActionsCustom() {
 		rows = append(rows, table.NewRow(table.RowData{
 			"id":          a.GetId(),
 			"action_type": "custom",
 			"name":        a.GetName(),
+			"namespace":   a.GetNamespace().GetFqn(),
 		}))
 	}
 
@@ -88,9 +96,10 @@ func policyCreateAction(cmd *cobra.Command, args []string) {
 	defer h.Close()
 
 	name := c.Flags.GetRequiredString("name")
+	namespace := c.Flags.GetOptionalString("namespace")
 	metadataLabels = c.Flags.GetStringSlice("label", metadataLabels, cli.FlagsStringSliceOptions{Min: 0})
 
-	action, err := h.CreateAction(cmd.Context(), name, getMetadataMutable(metadataLabels))
+	action, err := h.CreateAction(cmd.Context(), name, namespace, getMetadataMutable(metadataLabels))
 	if err != nil {
 		cli.ExitWithError("Failed to create action", err)
 	}
@@ -98,6 +107,7 @@ func policyCreateAction(cmd *cobra.Command, args []string) {
 	rows := [][]string{
 		{"Id", action.GetId()},
 		{"Name", action.GetName()},
+		{"Namespace", action.GetNamespace().GetFqn()},
 	}
 
 	if mdRows := getMetadataRows(action.GetMetadata()); mdRows != nil {
@@ -117,7 +127,7 @@ func policyDeleteAction(cmd *cobra.Command, args []string) {
 	force := c.Flags.GetOptionalBool("force")
 	ctx := cmd.Context()
 
-	action, err := h.GetAction(ctx, id, "")
+	action, err := h.GetAction(ctx, id, "", "")
 	if err != nil {
 		errMsg := fmt.Sprintf("Failed to find action (%s)", id)
 		cli.ExitWithError(errMsg, err)
@@ -130,7 +140,11 @@ func policyDeleteAction(cmd *cobra.Command, args []string) {
 		errMsg := fmt.Sprintf("Failed to delete action (%s)", id)
 		cli.ExitWithError(errMsg, err)
 	}
-	rows := [][]string{{"Id", id}, {"Name", action.GetName()}}
+	rows := [][]string{
+		{"Id", id},
+		{"Name", action.GetName()},
+		{"Namespace", action.GetNamespace().GetFqn()},
+	}
 	if mdRows := getMetadataRows(action.GetMetadata()); mdRows != nil {
 		rows = append(rows, mdRows...)
 	}
@@ -157,13 +171,26 @@ func policyUpdateAction(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cli.ExitWithError("Failed to update action", err)
 	}
-	rows := [][]string{{"Id", id}, {"Name", updated.GetName()}}
+	rows := [][]string{
+		{"Id", id},
+		{"Name", updated.GetName()},
+		{"Namespace", updated.GetNamespace().GetFqn()},
+	}
 	if mdRows := getMetadataRows(updated.GetMetadata()); mdRows != nil {
 		rows = append(rows, mdRows...)
 	}
 	t := cli.NewTabular(rows...)
 
 	common.HandleSuccess(cmd, id, t, updated)
+}
+
+func injectNamespaceFlag(doc *man.Doc) {
+	doc.Flags().StringP(
+		doc.GetDocFlag("namespace").Name,
+		doc.GetDocFlag("namespace").Shorthand,
+		doc.GetDocFlag("namespace").Default,
+		doc.GetDocFlag("namespace").Description,
+	)
 }
 
 func initActionsCommands() {
@@ -182,10 +209,12 @@ func initActionsCommands() {
 		getDoc.GetDocFlag("name").Default,
 		getDoc.GetDocFlag("name").Description,
 	)
+	injectNamespaceFlag(getDoc)
 
 	listDoc := man.Docs.GetCommand("policy/actions/list",
 		man.WithRun(policyListActions),
 	)
+	injectNamespaceFlag(listDoc)
 	injectListPaginationFlags(listDoc)
 
 	createDoc := man.Docs.GetCommand("policy/actions/create",
@@ -197,6 +226,7 @@ func initActionsCommands() {
 		createDoc.GetDocFlag("name").Default,
 		createDoc.GetDocFlag("name").Description,
 	)
+	injectNamespaceFlag(createDoc)
 	injectLabelFlags(&createDoc.Command, false)
 
 	updateDoc := man.Docs.GetCommand("policy/actions/update",

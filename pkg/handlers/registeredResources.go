@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
@@ -20,12 +19,7 @@ func (h Handler) CreateRegisteredResource(ctx context.Context, namespace, name s
 		Metadata: metadata,
 	}
 
-	_, err := uuid.Parse(namespace)
-	if err != nil {
-		req.NamespaceFqn = namespace
-	} else {
-		req.NamespaceId = namespace
-	}
+	req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
 
 	resp, err := h.sdk.RegisteredResources.CreateRegisteredResource(ctx, req)
 	if err != nil {
@@ -47,12 +41,7 @@ func (h Handler) GetRegisteredResource(ctx context.Context, id, name, namespace 
 		}
 	}
 	if namespace != "" {
-		_, err := uuid.Parse(namespace)
-		if err != nil {
-			req.NamespaceFqn = namespace
-		} else {
-			req.NamespaceId = namespace
-		}
+		req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
 	}
 
 	resp, err := h.sdk.RegisteredResources.GetRegisteredResource(ctx, req)
@@ -71,12 +60,7 @@ func (h Handler) ListRegisteredResources(ctx context.Context, limit, offset int3
 		},
 	}
 	if namespace != "" {
-		_, err := uuid.Parse(namespace)
-		if err != nil {
-			req.NamespaceFqn = namespace
-		} else {
-			req.NamespaceId = namespace
-		}
+		req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
 	}
 	return h.sdk.RegisteredResources.ListRegisteredResources(ctx, req)
 }

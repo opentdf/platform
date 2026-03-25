@@ -22,9 +22,9 @@ setup_file() {
     
     # create shared actions for tests
     export ACTION_1_NAME="test_action_1"
-    export ACTION_1_ID=$(./otdfctl $HOST $WITH_CREDS policy actions create --name "$ACTION_1_NAME" --json | jq -r '.id')
+    export ACTION_1_ID=$(./otdfctl $HOST $WITH_CREDS policy actions create --name "$ACTION_1_NAME" --namespace "$NS_ID" --json | jq -r '.id')
     export ACTION_2_NAME="test_action_2"
-    export ACTION_2_ID=$(./otdfctl $HOST $WITH_CREDS policy actions create --name "$ACTION_2_NAME" --json | jq -r '.id')
+    export ACTION_2_ID=$(./otdfctl $HOST $WITH_CREDS policy actions create --name "$ACTION_2_NAME" --namespace "$NS_ID" --json | jq -r '.id')
     
     # create shared attributes for tests
     export ATTR_NAME="test_attr_for_triggers"

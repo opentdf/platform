@@ -3,33 +3,39 @@
 # Tests for registered resources
 
 setup_file() {
-    # TODO: Remove this file-level skip once otdfctl passes namespace flags for the namespaced action APIs used by registered resource values.
-    skip "Temporarily disabled [namespaced-actions]: registered resource BATS setup still depends on pre-namespace action APIs"
-
     export WITH_CREDS='--with-client-creds-file ./creds.json'
     export HOST='--host http://localhost:8080'
 
     # create namespace first (needed for registered resource creation)
     export NS_NAME="test-rr.org"
-    export NS_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes namespaces create --name "$NS_NAME" --json | jq -r '.id')
+    NS_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes namespaces create --name "$NS_NAME" --json | jq -r '.id')
+    export NS_ID
 
     # create registered resource used in registered resource values tests
     export RR_NAME="test_rr_for_values"
-    export RR_ID=$(./otdfctl $HOST $WITH_CREDS policy registered-resources create --name "$RR_NAME" --namespace "$NS_ID" --json | jq -r '.id')
+    RR_ID=$(./otdfctl $HOST $WITH_CREDS policy registered-resources create --name "$RR_NAME" --namespace "$NS_ID" --json | jq -r '.id')
+    export RR_ID
 
     # create custom action to be used in registered resource values tests
     export CUSTOM_ACTION_NAME="test_action_for_values"
-    export CUSTOM_ACTION_ID=$(./otdfctl $HOST $WITH_CREDS policy actions create --name "$CUSTOM_ACTION_NAME" --json | jq -r '.id')
+    CUSTOM_ACTION_ID=$(./otdfctl $HOST $WITH_CREDS policy actions create --name "$CUSTOM_ACTION_NAME" --namespace "$NS_ID" --json | jq -r '.id')
+    export CUSTOM_ACTION_ID
 
     # get standard read action id to use in registered resource values tests
+    # TODO: when RRs support passing the namespace down to the action, add --namespace "$NS_ID" 
     export READ_ACTION_NAME="read"
-    export READ_ACTION_ID=$(./otdfctl $HOST $WITH_CREDS policy actions get --name "$READ_ACTION_NAME" --json | jq -r '.id')
+    READ_ACTION_ID=$(./otdfctl $HOST $WITH_CREDS policy actions get --name "$READ_ACTION_NAME" --json | jq -r '.id')
+    export READ_ACTION_ID
     export ATTR_NAME=test_rr_attr
     attr_id=$(./otdfctl $HOST $WITH_CREDS policy attributes create --namespace "$NS_ID" --name "$ATTR_NAME" --rule ANY_OF -l key=value --json | jq -r '.id')
-    export ATTR_VAL_1_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes values create --attribute-id "$attr_id" --value test_reg_res_attr__val_1 --json | jq -r '.id')
-    export ATTR_VAL_1_FQN=$(./otdfctl $HOST $WITH_CREDS policy attributes values get --id "$ATTR_VAL_1_ID" --json | jq -r '.fqn')
-    export ATTR_VAL_2_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes values create --attribute-id "$attr_id" --value test_reg_res_attr__val_2 --json | jq -r '.id')
-    export ATTR_VAL_2_FQN=$(./otdfctl $HOST $WITH_CREDS policy attributes values get --id "$ATTR_VAL_2_ID" --json | jq -r '.fqn')
+    ATTR_VAL_1_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes values create --attribute-id "$attr_id" --value test_reg_res_attr__val_1 --json | jq -r '.id')
+    export ATTR_VAL_1_ID
+    ATTR_VAL_1_FQN=$(./otdfctl $HOST $WITH_CREDS policy attributes values get --id "$ATTR_VAL_1_ID" --json | jq -r '.fqn')
+    export ATTR_VAL_1_FQN
+    ATTR_VAL_2_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes values create --attribute-id "$attr_id" --value test_reg_res_attr__val_2 --json | jq -r '.id')
+    export ATTR_VAL_2_ID
+    ATTR_VAL_2_FQN=$(./otdfctl $HOST $WITH_CREDS policy attributes values get --id "$ATTR_VAL_2_ID" --json | jq -r '.fqn')
+    export ATTR_VAL_2_FQN
 
     echo "FQN: $ATTR_VAL_1_FQN"
 }
@@ -227,7 +233,6 @@ teardown_file() {
 # Tests for registered resource values
 
 @test "Create a registered resource value - Good" {
-  skip "Temporarily disabled [namespaced-actions]: action-name validation/path is failing in CI"
   # simple by resource ID
   run_otdfctl_reg_res_values create --resource "$RR_ID" --value test_create_rr_val
     assert_output --partial "SUCCESS"
@@ -247,7 +252,8 @@ teardown_file() {
   created_id_simple_by_res_name=$(echo "$output" | grep Id | awk -F'│' '{print $3}' | xargs)
 
   # with action attribute values
-  run_otdfctl_reg_res_values create --resource "$RR_ID" --value test_create_rr_val_with_action_attr_vals --action-attribute-value "\"$READ_ACTION_ID;$ATTR_VAL_1_FQN\"" --action-attribute-value "\"$CUSTOM_ACTION_NAME;$ATTR_VAL_2_ID\"" --json
+  # TODO(namespaced-actions): switch custom action identifier back to name when RR action resolution is namespaced.
+  run_otdfctl_reg_res_values create --resource "$RR_ID" --value test_create_rr_val_with_action_attr_vals --action-attribute-value "\"$READ_ACTION_ID;$ATTR_VAL_1_FQN\"" --action-attribute-value "\"$CUSTOM_ACTION_ID;$ATTR_VAL_2_ID\"" --json
     assert_success
     [ "$(echo "$output" | jq -r '.id')" != "" ]
     [ "$(echo "$output" | jq -r '.value')" = "test_create_rr_val_with_action_attr_vals" ]
@@ -301,7 +307,6 @@ teardown_file() {
 }
 
 @test "Get a registered resource value - Good" {
-  skip "Temporarily disabled [namespaced-actions]: action-name validation/path is failing in CI"
   # setup a resource value to get
   run_otdfctl_reg_res_values create --resource "$RR_ID" --value test_get_rr_val --action-attribute-value "\"$READ_ACTION_ID;$ATTR_VAL_1_ID\""
     assert_success
@@ -348,7 +353,6 @@ teardown_file() {
 }
 
 @test "List registered resource values - Good" {
-  skip "Temporarily disabled [namespaced-actions]: dependent registered resource value setup is failing in CI"
   # setup values to list
   run_otdfctl_reg_res_values create --resource "$RR_ID" --value test_list_rr_val_1 --action-attribute-value "\"$READ_ACTION_ID;$ATTR_VAL_1_ID\""
   reg_res_val1_id=$(echo "$output" | grep Id | awk -F'│' '{print $3}' | xargs)
@@ -400,7 +404,6 @@ teardown_file() {
 }
 
 @test "Update registered resource values" {
-  skip "Temporarily disabled [namespaced-actions]: action-name validation/path is failing in CI"
   # setup a resource value to update
   run_otdfctl_reg_res_values create --resource "$RR_ID" --value test_update_rr_val --action-attribute-value "\"$READ_ACTION_ID;$ATTR_VAL_1_ID\""
     assert_success
@@ -428,7 +431,8 @@ teardown_file() {
     [ "$(echo "$output" | jq -r 'any(.action_attribute_values[]; .action.id == "'"$READ_ACTION_ID"'" and .action.name == "'"$READ_ACTION_NAME"'" and .attribute_value.id == "'"$ATTR_VAL_1_ID"'" and .attribute_value.fqn == "'"$ATTR_VAL_1_FQN"'")')" = "true" ]
 
   # update action attribute values
-  run_otdfctl_reg_res_values update --id "$created_id" --action-attribute-value "\"$READ_ACTION_NAME;$ATTR_VAL_1_FQN\"" --action-attribute-value "\"$CUSTOM_ACTION_ID;$ATTR_VAL_2_ID\"" --force --json
+  # TODO(namespaced-actions): switch action identifiers back to names when RR action resolution is namespaced.
+  run_otdfctl_reg_res_values update --id "$created_id" --action-attribute-value "\"$READ_ACTION_ID;$ATTR_VAL_1_FQN\"" --action-attribute-value "\"$CUSTOM_ACTION_ID;$ATTR_VAL_2_ID\"" --force --json
     assert_success
     [ "$(echo "$output" | jq -r '.id')" = "$created_id" ]
     [ "$(echo "$output" | jq -r 'any(.action_attribute_values[]; .action.id == "'"$READ_ACTION_ID"'" and .action.name == "'"$READ_ACTION_NAME"'" and .attribute_value.id == "'"$ATTR_VAL_1_ID"'" and .attribute_value.fqn == "'"$ATTR_VAL_1_FQN"'")')" = "true" ]

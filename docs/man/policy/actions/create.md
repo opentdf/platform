@@ -9,8 +9,11 @@ command:
   flags:
     - name: name
       shorthand: n
-      description: Name of the custom action (must be unique within Policy)
+      description: Name of the custom action (must be unique within a namespace)
       required: true
+    - name: namespace
+      shorthand: s
+      description: Namespace ID or FQN
     - name: label
       description: "Optional metadata 'labels' in the format: key=value"
       shorthand: l
@@ -20,8 +23,7 @@ command:
 Add a custom `action` to the platform Policy.
 
 An Action `name` is normalized to lower case and may contain underscores (`_`) or hyphens (`-`)
-between other alphanumeric characters. Each name must be globally unique as actions are not
-namespaced.
+between other alphanumeric characters. Each name must be unique within a namespace.
 
 For more information, see the `actions` subcommand.
 
@@ -30,6 +32,5 @@ For more information, see the `actions` subcommand.
 Create a custom action named 'install_package': 
 
 ```shell
-otdfctl policy actions create --name install_package
+otdfctl policy actions create --name install_package --namespace https://example.com
 ```
-

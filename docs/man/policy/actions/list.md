@@ -5,6 +5,9 @@ command:
   aliases:
     - l
   flags:
+    - name: namespace
+      shorthand: s
+      description: Namespace ID or FQN
     - name: limit
       shorthand: l
       description: Limit retrieved count
@@ -18,5 +21,5 @@ For more information about Actions, see the manual for the `actions` subcommand.
 ## Example
 
 ```shell
-otdfctl policy actions list
+otdfctl policy actions list --namespace https://example.com
 ```

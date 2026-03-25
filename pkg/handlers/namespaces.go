@@ -11,6 +11,13 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 )
 
+func getNamespaceIDAndFQN(namespace string) (string, string) {
+	if _, err := uuid.Parse(namespace); err != nil {
+		return "", namespace
+	}
+	return namespace, ""
+}
+
 func (h Handler) GetNamespace(ctx context.Context, identifier string) (*policy.Namespace, error) {
 	req := &namespaces.GetNamespaceRequest{
 		Identifier: &namespaces.GetNamespaceRequest_NamespaceId{

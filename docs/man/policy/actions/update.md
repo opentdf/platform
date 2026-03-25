@@ -11,7 +11,7 @@ command:
       required: true
     - name: name
       shorthand: n
-      description: Optional updated name of the custom action (must be unique within Policy)
+      description: Optional updated name of the custom action (must be unique within a namespace)
     - name: label
       description: "Optional metadata 'labels' in the format: key=value"
       shorthand: l

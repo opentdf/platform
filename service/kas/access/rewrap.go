@@ -878,12 +878,12 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			continue
 		}
 		policy, kaoResults, err := p.verifyRewrapRequests(ctx, req)
-		if err != nil && !errors.Is(err, errNoValidKeyAccessObjects) {
-			return "", nil, err400("invalid request")
-		}
 		policyID := req.GetPolicy().GetId()
 		results[policyID] = kaoResults
 		if err != nil {
+			// Store per-KAO results even on error so tamper signals (e.g. corrupted
+			// policy body → generic "bad request") reach the SDK rather than being
+			// replaced by a top-level "invalid request".
 			p.Logger.WarnContext(ctx,
 				"rewrap: verifyRewrapRequests failed",
 				slog.String("policy_id", policyID),

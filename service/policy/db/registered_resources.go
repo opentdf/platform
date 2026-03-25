@@ -59,7 +59,7 @@ func unmarshalRegisteredResourceActionAttributeValuesProto(actionAttrValuesJSON 
 }
 
 // hydrateNamespaceFromInterface converts a nullable namespace interface{} (from CASE WHEN SQL)
-// to a *policy.Namespace. Returns an empty Namespace if the namespace is NULL (legacy RRs without namespace).
+// to a *policy.Namespace. Returns nil if the namespace is NULL (legacy RRs without namespace).
 func hydrateNamespaceFromInterface(nsRaw interface{}) (*policy.Namespace, error) {
 	if nsRaw == nil {
 		return nil, nil //nolint:nilnil // nil namespace is valid for legacy RRs without namespace
@@ -116,9 +116,9 @@ func (c PolicyDBClient) CreateRegisteredResource(ctx context.Context, r *registe
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	namespace := &policy.Namespace{}
-	if err := unmarshalNamespace(row.Namespace, namespace); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal registered resource namespace: %w", err)
+	// Validate namespace JSON is parseable (actual namespace retrieved via GetRegisteredResource below)
+	if _, err := hydrateNamespaceFromInterface(row.Namespace); err != nil {
+		return nil, err
 	}
 
 	for _, v := range r.GetValues() {

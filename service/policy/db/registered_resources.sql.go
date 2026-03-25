@@ -26,20 +26,23 @@ WITH inserted AS (
     LEFT JOIN attribute_fqns fqns ON fqns.fqn = $4::text AND $1::text IS NULL
     WHERE
         ($1::text IS NOT NULL AND direct.direct_namespace_id IS NOT NULL) OR
-        ($4::text IS NOT NULL AND fqns.namespace_id IS NOT NULL)
+        ($4::text IS NOT NULL AND fqns.namespace_id IS NOT NULL) OR
+        ($1::text IS NULL AND $4::text IS NULL)
     RETURNING id, namespace_id, name, metadata
 )
 SELECT
     i.id,
     i.name,
     i.metadata,
-    JSON_BUILD_OBJECT(
-        'id', n.id,
-        'name', n.name,
-        'fqn', fqns.fqn
-    ) as namespace
+    CASE WHEN n.id IS NOT NULL THEN
+        JSON_BUILD_OBJECT(
+            'id', n.id,
+            'name', n.name,
+            'fqn', fqns.fqn
+        )
+    ELSE NULL END as namespace
 FROM inserted i
-JOIN attribute_namespaces n ON i.namespace_id = n.id
+LEFT JOIN attribute_namespaces n ON i.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 `
 
@@ -51,10 +54,10 @@ type createRegisteredResourceParams struct {
 }
 
 type createRegisteredResourceRow struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Metadata  []byte `json:"metadata"`
-	Namespace []byte `json:"namespace"`
+	ID        string      `json:"id"`
+	Name      string      `json:"name"`
+	Metadata  []byte      `json:"metadata"`
+	Namespace interface{} `json:"namespace"`
 }
 
 // --------------------------------------------------------------
@@ -74,20 +77,23 @@ type createRegisteredResourceRow struct {
 //	    LEFT JOIN attribute_fqns fqns ON fqns.fqn = $4::text AND $1::text IS NULL
 //	    WHERE
 //	        ($1::text IS NOT NULL AND direct.direct_namespace_id IS NOT NULL) OR
-//	        ($4::text IS NOT NULL AND fqns.namespace_id IS NOT NULL)
+//	        ($4::text IS NOT NULL AND fqns.namespace_id IS NOT NULL) OR
+//	        ($1::text IS NULL AND $4::text IS NULL)
 //	    RETURNING id, namespace_id, name, metadata
 //	)
 //	SELECT
 //	    i.id,
 //	    i.name,
 //	    i.metadata,
-//	    JSON_BUILD_OBJECT(
-//	        'id', n.id,
-//	        'name', n.name,
-//	        'fqn', fqns.fqn
-//	    ) as namespace
+//	    CASE WHEN n.id IS NOT NULL THEN
+//	        JSON_BUILD_OBJECT(
+//	            'id', n.id,
+//	            'name', n.name,
+//	            'fqn', fqns.fqn
+//	        )
+//	    ELSE NULL END as namespace
 //	FROM inserted i
-//	JOIN attribute_namespaces n ON i.namespace_id = n.id
+//	LEFT JOIN attribute_namespaces n ON i.namespace_id = n.id
 //	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 func (q *Queries) createRegisteredResource(ctx context.Context, arg createRegisteredResourceParams) (createRegisteredResourceRow, error) {
 	row := q.db.QueryRow(ctx, createRegisteredResource,
@@ -214,6 +220,8 @@ WHERE
     ($3::uuid IS NULL OR r.namespace_id = $3::uuid) AND
     ($4::text IS NULL OR ns_fqns.fqn = $4::text)
 GROUP BY r.id, n.id, ns_fqns.fqn
+ORDER BY r.namespace_id NULLS FIRST
+LIMIT 1
 `
 
 type getRegisteredResourceParams struct {
@@ -231,7 +239,7 @@ type getRegisteredResourceRow struct {
 	Values    []byte      `json:"values"`
 }
 
-// getRegisteredResource
+// prefer non-namespaced over namespaced results (to support legacy behavior)
 //
 //	SELECT
 //	    r.id,
@@ -260,6 +268,8 @@ type getRegisteredResourceRow struct {
 //	    ($3::uuid IS NULL OR r.namespace_id = $3::uuid) AND
 //	    ($4::text IS NULL OR ns_fqns.fqn = $4::text)
 //	GROUP BY r.id, n.id, ns_fqns.fqn
+//	ORDER BY r.namespace_id NULLS FIRST
+//	LIMIT 1
 func (q *Queries) getRegisteredResource(ctx context.Context, arg getRegisteredResourceParams) (getRegisteredResourceRow, error) {
 	row := q.db.QueryRow(ctx, getRegisteredResource,
 		arg.ID,

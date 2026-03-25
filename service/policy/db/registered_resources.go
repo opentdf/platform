@@ -598,7 +598,7 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 				if err != nil {
 					return err
 				}
-				if namespace.GetId() != resourceNamespaceID {
+				if namespace != nil && namespace.GetId() != resourceNamespaceID {
 					return db.ErrNamespaceMismatch
 				}
 			}

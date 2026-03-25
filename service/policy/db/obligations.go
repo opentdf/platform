@@ -719,7 +719,7 @@ func (c PolicyDBClient) resolveObligationTriggerActionID(ctx context.Context, ac
 		if err != nil {
 			return "", err
 		}
-		if actionNamespace.GetId() != "" && actionNamespace.GetId() != obligationNamespaceID {
+		if actionNamespace != nil && actionNamespace.GetId() != "" && actionNamespace.GetId() != obligationNamespaceID {
 			return "", db.ErrNamespaceMismatch
 		}
 

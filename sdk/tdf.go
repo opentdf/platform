@@ -1578,8 +1578,10 @@ func getKasErrorToReturn(err error, defaultError error) error {
 
 	switch {
 	case strings.Contains(errStr, codes.InvalidArgument.String()):
-		// Generic "bad request" from KAS may indicate policy binding tamper;
-		// specific messages indicate client/configuration errors.
+		// Per-KAO errors are serialized as plain strings through the proto
+		// response, so we match on a substring anchored to the gRPC status
+		// description. Generic "bad request" = potential tamper; anything
+		// else = client/configuration error.
 		if strings.Contains(errStr, kasGenericBadRequest) {
 			errToReturn = errors.Join(ErrRewrapBadRequest, errToReturn)
 		} else {

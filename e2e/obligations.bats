@@ -3,9 +3,6 @@
 # Tests for obligations
 
 setup_file() {
-    # TODO: Remove this file-level skip once otdfctl passes namespace flags for the namespaced action APIs used by obligation trigger setup.
-    skip "Temporarily disabled [namespaced-actions]: obligation BATS setup still depends on pre-namespace action APIs"
-
     export WITH_CREDS='--with-client-creds-file ./creds.json'
     export HOST='--host http://localhost:8080'
 
@@ -49,6 +46,13 @@ setup_file() {
     export LIST_NS_2_NAME="list-test-ns2.org"
     export LIST_NS_2_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes namespaces create --name "$LIST_NS_2_NAME" --json | jq -r '.id')
     export LIST_NS_2_FQN="https://$LIST_NS_2_NAME"
+
+    # Create actions in each list namespace for trigger creation
+    export LIST_ACTION_1_NAME="list_test_action_1"
+    export LIST_ACTION_1_ID=$(./otdfctl $HOST $WITH_CREDS policy actions create --name "$LIST_ACTION_1_NAME" --namespace "$LIST_NS_1_ID" --json | jq -r '.id')
+
+    export LIST_ACTION_2_NAME="list_test_action_2"
+    export LIST_ACTION_2_ID=$(./otdfctl $HOST $WITH_CREDS policy actions create --name "$LIST_ACTION_2_NAME" --namespace "$LIST_NS_2_ID" --json | jq -r '.id')
     
     # Create attributes for list triggers tests
     # Namespace 1 attributes
@@ -245,7 +249,7 @@ setup() {
         assert_success
         export LIST_OBL_VAL_1_ID=$(echo "$output" | jq -r '.id')
 
-        run sh -c "./otdfctl $HOST $WITH_CREDS policy obligations triggers create --attribute-value "$LIST_ATTR_1_VAL_1_ID" --action "$ACTION_1_ID" --obligation-value "$LIST_OBL_VAL_1_ID" --client-id "$CLIENT_ID_LIST" --json"
+        run sh -c "./otdfctl $HOST $WITH_CREDS policy obligations triggers create --attribute-value "$LIST_ATTR_1_VAL_1_ID" --action "$LIST_ACTION_1_ID" --obligation-value "$LIST_OBL_VAL_1_ID" --client-id "$CLIENT_ID_LIST" --json"
         assert_success
         export LIST_TRIGGER_1_ID=$(echo "$output" | jq -r '.id')
       else
@@ -264,7 +268,7 @@ setup() {
         assert_success
         export LIST_OBL_VAL_2_ID=$(echo "$output" | jq -r '.id')
 
-        run sh -c "./otdfctl $HOST $WITH_CREDS policy obligations triggers create --attribute-value "$LIST_ATTR_2_VAL_1_ID" --action "$ACTION_2_ID" --obligation-value "$LIST_OBL_VAL_2_ID" --client-id "$CLIENT_ID_LIST" --json"
+        run sh -c "./otdfctl $HOST $WITH_CREDS policy obligations triggers create --attribute-value "$LIST_ATTR_2_VAL_1_ID" --action "$LIST_ACTION_2_ID" --obligation-value "$LIST_OBL_VAL_2_ID" --client-id "$CLIENT_ID_LIST" --json"
         assert_success
         export LIST_TRIGGER_2_ID=$(echo "$output" | jq -r '.id')
       else
@@ -301,6 +305,8 @@ teardown_file() {
   ./otdfctl $HOST $WITH_CREDS policy attributes namespaces unsafe delete --id "$NS_ID" --force
   
   # remove list triggers test namespaces
+  ./otdfctl $HOST $WITH_CREDS policy actions delete --id "$LIST_ACTION_1_ID" --force
+  ./otdfctl $HOST $WITH_CREDS policy actions delete --id "$LIST_ACTION_2_ID" --force
   ./otdfctl $HOST $WITH_CREDS policy attributes namespaces unsafe delete --id "$LIST_NS_1_ID" --force
   ./otdfctl $HOST $WITH_CREDS policy attributes namespaces unsafe delete --id "$LIST_NS_2_ID" --force
   
@@ -310,6 +316,7 @@ teardown_file() {
   # clear out all test env vars
   unset HOST WITH_CREDS OBL_NAME OBL_ID NS_NAME NS_ID ACTION_1_NAME ACTION_1_ID ACTION_2_NAME ACTION_2_ID ATTR_NAME ATTR_VAL_NAME ATTR_ID ATTR_VAL_ID ATTR_VAL_FQN ATTR_2_NAME ATTR_2_VAL_NAME ATTR_2_ID ATTR_2_VAL_ID ATTR_2_VAL_FQN
   unset CLIENT_ID_LIST LIST_NS_1_NAME LIST_NS_1_ID LIST_NS_1_FQN LIST_NS_2_NAME LIST_NS_2_ID LIST_NS_2_FQN
+  unset LIST_ACTION_1_NAME LIST_ACTION_1_ID LIST_ACTION_2_NAME LIST_ACTION_2_ID
   unset LIST_ATTR_1_ID LIST_ATTR_1_VAL_1_ID LIST_ATTR_1_VAL_1_FQN LIST_ATTR_2_ID LIST_ATTR_2_VAL_1_ID LIST_ATTR_2_VAL_1_FQN
 }
 
@@ -535,7 +542,6 @@ teardown_file() {
 }
 
 @test "Create an obligation value with triggers - JSON Array - Success" {
-  skip "Temporarily disabled [namespaced-actions]: trigger action resolution changed and is failing in CI"
   # test with single trigger (new nested format)
   triggers_json='[{"action": "'$ACTION_1_NAME'", "attribute_value": "'$ATTR_VAL_FQN'", "context": {"pep": {"client_id": "test-client"}}}]'
   run ./otdfctl $HOST $WITH_CREDS policy obligations values create --obligation "$OBL_ID" --value test_val_single_trigger --triggers "$triggers_json" --json
@@ -571,7 +577,6 @@ teardown_file() {
 }
 
 @test "Create an obligation value with triggers - JSON File - Success" {
-  skip "Temporarily disabled [namespaced-actions]: trigger action resolution changed and is failing in CI"
   # create a temporary triggers file
   cat > "$SHARED_TRIGGERS_FILE" << EOF
 [
@@ -726,7 +731,6 @@ EOF
 }
 
 @test "Update obligation values with triggers - Success" {
-  skip "Temporarily disabled [namespaced-actions]: trigger action resolution changed and is failing in CI"
   # create an obligation value to update
   run_otdfctl_obl_values create --obligation "$OBL_ID" --value test_update_with_triggers --json
   assert_success
@@ -836,7 +840,6 @@ EOF
 # Tests for obligation triggers
 
 @test "Create an obligation trigger - Required Only - IDs - Success" {
-  skip "Temporarily disabled [namespaced-actions]: obligation trigger flag handling is failing in CI"
   # setup an obligation value to use
   run_otdfctl_obl_values create --obligation "$OBL_ID" --value "test_obl_val_for_trigger" --json
   obl_val_id=$(echo "$output" | jq -r '.id')
@@ -862,7 +865,6 @@ EOF
 }
 
 @test "Create an obligation trigger - Required Only - FQNs - Success" {
-  skip "Temporarily disabled [namespaced-actions]: obligation trigger flag handling is failing in CI"
   # setup an obligation value to use
   run_otdfctl_obl_values create --obligation "$OBL_ID" --value "test_obl_val_for_trigger" --json
   obl_val_id=$(echo "$output" | jq -r '.id')
@@ -891,7 +893,6 @@ EOF
 }
 
 @test "Create an obligation trigger - Optional Fields - Success" {
-  skip "Temporarily disabled [namespaced-actions]: obligation trigger flag handling is failing in CI"
   # setup an obligation value to use
   run_otdfctl_obl_values create --obligation "$OBL_ID" --value "test_obl_val_for_trigger" --json
   obl_val_id=$(echo "$output" | jq -r '.id')
@@ -921,7 +922,6 @@ EOF
 }
 
 @test "Create an obligation trigger - Same tuple different client IDs - Success" {
-  skip "Temporarily disabled [namespaced-actions]: obligation trigger flag handling is failing in CI"
   # setup an obligation value to use
   run_otdfctl_obl_values create --obligation "$OBL_ID" --value "test_obl_val_for_multi_peps" --json
   assert_success
@@ -966,7 +966,6 @@ EOF
 }
 
 @test "Delete an obligation trigger - Good" {
-  skip "Temporarily disabled [namespaced-actions]: obligation trigger flag handling is failing in CI"
   # setup an obligation value to use
   run_otdfctl_obl_values create --obligation "$OBL_ID" --value "test_obl_val_for_del_trigger" --json
   assert_success
@@ -988,7 +987,6 @@ EOF
 }
 
 @test "List obligation triggers - No filters" {
-  skip "Temporarily disabled [namespaced-actions]: obligation trigger setup is failing in CI"
   setup_triggers_test_data
   
   run_otdfctl_obl_triggers list --json
@@ -997,42 +995,39 @@ EOF
   # Verify all our triggers are present
   actual_triggers=$(echo "$output" | jq -r '.triggers | length')
   assert [ "$actual_triggers" -ge 2 ]
-  validate_triggers "$output" "2" "$LIST_ATTR_2_VAL_1_ID;$LIST_ATTR_2_VAL_1_FQN;$ACTION_2_ID;$ACTION_2_NAME;$CLIENT_ID_LIST;$LIST_OBL_2_VAL_ID;$LIST_OBL_VAL_2_FQN" "$LIST_ATTR_1_VAL_1_ID;$LIST_ATTR_1_VAL_1_FQN;$ACTION_1_ID;$ACTION_1_NAME;$CLIENT_ID_LIST;$LIST_OBL_1_VAL_ID;$LIST_OBL_VAL_1_FQN"
+  validate_triggers "$output" "2" "$LIST_ATTR_2_VAL_1_ID;$LIST_ATTR_2_VAL_1_FQN;$LIST_ACTION_2_ID;$LIST_ACTION_2_NAME;$CLIENT_ID_LIST;$LIST_OBL_2_VAL_ID;$LIST_OBL_VAL_2_FQN" "$LIST_ATTR_1_VAL_1_ID;$LIST_ATTR_1_VAL_1_FQN;$LIST_ACTION_1_ID;$LIST_ACTION_1_NAME;$CLIENT_ID_LIST;$LIST_OBL_1_VAL_ID;$LIST_OBL_VAL_1_FQN"
   validate_pagination "$output" "null" "2" "null"
 }
 
 @test "List obligation triggers - Limit and Offset" {
-  skip "Temporarily disabled [namespaced-actions]: obligation trigger setup is failing in CI"
   setup_triggers_test_data
   run_otdfctl_obl_triggers list --limit 1 --offset 0 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r '.triggers | length')" "1"
-  validate_triggers "$output" "1" "$LIST_ATTR_2_VAL_1_ID;$LIST_ATTR_2_VAL_1_FQN;$ACTION_2_ID;$ACTION_2_NAME;$CLIENT_ID_LIST;$LIST_OBL_2_VAL_ID;$LIST_OBL_VAL_2_FQN"
+  validate_triggers "$output" "1" "$LIST_ATTR_2_VAL_1_ID;$LIST_ATTR_2_VAL_1_FQN;$LIST_ACTION_2_ID;$LIST_ACTION_2_NAME;$CLIENT_ID_LIST;$LIST_OBL_2_VAL_ID;$LIST_OBL_VAL_2_FQN"
   validate_pagination "$output" "null" "2" "1"
 
   run_otdfctl_obl_triggers list --limit 1 --offset 1 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r '.triggers | length')" "1"
-  validate_triggers "$output" "1" "$LIST_ATTR_1_VAL_1_ID;$LIST_ATTR_1_VAL_1_FQN;$ACTION_1_ID;$ACTION_1_NAME;$CLIENT_ID_LIST;$LIST_OBL_1_VAL_ID;$LIST_OBL_VAL_1_FQN"
+  validate_triggers "$output" "1" "$LIST_ATTR_1_VAL_1_ID;$LIST_ATTR_1_VAL_1_FQN;$LIST_ACTION_1_ID;$LIST_ACTION_1_NAME;$CLIENT_ID_LIST;$LIST_OBL_1_VAL_ID;$LIST_OBL_VAL_1_FQN"
   validate_pagination "$output" "1" "2" "null"
 }
 
 @test "List obligation triggers - Filter by Namespace ID" {
-  skip "Temporarily disabled [namespaced-actions]: obligation trigger setup is failing in CI"
   setup_triggers_test_data
   run_otdfctl_obl_triggers list --namespace "$LIST_NS_1_ID" --json
   assert_success
   assert_equal "$(echo "$output" | jq -r '.triggers | length')" "1"
-  validate_triggers "$output" "1" "$LIST_ATTR_1_VAL_1_ID;$LIST_ATTR_1_VAL_1_FQN;$ACTION_1_ID;$ACTION_1_NAME;$CLIENT_ID_LIST;$LIST_OBL_1_VAL_ID;$LIST_OBL_VAL_1_FQN"
+  validate_triggers "$output" "1" "$LIST_ATTR_1_VAL_1_ID;$LIST_ATTR_1_VAL_1_FQN;$LIST_ACTION_1_ID;$LIST_ACTION_1_NAME;$CLIENT_ID_LIST;$LIST_OBL_1_VAL_ID;$LIST_OBL_VAL_1_FQN"
   validate_pagination "$output" "null" "1" "null"
 }
 
 @test "List obligation triggers - Filter by Namespace FQN" {
-  skip "Temporarily disabled [namespaced-actions]: obligation trigger setup is failing in CI"
   setup_triggers_test_data
   run_otdfctl_obl_triggers list --namespace "https://$LIST_NS_2_NAME" --json
   assert_success
   assert_equal "$(echo "$output" | jq -r '.triggers | length')" "1"
-  validate_triggers "$output" "1" "$LIST_ATTR_2_VAL_1_ID;$LIST_ATTR_2_VAL_1_FQN;$ACTION_2_ID;$ACTION_2_NAME;$CLIENT_ID_LIST;$LIST_OBL_2_VAL_ID;$LIST_OBL_VAL_2_FQN"
+  validate_triggers "$output" "1" "$LIST_ATTR_2_VAL_1_ID;$LIST_ATTR_2_VAL_1_FQN;$LIST_ACTION_2_ID;$LIST_ACTION_2_NAME;$CLIENT_ID_LIST;$LIST_OBL_2_VAL_ID;$LIST_OBL_VAL_2_FQN"
   validate_pagination "$output" "null" "1" "null"
 }

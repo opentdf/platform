@@ -21,10 +21,9 @@ setup_file() {
     CUSTOM_ACTION_ID=$(./otdfctl $HOST $WITH_CREDS policy actions create --name "$CUSTOM_ACTION_NAME" --namespace "$NS_ID" --json | jq -r '.id')
     export CUSTOM_ACTION_ID
 
-    # get standard read action id to use in registered resource values tests
-    # TODO: when RRs support passing the namespace down to the action, add --namespace "$NS_ID" 
+    # get standard read action id in the same namespace used for RR tests
     export READ_ACTION_NAME="read"
-    READ_ACTION_ID=$(./otdfctl $HOST $WITH_CREDS policy actions get --name "$READ_ACTION_NAME" --json | jq -r '.id')
+    READ_ACTION_ID=$(./otdfctl $HOST $WITH_CREDS policy actions get --name "$READ_ACTION_NAME" --namespace "$NS_ID" --json | jq -r '.id')
     export READ_ACTION_ID
     export ATTR_NAME=test_rr_attr
     attr_id=$(./otdfctl $HOST $WITH_CREDS policy attributes create --namespace "$NS_ID" --name "$ATTR_NAME" --rule ANY_OF -l key=value --json | jq -r '.id')

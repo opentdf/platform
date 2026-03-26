@@ -30,6 +30,7 @@ const (
 	EC521Key     KeyType = "ec:secp521r1"
 	MLKEM768Key  KeyType = "mlkem:768"
 	MLKEM1024Key KeyType = "mlkem:1024"
+	HybridXWing  KeyType = "hpqt:xwing"
 )
 
 const (
@@ -71,6 +72,8 @@ func NewKeyPair(kt KeyType) (KeyPair, error) {
 		return NewMLKEMKeyPair()
 	case MLKEM1024Key:
 		return NewMLKEM1024KeyPair()
+	case HybridXWing:
+		return NewXWingKeyPair()
 	default:
 		return nil, fmt.Errorf("unsupported key type: %v", kt)
 	}

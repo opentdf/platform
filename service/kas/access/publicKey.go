@@ -153,7 +153,7 @@ func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Pub
 		// For EC keys, export the public key
 		ecPublicKeyPem, err := keyDetails.ExportPublicKey(ctx, trust.KeyTypePKCS8)
 		return r(ecPublicKeyPem, kid, err)
-	case security.AlgorithmMLKEM768, security.AlgorithmMLKEM1024, security.AlgorithmRSA2048, security.AlgorithmRSA4096:
+	case security.AlgorithmMLKEM768, security.AlgorithmMLKEM1024, security.AlgorithmXWing, security.AlgorithmRSA2048, security.AlgorithmRSA4096:
 		fallthrough
 	case "":
 		switch fmt {

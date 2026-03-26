@@ -26,6 +26,8 @@ func mapAlgorithmToKasPublicKeyAlg(alg policy.Algorithm) policy.KasPublicKeyAlgE
 		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768
 	case policy.Algorithm_ALGORITHM_MLKEM_1024:
 		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_1024
+	case policy.Algorithm_ALGORITHM_XWING:
+		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_XWING
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
 	default:

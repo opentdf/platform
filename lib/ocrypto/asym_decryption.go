@@ -40,6 +40,10 @@ type MLKEMDecryptor1024 struct {
 	decap *mlkem.DecapsulationKey1024
 }
 
+type XWingDecryptor struct {
+	seed [xwingSeedSize]byte
+}
+
 // FromPrivatePEM creates and returns a new AsymDecryption.
 func FromPrivatePEM(privateKeyInPem string) (PrivateKeyDecryptor, error) {
 	// TK Move salt and info out of library, into API option functions
@@ -54,6 +58,13 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 	block, _ := pem.Decode([]byte(privateKeyInPem))
 	if block == nil {
 		return AsymDecryption{}, errors.New("failed to parse PEM formatted private key")
+	}
+
+	// Try X-Wing PKCS#8 (standard "PRIVATE KEY" PEM with id-XWing OID)
+	if block.Type == "PRIVATE KEY" {
+		if seed, err := parseXWingPrivateKeyFromDER(block.Bytes); err == nil {
+			return &XWingDecryptor{seed: seed}, nil
+		}
 	}
 
 	if block.Type == "MLKEM DECAPSULATION KEY" {
@@ -320,4 +331,48 @@ func convCurve(c ecdh.Curve) elliptic.Curve {
 	default:
 		return nil
 	}
+}
+
+// --- XWingDecryptor ---
+
+func (d XWingDecryptor) Decrypt(_ []byte) ([]byte, error) {
+	return nil, errors.New("X-Wing requires ephemeral ciphertext for decryption")
+}
+
+func (d XWingDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
+	// Parse ASN.1-wrapped ciphertext
+	ct, err := parseXWingCiphertext(ephemeral)
+	if err != nil {
+		return nil, fmt.Errorf("xwing: failed to parse ciphertext: %w", err)
+	}
+
+	// Perform X-Wing decapsulation
+	sharedSecret, err := xwingDecapsulate(ct, d.seed)
+	if err != nil {
+		return nil, fmt.Errorf("xwing: decapsulation failed: %w", err)
+	}
+
+	// Decrypt AES-GCM wrapped data
+	block, err := aes.NewCipher(sharedSecret[:])
+	if err != nil {
+		return nil, fmt.Errorf("aes.NewCipher failure: %w", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("cipher.NewGCM failure: %w", err)
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(data) < nonceSize {
+		return nil, errors.New("ciphertext too short")
+	}
+
+	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("gcm.Open failure: %w", err)
+	}
+
+	return plaintext, nil
 }

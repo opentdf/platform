@@ -44,6 +44,7 @@ const (
 	kWrapped               = "wrapped"
 	kECWrapped             = "ec-wrapped"
 	kMLKEMWrapped          = "mlkem-wrapped"
+	kHybrid                = "hybrid"
 	kKasProtocol           = "kas"
 	kSplitKeyType          = "split"
 	kGCMCipherAlgorithm    = "AES-256-GCM"
@@ -694,6 +695,14 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 			return KeyAccess{}, err
 		}
 		keyAccess.KeyType = kMLKEMWrapped
+		keyAccess.WrappedKey = wrappedKey
+		keyAccess.EphemeralPublicKey = encapsulatedKey
+	case ktype == ocrypto.HybridXWing:
+		wrappedKey, encapsulatedKey, err := generateWrapKeyWithMLKEM(kasInfo.PublicKey, symKey)
+		if err != nil {
+			return KeyAccess{}, err
+		}
+		keyAccess.KeyType = kHybrid
 		keyAccess.WrappedKey = wrappedKey
 		keyAccess.EphemeralPublicKey = encapsulatedKey
 	default:

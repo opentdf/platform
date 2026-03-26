@@ -726,7 +726,7 @@ func (c PolicyDBClient) resolveObligationTriggerActionID(ctx context.Context, ac
 			return "", err
 		}
 		if actionNamespace != nil && actionNamespace.GetId() != "" && actionNamespace.GetId() != obligationNamespaceID {
-			return "", db.ErrNamespaceMismatch
+			return "", errors.Join(db.ErrNamespaceMismatch, fmt.Errorf("action [%s] namespace [%s] does not match the specified obligation namespace [%s]", actionID, actionNamespace.GetId(), obligationNamespaceID))
 		}
 
 		return actionID, nil
@@ -734,7 +734,11 @@ func (c PolicyDBClient) resolveObligationTriggerActionID(ctx context.Context, ac
 
 	actionName := strings.ToLower(action.GetName())
 	if actionName == "" {
-		return "", errors.New("action identifier must include either id or name")
+		// this shouldnt happen due to proto validation, but just in case
+		return "", errors.Join(
+			db.ErrMissingValue,
+			errors.New("action identifier must include either id or name"),
+		)
 	}
 
 	createdOrListedActions, err := c.queries.createOrListActionsByNameInNamespace(ctx, createOrListActionsByNameInNamespaceParams{

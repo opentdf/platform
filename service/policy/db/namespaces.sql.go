@@ -199,15 +199,26 @@ SELECT
 FROM attribute_namespaces ns
 LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
 WHERE ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
-ORDER BY ns.created_at DESC
-LIMIT $3
-OFFSET $2
+ORDER BY
+    CASE WHEN $2::text = 'name' AND $3::text = 'ASC' THEN ns.name END ASC,
+    CASE WHEN $2::text = 'name' AND $3::text = 'DESC' THEN ns.name END DESC,
+    CASE WHEN $2::text = 'fqn' AND $3::text = 'ASC' THEN fqns.fqn END ASC,
+    CASE WHEN $2::text = 'fqn' AND $3::text = 'DESC' THEN fqns.fqn END DESC,
+    CASE WHEN $2::text = 'created_at' AND $3::text = 'ASC' THEN ns.created_at END ASC,
+    CASE WHEN $2::text = 'created_at' AND $3::text = 'DESC' THEN ns.created_at END DESC,
+    CASE WHEN $2::text = 'updated_at' AND $3::text = 'ASC' THEN ns.updated_at END ASC,
+    CASE WHEN $2::text = 'updated_at' AND $3::text = 'DESC' THEN ns.updated_at END DESC,
+    ns.created_at DESC
+LIMIT $5
+OFFSET $4
 `
 
 type listNamespacesParams struct {
-	Active pgtype.Bool `json:"active"`
-	Offset int32       `json:"offset_"`
-	Limit  int32       `json:"limit_"`
+	Active        pgtype.Bool `json:"active"`
+	SortField     string      `json:"sort_field"`
+	SortDirection string      `json:"sort_direction"`
+	Offset        int32       `json:"offset_"`
+	Limit         int32       `json:"limit_"`
 }
 
 type listNamespacesRow struct {
@@ -233,11 +244,26 @@ type listNamespacesRow struct {
 //	FROM attribute_namespaces ns
 //	LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
 //	WHERE ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
-//	ORDER BY ns.created_at DESC
-//	LIMIT $3
-//	OFFSET $2
+//	ORDER BY
+//	    CASE WHEN $2::text = 'name' AND $3::text = 'ASC' THEN ns.name END ASC,
+//	    CASE WHEN $2::text = 'name' AND $3::text = 'DESC' THEN ns.name END DESC,
+//	    CASE WHEN $2::text = 'fqn' AND $3::text = 'ASC' THEN fqns.fqn END ASC,
+//	    CASE WHEN $2::text = 'fqn' AND $3::text = 'DESC' THEN fqns.fqn END DESC,
+//	    CASE WHEN $2::text = 'created_at' AND $3::text = 'ASC' THEN ns.created_at END ASC,
+//	    CASE WHEN $2::text = 'created_at' AND $3::text = 'DESC' THEN ns.created_at END DESC,
+//	    CASE WHEN $2::text = 'updated_at' AND $3::text = 'ASC' THEN ns.updated_at END ASC,
+//	    CASE WHEN $2::text = 'updated_at' AND $3::text = 'DESC' THEN ns.updated_at END DESC,
+//	    ns.created_at DESC
+//	LIMIT $5
+//	OFFSET $4
 func (q *Queries) listNamespaces(ctx context.Context, arg listNamespacesParams) ([]listNamespacesRow, error) {
-	rows, err := q.db.Query(ctx, listNamespaces, arg.Active, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, listNamespaces,
+		arg.Active,
+		arg.SortField,
+		arg.SortDirection,
+		arg.Offset,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}

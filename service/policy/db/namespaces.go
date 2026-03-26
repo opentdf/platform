@@ -97,10 +97,14 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 		active = pgtypeBool(state == stateActive)
 	}
 
+	sortField, sortDirection := GetNamespacesSortParams(r.GetSort())
+
 	list, err := c.queries.listNamespaces(ctx, listNamespacesParams{
-		Active: active,
-		Limit:  limit,
-		Offset: offset,
+		Active:        active,
+		Limit:         limit,
+		Offset:        offset,
+		SortField:     sortField,
+		SortDirection: sortDirection,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

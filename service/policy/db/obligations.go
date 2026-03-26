@@ -714,21 +714,6 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 func (c PolicyDBClient) resolveObligationTriggerActionID(ctx context.Context, action *common.IdNameIdentifier, obligationNamespaceID string) (string, error) {
 	actionID := action.GetId()
 	if actionID != "" {
-		got, err := c.queries.getAction(ctx, getActionParams{ID: pgtypeUUID(actionID)})
-		if err != nil {
-			return "", db.WrapIfKnownInvalidQueryErr(
-				errors.Join(db.ErrMissingValue, fmt.Errorf("failed to get action by id [%v]: %w", actionID, err)),
-			)
-		}
-
-		actionNamespace, err := hydrateNamespaceFromInterface(got.Namespace)
-		if err != nil {
-			return "", err
-		}
-		if actionNamespace != nil && actionNamespace.GetId() != "" && actionNamespace.GetId() != obligationNamespaceID {
-			return "", errors.Join(db.ErrNamespaceMismatch, fmt.Errorf("action [%s] namespace [%s] does not match the specified obligation namespace [%s]", actionID, actionNamespace.GetId(), obligationNamespaceID))
-		}
-
 		return actionID, nil
 	}
 
@@ -799,7 +784,7 @@ func (c PolicyDBClient) validateObligationNamespaceConsistency(
 	actionNsID := UUIDToString(a.NamespaceID)
 	if actionNsID != targetNsID {
 		return errors.Join(db.ErrNamespaceMismatch,
-			fmt.Errorf("action [%s] namespace [%s] does not match the specified subject mapping namespace [%s]", a.ID, actionNsID, targetNsID))
+			fmt.Errorf("action [%s] namespace [%s] does not match the specified obligation namespace [%s]", a.ID, actionNsID, targetNsID))
 	}
 
 	return nil

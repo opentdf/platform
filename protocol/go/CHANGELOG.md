@@ -3,10 +3,6 @@
 ## [0.21.0](https://github.com/opentdf/platform/compare/protocol/go/v0.20.0...protocol/go/v0.21.0) (2026-03-26)
 
 
-### ⚠ BREAKING CHANGES
-
-* **policy:** optional namespace for RRs ([#3165](https://github.com/opentdf/platform/issues/3165))
-
 ### Features
 
 * **policy:** optional namespace for RRs ([#3165](https://github.com/opentdf/platform/issues/3165)) ([8948018](https://github.com/opentdf/platform/commit/89480186006085d2f59ebaeca6be6582db0e67d9))

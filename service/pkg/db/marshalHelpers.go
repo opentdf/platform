@@ -161,6 +161,8 @@ func FormatAlg(alg policy.Algorithm) (string, error) {
 		return "mlkem:768", nil
 	case policy.Algorithm_ALGORITHM_MLKEM_1024:
 		return "mlkem:1024", nil
+	case policy.Algorithm_ALGORITHM_HYBRID_XWING:
+		return "hpqt:xwing", nil
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:

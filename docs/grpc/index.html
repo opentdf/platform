@@ -4009,6 +4009,12 @@ Migrate to &#39;create&#39; action name</p></td>
                 <td><p></p></td>
               </tr>
             
+              <tr>
+                <td>ALGORITHM_HYBRID_XWING</td>
+                <td>30</td>
+                <td><p></p></td>
+              </tr>
+            
           </tbody>
         </table>
       
@@ -4129,6 +4135,12 @@ Migrate to &#39;create&#39; action name</p></td>
               <tr>
                 <td>KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_1024</td>
                 <td>21</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KAS_PUBLIC_KEY_ALG_ENUM_HYBRID_XWING</td>
+                <td>30</td>
                 <td><p></p></td>
               </tr>
             
@@ -6270,7 +6282,7 @@ Example: &#34;kas&#34; </p></td>
                   <td></td>
                   <td><p>Type of key wrapping used for the data encryption key
 Required: Always
-Values: &#39;wrapped&#39; (RSA-wrapped for ZTDF), &#39;ec-wrapped&#39; (experimental ECDH-wrapped) </p></td>
+Values: &#39;wrapped&#39; (RSA-wrapped for ZTDF), &#39;ec-wrapped&#39; (experimental ECDH-wrapped), &#39;mlkem-wrapped&#39; (ML-KEM-wrapped), &#39;hybrid&#39; (Hybrid X-Wing-wrapped) </p></td>
                 </tr>
               
                 <tr>
@@ -6325,10 +6337,10 @@ Contains magic bytes, version, algorithm, policy, and ephemeral key information 
                   <td>ephemeral_public_key</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Ephemeral public key for ECDH key derivation (ec-wrapped type only)
-Required: When key_type=&#34;ec-wrapped&#34; (experimental ECDH-based ZTDF)
+                  <td><p>Ephemeral public key for ECDH/ML-KEM/Hybrid key derivation
+Required: When key_type=&#34;ec-wrapped&#34;, &#34;mlkem-wrapped&#34;, or &#34;hybrid&#34;
 Omitted: When key_type=&#34;wrapped&#34; (RSA-based ZTDF)
-Should be a PEM-encoded PKCS#8 (ASN.1) formatted public key
+Should be a PEM-encoded or Base64-encoded (for ML-KEM/Hybrid) public key material
 Used to derive the symmetric key for unwrapping the DEK </p></td>
                 </tr>
               
@@ -6654,8 +6666,8 @@ Modern responses use kas_wrapped_key in KeyAccessRewrapResult </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>KAS&#39;s ephemeral session public key in PEM format
-Required: For EC-based operations (key_type=&#34;ec-wrapped&#34;)
-Optional: Empty for RSA-based ZTDF (key_type=&#34;wrapped&#34;)
+Required: For EC-based operations (key_type=&#34;ec-wrapped&#34;) or Hybrid
+Optional: Empty for RSA-based ZTDF (key_type=&#34;wrapped&#34;) or ML-KEM
 Used by client to perform ECDH key agreement and decrypt the kas_wrapped_key values </p></td>
                 </tr>
               

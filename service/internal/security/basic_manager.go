@@ -107,6 +107,16 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 			return nil, fmt.Errorf("failed to create protected key: %w", err)
 		}
 		return protectedKey, nil
+	case ocrypto.HybridXWingKey:
+		plaintext, err := decrypter.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt with Hybrid X-Wing: %w", err)
+		}
+		protectedKey, err := ocrypto.NewAESProtectedKey(plaintext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create protected key: %w", err)
+		}
+		return protectedKey, nil
 	}
 
 	return nil, fmt.Errorf("unsupported algorithm: %s", keyDetails.Algorithm())

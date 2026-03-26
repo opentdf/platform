@@ -677,6 +677,28 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				failedKAORewrap(results, kao, err400("bad request"))
 				continue
 			}
+		case string(ocrypto.Hybrid):
+			ephemeralCiphertext := kao.GetKeyAccessObject().GetEphemeralPublicKey()
+			if ephemeralCiphertext == "" {
+				p.Logger.WarnContext(ctx, "missing encapsulated key for hybrid rewrap")
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
+			}
+
+			encapsulatedKey, err := ocrypto.Base64Decode([]byte(ephemeralCiphertext))
+			if err != nil {
+				p.Logger.WarnContext(ctx, "failed to decode encapsulated key for hybrid rewrap", slog.Any("error", err))
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
+			}
+
+			kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
+			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), encapsulatedKey)
+			if err != nil {
+				p.Logger.WarnContext(ctx, "failed to decrypt hybrid key", slog.Any("error", err))
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
+			}
 		case "ec-wrapped":
 
 			if !p.ECTDFEnabled && !p.Preview.ECTDFEnabled {
@@ -930,16 +952,23 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 	encap := security.OCEncapsulator{PublicKeyEncryptor: asymEncrypt}
 
 	var sessionKey string
-	if e, ok := asymEncrypt.(ocrypto.ECEncryptor); ok {
+	switch e := asymEncrypt.(type) {
+	case ocrypto.ECEncryptor:
 		sessionKey, err = e.PublicKeyInPemFormat()
 		if err != nil {
 			p.Logger.ErrorContext(ctx, "unable to serialize ephemeral key", slog.Any("error", err))
-			// This may be a 500, but could also be caused by a bad clientPublicKey
 			failAllKaos(requests, results, err400("invalid request"))
 			return "", results, nil
 		}
 		if !p.ECTDFEnabled && !p.Preview.ECTDFEnabled {
 			p.Logger.ErrorContext(ctx, "ec rewrap not enabled")
+			failAllKaos(requests, results, err400("invalid request"))
+			return "", results, nil
+		}
+	case *ocrypto.HybridXWingEncryptorWrapper:
+		sessionKey, err = e.PublicKeyInPemFormat()
+		if err != nil {
+			p.Logger.ErrorContext(ctx, "unable to serialize hybrid session key", slog.Any("error", err))
 			failAllKaos(requests, results, err400("invalid request"))
 			return "", results, nil
 		}

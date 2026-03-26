@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"testing"
@@ -130,16 +131,26 @@ func (s *ObligationTriggersSuite) TearDownSuite() {
 
 func (s *ObligationTriggersSuite) TearDownTest() {
 	for _, triggerID := range s.triggerIDsToClean {
+		if triggerID == "" {
+			continue
+		}
 		_, err := s.db.PolicyClient.DeleteObligationTrigger(s.ctx, &obligations.RemoveObligationTriggerRequest{
 			Id: triggerID,
 		})
-		s.Require().NoError(err)
+		if err != nil && !errors.Is(err, db.ErrNotFound) {
+			s.Require().NoError(err)
+		}
 	}
 	for _, obligationValueID := range s.obligationValueIDsToClean {
+		if obligationValueID == "" {
+			continue
+		}
 		_, err := s.db.PolicyClient.DeleteObligationValue(s.ctx, &obligations.DeleteObligationValueRequest{
 			Id: obligationValueID,
 		})
-		s.Require().NoError(err)
+		if err != nil && !errors.Is(err, db.ErrNotFound) {
+			s.Require().NoError(err)
+		}
 	}
 	s.triggerIDsToClean = nil
 	s.obligationValueIDsToClean = nil
@@ -317,7 +328,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_AttributeValueNot
 		},
 	})
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNotNullViolation)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(trigger)
 }
 
@@ -334,7 +345,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ActionNotFound_Fa
 		},
 	})
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrInvalidOblTriParam)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(trigger)
 }
 
@@ -376,7 +387,38 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_AttributeValueDif
 		},
 	})
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrInvalidOblTriParam)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
+	s.Nil(trigger)
+}
+
+func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ActionIDDifferentNamespace_Fails() {
+	differentNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "different-action-ns",
+	})
+	s.Require().NoError(err)
+	defer func() {
+		_, deleteErr := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, differentNamespace, differentNamespace.GetFqn())
+		s.Require().NoError(deleteErr)
+	}()
+
+	differentAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "action-different-ns",
+		NamespaceId: differentNamespace.GetId(),
+	})
+	s.Require().NoError(err)
+
+	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
+		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
+		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
+		Action:          &common.IdNameIdentifier{Id: differentAction.GetId()},
+		Context: &policy.RequestContext{
+			Pep: &policy.PolicyEnforcementPoint{
+				ClientId: clientID,
+			},
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
 	s.Nil(trigger)
 }
 
@@ -725,15 +767,23 @@ func (s *ObligationTriggersSuite) appendObligationValuesToClean(createdTriggers 
 }
 
 func (s *ObligationTriggersSuite) createDifferentNamespaceWithTrigger(namespaceName string) *DifferentNamespaceEntities {
+	uniqueNamespaceName := fmt.Sprintf("%s-%d", namespaceName, time.Now().UnixNano())
+
 	// Create a different namespace
 	differentNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
-		Name: namespaceName,
+		Name: uniqueNamespaceName,
+	})
+	s.Require().NoError(err)
+
+	differentAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "different-action-" + uniqueNamespaceName,
+		NamespaceId: differentNamespace.GetId(),
 	})
 	s.Require().NoError(err)
 
 	// Create obligation in different namespace
 	differentObligation, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
-		Name:        "different-obligation-" + namespaceName,
+		Name:        "different-obligation-" + uniqueNamespaceName,
 		NamespaceId: differentNamespace.GetId(),
 	})
 	s.Require().NoError(err)
@@ -741,13 +791,13 @@ func (s *ObligationTriggersSuite) createDifferentNamespaceWithTrigger(namespaceN
 	// Create obligation value in different namespace
 	differentObligationValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
 		ObligationId: differentObligation.GetId(),
-		Value:        "different-obligation-value-" + namespaceName,
+		Value:        "different-obligation-value-" + uniqueNamespaceName,
 	})
 	s.Require().NoError(err)
 
 	// Create attribute in different namespace
 	differentAttribute, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		Name:        "different-attribute-" + namespaceName,
+		Name:        "different-attribute-" + uniqueNamespaceName,
 		NamespaceId: differentNamespace.GetId(),
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	})
@@ -755,7 +805,7 @@ func (s *ObligationTriggersSuite) createDifferentNamespaceWithTrigger(namespaceN
 
 	// Create attribute value in different namespace
 	differentAttributeValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, differentAttribute.GetId(), &attributes.CreateAttributeValueRequest{
-		Value:       "different-value-" + namespaceName,
+		Value:       "different-value-" + uniqueNamespaceName,
 		AttributeId: differentAttribute.GetId(),
 	})
 	s.Require().NoError(err)
@@ -764,7 +814,7 @@ func (s *ObligationTriggersSuite) createDifferentNamespaceWithTrigger(namespaceN
 	differentTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
 		ObligationValue: &common.IdFqnIdentifier{Id: differentObligationValue.GetId()},
 		AttributeValue:  &common.IdFqnIdentifier{Id: differentAttributeValue.GetId()},
-		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
+		Action:          &common.IdNameIdentifier{Id: differentAction.GetId()},
 		Context: &policy.RequestContext{
 			Pep: &policy.PolicyEnforcementPoint{
 				ClientId: clientID,

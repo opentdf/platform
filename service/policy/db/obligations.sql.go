@@ -155,30 +155,9 @@ WITH ov_id AS (
     WHERE $1::uuid IS NOT NULL AND ov.id = $1::uuid
 ),
 a_id AS (
-    SELECT
-        CASE
-            WHEN $2::uuid IS NOT NULL THEN (
-                SELECT a.id
-                FROM actions a
-                WHERE a.id = $2::uuid
-            )
-            WHEN $3::text IS NOT NULL THEN COALESCE(
-                (
-                    SELECT a.id
-                    FROM actions a
-                    WHERE a.name = $3::text
-                      -- TODO(namespaced-actions): Move action namespace resolution/enforcement to service level.
-                      -- This query currently assumes same-namespace action lookup before legacy unscoped fallback.
-                      AND a.namespace_id = (SELECT namespace_id FROM ov_id)
-                ),
-                (
-                    SELECT a.id
-                    FROM actions a
-                    WHERE a.name = $3::text
-                      AND a.namespace_id IS NULL
-                )
-            )
-        END AS id
+    SELECT a.id
+    FROM actions a
+    WHERE ($2::uuid IS NOT NULL AND a.id = $2::uuid)
 ),
 av_id AS (
     SELECT av.id
@@ -186,9 +165,9 @@ av_id AS (
     JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
     LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
     WHERE
-        (($4::uuid IS NOT NULL AND av.id = $4::uuid)
+        (($3::uuid IS NOT NULL AND av.id = $3::uuid)
         OR
-        ($5::text IS NOT NULL AND fqns.fqn = $5::text))
+        ($4::text IS NOT NULL AND fqns.fqn = $4::text))
         AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
 ),
 inserted AS (
@@ -197,8 +176,8 @@ inserted AS (
         (SELECT id FROM ov_id),
         (SELECT id FROM a_id),
         (SELECT id FROM av_id),
-        $6,
-        $7::text
+        $5,
+        $6::text
     RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at, client_id
 )
 SELECT
@@ -258,7 +237,6 @@ LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 type createObligationTriggerParams struct {
 	ObligationValueID pgtype.UUID `json:"obligation_value_id"`
 	ActionID          pgtype.UUID `json:"action_id"`
-	ActionName        pgtype.Text `json:"action_name"`
 	AttributeValueID  pgtype.UUID `json:"attribute_value_id"`
 	AttributeValueFqn pgtype.Text `json:"attribute_value_fqn"`
 	Metadata          []byte      `json:"metadata"`
@@ -282,30 +260,9 @@ type createObligationTriggerRow struct {
 //	    WHERE $1::uuid IS NOT NULL AND ov.id = $1::uuid
 //	),
 //	a_id AS (
-//	    SELECT
-//	        CASE
-//	            WHEN $2::uuid IS NOT NULL THEN (
-//	                SELECT a.id
-//	                FROM actions a
-//	                WHERE a.id = $2::uuid
-//	            )
-//	            WHEN $3::text IS NOT NULL THEN COALESCE(
-//	                (
-//	                    SELECT a.id
-//	                    FROM actions a
-//	                    WHERE a.name = $3::text
-//	                      -- TODO(namespaced-actions): Move action namespace resolution/enforcement to service level.
-//	                      -- This query currently assumes same-namespace action lookup before legacy unscoped fallback.
-//	                      AND a.namespace_id = (SELECT namespace_id FROM ov_id)
-//	                ),
-//	                (
-//	                    SELECT a.id
-//	                    FROM actions a
-//	                    WHERE a.name = $3::text
-//	                      AND a.namespace_id IS NULL
-//	                )
-//	            )
-//	        END AS id
+//	    SELECT a.id
+//	    FROM actions a
+//	    WHERE ($2::uuid IS NOT NULL AND a.id = $2::uuid)
 //	),
 //	av_id AS (
 //	    SELECT av.id
@@ -313,9 +270,9 @@ type createObligationTriggerRow struct {
 //	    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
 //	    LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
 //	    WHERE
-//	        (($4::uuid IS NOT NULL AND av.id = $4::uuid)
+//	        (($3::uuid IS NOT NULL AND av.id = $3::uuid)
 //	        OR
-//	        ($5::text IS NOT NULL AND fqns.fqn = $5::text))
+//	        ($4::text IS NOT NULL AND fqns.fqn = $4::text))
 //	        AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
 //	),
 //	inserted AS (
@@ -324,8 +281,8 @@ type createObligationTriggerRow struct {
 //	        (SELECT id FROM ov_id),
 //	        (SELECT id FROM a_id),
 //	        (SELECT id FROM av_id),
-//	        $6,
-//	        $7::text
+//	        $5,
+//	        $6::text
 //	    RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at, client_id
 //	)
 //	SELECT
@@ -384,7 +341,6 @@ func (q *Queries) createObligationTrigger(ctx context.Context, arg createObligat
 	row := q.db.QueryRow(ctx, createObligationTrigger,
 		arg.ObligationValueID,
 		arg.ActionID,
-		arg.ActionName,
 		arg.AttributeValueID,
 		arg.AttributeValueFqn,
 		arg.Metadata,

@@ -202,7 +202,7 @@ func (s *ActionsSuite) Test_ListActions_FiltersCustomActionsByNamespace_Succeeds
 
 func (s *ActionsSuite) Test_ListActions_WithNamespace_DoesNotLeakStandardActionsFromOtherNamespaces() {
 	createdNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
-		Name: "list-actions-standard-scope",
+		Name: fmt.Sprintf("list-actions-standard-scope-%d", time.Now().UnixNano()),
 	})
 	s.Require().NoError(err)
 	s.Require().NotNil(createdNamespace)

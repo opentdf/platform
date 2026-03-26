@@ -820,21 +820,7 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithInvali
 					},
 				},
 			},
-			err: db.ErrForeignKeyViolation,
-		},
-		{
-			name: "Invalid Action Name",
-			actionAttrValues: []*registeredresources.ActionAttributeValue{
-				{
-					ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
-						ActionName: "invalid_action_name",
-					},
-					AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
-						AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
-					},
-				},
-			},
-			err: db.ErrNotFound,
+			err: db.ErrMissingValue,
 		},
 		{
 			name: "Invalid Attribute Value ID",
@@ -848,7 +834,7 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithInvali
 					},
 				},
 			},
-			err: db.ErrForeignKeyViolation,
+			err: db.ErrNotFound,
 		},
 		{
 			name: "Invalid Attribute Value FQN",
@@ -1891,7 +1877,7 @@ func (s *RegisteredResourcesSuite) Test_SameNamespaceEnforcement_DifferentNamesp
 		},
 	})
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
 }
 
 func (s *RegisteredResourcesSuite) Test_SameNamespaceEnforcement_SameNamespace_Succeeds() {
@@ -1937,6 +1923,69 @@ func (s *RegisteredResourcesSuite) Test_SameNamespaceEnforcement_SameNamespace_S
 	s.Require().NoError(err)
 	s.NotNil(resVal)
 	s.Require().Len(resVal.GetActionAttributeValues(), 1)
+}
+
+func (s *RegisteredResourcesSuite) Test_SameNamespaceEnforcement_ActionIDDifferentNamespace_Fails() {
+	comNsID := s.getNamespaceID("example.com")
+	netNsID := s.getNamespaceID("example.net")
+
+	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: comNsID,
+		Name:        fmt.Sprintf("test_rr_action_id_ns_mismatch_%d", time.Now().UnixNano()),
+	})
+	s.Require().NoError(err)
+	s.NotNil(res)
+
+	wrongAction, err := s.db.PolicyClient.CreateAction(s.ctx, &pbActions.CreateActionRequest{
+		Name:        fmt.Sprintf("rr_wrong_action_id_%d", time.Now().UnixNano()),
+		NamespaceId: netNsID,
+	})
+	s.Require().NoError(err)
+
+	_, err = s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: res.GetId(),
+		Value:      fmt.Sprintf("rr_val_action_id_mismatch_%d", time.Now().UnixNano()),
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionId{ActionId: wrongAction.GetId()},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
+				},
+			},
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
+}
+
+func (s *RegisteredResourcesSuite) Test_UnnamespacedResource_NamespacedActionID_Fails() {
+	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: fmt.Sprintf("test_rr_unnamespaced_%d", time.Now().UnixNano()),
+	})
+	s.Require().NoError(err)
+	s.NotNil(res)
+	s.Nil(res.GetNamespace())
+
+	namespacedAction, err := s.db.PolicyClient.CreateAction(s.ctx, &pbActions.CreateActionRequest{
+		Name:        fmt.Sprintf("rr_namespaced_action_%d", time.Now().UnixNano()),
+		NamespaceId: s.getNamespaceID("example.com"),
+	})
+	s.Require().NoError(err)
+
+	_, err = s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: res.GetId(),
+		Value:      fmt.Sprintf("rr_val_unnamespaced_%d", time.Now().UnixNano()),
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionId{ActionId: namespacedAction.GetId()},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
+				},
+			},
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
 }
 
 func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithNamespacedCustomActionName_Succeeds() {

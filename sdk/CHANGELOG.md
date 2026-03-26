@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/opentdf/platform/compare/sdk/v0.15.0...sdk/v0.16.0) (2026-03-26)
+
+
+### Bug Fixes
+
+* **deps:** bump google.golang.org/grpc from 1.77.0 to 1.79.3 in /sdk ([#3174](https://github.com/opentdf/platform/issues/3174)) ([be8b154](https://github.com/opentdf/platform/commit/be8b15493d42eeaa3d8d8e9a0c4ec7065a0b36f7))
+
 ## [0.15.0](https://github.com/opentdf/platform/compare/sdk/v0.14.0...sdk/v0.15.0) (2026-03-23)
 
 

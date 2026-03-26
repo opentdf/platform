@@ -260,60 +260,45 @@ func (c PolicyDBClient) DeleteAllUnmappedSubjectConditionSets(ctx context.Contex
 // If a new subject condition set is provided, it will be created. The existing subject condition set id takes precedence.
 func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapping.CreateSubjectMappingRequest) (*policy.SubjectMapping, error) {
 	attributeValueID := s.GetAttributeValueId()
+	resolvedNamespaceID, err := c.resolveNamespace(ctx, s.GetNamespaceId(), s.GetNamespaceFqn())
+	if err != nil {
+		return nil, err
+	}
+	parsedNamespaceID := pgtypeUUID(resolvedNamespaceID)
+
+	// Resolve action IDs from the request (by id or by name)
+	actionIDs, err := c.resolveSubjectMappingActions(ctx, s.GetActions(), parsedNamespaceID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Resolve or create the subject condition set
+	scs, err := c.resolveSubjectConditionSet(ctx, s, resolvedNamespaceID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.validateSubjectMappingNamespaceConsistency(ctx, resolvedNamespaceID, attributeValueID, actionIDs, scs); err != nil {
+		return nil, err
+	}
+
 	metadataJSON, _, err := db.MarshalCreateMetadata(s.GetMetadata())
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	var created *policy.SubjectMapping
-	// Keep action resolution/creation, namespace validation, and mapping insert in a single
-	// transaction so a later failure cannot leave newly created actions behind.
-	err = c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
-		resolvedNamespaceID, err := txClient.resolveNamespace(ctx, s.GetNamespaceId(), s.GetNamespaceFqn())
-		if err != nil {
-			return err
-		}
-		parsedNamespaceID := pgtypeUUID(resolvedNamespaceID)
-
-		// Resolve action IDs from the request (by id or by name)
-		actionIDs, err := txClient.resolveSubjectMappingActions(ctx, s.GetActions(), parsedNamespaceID)
-		if err != nil {
-			return err
-		}
-
-		// Resolve or create the subject condition set
-		scs, err := txClient.resolveSubjectConditionSet(ctx, s, resolvedNamespaceID)
-		if err != nil {
-			return err
-		}
-
-		if err := txClient.validateSubjectMappingNamespaceConsistency(ctx, resolvedNamespaceID, attributeValueID, actionIDs, scs); err != nil {
-			return err
-		}
-
-		createdID, err := txClient.queries.createSubjectMapping(ctx, createSubjectMappingParams{
-			AttributeValueID:      attributeValueID,
-			ActionIds:             actionIDs,
-			Metadata:              metadataJSON,
-			SubjectConditionSetID: pgtypeUUID(scs.GetId()),
-			NamespaceID:           parsedNamespaceID,
-		})
-		if err != nil {
-			return db.WrapIfKnownInvalidQueryErr(err)
-		}
-
-		created, err = txClient.GetSubjectMapping(ctx, createdID)
-		if err != nil {
-			return err
-		}
-
-		return nil
+	createdID, err := c.queries.createSubjectMapping(ctx, createSubjectMappingParams{
+		AttributeValueID:      attributeValueID,
+		ActionIds:             actionIDs,
+		Metadata:              metadataJSON,
+		SubjectConditionSetID: pgtypeUUID(scs.GetId()),
+		NamespaceID:           parsedNamespaceID,
 	})
 	if err != nil {
-		return nil, err
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return created, nil
+	return c.GetSubjectMapping(ctx, createdID)
 }
 
 func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {

@@ -571,59 +571,62 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 	if len(actionAttrValues) == 0 {
 		return nil
 	}
-
-	// Look up the namespace_id of the registered resource for same-namespace enforcement
-	nsUUID, err := c.queries.getRegisteredResourceNamespaceIDByValueID(ctx, registeredResourceValueID)
-	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
-	}
-	resourceNamespaceID := UUIDToString(nsUUID)
-
-	createActionAttributeValueParams := make([]createRegisteredResourceActionAttributeValuesParams, len(actionAttrValues))
-	for i, aav := range actionAttrValues {
-		actionID, attributeValueID, err := c.resolveRegResAAV(ctx, aav, nsUUID)
-		if err != nil {
-			return err
-		}
-		err = c.validateRRAAVNamespaceConsistency(ctx, resourceNamespaceID, attributeValueID, actionID)
-		if err != nil {
-			return err
-		}
-
-		createActionAttributeValueParams[i] = createRegisteredResourceActionAttributeValuesParams{
-			RegisteredResourceValueID: registeredResourceValueID,
-			ActionID:                  actionID,
-			AttributeValueID:          attributeValueID,
-		}
-	}
-
-	// Same-namespace enforcement (batch): all attribute values must belong to the same namespace as the registered resource
-	if resourceNamespaceID != "" {
-		avIDs := make([]string, len(createActionAttributeValueParams))
-		for i, p := range createActionAttributeValueParams {
-			avIDs[i] = p.AttributeValueID
-		}
-		rows, err := c.queries.getAttributeValueNamespaceIDs(ctx, avIDs)
+	// Keep action resolution/creation, namespace validation, and AAV insert in a single
+	// transaction so a later failure cannot leave newly created actions behind.
+	return c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
+		// Look up the namespace_id of the registered resource for same-namespace enforcement
+		nsUUID, err := txClient.queries.getRegisteredResourceNamespaceIDByValueID(ctx, registeredResourceValueID)
 		if err != nil {
 			return db.WrapIfKnownInvalidQueryErr(err)
 		}
-		for _, row := range rows {
-			if row.NamespaceID != resourceNamespaceID {
-				return fmt.Errorf("attribute value %s belongs to namespace %s, but registered resource belongs to namespace %s: %w",
-					row.AttributeValueID, row.NamespaceID, resourceNamespaceID, db.ErrForeignKeyViolation)
+		resourceNamespaceID := UUIDToString(nsUUID)
+
+		createActionAttributeValueParams := make([]createRegisteredResourceActionAttributeValuesParams, len(actionAttrValues))
+		for i, aav := range actionAttrValues {
+			actionID, attributeValueID, err := txClient.resolveRegResAAV(ctx, aav, nsUUID)
+			if err != nil {
+				return err
+			}
+			err = txClient.validateRRAAVNamespaceConsistency(ctx, resourceNamespaceID, attributeValueID, actionID)
+			if err != nil {
+				return err
+			}
+
+			createActionAttributeValueParams[i] = createRegisteredResourceActionAttributeValuesParams{
+				RegisteredResourceValueID: registeredResourceValueID,
+				ActionID:                  actionID,
+				AttributeValueID:          attributeValueID,
 			}
 		}
-	}
 
-	count, err := c.queries.createRegisteredResourceActionAttributeValues(ctx, createActionAttributeValueParams)
-	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
-	}
-	if count != int64(len(actionAttrValues)) {
-		return fmt.Errorf("failed to create all action attribute values, expected %d, got %d", len(actionAttrValues), count)
-	}
+		// Same-namespace enforcement (batch): all attribute values must belong to the same namespace as the registered resource
+		if resourceNamespaceID != "" {
+			avIDs := make([]string, len(createActionAttributeValueParams))
+			for i, p := range createActionAttributeValueParams {
+				avIDs[i] = p.AttributeValueID
+			}
+			rows, err := txClient.queries.getAttributeValueNamespaceIDs(ctx, avIDs)
+			if err != nil {
+				return db.WrapIfKnownInvalidQueryErr(err)
+			}
+			for _, row := range rows {
+				if row.NamespaceID != resourceNamespaceID {
+					return fmt.Errorf("attribute value %s belongs to namespace %s, but registered resource belongs to namespace %s: %w",
+						row.AttributeValueID, row.NamespaceID, resourceNamespaceID, db.ErrForeignKeyViolation)
+				}
+			}
+		}
 
-	return nil
+		count, err := txClient.queries.createRegisteredResourceActionAttributeValues(ctx, createActionAttributeValueParams)
+		if err != nil {
+			return db.WrapIfKnownInvalidQueryErr(err)
+		}
+		if count != int64(len(actionAttrValues)) {
+			return fmt.Errorf("failed to create all action attribute values, expected %d, got %d", len(actionAttrValues), count)
+		}
+
+		return nil
+	})
 }
 
 // resolveRegResAAV parses the action from a createRegisteredResourceActionAttributeValues input

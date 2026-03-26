@@ -649,64 +649,74 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 		return nil, err
 	}
 
-	// Get obligation
-	var oblValReq *obligations.GetObligationValueRequest
-	if r.GetObligationValue().GetId() != "" {
-		oblValReq = &obligations.GetObligationValueRequest{
-			Id: r.GetObligationValue().GetId(),
+	var trigger *policy.ObligationTrigger
+	// Keep action resolution/creation, namespace validation, and trigger insert in a single
+	// transaction so a later failure cannot leave newly created actions behind.
+	err = c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
+		// Get obligation
+		var oblValReq *obligations.GetObligationValueRequest
+		if r.GetObligationValue().GetId() != "" {
+			oblValReq = &obligations.GetObligationValueRequest{
+				Id: r.GetObligationValue().GetId(),
+			}
+		} else {
+			oblValReq = &obligations.GetObligationValueRequest{
+				Fqn: r.GetObligationValue().GetFqn(),
+			}
 		}
-	} else {
-		oblValReq = &obligations.GetObligationValueRequest{
-			Fqn: r.GetObligationValue().GetFqn(),
+
+		oblVal, err := txClient.GetObligationValue(ctx, oblValReq)
+		if err != nil {
+			return fmt.Errorf("failed to get obligation value: %w", err)
 		}
-	}
-
-	oblVal, err := c.GetObligationValue(ctx, oblValReq)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get obligation value: %w", err)
-	}
-	actionID, err := c.resolveObligationTriggerActionID(ctx, r.GetAction(), oblVal.GetObligation().GetNamespace().GetId())
-	if err != nil {
-		return nil, err
-	}
-
-	err = c.validateObligationNamespaceConsistency(ctx, oblVal.GetObligation().GetNamespace().GetId(), r.GetAttributeValue(), actionID)
-	if err != nil {
-		return nil, err
-	}
-
-	params := createObligationTriggerParams{
-		ObligationValueID: pgtypeUUID(oblVal.GetId()),
-		ActionID:          pgtypeUUID(actionID),
-		AttributeValueID:  pgtypeUUID(r.GetAttributeValue().GetId()),
-		AttributeValueFqn: pgtypeText(r.GetAttributeValue().GetFqn()),
-		ClientID:          pgtypeText(r.GetContext().GetPep().GetClientId()),
-		Metadata:          metadataJSON,
-	}
-	row, err := c.queries.createObligationTrigger(ctx, params)
-	if err != nil {
-		wrappedErr := db.WrapIfKnownInvalidQueryErr(err)
-		if errors.Is(wrappedErr, db.ErrNotNullViolation) {
-			return nil, errors.Join(db.ErrInvalidOblTriParam, wrappedErr)
+		actionID, err := txClient.resolveObligationTriggerActionID(ctx, r.GetAction(), oblVal.GetObligation().GetNamespace().GetId())
+		if err != nil {
+			return err
 		}
-		return nil, wrappedErr
-	}
 
-	metadata := &common.Metadata{}
-	if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
-		return nil, err
-	}
+		err = txClient.validateObligationNamespaceConsistency(ctx, oblVal.GetObligation().GetNamespace().GetId(), r.GetAttributeValue(), actionID)
+		if err != nil {
+			return err
+		}
 
-	trigger, err := unmarshalObligationTrigger(row.Trigger)
+		params := createObligationTriggerParams{
+			ObligationValueID: pgtypeUUID(oblVal.GetId()),
+			ActionID:          pgtypeUUID(actionID),
+			AttributeValueID:  pgtypeUUID(r.GetAttributeValue().GetId()),
+			AttributeValueFqn: pgtypeText(r.GetAttributeValue().GetFqn()),
+			ClientID:          pgtypeText(r.GetContext().GetPep().GetClientId()),
+			Metadata:          metadataJSON,
+		}
+		row, err := txClient.queries.createObligationTrigger(ctx, params)
+		if err != nil {
+			wrappedErr := db.WrapIfKnownInvalidQueryErr(err)
+			if errors.Is(wrappedErr, db.ErrNotNullViolation) {
+				return errors.Join(db.ErrInvalidOblTriParam, wrappedErr)
+			}
+			return wrappedErr
+		}
+
+		metadata := &common.Metadata{}
+		if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
+			return err
+		}
+
+		trigger, err = unmarshalObligationTrigger(row.Trigger)
+		if err != nil {
+			return err
+		}
+
+		if returnedOblVal := trigger.GetObligationValue(); returnedOblVal != nil {
+			returnedOblVal.Fqn = oblVal.GetFqn()
+		}
+
+		trigger.Metadata = metadata
+
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	if returnedOblVal := trigger.GetObligationValue(); returnedOblVal != nil {
-		returnedOblVal.Fqn = oblVal.GetFqn()
-	}
-
-	trigger.Metadata = metadata
 
 	return trigger, nil
 }
@@ -787,6 +797,9 @@ func (c PolicyDBClient) validateObligationNamespaceConsistency(
 	actionRows, err := c.queries.getActionsByIDs(ctx, []string{actionID})
 	if err != nil {
 		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if len(actionRows) == 0 {
+		return errors.Join(db.ErrNotFound, fmt.Errorf("action [%s] was not found", actionID))
 	}
 	a := actionRows[0]
 	actionNsID := UUIDToString(a.NamespaceID)

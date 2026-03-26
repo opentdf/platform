@@ -150,7 +150,7 @@ func loadKey(k KeyPairInfo) (any, error) {
 			ecPrivateKeyPem:  string(privatePEM),
 			ecCertificatePEM: string(certPEM),
 		}, nil
-	case AlgorithmRSA2048, AlgorithmRSA4096, AlgorithmMLKEM768, AlgorithmMLKEM1024:
+	case AlgorithmRSA2048, AlgorithmRSA4096, AlgorithmMLKEM768, AlgorithmMLKEM1024, AlgorithmHybridXWing:
 		decrypter, err := ocrypto.FromPrivatePEM(string(privatePEM))
 		if err != nil {
 			return nil, fmt.Errorf("ocrypto.FromPrivatePEM failed: %w", err)

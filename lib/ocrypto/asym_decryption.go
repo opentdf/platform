@@ -7,6 +7,7 @@ import (
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/hkdf"
 	"crypto/mlkem"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -14,10 +15,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
-
-	"golang.org/x/crypto/hkdf"
 )
 
 type AsymDecryption struct {
@@ -66,6 +64,9 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 			return nil, fmt.Errorf("mlkem.NewDecapsulationKey1024 failed after mlkem.NewDecapsulationKey768 failed: %w / %w", err, err1024)
 		}
 		return &MLKEMDecryptor1024{decap: decap1024}, nil
+	}
+	if block.Type == xWingPrivateKeyPEMType {
+		return parseXWingPrivateKey(block.Bytes)
 	}
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
@@ -195,12 +196,12 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 		return nil, fmt.Errorf("ecdh failure: %w", err)
 	}
 
-	hkdfObj := hkdf.New(sha256.New, ikm, e.salt, e.info)
-
 	derivedKey := make([]byte, 32) //nolint:mnd // AES-256 requires a 32-byte key
-	if _, err := io.ReadFull(hkdfObj, derivedKey); err != nil {
+	key, err := hkdf.Key(sha256.New, ikm, e.salt, string(e.info), len(derivedKey))
+	if err != nil {
 		return nil, fmt.Errorf("hkdf failure: %w", err)
 	}
+	copy(derivedKey, key)
 
 	// Encrypt data with derived key using aes-gcm
 	block, err := aes.NewCipher(derivedKey)

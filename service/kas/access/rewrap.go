@@ -667,17 +667,17 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		var dek ocrypto.ProtectedKey
 		var err error
 		switch kao.GetKeyAccessObject().GetKeyType() {
-		case string(ocrypto.MLKEM):
+		case string(ocrypto.MLKEM), string(ocrypto.Hybrid):
 			ephemeralCiphertext := kao.GetKeyAccessObject().GetEphemeralPublicKey()
 			if ephemeralCiphertext == "" {
-				p.Logger.WarnContext(ctx, "missing encapsulated key for ml-kem rewrap")
+				p.Logger.WarnContext(ctx, "missing encapsulated key for KEM rewrap")
 				failedKAORewrap(results, kao, err400("bad request"))
 				continue
 			}
 
 			encapsulatedKey, err := ocrypto.Base64Decode([]byte(ephemeralCiphertext))
 			if err != nil {
-				p.Logger.WarnContext(ctx, "failed to decode encapsulated key for ml-kem rewrap", slog.Any("error", err))
+				p.Logger.WarnContext(ctx, "failed to decode encapsulated key for KEM rewrap", slog.Any("error", err))
 				failedKAORewrap(results, kao, err400("bad request"))
 				continue
 			}
@@ -685,7 +685,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
 			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), encapsulatedKey)
 			if err != nil {
-				p.Logger.WarnContext(ctx, "failed to decrypt ML-KEM key", slog.Any("error", err))
+				p.Logger.WarnContext(ctx, "failed to decrypt KEM key", slog.Any("error", err))
 				failedKAORewrap(results, kao, err400("bad request"))
 				continue
 			}

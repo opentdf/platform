@@ -20,31 +20,11 @@ import (
 
 type ECCMode uint8
 
-type KeyType string
-
-const (
-	RSA2048Key   KeyType = "rsa:2048"
-	RSA4096Key   KeyType = "rsa:4096"
-	EC256Key     KeyType = "ec:secp256r1"
-	EC384Key     KeyType = "ec:secp384r1"
-	EC521Key     KeyType = "ec:secp521r1"
-	MLKEM768Key  KeyType = "mlkem:768"
-	MLKEM1024Key KeyType = "mlkem:1024"
-)
-
 const (
 	ECCModeSecp256r1 ECCMode = 0
 	ECCModeSecp384r1 ECCMode = 1
 	ECCModeSecp521r1 ECCMode = 2
 	ECCModeSecp256k1 ECCMode = 3
-)
-
-const (
-	ECCurveP256Size = 256
-	ECCurveP384Size = 384
-	ECCurveP521Size = 521
-	RSA2048Size     = 2048
-	RSA4096Size     = 4096
 )
 
 type KeyPair interface {
@@ -71,6 +51,8 @@ func NewKeyPair(kt KeyType) (KeyPair, error) {
 		return NewMLKEMKeyPair()
 	case MLKEM1024Key:
 		return NewMLKEM1024KeyPair()
+	case HybridXWingKey:
+		return NewHybridXWingKeyPair()
 	default:
 		return nil, fmt.Errorf("unsupported key type: %v", kt)
 	}

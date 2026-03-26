@@ -44,6 +44,7 @@ const (
 	kWrapped               = "wrapped"
 	kECWrapped             = "ec-wrapped"
 	kMLKEMWrapped          = "mlkem-wrapped"
+	kHybridWrapped         = "hybrid"
 	kKasProtocol           = "kas"
 	kSplitKeyType          = "split"
 	kGCMCipherAlgorithm    = "AES-256-GCM"
@@ -696,6 +697,14 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 		keyAccess.KeyType = kMLKEMWrapped
 		keyAccess.WrappedKey = wrappedKey
 		keyAccess.EphemeralPublicKey = encapsulatedKey
+	case ktype == ocrypto.HybridXWingKey:
+		wrappedKey, encapsulatedKey, err := generateWrapKeyWithHybrid(kasInfo.PublicKey, symKey)
+		if err != nil {
+			return KeyAccess{}, err
+		}
+		keyAccess.KeyType = kHybridWrapped
+		keyAccess.WrappedKey = wrappedKey
+		keyAccess.EphemeralPublicKey = encapsulatedKey
 	default:
 		wrappedKey, err := generateWrapKeyWithRSA(kasInfo.PublicKey, symKey)
 		if err != nil {
@@ -785,6 +794,25 @@ func generateWrapKeyWithMLKEM(publicKey string, symKey []byte) (string, string, 
 	encapsulatedKey := publicKeyEncryptor.EphemeralKey()
 	if len(encapsulatedKey) == 0 {
 		return "", "", errors.New("generateWrapKeyWithMLKEM: encapsulated key missing")
+	}
+
+	return string(ocrypto.Base64Encode(wrappedKey)), string(ocrypto.Base64Encode(encapsulatedKey)), nil
+}
+
+func generateWrapKeyWithHybrid(publicKey string, symKey []byte) (string, string, error) {
+	publicKeyEncryptor, err := ocrypto.FromPublicPEM(publicKey)
+	if err != nil {
+		return "", "", fmt.Errorf("generateWrapKeyWithHybrid: ocrypto.FromPublicPEM failed:%w", err)
+	}
+
+	wrappedKey, err := publicKeyEncryptor.Encrypt(symKey)
+	if err != nil {
+		return "", "", fmt.Errorf("generateWrapKeyWithHybrid: encrypt failed:%w", err)
+	}
+
+	encapsulatedKey := publicKeyEncryptor.EphemeralKey()
+	if len(encapsulatedKey) == 0 {
+		return "", "", errors.New("generateWrapKeyWithHybrid: encapsulated key missing")
 	}
 
 	return string(ocrypto.Base64Encode(wrappedKey)), string(ocrypto.Base64Encode(encapsulatedKey)), nil

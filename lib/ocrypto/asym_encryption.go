@@ -11,6 +11,7 @@ import (
 	"crypto/sha1" //nolint:gosec // used for padding which is safe
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/asn1"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -24,9 +25,10 @@ import (
 type SchemeType string
 
 const (
-	RSA   SchemeType = "wrapped"
-	EC    SchemeType = "ec-wrapped"
-	MLKEM SchemeType = "mlkem-wrapped"
+	RSA    SchemeType = "wrapped"
+	EC     SchemeType = "ec-wrapped"
+	MLKEM  SchemeType = "mlkem-wrapped"
+	Hybrid SchemeType = "hybrid"
 )
 
 type PublicKeyEncryptor interface {
@@ -42,7 +44,8 @@ type PublicKeyEncryptor interface {
 	// KeyType returns the key type, e.g. RSA or EC.
 	KeyType() KeyType
 
-	// For EC schemes, this method returns the public part of the ephemeral key.
+	// For EC and ML-KEM schemes, this method returns the public part of the ephemeral key.
+	// For Hybrid scheme, it returns the ASN.1 marshaled ciphertext.
 	// Otherwise, it returns nil.
 	EphemeralKey() []byte
 
@@ -71,6 +74,12 @@ type MLKEMEncryptor1024 struct {
 	pub          *mlkem.EncapsulationKey1024
 	cipherText   []byte
 	sharedSecret []byte
+}
+
+type HybridXWingEncryptorWrapper struct {
+	enc          *HybridXWingEncryptor
+	sharedSecret []byte
+	ciphertext   []byte
 }
 
 func FromPublicPEM(publicKeyInPem string) (PublicKeyEncryptor, error) {
@@ -103,6 +112,8 @@ func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyE
 		return newMLKEM768(pub), nil
 	case *mlkem.EncapsulationKey1024:
 		return newMLKEM1024(pub), nil
+	case *HybridXWingEncryptor:
+		return newHybridXWing(pub)
 	default:
 		break
 	}
@@ -123,6 +134,14 @@ func newMLKEM768(pub *mlkem.EncapsulationKey768) *MLKEMEncryptor768 {
 func newMLKEM1024(pub *mlkem.EncapsulationKey1024) *MLKEMEncryptor1024 {
 	sharedSecret, cipherText := pub.Encapsulate()
 	return &MLKEMEncryptor1024{pub: pub, cipherText: cipherText, sharedSecret: sharedSecret}
+}
+
+func newHybridXWing(pub *HybridXWingEncryptor) (*HybridXWingEncryptorWrapper, error) {
+	sharedSecret, ciphertext, err := pub.Encapsulate()
+	if err != nil {
+		return nil, err
+	}
+	return &HybridXWingEncryptorWrapper{enc: pub, sharedSecret: sharedSecret, ciphertext: ciphertext}, nil
 }
 
 // NewAsymEncryption creates and returns a new AsymEncryption.
@@ -151,6 +170,7 @@ func getPublicPart(publicKeyInPem string) (any, error) {
 	}
 
 	var pub any
+	var err error
 	switch {
 	case strings.Contains(publicKeyInPem, "BEGIN CERTIFICATE"):
 		cert, err := x509.ParseCertificate(block.Bytes)
@@ -170,8 +190,12 @@ func getPublicPart(publicKeyInPem string) (any, error) {
 			return nil, fmt.Errorf("mlkem.NewEncapsulationKey1024 failed after mlkem.NewEncapsulationKey768 failed: %w / %w", err, err1024)
 		}
 		pub = encap1024
+	case block.Type == "HYBRID X-WING PUBLIC KEY":
+		pub, err = NewHybridXWingEncryptor(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
 	default:
-		var err error
 		pub, err = x509.ParsePKIXPublicKey(block.Bytes)
 		if err != nil {
 			return nil, fmt.Errorf("x509.ParsePKIXPublicKey failed: %w", err)
@@ -208,6 +232,10 @@ func (e MLKEMEncryptor1024) Type() SchemeType {
 	return MLKEM
 }
 
+func (e *HybridXWingEncryptorWrapper) Type() SchemeType {
+	return Hybrid
+}
+
 func (e ECEncryptor) KeyType() KeyType {
 	switch e.pub.Curve() {
 	case ecdh.P256():
@@ -232,6 +260,10 @@ func (e MLKEMEncryptor1024) KeyType() KeyType {
 	return MLKEM1024Key
 }
 
+func (e *HybridXWingEncryptorWrapper) KeyType() KeyType {
+	return HybridXWingKey
+}
+
 func (e AsymEncryption) EphemeralKey() []byte {
 	return nil
 }
@@ -252,6 +284,10 @@ func (e MLKEMEncryptor1024) EphemeralKey() []byte {
 	return e.cipherText
 }
 
+func (e *HybridXWingEncryptorWrapper) EphemeralKey() []byte {
+	return e.ciphertext
+}
+
 func (e AsymEncryption) Metadata() (map[string]string, error) {
 	return make(map[string]string), nil
 }
@@ -269,6 +305,12 @@ func (e MLKEMEncryptor768) Metadata() (map[string]string, error) {
 }
 
 func (e MLKEMEncryptor1024) Metadata() (map[string]string, error) {
+	m := make(map[string]string)
+	m["encapsulatedKey"] = string(e.EphemeralKey())
+	return m, nil
+}
+
+func (e *HybridXWingEncryptorWrapper) Metadata() (map[string]string, error) {
 	m := make(map[string]string)
 	m["encapsulatedKey"] = string(e.EphemeralKey())
 	return m, nil
@@ -383,6 +425,25 @@ func (e MLKEMEncryptor1024) Encrypt(data []byte) ([]byte, error) {
 	return gcm.Seal(nonce, nonce, data, nil), nil
 }
 
+func (e *HybridXWingEncryptorWrapper) Encrypt(data []byte) ([]byte, error) {
+	block, err := aes.NewCipher(e.sharedSecret)
+	if err != nil {
+		return nil, fmt.Errorf("aes.NewCipher failed: %w", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("cipher.NewGCM failed: %w", err)
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, fmt.Errorf("nonce generation failed: %w", err)
+	}
+
+	return gcm.Seal(nonce, nonce, data, nil), nil
+}
+
 // PublicKeyInPemFormat Returns public key in pem format.
 func (e ECEncryptor) PublicKeyInPemFormat() (string, error) {
 	return publicKeyInPemFormat(e.ek.Public())
@@ -399,5 +460,22 @@ func (e MLKEMEncryptor1024) PublicKeyInPemFormat() (string, error) {
 	return string(pem.EncodeToMemory(&pem.Block{
 		Type:  "MLKEM ENCAPSULATOR",
 		Bytes: e.pub.Bytes(),
+	})), nil
+}
+
+func (e *HybridXWingEncryptorWrapper) PublicKeyInPemFormat() (string, error) {
+	pk := hybridXWingPublicKeyASN1{
+		X25519:   e.enc.pkX,
+		MLKEM768: e.enc.pkM.Bytes(),
+	}
+
+	bytes, err := asn1.Marshal(pk)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal hybrid public key: %w", err)
+	}
+
+	return string(pem.EncodeToMemory(&pem.Block{
+		Type:  "HYBRID X-WING PUBLIC KEY",
+		Bytes: bytes,
 	})), nil
 }

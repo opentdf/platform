@@ -37,6 +37,8 @@ func getKasKeyAlg(alg string) policy.Algorithm {
 		return policy.Algorithm_ALGORITHM_MLKEM_768
 	case string(ocrypto.MLKEM1024Key):
 		return policy.Algorithm_ALGORITHM_MLKEM_1024
+	case string(ocrypto.HybridXWingKey):
+		return policy.Algorithm_ALGORITHM_HYBRID_XWING
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED
 	}
@@ -59,6 +61,8 @@ func formatAlg(alg policy.Algorithm) (string, error) {
 		return string(ocrypto.MLKEM768Key), nil
 	case policy.Algorithm_ALGORITHM_MLKEM_1024:
 		return string(ocrypto.MLKEM1024Key), nil
+	case policy.Algorithm_ALGORITHM_HYBRID_XWING:
+		return string(ocrypto.HybridXWingKey), nil
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:

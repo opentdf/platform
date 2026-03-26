@@ -244,7 +244,7 @@ type KeyAccess struct {
 	Protocol string `protobuf:"bytes,3,opt,name=protocol,proto3" json:"protocol,omitempty"`
 	// Type of key wrapping used for the data encryption key
 	// Required: Always
-	// Values: 'wrapped' (RSA-wrapped for ZTDF), 'ec-wrapped' (experimental ECDH-wrapped)
+	// Values: 'wrapped' (RSA-wrapped for ZTDF), 'ec-wrapped' (experimental ECDH-wrapped), 'mlkem-wrapped' (ML-KEM-wrapped), 'hybrid' (Hybrid X-Wing-wrapped)
 	KeyType string `protobuf:"bytes,4,opt,name=key_type,json=type,proto3" json:"key_type,omitempty"`
 	// URL of the Key Access Server that can unwrap this key
 	// Optional: May be omitted if KAS URL is known from context
@@ -269,10 +269,10 @@ type KeyAccess struct {
 	// Optional: Not used by ZTDF (policy and metadata are separate)
 	// Contains magic bytes, version, algorithm, policy, and ephemeral key information
 	Header []byte `protobuf:"bytes,9,opt,name=header,proto3" json:"header,omitempty"`
-	// Ephemeral public key for ECDH key derivation (ec-wrapped type only)
-	// Required: When key_type="ec-wrapped" (experimental ECDH-based ZTDF)
+	// Ephemeral public key for ECDH/ML-KEM/Hybrid key derivation
+	// Required: When key_type="ec-wrapped", "mlkem-wrapped", or "hybrid"
 	// Omitted: When key_type="wrapped" (RSA-based ZTDF)
-	// Should be a PEM-encoded PKCS#8 (ASN.1) formatted public key
+	// Should be a PEM-encoded or Base64-encoded (for ML-KEM/Hybrid) public key material
 	// Used to derive the symmetric key for unwrapping the DEK
 	EphemeralPublicKey string `protobuf:"bytes,10,opt,name=ephemeral_public_key,json=ephemeralPublicKey,proto3" json:"ephemeral_public_key,omitempty"`
 }
@@ -855,8 +855,8 @@ type RewrapResponse struct {
 	// Deprecated: Marked as deprecated in kas/kas.proto.
 	EntityWrappedKey []byte `protobuf:"bytes,2,opt,name=entity_wrapped_key,json=entityWrappedKey,proto3" json:"entity_wrapped_key,omitempty"`
 	// KAS's ephemeral session public key in PEM format
-	// Required: For EC-based operations (key_type="ec-wrapped")
-	// Optional: Empty for RSA-based ZTDF (key_type="wrapped")
+	// Required: For EC-based operations (key_type="ec-wrapped") or Hybrid
+	// Optional: Empty for RSA-based ZTDF (key_type="wrapped") or ML-KEM
 	// Used by client to perform ECDH key agreement and decrypt the kas_wrapped_key values
 	SessionPublicKey string `protobuf:"bytes,3,opt,name=session_public_key,json=sessionPublicKey,proto3" json:"session_public_key,omitempty"`
 	// Deprecated: Legacy schema version identifier

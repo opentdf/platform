@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.21.0](https://github.com/opentdf/platform/compare/protocol/go/v0.20.0...protocol/go/v0.21.0) (2026-03-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** optional namespace for RRs ([#3165](https://github.com/opentdf/platform/issues/3165))
+
+### Features
+
+* **policy:** optional namespace for RRs ([#3165](https://github.com/opentdf/platform/issues/3165)) ([8948018](https://github.com/opentdf/platform/commit/89480186006085d2f59ebaeca6be6582db0e67d9))
+
+
+### Bug Fixes
+
+* **deps:** bump google.golang.org/grpc from 1.67.1 to 1.79.3 in /protocol/go ([#3173](https://github.com/opentdf/platform/issues/3173)) ([447ece6](https://github.com/opentdf/platform/commit/447ece6d458ecf88c9ca1149d05cce2552a0f883))
+
 ## [0.20.0](https://github.com/opentdf/platform/compare/protocol/go/v0.19.0...protocol/go/v0.20.0) (2026-03-18)
 
 

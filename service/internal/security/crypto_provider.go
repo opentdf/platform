@@ -15,4 +15,7 @@ const (
 	// Used for encryption with ML-KEM of the KAO
 	AlgorithmMLKEM768  = "mlkem:768"
 	AlgorithmMLKEM1024 = "mlkem:1024"
+
+	// Used for encryption with X-Wing hybrid KEM of the KAO
+	AlgorithmHybridXWing = "hpqt:xwing"
 )

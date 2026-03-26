@@ -90,7 +90,7 @@ func (k *KeyDetailsAdapter) ExportCertificate(_ context.Context) (string, error)
 	switch k.algorithm {
 	case AlgorithmECP256R1, AlgorithmECP384R1, AlgorithmECP521R1:
 		return k.cryptoProvider.ECCertificate(kid)
-	case ocrypto.RSA2048Key, ocrypto.RSA4096Key, ocrypto.MLKEM768Key, ocrypto.MLKEM1024Key:
+	case ocrypto.RSA2048Key, ocrypto.RSA4096Key, ocrypto.MLKEM768Key, ocrypto.MLKEM1024Key, ocrypto.HybridXWingKey:
 		return "", errors.New("certificates only available for EC keys")
 	}
 	return "", errors.New("certificates only available for EC keys")

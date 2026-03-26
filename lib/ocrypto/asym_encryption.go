@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/ecdsa"
+	"crypto/hkdf"
 	"crypto/mlkem"
 	"crypto/rand"
 	"crypto/rsa"
@@ -17,16 +18,15 @@ import (
 	"io"
 	"strconv"
 	"strings"
-
-	"golang.org/x/crypto/hkdf"
 )
 
 type SchemeType string
 
 const (
-	RSA   SchemeType = "wrapped"
-	EC    SchemeType = "ec-wrapped"
-	MLKEM SchemeType = "mlkem-wrapped"
+	RSA    SchemeType = "wrapped"
+	EC     SchemeType = "ec-wrapped"
+	MLKEM  SchemeType = "mlkem-wrapped"
+	Hybrid SchemeType = "hybrid"
 )
 
 type PublicKeyEncryptor interface {
@@ -103,6 +103,8 @@ func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyE
 		return newMLKEM768(pub), nil
 	case *mlkem.EncapsulationKey1024:
 		return newMLKEM1024(pub), nil
+	case *XWingPublicKey:
+		return newXWingEncryptor(pub)
 	default:
 		break
 	}
@@ -170,6 +172,12 @@ func getPublicPart(publicKeyInPem string) (any, error) {
 			return nil, fmt.Errorf("mlkem.NewEncapsulationKey1024 failed after mlkem.NewEncapsulationKey768 failed: %w / %w", err, err1024)
 		}
 		pub = encap1024
+	case block.Type == xWingPublicKeyPEMType:
+		xWingPub, err := newXWingPublicKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse X-Wing public key: %w", err)
+		}
+		pub = xWingPub
 	default:
 		var err error
 		pub, err = x509.ParsePKIXPublicKey(block.Bytes)
@@ -318,12 +326,12 @@ func (e ECEncryptor) Encrypt(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("ecdh failure: %w", err)
 	}
 
-	hkdfObj := hkdf.New(sha256.New, ikm, e.salt, e.info)
-
 	derivedKey := make([]byte, 32) //nolint:mnd // AES-256 requires a 32-byte key
-	if _, err := io.ReadFull(hkdfObj, derivedKey); err != nil {
+	key, err := hkdf.Key(sha256.New, ikm, e.salt, string(e.info), len(derivedKey))
+	if err != nil {
 		return nil, fmt.Errorf("hkdf failure: %w", err)
 	}
+	copy(derivedKey, key)
 
 	// Encrypt data with derived key using aes-gcm
 	block, err := aes.NewCipher(derivedKey)

@@ -4,6 +4,7 @@ import (
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/hkdf"
 	"crypto/mlkem"
 	"crypto/rand"
 	"crypto/sha256"
@@ -11,11 +12,8 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io"
 	"math/big"
 	"strings"
-
-	"golang.org/x/crypto/hkdf"
 )
 
 type ECCMode uint8
@@ -23,13 +21,14 @@ type ECCMode uint8
 type KeyType string
 
 const (
-	RSA2048Key   KeyType = "rsa:2048"
-	RSA4096Key   KeyType = "rsa:4096"
-	EC256Key     KeyType = "ec:secp256r1"
-	EC384Key     KeyType = "ec:secp384r1"
-	EC521Key     KeyType = "ec:secp521r1"
-	MLKEM768Key  KeyType = "mlkem:768"
-	MLKEM1024Key KeyType = "mlkem:1024"
+	RSA2048Key     KeyType = "rsa:2048"
+	RSA4096Key     KeyType = "rsa:4096"
+	EC256Key       KeyType = "ec:secp256r1"
+	EC384Key       KeyType = "ec:secp384r1"
+	EC521Key       KeyType = "ec:secp521r1"
+	MLKEM768Key    KeyType = "mlkem:768"
+	MLKEM1024Key   KeyType = "mlkem:1024"
+	HybridXWingKey KeyType = "hpqt:xwing"
 )
 
 const (
@@ -71,6 +70,8 @@ func NewKeyPair(kt KeyType) (KeyPair, error) {
 		return NewMLKEMKeyPair()
 	case MLKEM1024Key:
 		return NewMLKEM1024KeyPair()
+	case HybridXWingKey:
+		return NewXWingKeyPair()
 	default:
 		return nil, fmt.Errorf("unsupported key type: %v", kt)
 	}
@@ -363,13 +364,12 @@ func ConvertToECDHPrivateKey(key interface{}) (*ecdh.PrivateKey, error) {
 
 // CalculateHKDF generate a key using key derivation function.
 func CalculateHKDF(salt []byte, secret []byte) ([]byte, error) {
-	hkdfObj := hkdf.New(sha256.New, secret, salt, nil)
-
 	derivedKey := make([]byte, 32) //nolint:mnd // AES-256 requires a 32-byte key
-	_, err := io.ReadFull(hkdfObj, derivedKey)
+	key, err := hkdf.Key(sha256.New, secret, salt, "", len(derivedKey))
 	if err != nil {
 		return nil, fmt.Errorf("failed to derive hkdf key: %w", err)
 	}
+	copy(derivedKey, key)
 
 	return derivedKey, nil
 }

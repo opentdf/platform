@@ -24,9 +24,10 @@ import (
 type SchemeType string
 
 const (
-	RSA   SchemeType = "wrapped"
-	EC    SchemeType = "ec-wrapped"
-	MLKEM SchemeType = "mlkem-wrapped"
+	RSA    SchemeType = "wrapped"
+	EC     SchemeType = "ec-wrapped"
+	MLKEM  SchemeType = "mlkem-wrapped"
+	Hybrid SchemeType = "hybrid"
 )
 
 type PublicKeyEncryptor interface {
@@ -73,6 +74,12 @@ type MLKEMEncryptor1024 struct {
 	sharedSecret []byte
 }
 
+type XWingEncryptor struct {
+	pk           []byte // 1216-byte X-Wing encapsulation key
+	cipherText   []byte // 1120-byte X-Wing ciphertext (ct_M || ct_X)
+	sharedSecret []byte // 32-byte combined shared secret
+}
+
 func FromPublicPEM(publicKeyInPem string) (PublicKeyEncryptor, error) {
 	// TK Move salt and info out of library, into API option functions
 	digest := sha256.New()
@@ -103,6 +110,8 @@ func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyE
 		return newMLKEM768(pub), nil
 	case *mlkem.EncapsulationKey1024:
 		return newMLKEM1024(pub), nil
+	case xwingPublicKey:
+		return newXWingEncryptor([]byte(pub))
 	default:
 		break
 	}
@@ -144,6 +153,10 @@ func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
 	return AsymEncryption{}, fmt.Errorf("unsupported public key type: %T", pub)
 }
 
+// xwingPublicKey is a wrapper type for the raw 1216-byte X-Wing public key
+// used for type-switching in FromPublicPEMWithSalt.
+type xwingPublicKey []byte
+
 func getPublicPart(publicKeyInPem string) (any, error) {
 	block, _ := pem.Decode([]byte(publicKeyInPem))
 	if block == nil {
@@ -171,6 +184,11 @@ func getPublicPart(publicKeyInPem string) (any, error) {
 		}
 		pub = encap1024
 	default:
+		// Try X-Wing SubjectPublicKeyInfo first (has id-XWing OID)
+		if pk, err := parseXWingPublicKeyFromDER(block.Bytes); err == nil {
+			pub = xwingPublicKey(pk)
+			break
+		}
 		var err error
 		pub, err = x509.ParsePKIXPublicKey(block.Bytes)
 		if err != nil {
@@ -399,5 +417,71 @@ func (e MLKEMEncryptor1024) PublicKeyInPemFormat() (string, error) {
 	return string(pem.EncodeToMemory(&pem.Block{
 		Type:  "MLKEM ENCAPSULATOR",
 		Bytes: e.pub.Bytes(),
+	})), nil
+}
+
+// --- XWingEncryptor ---
+
+func newXWingEncryptor(pk []byte) (*XWingEncryptor, error) {
+	ss, ct, err := xwingEncapsulate(pk)
+	if err != nil {
+		return nil, err
+	}
+	return &XWingEncryptor{
+		pk:           pk,
+		cipherText:   ct[:],
+		sharedSecret: ss[:],
+	}, nil
+}
+
+func (e XWingEncryptor) Type() SchemeType {
+	return Hybrid
+}
+
+func (e XWingEncryptor) KeyType() KeyType {
+	return HybridXWing
+}
+
+func (e XWingEncryptor) EphemeralKey() []byte {
+	ct, err := marshalXWingCiphertext(e.cipherText)
+	if err != nil {
+		return nil
+	}
+	return ct
+}
+
+func (e XWingEncryptor) Metadata() (map[string]string, error) {
+	m := make(map[string]string)
+	m["encapsulatedKey"] = string(e.EphemeralKey())
+	return m, nil
+}
+
+func (e XWingEncryptor) Encrypt(data []byte) ([]byte, error) {
+	block, err := aes.NewCipher(e.sharedSecret)
+	if err != nil {
+		return nil, fmt.Errorf("aes.NewCipher failed: %w", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("cipher.NewGCM failed: %w", err)
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, fmt.Errorf("nonce generation failed: %w", err)
+	}
+
+	return gcm.Seal(nonce, nonce, data, nil), nil
+}
+
+func (e XWingEncryptor) PublicKeyInPemFormat() (string, error) {
+	der, err := marshalXWingPublicKey(e.pk)
+	if err != nil {
+		return "", err
+	}
+	return string(pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: der,
 	})), nil
 }

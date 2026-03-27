@@ -586,8 +586,15 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		symKeys = append(symKeys, symKey)
 
 		// policy binding
-		policyBindingHash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
-		pbstring := string(ocrypto.Base64Encode([]byte(policyBindingHash)))
+		hmacBytes := ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject)
+		var pbstring string
+		if tdfConfig.useHex {
+			// Legacy format: hex encode then base64
+			pbstring = string(ocrypto.Base64Encode([]byte(hex.EncodeToString(hmacBytes))))
+		} else {
+			// v4.4.0 format: direct base64 of HMAC bytes
+			pbstring = string(ocrypto.Base64Encode(hmacBytes))
+		}
 		policyBinding := PolicyBinding{
 			Alg:  "HS256",
 			Hash: pbstring,
@@ -662,8 +669,10 @@ func encryptMetadata(symKey []byte, metaData string) (string, error) {
 }
 
 func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding, encryptedMetadata, splitID string) (KeyAccess, error) {
+	ktype := ocrypto.KeyType(kasInfo.Algorithm)
 	keyAccess := KeyAccess{
 		KeyType:           kWrapped,
+		Algorithm:         ocrypto.AlgForKeyType(ktype),
 		KasURL:            kasInfo.URL,
 		KID:               kasInfo.KID,
 		Protocol:          kKasProtocol,
@@ -673,7 +682,6 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 		SchemaVersion:     keyAccessSchemaVersion,
 	}
 
-	ktype := ocrypto.KeyType(kasInfo.Algorithm)
 	if ocrypto.IsECKeyType(ktype) {
 		mode, err := ocrypto.ECKeyTypeToMode(ktype)
 		if err != nil {

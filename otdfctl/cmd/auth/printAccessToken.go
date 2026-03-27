@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/opentdf/otdfctl/cmd/common"
-	"github.com/opentdf/otdfctl/pkg/auth"
-	"github.com/opentdf/otdfctl/pkg/cli"
-	"github.com/opentdf/otdfctl/pkg/man"
-	"github.com/opentdf/otdfctl/pkg/profiles"
+	"github.com/opentdf/platform/otdfctl/cmd/common"
+	"github.com/opentdf/platform/otdfctl/pkg/auth"
+	"github.com/opentdf/platform/otdfctl/pkg/cli"
+	"github.com/opentdf/platform/otdfctl/pkg/man"
+	"github.com/opentdf/platform/otdfctl/pkg/profiles"
 	"github.com/spf13/cobra"
 )
 

@@ -6,8 +6,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/opentdf/otdfctl/pkg/handlers"
-	"github.com/opentdf/otdfctl/tui/constants"
+	"github.com/opentdf/platform/otdfctl/pkg/handlers"
+	"github.com/opentdf/platform/otdfctl/tui/constants"
 )
 
 const (

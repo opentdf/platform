@@ -8,11 +8,11 @@ import (
 
 	"github.com/evertras/bubble-table/table"
 	osprofiles "github.com/jrschumacher/go-osprofiles"
-	"github.com/opentdf/otdfctl/pkg/auth"
-	"github.com/opentdf/otdfctl/pkg/cli"
-	"github.com/opentdf/otdfctl/pkg/config"
-	"github.com/opentdf/otdfctl/pkg/handlers"
-	"github.com/opentdf/otdfctl/pkg/profiles"
+	"github.com/opentdf/platform/otdfctl/pkg/auth"
+	"github.com/opentdf/platform/otdfctl/pkg/cli"
+	"github.com/opentdf/platform/otdfctl/pkg/config"
+	"github.com/opentdf/platform/otdfctl/pkg/handlers"
+	"github.com/opentdf/platform/otdfctl/pkg/profiles"
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
 )

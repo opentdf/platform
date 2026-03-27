@@ -9,7 +9,7 @@ import (
 
 	osprofiles "github.com/jrschumacher/go-osprofiles"
 	osplatform "github.com/jrschumacher/go-osprofiles/pkg/platform"
-	"github.com/opentdf/otdfctl/pkg/config"
+	"github.com/opentdf/platform/otdfctl/pkg/config"
 )
 
 type ProfileDriver string

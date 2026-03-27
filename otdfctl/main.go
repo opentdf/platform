@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/opentdf/otdfctl/cmd"
+	"github.com/opentdf/platform/otdfctl/cmd"
 	"github.com/spf13/cobra"
 )
 

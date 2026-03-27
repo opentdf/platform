@@ -8,6 +8,7 @@ use (
 	./lib/flattening
 	./lib/identifier
 	./lib/ocrypto
+	./otdfctl
 	./protocol/go
 	./sdk
 	./service

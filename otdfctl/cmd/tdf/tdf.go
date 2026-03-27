@@ -4,7 +4,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/opentdf/otdfctl/pkg/cli"
+	"github.com/opentdf/platform/otdfctl/pkg/cli"
 )
 
 const (

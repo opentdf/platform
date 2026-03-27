@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0](https://github.com/opentdf/platform/compare/lib/fixtures/v0.5.0...lib/fixtures/v0.6.0) (2026-03-26)
+
+
+### Bug Fixes
+
+* **ci:** Upgrade toolchain version to 1.25.8 ([#3116](https://github.com/opentdf/platform/issues/3116)) ([e1b7882](https://github.com/opentdf/platform/commit/e1b78822c0380a106e6eec05af78dc1fc9e5701f))
+* Go 1.25 ([#3053](https://github.com/opentdf/platform/issues/3053)) ([65eb7c3](https://github.com/opentdf/platform/commit/65eb7c3d5fe1892de1e4fabb9b3b7894742c3f02))
+
 ## [0.5.0](https://github.com/opentdf/platform/compare/lib/fixtures/v0.4.0...lib/fixtures/v0.5.0) (2026-01-28)
 
 

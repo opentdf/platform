@@ -93,15 +93,20 @@ type Config struct {
 	Port           int        `mapstructure:"port" json:"port" default:"5432"`
 	Database       string     `mapstructure:"database" json:"database" default:"opentdf"`
 	User           string     `mapstructure:"user" json:"user" default:"postgres"`
-	Password       string     `mapstructure:"password" json:"password" default:"changeme"`
+	Password       string     `mapstructure:"password" json:"password" default:"changeme"` // #nosec G117 -- configuration value
 	SSLMode        string     `mapstructure:"sslmode" json:"sslmode" default:"prefer"`
 	Schema         string     `mapstructure:"schema" json:"schema" default:"opentdf"`
 	ConnectTimeout int        `mapstructure:"connect_timeout_seconds" json:"connect_timeout_seconds" default:"15"`
+	StartTimeout   int        `mapstructure:"start_timeout_seconds" json:"start_timeout_seconds" default:"30"`
+	StopTimeout    int        `mapstructure:"stop_timeout_seconds" json:"stop_timeout_seconds" default:"10"`
 	Pool           PoolConfig `mapstructure:"pool" json:"pool"`
 
 	RunMigrations    bool      `mapstructure:"runMigrations" json:"runMigrations" default:"true"`
 	MigrationsFS     *embed.FS `mapstructure:"-" json:"-"`
 	VerifyConnection bool      `mapstructure:"verifyConnection" json:"verifyConnection" default:"true"`
+
+	RuntimeConfig map[string]any `mapstructure:"runtime_config" json:"runtime_config"`
+	Runtime       Runtime        `mapstructure:"-" json:"-"`
 }
 
 func (c Config) LogValue() slog.Value {
@@ -114,6 +119,8 @@ func (c Config) LogValue() slog.Value {
 		slog.String("sslmode", c.SSLMode),
 		slog.String("schema", c.Schema),
 		slog.Int("connect_timeout_seconds", c.ConnectTimeout),
+		slog.Int("start_timeout_seconds", c.StartTimeout),
+		slog.Int("stop_timeout_seconds", c.StopTimeout),
 		slog.Group("pool",
 			slog.Int("max_connection_count", int(c.Pool.MaxConns)),
 			slog.Int("min_connection_count", int(c.Pool.MinConns)),
@@ -123,6 +130,7 @@ func (c Config) LogValue() slog.Value {
 		),
 		slog.Bool("runMigrations", c.RunMigrations),
 		slog.Bool("verifyConnection", c.VerifyConnection),
+		slog.Bool("runtime_config_set", len(c.RuntimeConfig) > 0),
 	)
 }
 
@@ -148,6 +156,7 @@ type Client struct {
 	// This is the stdlib connection that is used for transactions
 	SQLDB *sql.DB
 	trace.Tracer
+	runtimeRelease func(context.Context) error
 }
 
 /*
@@ -175,10 +184,21 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 	if err != nil {
 		return nil, fmt.Errorf("failed to create logger: %w", err)
 	}
-	c.Logger = l.With("schema", config.Schema)
 
-	dbConfig, err := config.buildConfig()
+	runtime := resolveRuntime(config)
+	updatedConfig, runtimeRelease, err := runtime.Prepare(ctx, config, l)
 	if err != nil {
+		return nil, err
+	}
+	if runtimeRelease != nil {
+		c.runtimeRelease = runtimeRelease
+	}
+	c.config = updatedConfig
+	c.Logger = l.With("schema", c.config.Schema)
+
+	dbConfig, err := c.config.buildConfig()
+	if err != nil {
+		c.releaseRuntime(ctx)
 		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
 	}
 
@@ -195,9 +215,10 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 		}
 	}
 
-	slog.Info("opening new database pool", slog.String("schema", config.Schema))
+	c.Logger.Info("opening new database pool")
 	pool, err := pgxpool.NewWithConfig(ctx, dbConfig)
 	if err != nil {
+		c.releaseRuntime(ctx)
 		return nil, fmt.Errorf("failed to create pgxpool: %w", err)
 	}
 	c.Pgx = pool
@@ -207,6 +228,7 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 	// Connect to the database to verify the connection
 	if c.config.VerifyConnection {
 		if err := c.Pgx.Ping(ctx); err != nil {
+			c.releaseRuntime(ctx)
 			return nil, fmt.Errorf("failed to connect to database: %w", err)
 		}
 	}
@@ -221,6 +243,7 @@ func (c *Client) Schema() string {
 func (c *Client) Close() {
 	c.Pgx.Close()
 	c.SQLDB.Close()
+	c.releaseRuntime(context.Background())
 }
 
 func (c Config) buildConfig() (*pgxpool.Config, error) {
@@ -298,6 +321,17 @@ func (c Client) Exec(ctx context.Context, sql string, args []interface{}) error 
 	}
 
 	return nil
+}
+
+func (c *Client) releaseRuntime(ctx context.Context) {
+	if c.runtimeRelease == nil {
+		return
+	}
+
+	if err := c.runtimeRelease(ctx); err != nil {
+		c.Logger.Error("failed to release database runtime resources", slog.String("error", err.Error()))
+	}
+	c.runtimeRelease = nil
 }
 
 //

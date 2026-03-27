@@ -617,6 +617,16 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 				continue
 			}
 
+			// Determine resource attribute ID for audit
+			resourceAttrID := ra.GetResourceAttributesId()
+			if resourceAttrID == "" && len(ra.GetAttributeValueFqns()) > 0 {
+				resourceAttrID = ra.GetAttributeValueFqns()[0]
+			}
+
+			// Start deferred audit event
+			auditEvent := as.logger.Audit.Decision(ctx, ec.GetId(), resourceAttrID, fqns)
+			defer auditEvent.Log(ctx)
+
 			//
 			// TODO: we should already have the subject mappings here and be able to just use OPA to trim down the known data attr values to the ones matched up with the entities
 			//
@@ -658,6 +668,10 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 						envEntityAttrValues[entityID] = e.GetAttributeValueFqns()
 					}
 				}
+
+				// Update audit with entitlements as they are computed
+				auditEvent.UpdateEntitlements(auditECEntitlements)
+
 				// call access-pdp
 				accessPDP := access.NewPdp(as.logger)
 				decisions, err := accessPDP.DetermineAccess(
@@ -691,6 +705,9 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 						Entitlements: entityEntitlementFqns,
 					})
 				}
+
+				// Update audit with entity decisions
+				auditEvent.UpdateEntityDecisions(auditEntityDecisions)
 			}
 
 			decisionResp := &authorization.DecisionResponse{
@@ -708,18 +725,13 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 				decisionResp.ResourceAttributesId = ra.GetAttributeValueFqns()[0]
 			}
 
+			// Log audit with final decision
 			auditDecision := audit.GetDecisionResultDeny
 			if decision == authorization.DecisionResponse_DECISION_PERMIT {
 				auditDecision = audit.GetDecisionResultPermit
 			}
-			as.logger.Audit.GetDecision(ctx, audit.GetDecisionEventParams{
-				Decision:                auditDecision,
-				EntityChainEntitlements: auditECEntitlements,
-				EntityChainID:           decisionResp.GetEntityChainId(),
-				EntityDecisions:         auditEntityDecisions,
-				FQNs:                    fqns,
-				ResourceAttributeID:     decisionResp.GetResourceAttributesId(),
-			})
+			auditEvent.Success(ctx, auditDecision)
+
 			response[responseIdx] = decisionResp
 		}
 	}

@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	osprofiles "github.com/jrschumacher/go-osprofiles"
-	"github.com/opentdf/otdfctl/pkg/utils"
+	"github.com/opentdf/platform/otdfctl/pkg/utils"
 )
 
 const (

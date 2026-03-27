@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/opentdf/otdfctl/pkg/config"
+	"github.com/opentdf/platform/otdfctl/pkg/config"
 	"golang.org/x/term"
 )
 

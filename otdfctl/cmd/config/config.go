@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/opentdf/otdfctl/pkg/man"
+	"github.com/opentdf/platform/otdfctl/pkg/man"
 )
 
 var (

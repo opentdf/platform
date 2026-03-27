@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	otdfctl "github.com/opentdf/otdfctl/cmd/common"
-	"github.com/opentdf/otdfctl/migrations"
-	"github.com/opentdf/otdfctl/pkg/cli"
-	"github.com/opentdf/otdfctl/pkg/man"
+	otdfctl "github.com/opentdf/platform/otdfctl/cmd/common"
+	"github.com/opentdf/platform/otdfctl/migrations"
+	"github.com/opentdf/platform/otdfctl/pkg/cli"
+	"github.com/opentdf/platform/otdfctl/pkg/man"
 	"github.com/spf13/cobra"
 )
 

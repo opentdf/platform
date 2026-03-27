@@ -4,9 +4,9 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/opentdf/otdfctl/pkg/auth"
-	"github.com/opentdf/otdfctl/pkg/profiles"
-	"github.com/opentdf/otdfctl/pkg/utils"
+	"github.com/opentdf/platform/otdfctl/pkg/auth"
+	"github.com/opentdf/platform/otdfctl/pkg/profiles"
+	"github.com/opentdf/platform/otdfctl/pkg/utils"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/sdk"
 )

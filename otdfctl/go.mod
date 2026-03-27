@@ -1,4 +1,4 @@
-module github.com/opentdf/otdfctl
+module github.com/opentdf/platform/otdfctl
 
 go 1.25.0
 

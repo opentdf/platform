@@ -3,8 +3,8 @@ package policy
 import (
 	"strings"
 
-	"github.com/opentdf/otdfctl/pkg/cli"
-	"github.com/opentdf/otdfctl/pkg/man"
+	"github.com/opentdf/platform/otdfctl/pkg/cli"
+	"github.com/opentdf/platform/otdfctl/pkg/man"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/spf13/cobra"
 )

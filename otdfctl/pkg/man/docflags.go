@@ -3,7 +3,7 @@ package man
 import (
 	"fmt"
 
-	"github.com/opentdf/otdfctl/pkg/cli"
+	"github.com/opentdf/platform/otdfctl/pkg/cli"
 )
 
 type DocFlag struct {

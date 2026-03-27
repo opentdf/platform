@@ -1,7 +1,7 @@
 package policy
 
 import (
-	"github.com/opentdf/otdfctl/pkg/man"
+	"github.com/opentdf/platform/otdfctl/pkg/man"
 )
 
 // KeyManagementCmd is the command for managing keys

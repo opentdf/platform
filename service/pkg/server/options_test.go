@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -164,4 +165,46 @@ func TestWithAuthZRoleProviderFactory(t *testing.T) {
 
 	require.NotNil(t, cfg.authzRoleProviderFactories)
 	require.Contains(t, cfg.authzRoleProviderFactories, "mock")
+}
+
+func TestWithAdditionalAuditTypeRegistrations(t *testing.T) {
+	var cfg StartConfig
+
+	objectTypesOne := make(map[audit.ObjectType]string)
+	objectTypesOne[audit.ObjectType(1000)] = "custom_object_1"
+
+	actionTypes := make(map[audit.ActionType]string)
+	actionTypes[audit.ActionType(1001)] = "custom_action_1"
+
+	cfg = WithAdditionalAuditTypeRegistrations(audit.TypeRegistrations{
+		ObjectTypes: objectTypesOne,
+		ActionTypes: actionTypes,
+	})(cfg)
+
+	objectTypesTwo := make(map[audit.ObjectType]string)
+	objectTypesTwo[audit.ObjectType(1002)] = "custom_object_2"
+
+	actionResults := make(map[audit.ActionResult]string)
+	actionResults[audit.ActionResult(1003)] = "custom_result_1"
+
+	cfg = WithAdditionalAuditTypeRegistrations(audit.TypeRegistrations{
+		ObjectTypes:   objectTypesTwo,
+		ActionResults: actionResults,
+	})(cfg)
+
+	require.Len(t, cfg.auditTypeRegistrations.ObjectTypes, 2)
+	require.Len(t, cfg.auditTypeRegistrations.ActionTypes, 1)
+	require.Len(t, cfg.auditTypeRegistrations.ActionResults, 1)
+	require.Len(t, objectTypesOne, 1)
+	require.Len(t, objectTypesTwo, 1)
+	require.Len(t, actionTypes, 1)
+	require.Len(t, actionResults, 1)
+	assert.Equal(t, "custom_object_1", cfg.auditTypeRegistrations.ObjectTypes[audit.ObjectType(1000)])
+	assert.Equal(t, "custom_object_2", cfg.auditTypeRegistrations.ObjectTypes[audit.ObjectType(1002)])
+	assert.Equal(t, "custom_action_1", cfg.auditTypeRegistrations.ActionTypes[audit.ActionType(1001)])
+	assert.Equal(t, "custom_result_1", cfg.auditTypeRegistrations.ActionResults[audit.ActionResult(1003)])
+	assert.Equal(t, "custom_object_1", objectTypesOne[audit.ObjectType(1000)])
+	assert.Equal(t, "custom_object_2", objectTypesTwo[audit.ObjectType(1002)])
+	assert.Equal(t, "custom_action_1", actionTypes[audit.ActionType(1001)])
+	assert.Equal(t, "custom_result_1", actionResults[audit.ActionResult(1003)])
 }

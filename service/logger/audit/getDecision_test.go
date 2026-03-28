@@ -41,7 +41,9 @@ func TestCreateGetDecisionEventHappyPathSuccess(t *testing.T) {
 		Type: ObjectTypeEntityObject,
 		ID:   "test-entity-chain-id-test-resource-attribute-id",
 		Attributes: eventObjectAttributes{
-			Attrs: []string{"test-fqn"},
+			EventObjectAttributes: EventObjectAttributes{
+				Attrs: []string{"test-fqn"},
+			},
 		},
 	}
 	if !reflect.DeepEqual(event.Object, expectedEventObject) {
@@ -49,16 +51,20 @@ func TestCreateGetDecisionEventHappyPathSuccess(t *testing.T) {
 	}
 
 	expectedEventAction := eventAction{
-		Type:   ActionTypeRead,
-		Result: ActionResultSuccess,
+		EventObjectAction: EventObjectAction{
+			Type:   ActionTypeRead,
+			Result: ActionResultSuccess,
+		},
 	}
 	if !reflect.DeepEqual(event.Action, expectedEventAction) {
 		t.Fatalf("event action did not match expected: got %+v, want %+v", event.Action, expectedEventAction)
 	}
 
 	expectedEventActor := auditEventActor{
-		ID:         "test-entity-chain-id",
-		Attributes: buildActorAttributes(params.EntityChainEntitlements),
+		EventObjectActor: EventObjectActor{
+			ID:         "test-entity-chain-id",
+			Attributes: buildActorAttributes(params.EntityChainEntitlements),
+		},
 	}
 	if !reflect.DeepEqual(event.Actor, expectedEventActor) {
 		t.Fatalf("event actor did not match expected: got %+v, want %+v", event.Actor, expectedEventActor)
@@ -70,9 +76,11 @@ func TestCreateGetDecisionEventHappyPathSuccess(t *testing.T) {
 	}
 
 	expectedClientInfo := eventClientInfo{
-		Platform:  "authorization",
-		UserAgent: TestUserAgent,
-		RequestIP: TestRequestIP.String(),
+		EventClientInfo: EventClientInfo{
+			Platform:  "authorization",
+			UserAgent: TestUserAgent,
+			RequestIP: TestRequestIP.String(),
+		},
 	}
 	if !reflect.DeepEqual(event.ClientInfo, expectedClientInfo) {
 		t.Fatalf("event client info did not match expected: got %+v, want %+v", event.ClientInfo, expectedClientInfo)

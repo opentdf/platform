@@ -774,6 +774,14 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		// Check if policy binding is nil
 		if kao.GetKeyAccessObject().GetPolicyBinding() == nil {
 			p.Logger.WarnContext(ctx, "policy binding is nil", slog.String("kao_id", kao.GetKeyAccessObjectId()))
+			p.Logger.Audit.RewrapFailure(ctx, audit.RewrapAuditEventParams{
+				Policy:        ConvertToAuditKasPolicy(*policy),
+				IsSuccess:     false,
+				TDFFormat:     "tdf3",
+				Algorithm:     req.GetAlgorithm(),
+				PolicyBinding: "",
+				KeyID:         kao.GetKeyAccessObject().GetKid(),
+			})
 			failedKAORewrap(results, kao, err400("missing policy binding"))
 			continue
 		}
@@ -784,6 +792,14 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		n, err := base64.StdEncoding.Decode(policyBinding, []byte(policyBindingB64Encoded))
 		if err != nil {
 			p.Logger.WarnContext(ctx, "invalid policy binding encoding", slog.Any("error", err))
+			p.Logger.Audit.RewrapFailure(ctx, audit.RewrapAuditEventParams{
+				Policy:        ConvertToAuditKasPolicy(*policy),
+				IsSuccess:     false,
+				TDFFormat:     "tdf3",
+				Algorithm:     req.GetAlgorithm(),
+				PolicyBinding: policyBindingB64Encoded,
+				KeyID:         kao.GetKeyAccessObject().GetKid(),
+			})
 			failedKAORewrap(results, kao, err400("bad request"))
 			continue
 		}
@@ -800,6 +816,14 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		// Verify policy binding using the UnwrappedKeyData interface
 		if err := dek.VerifyBinding(ctx, []byte(req.GetPolicy().GetBody()), policyBinding); err != nil {
 			p.Logger.WarnContext(ctx, "failure to verify policy binding", slog.Any("error", err))
+			p.Logger.Audit.RewrapFailure(ctx, audit.RewrapAuditEventParams{
+				Policy:        ConvertToAuditKasPolicy(*policy),
+				IsSuccess:     false,
+				TDFFormat:     "tdf3",
+				Algorithm:     req.GetAlgorithm(),
+				PolicyBinding: policyBindingB64Encoded,
+				KeyID:         kao.GetKeyAccessObject().GetKid(),
+			})
 			failedKAORewrap(results, kao, err400("bad request"))
 			continue
 		}

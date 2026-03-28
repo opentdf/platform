@@ -22,6 +22,11 @@ services:
   kas:
     eccertid: e1
     rsacertid: r1
+    # Optional list of JWT claim names to log in audit and forward to auth decisions.
+    # Supports dot notation for nested claims (e.g., realm_access.roles).
+    # audited_entity_jwt_claims:
+    #   - sub
+    #   - realm_access.roles
   entityresolution:
     url: http://keycloak:8888/auth
     clientid: "tdf-entity-resolution"

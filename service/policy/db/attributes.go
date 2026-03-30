@@ -146,12 +146,16 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 		}
 	}
 
+	sortField, sortDirection := GetAttributesSortParams(r.GetSort())
+
 	list, err := c.queries.listAttributesDetail(ctx, listAttributesDetailParams{
 		Active:        active,
 		NamespaceID:   pgtypeUUID(namespaceID),
 		NamespaceName: pgtypeText(namespaceName),
 		Limit:         limit,
 		Offset:        offset,
+		SortField:     sortField,
+		SortDirection: sortDirection,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

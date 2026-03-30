@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -289,4 +290,35 @@ func UUIDToString(uuid pgtype.UUID) string {
 		uuid.Bytes[8:10],
 		uuid.Bytes[10:16],
 	)
+}
+
+// GetAttributesSortParams maps the strongly-typed AttributesSort enum to
+// SQL-compatible field name and direction strings.
+// Returns empty strings when sort is nil or empty (backward compatible —
+// callers fall back to default ORDER BY created_at DESC).
+func GetAttributesSortParams(sort []*attributes.AttributesSort) (string, string) {
+	if len(sort) == 0 || sort[0] == nil {
+		return "", ""
+	}
+	s := sort[0]
+
+	var field string
+	switch s.GetField() {
+	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME:
+		field = "name"
+	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT:
+		field = "created_at"
+	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UPDATED_AT:
+		field = "updated_at"
+	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UNSPECIFIED:
+		return "", ""
+	default:
+		return "", ""
+	}
+
+	direction := "ASC"
+	if s.GetDirection() == policy.SortDirection_SORT_DIRECTION_DESC {
+		direction = "DESC"
+	}
+	return field, direction
 }

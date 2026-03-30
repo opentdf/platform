@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -348,6 +349,90 @@ func Test_UnmarshalPrivatePublicKeyContext(t *testing.T) {
 					assert.Equal(t, "WRAPPED_PRIVATE_KEY", privKeyCtx.GetWrappedKey(), "Mismatch in privKeyCtx.GetWrappedKey() for test: %s", tt.name)
 				}
 			}
+		})
+	}
+}
+
+func Test_GetAttributesSortParams(t *testing.T) {
+	cases := []struct {
+		name          string
+		sort          []*attributes.AttributesSort
+		expectedField string
+		expectedDir   string
+	}{
+		{
+			name:          "nil sort returns empty strings",
+			sort:          nil,
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name:          "empty slice returns empty strings",
+			sort:          []*attributes.AttributesSort{},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name:          "nil element returns empty strings",
+			sort:          []*attributes.AttributesSort{nil},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name: "UNSPECIFIED field returns empty strings",
+			sort: []*attributes.AttributesSort{
+				{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name: "NAME with ASC",
+			sort: []*attributes.AttributesSort{
+				{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "name",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "NAME with DESC",
+			sort: []*attributes.AttributesSort{
+				{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "name",
+			expectedDir:   "DESC",
+		},
+		{
+			name: "CREATED_AT with ASC",
+			sort: []*attributes.AttributesSort{
+				{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "created_at",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "CREATED_AT with unspecified direction defaults to ASC",
+			sort: []*attributes.AttributesSort{
+				{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT},
+			},
+			expectedField: "created_at",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "UPDATED_AT with DESC",
+			sort: []*attributes.AttributesSort{
+				{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "updated_at",
+			expectedDir:   "DESC",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			field, dir := GetAttributesSortParams(tc.sort)
+			assert.Equal(t, tc.expectedField, field)
+			assert.Equal(t, tc.expectedDir, dir)
 		})
 	}
 }

@@ -1,0 +1,72 @@
+---
+status: 'proposed'
+date: '2026-03-30'
+tags:
+ - policy
+ - authorization
+ - namespaced-policy
+driver: '@elizabethhealy'
+---
+
+# Namespaced Subject Mapping Decisioning in PDP
+
+## Context and Problem Statement
+
+Policy objects are moving toward strict namespace ownership, but access decisioning still treats actions as unscoped names in several evaluation paths. This creates ambiguity when a request action name exists in multiple namespaces and when a single resource includes attributes from multiple namespaces.
+
+We need a decisioning model that is namespace-correct, fail-closed, and compatible with staged rollout using the `NamespacedPolicy` feature flag.
+
+## Decision Drivers
+
+- Preserve existing multi-namespace resource semantics (`AND` behavior) while adding namespace correctness.
+- Prevent cross-namespace action matches when namespaced policy mode is enabled.
+- Keep rollout safe via feature-flagged behavior split.
+- Avoid startup coupling by keeping standard-action checks lazy at evaluation time.
+
+## Decision Outcome
+
+Chosen option: **Resolve request action by name within each evaluation namespace context**.
+
+The request action remains unnamespaced in the decision request. During evaluation, action matching is performed per namespace context (derived from the rule/value being evaluated), not globally.
+
+Feature-flag mode split:
+
+- `NamespacedPolicy=false`: evaluate ONLY unnamespaced subject mappings and unnamespaced actions.
+- `NamespacedPolicy=true`: evaluate ONLY namespaced subject mappings and require action namespace equality for each evaluated namespace.
+
+For multi-namespace resources, existing `AND` semantics remain unchanged: all required namespace-scoped checks must pass, and missing action support in any required namespace denies access.
+
+## Consequences
+
+- 🟩 **Good**, because action evaluation becomes deterministic and namespace-safe.
+- 🟩 **Good**, because feature-flagged split allows staged migration without mixed-mode ambiguity.
+- 🟩 **Good**, because fail-closed behavior prevents accidental entitlement via cross-namespace action reuse.
+- 🟥 **Bad**, because policy admins must ensure required actions exist in each relevant namespace.
+- 🟥 **Bad**, because debugging becomes harder without explicit namespace-aware logs.
+
+## Validation
+
+Validation is done through PDP and decisioning tests covering:
+
+- mode split (`NamespacedPolicy=false` vs `true`) for subject mapping inclusion,
+- namespace-aware action matching in rule evaluation paths,
+- multi-namespace resource behavior where one missing namespace action causes deny,
+- regression checks to confirm existing `AND` behavior is preserved.
+
+## Implementation Notes
+
+- Thread `NamespacedPolicy` into PDP runtime configuration.
+- Filter subject mappings at PDP construction by mode (namespaced vs unnamespaced).
+- Centralize action matching in a namespace-aware helper used by all rule/action checks.
+- Derive required namespace per evaluated value/rule context.
+- Keep standard/custom action existence checks lazy at evaluation time.
+- Add debug logs including requested action, required namespace, candidate namespace, and rule/value context.
+
+## Rollout
+
+1. Land logic behind `NamespacedPolicy`.
+2. Keep default mode as legacy (`false`) until policy data migration is complete.
+3. Validate namespaced policy data readiness.
+4. Flip `NamespacedPolicy=true` and monitor mismatch/deny behavior.
+5. Remove legacy branch once namespaced mode is stable.
+

@@ -508,6 +508,193 @@ func (s *AttributesSuite) Test_ListAttributes_OrdersByCreatedAt_Succeeds() {
 	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, thirdID, secondID, firstID)
 }
 
+func (s *AttributesSuite) Test_ListAttributes_SortByName_ASC() {
+	suffix := time.Now().UnixNano()
+	nsName := fmt.Sprintf("sort-name-asc-attrs-%d.com", suffix)
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: nsName})
+	s.Require().NoError(err)
+
+	names := []string{
+		fmt.Sprintf("aaa-sort-attr-%d", suffix),
+		fmt.Sprintf("bbb-sort-attr-%d", suffix),
+		fmt.Sprintf("ccc-sort-attr-%d", suffix),
+	}
+	ids := make([]string, len(names))
+	for i, name := range names {
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        name,
+			NamespaceId: ns.GetId(),
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: ns.GetId(),
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// aaa < bbb < ccc in ASC order
+	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByName_DESC() {
+	suffix := time.Now().UnixNano()
+	nsName := fmt.Sprintf("sort-name-desc-attrs-%d.com", suffix)
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: nsName})
+	s.Require().NoError(err)
+
+	names := []string{
+		fmt.Sprintf("aaa-sortdesc-attr-%d", suffix),
+		fmt.Sprintf("bbb-sortdesc-attr-%d", suffix),
+		fmt.Sprintf("ccc-sortdesc-attr-%d", suffix),
+	}
+	ids := make([]string, len(names))
+	for i, name := range names {
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        name,
+			NamespaceId: ns.GetId(),
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: ns.GetId(),
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// ccc > bbb > aaa in DESC order
+	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByCreatedAt_ASC() {
+	suffix := time.Now().UnixNano()
+	nsName := fmt.Sprintf("sort-created-asc-attrs-%d.com", suffix)
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: nsName})
+	s.Require().NoError(err)
+
+	create := func(i int) string {
+		name := fmt.Sprintf("createdasc-attr-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        name,
+			NamespaceId: ns.GetId(),
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		})
+		s.Require().NoError(err)
+		return created.GetId()
+	}
+
+	firstID := create(1)
+	time.Sleep(5 * time.Millisecond)
+	secondID := create(2)
+	time.Sleep(5 * time.Millisecond)
+	thirdID := create(3)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: ns.GetId(),
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// oldest first in ASC order
+	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, firstID, secondID, thirdID)
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_DESC() {
+	suffix := time.Now().UnixNano()
+	nsName := fmt.Sprintf("sort-updated-desc-attrs-%d.com", suffix)
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: nsName})
+	s.Require().NoError(err)
+
+	create := func(i int) string {
+		name := fmt.Sprintf("upd-sort-attr-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        name,
+			NamespaceId: ns.GetId(),
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		})
+		s.Require().NoError(err)
+		return created.GetId()
+	}
+
+	firstID := create(1)
+	secondID := create(2)
+	thirdID := create(3)
+
+	// Update the first attribute so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err = s.db.PolicyClient.UpdateAttribute(s.ctx, firstID, &attributes.UpdateAttributeRequest{
+		Id: firstID,
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: ns.GetId(),
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// The updated attribute (firstID) should appear before the others
+	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, firstID, thirdID, secondID)
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedField_FallsBackToDefault() {
+	suffix := time.Now().UnixNano()
+	nsName := fmt.Sprintf("sort-unspecified-attrs-%d.com", suffix)
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: nsName})
+	s.Require().NoError(err)
+
+	create := func(i int) string {
+		name := fmt.Sprintf("unspecified-sort-attr-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        name,
+			NamespaceId: ns.GetId(),
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		})
+		s.Require().NoError(err)
+		return created.GetId()
+	}
+
+	firstID := create(1)
+	time.Sleep(5 * time.Millisecond)
+	secondID := create(2)
+	time.Sleep(5 * time.Millisecond)
+	thirdID := create(3)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: ns.GetId(),
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Falls back to default created_at DESC ordering
+	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, thirdID, secondID, firstID)
+}
+
 func (s *AttributesSuite) Test_ListAttributes_Limit_Succeeds() {
 	var limit int32 = 2
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{

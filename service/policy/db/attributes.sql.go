@@ -794,15 +794,24 @@ WHERE
     ($2::uuid IS NULL OR ad.namespace_id = $2::uuid) AND 
     ($3::text IS NULL OR n.name = $3::text) 
 GROUP BY ad.id, n.name, fqns.fqn
-ORDER BY ad.created_at DESC
-LIMIT $5 
-OFFSET $4
+ORDER BY
+    CASE WHEN $4::text = 'name' AND $5::text = 'ASC' THEN ad.name END ASC,
+    CASE WHEN $4::text = 'name' AND $5::text = 'DESC' THEN ad.name END DESC,
+    CASE WHEN $4::text = 'created_at' AND $5::text = 'ASC' THEN ad.created_at END ASC,
+    CASE WHEN $4::text = 'created_at' AND $5::text = 'DESC' THEN ad.created_at END DESC,
+    CASE WHEN $4::text = 'updated_at' AND $5::text = 'ASC' THEN ad.updated_at END ASC,
+    CASE WHEN $4::text = 'updated_at' AND $5::text = 'DESC' THEN ad.updated_at END DESC,
+    ad.created_at DESC
+LIMIT $7
+OFFSET $6
 `
 
 type listAttributesDetailParams struct {
 	Active        pgtype.Bool `json:"active"`
 	NamespaceID   pgtype.UUID `json:"namespace_id"`
 	NamespaceName pgtype.Text `json:"namespace_name"`
+	SortField     string      `json:"sort_field"`
+	SortDirection string      `json:"sort_direction"`
 	Offset        int32       `json:"offset_"`
 	Limit         int32       `json:"limit_"`
 }
@@ -861,14 +870,23 @@ type listAttributesDetailRow struct {
 //	    ($2::uuid IS NULL OR ad.namespace_id = $2::uuid) AND
 //	    ($3::text IS NULL OR n.name = $3::text)
 //	GROUP BY ad.id, n.name, fqns.fqn
-//	ORDER BY ad.created_at DESC
-//	LIMIT $5
-//	OFFSET $4
+//	ORDER BY
+//	    CASE WHEN $4::text = 'name' AND $5::text = 'ASC' THEN ad.name END ASC,
+//	    CASE WHEN $4::text = 'name' AND $5::text = 'DESC' THEN ad.name END DESC,
+//	    CASE WHEN $4::text = 'created_at' AND $5::text = 'ASC' THEN ad.created_at END ASC,
+//	    CASE WHEN $4::text = 'created_at' AND $5::text = 'DESC' THEN ad.created_at END DESC,
+//	    CASE WHEN $4::text = 'updated_at' AND $5::text = 'ASC' THEN ad.updated_at END ASC,
+//	    CASE WHEN $4::text = 'updated_at' AND $5::text = 'DESC' THEN ad.updated_at END DESC,
+//	    ad.created_at DESC
+//	LIMIT $7
+//	OFFSET $6
 func (q *Queries) listAttributesDetail(ctx context.Context, arg listAttributesDetailParams) ([]listAttributesDetailRow, error) {
 	rows, err := q.db.Query(ctx, listAttributesDetail,
 		arg.Active,
 		arg.NamespaceID,
 		arg.NamespaceName,
+		arg.SortField,
+		arg.SortDirection,
 		arg.Offset,
 		arg.Limit,
 	)
@@ -917,15 +935,24 @@ FROM attribute_definitions ad
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 WHERE ad.namespace_id = $1
 GROUP BY ad.id, n.name
-ORDER BY ad.created_at DESC
-LIMIT $3 
-OFFSET $2
+ORDER BY
+    CASE WHEN $2::text = 'name' AND $3::text = 'ASC' THEN ad.name END ASC,
+    CASE WHEN $2::text = 'name' AND $3::text = 'DESC' THEN ad.name END DESC,
+    CASE WHEN $2::text = 'created_at' AND $3::text = 'ASC' THEN ad.created_at END ASC,
+    CASE WHEN $2::text = 'created_at' AND $3::text = 'DESC' THEN ad.created_at END DESC,
+    CASE WHEN $2::text = 'updated_at' AND $3::text = 'ASC' THEN ad.updated_at END ASC,
+    CASE WHEN $2::text = 'updated_at' AND $3::text = 'DESC' THEN ad.updated_at END DESC,
+    ad.created_at DESC
+LIMIT $5
+OFFSET $4
 `
 
 type listAttributesSummaryParams struct {
-	NamespaceID string `json:"namespace_id"`
-	Offset      int32  `json:"offset_"`
-	Limit       int32  `json:"limit_"`
+	NamespaceID   string `json:"namespace_id"`
+	SortField     string `json:"sort_field"`
+	SortDirection string `json:"sort_direction"`
+	Offset        int32  `json:"offset_"`
+	Limit         int32  `json:"limit_"`
 }
 
 type listAttributesSummaryRow struct {
@@ -956,11 +983,24 @@ type listAttributesSummaryRow struct {
 //	LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 //	WHERE ad.namespace_id = $1
 //	GROUP BY ad.id, n.name
-//	ORDER BY ad.created_at DESC
-//	LIMIT $3
-//	OFFSET $2
+//	ORDER BY
+//	    CASE WHEN $2::text = 'name' AND $3::text = 'ASC' THEN ad.name END ASC,
+//	    CASE WHEN $2::text = 'name' AND $3::text = 'DESC' THEN ad.name END DESC,
+//	    CASE WHEN $2::text = 'created_at' AND $3::text = 'ASC' THEN ad.created_at END ASC,
+//	    CASE WHEN $2::text = 'created_at' AND $3::text = 'DESC' THEN ad.created_at END DESC,
+//	    CASE WHEN $2::text = 'updated_at' AND $3::text = 'ASC' THEN ad.updated_at END ASC,
+//	    CASE WHEN $2::text = 'updated_at' AND $3::text = 'DESC' THEN ad.updated_at END DESC,
+//	    ad.created_at DESC
+//	LIMIT $5
+//	OFFSET $4
 func (q *Queries) listAttributesSummary(ctx context.Context, arg listAttributesSummaryParams) ([]listAttributesSummaryRow, error) {
-	rows, err := q.db.Query(ctx, listAttributesSummary, arg.NamespaceID, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, listAttributesSummary,
+		arg.NamespaceID,
+		arg.SortField,
+		arg.SortDirection,
+		arg.Offset,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}

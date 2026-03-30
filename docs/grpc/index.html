@@ -909,6 +909,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.attributes.AttributesSort"><span class="badge">M</span>AttributesSort</a>
+                </li>
+              
+                <li>
                   <a href="#policy.attributes.CreateAttributeRequest"><span class="badge">M</span>CreateAttributeRequest</a>
                 </li>
               
@@ -1044,6 +1048,10 @@
                   <a href="#policy.attributes.ValueKeyAccessServer"><span class="badge">M</span>ValueKeyAccessServer</a>
                 </li>
               
+              
+                <li>
+                  <a href="#policy.attributes.SortAttributesType"><span class="badge">E</span>SortAttributesType</a>
+                </li>
               
               
               
@@ -8137,6 +8145,37 @@ Custom actions only: replaces the existing action name </p></td>
 
         
       
+        <h3 id="policy.attributes.AttributesSort">AttributesSort</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>field</td>
+                  <td><a href="#policy.attributes.SortAttributesType">SortAttributesType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>direction</td>
+                  <td><a href="#policy.SortDirection">policy.SortDirection</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.attributes.CreateAttributeRequest">CreateAttributeRequest</h3>
         <p></p>
 
@@ -8766,6 +8805,13 @@ Namespace ID or name </p></td>
                   <td><p>Optional </p></td>
                 </tr>
               
+                <tr>
+                  <td>sort</td>
+                  <td><a href="#policy.attributes.AttributesSort">AttributesSort</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional - CONSTRAINT: max 1 item </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -9184,6 +9230,41 @@ Common metadata </p></td>
         
       
 
+      
+        <h3 id="policy.attributes.SortAttributesType">SortAttributesType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_ATTRIBUTES_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_ATTRIBUTES_TYPE_NAME</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_ATTRIBUTES_TYPE_CREATED_AT</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_ATTRIBUTES_TYPE_UPDATED_AT</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
 
       

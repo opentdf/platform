@@ -16,7 +16,6 @@ require (
 	github.com/casbin/casbin/v2 v2.108.0
 	github.com/creasty/defaults v1.8.0
 	github.com/dgraph-io/ristretto/v2 v2.4.0
-	github.com/docker/docker v28.5.1+incompatible
 	github.com/docker/go-connections v0.6.0
 	github.com/eko/gocache/lib/v4 v4.2.0
 	github.com/eko/gocache/store/ristretto/v4 v4.3.2
@@ -66,6 +65,7 @@ require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
+	github.com/docker/docker v28.5.1+incompatible // indirect
 	github.com/ebitengine/purego v0.8.4 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667 // indirect
 	github.com/go-ldap/ldap/v3 v3.4.12

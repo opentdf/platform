@@ -12,7 +12,7 @@ driver: '@elizabethhealy'
 
 ## Context and Problem Statement
 
-Policy objects are moving toward strict namespace ownership, but access decisioning still treats actions as unscoped names in several evaluation paths. This creates ambiguity when a request action name exists in multiple namespaces and when a single resource includes attributes from multiple namespaces.
+Policy objects are moving toward strict namespace ownership, but access decisioning still treats actions as unscoped names in several evaluation paths. Subject mappings are also transitioning from legacy unnamespaced records to namespace-owned records. This creates ambiguity when a request action name exists in multiple namespaces and when a single resource includes attributes from multiple namespaces.
 
 We need a decisioning model that is namespace-correct, fail-closed, and compatible with staged rollout using the `NamespacedPolicy` feature flag.
 
@@ -25,9 +25,9 @@ We need a decisioning model that is namespace-correct, fail-closed, and compatib
 
 ## Decision Outcome
 
-Chosen option: **Resolve request action by name within each evaluation namespace context**.
+Chosen option: **Resolve request action identity within each evaluation namespace context**.
 
-The request action remains unnamespaced in the decision request. During evaluation, action matching is performed per namespace context (derived from the rule/value being evaluated), not globally.
+The normative request-action contract supports three request shapes. During evaluation, matching is always applied per namespace context (derived from the rule/value being evaluated), not globally.
 
 Request-action identity precedence is explicit:
 
@@ -40,7 +40,13 @@ When identity is explicit (`id` or `name+namespace`), decisioning does not fall 
 Feature-flag mode split:
 
 - `NamespacedPolicy=false`: preserve existing legacy behavior (no new namespace filtering semantics introduced by this change).
-- `NamespacedPolicy=true`: enforce namespaced subject mapping evaluation and require action namespace equality for each evaluated namespace.
+- `NamespacedPolicy=true`: enforce namespaced subject mapping evaluation (unnamespaced SMs are ignored) and require action namespace equality for each evaluated namespace.
+
+Subject mapping namespace enforcement (strict mode):
+
+- Subject mapping namespace must match the namespace of the referenced attribute value.
+- Subject mapping namespace must match the namespace of the referenced subject condition set.
+- Name-based action matching is evaluated in the same namespace context as the SM/value under evaluation.
 
 For multi-namespace resources, existing `AND` semantics remain unchanged: all required namespace-scoped checks must pass, and missing action support in any required namespace denies access.
 
@@ -57,6 +63,7 @@ For multi-namespace resources, existing `AND` semantics remain unchanged: all re
 Validation is done through PDP and decisioning tests covering:
 
 - mode split (`NamespacedPolicy=false` vs `true`) for subject mapping inclusion,
+- strict-mode subject mapping namespace scoping (unnamespaced SMs skipped),
 - namespace-aware action matching in rule evaluation paths,
 - multi-namespace resource behavior where one missing namespace action causes deny,
 - regression checks to confirm existing `AND` behavior is preserved.
@@ -65,6 +72,7 @@ Validation is done through PDP and decisioning tests covering:
 
 - Thread `NamespacedPolicy` into PDP runtime configuration.
 - Filter subject mappings at PDP construction by mode (namespaced vs unnamespaced).
+- Enforce subject mapping namespace consistency during create/update operations.
 - Centralize action matching in a namespace-aware helper used by all rule/action checks.
 - Derive required namespace per evaluated value/rule context.
 - Keep standard/custom action existence checks lazy at evaluation time.

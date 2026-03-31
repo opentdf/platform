@@ -395,7 +395,7 @@ func TestPopulateHigherValuesIfHierarchy(t *testing.T) {
 	}
 	valueRestricted := &policy.Value{
 		Fqn:             exampleRestrictedFQN,
-		SubjectMappings: []*policy.SubjectMapping{createSimpleSubjectMapping(exampleSecretFQN, "restricted", []*policy.Action{actionRead}, ".test", []string{"somethingelse"}, nil)},
+		SubjectMappings: []*policy.SubjectMapping{createSimpleSubjectMapping(exampleRestrictedFQN, "restricted", []*policy.Action{actionRead}, ".test", []string{"somethingelse"}, nil)},
 	}
 	valueConf := &policy.Value{
 		Fqn:             exampleConfidentialFQN,

@@ -81,9 +81,17 @@ func getResourceDecision(
 		}
 		for _, aav := range regResValue.GetActionAttributeValues() {
 			aavAttrValueFQN := aav.GetAttributeValue().GetFqn()
+			matchesRequestIdentity := isRequestedActionMatch(action, "", aav.GetAction(), false)
 			requiredNamespaceID := ""
 			if attrAndValue, ok := accessibleAttributeValues[aavAttrValueFQN]; ok {
 				requiredNamespaceID = attrAndValue.GetAttribute().GetNamespace().GetId()
+			} else if namespacedPolicy && matchesRequestIdentity {
+				l.TraceContext(
+					ctx,
+					"strict namespaced-policy mode: unable to resolve namespace for RR action-attribute-value; denying access",
+					slog.String("attribute_value_fqn", aavAttrValueFQN),
+				)
+				return failure, nil
 			}
 
 			// skip evaluating attribute rules on any action-attribute-values without the requested action

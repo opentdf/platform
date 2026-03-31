@@ -1406,6 +1406,59 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_RequestActionIDPrecedence()
 	s.False(decision.Entitled, "requested action id should take precedence over name match")
 }
 
+func (s *EvaluateTestSuite) Test_getResourceDecision_StrictMode_DeniesWhenAAVNamespaceCannotBeResolved() {
+	namespaceA := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://ns-a.example.com"}
+
+	knownFQN := levelHighestFQN
+	unknownFQN := "https://unknown.example.com/attr/missing/value/x"
+
+	s.accessibleAttrValues[knownFQN].Attribute.Namespace = namespaceA
+	s.accessibleRegisteredResourceValues[netRegResValFQN].ActionAttributeValues = []*policy.RegisteredResourceValue_ActionAttributeValue{
+		{
+			Id: "rr-aav-known",
+			Action: &policy.Action{
+				Name:      actions.ActionNameRead,
+				Namespace: namespaceA,
+			},
+			AttributeValue: &policy.Value{Fqn: knownFQN, Value: "highest"},
+		},
+		{
+			Id: "rr-aav-unknown",
+			Action: &policy.Action{
+				Name:      actions.ActionNameRead,
+				Namespace: namespaceA,
+			},
+			AttributeValue: &policy.Value{Fqn: unknownFQN, Value: "x"},
+		},
+	}
+
+	resource := &authz.Resource{
+		Resource:    &authz.Resource_RegisteredResourceValueFqn{RegisteredResourceValueFqn: netRegResValFQN},
+		EphemeralId: "rr-aav-unresolvable-ns",
+	}
+
+	entitlements := subjectmappingbuiltin.AttributeValueFQNsToActions{
+		knownFQN: {
+			{Name: actions.ActionNameRead, Namespace: namespaceA},
+		},
+	}
+
+	decision, err := getResourceDecision(
+		s.T().Context(),
+		s.logger,
+		s.accessibleAttrValues,
+		s.accessibleRegisteredResourceValues,
+		entitlements,
+		actionRead,
+		resource,
+		true,
+	)
+
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+	s.False(decision.Entitled, "strict mode should fail closed when any matching RR AAV namespace cannot be resolved")
+}
+
 func Test_isRequestedActionMatch(t *testing.T) {
 	namespaceA := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://ns-a.example.com"}
 	namespaceB := &policy.Namespace{Id: "22222222-2222-2222-2222-222222222222", Fqn: "https://ns-b.example.com"}

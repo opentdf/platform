@@ -8,7 +8,7 @@ var (
 	// config file naming and in the profile store
 	AppName = "otdfctl"
 
-	Version   = "0.29.0" // x-release-please-version
+	Version   = "0.30.0" // x-release-please-version
 	BuildTime = "1970-01-01T00:00:00Z"
 	CommitSha = "0000000"
 

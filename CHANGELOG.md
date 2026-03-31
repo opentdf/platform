@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.30.0](https://github.com/opentdf/otdfctl/compare/v0.29.0...v0.30.0) (2026-03-31)
+
+
+### Features
+
+* **core:** Add optional namespace flag for subject mappings and condtion sets ([#779](https://github.com/opentdf/otdfctl/issues/779)) ([9e849c4](https://github.com/opentdf/otdfctl/commit/9e849c4c80d8ba6f32a24a4be161dfe26d28cdde))
+* **core:** add scope support for client creds ([#752](https://github.com/opentdf/otdfctl/issues/752)) ([9ca9e43](https://github.com/opentdf/otdfctl/commit/9ca9e43394c67813a5fd1f506d174fbf33dcc492))
+* **core:** migrate registered resources ([#772](https://github.com/opentdf/otdfctl/issues/772)) ([2b49a7d](https://github.com/opentdf/otdfctl/commit/2b49a7deceaf9f227a6548e59c7c6e8cbf100b17))
+* **core:** optional namespace in actions commands and re-enable actions/RR tests ([#775](https://github.com/opentdf/otdfctl/issues/775)) ([29a2eb1](https://github.com/opentdf/otdfctl/commit/29a2eb13c8201f5ca059478169479dc5fea9de4e))
+* **core:** support namespaced registered resources ([#767](https://github.com/opentdf/otdfctl/issues/767)) ([4d786b5](https://github.com/opentdf/otdfctl/commit/4d786b5103580afae21ab6811e426f0b25eb6b3a))
+
+
+### Bug Fixes
+
+* **ci:** Temporarily skip namespaced-actions impacted BATS cases ([#773](https://github.com/opentdf/otdfctl/issues/773)) ([633728a](https://github.com/opentdf/otdfctl/commit/633728af0d7ce9cc6a1231a07315eafd23971d56))
+* **core:** bump toolchain to go 1.24.13 ([#747](https://github.com/opentdf/otdfctl/issues/747)) ([6804b93](https://github.com/opentdf/otdfctl/commit/6804b93c848bb56398bfdff09a78e1458493f5e7))
+* **core:** disable RR E2E tests ([#768](https://github.com/opentdf/otdfctl/issues/768)) ([0821b8c](https://github.com/opentdf/otdfctl/commit/0821b8c933b97a9550fdac47449adf8b533cb04a))
+* **core:** make namespacing registered resources optional ([#785](https://github.com/opentdf/otdfctl/issues/785)) ([8e6eb31](https://github.com/opentdf/otdfctl/commit/8e6eb3141feb7bc9c1a4e8cb7131cbf89f559eba))
+* **core:** refactor `ListAttributesValues` to use `Get` ([#769](https://github.com/opentdf/otdfctl/issues/769)) ([a82f7b7](https://github.com/opentdf/otdfctl/commit/a82f7b74a9fefd2dc59b019e9ad2877e25ac731a))
+* **core:** unsafe update result output values order ([#759](https://github.com/opentdf/otdfctl/issues/759)) ([baeba0f](https://github.com/opentdf/otdfctl/commit/baeba0f078fdad1b5fff018ff7b097eda794c703))
+
 ## [0.29.0](https://github.com/opentdf/otdfctl/compare/v0.28.0...v0.29.0) (2026-01-28)
 
 

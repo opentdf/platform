@@ -229,10 +229,26 @@ func (p *PolicyDecisionPoint) GetDecision(
 		for _, directEntitlement := range entityRepresentation.GetDirectEntitlements() {
 			fqn := directEntitlement.GetAttributeValueFqn()
 			actionNames := directEntitlement.GetActions()
+			// In strict namespaced-policy mode, direct-entitlement actions must carry
+			// the same namespace context as the entitled attribute value so they can
+			// satisfy namespace-aware action matching during rule evaluation.
+			var actionNamespace *policy.Namespace
+			if attrAndValue, ok := decisionableAttributes[fqn]; ok {
+				actionNamespace = attrAndValue.GetAttribute().GetNamespace()
+			} else if attrAndValue, ok := p.allEntitleableAttributesByValueFQN[fqn]; ok {
+				// Fallback for direct entitlements that may not be present in the
+				// narrowed decisionable set for this specific request.
+				actionNamespace = attrAndValue.GetAttribute().GetNamespace()
+			}
 
-			actions := make([]*policy.Action, len(actionNames))
-			for i, name := range actionNames {
-				actions[i] = &policy.Action{Name: name}
+			// Merge direct-entitlement actions with subject-mapping actions for the
+			// same value FQN instead of replacing them.
+			actions := entitledFQNsToActions[fqn]
+			for _, name := range actionNames {
+				actions = append(actions, &policy.Action{
+					Name:      name,
+					Namespace: actionNamespace,
+				})
 			}
 
 			entitledFQNsToActions[fqn] = actions

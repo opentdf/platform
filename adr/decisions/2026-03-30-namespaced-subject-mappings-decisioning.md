@@ -42,6 +42,13 @@ Feature-flag mode split:
 - `NamespacedPolicy=false`: preserve existing legacy behavior (no new namespace filtering semantics introduced by this change).
 - `NamespacedPolicy=true`: enforce namespaced subject mapping evaluation (unnamespaced SMs are ignored) and require action namespace equality for each evaluated namespace.
 
+Direct entitlements in strict mode:
+
+- Direct entitlements are still modeled as action names per attribute-value FQN.
+- During PDP evaluation, each direct-entitlement action is hydrated with the namespace of its attributed value context.
+- This makes direct entitlements participate in the same namespace-aware action matching rules as subject-mapping-derived entitlements.
+- Direct-entitlement actions are merged with subject-mapping actions per value FQN (not replacing them).
+
 Subject mapping namespace enforcement (strict mode):
 
 - Subject mapping namespace must match the namespace of the referenced attribute value.

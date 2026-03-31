@@ -4095,6 +4095,73 @@ func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements() {
 	})
 }
 
+func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements_StrictNamespacedPolicy() {
+	ctx := s.T().Context()
+
+	namespace1 := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://demo.com"}
+	namespace2 := &policy.Namespace{Id: "22222222-2222-2222-2222-222222222222", Fqn: "https://demo-two.com"}
+
+	attr1 := &policy.Attribute{
+		Fqn:       "https://demo.com/attr/adhoc",
+		Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Namespace: namespace1,
+		Values: []*policy.Value{
+			{Fqn: "https://demo.com/attr/adhoc/value/direct_entitlement_1", Value: "direct_entitlement_1"},
+		},
+	}
+	attr2 := &policy.Attribute{
+		Fqn:       "https://demo-two.com/attr/adhoc_2",
+		Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Namespace: namespace2,
+		Values: []*policy.Value{
+			{Fqn: "https://demo-two.com/attr/adhoc_2/value/direct_entitlement_2", Value: "direct_entitlement_2"},
+		},
+	}
+
+	attr1ValueFQN := attr1.GetValues()[0].GetFqn()
+	attr2ValueFQN := attr2.GetValues()[0].GetFqn()
+
+	pdp, err := NewPolicyDecisionPoint(
+		ctx,
+		s.logger,
+		[]*policy.Attribute{attr1, attr2},
+		[]*policy.SubjectMapping{},
+		[]*policy.RegisteredResource{},
+		true,
+		true,
+	)
+	s.Require().NoError(err)
+
+	entityRep := &entityresolutionV2.EntityRepresentation{
+		DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
+			{AttributeValueFqn: attr1ValueFQN, Actions: []string{actions.ActionNameCreate}},
+			{AttributeValueFqn: attr2ValueFQN, Actions: []string{actions.ActionNameCreate}},
+		},
+	}
+
+	s.Run("permits when direct entitlement action resolves to required namespace", func() {
+		decision, _, decisionErr := pdp.GetDecision(ctx, entityRep, testActionCreate, []*authz.Resource{
+			createAttributeValueResource(attr1ValueFQN, attr1ValueFQN),
+			createAttributeValueResource(attr2ValueFQN, attr2ValueFQN),
+		})
+		s.Require().NoError(decisionErr)
+		s.Require().NotNil(decision)
+		s.True(decision.AllPermitted)
+	})
+
+	s.Run("denies when explicit request namespace mismatches", func() {
+		decision, _, decisionErr := pdp.GetDecision(ctx, entityRep, &policy.Action{
+			Name:      actions.ActionNameCreate,
+			Namespace: namespace1,
+		}, []*authz.Resource{
+			createAttributeValueResource(attr2ValueFQN, attr2ValueFQN),
+		})
+		s.Require().NoError(decisionErr)
+		s.Require().NotNil(decision)
+		s.False(decision.AllPermitted)
+	})
+}
+
 // Helper functions for all tests
 
 // assertDecisionResult is a helper function to assert that a decision result for a given FQN matches the expected pass/fail state

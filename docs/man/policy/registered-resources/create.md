@@ -14,7 +14,6 @@ command:
     - name: namespace
       shorthand: s
       description: Namespace ID or FQN
-      required: true
     - name: value
       shorthand: v
       description: Value of the registered resource (i.e. 'value1', must be unique within the Registered Resource)

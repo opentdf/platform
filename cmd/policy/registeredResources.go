@@ -30,7 +30,7 @@ func policyCreateRegisteredResource(cmd *cobra.Command, args []string) {
 	defer h.Close()
 
 	name := c.Flags.GetRequiredString("name")
-	namespace := c.Flags.GetRequiredString("namespace")
+	namespace := c.Flags.GetOptionalString("namespace")
 	registeredResourceValues = c.Flags.GetStringSlice("value", registeredResourceValues, cli.FlagsStringSliceOptions{})
 	metadataLabels = c.Flags.GetStringSlice("label", metadataLabels, cli.FlagsStringSliceOptions{Min: 0})
 
@@ -44,6 +44,7 @@ func policyCreateRegisteredResource(cmd *cobra.Command, args []string) {
 	rows := [][]string{
 		{"Id", resource.GetId()},
 		{"Name", resource.GetName()},
+		{"Namespace", resource.GetNamespace().GetFqn()},
 		{"Values", cli.CommaSeparated(simpleRegResValues)},
 	}
 
@@ -83,6 +84,7 @@ func policyGetRegisteredResource(cmd *cobra.Command, args []string) {
 	rows := [][]string{
 		{"Id", resource.GetId()},
 		{"Name", resource.GetName()},
+		{"Namespace", resource.GetNamespace().GetFqn()},
 		{"Values", cli.CommaSeparated(simpleRegResValues)},
 	}
 	if mdRows := getMetadataRows(resource.GetMetadata()); mdRows != nil {
@@ -110,17 +112,17 @@ func policyListRegisteredResources(cmd *cobra.Command, args []string) {
 	t := cli.NewTable(
 		cli.NewUUIDColumn(),
 		table.NewFlexColumn("name", "Name", cli.FlexColumnWidthFour),
+		table.NewFlexColumn("namespace", "Namespace", cli.FlexColumnWidthFour),
 		table.NewFlexColumn("values", "Values", cli.FlexColumnWidthTwo),
-		// todo: do we need to show metadata labels and created/updated at?
 	)
 	rows := []table.Row{}
 	for _, r := range resp.GetResources() {
 		simpleRegResValues := cli.GetSimpleRegisteredResourceValues(r.GetValues())
 		rows = append(rows, table.NewRow(table.RowData{
-			"id":     r.GetId(),
-			"name":   r.GetName(),
-			"values": cli.CommaSeparated(simpleRegResValues),
-			// todo: do we need to show metadata labels and created/updated at?
+			"id":        r.GetId(),
+			"name":      r.GetName(),
+			"namespace": r.GetNamespace().GetFqn(),
+			"values":    cli.CommaSeparated(simpleRegResValues),
 		}))
 	}
 	t = t.WithRows(rows)
@@ -151,6 +153,7 @@ func policyUpdateRegisteredResource(cmd *cobra.Command, args []string) {
 	rows := [][]string{
 		{"Id", id},
 		{"Name", updated.GetName()},
+		{"Namespace", updated.GetNamespace().GetFqn()},
 	}
 	if mdRows := getMetadataRows(updated.GetMetadata()); mdRows != nil {
 		rows = append(rows, mdRows...)
@@ -186,6 +189,7 @@ func policyDeleteRegisteredResource(cmd *cobra.Command, args []string) {
 	rows := [][]string{
 		{"Id", id},
 		{"Name", resource.GetName()},
+		{"Namespace", resource.GetNamespace().GetFqn()},
 	}
 	if mdRows := getMetadataRows(resource.GetMetadata()); mdRows != nil {
 		rows = append(rows, mdRows...)

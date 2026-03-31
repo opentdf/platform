@@ -67,15 +67,27 @@ teardown_file() {
 }
 
 @test "Create a registered resource - Good" {
+  # with a namespace
   run_otdfctl_reg_res create --name test_create_rr --namespace "$NS_ID"
     assert_output --partial "SUCCESS"
     assert_line --regexp "Name.*test_create_rr"
+    assert_line --regexp "Namespace.*https://$NS_NAME"
     assert_output --partial "Id"
     assert_output --partial "Created At"
     assert_line --partial "Updated At"
 
   # cleanup
   created_id=$(echo "$output" | grep Id | awk -F'│' '{print $3}' | xargs)
+  run_otdfctl_reg_res delete --id $created_id --force
+
+  # without a namespace (should default to un-namespaced)
+  run_otdfctl_reg_res create --name test_create_rr_no_ns --json
+    assert_success
+    [ "$(echo "$output" | jq -r '.name')" = "test_create_rr_no_ns" ]
+    # ensure namespace is empty for un-namespaced resources
+    [ "$(echo "$output" | jq -r '.namespace.fqn // empty')" = "" ]
+
+  created_id=$(echo "$output" | jq -r '.id')
   run_otdfctl_reg_res delete --id $created_id --force
 }
 
@@ -92,9 +104,6 @@ teardown_file() {
   run_otdfctl_reg_res create
     assert_failure
     assert_output --partial "Flag '--name' is required"
-  run_otdfctl_reg_res create --name test_no_namespace
-    assert_failure
-    assert_output --partial "Flag '--namespace' is required"
 
   # conflict
   run_otdfctl_reg_res create --name test_create_rr_conflict --namespace "$NS_ID"
@@ -131,6 +140,7 @@ teardown_file() {
     assert_success
     [ "$(echo "$output" | jq -r '.id')" = "$created_id" ]
     [ "$(echo "$output" | jq -r '.name')" = "test_get_rr" ]
+    [ "$(echo "$output" | jq -r '.namespace.fqn')" = "https://$NS_NAME" ]
 
   # get by name + namespace FQN
   run_otdfctl_reg_res get --name test_get_rr --namespace "https://$NS_NAME" --json

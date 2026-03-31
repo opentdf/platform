@@ -33,6 +33,7 @@ jobs:
       matrix:
         directory:
           - examples
+          - otdfctl
           - sdk
           - service
           - lib/ocrypto
@@ -51,6 +52,7 @@ jobs:
           check-latest: false
           cache-dependency-path: |
             examples/go.sum
+            otdfctl/go.sum
             protocol/go/go.sum
             sdk/go.sum
             service/go.sum

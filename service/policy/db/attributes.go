@@ -357,6 +357,7 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceID string) ([]*policy.Attribute, error) {
 	list, err := c.queries.listAttributesSummary(ctx, listAttributesSummaryParams{
 		NamespaceID: namespaceID,
+		NoLimit:     true,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

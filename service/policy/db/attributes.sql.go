@@ -943,16 +943,17 @@ ORDER BY
     CASE WHEN $2::text = 'updated_at' AND $3::text = 'ASC' THEN ad.updated_at END ASC,
     CASE WHEN $2::text = 'updated_at' AND $3::text = 'DESC' THEN ad.updated_at END DESC,
     ad.created_at DESC
-LIMIT $5
+LIMIT CASE WHEN $5::boolean THEN NULL ELSE $6 END
 OFFSET $4
 `
 
 type listAttributesSummaryParams struct {
-	NamespaceID   string `json:"namespace_id"`
-	SortField     string `json:"sort_field"`
-	SortDirection string `json:"sort_direction"`
-	Offset        int32  `json:"offset_"`
-	Limit         int32  `json:"limit_"`
+	NamespaceID   string      `json:"namespace_id"`
+	SortField     string      `json:"sort_field"`
+	SortDirection string      `json:"sort_direction"`
+	Offset        int32       `json:"offset_"`
+	NoLimit       bool        `json:"no_limit"`
+	Limit         interface{} `json:"limit_"`
 }
 
 type listAttributesSummaryRow struct {
@@ -991,7 +992,7 @@ type listAttributesSummaryRow struct {
 //	    CASE WHEN $2::text = 'updated_at' AND $3::text = 'ASC' THEN ad.updated_at END ASC,
 //	    CASE WHEN $2::text = 'updated_at' AND $3::text = 'DESC' THEN ad.updated_at END DESC,
 //	    ad.created_at DESC
-//	LIMIT $5
+//	LIMIT CASE WHEN $5::boolean THEN NULL ELSE $6 END
 //	OFFSET $4
 func (q *Queries) listAttributesSummary(ctx context.Context, arg listAttributesSummaryParams) ([]listAttributesSummaryRow, error) {
 	rows, err := q.db.Query(ctx, listAttributesSummary,
@@ -999,6 +1000,7 @@ func (q *Queries) listAttributesSummary(ctx context.Context, arg listAttributesS
 		arg.SortField,
 		arg.SortDirection,
 		arg.Offset,
+		arg.NoLimit,
 		arg.Limit,
 	)
 	if err != nil {

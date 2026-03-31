@@ -943,7 +943,7 @@ ORDER BY
     CASE WHEN $2::text = 'updated_at' AND $3::text = 'ASC' THEN ad.updated_at END ASC,
     CASE WHEN $2::text = 'updated_at' AND $3::text = 'DESC' THEN ad.updated_at END DESC,
     ad.created_at DESC
-LIMIT (CASE WHEN $5::boolean THEN NULL ELSE $6 END)::bigint
+LIMIT CASE WHEN $5::boolean THEN NULL ELSE $6::bigint END
 OFFSET $4
 `
 
@@ -992,7 +992,7 @@ type listAttributesSummaryRow struct {
 //	    CASE WHEN $2::text = 'updated_at' AND $3::text = 'ASC' THEN ad.updated_at END ASC,
 //	    CASE WHEN $2::text = 'updated_at' AND $3::text = 'DESC' THEN ad.updated_at END DESC,
 //	    ad.created_at DESC
-//	LIMIT (CASE WHEN $5::boolean THEN NULL ELSE $6 END)::bigint
+//	LIMIT CASE WHEN $5::boolean THEN NULL ELSE $6::bigint END
 //	OFFSET $4
 func (q *Queries) listAttributesSummary(ctx context.Context, arg listAttributesSummaryParams) ([]listAttributesSummaryRow, error) {
 	rows, err := q.db.Query(ctx, listAttributesSummary,

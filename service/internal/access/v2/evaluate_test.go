@@ -887,7 +887,7 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition_NamespacedPolicy() {
 
 			if tc.expectErr != nil {
 				s.Require().Error(err)
-				s.ErrorIs(err, tc.expectErr)
+				s.Require().ErrorIs(err, tc.expectErr)
 				s.ErrorContains(err, tc.errorContains)
 				return
 			}

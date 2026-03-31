@@ -1,7 +1,6 @@
 package access
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -888,7 +887,7 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition_NamespacedPolicy() {
 
 			if tc.expectErr != nil {
 				s.Require().Error(err)
-				s.True(errors.Is(err, tc.expectErr))
+				s.ErrorIs(err, tc.expectErr)
 				s.ErrorContains(err, tc.errorContains)
 				return
 			}

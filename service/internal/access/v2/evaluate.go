@@ -255,13 +255,13 @@ func evaluateDefinition(
 // 1. For each resource attribute value FQN, the action is entitled
 // 2. If any FQN is not entitled, or the FQN is missing the requested action, the rule fails
 func allOfRule(
-	_ context.Context,
-	_ *logger.Logger,
+	ctx context.Context,
+	l *logger.Logger,
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resourceValueFQNs []string,
 ) []EntitlementFailure {
-	return allOfRuleWithContext(nil, nil, entitlements, action, resourceValueFQNs, "", false)
+	return allOfRuleWithContext(ctx, l, entitlements, action, resourceValueFQNs, "", false)
 }
 
 func allOfRuleWithContext(
@@ -307,13 +307,13 @@ func allOfRuleWithContext(
 // 2. If none of the FQNs are found the entitlements, the rule fails
 // 3. If none of the matching FQNs in the entitlements contain the requested action, the rule fails
 func anyOfRule(
-	_ context.Context,
-	_ *logger.Logger,
+	ctx context.Context,
+	l *logger.Logger,
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resourceValueFQNs []string,
 ) []EntitlementFailure {
-	return anyOfRuleWithContext(nil, nil, entitlements, action, resourceValueFQNs, "", false)
+	return anyOfRuleWithContext(ctx, l, entitlements, action, resourceValueFQNs, "", false)
 }
 
 func anyOfRuleWithContext(

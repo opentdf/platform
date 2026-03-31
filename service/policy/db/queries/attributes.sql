@@ -73,7 +73,7 @@ ORDER BY
     CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN ad.updated_at END ASC,
     CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN ad.updated_at END DESC,
     ad.created_at DESC
-LIMIT CASE WHEN @no_limit::boolean THEN NULL ELSE @limit_ END
+LIMIT (CASE WHEN @no_limit::boolean THEN NULL ELSE @limit_ END)::bigint
 OFFSET @offset_;
 
 -- name: listAttributesByDefOrValueFqns :many

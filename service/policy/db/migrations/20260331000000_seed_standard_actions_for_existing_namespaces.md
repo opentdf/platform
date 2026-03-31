@@ -20,4 +20,10 @@ A single idempotent `INSERT ... ON CONFLICT DO NOTHING` that cross-joins all exi
 
 ## Rollback
 
-The Down migration removes all namespace-scoped standard actions (`is_standard = TRUE` and `namespace_id IS NOT NULL`). This undoes both this seed migration and any standard actions created by `CreateNamespace()` going forward, effectively reverting to global-only standard actions.
+The Down migration is intentionally a no-op. Namespace-scoped standard actions are required for namespace correctness and policy reference rewrites; deleting them on rollback could break existing namespaces.
+
+## Operational Rollback Note
+
+Rolling back past `20260312000000_add_namespace_to_actions.sql` is not a safe automatic path once namespace-scoped standard actions exist. That migration's Down path restores global `UNIQUE(name)` semantics on `actions`, which conflicts with multiple namespace-scoped rows for standard action names (`create`, `read`, `update`, `delete`).
+
+Any rollback beyond action namespacing requires a separate, manual, and potentially destructive data remediation plan.

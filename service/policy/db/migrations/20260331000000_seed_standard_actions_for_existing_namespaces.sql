@@ -16,11 +16,8 @@ ON CONFLICT (namespace_id, name) WHERE namespace_id IS NOT NULL DO NOTHING;
 -- +goose Down
 -- +goose StatementBegin
 
--- Remove namespace-scoped standard actions that were seeded by this migration.
--- Only removes rows where is_standard = TRUE and namespace_id IS NOT NULL,
--- preserving global standard actions and any user-created custom actions.
-DELETE FROM actions
-WHERE is_standard = TRUE
-  AND namespace_id IS NOT NULL;
+-- No-op: namespace-scoped standard actions are required for namespace policy
+-- evaluation and reference rewrites. Removing them can break existing namespaces.
+SELECT 1;
 
 -- +goose StatementEnd

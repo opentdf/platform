@@ -29,6 +29,14 @@ func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateSubjectMapping(ctx
 				cellIndexMap[ci] = c.Value
 			} else {
 				switch cellIndexMap[ci] {
+				case "namespace_id":
+					nsID, ok := scenarioContext.GetObject(strings.TrimSpace(c.Value)).(string)
+					if !ok {
+						return ctx, fmt.Errorf("unable to get namespace id for %s", c.Value)
+					}
+					subjectMappingRequest.NamespaceId = nsID
+				case "namespace_fqn":
+					subjectMappingRequest.NamespaceFqn = strings.TrimSpace(c.Value)
 				case "attribute_value":
 					av, err := scenarioContext.GetAttributeValue(ctx, strings.TrimSpace(c.Value))
 					if err != nil {

@@ -24,8 +24,8 @@ Feature: Namespaced Policy Decisioning (name-only action requests)
 
   Scenario: Standard action name permits when entitled in resource namespace
     And I send a request to create a subject mapping with:
-      | reference_id   | attribute_value                                                | condition_set_name      | standard actions | custom actions |
-      | sm_ns1_read_ts | https://ns-one.example.com/attr/classification/value/topsecret | scs_clearance_topsecret | read             |                |
+      | reference_id   | namespace_id | attribute_value                                                | condition_set_name      | standard actions | custom actions |
+      | sm_ns1_read_ts | ns1          | https://ns-one.example.com/attr/classification/value/topsecret | scs_clearance_topsecret | read             |                |
     Then the response should be successful
     When I send a decision request for entity chain "alice" for "read" action on resource "https://ns-one.example.com/attr/classification/value/topsecret"
     Then the response should be successful
@@ -33,8 +33,8 @@ Feature: Namespaced Policy Decisioning (name-only action requests)
 
   Scenario: Standard action name denies when entitled only in different namespace
     And I send a request to create a subject mapping with:
-      | reference_id   | attribute_value                                                | condition_set_name      | standard actions | custom actions |
-      | sm_ns2_read_ts | https://ns-two.example.com/attr/classification/value/topsecret | scs_clearance_topsecret | read             |                |
+      | reference_id   | namespace_id | attribute_value                                                | condition_set_name      | standard actions | custom actions |
+      | sm_ns2_read_ts | ns2          | https://ns-two.example.com/attr/classification/value/topsecret | scs_clearance_topsecret | read             |                |
     Then the response should be successful
     When I send a decision request for entity chain "alice" for "read" action on resource "https://ns-one.example.com/attr/classification/value/topsecret"
     Then the response should be successful
@@ -42,8 +42,8 @@ Feature: Namespaced Policy Decisioning (name-only action requests)
 
   Scenario: Custom action name permits when entitled in resource namespace
     And I send a request to create a subject mapping with:
-      | reference_id     | attribute_value                                                | condition_set_name      | standard actions | custom actions |
-      | sm_ns1_export_ts | https://ns-one.example.com/attr/classification/value/topsecret | scs_clearance_topsecret |                  | export         |
+      | reference_id     | namespace_id | attribute_value                                                | condition_set_name      | standard actions | custom actions |
+      | sm_ns1_export_ts | ns1          | https://ns-one.example.com/attr/classification/value/topsecret | scs_clearance_topsecret |                  | export         |
     Then the response should be successful
     When I send a decision request for entity chain "alice" for "custom_action_export" action on resource "https://ns-one.example.com/attr/classification/value/topsecret"
     Then the response should be successful
@@ -51,9 +51,41 @@ Feature: Namespaced Policy Decisioning (name-only action requests)
 
   Scenario: Custom action name denies when entitled only in different namespace
     And I send a request to create a subject mapping with:
-      | reference_id     | attribute_value                                                | condition_set_name      | standard actions | custom actions |
-      | sm_ns2_export_ts | https://ns-two.example.com/attr/classification/value/topsecret | scs_clearance_topsecret |                  | export         |
+      | reference_id     | namespace_id | attribute_value                                                | condition_set_name      | standard actions | custom actions |
+      | sm_ns2_export_ts | ns2          | https://ns-two.example.com/attr/classification/value/topsecret | scs_clearance_topsecret |                  | export         |
     Then the response should be successful
     When I send a decision request for entity chain "alice" for "custom_action_export" action on resource "https://ns-one.example.com/attr/classification/value/topsecret"
     Then the response should be successful
     And I should get a "DENY" decision response
+
+  Scenario: Standard action AND behavior across mixed namespaces
+    And I send a request to create a subject mapping with:
+      | reference_id   | namespace_id | attribute_value                                                | condition_set_name      | standard actions | custom actions |
+      | sm_ns1_read_ts | ns1          | https://ns-one.example.com/attr/classification/value/topsecret | scs_clearance_topsecret | read             |                |
+    Then the response should be successful
+    When I send a decision request for entity chain "alice" for "read" action on resource "https://ns-one.example.com/attr/classification/value/topsecret,https://ns-two.example.com/attr/classification/value/topsecret"
+    Then the response should be successful
+    And I should get a "DENY" decision response
+    And I send a request to create a subject mapping with:
+      | reference_id    | namespace_id | attribute_value                                                | condition_set_name      | standard actions | custom actions |
+      | sm_ns2_read_ts2 | ns2          | https://ns-two.example.com/attr/classification/value/topsecret | scs_clearance_topsecret | read             |                |
+    Then the response should be successful
+    When I send a decision request for entity chain "alice" for "read" action on resource "https://ns-one.example.com/attr/classification/value/topsecret,https://ns-two.example.com/attr/classification/value/topsecret"
+    Then the response should be successful
+    And I should get a "PERMIT" decision response
+
+  Scenario: Custom action AND behavior across mixed namespaces
+    And I send a request to create a subject mapping with:
+      | reference_id     | namespace_id | attribute_value                                                | condition_set_name      | standard actions | custom actions |
+      | sm_ns1_export_ts | ns1          | https://ns-one.example.com/attr/classification/value/topsecret | scs_clearance_topsecret |                  | export         |
+    Then the response should be successful
+    When I send a decision request for entity chain "alice" for "custom_action_export" action on resource "https://ns-one.example.com/attr/classification/value/topsecret,https://ns-two.example.com/attr/classification/value/topsecret"
+    Then the response should be successful
+    And I should get a "DENY" decision response
+    And I send a request to create a subject mapping with:
+      | reference_id       | namespace_id | attribute_value                                                | condition_set_name      | standard actions | custom actions |
+      | sm_ns2_export_ts_2 | ns2          | https://ns-two.example.com/attr/classification/value/topsecret | scs_clearance_topsecret |                  | export         |
+    Then the response should be successful
+    When I send a decision request for entity chain "alice" for "custom_action_export" action on resource "https://ns-one.example.com/attr/classification/value/topsecret,https://ns-two.example.com/attr/classification/value/topsecret"
+    Then the response should be successful
+    And I should get a "PERMIT" decision response

@@ -34,6 +34,7 @@ func getResourceDecision(
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resource *authz.Resource,
+	namespacedPolicy bool,
 ) (*ResourceDecision, error) {
 	var (
 		resourceID                 = resource.GetEphemeralId()
@@ -80,9 +81,13 @@ func getResourceDecision(
 		}
 		for _, aav := range regResValue.GetActionAttributeValues() {
 			aavAttrValueFQN := aav.GetAttributeValue().GetFqn()
+			requiredNamespaceID := ""
+			if attrAndValue, ok := accessibleAttributeValues[aavAttrValueFQN]; ok {
+				requiredNamespaceID = attrAndValue.GetAttribute().GetNamespace().GetId()
+			}
 
 			// skip evaluating attribute rules on any action-attribute-values without the requested action
-			if aav.GetAction().GetName() != action.GetName() {
+			if !isRequestedActionMatch(action, requiredNamespaceID, aav.GetAction(), namespacedPolicy) {
 				continue
 			}
 
@@ -111,7 +116,7 @@ func getResourceDecision(
 		return failure, nil
 	}
 
-	return evaluateResourceAttributeValues(ctx, l, resourceAttributeValues, resourceID, registeredResourceValueFQN, action, entitlements, accessibleAttributeValues)
+	return evaluateResourceAttributeValues(ctx, l, resourceAttributeValues, resourceID, registeredResourceValueFQN, action, entitlements, accessibleAttributeValues, namespacedPolicy)
 }
 
 // evaluateResourceAttributeValues evaluates a list of attribute values against the action and entitlements
@@ -125,6 +130,7 @@ func evaluateResourceAttributeValues(
 	action *policy.Action,
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
 	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
+	namespacedPolicy bool,
 ) (*ResourceDecision, error) {
 	// Group value FQNs by parent definition
 	definitionFqnToValueFqns := make(map[string][]string)
@@ -167,7 +173,7 @@ func evaluateResourceAttributeValues(
 			return nil, fmt.Errorf("%w: %s", ErrDefinitionNotFound, defFQN)
 		}
 
-		dataRuleResult, err := evaluateDefinition(ctx, l, entitlements, action, resourceValueFQNs, definition)
+		dataRuleResult, err := evaluateDefinition(ctx, l, entitlements, action, resourceValueFQNs, definition, namespacedPolicy)
 		if err != nil {
 			return nil, errors.Join(ErrFailedEvaluation, err)
 		}
@@ -197,8 +203,10 @@ func evaluateDefinition(
 	action *policy.Action,
 	resourceValueFQNs []string,
 	attrDefinition *policy.Attribute,
+	namespacedPolicy bool,
 ) (*DataRuleResult, error) {
 	var entitlementFailures []EntitlementFailure
+	requiredNamespaceID := attrDefinition.GetNamespace().GetId()
 
 	l = l.With("definitionRule", attrDefinition.GetRule().String())
 	l = l.With("definitionFQN", attrDefinition.GetFqn())
@@ -211,13 +219,13 @@ func evaluateDefinition(
 
 	switch attrDefinition.GetRule() {
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF:
-		entitlementFailures = allOfRule(ctx, l, entitlements, action, resourceValueFQNs)
+		entitlementFailures = allOfRuleWithContext(ctx, l, entitlements, action, resourceValueFQNs, requiredNamespaceID, namespacedPolicy)
 
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF:
-		entitlementFailures = anyOfRule(ctx, l, entitlements, action, resourceValueFQNs)
+		entitlementFailures = anyOfRuleWithContext(ctx, l, entitlements, action, resourceValueFQNs, requiredNamespaceID, namespacedPolicy)
 
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY:
-		entitlementFailures = hierarchyRule(ctx, l, entitlements, action, resourceValueFQNs, attrDefinition)
+		entitlementFailures = hierarchyRuleWithContext(ctx, l, entitlements, action, resourceValueFQNs, attrDefinition, requiredNamespaceID, namespacedPolicy)
 
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED:
 		return nil, fmt.Errorf("%w: %s, rule: %s", ErrMissingRequiredSpecifiedRule, attrDefinition.GetFqn(), attrDefinition.GetRule().String())
@@ -253,6 +261,18 @@ func allOfRule(
 	action *policy.Action,
 	resourceValueFQNs []string,
 ) []EntitlementFailure {
+	return allOfRuleWithContext(nil, nil, entitlements, action, resourceValueFQNs, "", false)
+}
+
+func allOfRuleWithContext(
+	_ context.Context,
+	_ *logger.Logger,
+	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
+	action *policy.Action,
+	resourceValueFQNs []string,
+	requiredNamespaceID string,
+	namespacedPolicy bool,
+) []EntitlementFailure {
 	actionName := action.GetName()
 	failures := make([]EntitlementFailure, 0, len(resourceValueFQNs)) // Pre-allocate for efficiency
 
@@ -263,7 +283,7 @@ func allOfRule(
 		// Check if this FQN has the entitled action
 		if entitledActions, ok := entitlements[valueFQN]; ok {
 			for _, entitledAction := range entitledActions {
-				if strings.EqualFold(entitledAction.GetName(), actionName) {
+				if isRequestedActionMatch(action, requiredNamespaceID, entitledAction, namespacedPolicy) {
 					hasEntitlement = true
 					break
 				}
@@ -293,6 +313,18 @@ func anyOfRule(
 	action *policy.Action,
 	resourceValueFQNs []string,
 ) []EntitlementFailure {
+	return anyOfRuleWithContext(nil, nil, entitlements, action, resourceValueFQNs, "", false)
+}
+
+func anyOfRuleWithContext(
+	_ context.Context,
+	_ *logger.Logger,
+	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
+	action *policy.Action,
+	resourceValueFQNs []string,
+	requiredNamespaceID string,
+	namespacedPolicy bool,
+) []EntitlementFailure {
 	// No resources to check
 	if len(resourceValueFQNs) == 0 {
 		return nil
@@ -309,7 +341,7 @@ func anyOfRule(
 		entitledActions, ok := entitlements[valueFQN]
 		if ok {
 			for _, entitledAction := range entitledActions {
-				if strings.EqualFold(entitledAction.GetName(), actionName) {
+				if isRequestedActionMatch(action, requiredNamespaceID, entitledAction, namespacedPolicy) {
 					foundEntitlementForThisFQN = true
 					anyEntitlementFound = true
 					break
@@ -345,6 +377,19 @@ func hierarchyRule(
 	resourceValueFQNs []string,
 	attrDefinition *policy.Attribute,
 ) []EntitlementFailure {
+	return hierarchyRuleWithContext(ctx, l, entitlements, action, resourceValueFQNs, attrDefinition, "", false)
+}
+
+func hierarchyRuleWithContext(
+	ctx context.Context,
+	l *logger.Logger,
+	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
+	action *policy.Action,
+	resourceValueFQNs []string,
+	attrDefinition *policy.Attribute,
+	requiredNamespaceID string,
+	namespacedPolicy bool,
+) []EntitlementFailure {
 	// No resources to check
 	if len(resourceValueFQNs) == 0 {
 		return nil
@@ -374,7 +419,7 @@ func hierarchyRule(
 		if idx, exists := valueFQNToIndex[entitlementFQN]; exists && idx <= lowestValueFQNIndex {
 			// Check if the required action is entitled
 			for _, entitledAction := range entitledActions {
-				if strings.EqualFold(entitledAction.GetName(), actionName) {
+				if isRequestedActionMatch(action, requiredNamespaceID, entitledAction, namespacedPolicy) {
 					l.DebugContext(ctx, "hierarchy rule satisfied",
 						slog.Group("entitled_by_value",
 							slog.String("FQN", entitlementFQN),
@@ -397,7 +442,7 @@ func hierarchyRule(
 		foundValue := false
 		if entitledActions, ok := entitlements[valueFQN]; ok {
 			for _, entitledAction := range entitledActions {
-				if strings.EqualFold(entitledAction.GetName(), actionName) {
+				if isRequestedActionMatch(action, requiredNamespaceID, entitledAction, namespacedPolicy) {
 					foundValue = true
 					break
 				}
@@ -413,4 +458,48 @@ func hierarchyRule(
 	}
 
 	return entitlementFailures
+}
+
+func isRequestedActionMatch(requestedAction *policy.Action, requiredNamespaceID string, entitledAction *policy.Action, namespacedPolicy bool) bool {
+	if requestedAction == nil || entitledAction == nil {
+		return false
+	}
+
+	if requestedAction.GetId() != "" {
+		if requestedAction.GetId() != entitledAction.GetId() {
+			return false
+		}
+	} else {
+		if requestedAction.GetName() == "" || !strings.EqualFold(requestedAction.GetName(), entitledAction.GetName()) {
+			return false
+		}
+	}
+
+	if requestNamespace := requestedAction.GetNamespace(); requestNamespace != nil && (requestNamespace.GetId() != "" || requestNamespace.GetFqn() != "") {
+		entitledNamespace := entitledAction.GetNamespace()
+		if entitledNamespace == nil {
+			return false
+		}
+		if requestNamespace.GetId() != "" && entitledNamespace.GetId() != requestNamespace.GetId() {
+			return false
+		}
+		if requestNamespace.GetId() == "" && requestNamespace.GetFqn() != "" && !strings.EqualFold(entitledNamespace.GetFqn(), requestNamespace.GetFqn()) {
+			return false
+		}
+	}
+
+	if !namespacedPolicy {
+		return true
+	}
+
+	if requiredNamespaceID == "" {
+		return false
+	}
+
+	entitledNamespace := entitledAction.GetNamespace()
+	if entitledNamespace == nil || entitledNamespace.GetId() == "" {
+		return false
+	}
+
+	return entitledNamespace.GetId() == requiredNamespaceID
 }

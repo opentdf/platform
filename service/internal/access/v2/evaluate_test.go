@@ -1,9 +1,11 @@
 package access
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -698,7 +700,7 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition() {
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
-			result, err := evaluateDefinition(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValues, tc.definition)
+			result, err := evaluateDefinition(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValues, tc.definition, false)
 
 			if tc.expectError {
 				s.Require().Error(err)
@@ -707,6 +709,193 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition() {
 				s.NotNil(result)
 				s.Equal(tc.expectPass, result.Passed)
 			}
+		})
+	}
+}
+
+func (s *EvaluateTestSuite) TestEvaluateDefinition_NamespacedPolicy() {
+	namespaceA := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://ns-a.example.com"}
+	namespaceB := &policy.Namespace{Id: "22222222-2222-2222-2222-222222222222", Fqn: "https://ns-b.example.com"}
+
+	allOfDef := &policy.Attribute{
+		Id:        "all-of-def",
+		Fqn:       projectFQN,
+		Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Namespace: namespaceA,
+		Values: []*policy.Value{
+			{Fqn: projectAvengersFQN},
+			{Fqn: projectJusticeLeagueFQN},
+		},
+	}
+
+	anyOfDef := &policy.Attribute{
+		Id:        "any-of-def",
+		Fqn:       departmentFQN,
+		Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Namespace: namespaceA,
+		Values: []*policy.Value{
+			{Fqn: deptFinanceFQN},
+			{Fqn: deptMarketingFQN},
+		},
+	}
+
+	hierarchyDef := &policy.Attribute{
+		Id:        "hierarchy-def",
+		Fqn:       levelFQN,
+		Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		Namespace: namespaceA,
+		Values: []*policy.Value{
+			{Fqn: levelHighestFQN},
+			{Fqn: levelUpperMidFQN},
+			{Fqn: levelMidFQN},
+		},
+	}
+
+	tests := []struct {
+		name          string
+		definition    *policy.Attribute
+		resourceFQNs  []string
+		entitlements  subjectmappingbuiltin.AttributeValueFQNsToActions
+		requested     *policy.Action
+		namespaced    bool
+		expectPass    bool
+		expectErr     error
+		errorContains string
+	}{
+		{
+			name:       "all_of strict pass with matching namespace",
+			definition: allOfDef,
+			resourceFQNs: []string{
+				projectAvengersFQN,
+				projectJusticeLeagueFQN,
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				projectAvengersFQN:      {{Name: actions.ActionNameRead, Namespace: namespaceA}},
+				projectJusticeLeagueFQN: {{Name: actions.ActionNameRead, Namespace: namespaceA}},
+			},
+			requested:  &policy.Action{Name: actions.ActionNameRead},
+			namespaced: true,
+			expectPass: true,
+		},
+		{
+			name:       "all_of strict fail with wrong namespace",
+			definition: allOfDef,
+			resourceFQNs: []string{
+				projectAvengersFQN,
+				projectJusticeLeagueFQN,
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				projectAvengersFQN:      {{Name: actions.ActionNameRead, Namespace: namespaceB}},
+				projectJusticeLeagueFQN: {{Name: actions.ActionNameRead, Namespace: namespaceB}},
+			},
+			requested:  &policy.Action{Name: actions.ActionNameRead},
+			namespaced: true,
+			expectPass: false,
+		},
+		{
+			name:       "any_of strict pass when one namespace-matching action exists",
+			definition: anyOfDef,
+			resourceFQNs: []string{
+				deptFinanceFQN,
+				deptMarketingFQN,
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				deptFinanceFQN:   {{Name: actions.ActionNameRead, Namespace: namespaceB}},
+				deptMarketingFQN: {{Name: actions.ActionNameRead, Namespace: namespaceA}},
+			},
+			requested:  &policy.Action{Name: actions.ActionNameRead},
+			namespaced: true,
+			expectPass: true,
+		},
+		{
+			name:       "hierarchy strict pass with higher entitled value in same namespace",
+			definition: hierarchyDef,
+			resourceFQNs: []string{
+				levelUpperMidFQN,
+				levelMidFQN,
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				levelHighestFQN: {{Name: actions.ActionNameRead, Namespace: namespaceA}},
+			},
+			requested:  &policy.Action{Name: actions.ActionNameRead},
+			namespaced: true,
+			expectPass: true,
+		},
+		{
+			name:       "strict mode fails when definition namespace missing",
+			definition: &policy.Attribute{Id: "def-no-ns", Fqn: levelFQN, Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, Values: []*policy.Value{{Fqn: levelMidFQN}}},
+			resourceFQNs: []string{
+				levelMidFQN,
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				levelMidFQN: {{Name: actions.ActionNameRead, Namespace: namespaceA}},
+			},
+			requested:  &policy.Action{Name: actions.ActionNameRead},
+			namespaced: true,
+			expectPass: false,
+		},
+		{
+			name:       "request action namespace filter is enforced",
+			definition: anyOfDef,
+			resourceFQNs: []string{
+				deptFinanceFQN,
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				deptFinanceFQN: {{Name: actions.ActionNameRead, Namespace: namespaceA}},
+			},
+			requested:  &policy.Action{Name: actions.ActionNameRead, Namespace: namespaceB},
+			namespaced: false,
+			expectPass: false,
+		},
+		{
+			name:       "request action id precedence is enforced",
+			definition: anyOfDef,
+			resourceFQNs: []string{
+				deptFinanceFQN,
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				deptFinanceFQN: {{Id: "entitled-id", Name: actions.ActionNameRead, Namespace: namespaceA}},
+			},
+			requested:  &policy.Action{Id: "requested-id", Name: actions.ActionNameRead},
+			namespaced: true,
+			expectPass: false,
+		},
+		{
+			name:          "unspecified rule returns expected error",
+			definition:    &policy.Attribute{Fqn: levelFQN, Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED, Values: []*policy.Value{{Fqn: levelMidFQN}}},
+			resourceFQNs:  []string{levelMidFQN},
+			entitlements:  subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			requested:     &policy.Action{Name: actions.ActionNameRead},
+			namespaced:    true,
+			expectErr:     ErrMissingRequiredSpecifiedRule,
+			errorContains: "cannot be unspecified",
+		},
+		{
+			name:          "unknown rule returns expected error",
+			definition:    &policy.Attribute{Fqn: levelFQN, Rule: policy.AttributeRuleTypeEnum(999)},
+			resourceFQNs:  []string{levelMidFQN},
+			entitlements:  subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			requested:     &policy.Action{Name: actions.ActionNameRead},
+			namespaced:    true,
+			expectErr:     ErrUnrecognizedRule,
+			errorContains: "unrecognized",
+		},
+	}
+
+	for _, tc := range tests {
+		s.Run(tc.name, func() {
+			result, err := evaluateDefinition(s.T().Context(), s.logger, tc.entitlements, tc.requested, tc.resourceFQNs, tc.definition, tc.namespaced)
+
+			if tc.expectErr != nil {
+				s.Require().Error(err)
+				s.True(errors.Is(err, tc.expectErr))
+				s.ErrorContains(err, tc.errorContains)
+				return
+			}
+
+			s.Require().NoError(err)
+			s.Require().NotNil(result)
+			s.Equal(tc.expectPass, result.Passed)
 		})
 	}
 }
@@ -792,6 +981,7 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 				s.action,
 				tc.entitlements,
 				s.accessibleAttrValues,
+				false,
 			)
 
 			if tc.expectError {
@@ -1022,6 +1212,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				tc.entitlements,
 				s.action,
 				tc.resource,
+				false,
 			)
 
 			if tc.expectError {
@@ -1094,11 +1285,218 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_MultiResources_GranularDeni
 				entitlements,
 				s.action,
 				tc.resource,
+				false,
 			)
 
 			s.Require().NoError(err, "Should not error for resource: %s", tc.name)
 			s.Require().NotNil(decision)
 			s.Equal(tc.expectedEntitled, decision.Entitled, "Entitlement mismatch for: %s", tc.name)
+		})
+	}
+}
+
+func (s *EvaluateTestSuite) Test_getResourceDecision_StrictMode_DeniesOnActionNamespaceMismatch() {
+	namespaceA := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://ns-a.example.com"}
+	namespaceB := &policy.Namespace{Id: "22222222-2222-2222-2222-222222222222", Fqn: "https://ns-b.example.com"}
+
+	s.accessibleAttrValues[projectAvengersFQN].Attribute.Namespace = namespaceA
+
+	resource := &authz.Resource{
+		Resource: &authz.Resource_AttributeValues_{
+			AttributeValues: &authz.Resource_AttributeValues{Fqns: []string{projectAvengersFQN}},
+		},
+		EphemeralId: "ns-mismatch-resource",
+	}
+
+	entitlements := subjectmappingbuiltin.AttributeValueFQNsToActions{
+		projectAvengersFQN: {
+			{Name: actions.ActionNameRead, Namespace: namespaceB},
+		},
+	}
+
+	decision, err := getResourceDecision(
+		s.T().Context(),
+		s.logger,
+		s.accessibleAttrValues,
+		s.accessibleRegisteredResourceValues,
+		entitlements,
+		actionRead,
+		resource,
+		true,
+	)
+
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+	s.False(decision.Entitled, "desired namespaced-policy behavior: same-name action in wrong namespace should deny")
+}
+
+func (s *EvaluateTestSuite) Test_getResourceDecision_StrictMode_RegisteredResourceFiltersAAVByNamespace() {
+	namespaceA := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://ns-a.example.com"}
+	namespaceB := &policy.Namespace{Id: "22222222-2222-2222-2222-222222222222", Fqn: "https://ns-b.example.com"}
+
+	s.accessibleAttrValues[levelHighestFQN].Attribute.Namespace = namespaceA
+	s.accessibleRegisteredResourceValues[netRegResValFQN].ActionAttributeValues = []*policy.RegisteredResourceValue_ActionAttributeValue{
+		{
+			Id: "network-action-attr-val-wrong-ns",
+			Action: &policy.Action{
+				Name:      actions.ActionNameRead,
+				Namespace: namespaceB,
+			},
+			AttributeValue: &policy.Value{Fqn: levelHighestFQN, Value: "highest"},
+		},
+	}
+
+	resource := &authz.Resource{
+		Resource:    &authz.Resource_RegisteredResourceValueFqn{RegisteredResourceValueFqn: netRegResValFQN},
+		EphemeralId: "rr-ns-mismatch-resource",
+	}
+
+	entitlements := subjectmappingbuiltin.AttributeValueFQNsToActions{
+		levelHighestFQN: {
+			{Name: actions.ActionNameRead, Namespace: namespaceA},
+		},
+	}
+
+	decision, err := getResourceDecision(
+		s.T().Context(),
+		s.logger,
+		s.accessibleAttrValues,
+		s.accessibleRegisteredResourceValues,
+		entitlements,
+		actionRead,
+		resource,
+		true,
+	)
+
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+	s.False(decision.Entitled, "desired namespaced-policy behavior: RR AAV action namespace must match evaluated namespace")
+}
+
+func (s *EvaluateTestSuite) Test_getResourceDecision_RequestActionIDPrecedence() {
+	namespaceA := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://ns-a.example.com"}
+
+	s.accessibleAttrValues[projectAvengersFQN].Attribute.Namespace = namespaceA
+
+	resource := &authz.Resource{
+		Resource: &authz.Resource_AttributeValues_{
+			AttributeValues: &authz.Resource_AttributeValues{Fqns: []string{projectAvengersFQN}},
+		},
+		EphemeralId: "request-action-id-precedence",
+	}
+
+	entitlements := subjectmappingbuiltin.AttributeValueFQNsToActions{
+		projectAvengersFQN: {
+			{Id: "entitled-id", Name: actions.ActionNameRead, Namespace: namespaceA},
+		},
+	}
+
+	decision, err := getResourceDecision(
+		s.T().Context(),
+		s.logger,
+		s.accessibleAttrValues,
+		s.accessibleRegisteredResourceValues,
+		entitlements,
+		&policy.Action{Id: "different-id", Name: actions.ActionNameRead},
+		resource,
+		true,
+	)
+
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+	s.False(decision.Entitled, "requested action id should take precedence over name match")
+}
+
+func Test_isRequestedActionMatch(t *testing.T) {
+	namespaceA := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://ns-a.example.com"}
+	namespaceB := &policy.Namespace{Id: "22222222-2222-2222-2222-222222222222", Fqn: "https://ns-b.example.com"}
+
+	tests := []struct {
+		name                string
+		requestedAction     *policy.Action
+		requiredNamespace   string
+		entitledAction      *policy.Action
+		namespacedPolicy    bool
+		expectedActionMatch bool
+	}{
+		{
+			name:                "nil requested action",
+			requestedAction:     nil,
+			requiredNamespace:   namespaceA.GetId(),
+			entitledAction:      &policy.Action{Name: actions.ActionNameRead, Namespace: namespaceA},
+			namespacedPolicy:    true,
+			expectedActionMatch: false,
+		},
+		{
+			name:                "id precedence denies same-name different-id",
+			requestedAction:     &policy.Action{Id: "requested-id", Name: actions.ActionNameRead},
+			requiredNamespace:   namespaceA.GetId(),
+			entitledAction:      &policy.Action{Id: "entitled-id", Name: actions.ActionNameRead, Namespace: namespaceA},
+			namespacedPolicy:    true,
+			expectedActionMatch: false,
+		},
+		{
+			name:                "name is case-insensitive in legacy mode",
+			requestedAction:     &policy.Action{Name: "READ"},
+			requiredNamespace:   namespaceA.GetId(),
+			entitledAction:      &policy.Action{Name: "read"},
+			namespacedPolicy:    false,
+			expectedActionMatch: true,
+		},
+		{
+			name:                "request namespace id must match entitled namespace id",
+			requestedAction:     &policy.Action{Name: actions.ActionNameRead, Namespace: namespaceA},
+			requiredNamespace:   namespaceA.GetId(),
+			entitledAction:      &policy.Action{Name: actions.ActionNameRead, Namespace: namespaceB},
+			namespacedPolicy:    false,
+			expectedActionMatch: false,
+		},
+		{
+			name:                "request namespace fqn must match entitled namespace fqn",
+			requestedAction:     &policy.Action{Name: actions.ActionNameRead, Namespace: &policy.Namespace{Fqn: "https://ns-a.example.com"}},
+			requiredNamespace:   namespaceA.GetId(),
+			entitledAction:      &policy.Action{Name: actions.ActionNameRead, Namespace: &policy.Namespace{Id: namespaceA.GetId(), Fqn: "HTTPS://NS-A.EXAMPLE.COM"}},
+			namespacedPolicy:    false,
+			expectedActionMatch: true,
+		},
+		{
+			name:                "strict mode requires required namespace id",
+			requestedAction:     &policy.Action{Name: actions.ActionNameRead},
+			requiredNamespace:   "",
+			entitledAction:      &policy.Action{Name: actions.ActionNameRead, Namespace: namespaceA},
+			namespacedPolicy:    true,
+			expectedActionMatch: false,
+		},
+		{
+			name:                "strict mode requires entitled action namespace id",
+			requestedAction:     &policy.Action{Name: actions.ActionNameRead},
+			requiredNamespace:   namespaceA.GetId(),
+			entitledAction:      &policy.Action{Name: actions.ActionNameRead},
+			namespacedPolicy:    true,
+			expectedActionMatch: false,
+		},
+		{
+			name:                "strict mode allows matching namespace id",
+			requestedAction:     &policy.Action{Name: actions.ActionNameRead},
+			requiredNamespace:   namespaceA.GetId(),
+			entitledAction:      &policy.Action{Name: actions.ActionNameRead, Namespace: namespaceA},
+			namespacedPolicy:    true,
+			expectedActionMatch: true,
+		},
+		{
+			name:                "strict mode denies mismatched namespace id",
+			requestedAction:     &policy.Action{Name: actions.ActionNameRead},
+			requiredNamespace:   namespaceA.GetId(),
+			entitledAction:      &policy.Action{Name: actions.ActionNameRead, Namespace: namespaceB},
+			namespacedPolicy:    true,
+			expectedActionMatch: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			matched := isRequestedActionMatch(tt.requestedAction, tt.requiredNamespace, tt.entitledAction, tt.namespacedPolicy)
+			assert.Equal(t, tt.expectedActionMatch, matched)
 		})
 	}
 }

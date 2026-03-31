@@ -391,19 +391,19 @@ func TestPopulateHigherValuesIfHierarchy(t *testing.T) {
 
 	valueSecret := &policy.Value{
 		Fqn:             exampleSecretFQN,
-		SubjectMappings: []*policy.SubjectMapping{createSimpleSubjectMapping(exampleSecretFQN, "secret", []*policy.Action{actionRead}, ".test", []string{"value"})},
+		SubjectMappings: []*policy.SubjectMapping{createSimpleSubjectMapping(exampleSecretFQN, "secret", []*policy.Action{actionRead}, ".test", []string{"value"}, nil)},
 	}
 	valueRestricted := &policy.Value{
 		Fqn:             exampleRestrictedFQN,
-		SubjectMappings: []*policy.SubjectMapping{createSimpleSubjectMapping(exampleSecretFQN, "restricted", []*policy.Action{actionRead}, ".test", []string{"somethingelse"})},
+		SubjectMappings: []*policy.SubjectMapping{createSimpleSubjectMapping(exampleSecretFQN, "restricted", []*policy.Action{actionRead}, ".test", []string{"somethingelse"}, nil)},
 	}
 	valueConf := &policy.Value{
 		Fqn:             exampleConfidentialFQN,
-		SubjectMappings: []*policy.SubjectMapping{createSimpleSubjectMapping(exampleConfidentialFQN, "confidential", []*policy.Action{actionRead}, ".hello", []string{"world"})},
+		SubjectMappings: []*policy.SubjectMapping{createSimpleSubjectMapping(exampleConfidentialFQN, "confidential", []*policy.Action{actionRead}, ".hello", []string{"world"}, nil)},
 	}
 	valuePublic := &policy.Value{
 		Fqn:             examplePublicFQN,
-		SubjectMappings: []*policy.SubjectMapping{createSimpleSubjectMapping(examplePublicFQN, "public", []*policy.Action{actionRead}, ".goodnight", []string{"moon"})},
+		SubjectMappings: []*policy.SubjectMapping{createSimpleSubjectMapping(examplePublicFQN, "public", []*policy.Action{actionRead}, ".goodnight", []string{"moon"}, nil)},
 	}
 
 	values := []*policy.Value{valueSecret, valueRestricted, valueConf, valuePublic}

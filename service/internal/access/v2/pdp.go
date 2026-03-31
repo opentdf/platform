@@ -61,6 +61,7 @@ type PolicyDecisionPoint struct {
 	allRegisteredResourceValuesByFQN   map[string]*policy.RegisteredResourceValue
 	allAttributesByDefinitionFQN       map[string]*policy.Attribute
 	allowDirectEntitlements            bool
+	namespacedPolicy                   bool
 }
 
 var (
@@ -82,6 +83,7 @@ func NewPolicyDecisionPoint(
 	allSubjectMappings []*policy.SubjectMapping,
 	allRegisteredResources []*policy.RegisteredResource,
 	allowDirectEntitlements bool,
+	namespacedPolicy bool,
 ) (*PolicyDecisionPoint, error) {
 	var err error
 
@@ -124,6 +126,18 @@ func NewPolicyDecisionPoint(
 			)
 			continue
 		}
+
+		if namespacedPolicy {
+			ns := sm.GetNamespace()
+			if ns == nil || (ns.GetId() == "" && ns.GetFqn() == "") {
+				l.TraceContext(ctx,
+					"unnamespaced subject mapping in strict namespaced-policy mode - skipping",
+					slog.Any("subject_mapping", sm),
+				)
+				continue
+			}
+		}
+
 		mappedValue := sm.GetAttributeValue()
 		mappedValueFQN := mappedValue.GetFqn()
 		if _, ok := allEntitleableAttributesByValueFQN[mappedValueFQN]; ok {
@@ -169,6 +183,7 @@ func NewPolicyDecisionPoint(
 		allRegisteredResourceValuesByFQN,
 		allAttributesByDefinitionFQN,
 		allowDirectEntitlements,
+		namespacedPolicy,
 	}
 	return pdp, nil
 }
@@ -230,7 +245,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 	}
 
 	for idx, resource := range resources {
-		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource)
+		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource, p.namespacedPolicy)
 		if err != nil || resourceDecision == nil {
 			return nil, nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
 		}
@@ -308,7 +323,7 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	}
 
 	for idx, resource := range resources {
-		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource)
+		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource, p.namespacedPolicy)
 		if err != nil || resourceDecision == nil {
 			return nil, nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
 		}

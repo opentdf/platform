@@ -29,10 +29,18 @@ Chosen option: **Resolve request action by name within each evaluation namespace
 
 The request action remains unnamespaced in the decision request. During evaluation, action matching is performed per namespace context (derived from the rule/value being evaluated), not globally.
 
+Request-action identity precedence is explicit:
+
+1. `action.id` (exact identity)
+2. `action.name + action.namespace` (scoped identity)
+3. `action.name` only (contextual identity)
+
+When identity is explicit (`id` or `name+namespace`), decisioning does not fall back to looser name-only matching. It fails closed only if that explicit identity is unresolved or mismatched for the evaluated namespace context.
+
 Feature-flag mode split:
 
-- `NamespacedPolicy=false`: evaluate ONLY unnamespaced subject mappings and unnamespaced actions.
-- `NamespacedPolicy=true`: evaluate ONLY namespaced subject mappings and require action namespace equality for each evaluated namespace.
+- `NamespacedPolicy=false`: preserve existing legacy behavior (no new namespace filtering semantics introduced by this change).
+- `NamespacedPolicy=true`: enforce namespaced subject mapping evaluation and require action namespace equality for each evaluated namespace.
 
 For multi-namespace resources, existing `AND` semantics remain unchanged: all required namespace-scoped checks must pass, and missing action support in any required namespace denies access.
 
@@ -69,4 +77,3 @@ Validation is done through PDP and decisioning tests covering:
 3. Validate namespaced policy data readiness.
 4. Flip `NamespacedPolicy=true` and monitor mismatch/deny behavior.
 5. Remove legacy branch once namespaced mode is stable.
-

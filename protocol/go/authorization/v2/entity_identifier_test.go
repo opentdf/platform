@@ -1,9 +1,8 @@
-package sdk
+package authorizationv2
 
 import (
 	"testing"
 
-	authorizationv2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,7 +12,7 @@ func TestForToken(t *testing.T) {
 	jwt := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.test"
 	eid := ForToken(jwt)
 
-	tok, ok := eid.GetIdentifier().(*authorizationv2.EntityIdentifier_Token)
+	tok, ok := eid.GetIdentifier().(*EntityIdentifier_Token)
 	require.True(t, ok, "expected Token identifier")
 	assert.Equal(t, jwt, tok.Token.GetJwt())
 }
@@ -21,7 +20,7 @@ func TestForToken(t *testing.T) {
 func TestWithRequestToken(t *testing.T) {
 	eid := WithRequestToken()
 
-	wrt, ok := eid.GetIdentifier().(*authorizationv2.EntityIdentifier_WithRequestToken)
+	wrt, ok := eid.GetIdentifier().(*EntityIdentifier_WithRequestToken)
 	require.True(t, ok, "expected WithRequestToken identifier")
 	assert.True(t, wrt.WithRequestToken.GetValue())
 }
@@ -65,9 +64,9 @@ func TestForUserName(t *testing.T) {
 	assert.Equal(t, entity.Entity_CATEGORY_SUBJECT, e.GetCategory())
 }
 
-func extractEntityChain(t *testing.T, eid *authorizationv2.EntityIdentifier) *entity.EntityChain {
+func extractEntityChain(t *testing.T, eid *EntityIdentifier) *entity.EntityChain {
 	t.Helper()
-	ec, ok := eid.GetIdentifier().(*authorizationv2.EntityIdentifier_EntityChain)
+	ec, ok := eid.GetIdentifier().(*EntityIdentifier_EntityChain)
 	require.True(t, ok, "expected EntityChain identifier")
 	return ec.EntityChain
 }

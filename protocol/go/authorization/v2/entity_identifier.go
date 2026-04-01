@@ -1,16 +1,15 @@
-package sdk
+package authorizationv2
 
 import (
-	authorizationv2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // ForToken returns an EntityIdentifier that resolves the entity from the given JWT.
 // The authorization service will parse the token to derive the entity chain.
-func ForToken(jwt string) *authorizationv2.EntityIdentifier {
-	return &authorizationv2.EntityIdentifier{
-		Identifier: &authorizationv2.EntityIdentifier_Token{
+func ForToken(jwt string) *EntityIdentifier {
+	return &EntityIdentifier{
+		Identifier: &EntityIdentifier_Token{
 			Token: &entity.Token{
 				Jwt: jwt,
 			},
@@ -20,16 +19,16 @@ func ForToken(jwt string) *authorizationv2.EntityIdentifier {
 
 // WithRequestToken returns an EntityIdentifier that instructs the authorization
 // service to derive the entity from the request's Authorization header token.
-func WithRequestToken() *authorizationv2.EntityIdentifier {
-	return &authorizationv2.EntityIdentifier{
-		Identifier: &authorizationv2.EntityIdentifier_WithRequestToken{
+func WithRequestToken() *EntityIdentifier {
+	return &EntityIdentifier{
+		Identifier: &EntityIdentifier_WithRequestToken{
 			WithRequestToken: wrapperspb.Bool(true),
 		},
 	}
 }
 
 // ForClientID returns an EntityIdentifier for a single subject entity identified by client ID.
-func ForClientID(clientID string) *authorizationv2.EntityIdentifier {
+func ForClientID(clientID string) *EntityIdentifier {
 	return entityIdentifierFromEntity(&entity.Entity{
 		EntityType: &entity.Entity_ClientId{ClientId: clientID},
 		Category:   entity.Entity_CATEGORY_SUBJECT,
@@ -37,7 +36,7 @@ func ForClientID(clientID string) *authorizationv2.EntityIdentifier {
 }
 
 // ForEmail returns an EntityIdentifier for a single subject entity identified by email address.
-func ForEmail(email string) *authorizationv2.EntityIdentifier {
+func ForEmail(email string) *EntityIdentifier {
 	return entityIdentifierFromEntity(&entity.Entity{
 		EntityType: &entity.Entity_EmailAddress{EmailAddress: email},
 		Category:   entity.Entity_CATEGORY_SUBJECT,
@@ -45,16 +44,16 @@ func ForEmail(email string) *authorizationv2.EntityIdentifier {
 }
 
 // ForUserName returns an EntityIdentifier for a single subject entity identified by username.
-func ForUserName(username string) *authorizationv2.EntityIdentifier {
+func ForUserName(username string) *EntityIdentifier {
 	return entityIdentifierFromEntity(&entity.Entity{
 		EntityType: &entity.Entity_UserName{UserName: username},
 		Category:   entity.Entity_CATEGORY_SUBJECT,
 	})
 }
 
-func entityIdentifierFromEntity(e *entity.Entity) *authorizationv2.EntityIdentifier {
-	return &authorizationv2.EntityIdentifier{
-		Identifier: &authorizationv2.EntityIdentifier_EntityChain{
+func entityIdentifierFromEntity(e *entity.Entity) *EntityIdentifier {
+	return &EntityIdentifier{
+		Identifier: &EntityIdentifier_EntityChain{
 			EntityChain: &entity.EntityChain{
 				Entities: []*entity.Entity{e},
 			},

@@ -81,11 +81,18 @@ func getResourceDecision(
 		}
 		for _, aav := range regResValue.GetActionAttributeValues() {
 			aavAttrValueFQN := aav.GetAttributeValue().GetFqn()
+			// First, check whether the request action identity (id or name[/namespace])
+			// could match this AAV action at all. This lightweight pre-check is used to
+			// decide whether strict mode must fail closed when namespace context is
+			// missing for this candidate AAV.
 			matchesRequestIdentity := isRequestedActionMatch(action, "", aav.GetAction(), false)
 			requiredNamespaceID := ""
 			if attrAndValue, ok := accessibleAttributeValues[aavAttrValueFQN]; ok {
 				requiredNamespaceID = attrAndValue.GetAttribute().GetNamespace().GetId()
 			} else if namespacedPolicy && matchesRequestIdentity {
+				// Strict namespaced policy: if this AAV is otherwise a candidate for the
+				// requested action but we cannot resolve the attribute-value namespace,
+				// deny rather than silently skipping evaluation.
 				l.TraceContext(
 					ctx,
 					"strict namespaced-policy mode: unable to resolve namespace for RR action-attribute-value; denying access",
@@ -269,6 +276,7 @@ func allOfRule(
 	action *policy.Action,
 	resourceValueFQNs []string,
 ) []EntitlementFailure {
+	// Legacy wrapper: evaluate without strict namespace constraints.
 	return allOfRuleScoped(ctx, l, entitlements, action, resourceValueFQNs, "", false)
 }
 
@@ -321,6 +329,7 @@ func anyOfRule(
 	action *policy.Action,
 	resourceValueFQNs []string,
 ) []EntitlementFailure {
+	// Legacy wrapper: evaluate without strict namespace constraints.
 	return anyOfRuleScoped(ctx, l, entitlements, action, resourceValueFQNs, "", false)
 }
 
@@ -385,6 +394,7 @@ func hierarchyRule(
 	resourceValueFQNs []string,
 	attrDefinition *policy.Attribute,
 ) []EntitlementFailure {
+	// Legacy wrapper: evaluate without strict namespace constraints.
 	return hierarchyRuleScoped(ctx, l, entitlements, action, resourceValueFQNs, attrDefinition, "", false)
 }
 
@@ -473,6 +483,10 @@ func isRequestedActionMatch(requestedAction *policy.Action, requiredNamespaceID 
 		return false
 	}
 
+	// Action identity precedence:
+	// 1) request action id (if present) is authoritative,
+	// 2) otherwise name (case-insensitive),
+	// 3) optional request namespace (id or fqn) further narrows matches.
 	if requestedAction.GetId() != "" {
 		if requestedAction.GetId() != entitledAction.GetId() {
 			return false
@@ -500,6 +514,8 @@ func isRequestedActionMatch(requestedAction *policy.Action, requiredNamespaceID 
 		return true
 	}
 
+	// Strict namespaced-policy mode requires a resolved target namespace from
+	// the resource/definition context and a namespaced entitled action.
 	if requiredNamespaceID == "" {
 		return false
 	}

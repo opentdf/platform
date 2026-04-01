@@ -12,8 +12,8 @@ Feature: Namespaced Policy Decisioning (name-only action requests)
     And I submit a request to create a namespace with name "ns-two.example.com" and reference id "ns2"
     And I send a request to create an attribute with:
       | namespace_id | name           | rule      | values    |
-      | ns1          | department     | any_of    | eng       |
-      | ns2          | department     | any_of    | eng       |
+      | ns1          | department     | anyOf     | eng       |
+      | ns2          | department     | anyOf     | eng       |
     Then the response should be successful
     And a condition group referenced as "cg_eng_department" with an "or" operator with conditions:
       | selector_value           | operator | values |

@@ -125,7 +125,7 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 
 	// 3. Create Resource: Combine attributes from explicit config, defaults, and environment.
 	baseRes := resource.NewWithAttributes(
-		semconv.SchemaURL, // Required by NewWithAttributes
+		"",
 		semconv.ServiceNameKey.String(ServiceName),
 		// Add other static resource attributes here if needed
 	)

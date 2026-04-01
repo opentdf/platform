@@ -801,7 +801,8 @@ ORDER BY
     CASE WHEN $4::text = 'created_at' AND $5::text = 'DESC' THEN ad.created_at END DESC,
     CASE WHEN $4::text = 'updated_at' AND $5::text = 'ASC' THEN ad.updated_at END ASC,
     CASE WHEN $4::text = 'updated_at' AND $5::text = 'DESC' THEN ad.updated_at END DESC,
-    ad.created_at DESC
+    ad.created_at DESC,
+    ad.id ASC
 LIMIT $7
 OFFSET $6
 `
@@ -877,7 +878,8 @@ type listAttributesDetailRow struct {
 //	    CASE WHEN $4::text = 'created_at' AND $5::text = 'DESC' THEN ad.created_at END DESC,
 //	    CASE WHEN $4::text = 'updated_at' AND $5::text = 'ASC' THEN ad.updated_at END ASC,
 //	    CASE WHEN $4::text = 'updated_at' AND $5::text = 'DESC' THEN ad.updated_at END DESC,
-//	    ad.created_at DESC
+//	    ad.created_at DESC,
+//	    ad.id ASC
 //	LIMIT $7
 //	OFFSET $6
 func (q *Queries) listAttributesDetail(ctx context.Context, arg listAttributesDetailParams) ([]listAttributesDetailRow, error) {
@@ -942,7 +944,8 @@ ORDER BY
     CASE WHEN $2::text = 'created_at' AND $3::text = 'DESC' THEN ad.created_at END DESC,
     CASE WHEN $2::text = 'updated_at' AND $3::text = 'ASC' THEN ad.updated_at END ASC,
     CASE WHEN $2::text = 'updated_at' AND $3::text = 'DESC' THEN ad.updated_at END DESC,
-    ad.created_at DESC
+    ad.created_at DESC,
+    ad.id ASC
 LIMIT CASE WHEN $5::boolean THEN NULL ELSE $6::bigint END
 OFFSET $4
 `
@@ -991,7 +994,8 @@ type listAttributesSummaryRow struct {
 //	    CASE WHEN $2::text = 'created_at' AND $3::text = 'DESC' THEN ad.created_at END DESC,
 //	    CASE WHEN $2::text = 'updated_at' AND $3::text = 'ASC' THEN ad.updated_at END ASC,
 //	    CASE WHEN $2::text = 'updated_at' AND $3::text = 'DESC' THEN ad.updated_at END DESC,
-//	    ad.created_at DESC
+//	    ad.created_at DESC,
+//	    ad.id ASC
 //	LIMIT CASE WHEN $5::boolean THEN NULL ELSE $6::bigint END
 //	OFFSET $4
 func (q *Queries) listAttributesSummary(ctx context.Context, arg listAttributesSummaryParams) ([]listAttributesSummaryRow, error) {

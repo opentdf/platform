@@ -116,26 +116,33 @@ func TestMigrationUpDownUp(t *testing.T) {
 	h := newMigrationTestHarness(t, "test_opentdf_migration_roundtrip")
 
 	// Phase 1: Apply all migrations up
-	results, err := h.provider.Up(h.ctx)
+	upResults, err := h.provider.Up(h.ctx)
 	require.NoError(t, err, "migration up failed")
-	require.NotEmpty(t, results, "expected at least one migration applied")
-	t.Logf("phase 1 (up): applied %d migrations", len(results))
+	require.NotEmpty(t, upResults, "expected at least one migration applied")
+	for _, r := range upResults {
+		require.NoError(t, r.Error, "migration %d up error", r.Source.Version)
+	}
+	t.Logf("phase 1 (up): applied %d migrations", len(upResults))
 
 	// Phase 2: Roll back all migrations
 	downResults, err := h.provider.DownTo(h.ctx, 0)
 	require.NoError(t, err, "migration down failed")
+	require.NotEmpty(t, downResults, "expected at least one migration rolled back")
 	for _, r := range downResults {
 		require.NoError(t, r.Error, "migration %d down error", r.Source.Version)
 	}
-	require.NotEmpty(t, downResults, "expected at least one migration rolled back")
+	require.Len(t, downResults, len(upResults), "rollback count should match applied count")
 	t.Logf("phase 2 (down): rolled back %d migrations", len(downResults))
 
 	// Phase 3: Re-apply all migrations
-	results, err = h.provider.Up(h.ctx)
+	reupResults, err := h.provider.Up(h.ctx)
 	require.NoError(t, err, "migration re-up failed after rollback")
-	require.NotEmpty(t, results, "expected at least one migration re-applied")
-	require.Len(t, results, len(downResults), "re-applied count should match rollback count")
-	t.Logf("phase 3 (re-up): applied %d migrations", len(results))
+	require.NotEmpty(t, reupResults, "expected at least one migration re-applied")
+	for _, r := range reupResults {
+		require.NoError(t, r.Error, "migration %d re-up error", r.Source.Version)
+	}
+	require.Len(t, reupResults, len(upResults), "re-applied count should match initial count")
+	t.Logf("phase 3 (re-up): applied %d migrations", len(reupResults))
 }
 
 // TestMigrationData_SelectorFieldRename tests the JSONB field rename migration

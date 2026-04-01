@@ -76,9 +76,10 @@ message PageRequest {
   // Optional
   // Defaulted if not provided
   int32 offset = 2;
-  // Optional: sort results. Array for future extensibility; max 1 via protovalidate for now.
-  // Falls back to created_at DESC when unset.
-  repeated SortField sort = 3 [(buf.validate.field).repeated.max_items = 1];
+  // Deprecated: use resource-specific sort fields on each List*Request instead
+  // (e.g. AttributesSort, NamespacesSort). This generic field is unused and
+  // will be removed in a future version.
+  repeated SortField sort = 3 [deprecated = true, (buf.validate.field).repeated.max_items = 1];
 }
 
 message PageResponse {

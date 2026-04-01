@@ -63,7 +63,7 @@ func (l *FileLoader) Load(_ Config) error {
 }
 
 // Watch starts watching the config file for configuration changes
-func (l *FileLoader) Watch(ctx context.Context, _ *Config, onChange func(context.Context) error) error {
+func (l *FileLoader) Watch(ctx context.Context, _ *Config, onChange func(context.Context) error, _ []NamespaceInfo) error {
 	l.viper.WatchConfig()
 
 	// If config changes, trigger the main config reload function

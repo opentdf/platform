@@ -156,7 +156,7 @@ func (c *Config) AddOnConfigChangeHook(hook ChangeHook) {
 }
 
 // Watch starts watching the configuration for changes in all config loaders.
-func (c *Config) Watch(ctx context.Context) error {
+func (c *Config) Watch(ctx context.Context, namespaces []NamespaceInfo) error {
 	if len(c.loaders) == 0 {
 		return nil
 	}
@@ -176,12 +176,13 @@ func (c *Config) Watch(ctx context.Context) error {
 			// Now call the user-provided hooks with the new configuration.
 			return c.OnChange(ctx)
 		}
-		if err := loader.Watch(ctx, c, onChangeCallback); err != nil {
+		if err := loader.Watch(ctx, c, onChangeCallback, namespaces); err != nil {
 			return err
 		}
 	}
 	return nil
 }
+
 
 // Close invokes close method on all config loaders.
 func (c *Config) Close(ctx context.Context) error {

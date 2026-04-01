@@ -235,7 +235,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 			var actionNamespace *policy.Namespace
 			if attrAndValue, ok := decisionableAttributes[fqn]; ok {
 				actionNamespace = attrAndValue.GetAttribute().GetNamespace()
-			} else if fallbackAttrAndValue, ok := p.allEntitleableAttributesByValueFQN[fqn]; ok {
+			} else if fallbackAttrAndValue, ok2 := p.allEntitleableAttributesByValueFQN[fqn]; ok2 {
 				// Fallback for direct entitlements that may not be present in the
 				// narrowed decisionable set for this specific request.
 				actionNamespace = fallbackAttrAndValue.GetAttribute().GetNamespace()

@@ -244,6 +244,7 @@ DO $$ BEGIN
     SELECT 1 FROM information_schema.table_constraints
     WHERE constraint_name = 'attribute_value_members_value_id_fkey'
       AND table_name = 'attribute_value_members'
+      AND table_schema = current_schema()
   ) THEN
     ALTER TABLE attribute_value_members
     ADD CONSTRAINT attribute_value_members_value_id_fkey
@@ -259,6 +260,7 @@ DO $$ BEGIN
     SELECT 1 FROM information_schema.table_constraints
     WHERE constraint_name = 'attribute_value_members_member_id_fkey'
       AND table_name = 'attribute_value_members'
+      AND table_schema = current_schema()
   ) THEN
     ALTER TABLE attribute_value_members
     ADD CONSTRAINT attribute_value_members_member_id_fkey

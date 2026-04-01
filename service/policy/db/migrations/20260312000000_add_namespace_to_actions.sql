@@ -30,6 +30,35 @@ CREATE INDEX idx_actions_namespace_id
 -- by action name, remapping references, and deleting duplicate action rows.
 -- Canonical action selection prefers legacy/global actions (namespace_id IS NULL),
 -- then earliest created_at, then smallest id for deterministic behavior.
+--
+-- Operator note (optional, run manually outside migration):
+-- Preview action-id remaps this Down migration will apply:
+--
+-- WITH canonical AS (
+--   SELECT
+--     id,
+--     name,
+--     FIRST_VALUE(id) OVER (
+--       PARTITION BY name
+--       ORDER BY (namespace_id IS NULL) DESC, created_at ASC, id ASC
+--     ) AS canonical_id
+--   FROM actions
+-- )
+-- SELECT name, id AS old_action_id, canonical_id AS new_action_id
+-- FROM canonical
+-- WHERE id <> canonical_id
+-- ORDER BY name, old_action_id;
+--
+-- Preview impacted row counts by table:
+--   SELECT COUNT(*) FROM subject_mapping_actions sma JOIN actions a ON a.id = sma.action_id WHERE a.namespace_id IS NOT NULL;
+--   SELECT COUNT(*) FROM registered_resource_action_attribute_values rr JOIN actions a ON a.id = rr.action_id WHERE a.namespace_id IS NOT NULL;
+--   SELECT COUNT(*) FROM obligation_triggers ot JOIN actions a ON a.id = ot.action_id WHERE a.namespace_id IS NOT NULL;
+--
+-- Post-down verification queries:
+--   SELECT name, COUNT(*) FROM actions GROUP BY name HAVING COUNT(*) > 1;
+--   SELECT COUNT(*) FROM subject_mapping_actions sma LEFT JOIN actions a ON a.id = sma.action_id WHERE a.id IS NULL;
+--   SELECT COUNT(*) FROM registered_resource_action_attribute_values rr LEFT JOIN actions a ON a.id = rr.action_id WHERE a.id IS NULL;
+--   SELECT COUNT(*) FROM obligation_triggers ot LEFT JOIN actions a ON a.id = ot.action_id WHERE a.id IS NULL;
 
 CREATE TEMP TABLE action_id_remap AS
 WITH canonical AS (

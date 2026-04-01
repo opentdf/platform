@@ -4,8 +4,6 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/entity"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestForToken(t *testing.T) {
@@ -13,60 +11,97 @@ func TestForToken(t *testing.T) {
 	eid := ForToken(jwt)
 
 	tok, ok := eid.GetIdentifier().(*EntityIdentifier_Token)
-	require.True(t, ok, "expected Token identifier")
-	assert.Equal(t, jwt, tok.Token.GetJwt())
+	if !ok {
+		t.Fatal("expected Token identifier")
+	}
+	if got := tok.Token.GetJwt(); got != jwt {
+		t.Errorf("jwt = %q, want %q", got, jwt)
+	}
 }
 
 func TestWithRequestToken(t *testing.T) {
 	eid := WithRequestToken()
 
 	wrt, ok := eid.GetIdentifier().(*EntityIdentifier_WithRequestToken)
-	require.True(t, ok, "expected WithRequestToken identifier")
-	assert.True(t, wrt.WithRequestToken.GetValue())
+	if !ok {
+		t.Fatal("expected WithRequestToken identifier")
+	}
+	if !wrt.WithRequestToken.GetValue() {
+		t.Error("expected WithRequestToken value to be true")
+	}
 }
 
 func TestForClientID(t *testing.T) {
 	eid := ForClientID("my-client")
 
 	chain := extractEntityChain(t, eid)
-	require.Len(t, chain.GetEntities(), 1)
+	entities := chain.GetEntities()
+	if len(entities) != 1 {
+		t.Fatalf("entities len = %d, want 1", len(entities))
+	}
 
-	e := chain.GetEntities()[0]
+	e := entities[0]
 	cid, ok := e.GetEntityType().(*entity.Entity_ClientId)
-	require.True(t, ok, "expected ClientId entity type")
-	assert.Equal(t, "my-client", cid.ClientId)
-	assert.Equal(t, entity.Entity_CATEGORY_SUBJECT, e.GetCategory())
+	if !ok {
+		t.Fatal("expected ClientId entity type")
+	}
+	if cid.ClientId != "my-client" {
+		t.Errorf("ClientId = %q, want %q", cid.ClientId, "my-client")
+	}
+	if e.GetCategory() != entity.Entity_CATEGORY_SUBJECT {
+		t.Errorf("category = %v, want CATEGORY_SUBJECT", e.GetCategory())
+	}
 }
 
 func TestForEmail(t *testing.T) {
 	eid := ForEmail("user@example.com")
 
 	chain := extractEntityChain(t, eid)
-	require.Len(t, chain.GetEntities(), 1)
+	entities := chain.GetEntities()
+	if len(entities) != 1 {
+		t.Fatalf("entities len = %d, want 1", len(entities))
+	}
 
-	e := chain.GetEntities()[0]
+	e := entities[0]
 	em, ok := e.GetEntityType().(*entity.Entity_EmailAddress)
-	require.True(t, ok, "expected EmailAddress entity type")
-	assert.Equal(t, "user@example.com", em.EmailAddress)
-	assert.Equal(t, entity.Entity_CATEGORY_SUBJECT, e.GetCategory())
+	if !ok {
+		t.Fatal("expected EmailAddress entity type")
+	}
+	if em.EmailAddress != "user@example.com" {
+		t.Errorf("EmailAddress = %q, want %q", em.EmailAddress, "user@example.com")
+	}
+	if e.GetCategory() != entity.Entity_CATEGORY_SUBJECT {
+		t.Errorf("category = %v, want CATEGORY_SUBJECT", e.GetCategory())
+	}
 }
 
 func TestForUserName(t *testing.T) {
 	eid := ForUserName("alice")
 
 	chain := extractEntityChain(t, eid)
-	require.Len(t, chain.GetEntities(), 1)
+	entities := chain.GetEntities()
+	if len(entities) != 1 {
+		t.Fatalf("entities len = %d, want 1", len(entities))
+	}
 
-	e := chain.GetEntities()[0]
+	e := entities[0]
 	un, ok := e.GetEntityType().(*entity.Entity_UserName)
-	require.True(t, ok, "expected UserName entity type")
-	assert.Equal(t, "alice", un.UserName)
-	assert.Equal(t, entity.Entity_CATEGORY_SUBJECT, e.GetCategory())
+	if !ok {
+		t.Fatal("expected UserName entity type")
+	}
+	if un.UserName != "alice" {
+		t.Errorf("UserName = %q, want %q", un.UserName, "alice")
+	}
+	if e.GetCategory() != entity.Entity_CATEGORY_SUBJECT {
+		t.Errorf("category = %v, want CATEGORY_SUBJECT", e.GetCategory())
+	}
 }
 
 func extractEntityChain(t *testing.T, eid *EntityIdentifier) *entity.EntityChain {
 	t.Helper()
 	ec, ok := eid.GetIdentifier().(*EntityIdentifier_EntityChain)
-	require.True(t, ok, "expected EntityChain identifier")
+	if !ok {
+		t.Fatal("expected EntityChain identifier")
+	}
 	return ec.EntityChain
 }

@@ -233,20 +233,37 @@ ADD CONSTRAINT attribute_value_key_access_grants_attribute_value_id_fkey
 FOREIGN KEY (attribute_value_id)
 REFERENCES attribute_values (id);
 
+-- attribute_value_members may have been dropped and recreated by a later
+-- migration (20240813000000) with default constraint names, so these
+-- _cascades constraints may not exist.
 ALTER TABLE attribute_value_members
-DROP CONSTRAINT attr_val_members_value_id_fkey_cascades;
+DROP CONSTRAINT IF EXISTS attr_val_members_value_id_fkey_cascades;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'attribute_value_members_value_id_fkey'
+      AND table_name = 'attribute_value_members'
+  ) THEN
+    ALTER TABLE attribute_value_members
+    ADD CONSTRAINT attribute_value_members_value_id_fkey
+    FOREIGN KEY (value_id) REFERENCES attribute_values (id);
+  END IF;
+END $$;
 
 ALTER TABLE attribute_value_members
-ADD CONSTRAINT attribute_value_members_value_id_fkey
-FOREIGN KEY (value_id)
-REFERENCES attribute_values (id);
+DROP CONSTRAINT IF EXISTS attr_val_members_member_id_fkey_cascades;
 
-ALTER TABLE attribute_value_members
-DROP CONSTRAINT attr_val_members_member_id_fkey_cascades;
-
-ALTER TABLE attribute_value_members
-ADD CONSTRAINT attribute_value_members_member_id_fkey
-FOREIGN KEY (member_id)
-REFERENCES attribute_values (id);
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'attribute_value_members_member_id_fkey'
+      AND table_name = 'attribute_value_members'
+  ) THEN
+    ALTER TABLE attribute_value_members
+    ADD CONSTRAINT attribute_value_members_member_id_fkey
+    FOREIGN KEY (member_id) REFERENCES attribute_values (id);
+  END IF;
+END $$;
 
 -- +goose StatementEnd

@@ -243,6 +243,7 @@ const (
 	KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1 KasPublicKeyAlgEnum = 5
 	KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1 KasPublicKeyAlgEnum = 6
 	KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1 KasPublicKeyAlgEnum = 7
+	KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING  KasPublicKeyAlgEnum = 10
 )
 
 // Enum value maps for KasPublicKeyAlgEnum.
@@ -253,7 +254,8 @@ var (
 		2: "KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096",
 		5: "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1",
 		6: "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1",
-		7: "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1",
+		7:  "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1",
+		10: "KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING",
 	}
 	KasPublicKeyAlgEnum_value = map[string]int32{
 		"KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED":  0,
@@ -262,6 +264,7 @@ var (
 		"KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1": 5,
 		"KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1": 6,
 		"KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1": 7,
+		"KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING":  10,
 	}
 )
 
@@ -302,6 +305,7 @@ const (
 	Algorithm_ALGORITHM_EC_P256     Algorithm = 3
 	Algorithm_ALGORITHM_EC_P384     Algorithm = 4
 	Algorithm_ALGORITHM_EC_P521     Algorithm = 5
+	Algorithm_ALGORITHM_HPQT_XWING Algorithm = 6
 )
 
 // Enum value maps for Algorithm.
@@ -313,6 +317,7 @@ var (
 		3: "ALGORITHM_EC_P256",
 		4: "ALGORITHM_EC_P384",
 		5: "ALGORITHM_EC_P521",
+		6: "ALGORITHM_HPQT_XWING",
 	}
 	Algorithm_value = map[string]int32{
 		"ALGORITHM_UNSPECIFIED": 0,
@@ -321,6 +326,7 @@ var (
 		"ALGORITHM_EC_P256":     3,
 		"ALGORITHM_EC_P384":     4,
 		"ALGORITHM_EC_P521":     5,
+		"ALGORITHM_HPQT_XWING":  6,
 	}
 )
 

@@ -67,6 +67,12 @@ type StandardECCrypto struct {
 	sk *ecdh.PrivateKey
 }
 
+type StandardXWingCrypto struct {
+	KeyPairInfo
+	xwingPrivateKeyPem string
+	xwingPublicKeyPem  string
+}
+
 // List of keys by identifier
 type keylist map[string]any
 
@@ -167,6 +173,12 @@ func loadKey(k KeyPairInfo) (any, error) {
 			KeyPairInfo:    k,
 			asymDecryption: asymDecryption,
 			asymEncryption: *asymEncryption,
+		}, nil
+	case AlgorithmHPQTXWing:
+		return StandardXWingCrypto{
+			KeyPairInfo:        k,
+			xwingPrivateKeyPem: string(privatePEM),
+			xwingPublicKeyPem:  string(certPEM),
 		}, nil
 	default:
 		return nil, errors.New("unsupported algorithm [" + k.Algorithm + "]")
@@ -373,6 +385,18 @@ func (s StandardCrypto) RSAPublicKeyAsJSON(kid string) (string, error) {
 	return string(jsonPublicKey), nil
 }
 
+func (s StandardCrypto) XWingPublicKey(kid string) (string, error) {
+	k, ok := s.keysByID[kid]
+	if !ok {
+		return "", fmt.Errorf("no xwing key with id [%s]: %w", kid, ErrCertNotFound)
+	}
+	xw, ok := k.(StandardXWingCrypto)
+	if !ok {
+		return "", fmt.Errorf("key with id [%s] is not an X-Wing key: %w", kid, ErrCertNotFound)
+	}
+	return xw.xwingPublicKeyPem, nil
+}
+
 func (s StandardCrypto) Close() {
 }
 
@@ -437,6 +461,21 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 		rawKey, err = key.asymDecryption.Decrypt(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting data: %w", err)
+		}
+
+	case StandardXWingCrypto:
+		if len(ephemeralPublicKey) > 0 {
+			return nil, errors.New("ephemeral public key should not be provided for X-Wing decryption")
+		}
+
+		privKeyRaw, err := ocrypto.XWingPrivateKeyFromPem([]byte(key.xwingPrivateKeyPem))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse X-Wing private key: %w", err)
+		}
+
+		rawKey, err = ocrypto.XWingUnwrapDEK(privKeyRaw, ciphertext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unwrap DEK with X-Wing: %w", err)
 		}
 
 	default:

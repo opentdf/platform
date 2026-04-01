@@ -51,6 +51,8 @@ func formatAlg(alg policy.Algorithm) (string, error) {
 		return string(ocrypto.EC384Key), nil
 	case policy.Algorithm_ALGORITHM_EC_P521:
 		return string(ocrypto.EC521Key), nil
+	case policy.Algorithm_ALGORITHM_HPQT_XWING:
+		return string(ocrypto.HybridXWingKey), nil
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:

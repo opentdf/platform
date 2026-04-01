@@ -84,7 +84,10 @@ func (k *KeyDetailsAdapter) ExportPublicKey(_ context.Context, format trust.KeyT
 		if rsaKey, err := k.cryptoProvider.RSAPublicKey(kid); err == nil {
 			return rsaKey, nil
 		}
-		return k.cryptoProvider.ECPublicKey(kid)
+		if ecKey, err := k.cryptoProvider.ECPublicKey(kid); err == nil {
+			return ecKey, nil
+		}
+		return k.cryptoProvider.XWingPublicKey(kid)
 	default:
 		return "", ErrCertNotFound
 	}
@@ -171,7 +174,7 @@ func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm stri
 // FindKeyByID finds a key by ID
 func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
 	// Try to determine the algorithm by checking if the key works with known algorithms
-	for _, alg := range []string{AlgorithmECP256R1, AlgorithmRSA2048} {
+	for _, alg := range []string{AlgorithmECP256R1, AlgorithmRSA2048, AlgorithmHPQTXWing} {
 		// This is a hack since the original provider doesn't have a way to check if a key exists
 		switch alg {
 		case AlgorithmECP256R1:
@@ -185,6 +188,15 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 			}
 		case AlgorithmRSA2048:
 			if _, err := a.cryptoProvider.RSAPublicKey(string(id)); err == nil {
+				return &KeyDetailsAdapter{
+					id:             id,
+					algorithm:      ocrypto.KeyType(alg),
+					legacy:         a.legacyKeys[string(id)],
+					cryptoProvider: a.cryptoProvider,
+				}, nil
+			}
+		case AlgorithmHPQTXWing:
+			if _, err := a.cryptoProvider.XWingPublicKey(string(id)); err == nil {
 				return &KeyDetailsAdapter{
 					id:             id,
 					algorithm:      ocrypto.KeyType(alg),
@@ -207,7 +219,7 @@ func (a *InProcessProvider) ListKeysWith(ctx context.Context, opts trust.ListKey
 	var keys []trust.KeyDetails
 
 	// Try to find keys for known algorithms
-	for _, alg := range []string{AlgorithmRSA2048, AlgorithmECP256R1} {
+	for _, alg := range []string{AlgorithmRSA2048, AlgorithmECP256R1, AlgorithmHPQTXWing} {
 		if kids, err := a.cryptoProvider.ListKIDsByAlgorithm(alg); err == nil && len(kids) > 0 {
 			for _, kid := range kids {
 				if opts.LegacyOnly && !a.legacyKeys[kid] {
@@ -260,6 +272,12 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 			return nil, errors.New("ephemeral public key is required for EC decryption")
 		}
 		protectedKey, err = a.cryptoProvider.ECDecrypt(ctx, kid, ephemeralPublicKey, ciphertext)
+
+	case AlgorithmHPQTXWing:
+		if len(ephemeralPublicKey) > 0 {
+			return nil, errors.New("ephemeral public key should not be provided for X-Wing decryption")
+		}
+		protectedKey, err = a.cryptoProvider.Decrypt(ctx, trust.KeyIdentifier(kid), ciphertext, nil)
 
 	default:
 		return nil, errors.New("unsupported key algorithm")
@@ -346,6 +364,11 @@ func (a *InProcessProvider) determineKeyType(_ context.Context, kid string) (str
 	// Then try EC
 	if _, err := a.cryptoProvider.ECPublicKey(kid); err == nil {
 		return AlgorithmECP256R1, nil
+	}
+
+	// Then try X-Wing
+	if _, err := a.cryptoProvider.XWingPublicKey(kid); err == nil {
+		return AlgorithmHPQTXWing, nil
 	}
 
 	return "", errors.New("could not determine key type")

@@ -235,10 +235,10 @@ func (p *PolicyDecisionPoint) GetDecision(
 			var actionNamespace *policy.Namespace
 			if attrAndValue, ok := decisionableAttributes[fqn]; ok {
 				actionNamespace = attrAndValue.GetAttribute().GetNamespace()
-			} else if attrAndValue, ok := p.allEntitleableAttributesByValueFQN[fqn]; ok {
+			} else if fallbackAttrAndValue, ok := p.allEntitleableAttributesByValueFQN[fqn]; ok {
 				// Fallback for direct entitlements that may not be present in the
 				// narrowed decisionable set for this specific request.
-				actionNamespace = attrAndValue.GetAttribute().GetNamespace()
+				actionNamespace = fallbackAttrAndValue.GetAttribute().GetNamespace()
 			}
 
 			// Merge direct-entitlement actions with subject-mapping actions for the

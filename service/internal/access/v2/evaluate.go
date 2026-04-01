@@ -227,13 +227,13 @@ func evaluateDefinition(
 
 	switch attrDefinition.GetRule() {
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF:
-		entitlementFailures = allOfRuleWithContext(ctx, l, entitlements, action, resourceValueFQNs, requiredNamespaceID, namespacedPolicy)
+		entitlementFailures = allOfRuleScoped(ctx, l, entitlements, action, resourceValueFQNs, requiredNamespaceID, namespacedPolicy)
 
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF:
-		entitlementFailures = anyOfRuleWithContext(ctx, l, entitlements, action, resourceValueFQNs, requiredNamespaceID, namespacedPolicy)
+		entitlementFailures = anyOfRuleScoped(ctx, l, entitlements, action, resourceValueFQNs, requiredNamespaceID, namespacedPolicy)
 
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY:
-		entitlementFailures = hierarchyRuleWithContext(ctx, l, entitlements, action, resourceValueFQNs, attrDefinition, requiredNamespaceID, namespacedPolicy)
+		entitlementFailures = hierarchyRuleScoped(ctx, l, entitlements, action, resourceValueFQNs, attrDefinition, requiredNamespaceID, namespacedPolicy)
 
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED:
 		return nil, fmt.Errorf("%w: %s, rule: %s", ErrMissingRequiredSpecifiedRule, attrDefinition.GetFqn(), attrDefinition.GetRule().String())
@@ -269,10 +269,10 @@ func allOfRule(
 	action *policy.Action,
 	resourceValueFQNs []string,
 ) []EntitlementFailure {
-	return allOfRuleWithContext(ctx, l, entitlements, action, resourceValueFQNs, "", false)
+	return allOfRuleScoped(ctx, l, entitlements, action, resourceValueFQNs, "", false)
 }
 
-func allOfRuleWithContext(
+func allOfRuleScoped(
 	_ context.Context,
 	_ *logger.Logger,
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
@@ -321,10 +321,10 @@ func anyOfRule(
 	action *policy.Action,
 	resourceValueFQNs []string,
 ) []EntitlementFailure {
-	return anyOfRuleWithContext(ctx, l, entitlements, action, resourceValueFQNs, "", false)
+	return anyOfRuleScoped(ctx, l, entitlements, action, resourceValueFQNs, "", false)
 }
 
-func anyOfRuleWithContext(
+func anyOfRuleScoped(
 	_ context.Context,
 	_ *logger.Logger,
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
@@ -385,10 +385,10 @@ func hierarchyRule(
 	resourceValueFQNs []string,
 	attrDefinition *policy.Attribute,
 ) []EntitlementFailure {
-	return hierarchyRuleWithContext(ctx, l, entitlements, action, resourceValueFQNs, attrDefinition, "", false)
+	return hierarchyRuleScoped(ctx, l, entitlements, action, resourceValueFQNs, attrDefinition, "", false)
 }
 
-func hierarchyRuleWithContext(
+func hierarchyRuleScoped(
 	ctx context.Context,
 	l *logger.Logger,
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,

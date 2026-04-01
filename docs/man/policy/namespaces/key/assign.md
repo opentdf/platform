@@ -18,9 +18,9 @@ Assigns a KAS key to a policy attribute namespace. This enables the attribute na
 ## Example
 
 ```shell
-otdfctl policy attributes namespaces assign --namespace 3d25d33e-2469-4990-a9ed-fdd13ce74436 --key-id 8f7e6d5c-4b3a-2d1e-9f8d-7c6b5a432f1d
+otdfctl policy namespaces assign --namespace 3d25d33e-2469-4990-a9ed-fdd13ce74436 --key-id 8f7e6d5c-4b3a-2d1e-9f8d-7c6b5a432f1d
 ```
 
 ```shell
-otdfctl policy attributes namespaces remove --namespace "https://example.com" --key-id 8f7e6d5c-4b3a-2d1e-9f8d-7c6b5a432f1d
+otdfctl policy namespaces remove --namespace "https://example.com" --key-id 8f7e6d5c-4b3a-2d1e-9f8d-7c6b5a432f1d
 ```

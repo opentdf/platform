@@ -25,5 +25,5 @@ For unsafe updates, see the dedicated `unsafe update` command. For more general 
 ## Example
 
 ```shell
-otdfctl policy attributes namespaces update --id=7650f02a-be00-4faa-a1d1-37cded5e23dc --label hello=world
+otdfctl policy namespaces update --id=7650f02a-be00-4faa-a1d1-37cded5e23dc --label hello=world
 ```

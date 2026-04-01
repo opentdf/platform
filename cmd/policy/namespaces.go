@@ -11,11 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	NamespacesCmd = man.Docs.GetCommand("policy/attributes/namespaces")
-
-	forceUnsafe bool
-)
+var forceUnsafe bool
 
 func getAttributeNamespace(cmd *cobra.Command, args []string) {
 	c := cli.New(cmd, args)
@@ -320,146 +316,176 @@ func policyRemoveKeyFromNamespace(cmd *cobra.Command, args []string) {
 	common.HandleSuccess(cmd, namespace, t, nil)
 }
 
-func initNamespacesCommands() {
-	getCmd := man.Docs.GetCommand("policy/attributes/namespaces/get",
-		man.WithRun(getAttributeNamespace),
-	)
+// newCommandFromDoc creates an independent cobra.Command with metadata copied from a Doc.
+// This allows registering the same logical command under multiple parents.
+func newCommandFromDoc(doc *man.Doc, run func(*cobra.Command, []string)) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     doc.Use,
+		Short:   doc.Short,
+		Long:    doc.Long,
+		Args:    doc.Args,
+		Aliases: doc.Aliases,
+		Hidden:  doc.Hidden,
+		Run:     run,
+	}
+	return cmd
+}
+
+// buildNamespacesCommandTree creates a full namespaces command tree with all subcommands and flags.
+// Each call returns an independent *cobra.Command so it can be parented under multiple commands.
+func buildNamespacesCommandTree() *cobra.Command {
+	nsDoc := man.Docs.GetDoc("policy/namespaces")
+	nsCmd := newCommandFromDoc(nsDoc, nil)
+
+	getDoc := man.Docs.GetDoc("policy/namespaces/get")
+	getCmd := newCommandFromDoc(getDoc, getAttributeNamespace)
 	getCmd.Flags().StringP(
-		getCmd.GetDocFlag("id").Name,
-		getCmd.GetDocFlag("id").Shorthand,
-		getCmd.GetDocFlag("id").Default,
-		getCmd.GetDocFlag("id").Description,
+		getDoc.GetDocFlag("id").Name,
+		getDoc.GetDocFlag("id").Shorthand,
+		getDoc.GetDocFlag("id").Default,
+		getDoc.GetDocFlag("id").Description,
 	)
 
-	listCmd := man.Docs.GetCommand("policy/attributes/namespaces/list",
-		man.WithRun(listAttributeNamespaces),
-	)
+	listDoc := man.Docs.GetDoc("policy/namespaces/list")
+	listCmd := newCommandFromDoc(listDoc, listAttributeNamespaces)
 	listCmd.Flags().StringP(
-		listCmd.GetDocFlag("state").Name,
-		listCmd.GetDocFlag("state").Shorthand,
-		listCmd.GetDocFlag("state").Default,
-		listCmd.GetDocFlag("state").Description,
+		listDoc.GetDocFlag("state").Name,
+		listDoc.GetDocFlag("state").Shorthand,
+		listDoc.GetDocFlag("state").Default,
+		listDoc.GetDocFlag("state").Description,
 	)
-	injectListPaginationFlags(listCmd)
+	listCmd.Flags().Int32P(
+		listDoc.GetDocFlag("limit").Name,
+		listDoc.GetDocFlag("limit").Shorthand,
+		defaultListFlagLimit,
+		listDoc.GetDocFlag("limit").Description,
+	)
+	listCmd.Flags().Int32P(
+		listDoc.GetDocFlag("offset").Name,
+		listDoc.GetDocFlag("offset").Shorthand,
+		defaultListFlagOffset,
+		listDoc.GetDocFlag("offset").Description,
+	)
 
-	createDoc := man.Docs.GetCommand("policy/attributes/namespaces/create",
-		man.WithRun(createAttributeNamespace),
-	)
-	createDoc.Flags().StringP(
+	createDoc := man.Docs.GetDoc("policy/namespaces/create")
+	createCmd := newCommandFromDoc(createDoc, createAttributeNamespace)
+	createCmd.Flags().StringP(
 		createDoc.GetDocFlag("name").Name,
 		createDoc.GetDocFlag("name").Shorthand,
 		createDoc.GetDocFlag("name").Default,
 		createDoc.GetDocFlag("name").Description,
 	)
-	injectLabelFlags(&createDoc.Command, false)
+	injectLabelFlags(createCmd, false)
 
-	updateCmd := man.Docs.GetCommand("policy/attributes/namespaces/update",
-		man.WithRun(updateAttributeNamespace),
-	)
+	updateDoc := man.Docs.GetDoc("policy/namespaces/update")
+	updateCmd := newCommandFromDoc(updateDoc, updateAttributeNamespace)
 	updateCmd.Flags().StringP(
-		updateCmd.GetDocFlag("id").Name,
-		updateCmd.GetDocFlag("id").Shorthand,
-		updateCmd.GetDocFlag("id").Default,
-		updateCmd.GetDocFlag("id").Description,
+		updateDoc.GetDocFlag("id").Name,
+		updateDoc.GetDocFlag("id").Shorthand,
+		updateDoc.GetDocFlag("id").Default,
+		updateDoc.GetDocFlag("id").Description,
 	)
-	injectLabelFlags(&updateCmd.Command, true)
+	injectLabelFlags(updateCmd, true)
 
-	deactivateCmd := man.Docs.GetCommand("policy/attributes/namespaces/deactivate",
-		man.WithRun(deactivateAttributeNamespace),
-	)
+	deactivateDoc := man.Docs.GetDoc("policy/namespaces/deactivate")
+	deactivateCmd := newCommandFromDoc(deactivateDoc, deactivateAttributeNamespace)
 	deactivateCmd.Flags().StringP(
-		deactivateCmd.GetDocFlag("id").Name,
-		deactivateCmd.GetDocFlag("id").Shorthand,
-		deactivateCmd.GetDocFlag("id").Default,
-		deactivateCmd.GetDocFlag("id").Description,
+		deactivateDoc.GetDocFlag("id").Name,
+		deactivateDoc.GetDocFlag("id").Shorthand,
+		deactivateDoc.GetDocFlag("id").Default,
+		deactivateDoc.GetDocFlag("id").Description,
 	)
 	deactivateCmd.Flags().Bool(
-		deactivateCmd.GetDocFlag("force").Name,
+		deactivateDoc.GetDocFlag("force").Name,
 		false,
-		deactivateCmd.GetDocFlag("force").Description,
+		deactivateDoc.GetDocFlag("force").Description,
 	)
 
 	// unsafe
-	unsafeCmd := man.Docs.GetCommand("policy/attributes/namespaces/unsafe")
+	unsafeDoc := man.Docs.GetDoc("policy/namespaces/unsafe")
+	unsafeCmd := newCommandFromDoc(unsafeDoc, nil)
 	unsafeCmd.PersistentFlags().BoolVar(
 		&forceUnsafe,
-		unsafeCmd.GetDocFlag("force").Name,
+		unsafeDoc.GetDocFlag("force").Name,
 		false,
-		unsafeCmd.GetDocFlag("force").Description,
+		unsafeDoc.GetDocFlag("force").Description,
 	)
-	deleteCmd := man.Docs.GetCommand("policy/attributes/namespaces/unsafe/delete",
-		man.WithRun(unsafeDeleteAttributeNamespace),
-	)
+
+	deleteDoc := man.Docs.GetDoc("policy/namespaces/unsafe/delete")
+	deleteCmd := newCommandFromDoc(deleteDoc, unsafeDeleteAttributeNamespace)
 	deleteCmd.Flags().StringP(
-		deactivateCmd.GetDocFlag("id").Name,
-		deactivateCmd.GetDocFlag("id").Shorthand,
-		deactivateCmd.GetDocFlag("id").Default,
-		deactivateCmd.GetDocFlag("id").Description,
+		deleteDoc.GetDocFlag("id").Name,
+		deleteDoc.GetDocFlag("id").Shorthand,
+		deleteDoc.GetDocFlag("id").Default,
+		deleteDoc.GetDocFlag("id").Description,
 	)
-	reactivateCmd := man.Docs.GetCommand("policy/attributes/namespaces/unsafe/reactivate",
-		man.WithRun(unsafeReactivateAttributeNamespace),
-	)
+
+	reactivateDoc := man.Docs.GetDoc("policy/namespaces/unsafe/reactivate")
+	reactivateCmd := newCommandFromDoc(reactivateDoc, unsafeReactivateAttributeNamespace)
 	reactivateCmd.Flags().StringP(
-		deactivateCmd.GetDocFlag("id").Name,
-		deactivateCmd.GetDocFlag("id").Shorthand,
-		deactivateCmd.GetDocFlag("id").Default,
-		deactivateCmd.GetDocFlag("id").Description,
+		reactivateDoc.GetDocFlag("id").Name,
+		reactivateDoc.GetDocFlag("id").Shorthand,
+		reactivateDoc.GetDocFlag("id").Default,
+		reactivateDoc.GetDocFlag("id").Description,
 	)
-	unsafeUpdateCmd := man.Docs.GetCommand("policy/attributes/namespaces/unsafe/update",
-		man.WithRun(unsafeUpdateAttributeNamespace),
+
+	unsafeUpdateDoc := man.Docs.GetDoc("policy/namespaces/unsafe/update")
+	unsafeUpdateCmd := newCommandFromDoc(unsafeUpdateDoc, unsafeUpdateAttributeNamespace)
+	unsafeUpdateCmd.Flags().StringP(
+		unsafeUpdateDoc.GetDocFlag("id").Name,
+		unsafeUpdateDoc.GetDocFlag("id").Shorthand,
+		unsafeUpdateDoc.GetDocFlag("id").Default,
+		unsafeUpdateDoc.GetDocFlag("id").Description,
 	)
 	unsafeUpdateCmd.Flags().StringP(
-		deactivateCmd.GetDocFlag("id").Name,
-		deactivateCmd.GetDocFlag("id").Shorthand,
-		deactivateCmd.GetDocFlag("id").Default,
-		deactivateCmd.GetDocFlag("id").Description,
-	)
-	unsafeUpdateCmd.Flags().StringP(
-		unsafeUpdateCmd.GetDocFlag("name").Name,
-		unsafeUpdateCmd.GetDocFlag("name").Shorthand,
-		unsafeUpdateCmd.GetDocFlag("name").Default,
-		unsafeUpdateCmd.GetDocFlag("name").Description,
+		unsafeUpdateDoc.GetDocFlag("name").Name,
+		unsafeUpdateDoc.GetDocFlag("name").Shorthand,
+		unsafeUpdateDoc.GetDocFlag("name").Default,
+		unsafeUpdateDoc.GetDocFlag("name").Description,
 	)
 
-	keyCmd := man.Docs.GetCommand("policy/attributes/namespaces/key")
+	// key
+	keyDoc := man.Docs.GetDoc("policy/namespaces/key")
+	keyCmd := newCommandFromDoc(keyDoc, nil)
 
-	// Assign KAS key to attribute namespace
-	assignKasKeyCmd := man.Docs.GetCommand("policy/attributes/namespaces/key/assign",
-		man.WithRun(policyAssignKeyToNamespace),
+	assignDoc := man.Docs.GetDoc("policy/namespaces/key/assign")
+	assignCmd := newCommandFromDoc(assignDoc, policyAssignKeyToNamespace)
+	assignCmd.Flags().StringP(
+		assignDoc.GetDocFlag("namespace").Name,
+		assignDoc.GetDocFlag("namespace").Shorthand,
+		assignDoc.GetDocFlag("namespace").Default,
+		assignDoc.GetDocFlag("namespace").Description,
 	)
-	assignKasKeyCmd.Flags().StringP(
-		assignKasKeyCmd.GetDocFlag("namespace").Name,
-		assignKasKeyCmd.GetDocFlag("namespace").Shorthand,
-		assignKasKeyCmd.GetDocFlag("namespace").Default,
-		assignKasKeyCmd.GetDocFlag("namespace").Description,
-	)
-	assignKasKeyCmd.Flags().StringP(
-		assignKasKeyCmd.GetDocFlag("key-id").Name,
-		assignKasKeyCmd.GetDocFlag("key-id").Shorthand,
-		assignKasKeyCmd.GetDocFlag("key-id").Default,
-		assignKasKeyCmd.GetDocFlag("key-id").Description,
-	)
-
-	// Remove KAS key from attribute namespace
-	removeKasKeyCmd := man.Docs.GetCommand("policy/attributes/namespaces/key/remove",
-		man.WithRun(policyRemoveKeyFromNamespace),
-	)
-	removeKasKeyCmd.Flags().StringP(
-		removeKasKeyCmd.GetDocFlag("namespace").Name,
-		removeKasKeyCmd.GetDocFlag("namespace").Shorthand,
-		removeKasKeyCmd.GetDocFlag("namespace").Default,
-		removeKasKeyCmd.GetDocFlag("namespace").Description,
-	)
-	removeKasKeyCmd.Flags().StringP(
-		removeKasKeyCmd.GetDocFlag("key-id").Name,
-		removeKasKeyCmd.GetDocFlag("key-id").Shorthand,
-		removeKasKeyCmd.GetDocFlag("key-id").Default,
-		removeKasKeyCmd.GetDocFlag("key-id").Description,
+	assignCmd.Flags().StringP(
+		assignDoc.GetDocFlag("key-id").Name,
+		assignDoc.GetDocFlag("key-id").Shorthand,
+		assignDoc.GetDocFlag("key-id").Default,
+		assignDoc.GetDocFlag("key-id").Description,
 	)
 
-	keyCmd.AddSubcommands(assignKasKeyCmd, removeKasKeyCmd)
-	unsafeCmd.AddSubcommands(deleteCmd, reactivateCmd, unsafeUpdateCmd)
+	removeDoc := man.Docs.GetDoc("policy/namespaces/key/remove")
+	removeCmd := newCommandFromDoc(removeDoc, policyRemoveKeyFromNamespace)
+	removeCmd.Flags().StringP(
+		removeDoc.GetDocFlag("namespace").Name,
+		removeDoc.GetDocFlag("namespace").Shorthand,
+		removeDoc.GetDocFlag("namespace").Default,
+		removeDoc.GetDocFlag("namespace").Description,
+	)
+	removeCmd.Flags().StringP(
+		removeDoc.GetDocFlag("key-id").Name,
+		removeDoc.GetDocFlag("key-id").Shorthand,
+		removeDoc.GetDocFlag("key-id").Default,
+		removeDoc.GetDocFlag("key-id").Description,
+	)
 
-	NamespacesCmd.AddSubcommands(getCmd, listCmd, createDoc, updateCmd, deactivateCmd, unsafeCmd, keyCmd)
-	AttributesCmd.AddCommand(&NamespacesCmd.Command)
+	keyCmd.AddCommand(assignCmd, removeCmd)
+	unsafeCmd.AddCommand(deleteCmd, reactivateCmd, unsafeUpdateCmd)
+	nsCmd.AddCommand(getCmd, listCmd, createCmd, updateCmd, deactivateCmd, unsafeCmd, keyCmd)
+
+	return nsCmd
+}
+
+func initNamespacesCommands() {
+	Cmd.AddCommand(buildNamespacesCommandTree())
+	AttributesCmd.AddCommand(buildNamespacesCommandTree())
 }

@@ -27,5 +27,5 @@ For more general information, see the `namespaces` subcommand.
 ## Example
 
 ```shell
-otdfctl policy attributes namespaces unsafe update --id=7650f02a-be00-4faa-a1d1-37cded5e23dc --name opentdf2.io
+otdfctl policy namespaces unsafe update --id=7650f02a-be00-4faa-a1d1-37cded5e23dc --name opentdf2.io
 ```

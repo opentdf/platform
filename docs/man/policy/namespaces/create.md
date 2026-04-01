@@ -27,5 +27,5 @@ For more information, see the `namespaces` subcommand.
 ## Example
 
 ```shell
-otdfctl policy attributes namespaces create --name opentdf.io
+otdfctl policy namespaces create --name opentdf.io
 ```

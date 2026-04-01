@@ -26,9 +26,13 @@ setup_file() {
 }
 
 setup() {
-  # invoke binary with credentials
+  # invoke binary with credentials under 'policy attributes namespaces'
   run_otdfctl_ns() {
     run sh -c "./otdfctl $HOST $WITH_CREDS policy attributes namespaces $*"
+  }
+  # invoke binary with credentials under 'policy namespaces' (direct path)
+  run_otdfctl_nsd() {
+    run sh -c "./otdfctl $HOST $WITH_CREDS policy namespaces $*"
   }
 }
 
@@ -279,4 +283,24 @@ teardown_file() {
 
   run_otdfctl_ns list --state active
   echo $output | refute_output --partial "$NS_ID"
+}
+
+# ── policy namespaces (direct path) ──────────────────────────────────────────
+
+@test "Direct path: policy namespaces commands are accessible" {
+  run_otdfctl_nsd create --name direct-path-test.net --json
+  assert_success
+  DIRECT_NS_ID=$(echo "$output" | jq -r '.id')
+
+  run_otdfctl_nsd get --id "$DIRECT_NS_ID" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r '.name')" "direct-path-test.net"
+
+  run_otdfctl_nsd list --json
+  assert_success
+  assert_output --partial "$DIRECT_NS_ID"
+
+  # cleanup
+  run_otdfctl_nsd unsafe delete --id "$DIRECT_NS_ID" --force
+  assert_success
 }

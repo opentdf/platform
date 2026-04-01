@@ -22,5 +22,5 @@ For more general information, see the `namespaces` subcommand.
 ## Example
 
 ```shell
-otdfctl policy attributes namespaces list
+otdfctl policy namespaces list
 ```

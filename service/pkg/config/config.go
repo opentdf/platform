@@ -183,7 +183,6 @@ func (c *Config) Watch(ctx context.Context, namespaces []NamespaceInfo) error {
 	return nil
 }
 
-
 // Close invokes close method on all config loaders.
 func (c *Config) Close(ctx context.Context) error {
 	if len(c.loaders) == 0 {

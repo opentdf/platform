@@ -2728,8 +2728,13 @@ func (s *PDPTestSuite) Test_GetDecision_StrictMode_RequestActionIdentityMatrix()
 			permitted: true,
 		},
 		{
-			name:      "id match in wrong namespace denies",
+			name:      "non-existent action id denies",
 			action:    &policy.Action{Id: idNamespaceBRead, Name: actions.ActionNameRead},
+			permitted: false,
+		},
+		{
+			name:      "id match plus wrong request namespace denies",
+			action:    &policy.Action{Id: idNamespaceARead, Name: actions.ActionNameRead, Namespace: namespaceB},
 			permitted: false,
 		},
 		{

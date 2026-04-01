@@ -85,7 +85,7 @@ func getResourceDecision(
 			// could match this AAV action at all. This lightweight pre-check is used to
 			// decide whether strict mode must fail closed when namespace context is
 			// missing for this candidate AAV.
-			matchesRequestIdentity := isRequestedActionMatch(action, "", aav.GetAction(), false)
+			matchesRequestIdentity := isRequestedActionMatch(ctx, l, action, "", aav.GetAction(), false)
 			requiredNamespaceID := ""
 			if attrAndValue, ok := accessibleAttributeValues[aavAttrValueFQN]; ok {
 				requiredNamespaceID = attrAndValue.GetAttribute().GetNamespace().GetId()
@@ -102,7 +102,7 @@ func getResourceDecision(
 			}
 
 			// skip evaluating attribute rules on any action-attribute-values without the requested action
-			if !isRequestedActionMatch(action, requiredNamespaceID, aav.GetAction(), namespacedPolicy) {
+			if !isRequestedActionMatch(ctx, l, action, requiredNamespaceID, aav.GetAction(), namespacedPolicy) {
 				continue
 			}
 
@@ -281,8 +281,8 @@ func allOfRule(
 }
 
 func allOfRuleScoped(
-	_ context.Context,
-	_ *logger.Logger,
+	ctx context.Context,
+	l *logger.Logger,
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resourceValueFQNs []string,
@@ -299,7 +299,7 @@ func allOfRuleScoped(
 		// Check if this FQN has the entitled action
 		if entitledActions, ok := entitlements[valueFQN]; ok {
 			for _, entitledAction := range entitledActions {
-				if isRequestedActionMatch(action, requiredNamespaceID, entitledAction, namespacedPolicy) {
+				if isRequestedActionMatch(ctx, l, action, requiredNamespaceID, entitledAction, namespacedPolicy) {
 					hasEntitlement = true
 					break
 				}
@@ -334,8 +334,8 @@ func anyOfRule(
 }
 
 func anyOfRuleScoped(
-	_ context.Context,
-	_ *logger.Logger,
+	ctx context.Context,
+	l *logger.Logger,
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resourceValueFQNs []string,
@@ -358,7 +358,7 @@ func anyOfRuleScoped(
 		entitledActions, ok := entitlements[valueFQN]
 		if ok {
 			for _, entitledAction := range entitledActions {
-				if isRequestedActionMatch(action, requiredNamespaceID, entitledAction, namespacedPolicy) {
+				if isRequestedActionMatch(ctx, l, action, requiredNamespaceID, entitledAction, namespacedPolicy) {
 					foundEntitlementForThisFQN = true
 					anyEntitlementFound = true
 					break
@@ -437,7 +437,7 @@ func hierarchyRuleScoped(
 		if idx, exists := valueFQNToIndex[entitlementFQN]; exists && idx <= lowestValueFQNIndex {
 			// Check if the required action is entitled
 			for _, entitledAction := range entitledActions {
-				if isRequestedActionMatch(action, requiredNamespaceID, entitledAction, namespacedPolicy) {
+				if isRequestedActionMatch(ctx, l, action, requiredNamespaceID, entitledAction, namespacedPolicy) {
 					l.DebugContext(ctx, "hierarchy rule satisfied",
 						slog.Group("entitled_by_value",
 							slog.String("FQN", entitlementFQN),
@@ -460,7 +460,7 @@ func hierarchyRuleScoped(
 		foundValue := false
 		if entitledActions, ok := entitlements[valueFQN]; ok {
 			for _, entitledAction := range entitledActions {
-				if isRequestedActionMatch(action, requiredNamespaceID, entitledAction, namespacedPolicy) {
+				if isRequestedActionMatch(ctx, l, action, requiredNamespaceID, entitledAction, namespacedPolicy) {
 					foundValue = true
 					break
 				}
@@ -478,7 +478,7 @@ func hierarchyRuleScoped(
 	return entitlementFailures
 }
 
-func isRequestedActionMatch(requestedAction *policy.Action, requiredNamespaceID string, entitledAction *policy.Action, namespacedPolicy bool) bool {
+func isRequestedActionMatch(ctx context.Context, l *logger.Logger, requestedAction *policy.Action, requiredNamespaceID string, entitledAction *policy.Action, namespacedPolicy bool) bool {
 	if requestedAction == nil || entitledAction == nil {
 		return false
 	}
@@ -489,23 +489,44 @@ func isRequestedActionMatch(requestedAction *policy.Action, requiredNamespaceID 
 	// 3) optional request namespace (id or fqn) further narrows matches.
 	if requestedAction.GetId() != "" {
 		if requestedAction.GetId() != entitledAction.GetId() {
+			l.TraceContext(ctx, "action match identity mismatch",
+				slog.String("requested_action_id", requestedAction.GetId()),
+				slog.String("candidate_action_id", entitledAction.GetId()),
+			)
 			return false
 		}
 	} else {
 		if requestedAction.GetName() == "" || !strings.EqualFold(requestedAction.GetName(), entitledAction.GetName()) {
+			l.TraceContext(ctx, "action match identity mismatch",
+				slog.String("requested_action_name", requestedAction.GetName()),
+				slog.String("candidate_action_name", entitledAction.GetName()),
+			)
 			return false
 		}
 	}
 
+	// If the caller explicitly provides a request action namespace, always enforce
+	// that identity constraint regardless of namespacedPolicy mode.
 	if requestNamespace := requestedAction.GetNamespace(); requestNamespace != nil && (requestNamespace.GetId() != "" || requestNamespace.GetFqn() != "") {
 		entitledNamespace := entitledAction.GetNamespace()
 		if entitledNamespace == nil {
+			l.TraceContext(ctx, "action match request namespace mismatch",
+				slog.String("requested_action_namespace_id", requestNamespace.GetId()),
+			)
 			return false
 		}
 		if requestNamespace.GetId() != "" && entitledNamespace.GetId() != requestNamespace.GetId() {
+			l.TraceContext(ctx, "action match request namespace mismatch",
+				slog.String("requested_action_namespace_id", requestNamespace.GetId()),
+				slog.String("candidate_namespace_id", entitledNamespace.GetId()),
+			)
 			return false
 		}
 		if requestNamespace.GetId() == "" && requestNamespace.GetFqn() != "" && !strings.EqualFold(entitledNamespace.GetFqn(), requestNamespace.GetFqn()) {
+			l.TraceContext(ctx, "action match request namespace mismatch",
+				slog.String("requested_action_namespace_fqn", requestNamespace.GetFqn()),
+				slog.String("candidate_namespace_fqn", entitledNamespace.GetFqn()),
+			)
 			return false
 		}
 	}
@@ -517,13 +538,26 @@ func isRequestedActionMatch(requestedAction *policy.Action, requiredNamespaceID 
 	// Strict namespaced-policy mode requires a resolved target namespace from
 	// the resource/definition context and a namespaced entitled action.
 	if requiredNamespaceID == "" {
+		l.TraceContext(ctx, "action match strict namespace mismatch",
+			slog.String("required_namespace_id", requiredNamespaceID),
+		)
 		return false
 	}
 
 	entitledNamespace := entitledAction.GetNamespace()
 	if entitledNamespace == nil || entitledNamespace.GetId() == "" {
+		l.TraceContext(ctx, "action match strict namespace mismatch",
+			slog.String("required_namespace_id", requiredNamespaceID),
+		)
+		return false
+	}
+	if entitledNamespace.GetId() != requiredNamespaceID {
+		l.TraceContext(ctx, "action match strict namespace mismatch",
+			slog.String("required_namespace_id", requiredNamespaceID),
+			slog.String("candidate_namespace_id", entitledNamespace.GetId()),
+		)
 		return false
 	}
 
-	return entitledNamespace.GetId() == requiredNamespaceID
+	return true
 }

@@ -1,6 +1,7 @@
 package access
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -1547,7 +1548,7 @@ func Test_isRequestedActionMatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			matched := isRequestedActionMatch(tt.requestedAction, tt.requiredNamespace, tt.entitledAction, tt.namespacedPolicy)
+			matched := isRequestedActionMatch(context.Background(), logger.CreateTestLogger(), tt.requestedAction, tt.requiredNamespace, tt.entitledAction, tt.namespacedPolicy)
 			assert.Equal(t, tt.expectedActionMatch, matched)
 		})
 	}

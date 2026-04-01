@@ -132,7 +132,9 @@ func NewPolicyDecisionPoint(
 			if ns == nil || (ns.GetId() == "" && ns.GetFqn() == "") {
 				l.TraceContext(ctx,
 					"unnamespaced subject mapping in strict namespaced-policy mode - skipping",
-					slog.Any("subject_mapping", sm),
+					slog.String("reason", "subject_mapping_namespace_missing"),
+					slog.String("subject_mapping_id", sm.GetId()),
+					slog.String("mapped_value_fqn", sm.GetAttributeValue().GetFqn()),
 				)
 				continue
 			}

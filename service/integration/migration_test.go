@@ -62,6 +62,7 @@ func newMigrationTestHarness(t *testing.T, schema string) *migrationTestHarness 
 	t.Cleanup(func() {
 		sqlDB.Close()
 		dropSchema(ctx, t, dbClient, schema)
+		dbClient.Pgx.Close()
 	})
 
 	return h
@@ -105,8 +106,13 @@ func dropSchema(ctx context.Context, t *testing.T, client *db.Client, schema str
 }
 
 // TestMigrationUpDownUp validates that all migrations can be applied forward,
-// rolled back completely, and re-applied. This catches broken Down migrations
-// that would otherwise go unnoticed until a production rollback is needed.
+// recent migrations can be rolled back, and re-applied. This catches broken
+// Down migrations before they're needed in a production rollback.
+//
+// The rollback horizon is set to a known-good version rather than rolling back
+// the entire chain, because several older Down migrations have pre-existing
+// bugs (e.g., constraint name mismatches from table drops/recreates in
+// intervening migrations). Those issues are tracked separately.
 func TestMigrationUpDownUp(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping migration roundtrip test")
@@ -114,29 +120,30 @@ func TestMigrationUpDownUp(t *testing.T) {
 
 	h := newMigrationTestHarness(t, "test_opentdf_migration_roundtrip")
 
+	// Rollback horizon: the key_management_updates migration is a safe floor
+	// because it restructures key tables and has a well-tested Down section.
+	const rollbackHorizon int64 = 20250429000001
+
 	// Phase 1: Apply all migrations up
 	results, err := h.provider.Up(h.ctx)
 	require.NoError(t, err, "migration up failed")
 	require.NotEmpty(t, results, "expected at least one migration applied")
 	t.Logf("phase 1 (up): applied %d migrations", len(results))
 
-	// Phase 2: Roll back all migrations one at a time
-	rolledBack := 0
-	for {
-		res, err := h.provider.Down(h.ctx)
-		if err != nil || res.Error != nil {
-			t.Logf("phase 2 (down): stopped after %d rollbacks", rolledBack)
-			break
-		}
-		rolledBack++
+	// Phase 2: Roll back recent migrations to the horizon
+	downResults, err := h.provider.DownTo(h.ctx, rollbackHorizon)
+	require.NoError(t, err, "migration down failed")
+	for _, r := range downResults {
+		require.NoError(t, r.Error, "migration %d down error", r.Source.Version)
 	}
-	require.Positive(t, rolledBack, "expected at least one migration rolled back")
-	t.Logf("phase 2 (down): rolled back %d migrations", rolledBack)
+	require.NotEmpty(t, downResults, "expected at least one migration rolled back")
+	t.Logf("phase 2 (down): rolled back %d migrations to version %d", len(downResults), rollbackHorizon)
 
 	// Phase 3: Re-apply all migrations
 	results, err = h.provider.Up(h.ctx)
 	require.NoError(t, err, "migration re-up failed after rollback")
 	require.NotEmpty(t, results, "expected at least one migration re-applied")
+	require.Len(t, results, len(downResults), "re-applied count should match rollback count")
 	t.Logf("phase 3 (re-up): applied %d migrations", len(results))
 }
 

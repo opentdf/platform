@@ -48,7 +48,12 @@ func init() {
 			}
 
 			version := fmt.Sprintf("%s version %s (%s) %s", config.AppName, config.Version, config.BuildTime, config.CommitSha)
-			slog.Debug(version)
+			slog.Debug("version info",
+				slog.String("app", config.AppName),
+				slog.String("version", config.Version),
+				slog.String("build_time", config.BuildTime),
+				slog.String("commit_sha", config.CommitSha),
+			)
 			c.ExitWith(version, v, cli.ExitCodeSuccess, os.Stdout)
 			return
 		}

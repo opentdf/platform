@@ -3,9 +3,8 @@ package policy
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
-
 	"strconv"
+	"strings"
 
 	"github.com/evertras/bubble-table/table"
 	"github.com/opentdf/platform/otdfctl/cmd/common"
@@ -69,11 +68,11 @@ func policyGetObligation(cmd *cobra.Command, args []string) {
 
 	obl, err := h.GetObligation(cmd.Context(), id, fqn)
 	if err != nil {
-		identifier := fmt.Sprintf("id: %s", id)
+		identifier := "id: " + id
 		if id == "" {
-			identifier = fmt.Sprintf("fqn: %s", fqn)
+			identifier = "fqn: " + fqn
 		}
-		errMsg := fmt.Sprintf("Failed to find obligation (%s)", identifier)
+		errMsg := "Failed to find obligation (" + identifier + ")"
 		cli.ExitWithError(errMsg, err)
 	}
 
@@ -248,11 +247,11 @@ func policyGetObligationValue(cmd *cobra.Command, args []string) {
 
 	value, err := h.GetObligationValue(cmd.Context(), id, fqn)
 	if err != nil {
-		identifier := fmt.Sprintf("id: %s", id)
+		identifier := "id: " + id
 		if id == "" {
-			identifier = fmt.Sprintf("fqn: %s", fqn)
+			identifier = "fqn: " + fqn
 		}
-		errMsg := fmt.Sprintf("Failed to find obligation value (%s)", identifier)
+		errMsg := "Failed to find obligation value (" + identifier + ")"
 		cli.ExitWithError(errMsg, err)
 	}
 

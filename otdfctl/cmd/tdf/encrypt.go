@@ -1,7 +1,6 @@
 package tdf
 
 import (
-	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -89,7 +88,7 @@ func encryptRun(cmd *cobra.Command, args []string) {
 
 	// auto-detect mime type if not provided
 	if fileMimeType == "" {
-		slog.Debug("Detecting mime type of file")
+		slog.Debug("detecting mime type of file")
 		// get the mime type of the file
 		mimetype.SetLimit(Size1MB) // limit to 1MB
 		m := mimetype.Detect(bytesSlice)
@@ -102,9 +101,9 @@ func encryptRun(cmd *cobra.Command, args []string) {
 			}
 		}
 	}
-	slog.Debug("Encrypting file",
-		slog.Int("file-len", len(bytesSlice)),
-		slog.String("mime-type", fileMimeType),
+	slog.Debug("encrypting file",
+		slog.Int("file_len", len(bytesSlice)),
+		slog.String("mime_type", fileMimeType),
 	)
 
 	// Do the encryption
@@ -131,7 +130,7 @@ func encryptRun(cmd *cobra.Command, args []string) {
 		}
 		tdfFile, err := os.Create(out)
 		if err != nil {
-			cli.ExitWithError(fmt.Sprintf("Failed to write encrypted file %s", out), err)
+			cli.ExitWithError("Failed to write encrypted file "+out, err)
 		}
 		defer tdfFile.Close()
 		dest = tdfFile

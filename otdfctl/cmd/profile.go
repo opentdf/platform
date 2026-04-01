@@ -102,14 +102,14 @@ var profileListCmd = &cobra.Command{
 		defaultProfile := globalCfg.GetDefaultProfile()
 
 		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("Listing profiles from %s\n", driverType))
+		fmt.Fprintf(&sb, "Listing profiles from %s\n", driverType)
 
 		for _, p := range osprofiles.ListProfiles(profiler) {
 			if p == defaultProfile {
-				sb.WriteString(fmt.Sprintf("* %s\n", p))
+				fmt.Fprintf(&sb, "* %s\n", p)
 				continue
 			}
-			sb.WriteString(fmt.Sprintf("  %s\n", p))
+			fmt.Fprintf(&sb, "  %s\n", p)
 		}
 
 		c.ExitWithMessage(sb.String(), cli.ExitCodeSuccess)
@@ -127,7 +127,7 @@ var profileGetCmd = &cobra.Command{
 		driverType := getDriverTypeFromUser(c)
 		profileStore, err := profiles.LoadOtdfctlProfileStore(driverType, profileName)
 		if err != nil {
-			cli.ExitWithError(fmt.Sprintf("Error loading profile store for profile %s", profileName), err)
+			cli.ExitWithError("Error loading profile store for profile "+profileName, err)
 		}
 
 		isDefault := "false"

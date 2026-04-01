@@ -10,9 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	policyResourceMappingGroupsCmd *cobra.Command
-)
+var policyResourceMappingGroupsCmd *cobra.Command
 
 func policyCreateResourceMappingGroup(cmd *cobra.Command, args []string) {
 	c := cli.New(cmd, args)

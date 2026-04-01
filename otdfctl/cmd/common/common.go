@@ -43,10 +43,12 @@ func InitProfile(c *cli.Cli) *profiles.OtdfctlProfileStore {
 
 	hasKeyringStore, err := osprofiles.HasGlobalStore(config.AppName, osprofiles.WithKeyringStore())
 	if err != nil {
-		slog.Warn("Could not determine whether any profiles were stored on the keyring, defaulting to filesystem.", "error", err)
+		slog.Warn("could not determine whether any profiles were stored on the keyring, defaulting to filesystem",
+			slog.Any("error", err),
+		)
 	}
 	if hasKeyringStore {
-		slog.Debug("Keyring store still active, migrating profiles to filesystem.")
+		slog.Debug("keyring store still active, migrating profiles to filesystem")
 		err := profiles.Migrate(profiles.ProfileDriverFileSystem, profiles.ProfileDriverKeyring)
 		if err != nil {
 			cli.ExitWithError(fmt.Sprintf("Error during profile migration from %s, to %s. %s cannot continue with profiles being stored within %s, please use the `profile migrate` command to manually migrate profiles", profiles.ProfileDriverKeyring, profiles.ProfileDriverFileSystem, config.AppName, profiles.ProfileDriverKeyring), err)
@@ -67,12 +69,12 @@ func InitProfile(c *cli.Cli) *profiles.OtdfctlProfileStore {
 		profileName = defaultProfileName
 	}
 
-	slog.Debug("Using profile", "profile", profileName)
+	slog.Debug("using profile", slog.String("profile", profileName))
 
 	// load profile
 	store, err := profiles.LoadOtdfctlProfileStore(profiles.ProfileDriverFileSystem, profileName)
 	if err != nil {
-		c.ExitWithError(fmt.Sprintf("Failed to load profile: %s", profileName), err)
+		c.ExitWithError("Failed to load profile: "+profileName, err)
 	}
 
 	applyOutputFormatPreference(c, store)

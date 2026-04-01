@@ -102,7 +102,7 @@ Feature: Namespaced Policy Decisioning (name-only action requests)
     Then the response should be successful
     And I send a request to create a registered resource value with:
       | reference_id | resource_ref | value       | action_attribute_values                                      |
-      | rrv_ns1      | rr_ns1       | prod-config | read|https://ns-one.example.com/attr/department/value/eng |
+      | rrv_ns1      | rr_ns1       | prod-config | read=>https://ns-one.example.com/attr/department/value/eng |
     Then the response should be successful
     When I send a decision request for entity chain "alice" for "read" action on registered resource value "rrv_ns1"
     Then the response should be successful
@@ -119,7 +119,7 @@ Feature: Namespaced Policy Decisioning (name-only action requests)
     Then the response should be successful
     And I send a request to create a registered resource value with:
       | reference_id | resource_ref | value       | action_attribute_values                                      |
-      | rrv_ns1      | rr_ns1       | prod-config | read|https://ns-one.example.com/attr/department/value/eng |
+      | rrv_ns1      | rr_ns1       | prod-config | read=>https://ns-one.example.com/attr/department/value/eng |
     Then the response should be successful
     When I send a decision request for entity chain "alice" for "read" action on registered resource value "rrv_ns1"
     Then the response should be successful
@@ -136,7 +136,7 @@ Feature: Namespaced Policy Decisioning (name-only action requests)
     Then the response should be successful
     And I send a request to create a registered resource value with:
       | reference_id | resource_ref | value       | action_attribute_values                                                       |
-      | rrv_ns1      | rr_ns1       | prod-config | custom_action_export|https://ns-one.example.com/attr/department/value/eng |
+      | rrv_ns1      | rr_ns1       | prod-config | custom_action_export=>https://ns-one.example.com/attr/department/value/eng |
     Then the response should be successful
     When I send a decision request for entity chain "alice" for "custom_action_export" action on registered resource value "rrv_ns1"
     Then the response should be successful
@@ -153,7 +153,7 @@ Feature: Namespaced Policy Decisioning (name-only action requests)
     Then the response should be successful
     And I send a request to create a registered resource value with:
       | reference_id | resource_ref | value       | action_attribute_values                                                       |
-      | rrv_ns1      | rr_ns1       | prod-config | custom_action_export|https://ns-one.example.com/attr/department/value/eng |
+      | rrv_ns1      | rr_ns1       | prod-config | custom_action_export=>https://ns-one.example.com/attr/department/value/eng |
     Then the response should be successful
     When I send a decision request for entity chain "alice" for "custom_action_export" action on registered resource value "rrv_ns1"
     Then the response should be successful
@@ -171,8 +171,8 @@ Feature: Namespaced Policy Decisioning (name-only action requests)
     Then the response should be successful
     And I send a request to create a registered resource value with:
       | reference_id | resource_ref | value         | action_attribute_values                                      |
-      | rrv_mix_ns1  | rr_mix_ns1   | prod-config-a | read|https://ns-one.example.com/attr/department/value/eng |
-      | rrv_mix_ns2  | rr_mix_ns2   | prod-config-b | read|https://ns-two.example.com/attr/department/value/eng |
+      | rrv_mix_ns1  | rr_mix_ns1   | prod-config-a | read=>https://ns-one.example.com/attr/department/value/eng |
+      | rrv_mix_ns2  | rr_mix_ns2   | prod-config-b | read=>https://ns-two.example.com/attr/department/value/eng |
     Then the response should be successful
     When I send a multi-resource decision request for entity chain "alice" for "read" action on registered resource values "rrv_mix_ns1,rrv_mix_ns2"
     Then the response should be successful

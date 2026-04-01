@@ -2,6 +2,7 @@ package cukes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -14,6 +15,11 @@ import (
 )
 
 type RegisteredResourcesStepDefinitions struct{}
+
+const (
+	referenceIDColumn = "reference_id"
+	aavPairParts      = 2
+)
 
 func (s *RegisteredResourcesStepDefinitions) iSendARequestToCreateARegisteredResourceWith(ctx context.Context, tbl *godog.Table) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
@@ -34,7 +40,7 @@ func (s *RegisteredResourcesStepDefinitions) iSendARequestToCreateARegisteredRes
 		for ci, c := range r.Cells {
 			v := strings.TrimSpace(c.Value)
 			switch cellIndexMap[ci] {
-			case "reference_id":
+			case referenceIDColumn:
 				referenceID = v
 			case "name":
 				req.Name = v
@@ -81,7 +87,7 @@ func (s *RegisteredResourcesStepDefinitions) iSendARequestToCreateARegisteredRes
 		for ci, c := range r.Cells {
 			v := strings.TrimSpace(c.Value)
 			switch cellIndexMap[ci] {
-			case "reference_id":
+			case referenceIDColumn:
 				referenceID = v
 			case "resource_ref":
 				resource, ok := scenarioContext.GetObject(v).(*policy.RegisteredResource)
@@ -121,9 +127,13 @@ func parseAAVs(raw string) ([]*registeredresources.ActionAttributeValue, error) 
 	out := make([]*registeredresources.ActionAttributeValue, 0, len(parts))
 
 	for _, part := range parts {
-		pair := strings.Split(strings.TrimSpace(part), "|")
-		if len(pair) != 2 {
-			return nil, fmt.Errorf("invalid action_attribute_values entry %q, expected action|attribute_value_fqn", part)
+		entry := strings.TrimSpace(part)
+		pair := strings.SplitN(entry, "=>", aavPairParts)
+		if len(pair) != aavPairParts {
+			pair = strings.SplitN(entry, "|", aavPairParts)
+		}
+		if len(pair) != aavPairParts {
+			return nil, fmt.Errorf("invalid action_attribute_values entry %q, expected action=>attribute_value_fqn", part)
 		}
 
 		actionName := strings.TrimSpace(pair[0])
@@ -269,12 +279,12 @@ func (s *RegisteredResourcesStepDefinitions) theMultiResourceDecisionShouldBe(ct
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	resp, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authzV2.GetDecisionMultiResourceResponse)
 	if !ok || resp == nil {
-		return ctx, fmt.Errorf("multi-decision response not found or invalid")
+		return ctx, errors.New("multi-decision response not found or invalid")
 	}
 
 	allPermitted := resp.GetAllPermitted()
 	if allPermitted == nil {
-		return ctx, fmt.Errorf("multi-decision missing all_permitted flag")
+		return ctx, errors.New("multi-decision missing all_permitted flag")
 	}
 
 	expected := strings.EqualFold(expectedDecision, "PERMIT")

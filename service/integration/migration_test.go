@@ -2,25 +2,104 @@ package integration
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/policy"
+	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
 )
 
-func newMigrationDBClient(ctx context.Context, cfg config.Config) (*db.Client, error) {
+// migrationTestHarness provides direct access to the goose provider for
+// fine-grained migration control (UpTo, DownTo, ApplyVersion) and raw
+// SQL execution between migration steps.
+type migrationTestHarness struct {
+	t        *testing.T
+	ctx      context.Context //nolint:containedctx // context is used across test helper methods
+	dbClient *db.Client
+	provider *goose.Provider
+	schema   string
+	sqlDB    *sql.DB
+}
+
+func newMigrationTestHarness(t *testing.T, schema string) *migrationTestHarness {
+	t.Helper()
+	ctx := context.Background()
+	c := *Config
+	c.DB.Schema = schema
+
 	tracer := otel.Tracer("")
-	return db.New(ctx, cfg.DB, cfg.Logger, &tracer)
+	dbClient, err := db.New(ctx, c.DB, c.Logger, &tracer)
+	require.NoError(t, err, "failed to create db client")
+
+	// Create schema
+	q := "CREATE SCHEMA IF NOT EXISTS " + pgx.Identifier{schema}.Sanitize()
+	_, err = dbClient.Pgx.Exec(ctx, q)
+	require.NoError(t, err, "failed to create schema")
+
+	// Build goose provider directly for fine-grained control
+	pool, ok := dbClient.Pgx.(*pgxpool.Pool)
+	require.True(t, ok, "expected pgxpool.Pool")
+	sqlDB := stdlib.OpenDBFromPool(pool)
+
+	provider, err := goose.NewProvider(goose.DialectPostgres, sqlDB, policy.Migrations)
+	require.NoError(t, err, "failed to create goose provider")
+
+	h := &migrationTestHarness{
+		t:        t,
+		ctx:      ctx,
+		dbClient: dbClient,
+		provider: provider,
+		schema:   schema,
+		sqlDB:    sqlDB,
+	}
+
+	t.Cleanup(func() {
+		sqlDB.Close()
+		dropSchema(ctx, t, dbClient, schema)
+	})
+
+	return h
+}
+
+func (h *migrationTestHarness) upTo(version int64) {
+	h.t.Helper()
+	results, err := h.provider.UpTo(h.ctx, version)
+	require.NoError(h.t, err, "migration UpTo(%d) failed", version)
+	for _, r := range results {
+		require.NoError(h.t, r.Error, "migration %d up error", r.Source.Version)
+	}
+}
+
+func (h *migrationTestHarness) downTo(version int64) {
+	h.t.Helper()
+	results, err := h.provider.DownTo(h.ctx, version)
+	require.NoError(h.t, err, "migration DownTo(%d) failed", version)
+	for _, r := range results {
+		require.NoError(h.t, r.Error, "migration %d down error", r.Source.Version)
+	}
+}
+
+func (h *migrationTestHarness) exec(query string, args ...any) {
+	h.t.Helper()
+	_, err := h.dbClient.Pgx.Exec(h.ctx, query, args...)
+	require.NoError(h.t, err, "exec failed: %s", query)
+}
+
+func (h *migrationTestHarness) queryRow(query string, args ...any) pgx.Row { //nolint:unparam // args kept variadic for future test cases
+	h.t.Helper()
+	return h.dbClient.Pgx.QueryRow(h.ctx, query, args...)
 }
 
 func dropSchema(ctx context.Context, t *testing.T, client *db.Client, schema string) {
 	t.Helper()
-	sql := "DROP SCHEMA IF EXISTS " + pgx.Identifier{schema}.Sanitize() + " CASCADE"
-	if _, err := client.Pgx.Exec(ctx, sql); err != nil {
+	q := "DROP SCHEMA IF EXISTS " + pgx.Identifier{schema}.Sanitize() + " CASCADE"
+	if _, err := client.Pgx.Exec(ctx, q); err != nil {
 		t.Logf("warning: failed to drop schema %s: %v", schema, err)
 	}
 }
@@ -33,38 +112,110 @@ func TestMigrationUpDownUp(t *testing.T) {
 		t.Skip("skipping migration roundtrip test")
 	}
 
-	ctx := context.Background()
-	c := *Config
-	c.DB.Schema = "test_opentdf_migration_roundtrip"
-
-	dbClient, err := newMigrationDBClient(ctx, c)
-	require.NoError(t, err, "failed to create db client")
-
-	defer func() {
-		dropSchema(ctx, t, dbClient, c.DB.Schema)
-	}()
+	h := newMigrationTestHarness(t, "test_opentdf_migration_roundtrip")
 
 	// Phase 1: Apply all migrations up
-	appliedUp, err := dbClient.RunMigrations(ctx, policy.Migrations)
+	results, err := h.provider.Up(h.ctx)
 	require.NoError(t, err, "migration up failed")
-	require.Greater(t, appliedUp, 0, "expected at least one migration to be applied")
-	t.Logf("phase 1 (up): applied %d migrations", appliedUp)
+	require.NotEmpty(t, results, "expected at least one migration applied")
+	t.Logf("phase 1 (up): applied %d migrations", len(results))
 
 	// Phase 2: Roll back all migrations one at a time
 	rolledBack := 0
 	for {
-		if err := dbClient.MigrationDown(ctx, policy.Migrations); err != nil {
-			t.Logf("phase 2 (down): stopped after %d rollbacks: %v", rolledBack, err)
+		res, err := h.provider.Down(h.ctx)
+		if err != nil || res.Error != nil {
+			t.Logf("phase 2 (down): stopped after %d rollbacks", rolledBack)
 			break
 		}
 		rolledBack++
 	}
-	require.Greater(t, rolledBack, 0, "expected at least one migration to be rolled back")
+	require.Positive(t, rolledBack, "expected at least one migration rolled back")
 	t.Logf("phase 2 (down): rolled back %d migrations", rolledBack)
 
 	// Phase 3: Re-apply all migrations
-	reapplied, err := dbClient.RunMigrations(ctx, policy.Migrations)
+	results, err = h.provider.Up(h.ctx)
 	require.NoError(t, err, "migration re-up failed after rollback")
-	require.Greater(t, reapplied, 0, "expected at least one migration re-applied")
-	t.Logf("phase 3 (re-up): applied %d migrations", reapplied)
+	require.NotEmpty(t, results, "expected at least one migration re-applied")
+	t.Logf("phase 3 (re-up): applied %d migrations", len(results))
+}
+
+// TestMigrationData_SelectorFieldRename tests the JSONB field rename migration
+// (20240405000000_update_selector_field_name) to verify data integrity through
+// the up and down transitions.
+//
+// The migration renames subject_external_field -> subject_external_selector_value
+// inside the condition JSONB column of subject_condition_set.
+func TestMigrationData_SelectorFieldRename(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping data migration test")
+	}
+
+	h := newMigrationTestHarness(t, "test_opentdf_selector_rename")
+
+	// Migrate to the version just before the rename migration
+	const preMigration int64 = 20240402000000
+	const renameMigration int64 = 20240405000000
+	h.upTo(preMigration)
+
+	// Insert test data using the old field name (subject_external_field)
+	h.exec(`
+		INSERT INTO subject_condition_set (id, condition) VALUES (
+			'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+			'[{
+				"condition_groups": [{
+					"boolean_operator": "AND",
+					"conditions": [{
+						"operator": "IN",
+						"subject_external_field": "team_name",
+						"subject_external_values": ["engineering", "platform"]
+					}]
+				}]
+			}]'::jsonb
+		)
+	`)
+
+	// Apply the rename migration
+	h.upTo(renameMigration)
+
+	// Verify the field was renamed to subject_external_selector_value
+	var fieldValue string
+	row := h.queryRow(`
+		SELECT condition->0->'condition_groups'->0->'conditions'->0->>'subject_external_selector_value'
+		FROM subject_condition_set
+		WHERE id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+	`)
+	require.NoError(t, row.Scan(&fieldValue))
+	require.Equal(t, "team_name", fieldValue, "field should be renamed to subject_external_selector_value after up")
+
+	// Verify old field name is gone
+	var oldFieldValue *string
+	row = h.queryRow(`
+		SELECT condition->0->'condition_groups'->0->'conditions'->0->>'subject_external_field'
+		FROM subject_condition_set
+		WHERE id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+	`)
+	require.NoError(t, row.Scan(&oldFieldValue))
+	require.Nil(t, oldFieldValue, "old field name should not exist after up migration")
+
+	// Roll back the rename migration
+	h.downTo(preMigration)
+
+	// Verify the field was renamed back to subject_external_field
+	row = h.queryRow(`
+		SELECT condition->0->'condition_groups'->0->'conditions'->0->>'subject_external_field'
+		FROM subject_condition_set
+		WHERE id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+	`)
+	require.NoError(t, row.Scan(&fieldValue))
+	require.Equal(t, "team_name", fieldValue, "field should be restored to subject_external_field after down")
+
+	// Verify the new field name is gone after rollback
+	row = h.queryRow(`
+		SELECT condition->0->'condition_groups'->0->'conditions'->0->>'subject_external_selector_value'
+		FROM subject_condition_set
+		WHERE id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+	`)
+	require.NoError(t, row.Scan(&oldFieldValue))
+	require.Nil(t, oldFieldValue, "new field name should not exist after down migration")
 }

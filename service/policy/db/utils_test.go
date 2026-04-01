@@ -170,9 +170,9 @@ func Test_GetNamespacesSortParams(t *testing.T) {
 		},
 		{
 			name:          "nil-element pointer returns fallback",
-			sort:          []*policy.SortField{nil},
+			sort:          []*namespaces.NamespacesSort{nil},
 			expectedField: "",
-			expectedDir:   "ASC",
+			expectedDir:   "",
 		},
 	}
 

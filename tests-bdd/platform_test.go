@@ -91,6 +91,7 @@ func runTests() int {
 			cukes.RegisterSmokeStepDefinitions(ctx, platformCukesContext)
 			cukes.RegisterAuthorizationStepDefinitions(ctx)
 			cukes.RegisterSubjectMappingsStepsDefinitions(ctx)
+			cukes.RegisterRegisteredResourcesStepDefinitions(ctx)
 			cukes.RegisterObligationsStepDefinitions(ctx, platformCukesContext)
 			platformCukesContext.InitializeScenario(ctx)
 		},

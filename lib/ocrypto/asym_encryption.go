@@ -23,8 +23,9 @@ import (
 type SchemeType string
 
 const (
-	RSA SchemeType = "wrapped"
-	EC  SchemeType = "ec-wrapped"
+	RSA    SchemeType = "wrapped"
+	EC     SchemeType = "ec-wrapped"
+	Hybrid SchemeType = "hybrid-wrapped"
 )
 
 type PublicKeyEncryptor interface {
@@ -69,6 +70,15 @@ func FromPublicPEM(publicKeyInPem string) (PublicKeyEncryptor, error) {
 }
 
 func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyEncryptor, error) {
+	// Check for X-Wing PEM block type before attempting x509 parsing
+	block, _ := pem.Decode([]byte(publicKeyInPem))
+	if block != nil && block.Type == PEMBlockXWingPublicKey {
+		if len(block.Bytes) != XWingPublicKeySize {
+			return nil, fmt.Errorf("invalid X-Wing public key size: got %d, want %d", len(block.Bytes), XWingPublicKeySize)
+		}
+		return &XWingEncryptor{publicKeyRaw: block.Bytes}, nil
+	}
+
 	pub, err := getPublicPart(publicKeyInPem)
 	if err != nil {
 		return nil, err

@@ -58,6 +58,8 @@ func convertEnumToAlg(alg policy.Algorithm) ocrypto.KeyType {
 		return ocrypto.EC384Key
 	case policy.Algorithm_ALGORITHM_EC_P521:
 		return ocrypto.EC521Key
+	case policy.Algorithm_ALGORITHM_HPQT_XWING:
+		return ocrypto.HybridXWingKey
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:
@@ -77,6 +79,8 @@ func convertAlgToEnum(alg string) (policy.Algorithm, error) {
 		return policy.Algorithm_ALGORITHM_EC_P384, nil
 	case string(ocrypto.EC521Key):
 		return policy.Algorithm_ALGORITHM_EC_P521, nil
+	case string(ocrypto.HybridXWingKey):
+		return policy.Algorithm_ALGORITHM_HPQT_XWING, nil
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED, fmt.Errorf("unsupported algorithm: %s", alg)
 	}
@@ -278,6 +282,10 @@ func (p *KeyAdapter) ExportPublicKey(ctx context.Context, format trust.KeyType) 
 
 	switch format {
 	case trust.KeyTypeJWK:
+		// JWK format is not supported for X-Wing keys
+		if p.key.GetKey().GetKeyAlgorithm() == policy.Algorithm_ALGORITHM_HPQT_XWING {
+			return "", errors.New("JWK format not supported for X-Wing keys")
+		}
 		// For JWK format (currently only supported for RSA)
 		if p.key.GetKey().GetKeyAlgorithm() == policy.Algorithm_ALGORITHM_RSA_2048 ||
 			p.key.GetKey().GetKeyAlgorithm() == policy.Algorithm_ALGORITHM_RSA_4096 {

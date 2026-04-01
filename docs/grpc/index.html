@@ -7406,13 +7406,35 @@ Defaulted if not provided </p></td>
                   <td>sort</td>
                   <td><a href="#policy.SortField">SortField</a></td>
                   <td>repeated</td>
-                  <td><p>Optional: sort results. Array for future extensibility; max 1 via protovalidate for now.
-Falls back to created_at DESC when unset. </p></td>
+                  <td><p><strong>Deprecated.</strong> Deprecated: use resource-specific sort fields on each List*Request instead
+(e.g. AttributesSort, NamespacesSort). This generic field is unused and
+will be removed in a future version. </p></td>
                 </tr>
               
             </tbody>
           </table>
 
+          
+            
+            
+            <h4>Fields with deprecated option</h4>
+            <table>
+              <thead>
+                <tr>
+                  <td>Name</td>
+                  <td>Option</td>
+                </tr>
+              </thead>
+              <tbody>
+              
+                <tr>
+                  <td>sort</td>
+                  <td><p>true</p></td>
+                </tr>
+              
+              </tbody>
+            </table>
+            
           
 
         

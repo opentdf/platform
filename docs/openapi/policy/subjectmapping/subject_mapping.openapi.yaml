@@ -1028,8 +1028,10 @@ components:
           title: sort
           maxItems: 1
           description: |-
-            Optional: sort results. Array for future extensibility; max 1 via protovalidate for now.
-             Falls back to created_at DESC when unset.
+            Deprecated: use resource-specific sort fields on each List*Request instead
+             (e.g. AttributesSort, NamespacesSort). This generic field is unused and
+             will be removed in a future version.
+          deprecated: true
       title: PageRequest
       additionalProperties: false
     policy.PageResponse:

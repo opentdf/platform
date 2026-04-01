@@ -114,7 +114,6 @@ func (h Handler) DecryptBytes(
 	out := &bytes.Buffer{}
 	pt := io.Writer(out)
 	ec := bytes.NewReader(toDecrypt)
-	//nolint:exhaustive // Only standard TDF is supported; other container types are treated as unknown.
 	switch sdk.GetTdfType(ec) {
 	case sdk.Standard:
 		opts := []sdk.TDFReaderOption{
@@ -164,7 +163,6 @@ func (h Handler) DecryptBytes(
 
 func (h Handler) InspectTDF(toInspect []byte) (TDFInspect, []error) {
 	b := bytes.NewReader(toInspect)
-	//nolint:exhaustive // Only standard TDF is supported; other container types are treated as not inspectable.
 	switch sdk.GetTdfType(b) {
 	case sdk.Standard:
 		// grouping errors so we don't impact the piping of the data
@@ -197,7 +195,7 @@ func (h Handler) InspectTDF(toInspect []byte) (TDFInspect, []error) {
 	case sdk.Invalid:
 		return TDFInspect{}, []error{ErrTDFInspectFailNotValidTDF}
 	default:
-		return TDFInspect{}, []error{fmt.Errorf("tdf format unrecognized")}
+		return TDFInspect{}, []error{errors.New("tdf format unrecognized")}
 	}
 }
 
@@ -267,7 +265,9 @@ func formatDecryptError(ctx context.Context, getObligations func(ctx context.Con
 	if errors.Is(err, sdk.ErrRewrapForbidden) {
 		obligations, oblErr := getObligations(ctx)
 		if oblErr != nil {
-			slog.DebugContext(ctx, "Failed to get obligations after decrypt, obligations must not be cached", "error", oblErr)
+			slog.DebugContext(ctx, "failed to get obligations after decrypt, obligations must not be cached",
+				slog.Any("error", oblErr),
+			)
 		}
 
 		if len(obligations.FQNs) > 0 {

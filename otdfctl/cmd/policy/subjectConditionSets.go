@@ -71,13 +71,13 @@ func createSubjectConditionSet(cmd *cobra.Command, args []string) {
 	if ssFileJSON != "" {
 		jsonFile, err := os.Open(ssFileJSON)
 		if err != nil {
-			cli.ExitWithError(fmt.Sprintf("Failed to open file at path: %s", ssFileJSON), err)
+			cli.ExitWithError("Failed to open file at path: "+ssFileJSON, err)
 		}
 		defer jsonFile.Close()
 
 		bytes, err := io.ReadAll(jsonFile)
 		if err != nil {
-			cli.ExitWithError(fmt.Sprintf("Failed to read bytes from file at path: %s", ssFileJSON), err)
+			cli.ExitWithError("Failed to read bytes from file at path: "+ssFileJSON, err)
 		}
 		ssBytes = bytes
 	} else {
@@ -208,13 +208,13 @@ func updateSubjectConditionSet(cmd *cobra.Command, args []string) {
 	if ssFileJSON != "" {
 		jsonFile, err := os.Open(ssFileJSON)
 		if err != nil {
-			cli.ExitWithError(fmt.Sprintf("Failed to open file at path: %s", ssFileJSON), err)
+			cli.ExitWithError("Failed to open file at path: "+ssFileJSON, err)
 		}
 		defer jsonFile.Close()
 
 		bytes, err := io.ReadAll(jsonFile)
 		if err != nil {
-			cli.ExitWithError(fmt.Sprintf("Failed to read bytes from file at path: %s", ssFileJSON), err)
+			cli.ExitWithError("Failed to read bytes from file at path: "+ssFileJSON, err)
 		}
 		ssBytes = bytes
 	} else {

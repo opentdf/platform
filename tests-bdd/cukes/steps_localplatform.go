@@ -24,7 +24,6 @@ import (
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/cmd"
 	"github.com/opentdf/platform/service/pkg/server"
-	tcb "github.com/testcontainers/testcontainers-go"
 	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 	"gopkg.in/yaml.v2"
 )
@@ -230,43 +229,21 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 	return ctx, nil
 }
 
-type platformServiceLogConsumer struct {
-	logger *slog.Logger
-}
-
-func (c *platformServiceLogConsumer) Accept(l tcb.Log) {
-	if c.logger == nil {
-		return
-	}
-	c.logger.Info("platform container log",
-		slog.String("service", "otdf"),
-		slog.String("stream", l.LogType),
-		slog.String("line", string(l.Content)),
-	)
-}
-
 func attachPlatformServiceLogs(ctx context.Context, scenarioContext *PlatformScenarioContext, platformDockerCompose tc.ComposeStack) {
 	platformLogger := scenarioContext.TestSuiteContext.PlatformLogger
 	if platformLogger == nil {
 		return
 	}
 
-	container, err := platformDockerCompose.ServiceContainer(ctx, "otdf")
-	if err != nil {
-		platformLogger.Error("failed to get platform service container", slog.String("error", err.Error()))
-		return
-	}
-
-	container.FollowOutput(&platformServiceLogConsumer{logger: platformLogger})
-	if err := container.StartLogProducer(ctx); err != nil {
-		platformLogger.Error("failed to start platform service log producer", slog.String("error", err.Error()))
-		return
-	}
-
 	scenarioContext.RegisterShutdownHook(func() error {
-		if err := container.StopLogProducer(); err != nil {
-			platformLogger.Warn("failed to stop platform service log producer", slog.String("error", err.Error()))
+		logCtx := context.Background()
+		platformLogger.Info("capturing platform service logs", slog.String("service", "otdf"))
+		container, err := platformDockerCompose.ServiceContainer(logCtx, "otdf")
+		if err != nil {
+			platformLogger.Warn("failed to get platform service container for log capture", slog.String("error", err.Error()))
+			return nil
 		}
+		LogComposeService(logCtx, container, platformLogger, "otdf")
 		return nil
 	})
 }

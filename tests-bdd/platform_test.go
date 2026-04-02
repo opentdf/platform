@@ -94,7 +94,6 @@ func runTests() int {
 			Level: slog.LevelDebug,
 		},
 	))
-	slog.SetDefault(logger)
 
 	opts.Paths = pflag.Args()
 	platformCukesContext := cukes.CreatePlatformCukesContext(logger, composeLogger, platformLogger)

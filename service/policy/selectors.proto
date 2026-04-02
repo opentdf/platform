@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package policy;
 
-import "buf/validate/validate.proto";
 
 // Deprecated: never utilized
 message AttributeNamespaceSelector {
@@ -60,14 +59,6 @@ enum SortDirection {
   SORT_DIRECTION_DESC = 2;
 }
 
-message SortField {
-  // Field name to sort by (e.g. "name", "created_at", "updated_at")
-  // Valid values are resource-specific — validated at the service level
-  string field = 1;
-  // Sort direction; defaults to ASC when unspecified
-  SortDirection direction = 2;
-}
-
 message PageRequest {
   // Optional
   // Set to configured default limit if not provided
@@ -76,10 +67,6 @@ message PageRequest {
   // Optional
   // Defaulted if not provided
   int32 offset = 2;
-  // Deprecated: use resource-specific sort fields on each List*Request instead
-  // (e.g. AttributesSort, NamespacesSort). This generic field is unused and
-  // will be removed in a future version.
-  repeated SortField sort = 3 [deprecated = true, (buf.validate.field).repeated.max_items = 1];
 }
 
 message PageResponse {

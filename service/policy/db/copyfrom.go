@@ -39,9 +39,7 @@ func (r iteratorForcreateRegisteredResourceActionAttributeValues) Err() error {
 	return nil
 }
 
-// --------------------------------------------------------------
-// Registered Resource Action Attribute Values
-// --------------------------------------------------------------
+// createRegisteredResourceActionAttributeValues
 //
 //	INSERT INTO registered_resource_action_attribute_values (registered_resource_value_id, action_id, attribute_value_id)
 //	VALUES ($1, $2, $3)

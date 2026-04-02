@@ -63,20 +63,37 @@ func (s *RegisteredResourcesSuite) TestCreateRegisteredResource_Valid_Succeeds()
 		req  *registeredresources.CreateRegisteredResourceRequest
 	}{
 		{
-			name: "Name Only",
+			name: "Name with Namespace ID",
 			req: &registeredresources.CreateRegisteredResourceRequest{
-				Name: validName,
+				Name:        validName,
+				NamespaceId: validUUID,
 			},
 		},
 		{
-			name: "Name with Values",
+			name: "Name with Namespace FQN",
 			req: &registeredresources.CreateRegisteredResourceRequest{
-				Name: validName,
+				Name:         validName,
+				NamespaceFqn: validURI,
+			},
+		},
+		{
+			name: "Name with Values and Namespace ID",
+			req: &registeredresources.CreateRegisteredResourceRequest{
+				Name:        validName,
+				NamespaceId: validUUID,
 				Values: []string{
 					validValue,
 				},
 			},
 		},
+		// --- BEGIN namespace-optional (remove when enforce_namespace flag is phased out) ---
+		{
+			name: "Name without Namespace",
+			req: &registeredresources.CreateRegisteredResourceRequest{
+				Name: validName,
+			},
+		},
+		// --- END namespace-optional ---
 	}
 
 	for _, tc := range testCases {
@@ -95,70 +112,95 @@ func (s *RegisteredResourcesSuite) TestCreateRegisteredResource_Invalid_Fails() 
 		errMsg string
 	}{
 		{
-			name:   "Missing Name",
+			name:   "Missing Name and Namespace",
 			req:    &registeredresources.CreateRegisteredResourceRequest{},
 			errMsg: errMsgRequired,
 		},
 		{
+			name: "Invalid Namespace ID",
+			req: &registeredresources.CreateRegisteredResourceRequest{
+				Name:        validName,
+				NamespaceId: invalidUUID,
+			},
+			errMsg: errMsgUUID,
+		},
+		{
+			name: "Invalid Namespace FQN",
+			req: &registeredresources.CreateRegisteredResourceRequest{
+				Name:         validName,
+				NamespaceFqn: invalidURI,
+			},
+			errMsg: errMsgURI,
+		},
+		{
 			name: "Invalid Name (space)",
 			req: &registeredresources.CreateRegisteredResourceRequest{
-				Name: " ",
+				Name:        " ",
+				NamespaceId: validUUID,
 			},
 			errMsg: errMsgNameFormat,
 		},
 		{
 			name: "Invalid Name (too long)",
 			req: &registeredresources.CreateRegisteredResourceRequest{
-				Name: strings.Repeat("a", 254),
+				Name:        strings.Repeat("a", 254),
+				NamespaceId: validUUID,
 			},
 			errMsg: errMsgStringMaxLen,
 		},
 		{
 			name: "Invalid Name (text with spaces)",
 			req: &registeredresources.CreateRegisteredResourceRequest{
-				Name: "invalid name",
+				Name:        "invalid name",
+				NamespaceId: validUUID,
 			},
 			errMsg: errMsgNameFormat,
 		},
 		{
 			name: "Invalid Name (text with special chars)",
 			req: &registeredresources.CreateRegisteredResourceRequest{
-				Name: "invalid@name",
+				Name:        "invalid@name",
+				NamespaceId: validUUID,
 			},
 			errMsg: errMsgNameFormat,
 		},
 		{
 			name: "Invalid Name (leading underscore)",
 			req: &registeredresources.CreateRegisteredResourceRequest{
-				Name: "_invalid_name",
+				Name:        "_invalid_name",
+				NamespaceId: validUUID,
 			},
 			errMsg: errMsgNameFormat,
 		},
 		{
 			name: "Invalid Name (trailing underscore)",
 			req: &registeredresources.CreateRegisteredResourceRequest{
-				Name: "invalid_name_",
+				Name:        "invalid_name_",
+				NamespaceId: validUUID,
 			},
 			errMsg: errMsgNameFormat,
 		},
 		{
 			name: "Invalid Name (leading hyphen)",
 			req: &registeredresources.CreateRegisteredResourceRequest{
-				Name: "-invalid-name",
+				Name:        "-invalid-name",
+				NamespaceId: validUUID,
 			},
 			errMsg: errMsgNameFormat,
 		},
 		{
 			name: "Invalid Name (trailing hyphen)",
 			req: &registeredresources.CreateRegisteredResourceRequest{
-				Name: "invalid-name-",
+				Name:        "invalid-name-",
+				NamespaceId: validUUID,
 			},
 			errMsg: errMsgNameFormat,
 		},
 		{
 			name: "Invalid Name (invalid values)",
 			req: &registeredresources.CreateRegisteredResourceRequest{
-				Name: validName,
+				Name:        validName,
+				NamespaceId: validUUID,
 				Values: []string{
 					"invalid value",
 				},
@@ -200,6 +242,24 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResource_Valid_Succeeds() {
 				},
 			},
 		},
+		{
+			name: "Name with Namespace ID",
+			req: &registeredresources.GetRegisteredResourceRequest{
+				Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+					Name: validName,
+				},
+				NamespaceId: validUUID,
+			},
+		},
+		{
+			name: "Name with Namespace FQN",
+			req: &registeredresources.GetRegisteredResourceRequest{
+				Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+					Name: validName,
+				},
+				NamespaceFqn: validURI,
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -239,6 +299,37 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResource_Invalid_Fails() {
 				},
 			},
 			errMsg: errMsgNameFormat,
+		},
+		{
+			name: "Invalid Namespace ID (non-UUID)",
+			req: &registeredresources.GetRegisteredResourceRequest{
+				Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+					Name: validName,
+				},
+				NamespaceId: invalidUUID,
+			},
+			errMsg: errMsgUUID,
+		},
+		{
+			name: "Invalid Namespace FQN (non-URI)",
+			req: &registeredresources.GetRegisteredResourceRequest{
+				Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+					Name: validName,
+				},
+				NamespaceFqn: invalidURI,
+			},
+			errMsg: errMsgURI,
+		},
+		{
+			name: "Both Namespace ID and FQN provided (oneof violation)",
+			req: &registeredresources.GetRegisteredResourceRequest{
+				Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+					Name: validName,
+				},
+				NamespaceId:  validUUID,
+				NamespaceFqn: validURI,
+			},
+			errMsg: "oneof",
 		},
 	}
 

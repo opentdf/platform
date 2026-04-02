@@ -274,7 +274,7 @@ func Start(f ...StartOptions) error {
 		}
 
 		// provide token endpoint -- sdk cannot discover it since well-known service isnt running yet
-		sdkOptions = append(sdkOptions, sdk.WithTokenEndpoint(oidcconfig.TokenEndpoint))
+		sdkOptions = append(sdkOptions, sdk.WithTokenEndpoint(oidcconfig.TokenEndpoint)) //nolint:staticcheck // Backward-compatible explicit token endpoint option.
 	}
 
 	// Configure SDK based on mode

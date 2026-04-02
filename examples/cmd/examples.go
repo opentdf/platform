@@ -14,7 +14,6 @@ import (
 var (
 	platformEndpoint      string
 	clientCredentials     string
-	tokenEndpoint         string
 	insecurePlaintextConn bool
 	insecureSkipVerify    bool
 )
@@ -28,7 +27,6 @@ func init() {
 	f := ExamplesCmd.PersistentFlags()
 	f.StringVarP(&clientCredentials, "creds", "", "opentdf-sdk:secret", "client id:secret credentials")
 	f.StringVarP(&platformEndpoint, "platformEndpoint", "e", "https://localhost:8080", "Platform Endpoint")
-	f.StringVarP(&tokenEndpoint, "tokenEndpoint", "t", "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token", "OAuth token endpoint")
 	f.BoolVar(&insecurePlaintextConn, "insecurePlaintextConn", false, "Use insecure plaintext connection")
 	f.BoolVar(&insecureSkipVerify, "insecureSkipVerify", false, "Skip server certificate verification")
 }
@@ -49,9 +47,6 @@ func newSDK() (*sdk.SDK, error) {
 			return nil, errors.New("invalid client id/secret pair")
 		}
 		opts = append(opts, sdk.WithClientCredentials(clientCredentials[:i], clientCredentials[i+1:], nil))
-	}
-	if tokenEndpoint != "" {
-		opts = append(opts, sdk.WithTokenEndpoint(tokenEndpoint))
 	}
 	if noKIDInKAO {
 		opts = append(opts, sdk.WithNoKIDInKAO())

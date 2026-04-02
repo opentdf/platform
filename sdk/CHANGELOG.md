@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.15.0](https://github.com/opentdf/platform/compare/sdk/v0.14.0...sdk/v0.15.0) (2026-03-23)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.16.0 to 0.20.0 in /sdk ([#3179](https://github.com/opentdf/platform/issues/3179)) ([30bb0a8](https://github.com/opentdf/platform/commit/30bb0a816e9201c1b6f809e927e4260ba077d1d5))
+* **sdk:** AttributeValueExists returns false instead of error for non-existent values ([#3195](https://github.com/opentdf/platform/issues/3195)) ([4e46091](https://github.com/opentdf/platform/commit/4e46091d59cecb2d557a51a370e85813db9ff78f))
+
+## [0.14.0](https://github.com/opentdf/platform/compare/sdk/v0.13.0...sdk/v0.14.0) (2026-03-11)
+
+
+### Features
+
+* **sdk:** DSPX-2418 add attribute discovery methods ([#3082](https://github.com/opentdf/platform/issues/3082)) ([aeeaadd](https://github.com/opentdf/platform/commit/aeeaaddc804ede0a19780b1a9c7a5261076faee7))
+
+
+### Bug Fixes
+
+* **ci:** Upgrade toolchain version to 1.25.8 ([#3116](https://github.com/opentdf/platform/issues/3116)) ([e1b7882](https://github.com/opentdf/platform/commit/e1b78822c0380a106e6eec05af78dc1fc9e5701f))
+* **policy:** order List* results by created_at ([#3088](https://github.com/opentdf/platform/issues/3088)) ([ea90ac2](https://github.com/opentdf/platform/commit/ea90ac279abbdf796d1cbe8efd8bac9c8c62de85))
+* **sdk:** remove testcontainers from consumer dependency graph ([#3129](https://github.com/opentdf/platform/issues/3129)) ([f17dcdd](https://github.com/opentdf/platform/commit/f17dcdd77a0096eb3cfd9f7d15033e4f2074cc16))
+
 ## [0.13.0](https://github.com/opentdf/platform/compare/sdk/v0.12.0...sdk/v0.13.0) (2026-02-17)
 
 

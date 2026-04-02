@@ -645,6 +645,10 @@ components:
         name:
           type: string
           title: name
+        namespace:
+          title: namespace
+          description: Namespace context for this action
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -1049,6 +1053,9 @@ components:
           items:
             $ref: '#/components/schemas/policy.RegisteredResourceValue'
           title: values
+        namespace:
+          title: namespace
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           description: Common metadata
@@ -1199,6 +1206,13 @@ components:
         id:
           type: string
           title: id
+        namespace:
+          title: namespace
+          description: |-
+            the namespace containing this subject condition set
+             possible this is empty in the case a subject condition set
+             has not been migrated to a namespace.
+          $ref: '#/components/schemas/policy.Namespace'
         subjectSets:
           type: array
           items:
@@ -1236,6 +1250,13 @@ components:
             $ref: '#/components/schemas/policy.Action'
           title: actions
           description: The actions permitted by subjects in this mapping
+        namespace:
+          title: namespace
+          description: |-
+            the namespace containing this subject mapping
+             possible this is empty. If so that means
+             the Subject Mapping has not been migrated to a namespace.
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -1379,7 +1400,19 @@ components:
             uniqueItems: true
           title: values
           uniqueItems: true
-          description: "Optional \n Registered Resource Values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.\n The stored value will be normalized to lower case."
+          description: |-
+            Optional
+             Registered Resource Values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
+             The stored value will be normalized to lower case.
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
         metadata:
           title: metadata
           description: |-
@@ -1505,6 +1538,16 @@ components:
           title: name
           required:
             - name
+      properties:
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
       title: GetRegisteredResourceRequest
       additionalProperties: false
     policy.registeredresources.GetRegisteredResourceResponse:
@@ -1619,6 +1662,15 @@ components:
     policy.registeredresources.ListRegisteredResourcesRequest:
       type: object
       properties:
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
         pagination:
           title: pagination
           description: Optional

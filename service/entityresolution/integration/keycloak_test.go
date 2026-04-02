@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/Nerzal/gocloak/v13"
-	"github.com/docker/docker/api/types/container"
 	"github.com/opentdf/platform/service/entityresolution/integration/internal"
 	keycloakv2 "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
 	"github.com/opentdf/platform/service/logger"
@@ -202,9 +201,7 @@ func (a *KeycloakTestAdapter) setupKeycloakContainer(ctx context.Context) error 
 		Env:          containerConfig.Env,
 		Cmd:          containerConfig.Cmd,
 		WaitingFor:   containerConfig.WaitStrategy,
-		HostConfigModifier: func(hostConfig *container.HostConfig) {
-			hostConfig.AutoRemove = true
-		},
+		AutoRemove:   true,
 	}
 
 	container, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{

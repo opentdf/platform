@@ -187,6 +187,7 @@ WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL OR od.namespace_id = sqlc.narg('namespace_id')::uuid) AND
     (sqlc.narg('namespace_fqn')::text IS NULL OR fqns.fqn = sqlc.narg('namespace_fqn')::text)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
+ORDER BY od.created_at DESC
 LIMIT @limit_
 OFFSET @offset_;
 
@@ -495,10 +496,7 @@ WITH ov_id AS (
 a_id AS (
     SELECT a.id
     FROM actions a
-    WHERE
-        (sqlc.narg('action_id')::uuid IS NOT NULL AND a.id = sqlc.narg('action_id')::uuid)
-        OR
-        (sqlc.narg('action_name')::text IS NOT NULL AND a.name = sqlc.narg('action_name')::text)
+    WHERE (sqlc.narg('action_id')::uuid IS NOT NULL AND a.id = sqlc.narg('action_id')::uuid)
 ),
 -- Gets the attribute value, but also ensures that the attribute value belongs to the same namespace as the obligation, to which the obligation value belongs
 av_id AS (
@@ -646,4 +644,3 @@ WHERE
 ORDER BY ot.created_at DESC
 LIMIT @limit_
 OFFSET @offset_;
-

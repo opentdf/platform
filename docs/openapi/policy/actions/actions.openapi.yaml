@@ -435,6 +435,10 @@ components:
         name:
           type: string
           title: name
+        namespace:
+          title: namespace
+          description: Namespace context for this action
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -928,6 +932,13 @@ components:
         id:
           type: string
           title: id
+        namespace:
+          title: namespace
+          description: |-
+            the namespace containing this subject condition set
+             possible this is empty in the case a subject condition set
+             has not been migrated to a namespace.
+          $ref: '#/components/schemas/policy.Namespace'
         subjectSets:
           type: array
           items:
@@ -965,6 +976,13 @@ components:
             $ref: '#/components/schemas/policy.Action'
           title: actions
           description: The actions permitted by subjects in this mapping
+        namespace:
+          title: namespace
+          description: |-
+            the namespace containing this subject mapping
+             possible this is empty. If so that means
+             the Subject Mapping has not been migrated to a namespace.
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -1053,6 +1071,21 @@ components:
             this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
             ```
 
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+          description: |-
+            Optional namespace ID for the custom action.
+             If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config.
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: |-
+            Optional namespace FQN for the custom action.
+             If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config.
         metadata:
           title: metadata
           description: Optional
@@ -1116,6 +1149,22 @@ components:
           title: name
           required:
             - name
+      properties:
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+          description: |-
+            Optional namespace ID to scope name-based lookup.
+             If omitted for name-based lookup, action search is limited to legacy (namespace_id = NULL) actions.
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: |-
+            Optional namespace FQN to scope name-based lookup.
+             If omitted for name-based lookup, action search is limited to legacy (namespace_id = NULL) actions.
       title: GetActionRequest
       additionalProperties: false
     policy.actions.GetActionResponse:
@@ -1135,6 +1184,17 @@ components:
     policy.actions.ListActionsRequest:
       type: object
       properties:
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+          description: ID of the namespace to scope results. If omitted, returns actions across namespaces.
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: FQN of the namespace to scope results. If omitted, returns actions across namespaces.
         pagination:
           title: pagination
           description: Optional

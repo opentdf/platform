@@ -799,6 +799,10 @@
                 </li>
               
               
+                <li>
+                  <a href="#policy.SortDirection"><span class="badge">E</span>SortDirection</a>
+                </li>
+              
               
               
             </ul>
@@ -1394,6 +1398,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.namespaces.NamespacesSort"><span class="badge">M</span>NamespacesSort</a>
+                </li>
+              
+                <li>
                   <a href="#policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest"><span class="badge">M</span>RemoveKeyAccessServerFromNamespaceRequest</a>
                 </li>
               
@@ -1417,6 +1425,10 @@
                   <a href="#policy.namespaces.UpdateNamespaceResponse"><span class="badge">M</span>UpdateNamespaceResponse</a>
                 </li>
               
+              
+                <li>
+                  <a href="#policy.namespaces.SortNamespacesType"><span class="badge">E</span>SortNamespacesType</a>
+                </li>
               
               
               
@@ -2341,6 +2353,13 @@
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace</td>
+                  <td><a href="#policy.Namespace">Namespace</a></td>
+                  <td></td>
+                  <td><p>Namespace context for this action </p></td>
                 </tr>
               
                 <tr>
@@ -3293,6 +3312,13 @@ Base64 encoded public key in PEM format </p></td>
                 </tr>
               
                 <tr>
+                  <td>namespace</td>
+                  <td><a href="#policy.Namespace">Namespace</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -3619,6 +3645,15 @@ per namespace </p></td>
                 </tr>
               
                 <tr>
+                  <td>namespace</td>
+                  <td><a href="#policy.Namespace">Namespace</a></td>
+                  <td></td>
+                  <td><p>the namespace containing this subject condition set
+possible this is empty in the case a subject condition set
+has not been migrated to a namespace. </p></td>
+                </tr>
+              
+                <tr>
                   <td>subject_sets</td>
                   <td><a href="#policy.SubjectSet">SubjectSet</a></td>
                   <td>repeated</td>
@@ -3675,6 +3710,15 @@ per namespace </p></td>
                   <td><a href="#policy.Action">Action</a></td>
                   <td>repeated</td>
                   <td><p>The actions permitted by subjects in this mapping </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace</td>
+                  <td><a href="#policy.Namespace">Namespace</a></td>
+                  <td></td>
+                  <td><p>the namespace containing this subject mapping
+possible this is empty. If so that means
+the Subject Mapping has not been migrated to a namespace. </p></td>
                 </tr>
               
                 <tr>
@@ -7394,6 +7438,35 @@ Empty when none remain after current page </p></td>
       
 
       
+        <h3 id="policy.SortDirection">SortDirection</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_DIRECTION_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p>defaults to ASC</p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_DIRECTION_ASC</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_DIRECTION_DESC</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
 
       
 
@@ -7421,6 +7494,22 @@ Empty when none remain after current page </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional namespace ID for the custom action.
+If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional namespace FQN for the custom action.
+If omitted, create targets legacy (namespace_id = NULL) behavior unless enforced by server config. </p></td>
                 </tr>
               
                 <tr>
@@ -7533,6 +7622,22 @@ Empty when none remain after current page </p></td>
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional namespace ID to scope name-based lookup.
+If omitted for name-based lookup, action search is limited to legacy (namespace_id = NULL) actions. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional namespace FQN to scope name-based lookup.
+If omitted for name-based lookup, action search is limited to legacy (namespace_id = NULL) actions. </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -7580,6 +7685,20 @@ Empty when none remain after current page </p></td>
               <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
             </thead>
             <tbody>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ID of the namespace to scope results. If omitted, returns actions across namespaces. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>FQN of the namespace to scope results. If omitted, returns actions across namespaces. </p></td>
+                </tr>
               
                 <tr>
                   <td>pagination</td>
@@ -9091,7 +9210,8 @@ Attribute RPCs
                 <td>ListAttributeValues</td>
                 <td><a href="#policy.attributes.ListAttributeValuesRequest">ListAttributeValuesRequest</a></td>
                 <td><a href="#policy.attributes.ListAttributeValuesResponse">ListAttributeValuesResponse</a></td>
-                <td><p></p></td>
+                <td><p>Deprecated
+Use GetAttribute</p></td>
               </tr>
             
               <tr>
@@ -9230,6 +9350,11 @@ Value RPCs
               </tr>
             </thead>
             <tbody>
+            
+              <tr>
+                <td>ListAttributeValues</td>
+                <td><p>true</p></td>
+              </tr>
             
               <tr>
                 <td>AssignKeyAccessServerToAttribute</td>
@@ -12147,6 +12272,13 @@ ACTIVE by default when not specified </p></td>
                   <td><p>Optional </p></td>
                 </tr>
               
+                <tr>
+                  <td>sort</td>
+                  <td><a href="#policy.namespaces.NamespacesSort">NamespacesSort</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -12238,6 +12370,37 @@ ACTIVE by default when not specified </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.namespaces.NamespacesSort">NamespacesSort</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>field</td>
+                  <td><a href="#policy.namespaces.SortNamespacesType">SortNamespacesType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>direction</td>
+                  <td><a href="#policy.SortDirection">policy.SortDirection</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -12406,6 +12569,47 @@ ACTIVE by default when not specified </p></td>
         
       
 
+      
+        <h3 id="policy.namespaces.SortNamespacesType">SortNamespacesType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_NAMESPACES_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_NAMESPACES_TYPE_NAME</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_NAMESPACES_TYPE_FQN</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_NAMESPACES_TYPE_CREATED_AT</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_NAMESPACES_TYPE_UPDATED_AT</td>
+                <td>4</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
 
       
@@ -13766,9 +13970,23 @@ Common metadata </p></td>
                   <td>values</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
-                  <td><p>Optional 
+                  <td><p>Optional
 Registered Resource Values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
 The stored value will be normalized to lower case. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -13997,6 +14215,20 @@ Common metadata </p></td>
               
                 <tr>
                   <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
@@ -14238,6 +14470,20 @@ Common metadata </p></td>
               <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
             </thead>
             <tbody>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
               
                 <tr>
                   <td>pagination</td>
@@ -15414,6 +15660,20 @@ Common Metadata </p></td>
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -15484,6 +15744,21 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
                   <td><a href="#policy.subjectmapping.SubjectConditionSetCreate">SubjectConditionSetCreate</a></td>
                   <td></td>
                   <td><p>Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+Namespace ID or FQN for the subject mapping </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -15765,6 +16040,20 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
             <tbody>
               
                 <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
                   <td>pagination</td>
                   <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
@@ -15818,6 +16107,20 @@ Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition
               <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
             </thead>
             <tbody>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
               
                 <tr>
                   <td>pagination</td>

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -90,6 +91,90 @@ func Test_GetNextOffset(t *testing.T) {
 	for _, test := range cases {
 		result := getNextOffset(test.currOffset, test.limit, test.total)
 		assert.Equal(t, test.expected, result, test.scenario)
+	}
+}
+
+func Test_GetNamespacesSortParams(t *testing.T) {
+	cases := []struct {
+		name          string
+		sort          []*namespaces.NamespacesSort
+		expectedField string
+		expectedDir   string
+	}{
+		{
+			name:          "nil sort returns empty strings",
+			sort:          nil,
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name:          "empty slice returns empty strings",
+			sort:          []*namespaces.NamespacesSort{},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name:          "nil element returns empty strings",
+			sort:          []*namespaces.NamespacesSort{nil},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name: "UNSPECIFIED returns empty strings",
+			sort: []*namespaces.NamespacesSort{
+				{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name: "NAME with ASC",
+			sort: []*namespaces.NamespacesSort{
+				{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "name",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "NAME with DESC",
+			sort: []*namespaces.NamespacesSort{
+				{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "name",
+			expectedDir:   "DESC",
+		},
+		{
+			name: "FQN with unspecified direction defaults to ASC",
+			sort: []*namespaces.NamespacesSort{
+				{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN},
+			},
+			expectedField: "fqn",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "CREATED_AT with ASC",
+			sort: []*namespaces.NamespacesSort{
+				{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "created_at",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "UPDATED_AT with DESC",
+			sort: []*namespaces.NamespacesSort{
+				{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "updated_at",
+			expectedDir:   "DESC",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			field, dir := GetNamespacesSortParams(tc.sort)
+			assert.Equal(t, tc.expectedField, field)
+			assert.Equal(t, tc.expectedDir, dir)
+		})
 	}
 }
 

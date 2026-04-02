@@ -97,10 +97,14 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 		active = pgtypeBool(state == stateActive)
 	}
 
+	sortField, sortDirection := GetNamespacesSortParams(r.GetSort())
+
 	list, err := c.queries.listNamespaces(ctx, listNamespacesParams{
-		Active: active,
-		Limit:  limit,
-		Offset: offset,
+		Active:        active,
+		Limit:         limit,
+		Offset:        offset,
+		SortField:     sortField,
+		SortDirection: sortDirection,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -185,6 +189,11 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 
 	// Update FQN
 	_, err = c.queries.upsertAttributeNamespaceFqn(ctx, createdID)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	_, err = c.queries.seedStandardActionsForNamespace(ctx, pgtypeUUID(createdID))
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -337,7 +346,7 @@ func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, existing *pol
 	}, nil
 }
 
-func (c PolicyDBClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, k *namespaces.NamespaceKeyAccessServer) (*namespaces.NamespaceKeyAccessServer, error) {
+func (c PolicyDBClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, k *namespaces.NamespaceKeyAccessServer) (*namespaces.NamespaceKeyAccessServer, error) { //nolint:staticcheck // Compatibility path for deprecated protobuf type.
 	count, err := c.queries.removeKeyAccessServerFromNamespace(ctx, removeKeyAccessServerFromNamespaceParams{
 		NamespaceID:       k.GetNamespaceId(),
 		KeyAccessServerID: k.GetKeyAccessServerId(),

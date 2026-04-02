@@ -43,6 +43,7 @@ const (
 	ErrPlatformEndpointNotFound      = Error("platform_endpoint not found in well-known configuration")
 	ErrAccessTokenInvalid            = Error("access token is invalid")
 	ErrWellKnowConfigEmpty           = Error("well-known configuration is empty")
+	ErrAttributeNotFound             = Error("attribute not found")
 )
 
 var (
@@ -494,7 +495,7 @@ func getTokenEndpoint(c config) (string, error) {
 // so only store the most recent known key per url & algorithm pair.
 func (s *SDK) StoreKASKeys(url string, keys *policy.KasPublicKeySet) error {
 	for _, key := range keys.GetKeys() {
-		s.kasKeyCache.store(KASInfo{
+		s.store(KASInfo{
 			URL:       url,
 			PublicKey: key.GetPem(),
 			KID:       key.GetKid(),

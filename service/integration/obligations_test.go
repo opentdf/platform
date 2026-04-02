@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strconv"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/actions"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -100,6 +102,44 @@ func (s *ObligationsSuite) Test_CreateObligation_Succeeds() {
 	obl = s.createObligationByFQN(namespaceFQN, oblName, nil)
 	s.assertObligationBasics(obl, oblName, namespaceID, namespace.Name, namespaceFQN)
 	s.deleteObligations([]string{obl.GetId()})
+}
+
+func (s *ObligationsSuite) Test_CreateObligation_WithoutValues_DoesNotReturnValues() {
+	namespaceID, namespaceFQN, namespace := s.getNamespaceData(nsExampleCom)
+	name := fmt.Sprintf("%s-no-values-%d", oblName, time.Now().UnixNano())
+
+	createdObl := s.createObligation(namespaceID, name, nil)
+	defer s.deleteObligations([]string{createdObl.GetId()})
+
+	s.assertObligationBasics(createdObl, name, namespaceID, namespace.Name, namespaceFQN)
+	s.Empty(createdObl.GetValues())
+
+	gotObl, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
+		Id: createdObl.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(gotObl)
+	s.assertObligationBasics(gotObl, name, namespaceID, namespace.Name, namespaceFQN)
+	s.Empty(gotObl.GetValues())
+
+	oblList, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		NamespaceId: namespaceID,
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(oblList)
+
+	found := false
+	for _, obl := range oblList {
+		if obl.GetId() != createdObl.GetId() {
+			continue
+		}
+
+		found = true
+		s.assertObligationBasics(obl, name, namespaceID, namespace.Name, namespaceFQN)
+		s.Empty(obl.GetValues())
+		break
+	}
+	s.True(found)
 }
 
 func (s *ObligationsSuite) Test_CreateObligation_Fails() {
@@ -457,6 +497,32 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 
 	// Cleanup: Delete all created obligations
 	s.deleteObligations(createdOblIDs)
+}
+
+func (s *ObligationsSuite) Test_ListObligations_OrdersByCreatedAt_Succeeds() {
+	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
+	suffix := time.Now().UnixNano()
+
+	create := func(i int) *policy.Obligation {
+		name := fmt.Sprintf("order-test-obl-%d-%d", i, suffix)
+		return s.createObligation(namespaceID, name, nil)
+	}
+
+	first := create(1)
+	time.Sleep(5 * time.Millisecond)
+	second := create(2)
+	time.Sleep(5 * time.Millisecond)
+	third := create(3)
+
+	defer s.deleteObligations([]string{first.GetId(), second.GetId(), third.GetId()})
+
+	oblList, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		NamespaceId: namespaceID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblList)
+
+	assertIDsInDescendingOrder(s.T(), oblList, func(obl *policy.Obligation) string { return obl.GetId() }, third.GetId(), second.GetId(), first.GetId())
 }
 
 func (s *ObligationsSuite) Test_ListObligations_Fails() {
@@ -1462,10 +1528,15 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(updatedOblValue)
+	readAction, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
+		Identifier:  &actions.GetActionRequest_Name{Name: "read"},
+		NamespaceId: triggerSetup.namespace.ID,
+	})
+	s.Require().NoError(err)
 	s.assertObligationValueBasics(updatedOblValue, oblValPrefix+"test-1-updated", triggerSetup.namespace.ID, triggerSetup.namespace.Name, httpsPrefix+triggerSetup.namespace.Name)
 	s.assertTriggers(updatedOblValue, []*TriggerAssertion{
 		{
-			expectedAction:            triggerSetup.action,
+			expectedAction:            readAction,
 			expectedObligation:        triggerSetup.createdObl,
 			expectedAttributeValue:    triggerSetup.attributeValues[1],
 			expectedAttributeValueFQN: "https://example.com/attr/attr1/value/value2",
@@ -1590,6 +1661,66 @@ func (s *ObligationsSuite) Test_DeleteObligationValue_Fails() {
 	s.deleteObligations([]string{createdObl.GetId()})
 }
 
+// Test_ListObligations_EmptyNamespaceId_ReturnsAll validates that empty string parameters
+// are properly treated as NULL
+func (s *ObligationsSuite) Test_ListObligations_EmptyNamespaceId_ReturnsAll() {
+	// Create obligations in different namespaces
+	namespaceID1, _, _ := s.getNamespaceData(nsExampleCom)
+	namespaceID2, _, _ := s.getNamespaceData(nsExampleNet)
+
+	obl1 := s.createObligation(namespaceID1, oblName+"-empty-test-1", nil)
+	obl2 := s.createObligation(namespaceID2, oblName+"-empty-test-2", nil)
+
+	defer s.deleteObligations([]string{obl1.GetId(), obl2.GetId()})
+
+	// List with empty namespace_id should return all obligations
+	allObligations, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		NamespaceId: "", // Empty string should be treated as NULL
+	})
+	s.Require().NoError(err)
+	s.NotNil(allObligations)
+	s.GreaterOrEqual(len(allObligations), 2, "Should return at least our two test obligations")
+
+	// Verify our test obligations are in the results
+	found1, found2 := false, false
+	for _, obl := range allObligations {
+		if obl.GetId() == obl1.GetId() {
+			found1 = true
+		}
+		if obl.GetId() == obl2.GetId() {
+			found2 = true
+		}
+	}
+	s.True(found1, "Should find obligation from namespace 1")
+	s.True(found2, "Should find obligation from namespace 2")
+}
+
+// Test_GetObligation_ByIdAndFqn_ReturnSameResult validates that getObligation works correctly
+// with both ID and FQN lookups
+func (s *ObligationsSuite) Test_GetObligation_ByIdAndFqn_ReturnSameResult() {
+	namespaceID, namespaceFQN, _ := s.getNamespaceData(nsExampleCom)
+	createdObl := s.createObligation(namespaceID, oblName+"-dual-lookup-test", oblVals)
+
+	defer s.deleteObligations([]string{createdObl.GetId()})
+
+	// Get by ID
+	oblByID, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
+		Id: createdObl.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblByID)
+
+	// Get by FQN
+	oblByFQN, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
+		Fqn: namespaceFQN + "/obl/" + oblName + "-dual-lookup-test",
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblByFQN)
+
+	// Verify both return the same obligation
+	s.True(proto.Equal(oblByID, oblByFQN))
+}
+
 // Helper functions for common operations
 
 func (s *ObligationsSuite) getNamespaceData(nsName string) (string, string, fixtures.FixtureDataNamespace) {
@@ -1641,7 +1772,11 @@ func (s *ObligationsSuite) assertObligationValueBasics(oblValue *policy.Obligati
 func (s *ObligationsSuite) setupTriggerTests() *TriggerSetup {
 	namespaceID, _, namespace := s.getNamespaceData(nsExampleCom)
 	createdObl := s.createObligation(namespaceID, oblName, nil)
-	triggerAction := s.f.GetStandardAction("read")
+	triggerAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        fmt.Sprintf("trigger-action-%d", time.Now().UnixNano()),
+		NamespaceId: namespaceID,
+	})
+	s.Require().NoError(err)
 	triggerAttributeValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 	triggerAttributeValue2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
 
@@ -1726,7 +1861,14 @@ func (s *ObligationsSuite) createObligationValueWithTriggers(obligationID string
 		triggers = customTriggers
 	} else {
 		// Default triggers for backward compatibility
-		triggerAction := s.f.GetStandardAction("read")
+		obl, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{Id: obligationID})
+		s.Require().NoError(err)
+
+		triggerAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+			Name:        fmt.Sprintf("trigger-action-%d", time.Now().UnixNano()),
+			NamespaceId: obl.GetNamespace().GetId(),
+		})
+		s.Require().NoError(err)
 		triggerAttributeValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 		triggerAttributeValue2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
 
@@ -1822,64 +1964,4 @@ func (s *ObligationsSuite) assertObligationValuesSpecificTriggers(obl *policy.Ob
 			}
 		}
 	}
-}
-
-// Test_ListObligations_EmptyNamespaceId_ReturnsAll validates that empty string parameters
-// are properly treated as NULL
-func (s *ObligationsSuite) Test_ListObligations_EmptyNamespaceId_ReturnsAll() {
-	// Create obligations in different namespaces
-	namespaceID1, _, _ := s.getNamespaceData(nsExampleCom)
-	namespaceID2, _, _ := s.getNamespaceData(nsExampleNet)
-
-	obl1 := s.createObligation(namespaceID1, oblName+"-empty-test-1", nil)
-	obl2 := s.createObligation(namespaceID2, oblName+"-empty-test-2", nil)
-
-	defer s.deleteObligations([]string{obl1.GetId(), obl2.GetId()})
-
-	// List with empty namespace_id should return all obligations
-	allObligations, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
-		NamespaceId: "", // Empty string should be treated as NULL
-	})
-	s.Require().NoError(err)
-	s.NotNil(allObligations)
-	s.GreaterOrEqual(len(allObligations), 2, "Should return at least our two test obligations")
-
-	// Verify our test obligations are in the results
-	found1, found2 := false, false
-	for _, obl := range allObligations {
-		if obl.GetId() == obl1.GetId() {
-			found1 = true
-		}
-		if obl.GetId() == obl2.GetId() {
-			found2 = true
-		}
-	}
-	s.True(found1, "Should find obligation from namespace 1")
-	s.True(found2, "Should find obligation from namespace 2")
-}
-
-// Test_GetObligation_ByIdAndFqn_ReturnSameResult validates that getObligation works correctly
-// with both ID and FQN lookups
-func (s *ObligationsSuite) Test_GetObligation_ByIdAndFqn_ReturnSameResult() {
-	namespaceID, namespaceFQN, _ := s.getNamespaceData(nsExampleCom)
-	createdObl := s.createObligation(namespaceID, oblName+"-dual-lookup-test", oblVals)
-
-	defer s.deleteObligations([]string{createdObl.GetId()})
-
-	// Get by ID
-	oblByID, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
-		Id: createdObl.GetId(),
-	})
-	s.Require().NoError(err)
-	s.NotNil(oblByID)
-
-	// Get by FQN
-	oblByFQN, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
-		Fqn: namespaceFQN + "/obl/" + oblName + "-dual-lookup-test",
-	})
-	s.Require().NoError(err)
-	s.NotNil(oblByFQN)
-
-	// Verify both return the same obligation
-	s.True(proto.Equal(oblByID, oblByFQN))
 }

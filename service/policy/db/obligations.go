@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -664,11 +665,19 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 	if err != nil {
 		return nil, fmt.Errorf("failed to get obligation value: %w", err)
 	}
+	actionID, err := c.resolveObligationTriggerActionID(ctx, r.GetAction(), oblVal.GetObligation().GetNamespace().GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.validateObligationNamespaceConsistency(ctx, oblVal.GetObligation().GetNamespace().GetId(), r.GetAttributeValue(), actionID)
+	if err != nil {
+		return nil, err
+	}
 
 	params := createObligationTriggerParams{
 		ObligationValueID: pgtypeUUID(oblVal.GetId()),
-		ActionName:        pgtypeText(r.GetAction().GetName()),
-		ActionID:          pgtypeUUID(r.GetAction().GetId()),
+		ActionID:          pgtypeUUID(actionID),
 		AttributeValueID:  pgtypeUUID(r.GetAttributeValue().GetId()),
 		AttributeValueFqn: pgtypeText(r.GetAttributeValue().GetFqn()),
 		ClientID:          pgtypeText(r.GetContext().GetPep().GetClientId()),
@@ -700,6 +709,85 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 	trigger.Metadata = metadata
 
 	return trigger, nil
+}
+
+func (c PolicyDBClient) resolveObligationTriggerActionID(ctx context.Context, action *common.IdNameIdentifier, obligationNamespaceID string) (string, error) {
+	actionID := action.GetId()
+	if actionID != "" {
+		return actionID, nil
+	}
+
+	actionName := strings.ToLower(action.GetName())
+	if actionName == "" {
+		// this shouldnt happen due to proto validation, but just in case
+		return "", errors.Join(
+			db.ErrMissingValue,
+			errors.New("action identifier must include either id or name"),
+		)
+	}
+
+	createdOrListedActions, err := c.queries.createOrListActionsByNameInNamespace(ctx, createOrListActionsByNameInNamespaceParams{
+		ActionNames: []string{actionName},
+		NamespaceID: obligationNamespaceID,
+	})
+	if err != nil {
+		return "", db.WrapIfKnownInvalidQueryErr(
+			errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", actionName, err)),
+		)
+	}
+	if len(createdOrListedActions) == 0 {
+		return "", db.WrapIfKnownInvalidQueryErr(
+			errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]", actionName)),
+		)
+	}
+
+	return createdOrListedActions[0].ID, nil
+}
+
+// validateObligationNamespaceConsistency ensures that action and attribute value
+// belongs to the same namespace as the obligation trigger being created.
+func (c PolicyDBClient) validateObligationNamespaceConsistency(
+	ctx context.Context,
+	targetNsID string,
+	attributeValue *common.IdFqnIdentifier,
+	actionID string,
+) error {
+	var attributeValueIdentifier any
+	if attributeValue.GetId() != "" {
+		attributeValueIdentifier = &attributes.GetAttributeValueRequest_ValueId{ValueId: attributeValue.GetId()}
+	} else {
+		attributeValueIdentifier = &attributes.GetAttributeValueRequest_Fqn{Fqn: attributeValue.GetFqn()}
+	}
+
+	av, err := c.GetAttributeValue(ctx, attributeValueIdentifier)
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	attr, err := c.GetAttribute(ctx, av.GetAttribute().GetId())
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if attr.GetNamespace().GetId() != targetNsID {
+		return errors.Join(db.ErrNamespaceMismatch,
+			fmt.Errorf("attribute value namespace [%s] does not match the specified obligation trigger namespace [%s]", attr.GetNamespace().GetId(), targetNsID))
+	}
+
+	// All actions must be in the same namespace
+	actionRows, err := c.queries.getActionsByIDs(ctx, []string{actionID})
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if len(actionRows) == 0 {
+		return errors.Join(db.ErrNotFound, fmt.Errorf("action [%s] was not found", actionID))
+	}
+	a := actionRows[0]
+	actionNsID := UUIDToString(a.NamespaceID)
+	if actionNsID != targetNsID {
+		return errors.Join(db.ErrNamespaceMismatch,
+			fmt.Errorf("action [%s] namespace [%s] does not match the specified obligation namespace [%s]", a.ID, actionNsID, targetNsID))
+	}
+
+	return nil
 }
 
 func (c PolicyDBClient) DeleteObligationTrigger(ctx context.Context, r *obligations.RemoveObligationTriggerRequest) (*policy.ObligationTrigger, error) {

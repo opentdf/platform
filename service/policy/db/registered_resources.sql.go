@@ -13,28 +13,103 @@ import (
 
 const createRegisteredResource = `-- name: createRegisteredResource :one
 
-INSERT INTO registered_resources (name, metadata)
-VALUES ($1, $2)
-RETURNING id
+WITH inserted AS (
+    INSERT INTO registered_resources (namespace_id, name, metadata)
+    SELECT
+        COALESCE($1::uuid, fqns.namespace_id),
+        $2,
+        $3
+    FROM (
+        SELECT
+            $1::uuid as direct_namespace_id
+    ) direct
+    LEFT JOIN attribute_fqns fqns ON fqns.fqn = $4::text AND $1::text IS NULL
+    WHERE
+        ($1::text IS NOT NULL AND direct.direct_namespace_id IS NOT NULL) OR
+        ($4::text IS NOT NULL AND fqns.namespace_id IS NOT NULL) OR
+        ($1::text IS NULL AND $4::text IS NULL)
+    RETURNING id, namespace_id, name, metadata
+)
+SELECT
+    i.id,
+    i.name,
+    i.metadata,
+    CASE WHEN n.id IS NOT NULL THEN
+        JSON_BUILD_OBJECT(
+            'id', n.id,
+            'name', n.name,
+            'fqn', fqns.fqn
+        )
+    ELSE NULL END as namespace
+FROM inserted i
+LEFT JOIN attribute_namespaces n ON i.namespace_id = n.id
+LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 `
 
 type createRegisteredResourceParams struct {
-	Name     string `json:"name"`
-	Metadata []byte `json:"metadata"`
+	NamespaceID  pgtype.UUID `json:"namespace_id"`
+	Name         string      `json:"name"`
+	Metadata     []byte      `json:"metadata"`
+	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
+}
+
+type createRegisteredResourceRow struct {
+	ID        string      `json:"id"`
+	Name      string      `json:"name"`
+	Metadata  []byte      `json:"metadata"`
+	Namespace interface{} `json:"namespace"`
 }
 
 // --------------------------------------------------------------
 // REGISTERED RESOURCES
 // --------------------------------------------------------------
 //
-//	INSERT INTO registered_resources (name, metadata)
-//	VALUES ($1, $2)
-//	RETURNING id
-func (q *Queries) createRegisteredResource(ctx context.Context, arg createRegisteredResourceParams) (string, error) {
-	row := q.db.QueryRow(ctx, createRegisteredResource, arg.Name, arg.Metadata)
-	var id string
-	err := row.Scan(&id)
-	return id, err
+//	WITH inserted AS (
+//	    INSERT INTO registered_resources (namespace_id, name, metadata)
+//	    SELECT
+//	        COALESCE($1::uuid, fqns.namespace_id),
+//	        $2,
+//	        $3
+//	    FROM (
+//	        SELECT
+//	            $1::uuid as direct_namespace_id
+//	    ) direct
+//	    LEFT JOIN attribute_fqns fqns ON fqns.fqn = $4::text AND $1::text IS NULL
+//	    WHERE
+//	        ($1::text IS NOT NULL AND direct.direct_namespace_id IS NOT NULL) OR
+//	        ($4::text IS NOT NULL AND fqns.namespace_id IS NOT NULL) OR
+//	        ($1::text IS NULL AND $4::text IS NULL)
+//	    RETURNING id, namespace_id, name, metadata
+//	)
+//	SELECT
+//	    i.id,
+//	    i.name,
+//	    i.metadata,
+//	    CASE WHEN n.id IS NOT NULL THEN
+//	        JSON_BUILD_OBJECT(
+//	            'id', n.id,
+//	            'name', n.name,
+//	            'fqn', fqns.fqn
+//	        )
+//	    ELSE NULL END as namespace
+//	FROM inserted i
+//	LEFT JOIN attribute_namespaces n ON i.namespace_id = n.id
+//	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+func (q *Queries) createRegisteredResource(ctx context.Context, arg createRegisteredResourceParams) (createRegisteredResourceRow, error) {
+	row := q.db.QueryRow(ctx, createRegisteredResource,
+		arg.NamespaceID,
+		arg.Name,
+		arg.Metadata,
+		arg.NamespaceFqn,
+	)
+	var i createRegisteredResourceRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Metadata,
+		&i.Namespace,
+	)
+	return i, err
 }
 
 type createRegisteredResourceActionAttributeValuesParams struct {
@@ -122,6 +197,13 @@ SELECT
     r.id,
     r.name,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as metadata,
+    CASE WHEN n.id IS NOT NULL THEN
+        JSON_BUILD_OBJECT(
+            'id', n.id,
+            'name', n.name,
+            'fqn', ns_fqns.fqn
+        )
+    ELSE NULL END as namespace,
     JSON_AGG(
         JSON_BUILD_OBJECT(
             'id', v.id,
@@ -129,31 +211,47 @@ SELECT
         )
     ) FILTER (WHERE v.id IS NOT NULL) as values
 FROM registered_resources r
+LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
+LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 WHERE
     ($1::uuid IS NULL OR r.id = $1::uuid) AND
-    ($2::text IS NULL OR r.name = $2::text)
-GROUP BY r.id
+    ($2::text IS NULL OR r.name = $2::text) AND
+    ($3::uuid IS NULL OR r.namespace_id = $3::uuid) AND
+    ($4::text IS NULL OR ns_fqns.fqn = $4::text)
+GROUP BY r.id, n.id, ns_fqns.fqn
+ORDER BY r.namespace_id NULLS FIRST
+LIMIT 1
 `
 
 type getRegisteredResourceParams struct {
-	ID   pgtype.UUID `json:"id"`
-	Name pgtype.Text `json:"name"`
+	ID           pgtype.UUID `json:"id"`
+	Name         pgtype.Text `json:"name"`
+	NamespaceID  pgtype.UUID `json:"namespace_id"`
+	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
 }
 
 type getRegisteredResourceRow struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Metadata []byte `json:"metadata"`
-	Values   []byte `json:"values"`
+	ID        string      `json:"id"`
+	Name      string      `json:"name"`
+	Metadata  []byte      `json:"metadata"`
+	Namespace interface{} `json:"namespace"`
+	Values    []byte      `json:"values"`
 }
 
-// getRegisteredResource
+// prefer non-namespaced over namespaced results (to support legacy behavior)
 //
 //	SELECT
 //	    r.id,
 //	    r.name,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as metadata,
+//	    CASE WHEN n.id IS NOT NULL THEN
+//	        JSON_BUILD_OBJECT(
+//	            'id', n.id,
+//	            'name', n.name,
+//	            'fqn', ns_fqns.fqn
+//	        )
+//	    ELSE NULL END as namespace,
 //	    JSON_AGG(
 //	        JSON_BUILD_OBJECT(
 //	            'id', v.id,
@@ -161,21 +259,56 @@ type getRegisteredResourceRow struct {
 //	        )
 //	    ) FILTER (WHERE v.id IS NOT NULL) as values
 //	FROM registered_resources r
+//	LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
+//	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 //	LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 //	WHERE
 //	    ($1::uuid IS NULL OR r.id = $1::uuid) AND
-//	    ($2::text IS NULL OR r.name = $2::text)
-//	GROUP BY r.id
+//	    ($2::text IS NULL OR r.name = $2::text) AND
+//	    ($3::uuid IS NULL OR r.namespace_id = $3::uuid) AND
+//	    ($4::text IS NULL OR ns_fqns.fqn = $4::text)
+//	GROUP BY r.id, n.id, ns_fqns.fqn
+//	ORDER BY r.namespace_id NULLS FIRST
+//	LIMIT 1
 func (q *Queries) getRegisteredResource(ctx context.Context, arg getRegisteredResourceParams) (getRegisteredResourceRow, error) {
-	row := q.db.QueryRow(ctx, getRegisteredResource, arg.ID, arg.Name)
+	row := q.db.QueryRow(ctx, getRegisteredResource,
+		arg.ID,
+		arg.Name,
+		arg.NamespaceID,
+		arg.NamespaceFqn,
+	)
 	var i getRegisteredResourceRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Metadata,
+		&i.Namespace,
 		&i.Values,
 	)
 	return i, err
+}
+
+const getRegisteredResourceNamespaceIDByValueID = `-- name: getRegisteredResourceNamespaceIDByValueID :one
+
+SELECT rr.namespace_id
+FROM registered_resources rr
+JOIN registered_resource_values rrv ON rrv.registered_resource_id = rr.id
+WHERE rrv.id = $1
+`
+
+// --------------------------------------------------------------
+// Registered Resource Action Attribute Values
+// --------------------------------------------------------------
+//
+//	SELECT rr.namespace_id
+//	FROM registered_resources rr
+//	JOIN registered_resource_values rrv ON rrv.registered_resource_id = rr.id
+//	WHERE rrv.id = $1
+func (q *Queries) getRegisteredResourceNamespaceIDByValueID(ctx context.Context, id string) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getRegisteredResourceNamespaceIDByValueID, id)
+	var namespace_id pgtype.UUID
+	err := row.Scan(&namespace_id)
+	return namespace_id, err
 }
 
 const getRegisteredResourceValue = `-- name: getRegisteredResourceValue :one
@@ -184,6 +317,14 @@ SELECT
     v.registered_resource_id,
     v.value,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata,
+    CASE WHEN n.id IS NOT NULL THEN
+        JSON_BUILD_OBJECT(
+            'id', n.id,
+            'name', n.name,
+            'fqn', ns_fqns.fqn
+        )
+    ELSE NULL END as namespace,
+    r.name as resource_name,
     JSON_AGG(
     	JSON_BUILD_OBJECT(
     		'action', JSON_BUILD_OBJECT(
@@ -199,6 +340,8 @@ SELECT
     ) FILTER (WHERE rav.id IS NOT NULL) as action_attribute_values
 FROM registered_resource_values v
 JOIN registered_resources r ON v.registered_resource_id = r.id
+LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
+LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
 LEFT JOIN actions a on rav.action_id = a.id
 LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
@@ -206,22 +349,26 @@ LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE
     ($1::uuid IS NULL OR v.id = $1::uuid) AND
     ($2::text IS NULL OR r.name = $2::text) AND
-    ($3::text IS NULL OR v.value = $3::text)
-GROUP BY v.id
+    ($3::text IS NULL OR v.value = $3::text) AND
+    ($4::text IS NULL OR ns_fqns.fqn = $4::text)
+GROUP BY v.id, r.name, n.id, ns_fqns.fqn
 `
 
 type getRegisteredResourceValueParams struct {
-	ID    pgtype.UUID `json:"id"`
-	Name  pgtype.Text `json:"name"`
-	Value pgtype.Text `json:"value"`
+	ID           pgtype.UUID `json:"id"`
+	Name         pgtype.Text `json:"name"`
+	Value        pgtype.Text `json:"value"`
+	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
 }
 
 type getRegisteredResourceValueRow struct {
-	ID                    string `json:"id"`
-	RegisteredResourceID  string `json:"registered_resource_id"`
-	Value                 string `json:"value"`
-	Metadata              []byte `json:"metadata"`
-	ActionAttributeValues []byte `json:"action_attribute_values"`
+	ID                    string      `json:"id"`
+	RegisteredResourceID  string      `json:"registered_resource_id"`
+	Value                 string      `json:"value"`
+	Metadata              []byte      `json:"metadata"`
+	Namespace             interface{} `json:"namespace"`
+	ResourceName          string      `json:"resource_name"`
+	ActionAttributeValues []byte      `json:"action_attribute_values"`
 }
 
 // getRegisteredResourceValue
@@ -231,6 +378,14 @@ type getRegisteredResourceValueRow struct {
 //	    v.registered_resource_id,
 //	    v.value,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata,
+//	    CASE WHEN n.id IS NOT NULL THEN
+//	        JSON_BUILD_OBJECT(
+//	            'id', n.id,
+//	            'name', n.name,
+//	            'fqn', ns_fqns.fqn
+//	        )
+//	    ELSE NULL END as namespace,
+//	    r.name as resource_name,
 //	    JSON_AGG(
 //	    	JSON_BUILD_OBJECT(
 //	    		'action', JSON_BUILD_OBJECT(
@@ -246,6 +401,8 @@ type getRegisteredResourceValueRow struct {
 //	    ) FILTER (WHERE rav.id IS NOT NULL) as action_attribute_values
 //	FROM registered_resource_values v
 //	JOIN registered_resources r ON v.registered_resource_id = r.id
+//	LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
+//	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 //	LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
 //	LEFT JOIN actions a on rav.action_id = a.id
 //	LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
@@ -253,16 +410,24 @@ type getRegisteredResourceValueRow struct {
 //	WHERE
 //	    ($1::uuid IS NULL OR v.id = $1::uuid) AND
 //	    ($2::text IS NULL OR r.name = $2::text) AND
-//	    ($3::text IS NULL OR v.value = $3::text)
-//	GROUP BY v.id
+//	    ($3::text IS NULL OR v.value = $3::text) AND
+//	    ($4::text IS NULL OR ns_fqns.fqn = $4::text)
+//	GROUP BY v.id, r.name, n.id, ns_fqns.fqn
 func (q *Queries) getRegisteredResourceValue(ctx context.Context, arg getRegisteredResourceValueParams) (getRegisteredResourceValueRow, error) {
-	row := q.db.QueryRow(ctx, getRegisteredResourceValue, arg.ID, arg.Name, arg.Value)
+	row := q.db.QueryRow(ctx, getRegisteredResourceValue,
+		arg.ID,
+		arg.Name,
+		arg.Value,
+		arg.NamespaceFqn,
+	)
 	var i getRegisteredResourceValueRow
 	err := row.Scan(
 		&i.ID,
 		&i.RegisteredResourceID,
 		&i.Value,
 		&i.Metadata,
+		&i.Namespace,
+		&i.ResourceName,
 		&i.ActionAttributeValues,
 	)
 	return i, err
@@ -279,6 +444,14 @@ SELECT
     v.registered_resource_id,
     v.value,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata,
+    CASE WHEN n.id IS NOT NULL THEN
+        JSON_BUILD_OBJECT(
+            'id', n.id,
+            'name', n.name,
+            'fqn', ns_fqns.fqn
+        )
+    ELSE NULL END as namespace,
+    r.name as resource_name,
     JSON_AGG(
     	JSON_BUILD_OBJECT(
     		'action', JSON_BUILD_OBJECT(
@@ -295,14 +468,17 @@ SELECT
     counted.total
 FROM registered_resource_values v
 JOIN registered_resources r ON v.registered_resource_id = r.id
+LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
+LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
 LEFT JOIN actions a on rav.action_id = a.id
 LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
-LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id  
+LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 CROSS JOIN counted
 WHERE
     $1::uuid IS NULL OR v.registered_resource_id = $1::uuid
-GROUP BY v.id, counted.total
+GROUP BY v.id, r.name, n.id, ns_fqns.fqn, counted.total
+ORDER BY v.created_at DESC
 LIMIT $3
 OFFSET $2
 `
@@ -314,12 +490,14 @@ type listRegisteredResourceValuesParams struct {
 }
 
 type listRegisteredResourceValuesRow struct {
-	ID                    string `json:"id"`
-	RegisteredResourceID  string `json:"registered_resource_id"`
-	Value                 string `json:"value"`
-	Metadata              []byte `json:"metadata"`
-	ActionAttributeValues []byte `json:"action_attribute_values"`
-	Total                 int64  `json:"total"`
+	ID                    string      `json:"id"`
+	RegisteredResourceID  string      `json:"registered_resource_id"`
+	Value                 string      `json:"value"`
+	Metadata              []byte      `json:"metadata"`
+	Namespace             interface{} `json:"namespace"`
+	ResourceName          string      `json:"resource_name"`
+	ActionAttributeValues []byte      `json:"action_attribute_values"`
+	Total                 int64       `json:"total"`
 }
 
 // listRegisteredResourceValues
@@ -334,6 +512,14 @@ type listRegisteredResourceValuesRow struct {
 //	    v.registered_resource_id,
 //	    v.value,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata,
+//	    CASE WHEN n.id IS NOT NULL THEN
+//	        JSON_BUILD_OBJECT(
+//	            'id', n.id,
+//	            'name', n.name,
+//	            'fqn', ns_fqns.fqn
+//	        )
+//	    ELSE NULL END as namespace,
+//	    r.name as resource_name,
 //	    JSON_AGG(
 //	    	JSON_BUILD_OBJECT(
 //	    		'action', JSON_BUILD_OBJECT(
@@ -350,6 +536,8 @@ type listRegisteredResourceValuesRow struct {
 //	    counted.total
 //	FROM registered_resource_values v
 //	JOIN registered_resources r ON v.registered_resource_id = r.id
+//	LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
+//	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 //	LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
 //	LEFT JOIN actions a on rav.action_id = a.id
 //	LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
@@ -357,7 +545,8 @@ type listRegisteredResourceValuesRow struct {
 //	CROSS JOIN counted
 //	WHERE
 //	    $1::uuid IS NULL OR v.registered_resource_id = $1::uuid
-//	GROUP BY v.id, counted.total
+//	GROUP BY v.id, r.name, n.id, ns_fqns.fqn, counted.total
+//	ORDER BY v.created_at DESC
 //	LIMIT $3
 //	OFFSET $2
 func (q *Queries) listRegisteredResourceValues(ctx context.Context, arg listRegisteredResourceValuesParams) ([]listRegisteredResourceValuesRow, error) {
@@ -374,6 +563,8 @@ func (q *Queries) listRegisteredResourceValues(ctx context.Context, arg listRegi
 			&i.RegisteredResourceID,
 			&i.Value,
 			&i.Metadata,
+			&i.Namespace,
+			&i.ResourceName,
 			&i.ActionAttributeValues,
 			&i.Total,
 		); err != nil {
@@ -389,13 +580,25 @@ func (q *Queries) listRegisteredResourceValues(ctx context.Context, arg listRegi
 
 const listRegisteredResources = `-- name: listRegisteredResources :many
 WITH counted AS (
-    SELECT COUNT(id) AS total
-    FROM registered_resources
+    SELECT COUNT(r.id) AS total
+    FROM registered_resources r
+    LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
+    LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+    WHERE
+        ($1::uuid IS NULL OR r.namespace_id = $1::uuid) AND
+        ($2::text IS NULL OR ns_fqns.fqn = $2::text)
 )
 SELECT
     r.id,
     r.name,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as metadata,
+    CASE WHEN n.id IS NOT NULL THEN
+        JSON_BUILD_OBJECT(
+            'id', n.id,
+            'name', n.name,
+            'fqn', ns_fqns.fqn
+        )
+    ELSE NULL END as namespace,
     -- Aggregate all values for this resource into a JSON array, filtering NULL entries
     JSON_AGG(
         JSON_BUILD_OBJECT(
@@ -406,6 +609,8 @@ SELECT
     ) FILTER (WHERE v.id IS NOT NULL) as values,
     counted.total
 FROM registered_resources r
+LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
+LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 CROSS JOIN counted
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 LEFT JOIN LATERAL (
@@ -430,34 +635,53 @@ LEFT JOIN LATERAL (
     -- Correlate to the outer query's resource value
     WHERE rav.registered_resource_value_id = v.id
 ) action_attrs ON true  -- required syntax for LATERAL joins
-GROUP BY r.id, counted.total
-LIMIT $2 
-OFFSET $1
+WHERE
+    ($1::uuid IS NULL OR r.namespace_id = $1::uuid) AND
+    ($2::text IS NULL OR ns_fqns.fqn = $2::text)
+GROUP BY r.id, n.id, ns_fqns.fqn, counted.total
+ORDER BY r.created_at DESC
+LIMIT $4
+OFFSET $3
 `
 
 type listRegisteredResourcesParams struct {
-	Offset int32 `json:"offset_"`
-	Limit  int32 `json:"limit_"`
+	NamespaceID  pgtype.UUID `json:"namespace_id"`
+	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
+	Offset       int32       `json:"offset_"`
+	Limit        int32       `json:"limit_"`
 }
 
 type listRegisteredResourcesRow struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Metadata []byte `json:"metadata"`
-	Values   []byte `json:"values"`
-	Total    int64  `json:"total"`
+	ID        string      `json:"id"`
+	Name      string      `json:"name"`
+	Metadata  []byte      `json:"metadata"`
+	Namespace interface{} `json:"namespace"`
+	Values    []byte      `json:"values"`
+	Total     int64       `json:"total"`
 }
 
 // Build a JSON array of action/attribute pairs for each resource value
 //
 //	WITH counted AS (
-//	    SELECT COUNT(id) AS total
-//	    FROM registered_resources
+//	    SELECT COUNT(r.id) AS total
+//	    FROM registered_resources r
+//	    LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
+//	    LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+//	    WHERE
+//	        ($1::uuid IS NULL OR r.namespace_id = $1::uuid) AND
+//	        ($2::text IS NULL OR ns_fqns.fqn = $2::text)
 //	)
 //	SELECT
 //	    r.id,
 //	    r.name,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as metadata,
+//	    CASE WHEN n.id IS NOT NULL THEN
+//	        JSON_BUILD_OBJECT(
+//	            'id', n.id,
+//	            'name', n.name,
+//	            'fqn', ns_fqns.fqn
+//	        )
+//	    ELSE NULL END as namespace,
 //	    -- Aggregate all values for this resource into a JSON array, filtering NULL entries
 //	    JSON_AGG(
 //	        JSON_BUILD_OBJECT(
@@ -468,6 +692,8 @@ type listRegisteredResourcesRow struct {
 //	    ) FILTER (WHERE v.id IS NOT NULL) as values,
 //	    counted.total
 //	FROM registered_resources r
+//	LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
+//	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 //	CROSS JOIN counted
 //	LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 //	LEFT JOIN LATERAL (
@@ -492,11 +718,20 @@ type listRegisteredResourcesRow struct {
 //	    -- Correlate to the outer query's resource value
 //	    WHERE rav.registered_resource_value_id = v.id
 //	) action_attrs ON true  -- required syntax for LATERAL joins
-//	GROUP BY r.id, counted.total
-//	LIMIT $2
-//	OFFSET $1
+//	WHERE
+//	    ($1::uuid IS NULL OR r.namespace_id = $1::uuid) AND
+//	    ($2::text IS NULL OR ns_fqns.fqn = $2::text)
+//	GROUP BY r.id, n.id, ns_fqns.fqn, counted.total
+//	ORDER BY r.created_at DESC
+//	LIMIT $4
+//	OFFSET $3
 func (q *Queries) listRegisteredResources(ctx context.Context, arg listRegisteredResourcesParams) ([]listRegisteredResourcesRow, error) {
-	rows, err := q.db.Query(ctx, listRegisteredResources, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, listRegisteredResources,
+		arg.NamespaceID,
+		arg.NamespaceFqn,
+		arg.Offset,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -508,6 +743,7 @@ func (q *Queries) listRegisteredResources(ctx context.Context, arg listRegistere
 			&i.ID,
 			&i.Name,
 			&i.Metadata,
+			&i.Namespace,
 			&i.Values,
 			&i.Total,
 		); err != nil {

@@ -64,9 +64,10 @@ type Action struct {
 	// Whether the action is standard (proto-enum) or custom (user-defined).
 	IsStandard bool `json:"is_standard"`
 	// Metadata for the action (see protos for structure)
-	Metadata  []byte             `json:"metadata"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	Metadata    []byte             `json:"metadata"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	NamespaceID pgtype.UUID        `json:"namespace_id"`
 }
 
 // View to retrieve active public keys mapped to attribute definitions
@@ -346,7 +347,8 @@ type RegisteredResource struct {
 	// Timestamp when the record was created
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	// Timestamp when the record was last updated
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	NamespaceID pgtype.UUID        `json:"namespace_id"`
 }
 
 // Table to store the linkage of registered resource values to actions and attribute values
@@ -421,7 +423,8 @@ type SubjectConditionSet struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 	// Array of cached selector values extracted from the condition JSONB and maintained via trigger.
-	SelectorValues []string `json:"selector_values"`
+	SelectorValues []string    `json:"selector_values"`
+	NamespaceID    pgtype.UUID `json:"namespace_id"`
 }
 
 // Table to store conditions that logically entitle subject entity representations to attribute values
@@ -436,6 +439,7 @@ type SubjectMapping struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 	// Foreign key to the condition set that entitles the subject entity to the attribute value
 	SubjectConditionSetID pgtype.UUID `json:"subject_condition_set_id"`
+	NamespaceID           pgtype.UUID `json:"namespace_id"`
 }
 
 type SubjectMappingAction struct {

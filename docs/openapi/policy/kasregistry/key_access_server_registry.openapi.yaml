@@ -534,6 +534,7 @@ components:
         - ALGORITHM_EC_P256
         - ALGORITHM_EC_P384
         - ALGORITHM_EC_P521
+        - ALGORITHM_HPQT_XWING
       description: Supported key algorithms.
     policy.KasPublicKeyAlgEnum:
       type: string
@@ -545,6 +546,7 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
     policy.KeyMode:
       type: string
       title: KeyMode
@@ -1147,7 +1149,7 @@ components:
             Required The algorithm to be used for the key
             The key_algorithm must be one of the defined values.:
             ```
-            this in [1, 2, 3, 4, 5]
+            this in [1, 2, 3, 4, 5, 6]
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'
@@ -1670,7 +1672,7 @@ components:
             Filter keys by algorithm
             The key_algorithm must be one of the defined values.:
             ```
-            this in [0, 1, 2, 3, 4, 5]
+            this in [0, 1, 2, 3, 4, 5, 6]
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'
@@ -1932,7 +1934,7 @@ components:
             Required
             The key_algorithm must be one of the defined values.:
             ```
-            this in [1, 2, 3, 4, 5]
+            this in [1, 2, 3, 4, 5, 6]
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'

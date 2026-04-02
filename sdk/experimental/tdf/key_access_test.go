@@ -35,7 +35,7 @@ SQIDAQAB
 )
 
 // createTestSplitResult creates a mock SplitResult for testing key access operations
-func createTestSplitResult(kasURL, pubKey string, algorithm string) *keysplit.SplitResult {
+func createTestSplitResult(pubKey string, algorithm string) *keysplit.SplitResult {
 	// Generate random split data
 	splitData := make([]byte, 32)
 	_, err := rand.Read(splitData)
@@ -46,11 +46,11 @@ func createTestSplitResult(kasURL, pubKey string, algorithm string) *keysplit.Sp
 	split := keysplit.Split{
 		ID:      "test-split-1",
 		Data:    splitData,
-		KASURLs: []string{kasURL},
+		KASURLs: []string{testKAS1URL},
 	}
 
 	pubKeyInfo := keysplit.KASPublicKey{
-		URL:       kasURL,
+		URL:       testKAS1URL,
 		Algorithm: algorithm,
 		KID:       "test-kid-1",
 		PEM:       pubKey,
@@ -58,14 +58,14 @@ func createTestSplitResult(kasURL, pubKey string, algorithm string) *keysplit.Sp
 
 	return &keysplit.SplitResult{
 		Splits:        []keysplit.Split{split},
-		KASPublicKeys: map[string]keysplit.KASPublicKey{kasURL: pubKeyInfo},
+		KASPublicKeys: map[string]keysplit.KASPublicKey{testKAS1URL: pubKeyInfo},
 	}
 }
 
 func TestBuildKeyAccessObjects(t *testing.T) {
 	t.Run("successfully creates key access objects with RSA public key", func(t *testing.T) {
 		// Test that buildKeyAccessObjects correctly processes RSA keys and creates valid KeyAccess objects
-		splitResult := createTestSplitResult(testKAS1URL, testRSAPublicKey, "rsa:2048")
+		splitResult := createTestSplitResult(testRSAPublicKey, "rsa:2048")
 		policyBytes := []byte(testPolicyJSON)
 		metadata := testMetadata
 
@@ -96,7 +96,7 @@ func TestBuildKeyAccessObjects(t *testing.T) {
 		ecPublicKeyPEM, err := ecKeyPair.PublicKeyInPemFormat()
 		require.NoError(t, err, "Should get public key in PEM format")
 
-		splitResult := createTestSplitResult(testKAS1URL, ecPublicKeyPEM, "ec:secp256r1")
+		splitResult := createTestSplitResult(ecPublicKeyPEM, "ec:secp256r1")
 		policyBytes := []byte(testPolicyJSON)
 		metadata := testMetadata
 
@@ -110,6 +110,27 @@ func TestBuildKeyAccessObjects(t *testing.T) {
 		assert.Equal(t, testKAS1URL, keyAccess.KasURL, "Should preserve KAS URL")
 		assert.NotEmpty(t, keyAccess.EphemeralPublicKey, "EC keys should have ephemeral public key")
 		assert.NotEmpty(t, keyAccess.WrappedKey, "Should contain wrapped key data")
+	})
+
+	t.Run("successfully creates key access objects with X-Wing public key", func(t *testing.T) {
+		xwingKeyPair, err := ocrypto.NewXWingKeyPair()
+		require.NoError(t, err)
+
+		xwingPublicKeyPEM, err := xwingKeyPair.PublicKeyInPemFormat()
+		require.NoError(t, err)
+
+		splitResult := createTestSplitResult(xwingPublicKeyPEM, string(ocrypto.HybridXWingKey))
+		policyBytes := []byte(testPolicyJSON)
+
+		keyAccessList, err := buildKeyAccessObjects(splitResult, policyBytes, testMetadata)
+
+		require.NoError(t, err, "Should successfully create key access objects with valid X-Wing key")
+		require.Len(t, keyAccessList, 1)
+
+		keyAccess := keyAccessList[0]
+		assert.Equal(t, "hybrid-wrapped", keyAccess.KeyType)
+		assert.NotEmpty(t, keyAccess.WrappedKey)
+		assert.Empty(t, keyAccess.EphemeralPublicKey)
 	})
 
 	t.Run("handles multiple KAS URLs in single split", func(t *testing.T) {
@@ -172,7 +193,7 @@ func TestBuildKeyAccessObjects(t *testing.T) {
 
 	t.Run("handles empty metadata correctly", func(t *testing.T) {
 		// Test that empty metadata is handled without creating encrypted metadata
-		splitResult := createTestSplitResult(testKAS1URL, testRSAPublicKey, "rsa:2048")
+		splitResult := createTestSplitResult(testRSAPublicKey, "rsa:2048")
 
 		keyAccessList, err := buildKeyAccessObjects(splitResult, []byte(testPolicyJSON), "")
 
@@ -422,6 +443,44 @@ func TestWrapKeyWithPublicKey(t *testing.T) {
 			"Ephemeral key should be in PEM format")
 		assert.True(t, strings.HasSuffix(ephemeralPubKey, "-----END PUBLIC KEY-----\n"),
 			"Ephemeral key should end with PEM footer")
+	})
+
+	t.Run("wraps key with X-Wing public key", func(t *testing.T) {
+		symKey := make([]byte, 32)
+		_, err := rand.Read(symKey)
+		require.NoError(t, err)
+
+		xwingKeyPair, err := ocrypto.NewXWingKeyPair()
+		require.NoError(t, err)
+
+		xwingPublicKeyPEM, err := xwingKeyPair.PublicKeyInPemFormat()
+		require.NoError(t, err)
+
+		pubKeyInfo := keysplit.KASPublicKey{
+			URL:       testKAS1URL,
+			Algorithm: string(ocrypto.HybridXWingKey),
+			KID:       "test-kid",
+			PEM:       xwingPublicKeyPEM,
+		}
+
+		wrappedKey, keyType, ephemeralPubKey, err := wrapKeyWithPublicKey(symKey, pubKeyInfo)
+
+		require.NoError(t, err, "Should wrap key with X-Wing public key")
+		assert.NotEmpty(t, wrappedKey)
+		assert.Equal(t, "hybrid-wrapped", keyType)
+		assert.Empty(t, ephemeralPubKey)
+
+		decodedWrappedKey, err := ocrypto.Base64Decode([]byte(wrappedKey))
+		require.NoError(t, err)
+
+		privateKeyPEM, err := xwingKeyPair.PrivateKeyInPemFormat()
+		require.NoError(t, err)
+		privateKey, err := ocrypto.XWingPrivateKeyFromPem([]byte(privateKeyPEM))
+		require.NoError(t, err)
+
+		plaintext, err := ocrypto.XWingUnwrapDEK(privateKey, decodedWrappedKey)
+		require.NoError(t, err)
+		assert.Equal(t, symKey, plaintext)
 	})
 
 	t.Run("returns error for empty PEM", func(t *testing.T) {

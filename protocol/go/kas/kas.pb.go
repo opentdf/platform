@@ -7,14 +7,15 @@
 package kas
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	structpb "google.golang.org/protobuf/types/known/structpb"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
@@ -244,7 +245,7 @@ type KeyAccess struct {
 	Protocol string `protobuf:"bytes,3,opt,name=protocol,proto3" json:"protocol,omitempty"`
 	// Type of key wrapping used for the data encryption key
 	// Required: Always
-	// Values: 'wrapped' (RSA-wrapped for ZTDF), 'ec-wrapped' (experimental ECDH-wrapped)
+	// Values: 'wrapped' (RSA-wrapped for ZTDF), 'ec-wrapped' (experimental ECDH-wrapped), 'hybrid-wrapped' (experimental X-Wing-wrapped)
 	KeyType string `protobuf:"bytes,4,opt,name=key_type,json=type,proto3" json:"key_type,omitempty"`
 	// URL of the Key Access Server that can unwrap this key
 	// Optional: May be omitted if KAS URL is known from context
@@ -271,7 +272,7 @@ type KeyAccess struct {
 	Header []byte `protobuf:"bytes,9,opt,name=header,proto3" json:"header,omitempty"`
 	// Ephemeral public key for ECDH key derivation (ec-wrapped type only)
 	// Required: When key_type="ec-wrapped" (experimental ECDH-based ZTDF)
-	// Omitted: When key_type="wrapped" (RSA-based ZTDF)
+	// Omitted: When key_type="wrapped" or key_type="hybrid-wrapped"
 	// Should be a PEM-encoded PKCS#8 (ASN.1) formatted public key
 	// Used to derive the symmetric key for unwrapping the DEK
 	EphemeralPublicKey string `protobuf:"bytes,10,opt,name=ephemeral_public_key,json=ephemeralPublicKey,proto3" json:"ephemeral_public_key,omitempty"`
@@ -856,7 +857,7 @@ type RewrapResponse struct {
 	EntityWrappedKey []byte `protobuf:"bytes,2,opt,name=entity_wrapped_key,json=entityWrappedKey,proto3" json:"entity_wrapped_key,omitempty"`
 	// KAS's ephemeral session public key in PEM format
 	// Required: For EC-based operations (key_type="ec-wrapped")
-	// Optional: Empty for RSA-based ZTDF (key_type="wrapped")
+	// Optional: Empty for RSA-based or X-Wing-based ZTDF (key_type="wrapped" or key_type="hybrid-wrapped")
 	// Used by client to perform ECDH key agreement and decrypt the kas_wrapped_key values
 	SessionPublicKey string `protobuf:"bytes,3,opt,name=session_public_key,json=sessionPublicKey,proto3" json:"session_public_key,omitempty"`
 	// Deprecated: Legacy schema version identifier
@@ -1344,28 +1345,30 @@ func file_kas_kas_proto_rawDescGZIP() []byte {
 	return file_kas_kas_proto_rawDescData
 }
 
-var file_kas_kas_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
-var file_kas_kas_proto_goTypes = []interface{}{
-	(*InfoRequest)(nil),                               // 0: kas.InfoRequest
-	(*InfoResponse)(nil),                              // 1: kas.InfoResponse
-	(*LegacyPublicKeyRequest)(nil),                    // 2: kas.LegacyPublicKeyRequest
-	(*PolicyBinding)(nil),                             // 3: kas.PolicyBinding
-	(*KeyAccess)(nil),                                 // 4: kas.KeyAccess
-	(*UnsignedRewrapRequest)(nil),                     // 5: kas.UnsignedRewrapRequest
-	(*PublicKeyRequest)(nil),                          // 6: kas.PublicKeyRequest
-	(*PublicKeyResponse)(nil),                         // 7: kas.PublicKeyResponse
-	(*RewrapRequest)(nil),                             // 8: kas.RewrapRequest
-	(*KeyAccessRewrapResult)(nil),                     // 9: kas.KeyAccessRewrapResult
-	(*PolicyRewrapResult)(nil),                        // 10: kas.PolicyRewrapResult
-	(*RewrapResponse)(nil),                            // 11: kas.RewrapResponse
-	(*UnsignedRewrapRequest_WithPolicy)(nil),          // 12: kas.UnsignedRewrapRequest.WithPolicy
-	(*UnsignedRewrapRequest_WithKeyAccessObject)(nil), // 13: kas.UnsignedRewrapRequest.WithKeyAccessObject
-	(*UnsignedRewrapRequest_WithPolicyRequest)(nil),   // 14: kas.UnsignedRewrapRequest.WithPolicyRequest
-	nil,                            // 15: kas.KeyAccessRewrapResult.MetadataEntry
-	nil,                            // 16: kas.RewrapResponse.MetadataEntry
-	(*structpb.Value)(nil),         // 17: google.protobuf.Value
-	(*wrapperspb.StringValue)(nil), // 18: google.protobuf.StringValue
-}
+var (
+	file_kas_kas_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+	file_kas_kas_proto_goTypes  = []interface{}{
+		(*InfoRequest)(nil),                               // 0: kas.InfoRequest
+		(*InfoResponse)(nil),                              // 1: kas.InfoResponse
+		(*LegacyPublicKeyRequest)(nil),                    // 2: kas.LegacyPublicKeyRequest
+		(*PolicyBinding)(nil),                             // 3: kas.PolicyBinding
+		(*KeyAccess)(nil),                                 // 4: kas.KeyAccess
+		(*UnsignedRewrapRequest)(nil),                     // 5: kas.UnsignedRewrapRequest
+		(*PublicKeyRequest)(nil),                          // 6: kas.PublicKeyRequest
+		(*PublicKeyResponse)(nil),                         // 7: kas.PublicKeyResponse
+		(*RewrapRequest)(nil),                             // 8: kas.RewrapRequest
+		(*KeyAccessRewrapResult)(nil),                     // 9: kas.KeyAccessRewrapResult
+		(*PolicyRewrapResult)(nil),                        // 10: kas.PolicyRewrapResult
+		(*RewrapResponse)(nil),                            // 11: kas.RewrapResponse
+		(*UnsignedRewrapRequest_WithPolicy)(nil),          // 12: kas.UnsignedRewrapRequest.WithPolicy
+		(*UnsignedRewrapRequest_WithKeyAccessObject)(nil), // 13: kas.UnsignedRewrapRequest.WithKeyAccessObject
+		(*UnsignedRewrapRequest_WithPolicyRequest)(nil),   // 14: kas.UnsignedRewrapRequest.WithPolicyRequest
+		nil,                            // 15: kas.KeyAccessRewrapResult.MetadataEntry
+		nil,                            // 16: kas.RewrapResponse.MetadataEntry
+		(*structpb.Value)(nil),         // 17: google.protobuf.Value
+		(*wrapperspb.StringValue)(nil), // 18: google.protobuf.StringValue
+	}
+)
 var file_kas_kas_proto_depIdxs = []int32{
 	3,  // 0: kas.KeyAccess.policy_binding:type_name -> kas.PolicyBinding
 	14, // 1: kas.UnsignedRewrapRequest.requests:type_name -> kas.UnsignedRewrapRequest.WithPolicyRequest

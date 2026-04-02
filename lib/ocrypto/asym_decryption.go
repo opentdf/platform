@@ -43,6 +43,9 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 	if block == nil {
 		return AsymDecryption{}, errors.New("failed to parse PEM formatted private key")
 	}
+	if block.Type == PEMBlockXWingPrivateKey {
+		return NewSaltedXWingDecryptor(block.Bytes, salt, info)
+	}
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	switch {

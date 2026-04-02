@@ -43,6 +43,7 @@ const (
 	kKeySize               = 32
 	kWrapped               = "wrapped"
 	kECWrapped             = "ec-wrapped"
+	kHybridWrapped         = "hybrid-wrapped"
 	kKasProtocol           = "kas"
 	kSplitKeyType          = "split"
 	kGCMCipherAlgorithm    = "AES-256-GCM"
@@ -674,7 +675,15 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 	}
 
 	ktype := ocrypto.KeyType(kasInfo.Algorithm)
-	if ocrypto.IsECKeyType(ktype) {
+	switch {
+	case ocrypto.IsHybridKeyType(ktype):
+		wrappedKey, err := generateWrapKeyWithXWing(kasInfo.PublicKey, symKey)
+		if err != nil {
+			return KeyAccess{}, err
+		}
+		keyAccess.KeyType = kHybridWrapped
+		keyAccess.WrappedKey = wrappedKey
+	case ocrypto.IsECKeyType(ktype):
 		mode, err := ocrypto.ECKeyTypeToMode(ktype)
 		if err != nil {
 			return KeyAccess{}, err
@@ -686,7 +695,7 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 		keyAccess.KeyType = kECWrapped
 		keyAccess.WrappedKey = wrappedKeyInfo.wrappedKey
 		keyAccess.EphemeralPublicKey = wrappedKeyInfo.publicKey
-	} else {
+	default:
 		wrappedKey, err := generateWrapKeyWithRSA(kasInfo.PublicKey, symKey)
 		if err != nil {
 			return KeyAccess{}, err
@@ -756,6 +765,20 @@ func generateWrapKeyWithRSA(publicKey string, symKey []byte) (string, error) {
 	wrappedKey, err := asymEncrypt.Encrypt(symKey)
 	if err != nil {
 		return "", fmt.Errorf("generateWrapKeyWithRSA: ocrypto.AsymEncryption.encrypt failed:%w", err)
+	}
+
+	return string(ocrypto.Base64Encode(wrappedKey)), nil
+}
+
+func generateWrapKeyWithXWing(publicKeyPEM string, symKey []byte) (string, error) {
+	publicKey, err := ocrypto.XWingPubKeyFromPem([]byte(publicKeyPEM))
+	if err != nil {
+		return "", fmt.Errorf("generateWrapKeyWithXWing: ocrypto.XWingPubKeyFromPem failed:%w", err)
+	}
+
+	wrappedKey, err := ocrypto.XWingWrapDEK(publicKey, symKey)
+	if err != nil {
+		return "", fmt.Errorf("generateWrapKeyWithXWing: ocrypto.XWingWrapDEK failed:%w", err)
 	}
 
 	return string(ocrypto.Base64Encode(wrappedKey)), nil

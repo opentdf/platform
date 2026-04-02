@@ -22,11 +22,12 @@ type ECCMode uint8
 type KeyType string
 
 const (
-	RSA2048Key KeyType = "rsa:2048"
-	RSA4096Key KeyType = "rsa:4096"
-	EC256Key   KeyType = "ec:secp256r1"
-	EC384Key   KeyType = "ec:secp384r1"
-	EC521Key   KeyType = "ec:secp521r1"
+	RSA2048Key     KeyType = "rsa:2048"
+	RSA4096Key     KeyType = "rsa:4096"
+	EC256Key       KeyType = "ec:secp256r1"
+	EC384Key       KeyType = "ec:secp384r1"
+	EC521Key       KeyType = "ec:secp521r1"
+	HybridXWingKey KeyType = "hpqt:xwing"
 )
 
 const (
@@ -64,6 +65,8 @@ func NewKeyPair(kt KeyType) (KeyPair, error) {
 			return nil, err
 		}
 		return NewECKeyPair(mode)
+	case HybridXWingKey:
+		return NewXWingKeyPair()
 	default:
 		return nil, fmt.Errorf("unsupported key type: %v", kt)
 	}
@@ -85,6 +88,15 @@ func IsECKeyType(kt KeyType) bool {
 func IsRSAKeyType(kt KeyType) bool {
 	switch kt { //nolint:exhaustive // only handle rsa types
 	case RSA2048Key, RSA4096Key:
+		return true
+	default:
+		return false
+	}
+}
+
+func IsHybridKeyType(kt KeyType) bool {
+	switch kt { //nolint:exhaustive // only handle hybrid types
+	case HybridXWingKey:
 		return true
 	default:
 		return false

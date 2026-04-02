@@ -94,6 +94,11 @@ func TestGetKasKeyAlg(t *testing.T) {
 			expected: policy.Algorithm_ALGORITHM_EC_P521,
 		},
 		{
+			name:     "hybrid xwing",
+			algStr:   string(ocrypto.HybridXWingKey),
+			expected: policy.Algorithm_ALGORITHM_HPQT_XWING,
+		},
+		{
 			name:     "unsupported algorithm",
 			algStr:   "unsupported",
 			expected: policy.Algorithm_ALGORITHM_UNSPECIFIED,
@@ -148,6 +153,12 @@ func TestFormatAlg(t *testing.T) {
 			name:        "EC P521",
 			alg:         policy.Algorithm_ALGORITHM_EC_P521,
 			expected:    string(ocrypto.EC521Key), // Note: This matches the implementation
+			expectError: false,
+		},
+		{
+			name:        "Hybrid X-Wing",
+			alg:         policy.Algorithm_ALGORITHM_HPQT_XWING,
+			expected:    string(ocrypto.HybridXWingKey),
 			expectError: false,
 		},
 		{
@@ -324,6 +335,7 @@ func TestFormatAlg_GetKasKeyAlg_RoundTrip(t *testing.T) {
 		{"EC-P256", policy.Algorithm_ALGORITHM_EC_P256},
 		{"EC-P384", policy.Algorithm_ALGORITHM_EC_P384},
 		{"EC-P521", policy.Algorithm_ALGORITHM_EC_P521},
+		{"HPQT-XWing", policy.Algorithm_ALGORITHM_HPQT_XWING},
 	}
 
 	for _, tc := range supportedAlgs {

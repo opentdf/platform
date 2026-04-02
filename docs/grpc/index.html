@@ -4027,6 +4027,12 @@ Migrate to &#39;create&#39; action name</p></td>
                 <td><p></p></td>
               </tr>
             
+              <tr>
+                <td>ALGORITHM_HPQT_XWING</td>
+                <td>6</td>
+                <td><p></p></td>
+              </tr>
+            
           </tbody>
         </table>
       
@@ -4135,6 +4141,12 @@ Migrate to &#39;create&#39; action name</p></td>
               <tr>
                 <td>KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1</td>
                 <td>7</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING</td>
+                <td>10</td>
                 <td><p></p></td>
               </tr>
             
@@ -6276,7 +6288,7 @@ Example: &#34;kas&#34; </p></td>
                   <td></td>
                   <td><p>Type of key wrapping used for the data encryption key
 Required: Always
-Values: &#39;wrapped&#39; (RSA-wrapped for ZTDF), &#39;ec-wrapped&#39; (experimental ECDH-wrapped) </p></td>
+Values: &#39;wrapped&#39; (RSA-wrapped for ZTDF), &#39;ec-wrapped&#39; (experimental ECDH-wrapped), &#39;hybrid-wrapped&#39; (experimental X-Wing-wrapped) </p></td>
                 </tr>
               
                 <tr>
@@ -6333,7 +6345,7 @@ Contains magic bytes, version, algorithm, policy, and ephemeral key information 
                   <td></td>
                   <td><p>Ephemeral public key for ECDH key derivation (ec-wrapped type only)
 Required: When key_type=&#34;ec-wrapped&#34; (experimental ECDH-based ZTDF)
-Omitted: When key_type=&#34;wrapped&#34; (RSA-based ZTDF)
+Omitted: When key_type=&#34;wrapped&#34; or key_type=&#34;hybrid-wrapped&#34;
 Should be a PEM-encoded PKCS#8 (ASN.1) formatted public key
 Used to derive the symmetric key for unwrapping the DEK </p></td>
                 </tr>
@@ -6661,7 +6673,7 @@ Modern responses use kas_wrapped_key in KeyAccessRewrapResult </p></td>
                   <td></td>
                   <td><p>KAS&#39;s ephemeral session public key in PEM format
 Required: For EC-based operations (key_type=&#34;ec-wrapped&#34;)
-Optional: Empty for RSA-based ZTDF (key_type=&#34;wrapped&#34;)
+Optional: Empty for RSA-based or X-Wing-based ZTDF (key_type=&#34;wrapped&#34; or key_type=&#34;hybrid-wrapped&#34;)
 Used by client to perform ECDH key agreement and decrypt the kas_wrapped_key values </p></td>
                 </tr>
               

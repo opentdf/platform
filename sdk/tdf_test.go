@@ -2913,6 +2913,25 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations
 				entityWrappedKey, err = asymEncrypt.Encrypt(symmetricKey)
 				f.s.Require().NoError(err, "ocrypto.AsymEncryption.encrypt failed")
 
+			case "hybrid-wrapped":
+				kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
+				if kao.GetKid() != "" && kao.GetKid() != f.KID {
+					lk, ok := f.legakeys[kaoReq.GetKeyAccessObject().GetKid()]
+					f.s.Require().True(ok, "unable to find key [%s]", kao.GetKid())
+					kasPrivateKey = strings.ReplaceAll(lk.private, "\n\t", "\n")
+				}
+
+				privateKey, err := ocrypto.XWingPrivateKeyFromPem([]byte(kasPrivateKey))
+				f.s.Require().NoError(err, "failed to extract X-Wing private key from PEM")
+
+				symmetricKey, err := ocrypto.XWingUnwrapDEK(privateKey, wrappedKey)
+				f.s.Require().NoError(err, "failed to unwrap X-Wing wrapped key")
+
+				asymEncrypt, err := ocrypto.FromPublicPEM(bodyData.GetClientPublicKey())
+				f.s.Require().NoError(err, "ocrypto.FromPublicPEM failed")
+				entityWrappedKey, err = asymEncrypt.Encrypt(symmetricKey)
+				f.s.Require().NoError(err, "ocrypto.encrypt failed")
+
 			case "wrapped":
 				kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
 				if kao.GetKid() != "" && kao.GetKid() != f.KID {

@@ -47,6 +47,11 @@ func TestFormatAlgorithm(t *testing.T) {
 			expected: "rsa:4096",
 		},
 		{
+			name:     "HPQT X-Wing",
+			alg:      policy.Algorithm_ALGORITHM_HPQT_XWING,
+			expected: "hpqt:xwing",
+		},
+		{
 			name:     "unknown algorithm value",
 			alg:      policy.Algorithm(999),
 			expected: "unknown",
@@ -96,6 +101,11 @@ func TestConvertAlgEnum2Simple(t *testing.T) {
 			name:     "RSA 4096",
 			algEnum:  policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096,
 			expected: policy.Algorithm_ALGORITHM_RSA_4096,
+		},
+		{
+			name:     "HPQT X-Wing",
+			algEnum:  policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING,
+			expected: policy.Algorithm_ALGORITHM_HPQT_XWING,
 		},
 		{
 			name:     "unknown enum value",

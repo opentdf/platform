@@ -12,11 +12,12 @@ import (
 // reverseAlgMap mirrors the SDK's getKasKeyAlg mapping: ocrypto.KeyType string → policy.Algorithm.
 // If FormatAlg produces a string that isn't in this map, the SDK would return ALGORITHM_UNSPECIFIED.
 var reverseAlgMap = map[string]policy.Algorithm{
-	string(ocrypto.RSA2048Key): policy.Algorithm_ALGORITHM_RSA_2048,
-	string(ocrypto.RSA4096Key): policy.Algorithm_ALGORITHM_RSA_4096,
-	string(ocrypto.EC256Key):   policy.Algorithm_ALGORITHM_EC_P256,
-	string(ocrypto.EC384Key):   policy.Algorithm_ALGORITHM_EC_P384,
-	string(ocrypto.EC521Key):   policy.Algorithm_ALGORITHM_EC_P521,
+	string(ocrypto.RSA2048Key):     policy.Algorithm_ALGORITHM_RSA_2048,
+	string(ocrypto.RSA4096Key):     policy.Algorithm_ALGORITHM_RSA_4096,
+	string(ocrypto.EC256Key):       policy.Algorithm_ALGORITHM_EC_P256,
+	string(ocrypto.EC384Key):       policy.Algorithm_ALGORITHM_EC_P384,
+	string(ocrypto.EC521Key):       policy.Algorithm_ALGORITHM_EC_P521,
+	string(ocrypto.HybridXWingKey): policy.Algorithm_ALGORITHM_HPQT_XWING,
 }
 
 func TestFormatAlg_RoundTrip(t *testing.T) {
@@ -32,6 +33,7 @@ func TestFormatAlg_RoundTrip(t *testing.T) {
 		{"EC-P256", policy.Algorithm_ALGORITHM_EC_P256},
 		{"EC-P384", policy.Algorithm_ALGORITHM_EC_P384},
 		{"EC-P521", policy.Algorithm_ALGORITHM_EC_P521},
+		{"HPQT-XWing", policy.Algorithm_ALGORITHM_HPQT_XWING},
 	}
 
 	for _, tc := range supportedAlgs {

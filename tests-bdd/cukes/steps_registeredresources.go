@@ -170,7 +170,7 @@ func (s *RegisteredResourcesStepDefinitions) iSendADecisionRequestForEntityChain
 	entityChain := &entity.EntityChain{Entities: entities}
 
 	resourceValueFQN := strings.TrimSpace(resourceValueRef)
-	if rrValue, ok := scenarioContext.GetObject(resourceValueRef).(*policy.RegisteredResourceValue); ok && rrValue != nil {
+	if rrValue, ok := scenarioContext.GetObject(resourceValueFQN).(*policy.RegisteredResourceValue); ok && rrValue != nil {
 		if rrValue.GetResource() == nil {
 			return ctx, fmt.Errorf("registered resource value %s missing resource", resourceValueRef)
 		}

@@ -27,6 +27,15 @@ func getListLimit(limit int32, fallback int32) int32 {
 	return fallback
 }
 
+func getSortDirection(direction policy.SortDirection) string {
+	switch direction {
+	case policy.SortDirection_SORT_DIRECTION_DESC:
+		return "DESC"
+	default:
+		return "ASC"
+	}
+}
+
 // GetNamespacesSortParams maps the strongly-typed NamespacesSort enum to
 // SQL-compatible field name and direction strings.
 // Returns empty strings when sort is nil or empty (backward compatible —
@@ -53,11 +62,7 @@ func GetNamespacesSortParams(sort []*namespaces.NamespacesSort) (string, string)
 		return "", ""
 	}
 
-	direction := "ASC"
-	if s.GetDirection() == policy.SortDirection_SORT_DIRECTION_DESC {
-		direction = "DESC"
-	}
-	return field, direction
+	return field, getSortDirection(s.GetDirection())
 }
 
 // Returns next page's offset if has not yet reached total, or else returns 0
@@ -316,9 +321,5 @@ func GetAttributesSortParams(sort []*attributes.AttributesSort) (string, string)
 		return "", ""
 	}
 
-	direction := "ASC"
-	if s.GetDirection() == policy.SortDirection_SORT_DIRECTION_DESC {
-		direction = "DESC"
-	}
-	return field, direction
+	return field, getSortDirection(s.GetDirection())
 }

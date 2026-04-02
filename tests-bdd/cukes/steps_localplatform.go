@@ -236,7 +236,7 @@ func attachPlatformServiceLogs(ctx context.Context, scenarioContext *PlatformSce
 	}
 
 	scenarioContext.RegisterShutdownHook(func() error {
-		logCtx := context.Background()
+		logCtx := context.WithoutCancel(ctx)
 		platformLogger.Info("capturing platform service logs", slog.String("service", "otdf"))
 		container, err := platformDockerCompose.ServiceContainer(logCtx, "otdf")
 		if err != nil {

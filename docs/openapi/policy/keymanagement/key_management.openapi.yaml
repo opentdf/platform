@@ -189,13 +189,6 @@ components:
         - METADATA_UPDATE_ENUM_UNSPECIFIED
         - METADATA_UPDATE_ENUM_EXTEND
         - METADATA_UPDATE_ENUM_REPLACE
-    policy.SortDirection:
-      type: string
-      title: SortDirection
-      enum:
-        - SORT_DIRECTION_UNSPECIFIED
-        - SORT_DIRECTION_ASC
-        - SORT_DIRECTION_DESC
     common.Metadata:
       type: object
       properties:
@@ -387,17 +380,6 @@ components:
           description: |-
             Optional
              Defaulted if not provided
-        sort:
-          type: array
-          items:
-            $ref: '#/components/schemas/policy.SortField'
-          title: sort
-          maxItems: 1
-          description: |-
-            Deprecated: use resource-specific sort fields on each List*Request instead
-             (e.g. AttributesSort, NamespacesSort). This generic field is unused and
-             will be removed in a future version.
-          deprecated: true
       title: PageRequest
       additionalProperties: false
     policy.PageResponse:
@@ -421,21 +403,6 @@ components:
           format: int32
           description: Total count of entire list
       title: PageResponse
-      additionalProperties: false
-    policy.SortField:
-      type: object
-      properties:
-        field:
-          type: string
-          title: field
-          description: |-
-            Field name to sort by (e.g. "name", "created_at", "updated_at")
-             Valid values are resource-specific — validated at the service level
-        direction:
-          title: direction
-          description: Sort direction; defaults to ASC when unspecified
-          $ref: '#/components/schemas/policy.SortDirection'
-      title: SortField
       additionalProperties: false
     policy.keymanagement.CreateProviderConfigRequest:
       type: object

@@ -798,10 +798,6 @@
                   <a href="#policy.PageResponse"><span class="badge">M</span>PageResponse</a>
                 </li>
               
-                <li>
-                  <a href="#policy.SortField"><span class="badge">M</span>SortField</a>
-                </li>
-              
               
                 <li>
                   <a href="#policy.SortDirection"><span class="badge">E</span>SortDirection</a>
@@ -7402,39 +7398,9 @@ Maximum limit set in platform config and enforced by services </p></td>
 Defaulted if not provided </p></td>
                 </tr>
               
-                <tr>
-                  <td>sort</td>
-                  <td><a href="#policy.SortField">SortField</a></td>
-                  <td>repeated</td>
-                  <td><p><strong>Deprecated.</strong> Deprecated: use resource-specific sort fields on each List*Request instead
-(e.g. AttributesSort, NamespacesSort). This generic field is unused and
-will be removed in a future version. </p></td>
-                </tr>
-              
             </tbody>
           </table>
 
-          
-            
-            
-            <h4>Fields with deprecated option</h4>
-            <table>
-              <thead>
-                <tr>
-                  <td>Name</td>
-                  <td>Option</td>
-                </tr>
-              </thead>
-              <tbody>
-              
-                <tr>
-                  <td>sort</td>
-                  <td><p>true</p></td>
-                </tr>
-              
-              </tbody>
-            </table>
-            
           
 
         
@@ -7469,38 +7435,6 @@ Empty when none remain after current page </p></td>
                   <td><a href="#int32">int32</a></td>
                   <td></td>
                   <td><p>Total count of entire list </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.SortField">SortField</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>field</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Field name to sort by (e.g. &#34;name&#34;, &#34;created_at&#34;, &#34;updated_at&#34;)
-Valid values are resource-specific — validated at the service level </p></td>
-                </tr>
-              
-                <tr>
-                  <td>direction</td>
-                  <td><a href="#policy.SortDirection">SortDirection</a></td>
-                  <td></td>
-                  <td><p>Sort direction; defaults to ASC when unspecified </p></td>
                 </tr>
               
             </tbody>

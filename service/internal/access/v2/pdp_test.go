@@ -907,6 +907,67 @@ func (s *PDPTestSuite) TestNewPolicyDecisionPoint_AllowsAttributeDefinitionsWith
 	s.Require().NotContains(pdp.allEntitleableAttributesByValueFQN, emptyAttrFQN)
 }
 
+func (s *PDPTestSuite) TestNewPolicyDecisionPoint_IndexesRegisteredResourceValuesByNamespacedAndLegacyFQN() {
+	tests := []struct {
+		name          string
+		namespaceName string
+		namespaceFQN  string
+		expectedNS    string
+	}{
+		{
+			name:          "uses namespace name when present",
+			namespaceName: "ns-one.example.com",
+			namespaceFQN:  "https://ns-one.example.com",
+			expectedNS:    "ns-one.example.com",
+		},
+		{
+			name:         "falls back to namespace fqn when name absent",
+			namespaceFQN: "https://ns-two.example.com",
+			expectedNS:   "ns-two.example.com",
+		},
+	}
+
+	for _, tc := range tests {
+		s.Run(tc.name, func() {
+			regResVal := &policy.RegisteredResourceValue{Value: "prod-config"}
+			regRes := &policy.RegisteredResource{
+				Name: "app-config",
+				Namespace: &policy.Namespace{
+					Name: tc.namespaceName,
+					Fqn:  tc.namespaceFQN,
+				},
+				Values: []*policy.RegisteredResourceValue{regResVal},
+			}
+
+			pdp, err := NewPolicyDecisionPoint(
+				s.T().Context(),
+				s.logger,
+				[]*policy.Attribute{},
+				[]*policy.SubjectMapping{},
+				[]*policy.RegisteredResource{regRes},
+				allowDirectEntitlements,
+				true,
+			)
+			s.Require().NoError(err)
+
+			namespacedFQN := (&identifier.FullyQualifiedRegisteredResourceValue{
+				Namespace: tc.expectedNS,
+				Name:      regRes.GetName(),
+				Value:     regResVal.GetValue(),
+			}).FQN()
+			legacyFQN := (&identifier.FullyQualifiedRegisteredResourceValue{
+				Name:  regRes.GetName(),
+				Value: regResVal.GetValue(),
+			}).FQN()
+
+			s.Require().Contains(pdp.allRegisteredResourceValuesByFQN, namespacedFQN)
+			s.Require().Contains(pdp.allRegisteredResourceValuesByFQN, legacyFQN)
+			s.Same(regResVal, pdp.allRegisteredResourceValuesByFQN[namespacedFQN])
+			s.Same(regResVal, pdp.allRegisteredResourceValuesByFQN[legacyFQN])
+		})
+	}
+}
+
 // Test_GetDecision_MultipleResources tests the GetDecision method with some generalized scenarios for multiple resources
 func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 	f := s.fixtures

@@ -354,11 +354,15 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmappi
 		return nil, db.ErrListLimitTooLarge
 	}
 
+	sortField, sortDirection := GetSubjectMappingsSortParams(r.GetSort())
+
 	list, err := c.queries.listSubjectMappings(ctx, listSubjectMappingsParams{
-		NamespaceID:  pgtypeUUID(r.GetNamespaceId()),
-		NamespaceFqn: pgtypeText(r.GetNamespaceFqn()),
-		Limit:        limit,
-		Offset:       offset,
+		NamespaceID:   pgtypeUUID(r.GetNamespaceId()),
+		NamespaceFqn:  pgtypeText(r.GetNamespaceFqn()),
+		Limit:         limit,
+		Offset:        offset,
+		SortField:     sortField,
+		SortDirection: sortDirection,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

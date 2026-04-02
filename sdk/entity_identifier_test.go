@@ -1,16 +1,17 @@
-package authorizationv2
+package sdk
 
 import (
 	"testing"
 
+	authorizationv2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 )
 
-func TestForToken(t *testing.T) {
+func TestEntityIdentifierForToken(t *testing.T) {
 	jwt := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.test"
-	eid := ForToken(jwt)
+	eid := EntityIdentifierForToken(jwt)
 
-	tok, ok := eid.GetIdentifier().(*EntityIdentifier_Token)
+	tok, ok := eid.GetIdentifier().(*authorizationv2.EntityIdentifier_Token)
 	if !ok {
 		t.Fatal("expected Token identifier")
 	}
@@ -19,10 +20,10 @@ func TestForToken(t *testing.T) {
 	}
 }
 
-func TestForToken_EmptyString(t *testing.T) {
-	eid := ForToken("")
+func TestEntityIdentifierForToken_EmptyString(t *testing.T) {
+	eid := EntityIdentifierForToken("")
 
-	tok, ok := eid.GetIdentifier().(*EntityIdentifier_Token)
+	tok, ok := eid.GetIdentifier().(*authorizationv2.EntityIdentifier_Token)
 	if !ok {
 		t.Fatal("expected Token identifier")
 	}
@@ -31,10 +32,10 @@ func TestForToken_EmptyString(t *testing.T) {
 	}
 }
 
-func TestWithRequestToken(t *testing.T) {
-	eid := WithRequestToken()
+func TestEntityIdentifierWithRequestToken(t *testing.T) {
+	eid := EntityIdentifierWithRequestToken()
 
-	wrt, ok := eid.GetIdentifier().(*EntityIdentifier_WithRequestToken)
+	wrt, ok := eid.GetIdentifier().(*authorizationv2.EntityIdentifier_WithRequestToken)
 	if !ok {
 		t.Fatal("expected WithRequestToken identifier")
 	}
@@ -46,13 +47,13 @@ func TestWithRequestToken(t *testing.T) {
 func TestEntityChainConstructors(t *testing.T) {
 	tests := []struct {
 		name        string
-		constructor func(string) *EntityIdentifier
+		constructor func(string) *authorizationv2.EntityIdentifier
 		input       string
 		checkType   func(*entity.Entity) (string, bool)
 	}{
 		{
-			name:        "ForClientID",
-			constructor: ForClientID,
+			name:        "EntityIdentifierForClientID",
+			constructor: EntityIdentifierForClientID,
 			input:       "my-client",
 			checkType: func(e *entity.Entity) (string, bool) {
 				cid, ok := e.GetEntityType().(*entity.Entity_ClientId)
@@ -63,8 +64,8 @@ func TestEntityChainConstructors(t *testing.T) {
 			},
 		},
 		{
-			name:        "ForClientID_EmptyString",
-			constructor: ForClientID,
+			name:        "EntityIdentifierForClientID_EmptyString",
+			constructor: EntityIdentifierForClientID,
 			input:       "",
 			checkType: func(e *entity.Entity) (string, bool) {
 				cid, ok := e.GetEntityType().(*entity.Entity_ClientId)
@@ -75,8 +76,8 @@ func TestEntityChainConstructors(t *testing.T) {
 			},
 		},
 		{
-			name:        "ForEmail",
-			constructor: ForEmail,
+			name:        "EntityIdentifierForEmail",
+			constructor: EntityIdentifierForEmail,
 			input:       "user@example.com",
 			checkType: func(e *entity.Entity) (string, bool) {
 				em, ok := e.GetEntityType().(*entity.Entity_EmailAddress)
@@ -87,8 +88,8 @@ func TestEntityChainConstructors(t *testing.T) {
 			},
 		},
 		{
-			name:        "ForEmail_EmptyString",
-			constructor: ForEmail,
+			name:        "EntityIdentifierForEmail_EmptyString",
+			constructor: EntityIdentifierForEmail,
 			input:       "",
 			checkType: func(e *entity.Entity) (string, bool) {
 				em, ok := e.GetEntityType().(*entity.Entity_EmailAddress)
@@ -99,8 +100,8 @@ func TestEntityChainConstructors(t *testing.T) {
 			},
 		},
 		{
-			name:        "ForUserName",
-			constructor: ForUserName,
+			name:        "EntityIdentifierForUserName",
+			constructor: EntityIdentifierForUserName,
 			input:       "alice",
 			checkType: func(e *entity.Entity) (string, bool) {
 				un, ok := e.GetEntityType().(*entity.Entity_UserName)
@@ -111,8 +112,8 @@ func TestEntityChainConstructors(t *testing.T) {
 			},
 		},
 		{
-			name:        "ForUserName_EmptyString",
-			constructor: ForUserName,
+			name:        "EntityIdentifierForUserName_EmptyString",
+			constructor: EntityIdentifierForUserName,
 			input:       "",
 			checkType: func(e *entity.Entity) (string, bool) {
 				un, ok := e.GetEntityType().(*entity.Entity_UserName)
@@ -149,9 +150,9 @@ func TestEntityChainConstructors(t *testing.T) {
 	}
 }
 
-func extractEntityChain(t *testing.T, eid *EntityIdentifier) *entity.EntityChain {
+func extractEntityChain(t *testing.T, eid *authorizationv2.EntityIdentifier) *entity.EntityChain {
 	t.Helper()
-	ec, ok := eid.GetIdentifier().(*EntityIdentifier_EntityChain)
+	ec, ok := eid.GetIdentifier().(*authorizationv2.EntityIdentifier_EntityChain)
 	if !ok {
 		t.Fatal("expected EntityChain identifier")
 	}

@@ -171,11 +171,20 @@ func NewPolicyDecisionPoint(
 				return nil, fmt.Errorf("invalid registered resource value: %w", err)
 			}
 
+			namespaceName := namespaceNameFromPolicyNamespace(rr.GetNamespace())
+
 			fullyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
+				Namespace: namespaceName,
+				Name:      rrName,
+				Value:     v.GetValue(),
+			}
+			allRegisteredResourceValuesByFQN[fullyQualifiedValue.FQN()] = v
+
+			legacyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
 				Name:  rrName,
 				Value: v.GetValue(),
 			}
-			allRegisteredResourceValuesByFQN[fullyQualifiedValue.FQN()] = v
+			allRegisteredResourceValuesByFQN[legacyQualifiedValue.FQN()] = v
 		}
 	}
 
@@ -188,6 +197,27 @@ func NewPolicyDecisionPoint(
 		namespacedPolicy,
 	}
 	return pdp, nil
+}
+
+func namespaceNameFromPolicyNamespace(ns *policy.Namespace) string {
+	if ns == nil {
+		return ""
+	}
+
+	if ns.GetName() != "" {
+		return ns.GetName()
+	}
+
+	if ns.GetFqn() == "" {
+		return ""
+	}
+
+	parsed, err := identifier.Parse[*identifier.FullyQualifiedAttribute](ns.GetFqn())
+	if err != nil {
+		return ""
+	}
+
+	return parsed.Namespace
 }
 
 // GetDecision evaluates the action on the resources for the entity and returns a decision along with entitlements.

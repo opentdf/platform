@@ -33,6 +33,7 @@ type PlatformTestSuiteContext struct {
 	FeatureTracker    map[string]*PlatformScenarioContext
 	Logger            *slog.Logger
 	ComposeLogger     *slog.Logger
+	PlatformLogger    *slog.Logger
 	HasFailures       bool // Track if any test failures occurred
 }
 type DockerComposeLogger struct {
@@ -70,11 +71,12 @@ func (d *DockerComposeLogger) Printf(format string, v ...interface{}) {
 	d.Logger.Info("docker compose log", slog.String("message", fmt.Sprintf(format, v...)))
 }
 
-func CreatePlatformCukesContext(logger *slog.Logger, composeLogger *slog.Logger) *PlatformTestSuiteContext {
+func CreatePlatformCukesContext(logger *slog.Logger, composeLogger *slog.Logger, platformLogger *slog.Logger) *PlatformTestSuiteContext {
 	return &PlatformTestSuiteContext{
 		FeatureTracker: make(map[string]*PlatformScenarioContext),
 		Logger:         logger,
 		ComposeLogger:  composeLogger,
+		PlatformLogger: platformLogger,
 	}
 }
 

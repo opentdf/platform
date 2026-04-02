@@ -16,6 +16,3 @@ CREATE TABLE IF NOT EXISTS attribute_fqns (
 -- +goose Down
 
 DROP TABLE IF EXISTS attribute_fqns;
-
--- +goose StatementBegin
--- +goose StatementEnd

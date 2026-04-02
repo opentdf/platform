@@ -117,6 +117,3 @@ ALTER TABLE IF EXISTS subject_mappings DROP COLUMN subject_condition_set_id, DRO
 DROP TRIGGER IF EXISTS subject_condition_set_updated_at ON subject_condition_set;
 DROP TABLE subject_condition_set;
 CREATE TYPE subject_mappings_operator AS ENUM ('UNSPECIFIED', 'IN', 'NOT_IN');
-
--- +goose StatementBegin
--- +goose StatementEnd

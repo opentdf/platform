@@ -240,32 +240,20 @@ ALTER TABLE attribute_value_members
 DROP CONSTRAINT IF EXISTS attr_val_members_value_id_fkey_cascades;
 
 DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.table_constraints
-    WHERE constraint_name = 'attribute_value_members_value_id_fkey'
-      AND table_name = 'attribute_value_members'
-      AND table_schema = current_schema()
-  ) THEN
-    ALTER TABLE attribute_value_members
-    ADD CONSTRAINT attribute_value_members_value_id_fkey
-    FOREIGN KEY (value_id) REFERENCES attribute_values (id);
-  END IF;
+  ALTER TABLE attribute_value_members
+  ADD CONSTRAINT attribute_value_members_value_id_fkey
+  FOREIGN KEY (value_id) REFERENCES attribute_values (id);
+EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
 ALTER TABLE attribute_value_members
 DROP CONSTRAINT IF EXISTS attr_val_members_member_id_fkey_cascades;
 
 DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.table_constraints
-    WHERE constraint_name = 'attribute_value_members_member_id_fkey'
-      AND table_name = 'attribute_value_members'
-      AND table_schema = current_schema()
-  ) THEN
-    ALTER TABLE attribute_value_members
-    ADD CONSTRAINT attribute_value_members_member_id_fkey
-    FOREIGN KEY (member_id) REFERENCES attribute_values (id);
-  END IF;
+  ALTER TABLE attribute_value_members
+  ADD CONSTRAINT attribute_value_members_member_id_fkey
+  FOREIGN KEY (member_id) REFERENCES attribute_values (id);
+EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
 -- +goose StatementEnd

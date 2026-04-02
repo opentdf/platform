@@ -85,7 +85,6 @@ message ListAttributesRequest {
 
   // Optional
   policy.PageRequest pagination = 10;
-
   // Optional - CONSTRAINT: max 1 item
   repeated AttributesSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }

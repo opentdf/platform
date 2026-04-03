@@ -3,6 +3,6 @@
 - id: GO-2026-4883
   reason: "no upstream fix available for docker/docker, used only in test infrastructure"
   expires: 2026-07-01
-- id: GO-2026-4887
-  reason: "no upstream fix available for docker/docker, used only in test infrastructure"
-  expires: 2026-07-01
+# - id: GO-2026-4887
+#   reason: "no upstream fix available for docker/docker, used only in test infrastructure"
+#   expires: 2026-07-01

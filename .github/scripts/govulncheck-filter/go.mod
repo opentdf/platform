@@ -2,6 +2,8 @@ module github.com/opentdf/platform/govulncheck-filter
 
 go 1.25.5
 
+toolchain go1.25.8
+
 require (
 	golang.org/x/vuln v1.1.4
 	gopkg.in/yaml.v3 v3.0.1

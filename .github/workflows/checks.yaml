@@ -138,7 +138,8 @@ jobs:
       - name: govulncheck
         uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
         with:
-          go-version-input: "1.25.7"
+          go-version-file: ${{ matrix.directory }}/go.mod
+          repo-checkout: false
           work-dir: ${{ matrix.directory }}
           output-format: json
           output-file: govulncheck-output.json

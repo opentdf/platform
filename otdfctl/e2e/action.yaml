@@ -28,7 +28,7 @@ runs:
       run: |
         git worktree add ../otdfctl_v0.26.2 otdfctl/v0.26.2
         cd ../otdfctl_v0.26.2
-        go build -o ../otdfctl/otdfctl_v0.26.2 .
+        GOWORK=off go build -o ../otdfctl/otdfctl_v0.26.2 .
         echo "LEGACY_OTDFCTL_BIN=./otdfctl_v0.26.2" >> $GITHUB_ENV
     - name: Install keyring dependencies
       shell: bash

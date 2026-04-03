@@ -45,7 +45,7 @@ func Start(f ...StartOptions) error {
 
 	ctx := context.Background()
 
-	slog.Debug("loading configuration from environment")
+	slog.Log(ctx, logger.LevelTrace, "loading configuration from environment")
 	loaderOrder := []string{
 		config.LoaderNameLegacy,
 		config.LoaderNameDefaultSettings,
@@ -124,7 +124,7 @@ func Start(f ...StartOptions) error {
 	}
 	defer shutdown()
 
-	logger.Debug("config loaded", slog.Any("config", cfg.LogValue()))
+	logger.Trace("config loaded", slog.Any("config", cfg.LogValue()))
 
 	// Configure cache manager
 	logger.Info("creating cache manager")
@@ -299,7 +299,23 @@ func Start(f ...StartOptions) error {
 	defer gatewayCleanup()
 
 	// Start watching the configuration for changes with registered config change service hooks
-	if err := cfg.Watch(ctx); err != nil {
+	var watchInfo []config.NamespaceInfo
+	for _, nsInfo := range svcRegistry.GetNamespaces() {
+		var services []config.ServiceInfo
+		for _, svc := range nsInfo.Namespace.Services {
+			services = append(services, config.ServiceInfo{
+				Namespace: svc.GetNamespace(),
+				Name:      svc.GetServiceDesc().ServiceName,
+			})
+		}
+		watchInfo = append(watchInfo, config.NamespaceInfo{
+			Name:     nsInfo.Name,
+			Enabled:  nsInfo.Namespace.IsEnabled(cfg.Mode),
+			Services: services,
+		})
+	}
+
+	if err := cfg.WatchWithNamespaces(ctx, watchInfo); err != nil {
 		return fmt.Errorf("failed to watch configuration: %w", err)
 	}
 	defer cfg.Close(ctx)

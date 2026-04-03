@@ -358,6 +358,17 @@ func Test_ListSubjectConditionSetsRequest_Succeeds(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "sort with one item",
+			req: &subjectmapping.ListSubjectConditionSetsRequest{
+				Sort: []*subjectmapping.SubjectConditionSetsSort{
+					{
+						Field:     subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT,
+						Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -395,6 +406,22 @@ func Test_ListSubjectConditionSetsRequest_Fails(t *testing.T) {
 				NamespaceFqn: validNamespaceFQN,
 			},
 			expectedError: errMessageOneof,
+		},
+		{
+			name: "sort exceeds max items",
+			req: &subjectmapping.ListSubjectConditionSetsRequest{
+				Sort: []*subjectmapping.SubjectConditionSetsSort{
+					{
+						Field:     subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT,
+						Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+					},
+					{
+						Field:     subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT,
+						Direction: policy.SortDirection_SORT_DIRECTION_DESC,
+					},
+				},
+			},
+			expectedError: "sort",
 		},
 	}
 

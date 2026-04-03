@@ -801,7 +801,7 @@ func (a *Authentication) getClientIDFromToken(ctx context.Context, tok jwt.Token
 	if err != nil {
 		return "", fmt.Errorf("failed to parse token as a map and find claim at [%s]: %w", clientIDClaim, err)
 	}
-	found := dotNotation(claimsMap, clientIDClaim)
+	found := DotNotation(claimsMap, clientIDClaim)
 	if found == nil {
 		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotFound, clientIDClaim)
 	}

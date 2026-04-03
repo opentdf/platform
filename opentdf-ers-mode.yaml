@@ -6,6 +6,12 @@ logger:
   type: text
   output: stderr
 services:
+  kas:
+    # Optional list of JWT claim names to log in audit and forward to auth decisions.
+    # Supports dot notation for nested claims (e.g., realm_access.roles).
+    # audited_entity_jwt_claims:
+    #   - sub
+    #   - realm_access.roles
   entityresolution:
     log_level: info
     url: http://localhost:8888/auth

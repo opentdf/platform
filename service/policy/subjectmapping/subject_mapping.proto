@@ -160,6 +160,17 @@ message GetSubjectConditionSetResponse {
   repeated policy.SubjectMapping associated_subject_mappings = 2;
 }
 
+enum SortSubjectConditionSetsType {
+  SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED = 0;
+  SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT = 1;
+  SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT = 2;
+}
+
+message SubjectConditionSetsSort {
+  SortSubjectConditionSetsType field = 1;
+  policy.SortDirection direction = 2;
+}
+
 message ListSubjectConditionSetsRequest {
   // Optional
   // Namespace ID or FQN
@@ -174,6 +185,8 @@ message ListSubjectConditionSetsRequest {
 
   // Optional
   policy.PageRequest pagination = 10;
+  // Optional - CONSTRAINT: max 1 item
+  repeated SubjectConditionSetsSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 message ListSubjectConditionSetsResponse {
   repeated policy.SubjectConditionSet subject_condition_sets = 1;

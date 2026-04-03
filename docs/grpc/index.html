@@ -1898,7 +1898,7 @@
                 </li>
               
                 <li>
-                  <a href="#policy.subjectmapping.SubjectMappingsSort"><span class="badge">M</span>SubjectMappingsSort</a>
+                  <a href="#policy.subjectmapping.SubjectConditionSetsSort"><span class="badge">M</span>SubjectConditionSetsSort</a>
                 </li>
               
                 <li>
@@ -1919,7 +1919,7 @@
               
               
                 <li>
-                  <a href="#policy.subjectmapping.SortSubjectMappingsType"><span class="badge">E</span>SortSubjectMappingsType</a>
+                  <a href="#policy.subjectmapping.SortSubjectConditionSetsType"><span class="badge">E</span>SortSubjectConditionSetsType</a>
                 </li>
               
               
@@ -16149,6 +16149,13 @@ Namespace ID or FQN for the subject mapping </p></td>
                   <td><p>Optional </p></td>
                 </tr>
               
+                <tr>
+                  <td>sort</td>
+                  <td><a href="#policy.subjectmapping.SubjectConditionSetsSort">SubjectConditionSetsSort</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional - CONSTRAINT: max 1 item </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -16343,7 +16350,7 @@ Common metadata </p></td>
 
         
       
-        <h3 id="policy.subjectmapping.SubjectMappingsSort">SubjectMappingsSort</h3>
+        <h3 id="policy.subjectmapping.SubjectConditionSetsSort">SubjectConditionSetsSort</h3>
         <p></p>
 
         
@@ -16355,7 +16362,7 @@ Common metadata </p></td>
               
                 <tr>
                   <td>field</td>
-                  <td><a href="#policy.subjectmapping.SortSubjectMappingsType">SortSubjectMappingsType</a></td>
+                  <td><a href="#policy.subjectmapping.SortSubjectConditionSetsType">SortSubjectConditionSetsType</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -16524,7 +16531,7 @@ Replaces entire list of actions permitted by subjects </p></td>
       
 
       
-        <h3 id="policy.subjectmapping.SortSubjectMappingsType">SortSubjectMappingsType</h3>
+        <h3 id="policy.subjectmapping.SortSubjectConditionSetsType">SortSubjectConditionSetsType</h3>
         <p></p>
         <table class="enum-table">
           <thead>
@@ -16533,19 +16540,19 @@ Replaces entire list of actions permitted by subjects </p></td>
           <tbody>
             
               <tr>
-                <td>SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED</td>
+                <td>SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED</td>
                 <td>0</td>
                 <td><p></p></td>
               </tr>
             
               <tr>
-                <td>SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT</td>
+                <td>SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT</td>
                 <td>1</td>
                 <td><p></p></td>
               </tr>
             
               <tr>
-                <td>SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT</td>
+                <td>SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT</td>
                 <td>2</td>
                 <td><p></p></td>
               </tr>

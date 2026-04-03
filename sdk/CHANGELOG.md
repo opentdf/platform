@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.16.0](https://github.com/opentdf/platform/compare/sdk/v0.15.0...sdk/v0.16.0) (2026-04-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **sdk:** reclassify KAS 400 errors — distinguish tamper from misconfiguration ([#3166](https://github.com/opentdf/platform/issues/3166))
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.20.0 to 0.21.0 in /sdk ([#3219](https://github.com/opentdf/platform/issues/3219)) ([c7fde71](https://github.com/opentdf/platform/commit/c7fde7115ab43b1dbab1930c385c31faf2d2b758))
+* **deps:** bump google.golang.org/grpc from 1.77.0 to 1.79.3 in /sdk ([#3174](https://github.com/opentdf/platform/issues/3174)) ([be8b154](https://github.com/opentdf/platform/commit/be8b15493d42eeaa3d8d8e9a0c4ec7065a0b36f7))
+* **sdk:** reclassify KAS 400 errors — distinguish tamper from misconfiguration ([#3166](https://github.com/opentdf/platform/issues/3166)) ([f04a385](https://github.com/opentdf/platform/commit/f04a3856f004f68df0bcf7e355867971c8df7fdc))
+
 ## [0.15.0](https://github.com/opentdf/platform/compare/sdk/v0.14.0...sdk/v0.15.0) (2026-03-23)
 
 

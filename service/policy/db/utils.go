@@ -31,6 +31,8 @@ func getSortDirection(direction policy.SortDirection) string {
 	switch direction {
 	case policy.SortDirection_SORT_DIRECTION_DESC:
 		return "DESC"
+	case policy.SortDirection_SORT_DIRECTION_UNSPECIFIED, policy.SortDirection_SORT_DIRECTION_ASC:
+		return "ASC"
 	default:
 		return "ASC"
 	}

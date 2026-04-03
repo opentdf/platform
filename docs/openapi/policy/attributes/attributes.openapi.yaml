@@ -750,6 +750,13 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+    policy.SortDirection:
+      type: string
+      title: SortDirection
+      enum:
+        - SORT_DIRECTION_UNSPECIFIED
+        - SORT_DIRECTION_ASC
+        - SORT_DIRECTION_DESC
     policy.SourceType:
       type: string
       title: SourceType
@@ -769,6 +776,14 @@ components:
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
+    policy.attributes.SortAttributesType:
+      type: string
+      title: SortAttributesType
+      enum:
+        - SORT_ATTRIBUTES_TYPE_UNSPECIFIED
+        - SORT_ATTRIBUTES_TYPE_NAME
+        - SORT_ATTRIBUTES_TYPE_CREATED_AT
+        - SORT_ATTRIBUTES_TYPE_UPDATED_AT
     common.Metadata:
       type: object
       properties:
@@ -1688,6 +1703,17 @@ components:
       title: AttributeKeyAccessServer
       additionalProperties: false
       description: Deprecated
+    policy.attributes.AttributesSort:
+      type: object
+      properties:
+        field:
+          title: field
+          $ref: '#/components/schemas/policy.attributes.SortAttributesType'
+        direction:
+          title: direction
+          $ref: '#/components/schemas/policy.SortDirection'
+      title: AttributesSort
+      additionalProperties: false
     policy.attributes.CreateAttributeRequest:
       type: object
       properties:
@@ -2028,6 +2054,13 @@ components:
           title: pagination
           description: Optional
           $ref: '#/components/schemas/policy.PageRequest'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.attributes.AttributesSort'
+          title: sort
+          maxItems: 1
+          description: 'Optional - CONSTRAINT: max 1 item'
       title: ListAttributesRequest
       additionalProperties: false
     policy.attributes.ListAttributesResponse:

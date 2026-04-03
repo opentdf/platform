@@ -74,6 +74,42 @@ func GetNamespacesSortParams(sort []*namespaces.NamespacesSort) (string, string)
 	return field, getSortDirection(s.GetDirection())
 }
 
+func getSortDirection(direction policy.SortDirection) string {
+	switch direction {
+	case policy.SortDirection_SORT_DIRECTION_DESC:
+		return "DESC"
+	case policy.SortDirection_SORT_DIRECTION_UNSPECIFIED, policy.SortDirection_SORT_DIRECTION_ASC:
+		return "ASC"
+	default:
+		return "ASC"
+	}
+}
+
+// GetSubjectConditionSetsSortParams maps the strongly-typed SubjectConditionSetsSort enum to
+// SQL-compatible field name and direction strings.
+// Returns empty strings when sort is nil or empty (backward compatible —
+// callers fall back to default ORDER BY created_at DESC).
+func GetSubjectConditionSetsSortParams(sort []*subjectmapping.SubjectConditionSetsSort) (string, string) {
+	if len(sort) == 0 || sort[0] == nil {
+		return "", ""
+	}
+	s := sort[0]
+
+	var field string
+	switch s.GetField() {
+	case subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT:
+		field = "created_at"
+	case subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT:
+		field = "updated_at"
+	case subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED:
+		return "", ""
+	default:
+		return "", ""
+	}
+
+	return field, getSortDirection(s.GetDirection())
+}
+
 // Returns next page's offset if has not yet reached total, or else returns 0
 func getNextOffset(currentOffset, limit, total int32) int32 {
 	next := currentOffset + limit

@@ -130,6 +130,7 @@ jobs:
         with:
           go-version-file: ${{ matrix.directory }}/go.mod
           check-latest: false
+          cache: false
       - run: go mod download
         working-directory: ${{ matrix.directory }}
       - run: go mod verify

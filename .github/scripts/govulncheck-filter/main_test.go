@@ -221,6 +221,11 @@ func TestFindCalledVulns(t *testing.T) {
 	})
 }
 
+func makeEntry(id, reason, expires string) AllowlistEntry { //nolint:unparam // test helper
+	t, _ := time.Parse(time.DateOnly, expires)
+	return AllowlistEntry{ID: id, Reason: reason, Expires: expires, expires: t}
+}
+
 func TestCheckFindings(t *testing.T) {
 	t.Parallel()
 
@@ -245,7 +250,7 @@ func TestCheckFindings(t *testing.T) {
 		excluded, failed := checkFindings(
 			[]string{"GO-2024-0001"},
 			map[string]AllowlistEntry{
-				"GO-2024-0001": {ID: "GO-2024-0001", Reason: "no fix", Expires: futureDate},
+				"GO-2024-0001": makeEntry("GO-2024-0001", "no fix", futureDate),
 			},
 			now,
 		)
@@ -259,7 +264,7 @@ func TestCheckFindings(t *testing.T) {
 		excluded, failed := checkFindings(
 			[]string{"GO-2024-0001"},
 			map[string]AllowlistEntry{
-				"GO-2024-0001": {ID: "GO-2024-0001", Reason: "was no fix", Expires: pastDate},
+				"GO-2024-0001": makeEntry("GO-2024-0001", "was no fix", pastDate),
 			},
 			now,
 		)
@@ -272,7 +277,7 @@ func TestCheckFindings(t *testing.T) {
 		excluded, failed := checkFindings(
 			[]string{"GO-2024-0001"},
 			map[string]AllowlistEntry{
-				"GO-2024-0001": {ID: "GO-2024-0001", Reason: "expires today", Expires: "2026-04-01"},
+				"GO-2024-0001": makeEntry("GO-2024-0001", "expires today", "2026-04-01"),
 			},
 			now,
 		)
@@ -285,7 +290,7 @@ func TestCheckFindings(t *testing.T) {
 		excluded, failed := checkFindings(
 			[]string{"GO-2024-0001", "GO-2024-0002"},
 			map[string]AllowlistEntry{
-				"GO-2024-0001": {ID: "GO-2024-0001", Reason: "no fix", Expires: futureDate},
+				"GO-2024-0001": makeEntry("GO-2024-0001", "no fix", futureDate),
 			},
 			now,
 		)

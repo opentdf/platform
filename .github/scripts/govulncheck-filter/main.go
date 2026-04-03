@@ -15,16 +15,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// govulncheck JSON message types (stream of pretty-printed JSON objects).
-
-type Message struct {
-	// Use raw messages so we can re-serialize unknown fields faithfully.
-	Config   *json.RawMessage `json:"config,omitempty"`
-	Progress *json.RawMessage `json:"progress,omitempty"`
-	OSV      *json.RawMessage `json:"osv,omitempty"`
-	Finding  *json.RawMessage `json:"finding,omitempty"`
-	SBOM     *json.RawMessage `json:"SBOM,omitempty"`
-}
+// Message is a govulncheck JSON message. Using a map preserves all fields
+// (including any added in future govulncheck versions) during re-serialization.
+type Message = map[string]json.RawMessage
 
 type OSVEntry struct {
 	ID string `json:"id"`
@@ -43,9 +36,10 @@ type Frame struct {
 // Allowlist entry from .govulncheck-ignore.yaml.
 
 type AllowlistEntry struct {
-	ID      string `yaml:"id"`
-	Reason  string `yaml:"reason"`
-	Expires string `yaml:"expires"` // YYYY-MM-DD
+	ID      string    `yaml:"id"`
+	Reason  string    `yaml:"reason"`
+	Expires string    `yaml:"expires"` // YYYY-MM-DD
+	expires time.Time // parsed from Expires during loading
 }
 
 func main() {
@@ -101,9 +95,11 @@ func loadAllowlist(path string) (map[string]AllowlistEntry, error) {
 		if e.Expires == "" {
 			return nil, fmt.Errorf("allowlist entry %s missing 'expires' field", e.ID)
 		}
-		if _, err := time.Parse(time.DateOnly, e.Expires); err != nil {
+		parsed, err := time.Parse(time.DateOnly, e.Expires)
+		if err != nil {
 			return nil, fmt.Errorf("allowlist entry %s: invalid expires date %q (expected YYYY-MM-DD)", e.ID, e.Expires)
 		}
+		e.expires = parsed
 		m[e.ID] = e
 	}
 	return m, nil
@@ -126,14 +122,16 @@ func findCalledVulns(path string) ([]string, error) {
 			return nil, fmt.Errorf("decoding JSON object: %w", err)
 		}
 
-		if msg.Finding != nil {
-			var finding Finding
-			if err := json.Unmarshal(*msg.Finding, &finding); err != nil {
-				return nil, fmt.Errorf("decoding finding: %w", err)
-			}
-			if isCalled(&finding) {
-				calledSet[finding.OSV] = true
-			}
+		raw, ok := msg["finding"]
+		if !ok {
+			continue
+		}
+		var finding Finding
+		if err := json.Unmarshal(raw, &finding); err != nil {
+			return nil, fmt.Errorf("decoding finding: %w", err)
+		}
+		if isCalled(&finding) {
+			calledSet[finding.OSV] = true
 		}
 	}
 
@@ -164,8 +162,7 @@ func checkFindings(calledIDs []string, allowlist map[string]AllowlistEntry, now 
 			continue
 		}
 
-		expiresDate, _ := time.Parse(time.DateOnly, entry.Expires) // already validated
-		if nowDate.After(expiresDate) {
+		if nowDate.After(entry.expires) {
 			failed = append(failed, id)
 			continue
 		}
@@ -231,26 +228,25 @@ func printFilteredText(jsonPath string, failedIDs []string) error {
 	for dec.More() {
 		var msg Message
 		if err := dec.Decode(&msg); err != nil {
-			break
+			return fmt.Errorf("decoding JSON object: %w", err)
 		}
 
-		// Always pass through config, progress, and SBOM messages.
-		// For OSV and finding messages, only include those for failed vulns.
-		if msg.OSV != nil {
+		// Pass through all message types except OSV/finding for excluded vulns.
+		if raw, ok := msg["osv"]; ok {
 			var osv OSVEntry
-			if err := json.Unmarshal(*msg.OSV, &osv); err == nil && !failedSet[osv.ID] {
+			if err := json.Unmarshal(raw, &osv); err == nil && !failedSet[osv.ID] {
 				continue
 			}
 		}
-		if msg.Finding != nil {
+		if raw, ok := msg["finding"]; ok {
 			var finding Finding
-			if err := json.Unmarshal(*msg.Finding, &finding); err == nil && !failedSet[finding.OSV] {
+			if err := json.Unmarshal(raw, &finding); err == nil && !failedSet[finding.OSV] {
 				continue
 			}
 		}
 
 		if err := enc.Encode(msg); err != nil {
-			break
+			return fmt.Errorf("encoding filtered message: %w", err)
 		}
 	}
 

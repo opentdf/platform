@@ -74,7 +74,7 @@ func main() {
 		os.Exit(2) //nolint:mnd // exit code 2 = input error
 	}
 
-	results := checkFindings(calledIDs, osvMap, allowlist, time.Now())
+	results := checkFindings(calledIDs, osvMap, allowlist, time.Now().UTC())
 	exitCode := printReport(results)
 	os.Exit(exitCode)
 }
@@ -159,6 +159,7 @@ func isCalled(f *Finding) bool {
 }
 
 func checkFindings(calledIDs []string, osvMap map[string]string, allowlist map[string]AllowlistEntry, now time.Time) []result {
+	nowDate := now.UTC().Truncate(24 * time.Hour) //nolint:mnd // truncate to date
 	var results []result
 
 	for _, id := range calledIDs {
@@ -176,7 +177,7 @@ func checkFindings(calledIDs []string, osvMap map[string]string, allowlist map[s
 		}
 
 		expiresDate, _ := time.Parse(time.DateOnly, entry.Expires) // already validated
-		if now.After(expiresDate) {
+		if nowDate.After(expiresDate) {
 			results = append(results, result{
 				id:      id,
 				summary: summary,

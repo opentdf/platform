@@ -135,11 +135,13 @@ jobs:
         working-directory: ${{ matrix.directory }}
       - run: go mod verify
         working-directory: ${{ matrix.directory }}
-      - name: install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
       - name: govulncheck
-        run: govulncheck -format json ./... > "$GITHUB_WORKSPACE/govulncheck-output.json"
-        working-directory: ${{ matrix.directory }}
+        uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
+        with:
+          go-version-input: "1.25.7"
+          work-dir: ${{ matrix.directory }}
+          output-format: json
+          output-file: govulncheck-output.json
       - name: check govulncheck results
         working-directory: .github/scripts/govulncheck-filter
         run: go run . -output "$GITHUB_WORKSPACE/govulncheck-output.json" -allowlist "$GITHUB_WORKSPACE/.govulncheck-ignore.yaml"

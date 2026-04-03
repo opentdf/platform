@@ -273,6 +273,21 @@ func TestCheckFindings(t *testing.T) {
 		assert.Equal(t, "expired", results[0].status)
 	})
 
+	t.Run("vuln checked on its expiry date is still excluded", func(t *testing.T) {
+		t.Parallel()
+		// now is 2026-04-01, expires is also 2026-04-01 — should still be valid.
+		results := checkFindings(
+			[]string{"GO-2024-0001"},
+			map[string]string{"GO-2024-0001": "Bad thing"},
+			map[string]AllowlistEntry{
+				"GO-2024-0001": {ID: "GO-2024-0001", Reason: "expires today", Expires: "2026-04-01"},
+			},
+			now,
+		)
+		require.Len(t, results, 1)
+		assert.Equal(t, "excluded", results[0].status)
+	})
+
 	t.Run("mixed: one excluded, one failed", func(t *testing.T) {
 		t.Parallel()
 		results := checkFindings(

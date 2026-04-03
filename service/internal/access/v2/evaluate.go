@@ -367,25 +367,37 @@ func hierarchyRule(
 		}
 	}
 
-	// Check if the entitlements contain any values with index <= lowestValueFQNIndex
-	// This checks the requested value and any hierarchically higher values in a single pass - O(e) where e is entitlements count
-	for entitlementFQN, entitledActions := range entitlements {
-		// Check if this entitlement FQN has a valid index in the hierarchy
-		if idx, exists := valueFQNToIndex[entitlementFQN]; exists && idx <= lowestValueFQNIndex {
-			// Check if the required action is entitled
+	// If we didn't find any matching value indices, fail with all as missing
+	if lowestValueFQNIndex == len(attrValues) {
+		failures := make([]EntitlementFailure, 0, len(resourceValueFQNs))
+		for _, fqn := range resourceValueFQNs {
+			failures = append(failures, EntitlementFailure{
+				AttributeValueFQN: fqn,
+				ActionName:        actionName,
+			})
+		}
+		return failures
+	}
+
+	// Check entitlement at or above the hierarchy level:
+	// Scan only the FQNs in the definition up to the highest requested index (O(h))
+	// This is more efficient than scanning all entitlements (O(e)) when e >> h
+	for i := 0; i <= lowestValueFQNIndex; i++ {
+		candidateFQN := attrValues[i].GetFqn()
+		if entitledActions, ok := entitlements[candidateFQN]; ok {
 			for _, entitledAction := range entitledActions {
 				if strings.EqualFold(entitledAction.GetName(), actionName) {
 					l.DebugContext(ctx, "hierarchy rule satisfied",
 						slog.Group("entitled_by_value",
-							slog.String("FQN", entitlementFQN),
-							slog.Int("index", idx),
+							slog.String("FQN", candidateFQN),
+							slog.Int("index", i),
 						),
 						slog.Group("resource_highest_hierarchy_value",
 							slog.String("FQN", attrValues[lowestValueFQNIndex].GetFqn()),
 							slog.Int("index", lowestValueFQNIndex),
 						),
 					)
-					return nil // Found an entitled action at or above the hierarchy level, no failures
+					return nil
 				}
 			}
 		}

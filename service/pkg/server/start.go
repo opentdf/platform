@@ -315,7 +315,7 @@ func Start(f ...StartOptions) error {
 		})
 	}
 
-	if err := cfg.Watch(ctx, watchInfo); err != nil {
+	if err := cfg.WatchWithNamespaces(ctx, watchInfo); err != nil {
 		return fmt.Errorf("failed to watch configuration: %w", err)
 	}
 	defer cfg.Close(ctx)

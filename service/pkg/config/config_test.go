@@ -115,7 +115,7 @@ func TestConfig_Watch(t *testing.T) {
 
 	t.Run("No loaders", func(t *testing.T) {
 		config := &Config{}
-		err := config.Watch(ctx, []NamespaceInfo{})
+		err := config.Watch(ctx)
 		require.NoError(t, err)
 	})
 
@@ -128,7 +128,7 @@ func TestConfig_Watch(t *testing.T) {
 		}
 		config.AddLoader(loader)
 
-		err := config.Watch(ctx, []NamespaceInfo{})
+		err := config.Watch(ctx)
 
 		require.NoError(t, err)
 		assert.True(t, loader.watchCalled)
@@ -144,7 +144,7 @@ func TestConfig_Watch(t *testing.T) {
 		}
 		config.AddLoader(loader)
 
-		err := config.Watch(ctx, []NamespaceInfo{})
+		err := config.Watch(ctx)
 
 		assert.Equal(t, expectedErr, err)
 		assert.True(t, loader.watchCalled)
@@ -171,7 +171,7 @@ func TestConfig_Watch(t *testing.T) {
 		}
 		config.AddLoader(loader)
 
-		err := config.Watch(ctx, testNamespaces)
+		err := config.WatchWithNamespaces(ctx, testNamespaces)
 
 		require.NoError(t, err)
 		assert.Equal(t, testNamespaces, receivedNamespaces)

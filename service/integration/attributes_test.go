@@ -508,52 +508,6 @@ func (s *AttributesSuite) Test_ListAttributes_OrdersByCreatedAt_Succeeds() {
 	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, thirdID, secondID, firstID)
 }
 
-// createSortTestNamespace creates an isolated namespace for sort testing.
-func (s *AttributesSuite) createSortTestNamespace(label string) string {
-	nsName := fmt.Sprintf("%s-%d.com", label, time.Now().UnixNano())
-	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: nsName})
-	s.Require().NoError(err)
-	return ns.GetId()
-}
-
-// createSortTestAttributes creates count attributes in the given namespace with 5ms gaps for distinct timestamps.
-// Returns the attribute IDs in creation order.
-func (s *AttributesSuite) createSortTestAttributes(nsID string, label string, count int) []string {
-	ids := make([]string, count)
-	for i := range count {
-		if i > 0 {
-			time.Sleep(5 * time.Millisecond)
-		}
-		name := fmt.Sprintf("%s-%d-%d", label, i, time.Now().UnixNano())
-		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-			Name:        name,
-			NamespaceId: nsID,
-			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-		})
-		s.Require().NoError(err)
-		ids[i] = created.GetId()
-	}
-	return ids
-}
-
-// createNamedSortTestAttributes creates attributes with specific name prefixes for name-sort testing.
-// Returns the attribute IDs in the same order as the prefixes.
-func (s *AttributesSuite) createNamedSortTestAttributes(nsID string, prefixes []string) []string {
-	suffix := time.Now().UnixNano()
-	ids := make([]string, len(prefixes))
-	for i, prefix := range prefixes {
-		name := fmt.Sprintf("%s-%d", prefix, suffix)
-		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-			Name:        name,
-			NamespaceId: nsID,
-			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-		})
-		s.Require().NoError(err)
-		ids[i] = created.GetId()
-	}
-	return ids
-}
-
 func (s *AttributesSuite) Test_ListAttributes_SortByName_ASC() {
 	nsID := s.createSortTestNamespace("sort-name-asc")
 	ids := s.createNamedSortTestAttributes(nsID, []string{"aaa-sort", "bbb-sort", "ccc-sort"})
@@ -1792,6 +1746,52 @@ func (s *AttributesSuite) Test_GetAttribute_ByIdAndFqn_ReturnSameResult() {
 		// Verify both return the same attribute
 		s.True(proto.Equal(attrByID, attrByFQN))
 	}
+}
+
+// createSortTestNamespace creates an isolated namespace for sort testing.
+func (s *AttributesSuite) createSortTestNamespace(label string) string {
+	nsName := fmt.Sprintf("%s-%d.com", label, time.Now().UnixNano())
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: nsName})
+	s.Require().NoError(err)
+	return ns.GetId()
+}
+
+// createSortTestAttributes creates count attributes in the given namespace with 5ms gaps for distinct timestamps.
+// Returns the attribute IDs in creation order.
+func (s *AttributesSuite) createSortTestAttributes(nsID string, label string, count int) []string {
+	ids := make([]string, count)
+	for i := range count {
+		if i > 0 {
+			time.Sleep(5 * time.Millisecond)
+		}
+		name := fmt.Sprintf("%s-%d-%d", label, i, time.Now().UnixNano())
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        name,
+			NamespaceId: nsID,
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	return ids
+}
+
+// createNamedSortTestAttributes creates attributes with specific name prefixes for name-sort testing.
+// Returns the attribute IDs in the same order as the prefixes.
+func (s *AttributesSuite) createNamedSortTestAttributes(nsID string, prefixes []string) []string {
+	suffix := time.Now().UnixNano()
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
+		name := fmt.Sprintf("%s-%d", prefix, suffix)
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        name,
+			NamespaceId: nsID,
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	return ids
 }
 
 func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureDataAttribute {

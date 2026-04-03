@@ -118,6 +118,46 @@ func TestLoadAllowlist(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid expires date")
 	})
+
+	t.Run("duplicate id keeps sooner expiry", func(t *testing.T) {
+		t.Parallel()
+		content := `
+- id: GO-2024-0001
+  reason: "later entry"
+  expires: 2099-12-31
+- id: GO-2024-0001
+  reason: "sooner entry"
+  expires: 2026-06-01
+`
+		path := filepath.Join(t.TempDir(), "allowlist.yaml")
+		require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+
+		m, err := loadAllowlist(path)
+		require.NoError(t, err)
+		require.Len(t, m, 1)
+		assert.Equal(t, "2026-06-01", m["GO-2024-0001"].Expires)
+		assert.Equal(t, "sooner entry", m["GO-2024-0001"].Reason)
+	})
+
+	t.Run("duplicate id sooner entry first", func(t *testing.T) {
+		t.Parallel()
+		content := `
+- id: GO-2024-0001
+  reason: "sooner entry"
+  expires: 2026-06-01
+- id: GO-2024-0001
+  reason: "later entry"
+  expires: 2099-12-31
+`
+		path := filepath.Join(t.TempDir(), "allowlist.yaml")
+		require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+
+		m, err := loadAllowlist(path)
+		require.NoError(t, err)
+		require.Len(t, m, 1)
+		assert.Equal(t, "2026-06-01", m["GO-2024-0001"].Expires)
+		assert.Equal(t, "sooner entry", m["GO-2024-0001"].Reason)
+	})
 }
 
 func TestFindCalledVulns(t *testing.T) {

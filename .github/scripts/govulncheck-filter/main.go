@@ -100,6 +100,9 @@ func loadAllowlist(path string) (map[string]AllowlistEntry, error) {
 			return nil, fmt.Errorf("allowlist entry %s: invalid expires date %q (expected YYYY-MM-DD)", e.ID, e.Expires)
 		}
 		e.expires = parsed
+		if existing, ok := m[e.ID]; ok && existing.expires.Before(e.expires) {
+			continue // keep the entry with the sooner expiry
+		}
 		m[e.ID] = e
 	}
 	return m, nil
@@ -258,8 +261,12 @@ func printFilteredText(jsonPath string, failedIDs []string) error {
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("starting govulncheck convert: %w", err)
 	}
-	// govulncheck -mode convert returns a non-zero exit code when vulns are
-	// present, which is expected here.
-	_ = cmd.Wait()
+	if err := cmd.Wait(); err != nil {
+		// govulncheck exits with a typed error (ExitCode) when vulns are present,
+		// which is expected. Propagate only unexpected errors.
+		if _, ok := err.(interface{ ExitCode() int }); !ok {
+			return fmt.Errorf("govulncheck convert failed: %w", err)
+		}
+	}
 	return nil
 }

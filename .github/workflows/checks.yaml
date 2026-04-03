@@ -77,12 +77,12 @@ jobs:
           go-version-input: "1.25.7"
           work-dir: ${{ matrix.directory }}
       - if: steps.govulncheck.outcome == 'failure'
-        run: echo "${{ matrix.directory }}" > /tmp/govulncheck-failure.txt
+        run: echo "${{ matrix.directory }}" > "/tmp/govulncheck-failure-${{ strategy.job-index }}.txt"
       - if: steps.govulncheck.outcome == 'failure'
         uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4.3.4
         with:
           name: govulncheck-failure-${{ strategy.job-index }}
-          path: /tmp/govulncheck-failure.txt
+          path: /tmp/govulncheck-failure-${{ strategy.job-index }}.txt
           retention-days: 1
       - name: golangci-lint
         uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 # v8.0.0
@@ -140,9 +140,15 @@ jobs:
 
             // Read failing module names from downloaded artifacts
             let failures = [];
-            if ('${{ steps.download.outcome }}' === 'success') {
+            const downloadOutcome = '${{ steps.download.outcome }}';
+            console.log(`Artifact download outcome: ${downloadOutcome}`);
+            if (downloadOutcome === 'success') {
               const files = fs.readdirSync('govulncheck-failures').filter(f => f.endsWith('.txt'));
+              console.log(`Found ${files.length} failure artifact(s): ${files.join(', ')}`);
               failures = files.map(f => fs.readFileSync(`govulncheck-failures/${f}`, 'utf8').trim()).sort();
+              console.log(`Failing modules: ${failures.join(', ')}`);
+            } else {
+              console.log('No govulncheck failure artifacts found — all modules clean');
             }
 
             // Find existing comment by marker
@@ -152,18 +158,20 @@ jobs:
               issue_number: context.issue.number,
             });
             const existing = comments.find(c => c.body.includes(marker));
+            console.log(`Existing govulncheck comment: ${existing ? `#${existing.id}` : 'none'}`);
 
             if (failures.length > 0) {
               const modules = failures.map(m => `- \`${m}\``).join('\n');
               const body = [
                 marker,
-                '## Govulncheck found vulnerabilities\n',
+                '## :warning: Govulncheck found vulnerabilities :warning:\n',
                 'The following modules have known vulnerabilities:\n',
                 modules,
                 `\nSee the [workflow run](${runUrl}) for details.`,
               ].join('\n');
 
               if (existing) {
+                console.log(`Updating existing comment #${existing.id}`);
                 await github.rest.issues.updateComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -171,6 +179,7 @@ jobs:
                   body,
                 });
               } else {
+                console.log('Creating new govulncheck comment');
                 await github.rest.issues.createComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -179,11 +188,14 @@ jobs:
                 });
               }
             } else if (existing) {
+              console.log(`Deleting stale govulncheck comment #${existing.id}`);
               await github.rest.issues.deleteComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: existing.id,
               });
+            } else {
+              console.log('No vulnerabilities and no existing comment — nothing to do');
             }
 
   integration:

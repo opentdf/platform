@@ -141,8 +141,7 @@ jobs:
           SERVER_URL: ${{ github.server_url }}
           REPO: ${{ github.repository }}
         run: |
-          files=$(ls govulncheck-failures/*.txt 2>/dev/null | sort)
-          modules=$(for f in $files; do echo "- \`$(cat "$f")\`"; done)
+          modules=$(find govulncheck-failures -name '*.txt' | sort | while IFS= read -r f; do echo "- \`$(cat "$f")\`"; done)
           run_url="${SERVER_URL}/${REPO}/actions/runs/${RUN_ID}"
           body="## :warning: Govulncheck found vulnerabilities :warning:
 
@@ -151,9 +150,11 @@ jobs:
           ${modules}
 
           See the [workflow run](${run_url}) for details."
-          echo "body<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$body" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          {
+            echo "body<<EOF"
+            echo "$body"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
       - name: post govulncheck comment
         if: steps.download.outcome == 'success'
         uses: marocchino/sticky-pull-request-comment@70d2764d1a7d5d9560b100cbea0077fc8f633987 # v3.0.2

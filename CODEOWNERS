@@ -43,5 +43,6 @@
 
 ## High Security Area
 
-CODEOWNERS     @opentdf/architecture @opentdf/security
-LICENSE        @opentdf/architecture
+CODEOWNERS                  @opentdf/architecture @opentdf/security
+LICENSE                     @opentdf/architecture
+.govulncheck-ignore.yaml    @opentdf/security

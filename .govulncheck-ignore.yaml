@@ -1,0 +1,8 @@
+# Govulncheck allowlist. Each entry requires id, reason, and expires.
+# Expired entries are ignored if the vulnerability is no longer detected.
+- id: GO-2026-4883
+  reason: "no upstream fix available for docker/docker, used only in test infrastructure"
+  expires: 2026-04-15
+- id: GO-2026-4887
+  reason: "no upstream fix available for docker/docker, used only in test infrastructure"
+  expires: 2026-04-15

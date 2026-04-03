@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"time"
@@ -42,6 +43,8 @@ type AllowlistEntry struct {
 	expires time.Time // parsed from Expires during loading
 }
 
+const exitCodeInputError = 2
+
 func main() {
 	outputFile := flag.String("output", "", "path to govulncheck JSON output file (required)")
 	allowlistFile := flag.String("allowlist", ".govulncheck-ignore.yaml", "path to allowlist YAML file")
@@ -50,23 +53,23 @@ func main() {
 	if *outputFile == "" {
 		fmt.Fprintln(os.Stderr, "error: -output flag is required")
 		flag.Usage()
-		os.Exit(2) //nolint:mnd // exit code 2 = usage error
+		os.Exit(exitCodeInputError)
 	}
 
 	allowlist, err := loadAllowlist(*allowlistFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error loading allowlist: %v\n", err)
-		os.Exit(2) //nolint:mnd // exit code 2 = input error
+		os.Exit(exitCodeInputError)
 	}
 
 	calledIDs, err := findCalledVulns(*outputFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error parsing govulncheck output: %v\n", err)
-		os.Exit(2) //nolint:mnd // exit code 2 = input error
+		os.Exit(exitCodeInputError)
 	}
 
 	excluded, failed := checkFindings(calledIDs, allowlist, time.Now().UTC())
-	exitCode := printReport(*outputFile, excluded, failed)
+	exitCode := printReport(os.Stdout, *outputFile, excluded, failed)
 	os.Exit(exitCode)
 }
 
@@ -175,44 +178,43 @@ func checkFindings(calledIDs []string, allowlist map[string]AllowlistEntry, now 
 	return excluded, failed
 }
 
-//nolint:forbidigo // CLI tool — stdout is the primary interface
-func printReport(jsonPath string, excluded, failed []string) int {
+func printReport(w io.Writer, jsonPath string, excluded, failed []string) int {
 	if len(excluded) > 0 {
-		fmt.Println("EXCLUDED (allowlisted, not expired):")
+		fmt.Fprintln(w, "EXCLUDED (allowlisted, not expired):")
 		for _, id := range excluded {
-			fmt.Printf("  %s\n", id)
+			fmt.Fprintf(w, "  %s\n", id)
 		}
-		fmt.Println()
+		fmt.Fprintln(w)
 	}
 
 	if len(failed) > 0 {
-		fmt.Printf("FAILED (%d unresolved vulnerabilities):\n\n", len(failed))
+		fmt.Fprintf(w, "FAILED (%d unresolved vulnerabilities):\n\n", len(failed))
 
 		// Write filtered JSON containing only non-excluded findings,
 		// then pipe through govulncheck -mode convert for native text output.
-		if err := printFilteredText(jsonPath, failed); err != nil {
+		if err := printFilteredText(w, jsonPath, failed); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: could not render text output: %v\n", err)
 			// Fallback: just list the IDs.
 			for _, id := range failed {
-				fmt.Printf("  %s: https://pkg.go.dev/vuln/%s\n", id, id)
+				fmt.Fprintf(w, "  %s: https://pkg.go.dev/vuln/%s\n", id, id)
 			}
 		}
 
-		fmt.Println() //nolint:forbidigo // CLI tool
-		fmt.Printf("Result: FAIL (%d unresolved vulnerabilities)\n", len(failed))
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, "Result: FAIL (%d unresolved vulnerabilities)\n", len(failed))
 		return 1
 	}
 
 	if len(excluded) == 0 {
-		fmt.Println("No vulnerabilities detected.") //nolint:forbidigo // CLI tool
+		fmt.Fprintln(w, "No vulnerabilities detected.")
 	}
-	fmt.Println("Result: PASS") //nolint:forbidigo // CLI tool
+	fmt.Fprintln(w, "Result: PASS")
 	return 0
 }
 
 // printFilteredText builds a filtered JSON stream (only findings for failedIDs)
 // and converts it to native govulncheck text output via the scan library.
-func printFilteredText(jsonPath string, failedIDs []string) error {
+func printFilteredText(w io.Writer, jsonPath string, failedIDs []string) error {
 	failedSet := make(map[string]bool, len(failedIDs))
 	for _, id := range failedIDs {
 		failedSet[id] = true
@@ -256,7 +258,7 @@ func printFilteredText(jsonPath string, failedIDs []string) error {
 	// Convert filtered JSON to text using govulncheck's scan library.
 	cmd := scan.Command(context.Background(), "-mode", "convert")
 	cmd.Stdin = &buf
-	cmd.Stdout = os.Stdout
+	cmd.Stdout = w
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("starting govulncheck convert: %w", err)

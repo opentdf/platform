@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.10.0...lib/ocrypto/v0.11.0) (2026-04-03)
+
+
+### Bug Fixes
+
+* **ci:** Upgrade toolchain version to 1.25.8 ([#3116](https://github.com/opentdf/platform/issues/3116)) ([e1b7882](https://github.com/opentdf/platform/commit/e1b78822c0380a106e6eec05af78dc1fc9e5701f))
+
 ## [0.10.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.9.0...lib/ocrypto/v0.10.0) (2026-02-13)
 
 

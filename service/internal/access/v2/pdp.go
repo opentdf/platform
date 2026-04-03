@@ -61,6 +61,7 @@ type PolicyDecisionPoint struct {
 	allRegisteredResourceValuesByFQN   map[string]*policy.RegisteredResourceValue
 	allAttributesByDefinitionFQN       map[string]*policy.Attribute
 	allowDirectEntitlements            bool
+	namespacedPolicy                   bool
 }
 
 var (
@@ -82,6 +83,7 @@ func NewPolicyDecisionPoint(
 	allSubjectMappings []*policy.SubjectMapping,
 	allRegisteredResources []*policy.RegisteredResource,
 	allowDirectEntitlements bool,
+	namespacedPolicy bool,
 ) (*PolicyDecisionPoint, error) {
 	var err error
 
@@ -124,6 +126,20 @@ func NewPolicyDecisionPoint(
 			)
 			continue
 		}
+
+		if namespacedPolicy {
+			ns := sm.GetNamespace()
+			if ns == nil || (ns.GetId() == "" && ns.GetFqn() == "") {
+				l.TraceContext(ctx,
+					"unnamespaced subject mapping in strict namespaced-policy mode - skipping",
+					slog.String("reason", "subject_mapping_namespace_missing"),
+					slog.String("subject_mapping_id", sm.GetId()),
+					slog.String("mapped_value_fqn", sm.GetAttributeValue().GetFqn()),
+				)
+				continue
+			}
+		}
+
 		mappedValue := sm.GetAttributeValue()
 		mappedValueFQN := mappedValue.GetFqn()
 		if _, ok := allEntitleableAttributesByValueFQN[mappedValueFQN]; ok {
@@ -155,11 +171,20 @@ func NewPolicyDecisionPoint(
 				return nil, fmt.Errorf("invalid registered resource value: %w", err)
 			}
 
+			namespaceName := namespaceNameFromPolicyNamespace(rr.GetNamespace())
+
 			fullyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
+				Namespace: namespaceName,
+				Name:      rrName,
+				Value:     v.GetValue(),
+			}
+			allRegisteredResourceValuesByFQN[fullyQualifiedValue.FQN()] = v
+
+			legacyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
 				Name:  rrName,
 				Value: v.GetValue(),
 			}
-			allRegisteredResourceValuesByFQN[fullyQualifiedValue.FQN()] = v
+			allRegisteredResourceValuesByFQN[legacyQualifiedValue.FQN()] = v
 		}
 	}
 
@@ -169,8 +194,30 @@ func NewPolicyDecisionPoint(
 		allRegisteredResourceValuesByFQN,
 		allAttributesByDefinitionFQN,
 		allowDirectEntitlements,
+		namespacedPolicy,
 	}
 	return pdp, nil
+}
+
+func namespaceNameFromPolicyNamespace(ns *policy.Namespace) string {
+	if ns == nil {
+		return ""
+	}
+
+	if ns.GetName() != "" {
+		return ns.GetName()
+	}
+
+	if ns.GetFqn() == "" {
+		return ""
+	}
+
+	parsed, err := identifier.Parse[*identifier.FullyQualifiedAttribute](ns.GetFqn())
+	if err != nil {
+		return ""
+	}
+
+	return parsed.Namespace
 }
 
 // GetDecision evaluates the action on the resources for the entity and returns a decision along with entitlements.
@@ -214,10 +261,26 @@ func (p *PolicyDecisionPoint) GetDecision(
 		for _, directEntitlement := range entityRepresentation.GetDirectEntitlements() {
 			fqn := directEntitlement.GetAttributeValueFqn()
 			actionNames := directEntitlement.GetActions()
+			// In strict namespaced-policy mode, direct-entitlement actions must carry
+			// the same namespace context as the entitled attribute value so they can
+			// satisfy namespace-aware action matching during rule evaluation.
+			var actionNamespace *policy.Namespace
+			if attrAndValue, ok := decisionableAttributes[fqn]; ok {
+				actionNamespace = attrAndValue.GetAttribute().GetNamespace()
+			} else if fallbackAttrAndValue, ok2 := p.allEntitleableAttributesByValueFQN[fqn]; ok2 {
+				// Fallback for direct entitlements that may not be present in the
+				// narrowed decisionable set for this specific request.
+				actionNamespace = fallbackAttrAndValue.GetAttribute().GetNamespace()
+			}
 
-			actions := make([]*policy.Action, len(actionNames))
-			for i, name := range actionNames {
-				actions[i] = &policy.Action{Name: name}
+			// Merge direct-entitlement actions with subject-mapping actions for the
+			// same value FQN instead of replacing them.
+			actions := entitledFQNsToActions[fqn]
+			for _, name := range actionNames {
+				actions = append(actions, &policy.Action{
+					Name:      name,
+					Namespace: actionNamespace,
+				})
 			}
 
 			entitledFQNsToActions[fqn] = actions
@@ -230,7 +293,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 	}
 
 	for idx, resource := range resources {
-		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource)
+		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource, p.namespacedPolicy)
 		if err != nil || resourceDecision == nil {
 			return nil, nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
 		}
@@ -308,7 +371,7 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	}
 
 	for idx, resource := range resources {
-		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource)
+		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource, p.namespacedPolicy)
 		if err != nil || resourceDecision == nil {
 			return nil, nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
 		}

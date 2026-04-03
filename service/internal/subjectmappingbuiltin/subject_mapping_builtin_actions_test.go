@@ -450,6 +450,37 @@ func TestEvaluateSubjectMappingsWithActions_MultipleMatchingSubjectMappings(t *t
 	assert.Equal(t, actions.ActionNameRead, internalActions[0].GetName())
 }
 
+func TestEvaluateSubjectMappingsWithActions_DeduplicatesConflictingActionNamesDeterministically(t *testing.T) {
+	entity := createEntityRepresentation("eng-entity", map[string]interface{}{
+		"department": "engineering",
+	})
+
+	ns := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://example.com"}
+
+	sm := &policy.SubjectMapping{
+		SubjectConditionSet: departmentEngineeringSM.GetSubjectConditionSet(),
+		Actions: []*policy.Action{
+			{Name: actions.ActionNameRead},
+			{Id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", Name: actions.ActionNameRead, Namespace: ns},
+		},
+	}
+
+	attributeMappings := map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+		classConfFQN: createAttributeMapping(classConfFQN, sm),
+	}
+
+	entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, entity)
+	require.NoError(t, err)
+
+	actionsList, exists := entitlements[classConfFQN]
+	require.True(t, exists)
+	require.Len(t, actionsList, 1)
+
+	assert.Equal(t, actions.ActionNameRead, actionsList[0].GetName())
+	assert.Equal(t, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", actionsList[0].GetId())
+	assert.Equal(t, ns.GetId(), actionsList[0].GetNamespace().GetId())
+}
+
 func TestEvaluateSubjectMappingsWithActions_NoMatchingSubjectMappings(t *testing.T) {
 	// Setup test data with entity that doesn't match any subject mappings
 	marketingEntity := createEntityRepresentation("marketing-entity", map[string]interface{}{

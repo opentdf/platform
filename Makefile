@@ -68,7 +68,8 @@ govulncheck:
 	status=0; \
 	for m in $(MODS); do \
 		echo "govulncheck module: $$m"; \
-		(cd "$$m" && govulncheck ./...) || status=1; \
+		(cd "$$m" && govulncheck -format json ./... > /tmp/govulncheck-output.json); \
+		GOWORK=off go run $(ROOT_DIR)/.github/scripts/govulncheck-filter -output /tmp/govulncheck-output.json -allowlist $(ROOT_DIR)/.govulncheck-ignore.yaml || status=1; \
 	done; \
 	exit $$status
 

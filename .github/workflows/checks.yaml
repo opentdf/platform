@@ -480,23 +480,25 @@ jobs:
             cukes_platform_report.log
           retention-days: 1
 
-  # test latest otdfctl CLI 'main' against platform PR branch
+  # test otdfctl CLI e2e against platform PR branch
   otdfctl-test:
     permissions:
       contents: read
     name: otdfctl e2e tests
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - name: Install GNU parallel
         run: |
           sudo apt update
           sudo apt install -y parallel
-      - uses: opentdf/platform/test/start-up-with-containers@main
+      - uses: ./test/start-up-with-containers
         with:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: opentdf/otdfctl/e2e@main
-        with:
-          otdfctl-ref: "main"
+      - uses: ./otdfctl/e2e
         env:
           TESTRAIL_USER: ${{ secrets.TESTRAIL_USER }}
           TESTRAIL_PASS: ${{ secrets.TESTRAIL_PASS }}

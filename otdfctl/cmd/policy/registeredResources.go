@@ -70,11 +70,11 @@ func policyGetRegisteredResource(cmd *cobra.Command, args []string) {
 
 	resource, err := h.GetRegisteredResource(cmd.Context(), id, name, namespace)
 	if err != nil {
-		identifier := fmt.Sprintf("id: %s", id)
+		identifier := "id: " + id
 		if id == "" {
-			identifier = fmt.Sprintf("name: %s", name)
+			identifier = "name: " + name
 		}
-		errMsg := fmt.Sprintf("Failed to find registered resource (%s)", identifier)
+		errMsg := "Failed to find registered resource (" + identifier + ")"
 		cli.ExitWithError(errMsg, err)
 	}
 
@@ -259,11 +259,11 @@ func policyGetRegisteredResourceValue(cmd *cobra.Command, args []string) {
 
 	value, err := h.GetRegisteredResourceValue(cmd.Context(), id, fqn)
 	if err != nil {
-		identifier := fmt.Sprintf("id: %s", id)
+		identifier := "id: " + id
 		if id == "" {
-			identifier = fmt.Sprintf("fqn: %s", fqn)
+			identifier = "fqn: " + fqn
 		}
-		errMsg := fmt.Sprintf("Failed to find registered resource value (%s)", identifier)
+		errMsg := "Failed to find registered resource value (" + identifier + ")"
 		cli.ExitWithError(errMsg, err)
 	}
 

@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"fmt"
+	"errors"
 	"os"
 
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
@@ -52,7 +52,7 @@ func Execute(opts ...ExecuteOptFunc) {
 
 func MountRoot(newRoot *cobra.Command, cmd *cobra.Command) error {
 	if newRoot == nil {
-		return fmt.Errorf("newRoot is nil")
+		return errors.New("newRoot is nil")
 	}
 
 	if cmd != nil {

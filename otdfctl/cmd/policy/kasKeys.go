@@ -781,7 +781,7 @@ func policyUnsafeDeleteKasKey(cmd *cobra.Command, args []string) {
 	kasURI := c.Flags.GetRequiredString("kas-uri")
 	force := c.Flags.GetOptionalBool("force")
 
-	cli.ConfirmAction(cli.ActionDelete, fmt.Sprintf("key with kas uri: %s, and key identifier: %s", kasURI, kid), fmt.Sprintf("Id: %s", id), force)
+	cli.ConfirmAction(cli.ActionDelete, "key with kas uri: "+kasURI+", and key identifier: "+kid, "Id: "+id, force)
 
 	key, err := h.UnsafeDeleteKasKey(ctx, id, kid, kasURI)
 	if err != nil {

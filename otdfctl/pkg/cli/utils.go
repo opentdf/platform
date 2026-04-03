@@ -36,13 +36,15 @@ func TermWidth() int {
 }
 
 func PrettyList(values []string) string {
-	var l string
+	var b strings.Builder
 	for i, v := range values {
 		if i == len(values)-1 {
-			l += "or " + v
+			b.WriteString("or ")
+			b.WriteString(v)
 		} else {
-			l += v + ", "
+			b.WriteString(v)
+			b.WriteString(", ")
 		}
 	}
-	return l
+	return b.String()
 }

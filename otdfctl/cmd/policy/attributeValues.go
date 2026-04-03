@@ -78,7 +78,7 @@ func filterValuesByState(values []*policy.Value, state policycommon.ActiveStateE
 func paginateValues(values []*policy.Value, limit, offset int32) ([]*policy.Value, *policy.PageResponse) {
 	total := len(values)
 	pagination := &policy.PageResponse{
-		Total:         int32(min(total, math.MaxInt32)), //nolint:gosec // bounded by min
+		Total:         int32(min(total, math.MaxInt32)),
 		CurrentOffset: offset,
 	}
 

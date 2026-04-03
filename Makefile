@@ -69,7 +69,7 @@ govulncheck:
 	for m in $(MODS); do \
 		echo "govulncheck module: $$m"; \
 		(cd "$$m" && govulncheck -format json ./... > /tmp/govulncheck-output.json); \
-		(cd $(ROOT_DIR)/.github/scripts/govulncheck-filter && go run . -output /tmp/govulncheck-output.json -allowlist $(ROOT_DIR)/.govulncheck-ignore.yaml) || status=1; \
+		(cd $(ROOT_DIR)/.github/scripts/govulncheck-filter && GOWORK=off go run . -output /tmp/govulncheck-output.json -allowlist $(ROOT_DIR)/.govulncheck-ignore.yaml) || status=1; \
 	done; \
 	exit $$status
 

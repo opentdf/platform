@@ -3,7 +3,6 @@ go 1.25.5
 toolchain go1.25.8
 
 use (
-	./.github/scripts/govulncheck-filter
 	./examples
 	./lib/fixtures
 	./lib/flattening

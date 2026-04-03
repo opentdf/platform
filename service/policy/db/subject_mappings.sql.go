@@ -530,16 +530,24 @@ GROUP BY
     av.id, av.value, av.active,
     fqns.fqn,
     counted.total
-ORDER BY sm.created_at DESC
-LIMIT $4
-OFFSET $3
+ORDER BY
+    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN sm.created_at END ASC,
+    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN sm.created_at END DESC,
+    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN sm.updated_at END ASC,
+    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN sm.updated_at END DESC,
+    sm.created_at DESC,
+    sm.id ASC
+LIMIT $6
+OFFSET $5
 `
 
 type listSubjectMappingsParams struct {
-	NamespaceID  pgtype.UUID `json:"namespace_id"`
-	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
-	Offset       int32       `json:"offset_"`
-	Limit        int32       `json:"limit_"`
+	NamespaceID   pgtype.UUID `json:"namespace_id"`
+	NamespaceFqn  pgtype.Text `json:"namespace_fqn"`
+	SortField     string      `json:"sort_field"`
+	SortDirection string      `json:"sort_direction"`
+	Offset        int32       `json:"offset_"`
+	Limit         int32       `json:"limit_"`
 }
 
 type listSubjectMappingsRow struct {
@@ -641,13 +649,21 @@ type listSubjectMappingsRow struct {
 //	    av.id, av.value, av.active,
 //	    fqns.fqn,
 //	    counted.total
-//	ORDER BY sm.created_at DESC
-//	LIMIT $4
-//	OFFSET $3
+//	ORDER BY
+//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN sm.created_at END ASC,
+//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN sm.created_at END DESC,
+//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN sm.updated_at END ASC,
+//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN sm.updated_at END DESC,
+//	    sm.created_at DESC,
+//	    sm.id ASC
+//	LIMIT $6
+//	OFFSET $5
 func (q *Queries) listSubjectMappings(ctx context.Context, arg listSubjectMappingsParams) ([]listSubjectMappingsRow, error) {
 	rows, err := q.db.Query(ctx, listSubjectMappings,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
+		arg.SortField,
+		arg.SortDirection,
 		arg.Offset,
 		arg.Limit,
 	)

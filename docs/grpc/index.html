@@ -1890,6 +1890,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.subjectmapping.SubjectMappingsSort"><span class="badge">M</span>SubjectMappingsSort</a>
+                </li>
+              
+                <li>
                   <a href="#policy.subjectmapping.UpdateSubjectConditionSetRequest"><span class="badge">M</span>UpdateSubjectConditionSetRequest</a>
                 </li>
               
@@ -1905,6 +1909,10 @@
                   <a href="#policy.subjectmapping.UpdateSubjectMappingResponse"><span class="badge">M</span>UpdateSubjectMappingResponse</a>
                 </li>
               
+              
+                <li>
+                  <a href="#policy.subjectmapping.SortSubjectMappingsType"><span class="badge">E</span>SortSubjectMappingsType</a>
+                </li>
               
               
               
@@ -16129,6 +16137,13 @@ Namespace ID or FQN for the subject mapping </p></td>
                   <td><p>Optional </p></td>
                 </tr>
               
+                <tr>
+                  <td>sort</td>
+                  <td><a href="#policy.subjectmapping.SubjectMappingsSort">SubjectMappingsSort</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional - CONSTRAINT: max 1 item </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -16238,6 +16253,37 @@ Namespace ID or FQN for the subject mapping </p></td>
                   <td></td>
                   <td><p>Optional
 Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.subjectmapping.SubjectMappingsSort">SubjectMappingsSort</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>field</td>
+                  <td><a href="#policy.subjectmapping.SortSubjectMappingsType">SortSubjectMappingsType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>direction</td>
+                  <td><a href="#policy.SortDirection">policy.SortDirection</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -16396,6 +16442,35 @@ Replaces entire list of actions permitted by subjects </p></td>
         
       
 
+      
+        <h3 id="policy.subjectmapping.SortSubjectMappingsType">SortSubjectMappingsType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
 
       

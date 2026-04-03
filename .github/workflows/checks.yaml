@@ -133,73 +133,40 @@ jobs:
           pattern: govulncheck-failure-*
           path: govulncheck-failures
           merge-multiple: true
-      - name: post or update PR comment
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      - name: build comment body
+        id: comment-body
+        if: steps.download.outcome == 'success'
         env:
-          DOWNLOAD_OUTCOME: ${{ steps.download.outcome }}
+          RUN_ID: ${{ github.run_id }}
+          SERVER_URL: ${{ github.server_url }}
+          REPO: ${{ github.repository }}
+        run: |
+          files=$(ls govulncheck-failures/*.txt 2>/dev/null | sort)
+          modules=$(for f in $files; do echo "- \`$(cat "$f")\`"; done)
+          run_url="${SERVER_URL}/${REPO}/actions/runs/${RUN_ID}"
+          body="## :warning: Govulncheck found vulnerabilities :warning:
+
+          The following modules have known vulnerabilities:
+
+          ${modules}
+
+          See the [workflow run](${run_url}) for details."
+          echo "body<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$body" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+      - name: post govulncheck comment
+        if: steps.download.outcome == 'success'
+        uses: marocchino/sticky-pull-request-comment@70d2764d1a7d5d9560b100cbea0077fc8f633987 # v3.0.2
         with:
-          script: |
-            const fs = require('fs');
-            const marker = '<!-- govulncheck-results -->';
-            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-
-            // Read failing module names from downloaded artifacts
-            let failures = [];
-            const downloadOutcome = process.env.DOWNLOAD_OUTCOME;
-            console.log(`Artifact download outcome: ${downloadOutcome}`);
-            if (downloadOutcome === 'success') {
-              const files = fs.readdirSync('govulncheck-failures').filter(f => f.endsWith('.txt'));
-              console.log(`Found ${files.length} failure artifact(s): ${files.join(', ')}`);
-              failures = files.map(f => fs.readFileSync(`govulncheck-failures/${f}`, 'utf8').trim()).sort();
-              console.log(`Failing modules: ${failures.join(', ')}`);
-            } else {
-              console.log('No govulncheck failure artifacts found — all modules clean');
-            }
-
-            // Find existing comment by marker (paginate to handle busy PRs)
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            const existing = comments.find(c => c.body.includes(marker));
-            console.log(`Existing govulncheck comment: ${existing ? `#${existing.id}` : 'none'}`);
-
-            if (failures.length > 0) {
-              const modules = failures.map(m => `- \`${m}\``).join('\n');
-              const body = [
-                marker,
-                '## :warning: Govulncheck found vulnerabilities :warning:\n',
-                'The following modules have known vulnerabilities:\n',
-                modules,
-                `\nSee the [workflow run](${runUrl}) for details.`,
-              ].join('\n');
-
-              if (existing) {
-                console.log(`Deleting old comment #${existing.id} and reposting`);
-                await github.rest.issues.deleteComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  comment_id: existing.id,
-                });
-              }
-              console.log('Creating govulncheck comment');
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            } else if (existing) {
-              console.log(`Deleting stale govulncheck comment #${existing.id}`);
-              await github.rest.issues.deleteComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-              });
-            } else {
-              console.log('No vulnerabilities and no existing comment — nothing to do');
-            }
+          header: govulncheck-results
+          recreate: true
+          message: ${{ steps.comment-body.outputs.body }}
+      - name: delete govulncheck comment
+        if: steps.download.outcome != 'success'
+        uses: marocchino/sticky-pull-request-comment@70d2764d1a7d5d9560b100cbea0077fc8f633987 # v3.0.2
+        with:
+          header: govulncheck-results
+          delete: true
 
   integration:
     permissions:

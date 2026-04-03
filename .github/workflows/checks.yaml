@@ -171,22 +171,20 @@ jobs:
               ].join('\n');
 
               if (existing) {
-                console.log(`Updating existing comment #${existing.id}`);
-                await github.rest.issues.updateComment({
+                console.log(`Deleting old comment #${existing.id} and reposting`);
+                await github.rest.issues.deleteComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   comment_id: existing.id,
-                  body,
-                });
-              } else {
-                console.log('Creating new govulncheck comment');
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.issue.number,
-                  body,
                 });
               }
+              console.log('Creating govulncheck comment');
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
             } else if (existing) {
               console.log(`Deleting stale govulncheck comment #${existing.id}`);
               await github.rest.issues.deleteComment({

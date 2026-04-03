@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -9,19 +11,23 @@ import (
 	"sort"
 	"time"
 
+	"golang.org/x/vuln/scan"
 	"gopkg.in/yaml.v3"
 )
 
 // govulncheck JSON message types (stream of pretty-printed JSON objects).
 
 type Message struct {
-	OSV     *OSVEntry `json:"osv,omitempty"`
-	Finding *Finding  `json:"finding,omitempty"`
+	// Use raw messages so we can re-serialize unknown fields faithfully.
+	Config   *json.RawMessage `json:"config,omitempty"`
+	Progress *json.RawMessage `json:"progress,omitempty"`
+	OSV      *json.RawMessage `json:"osv,omitempty"`
+	Finding  *json.RawMessage `json:"finding,omitempty"`
+	SBOM     *json.RawMessage `json:"SBOM,omitempty"`
 }
 
 type OSVEntry struct {
-	ID      string `json:"id"`
-	Summary string `json:"summary"`
+	ID string `json:"id"`
 }
 
 type Finding struct {
@@ -31,7 +37,6 @@ type Finding struct {
 
 type Frame struct {
 	Module   string `json:"module"`
-	Package  string `json:"package"`
 	Function string `json:"function"`
 }
 
@@ -41,14 +46,6 @@ type AllowlistEntry struct {
 	ID      string `yaml:"id"`
 	Reason  string `yaml:"reason"`
 	Expires string `yaml:"expires"` // YYYY-MM-DD
-}
-
-type result struct {
-	id      string
-	summary string
-	status  string // "excluded", "failed", "expired"
-	reason  string
-	expires string
 }
 
 func main() {
@@ -68,14 +65,14 @@ func main() {
 		os.Exit(2) //nolint:mnd // exit code 2 = input error
 	}
 
-	osvMap, calledIDs, err := parseGovulncheckJSON(*outputFile)
+	calledIDs, err := findCalledVulns(*outputFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error parsing govulncheck output: %v\n", err)
 		os.Exit(2) //nolint:mnd // exit code 2 = input error
 	}
 
-	results := checkFindings(calledIDs, osvMap, allowlist, time.Now().UTC())
-	exitCode := printReport(results)
+	excluded, failed := checkFindings(calledIDs, allowlist, time.Now().UTC())
+	exitCode := printReport(*outputFile, excluded, failed)
 	os.Exit(exitCode)
 }
 
@@ -83,7 +80,6 @@ func loadAllowlist(path string) (map[string]AllowlistEntry, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// No allowlist file means no exclusions.
 			return map[string]AllowlistEntry{}, nil
 		}
 		return nil, err
@@ -113,44 +109,43 @@ func loadAllowlist(path string) (map[string]AllowlistEntry, error) {
 	return m, nil
 }
 
-func parseGovulncheckJSON(path string) (map[string]string, []string, error) {
+// findCalledVulns parses govulncheck JSON and returns sorted OSV IDs with called findings.
+func findCalledVulns(path string) ([]string, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer f.Close()
 
-	osvMap := make(map[string]string)  // id -> summary
-	calledSet := make(map[string]bool) // deduped called vuln IDs
+	calledSet := make(map[string]bool)
 
 	dec := json.NewDecoder(f)
 	for dec.More() {
 		var msg Message
 		if err := dec.Decode(&msg); err != nil {
-			return nil, nil, fmt.Errorf("decoding JSON object: %w", err)
+			return nil, fmt.Errorf("decoding JSON object: %w", err)
 		}
 
-		if msg.OSV != nil {
-			osvMap[msg.OSV.ID] = msg.OSV.Summary
-		}
-
-		if msg.Finding != nil && isCalled(msg.Finding) {
-			calledSet[msg.Finding.OSV] = true
+		if msg.Finding != nil {
+			var finding Finding
+			if err := json.Unmarshal(*msg.Finding, &finding); err != nil {
+				return nil, fmt.Errorf("decoding finding: %w", err)
+			}
+			if isCalled(&finding) {
+				calledSet[finding.OSV] = true
+			}
 		}
 	}
 
-	// Sort for deterministic output.
-	calledIDs := make([]string, 0, len(calledSet))
+	ids := make([]string, 0, len(calledSet))
 	for id := range calledSet {
-		calledIDs = append(calledIDs, id)
+		ids = append(ids, id)
 	}
-	sort.Strings(calledIDs)
-
-	return osvMap, calledIDs, nil
+	sort.Strings(ids)
+	return ids, nil
 }
 
-// isCalled returns true if the finding has a trace with function-level frames,
-// indicating the vulnerable code is actually called.
+// isCalled returns true if the finding has a trace with function-level frames.
 func isCalled(f *Finding) bool {
 	if len(f.Trace) == 0 {
 		return false
@@ -158,87 +153,117 @@ func isCalled(f *Finding) bool {
 	return f.Trace[0].Function != ""
 }
 
-func checkFindings(calledIDs []string, osvMap map[string]string, allowlist map[string]AllowlistEntry, now time.Time) []result {
+func checkFindings(calledIDs []string, allowlist map[string]AllowlistEntry, now time.Time) ([]string, []string) {
+	var excluded, failed []string
 	nowDate := now.UTC().Truncate(24 * time.Hour) //nolint:mnd // truncate to date
-	var results []result
 
 	for _, id := range calledIDs {
-		summary := osvMap[id]
 		entry, inAllowlist := allowlist[id]
-
 		if !inAllowlist {
-			results = append(results, result{
-				id:      id,
-				summary: summary,
-				status:  "failed",
-				reason:  "not in allowlist",
-			})
+			failed = append(failed, id)
 			continue
 		}
 
 		expiresDate, _ := time.Parse(time.DateOnly, entry.Expires) // already validated
 		if nowDate.After(expiresDate) {
-			results = append(results, result{
-				id:      id,
-				summary: summary,
-				status:  "expired",
-				reason:  entry.Reason,
-				expires: entry.Expires,
-			})
+			failed = append(failed, id)
 			continue
 		}
 
-		results = append(results, result{
-			id:      id,
-			summary: summary,
-			status:  "excluded",
-			reason:  entry.Reason,
-			expires: entry.Expires,
-		})
+		excluded = append(excluded, id)
 	}
-
-	return results
+	return excluded, failed
 }
 
-func printReport(results []result) int {
-	var excluded, failed []result
-	for _, r := range results {
-		switch r.status {
-		case "excluded":
-			excluded = append(excluded, r)
-		case "failed", "expired":
-			failed = append(failed, r)
-		}
-	}
-
-	//nolint:forbidigo // CLI tool — stdout is the primary interface
+//nolint:forbidigo // CLI tool — stdout is the primary interface
+func printReport(jsonPath string, excluded, failed []string) int {
 	if len(excluded) > 0 {
 		fmt.Println("EXCLUDED (allowlisted, not expired):")
-		for _, r := range excluded {
-			fmt.Printf("  %s: %s (expires %s)\n", r.id, r.reason, r.expires)
+		for _, id := range excluded {
+			fmt.Printf("  %s\n", id)
 		}
 		fmt.Println()
 	}
 
-	//nolint:forbidigo // CLI tool — stdout is the primary interface
 	if len(failed) > 0 {
-		fmt.Println("FAILED (action required):")
-		for _, r := range failed {
-			switch r.status {
-			case "failed":
-				fmt.Printf("  %s: %s (not in allowlist)\n", r.id, r.summary)
-			case "expired":
-				fmt.Printf("  %s: %s (allowlist entry expired on %s)\n", r.id, r.summary, r.expires)
+		fmt.Printf("FAILED (%d unresolved vulnerabilities):\n\n", len(failed))
+
+		// Write filtered JSON containing only non-excluded findings,
+		// then pipe through govulncheck -mode convert for native text output.
+		if err := printFilteredText(jsonPath, failed); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: could not render text output: %v\n", err)
+			// Fallback: just list the IDs.
+			for _, id := range failed {
+				fmt.Printf("  %s: https://pkg.go.dev/vuln/%s\n", id, id)
 			}
 		}
-		fmt.Println()
+
+		fmt.Println() //nolint:forbidigo // CLI tool
 		fmt.Printf("Result: FAIL (%d unresolved vulnerabilities)\n", len(failed))
 		return 1
 	}
 
-	if len(results) == 0 {
-		fmt.Println("No vulnerabilities detected.") //nolint:forbidigo // CLI tool — stdout is the primary interface
+	if len(excluded) == 0 {
+		fmt.Println("No vulnerabilities detected.") //nolint:forbidigo // CLI tool
 	}
-	fmt.Println("Result: PASS") //nolint:forbidigo // CLI tool — stdout is the primary interface
+	fmt.Println("Result: PASS") //nolint:forbidigo // CLI tool
 	return 0
+}
+
+// printFilteredText builds a filtered JSON stream (only findings for failedIDs)
+// and converts it to native govulncheck text output via the scan library.
+func printFilteredText(jsonPath string, failedIDs []string) error {
+	failedSet := make(map[string]bool, len(failedIDs))
+	for _, id := range failedIDs {
+		failedSet[id] = true
+	}
+
+	f, err := os.Open(jsonPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	// Build filtered JSON in memory.
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	dec := json.NewDecoder(f)
+	for dec.More() {
+		var msg Message
+		if err := dec.Decode(&msg); err != nil {
+			break
+		}
+
+		// Always pass through config, progress, and SBOM messages.
+		// For OSV and finding messages, only include those for failed vulns.
+		if msg.OSV != nil {
+			var osv OSVEntry
+			if err := json.Unmarshal(*msg.OSV, &osv); err == nil && !failedSet[osv.ID] {
+				continue
+			}
+		}
+		if msg.Finding != nil {
+			var finding Finding
+			if err := json.Unmarshal(*msg.Finding, &finding); err == nil && !failedSet[finding.OSV] {
+				continue
+			}
+		}
+
+		if err := enc.Encode(msg); err != nil {
+			break
+		}
+	}
+
+	// Convert filtered JSON to text using govulncheck's scan library.
+	cmd := scan.Command(context.Background(), "-mode", "convert")
+	cmd.Stdin = &buf
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("starting govulncheck convert: %w", err)
+	}
+	// govulncheck -mode convert returns a non-zero exit code when vulns are
+	// present, which is expected here.
+	_ = cmd.Wait()
+	return nil
 }

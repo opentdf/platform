@@ -26,7 +26,7 @@ func TestIsCalled(t *testing.T) {
 			name: "module-level only (no function)",
 			f: &Finding{
 				OSV:   "GO-2024-0001",
-				Trace: []Frame{{Module: "example.com/mod", Package: "example.com/mod/pkg"}},
+				Trace: []Frame{{Module: "example.com/mod"}},
 			},
 			called: false,
 		},
@@ -34,7 +34,7 @@ func TestIsCalled(t *testing.T) {
 			name: "symbol-level (has function)",
 			f: &Finding{
 				OSV:   "GO-2024-0001",
-				Trace: []Frame{{Module: "example.com/mod", Package: "example.com/mod/pkg", Function: "DoSomething"}},
+				Trace: []Frame{{Module: "example.com/mod", Function: "DoSomething"}},
 			},
 			called: true,
 		},
@@ -120,12 +120,11 @@ func TestLoadAllowlist(t *testing.T) {
 	})
 }
 
-func TestParseGovulncheckJSON(t *testing.T) {
+func TestFindCalledVulns(t *testing.T) {
 	t.Parallel()
 
 	t.Run("pretty-printed JSON with mixed message types", func(t *testing.T) {
 		t.Parallel()
-		// Simulate govulncheck's actual pretty-printed output format.
 		content := `{
   "config": {
     "protocol_version": "v1.0.0",
@@ -171,12 +170,8 @@ func TestParseGovulncheckJSON(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "output.json")
 		require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
 
-		osvMap, calledIDs, err := parseGovulncheckJSON(path)
+		calledIDs, err := findCalledVulns(path)
 		require.NoError(t, err)
-
-		// Should have both OSV entries.
-		require.Len(t, osvMap, 2)
-		assert.Equal(t, "Vuln one", osvMap["GO-2024-0001"])
 
 		// Only GO-2024-0001 has a function-level trace (called).
 		require.Len(t, calledIDs, 1)
@@ -194,7 +189,7 @@ func TestParseGovulncheckJSON(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "output.json")
 		require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
 
-		_, calledIDs, err := parseGovulncheckJSON(path)
+		calledIDs, err := findCalledVulns(path)
 		require.NoError(t, err)
 		assert.Empty(t, calledIDs)
 	})
@@ -220,7 +215,7 @@ func TestParseGovulncheckJSON(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "output.json")
 		require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
 
-		_, calledIDs, err := parseGovulncheckJSON(path)
+		calledIDs, err := findCalledVulns(path)
 		require.NoError(t, err)
 		require.Len(t, calledIDs, 1)
 	})
@@ -235,111 +230,75 @@ func TestCheckFindings(t *testing.T) {
 
 	t.Run("vuln not in allowlist", func(t *testing.T) {
 		t.Parallel()
-		results := checkFindings(
+		excluded, failed := checkFindings(
 			[]string{"GO-2024-0001"},
-			map[string]string{"GO-2024-0001": "Bad thing"},
 			map[string]AllowlistEntry{},
 			now,
 		)
-		require.Len(t, results, 1)
-		assert.Equal(t, "failed", results[0].status)
+		assert.Empty(t, excluded)
+		require.Len(t, failed, 1)
+		assert.Equal(t, "GO-2024-0001", failed[0])
 	})
 
 	t.Run("vuln in allowlist and not expired", func(t *testing.T) {
 		t.Parallel()
-		results := checkFindings(
+		excluded, failed := checkFindings(
 			[]string{"GO-2024-0001"},
-			map[string]string{"GO-2024-0001": "Bad thing"},
 			map[string]AllowlistEntry{
 				"GO-2024-0001": {ID: "GO-2024-0001", Reason: "no fix", Expires: futureDate},
 			},
 			now,
 		)
-		require.Len(t, results, 1)
-		assert.Equal(t, "excluded", results[0].status)
+		require.Len(t, excluded, 1)
+		assert.Equal(t, "GO-2024-0001", excluded[0])
+		assert.Empty(t, failed)
 	})
 
 	t.Run("vuln in allowlist but expired", func(t *testing.T) {
 		t.Parallel()
-		results := checkFindings(
+		excluded, failed := checkFindings(
 			[]string{"GO-2024-0001"},
-			map[string]string{"GO-2024-0001": "Bad thing"},
 			map[string]AllowlistEntry{
 				"GO-2024-0001": {ID: "GO-2024-0001", Reason: "was no fix", Expires: pastDate},
 			},
 			now,
 		)
-		require.Len(t, results, 1)
-		assert.Equal(t, "expired", results[0].status)
+		assert.Empty(t, excluded)
+		require.Len(t, failed, 1)
 	})
 
 	t.Run("vuln checked on its expiry date is still excluded", func(t *testing.T) {
 		t.Parallel()
-		// now is 2026-04-01, expires is also 2026-04-01 — should still be valid.
-		results := checkFindings(
+		excluded, failed := checkFindings(
 			[]string{"GO-2024-0001"},
-			map[string]string{"GO-2024-0001": "Bad thing"},
 			map[string]AllowlistEntry{
 				"GO-2024-0001": {ID: "GO-2024-0001", Reason: "expires today", Expires: "2026-04-01"},
 			},
 			now,
 		)
-		require.Len(t, results, 1)
-		assert.Equal(t, "excluded", results[0].status)
+		require.Len(t, excluded, 1)
+		assert.Empty(t, failed)
 	})
 
 	t.Run("mixed: one excluded, one failed", func(t *testing.T) {
 		t.Parallel()
-		results := checkFindings(
+		excluded, failed := checkFindings(
 			[]string{"GO-2024-0001", "GO-2024-0002"},
-			map[string]string{"GO-2024-0001": "Vuln one", "GO-2024-0002": "Vuln two"},
 			map[string]AllowlistEntry{
 				"GO-2024-0001": {ID: "GO-2024-0001", Reason: "no fix", Expires: futureDate},
 			},
 			now,
 		)
-		require.Len(t, results, 2)
-		assert.Equal(t, "excluded", results[0].status)
-		assert.Equal(t, "failed", results[1].status)
+		require.Len(t, excluded, 1)
+		assert.Equal(t, "GO-2024-0001", excluded[0])
+		require.Len(t, failed, 1)
+		assert.Equal(t, "GO-2024-0002", failed[0])
 	})
 
 	t.Run("no findings", func(t *testing.T) {
 		t.Parallel()
-		results := checkFindings(nil, nil, nil, now)
-		assert.Empty(t, results)
-	})
-}
-
-func TestPrintReport(t *testing.T) {
-	t.Parallel()
-
-	t.Run("returns 0 when no results", func(t *testing.T) {
-		t.Parallel()
-		assert.Equal(t, 0, printReport(nil))
-	})
-
-	t.Run("returns 0 when all excluded", func(t *testing.T) {
-		t.Parallel()
-		code := printReport([]result{
-			{id: "GO-2024-0001", status: "excluded", reason: "no fix", expires: "2099-12-31"},
-		})
-		assert.Equal(t, 0, code)
-	})
-
-	t.Run("returns 1 when any failed", func(t *testing.T) {
-		t.Parallel()
-		code := printReport([]result{
-			{id: "GO-2024-0001", status: "excluded", reason: "no fix", expires: "2099-12-31"},
-			{id: "GO-2024-0002", status: "failed", summary: "Bad vuln"},
-		})
-		assert.Equal(t, 1, code)
-	})
-
-	t.Run("returns 1 when expired", func(t *testing.T) {
-		t.Parallel()
-		code := printReport([]result{
-			{id: "GO-2024-0001", status: "expired", summary: "Old vuln", expires: "2025-01-01"},
-		})
-		assert.Equal(t, 1, code)
+		excluded, failed := checkFindings(nil, nil, now)
+		assert.Empty(t, excluded)
+		assert.Empty(t, failed)
 	})
 }

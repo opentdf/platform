@@ -7,6 +7,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/pkg/authz"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -164,4 +165,14 @@ func TestWithAuthZRoleProviderFactory(t *testing.T) {
 
 	require.NotNil(t, cfg.authzRoleProviderFactories)
 	require.Contains(t, cfg.authzRoleProviderFactories, "mock")
+}
+
+func TestWithDBRuntime(t *testing.T) {
+	var cfg StartConfig
+	runtime := db.NoopRuntime{}
+
+	cfg = WithDBRuntime(runtime)(cfg)
+
+	require.NotNil(t, cfg.dbRuntime)
+	assert.Equal(t, runtime, cfg.dbRuntime)
 }

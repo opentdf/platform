@@ -42,7 +42,7 @@ https://github.com/opentdf/platform/blob/main/service/go.mod#L3
      ```
 2. **Start Background Services**
    
-   Start the required infrastructure with [compose-spec](https://compose-spec.io).
+   Start the required infrastructure with [compose-spec](https://compose-spec.io). This starts the local Postgres database and Keycloak.
 
    ```shell
    docker compose up

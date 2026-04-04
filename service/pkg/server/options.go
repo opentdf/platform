@@ -5,6 +5,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/casbin/casbin/v2/persist"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -38,6 +39,8 @@ type StartConfig struct {
 	additionalCORSHeaders        []string
 	additionalCORSMethods        []string
 	additionalCORSExposedHeaders []string
+
+	auditTypeRegistrations audit.TypeRegistrations
 }
 
 // Deprecated: Use WithConfigKey
@@ -257,6 +260,47 @@ func WithAdditionalCORSMethods(methods ...string) StartOptions {
 func WithAdditionalCORSExposedHeaders(headers ...string) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.additionalCORSExposedHeaders = append(c.additionalCORSExposedHeaders, headers...)
+		return c
+	}
+}
+
+// WithAdditionalAuditTypeRegistrations centrally registers additional audit object/action/action result types
+// and seals the registration registry during startup to block runtime modifications.
+func WithAdditionalAuditTypeRegistrations(registrations audit.TypeRegistrations) StartOptions {
+	return func(c StartConfig) StartConfig {
+		mergedRegistrations := audit.TypeRegistrations{}
+
+		if len(c.auditTypeRegistrations.ObjectTypes) > 0 || len(registrations.ObjectTypes) > 0 {
+			mergedRegistrations.ObjectTypes = make(map[audit.ObjectType]string)
+			for objectType, name := range c.auditTypeRegistrations.ObjectTypes {
+				mergedRegistrations.ObjectTypes[objectType] = name
+			}
+			for objectType, name := range registrations.ObjectTypes {
+				mergedRegistrations.ObjectTypes[objectType] = name
+			}
+		}
+
+		if len(c.auditTypeRegistrations.ActionTypes) > 0 || len(registrations.ActionTypes) > 0 {
+			mergedRegistrations.ActionTypes = make(map[audit.ActionType]string)
+			for actionType, name := range c.auditTypeRegistrations.ActionTypes {
+				mergedRegistrations.ActionTypes[actionType] = name
+			}
+			for actionType, name := range registrations.ActionTypes {
+				mergedRegistrations.ActionTypes[actionType] = name
+			}
+		}
+
+		if len(c.auditTypeRegistrations.ActionResults) > 0 || len(registrations.ActionResults) > 0 {
+			mergedRegistrations.ActionResults = make(map[audit.ActionResult]string)
+			for actionResult, name := range c.auditTypeRegistrations.ActionResults {
+				mergedRegistrations.ActionResults[actionResult] = name
+			}
+			for actionResult, name := range registrations.ActionResults {
+				mergedRegistrations.ActionResults[actionResult] = name
+			}
+		}
+
+		c.auditTypeRegistrations = mergedRegistrations
 		return c
 	}
 }

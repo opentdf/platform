@@ -259,8 +259,8 @@ func TestMigrationData_ActionsNamespaceDownRemapsAndDedupes(t *testing.T) {
 		globalCustomID     = "abababab-abab-abab-abab-abababababab"
 		namespaceCustomID  = "acacacac-acac-acac-acac-acacacacacac"
 		namespaceTwoID     = "adadadad-adad-adad-adad-adadadadadad"
-		nsOnlyOlderID      = "aeaeaeae-aeae-aeae-aeae-aeaeaeaeaeae"
-		nsOnlyNewerID      = "afafafaf-afaf-afaf-afaf-afafafafafaf"
+		nsOnlyOlderID      = "afafafaf-afaf-afaf-afaf-afafafafafaf"
+		nsOnlyNewerID      = "aeaeaeae-aeae-aeae-aeae-aeaeaeaeaeae"
 
 		smaRowGlobalID    = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
 		smaRowNamespaceID = "cccccccc-cccc-cccc-cccc-cccccccccccc"

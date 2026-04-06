@@ -58,6 +58,11 @@ func main() {
 }
 
 func copyHelpers(srcDir, dstDir string, m helperMapping) error {
+	// Remove stale .gen.go files so that renamed or deleted helpers don't linger.
+	if err := removeGenFiles(dstDir); err != nil {
+		return fmt.Errorf("cleaning target directory: %w", err)
+	}
+
 	entries, err := os.ReadDir(srcDir)
 	if err != nil {
 		return fmt.Errorf("reading source directory: %w", err)
@@ -89,8 +94,26 @@ func copyHelpers(srcDir, dstDir string, m helperMapping) error {
 	return nil
 }
 
+func removeGenFiles(dir string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("reading directory: %w", err)
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".gen.go") {
+			if err := os.Remove(filepath.Join(dir, entry.Name())); err != nil {
+				return fmt.Errorf("removing %s: %w", entry.Name(), err)
+			}
+		}
+	}
+	return nil
+}
+
 // rewriteImports removes the self-referencing proto import and strips the alias qualifier
 // from type references so the file compiles inside the proto package.
+//
+// The qualifier regex also matches inside string literals and comments. This is acceptable
+// because we control the source files and don't use the alias in non-code contexts.
 func rewriteImports(content string, m helperMapping) string {
 	// Remove the import line: `authorizationv2 "github.com/.../authorization/v2"`
 	importLineRe := regexp.MustCompile(

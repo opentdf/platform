@@ -52,6 +52,12 @@ message AttributeValueSelector {
   AttributeSelector with_attribute = 10;
 }
 
+enum SortDirection {
+  SORT_DIRECTION_UNSPECIFIED = 0; // defaults to ASC
+  SORT_DIRECTION_ASC = 1;
+  SORT_DIRECTION_DESC = 2;
+}
+
 message PageRequest {
   // Optional
   // Set to configured default limit if not provided

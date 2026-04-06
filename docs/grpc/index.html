@@ -799,6 +799,10 @@
                 </li>
               
               
+                <li>
+                  <a href="#policy.SortDirection"><span class="badge">E</span>SortDirection</a>
+                </li>
+              
               
               
             </ul>
@@ -1394,6 +1398,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.namespaces.NamespacesSort"><span class="badge">M</span>NamespacesSort</a>
+                </li>
+              
+                <li>
                   <a href="#policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest"><span class="badge">M</span>RemoveKeyAccessServerFromNamespaceRequest</a>
                 </li>
               
@@ -1417,6 +1425,10 @@
                   <a href="#policy.namespaces.UpdateNamespaceResponse"><span class="badge">M</span>UpdateNamespaceResponse</a>
                 </li>
               
+              
+                <li>
+                  <a href="#policy.namespaces.SortNamespacesType"><span class="badge">E</span>SortNamespacesType</a>
+                </li>
               
               
               
@@ -7426,6 +7438,35 @@ Empty when none remain after current page </p></td>
       
 
       
+        <h3 id="policy.SortDirection">SortDirection</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_DIRECTION_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p>defaults to ASC</p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_DIRECTION_ASC</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_DIRECTION_DESC</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
 
       
 
@@ -12231,6 +12272,13 @@ ACTIVE by default when not specified </p></td>
                   <td><p>Optional </p></td>
                 </tr>
               
+                <tr>
+                  <td>sort</td>
+                  <td><a href="#policy.namespaces.NamespacesSort">NamespacesSort</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -12322,6 +12370,37 @@ ACTIVE by default when not specified </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.namespaces.NamespacesSort">NamespacesSort</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>field</td>
+                  <td><a href="#policy.namespaces.SortNamespacesType">SortNamespacesType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>direction</td>
+                  <td><a href="#policy.SortDirection">policy.SortDirection</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -12490,6 +12569,47 @@ ACTIVE by default when not specified </p></td>
         
       
 
+      
+        <h3 id="policy.namespaces.SortNamespacesType">SortNamespacesType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_NAMESPACES_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_NAMESPACES_TYPE_NAME</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_NAMESPACES_TYPE_FQN</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_NAMESPACES_TYPE_CREATED_AT</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_NAMESPACES_TYPE_UPDATED_AT</td>
+                <td>4</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
 
       

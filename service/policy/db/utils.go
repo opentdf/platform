@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -23,6 +24,39 @@ func getListLimit(limit int32, fallback int32) int32 {
 		return limit
 	}
 	return fallback
+}
+
+// GetNamespacesSortParams maps the strongly-typed NamespacesSort enum to
+// SQL-compatible field name and direction strings.
+// Returns empty strings when sort is nil or empty (backward compatible —
+// callers fall back to default ORDER BY created_at DESC).
+func GetNamespacesSortParams(sort []*namespaces.NamespacesSort) (string, string) {
+	if len(sort) == 0 || sort[0] == nil {
+		return "", ""
+	}
+	s := sort[0]
+
+	var field string
+	switch s.GetField() {
+	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME:
+		field = "name"
+	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN:
+		field = "fqn"
+	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT:
+		field = "created_at"
+	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UPDATED_AT:
+		field = "updated_at"
+	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UNSPECIFIED:
+		return "", ""
+	default:
+		return "", ""
+	}
+
+	direction := "ASC"
+	if s.GetDirection() == policy.SortDirection_SORT_DIRECTION_DESC {
+		direction = "DESC"
+	}
+	return field, direction
 }
 
 // Returns next page's offset if has not yet reached total, or else returns 0

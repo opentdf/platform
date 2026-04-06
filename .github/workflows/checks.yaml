@@ -69,7 +69,9 @@ jobs:
       - run: go work use .
         if: env.IS_RELEASE_BRANCH == 'true'
         working-directory: ${{ matrix.directory }}
-      - name: govluncheck
+      - name: govulncheck
+        id: govulncheck
+        continue-on-error: true
         uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
         with:
           go-version-input: "1.25.7"

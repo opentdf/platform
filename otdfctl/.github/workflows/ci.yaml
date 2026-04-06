@@ -1,0 +1,78 @@
+name: "CI"
+
+on:
+  pull_request: {}
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "45 0 * * *"
+
+jobs:
+  govulncheck:
+    runs-on: ubuntu-latest
+    name: Run govulncheck
+    steps:
+      - id: govulncheck
+        uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
+        with:
+          go-version-file: go.mod
+          # Empty input is workaround for open issue: https://github.com/golang/go/issues/70036
+          go-version-input: 
+          go-package: ./...
+
+  golangci:
+    name: lint
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+            fetch-depth: 0
+            persist-credentials: false
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version-file: "go.mod"
+          cache: false
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        with:
+          version: v2.10.1
+          # Optional: golangci-lint command line arguments.
+          args: --timeout=10m
+          only-new-issues: true
+  unit:
+    name: unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version-file: "go.mod"
+          cache: false
+      - name: Unit Tests with the Go CLI
+        run: go test ./... -short -race -cover
+
+  e2e:
+    name: e2e tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start up the platform with deps and containers
+        uses: opentdf/platform/test/start-up-with-containers@main
+        with:
+          platform-ref: "main"
+      - uses: opentdf/otdfctl/e2e@main
+        with:
+          otdfctl-ref: ${{ github.event.pull_request.head.sha }}
+        env:
+          TESTRAIL_USER: ${{ secrets.TESTRAIL_USER }}
+          TESTRAIL_PASS: ${{ secrets.TESTRAIL_PASS }}
+
+  platform-xtest:
+    needs:
+      - golangci
+      - unit
+    uses: opentdf/tests/.github/workflows/xtest.yml@main
+    with:
+      otdfctl-ref: ${{ github.ref }} latest
+      platform-ref: main lts
+      focus-sdk: go

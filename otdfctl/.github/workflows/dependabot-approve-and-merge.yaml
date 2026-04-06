@@ -1,0 +1,40 @@
+name: Dependabot auto approve and merge
+on: pull_request
+
+# Docs: https://docs.github.com/en/code-security/dependabot/working-with-dependabot/automating-dependabot-with-github-actions#common-dependabot-automations
+
+permissions:
+  pull-requests: write
+  contents: write
+
+jobs:
+  dependabot:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+      - name: Enable auto-merge
+        run: |
+          echo "enabling auto merge for dependency bump PR '$PR_URL'"
+          gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      - name: Approve the PR
+        id: approval-minor-patch
+        if: ${{ steps.metadata.outputs.update-type == 'version-update:semver-patch' ||  steps.metadata.outputs.update-type == 'version-update:semver-minor' }}
+        run: |
+          echo "approving minor or patch bump in PR '$PR_URL'"
+          gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      - name: Report on skip of PR approval
+        if: ${{ steps.approval-minor-patch.conclusion == 'skipped' }}
+        run: echo "Not approving PR '$PR_URL' because dependency bump is not minor or patch (major, unknown non-SEMVER bump, etc)"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}

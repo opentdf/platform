@@ -1,0 +1,99 @@
+name: 'end-to-end'
+description: 'Run end-to-end tests for the otdfctl CLI'
+inputs:
+  otdfctl-ref:
+    required: false
+    description: 'The ref to check out for the otdfctl CLI'
+    default: 'main'
+  testrail-run-name-for-cli-test:
+    required: false
+    description: 'The name to use for the TestRail test run created for the CLI tests'
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check out otdfctl CLI
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      with:
+        repository: opentdf/otdfctl
+        ref: ${{ inputs.otdfctl-ref }}
+        path: otdfctl
+
+    # Build the CLI and run tests
+    - name: Set up go (CLI version, if needed)
+      if: steps.setup-go.outcome != 'success'
+      uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7
+      with:
+        go-version-file: otdfctl/go.mod
+    - name: Build the CLI
+      shell: bash
+      run: go build .
+      working-directory: otdfctl
+    - name: Build the CLI in test mode
+      shell: bash
+      run: make build-test
+      working-directory: otdfctl
+    - name: Build v0.26.2 CLI for keyring profiles
+      shell: bash
+      working-directory: otdfctl
+      run: |
+        git fetch --tags origin v0.26.2
+        git worktree add ../otdfctl_v0.26.2 v0.26.2
+        cd ../otdfctl_v0.26.2
+        go build -o ../otdfctl/otdfctl_v0.26.2 .
+        echo "LEGACY_OTDFCTL_BIN=./otdfctl_v0.26.2" >> $GITHUB_ENV
+    - name: Install keyring dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gnome-keyring
+      working-directory: otdfctl
+    - name: Setup Bats and bats libs
+      uses: bats-core/bats-action@2.0.0
+    - name: Unlock Gnome keyring
+      shell: bash
+      run: |
+        # This is a fake dummy password, that is not used
+        # anywhere else in the CI, but for bats testing
+        echo "somecredstorepass" | gnome-keyring-daemon --unlock
+    - name: Run Bats tests
+      shell: bash
+      working-directory: otdfctl
+      run: |
+        if command -v parallel >/dev/null 2>&1; then
+          echo "GNU parallel found, running tests in parallel"
+          bats --tap e2e --jobs 4 --no-parallelize-within-files --no-tempdir-cleanup | tee e2e/bats-results.tap
+        else
+          echo "GNU parallel not found, running tests sequentially"
+          bats --tap e2e | tee e2e/bats-results.tap
+        fi
+      env:
+        # Define 'bats' install location in ubuntu
+        BATS_LIB_PATH: /usr/lib
+        # Terminal width for testing printed output
+        TEST_TERMINAL_WIDTH: 200
+    - name: Upload Bats TAP results
+      if: always() # ensures test report is uploaded even if tests fail
+      uses: actions/upload-artifact@v4
+      with:
+        name: bats-test-results
+        path: otdfctl/e2e/bats-results.tap
+    - name: Integrate Bats test results into TestRail
+      shell: bash
+      working-directory: otdfctl
+      run: |
+        cd e2e
+        cp ./testrail-integration/samples-for-virtru-instance/testrail-virtru.config.json ./testrail-integration/testrail.config.json
+        cp ./testrail-integration/samples-for-virtru-instance/testname-to-testrail-id.virtru.json ./testrail-integration/testname-to-testrail-id.json
+        ./testrail-integration/upload-bats-test-results-to-testrail.sh
+      continue-on-error: true
+      env:
+        TESTRAIL_USER: ${{ env.TESTRAIL_USER }}
+        TESTRAIL_PASS: ${{ env.TESTRAIL_PASS }}
+        TESTRAIL_CLI_RUN_NAME: ${{ inputs.testrail-run-name-for-cli-test }}
+    - name: Upload TestRail mapping report
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-cases-mapping-report
+        path: otdfctl/e2e/mapping-report.txt

@@ -1803,7 +1803,7 @@ func (s *AttributesSuite) createSortTestNamespace(label string) string {
 
 // createSortTestAttributes creates count attributes in the given namespace with 5ms gaps for distinct timestamps.
 // Returns the attribute IDs in creation order.
-func (s *AttributesSuite) createSortTestAttributes(nsID string, label string, count int) []string {
+func (s *AttributesSuite) createSortTestAttributes(nsID string, label string, count int) []string { //nolint:unparam // count is parameterized for reuse across endpoint test files
 	ids := make([]string, count)
 	for i := range count {
 		if i > 0 {

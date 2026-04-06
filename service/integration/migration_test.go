@@ -240,20 +240,27 @@ func TestMigrationData_ActionsNamespaceDownRemapsAndDedupes(t *testing.T) {
 		preNamespaceRollback  int64 = 20260318000000
 		postNamespaceRollback int64 = 20260306000000
 
-		namespaceID       = "11111111-1111-1111-1111-111111111111"
-		attributeDefID    = "22222222-2222-2222-2222-222222222222"
-		attributeValueID  = "33333333-3333-3333-3333-333333333333"
-		subjectSetID      = "44444444-4444-4444-4444-444444444444"
-		subjectMappingID  = "55555555-5555-5555-5555-555555555555"
-		registeredResID   = "66666666-6666-6666-6666-666666666666"
-		registeredValueID = "77777777-7777-7777-7777-777777777777"
+		namespaceID        = "11111111-1111-1111-1111-111111111111"
+		attributeDefID     = "22222222-2222-2222-2222-222222222222"
+		attributeValueID   = "33333333-3333-3333-3333-333333333333"
+		subjectSetID       = "44444444-4444-4444-4444-444444444444"
+		subjectMappingID   = "55555555-5555-5555-5555-555555555555"
+		subjectSetTieID    = "55666666-6666-6666-6666-666666666666"
+		subjectMappingTie  = "55777777-7777-7777-7777-777777777777"
+		registeredResID    = "66666666-6666-6666-6666-666666666666"
+		registeredValueID  = "77777777-7777-7777-7777-777777777777"
+		registeredValueTie = "77888888-8888-8888-8888-888888888888"
 
-		obligationDefID = "88888888-8888-8888-8888-888888888888"
-		obligationValID = "99999999-9999-9999-9999-999999999999"
+		obligationDefID  = "88888888-8888-8888-8888-888888888888"
+		obligationValID  = "99999999-9999-9999-9999-999999999999"
+		obligationValTie = "99999999-9999-9999-9999-999999999998"
 
 		namespacedCreateID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 		globalCustomID     = "abababab-abab-abab-abab-abababababab"
 		namespaceCustomID  = "acacacac-acac-acac-acac-acacacacacac"
+		namespaceTwoID     = "adadadad-adad-adad-adad-adadadadadad"
+		nsOnlyOlderID      = "aeaeaeae-aeae-aeae-aeae-aeaeaeaeaeae"
+		nsOnlyNewerID      = "afafafaf-afaf-afaf-afaf-afafafafafaf"
 
 		smaRowGlobalID    = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
 		smaRowNamespaceID = "cccccccc-cccc-cccc-cccc-cccccccccccc"
@@ -266,6 +273,10 @@ func TestMigrationData_ActionsNamespaceDownRemapsAndDedupes(t *testing.T) {
 		rrCustomNamespaceID  = "f4f4f4f4-f4f4-f4f4-f4f4-f4f4f4f4f4f4"
 		otCustomGlobalID     = "f5f5f5f5-f5f5-f5f5-f5f5-f5f5f5f5f5f5"
 		otCustomNamespaceID  = "f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6"
+		rrTieOlderID         = "f7f7f7f7-f7f7-f7f7-f7f7-f7f7f7f7f7f7"
+		rrTieNewerID         = "f8f8f8f8-f8f8-f8f8-f8f8-f8f8f8f8f8f8"
+		otTieOlderID         = "f9f9f9f9-f9f9-f9f9-f9f9-f9f9f9f9f9f9"
+		otTieNewerID         = "fafafafa-fafa-fafa-fafa-fafafafafafa"
 	)
 
 	h.upTo(preNamespaceRollback)
@@ -280,6 +291,7 @@ func TestMigrationData_ActionsNamespaceDownRemapsAndDedupes(t *testing.T) {
 
 	// Seed minimal dependency graph.
 	h.exec(`INSERT INTO attribute_namespaces (id, name, active) VALUES ($1, 'migration-test.example', true)`, namespaceID)
+	h.exec(`INSERT INTO attribute_namespaces (id, name, active) VALUES ($1, 'migration-test-two.example', true)`, namespaceTwoID)
 	h.exec(`
 		INSERT INTO attribute_definitions (id, namespace_id, name, rule, active)
 		VALUES ($1, $2, 'department', 'ALL_OF', true)
@@ -297,6 +309,14 @@ func TestMigrationData_ActionsNamespaceDownRemapsAndDedupes(t *testing.T) {
 		VALUES ($1, $2, $3)
 	`, subjectMappingID, attributeValueID, subjectSetID)
 	h.exec(`
+		INSERT INTO subject_condition_set (id, condition)
+		VALUES ($1, '[{"condition_groups":[{"boolean_operator":"AND","conditions":[]}]}]'::jsonb)
+	`, subjectSetTieID)
+	h.exec(`
+		INSERT INTO subject_mappings (id, attribute_value_id, subject_condition_set_id)
+		VALUES ($1, $2, $3)
+	`, subjectMappingTie, attributeValueID, subjectSetTieID)
+	h.exec(`
 		INSERT INTO registered_resources (id, name)
 		VALUES ($1, 'migration-test-resource')
 	`, registeredResID)
@@ -305,6 +325,10 @@ func TestMigrationData_ActionsNamespaceDownRemapsAndDedupes(t *testing.T) {
 		VALUES ($1, $2, 'migration-test-resource-value')
 	`, registeredValueID, registeredResID)
 	h.exec(`
+		INSERT INTO registered_resource_values (id, registered_resource_id, value)
+		VALUES ($1, $2, 'migration-test-resource-value-tie')
+	`, registeredValueTie, registeredResID)
+	h.exec(`
 		INSERT INTO obligation_definitions (id, namespace_id, name)
 		VALUES ($1, $2, 'migration-test-obligation')
 	`, obligationDefID, namespaceID)
@@ -312,6 +336,10 @@ func TestMigrationData_ActionsNamespaceDownRemapsAndDedupes(t *testing.T) {
 		INSERT INTO obligation_values_standard (id, obligation_definition_id, value)
 		VALUES ($1, $2, 'migration-test-obligation-value')
 	`, obligationValID, obligationDefID)
+	h.exec(`
+		INSERT INTO obligation_values_standard (id, obligation_definition_id, value)
+		VALUES ($1, $2, 'migration-test-obligation-value-tie')
+	`, obligationValTie, obligationDefID)
 
 	// Namespaced duplicate of standard create action.
 	h.exec(`
@@ -322,6 +350,12 @@ func TestMigrationData_ActionsNamespaceDownRemapsAndDedupes(t *testing.T) {
 		INSERT INTO actions (id, name, is_standard, namespace_id)
 		VALUES ($1, 'migration-custom-merge', false, NULL), ($2, 'migration-custom-merge', false, $3)
 	`, globalCustomID, namespaceCustomID, namespaceID)
+	h.exec(`
+		INSERT INTO actions (id, name, is_standard, namespace_id, created_at)
+		VALUES
+			($1, 'migration-ns-only', false, $2, '2026-01-01T00:00:00Z'::timestamp),
+			($3, 'migration-ns-only', false, $4, '2026-01-01T00:00:01Z'::timestamp)
+	`, nsOnlyOlderID, namespaceID, nsOnlyNewerID, namespaceTwoID)
 
 	// Two references in each table that collapse to one after remap.
 	h.exec(`
@@ -349,6 +383,20 @@ func TestMigrationData_ActionsNamespaceDownRemapsAndDedupes(t *testing.T) {
 		VALUES ($1, $2, $3, $4), ($5, $2, $6, $4)
 	`, otCustomGlobalID, obligationValID, globalCustomID, attributeValueID, otCustomNamespaceID, namespaceCustomID)
 
+	// Namespaced-only duplicate branch (no global action exists for this name).
+	h.exec(`
+		INSERT INTO subject_mapping_actions (subject_mapping_id, action_id)
+		VALUES ($1, $2), ($1, $3)
+	`, subjectMappingTie, nsOnlyOlderID, nsOnlyNewerID)
+	h.exec(`
+		INSERT INTO registered_resource_action_attribute_values (id, registered_resource_value_id, action_id, attribute_value_id)
+		VALUES ($1, $2, $3, $4), ($5, $2, $6, $4)
+	`, rrTieOlderID, registeredValueTie, nsOnlyOlderID, attributeValueID, rrTieNewerID, nsOnlyNewerID)
+	h.exec(`
+		INSERT INTO obligation_triggers (id, obligation_value_id, action_id, attribute_value_id)
+		VALUES ($1, $2, $3, $4), ($5, $2, $6, $4)
+	`, otTieOlderID, obligationValTie, nsOnlyOlderID, attributeValueID, otTieNewerID, nsOnlyNewerID)
+
 	// Sanity precondition: namespaced action exists and ref tables have 2 rows for test key.
 	var count int
 	row = h.queryRow(`SELECT COUNT(*) FROM actions WHERE name = 'create'`)
@@ -366,6 +414,22 @@ func TestMigrationData_ActionsNamespaceDownRemapsAndDedupes(t *testing.T) {
 	row = h.queryRow(`SELECT COUNT(*) FROM obligation_triggers WHERE obligation_value_id = $1 AND attribute_value_id = $2`, obligationValID, attributeValueID)
 	require.NoError(t, row.Scan(&count))
 	require.Equal(t, 4, count)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM actions WHERE name = 'migration-ns-only'`)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 2, count)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM subject_mapping_actions WHERE subject_mapping_id = $1`, subjectMappingTie)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 2, count)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM registered_resource_action_attribute_values WHERE registered_resource_value_id = $1 AND attribute_value_id = $2`, registeredValueTie, attributeValueID)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 2, count)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM obligation_triggers WHERE obligation_value_id = $1 AND attribute_value_id = $2`, obligationValTie, attributeValueID)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 2, count)
 
 	h.downTo(postNamespaceRollback)
 
@@ -456,6 +520,45 @@ func TestMigrationData_ActionsNamespaceDownRemapsAndDedupes(t *testing.T) {
 	require.Equal(t, 1, count)
 
 	row = h.queryRow(`SELECT COUNT(*) FROM actions WHERE name = 'migration-custom-merge'`)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 1, count)
+
+	// Namespaced-only duplicates are canonicalized by created_at ASC, then id ASC.
+	row = h.queryRow(`SELECT COUNT(*) FROM actions WHERE name = 'migration-ns-only'`)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 1, count)
+
+	row = h.queryRow(`
+		SELECT action_id FROM subject_mapping_actions WHERE subject_mapping_id = $1
+	`, subjectMappingTie)
+	require.NoError(t, row.Scan(&resolvedActionID))
+	require.Equal(t, nsOnlyOlderID, resolvedActionID)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM subject_mapping_actions WHERE subject_mapping_id = $1`, subjectMappingTie)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 1, count)
+
+	row = h.queryRow(`
+		SELECT action_id
+		FROM registered_resource_action_attribute_values
+		WHERE registered_resource_value_id = $1 AND attribute_value_id = $2
+	`, registeredValueTie, attributeValueID)
+	require.NoError(t, row.Scan(&resolvedActionID))
+	require.Equal(t, nsOnlyOlderID, resolvedActionID)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM registered_resource_action_attribute_values WHERE registered_resource_value_id = $1 AND attribute_value_id = $2`, registeredValueTie, attributeValueID)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 1, count)
+
+	row = h.queryRow(`
+		SELECT action_id
+		FROM obligation_triggers
+		WHERE obligation_value_id = $1 AND attribute_value_id = $2
+	`, obligationValTie, attributeValueID)
+	require.NoError(t, row.Scan(&resolvedActionID))
+	require.Equal(t, nsOnlyOlderID, resolvedActionID)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM obligation_triggers WHERE obligation_value_id = $1 AND attribute_value_id = $2`, obligationValTie, attributeValueID)
 	require.NoError(t, row.Scan(&count))
 	require.Equal(t, 1, count)
 

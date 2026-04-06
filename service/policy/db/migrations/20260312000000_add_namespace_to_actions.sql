@@ -108,7 +108,7 @@ SELECT DISTINCT ON (
     rr.updated_at
 FROM registered_resource_action_attribute_values rr
 LEFT JOIN action_id_remap r ON r.old_action_id = rr.action_id
-ORDER BY rr.registered_resource_value_id, COALESCE(r.new_action_id, rr.action_id), rr.attribute_value_id, rr.id;
+ORDER BY rr.registered_resource_value_id, COALESCE(r.new_action_id, rr.action_id), rr.attribute_value_id, (r.new_action_id IS NOT NULL) ASC, rr.id;
 
 DELETE FROM registered_resource_action_attribute_values;
 
@@ -147,7 +147,7 @@ SELECT DISTINCT ON (
     ot.updated_at
 FROM obligation_triggers ot
 LEFT JOIN action_id_remap r ON r.old_action_id = ot.action_id
-ORDER BY ot.obligation_value_id, COALESCE(r.new_action_id, ot.action_id), ot.attribute_value_id, ot.client_id, ot.id;
+ORDER BY ot.obligation_value_id, COALESCE(r.new_action_id, ot.action_id), ot.attribute_value_id, ot.client_id, (r.new_action_id IS NOT NULL) ASC, ot.id;
 
 DELETE FROM obligation_triggers;
 

@@ -1,4 +1,4 @@
-// Command codegen copies helper source files from protocol/go/helpers/ into their
+// Command codegen copies helper source files from protocol/go/internal/ into their
 // corresponding proto package directories with a "Code generated" header prepended.
 // Helper source files import proto types explicitly for IDE support; the copier strips
 // the self-referencing import and type qualifiers so the output compiles in-package.
@@ -17,10 +17,10 @@ import (
 	"strings"
 )
 
-// helperMapping defines a source directory (relative to protocol/go/helpers/) and its
+// helperMapping defines a source directory (relative to protocol/go/internal/) and its
 // target directory (relative to protocol/go/) where files will be copied.
 type helperMapping struct {
-	// Source is the subdirectory under helpers/ containing the source files.
+	// Source is the subdirectory under internal/ containing the source files.
 	Source string
 	// Target is the subdirectory under protocol/go/ where files are copied.
 	Target string
@@ -47,7 +47,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	helpersDir := filepath.Join(baseDir, "helpers")
+	helpersDir := filepath.Join(baseDir, "internal")
 	for _, m := range mappings {
 		srcDir := filepath.Join(helpersDir, m.Source)
 		dstDir := filepath.Join(baseDir, m.Target)
@@ -57,17 +57,21 @@ func main() {
 	}
 }
 
-func copyHelpers(srcDir, dstDir string, m helperMapping) error {
-	// Remove stale .gen.go files so that renamed or deleted helpers don't linger.
-	if err := removeGenFiles(dstDir); err != nil {
-		return fmt.Errorf("cleaning target directory: %w", err)
-	}
+// generatedFile holds a transformed helper ready to write.
+type generatedFile struct {
+	dst     string
+	content []byte
+	src     string
+}
 
+func copyHelpers(srcDir, dstDir string, m helperMapping) error {
 	entries, err := os.ReadDir(srcDir)
 	if err != nil {
 		return fmt.Errorf("reading source directory: %w", err)
 	}
 
+	// Read and transform all source files before touching the target directory.
+	var files []generatedFile
 	for _, entry := range entries {
 		name := entry.Name()
 		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
@@ -81,15 +85,25 @@ func copyHelpers(srcDir, dstDir string, m helperMapping) error {
 		}
 
 		transformed := rewriteImports(string(content), m)
-
 		outName := strings.TrimSuffix(name, ".go") + ".gen.go"
-		dst := filepath.Join(dstDir, outName)
 
-		output := generatedHeader + transformed
-		if err := os.WriteFile(dst, []byte(output), 0o644); err != nil {
-			return fmt.Errorf("writing %s: %w", dst, err)
+		files = append(files, generatedFile{
+			dst:     filepath.Join(dstDir, outName),
+			content: []byte(generatedHeader + transformed),
+			src:     src,
+		})
+	}
+
+	// Only remove stale .gen.go files once all reads succeeded.
+	if err := removeGenFiles(dstDir); err != nil {
+		return fmt.Errorf("cleaning target directory: %w", err)
+	}
+
+	for _, f := range files {
+		if err := os.WriteFile(f.dst, f.content, 0o644); err != nil {
+			return fmt.Errorf("writing %s: %w", f.dst, err)
 		}
-		fmt.Printf("  %s -> %s\n", src, dst)
+		fmt.Printf("  %s -> %s\n", f.src, f.dst)
 	}
 	return nil
 }

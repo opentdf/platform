@@ -52,3 +52,6 @@ traces/
 *.log
 
 .cache/*
+
+# Claude AI files
+.claude/

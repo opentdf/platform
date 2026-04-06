@@ -893,3 +893,39 @@ func Test_RemovePublicKeyFromValue(t *testing.T) {
 		})
 	}
 }
+
+func Test_ListAttributesRequest_Sort(t *testing.T) {
+	v := getValidator()
+
+	// no sort — valid
+	req := &attributes.ListAttributesRequest{}
+	require.NoError(t, v.Validate(req))
+
+	// one sort item — valid
+	req = &attributes.ListAttributesRequest{
+		Sort: []*attributes.AttributesSort{
+			{
+				Field:     attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+		},
+	}
+	require.NoError(t, v.Validate(req))
+
+	// two sort items — exceeds max_items = 1
+	req = &attributes.ListAttributesRequest{
+		Sort: []*attributes.AttributesSort{
+			{
+				Field:     attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+			{
+				Field:     attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME,
+				Direction: policy.SortDirection_SORT_DIRECTION_DESC,
+			},
+		},
+	}
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "sort")
+}

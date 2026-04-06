@@ -1,7 +1,7 @@
 # make
 # To run all lint checks: `LINT_OPTIONS= make lint`
 
-.PHONY: all build clean connect-wrapper-generate docker-build fix fmt go-lint license lint proto-generate proto-lint sdk/sdk test tidy toolcheck
+.PHONY: all build clean connect-wrapper-generate docker-build fix fmt go-lint license lint proto-generate proto-helper-generate proto-lint sdk/sdk test tidy toolcheck
 
 MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
 HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
@@ -84,10 +84,14 @@ proto-generate: toolcheck
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.grpc.docs.yaml
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.openapi.docs.yaml
 
+	go run ./protocol/go/codegen
 	go run ./sdk/codegen
 
 connect-wrapper-generate:
 	go run ./sdk/codegen
+
+proto-helper-generate:
+	go run ./protocol/go/codegen
 
 policy-sql-gen:
 	@which sqlc > /dev/null || { echo "sqlc not found, please install it: https://docs.sqlc.dev/en/stable/overview/install.html"; exit 1; }

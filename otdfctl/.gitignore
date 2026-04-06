@@ -1,0 +1,31 @@
+bin/.DS_Store
+.DS_Store
+target/
+.vscode/launch.json
+otdfctl.yaml
+
+# Ignore the binaries
+otdfctl
+otdfctl.*
+otdfctl_testbuild
+otdfctl_testbuild.*
+
+# Test artifacts
+creds.json
+
+# TestRail-related files
+testrail.config.json
+testname-to-testrail-id.json
+mapping-report.txt
+bats-results.tap
+
+# Hugo
+public/
+.hugo_build.lock
+output/
+
+# Ignore any TDF files created by the CLI
+*.tdf
+
+# Ignore go.cache
+.gocache

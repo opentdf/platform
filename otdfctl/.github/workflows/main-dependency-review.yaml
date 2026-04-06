@@ -1,0 +1,14 @@
+name: 'Main Branch Dependency Review'
+on:
+  pull_request: {}
+
+jobs:
+  main-dependency-review:
+    permissions:
+      contents: read
+      pull-requests: write
+
+    uses: ./.github/workflows/dependency-review.yaml
+    with:
+      base-ref: main
+      fail-on-severity: low

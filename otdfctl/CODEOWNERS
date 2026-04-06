@@ -1,0 +1,7 @@
+# CODEOWNERS
+
+* @opentdf/cli
+
+# @opentdf/security added on 2025-02-04 go.mod,go.sum
+go.mod @opentdf/cli @opentdf/security
+go.sum @opentdf/cli @opentdf/security

@@ -559,6 +559,23 @@ func (s *AttributesSuite) Test_ListAttributes_SortByCreatedAt_ASC() {
 	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[1], ids[2])
 }
 
+func (s *AttributesSuite) Test_ListAttributes_SortByCreatedAt_DESC() {
+	nsID := s.createSortTestNamespace("sort-created-desc")
+	ids := s.createSortTestAttributes(nsID, "createddesc-attr", 3)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// newest first in DESC order
+	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
+}
+
 func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_DESC() {
 	nsID := s.createSortTestNamespace("sort-updated-desc")
 	ids := s.createSortTestAttributes(nsID, "upd-sort-attr", 3)
@@ -585,6 +602,34 @@ func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_DESC() {
 
 	// The updated attribute (ids[0]) should appear before the others
 	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[2], ids[1])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_ASC() {
+	nsID := s.createSortTestNamespace("sort-updated-asc")
+	ids := s.createSortTestAttributes(nsID, "upd-sort-asc-attr", 3)
+
+	// Update the last attribute so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateAttribute(s.ctx, ids[2], &attributes.UpdateAttributeRequest{
+		Id: ids[2],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// The updated attribute (ids[2]) should appear last in ASC order
+	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedField_FallsBackToDefault() {

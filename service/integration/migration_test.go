@@ -92,7 +92,7 @@ func (h *migrationTestHarness) exec(query string, args ...any) {
 	require.NoError(h.t, err, "exec failed: %s", query)
 }
 
-func (h *migrationTestHarness) queryRow(query string, args ...any) pgx.Row { //nolint:unparam // args kept variadic for future test cases
+func (h *migrationTestHarness) queryRow(query string, args ...any) pgx.Row {
 	h.t.Helper()
 	return h.dbClient.Pgx.QueryRow(h.ctx, query, args...)
 }
@@ -223,4 +223,252 @@ func TestMigrationData_SelectorFieldRename(t *testing.T) {
 	`)
 	require.NoError(t, row.Scan(&oldFieldValue))
 	require.Nil(t, oldFieldValue, "new field name should not exist after down migration")
+}
+
+// TestMigrationData_ActionsNamespaceDownRemapsAndDedupes verifies that
+// 20260312000000_add_namespace_to_actions down migration remaps namespaced
+// action references to canonical global actions and deduplicates rows across
+// referencing tables.
+func TestMigrationData_ActionsNamespaceDownRemapsAndDedupes(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping data migration test")
+	}
+
+	h := newMigrationTestHarness(t, "test_opentdf_actions_namespace_down")
+
+	const (
+		preNamespaceRollback  int64 = 20260318000000
+		postNamespaceRollback int64 = 20260306000000
+
+		namespaceID       = "11111111-1111-1111-1111-111111111111"
+		attributeDefID    = "22222222-2222-2222-2222-222222222222"
+		attributeValueID  = "33333333-3333-3333-3333-333333333333"
+		subjectSetID      = "44444444-4444-4444-4444-444444444444"
+		subjectMappingID  = "55555555-5555-5555-5555-555555555555"
+		registeredResID   = "66666666-6666-6666-6666-666666666666"
+		registeredValueID = "77777777-7777-7777-7777-777777777777"
+
+		obligationDefID = "88888888-8888-8888-8888-888888888888"
+		obligationValID = "99999999-9999-9999-9999-999999999999"
+
+		namespacedCreateID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+		globalCustomID     = "abababab-abab-abab-abab-abababababab"
+		namespaceCustomID  = "acacacac-acac-acac-acac-acacacacacac"
+
+		smaRowGlobalID    = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+		smaRowNamespaceID = "cccccccc-cccc-cccc-cccc-cccccccccccc"
+		otRowGlobalID     = "dddddddd-dddd-dddd-dddd-dddddddddddd"
+		otRowNamespaceID  = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
+
+		smaCustomGlobalID    = "f1f1f1f1-f1f1-f1f1-f1f1-f1f1f1f1f1f1"
+		smaCustomNamespaceID = "f2f2f2f2-f2f2-f2f2-f2f2-f2f2f2f2f2f2"
+		rrCustomGlobalID     = "f3f3f3f3-f3f3-f3f3-f3f3-f3f3f3f3f3f3"
+		rrCustomNamespaceID  = "f4f4f4f4-f4f4-f4f4-f4f4-f4f4f4f4f4f4"
+		otCustomGlobalID     = "f5f5f5f5-f5f5-f5f5-f5f5-f5f5f5f5f5f5"
+		otCustomNamespaceID  = "f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6"
+	)
+
+	h.upTo(preNamespaceRollback)
+
+	// Global canonical action id for create should win remap selection.
+	var globalCreateID string
+	row := h.queryRow(`
+		SELECT id FROM actions
+		WHERE name = 'create' AND namespace_id IS NULL
+	`)
+	require.NoError(t, row.Scan(&globalCreateID))
+
+	// Seed minimal dependency graph.
+	h.exec(`INSERT INTO attribute_namespaces (id, name, active) VALUES ($1, 'migration-test.example', true)`, namespaceID)
+	h.exec(`
+		INSERT INTO attribute_definitions (id, namespace_id, name, rule, active)
+		VALUES ($1, $2, 'department', 'ALL_OF', true)
+	`, attributeDefID, namespaceID)
+	h.exec(`
+		INSERT INTO attribute_values (id, attribute_definition_id, value, active)
+		VALUES ($1, $2, 'engineering', true)
+	`, attributeValueID, attributeDefID)
+	h.exec(`
+		INSERT INTO subject_condition_set (id, condition)
+		VALUES ($1, '[{"condition_groups":[{"boolean_operator":"AND","conditions":[]}]}]'::jsonb)
+	`, subjectSetID)
+	h.exec(`
+		INSERT INTO subject_mappings (id, attribute_value_id, subject_condition_set_id)
+		VALUES ($1, $2, $3)
+	`, subjectMappingID, attributeValueID, subjectSetID)
+	h.exec(`
+		INSERT INTO registered_resources (id, name)
+		VALUES ($1, 'migration-test-resource')
+	`, registeredResID)
+	h.exec(`
+		INSERT INTO registered_resource_values (id, registered_resource_id, value)
+		VALUES ($1, $2, 'migration-test-resource-value')
+	`, registeredValueID, registeredResID)
+	h.exec(`
+		INSERT INTO obligation_definitions (id, namespace_id, name)
+		VALUES ($1, $2, 'migration-test-obligation')
+	`, obligationDefID, namespaceID)
+	h.exec(`
+		INSERT INTO obligation_values_standard (id, obligation_definition_id, value)
+		VALUES ($1, $2, 'migration-test-obligation-value')
+	`, obligationValID, obligationDefID)
+
+	// Namespaced duplicate of standard create action.
+	h.exec(`
+		INSERT INTO actions (id, name, is_standard, namespace_id)
+		VALUES ($1, 'create', true, $2)
+	`, namespacedCreateID, namespaceID)
+	h.exec(`
+		INSERT INTO actions (id, name, is_standard, namespace_id)
+		VALUES ($1, 'migration-custom-merge', false, NULL), ($2, 'migration-custom-merge', false, $3)
+	`, globalCustomID, namespaceCustomID, namespaceID)
+
+	// Two references in each table that collapse to one after remap.
+	h.exec(`
+		INSERT INTO subject_mapping_actions (subject_mapping_id, action_id)
+		VALUES ($1, $2), ($1, $3)
+	`, subjectMappingID, globalCreateID, namespacedCreateID)
+	h.exec(`
+		INSERT INTO subject_mapping_actions (subject_mapping_id, action_id, created_at)
+		VALUES ($1, $2, NOW()), ($1, $3, NOW() + interval '1 second')
+	`, subjectMappingID, globalCustomID, namespaceCustomID)
+	h.exec(`
+		INSERT INTO registered_resource_action_attribute_values (id, registered_resource_value_id, action_id, attribute_value_id)
+		VALUES ($1, $2, $3, $4), ($5, $2, $6, $4)
+	`, smaRowGlobalID, registeredValueID, globalCreateID, attributeValueID, smaRowNamespaceID, namespacedCreateID)
+	h.exec(`
+		INSERT INTO registered_resource_action_attribute_values (id, registered_resource_value_id, action_id, attribute_value_id)
+		VALUES ($1, $2, $3, $4), ($5, $2, $6, $4)
+	`, rrCustomGlobalID, registeredValueID, globalCustomID, attributeValueID, rrCustomNamespaceID, namespaceCustomID)
+	h.exec(`
+		INSERT INTO obligation_triggers (id, obligation_value_id, action_id, attribute_value_id)
+		VALUES ($1, $2, $3, $4), ($5, $2, $6, $4)
+	`, otRowGlobalID, obligationValID, globalCreateID, attributeValueID, otRowNamespaceID, namespacedCreateID)
+	h.exec(`
+		INSERT INTO obligation_triggers (id, obligation_value_id, action_id, attribute_value_id)
+		VALUES ($1, $2, $3, $4), ($5, $2, $6, $4)
+	`, otCustomGlobalID, obligationValID, globalCustomID, attributeValueID, otCustomNamespaceID, namespaceCustomID)
+
+	// Sanity precondition: namespaced action exists and ref tables have 2 rows for test key.
+	var count int
+	row = h.queryRow(`SELECT COUNT(*) FROM actions WHERE name = 'create'`)
+	require.NoError(t, row.Scan(&count))
+	require.GreaterOrEqual(t, count, 2)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM subject_mapping_actions WHERE subject_mapping_id = $1`, subjectMappingID)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 4, count)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM registered_resource_action_attribute_values WHERE registered_resource_value_id = $1 AND attribute_value_id = $2`, registeredValueID, attributeValueID)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 4, count)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM obligation_triggers WHERE obligation_value_id = $1 AND attribute_value_id = $2`, obligationValID, attributeValueID)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 4, count)
+
+	h.downTo(postNamespaceRollback)
+
+	// actions.namespace_id should be gone.
+	row = h.queryRow(`
+		SELECT COUNT(*)
+		FROM information_schema.columns
+		WHERE table_schema = current_schema()
+		  AND table_name = 'actions'
+		  AND column_name = 'namespace_id'
+	`)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 0, count)
+
+	// No duplicate action names after restoring global unique(name).
+	row = h.queryRow(`
+		SELECT COUNT(*)
+		FROM (
+			SELECT name FROM actions GROUP BY name HAVING COUNT(*) > 1
+		) d
+	`)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 0, count)
+
+	// All references should now point at canonical global create action.
+	var resolvedActionID string
+	row = h.queryRow(`
+		SELECT sma.action_id
+		FROM subject_mapping_actions sma
+		JOIN actions a ON a.id = sma.action_id
+		WHERE sma.subject_mapping_id = $1 AND a.name = 'create'
+	`, subjectMappingID)
+	require.NoError(t, row.Scan(&resolvedActionID))
+	require.Equal(t, globalCreateID, resolvedActionID)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM subject_mapping_actions WHERE subject_mapping_id = $1`, subjectMappingID)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 2, count)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM subject_mapping_actions WHERE subject_mapping_id = $1 AND action_id = $2`, subjectMappingID, globalCreateID)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 1, count)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM subject_mapping_actions WHERE subject_mapping_id = $1 AND action_id = $2`, subjectMappingID, globalCustomID)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 1, count)
+
+	row = h.queryRow(`
+		SELECT rr.action_id
+		FROM registered_resource_action_attribute_values rr
+		JOIN actions a ON a.id = rr.action_id
+		WHERE rr.registered_resource_value_id = $1 AND rr.attribute_value_id = $2 AND a.name = 'create'
+	`, registeredValueID, attributeValueID)
+	require.NoError(t, row.Scan(&resolvedActionID))
+	require.Equal(t, globalCreateID, resolvedActionID)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM registered_resource_action_attribute_values WHERE registered_resource_value_id = $1 AND attribute_value_id = $2`, registeredValueID, attributeValueID)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 2, count)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM registered_resource_action_attribute_values WHERE registered_resource_value_id = $1 AND attribute_value_id = $2 AND action_id = $3`, registeredValueID, attributeValueID, globalCreateID)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 1, count)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM registered_resource_action_attribute_values WHERE registered_resource_value_id = $1 AND attribute_value_id = $2 AND action_id = $3`, registeredValueID, attributeValueID, globalCustomID)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 1, count)
+
+	row = h.queryRow(`
+		SELECT ot.action_id
+		FROM obligation_triggers ot
+		JOIN actions a ON a.id = ot.action_id
+		WHERE ot.obligation_value_id = $1 AND ot.attribute_value_id = $2 AND a.name = 'create'
+	`, obligationValID, attributeValueID)
+	require.NoError(t, row.Scan(&resolvedActionID))
+	require.Equal(t, globalCreateID, resolvedActionID)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM obligation_triggers WHERE obligation_value_id = $1 AND attribute_value_id = $2`, obligationValID, attributeValueID)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 2, count)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM obligation_triggers WHERE obligation_value_id = $1 AND attribute_value_id = $2 AND action_id = $3`, obligationValID, attributeValueID, globalCreateID)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 1, count)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM obligation_triggers WHERE obligation_value_id = $1 AND attribute_value_id = $2 AND action_id = $3`, obligationValID, attributeValueID, globalCustomID)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 1, count)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM actions WHERE name = 'migration-custom-merge'`)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 1, count)
+
+	// No orphan action refs.
+	row = h.queryRow(`SELECT COUNT(*) FROM subject_mapping_actions sma LEFT JOIN actions a ON a.id = sma.action_id WHERE a.id IS NULL`)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 0, count)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM registered_resource_action_attribute_values rr LEFT JOIN actions a ON a.id = rr.action_id WHERE a.id IS NULL`)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 0, count)
+
+	row = h.queryRow(`SELECT COUNT(*) FROM obligation_triggers ot LEFT JOIN actions a ON a.id = ot.action_id WHERE a.id IS NULL`)
+	require.NoError(t, row.Scan(&count))
+	require.Equal(t, 0, count)
 }

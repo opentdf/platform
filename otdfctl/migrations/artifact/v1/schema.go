@@ -220,19 +220,7 @@ func (a *artifact) Metadata() artifactmetadata.ArtifactMetadata {
 }
 
 func (a *artifact) Summary() ([]byte, error) {
-	summary := Summary{
-		Counts: SummaryCounts{
-			Namespaces:           len(a.Namespaces),
-			Actions:              len(a.Actions),
-			SubjectConditionSets: len(a.SubjectConditionSets),
-			SubjectMappings:      len(a.SubjectMappings),
-			RegisteredResources:  len(a.RegisteredResources),
-			ObligationTriggers:   len(a.ObligationTriggers),
-			Skipped:              len(a.Skipped),
-		},
-	}
-
-	encoded, err := json.Marshal(summary)
+	encoded, err := json.Marshal(a.getSummary())
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrSummaryArtifact, err)
 	}
@@ -253,7 +241,11 @@ func (a *artifact) Write() error {
 }
 
 func (a *artifact) updateSummary() {
-	a.SummaryData = Summary{
+	a.SummaryData = a.getSummary()
+}
+
+func (a *artifact) getSummary() Summary {
+	return Summary{
 		Counts: SummaryCounts{
 			Namespaces:           len(a.Namespaces),
 			Actions:              len(a.Actions),

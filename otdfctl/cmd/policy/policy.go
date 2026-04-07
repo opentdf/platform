@@ -12,7 +12,7 @@ import (
 var (
 	metadataLabels        []string
 	defaultListFlagLimit  int32 = 300
-	defaultListFlagOffset int32 = 0
+	defaultListFlagOffset int32
 
 	Cmd = &cobra.Command{
 		Use:   man.Docs.GetDoc("policy").Use,

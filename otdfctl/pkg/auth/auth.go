@@ -29,7 +29,7 @@ const authCallbackPath = "/callback"
 
 type ClientCredentials struct {
 	ClientID     string   `json:"clientId"`
-	ClientSecret string   `json:"clientSecret"` //nolint:gosec // not a hard-coded secret; populated at runtime
+	ClientSecret string   `json:"clientSecret"`
 	Scopes       []string `json:"scopes,omitempty"`
 }
 
@@ -250,7 +250,7 @@ func GetFreePort(ctx context.Context) (int, error) {
 	// Get the address information from the listener
 	addr, ok := listener.Addr().(*net.TCPAddr)
 	if !ok {
-		return 0, fmt.Errorf("failed to get TCP address from listener")
+		return 0, errors.New("failed to get TCP address from listener")
 	}
 
 	// Return the port that was assigned

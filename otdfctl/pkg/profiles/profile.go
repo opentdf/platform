@@ -2,7 +2,6 @@ package profiles
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 	"runtime"
 	"strings"
@@ -92,7 +91,11 @@ func Migrate(to ProfileDriver, from ProfileDriver) error {
 
 	defaultProfileBeingMigrated := osprofiles.GetGlobalConfig(fromProfiler).GetDefaultProfile()
 
-	slog.Debug("Migrating profiles", slog.Any("count", len(profilesToMigrate)), slog.Any("from", string(from)), slog.Any("to", string(to)))
+	slog.Debug("migrating profiles",
+		slog.Any("count", len(profilesToMigrate)),
+		slog.Any("from", string(from)),
+		slog.Any("to", string(to)),
+	)
 
 	for _, profileName := range profilesToMigrate {
 		store, err := osprofiles.GetProfile[*ProfileConfig](fromProfiler, profileName)
@@ -111,14 +114,20 @@ func Migrate(to ProfileDriver, from ProfileDriver) error {
 			return err
 		}
 
-		slog.Debug("Migrated profile", "profile", profileName, "setDefault", setDefault)
+		slog.Debug("migrated profile",
+			slog.String("profile", profileName),
+			slog.Bool("set_default", setDefault),
+		)
 	}
 
-	slog.Debug(fmt.Sprintf("Removing profiles from %s", string(from)), slog.Any("count", len(profilesToMigrate)))
+	slog.Debug("removing profiles",
+		slog.String("from", string(from)),
+		slog.Any("count", len(profilesToMigrate)),
+	)
 	if err = fromProfiler.Cleanup(false); err != nil {
 		return errors.Join(ErrCleaningUpProfiles, err)
 	}
 
-	slog.Debug("Migration complete.")
+	slog.Debug("migration complete")
 	return nil
 }

@@ -13,11 +13,8 @@ import (
 const CurrentSchemaVersion = artifactv1.SchemaVersion
 
 var (
-	currentSchemaVersion = semver.MustParse(CurrentSchemaVersion)
-
-	ErrInvalidSchemaVersion     = errors.New("invalid artifact schema version")
+	currentSchemaVersion        = semver.MustParse(CurrentSchemaVersion)
 	ErrUnsupportedSchemaVersion = errors.New("unsupported artifact schema version")
-	ErrNotImplemented           = errors.New("not implemented")
 )
 
 type Options struct {

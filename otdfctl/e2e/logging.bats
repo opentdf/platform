@@ -10,7 +10,7 @@ setup() {
 
     assert_success
     assert_output --partial "otdfctl version"
-    [[ "$stderr" == *"version info"* ]]
+    [[ "$stderr" == *"otdfctl version"* ]]
     [[ "$stderr" == *"\"level\":\"DEBUG\""* ]]
 }
 
@@ -19,6 +19,6 @@ setup() {
 
     assert_success
     assert_output --partial "otdfctl version"
-    [[ "$stderr" == *"version info"* ]]
+    [[ "$stderr" == *"otdfctl version"* ]]
     [[ "$stderr" == *"\"level\":\"DEBUG\""* ]]
 }

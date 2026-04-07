@@ -48,7 +48,7 @@ func init() {
 			}
 
 			version := fmt.Sprintf("%s version %s (%s) %s", config.AppName, config.Version, config.BuildTime, config.CommitSha)
-			slog.Debug("version info",
+			slog.Debug("otdfctl version",
 				slog.String("app", config.AppName),
 				slog.String("version", config.Version),
 				slog.String("build_time", config.BuildTime),

@@ -20,10 +20,11 @@ type EntityIDsToEntitlements map[string]AttributeValueFQNsToActions
 func EvaluateSubjectMappingMultipleEntitiesWithActions(
 	attributeMappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 	entityRepresentations []*entityresolutionV2.EntityRepresentation,
+	l *slog.Logger,
 ) (EntityIDsToEntitlements, error) {
 	results := make(map[string]AttributeValueFQNsToActions, len(entityRepresentations))
 	for _, er := range entityRepresentations {
-		entitlements, err := EvaluateSubjectMappingsWithActions(attributeMappings, er)
+		entitlements, err := EvaluateSubjectMappingsWithActions(attributeMappings, er, l)
 		if err != nil {
 			return nil, err
 		}
@@ -37,6 +38,7 @@ func EvaluateSubjectMappingMultipleEntitiesWithActions(
 func EvaluateSubjectMappingsWithActions(
 	resolveableAttributes map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 	entityRepresentation *entityresolutionV2.EntityRepresentation,
+	l *slog.Logger,
 ) (AttributeValueFQNsToActions, error) {
 	jsonEntities := entityRepresentation.GetAdditionalProps()
 	entitlementsSet := make(map[string][]*policy.Action)
@@ -83,12 +85,14 @@ func EvaluateSubjectMappingsWithActions(
 						key := strings.ToLower(action.GetName())
 						if existing, ok := m[key]; ok {
 							if actionsConflict(existing, action) {
-								slog.Warn(
-									"subject mapping action name collision with conflicting identity; using deterministic preference",
-									slog.String("action_name", key),
-									slog.Any("existing_action", existing),
-									slog.Any("candidate_action", action),
-								)
+								if l != nil {
+									l.Warn(
+										"subject mapping action name collision with conflicting identity; using deterministic preference",
+										slog.String("action_name", key),
+										slog.Any("existing_action", existing),
+										slog.Any("candidate_action", action),
+									)
+								}
 							}
 							m[key] = preferAction(existing, action)
 							continue

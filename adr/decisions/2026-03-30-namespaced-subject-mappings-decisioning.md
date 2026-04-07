@@ -14,7 +14,7 @@ driver: '@elizabethhealy'
 
 Policy objects are moving toward strict namespace ownership, but access decisioning still treats actions as unscoped names in several evaluation paths. Subject mappings are also transitioning from legacy unnamespaced records to namespace-owned records. This creates ambiguity when a request action name exists in multiple namespaces and when a single resource includes attributes from multiple namespaces.
 
-We need a decisioning model that is namespace-correct, fail-closed, and compatible with staged rollout using the `NamespacedPolicy` feature flag.
+We need a decisioning model that is namespace-correct, fail-closed, and compatible with staged rollout using the `EnforceNamespacedEntitlements` feature flag.
 
 ## Decision Drivers
 
@@ -27,20 +27,20 @@ We need a decisioning model that is namespace-correct, fail-closed, and compatib
 
 Chosen option: **Resolve request action identity within each evaluation namespace context**.
 
-The normative request-action contract supports three request shapes. During evaluation, matching is always applied per namespace context (derived from the rule/value being evaluated), not globally.
+For `GetDecisionRequest`/`GetDecisionMultiResourceRequest`, request validation still requires `action.name` (current proto contract). During evaluation, matching is always applied per namespace context (derived from the rule/value being evaluated), not globally.
 
-Request-action identity precedence is explicit:
+Request-action matching precedence is explicit (given the request action object):
 
-1. `action.id` (exact identity)
-2. `action.name + action.namespace` (scoped identity)
+1. `action.id` (exact identity, when present)
+2. `action.name + action.namespace` (scoped identity, when namespace is present)
 3. `action.name` only (contextual identity)
 
 When identity is explicit (`id` or `name+namespace`), decisioning does not fall back to looser name-only matching. It fails closed only if that explicit identity is unresolved or mismatched for the evaluated namespace context.
 
 Feature-flag mode split:
 
-- `NamespacedPolicy=false`: preserve existing legacy behavior (no new namespace filtering semantics introduced by this change).
-- `NamespacedPolicy=true`: enforce namespaced subject mapping evaluation (unnamespaced SMs are ignored) and require action namespace equality for each evaluated namespace.
+- `EnforceNamespacedEntitlements=false`: preserve existing legacy behavior (no new namespace filtering semantics introduced by this change).
+- `EnforceNamespacedEntitlements=true`: enforce namespaced subject mapping evaluation (unnamespaced SMs are ignored) and require action namespace equality for each evaluated namespace.
 
 Direct entitlements in strict mode:
 
@@ -69,7 +69,7 @@ For multi-namespace resources, existing `AND` semantics remain unchanged: all re
 
 Validation is done through PDP and decisioning tests covering:
 
-- mode split (`NamespacedPolicy=false` vs `true`) for subject mapping inclusion,
+- mode split (`EnforceNamespacedEntitlements=false` vs `true`) for subject mapping inclusion,
 - strict-mode subject mapping namespace scoping (unnamespaced SMs skipped),
 - namespace-aware action matching in rule evaluation paths,
 - multi-namespace resource behavior where one missing namespace action causes deny,
@@ -77,7 +77,7 @@ Validation is done through PDP and decisioning tests covering:
 
 ## Implementation Notes
 
-- Thread `NamespacedPolicy` into PDP runtime configuration.
+- Thread `EnforceNamespacedEntitlements` into PDP runtime configuration.
 - Filter subject mappings at PDP construction by mode (namespaced vs unnamespaced).
 - Enforce subject mapping namespace consistency during create/update operations.
 - Centralize action matching in a namespace-aware helper used by all rule/action checks.
@@ -87,8 +87,8 @@ Validation is done through PDP and decisioning tests covering:
 
 ## Rollout
 
-1. Land logic behind `NamespacedPolicy`.
+1. Land logic behind `EnforceNamespacedEntitlements`.
 2. Keep default mode as legacy (`false`) until policy data migration is complete.
 3. Validate namespaced policy data readiness.
-4. Flip `NamespacedPolicy=true` and monitor mismatch/deny behavior.
+4. Flip `EnforceNamespacedEntitlements=true` and monitor mismatch/deny behavior.
 5. Remove legacy branch once namespaced mode is stable.

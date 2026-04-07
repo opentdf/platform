@@ -29,7 +29,7 @@ db:
   schema: otdf
 services:
   authorization:
-    namespaced_policy: true
+    enforce_namespaced_entitlements: true
   kas:
     keyring:
       - kid: e1

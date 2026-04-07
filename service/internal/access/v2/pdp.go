@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/opentdf/platform/lib/identifier"
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -247,7 +248,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 	l.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionable_attribute_values_count", len(decisionableAttributes)))
 
 	// Resolve them to their entitled FQNs and the actions available on each
-	entitledFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(decisionableAttributes, entityRepresentation)
+	entitledFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(decisionableAttributes, entityRepresentation, l.Logger)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
 	}
@@ -344,20 +345,33 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	entitledFQNsToActions := make(map[string][]*policy.Action)
 	for _, aav := range entityRegisteredResourceValue.GetActionAttributeValues() {
 		aavAction := aav.GetAction()
-		if action.GetName() != aavAction.GetName() {
-			l.DebugContext(ctx, "skipping action not matching Decision Request action", slog.String("action_name", aavAction.GetName()))
+		attrVal := aav.GetAttributeValue()
+		attrValFQN := attrVal.GetFqn()
+
+		requiredNamespaceID := ""
+		if attrAndValue, ok := decisionableAttributes[attrValFQN]; ok {
+			requiredNamespaceID = attrAndValue.GetAttribute().GetNamespace().GetId()
+		}
+
+		if !isRequestedActionMatch(ctx, l, action, requiredNamespaceID, aavAction, p.namespacedPolicy) {
+			l.DebugContext(ctx, "skipping action not matching Decision Request action",
+				slog.String("action_name", aavAction.GetName()),
+				slog.String("attribute_value_fqn", attrValFQN),
+				slog.String("required_namespace_id", requiredNamespaceID),
+			)
 			continue
 		}
 
-		attrVal := aav.GetAttributeValue()
-		attrValFQN := attrVal.GetFqn()
 		actionsList, actionsAreOK := entitledFQNsToActions[attrValFQN]
 		if !actionsAreOK {
 			actionsList = make([]*policy.Action, 0)
 		}
 
 		if !slices.ContainsFunc(actionsList, func(a *policy.Action) bool {
-			return a.GetName() == aavAction.GetName()
+			if a.GetId() != "" && aavAction.GetId() != "" {
+				return a.GetId() == aavAction.GetId()
+			}
+			return strings.EqualFold(a.GetName(), aavAction.GetName())
 		}) {
 			actionsList = append(actionsList, aavAction)
 		}
@@ -422,7 +436,7 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 	}
 
 	// Resolve them to their entitled FQNs and the actions available on each
-	entityIDsToFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(entitleableAttributes, entityRepresentations)
+	entityIDsToFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(entitleableAttributes, entityRepresentations, l.Logger)
 	if err != nil {
 		return nil, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
 	}

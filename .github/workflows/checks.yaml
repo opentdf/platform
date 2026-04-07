@@ -445,7 +445,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
-            if git diff --name-only "$BASE_SHA" HEAD | grep -q '\.proto$'; then
+            if git diff --name-only "$BASE_SHA" HEAD | grep -qE '\.proto$|^Makefile$|^buf\.|^protocol/codegen/|^protocol/go/internal/|^sdk/codegen/'; then
               echo "proto=true" >> "$GITHUB_OUTPUT"
             else
               echo "proto=false" >> "$GITHUB_OUTPUT"

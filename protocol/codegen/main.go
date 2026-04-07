@@ -3,7 +3,7 @@
 // Helper source files import proto types explicitly for IDE support; the copier strips
 // the self-referencing import and type qualifiers so the output compiles in-package.
 //
-// See ADR DSPX-2594 for background on the source-file codegen approach.
+// See https://github.com/opentdf/platform/pull/3232 for background on the source-file codegen approach.
 package main
 
 import (
@@ -138,6 +138,10 @@ func rewriteImports(content string, m helperMapping) string {
 	// Strip the alias qualifier from type references: `authorizationv2.Foo` -> `Foo`
 	qualifierRe := regexp.MustCompile(regexp.QuoteMeta(m.ProtoImportAlias) + `\.`)
 	content = qualifierRe.ReplaceAllString(content, "")
+
+	// Clean up empty import blocks left behind when the proto import was the only one.
+	emptyImportRe := regexp.MustCompile(`\nimport \(\n\)\n`)
+	content = emptyImportRe.ReplaceAllString(content, "")
 
 	return content
 }

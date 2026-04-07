@@ -1,3 +1,5 @@
-go 1.25.0
+// Isolate this module from the root workspace so `go run .` resolves locally
+// without adding protocol/codegen to the root go.work.
+go 1.25.5
 
 use .

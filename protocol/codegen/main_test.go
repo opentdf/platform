@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -98,9 +99,6 @@ func F() *authorizationv2.EntityIdentifier { return nil }
 `,
 			want: `package authorizationv2
 
-import (
-)
-
 // authorizationv2helper is not a qualifier reference
 var authorizationv2helper = "should stay"
 func F() *EntityIdentifier { return nil }
@@ -156,5 +154,98 @@ func TestRemoveGenFiles(t *testing.T) {
 		if !shouldExist && remaining[name] {
 			t.Errorf("%s was kept but should have been removed", name)
 		}
+	}
+}
+
+func TestCopyHelpers(t *testing.T) {
+	m := helperMapping{
+		Source:           "test-pkg",
+		Target:           "test-pkg",
+		ProtoImportPath:  "github.com/example/proto/test",
+		ProtoImportAlias: "testpkg",
+	}
+
+	srcDir := filepath.Join(t.TempDir(), "src")
+	dstDir := filepath.Join(t.TempDir(), "dst")
+	if err := os.MkdirAll(srcDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(dstDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Source .go file that should be copied and transformed.
+	helperContent := `package testpkg
+
+import (
+	testpkg "github.com/example/proto/test"
+)
+
+func NewFoo() *testpkg.Foo {
+	return &testpkg.Foo{}
+}
+`
+	if err := os.WriteFile(filepath.Join(srcDir, "helper.go"), []byte(helperContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// _test.go file that should be skipped.
+	if err := os.WriteFile(filepath.Join(srcDir, "helper_test.go"), []byte("package testpkg\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Non-Go file that should be skipped.
+	if err := os.WriteFile(filepath.Join(srcDir, "README.md"), []byte("# readme\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Pre-existing stale .gen.go that should be cleaned up.
+	staleFile := filepath.Join(dstDir, "old_helper.gen.go")
+	if err := os.WriteFile(staleFile, []byte("package testpkg\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := copyHelpers(srcDir, dstDir, m); err != nil {
+		t.Fatalf("copyHelpers failed: %v", err)
+	}
+
+	// Verify the transformed file was written with .gen.go suffix.
+	genFile := filepath.Join(dstDir, "helper.gen.go")
+	content, err := os.ReadFile(genFile)
+	if err != nil {
+		t.Fatalf("expected helper.gen.go to exist: %v", err)
+	}
+
+	got := string(content)
+
+	// Verify generated header is prepended.
+	if !strings.HasPrefix(got, generatedHeader) {
+		t.Errorf("missing generated header, starts with: %q", got[:min(len(got), 60)])
+	}
+
+	// Verify import rewriting happened (self-referencing import removed, qualifier stripped).
+	if strings.Contains(got, `"github.com/example/proto/test"`) {
+		t.Error("self-referencing import was not stripped")
+	}
+	if strings.Contains(got, "testpkg.Foo") {
+		t.Error("qualifier was not stripped from type references")
+	}
+	if !strings.Contains(got, "*Foo") {
+		t.Error("expected unqualified type reference *Foo")
+	}
+
+	// Verify _test.go was not copied.
+	if _, err := os.Stat(filepath.Join(dstDir, "helper_test.gen.go")); err == nil {
+		t.Error("_test.go file should not be copied")
+	}
+
+	// Verify non-Go file was not copied.
+	if _, err := os.Stat(filepath.Join(dstDir, "README.gen.go")); err == nil {
+		t.Error("non-Go file should not be copied")
+	}
+
+	// Verify stale .gen.go was removed.
+	if _, err := os.Stat(staleFile); err == nil {
+		t.Error("stale old_helper.gen.go should have been removed")
 	}
 }

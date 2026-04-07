@@ -26,9 +26,9 @@ func policyGetAction(cmd *cobra.Command, args []string) {
 
 	action, err := h.GetAction(cmd.Context(), id, name, namespace)
 	if err != nil {
-		identifier := fmt.Sprintf("id: %s", id)
+		identifier := "id: " + id
 		if id == "" {
-			identifier = fmt.Sprintf("name: %s", name)
+			identifier = "name: " + name
 		}
 		errMsg := fmt.Sprintf("Failed to find action (%s)", identifier)
 		cli.ExitWithError(errMsg, err)

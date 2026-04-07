@@ -12,7 +12,8 @@ func (h Handler) CreateProviderConfig(
 	ctx context.Context,
 	name, manager string,
 	config []byte,
-	metadata *common.MetadataMutable) (*policy.KeyProviderConfig, error) {
+	metadata *common.MetadataMutable,
+) (*policy.KeyProviderConfig, error) {
 	req := keymanagement.CreateProviderConfigRequest{
 		Name:       name,
 		Manager:    manager,
@@ -53,7 +54,8 @@ func (h Handler) UpdateProviderConfig(
 	id, name, manager string,
 	config []byte,
 	metadata *common.MetadataMutable,
-	behavior common.MetadataUpdateEnum) (*policy.KeyProviderConfig, error) {
+	behavior common.MetadataUpdateEnum,
+) (*policy.KeyProviderConfig, error) {
 	req := keymanagement.UpdateProviderConfigRequest{
 		Id:                     id,
 		Name:                   name,

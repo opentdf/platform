@@ -2,11 +2,12 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 )
 
-var ErrPrinterExpectsCommand = fmt.Errorf("printer expects a command")
+var ErrPrinterExpectsCommand = errors.New("printer expects a command")
 
 type Printer struct {
 	enabled bool

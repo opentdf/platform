@@ -27,6 +27,7 @@ jobs:
           check-latest: false
           cache-dependency-path: |
             platform/examples/go.sum
+            platform/otdfctl/go.sum
             platform/protocol/go/go.sum
             platform/sdk/go.sum
             platform/service/go.sum
@@ -60,18 +61,11 @@ jobs:
           wait-for: 90s
           working-directory: platform
 
-      ######## CHECKOUT/BUILD 'otdfctl' #############
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          repository: opentdf/otdfctl
-          ref: main
-          fetch-depth: 0
-          path: otdfctl
-          persist-credentials: false
-      - run: go build -o otdfctl
-        working-directory: otdfctl
-      - run: cp otdfctl ../platform
-        working-directory: otdfctl
+      ######## BUILD 'otdfctl' (now part of platform monorepo) #############
+      - run: go build -o otdfctl .
+        working-directory: platform/otdfctl
+      - run: cp otdfctl ../
+        working-directory: platform/otdfctl
 
       ######## RUN TESTS #############
       - run: ./.github/scripts/connectivity-test.sh

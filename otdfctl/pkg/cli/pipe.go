@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"io"
 	"os"
 )
@@ -9,12 +8,11 @@ import (
 func ReadFromArgsOrPipe(args []string, pipe *os.File) []byte {
 	if len(args) > 0 {
 		return ReadFromFile(args[0])
-	} else {
-		if pipe == nil {
-			pipe = os.Stdin
-		}
-		return ReadFromPipe(pipe)
 	}
+	if pipe == nil {
+		pipe = os.Stdin
+	}
+	return ReadFromPipe(pipe)
 }
 
 func ReadFromPipe(in *os.File) []byte {
@@ -35,13 +33,13 @@ func ReadFromPipe(in *os.File) []byte {
 func ReadFromFile(filePath string) []byte {
 	fileToEncrypt, err := os.Open(filePath)
 	if err != nil {
-		ExitWithError(fmt.Sprintf("Failed to git open file at path: %s", filePath), err)
+		ExitWithError("Failed to git open file at path: "+filePath, err)
 	}
 	defer fileToEncrypt.Close()
 
 	bytes, err := io.ReadAll(fileToEncrypt)
 	if err != nil {
-		ExitWithError(fmt.Sprintf("Failed to read bytes from file at path: %s", filePath), err)
+		ExitWithError("Failed to read bytes from file at path: "+filePath, err)
 	}
 	return bytes
 }

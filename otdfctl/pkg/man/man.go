@@ -2,6 +2,7 @@ package man
 
 import (
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -78,7 +79,7 @@ func (m *Manual) SetLang(l string) {
 	case "en", "fr":
 		m.lang = l
 	default:
-		panic(fmt.Sprintf("Unknown language: %s", l))
+		panic("Unknown language: " + l)
 	}
 }
 
@@ -91,12 +92,15 @@ func (m Manual) GetDoc(cmd string) *Doc {
 				return m.Fr[cmd]
 			}
 			// if no doc found in french, fallback to english
-			slog.Debug(fmt.Sprintf("No doc found for cmd, %s in %s", cmd, m.lang))
+			slog.Debug("no doc found for cmd, falling back to english",
+				slog.String("cmd", cmd),
+				slog.String("lang", m.lang),
+			)
 		}
 	}
 
 	if _, ok := m.En[cmd]; !ok {
-		panic(fmt.Sprintf("No doc found for cmd, %s", cmd))
+		panic("No doc found for cmd, " + cmd)
 	}
 
 	return m.En[cmd]
@@ -158,7 +162,10 @@ func ProcessEmbeddedDocs(manFiles embed.FS) {
 			cmd = "<root>"
 		}
 
-		slog.Debug("Found doc", slog.String("cmd", cmd), slog.String("lang", lang))
+		slog.Debug("found doc",
+			slog.String("cmd", cmd),
+			slog.String("lang", lang),
+		)
 		c, err := manFiles.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("could not read file, %s: %s ", path, err.Error())
@@ -169,7 +176,10 @@ func ProcessEmbeddedDocs(manFiles embed.FS) {
 			return fmt.Errorf("could not process doc, %s: %s", path, err.Error())
 		}
 
-		slog.Debug("Adding doc: ", cmd, " ", lang, "\n")
+		slog.Debug("adding doc",
+			slog.String("cmd", cmd),
+			slog.String("lang", lang),
+		)
 		switch lang {
 		case "fr":
 			Docs.Fr[cmd] = doc
@@ -187,7 +197,7 @@ func ProcessEmbeddedDocs(manFiles embed.FS) {
 }
 
 func init() {
-	slog.Debug("Loading docs from embed")
+	slog.Debug("loading docs from embed")
 	Docs = Manual{
 		Docs: make(map[string]*Doc),
 		En:   make(map[string]*Doc),
@@ -199,7 +209,7 @@ func init() {
 
 func ProcessDoc(doc string) (*Doc, error) {
 	if len(doc) == 0 {
-		return nil, fmt.Errorf("empty document")
+		return nil, errors.New("empty document")
 	}
 	var matter struct {
 		Title   string `yaml:"title"`
@@ -220,7 +230,7 @@ func ProcessDoc(doc string) (*Doc, error) {
 	c := matter.Command
 
 	if c.Name == "" {
-		return nil, fmt.Errorf("required 'command' property")
+		return nil, errors.New("required 'command' property")
 	}
 
 	long := "# " + matter.Title + "\n\n" + strings.TrimSpace(string(rest))

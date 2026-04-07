@@ -1,0 +1,5 @@
+version: v2.8.0
+name: custom-gcl
+plugins:
+  - module: github.com/jakedoublev/pathconcat
+    version: v0.1.0

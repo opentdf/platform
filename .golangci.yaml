@@ -48,6 +48,7 @@ linters:
     - nolintlint
     - nonamedreturns
     - nosprintfhostport
+    - pathconcat
     - perfsprint
     - predeclared
     - promlinter
@@ -73,6 +74,15 @@ linters:
     - wastedassign
     - whitespace
   settings:
+    custom:
+      pathconcat:
+        type: module
+        description: "Detects string path/URL concatenation; suggests filepath.Join, path.Join, or url.JoinPath"
+        settings:
+          ignore-strings:
+            - "/attr/"
+            - "/value/"
+            - "/obl/"
     errcheck:
       check-type-assertions: true
     exhaustive:

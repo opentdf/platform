@@ -1,7 +1,7 @@
 # make
 # To run all lint checks: `LINT_OPTIONS= make lint`
 
-.PHONY: all build clean connect-wrapper-generate docker-build fix fmt go-lint license lint proto-generate proto-lint sdk/sdk test tidy toolcheck
+.PHONY: all build clean connect-wrapper-generate custom-gcl docker-build fix fmt go-lint license lint proto-generate proto-lint sdk/sdk test tidy toolcheck
 
 MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
 HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
@@ -56,11 +56,14 @@ proto-lint:
 			exit $$exit_code; \
 		fi)
 
-go-lint:
+custom-gcl:
+	golangci-lint custom
+
+go-lint: custom-gcl
 	status=0; \
 	for m in $(HAND_MODS); do \
 		echo "Linting module: $$m"; \
-		(cd "$$m" && golangci-lint run $(LINT_OPTIONS) ) || status=1; \
+		(cd "$$m" && $(ROOT_DIR)/custom-gcl run $(LINT_OPTIONS) ) || status=1; \
 	done; \
 	exit $$status
 

@@ -32,6 +32,7 @@ tmp-gen/
 /examples/examples
 /**/kas-*.pem
 /opentdf
+/custom-gcl
 /sdkjava/target
 /serviceapp
 /service/opentdf

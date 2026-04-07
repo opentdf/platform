@@ -447,7 +447,7 @@ func TestRunBatchRegisteredResourceMigration(t *testing.T) {
 
 	t.Run("reports partial failure", func(t *testing.T) {
 		handler := &MockMigrationHandler{
-			CreateResourceErr: fmt.Errorf("create failed"),
+			CreateResourceErr: errors.New("create failed"),
 		}
 		prompter := &MockMigrationPrompter{
 			BatchNamespaceResponse: "https://example.com",
@@ -880,7 +880,7 @@ func TestCommitRegisteredResourceMigration(t *testing.T) {
 
 	t.Run("returns error when create fails", func(t *testing.T) {
 		mock := &MockMigrationHandler{
-			CreateResourceErr: fmt.Errorf("create failed"),
+			CreateResourceErr: errors.New("create failed"),
 		}
 
 		plan := RegisteredResourceMigrationPlan{
@@ -902,7 +902,7 @@ func TestCommitRegisteredResourceMigration(t *testing.T) {
 
 	t.Run("returns error when delete fails", func(t *testing.T) {
 		mock := &MockMigrationHandler{
-			DeleteResourceErr: fmt.Errorf("delete failed"),
+			DeleteResourceErr: errors.New("delete failed"),
 		}
 
 		plan := RegisteredResourceMigrationPlan{

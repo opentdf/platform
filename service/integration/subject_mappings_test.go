@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -598,44 +599,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_OrdersByCreatedAt_Succee
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByCreatedAt_ASC() {
-	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
-	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
-
-	createMapping := func(email string) string {
-		scs := &subjectmapping.SubjectConditionSetCreate{
-			SubjectSets: []*policy.SubjectSet{
-				{
-					ConditionGroups: []*policy.ConditionGroup{
-						{
-							BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
-							Conditions: []*policy.Condition{
-								{
-									SubjectExternalSelectorValue: ".email",
-									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-									SubjectExternalValues:        []string{email},
-								},
-							},
-						},
-					},
-				},
-			},
-		}
-
-		created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
-			AttributeValueId:       fixtureAttrValID,
-			NewSubjectConditionSet: scs,
-			Actions:                []*policy.Action{actionRead},
-		})
-		s.Require().NoError(err)
-		s.Require().NotEmpty(created.GetId())
-		return created.GetId()
-	}
-
-	firstID := createMapping("sort-created-asc-1@example.com")
-	time.Sleep(5 * time.Millisecond)
-	secondID := createMapping("sort-created-asc-2@example.com")
-	time.Sleep(5 * time.Millisecond)
-	thirdID := createMapping("sort-created-asc-3@example.com")
+	ids := s.createSortTestSubjectMappings("sort-created-asc")
 
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		Sort: []*subjectmapping.SubjectMappingsSort{
@@ -646,48 +610,11 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByCreatedAt_ASC() {
 	s.NotNil(listRsp)
 
 	// oldest first in ASC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, firstID, secondID, thirdID)
+	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByCreatedAt_DESC() {
-	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
-	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
-
-	createMapping := func(email string) string {
-		scs := &subjectmapping.SubjectConditionSetCreate{
-			SubjectSets: []*policy.SubjectSet{
-				{
-					ConditionGroups: []*policy.ConditionGroup{
-						{
-							BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
-							Conditions: []*policy.Condition{
-								{
-									SubjectExternalSelectorValue: ".email",
-									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-									SubjectExternalValues:        []string{email},
-								},
-							},
-						},
-					},
-				},
-			},
-		}
-
-		created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
-			AttributeValueId:       fixtureAttrValID,
-			NewSubjectConditionSet: scs,
-			Actions:                []*policy.Action{actionRead},
-		})
-		s.Require().NoError(err)
-		s.Require().NotEmpty(created.GetId())
-		return created.GetId()
-	}
-
-	firstID := createMapping("sort-created-desc-1@example.com")
-	time.Sleep(5 * time.Millisecond)
-	secondID := createMapping("sort-created-desc-2@example.com")
-	time.Sleep(5 * time.Millisecond)
-	thirdID := createMapping("sort-created-desc-3@example.com")
+	ids := s.createSortTestSubjectMappings("sort-created-desc")
 
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		Sort: []*subjectmapping.SubjectMappingsSort{
@@ -698,53 +625,16 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByCreatedAt_DESC() {
 	s.NotNil(listRsp)
 
 	// newest first in DESC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, thirdID, secondID, firstID)
+	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUpdatedAt_DESC() {
-	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
-	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
-
-	createMapping := func(email string) string {
-		scs := &subjectmapping.SubjectConditionSetCreate{
-			SubjectSets: []*policy.SubjectSet{
-				{
-					ConditionGroups: []*policy.ConditionGroup{
-						{
-							BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
-							Conditions: []*policy.Condition{
-								{
-									SubjectExternalSelectorValue: ".email",
-									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-									SubjectExternalValues:        []string{email},
-								},
-							},
-						},
-					},
-				},
-			},
-		}
-
-		created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
-			AttributeValueId:       fixtureAttrValID,
-			NewSubjectConditionSet: scs,
-			Actions:                []*policy.Action{actionRead},
-		})
-		s.Require().NoError(err)
-		s.Require().NotEmpty(created.GetId())
-		return created.GetId()
-	}
-
-	firstID := createMapping("sort-updated-desc-1@example.com")
-	time.Sleep(5 * time.Millisecond)
-	secondID := createMapping("sort-updated-desc-2@example.com")
-	time.Sleep(5 * time.Millisecond)
-	thirdID := createMapping("sort-updated-desc-3@example.com")
+	ids := s.createSortTestSubjectMappings("sort-updated-desc")
 
 	// Update the first mapping so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
 	_, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, &subjectmapping.UpdateSubjectMappingRequest{
-		Id: firstID,
+		Id: ids[0],
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{"updated": "true"},
 		},
@@ -760,54 +650,17 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUpdatedAt_DESC() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	// The updated mapping (firstID) should appear before the others
-	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, firstID, thirdID, secondID)
+	// The updated mapping (ids[0]) should appear before the others
+	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[0], ids[2], ids[1])
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUpdatedAt_ASC() {
-	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
-	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
+	ids := s.createSortTestSubjectMappings("sort-updated-asc")
 
-	createMapping := func(email string) string {
-		scs := &subjectmapping.SubjectConditionSetCreate{
-			SubjectSets: []*policy.SubjectSet{
-				{
-					ConditionGroups: []*policy.ConditionGroup{
-						{
-							BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
-							Conditions: []*policy.Condition{
-								{
-									SubjectExternalSelectorValue: ".email",
-									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-									SubjectExternalValues:        []string{email},
-								},
-							},
-						},
-					},
-				},
-			},
-		}
-
-		created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
-			AttributeValueId:       fixtureAttrValID,
-			NewSubjectConditionSet: scs,
-			Actions:                []*policy.Action{actionRead},
-		})
-		s.Require().NoError(err)
-		s.Require().NotEmpty(created.GetId())
-		return created.GetId()
-	}
-
-	firstID := createMapping("sort-updated-asc-1@example.com")
-	time.Sleep(5 * time.Millisecond)
-	secondID := createMapping("sort-updated-asc-2@example.com")
-	time.Sleep(5 * time.Millisecond)
-	thirdID := createMapping("sort-updated-asc-3@example.com")
-
-	// Update the first mapping so its updated_at is the most recent
+	// Update the last mapping so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
 	_, err := s.db.PolicyClient.UpdateSubjectMapping(s.ctx, &subjectmapping.UpdateSubjectMappingRequest{
-		Id: firstID,
+		Id: ids[2],
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{"updated": "true"},
 		},
@@ -823,49 +676,12 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUpdatedAt_ASC() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	// Least recently updated first: second, third, then first (which was updated last)
-	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, secondID, thirdID, firstID)
+	// The updated mapping (ids[2]) should appear last in ASC order
+	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecified_FallsBackToDefault() {
-	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
-	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
-
-	createMapping := func(email string) string {
-		scs := &subjectmapping.SubjectConditionSetCreate{
-			SubjectSets: []*policy.SubjectSet{
-				{
-					ConditionGroups: []*policy.ConditionGroup{
-						{
-							BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
-							Conditions: []*policy.Condition{
-								{
-									SubjectExternalSelectorValue: ".email",
-									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-									SubjectExternalValues:        []string{email},
-								},
-							},
-						},
-					},
-				},
-			},
-		}
-
-		created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
-			AttributeValueId:       fixtureAttrValID,
-			NewSubjectConditionSet: scs,
-			Actions:                []*policy.Action{actionRead},
-		})
-		s.Require().NoError(err)
-		s.Require().NotEmpty(created.GetId())
-		return created.GetId()
-	}
-
-	firstID := createMapping("sort-unspecified-1@example.com")
-	time.Sleep(5 * time.Millisecond)
-	secondID := createMapping("sort-unspecified-2@example.com")
-	time.Sleep(5 * time.Millisecond)
-	thirdID := createMapping("sort-unspecified-3@example.com")
+	ids := s.createSortTestSubjectMappings("sort-unspecified")
 
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		Sort: []*subjectmapping.SubjectMappingsSort{
@@ -876,7 +692,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecified_FallsB
 	s.NotNil(listRsp)
 
 	// Falls back to default created_at DESC ordering
-	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, thirdID, secondID, firstID)
+	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Limit_Succeeds() {
@@ -2751,4 +2567,46 @@ func (s *SubjectMappingsSuite) newSCSInNamespace(nsID string) *policy.SubjectCon
 	}, nsID, "")
 	s.Require().NoError(err)
 	return scs
+}
+
+// createSortTestSubjectMappings creates 3 subject mappings with 5ms gaps for distinct timestamps.
+// Returns the subject mapping IDs in creation order.
+func (s *SubjectMappingsSuite) createSortTestSubjectMappings(label string) []string {
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
+
+	const count = 3
+	ids := make([]string, count)
+	for i := range count {
+		if i > 0 {
+			time.Sleep(5 * time.Millisecond)
+		}
+		email := fmt.Sprintf("%s-%d-%d@example.com", label, i, time.Now().UnixNano())
+		scs := &subjectmapping.SubjectConditionSetCreate{
+			SubjectSets: []*policy.SubjectSet{
+				{
+					ConditionGroups: []*policy.ConditionGroup{
+						{
+							BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+							Conditions: []*policy.Condition{
+								{
+									SubjectExternalSelectorValue: ".email",
+									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+									SubjectExternalValues:        []string{email},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+			AttributeValueId:       fixtureAttrValID,
+			NewSubjectConditionSet: scs,
+			Actions:                []*policy.Action{actionRead},
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	return ids
 }

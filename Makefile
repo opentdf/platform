@@ -74,7 +74,7 @@ govulncheck:
 
 proto-generate: toolcheck
 	# remove all generated directories under protocol/go
-	find protocol/go -mindepth 1 -maxdepth 1 -type d ! -name codegen ! -name internal -exec rm -rf {} +
+	find protocol/go -mindepth 1 -maxdepth 1 -type d ! -name internal -exec rm -rf {} +
 	rm -rf docs/grpc docs/openapi
 	buf generate service
 	buf generate service --template buf.gen.grpc.docs.yaml
@@ -84,14 +84,14 @@ proto-generate: toolcheck
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.grpc.docs.yaml
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.openapi.docs.yaml
 
-	go run ./protocol/go/codegen
+	cd protocol/codegen && GOWORK=off go run .
 	go run ./sdk/codegen
 
 connect-wrapper-generate:
 	go run ./sdk/codegen
 
 proto-helper-generate:
-	go run ./protocol/go/codegen
+	cd protocol/codegen && GOWORK=off go run .
 
 policy-sql-gen:
 	@which sqlc > /dev/null || { echo "sqlc not found, please install it: https://docs.sqlc.dev/en/stable/overview/install.html"; exit 1; }

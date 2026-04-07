@@ -134,7 +134,7 @@ func (p *HuhPrompter) ConfirmResourceNamespace(resourceName, detectedNamespaceFQ
 			huh.NewSelect[string]().
 				Title(fmt.Sprintf("Resource '%s' belongs in namespace '%s' (detected from AAVs):", resourceName, detectedNamespaceFQN)).
 				Options(
-					huh.NewOption("Confirm: "+detectedNamespaceFQN, detectedNamespaceFQN),
+					huh.NewOption(fmt.Sprintf("Confirm: %s", detectedNamespaceFQN), detectedNamespaceFQN),
 					huh.NewOption("Skip this resource", optSkipResource),
 					huh.NewOption("Abort entire migration", optAbortAll),
 				).
@@ -557,7 +557,7 @@ func runBatchRegisteredResourceMigration(ctx context.Context, h MigrationHandler
 			fmt.Println(styles.styleWarning.Render(errMsg))
 			failedResources[p.Resource.GetId()] = err.Error()
 		} else {
-			fmt.Println(styles.styleAction.Render("  Successfully migrated resource " + p.Resource.GetName()))
+			fmt.Println(styles.styleAction.Render(fmt.Sprintf("  Successfully migrated resource %s", p.Resource.GetName())))
 			successCount++
 		}
 	}
@@ -734,7 +734,7 @@ func runInteractiveRegisteredResourceMigration(ctx context.Context, h MigrationH
 			fmt.Println(styles.styleWarning.Render(errMsg))
 			failedResources[p.Resource.GetId()] = err.Error()
 		} else {
-			fmt.Println(styles.styleAction.Render("  Successfully migrated resource " + p.Resource.GetName()))
+			fmt.Println(styles.styleAction.Render(fmt.Sprintf("  Successfully migrated resource %s", p.Resource.GetName())))
 			successCount++
 		}
 	}

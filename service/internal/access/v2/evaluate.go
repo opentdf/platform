@@ -483,10 +483,12 @@ func isRequestedActionMatch(ctx context.Context, l *logger.Logger, requestedActi
 		return false
 	}
 
-	// Action identity precedence:
+	// Action identity precedence for matching:
 	// 1) request action id (if present) is authoritative,
 	// 2) otherwise name (case-insensitive),
 	// 3) optional request namespace (id or fqn) further narrows matches.
+	// Note: API validation still requires request action name today; this logic
+	// defines matcher behavior when additional identity fields are present.
 	if requestedAction.GetId() != "" {
 		if requestedAction.GetId() != entitledAction.GetId() {
 			l.TraceContext(ctx, "action match identity mismatch",

@@ -84,14 +84,14 @@ proto-generate: toolcheck
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.grpc.docs.yaml
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.openapi.docs.yaml
 
-	cd protocol/codegen && GOWORK=off go run .
+	cd protocol/codegen && go run .
 	go run ./sdk/codegen
 
 connect-wrapper-generate:
 	go run ./sdk/codegen
 
 proto-helper-generate:
-	cd protocol/codegen && GOWORK=off go run .
+	cd protocol/codegen && go run .
 
 policy-sql-gen:
 	@which sqlc > /dev/null || { echo "sqlc not found, please install it: https://docs.sqlc.dev/en/stable/overview/install.html"; exit 1; }

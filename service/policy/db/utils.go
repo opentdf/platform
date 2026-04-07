@@ -16,6 +16,12 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+// Sort field constants shared across all List endpoint sort helpers.
+const (
+	sortFieldCreatedAt = "created_at"
+	sortFieldUpdatedAt = "updated_at"
+)
+
 // Gathers request pagination limit/offset or configured default
 func (c PolicyDBClient) getRequestedLimitOffset(page *policy.PageRequest) (int32, int32) {
 	return getListLimit(page.GetLimit(), c.listCfg.limitDefault), page.GetOffset()
@@ -56,9 +62,9 @@ func GetNamespacesSortParams(sort []*namespaces.NamespacesSort) (string, string)
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN:
 		field = "fqn"
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT:
-		field = "created_at"
+		field = sortFieldCreatedAt
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UPDATED_AT:
-		field = "updated_at"
+		field = sortFieldUpdatedAt
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UNSPECIFIED:
 		return "", ""
 	default:
@@ -299,9 +305,9 @@ func GetSubjectMappingsSortParams(sort []*subjectmapping.SubjectMappingsSort) (s
 	var field string
 	switch s.GetField() {
 	case subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT:
-		field = "created_at"
+		field = sortFieldCreatedAt
 	case subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT:
-		field = "updated_at"
+		field = sortFieldUpdatedAt
 	case subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED:
 		return "", ""
 	default:
@@ -344,9 +350,9 @@ func GetAttributesSortParams(sort []*attributes.AttributesSort) (string, string)
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME:
 		field = "name"
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT:
-		field = "created_at"
+		field = sortFieldCreatedAt
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UPDATED_AT:
-		field = "updated_at"
+		field = sortFieldUpdatedAt
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UNSPECIFIED:
 		return "", ""
 	default:

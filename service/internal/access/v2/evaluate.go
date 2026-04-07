@@ -81,11 +81,13 @@ func getResourceDecision(
 		}
 		for _, aav := range regResValue.GetActionAttributeValues() {
 			aavAttrValueFQN := aav.GetAttributeValue().GetFqn()
+			precheckNamespaceID := ""
+			precheckNamespacedPolicy := false
 			// First, check whether the request action identity (id or name[/namespace])
 			// could match this AAV action at all. This lightweight pre-check is used to
 			// decide whether strict mode must fail closed when namespace context is
 			// missing for this candidate AAV.
-			matchesRequestIdentity := isRequestedActionMatch(ctx, l, action, "", aav.GetAction(), false)
+			matchesRequestIdentity := isRequestedActionMatch(ctx, l, action, precheckNamespaceID, aav.GetAction(), precheckNamespacedPolicy)
 			requiredNamespaceID := ""
 			if attrAndValue, ok := accessibleAttributeValues[aavAttrValueFQN]; ok {
 				requiredNamespaceID = attrAndValue.GetAttribute().GetNamespace().GetId()

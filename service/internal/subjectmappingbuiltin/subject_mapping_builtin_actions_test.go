@@ -143,7 +143,7 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_SingleEntity(t *testi
 		),
 	}
 
-	result, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings, []*entityresolutionV2.EntityRepresentation{engineeringEntity})
+	result, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings, []*entityresolutionV2.EntityRepresentation{engineeringEntity}, nil)
 	require.NoError(t, err)
 	assert.Len(t, result, 1)
 
@@ -187,6 +187,7 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_MultipleEntities(t *t
 	result, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(
 		attributeMappings,
 		[]*entityresolutionV2.EntityRepresentation{engineeringEntity, salesEntity},
+		nil,
 	)
 
 	// Validate results
@@ -235,6 +236,7 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_NoMatchingEntities(t 
 	result, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(
 		attributeMappings,
 		[]*entityresolutionV2.EntityRepresentation{marketingEntity},
+		nil,
 	)
 
 	// Validate results
@@ -269,6 +271,7 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_MultipleAttributes(t 
 	result, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(
 		attributeMappings,
 		[]*entityresolutionV2.EntityRepresentation{engineeringEntity},
+		nil,
 	)
 
 	// Validate results
@@ -356,7 +359,7 @@ func TestEvaluateSubjectMappingsWithActions_OneGoodResolution(t *testing.T) {
 				),
 			}
 			// Execute function
-			entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, entity)
+			entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, entity, nil)
 			require.NoError(t, err)
 			assert.Len(t, entitlements, 1)
 
@@ -422,7 +425,7 @@ func TestEvaluateSubjectMappingsWithActions_MultipleMatchingSubjectMappings(t *t
 	}
 
 	// Execute function
-	entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, multiMatchEntity)
+	entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, multiMatchEntity, nil)
 
 	// Validate results
 	require.NoError(t, err)
@@ -469,7 +472,7 @@ func TestEvaluateSubjectMappingsWithActions_DeduplicatesConflictingActionNamesDe
 		classConfFQN: createAttributeMapping(classConfFQN, sm),
 	}
 
-	entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, entity)
+	entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, entity, nil)
 	require.NoError(t, err)
 
 	actionsList, exists := entitlements[classConfFQN]
@@ -501,7 +504,7 @@ func TestEvaluateSubjectMappingsWithActions_NoMatchingSubjectMappings(t *testing
 	}
 
 	// Execute function
-	entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, marketingEntity)
+	entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, marketingEntity, nil)
 
 	// Validate results
 	require.NoError(t, err)
@@ -587,7 +590,7 @@ func TestEvaluateSubjectMappingsWithActions_ComplexCondition_MultipleConditionGr
 	}
 
 	// Test senior engineer
-	seniorEntitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, seniorEngEntity)
+	seniorEntitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, seniorEngEntity, nil)
 	require.NoError(t, err)
 	assert.Empty(t, seniorEntitlements)
 	seniorActions, exists := seniorEntitlements[classRestrictedFQN]
@@ -595,7 +598,7 @@ func TestEvaluateSubjectMappingsWithActions_ComplexCondition_MultipleConditionGr
 	assert.Empty(t, seniorActions)
 
 	// Test principal engineer with admin
-	adminEntitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, principalEngWithAdmin)
+	adminEntitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, principalEngWithAdmin, nil)
 	require.NoError(t, err)
 	assert.Len(t, adminEntitlements, 1)
 	seniorWithAdminActions, exists := adminEntitlements[classRestrictedFQN]
@@ -609,7 +612,7 @@ func TestEvaluateSubjectMappingsWithActions_ComplexCondition_MultipleConditionGr
 	assert.Contains(t, actionNames, actions.ActionNameDelete)
 
 	// Test senior engineer with admin in a different index
-	adminEntitlementsBadIndex, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, seniorEngWithAdminEntityInBadIndex)
+	adminEntitlementsBadIndex, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, seniorEngWithAdminEntityInBadIndex, nil)
 	require.NoError(t, err)
 	assert.Empty(t, adminEntitlementsBadIndex)
 	adminActionsBadIndex, exists := adminEntitlementsBadIndex[classRestrictedFQN]
@@ -617,7 +620,7 @@ func TestEvaluateSubjectMappingsWithActions_ComplexCondition_MultipleConditionGr
 	assert.Empty(t, adminActionsBadIndex)
 
 	// Test non-engineering admin
-	nonEngAdminEntitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, nonEngAdminEntity)
+	nonEngAdminEntitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, nonEngAdminEntity, nil)
 	require.NoError(t, err)
 	assert.Empty(t, nonEngAdminEntitlements)
 	nonEngAdminActions, exists := nonEngAdminEntitlements[classRestrictedFQN]

@@ -314,11 +314,7 @@ func GetSubjectMappingsSortParams(sort []*subjectmapping.SubjectMappingsSort) (s
 		return "", ""
 	}
 
-	direction := "ASC"
-	if s.GetDirection() == policy.SortDirection_SORT_DIRECTION_DESC {
-		direction = "DESC"
-	}
-	return field, direction
+	return field, getSortDirection(s.GetDirection())
 }
 
 func UUIDToString(uuid pgtype.UUID) string {

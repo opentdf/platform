@@ -132,9 +132,9 @@ func (p *HuhPrompter) ConfirmResourceNamespace(resourceName, detectedNamespaceFQ
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
-				Title(fmt.Sprintf("Resource '%s' belongs in namespace '%s' (detected from AAVs):", resourceName, detectedNamespaceFQN)).
+				Title("Resource '"+resourceName+"' belongs in namespace '"+detectedNamespaceFQN+"' (detected from AAVs):").
 				Options(
-					huh.NewOption(fmt.Sprintf("Confirm: %s", detectedNamespaceFQN), detectedNamespaceFQN),
+					huh.NewOption("Confirm: "+detectedNamespaceFQN, detectedNamespaceFQN),
 					huh.NewOption("Skip this resource", optSkipResource),
 					huh.NewOption("Abort entire migration", optAbortAll),
 				).
@@ -553,11 +553,11 @@ func runBatchRegisteredResourceMigration(ctx context.Context, h MigrationHandler
 		)
 
 		if err := commitRegisteredResourceMigration(ctx, h, p); err != nil {
-			errMsg := fmt.Sprintf("Failed to migrate resource %s: %v", p.Resource.GetId(), err)
+			errMsg := "Failed to migrate resource " + p.Resource.GetId() + ": " + err.Error()
 			fmt.Println(styles.styleWarning.Render(errMsg))
 			failedResources[p.Resource.GetId()] = err.Error()
 		} else {
-			fmt.Println(styles.styleAction.Render(fmt.Sprintf("  Successfully migrated resource %s", p.Resource.GetName())))
+			fmt.Println(styles.styleAction.Render("  Successfully migrated resource " + p.Resource.GetName()))
 			successCount++
 		}
 	}
@@ -730,11 +730,11 @@ func runInteractiveRegisteredResourceMigration(ctx context.Context, h MigrationH
 		)
 
 		if err := commitRegisteredResourceMigration(ctx, h, p); err != nil {
-			errMsg := fmt.Sprintf("Failed to migrate resource %s: %v", p.Resource.GetId(), err)
+			errMsg := "Failed to migrate resource " + p.Resource.GetId() + ": " + err.Error()
 			fmt.Println(styles.styleWarning.Render(errMsg))
 			failedResources[p.Resource.GetId()] = err.Error()
 		} else {
-			fmt.Println(styles.styleAction.Render(fmt.Sprintf("  Successfully migrated resource %s", p.Resource.GetName())))
+			fmt.Println(styles.styleAction.Render("  Successfully migrated resource " + p.Resource.GetName()))
 			successCount++
 		}
 	}

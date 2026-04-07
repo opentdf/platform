@@ -14,7 +14,7 @@ import (
 func TestNewRejectsUnsupportedSchemaVersion(t *testing.T) {
 	t.Parallel()
 
-	_, err := New(ArtifactOpts{
+	_, err := New(Options{
 		Version: semver.MustParse("v2.0.0"),
 	})
 	require.ErrorIs(t, err, ErrUnsupportedSchemaVersion)
@@ -23,7 +23,7 @@ func TestNewRejectsUnsupportedSchemaVersion(t *testing.T) {
 func TestNewRejectsNilWriter(t *testing.T) {
 	t.Parallel()
 
-	_, err := New(ArtifactOpts{})
+	_, err := New(Options{})
 	require.ErrorIs(t, err, artifactv1.ErrNilWriter)
 }
 
@@ -31,7 +31,7 @@ func TestNewDefaultsCurrentVersion(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	doc, err := New(ArtifactOpts{Writer: &buf})
+	doc, err := New(Options{Writer: &buf})
 	require.NoError(t, err)
 
 	require.NoError(t, doc.Write())
@@ -43,7 +43,7 @@ func TestArtifactSummaryReturnsEncodedJSON(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	doc, err := New(ArtifactOpts{Writer: &buf})
+	doc, err := New(Options{Writer: &buf})
 	require.NoError(t, err)
 
 	summary, err := doc.Summary()
@@ -65,7 +65,7 @@ func TestArtifactBuildAndCommitAreNotImplemented(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	doc, err := New(ArtifactOpts{Writer: &buf})
+	doc, err := New(Options{Writer: &buf})
 	require.NoError(t, err)
 
 	buildErr := doc.Build()

@@ -20,7 +20,7 @@ var (
 	ErrNotImplemented           = errors.New("not implemented")
 )
 
-type ArtifactOpts struct {
+type Options struct {
 	Version *semver.Version
 	Writer  io.Writer
 }
@@ -33,7 +33,7 @@ type Artifact interface {
 	Write() error
 }
 
-func New(opts ArtifactOpts) (Artifact, error) {
+func New(opts Options) (Artifact, error) {
 	version := opts.Version
 	if version == nil {
 		version = currentSchemaVersion

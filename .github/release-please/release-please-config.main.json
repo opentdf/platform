@@ -39,6 +39,15 @@
           "path": "cmd/version.go"
         }
       ]
+    },
+    "otdfctl": {
+      "component": "otdfctl",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "pkg/config/config.go"
+        }
+      ]
     }
   }
 }

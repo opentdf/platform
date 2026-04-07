@@ -5,5 +5,6 @@
   "lib/identifier": "0.3.0",
   "protocol/go": "0.23.0",
   "sdk": "0.15.0",
-  "service": "0.13.0"
+  "service": "0.13.0",
+  "otdfctl": "0.30.0"
 }

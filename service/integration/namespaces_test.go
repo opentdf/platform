@@ -303,7 +303,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByName_DESC() {
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_ASC() {
-	ids := s.createSortTestNamespaces("createdasc-ns", 3)
+	ids := s.createSortTestNamespaces("createdasc-ns")
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -319,7 +319,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_ASC() {
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_DESC() {
-	ids := s.createSortTestNamespaces("createddesc-ns", 3)
+	ids := s.createSortTestNamespaces("createddesc-ns")
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -367,7 +367,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_DESC() {
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_DESC() {
-	ids := s.createSortTestNamespaces("upd-sort-ns", 3)
+	ids := s.createSortTestNamespaces("upd-sort-ns")
 
 	// Update the first namespace so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -394,7 +394,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_DESC() {
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_ASC() {
-	ids := s.createSortTestNamespaces("upd-sort-asc-ns", 3)
+	ids := s.createSortTestNamespaces("upd-sort-asc-ns")
 
 	// Update the last namespace so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -421,7 +421,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_ASC() {
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedField_FallsBackToDefault() {
-	ids := s.createSortTestNamespaces("unspecified-sort-ns", 3)
+	ids := s.createSortTestNamespaces("unspecified-sort-ns")
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -1359,9 +1359,10 @@ func (s *NamespacesSuite) Test_GetNamespace_ByIdAndName_ReturnSameResult() {
 	}
 }
 
-// createSortTestNamespaces creates count namespaces with 5ms gaps for distinct timestamps.
+// createSortTestNamespaces creates 3 namespaces with 5ms gaps for distinct timestamps.
 // Returns the namespace IDs in creation order.
-func (s *NamespacesSuite) createSortTestNamespaces(label string, count int) []string { //nolint:unparam // count is parameterized for reuse across endpoint test files
+func (s *NamespacesSuite) createSortTestNamespaces(label string) []string {
+	const count = 3
 	ids := make([]string, count)
 	for i := range count {
 		if i > 0 {

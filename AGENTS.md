@@ -62,6 +62,20 @@ Prefer `make` targets at repo root:
 - DCO sign-off is required: use `git commit -s -m "feat(scope): summary"`. See `CONTRIBUTING.md`.
 - PRs should describe changes, include testing notes, and update docs/tests when applicable (see `.github/pull_request_template.md`).
 
+## Go Toolchain Version Management
+
+The Go toolchain version (`toolchain goX.Y.Z`) is pinned in `go.work` and in every module’s `go.mod`. Two CI workflow files also hardcode it: `.github/workflows/checks.yaml` (`go-version-input`) and `.github/workflows/sonarcloud.yml` (`go-version`).
+
+**Do not update the Go toolchain version by hand in feature PRs.** Instead:
+
+- Toolchain bumps are automated by the `go-version-update` workflow (`.github/workflows/go-version-update.yaml`), which fires automatically when `govulncheck` fails on `main` or a `release/**` branch. It uses the `opentdf-automation[bot]` account and the `chore/bump-go-toolchain` branch.
+- To trigger a bump manually: `gh workflow run go-version-update.yaml --field base_branch=main`
+- To preview what a bump would change without modifying files: `.github/scripts/bump-go-version.sh --dry-run`
+
+**Minor-version upgrades** (e.g. 1.25 → 1.26) are handled by the same workflow when the current minor falls out of Go’s two-release support window. The `go` directive in every `go.mod` is updated to `X.Y.0` (minimum), and the `toolchain` directive is set to the latest patch.
+
+If `govulncheck` is failing locally because you are on an older toolchain, update your local Go installation rather than editing these files directly.
+
 ## Security & Configuration Tips
 
 - Don’t commit secrets/keys. Use local configs like `opentdf-dev.yaml` and follow `SECURITY.md`.

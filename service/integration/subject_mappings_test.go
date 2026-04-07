@@ -1381,6 +1381,103 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_NoNamespaceFilter_R
 	s.True(foundUnnamespaced)
 }
 
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_ASC() {
+	ids := s.createSortTestSubjectConditionSets("sort-scs-created-asc")
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Sort: []*subjectmapping.SubjectConditionSetsSort{
+			{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// oldest first in ASC order
+	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_DESC() {
+	ids := s.createSortTestSubjectConditionSets("sort-scs-created-desc")
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Sort: []*subjectmapping.SubjectConditionSetsSort{
+			{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// newest first in DESC order
+	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUpdatedAt_DESC() {
+	ids := s.createSortTestSubjectConditionSets("sort-scs-updated-desc")
+
+	// Update the first SCS so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, &subjectmapping.UpdateSubjectConditionSetRequest{
+		Id: ids[0],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Sort: []*subjectmapping.SubjectConditionSetsSort{
+			{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// The updated SCS (ids[0]) should appear before the others
+	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[0], ids[2], ids[1])
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUpdatedAt_ASC() {
+	ids := s.createSortTestSubjectConditionSets("sort-scs-updated-asc")
+
+	// Update the last SCS so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, &subjectmapping.UpdateSubjectConditionSetRequest{
+		Id: ids[2],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Sort: []*subjectmapping.SubjectConditionSetsSort{
+			{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// The updated SCS (ids[2]) should appear last in ASC order
+	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecified_FallsBackToDefault() {
+	ids := s.createSortTestSubjectConditionSets("sort-scs-unspecified")
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Sort: []*subjectmapping.SubjectConditionSetsSort{
+			{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Falls back to default created_at DESC ordering
+	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[2], ids[1], ids[0])
+}
+
 func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet() {
 	// create a new subject condition set, delete it, and verify get fails with not found
 	newConditionSet := &subjectmapping.SubjectConditionSetCreate{
@@ -2575,6 +2672,9 @@ func (s *SubjectMappingsSuite) createSortTestSubjectMappings(label string) []str
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
 	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
 
+// createSortTestSubjectConditionSets creates 3 subject condition sets with 5ms gaps for distinct timestamps.
+// Returns the SCS IDs in creation order.
+func (s *SubjectMappingsSuite) createSortTestSubjectConditionSets(label string) []string {
 	const count = 3
 	ids := make([]string, count)
 	for i := range count {
@@ -2583,6 +2683,8 @@ func (s *SubjectMappingsSuite) createSortTestSubjectMappings(label string) []str
 		}
 		email := fmt.Sprintf("%s-%d-%d@example.com", label, i, time.Now().UnixNano())
 		scs := &subjectmapping.SubjectConditionSetCreate{
+		val := fmt.Sprintf("%s-%d-%d", label, i, time.Now().UnixNano())
+		created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
 			SubjectSets: []*policy.SubjectSet{
 				{
 					ConditionGroups: []*policy.ConditionGroup{
@@ -2593,6 +2695,9 @@ func (s *SubjectMappingsSuite) createSortTestSubjectMappings(label string) []str
 									SubjectExternalSelectorValue: ".email",
 									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
 									SubjectExternalValues:        []string{email},
+									SubjectExternalSelectorValue: ".sort_test",
+									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+									SubjectExternalValues:        []string{val},
 								},
 							},
 						},
@@ -2605,6 +2710,7 @@ func (s *SubjectMappingsSuite) createSortTestSubjectMappings(label string) []str
 			NewSubjectConditionSet: scs,
 			Actions:                []*policy.Action{actionRead},
 		})
+		}, "", "")
 		s.Require().NoError(err)
 		ids[i] = created.GetId()
 	}

@@ -1,5 +1,10 @@
 [
   {
+    "version": "go1.26rc1",
+    "stable": false,
+    "files": []
+  },
+  {
     "version": "go1.25.9",
     "stable": true,
     "files": []

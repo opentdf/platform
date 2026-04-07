@@ -57,13 +57,21 @@ usage() {
   sed -n '/^# Usage:/,/^[^#]/{ /^#/{ s/^# \{0,1\}//; p } }' "$0"
 }
 
+needs_value() {
+  if [[ $# -lt 2 || -z "$2" || "$2" == --* ]]; then
+    echo "[ERROR] Option $1 requires a non-empty value" >&2
+    usage
+    exit 1
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --dry-run)  DRY_RUN=true ;;
-    --target)   TARGET_VERSION="$2"; shift ;;
-    --repo-root) REPO_ROOT="$2"; shift ;;
-    --api-url)  API_URL="$2"; shift ;;
-    --help)     usage; exit 0 ;;
+    --dry-run)   DRY_RUN=true ;;
+    --target)    needs_value "$@"; TARGET_VERSION="$2"; shift ;;
+    --repo-root) needs_value "$@"; REPO_ROOT="$2"; shift ;;
+    --api-url)   needs_value "$@"; API_URL="$2"; shift ;;
+    --help)      usage; exit 0 ;;
     *) echo "[ERROR] Unknown option: $1" >&2; usage; exit 1 ;;
   esac
   shift
@@ -120,13 +128,15 @@ if [[ -n "$TARGET_VERSION" ]]; then
   fi
 else
   log "Fetching Go release list from ${API_URL}"
-  VERSIONS_JSON="$(curl -sf "$API_URL")"
+  VERSIONS_JSON="$(curl -sf --connect-timeout 5 --max-time 30 "$API_URL")"
 
-  # Extract all distinct minor versions from stable releases, sorted ascending.
+  # Extract all distinct minor versions from *stable* releases, sorted ascending.
+  # Filter .stable == true to exclude betas and release candidates.
   ALL_MINORS="$(
     echo "$VERSIONS_JSON" \
       | jq -r '[
-          .[].version
+          .[] | select(.stable == true) |
+          .version
           | ltrimstr("go")
           | split(".")
           | .[0:2]
@@ -147,11 +157,15 @@ else
     TARGET_MINOR="$CURRENT_MINOR"
   fi
 
-  # Latest patch release for the target minor.
+  # Latest *stable* patch release for the target minor.
+  # Sort numerically and take the last entry to guard against non-ordered API responses.
   LATEST_PATCH="$(
     echo "$VERSIONS_JSON" \
       | jq -r --arg prefix "go${TARGET_MINOR}." \
-          '[.[].version | select(startswith($prefix))] | first | ltrimstr("go")'
+          '[.[] | select(.stable == true) | .version | select(startswith($prefix))]
+           | sort_by(ltrimstr("go") | split(".") | map(tonumber))
+           | last
+           | ltrimstr("go")'
   )"
 
   if [[ -z "$LATEST_PATCH" || "$LATEST_PATCH" == "null" ]]; then
@@ -246,9 +260,9 @@ if [[ "$DRY_RUN" == "true" ]]; then
       continue
     fi
     if ! diff -q "$orig" "$modified" > /dev/null 2>&1; then
-      diff -u "$orig" "$modified" \
-        --label "a/${rel}" \
-        --label "b/${rel}" \
+      # Use -L (short form) for portability: --label is GNU diff only.
+      diff -u -L "a/${rel}" -L "b/${rel}" \
+        "$orig" "$modified" \
         || true   # diff exits 1 when files differ — that is expected
       HAS_DIFF=true
     fi

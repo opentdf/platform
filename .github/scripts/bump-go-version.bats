@@ -213,3 +213,16 @@ EOF
   # go directive must NOT change (still a patch bump)
   grep -q "^go 1\.25\.0$" "${root}/go.work"
 }
+
+@test "prerelease versions (stable: false) are excluded from version selection" {
+  local root="${BATS_TEST_TMPDIR}/repo"
+  # Fixtures include go1.26rc1 (stable: false); current minor 1.25 is still supported.
+  # The script must NOT upgrade to 1.26 and must pick 1.25.9 as the latest stable patch.
+  build_repo "$root" "1.25.7" "1.25.0"
+
+  run "$SCRIPT" --repo-root "$root" --api-url "$API_URL"
+  [ "$status" -eq 0 ]
+
+  grep -q "toolchain go1\.25\.9" "${root}/go.work"
+  ! grep -q "toolchain go1\.26" "${root}/go.work"
+}

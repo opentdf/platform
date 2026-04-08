@@ -45,6 +45,7 @@ echo "[INFO] Rebuilding partial go.work for [${component}]"
 case $component in
 lib/ocrypto | lib/fixtures | lib/flattening | lib/identifier | protocol/go)
   echo "[INFO] skipping for leaf package"
+  exit 0
   ;;
 sdk)
   rm -f go.work go.work.sum &&
@@ -71,7 +72,7 @@ examples)
 esac
 
 # Restore the toolchain directive if it was present in the original go.work.
-if [[ -n "${ORIG_TOOLCHAIN:-}" && -f go.work ]]; then
+if [[ -n "${ORIG_TOOLCHAIN:-}" ]]; then
   go work edit -toolchain="$ORIG_TOOLCHAIN"
   echo "[INFO] Restored toolchain ${ORIG_TOOLCHAIN} in go.work"
 fi

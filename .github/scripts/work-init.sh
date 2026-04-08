@@ -36,6 +36,11 @@ if ! cd "$ROOT_DIR"; then
   exit 1
 fi
 
+# Preserve the toolchain directive from the original go.work so that CI steps
+# reading go-version-file: go.work (e.g. govulncheck) continue to use the
+# correct Go version after the workspace is regenerated.
+ORIG_TOOLCHAIN=$(grep "^toolchain " go.work 2>/dev/null | awk '{print $2}')
+
 echo "[INFO] Rebuilding partial go.work for [${component}]"
 case $component in
 lib/ocrypto | lib/fixtures | lib/flattening | lib/identifier | protocol/go)
@@ -64,3 +69,9 @@ examples)
   exit 1
   ;;
 esac
+
+# Restore the toolchain directive if it was present in the original go.work.
+if [[ -n "${ORIG_TOOLCHAIN:-}" && -f go.work ]]; then
+  go work edit -toolchain="$ORIG_TOOLCHAIN"
+  echo "[INFO] Restored toolchain ${ORIG_TOOLCHAIN} in go.work"
+fi

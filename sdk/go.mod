@@ -2,8 +2,6 @@ module github.com/opentdf/platform/sdk
 
 go 1.25.0
 
-toolchain go1.25.8
-
 require (
 	connectrpc.com/connect v1.19.1
 	github.com/Masterminds/semver/v3 v3.4.0

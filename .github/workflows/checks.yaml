@@ -74,7 +74,7 @@ jobs:
         continue-on-error: true
         uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
         with:
-          go-version-input: "1.25.7"
+          go-version-file: go.work
           work-dir: ${{ matrix.directory }}
       - if: steps.govulncheck.outcome == 'failure'
         run: echo "$MODULE_DIR" > "/tmp/govulncheck-failure-${JOB_INDEX}.txt"

@@ -74,7 +74,8 @@ jobs:
         continue-on-error: true
         uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
         with:
-          go-version-input: "1.25.7"
+          go-version-input: ""
+          go-version-file: go.work
           work-dir: ${{ matrix.directory }}
       - if: steps.govulncheck.outcome == 'failure'
         run: echo "$MODULE_DIR" > "/tmp/govulncheck-failure-${JOB_INDEX}.txt"
@@ -618,6 +619,56 @@ jobs:
       - name: Check that make proto-generate and connect-wrapper-generate have run before PR submission; see above for error details
         run: git diff-files --quiet --ignore-submodules
 
+  # Dispatch the go-version-update workflow when govulncheck fails on a
+  # protected branch.  Only fires for direct pushes (not PRs or workflow_call)
+  # so the automation PR itself will never re-trigger this job.
+  trigger-go-version-update:
+    if: |
+      !cancelled() &&
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/'))
+    needs: go
+    runs-on: ubuntu-22.04
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Check for govulncheck failure artifacts
+        id: check-artifacts
+        continue-on-error: true
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          pattern: govulncheck-failure-*
+          path: govulncheck-failures
+          merge-multiple: true
+      - name: Dispatch go-version-update workflow
+        if: steps.check-artifacts.outcome == 'success'
+        run: |
+          gh workflow run go-version-update.yaml \
+            --field base_branch="${GITHUB_REF_NAME}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  # Run unit tests for .github/scripts using bats-core.
+  # These tests do not require a running server.
+  script-tests:
+    permissions:
+      contents: read
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: service/go.mod
+          cache: false
+          check-latest: false
+      - name: Setup Bats and bats libs
+        uses: bats-core/bats-action@42fcc8700f773c075a16a90eb11674c0318ad507 # 3.0.1
+      - name: Run script unit tests
+        run: bats .github/scripts/bump-go-version.bats
+
   ci:
     permissions: {}
     needs:
@@ -628,6 +679,7 @@ jobs:
       - benchmark
       - license
       - platform-xtest
+      - script-tests
       - tests-bdd
       - otdfctl-test
     runs-on: ubuntu-22.04

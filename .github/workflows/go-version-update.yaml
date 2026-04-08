@@ -1,0 +1,212 @@
+name: "Go Version Update"
+
+# Automatically creates or updates a PR that bumps the Go toolchain version
+# whenever govulncheck fails on a protected branch.
+#
+# Trigger paths:
+#   1. workflow_dispatch — dispatched by the `trigger-go-version-update` job in
+#      checks.yaml when govulncheck failure artifacts are detected on a push to
+#      main or release/**. Passes the failing branch as `base_branch`.
+#   2. schedule — weekly backstop in case a Go release occurs while main is
+#      quiet (no pushes triggering Checks).
+#   3. Manual dispatch — for ad-hoc use or testing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_branch:
+        description: "Base branch to target with the PR (e.g. main, release/service/v0.8)"
+        required: false
+        default: "main"
+        type: string
+  schedule:
+    # Weekly Monday 03:42 UTC — backstop for main
+    - cron: "42 3 * * 1"
+
+permissions: {}
+
+jobs:
+  update:
+    name: bump Go toolchain
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Obtain app token
+        id: app-token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_KEY }}
+
+      - name: Determine base branch
+        id: base
+        env:
+          INPUT_BASE_BRANCH: ${{ inputs.base_branch }}
+        run: |
+          branch="${INPUT_BASE_BRANCH:-main}"
+          echo "branch=${branch}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          ref: ${{ steps.base.outputs.branch }}
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          # Use the version from go.work so go mod edit / go work edit are
+          # available with the current workspace toolchain.
+          go-version-file: go.work
+          check-latest: false
+
+      - name: Determine latest Go version
+        id: versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSIONS_JSON=$(curl -sf "https://go.dev/dl/?mode=json")
+
+          # Current toolchain from go.work (e.g. "1.25.8")
+          CURRENT=$(grep "^toolchain " go.work | sed 's/toolchain go//')
+          CURRENT_MINOR=$(echo "$CURRENT" | cut -d. -f1,2)
+
+          # All distinct minor versions from *stable* releases, sorted ascending.
+          # Filter .stable == true to exclude betas and release candidates.
+          ALL_MINORS=$(
+            echo "$VERSIONS_JSON" \
+              | jq -r '[
+                  .[] | select(.stable == true) |
+                  .version
+                  | ltrimstr("go")
+                  | split(".")
+                  | .[0:2]
+                  | join(".")
+                ] | unique | sort_by(split(".") | map(tonumber)) | .[]'
+          )
+
+          LATEST_MINOR=$(echo "$ALL_MINORS" | tail -1)
+          PREV_MINOR=$(echo "$ALL_MINORS" | tail -2 | head -1)
+
+          TARGET_MINOR="$CURRENT_MINOR"
+          if [[ "$CURRENT_MINOR" != "$LATEST_MINOR" && "$CURRENT_MINOR" != "$PREV_MINOR" ]]; then
+            echo "Go ${CURRENT_MINOR} is EOL; upgrading to ${LATEST_MINOR}"
+            TARGET_MINOR="$LATEST_MINOR"
+          fi
+
+          # Latest *stable* patch for the target minor; sort numerically and
+          # take the last entry to guard against non-ordered API responses.
+          LATEST_PATCH=$(
+            echo "$VERSIONS_JSON" \
+              | jq -r --arg prefix "go${TARGET_MINOR}." \
+                  '[.[] | select(.stable == true) | .version | select(startswith($prefix))]
+                   | sort_by(ltrimstr("go") | split(".") | map(tonumber))
+                   | last
+                   | ltrimstr("go")'
+          )
+
+          echo "current=${CURRENT}"           >> "$GITHUB_OUTPUT"
+          echo "latest_patch=${LATEST_PATCH}" >> "$GITHUB_OUTPUT"
+
+          if [[ "$CURRENT" == "$LATEST_PATCH" ]]; then
+            echo "up_to_date=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "up_to_date=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply Go version updates
+        if: steps.versions.outputs.up_to_date != 'true'
+        env:
+          TARGET_VERSION: ${{ steps.versions.outputs.latest_patch }}
+        run: |
+          .github/scripts/bump-go-version.sh --target "$TARGET_VERSION"
+
+      - name: Commit and push PR branch
+        id: push
+        if: steps.versions.outputs.up_to_date != 'true'
+        env:
+          BASE: ${{ steps.base.outputs.branch }}
+          NEW: ${{ steps.versions.outputs.latest_patch }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          # Derive a git-safe PR branch name.
+          if [[ "$BASE" == "main" ]]; then
+            BRANCH="chore/bump-go-toolchain"
+          else
+            BRANCH="chore/bump-go-toolchain-$(echo "$BASE" | tr '/' '-')"
+          fi
+
+          git config user.name  "opentdf-automation[bot]"
+          git config user.email "149537512+opentdf-automation[bot]@users.noreply.github.com"
+
+          # Hard-reset the PR branch to the tip of the base branch so the
+          # commit is always a clean, single-commit branch (no stale history).
+          git checkout -B "$BRANCH"
+
+          git add go.work
+          git add -- '**/go.mod'
+
+          if git diff-index --quiet HEAD; then
+            echo "No changes to commit after applying updates."
+            echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+            echo "changed=false"    >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git commit -s -m "fix(ci): bump go toolchain to ${NEW}"
+          git push origin "$BRANCH" --force
+
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+          echo "changed=true"     >> "$GITHUB_OUTPUT"
+
+      - name: Create or update PR
+        if: >-
+          steps.versions.outputs.up_to_date != 'true' &&
+          steps.push.outputs.changed == 'true'
+        env:
+          BASE: ${{ steps.base.outputs.branch }}
+          BRANCH: ${{ steps.push.outputs.branch }}
+          NEW: ${{ steps.versions.outputs.latest_patch }}
+          OLD: ${{ steps.versions.outputs.current }}
+          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/workflows/go-version-update.yaml
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          TITLE="fix(ci): bump go toolchain to ${NEW}"
+          BODY="$(cat <<EOF
+          Automated bump of the Go toolchain from \`${OLD}\` to \`${NEW}\`.
+
+          Changes:
+          - \`go.work\` — toolchain directive (and \`go\` directive if minor-version bump)
+          - All \`go.mod\` \`go\` directives (minor-version bumps only)
+
+          CI workflows read the Go version from \`go.work\` via \`go-version-file\`,
+          so no YAML changes are needed.
+
+          Generated by the [go-version-update](${WORKFLOW_URL}) workflow.
+          EOF
+          )"
+
+          EXISTING=$(
+            gh pr list \
+              --base "$BASE" \
+              --head "$BRANCH" \
+              --state open \
+              --json number \
+              --jq '.[0].number'
+          )
+
+          if [[ -n "$EXISTING" ]]; then
+            echo "Updating existing PR #${EXISTING}"
+            gh pr edit "$EXISTING" --title "$TITLE" --body "$BODY"
+          else
+            echo "Creating new PR"
+            gh pr create \
+              --base    "$BASE" \
+              --head    "$BRANCH" \
+              --title   "$TITLE" \
+              --body    "$BODY" \
+              --label   "autobump"
+          fi

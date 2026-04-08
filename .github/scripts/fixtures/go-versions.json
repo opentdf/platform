@@ -1,0 +1,47 @@
+[
+  {
+    "version": "go1.26rc1",
+    "stable": false,
+    "files": []
+  },
+  {
+    "version": "go1.25.9",
+    "stable": true,
+    "files": []
+  },
+  {
+    "version": "go1.25.8",
+    "stable": true,
+    "files": []
+  },
+  {
+    "version": "go1.25.7",
+    "stable": true,
+    "files": []
+  },
+  {
+    "version": "go1.24.3",
+    "stable": true,
+    "files": []
+  },
+  {
+    "version": "go1.24.2",
+    "stable": true,
+    "files": []
+  },
+  {
+    "version": "go1.24.1",
+    "stable": true,
+    "files": []
+  },
+  {
+    "version": "go1.23.8",
+    "stable": true,
+    "files": []
+  },
+  {
+    "version": "go1.23.7",
+    "stable": true,
+    "files": []
+  }
+]

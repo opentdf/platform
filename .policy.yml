@@ -104,7 +104,7 @@ approval_rules:
       has_labels:
         - autobump
       from_branch:
-        pattern: "^update-go-mods-for-(service|sdk|examples)$"
+        pattern: "^(update-go-mods-for-(service|sdk|examples)|chore/bump-go-toolchain(-[a-z0-9./-]+)?)$"
     options:
       invalidate_on_push: true
       ignore_edited_comments: true

@@ -62,6 +62,24 @@ Prefer `make` targets at repo root:
 - DCO sign-off is required: use `git commit -s -m "feat(scope): summary"`. See `CONTRIBUTING.md`.
 - PRs should describe changes, include testing notes, and update docs/tests when applicable (see `.github/pull_request_template.md`).
 
+## Go Toolchain Version Management
+
+**`go.work` is the single source of truth for the Go toolchain version.** Its `toolchain goX.Y.Z` directive controls which Go version is used for workspace builds and CI. Individual `go.mod` files intentionally have **no `toolchain` directive** — the workspace handles it, and omitting it avoids imposing a specific toolchain on downstream consumers of our published modules (sdk, protocol/go, lib/*).
+
+CI workflows read the Go version from `go.work` via `go-version-file: go.work`, so there are no hardcoded version strings in YAML files.
+
+**Do not update the Go toolchain version by hand in feature PRs.** Instead:
+
+- Toolchain bumps are automated by the `go-version-update` workflow (`.github/workflows/go-version-update.yaml`), which fires automatically when `govulncheck` fails on `main` or a `release/**` branch. It uses the `opentdf-automation[bot]` account and the `chore/bump-go-toolchain` branch.
+- To trigger a bump manually: `gh workflow run go-version-update.yaml --field base_branch=main`
+- To preview what a bump would change without modifying files: `.github/scripts/bump-go-version.sh --dry-run`
+- **Patch bumps** (e.g. 1.25.8 → 1.25.9) only modify `go.work` — one file.
+- **Minor-version upgrades** (e.g. 1.25 → 1.26) also update the `go` directive in `go.work` and all `go.mod` files. This is triggered when the current minor falls out of Go’s two-release support window.
+
+**Do not add `toolchain` directives to go.mod files.** If `go mod tidy` or another tool adds one, remove it with `go mod edit -toolchain=none path/to/go.mod`.
+
+If `govulncheck` is failing locally because you are on an older toolchain, update your local Go installation rather than editing version files directly.
+
 ## Security & Configuration Tips
 
 - Don’t commit secrets/keys. Use local configs like `opentdf-dev.yaml` and follow `SECURITY.md`.

@@ -997,6 +997,8 @@ type ListSubjectConditionSetsRequest struct {
 	// Optional
 	Pagination *policy.PageRequest `protobuf:"bytes,10,opt,name=pagination,proto3" json:"pagination,omitempty"`
 	// Optional - CONSTRAINT: max 1 item
+	// Default ordering when omitted or when the first entry's field is UNSPECIFIED:
+	// created_at DESC, then id ASC (tie-breaker).
 	Sort []*SubjectConditionSetsSort `protobuf:"bytes,11,rep,name=sort,proto3" json:"sort,omitempty"`
 }
 

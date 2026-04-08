@@ -7455,7 +7455,7 @@ Empty when none remain after current page </p></td>
 
       
         <h3 id="policy.SortDirection">SortDirection</h3>
-        <p></p>
+        <p>Sorting direction shared across list APIs.</p><p>Notes:</p><p>- When a sort field is provided, UNSPECIFIED is treated as ASC.</p><p>- When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,</p><p>the endpoint's request message defines the default ordering; see the</p><p>specific List* request docs.</p>
         <table class="enum-table">
           <thead>
             <tr><td>Name</td><td>Number</td><td>Description</td></tr>
@@ -7465,7 +7465,9 @@ Empty when none remain after current page </p></td>
               <tr>
                 <td>SORT_DIRECTION_UNSPECIFIED</td>
                 <td>0</td>
-                <td><p>defaults to ASC</p></td>
+                <td><p>Treated as ASC when a sort field is provided.
+
+defaults to ASC</p></td>
               </tr>
             
               <tr>
@@ -16153,7 +16155,9 @@ Namespace ID or FQN for the subject mapping </p></td>
                   <td>sort</td>
                   <td><a href="#policy.subjectmapping.SubjectConditionSetsSort">SubjectConditionSetsSort</a></td>
                   <td>repeated</td>
-                  <td><p>Optional - CONSTRAINT: max 1 item </p></td>
+                  <td><p>Optional - CONSTRAINT: max 1 item
+Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
+created_at DESC, then id ASC (tie-breaker). </p></td>
                 </tr>
               
             </tbody>

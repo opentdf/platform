@@ -799,6 +799,10 @@
                 </li>
               
               
+                <li>
+                  <a href="#policy.SortDirection"><span class="badge">E</span>SortDirection</a>
+                </li>
+              
               
               
             </ul>
@@ -902,6 +906,10 @@
               
                 <li>
                   <a href="#policy.attributes.AttributeKeyAccessServer"><span class="badge">M</span>AttributeKeyAccessServer</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.AttributesSort"><span class="badge">M</span>AttributesSort</a>
                 </li>
               
                 <li>
@@ -1040,6 +1048,10 @@
                   <a href="#policy.attributes.ValueKeyAccessServer"><span class="badge">M</span>ValueKeyAccessServer</a>
                 </li>
               
+              
+                <li>
+                  <a href="#policy.attributes.SortAttributesType"><span class="badge">E</span>SortAttributesType</a>
+                </li>
               
               
               
@@ -1394,6 +1406,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.namespaces.NamespacesSort"><span class="badge">M</span>NamespacesSort</a>
+                </li>
+              
+                <li>
                   <a href="#policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest"><span class="badge">M</span>RemoveKeyAccessServerFromNamespaceRequest</a>
                 </li>
               
@@ -1417,6 +1433,10 @@
                   <a href="#policy.namespaces.UpdateNamespaceResponse"><span class="badge">M</span>UpdateNamespaceResponse</a>
                 </li>
               
+              
+                <li>
+                  <a href="#policy.namespaces.SortNamespacesType"><span class="badge">E</span>SortNamespacesType</a>
+                </li>
               
               
               
@@ -1878,6 +1898,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.subjectmapping.SubjectMappingsSort"><span class="badge">M</span>SubjectMappingsSort</a>
+                </li>
+              
+                <li>
                   <a href="#policy.subjectmapping.UpdateSubjectConditionSetRequest"><span class="badge">M</span>UpdateSubjectConditionSetRequest</a>
                 </li>
               
@@ -1893,6 +1917,10 @@
                   <a href="#policy.subjectmapping.UpdateSubjectMappingResponse"><span class="badge">M</span>UpdateSubjectMappingResponse</a>
                 </li>
               
+              
+                <li>
+                  <a href="#policy.subjectmapping.SortSubjectMappingsType"><span class="badge">E</span>SortSubjectMappingsType</a>
+                </li>
               
               
               
@@ -7426,6 +7454,35 @@ Empty when none remain after current page </p></td>
       
 
       
+        <h3 id="policy.SortDirection">SortDirection</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_DIRECTION_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p>defaults to ASC</p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_DIRECTION_ASC</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_DIRECTION_DESC</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
 
       
 
@@ -8096,6 +8153,37 @@ Custom actions only: replaces the existing action name </p></td>
 
         
       
+        <h3 id="policy.attributes.AttributesSort">AttributesSort</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>field</td>
+                  <td><a href="#policy.attributes.SortAttributesType">SortAttributesType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>direction</td>
+                  <td><a href="#policy.SortDirection">policy.SortDirection</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.attributes.CreateAttributeRequest">CreateAttributeRequest</h3>
         <p></p>
 
@@ -8725,6 +8813,13 @@ Namespace ID or name </p></td>
                   <td><p>Optional </p></td>
                 </tr>
               
+                <tr>
+                  <td>sort</td>
+                  <td><a href="#policy.attributes.AttributesSort">AttributesSort</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional - CONSTRAINT: max 1 item </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -9143,6 +9238,41 @@ Common metadata </p></td>
         
       
 
+      
+        <h3 id="policy.attributes.SortAttributesType">SortAttributesType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_ATTRIBUTES_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_ATTRIBUTES_TYPE_NAME</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_ATTRIBUTES_TYPE_CREATED_AT</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_ATTRIBUTES_TYPE_UPDATED_AT</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
 
       
@@ -12231,6 +12361,13 @@ ACTIVE by default when not specified </p></td>
                   <td><p>Optional </p></td>
                 </tr>
               
+                <tr>
+                  <td>sort</td>
+                  <td><a href="#policy.namespaces.NamespacesSort">NamespacesSort</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -12322,6 +12459,37 @@ ACTIVE by default when not specified </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.namespaces.NamespacesSort">NamespacesSort</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>field</td>
+                  <td><a href="#policy.namespaces.SortNamespacesType">SortNamespacesType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>direction</td>
+                  <td><a href="#policy.SortDirection">policy.SortDirection</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -12490,6 +12658,47 @@ ACTIVE by default when not specified </p></td>
         
       
 
+      
+        <h3 id="policy.namespaces.SortNamespacesType">SortNamespacesType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_NAMESPACES_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_NAMESPACES_TYPE_NAME</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_NAMESPACES_TYPE_FQN</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_NAMESPACES_TYPE_CREATED_AT</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_NAMESPACES_TYPE_UPDATED_AT</td>
+                <td>4</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
 
       
@@ -16009,6 +16218,13 @@ Namespace ID or FQN for the subject mapping </p></td>
                   <td><p>Optional </p></td>
                 </tr>
               
+                <tr>
+                  <td>sort</td>
+                  <td><a href="#policy.subjectmapping.SubjectMappingsSort">SubjectMappingsSort</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional - CONSTRAINT: max 1 item </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -16118,6 +16334,37 @@ Namespace ID or FQN for the subject mapping </p></td>
                   <td></td>
                   <td><p>Optional
 Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.subjectmapping.SubjectMappingsSort">SubjectMappingsSort</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>field</td>
+                  <td><a href="#policy.subjectmapping.SortSubjectMappingsType">SortSubjectMappingsType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>direction</td>
+                  <td><a href="#policy.SortDirection">policy.SortDirection</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -16276,6 +16523,35 @@ Replaces entire list of actions permitted by subjects </p></td>
         
       
 
+      
+        <h3 id="policy.subjectmapping.SortSubjectMappingsType">SortSubjectMappingsType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
 
       

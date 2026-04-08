@@ -5,6 +5,7 @@ import (
 
 	"buf.build/go/protovalidate"
 	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/stretchr/testify/require"
 )
@@ -337,6 +338,42 @@ func Test_AssignPublicKeyToNamespace(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_ListNamespacesRequest_Sort(t *testing.T) {
+	v := getValidator()
+
+	// no sort — valid
+	req := &namespaces.ListNamespacesRequest{}
+	require.NoError(t, v.Validate(req))
+
+	// one sort item — valid
+	req = &namespaces.ListNamespacesRequest{
+		Sort: []*namespaces.NamespacesSort{
+			{
+				Field:     namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+		},
+	}
+	require.NoError(t, v.Validate(req))
+
+	// two sort items — exceeds max_items = 1
+	req = &namespaces.ListNamespacesRequest{
+		Sort: []*namespaces.NamespacesSort{
+			{
+				Field:     namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+			{
+				Field:     namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME,
+				Direction: policy.SortDirection_SORT_DIRECTION_DESC,
+			},
+		},
+	}
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "sort")
 }
 
 func Test_RemovePublicKeyFromNamespace(t *testing.T) {

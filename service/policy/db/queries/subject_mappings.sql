@@ -150,7 +150,13 @@ GROUP BY
     av.id, av.value, av.active,
     fqns.fqn,
     counted.total
-ORDER BY sm.created_at DESC
+ORDER BY
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN sm.created_at END ASC,
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN sm.created_at END DESC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN sm.updated_at END ASC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN sm.updated_at END DESC,
+    sm.created_at DESC,
+    sm.id ASC
 LIMIT @limit_
 OFFSET @offset_;
 

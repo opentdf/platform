@@ -270,6 +270,172 @@ func (s *NamespacesSuite) Test_ListNamespaces_OrdersByCreatedAt_Succeeds() {
 	assertIDsInDescendingOrder(s.T(), listNamespacesRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, thirdID, secondID, firstID)
 }
 
+func (s *NamespacesSuite) Test_ListNamespaces_SortByName_ASC() {
+	ids := s.createNamedSortTestNamespaces([]string{"aaa-sort", "bbb-sort", "ccc-sort"})
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// aaa < bbb < ccc in ASC order
+	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByName_DESC() {
+	ids := s.createNamedSortTestNamespaces([]string{"aaa-sortdesc", "bbb-sortdesc", "ccc-sortdesc"})
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// ccc > bbb > aaa in DESC order
+	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_ASC() {
+	ids := s.createSortTestNamespaces("createdasc-ns")
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// oldest first in ASC order
+	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_DESC() {
+	ids := s.createSortTestNamespaces("createddesc-ns")
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// newest first in DESC order
+	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_ASC() {
+	ids := s.createNamedSortTestNamespaces([]string{"aaa-fqnsort", "bbb-fqnsort", "ccc-fqnsort"})
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// fqn is https://<name>, so aaa < bbb < ccc in ASC order
+	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_DESC() {
+	ids := s.createNamedSortTestNamespaces([]string{"aaa-fqnsortdesc", "bbb-fqnsortdesc", "ccc-fqnsortdesc"})
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// fqn is https://<name>, so ccc > bbb > aaa in DESC order
+	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_DESC() {
+	ids := s.createSortTestNamespaces("upd-sort-ns")
+
+	// Update the first namespace so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateNamespace(s.ctx, ids[0], &namespaces.UpdateNamespaceRequest{
+		Id: ids[0],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// The updated namespace (ids[0]) should appear before the others
+	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[2], ids[1])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_ASC() {
+	ids := s.createSortTestNamespaces("upd-sort-asc-ns")
+
+	// Update the last namespace so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateNamespace(s.ctx, ids[2], &namespaces.UpdateNamespaceRequest{
+		Id: ids[2],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// The updated namespace (ids[2]) should appear last in ASC order
+	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedField_FallsBackToDefault() {
+	ids := s.createSortTestNamespaces("unspecified-sort-ns")
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Falls back to default created_at DESC ordering
+	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
+}
+
 func (s *NamespacesSuite) Test_ListNamespaces_Limit_Succeeds() {
 	var limit int32 = 2
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
@@ -1191,6 +1357,37 @@ func (s *NamespacesSuite) Test_GetNamespace_ByIdAndName_ReturnSameResult() {
 		// Verify both return the same namespace
 		s.True(proto.Equal(nsByID, nsByName))
 	}
+}
+
+// createSortTestNamespaces creates 3 namespaces with 5ms gaps for distinct timestamps.
+// Returns the namespace IDs in creation order.
+func (s *NamespacesSuite) createSortTestNamespaces(label string) []string {
+	const count = 3
+	ids := make([]string, count)
+	for i := range count {
+		if i > 0 {
+			time.Sleep(5 * time.Millisecond)
+		}
+		name := fmt.Sprintf("%s-%d-%d.com", label, i, time.Now().UnixNano())
+		created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	return ids
+}
+
+// createNamedSortTestNamespaces creates namespaces with specific name prefixes for name/fqn sort testing.
+// Returns the namespace IDs in the same order as the prefixes.
+func (s *NamespacesSuite) createNamedSortTestNamespaces(prefixes []string) []string {
+	suffix := time.Now().UnixNano()
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
+		name := fmt.Sprintf("%s-%d.com", prefix, suffix)
+		created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	return ids
 }
 
 func (s *NamespacesSuite) getActiveNamespaceFixtures() []fixtures.FixtureDataNamespace {

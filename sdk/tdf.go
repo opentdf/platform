@@ -677,7 +677,7 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 	ktype := ocrypto.KeyType(kasInfo.Algorithm)
 	switch {
 	case ocrypto.IsHybridKeyType(ktype):
-		wrappedKey, err := generateWrapKeyWithXWing(kasInfo.PublicKey, symKey)
+		wrappedKey, err := generateWrapKeyWithHybrid(kasInfo.Algorithm, kasInfo.PublicKey, symKey)
 		if err != nil {
 			return KeyAccess{}, err
 		}
@@ -782,6 +782,35 @@ func generateWrapKeyWithXWing(publicKeyPEM string, symKey []byte) (string, error
 	}
 
 	return string(ocrypto.Base64Encode(wrappedKey)), nil
+}
+
+func generateWrapKeyWithHybrid(algorithm, publicKeyPEM string, symKey []byte) (string, error) {
+	switch ocrypto.KeyType(algorithm) { //nolint:exhaustive // only handle hybrid types
+	case ocrypto.HybridXWingKey:
+		return generateWrapKeyWithXWing(publicKeyPEM, symKey)
+	case ocrypto.HybridSecp256r1MLKEM768Key:
+		pubKey, err := ocrypto.P256MLKEM768PubKeyFromPem([]byte(publicKeyPEM))
+		if err != nil {
+			return "", fmt.Errorf("P256MLKEM768PubKeyFromPem failed: %w", err)
+		}
+		wrappedKey, err := ocrypto.P256MLKEM768WrapDEK(pubKey, symKey)
+		if err != nil {
+			return "", fmt.Errorf("P256MLKEM768WrapDEK failed: %w", err)
+		}
+		return string(ocrypto.Base64Encode(wrappedKey)), nil
+	case ocrypto.HybridSecp384r1MLKEM1024Key:
+		pubKey, err := ocrypto.P384MLKEM1024PubKeyFromPem([]byte(publicKeyPEM))
+		if err != nil {
+			return "", fmt.Errorf("P384MLKEM1024PubKeyFromPem failed: %w", err)
+		}
+		wrappedKey, err := ocrypto.P384MLKEM1024WrapDEK(pubKey, symKey)
+		if err != nil {
+			return "", fmt.Errorf("P384MLKEM1024WrapDEK failed: %w", err)
+		}
+		return string(ocrypto.Base64Encode(wrappedKey)), nil
+	default:
+		return "", fmt.Errorf("unsupported hybrid algorithm: %s", algorithm)
+	}
 }
 
 // create policy object

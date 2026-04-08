@@ -60,6 +60,10 @@ func convertEnumToAlg(alg policy.Algorithm) ocrypto.KeyType {
 		return ocrypto.EC521Key
 	case policy.Algorithm_ALGORITHM_HPQT_XWING:
 		return ocrypto.HybridXWingKey
+	case policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768:
+		return ocrypto.HybridSecp256r1MLKEM768Key
+	case policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
+		return ocrypto.HybridSecp384r1MLKEM1024Key
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:
@@ -81,6 +85,10 @@ func convertAlgToEnum(alg string) (policy.Algorithm, error) {
 		return policy.Algorithm_ALGORITHM_EC_P521, nil
 	case string(ocrypto.HybridXWingKey):
 		return policy.Algorithm_ALGORITHM_HPQT_XWING, nil
+	case string(ocrypto.HybridSecp256r1MLKEM768Key):
+		return policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768, nil
+	case string(ocrypto.HybridSecp384r1MLKEM1024Key):
+		return policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024, nil
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED, fmt.Errorf("unsupported algorithm: %s", alg)
 	}

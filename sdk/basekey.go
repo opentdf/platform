@@ -35,6 +35,10 @@ func getKasKeyAlg(alg string) policy.Algorithm {
 		return policy.Algorithm_ALGORITHM_EC_P521
 	case string(ocrypto.HybridXWingKey):
 		return policy.Algorithm_ALGORITHM_HPQT_XWING
+	case string(ocrypto.HybridSecp256r1MLKEM768Key):
+		return policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768
+	case string(ocrypto.HybridSecp384r1MLKEM1024Key):
+		return policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED
 	}
@@ -55,6 +59,10 @@ func formatAlg(alg policy.Algorithm) (string, error) {
 		return string(ocrypto.EC521Key), nil
 	case policy.Algorithm_ALGORITHM_HPQT_XWING:
 		return string(ocrypto.HybridXWingKey), nil
+	case policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768:
+		return string(ocrypto.HybridSecp256r1MLKEM768Key), nil
+	case policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
+		return string(ocrypto.HybridSecp384r1MLKEM1024Key), nil
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:

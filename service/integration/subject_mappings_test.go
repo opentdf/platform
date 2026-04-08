@@ -2672,9 +2672,6 @@ func (s *SubjectMappingsSuite) createSortTestSubjectMappings(label string) []str
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
 	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
 
-// createSortTestSubjectConditionSets creates 3 subject condition sets with 5ms gaps for distinct timestamps.
-// Returns the SCS IDs in creation order.
-func (s *SubjectMappingsSuite) createSortTestSubjectConditionSets(label string) []string {
 	const count = 3
 	ids := make([]string, count)
 	for i := range count {
@@ -2683,8 +2680,6 @@ func (s *SubjectMappingsSuite) createSortTestSubjectConditionSets(label string) 
 		}
 		email := fmt.Sprintf("%s-%d-%d@example.com", label, i, time.Now().UnixNano())
 		scs := &subjectmapping.SubjectConditionSetCreate{
-		val := fmt.Sprintf("%s-%d-%d", label, i, time.Now().UnixNano())
-		created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
 			SubjectSets: []*policy.SubjectSet{
 				{
 					ConditionGroups: []*policy.ConditionGroup{
@@ -2695,9 +2690,6 @@ func (s *SubjectMappingsSuite) createSortTestSubjectConditionSets(label string) 
 									SubjectExternalSelectorValue: ".email",
 									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
 									SubjectExternalValues:        []string{email},
-									SubjectExternalSelectorValue: ".sort_test",
-									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-									SubjectExternalValues:        []string{val},
 								},
 							},
 						},
@@ -2710,6 +2702,39 @@ func (s *SubjectMappingsSuite) createSortTestSubjectConditionSets(label string) 
 			NewSubjectConditionSet: scs,
 			Actions:                []*policy.Action{actionRead},
 		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	return ids
+}
+
+// createSortTestSubjectConditionSets creates 3 subject condition sets with 5ms gaps for distinct timestamps.
+// Returns the SCS IDs in creation order.
+func (s *SubjectMappingsSuite) createSortTestSubjectConditionSets(label string) []string {
+	const count = 3
+	ids := make([]string, count)
+	for i := range count {
+		if i > 0 {
+			time.Sleep(5 * time.Millisecond)
+		}
+		val := fmt.Sprintf("%s-%d-%d", label, i, time.Now().UnixNano())
+		created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
+			SubjectSets: []*policy.SubjectSet{
+				{
+					ConditionGroups: []*policy.ConditionGroup{
+						{
+							BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+							Conditions: []*policy.Condition{
+								{
+									SubjectExternalSelectorValue: ".sort_test",
+									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+									SubjectExternalValues:        []string{val},
+								},
+							},
+						},
+					},
+				},
+			},
 		}, "", "")
 		s.Require().NoError(err)
 		ids[i] = created.GetId()

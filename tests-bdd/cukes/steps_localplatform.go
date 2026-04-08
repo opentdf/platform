@@ -196,6 +196,8 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 			return ctx, err
 		}
 
+		attachPlatformServiceLogs(ctx, scenarioContext, platformDockerCompose)
+
 		// Wait for platform to be ready
 		logger.Debug("waiting for platform to start")
 		if err := waitForPlatform(platformEndpoint); err != nil {
@@ -225,6 +227,25 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 		slog.String("endpoint", te))
 
 	return ctx, nil
+}
+
+func attachPlatformServiceLogs(ctx context.Context, scenarioContext *PlatformScenarioContext, platformDockerCompose tc.ComposeStack) {
+	platformLogger := scenarioContext.TestSuiteContext.PlatformLogger
+	if platformLogger == nil {
+		return
+	}
+
+	scenarioContext.RegisterShutdownHook(func() error {
+		logCtx := context.WithoutCancel(ctx)
+		platformLogger.Info("capturing platform service logs", slog.String("service", "otdf"))
+		container, err := platformDockerCompose.ServiceContainer(logCtx, "otdf")
+		if err != nil {
+			platformLogger.Warn("failed to get platform service container for log capture", slog.String("error", err.Error()))
+			return nil
+		}
+		LogComposeService(logCtx, container, platformLogger, "otdf")
+		return nil
+	})
 }
 
 func (s *LocalPlatformStepDefinitions) aEmptyLocalPlatform(ctx context.Context) (context.Context, error) {

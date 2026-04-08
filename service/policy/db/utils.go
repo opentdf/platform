@@ -9,8 +9,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
+)
+
+// Sort field constants shared across all List endpoint sort helpers.
+const (
+	sortFieldCreatedAt = "created_at"
+	sortFieldUpdatedAt = "updated_at"
 )
 
 // Gathers request pagination limit/offset or configured default
@@ -23,6 +32,46 @@ func getListLimit(limit int32, fallback int32) int32 {
 		return limit
 	}
 	return fallback
+}
+
+func getSortDirection(direction policy.SortDirection) string {
+	switch direction {
+	case policy.SortDirection_SORT_DIRECTION_DESC:
+		return "DESC"
+	case policy.SortDirection_SORT_DIRECTION_UNSPECIFIED, policy.SortDirection_SORT_DIRECTION_ASC:
+		return "ASC"
+	default:
+		return ""
+	}
+}
+
+// GetNamespacesSortParams maps the strongly-typed NamespacesSort enum to
+// SQL-compatible field name and direction strings.
+// Returns empty strings when sort is nil or empty (backward compatible —
+// callers fall back to default ORDER BY created_at DESC).
+func GetNamespacesSortParams(sort []*namespaces.NamespacesSort) (string, string) {
+	if len(sort) == 0 || sort[0] == nil {
+		return "", ""
+	}
+	s := sort[0]
+
+	var field string
+	switch s.GetField() {
+	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME:
+		field = "name"
+	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN:
+		field = "fqn"
+	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT:
+		field = sortFieldCreatedAt
+	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UPDATED_AT:
+		field = sortFieldUpdatedAt
+	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UNSPECIFIED:
+		return "", ""
+	default:
+		return "", ""
+	}
+
+	return field, getSortDirection(s.GetDirection())
 }
 
 // Returns next page's offset if has not yet reached total, or else returns 0
@@ -243,6 +292,31 @@ func pgtypeInt4(i int32, valid bool) pgtype.Int4 {
 	}
 }
 
+// GetSubjectMappingsSortParams maps the strongly-typed SubjectMappingsSort enum to
+// SQL-compatible field name and direction strings.
+// Returns empty strings when sort is nil or empty (backward compatible —
+// callers fall back to default ORDER BY created_at DESC).
+func GetSubjectMappingsSortParams(sort []*subjectmapping.SubjectMappingsSort) (string, string) {
+	if len(sort) == 0 || sort[0] == nil {
+		return "", ""
+	}
+	s := sort[0]
+
+	var field string
+	switch s.GetField() {
+	case subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT:
+		field = sortFieldCreatedAt
+	case subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT:
+		field = sortFieldUpdatedAt
+	case subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED:
+		return "", ""
+	default:
+		return "", ""
+	}
+
+	return field, getSortDirection(s.GetDirection())
+}
+
 func UUIDToString(uuid pgtype.UUID) string {
 	if !uuid.Valid {
 		return ""
@@ -255,4 +329,31 @@ func UUIDToString(uuid pgtype.UUID) string {
 		uuid.Bytes[8:10],
 		uuid.Bytes[10:16],
 	)
+}
+
+// GetAttributesSortParams maps the strongly-typed AttributesSort enum to
+// SQL-compatible field name and direction strings.
+// Returns empty strings when sort is nil or empty (backward compatible —
+// callers fall back to default ORDER BY created_at DESC).
+func GetAttributesSortParams(sort []*attributes.AttributesSort) (string, string) {
+	if len(sort) == 0 || sort[0] == nil {
+		return "", ""
+	}
+	s := sort[0]
+
+	var field string
+	switch s.GetField() {
+	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME:
+		field = "name"
+	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT:
+		field = sortFieldCreatedAt
+	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UPDATED_AT:
+		field = sortFieldUpdatedAt
+	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UNSPECIFIED:
+		return "", ""
+	default:
+		return "", ""
+	}
+
+	return field, getSortDirection(s.GetDirection())
 }

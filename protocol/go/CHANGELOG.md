@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.23.0](https://github.com/opentdf/platform/compare/protocol/go/v0.22.0...protocol/go/v0.23.0) (2026-04-07)
+
+
+### Features
+
+* **policy:** add sort support to ListAttributes API  ([#3223](https://github.com/opentdf/platform/issues/3223)) ([ec3312f](https://github.com/opentdf/platform/commit/ec3312f622dec7ed18ffa6033c86b248b47a420a))
+* **sdk:** source-file codegen for EntityIdentifier helpers  ([#3232](https://github.com/opentdf/platform/issues/3232)) ([ee8177c](https://github.com/opentdf/platform/commit/ee8177c98bda4e7483fa26be736fe4965c00bf46))
+
+## [0.22.0](https://github.com/opentdf/platform/compare/protocol/go/v0.21.0...protocol/go/v0.22.0) (2026-04-01)
+
+
+### Features
+
+* **policy:** Add sort support to ListNamespaces API ([#3192](https://github.com/opentdf/platform/issues/3192)) ([aac86cd](https://github.com/opentdf/platform/commit/aac86cdfbfc422149b62f85bbd752260b3a3dcd0))
+* **policy:** add SortField proto and update PageRequest for sort support   ([#3187](https://github.com/opentdf/platform/issues/3187)) ([6cf1862](https://github.com/opentdf/platform/commit/6cf1862438c7e62fa676aa74160cfa533a1f6315))
+
 ## [0.21.0](https://github.com/opentdf/platform/compare/protocol/go/v0.20.0...protocol/go/v0.21.0) (2026-03-26)
 
 

@@ -499,6 +499,42 @@ func Test_ListSubjectMappingsRequest_Fails(t *testing.T) {
 	}
 }
 
+func Test_ListSubjectMappingsRequest_Sort(t *testing.T) {
+	v := getValidator()
+
+	// no sort — valid
+	req := &subjectmapping.ListSubjectMappingsRequest{}
+	require.NoError(t, v.Validate(req))
+
+	// one sort item — valid
+	req = &subjectmapping.ListSubjectMappingsRequest{
+		Sort: []*subjectmapping.SubjectMappingsSort{
+			{
+				Field:     subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+		},
+	}
+	require.NoError(t, v.Validate(req))
+
+	// two sort items — exceeds max_items = 1
+	req = &subjectmapping.ListSubjectMappingsRequest{
+		Sort: []*subjectmapping.SubjectMappingsSort{
+			{
+				Field:     subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+			{
+				Field:     subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_DESC,
+			},
+		},
+	}
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "sort")
+}
+
 func Test_UpdateSubjectMappingRequest_Succeeds(t *testing.T) {
 	v := getValidator()
 	req := &subjectmapping.UpdateSubjectMappingRequest{}

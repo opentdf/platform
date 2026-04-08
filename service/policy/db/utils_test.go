@@ -5,6 +5,7 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/stretchr/testify/assert"
@@ -596,6 +597,114 @@ func Test_GetSubjectConditionSetsSortParams(t *testing.T) {
 			field, dir := GetSubjectConditionSetsSortParams(tc.sort)
 			assert.Equal(t, tc.expectedField, field)
 			assert.Equal(t, tc.expectedDir, dir)
+		})
+	}
+}
+
+func Test_GetKeyAccessServersSortParams(t *testing.T) {
+	tests := []struct {
+		name              string
+		sort              []*kasregistry.KeyAccessServersSort
+		expectedField     string
+		expectedDirection string
+	}{
+		{
+			name:              "nil sort returns empty strings",
+			sort:              nil,
+			expectedField:     "",
+			expectedDirection: "",
+		},
+		{
+			name:              "empty slice returns empty strings",
+			sort:              []*kasregistry.KeyAccessServersSort{},
+			expectedField:     "",
+			expectedDirection: "",
+		},
+		{
+			name:              "nil element returns empty strings",
+			sort:              []*kasregistry.KeyAccessServersSort{nil},
+			expectedField:     "",
+			expectedDirection: "",
+		},
+		{
+			name: "UNSPECIFIED field returns empty strings",
+			sort: []*kasregistry.KeyAccessServersSort{
+				{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField:     "",
+			expectedDirection: "",
+		},
+		{
+			name: "NAME with ASC",
+			sort: []*kasregistry.KeyAccessServersSort{
+				{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField:     "name",
+			expectedDirection: "ASC",
+		},
+		{
+			name: "NAME with DESC",
+			sort: []*kasregistry.KeyAccessServersSort{
+				{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField:     "name",
+			expectedDirection: "DESC",
+		},
+		{
+			name: "URI with ASC",
+			sort: []*kasregistry.KeyAccessServersSort{
+				{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_URI, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField:     "uri",
+			expectedDirection: "ASC",
+		},
+		{
+			name: "URI with DESC",
+			sort: []*kasregistry.KeyAccessServersSort{
+				{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_URI, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField:     "uri",
+			expectedDirection: "DESC",
+		},
+		{
+			name: "CREATED_AT with ASC",
+			sort: []*kasregistry.KeyAccessServersSort{
+				{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField:     "created_at",
+			expectedDirection: "ASC",
+		},
+		{
+			name: "CREATED_AT with DESC",
+			sort: []*kasregistry.KeyAccessServersSort{
+				{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField:     "created_at",
+			expectedDirection: "DESC",
+		},
+		{
+			name: "UPDATED_AT with DESC",
+			sort: []*kasregistry.KeyAccessServersSort{
+				{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField:     "updated_at",
+			expectedDirection: "DESC",
+		},
+		{
+			name: "UNSPECIFIED direction defaults to ASC",
+			sort: []*kasregistry.KeyAccessServersSort{
+				{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+			},
+			expectedField:     "created_at",
+			expectedDirection: "ASC",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			field, direction := GetKeyAccessServersSortParams(tc.sort)
+			assert.Equal(t, tc.expectedField, field)
+			assert.Equal(t, tc.expectedDirection, direction)
 		})
 	}
 }

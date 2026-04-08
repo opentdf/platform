@@ -24,6 +24,6 @@ The Down migration is intentionally a no-op. Namespace-scoped standard actions a
 
 ## Operational Rollback Note
 
-Rolling back past `20260312000000_add_namespace_to_actions.sql` is not a safe automatic path once namespace-scoped standard actions exist. That migration's Down path restores global `UNIQUE(name)` semantics on `actions`, which conflicts with multiple namespace-scoped rows for standard action names (`create`, `read`, `update`, `delete`).
+Rolling back past `20260312000000_add_namespace_to_actions.sql` now performs an automatic action-id canonicalization and reference remap by action name before restoring global `UNIQUE(name)` semantics. This allows namespace-scoped duplicates (including standard actions) to be merged safely for rollback.
 
-Any rollback beyond action namespacing requires a separate, manual, and potentially destructive data remediation plan.
+This rollback remains intentionally lossy with respect to namespace-level action identity: actions sharing the same name are collapsed to one global action id, and policy references are rewritten to that canonical action.

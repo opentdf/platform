@@ -87,9 +87,9 @@ func GetSubjectConditionSetsSortParams(sort []*subjectmapping.SubjectConditionSe
 	var field string
 	switch s.GetField() {
 	case subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT:
-		field = "created_at"
+		field = sortFieldCreatedAt
 	case subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT:
-		field = "updated_at"
+		field = sortFieldUpdatedAt
 	case subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED:
 		return "", ""
 	default:

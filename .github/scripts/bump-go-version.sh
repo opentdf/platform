@@ -19,11 +19,14 @@
 #   1  Error.
 #   2  Already at the target version; no changes needed.
 #
-# Files touched (when changes are needed):
-#   go.work  — toolchain directive; also the go directive on a minor-version bump
-#   {module}/go.mod  — same (for all modules listed in MODULE_DIRS)
-#   .github/workflows/checks.yaml    — go-version-input in the govulncheck step
-#   .github/workflows/sonarcloud.yml — go-version in the setup-go step
+# Patch bumps update only go.work (toolchain directive).  CI workflows read
+# the Go version from go.work via go-version-file, so no YAML edits are
+# needed.  Individual go.mod files intentionally omit the toolchain directive
+# — the workspace go.work governs builds.
+#
+# Minor-version bumps (triggered when the current minor falls out of Go's
+# two-release support window) additionally update the go directive in go.work
+# and in every module's go.mod.
 
 set -euo pipefail
 
@@ -35,9 +38,8 @@ API_URL="${API_URL:-https://go.dev/dl/?mode=json}"
 DRY_RUN=false
 TARGET_VERSION=""
 
-# Modules that carry a go.mod (relative to REPO_ROOT).
-# Includes test/integration even though it is not in go.work — it still has a
-# toolchain directive that should stay in sync.
+# Modules whose go.mod carries a go directive that must be updated on a
+# minor-version bump (relative to REPO_ROOT).
 MODULE_DIRS=(
   examples
   sdk
@@ -81,15 +83,6 @@ done
 
 log()  { echo "[INFO] $*"; }
 err()  { echo "[ERROR] $*" >&2; }
-
-# Portable in-place sed: handles both GNU sed (Linux CI) and BSD sed (macOS).
-sed_inplace() {
-  if sed --version 2>/dev/null | grep -q GNU; then
-    sed -i "$@"
-  else
-    sed -i "" "$@"
-  fi
-}
 
 # Reads the toolchain version (e.g. "1.25.8") from a go.work file.
 read_toolchain() {
@@ -186,52 +179,40 @@ fi
 # ── Core update function ───────────────────────────────────────────────────────
 # apply_changes_to TARGET_DIR
 #
-# Applies all version updates to files rooted at TARGET_DIR.  TARGET_DIR may
-# be the real REPO_ROOT (normal mode) or a temp copy (dry-run mode).
+# Applies version updates to files rooted at TARGET_DIR.  TARGET_DIR may be
+# the real REPO_ROOT (normal mode) or a temp copy (dry-run mode).
+#
+# Patch bumps:  only go.work toolchain directive.
+# Minor bumps:  go.work toolchain + go directive, and go directive in every
+#               module's go.mod.
 
 apply_changes_to() {
   local root="$1"
 
-  # go.work — toolchain (always) + go directive (minor bumps only)
+  # go.work — toolchain always, go directive on minor bumps
   go work edit -toolchain="go${LATEST_PATCH}" "${root}/go.work"
   if [[ "$NEEDS_MINOR_BUMP" == "true" ]]; then
     go work edit -go="${TARGET_MINOR}.0" "${root}/go.work"
-  fi
-
-  # Each module's go.mod
-  for dir in "${MODULE_DIRS[@]}"; do
-    local modfile="${root}/${dir}/go.mod"
-    if [[ ! -f "$modfile" ]]; then
-      log "Skipping ${dir}/go.mod (not found)"
-      continue
-    fi
-    go mod edit -toolchain="go${LATEST_PATCH}" "$modfile"
-    if [[ "$NEEDS_MINOR_BUMP" == "true" ]]; then
+    # Each module's go.mod — go directive only (no toolchain in go.mod)
+    for dir in "${MODULE_DIRS[@]}"; do
+      local modfile="${root}/${dir}/go.mod"
+      if [[ ! -f "$modfile" ]]; then
+        log "Skipping ${dir}/go.mod (not found)"
+        continue
+      fi
       go mod edit -go="${TARGET_MINOR}.0" "$modfile"
-    fi
-  done
-
-  # CI workflow YAML files — always overwrite to latest regardless of current
-  # value (handles drift between files).
-  local checks="${root}/.github/workflows/checks.yaml"
-  local sonar="${root}/.github/workflows/sonarcloud.yml"
-
-  if [[ -f "$checks" ]]; then
-    sed_inplace "s/go-version-input: \"[0-9.]*\"/go-version-input: \"${LATEST_PATCH}\"/" "$checks"
-  fi
-  if [[ -f "$sonar" ]]; then
-    sed_inplace "s/go-version: \"[0-9.]*\"/go-version: \"${LATEST_PATCH}\"/" "$sonar"
+    done
   fi
 }
 
-# ── List of all files the update touches ──────────────────────────────────────
+# ── List of all files the update may touch ────────────────────────────────────
 target_files() {
   echo "go.work"
-  for dir in "${MODULE_DIRS[@]}"; do
-    echo "${dir}/go.mod"
-  done
-  echo ".github/workflows/checks.yaml"
-  echo ".github/workflows/sonarcloud.yml"
+  if [[ "$NEEDS_MINOR_BUMP" == "true" ]]; then
+    for dir in "${MODULE_DIRS[@]}"; do
+      echo "${dir}/go.mod"
+    done
+  fi
 }
 
 # ── Dry-run: copy files, apply, diff ──────────────────────────────────────────

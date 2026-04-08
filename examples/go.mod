@@ -2,8 +2,6 @@ module github.com/opentdf/platform/examples
 
 go 1.25.0
 
-toolchain go1.25.8
-
 require (
 	connectrpc.com/connect v1.19.1
 	github.com/opentdf/platform/lib/ocrypto v0.10.0

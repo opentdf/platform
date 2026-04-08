@@ -2,8 +2,6 @@ module github.com/opentdf/platform/test/integration
 
 go 1.25.0
 
-toolchain go1.25.8
-
 replace (
 	github.com/opentdf/platform/lib/fixtures => ../../lib/fixtures
 	github.com/opentdf/platform/lib/ocrypto => ../../lib/ocrypto

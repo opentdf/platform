@@ -39,7 +39,7 @@ fi
 # Preserve the toolchain directive from the original go.work so that CI steps
 # reading go-version-file: go.work (e.g. govulncheck) continue to use the
 # correct Go version after the workspace is regenerated.
-ORIG_TOOLCHAIN=$(grep "^toolchain " go.work 2>/dev/null | awk '{print $2}')
+ORIG_TOOLCHAIN=$(awk '/^toolchain / {print $2; exit}' go.work 2>/dev/null)
 
 echo "[INFO] Rebuilding partial go.work for [${component}]"
 case $component in

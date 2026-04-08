@@ -7,15 +7,14 @@
 package kas
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	structpb "google.golang.org/protobuf/types/known/structpb"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -1345,30 +1344,28 @@ func file_kas_kas_proto_rawDescGZIP() []byte {
 	return file_kas_kas_proto_rawDescData
 }
 
-var (
-	file_kas_kas_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
-	file_kas_kas_proto_goTypes  = []interface{}{
-		(*InfoRequest)(nil),                               // 0: kas.InfoRequest
-		(*InfoResponse)(nil),                              // 1: kas.InfoResponse
-		(*LegacyPublicKeyRequest)(nil),                    // 2: kas.LegacyPublicKeyRequest
-		(*PolicyBinding)(nil),                             // 3: kas.PolicyBinding
-		(*KeyAccess)(nil),                                 // 4: kas.KeyAccess
-		(*UnsignedRewrapRequest)(nil),                     // 5: kas.UnsignedRewrapRequest
-		(*PublicKeyRequest)(nil),                          // 6: kas.PublicKeyRequest
-		(*PublicKeyResponse)(nil),                         // 7: kas.PublicKeyResponse
-		(*RewrapRequest)(nil),                             // 8: kas.RewrapRequest
-		(*KeyAccessRewrapResult)(nil),                     // 9: kas.KeyAccessRewrapResult
-		(*PolicyRewrapResult)(nil),                        // 10: kas.PolicyRewrapResult
-		(*RewrapResponse)(nil),                            // 11: kas.RewrapResponse
-		(*UnsignedRewrapRequest_WithPolicy)(nil),          // 12: kas.UnsignedRewrapRequest.WithPolicy
-		(*UnsignedRewrapRequest_WithKeyAccessObject)(nil), // 13: kas.UnsignedRewrapRequest.WithKeyAccessObject
-		(*UnsignedRewrapRequest_WithPolicyRequest)(nil),   // 14: kas.UnsignedRewrapRequest.WithPolicyRequest
-		nil,                            // 15: kas.KeyAccessRewrapResult.MetadataEntry
-		nil,                            // 16: kas.RewrapResponse.MetadataEntry
-		(*structpb.Value)(nil),         // 17: google.protobuf.Value
-		(*wrapperspb.StringValue)(nil), // 18: google.protobuf.StringValue
-	}
-)
+var file_kas_kas_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_kas_kas_proto_goTypes = []interface{}{
+	(*InfoRequest)(nil),                               // 0: kas.InfoRequest
+	(*InfoResponse)(nil),                              // 1: kas.InfoResponse
+	(*LegacyPublicKeyRequest)(nil),                    // 2: kas.LegacyPublicKeyRequest
+	(*PolicyBinding)(nil),                             // 3: kas.PolicyBinding
+	(*KeyAccess)(nil),                                 // 4: kas.KeyAccess
+	(*UnsignedRewrapRequest)(nil),                     // 5: kas.UnsignedRewrapRequest
+	(*PublicKeyRequest)(nil),                          // 6: kas.PublicKeyRequest
+	(*PublicKeyResponse)(nil),                         // 7: kas.PublicKeyResponse
+	(*RewrapRequest)(nil),                             // 8: kas.RewrapRequest
+	(*KeyAccessRewrapResult)(nil),                     // 9: kas.KeyAccessRewrapResult
+	(*PolicyRewrapResult)(nil),                        // 10: kas.PolicyRewrapResult
+	(*RewrapResponse)(nil),                            // 11: kas.RewrapResponse
+	(*UnsignedRewrapRequest_WithPolicy)(nil),          // 12: kas.UnsignedRewrapRequest.WithPolicy
+	(*UnsignedRewrapRequest_WithKeyAccessObject)(nil), // 13: kas.UnsignedRewrapRequest.WithKeyAccessObject
+	(*UnsignedRewrapRequest_WithPolicyRequest)(nil),   // 14: kas.UnsignedRewrapRequest.WithPolicyRequest
+	nil,                            // 15: kas.KeyAccessRewrapResult.MetadataEntry
+	nil,                            // 16: kas.RewrapResponse.MetadataEntry
+	(*structpb.Value)(nil),         // 17: google.protobuf.Value
+	(*wrapperspb.StringValue)(nil), // 18: google.protobuf.StringValue
+}
 var file_kas_kas_proto_depIdxs = []int32{
 	3,  // 0: kas.KeyAccess.policy_binding:type_name -> kas.PolicyBinding
 	14, // 1: kas.UnsignedRewrapRequest.requests:type_name -> kas.UnsignedRewrapRequest.WithPolicyRequest

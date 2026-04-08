@@ -99,6 +99,16 @@ func TestGetKasKeyAlg(t *testing.T) {
 			expected: policy.Algorithm_ALGORITHM_HPQT_XWING,
 		},
 		{
+			name:     "hybrid secp256r1 mlkem768",
+			algStr:   string(ocrypto.HybridSecp256r1MLKEM768Key),
+			expected: policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768,
+		},
+		{
+			name:     "hybrid secp384r1 mlkem1024",
+			algStr:   string(ocrypto.HybridSecp384r1MLKEM1024Key),
+			expected: policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024,
+		},
+		{
 			name:     "unsupported algorithm",
 			algStr:   "unsupported",
 			expected: policy.Algorithm_ALGORITHM_UNSPECIFIED,
@@ -159,6 +169,18 @@ func TestFormatAlg(t *testing.T) {
 			name:        "Hybrid X-Wing",
 			alg:         policy.Algorithm_ALGORITHM_HPQT_XWING,
 			expected:    string(ocrypto.HybridXWingKey),
+			expectError: false,
+		},
+		{
+			name:        "Hybrid SecP256r1 ML-KEM-768",
+			alg:         policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768,
+			expected:    string(ocrypto.HybridSecp256r1MLKEM768Key),
+			expectError: false,
+		},
+		{
+			name:        "Hybrid SecP384r1 ML-KEM-1024",
+			alg:         policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024,
+			expected:    string(ocrypto.HybridSecp384r1MLKEM1024Key),
 			expectError: false,
 		},
 		{
@@ -336,6 +358,8 @@ func TestFormatAlg_GetKasKeyAlg_RoundTrip(t *testing.T) {
 		{"EC-P384", policy.Algorithm_ALGORITHM_EC_P384},
 		{"EC-P521", policy.Algorithm_ALGORITHM_EC_P521},
 		{"HPQT-XWing", policy.Algorithm_ALGORITHM_HPQT_XWING},
+		{"HPQT-SecP256r1-MLKEM768", policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768},
+		{"HPQT-SecP384r1-MLKEM1024", policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024},
 	}
 
 	for _, tc := range supportedAlgs {

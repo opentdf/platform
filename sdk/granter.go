@@ -288,6 +288,10 @@ func convertAlgEnum2Simple(a policy.KasPublicKeyAlgEnum) policy.Algorithm {
 		return policy.Algorithm_ALGORITHM_RSA_4096
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING:
 		return policy.Algorithm_ALGORITHM_HPQT_XWING
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768:
+		return policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024:
+		return policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED
 	default:
@@ -310,6 +314,10 @@ func convertStringToAlgorithm(alg string) policy.Algorithm {
 		return policy.Algorithm_ALGORITHM_RSA_4096
 	case ocrypto.HybridXWingKey:
 		return policy.Algorithm_ALGORITHM_HPQT_XWING
+	case ocrypto.HybridSecp256r1MLKEM768Key:
+		return policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768
+	case ocrypto.HybridSecp384r1MLKEM1024Key:
+		return policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED
 	}
@@ -496,6 +504,10 @@ func algProto2String(e policy.KasPublicKeyAlgEnum) string {
 		return string(ocrypto.RSA4096Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING:
 		return string(ocrypto.HybridXWingKey)
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768:
+		return string(ocrypto.HybridSecp256r1MLKEM768Key)
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024:
+		return string(ocrypto.HybridSecp384r1MLKEM1024Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
 		return ""
 	}
@@ -516,6 +528,10 @@ func algProto2OcryptoKeyType(e policy.Algorithm) ocrypto.KeyType {
 		return ocrypto.RSA4096Key
 	case policy.Algorithm_ALGORITHM_HPQT_XWING:
 		return ocrypto.HybridXWingKey
+	case policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768:
+		return ocrypto.HybridSecp256r1MLKEM768Key
+	case policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
+		return ocrypto.HybridSecp384r1MLKEM1024Key
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		return ocrypto.KeyType("")
 	default:

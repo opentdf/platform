@@ -2921,11 +2921,11 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations
 					kasPrivateKey = strings.ReplaceAll(lk.private, "\n\t", "\n")
 				}
 
-				privateKey, err := ocrypto.XWingPrivateKeyFromPem([]byte(kasPrivateKey))
-				f.s.Require().NoError(err, "failed to extract X-Wing private key from PEM")
+				asymDecrypt, err := ocrypto.FromPrivatePEM(kasPrivateKey)
+				f.s.Require().NoError(err, "failed to create hybrid decryptor")
 
-				symmetricKey, err := ocrypto.XWingUnwrapDEK(privateKey, wrappedKey)
-				f.s.Require().NoError(err, "failed to unwrap X-Wing wrapped key")
+				symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
+				f.s.Require().NoError(err, "failed to unwrap hybrid wrapped key")
 
 				asymEncrypt, err := ocrypto.FromPublicPEM(bodyData.GetClientPublicKey())
 				f.s.Require().NoError(err, "ocrypto.FromPublicPEM failed")

@@ -159,6 +159,10 @@ func FormatAlg(alg policy.Algorithm) (string, error) {
 		return "ec:secp521r1", nil
 	case policy.Algorithm_ALGORITHM_HPQT_XWING:
 		return "hpqt:xwing", nil
+	case policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768:
+		return "hpqt:secp256r1-mlkem768", nil
+	case policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
+		return "hpqt:secp384r1-mlkem1024", nil
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:

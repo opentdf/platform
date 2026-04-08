@@ -189,6 +189,28 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 		certData:  "-----BEGIN CERTIFICATE-----\nMIIBcTCCARegAwIBAgIUTxgZ1CzWBXgysrV4bKVGw+1iBTwwCgYIKoZIzj0EAwIw\nDjEMMAoGA1UEAwwDa2FzMB4XDTIzMDYxMzAwMDAwMFoXDTI4MDYxMzAwMDAwMFow\nDjEMMAoGA1UEAwwDa2FzMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEn6WYEj3s\nxP/IR0W1O5TYHKPyhceFki4Y/9YYeK/D3QkYQrv+DkKXPKkR/MQS6uzmHZY9NS8X\nbcwJ4cGpR6l4FaNmMGQwHQYDVR0OBBYEFFQ8TIybvYhMKH0E+lOVDS0F7r9PMB8G\nA1UdIwQYMBaAFFQ8TIybvYhMKH0E+lOVDS0F7r9PMA8GA1UdEwEB/wQFMAMBAf8w\nEQYDVR0gBAowCDAGBgRVHSAAMAoGCCqGSM49BAMCA0gAMEUCIQD5adIeKGCpbI1E\nJr3jVwQNJL6+bLGXRORhIeKjpvd3egIgRZ7qwTpjZwrkXpDS2i1ODQjj2Ap9ZeMN\nzuDaXdOl90E=\n-----END CERTIFICATE-----",
 	})
 
+	p256HybridKeyPair, err := ocrypto.NewP256MLKEM768KeyPair()
+	require.NoError(t, err)
+	p256HybridPublicPEM, err := p256HybridKeyPair.PublicKeyInPemFormat()
+	require.NoError(t, err)
+	mockProvider.AddKey(&MockKeyDetails{
+		id:        "hybrid-p256-key",
+		algorithm: security.AlgorithmHPQTSecp256r1MLKEM768,
+		legacy:    false,
+		pemData:   p256HybridPublicPEM,
+	})
+
+	p384HybridKeyPair, err := ocrypto.NewP384MLKEM1024KeyPair()
+	require.NoError(t, err)
+	p384HybridPublicPEM, err := p384HybridKeyPair.PublicKeyInPemFormat()
+	require.NoError(t, err)
+	mockProvider.AddKey(&MockKeyDetails{
+		id:        "hybrid-p384-key",
+		algorithm: security.AlgorithmHPQTSecp384r1MLKEM1024,
+		legacy:    false,
+		pemData:   p384HybridPublicPEM,
+	})
+
 	// Create Provider with the mock security provider
 	delegator := trust.NewDelegatingKeyService(mockProvider, logger.CreateTestLogger(), nil)
 	delegator.RegisterKeyManagerCtx(mockProvider.Name(), func(_ context.Context, _ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
@@ -205,6 +227,14 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 				{
 					Algorithm: security.AlgorithmRSA2048,
 					KID:       "rsa-key",
+				},
+				{
+					Algorithm: security.AlgorithmHPQTSecp256r1MLKEM768,
+					KID:       "hybrid-p256-key",
+				},
+				{
+					Algorithm: security.AlgorithmHPQTSecp384r1MLKEM1024,
+					KID:       "hybrid-p384-key",
 				},
 			},
 		},
@@ -275,6 +305,47 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 		require.NotNil(t, result)
 		assert.Contains(t, result.Msg.GetValue(), "BEGIN PUBLIC KEY")
 	})
+
+	for _, tc := range []struct {
+		name      string
+		algorithm string
+		kid       string
+	}{
+		{
+			name:      "Hybrid P256 ML-KEM-768",
+			algorithm: security.AlgorithmHPQTSecp256r1MLKEM768,
+			kid:       "hybrid-p256-key",
+		},
+		{
+			name:      "Hybrid P384 ML-KEM-1024",
+			algorithm: security.AlgorithmHPQTSecp384r1MLKEM1024,
+			kid:       "hybrid-p384-key",
+		},
+	} {
+		t.Run("PublicKey with "+tc.name, func(t *testing.T) {
+			result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
+				Msg: &kaspb.PublicKeyRequest{
+					Algorithm: tc.algorithm,
+				},
+			})
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			assert.Contains(t, result.Msg.GetPublicKey(), "BEGIN")
+			assert.Equal(t, tc.kid, result.Msg.GetKid())
+		})
+
+		t.Run("PublicKey with "+tc.name+" in JWK format is rejected", func(t *testing.T) {
+			result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
+				Msg: &kaspb.PublicKeyRequest{
+					Algorithm: tc.algorithm,
+					Fmt:       "jwk",
+				},
+			})
+			require.Error(t, err)
+			assert.Nil(t, result)
+			assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+		})
+	}
 
 	// Test with invalid algorithm
 	t.Run("PublicKey with invalid algorithm", func(t *testing.T) {

@@ -455,6 +455,74 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		})
 	}
 
+	for _, tc := range []struct {
+		name       string
+		algorithm  string
+		kid        string
+		newKeyPair func() (ocrypto.KeyPair, error)
+	}{
+		{
+			name:      "X-Wing",
+			algorithm: string(ocrypto.HybridXWingKey),
+			kid:       "hybrid-kid-xwing",
+			newKeyPair: func() (ocrypto.KeyPair, error) {
+				return ocrypto.NewXWingKeyPair()
+			},
+		},
+		{
+			name:      "SecP256r1-MLKEM768",
+			algorithm: string(ocrypto.HybridSecp256r1MLKEM768Key),
+			kid:       "hybrid-kid-p256",
+			newKeyPair: func() (ocrypto.KeyPair, error) {
+				return ocrypto.NewP256MLKEM768KeyPair()
+			},
+		},
+		{
+			name:      "SecP384r1-MLKEM1024",
+			algorithm: string(ocrypto.HybridSecp384r1MLKEM1024Key),
+			kid:       "hybrid-kid-p384",
+			newKeyPair: func() (ocrypto.KeyPair, error) {
+				return ocrypto.NewP384MLKEM1024KeyPair()
+			},
+		},
+	} {
+		t.Run("successful hybrid decryption "+tc.name, func(t *testing.T) {
+			keyPair, err := tc.newKeyPair()
+			require.NoError(t, err)
+
+			privateKeyPEM, err := keyPair.PrivateKeyInPemFormat()
+			require.NoError(t, err)
+			publicKeyPEM, err := keyPair.PublicKeyInPemFormat()
+			require.NoError(t, err)
+
+			wrappedPrivateKeyStr, err := wrapKeyWithAESGCM([]byte(privateKeyPEM), rootKey)
+			require.NoError(t, err)
+
+			mockDetails := new(MockKeyDetails)
+			mockDetails.MID = tc.kid
+			mockDetails.MAlgorithm = tc.algorithm
+			mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedPrivateKeyStr}
+
+			mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
+			mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
+			mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
+
+			hybridEncryptor, err := ocrypto.FromPublicPEM(publicKeyPEM)
+			require.NoError(t, err)
+			ciphertext, err := hybridEncryptor.Encrypt(samplePayload)
+			require.NoError(t, err)
+
+			protectedKey, err := bm.Decrypt(t.Context(), mockDetails, ciphertext, nil)
+			require.NoError(t, err)
+			require.NotNil(t, protectedKey)
+
+			noOpEnc := &noOpEncapsulator{}
+			decryptedPayload, err := noOpEnc.Encapsulate(protectedKey)
+			require.NoError(t, err)
+			assert.Equal(t, samplePayload, decryptedPayload)
+		})
+	}
+
 	t.Run("fail ExportPrivateKey", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)
 		mockDetails.On("ID").Return(trust.KeyIdentifier("fail-export"))

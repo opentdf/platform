@@ -77,6 +77,9 @@ func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyE
 	if block.Type == PEMBlockXWingPublicKey {
 		return NewXWingEncryptor(block.Bytes, salt, info)
 	}
+	if params, ok := hybridParamsFromPublicPEMType(block.Type); ok {
+		return newHybridECMLKEMEncryptor(params, block.Bytes, salt, info)
+	}
 
 	pub, err := getPublicPart(publicKeyInPem)
 	if err != nil {

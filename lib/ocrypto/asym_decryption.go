@@ -46,6 +46,9 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 	if block.Type == PEMBlockXWingPrivateKey {
 		return NewSaltedXWingDecryptor(block.Bytes, salt, info)
 	}
+	if params, ok := hybridParamsFromPrivatePEMType(block.Type); ok {
+		return newSaltedHybridECMLKEMDecryptor(params, block.Bytes, salt, info)
+	}
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	switch {

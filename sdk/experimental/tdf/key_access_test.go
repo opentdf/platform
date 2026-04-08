@@ -112,26 +112,54 @@ func TestBuildKeyAccessObjects(t *testing.T) {
 		assert.NotEmpty(t, keyAccess.WrappedKey, "Should contain wrapped key data")
 	})
 
-	t.Run("successfully creates key access objects with X-Wing public key", func(t *testing.T) {
-		xwingKeyPair, err := ocrypto.NewXWingKeyPair()
-		require.NoError(t, err)
+	for _, tc := range []struct {
+		name       string
+		algorithm  string
+		newKeyPair func() (ocrypto.KeyPair, error)
+	}{
+		{
+			name:      "X-Wing",
+			algorithm: string(ocrypto.HybridXWingKey),
+			newKeyPair: func() (ocrypto.KeyPair, error) {
+				return ocrypto.NewXWingKeyPair()
+			},
+		},
+		{
+			name:      "SecP256r1-MLKEM768",
+			algorithm: string(ocrypto.HybridSecp256r1MLKEM768Key),
+			newKeyPair: func() (ocrypto.KeyPair, error) {
+				return ocrypto.NewP256MLKEM768KeyPair()
+			},
+		},
+		{
+			name:      "SecP384r1-MLKEM1024",
+			algorithm: string(ocrypto.HybridSecp384r1MLKEM1024Key),
+			newKeyPair: func() (ocrypto.KeyPair, error) {
+				return ocrypto.NewP384MLKEM1024KeyPair()
+			},
+		},
+	} {
+		t.Run("successfully creates key access objects with hybrid public key "+tc.name, func(t *testing.T) {
+			keyPair, err := tc.newKeyPair()
+			require.NoError(t, err)
 
-		xwingPublicKeyPEM, err := xwingKeyPair.PublicKeyInPemFormat()
-		require.NoError(t, err)
+			publicKeyPEM, err := keyPair.PublicKeyInPemFormat()
+			require.NoError(t, err)
 
-		splitResult := createTestSplitResult(xwingPublicKeyPEM, string(ocrypto.HybridXWingKey))
-		policyBytes := []byte(testPolicyJSON)
+			splitResult := createTestSplitResult(publicKeyPEM, tc.algorithm)
+			policyBytes := []byte(testPolicyJSON)
 
-		keyAccessList, err := buildKeyAccessObjects(splitResult, policyBytes, testMetadata)
+			keyAccessList, err := buildKeyAccessObjects(splitResult, policyBytes, testMetadata)
 
-		require.NoError(t, err, "Should successfully create key access objects with valid X-Wing key")
-		require.Len(t, keyAccessList, 1)
+			require.NoError(t, err, "Should successfully create key access objects with valid hybrid key")
+			require.Len(t, keyAccessList, 1)
 
-		keyAccess := keyAccessList[0]
-		assert.Equal(t, "hybrid-wrapped", keyAccess.KeyType)
-		assert.NotEmpty(t, keyAccess.WrappedKey)
-		assert.Empty(t, keyAccess.EphemeralPublicKey)
-	})
+			keyAccess := keyAccessList[0]
+			assert.Equal(t, "hybrid-wrapped", keyAccess.KeyType)
+			assert.NotEmpty(t, keyAccess.WrappedKey)
+			assert.Empty(t, keyAccess.EphemeralPublicKey)
+		})
+	}
 
 	t.Run("handles multiple KAS URLs in single split", func(t *testing.T) {
 		// Test that multiple KAS URLs in one split create separate KeyAccess objects
@@ -445,43 +473,71 @@ func TestWrapKeyWithPublicKey(t *testing.T) {
 			"Ephemeral key should end with PEM footer")
 	})
 
-	t.Run("wraps key with X-Wing public key", func(t *testing.T) {
-		symKey := make([]byte, 32)
-		_, err := rand.Read(symKey)
-		require.NoError(t, err)
+	for _, tc := range []struct {
+		name       string
+		algorithm  string
+		newKeyPair func() (ocrypto.KeyPair, error)
+	}{
+		{
+			name:      "X-Wing",
+			algorithm: string(ocrypto.HybridXWingKey),
+			newKeyPair: func() (ocrypto.KeyPair, error) {
+				return ocrypto.NewXWingKeyPair()
+			},
+		},
+		{
+			name:      "SecP256r1-MLKEM768",
+			algorithm: string(ocrypto.HybridSecp256r1MLKEM768Key),
+			newKeyPair: func() (ocrypto.KeyPair, error) {
+				return ocrypto.NewP256MLKEM768KeyPair()
+			},
+		},
+		{
+			name:      "SecP384r1-MLKEM1024",
+			algorithm: string(ocrypto.HybridSecp384r1MLKEM1024Key),
+			newKeyPair: func() (ocrypto.KeyPair, error) {
+				return ocrypto.NewP384MLKEM1024KeyPair()
+			},
+		},
+	} {
+		t.Run("wraps key with hybrid public key "+tc.name, func(t *testing.T) {
+			symKey := make([]byte, 32)
+			_, err := rand.Read(symKey)
+			require.NoError(t, err)
 
-		xwingKeyPair, err := ocrypto.NewXWingKeyPair()
-		require.NoError(t, err)
+			keyPair, err := tc.newKeyPair()
+			require.NoError(t, err)
 
-		xwingPublicKeyPEM, err := xwingKeyPair.PublicKeyInPemFormat()
-		require.NoError(t, err)
+			publicKeyPEM, err := keyPair.PublicKeyInPemFormat()
+			require.NoError(t, err)
 
-		pubKeyInfo := keysplit.KASPublicKey{
-			URL:       testKAS1URL,
-			Algorithm: string(ocrypto.HybridXWingKey),
-			KID:       "test-kid",
-			PEM:       xwingPublicKeyPEM,
-		}
+			pubKeyInfo := keysplit.KASPublicKey{
+				URL:       testKAS1URL,
+				Algorithm: tc.algorithm,
+				KID:       "test-kid",
+				PEM:       publicKeyPEM,
+			}
 
-		wrappedKey, keyType, ephemeralPubKey, err := wrapKeyWithPublicKey(symKey, pubKeyInfo)
+			wrappedKey, keyType, ephemeralPubKey, err := wrapKeyWithPublicKey(symKey, pubKeyInfo)
 
-		require.NoError(t, err, "Should wrap key with X-Wing public key")
-		assert.NotEmpty(t, wrappedKey)
-		assert.Equal(t, "hybrid-wrapped", keyType)
-		assert.Empty(t, ephemeralPubKey)
+			require.NoError(t, err, "Should wrap key with hybrid public key")
+			assert.NotEmpty(t, wrappedKey)
+			assert.Equal(t, "hybrid-wrapped", keyType)
+			assert.Empty(t, ephemeralPubKey)
 
-		decodedWrappedKey, err := ocrypto.Base64Decode([]byte(wrappedKey))
-		require.NoError(t, err)
+			decodedWrappedKey, err := ocrypto.Base64Decode([]byte(wrappedKey))
+			require.NoError(t, err)
 
-		privateKeyPEM, err := xwingKeyPair.PrivateKeyInPemFormat()
-		require.NoError(t, err)
-		privateKey, err := ocrypto.XWingPrivateKeyFromPem([]byte(privateKeyPEM))
-		require.NoError(t, err)
+			privateKeyPEM, err := keyPair.PrivateKeyInPemFormat()
+			require.NoError(t, err)
+			decryptor, err := ocrypto.FromPrivatePEM(privateKeyPEM)
+			require.NoError(t, err)
 
-		plaintext, err := ocrypto.XWingUnwrapDEK(privateKey, decodedWrappedKey)
-		require.NoError(t, err)
-		assert.Equal(t, symKey, plaintext)
-	})
+			plaintext, err := decryptor.Decrypt(decodedWrappedKey)
+			require.NoError(t, err)
+			assert.Equal(t, symKey, plaintext)
+		})
+	}
 
 	t.Run("returns error for empty PEM", func(t *testing.T) {
 		// Test error handling for missing public key PEM

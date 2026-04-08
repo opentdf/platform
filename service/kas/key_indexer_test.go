@@ -176,6 +176,19 @@ func (s *KeyIndexTestSuite) TestAlgorithmConversions_HybridXWing() {
 	s.Equal(policy.Algorithm_ALGORITHM_HPQT_XWING, alg)
 }
 
+func (s *KeyIndexTestSuite) TestAlgorithmConversions_HybridNIST() {
+	s.Equal(ocrypto.HybridSecp256r1MLKEM768Key, convertEnumToAlg(policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768))
+	s.Equal(ocrypto.HybridSecp384r1MLKEM1024Key, convertEnumToAlg(policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024))
+
+	alg, err := convertAlgToEnum(string(ocrypto.HybridSecp256r1MLKEM768Key))
+	s.Require().NoError(err)
+	s.Equal(policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768, alg)
+
+	alg, err = convertAlgToEnum(string(ocrypto.HybridSecp384r1MLKEM1024Key))
+	s.Require().NoError(err)
+	s.Equal(policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024, alg)
+}
+
 func (s *KeyIndexTestSuite) TestListKeysWith() {
 	mockClient := new(MockKeyAccessServerRegistryClient)
 	keyIndexer := &KeyIndexer{

@@ -151,8 +151,10 @@ func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Pub
 		// For EC keys, export the public key
 		ecPublicKeyPem, err := keyDetails.ExportPublicKey(ctx, trust.KeyTypePKCS8)
 		return r(ecPublicKeyPem, kid, err)
-	case security.AlgorithmHPQTXWing:
+	case security.AlgorithmHPQTXWing, security.AlgorithmHPQTSecp256r1MLKEM768, security.AlgorithmHPQTSecp384r1MLKEM1024:
 		switch fmt {
+		case "jwk":
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("JWK export is not supported for hybrid algorithms"))
 		case "pkcs8":
 			fallthrough
 		case "":

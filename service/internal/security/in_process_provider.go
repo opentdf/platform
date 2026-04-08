@@ -64,6 +64,9 @@ func (k *KeyDetailsAdapter) ExportPublicKey(_ context.Context, format trust.KeyT
 	kid := string(k.id)
 	switch format {
 	case trust.KeyTypeJWK:
+		if ocrypto.IsHybridKeyType(k.algorithm) {
+			return "", errors.New("JWK export is not supported for hybrid keys")
+		}
 		// For JWK format (currently only supported for RSA)
 		if k.algorithm == AlgorithmRSA2048 || k.algorithm == AlgorithmRSA4096 {
 			return k.cryptoProvider.RSAPublicKeyAsJSON(kid)
@@ -73,19 +76,14 @@ func (k *KeyDetailsAdapter) ExportPublicKey(_ context.Context, format trust.KeyT
 		if err != nil {
 			return "", err
 		}
-		jwkKey, err := convertPEMToJWK(pemKey)
-		if err != nil {
-			return "", err
-		}
-
-		return jwkKey, nil
+		return convertPEMToJWK(pemKey)
 	case trust.KeyTypePKCS8:
 		// Try to get the key as an RSA key first
 		if rsaKey, err := k.cryptoProvider.RSAPublicKey(kid); err == nil {
 			return rsaKey, nil
 		}
-		if xwingKey, err := k.cryptoProvider.XWingPublicKey(kid); err == nil {
-			return xwingKey, nil
+		if hybridKey, err := k.cryptoProvider.HybridPublicKey(kid); err == nil {
+			return hybridKey, nil
 		}
 		return k.cryptoProvider.ECPublicKey(kid)
 	default:
@@ -196,7 +194,14 @@ func (a *InProcessProvider) ListKeysWith(ctx context.Context, opts trust.ListKey
 	var keys []trust.KeyDetails
 
 	// Try to find keys for known algorithms
-	for _, alg := range []string{AlgorithmRSA2048, AlgorithmRSA4096, AlgorithmECP256R1, AlgorithmHPQTXWing} {
+	for _, alg := range []string{
+		AlgorithmRSA2048,
+		AlgorithmRSA4096,
+		AlgorithmECP256R1,
+		AlgorithmHPQTXWing,
+		AlgorithmHPQTSecp256r1MLKEM768,
+		AlgorithmHPQTSecp384r1MLKEM1024,
+	} {
 		if kids, err := a.cryptoProvider.ListKIDsByAlgorithm(alg); err == nil && len(kids) > 0 {
 			for _, kid := range kids {
 				if opts.LegacyOnly && !a.legacyKeys[kid] {
@@ -252,9 +257,9 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 		}
 		protectedKey, err = a.cryptoProvider.ECDecrypt(ctx, kid, ephemeralPublicKey, ciphertext)
 
-	case AlgorithmHPQTXWing:
+	case AlgorithmHPQTXWing, AlgorithmHPQTSecp256r1MLKEM768, AlgorithmHPQTSecp384r1MLKEM1024:
 		if len(ephemeralPublicKey) > 0 {
-			return nil, errors.New("ephemeral public key should not be provided for X-Wing decryption")
+			return nil, errors.New("ephemeral public key should not be provided for hybrid decryption")
 		}
 		return a.cryptoProvider.Decrypt(ctx, trust.KeyIdentifier(kid), ciphertext, nil)
 
@@ -344,7 +349,7 @@ func (a *InProcessProvider) determineKeyType(kid string) (string, error) {
 		return key.Algorithm, nil
 	case StandardECCrypto:
 		return key.Algorithm, nil
-	case StandardXWingCrypto:
+	case StandardHybridCrypto:
 		return key.Algorithm, nil
 	}
 

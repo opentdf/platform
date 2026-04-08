@@ -52,6 +52,16 @@ func TestFormatAlgorithm(t *testing.T) {
 			expected: "hpqt:xwing",
 		},
 		{
+			name:     "HPQT SecP256r1 ML-KEM-768",
+			alg:      policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768,
+			expected: "hpqt:secp256r1-mlkem768",
+		},
+		{
+			name:     "HPQT SecP384r1 ML-KEM-1024",
+			alg:      policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024,
+			expected: "hpqt:secp384r1-mlkem1024",
+		},
+		{
 			name:     "unknown algorithm value",
 			alg:      policy.Algorithm(999),
 			expected: "unknown",
@@ -106,6 +116,16 @@ func TestConvertAlgEnum2Simple(t *testing.T) {
 			name:     "HPQT X-Wing",
 			algEnum:  policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING,
 			expected: policy.Algorithm_ALGORITHM_HPQT_XWING,
+		},
+		{
+			name:     "HPQT SecP256r1 ML-KEM-768",
+			algEnum:  policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768,
+			expected: policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768,
+		},
+		{
+			name:     "HPQT SecP384r1 ML-KEM-1024",
+			algEnum:  policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024,
+			expected: policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024,
 		},
 		{
 			name:     "unknown enum value",

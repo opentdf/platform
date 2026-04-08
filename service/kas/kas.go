@@ -192,7 +192,13 @@ func initSecurityProviderAdapter(cryptoProvider *security.StandardCrypto, kasCfg
 		}
 	}
 	if len(defaults) == 0 && len(legacies) == 0 {
-		for _, alg := range []string{security.AlgorithmECP256R1, security.AlgorithmRSA2048, security.AlgorithmHPQTXWing} {
+		for _, alg := range []string{
+			security.AlgorithmECP256R1,
+			security.AlgorithmRSA2048,
+			security.AlgorithmHPQTXWing,
+			security.AlgorithmHPQTSecp256r1MLKEM768,
+			security.AlgorithmHPQTSecp384r1MLKEM1024,
+		} {
 			kid := cryptoProvider.FindKID(alg)
 			if kid != "" {
 				defaults = append(defaults, kid)

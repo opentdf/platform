@@ -8,6 +8,7 @@ import (
 	"github.com/opentdf/platform/otdfctl/cmd/auth"
 	cfg "github.com/opentdf/platform/otdfctl/cmd/config"
 	"github.com/opentdf/platform/otdfctl/cmd/dev"
+	"github.com/opentdf/platform/otdfctl/cmd/migrate"
 	"github.com/opentdf/platform/otdfctl/cmd/policy"
 	"github.com/opentdf/platform/otdfctl/cmd/tdf"
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
@@ -99,6 +100,8 @@ func init() {
 		auth.Cmd,
 		// policy
 		policy.Cmd,
+		// migrate
+		migrate.Cmd,
 		// dev
 		dev.Cmd,
 	)
@@ -166,15 +169,13 @@ func init() {
 	// Initialize all subcommands that have been refactored to use explicit initialization
 	cfg.InitCommands()
 	auth.InitCommands()
+	migrate.InitCommands()
 	policy.InitCommands()
 	dev.InitCommands()
 	tdf.InitEncryptCommand()
 	tdf.InitDecryptCommand()
 	tdf.InitInspectCommand()
 	InitProfileCommands()
-
-	// Add migrate command
-	withMigrateSubcommand(RootCmd)
 
 	// Add interactive command
 	RootCmd.AddCommand(newInteractiveCmd())

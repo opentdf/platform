@@ -349,7 +349,7 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 		attrValFQN := attrVal.GetFqn()
 
 		requiredNamespaceID := ""
-		if attrAndValue, ok := decisionableAttributes[attrValFQN]; ok {
+		if attrAndValue, ok2 := decisionableAttributes[attrValFQN]; ok2 {
 			requiredNamespaceID = attrAndValue.GetAttribute().GetNamespace().GetId()
 		}
 

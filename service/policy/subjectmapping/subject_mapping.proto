@@ -29,6 +29,17 @@ message GetSubjectMappingResponse {
   policy.SubjectMapping subject_mapping = 1;
 }
 
+enum SortSubjectMappingsType {
+  SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED = 0;
+  SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT = 1;
+  SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT = 2;
+}
+
+message SubjectMappingsSort {
+  SortSubjectMappingsType field = 1;
+  policy.SortDirection direction = 2;
+}
+
 message ListSubjectMappingsRequest {
   // Optional
   // Namespace ID or FQN
@@ -43,6 +54,9 @@ message ListSubjectMappingsRequest {
 
   // Optional
   policy.PageRequest pagination = 10;
+
+  // Optional - CONSTRAINT: max 1 item
+  repeated SubjectMappingsSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 message ListSubjectMappingsResponse {
   repeated policy.SubjectMapping subject_mappings = 1;

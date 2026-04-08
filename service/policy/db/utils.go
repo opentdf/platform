@@ -11,8 +11,15 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
+)
+
+// Sort field constants shared across all List endpoint sort helpers.
+const (
+	sortFieldCreatedAt = "created_at"
+	sortFieldUpdatedAt = "updated_at"
 )
 
 // Gathers request pagination limit/offset or configured default
@@ -55,9 +62,9 @@ func GetNamespacesSortParams(sort []*namespaces.NamespacesSort) (string, string)
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN:
 		field = "fqn"
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT:
-		field = "created_at"
+		field = sortFieldCreatedAt
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UPDATED_AT:
-		field = "updated_at"
+		field = sortFieldUpdatedAt
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UNSPECIFIED:
 		return "", ""
 	default:
@@ -285,6 +292,31 @@ func pgtypeInt4(i int32, valid bool) pgtype.Int4 {
 	}
 }
 
+// GetSubjectMappingsSortParams maps the strongly-typed SubjectMappingsSort enum to
+// SQL-compatible field name and direction strings.
+// Returns empty strings when sort is nil or empty (backward compatible —
+// callers fall back to default ORDER BY created_at DESC).
+func GetSubjectMappingsSortParams(sort []*subjectmapping.SubjectMappingsSort) (string, string) {
+	if len(sort) == 0 || sort[0] == nil {
+		return "", ""
+	}
+	s := sort[0]
+
+	var field string
+	switch s.GetField() {
+	case subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT:
+		field = sortFieldCreatedAt
+	case subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT:
+		field = sortFieldUpdatedAt
+	case subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED:
+		return "", ""
+	default:
+		return "", ""
+	}
+
+	return field, getSortDirection(s.GetDirection())
+}
+
 func UUIDToString(uuid pgtype.UUID) string {
 	if !uuid.Valid {
 		return ""
@@ -314,9 +346,9 @@ func GetAttributesSortParams(sort []*attributes.AttributesSort) (string, string)
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME:
 		field = "name"
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT:
-		field = "created_at"
+		field = sortFieldCreatedAt
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UPDATED_AT:
-		field = "updated_at"
+		field = sortFieldUpdatedAt
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UNSPECIFIED:
 		return "", ""
 	default:

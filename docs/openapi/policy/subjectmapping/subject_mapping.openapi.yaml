@@ -475,6 +475,13 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+    policy.SortDirection:
+      type: string
+      title: SortDirection
+      enum:
+        - SORT_DIRECTION_UNSPECIFIED
+        - SORT_DIRECTION_ASC
+        - SORT_DIRECTION_DESC
     policy.SourceType:
       type: string
       title: SourceType
@@ -494,6 +501,13 @@ components:
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
+    policy.subjectmapping.SortSubjectMappingsType:
+      type: string
+      title: SortSubjectMappingsType
+      enum:
+        - SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED
+        - SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT
+        - SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT
     common.Metadata:
       type: object
       properties:
@@ -1563,6 +1577,13 @@ components:
           title: pagination
           description: Optional
           $ref: '#/components/schemas/policy.PageRequest'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.subjectmapping.SubjectMappingsSort'
+          title: sort
+          maxItems: 1
+          description: 'Optional - CONSTRAINT: max 1 item'
       title: ListSubjectMappingsRequest
       additionalProperties: false
     policy.subjectmapping.ListSubjectMappingsResponse:
@@ -1619,6 +1640,17 @@ components:
              Common metadata
           $ref: '#/components/schemas/common.MetadataMutable'
       title: SubjectConditionSetCreate
+      additionalProperties: false
+    policy.subjectmapping.SubjectMappingsSort:
+      type: object
+      properties:
+        field:
+          title: field
+          $ref: '#/components/schemas/policy.subjectmapping.SortSubjectMappingsType'
+        direction:
+          title: direction
+          $ref: '#/components/schemas/policy.SortDirection'
+      title: SubjectMappingsSort
       additionalProperties: false
     policy.subjectmapping.UpdateSubjectConditionSetRequest:
       type: object

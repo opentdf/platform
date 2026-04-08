@@ -132,7 +132,7 @@ func (p *HuhPrompter) ConfirmResourceNamespace(resourceName, detectedNamespaceFQ
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
-				Title(fmt.Sprintf("Resource '%s' belongs in namespace '%s' (detected from AAVs):", resourceName, detectedNamespaceFQN)).
+				Title("Resource '"+resourceName+"' belongs in namespace '"+detectedNamespaceFQN+"' (detected from AAVs):").
 				Options(
 					huh.NewOption("Confirm: "+detectedNamespaceFQN, detectedNamespaceFQN),
 					huh.NewOption("Skip this resource", optSkipResource),
@@ -553,7 +553,7 @@ func runBatchRegisteredResourceMigration(ctx context.Context, h MigrationHandler
 		)
 
 		if err := commitRegisteredResourceMigration(ctx, h, p); err != nil {
-			errMsg := fmt.Sprintf("Failed to migrate resource %s: %v", p.Resource.GetId(), err)
+			errMsg := "Failed to migrate resource " + p.Resource.GetId() + ": " + err.Error()
 			fmt.Println(styles.styleWarning.Render(errMsg))
 			failedResources[p.Resource.GetId()] = err.Error()
 		} else {
@@ -730,7 +730,7 @@ func runInteractiveRegisteredResourceMigration(ctx context.Context, h MigrationH
 		)
 
 		if err := commitRegisteredResourceMigration(ctx, h, p); err != nil {
-			errMsg := fmt.Sprintf("Failed to migrate resource %s: %v", p.Resource.GetId(), err)
+			errMsg := "Failed to migrate resource " + p.Resource.GetId() + ": " + err.Error()
 			fmt.Println(styles.styleWarning.Render(errMsg))
 			failedResources[p.Resource.GetId()] = err.Error()
 		} else {

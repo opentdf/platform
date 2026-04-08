@@ -186,6 +186,8 @@ message ListSubjectConditionSetsRequest {
   // Optional
   policy.PageRequest pagination = 10;
   // Optional - CONSTRAINT: max 1 item
+  // Default ordering when omitted or when the first entry's field is UNSPECIFIED:
+  // created_at DESC, then id ASC (tie-breaker).
   repeated SubjectConditionSetsSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 message ListSubjectConditionSetsResponse {

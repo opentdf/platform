@@ -3,17 +3,12 @@ package migrate
 import (
 	"github.com/opentdf/platform/otdfctl/cmd/migrate/prune"
 	"github.com/opentdf/platform/otdfctl/pkg/man"
-	"github.com/spf13/cobra"
 )
 
 var (
 	migrateDoc = man.Docs.GetDoc("migrate")
 
-	Cmd = &cobra.Command{
-		Use:   migrateDoc.Use,
-		Short: migrateDoc.Short,
-		Long:  migrateDoc.Long,
-	}
+	Cmd = &migrateDoc.Command
 )
 
 func InitCommands() {

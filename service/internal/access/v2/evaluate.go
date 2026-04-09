@@ -493,18 +493,10 @@ func isRequestedActionMatch(ctx context.Context, l *logger.Logger, requestedActi
 	// defines matcher behavior when additional identity fields are present.
 	if requestedAction.GetId() != "" {
 		if requestedAction.GetId() != entitledAction.GetId() {
-			l.TraceContext(ctx, "action match identity mismatch",
-				slog.String("requested_action_id", requestedAction.GetId()),
-				slog.String("candidate_action_id", entitledAction.GetId()),
-			)
 			return false
 		}
 	} else {
 		if requestedAction.GetName() == "" || !strings.EqualFold(requestedAction.GetName(), entitledAction.GetName()) {
-			l.TraceContext(ctx, "action match identity mismatch",
-				slog.String("requested_action_name", requestedAction.GetName()),
-				slog.String("candidate_action_name", entitledAction.GetName()),
-			)
 			return false
 		}
 	}

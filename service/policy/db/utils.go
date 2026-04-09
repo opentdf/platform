@@ -19,6 +19,7 @@ import (
 
 // Sort field constants shared across all List endpoint sort helpers.
 const (
+	sortFieldName      = "name"
 	sortFieldCreatedAt = "created_at"
 	sortFieldUpdatedAt = "updated_at"
 )
@@ -59,7 +60,7 @@ func GetNamespacesSortParams(sort []*namespaces.NamespacesSort) (string, string)
 	var field string
 	switch s.GetField() {
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME:
-		field = "name"
+		field = sortFieldName
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN:
 		field = "fqn"
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT:
@@ -370,7 +371,7 @@ func GetAttributesSortParams(sort []*attributes.AttributesSort) (string, string)
 	var field string
 	switch s.GetField() {
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME:
-		field = "name"
+		field = sortFieldName
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT:
 		field = sortFieldCreatedAt
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UPDATED_AT:
@@ -397,7 +398,7 @@ func GetKeyAccessServersSortParams(sort []*kasregistry.KeyAccessServersSort) (st
 	var field string
 	switch s.GetField() {
 	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_NAME:
-		field = "name"
+		field = sortFieldName
 	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_URI:
 		field = "uri"
 	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT:

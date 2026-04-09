@@ -581,6 +581,14 @@ func Test_GetSubjectConditionSetsSortParams(t *testing.T) {
 			expectedField: "updated_at",
 			expectedDir:   "DESC",
 		},
+		{
+			name: "UPDATED_AT with ASC",
+			sort: []*subjectmapping.SubjectConditionSetsSort{
+				{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "updated_at",
+			expectedDir:   "ASC",
+		},
 	}
 
 	for _, tc := range cases {

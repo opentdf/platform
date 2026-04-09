@@ -133,6 +133,48 @@ func TestBuildKeyAccessObjects(t *testing.T) {
 		assert.Empty(t, keyAccess.EphemeralPublicKey)
 	})
 
+	t.Run("successfully creates key access objects with P256+ML-KEM-768 public key", func(t *testing.T) {
+		keyPair, err := ocrypto.NewP256MLKEM768KeyPair()
+		require.NoError(t, err)
+
+		publicKeyPEM, err := keyPair.PublicKeyInPemFormat()
+		require.NoError(t, err)
+
+		splitResult := createTestSplitResult(publicKeyPEM, string(ocrypto.HybridSecp256r1MLKEM768Key))
+		policyBytes := []byte(testPolicyJSON)
+
+		keyAccessList, err := buildKeyAccessObjects(splitResult, policyBytes, testMetadata)
+
+		require.NoError(t, err, "Should successfully create key access objects with valid P256+ML-KEM-768 key")
+		require.Len(t, keyAccessList, 1)
+
+		keyAccess := keyAccessList[0]
+		assert.Equal(t, "hybrid-wrapped", keyAccess.KeyType)
+		assert.NotEmpty(t, keyAccess.WrappedKey)
+		assert.Empty(t, keyAccess.EphemeralPublicKey)
+	})
+
+	t.Run("successfully creates key access objects with P384+ML-KEM-1024 public key", func(t *testing.T) {
+		keyPair, err := ocrypto.NewP384MLKEM1024KeyPair()
+		require.NoError(t, err)
+
+		publicKeyPEM, err := keyPair.PublicKeyInPemFormat()
+		require.NoError(t, err)
+
+		splitResult := createTestSplitResult(publicKeyPEM, string(ocrypto.HybridSecp384r1MLKEM1024Key))
+		policyBytes := []byte(testPolicyJSON)
+
+		keyAccessList, err := buildKeyAccessObjects(splitResult, policyBytes, testMetadata)
+
+		require.NoError(t, err, "Should successfully create key access objects with valid P384+ML-KEM-1024 key")
+		require.Len(t, keyAccessList, 1)
+
+		keyAccess := keyAccessList[0]
+		assert.Equal(t, "hybrid-wrapped", keyAccess.KeyType)
+		assert.NotEmpty(t, keyAccess.WrappedKey)
+		assert.Empty(t, keyAccess.EphemeralPublicKey)
+	})
+
 	t.Run("handles multiple KAS URLs in single split", func(t *testing.T) {
 		// Test that multiple KAS URLs in one split create separate KeyAccess objects
 		splitData := make([]byte, 32)
@@ -479,6 +521,82 @@ func TestWrapKeyWithPublicKey(t *testing.T) {
 		require.NoError(t, err)
 
 		plaintext, err := ocrypto.XWingUnwrapDEK(privateKey, decodedWrappedKey)
+		require.NoError(t, err)
+		assert.Equal(t, symKey, plaintext)
+	})
+
+	t.Run("wraps key with P256+ML-KEM-768 public key", func(t *testing.T) {
+		symKey := make([]byte, 32)
+		_, err := rand.Read(symKey)
+		require.NoError(t, err)
+
+		keyPair, err := ocrypto.NewP256MLKEM768KeyPair()
+		require.NoError(t, err)
+
+		publicKeyPEM, err := keyPair.PublicKeyInPemFormat()
+		require.NoError(t, err)
+
+		pubKeyInfo := keysplit.KASPublicKey{
+			URL:       testKAS1URL,
+			Algorithm: string(ocrypto.HybridSecp256r1MLKEM768Key),
+			KID:       "test-kid",
+			PEM:       publicKeyPEM,
+		}
+
+		wrappedKey, keyType, ephemeralPubKey, err := wrapKeyWithPublicKey(symKey, pubKeyInfo)
+
+		require.NoError(t, err, "Should wrap key with P256+ML-KEM-768 public key")
+		assert.NotEmpty(t, wrappedKey)
+		assert.Equal(t, "hybrid-wrapped", keyType)
+		assert.Empty(t, ephemeralPubKey)
+
+		decodedWrappedKey, err := ocrypto.Base64Decode([]byte(wrappedKey))
+		require.NoError(t, err)
+
+		privateKeyPEM, err := keyPair.PrivateKeyInPemFormat()
+		require.NoError(t, err)
+		privateKey, err := ocrypto.P256MLKEM768PrivateKeyFromPem([]byte(privateKeyPEM))
+		require.NoError(t, err)
+
+		plaintext, err := ocrypto.P256MLKEM768UnwrapDEK(privateKey, decodedWrappedKey)
+		require.NoError(t, err)
+		assert.Equal(t, symKey, plaintext)
+	})
+
+	t.Run("wraps key with P384+ML-KEM-1024 public key", func(t *testing.T) {
+		symKey := make([]byte, 32)
+		_, err := rand.Read(symKey)
+		require.NoError(t, err)
+
+		keyPair, err := ocrypto.NewP384MLKEM1024KeyPair()
+		require.NoError(t, err)
+
+		publicKeyPEM, err := keyPair.PublicKeyInPemFormat()
+		require.NoError(t, err)
+
+		pubKeyInfo := keysplit.KASPublicKey{
+			URL:       testKAS1URL,
+			Algorithm: string(ocrypto.HybridSecp384r1MLKEM1024Key),
+			KID:       "test-kid",
+			PEM:       publicKeyPEM,
+		}
+
+		wrappedKey, keyType, ephemeralPubKey, err := wrapKeyWithPublicKey(symKey, pubKeyInfo)
+
+		require.NoError(t, err, "Should wrap key with P384+ML-KEM-1024 public key")
+		assert.NotEmpty(t, wrappedKey)
+		assert.Equal(t, "hybrid-wrapped", keyType)
+		assert.Empty(t, ephemeralPubKey)
+
+		decodedWrappedKey, err := ocrypto.Base64Decode([]byte(wrappedKey))
+		require.NoError(t, err)
+
+		privateKeyPEM, err := keyPair.PrivateKeyInPemFormat()
+		require.NoError(t, err)
+		privateKey, err := ocrypto.P384MLKEM1024PrivateKeyFromPem([]byte(privateKeyPEM))
+		require.NoError(t, err)
+
+		plaintext, err := ocrypto.P384MLKEM1024UnwrapDEK(privateKey, decodedWrappedKey)
 		require.NoError(t, err)
 		assert.Equal(t, symKey, plaintext)
 	})

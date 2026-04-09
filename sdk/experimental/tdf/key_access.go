@@ -166,7 +166,7 @@ func wrapKeyWithPublicKey(symKey []byte, pubKeyInfo keysplit.KASPublicKey) (stri
 	ktype := ocrypto.KeyType(pubKeyInfo.Algorithm)
 
 	if ocrypto.IsHybridKeyType(ktype) {
-		return wrapKeyWithXWing(pubKeyInfo.PEM, symKey)
+		return wrapKeyWithHybrid(ktype, pubKeyInfo.PEM, symKey)
 	}
 	if ocrypto.IsECKeyType(ktype) {
 		// Handle EC key wrapping
@@ -249,15 +249,39 @@ func wrapKeyWithRSA(kasPublicKeyPEM string, symKey []byte) (string, error) {
 	return string(ocrypto.Base64Encode(encryptedKey)), nil
 }
 
-func wrapKeyWithXWing(kasPublicKeyPEM string, symKey []byte) (string, string, string, error) {
-	publicKey, err := ocrypto.XWingPubKeyFromPem([]byte(kasPublicKeyPEM))
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to parse X-Wing public key: %w", err)
-	}
+func wrapKeyWithHybrid(ktype ocrypto.KeyType, kasPublicKeyPEM string, symKey []byte) (string, string, string, error) {
+	var (
+		wrappedKey []byte
+		err        error
+	)
 
-	wrappedKey, err := ocrypto.XWingWrapDEK(publicKey, symKey)
+	switch ktype { //nolint:exhaustive // only handle hybrid types
+	case ocrypto.HybridXWingKey:
+		var pubKey []byte
+		pubKey, err = ocrypto.XWingPubKeyFromPem([]byte(kasPublicKeyPEM))
+		if err != nil {
+			return "", "", "", fmt.Errorf("failed to parse X-Wing public key: %w", err)
+		}
+		wrappedKey, err = ocrypto.XWingWrapDEK(pubKey, symKey)
+	case ocrypto.HybridSecp256r1MLKEM768Key:
+		var pubKey []byte
+		pubKey, err = ocrypto.P256MLKEM768PubKeyFromPem([]byte(kasPublicKeyPEM))
+		if err != nil {
+			return "", "", "", fmt.Errorf("failed to parse P256+ML-KEM-768 public key: %w", err)
+		}
+		wrappedKey, err = ocrypto.P256MLKEM768WrapDEK(pubKey, symKey)
+	case ocrypto.HybridSecp384r1MLKEM1024Key:
+		var pubKey []byte
+		pubKey, err = ocrypto.P384MLKEM1024PubKeyFromPem([]byte(kasPublicKeyPEM))
+		if err != nil {
+			return "", "", "", fmt.Errorf("failed to parse P384+ML-KEM-1024 public key: %w", err)
+		}
+		wrappedKey, err = ocrypto.P384MLKEM1024WrapDEK(pubKey, symKey)
+	default:
+		return "", "", "", fmt.Errorf("unsupported hybrid algorithm: %s", ktype)
+	}
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to X-Wing wrap key: %w", err)
+		return "", "", "", fmt.Errorf("failed to wrap key with %s: %w", ktype, err)
 	}
 
 	return string(ocrypto.Base64Encode(wrappedKey)), "hybrid-wrapped", "", nil

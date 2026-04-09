@@ -389,6 +389,7 @@ components:
         - ALGORITHM_EC_P521
         - ALGORITHM_MLKEM_768
         - ALGORITHM_MLKEM_1024
+        - ALGORITHM_HPQT_XWING
       description: Supported key algorithms.
     policy.AttributeRuleTypeEnum:
       type: string
@@ -417,6 +418,7 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
         - KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768
         - KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_1024
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
     policy.KeyMode:
       type: string
       title: KeyMode

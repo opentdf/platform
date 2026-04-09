@@ -355,6 +355,7 @@ components:
         - ALGORITHM_EC_P521
         - ALGORITHM_MLKEM_768
         - ALGORITHM_MLKEM_1024
+        - ALGORITHM_HPQT_XWING
       description: Supported key algorithms.
     policy.KasPublicKeyAlgEnum:
       type: string
@@ -368,6 +369,14 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
         - KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768
         - KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_1024
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+    policy.SortDirection:
+      type: string
+      title: SortDirection
+      enum:
+        - SORT_DIRECTION_UNSPECIFIED
+        - SORT_DIRECTION_ASC
+        - SORT_DIRECTION_DESC
     policy.SourceType:
       type: string
       title: SourceType
@@ -379,6 +388,15 @@ components:
         Describes whether this kas is managed by the organization or if they imported
          the kas information from an external party. These two modes are necessary in order
          to encrypt a tdf dek with an external parties kas public key.
+    policy.namespaces.SortNamespacesType:
+      type: string
+      title: SortNamespacesType
+      enum:
+        - SORT_NAMESPACES_TYPE_UNSPECIFIED
+        - SORT_NAMESPACES_TYPE_NAME
+        - SORT_NAMESPACES_TYPE_FQN
+        - SORT_NAMESPACES_TYPE_CREATED_AT
+        - SORT_NAMESPACES_TYPE_UPDATED_AT
     common.Metadata:
       type: object
       properties:
@@ -905,6 +923,13 @@ components:
           title: pagination
           description: Optional
           $ref: '#/components/schemas/policy.PageRequest'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.namespaces.NamespacesSort'
+          title: sort
+          maxItems: 1
+          description: Optional
       title: ListNamespacesRequest
       additionalProperties: false
     policy.namespaces.ListNamespacesResponse:
@@ -954,6 +979,17 @@ components:
       title: NamespaceKeyAccessServer
       additionalProperties: false
       description: Deprecated
+    policy.namespaces.NamespacesSort:
+      type: object
+      properties:
+        field:
+          title: field
+          $ref: '#/components/schemas/policy.namespaces.SortNamespacesType'
+        direction:
+          title: direction
+          $ref: '#/components/schemas/policy.SortDirection'
+      title: NamespacesSort
+      additionalProperties: false
     policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest:
       type: object
       properties:

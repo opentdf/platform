@@ -832,7 +832,7 @@ func createTestAttributeWithRule(fqn, kasURL, kid string, rule policy.AttributeR
 	if len(attrParts) < 5 {
 		panic("Invalid attribute FQN format: " + attrFQN)
 	}
-	authority := strings.Join(attrParts[0:3], "/")
+	authority := strings.Join(attrParts[0:3], "/") //nolint:pathconcat // reconstructing FQNs, not a URL
 	attrName := attrParts[4]
 
 	namespace := &policy.Namespace{

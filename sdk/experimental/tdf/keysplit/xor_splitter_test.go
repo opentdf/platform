@@ -61,7 +61,7 @@ func createMockValue(fqn, grantKas, kid string, rule policy.AttributeRuleTypeEnu
 	if len(attrParts) < 5 {
 		panic("Invalid attribute FQN format: " + attrFQN)
 	}
-	authority := strings.Join(attrParts[0:3], "/")
+	authority := strings.Join(attrParts[0:3], "/") //nolint:pathconcat // reconstructing FQNs, not a URL
 	attrName := attrParts[4]
 
 	namespace := &policy.Namespace{

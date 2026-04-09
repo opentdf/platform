@@ -349,7 +349,10 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 
 			// parse the rpc method
 			p := strings.Split(req.Spec().Procedure, "/")
-			resource := p[1] + "/" + p[2]
+			resource, err := url.JoinPath(p[1], p[2])
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("invalid procedure path: %w", err))
+			}
 			action := getAction(p[2])
 
 			token, ctxWithJWK, err := a.checkToken(

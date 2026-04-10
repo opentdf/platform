@@ -188,13 +188,18 @@ func TestTraceContextPropagation_NoTraceContext(t *testing.T) {
 	clientInt, err := tracing.ConnectClientTraceInterceptor()
 	require.NoError(t, err)
 
-	var serverTraceID trace.TraceID
+	var (
+		mu            sync.Mutex
+		serverTraceID trace.TraceID
+	)
 
 	mux := http.NewServeMux()
 	handler := connect.NewUnaryHandler(
 		"/test.v1.TestService/Ping",
 		func(ctx context.Context, _ *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error) {
+			mu.Lock()
 			serverTraceID = trace.SpanContextFromContext(ctx).TraceID()
+			mu.Unlock()
 			return connect.NewResponse(&emptypb.Empty{}), nil
 		},
 		connect.WithInterceptors(serverInt),
@@ -218,9 +223,13 @@ func TestTraceContextPropagation_NoTraceContext(t *testing.T) {
 	span.End()
 	require.NoError(t, err)
 
-	// With a no-op propagator, the client's trace context is not injected into
-	// headers. otelconnect still creates a server span, but it starts a new
-	// independent trace — the trace IDs must differ.
+	mu.Lock()
+	defer mu.Unlock()
+
+	// otelconnect still creates a server span, so serverTraceID must be valid.
+	// But with a no-op propagator, the client's trace context is not injected
+	// into headers — the server starts a new independent trace.
+	require.True(t, serverTraceID.IsValid(), "server span should still be created")
 	assert.NotEqual(t, clientTraceID, serverTraceID,
 		"server should have a different trace ID when no propagator is configured")
 }

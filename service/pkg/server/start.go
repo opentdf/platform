@@ -372,6 +372,13 @@ func setupERSConnection(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, 
 
 	ersConnectRPCConn := &sdk.ConnectRPCConnection{}
 
+	// OTel tracing and metrics for outbound ERS Connect RPCs (outermost interceptor)
+	ersTraceInt, err := tracing.ConnectClientTraceInterceptor()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ERS trace interceptor: %w", err)
+	}
+	ersConnectRPCConn.Options = append(ersConnectRPCConn.Options, connect.WithInterceptors(ersTraceInt))
+
 	// Configure TLS
 	tlsConfig := configureTLSForERS(cfg, ersConnectRPCConn)
 
@@ -387,13 +394,6 @@ func setupERSConnection(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, 
 		return nil, fmt.Errorf("entityresolution endpoint is malformed: %s", cfg.SDKConfig.EntityResolutionConnection.Endpoint)
 	}
 	ersConnectRPCConn.Endpoint = cfg.SDKConfig.EntityResolutionConnection.Endpoint
-
-	// OTel tracing and metrics for outbound ERS Connect RPCs
-	ersTraceInt, err := tracing.ConnectClientTraceInterceptor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create ERS trace interceptor: %w", err)
-	}
-	ersConnectRPCConn.Options = append(ersConnectRPCConn.Options, connect.WithInterceptors(ersTraceInt))
 
 	logger.Info("added with custom ers connection", slog.String("ers_connection_endpoint", ersConnectRPCConn.Endpoint))
 	return ersConnectRPCConn, nil

@@ -523,6 +523,9 @@ func pprofHandler(h http.Handler) http.Handler {
 func newConnectRPC(c Config, authInt connect.Interceptor, ints []connect.Interceptor, logger *logger.Logger) (*ConnectRPC, error) {
 	interceptors := make([]connect.HandlerOption, 0)
 
+	// Extract OTel trace context from incoming Connect requests before all other interceptors
+	interceptors = append(interceptors, connect.WithInterceptors(tracing.ConnectServerTraceInterceptor()))
+
 	if c.Auth.Enabled {
 		if authInt == nil {
 			return nil, errors.New("authentication enabled but no interceptor provided")
@@ -596,6 +599,9 @@ func (s OpenTDFServer) Stop() {
 
 func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
 	var clientInterceptors []connect.Interceptor
+
+	// Propagate OTel trace context on outbound IPC Connect RPCs
+	clientInterceptors = append(clientInterceptors, tracing.ConnectClientTraceInterceptor())
 
 	// Add audit interceptor
 	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingConnectInterceptor())

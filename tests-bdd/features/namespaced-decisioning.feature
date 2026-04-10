@@ -33,9 +33,10 @@ Feature: Namespaced Policy Decisioning (name-only action requests)
     And I should get a "PERMIT" decision response
 
   Scenario: Standard action name denies when subject mapping is unnamespaced
+    And I send a request to create a subject condition set referenced as "scs_department_eng_unns" containing subject sets "ss_eng_department"
     And I send a request to create a subject mapping with:
       | reference_id        | attribute_value                                                | condition_set_name          | standard actions | custom actions |
-      | sm_unns_read_eng    | https://ns-one.example.com/attr/department/value/eng           | scs_department_eng_ns1      | read             |                |
+      | sm_unns_read_eng    | https://ns-one.example.com/attr/department/value/eng           | scs_department_eng_unns     | read             |                |
     Then the response should be successful
     When I send a decision request for entity chain "alice" for "read" action on resource "https://ns-one.example.com/attr/department/value/eng"
     Then the response should be successful
@@ -60,9 +61,10 @@ Feature: Namespaced Policy Decisioning (name-only action requests)
     And I should get a "PERMIT" decision response
 
   Scenario: Custom action name denies when subject mapping is unnamespaced
+    And I send a request to create a subject condition set referenced as "scs_department_eng_unns" containing subject sets "ss_eng_department"
     And I send a request to create a subject mapping with:
       | reference_id          | attribute_value                                                | condition_set_name          | standard actions | custom actions |
-      | sm_unns_export_eng    | https://ns-one.example.com/attr/department/value/eng           | scs_department_eng_ns1      |                  | export         |
+      | sm_unns_export_eng    | https://ns-one.example.com/attr/department/value/eng           | scs_department_eng_unns     |                  | export         |
     Then the response should be successful
     When I send a decision request for entity chain "alice" for "custom_action_export" action on resource "https://ns-one.example.com/attr/department/value/eng"
     Then the response should be successful

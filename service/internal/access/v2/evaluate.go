@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/opentdf/platform/lib/identifier"
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -39,6 +40,7 @@ func getResourceDecision(
 	var (
 		resourceID                 = resource.GetEphemeralId()
 		registeredResourceValueFQN string
+		requiredNamespace          string
 		resourceAttributeValues    *authz.Resource_AttributeValues
 		failure                    = &ResourceDecision{
 			Entitled:     false,
@@ -62,6 +64,18 @@ func getResourceDecision(
 		l = l.With("registered_resource_value_fqn", registeredResourceValueFQN)
 		failure.ResourceName = registeredResourceValueFQN
 
+		// If namespaced policies are enabled, enforce that the registered resource value FQN is namespaced and extract the required namespace for later checks
+		if namespacedPolicy {
+			parsed, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN)
+			if err != nil {
+				return nil, fmt.Errorf("invalid registered resource value FQN [%s]: %w", registeredResourceValueFQN, ErrInvalidResource)
+			}
+			if parsed.Namespace == "" {
+				return nil, fmt.Errorf("registered resource value FQN must be namespaced in strict mode [%s]: %w", registeredResourceValueFQN, ErrInvalidResource)
+			}
+			requiredNamespace = parsed.Namespace
+		}
+
 		regResValue, found := accessibleRegisteredResourceValues[registeredResourceValueFQN]
 		if !found {
 			l.WarnContext(
@@ -81,26 +95,24 @@ func getResourceDecision(
 		}
 		for _, aav := range regResValue.GetActionAttributeValues() {
 			aavAttrValueFQN := aav.GetAttributeValue().GetFqn()
-			precheckNamespaceID := ""
-			precheckNamespacedPolicy := false
-			// First, check whether the request action identity (id or name[/namespace])
-			// could match this AAV action at all. This lightweight pre-check is used to
-			// decide whether strict mode must fail closed when namespace context is
-			// missing for this candidate AAV.
-			matchesRequestIdentity := isRequestedActionMatch(ctx, l, action, precheckNamespaceID, aav.GetAction(), precheckNamespacedPolicy)
-			requiredNamespaceID := ""
-			if attrAndValue, ok := accessibleAttributeValues[aavAttrValueFQN]; ok {
-				requiredNamespaceID = attrAndValue.GetAttribute().GetNamespace().GetId()
-			} else if namespacedPolicy && matchesRequestIdentity {
-				// Strict namespaced policy: if this AAV is otherwise a candidate for the
-				// requested action but we cannot resolve the attribute-value namespace,
-				// deny rather than silently skipping evaluation.
-				l.TraceContext(
-					ctx,
-					"strict namespaced-policy mode: unable to resolve namespace for RR action-attribute-value; denying access",
-					slog.String("attribute_value_fqn", aavAttrValueFQN),
-				)
-				return failure, nil
+			var requiredNamespaceID string
+			// If namespaced policies are enabled, enforce that the attribute value FQN is in the same namespace as the registered resource value and extract the namespace ID for later checks.
+			// This is a fail safe, as RR and attr NS match should be enforced on creation and update of registered resources
+			// This ensures that only attribute values from the correct namespace are considered in the evaluation.
+			if namespacedPolicy {
+				parsed, err := identifier.Parse[*identifier.FullyQualifiedAttribute](aavAttrValueFQN)
+				if err != nil {
+					return nil, fmt.Errorf("invalid attribute value FQN [%s]: %w", aavAttrValueFQN, ErrInvalidResource)
+				}
+				if parsed.Namespace != requiredNamespace {
+					return nil, fmt.Errorf("attribute value FQN [%s] namespace [%s] does not match RR namespace [%s]: %w", aavAttrValueFQN, parsed.Namespace, requiredNamespace, ErrInvalidResource)
+				}
+				// Since we dont have the ns id on the RR value, pull it from the attr val
+				if attrAndValue, ok := accessibleAttributeValues[aavAttrValueFQN]; ok {
+					requiredNamespaceID = attrAndValue.GetAttribute().GetNamespace().GetId()
+				} else {
+					return nil, fmt.Errorf("AAV attribute value FQN [%s] not found in accessible attributes: %w", aavAttrValueFQN, ErrFQNNotFound)
+				}
 			}
 
 			// skip evaluating attribute rules on any action-attribute-values without the requested action

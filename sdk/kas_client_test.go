@@ -541,18 +541,18 @@ func Test_processECResponse(t *testing.T) {
 	c := newKASClient(nil, nil, nil, nil, nil)
 
 	// 1. Set up keys for encryption
-	kasPublicKey, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
+	kasPrivateKey, err := ocrypto.NewECPrivateKey(ocrypto.ECCModeSecp256r1)
+	require.NoError(t, err)
+	kasPublicKey, err := kasPrivateKey.Public()
 	require.NoError(t, err)
 	kasPublicKeyPEM, err := kasPublicKey.PublicKeyInPemFormat()
 	require.NoError(t, err)
 
-	clientPrivateKey, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
-	require.NoError(t, err)
-	clientPrivateKeyPEM, err := clientPrivateKey.PrivateKeyInPemFormat()
+	clientPrivateKey, err := ocrypto.NewECPrivateKey(ocrypto.ECCModeSecp256r1)
 	require.NoError(t, err)
 
 	// 2. Compute shared secret and derive session key (for encryption)
-	ecdhKey, err := ocrypto.ComputeECDHKey([]byte(clientPrivateKeyPEM), []byte(kasPublicKeyPEM))
+	ecdhKey, err := clientPrivateKey.DeriveSharedKey(kasPublicKeyPEM)
 	require.NoError(t, err)
 
 	digest := sha256.New()

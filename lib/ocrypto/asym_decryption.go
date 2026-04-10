@@ -7,6 +7,7 @@ import (
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -26,6 +27,41 @@ type AsymDecryption struct {
 type PrivateKeyDecryptor interface {
 	// Decrypt decrypts ciphertext with private key.
 	Decrypt(data []byte) ([]byte, error)
+
+	// PrivateKeyInPemFormat returns the private key in PEM format.
+	PrivateKeyInPemFormat() (string, error)
+
+	// Public returns the corresponding public-key encryptor.
+	Public() (PublicKeyEncryptor, error)
+
+	// KeyType returns the key type, e.g. RSA or EC.
+	KeyType() KeyType
+
+	// DeriveSharedKey derives a shared secret from the private key and the provided peer public key.
+	DeriveSharedKey(publicKeyInPem string) ([]byte, error)
+}
+
+func NewPrivateKeyDecryptor(kt KeyType) (PrivateKeyDecryptor, error) {
+	switch {
+	case IsRSAKeyType(kt):
+		bits, err := RSAKeyTypeToBits(kt)
+		if err != nil {
+			return nil, err
+		}
+		keyPair, err := NewRSAKeyPair(bits)
+		if err != nil {
+			return nil, err
+		}
+		return keyPair, nil
+	case IsECKeyType(kt):
+		mode, err := ECKeyTypeToMode(kt)
+		if err != nil {
+			return nil, err
+		}
+		return NewECPrivateKey(mode)
+	default:
+		return nil, fmt.Errorf("unsupported key type: %v", kt)
+	}
 }
 
 // FromPrivatePEM creates and returns a new AsymDecryption.
@@ -109,6 +145,37 @@ func (asymDecryption AsymDecryption) Decrypt(data []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+func (asymDecryption AsymDecryption) PrivateKeyInPemFormat() (string, error) {
+	return privateKeyInPemFormat(asymDecryption.PrivateKey)
+}
+
+func (asymDecryption AsymDecryption) Public() (PublicKeyEncryptor, error) {
+	if asymDecryption.PrivateKey == nil {
+		return nil, errors.New("failed to generate public key encryptor, private key is empty")
+	}
+
+	return &AsymEncryption{PublicKey: &asymDecryption.PrivateKey.PublicKey}, nil
+}
+
+func (asymDecryption AsymDecryption) KeyType() KeyType {
+	if asymDecryption.PrivateKey == nil {
+		return KeyType("rsa:[unknown]")
+	}
+
+	switch asymDecryption.PrivateKey.Size() {
+	case RSA2048Size / 8: //nolint:mnd // standard key size in bytes
+		return RSA2048Key
+	case RSA4096Size / 8: //nolint:mnd // large key size in bytes
+		return RSA4096Key
+	default:
+		return KeyType(fmt.Sprintf("rsa:%d", asymDecryption.PrivateKey.Size()*8)) //nolint:mnd // convert to bits
+	}
+}
+
+func (asymDecryption AsymDecryption) DeriveSharedKey(_ string) ([]byte, error) {
+	return nil, errors.New("shared key derivation is unsupported for RSA private keys")
+}
+
 type ECDecryptor struct {
 	sk   *ecdh.PrivateKey
 	salt []byte
@@ -124,6 +191,20 @@ func NewECDecryptor(sk *ecdh.PrivateKey) (ECDecryptor, error) {
 	return ECDecryptor{sk, salt, nil}, nil
 }
 
+func NewECPrivateKey(mode ECCMode) (ECDecryptor, error) {
+	curve, err := curveFromECCMode(mode)
+	if err != nil {
+		return ECDecryptor{}, err
+	}
+
+	sk, err := curve.GenerateKey(rand.Reader)
+	if err != nil {
+		return ECDecryptor{}, fmt.Errorf("ecdh.GenerateKey failed: %w", err)
+	}
+
+	return NewECDecryptor(sk)
+}
+
 func NewSaltedECDecryptor(sk *ecdh.PrivateKey, salt, info []byte) (ECDecryptor, error) {
 	return ECDecryptor{sk, salt, info}, nil
 }
@@ -131,6 +212,49 @@ func NewSaltedECDecryptor(sk *ecdh.PrivateKey, salt, info []byte) (ECDecryptor, 
 func (e ECDecryptor) Decrypt(_ []byte) ([]byte, error) {
 	// TK How to get the ephmeral key into here?
 	return nil, errors.New("ecdh standard decrypt unimplemented")
+}
+
+func (e ECDecryptor) PrivateKeyInPemFormat() (string, error) {
+	return privateKeyInPemFormat(e.sk)
+}
+
+func (e ECDecryptor) Public() (PublicKeyEncryptor, error) {
+	if e.sk == nil {
+		return nil, errors.New("failed to generate public key encryptor, private key is empty")
+	}
+
+	return newECIES(e.sk.PublicKey(), e.salt, e.info)
+}
+
+func (e ECDecryptor) KeyType() KeyType {
+	if e.sk == nil {
+		return KeyType("ec:[unknown]")
+	}
+
+	return keyTypeFromECDHCurve(e.sk.Curve())
+}
+
+func (e ECDecryptor) DeriveSharedKey(publicKeyInPem string) ([]byte, error) {
+	if e.sk == nil {
+		return nil, errors.New("failed to derive shared key, private key is empty")
+	}
+
+	pub, err := getPublicPart(publicKeyInPem)
+	if err != nil {
+		return nil, err
+	}
+
+	ecdhPublicKey, err := ConvertToECDHPublicKey(pub)
+	if err != nil {
+		return nil, fmt.Errorf("unsupported public key type: %w", err)
+	}
+
+	sharedKey, err := e.sk.ECDH(ecdhPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("there was a problem deriving a shared ECDH key: %w", err)
+	}
+
+	return sharedKey, nil
 }
 
 func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {

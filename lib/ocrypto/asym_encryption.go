@@ -271,5 +271,13 @@ func (e ECEncryptor) Encrypt(data []byte) ([]byte, error) {
 
 // PublicKeyInPemFormat Returns public key in pem format.
 func (e ECEncryptor) PublicKeyInPemFormat() (string, error) {
-	return publicKeyInPemFormat(e.ek.Public())
+	return publicKeyInPemFormat(e.pub)
+}
+
+func (e ECEncryptor) EphemeralPublicKeyInPemFormat() (string, error) {
+	if e.ek == nil {
+		return "", errors.New("failed to generate PEM formatted public key")
+	}
+
+	return publicKeyInPemFormat(e.ek.PublicKey())
 }

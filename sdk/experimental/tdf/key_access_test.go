@@ -90,10 +90,13 @@ func TestBuildKeyAccessObjects(t *testing.T) {
 		// Test that buildKeyAccessObjects correctly handles elliptic curve keys with ephemeral key generation
 
 		// Generate a real EC P-256 key pair for testing
-		ecKeyPair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
-		require.NoError(t, err, "Should generate EC key pair")
+		ecPrivateKey, err := ocrypto.NewECPrivateKey(ocrypto.ECCModeSecp256r1)
+		require.NoError(t, err, "Should generate EC private key")
 
-		ecPublicKeyPEM, err := ecKeyPair.PublicKeyInPemFormat()
+		ecPublicKey, err := ecPrivateKey.Public()
+		require.NoError(t, err, "Should derive EC public key")
+
+		ecPublicKeyPEM, err := ecPublicKey.PublicKeyInPemFormat()
 		require.NoError(t, err, "Should get public key in PEM format")
 
 		splitResult := createTestSplitResult(testKAS1URL, ecPublicKeyPEM, "ec:secp256r1")
@@ -397,10 +400,13 @@ func TestWrapKeyWithPublicKey(t *testing.T) {
 		require.NoError(t, err)
 
 		// Generate a real EC P-256 key pair for testing
-		ecKeyPair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
-		require.NoError(t, err, "Should generate EC key pair")
+		ecPrivateKey, err := ocrypto.NewECPrivateKey(ocrypto.ECCModeSecp256r1)
+		require.NoError(t, err, "Should generate EC private key")
 
-		ecPublicKeyPEM, err := ecKeyPair.PublicKeyInPemFormat()
+		ecPublicKey, err := ecPrivateKey.Public()
+		require.NoError(t, err, "Should derive EC public key")
+
+		ecPublicKeyPEM, err := ecPublicKey.PublicKeyInPemFormat()
 		require.NoError(t, err, "Should get public key in PEM format")
 
 		pubKeyInfo := keysplit.KASPublicKey{

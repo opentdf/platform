@@ -183,27 +183,25 @@ func wrapKeyWithEC(keyType ocrypto.KeyType, kasPublicKeyPEM string, symKey []byt
 	}
 
 	// Generate ephemeral key pair
-	ecKeyPair, err := ocrypto.NewECKeyPair(mode)
+	ecPrivateKey, err := ocrypto.NewECPrivateKey(mode)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to create EC key pair: %w", err)
+		return "", "", "", fmt.Errorf("failed to create EC private key: %w", err)
 	}
 
-	// Get ephemeral public key in PEM format
-	ephemeralPubKey, err := ecKeyPair.PublicKeyInPemFormat()
+	ephemeralPublicKeyEncryptor, err := ecPrivateKey.Public()
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to get ephemeral public key: %w", err)
 	}
 
-	// Get ephemeral private key
-	ephemeralPrivKey, err := ecKeyPair.PrivateKeyInPemFormat()
+	ephemeralPubKey, err := ephemeralPublicKeyEncryptor.PublicKeyInPemFormat()
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get ephemeral private key: %w", err)
+		return "", "", "", fmt.Errorf("failed to serialize ephemeral public key: %w", err)
 	}
 
 	// Compute ECDH shared secret
-	ecdhKey, err := ocrypto.ComputeECDHKey([]byte(ephemeralPrivKey), []byte(kasPublicKeyPEM))
+	ecdhKey, err := ecPrivateKey.DeriveSharedKey(kasPublicKeyPEM)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to compute ECDH key: %w", err)
+		return "", "", "", fmt.Errorf("failed to derive shared key: %w", err)
 	}
 
 	// Derive wrapping key using HKDF

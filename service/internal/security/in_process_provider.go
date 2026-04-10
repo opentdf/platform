@@ -305,9 +305,14 @@ func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDet
 		Bytes: derBytes,
 	})
 
-	symmetricKey, err := ocrypto.ComputeECDHKey([]byte(ec.ecPrivateKeyPem), ephemeralECDSAPublicKeyPEM)
+	decrypter, err := ocrypto.FromPrivatePEM(ec.ecPrivateKeyPem)
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
+		return nil, fmt.Errorf("failed to create decryptor from private PEM: %w", err)
+	}
+
+	symmetricKey, err := decrypter.DeriveSharedKey(string(ephemeralECDSAPublicKeyPEM))
+	if err != nil {
+		return nil, fmt.Errorf("failed to derive shared key: %w", err)
 	}
 
 	key, err := ocrypto.CalculateHKDF(TDFSalt(), symmetricKey)

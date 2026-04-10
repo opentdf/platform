@@ -80,13 +80,9 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		}
 		return protectedKey, nil
 	case ocrypto.EC256Key, ocrypto.EC384Key, ocrypto.EC521Key:
-		ecPrivKey, err := ocrypto.ECPrivateKeyFromPem(privKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create EC private key from PEM: %w", err)
-		}
-		ecDecryptor, err := ocrypto.NewECDecryptor(ecPrivKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create ECDecryptor: %w", err)
+		ecDecryptor, ok := decrypter.(ocrypto.ECDecryptor)
+		if !ok {
+			return nil, fmt.Errorf("failed to create ECDecryptor: unexpected type %T", decrypter)
 		}
 		plaintext, err := ecDecryptor.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
 		if err != nil {
@@ -129,9 +125,14 @@ func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetail
 	}
 	ephemeralECDSAPublicKeyPEM := pem.EncodeToMemory(pemBlock)
 
-	symmetricKey, err := ocrypto.ComputeECDHKey(privKey, ephemeralECDSAPublicKeyPEM)
+	decrypter, err := ocrypto.FromPrivatePEM(string(privKey))
 	if err != nil {
-		return nil, fmt.Errorf("failed to compute ECDH key: %w", err)
+		return nil, fmt.Errorf("failed to create decryptor from private PEM: %w", err)
+	}
+
+	symmetricKey, err := decrypter.DeriveSharedKey(string(ephemeralECDSAPublicKeyPEM))
+	if err != nil {
+		return nil, fmt.Errorf("failed to derive shared key: %w", err)
 	}
 
 	key, err := ocrypto.CalculateHKDF(TDFSalt(), symmetricKey)

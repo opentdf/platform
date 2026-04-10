@@ -152,9 +152,19 @@ func generateRSAKeyAndPEM() (ocrypto.RsaKeyPair, error) {
 	return ocrypto.NewRSAKeyPair(2048)
 }
 
-// Helper function to generate EC key pair and PEM encode private key
-func generateECKeyAndPEM(curve ocrypto.ECCMode) (ocrypto.ECKeyPair, error) {
-	return ocrypto.NewECKeyPair(curve)
+// Helper function to generate an EC private key and derive the matching public key.
+func generateECKeyAndPEM(curve ocrypto.ECCMode) (ocrypto.ECDecryptor, ocrypto.PublicKeyEncryptor, error) {
+	privateKey, err := ocrypto.NewECPrivateKey(curve)
+	if err != nil {
+		return ocrypto.ECDecryptor{}, nil, err
+	}
+
+	publicKey, err := privateKey.Public()
+	if err != nil {
+		return ocrypto.ECDecryptor{}, nil, err
+	}
+
+	return privateKey, publicKey, nil
 }
 
 func compressEphemeralPublicKey(t *testing.T, der []byte) []byte {
@@ -327,11 +337,11 @@ func TestBasicManager_Decrypt(t *testing.T) {
 	wrappedRSAPrivKeyStr, err := wrapKeyWithAESGCM([]byte(rsaPrivKey), rootKey)
 	require.NoError(t, err)
 
-	ecKey, err := generateECKeyAndPEM(ocrypto.ECCModeSecp256r1)
+	ecKey, ecPublicKey, err := generateECKeyAndPEM(ocrypto.ECCModeSecp256r1)
 	require.NoError(t, err)
 	ecPrivKey, err := ecKey.PrivateKeyInPemFormat()
 	require.NoError(t, err)
-	ecPubKey, err := ecKey.PublicKeyInPemFormat()
+	ecPubKey, err := ecPublicKey.PublicKeyInPemFormat()
 	require.NoError(t, err)
 
 	wrappedECPrivKeyStr, err := wrapKeyWithAESGCM([]byte(ecPrivKey), rootKey)
@@ -419,11 +429,11 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		},
 	} {
 		t.Run("successful EC decryption with compressed ephemeral key "+tc.name, func(t *testing.T) {
-			curveKey, err := generateECKeyAndPEM(tc.mode)
+			curveKey, curvePublicKey, err := generateECKeyAndPEM(tc.mode)
 			require.NoError(t, err)
 			curvePrivKey, err := curveKey.PrivateKeyInPemFormat()
 			require.NoError(t, err)
-			curvePubKey, err := curveKey.PublicKeyInPemFormat()
+			curvePubKey, err := curvePublicKey.PublicKeyInPemFormat()
 			require.NoError(t, err)
 
 			wrappedCurvePrivKeyStr, err := wrapKeyWithAESGCM([]byte(curvePrivKey), rootKey)
@@ -518,7 +528,7 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 	rootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
 	rootKey, _ := hex.DecodeString(rootKeyHex)
 
-	ecKey, err := generateECKeyAndPEM(ocrypto.ECCModeSecp256r1)
+	ecKey, _, err := generateECKeyAndPEM(ocrypto.ECCModeSecp256r1)
 	require.NoError(t, err)
 	ecPrivKey, err := ecKey.PrivateKeyInPemFormat()
 	require.NoError(t, err)

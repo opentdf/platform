@@ -65,7 +65,7 @@ type Reader struct {
 	aesGcm              ocrypto.AesGcm
 	payloadSize         int64
 	payloadKey          []byte
-	kasSessionKey       ocrypto.KeyPair
+	kasSessionKey       ocrypto.PrivateKeyDecryptor
 	config              TDFReaderConfig
 	requiredObligations *RequiredObligations
 }
@@ -705,24 +705,24 @@ func tdfSalt() []byte {
 }
 
 func generateWrapKeyWithEC(mode ocrypto.ECCMode, kasPublicKey string, symKey []byte) (ecKeyWrappedKeyInfo, error) {
-	ecKeyPair, err := ocrypto.NewECKeyPair(mode)
+	ecPrivateKey, err := ocrypto.NewECPrivateKey(mode)
 	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("ocrypto.NewECKeyPair failed:%w", err)
+		return ecKeyWrappedKeyInfo{}, fmt.Errorf("ocrypto.NewECPrivateKey failed:%w", err)
 	}
 
-	emphermalPublicKey, err := ecKeyPair.PublicKeyInPemFormat()
+	ephemeralPublicKeyEncryptor, err := ecPrivateKey.Public()
 	if err != nil {
 		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: failed to get EC public key: %w", err)
 	}
 
-	emphermalPrivateKey, err := ecKeyPair.PrivateKeyInPemFormat()
+	ephemeralPublicKey, err := ephemeralPublicKeyEncryptor.PublicKeyInPemFormat()
 	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: failed to get EC private key: %w", err)
+		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: failed to serialize EC public key: %w", err)
 	}
 
-	ecdhKey, err := ocrypto.ComputeECDHKey([]byte(emphermalPrivateKey), []byte(kasPublicKey))
+	ecdhKey, err := ecPrivateKey.DeriveSharedKey(kasPublicKey)
 	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: ocrypto.ComputeECDHKey failed:%w", err)
+		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: failed to derive shared key:%w", err)
 	}
 
 	salt := tdfSalt()
@@ -742,7 +742,7 @@ func generateWrapKeyWithEC(mode ocrypto.ECCMode, kasPublicKey string, symKey []b
 	}
 
 	return ecKeyWrappedKeyInfo{
-		publicKey:  emphermalPublicKey,
+		publicKey:  ephemeralPublicKey,
 		wrappedKey: string(ocrypto.Base64Encode(wrappedKey)),
 	}, nil
 }

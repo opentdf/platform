@@ -2906,7 +2906,7 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations
 
 				var sessionKey string
 				if e, found := asymEncrypt.(ocrypto.ECEncryptor); found {
-					sessionKey, err = e.PublicKeyInPemFormat()
+					sessionKey, err = e.EphemeralPublicKeyInPemFormat()
 					f.s.Require().NoError(err, "unable to serialize ephemeral key")
 				}
 				resp.SessionPublicKey = sessionKey

@@ -515,3 +515,87 @@ func Test_GetAttributesSortParams(t *testing.T) {
 		})
 	}
 }
+
+func Test_GetSubjectConditionSetsSortParams(t *testing.T) {
+	cases := []struct {
+		name          string
+		sort          []*subjectmapping.SubjectConditionSetsSort
+		expectedField string
+		expectedDir   string
+	}{
+		{
+			name:          "nil sort returns empty strings",
+			sort:          nil,
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name:          "empty slice returns empty strings",
+			sort:          []*subjectmapping.SubjectConditionSetsSort{},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name:          "nil element returns empty strings",
+			sort:          []*subjectmapping.SubjectConditionSetsSort{nil},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name: "UNSPECIFIED field returns empty strings",
+			sort: []*subjectmapping.SubjectConditionSetsSort{
+				{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name: "CREATED_AT with ASC",
+			sort: []*subjectmapping.SubjectConditionSetsSort{
+				{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "created_at",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "CREATED_AT with DESC",
+			sort: []*subjectmapping.SubjectConditionSetsSort{
+				{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "created_at",
+			expectedDir:   "DESC",
+		},
+		{
+			name: "CREATED_AT with unspecified direction defaults to ASC",
+			sort: []*subjectmapping.SubjectConditionSetsSort{
+				{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT},
+			},
+			expectedField: "created_at",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "UPDATED_AT with DESC",
+			sort: []*subjectmapping.SubjectConditionSetsSort{
+				{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "updated_at",
+			expectedDir:   "DESC",
+		},
+		{
+			name: "UPDATED_AT with ASC",
+			sort: []*subjectmapping.SubjectConditionSetsSort{
+				{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "updated_at",
+			expectedDir:   "ASC",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			field, dir := GetSubjectConditionSetsSortParams(tc.sort)
+			assert.Equal(t, tc.expectedField, field)
+			assert.Equal(t, tc.expectedDir, dir)
+		})
+	}
+}

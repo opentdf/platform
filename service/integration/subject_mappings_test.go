@@ -595,7 +595,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_OrdersByCreatedAt_Succee
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
 	s.Require().NoError(err)
 
-	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, thirdID, secondID, firstID)
+	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByCreatedAt_ASC() {
@@ -610,7 +610,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByCreatedAt_ASC() {
 	s.NotNil(listRsp)
 
 	// oldest first in ASC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[0], ids[1], ids[2])
+	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByCreatedAt_DESC() {
@@ -625,7 +625,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByCreatedAt_DESC() {
 	s.NotNil(listRsp)
 
 	// newest first in DESC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[2], ids[1], ids[0])
+	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUpdatedAt_DESC() {
@@ -651,7 +651,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUpdatedAt_DESC() {
 	s.NotNil(listRsp)
 
 	// The updated mapping (ids[0]) should appear before the others
-	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[0], ids[2], ids[1])
+	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[0], ids[2], ids[1])
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUpdatedAt_ASC() {
@@ -677,7 +677,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUpdatedAt_ASC() {
 	s.NotNil(listRsp)
 
 	// The updated mapping (ids[2]) should appear last in ASC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[0], ids[1], ids[2])
+	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecified_FallsBackToDefault() {
@@ -692,7 +692,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecified_FallsB
 	s.NotNil(listRsp)
 
 	// Falls back to default created_at DESC ordering
-	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[2], ids[1], ids[0])
+	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Limit_Succeeds() {
@@ -1175,7 +1175,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_OrdersByCreatedAt_Su
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, thirdID, secondID, firstID)
+	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_Limit_Succeeds() {
@@ -1393,7 +1393,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_ASC
 	s.NotNil(listRsp)
 
 	// oldest first in ASC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[0], ids[1], ids[2])
+	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_DESC() {
@@ -1408,7 +1408,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_DES
 	s.NotNil(listRsp)
 
 	// newest first in DESC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[2], ids[1], ids[0])
+	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUpdatedAt_DESC() {
@@ -1434,7 +1434,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUpdatedAt_DES
 	s.NotNil(listRsp)
 
 	// The updated SCS (ids[0]) should appear before the others
-	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[0], ids[2], ids[1])
+	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[0], ids[2], ids[1])
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUpdatedAt_ASC() {
@@ -1460,7 +1460,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUpdatedAt_ASC
 	s.NotNil(listRsp)
 
 	// The updated SCS (ids[2]) should appear last in ASC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[0], ids[1], ids[2])
+	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecified_FallsBackToDefault() {
@@ -1475,7 +1475,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecified_F
 	s.NotNil(listRsp)
 
 	// Falls back to default created_at DESC ordering
-	assertIDsInDescendingOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[2], ids[1], ids[0])
+	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet() {

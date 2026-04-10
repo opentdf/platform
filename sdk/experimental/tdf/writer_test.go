@@ -58,6 +58,9 @@ func TestWriterEndToEnd(t *testing.T) {
 		{"GetManifestIncludesInitialPolicy", testGetManifestIncludesInitialPolicy},
 		{"SparseIndicesInOrder", testSparseIndicesInOrder},
 		{"SparseIndicesOutOfOrder", testSparseIndicesOutOfOrder},
+		{"HybridXWingFlow", testHybridXWingFlow},
+		{"HybridP256MLKEM768Flow", testHybridP256MLKEM768Flow},
+		{"HybridP384MLKEM1024Flow", testHybridP384MLKEM1024Flow},
 	}
 
 	for _, tc := range testCases {
@@ -875,6 +878,105 @@ func createTestAttributeWithRule(fqn, kasURL, kid string, rule policy.AttributeR
 	}
 
 	return value
+}
+
+func createTestAttributeWithAlgorithm(fqn, kasURL, kid string, alg policy.Algorithm, pem string) *policy.Value {
+	value := createTestAttribute(fqn, kasURL, kid)
+	if len(value.GetGrants()) > 0 && len(value.GetGrants()[0].GetKasKeys()) > 0 {
+		value.GetGrants()[0].GetKasKeys()[0].PublicKey.Algorithm = alg
+		value.GetGrants()[0].GetKasKeys()[0].PublicKey.Pem = pem
+	}
+	return value
+}
+
+func testHybridXWingFlow(t *testing.T) {
+	ctx := t.Context()
+
+	keyPair, err := ocrypto.NewXWingKeyPair()
+	require.NoError(t, err)
+	pubPEM, err := keyPair.PublicKeyInPemFormat()
+	require.NoError(t, err)
+
+	writer, err := NewWriter(ctx)
+	require.NoError(t, err)
+
+	_, err = writer.WriteSegment(ctx, 0, []byte("hybrid xwing test data"))
+	require.NoError(t, err)
+
+	attributes := []*policy.Value{
+		createTestAttributeWithAlgorithm(
+			"https://example.com/attr/Classification/value/Secret",
+			testKAS1, "xwing-kid",
+			policy.Algorithm_ALGORITHM_HPQT_XWING, pubPEM,
+		),
+	}
+	result, err := writer.Finalize(ctx, WithAttributeValues(attributes))
+	require.NoError(t, err)
+	assert.NotEmpty(t, result.Data)
+
+	keyAccess := result.Manifest.KeyAccessObjs[0]
+	assert.Equal(t, "hybrid-wrapped", keyAccess.KeyType)
+	assert.NotEmpty(t, keyAccess.WrappedKey)
+}
+
+func testHybridP256MLKEM768Flow(t *testing.T) {
+	ctx := t.Context()
+
+	keyPair, err := ocrypto.NewP256MLKEM768KeyPair()
+	require.NoError(t, err)
+	pubPEM, err := keyPair.PublicKeyInPemFormat()
+	require.NoError(t, err)
+
+	writer, err := NewWriter(ctx)
+	require.NoError(t, err)
+
+	_, err = writer.WriteSegment(ctx, 0, []byte("hybrid p256 mlkem768 test data"))
+	require.NoError(t, err)
+
+	attributes := []*policy.Value{
+		createTestAttributeWithAlgorithm(
+			"https://example.com/attr/Classification/value/Secret",
+			testKAS1, "p256mlkem768-kid",
+			policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768, pubPEM,
+		),
+	}
+	result, err := writer.Finalize(ctx, WithAttributeValues(attributes))
+	require.NoError(t, err)
+	assert.NotEmpty(t, result.Data)
+
+	keyAccess := result.Manifest.KeyAccessObjs[0]
+	assert.Equal(t, "hybrid-wrapped", keyAccess.KeyType)
+	assert.NotEmpty(t, keyAccess.WrappedKey)
+}
+
+func testHybridP384MLKEM1024Flow(t *testing.T) {
+	ctx := t.Context()
+
+	keyPair, err := ocrypto.NewP384MLKEM1024KeyPair()
+	require.NoError(t, err)
+	pubPEM, err := keyPair.PublicKeyInPemFormat()
+	require.NoError(t, err)
+
+	writer, err := NewWriter(ctx)
+	require.NoError(t, err)
+
+	_, err = writer.WriteSegment(ctx, 0, []byte("hybrid p384 mlkem1024 test data"))
+	require.NoError(t, err)
+
+	attributes := []*policy.Value{
+		createTestAttributeWithAlgorithm(
+			"https://example.com/attr/Classification/value/Secret",
+			testKAS1, "p384mlkem1024-kid",
+			policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024, pubPEM,
+		),
+	}
+	result, err := writer.Finalize(ctx, WithAttributeValues(attributes))
+	require.NoError(t, err)
+	assert.NotEmpty(t, result.Data)
+
+	keyAccess := result.Manifest.KeyAccessObjs[0]
+	assert.Equal(t, "hybrid-wrapped", keyAccess.KeyType)
+	assert.NotEmpty(t, keyAccess.WrappedKey)
 }
 
 // validateManifestSchema validates a TDF manifest against the JSON schema

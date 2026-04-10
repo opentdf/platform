@@ -183,8 +183,6 @@ func NewHybridKeyPair(kt KeyType) (KeyPair, error) {
 	}
 }
 
-// --- KeyPair generation ---
-
 func NewP256MLKEM768KeyPair() (HybridNISTKeyPair, error) {
 	return newHybridNISTKeyPair(&p256mlkem768Params, func() ([]byte, []byte, error) {
 		pk, sk, err := mlkem768.GenerateKeyPair(rand.Reader)
@@ -339,8 +337,6 @@ func (d *HybridNISTDecryptor) Decrypt(data []byte) ([]byte, error) {
 	return hybridNISTUnwrapDEK(d.params, d.privateKey, data, d.salt, d.info)
 }
 
-// --- Public WrapDEK / UnwrapDEK ---
-
 func P256MLKEM768WrapDEK(publicKeyRaw, dek []byte) ([]byte, error) {
 	return hybridNISTWrapDEK(&p256mlkem768Params, publicKeyRaw, dek, defaultXWingSalt(), nil)
 }
@@ -416,8 +412,6 @@ func P256MLKEM768Encapsulate(publicKeyRaw []byte) ([]byte, []byte, error) {
 func P384MLKEM1024Encapsulate(publicKeyRaw []byte) ([]byte, []byte, error) {
 	return hybridNISTEncapsulate(&p384mlkem1024Params, publicKeyRaw)
 }
-
-// --- Core wrap/unwrap ---
 
 func hybridNISTWrapDEK(p *hybridNISTParams, publicKeyRaw, dek, salt, info []byte) ([]byte, error) {
 	combinedSecret, hybridCt, err := hybridNISTEncapsulate(p, publicKeyRaw)

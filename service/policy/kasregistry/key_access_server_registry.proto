@@ -403,7 +403,7 @@ message CreateKeyRequest {
   Algorithm key_algorithm = 3 [(buf.validate.field).cel = {
     id: "key_algorithm_defined"
     message: "The key_algorithm must be one of the defined values."
-    expression: "this in [1, 2, 3, 4, 5, 6]" // Allow ALGORITHM_RSA_2048, ALGORITHM_RSA_4096, ALGORITHM_EC_P256, ALGORITHM_EC_P384, ALGORITHM_EC_P521, ALGORITHM_HPQT_XWING
+    expression: "this in [1, 2, 3, 4, 5, 6, 7, 8]" // Allow ALGORITHM_RSA_2048, ALGORITHM_RSA_4096, ALGORITHM_EC_P256, ALGORITHM_EC_P384, ALGORITHM_EC_P521, ALGORITHM_HPQT_XWING, ALGORITHM_HPQT_SECP256R1_MLKEM768, ALGORITHM_HPQT_SECP384R1_MLKEM1024
   }]; // The algorithm to be used for the key
   // Required
   KeyMode key_mode = 4 [(buf.validate.field).cel = {
@@ -447,7 +447,7 @@ message ListKeysRequest {
   Algorithm key_algorithm = 1 [(buf.validate.field).cel = {
     id: "key_algorithm_defined"
     message: "The key_algorithm must be one of the defined values."
-    expression: "this in [0, 1, 2, 3, 4, 5, 6]" // Allow unspecified and object.Algorithm values for currently supported RSA bit sizes, EC curve types, and X-Wing
+    expression: "this in [0, 1, 2, 3, 4, 5, 6, 7, 8]" // Allow unspecified and all supported algorithm values
   }]; // Filter keys by algorithm
 
   oneof kas_filter {
@@ -550,7 +550,7 @@ message RotateKeyRequest {
     Algorithm algorithm = 2 [(buf.validate.field).cel = {
       id: "key_algorithm_defined"
       message: "The key_algorithm must be one of the defined values."
-      expression: "this in [1, 2, 3, 4, 5, 6]" // Allow ALGORITHM_RSA_2048, ALGORITHM_RSA_4096, ALGORITHM_EC_P256, ALGORITHM_EC_P384, ALGORITHM_EC_P521, ALGORITHM_HPQT_XWING
+      expression: "this in [1, 2, 3, 4, 5, 6, 7, 8]" // Allow ALGORITHM_RSA_2048, ALGORITHM_RSA_4096, ALGORITHM_EC_P256, ALGORITHM_EC_P384, ALGORITHM_EC_P521, ALGORITHM_HPQT_XWING, ALGORITHM_HPQT_SECP256R1_MLKEM768, ALGORITHM_HPQT_SECP384R1_MLKEM1024
     }];
     // Required
     KeyMode key_mode = 3 [

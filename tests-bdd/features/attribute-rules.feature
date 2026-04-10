@@ -92,3 +92,20 @@ Feature: Attribute Rule Decisioning
     When I send a decision request for entity chain "alice" for "read" action on resource "https://example.com/attr/sensitivity/value/critical"
     Then the response should be successful
     And I should get a "DENY" decision response
+
+  Scenario: multiple attributes must all pass across requests
+    And I send a request to create a subject mapping with:
+      | reference_id      | attribute_value                               | condition_set_name | standard actions | custom actions |
+      | sm_department_eng | https://example.com/attr/department/value/eng | scs_department_eng | read             |                |
+      | sm_project_alpha  | https://example.com/attr/project/value/alpha  | scs_project_alpha  | read             |                |
+    Then the response should be successful
+    When I send a decision request for entity chain "alice" for "read" action on resource "https://example.com/attr/department/value/eng,https://example.com/attr/project/value/beta"
+    Then the response should be successful
+    And I should get a "DENY" decision response
+    And I send a request to create a subject mapping with:
+      | reference_id     | attribute_value                              | condition_set_name | standard actions | custom actions |
+      | sm_project_beta  | https://example.com/attr/project/value/beta  | scs_project_beta   | read             |                |
+    Then the response should be successful
+    When I send a decision request for entity chain "alice" for "read" action on resource "https://example.com/attr/department/value/eng,https://example.com/attr/project/value/beta"
+    Then the response should be successful
+    And I should get a "PERMIT" decision response

@@ -287,7 +287,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_OrdersByCreatedA
 	s.Require().NoError(err)
 	s.NotNil(list)
 
-	assertIDsInDescendingOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, thirdID, secondID, firstID)
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_RegResValuesContainActionAttributeValues() {
@@ -1097,7 +1097,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_OrdersByCre
 	s.Require().NoError(err)
 	s.NotNil(list)
 
-	assertIDsInDescendingOrder(s.T(), list.GetValues(), func(v *policy.RegisteredResourceValue) string { return v.GetId() }, thirdID, secondID, firstID)
+	assertIDsInOrder(s.T(), list.GetValues(), func(v *policy.RegisteredResourceValue) string { return v.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_Limit_Succeeds() {

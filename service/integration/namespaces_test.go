@@ -267,7 +267,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_OrdersByCreatedAt_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(listNamespacesRsp)
 
-	assertIDsInDescendingOrder(s.T(), listNamespacesRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, thirdID, secondID, firstID)
+	assertIDsInOrder(s.T(), listNamespacesRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByName_ASC() {
@@ -283,7 +283,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByName_ASC() {
 	s.NotNil(listRsp)
 
 	// aaa < bbb < ccc in ASC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByName_DESC() {
@@ -299,7 +299,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByName_DESC() {
 	s.NotNil(listRsp)
 
 	// ccc > bbb > aaa in DESC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_ASC() {
@@ -315,7 +315,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_ASC() {
 	s.NotNil(listRsp)
 
 	// oldest first in ASC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_DESC() {
@@ -331,7 +331,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_DESC() {
 	s.NotNil(listRsp)
 
 	// newest first in DESC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_ASC() {
@@ -347,7 +347,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_ASC() {
 	s.NotNil(listRsp)
 
 	// fqn is https://<name>, so aaa < bbb < ccc in ASC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_DESC() {
@@ -363,7 +363,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_DESC() {
 	s.NotNil(listRsp)
 
 	// fqn is https://<name>, so ccc > bbb > aaa in DESC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_DESC() {
@@ -390,7 +390,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_DESC() {
 	s.NotNil(listRsp)
 
 	// The updated namespace (ids[0]) should appear before the others
-	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[2], ids[1])
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[2], ids[1])
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_ASC() {
@@ -417,7 +417,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_ASC() {
 	s.NotNil(listRsp)
 
 	// The updated namespace (ids[2]) should appear last in ASC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedField_FallsBackToDefault() {
@@ -433,7 +433,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedField_FallsBackTo
 	s.NotNil(listRsp)
 
 	// Falls back to default created_at DESC ordering
-	assertIDsInDescendingOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_Limit_Succeeds() {

@@ -1,5 +1,5 @@
 @authorization @registered-resources
-Feature: Registered Resource Decisioning (Non-Namespaced)
+Feature: Registered Resource Decisioning
   Validate registered resource value decisioning without strict namespaced policy.
 
   Background:

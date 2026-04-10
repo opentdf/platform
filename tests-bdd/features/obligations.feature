@@ -34,6 +34,7 @@ Feature: Obligations Decisioning E2E Tests
       | reference_id                | attribute_value                                         | condition_set_name      | standard actions | custom actions |
       | sm_classification_topsecret | https://example.com/attr/classification/value/topsecret | scs_clearance_topsecret | read,update      |                |
       | sm_classification_secret    | https://example.com/attr/classification/value/secret    | scs_clearance_secret    | read,update      |                |
+    And there is a "user_name" subject entity with value "alice" and referenced as "alice"
 
   Scenario: Create obligation definition with value and verify in decision response
     Given I send a request to create an obligation with:
@@ -45,7 +46,6 @@ Feature: Obligations Decisioning E2E Tests
       | obligation_name | obligation_value | action | attribute_value                                         |
       | drm             | watermark        | read   | https://example.com/attr/classification/value/topsecret |
     Then the response should be successful
-    Given there is a "user_name" subject entity with value "alice" and referenced as "alice"
     When I send a decision request for entity chain "alice" for "read" action on resource "https://example.com/attr/classification/value/topsecret"
     Then the response should be successful
     And I should get a "PERMIT" decision response
@@ -91,7 +91,6 @@ Feature: Obligations Decisioning E2E Tests
       | obligation_name | obligation_value | action | attribute_value                                         |
       | drm             | prevent_download | read   | https://example.com/attr/classification/value/topsecret |
     Then the response should be successful
-    Given there is a "user_name" subject entity with value "alice" and referenced as "alice"
     When I send a multi-resource decision request for entity chain "alice" for "read" action on resources:
       | resource                                                   |
       | https://example.com/attr/classification/value/topsecret    |
@@ -112,7 +111,6 @@ Feature: Obligations Decisioning E2E Tests
       | obligation_name | obligation_value | action | attribute_value                                      |
       | drm             | watermark        | read   | https://example.com/attr/classification/value/secret |
     Then the response should be successful
-    Given there is a "user_name" subject entity with value "alice" and referenced as "alice"
     And there is a "client_id" environment entity with value "app-client" and referenced as "app"
     And there is a "user_name" subject entity with value "bob" and referenced as "bob"
     When I send a decision request for entity chain "alice,app,bob" for "read" action on resource "https://example.com/attr/classification/value/secret"
@@ -132,7 +130,6 @@ Feature: Obligations Decisioning E2E Tests
       | obligation_name | obligation_value | action | attribute_value                                         |
       | drm             | prevent_download | read   | https://example.com/attr/classification/value/topsecret |
     Then the response should be successful
-    Given there is a "user_name" subject entity with value "alice" and referenced as "alice"
     When I send a multi-resource decision request for entity chain "alice" for "read" action on resources:
       | resource                                                |
       | https://example.com/attr/classification/value/topsecret |
@@ -160,8 +157,97 @@ Feature: Obligations Decisioning E2E Tests
       | obligation_name | obligation_value | action | attribute_value                                         |
       | drm             | prevent_download | read   | https://example.com/attr/classification/value/topsecret |
     Then the response should be successful
-    Given there is a "user_name" subject entity with value "alice" and referenced as "alice"
     When I send a decision request for entity chain "alice" for "read" action on resource "https://example.com/attr/classification/value/topsecret"
+    Then the response should be successful
+    And I should get a "PERMIT" decision response
+    And the decision response should contain obligations:
+      | obligation                                         |
+      | https://example.com/obl/drm/value/watermark        |
+      | https://example.com/obl/drm/value/prevent_download |
+
+  Scenario: Unfulfilled obligations deny access and return required obligations
+    Given I send a request to create an obligation with:
+      | namespace_id | name | values    |
+      | ns1          | drm  | watermark |
+    Then the response should be successful
+    And I send a request to create an obligation trigger with:
+      | obligation_name | obligation_value | action | attribute_value                                         |
+      | drm             | watermark        | read   | https://example.com/attr/classification/value/topsecret |
+    Then the response should be successful
+    When I send a decision request for entity chain "alice" for "read" action on resource "https://example.com/attr/classification/value/topsecret" with fulfillable obligations "[]"
+    Then the response should be successful
+    And I should get a "DENY" decision response
+    And the decision response should contain obligation "https://example.com/obl/drm/value/watermark"
+
+  Scenario: Unentitled access denies without returning obligations
+    Given I send a request to create an obligation with:
+      | namespace_id | name | values    |
+      | ns1          | drm  | watermark |
+    Then the response should be successful
+    And I send a request to create an obligation trigger with:
+      | obligation_name | obligation_value | action | attribute_value                                         |
+      | drm             | watermark        | read   | https://example.com/attr/classification/value/topsecret |
+    Then the response should be successful
+    And there is a "user_name" subject entity with value "bob" and referenced as "bob"
+    When I send a decision request for entity chain "bob" for "read" action on resource "https://example.com/attr/classification/value/topsecret" with fulfillable obligations "[]"
+    Then the response should be successful
+    And I should get a "DENY" decision response
+    And the decision response should not contain obligation "https://example.com/obl/drm/value/watermark"
+
+  Scenario: Mixed obligations across multiple resources
+    Given I send a request to create an obligation with:
+      | namespace_id | name | values    |
+      | ns1          | drm  | watermark |
+    Then the response should be successful
+    And I send a request to create an obligation trigger with:
+      | obligation_name | obligation_value | action | attribute_value                                         |
+      | drm             | watermark        | read   | https://example.com/attr/classification/value/topsecret |
+    Then the response should be successful
+    When I send a multi-resource decision request for entity chain "alice" for "read" action on resources with fulfillable obligations "[]":
+      | resource                                                |
+      | https://example.com/attr/classification/value/topsecret |
+      | https://example.com/attr/classification/value/secret    |
+    Then the response should be successful
+    And I should get 2 decision responses
+    And the multi-resource decision should be "DENY"
+    And the decision response for resource "https://example.com/attr/classification/value/topsecret" should be "DENY"
+    And the decision response for resource "https://example.com/attr/classification/value/secret" should be "PERMIT"
+    And the decision response for resource "https://example.com/attr/classification/value/topsecret" should contain obligation "https://example.com/obl/drm/value/watermark"
+    And the decision response for resource "https://example.com/attr/classification/value/secret" should not contain any obligations
+
+  Scenario: Partial fulfillable obligations deny but return all required obligations
+    Given I send a request to create an obligation with:
+      | namespace_id | name | values                     |
+      | ns1          | drm  | watermark,prevent_download |
+    Then the response should be successful
+    And I send a request to create an obligation trigger with:
+      | obligation_name | obligation_value | action | attribute_value                                         |
+      | drm             | watermark        | read   | https://example.com/attr/classification/value/topsecret |
+    And I send a request to create an obligation trigger with:
+      | obligation_name | obligation_value | action | attribute_value                                         |
+      | drm             | prevent_download | read   | https://example.com/attr/classification/value/topsecret |
+    Then the response should be successful
+    When I send a decision request for entity chain "alice" for "read" action on resource "https://example.com/attr/classification/value/topsecret" with fulfillable obligations "https://example.com/obl/drm/value/watermark"
+    Then the response should be successful
+    And I should get a "DENY" decision response
+    And the decision response should contain obligations:
+      | obligation                                         |
+      | https://example.com/obl/drm/value/watermark        |
+      | https://example.com/obl/drm/value/prevent_download |
+
+  Scenario: All fulfillable obligations permit and return required obligations
+    Given I send a request to create an obligation with:
+      | namespace_id | name | values                     |
+      | ns1          | drm  | watermark,prevent_download |
+    Then the response should be successful
+    And I send a request to create an obligation trigger with:
+      | obligation_name | obligation_value | action | attribute_value                                         |
+      | drm             | watermark        | read   | https://example.com/attr/classification/value/topsecret |
+    And I send a request to create an obligation trigger with:
+      | obligation_name | obligation_value | action | attribute_value                                         |
+      | drm             | prevent_download | read   | https://example.com/attr/classification/value/topsecret |
+    Then the response should be successful
+    When I send a decision request for entity chain "alice" for "read" action on resource "https://example.com/attr/classification/value/topsecret" with fulfillable obligations "https://example.com/obl/drm/value/watermark,https://example.com/obl/drm/value/prevent_download"
     Then the response should be successful
     And I should get a "PERMIT" decision response
     And the decision response should contain obligations:

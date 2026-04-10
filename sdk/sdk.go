@@ -189,6 +189,9 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	var uci []connect.Interceptor
 
+	// Propagate OTel trace context on outbound Connect RPCs
+	uci = append(uci, TraceContextInterceptor())
+
 	// Add request ID interceptor
 	uci = append(uci, audit.MetadataAddingConnectInterceptor())
 

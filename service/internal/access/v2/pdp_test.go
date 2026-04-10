@@ -46,10 +46,11 @@ func createAttrValueFQN(namespace, name, value string) string {
 }
 
 // Helper function to create registered resource value FQNs
-func createRegisteredResourceValueFQN(name, value string) string {
+func createRegisteredResourceValueFQN(ns, name, value string) string {
 	resourceValue := &identifier.FullyQualifiedRegisteredResourceValue{
-		Name:  name,
-		Value: value,
+		Namespace: ns,
+		Name:      name,
+		Value:     value,
 	}
 	return resourceValue.FQN()
 }
@@ -92,20 +93,20 @@ var (
 	testPlatformHybridFQN = createAttrValueFQN(testSecondaryNamespace, "platform", "hybrid")
 
 	// Registered resource value FQNs
-	testNetworkPrivateFQN = createRegisteredResourceValueFQN("network", "private")
-	testNetworkPublicFQN  = createRegisteredResourceValueFQN("network", "public")
+	testNetworkPrivateFQN = createRegisteredResourceValueFQN("", "network", "private")
+	testNetworkPublicFQN  = createRegisteredResourceValueFQN("", "network", "public")
 )
 
 // registered resource value FQNs using identifier package
 var (
 	// Classification values
-	testClassSecretRegResFQN       = createRegisteredResourceValueFQN("classification", "secret")
-	testClassConfidentialRegResFQN = createRegisteredResourceValueFQN("classification", "confidential")
+	testClassSecretRegResFQN       = createRegisteredResourceValueFQN("", "classification", "secret")
+	testClassConfidentialRegResFQN = createRegisteredResourceValueFQN("", "classification", "confidential")
 
 	// Department values
-	testDeptEngineeringRegResFQN = createRegisteredResourceValueFQN("department", "engineering")
-	testDeptFinanceRegResFQN     = createRegisteredResourceValueFQN("department", "finance")
-	testProjectAlphaRegResFQN    = createRegisteredResourceValueFQN("project", "alpha")
+	testDeptEngineeringRegResFQN = createRegisteredResourceValueFQN("", "department", "engineering")
+	testDeptFinanceRegResFQN     = createRegisteredResourceValueFQN("", "department", "finance")
+	testProjectAlphaRegResFQN    = createRegisteredResourceValueFQN("", "project", "alpha")
 )
 
 // Registered resource value FQNs using identifier package
@@ -808,12 +809,12 @@ func (s *PDPTestSuite) SetupTest() {
 	s.fixtures.regResValMultiActionMultiAttrVal = regResValMultiActionMultiAttrVal
 	s.fixtures.regResValComprehensiveHierarchyActionAttrVal = regResValComprehensiveHierarchyActionAttrVal
 
-	regResValNoActionAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValNoActionAttrVal.GetValue())
-	regResValSingleActionAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValSingleActionAttrVal.GetValue())
-	regResValDuplicateActionAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValDuplicateActionAttrVal.GetValue())
-	regResValMultiActionSingleAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValMultiActionSingleAttrVal.GetValue())
-	regResValMultiActionMultiAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValMultiActionMultiAttrVal.GetValue())
-	regResValComprehensiveHierarchyActionAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValComprehensiveHierarchyActionAttrVal.GetValue())
+	regResValNoActionAttrValFQN = createRegisteredResourceValueFQN("", regRes.GetName(), regResValNoActionAttrVal.GetValue())
+	regResValSingleActionAttrValFQN = createRegisteredResourceValueFQN("", regRes.GetName(), regResValSingleActionAttrVal.GetValue())
+	regResValDuplicateActionAttrValFQN = createRegisteredResourceValueFQN("", regRes.GetName(), regResValDuplicateActionAttrVal.GetValue())
+	regResValMultiActionSingleAttrValFQN = createRegisteredResourceValueFQN("", regRes.GetName(), regResValMultiActionSingleAttrVal.GetValue())
+	regResValMultiActionMultiAttrValFQN = createRegisteredResourceValueFQN("", regRes.GetName(), regResValMultiActionMultiAttrVal.GetValue())
+	regResValComprehensiveHierarchyActionAttrValFQN = createRegisteredResourceValueFQN("", regRes.GetName(), regResValComprehensiveHierarchyActionAttrVal.GetValue())
 }
 
 // TestPDPSuite runs the test suite
@@ -909,21 +910,35 @@ func (s *PDPTestSuite) TestNewPolicyDecisionPoint_AllowsAttributeDefinitionsWith
 
 func (s *PDPTestSuite) TestNewPolicyDecisionPoint_IndexesRegisteredResourceValuesByNamespacedAndLegacyFQN() {
 	tests := []struct {
-		name          string
-		namespaceName string
-		namespaceFQN  string
-		expectedNS    string
+		name             string
+		namespaceName    string
+		namespaceFQN     string
+		expectedNS       string
+		namespacedPolicy bool
+		expectLegacyFQN  bool
 	}{
 		{
-			name:          "uses namespace name when present",
-			namespaceName: "ns-one.example.com",
-			namespaceFQN:  "https://ns-one.example.com",
-			expectedNS:    "ns-one.example.com",
+			name:             "uses namespace name when present (legacy indexed when not strict)",
+			namespaceName:    "ns-one.example.com",
+			namespaceFQN:     "https://ns-one.example.com",
+			expectedNS:       "ns-one.example.com",
+			namespacedPolicy: false,
+			expectLegacyFQN:  true,
 		},
 		{
-			name:         "falls back to namespace fqn when name absent",
-			namespaceFQN: "https://ns-two.example.com",
-			expectedNS:   "ns-two.example.com",
+			name:             "falls back to namespace fqn when name absent (legacy indexed when not strict)",
+			namespaceFQN:     "https://ns-two.example.com",
+			expectedNS:       "ns-two.example.com",
+			namespacedPolicy: false,
+			expectLegacyFQN:  true,
+		},
+		{
+			name:             "strict mode skips legacy FQN",
+			namespaceName:    "ns-one.example.com",
+			namespaceFQN:     "https://ns-one.example.com",
+			expectedNS:       "ns-one.example.com",
+			namespacedPolicy: true,
+			expectLegacyFQN:  false,
 		},
 	}
 
@@ -946,7 +961,7 @@ func (s *PDPTestSuite) TestNewPolicyDecisionPoint_IndexesRegisteredResourceValue
 				[]*policy.SubjectMapping{},
 				[]*policy.RegisteredResource{regRes},
 				allowDirectEntitlements,
-				true,
+				tc.namespacedPolicy,
 			)
 			s.Require().NoError(err)
 
@@ -961,9 +976,13 @@ func (s *PDPTestSuite) TestNewPolicyDecisionPoint_IndexesRegisteredResourceValue
 			}).FQN()
 
 			s.Require().Contains(pdp.allRegisteredResourceValuesByFQN, namespacedFQN)
-			s.Require().Contains(pdp.allRegisteredResourceValuesByFQN, legacyFQN)
 			s.Same(regResVal, pdp.allRegisteredResourceValuesByFQN[namespacedFQN])
-			s.Same(regResVal, pdp.allRegisteredResourceValuesByFQN[legacyFQN])
+			if tc.expectLegacyFQN {
+				s.Require().Contains(pdp.allRegisteredResourceValuesByFQN, legacyFQN)
+				s.Same(regResVal, pdp.allRegisteredResourceValuesByFQN[legacyFQN])
+			} else {
+				s.Require().NotContains(pdp.allRegisteredResourceValuesByFQN, legacyFQN)
+			}
 		})
 	}
 }
@@ -1169,8 +1188,8 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			"department": "rnd",
 		})
 
-		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
-		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+		rndDeptRegResFQN := createRegisteredResourceValueFQN("", f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN("", f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
 
 		resources := []*authz.Resource{
 			{
@@ -1216,8 +1235,8 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			"department": "rnd",
 		})
 
-		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
-		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+		rndDeptRegResFQN := createRegisteredResourceValueFQN("", f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN("", f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
 
 		// Upper case both registered resource value FQNs for assurance FQNs will be case-normalized
 		resources := []*authz.Resource{
@@ -1264,8 +1283,8 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			"department": "finance",      // Not rnd
 		})
 
-		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
-		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+		rndDeptRegResFQN := createRegisteredResourceValueFQN("", f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN("", f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
 
 		resources := []*authz.Resource{
 			{
@@ -1311,8 +1330,8 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			"department": "rnd", // subject mapping permits read/update
 		})
 
-		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
-		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+		rndDeptRegResFQN := createRegisteredResourceValueFQN("", f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN("", f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
 
 		resources := []*authz.Resource{
 			{
@@ -1357,8 +1376,8 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			"department": "rnd", // subject mapping permits read/update
 		})
 
-		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
-		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+		rndDeptRegResFQN := createRegisteredResourceValueFQN("", f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN("", f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
 
 		resources := []*authz.Resource{
 			{
@@ -1405,8 +1424,8 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			"department": "rnd",
 		})
 
-		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
-		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+		rndDeptRegResFQN := createRegisteredResourceValueFQN("", f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN("", f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
 
 		resources := []*authz.Resource{
 			{
@@ -1766,7 +1785,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			"clearance": "confidential",
 		})
 
-		readConfidentialRegResFQN := createRegisteredResourceValueFQN(readConfidentialRegRes.GetName(), readConfidentialRegRes.GetValues()[0].GetValue())
+		readConfidentialRegResFQN := createRegisteredResourceValueFQN("", readConfidentialRegRes.GetName(), readConfidentialRegRes.GetValues()[0].GetValue())
 
 		resources := []*authz.Resource{
 			{
@@ -1801,7 +1820,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			"country": []any{"uk"},
 		})
 
-		readCountryUKRegResFQN := createRegisteredResourceValueFQN(f.countryRegRes.GetName(), f.countryRegRes.GetValues()[1].GetValue())
+		readCountryUKRegResFQN := createRegisteredResourceValueFQN("", f.countryRegRes.GetName(), f.countryRegRes.GetValues()[1].GetValue())
 
 		resources := []*authz.Resource{
 			{
@@ -2905,7 +2924,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 	s.Require().NotNil(pdp)
 
 	s.Run("Multiple resources and entitled actions/attributes - full access", func() {
-		entityRegResFQN := createRegisteredResourceValueFQN(regResS3BucketEntity.GetName(), "ts-engineering")
+		entityRegResFQN := createRegisteredResourceValueFQN("", regResS3BucketEntity.GetName(), "ts-engineering")
 		resources := createResourcePerFqn(testClassSecretFQN, testDeptEngineeringFQN, testNetworkPrivateFQN, testNetworkPublicFQN)
 
 		decision, _, err := pdp.GetDecisionRegisteredResource(s.T().Context(), entityRegResFQN, testActionRead, resources)
@@ -2930,7 +2949,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 	})
 
 	s.Run("Multiple resources and entitled actions/attributes of varied casing - full access", func() {
-		entityRegResFQN := createRegisteredResourceValueFQN(regResS3BucketEntity.GetName(), "ts-engineering")
+		entityRegResFQN := createRegisteredResourceValueFQN("", regResS3BucketEntity.GetName(), "ts-engineering")
 		secretFQN := strings.ToUpper(testClassSecretFQN)
 		networkPrivateFQN := strings.ToUpper(testNetworkPrivateFQN)
 
@@ -2958,7 +2977,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 	})
 
 	s.Run("Multiple resources and unentitled attributes - full denial", func() {
-		entityRegResFQN := createRegisteredResourceValueFQN(regResS3BucketEntity.GetName(), "confidential-finance")
+		entityRegResFQN := createRegisteredResourceValueFQN("", regResS3BucketEntity.GetName(), "confidential-finance")
 
 		resources := createResourcePerFqn(testClassSecretFQN, testDeptEngineeringFQN, testNetworkPrivateFQN, testNetworkPublicFQN)
 
@@ -2989,7 +3008,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 	})
 
 	s.Run("Multiple resources and unentitled actions - full denial", func() {
-		entityRegResFQN := createRegisteredResourceValueFQN(regResS3BucketEntity.GetName(), "ts-engineering")
+		entityRegResFQN := createRegisteredResourceValueFQN("", regResS3BucketEntity.GetName(), "ts-engineering")
 
 		resources := createResourcePerFqn(testDeptEngineeringFQN, testClassSecretFQN, testNetworkPrivateFQN, testNetworkPublicFQN)
 
@@ -3011,7 +3030,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 	})
 
 	s.Run("Multiple resources - partial access", func() {
-		entityRegResFQN := createRegisteredResourceValueFQN(regResS3BucketEntity.GetName(), "secret-engineering")
+		entityRegResFQN := createRegisteredResourceValueFQN("", regResS3BucketEntity.GetName(), "secret-engineering")
 
 		resources := createResourcePerFqn(testClassSecretFQN, testDeptFinanceFQN, testNetworkPrivateFQN, testNetworkPublicFQN)
 
@@ -3478,7 +3497,7 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 	})
 
 	s.Run("Valid but non-existent registered resource value FQN", func() {
-		validButNonexistentFQN := createRegisteredResourceValueFQN("test-res-not-exist", "test-value-not-exist")
+		validButNonexistentFQN := createRegisteredResourceValueFQN("", "test-res-not-exist", "test-value-not-exist")
 		entitlements, err := pdp.GetEntitlementsRegisteredResource(
 			s.T().Context(),
 			validButNonexistentFQN,
@@ -3905,7 +3924,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_NonExistentFQN() {
 			"clearance": "secret",
 		})
 
-		nonExistentRegResFQN := createRegisteredResourceValueFQN("special-system", "classified")
+		nonExistentRegResFQN := createRegisteredResourceValueFQN("", "special-system", "classified")
 		resources := []*authz.Resource{
 			{
 				Resource: &authz.Resource_RegisteredResourceValueFqn{
@@ -3934,7 +3953,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_NonExistentFQN() {
 			"clearance": "secret",
 		})
 
-		nonExistentRegResFQN := createRegisteredResourceValueFQN("secret-system", "classified")
+		nonExistentRegResFQN := createRegisteredResourceValueFQN("", "secret-system", "classified")
 		resources := []*authz.Resource{
 			{
 				Resource: &authz.Resource_RegisteredResourceValueFqn{

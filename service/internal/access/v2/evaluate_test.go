@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/opentdf/platform/lib/identifier"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
@@ -19,7 +20,7 @@ import (
 // Constants for namespaces and attribute FQNs
 var (
 	// Base namespaces
-	baseNamespace = "https://namespace.com"
+	baseNamespace = "namespace.com"
 	levelFQN      = createAttrFQN(baseNamespace, "level")
 	departmentFQN = createAttrFQN(baseNamespace, "department")
 	projectFQN    = createAttrFQN(baseNamespace, "project")
@@ -43,8 +44,9 @@ var (
 	projectFantasicFourFQN  = createAttrValueFQN(baseNamespace, "project", "fantasticfour")
 
 	// Registered resource values
-	netRegResValFQN  = createRegisteredResourceValueFQN("network", "external")
-	platRegResValFQN = createRegisteredResourceValueFQN("platform", "internal")
+	netRegResValFQN    = createRegisteredResourceValueFQN("", "network", "external")
+	platRegResValFQN   = createRegisteredResourceValueFQN("", "platform", "internal")
+	ns1NetRegResValFQN = createRegisteredResourceValueFQN("ns1", "network", "external")
 )
 
 var (
@@ -203,6 +205,33 @@ func (s *EvaluateTestSuite) SetupTest() {
 					AttributeValue: &policy.Value{
 						Fqn:   projectJusticeLeagueFQN,
 						Value: "justiceleague",
+					},
+				},
+			},
+		},
+		ns1NetRegResValFQN: {
+			Resource: &policy.RegisteredResource{
+				Namespace: &policy.Namespace{
+					Id: "ns1",
+				},
+			},
+			Id:    "ns1-network-registered-res-id",
+			Value: "external",
+			ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+				{
+					Id:     "ns1-network-action-attr-val-1",
+					Action: actionRead,
+					AttributeValue: &policy.Value{
+						Fqn:   levelHighestFQN,
+						Value: "highest",
+					},
+				},
+				{
+					Id:     "ns1-network-action-attr-val-2",
+					Action: actionCreate,
+					AttributeValue: &policy.Value{
+						Fqn:   levelMidFQN,
+						Value: "mid",
 					},
 				},
 			},
@@ -1017,12 +1046,13 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 
 // Test cases for getResourceDecision
 func (s *EvaluateTestSuite) TestGetResourceDecision() {
-	nonExistentRegResValueFQN := createRegisteredResourceValueFQN("nonexistent", "value")
+	nonExistentRegResValueFQN := createRegisteredResourceValueFQN("", "nonexistent", "value")
 
 	tests := []struct {
 		name         string
 		resource     *authz.Resource
 		entitlements subjectmappingbuiltin.AttributeValueFQNsToActions
+		namespaced   bool
 		expectError  bool
 		expectPass   bool
 	}{
@@ -1039,6 +1069,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
 				levelMidFQN: []*policy.Action{actionRead},
 			},
+			namespaced:  false,
 			expectError: false,
 			expectPass:  true,
 		},
@@ -1053,6 +1084,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
 				levelHighestFQN: []*policy.Action{actionRead},
 			},
+			namespaced:  false,
 			expectError: false,
 			expectPass:  true,
 		},
@@ -1068,6 +1100,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				projectAvengersFQN:      []*policy.Action{actionRead},
 				projectJusticeLeagueFQN: []*policy.Action{actionRead},
 			},
+			namespaced:  false,
 			expectError: false,
 			expectPass:  true,
 		},
@@ -1083,6 +1116,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				// Missing projectJusticeLeagueFQN
 				projectAvengersFQN: []*policy.Action{actionRead},
 			},
+			namespaced:  false,
 			expectError: false,
 			expectPass:  false, // Missing entitlement for projectJusticeLeagueFQN
 		},
@@ -1098,8 +1132,21 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				// Wrong action
 				levelHighestFQN: []*policy.Action{actionCreate},
 			},
+			namespaced:  false,
 			expectError: false,
 			expectPass:  false,
+		},
+		{
+			name: "registered resource value unnamespaced in strict mode",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: createRegisteredResourceValueFQN("", "network", "external"),
+				},
+				EphemeralId: "test-reg-res-id-unnamespaced-strict",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			namespaced:   true,
+			expectError:  true,
 		},
 		{
 			name: "nonexistent registered resource value - should DENY",
@@ -1110,6 +1157,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				EphemeralId: "test-reg-res-id-5",
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			namespaced:   false,
 			expectError:  false,
 			expectPass:   false,
 		},
@@ -1126,6 +1174,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				EphemeralId: "test-attr-missing-fqns",
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			namespaced:   false,
 			expectError:  false,
 			expectPass:   false,
 		},
@@ -1142,6 +1191,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				EphemeralId: "test-attr-missing-fqns",
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			namespaced:   false,
 			expectError:  false,
 			expectPass:   false,
 		},
@@ -1158,6 +1208,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				EphemeralId: "test-attr-missing-fqns",
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			namespaced:   false,
 			expectError:  false,
 			expectPass:   false,
 		},
@@ -1177,6 +1228,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
 				levelMidFQN: []*policy.Action{actionRead},
 			},
+			namespaced:  false,
 			expectError: false,
 			expectPass:  false,
 		},
@@ -1184,6 +1236,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			name:         "invalid nil resource",
 			resource:     nil,
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			namespaced:   false,
 			expectError:  true,
 		},
 		{
@@ -1197,6 +1250,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
 				levelHighestFQN: []*policy.Action{actionRead},
 			},
+			namespaced:  false,
 			expectError: false,
 			expectPass:  true,
 		},
@@ -1212,7 +1266,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				tc.entitlements,
 				s.action,
 				tc.resource,
-				false,
+				tc.namespaced,
 			)
 
 			if tc.expectError {
@@ -1333,9 +1387,19 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_StrictMode_DeniesOnActionNa
 func (s *EvaluateTestSuite) Test_getResourceDecision_StrictMode_RegisteredResourceFiltersAAVByNamespace() {
 	namespaceA := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://ns-a.example.com"}
 	namespaceB := &policy.Namespace{Id: "22222222-2222-2222-2222-222222222222", Fqn: "https://ns-b.example.com"}
+	namespacedRegResFQN := (&identifier.FullyQualifiedRegisteredResourceValue{
+		Namespace: "namespace.com",
+		Name:      "network",
+		Value:     "external",
+	}).FQN()
 
 	s.accessibleAttrValues[levelHighestFQN].Attribute.Namespace = namespaceA
-	s.accessibleRegisteredResourceValues[netRegResValFQN].ActionAttributeValues = []*policy.RegisteredResourceValue_ActionAttributeValue{
+	regResValue := s.accessibleRegisteredResourceValues[netRegResValFQN]
+	regResValue.Resource = &policy.RegisteredResource{
+		Name:      "network",
+		Namespace: namespaceA,
+	}
+	regResValue.ActionAttributeValues = []*policy.RegisteredResourceValue_ActionAttributeValue{
 		{
 			Id: "network-action-attr-val-wrong-ns",
 			Action: &policy.Action{
@@ -1345,9 +1409,10 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_StrictMode_RegisteredResour
 			AttributeValue: &policy.Value{Fqn: levelHighestFQN, Value: "highest"},
 		},
 	}
+	s.accessibleRegisteredResourceValues[namespacedRegResFQN] = regResValue
 
 	resource := &authz.Resource{
-		Resource:    &authz.Resource_RegisteredResourceValueFqn{RegisteredResourceValueFqn: netRegResValFQN},
+		Resource:    &authz.Resource_RegisteredResourceValueFqn{RegisteredResourceValueFqn: namespacedRegResFQN},
 		EphemeralId: "rr-ns-mismatch-resource",
 	}
 
@@ -1374,7 +1439,7 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_StrictMode_RegisteredResour
 }
 
 func (s *EvaluateTestSuite) Test_getResourceDecision_RequestActionIDPrecedence() {
-	namespaceA := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://ns-a.example.com"}
+	namespaceA := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://namespace.com"}
 
 	s.accessibleAttrValues[projectAvengersFQN].Attribute.Namespace = namespaceA
 
@@ -1407,14 +1472,24 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_RequestActionIDPrecedence()
 	s.False(decision.Entitled, "requested action id should take precedence over name match")
 }
 
-func (s *EvaluateTestSuite) Test_getResourceDecision_StrictMode_DeniesWhenAAVNamespaceCannotBeResolved() {
-	namespaceA := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://ns-a.example.com"}
+func (s *EvaluateTestSuite) Test_getResourceDecision_StrictMode_ErrorsOnAAVNamespaceMismatch() {
+	namespaceA := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://namespace.com"}
+	namespacedRegResFQN := (&identifier.FullyQualifiedRegisteredResourceValue{
+		Namespace: "namespace.com",
+		Name:      "network",
+		Value:     "external",
+	}).FQN()
 
 	knownFQN := levelHighestFQN
 	unknownFQN := "https://unknown.example.com/attr/missing/value/x"
 
 	s.accessibleAttrValues[knownFQN].Attribute.Namespace = namespaceA
-	s.accessibleRegisteredResourceValues[netRegResValFQN].ActionAttributeValues = []*policy.RegisteredResourceValue_ActionAttributeValue{
+	regResValue := s.accessibleRegisteredResourceValues[netRegResValFQN]
+	regResValue.Resource = &policy.RegisteredResource{
+		Name:      "network",
+		Namespace: namespaceA,
+	}
+	regResValue.ActionAttributeValues = []*policy.RegisteredResourceValue_ActionAttributeValue{
 		{
 			Id: "rr-aav-known",
 			Action: &policy.Action{
@@ -1432,9 +1507,10 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_StrictMode_DeniesWhenAAVNam
 			AttributeValue: &policy.Value{Fqn: unknownFQN, Value: "x"},
 		},
 	}
+	s.accessibleRegisteredResourceValues[namespacedRegResFQN] = regResValue
 
 	resource := &authz.Resource{
-		Resource:    &authz.Resource_RegisteredResourceValueFqn{RegisteredResourceValueFqn: netRegResValFQN},
+		Resource:    &authz.Resource_RegisteredResourceValueFqn{RegisteredResourceValueFqn: namespacedRegResFQN},
 		EphemeralId: "rr-aav-unresolvable-ns",
 	}
 
@@ -1455,9 +1531,8 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_StrictMode_DeniesWhenAAVNam
 		true,
 	)
 
-	s.Require().NoError(err)
-	s.Require().NotNil(decision)
-	s.False(decision.Entitled, "strict mode should fail closed when any matching RR AAV namespace cannot be resolved")
+	s.Require().Error(err)
+	s.Nil(decision)
 }
 
 func Test_isRequestedActionMatch(t *testing.T) {

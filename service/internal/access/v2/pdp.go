@@ -181,11 +181,13 @@ func NewPolicyDecisionPoint(
 			}
 			allRegisteredResourceValuesByFQN[fullyQualifiedValue.FQN()] = v
 
-			legacyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
-				Name:  rrName,
-				Value: v.GetValue(),
+			if !namespacedPolicy {
+				legacyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
+					Name:  rrName,
+					Value: v.GetValue(),
+				}
+				allRegisteredResourceValuesByFQN[legacyQualifiedValue.FQN()] = v
 			}
-			allRegisteredResourceValuesByFQN[legacyQualifiedValue.FQN()] = v
 		}
 	}
 
@@ -237,7 +239,15 @@ func (p *PolicyDecisionPoint) GetDecision(
 	}
 
 	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
-	decisionableAttributes, err := getResourceDecisionableAttributes(ctx, l, p.allRegisteredResourceValuesByFQN, p.allEntitleableAttributesByValueFQN, p.allAttributesByDefinitionFQN /* action, */, resources, p.allowDirectEntitlements)
+	decisionableAttributes, err := getResourceDecisionableAttributes(
+		ctx,
+		l,
+		p.allRegisteredResourceValuesByFQN,
+		p.allEntitleableAttributesByValueFQN,
+		p.allAttributesByDefinitionFQN, /* action, */
+		resources,
+		p.allowDirectEntitlements,
+	)
 	if err != nil {
 		if !errors.Is(err, ErrFQNNotFound) {
 			return nil, nil, fmt.Errorf("error getting decisionable attributes: %w", err)
@@ -329,6 +339,15 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	if err := validateGetDecisionRegisteredResource(entityRegisteredResourceValueFQN, action, resources); err != nil {
 		return nil, nil, err
 	}
+	if p.namespacedPolicy {
+		parsed, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](entityRegisteredResourceValueFQN)
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid registered resource value FQN [%s]: %w", entityRegisteredResourceValueFQN, ErrInvalidResource)
+		}
+		if parsed.Namespace == "" {
+			return nil, nil, fmt.Errorf("registered resource value FQN must be namespaced in strict mode [%s]: %w", entityRegisteredResourceValueFQN, ErrInvalidResource)
+		}
+	}
 
 	entityRegisteredResourceValue, ok := p.allRegisteredResourceValuesByFQN[entityRegisteredResourceValueFQN]
 	if !ok {
@@ -336,7 +355,15 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	}
 
 	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
-	decisionableAttributes, err := getResourceDecisionableAttributes(ctx, l, p.allRegisteredResourceValuesByFQN, p.allEntitleableAttributesByValueFQN, p.allAttributesByDefinitionFQN /*action, */, resources, p.allowDirectEntitlements)
+	decisionableAttributes, err := getResourceDecisionableAttributes(
+		ctx,
+		l,
+		p.allRegisteredResourceValuesByFQN,
+		p.allEntitleableAttributesByValueFQN,
+		p.allAttributesByDefinitionFQN, /*action, */
+		resources,
+		p.allowDirectEntitlements,
+	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error getting decisionable attributes: %w", err)
 	}

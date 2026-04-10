@@ -23,12 +23,14 @@ type KeyManager interface {
 	Name() string
 
 	// Decrypt decrypts data that was encrypted with the key identified by keyID
+	// This is exclusively used for unwrapping Key Access Object splits.
 	// For EC keys, ephemeralPublicKey must be non-nil
 	// For RSA keys, ephemeralPublicKey should be nil
 	// Returns an UnwrappedKeyData interface for further operations
 	Decrypt(ctx context.Context, key KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error)
 
 	// DeriveKey computes an agreed upon secret key derived from an ECDH exchange.
+	// Deprecated: Directly use Decrypt when appropriate.
 	DeriveKey(ctx context.Context, key KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error)
 
 	// GenerateECSessionKey generates a private session key, for use with a client-provided ephemeral public key

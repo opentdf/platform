@@ -75,10 +75,6 @@ func (keyPair RsaKeyPair) KeyType() KeyType {
 	}
 }
 
-func (keyPair RsaKeyPair) DeriveSharedKey(_ string) ([]byte, error) {
-	return nil, errors.New("shared key derivation is unsupported for RSA private keys")
-}
-
 // GetKeyType returns the key type (RSAKey)
 func (keyPair RsaKeyPair) GetKeyType() KeyType {
 	return keyPair.KeyType()

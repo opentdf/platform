@@ -2,9 +2,9 @@ package sdk
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"net"
@@ -194,36 +194,28 @@ func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapR
 }
 
 func (k *KASClient) handleECKeyResponse(response *kas.RewrapResponse) (map[string][]kaoResult, error) {
-	kasEphemeralPublicKey := response.GetSessionPublicKey()
-	ecdhKey, err := k.sessionKey.DeriveSharedKey(kasEphemeralPublicKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to derive shared key: %w", err)
+	kasEphemeralPublicKeyPEM := response.GetSessionPublicKey()
+	block, _ := pem.Decode([]byte(kasEphemeralPublicKeyPEM))
+	if block == nil {
+		return nil, errors.New("failed to decode KAS session public key PEM")
 	}
 
-	digest := sha256.New()
-	digest.Write([]byte("TDF"))
-	salt := digest.Sum(nil)
-	sessionKey, err := ocrypto.CalculateHKDF(salt, ecdhKey)
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed: %w", err)
+	ecDecryptor, ok := k.sessionKey.(ocrypto.ECDecryptor)
+	if !ok {
+		return nil, errors.New("session key is not an EC decryptor")
 	}
 
-	aesGcm, err := ocrypto.NewAESGcm(sessionKey)
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.NewAESGcm failed: %w", err)
-	}
-
-	return k.processECResponse(response, aesGcm)
+	return k.processECResponse(response, ecDecryptor, block.Bytes)
 }
 
-func (k *KASClient) processECResponse(response *kas.RewrapResponse, aesGcm ocrypto.AesGcm) (map[string][]kaoResult, error) {
+func (k *KASClient) processECResponse(response *kas.RewrapResponse, ecDecryptor ocrypto.ECDecryptor, ephemeralKeyDER []byte) (map[string][]kaoResult, error) {
 	policyResults := make(map[string][]kaoResult)
 	for _, results := range response.GetResponses() {
 		var kaoKeys []kaoResult
 		for _, kao := range results.GetResults() {
 			requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
 			if kao.GetStatus() == statusPermit {
-				key, err := aesGcm.Decrypt(kao.GetKasWrappedKey())
+				key, err := ecDecryptor.DecryptWithEphemeralKey(kao.GetKasWrappedKey(), ephemeralKeyDER)
 				if err != nil {
 					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err, RequiredObligations: requiredObligationsForKAO})
 				} else {

@@ -45,12 +45,19 @@ const (
 	RSA4096Size     = 4096
 )
 
+// KeyPair represents a cryptographic key pair.
+//
+// Deprecated: Prefer PrivateKeyDecryptor from asym_decryption.go, which separates
+// key-management from algorithm-specific capabilities.
 type KeyPair interface {
 	PublicKeyInPemFormat() (string, error)
 	PrivateKeyInPemFormat() (string, error)
 	GetKeyType() KeyType
 }
 
+// NewKeyPair creates a new key pair of the given type.
+//
+// Deprecated: Use NewPrivateKeyDecryptor instead.
 func NewKeyPair(kt KeyType) (KeyPair, error) {
 	switch kt {
 	case RSA2048Key, RSA4096Key:
@@ -233,8 +240,11 @@ func (keyPair ECKeyPair) Decrypt(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	return ECDecryptor{sk: ecdhPrivateKey}.Decrypt(data)
+	dec, err := NewECDecryptor(ecdhPrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	return dec.Decrypt(data)
 }
 
 func (keyPair ECKeyPair) Public() (PublicKeyEncryptor, error) {
@@ -242,8 +252,11 @@ func (keyPair ECKeyPair) Public() (PublicKeyEncryptor, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	return ECDecryptor{sk: ecdhPrivateKey}.Public()
+	dec, err := NewECDecryptor(ecdhPrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	return dec.Public()
 }
 
 func (keyPair ECKeyPair) KeyType() KeyType {
@@ -259,8 +272,11 @@ func (keyPair ECKeyPair) DeriveSharedKey(publicKeyInPem string) ([]byte, error) 
 	if err != nil {
 		return nil, err
 	}
-
-	return ECDecryptor{sk: ecdhPrivateKey}.DeriveSharedKey(publicKeyInPem)
+	dec, err := NewECDecryptor(ecdhPrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	return dec.DeriveSharedKey(publicKeyInPem)
 }
 
 // CompressedECPublicKey - return a compressed key from the supplied curve and public key

@@ -98,6 +98,7 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 	return nil, fmt.Errorf("unsupported algorithm: %s", keyDetails.Algorithm())
 }
 
+// Deprecated: Prefer to directly unwrap the value with Decrypt.
 func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ocrypto.ProtectedKey, error) {
 	// Implementation of DeriveKey method
 	privateKeyCtx, err := keyDetails.ExportPrivateKey(ctx)
@@ -130,7 +131,12 @@ func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetail
 		return nil, fmt.Errorf("failed to create decryptor from private PEM: %w", err)
 	}
 
-	symmetricKey, err := decrypter.DeriveSharedKey(string(ephemeralECDSAPublicKeyPEM))
+	ecDecryptor, ok := decrypter.(ocrypto.ECDecryptor)
+	if !ok {
+		return nil, errors.New("key derivation requires an EC private key")
+	}
+
+	symmetricKey, err := ecDecryptor.DeriveSharedKey(string(ephemeralECDSAPublicKeyPEM))
 	if err != nil {
 		return nil, fmt.Errorf("failed to derive shared key: %w", err)
 	}

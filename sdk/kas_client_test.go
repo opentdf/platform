@@ -2,7 +2,6 @@ package sdk
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
@@ -540,34 +539,26 @@ func Test_processRSAResponse(t *testing.T) {
 func Test_processECResponse(t *testing.T) {
 	c := newKASClient(nil, nil, nil, nil, nil)
 
-	// 1. Set up keys for encryption
-	kasPrivateKey, err := ocrypto.NewECPrivateKey(ocrypto.ECCModeSecp256r1)
-	require.NoError(t, err)
-	kasPublicKey, err := kasPrivateKey.Public()
-	require.NoError(t, err)
-	kasPublicKeyPEM, err := kasPublicKey.PublicKeyInPemFormat()
-	require.NoError(t, err)
-
+	// 1. Generate client EC session key pair (what the SDK would use for session negotiation)
 	clientPrivateKey, err := ocrypto.NewECPrivateKey(ocrypto.ECCModeSecp256r1)
 	require.NoError(t, err)
-
-	// 2. Compute shared secret and derive session key (for encryption)
-	ecdhKey, err := clientPrivateKey.DeriveSharedKey(kasPublicKeyPEM)
+	clientPublicKey, err := clientPrivateKey.Public()
+	require.NoError(t, err)
+	clientPublicKeyPEM, err := clientPublicKey.PublicKeyInPemFormat()
 	require.NoError(t, err)
 
-	digest := sha256.New()
-	digest.Write([]byte("TDF"))
-	salt := digest.Sum(nil)
-	sessionKey, err := ocrypto.CalculateHKDF(salt, ecdhKey)
-	require.NoError(t, err)
-
-	// 3. Create AES-GCM cipher for encryption
-	encryptor, err := ocrypto.NewAESGcm(sessionKey)
+	// 2. Simulate KAS encrypting symmetricKey2 for the client using ECIES
+	// (same TDF salt used by NewECDecryptor/NewECPrivateKey on the client side)
+	asymEncrypt, err := ocrypto.FromPublicPEMWithSalt(clientPublicKeyPEM, tdfSalt(), nil)
 	require.NoError(t, err)
 
 	symmetricKey2 := []byte("supersecretkey2")
-	wrappedKey2, err := encryptor.Encrypt(symmetricKey2)
+	wrappedKey2, err := asymEncrypt.Encrypt(symmetricKey2)
 	require.NoError(t, err)
+
+	// 3. Get the KAS-generated ephemeral key DER bytes (what KAS sends as SessionPublicKey)
+	kasEphemeralKeyDER := asymEncrypt.EphemeralKey()
+	require.NotEmpty(t, kasEphemeralKeyDER)
 
 	// 5. Create mock response with multiple policies
 	response := &kaspb.RewrapResponse{
@@ -615,12 +606,8 @@ func Test_processECResponse(t *testing.T) {
 		},
 	}
 
-	// 6. Create AES-GCM cipher for decryption (using the same session key)
-	decryptor, err := ocrypto.NewAESGcm(sessionKey)
-	require.NoError(t, err)
-
-	// 7. Process the response
-	policyResults, err := c.processECResponse(response, decryptor)
+	// 4. Process the response using client's private key and KAS ephemeral key DER
+	policyResults, err := c.processECResponse(response, clientPrivateKey, kasEphemeralKeyDER)
 	require.NoError(t, err)
 	require.Len(t, policyResults, 2)
 

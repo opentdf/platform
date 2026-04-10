@@ -198,7 +198,7 @@ func wrapKeyWithEC(keyType ocrypto.KeyType, kasPublicKeyPEM string, symKey []byt
 		return "", "", "", fmt.Errorf("failed to serialize ephemeral public key: %w", err)
 	}
 
-	// Compute ECDH shared secret
+	// Compute ECDH shared secret — ecPrivateKey is ECDecryptor from NewECPrivateKey
 	ecdhKey, err := ecPrivateKey.DeriveSharedKey(kasPublicKeyPEM)
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to derive shared key: %w", err)

@@ -310,7 +310,12 @@ func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDet
 		return nil, fmt.Errorf("failed to create decryptor from private PEM: %w", err)
 	}
 
-	symmetricKey, err := decrypter.DeriveSharedKey(string(ephemeralECDSAPublicKeyPEM))
+	ecDecryptor, ok := decrypter.(ocrypto.ECDecryptor)
+	if !ok {
+		return nil, errors.New("key derivation requires an EC private key")
+	}
+
+	symmetricKey, err := ecDecryptor.DeriveSharedKey(string(ephemeralECDSAPublicKeyPEM))
 	if err != nil {
 		return nil, fmt.Errorf("failed to derive shared key: %w", err)
 	}

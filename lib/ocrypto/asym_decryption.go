@@ -36,9 +36,6 @@ type PrivateKeyDecryptor interface {
 
 	// KeyType returns the key type, e.g. RSA or EC.
 	KeyType() KeyType
-
-	// DeriveSharedKey derives a shared secret from the private key and the provided peer public key.
-	DeriveSharedKey(publicKeyInPem string) ([]byte, error)
 }
 
 func NewPrivateKeyDecryptor(kt KeyType) (PrivateKeyDecryptor, error) {
@@ -172,10 +169,6 @@ func (asymDecryption AsymDecryption) KeyType() KeyType {
 	}
 }
 
-func (asymDecryption AsymDecryption) DeriveSharedKey(_ string) ([]byte, error) {
-	return nil, errors.New("shared key derivation is unsupported for RSA private keys")
-}
-
 type ECDecryptor struct {
 	sk   *ecdh.PrivateKey
 	salt []byte
@@ -258,29 +251,9 @@ func (e ECDecryptor) DeriveSharedKey(publicKeyInPem string) ([]byte, error) {
 }
 
 func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
-	var ek *ecdh.PublicKey
-
-	if pubFromDSN, err := x509.ParsePKIXPublicKey(ephemeral); err == nil {
-		switch pubFromDSN := pubFromDSN.(type) {
-		case *ecdsa.PublicKey:
-			ek, err = ConvertToECDHPublicKey(pubFromDSN)
-			if err != nil {
-				return nil, fmt.Errorf("ecdh conversion failure: %w", err)
-			}
-		case *ecdh.PublicKey:
-			ek = pubFromDSN
-		default:
-			return nil, fmt.Errorf("unsupported public key of type: %T", pubFromDSN)
-		}
-	} else {
-		ekDSA, err := UncompressECPubKey(convCurve(e.sk.Curve()), ephemeral)
-		if err != nil {
-			return nil, err
-		}
-		ek, err = ekDSA.ECDH()
-		if err != nil {
-			return nil, fmt.Errorf("ecdh failure: %w", err)
-		}
+	ek, err := e.parseEphemeralPublicKey(ephemeral)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse ephemeral public key: %w", err)
 	}
 
 	ikm, err := e.sk.ECDH(ek)
@@ -320,15 +293,38 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 	return plaintext, nil
 }
 
-func convCurve(c ecdh.Curve) elliptic.Curve {
+// parseEphemeralPublicKey parses an ephemeral public key from DER (PKIX) or compressed EC point bytes.
+func (e ECDecryptor) parseEphemeralPublicKey(ephemeral []byte) (*ecdh.PublicKey, error) {
+	if pub, err := x509.ParsePKIXPublicKey(ephemeral); err == nil {
+		switch pub := pub.(type) {
+		case *ecdsa.PublicKey:
+			return ConvertToECDHPublicKey(pub)
+		case *ecdh.PublicKey:
+			return pub, nil
+		default:
+			return nil, fmt.Errorf("unsupported public key of type: %T", pub)
+		}
+	}
+	curve, err := convCurve(e.sk.Curve())
+	if err != nil {
+		return nil, err
+	}
+	ekDSA, err := UncompressECPubKey(curve, ephemeral)
+	if err != nil {
+		return nil, err
+	}
+	return ekDSA.ECDH()
+}
+
+func convCurve(c ecdh.Curve) (elliptic.Curve, error) {
 	switch c {
 	case ecdh.P256():
-		return elliptic.P256()
+		return elliptic.P256(), nil
 	case ecdh.P384():
-		return elliptic.P384()
+		return elliptic.P384(), nil
 	case ecdh.P521():
-		return elliptic.P521()
+		return elliptic.P521(), nil
 	default:
-		return nil
+		return nil, fmt.Errorf("unsupported ECDH curve: %v", c)
 	}
 }

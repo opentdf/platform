@@ -189,6 +189,17 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 		certData:  "-----BEGIN CERTIFICATE-----\nMIIBcTCCARegAwIBAgIUTxgZ1CzWBXgysrV4bKVGw+1iBTwwCgYIKoZIzj0EAwIw\nDjEMMAoGA1UEAwwDa2FzMB4XDTIzMDYxMzAwMDAwMFoXDTI4MDYxMzAwMDAwMFow\nDjEMMAoGA1UEAwwDa2FzMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEn6WYEj3s\nxP/IR0W1O5TYHKPyhceFki4Y/9YYeK/D3QkYQrv+DkKXPKkR/MQS6uzmHZY9NS8X\nbcwJ4cGpR6l4FaNmMGQwHQYDVR0OBBYEFFQ8TIybvYhMKH0E+lOVDS0F7r9PMB8G\nA1UdIwQYMBaAFFQ8TIybvYhMKH0E+lOVDS0F7r9PMA8GA1UdEwEB/wQFMAMBAf8w\nEQYDVR0gBAowCDAGBgRVHSAAMAoGCCqGSM49BAMCA0gAMEUCIQD5adIeKGCpbI1E\nJr3jVwQNJL6+bLGXRORhIeKjpvd3egIgRZ7qwTpjZwrkXpDS2i1ODQjj2Ap9ZeMN\nzuDaXdOl90E=\n-----END CERTIFICATE-----",
 	})
 
+	xWingKeyPair, err := ocrypto.NewXWingKeyPair()
+	require.NoError(t, err)
+	xWingPublicKeyPEM, err := xWingKeyPair.PublicKeyInPemFormat()
+	require.NoError(t, err)
+	mockProvider.AddKey(&MockKeyDetails{
+		id:        "xwing-key",
+		algorithm: security.AlgorithmHybridXWing,
+		legacy:    false,
+		pemData:   xWingPublicKeyPEM,
+	})
+
 	// Create Provider with the mock security provider
 	delegator := trust.NewDelegatingKeyService(mockProvider, logger.CreateTestLogger(), nil)
 	delegator.RegisterKeyManagerCtx(mockProvider.Name(), func(_ context.Context, _ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
@@ -205,6 +216,10 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 				{
 					Algorithm: security.AlgorithmRSA2048,
 					KID:       "rsa-key",
+				},
+				{
+					Algorithm: security.AlgorithmHybridXWing,
+					KID:       "xwing-key",
 				},
 			},
 		},
@@ -237,6 +252,18 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 		require.NotNil(t, result)
 		assert.Contains(t, result.Msg.GetPublicKey(), "\"kty\":\"RSA\"")
 		assert.Equal(t, "rsa-key", result.Msg.GetKid())
+	})
+
+	t.Run("PublicKey with X-Wing", func(t *testing.T) {
+		result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
+			Msg: &kaspb.PublicKeyRequest{
+				Algorithm: security.AlgorithmHybridXWing,
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Contains(t, result.Msg.GetPublicKey(), "BEGIN X-WING PUBLIC KEY")
+		assert.Equal(t, "xwing-key", result.Msg.GetKid())
 	})
 
 	// Test PublicKey with EC

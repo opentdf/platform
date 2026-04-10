@@ -13,6 +13,8 @@ import (
 )
 
 const (
+	HybridXWingKey KeyType = "hpqt:xwing"
+
 	XWingPublicKeySize  = xwing.PublicKeySize
 	XWingPrivateKeySize = xwing.PrivateKeySize
 	XWingCiphertextSize = xwing.CiphertextSize
@@ -61,11 +63,11 @@ func NewXWingKeyPair() (XWingKeyPair, error) {
 }
 
 func (k XWingKeyPair) PublicKeyInPemFormat() (string, error) {
-	return xwingRawToPEM(PEMBlockXWingPublicKey, k.publicKey, XWingPublicKeySize)
+	return rawToPEM(PEMBlockXWingPublicKey, k.publicKey, XWingPublicKeySize)
 }
 
 func (k XWingKeyPair) PrivateKeyInPemFormat() (string, error) {
-	return xwingRawToPEM(PEMBlockXWingPrivateKey, k.privateKey, XWingPrivateKeySize)
+	return rawToPEM(PEMBlockXWingPrivateKey, k.privateKey, XWingPrivateKeySize)
 }
 
 func (k XWingKeyPair) GetKeyType() KeyType {
@@ -97,7 +99,7 @@ func (e *XWingEncryptor) Encrypt(data []byte) ([]byte, error) {
 }
 
 func (e *XWingEncryptor) PublicKeyInPemFormat() (string, error) {
-	return xwingRawToPEM(PEMBlockXWingPublicKey, e.publicKey, XWingPublicKeySize)
+	return rawToPEM(PEMBlockXWingPublicKey, e.publicKey, XWingPublicKeySize)
 }
 
 func (e *XWingEncryptor) Type() SchemeType {
@@ -144,14 +146,25 @@ func XWingUnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
 	return xwingUnwrapDEK(privateKeyRaw, wrappedDER, defaultXWingSalt(), nil)
 }
 
-func xwingWrapDEK(publicKeyRaw, dek, salt, info []byte) ([]byte, error) {
+// XWingEncapsulate performs the X-Wing KEM encapsulation, returning the shared
+// secret and ciphertext without applying KDF or encryption.
+func XWingEncapsulate(publicKeyRaw []byte) ([]byte, []byte, error) {
 	if len(publicKeyRaw) != XWingPublicKeySize {
-		return nil, fmt.Errorf("invalid X-Wing public key size: got %d want %d", len(publicKeyRaw), XWingPublicKeySize)
+		return nil, nil, fmt.Errorf("invalid X-Wing public key size: got %d want %d", len(publicKeyRaw), XWingPublicKeySize)
 	}
 
 	sharedSecret, ciphertext, err := xwing.Encapsulate(publicKeyRaw, nil)
 	if err != nil {
-		return nil, fmt.Errorf("xwing.Encapsulate failed: %w", err)
+		return nil, nil, fmt.Errorf("xwing.Encapsulate failed: %w", err)
+	}
+
+	return sharedSecret, ciphertext, nil
+}
+
+func xwingWrapDEK(publicKeyRaw, dek, salt, info []byte) ([]byte, error) {
+	sharedSecret, ciphertext, err := XWingEncapsulate(publicKeyRaw)
+	if err != nil {
+		return nil, err
 	}
 
 	wrapKey, err := deriveXWingWrapKey(sharedSecret, salt, info)
@@ -231,7 +244,7 @@ func deriveXWingWrapKey(sharedSecret, salt, info []byte) ([]byte, error) {
 	return derivedKey, nil
 }
 
-func xwingRawToPEM(blockType string, raw []byte, expectedSize int) (string, error) {
+func rawToPEM(blockType string, raw []byte, expectedSize int) (string, error) {
 	if len(raw) != expectedSize {
 		return "", fmt.Errorf("invalid %s size: got %d want %d", blockType, len(raw), expectedSize)
 	}

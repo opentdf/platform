@@ -13,6 +13,11 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
+const (
+	HybridSecp256r1MLKEM768Key  KeyType = "hpqt:secp256r1-mlkem768"
+	HybridSecp384r1MLKEM1024Key KeyType = "hpqt:secp384r1-mlkem1024"
+)
+
 // Sizes for P-256 + ML-KEM-768 hybrid.
 const (
 	P256MLKEM768ECPublicKeySize  = 65   // uncompressed P-256 point
@@ -154,6 +159,30 @@ type HybridNISTDecryptor struct {
 	params     *hybridNISTParams
 }
 
+// IsHybridKeyType returns true if the key type is a hybrid post-quantum type.
+func IsHybridKeyType(kt KeyType) bool {
+	switch kt { //nolint:exhaustive // only handle hybrid types
+	case HybridXWingKey, HybridSecp256r1MLKEM768Key, HybridSecp384r1MLKEM1024Key:
+		return true
+	default:
+		return false
+	}
+}
+
+// NewHybridKeyPair creates a key pair for the given hybrid key type.
+func NewHybridKeyPair(kt KeyType) (KeyPair, error) {
+	switch kt { //nolint:exhaustive // only handle hybrid types
+	case HybridXWingKey:
+		return NewXWingKeyPair()
+	case HybridSecp256r1MLKEM768Key:
+		return NewP256MLKEM768KeyPair()
+	case HybridSecp384r1MLKEM1024Key:
+		return NewP384MLKEM1024KeyPair()
+	default:
+		return nil, fmt.Errorf("unsupported hybrid key type: %v", kt)
+	}
+}
+
 // --- KeyPair generation ---
 
 func NewP256MLKEM768KeyPair() (HybridNISTKeyPair, error) {
@@ -213,18 +242,16 @@ func newHybridNISTKeyPair(p *hybridNISTParams, genMLKEM func() (pub, priv []byte
 }
 
 func (k HybridNISTKeyPair) PublicKeyInPemFormat() (string, error) {
-	return xwingRawToPEM(k.params.pubPEMBlock, k.publicKey, k.params.ecPubSize+k.params.mlkemPubSize)
+	return rawToPEM(k.params.pubPEMBlock, k.publicKey, k.params.ecPubSize+k.params.mlkemPubSize)
 }
 
 func (k HybridNISTKeyPair) PrivateKeyInPemFormat() (string, error) {
-	return xwingRawToPEM(k.params.privPEMBlock, k.privateKey, k.params.ecPrivSize+k.params.mlkemPrivSize)
+	return rawToPEM(k.params.privPEMBlock, k.privateKey, k.params.ecPrivSize+k.params.mlkemPrivSize)
 }
 
 func (k HybridNISTKeyPair) GetKeyType() KeyType {
 	return k.params.keyType
 }
-
-// --- PEM decode helpers ---
 
 func P256MLKEM768PubKeyFromPem(data []byte) ([]byte, error) {
 	return decodeSizedPEMBlock(data, PEMBlockP256MLKEM768PublicKey, P256MLKEM768PublicKeySize)
@@ -241,8 +268,6 @@ func P384MLKEM1024PubKeyFromPem(data []byte) ([]byte, error) {
 func P384MLKEM1024PrivateKeyFromPem(data []byte) ([]byte, error) {
 	return decodeSizedPEMBlock(data, PEMBlockP384MLKEM1024PrivateKey, P384MLKEM1024PrivateKeySize)
 }
-
-// --- Encryptor ---
 
 func NewP256MLKEM768Encryptor(publicKey, salt, info []byte) (*HybridNISTEncryptor, error) {
 	return newHybridNISTEncryptor(&p256mlkem768Params, publicKey, salt, info)
@@ -270,7 +295,7 @@ func (e *HybridNISTEncryptor) Encrypt(data []byte) ([]byte, error) {
 }
 
 func (e *HybridNISTEncryptor) PublicKeyInPemFormat() (string, error) {
-	return xwingRawToPEM(e.params.pubPEMBlock, e.publicKey, e.params.ecPubSize+e.params.mlkemPubSize)
+	return rawToPEM(e.params.pubPEMBlock, e.publicKey, e.params.ecPubSize+e.params.mlkemPubSize)
 }
 
 func (e *HybridNISTEncryptor) Type() SchemeType     { return Hybrid }
@@ -280,8 +305,6 @@ func (e *HybridNISTEncryptor) EphemeralKey() []byte { return nil }
 func (e *HybridNISTEncryptor) Metadata() (map[string]string, error) {
 	return make(map[string]string), nil
 }
-
-// --- Decryptor ---
 
 func NewP256MLKEM768Decryptor(privateKey []byte) (*HybridNISTDecryptor, error) {
 	return NewSaltedP256MLKEM768Decryptor(privateKey, defaultXWingSalt(), nil)
@@ -334,12 +357,17 @@ func P384MLKEM1024UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
 	return hybridNISTUnwrapDEK(&p384mlkem1024Params, privateKeyRaw, wrappedDER, defaultXWingSalt(), nil)
 }
 
-// --- Core wrap/unwrap ---
-
-func hybridNISTWrapDEK(p *hybridNISTParams, publicKeyRaw, dek, salt, info []byte) ([]byte, error) {
+// hybridNISTEncapsulate performs hybrid encapsulation:
+//  1. Generates an ephemeral EC key and computes ECDH shared secret
+//  2. Encapsulates ML-KEM to produce a post-quantum shared secret
+//  3. Combines both secrets (ECDH || ML-KEM)
+//  4. Builds hybrid ciphertext (ephemeral EC point || ML-KEM ciphertext)
+//
+// Returns (combinedSecret, hybridCiphertext) without applying KDF or encryption.
+func hybridNISTEncapsulate(p *hybridNISTParams, publicKeyRaw []byte) ([]byte, []byte, error) {
 	expectedPubSize := p.ecPubSize + p.mlkemPubSize
 	if len(publicKeyRaw) != expectedPubSize {
-		return nil, fmt.Errorf("invalid %s public key size: got %d want %d", p.keyType, len(publicKeyRaw), expectedPubSize)
+		return nil, nil, fmt.Errorf("invalid %s public key size: got %d want %d", p.keyType, len(publicKeyRaw), expectedPubSize)
 	}
 
 	ecPubBytes := publicKeyRaw[:p.ecPubSize]
@@ -348,28 +376,54 @@ func hybridNISTWrapDEK(p *hybridNISTParams, publicKeyRaw, dek, salt, info []byte
 	// ECDH: generate ephemeral key, compute shared secret
 	ecPub, err := p.curve.NewPublicKey(ecPubBytes)
 	if err != nil {
-		return nil, fmt.Errorf("invalid EC public key: %w", err)
+		return nil, nil, fmt.Errorf("invalid EC public key: %w", err)
 	}
 	ephemeral, err := p.curve.GenerateKey(rand.Reader)
 	if err != nil {
-		return nil, fmt.Errorf("ECDH ephemeral key generation failed: %w", err)
+		return nil, nil, fmt.Errorf("ECDH ephemeral key generation failed: %w", err)
 	}
 	ecdhSecret, err := ephemeral.ECDH(ecPub)
 	if err != nil {
-		return nil, fmt.Errorf("ECDH failed: %w", err)
+		return nil, nil, fmt.Errorf("ECDH failed: %w", err)
 	}
 	ephemeralPub := ephemeral.PublicKey().Bytes()
 
 	// ML-KEM: encapsulate
 	mlkemSecret, mlkemCt, err := p.mlkemEncapsulate(mlkemPubBytes)
 	if err != nil {
-		return nil, fmt.Errorf("ML-KEM encapsulate failed: %w", err)
+		return nil, nil, fmt.Errorf("ML-KEM encapsulate failed: %w", err)
 	}
 
 	// Combine secrets: ECDH || ML-KEM
 	combinedSecret := make([]byte, 0, len(ecdhSecret)+len(mlkemSecret))
 	combinedSecret = append(combinedSecret, ecdhSecret...)
 	combinedSecret = append(combinedSecret, mlkemSecret...)
+
+	// Build hybrid ciphertext: ephemeral EC point || ML-KEM ciphertext
+	hybridCt := make([]byte, 0, len(ephemeralPub)+len(mlkemCt))
+	hybridCt = append(hybridCt, ephemeralPub...)
+	hybridCt = append(hybridCt, mlkemCt...)
+
+	return combinedSecret, hybridCt, nil
+}
+
+// P256MLKEM768Encapsulate performs P-256 ECDH + ML-KEM-768 hybrid encapsulation.
+func P256MLKEM768Encapsulate(publicKeyRaw []byte) ([]byte, []byte, error) {
+	return hybridNISTEncapsulate(&p256mlkem768Params, publicKeyRaw)
+}
+
+// P384MLKEM1024Encapsulate performs P-384 ECDH + ML-KEM-1024 hybrid encapsulation.
+func P384MLKEM1024Encapsulate(publicKeyRaw []byte) ([]byte, []byte, error) {
+	return hybridNISTEncapsulate(&p384mlkem1024Params, publicKeyRaw)
+}
+
+// --- Core wrap/unwrap ---
+
+func hybridNISTWrapDEK(p *hybridNISTParams, publicKeyRaw, dek, salt, info []byte) ([]byte, error) {
+	combinedSecret, hybridCt, err := hybridNISTEncapsulate(p, publicKeyRaw)
+	if err != nil {
+		return nil, err
+	}
 
 	// Derive AES-256 wrap key via HKDF
 	wrapKey, err := deriveHybridNISTWrapKey(combinedSecret, salt, info)
@@ -386,11 +440,6 @@ func hybridNISTWrapDEK(p *hybridNISTParams, publicKeyRaw, dek, salt, info []byte
 	if err != nil {
 		return nil, fmt.Errorf("AES-GCM encrypt failed: %w", err)
 	}
-
-	// Build hybrid ciphertext: ephemeral EC point || ML-KEM ciphertext
-	hybridCt := make([]byte, 0, len(ephemeralPub)+len(mlkemCt))
-	hybridCt = append(hybridCt, ephemeralPub...)
-	hybridCt = append(hybridCt, mlkemCt...)
 
 	wrappedDER, err := asn1.Marshal(HybridNISTWrappedKey{
 		HybridCiphertext: hybridCt,

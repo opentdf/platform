@@ -4,6 +4,7 @@ package tdf
 
 import (
 	"crypto/sha256"
+	"encoding/asn1"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -250,39 +251,63 @@ func wrapKeyWithRSA(kasPublicKeyPEM string, symKey []byte) (string, error) {
 }
 
 func wrapKeyWithHybrid(ktype ocrypto.KeyType, kasPublicKeyPEM string, symKey []byte) (string, string, string, error) {
+	// Step 1: Parse public key and perform hybrid KEM encapsulation (ECDH + ML-KEM)
 	var (
-		wrappedKey []byte
-		err        error
+		pubKey                      []byte
+		sharedSecret, kemCiphertext []byte
+		err                         error
 	)
 
 	switch ktype { //nolint:exhaustive // only handle hybrid types
 	case ocrypto.HybridXWingKey:
-		var pubKey []byte
 		pubKey, err = ocrypto.XWingPubKeyFromPem([]byte(kasPublicKeyPEM))
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to parse X-Wing public key: %w", err)
 		}
-		wrappedKey, err = ocrypto.XWingWrapDEK(pubKey, symKey)
+		sharedSecret, kemCiphertext, err = ocrypto.XWingEncapsulate(pubKey)
 	case ocrypto.HybridSecp256r1MLKEM768Key:
-		var pubKey []byte
 		pubKey, err = ocrypto.P256MLKEM768PubKeyFromPem([]byte(kasPublicKeyPEM))
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to parse P256+ML-KEM-768 public key: %w", err)
 		}
-		wrappedKey, err = ocrypto.P256MLKEM768WrapDEK(pubKey, symKey)
+		sharedSecret, kemCiphertext, err = ocrypto.P256MLKEM768Encapsulate(pubKey)
 	case ocrypto.HybridSecp384r1MLKEM1024Key:
-		var pubKey []byte
 		pubKey, err = ocrypto.P384MLKEM1024PubKeyFromPem([]byte(kasPublicKeyPEM))
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to parse P384+ML-KEM-1024 public key: %w", err)
 		}
-		wrappedKey, err = ocrypto.P384MLKEM1024WrapDEK(pubKey, symKey)
+		sharedSecret, kemCiphertext, err = ocrypto.P384MLKEM1024Encapsulate(pubKey)
 	default:
 		return "", "", "", fmt.Errorf("unsupported hybrid algorithm: %s", ktype)
 	}
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to wrap key with %s: %w", ktype, err)
+		return "", "", "", fmt.Errorf("failed to encapsulate with %s: %w", ktype, err)
 	}
 
-	return string(ocrypto.Base64Encode(wrappedKey)), "hybrid-wrapped", "", nil
+	// Step 2: Derive wrap key from shared secret via HKDF
+	wrapKey, err := ocrypto.CalculateHKDF(tdfSalt(), sharedSecret)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to derive HKDF key: %w", err)
+	}
+
+	// Step 3: AES-GCM encrypt at SDK layer
+	gcm, err := ocrypto.NewAESGcm(wrapKey)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to create AES-GCM: %w", err)
+	}
+	encryptedDEK, err := gcm.Encrypt(symKey)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to AES-GCM encrypt: %w", err)
+	}
+
+	// Step 4: ASN1 marshal at SDK layer
+	wrappedDER, err := asn1.Marshal(ocrypto.HybridNISTWrappedKey{
+		HybridCiphertext: kemCiphertext,
+		EncryptedDEK:     encryptedDEK,
+	})
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to ASN1 marshal: %w", err)
+	}
+
+	return string(ocrypto.Base64Encode(wrappedDER)), "hybrid-wrapped", "", nil
 }

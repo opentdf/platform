@@ -112,3 +112,19 @@ func TestXWingPEMDispatch(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []byte("dispatch-dek"), plaintext)
 }
+
+func TestXWingEncapsulate(t *testing.T) {
+	keyPair, err := NewXWingKeyPair()
+	require.NoError(t, err)
+
+	sharedSecret, ciphertext, err := XWingEncapsulate(keyPair.publicKey)
+	require.NoError(t, err)
+	assert.Len(t, sharedSecret, 32)
+	assert.Len(t, ciphertext, XWingCiphertextSize)
+}
+
+func TestXWingEncapsulateInvalidKeySize(t *testing.T) {
+	_, _, err := XWingEncapsulate([]byte("too-short"))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid X-Wing public key size")
+}

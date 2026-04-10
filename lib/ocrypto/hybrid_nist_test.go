@@ -196,6 +196,38 @@ func TestP384MLKEM1024PEMDispatch(t *testing.T) {
 	assert.Equal(t, []byte("dispatch-dek-384"), plaintext)
 }
 
+func TestP256MLKEM768Encapsulate(t *testing.T) {
+	keyPair, err := NewP256MLKEM768KeyPair()
+	require.NoError(t, err)
+
+	pubKey, err := keyPair.PublicKeyInPemFormat()
+	require.NoError(t, err)
+
+	pubKeyRaw, err := P256MLKEM768PubKeyFromPem([]byte(pubKey))
+	require.NoError(t, err)
+
+	combinedSecret, hybridCt, err := P256MLKEM768Encapsulate(pubKeyRaw)
+	require.NoError(t, err)
+	assert.NotEmpty(t, combinedSecret)
+	assert.NotEmpty(t, hybridCt)
+}
+
+func TestP384MLKEM1024Encapsulate(t *testing.T) {
+	keyPair, err := NewP384MLKEM1024KeyPair()
+	require.NoError(t, err)
+
+	pubKey, err := keyPair.PublicKeyInPemFormat()
+	require.NoError(t, err)
+
+	pubKeyRaw, err := P384MLKEM1024PubKeyFromPem([]byte(pubKey))
+	require.NoError(t, err)
+
+	combinedSecret, hybridCt, err := P384MLKEM1024Encapsulate(pubKeyRaw)
+	require.NoError(t, err)
+	assert.NotEmpty(t, combinedSecret)
+	assert.NotEmpty(t, hybridCt)
+}
+
 func TestIsHybridKeyTypeIncludesNewTypes(t *testing.T) {
 	assert.True(t, IsHybridKeyType(HybridXWingKey))
 	assert.True(t, IsHybridKeyType(HybridSecp256r1MLKEM768Key))

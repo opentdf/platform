@@ -888,7 +888,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_ASC() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInDescendingOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_DESC() {
@@ -902,7 +902,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_DESC() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInDescendingOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_DESC() {
@@ -926,7 +926,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_DESC() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInDescendingOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[2], ids[1])
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[2], ids[1])
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_ASC() {
@@ -950,7 +950,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_ASC() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInDescendingOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_ASC() {
@@ -964,7 +964,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_ASC() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInDescendingOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_DESC() {
@@ -978,7 +978,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_DESC() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInDescendingOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_ASC() {
@@ -992,7 +992,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_ASC() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInDescendingOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_DESC() {
@@ -1006,7 +1006,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_DESC() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInDescendingOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUnspecified_FallsBackToDefault() {
@@ -1020,7 +1020,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUnspecified_FallsBack
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInDescendingOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *KasRegistrySuite) getKasRegistryFixtures() []fixtures.FixtureDataKasRegistry {

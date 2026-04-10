@@ -9,7 +9,6 @@ import (
 	"github.com/cucumber/godog"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/common"
-	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 )
@@ -270,92 +269,6 @@ func (s *ObligationsStepDefinitions) theDecisionResponseShouldNotContainObligati
 	return ctx, errors.New("decision response not found or invalid")
 }
 
-// Step: I send a multi-resource decision request for entity chain "id" for "action" action on resources: (table)
-func (s *ObligationsStepDefinitions) iSendAMultiResourceDecisionRequestForEntityChainForActionOnResources(ctx context.Context, entityChainID string, action string, tbl *godog.Table) (context.Context, error) {
-	scenarioContext := GetPlatformScenarioContext(ctx)
-	scenarioContext.ClearError()
-
-	// Build entity chain from stored v2 entities
-	var entities []*entity.Entity
-	for _, entityID := range strings.Split(entityChainID, ",") {
-		ent, ok := scenarioContext.GetObject(strings.TrimSpace(entityID)).(*entity.Entity)
-		if !ok {
-			return ctx, fmt.Errorf("entity %s not found or invalid type", entityID)
-		}
-		entities = append(entities, ent)
-	}
-
-	entityChain := &entity.EntityChain{
-		Entities: entities,
-	}
-
-	// Parse resource FQNs from table
-	var resources []*authzV2.Resource
-	resourceFQNMap := make(map[string]string) // map ephemeral ID to FQN
-	resourceIdx := 0
-	for ri, row := range tbl.Rows {
-		if ri == 0 {
-			continue // Skip header
-		}
-		for _, cell := range row.Cells {
-			fqn := strings.TrimSpace(cell.Value)
-			ephemeralID := fmt.Sprintf("resource%d", resourceIdx)
-			resourceFQNMap[ephemeralID] = fqn
-			resources = append(resources, &authzV2.Resource{
-				EphemeralId: ephemeralID,
-				Resource: &authzV2.Resource_AttributeValues_{
-					AttributeValues: &authzV2.Resource_AttributeValues{
-						Fqns: []string{fqn},
-					},
-				},
-			})
-			resourceIdx++
-		}
-	}
-
-	// Create v2 multi-resource decision request
-	req := &authzV2.GetDecisionMultiResourceRequest{
-		EntityIdentifier: &authzV2.EntityIdentifier{
-			Identifier: &authzV2.EntityIdentifier_EntityChain{
-				EntityChain: entityChain,
-			},
-		},
-		Action: &policy.Action{
-			Name: strings.ToLower(action),
-		},
-		Resources: resources,
-		// For testing purposes, we declare that we can fulfill all obligations
-		FulfillableObligationFqns: getAllObligationsFromScenario(scenarioContext),
-	}
-
-	resp, err := scenarioContext.SDK.AuthorizationV2.GetDecisionMultiResource(ctx, req)
-
-	scenarioContext.SetError(err)
-	scenarioContext.RecordObject(multiDecisionResponseKey, resp)
-	scenarioContext.RecordObject("decisionResponse", resp)         // Also store as single response for compatibility
-	scenarioContext.RecordObject("resourceFQNMap", resourceFQNMap) // Store mapping for validation
-
-	return ctx, nil
-}
-
-// Step: I should get N decision responses
-func (s *ObligationsStepDefinitions) iShouldGetNDecisionResponses(ctx context.Context, count int) (context.Context, error) {
-	scenarioContext := GetPlatformScenarioContext(ctx)
-
-	// Check v2 multi-resource response
-	decisionRespV2, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authzV2.GetDecisionMultiResourceResponse)
-	if !ok {
-		return ctx, errors.New("multi-decision response not found or invalid")
-	}
-
-	actualCount := len(decisionRespV2.GetResourceDecisions())
-	if actualCount != count {
-		return ctx, fmt.Errorf("expected %d decision responses, got %d", count, actualCount)
-	}
-
-	return ctx, nil
-}
-
 // Step: the decision response for resource FQN should contain obligation
 func (s *ObligationsStepDefinitions) theDecisionResponseForResourceShouldContainObligation(ctx context.Context, resourceFQN string, obligationFQN string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
@@ -472,9 +385,6 @@ func RegisterObligationsStepDefinitions(ctx *godog.ScenarioContext, _ *PlatformT
 	ctx.Step(`^the decision response should not contain obligation "([^"]*)"$`, stepDefinitions.theDecisionResponseShouldNotContainObligation)
 	ctx.Step(`^the decision response should contain obligations:$`, stepDefinitions.theDecisionResponseShouldContainObligations)
 
-	// Multi-resource decision steps
-	ctx.Step(`^I send a multi-resource decision request for entity chain "([^"]*)" for "([^"]*)" action on resources:$`, stepDefinitions.iSendAMultiResourceDecisionRequestForEntityChainForActionOnResources)
-	ctx.Step(`^I should get (\d+) decision responses$`, stepDefinitions.iShouldGetNDecisionResponses)
 	ctx.Step(`^the decision response for resource "([^"]*)" should contain obligation "([^"]*)"$`, stepDefinitions.theDecisionResponseForResourceShouldContainObligation)
 	ctx.Step(`^the decision response for resource "([^"]*)" should not contain any obligations$`, stepDefinitions.theDecisionResponseForResourceShouldNotContainAnyObligations)
 }

@@ -1,8 +1,13 @@
 package migrate
 
 import (
+	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 
+	otdfctl "github.com/opentdf/platform/otdfctl/cmd/common"
+	namespacedpolicy "github.com/opentdf/platform/otdfctl/migrations/namespacedpolicy"
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
 	"github.com/opentdf/platform/otdfctl/pkg/man"
 	"github.com/spf13/cobra"
@@ -30,11 +35,48 @@ func migrateNamespacedPolicyCmd() *cobra.Command {
 
 func migrateNamespacedPolicy(cmd *cobra.Command, args []string) {
 	c := cli.New(cmd, args)
-	c.Flags.GetRequiredString("scope")
-	c.Flags.GetRequiredString("output")
+	scopeCSV := c.Flags.GetRequiredString("scope")
+	outputPath := c.Flags.GetRequiredString("output")
 
-	cli.ExitWithError(
-		"migrate namespaced-policy is not implemented",
-		errors.New("the migrate namespaced-policy workflow is not implemented yet"),
-	)
+	commit, err := cmd.InheritedFlags().GetBool("commit")
+	if err != nil {
+		cli.ExitWithError("could not read --commit flag", err)
+	}
+	if commit {
+		cli.ExitWithError("commit is not implemented for namespaced-policy", errors.New("--commit is not supported yet"))
+	}
+
+	h := otdfctl.NewHandler(c)
+	defer h.Close()
+
+	planner, err := namespacedpolicy.NewPlanner(&h, scopeCSV)
+	if err != nil {
+		cli.ExitWithError("could not create namespacedpolicy planner", err)
+	}
+
+	plan, err := planner.Plan(cmd.Context())
+	if err != nil {
+		cli.ExitWithError("could not build namespacedpolicy plan", err)
+	}
+
+	if err := writeNamespacedPolicyPlan(outputPath, plan); err != nil {
+		cli.ExitWithError("could not write namespacedpolicy plan", err)
+	}
+}
+
+func writeNamespacedPolicyPlan(path string, plan *namespacedpolicy.Plan) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+
+	return encoder.Encode(plan)
 }

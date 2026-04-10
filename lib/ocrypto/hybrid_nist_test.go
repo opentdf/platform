@@ -47,16 +47,14 @@ func TestP384MLKEM1024KeyPairAndPEM(t *testing.T) {
 }
 
 func TestNewKeyPairP256MLKEM768(t *testing.T) {
-	keyPair, err := NewKeyPair(HybridSecp256r1MLKEM768Key)
+	keyPair, err := NewP256MLKEM768KeyPair()
 	require.NoError(t, err)
-	require.NotNil(t, keyPair)
 	assert.Equal(t, HybridSecp256r1MLKEM768Key, keyPair.GetKeyType())
 }
 
 func TestNewKeyPairP384MLKEM1024(t *testing.T) {
-	keyPair, err := NewKeyPair(HybridSecp384r1MLKEM1024Key)
+	keyPair, err := NewP384MLKEM1024KeyPair()
 	require.NoError(t, err)
-	require.NotNil(t, keyPair)
 	assert.Equal(t, HybridSecp384r1MLKEM1024Key, keyPair.GetKeyType())
 }
 

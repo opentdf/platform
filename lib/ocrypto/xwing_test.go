@@ -28,9 +28,8 @@ func TestXWingKeyPairAndPEM(t *testing.T) {
 }
 
 func TestNewKeyPairXWing(t *testing.T) {
-	keyPair, err := NewKeyPair(HybridXWingKey)
+	keyPair, err := NewXWingKeyPair()
 	require.NoError(t, err)
-	require.NotNil(t, keyPair)
 	assert.Equal(t, HybridXWingKey, keyPair.GetKeyType())
 }
 

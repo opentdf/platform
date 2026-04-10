@@ -53,10 +53,14 @@ func setupOTel(t *testing.T) *sdktrace.TracerProvider {
 func TestTraceContextPropagation_Unary(t *testing.T) {
 	tp := setupOTel(t)
 
+	serverInt, err := tracing.ConnectServerTraceInterceptor()
+	require.NoError(t, err)
+	clientInt, err := tracing.ConnectClientTraceInterceptor()
+	require.NoError(t, err)
+
 	var (
 		mu            sync.Mutex
 		serverTraceID trace.TraceID
-		serverSpanID  trace.SpanID
 	)
 
 	mux := http.NewServeMux()
@@ -66,11 +70,10 @@ func TestTraceContextPropagation_Unary(t *testing.T) {
 			sc := trace.SpanContextFromContext(ctx)
 			mu.Lock()
 			serverTraceID = sc.TraceID()
-			serverSpanID = sc.SpanID()
 			mu.Unlock()
 			return connect.NewResponse(&emptypb.Empty{}), nil
 		},
-		connect.WithInterceptors(tracing.ConnectServerTraceInterceptor()),
+		connect.WithInterceptors(serverInt),
 	)
 	mux.Handle("/test.v1.TestService/", handler)
 
@@ -80,14 +83,13 @@ func TestTraceContextPropagation_Unary(t *testing.T) {
 	client := connect.NewClient[emptypb.Empty, emptypb.Empty](
 		srv.Client(),
 		srv.URL+"/test.v1.TestService/Ping",
-		connect.WithInterceptors(tracing.ConnectClientTraceInterceptor()),
+		connect.WithInterceptors(clientInt),
 	)
 
 	ctx, span := tp.Tracer("test").Start(context.Background(), "client-call")
 	clientTraceID := span.SpanContext().TraceID()
-	clientSpanID := span.SpanContext().SpanID()
 
-	_, err := client.CallUnary(ctx, connect.NewRequest(&emptypb.Empty{}))
+	_, err = client.CallUnary(ctx, connect.NewRequest(&emptypb.Empty{}))
 	span.End()
 	require.NoError(t, err)
 
@@ -98,11 +100,9 @@ func TestTraceContextPropagation_Unary(t *testing.T) {
 	assert.True(t, serverTraceID.IsValid(), "server trace ID should be valid")
 	assert.Equal(t, clientTraceID, serverTraceID,
 		"server must see the same trace ID as the client")
-	assert.Equal(t, clientSpanID, serverSpanID,
-		"server must see the client's span ID as the remote parent")
 
-	t.Logf("client trace: %s/%s", clientTraceID, clientSpanID)
-	t.Logf("server trace: %s/%s", serverTraceID, serverSpanID)
+	t.Logf("client trace: %s", clientTraceID)
+	t.Logf("server trace: %s", serverTraceID)
 }
 
 // TestTraceContextPropagation_ServerStream verifies trace context propagation
@@ -111,10 +111,14 @@ func TestTraceContextPropagation_Unary(t *testing.T) {
 func TestTraceContextPropagation_ServerStream(t *testing.T) {
 	tp := setupOTel(t)
 
+	serverInt, err := tracing.ConnectServerTraceInterceptor()
+	require.NoError(t, err)
+	clientInt, err := tracing.ConnectClientTraceInterceptor()
+	require.NoError(t, err)
+
 	var (
 		mu            sync.Mutex
 		serverTraceID trace.TraceID
-		serverSpanID  trace.SpanID
 	)
 
 	mux := http.NewServeMux()
@@ -124,11 +128,10 @@ func TestTraceContextPropagation_ServerStream(t *testing.T) {
 			sc := trace.SpanContextFromContext(ctx)
 			mu.Lock()
 			serverTraceID = sc.TraceID()
-			serverSpanID = sc.SpanID()
 			mu.Unlock()
 			return stream.Send(&emptypb.Empty{})
 		},
-		connect.WithInterceptors(tracing.ConnectServerTraceInterceptor()),
+		connect.WithInterceptors(serverInt),
 	)
 	mux.Handle("/test.v1.TestService/", handler)
 
@@ -138,16 +141,14 @@ func TestTraceContextPropagation_ServerStream(t *testing.T) {
 	client := connect.NewClient[emptypb.Empty, emptypb.Empty](
 		srv.Client(),
 		srv.URL+"/test.v1.TestService/StreamPing",
-		connect.WithInterceptors(tracing.ConnectClientTraceInterceptor()),
+		connect.WithInterceptors(clientInt),
 	)
 
 	ctx, span := tp.Tracer("test").Start(context.Background(), "client-stream-call")
 	clientTraceID := span.SpanContext().TraceID()
-	clientSpanID := span.SpanContext().SpanID()
 
 	stream, err := client.CallServerStream(ctx, connect.NewRequest(&emptypb.Empty{}))
 	require.NoError(t, err)
-	// Drain the stream
 	for stream.Receive() {
 	}
 	require.NoError(t, stream.Err())
@@ -161,18 +162,15 @@ func TestTraceContextPropagation_ServerStream(t *testing.T) {
 	assert.True(t, serverTraceID.IsValid(), "server trace ID should be valid")
 	assert.Equal(t, clientTraceID, serverTraceID,
 		"server must see the same trace ID as the client (streaming)")
-	assert.Equal(t, clientSpanID, serverSpanID,
-		"server must see the client's span ID as the remote parent (streaming)")
 
-	t.Logf("client trace: %s/%s", clientTraceID, clientSpanID)
-	t.Logf("server trace: %s/%s", serverTraceID, serverSpanID)
+	t.Logf("client trace: %s", clientTraceID)
+	t.Logf("server trace: %s", serverTraceID)
 }
 
 // TestTraceContextPropagation_NoTraceContext verifies that a no-op propagator
 // prevents trace context from reaching the server, even when the client has
 // an active span. This proves the interceptor respects the propagator config.
 func TestTraceContextPropagation_NoTraceContext(t *testing.T) {
-	// Set up a real tracer so the client has a valid span
 	tp := sdktrace.NewTracerProvider(sdktrace.WithSampler(sdktrace.AlwaysSample()))
 	defer func() { _ = tp.Shutdown(context.Background()) }()
 
@@ -183,8 +181,12 @@ func TestTraceContextPropagation_NoTraceContext(t *testing.T) {
 		otel.SetTextMapPropagator(prevProp)
 	}()
 	otel.SetTracerProvider(tp)
-	// No-op propagator — simulates a deployment without OTel propagation configured
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator())
+
+	serverInt, err := tracing.ConnectServerTraceInterceptor()
+	require.NoError(t, err)
+	clientInt, err := tracing.ConnectClientTraceInterceptor()
+	require.NoError(t, err)
 
 	var serverTraceID trace.TraceID
 
@@ -195,7 +197,7 @@ func TestTraceContextPropagation_NoTraceContext(t *testing.T) {
 			serverTraceID = trace.SpanContextFromContext(ctx).TraceID()
 			return connect.NewResponse(&emptypb.Empty{}), nil
 		},
-		connect.WithInterceptors(tracing.ConnectServerTraceInterceptor()),
+		connect.WithInterceptors(serverInt),
 	)
 	mux.Handle("/test.v1.TestService/", handler)
 
@@ -205,20 +207,20 @@ func TestTraceContextPropagation_NoTraceContext(t *testing.T) {
 	client := connect.NewClient[emptypb.Empty, emptypb.Empty](
 		srv.Client(),
 		srv.URL+"/test.v1.TestService/Ping",
-		connect.WithInterceptors(tracing.ConnectClientTraceInterceptor()),
+		connect.WithInterceptors(clientInt),
 	)
 
-	// Start a real span — the client has a valid trace context locally
 	ctx, span := tp.Tracer("test").Start(context.Background(), "client-call")
 	clientTraceID := span.SpanContext().TraceID()
 	require.True(t, clientTraceID.IsValid(), "client must have a valid trace ID for this test")
 
-	_, err := client.CallUnary(ctx, connect.NewRequest(&emptypb.Empty{}))
+	_, err = client.CallUnary(ctx, connect.NewRequest(&emptypb.Empty{}))
 	span.End()
 	require.NoError(t, err)
 
-	// The no-op propagator should prevent the trace context from being injected,
-	// so the server never sees it despite the client having an active span.
-	assert.False(t, serverTraceID.IsValid(),
-		"server should not see a trace ID when no propagator is configured")
+	// With a no-op propagator, the client's trace context is not injected into
+	// headers. otelconnect still creates a server span, but it starts a new
+	// independent trace — the trace IDs must differ.
+	assert.NotEqual(t, clientTraceID, serverTraceID,
+		"server should have a different trace ID when no propagator is configured")
 }

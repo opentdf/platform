@@ -388,8 +388,12 @@ func setupERSConnection(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, 
 	}
 	ersConnectRPCConn.Endpoint = cfg.SDKConfig.EntityResolutionConnection.Endpoint
 
-	// Propagate OTel trace context on outbound ERS Connect RPCs
-	ersConnectRPCConn.Options = append(ersConnectRPCConn.Options, connect.WithInterceptors(tracing.ConnectClientTraceInterceptor()))
+	// OTel tracing and metrics for outbound ERS Connect RPCs
+	ersTraceInt, err := tracing.ConnectClientTraceInterceptor()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ERS trace interceptor: %w", err)
+	}
+	ersConnectRPCConn.Options = append(ersConnectRPCConn.Options, connect.WithInterceptors(ersTraceInt))
 
 	logger.Info("added with custom ers connection", slog.String("ers_connection_endpoint", ersConnectRPCConn.Endpoint))
 	return ersConnectRPCConn, nil

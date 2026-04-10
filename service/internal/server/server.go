@@ -523,8 +523,12 @@ func pprofHandler(h http.Handler) http.Handler {
 func newConnectRPC(c Config, authInt connect.Interceptor, ints []connect.Interceptor, logger *logger.Logger) (*ConnectRPC, error) {
 	interceptors := make([]connect.HandlerOption, 0)
 
-	// Extract OTel trace context from incoming Connect requests before all other interceptors
-	interceptors = append(interceptors, connect.WithInterceptors(tracing.ConnectServerTraceInterceptor()))
+	// OTel tracing and metrics for incoming Connect requests, before all other interceptors
+	serverTraceInt, err := tracing.ConnectServerTraceInterceptor()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create server trace interceptor: %w", err)
+	}
+	interceptors = append(interceptors, connect.WithInterceptors(serverTraceInt))
 
 	if c.Auth.Enabled {
 		if authInt == nil {
@@ -600,8 +604,12 @@ func (s OpenTDFServer) Stop() {
 func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
 	var clientInterceptors []connect.Interceptor
 
-	// Propagate OTel trace context on outbound IPC Connect RPCs
-	clientInterceptors = append(clientInterceptors, tracing.ConnectClientTraceInterceptor())
+	// OTel tracing and metrics for outbound IPC Connect RPCs
+	if clientTraceInt, err := tracing.ConnectClientTraceInterceptor(); err != nil {
+		s.logger.Error("failed to create IPC client trace interceptor", slog.String("error", err.Error()))
+	} else {
+		clientInterceptors = append(clientInterceptors, clientTraceInt)
+	}
 
 	// Add audit interceptor
 	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingConnectInterceptor())

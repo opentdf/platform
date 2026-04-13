@@ -22,7 +22,7 @@ const (
 	sortFieldCreatedAt = "created_at"
 	sortFieldUpdatedAt = "updated_at"
 	sortFieldName      = "name"
-	SortFieldFQN       = "fqn"
+	sortFieldFQN       = "fqn"
 )
 
 // Gathers request pagination limit/offset or configured default
@@ -117,7 +117,7 @@ func GetObligationsSortParams(sort []*obligations.ObligationsSort) (string, stri
 	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_NAME:
 		field = sortFieldName
 	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_FQN:
-		field = SortFieldFQN
+		field = sortFieldFQN
 	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT:
 		field = sortFieldCreatedAt
 	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UPDATED_AT:

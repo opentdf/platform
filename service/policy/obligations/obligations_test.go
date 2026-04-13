@@ -1247,7 +1247,7 @@ func Test_ListObligationTriggers_Request(t *testing.T) {
 	}
 }
 
-func Test_ListObligationRequest_Sort(t *testing.T) {
+func Test_ListObligationsRequest_Sort(t *testing.T) {
 	v := getValidator()
 
 	// no sort (valid)

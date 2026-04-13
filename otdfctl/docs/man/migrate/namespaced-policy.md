@@ -16,13 +16,15 @@ command:
 
 `namespaced-policy` is the migration entrypoint for moving legacy policy objects into namespaced policy.
 
-The command surface is present, but the migration workflow is not implemented yet.
+Dry-run planning is implemented. The command writes the executable migration plan JSON to `--output`.
 
 `--scope` is required and selects any subset of `actions`, `subject-condition-sets`, `subject-mappings`, `registered-resources`, and `obligation-triggers`.
 
-`--output` is required and specifies where the migration manifest JSON artifact is written. Dry-run is expected to write the planned artifact, and `--commit` is expected to rewrite the same file with target IDs after successful execution.
+`--output` is required and specifies where the plan JSON is written.
 
 The parent `migrate` command provides the shared `--commit` and `--interactive` flags.
+
+`--commit` is not implemented yet for `namespaced-policy`. The current workflow is dry-run only.
 
 `namespaced-policy` is intended to be non-destructive. Commit should create namespaced copies and record migration metadata, but it should not delete legacy objects. Cleanup belongs to `migrate prune`.
 

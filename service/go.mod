@@ -16,7 +16,6 @@ require (
 	github.com/casbin/casbin/v2 v2.108.0
 	github.com/creasty/defaults v1.8.0
 	github.com/dgraph-io/ristretto/v2 v2.4.0
-	github.com/docker/go-connections v0.6.0
 	github.com/eko/gocache/lib/v4 v4.2.0
 	github.com/eko/gocache/store/ristretto/v4 v4.3.2
 	github.com/fsnotify/fsnotify v1.9.0
@@ -58,6 +57,7 @@ require (
 )
 
 require (
+	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/moby/moby/api v1.54.1 // indirect
 	github.com/moby/moby/client v0.4.0 // indirect
 )

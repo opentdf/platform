@@ -1522,16 +1522,28 @@ WHERE
     ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
     ($2::text IS NULL OR fqns.fqn = $2::text)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
-ORDER BY od.created_at DESC
-LIMIT $4
-OFFSET $3
+ORDER BY
+    CASE WHEN $3::text = 'name' AND $4::text = 'ASC' THEN od.name END ASC,
+    CASE WHEN $3::text = 'name' AND $4::text = 'DESC' THEN od.name END DESC,
+    CASE WHEN $3::text = 'fqn' AND $4::text = 'ASC' THEN fqns.fqn || '/obl/' || LOWER(od.name) END ASC,
+    CASE WHEN $3::text = 'fqn' AND $4::text = 'DESC' THEN fqns.fqn || '/obl/' || LOWER(od.name) END DESC,
+    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN od.created_at END ASC,
+    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN od.created_at END DESC,
+    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN od.updated_at END ASC,
+    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN od.updated_at END DESC,
+    od.created_at DESC,
+    od.id ASC
+LIMIT $6
+OFFSET $5
 `
 
 type listObligationsParams struct {
-	NamespaceID  pgtype.UUID `json:"namespace_id"`
-	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
-	Offset       int32       `json:"offset_"`
-	Limit        int32       `json:"limit_"`
+	NamespaceID   pgtype.UUID `json:"namespace_id"`
+	NamespaceFqn  pgtype.Text `json:"namespace_fqn"`
+	SortField     string      `json:"sort_field"`
+	SortDirection string      `json:"sort_direction"`
+	Offset        int32       `json:"offset_"`
+	Limit         int32       `json:"limit_"`
 }
 
 type listObligationsRow struct {
@@ -1614,13 +1626,25 @@ type listObligationsRow struct {
 //	    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
 //	    ($2::text IS NULL OR fqns.fqn = $2::text)
 //	GROUP BY od.id, n.id, fqns.fqn, counted.total
-//	ORDER BY od.created_at DESC
-//	LIMIT $4
-//	OFFSET $3
+//	ORDER BY
+//	    CASE WHEN $3::text = 'name' AND $4::text = 'ASC' THEN od.name END ASC,
+//	    CASE WHEN $3::text = 'name' AND $4::text = 'DESC' THEN od.name END DESC,
+//	    CASE WHEN $3::text = 'fqn' AND $4::text = 'ASC' THEN fqns.fqn || '/obl/' || LOWER(od.name) END ASC,
+//	    CASE WHEN $3::text = 'fqn' AND $4::text = 'DESC' THEN fqns.fqn || '/obl/' || LOWER(od.name) END DESC,
+//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN od.created_at END ASC,
+//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN od.created_at END DESC,
+//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN od.updated_at END ASC,
+//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN od.updated_at END DESC,
+//	    od.created_at DESC,
+//	    od.id ASC
+//	LIMIT $6
+//	OFFSET $5
 func (q *Queries) listObligations(ctx context.Context, arg listObligationsParams) ([]listObligationsRow, error) {
 	rows, err := q.db.Query(ctx, listObligations,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
+		arg.SortField,
+		arg.SortDirection,
 		arg.Offset,
 		arg.Limit,
 	)

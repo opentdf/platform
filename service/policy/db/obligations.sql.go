@@ -1531,8 +1531,7 @@ ORDER BY
     CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN od.created_at END DESC,
     CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN od.updated_at END ASC,
     CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN od.updated_at END DESC,
-    od.created_at DESC,
-    od.id ASC
+    od.created_at DESC
 LIMIT $6
 OFFSET $5
 `
@@ -1635,8 +1634,7 @@ type listObligationsRow struct {
 //	    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN od.created_at END DESC,
 //	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN od.updated_at END ASC,
 //	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN od.updated_at END DESC,
-//	    od.created_at DESC,
-//	    od.id ASC
+//	    od.created_at DESC
 //	LIMIT $6
 //	OFFSET $5
 func (q *Queries) listObligations(ctx context.Context, arg listObligationsParams) ([]listObligationsRow, error) {

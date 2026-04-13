@@ -111,8 +111,8 @@ runs:
         set -e
         allowed_algorithms=(ec:secp256r1 rsa:2048)
         if echo $PLATFORM_VERSION | awk -F. '{ if ($1 > 0 || ($1 == 0 && $2 > 7) || ($1 == 0 && $2 == 7 && $3 >= 1)) exit 0; else exit 1; }'; then
-          # For versions 0.7.1 and later, we allow rsa:4096 ec:secp384r1 ec:secp521r1 
-          allowed_algorithms+=(rsa:4096 ec:secp384r1 ec:secp521r1)
+          # For versions 0.7.1 and later, we allow rsa:4096 ec:secp384r1 ec:secp521r1
+          allowed_algorithms+=(rsa:4096 ec:secp384r1 ec:secp521r1 hpqt:xwing hpqt:secp256r1-mlkem768 hpqt:secp384r1-mlkem1024)
         fi
         keyring='[{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}]'
         keys='[{"kid":"e1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}]'

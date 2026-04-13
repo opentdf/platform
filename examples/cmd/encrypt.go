@@ -93,13 +93,24 @@ func encrypt(cmd *cobra.Command, args []string) error {
 }
 
 func keyTypeForKeyType(alg string) (ocrypto.KeyType, error) {
-	switch alg {
-	case string(ocrypto.RSA2048Key):
+	switch ocrypto.KeyType(alg) {
+	case ocrypto.RSA2048Key:
 		return ocrypto.RSA2048Key, nil
-	case string(ocrypto.EC256Key):
+	case ocrypto.RSA4096Key:
+		return ocrypto.RSA4096Key, nil
+	case ocrypto.EC256Key:
 		return ocrypto.EC256Key, nil
+	case ocrypto.EC384Key:
+		return ocrypto.EC384Key, nil
+	case ocrypto.EC521Key:
+		return ocrypto.EC521Key, nil
+	case ocrypto.HybridXWingKey:
+		return ocrypto.HybridXWingKey, nil
+	case ocrypto.HybridSecp256r1MLKEM768Key:
+		return ocrypto.HybridSecp256r1MLKEM768Key, nil
+	case ocrypto.HybridSecp384r1MLKEM1024Key:
+		return ocrypto.HybridSecp384r1MLKEM1024Key, nil
 	default:
-		// do not submit add ocrypto.UnknownKey
 		return ocrypto.RSA2048Key, fmt.Errorf("unsupported key type [%s]", alg)
 	}
 }

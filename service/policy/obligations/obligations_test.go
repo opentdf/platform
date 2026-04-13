@@ -1246,3 +1246,39 @@ func Test_ListObligationTriggers_Request(t *testing.T) {
 		})
 	}
 }
+
+func Test_ListObligationRequest_Sort(t *testing.T) {
+	v := getValidator()
+
+	// no sort (valid)
+	req := &obligations.ListObligationsRequest{}
+	require.NoError(t, v.Validate(req))
+
+	// one sorted item (valid)
+	req = &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{
+				Field:     obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+		},
+	}
+	require.NoError(t, v.Validate(req))
+
+	// two items sorted (invalid, exceeds max_items = 1)
+	req = &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{
+				Field:     obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+			{
+				Field:     obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_NAME,
+				Direction: policy.SortDirection_SORT_DIRECTION_DESC,
+			},
+		},
+	}
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "sort")
+}

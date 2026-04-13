@@ -95,7 +95,7 @@ func (l *EnvironmentValueLoader) Load(_ Config) error {
 }
 
 // Watch starts watching the config file for configuration changes
-func (l *EnvironmentValueLoader) Watch(_ context.Context, _ *Config, _ func(context.Context) error) error {
+func (l *EnvironmentValueLoader) Watch(_ context.Context, _ *Config, _ func(context.Context) error, _ []NamespaceInfo) error {
 	// Environment variables can't be watched.
 	return nil
 }

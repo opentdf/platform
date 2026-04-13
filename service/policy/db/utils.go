@@ -22,7 +22,8 @@ const (
 	sortFieldName      = "name"
 	sortFieldCreatedAt = "created_at"
 	sortFieldUpdatedAt = "updated_at"
-	sortFieldUri       = "uri"
+	sortFieldFQN       = "fqn"
+	sortFieldURI       = "uri"
 )
 
 // Gathers request pagination limit/offset or configured default
@@ -63,7 +64,7 @@ func GetNamespacesSortParams(sort []*namespaces.NamespacesSort) (string, string)
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME:
 		field = sortFieldName
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN:
-		field = "fqn"
+		field = sortFieldFQN
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT:
 		field = sortFieldCreatedAt
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UPDATED_AT:
@@ -401,7 +402,7 @@ func GetKeyAccessServersSortParams(sort []*kasregistry.KeyAccessServersSort) (st
 	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_NAME:
 		field = sortFieldName
 	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_URI:
-		field = sortFieldUri
+		field = sortFieldURI
 	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT:
 		field = sortFieldCreatedAt
 	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UPDATED_AT:

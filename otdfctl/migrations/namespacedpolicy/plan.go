@@ -48,6 +48,13 @@ const (
 	TargetStatusUnresolved       TargetStatus = "unresolved"
 )
 
+type ExecutionResult struct {
+	RunID           string `json:"run_id,omitempty"`
+	Applied         bool   `json:"applied,omitempty"`
+	CreatedTargetID string `json:"created_target_id,omitempty"`
+	Failure         string `json:"failure,omitempty"`
+}
+
 type ActionPlan struct {
 	Source *policy.Action `json:"source"`
 	// TODO: Add analogous reference metadata for other policy object plan types
@@ -76,6 +83,7 @@ type ActionTargetPlan struct {
 	Namespace *policy.Namespace `json:"namespace"`
 	Status    TargetStatus      `json:"status"`
 	Existing  *policy.Action    `json:"existing,omitempty"`
+	Execution *ExecutionResult  `json:"execution,omitempty"`
 	Reason    string            `json:"reason,omitempty"`
 }
 
@@ -300,7 +308,13 @@ func sameNamespace(left, right *policy.Namespace) bool {
 }
 
 func (t *ActionTargetPlan) TargetID() string {
-	if t == nil || t.Existing == nil {
+	if t == nil {
+		return ""
+	}
+	if t.Execution != nil && t.Execution.CreatedTargetID != "" {
+		return t.Execution.CreatedTargetID
+	}
+	if t.Existing == nil {
 		return ""
 	}
 	return t.Existing.GetId()

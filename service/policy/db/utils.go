@@ -20,6 +20,8 @@ import (
 const (
 	sortFieldCreatedAt = "created_at"
 	sortFieldUpdatedAt = "updated_at"
+	sortFieldName      = "name"
+	SortFieldFQN       = "fqn"
 )
 
 // Gathers request pagination limit/offset or configured default

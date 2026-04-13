@@ -108,7 +108,10 @@ LEFT JOIN LATERAL (
         JSON_BUILD_OBJECT(
             'action', JSON_BUILD_OBJECT(
                 'id', a.id,
-                'name', a.name
+                'name', a.name,
+                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                    ELSE JSON_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+                END
             ),
             'attribute_value', JSON_BUILD_OBJECT(
                 'id', av.id,
@@ -120,6 +123,8 @@ LEFT JOIN LATERAL (
     -- Join to get all action-attribute relationships for this resource value
     FROM registered_resource_action_attribute_values rav
     LEFT JOIN actions a on rav.action_id = a.id
+    LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
+    LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
     LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
     LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
     -- Correlate to the outer query's resource value

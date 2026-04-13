@@ -197,7 +197,6 @@ ORDER BY
     CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN od.updated_at END ASC,
     CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN od.updated_at END DESC,
     od.created_at DESC,
-    od.id ASC
 LIMIT @limit_
 OFFSET @offset_;
 

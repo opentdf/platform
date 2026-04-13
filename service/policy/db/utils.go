@@ -22,6 +22,7 @@ const (
 	sortFieldName      = "name"
 	sortFieldCreatedAt = "created_at"
 	sortFieldUpdatedAt = "updated_at"
+	sortFieldUri       = "uri"
 )
 
 // Gathers request pagination limit/offset or configured default
@@ -400,7 +401,7 @@ func GetKeyAccessServersSortParams(sort []*kasregistry.KeyAccessServersSort) (st
 	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_NAME:
 		field = sortFieldName
 	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_URI:
-		field = "uri"
+		field = sortFieldUri
 	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT:
 		field = sortFieldCreatedAt
 	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UPDATED_AT:

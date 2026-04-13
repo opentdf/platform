@@ -133,7 +133,11 @@ func (p *Planner) retrieve(ctx context.Context) (*Retrieved, error) {
 		return nil, err
 	}
 
-	retrieved = reduceDependencies(retrieved, p.requestedScopes)
+	reduceDependencies(retrieved, p.requestedScopes)
+	// Keep retrieval/reduction keyed off requestedScopes so "actions" does not
+	// implicitly pull in reverse-lookup scopes like registered resources or
+	// obligation triggers. The retrieved artifact still records expandedScopes to
+	// reflect the full dependency closure used by later planner stages.
 	retrieved.Scopes = p.expandedScopes.ordered()
 
 	return retrieved, nil

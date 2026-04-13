@@ -7,29 +7,26 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCanonicalObligationTriggerIncludesContext(t *testing.T) {
+func TestSortByJSONOrdersItemsByEncodedKey(t *testing.T) {
 	t.Parallel()
 
-	base := &policy.ObligationTrigger{
-		Action:         &policy.Action{Id: "action-1", Name: "decrypt"},
-		AttributeValue: &policy.Value{Id: "value-1", Fqn: "https://attr.example.com/value/secret"},
-		ObligationValue: &policy.ObligationValue{
-			Id:  "ov-1",
-			Fqn: "https://obligation.example.com/value/notify",
-		},
+	items := []struct {
+		Name string `json:"name"`
+	}{
+		{Name: "b"},
+		{Name: "c"},
+		{Name: "a"},
 	}
 
-	left := protoCloneTrigger(base)
-	left.Context = []*policy.RequestContext{
-		{Pep: &policy.PolicyEnforcementPoint{ClientId: "ingress-client"}},
-	}
+	sortByJSON(items)
 
-	right := protoCloneTrigger(base)
-	right.Context = []*policy.RequestContext{
-		{Pep: &policy.PolicyEnforcementPoint{ClientId: "egress-client"}},
-	}
-
-	assert.NotEqual(t, canonicalObligationTrigger(left), canonicalObligationTrigger(right))
+	assert.Equal(t, []struct {
+		Name string `json:"name"`
+	}{
+		{Name: "a"},
+		{Name: "b"},
+		{Name: "c"},
+	}, items)
 }
 
 func TestCanonicalRegisteredResourceIgnoresValueAndBindingOrder(t *testing.T) {
@@ -255,6 +252,31 @@ func TestCanonicalObligationTriggerContextReturnsEmptyForNilOrEmpty(t *testing.T
 	assert.Empty(t, canonicalObligationTriggerContext(nil))
 	assert.Empty(t, canonicalObligationTriggerContext([]*policy.RequestContext{}))
 	assert.Empty(t, canonicalObligationTriggerContext([]*policy.RequestContext{nil}))
+}
+
+func TestCanonicalObligationTriggerIncludesContext(t *testing.T) {
+	t.Parallel()
+
+	base := &policy.ObligationTrigger{
+		Action:         &policy.Action{Id: "action-1", Name: "decrypt"},
+		AttributeValue: &policy.Value{Id: "value-1", Fqn: "https://attr.example.com/value/secret"},
+		ObligationValue: &policy.ObligationValue{
+			Id:  "ov-1",
+			Fqn: "https://obligation.example.com/value/notify",
+		},
+	}
+
+	left := protoCloneTrigger(base)
+	left.Context = []*policy.RequestContext{
+		{Pep: &policy.PolicyEnforcementPoint{ClientId: "ingress-client"}},
+	}
+
+	right := protoCloneTrigger(base)
+	right.Context = []*policy.RequestContext{
+		{Pep: &policy.PolicyEnforcementPoint{ClientId: "egress-client"}},
+	}
+
+	assert.NotEqual(t, canonicalObligationTrigger(left), canonicalObligationTrigger(right))
 }
 
 func protoCloneTrigger(trigger *policy.ObligationTrigger) *policy.ObligationTrigger {

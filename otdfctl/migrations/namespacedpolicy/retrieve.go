@@ -182,9 +182,10 @@ func (r *Retriever) retrieveSubjectMappings(ctx context.Context) ([]*policy.Subj
 		}
 
 		for _, mapping := range items {
-			if isLegacyNamespace(mapping.GetNamespace()) {
-				candidates = append(candidates, mapping)
+			if mapping.GetId() == "" || !isLegacyNamespace(mapping.GetNamespace()) || hasObject(candidates, mapping.GetId()) {
+				continue
 			}
+			candidates = append(candidates, mapping)
 		}
 
 		nextOffset, err := nextOffsetFromPage(resp)
@@ -255,7 +256,7 @@ func (r *Retriever) retrieveRegisteredResources(ctx context.Context) ([]*policy.
 		}
 
 		for _, resource := range items {
-			if !isLegacyNamespace(resource.GetNamespace()) {
+			if resource.GetId() == "" || !isLegacyNamespace(resource.GetNamespace()) || hasObject(candidates, resource.GetId()) {
 				continue
 			}
 			candidates = append(candidates, resource)
@@ -343,9 +344,10 @@ func (r *Retriever) retrieveObligationTriggers(ctx context.Context) ([]*policy.O
 		}
 
 		for _, trigger := range items {
-			if trigger.GetAction() != nil && isLegacyNamespace(trigger.GetAction().GetNamespace()) {
-				candidates = append(candidates, trigger)
+			if trigger.GetId() == "" || trigger.GetAction() == nil || !isLegacyNamespace(trigger.GetAction().GetNamespace()) || hasObject(candidates, trigger.GetId()) {
+				continue
 			}
+			candidates = append(candidates, trigger)
 		}
 
 		nextOffset, err := nextOffsetFromPage(resp)

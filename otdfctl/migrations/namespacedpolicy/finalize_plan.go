@@ -112,7 +112,7 @@ func (f *planFinalizer) build() *Plan {
 		plan.Unresolved = &f.unresolved
 	}
 
-	return orderPlan(plan, f.namespaces)
+	return plan
 }
 
 func (f *planFinalizer) addResolvedAction(item *ResolvedAction) {
@@ -470,6 +470,8 @@ func (f *planFinalizer) addActionIssue(action *policy.Action, namespace *policy.
 	if action == nil || reason == "" {
 		return
 	}
+	// TODO: Replace this linear dedupe scan with a set if unresolved issue counts
+	// grow enough for this path to matter.
 	for _, issue := range f.unresolved.Actions {
 		if issue != nil && issue.Source != nil && issue.Source.GetId() == action.GetId() && sameNamespace(issue.Namespace, namespace) && issue.Reason == reason {
 			return

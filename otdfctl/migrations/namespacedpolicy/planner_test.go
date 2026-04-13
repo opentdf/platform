@@ -82,93 +82,6 @@ func TestPlannerPlanMarksActionAlreadyMigratedWithoutMetadata(t *testing.T) {
 	assert.Equal(t, []string{""}, handler.subjectMappingCalls)
 }
 
-func TestFinalizePlanAppliesOrderingAtBuildTime(t *testing.T) {
-	t.Parallel()
-
-	namespaceA := &policy.Namespace{
-		Id:  "ns-a",
-		Fqn: "https://example.com/a",
-	}
-	namespaceB := &policy.Namespace{
-		Id:  "ns-b",
-		Fqn: "https://example.com/b",
-	}
-
-	resolved := &ResolvedTargets{
-		Scopes: []Scope{ScopeActions, ScopeSubjectConditionSets},
-		Actions: []*ResolvedAction{
-			{
-				Source: &policy.Action{Id: "action-b", Name: "beta"},
-				References: []*ActionReference{
-					{Kind: ActionReferenceKindSubjectMapping, ID: "mapping-b", Namespace: namespaceB},
-					{Kind: ActionReferenceKindRegisteredResource, ID: "resource-a", Namespace: namespaceA},
-					{Kind: ActionReferenceKindSubjectMapping, ID: "mapping-a", Namespace: namespaceA},
-				},
-				Results: []*ResolvedActionResult{
-					{Namespace: namespaceB, NeedsCreate: true},
-					{Namespace: namespaceA, NeedsCreate: true},
-				},
-			},
-			{
-				Source: &policy.Action{Id: "action-a", Name: "alpha"},
-				Results: []*ResolvedActionResult{
-					{Namespace: namespaceB, NeedsCreate: true},
-				},
-			},
-		},
-		SubjectConditionSets: []*ResolvedSubjectConditionSet{
-			{
-				Source: &policy.SubjectConditionSet{Id: "scs-b"},
-				Results: []*ResolvedSubjectConditionSetResult{
-					{Namespace: namespaceB, NeedsCreate: true},
-					{Namespace: namespaceA, NeedsCreate: true},
-				},
-			},
-			{
-				Source: &policy.SubjectConditionSet{Id: "scs-a"},
-				Results: []*ResolvedSubjectConditionSetResult{
-					{Namespace: namespaceB, NeedsCreate: true},
-				},
-			},
-		},
-	}
-
-	plan, err := finalizePlan(resolved, []*policy.Namespace{namespaceA, namespaceB})
-	require.NoError(t, err)
-
-	require.Len(t, plan.Actions, 2)
-	assert.Equal(t, "action-a", plan.Actions[0].Source.GetId())
-	assert.Equal(t, "action-b", plan.Actions[1].Source.GetId())
-
-	require.Len(t, plan.Actions[1].Targets, 2)
-	assert.Equal(t, namespaceA.GetId(), plan.Actions[1].Targets[0].Namespace.GetId())
-	assert.Equal(t, namespaceB.GetId(), plan.Actions[1].Targets[1].Namespace.GetId())
-
-	require.Len(t, plan.Actions[1].References, 3)
-	assert.Equal(t, ActionReferenceKindRegisteredResource, plan.Actions[1].References[0].Kind)
-	assert.Equal(t, "resource-a", plan.Actions[1].References[0].ID)
-	assert.Equal(t, ActionReferenceKindSubjectMapping, plan.Actions[1].References[1].Kind)
-	assert.Equal(t, "mapping-a", plan.Actions[1].References[1].ID)
-	assert.Equal(t, ActionReferenceKindSubjectMapping, plan.Actions[1].References[2].Kind)
-	assert.Equal(t, "mapping-b", plan.Actions[1].References[2].ID)
-
-	require.Len(t, plan.SubjectConditionSets, 2)
-	assert.Equal(t, "scs-a", plan.SubjectConditionSets[0].Source.GetId())
-	assert.Equal(t, "scs-b", plan.SubjectConditionSets[1].Source.GetId())
-
-	require.Len(t, plan.SubjectConditionSets[1].Targets, 2)
-	assert.Equal(t, namespaceA.GetId(), plan.SubjectConditionSets[1].Targets[0].Namespace.GetId())
-	assert.Equal(t, namespaceB.GetId(), plan.SubjectConditionSets[1].Targets[1].Namespace.GetId())
-
-	require.Len(t, plan.Namespaces, 2)
-	assert.Equal(t, namespaceA.GetId(), plan.Namespaces[0].Namespace.GetId())
-	assert.Equal(t, []string{"action-b"}, plan.Namespaces[0].Actions)
-	assert.Equal(t, []string{"scs-b"}, plan.Namespaces[0].SubjectConditionSets)
-	assert.Equal(t, namespaceB.GetId(), plan.Namespaces[1].Namespace.GetId())
-	assert.Equal(t, []string{"action-a", "action-b"}, plan.Namespaces[1].Actions)
-	assert.Equal(t, []string{"scs-a", "scs-b"}, plan.Namespaces[1].SubjectConditionSets)
-}
-
 func TestPlannerPlanDoesNotLeakSupportSubjectMappingsIntoActionScope(t *testing.T) {
 	t.Parallel()
 
@@ -298,6 +211,339 @@ func TestPlannerPlanDoesNotLeakSupportSubjectMappingsIntoActionScope(t *testing.
 	assert.Equal(t, legacySCS.GetId(), plan.SubjectConditionSets[0].Source.GetId())
 	assert.Equal(t, []string{"", targetNamespace.GetId()}, handler.actionCalls)
 	assert.Equal(t, []string{""}, handler.subjectMappingCalls)
+}
+
+func TestPlannerRetrieveUsesRequestedScopeBoundaries(t *testing.T) {
+	t.Parallel()
+
+	targetNamespace := &policy.Namespace{
+		Id:  "ns-1",
+		Fqn: "https://example.com",
+	}
+	legacyAction := &policy.Action{
+		Id:   "action-1",
+		Name: "decrypt",
+	}
+	legacySCS := &policy.SubjectConditionSet{
+		Id: "scs-1",
+	}
+	legacyMapping := &policy.SubjectMapping{
+		Id: "mapping-1",
+		AttributeValue: testAttributeValue(
+			"https://example.com/attr/classification/value/secret",
+			targetNamespace,
+		),
+		SubjectConditionSet: &policy.SubjectConditionSet{
+			Id: legacySCS.GetId(),
+		},
+		Actions: []*policy.Action{
+			{
+				Id:   legacyAction.GetId(),
+				Name: legacyAction.GetName(),
+			},
+		},
+	}
+	legacyResource := testRegisteredResource(
+		"resource-1",
+		"documents",
+		testRegisteredResourceValue(
+			"prod",
+			testActionAttributeValue(
+				legacyAction.GetId(),
+				legacyAction.GetName(),
+				testAttributeValue("https://example.com/attr/classification/value/secret", targetNamespace),
+			),
+		),
+	)
+	legacyTrigger := &policy.ObligationTrigger{
+		Id:     "trigger-1",
+		Action: &policy.Action{Id: legacyAction.GetId(), Name: legacyAction.GetName()},
+		ObligationValue: &policy.ObligationValue{
+			Id:  "ov-1",
+			Fqn: "https://example.com/obl/notify/value/email",
+			Obligation: &policy.Obligation{
+				Namespace: targetNamespace,
+			},
+		},
+	}
+
+	tests := []struct {
+		name                           string
+		scopeCSV                       string
+		expectedScopes                 []Scope
+		expectedActionCalls            []string
+		expectedSubjectConditionCalls  []string
+		expectedSubjectMappingCalls    []string
+		expectedRegisteredResourceCall []string
+		expectedObligationCalls        []string
+		expectedCandidateCounts        Candidates
+	}{
+		{
+			name:           "subject mappings pull dependencies without reverse lookup scopes",
+			scopeCSV:       "subject-mappings",
+			expectedScopes: []Scope{ScopeActions, ScopeSubjectConditionSets, ScopeSubjectMappings},
+			expectedActionCalls: []string{
+				"",
+			},
+			expectedSubjectConditionCalls: []string{
+				"",
+			},
+			expectedSubjectMappingCalls: []string{
+				"",
+			},
+			expectedCandidateCounts: Candidates{
+				Actions:              []*policy.Action{legacyAction},
+				SubjectConditionSets: []*policy.SubjectConditionSet{legacySCS},
+				SubjectMappings:      []*policy.SubjectMapping{legacyMapping},
+			},
+		},
+		{
+			name:           "actions pull reverse lookup scopes without expanding artifact scopes",
+			scopeCSV:       "actions",
+			expectedScopes: []Scope{ScopeActions},
+			expectedActionCalls: []string{
+				"",
+			},
+			expectedSubjectMappingCalls: []string{
+				"",
+			},
+			expectedRegisteredResourceCall: []string{
+				"",
+			},
+			expectedObligationCalls: []string{
+				"",
+			},
+			expectedCandidateCounts: Candidates{
+				Actions:             []*policy.Action{legacyAction},
+				SubjectMappings:     []*policy.SubjectMapping{legacyMapping},
+				RegisteredResources: []*policy.RegisteredResource{legacyResource},
+				ObligationTriggers:  []*policy.ObligationTrigger{legacyTrigger},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			handler := &plannerTestHandler{
+				actionsByNamespace: map[string]*actions.ListActionsResponse{
+					"": {
+						ActionsCustom: []*policy.Action{legacyAction},
+						Pagination:    emptyPageResponse(),
+					},
+				},
+				subjectConditionSetsByNamespace: map[string]*subjectmapping.ListSubjectConditionSetsResponse{
+					"": {
+						SubjectConditionSets: []*policy.SubjectConditionSet{legacySCS},
+						Pagination:           emptyPageResponse(),
+					},
+				},
+				subjectMappingsByNamespace: map[string]*subjectmapping.ListSubjectMappingsResponse{
+					"": {
+						SubjectMappings: []*policy.SubjectMapping{legacyMapping},
+						Pagination:      emptyPageResponse(),
+					},
+				},
+				registeredResourcesByNamespace: map[string]*registeredresources.ListRegisteredResourcesResponse{
+					"": {
+						Resources:  []*policy.RegisteredResource{legacyResource},
+						Pagination: emptyPageResponse(),
+					},
+				},
+				obligationTriggersByNamespace: map[string]*obligations.ListObligationTriggersResponse{
+					"": {
+						Triggers:   []*policy.ObligationTrigger{legacyTrigger},
+						Pagination: emptyPageResponse(),
+					},
+				},
+			}
+
+			planner, err := NewPlanner(handler, tt.scopeCSV)
+			require.NoError(t, err)
+
+			retrieved, err := planner.retrieve(context.Background())
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.expectedScopes, retrieved.Scopes)
+			assert.Equal(t, tt.expectedActionCalls, handler.actionCalls)
+			assert.Equal(t, tt.expectedSubjectConditionCalls, handler.subjectConditionSetCalls)
+			assert.Equal(t, tt.expectedSubjectMappingCalls, handler.subjectMappingCalls)
+			assert.Equal(t, tt.expectedRegisteredResourceCall, handler.registeredResourceCalls)
+			assert.Equal(t, tt.expectedObligationCalls, handler.obligationTriggerCalls)
+			assert.Len(t, retrieved.Candidates.Actions, len(tt.expectedCandidateCounts.Actions))
+			assert.Len(t, retrieved.Candidates.SubjectConditionSets, len(tt.expectedCandidateCounts.SubjectConditionSets))
+			assert.Len(t, retrieved.Candidates.SubjectMappings, len(tt.expectedCandidateCounts.SubjectMappings))
+			assert.Len(t, retrieved.Candidates.RegisteredResources, len(tt.expectedCandidateCounts.RegisteredResources))
+			assert.Len(t, retrieved.Candidates.ObligationTriggers, len(tt.expectedCandidateCounts.ObligationTriggers))
+		})
+	}
+}
+
+func TestPlannerPlanAllScopesBuildsAllPlanSections(t *testing.T) {
+	t.Parallel()
+
+	targetNamespace := &policy.Namespace{
+		Id:  "ns-1",
+		Fqn: "https://example.com",
+	}
+	legacyAction := &policy.Action{
+		Id:   "action-1",
+		Name: "decrypt",
+	}
+	legacySCS := &policy.SubjectConditionSet{
+		Id: "scs-1",
+	}
+	legacyMapping := &policy.SubjectMapping{
+		Id: "mapping-1",
+		AttributeValue: testAttributeValue(
+			"https://example.com/attr/classification/value/secret",
+			targetNamespace,
+		),
+		SubjectConditionSet: &policy.SubjectConditionSet{
+			Id: legacySCS.GetId(),
+		},
+		Actions: []*policy.Action{
+			{
+				Id:   legacyAction.GetId(),
+				Name: legacyAction.GetName(),
+			},
+		},
+	}
+	legacyResource := testRegisteredResource(
+		"resource-1",
+		"documents",
+		testRegisteredResourceValue(
+			"prod",
+			testActionAttributeValue(
+				legacyAction.GetId(),
+				legacyAction.GetName(),
+				testAttributeValue("https://example.com/attr/classification/value/secret", targetNamespace),
+			),
+		),
+	)
+	legacyTrigger := &policy.ObligationTrigger{
+		Id:     "trigger-1",
+		Action: &policy.Action{Id: legacyAction.GetId(), Name: legacyAction.GetName()},
+		ObligationValue: &policy.ObligationValue{
+			Id:  "ov-1",
+			Fqn: "https://example.com/obl/notify/value/email",
+			Obligation: &policy.Obligation{
+				Namespace: targetNamespace,
+			},
+		},
+	}
+
+	handler := &plannerTestHandler{
+		actionsByNamespace: map[string]*actions.ListActionsResponse{
+			"": {
+				ActionsCustom: []*policy.Action{legacyAction},
+				Pagination:    emptyPageResponse(),
+			},
+			targetNamespace.GetId(): {
+				Pagination: emptyPageResponse(),
+			},
+		},
+		subjectConditionSetsByNamespace: map[string]*subjectmapping.ListSubjectConditionSetsResponse{
+			"": {
+				SubjectConditionSets: []*policy.SubjectConditionSet{legacySCS},
+				Pagination:           emptyPageResponse(),
+			},
+			targetNamespace.GetId(): {
+				Pagination: emptyPageResponse(),
+			},
+		},
+		subjectMappingsByNamespace: map[string]*subjectmapping.ListSubjectMappingsResponse{
+			"": {
+				SubjectMappings: []*policy.SubjectMapping{legacyMapping},
+				Pagination:      emptyPageResponse(),
+			},
+			targetNamespace.GetId(): {
+				Pagination: emptyPageResponse(),
+			},
+		},
+		registeredResourcesByNamespace: map[string]*registeredresources.ListRegisteredResourcesResponse{
+			"": {
+				Resources:  []*policy.RegisteredResource{legacyResource},
+				Pagination: emptyPageResponse(),
+			},
+			targetNamespace.GetId(): {
+				Pagination: emptyPageResponse(),
+			},
+		},
+		obligationTriggersByNamespace: map[string]*obligations.ListObligationTriggersResponse{
+			"": {
+				Triggers:   []*policy.ObligationTrigger{legacyTrigger},
+				Pagination: emptyPageResponse(),
+			},
+			targetNamespace.GetId(): {
+				Pagination: emptyPageResponse(),
+			},
+		},
+		namespacesResponse: &namespaces.ListNamespacesResponse{
+			Namespaces: []*policy.Namespace{targetNamespace},
+			Pagination: emptyPageResponse(),
+		},
+	}
+
+	planner, err := NewPlanner(handler, "actions,subject-condition-sets,subject-mappings,registered-resources,obligation-triggers")
+	require.NoError(t, err)
+
+	plan, err := planner.Plan(context.Background())
+	require.NoError(t, err)
+
+	assert.Equal(t, []Scope{
+		ScopeActions,
+		ScopeSubjectConditionSets,
+		ScopeSubjectMappings,
+		ScopeRegisteredResources,
+		ScopeObligationTriggers,
+	}, plan.Scopes)
+	require.Len(t, plan.Actions, 1)
+	require.Len(t, plan.Actions[0].Targets, 1)
+	assert.Equal(t, TargetStatusCreate, plan.Actions[0].Targets[0].Status)
+	assert.ElementsMatch(t, []string{
+		"subject_mapping|mapping-1",
+		"registered_resource|resource-1",
+		"obligation_trigger|trigger-1",
+	}, actionReferenceKindsAndIDs(plan.Actions[0].References))
+
+	require.Len(t, plan.SubjectConditionSets, 1)
+	require.Len(t, plan.SubjectConditionSets[0].Targets, 1)
+	assert.Equal(t, TargetStatusCreate, plan.SubjectConditionSets[0].Targets[0].Status)
+
+	require.Len(t, plan.SubjectMappings, 1)
+	require.Len(t, plan.SubjectMappings[0].Targets, 1)
+	assert.Equal(t, TargetStatusCreate, plan.SubjectMappings[0].Targets[0].Status)
+	require.Len(t, plan.SubjectMappings[0].Targets[0].Actions, 1)
+	assert.Equal(t, TargetStatusCreate, plan.SubjectMappings[0].Targets[0].Actions[0].Status)
+	require.NotNil(t, plan.SubjectMappings[0].Targets[0].SubjectConditionSet)
+	assert.Equal(t, TargetStatusCreate, plan.SubjectMappings[0].Targets[0].SubjectConditionSet.Status)
+
+	require.Len(t, plan.RegisteredResources, 1)
+	require.Len(t, plan.RegisteredResources[0].Targets, 1)
+	require.Len(t, plan.RegisteredResources[0].Targets[0].Values, 1)
+	require.Len(t, plan.RegisteredResources[0].Targets[0].Values[0].ActionBindings, 1)
+	assert.Equal(t, TargetStatusCreate, plan.RegisteredResources[0].Targets[0].Values[0].ActionBindings[0].ActionTargetRef.Status)
+
+	require.Len(t, plan.ObligationTriggers, 1)
+	require.Len(t, plan.ObligationTriggers[0].Targets, 1)
+	require.NotNil(t, plan.ObligationTriggers[0].Targets[0].Action)
+	assert.Equal(t, TargetStatusCreate, plan.ObligationTriggers[0].Targets[0].Action.Status)
+
+	require.Len(t, plan.Namespaces, 1)
+	assert.Equal(t, []string{legacyAction.GetId()}, plan.Namespaces[0].Actions)
+	assert.Equal(t, []string{legacySCS.GetId()}, plan.Namespaces[0].SubjectConditionSets)
+	assert.Equal(t, []string{legacyMapping.GetId()}, plan.Namespaces[0].SubjectMappings)
+	assert.Equal(t, []string{legacyResource.GetId()}, plan.Namespaces[0].RegisteredResources)
+	assert.Equal(t, []string{legacyTrigger.GetId()}, plan.Namespaces[0].ObligationTriggers)
+
+	assert.Equal(t, []string{"", targetNamespace.GetId()}, handler.actionCalls)
+	assert.Equal(t, []string{"", targetNamespace.GetId()}, handler.subjectConditionSetCalls)
+	assert.Equal(t, []string{"", targetNamespace.GetId()}, handler.subjectMappingCalls)
+	assert.Equal(t, []string{"", targetNamespace.GetId()}, handler.registeredResourceCalls)
+	assert.Equal(t, []string{"", targetNamespace.GetId()}, handler.obligationTriggerCalls)
 }
 
 type plannerTestHandler struct {

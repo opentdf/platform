@@ -36,13 +36,12 @@ func TestReduceDependenciesKeepsOnlySubjectMappingDependencies(t *testing.T) {
 		},
 	}
 
-	reduced := reduceDependencies(retrieved, scopes)
-	require.NotNil(t, reduced)
+	reduceDependencies(retrieved, scopes)
 
-	require.Len(t, reduced.Candidates.Actions, 1)
-	assert.Equal(t, "action-keep", reduced.Candidates.Actions[0].GetId())
-	require.Len(t, reduced.Candidates.SubjectConditionSets, 1)
-	assert.Equal(t, "scs-keep", reduced.Candidates.SubjectConditionSets[0].GetId())
+	require.Len(t, retrieved.Candidates.Actions, 1)
+	assert.Equal(t, "action-keep", retrieved.Candidates.Actions[0].GetId())
+	require.Len(t, retrieved.Candidates.SubjectConditionSets, 1)
+	assert.Equal(t, "scs-keep", retrieved.Candidates.SubjectConditionSets[0].GetId())
 }
 
 func TestReduceActionsIgnoresRegisteredResourcesWithoutSingleNamespace(t *testing.T) {
@@ -129,4 +128,31 @@ func TestRegisteredResourceNamespaceRefAcceptsEquivalentFQNs(t *testing.T) {
 	assert.Equal(t, " https://Example.COM ", namespace.GetFqn())
 }
 
-// TODO: Add obligation trigger tests.
+func TestReduceActionsKeepsOnlyObligationTriggerDependencies(t *testing.T) {
+	t.Parallel()
+
+	scopes, err := normalizeScopes([]Scope{ScopeObligationTriggers})
+	require.NoError(t, err)
+
+	actions := reduceActions(scopes, Candidates{
+		Actions: []*policy.Action{
+			{Id: "action-keep", Name: "decrypt"},
+			{Id: "action-drop", Name: "upload"},
+		},
+		ObligationTriggers: []*policy.ObligationTrigger{
+			{
+				Id: "trigger-1",
+				Action: &policy.Action{
+					Id: "action-keep",
+				},
+			},
+			{
+				Id:     "trigger-2",
+				Action: &policy.Action{},
+			},
+		},
+	})
+
+	require.Len(t, actions, 1)
+	assert.Equal(t, "action-keep", actions[0].GetId())
+}

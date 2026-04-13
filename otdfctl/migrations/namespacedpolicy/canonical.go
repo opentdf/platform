@@ -9,6 +9,11 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
+type registeredResourceValueCanonical struct {
+	Value                 string   `json:"value"`
+	ActionAttributeValues []string `json:"action_attribute_values"`
+}
+
 func actionCanonicalEqual(source, target *policy.Action) bool {
 	s := canonicalActionName(source)
 	return s != "" && s == canonicalActionName(target)
@@ -218,14 +223,26 @@ func normalizeConditionGroup(cg *policy.ConditionGroup) canonicalConditionGroupE
 }
 
 func sortByJSON[T any](items []T) {
-	keys := make([]string, len(items))
-	for i, item := range items {
-		k, _ := json.Marshal(item)
-		keys[i] = string(k)
+	type keyedItem struct {
+		value T
+		key   string
 	}
-	sort.SliceStable(items, func(i, j int) bool {
-		return keys[i] < keys[j]
+
+	keyed := make([]keyedItem, 0, len(items))
+	for _, item := range items {
+		k, _ := json.Marshal(item)
+		keyed = append(keyed, keyedItem{
+			value: item,
+			key:   string(k),
+		})
+	}
+
+	sort.SliceStable(keyed, func(i, j int) bool {
+		return keyed[i].key < keyed[j].key
 	})
+	for i := range keyed {
+		items[i] = keyed[i].value
+	}
 }
 
 // TODO: Revisit this. Probably can be simpler.
@@ -281,11 +298,6 @@ func canonicalRegisteredResource(resource *policy.RegisteredResource) string {
 		return ""
 	}
 	return string(encoded)
-}
-
-type registeredResourceValueCanonical struct {
-	Value                 string   `json:"value"`
-	ActionAttributeValues []string `json:"action_attribute_values"`
 }
 
 func canonicalActionNames(actions []*policy.Action) []string {

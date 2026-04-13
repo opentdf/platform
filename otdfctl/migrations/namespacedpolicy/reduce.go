@@ -4,15 +4,15 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
-func reduceDependencies(retrieved *Retrieved, scopes scopeSet) *Retrieved {
+// reduceDependencies filters dependency-backed candidate slices in place on the
+// provided Retrieved. Callers should assume retrieved.Candidates is modified.
+func reduceDependencies(retrieved *Retrieved, scopes scopeSet) {
 	if retrieved == nil {
-		return nil
+		return
 	}
 
 	retrieved.Candidates.Actions = reduceActions(scopes, retrieved.Candidates)
 	retrieved.Candidates.SubjectConditionSets = reduceSubjectConditionSets(scopes, retrieved.Candidates)
-
-	return retrieved
 }
 
 func reduceActions(scopes scopeSet, candidates Candidates) []*policy.Action {
@@ -58,6 +58,8 @@ func reduceActions(scopes scopeSet, candidates Candidates) []*policy.Action {
 	return filterActions(candidates.Actions, required)
 }
 
+// Determine if a registered resource can be derived to one namespace based on
+// whether or not the attribute values are all under one namespace.
 func registeredResourceNamespaceRef(resource *policy.RegisteredResource) (*policy.Namespace, bool) {
 	if resource == nil {
 		return nil, false

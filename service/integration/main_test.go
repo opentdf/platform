@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -83,13 +84,15 @@ func TestMain(m *testing.M) {
 				"POSTGRES_DB":       conf.DB.Database,
 			},
 			WaitingFor: wait.ForSQL("5432/tcp", "pgx", func(host string, port string) string {
+				// port is Port.String() which includes protocol (e.g. "5432/tcp"); strip it
+				portNum, _, _ := strings.Cut(port, "/")
 				return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable",
 					conf.DB.User,
 					conf.DB.Password,
-					net.JoinHostPort(host, port),
+					net.JoinHostPort(host, portNum),
 					conf.DB.Database,
 				)
-			}).WithStartupTimeout(time.Second * 60).WithQuery("SELECT 1"), // Increased timeout and simplified query
+			}).WithStartupTimeout(time.Second * 60).WithQuery("SELECT 1"),
 		},
 		Started: true,
 	}

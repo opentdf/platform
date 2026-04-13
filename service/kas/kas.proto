@@ -68,7 +68,7 @@ message KeyAccess {
   
   // Type of key wrapping used for the data encryption key
   // Required: Always
-  // Values: 'wrapped' (RSA-wrapped for ZTDF), 'ec-wrapped' (experimental ECDH-wrapped)
+  // Values: 'wrapped' (RSA-wrapped for ZTDF), 'ec-wrapped' (experimental ECDH-wrapped), 'mlkem-wrapped' (ML-KEM-wrapped), 'hybrid' (Hybrid X-Wing-wrapped)
   string key_type = 4 [json_name = "type"];
   
   // URL of the Key Access Server that can unwrap this key
@@ -99,10 +99,10 @@ message KeyAccess {
   // Contains magic bytes, version, algorithm, policy, and ephemeral key information
   bytes header = 9;
   
-  // Ephemeral public key for ECDH key derivation (ec-wrapped type only)
-  // Required: When key_type="ec-wrapped" (experimental ECDH-based ZTDF)
+  // Ephemeral public key for ECDH/ML-KEM/Hybrid key derivation
+  // Required: When key_type="ec-wrapped", "mlkem-wrapped", or "hybrid"
   // Omitted: When key_type="wrapped" (RSA-based ZTDF)
-  // Should be a PEM-encoded PKCS#8 (ASN.1) formatted public key
+  // Should be a PEM-encoded or Base64-encoded (for ML-KEM/Hybrid) public key material
   // Used to derive the symmetric key for unwrapping the DEK
   string ephemeral_public_key = 10;
 }
@@ -257,8 +257,8 @@ message RewrapResponse {
   bytes entity_wrapped_key = 2 [deprecated = true];
   
   // KAS's ephemeral session public key in PEM format
-  // Required: For EC-based operations (key_type="ec-wrapped")
-  // Optional: Empty for RSA-based ZTDF (key_type="wrapped")
+  // Required: For EC-based operations (key_type="ec-wrapped") or Hybrid
+  // Optional: Empty for RSA-based ZTDF (key_type="wrapped") or ML-KEM
   // Used by client to perform ECDH key agreement and decrypt the kas_wrapped_key values
   string session_public_key = 3;
   

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/creasty/defaults"
-	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -83,11 +82,11 @@ func TestMain(m *testing.M) {
 				"POSTGRES_PASSWORD": conf.DB.Password,
 				"POSTGRES_DB":       conf.DB.Database,
 			},
-			WaitingFor: wait.ForSQL(nat.Port("5432/tcp"), "pgx", func(host string, port nat.Port) string {
+			WaitingFor: wait.ForSQL("5432/tcp", "pgx", func(host string, port string) string {
 				return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable",
 					conf.DB.User,
 					conf.DB.Password,
-					net.JoinHostPort(host, port.Port()),
+					net.JoinHostPort(host, port),
 					conf.DB.Database,
 				)
 			}).WithStartupTimeout(time.Second * 60).WithQuery("SELECT 1"), // Increased timeout and simplified query
@@ -121,7 +120,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	conf.DB.Port = port.Int()
+	conf.DB.Port = int(port.Num())
 
 	//nolint:sloglint // emoji
 	slog.Info("🏠 loading fixtures")

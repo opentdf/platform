@@ -6,6 +6,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -594,6 +595,114 @@ func Test_GetSubjectConditionSetsSortParams(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			field, dir := GetSubjectConditionSetsSortParams(tc.sort)
+			assert.Equal(t, tc.expectedField, field)
+			assert.Equal(t, tc.expectedDir, dir)
+		})
+	}
+}
+
+func Test_GetObligationsSortParams(t *testing.T) {
+	cases := []struct {
+		name          string
+		sort          []*obligations.ObligationsSort
+		expectedField string
+		expectedDir   string
+	}{
+		{
+			name:          "nil sort returns empty strings",
+			sort:          nil,
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name:          "empty slice returns empty strings",
+			sort:          []*obligations.ObligationsSort{},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name:          "nil element returns empty strings",
+			sort:          []*obligations.ObligationsSort{nil},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name: "UNSPECIFIED returns empty strings",
+			sort: []*obligations.ObligationsSort{
+				{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name: "NAME with ASC",
+			sort: []*obligations.ObligationsSort{
+				{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "name",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "NAME with DESC",
+			sort: []*obligations.ObligationsSort{
+				{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "name",
+			expectedDir:   "DESC",
+		},
+		{
+			name: "FQN with ASC",
+			sort: []*obligations.ObligationsSort{
+				{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_FQN, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "fqn",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "FQN with unspecified direction defaults to ASC",
+			sort: []*obligations.ObligationsSort{
+				{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_FQN},
+			},
+			expectedField: "fqn",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "CREATED_AT with ASC",
+			sort: []*obligations.ObligationsSort{
+				{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "created_at",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "CREATED_AT with DESC",
+			sort: []*obligations.ObligationsSort{
+				{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "created_at",
+			expectedDir:   "DESC",
+		},
+		{
+			name: "UPDATED_AT with ASC",
+			sort: []*obligations.ObligationsSort{
+				{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "updated_at",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "UPDATED_AT with DESC",
+			sort: []*obligations.ObligationsSort{
+				{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "updated_at",
+			expectedDir:   "DESC",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			field, dir := GetObligationsSortParams(tc.sort)
 			assert.Equal(t, tc.expectedField, field)
 			assert.Equal(t, tc.expectedDir, dir)
 		})

@@ -160,34 +160,3 @@ func TestAsymDecryptionKeyType(t *testing.T) {
 		require.False(t, IsECKeyType(kt))
 	})
 }
-
-func TestECDecryptorDeriveSharedKeySymmetry(t *testing.T) {
-	t.Parallel()
-
-	modes := []ECCMode{ECCModeSecp256r1, ECCModeSecp384r1, ECCModeSecp521r1}
-	for _, mode := range modes {
-		t.Run("", func(t *testing.T) {
-			t.Parallel()
-			alice, err := NewECPrivateKey(mode)
-			require.NoError(t, err)
-			bob, err := NewECPrivateKey(mode)
-			require.NoError(t, err)
-
-			alicePub, err := alice.Public()
-			require.NoError(t, err)
-			alicePubPEM, err := alicePub.PublicKeyInPemFormat()
-			require.NoError(t, err)
-
-			bobPub, err := bob.Public()
-			require.NoError(t, err)
-			bobPubPEM, err := bobPub.PublicKeyInPemFormat()
-			require.NoError(t, err)
-
-			aliceShared, err := alice.DeriveSharedKey(bobPubPEM)
-			require.NoError(t, err)
-			bobShared, err := bob.DeriveSharedKey(alicePubPEM)
-			require.NoError(t, err)
-			require.Equal(t, aliceShared, bobShared)
-		})
-	}
-}

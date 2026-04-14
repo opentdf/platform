@@ -227,7 +227,7 @@ func (e ECDecryptor) KeyType() KeyType {
 	return keyTypeFromECDHCurve(e.sk.Curve())
 }
 
-func (e ECDecryptor) DeriveSharedKey(publicKeyInPem string) ([]byte, error) {
+func (e ECDecryptor) deriveSharedKey(publicKeyInPem string) ([]byte, error) {
 	if e.sk == nil {
 		return nil, errors.New("failed to derive shared key, private key is empty")
 	}

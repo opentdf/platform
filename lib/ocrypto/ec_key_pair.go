@@ -276,7 +276,7 @@ func (keyPair ECKeyPair) DeriveSharedKey(publicKeyInPem string) ([]byte, error) 
 	if err != nil {
 		return nil, err
 	}
-	return dec.DeriveSharedKey(publicKeyInPem)
+	return dec.deriveSharedKey(publicKeyInPem)
 }
 
 // CompressedECPublicKey - return a compressed key from the supplied curve and public key

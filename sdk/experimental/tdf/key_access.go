@@ -163,7 +163,12 @@ func wrapKeyWithPublicKey(symKey []byte, pubKeyInfo keysplit.KASPublicKey) (stri
 	}
 
 	// Determine key type based on algorithm
-	ktype := ocrypto.KeyType(pubKeyInfo.Algorithm)
+	ktype := ocrypto.ParseKeyType(pubKeyInfo.Algorithm)
+
+	kasPublicKey, err := ocrypto.FromPublicPEM(kasPublicKeyPEM)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to create parse KAS public key: %w", err)
+	}
 
 	if ocrypto.IsECKeyType(ktype) {
 		// Handle EC key wrapping
@@ -182,49 +187,13 @@ func wrapKeyWithEC(keyType ocrypto.KeyType, kasPublicKeyPEM string, symKey []byt
 		return "", "", "", fmt.Errorf("failed to convert key type to ECC mode: %w", err)
 	}
 
-	// Generate ephemeral key pair
-	ecPrivateKey, err := ocrypto.NewECPrivateKey(mode)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to create EC private key: %w", err)
+	if !ocrypto.IsECKeyType(kasPublicKey.KeyType()) {
+		return "", "", "", fmt.Errorf("unexpected KAS public key type: %v", kasPublicKey.KeyType())
 	}
 
-	ephemeralPublicKeyEncryptor, err := ecPrivateKey.Public()
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get ephemeral public key: %w", err)
-	}
+	wrapped, err := kasPublicKey.Encrypt(symKey)
 
-	ephemeralPubKey, err := ephemeralPublicKeyEncryptor.PublicKeyInPemFormat()
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to serialize ephemeral public key: %w", err)
-	}
-
-	// Compute ECDH shared secret — ecPrivateKey is ECDecryptor from NewECPrivateKey
-	ecdhKey, err := ecPrivateKey.DeriveSharedKey(kasPublicKeyPEM)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to derive shared key: %w", err)
-	}
-
-	// Derive wrapping key using HKDF
-	salt := tdfSalt()
-	wrapKey, err := ocrypto.CalculateHKDF(salt, ecdhKey)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to derive wrap key: %w", err)
-	}
-
-	// Ensure we have the right length for wrapping, trim if needed, or error if too short
-	if len(wrapKey) > len(symKey) {
-		wrapKey = wrapKey[:len(symKey)]
-	} else if len(wrapKey) < len(symKey) {
-		return "", "", "", fmt.Errorf("wrap key too short: got %d, expected at least %d",
-			len(wrapKey), len(symKey))
-	}
-
-	wrapped := make([]byte, len(symKey))
-	for i := range symKey {
-		wrapped[i] = symKey[i] ^ wrapKey[i]
-	}
-
-	return string(ocrypto.Base64Encode(wrapped)), "eccWrapped", ephemeralPubKey, nil
+	return string(ocrypto.Base64Encode(wrapped)), "eccWrapped", kasPublicKey.EphemeralPublicKeyInPemFormat(), nil
 }
 
 // wrapKeyWithRSA encrypts a key using RSA public key with OAEP padding

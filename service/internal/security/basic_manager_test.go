@@ -552,43 +552,6 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 	clientEphemeralPublicKeyBytes, err := ocrypto.CompressedECPublicKey(ocrypto.ECCModeSecp256r1, *clientECDSAKey)
 	require.NoError(t, err)
 
-	t.Run("successful key derivation", func(t *testing.T) {
-		mockDetails := new(MockKeyDetails)
-		mockDetails.MID = "ec-kid-derive"
-		mockDetails.MAlgorithm = AlgorithmECP256R1
-		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedECPrivKeyStr}
-
-		// Set up mock expectations
-		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
-		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
-		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
-
-		protectedKey, err := bm.DeriveKey(t.Context(), mockDetails, clientEphemeralPublicKeyBytes, elliptic.P256())
-		require.NoError(t, err)
-		require.NotNil(t, protectedKey)
-
-		ecdhPrivKey, err := ocrypto.ECPrivateKeyFromPem([]byte(ecPrivKey)) // ECDH private key
-		require.NoError(t, err)
-
-		// We need to compute the shared secret using the private key and the client ephemeral public key
-		clientEphemeralECDSAPubKey, err := ocrypto.UncompressECPubKey(elliptic.P256(), clientEphemeralPublicKeyBytes)
-		require.NoError(t, err)
-		clientECDHPublicKey, err := ocrypto.ConvertToECDHPublicKey(clientEphemeralECDSAPubKey)
-		require.NoError(t, err)
-
-		expectedSharedSecret, err := ocrypto.ComputeECDHKeyFromECDHKeys(clientECDHPublicKey, ecdhPrivKey)
-		require.NoError(t, err)
-		expectedDerivedKey, err := ocrypto.CalculateHKDF(TDFSalt(), expectedSharedSecret)
-		require.NoError(t, err)
-
-		// Use noOpEncapsulator to get raw key data for testing
-		noOpEnc := &noOpEncapsulator{}
-		//nolint:staticcheck // Export is used in tests until ProtectedKey deprecation is removed upstream.
-		actualDerivedKey, err := protectedKey.Export(noOpEnc)
-		require.NoError(t, err)
-		assert.Equal(t, expectedDerivedKey, actualDerivedKey)
-	})
-
 	t.Run("fail ExportPrivateKey for DeriveKey", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)
 		mockDetails.On("ID").Return(trust.KeyIdentifier("fail-export-derive"))

@@ -3,10 +3,8 @@ package security
 import (
 	"context"
 	"crypto/elliptic"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -100,56 +98,7 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 
 // Deprecated: Prefer to directly unwrap the value with Decrypt.
 func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ocrypto.ProtectedKey, error) {
-	// Implementation of DeriveKey method
-	privateKeyCtx, err := keyDetails.ExportPrivateKey(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get private key: %w", err)
-	}
-
-	privKey, err := b.unwrap(ctx, string(keyDetails.ID()), privateKeyCtx.WrappedKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unwrap private key: %w", err)
-	}
-
-	ephemeralECDSAPublicKey, err := ocrypto.UncompressECPubKey(curve, ephemeralPublicKeyBytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to uncompress ephemeral public key: %w", err)
-	}
-
-	derBytes, err := x509.MarshalPKIXPublicKey(ephemeralECDSAPublicKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal ECDSA public key: %w", err)
-	}
-	pemBlock := &pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: derBytes,
-	}
-	ephemeralECDSAPublicKeyPEM := pem.EncodeToMemory(pemBlock)
-
-	decrypter, err := ocrypto.FromPrivatePEM(string(privKey))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create decryptor from private PEM: %w", err)
-	}
-
-	ecDecryptor, ok := decrypter.(ocrypto.ECDecryptor)
-	if !ok {
-		return nil, errors.New("key derivation requires an EC private key")
-	}
-
-	symmetricKey, err := ecDecryptor.DeriveSharedKey(string(ephemeralECDSAPublicKeyPEM))
-	if err != nil {
-		return nil, fmt.Errorf("failed to derive shared key: %w", err)
-	}
-
-	key, err := ocrypto.CalculateHKDF(TDFSalt(), symmetricKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to calculate HKDF: %w", err)
-	}
-	protectedKey, err := ocrypto.NewAESProtectedKey(key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create protected key: %w", err)
-	}
-	return protectedKey, nil
+	return nil, errors.New("unsupported operation")
 }
 
 type OCEncapsulator struct {

@@ -30,6 +30,7 @@ type KeyManager interface {
 	Decrypt(ctx context.Context, key KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error)
 
 	// DeriveKey computes an agreed upon secret key derived from an ECDH exchange.
+	//
 	// Deprecated: Directly use Decrypt when appropriate.
 	DeriveKey(ctx context.Context, key KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error)
 

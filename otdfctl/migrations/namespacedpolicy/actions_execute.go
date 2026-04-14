@@ -37,7 +37,12 @@ func (e *Executor) cachedActionTargetID(sourceID string, namespace *policy.Names
 		return ""
 	}
 
-	target := e.actionTargets[sourceID][namespaceKey]
+	targets := e.actionTargets[sourceID]
+	if targets == nil {
+		return ""
+	}
+
+	target := targets[namespaceKey]
 	if target == nil {
 		return ""
 	}

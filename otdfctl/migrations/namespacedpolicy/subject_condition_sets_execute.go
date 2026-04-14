@@ -37,7 +37,12 @@ func (e *Executor) cachedScsTargetID(sourceID string, namespace *policy.Namespac
 		return ""
 	}
 
-	target := e.subjectConditionSets[sourceID][namespaceKey]
+	targets := e.subjectConditionSets[sourceID]
+	if targets == nil {
+		return ""
+	}
+
+	target := targets[namespaceKey]
 	if target == nil {
 		return ""
 	}

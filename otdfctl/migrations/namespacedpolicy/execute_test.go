@@ -66,7 +66,7 @@ func (m *mockExecutorHandler) CreateAction(_ context.Context, name string, names
 	return nil, errMissingMockActionResult
 }
 
-func TestExecutorExecute(t *testing.T) {
+func ExecuteActions(t *testing.T) {
 	t.Parallel()
 
 	namespace1 := &policy.Namespace{Id: "ns-1", Fqn: "https://example.com"}

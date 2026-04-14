@@ -97,6 +97,7 @@ type SubjectConditionSetTargetPlan struct {
 	Namespace *policy.Namespace           `json:"namespace"`
 	Status    TargetStatus                `json:"status"`
 	Existing  *policy.SubjectConditionSet `json:"existing,omitempty"`
+	Execution *ExecutionResult            `json:"execution,omitempty"`
 	Reason    string                      `json:"reason,omitempty"`
 }
 
@@ -321,7 +322,13 @@ func (t *ActionTargetPlan) TargetID() string {
 }
 
 func (t *SubjectConditionSetTargetPlan) TargetID() string {
-	if t == nil || t.Existing == nil {
+	if t == nil {
+		return ""
+	}
+	if t.Execution != nil && t.Execution.CreatedTargetID != "" {
+		return t.Execution.CreatedTargetID
+	}
+	if t.Existing == nil {
 		return ""
 	}
 	return t.Existing.GetId()

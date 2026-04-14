@@ -1966,39 +1966,6 @@ func (s *ObligationsSuite) assertObligationValuesSpecificTriggers(obl *policy.Ob
 	}
 }
 
-// Sort test helpers
-
-// createSortTestObligations creates 3 obligations with 5ms gaps for distinct timestamps.
-// Returns the obligation IDs in creation order.
-func (s *ObligationsSuite) createSortTestObligations(label string) []string {
-	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
-	const count = 3
-	ids := make([]string, count)
-	for i := range count {
-		if i > 0 {
-			time.Sleep(5 * time.Millisecond)
-		}
-		name := fmt.Sprintf("%s-%d-%d", label, i, time.Now().UnixNano())
-		obl := s.createObligation(namespaceID, name, nil)
-		ids[i] = obl.GetId()
-	}
-	return ids
-}
-
-// createNamedSortTestObligations creates obligations with specific name prefixes for name/FQN sort testing.
-// Returns the obligation IDs in the same order as the prefixes.
-func (s *ObligationsSuite) createNamedSortTestObligations(prefixes []string) []string {
-	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
-	suffix := time.Now().UnixNano()
-	ids := make([]string, len(prefixes))
-	for i, prefix := range prefixes {
-		name := fmt.Sprintf("%s-%d", prefix, suffix)
-		obl := s.createObligation(namespaceID, name, nil)
-		ids[i] = obl.GetId()
-	}
-	return ids
-}
-
 // Sort by Name
 
 func (s *ObligationsSuite) Test_ListObligations_SortByName_ASC() {
@@ -2164,4 +2131,37 @@ func (s *ObligationsSuite) Test_ListObligations_SortByUnspecifiedField_FallsBack
 
 	// Falls back to default created_at DESC ordering
 	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[2], ids[1], ids[0])
+}
+
+// Sort test helpers
+
+// createSortTestObligations creates 3 obligations with 5ms gaps for distinct timestamps.
+// Returns the obligation IDs in creation order.
+func (s *ObligationsSuite) createSortTestObligations(label string) []string {
+	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
+	const count = 3
+	ids := make([]string, count)
+	for i := range count {
+		if i > 0 {
+			time.Sleep(5 * time.Millisecond)
+		}
+		name := fmt.Sprintf("%s-%d-%d", label, i, time.Now().UnixNano())
+		obl := s.createObligation(namespaceID, name, nil)
+		ids[i] = obl.GetId()
+	}
+	return ids
+}
+
+// createNamedSortTestObligations creates obligations with specific name prefixes for name/FQN sort testing.
+// Returns the obligation IDs in the same order as the prefixes.
+func (s *ObligationsSuite) createNamedSortTestObligations(prefixes []string) []string {
+	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
+	suffix := time.Now().UnixNano()
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
+		name := fmt.Sprintf("%s-%d", prefix, suffix)
+		obl := s.createObligation(namespaceID, name, nil)
+		ids[i] = obl.GetId()
+	}
+	return ids
 }

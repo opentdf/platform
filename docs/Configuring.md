@@ -540,6 +540,7 @@ Root level key `policy`
 | ---------------------------- | ------------------------------------------------------ | ------- | -------------------------------------------------- |
 | `list_request_limit_default` | Policy List request limit default when not provided    | 1000    | OPENTDF_SERVICES_POLICY_LIST_REQUEST_LIMIT_DEFAULT |
 | `list_request_limit_max`     | Policy List request limit maximum enforced by services | 2500    | OPENTDF_SERVICES_POLICY_LIST_REQUEST_LIMIT_MAX     |
+| `namespaced_policy`          | When enabled, new actions, subject mappings, subject condition sets, and registered resources require a namespace. Non-namespaced versions are deprecated. | `false` | OPENTDF_SERVICES_POLICY_NAMESPACED_POLICY          |
 
 Example:
 
@@ -548,6 +549,7 @@ services:
   policy:
     list_request_limit_default: 1000
     list_request_limit_max: 2500
+    namespaced_policy: false
 ```
 
 ### Casbin Endpoint Authorization

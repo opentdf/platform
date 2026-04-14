@@ -7,11 +7,13 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 )
 
 var (
 	errMissingMockActionResult              = errors.New("missing mock action result")
 	errMissingMockSubjectConditionSetResult = errors.New("missing mock subject condition set result")
+	errMissingMockSubjectMappingResult      = errors.New("missing mock subject mapping result")
 )
 
 type expectedError struct {
@@ -33,6 +35,9 @@ type mockExecutorHandler struct {
 	createdSubjectConditions  map[string]map[string]*createdSubjectConditionSetCall
 	subjectConditionSetResult map[string]map[string]*policy.SubjectConditionSet
 	subjectConditionSetErrs   map[string]map[string]error
+	createdSubjectMappings    map[string]map[string]*createdSubjectMappingCall
+	subjectMappingResults     map[string]map[string]*policy.SubjectMapping
+	subjectMappingErrs        map[string]map[string]error
 }
 
 type createdActionCall struct {
@@ -45,6 +50,15 @@ type createdSubjectConditionSetCall struct {
 	SubjectSets []*policy.SubjectSet
 	Namespace   string
 	Metadata    *common.MetadataMutable
+}
+
+type createdSubjectMappingCall struct {
+	AttributeValueID            string
+	Actions                     []*policy.Action
+	ExistingSubjectConditionSet string
+	NewSubjectConditionSet      *subjectmapping.SubjectConditionSetCreate
+	Namespace                   string
+	Metadata                    *common.MetadataMutable
 }
 
 func (m *mockExecutorHandler) CreateAction(_ context.Context, name string, namespace string, metadata *common.MetadataMutable) (*policy.Action, error) {
@@ -103,4 +117,37 @@ func (m *mockExecutorHandler) CreateSubjectConditionSet(_ context.Context, ss []
 	}
 
 	return nil, errMissingMockSubjectConditionSetResult
+}
+
+func (m *mockExecutorHandler) CreateNewSubjectMapping(_ context.Context, attrValID string, actions []*policy.Action, existingSCSId string, newScs *subjectmapping.SubjectConditionSetCreate, metadata *common.MetadataMutable, namespace string) (*policy.SubjectMapping, error) {
+	sourceID := metadata.GetLabels()[migrationLabelMigratedFrom]
+
+	if m.createdSubjectMappings == nil {
+		m.createdSubjectMappings = make(map[string]map[string]*createdSubjectMappingCall)
+	}
+	if m.createdSubjectMappings[sourceID] == nil {
+		m.createdSubjectMappings[sourceID] = make(map[string]*createdSubjectMappingCall)
+	}
+
+	m.createdSubjectMappings[sourceID][namespace] = &createdSubjectMappingCall{
+		AttributeValueID:            attrValID,
+		Actions:                     actions,
+		ExistingSubjectConditionSet: existingSCSId,
+		NewSubjectConditionSet:      newScs,
+		Namespace:                   namespace,
+		Metadata:                    metadata,
+	}
+
+	if m.subjectMappingErrs != nil && m.subjectMappingErrs[sourceID] != nil {
+		if err := m.subjectMappingErrs[sourceID][namespace]; err != nil {
+			return nil, err
+		}
+	}
+	if m.subjectMappingResults != nil && m.subjectMappingResults[sourceID] != nil {
+		if result := m.subjectMappingResults[sourceID][namespace]; result != nil {
+			return result, nil
+		}
+	}
+
+	return nil, errMissingMockSubjectMappingResult
 }

@@ -1,9 +1,6 @@
 package namespacedpolicy
 
 import (
-	"context"
-	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/common"
@@ -12,61 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var errMissingMockActionResult = errors.New("missing mock action result")
-
-type expectedError struct {
-	is      error
-	message string
-}
-
-func wantError(is error, format string, args ...any) *expectedError {
-	return &expectedError{
-		is:      is,
-		message: fmt.Sprintf("%s: %s", is, fmt.Sprintf(format, args...)),
-	}
-}
-
-type mockExecutorHandler struct {
-	created map[string]map[string]*createdActionCall
-	results map[string]map[string]*policy.Action
-	errs    map[string]map[string]error
-}
-
-type createdActionCall struct {
-	Name      string
-	Namespace string
-	Metadata  *common.MetadataMutable
-}
-
-func (m *mockExecutorHandler) CreateAction(_ context.Context, name string, namespace string, metadata *common.MetadataMutable) (*policy.Action, error) {
-	if m.created == nil {
-		m.created = make(map[string]map[string]*createdActionCall)
-	}
-	if m.created[name] == nil {
-		m.created[name] = make(map[string]*createdActionCall)
-	}
-
-	m.created[name][namespace] = &createdActionCall{
-		Name:      name,
-		Namespace: namespace,
-		Metadata:  metadata,
-	}
-
-	if m.errs != nil && m.errs[name] != nil {
-		if err := m.errs[name][namespace]; err != nil {
-			return nil, err
-		}
-	}
-	if m.results != nil && m.results[name] != nil {
-		if result := m.results[name][namespace]; result != nil {
-			return result, nil
-		}
-	}
-
-	return nil, errMissingMockActionResult
-}
-
-func ExecuteActions(t *testing.T) {
+func TestExecuteActions(t *testing.T) {
 	t.Parallel()
 
 	namespace1 := &policy.Namespace{Id: "ns-1", Fqn: "https://example.com"}
@@ -155,10 +98,10 @@ func ExecuteActions(t *testing.T) {
 				migratedTarget := plan.Actions[0].Targets[2]
 				assert.Equal(t, "migrated-action", migratedTarget.TargetID())
 
-				assert.Equal(t, "created-action-1", executor.actionTargetID("action-1", namespace1))
-				assert.Equal(t, "standard-action", executor.actionTargetID("action-1", namespace2))
-				assert.Equal(t, "migrated-action", executor.actionTargetID("action-1", namespace3))
-				assert.Empty(t, executor.actionTargetID("action-2", namespace1))
+				assert.Equal(t, "created-action-1", executor.cachedActionTargetID("action-1", namespace1))
+				assert.Equal(t, "standard-action", executor.cachedActionTargetID("action-1", namespace2))
+				assert.Equal(t, "migrated-action", executor.cachedActionTargetID("action-1", namespace3))
+				assert.Empty(t, executor.cachedActionTargetID("action-2", namespace1))
 			},
 		},
 		{
@@ -191,7 +134,7 @@ func ExecuteActions(t *testing.T) {
 
 				require.Error(t, err)
 				assert.Empty(t, handler.created)
-				assert.Empty(t, executor.actionTargetID("action-1", namespace1))
+				assert.Empty(t, executor.cachedActionTargetID("action-1", namespace1))
 			},
 		},
 		{
@@ -211,13 +154,13 @@ func ExecuteActions(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			wantErr: wantError(ErrActionMissingExistingTarget, `action %q target %q`, "action-1", "ns-1"),
+			wantErr: wantError(ErrMissingExistingTarget, `action %q target %q`, "action-1", "ns-1"),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
 				require.Error(t, err)
 				assert.Empty(t, handler.created)
-				assert.Empty(t, executor.actionTargetID("action-1", namespace1))
+				assert.Empty(t, executor.cachedActionTargetID("action-1", namespace1))
 			},
 		},
 		{
@@ -237,13 +180,13 @@ func ExecuteActions(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			wantErr: wantError(ErrActionMissingMigratedTarget, `action %q target %q`, "action-1", "ns-1"),
+			wantErr: wantError(ErrMissingMigratedTarget, `action %q target %q`, "action-1", "ns-1"),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
 				require.Error(t, err)
 				assert.Empty(t, handler.created)
-				assert.Empty(t, executor.actionTargetID("action-1", namespace1))
+				assert.Empty(t, executor.cachedActionTargetID("action-1", namespace1))
 			},
 		},
 		{
@@ -262,13 +205,13 @@ func ExecuteActions(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			wantErr: wantError(ErrActionMissingTargetNamespace, `action %q`, "action-1"),
+			wantErr: wantError(ErrTargetNamespaceRequired, `action %q`, "action-1"),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
 				require.Error(t, err)
 				assert.Empty(t, handler.created)
-				assert.Empty(t, executor.actionTargetID("action-1", nil))
+				assert.Empty(t, executor.cachedActionTargetID("action-1", nil))
 			},
 		},
 		{
@@ -294,15 +237,15 @@ func ExecuteActions(t *testing.T) {
 					},
 				},
 			},
-			wantErr: wantError(ErrActionMissingCreatedTargetID, `action %q target %q`, "action-1", "ns-1"),
+			wantErr: wantError(ErrMissingCreatedTargetID, `action %q target %q`, "action-1", "ns-1"),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan) {
 				t.Helper()
 
 				require.Error(t, err)
 				require.Contains(t, handler.created, "decrypt")
 				require.NotNil(t, plan.Actions[0].Targets[0].Execution)
-				assert.Equal(t, ErrActionMissingCreatedTargetID.Error(), plan.Actions[0].Targets[0].Execution.Failure)
-				assert.Empty(t, executor.actionTargetID("action-1", namespace1))
+				assert.Equal(t, ErrMissingCreatedTargetID.Error(), plan.Actions[0].Targets[0].Execution.Failure)
+				assert.Empty(t, executor.cachedActionTargetID("action-1", namespace1))
 			},
 		},
 		{
@@ -323,7 +266,7 @@ func ExecuteActions(t *testing.T) {
 			},
 			handler: &mockExecutorHandler{},
 			wantErr: wantError(
-				ErrActionUnsupportedStatus,
+				ErrUnsupportedStatus,
 				`action %q target %q has unsupported status %q`,
 				"action-1",
 				"ns-1",
@@ -334,7 +277,7 @@ func ExecuteActions(t *testing.T) {
 
 				require.Error(t, err)
 				assert.Empty(t, handler.created)
-				assert.Empty(t, executor.actionTargetID("action-1", namespace1))
+				assert.Empty(t, executor.cachedActionTargetID("action-1", namespace1))
 			},
 		},
 	}

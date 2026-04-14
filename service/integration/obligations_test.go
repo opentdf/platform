@@ -1970,6 +1970,7 @@ func (s *ObligationsSuite) assertObligationValuesSpecificTriggers(obl *policy.Ob
 
 func (s *ObligationsSuite) Test_ListObligations_SortByName_ASC() {
 	ids := s.createNamedSortTestObligations([]string{"aaa-sort", "bbb-sort", "ccc-sort"})
+	defer s.deleteObligations(ids)
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		Sort: []*obligations.ObligationsSort{
@@ -1985,6 +1986,7 @@ func (s *ObligationsSuite) Test_ListObligations_SortByName_ASC() {
 
 func (s *ObligationsSuite) Test_ListObligations_SortByName_DESC() {
 	ids := s.createNamedSortTestObligations([]string{"aaa-sortdesc", "bbb-sortdesc", "ccc-sortdesc"})
+	defer s.deleteObligations(ids)
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		Sort: []*obligations.ObligationsSort{
@@ -2002,6 +2004,7 @@ func (s *ObligationsSuite) Test_ListObligations_SortByName_DESC() {
 
 func (s *ObligationsSuite) Test_ListObligations_SortByFqn_ASC() {
 	ids := s.createNamedSortTestObligations([]string{"aaa-fqnsort", "bbb-fqnsort", "ccc-fqnsort"})
+	defer s.deleteObligations(ids)
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		Sort: []*obligations.ObligationsSort{
@@ -2017,6 +2020,7 @@ func (s *ObligationsSuite) Test_ListObligations_SortByFqn_ASC() {
 
 func (s *ObligationsSuite) Test_ListObligations_SortByFqn_DESC() {
 	ids := s.createNamedSortTestObligations([]string{"aaa-fqnsortdesc", "bbb-fqnsortdesc", "ccc-fqnsortdesc"})
+	defer s.deleteObligations(ids)
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		Sort: []*obligations.ObligationsSort{
@@ -2034,6 +2038,7 @@ func (s *ObligationsSuite) Test_ListObligations_SortByFqn_DESC() {
 
 func (s *ObligationsSuite) Test_ListObligations_SortByCreatedAt_ASC() {
 	ids := s.createSortTestObligations("createdasc-obl")
+	defer s.deleteObligations(ids)
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		Sort: []*obligations.ObligationsSort{
@@ -2049,6 +2054,7 @@ func (s *ObligationsSuite) Test_ListObligations_SortByCreatedAt_ASC() {
 
 func (s *ObligationsSuite) Test_ListObligations_SortByCreatedAt_DESC() {
 	ids := s.createSortTestObligations("createddesc-obl")
+	defer s.deleteObligations(ids)
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		Sort: []*obligations.ObligationsSort{
@@ -2066,6 +2072,7 @@ func (s *ObligationsSuite) Test_ListObligations_SortByCreatedAt_DESC() {
 
 func (s *ObligationsSuite) Test_ListObligations_SortByUpdatedAt_DESC() {
 	ids := s.createSortTestObligations("upd-sort-obl")
+	defer s.deleteObligations(ids)
 
 	// Update the first obligation so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -2092,6 +2099,7 @@ func (s *ObligationsSuite) Test_ListObligations_SortByUpdatedAt_DESC() {
 
 func (s *ObligationsSuite) Test_ListObligations_SortByUpdatedAt_ASC() {
 	ids := s.createSortTestObligations("upd-sort-asc-obl")
+	defer s.deleteObligations(ids)
 
 	// Update the last obligation so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -2120,6 +2128,7 @@ func (s *ObligationsSuite) Test_ListObligations_SortByUpdatedAt_ASC() {
 
 func (s *ObligationsSuite) Test_ListObligations_SortByUnspecifiedField_FallsBackToDefault() {
 	ids := s.createSortTestObligations("unspecified-sort-obl")
+	defer s.deleteObligations(ids)
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		Sort: []*obligations.ObligationsSort{

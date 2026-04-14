@@ -706,6 +706,10 @@ func Test_GetObligationsSortParams(t *testing.T) {
 			field, dir := GetObligationsSortParams(tc.sort)
 			assert.Equal(t, tc.expectedField, field)
 			assert.Equal(t, tc.expectedDir, dir)
+		})
+	}
+}
+
 func Test_GetKeyAccessServersSortParams(t *testing.T) {
 	tests := []struct {
 		name              string

@@ -170,17 +170,15 @@ func (e *Executor) executeActions(ctx context.Context, actionPlans []*ActionPlan
 			}
 
 			switch target.Status {
-			case TargetStatusExistingStandard:
+			case TargetStatusExistingStandard, TargetStatusAlreadyMigrated:
 				if target.TargetID() == "" {
-					return fmt.Errorf("%w: action %q target %q", ErrActionMissingExistingTarget, actionPlan.Source.GetId(), namespaceLabel(target.Namespace))
+					errKind := ErrActionMissingExistingTarget
+					if target.Status == TargetStatusAlreadyMigrated {
+						errKind = ErrActionMissingMigratedTarget
+					}
+					return fmt.Errorf("%w: action %q target %q", errKind, actionPlan.Source.GetId(), namespaceLabel(target.Namespace))
 				}
 				e.setActionTargetID(actionPlan.Source.GetId(), target.Namespace, target.TargetID())
-			case TargetStatusAlreadyMigrated:
-				if target.TargetID() == "" {
-					return fmt.Errorf("%w: action %q target %q", ErrActionMissingMigratedTarget, actionPlan.Source.GetId(), namespaceLabel(target.Namespace))
-				}
-				e.setActionTargetID(actionPlan.Source.GetId(), target.Namespace, target.TargetID())
-				continue
 			case TargetStatusCreate:
 				namespace := namespaceIdentifier(target.Namespace)
 				if namespace == "" {
@@ -204,7 +202,7 @@ func (e *Executor) executeActions(ctx context.Context, actionPlans []*ActionPlan
 					}
 					return fmt.Errorf("create action %q in namespace %q: %w", actionPlan.Source.GetId(), namespaceLabel(target.Namespace), err)
 				}
-				if created == nil || created.GetId() == "" {
+				if created.GetId() == "" {
 					target.Execution = &ExecutionResult{
 						RunID:   e.runID,
 						Failure: ErrActionMissingCreatedTargetID.Error(),

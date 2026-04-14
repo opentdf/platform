@@ -126,7 +126,7 @@ func TestExecuteActions(t *testing.T) {
 				ErrPlanNotExecutable,
 				`action %q target %q is unresolved: %s`,
 				"action-1",
-				"ns-1",
+				namespace1.GetFqn(),
 				"missing target namespace mapping",
 			),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
@@ -154,7 +154,7 @@ func TestExecuteActions(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			wantErr: wantError(ErrMissingExistingTarget, `action %q target %q`, "action-1", "ns-1"),
+			wantErr: wantError(ErrMissingExistingTarget, `action %q target %q`, "action-1", namespace1.GetFqn()),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
@@ -180,7 +180,7 @@ func TestExecuteActions(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			wantErr: wantError(ErrMissingMigratedTarget, `action %q target %q`, "action-1", "ns-1"),
+			wantErr: wantError(ErrMissingMigratedTarget, `action %q target %q`, "action-1", namespace1.GetFqn()),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
@@ -237,7 +237,7 @@ func TestExecuteActions(t *testing.T) {
 					},
 				},
 			},
-			wantErr: wantError(ErrMissingCreatedTargetID, `action %q target %q`, "action-1", "ns-1"),
+			wantErr: wantError(ErrMissingCreatedTargetID, `action %q target %q`, "action-1", namespace1.GetFqn()),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan) {
 				t.Helper()
 
@@ -269,7 +269,7 @@ func TestExecuteActions(t *testing.T) {
 				ErrUnsupportedStatus,
 				`action %q target %q has unsupported status %q`,
 				"action-1",
-				"ns-1",
+				namespace1.GetFqn(),
 				TargetStatus("bogus"),
 			),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {

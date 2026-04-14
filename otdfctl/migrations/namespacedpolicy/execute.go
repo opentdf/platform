@@ -131,11 +131,11 @@ func namespaceLabel(namespace *policy.Namespace) string {
 	if namespace == nil {
 		return "<unknown>"
 	}
-	if id := strings.TrimSpace(namespace.GetId()); id != "" {
-		return id
-	}
 	if fqn := strings.TrimSpace(namespace.GetFqn()); fqn != "" {
 		return fqn
+	}
+	if id := strings.TrimSpace(namespace.GetId()); id != "" {
+		return id
 	}
 	return "<unknown>"
 }

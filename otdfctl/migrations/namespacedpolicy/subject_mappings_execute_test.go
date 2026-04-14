@@ -184,7 +184,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 				ErrPlanNotExecutable,
 				`subject mapping %q target %q is unresolved: %s`,
 				"mapping-1",
-				"ns-1",
+				namespace1.GetFqn(),
 				"missing target namespace mapping",
 			),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
@@ -211,7 +211,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			wantErr: wantError(ErrMissingMigratedTarget, `subject mapping %q target %q`, "mapping-1", "ns-1"),
+			wantErr: wantError(ErrMissingMigratedTarget, `subject mapping %q target %q`, "mapping-1", namespace1.GetFqn()),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
@@ -253,7 +253,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			wantErr: wantError(ErrMissingActionTarget, `subject mapping %q action %q target %q`, "mapping-1", "action-1", "ns-1"),
+			wantErr: wantError(ErrMissingActionTarget, `subject mapping %q action %q target %q`, "mapping-1", "action-1", namespace1.GetFqn()),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
@@ -307,7 +307,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			wantErr: wantError(ErrMissingSubjectConditionSetTarget, `subject mapping %q subject condition set %q target %q`, "mapping-1", "scs-1", "ns-1"),
+			wantErr: wantError(ErrMissingSubjectConditionSetTarget, `subject mapping %q subject condition set %q target %q`, "mapping-1", "scs-1", namespace1.GetFqn()),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
@@ -408,7 +408,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 					},
 				},
 			},
-			wantErr: wantError(ErrMissingCreatedTargetID, `subject mapping %q target %q`, "mapping-1", "ns-1"),
+			wantErr: wantError(ErrMissingCreatedTargetID, `subject mapping %q target %q`, "mapping-1", namespace1.GetFqn()),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
 				t.Helper()
 
@@ -439,7 +439,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 				ErrUnsupportedStatus,
 				`subject mapping %q target %q has unsupported status %q`,
 				"mapping-1",
-				"ns-1",
+				namespace1.GetFqn(),
 				TargetStatus("bogus"),
 			),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
@@ -515,7 +515,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 			},
 			wantErr: &expectedError{
 				is:      errBoom,
-				message: `create subject mapping "mapping-1" in namespace "ns-1": boom`,
+				message: `create subject mapping "mapping-1" in namespace "https://example.com": boom`,
 			},
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
 				t.Helper()

@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 
@@ -42,25 +41,33 @@ func migrateNamespacedPolicy(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cli.ExitWithError("could not read --commit flag", err)
 	}
-	if commit {
-		cli.ExitWithError("commit is not implemented for namespaced-policy", errors.New("--commit is not supported yet"))
-	}
 
 	h := otdfctl.NewHandler(c)
 	defer h.Close()
 
 	planner, err := namespacedpolicy.NewPlanner(&h, scopeCSV)
 	if err != nil {
-		cli.ExitWithError("could not create namespacedpolicy planner", err)
+		cli.ExitWithError("could not create namespaced-policy planner", err)
 	}
 
 	plan, err := planner.Plan(cmd.Context())
 	if err != nil {
-		cli.ExitWithError("could not build namespacedpolicy plan", err)
+		cli.ExitWithError("could not build namespaced-policy plan", err)
+	}
+
+	if commit {
+		executor, err := namespacedpolicy.NewExecutor(h)
+		if err != nil {
+			cli.ExitWithError("could not create namespaced-policy executor", err)
+		}
+
+		if err := executor.Execute(cmd.Context(), plan); err != nil {
+			cli.ExitWithError("could not execute namespaced-policy commit", err)
+		}
 	}
 
 	if err := writeNamespacedPolicyPlan(outputPath, plan); err != nil {
-		cli.ExitWithError("could not write namespacedpolicy plan", err)
+		cli.ExitWithError("could not write namespaced-policy plan", err)
 	}
 }
 

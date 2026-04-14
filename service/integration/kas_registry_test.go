@@ -877,6 +877,152 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer_ByIdNameUri_ReturnSameResult(
 	s.True(proto.Equal(kasByID, kasByURI))
 }
 
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_ASC() {
+	ids := s.createSortTestKeyAccessServers("sort-kas-created-asc")
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_DESC() {
+	ids := s.createSortTestKeyAccessServers("sort-kas-created-desc")
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_DESC() {
+	ids := s.createSortTestKeyAccessServers("sort-kas-updated-desc")
+
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, ids[0], &kasregistry.UpdateKeyAccessServerRequest{
+		Id: ids[0],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[2], ids[1])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_ASC() {
+	ids := s.createSortTestKeyAccessServers("sort-kas-updated-asc")
+
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, ids[2], &kasregistry.UpdateKeyAccessServerRequest{
+		Id: ids[2],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_ASC() {
+	ids := s.createNamedSortTestKeyAccessServers([]string{"aaa-kas-sort", "bbb-kas-sort", "ccc-kas-sort"})
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_DESC() {
+	ids := s.createNamedSortTestKeyAccessServers([]string{"aaa-kas-sortdesc", "bbb-kas-sortdesc", "ccc-kas-sortdesc"})
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_ASC() {
+	ids := s.createNamedSortTestKeyAccessServers([]string{"aaa-kas-uri", "bbb-kas-uri", "ccc-kas-uri"})
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_URI, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_DESC() {
+	ids := s.createNamedSortTestKeyAccessServers([]string{"aaa-kas-uridesc", "bbb-kas-uridesc", "ccc-kas-uridesc"})
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_URI, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUnspecified_FallsBackToDefault() {
+	ids := s.createSortTestKeyAccessServers("sort-kas-unspecified")
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
+}
+
 func (s *KasRegistrySuite) getKasRegistryFixtures() []fixtures.FixtureDataKasRegistry {
 	return []fixtures.FixtureDataKasRegistry{
 		s.f.GetKasRegistryKey("key_access_server_1"),
@@ -921,6 +1067,42 @@ func (s *KasRegistrySuite) validateKasRegistryKeys(kasr *policy.KeyAccessServer)
 		}
 	}
 	s.Len(expectedKasKeys, matchingKeysCount)
+}
+
+// createSortTestKeyAccessServers creates 3 KAS entries with 5ms gaps for distinct timestamps.
+// Returns the KAS IDs in creation order.
+func (s *KasRegistrySuite) createSortTestKeyAccessServers(label string) []string {
+	const count = 3
+	ids := make([]string, count)
+	for i := range count {
+		if i > 0 {
+			time.Sleep(5 * time.Millisecond)
+		}
+		suffix := fmt.Sprintf("%s-%d-%d", label, i, time.Now().UnixNano())
+		created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+			Uri:  fmt.Sprintf("https://%s.example.com", suffix),
+			Name: suffix,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	return ids
+}
+
+// createNamedSortTestKeyAccessServers creates KAS entries with specific name prefixes for deterministic name/uri sorting.
+// Returns the KAS IDs in prefix order.
+func (s *KasRegistrySuite) createNamedSortTestKeyAccessServers(prefixes []string) []string {
+	suffix := time.Now().UnixNano()
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
+		created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+			Uri:  fmt.Sprintf("https://%s-%d.example.com", prefix, suffix),
+			Name: fmt.Sprintf("%s-%d", prefix, suffix),
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	return ids
 }
 
 func TestKasRegistrySuite(t *testing.T) {

@@ -3,6 +3,7 @@ package namespacedpolicy
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/common"
@@ -12,6 +13,18 @@ import (
 )
 
 var errMissingMockActionResult = errors.New("missing mock action result")
+
+type expectedError struct {
+	is      error
+	message string
+}
+
+func wantError(is error, format string, args ...any) *expectedError {
+	return &expectedError{
+		is:      is,
+		message: fmt.Sprintf("%s: %s", is, fmt.Sprintf(format, args...)),
+	}
+}
 
 type mockExecutorHandler struct {
 	created map[string]map[string]*createdActionCall
@@ -61,13 +74,12 @@ func TestExecutorExecute(t *testing.T) {
 	namespace3 := &policy.Namespace{Id: "ns-3", Fqn: "https://example.org"}
 
 	tests := []struct {
-		name      string
-		plan      *Plan
-		handler   *mockExecutorHandler
-		runID     string
-		wantErrIs error
-		wantErr   string
-		assert    func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan)
+		name    string
+		plan    *Plan
+		handler *mockExecutorHandler
+		runID   string
+		wantErr *expectedError
+		assert  func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan)
 	}{
 		{
 			name: "handles created, existing, and already migrated action targets",
@@ -166,9 +178,14 @@ func TestExecutorExecute(t *testing.T) {
 					},
 				},
 			},
-			handler:   &mockExecutorHandler{},
-			wantErrIs: ErrPlanNotExecutable,
-			wantErr:   `action "action-1" target "ns-1" is unresolved: missing target namespace mapping`,
+			handler: &mockExecutorHandler{},
+			wantErr: wantError(
+				ErrPlanNotExecutable,
+				`action %q target %q is unresolved: %s`,
+				"action-1",
+				"ns-1",
+				"missing target namespace mapping",
+			),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
@@ -193,9 +210,8 @@ func TestExecutorExecute(t *testing.T) {
 					},
 				},
 			},
-			handler:   &mockExecutorHandler{},
-			wantErrIs: ErrActionMissingExistingTarget,
-			wantErr:   `action "action-1" target "ns-1"`,
+			handler: &mockExecutorHandler{},
+			wantErr: wantError(ErrActionMissingExistingTarget, `action %q target %q`, "action-1", "ns-1"),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
@@ -220,9 +236,8 @@ func TestExecutorExecute(t *testing.T) {
 					},
 				},
 			},
-			handler:   &mockExecutorHandler{},
-			wantErrIs: ErrActionMissingMigratedTarget,
-			wantErr:   `action "action-1" target "ns-1"`,
+			handler: &mockExecutorHandler{},
+			wantErr: wantError(ErrActionMissingMigratedTarget, `action %q target %q`, "action-1", "ns-1"),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
@@ -246,9 +261,8 @@ func TestExecutorExecute(t *testing.T) {
 					},
 				},
 			},
-			handler:   &mockExecutorHandler{},
-			wantErrIs: ErrActionMissingTargetNamespace,
-			wantErr:   `action "action-1"`,
+			handler: &mockExecutorHandler{},
+			wantErr: wantError(ErrActionMissingTargetNamespace, `action %q`, "action-1"),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
@@ -280,8 +294,7 @@ func TestExecutorExecute(t *testing.T) {
 					},
 				},
 			},
-			wantErrIs: ErrActionMissingCreatedTargetID,
-			wantErr:   `action "action-1" target "ns-1"`,
+			wantErr: wantError(ErrActionMissingCreatedTargetID, `action %q target %q`, "action-1", "ns-1"),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan) {
 				t.Helper()
 
@@ -308,9 +321,14 @@ func TestExecutorExecute(t *testing.T) {
 					},
 				},
 			},
-			handler:   &mockExecutorHandler{},
-			wantErrIs: ErrActionUnsupportedStatus,
-			wantErr:   `action "action-1" target "ns-1" has unsupported status "bogus"`,
+			handler: &mockExecutorHandler{},
+			wantErr: wantError(
+				ErrActionUnsupportedStatus,
+				`action %q target %q has unsupported status %q`,
+				"action-1",
+				"ns-1",
+				TargetStatus("bogus"),
+			),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
@@ -334,16 +352,12 @@ func TestExecutorExecute(t *testing.T) {
 
 			err = executor.Execute(t.Context(), tt.plan)
 			switch {
-			case tt.wantErrIs != nil:
+			case tt.wantErr != nil:
 				require.Error(t, err)
-				require.ErrorIs(t, err, tt.wantErrIs)
-			case tt.wantErr != "":
-				require.Error(t, err)
+				require.ErrorIs(t, err, tt.wantErr.is)
+				require.EqualError(t, err, tt.wantErr.message)
 			default:
 				require.NoError(t, err)
-			}
-			if tt.wantErr != "" {
-				require.ErrorContains(t, err, tt.wantErr)
 			}
 
 			tt.assert(t, err, executor, tt.handler, tt.plan)

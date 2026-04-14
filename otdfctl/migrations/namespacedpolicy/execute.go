@@ -16,11 +16,11 @@ var (
 	ErrNilExecutionPlan             = errors.New("execution plan is required")
 	ErrPlanNotExecutable            = errors.New("plan is not executable")
 	ErrExecutionPhaseNotImplemented = errors.New("execution phase is not implemented")
-	ErrActionMissingExistingTarget  = errors.New("action target is missing an existing standard target id")
-	ErrActionMissingMigratedTarget  = errors.New("action target is missing an already-migrated target id")
-	ErrActionMissingTargetNamespace = errors.New("action target namespace is not set")
-	ErrActionMissingCreatedTargetID = errors.New("create action returned no target id")
-	ErrActionUnsupportedStatus      = errors.New("action target has unsupported status")
+	ErrMissingExistingTarget        = errors.New("missing existing target")
+	ErrMissingMigratedTarget        = errors.New("missing migrated target")
+	ErrTargetNamespaceRequired      = errors.New("target namespace is required")
+	ErrMissingCreatedTargetID       = errors.New("missing created target id")
+	ErrUnsupportedStatus            = errors.New("unsupported status")
 )
 
 const (
@@ -30,12 +30,14 @@ const (
 
 type ExecutorHandler interface {
 	CreateAction(ctx context.Context, name string, namespace string, metadata *common.MetadataMutable) (*policy.Action, error)
+	CreateSubjectConditionSet(ctx context.Context, ss []*policy.SubjectSet, metadata *common.MetadataMutable, namespace string) (*policy.SubjectConditionSet, error)
 }
 
 type Executor struct {
-	handler   ExecutorHandler
-	runID     string
-	actionIDs map[string]map[string]string
+	handler              ExecutorHandler
+	runID                string
+	actionTargets        map[string]map[string]*ActionTargetPlan
+	subjectConditionSets map[string]map[string]*SubjectConditionSetTargetPlan
 }
 
 func NewExecutor(handler ExecutorHandler) (*Executor, error) {
@@ -44,9 +46,10 @@ func NewExecutor(handler ExecutorHandler) (*Executor, error) {
 	}
 
 	return &Executor{
-		handler:   handler,
-		runID:     uuid.NewString(),
-		actionIDs: make(map[string]map[string]string),
+		handler:              handler,
+		runID:                uuid.NewString(),
+		actionTargets:        make(map[string]map[string]*ActionTargetPlan),
+		subjectConditionSets: make(map[string]map[string]*SubjectConditionSetTargetPlan),
 	}, nil
 }
 
@@ -58,16 +61,16 @@ func (e *Executor) Execute(ctx context.Context, plan *Plan) error {
 	if err := e.executeActions(ctx, plan.Actions); err != nil {
 		return err
 	}
-	if err := e.executeSubjectConditionSets(ctx, plan); err != nil {
+	if err := e.executeSubjectConditionSets(ctx, plan.SubjectConditionSets); err != nil {
 		return err
 	}
-	if err := e.executeSubjectMappings(ctx, plan); err != nil {
+	if err := e.executeSubjectMappings(ctx, plan.SubjectMappings); err != nil {
 		return err
 	}
-	if err := e.executeRegisteredResources(ctx, plan); err != nil {
+	if err := e.executeRegisteredResources(ctx, plan.RegisteredResources); err != nil {
 		return err
 	}
-	if err := e.executeObligationTriggers(ctx, plan); err != nil {
+	if err := e.executeObligationTriggers(ctx, plan.ObligationTriggers); err != nil {
 		return err
 	}
 
@@ -102,6 +105,14 @@ func metadataForCreate(sourceID string, sourceLabels map[string]string, runID st
 	}
 }
 
+func metadataLabels(metadata *common.Metadata) map[string]string {
+	if metadata == nil {
+		return nil
+	}
+
+	return metadata.GetLabels()
+}
+
 func namespaceIdentifier(namespace *policy.Namespace) string {
 	if namespace == nil {
 		return ""
@@ -123,139 +134,4 @@ func namespaceLabel(namespace *policy.Namespace) string {
 		return fqn
 	}
 	return "<unknown>"
-}
-
-func (e *Executor) setActionTargetID(sourceID string, namespace *policy.Namespace, targetID string) {
-	if e == nil || sourceID == "" || targetID == "" {
-		return
-	}
-
-	namespaceKey := namespaceRefKey(namespace)
-	if namespaceKey == "" {
-		return
-	}
-
-	if e.actionIDs == nil {
-		e.actionIDs = make(map[string]map[string]string)
-	}
-	if e.actionIDs[sourceID] == nil {
-		e.actionIDs[sourceID] = make(map[string]string)
-	}
-
-	e.actionIDs[sourceID][namespaceKey] = targetID
-}
-
-func (e *Executor) actionTargetID(sourceID string, namespace *policy.Namespace) string {
-	if e == nil || sourceID == "" {
-		return ""
-	}
-
-	namespaceKey := namespaceRefKey(namespace)
-	if namespaceKey == "" {
-		return ""
-	}
-
-	return e.actionIDs[sourceID][namespaceKey]
-}
-
-func (e *Executor) executeActions(ctx context.Context, actionPlans []*ActionPlan) error {
-	for _, actionPlan := range actionPlans {
-		if actionPlan == nil || actionPlan.Source == nil {
-			continue
-		}
-
-		for _, target := range actionPlan.Targets {
-			if target == nil {
-				continue
-			}
-
-			switch target.Status {
-			case TargetStatusExistingStandard, TargetStatusAlreadyMigrated:
-				if target.TargetID() == "" {
-					errKind := ErrActionMissingExistingTarget
-					if target.Status == TargetStatusAlreadyMigrated {
-						errKind = ErrActionMissingMigratedTarget
-					}
-					return fmt.Errorf("%w: action %q target %q", errKind, actionPlan.Source.GetId(), namespaceLabel(target.Namespace))
-				}
-				e.setActionTargetID(actionPlan.Source.GetId(), target.Namespace, target.TargetID())
-			case TargetStatusCreate:
-				namespace := namespaceIdentifier(target.Namespace)
-				if namespace == "" {
-					return fmt.Errorf("%w: action %q", ErrActionMissingTargetNamespace, actionPlan.Source.GetId())
-				}
-
-				created, err := e.handler.CreateAction(
-					ctx,
-					actionPlan.Source.GetName(),
-					namespace,
-					metadataForCreate(
-						actionPlan.Source.GetId(),
-						actionPlan.Source.GetMetadata().GetLabels(),
-						e.runID,
-					),
-				)
-				if err != nil {
-					target.Execution = &ExecutionResult{
-						RunID:   e.runID,
-						Failure: err.Error(),
-					}
-					return fmt.Errorf("create action %q in namespace %q: %w", actionPlan.Source.GetId(), namespaceLabel(target.Namespace), err)
-				}
-				if created.GetId() == "" {
-					target.Execution = &ExecutionResult{
-						RunID:   e.runID,
-						Failure: ErrActionMissingCreatedTargetID.Error(),
-					}
-					return fmt.Errorf("%w: action %q target %q", ErrActionMissingCreatedTargetID, actionPlan.Source.GetId(), namespaceLabel(target.Namespace))
-				}
-
-				target.Execution = &ExecutionResult{
-					RunID:           e.runID,
-					Applied:         true,
-					CreatedTargetID: created.GetId(),
-				}
-				e.setActionTargetID(actionPlan.Source.GetId(), target.Namespace, created.GetId())
-			case TargetStatusUnresolved:
-				// ! Note: This should never really happen, as the validatePlan should be run before this; good defensive check though.
-				return fmt.Errorf("%w: action %q target %q is unresolved: %s", ErrPlanNotExecutable, actionPlan.Source.GetId(), namespaceLabel(target.Namespace), target.Reason)
-			default:
-				return fmt.Errorf("%w: action %q target %q has unsupported status %q", ErrActionUnsupportedStatus, actionPlan.Source.GetId(), namespaceLabel(target.Namespace), target.Status)
-			}
-		}
-	}
-
-	return nil
-}
-
-func (e *Executor) executeSubjectConditionSets(_ context.Context, plan *Plan) error {
-	if plan == nil || len(plan.SubjectConditionSets) == 0 {
-		return nil
-	}
-
-	return fmt.Errorf("%w: %s", ErrExecutionPhaseNotImplemented, ScopeSubjectConditionSets)
-}
-
-func (e *Executor) executeSubjectMappings(_ context.Context, plan *Plan) error {
-	if plan == nil || len(plan.SubjectMappings) == 0 {
-		return nil
-	}
-
-	return fmt.Errorf("%w: %s", ErrExecutionPhaseNotImplemented, ScopeSubjectMappings)
-}
-
-func (e *Executor) executeRegisteredResources(_ context.Context, plan *Plan) error {
-	if plan == nil || len(plan.RegisteredResources) == 0 {
-		return nil
-	}
-
-	return fmt.Errorf("%w: %s", ErrExecutionPhaseNotImplemented, ScopeRegisteredResources)
-}
-
-func (e *Executor) executeObligationTriggers(_ context.Context, plan *Plan) error {
-	if plan == nil || len(plan.ObligationTriggers) == 0 {
-		return nil
-	}
-
-	return fmt.Errorf("%w: %s", ErrExecutionPhaseNotImplemented, ScopeObligationTriggers)
 }

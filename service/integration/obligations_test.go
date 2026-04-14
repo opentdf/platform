@@ -2003,8 +2003,18 @@ func (s *ObligationsSuite) Test_ListObligations_SortByName_DESC() {
 // Sort by FQN
 
 func (s *ObligationsSuite) Test_ListObligations_SortByFqn_ASC() {
-	ids := s.createNamedSortTestObligations([]string{"aaa-fqnsort", "bbb-fqnsort", "ccc-fqnsort"})
-	defer s.deleteObligations(ids)
+	// Create obligations across two namespaces to prove FQN sort uses the full
+	// constructed FQN (namespace_fqn/obl/name), not just the name.
+	// "example.com" < "example.net" lexicographically, so even zzz in example.com
+	// sorts before aaa in example.net. Within example.com, name breaks the tie.
+	comID, _, _ := s.getNamespaceData(nsExampleCom)
+	netID, _, _ := s.getNamespaceData(nsExampleNet)
+	suffix := fmt.Sprintf("fqnasc-%d", time.Now().UnixNano())
+
+	oblComAAA := s.createObligation(comID, "aaa-"+suffix, nil)
+	oblComZZZ := s.createObligation(comID, "zzz-"+suffix, nil)
+	oblNetAAA := s.createObligation(netID, "aaa-"+suffix, nil)
+	defer s.deleteObligations([]string{oblComAAA.GetId(), oblComZZZ.GetId(), oblNetAAA.GetId()})
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		Sort: []*obligations.ObligationsSort{
@@ -2014,13 +2024,19 @@ func (s *ObligationsSuite) Test_ListObligations_SortByFqn_ASC() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	// FQN is namespace_fqn/obl/name, so aaa < bbb < ccc in ASC order
-	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[0], ids[1], ids[2])
+	// example.com/obl/aaa < example.com/obl/zzz < example.net/obl/aaa
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, oblComAAA.GetId(), oblComZZZ.GetId(), oblNetAAA.GetId())
 }
 
 func (s *ObligationsSuite) Test_ListObligations_SortByFqn_DESC() {
-	ids := s.createNamedSortTestObligations([]string{"aaa-fqnsortdesc", "bbb-fqnsortdesc", "ccc-fqnsortdesc"})
-	defer s.deleteObligations(ids)
+	comID, _, _ := s.getNamespaceData(nsExampleCom)
+	netID, _, _ := s.getNamespaceData(nsExampleNet)
+	suffix := fmt.Sprintf("fqndesc-%d", time.Now().UnixNano())
+
+	oblComAAA := s.createObligation(comID, "aaa-"+suffix, nil)
+	oblComZZZ := s.createObligation(comID, "zzz-"+suffix, nil)
+	oblNetAAA := s.createObligation(netID, "aaa-"+suffix, nil)
+	defer s.deleteObligations([]string{oblComAAA.GetId(), oblComZZZ.GetId(), oblNetAAA.GetId()})
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		Sort: []*obligations.ObligationsSort{
@@ -2030,8 +2046,8 @@ func (s *ObligationsSuite) Test_ListObligations_SortByFqn_DESC() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	// ccc > bbb > aaa in DESC order
-	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[2], ids[1], ids[0])
+	// example.net/obl/aaa > example.com/obl/zzz > example.com/obl/aaa
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, oblNetAAA.GetId(), oblComZZZ.GetId(), oblComAAA.GetId())
 }
 
 // Sort by CreatedAt

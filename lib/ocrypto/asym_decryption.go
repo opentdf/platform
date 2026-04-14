@@ -227,29 +227,6 @@ func (e ECDecryptor) KeyType() KeyType {
 	return keyTypeFromECDHCurve(e.sk.Curve())
 }
 
-func (e ECDecryptor) deriveSharedKey(publicKeyInPem string) ([]byte, error) {
-	if e.sk == nil {
-		return nil, errors.New("failed to derive shared key, private key is empty")
-	}
-
-	pub, err := getPublicPart(publicKeyInPem)
-	if err != nil {
-		return nil, err
-	}
-
-	ecdhPublicKey, err := ConvertToECDHPublicKey(pub)
-	if err != nil {
-		return nil, fmt.Errorf("unsupported public key type: %w", err)
-	}
-
-	sharedKey, err := e.sk.ECDH(ecdhPublicKey)
-	if err != nil {
-		return nil, fmt.Errorf("there was a problem deriving a shared ECDH key: %w", err)
-	}
-
-	return sharedKey, nil
-}
-
 func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
 	ek, err := e.parseEphemeralPublicKey(ephemeral)
 	if err != nil {
@@ -291,6 +268,29 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 	}
 
 	return plaintext, nil
+}
+
+func (e ECDecryptor) deriveSharedKey(publicKeyInPem string) ([]byte, error) {
+	if e.sk == nil {
+		return nil, errors.New("failed to derive shared key, private key is empty")
+	}
+
+	pub, err := getPublicPart(publicKeyInPem)
+	if err != nil {
+		return nil, err
+	}
+
+	ecdhPublicKey, err := ConvertToECDHPublicKey(pub)
+	if err != nil {
+		return nil, fmt.Errorf("unsupported public key type: %w", err)
+	}
+
+	sharedKey, err := e.sk.ECDH(ecdhPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("there was a problem deriving a shared ECDH key: %w", err)
+	}
+
+	return sharedKey, nil
 }
 
 // parseEphemeralPublicKey parses an ephemeral public key from DER (PKIX) or compressed EC point bytes.

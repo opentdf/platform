@@ -163,47 +163,46 @@ func wrapKeyWithPublicKey(symKey []byte, pubKeyInfo keysplit.KASPublicKey) (stri
 	}
 
 	// Determine key type based on algorithm
-	ktype := ocrypto.ParseKeyType(pubKeyInfo.Algorithm)
+	ktype := ocrypto.KeyType(pubKeyInfo.Algorithm)
 
-	kasPublicKey, err := ocrypto.FromPublicPEM(kasPublicKeyPEM)
+	kasPublicKey, err := ocrypto.FromPublicPEM(pubKeyInfo.PEM)
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to create parse KAS public key: %w", err)
 	}
 
 	if ocrypto.IsECKeyType(ktype) {
-		// Handle EC key wrapping
-		return wrapKeyWithEC(ktype, pubKeyInfo.PEM, symKey)
+		if epk, ok := kasPublicKey.(ocrypto.ECEncryptor); ok {
+			// Handle EC key wrapping
+			return wrapKeyWithEC(ktype, epk, symKey)
+		}
+		return "", "", "", fmt.Errorf("incorrect key type for %v", ktype)
 	}
 	// Handle RSA key wrapping
-	wrapped, err := wrapKeyWithRSA(pubKeyInfo.PEM, symKey)
+	wrapped, err := wrapKeyWithRSA(kasPublicKey, symKey)
 	return wrapped, "wrapped", "", err
 }
 
 // wrapKeyWithEC encrypts a key using EC public key with ECIES
-func wrapKeyWithEC(keyType ocrypto.KeyType, kasPublicKeyPEM string, symKey []byte) (string, string, string, error) {
-	// Convert key type to ECC mode
-	mode, err := ocrypto.ECKeyTypeToMode(keyType)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to convert key type to ECC mode: %w", err)
-	}
-
+func wrapKeyWithEC(keyType ocrypto.KeyType, kasPublicKey ocrypto.ECEncryptor, symKey []byte) (string, string, string, error) {
 	if !ocrypto.IsECKeyType(kasPublicKey.KeyType()) {
 		return "", "", "", fmt.Errorf("unexpected KAS public key type: %v", kasPublicKey.KeyType())
 	}
 
 	wrapped, err := kasPublicKey.Encrypt(symKey)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to wrap with %v: %w", keyType, err)
+	}
 
-	return string(ocrypto.Base64Encode(wrapped)), "eccWrapped", kasPublicKey.EphemeralPublicKeyInPemFormat(), nil
+	epk, err := kasPublicKey.EphemeralPublicKeyInPemFormat()
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to export ephemeral public key: %w", err)
+	}
+
+	return string(ocrypto.Base64Encode(wrapped)), "eccWrapped", epk, nil
 }
 
 // wrapKeyWithRSA encrypts a key using RSA public key with OAEP padding
-func wrapKeyWithRSA(kasPublicKeyPEM string, symKey []byte) (string, error) {
-	// Create RSA encryptor from PEM
-	encryptor, err := ocrypto.FromPublicPEM(kasPublicKeyPEM)
-	if err != nil {
-		return "", fmt.Errorf("failed to create RSA encryptor: %w", err)
-	}
-
+func wrapKeyWithRSA(encryptor ocrypto.PublicKeyEncryptor, symKey []byte) (string, error) {
 	// Encrypt with OAEP padding
 	encryptedKey, err := encryptor.Encrypt(symKey)
 	if err != nil {

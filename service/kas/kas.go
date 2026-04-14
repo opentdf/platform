@@ -21,14 +21,14 @@ import (
 )
 
 func OnConfigUpdate(p *access.Provider) serviceregistry.OnConfigUpdateHook {
-	return func(_ context.Context, cfg config.ServiceConfig) error {
+	return func(ctx context.Context, cfg config.ServiceConfig) error {
 		var kasCfg access.KASConfig
 		if err := mapstructure.Decode(cfg, &kasCfg); err != nil {
 			return fmt.Errorf("invalid kas cfg [%v] %w", cfg, err)
 		}
 
 		p.ApplyConfig(kasCfg, p.SecurityConfig())
-		p.Logger.Info("kas config reloaded")
+		p.Logger.TraceContext(ctx, "kas config reloaded")
 
 		return nil
 	}

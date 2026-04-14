@@ -42,9 +42,13 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 		return nil, db.ErrListLimitTooLarge
 	}
 
+	sortField, sortDirection := GetKeyAccessServersSortParams(r.GetSort())
+
 	list, err := c.queries.listKeyAccessServers(ctx, listKeyAccessServersParams{
-		Offset: offset,
-		Limit:  limit,
+		Offset:        offset,
+		Limit:         limit,
+		SortField:     sortField,
+		SortDirection: sortDirection,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

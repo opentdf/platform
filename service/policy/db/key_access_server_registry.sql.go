@@ -668,14 +668,26 @@ LEFT JOIN (
         INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY kask.key_access_server_id
     ) kask_keys ON kas.id = kask_keys.key_access_server_id
-ORDER BY kas.created_at DESC
-LIMIT $2 
-OFFSET $1
+ORDER BY
+    CASE WHEN $1::text = 'name' AND $2::text = 'ASC' THEN kas.name END ASC,
+    CASE WHEN $1::text = 'name' AND $2::text = 'DESC' THEN kas.name END DESC,
+    CASE WHEN $1::text = 'uri' AND $2::text = 'ASC' THEN kas.uri END ASC,
+    CASE WHEN $1::text = 'uri' AND $2::text = 'DESC' THEN kas.uri END DESC,
+    CASE WHEN $1::text = 'created_at' AND $2::text = 'ASC' THEN kas.created_at END ASC,
+    CASE WHEN $1::text = 'created_at' AND $2::text = 'DESC' THEN kas.created_at END DESC,
+    CASE WHEN $1::text = 'updated_at' AND $2::text = 'ASC' THEN kas.updated_at END ASC,
+    CASE WHEN $1::text = 'updated_at' AND $2::text = 'DESC' THEN kas.updated_at END DESC,
+    kas.created_at DESC,
+    kas.id ASC
+LIMIT $4
+OFFSET $3
 `
 
 type listKeyAccessServersParams struct {
-	Offset int32 `json:"offset_"`
-	Limit  int32 `json:"limit_"`
+	SortField     string `json:"sort_field"`
+	SortDirection string `json:"sort_direction"`
+	Offset        int32  `json:"offset_"`
+	Limit         int32  `json:"limit_"`
 }
 
 type listKeyAccessServersRow struct {
@@ -723,11 +735,26 @@ type listKeyAccessServersRow struct {
 //	        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
 //	        GROUP BY kask.key_access_server_id
 //	    ) kask_keys ON kas.id = kask_keys.key_access_server_id
-//	ORDER BY kas.created_at DESC
-//	LIMIT $2
-//	OFFSET $1
+//	ORDER BY
+//	    CASE WHEN $1::text = 'name' AND $2::text = 'ASC' THEN kas.name END ASC,
+//	    CASE WHEN $1::text = 'name' AND $2::text = 'DESC' THEN kas.name END DESC,
+//	    CASE WHEN $1::text = 'uri' AND $2::text = 'ASC' THEN kas.uri END ASC,
+//	    CASE WHEN $1::text = 'uri' AND $2::text = 'DESC' THEN kas.uri END DESC,
+//	    CASE WHEN $1::text = 'created_at' AND $2::text = 'ASC' THEN kas.created_at END ASC,
+//	    CASE WHEN $1::text = 'created_at' AND $2::text = 'DESC' THEN kas.created_at END DESC,
+//	    CASE WHEN $1::text = 'updated_at' AND $2::text = 'ASC' THEN kas.updated_at END ASC,
+//	    CASE WHEN $1::text = 'updated_at' AND $2::text = 'DESC' THEN kas.updated_at END DESC,
+//	    kas.created_at DESC,
+//	    kas.id ASC
+//	LIMIT $4
+//	OFFSET $3
 func (q *Queries) listKeyAccessServers(ctx context.Context, arg listKeyAccessServersParams) ([]listKeyAccessServersRow, error) {
-	rows, err := q.db.Query(ctx, listKeyAccessServers, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, listKeyAccessServers,
+		arg.SortField,
+		arg.SortDirection,
+		arg.Offset,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}

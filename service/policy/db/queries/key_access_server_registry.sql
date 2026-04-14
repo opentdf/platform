@@ -100,9 +100,19 @@ LEFT JOIN (
         INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY kask.key_access_server_id
     ) kask_keys ON kas.id = kask_keys.key_access_server_id
-ORDER BY kas.created_at DESC
-LIMIT @limit_ 
-OFFSET @offset_; 
+ORDER BY
+    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'ASC' THEN kas.name END ASC,
+    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'DESC' THEN kas.name END DESC,
+    CASE WHEN @sort_field::text = 'uri' AND @sort_direction::text = 'ASC' THEN kas.uri END ASC,
+    CASE WHEN @sort_field::text = 'uri' AND @sort_direction::text = 'DESC' THEN kas.uri END DESC,
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN kas.created_at END ASC,
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN kas.created_at END DESC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN kas.updated_at END ASC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN kas.updated_at END DESC,
+    kas.created_at DESC,
+    kas.id ASC
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: getKeyAccessServer :one
 SELECT 

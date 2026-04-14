@@ -43,13 +43,13 @@ func TestECKeyPair(t *testing.T) {
 	emptyECKeyPair := ECKeyPair{}
 
 	_, err := emptyECKeyPair.PrivateKeyInPemFormat()
-	require.NoError(t, err, "EcKeyPair.PrivateKeyInPemFormat() fail to return error")
+	require.Error(t, err, "EcKeyPair.PrivateKeyInPemFormat() fail to return error")
 
 	_, err = emptyECKeyPair.PublicKeyInPemFormat()
-	require.NoError(t, err, "EcKeyPair.PublicKeyInPemFormat() fail to return error")
+	require.Error(t, err, "EcKeyPair.PublicKeyInPemFormat() fail to return error")
 
 	_, err = emptyECKeyPair.KeySize()
-	require.NoError(t, err, "EcKeyPair.keySize() fail to return error")
+	require.Error(t, err, "EcKeyPair.keySize() fail to return error")
 
 	for _, modeBad := range []ECCMode{ECCModeSecp256k1} {
 		_, err := NewECKeyPair(modeBad)
@@ -65,18 +65,11 @@ func TestECRewrapKeyGenerate(t *testing.T) {
 	kasPublicKey, err := kasKey.Public()
 	require.NoError(t, err, "fail to get KAS public key")
 
-	// SDK key pair
-	sdkKey, err := NewECPrivateKey(ECCModeSecp256r1)
-	require.NoError(t, err, "fail on NewECPrivateKey")
-
-	sdkPublicKey, err := sdkKey.Public()
-	require.NoError(t, err, "fail to get SDK public key")
-
 	sampleKey := []byte("samplekey")
 	wrappedKey, err := kasPublicKey.Encrypt(sampleKey)
 	require.NoError(t, err, "fail unable to encypt samplekey")
 
-	unwrappedKey, err := kasKey.DecryptWithEphemeralKey(wrappedKey, sdkPublicKey.EphemeralKey())
+	unwrappedKey, err := kasKey.DecryptWithEphemeralKey(wrappedKey, kasPublicKey.EphemeralKey())
 	require.NoError(t, err, "fail to unwrap")
 
 	assert.Equal(t, sampleKey, unwrappedKey)

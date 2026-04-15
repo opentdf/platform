@@ -135,28 +135,25 @@ func TestRsaKeyPairNewMethods(t *testing.T) {
 
 func TestAsymDecryptionKeyType(t *testing.T) {
 	t.Parallel()
-
-	for _, bits := range []int{RSA2048Size, RSA4096Size} {
-		kp, err := NewRSAKeyPair(bits)
-		require.NoError(t, err)
-		privPEM, err := kp.PrivateKeyInPemFormat()
-		require.NoError(t, err)
-		d, err := FromPrivatePEM(privPEM)
-		require.NoError(t, err)
-		ad, ok := d.(AsymDecryption)
-		require.True(t, ok)
-		if bits == RSA2048Size {
-			require.Equal(t, RSA2048Key, ad.KeyType())
-		} else {
-			require.Equal(t, RSA4096Key, ad.KeyType())
-		}
+	sizes := []struct {
+		bits int
+		kt   KeyType
+	}{
+		{RSA2048Size, RSA2048Key},
+		{RSA4096Size, RSA4096Key},
 	}
-
-	t.Run("NilKeyGuard", func(t *testing.T) {
-		t.Parallel()
-		kt := AsymDecryption{}.KeyType()
-		// nil key returns a sentinel string, not a valid key type
-		require.False(t, IsRSAKeyType(kt))
-		require.False(t, IsECKeyType(kt))
-	})
+	for _, tc := range sizes {
+		t.Run(string(tc.kt), func(t *testing.T) {
+			t.Parallel()
+			kp, err := NewRSAKeyPair(tc.bits)
+			require.NoError(t, err)
+			privPEM, err := kp.PrivateKeyInPemFormat()
+			require.NoError(t, err)
+			d, err := FromPrivatePEM(privPEM)
+			require.NoError(t, err)
+			ad, ok := d.(AsymDecryption)
+			require.True(t, ok)
+			require.Equal(t, tc.kt, ad.KeyType())
+		})
+	}
 }

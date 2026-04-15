@@ -109,7 +109,7 @@ func TestBuildKeyAccessObjects(t *testing.T) {
 		require.Len(t, keyAccessList, 1, "Should create exactly one key access object")
 
 		keyAccess := keyAccessList[0]
-		assert.Equal(t, "eccWrapped", keyAccess.KeyType, "EC keys should use 'eccWrapped' key type")
+		assert.Equal(t, "ec-wrapped", keyAccess.KeyType, "EC keys should use 'ec-wrapped' key type")
 		assert.Equal(t, testKAS1URL, keyAccess.KasURL, "Should preserve KAS URL")
 		assert.NotEmpty(t, keyAccess.EphemeralPublicKey, "EC keys should have ephemeral public key")
 		assert.NotEmpty(t, keyAccess.WrappedKey, "Should contain wrapped key data")
@@ -420,7 +420,7 @@ func TestWrapKeyWithPublicKey(t *testing.T) {
 
 		require.NoError(t, err, "Should wrap key with EC public key")
 		assert.NotEmpty(t, wrappedKey, "Should return wrapped key")
-		assert.Equal(t, "eccWrapped", keyType, "EC keys should use 'eccWrapped' type")
+		assert.Equal(t, "ec-wrapped", keyType, "EC keys should use 'ec-wrapped' type")
 		assert.NotEmpty(t, ephemeralPubKey, "EC should generate ephemeral public key")
 
 		// Verify ephemeral key is valid PEM

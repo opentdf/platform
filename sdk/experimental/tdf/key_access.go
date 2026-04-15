@@ -162,24 +162,24 @@ func wrapKeyWithPublicKey(symKey []byte, pubKeyInfo keysplit.KASPublicKey) (stri
 		return "", "", "", fmt.Errorf("public key PEM is empty for KAS %s", pubKeyInfo.URL)
 	}
 
-	// Determine key type based on algorithm
-	ktype := ocrypto.KeyType(pubKeyInfo.Algorithm)
-
 	kasPublicKey, err := ocrypto.FromPublicPEM(pubKeyInfo.PEM)
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to create parse KAS public key: %w", err)
 	}
 
-	if ocrypto.IsECKeyType(ktype) {
-		if epk, ok := kasPublicKey.(ocrypto.ECEncryptor); ok {
-			// Handle EC key wrapping
-			return wrapKeyWithEC(ktype, epk, symKey)
+	switch kasPublicKey.Type() {
+	case ocrypto.EC:
+		epk, ok := kasPublicKey.(ocrypto.ECEncryptor)
+		if !ok {
+			return "", "", "", fmt.Errorf("unexpected encryptor type %T", kasPublicKey)
 		}
-		return "", "", "", fmt.Errorf("incorrect key type for %v", ktype)
+		return wrapKeyWithEC(epk.KeyType(), epk, symKey)
+	case ocrypto.RSA:
+		wrapped, err := wrapKeyWithRSA(kasPublicKey, symKey)
+		return wrapped, "wrapped", "", err
+	default:
+		return "", "", "", fmt.Errorf("unsupported KAS public key type: %v", kasPublicKey.KeyType())
 	}
-	// Handle RSA key wrapping
-	wrapped, err := wrapKeyWithRSA(kasPublicKey, symKey)
-	return wrapped, "wrapped", "", err
 }
 
 // wrapKeyWithEC encrypts a key using EC public key with ECIES
@@ -198,7 +198,7 @@ func wrapKeyWithEC(keyType ocrypto.KeyType, kasPublicKey ocrypto.ECEncryptor, sy
 		return "", "", "", fmt.Errorf("failed to export ephemeral public key: %w", err)
 	}
 
-	return string(ocrypto.Base64Encode(wrapped)), "eccWrapped", epk, nil
+	return string(ocrypto.Base64Encode(wrapped)), "ec-wrapped", epk, nil
 }
 
 // wrapKeyWithRSA encrypts a key using RSA public key with OAEP padding

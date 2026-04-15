@@ -1557,6 +1557,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.obligations.ObligationsSort"><span class="badge">M</span>ObligationsSort</a>
+                </li>
+              
+                <li>
                   <a href="#policy.obligations.RemoveObligationTriggerRequest"><span class="badge">M</span>RemoveObligationTriggerRequest</a>
                 </li>
               
@@ -1584,6 +1588,10 @@
                   <a href="#policy.obligations.ValueTriggerRequest"><span class="badge">M</span>ValueTriggerRequest</a>
                 </li>
               
+              
+                <li>
+                  <a href="#policy.obligations.SortObligationsType"><span class="badge">E</span>SortObligationsType</a>
+                </li>
               
               
               
@@ -13284,7 +13292,7 @@ Common metadata </p></td>
         
       
         <h3 id="policy.obligations.GetObligationRequest">GetObligationRequest</h3>
-        <p>Definitions</p>
+        <p></p>
 
         
           <table class="field-table">
@@ -13651,6 +13659,15 @@ Common metadata </p></td>
                   <td><p>Optional </p></td>
                 </tr>
               
+                <tr>
+                  <td>sort</td>
+                  <td><a href="#policy.obligations.ObligationsSort">ObligationsSort</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional - CONSTRAINT: max 1 item
+Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
+created_at DESC, then id ASC (tie-breaker). </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -13678,6 +13695,37 @@ Common metadata </p></td>
                 <tr>
                   <td>pagination</td>
                   <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.ObligationsSort">ObligationsSort</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>field</td>
+                  <td><a href="#policy.obligations.SortObligationsType">SortObligationsType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>direction</td>
+                  <td><a href="#policy.SortDirection">policy.SortDirection</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -13923,6 +13971,47 @@ Common metadata </p></td>
         
       
 
+      
+        <h3 id="policy.obligations.SortObligationsType">SortObligationsType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_OBLIGATIONS_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_OBLIGATIONS_TYPE_NAME</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_OBLIGATIONS_TYPE_FQN</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_OBLIGATIONS_TYPE_CREATED_AT</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_OBLIGATIONS_TYPE_UPDATED_AT</td>
+                <td>4</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
 
       

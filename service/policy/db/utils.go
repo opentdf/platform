@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -95,6 +96,35 @@ func GetSubjectConditionSetsSortParams(sort []*subjectmapping.SubjectConditionSe
 	case subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT:
 		field = sortFieldUpdatedAt
 	case subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED:
+		return "", ""
+	default:
+		return "", ""
+	}
+
+	return field, getSortDirection(s.GetDirection())
+}
+
+// GetObligationsSortParams maps the strongly-typed ObligationsSort enum to
+// SQL-compatible field name and direction strings.
+// Returns empty strings when sort is nil or empty (backward compatible —
+// callers fall back to default ORDER BY created_at DESC).
+func GetObligationsSortParams(sort []*obligations.ObligationsSort) (string, string) {
+	if len(sort) == 0 || sort[0] == nil {
+		return "", ""
+	}
+	s := sort[0]
+
+	var field string
+	switch s.GetField() {
+	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_NAME:
+		field = sortFieldName
+	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_FQN:
+		field = sortFieldFQN
+	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT:
+		field = sortFieldCreatedAt
+	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UPDATED_AT:
+		field = sortFieldUpdatedAt
+	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UNSPECIFIED:
 		return "", ""
 	default:
 		return "", ""

@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/tracing"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -71,7 +72,7 @@ func NewJustInTimePDP(
 	p := &JustInTimePDP{
 		sdk:    sdk,
 		logger: log,
-		tracer: otel.Tracer("opentdf-platform"),
+		tracer: otel.Tracer(tracing.ServiceName),
 	}
 
 	ctx, span := p.tracer.Start(ctx, "NewJustInTimePDP")

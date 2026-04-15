@@ -115,7 +115,6 @@ func GetECCurveFromECCMode(mode ECCMode) (elliptic.Curve, error) {
 	case ECCModeSecp521r1:
 		c = elliptic.P521()
 	case ECCModeSecp256k1:
-		// TODO FIXME - unsupported?
 		return nil, errors.New("unsupported ECC mode")
 	default:
 		return nil, fmt.Errorf("unsupported ECC mode %d", mode)
@@ -191,7 +190,7 @@ func RSAKeyTypeToBits(kt KeyType) (int, error) {
 	}
 }
 
-// NewECKeyPair Generates an EC key pair of the given bit size.
+// NewECKeyPair generates an EC key pair for the given curve mode.
 //
 // Deprecated: Prefer NewECPrivateKey and derive the public half via PrivateKeyDecryptor.Public().
 func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
@@ -413,7 +412,7 @@ func ECPrivateKeyFromPem(privateECKeyInPem []byte) (*ecdh.PrivateKey, error) {
 
 // ComputeECDHKey calculate shared secret from public key from one party and the private key from another party.
 //
-// Deprecated: Use PrivateKeyDecryptor.DeriveSharedKey.
+// Deprecated: Use ECDecryptor.DecryptWithEphemeralKey or the higher-level encrypt/decrypt workflow.
 func ComputeECDHKey(privateKeyInPem []byte, publicKeyInPem []byte) ([]byte, error) {
 	ecdhPrivateKey, err := ECPrivateKeyFromPem(privateKeyInPem)
 	if err != nil {
@@ -479,12 +478,12 @@ func UncompressECPubKey(curve elliptic.Curve, compressedPubKey []byte) (*ecdsa.P
 
 // ECPrivateKeyInPemFormat Returns private key in pem format.
 func ECPrivateKeyInPemFormat(privateKey ecdsa.PrivateKey) (string, error) {
-	return privateKeyInPemFormat(privateKey)
+	return privateKeyInPemFormat(&privateKey)
 }
 
 // ECPublicKeyInPemFormat Returns public key in pem format.
 func ECPublicKeyInPemFormat(publicKey ecdsa.PublicKey) (string, error) {
-	return publicKeyInPemFormat(publicKey)
+	return publicKeyInPemFormat(&publicKey)
 }
 
 // GetECKeySize returns the curve size from a PEM-encoded EC public key
@@ -516,7 +515,7 @@ func GetECKeySize(pemData []byte) (int, error) {
 	}
 }
 
-// GetKeyType returns the key type (ECKey)
+// GetKeyType returns the key type. Deprecated: Use KeyType() instead.
 func (keyPair ECKeyPair) GetKeyType() KeyType {
 	return keyPair.KeyType()
 }

@@ -26,7 +26,7 @@ type KeyManager interface {
 	// This is exclusively used for unwrapping Key Access Object splits.
 	// For EC keys, ephemeralPublicKey must be non-nil
 	// For RSA keys, ephemeralPublicKey should be nil
-	// Returns an UnwrappedKeyData interface for further operations
+	// Returns a ProtectedKey for further operations
 	Decrypt(ctx context.Context, key KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error)
 
 	// DeriveKey computes an agreed upon secret key derived from an ECDH exchange.

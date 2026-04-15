@@ -133,6 +133,64 @@ func TestRsaKeyPairNewMethods(t *testing.T) {
 	})
 }
 
+func TestECIESRoundTripAllCurves(t *testing.T) {
+	t.Parallel()
+
+	modes := []struct {
+		mode ECCMode
+		kt   KeyType
+	}{
+		{ECCModeSecp256r1, EC256Key},
+		{ECCModeSecp384r1, EC384Key},
+		{ECCModeSecp521r1, EC521Key},
+	}
+
+	for _, tc := range modes {
+		t.Run(string(tc.kt), func(t *testing.T) {
+			t.Parallel()
+
+			dec, err := NewECPrivateKey(tc.mode)
+			require.NoError(t, err)
+
+			enc, err := dec.Public()
+			require.NoError(t, err)
+
+			plaintext := []byte("hello from " + string(tc.kt))
+			ciphertext, err := enc.Encrypt(plaintext)
+			require.NoError(t, err)
+
+			ecEnc, ok := enc.(ECEncryptor)
+			require.True(t, ok)
+
+			result, err := dec.DecryptWithEphemeralKey(ciphertext, ecEnc.EphemeralKey())
+			require.NoError(t, err)
+			require.Equal(t, plaintext, result)
+		})
+	}
+}
+
+func TestECEncryptorKeyPemSeparation(t *testing.T) {
+	t.Parallel()
+
+	dec, err := NewECPrivateKey(ECCModeSecp256r1)
+	require.NoError(t, err)
+
+	enc, err := dec.Public()
+	require.NoError(t, err)
+
+	recipientPEM, err := enc.PublicKeyInPemFormat()
+	require.NoError(t, err)
+
+	ecEnc, ok := enc.(ECEncryptor)
+	require.True(t, ok)
+
+	ephemeralPEM, err := ecEnc.EphemeralPublicKeyInPemFormat()
+	require.NoError(t, err)
+
+	require.NotEqual(t, recipientPEM, ephemeralPEM,
+		"PublicKeyInPemFormat (recipient) and EphemeralPublicKeyInPemFormat must differ")
+}
+
 func TestAsymDecryptionKeyType(t *testing.T) {
 	t.Parallel()
 	sizes := []struct {

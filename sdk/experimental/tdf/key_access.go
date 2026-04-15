@@ -164,7 +164,7 @@ func wrapKeyWithPublicKey(symKey []byte, pubKeyInfo keysplit.KASPublicKey) (stri
 
 	kasPublicKey, err := ocrypto.FromPublicPEM(pubKeyInfo.PEM)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to create parse KAS public key: %w", err)
+		return "", "", "", fmt.Errorf("failed to parse KAS public key: %w", err)
 	}
 
 	switch kasPublicKey.Type() {

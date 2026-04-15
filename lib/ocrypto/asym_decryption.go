@@ -26,6 +26,7 @@ type AsymDecryption struct {
 
 type PrivateKeyDecryptor interface {
 	// Decrypt decrypts ciphertext with private key.
+	// For EC keys, use DecryptWithEphemeralKey on the concrete ECDecryptor type instead.
 	Decrypt(data []byte) ([]byte, error)
 
 	// PrivateKeyInPemFormat returns the private key in PEM format.
@@ -199,12 +200,14 @@ func NewECPrivateKey(mode ECCMode) (ECDecryptor, error) {
 }
 
 func NewSaltedECDecryptor(sk *ecdh.PrivateKey, salt, info []byte) (ECDecryptor, error) {
+	if sk == nil {
+		return ECDecryptor{}, errors.New("private key must not be nil")
+	}
 	return ECDecryptor{sk, salt, info}, nil
 }
 
 func (e ECDecryptor) Decrypt(_ []byte) ([]byte, error) {
-	// TK How to get the ephmeral key into here?
-	return nil, errors.New("ecdh standard decrypt unimplemented")
+	return nil, errors.New("EC keys require DecryptWithEphemeralKey; standard Decrypt is not supported for ECDH")
 }
 
 func (e ECDecryptor) PrivateKeyInPemFormat() (string, error) {
@@ -245,7 +248,7 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 		return nil, fmt.Errorf("hkdf failure: %w", err)
 	}
 
-	// Encrypt data with derived key using aes-gcm
+	// Decrypt data with derived key using AES-GCM
 	block, err := aes.NewCipher(derivedKey)
 	if err != nil {
 		return nil, fmt.Errorf("aes.NewCipher failure: %w", err)
@@ -295,7 +298,7 @@ func (e ECDecryptor) deriveSharedKey(publicKeyInPem string) ([]byte, error) {
 
 // parseEphemeralPublicKey parses an ephemeral public key from DER (PKIX) or compressed EC point bytes.
 func (e ECDecryptor) parseEphemeralPublicKey(ephemeral []byte) (*ecdh.PublicKey, error) {
-	if pub, err := x509.ParsePKIXPublicKey(ephemeral); err == nil {
+	if pub, derErr := x509.ParsePKIXPublicKey(ephemeral); derErr == nil {
 		switch pub := pub.(type) {
 		case *ecdsa.PublicKey:
 			return ConvertToECDHPublicKey(pub)
@@ -311,7 +314,7 @@ func (e ECDecryptor) parseEphemeralPublicKey(ephemeral []byte) (*ecdh.PublicKey,
 	}
 	ekDSA, err := UncompressECPubKey(curve, ephemeral)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ephemeral key is neither valid DER (PKIX) nor a compressed EC point: %w", err)
 	}
 	return ekDSA.ECDH()
 }

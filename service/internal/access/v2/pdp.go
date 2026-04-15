@@ -286,7 +286,10 @@ func (p *PolicyDecisionPoint) GetDecision(
 
 			// Merge direct-entitlement actions with subject-mapping actions for the
 			// same value FQN instead of replacing them.
-			actions := entitledFQNsToActions[fqn]
+			actions, ok := entitledFQNsToActions[fqn]
+			if !ok {
+				actions = make([]*policy.Action, len(actionNames))
+			}
 			for _, name := range actionNames {
 				actions = append(actions, &policy.Action{
 					Name:      name,
@@ -336,17 +339,8 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	l = l.With("action", action.GetName())
 	l.DebugContext(ctx, "getting decision", slog.Int("resources_count", len(resources)))
 
-	if err := validateGetDecisionRegisteredResource(entityRegisteredResourceValueFQN, action, resources); err != nil {
+	if err := validateGetDecisionRegisteredResource(entityRegisteredResourceValueFQN, action, resources, p.namespacedPolicy); err != nil {
 		return nil, nil, err
-	}
-	if p.namespacedPolicy {
-		parsed, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](entityRegisteredResourceValueFQN)
-		if err != nil {
-			return nil, nil, fmt.Errorf("invalid registered resource value FQN [%s]: %w", entityRegisteredResourceValueFQN, ErrInvalidResource)
-		}
-		if parsed.Namespace == "" {
-			return nil, nil, fmt.Errorf("registered resource value FQN must be namespaced in strict mode [%s]: %w", entityRegisteredResourceValueFQN, ErrInvalidResource)
-		}
 	}
 
 	entityRegisteredResourceValue, ok := p.allRegisteredResourceValuesByFQN[entityRegisteredResourceValueFQN]
@@ -375,16 +369,16 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 		attrVal := aav.GetAttributeValue()
 		attrValFQN := attrVal.GetFqn()
 
-		requiredNamespaceID := ""
+		requiredNamespaceFQN := ""
 		if attrAndValue, ok2 := decisionableAttributes[attrValFQN]; ok2 {
-			requiredNamespaceID = attrAndValue.GetAttribute().GetNamespace().GetId()
+			requiredNamespaceFQN = attrAndValue.GetAttribute().GetNamespace().GetFqn()
 		}
 
-		if !isRequestedActionMatch(ctx, l, action, requiredNamespaceID, aavAction, p.namespacedPolicy) {
+		if !isRequestedActionMatch(ctx, l, action, requiredNamespaceFQN, aavAction, p.namespacedPolicy) {
 			l.DebugContext(ctx, "skipping action not matching Decision Request action",
 				slog.String("action_name", aavAction.GetName()),
 				slog.String("attribute_value_fqn", attrValFQN),
-				slog.String("required_namespace_id", requiredNamespaceID),
+				slog.String("required_namespace", requiredNamespaceFQN),
 			)
 			continue
 		}

@@ -421,60 +421,81 @@ func TestValidateGetResourceDecision(t *testing.T) {
 		},
 	}
 
+	validRRResource := &authzV2.Resource{
+		Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+			RegisteredResourceValueFqn: "https://reg_res/resource1/value/value1",
+		},
+	}
+
 	tests := []struct {
-		name         string
-		entitlements map[string][]*policy.Action
-		action       *policy.Action
-		resource     *authzV2.Resource
-		wantErr      error
+		name             string
+		entitlements     map[string][]*policy.Action
+		action           *policy.Action
+		resource         *authzV2.Resource
+		namespacedPolicy bool
+		wantErr          error
 	}{
 		{
-			name:         "Valid inputs",
-			entitlements: validEntitledFQNsToActions,
-			action:       validAction,
-			resource:     validResource,
-			wantErr:      nil,
+			name:             "Valid inputs",
+			entitlements:     validEntitledFQNsToActions,
+			action:           validAction,
+			resource:         validResource,
+			namespacedPolicy: false,
+			wantErr:          nil,
 		},
 		{
-			name:         "Nil entitlements",
-			entitlements: nil,
-			action:       validAction,
-			resource:     validResource,
-			wantErr:      ErrInvalidEntitledFQNsToActions,
+			name:             "Nil entitlements",
+			entitlements:     nil,
+			action:           validAction,
+			resource:         validResource,
+			namespacedPolicy: false,
+			wantErr:          ErrInvalidEntitledFQNsToActions,
 		},
 		{
-			name:         "Nil action",
-			entitlements: validEntitledFQNsToActions,
-			action:       nil,
-			resource:     validResource,
-			wantErr:      ErrInvalidAction,
+			name:             "Nil action",
+			entitlements:     validEntitledFQNsToActions,
+			action:           nil,
+			resource:         validResource,
+			namespacedPolicy: false,
+			wantErr:          ErrInvalidAction,
 		},
 		{
-			name:         "Nil resource",
-			entitlements: validEntitledFQNsToActions,
-			action:       validAction,
-			resource:     nil,
-			wantErr:      ErrInvalidResource,
+			name:             "Nil resource",
+			entitlements:     validEntitledFQNsToActions,
+			action:           validAction,
+			resource:         nil,
+			namespacedPolicy: false,
+			wantErr:          ErrInvalidResource,
 		},
 		{
-			name:         "Empty action",
-			entitlements: validEntitledFQNsToActions,
-			action:       &policy.Action{},
-			resource:     validResource,
-			wantErr:      ErrInvalidAction,
+			name:             "Empty action",
+			entitlements:     validEntitledFQNsToActions,
+			action:           &policy.Action{},
+			resource:         validResource,
+			namespacedPolicy: false,
+			wantErr:          ErrInvalidAction,
 		},
 		{
-			name:         "Empty resource",
-			entitlements: validEntitledFQNsToActions,
-			action:       validAction,
-			resource:     &authzV2.Resource{},
-			wantErr:      ErrInvalidResource,
+			name:             "Empty resource",
+			entitlements:     validEntitledFQNsToActions,
+			action:           validAction,
+			resource:         &authzV2.Resource{},
+			namespacedPolicy: false,
+			wantErr:          ErrInvalidResource,
+		},
+		{
+			name:             "Unnamespaced RR resource",
+			entitlements:     validEntitledFQNsToActions,
+			action:           validAction,
+			resource:         validRRResource,
+			namespacedPolicy: true,
+			wantErr:          ErrInvalidResource,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateGetResourceDecision(tt.entitlements, tt.action, tt.resource)
+			err := validateGetResourceDecision(tt.entitlements, tt.action, tt.resource, tt.namespacedPolicy)
 			if tt.wantErr != nil {
 				require.ErrorIs(t, err, tt.wantErr)
 			} else {
@@ -486,6 +507,7 @@ func TestValidateGetResourceDecision(t *testing.T) {
 
 func TestValidateGetDecisionRegisteredResource(t *testing.T) {
 	validRegisteredResourceValueFQN := "https://reg_res/resource1/value/value1"
+	validNamespacedRegisteredResourceValueFQN := "https://namespace.com/reg_res/resource1/value/value1"
 
 	validAction := &policy.Action{
 		Name: "read",
@@ -510,6 +532,7 @@ func TestValidateGetDecisionRegisteredResource(t *testing.T) {
 		registeredResourceValueFQN string
 		action                     *policy.Action
 		resources                  []*authzV2.Resource
+		namespacedPolicy           bool
 		wantErr                    error
 	}{
 		{
@@ -517,6 +540,7 @@ func TestValidateGetDecisionRegisteredResource(t *testing.T) {
 			registeredResourceValueFQN: validRegisteredResourceValueFQN,
 			action:                     validAction,
 			resources:                  validResources,
+			namespacedPolicy:           false,
 			wantErr:                    nil,
 		},
 		{
@@ -524,6 +548,7 @@ func TestValidateGetDecisionRegisteredResource(t *testing.T) {
 			registeredResourceValueFQN: "invalid-fqn",
 			action:                     validAction,
 			resources:                  validResources,
+			namespacedPolicy:           false,
 			wantErr:                    identifier.ErrInvalidFQNFormat,
 		},
 		{
@@ -531,6 +556,7 @@ func TestValidateGetDecisionRegisteredResource(t *testing.T) {
 			registeredResourceValueFQN: validRegisteredResourceValueFQN,
 			action:                     emptyNameAction,
 			resources:                  validResources,
+			namespacedPolicy:           false,
 			wantErr:                    ErrInvalidAction,
 		},
 		{
@@ -538,6 +564,7 @@ func TestValidateGetDecisionRegisteredResource(t *testing.T) {
 			registeredResourceValueFQN: validRegisteredResourceValueFQN,
 			action:                     validAction,
 			resources:                  []*authzV2.Resource{},
+			namespacedPolicy:           false,
 			wantErr:                    ErrInvalidResource,
 		},
 		{
@@ -545,13 +572,30 @@ func TestValidateGetDecisionRegisteredResource(t *testing.T) {
 			registeredResourceValueFQN: validRegisteredResourceValueFQN,
 			action:                     validAction,
 			resources:                  []*authzV2.Resource{nil},
+			namespacedPolicy:           false,
 			wantErr:                    ErrInvalidResource,
+		},
+		{
+			name:                       "Unnamespaced RR resource in strict mode",
+			registeredResourceValueFQN: validRegisteredResourceValueFQN,
+			action:                     validAction,
+			resources:                  validResources,
+			namespacedPolicy:           true,
+			wantErr:                    ErrInvalidResource,
+		},
+		{
+			name:                       "Namespaced RR resource in strict mode pass",
+			registeredResourceValueFQN: validNamespacedRegisteredResourceValueFQN,
+			action:                     validAction,
+			resources:                  validResources,
+			namespacedPolicy:           true,
+			wantErr:                    nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateGetDecisionRegisteredResource(tt.registeredResourceValueFQN, tt.action, tt.resources)
+			err := validateGetDecisionRegisteredResource(tt.registeredResourceValueFQN, tt.action, tt.resources, tt.namespacedPolicy)
 			if tt.wantErr != nil {
 				require.ErrorIs(t, err, tt.wantErr)
 			} else {

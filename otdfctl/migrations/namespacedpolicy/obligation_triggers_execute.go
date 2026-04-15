@@ -126,11 +126,11 @@ func obligationValueIDOrFQN(value *policy.ObligationValue) string {
 }
 
 func triggerClientID(contexts []*policy.RequestContext) string {
-	for _, context := range contexts {
-		if context == nil || context.GetPep() == nil {
+	for _, requestContext := range contexts {
+		if requestContext == nil || requestContext.GetPep() == nil {
 			continue
 		}
-		if clientID := strings.TrimSpace(context.GetPep().GetClientId()); clientID != "" {
+		if clientID := strings.TrimSpace(requestContext.GetPep().GetClientId()); clientID != "" {
 			return clientID
 		}
 	}

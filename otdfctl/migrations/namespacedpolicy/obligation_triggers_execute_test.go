@@ -167,7 +167,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 				ErrPlanNotExecutable,
 				`obligation trigger %q target %q is unresolved: %s`,
 				"trigger-1",
-				"ns-1",
+				namespace1.GetFqn(),
 				"missing target namespace mapping",
 			),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
@@ -204,7 +204,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			wantErr: wantError(ErrMissingMigratedTarget, `obligation trigger %q action %q target %q`, "trigger-1", "action-1", "ns-1"),
+			wantErr: wantError(ErrMissingMigratedTarget, `obligation trigger %q action %q target %q`, "trigger-1", "action-1", namespace1.GetFqn()),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
 				t.Helper()
 
@@ -230,7 +230,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			wantErr: wantError(ErrMissingMigratedTarget, `obligation trigger %q target %q`, "trigger-1", "ns-1"),
+			wantErr: wantError(ErrMissingMigratedTarget, `obligation trigger %q target %q`, "trigger-1", namespace1.GetFqn()),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
@@ -287,7 +287,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 					},
 				},
 			},
-			wantErr: wantError(ErrMissingCreatedTargetID, `obligation trigger %q target %q`, "trigger-1", "ns-1"),
+			wantErr: wantError(ErrMissingCreatedTargetID, `obligation trigger %q target %q`, "trigger-1", namespace1.GetFqn()),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
 				t.Helper()
 
@@ -348,7 +348,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 			},
 			wantErr: &expectedError{
 				is:      errBoom,
-				message: `create obligation trigger "trigger-1" in namespace "ns-1": boom`,
+				message: `create obligation trigger "trigger-1" in namespace "https://example.com": boom`,
 			},
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
 				t.Helper()
@@ -380,7 +380,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 				ErrUnsupportedStatus,
 				`obligation trigger %q target %q has unsupported status %q`,
 				"trigger-1",
-				"ns-1",
+				namespace1.GetFqn(),
 				TargetStatus("bogus"),
 			),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {

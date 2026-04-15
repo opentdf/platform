@@ -108,6 +108,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 				assert.Equal(t, "migrated-scs-1", migratedTarget.TargetID())
 				assert.Nil(t, migratedTarget.Execution)
 				assert.Equal(t, "created-scs-1", executor.cachedScsTargetID("scs-1", namespace1))
+				assert.Equal(t, "migrated-scs-1", executor.cachedScsTargetID("scs-1", namespace2))
 				assert.Empty(t, executor.cachedScsTargetID("scs-2", namespace1))
 			},
 		},
@@ -133,7 +134,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 				ErrPlanNotExecutable,
 				`subject condition set %q target %q is unresolved: %s`,
 				"scs-1",
-				"ns-1",
+				namespace1.GetFqn(),
 				"missing target namespace mapping",
 			),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
@@ -160,7 +161,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			wantErr: wantError(ErrMissingMigratedTarget, `subject condition set %q target %q`, "scs-1", "ns-1"),
+			wantErr: wantError(ErrMissingMigratedTarget, `subject condition set %q target %q`, "scs-1", namespace1.GetFqn()),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
@@ -215,7 +216,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 					},
 				},
 			},
-			wantErr: wantError(ErrMissingCreatedTargetID, `subject condition set %q target %q`, "scs-1", "ns-1"),
+			wantErr: wantError(ErrMissingCreatedTargetID, `subject condition set %q target %q`, "scs-1", namespace1.GetFqn()),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan) {
 				t.Helper()
 
@@ -247,7 +248,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 				ErrUnsupportedStatus,
 				`subject condition set %q target %q has unsupported status %q`,
 				"scs-1",
-				"ns-1",
+				namespace1.GetFqn(),
 				TargetStatus("bogus"),
 			),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
@@ -282,7 +283,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 			},
 			wantErr: &expectedError{
 				is:      errBoom,
-				message: `create subject condition set "scs-1" in namespace "ns-1": boom`,
+				message: `create subject condition set "scs-1" in namespace "https://example.com": boom`,
 			},
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan) {
 				t.Helper()

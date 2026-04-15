@@ -111,6 +111,7 @@ type SubjectMappingTargetPlan struct {
 	Namespace           *policy.Namespace           `json:"namespace"`
 	Status              TargetStatus                `json:"status"`
 	Existing            *policy.SubjectMapping      `json:"existing,omitempty"`
+	Execution           *ExecutionResult            `json:"execution,omitempty"`
 	Reason              string                      `json:"reason,omitempty"`
 	Actions             []*ActionBinding            `json:"actions,omitempty"`
 	SubjectConditionSet *SubjectConditionSetBinding `json:"subject_condition_set,omitempty"`
@@ -155,6 +156,7 @@ type ObligationTriggerTargetPlan struct {
 	Action    *ActionBinding            `json:"action,omitempty"`
 }
 
+// TODO: Revisit this and Scs binding to see what is actually useful
 type ActionBinding struct {
 	SourceID  string            `json:"source_id"`
 	Namespace *policy.Namespace `json:"namespace,omitempty"`
@@ -335,7 +337,13 @@ func (t *SubjectConditionSetTargetPlan) TargetID() string {
 }
 
 func (t *SubjectMappingTargetPlan) TargetID() string {
-	if t == nil || t.Existing == nil {
+	if t == nil {
+		return ""
+	}
+	if t.Execution != nil && t.Execution.CreatedTargetID != "" {
+		return t.Execution.CreatedTargetID
+	}
+	if t.Existing == nil {
 		return ""
 	}
 	return t.Existing.GetId()

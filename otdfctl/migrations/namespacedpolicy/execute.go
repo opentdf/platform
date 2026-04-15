@@ -9,18 +9,21 @@ import (
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 )
 
 var (
-	ErrNilExecutorHandler           = errors.New("executor handler is required")
-	ErrNilExecutionPlan             = errors.New("execution plan is required")
-	ErrPlanNotExecutable            = errors.New("plan is not executable")
-	ErrExecutionPhaseNotImplemented = errors.New("execution phase is not implemented")
-	ErrMissingExistingTarget        = errors.New("missing existing target")
-	ErrMissingMigratedTarget        = errors.New("missing migrated target")
-	ErrTargetNamespaceRequired      = errors.New("target namespace is required")
-	ErrMissingCreatedTargetID       = errors.New("missing created target id")
-	ErrUnsupportedStatus            = errors.New("unsupported status")
+	ErrNilExecutorHandler               = errors.New("executor handler is required")
+	ErrNilExecutionPlan                 = errors.New("execution plan is required")
+	ErrPlanNotExecutable                = errors.New("plan is not executable")
+	ErrExecutionPhaseNotImplemented     = errors.New("execution phase is not implemented")
+	ErrMissingExistingTarget            = errors.New("missing existing target")
+	ErrMissingMigratedTarget            = errors.New("missing migrated target")
+	ErrMissingActionTarget              = errors.New("missing action target")
+	ErrMissingSubjectConditionSetTarget = errors.New("missing subject condition set target")
+	ErrTargetNamespaceRequired          = errors.New("target namespace is required")
+	ErrMissingCreatedTargetID           = errors.New("missing created target id")
+	ErrUnsupportedStatus                = errors.New("unsupported status")
 )
 
 const (
@@ -31,6 +34,7 @@ const (
 type ExecutorHandler interface {
 	CreateAction(ctx context.Context, name string, namespace string, metadata *common.MetadataMutable) (*policy.Action, error)
 	CreateSubjectConditionSet(ctx context.Context, ss []*policy.SubjectSet, metadata *common.MetadataMutable, namespace string) (*policy.SubjectConditionSet, error)
+	CreateNewSubjectMapping(ctx context.Context, attrValID string, actions []*policy.Action, existingSCSId string, newScs *subjectmapping.SubjectConditionSetCreate, metadata *common.MetadataMutable, namespace string) (*policy.SubjectMapping, error)
 }
 
 type Executor struct {
@@ -127,11 +131,11 @@ func namespaceLabel(namespace *policy.Namespace) string {
 	if namespace == nil {
 		return "<unknown>"
 	}
-	if id := strings.TrimSpace(namespace.GetId()); id != "" {
-		return id
-	}
 	if fqn := strings.TrimSpace(namespace.GetFqn()); fqn != "" {
 		return fqn
+	}
+	if id := strings.TrimSpace(namespace.GetId()); id != "" {
+		return id
 	}
 	return "<unknown>"
 }

@@ -9,6 +9,7 @@ require (
 	connectrpc.com/connect v1.19.1
 	connectrpc.com/grpchealth v1.4.0
 	connectrpc.com/grpcreflect v1.3.0
+	connectrpc.com/otelconnect v0.9.0
 	connectrpc.com/validate v0.6.0
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/Nerzal/gocloak/v13 v13.9.0

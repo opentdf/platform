@@ -388,6 +388,13 @@ func setupERSConnection(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, 
 
 	ersConnectRPCConn := &sdk.ConnectRPCConnection{}
 
+	// OTel tracing and metrics for outbound ERS Connect RPCs (outermost interceptor)
+	if ersTraceInt, err := tracing.ConnectClientTraceInterceptor(); err != nil {
+		logger.Error("failed to create ERS trace interceptor", slog.String("error", err.Error()))
+	} else {
+		ersConnectRPCConn.Options = append(ersConnectRPCConn.Options, connect.WithInterceptors(ersTraceInt))
+	}
+
 	// Configure TLS
 	tlsConfig := configureTLSForERS(cfg, ersConnectRPCConn)
 

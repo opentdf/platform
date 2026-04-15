@@ -660,6 +660,14 @@ func Test_GetObligationsSortParams(t *testing.T) {
 			expectedDir:   "ASC",
 		},
 		{
+			name: "FQN with DESC",
+			sort: []*obligations.ObligationsSort{
+				{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_FQN, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "fqn",
+			expectedDir:   "DESC",
+		},
+		{
 			name: "FQN with unspecified direction defaults to ASC",
 			sort: []*obligations.ObligationsSort{
 				{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_FQN},

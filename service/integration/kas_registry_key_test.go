@@ -525,7 +525,7 @@ func (s *KasRegistryKeySuite) Test_ListKeys_OrdersByCreatedAt_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(resp)
 
-	assertIDsInDescendingOrder(s.T(), resp.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, thirdID, secondID, firstID)
+	assertIDsInOrder(s.T(), resp.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_KasID_Success() {
@@ -1504,7 +1504,7 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_OrdersByCreatedAt_Succeeds() 
 	s.Require().NoError(err)
 	s.NotNil(resp)
 
-	assertIDsInDescendingOrder(
+	assertIDsInOrder(
 		s.T(),
 		resp.GetKeyMappings(),
 		func(m *kasregistry.KeyMapping) string { return m.GetKid() },

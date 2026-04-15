@@ -200,6 +200,8 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 	parsedID := pgtypeUUID(namespaceID)
 	idIsValid := parsedID.Valid
 
+	sortField, sortDirection := GetObligationsSortParams(r.GetSort())
+
 	if useID && !idIsValid {
 		return nil, nil, db.ErrUUIDInvalid
 	}
@@ -212,10 +214,12 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 	}
 
 	rows, err := c.queries.listObligations(ctx, listObligationsParams{
-		NamespaceID:  parsedID,
-		NamespaceFqn: pgtypeText(r.GetNamespaceFqn()),
-		Limit:        limit,
-		Offset:       offset,
+		NamespaceID:   parsedID,
+		NamespaceFqn:  pgtypeText(r.GetNamespaceFqn()),
+		Limit:         limit,
+		Offset:        offset,
+		SortField:     sortField,
+		SortDirection: sortDirection,
 	})
 	if err != nil {
 		return nil, nil, db.WrapIfKnownInvalidQueryErr(err)

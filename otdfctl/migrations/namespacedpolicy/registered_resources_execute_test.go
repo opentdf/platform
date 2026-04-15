@@ -234,7 +234,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 				ErrPlanNotExecutable,
 				`registered resource %q target %q is unresolved: %s`,
 				"rr-1",
-				"ns-1",
+				namespace1.GetFqn(),
 				errDuplicateCanonicalMatch,
 			),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
@@ -360,7 +360,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 					},
 				},
 			},
-			wantErr: wantError(errBoom, `create registered resource %q in namespace %q`, "rr-1", "ns-1"),
+			wantErr: wantError(errBoom, `create registered resource %q in namespace %q`, "rr-1", namespace1.GetFqn()),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
 				t.Helper()
 
@@ -413,9 +413,9 @@ func TestExecuteRegisteredResources(t *testing.T) {
 				ErrMissingMigratedTarget,
 				`action %q target %q: build registered resource value %q action bindings for namespace %q`,
 				"missing-action",
-				"ns-1",
+				namespace1.GetFqn(),
 				"rrv-1",
-				"ns-1",
+				namespace1.GetFqn(),
 			),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
 				t.Helper()
@@ -426,7 +426,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 				require.NotNil(t, plan.RegisteredResources[0].Targets[0].Execution)
 				assert.True(t, plan.RegisteredResources[0].Targets[0].Execution.Applied)
 				require.NotNil(t, plan.RegisteredResources[0].Targets[0].Values[0].Execution)
-				assert.Contains(t, plan.RegisteredResources[0].Targets[0].Values[0].Execution.Failure, `missing migrated target: action "missing-action" target "ns-1"`)
+				assert.Contains(t, plan.RegisteredResources[0].Targets[0].Values[0].Execution.Failure, `missing migrated target: action "missing-action" target "https://example.com"`)
 			},
 		},
 		{
@@ -489,7 +489,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 					},
 				},
 			},
-			wantErr: wantError(errBoom, `create registered resource value %q for resource %q in namespace %q`, "rrv-1", "created-rr-1", "ns-1"),
+			wantErr: wantError(errBoom, `create registered resource value %q for resource %q in namespace %q`, "rrv-1", "created-rr-1", namespace1.GetFqn()),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
 				t.Helper()
 

@@ -189,6 +189,8 @@ func (p *JustInTimePDP) GetDecision(
 	}
 	oblSpan.End()
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to check obligations")
 		return nil, fmt.Errorf("failed to check obligations: %w", err)
 	}
 	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
@@ -245,7 +247,11 @@ func (p *JustInTimePDP) GetDecision(
 		return decision, nil
 
 	default:
+		resolveSpan.RecordError(ErrInvalidEntityType)
+		resolveSpan.SetStatus(codes.Error, ErrInvalidEntityType.Error())
 		resolveSpan.End()
+		span.RecordError(ErrInvalidEntityType)
+		span.SetStatus(codes.Error, ErrInvalidEntityType.Error())
 		return nil, ErrInvalidEntityType
 	}
 	if err != nil {
@@ -254,6 +260,8 @@ func (p *JustInTimePDP) GetDecision(
 	}
 	resolveSpan.End()
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to resolve entity identifier")
 		return nil, fmt.Errorf("failed to resolve entity identifier: %w", err)
 	}
 
@@ -272,11 +280,18 @@ func (p *JustInTimePDP) GetDecision(
 			evalSpan.RecordError(err)
 			evalSpan.SetStatus(codes.Error, err.Error())
 			evalSpan.End()
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "failed to get decision for entity representation")
 			return nil, fmt.Errorf("failed to get decision for entityRepresentation with original id [%s]: %w", entityRep.GetOriginalId(), err)
 		}
 		if entityRepresentationDecision == nil {
+			nilErr := fmt.Errorf("decision is nil for entity representation [%s]", entityRep.GetOriginalId())
+			evalSpan.RecordError(nilErr)
+			evalSpan.SetStatus(codes.Error, nilErr.Error())
 			evalSpan.End()
-			return nil, fmt.Errorf("decision is nil: %w", err)
+			span.RecordError(nilErr)
+			span.SetStatus(codes.Error, nilErr.Error())
+			return nil, nilErr
 		}
 
 		// If any entity lacks access to any resource, update overall decision denial
@@ -293,7 +308,11 @@ func (p *JustInTimePDP) GetDecision(
 			obligationDecision,
 		)
 		if err != nil {
+			evalSpan.RecordError(err)
+			evalSpan.SetStatus(codes.Error, err.Error())
 			evalSpan.End()
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "failed to apply obligations and consolidate")
 			return nil, fmt.Errorf("failed to apply obligations and consolidate for entity representation [%s]: %w", entityRep.GetOriginalId(), err)
 		}
 
@@ -361,8 +380,13 @@ func (p *JustInTimePDP) GetEntitlements(
 		entityRepresentations, err = p.resolveEntitiesFromRequestToken(resolveCtx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, []*authzV2.Resource{})
 
 	default:
+		defaultErr := fmt.Errorf("entity type %T: %w", entityIdentifier.GetIdentifier(), ErrInvalidEntityType)
+		resolveSpan.RecordError(defaultErr)
+		resolveSpan.SetStatus(codes.Error, defaultErr.Error())
 		resolveSpan.End()
-		return nil, fmt.Errorf("entity type %T: %w", entityIdentifier.GetIdentifier(), ErrInvalidEntityType)
+		span.RecordError(defaultErr)
+		span.SetStatus(codes.Error, defaultErr.Error())
+		return nil, defaultErr
 	}
 	if err != nil {
 		resolveSpan.RecordError(err)
@@ -370,11 +394,15 @@ func (p *JustInTimePDP) GetEntitlements(
 	}
 	resolveSpan.End()
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to resolve entities")
 		return nil, fmt.Errorf("failed to resolve entities from entity identifier: %w", err)
 	}
 
 	matchedSubjectMappings, err := p.getMatchedSubjectMappings(ctx, entityRepresentations)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get matched subject mappings")
 		return nil, fmt.Errorf("failed to get matched subject mappings: %w", err)
 	}
 	// If no subject mappings matched, return empty entitlements
@@ -385,6 +413,8 @@ func (p *JustInTimePDP) GetEntitlements(
 
 	entitlements, err := p.pdp.GetEntitlements(ctx, entityRepresentations, matchedSubjectMappings, withComprehensiveHierarchy)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get entitlements")
 		return nil, fmt.Errorf("failed to get entitlements: %w", err)
 	}
 	return entitlements, nil

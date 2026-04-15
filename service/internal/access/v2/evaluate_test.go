@@ -335,7 +335,7 @@ func (s *EvaluateTestSuite) TestAllOfRule() {
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
-			failures := allOfRule(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValueFQNs)
+			failures := allOfRule(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValueFQNs, "", false)
 
 			s.Len(failures, tc.expectedFailures)
 
@@ -469,7 +469,7 @@ func (s *EvaluateTestSuite) TestAnyOfRule() {
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
 			// Execute
-			failures := anyOfRule(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValueFQNs)
+			failures := anyOfRule(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValueFQNs, "", false)
 
 			// Assert
 			if tc.expectedFailCount == 0 {
@@ -649,7 +649,7 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
 			// Execute
-			failures := hierarchyRule(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValueFQNs, s.hierarchicalClassAttr)
+			failures := hierarchyRule(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValueFQNs, s.hierarchicalClassAttr, "", false)
 
 			// Assert
 			if tc.expectedFailures {
@@ -1550,7 +1550,7 @@ func Test_isRequestedActionMatch(t *testing.T) {
 		{
 			name:                "nil requested action",
 			requestedAction:     nil,
-			requiredNamespace:   namespaceA.GetId(),
+			requiredNamespace:   namespaceA.GetFqn(),
 			entitledAction:      &policy.Action{Name: actions.ActionNameRead, Namespace: namespaceA},
 			namespacedPolicy:    true,
 			expectedActionMatch: false,
@@ -1558,7 +1558,7 @@ func Test_isRequestedActionMatch(t *testing.T) {
 		{
 			name:                "id precedence denies same-name different-id",
 			requestedAction:     &policy.Action{Id: "requested-id", Name: actions.ActionNameRead},
-			requiredNamespace:   namespaceA.GetId(),
+			requiredNamespace:   namespaceA.GetFqn(),
 			entitledAction:      &policy.Action{Id: "entitled-id", Name: actions.ActionNameRead, Namespace: namespaceA},
 			namespacedPolicy:    true,
 			expectedActionMatch: false,
@@ -1566,7 +1566,7 @@ func Test_isRequestedActionMatch(t *testing.T) {
 		{
 			name:                "name is case-insensitive in legacy mode",
 			requestedAction:     &policy.Action{Name: "READ"},
-			requiredNamespace:   namespaceA.GetId(),
+			requiredNamespace:   namespaceA.GetFqn(),
 			entitledAction:      &policy.Action{Name: "read"},
 			namespacedPolicy:    false,
 			expectedActionMatch: true,
@@ -1574,7 +1574,7 @@ func Test_isRequestedActionMatch(t *testing.T) {
 		{
 			name:                "request namespace id must match entitled namespace id",
 			requestedAction:     &policy.Action{Name: actions.ActionNameRead, Namespace: namespaceA},
-			requiredNamespace:   namespaceA.GetId(),
+			requiredNamespace:   namespaceA.GetFqn(),
 			entitledAction:      &policy.Action{Name: actions.ActionNameRead, Namespace: namespaceB},
 			namespacedPolicy:    false,
 			expectedActionMatch: false,
@@ -1582,7 +1582,7 @@ func Test_isRequestedActionMatch(t *testing.T) {
 		{
 			name:                "request namespace fqn must match entitled namespace fqn",
 			requestedAction:     &policy.Action{Name: actions.ActionNameRead, Namespace: &policy.Namespace{Fqn: "https://ns-a.example.com"}},
-			requiredNamespace:   namespaceA.GetId(),
+			requiredNamespace:   namespaceA.GetFqn(),
 			entitledAction:      &policy.Action{Name: actions.ActionNameRead, Namespace: &policy.Namespace{Id: namespaceA.GetId(), Fqn: "HTTPS://NS-A.EXAMPLE.COM"}},
 			namespacedPolicy:    false,
 			expectedActionMatch: true,
@@ -1598,7 +1598,7 @@ func Test_isRequestedActionMatch(t *testing.T) {
 		{
 			name:                "strict mode requires entitled action namespace id",
 			requestedAction:     &policy.Action{Name: actions.ActionNameRead},
-			requiredNamespace:   namespaceA.GetId(),
+			requiredNamespace:   namespaceA.GetFqn(),
 			entitledAction:      &policy.Action{Name: actions.ActionNameRead},
 			namespacedPolicy:    true,
 			expectedActionMatch: false,
@@ -1606,7 +1606,7 @@ func Test_isRequestedActionMatch(t *testing.T) {
 		{
 			name:                "strict mode allows matching namespace id",
 			requestedAction:     &policy.Action{Name: actions.ActionNameRead},
-			requiredNamespace:   namespaceA.GetId(),
+			requiredNamespace:   namespaceA.GetFqn(),
 			entitledAction:      &policy.Action{Name: actions.ActionNameRead, Namespace: namespaceA},
 			namespacedPolicy:    true,
 			expectedActionMatch: true,
@@ -1614,7 +1614,7 @@ func Test_isRequestedActionMatch(t *testing.T) {
 		{
 			name:                "strict mode denies mismatched namespace id",
 			requestedAction:     &policy.Action{Name: actions.ActionNameRead},
-			requiredNamespace:   namespaceA.GetId(),
+			requiredNamespace:   namespaceA.GetFqn(),
 			entitledAction:      &policy.Action{Name: actions.ActionNameRead, Namespace: namespaceB},
 			namespacedPolicy:    true,
 			expectedActionMatch: false,

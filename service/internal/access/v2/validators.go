@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/opentdf/platform/lib/identifier"
+	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -45,7 +46,7 @@ func validateGetDecision(entityRepresentation *entityresolutionV2.EntityRepresen
 //   - registeredResourceValueFQN: must be a valid registered resource value FQN
 //   - action: must not be nil
 //   - resources: must not be nil and must contain at least one resource
-func validateGetDecisionRegisteredResource(registeredResourceValueFQN string, action *policy.Action, resources []*authzV2.Resource) error {
+func validateGetDecisionRegisteredResource(registeredResourceValueFQN string, action *policy.Action, resources []*authzV2.Resource, namespacedPolicy bool) error {
 	if _, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN); err != nil {
 		return err
 	}
@@ -58,6 +59,15 @@ func validateGetDecisionRegisteredResource(registeredResourceValueFQN string, ac
 	for _, resource := range resources {
 		if resource == nil {
 			return fmt.Errorf("resource is nil: %w", ErrInvalidResource)
+		}
+	}
+	if namespacedPolicy {
+		parsed, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN)
+		if err != nil {
+			return fmt.Errorf("invalid registered resource value FQN [%s]: %w", registeredResourceValueFQN, ErrInvalidResource)
+		}
+		if parsed.Namespace == "" {
+			return fmt.Errorf("registered resource value FQN must be namespaced in strict mode [%s]: %w", registeredResourceValueFQN, ErrInvalidResource)
 		}
 	}
 	return nil
@@ -175,6 +185,7 @@ func validateGetResourceDecision(
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resource *authzV2.Resource,
+	namespacedPolicy bool,
 ) error {
 	if entitlements == nil {
 		return fmt.Errorf("entitled FQNs to actions are nil: %w", ErrInvalidEntitledFQNsToActions)
@@ -184,6 +195,21 @@ func validateGetResourceDecision(
 	}
 	if resource.GetResource() == nil {
 		return fmt.Errorf("resource is nil: %w", ErrInvalidResource)
+	}
+	if namespacedPolicy {
+		switch resource.GetResource().(type) {
+		case *authz.Resource_RegisteredResourceValueFqn:
+			registeredResourceValueFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
+			// If namespaced policies are enabled, enforce that the registered resource value FQN is namespaced and extract the required namespace for later checks
+			parsed, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN)
+
+			if err != nil {
+				return fmt.Errorf("invalid registered resource value FQN [%s]: %w", registeredResourceValueFQN, ErrInvalidResource)
+			}
+			if parsed.Namespace == "" {
+				return fmt.Errorf("registered resource value FQN must be namespaced in strict mode [%s]: %w", registeredResourceValueFQN, ErrInvalidResource)
+			}
+		}
 	}
 	return nil
 }

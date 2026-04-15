@@ -358,6 +358,8 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_RegResValuesCont
 					for _, aav := range actionAttrValues {
 						s.NotNil(aav.GetAction())
 						s.NotNil(aav.GetAttributeValue())
+						s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
+						s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
 					}
 				}
 				if v.GetId() == val2.GetId() {
@@ -367,6 +369,8 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_RegResValuesCont
 					for _, aav := range actionAttrValues {
 						s.NotNil(aav.GetAction())
 						s.NotNil(aav.GetAttributeValue())
+						s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
+						s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
 					}
 				}
 			}

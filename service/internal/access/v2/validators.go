@@ -60,7 +60,7 @@ func validateGetDecisionRegisteredResource(registeredResourceValueFQN string, ac
 			return fmt.Errorf("resource is nil: %w", ErrInvalidResource)
 		}
 	}
-	if namespacedPolicy { //nolint:nestif // validation reads clearer inline
+	if namespacedPolicy {
 		parsed, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN)
 		if err != nil {
 			return fmt.Errorf("invalid registered resource value FQN [%s]: %w", registeredResourceValueFQN, ErrInvalidResource)
@@ -195,7 +195,7 @@ func validateGetResourceDecision(
 	if resource.GetResource() == nil {
 		return fmt.Errorf("resource is nil: %w", ErrInvalidResource)
 	}
-	if namespacedPolicy {
+	if namespacedPolicy { //nolint:nestif // validation reads clearer inline
 		if _, ok := resource.GetResource().(*authzV2.Resource_RegisteredResourceValueFqn); ok {
 			registeredResourceValueFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
 			// If namespaced policies are enabled, enforce that the registered resource value FQN is namespaced.

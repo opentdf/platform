@@ -15,6 +15,10 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/opentdf/platform/service/internal/access/v2/obligations"
@@ -36,6 +40,7 @@ var (
 type JustInTimePDP struct {
 	logger *logger.Logger
 	sdk    *otdfSDK.SDK
+	tracer trace.Tracer
 	// embedded entitlement PDP
 	pdp *PolicyDecisionPoint
 	// embedded obligations PDP
@@ -66,33 +71,49 @@ func NewJustInTimePDP(
 	p := &JustInTimePDP{
 		sdk:    sdk,
 		logger: log,
+		tracer: otel.Tracer("opentdf-platform"),
 	}
 
+	ctx, span := p.tracer.Start(ctx, "NewJustInTimePDP")
+	defer span.End()
+
 	// If no store is provided, have EntitlementPolicyRetriever fetch from policy services
-	if !store.IsEnabled() || !store.IsReady(ctx) {
+	cacheUsed := store.IsEnabled() && store.IsReady(ctx)
+	span.SetAttributes(attribute.Bool("cache.hit", cacheUsed))
+	if !cacheUsed {
 		log.DebugContext(ctx, "no EntitlementPolicyStore provided or not yet ready, will retrieve directly from policy services")
 		store = NewEntitlementPolicyRetriever(sdk)
 	}
 
 	allAttributes, err := store.ListAllAttributes(ctx)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to list attributes")
 		return nil, fmt.Errorf("failed to list cached attributes: %w", err)
 	}
 	allSubjectMappings, err := store.ListAllSubjectMappings(ctx)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to list subject mappings")
 		return nil, fmt.Errorf("failed to list cached subject mappings: %w", err)
 	}
 	allRegisteredResources, err := store.ListAllRegisteredResources(ctx)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to fetch registered resources")
 		return nil, fmt.Errorf("failed to fetch all registered resources: %w", err)
 	}
 	allObligations, err := store.ListAllObligations(ctx)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to fetch obligations")
 		return nil, fmt.Errorf("failed to fetch all obligations: %w", err)
 	}
 
 	pdp, err := NewPolicyDecisionPoint(ctx, log, allAttributes, allSubjectMappings, allRegisteredResources, allowDirectEntitlements)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to create PDP")
 		return nil, fmt.Errorf("failed to create new policy decision point: %w", err)
 	}
 	p.pdp = pdp
@@ -105,6 +126,8 @@ func NewJustInTimePDP(
 		allObligations,
 	)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to create obligations PDP")
 		return nil, fmt.Errorf("failed to create new obligations policy decision point: %w", err)
 	}
 	p.obligationsPDP = obligationsPDP
@@ -140,6 +163,10 @@ func (p *JustInTimePDP) GetDecision(
 	requestContext *policy.RequestContext,
 	fulfillableObligationValueFQNs []string,
 ) (*Decision, error) {
+	ctx, span := p.tracer.Start(ctx, "JustInTimePDP.GetDecision")
+	defer span.End()
+	span.SetAttributes(attribute.Int("resource.count", len(resources)))
+
 	var (
 		entityRepresentations   []*entityresolutionV2.EntityRepresentation
 		err                     error
@@ -147,30 +174,43 @@ func (p *JustInTimePDP) GetDecision(
 	)
 
 	// Because there are three possible types of entities, check obligations first to more easily handle decisioning logic
+	oblCtx, oblSpan := p.tracer.Start(ctx, "EvaluateObligations")
 	obligationDecision, err := p.obligationsPDP.GetAllTriggeredObligationsAreFulfilled(
-		ctx,
+		oblCtx,
 		resources,
 		action,
 		requestContext,
 		fulfillableObligationValueFQNs,
 	)
 	if err != nil {
+		oblSpan.RecordError(err)
+		oblSpan.SetStatus(codes.Error, err.Error())
+	}
+	oblSpan.End()
+	if err != nil {
 		return nil, fmt.Errorf("failed to check obligations: %w", err)
 	}
 	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
 	allObligationsSatisfied := (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)
 
+	resolveCtx, resolveSpan := p.tracer.Start(ctx, "ResolveEntities")
 	switch entityIdentifier.GetIdentifier().(type) {
 	case *authzV2.EntityIdentifier_EntityChain:
-		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
+		resolveSpan.SetAttributes(attribute.String("entity_identifier.type", "entity_chain"))
+		entityRepresentations, err = p.resolveEntitiesFromEntityChain(resolveCtx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
 
 	case *authzV2.EntityIdentifier_Token:
-		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, resources)
+		resolveSpan.SetAttributes(attribute.String("entity_identifier.type", "token"))
+		entityRepresentations, err = p.resolveEntitiesFromToken(resolveCtx, entityIdentifier.GetToken(), skipEnvironmentEntities, resources)
 
 	case *authzV2.EntityIdentifier_WithRequestToken:
-		entityRepresentations, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, resources)
+		resolveSpan.SetAttributes(attribute.String("entity_identifier.type", "with_request_token"))
+		entityRepresentations, err = p.resolveEntitiesFromRequestToken(resolveCtx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, resources)
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
+		resolveSpan.SetAttributes(attribute.String("entity_identifier.type", "registered_resource"))
+		resolveSpan.End()
+
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
 		// Registered resources do not have entity representations, so only one decision is made
 		decision, entitlements, err := p.pdp.GetDecisionRegisteredResource(ctx, regResValueFQN, action, resources)
@@ -204,22 +244,37 @@ func (p *JustInTimePDP) GetDecision(
 		return decision, nil
 
 	default:
+		resolveSpan.End()
 		return nil, ErrInvalidEntityType
 	}
+	if err != nil {
+		resolveSpan.RecordError(err)
+		resolveSpan.SetStatus(codes.Error, err.Error())
+	}
+	resolveSpan.End()
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve entity identifier: %w", err)
 	}
 
 	// Get a decision on each entity representation and consolidate into an overall decision
+	evalCtx, evalSpan := p.tracer.Start(ctx, "EvaluateDecision")
+	evalSpan.SetAttributes(
+		attribute.Int("entity_representation.count", len(entityRepresentations)),
+	)
+
 	var resourceDecisionsAcrossAllEntityReps []ResourceDecision
 	allPermitted := true
 
 	for _, entityRep := range entityRepresentations {
-		entityRepresentationDecision, entitlements, err := p.pdp.GetDecision(ctx, entityRep, action, resources)
+		entityRepresentationDecision, entitlements, err := p.pdp.GetDecision(evalCtx, entityRep, action, resources)
 		if err != nil {
+			evalSpan.RecordError(err)
+			evalSpan.SetStatus(codes.Error, err.Error())
+			evalSpan.End()
 			return nil, fmt.Errorf("failed to get decision for entityRepresentation with original id [%s]: %w", entityRep.GetOriginalId(), err)
 		}
 		if entityRepresentationDecision == nil {
+			evalSpan.End()
 			return nil, fmt.Errorf("decision is nil: %w", err)
 		}
 
@@ -237,6 +292,7 @@ func (p *JustInTimePDP) GetDecision(
 			obligationDecision,
 		)
 		if err != nil {
+			evalSpan.End()
 			return nil, fmt.Errorf("failed to apply obligations and consolidate for entity representation [%s]: %w", entityRep.GetOriginalId(), err)
 		}
 
@@ -253,6 +309,7 @@ func (p *JustInTimePDP) GetDecision(
 			auditResourceDecisions,
 		)
 	}
+	evalSpan.End()
 
 	allEntitledWithAllObligationsSatisfied := allPermitted && allObligationsSatisfied
 	return &Decision{
@@ -268,6 +325,9 @@ func (p *JustInTimePDP) GetEntitlements(
 	entityIdentifier *authzV2.EntityIdentifier,
 	withComprehensiveHierarchy bool,
 ) ([]*authzV2.EntityEntitlements, error) {
+	ctx, span := p.tracer.Start(ctx, "JustInTimePDP.GetEntitlements")
+	defer span.End()
+
 	p.logger.DebugContext(ctx, "getting entitlements - resolving entity chain")
 
 	var (
@@ -276,25 +336,38 @@ func (p *JustInTimePDP) GetEntitlements(
 		skipEnvironmentEntities = false
 	)
 
+	resolveCtx, resolveSpan := p.tracer.Start(ctx, "ResolveEntities")
 	switch entityIdentifier.GetIdentifier().(type) {
 	case *authzV2.EntityIdentifier_EntityChain:
-		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
+		resolveSpan.SetAttributes(attribute.String("entity_identifier.type", "entity_chain"))
+		entityRepresentations, err = p.resolveEntitiesFromEntityChain(resolveCtx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
 
 	case *authzV2.EntityIdentifier_Token:
-		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, []*authzV2.Resource{})
+		resolveSpan.SetAttributes(attribute.String("entity_identifier.type", "token"))
+		entityRepresentations, err = p.resolveEntitiesFromToken(resolveCtx, entityIdentifier.GetToken(), skipEnvironmentEntities, []*authzV2.Resource{})
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
+		resolveSpan.SetAttributes(attribute.String("entity_identifier.type", "registered_resource"))
+		resolveSpan.End()
+
 		p.logger.DebugContext(ctx, "getting entitlements - resolving registered resource value FQN")
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
 		// registered resources do not have entity representations, so we can skip the remaining logic
 		return p.pdp.GetEntitlementsRegisteredResource(ctx, regResValueFQN, withComprehensiveHierarchy)
 
 	case *authzV2.EntityIdentifier_WithRequestToken:
-		entityRepresentations, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, []*authzV2.Resource{})
+		resolveSpan.SetAttributes(attribute.String("entity_identifier.type", "with_request_token"))
+		entityRepresentations, err = p.resolveEntitiesFromRequestToken(resolveCtx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, []*authzV2.Resource{})
 
 	default:
+		resolveSpan.End()
 		return nil, fmt.Errorf("entity type %T: %w", entityIdentifier.GetIdentifier(), ErrInvalidEntityType)
 	}
+	if err != nil {
+		resolveSpan.RecordError(err)
+		resolveSpan.SetStatus(codes.Error, err.Error())
+	}
+	resolveSpan.End()
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve entities from entity identifier: %w", err)
 	}

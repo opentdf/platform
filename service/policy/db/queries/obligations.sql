@@ -190,8 +190,8 @@ GROUP BY od.id, n.id, fqns.fqn, counted.total
 ORDER BY
     CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'ASC' THEN od.name END ASC,
     CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'DESC' THEN od.name END DESC,
-    CASE WHEN @sort_field::text = 'fqn' AND @sort_direction::text = 'ASC' THEN fqns.fqn || '/obl/' || LOWER(od.name) END ASC,
-    CASE WHEN @sort_field::text = 'fqn' AND @sort_direction::text = 'DESC' THEN fqns.fqn || '/obl/' || LOWER(od.name) END DESC,
+    CASE WHEN @sort_field::text = 'fqn' AND @sort_direction::text = 'ASC' THEN fqns.fqn || LOWER(od.name) END ASC,
+    CASE WHEN @sort_field::text = 'fqn' AND @sort_direction::text = 'DESC' THEN fqns.fqn || LOWER(od.name) END DESC,
     CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN od.created_at END ASC,
     CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN od.created_at END DESC,
     CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN od.updated_at END ASC,

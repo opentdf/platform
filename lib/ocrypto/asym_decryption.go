@@ -39,6 +39,8 @@ type PrivateKeyDecryptor interface {
 	KeyType() KeyType
 }
 
+// NewPrivateKeyDecryptor generates a new private key of the requested type,
+// enclosing it in a PrivateKeyDecryptor interface.
 func NewPrivateKeyDecryptor(kt KeyType) (PrivateKeyDecryptor, error) {
 	switch {
 	case IsRSAKeyType(kt):

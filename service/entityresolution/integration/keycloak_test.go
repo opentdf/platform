@@ -224,7 +224,7 @@ func (a *KeycloakTestAdapter) setupKeycloakContainer(ctx context.Context) error 
 	}
 
 	// Update config with actual container details
-	a.config.Port = mappedPort.Int()
+	a.config.Port = int(mappedPort.Num())
 	a.config.URL = "http://" + net.JoinHostPort(a.config.Host, strconv.Itoa(a.config.Port))
 	a.config.AdminURL = a.config.URL
 

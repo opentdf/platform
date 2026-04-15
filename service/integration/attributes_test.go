@@ -505,7 +505,7 @@ func (s *AttributesSuite) Test_ListAttributes_OrdersByCreatedAt_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, thirdID, secondID, firstID)
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *AttributesSuite) Test_ListAttributes_SortByName_ASC() {
@@ -522,7 +522,7 @@ func (s *AttributesSuite) Test_ListAttributes_SortByName_ASC() {
 	s.NotNil(listRsp)
 
 	// aaa < bbb < ccc in ASC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[1], ids[2])
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *AttributesSuite) Test_ListAttributes_SortByName_DESC() {
@@ -539,7 +539,7 @@ func (s *AttributesSuite) Test_ListAttributes_SortByName_DESC() {
 	s.NotNil(listRsp)
 
 	// ccc > bbb > aaa in DESC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *AttributesSuite) Test_ListAttributes_SortByCreatedAt_ASC() {
@@ -556,7 +556,7 @@ func (s *AttributesSuite) Test_ListAttributes_SortByCreatedAt_ASC() {
 	s.NotNil(listRsp)
 
 	// oldest first in ASC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[1], ids[2])
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *AttributesSuite) Test_ListAttributes_SortByCreatedAt_DESC() {
@@ -573,7 +573,7 @@ func (s *AttributesSuite) Test_ListAttributes_SortByCreatedAt_DESC() {
 	s.NotNil(listRsp)
 
 	// newest first in DESC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_DESC() {
@@ -601,7 +601,7 @@ func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_DESC() {
 	s.NotNil(listRsp)
 
 	// The updated attribute (ids[0]) should appear before the others
-	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[2], ids[1])
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[2], ids[1])
 }
 
 func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_ASC() {
@@ -629,7 +629,7 @@ func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_ASC() {
 	s.NotNil(listRsp)
 
 	// The updated attribute (ids[2]) should appear last in ASC order
-	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[1], ids[2])
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedField_FallsBackToDefault() {
@@ -646,7 +646,7 @@ func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedField_FallsBackTo
 	s.NotNil(listRsp)
 
 	// Falls back to default created_at DESC ordering
-	assertIDsInDescendingOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *AttributesSuite) Test_ListAttributes_Limit_Succeeds() {

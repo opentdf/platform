@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"slices"
 	"strings"
@@ -349,7 +350,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 
 			// parse the rpc method
 			p := strings.Split(req.Spec().Procedure, "/")
-			resource := p[1] + "/" + p[2]
+			resource := path.Join(p[1], p[2])
 			action := getAction(p[2])
 
 			token, ctxWithJWK, err := a.checkToken(

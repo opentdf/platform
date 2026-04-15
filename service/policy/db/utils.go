@@ -10,7 +10,9 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -18,8 +20,11 @@ import (
 
 // Sort field constants shared across all List endpoint sort helpers.
 const (
+	sortFieldName      = "name"
 	sortFieldCreatedAt = "created_at"
 	sortFieldUpdatedAt = "updated_at"
+	sortFieldFQN       = "fqn"
+	sortFieldURI       = "uri"
 )
 
 // Gathers request pagination limit/offset or configured default
@@ -58,14 +63,68 @@ func GetNamespacesSortParams(sort []*namespaces.NamespacesSort) (string, string)
 	var field string
 	switch s.GetField() {
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME:
-		field = "name"
+		field = sortFieldName
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN:
-		field = "fqn"
+		field = sortFieldFQN
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT:
 		field = sortFieldCreatedAt
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UPDATED_AT:
 		field = sortFieldUpdatedAt
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UNSPECIFIED:
+		return "", ""
+	default:
+		return "", ""
+	}
+
+	return field, getSortDirection(s.GetDirection())
+}
+
+// GetSubjectConditionSetsSortParams maps the strongly-typed SubjectConditionSetsSort enum to
+// SQL-compatible field name and direction strings.
+// Returns empty strings when sort is nil or empty (backward compatible —
+// callers fall back to default ORDER BY created_at DESC).
+func GetSubjectConditionSetsSortParams(sort []*subjectmapping.SubjectConditionSetsSort) (string, string) {
+	if len(sort) == 0 || sort[0] == nil {
+		return "", ""
+	}
+	s := sort[0]
+
+	var field string
+	switch s.GetField() {
+	case subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT:
+		field = sortFieldCreatedAt
+	case subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT:
+		field = sortFieldUpdatedAt
+	case subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED:
+		return "", ""
+	default:
+		return "", ""
+	}
+
+	return field, getSortDirection(s.GetDirection())
+}
+
+// GetObligationsSortParams maps the strongly-typed ObligationsSort enum to
+// SQL-compatible field name and direction strings.
+// Returns empty strings when sort is nil or empty (backward compatible —
+// callers fall back to default ORDER BY created_at DESC).
+func GetObligationsSortParams(sort []*obligations.ObligationsSort) (string, string) {
+	if len(sort) == 0 || sort[0] == nil {
+		return "", ""
+	}
+	s := sort[0]
+
+	var field string
+	switch s.GetField() {
+	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_NAME:
+		field = sortFieldName
+	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_FQN:
+		field = sortFieldFQN
+	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT:
+		field = sortFieldCreatedAt
+	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UPDATED_AT:
+		field = sortFieldUpdatedAt
+	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UNSPECIFIED:
 		return "", ""
 	default:
 		return "", ""
@@ -344,12 +403,41 @@ func GetAttributesSortParams(sort []*attributes.AttributesSort) (string, string)
 	var field string
 	switch s.GetField() {
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME:
-		field = "name"
+		field = sortFieldName
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT:
 		field = sortFieldCreatedAt
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UPDATED_AT:
 		field = sortFieldUpdatedAt
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UNSPECIFIED:
+		return "", ""
+	default:
+		return "", ""
+	}
+
+	return field, getSortDirection(s.GetDirection())
+}
+
+// GetKeyAccessServersSortParams maps the strongly-typed KeyAccessServersSort enum to
+// SQL-compatible field name and direction strings.
+// Returns empty strings when sort is nil or empty (backward compatible —
+// callers fall back to default ORDER BY created_at DESC).
+func GetKeyAccessServersSortParams(sort []*kasregistry.KeyAccessServersSort) (string, string) {
+	if len(sort) == 0 || sort[0] == nil {
+		return "", ""
+	}
+	s := sort[0]
+
+	var field string
+	switch s.GetField() {
+	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_NAME:
+		field = sortFieldName
+	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_URI:
+		field = sortFieldURI
+	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT:
+		field = sortFieldCreatedAt
+	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UPDATED_AT:
+		field = sortFieldUpdatedAt
+	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UNSPECIFIED:
 		return "", ""
 	default:
 		return "", ""

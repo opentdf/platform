@@ -187,7 +187,16 @@ WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL OR od.namespace_id = sqlc.narg('namespace_id')::uuid) AND
     (sqlc.narg('namespace_fqn')::text IS NULL OR fqns.fqn = sqlc.narg('namespace_fqn')::text)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
-ORDER BY od.created_at DESC
+ORDER BY
+    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'ASC' THEN od.name END ASC,
+    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'DESC' THEN od.name END DESC,
+    CASE WHEN @sort_field::text = 'fqn' AND @sort_direction::text = 'ASC' THEN fqns.fqn || LOWER(od.name) END ASC,
+    CASE WHEN @sort_field::text = 'fqn' AND @sort_direction::text = 'DESC' THEN fqns.fqn || LOWER(od.name) END DESC,
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN od.created_at END ASC,
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN od.created_at END DESC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN od.updated_at END ASC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN od.updated_at END DESC,
+    od.created_at DESC
 LIMIT @limit_
 OFFSET @offset_;
 

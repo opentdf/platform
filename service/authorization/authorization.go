@@ -33,8 +33,6 @@ import (
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -154,10 +152,6 @@ func (as AuthorizationService) IsReady(ctx context.Context) error {
 }
 
 func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *connect.Request[authorization.GetDecisionsByTokenRequest]) (*connect.Response[authorization.GetDecisionsByTokenResponse], error) {
-	// Extract trace context from the incoming request
-	propagator := otel.GetTextMapPropagator()
-	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
-
 	ctx, span := as.Start(ctx, "GetDecisionsByToken")
 	defer span.End()
 

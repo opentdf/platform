@@ -142,7 +142,7 @@ func New%s%s%sConnectWrapper(httpClient connect.HTTPClient, baseURL string, opts
 		prefix,
 		interfaceName,
 		packagePath,
-		packagePath+"/"+connectPackageName,
+		path.Join(packagePath, connectPackageName),
 		prefix,
 		interfaceName,
 		suffix,

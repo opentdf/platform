@@ -60,7 +60,7 @@ func validateGetDecisionRegisteredResource(registeredResourceValueFQN string, ac
 			return fmt.Errorf("resource is nil: %w", ErrInvalidResource)
 		}
 	}
-	if namespacedPolicy {
+	if namespacedPolicy { //nolint:nestif // validation reads clearer inline
 		parsed, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN)
 		if err != nil {
 			return fmt.Errorf("invalid registered resource value FQN [%s]: %w", registeredResourceValueFQN, ErrInvalidResource)

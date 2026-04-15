@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/opentdf/platform/lib/identifier"
-	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -197,12 +196,10 @@ func validateGetResourceDecision(
 		return fmt.Errorf("resource is nil: %w", ErrInvalidResource)
 	}
 	if namespacedPolicy {
-		switch resource.GetResource().(type) {
-		case *authz.Resource_RegisteredResourceValueFqn:
+		if _, ok := resource.GetResource().(*authzV2.Resource_RegisteredResourceValueFqn); ok {
 			registeredResourceValueFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
-			// If namespaced policies are enabled, enforce that the registered resource value FQN is namespaced and extract the required namespace for later checks
+			// If namespaced policies are enabled, enforce that the registered resource value FQN is namespaced.
 			parsed, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN)
-
 			if err != nil {
 				return fmt.Errorf("invalid registered resource value FQN [%s]: %w", registeredResourceValueFQN, ErrInvalidResource)
 			}

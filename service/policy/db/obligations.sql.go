@@ -1525,8 +1525,8 @@ GROUP BY od.id, n.id, fqns.fqn, counted.total
 ORDER BY
     CASE WHEN $3::text = 'name' AND $4::text = 'ASC' THEN od.name END ASC,
     CASE WHEN $3::text = 'name' AND $4::text = 'DESC' THEN od.name END DESC,
-    CASE WHEN $3::text = 'fqn' AND $4::text = 'ASC' THEN fqns.fqn || '/obl/' || LOWER(od.name) END ASC,
-    CASE WHEN $3::text = 'fqn' AND $4::text = 'DESC' THEN fqns.fqn || '/obl/' || LOWER(od.name) END DESC,
+    CASE WHEN $3::text = 'fqn' AND $4::text = 'ASC' THEN fqns.fqn || LOWER(od.name) END ASC,
+    CASE WHEN $3::text = 'fqn' AND $4::text = 'DESC' THEN fqns.fqn || LOWER(od.name) END DESC,
     CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN od.created_at END ASC,
     CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN od.created_at END DESC,
     CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN od.updated_at END ASC,
@@ -1628,8 +1628,8 @@ type listObligationsRow struct {
 //	ORDER BY
 //	    CASE WHEN $3::text = 'name' AND $4::text = 'ASC' THEN od.name END ASC,
 //	    CASE WHEN $3::text = 'name' AND $4::text = 'DESC' THEN od.name END DESC,
-//	    CASE WHEN $3::text = 'fqn' AND $4::text = 'ASC' THEN fqns.fqn || '/obl/' || LOWER(od.name) END ASC,
-//	    CASE WHEN $3::text = 'fqn' AND $4::text = 'DESC' THEN fqns.fqn || '/obl/' || LOWER(od.name) END DESC,
+//	    CASE WHEN $3::text = 'fqn' AND $4::text = 'ASC' THEN fqns.fqn || LOWER(od.name) END ASC,
+//	    CASE WHEN $3::text = 'fqn' AND $4::text = 'DESC' THEN fqns.fqn || LOWER(od.name) END DESC,
 //	    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN od.created_at END ASC,
 //	    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN od.created_at END DESC,
 //	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN od.updated_at END ASC,

@@ -14,6 +14,7 @@ var (
 	errMissingMockActionResult              = errors.New("missing mock action result")
 	errMissingMockSubjectConditionSetResult = errors.New("missing mock subject condition set result")
 	errMissingMockSubjectMappingResult      = errors.New("missing mock subject mapping result")
+	errMissingMockObligationTriggerResult   = errors.New("missing mock obligation trigger result")
 )
 
 type expectedError struct {
@@ -30,7 +31,7 @@ func wantError(is error, format string, args ...any) *expectedError {
 
 type mockExecutorHandler struct {
 	created                   map[string]map[string]*createdActionCall
-	results                   map[string]map[string]*policy.Action
+	results                   map[string]map[string]*policy.Action // ! Should be renamed to actionResults
 	errs                      map[string]map[string]error
 	createdSubjectConditions  map[string]map[string]*createdSubjectConditionSetCall
 	subjectConditionSetResult map[string]map[string]*policy.SubjectConditionSet
@@ -38,6 +39,9 @@ type mockExecutorHandler struct {
 	createdSubjectMappings    map[string]map[string]*createdSubjectMappingCall
 	subjectMappingResults     map[string]map[string]*policy.SubjectMapping
 	subjectMappingErrs        map[string]map[string]error
+	createdObligationTriggers map[string]map[string]*createdObligationTriggerCall
+	obligationTriggerResult   map[string]map[string]*policy.ObligationTrigger
+	obligationTriggerErrs     map[string]map[string]error
 }
 
 type createdActionCall struct {
@@ -59,6 +63,13 @@ type createdSubjectMappingCall struct {
 	NewSubjectConditionSet      *subjectmapping.SubjectConditionSetCreate
 	Namespace                   string
 	Metadata                    *common.MetadataMutable
+}
+type createdObligationTriggerCall struct {
+	AttributeValue  string
+	Action          string
+	ObligationValue string
+	ClientID        string
+	Metadata        *common.MetadataMutable
 }
 
 func (m *mockExecutorHandler) CreateAction(_ context.Context, name string, namespace string, metadata *common.MetadataMutable) (*policy.Action, error) {
@@ -150,4 +161,36 @@ func (m *mockExecutorHandler) CreateNewSubjectMapping(_ context.Context, attrVal
 	}
 
 	return nil, errMissingMockSubjectMappingResult
+}
+
+func (m *mockExecutorHandler) CreateObligationTrigger(_ context.Context, attributeValue, action, obligationValue, clientID string, metadata *common.MetadataMutable) (*policy.ObligationTrigger, error) {
+	sourceID := metadata.GetLabels()[migrationLabelMigratedFrom]
+
+	if m.createdObligationTriggers == nil {
+		m.createdObligationTriggers = make(map[string]map[string]*createdObligationTriggerCall)
+	}
+	if m.createdObligationTriggers[sourceID] == nil {
+		m.createdObligationTriggers[sourceID] = make(map[string]*createdObligationTriggerCall)
+	}
+
+	m.createdObligationTriggers[sourceID][action] = &createdObligationTriggerCall{
+		AttributeValue:  attributeValue,
+		Action:          action,
+		ObligationValue: obligationValue,
+		ClientID:        clientID,
+		Metadata:        metadata,
+	}
+
+	if m.obligationTriggerErrs != nil && m.obligationTriggerErrs[sourceID] != nil {
+		if err := m.obligationTriggerErrs[sourceID][action]; err != nil {
+			return nil, err
+		}
+	}
+	if m.obligationTriggerResult != nil && m.obligationTriggerResult[sourceID] != nil {
+		if result := m.obligationTriggerResult[sourceID][action]; result != nil {
+			return result, nil
+		}
+	}
+
+	return nil, errMissingMockObligationTriggerResult
 }

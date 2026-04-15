@@ -152,6 +152,7 @@ type ObligationTriggerTargetPlan struct {
 	Namespace *policy.Namespace         `json:"namespace"`
 	Status    TargetStatus              `json:"status"`
 	Existing  *policy.ObligationTrigger `json:"existing,omitempty"`
+	Execution *ExecutionResult          `json:"execution,omitempty"`
 	Reason    string                    `json:"reason,omitempty"`
 	Action    *ActionBinding            `json:"action,omitempty"`
 }
@@ -357,7 +358,13 @@ func (t *RegisteredResourceTargetPlan) TargetID() string {
 }
 
 func (t *ObligationTriggerTargetPlan) TargetID() string {
-	if t == nil || t.Existing == nil {
+	if t == nil {
+		return ""
+	}
+	if t.Execution != nil && t.Execution.CreatedTargetID != "" {
+		return t.Execution.CreatedTargetID
+	}
+	if t.Existing == nil {
 		return ""
 	}
 	return t.Existing.GetId()

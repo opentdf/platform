@@ -544,6 +544,13 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+    policy.SortDirection:
+      type: string
+      title: SortDirection
+      enum:
+        - SORT_DIRECTION_UNSPECIFIED
+        - SORT_DIRECTION_ASC
+        - SORT_DIRECTION_DESC
     policy.SourceType:
       type: string
       title: SourceType
@@ -563,6 +570,15 @@ components:
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
+    policy.obligations.SortObligationsType:
+      type: string
+      title: SortObligationsType
+      enum:
+        - SORT_OBLIGATIONS_TYPE_UNSPECIFIED
+        - SORT_OBLIGATIONS_TYPE_NAME
+        - SORT_OBLIGATIONS_TYPE_FQN
+        - SORT_OBLIGATIONS_TYPE_CREATED_AT
+        - SORT_OBLIGATIONS_TYPE_UPDATED_AT
     common.IdFqnIdentifier:
       type: object
       properties:
@@ -1604,7 +1620,6 @@ components:
           format: uri
       title: GetObligationRequest
       additionalProperties: false
-      description: Definitions
     policy.obligations.GetObligationResponse:
       type: object
       properties:
@@ -1763,6 +1778,16 @@ components:
           title: pagination
           description: Optional
           $ref: '#/components/schemas/policy.PageRequest'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.obligations.ObligationsSort'
+          title: sort
+          maxItems: 1
+          description: |-
+            Optional - CONSTRAINT: max 1 item
+             Default ordering when omitted or when the first entry's field is UNSPECIFIED:
+             created_at DESC, then id ASC (tie-breaker).
       title: ListObligationsRequest
       additionalProperties: false
     policy.obligations.ListObligationsResponse:
@@ -1777,6 +1802,17 @@ components:
           title: pagination
           $ref: '#/components/schemas/policy.PageResponse'
       title: ListObligationsResponse
+      additionalProperties: false
+    policy.obligations.ObligationsSort:
+      type: object
+      properties:
+        field:
+          title: field
+          $ref: '#/components/schemas/policy.obligations.SortObligationsType'
+        direction:
+          title: direction
+          $ref: '#/components/schemas/policy.SortDirection'
+      title: ObligationsSort
       additionalProperties: false
     policy.obligations.RemoveObligationTriggerRequest:
       type: object

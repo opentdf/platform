@@ -19,7 +19,7 @@ type MockLoader struct {
 	loadFn          func(Config) error
 	getFn           func(string) (any, error)
 	getConfigKeysFn func() ([]string, error)
-	watchFn         func(context.Context, *Config, func(context.Context) error) error
+	watchFn         func(context.Context, *Config, func(context.Context) error, []NamespaceInfo) error
 	closeFn         func() error
 	getNameFn       func() string
 
@@ -51,10 +51,10 @@ func (l *MockLoader) GetConfigKeys() ([]string, error) {
 	return nil, nil
 }
 
-func (l *MockLoader) Watch(ctx context.Context, config *Config, onChange func(context.Context) error) error {
+func (l *MockLoader) Watch(ctx context.Context, config *Config, onChange func(context.Context) error, namespaces []NamespaceInfo) error {
 	l.watchCalled = true
 	if l.watchFn != nil {
-		if err := l.watchFn(ctx, config, onChange); err != nil {
+		if err := l.watchFn(ctx, config, onChange, namespaces); err != nil {
 			return err
 		}
 		l.onChangeCalled = true
@@ -123,7 +123,7 @@ func TestConfig_Watch(t *testing.T) {
 		config := &Config{}
 		loader := newMockLoader()
 		// Mock loader to call onChange
-		loader.watchFn = func(_ context.Context, _ *Config, _ func(context.Context) error) error {
+		loader.watchFn = func(_ context.Context, _ *Config, _ func(context.Context) error, _ []NamespaceInfo) error {
 			return nil
 		}
 		config.AddLoader(loader)
@@ -139,7 +139,7 @@ func TestConfig_Watch(t *testing.T) {
 		config := &Config{}
 		expectedErr := errors.New("watch error")
 		loader := newMockLoader()
-		loader.watchFn = func(_ context.Context, _ *Config, _ func(context.Context) error) error {
+		loader.watchFn = func(_ context.Context, _ *Config, _ func(context.Context) error, _ []NamespaceInfo) error {
 			return expectedErr
 		}
 		config.AddLoader(loader)
@@ -149,6 +149,32 @@ func TestConfig_Watch(t *testing.T) {
 		assert.Equal(t, expectedErr, err)
 		assert.True(t, loader.watchCalled)
 		assert.False(t, loader.onChangeCalled)
+	})
+
+	t.Run("Loader receives NamespaceInfo", func(t *testing.T) {
+		config := &Config{}
+		loader := newMockLoader()
+		testNamespaces := []NamespaceInfo{
+			{
+				Name:    "test-ns",
+				Enabled: true,
+				Services: []ServiceInfo{
+					{Namespace: "test-ns", Name: "test-svc"},
+				},
+			},
+		}
+
+		var receivedNamespaces []NamespaceInfo
+		loader.watchFn = func(_ context.Context, _ *Config, _ func(context.Context) error, namespaces []NamespaceInfo) error {
+			receivedNamespaces = namespaces
+			return nil
+		}
+		config.AddLoader(loader)
+
+		err := config.WatchWithNamespaces(ctx, testNamespaces)
+
+		require.NoError(t, err)
+		assert.Equal(t, testNamespaces, receivedNamespaces)
 	})
 }
 

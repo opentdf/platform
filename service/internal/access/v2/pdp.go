@@ -288,7 +288,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 			// same value FQN instead of replacing them.
 			actions, ok := entitledFQNsToActions[fqn]
 			if !ok {
-				actions = make([]*policy.Action, len(actionNames))
+				actions = make([]*policy.Action, 0, len(actionNames))
 			}
 			for _, name := range actionNames {
 				actions = append(actions, &policy.Action{

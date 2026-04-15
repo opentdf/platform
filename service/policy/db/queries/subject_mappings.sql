@@ -19,7 +19,13 @@ WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL)
     OR scs.namespace_id = sqlc.narg('namespace_id')::uuid
     OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text
-ORDER BY scs.created_at DESC
+ORDER BY
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN scs.created_at END ASC,
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN scs.created_at END DESC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN scs.updated_at END ASC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN scs.updated_at END DESC,
+    scs.created_at DESC,
+    scs.id ASC
 LIMIT @limit_
 OFFSET @offset_;
 

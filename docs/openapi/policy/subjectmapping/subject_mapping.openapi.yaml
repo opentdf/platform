@@ -482,6 +482,13 @@ components:
         - SORT_DIRECTION_UNSPECIFIED
         - SORT_DIRECTION_ASC
         - SORT_DIRECTION_DESC
+      description: |-
+        Sorting direction shared across list APIs.
+         Notes:
+         - When a sort field is provided, UNSPECIFIED is treated as ASC.
+         - When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+           the endpoint's request message defines the default ordering; see the
+           specific List* request docs.
     policy.SourceType:
       type: string
       title: SourceType
@@ -501,6 +508,13 @@ components:
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
+    policy.subjectmapping.SortSubjectConditionSetsType:
+      type: string
+      title: SortSubjectConditionSetsType
+      enum:
+        - SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED
+        - SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT
+        - SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT
     policy.subjectmapping.SortSubjectMappingsType:
       type: string
       title: SortSubjectMappingsType
@@ -1546,6 +1560,16 @@ components:
           title: pagination
           description: Optional
           $ref: '#/components/schemas/policy.PageRequest'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.subjectmapping.SubjectConditionSetsSort'
+          title: sort
+          maxItems: 1
+          description: |-
+            Optional - CONSTRAINT: max 1 item
+             Default ordering when omitted or when the first entry's field is UNSPECIFIED:
+             created_at DESC, then id ASC (tie-breaker).
       title: ListSubjectConditionSetsRequest
       additionalProperties: false
     policy.subjectmapping.ListSubjectConditionSetsResponse:
@@ -1640,6 +1664,17 @@ components:
              Common metadata
           $ref: '#/components/schemas/common.MetadataMutable'
       title: SubjectConditionSetCreate
+      additionalProperties: false
+    policy.subjectmapping.SubjectConditionSetsSort:
+      type: object
+      properties:
+        field:
+          title: field
+          $ref: '#/components/schemas/policy.subjectmapping.SortSubjectConditionSetsType'
+        direction:
+          title: direction
+          $ref: '#/components/schemas/policy.SortDirection'
+      title: SubjectConditionSetsSort
       additionalProperties: false
     policy.subjectmapping.SubjectMappingsSort:
       type: object

@@ -85,6 +85,7 @@ func TestMultiStrategyContractValidation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
+	ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
 
 	// Create wrapper for contract testing
 	wrapper := &MultiStrategyERSWrapper{
@@ -154,6 +155,7 @@ func TestMultiStrategyChainSpecific(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
+	ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
 
 	wrapper := &MultiStrategyERSWrapper{
 		ers:    ers,

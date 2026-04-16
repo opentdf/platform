@@ -16,10 +16,10 @@ import (
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/creasty/defaults"
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	ent "github.com/opentdf/platform/service/entity"
+	"github.com/opentdf/platform/service/entityresolution/internal/tokenvalidation"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -45,8 +45,9 @@ const serviceAccountUsernamePrefix = "service-account-"
 
 type EntityResolutionServiceV2 struct {
 	entityresolutionV2.UnimplementedEntityResolutionServiceServer
-	idpConfig Config
-	logger    *logger.Logger
+	idpConfig     Config
+	logger        *logger.Logger
+	tokenVerifier tokenvalidation.Verifier
 	trace.Tracer
 	connector   *Connector
 	connectorMu sync.Mutex
@@ -81,6 +82,10 @@ func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger, svc
 	return keycloakSVC, nil
 }
 
+func (s *EntityResolutionServiceV2) SetTokenVerifier(verifier tokenvalidation.Verifier) {
+	s.tokenVerifier = verifier
+}
+
 func (s *EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
 	ctx, span := s.Start(ctx, "ResolveEntities")
 	defer span.End()
@@ -102,8 +107,11 @@ func (s *EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Con
 		s.logger.ErrorContext(ctx, "error getting keycloak connector", slog.String("error", err.Error()))
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("%w: %w", ErrCreationFailed, err))
 	}
-	resp, err := CreateEntityChainsFromTokens(ctx, req.Msg, s.idpConfig, connector, s.logger, s.svcCache)
-	return connect.NewResponse(&resp), err
+	resp, err := CreateEntityChainsFromTokens(ctx, req.Msg, s.idpConfig, connector, s.logger, s.svcCache, s.tokenVerifier)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&resp), nil
 }
 
 func (c Config) LogValue() slog.Value {
@@ -141,12 +149,17 @@ func CreateEntityChainsFromTokens(
 	connector *Connector,
 	logger *logger.Logger,
 	svcCache *cache.Cache,
+	verifier tokenvalidation.Verifier,
 ) (entityresolutionV2.CreateEntityChainsFromTokensResponse, error) {
 	entityChains := []*entity.EntityChain{}
 	// for each token in the tokens form an entity chain
 	for _, tok := range req.GetTokens() {
-		entities, err := getEntitiesFromToken(ctx, kcConfig, connector, tok.GetJwt(), logger, svcCache)
+		entities, err := getEntitiesFromToken(ctx, kcConfig, connector, tok.GetJwt(), logger, svcCache, verifier)
 		if err != nil {
+			code := tokenvalidation.ConnectCode(err)
+			if code != connect.CodeUnknown {
+				return entityresolutionV2.CreateEntityChainsFromTokensResponse{}, connect.NewError(code, err)
+			}
 			return entityresolutionV2.CreateEntityChainsFromTokensResponse{}, err
 		}
 		entityChains = append(entityChains, &entity.EntityChain{EphemeralId: tok.GetEphemeralId(), Entities: entities})
@@ -389,10 +402,10 @@ func expandGroup(ctx context.Context, groupID string, kcConnector *Connector, kc
 	return entityRepresentations, nil
 }
 
-func getEntitiesFromToken(ctx context.Context, kcConfig Config, connector *Connector, jwtString string, logger *logger.Logger, svcCache *cache.Cache) ([]*entity.Entity, error) {
-	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
+func getEntitiesFromToken(ctx context.Context, kcConfig Config, connector *Connector, jwtString string, logger *logger.Logger, svcCache *cache.Cache, verifier tokenvalidation.Verifier) ([]*entity.Entity, error) {
+	token, err := tokenvalidation.Verify(ctx, verifier, jwtString)
 	if err != nil {
-		return nil, errors.New("error parsing jwt " + err.Error())
+		return nil, err
 	}
 	claims, err := token.AsMap(context.Background()) ///nolint:contextcheck // Do not want to include keys from context in map
 	if err != nil {

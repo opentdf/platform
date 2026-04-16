@@ -16,6 +16,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
+	"github.com/opentdf/platform/service/entityresolution/integration/internal"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	multistrategyv2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
 	"github.com/opentdf/platform/service/logger"
@@ -77,6 +78,7 @@ func TestMultiStrategy_ClaimsOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
+	ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
 
 	// Test entity chain creation with JWT token
 	req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
@@ -243,6 +245,7 @@ func TestMultiStrategy_SQLOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
+	ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
 
 	// Test entity chain creation
 	req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
@@ -380,6 +383,7 @@ func TestMultiStrategy_LDAPOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
+	ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
 
 	// Test basic health check first
 	healthErr := ers.GetService().HealthCheck(ctx)
@@ -516,6 +520,7 @@ func TestMultiStrategy_ClaimsThenLDAPFallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS with LDAP fallback: %v", err)
 	}
+	service.SetTokenVerifier(internal.NewInsecureTokenVerifier())
 
 	jwtClaims := types.JWTClaims{
 		"sub": "alice",
@@ -645,6 +650,7 @@ func TestMultiStrategy_MultiProviderFailover(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
+	ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
 	req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 		Tokens: []*entity.Token{
 			{
@@ -743,6 +749,7 @@ func TestMultiStrategy_MultiProviderEarlySuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
+	ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
 	req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 		Tokens: []*entity.Token{
 			{
@@ -845,6 +852,7 @@ func TestMultiStrategy_EntityChainCreation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
+	ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
 
 	// Test multiple tokens to create multiple chains
 	req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{

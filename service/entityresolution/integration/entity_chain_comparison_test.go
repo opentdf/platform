@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
+	"github.com/opentdf/platform/service/entityresolution/integration/internal"
 	keycloakv2 "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	multistrategyv2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
@@ -52,6 +53,7 @@ func TestEntityChainComparison(t *testing.T) {
 		var testCache *cache.Cache
 
 		keycloakService, _ := keycloakv2.RegisterKeycloakERS(keycloakConfig, testLogger, testCache)
+		keycloakService.SetTokenVerifier(internal.NewInsecureTokenVerifier())
 		keycloakService.Tracer = noop.NewTracerProvider().Tracer("test-keycloak-v2")
 
 		// Test CreateEntityChainsFromTokens
@@ -139,6 +141,7 @@ func TestEntityChainComparison(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 		}
+		ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
 
 		// Test CreateEntityChainsFromTokens
 		req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{

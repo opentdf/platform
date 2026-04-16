@@ -151,6 +151,7 @@ func (a *KeycloakTestAdapter) CreateERSService(_ context.Context) (internal.ERSI
 	var testCache *cache.Cache
 
 	service, _ := keycloakv2.RegisterKeycloakERS(keycloakConfig, testLogger, testCache)
+	service.SetTokenVerifier(internal.NewInsecureTokenVerifier())
 
 	// Set a no-op tracer for testing to prevent nil pointer dereference
 	service.Tracer = noop.NewTracerProvider().Tracer("test-keycloak-v2")

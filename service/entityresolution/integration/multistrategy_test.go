@@ -168,6 +168,7 @@ func (a *MultiStrategyTestAdapter) CreateERSService(ctx context.Context) (intern
 	if err != nil {
 		return nil, err
 	}
+	ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
 
 	// Wrap it to handle contract tests that use ResolveEntities with entity IDs
 	wrapper := &MultiStrategyERSWrapper{
@@ -508,6 +509,7 @@ func TestMultiStrategyChainFailureStrategies(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create ERS: %v", err)
 		}
+		ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
 		v2Req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 			Tokens: []*entity.Token{
 				{
@@ -593,6 +595,7 @@ func TestMultiStrategyChainFailureStrategies(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create ERS: %v", err)
 		}
+		ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
 		v2Req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 			Tokens: []*entity.Token{
 				{

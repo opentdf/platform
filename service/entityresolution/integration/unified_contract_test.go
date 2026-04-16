@@ -106,6 +106,7 @@ func createMultiStrategyImplementation(t *testing.T) internal.ERSImplementation 
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
+	ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
 
 	return &MultiStrategyERSWrapper{
 		ers:    ers,
@@ -136,6 +137,7 @@ func createKeycloakImplementation(_ *testing.T) internal.ERSImplementation {
 	var testCache *cache.Cache
 
 	keycloakService, _ := keycloakv2.RegisterKeycloakERS(keycloakConfig, testLogger, testCache)
+	keycloakService.SetTokenVerifier(internal.NewInsecureTokenVerifier())
 
 	// Test if Keycloak is available - if not, return nil to skip
 	// (The actual test will handle the Docker unavailability gracefully)

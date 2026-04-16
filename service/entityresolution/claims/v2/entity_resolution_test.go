@@ -96,7 +96,7 @@ func Test_ClaimsResolveEntity(t *testing.T) {
 func Test_JWTToEntityChainClaims(t *testing.T) {
 	validBody := []*entity.Token{{Jwt: samplejwt}}
 
-	resp, reserr := claims.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, logger.CreateTestLogger())
+	resp, reserr := claims.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, logger.CreateTestLogger(), insecureTestTokenVerifier{})
 
 	require.NoError(t, reserr)
 

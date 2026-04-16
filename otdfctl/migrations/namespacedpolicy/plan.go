@@ -12,11 +12,19 @@ var (
 	ErrNilRetrieved              = errors.New("planner retrieved state is required")
 	ErrMissingTargetNamespace    = errors.New("missing target namespace")
 	ErrUndeterminedTargetMapping = errors.New("could not determine target namespace")
+	ErrDuplicateCanonincalMatch  = errors.New("multiple existing target objects match canonical equality in the target namespace")
 )
 
+type UnresolvedReason string
+
 const (
-	errDuplicateCanonicalMatch = "multiple existing target objects match canonical equality in the target namespace"
+	UnresolvedReasonRegisteredResourceConflictingNamespaces UnresolvedReason = "registered_resource_conflicting_namespaces"
 )
+
+type Unresolved struct {
+	Reason  UnresolvedReason
+	Message string
+}
 
 type Plan struct {
 	Scopes               []Scope                    `json:"scopes"`
@@ -62,7 +70,6 @@ type ActionPlan struct {
 	// actions.
 	References []*ActionReference  `json:"references,omitempty"`
 	Targets    []*ActionTargetPlan `json:"targets,omitempty"`
-	Unresolved string              `json:"unresolved,omitempty"`
 }
 
 type ActionReferenceKind string
@@ -88,9 +95,8 @@ type ActionTargetPlan struct {
 }
 
 type SubjectConditionSetPlan struct {
-	Source     *policy.SubjectConditionSet      `json:"source"`
-	Targets    []*SubjectConditionSetTargetPlan `json:"targets,omitempty"`
-	Unresolved string                           `json:"unresolved,omitempty"`
+	Source  *policy.SubjectConditionSet      `json:"source"`
+	Targets []*SubjectConditionSetTargetPlan `json:"targets,omitempty"`
 }
 
 type SubjectConditionSetTargetPlan struct {
@@ -102,9 +108,8 @@ type SubjectConditionSetTargetPlan struct {
 }
 
 type SubjectMappingPlan struct {
-	Source     *policy.SubjectMapping      `json:"source"`
-	Targets    []*SubjectMappingTargetPlan `json:"targets,omitempty"`
-	Unresolved string                      `json:"unresolved,omitempty"`
+	Source  *policy.SubjectMapping      `json:"source"`
+	Targets []*SubjectMappingTargetPlan `json:"targets,omitempty"`
 }
 
 type SubjectMappingTargetPlan struct {
@@ -148,9 +153,8 @@ type RegisteredResourceActionBinding struct {
 }
 
 type ObligationTriggerPlan struct {
-	Source     *policy.ObligationTrigger      `json:"source"`
-	Targets    []*ObligationTriggerTargetPlan `json:"targets,omitempty"`
-	Unresolved string                         `json:"unresolved,omitempty"`
+	Source  *policy.ObligationTrigger      `json:"source"`
+	Targets []*ObligationTriggerTargetPlan `json:"targets,omitempty"`
 }
 
 type ObligationTriggerTargetPlan struct {
@@ -190,41 +194,13 @@ type UnusedAction struct {
 }
 
 type UnresolvedPlan struct {
-	Actions              []*ActionIssue              `json:"actions,omitempty"`
-	SubjectConditionSets []*SubjectConditionSetIssue `json:"subject_condition_sets,omitempty"`
-	SubjectMappings      []*SubjectMappingIssue      `json:"subject_mappings,omitempty"`
-	RegisteredResources  []*RegisteredResourceIssue  `json:"registered_resources,omitempty"`
-	ObligationTriggers   []*ObligationTriggerIssue   `json:"obligation_triggers,omitempty"`
-}
-
-type ActionIssue struct {
-	Source    *policy.Action    `json:"source"`
-	Namespace *policy.Namespace `json:"namespace,omitempty"`
-	Reason    string            `json:"reason"`
-}
-
-type SubjectConditionSetIssue struct {
-	Source    *policy.SubjectConditionSet `json:"source"`
-	Namespace *policy.Namespace           `json:"namespace,omitempty"`
-	Reason    string                      `json:"reason"`
-}
-
-type SubjectMappingIssue struct {
-	Source    *policy.SubjectMapping `json:"source"`
-	Namespace *policy.Namespace      `json:"namespace,omitempty"`
-	Reason    string                 `json:"reason"`
+	RegisteredResources []*RegisteredResourceIssue `json:"registered_resources,omitempty"`
 }
 
 type RegisteredResourceIssue struct {
 	Resource  *policy.RegisteredResource `json:"resource"`
 	Namespace *policy.Namespace          `json:"namespace,omitempty"`
 	Reason    string                     `json:"reason"`
-}
-
-type ObligationTriggerIssue struct {
-	Source    *policy.ObligationTrigger `json:"source"`
-	Namespace *policy.Namespace         `json:"namespace,omitempty"`
-	Reason    string                    `json:"reason"`
 }
 
 func namespaceFromAttributeValue(value *policy.Value) *policy.Namespace {
@@ -277,11 +253,7 @@ func hasObject[T interface{ GetId() string }](items []T, id string) bool {
 }
 
 func hasUnresolved(plan UnresolvedPlan) bool {
-	return len(plan.Actions) > 0 ||
-		len(plan.SubjectConditionSets) > 0 ||
-		len(plan.SubjectMappings) > 0 ||
-		len(plan.RegisteredResources) > 0 ||
-		len(plan.ObligationTriggers) > 0
+	return len(plan.RegisteredResources) > 0
 }
 
 func hasUnused(plan UnusedPlan) bool {

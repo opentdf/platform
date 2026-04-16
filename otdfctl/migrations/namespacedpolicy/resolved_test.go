@@ -122,7 +122,7 @@ func TestResolveExistingFailsWhenSubjectMappingActionDependencyMissing(t *testin
 	assert.EqualError(
 		t,
 		err,
-		`subject mapping "mapping-1": subject mapping dependency action "action-1" is not resolved in namespace "ns-1"`,
+		`subject mapping "mapping-1" in namespace "ns-1": subject mapping dependency action "action-1" is not resolved in namespace "ns-1"`,
 	)
 }
 

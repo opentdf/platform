@@ -12,7 +12,7 @@ var (
 	ErrNilRetrieved              = errors.New("planner retrieved state is required")
 	ErrMissingTargetNamespace    = errors.New("missing target namespace")
 	ErrUndeterminedTargetMapping = errors.New("could not determine target namespace")
-	ErrDuplicateCanonincalMatch  = errors.New("multiple existing target objects match canonical equality in the target namespace")
+	ErrDuplicateCanonicalMatch   = errors.New("multiple existing target objects match canonical equality in the target namespace")
 )
 
 type UnresolvedReason string

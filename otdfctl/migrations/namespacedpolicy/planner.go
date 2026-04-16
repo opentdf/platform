@@ -113,7 +113,10 @@ func (p *Planner) Plan(ctx context.Context) (*Plan, error) {
 		return nil, err
 	}
 
-	resolved := resolveExisting(derived, existingTargets)
+	resolved, err := resolveExisting(derived, existingTargets)
+	if err != nil {
+		return nil, err
+	}
 
 	return finalizePlan(resolved, namespaces)
 }

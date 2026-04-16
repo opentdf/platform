@@ -20,31 +20,27 @@ type DerivedAction struct {
 	Source     *policy.Action
 	References []*ActionReference
 	Targets    []*policy.Namespace
-	Unresolved string
 }
 
 type DerivedSubjectConditionSet struct {
-	Source     *policy.SubjectConditionSet
-	Targets    []*policy.Namespace
-	Unresolved string
+	Source  *policy.SubjectConditionSet
+	Targets []*policy.Namespace
 }
 
 type DerivedSubjectMapping struct {
-	Source     *policy.SubjectMapping
-	Target     *policy.Namespace
-	Unresolved string
+	Source *policy.SubjectMapping
+	Target *policy.Namespace
 }
 
 type DerivedRegisteredResource struct {
 	Source     *policy.RegisteredResource
 	Target     *policy.Namespace
-	Unresolved string
+	Unresolved *Unresolved
 }
 
 type DerivedObligationTrigger struct {
-	Source     *policy.ObligationTrigger
-	Target     *policy.Namespace
-	Unresolved string
+	Source *policy.ObligationTrigger
+	Target *policy.Namespace
 }
 
 type targetDeriver struct {
@@ -55,6 +51,8 @@ type targetDeriver struct {
 	actionRefsByID    map[string]*actionReferenceAccumulator
 	scsTargetsByID    map[string]*namespaceAccumulator
 }
+
+var errSkipRegisteredResource = errors.New("skip registered resource")
 
 func deriveTargets(retrieved *Retrieved, namespaces []*policy.Namespace) (*DerivedTargets, error) {
 	if retrieved == nil {
@@ -83,6 +81,9 @@ func deriveTargets(retrieved *Retrieved, namespaces []*policy.Namespace) (*Deriv
 	for _, resource := range retrieved.Candidates.RegisteredResources {
 		item, err := deriver.deriveRegisteredResource(resource)
 		if err != nil {
+			if errors.Is(err, errSkipRegisteredResource) {
+				continue
+			}
 			return nil, err
 		}
 		derived.RegisteredResources = append(derived.RegisteredResources, item)
@@ -99,11 +100,19 @@ func deriveTargets(retrieved *Retrieved, namespaces []*policy.Namespace) (*Deriv
 	}
 
 	for _, action := range retrieved.Candidates.Actions {
-		derived.Actions = append(derived.Actions, deriver.deriveAction(action))
+		item, err := deriver.deriveAction(action)
+		if err != nil {
+			return nil, err
+		}
+		derived.Actions = append(derived.Actions, item)
 	}
 
 	for _, scs := range retrieved.Candidates.SubjectConditionSets {
-		derived.SubjectConditionSets = append(derived.SubjectConditionSets, deriver.deriveSubjectConditionSet(scs))
+		item, err := deriver.deriveSubjectConditionSet(scs)
+		if err != nil {
+			return nil, err
+		}
+		derived.SubjectConditionSets = append(derived.SubjectConditionSets, item)
 	}
 
 	return derived, nil
@@ -138,11 +147,7 @@ func (d *targetDeriver) deriveSubjectMapping(mapping *policy.SubjectMapping) (*D
 	item := &DerivedSubjectMapping{Source: mapping}
 	namespace, err := d.resolveNamespace(namespaceFromAttributeValue(mapping.GetAttributeValue()))
 	if err != nil {
-		item.Unresolved = err.Error()
-		if errors.Is(err, ErrMissingTargetNamespace) {
-			return item, err
-		}
-		return item, nil
+		return nil, fmt.Errorf("subject mapping %q: %w", mapping.GetId(), err)
 	}
 
 	item.Target = namespace
@@ -152,27 +157,25 @@ func (d *targetDeriver) deriveSubjectMapping(mapping *policy.SubjectMapping) (*D
 func (d *targetDeriver) deriveRegisteredResource(resource *policy.RegisteredResource) (*DerivedRegisteredResource, error) {
 	item := &DerivedRegisteredResource{Source: resource}
 	if resource == nil {
-		item.Unresolved = fmt.Errorf("%w: registered resource is empty", ErrUndeterminedTargetMapping).Error()
-		return item, nil
+		return nil, fmt.Errorf("%w: registered resource is empty", ErrUndeterminedTargetMapping)
 	}
 
 	namespaceRef, ok := registeredResourceNamespaceRef(resource)
 	if !ok {
 		if hasRegisteredResourceActionAttributeValues(resource) {
-			item.Unresolved = fmt.Errorf("%w: registered resource spans multiple target namespaces", ErrUndeterminedTargetMapping).Error()
+			item.Unresolved = &Unresolved{
+				Reason:  UnresolvedReasonRegisteredResourceConflictingNamespaces,
+				Message: fmt.Errorf("%w: registered resource spans multiple target namespaces", ErrUndeterminedTargetMapping).Error(),
+			}
 			return item, nil
 		}
-		item.Unresolved = fmt.Errorf("%w: no action-attribute values resolve a namespace", ErrUndeterminedTargetMapping).Error()
-		return item, nil
+		// Skip registered resources that have no action-attribute values because they do not provide a derivable namespace target.
+		return nil, errSkipRegisteredResource
 	}
 
 	namespace, err := d.resolveNamespace(namespaceRef)
 	if err != nil {
-		item.Unresolved = err.Error()
-		if errors.Is(err, ErrMissingTargetNamespace) {
-			return item, err
-		}
-		return item, nil
+		return nil, fmt.Errorf("registered resource %q: %w", resource.GetId(), err)
 	}
 
 	item.Target = namespace
@@ -183,20 +186,19 @@ func (d *targetDeriver) deriveObligationTrigger(trigger *policy.ObligationTrigge
 	item := &DerivedObligationTrigger{Source: trigger}
 	namespace, err := d.resolveNamespace(namespaceFromObligationValue(trigger.GetObligationValue()))
 	if err != nil {
-		item.Unresolved = err.Error()
-		if errors.Is(err, ErrMissingTargetNamespace) {
-			return item, err
-		}
-		return item, nil
+		return nil, fmt.Errorf("obligation trigger %q: %w", trigger.GetId(), err)
 	}
 
 	item.Target = namespace
 	return item, nil
 }
 
-func (d *targetDeriver) deriveAction(action *policy.Action) *DerivedAction {
+func (d *targetDeriver) deriveAction(action *policy.Action) (*DerivedAction, error) {
 	item := &DerivedAction{
 		Source: action,
+	}
+	if action == nil {
+		return nil, fmt.Errorf("%w: empty action candidate", ErrUndeterminedTargetMapping)
 	}
 	if refs := d.actionRefsByID[action.GetId()]; refs != nil {
 		item.References = refs.slice()
@@ -204,25 +206,27 @@ func (d *targetDeriver) deriveAction(action *policy.Action) *DerivedAction {
 	targets := d.targets(d.actionTargetsByID[action.GetId()])
 	if len(targets) == 0 {
 		if len(item.References) > 0 {
-			item.Unresolved = fmt.Errorf("%w: no target namespaces were discovered", ErrUndeterminedTargetMapping).Error()
+			return nil, fmt.Errorf("%w: no target namespaces were discovered for action %q", ErrUndeterminedTargetMapping, action.GetId())
 		}
-		return item
+		return item, nil
 	}
 
 	item.Targets = targets
-	return item
+	return item, nil
 }
 
-func (d *targetDeriver) deriveSubjectConditionSet(scs *policy.SubjectConditionSet) *DerivedSubjectConditionSet {
+func (d *targetDeriver) deriveSubjectConditionSet(scs *policy.SubjectConditionSet) (*DerivedSubjectConditionSet, error) {
 	item := &DerivedSubjectConditionSet{Source: scs}
+	if scs == nil {
+		return nil, fmt.Errorf("%w: empty subject condition set candidate", ErrUndeterminedTargetMapping)
+	}
 	targets := d.targets(d.scsTargetsByID[scs.GetId()])
 	if len(targets) == 0 {
-		item.Unresolved = fmt.Errorf("%w: no target namespaces were discovered", ErrUndeterminedTargetMapping).Error()
-		return item
+		return nil, fmt.Errorf("%w: no target namespaces were discovered for subject condition set %q", ErrUndeterminedTargetMapping, scs.GetId())
 	}
 
 	item.Targets = targets
-	return item
+	return item, nil
 }
 
 func (d *targetDeriver) observeSubjectMapping(item *DerivedSubjectMapping) {

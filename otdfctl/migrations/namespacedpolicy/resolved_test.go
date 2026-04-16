@@ -20,7 +20,7 @@ func TestResolveExistingUsesExistingStandardAction(t *testing.T) {
 		{Id: "read-target", Name: "read", Namespace: namespace},
 	}
 
-	resolved := resolveExisting(
+	resolved, err := resolveExisting(
 		&DerivedTargets{
 			Scopes: []Scope{ScopeActions},
 			Actions: []*DerivedAction{
@@ -32,15 +32,60 @@ func TestResolveExistingUsesExistingStandardAction(t *testing.T) {
 		},
 		existing,
 	)
+	require.NoError(t, err)
 
 	require.Len(t, resolved.Actions, 1)
 	require.Len(t, resolved.Actions[0].Results, 1)
 	assert.Equal(t, "read-target", resolved.Actions[0].Results[0].ExistingStandard.GetId())
 	assert.False(t, resolved.Actions[0].Results[0].NeedsCreate)
-	assert.Empty(t, resolved.Actions[0].Results[0].Unresolved)
 }
 
-func TestResolveExistingMarksSubjectMappingUnresolvedWhenActionDependencyMissing(t *testing.T) {
+func TestResolveExistingFailsWhenActionCandidateIsNil(t *testing.T) {
+	t.Parallel()
+
+	resolved, err := resolveExisting(
+		&DerivedTargets{
+			Scopes:  []Scope{ScopeActions},
+			Actions: []*DerivedAction{nil},
+		},
+		nil,
+	)
+	require.Error(t, err)
+	assert.Nil(t, resolved)
+	assert.EqualError(t, err, "could not determine target namespace: empty action candidate")
+}
+
+func TestResolveExistingFailsWhenSubjectConditionSetCandidateIsNil(t *testing.T) {
+	t.Parallel()
+
+	resolved, err := resolveExisting(
+		&DerivedTargets{
+			Scopes:               []Scope{ScopeSubjectConditionSets},
+			SubjectConditionSets: []*DerivedSubjectConditionSet{nil},
+		},
+		nil,
+	)
+	require.Error(t, err)
+	assert.Nil(t, resolved)
+	assert.EqualError(t, err, "could not determine target namespace: empty subject condition set candidate")
+}
+
+func TestResolveExistingFailsWhenSubjectMappingCandidateIsNil(t *testing.T) {
+	t.Parallel()
+
+	resolved, err := resolveExisting(
+		&DerivedTargets{
+			Scopes:          []Scope{ScopeSubjectMappings},
+			SubjectMappings: []*DerivedSubjectMapping{nil},
+		},
+		nil,
+	)
+	require.Error(t, err)
+	assert.Nil(t, resolved)
+	assert.EqualError(t, err, "could not determine target namespace: empty subject mapping candidate")
+}
+
+func TestResolveExistingFailsWhenSubjectMappingActionDependencyMissing(t *testing.T) {
 	t.Parallel()
 
 	namespace := &policy.Namespace{
@@ -48,7 +93,7 @@ func TestResolveExistingMarksSubjectMappingUnresolvedWhenActionDependencyMissing
 		Fqn: "https://example.com",
 	}
 
-	resolved := resolveExisting(
+	resolved, err := resolveExisting(
 		&DerivedTargets{
 			Scopes: []Scope{ScopeActions, ScopeSubjectConditionSets, ScopeSubjectMappings},
 			SubjectConditionSets: []*DerivedSubjectConditionSet{
@@ -72,12 +117,47 @@ func TestResolveExistingMarksSubjectMappingUnresolvedWhenActionDependencyMissing
 		},
 		nil,
 	)
+	require.Error(t, err)
+	assert.Nil(t, resolved)
+	assert.EqualError(
+		t,
+		err,
+		`subject mapping "mapping-1": subject mapping dependency action "action-1" is not resolved in namespace "ns-1"`,
+	)
+}
 
-	require.Len(t, resolved.SubjectMappings, 1)
+func TestResolveExistingKeepsRegisteredResourceConflictUnresolved(t *testing.T) {
+	t.Parallel()
+
+	namespace := &policy.Namespace{
+		Id:  "ns-1",
+		Fqn: "https://example.com",
+	}
+
+	resolved, err := resolveExisting(
+		&DerivedTargets{
+			Scopes: []Scope{ScopeRegisteredResources},
+			RegisteredResources: []*DerivedRegisteredResource{
+				{
+					Source: &policy.RegisteredResource{Id: "resource-1", Name: "documents"},
+					Target: namespace,
+					Unresolved: &Unresolved{
+						Reason:  UnresolvedReasonRegisteredResourceConflictingNamespaces,
+						Message: "could not determine target namespace: registered resource spans multiple target namespaces",
+					},
+				},
+			},
+		},
+		nil,
+	)
+	require.NoError(t, err)
+	require.Len(t, resolved.RegisteredResources, 1)
+	require.NotNil(t, resolved.RegisteredResources[0].Unresolved)
+	assert.Equal(t, UnresolvedReasonRegisteredResourceConflictingNamespaces, resolved.RegisteredResources[0].Unresolved.Reason)
 	assert.Equal(
 		t,
-		`subject mapping dependency action "action-1" is not resolved in namespace "ns-1"`,
-		resolved.SubjectMappings[0].Unresolved,
+		"could not determine target namespace: registered resource spans multiple target namespaces",
+		resolved.RegisteredResources[0].Unresolved.Message,
 	)
-	assert.False(t, resolved.SubjectMappings[0].NeedsCreate)
+	assert.False(t, resolved.RegisteredResources[0].NeedsCreate)
 }

@@ -223,7 +223,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 							{
 								Namespace: namespace1,
 								Status:    TargetStatusUnresolved,
-								Reason:    errDuplicateCanonicalMatch,
+								Reason:    ErrDuplicateCanonicalMatch.Error(),
 							},
 						},
 					},
@@ -235,7 +235,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 				`registered resource %q target %q is unresolved: %s`,
 				"rr-1",
 				namespace1.GetFqn(),
-				errDuplicateCanonicalMatch,
+				ErrDuplicateCanonicalMatch,
 			),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()

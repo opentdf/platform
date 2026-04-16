@@ -176,7 +176,13 @@ func (c *Config) WatchWithNamespaces(ctx context.Context, namespaces []Namespace
 			// Now call the user-provided hooks with the new configuration.
 			return c.OnChange(ctx)
 		}
-		if err := loader.Watch(ctx, c, onChangeCallback, namespaces); err != nil {
+		if nsLoader, ok := loader.(NamespaceAwareLoader); ok {
+			if err := nsLoader.WatchWithNamespaces(ctx, c, onChangeCallback, namespaces); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := loader.Watch(ctx, c, onChangeCallback); err != nil {
 			return err
 		}
 	}

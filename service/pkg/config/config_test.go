@@ -19,7 +19,7 @@ type MockLoader struct {
 	loadFn          func(Config) error
 	getFn           func(string) (any, error)
 	getConfigKeysFn func() ([]string, error)
-	watchFn         func(context.Context, *Config, func(context.Context) error, []NamespaceInfo) error
+	watchFn         func(context.Context, *Config, func(context.Context) error) error
 	closeFn         func() error
 	getNameFn       func() string
 
@@ -28,6 +28,23 @@ type MockLoader struct {
 	getNameCalled bool
 
 	onChangeCalled bool
+}
+
+// MockNamespaceAwareLoader extends MockLoader with NamespaceAwareLoader support
+type MockNamespaceAwareLoader struct {
+	MockLoader
+	watchWithNamespacesFn func(context.Context, *Config, func(context.Context) error, []NamespaceInfo) error
+}
+
+func (l *MockNamespaceAwareLoader) WatchWithNamespaces(ctx context.Context, config *Config, onChange func(context.Context) error, namespaces []NamespaceInfo) error {
+	l.watchCalled = true
+	if l.watchWithNamespacesFn != nil {
+		if err := l.watchWithNamespacesFn(ctx, config, onChange, namespaces); err != nil {
+			return err
+		}
+		l.onChangeCalled = true
+	}
+	return nil
 }
 
 func (l *MockLoader) Load(mostRecentConfig Config) error {
@@ -51,10 +68,10 @@ func (l *MockLoader) GetConfigKeys() ([]string, error) {
 	return nil, nil
 }
 
-func (l *MockLoader) Watch(ctx context.Context, config *Config, onChange func(context.Context) error, namespaces []NamespaceInfo) error {
+func (l *MockLoader) Watch(ctx context.Context, config *Config, onChange func(context.Context) error) error {
 	l.watchCalled = true
 	if l.watchFn != nil {
-		if err := l.watchFn(ctx, config, onChange, namespaces); err != nil {
+		if err := l.watchFn(ctx, config, onChange); err != nil {
 			return err
 		}
 		l.onChangeCalled = true
@@ -123,7 +140,7 @@ func TestConfig_Watch(t *testing.T) {
 		config := &Config{}
 		loader := newMockLoader()
 		// Mock loader to call onChange
-		loader.watchFn = func(_ context.Context, _ *Config, _ func(context.Context) error, _ []NamespaceInfo) error {
+		loader.watchFn = func(_ context.Context, _ *Config, _ func(context.Context) error) error {
 			return nil
 		}
 		config.AddLoader(loader)
@@ -139,7 +156,7 @@ func TestConfig_Watch(t *testing.T) {
 		config := &Config{}
 		expectedErr := errors.New("watch error")
 		loader := newMockLoader()
-		loader.watchFn = func(_ context.Context, _ *Config, _ func(context.Context) error, _ []NamespaceInfo) error {
+		loader.watchFn = func(_ context.Context, _ *Config, _ func(context.Context) error) error {
 			return expectedErr
 		}
 		config.AddLoader(loader)
@@ -153,7 +170,7 @@ func TestConfig_Watch(t *testing.T) {
 
 	t.Run("Loader receives NamespaceInfo", func(t *testing.T) {
 		config := &Config{}
-		loader := newMockLoader()
+		loader := &MockNamespaceAwareLoader{}
 		testNamespaces := []NamespaceInfo{
 			{
 				Name:    "test-ns",
@@ -165,7 +182,7 @@ func TestConfig_Watch(t *testing.T) {
 		}
 
 		var receivedNamespaces []NamespaceInfo
-		loader.watchFn = func(_ context.Context, _ *Config, _ func(context.Context) error, namespaces []NamespaceInfo) error {
+		loader.watchWithNamespacesFn = func(_ context.Context, _ *Config, _ func(context.Context) error, namespaces []NamespaceInfo) error {
 			receivedNamespaces = namespaces
 			return nil
 		}

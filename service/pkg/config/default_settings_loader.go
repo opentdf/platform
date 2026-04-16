@@ -90,7 +90,7 @@ func (l *DefaultSettingsLoader) Load(_ Config) error {
 	return nil
 }
 
-func (l *DefaultSettingsLoader) Watch(_ context.Context, _ *Config, _ func(context.Context) error, _ []NamespaceInfo) error {
+func (l *DefaultSettingsLoader) Watch(_ context.Context, _ *Config, _ func(context.Context) error) error {
 	return nil
 }
 

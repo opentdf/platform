@@ -4,6 +4,19 @@ import (
 	"context"
 )
 
+// ServiceInfo represents minimal information about a service for configuration loaders
+type ServiceInfo struct {
+	Namespace string
+	Name      string
+}
+
+// NamespaceInfo represents minimal information about a namespace for configuration loaders
+type NamespaceInfo struct {
+	Name     string
+	Enabled  bool
+	Services []ServiceInfo
+}
+
 // Loader defines the interface for loading and managing configuration
 type Loader interface {
 	// Get fetches a particular config value by dot-delimited key
@@ -18,4 +31,14 @@ type Loader interface {
 	Close() error
 	// Name returns the name of the configuration loader
 	Name() string
+}
+
+// NamespaceAwareLoader extends Loader with namespace-aware watching.
+// Loaders that need information about registered namespaces and services
+// should implement this interface.
+type NamespaceAwareLoader interface {
+	Loader
+	// WatchWithNamespaces starts watching for configuration changes with
+	// information about the registered namespaces and services.
+	WatchWithNamespaces(ctx context.Context, cfg *Config, onChange func(context.Context) error, namespaces []NamespaceInfo) error
 }

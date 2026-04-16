@@ -826,3 +826,103 @@ func Test_GetKeyAccessServersSortParams(t *testing.T) {
 		})
 	}
 }
+
+func Test_GetRegisteredResourcesSortParams(t *testing.T) {
+	cases := []struct {
+		name          string
+		sort          []*registeredresources.RegisteredResourcesSort
+		expectedField string
+		expectedDir   string
+	}{
+		{
+			name:          "nil sort returns empty strings",
+			sort:          nil,
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name:          "empty slice returns empty strings",
+			sort:          []*registeredresources.RegisteredResourcesSort{},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name:          "nil element returns empty strings",
+			sort:          []*registeredresources.RegisteredResourcesSort{nil},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name: "UNSPECIFIED returns empty strings",
+			sort: []*registeredresources.RegisteredResourcesSort{
+				{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name: "NAME with ASC",
+			sort: []*registeredresources.RegisteredResourcesSort{
+				{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "name",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "NAME with DESC",
+			sort: []*registeredresources.RegisteredResourcesSort{
+				{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "name",
+			expectedDir:   "DESC",
+		},
+		{
+			name: "NAME with unspecified direction defaults to ASC",
+			sort: []*registeredresources.RegisteredResourcesSort{
+				{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_NAME},
+			},
+			expectedField: "name",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "CREATED_AT with ASC",
+			sort: []*registeredresources.RegisteredResourcesSort{
+				{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "created_at",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "CREATED_AT with DESC",
+			sort: []*registeredresources.RegisteredResourcesSort{
+				{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "created_at",
+			expectedDir:   "DESC",
+		},
+		{
+			name: "UPDATED_AT with ASC",
+			sort: []*registeredresources.RegisteredResourcesSort{
+				{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "updated_at",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "UPDATED_AT with DESC",
+			sort: []*registeredresources.RegisteredResourcesSort{
+				{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "updated_at",
+			expectedDir:   "DESC",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			field, dir := GetRegisteredResourcesSortParams(tc.sort)
+			assert.Equal(t, tc.expectedField, field)
+			assert.Equal(t, tc.expectedDir, dir)
+		})
+	}
+}

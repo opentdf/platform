@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/service/entityresolution/integration/internal"
+	ertestutil "github.com/opentdf/platform/service/entityresolution/internal/testutil"
 	keycloakv2 "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	multistrategyv2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
@@ -106,7 +107,7 @@ func createMultiStrategyImplementation(t *testing.T) internal.ERSImplementation 
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
-	ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
+	ers.SetTokenVerifier(ertestutil.NewInsecureTokenVerifier())
 
 	return &MultiStrategyERSWrapper{
 		ers:    ers,
@@ -137,7 +138,7 @@ func createKeycloakImplementation(_ *testing.T) internal.ERSImplementation {
 	var testCache *cache.Cache
 
 	keycloakService, _ := keycloakv2.RegisterKeycloakERS(keycloakConfig, testLogger, testCache)
-	keycloakService.SetTokenVerifier(internal.NewInsecureTokenVerifier())
+	keycloakService.SetTokenVerifier(ertestutil.NewInsecureTokenVerifier())
 
 	// Test if Keycloak is available - if not, return nil to skip
 	// (The actual test will handle the Docker unavailability gracefully)

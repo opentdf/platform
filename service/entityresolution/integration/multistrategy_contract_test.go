@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/service/entityresolution/integration/internal"
+	ertestutil "github.com/opentdf/platform/service/entityresolution/internal/testutil"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	multistrategyv2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
 	"github.com/opentdf/platform/service/logger"
@@ -85,7 +86,7 @@ func TestMultiStrategyContractValidation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
-	ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
+	ers.SetTokenVerifier(ertestutil.NewInsecureTokenVerifier())
 
 	// Create wrapper for contract testing
 	wrapper := &MultiStrategyERSWrapper{
@@ -155,7 +156,7 @@ func TestMultiStrategyChainSpecific(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
-	ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
+	ers.SetTokenVerifier(ertestutil.NewInsecureTokenVerifier())
 
 	wrapper := &MultiStrategyERSWrapper{
 		ers:    ers,

@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/service/entityresolution/integration/internal"
+	ertestutil "github.com/opentdf/platform/service/entityresolution/internal/testutil"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	multistrategyv2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
 	"github.com/opentdf/platform/service/logger"
@@ -168,7 +169,7 @@ func (a *MultiStrategyTestAdapter) CreateERSService(ctx context.Context) (intern
 	if err != nil {
 		return nil, err
 	}
-	ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
+	ers.SetTokenVerifier(ertestutil.NewInsecureTokenVerifier())
 
 	// Wrap it to handle contract tests that use ResolveEntities with entity IDs
 	wrapper := &MultiStrategyERSWrapper{
@@ -509,7 +510,7 @@ func TestMultiStrategyChainFailureStrategies(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create ERS: %v", err)
 		}
-		ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
+		ers.SetTokenVerifier(ertestutil.NewInsecureTokenVerifier())
 		v2Req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 			Tokens: []*entity.Token{
 				{
@@ -595,7 +596,7 @@ func TestMultiStrategyChainFailureStrategies(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create ERS: %v", err)
 		}
-		ers.SetTokenVerifier(internal.NewInsecureTokenVerifier())
+		ers.SetTokenVerifier(ertestutil.NewInsecureTokenVerifier())
 		v2Req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 			Tokens: []*entity.Token{
 				{

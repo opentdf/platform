@@ -124,9 +124,13 @@ type RegisteredResourcePlan struct {
 }
 
 type RegisteredResourceTargetPlan struct {
-	Namespace *policy.Namespace              `json:"namespace"`
-	Status    TargetStatus                   `json:"status"`
+	Namespace *policy.Namespace `json:"namespace"`
+	Status    TargetStatus      `json:"status"`
+	// For registered resources, Existing is also used on create targets to mean
+	// "reuse this parent RR and reconcile missing values under it" rather than
+	// creating a new top-level RR.
 	Existing  *policy.RegisteredResource     `json:"existing,omitempty"`
+	Execution *ExecutionResult               `json:"execution,omitempty"`
 	Reason    string                         `json:"reason,omitempty"`
 	Values    []*RegisteredResourceValuePlan `json:"values,omitempty"`
 }
@@ -134,6 +138,7 @@ type RegisteredResourceTargetPlan struct {
 type RegisteredResourceValuePlan struct {
 	Source         *policy.RegisteredResourceValue    `json:"source"`
 	ActionBindings []*RegisteredResourceActionBinding `json:"action_bindings,omitempty"`
+	Execution      *ExecutionResult                   `json:"execution,omitempty"`
 }
 
 type RegisteredResourceActionBinding struct {
@@ -351,10 +356,23 @@ func (t *SubjectMappingTargetPlan) TargetID() string {
 }
 
 func (t *RegisteredResourceTargetPlan) TargetID() string {
-	if t == nil || t.Existing == nil {
+	if t == nil {
+		return ""
+	}
+	if t.Execution != nil && t.Execution.CreatedTargetID != "" {
+		return t.Execution.CreatedTargetID
+	}
+	if t.Existing == nil {
 		return ""
 	}
 	return t.Existing.GetId()
+}
+
+func (p *RegisteredResourceValuePlan) TargetID() string {
+	if p == nil || p.Execution == nil {
+		return ""
+	}
+	return p.Execution.CreatedTargetID
 }
 
 func (t *ObligationTriggerTargetPlan) TargetID() string {

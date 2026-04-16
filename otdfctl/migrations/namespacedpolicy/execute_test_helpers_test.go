@@ -7,6 +7,7 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 )
 
@@ -15,6 +16,8 @@ var (
 	errMissingMockSubjectConditionSetResult = errors.New("missing mock subject condition set result")
 	errMissingMockSubjectMappingResult      = errors.New("missing mock subject mapping result")
 	errMissingMockObligationTriggerResult   = errors.New("missing mock obligation trigger result")
+	errMissingMockRegisteredResourceResult  = errors.New("missing mock registered resource result")
+	errMissingMockRegisteredResourceValue   = errors.New("missing mock registered resource value result")
 )
 
 type expectedError struct {
@@ -30,18 +33,24 @@ func wantError(is error, format string, args ...any) *expectedError {
 }
 
 type mockExecutorHandler struct {
-	created                   map[string]map[string]*createdActionCall
-	results                   map[string]map[string]*policy.Action // ! Should be renamed to actionResults
-	errs                      map[string]map[string]error
-	createdSubjectConditions  map[string]map[string]*createdSubjectConditionSetCall
-	subjectConditionSetResult map[string]map[string]*policy.SubjectConditionSet
-	subjectConditionSetErrs   map[string]map[string]error
-	createdSubjectMappings    map[string]map[string]*createdSubjectMappingCall
-	subjectMappingResults     map[string]map[string]*policy.SubjectMapping
-	subjectMappingErrs        map[string]map[string]error
-	createdObligationTriggers map[string]map[string]*createdObligationTriggerCall
-	obligationTriggerResult   map[string]map[string]*policy.ObligationTrigger
-	obligationTriggerErrs     map[string]map[string]error
+	created                         map[string]map[string]*createdActionCall
+	results                         map[string]map[string]*policy.Action // ! Should be renamed to actionResults
+	errs                            map[string]map[string]error
+	createdSubjectConditions        map[string]map[string]*createdSubjectConditionSetCall
+	subjectConditionSetResult       map[string]map[string]*policy.SubjectConditionSet
+	subjectConditionSetErrs         map[string]map[string]error
+	createdSubjectMappings          map[string]map[string]*createdSubjectMappingCall
+	subjectMappingResults           map[string]map[string]*policy.SubjectMapping
+	subjectMappingErrs              map[string]map[string]error
+	createdObligationTriggers       map[string]map[string]*createdObligationTriggerCall
+	obligationTriggerResult         map[string]map[string]*policy.ObligationTrigger
+	obligationTriggerErrs           map[string]map[string]error
+	createdRegisteredResources      map[string]map[string]*createdRegisteredResourceCall
+	registeredResourceResult        map[string]map[string]*policy.RegisteredResource
+	registeredResourceErrs          map[string]map[string]error
+	createdRegisteredResourceValues map[string]map[string]*createdRegisteredResourceValueCall
+	registeredResourceValueResult   map[string]map[string]*policy.RegisteredResourceValue
+	registeredResourceValueErrs     map[string]map[string]error
 }
 
 type createdActionCall struct {
@@ -70,6 +79,20 @@ type createdObligationTriggerCall struct {
 	ObligationValue string
 	ClientID        string
 	Metadata        *common.MetadataMutable
+}
+
+type createdRegisteredResourceCall struct {
+	Name      string
+	Namespace string
+	Values    []string
+	Metadata  *common.MetadataMutable
+}
+
+type createdRegisteredResourceValueCall struct {
+	ResourceID            string
+	Value                 string
+	ActionAttributeValues []*registeredresources.ActionAttributeValue
+	Metadata              *common.MetadataMutable
 }
 
 func (m *mockExecutorHandler) CreateAction(_ context.Context, name string, namespace string, metadata *common.MetadataMutable) (*policy.Action, error) {
@@ -193,4 +216,66 @@ func (m *mockExecutorHandler) CreateObligationTrigger(_ context.Context, attribu
 	}
 
 	return nil, errMissingMockObligationTriggerResult
+}
+
+func (m *mockExecutorHandler) CreateRegisteredResource(_ context.Context, namespace string, name string, values []string, metadata *common.MetadataMutable) (*policy.RegisteredResource, error) {
+	sourceID := metadata.GetLabels()[migrationLabelMigratedFrom]
+
+	if m.createdRegisteredResources == nil {
+		m.createdRegisteredResources = make(map[string]map[string]*createdRegisteredResourceCall)
+	}
+	if m.createdRegisteredResources[sourceID] == nil {
+		m.createdRegisteredResources[sourceID] = make(map[string]*createdRegisteredResourceCall)
+	}
+
+	m.createdRegisteredResources[sourceID][namespace] = &createdRegisteredResourceCall{
+		Name:      name,
+		Namespace: namespace,
+		Values:    values,
+		Metadata:  metadata,
+	}
+
+	if m.registeredResourceErrs != nil && m.registeredResourceErrs[sourceID] != nil {
+		if err := m.registeredResourceErrs[sourceID][namespace]; err != nil {
+			return nil, err
+		}
+	}
+	if m.registeredResourceResult != nil && m.registeredResourceResult[sourceID] != nil {
+		if result := m.registeredResourceResult[sourceID][namespace]; result != nil {
+			return result, nil
+		}
+	}
+
+	return nil, errMissingMockRegisteredResourceResult
+}
+
+func (m *mockExecutorHandler) CreateRegisteredResourceValue(_ context.Context, resourceID string, value string, actionAttributeValues []*registeredresources.ActionAttributeValue, metadata *common.MetadataMutable) (*policy.RegisteredResourceValue, error) {
+	sourceID := metadata.GetLabels()[migrationLabelMigratedFrom]
+
+	if m.createdRegisteredResourceValues == nil {
+		m.createdRegisteredResourceValues = make(map[string]map[string]*createdRegisteredResourceValueCall)
+	}
+	if m.createdRegisteredResourceValues[sourceID] == nil {
+		m.createdRegisteredResourceValues[sourceID] = make(map[string]*createdRegisteredResourceValueCall)
+	}
+
+	m.createdRegisteredResourceValues[sourceID][resourceID] = &createdRegisteredResourceValueCall{
+		ResourceID:            resourceID,
+		Value:                 value,
+		ActionAttributeValues: actionAttributeValues,
+		Metadata:              metadata,
+	}
+
+	if m.registeredResourceValueErrs != nil && m.registeredResourceValueErrs[sourceID] != nil {
+		if err := m.registeredResourceValueErrs[sourceID][resourceID]; err != nil {
+			return nil, err
+		}
+	}
+	if m.registeredResourceValueResult != nil && m.registeredResourceValueResult[sourceID] != nil {
+		if result := m.registeredResourceValueResult[sourceID][resourceID]; result != nil {
+			return result, nil
+		}
+	}
+
+	return nil, errMissingMockRegisteredResourceValue
 }

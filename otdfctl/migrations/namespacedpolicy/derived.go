@@ -158,6 +158,9 @@ func (d *targetDeriver) deriveRegisteredResource(resource *policy.RegisteredReso
 
 	namespaceRef, ok := registeredResourceNamespaceRef(resource)
 	if !ok {
+		// Registered resources only resolve when their action-attribute values
+		// imply exactly one target namespace. No AAV-derived namespace, or AAVs
+		// spanning multiple namespaces, leaves the RR unresolved here.
 		if hasRegisteredResourceActionAttributeValues(resource) {
 			item.Unresolved = fmt.Errorf("%w: registered resource spans multiple target namespaces", ErrUndeterminedTargetMapping).Error()
 			return item, nil

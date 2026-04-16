@@ -148,7 +148,7 @@ func (r *resolver) resolveAction(derived *DerivedAction) (*ResolvedAction, error
 	for _, namespace := range derived.Targets {
 		result, err := r.resolveActionTargetFromExisting(derived.Source, namespace)
 		if err != nil {
-			return nil, fmt.Errorf("action %q: %w", derived.Source.GetId(), err)
+			return nil, fmt.Errorf("action %q in namespace %q: %w", derived.Source.GetId(), namespace.GetId(), err)
 		}
 		item.Results = append(item.Results, result)
 		r.addActionResult(derived.Source.GetId(), result)
@@ -233,7 +233,7 @@ func (r *resolver) resolveSubjectConditionSets() ([]*ResolvedSubjectConditionSet
 }
 
 func (r *resolver) resolveSubjectConditionSet(derived *DerivedSubjectConditionSet) (*ResolvedSubjectConditionSet, error) {
-	if derived == nil || derived.Source == nil { // ? Might want to check if derived is nil in the caller and just continue if so
+	if derived == nil || derived.Source == nil {
 		return nil, fmt.Errorf("%w: empty subject condition set candidate", ErrUndeterminedTargetMapping)
 	}
 
@@ -244,7 +244,7 @@ func (r *resolver) resolveSubjectConditionSet(derived *DerivedSubjectConditionSe
 	for _, namespace := range derived.Targets {
 		result, err := r.resolveSubjectConditionSetTargetFromExisting(derived.Source, namespace)
 		if err != nil {
-			return nil, fmt.Errorf("subject condition set %q: %w", derived.Source.GetId(), err)
+			return nil, fmt.Errorf("subject condition set %q in namespace %q: %w", derived.Source.GetId(), namespace.GetId(), err)
 		}
 		item.Results = append(item.Results, result)
 		r.addSubjectConditionSetResult(derived.Source.GetId(), result)
@@ -304,7 +304,7 @@ func (r *resolver) resolveSubjectMapping(derived *DerivedSubjectMapping) (*Resol
 	// condition set dependencies are themselves resolvable in the same target
 	// namespace. This keeps the plan graph internally consistent.
 	if err := r.resolveSubjectMappingDependencies(item.Source, item.Namespace); err != nil {
-		return nil, fmt.Errorf("subject mapping %q: %w", item.Source.GetId(), err)
+		return nil, fmt.Errorf("subject mapping %q in namespace %q: %w", item.Source.GetId(), item.Namespace.GetId(), err)
 	}
 
 	existing, found, err := resolveExistingSubjectMapping(item.Source, r.existing.SubjectMappings[item.Namespace.GetId()])
@@ -312,7 +312,7 @@ func (r *resolver) resolveSubjectMapping(derived *DerivedSubjectMapping) (*Resol
 	case found:
 		item.AlreadyMigrated = existing
 	case err != nil:
-		return nil, fmt.Errorf("subject mapping %q: %w", item.Source.GetId(), err)
+		return nil, fmt.Errorf("subject mapping %q in namespace %q: %w", item.Source.GetId(), item.Namespace.GetId(), err)
 	default:
 		item.NeedsCreate = true
 	}
@@ -360,7 +360,7 @@ func (r *resolver) resolveRegisteredResource(derived *DerivedRegisteredResource)
 	case found:
 		item.AlreadyMigrated = existing
 	case err != nil:
-		return nil, fmt.Errorf("registered resource %q: %w", item.Source.GetId(), err)
+		return nil, fmt.Errorf("registered resource %q in namespace %q: %w", item.Source.GetId(), item.Namespace.GetId(), err)
 	default:
 		item.NeedsCreate = true
 	}
@@ -401,7 +401,7 @@ func (r *resolver) resolveObligationTrigger(derived *DerivedObligationTrigger) (
 	case found:
 		item.AlreadyMigrated = existing
 	case err != nil:
-		return nil, fmt.Errorf("obligation trigger %q: %w", item.Source.GetId(), err)
+		return nil, fmt.Errorf("obligation trigger %q in namespace %q: %w", item.Source.GetId(), item.Namespace.GetId(), err)
 	default:
 		item.NeedsCreate = true
 	}
@@ -463,7 +463,7 @@ func resolveExistingAction(source *policy.Action, existing []*policy.Action) (*p
 	case 0:
 		return nil, false, nil
 	default:
-		return nil, false, ErrDuplicateCanonincalMatch
+		return nil, false, ErrDuplicateCanonicalMatch
 	}
 }
 
@@ -481,7 +481,7 @@ func resolveExistingSubjectConditionSet(source *policy.SubjectConditionSet, exis
 	case 0:
 		return nil, false, nil
 	default:
-		return nil, false, ErrDuplicateCanonincalMatch
+		return nil, false, ErrDuplicateCanonicalMatch
 	}
 }
 
@@ -499,7 +499,7 @@ func resolveExistingSubjectMapping(source *policy.SubjectMapping, existing []*po
 	case 0:
 		return nil, false, nil
 	default:
-		return nil, false, ErrDuplicateCanonincalMatch
+		return nil, false, ErrDuplicateCanonicalMatch
 	}
 }
 
@@ -517,7 +517,7 @@ func resolveExistingRegisteredResource(source *policy.RegisteredResource, existi
 	case 0:
 		return nil, false, nil
 	default:
-		return nil, false, ErrDuplicateCanonincalMatch
+		return nil, false, ErrDuplicateCanonicalMatch
 	}
 }
 
@@ -535,7 +535,7 @@ func resolveExistingObligationTrigger(source *policy.ObligationTrigger, existing
 	case 0:
 		return nil, false, nil
 	default:
-		return nil, false, ErrDuplicateCanonincalMatch
+		return nil, false, ErrDuplicateCanonicalMatch
 	}
 }
 

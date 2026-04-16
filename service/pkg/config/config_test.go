@@ -30,23 +30,6 @@ type MockLoader struct {
 	onChangeCalled bool
 }
 
-// MockNamespaceAwareLoader extends MockLoader with NamespaceAwareLoader support
-type MockNamespaceAwareLoader struct {
-	MockLoader
-	watchWithNamespacesFn func(context.Context, *Config, func(context.Context) error, []NamespaceInfo) error
-}
-
-func (l *MockNamespaceAwareLoader) WatchWithNamespaces(ctx context.Context, config *Config, onChange func(context.Context) error, namespaces []NamespaceInfo) error {
-	l.watchCalled = true
-	if l.watchWithNamespacesFn != nil {
-		if err := l.watchWithNamespacesFn(ctx, config, onChange, namespaces); err != nil {
-			return err
-		}
-		l.onChangeCalled = true
-	}
-	return nil
-}
-
 func (l *MockLoader) Load(mostRecentConfig Config) error {
 	if l.loadFn != nil {
 		return l.loadFn(mostRecentConfig)
@@ -166,32 +149,6 @@ func TestConfig_Watch(t *testing.T) {
 		assert.Equal(t, expectedErr, err)
 		assert.True(t, loader.watchCalled)
 		assert.False(t, loader.onChangeCalled)
-	})
-
-	t.Run("Loader receives NamespaceInfo", func(t *testing.T) {
-		config := &Config{}
-		loader := &MockNamespaceAwareLoader{}
-		testNamespaces := []NamespaceInfo{
-			{
-				Name:    "test-ns",
-				Enabled: true,
-				Services: []ServiceInfo{
-					{Namespace: "test-ns", Name: "test-svc"},
-				},
-			},
-		}
-
-		var receivedNamespaces []NamespaceInfo
-		loader.watchWithNamespacesFn = func(_ context.Context, _ *Config, _ func(context.Context) error, namespaces []NamespaceInfo) error {
-			receivedNamespaces = namespaces
-			return nil
-		}
-		config.AddLoader(loader)
-
-		err := config.WatchWithNamespaces(ctx, testNamespaces)
-
-		require.NoError(t, err)
-		assert.Equal(t, testNamespaces, receivedNamespaces)
 	})
 }
 

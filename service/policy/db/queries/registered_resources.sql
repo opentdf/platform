@@ -129,7 +129,14 @@ WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL OR r.namespace_id = sqlc.narg('namespace_id')::uuid) AND
     (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text)
 GROUP BY r.id, n.id, ns_fqns.fqn, counted.total
-ORDER BY r.created_at DESC
+ORDER BY
+    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'ASC' THEN r.name END ASC,
+    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'DESC' THEN r.name END DESC,
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN r.created_at END ASC,
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN r.created_at END DESC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN r.updated_at END ASC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN r.updated_at END DESC,
+    r.created_at DESC
 LIMIT @limit_
 OFFSET @offset_;
 

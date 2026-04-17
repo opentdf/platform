@@ -41,11 +41,20 @@ func migrateNamespacedPolicy(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cli.ExitWithError("could not read --commit flag", err)
 	}
+	interactive, err := cmd.InheritedFlags().GetBool("interactive")
+	if err != nil {
+		cli.ExitWithError("could not read --interactive flag", err)
+	}
 
 	h := otdfctl.NewHandler(c)
 	defer h.Close()
 
-	planner, err := namespacedpolicy.NewPlanner(&h, scopeCSV)
+	var plannerOpts []namespacedpolicy.Option
+	if interactive {
+		plannerOpts = append(plannerOpts, namespacedpolicy.WithInteractiveReviewer(namespacedpolicy.NewHuhInteractiveReviewer(&h, nil)))
+	}
+
+	planner, err := namespacedpolicy.NewPlanner(&h, scopeCSV, plannerOpts...)
 	if err != nil {
 		cli.ExitWithError("could not create namespaced-policy planner", err)
 	}

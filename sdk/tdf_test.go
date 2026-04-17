@@ -2916,8 +2916,8 @@ func (s *TDFSuite) startBackend() {
 		{"https://a.kas/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID, "rsa:2048"},
 		{"https://b.kas/", mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID, "rsa:2048"},
 		{"https://c.kas/", mockRSAPrivateKey3, mockRSAPublicKey3, defaultKID, "rsa:2048"},
-		{"https://d.kas/", mockECPrivateKey1, mockECPublicKey1, "e1", "rsa:2048"},
-		{"https://e.kas/", mockECPrivateKey2, mockECPublicKey2, defaultKID, "rsa:2048"},
+		{"https://d.kas/", mockECPrivateKey1, mockECPublicKey1, "e1", string(ocrypto.EC256Key)},
+		{"https://e.kas/", mockECPrivateKey2, mockECPublicKey2, defaultKID, string(ocrypto.EC256Key)},
 		{kasAu, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID, "rsa:2048"},
 		{kasCa, mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID, "rsa:2048"},
 		{kasUk, mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID, "rsa:2048"},
@@ -3224,8 +3224,13 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations
 					f.s.Require().Failf("unsupported hybrid algorithm", "algorithm: %s", f.Algorithm)
 				}
 
-				asymEncrypt, err := ocrypto.FromPublicPEM(bodyData.GetClientPublicKey())
-				f.s.Require().NoError(err, "ocrypto.FromPublicPEM failed")
+				asymEncrypt, err := ocrypto.FromPublicPEMWithSalt(bodyData.GetClientPublicKey(), tdfSalt(), nil)
+				f.s.Require().NoError(err, "ocrypto.FromPublicPEMWithSalt failed")
+				if e, found := asymEncrypt.(ocrypto.ECEncryptor); found {
+					sessionKey, err := e.PublicKeyInPemFormat()
+					f.s.Require().NoError(err, "unable to serialize ephemeral key")
+					resp.SessionPublicKey = sessionKey
+				}
 				entityWrappedKey, err = asymEncrypt.Encrypt(symmetricKey)
 				f.s.Require().NoError(err, "ocrypto.encrypt failed")
 

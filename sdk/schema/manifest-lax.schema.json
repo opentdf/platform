@@ -52,7 +52,7 @@
               "type": {
                 "description": "The type of key access object.",
                 "type": "string",
-                "enum": ["wrapped", "hybrid-wrapped", "remote"]
+                "enum": ["wrapped", "ec-wrapped", "hybrid-wrapped", "remote"]
               },
               "url": {
                 "description": "A fully qualified URL pointing to a key access service responsible for managing access to the encryption keys.",

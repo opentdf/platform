@@ -6312,7 +6312,7 @@ Example: &#34;kas&#34; </p></td>
                   <td></td>
                   <td><p>Type of key wrapping used for the data encryption key
 Required: Always
-Values: &#39;wrapped&#39; (RSA-wrapped for ZTDF), &#39;ec-wrapped&#39; (experimental ECDH-wrapped), &#39;hybrid-wrapped&#39; (experimental X-Wing-wrapped) </p></td>
+Values: &#39;wrapped&#39; (RSA-wrapped for ZTDF), &#39;ec-wrapped&#39; (experimental ECDH-wrapped), &#39;hybrid-wrapped&#39; (experimental hybrid PQ key wrapping, e.g. X-Wing, NIST EC+ML-KEM) </p></td>
                 </tr>
               
                 <tr>
@@ -6697,7 +6697,7 @@ Modern responses use kas_wrapped_key in KeyAccessRewrapResult </p></td>
                   <td></td>
                   <td><p>KAS&#39;s ephemeral session public key in PEM format
 Required: For EC-based operations (key_type=&#34;ec-wrapped&#34;)
-Optional: Empty for RSA-based or X-Wing-based ZTDF (key_type=&#34;wrapped&#34; or key_type=&#34;hybrid-wrapped&#34;)
+Optional: Empty for RSA-based or hybrid PQ-wrapped ZTDF (key_type=&#34;wrapped&#34; or key_type=&#34;hybrid-wrapped&#34;)
 Used by client to perform ECDH key agreement and decrypt the kas_wrapped_key values </p></td>
                 </tr>
               

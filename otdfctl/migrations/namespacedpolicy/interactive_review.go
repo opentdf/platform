@@ -311,8 +311,9 @@ func filterRegisteredResourceToNamespace(resource *policy.RegisteredResource, na
 		return nil, errors.New("could not clone registered resource")
 	}
 
-	cloned.Values = make([]*policy.RegisteredResourceValue, 0, len(cloned.GetValues()))
-	for _, value := range cloned.GetValues() {
+	clonedValues := cloned.GetValues()
+	cloned.Values = make([]*policy.RegisteredResourceValue, 0, len(clonedValues))
+	for _, value := range clonedValues {
 		if value == nil {
 			continue
 		}

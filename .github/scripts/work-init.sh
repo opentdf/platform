@@ -73,9 +73,12 @@ esac
 
 # Restore the toolchain directive if it was present in the original go.work.
 if [[ -n "${ORIG_TOOLCHAIN:-}" ]]; then
-  if ! go work edit -toolchain="$ORIG_TOOLCHAIN"; 
-    echo "[ERROR] unable to restore original toolchain [${ORIG_TOOLCHAIN}] in go.work"
-    exit 1
+  if [[ -n "${ORIG_TOOLCHAIN:-}" ]]; then
+    if ! go work edit -toolchain="$ORIG_TOOLCHAIN"; then
+      echo "[ERROR] unable to restore original toolchain [${ORIG_TOOLCHAIN}] in go.work" >&2
+      exit 1
+    fi
+    echo "[INFO] Restored toolchain ${ORIG_TOOLCHAIN} in go.work"
   fi
   echo "[INFO] Restored toolchain ${ORIG_TOOLCHAIN} in go.work"
 fi

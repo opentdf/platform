@@ -2,14 +2,13 @@ package ocrypto
 
 import (
 	"crypto/ecdh"
+	"crypto/mlkem"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/asn1"
 	"fmt"
 	"io"
 
-	"github.com/cloudflare/circl/kem/mlkem/mlkem1024"
-	"github.com/cloudflare/circl/kem/mlkem/mlkem768"
 	"golang.org/x/crypto/hkdf"
 )
 
@@ -18,16 +17,19 @@ const (
 	HybridSecp384r1MLKEM1024Key KeyType = "hpqt:secp384r1-mlkem1024"
 )
 
+// ML-KEM seed size (d || z) used by crypto/mlkem for private key serialization.
+const mlkemSeedSize = 64
+
 // Sizes for P-256 + ML-KEM-768 hybrid.
 const (
 	P256MLKEM768ECPublicKeySize  = 65   // uncompressed P-256 point
 	P256MLKEM768ECPrivateKeySize = 32   // P-256 scalar
-	P256MLKEM768MLKEMPubKeySize  = 1184 // mlkem768.PublicKeySize
-	P256MLKEM768MLKEMPrivKeySize = 2400 // mlkem768.PrivateKeySize
-	P256MLKEM768MLKEMCtSize      = 1088 // mlkem768.CiphertextSize
+	P256MLKEM768MLKEMPubKeySize  = 1184 // mlkem768 encapsulation key
+	P256MLKEM768MLKEMPrivKeySize = mlkemSeedSize
+	P256MLKEM768MLKEMCtSize      = 1088 // mlkem768 ciphertext
 
 	P256MLKEM768PublicKeySize  = P256MLKEM768ECPublicKeySize + P256MLKEM768MLKEMPubKeySize   // 1249
-	P256MLKEM768PrivateKeySize = P256MLKEM768ECPrivateKeySize + P256MLKEM768MLKEMPrivKeySize // 2432
+	P256MLKEM768PrivateKeySize = P256MLKEM768ECPrivateKeySize + P256MLKEM768MLKEMPrivKeySize // 96
 	P256MLKEM768CiphertextSize = P256MLKEM768ECPublicKeySize + P256MLKEM768MLKEMCtSize       // 1153
 
 	PEMBlockP256MLKEM768PublicKey  = "SECP256R1 MLKEM768 PUBLIC KEY"
@@ -38,12 +40,12 @@ const (
 const (
 	P384MLKEM1024ECPublicKeySize  = 97   // uncompressed P-384 point
 	P384MLKEM1024ECPrivateKeySize = 48   // P-384 scalar
-	P384MLKEM1024MLKEMPubKeySize  = 1568 // mlkem1024.PublicKeySize
-	P384MLKEM1024MLKEMPrivKeySize = 3168 // mlkem1024.PrivateKeySize
-	P384MLKEM1024MLKEMCtSize      = 1568 // mlkem1024.CiphertextSize
+	P384MLKEM1024MLKEMPubKeySize  = 1568 // mlkem1024 encapsulation key
+	P384MLKEM1024MLKEMPrivKeySize = mlkemSeedSize
+	P384MLKEM1024MLKEMCtSize      = 1568 // mlkem1024 ciphertext
 
 	P384MLKEM1024PublicKeySize  = P384MLKEM1024ECPublicKeySize + P384MLKEM1024MLKEMPubKeySize   // 1665
-	P384MLKEM1024PrivateKeySize = P384MLKEM1024ECPrivateKeySize + P384MLKEM1024MLKEMPrivKeySize // 3216
+	P384MLKEM1024PrivateKeySize = P384MLKEM1024ECPrivateKeySize + P384MLKEM1024MLKEMPrivKeySize // 112
 	P384MLKEM1024CiphertextSize = P384MLKEM1024ECPublicKeySize + P384MLKEM1024MLKEMCtSize       // 1665
 
 	PEMBlockP384MLKEM1024PublicKey  = "SECP384R1 MLKEM1024 PUBLIC KEY"
@@ -85,23 +87,19 @@ var p256mlkem768Params = hybridNISTParams{
 	privPEMBlock:  PEMBlockP256MLKEM768PrivateKey,
 	keyType:       HybridSecp256r1MLKEM768Key,
 	mlkemEncapsulate: func(pubKey []byte) ([]byte, []byte, error) {
-		var pk mlkem768.PublicKey
-		if err := pk.Unpack(pubKey); err != nil {
-			return nil, nil, fmt.Errorf("mlkem768 public key unpack: %w", err)
+		ek, err := mlkem.NewEncapsulationKey768(pubKey)
+		if err != nil {
+			return nil, nil, fmt.Errorf("mlkem768 encapsulation key: %w", err)
 		}
-		ct := make([]byte, mlkem768.CiphertextSize)
-		ss := make([]byte, mlkem768.SharedKeySize)
-		pk.EncapsulateTo(ct, ss, nil)
+		ss, ct := ek.Encapsulate()
 		return ss, ct, nil
 	},
-	mlkemDecapsulate: func(privKey, ciphertext []byte) ([]byte, error) {
-		var sk mlkem768.PrivateKey
-		if err := sk.Unpack(privKey); err != nil {
-			return nil, fmt.Errorf("mlkem768 private key unpack: %w", err)
+	mlkemDecapsulate: func(seed, ciphertext []byte) ([]byte, error) {
+		dk, err := mlkem.NewDecapsulationKey768(seed)
+		if err != nil {
+			return nil, fmt.Errorf("mlkem768 decapsulation key: %w", err)
 		}
-		ss := make([]byte, mlkem768.SharedKeySize)
-		sk.DecapsulateTo(ss, ciphertext)
-		return ss, nil
+		return dk.Decapsulate(ciphertext)
 	},
 }
 
@@ -116,23 +114,19 @@ var p384mlkem1024Params = hybridNISTParams{
 	privPEMBlock:  PEMBlockP384MLKEM1024PrivateKey,
 	keyType:       HybridSecp384r1MLKEM1024Key,
 	mlkemEncapsulate: func(pubKey []byte) ([]byte, []byte, error) {
-		var pk mlkem1024.PublicKey
-		if err := pk.Unpack(pubKey); err != nil {
-			return nil, nil, fmt.Errorf("mlkem1024 public key unpack: %w", err)
+		ek, err := mlkem.NewEncapsulationKey1024(pubKey)
+		if err != nil {
+			return nil, nil, fmt.Errorf("mlkem1024 encapsulation key: %w", err)
 		}
-		ct := make([]byte, mlkem1024.CiphertextSize)
-		ss := make([]byte, mlkem1024.SharedKeySize)
-		pk.EncapsulateTo(ct, ss, nil)
+		ss, ct := ek.Encapsulate()
 		return ss, ct, nil
 	},
-	mlkemDecapsulate: func(privKey, ciphertext []byte) ([]byte, error) {
-		var sk mlkem1024.PrivateKey
-		if err := sk.Unpack(privKey); err != nil {
-			return nil, fmt.Errorf("mlkem1024 private key unpack: %w", err)
+	mlkemDecapsulate: func(seed, ciphertext []byte) ([]byte, error) {
+		dk, err := mlkem.NewDecapsulationKey1024(seed)
+		if err != nil {
+			return nil, fmt.Errorf("mlkem1024 decapsulation key: %w", err)
 		}
-		ss := make([]byte, mlkem1024.SharedKeySize)
-		sk.DecapsulateTo(ss, ciphertext)
-		return ss, nil
+		return dk.Decapsulate(ciphertext)
 	},
 }
 
@@ -185,29 +179,21 @@ func NewHybridKeyPair(kt KeyType) (KeyPair, error) {
 
 func NewP256MLKEM768KeyPair() (HybridNISTKeyPair, error) {
 	return newHybridNISTKeyPair(&p256mlkem768Params, func() ([]byte, []byte, error) {
-		pk, sk, err := mlkem768.GenerateKeyPair(rand.Reader)
+		dk, err := mlkem.GenerateKey768()
 		if err != nil {
 			return nil, nil, err
 		}
-		pub := make([]byte, mlkem768.PublicKeySize)
-		priv := make([]byte, mlkem768.PrivateKeySize)
-		pk.Pack(pub)
-		sk.Pack(priv)
-		return pub, priv, nil
+		return dk.EncapsulationKey().Bytes(), dk.Bytes(), nil
 	})
 }
 
 func NewP384MLKEM1024KeyPair() (HybridNISTKeyPair, error) {
 	return newHybridNISTKeyPair(&p384mlkem1024Params, func() ([]byte, []byte, error) {
-		pk, sk, err := mlkem1024.GenerateKeyPair(rand.Reader)
+		dk, err := mlkem.GenerateKey1024()
 		if err != nil {
 			return nil, nil, err
 		}
-		pub := make([]byte, mlkem1024.PublicKeySize)
-		priv := make([]byte, mlkem1024.PrivateKeySize)
-		pk.Pack(pub)
-		sk.Pack(priv)
-		return pub, priv, nil
+		return dk.EncapsulationKey().Bytes(), dk.Bytes(), nil
 	})
 }
 

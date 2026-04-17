@@ -675,14 +675,6 @@ func (c PolicyDBClient) DeleteObligationValue(ctx context.Context, r *obligation
 
 func (c PolicyDBClient) GetObligationTrigger(ctx context.Context, r *obligations.GetObligationTriggerRequest) (*policy.ObligationTrigger, error) {
 	id := r.GetId()
-	useID := len(id) > 0
-	parsedID := pgtypeUUID(id)
-	idIsValid := parsedID.Valid
-
-	if useID && !idIsValid {
-		return nil, db.ErrUUIDInvalid
-	}
-
 	row, err := c.queries.getObligationTrigger(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

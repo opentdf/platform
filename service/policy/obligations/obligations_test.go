@@ -22,6 +22,7 @@ const (
 	invalidName           = "invalid name"
 	invalidFQN            = "invalid-fqn"
 	errMessageUUID        = "string.uuid"
+	errMessageUUIDEmpty   = "string.uuid_empty"
 	errMessageURI         = "string.uri"
 	errMessageMinItems    = "repeated.min_items"
 	errMessageUnique      = "repeated.unique"
@@ -767,13 +768,13 @@ func Test_GetObligationTrigger_Request(t *testing.T) {
 				Id: invalidUUID,
 			},
 			expectError:  true,
-			errorMessage: "id",
+			errorMessage: errMessageUUID,
 		},
 		{
 			name:         "missing id",
 			req:          &obligations.GetObligationTriggerRequest{},
 			expectError:  true,
-			errorMessage: "id",
+			errorMessage: errMessageUUIDEmpty,
 		},
 	}
 

@@ -63,17 +63,15 @@ type HybridNISTWrappedKey struct {
 
 // hybridNISTParams captures the curve-specific parameters for a NIST hybrid scheme.
 type hybridNISTParams struct {
-	curve            ecdh.Curve
-	ecPubSize        int
-	ecPrivSize       int
-	mlkemPubSize     int
-	mlkemPrivSize    int
-	mlkemCtSize      int
-	pubPEMBlock      string
-	privPEMBlock     string
-	keyType          KeyType
-	mlkemEncapsulate func(pubKey []byte) (sharedSecret, ciphertext []byte, err error)
-	mlkemDecapsulate func(privKey, ciphertext []byte) (sharedSecret []byte, err error)
+	curve         ecdh.Curve
+	ecPubSize     int
+	ecPrivSize    int
+	mlkemPubSize  int
+	mlkemPrivSize int
+	mlkemCtSize   int
+	pubPEMBlock   string
+	privPEMBlock  string
+	keyType       KeyType
 }
 
 var p256mlkem768Params = hybridNISTParams{
@@ -86,21 +84,6 @@ var p256mlkem768Params = hybridNISTParams{
 	pubPEMBlock:   PEMBlockP256MLKEM768PublicKey,
 	privPEMBlock:  PEMBlockP256MLKEM768PrivateKey,
 	keyType:       HybridSecp256r1MLKEM768Key,
-	mlkemEncapsulate: func(pubKey []byte) ([]byte, []byte, error) {
-		ek, err := mlkem.NewEncapsulationKey768(pubKey)
-		if err != nil {
-			return nil, nil, fmt.Errorf("mlkem768 encapsulation key: %w", err)
-		}
-		ss, ct := ek.Encapsulate()
-		return ss, ct, nil
-	},
-	mlkemDecapsulate: func(seed, ciphertext []byte) ([]byte, error) {
-		dk, err := mlkem.NewDecapsulationKey768(seed)
-		if err != nil {
-			return nil, fmt.Errorf("mlkem768 decapsulation key: %w", err)
-		}
-		return dk.Decapsulate(ciphertext)
-	},
 }
 
 var p384mlkem1024Params = hybridNISTParams{
@@ -113,21 +96,48 @@ var p384mlkem1024Params = hybridNISTParams{
 	pubPEMBlock:   PEMBlockP384MLKEM1024PublicKey,
 	privPEMBlock:  PEMBlockP384MLKEM1024PrivateKey,
 	keyType:       HybridSecp384r1MLKEM1024Key,
-	mlkemEncapsulate: func(pubKey []byte) ([]byte, []byte, error) {
+}
+
+// mlkemEncapsulate dispatches to crypto/mlkem based on the hybrid key type.
+func (p *hybridNISTParams) mlkemEncapsulate(pubKey []byte) ([]byte, []byte, error) {
+	switch p.keyType { //nolint:exhaustive // only NIST hybrid types
+	case HybridSecp256r1MLKEM768Key:
+		ek, err := mlkem.NewEncapsulationKey768(pubKey)
+		if err != nil {
+			return nil, nil, fmt.Errorf("mlkem768 encapsulation key: %w", err)
+		}
+		ss, ct := ek.Encapsulate()
+		return ss, ct, nil
+	case HybridSecp384r1MLKEM1024Key:
 		ek, err := mlkem.NewEncapsulationKey1024(pubKey)
 		if err != nil {
 			return nil, nil, fmt.Errorf("mlkem1024 encapsulation key: %w", err)
 		}
 		ss, ct := ek.Encapsulate()
 		return ss, ct, nil
-	},
-	mlkemDecapsulate: func(seed, ciphertext []byte) ([]byte, error) {
+	default:
+		return nil, nil, fmt.Errorf("unsupported ML-KEM key type: %s", p.keyType)
+	}
+}
+
+// mlkemDecapsulate dispatches to crypto/mlkem based on the hybrid key type.
+func (p *hybridNISTParams) mlkemDecapsulate(seed, ciphertext []byte) ([]byte, error) {
+	switch p.keyType { //nolint:exhaustive // only NIST hybrid types
+	case HybridSecp256r1MLKEM768Key:
+		dk, err := mlkem.NewDecapsulationKey768(seed)
+		if err != nil {
+			return nil, fmt.Errorf("mlkem768 decapsulation key: %w", err)
+		}
+		return dk.Decapsulate(ciphertext)
+	case HybridSecp384r1MLKEM1024Key:
 		dk, err := mlkem.NewDecapsulationKey1024(seed)
 		if err != nil {
 			return nil, fmt.Errorf("mlkem1024 decapsulation key: %w", err)
 		}
 		return dk.Decapsulate(ciphertext)
-	},
+	default:
+		return nil, fmt.Errorf("unsupported ML-KEM key type: %s", p.keyType)
+	}
 }
 
 // HybridNISTKeyPair holds a hybrid EC + ML-KEM keypair as raw bytes.

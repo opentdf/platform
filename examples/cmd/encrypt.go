@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"strings"
 
@@ -73,7 +72,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			}))
 	}
 	if alg != "" {
-		kt, err := keyTypeForKeyType(alg)
+		kt, err := ocrypto.ParseKeyType(alg)
 		if err != nil {
 			return err
 		}
@@ -92,25 +91,3 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func keyTypeForKeyType(alg string) (ocrypto.KeyType, error) {
-	switch ocrypto.KeyType(alg) {
-	case ocrypto.RSA2048Key:
-		return ocrypto.RSA2048Key, nil
-	case ocrypto.RSA4096Key:
-		return ocrypto.RSA4096Key, nil
-	case ocrypto.EC256Key:
-		return ocrypto.EC256Key, nil
-	case ocrypto.EC384Key:
-		return ocrypto.EC384Key, nil
-	case ocrypto.EC521Key:
-		return ocrypto.EC521Key, nil
-	case ocrypto.HybridXWingKey:
-		return ocrypto.HybridXWingKey, nil
-	case ocrypto.HybridSecp256r1MLKEM768Key:
-		return ocrypto.HybridSecp256r1MLKEM768Key, nil
-	case ocrypto.HybridSecp384r1MLKEM1024Key:
-		return ocrypto.HybridSecp384r1MLKEM1024Key, nil
-	default:
-		return ocrypto.RSA2048Key, fmt.Errorf("unsupported key type [%s]", alg)
-	}
-}

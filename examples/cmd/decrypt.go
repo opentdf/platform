@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk"
 
 	"github.com/spf13/cobra"
@@ -50,7 +51,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 				}
 				opts := []sdk.TDFReaderOption{}
 				if alg != "" {
-					kt, err := keyTypeForKeyType(alg)
+					kt, err := ocrypto.ParseKeyType(alg)
 					if err != nil {
 						return err
 					}
@@ -79,7 +80,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 
 	opts := []sdk.TDFReaderOption{}
 	if alg != "" {
-		kt, err := keyTypeForKeyType(alg)
+		kt, err := ocrypto.ParseKeyType(alg)
 		if err != nil {
 			return err
 		}

@@ -11,6 +11,13 @@ components:
         - SORT_DIRECTION_UNSPECIFIED
         - SORT_DIRECTION_ASC
         - SORT_DIRECTION_DESC
+      description: |-
+        Sorting direction shared across list APIs.
+         Notes:
+         - When a sort field is provided, UNSPECIFIED is treated as ASC.
+         - When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+           the endpoint's request message defines the default ordering; see the
+           specific List* request docs.
     policy.AttributeDefinitionSelector:
       type: object
       properties:

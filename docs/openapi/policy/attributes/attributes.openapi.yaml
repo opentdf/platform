@@ -724,9 +724,6 @@ components:
         - ALGORITHM_EC_P256
         - ALGORITHM_EC_P384
         - ALGORITHM_EC_P521
-        - ALGORITHM_HPQT_XWING
-        - ALGORITHM_HPQT_SECP256R1_MLKEM768
-        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
       description: Supported key algorithms.
     policy.AttributeRuleTypeEnum:
       type: string
@@ -753,9 +750,20 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
+    policy.SortDirection:
+      type: string
+      title: SortDirection
+      enum:
+        - SORT_DIRECTION_UNSPECIFIED
+        - SORT_DIRECTION_ASC
+        - SORT_DIRECTION_DESC
+      description: |-
+        Sorting direction shared across list APIs.
+         Notes:
+         - When a sort field is provided, UNSPECIFIED is treated as ASC.
+         - When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+           the endpoint's request message defines the default ordering; see the
+           specific List* request docs.
     policy.SourceType:
       type: string
       title: SourceType
@@ -775,6 +783,14 @@ components:
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
+    policy.attributes.SortAttributesType:
+      type: string
+      title: SortAttributesType
+      enum:
+        - SORT_ATTRIBUTES_TYPE_UNSPECIFIED
+        - SORT_ATTRIBUTES_TYPE_NAME
+        - SORT_ATTRIBUTES_TYPE_CREATED_AT
+        - SORT_ATTRIBUTES_TYPE_UPDATED_AT
     common.Metadata:
       type: object
       properties:
@@ -1694,6 +1710,17 @@ components:
       title: AttributeKeyAccessServer
       additionalProperties: false
       description: Deprecated
+    policy.attributes.AttributesSort:
+      type: object
+      properties:
+        field:
+          title: field
+          $ref: '#/components/schemas/policy.attributes.SortAttributesType'
+        direction:
+          title: direction
+          $ref: '#/components/schemas/policy.SortDirection'
+      title: AttributesSort
+      additionalProperties: false
     policy.attributes.CreateAttributeRequest:
       type: object
       properties:
@@ -2034,6 +2061,13 @@ components:
           title: pagination
           description: Optional
           $ref: '#/components/schemas/policy.PageRequest'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.attributes.AttributesSort'
+          title: sort
+          maxItems: 1
+          description: 'Optional - CONSTRAINT: max 1 item'
       title: ListAttributesRequest
       additionalProperties: false
     policy.attributes.ListAttributesResponse:

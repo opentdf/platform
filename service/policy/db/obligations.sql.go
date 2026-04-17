@@ -147,7 +147,6 @@ func (q *Queries) createObligation(ctx context.Context, arg createObligationPara
 }
 
 const createObligationTrigger = `-- name: createObligationTrigger :one
-
 WITH ov_id AS (
     SELECT ov.id, od.namespace_id
     FROM obligation_values_standard ov
@@ -248,9 +247,6 @@ type createObligationTriggerRow struct {
 	Trigger  []byte `json:"trigger"`
 }
 
-// --------------------------------------------------------------
-// OBLIGATION TRIGGERS
-// --------------------------------------------------------------
 // Gets the attribute value, but also ensures that the attribute value belongs to the same namespace as the obligation, to which the obligation value belongs
 //
 //	WITH ov_id AS (
@@ -777,6 +773,134 @@ func (q *Queries) getObligation(ctx context.Context, arg getObligationParams) (g
 		&i.Metadata,
 		&i.Values,
 	)
+	return i, err
+}
+
+const getObligationTrigger = `-- name: getObligationTrigger :one
+
+SELECT
+    JSON_STRIP_NULLS(
+        JSON_BUILD_OBJECT(
+            'id', ot.id,
+            'obligation_value', JSON_BUILD_OBJECT(
+                'id', ov.id,
+                'value', ov.value,
+                'obligation', JSON_BUILD_OBJECT(
+                    'id', od.id,
+                    'name', od.name,
+                    'namespace', JSON_BUILD_OBJECT(
+                        'id', n.id,
+                        'name', n.name,
+                        'fqn', COALESCE(ns_fqns.fqn, '')
+                    )
+                )
+            ),
+            'action', JSON_BUILD_OBJECT(
+                'id', a.id,
+                'name', a.name
+            ),
+            'attribute_value', JSON_BUILD_OBJECT(
+                'id', av.id,
+                'value', av.value,
+                'fqn', COALESCE(av_fqns.fqn, '')
+            ),
+            'context', CASE
+                WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
+                    JSON_BUILD_OBJECT(
+                        'pep', JSON_BUILD_OBJECT(
+                            'client_id', ot.client_id
+                        )
+                    )
+                )
+                ELSE '[]'::JSON
+            END
+        )
+    ) as trigger,
+    JSON_STRIP_NULLS(
+        JSON_BUILD_OBJECT(
+            'labels', ot.metadata -> 'labels',
+            'created_at', ot.created_at,
+            'updated_at', ot.updated_at
+        )
+    ) as metadata
+FROM obligation_triggers ot
+JOIN obligation_values_standard ov ON ot.obligation_value_id = ov.id
+JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+JOIN attribute_namespaces n ON od.namespace_id = n.id
+LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+JOIN actions a ON ot.action_id = a.id
+JOIN attribute_values av ON ot.attribute_value_id = av.id
+LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
+WHERE ot.id = $1
+`
+
+type getObligationTriggerRow struct {
+	Trigger  []byte `json:"trigger"`
+	Metadata []byte `json:"metadata"`
+}
+
+// --------------------------------------------------------------
+// OBLIGATION TRIGGERS
+// --------------------------------------------------------------
+//
+//	SELECT
+//	    JSON_STRIP_NULLS(
+//	        JSON_BUILD_OBJECT(
+//	            'id', ot.id,
+//	            'obligation_value', JSON_BUILD_OBJECT(
+//	                'id', ov.id,
+//	                'value', ov.value,
+//	                'obligation', JSON_BUILD_OBJECT(
+//	                    'id', od.id,
+//	                    'name', od.name,
+//	                    'namespace', JSON_BUILD_OBJECT(
+//	                        'id', n.id,
+//	                        'name', n.name,
+//	                        'fqn', COALESCE(ns_fqns.fqn, '')
+//	                    )
+//	                )
+//	            ),
+//	            'action', JSON_BUILD_OBJECT(
+//	                'id', a.id,
+//	                'name', a.name
+//	            ),
+//	            'attribute_value', JSON_BUILD_OBJECT(
+//	                'id', av.id,
+//	                'value', av.value,
+//	                'fqn', COALESCE(av_fqns.fqn, '')
+//	            ),
+//	            'context', CASE
+//	                WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
+//	                    JSON_BUILD_OBJECT(
+//	                        'pep', JSON_BUILD_OBJECT(
+//	                            'client_id', ot.client_id
+//	                        )
+//	                    )
+//	                )
+//	                ELSE '[]'::JSON
+//	            END
+//	        )
+//	    ) as trigger,
+//	    JSON_STRIP_NULLS(
+//	        JSON_BUILD_OBJECT(
+//	            'labels', ot.metadata -> 'labels',
+//	            'created_at', ot.created_at,
+//	            'updated_at', ot.updated_at
+//	        )
+//	    ) as metadata
+//	FROM obligation_triggers ot
+//	JOIN obligation_values_standard ov ON ot.obligation_value_id = ov.id
+//	JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+//	JOIN attribute_namespaces n ON od.namespace_id = n.id
+//	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+//	JOIN actions a ON ot.action_id = a.id
+//	JOIN attribute_values av ON ot.attribute_value_id = av.id
+//	LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
+//	WHERE ot.id = $1
+func (q *Queries) getObligationTrigger(ctx context.Context, id string) (getObligationTriggerRow, error) {
+	row := q.db.QueryRow(ctx, getObligationTrigger, id)
+	var i getObligationTriggerRow
+	err := row.Scan(&i.Trigger, &i.Metadata)
 	return i, err
 }
 
@@ -1522,16 +1646,27 @@ WHERE
     ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
     ($2::text IS NULL OR fqns.fqn = $2::text)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
-ORDER BY od.created_at DESC
-LIMIT $4
-OFFSET $3
+ORDER BY
+    CASE WHEN $3::text = 'name' AND $4::text = 'ASC' THEN od.name END ASC,
+    CASE WHEN $3::text = 'name' AND $4::text = 'DESC' THEN od.name END DESC,
+    CASE WHEN $3::text = 'fqn' AND $4::text = 'ASC' THEN fqns.fqn || LOWER(od.name) END ASC,
+    CASE WHEN $3::text = 'fqn' AND $4::text = 'DESC' THEN fqns.fqn || LOWER(od.name) END DESC,
+    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN od.created_at END ASC,
+    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN od.created_at END DESC,
+    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN od.updated_at END ASC,
+    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN od.updated_at END DESC,
+    od.created_at DESC
+LIMIT $6
+OFFSET $5
 `
 
 type listObligationsParams struct {
-	NamespaceID  pgtype.UUID `json:"namespace_id"`
-	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
-	Offset       int32       `json:"offset_"`
-	Limit        int32       `json:"limit_"`
+	NamespaceID   pgtype.UUID `json:"namespace_id"`
+	NamespaceFqn  pgtype.Text `json:"namespace_fqn"`
+	SortField     string      `json:"sort_field"`
+	SortDirection string      `json:"sort_direction"`
+	Offset        int32       `json:"offset_"`
+	Limit         int32       `json:"limit_"`
 }
 
 type listObligationsRow struct {
@@ -1614,13 +1749,24 @@ type listObligationsRow struct {
 //	    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
 //	    ($2::text IS NULL OR fqns.fqn = $2::text)
 //	GROUP BY od.id, n.id, fqns.fqn, counted.total
-//	ORDER BY od.created_at DESC
-//	LIMIT $4
-//	OFFSET $3
+//	ORDER BY
+//	    CASE WHEN $3::text = 'name' AND $4::text = 'ASC' THEN od.name END ASC,
+//	    CASE WHEN $3::text = 'name' AND $4::text = 'DESC' THEN od.name END DESC,
+//	    CASE WHEN $3::text = 'fqn' AND $4::text = 'ASC' THEN fqns.fqn || LOWER(od.name) END ASC,
+//	    CASE WHEN $3::text = 'fqn' AND $4::text = 'DESC' THEN fqns.fqn || LOWER(od.name) END DESC,
+//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN od.created_at END ASC,
+//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN od.created_at END DESC,
+//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN od.updated_at END ASC,
+//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN od.updated_at END DESC,
+//	    od.created_at DESC
+//	LIMIT $6
+//	OFFSET $5
 func (q *Queries) listObligations(ctx context.Context, arg listObligationsParams) ([]listObligationsRow, error) {
 	rows, err := q.db.Query(ctx, listObligations,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
+		arg.SortField,
+		arg.SortDirection,
 		arg.Offset,
 		arg.Limit,
 	)

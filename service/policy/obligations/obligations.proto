@@ -12,6 +12,20 @@ import "buf/validate/validate.proto";
 ///
 
 // Definitions
+
+enum SortObligationsType {
+    SORT_OBLIGATIONS_TYPE_UNSPECIFIED = 0;
+    SORT_OBLIGATIONS_TYPE_NAME = 1;
+    SORT_OBLIGATIONS_TYPE_FQN = 2;
+    SORT_OBLIGATIONS_TYPE_CREATED_AT = 3;
+    SORT_OBLIGATIONS_TYPE_UPDATED_AT = 4;
+}
+
+message ObligationsSort {
+    SortObligationsType field = 1;
+    policy.SortDirection direction = 2;
+}
+
 message GetObligationRequest {
     option (buf.validate.message).oneof = { fields: ["id", "fqn"], required: true };
     string id = 1 [(buf.validate.field).string.uuid = true];
@@ -150,6 +164,11 @@ message ListObligationsRequest {
 
     // Optional
     policy.PageRequest pagination = 10;
+
+    // Optional - CONSTRAINT: max 1 item
+    // Default ordering when omitted or when the first entry's field is UNSPECIFIED:
+    // created_at DESC, then id ASC (tie-breaker).
+    repeated ObligationsSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 
 message ListObligationsResponse {
@@ -272,6 +291,15 @@ message DeleteObligationValueResponse {
 }
 
 // Triggers
+message GetObligationTriggerRequest {
+    // Required
+    string id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message GetObligationTriggerResponse {
+    policy.ObligationTrigger trigger = 1;
+}
+
 message AddObligationTriggerRequest {
     // Required
     common.IdFqnIdentifier obligation_value = 1 [(buf.validate.field).required = true];
@@ -393,6 +421,10 @@ service Service {
    /*--------------------------------------*
     * Trigger RPCs
     *--------------------------------------*/
+
+    rpc GetObligationTrigger(GetObligationTriggerRequest) returns (GetObligationTriggerResponse) {
+        option idempotency_level = NO_SIDE_EFFECTS;
+    }
     
     rpc AddObligationTrigger(AddObligationTriggerRequest) returns (AddObligationTriggerResponse) {}
 

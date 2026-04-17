@@ -909,6 +909,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.attributes.AttributesSort"><span class="badge">M</span>AttributesSort</a>
+                </li>
+              
+                <li>
                   <a href="#policy.attributes.CreateAttributeRequest"><span class="badge">M</span>CreateAttributeRequest</a>
                 </li>
               
@@ -1045,6 +1049,10 @@
                 </li>
               
               
+                <li>
+                  <a href="#policy.attributes.SortAttributesType"><span class="badge">E</span>SortAttributesType</a>
+                </li>
+              
               
               
                 <li>
@@ -1153,6 +1161,10 @@
               
                 <li>
                   <a href="#policy.kasregistry.KeyAccessServerGrants"><span class="badge">M</span>KeyAccessServerGrants</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.KeyAccessServersSort"><span class="badge">M</span>KeyAccessServersSort</a>
                 </li>
               
                 <li>
@@ -1271,6 +1283,10 @@
                   <a href="#policy.kasregistry.UpdatePublicKeyResponse"><span class="badge">M</span>UpdatePublicKeyResponse</a>
                 </li>
               
+              
+                <li>
+                  <a href="#policy.kasregistry.SortKeyAccessServersType"><span class="badge">E</span>SortKeyAccessServersType</a>
+                </li>
               
               
               
@@ -1493,6 +1509,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.obligations.GetObligationTriggerRequest"><span class="badge">M</span>GetObligationTriggerRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.obligations.GetObligationTriggerResponse"><span class="badge">M</span>GetObligationTriggerResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.obligations.GetObligationValueRequest"><span class="badge">M</span>GetObligationValueRequest</a>
                 </li>
               
@@ -1541,6 +1565,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.obligations.ObligationsSort"><span class="badge">M</span>ObligationsSort</a>
+                </li>
+              
+                <li>
                   <a href="#policy.obligations.RemoveObligationTriggerRequest"><span class="badge">M</span>RemoveObligationTriggerRequest</a>
                 </li>
               
@@ -1568,6 +1596,10 @@
                   <a href="#policy.obligations.ValueTriggerRequest"><span class="badge">M</span>ValueTriggerRequest</a>
                 </li>
               
+              
+                <li>
+                  <a href="#policy.obligations.SortObligationsType"><span class="badge">E</span>SortObligationsType</a>
+                </li>
               
               
               
@@ -1890,6 +1922,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.subjectmapping.SubjectConditionSetsSort"><span class="badge">M</span>SubjectConditionSetsSort</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.subjectmapping.SubjectMappingsSort"><span class="badge">M</span>SubjectMappingsSort</a>
+                </li>
+              
+                <li>
                   <a href="#policy.subjectmapping.UpdateSubjectConditionSetRequest"><span class="badge">M</span>UpdateSubjectConditionSetRequest</a>
                 </li>
               
@@ -1905,6 +1945,14 @@
                   <a href="#policy.subjectmapping.UpdateSubjectMappingResponse"><span class="badge">M</span>UpdateSubjectMappingResponse</a>
                 </li>
               
+              
+                <li>
+                  <a href="#policy.subjectmapping.SortSubjectConditionSetsType"><span class="badge">E</span>SortSubjectConditionSetsType</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.subjectmapping.SortSubjectMappingsType"><span class="badge">E</span>SortSubjectMappingsType</a>
+                </li>
               
               
               
@@ -7475,7 +7523,7 @@ Empty when none remain after current page </p></td>
 
       
         <h3 id="policy.SortDirection">SortDirection</h3>
-        <p></p>
+        <p>Sorting direction shared across list APIs.</p><p>Notes:</p><p>- When a sort field is provided, UNSPECIFIED is treated as ASC.</p><p>- When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,</p><p>the endpoint's request message defines the default ordering; see the</p><p>specific List* request docs.</p>
         <table class="enum-table">
           <thead>
             <tr><td>Name</td><td>Number</td><td>Description</td></tr>
@@ -7485,7 +7533,9 @@ Empty when none remain after current page </p></td>
               <tr>
                 <td>SORT_DIRECTION_UNSPECIFIED</td>
                 <td>0</td>
-                <td><p>defaults to ASC</p></td>
+                <td><p>Treated as ASC when a sort field is provided.
+
+defaults to ASC</p></td>
               </tr>
             
               <tr>
@@ -8173,6 +8223,37 @@ Custom actions only: replaces the existing action name </p></td>
 
         
       
+        <h3 id="policy.attributes.AttributesSort">AttributesSort</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>field</td>
+                  <td><a href="#policy.attributes.SortAttributesType">SortAttributesType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>direction</td>
+                  <td><a href="#policy.SortDirection">policy.SortDirection</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.attributes.CreateAttributeRequest">CreateAttributeRequest</h3>
         <p></p>
 
@@ -8802,6 +8883,13 @@ Namespace ID or name </p></td>
                   <td><p>Optional </p></td>
                 </tr>
               
+                <tr>
+                  <td>sort</td>
+                  <td><a href="#policy.attributes.AttributesSort">AttributesSort</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional - CONSTRAINT: max 1 item </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -9220,6 +9308,41 @@ Common metadata </p></td>
         
       
 
+      
+        <h3 id="policy.attributes.SortAttributesType">SortAttributesType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_ATTRIBUTES_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_ATTRIBUTES_TYPE_NAME</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_ATTRIBUTES_TYPE_CREATED_AT</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_ATTRIBUTES_TYPE_UPDATED_AT</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
 
       
@@ -10273,6 +10396,37 @@ Mutable metadata for the key </p></td>
 
         
       
+        <h3 id="policy.kasregistry.KeyAccessServersSort">KeyAccessServersSort</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>field</td>
+                  <td><a href="#policy.kasregistry.SortKeyAccessServersType">SortKeyAccessServersType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>direction</td>
+                  <td><a href="#policy.SortDirection">policy.SortDirection</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.kasregistry.KeyMapping">KeyMapping</h3>
         <p></p>
 
@@ -10446,6 +10600,15 @@ objects are returned. </p></td>
                   <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
                   <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>sort</td>
+                  <td><a href="#policy.kasregistry.KeyAccessServersSort">KeyAccessServersSort</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional - CONSTRAINT: max 1 item
+Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
+created_at DESC, then id ASC (tie-breaker). </p></td>
                 </tr>
               
             </tbody>
@@ -11431,6 +11594,47 @@ Common metadata </p></td>
         
       
 
+      
+        <h3 id="policy.kasregistry.SortKeyAccessServersType">SortKeyAccessServersType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_KEY_ACCESS_SERVERS_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_KEY_ACCESS_SERVERS_TYPE_NAME</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_KEY_ACCESS_SERVERS_TYPE_URI</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_KEY_ACCESS_SERVERS_TYPE_UPDATED_AT</td>
+                <td>4</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
 
       
@@ -12789,7 +12993,7 @@ Namespace &lt;&gt; Key RPCs
 
       
         <h3 id="policy.obligations.AddObligationTriggerRequest">AddObligationTriggerRequest</h3>
-        <p>Triggers</p>
+        <p></p>
 
         
           <table class="field-table">
@@ -13132,7 +13336,7 @@ Common metadata </p></td>
         
       
         <h3 id="policy.obligations.GetObligationRequest">GetObligationRequest</h3>
-        <p>Definitions</p>
+        <p></p>
 
         
           <table class="field-table">
@@ -13175,6 +13379,54 @@ Common metadata </p></td>
                 <tr>
                   <td>obligation</td>
                   <td><a href="#policy.Obligation">policy.Obligation</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.GetObligationTriggerRequest">GetObligationTriggerRequest</h3>
+        <p>Triggers</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.GetObligationTriggerResponse">GetObligationTriggerResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>trigger</td>
+                  <td><a href="#policy.ObligationTrigger">policy.ObligationTrigger</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -13499,6 +13751,15 @@ Common metadata </p></td>
                   <td><p>Optional </p></td>
                 </tr>
               
+                <tr>
+                  <td>sort</td>
+                  <td><a href="#policy.obligations.ObligationsSort">ObligationsSort</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional - CONSTRAINT: max 1 item
+Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
+created_at DESC, then id ASC (tie-breaker). </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -13526,6 +13787,37 @@ Common metadata </p></td>
                 <tr>
                   <td>pagination</td>
                   <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.ObligationsSort">ObligationsSort</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>field</td>
+                  <td><a href="#policy.obligations.SortObligationsType">SortObligationsType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>direction</td>
+                  <td><a href="#policy.SortDirection">policy.SortDirection</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -13772,6 +14064,47 @@ Common metadata </p></td>
       
 
       
+        <h3 id="policy.obligations.SortObligationsType">SortObligationsType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_OBLIGATIONS_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_OBLIGATIONS_TYPE_NAME</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_OBLIGATIONS_TYPE_FQN</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_OBLIGATIONS_TYPE_CREATED_AT</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_OBLIGATIONS_TYPE_UPDATED_AT</td>
+                <td>4</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
 
       
 
@@ -13862,6 +14195,13 @@ Common metadata </p></td>
               </tr>
             
               <tr>
+                <td>GetObligationTrigger</td>
+                <td><a href="#policy.obligations.GetObligationTriggerRequest">GetObligationTriggerRequest</a></td>
+                <td><a href="#policy.obligations.GetObligationTriggerResponse">GetObligationTriggerResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
                 <td>AddObligationTrigger</td>
                 <td><a href="#policy.obligations.AddObligationTriggerRequest">AddObligationTriggerRequest</a></td>
                 <td><a href="#policy.obligations.AddObligationTriggerResponse">AddObligationTriggerResponse</a></td>
@@ -13920,6 +14260,11 @@ Common metadata </p></td>
             
               <tr>
                 <td>GetObligationValuesByFQNs</td>
+                <td><p>NO_SIDE_EFFECTS</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetObligationTrigger</td>
                 <td><p>NO_SIDE_EFFECTS</p></td>
               </tr>
             
@@ -16096,6 +16441,15 @@ Namespace ID or FQN for the subject mapping </p></td>
                   <td><p>Optional </p></td>
                 </tr>
               
+                <tr>
+                  <td>sort</td>
+                  <td><a href="#policy.subjectmapping.SubjectConditionSetsSort">SubjectConditionSetsSort</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional - CONSTRAINT: max 1 item
+Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
+created_at DESC, then id ASC (tie-breaker). </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -16163,6 +16517,13 @@ Namespace ID or FQN for the subject mapping </p></td>
                   <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
                   <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>sort</td>
+                  <td><a href="#policy.subjectmapping.SubjectMappingsSort">SubjectMappingsSort</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional - CONSTRAINT: max 1 item </p></td>
                 </tr>
               
             </tbody>
@@ -16274,6 +16635,68 @@ Namespace ID or FQN for the subject mapping </p></td>
                   <td></td>
                   <td><p>Optional
 Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.subjectmapping.SubjectConditionSetsSort">SubjectConditionSetsSort</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>field</td>
+                  <td><a href="#policy.subjectmapping.SortSubjectConditionSetsType">SortSubjectConditionSetsType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>direction</td>
+                  <td><a href="#policy.SortDirection">policy.SortDirection</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.subjectmapping.SubjectMappingsSort">SubjectMappingsSort</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>field</td>
+                  <td><a href="#policy.subjectmapping.SortSubjectMappingsType">SortSubjectMappingsType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>direction</td>
+                  <td><a href="#policy.SortDirection">policy.SortDirection</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -16432,6 +16855,64 @@ Replaces entire list of actions permitted by subjects </p></td>
         
       
 
+      
+        <h3 id="policy.subjectmapping.SortSubjectConditionSetsType">SortSubjectConditionSetsType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="policy.subjectmapping.SortSubjectMappingsType">SortSubjectMappingsType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
 
       

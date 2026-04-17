@@ -422,6 +422,29 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ActionIDDifferent
 	s.Nil(trigger)
 }
 
+func (s *ObligationTriggersSuite) Test_GetObligationTrigger_Success() {
+	trigger := s.createGenericTrigger()
+	s.triggerIDsToClean = append(s.triggerIDsToClean, trigger.GetId())
+
+	retrievedTrigger, err := s.db.PolicyClient.GetObligationTrigger(s.ctx, &obligations.GetObligationTriggerRequest{
+		Id: trigger.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(retrievedTrigger)
+	s.Require().Equal(trigger.GetId(), retrievedTrigger.GetId())
+	s.validateTrigger(retrievedTrigger, trigger.GetObligationValue(), trigger.GetAttributeValue(), trigger.GetAction(), true)
+	s.Require().NotNil(retrievedTrigger.GetMetadata())
+}
+
+func (s *ObligationTriggersSuite) Test_GetObligationTrigger_NotFound_Fails() {
+	randomID := uuid.NewString()
+	_, err := s.db.PolicyClient.GetObligationTrigger(s.ctx, &obligations.GetObligationTriggerRequest{
+		Id: randomID,
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
 func (s *ObligationTriggersSuite) Test_DeleteObligationTrigger_Success() {
 	trigger := s.createGenericTrigger()
 	deletedTrigger, err := s.db.PolicyClient.DeleteObligationTrigger(s.ctx, &obligations.RemoveObligationTriggerRequest{
@@ -469,7 +492,7 @@ func (s *ObligationTriggersSuite) Test_ListObligationTriggers_OrdersByCreatedAt_
 	s.Require().NoError(err)
 	s.NotNil(triggers)
 
-	assertIDsInDescendingOrder(s.T(), triggers, func(t *policy.ObligationTrigger) string { return t.GetId() }, third.GetId(), second.GetId(), first.GetId())
+	assertIDsInOrder(s.T(), triggers, func(t *policy.ObligationTrigger) string { return t.GetId() }, third.GetId(), second.GetId(), first.GetId())
 }
 
 func (s *ObligationTriggersSuite) Test_ListObligationTriggers_NoTriggersWithNamespaceId_Success() {

@@ -453,7 +453,10 @@ func getTokenEndpoint(c config) (string, error) {
 		return "", errors.New("platform_issuer is not set, or is not a string")
 	}
 
-	oidcConfigURL := issuerURL + "/.well-known/openid-configuration"
+	oidcConfigURL, err := url.JoinPath(issuerURL, ".well-known/openid-configuration")
+	if err != nil {
+		return "", fmt.Errorf("invalid issuer URL %q: %w", issuerURL, err)
+	}
 
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, oidcConfigURL, nil)
 	if err != nil {

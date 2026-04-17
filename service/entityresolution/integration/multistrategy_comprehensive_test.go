@@ -191,7 +191,7 @@ func TestMultiStrategy_SQLOnly(t *testing.T) {
 				Connection: map[string]interface{}{
 					"driver":   "postgres",
 					"host":     host,
-					"port":     mappedPort.Int(),
+					"port":     int(mappedPort.Num()),
 					"database": "testdb",
 					"username": "testuser",
 					"password": "testpass",
@@ -323,7 +323,7 @@ func TestMultiStrategy_LDAPOnly(t *testing.T) {
 				Type: "ldap",
 				Connection: map[string]interface{}{
 					"host":          host,
-					"port":          mappedPort.Int(),
+					"port":          int(mappedPort.Num()),
 					"use_tls":       false,
 					"bind_dn":       "cn=admin,dc=test,dc=local",
 					"bind_password": "admin123",
@@ -1011,7 +1011,7 @@ func startSeededLDAPContainer(ctx context.Context, t *testing.T) (testcontainers
 		t.Fatalf("Failed to get LDAP container port: %v", err)
 	}
 
-	return ldapContainer, host, mappedPort.Int()
+	return ldapContainer, host, int(mappedPort.Num())
 }
 
 func ldapFixturePath(name string) string {

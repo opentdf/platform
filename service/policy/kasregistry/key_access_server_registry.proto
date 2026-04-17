@@ -43,9 +43,26 @@ message GetKeyAccessServerResponse {
   KeyAccessServer key_access_server = 1;
 }
 
+enum SortKeyAccessServersType {
+  SORT_KEY_ACCESS_SERVERS_TYPE_UNSPECIFIED = 0;
+  SORT_KEY_ACCESS_SERVERS_TYPE_NAME = 1;
+  SORT_KEY_ACCESS_SERVERS_TYPE_URI = 2;
+  SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT = 3;
+  SORT_KEY_ACCESS_SERVERS_TYPE_UPDATED_AT = 4;
+}
+
+message KeyAccessServersSort {
+  SortKeyAccessServersType field = 1;
+  policy.SortDirection direction = 2;
+}
+
 message ListKeyAccessServersRequest {
   // Optional
   policy.PageRequest pagination = 10;
+  // Optional - CONSTRAINT: max 1 item
+  // Default ordering when omitted or when the first entry's field is UNSPECIFIED:
+  // created_at DESC, then id ASC (tie-breaker).
+  repeated KeyAccessServersSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 message ListKeyAccessServersResponse {
   repeated KeyAccessServer key_access_servers = 1;

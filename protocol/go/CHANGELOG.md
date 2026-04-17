@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.24.0](https://github.com/opentdf/platform/compare/protocol/go/v0.23.0...protocol/go/v0.24.0) (2026-04-17)
+
+
+### Features
+
+* **policy:** add GetObligationTrigger RPC ([#3318](https://github.com/opentdf/platform/issues/3318)) ([d68e39d](https://github.com/opentdf/platform/commit/d68e39d950d94dcbb98a2f16982ea57f28d9c550))
+* **policy:** add sort ListSubjectMappings API ([#3255](https://github.com/opentdf/platform/issues/3255)) ([9d5d757](https://github.com/opentdf/platform/commit/9d5d7570e22c6227409b01292f03c0d0624c1ce7))
+* **policy:** add sort support to ListKeyAccessServer ([#3287](https://github.com/opentdf/platform/issues/3287)) ([7fae2d7](https://github.com/opentdf/platform/commit/7fae2d701f3967b5ea743d4dc5ce0d41eb4d5413))
+* **policy:** add sort support to listobligations api ([#3300](https://github.com/opentdf/platform/issues/3300)) ([9221cac](https://github.com/opentdf/platform/commit/9221cac2f0a0c82847f0e7973b044f78a30450d8))
+* **policy:** add sort support to ListSubjectConditionSets API ([#3272](https://github.com/opentdf/platform/issues/3272)) ([9010f12](https://github.com/opentdf/platform/commit/9010f125eef244be2ac34906c59e68319d3b8f95))
+
+## [0.23.0](https://github.com/opentdf/platform/compare/protocol/go/v0.22.0...protocol/go/v0.23.0) (2026-04-07)
+
+
+### Features
+
+* **policy:** add sort support to ListAttributes API  ([#3223](https://github.com/opentdf/platform/issues/3223)) ([ec3312f](https://github.com/opentdf/platform/commit/ec3312f622dec7ed18ffa6033c86b248b47a420a))
+* **sdk:** source-file codegen for EntityIdentifier helpers  ([#3232](https://github.com/opentdf/platform/issues/3232)) ([ee8177c](https://github.com/opentdf/platform/commit/ee8177c98bda4e7483fa26be736fe4965c00bf46))
+
 ## [0.22.0](https://github.com/opentdf/platform/compare/protocol/go/v0.21.0...protocol/go/v0.22.0) (2026-04-01)
 
 

@@ -746,6 +746,52 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 	}
 }
 
+func Test_GetObligationTrigger_Request(t *testing.T) {
+	validUUID := uuid.NewString()
+	testCases := []struct {
+		name         string
+		req          *obligations.GetObligationTriggerRequest
+		expectError  bool
+		errorMessage string
+	}{
+		{
+			name: "valid",
+			req: &obligations.GetObligationTriggerRequest{
+				Id: validUUID,
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid id",
+			req: &obligations.GetObligationTriggerRequest{
+				Id: invalidUUID,
+			},
+			expectError:  true,
+			errorMessage: "id",
+		},
+		{
+			name:         "missing id",
+			req:          &obligations.GetObligationTriggerRequest{},
+			expectError:  true,
+			errorMessage: "id",
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errorMessage)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func Test_RemoveObligationTrigger_Request(t *testing.T) {
 	validUUID := uuid.NewString()
 	testCases := []struct {

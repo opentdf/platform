@@ -22,6 +22,7 @@ const (
 	invalidName           = "invalid name"
 	invalidFQN            = "invalid-fqn"
 	errMessageUUID        = "string.uuid"
+	errMessageUUIDEmpty   = "string.uuid_empty"
 	errMessageURI         = "string.uri"
 	errMessageMinItems    = "repeated.min_items"
 	errMessageUnique      = "repeated.unique"
@@ -728,6 +729,52 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 			},
 			expectError:  true,
 			errorMessage: "pep.client_id",
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errorMessage)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_GetObligationTrigger_Request(t *testing.T) {
+	validUUID := uuid.NewString()
+	testCases := []struct {
+		name         string
+		req          *obligations.GetObligationTriggerRequest
+		expectError  bool
+		errorMessage string
+	}{
+		{
+			name: "valid",
+			req: &obligations.GetObligationTriggerRequest{
+				Id: validUUID,
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid id",
+			req: &obligations.GetObligationTriggerRequest{
+				Id: invalidUUID,
+			},
+			expectError:  true,
+			errorMessage: errMessageUUID,
+		},
+		{
+			name:         "missing id",
+			req:          &obligations.GetObligationTriggerRequest{},
+			expectError:  true,
+			errorMessage: errMessageUUIDEmpty,
 		},
 	}
 

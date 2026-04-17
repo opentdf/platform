@@ -387,6 +387,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.DeleteObligationValueResponse'
+  /policy.obligations.Service/GetObligationTrigger:
+    post:
+      tags:
+        - policy.obligations.Service
+      summary: GetObligationTrigger
+      operationId: policy.obligations.Service.GetObligationTrigger
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.obligations.GetObligationTriggerRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.obligations.GetObligationTriggerResponse'
   /policy.obligations.Service/AddObligationTrigger:
     post:
       tags:
@@ -551,6 +586,13 @@ components:
         - SORT_DIRECTION_UNSPECIFIED
         - SORT_DIRECTION_ASC
         - SORT_DIRECTION_DESC
+      description: |-
+        Sorting direction shared across list APIs.
+         Notes:
+         - When a sort field is provided, UNSPECIFIED is treated as ASC.
+         - When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+           the endpoint's request message defines the default ordering; see the
+           specific List* request docs.
     policy.SourceType:
       type: string
       title: SourceType
@@ -1455,7 +1497,6 @@ components:
         - action
         - attributeValue
       additionalProperties: false
-      description: Triggers
     policy.obligations.AddObligationTriggerResponse:
       type: object
       properties:
@@ -1627,6 +1668,25 @@ components:
           title: obligation
           $ref: '#/components/schemas/policy.Obligation'
       title: GetObligationResponse
+      additionalProperties: false
+    policy.obligations.GetObligationTriggerRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Required
+      title: GetObligationTriggerRequest
+      additionalProperties: false
+      description: Triggers
+    policy.obligations.GetObligationTriggerResponse:
+      type: object
+      properties:
+        trigger:
+          title: trigger
+          $ref: '#/components/schemas/policy.ObligationTrigger'
+      title: GetObligationTriggerResponse
       additionalProperties: false
     policy.obligations.GetObligationValueRequest:
       type: object

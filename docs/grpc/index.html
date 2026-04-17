@@ -1509,6 +1509,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.obligations.GetObligationTriggerRequest"><span class="badge">M</span>GetObligationTriggerRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.obligations.GetObligationTriggerResponse"><span class="badge">M</span>GetObligationTriggerResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.obligations.GetObligationValueRequest"><span class="badge">M</span>GetObligationValueRequest</a>
                 </li>
               
@@ -12949,7 +12957,7 @@ Namespace &lt;&gt; Key RPCs
 
       
         <h3 id="policy.obligations.AddObligationTriggerRequest">AddObligationTriggerRequest</h3>
-        <p>Triggers</p>
+        <p></p>
 
         
           <table class="field-table">
@@ -13335,6 +13343,54 @@ Common metadata </p></td>
                 <tr>
                   <td>obligation</td>
                   <td><a href="#policy.Obligation">policy.Obligation</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.GetObligationTriggerRequest">GetObligationTriggerRequest</h3>
+        <p>Triggers</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.GetObligationTriggerResponse">GetObligationTriggerResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>trigger</td>
+                  <td><a href="#policy.ObligationTrigger">policy.ObligationTrigger</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -14103,6 +14159,13 @@ Common metadata </p></td>
               </tr>
             
               <tr>
+                <td>GetObligationTrigger</td>
+                <td><a href="#policy.obligations.GetObligationTriggerRequest">GetObligationTriggerRequest</a></td>
+                <td><a href="#policy.obligations.GetObligationTriggerResponse">GetObligationTriggerResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
                 <td>AddObligationTrigger</td>
                 <td><a href="#policy.obligations.AddObligationTriggerRequest">AddObligationTriggerRequest</a></td>
                 <td><a href="#policy.obligations.AddObligationTriggerResponse">AddObligationTriggerResponse</a></td>
@@ -14161,6 +14224,11 @@ Common metadata </p></td>
             
               <tr>
                 <td>GetObligationValuesByFQNs</td>
+                <td><p>NO_SIDE_EFFECTS</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetObligationTrigger</td>
                 <td><p>NO_SIDE_EFFECTS</p></td>
               </tr>
             

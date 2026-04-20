@@ -30,6 +30,7 @@ var (
 const (
 	migrationLabelMigratedFrom = "migrated_from"
 	migrationLabelRun          = "migration_run"
+	unknownLabel               = "<unknown>"
 )
 
 type ExecutorHandler interface {
@@ -133,7 +134,7 @@ func namespaceIdentifier(namespace *policy.Namespace) string {
 
 func namespaceLabel(namespace *policy.Namespace) string {
 	if namespace == nil {
-		return "<unknown>"
+		return unknownLabel
 	}
 	if fqn := strings.TrimSpace(namespace.GetFqn()); fqn != "" {
 		return fqn
@@ -141,5 +142,5 @@ func namespaceLabel(namespace *policy.Namespace) string {
 	if id := strings.TrimSpace(namespace.GetId()); id != "" {
 		return id
 	}
-	return "<unknown>"
+	return unknownLabel
 }

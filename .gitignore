@@ -71,7 +71,8 @@ otdfctl/otdfctl_testbuild
 otdfctl/otdfctl_testbuild.*
 
 # Test artifacts
-otdfctl/e2e/creds.json
+otdfctl/creds.json
+otdfctl/**/creds.json
 
 # TestRail-related files
 otdfctl/testrail.config.json

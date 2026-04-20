@@ -1509,6 +1509,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.obligations.GetObligationTriggerRequest"><span class="badge">M</span>GetObligationTriggerRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.obligations.GetObligationTriggerResponse"><span class="badge">M</span>GetObligationTriggerResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.obligations.GetObligationValueRequest"><span class="badge">M</span>GetObligationValueRequest</a>
                 </li>
               
@@ -1688,6 +1696,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.registeredresources.RegisteredResourcesSort"><span class="badge">M</span>RegisteredResourcesSort</a>
+                </li>
+              
+                <li>
                   <a href="#policy.registeredresources.UpdateRegisteredResourceRequest"><span class="badge">M</span>UpdateRegisteredResourceRequest</a>
                 </li>
               
@@ -1703,6 +1715,10 @@
                   <a href="#policy.registeredresources.UpdateRegisteredResourceValueResponse"><span class="badge">M</span>UpdateRegisteredResourceValueResponse</a>
                 </li>
               
+              
+                <li>
+                  <a href="#policy.registeredresources.SortRegisteredResourcesType"><span class="badge">E</span>SortRegisteredResourcesType</a>
+                </li>
               
               
               
@@ -12949,7 +12965,7 @@ Namespace &lt;&gt; Key RPCs
 
       
         <h3 id="policy.obligations.AddObligationTriggerRequest">AddObligationTriggerRequest</h3>
-        <p>Triggers</p>
+        <p></p>
 
         
           <table class="field-table">
@@ -13335,6 +13351,54 @@ Common metadata </p></td>
                 <tr>
                   <td>obligation</td>
                   <td><a href="#policy.Obligation">policy.Obligation</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.GetObligationTriggerRequest">GetObligationTriggerRequest</h3>
+        <p>Triggers</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.GetObligationTriggerResponse">GetObligationTriggerResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>trigger</td>
+                  <td><a href="#policy.ObligationTrigger">policy.ObligationTrigger</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -14103,6 +14167,13 @@ Common metadata </p></td>
               </tr>
             
               <tr>
+                <td>GetObligationTrigger</td>
+                <td><a href="#policy.obligations.GetObligationTriggerRequest">GetObligationTriggerRequest</a></td>
+                <td><a href="#policy.obligations.GetObligationTriggerResponse">GetObligationTriggerResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
                 <td>AddObligationTrigger</td>
                 <td><a href="#policy.obligations.AddObligationTriggerRequest">AddObligationTriggerRequest</a></td>
                 <td><a href="#policy.obligations.AddObligationTriggerResponse">AddObligationTriggerResponse</a></td>
@@ -14161,6 +14232,11 @@ Common metadata </p></td>
             
               <tr>
                 <td>GetObligationValuesByFQNs</td>
+                <td><p>NO_SIDE_EFFECTS</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetObligationTrigger</td>
                 <td><p>NO_SIDE_EFFECTS</p></td>
               </tr>
             
@@ -14769,6 +14845,15 @@ Common metadata </p></td>
                   <td><p>Optional </p></td>
                 </tr>
               
+                <tr>
+                  <td>sort</td>
+                  <td><a href="#policy.registeredresources.RegisteredResourcesSort">RegisteredResourcesSort</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional - CONSTRAINT: max 1 item
+Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
+created_at DESC. </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -14796,6 +14881,37 @@ Common metadata </p></td>
                 <tr>
                   <td>pagination</td>
                   <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.registeredresources.RegisteredResourcesSort">RegisteredResourcesSort</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>field</td>
+                  <td><a href="#policy.registeredresources.SortRegisteredResourcesType">SortRegisteredResourcesType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>direction</td>
+                  <td><a href="#policy.SortDirection">policy.SortDirection</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -14956,6 +15072,41 @@ Common metadata </p></td>
         
       
 
+      
+        <h3 id="policy.registeredresources.SortRegisteredResourcesType">SortRegisteredResourcesType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_REGISTERED_RESOURCES_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_REGISTERED_RESOURCES_TYPE_NAME</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_REGISTERED_RESOURCES_TYPE_UPDATED_AT</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
 
       

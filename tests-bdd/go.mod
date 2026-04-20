@@ -7,7 +7,7 @@ toolchain go1.25.8
 require (
 	github.com/cucumber/godog v0.15.0
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx/v5 v5.7.5
+	github.com/jackc/pgx/v5 v5.9.0
 	github.com/opentdf/platform/lib/fixtures v0.3.0
 	github.com/opentdf/platform/lib/identifier v0.0.2
 	github.com/opentdf/platform/protocol/go v0.15.0

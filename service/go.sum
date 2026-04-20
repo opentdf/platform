@@ -179,8 +179,8 @@ github.com/jackc/pgpassfile v1.0.0 h1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsI
 github.com/jackc/pgpassfile v1.0.0/go.mod h1:CEx0iS5ambNFdcRtxPj5JhEz+xB6uRky5eyVu/W2HEg=
 github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 h1:iCEnooe7UlwOQYpKFhBabPMi4aNAfoODPEFNiAnClxo=
 github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761/go.mod h1:5TJZWKEWniPve33vlWYSoGYefn3gLQRzjfDlhSJ9ZKM=
-github.com/jackc/pgx/v5 v5.7.5 h1:JHGfMnQY+IEtGM63d+NGMjoRpysB2JBwDr5fsngwmJs=
-github.com/jackc/pgx/v5 v5.7.5/go.mod h1:aruU7o91Tc2q2cFp5h4uP3f6ztExVpyVv88Xl/8Vl8M=
+github.com/jackc/pgx/v5 v5.9.0 h1:T/dI+2TvmI2H8s/KH1/lXIbz1CUFk3gn5oTjr0/mBsE=
+github.com/jackc/pgx/v5 v5.9.0/go.mod h1:mal1tBGAFfLHvZzaYh77YS/eC6IX9OWbRV1QIIM0Jn4=
 github.com/jackc/puddle/v2 v2.2.2 h1:PR8nw+E/1w0GLuRFSmiioY6UooMp6KJv0/61nB7icHo=
 github.com/jackc/puddle/v2 v2.2.2/go.mod h1:vriiEXHvEE654aYKXXjOvZM39qJ0q+azkZFrfEOc3H4=
 github.com/jcmturner/aescts/v2 v2.0.0 h1:9YKLH6ey7H4eDBXW8khjYslgyqG2xZikXP0EQFKrle8=
@@ -271,8 +271,8 @@ github.com/opentdf/platform/lib/identifier v0.3.0 h1:kLVRVC8wE0kmuEIdodEhqIRym5O
 github.com/opentdf/platform/lib/identifier v0.3.0/go.mod h1:3RlXYY9sxH/VnMkgm/M6zryUrtBL0lnsOVyqb0hYYvs=
 github.com/opentdf/platform/lib/ocrypto v0.10.0 h1:7dn/z/1qH3p+gWCrfOoU7hj9XF/p5N+b2JBJuWF9aK0=
 github.com/opentdf/platform/lib/ocrypto v0.10.0/go.mod h1:WASkoHreqgTFImB/gJW42VTdpi9AkgkmaW19y/fU+Ew=
-github.com/opentdf/platform/protocol/go v0.23.0 h1:4lQenwAHiKdJ+7tt2+gugJ0mjXyFK1yEgwYe4OE+jsU=
-github.com/opentdf/platform/protocol/go v0.23.0/go.mod h1:ufSzLVpcGv368L++kni7fzbN4ugtxmstcifmwI/o4T0=
+github.com/opentdf/platform/protocol/go v0.24.0 h1:/ofCjovtmy2hWQVjNl2WZDdDcJMzqApPsP2XHgeyTq8=
+github.com/opentdf/platform/protocol/go v0.24.0/go.mod h1:ufSzLVpcGv368L++kni7fzbN4ugtxmstcifmwI/o4T0=
 github.com/opentdf/platform/sdk v0.13.0 h1:jhhCLE1Y57Y20g6TUEg/zqCfid8m4KPfbaaBlg6oAsM=
 github.com/opentdf/platform/sdk v0.13.0/go.mod h1:x80F65+dGzxDTq8iqVIbCrbDDB9oYCYGjh4duoH6biM=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=

@@ -3,8 +3,6 @@ package ocrypto
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"fmt"
 )
@@ -30,22 +28,7 @@ func NewRSAKeyPair(bits int) (RsaKeyPair, error) {
 
 // PrivateKeyInPemFormat Returns private key in pem format.
 func (keyPair RsaKeyPair) PrivateKeyInPemFormat() (string, error) {
-	if keyPair.privateKey == nil {
-		return "", errors.New("failed to generate PEM formatted private key")
-	}
-
-	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(keyPair.privateKey)
-	if err != nil {
-		return "", fmt.Errorf("x509.MarshalPKCS8PrivateKey failed: %w", err)
-	}
-
-	privateKeyPem := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "PRIVATE KEY",
-			Bytes: privateKeyBytes,
-		},
-	)
-	return string(privateKeyPem), nil
+	return privateKeyInPemFormat(keyPair.privateKey)
 }
 
 // PublicKeyInPemFormat Returns public key in pem format.
@@ -54,19 +37,7 @@ func (keyPair RsaKeyPair) PublicKeyInPemFormat() (string, error) {
 		return "", errors.New("failed to generate PEM formatted public key")
 	}
 
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(&keyPair.privateKey.PublicKey)
-	if err != nil {
-		return "", fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)
-	}
-
-	publicKeyPem := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "PUBLIC KEY",
-			Bytes: publicKeyBytes,
-		},
-	)
-
-	return string(publicKeyPem), nil
+	return publicKeyInPemFormat(&keyPair.privateKey.PublicKey)
 }
 
 // KeySize Return the size of this rsa key pair.
@@ -77,7 +48,34 @@ func (keyPair RsaKeyPair) KeySize() (int, error) {
 	return keyPair.privateKey.N.BitLen(), nil
 }
 
+func (keyPair RsaKeyPair) Decrypt(data []byte) ([]byte, error) {
+	return AsymDecryption{PrivateKey: keyPair.privateKey}.Decrypt(data)
+}
+
+func (keyPair RsaKeyPair) Public() (PublicKeyEncryptor, error) {
+	if keyPair.privateKey == nil {
+		return nil, errors.New("failed to generate public key encryptor, private key is empty")
+	}
+
+	return &AsymEncryption{PublicKey: &keyPair.privateKey.PublicKey}, nil
+}
+
+func (keyPair RsaKeyPair) KeyType() KeyType {
+	if keyPair.privateKey == nil {
+		return KeyType("rsa:[unknown]")
+	}
+
+	switch keyPair.privateKey.Size() {
+	case RSA2048Size / 8: //nolint:mnd // standard key size in bytes
+		return RSA2048Key
+	case RSA4096Size / 8: //nolint:mnd // large key size in bytes
+		return RSA4096Key
+	default:
+		return KeyType(fmt.Sprintf("rsa:%d", keyPair.privateKey.Size()*8)) //nolint:mnd // convert to bits
+	}
+}
+
 // GetKeyType returns the key type (RSAKey)
 func (keyPair RsaKeyPair) GetKeyType() KeyType {
-	return RSA2048Key
+	return keyPair.KeyType()
 }

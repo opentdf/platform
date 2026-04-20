@@ -921,7 +921,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 
 	var sessionKey string
 	if e, ok := asymEncrypt.(ocrypto.ECEncryptor); ok {
-		sessionKey, err = e.PublicKeyInPemFormat()
+		sessionKey, err = e.EphemeralPublicKeyInPemFormat()
 		if err != nil {
 			p.Logger.ErrorContext(ctx, "unable to serialize ephemeral key", slog.Any("error", err))
 			// This may be a 500, but could also be caused by a bad clientPublicKey

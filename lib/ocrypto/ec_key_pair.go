@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
@@ -44,12 +45,19 @@ const (
 	RSA4096Size     = 4096
 )
 
+// KeyPair represents a cryptographic key pair.
+//
+// Deprecated: Prefer PrivateKeyDecryptor from asym_decryption.go, which separates
+// key-management from algorithm-specific capabilities.
 type KeyPair interface {
 	PublicKeyInPemFormat() (string, error)
 	PrivateKeyInPemFormat() (string, error)
 	GetKeyType() KeyType
 }
 
+// NewKeyPair creates a new key pair of the given type.
+//
+// Deprecated: Use NewPrivateKeyDecryptor instead.
 func NewKeyPair(kt KeyType) (KeyPair, error) {
 	switch kt {
 	case RSA2048Key, RSA4096Key:
@@ -69,6 +77,10 @@ func NewKeyPair(kt KeyType) (KeyPair, error) {
 	}
 }
 
+// ECKeyPair combines private and public EC key material in one value.
+//
+// Deprecated: Prefer PrivateKeyDecryptor implementations from asym_decryption.go
+// and derive the public half via PrivateKeyDecryptor.Public().
 type ECKeyPair struct {
 	PrivateKey *ecdsa.PrivateKey
 }
@@ -103,13 +115,27 @@ func GetECCurveFromECCMode(mode ECCMode) (elliptic.Curve, error) {
 	case ECCModeSecp521r1:
 		c = elliptic.P521()
 	case ECCModeSecp256k1:
-		// TODO FIXME - unsupported?
 		return nil, errors.New("unsupported ECC mode")
 	default:
 		return nil, fmt.Errorf("unsupported ECC mode %d", mode)
 	}
 
 	return c, nil
+}
+
+func curveFromECCMode(mode ECCMode) (ecdh.Curve, error) {
+	switch mode {
+	case ECCModeSecp256r1:
+		return ecdh.P256(), nil
+	case ECCModeSecp384r1:
+		return ecdh.P384(), nil
+	case ECCModeSecp521r1:
+		return ecdh.P521(), nil
+	case ECCModeSecp256k1:
+		return nil, errors.New("unsupported ECC mode")
+	default:
+		return nil, fmt.Errorf("unsupported ECC mode %d", mode)
+	}
 }
 
 func (mode ECCMode) String() string {
@@ -164,7 +190,9 @@ func RSAKeyTypeToBits(kt KeyType) (int, error) {
 	}
 }
 
-// NewECKeyPair Generates an EC key pair of the given bit size.
+// NewECKeyPair generates an EC key pair for the given curve mode.
+//
+// Deprecated: Prefer NewECPrivateKey and derive the public half via PrivateKeyDecryptor.Public().
 func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
 	var c elliptic.Curve
 
@@ -186,22 +214,7 @@ func NewECKeyPair(mode ECCMode) (ECKeyPair, error) {
 
 // PrivateKeyInPemFormat Returns private key in pem format.
 func (keyPair ECKeyPair) PrivateKeyInPemFormat() (string, error) {
-	if keyPair.PrivateKey == nil {
-		return "", errors.New("failed to generate PEM formatted private key")
-	}
-
-	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(keyPair.PrivateKey)
-	if err != nil {
-		return "", fmt.Errorf("x509.MarshalPKCS8PrivateKey failed: %w", err)
-	}
-
-	privateKeyPem := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "PRIVATE KEY",
-			Bytes: privateKeyBytes,
-		},
-	)
-	return string(privateKeyPem), nil
+	return privateKeyInPemFormat(keyPair.PrivateKey)
 }
 
 // PublicKeyInPemFormat Returns public key in pem format.
@@ -210,18 +223,7 @@ func (keyPair ECKeyPair) PublicKeyInPemFormat() (string, error) {
 		return "", errors.New("failed to generate PEM formatted public key")
 	}
 
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(&keyPair.PrivateKey.PublicKey)
-	if err != nil {
-		return "", fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)
-	}
-
-	publicKeyPem := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "PUBLIC KEY",
-			Bytes: publicKeyBytes,
-		},
-	)
-	return string(publicKeyPem), nil
+	return publicKeyInPemFormat(&keyPair.PrivateKey.PublicKey)
 }
 
 // KeySize Return the size of this ec key pair.
@@ -230,6 +232,50 @@ func (keyPair ECKeyPair) KeySize() (int, error) {
 		return -1, errors.New("failed to return key size")
 	}
 	return keyPair.PrivateKey.Params().N.BitLen(), nil
+}
+
+func (keyPair ECKeyPair) Decrypt(data []byte) ([]byte, error) {
+	ecdhPrivateKey, err := ConvertToECDHPrivateKey(keyPair.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	dec, err := NewECDecryptor(ecdhPrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	return dec.Decrypt(data)
+}
+
+func (keyPair ECKeyPair) Public() (PublicKeyEncryptor, error) {
+	ecdhPrivateKey, err := ConvertToECDHPrivateKey(keyPair.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	dec, err := NewECDecryptor(ecdhPrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	return dec.Public()
+}
+
+func (keyPair ECKeyPair) KeyType() KeyType {
+	if keyPair.PrivateKey == nil {
+		return KeyType("ec:[unknown]")
+	}
+
+	return keyTypeFromEllipticCurve(keyPair.PrivateKey.Curve)
+}
+
+func (keyPair ECKeyPair) DeriveSharedKey(publicKeyInPem string) ([]byte, error) {
+	ecdhPrivateKey, err := ConvertToECDHPrivateKey(keyPair.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	dec, err := NewECDecryptor(ecdhPrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	return dec.deriveSharedKey(publicKeyInPem)
 }
 
 // CompressedECPublicKey - return a compressed key from the supplied curve and public key
@@ -365,6 +411,8 @@ func ECPrivateKeyFromPem(privateECKeyInPem []byte) (*ecdh.PrivateKey, error) {
 }
 
 // ComputeECDHKey calculate shared secret from public key from one party and the private key from another party.
+//
+// Deprecated: Use ECDecryptor.DecryptWithEphemeralKey or the higher-level encrypt/decrypt workflow.
 func ComputeECDHKey(privateKeyInPem []byte, publicKeyInPem []byte) ([]byte, error) {
 	ecdhPrivateKey, err := ECPrivateKeyFromPem(privateKeyInPem)
 	if err != nil {
@@ -430,35 +478,12 @@ func UncompressECPubKey(curve elliptic.Curve, compressedPubKey []byte) (*ecdsa.P
 
 // ECPrivateKeyInPemFormat Returns private key in pem format.
 func ECPrivateKeyInPemFormat(privateKey ecdsa.PrivateKey) (string, error) {
-	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
-	if err != nil {
-		return "", fmt.Errorf("x509.MarshalPKCS8PrivateKey failed: %w", err)
-	}
-
-	privateKeyPem := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "PRIVATE KEY",
-			Bytes: privateKeyBytes,
-		},
-	)
-	return string(privateKeyPem), nil
+	return privateKeyInPemFormat(&privateKey)
 }
 
 // ECPublicKeyInPemFormat Returns public key in pem format.
 func ECPublicKeyInPemFormat(publicKey ecdsa.PublicKey) (string, error) {
-	pkb, err := x509.MarshalPKIXPublicKey(publicKey)
-	if err != nil {
-		return "", fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)
-	}
-
-	publicKeyPem := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "PUBLIC KEY",
-			Bytes: pkb,
-		},
-	)
-
-	return string(publicKeyPem), nil
+	return publicKeyInPemFormat(&publicKey)
 }
 
 // GetECKeySize returns the curve size from a PEM-encoded EC public key
@@ -490,7 +515,67 @@ func GetECKeySize(pemData []byte) (int, error) {
 	}
 }
 
-// GetKeyType returns the key type (ECKey)
+// GetKeyType returns the key type. Deprecated: Use KeyType() instead.
 func (keyPair ECKeyPair) GetKeyType() KeyType {
-	return EC256Key
+	return keyPair.KeyType()
+}
+
+func privateKeyInPemFormat(pk any) (string, error) {
+	switch key := pk.(type) {
+	case nil:
+		return "", errors.New("failed to generate PEM formatted private key")
+	case *ecdsa.PrivateKey:
+		if key == nil {
+			return "", errors.New("failed to generate PEM formatted private key")
+		}
+	case *ecdh.PrivateKey:
+		if key == nil {
+			return "", errors.New("failed to generate PEM formatted private key")
+		}
+	case *rsa.PrivateKey:
+		if key == nil {
+			return "", errors.New("failed to generate PEM formatted private key")
+		}
+	}
+
+	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(pk)
+	if err != nil {
+		return "", fmt.Errorf("x509.MarshalPKCS8PrivateKey failed: %w", err)
+	}
+
+	privateKeyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: privateKeyBytes,
+	})
+
+	return string(privateKeyPEM), nil
+}
+
+func keyTypeFromECDHCurve(curve ecdh.Curve) KeyType {
+	switch curve {
+	case ecdh.P256():
+		return EC256Key
+	case ecdh.P384():
+		return EC384Key
+	case ecdh.P521():
+		return EC521Key
+	default:
+		if n, ok := curve.(fmt.Stringer); ok {
+			return KeyType("ec:" + n.String())
+		}
+		return KeyType("ec:[unknown]")
+	}
+}
+
+func keyTypeFromEllipticCurve(curve elliptic.Curve) KeyType {
+	switch curve {
+	case elliptic.P256():
+		return EC256Key
+	case elliptic.P384():
+		return EC384Key
+	case elliptic.P521():
+		return EC521Key
+	default:
+		return KeyType("ec:[unknown]")
+	}
 }

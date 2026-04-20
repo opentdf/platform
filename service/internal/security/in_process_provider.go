@@ -4,8 +4,6 @@ import (
 	"context"
 	"crypto"
 	"crypto/elliptic"
-	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -280,45 +278,8 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 }
 
 // DeriveKey computes an ECDH shared secret and derives an AES key via HKDF.
-func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ocrypto.ProtectedKey, error) {
-	kid := string(keyDetails.ID())
-	k, ok := a.cryptoProvider.keysByID[kid]
-	if !ok {
-		return nil, ErrKeyPairInfoNotFound
-	}
-	ec, ok := k.(StandardECCrypto)
-	if !ok {
-		return nil, ErrKeyPairInfoMalformed
-	}
-
-	ephemeralECDSAPublicKey, err := ocrypto.UncompressECPubKey(curve, ephemeralPublicKeyBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	derBytes, err := x509.MarshalPKIXPublicKey(ephemeralECDSAPublicKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal ECDSA public key: %w", err)
-	}
-	ephemeralECDSAPublicKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: derBytes,
-	})
-
-	symmetricKey, err := ocrypto.ComputeECDHKey([]byte(ec.ecPrivateKeyPem), ephemeralECDSAPublicKeyPEM)
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
-	}
-
-	key, err := ocrypto.CalculateHKDF(TDFSalt(), symmetricKey)
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
-	}
-	protectedKey, err := ocrypto.NewAESProtectedKey(key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create protected key: %w", err)
-	}
-	return protectedKey, nil
+func (a *InProcessProvider) DeriveKey(_ context.Context, _ trust.KeyDetails, _ []byte, _ elliptic.Curve) (ocrypto.ProtectedKey, error) {
+	return nil, errors.New("unsupported operation")
 }
 
 // GenerateECSessionKey generates a session key for ECDH-based response encryption.

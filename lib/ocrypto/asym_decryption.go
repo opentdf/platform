@@ -7,6 +7,7 @@ import (
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -25,7 +26,42 @@ type AsymDecryption struct {
 
 type PrivateKeyDecryptor interface {
 	// Decrypt decrypts ciphertext with private key.
+	// For EC keys, use DecryptWithEphemeralKey on the concrete ECDecryptor type instead.
 	Decrypt(data []byte) ([]byte, error)
+
+	// PrivateKeyInPemFormat returns the private key in PEM format.
+	PrivateKeyInPemFormat() (string, error)
+
+	// Public returns the corresponding public-key encryptor.
+	Public() (PublicKeyEncryptor, error)
+
+	// KeyType returns the key type, e.g. RSA or EC.
+	KeyType() KeyType
+}
+
+// NewPrivateKeyDecryptor generates a new private key of the requested type,
+// enclosing it in a PrivateKeyDecryptor interface.
+func NewPrivateKeyDecryptor(kt KeyType) (PrivateKeyDecryptor, error) {
+	switch {
+	case IsRSAKeyType(kt):
+		bits, err := RSAKeyTypeToBits(kt)
+		if err != nil {
+			return nil, err
+		}
+		keyPair, err := NewRSAKeyPair(bits)
+		if err != nil {
+			return nil, err
+		}
+		return keyPair, nil
+	case IsECKeyType(kt):
+		mode, err := ECKeyTypeToMode(kt)
+		if err != nil {
+			return nil, err
+		}
+		return NewECPrivateKey(mode)
+	default:
+		return nil, fmt.Errorf("unsupported key type: %v", kt)
+	}
 }
 
 // FromPrivatePEM creates and returns a new AsymDecryption.
@@ -109,6 +145,33 @@ func (asymDecryption AsymDecryption) Decrypt(data []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+func (asymDecryption AsymDecryption) PrivateKeyInPemFormat() (string, error) {
+	return privateKeyInPemFormat(asymDecryption.PrivateKey)
+}
+
+func (asymDecryption AsymDecryption) Public() (PublicKeyEncryptor, error) {
+	if asymDecryption.PrivateKey == nil {
+		return nil, errors.New("failed to generate public key encryptor, private key is empty")
+	}
+
+	return &AsymEncryption{PublicKey: &asymDecryption.PrivateKey.PublicKey}, nil
+}
+
+func (asymDecryption AsymDecryption) KeyType() KeyType {
+	if asymDecryption.PrivateKey == nil {
+		return KeyType("rsa:[unknown]")
+	}
+
+	switch asymDecryption.PrivateKey.Size() {
+	case RSA2048Size / 8: //nolint:mnd // standard key size in bytes
+		return RSA2048Key
+	case RSA4096Size / 8: //nolint:mnd // large key size in bytes
+		return RSA4096Key
+	default:
+		return KeyType(fmt.Sprintf("rsa:%d", asymDecryption.PrivateKey.Size()*8)) //nolint:mnd // convert to bits
+	}
+}
+
 type ECDecryptor struct {
 	sk   *ecdh.PrivateKey
 	salt []byte
@@ -124,39 +187,55 @@ func NewECDecryptor(sk *ecdh.PrivateKey) (ECDecryptor, error) {
 	return ECDecryptor{sk, salt, nil}, nil
 }
 
+func NewECPrivateKey(mode ECCMode) (ECDecryptor, error) {
+	curve, err := curveFromECCMode(mode)
+	if err != nil {
+		return ECDecryptor{}, err
+	}
+
+	sk, err := curve.GenerateKey(rand.Reader)
+	if err != nil {
+		return ECDecryptor{}, fmt.Errorf("ecdh.GenerateKey failed: %w", err)
+	}
+
+	return NewECDecryptor(sk)
+}
+
 func NewSaltedECDecryptor(sk *ecdh.PrivateKey, salt, info []byte) (ECDecryptor, error) {
+	if sk == nil {
+		return ECDecryptor{}, errors.New("private key must not be nil")
+	}
 	return ECDecryptor{sk, salt, info}, nil
 }
 
 func (e ECDecryptor) Decrypt(_ []byte) ([]byte, error) {
-	// TK How to get the ephmeral key into here?
-	return nil, errors.New("ecdh standard decrypt unimplemented")
+	return nil, errors.New("EC keys require DecryptWithEphemeralKey; standard Decrypt is not supported for ECDH")
+}
+
+func (e ECDecryptor) PrivateKeyInPemFormat() (string, error) {
+	return privateKeyInPemFormat(e.sk)
+}
+
+func (e ECDecryptor) Public() (PublicKeyEncryptor, error) {
+	if e.sk == nil {
+		return nil, errors.New("failed to generate public key encryptor, private key is empty")
+	}
+
+	return newECIES(e.sk.PublicKey(), e.salt, e.info)
+}
+
+func (e ECDecryptor) KeyType() KeyType {
+	if e.sk == nil {
+		return KeyType("ec:[unknown]")
+	}
+
+	return keyTypeFromECDHCurve(e.sk.Curve())
 }
 
 func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
-	var ek *ecdh.PublicKey
-
-	if pubFromDSN, err := x509.ParsePKIXPublicKey(ephemeral); err == nil {
-		switch pubFromDSN := pubFromDSN.(type) {
-		case *ecdsa.PublicKey:
-			ek, err = ConvertToECDHPublicKey(pubFromDSN)
-			if err != nil {
-				return nil, fmt.Errorf("ecdh conversion failure: %w", err)
-			}
-		case *ecdh.PublicKey:
-			ek = pubFromDSN
-		default:
-			return nil, fmt.Errorf("unsupported public key of type: %T", pubFromDSN)
-		}
-	} else {
-		ekDSA, err := UncompressECPubKey(convCurve(e.sk.Curve()), ephemeral)
-		if err != nil {
-			return nil, err
-		}
-		ek, err = ekDSA.ECDH()
-		if err != nil {
-			return nil, fmt.Errorf("ecdh failure: %w", err)
-		}
+	ek, err := e.parseEphemeralPublicKey(ephemeral)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse ephemeral public key: %w", err)
 	}
 
 	ikm, err := e.sk.ECDH(ek)
@@ -171,7 +250,7 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 		return nil, fmt.Errorf("hkdf failure: %w", err)
 	}
 
-	// Encrypt data with derived key using aes-gcm
+	// Decrypt data with derived key using AES-GCM
 	block, err := aes.NewCipher(derivedKey)
 	if err != nil {
 		return nil, fmt.Errorf("aes.NewCipher failure: %w", err)
@@ -196,15 +275,61 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 	return plaintext, nil
 }
 
-func convCurve(c ecdh.Curve) elliptic.Curve {
+func (e ECDecryptor) deriveSharedKey(publicKeyInPem string) ([]byte, error) {
+	if e.sk == nil {
+		return nil, errors.New("failed to derive shared key, private key is empty")
+	}
+
+	pub, err := getPublicPart(publicKeyInPem)
+	if err != nil {
+		return nil, err
+	}
+
+	ecdhPublicKey, err := ConvertToECDHPublicKey(pub)
+	if err != nil {
+		return nil, fmt.Errorf("unsupported public key type: %w", err)
+	}
+
+	sharedKey, err := e.sk.ECDH(ecdhPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("there was a problem deriving a shared ECDH key: %w", err)
+	}
+
+	return sharedKey, nil
+}
+
+// parseEphemeralPublicKey parses an ephemeral public key from DER (PKIX) or compressed EC point bytes.
+func (e ECDecryptor) parseEphemeralPublicKey(ephemeral []byte) (*ecdh.PublicKey, error) {
+	if pub, derErr := x509.ParsePKIXPublicKey(ephemeral); derErr == nil {
+		switch pub := pub.(type) {
+		case *ecdsa.PublicKey:
+			return ConvertToECDHPublicKey(pub)
+		case *ecdh.PublicKey:
+			return pub, nil
+		default:
+			return nil, fmt.Errorf("unsupported public key of type: %T", pub)
+		}
+	}
+	curve, err := convCurve(e.sk.Curve())
+	if err != nil {
+		return nil, err
+	}
+	ekDSA, err := UncompressECPubKey(curve, ephemeral)
+	if err != nil {
+		return nil, fmt.Errorf("ephemeral key is neither valid DER (PKIX) nor a compressed EC point: %w", err)
+	}
+	return ekDSA.ECDH()
+}
+
+func convCurve(c ecdh.Curve) (elliptic.Curve, error) {
 	switch c {
 	case ecdh.P256():
-		return elliptic.P256()
+		return elliptic.P256(), nil
 	case ecdh.P384():
-		return elliptic.P384()
+		return elliptic.P384(), nil
 	case ecdh.P521():
-		return elliptic.P521()
+		return elliptic.P521(), nil
 	default:
-		return nil
+		return nil, fmt.Errorf("unsupported ECDH curve: %v", c)
 	}
 }

@@ -162,81 +162,47 @@ func wrapKeyWithPublicKey(symKey []byte, pubKeyInfo keysplit.KASPublicKey) (stri
 		return "", "", "", fmt.Errorf("public key PEM is empty for KAS %s", pubKeyInfo.URL)
 	}
 
-	// Determine key type based on algorithm
-	ktype := ocrypto.KeyType(pubKeyInfo.Algorithm)
-
-	if ocrypto.IsECKeyType(ktype) {
-		// Handle EC key wrapping
-		return wrapKeyWithEC(ktype, pubKeyInfo.PEM, symKey)
+	kasPublicKey, err := ocrypto.FromPublicPEM(pubKeyInfo.PEM)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to parse KAS public key: %w", err)
 	}
-	// Handle RSA key wrapping
-	wrapped, err := wrapKeyWithRSA(pubKeyInfo.PEM, symKey)
-	return wrapped, "wrapped", "", err
+
+	switch kasPublicKey.Type() {
+	case ocrypto.EC:
+		epk, ok := kasPublicKey.(ocrypto.ECEncryptor)
+		if !ok {
+			return "", "", "", fmt.Errorf("unexpected encryptor type %T", kasPublicKey)
+		}
+		return wrapKeyWithEC(epk.KeyType(), epk, symKey)
+	case ocrypto.RSA:
+		wrapped, err := wrapKeyWithRSA(kasPublicKey, symKey)
+		return wrapped, "wrapped", "", err
+	default:
+		return "", "", "", fmt.Errorf("unsupported KAS public key type: %v", kasPublicKey.KeyType())
+	}
 }
 
 // wrapKeyWithEC encrypts a key using EC public key with ECIES
-func wrapKeyWithEC(keyType ocrypto.KeyType, kasPublicKeyPEM string, symKey []byte) (string, string, string, error) {
-	// Convert key type to ECC mode
-	mode, err := ocrypto.ECKeyTypeToMode(keyType)
+func wrapKeyWithEC(keyType ocrypto.KeyType, kasPublicKey ocrypto.ECEncryptor, symKey []byte) (string, string, string, error) {
+	if !ocrypto.IsECKeyType(kasPublicKey.KeyType()) {
+		return "", "", "", fmt.Errorf("unexpected KAS public key type: %v", kasPublicKey.KeyType())
+	}
+
+	wrapped, err := kasPublicKey.Encrypt(symKey)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to convert key type to ECC mode: %w", err)
+		return "", "", "", fmt.Errorf("failed to wrap with %v: %w", keyType, err)
 	}
 
-	// Generate ephemeral key pair
-	ecKeyPair, err := ocrypto.NewECKeyPair(mode)
+	epk, err := kasPublicKey.EphemeralPublicKeyInPemFormat()
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to create EC key pair: %w", err)
+		return "", "", "", fmt.Errorf("failed to export ephemeral public key: %w", err)
 	}
 
-	// Get ephemeral public key in PEM format
-	ephemeralPubKey, err := ecKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get ephemeral public key: %w", err)
-	}
-
-	// Get ephemeral private key
-	ephemeralPrivKey, err := ecKeyPair.PrivateKeyInPemFormat()
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get ephemeral private key: %w", err)
-	}
-
-	// Compute ECDH shared secret
-	ecdhKey, err := ocrypto.ComputeECDHKey([]byte(ephemeralPrivKey), []byte(kasPublicKeyPEM))
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to compute ECDH key: %w", err)
-	}
-
-	// Derive wrapping key using HKDF
-	salt := tdfSalt()
-	wrapKey, err := ocrypto.CalculateHKDF(salt, ecdhKey)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to derive wrap key: %w", err)
-	}
-
-	// Ensure we have the right length for wrapping, trim if needed, or error if too short
-	if len(wrapKey) > len(symKey) {
-		wrapKey = wrapKey[:len(symKey)]
-	} else if len(wrapKey) < len(symKey) {
-		return "", "", "", fmt.Errorf("wrap key too short: got %d, expected at least %d",
-			len(wrapKey), len(symKey))
-	}
-
-	wrapped := make([]byte, len(symKey))
-	for i := range symKey {
-		wrapped[i] = symKey[i] ^ wrapKey[i]
-	}
-
-	return string(ocrypto.Base64Encode(wrapped)), "eccWrapped", ephemeralPubKey, nil
+	return string(ocrypto.Base64Encode(wrapped)), "ec-wrapped", epk, nil
 }
 
 // wrapKeyWithRSA encrypts a key using RSA public key with OAEP padding
-func wrapKeyWithRSA(kasPublicKeyPEM string, symKey []byte) (string, error) {
-	// Create RSA encryptor from PEM
-	encryptor, err := ocrypto.FromPublicPEM(kasPublicKeyPEM)
-	if err != nil {
-		return "", fmt.Errorf("failed to create RSA encryptor: %w", err)
-	}
-
+func wrapKeyWithRSA(encryptor ocrypto.PublicKeyEncryptor, symKey []byte) (string, error) {
 	// Encrypt with OAEP padding
 	encryptedKey, err := encryptor.Encrypt(symKey)
 	if err != nil {

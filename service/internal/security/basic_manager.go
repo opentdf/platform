@@ -3,10 +3,8 @@ package security
 import (
 	"context"
 	"crypto/elliptic"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -80,13 +78,9 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		}
 		return protectedKey, nil
 	case ocrypto.EC256Key, ocrypto.EC384Key, ocrypto.EC521Key:
-		ecPrivKey, err := ocrypto.ECPrivateKeyFromPem(privKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create EC private key from PEM: %w", err)
-		}
-		ecDecryptor, err := ocrypto.NewECDecryptor(ecPrivKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create ECDecryptor: %w", err)
+		ecDecryptor, ok := decrypter.(ocrypto.ECDecryptor)
+		if !ok {
+			return nil, fmt.Errorf("failed to create ECDecryptor: unexpected type %T", decrypter)
 		}
 		plaintext, err := ecDecryptor.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
 		if err != nil {
@@ -102,47 +96,9 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 	return nil, fmt.Errorf("unsupported algorithm: %s", keyDetails.Algorithm())
 }
 
-func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ocrypto.ProtectedKey, error) {
-	// Implementation of DeriveKey method
-	privateKeyCtx, err := keyDetails.ExportPrivateKey(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get private key: %w", err)
-	}
-
-	privKey, err := b.unwrap(ctx, string(keyDetails.ID()), privateKeyCtx.WrappedKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unwrap private key: %w", err)
-	}
-
-	ephemeralECDSAPublicKey, err := ocrypto.UncompressECPubKey(curve, ephemeralPublicKeyBytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to uncompress ephemeral public key: %w", err)
-	}
-
-	derBytes, err := x509.MarshalPKIXPublicKey(ephemeralECDSAPublicKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal ECDSA public key: %w", err)
-	}
-	pemBlock := &pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: derBytes,
-	}
-	ephemeralECDSAPublicKeyPEM := pem.EncodeToMemory(pemBlock)
-
-	symmetricKey, err := ocrypto.ComputeECDHKey(privKey, ephemeralECDSAPublicKeyPEM)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compute ECDH key: %w", err)
-	}
-
-	key, err := ocrypto.CalculateHKDF(TDFSalt(), symmetricKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to calculate HKDF: %w", err)
-	}
-	protectedKey, err := ocrypto.NewAESProtectedKey(key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create protected key: %w", err)
-	}
-	return protectedKey, nil
+// Deprecated: Prefer to directly unwrap the value with Decrypt.
+func (b *BasicManager) DeriveKey(_ context.Context, _ trust.KeyDetails, _ []byte, _ elliptic.Curve) (ocrypto.ProtectedKey, error) {
+	return nil, errors.New("unsupported operation")
 }
 
 type OCEncapsulator struct {

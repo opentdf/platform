@@ -152,9 +152,19 @@ func generateRSAKeyAndPEM() (ocrypto.RsaKeyPair, error) {
 	return ocrypto.NewRSAKeyPair(2048)
 }
 
-// Helper function to generate EC key pair and PEM encode private key
-func generateECKeyAndPEM(curve ocrypto.ECCMode) (ocrypto.ECKeyPair, error) {
-	return ocrypto.NewECKeyPair(curve)
+// Helper function to generate an EC private key and derive the matching public key.
+func generateECKeyAndPEM(curve ocrypto.ECCMode) (ocrypto.ECDecryptor, ocrypto.PublicKeyEncryptor, error) {
+	privateKey, err := ocrypto.NewECPrivateKey(curve)
+	if err != nil {
+		return ocrypto.ECDecryptor{}, nil, err
+	}
+
+	publicKey, err := privateKey.Public()
+	if err != nil {
+		return ocrypto.ECDecryptor{}, nil, err
+	}
+
+	return privateKey, publicKey, nil
 }
 
 func compressEphemeralPublicKey(t *testing.T, der []byte) []byte {
@@ -327,11 +337,11 @@ func TestBasicManager_Decrypt(t *testing.T) {
 	wrappedRSAPrivKeyStr, err := wrapKeyWithAESGCM([]byte(rsaPrivKey), rootKey)
 	require.NoError(t, err)
 
-	ecKey, err := generateECKeyAndPEM(ocrypto.ECCModeSecp256r1)
+	ecKey, ecPublicKey, err := generateECKeyAndPEM(ocrypto.ECCModeSecp256r1)
 	require.NoError(t, err)
 	ecPrivKey, err := ecKey.PrivateKeyInPemFormat()
 	require.NoError(t, err)
-	ecPubKey, err := ecKey.PublicKeyInPemFormat()
+	ecPubKey, err := ecPublicKey.PublicKeyInPemFormat()
 	require.NoError(t, err)
 
 	wrappedECPrivKeyStr, err := wrapKeyWithAESGCM([]byte(ecPrivKey), rootKey)
@@ -419,11 +429,11 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		},
 	} {
 		t.Run("successful EC decryption with compressed ephemeral key "+tc.name, func(t *testing.T) {
-			curveKey, err := generateECKeyAndPEM(tc.mode)
+			curveKey, curvePublicKey, err := generateECKeyAndPEM(tc.mode)
 			require.NoError(t, err)
 			curvePrivKey, err := curveKey.PrivateKeyInPemFormat()
 			require.NoError(t, err)
-			curvePubKey, err := curveKey.PublicKeyInPemFormat()
+			curvePubKey, err := curvePublicKey.PublicKeyInPemFormat()
 			require.NoError(t, err)
 
 			wrappedCurvePrivKeyStr, err := wrapKeyWithAESGCM([]byte(curvePrivKey), rootKey)
@@ -509,84 +519,6 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		_, err = bm.Decrypt(t.Context(), mockDetails, []byte("ct"), nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unsupported algorithm: unknown-algo")
-	})
-}
-
-func TestBasicManager_DeriveKey(t *testing.T) {
-	log := logger.CreateTestLogger()
-	testCache := newTestCache(t, log)
-	rootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
-	rootKey, _ := hex.DecodeString(rootKeyHex)
-
-	ecKey, err := generateECKeyAndPEM(ocrypto.ECCModeSecp256r1)
-	require.NoError(t, err)
-	ecPrivKey, err := ecKey.PrivateKeyInPemFormat()
-	require.NoError(t, err)
-
-	wrappedECPrivKeyStr, err := wrapKeyWithAESGCM([]byte(ecPrivKey), rootKey)
-	require.NoError(t, err)
-
-	bm, err := NewBasicManager(log, testCache, rootKeyHex)
-	require.NoError(t, err)
-
-	clientEphemeralECDHKey, err := ecdh.P256().GenerateKey(rand.Reader)
-	require.NoError(t, err)
-	// Ensure the public key is in compressed format as expected by ocrypto.UncompressECPubKey
-	ecdhPubKey := clientEphemeralECDHKey.PublicKey()
-	pubKeyBytes, err := x509.MarshalPKIXPublicKey(ecdhPubKey)
-	require.NoError(t, err)
-	parsedPubKey, err := x509.ParsePKIXPublicKey(pubKeyBytes)
-	require.NoError(t, err)
-	clientECDSAKey, ok := parsedPubKey.(*ecdsa.PublicKey)
-	require.True(t, ok, "failed to convert ecdh.PublicKey to *ecdsa.PublicKey")
-	clientEphemeralPublicKeyBytes, err := ocrypto.CompressedECPublicKey(ocrypto.ECCModeSecp256r1, *clientECDSAKey)
-	require.NoError(t, err)
-
-	t.Run("successful key derivation", func(t *testing.T) {
-		mockDetails := new(MockKeyDetails)
-		mockDetails.MID = "ec-kid-derive"
-		mockDetails.MAlgorithm = AlgorithmECP256R1
-		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedECPrivKeyStr}
-
-		// Set up mock expectations
-		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
-		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
-		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
-
-		protectedKey, err := bm.DeriveKey(t.Context(), mockDetails, clientEphemeralPublicKeyBytes, elliptic.P256())
-		require.NoError(t, err)
-		require.NotNil(t, protectedKey)
-
-		ecdhPrivKey, err := ocrypto.ECPrivateKeyFromPem([]byte(ecPrivKey)) // ECDH private key
-		require.NoError(t, err)
-
-		// We need to compute the shared secret using the private key and the client ephemeral public key
-		clientEphemeralECDSAPubKey, err := ocrypto.UncompressECPubKey(elliptic.P256(), clientEphemeralPublicKeyBytes)
-		require.NoError(t, err)
-		clientECDHPublicKey, err := ocrypto.ConvertToECDHPublicKey(clientEphemeralECDSAPubKey)
-		require.NoError(t, err)
-
-		expectedSharedSecret, err := ocrypto.ComputeECDHKeyFromECDHKeys(clientECDHPublicKey, ecdhPrivKey)
-		require.NoError(t, err)
-		expectedDerivedKey, err := ocrypto.CalculateHKDF(TDFSalt(), expectedSharedSecret)
-		require.NoError(t, err)
-
-		// Use noOpEncapsulator to get raw key data for testing
-		noOpEnc := &noOpEncapsulator{}
-		//nolint:staticcheck // Export is used in tests until ProtectedKey deprecation is removed upstream.
-		actualDerivedKey, err := protectedKey.Export(noOpEnc)
-		require.NoError(t, err)
-		assert.Equal(t, expectedDerivedKey, actualDerivedKey)
-	})
-
-	t.Run("fail ExportPrivateKey for DeriveKey", func(t *testing.T) {
-		mockDetails := new(MockKeyDetails)
-		mockDetails.On("ID").Return(trust.KeyIdentifier("fail-export-derive"))
-		mockDetails.On("ExportPrivateKey").Return(nil, errors.New("export failed derive"))
-
-		_, err := bm.DeriveKey(t.Context(), mockDetails, clientEphemeralPublicKeyBytes, elliptic.P256())
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to get private key")
 	})
 }
 

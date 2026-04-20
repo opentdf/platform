@@ -94,7 +94,10 @@ func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyE
 
 func newECIES(pub *ecdh.PublicKey, salt, info []byte) (ECEncryptor, error) {
 	ek, err := pub.Curve().GenerateKey(rand.Reader)
-	return ECEncryptor{pub, ek, salt, info}, err
+	if err != nil {
+		return ECEncryptor{}, fmt.Errorf("newECIES: failed to generate ephemeral key: %w", err)
+	}
+	return ECEncryptor{pub, ek, salt, info}, nil
 }
 
 // NewAsymEncryption creates and returns a new AsymEncryption.
@@ -181,9 +184,13 @@ func (e AsymEncryption) EphemeralKey() []byte {
 }
 
 func (e ECEncryptor) EphemeralKey() []byte {
+	if e.ek == nil {
+		return nil
+	}
 	publicKeyBytes, err := x509.MarshalPKIXPublicKey(e.ek.PublicKey())
 	if err != nil {
-		return nil
+		// MarshalPKIXPublicKey failing on a freshly-generated ecdh.PublicKey is unexpected.
+		panic(fmt.Sprintf("ocrypto: EphemeralKey: unexpected marshal failure: %v", err))
 	}
 	return publicKeyBytes
 }
@@ -193,8 +200,12 @@ func (e AsymEncryption) Metadata() (map[string]string, error) {
 }
 
 func (e ECEncryptor) Metadata() (map[string]string, error) {
+	ek := e.EphemeralKey()
+	if len(ek) == 0 {
+		return nil, errors.New("ECEncryptor.Metadata: ephemeral key is empty")
+	}
 	m := make(map[string]string)
-	m["ephemeralPublicKey"] = string(e.EphemeralKey())
+	m["ephemeralPublicKey"] = string(ek)
 	return m, nil
 }
 
@@ -271,5 +282,13 @@ func (e ECEncryptor) Encrypt(data []byte) ([]byte, error) {
 
 // PublicKeyInPemFormat Returns public key in pem format.
 func (e ECEncryptor) PublicKeyInPemFormat() (string, error) {
-	return publicKeyInPemFormat(e.ek.Public())
+	return publicKeyInPemFormat(e.pub)
+}
+
+func (e ECEncryptor) EphemeralPublicKeyInPemFormat() (string, error) {
+	if e.ek == nil {
+		return "", errors.New("failed to generate PEM formatted public key")
+	}
+
+	return publicKeyInPemFormat(e.ek.PublicKey())
 }

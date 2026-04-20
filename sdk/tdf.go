@@ -65,7 +65,7 @@ type Reader struct {
 	aesGcm              ocrypto.AesGcm
 	payloadSize         int64
 	payloadKey          []byte
-	kasSessionKey       ocrypto.KeyPair
+	kasSessionKey       ocrypto.PrivateKeyDecryptor
 	config              TDFReaderConfig
 	requiredObligations *RequiredObligations
 }
@@ -675,11 +675,7 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 
 	ktype := ocrypto.KeyType(kasInfo.Algorithm)
 	if ocrypto.IsECKeyType(ktype) {
-		mode, err := ocrypto.ECKeyTypeToMode(ktype)
-		if err != nil {
-			return KeyAccess{}, err
-		}
-		wrappedKeyInfo, err := generateWrapKeyWithEC(mode, kasInfo.PublicKey, symKey)
+		wrappedKeyInfo, err := generateWrapKeyWithEC(kasInfo.PublicKey, symKey)
 		if err != nil {
 			return KeyAccess{}, err
 		}
@@ -704,45 +700,29 @@ func tdfSalt() []byte {
 	return salt
 }
 
-func generateWrapKeyWithEC(mode ocrypto.ECCMode, kasPublicKey string, symKey []byte) (ecKeyWrappedKeyInfo, error) {
-	ecKeyPair, err := ocrypto.NewECKeyPair(mode)
+func generateWrapKeyWithEC(kasPublicKey string, symKey []byte) (ecKeyWrappedKeyInfo, error) {
+	asymEncrypt, err := ocrypto.FromPublicPEMWithSalt(kasPublicKey, tdfSalt(), nil)
 	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("ocrypto.NewECKeyPair failed:%w", err)
+		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: failed to create EC encryptor: %w", err)
 	}
 
-	emphermalPublicKey, err := ecKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: failed to get EC public key: %w", err)
+	ecEnc, ok := asymEncrypt.(ocrypto.ECEncryptor)
+	if !ok {
+		return ecKeyWrappedKeyInfo{}, errors.New("generateWrapKeyWithEC: KAS public key is not an EC key")
 	}
 
-	emphermalPrivateKey, err := ecKeyPair.PrivateKeyInPemFormat()
+	wrappedKey, err := asymEncrypt.Encrypt(symKey)
 	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: failed to get EC private key: %w", err)
+		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: failed to wrap key: %w", err)
 	}
 
-	ecdhKey, err := ocrypto.ComputeECDHKey([]byte(emphermalPrivateKey), []byte(kasPublicKey))
+	ephemeralPublicKey, err := ecEnc.EphemeralPublicKeyInPemFormat()
 	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: ocrypto.ComputeECDHKey failed:%w", err)
-	}
-
-	salt := tdfSalt()
-	sessionKey, err := ocrypto.CalculateHKDF(salt, ecdhKey)
-	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: ocrypto.CalculateHKDF failed:%w", err)
-	}
-
-	gcm, err := ocrypto.NewAESGcm(sessionKey)
-	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: ocrypto.NewAESGcm failed:%w", err)
-	}
-
-	wrappedKey, err := gcm.Encrypt(symKey)
-	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: ocrypto.AESGcm.Encrypt failed:%w", err)
+		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: failed to get ephemeral public key: %w", err)
 	}
 
 	return ecKeyWrappedKeyInfo{
-		publicKey:  emphermalPublicKey,
+		publicKey:  ephemeralPublicKey,
 		wrappedKey: string(ocrypto.Base64Encode(wrappedKey)),
 	}, nil
 }

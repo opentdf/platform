@@ -26,17 +26,22 @@ func TestECDecryptWithCompressedEphemeralKey(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			receiverKeys, err := NewECKeyPair(test.mode)
+			receiverKey, err := NewECPrivateKey(test.mode)
 			if err != nil {
-				t.Fatalf("NewECKeyPair failed: %v", err)
+				t.Fatalf("NewECPrivateKey failed: %v", err)
 			}
 
-			pubPEM, err := receiverKeys.PublicKeyInPemFormat()
+			pubEncryptor, err := receiverKey.Public()
+			if err != nil {
+				t.Fatalf("Public failed: %v", err)
+			}
+
+			pubPEM, err := pubEncryptor.PublicKeyInPemFormat()
 			if err != nil {
 				t.Fatalf("PublicKeyInPemFormat failed: %v", err)
 			}
 
-			privPEM, err := receiverKeys.PrivateKeyInPemFormat()
+			privPEM, err := receiverKey.PrivateKeyInPemFormat()
 			if err != nil {
 				t.Fatalf("PrivateKeyInPemFormat failed: %v", err)
 			}

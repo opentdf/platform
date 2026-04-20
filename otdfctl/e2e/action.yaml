@@ -48,12 +48,18 @@ runs:
       shell: bash
       working-directory: otdfctl
       run: |
+        # Run the namespaced-policy migration suite separately before the rest
+        # of the e2e directory. Those tests discover legacy/global objects by
+        # scope and are not safe to overlap with the parallel remainder of the
+        # suite while other files still create unnamespaced policy fixtures.
+        bats --tap e2e --filter-tags namespaced_policy_migration | tee e2e/bats-results.tap
+
         if command -v parallel >/dev/null 2>&1; then
-          echo "GNU parallel found, running tests in parallel"
-          bats --tap e2e --jobs 4 --no-parallelize-within-files --no-tempdir-cleanup | tee e2e/bats-results.tap
+          echo "GNU parallel found, running remaining tests in parallel"
+          bats --tap e2e --filter-tags '!namespaced_policy_migration' --jobs 4 --no-parallelize-within-files --no-tempdir-cleanup | tee -a e2e/bats-results.tap
         else
-          echo "GNU parallel not found, running tests sequentially"
-          bats --tap e2e | tee e2e/bats-results.tap
+          echo "GNU parallel not found, running remaining tests sequentially"
+          bats --tap e2e --filter-tags '!namespaced_policy_migration' | tee -a e2e/bats-results.tap
         fi
       env:
         # Define 'bats' install location in ubuntu

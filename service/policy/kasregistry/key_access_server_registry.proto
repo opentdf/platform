@@ -70,6 +70,18 @@ message ListKeyAccessServersResponse {
   policy.PageResponse pagination = 10;
 }
 
+enum SortKasKeysType {
+  SORT_KAS_KEYS_TYPE_UNSPECIFIED = 0;
+  SORT_KAS_KEYS_TYPE_KEY_ID = 1;
+  SORT_KAS_KEYS_TYPE_CREATED_AT = 2;
+  SORT_KAS_KEYS_TYPE_UPDATED_AT = 3;
+}
+
+message KasKeysSort {
+  SortKasKeysType field = 1;
+  policy.SortDirection direction = 2;
+}
+
 // TODO: optional validation below should be through a custom validator, which
 // is too bleeding edge at present without full plugin support
 

@@ -109,6 +109,221 @@ func TestHuhInteractiveReviewerResolvesConflictingRegisteredResource(t *testing.
 	assert.True(t, sameNamespace(leftNamespace, action.References[0].Namespace))
 }
 
+func TestHuhInteractiveReviewerSkipsActionResolutionWhenFilteredResourceAlreadyExists(t *testing.T) {
+	t.Parallel()
+
+	leftNamespace := &policy.Namespace{
+		Id:  "ns-1",
+		Fqn: "https://example.com",
+	}
+	rightNamespace := &policy.Namespace{
+		Id:  "ns-2",
+		Fqn: "https://example.org",
+	}
+
+	filteredExisting := testRegisteredResource(
+		"resource-existing",
+		"documents",
+		testRegisteredResourceValue(
+			"prod",
+			testActionAttributeValue(
+				"action-existing",
+				"decrypt",
+				testAttributeValue("https://example.com/attr/classification/value/secret", leftNamespace),
+			),
+		),
+		&policy.RegisteredResourceValue{Value: "shared"},
+	)
+
+	handler := &plannerTestHandler{
+		actionsByNamespace: map[string]*actions.ListActionsResponse{
+			leftNamespace.GetId(): {
+				Pagination: emptyPageResponse(),
+			},
+		},
+		registeredResourcesByNamespace: map[string]*registeredresources.ListRegisteredResourcesResponse{
+			leftNamespace.GetId(): {
+				Resources:  []*policy.RegisteredResource{filteredExisting},
+				Pagination: emptyPageResponse(),
+			},
+		},
+		namespacesResponse: &namespaces.ListNamespacesResponse{
+			Namespaces: []*policy.Namespace{leftNamespace, rightNamespace},
+			Pagination: emptyPageResponse(),
+		},
+	}
+	reviewer := NewHuhInteractiveReviewer(handler, &testInteractivePrompter{
+		selectValue: namespaceSelectionValue(leftNamespace),
+	})
+	resolved := &ResolvedTargets{
+		Scopes: []Scope{ScopeRegisteredResources},
+		RegisteredResources: []*ResolvedRegisteredResource{
+			{
+				Source: testRegisteredResource(
+					"resource-1",
+					"documents",
+					testRegisteredResourceValue(
+						"prod",
+						testActionAttributeValue(
+							"action-1",
+							"decrypt",
+							testAttributeValue("https://example.com/attr/classification/value/secret", leftNamespace),
+						),
+						testActionAttributeValue(
+							"action-2",
+							"encrypt",
+							testAttributeValue("https://example.org/attr/classification/value/restricted", rightNamespace),
+						),
+					),
+					&policy.RegisteredResourceValue{Value: "shared"},
+				),
+				Unresolved: &Unresolved{
+					Reason: UnresolvedReasonRegisteredResourceConflictingNamespaces,
+				},
+			},
+		},
+	}
+
+	err := reviewer.Review(t.Context(), resolved, []*policy.Namespace{leftNamespace, rightNamespace})
+	require.NoError(t, err)
+
+	resource := resolved.RegisteredResources[0]
+	require.NotNil(t, resource)
+	assert.Nil(t, resource.Unresolved)
+	assert.False(t, resource.NeedsCreate)
+	require.NotNil(t, resource.AlreadyMigrated)
+	assert.Equal(t, filteredExisting.GetId(), resource.AlreadyMigrated.GetId())
+	assert.Empty(t, resolved.Actions)
+}
+
+func TestEnsureRegisteredResourceActionResolutionReusesExistingNamespaceResult(t *testing.T) {
+	t.Parallel()
+
+	namespace := &policy.Namespace{
+		Id:  "ns-1",
+		Fqn: "https://example.com",
+	}
+	resolved := &ResolvedTargets{
+		Actions: []*ResolvedAction{
+			{
+				Source: &policy.Action{
+					Id:   "action-1",
+					Name: "decrypt",
+				},
+				Results: []*ResolvedActionResult{
+					{
+						Namespace:   namespace,
+						NeedsCreate: true,
+					},
+				},
+			},
+		},
+	}
+
+	err := ensureRegisteredResourceActionResolution(
+		resolved,
+		"resource-1",
+		namespace,
+		&policy.Action{Id: "action-1", Name: "decrypt"},
+		&resolver{
+			existing: &ExistingTargets{},
+		},
+	)
+	require.NoError(t, err)
+
+	require.Len(t, resolved.Actions, 1)
+	require.Len(t, resolved.Actions[0].Results, 1)
+	require.Len(t, resolved.Actions[0].References, 1)
+	assert.Equal(t, ActionReferenceKindRegisteredResource, resolved.Actions[0].References[0].Kind)
+	assert.Equal(t, "resource-1", resolved.Actions[0].References[0].ID)
+	assert.True(t, sameNamespace(namespace, resolved.Actions[0].References[0].Namespace))
+}
+
+func TestFilterRegisteredResourceToNamespaceRetainsUnboundValues(t *testing.T) {
+	t.Parallel()
+
+	leftNamespace := &policy.Namespace{
+		Id:  "ns-1",
+		Fqn: "https://example.com",
+	}
+	rightNamespace := &policy.Namespace{
+		Id:  "ns-2",
+		Fqn: "https://example.org",
+	}
+
+	filtered, err := filterRegisteredResourceToNamespace(
+		testRegisteredResource(
+			"resource-1",
+			"documents",
+			testRegisteredResourceValue(
+				"prod",
+				testActionAttributeValue(
+					"action-1",
+					"decrypt",
+					testAttributeValue("https://example.com/attr/classification/value/secret", leftNamespace),
+				),
+				testActionAttributeValue(
+					"action-2",
+					"encrypt",
+					testAttributeValue("https://example.org/attr/classification/value/restricted", rightNamespace),
+				),
+			),
+			&policy.RegisteredResourceValue{Value: "shared"},
+		),
+		leftNamespace,
+	)
+	require.NoError(t, err)
+
+	require.Len(t, filtered.GetValues(), 2)
+	require.Len(t, filtered.GetValues()[0].GetActionAttributeValues(), 1)
+	assert.Equal(t, "action-1", filtered.GetValues()[0].GetActionAttributeValues()[0].GetAction().GetId())
+	assert.Empty(t, filtered.GetValues()[1].GetActionAttributeValues())
+}
+
+func TestRegisteredResourceCandidateNamespacesDeduplicatesNamespaces(t *testing.T) {
+	t.Parallel()
+
+	leftNamespace := &policy.Namespace{
+		Id:  "ns-1",
+		Fqn: "https://example.com",
+	}
+	rightNamespace := &policy.Namespace{
+		Id:  "ns-2",
+		Fqn: "https://example.org",
+	}
+
+	candidates, err := registeredResourceCandidateNamespaces(
+		testRegisteredResource(
+			"resource-1",
+			"documents",
+			testRegisteredResourceValue(
+				"prod",
+				testActionAttributeValue(
+					"action-1",
+					"decrypt",
+					testAttributeValue("https://example.com/attr/classification/value/secret", leftNamespace),
+				),
+				testActionAttributeValue(
+					"action-2",
+					"decrypt-again",
+					testAttributeValue("https://example.com/attr/classification/value/internal", leftNamespace),
+				),
+				testActionAttributeValue(
+					"action-3",
+					"encrypt",
+					testAttributeValue("https://example.org/attr/classification/value/restricted", rightNamespace),
+				),
+			),
+		),
+		[]*policy.Namespace{leftNamespace, rightNamespace},
+	)
+	require.NoError(t, err)
+
+	require.Len(t, candidates, 2)
+	assert.True(t, sameNamespace(leftNamespace, candidates[0]))
+	assert.True(t, sameNamespace(rightNamespace, candidates[1]))
+}
+
 func TestHuhInteractiveReviewerReturnsAbortWhenPromptAborts(t *testing.T) {
 	t.Parallel()
 

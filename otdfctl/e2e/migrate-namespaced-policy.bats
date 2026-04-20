@@ -14,19 +14,19 @@ load "${BATS_LIB_PATH}/bats-support/load.bash"
 load "${BATS_LIB_PATH}/bats-assert/load.bash"
 
 run_otdfctl_migrate() {
-  run sh -c "./otdfctl $HOST $WITH_CREDS migrate $*"
+  run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json migrate "$@"
 }
 
 run_otdfctl_action() {
-  run sh -c "./otdfctl $HOST $WITH_CREDS policy actions $*"
+  run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json policy actions "$@"
 }
 
 run_otdfctl_sm() {
-  run sh -c "./otdfctl $HOST $WITH_CREDS policy subject-mappings $*"
+  run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json policy subject-mappings "$@"
 }
 
 run_otdfctl_scs() {
-  run sh -c "./otdfctl $HOST $WITH_CREDS policy scs $*"
+  run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json policy scs "$@"
 }
 
 track_action_id() {
@@ -47,13 +47,13 @@ track_subject_mapping_id() {
 create_global_action() {
   local result_var="$1"
   local action_name="$2"
-  local label_flags="${3:-}"
+  shift 2
 
-  run sh -c "./otdfctl $HOST $WITH_CREDS policy actions create --name \"$action_name\" $label_flags --json"
+  run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json policy actions create --name "$action_name" "$@" --json
   assert_success
 
   local action_id
-  action_id=$(echo "$output" | jq -r '.id')
+  action_id=$(echo "$output" | jq -r '.id // empty')
   assert_not_equal "$action_id" ""
 
   track_action_id "$action_id"
@@ -63,13 +63,13 @@ create_global_action() {
 create_global_scs() {
   local result_var="$1"
   local subject_sets_json="$2"
-  local label_flags="${3:-}"
+  shift 2
 
-  run sh -c "./otdfctl $HOST $WITH_CREDS policy scs create --subject-sets '$subject_sets_json' $label_flags --json"
+  run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json policy scs create --subject-sets "$subject_sets_json" "$@" --json
   assert_success
 
   local scs_id
-  scs_id=$(echo "$output" | jq -r '.id')
+  scs_id=$(echo "$output" | jq -r '.id // empty')
   assert_not_equal "$scs_id" ""
 
   track_scs_id "$scs_id"
@@ -80,13 +80,13 @@ create_namespaced_scs() {
   local result_var="$1"
   local namespace_id="$2"
   local subject_sets_json="$3"
-  local label_flags="${4:-}"
+  shift 3
 
-  run sh -c "./otdfctl $HOST $WITH_CREDS policy scs create --namespace \"$namespace_id\" --subject-sets '$subject_sets_json' $label_flags --json"
+  run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json policy scs create --namespace "$namespace_id" --subject-sets "$subject_sets_json" "$@" --json
   assert_success
 
   local scs_id
-  scs_id=$(echo "$output" | jq -r '.id')
+  scs_id=$(echo "$output" | jq -r '.id // empty')
   assert_not_equal "$scs_id" ""
 
   track_scs_id "$scs_id"
@@ -98,13 +98,13 @@ create_legacy_subject_mapping() {
   local attribute_value_id="$2"
   local action_id="$3"
   local subject_condition_set_id="$4"
-  local label_flags="${5:-}"
+  shift 4
 
-  run sh -c "./otdfctl $HOST $WITH_CREDS policy subject-mappings create --attribute-value-id \"$attribute_value_id\" --action \"$action_id\" --subject-condition-set-id \"$subject_condition_set_id\" $label_flags --json"
+  run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json policy subject-mappings create --attribute-value-id "$attribute_value_id" --action "$action_id" --subject-condition-set-id "$subject_condition_set_id" "$@" --json
   assert_success
 
   local subject_mapping_id
-  subject_mapping_id=$(echo "$output" | jq -r '.id')
+  subject_mapping_id=$(echo "$output" | jq -r '.id // empty')
   assert_not_equal "$subject_mapping_id" ""
 
   track_subject_mapping_id "$subject_mapping_id"
@@ -264,18 +264,21 @@ assert_subject_mapping_already_migrated_in_namespace() {
   local namespace_fqn="$4"
   local existing_mapping_id="$5"
 
+  assert_not_equal "$existing_mapping_id" ""
+
   run subject_mapping_plan_target_status "$output_file" "$source_mapping_id" "$namespace_fqn"
   assert_success
   assert_equal "$output" "already_migrated"
 
   local effective_target_id
   effective_target_id=$(subject_mapping_plan_target_effective_id "$output_file" "$source_mapping_id" "$namespace_fqn")
+  assert_not_equal "$effective_target_id" ""
   assert_equal "$effective_target_id" "$existing_mapping_id"
 
   local existing_mapping_json
   existing_mapping_json=$(./otdfctl $HOST $WITH_CREDS policy subject-mappings get --id "$existing_mapping_id" --json)
 
-  assert_equal "$(echo "$existing_mapping_json" | jq -r '.id')" "$existing_mapping_id"
+  assert_equal "$(echo "$existing_mapping_json" | jq -r '.id // empty')" "$existing_mapping_id"
   assert_equal "$(echo "$existing_mapping_json" | jq -r '.namespace.id')" "$namespace_id"
 }
 
@@ -283,10 +286,13 @@ assert_legacy_subject_mapping_still_exists() {
   local attribute_value_id="$1"
   local source_mapping_id="$2"
 
+  assert_not_equal "$attribute_value_id" ""
+  assert_not_equal "$source_mapping_id" ""
+
   local legacy_mapping_json
   legacy_mapping_json=$(./otdfctl $HOST $WITH_CREDS policy subject-mappings get --id "$source_mapping_id" --json)
 
-  assert_equal "$(echo "$legacy_mapping_json" | jq -r '.id')" "$source_mapping_id"
+  assert_equal "$(echo "$legacy_mapping_json" | jq -r '.id // empty')" "$source_mapping_id"
   assert_equal "$(echo "$legacy_mapping_json" | jq -r '.namespace.id // empty')" ""
   assert_equal "$(echo "$legacy_mapping_json" | jq -r '.attribute_value.id')" "$attribute_value_id"
 }
@@ -462,7 +468,7 @@ assert_standard_action_resolved_in_namespace() {
   assert_not_equal "$planned_target_id" ""
 
   local live_target_id
-  live_target_id=$(./otdfctl $HOST $WITH_CREDS policy actions get --name "$action_name" --namespace "$namespace_id" --json | jq -r '.id')
+  live_target_id=$(./otdfctl $HOST $WITH_CREDS policy actions get --name "$action_name" --namespace "$namespace_id" --json | jq -r '.id // empty')
   assert_not_equal "$live_target_id" ""
 
   assert_equal "$planned_target_id" "$live_target_id"
@@ -475,18 +481,21 @@ assert_action_already_migrated_in_namespace() {
   local namespace_fqn="$4"
   local existing_action_id="$5"
 
+  assert_not_equal "$existing_action_id" ""
+
   run action_plan_target_status "$output_file" "$action_name" "$namespace_fqn"
   assert_success
   assert_equal "$output" "already_migrated"
 
   local effective_target_id
   effective_target_id=$(action_plan_target_effective_id "$output_file" "$action_name" "$namespace_fqn")
+  assert_not_equal "$effective_target_id" ""
   assert_equal "$effective_target_id" "$existing_action_id"
 
   local existing_action_json
   existing_action_json=$(./otdfctl $HOST $WITH_CREDS policy actions get --id "$existing_action_id" --json)
 
-  assert_equal "$(echo "$existing_action_json" | jq -r '.id')" "$existing_action_id"
+  assert_equal "$(echo "$existing_action_json" | jq -r '.id // empty')" "$existing_action_id"
   assert_equal "$(echo "$existing_action_json" | jq -r '.namespace.id')" "$namespace_id"
 }
 
@@ -523,10 +532,13 @@ assert_legacy_custom_action_still_exists() {
   local action_id="$1"
   local action_name="$2"
 
+  assert_not_equal "$action_id" ""
+  assert_not_equal "$action_name" ""
+
   local legacy_action_json
   legacy_action_json=$(./otdfctl $HOST $WITH_CREDS policy actions get --id "$action_id" --json)
 
-  assert_equal "$(echo "$legacy_action_json" | jq -r '.id')" "$action_id"
+  assert_equal "$(echo "$legacy_action_json" | jq -r '.id // empty')" "$action_id"
   assert_equal "$(echo "$legacy_action_json" | jq -r '.name')" "$action_name"
   assert_equal "$(echo "$legacy_action_json" | jq -r '.namespace.id // empty')" ""
 }
@@ -566,12 +578,15 @@ assert_scs_already_migrated_in_namespace() {
   local namespace_fqn="$4"
   local existing_scs_id="$5"
 
+  assert_not_equal "$existing_scs_id" ""
+
   run scs_plan_target_status "$output_file" "$source_scs_id" "$namespace_fqn"
   assert_success
   assert_equal "$output" "already_migrated"
 
   local effective_target_id
   effective_target_id=$(scs_plan_target_effective_id "$output_file" "$source_scs_id" "$namespace_fqn")
+  assert_not_equal "$effective_target_id" ""
   assert_equal "$effective_target_id" "$existing_scs_id"
 
   local source_scs_json
@@ -580,7 +595,7 @@ assert_scs_already_migrated_in_namespace() {
   local existing_scs_json
   existing_scs_json=$(./otdfctl $HOST $WITH_CREDS policy scs get --id "$existing_scs_id" --json)
 
-  assert_equal "$(echo "$existing_scs_json" | jq -r '.id')" "$existing_scs_id"
+  assert_equal "$(echo "$existing_scs_json" | jq -r '.id // empty')" "$existing_scs_id"
   assert_equal "$(echo "$existing_scs_json" | jq -r '.namespace.id')" "$namespace_id"
   assert_equal "$(echo "$existing_scs_json" | jq -c '.subject_sets')" "$(echo "$source_scs_json" | jq -c '.subject_sets')"
 }
@@ -588,10 +603,12 @@ assert_scs_already_migrated_in_namespace() {
 assert_legacy_scs_still_exists() {
   local source_scs_id="$1"
 
+  assert_not_equal "$source_scs_id" ""
+
   local legacy_scs_json
   legacy_scs_json=$(./otdfctl $HOST $WITH_CREDS policy scs get --id "$source_scs_id" --json)
 
-  assert_equal "$(echo "$legacy_scs_json" | jq -r '.id')" "$source_scs_id"
+  assert_equal "$(echo "$legacy_scs_json" | jq -r '.id // empty')" "$source_scs_id"
   assert_equal "$(echo "$legacy_scs_json" | jq -r '.namespace.id // empty')" ""
 }
 
@@ -624,19 +641,22 @@ setup_file() {
 
   run sh -c "./otdfctl $HOST $WITH_CREDS policy attributes namespaces create --name \"$NS_A_NAME\" --json"
   assert_success
-  export NS_A_ID=$(echo "$output" | jq -r '.id')
+  export NS_A_ID
+  NS_A_ID=$(echo "$output" | jq -r '.id // empty')
   assert_not_equal "$NS_A_ID" ""
 
   run sh -c "./otdfctl $HOST $WITH_CREDS policy attributes namespaces create --name \"$NS_B_NAME\" --json"
   assert_success
-  export NS_B_ID=$(echo "$output" | jq -r '.id')
+  export NS_B_ID
+  NS_B_ID=$(echo "$output" | jq -r '.id // empty')
   assert_not_equal "$NS_B_ID" ""
 
   run sh -c "./otdfctl $HOST $WITH_CREDS policy attributes create --name \"${MIGRATION_TEST_PREFIX}-attr-a\" --namespace \"$NS_A_ID\" --rule ANY_OF -v \"${MIGRATION_TEST_PREFIX}-a1\" --json"
   assert_success
   attr_a_json="$output"
-  export ATTR_A_ID=$(echo "$attr_a_json" | jq -r '.id')
-  export ATTR_A_VAL_1_ID=$(echo "$attr_a_json" | jq -r '.values[0].id')
+  export ATTR_A_ID ATTR_A_VAL_1_ID
+  ATTR_A_ID=$(echo "$attr_a_json" | jq -r '.id // empty')
+  ATTR_A_VAL_1_ID=$(echo "$attr_a_json" | jq -r '.values[0].id // empty')
   assert_not_equal "$ATTR_A_ID" ""
   assert_not_equal "$ATTR_A_VAL_1_ID" ""
 
@@ -645,7 +665,8 @@ setup_file() {
   #   ${NS_A_FQN}/attr/${MIGRATION_TEST_PREFIX}-attr-a/value/${MIGRATION_TEST_PREFIX}-a2
   run sh -c "./otdfctl $HOST $WITH_CREDS policy attributes values create --attribute-id \"$ATTR_A_ID\" --value \"${MIGRATION_TEST_PREFIX}-a2\" --json"
   assert_success
-  export ATTR_A_VAL_2_ID=$(echo "$output" | jq -r '.id')
+  export ATTR_A_VAL_2_ID
+  ATTR_A_VAL_2_ID=$(echo "$output" | jq -r '.id // empty')
   assert_not_equal "$ATTR_A_VAL_2_ID" ""
 
   # ATTR_B values resolve under the namespace FQN:
@@ -653,34 +674,53 @@ setup_file() {
   run sh -c "./otdfctl $HOST $WITH_CREDS policy attributes create --name \"${MIGRATION_TEST_PREFIX}-attr-b\" --namespace \"$NS_B_ID\" --rule ANY_OF -v \"${MIGRATION_TEST_PREFIX}-b1\" --json"
   assert_success
   attr_b_json="$output"
-  export ATTR_B_ID=$(echo "$attr_b_json" | jq -r '.id')
-  export ATTR_B_VAL_1_ID=$(echo "$attr_b_json" | jq -r '.values[0].id')
+  export ATTR_B_ID ATTR_B_VAL_1_ID
+  ATTR_B_ID=$(echo "$attr_b_json" | jq -r '.id // empty')
+  ATTR_B_VAL_1_ID=$(echo "$attr_b_json" | jq -r '.values[0].id // empty')
   assert_not_equal "$ATTR_B_ID" ""
   assert_not_equal "$ATTR_B_VAL_1_ID" ""
 
   run sh -c "./otdfctl $HOST $WITH_CREDS policy actions get --name read --json"
   assert_success
-  export GLOBAL_READ_ID=$(echo "$output" | jq -r '.id')
+  export GLOBAL_READ_ID
+  GLOBAL_READ_ID=$(echo "$output" | jq -r '.id // empty')
   assert_not_equal "$GLOBAL_READ_ID" ""
 }
 
 teardown() {
   local subject_mapping_id
+  local delete_output
+  local delete_status
   while IFS= read -r subject_mapping_id; do
     [ -n "$subject_mapping_id" ] || continue
-    ./otdfctl $HOST $WITH_CREDS policy subject-mappings delete --id "$subject_mapping_id" --force >/dev/null 2>&1 || true
+    if delete_output=$(./otdfctl $HOST $WITH_CREDS policy subject-mappings delete --id "$subject_mapping_id" --force 2>&1); then
+      :
+    else
+      delete_status=$?
+      echo "warning: failed to delete subject mapping fixture $subject_mapping_id during teardown (exit $delete_status): $delete_output" >&2
+    fi
   done <<< "$TRACKED_SUBJECT_MAPPING_IDS"
 
   local scs_id
   while IFS= read -r scs_id; do
     [ -n "$scs_id" ] || continue
-    ./otdfctl $HOST $WITH_CREDS policy scs delete --id "$scs_id" --force >/dev/null 2>&1 || true
+    if delete_output=$(./otdfctl $HOST $WITH_CREDS policy scs delete --id "$scs_id" --force 2>&1); then
+      :
+    else
+      delete_status=$?
+      echo "warning: failed to delete subject condition set fixture $scs_id during teardown (exit $delete_status): $delete_output" >&2
+    fi
   done <<< "$TRACKED_SCS_IDS"
 
   local action_id
   while IFS= read -r action_id; do
     [ -n "$action_id" ] || continue
-    ./otdfctl $HOST $WITH_CREDS policy actions delete --id "$action_id" --force >/dev/null 2>&1 || true
+    if delete_output=$(./otdfctl $HOST $WITH_CREDS policy actions delete --id "$action_id" --force 2>&1); then
+      :
+    else
+      delete_status=$?
+      echo "warning: failed to delete action fixture $action_id during teardown (exit $delete_status): $delete_output" >&2
+    fi
   done <<< "$TRACKED_ACTION_IDS"
 }
 
@@ -704,18 +744,20 @@ teardown_file() {
 @test "migrate namespaced-policy actions resolves standard actions and creates custom actions" {
   local custom_action_name="${TEST_PREFIX}-download"
   local shared_scs='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-engineering"],"subject_external_selector_value":".org.name"}],"boolean_operator":1}]}]'
-  local custom_action_labels="--label test_case=actions --label fixture=${TEST_PREFIX}-custom-action"
+  local custom_action_labels=(--label "test_case=actions" --label "fixture=${TEST_PREFIX}-custom-action")
   local custom_action_id
   local shared_scs_id
 
-  create_global_action custom_action_id "$custom_action_name" "$custom_action_labels"
+  create_global_action custom_action_id "$custom_action_name" "${custom_action_labels[@]}"
   create_global_scs shared_scs_id "$shared_scs"
 
   # These anchor subject mappings stay legacy/global. Their target namespace
   # should be derived from the referenced attribute value during migration.
   local ignored_mapping_id
   create_legacy_subject_mapping ignored_mapping_id "$ATTR_A_VAL_1_ID" "$GLOBAL_READ_ID" "$shared_scs_id"
-  # ! We should change this to RR and Obligation Trigger instead of three subject mappings, works for now though.
+  # TODO(DSPX-2717): Replace the custom-action namespace anchor with a
+  # registered-resource or obligation-trigger fixture once those scope tests
+  # land, so action-scope coverage is not driven entirely by subject mappings.
   create_legacy_subject_mapping ignored_mapping_id "$ATTR_A_VAL_2_ID" "$custom_action_id" "$shared_scs_id"
   create_legacy_subject_mapping ignored_mapping_id "$ATTR_B_VAL_1_ID" "$GLOBAL_READ_ID" "$shared_scs_id"
 
@@ -766,14 +808,14 @@ teardown_file() {
 @test "migrate namespaced-policy subject-condition-sets creates single-namespace targets and reuses existing fanout targets" {
   local fanout_scs='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-shared"],"subject_external_selector_value":".org.name"}],"boolean_operator":1}]}]'
   local single_namespace_scs='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-a-only"],"subject_external_selector_value":".team.name"}],"boolean_operator":1}]}]'
-  local fanout_scs_labels="--label test_case=scs --label fixture=${TEST_PREFIX}-fanout-scs"
-  local single_namespace_scs_labels="--label test_case=scs --label fixture=${TEST_PREFIX}-single-scs"
+  local fanout_scs_labels=(--label "test_case=scs" --label "fixture=${TEST_PREFIX}-fanout-scs")
+  local single_namespace_scs_labels=(--label "test_case=scs" --label "fixture=${TEST_PREFIX}-single-scs")
   local fanout_scs_id
   local single_namespace_scs_id
   local existing_fanout_ns_b_scs_id
 
-  create_global_scs fanout_scs_id "$fanout_scs" "$fanout_scs_labels"
-  create_global_scs single_namespace_scs_id "$single_namespace_scs" "$single_namespace_scs_labels"
+  create_global_scs fanout_scs_id "$fanout_scs" "${fanout_scs_labels[@]}"
+  create_global_scs single_namespace_scs_id "$single_namespace_scs" "${single_namespace_scs_labels[@]}"
   create_namespaced_scs existing_fanout_ns_b_scs_id "$NS_B_ID" "$fanout_scs"
 
   local ignored_mapping_id
@@ -829,23 +871,23 @@ teardown_file() {
   local custom_action_name="${TEST_PREFIX}-download"
   local sm_a_scs='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-sm-a"],"subject_external_selector_value":".org.name"}],"boolean_operator":1}]}]'
   local sm_b_scs='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-sm-b"],"subject_external_selector_value":".team.name"}],"boolean_operator":1}]}]'
-  local custom_action_labels="--label test_case=subject-mappings --label fixture=${TEST_PREFIX}-custom-action"
-  local sm_a_scs_labels="--label test_case=subject-mappings --label fixture=${TEST_PREFIX}-sm-a-scs"
-  local sm_b_scs_labels="--label test_case=subject-mappings --label fixture=${TEST_PREFIX}-sm-b-scs"
-  local mapping_a_labels="--label test_case=subject-mappings --label fixture=${TEST_PREFIX}-mapping-a"
-  local mapping_b_labels="--label test_case=subject-mappings --label fixture=${TEST_PREFIX}-mapping-b"
+  local custom_action_labels=(--label "test_case=subject-mappings" --label "fixture=${TEST_PREFIX}-custom-action")
+  local sm_a_scs_labels=(--label "test_case=subject-mappings" --label "fixture=${TEST_PREFIX}-sm-a-scs")
+  local sm_b_scs_labels=(--label "test_case=subject-mappings" --label "fixture=${TEST_PREFIX}-sm-b-scs")
+  local mapping_a_labels=(--label "test_case=subject-mappings" --label "fixture=${TEST_PREFIX}-mapping-a")
+  local mapping_b_labels=(--label "test_case=subject-mappings" --label "fixture=${TEST_PREFIX}-mapping-b")
   local custom_action_id
   local sm_a_scs_id
   local sm_b_scs_id
   local mapping_a_id
   local mapping_b_id
 
-  create_global_action custom_action_id "$custom_action_name" "$custom_action_labels"
-  create_global_scs sm_a_scs_id "$sm_a_scs" "$sm_a_scs_labels"
-  create_global_scs sm_b_scs_id "$sm_b_scs" "$sm_b_scs_labels"
+  create_global_action custom_action_id "$custom_action_name" "${custom_action_labels[@]}"
+  create_global_scs sm_a_scs_id "$sm_a_scs" "${sm_a_scs_labels[@]}"
+  create_global_scs sm_b_scs_id "$sm_b_scs" "${sm_b_scs_labels[@]}"
 
-  create_legacy_subject_mapping mapping_a_id "$ATTR_A_VAL_1_ID" "$custom_action_id" "$sm_a_scs_id" "$mapping_a_labels"
-  create_legacy_subject_mapping mapping_b_id "$ATTR_B_VAL_1_ID" "$GLOBAL_READ_ID" "$sm_b_scs_id" "$mapping_b_labels"
+  create_legacy_subject_mapping mapping_a_id "$ATTR_A_VAL_1_ID" "$custom_action_id" "$sm_a_scs_id" "${mapping_a_labels[@]}"
+  create_legacy_subject_mapping mapping_b_id "$ATTR_B_VAL_1_ID" "$GLOBAL_READ_ID" "$sm_b_scs_id" "${mapping_b_labels[@]}"
 
   local output_file="${MIGRATION_OUTPUT_DIR}/subject-mappings-plan.json"
 

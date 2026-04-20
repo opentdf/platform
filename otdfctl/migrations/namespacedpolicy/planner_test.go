@@ -2,6 +2,7 @@ package namespacedpolicy
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/common"
@@ -70,7 +71,7 @@ func TestPlannerPlanMarksActionAlreadyMigratedWithoutMetadata(t *testing.T) {
 	planner, err := NewPlanner(handler, "actions")
 	require.NoError(t, err)
 
-	plan, err := planner.Plan(context.Background())
+	plan, err := planner.Plan(t.Context())
 	require.NoError(t, err)
 	require.Len(t, plan.Actions, 1)
 	require.Len(t, plan.Actions[0].Targets, 1)
@@ -201,7 +202,7 @@ func TestPlannerPlanDoesNotLeakSupportSubjectMappingsIntoActionScope(t *testing.
 	planner, err := NewPlanner(handler, "subject-condition-sets,registered-resources")
 	require.NoError(t, err)
 
-	plan, err := planner.Plan(context.Background())
+	plan, err := planner.Plan(t.Context())
 	require.NoError(t, err)
 
 	assert.Equal(t, []Scope{ScopeActions, ScopeSubjectConditionSets, ScopeRegisteredResources}, plan.Scopes)
@@ -363,7 +364,7 @@ func TestPlannerRetrieveUsesRequestedScopeBoundaries(t *testing.T) {
 			planner, err := NewPlanner(handler, tt.scopeCSV)
 			require.NoError(t, err)
 
-			retrieved, err := planner.retrieve(context.Background())
+			retrieved, err := planner.retrieve(t.Context())
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.expectedScopes, retrieved.Scopes)
@@ -490,7 +491,7 @@ func TestPlannerPlanAllScopesBuildsAllPlanSections(t *testing.T) {
 	planner, err := NewPlanner(handler, "actions,subject-condition-sets,subject-mappings,registered-resources,obligation-triggers")
 	require.NoError(t, err)
 
-	plan, err := planner.Plan(context.Background())
+	plan, err := planner.Plan(t.Context())
 	require.NoError(t, err)
 
 	assert.Equal(t, []Scope{
@@ -544,6 +545,274 @@ func TestPlannerPlanAllScopesBuildsAllPlanSections(t *testing.T) {
 	assert.Equal(t, []string{"", targetNamespace.GetId()}, handler.subjectMappingCalls)
 	assert.Equal(t, []string{"", targetNamespace.GetId()}, handler.registeredResourceCalls)
 	assert.Equal(t, []string{"", targetNamespace.GetId()}, handler.obligationTriggerCalls)
+}
+
+func TestPlannerPlanInvokesInteractiveReviewerWhenConfigured(t *testing.T) {
+	t.Parallel()
+
+	targetNamespace := &policy.Namespace{
+		Id:  "ns-1",
+		Fqn: "https://example.com",
+	}
+	legacyAction := &policy.Action{
+		Id:   "action-legacy",
+		Name: "decrypt",
+	}
+	legacyMapping := &policy.SubjectMapping{
+		Id: "mapping-legacy",
+		Actions: []*policy.Action{
+			{
+				Id:   legacyAction.GetId(),
+				Name: legacyAction.GetName(),
+			},
+		},
+		AttributeValue: &policy.Value{
+			Fqn: "https://example.com/attr/classification/value/secret",
+		},
+	}
+	reviewer := &plannerTestReviewer{}
+
+	handler := &plannerTestHandler{
+		actionsByNamespace: map[string]*actions.ListActionsResponse{
+			"": {
+				ActionsCustom: []*policy.Action{legacyAction},
+				Pagination:    emptyPageResponse(),
+			},
+			targetNamespace.GetId(): {
+				Pagination: emptyPageResponse(),
+			},
+		},
+		subjectMappingsByNamespace: map[string]*subjectmapping.ListSubjectMappingsResponse{
+			"": {
+				SubjectMappings: []*policy.SubjectMapping{legacyMapping},
+				Pagination:      emptyPageResponse(),
+			},
+		},
+		namespacesResponse: &namespaces.ListNamespacesResponse{
+			Namespaces: []*policy.Namespace{targetNamespace},
+			Pagination: emptyPageResponse(),
+		},
+	}
+
+	planner, err := NewPlanner(handler, "actions", WithInteractiveReviewer(reviewer))
+	require.NoError(t, err)
+
+	plan, err := planner.Plan(t.Context())
+	require.NoError(t, err)
+
+	require.Len(t, plan.Actions, 1)
+	assert.Equal(t, 1, reviewer.calls)
+	assert.NotNil(t, reviewer.lastResolved)
+}
+
+func TestPlannerPlanPropagatesInteractiveReviewerError(t *testing.T) {
+	t.Parallel()
+
+	targetNamespace := &policy.Namespace{
+		Id:  "ns-1",
+		Fqn: "https://example.com",
+	}
+	legacyAction := &policy.Action{
+		Id:   "action-legacy",
+		Name: "decrypt",
+	}
+	legacyMapping := &policy.SubjectMapping{
+		Id: "mapping-legacy",
+		Actions: []*policy.Action{
+			{
+				Id:   legacyAction.GetId(),
+				Name: legacyAction.GetName(),
+			},
+		},
+		AttributeValue: &policy.Value{
+			Fqn: "https://example.com/attr/classification/value/secret",
+		},
+	}
+	reviewerErr := errors.New("review failed")
+	reviewer := &plannerTestReviewer{err: reviewerErr}
+
+	handler := &plannerTestHandler{
+		actionsByNamespace: map[string]*actions.ListActionsResponse{
+			"": {
+				ActionsCustom: []*policy.Action{legacyAction},
+				Pagination:    emptyPageResponse(),
+			},
+			targetNamespace.GetId(): {
+				Pagination: emptyPageResponse(),
+			},
+		},
+		subjectMappingsByNamespace: map[string]*subjectmapping.ListSubjectMappingsResponse{
+			"": {
+				SubjectMappings: []*policy.SubjectMapping{legacyMapping},
+				Pagination:      emptyPageResponse(),
+			},
+		},
+		namespacesResponse: &namespaces.ListNamespacesResponse{
+			Namespaces: []*policy.Namespace{targetNamespace},
+			Pagination: emptyPageResponse(),
+		},
+	}
+
+	planner, err := NewPlanner(handler, "actions", WithInteractiveReviewer(reviewer))
+	require.NoError(t, err)
+
+	_, err = planner.Plan(t.Context())
+	require.ErrorIs(t, err, reviewerErr)
+	assert.Equal(t, 1, reviewer.calls)
+}
+
+func TestPlannerPlanInteractiveReviewerLeavesCurrentUnresolvedPlanShapeUntouched(t *testing.T) {
+	t.Parallel()
+
+	namespaceOne := &policy.Namespace{
+		Id:  "ns-1",
+		Fqn: "https://example.com",
+	}
+	namespaceTwo := &policy.Namespace{
+		Id:  "ns-2",
+		Fqn: "https://example.org",
+	}
+	legacyAction := &policy.Action{
+		Id:   "action-legacy",
+		Name: "decrypt",
+	}
+	legacyResource := testRegisteredResource(
+		"resource-1",
+		"documents",
+		testRegisteredResourceValue(
+			"prod",
+			testActionAttributeValue(
+				legacyAction.GetId(),
+				legacyAction.GetName(),
+				testAttributeValue("https://example.com/attr/classification/value/secret", namespaceOne),
+			),
+			testActionAttributeValue(
+				legacyAction.GetId(),
+				legacyAction.GetName(),
+				testAttributeValue("https://example.org/attr/classification/value/restricted", namespaceTwo),
+			),
+		),
+	)
+	reviewer := &plannerTestReviewer{}
+
+	handler := &plannerTestHandler{
+		actionsByNamespace: map[string]*actions.ListActionsResponse{
+			"": {
+				ActionsCustom: []*policy.Action{legacyAction},
+				Pagination:    emptyPageResponse(),
+			},
+		},
+		registeredResourcesByNamespace: map[string]*registeredresources.ListRegisteredResourcesResponse{
+			"": {
+				Resources:  []*policy.RegisteredResource{legacyResource},
+				Pagination: emptyPageResponse(),
+			},
+		},
+		namespacesResponse: &namespaces.ListNamespacesResponse{
+			Namespaces: []*policy.Namespace{namespaceOne, namespaceTwo},
+			Pagination: emptyPageResponse(),
+		},
+	}
+
+	planner, err := NewPlanner(handler, "registered-resources", WithInteractiveReviewer(reviewer))
+	require.NoError(t, err)
+
+	plan, err := planner.Plan(t.Context())
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, reviewer.calls)
+	require.Len(t, plan.RegisteredResources, 1)
+	assert.Equal(t, ErrUndeterminedTargetMapping.Error()+": registered resource spans multiple target namespaces", plan.RegisteredResources[0].Unresolved)
+	assert.Empty(t, plan.RegisteredResources[0].Targets)
+	require.NotNil(t, plan.Unresolved)
+	require.Len(t, plan.Unresolved.RegisteredResources, 1)
+	assert.Equal(t, legacyResource.GetId(), plan.Unresolved.RegisteredResources[0].Resource.GetId())
+	assert.Equal(t, plan.RegisteredResources[0].Unresolved, plan.Unresolved.RegisteredResources[0].Reason)
+}
+
+func TestPlannerPlanHuhInteractiveReviewerResolvesRegisteredResourceConflict(t *testing.T) {
+	t.Parallel()
+
+	namespaceOne := &policy.Namespace{
+		Id:  "ns-1",
+		Fqn: "https://example.com",
+	}
+	namespaceTwo := &policy.Namespace{
+		Id:  "ns-2",
+		Fqn: "https://example.org",
+	}
+	legacyAction := &policy.Action{
+		Id:   "action-legacy",
+		Name: "decrypt",
+	}
+	legacyResource := testRegisteredResource(
+		"resource-1",
+		"documents",
+		testRegisteredResourceValue(
+			"prod",
+			testActionAttributeValue(
+				legacyAction.GetId(),
+				legacyAction.GetName(),
+				testAttributeValue("https://example.com/attr/classification/value/secret", namespaceOne),
+			),
+			testActionAttributeValue(
+				legacyAction.GetId(),
+				legacyAction.GetName(),
+				testAttributeValue("https://example.org/attr/classification/value/restricted", namespaceTwo),
+			),
+		),
+	)
+	prompter := &testInteractivePrompter{
+		selectValue: namespaceSelectionValue(namespaceOne),
+	}
+
+	handler := &plannerTestHandler{
+		actionsByNamespace: map[string]*actions.ListActionsResponse{
+			"": {
+				ActionsCustom: []*policy.Action{legacyAction},
+				Pagination:    emptyPageResponse(),
+			},
+			namespaceOne.GetId(): {
+				Pagination: emptyPageResponse(),
+			},
+		},
+		registeredResourcesByNamespace: map[string]*registeredresources.ListRegisteredResourcesResponse{
+			"": {
+				Resources:  []*policy.RegisteredResource{legacyResource},
+				Pagination: emptyPageResponse(),
+			},
+			namespaceOne.GetId(): {
+				Pagination: emptyPageResponse(),
+			},
+		},
+		namespacesResponse: &namespaces.ListNamespacesResponse{
+			Namespaces: []*policy.Namespace{namespaceOne, namespaceTwo},
+			Pagination: emptyPageResponse(),
+		},
+	}
+
+	planner, err := NewPlanner(handler, "registered-resources", WithInteractiveReviewer(NewHuhInteractiveReviewer(handler, prompter)))
+	require.NoError(t, err)
+
+	plan, err := planner.Plan(t.Context())
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, prompter.selectCalls)
+	require.Len(t, plan.RegisteredResources, 1)
+	assert.Empty(t, plan.RegisteredResources[0].Unresolved)
+	require.Len(t, plan.RegisteredResources[0].Targets, 1)
+	assert.Equal(t, TargetStatusCreate, plan.RegisteredResources[0].Targets[0].Status)
+	assert.True(t, sameNamespace(namespaceOne, plan.RegisteredResources[0].Targets[0].Namespace))
+	require.Len(t, plan.RegisteredResources[0].Targets[0].Values, 1)
+	require.Len(t, plan.RegisteredResources[0].Targets[0].Values[0].ActionBindings, 1)
+	assert.Equal(t, "action-legacy", plan.RegisteredResources[0].Targets[0].Values[0].ActionBindings[0].SourceActionID)
+	require.NotNil(t, plan.RegisteredResources[0].Targets[0].Values[0].ActionBindings[0].ActionTargetRef)
+	assert.Equal(t, TargetStatusCreate, plan.RegisteredResources[0].Targets[0].Values[0].ActionBindings[0].ActionTargetRef.Status)
+	assert.Nil(t, plan.Unresolved)
+	require.Len(t, plan.Actions, 1)
+	require.Len(t, plan.Actions[0].Targets, 1)
+	assert.Equal(t, TargetStatusCreate, plan.Actions[0].Targets[0].Status)
+	assert.True(t, sameNamespace(namespaceOne, plan.Actions[0].Targets[0].Namespace))
 }
 
 type plannerTestHandler struct {
@@ -621,4 +890,16 @@ func actionSourceIDs(actions []*ActionPlan) []string {
 	}
 
 	return ids
+}
+
+type plannerTestReviewer struct {
+	calls        int
+	lastResolved *ResolvedTargets
+	err          error
+}
+
+func (r *plannerTestReviewer) Review(_ context.Context, resolved *ResolvedTargets, _ []*policy.Namespace) error {
+	r.calls++
+	r.lastResolved = resolved
+	return r.err
 }

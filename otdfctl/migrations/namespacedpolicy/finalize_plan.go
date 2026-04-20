@@ -120,7 +120,7 @@ func (f *planFinalizer) addResolvedAction(item *ResolvedAction) {
 		return
 	}
 
-	if item.Unresolved == "" && len(item.Results) == 0 && len(item.References) == 0 {
+	if len(item.Results) == 0 && len(item.References) == 0 {
 		f.addUnusedAction(item.Source, item.References, unusedActionReason)
 		return
 	}
@@ -129,10 +129,6 @@ func (f *planFinalizer) addResolvedAction(item *ResolvedAction) {
 		Source:     item.Source,
 		References: append([]*ActionReference(nil), item.References...),
 		Targets:    make([]*ActionTargetPlan, 0, len(item.Results)),
-	}
-	if item.Unresolved != "" {
-		actionPlan.Unresolved = item.Unresolved
-		f.addActionIssue(item.Source, nil, item.Unresolved)
 	}
 
 	for _, result := range item.Results {
@@ -143,10 +139,6 @@ func (f *planFinalizer) addResolvedAction(item *ResolvedAction) {
 		actionPlan.Targets = append(actionPlan.Targets, target)
 		f.storeActionTarget(item.Source.GetId(), target)
 
-		if target.Status == TargetStatusUnresolved {
-			f.addActionIssue(item.Source, target.Namespace, target.Reason)
-			continue
-		}
 		f.addNamespacePlacement(target.Namespace, ScopeActions, item.Source.GetId())
 	}
 
@@ -162,10 +154,6 @@ func (f *planFinalizer) addResolvedSubjectConditionSet(item *ResolvedSubjectCond
 		Source:  item.Source,
 		Targets: make([]*SubjectConditionSetTargetPlan, 0, len(item.Results)),
 	}
-	if item.Unresolved != "" {
-		scsPlan.Unresolved = item.Unresolved
-		f.addSubjectConditionSetIssue(item.Source, nil, item.Unresolved)
-	}
 
 	for _, result := range item.Results {
 		target := newSubjectConditionSetTargetPlan(result)
@@ -175,10 +163,6 @@ func (f *planFinalizer) addResolvedSubjectConditionSet(item *ResolvedSubjectCond
 		scsPlan.Targets = append(scsPlan.Targets, target)
 		f.storeSubjectConditionSetTarget(item.Source.GetId(), target)
 
-		if target.Status == TargetStatusUnresolved {
-			f.addSubjectConditionSetIssue(item.Source, target.Namespace, target.Reason)
-			continue
-		}
 		f.addNamespacePlacement(target.Namespace, ScopeSubjectConditionSets, item.Source.GetId())
 	}
 
@@ -191,20 +175,11 @@ func (f *planFinalizer) addResolvedSubjectMapping(item *ResolvedSubjectMapping) 
 	}
 
 	mappingPlan := &SubjectMappingPlan{Source: item.Source}
-	if item.Unresolved != "" {
-		mappingPlan.Unresolved = item.Unresolved
-	}
 
 	target := f.newSubjectMappingTarget(item)
 	if target != nil {
 		mappingPlan.Targets = append(mappingPlan.Targets, target)
-		if target.Status == TargetStatusUnresolved {
-			f.addSubjectMappingIssue(item.Source, target.Namespace, target.Reason)
-		} else {
-			f.addNamespacePlacement(target.Namespace, ScopeSubjectMappings, item.Source.GetId())
-		}
-	} else if item.Unresolved != "" {
-		f.addSubjectMappingIssue(item.Source, item.Namespace, item.Unresolved)
+		f.addNamespacePlacement(target.Namespace, ScopeSubjectMappings, item.Source.GetId())
 	}
 
 	f.subjectMappings = append(f.subjectMappings, mappingPlan)
@@ -216,8 +191,8 @@ func (f *planFinalizer) addResolvedRegisteredResource(item *ResolvedRegisteredRe
 	}
 
 	resourcePlan := &RegisteredResourcePlan{Source: item.Source}
-	if item.Unresolved != "" {
-		resourcePlan.Unresolved = item.Unresolved
+	if item.Unresolved != nil {
+		resourcePlan.Unresolved = item.Unresolved.Message
 	}
 
 	target := f.newRegisteredResourceTarget(item)
@@ -228,8 +203,8 @@ func (f *planFinalizer) addResolvedRegisteredResource(item *ResolvedRegisteredRe
 		} else {
 			f.addNamespacePlacement(target.Namespace, ScopeRegisteredResources, item.Source.GetId())
 		}
-	} else if item.Unresolved != "" {
-		f.addRegisteredResourceIssue(item.Source, item.Namespace, item.Unresolved)
+	} else if item.Unresolved != nil {
+		f.addRegisteredResourceIssue(item.Source, item.Namespace, item.Unresolved.Message)
 	}
 
 	f.registeredResources = append(f.registeredResources, resourcePlan)
@@ -241,20 +216,11 @@ func (f *planFinalizer) addResolvedObligationTrigger(item *ResolvedObligationTri
 	}
 
 	triggerPlan := &ObligationTriggerPlan{Source: item.Source}
-	if item.Unresolved != "" {
-		triggerPlan.Unresolved = item.Unresolved
-	}
 
 	target := f.newObligationTriggerTarget(item)
 	if target != nil {
 		triggerPlan.Targets = append(triggerPlan.Targets, target)
-		if target.Status == TargetStatusUnresolved {
-			f.addObligationTriggerIssue(item.Source, target.Namespace, target.Reason)
-		} else {
-			f.addNamespacePlacement(target.Namespace, ScopeObligationTriggers, item.Source.GetId())
-		}
-	} else if item.Unresolved != "" {
-		f.addObligationTriggerIssue(item.Source, item.Namespace, item.Unresolved)
+		f.addNamespacePlacement(target.Namespace, ScopeObligationTriggers, item.Source.GetId())
 	}
 
 	f.obligationTriggers = append(f.obligationTriggers, triggerPlan)
@@ -331,9 +297,6 @@ func (f *planFinalizer) newSubjectMappingTarget(item *ResolvedSubjectMapping) *S
 		target.Existing = item.AlreadyMigrated
 	case item.NeedsCreate:
 		target.Status = TargetStatusCreate
-	case item.Unresolved != "":
-		target.Status = TargetStatusUnresolved
-		target.Reason = item.Unresolved
 	default:
 		return nil
 	}
@@ -362,9 +325,6 @@ func (f *planFinalizer) newRegisteredResourceTarget(item *ResolvedRegisteredReso
 		target.Existing = item.AlreadyMigrated
 	case item.NeedsCreate:
 		target.Status = TargetStatusCreate
-	case item.Unresolved != "":
-		target.Status = TargetStatusUnresolved
-		target.Reason = item.Unresolved
 	default:
 		return nil
 	}
@@ -407,9 +367,6 @@ func (f *planFinalizer) newObligationTriggerTarget(item *ResolvedObligationTrigg
 		target.Existing = item.AlreadyMigrated
 	case item.NeedsCreate:
 		target.Status = TargetStatusCreate
-	case item.Unresolved != "":
-		target.Status = TargetStatusUnresolved
-		target.Reason = item.Unresolved
 	default:
 		return nil
 	}
@@ -466,20 +423,6 @@ func (f *planFinalizer) subjectConditionSetBinding(sourceID string, namespace *p
 	}
 }
 
-func (f *planFinalizer) addActionIssue(action *policy.Action, namespace *policy.Namespace, reason string) {
-	if action == nil || reason == "" {
-		return
-	}
-	// TODO: Replace this linear dedupe scan with a set if unresolved issue counts
-	// grow enough for this path to matter.
-	for _, issue := range f.unresolved.Actions {
-		if issue != nil && issue.Source != nil && issue.Source.GetId() == action.GetId() && sameNamespace(issue.Namespace, namespace) && issue.Reason == reason {
-			return
-		}
-	}
-	f.unresolved.Actions = append(f.unresolved.Actions, &ActionIssue{Source: action, Namespace: namespace, Reason: reason})
-}
-
 func (f *planFinalizer) addUnusedAction(action *policy.Action, references []*ActionReference, reason string) {
 	if action == nil || reason == "" {
 		return
@@ -494,30 +437,6 @@ func (f *planFinalizer) addUnusedAction(action *policy.Action, references []*Act
 		References: append([]*ActionReference(nil), references...),
 		Reason:     reason,
 	})
-}
-
-func (f *planFinalizer) addSubjectConditionSetIssue(scs *policy.SubjectConditionSet, namespace *policy.Namespace, reason string) {
-	if scs == nil || reason == "" {
-		return
-	}
-	for _, issue := range f.unresolved.SubjectConditionSets {
-		if issue != nil && issue.Source != nil && issue.Source.GetId() == scs.GetId() && sameNamespace(issue.Namespace, namespace) && issue.Reason == reason {
-			return
-		}
-	}
-	f.unresolved.SubjectConditionSets = append(f.unresolved.SubjectConditionSets, &SubjectConditionSetIssue{Source: scs, Namespace: namespace, Reason: reason})
-}
-
-func (f *planFinalizer) addSubjectMappingIssue(mapping *policy.SubjectMapping, namespace *policy.Namespace, reason string) {
-	if mapping == nil || reason == "" {
-		return
-	}
-	for _, issue := range f.unresolved.SubjectMappings {
-		if issue != nil && issue.Source != nil && issue.Source.GetId() == mapping.GetId() && sameNamespace(issue.Namespace, namespace) && issue.Reason == reason {
-			return
-		}
-	}
-	f.unresolved.SubjectMappings = append(f.unresolved.SubjectMappings, &SubjectMappingIssue{Source: mapping, Namespace: namespace, Reason: reason})
 }
 
 func (f *planFinalizer) addRegisteredResourceIssue(resource *policy.RegisteredResource, namespace *policy.Namespace, reason string) {
@@ -539,18 +458,6 @@ func (f *planFinalizer) addRegisteredResourceIssue(resource *policy.RegisteredRe
 	})
 }
 
-func (f *planFinalizer) addObligationTriggerIssue(trigger *policy.ObligationTrigger, namespace *policy.Namespace, reason string) {
-	if trigger == nil || reason == "" {
-		return
-	}
-	for _, issue := range f.unresolved.ObligationTriggers {
-		if issue != nil && issue.Source != nil && issue.Source.GetId() == trigger.GetId() && sameNamespace(issue.Namespace, namespace) && issue.Reason == reason {
-			return
-		}
-	}
-	f.unresolved.ObligationTriggers = append(f.unresolved.ObligationTriggers, &ObligationTriggerIssue{Source: trigger, Namespace: namespace, Reason: reason})
-}
-
 func newActionTargetPlan(result *ResolvedActionResult) *ActionTargetPlan {
 	if result == nil || result.Namespace == nil {
 		return nil
@@ -566,9 +473,6 @@ func newActionTargetPlan(result *ResolvedActionResult) *ActionTargetPlan {
 		target.Existing = result.ExistingStandard
 	case result.NeedsCreate:
 		target.Status = TargetStatusCreate
-	case result.Unresolved != "":
-		target.Status = TargetStatusUnresolved
-		target.Reason = result.Unresolved
 	default:
 		return nil
 	}
@@ -588,9 +492,6 @@ func newSubjectConditionSetTargetPlan(result *ResolvedSubjectConditionSetResult)
 		target.Existing = result.AlreadyMigrated
 	case result.NeedsCreate:
 		target.Status = TargetStatusCreate
-	case result.Unresolved != "":
-		target.Status = TargetStatusUnresolved
-		target.Reason = result.Unresolved
 	default:
 		return nil
 	}

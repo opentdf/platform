@@ -30,6 +30,7 @@ type Planner struct {
 	retriever       *Retriever
 	requestedScopes scopeSet
 	expandedScopes  scopeSet
+	reviewer        InteractiveReviewer
 }
 
 type Option func(*Planner)
@@ -92,6 +93,12 @@ func WithPageSize(pageSize int32) Option {
 	}
 }
 
+func WithInteractiveReviewer(reviewer InteractiveReviewer) Option {
+	return func(planner *Planner) {
+		planner.reviewer = reviewer
+	}
+}
+
 func (p *Planner) Plan(ctx context.Context) (*Plan, error) {
 	retrieved, err := p.retrieve(ctx)
 	if err != nil {
@@ -113,7 +120,16 @@ func (p *Planner) Plan(ctx context.Context) (*Plan, error) {
 		return nil, err
 	}
 
-	resolved := resolveExisting(derived, existingTargets)
+	resolved, err := resolveExisting(derived, existingTargets)
+	if err != nil {
+		return nil, err
+	}
+
+	if p.reviewer != nil {
+		if err := p.reviewer.Review(ctx, resolved, namespaces); err != nil {
+			return nil, err
+		}
+	}
 
 	return finalizePlan(resolved, namespaces)
 }

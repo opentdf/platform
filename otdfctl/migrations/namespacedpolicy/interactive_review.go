@@ -356,18 +356,28 @@ func ensureRegisteredResourceActionResolution(resolved *ResolvedTargets, resourc
 		return errors.New("registered resource binding action is missing")
 	}
 	if actionResolver == nil {
-		return ErrNilInteractiveReviewHandler
+		return errors.New("action resolver required for plan resolution")
 	}
 
 	item := resolvedActionByID(resolved.Actions, action.GetId())
 	if item == nil {
+		source, err := cloneAction(action)
+		if err != nil {
+			return err
+		}
+
 		item = &ResolvedAction{
-			Source:  cloneAction(action),
+			Source:  source,
 			Results: make([]*ResolvedActionResult, 0, 1),
 		}
 		resolved.Actions = append(resolved.Actions, item)
 	} else if item.Source == nil {
-		item.Source = cloneAction(action)
+		source, err := cloneAction(action)
+		if err != nil {
+			return err
+		}
+
+		item.Source = source
 	}
 
 	addActionReferenceIfMissing(item, &ActionReference{
@@ -427,20 +437,15 @@ func addActionReferenceIfMissing(action *ResolvedAction, reference *ActionRefere
 	action.References = append(action.References, reference)
 }
 
-func cloneAction(action *policy.Action) *policy.Action {
+func cloneAction(action *policy.Action) (*policy.Action, error) {
 	if action == nil {
-		return nil
+		return nil, errors.New("action is nil")
 	}
 
 	cloned, ok := proto.Clone(action).(*policy.Action)
 	if !ok {
-		return &policy.Action{
-			Id:        action.GetId(),
-			Name:      action.GetName(),
-			Metadata:  action.GetMetadata(),
-			Namespace: action.GetNamespace(),
-		}
+		return nil, fmt.Errorf("clone action %q: unexpected proto clone type", action.GetId())
 	}
 
-	return cloned
+	return cloned, nil
 }

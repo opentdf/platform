@@ -21,6 +21,7 @@ const (
 	obligationTriggerResponseKey = "obligationTriggerResponse"
 	multiDecisionResponseKey     = "multiDecisionResponse"
 	valuesKey                    = "values"
+	namespaceID					 = "namespace_id"
 )
 
 // Step: I send a request to create an obligation with table
@@ -43,10 +44,10 @@ func (s *ObligationsStepDefinitions) iSendARequestToCreateAnObligationWith(ctx c
 
 		for ci, c := range r.Cells {
 			switch cellIndexMap[ci] {
-			case "namespace_id":
+			case namespaceID:
 				nsID, ok := scenarioContext.GetObject(strings.TrimSpace(c.Value)).(string)
 				if !ok {
-					return ctx, fmt.Errorf("namespace_id %s not found", c.Value)
+					return ctx, fmt.Errorf("%s %s not found", namespaceID, c.Value)
 				}
 				req.NamespaceId = nsID
 			case "name":

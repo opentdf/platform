@@ -1160,6 +1160,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.kasregistry.KasKeysSort"><span class="badge">M</span>KasKeysSort</a>
+                </li>
+              
+                <li>
                   <a href="#policy.kasregistry.KeyAccessServerGrants"><span class="badge">M</span>KeyAccessServerGrants</a>
                 </li>
               
@@ -1283,6 +1287,10 @@
                   <a href="#policy.kasregistry.UpdatePublicKeyResponse"><span class="badge">M</span>UpdatePublicKeyResponse</a>
                 </li>
               
+              
+                <li>
+                  <a href="#policy.kasregistry.SortKasKeysType"><span class="badge">E</span>SortKasKeysType</a>
+                </li>
               
                 <li>
                   <a href="#policy.kasregistry.SortKeyAccessServersType"><span class="badge">E</span>SortKeyAccessServersType</a>
@@ -10323,6 +10331,37 @@ Mutable metadata for the key </p></td>
 
         
       
+        <h3 id="policy.kasregistry.KasKeysSort">KasKeysSort</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>field</td>
+                  <td><a href="#policy.kasregistry.SortKasKeysType">SortKasKeysType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>direction</td>
+                  <td><a href="#policy.SortDirection">policy.SortDirection</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.kasregistry.KeyAccessServerGrants">KeyAccessServerGrants</h3>
         <p>Deprecated</p>
 
@@ -10744,6 +10783,15 @@ Filter for legacy keys </p></td>
                   <td><p>Optional
 
 Pagination request for the list of keys </p></td>
+                </tr>
+              
+                <tr>
+                  <td>sort</td>
+                  <td><a href="#policy.kasregistry.KasKeysSort">KasKeysSort</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional - CONSTRAINT: max 1 item
+Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
+created_at DESC. </p></td>
                 </tr>
               
             </tbody>
@@ -11566,6 +11614,41 @@ Common metadata </p></td>
         
       
 
+      
+        <h3 id="policy.kasregistry.SortKasKeysType">SortKasKeysType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_KAS_KEYS_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_KAS_KEYS_TYPE_KEY_ID</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_KAS_KEYS_TYPE_CREATED_AT</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_KAS_KEYS_TYPE_UPDATED_AT</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
         <h3 id="policy.kasregistry.SortKeyAccessServersType">SortKeyAccessServersType</h3>
         <p></p>

@@ -21,7 +21,7 @@ const (
 	obligationTriggerResponseKey = "obligationTriggerResponse"
 	multiDecisionResponseKey     = "multiDecisionResponse"
 	valuesKey                    = "values"
-	namespaceID					 = "namespace_id"
+	namespaceIDKey               = "namespace_id"
 )
 
 // Step: I send a request to create an obligation with table

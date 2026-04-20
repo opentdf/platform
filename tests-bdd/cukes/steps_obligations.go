@@ -44,10 +44,10 @@ func (s *ObligationsStepDefinitions) iSendARequestToCreateAnObligationWith(ctx c
 
 		for ci, c := range r.Cells {
 			switch cellIndexMap[ci] {
-			case namespaceID:
+			case namespaceIDKey:
 				nsID, ok := scenarioContext.GetObject(strings.TrimSpace(c.Value)).(string)
 				if !ok {
-					return ctx, fmt.Errorf("%s %s not found", namespaceID, c.Value)
+					return ctx, fmt.Errorf("%s %s not found", namespaceIDKey, c.Value)
 				}
 				req.NamespaceId = nsID
 			case "name":

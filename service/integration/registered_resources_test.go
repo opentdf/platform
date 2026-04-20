@@ -2220,6 +2220,189 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_ByName_Ambiguous_R
 // │ end namespace-optional tests                                                │
 // └─────────────────────────────────────────────────────────────────────────────┘
 
+// Sort tests
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByName_ASC() {
+	ids := s.createNamedSortTestRegisteredResources([]string{"aaa-rrsort", "bbb-rrsort", "ccc-rrsort"})
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// aaa < bbb < ccc in ASC order
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByName_DESC() {
+	ids := s.createNamedSortTestRegisteredResources([]string{"aaa-rrsortdesc", "bbb-rrsortdesc", "ccc-rrsortdesc"})
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// ccc > bbb > aaa in DESC order
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByCreatedAt_ASC() {
+	ids := s.createSortTestRegisteredResources("createdasc-rr")
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// oldest first in ASC order
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByCreatedAt_DESC() {
+	ids := s.createSortTestRegisteredResources("createddesc-rr")
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// newest first in DESC order
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUpdatedAt_DESC() {
+	ids := s.createSortTestRegisteredResources("upd-sort-rr")
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	// Update the first resource so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateRegisteredResource(s.ctx, &registeredresources.UpdateRegisteredResourceRequest{
+		Id: ids[0],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// The updated resource (ids[0]) should appear before the others
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[0], ids[2], ids[1])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUpdatedAt_ASC() {
+	ids := s.createSortTestRegisteredResources("upd-sort-asc-rr")
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	// Update the last resource so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateRegisteredResource(s.ctx, &registeredresources.UpdateRegisteredResourceRequest{
+		Id: ids[2],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// The updated resource (ids[2]) should appear last in ASC order
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUnspecifiedField_FallsBackToDefault() {
+	ids := s.createSortTestRegisteredResources("unspecified-sort-rr")
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// Falls back to default created_at DESC ordering
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[2], ids[1], ids[0])
+}
+
+// Sort test helpers
+
+// createSortTestRegisteredResources creates 3 registered resources with 5ms gaps for distinct timestamps.
+// Returns the resource IDs in creation order.
+func (s *RegisteredResourcesSuite) createSortTestRegisteredResources(label string) []string {
+	const count = 3
+	ids := make([]string, count)
+	for i := range count {
+		if i > 0 {
+			time.Sleep(5 * time.Millisecond)
+		}
+		name := fmt.Sprintf("%s-%d-%d", label, i, time.Now().UnixNano())
+		created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+			NamespaceId: s.getNamespaceID("example.com"),
+			Name:        name,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	return ids
+}
+
+// createNamedSortTestRegisteredResources creates registered resources with specific name prefixes for name sort testing.
+// Returns the resource IDs in the same order as the prefixes.
+func (s *RegisteredResourcesSuite) createNamedSortTestRegisteredResources(prefixes []string) []string {
+	suffix := time.Now().UnixNano()
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
+		name := fmt.Sprintf("%s-%d", prefix, suffix)
+		created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+			NamespaceId: s.getNamespaceID("example.com"),
+			Name:        name,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	return ids
+}
+
+// deleteSortTestRegisteredResources cleans up registered resources created by sort tests.
+func (s *RegisteredResourcesSuite) deleteSortTestRegisteredResources(ids []string) {
+	for _, id := range ids {
+		_, err := s.db.PolicyClient.DeleteRegisteredResource(s.ctx, id)
+		s.Require().NoError(err)
+	}
+}
+
 func (s *RegisteredResourcesSuite) getNamespaceID(key string) string {
 	ns := s.f.GetNamespaceKey(key)
 	return ns.ID

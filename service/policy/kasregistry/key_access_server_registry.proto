@@ -493,6 +493,11 @@ message ListKeysRequest {
 
   // Optional
   policy.PageRequest pagination = 10; // Pagination request for the list of keys
+
+  // Optional - CONSTRAINT: max 1 item
+  // Default ordering when omitted or when the first entry's field is UNSPECIFIED:
+  // created_at DESC.
+  repeated KasKeysSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 
 // Response to a ListKeysRequest, containing the list of asymmetric keys and pagination information

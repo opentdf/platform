@@ -240,6 +240,7 @@ assert_subject_mapping_created_in_namespace() {
   local created_target_id
   created_target_id=$(subject_mapping_plan_target_effective_id "$output_file" "$source_mapping_id" "$namespace_fqn")
   assert_not_equal "$created_target_id" ""
+  assert_not_equal "$created_target_id" "$source_mapping_id"
 
   local source_mapping_json
   source_mapping_json=$(./otdfctl $HOST $WITH_CREDS policy subject-mappings get --id "$source_mapping_id" --json)
@@ -513,6 +514,7 @@ assert_custom_action_created_in_namespace() {
   local created_target_id
   created_target_id=$(action_plan_target_effective_id "$output_file" "$action_name" "$namespace_fqn")
   assert_not_equal "$created_target_id" ""
+  assert_not_equal "$created_target_id" "$source_action_id"
 
   local source_action_json
   source_action_json=$(./otdfctl $HOST $WITH_CREDS policy actions get --id "$source_action_id" --json)
@@ -556,6 +558,7 @@ assert_scs_created_in_namespace() {
   local created_target_id
   created_target_id=$(scs_plan_target_effective_id "$output_file" "$source_scs_id" "$namespace_fqn")
   assert_not_equal "$created_target_id" ""
+  assert_not_equal "$created_target_id" "$source_scs_id"
 
   local source_scs_json
   source_scs_json=$(./otdfctl $HOST $WITH_CREDS policy scs get --id "$source_scs_id" --json)

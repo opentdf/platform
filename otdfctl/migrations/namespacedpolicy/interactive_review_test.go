@@ -81,7 +81,7 @@ func TestHuhInteractiveReviewerResolvesConflictingRegisteredResource(t *testing.
 
 	require.Equal(t, 1, prompter.selectCalls)
 	require.NotNil(t, prompter.lastSelectPrompt)
-	assert.Equal(t, "Registered resource https://reg_res/documents spans multiple target namespaces.", prompter.lastSelectPrompt.Title)
+	assert.Equal(t, "Registered resource (name: documents, id: resource-1) spans multiple target namespaces.", prompter.lastSelectPrompt.Title)
 	require.Len(t, prompter.lastSelectPrompt.Options, 3)
 
 	require.Len(t, resolved.RegisteredResources, 1)
@@ -205,6 +205,95 @@ func TestHuhInteractiveReviewerRequiresHandlerForConflictingReview(t *testing.T)
 		},
 	}, []*policy.Namespace{leftNamespace, rightNamespace})
 	require.ErrorIs(t, err, ErrNilInteractiveReviewHandler)
+}
+
+func TestHuhInteractiveReviewerCachesNamespaceLookupsWithinReview(t *testing.T) {
+	t.Parallel()
+
+	leftNamespace := &policy.Namespace{
+		Id:  "ns-1",
+		Fqn: "https://example.com",
+	}
+	rightNamespace := &policy.Namespace{
+		Id:  "ns-2",
+		Fqn: "https://example.org",
+	}
+
+	handler := &plannerTestHandler{
+		actionsByNamespace: map[string]*actions.ListActionsResponse{
+			leftNamespace.GetId(): {
+				Pagination: emptyPageResponse(),
+			},
+		},
+		registeredResourcesByNamespace: map[string]*registeredresources.ListRegisteredResourcesResponse{
+			leftNamespace.GetId(): {
+				Pagination: emptyPageResponse(),
+			},
+		},
+		namespacesResponse: &namespaces.ListNamespacesResponse{
+			Namespaces: []*policy.Namespace{leftNamespace, rightNamespace},
+			Pagination: emptyPageResponse(),
+		},
+	}
+	prompter := &testInteractivePrompter{
+		selectValue: namespaceSelectionValue(leftNamespace),
+	}
+	reviewer := NewHuhInteractiveReviewer(handler, prompter)
+	resolved := &ResolvedTargets{
+		Scopes: []Scope{ScopeRegisteredResources},
+		RegisteredResources: []*ResolvedRegisteredResource{
+			{
+				Source: testRegisteredResource(
+					"resource-1",
+					"documents",
+					testRegisteredResourceValue(
+						"prod",
+						testActionAttributeValue(
+							"action-1",
+							"decrypt",
+							testAttributeValue("https://example.com/attr/classification/value/secret", leftNamespace),
+						),
+						testActionAttributeValue(
+							"action-2",
+							"encrypt",
+							testAttributeValue("https://example.org/attr/classification/value/restricted", rightNamespace),
+						),
+					),
+				),
+				Unresolved: &Unresolved{
+					Reason: UnresolvedReasonRegisteredResourceConflictingNamespaces,
+				},
+			},
+			{
+				Source: testRegisteredResource(
+					"resource-2",
+					"records",
+					testRegisteredResourceValue(
+						"stage",
+						testActionAttributeValue(
+							"action-3",
+							"review_records",
+							testAttributeValue("https://example.com/attr/classification/value/internal", leftNamespace),
+						),
+						testActionAttributeValue(
+							"action-4",
+							"publish_records",
+							testAttributeValue("https://example.org/attr/classification/value/restricted", rightNamespace),
+						),
+					),
+				),
+				Unresolved: &Unresolved{
+					Reason: UnresolvedReasonRegisteredResourceConflictingNamespaces,
+				},
+			},
+		},
+	}
+
+	err := reviewer.Review(t.Context(), resolved, []*policy.Namespace{leftNamespace, rightNamespace})
+	require.NoError(t, err)
+	assert.Equal(t, 2, prompter.selectCalls)
+	assert.Equal(t, []string{leftNamespace.GetId()}, handler.actionCalls)
+	assert.Equal(t, []string{leftNamespace.GetId()}, handler.registeredResourceCalls)
 }
 
 type testInteractivePrompter struct {

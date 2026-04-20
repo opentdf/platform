@@ -30,14 +30,14 @@ type InteractiveReviewer interface {
 // registered resources whose action-attribute-values span multiple namespaces.
 type HuhInteractiveReviewer struct {
 	handler  PolicyClient
-	Prompter InteractivePrompter
+	prompter InteractivePrompter
 	pageSize int32
 }
 
 func NewHuhInteractiveReviewer(handler PolicyClient, prompter InteractivePrompter) *HuhInteractiveReviewer {
 	return &HuhInteractiveReviewer{
 		handler:  handler,
-		Prompter: prompter,
+		prompter: prompter,
 		pageSize: defaultPlannerPageSize,
 	}
 }
@@ -47,11 +47,20 @@ func (r *HuhInteractiveReviewer) Review(ctx context.Context, resolved *ResolvedT
 		return nil
 	}
 
+	var retriever *Retriever
+	namespaceCache := make(map[string]*interactiveReviewNamespaceState)
 	for _, resource := range resolved.RegisteredResources {
 		if !isConflictingRegisteredResource(resource) {
 			continue
 		}
-		if err := r.reviewRegisteredResource(ctx, resolved, resource, namespaces); err != nil {
+		if retriever == nil {
+			var err error
+			retriever, err = r.retriever()
+			if err != nil {
+				return err
+			}
+		}
+		if err := r.reviewRegisteredResource(ctx, resolved, resource, namespaces, retriever, namespaceCache); err != nil {
 			return err
 		}
 	}
@@ -59,14 +68,16 @@ func (r *HuhInteractiveReviewer) Review(ctx context.Context, resolved *ResolvedT
 	return nil
 }
 
-func (r *HuhInteractiveReviewer) reviewRegisteredResource(ctx context.Context, resolved *ResolvedTargets, resource *ResolvedRegisteredResource, namespaces []*policy.Namespace) error {
+func (r *HuhInteractiveReviewer) reviewRegisteredResource(
+	ctx context.Context,
+	resolved *ResolvedTargets,
+	resource *ResolvedRegisteredResource,
+	namespaces []*policy.Namespace,
+	retriever *Retriever,
+	namespaceCache map[string]*interactiveReviewNamespaceState,
+) error {
 	if resource == nil || resource.Source == nil {
 		return nil
-	}
-
-	retriever, err := r.retriever()
-	if err != nil {
-		return err
 	}
 
 	candidates, err := registeredResourceCandidateNamespaces(resource.Source, namespaces)
@@ -74,10 +85,12 @@ func (r *HuhInteractiveReviewer) reviewRegisteredResource(ctx context.Context, r
 		return fmt.Errorf("registered resource %q: %w", resource.Source.GetId(), err)
 	}
 
-	selected, err := r.prompter().Select(ctx, registeredResourceConflictPrompt(resource.Source, candidates))
+	selected, err := r.resolvePrompter().Select(ctx, registeredResourceConflictPrompt(resource.Source, candidates))
 	if err != nil {
 		return err
 	}
+	// registeredResourceConflictPrompt appends interactiveReviewAbortOption to SelectPrompt.Options,
+	// but selectedNamespace only searches candidates, so this short-circuit must remain in place.
 	if selected == interactiveReviewAbortOption {
 		return ErrInteractiveReviewAborted
 	}
@@ -92,26 +105,14 @@ func (r *HuhInteractiveReviewer) reviewRegisteredResource(ctx context.Context, r
 		return fmt.Errorf("registered resource %q: %w", resource.Source.GetId(), err)
 	}
 
-	customActions, standardActions, err := retriever.listActionsForNamespaces(ctx, []*policy.Namespace{chosen})
+	namespaceState, err := reviewNamespaceState(ctx, retriever, chosen, namespaceCache)
 	if err != nil {
 		return fmt.Errorf("registered resource %q: %w", resource.Source.GetId(), err)
-	}
-
-	registeredResources, err := retriever.listRegisteredResourcesForNamespaces(ctx, []*policy.Namespace{chosen})
-	if err != nil {
-		return fmt.Errorf("registered resource %q: %w", resource.Source.GetId(), err)
-	}
-
-	actionResolver := &resolver{
-		existing: &ExistingTargets{
-			CustomActions:   customActions,
-			StandardActions: standardActions,
-		},
 	}
 
 	for _, value := range filtered.GetValues() {
 		for _, aav := range value.GetActionAttributeValues() {
-			if err := ensureRegisteredResourceActionResolution(resolved, resource.Source.GetId(), chosen, aav.GetAction(), actionResolver); err != nil {
+			if err := ensureRegisteredResourceActionResolution(resolved, resource.Source.GetId(), chosen, aav.GetAction(), namespaceState.actionResolver); err != nil {
 				return fmt.Errorf("registered resource %q: %w", resource.Source.GetId(), err)
 			}
 		}
@@ -119,11 +120,12 @@ func (r *HuhInteractiveReviewer) reviewRegisteredResource(ctx context.Context, r
 
 	resource.Source = filtered
 	resource.Namespace = chosen
+	// Reset planner state before re-resolving against registeredResources[chosen.GetId()] so AlreadyMigrated/NeedsCreate matches resolver.resolveRegisteredResource semantics for the chosen namespace.
 	resource.Unresolved = nil
 	resource.AlreadyMigrated = nil
 	resource.NeedsCreate = false
 
-	existing, found, err := resolveExistingRegisteredResource(filtered, registeredResources[chosen.GetId()])
+	existing, found, err := resolveExistingRegisteredResource(filtered, namespaceState.registeredResources)
 	switch {
 	case found:
 		resource.AlreadyMigrated = existing
@@ -136,9 +138,57 @@ func (r *HuhInteractiveReviewer) reviewRegisteredResource(ctx context.Context, r
 	return nil
 }
 
-func (r *HuhInteractiveReviewer) prompter() InteractivePrompter {
-	if r != nil && r.Prompter != nil {
-		return r.Prompter
+type interactiveReviewNamespaceState struct {
+	actionResolver      *resolver
+	registeredResources []*policy.RegisteredResource
+}
+
+func reviewNamespaceState(
+	ctx context.Context,
+	retriever *Retriever,
+	chosen *policy.Namespace,
+	namespaceCache map[string]*interactiveReviewNamespaceState,
+) (*interactiveReviewNamespaceState, error) {
+	if chosen == nil {
+		return nil, fmt.Errorf("%w: empty namespace reference", ErrUndeterminedTargetMapping)
+	}
+	if retriever == nil {
+		return nil, ErrNilInteractiveReviewHandler
+	}
+
+	key := chosen.GetId()
+	if state, ok := namespaceCache[key]; ok {
+		return state, nil
+	}
+
+	customActions, standardActions, err := retriever.listActionsForNamespaces(ctx, []*policy.Namespace{chosen})
+	if err != nil {
+		return nil, err
+	}
+
+	registeredResources, err := retriever.listRegisteredResourcesForNamespaces(ctx, []*policy.Namespace{chosen})
+	if err != nil {
+		return nil, err
+	}
+
+	state := &interactiveReviewNamespaceState{
+		actionResolver: &resolver{
+			existing: &ExistingTargets{
+				CustomActions:   customActions,
+				StandardActions: standardActions,
+			},
+			actionResultsByKey: make(map[string]*ResolvedActionResult),
+			scsResultsByKey:    make(map[string]*ResolvedSubjectConditionSetResult),
+		},
+		registeredResources: registeredResources[chosen.GetId()],
+	}
+	namespaceCache[key] = state
+	return state, nil
+}
+
+func (r *HuhInteractiveReviewer) resolvePrompter() InteractivePrompter {
+	if r != nil && r.prompter != nil {
+		return r.prompter
 	}
 
 	return &HuhPrompter{}
@@ -214,35 +264,10 @@ func registeredResourceConflictPrompt(resource *policy.RegisteredResource, names
 	})
 
 	return SelectPrompt{
-		Title:       fmt.Sprintf("Registered resource %s spans multiple target namespaces.", registeredResourceFQN(resource)),
+		Title:       fmt.Sprintf("Registered resource (name: %s, id: %s) spans multiple target namespaces.", resource.GetName(), resource.GetId()),
 		Description: description,
 		Options:     options,
 	}
-}
-
-func registeredResourceFQN(resource *policy.RegisteredResource) string {
-	if resource == nil {
-		return unknownLabel
-	}
-
-	name := strings.TrimSpace(resource.GetName())
-	if name == "" {
-		if id := strings.TrimSpace(resource.GetId()); id != "" {
-			return id
-		}
-		return unknownLabel
-	}
-
-	if namespace := resource.GetNamespace(); namespace != nil {
-		if fqn := strings.TrimSpace(namespace.GetFqn()); fqn != "" {
-			return strings.TrimRight(fqn, "/") + "/reg_res/" + name
-		}
-		if namespaceName := strings.TrimSpace(namespace.GetName()); namespaceName != "" {
-			return "https://" + namespaceName + "/reg_res/" + name
-		}
-	}
-
-	return "https://reg_res/" + name
 }
 
 func registeredResourceConflictLines(resource *policy.RegisteredResource) []string {

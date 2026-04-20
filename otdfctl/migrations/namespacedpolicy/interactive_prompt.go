@@ -42,7 +42,7 @@ type InteractivePrompter interface {
 // HuhPrompter implements InteractivePrompter using charmbracelet/huh forms.
 type HuhPrompter struct{}
 
-func (p *HuhPrompter) Confirm(_ context.Context, prompt ConfirmPrompt) error {
+func (p *HuhPrompter) Confirm(ctx context.Context, prompt ConfirmPrompt) error {
 	confirmLabel := strings.TrimSpace(prompt.ConfirmLabel)
 	if confirmLabel == "" {
 		confirmLabel = "Continue"
@@ -53,35 +53,33 @@ func (p *HuhPrompter) Confirm(_ context.Context, prompt ConfirmPrompt) error {
 		cancelLabel = "Abort"
 	}
 
-	var choice string
+	var choice bool
 	form := huh.NewForm(
 		huh.NewGroup(
-			huh.NewSelect[string]().
+			huh.NewConfirm().
 				Title(strings.TrimSpace(prompt.Title)).
 				Description(promptDescription(prompt.Description)).
-				Options(
-					huh.NewOption(confirmLabel, confirmLabel),
-					huh.NewOption(cancelLabel, cancelLabel),
-				).
+				Affirmative(confirmLabel).
+				Negative(cancelLabel).
 				Value(&choice),
 		),
 	)
 
-	if err := form.Run(); err != nil {
+	if err := form.RunWithContext(ctx); err != nil {
 		if errors.Is(err, huh.ErrUserAborted) {
 			return ErrInteractiveReviewAborted
 		}
 		return err
 	}
 
-	if choice != confirmLabel {
+	if !choice {
 		return ErrInteractiveReviewAborted
 	}
 
 	return nil
 }
 
-func (p *HuhPrompter) Select(_ context.Context, prompt SelectPrompt) (string, error) {
+func (p *HuhPrompter) Select(ctx context.Context, prompt SelectPrompt) (string, error) {
 	options := make([]huh.Option[string], 0, len(prompt.Options))
 	for _, option := range prompt.Options {
 		label := option.Label
@@ -102,7 +100,7 @@ func (p *HuhPrompter) Select(_ context.Context, prompt SelectPrompt) (string, er
 		),
 	)
 
-	if err := form.Run(); err != nil {
+	if err := form.RunWithContext(ctx); err != nil {
 		if errors.Is(err, huh.ErrUserAborted) {
 			return "", ErrInteractiveReviewAborted
 		}

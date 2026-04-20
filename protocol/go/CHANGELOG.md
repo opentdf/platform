@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/opentdf/platform/compare/protocol/go/v0.24.0...protocol/go/v0.25.0) (2026-04-20)
+
+
+### Features
+
+* **policy:** Add sort support listregisteredresources api ([#3312](https://github.com/opentdf/platform/issues/3312)) ([91a3ff3](https://github.com/opentdf/platform/commit/91a3ff3686512353669e35e4884fde807d73d9b0))
+
 ## [0.24.0](https://github.com/opentdf/platform/compare/protocol/go/v0.23.0...protocol/go/v0.24.0) (2026-04-17)
 
 

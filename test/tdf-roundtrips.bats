@@ -209,19 +209,6 @@ server:
         e2:
           private_key_path: kas-e2-private.pem
           public_key_path: kas-e2-cert.pem
-      keys:
-        - kid: x1
-          alg: hpqt:xwing
-          private: kas-xwing-private.pem
-          cert: kas-xwing-public.pem
-        - kid: h1
-          alg: hpqt:secp256r1-mlkem768
-          private: kas-p256mlkem768-private.pem
-          cert: kas-p256mlkem768-public.pem
-        - kid: h2
-          alg: hpqt:secp384r1-mlkem1024
-          private: kas-p384mlkem1024-private.pem
-          cert: kas-p384mlkem1024-public.pem
   port: 8080
 opa:
   embedded: true

@@ -739,7 +739,10 @@ func (r granter) resolveTemplate(ctx context.Context, kaoKeyAlg string, genSplit
 			if !ok || kpub.GetPublicKey() == nil || kpub.GetPublicKey().GetPem() == "" {
 				return nil, fmt.Errorf("no key found for resource locator [%s]", o)
 			}
-			algorithm := algProto2OcryptoKeyType(kpub.GetPublicKey().GetAlgorithm())
+			algorithm, err := PolicyAlgorithmToKeyType(kpub.GetPublicKey().GetAlgorithm())
+			if err != nil {
+				return nil, fmt.Errorf("invalid algorithm [%v] for kas %s with kid [%s]: %w", kpub.GetPublicKey().GetAlgorithm(), kpub.GetKasUri(), kpub.GetPublicKey().GetKid(), err)
+			}
 			p = append(p, kaoTpl{o.KASURI(), splitID, o.ID(), kpub.GetPublicKey().GetPem(), algorithm})
 		}
 	}

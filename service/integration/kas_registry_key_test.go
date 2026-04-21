@@ -2474,7 +2474,7 @@ func (s *KasRegistryKeySuite) createKeyAndKas() *policy.KasKey {
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_SortByKeyId_ASC() {
-	ids, kasID := s.createKeyIdSortTestKasKeys([]string{"aaa-kksort", "bbb-kksort", "ccc-kksort"})
+	ids, kasID := s.createKeyIDSortTestKasKeys([]string{"aaa-kksort", "bbb-kksort", "ccc-kksort"})
 	defer s.deleteSortTestKasKeys(ids, kasID)
 
 	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
@@ -2491,7 +2491,7 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByKeyId_ASC() {
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_SortByKeyId_DESC() {
-	ids, kasID := s.createKeyIdSortTestKasKeys([]string{"aaa-kksortdesc", "bbb-kksortdesc", "ccc-kksortdesc"})
+	ids, kasID := s.createKeyIDSortTestKasKeys([]string{"aaa-kksortdesc", "bbb-kksortdesc", "ccc-kksortdesc"})
 	defer s.deleteSortTestKasKeys(ids, kasID)
 
 	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
@@ -2652,9 +2652,9 @@ func (s *KasRegistryKeySuite) createSortTestKasKeys(label string) ([]string, str
 	return ids, kas.GetId()
 }
 
-// createKeyIdSortTestKasKeys creates kas keys with controlled key_id prefixes for lexicographic sort testing.
+// createKeyIDSortTestKasKeys creates kas keys with controlled key_id prefixes for lexicographic sort testing.
 // Returns the key IDs (UUIDs) in the same order as the prefixes and the parent KAS ID.
-func (s *KasRegistryKeySuite) createKeyIdSortTestKasKeys(prefixes []string) ([]string, string) {
+func (s *KasRegistryKeySuite) createKeyIDSortTestKasKeys(prefixes []string) ([]string, string) {
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "keyidsort-kas-" + uuid.NewString(),
 		Uri:  "https://keyidsort-kas-" + uuid.NewString() + ".opentdf.io",

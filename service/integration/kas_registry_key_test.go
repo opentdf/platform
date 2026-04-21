@@ -2570,7 +2570,7 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByUpdatedAt_DESC() {
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_SortByUpdatedAt_ASC() {
-	ids, kasID := s.createSortTestKasKeys("upd-sort-asc-kk")
+	ids, kasID := s.createSortTestKasKeys("updasc-kk")
 	defer s.deleteSortTestKasKeys(ids, kasID)
 
 	// Update the last key so its updated_at is the most recent
@@ -2598,7 +2598,7 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByUpdatedAt_ASC() {
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_SortByUnspecifiedField_FallsBackToDefault() {
-	ids, kasID := s.createSortTestKasKeys("unspecified-sort-kk")
+	ids, kasID := s.createSortTestKasKeys("unsrt-kk")
 	defer s.deleteSortTestKasKeys(ids, kasID)
 
 	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{

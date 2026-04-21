@@ -111,7 +111,7 @@ runs:
             | (.logger.level = env(LOG_LEVEL))
             | (.logger.type = env(LOG_TYPE))
             | (.sdk_config = {"client_id":"opentdf","client_secret":"secret","core":{"endpoint":"http://localhost:8080","plaintext":true}})
-          ' opentdf-dev.yaml > opentdf-${KAS_NAME}.yaml
+          ' opentdf.yaml > opentdf-${KAS_NAME}.yaml
           if [ "${KEY_MANAGEMENT}" == "true" ]; then
             yq e -i '.services.kas.root_key = env(ROOT_KEY)' opentdf-${KAS_NAME}.yaml
           fi

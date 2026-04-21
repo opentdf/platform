@@ -23,6 +23,10 @@ inputs:
     default: "text"
     description: 'Log format type (text, json)'
     required: false
+  provision-policy-fixtures:
+    default: "true"
+    description: 'Whether to provision fixture policy data after bootstrapping the platform'
+    required: false
 
 outputs:
   platform-working-dir:
@@ -211,6 +215,7 @@ runs:
       run: go run ./service provision keycloak
       working-directory: otdf-test-platform
     - name: Provision test fixture policy
+      if: ${{ inputs.provision-policy-fixtures == 'true' }}
       shell: bash
       run: go run ./service provision fixtures
       working-directory: otdf-test-platform

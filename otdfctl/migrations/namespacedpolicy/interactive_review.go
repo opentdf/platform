@@ -110,14 +110,6 @@ func (r *HuhInteractiveReviewer) reviewRegisteredResource(
 		return fmt.Errorf("registered resource %q: %w", resource.Source.GetId(), err)
 	}
 
-	for _, value := range filtered.GetValues() {
-		for _, aav := range value.GetActionAttributeValues() {
-			if err := ensureRegisteredResourceActionResolution(resolved, resource.Source.GetId(), chosen, aav.GetAction(), namespaceState.actionResolver); err != nil {
-				return fmt.Errorf("registered resource %q: %w", resource.Source.GetId(), err)
-			}
-		}
-	}
-
 	resource.Source = filtered
 	resource.Namespace = chosen
 	// Reset planner state before re-resolving against registeredResources[chosen.GetId()] so AlreadyMigrated/NeedsCreate matches resolver.resolveRegisteredResource semantics for the chosen namespace.
@@ -129,10 +121,19 @@ func (r *HuhInteractiveReviewer) reviewRegisteredResource(
 	switch {
 	case found:
 		resource.AlreadyMigrated = existing
+		return nil
 	case err != nil:
 		return fmt.Errorf("registered resource %q in namespace %q: %w", filtered.GetId(), chosen.GetId(), err)
 	default:
 		resource.NeedsCreate = true
+	}
+
+	for _, value := range filtered.GetValues() {
+		for _, aav := range value.GetActionAttributeValues() {
+			if err := ensureRegisteredResourceActionResolution(resolved, resource.Source.GetId(), chosen, aav.GetAction(), namespaceState.actionResolver); err != nil {
+				return fmt.Errorf("registered resource %q: %w", resource.Source.GetId(), err)
+			}
+		}
 	}
 
 	return nil

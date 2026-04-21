@@ -45,6 +45,19 @@ func TestForAttributeValues_Single(t *testing.T) {
 	}
 }
 
+func TestForAttributeValues_ZeroArgs(t *testing.T) {
+	r := ForAttributeValues()
+
+	av, ok := r.GetResource().(*authorizationv2proto.Resource_AttributeValues_)
+	if !ok {
+		t.Fatal("expected AttributeValues resource")
+	}
+	got := av.AttributeValues.GetFqns()
+	if len(got) != 0 {
+		t.Fatalf("fqns len = %d, want 0", len(got))
+	}
+}
+
 func TestForRegisteredResourceValueFqn(t *testing.T) {
 	fqn := "https://example.com/attr/department/value/finance"
 	r := ForRegisteredResourceValueFqn(fqn)

@@ -38,9 +38,9 @@ func TestExecuteObligationTriggers(t *testing.T) {
 								Status:    TargetStatusCreate,
 							},
 							{
-								Namespace: namespace2,
-								Status:    TargetStatusExistingStandard,
-								Existing:  &policy.Action{Id: "existing-standard-action"},
+								Namespace:  namespace2,
+								Status:     TargetStatusExistingStandard,
+								ExistingID: "existing-standard-action",
 							},
 						},
 					},
@@ -68,16 +68,10 @@ func TestExecuteObligationTriggers(t *testing.T) {
 								},
 							},
 						},
-						Targets: []*ObligationTriggerTargetPlan{
-							{
-								Namespace: namespace1,
-								Status:    TargetStatusCreate,
-								Action: &ActionBinding{
-									SourceID:  "action-1",
-									Namespace: namespace1,
-									Status:    TargetStatusCreate,
-								},
-							},
+						Target: &ObligationTriggerTargetPlan{
+							Namespace:      namespace1,
+							Status:         TargetStatusCreate,
+							ActionSourceID: "action-1",
 						},
 					},
 					{
@@ -85,18 +79,11 @@ func TestExecuteObligationTriggers(t *testing.T) {
 							Id:     "trigger-2",
 							Action: &policy.Action{Id: "action-1"},
 						},
-						Targets: []*ObligationTriggerTargetPlan{
-							{
-								Namespace: namespace2,
-								Status:    TargetStatusAlreadyMigrated,
-								Existing:  &policy.ObligationTrigger{Id: "migrated-trigger-2"},
-								Action: &ActionBinding{
-									SourceID:  "action-1",
-									Namespace: namespace2,
-									Status:    TargetStatusExistingStandard,
-									TargetID:  "existing-standard-action",
-								},
-							},
+						Target: &ObligationTriggerTargetPlan{
+							Namespace:      namespace2,
+							Status:         TargetStatusAlreadyMigrated,
+							ExistingID:     "migrated-trigger-2",
+							ActionSourceID: "action-1",
 						},
 					},
 				},
@@ -133,14 +120,14 @@ func TestExecuteObligationTriggers(t *testing.T) {
 					migrationLabelRun:          "run-789",
 				}, createdCall.Metadata.GetLabels())
 
-				createdTarget := plan.ObligationTriggers[0].Targets[0]
+				createdTarget := plan.ObligationTriggers[0].Target
 				require.NotNil(t, createdTarget.Execution)
 				assert.True(t, createdTarget.Execution.Applied)
 				assert.Equal(t, "created-trigger-1", createdTarget.Execution.CreatedTargetID)
 				assert.Equal(t, "run-789", createdTarget.Execution.RunID)
 				assert.Equal(t, "created-trigger-1", createdTarget.TargetID())
 
-				migratedTarget := plan.ObligationTriggers[1].Targets[0]
+				migratedTarget := plan.ObligationTriggers[1].Target
 				assert.Equal(t, "migrated-trigger-2", migratedTarget.TargetID())
 				assert.Nil(t, migratedTarget.Execution)
 			},
@@ -152,12 +139,10 @@ func TestExecuteObligationTriggers(t *testing.T) {
 				ObligationTriggers: []*ObligationTriggerPlan{
 					{
 						Source: &policy.ObligationTrigger{Id: "trigger-1"},
-						Targets: []*ObligationTriggerTargetPlan{
-							{
-								Namespace: namespace1,
-								Status:    TargetStatusUnresolved,
-								Reason:    "missing target namespace mapping",
-							},
+						Target: &ObligationTriggerTargetPlan{
+							Namespace: namespace1,
+							Status:    TargetStatusUnresolved,
+							Reason:    "missing target namespace mapping",
 						},
 					},
 				},
@@ -189,16 +174,10 @@ func TestExecuteObligationTriggers(t *testing.T) {
 							AttributeValue:  &policy.Value{Id: "attribute-value-1"},
 							ObligationValue: &policy.ObligationValue{Id: "obligation-value-1"},
 						},
-						Targets: []*ObligationTriggerTargetPlan{
-							{
-								Namespace: namespace1,
-								Status:    TargetStatusCreate,
-								Action: &ActionBinding{
-									SourceID:  "action-1",
-									Namespace: namespace1,
-									Status:    TargetStatusCreate,
-								},
-							},
+						Target: &ObligationTriggerTargetPlan{
+							Namespace:      namespace1,
+							Status:         TargetStatusCreate,
+							ActionSourceID: "action-1",
 						},
 					},
 				},
@@ -210,7 +189,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 
 				require.Error(t, err)
 				assert.Empty(t, handler.createdObligationTriggers)
-				assert.Nil(t, plan.ObligationTriggers[0].Targets[0].Execution)
+				assert.Nil(t, plan.ObligationTriggers[0].Target.Execution)
 			},
 		},
 		{
@@ -220,11 +199,9 @@ func TestExecuteObligationTriggers(t *testing.T) {
 				ObligationTriggers: []*ObligationTriggerPlan{
 					{
 						Source: &policy.ObligationTrigger{Id: "trigger-1"},
-						Targets: []*ObligationTriggerTargetPlan{
-							{
-								Namespace: namespace1,
-								Status:    TargetStatusAlreadyMigrated,
-							},
+						Target: &ObligationTriggerTargetPlan{
+							Namespace: namespace1,
+							Status:    TargetStatusAlreadyMigrated,
 						},
 					},
 				},
@@ -261,16 +238,10 @@ func TestExecuteObligationTriggers(t *testing.T) {
 							AttributeValue:  &policy.Value{Id: "attribute-value-1"},
 							ObligationValue: &policy.ObligationValue{Id: "obligation-value-1"},
 						},
-						Targets: []*ObligationTriggerTargetPlan{
-							{
-								Namespace: namespace1,
-								Status:    TargetStatusCreate,
-								Action: &ActionBinding{
-									SourceID:  "action-1",
-									Namespace: namespace1,
-									Status:    TargetStatusCreate,
-								},
-							},
+						Target: &ObligationTriggerTargetPlan{
+							Namespace:      namespace1,
+							Status:         TargetStatusCreate,
+							ActionSourceID: "action-1",
 						},
 					},
 				},
@@ -293,8 +264,8 @@ func TestExecuteObligationTriggers(t *testing.T) {
 
 				require.Error(t, err)
 				require.Contains(t, handler.createdObligationTriggers, "trigger-1")
-				require.NotNil(t, plan.ObligationTriggers[0].Targets[0].Execution)
-				assert.Equal(t, ErrMissingCreatedTargetID.Error(), plan.ObligationTriggers[0].Targets[0].Execution.Failure)
+				require.NotNil(t, plan.ObligationTriggers[0].Target.Execution)
+				assert.Equal(t, ErrMissingCreatedTargetID.Error(), plan.ObligationTriggers[0].Target.Execution.Failure)
 			},
 		},
 		{
@@ -320,16 +291,10 @@ func TestExecuteObligationTriggers(t *testing.T) {
 							AttributeValue:  &policy.Value{Id: "attribute-value-1"},
 							ObligationValue: &policy.ObligationValue{Id: "obligation-value-1"},
 						},
-						Targets: []*ObligationTriggerTargetPlan{
-							{
-								Namespace: namespace1,
-								Status:    TargetStatusCreate,
-								Action: &ActionBinding{
-									SourceID:  "action-1",
-									Namespace: namespace1,
-									Status:    TargetStatusCreate,
-								},
-							},
+						Target: &ObligationTriggerTargetPlan{
+							Namespace:      namespace1,
+							Status:         TargetStatusCreate,
+							ActionSourceID: "action-1",
 						},
 					},
 				},
@@ -355,8 +320,8 @@ func TestExecuteObligationTriggers(t *testing.T) {
 
 				require.Error(t, err)
 				require.Contains(t, handler.createdObligationTriggers, "trigger-1")
-				require.NotNil(t, plan.ObligationTriggers[0].Targets[0].Execution)
-				assert.Equal(t, "boom", plan.ObligationTriggers[0].Targets[0].Execution.Failure)
+				require.NotNil(t, plan.ObligationTriggers[0].Target.Execution)
+				assert.Equal(t, "boom", plan.ObligationTriggers[0].Target.Execution.Failure)
 			},
 		},
 		{
@@ -366,11 +331,9 @@ func TestExecuteObligationTriggers(t *testing.T) {
 				ObligationTriggers: []*ObligationTriggerPlan{
 					{
 						Source: &policy.ObligationTrigger{Id: "trigger-1"},
-						Targets: []*ObligationTriggerTargetPlan{
-							{
-								Namespace: namespace1,
-								Status:    TargetStatus("bogus"),
-							},
+						Target: &ObligationTriggerTargetPlan{
+							Namespace: namespace1,
+							Status:    TargetStatus("bogus"),
 						},
 					},
 				},

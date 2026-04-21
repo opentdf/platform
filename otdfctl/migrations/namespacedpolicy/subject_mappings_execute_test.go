@@ -66,23 +66,11 @@ func TestExecuteSubjectMappings(t *testing.T) {
 								},
 							},
 						},
-						Targets: []*SubjectMappingTargetPlan{
-							{
-								Namespace: namespace1,
-								Status:    TargetStatusCreate,
-								Actions: []*ActionBinding{
-									{
-										SourceID:  "action-1",
-										Namespace: namespace1,
-										Status:    TargetStatusCreate,
-									},
-								},
-								SubjectConditionSet: &SubjectConditionSetBinding{
-									SourceID:  "scs-1",
-									Namespace: namespace1,
-									Status:    TargetStatusCreate,
-								},
-							},
+						Target: &SubjectMappingTargetPlan{
+							Namespace:                   namespace1,
+							Status:                      TargetStatusCreate,
+							ActionSourceIDs:             []string{"action-1"},
+							SubjectConditionSetSourceID: "scs-1",
 						},
 					},
 				},
@@ -125,9 +113,9 @@ func TestExecuteSubjectMappings(t *testing.T) {
 					migrationLabelRun:          "run-789",
 				}, call.Metadata.GetLabels())
 
-				target := plan.SubjectMappings[0].Targets[0]
+				target := plan.SubjectMappings[0].Target
 				assert.Equal(t, TargetStatusCreate, target.Status)
-				assert.Nil(t, target.Existing)
+				assert.Empty(t, target.ExistingID)
 				require.NotNil(t, target.Execution)
 				assert.True(t, target.Execution.Applied)
 				assert.Equal(t, "mapping-target-1", target.Execution.CreatedTargetID)
@@ -142,12 +130,10 @@ func TestExecuteSubjectMappings(t *testing.T) {
 				SubjectMappings: []*SubjectMappingPlan{
 					{
 						Source: &policy.SubjectMapping{Id: "mapping-1"},
-						Targets: []*SubjectMappingTargetPlan{
-							{
-								Namespace: namespace1,
-								Status:    TargetStatusAlreadyMigrated,
-								Existing:  &policy.SubjectMapping{Id: "mapping-target-1"},
-							},
+						Target: &SubjectMappingTargetPlan{
+							Namespace:  namespace1,
+							Status:     TargetStatusAlreadyMigrated,
+							ExistingID: "mapping-target-1",
 						},
 					},
 				},
@@ -158,8 +144,8 @@ func TestExecuteSubjectMappings(t *testing.T) {
 
 				require.NoError(t, err)
 				assert.Empty(t, handler.createdSubjectMappings)
-				assert.Equal(t, "mapping-target-1", plan.SubjectMappings[0].Targets[0].TargetID())
-				assert.Nil(t, plan.SubjectMappings[0].Targets[0].Execution)
+				assert.Equal(t, "mapping-target-1", plan.SubjectMappings[0].Target.TargetID())
+				assert.Nil(t, plan.SubjectMappings[0].Target.Execution)
 			},
 		},
 		{
@@ -169,12 +155,10 @@ func TestExecuteSubjectMappings(t *testing.T) {
 				SubjectMappings: []*SubjectMappingPlan{
 					{
 						Source: &policy.SubjectMapping{Id: "mapping-1"},
-						Targets: []*SubjectMappingTargetPlan{
-							{
-								Namespace: namespace1,
-								Status:    TargetStatusUnresolved,
-								Reason:    "missing target namespace mapping",
-							},
+						Target: &SubjectMappingTargetPlan{
+							Namespace: namespace1,
+							Status:    TargetStatusUnresolved,
+							Reason:    "missing target namespace mapping",
 						},
 					},
 				},
@@ -201,11 +185,9 @@ func TestExecuteSubjectMappings(t *testing.T) {
 				SubjectMappings: []*SubjectMappingPlan{
 					{
 						Source: &policy.SubjectMapping{Id: "mapping-1"},
-						Targets: []*SubjectMappingTargetPlan{
-							{
-								Namespace: namespace1,
-								Status:    TargetStatusAlreadyMigrated,
-							},
+						Target: &SubjectMappingTargetPlan{
+							Namespace: namespace1,
+							Status:    TargetStatusAlreadyMigrated,
 						},
 					},
 				},
@@ -231,23 +213,11 @@ func TestExecuteSubjectMappings(t *testing.T) {
 								Id: "av-1",
 							},
 						},
-						Targets: []*SubjectMappingTargetPlan{
-							{
-								Namespace: namespace1,
-								Status:    TargetStatusCreate,
-								Actions: []*ActionBinding{
-									{
-										SourceID:  "action-1",
-										Namespace: namespace1,
-										Status:    TargetStatusCreate,
-									},
-								},
-								SubjectConditionSet: &SubjectConditionSetBinding{
-									SourceID:  "scs-1",
-									Namespace: namespace1,
-									Status:    TargetStatusAlreadyMigrated,
-								},
-							},
+						Target: &SubjectMappingTargetPlan{
+							Namespace:                   namespace1,
+							Status:                      TargetStatusCreate,
+							ActionSourceIDs:             []string{"action-1"},
+							SubjectConditionSetSourceID: "scs-1",
 						},
 					},
 				},
@@ -270,9 +240,9 @@ func TestExecuteSubjectMappings(t *testing.T) {
 						Source: &policy.Action{Id: "action-1", Name: "decrypt"},
 						Targets: []*ActionTargetPlan{
 							{
-								Namespace: namespace1,
-								Status:    TargetStatusAlreadyMigrated,
-								Existing:  &policy.Action{Id: "action-target-1"},
+								Namespace:  namespace1,
+								Status:     TargetStatusAlreadyMigrated,
+								ExistingID: "action-target-1",
 							},
 						},
 					},
@@ -285,23 +255,11 @@ func TestExecuteSubjectMappings(t *testing.T) {
 								Id: "av-1",
 							},
 						},
-						Targets: []*SubjectMappingTargetPlan{
-							{
-								Namespace: namespace1,
-								Status:    TargetStatusCreate,
-								Actions: []*ActionBinding{
-									{
-										SourceID:  "action-1",
-										Namespace: namespace1,
-										Status:    TargetStatusAlreadyMigrated,
-									},
-								},
-								SubjectConditionSet: &SubjectConditionSetBinding{
-									SourceID:  "scs-1",
-									Namespace: namespace1,
-									Status:    TargetStatusCreate,
-								},
-							},
+						Target: &SubjectMappingTargetPlan{
+							Namespace:                   namespace1,
+							Status:                      TargetStatusCreate,
+							ActionSourceIDs:             []string{"action-1"},
+							SubjectConditionSetSourceID: "scs-1",
 						},
 					},
 				},
@@ -327,10 +285,8 @@ func TestExecuteSubjectMappings(t *testing.T) {
 								Id: "av-1",
 							},
 						},
-						Targets: []*SubjectMappingTargetPlan{
-							{
-								Status: TargetStatusCreate,
-							},
+						Target: &SubjectMappingTargetPlan{
+							Status: TargetStatusCreate,
 						},
 					},
 				},
@@ -353,9 +309,9 @@ func TestExecuteSubjectMappings(t *testing.T) {
 						Source: &policy.Action{Id: "action-1", Name: "decrypt"},
 						Targets: []*ActionTargetPlan{
 							{
-								Namespace: namespace1,
-								Status:    TargetStatusAlreadyMigrated,
-								Existing:  &policy.Action{Id: "action-target-1"},
+								Namespace:  namespace1,
+								Status:     TargetStatusAlreadyMigrated,
+								ExistingID: "action-target-1",
 							},
 						},
 					},
@@ -365,9 +321,9 @@ func TestExecuteSubjectMappings(t *testing.T) {
 						Source: &policy.SubjectConditionSet{Id: "scs-1"},
 						Targets: []*SubjectConditionSetTargetPlan{
 							{
-								Namespace: namespace1,
-								Status:    TargetStatusAlreadyMigrated,
-								Existing:  &policy.SubjectConditionSet{Id: "scs-target-1"},
+								Namespace:  namespace1,
+								Status:     TargetStatusAlreadyMigrated,
+								ExistingID: "scs-target-1",
 							},
 						},
 					},
@@ -380,23 +336,11 @@ func TestExecuteSubjectMappings(t *testing.T) {
 								Id: "av-1",
 							},
 						},
-						Targets: []*SubjectMappingTargetPlan{
-							{
-								Namespace: namespace1,
-								Status:    TargetStatusCreate,
-								Actions: []*ActionBinding{
-									{
-										SourceID:  "action-1",
-										Namespace: namespace1,
-										Status:    TargetStatusAlreadyMigrated,
-									},
-								},
-								SubjectConditionSet: &SubjectConditionSetBinding{
-									SourceID:  "scs-1",
-									Namespace: namespace1,
-									Status:    TargetStatusAlreadyMigrated,
-								},
-							},
+						Target: &SubjectMappingTargetPlan{
+							Namespace:                   namespace1,
+							Status:                      TargetStatusCreate,
+							ActionSourceIDs:             []string{"action-1"},
+							SubjectConditionSetSourceID: "scs-1",
 						},
 					},
 				},
@@ -414,8 +358,8 @@ func TestExecuteSubjectMappings(t *testing.T) {
 
 				require.Error(t, err)
 				require.Contains(t, handler.createdSubjectMappings, "mapping-1")
-				require.NotNil(t, plan.SubjectMappings[0].Targets[0].Execution)
-				assert.Equal(t, ErrMissingCreatedTargetID.Error(), plan.SubjectMappings[0].Targets[0].Execution.Failure)
+				require.NotNil(t, plan.SubjectMappings[0].Target.Execution)
+				assert.Equal(t, ErrMissingCreatedTargetID.Error(), plan.SubjectMappings[0].Target.Execution.Failure)
 			},
 		},
 		{
@@ -425,11 +369,9 @@ func TestExecuteSubjectMappings(t *testing.T) {
 				SubjectMappings: []*SubjectMappingPlan{
 					{
 						Source: &policy.SubjectMapping{Id: "mapping-1"},
-						Targets: []*SubjectMappingTargetPlan{
-							{
-								Namespace: namespace1,
-								Status:    TargetStatus("bogus"),
-							},
+						Target: &SubjectMappingTargetPlan{
+							Namespace: namespace1,
+							Status:    TargetStatus("bogus"),
 						},
 					},
 				},
@@ -458,9 +400,9 @@ func TestExecuteSubjectMappings(t *testing.T) {
 						Source: &policy.Action{Id: "action-1", Name: "decrypt"},
 						Targets: []*ActionTargetPlan{
 							{
-								Namespace: namespace1,
-								Status:    TargetStatusAlreadyMigrated,
-								Existing:  &policy.Action{Id: "action-target-1"},
+								Namespace:  namespace1,
+								Status:     TargetStatusAlreadyMigrated,
+								ExistingID: "action-target-1",
 							},
 						},
 					},
@@ -470,9 +412,9 @@ func TestExecuteSubjectMappings(t *testing.T) {
 						Source: &policy.SubjectConditionSet{Id: "scs-1"},
 						Targets: []*SubjectConditionSetTargetPlan{
 							{
-								Namespace: namespace1,
-								Status:    TargetStatusAlreadyMigrated,
-								Existing:  &policy.SubjectConditionSet{Id: "scs-target-1"},
+								Namespace:  namespace1,
+								Status:     TargetStatusAlreadyMigrated,
+								ExistingID: "scs-target-1",
 							},
 						},
 					},
@@ -485,23 +427,11 @@ func TestExecuteSubjectMappings(t *testing.T) {
 								Id: "av-1",
 							},
 						},
-						Targets: []*SubjectMappingTargetPlan{
-							{
-								Namespace: namespace1,
-								Status:    TargetStatusCreate,
-								Actions: []*ActionBinding{
-									{
-										SourceID:  "action-1",
-										Namespace: namespace1,
-										Status:    TargetStatusAlreadyMigrated,
-									},
-								},
-								SubjectConditionSet: &SubjectConditionSetBinding{
-									SourceID:  "scs-1",
-									Namespace: namespace1,
-									Status:    TargetStatusAlreadyMigrated,
-								},
-							},
+						Target: &SubjectMappingTargetPlan{
+							Namespace:                   namespace1,
+							Status:                      TargetStatusCreate,
+							ActionSourceIDs:             []string{"action-1"},
+							SubjectConditionSetSourceID: "scs-1",
 						},
 					},
 				},
@@ -522,8 +452,8 @@ func TestExecuteSubjectMappings(t *testing.T) {
 
 				require.Error(t, err)
 				require.Contains(t, handler.createdSubjectMappings, "mapping-1")
-				require.NotNil(t, plan.SubjectMappings[0].Targets[0].Execution)
-				assert.Equal(t, "boom", plan.SubjectMappings[0].Targets[0].Execution.Failure)
+				require.NotNil(t, plan.SubjectMappings[0].Target.Execution)
+				assert.Equal(t, "boom", plan.SubjectMappings[0].Target.Execution.Failure)
 			},
 		},
 	}
@@ -558,8 +488,8 @@ func TestSubjectMappingTargetIDPrefersExecutionResult(t *testing.T) {
 	t.Parallel()
 
 	target := &SubjectMappingTargetPlan{
-		Namespace: &policy.Namespace{Id: "ns-2", Fqn: "https://example.net"},
-		Existing:  &policy.SubjectMapping{Id: "existing-target"},
+		Namespace:  &policy.Namespace{Id: "ns-2", Fqn: "https://example.net"},
+		ExistingID: "existing-target",
 		Execution: &ExecutionResult{
 			CreatedTargetID: "created-target",
 		},

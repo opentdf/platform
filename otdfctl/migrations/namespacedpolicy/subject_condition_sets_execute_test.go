@@ -63,9 +63,9 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 								Status:    TargetStatusCreate,
 							},
 							{
-								Namespace: namespace2,
-								Status:    TargetStatusAlreadyMigrated,
-								Existing:  &policy.SubjectConditionSet{Id: "migrated-scs-1"},
+								Namespace:  namespace2,
+								Status:     TargetStatusAlreadyMigrated,
+								ExistingID: "migrated-scs-1",
 							},
 						},
 					},
@@ -97,7 +97,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 
 				createdTarget := plan.SubjectConditionSets[0].Targets[0]
 				assert.Equal(t, TargetStatusCreate, createdTarget.Status)
-				assert.Nil(t, createdTarget.Existing)
+				assert.Empty(t, createdTarget.ExistingID)
 				require.NotNil(t, createdTarget.Execution)
 				assert.True(t, createdTarget.Execution.Applied)
 				assert.Equal(t, "created-scs-1", createdTarget.Execution.CreatedTargetID)

@@ -161,10 +161,21 @@ wait_for_green() {
   done
 }
 
+write_opentdf_config() {
+  local tmp
+
+  tmp=$(mktemp "./opentdf.yaml.tmp.XXXXXX")
+  if ! cat >"$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  mv -f "$tmp" opentdf.yaml
+}
+
 downgrade_config() {
   ec_current_key=$1
   rsa_current_key=$2
-  cat >opentdf.yaml <<EOF
+  write_opentdf_config <<EOF
 logger:
   level: debug
   type: text
@@ -230,7 +241,7 @@ update_config() {
   rsa_current_key=$3
   rsa_legacy_key=$4
 
-  cat >opentdf.yaml <<EOF
+  write_opentdf_config <<EOF
 logger:
   level: debug
   type: text

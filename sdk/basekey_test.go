@@ -63,7 +63,7 @@ func (m *mockWellKnownService) GetWellKnownConfiguration(
 }
 
 func TestGetKasKeyAlg(t *testing.T) {
-	tests := []struct {
+	for _, test := range []struct {
 		name     string
 		algStr   string
 		expected policy.Algorithm
@@ -108,23 +108,31 @@ func TestGetKasKeyAlg(t *testing.T) {
 			algStr:   string(ocrypto.HybridSecp384r1MLKEM1024Key),
 			expected: policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024,
 		},
-		{
-			name:     "unsupported algorithm",
-			algStr:   "unsupported",
-			expected: policy.Algorithm_ALGORITHM_UNSPECIFIED,
-		},
-		{
-			name:     "empty string",
-			algStr:   "",
-			expected: policy.Algorithm_ALGORITHM_UNSPECIFIED,
-		},
-	}
-
-	for _, test := range tests {
+	} {
 		t.Run(test.name, func(t *testing.T) {
 			result, err := getKasKeyAlg(test.algStr)
 			require.NoError(t, err)
 			assert.Equal(t, test.expected, result, "Algorithm enum mismatch")
+		})
+	}
+
+	for _, test := range []struct {
+		name   string
+		algStr string
+	}{
+		{
+			name:   "unsupported algorithm",
+			algStr: "unsupported",
+		},
+		{
+			name:   "empty string",
+			algStr: "",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := getKasKeyAlg(test.algStr)
+			assert.Error(t, err)
+			assert.Equal(t, policy.Algorithm_ALGORITHM_UNSPECIFIED, result, "Algorithm enum mismatch")
 		})
 	}
 }

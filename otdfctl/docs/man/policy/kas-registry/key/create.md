@@ -73,6 +73,9 @@ otdfctl policy kas-registry key create --key-id "aws-key" --algorithm "rsa:2048"
     | `ec:secp256r1` |
     | `ec:secp384r1` |
     | `ec:secp521r1` |
+    | `hpqt:xwing` |
+    | `hpqt:secp256r1-mlkem768` |
+    | `hpqt:secp384r1-mlkem1024` |
 
 2. The `"mode"` specifies where the key that is encrypting TDFs is stored. All keys will be encrypted when stored in Virtru's DB, for modes `"local"` and `"provider"`
 

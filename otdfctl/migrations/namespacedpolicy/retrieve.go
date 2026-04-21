@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -19,6 +20,7 @@ var (
 	_ pagedResponse = (*subjectmapping.ListSubjectConditionSetsResponse)(nil)
 	_ pagedResponse = (*subjectmapping.ListSubjectMappingsResponse)(nil)
 	_ pagedResponse = (*registeredresources.ListRegisteredResourcesResponse)(nil)
+	_ pagedResponse = (*registeredresources.ListRegisteredResourceValuesResponse)(nil)
 	_ pagedResponse = (*obligations.ListObligationTriggersResponse)(nil)
 	_ pagedResponse = (*namespaces.ListNamespacesResponse)(nil)
 )
@@ -75,7 +77,7 @@ func (r *Retriever) retrieve(ctx context.Context, scopes scopeSet) (*Retrieved, 
 	}
 
 	if scopes.requiresObligationTriggers() {
-		candidates, err := r.retrieveObligationTriggers(ctx)
+		candidates, err := r.retrieveObligationTriggers(ctx, objectIDSet(retrieved.Candidates.Actions))
 		if err != nil {
 			return nil, err
 		}
@@ -119,9 +121,14 @@ func (r *Retriever) listNamespaces(ctx context.Context) ([]*policy.Namespace, er
 
 func (r *Retriever) listExistingTargets(ctx context.Context, scopes scopeSet, derived *DerivedTargets) (*ExistingTargets, error) {
 	existing := newExistingTargets()
+	var (
+		customActions   map[string][]*policy.Action
+		standardActions map[string][]*policy.Action
+	)
 
 	if scopes.requiresActions() {
-		customActions, standardActions, err := r.listActionsForNamespaces(ctx, derivedActionNamespaces(derived))
+		var err error
+		customActions, standardActions, err = r.listActionsForNamespaces(ctx, derivedActionNamespaces(derived))
 		if err != nil {
 			return nil, err
 		}
@@ -154,7 +161,11 @@ func (r *Retriever) listExistingTargets(ctx context.Context, scopes scopeSet, de
 	}
 
 	if scopes.has(ScopeObligationTriggers) {
-		obligationTriggers, err := r.listObligationTriggersForNamespaces(ctx, derivedObligationTriggerNamespaces(derived))
+		obligationTriggers, err := r.listObligationTriggersForNamespaces(
+			ctx,
+			derivedObligationTriggerNamespaces(derived),
+			actionIDsByNamespace(derivedActionNamespaces(derived), customActions, standardActions),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -259,7 +270,12 @@ func (r *Retriever) retrieveRegisteredResources(ctx context.Context) ([]*policy.
 			if resource.GetId() == "" || !isLegacyNamespace(resource.GetNamespace()) || hasObject(candidates, resource.GetId()) {
 				continue
 			}
-			candidates = append(candidates, resource)
+
+			hydrated, err := r.hydrateRegisteredResource(ctx, resource)
+			if err != nil {
+				return nil, fmt.Errorf("list registered resource values for resource %s: %w", resource.GetId(), err)
+			}
+			candidates = append(candidates, hydrated)
 		}
 
 		nextOffset, err := nextOffsetFromPage(resp)
@@ -326,7 +342,7 @@ func (r *Retriever) retrieveActions(ctx context.Context) ([]*policy.Action, erro
 	return candidates, nil
 }
 
-func (r *Retriever) retrieveObligationTriggers(ctx context.Context) ([]*policy.ObligationTrigger, error) {
+func (r *Retriever) retrieveObligationTriggers(ctx context.Context, legacyActionIDs map[string]struct{}) ([]*policy.ObligationTrigger, error) {
 	var (
 		candidates []*policy.ObligationTrigger
 		offset     int32
@@ -344,7 +360,11 @@ func (r *Retriever) retrieveObligationTriggers(ctx context.Context) ([]*policy.O
 		}
 
 		for _, trigger := range items {
-			if trigger.GetId() == "" || trigger.GetAction() == nil || !isLegacyNamespace(trigger.GetAction().GetNamespace()) || hasObject(candidates, trigger.GetId()) {
+			if trigger.GetId() == "" || trigger.GetAction().GetId() == "" || hasObject(candidates, trigger.GetId()) {
+				continue
+			}
+			// ! If the trigger action id is not within the candidate set, it is not a legacy obligation trigger.
+			if _, ok := legacyActionIDs[trigger.GetAction().GetId()]; !ok {
 				continue
 			}
 			candidates = append(candidates, trigger)
@@ -361,6 +381,46 @@ func (r *Retriever) retrieveObligationTriggers(ctx context.Context) ([]*policy.O
 	}
 
 	return candidates, nil
+}
+
+func objectIDSet[T interface{ GetId() string }](items []T) map[string]struct{} {
+	ids := make(map[string]struct{}, len(items))
+	for _, item := range items {
+		if id := item.GetId(); id != "" {
+			ids[id] = struct{}{}
+		}
+	}
+	return ids
+}
+
+func actionIDsByNamespace(namespaces []*policy.Namespace, customByNamespace, standardByNamespace map[string][]*policy.Action) map[string]map[string]struct{} {
+	idsByNamespace := make(map[string]map[string]struct{}, len(namespaces))
+	for _, namespace := range dedupeTargetNamespaces(namespaces) {
+		idsByNamespace[namespace.GetId()] = make(map[string]struct{})
+	}
+	add := func(namespaceID string, actions []*policy.Action) {
+		if namespaceID == "" {
+			return
+		}
+		if idsByNamespace[namespaceID] == nil {
+			idsByNamespace[namespaceID] = make(map[string]struct{}, len(actions))
+		}
+		for _, action := range actions {
+			if action == nil || action.GetId() == "" {
+				continue
+			}
+			idsByNamespace[namespaceID][action.GetId()] = struct{}{}
+		}
+	}
+
+	for namespaceID, actions := range customByNamespace {
+		add(namespaceID, actions)
+	}
+	for namespaceID, actions := range standardByNamespace {
+		add(namespaceID, actions)
+	}
+
+	return idsByNamespace
 }
 
 func (r *Retriever) listActionsForNamespaces(ctx context.Context, namespaces []*policy.Namespace) (map[string][]*policy.Action, map[string][]*policy.Action, error) {
@@ -481,7 +541,12 @@ func (r *Retriever) listRegisteredResourcesForNamespaces(ctx context.Context, na
 				if resource.GetId() == "" || hasObject(byNamespace[namespace.GetId()], resource.GetId()) {
 					continue
 				}
-				byNamespace[namespace.GetId()] = append(byNamespace[namespace.GetId()], resource)
+
+				hydrated, err := r.hydrateRegisteredResource(ctx, resource)
+				if err != nil {
+					return nil, fmt.Errorf("list registered resource values for resource %s in namespace %s: %w", resource.GetId(), namespace.GetId(), err)
+				}
+				byNamespace[namespace.GetId()] = append(byNamespace[namespace.GetId()], hydrated)
 			}
 
 			nextOffset, err := nextOffsetFromPage(resp)
@@ -498,10 +563,70 @@ func (r *Retriever) listRegisteredResourcesForNamespaces(ctx context.Context, na
 	return byNamespace, nil
 }
 
-func (r *Retriever) listObligationTriggersForNamespaces(ctx context.Context, namespaces []*policy.Namespace) (map[string][]*policy.ObligationTrigger, error) {
+func (r *Retriever) hydrateRegisteredResource(ctx context.Context, resource *policy.RegisteredResource) (*policy.RegisteredResource, error) {
+	if resource == nil || resource.GetId() == "" {
+		return resource, nil
+	}
+
+	values, err := r.listRegisteredResourceValues(ctx, resource.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	hydrated, ok := proto.Clone(resource).(*policy.RegisteredResource)
+	if !ok {
+		return nil, errors.New("clone registered resource: unexpected type")
+	}
+	hydrated.Values = values
+	return hydrated, nil
+}
+
+func (r *Retriever) listRegisteredResourceValues(ctx context.Context, resourceID string) ([]*policy.RegisteredResourceValue, error) {
+	if resourceID == "" {
+		return nil, nil
+	}
+
+	var (
+		values []*policy.RegisteredResourceValue
+		offset int32
+	)
+
+	for {
+		resp, err := r.handler.ListRegisteredResourceValues(ctx, resourceID, r.pageSize, offset)
+		if err != nil {
+			return nil, err
+		}
+
+		values = append(values, resp.GetValues()...)
+
+		nextOffset, err := nextOffsetFromPage(resp)
+		if err != nil {
+			return nil, err
+		}
+		if nextOffset <= 0 {
+			break
+		}
+		offset = nextOffset
+	}
+
+	return values, nil
+}
+
+// * Getting an existing trigger means to retrieve all triggers for a set of namespaces
+// * where the obligation trigger has an action that has a namespace.
+// *
+// * ListRPCs do not return namespace information for non-target objects (i.e. actions for triggers)
+// * so we must lookup the action from ListActionsExisting to discern whether or not the action tied
+// * to the Obligation Trigger is legacy or not.
+func (r *Retriever) listObligationTriggersForNamespaces(ctx context.Context, namespaces []*policy.Namespace, actionIDsByNamespace map[string]map[string]struct{}) (map[string][]*policy.ObligationTrigger, error) {
 	byNamespace := make(map[string][]*policy.ObligationTrigger)
 
 	for _, namespace := range dedupeTargetNamespaces(namespaces) {
+		allowedActionIDs, hasActionNamespace := actionIDsByNamespace[namespace.GetId()]
+		// ! Actions should always include the derived obligation trigger namespaces.
+		if !hasActionNamespace {
+			return nil, fmt.Errorf("obligation trigger existing-target lookup for namespace %q is missing action candidates", namespace.GetId())
+		}
 		var offset int32
 		for {
 			resp, err := r.handler.ListObligationTriggers(ctx, namespace.GetId(), r.pageSize, offset)
@@ -510,7 +635,11 @@ func (r *Retriever) listObligationTriggersForNamespaces(ctx context.Context, nam
 			}
 
 			for _, trigger := range resp.GetTriggers() {
-				if trigger.GetId() == "" || hasObject(byNamespace[namespace.GetId()], trigger.GetId()) {
+				if trigger.GetId() == "" || trigger.GetAction().GetId() == "" || hasObject(byNamespace[namespace.GetId()], trigger.GetId()) {
+					continue
+				}
+				// ! Check that the trigger action is one with a namespace.
+				if _, actionAllowed := allowedActionIDs[trigger.GetAction().GetId()]; !actionAllowed {
 					continue
 				}
 				byNamespace[namespace.GetId()] = append(byNamespace[namespace.GetId()], trigger)

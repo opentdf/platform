@@ -608,14 +608,18 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		legacy = pgtypeBool(r.GetLegacy())
 	}
 
+	sortField, sortDirection := GetKasKeysSortParams(r.GetSort())
+
 	params := listKeysParams{
-		Legacy:       legacy,
-		KeyAlgorithm: algo,
-		KasID:        kasID,
-		KasUri:       kasURI,
-		KasName:      kasName,
-		Offset:       offset,
-		Limit:        limit,
+		Legacy:        legacy,
+		KeyAlgorithm:  algo,
+		KasID:         kasID,
+		KasUri:        kasURI,
+		KasName:       kasName,
+		Offset:        offset,
+		Limit:         limit,
+		SortField:     sortField,
+		SortDirection: sortDirection,
 	}
 
 	listRows, err := c.queries.listKeys(ctx, params)

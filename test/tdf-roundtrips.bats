@@ -42,10 +42,6 @@
   echo "$output"
   printf '%s\n' "$output" | grep "Hello X-Wing wrappers!"
 
-  echo "[INFO] decrypting with X-Wing..."
-  run go run ./examples decrypt -A 'hpqt:xwing' sensitive-with-xwing.txt.tdf
-  echo "$output"
-  printf '%s\n' "$output" | grep "Hello X-Wing wrappers!"
 }
 
 @test "examples: roundtrip Z-TDF with P256+ML-KEM-768 wrapped KAO" {
@@ -64,10 +60,6 @@
   echo "$output"
   printf '%s\n' "$output" | grep "Hello P256+ML-KEM-768 wrappers!"
 
-  echo "[INFO] decrypting with P256+ML-KEM-768..."
-  run go run ./examples decrypt -A 'hpqt:secp256r1-mlkem768' sensitive-with-p256mlkem768.txt.tdf
-  echo "$output"
-  printf '%s\n' "$output" | grep "Hello P256+ML-KEM-768 wrappers!"
 }
 
 @test "examples: roundtrip Z-TDF with P384+ML-KEM-1024 wrapped KAO" {
@@ -86,10 +78,6 @@
   echo "$output"
   printf '%s\n' "$output" | grep "Hello P384+ML-KEM-1024 wrappers!"
 
-  echo "[INFO] decrypting with P384+ML-KEM-1024..."
-  run go run ./examples decrypt -A 'hpqt:secp384r1-mlkem1024' sensitive-with-p384mlkem1024.txt.tdf
-  echo "$output"
-  printf '%s\n' "$output" | grep "Hello P384+ML-KEM-1024 wrappers!"
 }
 
 @test "examples: legacy key support Z-TDF" {

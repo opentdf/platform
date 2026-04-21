@@ -254,9 +254,10 @@ logger:
 services:
   kas:
     enabled: true
-    ec_tdf_enabled: true
     preview:
+      ec_tdf_enabled: true
       hybrid_tdf_enabled: true
+      key_management: false
     keyring:
       - kid: ${ec_current_key}
         alg: ec:secp256r1

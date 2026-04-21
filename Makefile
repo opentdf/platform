@@ -3,8 +3,8 @@
 
 .PHONY: all build clean connect-wrapper-generate docker-build fix fmt go-lint license lint proto-generate proto-helper-generate proto-lint sdk/sdk test tidy toolcheck
 
-MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
-HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
+MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples tests-bdd
+HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples tests-bdd
 REQUIRED_BUF_VERSION=1.56.0
 
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))

@@ -55,7 +55,6 @@ sql_escape_literal() {
 
 run_policy_db_sql() {
   local sql="$1"
-  local schema="${OPENTDF_DB_SCHEMA:-opentdf_policy}"
 
   run env \
     PGPASSWORD="${OPENTDF_DB_PASSWORD:-changeme}" \
@@ -66,7 +65,7 @@ run_policy_db_sql() {
     -d "${OPENTDF_DB_DATABASE:-opentdf}" \
     -X \
     -v ON_ERROR_STOP=1 \
-    -Atqc "SET search_path TO ${schema}, public; ${sql}"
+    -Atqc "SET search_path TO \"opentdf_policy\", public; ${sql}"
 }
 
 build_metadata_json_from_labels() {

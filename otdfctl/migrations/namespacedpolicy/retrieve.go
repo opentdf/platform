@@ -363,7 +363,7 @@ func (r *Retriever) retrieveObligationTriggers(ctx context.Context, legacyAction
 			if trigger.GetId() == "" || trigger.GetAction().GetId() == "" || hasObject(candidates, trigger.GetId()) {
 				continue
 			}
-			// ! If triggers action id is not within the candidate set, it is not a legacy obligation trigger.
+			// ! If the trigger action id is not within the candidate set, it is not a legacy obligation trigger.
 			if _, ok := legacyActionIDs[trigger.GetAction().GetId()]; !ok {
 				continue
 			}
@@ -394,7 +394,7 @@ func objectIDSet[T interface{ GetId() string }](items []T) map[string]struct{} {
 }
 
 func actionIDsByNamespace(namespaces []*policy.Namespace, customByNamespace, standardByNamespace map[string][]*policy.Action) map[string]map[string]struct{} {
-	idsByNamespace := make(map[string]map[string]struct{}, len(namespaces)+len(customByNamespace)+len(standardByNamespace))
+	idsByNamespace := make(map[string]map[string]struct{}, len(namespaces))
 	for _, namespace := range dedupeTargetNamespaces(namespaces) {
 		idsByNamespace[namespace.GetId()] = make(map[string]struct{})
 	}
@@ -616,7 +616,7 @@ func (r *Retriever) listRegisteredResourceValues(ctx context.Context, resourceID
 // * where the obligation trigger has an action that has a namespace.
 // *
 // * ListRPCs do not return namespace information for non-target objects (i.e. actions for triggers)
-// * so we must lookup the action from the ListActionsExisting to decern whether or not the action tied
+// * so we must lookup the action from ListActionsExisting to discern whether or not the action tied
 // * to the Obligation Trigger is legacy or not.
 func (r *Retriever) listObligationTriggersForNamespaces(ctx context.Context, namespaces []*policy.Namespace, actionIDsByNamespace map[string]map[string]struct{}) (map[string][]*policy.ObligationTrigger, error) {
 	byNamespace := make(map[string][]*policy.ObligationTrigger)

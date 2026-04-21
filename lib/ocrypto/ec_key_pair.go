@@ -77,6 +77,8 @@ func NewKeyPair(kt KeyType) (KeyPair, error) {
 			return nil, err
 		}
 		return NewECKeyPair(mode)
+	case HybridSecp256r1MLKEM768Key, HybridSecp384r1MLKEM1024Key, HybridXWingKey:
+		return NewHybridKeyPair(kt)
 	default:
 		return nil, fmt.Errorf("unsupported key type: %v", kt)
 	}

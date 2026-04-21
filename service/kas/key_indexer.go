@@ -55,7 +55,11 @@ func (p *KeyIndexer) LogValue() slog.Value {
 }
 
 func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (trust.KeyDetails, error) {
-	alg, err := convertAlgToEnum(algorithm)
+	kt, err := ocrypto.ParseKeyType(algorithm)
+	if err != nil {
+		return nil, err
+	}
+	alg, err := sdk.KeyTypeToPolicyAlgorithm(kt)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +162,9 @@ func (p *KeyAdapter) ID() trust.KeyIdentifier {
 func (p *KeyAdapter) Algorithm() ocrypto.KeyType {
 	kt, err := sdk.PolicyAlgorithmToKeyType(p.key.GetKey().GetKeyAlgorithm())
 	if err != nil {
-		p.log.Error("Unable to format key [%s] with alg [%v]: %v", p.key.GetKey().GetKeyId(), p.key.GetKey().GetKeyAlgorithm(), err)
+		p.log.Error("unable to format key with alg",
+			slog.String("kid", p.key.GetKey().GetKeyId()),
+			slog.Any("err", err))
 	}
 	return kt
 }

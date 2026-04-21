@@ -299,30 +299,6 @@ func convertAlgEnum2Simple(a policy.KasPublicKeyAlgEnum) policy.Algorithm {
 	}
 }
 
-// convertStringToAlgorithm converts a string algorithm representation to policy.Algorithm
-func convertStringToAlgorithm(alg string) policy.Algorithm {
-	switch ocrypto.KeyType(strings.ToLower(alg)) {
-	case ocrypto.EC256Key:
-		return policy.Algorithm_ALGORITHM_EC_P256
-	case ocrypto.EC384Key:
-		return policy.Algorithm_ALGORITHM_EC_P384
-	case ocrypto.EC521Key:
-		return policy.Algorithm_ALGORITHM_EC_P521
-	case ocrypto.RSA2048Key:
-		return policy.Algorithm_ALGORITHM_RSA_2048
-	case ocrypto.RSA4096Key:
-		return policy.Algorithm_ALGORITHM_RSA_4096
-	case ocrypto.HybridXWingKey:
-		return policy.Algorithm_ALGORITHM_HPQT_XWING
-	case ocrypto.HybridSecp256r1MLKEM768Key:
-		return policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768
-	case ocrypto.HybridSecp384r1MLKEM1024Key:
-		return policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024
-	default:
-		return policy.Algorithm_ALGORITHM_UNSPECIFIED
-	}
-}
-
 type grantType int
 
 const (
@@ -725,7 +701,10 @@ func (r granter) resolveTemplate(ctx context.Context, kaoKeyAlg string, genSplit
 				}
 				o.identifier = kpub.KID
 				// Convert the string algorithm to the appropriate enum
-				algEnum := convertStringToAlgorithm(kpub.Algorithm)
+				algEnum, err := getKasKeyAlg(strings.ToLower(kpub.Algorithm))
+				if err != nil {
+					return nil, fmt.Errorf("unsupported algorithm for kas [%s#%s]: %w", o.KASURI(), kpub.KID, err)
+				}
 				r.keyCache.c[*o] = &policy.SimpleKasKey{
 					KasUri: o.KASURI(),
 					PublicKey: &policy.SimpleKasPublicKey{

@@ -122,7 +122,8 @@ func TestGetKasKeyAlg(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result := getKasKeyAlg(test.algStr)
+			result, err := getKasKeyAlg(test.algStr)
+			require.NoError(t, err)
 			assert.Equal(t, test.expected, result, "Algorithm enum mismatch")
 		})
 	}
@@ -367,7 +368,8 @@ func TestFormatAlg_GetKasKeyAlg_RoundTrip(t *testing.T) {
 			formatted, err := formatAlg(tc.alg)
 			require.NoError(t, err, "formatAlg should not error for %s", tc.name)
 
-			roundTripped := getKasKeyAlg(formatted)
+			roundTripped, err := getKasKeyAlg(formatted)
+			require.NoError(t, err)
 			assert.Equal(t, tc.alg, roundTripped,
 				"round-trip mismatch: formatAlg(%s) = %q → getKasKeyAlg returned %s, want %s",
 				tc.name, formatted, roundTripped, tc.alg)

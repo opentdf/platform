@@ -41,6 +41,10 @@ func ValidatePublicKeyPEM(pemBytes []byte, expected policy.Algorithm) error {
 		if enc.KeyType() != ocrypto.EC521Key {
 			return errors.New("algorithm mismatch: expected EC P-521")
 		}
+	case policy.Algorithm_ALGORITHM_HPQT_XWING,
+		policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768,
+		policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
+		fallthrough
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:

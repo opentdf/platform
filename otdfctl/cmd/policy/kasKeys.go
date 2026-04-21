@@ -83,6 +83,10 @@ func generateKeyPair(alg policy.Algorithm) (ocrypto.KeyPair, error) {
 		key, err = generateECCKey(ecSecp384Len)
 	case policy.Algorithm_ALGORITHM_EC_P521:
 		key, err = generateECCKey(ecSecp521Len)
+	case policy.Algorithm_ALGORITHM_HPQT_XWING,
+		policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768,
+		policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
+		fallthrough
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:

@@ -20,27 +20,34 @@ const (
 	baseKeyPublicKey = "public_key"
 )
 
-// TODO: Move this function to ocrypto?
-func getKasKeyAlg(alg string) policy.Algorithm {
-	switch alg {
-	case string(ocrypto.RSA2048Key):
-		return policy.Algorithm_ALGORITHM_RSA_2048
-	case string(ocrypto.RSA4096Key):
-		return policy.Algorithm_ALGORITHM_RSA_4096
-	case string(ocrypto.EC256Key):
-		return policy.Algorithm_ALGORITHM_EC_P256
-	case string(ocrypto.EC384Key):
-		return policy.Algorithm_ALGORITHM_EC_P384
-	case string(ocrypto.EC521Key):
-		return policy.Algorithm_ALGORITHM_EC_P521
-	case string(ocrypto.HybridXWingKey):
-		return policy.Algorithm_ALGORITHM_HPQT_XWING
-	case string(ocrypto.HybridSecp256r1MLKEM768Key):
-		return policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768
-	case string(ocrypto.HybridSecp384r1MLKEM1024Key):
-		return policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024
+func getKasKeyAlg(alg string) (policy.Algorithm, error) {
+	kt, err := ocrypto.ParseKeyType(alg)
+	if err != nil {
+		return policy.Algorithm_ALGORITHM_UNSPECIFIED, fmt.Errorf("invalid alg [%s]: %w", alg, err)
+	}
+	return KeyTypeToPolicyAlgorithm(kt)
+}
+
+func KeyTypeToPolicyAlgorithm(kt ocrypto.KeyType) (policy.Algorithm, error) {
+	switch kt {
+	case ocrypto.RSA2048Key:
+		return policy.Algorithm_ALGORITHM_RSA_2048, nil
+	case ocrypto.RSA4096Key:
+		return policy.Algorithm_ALGORITHM_RSA_4096, nil
+	case ocrypto.EC256Key:
+		return policy.Algorithm_ALGORITHM_EC_P256, nil
+	case ocrypto.EC384Key:
+		return policy.Algorithm_ALGORITHM_EC_P384, nil
+	case ocrypto.EC521Key:
+		return policy.Algorithm_ALGORITHM_EC_P521, nil
+	case ocrypto.HybridXWingKey:
+		return policy.Algorithm_ALGORITHM_HPQT_XWING, nil
+	case ocrypto.HybridSecp256r1MLKEM768Key:
+		return policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768, nil
+	case ocrypto.HybridSecp384r1MLKEM1024Key:
+		return policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024, nil
 	default:
-		return policy.Algorithm_ALGORITHM_UNSPECIFIED
+		return policy.Algorithm_ALGORITHM_UNSPECIFIED, fmt.Errorf("unknown key type: %s", kt)
 	}
 }
 
@@ -130,7 +137,11 @@ func parseSimpleKasKey(baseKeyMap map[string]interface{}) (*policy.SimpleKasKey,
 	if !ok {
 		return nil, ErrBaseKeyInvalidFormat
 	}
-	publicKey[baseKeyAlg] = getKasKeyAlg(alg)
+	a, err := getKasKeyAlg(alg)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrMarshalBaseKeyFailed, err)
+	}
+	publicKey[baseKeyAlg] = a
 	baseKeyMap[baseKeyPublicKey] = publicKey
 	configJSON, err := json.Marshal(baseKeyMap)
 	if err != nil {

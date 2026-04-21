@@ -34,14 +34,17 @@
 
   echo "[INFO] Validate the manifest lists the expected type in its KAO"
   kaotype=$(jq -r '.encryptionInformation.keyAccess[0].type' <<<"${output}")
-  echo "$kaotype"
+  echo "kao.type=$kaotype"
   [ "$kaotype" = hybrid-wrapped ]
+
+  kid=$(jq -r '.encryptionInformation.keyAccess[0].kid' <<<"${output}")
+  echo "kao.kid=$kid"
+  [ "$kid" = x1 ]
 
   echo "[INFO] decrypting..."
   run go run ./examples decrypt sensitive-with-xwing.txt.tdf
   echo "$output"
   printf '%s\n' "$output" | grep "Hello X-Wing wrappers!"
-
 }
 
 @test "examples: roundtrip Z-TDF with P256+ML-KEM-768 wrapped KAO" {
@@ -55,11 +58,14 @@
   echo "$kaotype"
   [ "$kaotype" = hybrid-wrapped ]
 
+  kid=$(jq -r '.encryptionInformation.keyAccess[0].kid' <<<"${output}")
+  echo "kao.kid=$kid"
+  [ "$kid" = h1 ]
+
   echo "[INFO] decrypting..."
   run go run ./examples decrypt sensitive-with-p256mlkem768.txt.tdf
   echo "$output"
   printf '%s\n' "$output" | grep "Hello P256+ML-KEM-768 wrappers!"
-
 }
 
 @test "examples: roundtrip Z-TDF with P384+ML-KEM-1024 wrapped KAO" {
@@ -73,11 +79,14 @@
   echo "$kaotype"
   [ "$kaotype" = hybrid-wrapped ]
 
+  kid=$(jq -r '.encryptionInformation.keyAccess[0].kid' <<<"${output}")
+  echo "kao.kid=$kid"
+  [ "$kid" = h2 ]
+
   echo "[INFO] decrypting..."
   run go run ./examples decrypt sensitive-with-p384mlkem1024.txt.tdf
   echo "$output"
   printf '%s\n' "$output" | grep "Hello P384+ML-KEM-1024 wrappers!"
-
 }
 
 @test "examples: legacy key support Z-TDF" {
@@ -269,7 +278,7 @@ server:
   tls:
     enabled: true
     cert: ./keys/platform.crt
-    key: ./keys/platform-key.pem
+    key: ./keys/platform-key.p
   auth:
     enabled: true
     enforceDPoP: false

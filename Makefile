@@ -1,11 +1,11 @@
 # make
 # To run all lint checks: `LINT_OPTIONS= make lint`
 
-.PHONY: all build clean connect-wrapper-generate docker-build fix fmt go-lint license lint proto-generate proto-helper-generate proto-lint sdk/sdk test tidy toolcheck
+.PHONY: all build clean connect-wrapper-generate docker-build fix fmt go-lint license lint otdfctl/otdfctl proto-generate proto-helper-generate proto-lint sdk/sdk test tidy toolcheck
 
-MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples tests-bdd
-HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples tests-bdd
-REQUIRED_BUF_VERSION=1.56.0
+MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples otdfctl tests-bdd
+HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples otdfctl tests-bdd
+REQUIRED_BUF_VERSION=1.5git 6.0
 
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -115,9 +115,9 @@ bench:
 
 clean:
 	for m in $(MODS); do (cd $$m && go clean) || exit 1; done
-	rm -f opentdf examples/examples
+	rm -f opentdf examples/examples otdfctl/otdfctl
 
-build: proto-generate connect-wrapper-generate opentdf sdk/sdk examples/examples
+build: proto-generate connect-wrapper-generate opentdf sdk/sdk examples/examples otdfctl/otdfctl
 
 opentdf: $(shell find service)
 	go build -o opentdf -v service/main.go
@@ -127,6 +127,9 @@ sdk/sdk: $(shell find sdk)
 
 examples/examples: $(shell find examples)
 	(cd examples && go build -o examples .)
+
+otdfctl/otdfctl: $(shell find otdfctl)
+	(cd otdfctl && go build -o otdfctl .)
 
 docker-build: build
 	docker build -t opentdf .

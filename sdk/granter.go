@@ -514,31 +514,6 @@ func algProto2String(e policy.KasPublicKeyAlgEnum) string {
 	return ""
 }
 
-func algProto2OcryptoKeyType(e policy.Algorithm) ocrypto.KeyType {
-	switch e {
-	case policy.Algorithm_ALGORITHM_EC_P256:
-		return ocrypto.EC256Key
-	case policy.Algorithm_ALGORITHM_EC_P384:
-		return ocrypto.EC384Key
-	case policy.Algorithm_ALGORITHM_EC_P521:
-		return ocrypto.EC521Key
-	case policy.Algorithm_ALGORITHM_RSA_2048:
-		return ocrypto.RSA2048Key
-	case policy.Algorithm_ALGORITHM_RSA_4096:
-		return ocrypto.RSA4096Key
-	case policy.Algorithm_ALGORITHM_HPQT_XWING:
-		return ocrypto.HybridXWingKey
-	case policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768:
-		return ocrypto.HybridSecp256r1MLKEM768Key
-	case policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
-		return ocrypto.HybridSecp384r1MLKEM1024Key
-	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
-		return ocrypto.KeyType("")
-	default:
-		return ocrypto.KeyType("")
-	}
-}
-
 func storeKeysToCache(logger *slog.Logger, kases []*policy.KeyAccessServer, keys []*policy.SimpleKasKey, c *kasKeyCache, kc *rlKeyCache) {
 	for _, kas := range kases {
 		keys := kas.GetPublicKey().GetCached().GetKeys()

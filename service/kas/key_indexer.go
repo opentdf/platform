@@ -46,54 +46,6 @@ func NewPlatformKeyIndexer(sdk *sdk.SDK, kasURI string, l *logger.Logger) *KeyIn
 	}
 }
 
-func convertEnumToAlg(alg policy.Algorithm) ocrypto.KeyType {
-	switch alg {
-	case policy.Algorithm_ALGORITHM_RSA_2048:
-		return ocrypto.RSA2048Key
-	case policy.Algorithm_ALGORITHM_RSA_4096:
-		return ocrypto.RSA4096Key
-	case policy.Algorithm_ALGORITHM_EC_P256:
-		return ocrypto.EC256Key
-	case policy.Algorithm_ALGORITHM_EC_P384:
-		return ocrypto.EC384Key
-	case policy.Algorithm_ALGORITHM_EC_P521:
-		return ocrypto.EC521Key
-	case policy.Algorithm_ALGORITHM_HPQT_XWING:
-		return ocrypto.HybridXWingKey
-	case policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768:
-		return ocrypto.HybridSecp256r1MLKEM768Key
-	case policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
-		return ocrypto.HybridSecp384r1MLKEM1024Key
-	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
-		fallthrough
-	default:
-		return ""
-	}
-}
-
-func convertAlgToEnum(alg string) (policy.Algorithm, error) {
-	switch alg {
-	case string(ocrypto.RSA2048Key):
-		return policy.Algorithm_ALGORITHM_RSA_2048, nil
-	case string(ocrypto.RSA4096Key):
-		return policy.Algorithm_ALGORITHM_RSA_4096, nil
-	case string(ocrypto.EC256Key):
-		return policy.Algorithm_ALGORITHM_EC_P256, nil
-	case string(ocrypto.EC384Key):
-		return policy.Algorithm_ALGORITHM_EC_P384, nil
-	case string(ocrypto.EC521Key):
-		return policy.Algorithm_ALGORITHM_EC_P521, nil
-	case string(ocrypto.HybridXWingKey):
-		return policy.Algorithm_ALGORITHM_HPQT_XWING, nil
-	case string(ocrypto.HybridSecp256r1MLKEM768Key):
-		return policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768, nil
-	case string(ocrypto.HybridSecp384r1MLKEM1024Key):
-		return policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024, nil
-	default:
-		return policy.Algorithm_ALGORITHM_UNSPECIFIED, fmt.Errorf("unsupported algorithm: %s", alg)
-	}
-}
-
 func (p *KeyIndexer) String() string {
 	return fmt.Sprintf("PlatformKeyIndexer[%s]", p.kasURI)
 }
@@ -204,7 +156,11 @@ func (p *KeyAdapter) ID() trust.KeyIdentifier {
 
 // Might need to convert this to a standard format
 func (p *KeyAdapter) Algorithm() ocrypto.KeyType {
-	return convertEnumToAlg(p.key.GetKey().GetKeyAlgorithm())
+	kt, err := sdk.PolicyAlgorithmToKeyType(p.key.GetKey().GetKeyAlgorithm())
+	if err != nil {
+		p.log.Error("Unable to format key [%s] with alg [%v]: %v", p.key.GetKey().GetKeyId(), p.key.GetKey().GetKeyAlgorithm(), err)
+	}
+	return kt
 }
 
 func (p *KeyAdapter) IsLegacy() bool {

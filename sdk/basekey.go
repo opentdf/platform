@@ -44,30 +44,34 @@ func getKasKeyAlg(alg string) policy.Algorithm {
 	}
 }
 
-// TODO: Move this function to ocrypto?
-func formatAlg(alg policy.Algorithm) (string, error) {
+func PolicyAlgorithmToKeyType(alg policy.Algorithm) (ocrypto.KeyType, error) {
 	switch alg {
 	case policy.Algorithm_ALGORITHM_RSA_2048:
-		return string(ocrypto.RSA2048Key), nil
+		return ocrypto.RSA2048Key, nil
 	case policy.Algorithm_ALGORITHM_RSA_4096:
-		return string(ocrypto.RSA4096Key), nil
+		return ocrypto.RSA4096Key, nil
 	case policy.Algorithm_ALGORITHM_EC_P256:
-		return string(ocrypto.EC256Key), nil
+		return ocrypto.EC256Key, nil
 	case policy.Algorithm_ALGORITHM_EC_P384:
-		return string(ocrypto.EC384Key), nil
+		return ocrypto.EC384Key, nil
 	case policy.Algorithm_ALGORITHM_EC_P521:
-		return string(ocrypto.EC521Key), nil
+		return ocrypto.EC521Key, nil
 	case policy.Algorithm_ALGORITHM_HPQT_XWING:
-		return string(ocrypto.HybridXWingKey), nil
+		return ocrypto.HybridXWingKey, nil
 	case policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768:
-		return string(ocrypto.HybridSecp256r1MLKEM768Key), nil
+		return ocrypto.HybridSecp256r1MLKEM768Key, nil
 	case policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
-		return string(ocrypto.HybridSecp384r1MLKEM1024Key), nil
+		return ocrypto.HybridSecp384r1MLKEM1024Key, nil
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:
 		return "", fmt.Errorf("unsupported algorithm: %s", alg)
 	}
+}
+
+func formatAlg(alg policy.Algorithm) (string, error) {
+	kt, err := PolicyAlgorithmToKeyType(alg)
+	return string(kt), err
 }
 
 // GetBaseKey retrieves the platform base KAS key from the well-known configuration.

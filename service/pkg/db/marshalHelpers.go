@@ -8,6 +8,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/sdk"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -146,28 +147,11 @@ func KasKeysProtoJSON(keysJSON []byte) ([]*policy.KasKey, error) {
 }
 
 func FormatAlg(alg policy.Algorithm) (string, error) {
-	switch alg {
-	case policy.Algorithm_ALGORITHM_RSA_2048:
-		return "rsa:2048", nil
-	case policy.Algorithm_ALGORITHM_RSA_4096:
-		return "rsa:4096", nil
-	case policy.Algorithm_ALGORITHM_EC_P256:
-		return "ec:secp256r1", nil
-	case policy.Algorithm_ALGORITHM_EC_P384:
-		return "ec:secp384r1", nil
-	case policy.Algorithm_ALGORITHM_EC_P521:
-		return "ec:secp521r1", nil
-	case policy.Algorithm_ALGORITHM_HPQT_XWING:
-		return "hpqt:xwing", nil
-	case policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768:
-		return "hpqt:secp256r1-mlkem768", nil
-	case policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
-		return "hpqt:secp384r1-mlkem1024", nil
-	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
-		fallthrough
-	default:
+	kt, err := sdk.PolicyAlgorithmToKeyType(alg)
+	if err != nil {
 		return "", fmt.Errorf("unsupported algorithm: %s", alg)
 	}
+	return string(kt), nil
 }
 
 func SimpleKasKeysProtoJSON(keysJSON []byte) ([]*policy.SimpleKasKey, error) {

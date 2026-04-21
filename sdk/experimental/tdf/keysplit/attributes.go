@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/sdk"
 )
 
 const unknownAlgorithm = "unknown"
@@ -186,28 +187,11 @@ func extractKASGrants(grants []*policy.KeyAccessServer, kasKeys []*policy.Simple
 
 // formatAlgorithm converts policy algorithm enum to string
 func formatAlgorithm(alg policy.Algorithm) string {
-	switch alg {
-	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
-		return unknownAlgorithm
-	case policy.Algorithm_ALGORITHM_EC_P256:
-		return "ec:secp256r1"
-	case policy.Algorithm_ALGORITHM_EC_P384:
-		return "ec:secp384r1"
-	case policy.Algorithm_ALGORITHM_EC_P521:
-		return "ec:secp521r1"
-	case policy.Algorithm_ALGORITHM_RSA_2048:
-		return "rsa:2048"
-	case policy.Algorithm_ALGORITHM_RSA_4096:
-		return "rsa:4096"
-	case policy.Algorithm_ALGORITHM_HPQT_XWING:
-		return "hpqt:xwing"
-	case policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768:
-		return "hpqt:secp256r1-mlkem768"
-	case policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
-		return "hpqt:secp384r1-mlkem1024"
-	default:
+	kt, err := sdk.PolicyAlgorithmToKeyType(alg)
+	if err != nil {
 		return unknownAlgorithm
 	}
+	return string(kt)
 }
 
 // convertAlgEnum2Simple converts KAS key algorithm enum to policy algorithm enum

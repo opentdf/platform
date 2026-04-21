@@ -168,14 +168,6 @@ func (s *KeyIndexTestSuite) TestKeyDetails_Legacy() {
 	s.True(legacyKey.IsLegacy())
 }
 
-func (s *KeyIndexTestSuite) TestAlgorithmConversions_HybridXWing() {
-	s.Equal(ocrypto.HybridXWingKey, convertEnumToAlg(policy.Algorithm_ALGORITHM_HPQT_XWING))
-
-	alg, err := convertAlgToEnum(string(ocrypto.HybridXWingKey))
-	s.Require().NoError(err)
-	s.Equal(policy.Algorithm_ALGORITHM_HPQT_XWING, alg)
-}
-
 func (s *KeyIndexTestSuite) TestListKeysWith() {
 	mockClient := new(MockKeyAccessServerRegistryClient)
 	keyIndexer := &KeyIndexer{

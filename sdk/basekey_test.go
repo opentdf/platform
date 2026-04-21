@@ -131,7 +131,7 @@ func TestGetKasKeyAlg(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			result, err := getKasKeyAlg(test.algStr)
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Equal(t, policy.Algorithm_ALGORITHM_UNSPECIFIED, result, "Algorithm enum mismatch")
 		})
 	}

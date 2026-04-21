@@ -26,6 +26,72 @@
   printf '%s\n' "$output" | grep "Hello EC wrappers!"
 }
 
+@test "examples: roundtrip Z-TDF with X-Wing wrapped KAO" {
+  echo "[INFO] create a tdf3 format file"
+  run go run ./examples encrypt -o sensitive-with-xwing.txt.tdf --autoconfigure=false -A "hpqt:xwing" "Hello X-Wing wrappers!"
+  echo "[INFO] echoing output; if successful, this is just the manifest"
+  echo "$output"
+
+  echo "[INFO] Validate the manifest lists the expected type in its KAO"
+  kaotype=$(jq -r '.encryptionInformation.keyAccess[0].type' <<<"${output}")
+  echo "$kaotype"
+  [ "$kaotype" = hybrid-wrapped ]
+
+  echo "[INFO] decrypting..."
+  run go run ./examples decrypt sensitive-with-xwing.txt.tdf
+  echo "$output"
+  printf '%s\n' "$output" | grep "Hello X-Wing wrappers!"
+
+  echo "[INFO] decrypting with X-Wing..."
+  run go run ./examples decrypt -A 'hpqt:xwing' sensitive-with-xwing.txt.tdf
+  echo "$output"
+  printf '%s\n' "$output" | grep "Hello X-Wing wrappers!"
+}
+
+@test "examples: roundtrip Z-TDF with P256+ML-KEM-768 wrapped KAO" {
+  echo "[INFO] create a tdf3 format file"
+  run go run ./examples encrypt -o sensitive-with-p256mlkem768.txt.tdf --autoconfigure=false -A "hpqt:secp256r1-mlkem768" "Hello P256+ML-KEM-768 wrappers!"
+  echo "[INFO] echoing output; if successful, this is just the manifest"
+  echo "$output"
+
+  echo "[INFO] Validate the manifest lists the expected type in its KAO"
+  kaotype=$(jq -r '.encryptionInformation.keyAccess[0].type' <<<"${output}")
+  echo "$kaotype"
+  [ "$kaotype" = hybrid-wrapped ]
+
+  echo "[INFO] decrypting..."
+  run go run ./examples decrypt sensitive-with-p256mlkem768.txt.tdf
+  echo "$output"
+  printf '%s\n' "$output" | grep "Hello P256+ML-KEM-768 wrappers!"
+
+  echo "[INFO] decrypting with P256+ML-KEM-768..."
+  run go run ./examples decrypt -A 'hpqt:secp256r1-mlkem768' sensitive-with-p256mlkem768.txt.tdf
+  echo "$output"
+  printf '%s\n' "$output" | grep "Hello P256+ML-KEM-768 wrappers!"
+}
+
+@test "examples: roundtrip Z-TDF with P384+ML-KEM-1024 wrapped KAO" {
+  echo "[INFO] create a tdf3 format file"
+  run go run ./examples encrypt -o sensitive-with-p384mlkem1024.txt.tdf --autoconfigure=false -A "hpqt:secp384r1-mlkem1024" "Hello P384+ML-KEM-1024 wrappers!"
+  echo "[INFO] echoing output; if successful, this is just the manifest"
+  echo "$output"
+
+  echo "[INFO] Validate the manifest lists the expected type in its KAO"
+  kaotype=$(jq -r '.encryptionInformation.keyAccess[0].type' <<<"${output}")
+  echo "$kaotype"
+  [ "$kaotype" = hybrid-wrapped ]
+
+  echo "[INFO] decrypting..."
+  run go run ./examples decrypt sensitive-with-p384mlkem1024.txt.tdf
+  echo "$output"
+  printf '%s\n' "$output" | grep "Hello P384+ML-KEM-1024 wrappers!"
+
+  echo "[INFO] decrypting with P384+ML-KEM-1024..."
+  run go run ./examples decrypt -A 'hpqt:secp384r1-mlkem1024' sensitive-with-p384mlkem1024.txt.tdf
+  echo "$output"
+  printf '%s\n' "$output" | grep "Hello P384+ML-KEM-1024 wrappers!"
+}
+
 @test "examples: legacy key support Z-TDF" {
   echo "[INFO] validating default key is r1"
   echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
@@ -155,6 +221,19 @@ server:
         e2:
           private_key_path: kas-e2-private.pem
           public_key_path: kas-e2-cert.pem
+      keys:
+        - kid: x1
+          alg: hpqt:xwing
+          private: kas-xwing-private.pem
+          cert: kas-xwing-public.pem
+        - kid: h1
+          alg: hpqt:secp256r1-mlkem768
+          private: kas-p256mlkem768-private.pem
+          cert: kas-p256mlkem768-public.pem
+        - kid: h2
+          alg: hpqt:secp384r1-mlkem1024
+          private: kas-p384mlkem1024-private.pem
+          cert: kas-p384mlkem1024-public.pem
   port: 8080
 opa:
   embedded: true
@@ -176,6 +255,8 @@ services:
   kas:
     enabled: true
     ec_tdf_enabled: true
+    preview:
+      hybrid_tdf_enabled: true
     keyring:
       - kid: ${ec_current_key}
         alg: ec:secp256r1
@@ -187,6 +268,12 @@ services:
       - kid: ${rsa_legacy_key}
         alg: rsa:2048
         legacy: true
+      - kid: x1
+        alg: hpqt:xwing
+      - kid: h1
+        alg: hpqt:secp256r1-mlkem768
+      - kid: h2
+        alg: hpqt:secp384r1-mlkem1024
   policy:
     enabled: true
   authorization:
@@ -234,6 +321,18 @@ server:
           alg: ec:secp256r1
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
+        - kid: x1
+          alg: hpqt:xwing
+          private: kas-xwing-private.pem
+          cert: kas-xwing-public.pem
+        - kid: h1
+          alg: hpqt:secp256r1-mlkem768
+          private: kas-p256mlkem768-private.pem
+          cert: kas-p256mlkem768-public.pem
+        - kid: h2
+          alg: hpqt:secp384r1-mlkem1024
+          private: kas-p384mlkem1024-private.pem
+          cert: kas-p384mlkem1024-public.pem
   port: 8080
 opa:
   embedded: true

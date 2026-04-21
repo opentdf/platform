@@ -341,7 +341,8 @@ subject_mapping_plan_target_count() {
     [
       .subject_mappings[]
       | select(.source.id == $source_mapping_id)
-      | .targets[]
+      | .target
+      | select(. != null)
     ] | length
   ' "$output_file"
 }
@@ -353,7 +354,7 @@ subject_mapping_plan_target_status() {
   jq -er --arg source_mapping_id "$source_mapping_id" --arg namespace_fqn "$namespace_fqn" '
     .subject_mappings[]
     | select(.source.id == $source_mapping_id)
-    | .targets[]
+    | .target
     | select(.namespace.fqn == $namespace_fqn)
     | .status
   ' "$output_file"
@@ -366,9 +367,9 @@ subject_mapping_plan_target_effective_id() {
   jq -er --arg source_mapping_id "$source_mapping_id" --arg namespace_fqn "$namespace_fqn" '
     .subject_mappings[]
     | select(.source.id == $source_mapping_id)
-    | .targets[]
+    | .target
     | select(.namespace.fqn == $namespace_fqn)
-    | (.execution.created_target_id // .existing.id // empty)
+    | (.execution.created_target_id // .existing_id // empty)
   ' "$output_file"
 }
 
@@ -378,12 +379,10 @@ subject_mapping_plan_action_status() {
   local namespace_fqn="$3"
   local source_action_id="$4"
   jq -er --arg source_mapping_id "$source_mapping_id" --arg namespace_fqn "$namespace_fqn" --arg source_action_id "$source_action_id" '
-    .subject_mappings[]
-    | select(.source.id == $source_mapping_id)
+    .actions[]
+    | select(.source.id == $source_action_id)
     | .targets[]
     | select(.namespace.fqn == $namespace_fqn)
-    | .actions[]
-    | select(.source_id == $source_action_id)
     | .status
   ' "$output_file"
 }
@@ -393,11 +392,17 @@ subject_mapping_plan_scs_status() {
   local source_mapping_id="$2"
   local namespace_fqn="$3"
   jq -er --arg source_mapping_id "$source_mapping_id" --arg namespace_fqn "$namespace_fqn" '
-    .subject_mappings[]
+    . as $plan
+    | $plan.subject_mappings[]
     | select(.source.id == $source_mapping_id)
+    | .target
+    | select(.namespace.fqn == $namespace_fqn)
+    | .subject_condition_set_source_id as $source_scs_id
+    | $plan.subject_condition_sets[]
+    | select(.source.id == $source_scs_id)
     | .targets[]
     | select(.namespace.fqn == $namespace_fqn)
-    | .subject_condition_set.status
+    | .status
   ' "$output_file"
 }
 
@@ -718,7 +723,7 @@ action_plan_target_effective_id() {
     | select(.source.name == $action_name)
     | .targets[]
     | select(.namespace.fqn == $namespace_fqn)
-    | (.execution.created_target_id // .existing.id // empty)
+    | (.execution.created_target_id // .existing_id // empty)
   ' "$output_file"
 }
 
@@ -756,7 +761,7 @@ scs_plan_target_effective_id() {
     | select(.source.id == $source_scs_id)
     | .targets[]
     | select(.namespace.fqn == $namespace_fqn)
-    | (.execution.created_target_id // .existing.id // empty)
+    | (.execution.created_target_id // .existing_id // empty)
   ' "$output_file"
 }
 

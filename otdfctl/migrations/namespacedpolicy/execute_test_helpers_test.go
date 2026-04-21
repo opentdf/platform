@@ -47,6 +47,7 @@ type mockExecutorHandler struct {
 	obligationTriggerErrs           map[string]map[string]error
 	createdRegisteredResources      map[string]map[string]*createdRegisteredResourceCall
 	registeredResourceResult        map[string]map[string]*policy.RegisteredResource
+	registeredResourcesByID         map[string]*policy.RegisteredResource
 	registeredResourceErrs          map[string]map[string]error
 	createdRegisteredResourceValues map[string]map[string]*createdRegisteredResourceValueCall
 	registeredResourceValueResult   map[string]map[string]*policy.RegisteredResourceValue
@@ -242,10 +243,26 @@ func (m *mockExecutorHandler) CreateRegisteredResource(_ context.Context, namesp
 	}
 	if m.registeredResourceResult != nil && m.registeredResourceResult[sourceID] != nil {
 		if result := m.registeredResourceResult[sourceID][namespace]; result != nil {
+			if m.registeredResourcesByID == nil {
+				m.registeredResourcesByID = make(map[string]*policy.RegisteredResource)
+			}
+			m.registeredResourcesByID[result.GetId()] = result
 			return result, nil
 		}
 	}
 
+	return nil, errMissingMockRegisteredResourceResult
+}
+
+func (m *mockExecutorHandler) GetRegisteredResource(_ context.Context, id, _, _ string) (*policy.RegisteredResource, error) {
+	if id == "" {
+		return nil, errMissingMockRegisteredResourceResult
+	}
+	if m.registeredResourcesByID != nil {
+		if result := m.registeredResourcesByID[id]; result != nil {
+			return result, nil
+		}
+	}
 	return nil, errMissingMockRegisteredResourceResult
 }
 

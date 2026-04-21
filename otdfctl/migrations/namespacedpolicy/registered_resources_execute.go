@@ -20,14 +20,12 @@ func (e *Executor) executeRegisteredResources(ctx context.Context, plans []*Regi
 			continue
 		}
 
-		for _, target := range plan.Targets {
-			if target == nil {
-				continue
-			}
+		if plan.Target == nil {
+			continue
+		}
 
-			if err := e.executeRegisteredResourceTarget(ctx, plan, target); err != nil {
-				return err
-			}
+		if err := e.executeRegisteredResourceTarget(ctx, plan, plan.Target); err != nil {
+			return err
 		}
 	}
 
@@ -60,8 +58,15 @@ func (e *Executor) createRegisteredResourceTarget(ctx context.Context, plan *Reg
 
 	// Create the parent RR only when the plan did not already select an existing
 	// target RR to reuse for this namespace.
-	created := target.Existing
-	if created == nil {
+	created, hasExistingParent, err := e.existingRegisteredResource(ctx, target)
+	if err != nil {
+		target.Execution = &ExecutionResult{
+			RunID:   e.runID,
+			Failure: err.Error(),
+		}
+		return fmt.Errorf("load registered resource %q target %q: %w", plan.Source.GetId(), namespaceLabel(target.Namespace), err)
+	}
+	if !hasExistingParent {
 		var err error
 		created, err = e.handler.CreateRegisteredResource(
 			ctx,
@@ -126,6 +131,18 @@ func (e *Executor) createRegisteredResourceTarget(ctx context.Context, plan *Reg
 	}
 
 	return nil
+}
+
+func (e *Executor) existingRegisteredResource(ctx context.Context, target *RegisteredResourceTargetPlan) (*policy.RegisteredResource, bool, error) {
+	if target == nil || target.ExistingID == "" {
+		return nil, false, nil
+	}
+
+	resource, err := e.handler.GetRegisteredResource(ctx, target.ExistingID, "", "")
+	if err != nil {
+		return nil, true, err
+	}
+	return resource, true, nil
 }
 
 func (e *Executor) createRegisteredResourceValue(ctx context.Context, target *RegisteredResourceTargetPlan, valuePlan *RegisteredResourceValuePlan) error {

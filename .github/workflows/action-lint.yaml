@@ -23,7 +23,7 @@ jobs:
         with:
           persist-credentials: false
       - name: "Run reviewdog actionlint"
-        uses: reviewdog/action-actionlint@8e1a3507eddeba1bcb41dcda6e6de09ed83c8a6b # v1.57.0
+        uses: reviewdog/action-actionlint@5eaffa19a1991ecc52b11eddcdd57760d1ac7e3d # v1.57.0
         with:
           reporter: "github-pr-review"
           fail_level: error

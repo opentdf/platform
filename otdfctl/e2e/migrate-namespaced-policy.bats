@@ -373,39 +373,6 @@ subject_mapping_plan_target_effective_id() {
   ' "$output_file"
 }
 
-subject_mapping_plan_action_status() {
-  local output_file="$1"
-  local source_mapping_id="$2"
-  local namespace_fqn="$3"
-  local source_action_id="$4"
-  jq -er --arg source_mapping_id "$source_mapping_id" --arg namespace_fqn "$namespace_fqn" --arg source_action_id "$source_action_id" '
-    .actions[]
-    | select(.source.id == $source_action_id)
-    | .targets[]
-    | select(.namespace.fqn == $namespace_fqn)
-    | .status
-  ' "$output_file"
-}
-
-subject_mapping_plan_scs_status() {
-  local output_file="$1"
-  local source_mapping_id="$2"
-  local namespace_fqn="$3"
-  jq -er --arg source_mapping_id "$source_mapping_id" --arg namespace_fqn "$namespace_fqn" '
-    . as $plan
-    | $plan.subject_mappings[]
-    | select(.source.id == $source_mapping_id)
-    | .target
-    | select(.namespace.fqn == $namespace_fqn)
-    | .subject_condition_set_source_id as $source_scs_id
-    | $plan.subject_condition_sets[]
-    | select(.source.id == $source_scs_id)
-    | .targets[]
-    | select(.namespace.fqn == $namespace_fqn)
-    | .status
-  ' "$output_file"
-}
-
 assert_subject_mapping_target_count() {
   local output_file="$1"
   local source_mapping_id="$2"
@@ -446,7 +413,7 @@ assert_subject_mapping_created_in_namespace() {
       ;;
   esac
 
-  run subject_mapping_plan_action_status "$output_file" "$source_mapping_id" "$namespace_fqn" "$source_action_id"
+  run action_plan_target_status "$output_file" "$action_name" "$namespace_fqn"
   assert_success
   assert_equal "$output" "$expected_action_status"
 
@@ -457,7 +424,7 @@ assert_subject_mapping_created_in_namespace() {
   assert_scs_target_count "$output_file" "$source_scs_id" "$expected_scs_count"
   assert_scs_created_in_namespace "$output_file" "$source_scs_id" "$namespace_id" "$namespace_fqn"
 
-  run subject_mapping_plan_scs_status "$output_file" "$source_mapping_id" "$namespace_fqn"
+  run scs_plan_target_status "$output_file" "$source_scs_id" "$namespace_fqn"
   assert_success
   assert_equal "$output" "create"
 

@@ -22,6 +22,7 @@ type PolicyClient interface {
 	ListSubjectConditionSets(ctx context.Context, limit, offset int32, namespace string) (*subjectmapping.ListSubjectConditionSetsResponse, error)
 	ListSubjectMappings(ctx context.Context, limit, offset int32, namespace string) (*subjectmapping.ListSubjectMappingsResponse, error)
 	ListRegisteredResources(ctx context.Context, limit, offset int32, namespace string) (*registeredresources.ListRegisteredResourcesResponse, error)
+	ListRegisteredResourceValues(ctx context.Context, resourceID string, limit, offset int32) (*registeredresources.ListRegisteredResourceValuesResponse, error)
 	ListObligationTriggers(ctx context.Context, namespace string, limit, offset int32) (*obligations.ListObligationTriggersResponse, error)
 	ListNamespaces(ctx context.Context, state common.ActiveStateEnum, limit, offset int32) (*namespaces.ListNamespacesResponse, error)
 }

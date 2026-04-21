@@ -816,17 +816,19 @@ func TestPlannerPlanHuhInteractiveReviewerResolvesRegisteredResourceConflict(t *
 }
 
 type plannerTestHandler struct {
-	actionsByNamespace              map[string]*actions.ListActionsResponse
-	subjectConditionSetsByNamespace map[string]*subjectmapping.ListSubjectConditionSetsResponse
-	subjectMappingsByNamespace      map[string]*subjectmapping.ListSubjectMappingsResponse
-	registeredResourcesByNamespace  map[string]*registeredresources.ListRegisteredResourcesResponse
-	obligationTriggersByNamespace   map[string]*obligations.ListObligationTriggersResponse
-	namespacesResponse              *namespaces.ListNamespacesResponse
-	actionCalls                     []string
-	subjectConditionSetCalls        []string
-	subjectMappingCalls             []string
-	registeredResourceCalls         []string
-	obligationTriggerCalls          []string
+	actionsByNamespace                   map[string]*actions.ListActionsResponse
+	subjectConditionSetsByNamespace      map[string]*subjectmapping.ListSubjectConditionSetsResponse
+	subjectMappingsByNamespace           map[string]*subjectmapping.ListSubjectMappingsResponse
+	registeredResourcesByNamespace       map[string]*registeredresources.ListRegisteredResourcesResponse
+	registeredResourceValuesByResourceID map[string]*registeredresources.ListRegisteredResourceValuesResponse
+	obligationTriggersByNamespace        map[string]*obligations.ListObligationTriggersResponse
+	namespacesResponse                   *namespaces.ListNamespacesResponse
+	actionCalls                          []string
+	subjectConditionSetCalls             []string
+	subjectMappingCalls                  []string
+	registeredResourceCalls              []string
+	registeredResourceValueCalls         []string
+	obligationTriggerCalls               []string
 }
 
 func (h *plannerTestHandler) ListActions(_ context.Context, limit, offset int32, namespace string) (*actions.ListActionsResponse, error) {
@@ -859,6 +861,27 @@ func (h *plannerTestHandler) ListRegisteredResources(_ context.Context, limit, o
 		return resp, nil
 	}
 	return &registeredresources.ListRegisteredResourcesResponse{Pagination: emptyPageResponse()}, nil
+}
+
+func (h *plannerTestHandler) ListRegisteredResourceValues(_ context.Context, resourceID string, limit, offset int32) (*registeredresources.ListRegisteredResourceValuesResponse, error) {
+	h.registeredResourceValueCalls = append(h.registeredResourceValueCalls, resourceID)
+	if resp, ok := h.registeredResourceValuesByResourceID[resourceID]; ok {
+		return resp, nil
+	}
+
+	for _, resp := range h.registeredResourcesByNamespace {
+		for _, resource := range resp.GetResources() {
+			if resource.GetId() != resourceID {
+				continue
+			}
+			return &registeredresources.ListRegisteredResourceValuesResponse{
+				Values:     resource.GetValues(),
+				Pagination: emptyPageResponse(),
+			}, nil
+		}
+	}
+
+	return &registeredresources.ListRegisteredResourceValuesResponse{Pagination: emptyPageResponse()}, nil
 }
 
 func (h *plannerTestHandler) ListObligationTriggers(_ context.Context, namespace string, limit, offset int32) (*obligations.ListObligationTriggersResponse, error) {

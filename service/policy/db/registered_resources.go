@@ -206,11 +206,15 @@ func (c PolicyDBClient) ListRegisteredResources(ctx context.Context, r *register
 		return nil, db.ErrListLimitTooLarge
 	}
 
+	sortField, sortDirection := GetRegisteredResourcesSortParams(r.GetSort())
+
 	list, err := c.queries.listRegisteredResources(ctx, listRegisteredResourcesParams{
-		NamespaceID:  parsedID,
-		NamespaceFqn: pgtypeText(r.GetNamespaceFqn()),
-		Limit:        limit,
-		Offset:       offset,
+		NamespaceID:   parsedID,
+		NamespaceFqn:  pgtypeText(r.GetNamespaceFqn()),
+		Limit:         limit,
+		Offset:        offset,
+		SortField:     sortField,
+		SortDirection: sortDirection,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

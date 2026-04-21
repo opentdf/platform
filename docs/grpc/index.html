@@ -1696,6 +1696,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.registeredresources.RegisteredResourcesSort"><span class="badge">M</span>RegisteredResourcesSort</a>
+                </li>
+              
+                <li>
                   <a href="#policy.registeredresources.UpdateRegisteredResourceRequest"><span class="badge">M</span>UpdateRegisteredResourceRequest</a>
                 </li>
               
@@ -1711,6 +1715,10 @@
                   <a href="#policy.registeredresources.UpdateRegisteredResourceValueResponse"><span class="badge">M</span>UpdateRegisteredResourceValueResponse</a>
                 </li>
               
+              
+                <li>
+                  <a href="#policy.registeredresources.SortRegisteredResourcesType"><span class="badge">E</span>SortRegisteredResourcesType</a>
+                </li>
               
               
               
@@ -6360,7 +6368,7 @@ Example: &#34;kas&#34; </p></td>
                   <td></td>
                   <td><p>Type of key wrapping used for the data encryption key
 Required: Always
-Values: &#39;wrapped&#39; (RSA-wrapped for ZTDF), &#39;ec-wrapped&#39; (experimental ECDH-wrapped), &#39;hybrid-wrapped&#39; (experimental hybrid PQ key wrapping, e.g. X-Wing, NIST EC+ML-KEM) </p></td>
+Values: &#39;wrapped&#39; (RSA-wrapped for ZTDF), &#39;ec-wrapped&#39; (experimental ECDH-wrapped), &#39;hybrid-wrapped&#39; (experimental X-Wing-wrapped) </p></td>
                 </tr>
               
                 <tr>
@@ -6745,7 +6753,7 @@ Modern responses use kas_wrapped_key in KeyAccessRewrapResult </p></td>
                   <td></td>
                   <td><p>KAS&#39;s ephemeral session public key in PEM format
 Required: For EC-based operations (key_type=&#34;ec-wrapped&#34;)
-Optional: Empty for RSA-based or hybrid PQ-wrapped ZTDF (key_type=&#34;wrapped&#34; or key_type=&#34;hybrid-wrapped&#34;)
+Optional: Empty for RSA-based or X-Wing-based ZTDF (key_type=&#34;wrapped&#34; or key_type=&#34;hybrid-wrapped&#34;)
 Used by client to perform ECDH key agreement and decrypt the kas_wrapped_key values </p></td>
                 </tr>
               
@@ -14873,6 +14881,15 @@ Common metadata </p></td>
                   <td><p>Optional </p></td>
                 </tr>
               
+                <tr>
+                  <td>sort</td>
+                  <td><a href="#policy.registeredresources.RegisteredResourcesSort">RegisteredResourcesSort</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional - CONSTRAINT: max 1 item
+Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
+created_at DESC. </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -14900,6 +14917,37 @@ Common metadata </p></td>
                 <tr>
                   <td>pagination</td>
                   <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.registeredresources.RegisteredResourcesSort">RegisteredResourcesSort</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>field</td>
+                  <td><a href="#policy.registeredresources.SortRegisteredResourcesType">SortRegisteredResourcesType</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>direction</td>
+                  <td><a href="#policy.SortDirection">policy.SortDirection</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -15060,6 +15108,41 @@ Common metadata </p></td>
         
       
 
+      
+        <h3 id="policy.registeredresources.SortRegisteredResourcesType">SortRegisteredResourcesType</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SORT_REGISTERED_RESOURCES_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_REGISTERED_RESOURCES_TYPE_NAME</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_REGISTERED_RESOURCES_TYPE_UPDATED_AT</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
       
 
       

@@ -618,7 +618,10 @@ LEFT JOIN LATERAL (
         JSON_BUILD_OBJECT(
             'action', JSON_BUILD_OBJECT(
                 'id', a.id,
-                'name', a.name
+                'name', a.name,
+                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                    ELSE JSON_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+                END
             ),
             'attribute_value', JSON_BUILD_OBJECT(
                 'id', av.id,
@@ -630,6 +633,8 @@ LEFT JOIN LATERAL (
     -- Join to get all action-attribute relationships for this resource value
     FROM registered_resource_action_attribute_values rav
     LEFT JOIN actions a on rav.action_id = a.id
+    LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
+    LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
     LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
     LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
     -- Correlate to the outer query's resource value
@@ -639,16 +644,25 @@ WHERE
     ($1::uuid IS NULL OR r.namespace_id = $1::uuid) AND
     ($2::text IS NULL OR ns_fqns.fqn = $2::text)
 GROUP BY r.id, n.id, ns_fqns.fqn, counted.total
-ORDER BY r.created_at DESC
-LIMIT $4
-OFFSET $3
+ORDER BY
+    CASE WHEN $3::text = 'name' AND $4::text = 'ASC' THEN r.name END ASC,
+    CASE WHEN $3::text = 'name' AND $4::text = 'DESC' THEN r.name END DESC,
+    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN r.created_at END ASC,
+    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN r.created_at END DESC,
+    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN r.updated_at END ASC,
+    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN r.updated_at END DESC,
+    r.created_at DESC
+LIMIT $6
+OFFSET $5
 `
 
 type listRegisteredResourcesParams struct {
-	NamespaceID  pgtype.UUID `json:"namespace_id"`
-	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
-	Offset       int32       `json:"offset_"`
-	Limit        int32       `json:"limit_"`
+	NamespaceID   pgtype.UUID `json:"namespace_id"`
+	NamespaceFqn  pgtype.Text `json:"namespace_fqn"`
+	SortField     string      `json:"sort_field"`
+	SortDirection string      `json:"sort_direction"`
+	Offset        int32       `json:"offset_"`
+	Limit         int32       `json:"limit_"`
 }
 
 type listRegisteredResourcesRow struct {
@@ -701,7 +715,10 @@ type listRegisteredResourcesRow struct {
 //	        JSON_BUILD_OBJECT(
 //	            'action', JSON_BUILD_OBJECT(
 //	                'id', a.id,
-//	                'name', a.name
+//	                'name', a.name,
+//	                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+//	                    ELSE JSON_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+//	                END
 //	            ),
 //	            'attribute_value', JSON_BUILD_OBJECT(
 //	                'id', av.id,
@@ -713,6 +730,8 @@ type listRegisteredResourcesRow struct {
 //	    -- Join to get all action-attribute relationships for this resource value
 //	    FROM registered_resource_action_attribute_values rav
 //	    LEFT JOIN actions a on rav.action_id = a.id
+//	    LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
+//	    LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
 //	    LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
 //	    LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 //	    -- Correlate to the outer query's resource value
@@ -722,13 +741,22 @@ type listRegisteredResourcesRow struct {
 //	    ($1::uuid IS NULL OR r.namespace_id = $1::uuid) AND
 //	    ($2::text IS NULL OR ns_fqns.fqn = $2::text)
 //	GROUP BY r.id, n.id, ns_fqns.fqn, counted.total
-//	ORDER BY r.created_at DESC
-//	LIMIT $4
-//	OFFSET $3
+//	ORDER BY
+//	    CASE WHEN $3::text = 'name' AND $4::text = 'ASC' THEN r.name END ASC,
+//	    CASE WHEN $3::text = 'name' AND $4::text = 'DESC' THEN r.name END DESC,
+//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN r.created_at END ASC,
+//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN r.created_at END DESC,
+//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN r.updated_at END ASC,
+//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN r.updated_at END DESC,
+//	    r.created_at DESC
+//	LIMIT $6
+//	OFFSET $5
 func (q *Queries) listRegisteredResources(ctx context.Context, arg listRegisteredResourcesParams) ([]listRegisteredResourcesRow, error) {
 	rows, err := q.db.Query(ctx, listRegisteredResources,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
+		arg.SortField,
+		arg.SortDirection,
 		arg.Offset,
 		arg.Limit,
 	)

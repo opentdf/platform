@@ -90,4 +90,3 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	cmd.Println(string(manifestJSON))
 	return nil
 }
-

@@ -445,6 +445,20 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
         - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
         - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
+    policy.SortDirection:
+      type: string
+      title: SortDirection
+      enum:
+        - SORT_DIRECTION_UNSPECIFIED
+        - SORT_DIRECTION_ASC
+        - SORT_DIRECTION_DESC
+      description: |-
+        Sorting direction shared across list APIs.
+         Notes:
+         - When a sort field is provided, UNSPECIFIED is treated as ASC.
+         - When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+           the endpoint's request message defines the default ordering; see the
+           specific List* request docs.
     policy.SourceType:
       type: string
       title: SourceType
@@ -464,6 +478,14 @@ components:
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
+    policy.registeredresources.SortRegisteredResourcesType:
+      type: string
+      title: SortRegisteredResourcesType
+      enum:
+        - SORT_REGISTERED_RESOURCES_TYPE_UNSPECIFIED
+        - SORT_REGISTERED_RESOURCES_TYPE_NAME
+        - SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT
+        - SORT_REGISTERED_RESOURCES_TYPE_UPDATED_AT
     common.Metadata:
       type: object
       properties:
@@ -1681,6 +1703,16 @@ components:
           title: pagination
           description: Optional
           $ref: '#/components/schemas/policy.PageRequest'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.registeredresources.RegisteredResourcesSort'
+          title: sort
+          maxItems: 1
+          description: |-
+            Optional - CONSTRAINT: max 1 item
+             Default ordering when omitted or when the first entry's field is UNSPECIFIED:
+             created_at DESC.
       title: ListRegisteredResourcesRequest
       additionalProperties: false
     policy.registeredresources.ListRegisteredResourcesResponse:
@@ -1695,6 +1727,17 @@ components:
           title: pagination
           $ref: '#/components/schemas/policy.PageResponse'
       title: ListRegisteredResourcesResponse
+      additionalProperties: false
+    policy.registeredresources.RegisteredResourcesSort:
+      type: object
+      properties:
+        field:
+          title: field
+          $ref: '#/components/schemas/policy.registeredresources.SortRegisteredResourcesType'
+        direction:
+          title: direction
+          $ref: '#/components/schemas/policy.SortDirection'
+      title: RegisteredResourcesSort
       additionalProperties: false
     policy.registeredresources.UpdateRegisteredResourceRequest:
       type: object

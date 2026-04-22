@@ -3,7 +3,7 @@
   "lib/ocrypto": "0.10.0",
   "lib/flattening": "0.1.3",
   "lib/identifier": "0.4.0",
-  "otdfctl": "0.30.0",
+  "otdfctl": "0.31.0",
   "protocol/go": "0.26.0",
   "sdk": "0.16.0",
   "service": "0.14.0"

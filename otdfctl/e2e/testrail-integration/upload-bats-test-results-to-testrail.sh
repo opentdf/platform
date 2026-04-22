@@ -16,6 +16,13 @@ set -euo pipefail
 # ================================================================
 
 # -----------------------------
+# Colors
+# -----------------------------
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+# -----------------------------
 # Load TestRail config
 # -----------------------------
 
@@ -73,7 +80,7 @@ lookup_case_id() {
     while IFS= read -r section; do
       id=$(jq -r --arg n "$lowercasename" --arg s "$section" '
         reduce ( .[$s] | to_entries[] ) as $item (null;
-          if ($item.key | ascii_downcase) == $n then $item.value else . end
+          if ($item.key | ascii_downcase | ltrimstr("[auto] ") | ltrimstr("(auto) ")) == $n then $item.value else . end
         )
       ' "$MAPPING_FILE")
 
@@ -86,7 +93,7 @@ lookup_case_id() {
     # Flat JSON
     id=$(jq -r --arg n "$lowercasename" '
       reduce to_entries[] as $item (null;
-        if ($item.key | ascii_downcase) == $n then $item.value else . end
+        if ($item.key | ascii_downcase | ltrimstr("[auto] ") | ltrimstr("(auto) ")) == $n then $item.value else . end
       )
     ' "$MAPPING_FILE")
 
@@ -129,12 +136,12 @@ parse_tap() {
       if [[ -n "$mapping" ]]; then
         case_id="${mapping%%|*}"
         section="${mapping##*|}"
-        echo "\"$name\" YES $case_id (Section: $section)"
-        echo "\"$name\" YES $case_id" >> "$REPORT_FILE"
+        echo -e "\"$name\" ${GREEN}YES_MAPPING_FOUND${NC} $case_id (Section: $section)"
+        echo "\"$name\" YES_MAPPING_FOUND $case_id" >> "$REPORT_FILE"
         results+=("{\"case_id\": ${case_id#C}, \"status_id\": $status_id, \"comment\": \"$name\"}")
       else
-        echo "\"$name\" NO"
-        echo "\"$name\" NO" >> "$REPORT_FILE"
+        echo -e "\"$name\" ${RED}MAPPING_NOT_FOUND${NC}"
+        echo "\"$name\" MAPPING_NOT_FOUND" >> "$REPORT_FILE"
       fi
     fi
   done < "$TAP_FILE"

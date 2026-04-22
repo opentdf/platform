@@ -109,20 +109,20 @@ func valueIDOrFQN(value *policy.Value) string {
 	if value == nil {
 		return ""
 	}
-	if id := strings.TrimSpace(value.GetId()); id != "" {
-		return id
+	if fqn := strings.TrimSpace(value.GetFqn()); fqn != "" {
+		return fqn
 	}
-	return strings.TrimSpace(value.GetFqn())
+	return strings.TrimSpace(value.GetId())
 }
 
 func obligationValueIDOrFQN(value *policy.ObligationValue) string {
 	if value == nil {
 		return ""
 	}
-	if id := strings.TrimSpace(value.GetId()); id != "" {
-		return id
+	if fqn := strings.TrimSpace(value.GetFqn()); fqn != "" {
+		return fqn
 	}
-	return strings.TrimSpace(value.GetFqn())
+	return strings.TrimSpace(value.GetId())
 }
 
 func triggerClientID(contexts []*policy.RequestContext) string {

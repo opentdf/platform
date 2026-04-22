@@ -248,20 +248,21 @@ func (f *planFinalizer) newSubjectMappingTarget(item *ResolvedSubjectMapping) *S
 	}
 
 	target := &SubjectMappingTargetPlan{
-		Namespace:       item.Namespace,
-		ActionSourceIDs: make([]string, 0, len(item.Source.GetActions())),
+		Namespace: item.Namespace,
 	}
 
 	switch {
 	case item.AlreadyMigrated != nil:
 		target.Status = TargetStatusAlreadyMigrated
 		target.ExistingID = item.AlreadyMigrated.GetId()
+		return target
 	case item.NeedsCreate:
 		target.Status = TargetStatusCreate
 	default:
 		return nil
 	}
 
+	target.ActionSourceIDs = make([]string, 0, len(item.Source.GetActions()))
 	for _, action := range item.Source.GetActions() {
 		target.ActionSourceIDs = append(target.ActionSourceIDs, action.GetId())
 	}
@@ -277,19 +278,20 @@ func (f *planFinalizer) newRegisteredResourceTarget(item *ResolvedRegisteredReso
 
 	target := &RegisteredResourceTargetPlan{
 		Namespace: item.Namespace,
-		Values:    make([]*RegisteredResourceValuePlan, 0, len(item.Source.GetValues())),
 	}
 
 	switch {
 	case item.AlreadyMigrated != nil:
 		target.Status = TargetStatusAlreadyMigrated
 		target.ExistingID = item.AlreadyMigrated.GetId()
+		return target
 	case item.NeedsCreate:
 		target.Status = TargetStatusCreate
 	default:
 		return nil
 	}
 
+	target.Values = make([]*RegisteredResourceValuePlan, 0, len(item.Source.GetValues()))
 	for _, value := range item.Source.GetValues() {
 		valuePlan := &RegisteredResourceValuePlan{
 			Source:         value,
@@ -322,6 +324,7 @@ func (f *planFinalizer) newObligationTriggerTarget(item *ResolvedObligationTrigg
 	case item.AlreadyMigrated != nil:
 		target.Status = TargetStatusAlreadyMigrated
 		target.ExistingID = item.AlreadyMigrated.GetId()
+		return target
 	case item.NeedsCreate:
 		target.Status = TargetStatusCreate
 	default:

@@ -123,7 +123,7 @@ func TestRenderNamespacedPolicySummaryCommitIncludesCountsAndCreatedDetails(t *t
 					Action:         &policy.Action{Id: "action-create", Name: "decrypt"},
 					AttributeValue: classificationValue,
 					ObligationValue: &policy.ObligationValue{
-						Id: "obligation-value-1",
+						Fqn: "https://example.com/obligation/log/value/default",
 					},
 				},
 				Target: &ObligationTriggerTargetPlan{
@@ -154,7 +154,7 @@ func TestRenderNamespacedPolicySummaryCommitIncludesCountsAndCreatedDetails(t *t
 	assert.Contains(t, summary, `registered resource "documents" -> https://example.com (id: created-resource-1) (values=https://example.com/reg_res/documents/value/prod, action_bindings="decrypt" -> https://example.com/attr/classification/value/secret)`)
 	assert.Contains(t, summary, `registered resource "finance": conflicting namespaces`)
 	assert.Contains(t, summary, "Obligation Triggers")
-	assert.Contains(t, summary, `obligation trigger "trigger-1" -> https://example.com (id: created-trigger-1) (action="decrypt", attribute_value=https://example.com/attr/classification/value/secret, obligation_value=obligation-value-1)`)
+	assert.Contains(t, summary, `obligation trigger "trigger-1" -> https://example.com (id: created-trigger-1) (action="decrypt", attribute_value=https://example.com/attr/classification/value/secret, obligation_value=https://example.com/obligation/log/value/default)`)
 	assert.Contains(t, summary, "Created")
 	assert.Contains(t, summary, "Skipped")
 	assert.Contains(t, summary, "Unresolved")

@@ -109,9 +109,9 @@ func TestExecuteObligationTriggers(t *testing.T) {
 				require.Contains(t, handler.createdObligationTriggers["trigger-1"], "created-action-1")
 
 				createdCall := handler.createdObligationTriggers["trigger-1"]["created-action-1"]
-				assert.Equal(t, "attribute-value-1", createdCall.AttributeValue)
+				assert.Equal(t, "https://example.com/attr/department/value/eng", createdCall.AttributeValue)
 				assert.Equal(t, "created-action-1", createdCall.Action)
-				assert.Equal(t, "obligation-value-1", createdCall.ObligationValue)
+				assert.Equal(t, "https://example.com/obligation/log/value/default", createdCall.ObligationValue)
 				assert.Equal(t, "client-a", createdCall.ClientID)
 				assert.Equal(t, map[string]string{
 					"owner":                    "policy-team",

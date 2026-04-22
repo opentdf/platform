@@ -383,7 +383,7 @@ func obligationTriggerPrompt(plan *Plan, triggerPlan *ObligationTriggerPlan) Sel
 			targetNamespaceText + namespaceDisplay(triggerPlan.Target.Namespace),
 			actionText + plainActionNamesSummary(plan, []string{triggerPlan.Target.ActionSourceID}),
 			attributeValueText + valueFQN(triggerPlan.Source.GetAttributeValue()),
-			obligationValueText + obligationValueID(triggerPlan.Source.GetObligationValue()),
+			obligationValueText + obligationValueIDOrFQN(triggerPlan.Source.GetObligationValue()),
 			createObligationTriggerDesc,
 		},
 		Options: confirmSkipAbortOptions(),

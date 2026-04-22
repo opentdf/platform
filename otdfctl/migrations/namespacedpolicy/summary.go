@@ -368,7 +368,7 @@ func formatObligationTriggerCreatedLine(styles *migrations.DisplayStyles, plan *
 	return appendDetails(line,
 		"action="+actionNamesSummary(styles, plan, []string{trigger.Target.ActionSourceID}),
 		"attribute_value="+styles.Namespace().Render(valueFQN(trigger.Source.GetAttributeValue())),
-		"obligation_value="+styles.ID().Render(obligationValueID(trigger.Source.GetObligationValue())),
+		"obligation_value="+styles.ID().Render(obligationValueIDOrFQN(trigger.Source.GetObligationValue())),
 	)
 }
 
@@ -437,13 +437,6 @@ func valueFQN(value *policy.Value) string {
 	}
 	if value.GetFqn() != "" {
 		return value.GetFqn()
-	}
-	return value.GetId()
-}
-
-func obligationValueID(value *policy.ObligationValue) string {
-	if value == nil {
-		return ""
 	}
 	return value.GetId()
 }

@@ -1,0 +1,5 @@
+{
+  "url": "https://yourcompany.testrail.net",
+  "projectId": 123,
+  "tapFile": "./bats-results.tap",
+}

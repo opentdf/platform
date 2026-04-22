@@ -10,10 +10,12 @@ import (
 )
 
 type migrationStatusCounts struct {
-	create           int
+	created          int
+	toCreate         int
 	existingStandard int
 	alreadyMigrated  int
 	skipped          int
+	failed           int
 	unresolved       int
 }
 
@@ -22,11 +24,21 @@ type migrationConstructSummary struct {
 	include    bool
 	counts     migrationStatusCounts
 	created    []string
+	toCreate   []string
+	failed     []string
 	skipped    []string
 	unresolved []string
 }
 
 const unexpectedNilTargetReasonFormat = "received unexpected nil target for %s"
+
+type createExecutionState string
+
+const (
+	createExecutionStateCreated createExecutionState = "created"
+	createExecutionStatePending createExecutionState = "pending"
+	createExecutionStateFailed  createExecutionState = "failed"
+)
 
 func RenderNamespacedPolicySummary(plan *Plan, commit bool) string {
 	return renderNamespacedPolicySummary(plan, commit, "success")
@@ -69,27 +81,35 @@ func renderNamespacedPolicySummary(plan *Plan, commit bool, result string) strin
 		b.WriteByte('\n')
 		b.WriteString(styles.Separator().Render(styles.SeparatorText()))
 		b.WriteByte('\n')
-		fmt.Fprintf(
-			&b,
-			"%s %s=%d existing_standard=%d already_migrated=%d skipped=%d unresolved=%d\n",
-			styles.Info().Render("Counts:"),
-			createCountLabel(commit),
-			summary.counts.create,
-			summary.counts.existingStandard,
-			summary.counts.alreadyMigrated,
-			summary.counts.skipped,
-			summary.counts.unresolved,
-		)
+		fmt.Fprintf(&b, "%s %s\n", styles.Info().Render("Counts:"), formatSummaryCounts(summary.counts, commit))
 
 		if len(summary.created) > 0 {
 			b.WriteByte('\n')
-			if commit {
-				b.WriteString(styles.Action().Render("Created"))
-			} else {
-				b.WriteString(styles.Action().Render("Will Create"))
-			}
+			b.WriteString(styles.Action().Render("Created"))
 			b.WriteByte('\n')
 			for _, line := range summary.created {
+				b.WriteString("  - ")
+				b.WriteString(line)
+				b.WriteByte('\n')
+			}
+		}
+
+		if len(summary.toCreate) > 0 {
+			b.WriteByte('\n')
+			b.WriteString(styles.Action().Render("Will Create"))
+			b.WriteByte('\n')
+			for _, line := range summary.toCreate {
+				b.WriteString("  - ")
+				b.WriteString(line)
+				b.WriteByte('\n')
+			}
+		}
+
+		if len(summary.failed) > 0 {
+			b.WriteByte('\n')
+			b.WriteString(styles.Warning().Render("Failed"))
+			b.WriteByte('\n')
+			for _, line := range summary.failed {
 				b.WriteString("  - ")
 				b.WriteString(line)
 				b.WriteByte('\n')
@@ -137,14 +157,26 @@ func summarizeActions(plan *Plan, commit bool, styles *migrations.DisplayStyles)
 				appendTargetlessUnresolved(&summary, styles, "action", action.Source.GetName(), unexpectedNilTargetReason("action"))
 				continue
 			}
-			recordTargetStatus(&summary.counts, target.Status)
 			switch target.Status {
 			case TargetStatusCreate:
-				summary.created = append(summary.created, formatCreatedLine(styles, "action", action.Source.GetName(), target.Namespace, target.TargetID(), commit))
+				switch classifyCreateExecution(commit, target.Execution) {
+				case createExecutionStateCreated:
+					summary.counts.created++
+					summary.created = append(summary.created, formatCreatedLine(styles, "action", action.Source.GetName(), target.Namespace, target.TargetID(), true))
+				case createExecutionStateFailed:
+					summary.counts.failed++
+					summary.failed = append(summary.failed, formatFailedLine(styles, "action", action.Source.GetName(), target.Namespace, target.Execution.Failure))
+				case createExecutionStatePending:
+					summary.counts.toCreate++
+					summary.toCreate = append(summary.toCreate, formatCreatedLine(styles, "action", action.Source.GetName(), target.Namespace, target.TargetID(), false))
+				}
 			case TargetStatusExistingStandard, TargetStatusAlreadyMigrated:
+				recordTargetStatus(&summary.counts, target.Status)
 			case TargetStatusSkipped:
+				recordTargetStatus(&summary.counts, target.Status)
 				summary.skipped = append(summary.skipped, formatSkippedLine(styles, "action", action.Source.GetName(), target.Namespace, target.Reason))
 			case TargetStatusUnresolved:
+				recordTargetStatus(&summary.counts, target.Status)
 				summary.unresolved = append(summary.unresolved, formatUnresolvedLine(styles, "action", action.Source.GetName(), target.Namespace, target.Reason))
 			}
 		}
@@ -168,14 +200,26 @@ func summarizeSubjectConditionSets(plan *Plan, commit bool, styles *migrations.D
 				appendTargetlessUnresolved(&summary, styles, "subject condition set", scs.Source.GetId(), unexpectedNilTargetReason("subject condition set"))
 				continue
 			}
-			recordTargetStatus(&summary.counts, target.Status)
 			switch target.Status {
 			case TargetStatusCreate:
-				summary.created = append(summary.created, formatSubjectConditionSetCreatedLine(styles, scs, target, commit))
+				switch classifyCreateExecution(commit, target.Execution) {
+				case createExecutionStateCreated:
+					summary.counts.created++
+					summary.created = append(summary.created, formatSubjectConditionSetCreatedLine(styles, scs, target, true))
+				case createExecutionStateFailed:
+					summary.counts.failed++
+					summary.failed = append(summary.failed, formatFailedLine(styles, "subject condition set", scs.Source.GetId(), target.Namespace, target.Execution.Failure))
+				case createExecutionStatePending:
+					summary.counts.toCreate++
+					summary.toCreate = append(summary.toCreate, formatSubjectConditionSetCreatedLine(styles, scs, target, false))
+				}
 			case TargetStatusExistingStandard, TargetStatusAlreadyMigrated:
+				recordTargetStatus(&summary.counts, target.Status)
 			case TargetStatusSkipped:
+				recordTargetStatus(&summary.counts, target.Status)
 				summary.skipped = append(summary.skipped, formatSkippedLine(styles, "subject condition set", scs.Source.GetId(), target.Namespace, target.Reason))
 			case TargetStatusUnresolved:
+				recordTargetStatus(&summary.counts, target.Status)
 				summary.unresolved = append(summary.unresolved, formatUnresolvedLine(styles, "subject condition set", scs.Source.GetId(), target.Namespace, target.Reason))
 			}
 		}
@@ -199,14 +243,26 @@ func summarizeSubjectMappings(plan *Plan, commit bool, styles *migrations.Displa
 			continue
 		}
 
-		recordTargetStatus(&summary.counts, mapping.Target.Status)
 		switch mapping.Target.Status {
 		case TargetStatusCreate:
-			summary.created = append(summary.created, formatSubjectMappingCreatedLine(styles, plan, mapping, commit))
+			switch classifyCreateExecution(commit, mapping.Target.Execution) {
+			case createExecutionStateCreated:
+				summary.counts.created++
+				summary.created = append(summary.created, formatSubjectMappingCreatedLine(styles, plan, mapping, true))
+			case createExecutionStateFailed:
+				summary.counts.failed++
+				summary.failed = append(summary.failed, formatFailedLine(styles, "subject mapping", mapping.Source.GetId(), mapping.Target.Namespace, mapping.Target.Execution.Failure))
+			case createExecutionStatePending:
+				summary.counts.toCreate++
+				summary.toCreate = append(summary.toCreate, formatSubjectMappingCreatedLine(styles, plan, mapping, false))
+			}
 		case TargetStatusExistingStandard, TargetStatusAlreadyMigrated:
+			recordTargetStatus(&summary.counts, mapping.Target.Status)
 		case TargetStatusSkipped:
+			recordTargetStatus(&summary.counts, mapping.Target.Status)
 			summary.skipped = append(summary.skipped, formatSkippedLine(styles, "subject mapping", mapping.Source.GetId(), mapping.Target.Namespace, mapping.Target.Reason))
 		case TargetStatusUnresolved:
+			recordTargetStatus(&summary.counts, mapping.Target.Status)
 			summary.unresolved = append(summary.unresolved, formatUnresolvedLine(styles, "subject mapping", mapping.Source.GetId(), mapping.Target.Namespace, mapping.Target.Reason))
 		}
 	}
@@ -229,14 +285,26 @@ func summarizeRegisteredResources(plan *Plan, commit bool, styles *migrations.Di
 			continue
 		}
 
-		recordTargetStatus(&summary.counts, resource.Target.Status)
 		switch resource.Target.Status {
 		case TargetStatusCreate:
-			summary.created = append(summary.created, formatRegisteredResourceCreatedLine(styles, plan, resource, commit))
+			switch state, failure := classifyRegisteredResourceExecution(commit, resource.Target); state {
+			case createExecutionStateCreated:
+				summary.counts.created++
+				summary.created = append(summary.created, formatRegisteredResourceCreatedLine(styles, plan, resource, true))
+			case createExecutionStateFailed:
+				summary.counts.failed++
+				summary.failed = append(summary.failed, formatRegisteredResourceFailedLine(styles, resource, failure))
+			case createExecutionStatePending:
+				summary.counts.toCreate++
+				summary.toCreate = append(summary.toCreate, formatRegisteredResourceCreatedLine(styles, plan, resource, false))
+			}
 		case TargetStatusExistingStandard, TargetStatusAlreadyMigrated:
+			recordTargetStatus(&summary.counts, resource.Target.Status)
 		case TargetStatusSkipped:
+			recordTargetStatus(&summary.counts, resource.Target.Status)
 			summary.skipped = append(summary.skipped, formatSkippedLine(styles, "registered resource", resource.Source.GetName(), resource.Target.Namespace, resource.Target.Reason))
 		case TargetStatusUnresolved:
+			recordTargetStatus(&summary.counts, resource.Target.Status)
 			reason := resource.Target.Reason
 			if reason == "" {
 				reason = resource.Unresolved
@@ -263,14 +331,26 @@ func summarizeObligationTriggers(plan *Plan, commit bool, styles *migrations.Dis
 			continue
 		}
 
-		recordTargetStatus(&summary.counts, trigger.Target.Status)
 		switch trigger.Target.Status {
 		case TargetStatusCreate:
-			summary.created = append(summary.created, formatObligationTriggerCreatedLine(styles, plan, trigger, commit))
+			switch classifyCreateExecution(commit, trigger.Target.Execution) {
+			case createExecutionStateCreated:
+				summary.counts.created++
+				summary.created = append(summary.created, formatObligationTriggerCreatedLine(styles, plan, trigger, true))
+			case createExecutionStateFailed:
+				summary.counts.failed++
+				summary.failed = append(summary.failed, formatFailedLine(styles, "obligation trigger", trigger.Source.GetId(), trigger.Target.Namespace, trigger.Target.Execution.Failure))
+			case createExecutionStatePending:
+				summary.counts.toCreate++
+				summary.toCreate = append(summary.toCreate, formatObligationTriggerCreatedLine(styles, plan, trigger, false))
+			}
 		case TargetStatusExistingStandard, TargetStatusAlreadyMigrated:
+			recordTargetStatus(&summary.counts, trigger.Target.Status)
 		case TargetStatusSkipped:
+			recordTargetStatus(&summary.counts, trigger.Target.Status)
 			summary.skipped = append(summary.skipped, formatSkippedLine(styles, "obligation trigger", trigger.Source.GetId(), trigger.Target.Namespace, trigger.Target.Reason))
 		case TargetStatusUnresolved:
+			recordTargetStatus(&summary.counts, trigger.Target.Status)
 			summary.unresolved = append(summary.unresolved, formatUnresolvedLine(styles, "obligation trigger", trigger.Source.GetId(), trigger.Target.Namespace, trigger.Target.Reason))
 		}
 	}
@@ -281,7 +361,6 @@ func summarizeObligationTriggers(plan *Plan, commit bool, styles *migrations.Dis
 func recordTargetStatus(counts *migrationStatusCounts, status TargetStatus) {
 	switch status {
 	case TargetStatusCreate:
-		counts.create++
 	case TargetStatusExistingStandard:
 		counts.existingStandard++
 	case TargetStatusAlreadyMigrated:
@@ -318,11 +397,39 @@ func joinScopeLabels(scopes []Scope) string {
 	return strings.Join(labels, ", ")
 }
 
-func createCountLabel(commit bool) string {
+func formatSummaryCounts(counts migrationStatusCounts, commit bool) string {
+	var parts []string
 	if commit {
-		return "created"
+		parts = append(parts, fmt.Sprintf("created=%d", counts.created))
 	}
-	return "to_create"
+	if !commit || counts.toCreate > 0 {
+		parts = append(parts, fmt.Sprintf("to_create=%d", counts.toCreate))
+	}
+
+	parts = append(parts,
+		fmt.Sprintf("existing_standard=%d", counts.existingStandard),
+		fmt.Sprintf("already_migrated=%d", counts.alreadyMigrated),
+		fmt.Sprintf("skipped=%d", counts.skipped),
+		fmt.Sprintf("failed=%d", counts.failed),
+		fmt.Sprintf("unresolved=%d", counts.unresolved),
+	)
+	return strings.Join(parts, " ")
+}
+
+func classifyCreateExecution(commit bool, execution *ExecutionResult) createExecutionState {
+	if !commit {
+		return createExecutionStatePending
+	}
+	if execution == nil {
+		return createExecutionStatePending
+	}
+	if strings.TrimSpace(execution.Failure) != "" {
+		return createExecutionStateFailed
+	}
+	if execution.Applied || strings.TrimSpace(execution.CreatedTargetID) != "" {
+		return createExecutionStateCreated
+	}
+	return createExecutionStatePending
 }
 
 func formatCreatedLine(styles *migrations.DisplayStyles, kind, label string, namespace *policy.Namespace, targetID string, commit bool) string {
@@ -336,6 +443,19 @@ func formatCreatedLine(styles *migrations.DisplayStyles, kind, label string, nam
 		line = fmt.Sprintf("%s (id: %s)", line, styles.ID().Render(targetID))
 	}
 	return line
+}
+
+func formatFailedLine(styles *migrations.DisplayStyles, kind, label string, namespace *policy.Namespace, reason string) string {
+	line := fmt.Sprintf(
+		"%s %s -> %s",
+		styles.Info().Render(kind),
+		styles.Name().Render(strconvQuote(label)),
+		styles.Namespace().Render(namespaceDisplay(namespace)),
+	)
+	if strings.TrimSpace(reason) == "" {
+		return line
+	}
+	return fmt.Sprintf("%s: %s", line, styles.Warning().Render(reason))
 }
 
 func formatSubjectConditionSetCreatedLine(styles *migrations.DisplayStyles, scs *SubjectConditionSetPlan, target *SubjectConditionSetTargetPlan, commit bool) string {
@@ -361,6 +481,14 @@ func formatRegisteredResourceCreatedLine(styles *migrations.DisplayStyles, plan 
 		"values="+registeredResourceValueFQNsSummary(styles, resource),
 		"action_bindings="+registeredResourceActionBindingsSummary(styles, plan, resource),
 	)
+}
+
+func formatRegisteredResourceFailedLine(styles *migrations.DisplayStyles, resource *RegisteredResourcePlan, reason string) string {
+	line := formatFailedLine(styles, "registered resource", resource.Source.GetName(), resource.Target.Namespace, reason)
+	if failedValue := registeredResourceFailedValue(resource); failedValue != "" {
+		return appendDetails(line, "value="+styles.Namespace().Render(failedValue))
+	}
+	return line
 }
 
 func formatObligationTriggerCreatedLine(styles *migrations.DisplayStyles, plan *Plan, trigger *ObligationTriggerPlan, commit bool) string {
@@ -410,6 +538,38 @@ func formatSkippedLine(styles *migrations.DisplayStyles, kind, label string, nam
 	return fmt.Sprintf("%s: %s", line, styles.Warning().Render(reason))
 }
 
+func classifyRegisteredResourceExecution(commit bool, target *RegisteredResourceTargetPlan) (createExecutionState, string) {
+	if !commit {
+		return createExecutionStatePending, ""
+	}
+	if target == nil {
+		return createExecutionStatePending, ""
+	}
+	if target.Execution != nil && strings.TrimSpace(target.Execution.Failure) != "" {
+		return createExecutionStateFailed, target.Execution.Failure
+	}
+	if target.Execution == nil || (!target.Execution.Applied && strings.TrimSpace(target.Execution.CreatedTargetID) == "") {
+		return createExecutionStatePending, ""
+	}
+
+	pendingValues := false
+	for _, valuePlan := range target.Values {
+		if valuePlan == nil {
+			continue
+		}
+		if valuePlan.Execution != nil && strings.TrimSpace(valuePlan.Execution.Failure) != "" {
+			return createExecutionStateFailed, valuePlan.Execution.Failure
+		}
+		if valuePlan.Execution == nil || (!valuePlan.Execution.Applied && strings.TrimSpace(valuePlan.Execution.CreatedTargetID) == "") {
+			pendingValues = true
+		}
+	}
+	if pendingValues {
+		return createExecutionStatePending, ""
+	}
+	return createExecutionStateCreated, ""
+}
+
 func appendTargetlessUnresolved(summary *migrationConstructSummary, styles *migrations.DisplayStyles, kind, label, reason string) {
 	if summary == nil || strings.TrimSpace(reason) == "" {
 		return
@@ -456,6 +616,19 @@ func registeredResourceValueFQNsSummary(styles *migrations.DisplayStyles, resour
 		values = append(values, styles.Namespace().Render(fqn))
 	}
 	return strings.Join(values, ", ")
+}
+
+func registeredResourceFailedValue(resource *RegisteredResourcePlan) string {
+	if resource == nil || resource.Target == nil {
+		return ""
+	}
+	for _, valuePlan := range resource.Target.Values {
+		if valuePlan == nil || valuePlan.Execution == nil || strings.TrimSpace(valuePlan.Execution.Failure) == "" {
+			continue
+		}
+		return registeredResourceValueFQN(valuePlan)
+	}
+	return ""
 }
 
 func registeredResourceActionBindingsSummary(styles *migrations.DisplayStyles, plan *Plan, resource *RegisteredResourcePlan) string {

@@ -93,6 +93,7 @@ func executeNamespacedPolicyCommit(cmd *cobra.Command, h namespacedpolicy.Execut
 	}
 
 	if err := executor.Execute(cmd.Context(), plan); err != nil {
+		writeNamespacedPolicySummary(plan, true, "failure")
 		cli.ExitWithError("could not execute namespaced-policy commit", err)
 	}
 }

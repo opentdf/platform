@@ -62,7 +62,9 @@ examples)
 otdfctl)
   rm -f go.work go.work.sum &&
     go work init &&
-    go work use ./otdfctl
+    go work use ./otdfctl &&
+    go work use ./service &&
+    go work use ./examples
   ;;
 *)
   echo "[ERROR] unknown component [${component}]"

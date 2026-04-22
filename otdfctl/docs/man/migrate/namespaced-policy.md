@@ -36,19 +36,17 @@ All target namespaces must already exist before the command runs. Planning shoul
 
 1. Before running any migration commands you should take a backup of your database to avoid any potential issues.
 
-2. While we allow you to perform a full migration of policy at once with the multiple scopes, we recommend that you migrate one-by-one in the following order:
+2. Turn on the `namespaced_policy` feature flag within your deployed service yaml to avoid creating any accidental non-namespaced policy objects.
+
+3. While we allow you to perform a full migration of policy at once with the multiple scopes, we recommend that you migrate one-by-one in the following order:
    - Actions
    - Subject-Condition-Sets
    - Subject-Mappings
    - Obligation-Triggers
    - Registered-Resources
 
-3. Use `--interactive` mode when migrating policy, this will give you the best chance of success for handling any issues that might occur. In addition, we ask for confirmation for each
+4. Use `--interactive` mode when migrating policy, this will give you the best chance of success for handling any issues that might occur. In addition, we ask for confirmation for each
 object before creating it.
-
-4. Turn on the `namespaced_policy` feature flag within your deployed service yaml to avoid creating any accidental non-namespaced policy objects.
-
-5. In `--interactive` mode only create operations are reviewed. Existing standard objects and already migrated objects are not prompted.
 
 ## Examples
 
@@ -64,3 +62,4 @@ otdfctl migrate namespaced-policy --scope=actions,subject-mappings --interactive
 2. If you provide a parent scope, the dependent scopes will also be added. For example, given scope `subject-mappings` will also add scope: `actions`, `subject-condition-sets`
 since those are required by `subject-mappings` to be migrated to a new namespace.
 3. In `--interactive --commit` mode, declining the backup confirmation or aborting review prints an `aborted` summary and exits without applying the remaining changes.
+4. In `--interactive` mode only create operations are reviewed. Existing standard objects and already migrated objects are not prompted.

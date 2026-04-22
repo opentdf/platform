@@ -43,8 +43,6 @@ func (e *Executor) executeRegisteredResourceTarget(ctx context.Context, plan *Re
 		return nil
 	case TargetStatusCreate:
 		return e.createRegisteredResourceTarget(ctx, plan, target)
-	case TargetStatusExistingStandard:
-		return fmt.Errorf("%w: registered resource %q target %q has unsupported status %q", ErrUnsupportedStatus, plan.Source.GetId(), namespaceLabel(target.Namespace), target.Status)
 	case TargetStatusUnresolved:
 		return nil
 	default:

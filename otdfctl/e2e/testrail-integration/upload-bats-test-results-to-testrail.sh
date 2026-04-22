@@ -136,12 +136,12 @@ parse_tap() {
       if [[ -n "$mapping" ]]; then
         case_id="${mapping%%|*}"
         section="${mapping##*|}"
-        echo -e "\"$name\" ${GREEN}YES_MAPPING_FOUND${NC} $case_id (Section: $section)"
-        echo "\"$name\" YES_MAPPING_FOUND $case_id" >> "$REPORT_FILE"
-        results+=("{\"case_id\": ${case_id#C}, \"status_id\": $status_id, \"comment\": \"$name\"}")
+        printf "\"%s\" ${GREEN}YES_MAPPING_FOUND${NC} %s (Section: %s)\n" "$name" "$case_id" "$section"
+        printf "\"%s\" YES_MAPPING_FOUND %s\n" "$name" "$case_id" >> "$REPORT_FILE"
+        results+=("$(jq -n -c --arg cid "${case_id#C}" --arg sid "$status_id" --arg comment "$name" '{case_id: ($cid|tonumber), status_id: ($sid|tonumber), comment: $comment}')")
       else
-        echo -e "\"$name\" ${RED}MAPPING_NOT_FOUND${NC}"
-        echo "\"$name\" MAPPING_NOT_FOUND" >> "$REPORT_FILE"
+        printf "\"%s\" ${RED}MAPPING_NOT_FOUND${NC}\n" "$name"
+        printf "\"%s\" MAPPING_NOT_FOUND\n" "$name" >> "$REPORT_FILE"
       fi
     fi
   done < "$TAP_FILE"

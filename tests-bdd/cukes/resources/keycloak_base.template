@@ -1,5 +1,7 @@
 # This template tracks service/cmd/keycloak_data.yaml. Only the templated
-# values (hostname/kcPort/platformPort/realm) should differ from that file;
+# values (hostname/kcPort/platformPort/realm) and BDD-specific additions
+# marked inline (e.g., `directAccessGrantsEnabled` on opentdf-sdk for
+# programmatic user tokens in tests) should differ from that file;
 # when keycloak_data.yaml changes, update this template to match.
 baseUrl: &baseUrl http://{{.hostname}}:{{.kcPort}}
 serverBaseUrl: &serverBaseUrl http://{{.hostname}}:{{.platformPort}}
@@ -44,6 +46,9 @@ realms:
           enabled: true
           name: opentdf-sdk
           serviceAccountsEnabled: true
+          # BDD-only: enable ROPC so encrypt/decrypt scenarios can mint
+          # user-scoped tokens by username+password.
+          directAccessGrantsEnabled: true
           clientAuthenticatorType: client-secret
           secret: secret
           protocolMappers:

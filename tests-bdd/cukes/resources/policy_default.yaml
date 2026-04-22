@@ -1,0 +1,279 @@
+##
+# Default BDD policy fixture.
+#
+# Loaded by `a default local platform` (see tests-bdd/README.md). Provisions
+# a minimal, demo-friendly ABAC policy under the `demo.com` namespace that
+# the encrypt/decrypt feature file leans on:
+#
+#   demo.com/attr/department        rule: ANY_OF
+#     - engineering, finance, hr
+#
+#   demo.com/attr/classification    rule: HIERARCHY  (listed high -> low)
+#     - secret, confidential, internal, public
+#
+# Subject mappings key off Keycloak user attribute claims:
+#   .attributes.department[]       -> department attribute values
+#   .attributes.classification[]   -> classification attribute values
+# Each mapping grants the `read` action (the action KAS evaluates during
+# rewrap — see service/kas/access/accessPdp.go).
+#
+# KAS registry + attribute-value-to-key bindings are NOT in this fixture:
+# they depend on per-scenario generated key material and are provisioned
+# via the SDK in steps_localplatform.go after the platform is healthy.
+#
+# Schema mirrors service/internal/fixtures/policy_fixtures.yaml.
+##
+
+attribute_namespaces:
+  metadata:
+    table_name: attribute_namespaces
+    columns:
+      - id
+      - name
+      - active
+  data:
+    demo.com:
+      id: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
+      name: demo.com
+      active: true
+
+attributes:
+  metadata:
+    table_name: attribute_definitions
+    columns:
+      - id
+      - namespace_id
+      - name
+      - rule
+      - active
+  data:
+    demo.com/attr/department:
+      id: a1b2c3d4-e5f6-4a7b-8c9d-000000000010
+      namespace_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
+      name: department
+      rule: ANY_OF
+      active: true
+    demo.com/attr/classification:
+      id: a1b2c3d4-e5f6-4a7b-8c9d-000000000020
+      namespace_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
+      name: classification
+      rule: HIERARCHY
+      active: true
+
+##
+# Attribute values. HIERARCHY rank is determined by insertion order: the
+# FIRST-listed value is the HIGHEST rank and subsumes every value after it.
+# So a subject entitled to `secret` can also decrypt data tagged
+# `confidential`, `internal`, or `public`; a subject entitled to `public`
+# can only decrypt `public`-tagged data.
+##
+attribute_values:
+  metadata:
+    table_name: attribute_values
+    columns:
+      - id
+      - attribute_definition_id
+      - value
+      - active
+  data:
+    demo.com/attr/department/value/engineering:
+      id: a1b2c3d4-e5f6-4a7b-8c9d-000000000011
+      attribute_definition_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000010
+      value: engineering
+      active: true
+    demo.com/attr/department/value/finance:
+      id: a1b2c3d4-e5f6-4a7b-8c9d-000000000012
+      attribute_definition_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000010
+      value: finance
+      active: true
+    demo.com/attr/department/value/hr:
+      id: a1b2c3d4-e5f6-4a7b-8c9d-000000000013
+      attribute_definition_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000010
+      value: hr
+      active: true
+
+    demo.com/attr/classification/value/secret:
+      id: a1b2c3d4-e5f6-4a7b-8c9d-000000000024
+      attribute_definition_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000020
+      value: secret
+      active: true
+    demo.com/attr/classification/value/confidential:
+      id: a1b2c3d4-e5f6-4a7b-8c9d-000000000023
+      attribute_definition_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000020
+      value: confidential
+      active: true
+    demo.com/attr/classification/value/internal:
+      id: a1b2c3d4-e5f6-4a7b-8c9d-000000000022
+      attribute_definition_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000020
+      value: internal
+      active: true
+    demo.com/attr/classification/value/public:
+      id: a1b2c3d4-e5f6-4a7b-8c9d-000000000021
+      attribute_definition_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000020
+      value: public
+      active: true
+
+##
+# Subject Condition Sets — one per attribute value. Each SCS matches
+# exactly the claim value for that attribute value.
+##
+subject_condition_set:
+  metadata:
+    table_name: subject_condition_set
+    columns:
+      - id
+      - condition
+  data:
+    scs_department_engineering:
+      id: b1b2c3d4-e5f6-4a7b-8c9d-000000000011
+      condition:
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+                conditions:
+                  - subjectExternalSelectorValue: ".attributes.department[]"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subjectExternalValues:
+                      - engineering
+    scs_department_finance:
+      id: b1b2c3d4-e5f6-4a7b-8c9d-000000000012
+      condition:
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+                conditions:
+                  - subjectExternalSelectorValue: ".attributes.department[]"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subjectExternalValues:
+                      - finance
+    scs_department_hr:
+      id: b1b2c3d4-e5f6-4a7b-8c9d-000000000013
+      condition:
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+                conditions:
+                  - subjectExternalSelectorValue: ".attributes.department[]"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subjectExternalValues:
+                      - hr
+
+    scs_classification_public:
+      id: b1b2c3d4-e5f6-4a7b-8c9d-000000000021
+      condition:
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+                conditions:
+                  - subjectExternalSelectorValue: ".attributes.classification[]"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subjectExternalValues:
+                      - public
+    scs_classification_internal:
+      id: b1b2c3d4-e5f6-4a7b-8c9d-000000000022
+      condition:
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+                conditions:
+                  - subjectExternalSelectorValue: ".attributes.classification[]"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subjectExternalValues:
+                      - internal
+    scs_classification_confidential:
+      id: b1b2c3d4-e5f6-4a7b-8c9d-000000000023
+      condition:
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+                conditions:
+                  - subjectExternalSelectorValue: ".attributes.classification[]"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subjectExternalValues:
+                      - confidential
+    scs_classification_secret:
+      id: b1b2c3d4-e5f6-4a7b-8c9d-000000000024
+      condition:
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+                conditions:
+                  - subjectExternalSelectorValue: ".attributes.classification[]"
+                    operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
+                    subjectExternalValues:
+                      - secret
+
+##
+# Subject Mappings — link each attribute value to the SCS that matches
+# the corresponding Keycloak claim.
+##
+subject_mappings:
+  metadata:
+    table_name: subject_mappings
+    columns:
+      - id
+      - attribute_value_id
+      - subject_condition_set_id
+  data:
+    sm_department_engineering:
+      id: c1b2c3d4-e5f6-4a7b-8c9d-000000000011
+      attribute_value_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000011
+      subject_condition_set_id: b1b2c3d4-e5f6-4a7b-8c9d-000000000011
+    sm_department_finance:
+      id: c1b2c3d4-e5f6-4a7b-8c9d-000000000012
+      attribute_value_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000012
+      subject_condition_set_id: b1b2c3d4-e5f6-4a7b-8c9d-000000000012
+    sm_department_hr:
+      id: c1b2c3d4-e5f6-4a7b-8c9d-000000000013
+      attribute_value_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000013
+      subject_condition_set_id: b1b2c3d4-e5f6-4a7b-8c9d-000000000013
+
+    sm_classification_public:
+      id: c1b2c3d4-e5f6-4a7b-8c9d-000000000021
+      attribute_value_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000021
+      subject_condition_set_id: b1b2c3d4-e5f6-4a7b-8c9d-000000000021
+    sm_classification_internal:
+      id: c1b2c3d4-e5f6-4a7b-8c9d-000000000022
+      attribute_value_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000022
+      subject_condition_set_id: b1b2c3d4-e5f6-4a7b-8c9d-000000000022
+    sm_classification_confidential:
+      id: c1b2c3d4-e5f6-4a7b-8c9d-000000000023
+      attribute_value_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000023
+      subject_condition_set_id: b1b2c3d4-e5f6-4a7b-8c9d-000000000023
+    sm_classification_secret:
+      id: c1b2c3d4-e5f6-4a7b-8c9d-000000000024
+      attribute_value_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000024
+      subject_condition_set_id: b1b2c3d4-e5f6-4a7b-8c9d-000000000024
+
+##
+# Each subject mapping grants the `read` action (standard action inserted
+# by migration; KAS hard-codes `read` during rewrap evaluation).
+##
+subject_mapping_actions_relation:
+  metadata:
+    table_name: subject_mapping_actions
+    columns:
+      - subject_mapping_id
+      - action_id
+  data:
+    sm_department_engineering_read:
+      subject_mapping_id: c1b2c3d4-e5f6-4a7b-8c9d-000000000011
+      action_name: read
+    sm_department_finance_read:
+      subject_mapping_id: c1b2c3d4-e5f6-4a7b-8c9d-000000000012
+      action_name: read
+    sm_department_hr_read:
+      subject_mapping_id: c1b2c3d4-e5f6-4a7b-8c9d-000000000013
+      action_name: read
+    sm_classification_public_read:
+      subject_mapping_id: c1b2c3d4-e5f6-4a7b-8c9d-000000000021
+      action_name: read
+    sm_classification_internal_read:
+      subject_mapping_id: c1b2c3d4-e5f6-4a7b-8c9d-000000000022
+      action_name: read
+    sm_classification_confidential_read:
+      subject_mapping_id: c1b2c3d4-e5f6-4a7b-8c9d-000000000023
+      action_name: read
+    sm_classification_secret_read:
+      subject_mapping_id: c1b2c3d4-e5f6-4a7b-8c9d-000000000024
+      action_name: read

@@ -116,11 +116,12 @@ that their tests are not sharing state.
 
 [Local Platform Step Definitions](cukes/steps_localplatform.go) handle the provisioning of keycloak, bootstrapping
 of the platform and provisioning of the platform.  This is handled in the following modes:
-- default local platform: TBD
-- empty local platform: stands up platform without provisioning any platform policy and uses a [keycloak profile with no users](cukes/resources/keycloak_base.template)
+- `Given an empty local platform`: stands up platform without provisioning any platform policy and uses a [keycloak profile with no users](cukes/resources/keycloak_base.template)
   - add users and their attributes as part of step defs
   - add policy as part of step defs
-- local platform with a parameterized path to platform policy (optional) and keycloak template. See [example keycloak template](cukes/resources/keycloak_base.template) 
+- `Given a default local platform`: stands up the platform and loads the default demo policy from [`cukes/resources/policy_default.yaml`](cukes/resources/policy_default.yaml) (namespace `demo.com` with `department` ANY_OF + `classification` HIERARCHY attributes, plus subject mappings keyed on `.attributes.department[]` and `.attributes.classification[]`). Use this when your scenario wants ABAC primitives ready to go.
+- `Given a local platform with policy "<path>"`: same as default, but loads the fixture YAML at `<path>` (absolute, or relative to the project root) instead of `policy_default.yaml`. Useful for scenarios that need a custom seed policy.
+- `Given a local platform with platform template "<pt>" and keycloak template "<kc>"`: stands up the platform with explicit platform and keycloak templates. See the [default keycloak template](cukes/resources/keycloak_base.template).
 
 ## Test Feature Authoring
 

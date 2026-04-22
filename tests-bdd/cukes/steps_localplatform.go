@@ -23,6 +23,9 @@ import (
 	"github.com/opentdf/platform/lib/fixtures"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/cmd"
+	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/server"
 	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 	"gopkg.in/yaml.v2"
@@ -52,6 +55,11 @@ type LocalPlatformStepDefinitions struct {
 type platformStartOptions struct {
 	platformProvisionPath *string
 	kcProvisionPath       *template.Template
+	// policyProvisionPath controls policy fixture provisioning:
+	//   nil        -> no policy is provisioned (default; mirrors `an empty local platform`)
+	//   empty ""   -> load tests-bdd/cukes/resources/policy_default.yaml
+	//   non-empty  -> load the given path; absolute, or relative to ProjectDir.
+	policyProvisionPath *string
 }
 
 func (s *LocalPlatformStepDefinitions) aUser(ctx context.Context, username string, email string, attributes *godog.Table) (context.Context, error) {
@@ -110,6 +118,21 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	logger := scenarioContext.TestSuiteContext.Logger
 	if !scenarioContext.FirstScenario && scenarioContext.Stateless {
+		// Platform is already up (shared across @stateless scenarios), but
+		// each godog scenario gets its own PlatformScenarioContext with a
+		// nil SDK. Re-attach the SDK to the shared endpoint so step
+		// definitions (and the Background) keep working.
+		if scenarioContext.SDK == nil {
+			platformSDK, err := otdf.New(
+				scenarioContext.ScenarioOptions.PlatformEndpoint,
+				otdf.WithInsecureSkipVerifyConn(),
+				otdf.WithClientCredentials("opentdf", "secret", nil),
+			)
+			if err != nil {
+				return ctx, err
+			}
+			scenarioContext.SDK = platformSDK
+		}
 		return ctx, nil
 	}
 	localPlatformGlue, ok := (*scenarioContext.TestSuiteContext.PlatformGlue).(*LocalDevPlatformGlue)
@@ -135,6 +158,12 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 
 	if err := provisionKeycloak(ctx, localPlatformOptions, scenarioContext, options); err != nil {
 		return ctx, err
+	}
+
+	if options.policyProvisionPath != nil {
+		if err := provisionPlatformPolicy(ctx, localPlatformOptions, scenarioContext, options); err != nil {
+			return ctx, err
+		}
 	}
 	version, exists := os.LookupEnv(platformImageEnvironment)
 	if !exists {
@@ -251,6 +280,23 @@ func attachPlatformServiceLogs(ctx context.Context, scenarioContext *PlatformSce
 func (s *LocalPlatformStepDefinitions) aEmptyLocalPlatform(ctx context.Context) (context.Context, error) {
 	kt := template.Must(template.New("kc").Parse(keycloakBaseTemplate))
 	return s.commonLocalPlatform(ctx, &platformStartOptions{kcProvisionPath: kt})
+}
+
+func (s *LocalPlatformStepDefinitions) aDefaultLocalPlatform(ctx context.Context) (context.Context, error) {
+	kt := template.Must(template.New("kc").Parse(keycloakBaseTemplate))
+	defaultPolicyPath := ""
+	return s.commonLocalPlatform(ctx, &platformStartOptions{
+		kcProvisionPath:     kt,
+		policyProvisionPath: &defaultPolicyPath,
+	})
+}
+
+func (s *LocalPlatformStepDefinitions) aLocalPlatformWithPolicy(ctx context.Context, policyPath string) (context.Context, error) {
+	kt := template.Must(template.New("kc").Parse(keycloakBaseTemplate))
+	return s.commonLocalPlatform(ctx, &platformStartOptions{
+		kcProvisionPath:     kt,
+		policyProvisionPath: &policyPath,
+	})
 }
 
 // func (s *LocalPlatformStepDefinitions) aDefaultLocalPlatform(ctx context.Context) (context.Context, error) {
@@ -383,6 +429,69 @@ func provisionKeycloak(ctx context.Context, suiteOptions *LocalDevOptions, scena
 	}, kcData)
 }
 
+// provisionPlatformPolicy loads a policy fixture YAML into the scenario's
+// policy schema. The path in startupOptions.policyProvisionPath is resolved
+// as follows: empty string -> tests-bdd/cukes/resources/policy_default.yaml;
+// absolute path -> used verbatim; relative path -> resolved under ProjectDir.
+//
+// NOTE: fixtures.LoadFixtureData (in service/internal/fixtures, wrapped by
+// cmd.ProvisionPolicyFixturesFromFile) mutates package-global state. BDD
+// scenarios currently run serially; any future move to parallel scenarios
+// must serialize calls to this function.
+func provisionPlatformPolicy(ctx context.Context, suiteOptions *LocalDevOptions, scenarioContext *PlatformScenarioContext,
+	startupOptions *platformStartOptions,
+) error {
+	scenarioLogger := scenarioContext.TestSuiteContext.Logger
+	scenarioLogger.Info("provision platform policy")
+
+	fixturePath := *startupOptions.policyProvisionPath
+	switch {
+	case fixturePath == "":
+		fixturePath = path.Join(suiteOptions.ProjectDir, "tests-bdd", "cukes", "resources", "policy_default.yaml")
+	case !path.IsAbs(fixturePath):
+		fixturePath = path.Join(suiteOptions.ProjectDir, fixturePath)
+	}
+
+	cfg := &config.Config{
+		DB: db.Config{
+			Host:           "localhost",
+			Port:           suiteOptions.postgresPort,
+			Database:       scenarioContext.ScenarioOptions.DatabaseName,
+			User:           "postgres",
+			Password:       "changeme",
+			SSLMode:        "prefer",
+			Schema:         "otdf",
+			ConnectTimeout: 15,
+			Pool: db.PoolConfig{
+				MaxConns:          4,
+				MaxConnLifetime:   3600,
+				MaxConnIdleTime:   1800,
+				HealthCheckPeriod: 60,
+			},
+			RunMigrations:    true,
+			VerifyConnection: true,
+		},
+		Logger: logger.Config{
+			Level:  "info",
+			Output: "stdout",
+			Type:   "text",
+		},
+	}
+
+	// Recover from fixture panics so we return a readable error instead of
+	// aborting the entire test process on a malformed fixture.
+	var provisionErr error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				provisionErr = fmt.Errorf("policy fixture provisioning panicked: %v", r)
+			}
+		}()
+		cmd.ProvisionPolicyFixturesFromFile(ctx, cfg, fixturePath)
+	}()
+	return provisionErr
+}
+
 func createPlatformComposeConfiguration(options *LocalDevOptions) (string, error) {
 	tmpFile, err := os.CreateTemp(options.CukesDir, "docker_compose.yaml")
 	if err != nil {
@@ -440,6 +549,8 @@ func RegisterLocalPlatformStepDefinitions(ctx *godog.ScenarioContext, x *Platfor
 		PlatformCukesContext: x,
 	}
 	ctx.Step(`^an empty local platform$`, platformStepDefinitions.aEmptyLocalPlatform)
+	ctx.Step(`^a default local platform$`, platformStepDefinitions.aDefaultLocalPlatform)
+	ctx.Step(`^a local platform with policy "([^"]*)"$`, platformStepDefinitions.aLocalPlatformWithPolicy)
 	ctx.Step(`^a user exists with username "([^"]*)" and email "([^"]*)" and the following attributes:$`, platformStepDefinitions.aUser)
 	ctx.Step(`^a local platform with platform template "([^"]*)" and keycloak template "([^"]*)"$`, platformStepDefinitions.aLocalPlatformWithTemplates)
 }

@@ -771,6 +771,12 @@ func (f *Fixtures) provisionRegisteredResourceActionAttributeValues(ctx context.
 
 //nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provision(ctx context.Context, t string, c []string, v [][]any) int64 {
+	// A fixture file may omit a section entirely (e.g., a minimal BDD fixture
+	// that only populates namespaces/attributes/subject_mappings). Treat that
+	// as "nothing to do" rather than a fatal error.
+	if len(v) == 0 {
+		return 0
+	}
 	rows, err := f.db.ExecInsert(ctx, t, c, v...)
 	if err != nil {
 		slog.Error("⛔️ 📦 issue with insert into table - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Any("err", err))

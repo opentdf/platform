@@ -44,13 +44,13 @@ func (s *RegisteredResourcesStepDefinitions) iSendARequestToCreateARegisteredRes
 				referenceID = v
 			case "name":
 				req.Name = v
-			case "namespace_id":
+			case namespaceIDKey:
 				nsID, ok := scenarioContext.GetObject(v).(string)
 				if !ok {
-					return ctx, fmt.Errorf("namespace_id %s not found", v)
+					return ctx, fmt.Errorf("%s %s not found", namespaceIDKey, v)
 				}
 				req.NamespaceId = nsID
-			case "namespace_fqn":
+			case namespaceFQNKey:
 				req.NamespaceFqn = v
 			}
 		}

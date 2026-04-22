@@ -10,6 +10,8 @@ import (
 
 const (
 	createNamespaceResponseKey = "createNamespaceResponse"
+	namespaceIDKey             = "namespace_id"
+	namespaceFQNKey            = "namespace_fqn"
 )
 
 type NamespacesStepDefinitions struct{}

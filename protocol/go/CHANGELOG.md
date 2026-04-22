@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.26.0](https://github.com/opentdf/platform/compare/protocol/go/v0.25.0...protocol/go/v0.26.0) (2026-04-22)
+
+
+### Features
+
+* **sdk:** add ergonomic Resource constructors for authorization ([#3337](https://github.com/opentdf/platform/issues/3337)) ([4a786ca](https://github.com/opentdf/platform/commit/4a786cab530a9518086f8114f819442efad09b78))
+
+
+### Bug Fixes
+
+* **sdk:** require at least one FQN in ForAttributeValues ([#3355](https://github.com/opentdf/platform/issues/3355)) ([2529e11](https://github.com/opentdf/platform/commit/2529e117c5a0c60839fc2d50db6f69358034c700))
+
 ## [0.25.0](https://github.com/opentdf/platform/compare/protocol/go/v0.24.0...protocol/go/v0.25.0) (2026-04-20)
 
 

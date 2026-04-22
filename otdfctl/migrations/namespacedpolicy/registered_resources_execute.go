@@ -43,8 +43,6 @@ func (e *Executor) executeRegisteredResourceTarget(ctx context.Context, plan *Re
 		return nil
 	case TargetStatusCreate:
 		return e.createRegisteredResourceTarget(ctx, plan, target)
-	case TargetStatusExistingStandard:
-		return fmt.Errorf("%w: registered resource %q target %q has unsupported status %q", ErrUnsupportedStatus, plan.Source.GetId(), namespaceLabel(target.Namespace), target.Status)
 	case TargetStatusUnresolved:
 		return nil
 	default:
@@ -58,36 +56,23 @@ func (e *Executor) createRegisteredResourceTarget(ctx context.Context, plan *Reg
 		return fmt.Errorf("%w: registered resource %q", ErrTargetNamespaceRequired, plan.Source.GetId())
 	}
 
-	// Create the parent RR only when the plan did not already select an existing
-	// target RR to reuse for this namespace.
-	created, hasExistingParent, err := e.existingRegisteredResource(ctx, target)
+	created, err := e.handler.CreateRegisteredResource(
+		ctx,
+		namespace,
+		plan.Source.GetName(),
+		nil,
+		metadataForCreate(
+			plan.Source.GetId(),
+			metadataLabels(plan.Source.GetMetadata()),
+			e.runID,
+		),
+	)
 	if err != nil {
 		target.Execution = &ExecutionResult{
 			RunID:   e.runID,
 			Failure: err.Error(),
 		}
-		return fmt.Errorf("load registered resource %q target %q: %w", plan.Source.GetId(), namespaceLabel(target.Namespace), err)
-	}
-	if !hasExistingParent {
-		var err error
-		created, err = e.handler.CreateRegisteredResource(
-			ctx,
-			namespace,
-			plan.Source.GetName(),
-			nil,
-			metadataForCreate(
-				plan.Source.GetId(),
-				metadataLabels(plan.Source.GetMetadata()),
-				e.runID,
-			),
-		)
-		if err != nil {
-			target.Execution = &ExecutionResult{
-				RunID:   e.runID,
-				Failure: err.Error(),
-			}
-			return fmt.Errorf("%w: create registered resource %q in namespace %q", err, plan.Source.GetId(), namespaceLabel(target.Namespace))
-		}
+		return fmt.Errorf("%w: create registered resource %q in namespace %q", err, plan.Source.GetId(), namespaceLabel(target.Namespace))
 	}
 	if created == nil {
 		target.Execution = &ExecutionResult{
@@ -133,18 +118,6 @@ func (e *Executor) createRegisteredResourceTarget(ctx context.Context, plan *Reg
 	}
 
 	return nil
-}
-
-func (e *Executor) existingRegisteredResource(ctx context.Context, target *RegisteredResourceTargetPlan) (*policy.RegisteredResource, bool, error) {
-	if target == nil || target.ExistingID == "" {
-		return nil, false, nil
-	}
-
-	resource, err := e.handler.GetRegisteredResource(ctx, target.ExistingID, "", "")
-	if err != nil {
-		return nil, true, err
-	}
-	return resource, true, nil
 }
 
 func (e *Executor) createRegisteredResourceValue(ctx context.Context, target *RegisteredResourceTargetPlan, valuePlan *RegisteredResourceValuePlan) error {

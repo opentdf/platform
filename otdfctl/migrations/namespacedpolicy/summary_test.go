@@ -101,6 +101,7 @@ func TestRenderNamespacedPolicySummaryCommitIncludesCountsAndCreatedDetails(t *t
 									Namespace: namespace,
 								},
 							},
+							Execution: &ExecutionResult{CreatedTargetID: "created-resource-value-1"},
 							ActionBindings: []*RegisteredResourceActionBinding{
 								{
 									SourceActionID: "action-create",
@@ -143,7 +144,7 @@ func TestRenderNamespacedPolicySummaryCommitIncludesCountsAndCreatedDetails(t *t
 	assert.Contains(t, summary, "Commit: true")
 	assert.Contains(t, summary, "Result: success")
 	assert.Contains(t, summary, "Actions")
-	assert.Contains(t, summary, "Counts: created=1 existing_standard=0 already_migrated=0 skipped=1 unresolved=0")
+	assert.Contains(t, summary, "Counts: created=1 existing_standard=0 already_migrated=0 skipped=1 failed=0 unresolved=0")
 	assert.Contains(t, summary, `action "decrypt" -> https://example.com (id: created-action-1)`)
 	assert.Contains(t, summary, `action "download" -> https://example.org: skipped by user`)
 	assert.Contains(t, summary, "Subject Condition Sets")
@@ -185,8 +186,9 @@ func TestRenderNamespacedPolicySummaryDryRunUsesToCreateLabel(t *testing.T) {
 	assert.Contains(t, summary, "Namespaced Policy Migration Plan")
 	assert.Contains(t, summary, "Commit: false")
 	assert.Contains(t, summary, "Result: success")
-	assert.Contains(t, summary, "Counts: to_create=1 existing_standard=0 already_migrated=0 skipped=0 unresolved=0")
+	assert.Contains(t, summary, "Counts: to_create=1 existing_standard=0 already_migrated=0 skipped=0 failed=0 unresolved=0")
 	assert.Contains(t, summary, "Will Create")
+	assert.NotContains(t, summary, "\nCreated\n")
 	assert.Contains(t, summary, `action "decrypt" -> https://example.com`)
 	assert.NotContains(t, summary, "(id: created-action-1)")
 }
@@ -232,17 +234,148 @@ func TestRenderNamespacedPolicySummaryIncludesTargetlessUnresolvedEntries(t *tes
 	summary := stripANSI(RenderNamespacedPolicySummaryWithResult(plan, true, "success"))
 
 	assert.Contains(t, summary, "Actions")
-	assert.Contains(t, summary, "Counts: created=0 existing_standard=0 already_migrated=0 skipped=0 unresolved=1")
+	assert.Contains(t, summary, "Counts: created=0 existing_standard=0 already_migrated=0 skipped=0 failed=0 unresolved=1")
 	assert.Contains(t, summary, `action "decrypt": received unexpected nil target for action`)
 	assert.Contains(t, summary, "Subject Condition Sets")
-	assert.Contains(t, summary, "Counts: created=0 existing_standard=0 already_migrated=0 skipped=0 unresolved=1")
+	assert.Contains(t, summary, "Counts: created=0 existing_standard=0 already_migrated=0 skipped=0 failed=0 unresolved=1")
 	assert.Contains(t, summary, `subject condition set "scs-1": received unexpected nil target for subject condition set`)
 	assert.Contains(t, summary, "Subject Mappings")
-	assert.Contains(t, summary, "Counts: created=0 existing_standard=0 already_migrated=0 skipped=0 unresolved=1")
+	assert.Contains(t, summary, "Counts: created=0 existing_standard=0 already_migrated=0 skipped=0 failed=0 unresolved=1")
 	assert.Contains(t, summary, `subject mapping "mapping-1": received unexpected nil target for subject mapping`)
 	assert.Contains(t, summary, "Obligation Triggers")
-	assert.Contains(t, summary, "Counts: created=0 existing_standard=0 already_migrated=0 skipped=0 unresolved=1")
+	assert.Contains(t, summary, "Counts: created=0 existing_standard=0 already_migrated=0 skipped=0 failed=0 unresolved=1")
 	assert.Contains(t, summary, `obligation trigger "trigger-1": received unexpected nil target for obligation trigger`)
+}
+
+func TestRenderNamespacedPolicySummaryCommitFailureShowsFailedAndPendingCreates(t *testing.T) {
+	t.Parallel()
+
+	namespace := &policy.Namespace{Id: "ns-1", Fqn: "https://example.com"}
+
+	plan := &Plan{
+		Scopes: []Scope{
+			ScopeActions,
+			ScopeSubjectConditionSets,
+			ScopeRegisteredResources,
+		},
+		Actions: []*ActionPlan{
+			{
+				Source: &policy.Action{Id: "action-created", Name: "decrypt"},
+				Targets: []*ActionTargetPlan{
+					{
+						Namespace: namespace,
+						Status:    TargetStatusCreate,
+						Execution: &ExecutionResult{Applied: true, CreatedTargetID: "created-action-1"},
+					},
+				},
+			},
+			{
+				Source: &policy.Action{Id: "action-failed", Name: "download"},
+				Targets: []*ActionTargetPlan{
+					{
+						Namespace: namespace,
+						Status:    TargetStatusCreate,
+						Execution: &ExecutionResult{Failure: "boom"},
+					},
+				},
+			},
+		},
+		SubjectConditionSets: []*SubjectConditionSetPlan{
+			{
+				Source: &policy.SubjectConditionSet{Id: "scs-pending"},
+				Targets: []*SubjectConditionSetTargetPlan{
+					{
+						Namespace: namespace,
+						Status:    TargetStatusCreate,
+					},
+				},
+			},
+		},
+		RegisteredResources: []*RegisteredResourcePlan{
+			{
+				Source: testRegisteredResource(
+					"resource-1",
+					"documents",
+					testRegisteredResourceValue("prod"),
+				),
+				Target: &RegisteredResourceTargetPlan{
+					Namespace: namespace,
+					Status:    TargetStatusCreate,
+					Execution: &ExecutionResult{Applied: true, CreatedTargetID: "created-resource-1"},
+					Values: []*RegisteredResourceValuePlan{
+						{
+							Source: &policy.RegisteredResourceValue{
+								Id:    "rrv-1",
+								Value: "prod",
+								Resource: &policy.RegisteredResource{
+									Name:      "documents",
+									Namespace: namespace,
+								},
+							},
+							Execution: &ExecutionResult{Failure: "value boom"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	summary := stripANSI(RenderNamespacedPolicySummaryWithResult(plan, true, "failure"))
+
+	assert.Contains(t, summary, "Result: failure")
+	assert.Contains(t, summary, "Actions")
+	assert.Contains(t, summary, "Counts: created=1 existing_standard=0 already_migrated=0 skipped=0 failed=1 unresolved=0")
+	assert.Contains(t, summary, "Created")
+	assert.Contains(t, summary, `action "decrypt" -> https://example.com (id: created-action-1)`)
+	assert.Contains(t, summary, "Failed")
+	assert.Contains(t, summary, `action "download" -> https://example.com: boom`)
+	assert.Contains(t, summary, "Subject Condition Sets")
+	assert.Contains(t, summary, "Counts: created=0 to_create=1 existing_standard=0 already_migrated=0 skipped=0 failed=0 unresolved=0")
+	assert.Contains(t, summary, "Will Create")
+	assert.Contains(t, summary, `subject condition set "scs-pending" -> https://example.com (subject_sets=0)`)
+	assert.Contains(t, summary, "Registered Resources")
+	assert.Contains(t, summary, "Counts: created=0 existing_standard=0 already_migrated=0 skipped=0 failed=1 unresolved=0")
+	assert.Contains(t, summary, `registered resource "documents" -> https://example.com: value boom (value=https://example.com/reg_res/documents/value/prod)`)
+}
+
+func TestFormatSummaryCounts(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t,
+		"created=0 existing_standard=0 already_migrated=0 skipped=0 failed=0 unresolved=1",
+		formatSummaryCounts(migrationStatusCounts{
+			unresolved: 1,
+		}, true),
+	)
+
+	assert.Equal(t,
+		"created=0 to_create=1 existing_standard=0 already_migrated=0 skipped=0 failed=0 unresolved=0",
+		formatSummaryCounts(migrationStatusCounts{
+			toCreate: 1,
+		}, true),
+	)
+
+	assert.Equal(t,
+		"created=1 existing_standard=0 already_migrated=0 skipped=0 failed=1 unresolved=0",
+		formatSummaryCounts(migrationStatusCounts{
+			created: 1,
+			failed:  1,
+		}, true),
+	)
+
+	assert.Equal(t,
+		"to_create=0 existing_standard=0 already_migrated=0 skipped=0 failed=0 unresolved=1",
+		formatSummaryCounts(migrationStatusCounts{
+			unresolved: 1,
+		}, false),
+	)
+
+	assert.Equal(t,
+		"to_create=1 existing_standard=0 already_migrated=0 skipped=0 failed=0 unresolved=0",
+		formatSummaryCounts(migrationStatusCounts{
+			toCreate: 1,
+		}, false),
+	)
 }
 
 func stripANSI(value string) string {

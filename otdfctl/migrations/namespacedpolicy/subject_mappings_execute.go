@@ -37,6 +37,8 @@ func (e *Executor) executeSubjectMappingTarget(ctx context.Context, mappingPlan 
 			return fmt.Errorf("%w: subject mapping %q target %q", ErrMissingMigratedTarget, mappingPlan.Source.GetId(), namespaceLabel(target.Namespace))
 		}
 		return nil
+	case TargetStatusSkipped:
+		return nil
 	case TargetStatusCreate:
 		return e.createSubjectMappingTarget(ctx, mappingPlan, target)
 	case TargetStatusUnresolved:

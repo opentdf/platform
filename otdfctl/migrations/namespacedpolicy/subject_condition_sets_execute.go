@@ -83,6 +83,8 @@ func (e *Executor) executeSubjectConditionSetTarget(ctx context.Context, scsPlan
 		}
 		e.rememberSubjectConditionSetTarget(scsPlan.Source.GetId(), target)
 		return nil
+	case TargetStatusSkipped:
+		return nil
 	case TargetStatusCreate:
 		return e.createSubjectConditionSetTarget(ctx, scsPlan, target)
 	case TargetStatusUnresolved:

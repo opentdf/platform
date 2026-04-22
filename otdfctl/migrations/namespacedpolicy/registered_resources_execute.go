@@ -39,6 +39,8 @@ func (e *Executor) executeRegisteredResourceTarget(ctx context.Context, plan *Re
 			return fmt.Errorf("%w: registered resource %q target %q", ErrMissingMigratedTarget, plan.Source.GetId(), namespaceLabel(target.Namespace))
 		}
 		return nil
+	case TargetStatusSkipped:
+		return nil
 	case TargetStatusCreate:
 		return e.createRegisteredResourceTarget(ctx, plan, target)
 	case TargetStatusExistingStandard:

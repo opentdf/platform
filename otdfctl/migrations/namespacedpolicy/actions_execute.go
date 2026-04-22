@@ -82,6 +82,8 @@ func (e *Executor) executeActionTarget(ctx context.Context, actionPlan *ActionPl
 		}
 		e.rememberActionTarget(actionPlan.Source.GetId(), target)
 		return nil
+	case TargetStatusSkipped:
+		return nil
 	case TargetStatusCreate:
 		return e.createActionTarget(ctx, actionPlan, target)
 	case TargetStatusUnresolved:

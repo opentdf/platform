@@ -1,9 +1,8 @@
 package migrate
 
 import (
-	"encoding/json"
+	"errors"
 	"os"
-	"path/filepath"
 
 	otdfctl "github.com/opentdf/platform/otdfctl/cmd/common"
 	namespacedpolicy "github.com/opentdf/platform/otdfctl/migrations/namespacedpolicy"
@@ -22,12 +21,6 @@ func migrateNamespacedPolicyCmd() *cobra.Command {
 		doc.GetDocFlag("scope").Default,
 		doc.GetDocFlag("scope").Description,
 	)
-	doc.Flags().StringP(
-		doc.GetDocFlag("output").Name,
-		doc.GetDocFlag("output").Shorthand,
-		doc.GetDocFlag("output").Default,
-		doc.GetDocFlag("output").Description,
-	)
 
 	return &doc.Command
 }
@@ -35,7 +28,7 @@ func migrateNamespacedPolicyCmd() *cobra.Command {
 func migrateNamespacedPolicy(cmd *cobra.Command, args []string) {
 	c := cli.New(cmd, args)
 	scopeCSV := c.Flags.GetRequiredString("scope")
-	outputPath := c.Flags.GetRequiredString("output")
+	prompter := &namespacedpolicy.HuhPrompter{}
 
 	commit, err := cmd.InheritedFlags().GetBool("commit")
 	if err != nil {
@@ -51,7 +44,7 @@ func migrateNamespacedPolicy(cmd *cobra.Command, args []string) {
 
 	var plannerOpts []namespacedpolicy.Option
 	if interactive {
-		plannerOpts = append(plannerOpts, namespacedpolicy.WithInteractiveReviewer(namespacedpolicy.NewHuhInteractiveReviewer(&h, nil)))
+		plannerOpts = append(plannerOpts, namespacedpolicy.WithInteractiveReviewer(namespacedpolicy.NewHuhInteractiveReviewer(&h, prompter)))
 	}
 
 	planner, err := namespacedpolicy.NewPlanner(&h, scopeCSV, plannerOpts...)
@@ -65,34 +58,47 @@ func migrateNamespacedPolicy(cmd *cobra.Command, args []string) {
 	}
 
 	if commit {
-		executor, err := namespacedpolicy.NewExecutor(h)
-		if err != nil {
-			cli.ExitWithError("could not create namespaced-policy executor", err)
-		}
-
-		if err := executor.Execute(cmd.Context(), plan); err != nil {
-			cli.ExitWithError("could not execute namespaced-policy commit", err)
-		}
+		executeNamespacedPolicyCommit(cmd, h, plan, interactive, prompter)
 	}
 
-	if err := writeNamespacedPolicyPlan(outputPath, plan); err != nil {
-		cli.ExitWithError("could not write namespaced-policy plan", err)
+	if _, err := os.Stdout.WriteString(namespacedpolicy.RenderNamespacedPolicySummary(plan, commit) + "\n"); err != nil {
+		cli.ExitWithError("could not write namespaced-policy summary", err)
 	}
 }
 
-func writeNamespacedPolicyPlan(path string, plan *namespacedpolicy.Plan) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+func confirmNamespacedPolicyCommit(cmd *cobra.Command, plan *namespacedpolicy.Plan, interactive bool, prompter namespacedpolicy.InteractivePrompter) error {
+	if !interactive {
+		return nil
+	}
+	if err := namespacedpolicy.ConfirmNamespacedPolicyBackup(cmd.Context(), prompter); err != nil {
 		return err
 	}
+	if err := namespacedpolicy.ReviewNamespacedPolicyInteractiveCommit(cmd.Context(), plan, prompter); err != nil {
+		return err
+	}
+	return nil
+}
 
-	file, err := os.Create(path)
+func executeNamespacedPolicyCommit(cmd *cobra.Command, h namespacedpolicy.ExecutorHandler, plan *namespacedpolicy.Plan, interactive bool, prompter namespacedpolicy.InteractivePrompter) {
+	if err := confirmNamespacedPolicyCommit(cmd, plan, interactive, prompter); err != nil {
+		if errors.Is(err, namespacedpolicy.ErrNamespacedPolicyBackupNotConfirmed) || errors.Is(err, namespacedpolicy.ErrInteractiveReviewAborted) {
+			writeNamespacedPolicySummary(plan, false, "aborted")
+		}
+		cli.ExitWithError("could not review namespaced-policy commit", err)
+	}
+
+	executor, err := namespacedpolicy.NewExecutor(h)
 	if err != nil {
-		return err
+		cli.ExitWithError("could not create namespaced-policy executor", err)
 	}
-	defer file.Close()
 
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
+	if err := executor.Execute(cmd.Context(), plan); err != nil {
+		cli.ExitWithError("could not execute namespaced-policy commit", err)
+	}
+}
 
-	return encoder.Encode(plan)
+func writeNamespacedPolicySummary(plan *namespacedpolicy.Plan, commit bool, result string) {
+	if _, err := os.Stdout.WriteString(namespacedpolicy.RenderNamespacedPolicySummaryWithResult(plan, commit, result) + "\n"); err != nil {
+		cli.ExitWithError("could not write namespaced-policy summary", err)
+	}
 }

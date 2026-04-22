@@ -51,6 +51,7 @@ const (
 	TargetStatusCreate           TargetStatus = "create"
 	TargetStatusAlreadyMigrated  TargetStatus = "already_migrated"
 	TargetStatusExistingStandard TargetStatus = "existing_standard"
+	TargetStatusSkipped          TargetStatus = "skipped"
 	TargetStatusUnresolved       TargetStatus = "unresolved"
 )
 

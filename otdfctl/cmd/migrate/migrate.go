@@ -31,6 +31,5 @@ func InitCommands() {
 	Cmd.AddCommand(
 		migrateNamespacedPolicyCmd(),
 		prune.Cmd,
-		newRegisteredResourcesCmd(), // TODO: Put this under a scope once we get there.
 	)
 }

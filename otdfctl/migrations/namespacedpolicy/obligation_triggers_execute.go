@@ -38,6 +38,8 @@ func (e *Executor) executeObligationTriggerTarget(ctx context.Context, triggerPl
 			return fmt.Errorf("%w: obligation trigger %q target %q", ErrMissingMigratedTarget, triggerPlan.Source.GetId(), namespaceLabel(target.Namespace))
 		}
 		return nil
+	case TargetStatusSkipped:
+		return nil
 	case TargetStatusCreate:
 		return e.createObligationTriggerTarget(ctx, triggerPlan, target)
 	case TargetStatusUnresolved:

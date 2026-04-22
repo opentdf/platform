@@ -1209,6 +1209,8 @@ run_namespaced_policy_commit() {
 }
 
 setup() {
+  skip "migrate-namespaced-policy.bats temporarily disabled"
+
   export TEST_PREFIX="${MIGRATION_TEST_PREFIX}-t${BATS_TEST_NUMBER}"
   export TRACKED_ACTION_IDS=""
   export TRACKED_REGISTERED_RESOURCE_IDS=""

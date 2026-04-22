@@ -5,9 +5,9 @@ go 1.25.5
 toolchain go1.25.8
 
 require (
-	github.com/cucumber/godog v0.15.0
+	github.com/cucumber/godog v0.15.1
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx/v5 v5.9.0
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/opentdf/platform/lib/fixtures v0.3.0
 	github.com/opentdf/platform/lib/identifier v0.0.2
 	github.com/opentdf/platform/protocol/go v0.20.0
@@ -24,7 +24,7 @@ require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250613105001-9f2d3c737feb.1 // indirect
 	buf.build/go/protovalidate v0.13.1 // indirect
 	cel.dev/expr v0.25.1 // indirect
-	connectrpc.com/connect v1.19.1 // indirect
+	connectrpc.com/connect v1.19.2 // indirect
 	connectrpc.com/grpchealth v1.4.0 // indirect
 	connectrpc.com/grpcreflect v1.3.0 // indirect
 	connectrpc.com/validate v0.3.0 // indirect

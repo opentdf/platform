@@ -213,7 +213,11 @@ func summarizeRegisteredResources(plan *Plan, commit bool, styles *migrations.Di
 	}
 
 	for _, resource := range plan.RegisteredResources {
-		if resource == nil || resource.Source == nil || resource.Target == nil {
+		if resource == nil || resource.Source == nil {
+			continue
+		}
+		if resource.Target == nil {
+			appendTargetlessUnresolved(&summary, styles, "registered resource", resource.Source.GetName(), unresolvedRegisteredResourceReason(resource))
 			continue
 		}
 
@@ -369,6 +373,18 @@ func formatUnresolvedLine(styles *migrations.DisplayStyles, kind, label string, 
 	return fmt.Sprintf("%s: %s", line, styles.Warning().Render(reason))
 }
 
+func formatUnresolvedLineWithoutNamespace(styles *migrations.DisplayStyles, kind, label string, reason string) string {
+	line := fmt.Sprintf(
+		"%s %s",
+		styles.Info().Render(kind),
+		styles.Name().Render(strconvQuote(label)),
+	)
+	if strings.TrimSpace(reason) == "" {
+		return line
+	}
+	return fmt.Sprintf("%s: %s", line, styles.Warning().Render(reason))
+}
+
 func formatSkippedLine(styles *migrations.DisplayStyles, kind, label string, namespace *policy.Namespace, reason string) string {
 	line := fmt.Sprintf(
 		"%s %s -> %s",
@@ -380,6 +396,14 @@ func formatSkippedLine(styles *migrations.DisplayStyles, kind, label string, nam
 		return line
 	}
 	return fmt.Sprintf("%s: %s", line, styles.Warning().Render(reason))
+}
+
+func appendTargetlessUnresolved(summary *migrationConstructSummary, styles *migrations.DisplayStyles, kind, label, reason string) {
+	if summary == nil || strings.TrimSpace(reason) == "" {
+		return
+	}
+	summary.counts.unresolved++
+	summary.unresolved = append(summary.unresolved, formatUnresolvedLineWithoutNamespace(styles, kind, label, reason))
 }
 
 func appendDetails(line string, details ...string) string {
@@ -496,6 +520,13 @@ func actionNameBySourceID(plan *Plan, sourceID string) string {
 		}
 	}
 	return ""
+}
+
+func unresolvedRegisteredResourceReason(resource *RegisteredResourcePlan) string {
+	if resource == nil {
+		return ""
+	}
+	return strings.TrimSpace(resource.Unresolved)
 }
 
 func registeredResourceValueFQN(valuePlan *RegisteredResourceValuePlan) string {

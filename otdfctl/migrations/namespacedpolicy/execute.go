@@ -3,7 +3,6 @@ package namespacedpolicy
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -93,11 +92,6 @@ func (e *Executor) validatePlan(plan *Plan) error {
 	}
 	if plan == nil {
 		return ErrNilExecutionPlan
-	}
-	for _, resource := range plan.RegisteredResources { // ? This should be a function withint the plan.go file
-		if resource != nil && resource.Unresolved != "" {
-			return fmt.Errorf("%w: finalized plan contains unresolved registered resources", ErrPlanNotExecutable)
-		}
 	}
 
 	return nil

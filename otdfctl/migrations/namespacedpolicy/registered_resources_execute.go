@@ -46,7 +46,7 @@ func (e *Executor) executeRegisteredResourceTarget(ctx context.Context, plan *Re
 	case TargetStatusExistingStandard:
 		return fmt.Errorf("%w: registered resource %q target %q has unsupported status %q", ErrUnsupportedStatus, plan.Source.GetId(), namespaceLabel(target.Namespace), target.Status)
 	case TargetStatusUnresolved:
-		return fmt.Errorf("%w: registered resource %q target %q is unresolved: %s", ErrPlanNotExecutable, plan.Source.GetId(), namespaceLabel(target.Namespace), target.Reason)
+		return nil
 	default:
 		return fmt.Errorf("%w: registered resource %q target %q has unsupported status %q", ErrUnsupportedStatus, plan.Source.GetId(), namespaceLabel(target.Namespace), target.Status)
 	}

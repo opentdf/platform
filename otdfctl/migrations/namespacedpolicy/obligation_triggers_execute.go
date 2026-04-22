@@ -43,7 +43,7 @@ func (e *Executor) executeObligationTriggerTarget(ctx context.Context, triggerPl
 	case TargetStatusCreate:
 		return e.createObligationTriggerTarget(ctx, triggerPlan, target)
 	case TargetStatusUnresolved:
-		return fmt.Errorf("%w: obligation trigger %q target %q is unresolved: %s", ErrPlanNotExecutable, triggerPlan.Source.GetId(), namespaceLabel(target.Namespace), target.Reason)
+		return nil
 	default:
 		return fmt.Errorf("%w: obligation trigger %q target %q has unsupported status %q", ErrUnsupportedStatus, triggerPlan.Source.GetId(), namespaceLabel(target.Namespace), target.Status)
 	}

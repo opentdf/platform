@@ -87,7 +87,7 @@ func (e *Executor) executeActionTarget(ctx context.Context, actionPlan *ActionPl
 	case TargetStatusCreate:
 		return e.createActionTarget(ctx, actionPlan, target)
 	case TargetStatusUnresolved:
-		return fmt.Errorf("%w: action %q target %q is unresolved: %s", ErrPlanNotExecutable, actionPlan.Source.GetId(), namespaceLabel(target.Namespace), target.Reason)
+		return nil
 	default:
 		return fmt.Errorf("%w: action %q target %q has unsupported status %q", ErrUnsupportedStatus, actionPlan.Source.GetId(), namespaceLabel(target.Namespace), target.Status)
 	}

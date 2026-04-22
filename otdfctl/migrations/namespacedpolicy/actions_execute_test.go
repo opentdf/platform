@@ -105,7 +105,7 @@ func TestExecuteActions(t *testing.T) {
 			},
 		},
 		{
-			name: "returns not executable for unresolved target status",
+			name: "ignores unresolved target status",
 			plan: &Plan{
 				Scopes: []Scope{ScopeActions},
 				Actions: []*ActionPlan{
@@ -122,17 +122,10 @@ func TestExecuteActions(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			wantErr: wantError(
-				ErrPlanNotExecutable,
-				`action %q target %q is unresolved: %s`,
-				"action-1",
-				namespace1.GetFqn(),
-				"missing target namespace mapping",
-			),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
-				require.Error(t, err)
+				require.NoError(t, err)
 				assert.Empty(t, handler.created)
 				assert.Empty(t, executor.cachedActionTargetID("action-1", namespace1))
 			},

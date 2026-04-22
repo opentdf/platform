@@ -197,7 +197,38 @@ func TestExecuteRegisteredResources(t *testing.T) {
 			},
 		},
 		{
-			name: "returns not executable for unresolved target status",
+			name: "skips skipped registered resource targets",
+			plan: &Plan{
+				Scopes: []Scope{ScopeRegisteredResources},
+				RegisteredResources: []*RegisteredResourcePlan{
+					{
+						Source: &policy.RegisteredResource{Id: "rr-1", Name: "repo"},
+						Target: &RegisteredResourceTargetPlan{
+							Namespace: namespace1,
+							Status:    TargetStatusSkipped,
+							Reason:    skippedByUserReason,
+							Values: []*RegisteredResourceValuePlan{
+								{
+									Source: &policy.RegisteredResourceValue{Id: "rrv-1", Value: "repo-a"},
+								},
+							},
+						},
+					},
+				},
+			},
+			handler: &mockExecutorHandler{},
+			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
+				t.Helper()
+
+				require.NoError(t, err)
+				assert.Nil(t, handler.createdRegisteredResources)
+				assert.Nil(t, handler.createdRegisteredResourceValues)
+				assert.Nil(t, plan.RegisteredResources[0].Target.Execution)
+				assert.Nil(t, plan.RegisteredResources[0].Target.Values[0].Execution)
+			},
+		},
+		{
+			name: "ignores unresolved target status",
 			plan: &Plan{
 				Scopes: []Scope{ScopeActions, ScopeRegisteredResources},
 				RegisteredResources: []*RegisteredResourcePlan{
@@ -212,17 +243,30 @@ func TestExecuteRegisteredResources(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			wantErr: wantError(
-				ErrPlanNotExecutable,
-				`registered resource %q target %q is unresolved: %s`,
-				"rr-1",
-				namespace1.GetFqn(),
-				ErrDuplicateCanonicalMatch,
-			),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
-				require.Error(t, err)
+				require.NoError(t, err)
+				assert.Nil(t, handler.createdRegisteredResources)
+				assert.Nil(t, handler.createdRegisteredResourceValues)
+			},
+		},
+		{
+			name: "ignores unresolved registered resource entry without target",
+			plan: &Plan{
+				Scopes: []Scope{ScopeRegisteredResources},
+				RegisteredResources: []*RegisteredResourcePlan{
+					{
+						Source:     &policy.RegisteredResource{Id: "rr-1", Name: "repo"},
+						Unresolved: "registered resource spans multiple target namespaces",
+					},
+				},
+			},
+			handler: &mockExecutorHandler{},
+			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
+				t.Helper()
+
+				require.NoError(t, err)
 				assert.Nil(t, handler.createdRegisteredResources)
 				assert.Nil(t, handler.createdRegisteredResourceValues)
 			},

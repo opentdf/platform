@@ -133,7 +133,31 @@ func TestExecuteObligationTriggers(t *testing.T) {
 			},
 		},
 		{
-			name: "returns not executable for unresolved target status",
+			name: "skips skipped obligation trigger targets",
+			plan: &Plan{
+				Scopes: []Scope{ScopeObligationTriggers},
+				ObligationTriggers: []*ObligationTriggerPlan{
+					{
+						Source: &policy.ObligationTrigger{Id: "trigger-1"},
+						Target: &ObligationTriggerTargetPlan{
+							Namespace: namespace1,
+							Status:    TargetStatusSkipped,
+							Reason:    skippedByUserReason,
+						},
+					},
+				},
+			},
+			handler: &mockExecutorHandler{},
+			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
+				t.Helper()
+
+				require.NoError(t, err)
+				assert.Empty(t, handler.createdObligationTriggers)
+				assert.Nil(t, plan.ObligationTriggers[0].Target.Execution)
+			},
+		},
+		{
+			name: "ignores unresolved target status",
 			plan: &Plan{
 				Scopes: []Scope{ScopeObligationTriggers},
 				ObligationTriggers: []*ObligationTriggerPlan{
@@ -148,17 +172,10 @@ func TestExecuteObligationTriggers(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			wantErr: wantError(
-				ErrPlanNotExecutable,
-				`obligation trigger %q target %q is unresolved: %s`,
-				"trigger-1",
-				namespace1.GetFqn(),
-				"missing target namespace mapping",
-			),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
-				require.Error(t, err)
+				require.NoError(t, err)
 				assert.Empty(t, handler.createdObligationTriggers)
 			},
 		},

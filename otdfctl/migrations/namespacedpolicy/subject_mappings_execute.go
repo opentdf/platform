@@ -42,7 +42,7 @@ func (e *Executor) executeSubjectMappingTarget(ctx context.Context, mappingPlan 
 	case TargetStatusCreate:
 		return e.createSubjectMappingTarget(ctx, mappingPlan, target)
 	case TargetStatusUnresolved:
-		return fmt.Errorf("%w: subject mapping %q target %q is unresolved: %s", ErrPlanNotExecutable, mappingPlan.Source.GetId(), namespaceLabel(target.Namespace), target.Reason)
+		return nil
 	default:
 		return fmt.Errorf("%w: subject mapping %q target %q has unsupported status %q", ErrUnsupportedStatus, mappingPlan.Source.GetId(), namespaceLabel(target.Namespace), target.Status)
 	}

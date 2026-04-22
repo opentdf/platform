@@ -149,7 +149,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 			},
 		},
 		{
-			name: "returns not executable for unresolved target status",
+			name: "ignores unresolved target status",
 			plan: &Plan{
 				Scopes: []Scope{ScopeSubjectMappings},
 				SubjectMappings: []*SubjectMappingPlan{
@@ -164,17 +164,10 @@ func TestExecuteSubjectMappings(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			wantErr: wantError(
-				ErrPlanNotExecutable,
-				`subject mapping %q target %q is unresolved: %s`,
-				"mapping-1",
-				namespace1.GetFqn(),
-				"missing target namespace mapping",
-			),
 			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
-				require.Error(t, err)
+				require.NoError(t, err)
 				assert.Empty(t, handler.createdSubjectMappings)
 			},
 		},

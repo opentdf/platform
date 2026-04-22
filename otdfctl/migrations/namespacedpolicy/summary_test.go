@@ -112,12 +112,8 @@ func TestRenderNamespacedPolicySummaryCommitIncludesCountsAndCreatedDetails(t *t
 				},
 			},
 			{
-				Source: testRegisteredResource("resource-2", "finance"),
-				Target: &RegisteredResourceTargetPlan{
-					Namespace: otherNamespace,
-					Status:    TargetStatusUnresolved,
-					Reason:    "conflicting namespaces",
-				},
+				Source:     testRegisteredResource("resource-2", "finance"),
+				Unresolved: "conflicting namespaces",
 			},
 		},
 		ObligationTriggers: []*ObligationTriggerPlan{
@@ -156,7 +152,7 @@ func TestRenderNamespacedPolicySummaryCommitIncludesCountsAndCreatedDetails(t *t
 	assert.Contains(t, summary, `subject mapping "mapping-1" -> https://example.com (id: created-mapping-1) (attribute_value=https://example.com/attr/classification/value/secret, actions="decrypt", scs_source=scs-1)`)
 	assert.Contains(t, summary, "Registered Resources")
 	assert.Contains(t, summary, `registered resource "documents" -> https://example.com (id: created-resource-1) (values=https://example.com/reg_res/documents/value/prod, action_bindings="decrypt" -> https://example.com/attr/classification/value/secret)`)
-	assert.Contains(t, summary, `registered resource "finance" -> https://example.org: conflicting namespaces`)
+	assert.Contains(t, summary, `registered resource "finance": conflicting namespaces`)
 	assert.Contains(t, summary, "Obligation Triggers")
 	assert.Contains(t, summary, `obligation trigger "trigger-1" -> https://example.com (id: created-trigger-1) (action="decrypt", attribute_value=https://example.com/attr/classification/value/secret, obligation_value=obligation-value-1)`)
 	assert.Contains(t, summary, "Created")

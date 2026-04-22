@@ -683,6 +683,42 @@ registered_resource_values_signature() {
   '
 }
 
+subject_sets_signature() {
+  local scs_json="$1"
+
+  echo "$scs_json" | jq -c '
+    def normalized_condition:
+      {
+        selector: (.subject_external_selector_value // ""),
+        operator: (.operator // 0),
+        values: ((.subject_external_values // []) | sort)
+      };
+
+    def normalized_group:
+      {
+        conditions: (
+          (.conditions // [])
+          | map(select(. != null) | normalized_condition)
+          | sort_by([.selector, .operator, (.values | join(","))])
+        ),
+        boolean_operator: (.boolean_operator // 0)
+      };
+
+    (.subject_sets // [])
+    | map(
+        select(. != null)
+        | {
+            condition_groups: (
+              (.condition_groups // [])
+              | map(select(. != null) | normalized_group)
+              | sort_by(tojson)
+            )
+          }
+      )
+    | sort_by(tojson)
+  '
+}
+
 assert_standard_action_resolved_in_namespace() {
   local action_name="$1"
   local namespace_id="$2"
@@ -764,7 +800,7 @@ assert_scs_created_in_namespace() {
   assert_not_equal "$created_target_id" "$source_scs_id"
 
   assert_equal "$(echo "$created_scs_json" | jq -r '.namespace.id')" "$namespace_id"
-  assert_equal "$(echo "$created_scs_json" | jq -c '.subject_sets')" "$(echo "$source_scs_json" | jq -c '.subject_sets')"
+  assert_equal "$(subject_sets_signature "$created_scs_json")" "$(subject_sets_signature "$source_scs_json")"
   assert_metadata_labels_preserved "$source_scs_json" "$created_scs_json"
   assert_equal "$(echo "$created_scs_json" | jq -r '.metadata.labels.migrated_from')" "$source_scs_id"
   assert_not_equal "$(echo "$created_scs_json" | jq -r '.metadata.labels.migration_run // empty')" ""
@@ -1006,7 +1042,7 @@ assert_scs_already_migrated_in_namespace() {
 
   assert_equal "$(echo "$existing_scs_json" | jq -r '.id // empty')" "$existing_scs_id"
   assert_equal "$(echo "$existing_scs_json" | jq -r '.namespace.id')" "$namespace_id"
-  assert_equal "$(echo "$existing_scs_json" | jq -c '.subject_sets')" "$(echo "$source_scs_json" | jq -c '.subject_sets')"
+  assert_equal "$(subject_sets_signature "$existing_scs_json")" "$(subject_sets_signature "$source_scs_json")"
 }
 
 assert_legacy_scs_still_exists() {

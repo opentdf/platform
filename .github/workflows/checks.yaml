@@ -13,12 +13,13 @@ on:
     branches:
       - main
       - release/**
-      - ab-2181-otdfctl-improvements
   merge_group:
     branches:
       - main
     types:
       - checks_requested
+  schedule:
+    - cron: '0 6 * * *'
   workflow_call:
   workflow_dispatch:
     inputs:

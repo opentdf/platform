@@ -73,7 +73,6 @@ runs:
         name: bats-test-results
         path: otdfctl/e2e/bats-results.tap
     - name: Integrate Bats test results into TestRail
-      if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/ab-2181-otdfctl-improvements'
       shell: bash
       working-directory: otdfctl
       run: |
@@ -87,7 +86,6 @@ runs:
         TESTRAIL_PASS: ${{ env.TESTRAIL_PASS }}
         TESTRAIL_CLI_RUN_NAME: ${{ inputs.testrail-run-name-for-cli-test }}
     - name: Upload TestRail mapping report
-      if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/ab-2181-otdfctl-improvements'
       uses: actions/upload-artifact@v4
       with:
         name: test-cases-mapping-report

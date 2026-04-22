@@ -45,17 +45,13 @@ func TestForAttributeValues_Single(t *testing.T) {
 	}
 }
 
-func TestForAttributeValues_ZeroArgs(t *testing.T) {
-	r := ForAttributeValues()
-
-	av, ok := r.GetResource().(*authorizationv2proto.Resource_AttributeValues_)
-	if !ok {
-		t.Fatal("expected AttributeValues resource")
-	}
-	got := av.AttributeValues.GetFqns()
-	if len(got) != 0 {
-		t.Fatalf("fqns len = %d, want 0", len(got))
-	}
+func TestForAttributeValues_ZeroArgs_Panics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("expected panic for zero FQNs, but did not panic")
+		}
+	}()
+	ForAttributeValues()
 }
 
 func TestForRegisteredResourceValueFqn(t *testing.T) {

@@ -63,6 +63,7 @@ otdfctl)
   rm -f go.work go.work.sum &&
     go work init &&
     go work use ./otdfctl &&
+    # service and examples are needed for release branch checks
     go work use ./service &&
     go work use ./examples
   ;;

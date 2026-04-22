@@ -73,6 +73,7 @@ runs:
         name: bats-test-results
         path: otdfctl/e2e/bats-results.tap
     - name: Integrate Bats test results into TestRail
+      if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
       shell: bash
       working-directory: otdfctl
       run: |

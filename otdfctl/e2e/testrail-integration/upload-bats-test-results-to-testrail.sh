@@ -150,7 +150,6 @@ parse_tap() {
 find_existing_run() {
   curl -s -u "$TESTRAIL_USER:$TESTRAIL_PASS" \
     "$TESTRAIL_URL/index.php?/api/v2/get_runs/$PROJECT_ID" |
-#    jq ".runs[] | select(.name==\"$RUN_NAME\") | .id" | head -n1
     jq --arg run_name "$RUN_NAME" '.runs[] | select(.name == $run_name) | .id' | head -n1
 }
 

@@ -35,16 +35,14 @@ const (
 	obligationValueText = "Obligation value: "
 	valuesText          = "Values: "
 	actionBindingsText  = "Action bindings: "
-	existingTargetText  = "Existing target resource: "
 	subjectSetsTextFmt  = "Subject sets: %d"
 	scsSourceText       = "Subject condition set source: "
 
-	createActionDescription            = "This will create a new namespaced action."
-	createSubjectConditionSetDesc      = "This will create a new namespaced subject condition set."
-	createSubjectMappingDescription    = "This will create a new namespaced subject mapping."
-	reuseRegisteredResourceDescription = "This will reuse the existing parent registered resource and create any missing values."
-	createRegisteredResourceDesc       = "This will create a new namespaced registered resource and its values."
-	createObligationTriggerDesc        = "This will create a new namespaced obligation trigger."
+	createActionDescription         = "This will create a new namespaced action."
+	createSubjectConditionSetDesc   = "This will create a new namespaced subject condition set."
+	createSubjectMappingDescription = "This will create a new namespaced subject mapping."
+	createRegisteredResourceDesc    = "This will create a new namespaced registered resource and its values."
+	createObligationTriggerDesc     = "This will create a new namespaced obligation trigger."
 
 	confirmMigrationLabel       = "Confirm migration"
 	confirmMigrationDescription = "apply this create operation"
@@ -358,14 +356,7 @@ func registeredResourcePrompt(plan *Plan, resourcePlan *RegisteredResourcePlan) 
 		targetNamespaceText + namespaceDisplay(resourcePlan.Target.Namespace),
 		valuesText + plainRegisteredResourceValueFQNsSummary(resourcePlan),
 		actionBindingsText + plainRegisteredResourceActionBindingsSummary(plan, resourcePlan),
-	}
-	if strings.TrimSpace(resourcePlan.Target.ExistingID) != "" {
-		description = append(description,
-			existingTargetText+resourcePlan.Target.ExistingID,
-			reuseRegisteredResourceDescription,
-		)
-	} else {
-		description = append(description, createRegisteredResourceDesc)
+		createRegisteredResourceDesc,
 	}
 
 	return SelectPrompt{

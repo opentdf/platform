@@ -128,11 +128,8 @@ type RegisteredResourcePlan struct {
 }
 
 type RegisteredResourceTargetPlan struct {
-	Namespace *policy.Namespace `json:"namespace"`
-	Status    TargetStatus      `json:"status"`
-	// For registered resources, ExistingID is also used on create targets to mean
-	// "reuse this parent RR and reconcile missing values under it" rather than
-	// creating a new top-level RR.
+	Namespace  *policy.Namespace              `json:"namespace"`
+	Status     TargetStatus                   `json:"status"`
 	ExistingID string                         `json:"existing_id,omitempty"`
 	Execution  *ExecutionResult               `json:"execution,omitempty"`
 	Reason     string                         `json:"reason,omitempty"`

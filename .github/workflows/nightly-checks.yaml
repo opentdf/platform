@@ -62,9 +62,7 @@ jobs:
           working-directory: platform
 
       ######## BUILD 'otdfctl' (now part of platform monorepo) #############
-      - run: go build -o otdfctl .
-        working-directory: platform/otdfctl
-      - run: cp otdfctl ../
+      - run: go build -o ../bin/otdfctl .
         working-directory: platform/otdfctl
 
       ######## RUN TESTS #############

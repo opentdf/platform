@@ -60,7 +60,7 @@ func (e *Executor) createRegisteredResourceTarget(ctx context.Context, plan *Reg
 
 	// Create the parent RR only when the plan did not already select an existing
 	// target RR to reuse for this namespace.
-	created, hasExistingParent, err := e.existingRegisteredResource(ctx, target)
+	created, hasExistingParent, err := e.existingRegisteredResource(ctx, target) // ? We should remove this right? As we don't currently check. We should just try to create and fail if so.
 	if err != nil {
 		target.Execution = &ExecutionResult{
 			RunID:   e.runID,

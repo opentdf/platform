@@ -254,17 +254,17 @@ func summarizeRegisteredResources(plan *Plan, commit bool, styles *migrations.Di
 			continue
 		}
 
-		state, failure := classifyRegisteredResourceExecution(commit, resource.Target)
-		reason := resource.Target.Reason
-		if reason == "" {
-			reason = resource.Unresolved
+		state := createExecutionStatePending
+		failure := ""
+		if resource.Target.Status == TargetStatusCreate {
+			state, failure = classifyRegisteredResourceExecution(commit, resource.Target)
 		}
 		appendTargetStatusSummary(&summary, resource.Target.Status, state, targetSummaryLines{
 			created:    formatRegisteredResourceCreatedLine(styles, plan, resource, true),
 			toCreate:   formatRegisteredResourceCreatedLine(styles, plan, resource, false),
 			failed:     formatRegisteredResourceFailedLine(styles, resource, failure),
 			skipped:    formatSkippedLine(styles, registeredResourceKind, resource.Source.GetName(), resource.Target.Namespace, resource.Target.Reason),
-			unresolved: formatUnresolvedLine(styles, registeredResourceKind, resource.Source.GetName(), resource.Target.Namespace, reason),
+			unresolved: formatUnresolvedLine(styles, registeredResourceKind, resource.Source.GetName(), resource.Target.Namespace, registeredResourceUnresolvedReason(resource)),
 		})
 	}
 
@@ -511,11 +511,18 @@ func formatSkippedLine(styles *migrations.DisplayStyles, kind, label string, nam
 	return fmt.Sprintf("%s: %s", line, styles.Warning().Render(reason))
 }
 
+func registeredResourceUnresolvedReason(resource *RegisteredResourcePlan) string {
+	if resource == nil || resource.Target == nil {
+		return ""
+	}
+	if resource.Target.Reason != "" {
+		return resource.Target.Reason
+	}
+	return resource.Unresolved
+}
+
 func classifyRegisteredResourceExecution(commit bool, target *RegisteredResourceTargetPlan) (createExecutionState, string) {
 	if !commit {
-		return createExecutionStatePending, ""
-	}
-	if target == nil {
 		return createExecutionStatePending, ""
 	}
 	if target.Execution != nil && strings.TrimSpace(target.Execution.Failure) != "" {
@@ -544,7 +551,7 @@ func classifyRegisteredResourceExecution(commit bool, target *RegisteredResource
 }
 
 func appendTargetlessUnresolved(summary *migrationConstructSummary, styles *migrations.DisplayStyles, kind, label, reason string) {
-	if summary == nil || strings.TrimSpace(reason) == "" {
+	if summary == nil {
 		return
 	}
 	summary.counts.unresolved++

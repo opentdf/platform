@@ -150,16 +150,23 @@ parse_tap() {
 find_existing_run() {
   curl -s -u "$TESTRAIL_USER:$TESTRAIL_PASS" \
     "$TESTRAIL_URL/index.php?/api/v2/get_runs/$PROJECT_ID" |
-    jq ".runs[] | select(.name==\"$RUN_NAME\") | .id" | head -n1
+#    jq ".runs[] | select(.name==\"$RUN_NAME\") | .id" | head -n1
+    jq --arg run_name "$RUN_NAME" '.runs[] | select(.name == $run_name) | .id' | head -n1
 }
 
 create_run() {
   local case_ids_json
+  local payload
   case_ids_json=$(printf '%s\n' "${results[@]}" | jq -s '.[].case_id' | jq -s .)
+  payload=$(jq -n \
+    --arg name "$RUN_NAME" \
+    --argjson case_ids "$case_ids_json" \
+    '{name: $name, include_all: false, case_ids: $case_ids}')
+
 
   curl -s -u "$TESTRAIL_USER:$TESTRAIL_PASS" \
     -H "Content-Type: application/json" \
-    -d "{\"name\": \"$RUN_NAME\", \"include_all\": false, \"case_ids\": $case_ids_json}" \
+    -d "$payload" \
     "$TESTRAIL_URL/index.php?/api/v2/add_run/$PROJECT_ID" | jq .id
 }
 

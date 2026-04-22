@@ -26,6 +26,8 @@ type migrationConstructSummary struct {
 	unresolved []string
 }
 
+const unexpectedNilTargetReasonFormat = "received unexpected nil target for %s"
+
 func RenderNamespacedPolicySummary(plan *Plan, commit bool) string {
 	return renderNamespacedPolicySummary(plan, commit, "success")
 }
@@ -132,6 +134,7 @@ func summarizeActions(plan *Plan, commit bool, styles *migrations.DisplayStyles)
 		}
 		for _, target := range action.Targets {
 			if target == nil {
+				appendTargetlessUnresolved(&summary, styles, "action", action.Source.GetName(), unexpectedNilTargetReason("action"))
 				continue
 			}
 			recordTargetStatus(&summary.counts, target.Status)
@@ -162,6 +165,7 @@ func summarizeSubjectConditionSets(plan *Plan, commit bool, styles *migrations.D
 		}
 		for _, target := range scs.Targets {
 			if target == nil {
+				appendTargetlessUnresolved(&summary, styles, "subject condition set", scs.Source.GetId(), unexpectedNilTargetReason("subject condition set"))
 				continue
 			}
 			recordTargetStatus(&summary.counts, target.Status)
@@ -187,7 +191,11 @@ func summarizeSubjectMappings(plan *Plan, commit bool, styles *migrations.Displa
 	}
 
 	for _, mapping := range plan.SubjectMappings {
-		if mapping == nil || mapping.Source == nil || mapping.Target == nil {
+		if mapping == nil || mapping.Source == nil {
+			continue
+		}
+		if mapping.Target == nil {
+			appendTargetlessUnresolved(&summary, styles, "subject mapping", mapping.Source.GetId(), unexpectedNilTargetReason("subject mapping"))
 			continue
 		}
 
@@ -247,7 +255,11 @@ func summarizeObligationTriggers(plan *Plan, commit bool, styles *migrations.Dis
 	}
 
 	for _, trigger := range plan.ObligationTriggers {
-		if trigger == nil || trigger.Source == nil || trigger.Target == nil {
+		if trigger == nil || trigger.Source == nil {
+			continue
+		}
+		if trigger.Target == nil {
+			appendTargetlessUnresolved(&summary, styles, "obligation trigger", trigger.Source.GetId(), unexpectedNilTargetReason("obligation trigger"))
 			continue
 		}
 
@@ -527,6 +539,10 @@ func unresolvedRegisteredResourceReason(resource *RegisteredResourcePlan) string
 		return ""
 	}
 	return strings.TrimSpace(resource.Unresolved)
+}
+
+func unexpectedNilTargetReason(kind string) string {
+	return fmt.Sprintf(unexpectedNilTargetReasonFormat, kind)
 }
 
 func registeredResourceValueFQN(valuePlan *RegisteredResourceValuePlan) string {

@@ -191,6 +191,60 @@ func TestRenderNamespacedPolicySummaryDryRunUsesToCreateLabel(t *testing.T) {
 	assert.NotContains(t, summary, "(id: created-action-1)")
 }
 
+func TestRenderNamespacedPolicySummaryIncludesTargetlessUnresolvedEntries(t *testing.T) {
+	t.Parallel()
+
+	plan := &Plan{
+		Scopes: []Scope{
+			ScopeActions,
+			ScopeSubjectConditionSets,
+			ScopeSubjectMappings,
+			ScopeObligationTriggers,
+		},
+		Actions: []*ActionPlan{
+			{
+				Source: &policy.Action{Id: "action-1", Name: "decrypt"},
+				Targets: []*ActionTargetPlan{
+					nil,
+				},
+			},
+		},
+		SubjectConditionSets: []*SubjectConditionSetPlan{
+			{
+				Source: &policy.SubjectConditionSet{Id: "scs-1"},
+				Targets: []*SubjectConditionSetTargetPlan{
+					nil,
+				},
+			},
+		},
+		SubjectMappings: []*SubjectMappingPlan{
+			{
+				Source: &policy.SubjectMapping{Id: "mapping-1"},
+			},
+		},
+		ObligationTriggers: []*ObligationTriggerPlan{
+			{
+				Source: &policy.ObligationTrigger{Id: "trigger-1"},
+			},
+		},
+	}
+
+	summary := stripANSI(RenderNamespacedPolicySummaryWithResult(plan, true, "success"))
+
+	assert.Contains(t, summary, "Actions")
+	assert.Contains(t, summary, "Counts: created=0 existing_standard=0 already_migrated=0 skipped=0 unresolved=1")
+	assert.Contains(t, summary, `action "decrypt": received unexpected nil target for action`)
+	assert.Contains(t, summary, "Subject Condition Sets")
+	assert.Contains(t, summary, "Counts: created=0 existing_standard=0 already_migrated=0 skipped=0 unresolved=1")
+	assert.Contains(t, summary, `subject condition set "scs-1": received unexpected nil target for subject condition set`)
+	assert.Contains(t, summary, "Subject Mappings")
+	assert.Contains(t, summary, "Counts: created=0 existing_standard=0 already_migrated=0 skipped=0 unresolved=1")
+	assert.Contains(t, summary, `subject mapping "mapping-1": received unexpected nil target for subject mapping`)
+	assert.Contains(t, summary, "Obligation Triggers")
+	assert.Contains(t, summary, "Counts: created=0 existing_standard=0 already_migrated=0 skipped=0 unresolved=1")
+	assert.Contains(t, summary, `obligation trigger "trigger-1": received unexpected nil target for obligation trigger`)
+}
+
 func stripANSI(value string) string {
 	tidyWhitespace := regexp.MustCompile(`\x1b\[[0-9;]*m`)
 	return tidyWhitespace.ReplaceAllString(value, "")

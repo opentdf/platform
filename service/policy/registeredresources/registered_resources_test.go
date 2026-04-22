@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"buf.build/go/protovalidate"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/stretchr/testify/suite"
 )
@@ -1124,4 +1125,38 @@ func (s *RegisteredResourcesSuite) TestDeleteRegisteredResourceValue_Invalid_Fai
 			s.Require().Contains(err.Error(), errMsgUUID)
 		})
 	}
+}
+
+func (s *RegisteredResourcesSuite) TestListRegisteredResourcesRequest_Sort() {
+	// no sort — valid
+	req := &registeredresources.ListRegisteredResourcesRequest{}
+	s.Require().NoError(s.v.Validate(req))
+
+	// one sort item — valid
+	req = &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{
+				Field:     registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+		},
+	}
+	s.Require().NoError(s.v.Validate(req))
+
+	// two sort items — exceeds max_items = 1
+	req = &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{
+				Field:     registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+			{
+				Field:     registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_NAME,
+				Direction: policy.SortDirection_SORT_DIRECTION_DESC,
+			},
+		},
+	}
+	err := s.v.Validate(req)
+	s.Require().Error(err)
+	s.Require().ErrorContains(err, "sort")
 }

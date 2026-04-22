@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
+	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -125,6 +126,33 @@ func GetObligationsSortParams(sort []*obligations.ObligationsSort) (string, stri
 	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UPDATED_AT:
 		field = sortFieldUpdatedAt
 	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UNSPECIFIED:
+		return "", ""
+	default:
+		return "", ""
+	}
+
+	return field, getSortDirection(s.GetDirection())
+}
+
+// GetRegisteredResourcesSortParams maps the strongly-typed RegisteredResourcesSort enum to
+// SQL-compatible field name and direction strings.
+// Returns empty strings when sort is nil or empty (backward compatible —
+// callers fall back to default ORDER BY created_at DESC).
+func GetRegisteredResourcesSortParams(sort []*registeredresources.RegisteredResourcesSort) (string, string) {
+	if len(sort) == 0 || sort[0] == nil {
+		return "", ""
+	}
+	s := sort[0]
+
+	var field string
+	switch s.GetField() {
+	case registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_NAME:
+		field = sortFieldName
+	case registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT:
+		field = sortFieldCreatedAt
+	case registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UPDATED_AT:
+		field = sortFieldUpdatedAt
+	case registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UNSPECIFIED:
 		return "", ""
 	default:
 		return "", ""

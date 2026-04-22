@@ -33,6 +33,7 @@ jobs:
       matrix:
         directory:
           - examples
+          - otdfctl
           - sdk
           - service
           - lib/ocrypto
@@ -51,6 +52,7 @@ jobs:
           check-latest: false
           cache-dependency-path: |
             examples/go.sum
+            otdfctl/go.sum
             protocol/go/go.sum
             sdk/go.sum
             service/go.sum
@@ -545,23 +547,26 @@ jobs:
             cukes_platform_report.log
           retention-days: 1
 
-  # test latest otdfctl CLI 'main' against platform PR branch
+  # test otdfctl CLI e2e against platform PR branch
   otdfctl-test:
     permissions:
       contents: read
     name: otdfctl e2e tests
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - name: Install GNU parallel
         run: |
           sudo apt update
           sudo apt install -y parallel
-      - uses: opentdf/platform/test/start-up-with-containers@main
+      - uses: ./test/start-up-with-containers
         with:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: opentdf/otdfctl/e2e@main
-        with:
-          otdfctl-ref: "main"
+          provision-policy-fixtures: "false"
+      - uses: ./otdfctl/e2e
         env:
           TESTRAIL_USER: ${{ secrets.TESTRAIL_USER }}
           TESTRAIL_PASS: ${{ secrets.TESTRAIL_PASS }}

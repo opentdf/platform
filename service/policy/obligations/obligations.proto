@@ -291,6 +291,15 @@ message DeleteObligationValueResponse {
 }
 
 // Triggers
+message GetObligationTriggerRequest {
+    // Required
+    string id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message GetObligationTriggerResponse {
+    policy.ObligationTrigger trigger = 1;
+}
+
 message AddObligationTriggerRequest {
     // Required
     common.IdFqnIdentifier obligation_value = 1 [(buf.validate.field).required = true];
@@ -412,6 +421,10 @@ service Service {
    /*--------------------------------------*
     * Trigger RPCs
     *--------------------------------------*/
+
+    rpc GetObligationTrigger(GetObligationTriggerRequest) returns (GetObligationTriggerResponse) {
+        option idempotency_level = NO_SIDE_EFFECTS;
+    }
     
     rpc AddObligationTrigger(AddObligationTriggerRequest) returns (AddObligationTriggerResponse) {}
 

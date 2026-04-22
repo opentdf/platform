@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.31.0](https://github.com/opentdf/platform/compare/otdfctl/v0.30.0...otdfctl/v0.31.0) (2026-04-22)
+
+
+### Features
+
+* **cli:** Add e2e tests and fix bugs. ([#3353](https://github.com/opentdf/platform/issues/3353)) ([213d843](https://github.com/opentdf/platform/commit/213d843cedc38be9a7c255d73c7d66ffbb4fdc53))
+* **cli:** Add E2E tests for namespaced policy. ([#3363](https://github.com/opentdf/platform/issues/3363)) ([e46f07d](https://github.com/opentdf/platform/commit/e46f07d7126a66f92251ee6a37ff59bc3d60e165))
+* **cli:** Interactive confirmation ([#3360](https://github.com/opentdf/platform/issues/3360)) ([cd931d9](https://github.com/opentdf/platform/commit/cd931d9a46083151d9cd2a2efea4bd447c43f5cc))
+* **cli:** migrate otdfctl into platform monorepo ([#3205](https://github.com/opentdf/platform/issues/3205)) ([5177bec](https://github.com/opentdf/platform/commit/5177bec0a2f67aa1395e45a1b8a72570910f6208))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/sdk from 0.15.0 to 0.16.0 in /otdfctl ([#3357](https://github.com/opentdf/platform/issues/3357)) ([d829184](https://github.com/opentdf/platform/commit/d829184487f539dde2c57c0f781d4fe1a65bd63a))
+
 ## [0.30.0](https://github.com/opentdf/otdfctl/compare/v0.29.0...v0.30.0) (2026-03-31)
 
 

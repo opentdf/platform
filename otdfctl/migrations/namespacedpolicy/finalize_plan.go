@@ -8,8 +8,6 @@ import (
 
 var ErrNilResolvedTargets = errors.New("planner resolved state is required")
 
-const unusedActionReason = "action is not referenced by any subject mapping, registered resource, or obligation trigger"
-
 // finalizePlan converts the fully resolved graph into the current Plan shape.
 // This is the last planner stage before artifact building/execution wiring.
 func finalizePlan(resolved *ResolvedTargets, namespaces []*policy.Namespace) (*Plan, error) {
@@ -68,10 +66,6 @@ type planFinalizer struct {
 	subjectMappings      []*SubjectMappingPlan
 	registeredResources  []*RegisteredResourcePlan
 	obligationTriggers   []*ObligationTriggerPlan
-	actionTargetsByKey   map[string]*ActionTargetPlan
-	scsTargetsByKey      map[string]*SubjectConditionSetTargetPlan
-	unused               UnusedPlan
-	unresolved           UnresolvedPlan
 }
 
 func newPlanFinalizer(resolved *ResolvedTargets, namespaces []*policy.Namespace) *planFinalizer {
@@ -79,8 +73,6 @@ func newPlanFinalizer(resolved *ResolvedTargets, namespaces []*policy.Namespace)
 		resolved:           resolved,
 		namespaces:         namespaces,
 		namespacePlansByID: make(map[string]*NamespacePlan),
-		actionTargetsByKey: make(map[string]*ActionTargetPlan),
-		scsTargetsByKey:    make(map[string]*SubjectConditionSetTargetPlan),
 	}
 }
 
@@ -104,14 +96,6 @@ func (f *planFinalizer) build() *Plan {
 		}
 	}
 
-	if hasUnused(f.unused) {
-		plan.Unused = &f.unused
-	}
-
-	if hasUnresolved(f.unresolved) {
-		plan.Unresolved = &f.unresolved
-	}
-
 	return plan
 }
 
@@ -120,8 +104,7 @@ func (f *planFinalizer) addResolvedAction(item *ResolvedAction) {
 		return
 	}
 
-	if len(item.Results) == 0 && len(item.References) == 0 {
-		f.addUnusedAction(item.Source, item.References, unusedActionReason)
+	if len(item.Results) == 0 {
 		return
 	}
 
@@ -137,7 +120,6 @@ func (f *planFinalizer) addResolvedAction(item *ResolvedAction) {
 			continue
 		}
 		actionPlan.Targets = append(actionPlan.Targets, target)
-		f.storeActionTarget(item.Source.GetId(), target)
 
 		f.addNamespacePlacement(target.Namespace, ScopeActions, item.Source.GetId())
 	}
@@ -161,7 +143,6 @@ func (f *planFinalizer) addResolvedSubjectConditionSet(item *ResolvedSubjectCond
 			continue
 		}
 		scsPlan.Targets = append(scsPlan.Targets, target)
-		f.storeSubjectConditionSetTarget(item.Source.GetId(), target)
 
 		f.addNamespacePlacement(target.Namespace, ScopeSubjectConditionSets, item.Source.GetId())
 	}
@@ -178,7 +159,7 @@ func (f *planFinalizer) addResolvedSubjectMapping(item *ResolvedSubjectMapping) 
 
 	target := f.newSubjectMappingTarget(item)
 	if target != nil {
-		mappingPlan.Targets = append(mappingPlan.Targets, target)
+		mappingPlan.Target = target
 		f.addNamespacePlacement(target.Namespace, ScopeSubjectMappings, item.Source.GetId())
 	}
 
@@ -197,14 +178,8 @@ func (f *planFinalizer) addResolvedRegisteredResource(item *ResolvedRegisteredRe
 
 	target := f.newRegisteredResourceTarget(item)
 	if target != nil {
-		resourcePlan.Targets = append(resourcePlan.Targets, target)
-		if target.Status == TargetStatusUnresolved {
-			f.addRegisteredResourceIssue(item.Source, target.Namespace, target.Reason)
-		} else {
-			f.addNamespacePlacement(target.Namespace, ScopeRegisteredResources, item.Source.GetId())
-		}
-	} else if item.Unresolved != nil {
-		f.addRegisteredResourceIssue(item.Source, item.Namespace, item.Unresolved.Message)
+		resourcePlan.Target = target
+		f.addNamespacePlacement(target.Namespace, ScopeRegisteredResources, item.Source.GetId())
 	}
 
 	f.registeredResources = append(f.registeredResources, resourcePlan)
@@ -219,7 +194,7 @@ func (f *planFinalizer) addResolvedObligationTrigger(item *ResolvedObligationTri
 
 	target := f.newObligationTriggerTarget(item)
 	if target != nil {
-		triggerPlan.Targets = append(triggerPlan.Targets, target)
+		triggerPlan.Target = target
 		f.addNamespacePlacement(target.Namespace, ScopeObligationTriggers, item.Source.GetId())
 	}
 
@@ -267,20 +242,6 @@ func (f *planFinalizer) addNamespacePlacement(namespace *policy.Namespace, scope
 	}
 }
 
-func (f *planFinalizer) storeActionTarget(sourceID string, target *ActionTargetPlan) {
-	if sourceID == "" || target == nil || target.Namespace == nil || target.Namespace.GetId() == "" {
-		return
-	}
-	f.actionTargetsByKey[resolvedResultKey(sourceID, target.Namespace.GetId())] = target
-}
-
-func (f *planFinalizer) storeSubjectConditionSetTarget(sourceID string, target *SubjectConditionSetTargetPlan) {
-	if sourceID == "" || target == nil || target.Namespace == nil || target.Namespace.GetId() == "" {
-		return
-	}
-	f.scsTargetsByKey[resolvedResultKey(sourceID, target.Namespace.GetId())] = target
-}
-
 func (f *planFinalizer) newSubjectMappingTarget(item *ResolvedSubjectMapping) *SubjectMappingTargetPlan {
 	if item == nil || item.Namespace == nil {
 		return nil
@@ -288,23 +249,24 @@ func (f *planFinalizer) newSubjectMappingTarget(item *ResolvedSubjectMapping) *S
 
 	target := &SubjectMappingTargetPlan{
 		Namespace: item.Namespace,
-		Actions:   make([]*ActionBinding, 0, len(item.Source.GetActions())),
 	}
 
 	switch {
 	case item.AlreadyMigrated != nil:
 		target.Status = TargetStatusAlreadyMigrated
-		target.Existing = item.AlreadyMigrated
+		target.ExistingID = item.AlreadyMigrated.GetId()
+		return target
 	case item.NeedsCreate:
 		target.Status = TargetStatusCreate
 	default:
 		return nil
 	}
 
+	target.ActionSourceIDs = make([]string, 0, len(item.Source.GetActions()))
 	for _, action := range item.Source.GetActions() {
-		target.Actions = append(target.Actions, f.actionBinding(action.GetId(), item.Namespace))
+		target.ActionSourceIDs = append(target.ActionSourceIDs, action.GetId())
 	}
-	target.SubjectConditionSet = f.subjectConditionSetBinding(item.Source.GetSubjectConditionSet().GetId(), item.Namespace)
+	target.SubjectConditionSetSourceID = item.Source.GetSubjectConditionSet().GetId()
 
 	return target
 }
@@ -316,19 +278,20 @@ func (f *planFinalizer) newRegisteredResourceTarget(item *ResolvedRegisteredReso
 
 	target := &RegisteredResourceTargetPlan{
 		Namespace: item.Namespace,
-		Values:    make([]*RegisteredResourceValuePlan, 0, len(item.Source.GetValues())),
 	}
 
 	switch {
 	case item.AlreadyMigrated != nil:
 		target.Status = TargetStatusAlreadyMigrated
-		target.Existing = item.AlreadyMigrated
+		target.ExistingID = item.AlreadyMigrated.GetId()
+		return target
 	case item.NeedsCreate:
 		target.Status = TargetStatusCreate
 	default:
 		return nil
 	}
 
+	target.Values = make([]*RegisteredResourceValuePlan, 0, len(item.Source.GetValues()))
 	for _, value := range item.Source.GetValues() {
 		valuePlan := &RegisteredResourceValuePlan{
 			Source:         value,
@@ -341,10 +304,6 @@ func (f *planFinalizer) newRegisteredResourceTarget(item *ResolvedRegisteredReso
 			valuePlan.ActionBindings = append(valuePlan.ActionBindings, &RegisteredResourceActionBinding{
 				SourceActionID: aav.GetAction().GetId(),
 				AttributeValue: aav.GetAttributeValue(),
-				ActionTargetRef: f.actionBinding(
-					aav.GetAction().GetId(),
-					item.Namespace,
-				),
 			})
 		}
 		target.Values = append(target.Values, valuePlan)
@@ -364,98 +323,16 @@ func (f *planFinalizer) newObligationTriggerTarget(item *ResolvedObligationTrigg
 	switch {
 	case item.AlreadyMigrated != nil:
 		target.Status = TargetStatusAlreadyMigrated
-		target.Existing = item.AlreadyMigrated
+		target.ExistingID = item.AlreadyMigrated.GetId()
+		return target
 	case item.NeedsCreate:
 		target.Status = TargetStatusCreate
 	default:
 		return nil
 	}
-	target.Action = f.actionBinding(item.Source.GetAction().GetId(), item.Namespace)
+	target.ActionSourceID = item.Source.GetAction().GetId()
 
 	return target
-}
-
-func (f *planFinalizer) actionBinding(sourceID string, namespace *policy.Namespace) *ActionBinding {
-	if sourceID == "" || namespace == nil {
-		return nil
-	}
-
-	target := f.actionTargetsByKey[resolvedResultKey(sourceID, namespace.GetId())]
-	if target == nil {
-		return &ActionBinding{
-			SourceID:  sourceID,
-			Namespace: namespace,
-			Status:    TargetStatusUnresolved,
-			Reason:    "action target is not available in the finalized plan",
-		}
-	}
-
-	return &ActionBinding{
-		SourceID:  sourceID,
-		Namespace: namespace,
-		Status:    target.Status,
-		TargetID:  target.TargetID(),
-		Reason:    target.Reason,
-	}
-}
-
-func (f *planFinalizer) subjectConditionSetBinding(sourceID string, namespace *policy.Namespace) *SubjectConditionSetBinding {
-	if sourceID == "" || namespace == nil {
-		return nil
-	}
-
-	target := f.scsTargetsByKey[resolvedResultKey(sourceID, namespace.GetId())]
-	if target == nil {
-		return &SubjectConditionSetBinding{
-			SourceID:  sourceID,
-			Namespace: namespace,
-			Status:    TargetStatusUnresolved,
-			Reason:    "subject condition set target is not available in the finalized plan",
-		}
-	}
-
-	return &SubjectConditionSetBinding{
-		SourceID:  sourceID,
-		Namespace: namespace,
-		Status:    target.Status,
-		TargetID:  target.TargetID(),
-		Reason:    target.Reason,
-	}
-}
-
-func (f *planFinalizer) addUnusedAction(action *policy.Action, references []*ActionReference, reason string) {
-	if action == nil || reason == "" {
-		return
-	}
-	for _, unused := range f.unused.Actions {
-		if unused != nil && unused.Source != nil && unused.Source.GetId() == action.GetId() && unused.Reason == reason {
-			return
-		}
-	}
-	f.unused.Actions = append(f.unused.Actions, &UnusedAction{
-		Source:     action,
-		References: append([]*ActionReference(nil), references...),
-		Reason:     reason,
-	})
-}
-
-func (f *planFinalizer) addRegisteredResourceIssue(resource *policy.RegisteredResource, namespace *policy.Namespace, reason string) {
-	if resource == nil || reason == "" {
-		return
-	}
-	for _, issue := range f.unresolved.RegisteredResources {
-		if issue != nil && issue.Resource != nil &&
-			issue.Resource.GetId() == resource.GetId() &&
-			sameNamespace(issue.Namespace, namespace) &&
-			issue.Reason == reason {
-			return
-		}
-	}
-	f.unresolved.RegisteredResources = append(f.unresolved.RegisteredResources, &RegisteredResourceIssue{
-		Resource:  resource,
-		Namespace: namespace,
-		Reason:    reason,
-	})
 }
 
 func newActionTargetPlan(result *ResolvedActionResult) *ActionTargetPlan {
@@ -467,10 +344,10 @@ func newActionTargetPlan(result *ResolvedActionResult) *ActionTargetPlan {
 	switch {
 	case result.AlreadyMigrated != nil:
 		target.Status = TargetStatusAlreadyMigrated
-		target.Existing = result.AlreadyMigrated
+		target.ExistingID = result.AlreadyMigrated.GetId()
 	case result.ExistingStandard != nil:
 		target.Status = TargetStatusExistingStandard
-		target.Existing = result.ExistingStandard
+		target.ExistingID = result.ExistingStandard.GetId()
 	case result.NeedsCreate:
 		target.Status = TargetStatusCreate
 	default:
@@ -489,7 +366,7 @@ func newSubjectConditionSetTargetPlan(result *ResolvedSubjectConditionSetResult)
 	switch {
 	case result.AlreadyMigrated != nil:
 		target.Status = TargetStatusAlreadyMigrated
-		target.Existing = result.AlreadyMigrated
+		target.ExistingID = result.AlreadyMigrated.GetId()
 	case result.NeedsCreate:
 		target.Status = TargetStatusCreate
 	default:

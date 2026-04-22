@@ -17,15 +17,12 @@ func (e *Executor) executeSubjectMappings(ctx context.Context, plans []*SubjectM
 			continue
 		}
 
-		// TODO: Need to fix this on the plan. A subject mapping plan should not have multiple targets.
-		for _, target := range mappingPlan.Targets {
-			if target == nil {
-				continue
-			}
+		if mappingPlan.Target == nil {
+			continue
+		}
 
-			if err := e.executeSubjectMappingTarget(ctx, mappingPlan, target); err != nil {
-				return err
-			}
+		if err := e.executeSubjectMappingTarget(ctx, mappingPlan, mappingPlan.Target); err != nil {
+			return err
 		}
 	}
 
@@ -40,10 +37,12 @@ func (e *Executor) executeSubjectMappingTarget(ctx context.Context, mappingPlan 
 			return fmt.Errorf("%w: subject mapping %q target %q", ErrMissingMigratedTarget, mappingPlan.Source.GetId(), namespaceLabel(target.Namespace))
 		}
 		return nil
+	case TargetStatusSkipped:
+		return nil
 	case TargetStatusCreate:
 		return e.createSubjectMappingTarget(ctx, mappingPlan, target)
 	case TargetStatusUnresolved:
-		return fmt.Errorf("%w: subject mapping %q target %q is unresolved: %s", ErrPlanNotExecutable, mappingPlan.Source.GetId(), namespaceLabel(target.Namespace), target.Reason)
+		return nil
 	default:
 		return fmt.Errorf("%w: subject mapping %q target %q has unsupported status %q", ErrUnsupportedStatus, mappingPlan.Source.GetId(), namespaceLabel(target.Namespace), target.Status)
 	}
@@ -108,15 +107,15 @@ func (e *Executor) createSubjectMappingTarget(ctx context.Context, mappingPlan *
 }
 
 func (e *Executor) resolveSubjectMappingActions(mappingPlan *SubjectMappingPlan, target *SubjectMappingTargetPlan) ([]*policy.Action, error) {
-	actions := make([]*policy.Action, 0, len(target.Actions))
-	for _, binding := range target.Actions {
-		if binding == nil || binding.SourceID == "" {
+	actions := make([]*policy.Action, 0, len(target.ActionSourceIDs))
+	for _, sourceID := range target.ActionSourceIDs {
+		if sourceID == "" {
 			return nil, fmt.Errorf("%w: subject mapping %q target %q", ErrMissingActionTarget, mappingPlan.Source.GetId(), namespaceLabel(target.Namespace))
 		}
 
-		targetID := e.cachedActionTargetID(binding.SourceID, target.Namespace)
+		targetID := e.cachedActionTargetID(sourceID, target.Namespace)
 		if targetID == "" {
-			return nil, fmt.Errorf("%w: subject mapping %q action %q target %q", ErrMissingActionTarget, mappingPlan.Source.GetId(), binding.SourceID, namespaceLabel(target.Namespace))
+			return nil, fmt.Errorf("%w: subject mapping %q action %q target %q", ErrMissingActionTarget, mappingPlan.Source.GetId(), sourceID, namespaceLabel(target.Namespace))
 		}
 
 		actions = append(actions, &policy.Action{Id: targetID})
@@ -126,13 +125,13 @@ func (e *Executor) resolveSubjectMappingActions(mappingPlan *SubjectMappingPlan,
 }
 
 func (e *Executor) resolveSubjectMappingSubjectConditionSet(mappingPlan *SubjectMappingPlan, target *SubjectMappingTargetPlan) (string, error) {
-	if target.SubjectConditionSet == nil || target.SubjectConditionSet.SourceID == "" {
+	if target.SubjectConditionSetSourceID == "" {
 		return "", fmt.Errorf("%w: subject mapping %q target %q", ErrMissingSubjectConditionSetTarget, mappingPlan.Source.GetId(), namespaceLabel(target.Namespace))
 	}
 
-	targetID := e.cachedScsTargetID(target.SubjectConditionSet.SourceID, target.Namespace)
+	targetID := e.cachedScsTargetID(target.SubjectConditionSetSourceID, target.Namespace)
 	if targetID == "" {
-		return "", fmt.Errorf("%w: subject mapping %q subject condition set %q target %q", ErrMissingSubjectConditionSetTarget, mappingPlan.Source.GetId(), target.SubjectConditionSet.SourceID, namespaceLabel(target.Namespace))
+		return "", fmt.Errorf("%w: subject mapping %q subject condition set %q target %q", ErrMissingSubjectConditionSetTarget, mappingPlan.Source.GetId(), target.SubjectConditionSetSourceID, namespaceLabel(target.Namespace))
 	}
 
 	return targetID, nil

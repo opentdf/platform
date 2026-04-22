@@ -3,7 +3,6 @@ package namespacedpolicy
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -40,6 +39,7 @@ type ExecutorHandler interface {
 	CreateObligationTrigger(ctx context.Context, attributeValue, action, obligationValue, clientID string, metadata *common.MetadataMutable) (*policy.ObligationTrigger, error)
 	CreateRegisteredResource(ctx context.Context, namespace string, name string, values []string, metadata *common.MetadataMutable) (*policy.RegisteredResource, error)
 	CreateRegisteredResourceValue(ctx context.Context, resourceID string, value string, actionAttributeValues []*registeredresources.ActionAttributeValue, metadata *common.MetadataMutable) (*policy.RegisteredResourceValue, error)
+	GetRegisteredResource(ctx context.Context, id, name, namespace string) (*policy.RegisteredResource, error)
 }
 
 type Executor struct {
@@ -92,9 +92,6 @@ func (e *Executor) validatePlan(plan *Plan) error {
 	}
 	if plan == nil {
 		return ErrNilExecutionPlan
-	}
-	if plan.Unresolved != nil && hasUnresolved(*plan.Unresolved) {
-		return fmt.Errorf("%w: finalized plan contains unresolved entries", ErrPlanNotExecutable)
 	}
 
 	return nil

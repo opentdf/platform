@@ -63,9 +63,9 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 								Status:    TargetStatusCreate,
 							},
 							{
-								Namespace: namespace2,
-								Status:    TargetStatusAlreadyMigrated,
-								Existing:  &policy.SubjectConditionSet{Id: "migrated-scs-1"},
+								Namespace:  namespace2,
+								Status:     TargetStatusAlreadyMigrated,
+								ExistingID: "migrated-scs-1",
 							},
 						},
 					},
@@ -97,7 +97,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 
 				createdTarget := plan.SubjectConditionSets[0].Targets[0]
 				assert.Equal(t, TargetStatusCreate, createdTarget.Status)
-				assert.Nil(t, createdTarget.Existing)
+				assert.Empty(t, createdTarget.ExistingID)
 				require.NotNil(t, createdTarget.Execution)
 				assert.True(t, createdTarget.Execution.Applied)
 				assert.Equal(t, "created-scs-1", createdTarget.Execution.CreatedTargetID)
@@ -113,7 +113,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 			},
 		},
 		{
-			name: "returns not executable for unresolved target status",
+			name: "ignores unresolved target status",
 			plan: &Plan{
 				Scopes: []Scope{ScopeSubjectConditionSets},
 				SubjectConditionSets: []*SubjectConditionSetPlan{
@@ -130,17 +130,10 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			wantErr: wantError(
-				ErrPlanNotExecutable,
-				`subject condition set %q target %q is unresolved: %s`,
-				"scs-1",
-				namespace1.GetFqn(),
-				"missing target namespace mapping",
-			),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
-				require.Error(t, err)
+				require.NoError(t, err)
 				assert.Empty(t, handler.createdSubjectConditions)
 			},
 		},

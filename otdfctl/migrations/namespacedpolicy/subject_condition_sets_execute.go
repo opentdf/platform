@@ -83,10 +83,12 @@ func (e *Executor) executeSubjectConditionSetTarget(ctx context.Context, scsPlan
 		}
 		e.rememberSubjectConditionSetTarget(scsPlan.Source.GetId(), target)
 		return nil
+	case TargetStatusSkipped:
+		return nil
 	case TargetStatusCreate:
 		return e.createSubjectConditionSetTarget(ctx, scsPlan, target)
 	case TargetStatusUnresolved:
-		return fmt.Errorf("%w: subject condition set %q target %q is unresolved: %s", ErrPlanNotExecutable, scsPlan.Source.GetId(), namespaceLabel(target.Namespace), target.Reason)
+		return nil
 	default:
 		return fmt.Errorf("%w: subject condition set %q target %q has unsupported status %q", ErrUnsupportedStatus, scsPlan.Source.GetId(), namespaceLabel(target.Namespace), target.Status)
 	}

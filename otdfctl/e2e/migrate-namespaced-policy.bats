@@ -342,26 +342,25 @@ namespace_state_json() {
   local registered_resources_total
   local obligation_triggers_total
 
-  actions_total=$(
-    ./otdfctl $HOST $WITH_CREDS policy actions list --namespace "$namespace_filter" --limit 1 --offset 0 --json \
-      | jq -r '.pagination.total // 0'
-  )
-  subject_mappings_total=$(
-    ./otdfctl $HOST $WITH_CREDS policy subject-mappings list --namespace "$namespace_filter" --limit 1 --offset 0 --json \
-      | jq -r '.pagination.total // 0'
-  )
-  scs_total=$(
-    ./otdfctl $HOST $WITH_CREDS policy scs list --namespace "$namespace_filter" --limit 1 --offset 0 --json \
-      | jq -r '.pagination.total // 0'
-  )
-  registered_resources_total=$(
-    ./otdfctl $HOST $WITH_CREDS policy registered-resources list --namespace "$namespace_filter" --limit 1 --offset 0 --json \
-      | jq -r '.pagination.total // 0'
-  )
-  obligation_triggers_total=$(
-    ./otdfctl $HOST $WITH_CREDS policy obligations triggers list --namespace "$namespace_filter" --limit 1 --offset 0 --json \
-      | jq -r '.pagination.total // 0'
-  )
+  run ./otdfctl $HOST $WITH_CREDS policy actions list --namespace "$namespace_filter" --limit 1 --offset 0 --json
+  assert_success
+  actions_total=$(echo "$output" | jq -r '.pagination.total // 0')
+
+  run ./otdfctl $HOST $WITH_CREDS policy subject-mappings list --namespace "$namespace_filter" --limit 1 --offset 0 --json
+  assert_success
+  subject_mappings_total=$(echo "$output" | jq -r '.pagination.total // 0')
+
+  run ./otdfctl $HOST $WITH_CREDS policy scs list --namespace "$namespace_filter" --limit 1 --offset 0 --json
+  assert_success
+  scs_total=$(echo "$output" | jq -r '.pagination.total // 0')
+
+  run ./otdfctl $HOST $WITH_CREDS policy registered-resources list --namespace "$namespace_filter" --limit 1 --offset 0 --json
+  assert_success
+  registered_resources_total=$(echo "$output" | jq -r '.pagination.total // 0')
+
+  run ./otdfctl $HOST $WITH_CREDS policy obligations triggers list --namespace "$namespace_filter" --limit 1 --offset 0 --json
+  assert_success
+  obligation_triggers_total=$(echo "$output" | jq -r '.pagination.total // 0')
 
   jq -cn \
     --argjson actions "$actions_total" \
@@ -427,15 +426,15 @@ subject_mapping_json_by_migrated_from() {
   ./otdfctl $HOST $WITH_CREDS policy subject-mappings list --namespace "$namespace_filter" --limit 100 --offset 0 --json \
     | jq -cer --arg source_mapping_id "$source_mapping_id" '
       [
-        .subject_mappings[]
+        (.subject_mappings // [])[]
         | select((.metadata.labels.migrated_from // "") == $source_mapping_id)
       ] | if length == 1 then .[0] else empty end
     '
 }
 
 subject_mapping_id_by_migrated_from() {
-  local source_mapping_id="$1"
-  local namespace_filter="$2"
+  local namespace_filter="$1"
+  local source_mapping_id="$2"
 
   subject_mapping_json_by_migrated_from "$namespace_filter" "$source_mapping_id" | jq -r '.id // empty'
 }
@@ -468,7 +467,7 @@ assert_subject_mapping_created_in_namespace() {
   assert_not_equal "$expected_action_target_id" ""
 
   local expected_scs_target_id
-  expected_scs_target_id=$(scs_id_by_migrated_from "$source_scs_id" "$namespace_id")
+  expected_scs_target_id=$(scs_id_by_migrated_from "$namespace_id" "$source_scs_id")
   assert_not_equal "$expected_scs_target_id" ""
 
   local source_mapping_json
@@ -537,7 +536,8 @@ obligation_trigger_json_by_id() {
   local trigger_id="$1"
   local namespace_filter="$2"
 
-  ./otdfctl $HOST $WITH_CREDS policy obligations triggers list --namespace "$namespace_filter" --limit 100 --offset 0 --json | jq -cer --arg trigger_id "$trigger_id" '.triggers[] | select(.id == $trigger_id)'
+  ./otdfctl $HOST $WITH_CREDS policy obligations triggers list --namespace "$namespace_filter" --limit 100 --offset 0 --json \
+    | jq -cer --arg trigger_id "$trigger_id" '(.triggers // [])[] | select(.id == $trigger_id)'
 }
 
 obligation_trigger_json_by_migrated_from() {
@@ -547,15 +547,15 @@ obligation_trigger_json_by_migrated_from() {
   ./otdfctl $HOST $WITH_CREDS policy obligations triggers list --namespace "$namespace_filter" --limit 100 --offset 0 --json \
     | jq -cer --arg source_trigger_id "$source_trigger_id" '
       [
-        .triggers[]
+        (.triggers // [])[]
         | select((.metadata.labels.migrated_from // "") == $source_trigger_id)
       ] | if length == 1 then .[0] else empty end
     '
 }
 
 obligation_trigger_id_by_migrated_from() {
-  local source_trigger_id="$1"
-  local namespace_filter="$2"
+  local namespace_filter="$1"
+  local source_trigger_id="$2"
 
   obligation_trigger_json_by_migrated_from "$namespace_filter" "$source_trigger_id" | jq -r '.id // empty'
 }
@@ -595,15 +595,15 @@ scs_json_by_migrated_from() {
   ./otdfctl $HOST $WITH_CREDS policy scs list --namespace "$namespace_filter" --limit 100 --offset 0 --json \
     | jq -cer --arg source_scs_id "$source_scs_id" '
       [
-        .subject_condition_sets[]
+        (.subject_condition_sets // [])[]
         | select((.metadata.labels.migrated_from // "") == $source_scs_id)
       ] | if length == 1 then .[0] else empty end
     '
 }
 
 scs_id_by_migrated_from() {
-  local source_scs_id="$1"
-  local namespace_filter="$2"
+  local namespace_filter="$1"
+  local source_scs_id="$2"
 
   scs_json_by_migrated_from "$namespace_filter" "$source_scs_id" | jq -r '.id // empty'
 }
@@ -615,15 +615,15 @@ registered_resource_json_by_migrated_from() {
   ./otdfctl $HOST $WITH_CREDS policy registered-resources list --namespace "$namespace_filter" --limit 100 --offset 0 --json \
     | jq -cer --arg source_resource_id "$source_resource_id" '
       [
-        .resources[]
+        (.resources // [])[]
         | select((.metadata.labels.migrated_from // "") == $source_resource_id)
       ] | if length == 1 then .[0] else empty end
     '
 }
 
 registered_resource_id_by_migrated_from() {
-  local source_resource_id="$1"
-  local namespace_filter="$2"
+  local namespace_filter="$1"
+  local source_resource_id="$2"
 
   registered_resource_json_by_migrated_from "$namespace_filter" "$source_resource_id" | jq -r '.id // empty'
 }
@@ -635,7 +635,7 @@ registered_resource_value_json_by_migrated_from() {
   ./otdfctl $HOST $WITH_CREDS policy registered-resources values list --resource "$resource_id" --limit 100 --offset 0 --json \
     | jq -cer --arg source_value_id "$source_value_id" '
       [
-        .values[]
+        (.values // [])[]
         | select((.metadata.labels.migrated_from // "") == $source_value_id)
       ] | if length == 1 then .[0] else empty end
     '
@@ -662,7 +662,25 @@ assert_scs_absent_in_namespace() {
 
   run sh -c "./otdfctl $HOST $WITH_CREDS policy scs list --namespace \"$namespace_filter\" --limit 100 --offset 0 --json"
   assert_success
-  assert_equal "$(echo "$output" | jq -r --arg source_scs_id "$source_scs_id" '[.subject_condition_sets[] | select((.metadata.labels.migrated_from // "") == $source_scs_id)] | length')" "0"
+  assert_equal "$(echo "$output" | jq -r --arg source_scs_id "$source_scs_id" '[(.subject_condition_sets // [])[] | select((.metadata.labels.migrated_from // "") == $source_scs_id)] | length')" "0"
+}
+
+registered_resource_values_signature() {
+  local resource_json="$1"
+
+  echo "$resource_json" | jq -c '
+    def normalized_bindings:
+      (.action_attribute_values // [])
+      | map("\(.action.name | ascii_downcase)|\(.attribute_value.fqn)")
+      | sort;
+
+    (.values // [])
+    | map({
+        value: (.value | ascii_downcase),
+        bindings: normalized_bindings
+      })
+    | sort_by([.value, (.bindings | join(","))])
+  '
 }
 
 assert_standard_action_resolved_in_namespace() {
@@ -834,31 +852,7 @@ assert_registered_resource_already_migrated_in_namespace() {
   assert_equal "$(echo "$existing_resource_json" | jq -r '.id // empty')" "$existing_resource_id"
   assert_equal "$(echo "$existing_resource_json" | jq -r '.namespace.id')" "$namespace_id"
   assert_equal "$(echo "$existing_resource_json" | jq -r '.name')" "$(echo "$source_resource_json" | jq -r '.name')"
-  assert_equal \
-    "$(echo "$existing_resource_json" | jq -c '
-      (.values // [])
-      | map({
-          value: (.value | ascii_downcase),
-          action_attribute_values: (
-            (.action_attribute_values // [])
-            | map("\(.action.name | ascii_downcase)|\(.attribute_value.fqn)")
-            | sort
-          )
-        })
-      | sort_by(.value, (.action_attribute_values | join(",")))
-    ')" \
-    "$(echo "$source_resource_json" | jq -c '
-      (.values // [])
-      | map({
-          value: (.value | ascii_downcase),
-          action_attribute_values: (
-            (.action_attribute_values // [])
-            | map("\(.action.name | ascii_downcase)|\(.attribute_value.fqn)")
-            | sort
-          )
-        })
-      | sort_by(.value, (.action_attribute_values | join(",")))
-    ')"
+  assert_equal "$(registered_resource_values_signature "$existing_resource_json")" "$(registered_resource_values_signature "$source_resource_json")"
 }
 
 assert_registered_resource_value_uses_action() {
@@ -1302,8 +1296,8 @@ teardown_file() {
   # canonical target should continue to resolve as already_migrated.
   local fanout_ns_a_target_id
   local single_namespace_target_id
-  fanout_ns_a_target_id=$(scs_id_by_migrated_from "$fanout_scs_id" "$NS_A_ID")
-  single_namespace_target_id=$(scs_id_by_migrated_from "$single_namespace_scs_id" "$NS_A_ID")
+  fanout_ns_a_target_id=$(scs_id_by_migrated_from "$NS_A_ID" "$fanout_scs_id")
+  single_namespace_target_id=$(scs_id_by_migrated_from "$NS_A_ID" "$single_namespace_scs_id")
   assert_not_equal "$fanout_ns_a_target_id" ""
   assert_not_equal "$single_namespace_target_id" ""
 
@@ -1381,10 +1375,10 @@ teardown_file() {
   local mapping_a_target_id
   local mapping_b_target_id
   custom_action_target_id=$(action_id_by_name_in_namespace "$custom_action_name" "$NS_A_ID")
-  sm_a_scs_target_id=$(scs_id_by_migrated_from "$sm_a_scs_id" "$NS_A_ID")
-  sm_b_scs_target_id=$(scs_id_by_migrated_from "$sm_b_scs_id" "$NS_B_ID")
-  mapping_a_target_id=$(subject_mapping_id_by_migrated_from "$mapping_a_id" "$NS_A_ID")
-  mapping_b_target_id=$(subject_mapping_id_by_migrated_from "$mapping_b_id" "$NS_B_ID")
+  sm_a_scs_target_id=$(scs_id_by_migrated_from "$NS_A_ID" "$sm_a_scs_id")
+  sm_b_scs_target_id=$(scs_id_by_migrated_from "$NS_B_ID" "$sm_b_scs_id")
+  mapping_a_target_id=$(subject_mapping_id_by_migrated_from "$NS_A_ID" "$mapping_a_id")
+  mapping_b_target_id=$(subject_mapping_id_by_migrated_from "$NS_B_ID" "$mapping_b_id")
 
   ns_a_state_before="$ns_a_state_after"
   ns_b_state_before="$ns_b_state_after"
@@ -1480,7 +1474,7 @@ teardown_file() {
   local custom_action_target_id
   local rr_a_target_id
   custom_action_target_id=$(action_id_by_name_in_namespace "$custom_action_name" "$NS_A_ID")
-  rr_a_target_id=$(registered_resource_id_by_migrated_from "$rr_a_id" "$NS_A_ID")
+  rr_a_target_id=$(registered_resource_id_by_migrated_from "$NS_A_ID" "$rr_a_id")
 
   ns_a_state_before="$ns_a_state_after"
   ns_b_state_before="$ns_b_state_after"
@@ -1571,7 +1565,7 @@ teardown_file() {
   local custom_action_target_id
   local trigger_a_target_id
   custom_action_target_id=$(action_id_by_name_in_namespace "$custom_action_name" "$NS_A_ID")
-  trigger_a_target_id=$(obligation_trigger_id_by_migrated_from "$trigger_a_id" "$NS_A_ID")
+  trigger_a_target_id=$(obligation_trigger_id_by_migrated_from "$NS_A_ID" "$trigger_a_id")
 
   ns_a_state_before="$ns_a_state_after"
   ns_b_state_before="$ns_b_state_after"
@@ -1661,10 +1655,10 @@ teardown_file() {
   local rr_target_id
   local trigger_target_id
   custom_action_target_id=$(action_id_by_name_in_namespace "$custom_action_name" "$NS_A_ID")
-  scs_target_id=$(scs_id_by_migrated_from "$scs_id" "$NS_A_ID")
-  mapping_target_id=$(subject_mapping_id_by_migrated_from "$mapping_id" "$NS_A_ID")
-  rr_target_id=$(registered_resource_id_by_migrated_from "$rr_id" "$NS_A_ID")
-  trigger_target_id=$(obligation_trigger_id_by_migrated_from "$trigger_id" "$NS_A_ID")
+  scs_target_id=$(scs_id_by_migrated_from "$NS_A_ID" "$scs_id")
+  mapping_target_id=$(subject_mapping_id_by_migrated_from "$NS_A_ID" "$mapping_id")
+  rr_target_id=$(registered_resource_id_by_migrated_from "$NS_A_ID" "$rr_id")
+  trigger_target_id=$(obligation_trigger_id_by_migrated_from "$NS_A_ID" "$trigger_id")
 
   ns_a_state_before="$ns_a_state_after"
   ns_b_state_before="$ns_b_state_after"

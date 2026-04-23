@@ -126,10 +126,13 @@ func (s *EncryptionStepDefinitions) userDecryptsStoredAs(ctx context.Context, to
 		return ctx, fmt.Errorf("no TDF bytes stored under %q", tdfRef)
 	}
 
+	// LoadTDF only parses the ZIP/manifest — it does not contact KAS, so
+	// access-denied (rewrap-forbidden) cannot surface here. KAS rewrap
+	// happens during io.Copy / Reader.Read below.
 	reader, err := userSDK.LoadTDF(bytes.NewReader(tdfBytes))
 	if err != nil {
-		scenarioContext.RecordObject(plainRef, &decryptResult{err: err, denied: errors.Is(err, otdf.ErrRewrapForbidden)})
-		return ctx, nil
+		scenarioContext.RecordObject(plainRef, &decryptResult{err: err})
+		return ctx, nil //nolint:nilerr // error is captured on decryptResult for the assertion step
 	}
 
 	var plainBuf bytes.Buffer

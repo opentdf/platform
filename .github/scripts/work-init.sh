@@ -45,12 +45,14 @@ sdk)
   rm -f go.work go.work.sum &&
     go work init &&
     go work use ./sdk &&
+    go work use ./protocol/go &&
     go work use ./service &&
     go work use ./examples
   ;;
 service)
   rm -f go.work go.work.sum &&
     go work init &&
+    go work use ./protocol/go &&
     go work use ./service &&
     go work use ./examples
   ;;
@@ -63,6 +65,7 @@ otdfctl)
   rm -f go.work go.work.sum &&
     go work init &&
     go work use ./otdfctl &&
+    go work use ./protocol/go &&
     # service and examples are needed for release branch checks
     go work use ./service &&
     go work use ./examples

@@ -2,10 +2,15 @@ package sdk_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
+	"time"
 
+	"connectrpc.com/grpchealth"
 	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping/resourcemappingconnect"
@@ -335,4 +340,146 @@ func TestHealthStatus_String(t *testing.T) {
 func TestErrHealthCheckUnsupported_Distinct(t *testing.T) {
 	assert.NotEqual(t, sdk.ErrHealthCheckUnsupported, sdk.ErrPlatformUnreachable)
 	assert.Equal(t, "health check not supported in IPC mode", sdk.ErrHealthCheckUnsupported.Error())
+}
+
+// newHealthTestServer starts an httptest.Server serving grpc.health.v1.Health.
+// serving is the set of service names that should report SERVING; notServing is the set
+// that should report NOT_SERVING. Any service name not in either set causes
+// grpchealth.StaticChecker to return a Connect not_found error, which SDK.HealthCheck
+// maps to HealthStatusUnknown.
+// The empty service name ("") reports SERVING regardless (StaticChecker default).
+func newHealthTestServer(t *testing.T, serving, notServing []string) *httptest.Server {
+	t.Helper()
+	all := append([]string{}, serving...)
+	all = append(all, notServing...)
+	checker := grpchealth.NewStaticChecker(all...)
+	for _, svc := range notServing {
+		checker.SetStatus(svc, grpchealth.StatusNotServing)
+	}
+	mux := http.NewServeMux()
+	path, handler := grpchealth.NewHandler(checker)
+	mux.Handle(path, handler)
+	return httptest.NewServer(mux)
+}
+
+func TestSDK_HealthCheck_IPCMode_ReturnsErrHealthCheckUnsupported(t *testing.T) {
+	// IPC mode requires a coreConn; provide a dummy one to satisfy sdk.New.
+	dummyConn := &sdk.ConnectRPCConnection{
+		Endpoint: "http://localhost:0",
+		Client:   http.DefaultClient,
+	}
+	s, err := sdk.New("",
+		sdk.WithIPC(),
+		sdk.WithCustomCoreConnection(dummyConn),
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx := context.Background()
+	status, err := s.HealthCheck(ctx, "")
+	assert.Equal(t, sdk.HealthStatusUnknown, status)
+	require.ErrorIs(t, err, sdk.ErrHealthCheckUnsupported)
+}
+
+func TestSDK_HealthCheck_Unreachable_ReturnsErrPlatformUnreachable(t *testing.T) {
+	s, err := sdk.New(badPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	status, err := s.HealthCheck(ctx, "")
+	elapsed := time.Since(start)
+
+	assert.Equal(t, sdk.HealthStatusUnknown, status)
+	require.ErrorIs(t, err, sdk.ErrPlatformUnreachable)
+	assert.Less(t, elapsed, 2*time.Second, "health check should return promptly against a closed port, not wait for the ctx deadline")
+}
+
+func TestSDK_HealthCheck_ContextCanceled_ReturnsQuickly(t *testing.T) {
+	s, err := sdk.New(badPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // canceled before the call
+
+	start := time.Now()
+	status, err := s.HealthCheck(ctx, "")
+	elapsed := time.Since(start)
+
+	assert.Equal(t, sdk.HealthStatusUnknown, status)
+	require.Error(t, err)
+	require.ErrorIs(t, err, sdk.ErrPlatformUnreachable)
+	require.ErrorIs(t, err, context.Canceled)
+	assert.Less(t, elapsed, 500*time.Millisecond, "pre-canceled ctx should short-circuit")
+}
+
+func TestSDK_HealthCheck_Serving_HappyPath(t *testing.T) {
+	ts := newHealthTestServer(t, []string{"kas"}, []string{"broken"})
+	defer ts.Close()
+
+	s, err := sdk.New(ts.URL,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	t.Run("empty service returns SERVING", func(t *testing.T) {
+		status, err := s.HealthCheck(ctx, "")
+		require.NoError(t, err)
+		assert.Equal(t, sdk.HealthStatusServing, status)
+	})
+
+	t.Run("named serving service returns SERVING", func(t *testing.T) {
+		status, err := s.HealthCheck(ctx, "kas")
+		require.NoError(t, err)
+		assert.Equal(t, sdk.HealthStatusServing, status)
+	})
+
+	t.Run("named not-serving service returns NOT_SERVING", func(t *testing.T) {
+		status, err := s.HealthCheck(ctx, "broken")
+		require.NoError(t, err)
+		assert.Equal(t, sdk.HealthStatusNotServing, status)
+	})
+
+	t.Run("unknown service returns UNKNOWN", func(t *testing.T) {
+		status, err := s.HealthCheck(ctx, "does-not-exist")
+		require.NoError(t, err)
+		assert.Equal(t, sdk.HealthStatusUnknown, status)
+	})
 }

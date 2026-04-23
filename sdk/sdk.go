@@ -340,6 +340,57 @@ func (s SDK) Conn() *ConnectRPCConnection {
 	return s.conn
 }
 
+// HealthCheck queries the platform's gRPC Health v1 endpoint (grpc.health.v1.Health/Check)
+// and returns the reported serving status.
+//
+// The service argument selects the check scope:
+//
+//   - ""     — reachability check. Returns SERVING if the health handler responds. Does
+//     not exercise any registered readiness probe.
+//   - "all"  — runs every readiness check the platform has registered. Returns
+//     NOT_SERVING if any registered service reports an error.
+//   - other  — runs only the named service's readiness check (e.g. "kas", "authorization").
+//     Returns HealthStatusUnknown if the service is not registered on this deployment.
+//
+// The call honors ctx for deadline, cancellation, and trace-context propagation. Callers are
+// expected to manage timeouts via context.WithTimeout and to drive probe cadence / retry themselves.
+//
+// OTEL tracing works automatically when the caller has registered otelconnect.NewInterceptor()
+// via sdk.WithExtraClientOptions at SDK construction time. The SDK does not emit spans of its own.
+//
+// Returns (HealthStatusServing, nil) on SERVING; (HealthStatusNotServing, nil) on NOT_SERVING;
+// (HealthStatusUnknown, nil) on UNKNOWN / SERVICE_UNKNOWN; (HealthStatusUnknown, err wrapping
+// ErrPlatformUnreachable) on any transport failure including ctx errors; and
+// (HealthStatusUnknown, ErrHealthCheckUnsupported) when the SDK is in IPC mode.
+func (s SDK) HealthCheck(ctx context.Context, service string) (HealthStatus, error) {
+	if s.ipc || s.conn == nil {
+		return HealthStatusUnknown, ErrHealthCheckUnsupported
+	}
+	status, err := checkPlatformHealth(ctx, s.conn.Endpoint, service, s.conn.Client, s.conn.Options)
+	if err != nil {
+		// Unregistered services can surface in two ways depending on the server
+		// implementation. The OpenTDF platform's handler reports them via proto
+		// HealthCheckResponse_UNKNOWN, which falls through to the switch default
+		// below. Generic grpchealth servers (e.g. grpchealth.NewStaticChecker,
+		// which the SDK tests use) surface them as a Connect not_found error.
+		// Both paths map to HealthStatusUnknown with no transport-error wrapper.
+		var connErr *connect.Error
+		if errors.As(err, &connErr) && connErr.Code() == connect.CodeNotFound {
+			return HealthStatusUnknown, nil
+		}
+		return HealthStatusUnknown, errors.Join(ErrPlatformUnreachable, err)
+	}
+	switch status { //nolint:exhaustive // default intentionally covers UNKNOWN and SERVICE_UNKNOWN
+	case healthpb.HealthCheckResponse_SERVING:
+		return HealthStatusServing, nil
+	case healthpb.HealthCheckResponse_NOT_SERVING:
+		return HealthStatusNotServing, nil
+	default:
+		// UNKNOWN and SERVICE_UNKNOWN both map to HealthStatusUnknown.
+		return HealthStatusUnknown, nil
+	}
+}
+
 type TdfType string
 
 const (

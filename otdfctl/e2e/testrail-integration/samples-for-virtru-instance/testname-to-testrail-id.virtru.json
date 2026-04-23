@@ -192,7 +192,8 @@
     "Unsafe reactivate namespace": "C793449",
     "List namespaces - when reactivated": "C793450",
     "Unsafe delete namespace": "C793451",
-    "List namespaces - when deleted": "C793452"
+    "List namespaces - when deleted": "C793452",
+    "Direct path: policy namespaces commands are accessible": "C10294193"
   },
   "Obligations": {
     "Create a obligation - Good": "C875288",
@@ -218,6 +219,7 @@
     "Create an obligation trigger - Required Only - IDs - Success": "C875308",
     "Create an obligation trigger - Required Only - FQNs - Success": "C875309",
     "Create an obligation trigger - Optional Fields - Success": "C875310",
+    "Create an obligation trigger - Same tuple different client IDs - Success": "C10294194",
     "Create an obligation trigger - Bad": "C875311",
     "Delete an obligation trigger - Good": "C875312",
     "List obligation triggers - No filters": "C875378",
@@ -295,6 +297,9 @@
     "Update a SCS - from flag value JSON": "C794014",
     "Update a SCS - from file": "C797138",
     "List SCS": "C794015",
+    "Create a SCS with namespace id": "C10322092",
+    "Create a SCS with namespace FQN": "C10322093",
+    "List SCS with namespace filter": "C10322094",
     "Prune SCS - deletes unmapped SCS alone": "C794016"
   },
   "Subject Mapping": {
@@ -303,6 +308,9 @@
     "Get subject mapping": "C793465",
     "Update a subject mapping": "C793466",
     "List subject mappings": "C793467",
+    "Create subject mapping with namespace ID": "C10322095",
+    "Create subject mapping with namespace FQN": "C10322096",
+    "List subject mappings with namespace": "C10322097",
     "Delete subject mapping": "C793468"
   }
 }

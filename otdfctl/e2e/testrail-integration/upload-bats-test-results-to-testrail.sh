@@ -16,6 +16,13 @@ set -euo pipefail
 # ================================================================
 
 # -----------------------------
+# Colors
+# -----------------------------
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+# -----------------------------
 # Load TestRail config
 # -----------------------------
 
@@ -73,7 +80,7 @@ lookup_case_id() {
     while IFS= read -r section; do
       id=$(jq -r --arg n "$lowercasename" --arg s "$section" '
         reduce ( .[$s] | to_entries[] ) as $item (null;
-          if ($item.key | ascii_downcase) == $n then $item.value else . end
+          if ($item.key | ascii_downcase | ltrimstr("[auto] ") | ltrimstr("(auto) ")) == $n then $item.value else . end
         )
       ' "$MAPPING_FILE")
 
@@ -86,7 +93,7 @@ lookup_case_id() {
     # Flat JSON
     id=$(jq -r --arg n "$lowercasename" '
       reduce to_entries[] as $item (null;
-        if ($item.key | ascii_downcase) == $n then $item.value else . end
+        if ($item.key | ascii_downcase | ltrimstr("[auto] ") | ltrimstr("(auto) ")) == $n then $item.value else . end
       )
     ' "$MAPPING_FILE")
 
@@ -129,12 +136,12 @@ parse_tap() {
       if [[ -n "$mapping" ]]; then
         case_id="${mapping%%|*}"
         section="${mapping##*|}"
-        echo "\"$name\" YES $case_id (Section: $section)"
-        echo "\"$name\" YES $case_id" >> "$REPORT_FILE"
-        results+=("{\"case_id\": ${case_id#C}, \"status_id\": $status_id, \"comment\": \"$name\"}")
+        printf "\"%s\" ${GREEN}YES_MAPPING_FOUND${NC} %s (Section: %s)\n" "$name" "$case_id" "$section"
+        printf "\"%s\" YES_MAPPING_FOUND %s\n" "$name" "$case_id" >> "$REPORT_FILE"
+        results+=("$(jq -n -c --arg cid "${case_id#C}" --arg sid "$status_id" --arg comment "$name" '{case_id: ($cid|tonumber), status_id: ($sid|tonumber), comment: $comment}')")
       else
-        echo "\"$name\" NO"
-        echo "\"$name\" NO" >> "$REPORT_FILE"
+        printf "\"%s\" ${RED}MAPPING_NOT_FOUND${NC}\n" "$name"
+        printf "\"%s\" MAPPING_NOT_FOUND\n" "$name" >> "$REPORT_FILE"
       fi
     fi
   done < "$TAP_FILE"
@@ -143,16 +150,22 @@ parse_tap() {
 find_existing_run() {
   curl -s -u "$TESTRAIL_USER:$TESTRAIL_PASS" \
     "$TESTRAIL_URL/index.php?/api/v2/get_runs/$PROJECT_ID" |
-    jq ".runs[] | select(.name==\"$RUN_NAME\") | .id" | head -n1
+    jq --arg run_name "$RUN_NAME" '.runs[] | select(.name == $run_name) | .id' | head -n1
 }
 
 create_run() {
   local case_ids_json
+  local payload
   case_ids_json=$(printf '%s\n' "${results[@]}" | jq -s '.[].case_id' | jq -s .)
+  payload=$(jq -n \
+    --arg name "$RUN_NAME" \
+    --argjson case_ids "$case_ids_json" \
+    '{name: $name, include_all: false, case_ids: $case_ids}')
+
 
   curl -s -u "$TESTRAIL_USER:$TESTRAIL_PASS" \
     -H "Content-Type: application/json" \
-    -d "{\"name\": \"$RUN_NAME\", \"include_all\": false, \"case_ids\": $case_ids_json}" \
+    -d "$payload" \
     "$TESTRAIL_URL/index.php?/api/v2/add_run/$PROJECT_ID" | jq .id
 }
 

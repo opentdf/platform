@@ -18,7 +18,15 @@ on:
       - main
     types:
       - checks_requested
+  schedule:
+    - cron: '25 5 * * *' # 5:25am UTC = 12:25am EST / 8:25am EEST
   workflow_call:
+  workflow_dispatch:
+    inputs:
+      testrail-run-name-for-cli-test:
+        description: 'Name for the TestRail test run'
+        required: false
+        default: ''
 
 permissions: {}
 
@@ -567,6 +575,8 @@ jobs:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
           provision-policy-fixtures: "false"
       - uses: ./otdfctl/e2e
+        with:
+          testrail-run-name-for-cli-test: ${{ inputs.testrail-run-name-for-cli-test }}
         env:
           TESTRAIL_USER: ${{ secrets.TESTRAIL_USER }}
           TESTRAIL_PASS: ${{ secrets.TESTRAIL_PASS }}

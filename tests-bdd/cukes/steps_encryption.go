@@ -7,8 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,8 +26,11 @@ const (
 	// realm-management so it may obtain user-scoped tokens.
 	exchangeClientID     = "opentdf"
 	exchangeClientSecret = "secret"
-	tokenExchangeGrant   = "urn:ietf:params:oauth:grant-type:token-exchange"
-	accessTokenType      = "urn:ietf:params:oauth:token-type:access_token"
+	// Standard OAuth grant-type and token-type URNs from RFC 8693 — not credentials.
+	tokenExchangeGrant = "urn:ietf:params:oauth:grant-type:token-exchange" //nolint:gosec // URN identifier, not a credential
+	accessTokenType    = "urn:ietf:params:oauth:token-type:access_token"   //nolint:gosec // URN identifier, not a credential
+
+	tokenEndpointTimeout = 10 * time.Second
 )
 
 // decryptResult captures whether a decrypt attempt succeeded, and if not,
@@ -49,9 +54,9 @@ func (s *EncryptionStepDefinitions) userTokenForStoredAs(ctx context.Context, us
 		return ctx, errors.New("failed to load local platform glue")
 	}
 
-	tokenURL := fmt.Sprintf("http://%s:%d/auth/realms/%s/protocol/openid-connect/token",
-		localPlatformGlue.Options.Hostname,
-		localPlatformGlue.Options.keycloakPort,
+	kcHostPort := net.JoinHostPort(localPlatformGlue.Options.Hostname, strconv.Itoa(localPlatformGlue.Options.keycloakPort))
+	tokenURL := fmt.Sprintf("http://%s/auth/realms/%s/protocol/openid-connect/token",
+		kcHostPort,
 		scenarioContext.ScenarioOptions.KeycloakRealm,
 	)
 
@@ -209,7 +214,7 @@ func postForTokenEndpoint(ctx context.Context, tokenURL string, form url.Values,
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	httpClient := &http.Client{Timeout: 10 * time.Second}
+	httpClient := &http.Client{Timeout: tokenEndpointTimeout}
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err

@@ -37,6 +37,13 @@ const (
 	platformImageEnvironment           = "PLATFORM_IMAGE"
 	platformImageEnvironmentLocalImage = "platform-cukes:latest"
 	userContextKey                     = "platform_users"
+
+	// Policy-fixture DB pool defaults (mirror service/pkg/db.Config struct-tag defaults).
+	policyDBConnectTimeoutSeconds    = 15
+	policyDBMaxConns                 = 4
+	policyDBMaxConnLifetimeSeconds   = 3600
+	policyDBMaxConnIdleSeconds       = 1800
+	policyDBHealthCheckPeriodSeconds = 60
 )
 
 //go:embed resources/platform.template
@@ -461,12 +468,12 @@ func provisionPlatformPolicy(ctx context.Context, suiteOptions *LocalDevOptions,
 			Password:       "changeme",
 			SSLMode:        "prefer",
 			Schema:         "otdf",
-			ConnectTimeout: 15,
+			ConnectTimeout: policyDBConnectTimeoutSeconds,
 			Pool: db.PoolConfig{
-				MaxConns:          4,
-				MaxConnLifetime:   3600,
-				MaxConnIdleTime:   1800,
-				HealthCheckPeriod: 60,
+				MaxConns:          policyDBMaxConns,
+				MaxConnLifetime:   policyDBMaxConnLifetimeSeconds,
+				MaxConnIdleTime:   policyDBMaxConnIdleSeconds,
+				HealthCheckPeriod: policyDBHealthCheckPeriodSeconds,
 			},
 			RunMigrations:    true,
 			VerifyConnection: true,

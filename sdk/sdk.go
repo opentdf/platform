@@ -32,9 +32,12 @@ import (
 const (
 	// Failure while connecting to a service.
 	// Check your configuration and/or retry.
-	ErrGrpcDialFailed                = Error("failed to dial grpc endpoint")
-	ErrShutdownFailed                = Error("failed to shutdown sdk")
-	ErrPlatformUnreachable           = Error("platform unreachable or not responding")
+	ErrGrpcDialFailed      = Error("failed to dial grpc endpoint")
+	ErrShutdownFailed      = Error("failed to shutdown sdk")
+	ErrPlatformUnreachable = Error("platform unreachable or not responding")
+	// ErrHealthCheckUnsupported is returned by SDK.HealthCheck when the SDK is configured
+	// in IPC mode, which does not support the gRPC Health protocol.
+	ErrHealthCheckUnsupported        = Error("health check not supported in IPC mode")
 	ErrPlatformConfigFailed          = Error("failed to retrieve platform configuration")
 	ErrPlatformEndpointMalformed     = Error("platform endpoint is malformed")
 	ErrPlatformIssuerNotFound        = Error("issuer not found in well-known idp configuration")
@@ -56,6 +59,33 @@ type Error string
 
 func (c Error) Error() string {
 	return string(c)
+}
+
+// HealthStatus is the serving status reported by the platform's gRPC Health v1 endpoint.
+// It mirrors google.golang.org/grpc/health/grpc_health_v1.HealthCheckResponse_ServingStatus
+// so callers do not need to import the grpc health protobuf to branch on results.
+type HealthStatus int
+
+const (
+	// HealthStatusUnknown means the platform could not determine status, or the requested
+	// service is not registered on this deployment.
+	HealthStatusUnknown HealthStatus = iota
+	// HealthStatusServing means the requested scope reports SERVING.
+	HealthStatusServing
+	// HealthStatusNotServing means the requested scope was reached but reports NOT_SERVING.
+	HealthStatusNotServing
+)
+
+// String returns the uppercase name of the status. Unknown or out-of-range values render as "UNKNOWN".
+func (s HealthStatus) String() string {
+	switch s { //nolint:exhaustive // default intentionally covers HealthStatusUnknown and any future out-of-range values
+	case HealthStatusServing:
+		return "SERVING"
+	case HealthStatusNotServing:
+		return "NOT_SERVING"
+	default:
+		return "UNKNOWN"
+	}
 }
 
 // getLogger returns the package-level logger, defaulting to slog.Default() if not set to

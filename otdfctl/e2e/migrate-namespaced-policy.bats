@@ -18,6 +18,7 @@
 # - SCS migration handles single-namespace placement, cross-namespace fanout,
 #   and reuse of an already-existing canonical target
 # - subject-mapping migration rewrites action and SCS dependencies correctly
+#   and can reuse an already-existing canonical target
 # - registered-resource migration rewrites action bindings and reuses canonical
 #   targets when they already exist
 # - obligation-trigger migration rewrites action dependencies and reuses
@@ -205,6 +206,25 @@ create_legacy_subject_mapping() {
   shift 4
 
   run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json policy subject-mappings create --attribute-value-id "$attribute_value_id" --action "$action_id" --subject-condition-set-id "$subject_condition_set_id" "$@" --json
+  assert_success
+
+  local created_subject_mapping_id
+  created_subject_mapping_id=$(echo "$output" | jq -r '.id // empty')
+  assert_not_equal "$created_subject_mapping_id" ""
+
+  track_subject_mapping_id "$created_subject_mapping_id"
+  printf -v "$result_var" '%s' "$created_subject_mapping_id"
+}
+
+create_namespaced_subject_mapping() {
+  local result_var="$1"
+  local namespace_id="$2"
+  local attribute_value_id="$3"
+  local action_id="$4"
+  local subject_condition_set_id="$5"
+  shift 5
+
+  run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json policy subject-mappings create --namespace "$namespace_id" --attribute-value-id "$attribute_value_id" --action "$action_id" --subject-condition-set-id "$subject_condition_set_id" "$@" --json
   assert_success
 
   local created_subject_mapping_id
@@ -1398,11 +1418,12 @@ teardown_file() {
   assert_scs_absent_in_namespace "$single_namespace_scs_id" "$NS_B_ID"
 }
 
-# Asserts subject-mapping migration creates namespaced mappings, rewrites both
-# custom-action and standard-action dependencies to the correct target IDs,
-# rewrites SCS dependencies, preserves source metadata on the migrated subject
-# mappings, and is idempotent on rerun.
-@test "migrate namespaced-policy subject-mappings rewrite custom and standard actions plus scs dependencies" {
+# Asserts subject-mapping migration creates missing namespaced mappings,
+# rewrites both custom-action and standard-action dependencies to the correct
+# target IDs, reuses an already-migrated canonical mapping when present,
+# rewrites SCS dependencies, preserves source metadata on created mappings, and
+# is idempotent on rerun.
+@test "migrate namespaced-policy subject-mappings rewrite dependencies and reuse canonical targets" {
   local custom_action_name="${TEST_PREFIX}-download"
   local sm_a_scs='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-sm-a"],"subject_external_selector_value":".org.name"}],"boolean_operator":1}]}]'
   local sm_b_scs='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-sm-b"],"subject_external_selector_value":".team.name"}],"boolean_operator":1}]}]'
@@ -1416,6 +1437,9 @@ teardown_file() {
   local sm_b_scs_id
   local mapping_custom_id
   local mapping_standard_id
+  local ns_b_read_action_id
+  local existing_sm_b_scs_id
+  local existing_mapping_standard_id
   local ns_a_state_before
   local ns_b_state_before
   local ns_a_state_after
@@ -1428,6 +1452,10 @@ teardown_file() {
   create_legacy_subject_mapping mapping_custom_id "$ATTR_A_VAL_1_ID" "$custom_action_id" "$sm_a_scs_id" "${mapping_custom_labels[@]}"
   create_legacy_subject_mapping mapping_standard_id "$ATTR_B_VAL_1_ID" "$GLOBAL_READ_ID" "$sm_b_scs_id" "${mapping_standard_labels[@]}"
 
+  lookup_namespaced_action_id ns_b_read_action_id "read" "$NS_B_ID"
+  create_namespaced_scs existing_sm_b_scs_id "$NS_B_ID" "$sm_b_scs"
+  create_namespaced_subject_mapping existing_mapping_standard_id "$NS_B_ID" "$ATTR_B_VAL_1_ID" "$ns_b_read_action_id" "$existing_sm_b_scs_id" --label "test_case=subject-mappings" --label "fixture=${TEST_PREFIX}-existing-mapping-standard"
+
   ns_a_state_before=$(namespace_state_json "$NS_A_ID")
   ns_b_state_before=$(namespace_state_json "$NS_B_ID")
 
@@ -1438,10 +1466,12 @@ teardown_file() {
   ns_b_state_after=$(namespace_state_json "$NS_B_ID")
 
   assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 1 1 1 0 0
-  assert_namespace_state_delta "$ns_b_state_before" "$ns_b_state_after" 0 1 1 0 0
+  assert_namespace_state_delta "$ns_b_state_before" "$ns_b_state_after" 0 0 0 0 0
 
   assert_subject_mapping_created_in_namespace "$mapping_custom_id" "$NS_A_ID" "$ATTR_A_VAL_1_ID" "$custom_action_name" "$custom_action_id" "create" "$sm_a_scs_id"
-  assert_subject_mapping_created_in_namespace "$mapping_standard_id" "$NS_B_ID" "$ATTR_B_VAL_1_ID" "read" "$GLOBAL_READ_ID" "existing_standard" "$sm_b_scs_id"
+  assert_standard_action_resolved_in_namespace "read" "$NS_B_ID"
+  assert_scs_already_migrated_in_namespace "$sm_b_scs_id" "$NS_B_ID" "$existing_sm_b_scs_id"
+  assert_subject_mapping_already_migrated_in_namespace "$mapping_standard_id" "$NS_B_ID" "$existing_mapping_standard_id"
 
   assert_legacy_subject_mapping_still_exists "$ATTR_A_VAL_1_ID" "$mapping_custom_id"
   assert_legacy_subject_mapping_still_exists "$ATTR_B_VAL_1_ID" "$mapping_standard_id"
@@ -1451,14 +1481,10 @@ teardown_file() {
   # already_migrated on the second pass. Standard read remains existing_standard.
   local custom_action_target_id
   local sm_a_scs_target_id
-  local sm_b_scs_target_id
   local mapping_custom_target_id
-  local mapping_standard_target_id
   custom_action_target_id=$(action_id_by_name_in_namespace "$custom_action_name" "$NS_A_ID")
   sm_a_scs_target_id=$(scs_id_by_migrated_from "$NS_A_ID" "$sm_a_scs_id")
-  sm_b_scs_target_id=$(scs_id_by_migrated_from "$NS_B_ID" "$sm_b_scs_id")
   mapping_custom_target_id=$(subject_mapping_id_by_migrated_from "$NS_A_ID" "$mapping_custom_id")
-  mapping_standard_target_id=$(subject_mapping_id_by_migrated_from "$NS_B_ID" "$mapping_standard_id")
 
   ns_a_state_before="$ns_a_state_after"
   ns_b_state_before="$ns_b_state_after"
@@ -1475,9 +1501,9 @@ teardown_file() {
   assert_action_already_migrated_in_namespace "$custom_action_name" "$NS_A_ID" "$custom_action_target_id"
   assert_standard_action_resolved_in_namespace "read" "$NS_B_ID"
   assert_scs_already_migrated_in_namespace "$sm_a_scs_id" "$NS_A_ID" "$sm_a_scs_target_id"
-  assert_scs_already_migrated_in_namespace "$sm_b_scs_id" "$NS_B_ID" "$sm_b_scs_target_id"
+  assert_scs_already_migrated_in_namespace "$sm_b_scs_id" "$NS_B_ID" "$existing_sm_b_scs_id"
   assert_subject_mapping_already_migrated_in_namespace "$mapping_custom_id" "$NS_A_ID" "$mapping_custom_target_id"
-  assert_subject_mapping_already_migrated_in_namespace "$mapping_standard_id" "$NS_B_ID" "$mapping_standard_target_id"
+  assert_subject_mapping_already_migrated_in_namespace "$mapping_standard_id" "$NS_B_ID" "$existing_mapping_standard_id"
 }
 
 # Asserts registered-resource migration creates missing namespaced targets,

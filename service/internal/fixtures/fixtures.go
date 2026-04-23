@@ -12,10 +12,12 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var (
-	fixtureFilename = "policy_fixtures.yaml"
-	fixtureData     FixtureData
-)
+// fixtureData is the package-global parsed fixture payload that every
+// provisioner reads from. It is (re)populated by LoadFixtureData, which
+// resets it before unmarshalling so consecutive calls in the same
+// process do not leak data from a previous fixture into sections that a
+// later fixture omits.
+var fixtureData FixtureData
 
 type FixtureMetadata struct {
 	TableName string   `yaml:"table_name"`
@@ -240,10 +242,16 @@ type FixtureData struct {
 }
 
 func LoadFixtureData(file string) {
+	// Reset the package-global before unmarshalling so a partial fixture
+	// loaded after a full one does not inherit data from the previous load
+	// (see provision()'s len(v) == 0 guard, which relies on omitted
+	// sections being empty).
+	fixtureData = FixtureData{}
+
 	c, err := os.ReadFile(file)
 	if err != nil {
 		slog.Error("could not read",
-			slog.String("fixture_file_name", fixtureFilename),
+			slog.String("fixture_file_name", file),
 			slog.Any("error", err),
 		)
 		panic(err)
@@ -251,12 +259,15 @@ func LoadFixtureData(file string) {
 
 	if err := yaml.Unmarshal(c, &fixtureData); err != nil {
 		slog.Error("could not unmarshal",
-			slog.String("fixture_file_name", fixtureFilename),
+			slog.String("fixture_file_name", file),
 			slog.Any("error", err),
 		)
 		panic(err)
 	}
-	slog.Info("fully loaded fixtures", slog.Any("fixture_data", fixtureData))
+	slog.Info("fully loaded fixtures",
+		slog.String("fixture_file_name", file),
+		slog.Any("fixture_data", fixtureData),
+	)
 }
 
 type Fixtures struct {
@@ -779,15 +790,15 @@ func (f *Fixtures) provision(ctx context.Context, t string, c []string, v [][]an
 	}
 	rows, err := f.db.ExecInsert(ctx, t, c, v...)
 	if err != nil {
-		slog.Error("⛔️ 📦 issue with insert into table - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Any("err", err))
+		slog.Error("⛔️ 📦 issue with insert into table - check the fixture YAML for issues", slog.String("table", t), slog.Any("err", err))
 		panic("issue with insert into table")
 	}
 	if rows == 0 {
-		slog.Error("⛔️ 📦 no rows provisioned - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Int("expected", len(v)))
+		slog.Error("⛔️ 📦 no rows provisioned - check the fixture YAML for issues", slog.String("table", t), slog.Int("expected", len(v)))
 		panic("no rows provisioned")
 	}
 	if rows != int64(len(v)) {
-		slog.Error("⛔️ 📦 incorrect number of rows provisioned - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Int("expected", len(v)), slog.Int64("actual", rows))
+		slog.Error("⛔️ 📦 incorrect number of rows provisioned - check the fixture YAML for issues", slog.String("table", t), slog.Int("expected", len(v)), slog.Int64("actual", rows))
 		panic("incorrect number of rows provisioned")
 	}
 	return rows

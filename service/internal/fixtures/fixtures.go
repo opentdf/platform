@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"os"
+	"sort"
 
 	policypb "github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/policy"
@@ -541,8 +542,21 @@ func (f *Fixtures) provisionAttribute(ctx context.Context) int64 {
 }
 
 func (f *Fixtures) provisionAttributeValues(ctx context.Context) int64 {
-	values := make([][]any, 0, len(fixtureData.AttributeValues.Data))
-	for _, d := range fixtureData.AttributeValues.Data {
+	// HIERARCHY attribute rules derive rank from database insertion order,
+	// so we iterate map entries in a stable key-sorted order. Map range
+	// order is randomized per-process, which would otherwise make hierarchy
+	// tests flaky. Fixture authors control the resulting rank by choosing
+	// map keys that sort into the intended order (e.g., `01-secret`,
+	// `02-confidential`).
+	keys := make([]string, 0, len(fixtureData.AttributeValues.Data))
+	for k := range fixtureData.AttributeValues.Data {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	values := make([][]any, 0, len(keys))
+	for _, k := range keys {
+		d := fixtureData.AttributeValues.Data[k]
 		values = append(values, []any{
 			d.ID,
 			d.AttributeDefinitionID,

@@ -6,25 +6,21 @@ import (
 
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/config"
-	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/spf13/cobra"
 )
 
 // ProvisionPolicyFixturesFromFile loads a policy fixture YAML at fixturePath
 // and provisions it into the `<schema>_policy` schema of the database
-// configured by cfg. The caller's cfg is not mutated. This is intended for
-// local development and test harness use (e.g. BDD scenario setup); it
-// panics on fatal errors surfaced by the fixtures loader.
+// configured by cfg. The caller's cfg is not mutated. Intended for local
+// development and test-harness use (e.g. BDD scenario setup); panics on
+// fatal errors surfaced by the fixtures loader.
 //
 // NOTE: fixtures.LoadFixtureData mutates package-global state in
 // service/internal/fixtures; callers must serialize invocations.
 func ProvisionPolicyFixturesFromFile(ctx context.Context, cfg *config.Config, fixturePath string) {
-	dbClient, err := db.New(ctx, cfg.DB, cfg.Logger, nil)
-	if err != nil {
-		panic(fmt.Errorf("issue creating database client: %w", err))
-	}
-	defer dbClient.Close()
-
+	// NewDBInterface opens its own pool against the _policy schema; the
+	// fixtures.Provision call runs migrations + inserts on that schema.
+	// No separate top-level db.Client is needed.
 	fixCfg := *cfg
 	fixCfg.DB.Schema += "_policy"
 	dbI := fixtures.NewDBInterface(ctx, fixCfg)

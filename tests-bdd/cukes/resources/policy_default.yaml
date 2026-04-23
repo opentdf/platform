@@ -61,11 +61,11 @@ attributes:
       active: true
 
 ##
-# Attribute values. HIERARCHY rank is determined by insertion order: the
-# FIRST-listed value is the HIGHEST rank and subsumes every value after it.
-# So a subject entitled to `secret` can also decrypt data tagged
-# `confidential`, `internal`, or `public`; a subject entitled to `public`
-# can only decrypt `public`-tagged data.
+# Attribute values. HIERARCHY rank is derived from database insertion
+# order; the fixtures loader sorts entries by map key, so classification
+# values are keyed with numeric prefixes (01-..secret, 02-..confidential,
+# etc.) to pin the intended ranking: secret > confidential > internal >
+# public. Department values are ANY_OF, so order is irrelevant.
 ##
 attribute_values:
   metadata:
@@ -92,22 +92,22 @@ attribute_values:
       value: hr
       active: true
 
-    demo.com/attr/classification/value/secret:
+    01-demo.com/attr/classification/value/secret:
       id: a1b2c3d4-e5f6-4a7b-8c9d-000000000024
       attribute_definition_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000020
       value: secret
       active: true
-    demo.com/attr/classification/value/confidential:
+    02-demo.com/attr/classification/value/confidential:
       id: a1b2c3d4-e5f6-4a7b-8c9d-000000000023
       attribute_definition_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000020
       value: confidential
       active: true
-    demo.com/attr/classification/value/internal:
+    03-demo.com/attr/classification/value/internal:
       id: a1b2c3d4-e5f6-4a7b-8c9d-000000000022
       attribute_definition_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000020
       value: internal
       active: true
-    demo.com/attr/classification/value/public:
+    04-demo.com/attr/classification/value/public:
       id: a1b2c3d4-e5f6-4a7b-8c9d-000000000021
       attribute_definition_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000020
       value: public

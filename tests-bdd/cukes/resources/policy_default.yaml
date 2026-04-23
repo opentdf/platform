@@ -59,13 +59,20 @@ attributes:
       name: classification
       rule: HIERARCHY
       active: true
+      # Explicit HIERARCHY rank order, high -> low. The fixtures loader
+      # applies this as an UPDATE on attribute_definitions.values_order
+      # after values are provisioned, so scenarios 3-5 in
+      # encrypt-decrypt.feature get deterministic ranking regardless of
+      # map iteration order.
+      values_order:
+        - a1b2c3d4-e5f6-4a7b-8c9d-000000000024 # secret
+        - a1b2c3d4-e5f6-4a7b-8c9d-000000000023 # confidential
+        - a1b2c3d4-e5f6-4a7b-8c9d-000000000022 # internal
+        - a1b2c3d4-e5f6-4a7b-8c9d-000000000021 # public
 
 ##
-# Attribute values. HIERARCHY rank is derived from database insertion
-# order; the fixtures loader sorts entries by map key, so classification
-# values are keyed with numeric prefixes (01-..secret, 02-..confidential,
-# etc.) to pin the intended ranking: secret > confidential > internal >
-# public. Department values are ANY_OF, so order is irrelevant.
+# Attribute values. HIERARCHY rank is pinned by values_order on the
+# classification attribute above, so the map keys here can be plain FQNs.
 ##
 attribute_values:
   metadata:
@@ -92,22 +99,22 @@ attribute_values:
       value: hr
       active: true
 
-    01-demo.com/attr/classification/value/secret:
+    demo.com/attr/classification/value/secret:
       id: a1b2c3d4-e5f6-4a7b-8c9d-000000000024
       attribute_definition_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000020
       value: secret
       active: true
-    02-demo.com/attr/classification/value/confidential:
+    demo.com/attr/classification/value/confidential:
       id: a1b2c3d4-e5f6-4a7b-8c9d-000000000023
       attribute_definition_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000020
       value: confidential
       active: true
-    03-demo.com/attr/classification/value/internal:
+    demo.com/attr/classification/value/internal:
       id: a1b2c3d4-e5f6-4a7b-8c9d-000000000022
       attribute_definition_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000020
       value: internal
       active: true
-    04-demo.com/attr/classification/value/public:
+    demo.com/attr/classification/value/public:
       id: a1b2c3d4-e5f6-4a7b-8c9d-000000000021
       attribute_definition_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000020
       value: public

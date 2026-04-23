@@ -26,6 +26,10 @@ const (
 	// realm-management so it may obtain user-scoped tokens.
 	exchangeClientID     = "opentdf"
 	exchangeClientSecret = "secret"
+	// Target audience of the exchanged token; matches the token_exchanges
+	// policy wired in keycloak_base.template (start_client: opentdf,
+	// target_client: opentdf-sdk).
+	exchangeTargetClientID = "opentdf-sdk"
 	// Standard OAuth grant-type and token-type URNs from RFC 8693 — not credentials.
 	tokenExchangeGrant = "urn:ietf:params:oauth:grant-type:token-exchange" //nolint:gosec // URN identifier, not a credential
 	accessTokenType    = "urn:ietf:params:oauth:token-type:access_token"   //nolint:gosec // URN identifier, not a credential
@@ -192,15 +196,20 @@ func fetchAdminAccessToken(ctx context.Context, tokenURL string) (*oauth2.Token,
 // exchangeForUserToken takes a valid admin token and asks Keycloak for a
 // user-scoped token via RFC 8693 token exchange with `requested_subject`.
 // Requires the exchange client to have the realm-management `impersonation`
-// role.
+// role. `audience` routes the exchange through the opentdf->opentdf-sdk
+// policy configured in keycloak_base.template so the returned token is
+// minted for opentdf-sdk, matching the SDK's own token-exchange flow
+// (see sdk/auth/oauth/oauth.go).
 func exchangeForUserToken(ctx context.Context, tokenURL, adminAccessToken, username string) (*oauth2.Token, error) {
 	form := url.Values{
-		"grant_type":         {tokenExchangeGrant},
-		"client_id":          {exchangeClientID},
-		"client_secret":      {exchangeClientSecret},
-		"subject_token":      {adminAccessToken},
-		"subject_token_type": {accessTokenType},
-		"requested_subject":  {username},
+		"grant_type":           {tokenExchangeGrant},
+		"client_id":            {exchangeClientID},
+		"client_secret":        {exchangeClientSecret},
+		"subject_token":        {adminAccessToken},
+		"subject_token_type":   {accessTokenType},
+		"requested_token_type": {accessTokenType},
+		"audience":             {exchangeTargetClientID},
+		"requested_subject":    {username},
 	}
 	return postForTokenEndpoint(ctx, tokenURL, form, "token-exchange")
 }

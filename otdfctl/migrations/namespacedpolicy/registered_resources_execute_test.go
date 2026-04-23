@@ -237,7 +237,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 						Target: &RegisteredResourceTargetPlan{
 							Namespace: namespace1,
 							Status:    TargetStatusUnresolved,
-							Reason:    ErrDuplicateCanonicalMatch.Error(),
+							Reason:    "ambiguous target namespace",
 						},
 					},
 				},

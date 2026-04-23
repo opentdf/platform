@@ -109,9 +109,8 @@ func (f *planFinalizer) addResolvedAction(item *ResolvedAction) {
 	}
 
 	actionPlan := &ActionPlan{
-		Source:     item.Source,
-		References: append([]*ActionReference(nil), item.References...),
-		Targets:    make([]*ActionTargetPlan, 0, len(item.Results)),
+		Source:  item.Source,
+		Targets: make([]*ActionTargetPlan, 0, len(item.Results)),
 	}
 
 	for _, result := range item.Results {

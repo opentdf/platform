@@ -237,6 +237,81 @@ func TestReviewNamespacedPolicyInteractiveCommitSkipsMappingsDependentOnSkippedS
 	assert.Nil(t, mappingTarget.Execution)
 }
 
+func TestReviewNamespacedPolicyInteractiveCommitPropagatesAbort(t *testing.T) {
+	t.Parallel()
+
+	// The user aborts on the first action prompt. The reviewer must (a) return
+	// ErrInteractiveReviewAborted so the caller stops, and (b) not prompt for
+	// any later action or downstream object, so no half-applied migration is
+	// committed.
+	namespace := &policy.Namespace{
+		Id:  "ns-1",
+		Fqn: "https://example.com",
+	}
+	attributeValue := testAttributeValue("https://example.com/attr/classification/value/secret", namespace)
+	plan := &Plan{
+		Scopes: []Scope{
+			ScopeActions,
+			ScopeSubjectConditionSets,
+			ScopeSubjectMappings,
+		},
+		Actions: []*ActionPlan{
+			{
+				Source: &policy.Action{Id: "action-1", Name: "decrypt"},
+				Targets: []*ActionTargetPlan{
+					{Namespace: namespace, Status: TargetStatusCreate},
+				},
+			},
+			{
+				Source: &policy.Action{Id: "action-2", Name: "read"},
+				Targets: []*ActionTargetPlan{
+					{Namespace: namespace, Status: TargetStatusCreate},
+				},
+			},
+		},
+		SubjectConditionSets: []*SubjectConditionSetPlan{
+			{
+				Source: &policy.SubjectConditionSet{Id: "scs-1"},
+				Targets: []*SubjectConditionSetTargetPlan{
+					{Namespace: namespace, Status: TargetStatusCreate},
+				},
+			},
+		},
+		SubjectMappings: []*SubjectMappingPlan{
+			{
+				Source: &policy.SubjectMapping{
+					Id:             "mapping-1",
+					AttributeValue: attributeValue,
+				},
+				Target: &SubjectMappingTargetPlan{
+					Namespace:                   namespace,
+					Status:                      TargetStatusCreate,
+					ActionSourceIDs:             []string{"action-1"},
+					SubjectConditionSetSourceID: "scs-1",
+				},
+			},
+		},
+	}
+
+	prompter := &queuedSelectPrompter{
+		selectValues: []string{namespacedPolicyCommitAbort},
+	}
+
+	err := ReviewNamespacedPolicyInteractiveCommit(t.Context(), plan, prompter)
+	require.ErrorIs(t, err, ErrInteractiveReviewAborted)
+
+	// Only the first prompt should have fired; abort must halt the walkthrough.
+	require.Equal(t, 1, prompter.selectCalls)
+
+	// Abort must not mutate target state — subsequent execution should be able
+	// to run or the user should be able to retry.
+	assert.Equal(t, TargetStatusCreate, plan.Actions[0].Targets[0].Status)
+	assert.Empty(t, plan.Actions[0].Targets[0].Reason)
+	assert.Equal(t, TargetStatusCreate, plan.Actions[1].Targets[0].Status)
+	assert.Equal(t, TargetStatusCreate, plan.SubjectConditionSets[0].Targets[0].Status)
+	assert.Equal(t, TargetStatusCreate, plan.SubjectMappings[0].Target.Status)
+}
+
 func TestApplyInteractiveDecisionHandlesChoices(t *testing.T) {
 	t.Parallel()
 

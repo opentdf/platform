@@ -17,9 +17,8 @@ type DerivedTargets struct {
 }
 
 type DerivedAction struct {
-	Source     *policy.Action
-	References []*ActionReference
-	Targets    []*policy.Namespace
+	Source  *policy.Action
+	Targets []*policy.Namespace
 }
 
 type DerivedSubjectConditionSet struct {
@@ -48,7 +47,6 @@ type targetDeriver struct {
 	namespaceByID     map[string]*policy.Namespace
 	namespaceByFQN    map[string]*policy.Namespace
 	actionTargetsByID map[string]*namespaceAccumulator
-	actionRefsByID    map[string]*actionReferenceAccumulator
 	scsTargetsByID    map[string]*namespaceAccumulator
 }
 
@@ -70,6 +68,9 @@ func deriveTargets(retrieved *Retrieved, namespaces []*policy.Namespace) (*Deriv
 	}
 
 	for _, mapping := range retrieved.Candidates.SubjectMappings {
+		if mapping == nil {
+			continue
+		}
 		item, err := deriver.deriveSubjectMapping(mapping)
 		if err != nil {
 			return nil, err
@@ -79,6 +80,9 @@ func deriveTargets(retrieved *Retrieved, namespaces []*policy.Namespace) (*Deriv
 	}
 
 	for _, resource := range retrieved.Candidates.RegisteredResources {
+		if resource == nil {
+			continue
+		}
 		item, err := deriver.deriveRegisteredResource(resource)
 		if err != nil {
 			if errors.Is(err, errSkipRegisteredResource) {
@@ -91,6 +95,9 @@ func deriveTargets(retrieved *Retrieved, namespaces []*policy.Namespace) (*Deriv
 	}
 
 	for _, trigger := range retrieved.Candidates.ObligationTriggers {
+		if trigger == nil {
+			continue
+		}
 		item, err := deriver.deriveObligationTrigger(trigger)
 		if err != nil {
 			return nil, err
@@ -100,17 +107,19 @@ func deriveTargets(retrieved *Retrieved, namespaces []*policy.Namespace) (*Deriv
 	}
 
 	for _, action := range retrieved.Candidates.Actions {
-		item, err := deriver.deriveAction(action)
-		if err != nil {
-			return nil, err
+		if action == nil {
+			continue
 		}
-		derived.Actions = append(derived.Actions, item)
+		derived.Actions = append(derived.Actions, deriver.deriveAction(action))
 	}
 
 	for _, scs := range retrieved.Candidates.SubjectConditionSets {
-		item, err := deriver.deriveSubjectConditionSet(scs)
-		if err != nil {
-			return nil, err
+		if scs == nil {
+			continue
+		}
+		item := deriver.deriveSubjectConditionSet(scs)
+		if item == nil {
+			continue
 		}
 		derived.SubjectConditionSets = append(derived.SubjectConditionSets, item)
 	}
@@ -138,7 +147,6 @@ func newTargetDeriver(namespaces []*policy.Namespace) *targetDeriver {
 		namespaceByID:     namespaceByID,
 		namespaceByFQN:    namespaceByFQN,
 		actionTargetsByID: make(map[string]*namespaceAccumulator),
-		actionRefsByID:    make(map[string]*actionReferenceAccumulator),
 		scsTargetsByID:    make(map[string]*namespaceAccumulator),
 	}
 }
@@ -156,9 +164,6 @@ func (d *targetDeriver) deriveSubjectMapping(mapping *policy.SubjectMapping) (*D
 
 func (d *targetDeriver) deriveRegisteredResource(resource *policy.RegisteredResource) (*DerivedRegisteredResource, error) {
 	item := &DerivedRegisteredResource{Source: resource}
-	if resource == nil {
-		return nil, fmt.Errorf("%w: registered resource is empty", ErrUndeterminedTargetMapping)
-	}
 
 	namespaceRef, ok := registeredResourceNamespaceRef(resource)
 	if !ok {
@@ -196,40 +201,26 @@ func (d *targetDeriver) deriveObligationTrigger(trigger *policy.ObligationTrigge
 	return item, nil
 }
 
-func (d *targetDeriver) deriveAction(action *policy.Action) (*DerivedAction, error) {
-	item := &DerivedAction{
-		Source: action,
+func (d *targetDeriver) deriveAction(action *policy.Action) *DerivedAction {
+	return &DerivedAction{
+		Source:  action,
+		Targets: d.targets(d.actionTargetsByID[action.GetId()]),
 	}
-	if action == nil {
-		return nil, fmt.Errorf("%w: empty action candidate", ErrUndeterminedTargetMapping)
-	}
-	if refs := d.actionRefsByID[action.GetId()]; refs != nil {
-		item.References = refs.slice()
-	}
-	targets := d.targets(d.actionTargetsByID[action.GetId()])
-	if len(targets) == 0 {
-		if len(item.References) > 0 {
-			return nil, fmt.Errorf("%w: no target namespaces were discovered for action %q", ErrUndeterminedTargetMapping, action.GetId())
-		}
-		return item, nil
-	}
-
-	item.Targets = targets
-	return item, nil
 }
 
-func (d *targetDeriver) deriveSubjectConditionSet(scs *policy.SubjectConditionSet) (*DerivedSubjectConditionSet, error) {
-	item := &DerivedSubjectConditionSet{Source: scs}
-	if scs == nil {
-		return nil, fmt.Errorf("%w: empty subject condition set candidate", ErrUndeterminedTargetMapping)
-	}
+// deriveSubjectConditionSet returns nil when the SCS has no referencing
+// subject mapping in scope — a legacy SCS that isn't being migrated is silently
+// skipped rather than treated as a retrieval invariant violation.
+func (d *targetDeriver) deriveSubjectConditionSet(scs *policy.SubjectConditionSet) *DerivedSubjectConditionSet {
 	targets := d.targets(d.scsTargetsByID[scs.GetId()])
 	if len(targets) == 0 {
-		return nil, fmt.Errorf("%w: no target namespaces were discovered for subject condition set %q", ErrUndeterminedTargetMapping, scs.GetId())
+		return nil
 	}
 
-	item.Targets = targets
-	return item, nil
+	return &DerivedSubjectConditionSet{
+		Source:  scs,
+		Targets: targets,
+	}
 }
 
 func (d *targetDeriver) observeSubjectMapping(item *DerivedSubjectMapping) {
@@ -239,7 +230,6 @@ func (d *targetDeriver) observeSubjectMapping(item *DerivedSubjectMapping) {
 
 	for _, action := range item.Source.GetActions() {
 		d.addActionTarget(action.GetId(), item.Target)
-		d.addActionReference(action.GetId(), ActionReferenceKindSubjectMapping, item.Source.GetId(), item.Target)
 	}
 
 	if scsID := item.Source.GetSubjectConditionSet().GetId(); scsID != "" {
@@ -255,7 +245,6 @@ func (d *targetDeriver) observeRegisteredResource(item *DerivedRegisteredResourc
 	for _, value := range item.Source.GetValues() {
 		for _, aav := range value.GetActionAttributeValues() {
 			d.addActionTarget(aav.GetAction().GetId(), item.Target)
-			d.addActionReference(aav.GetAction().GetId(), ActionReferenceKindRegisteredResource, item.Source.GetId(), item.Target)
 		}
 	}
 }
@@ -266,7 +255,6 @@ func (d *targetDeriver) observeObligationTrigger(item *DerivedObligationTrigger)
 	}
 
 	d.addActionTarget(item.Source.GetAction().GetId(), item.Target)
-	d.addActionReference(item.Source.GetAction().GetId(), ActionReferenceKindObligationTrigger, item.Source.GetId(), item.Target)
 }
 
 func (d *targetDeriver) addActionTarget(actionID string, namespace *policy.Namespace) {
@@ -280,24 +268,6 @@ func (d *targetDeriver) addActionTarget(actionID string, namespace *policy.Names
 		d.actionTargetsByID[actionID] = targets
 	}
 	targets.add(namespace)
-}
-
-func (d *targetDeriver) addActionReference(actionID string, kind ActionReferenceKind, id string, namespace *policy.Namespace) {
-	if actionID == "" || id == "" || kind == "" {
-		return
-	}
-
-	references := d.actionRefsByID[actionID]
-	if references == nil {
-		references = newActionReferenceAccumulator()
-		d.actionRefsByID[actionID] = references
-	}
-
-	references.add(&ActionReference{
-		Kind:      kind,
-		ID:        id,
-		Namespace: namespace,
-	})
 }
 
 func (d *targetDeriver) addSubjectConditionSetTarget(scsID string, namespace *policy.Namespace) {
@@ -455,46 +425,4 @@ func (a *namespaceAccumulator) slice() []*policy.Namespace {
 	}
 
 	return append([]*policy.Namespace(nil), a.items...)
-}
-
-type actionReferenceAccumulator struct {
-	items []*ActionReference
-	seen  map[string]struct{}
-}
-
-func newActionReferenceAccumulator() *actionReferenceAccumulator {
-	return &actionReferenceAccumulator{
-		seen: make(map[string]struct{}),
-	}
-}
-
-func (a *actionReferenceAccumulator) add(reference *ActionReference) {
-	if a == nil || reference == nil || reference.Kind == "" || reference.ID == "" {
-		return
-	}
-	key := actionReferenceKey(reference)
-	if key == "" {
-		return
-	}
-	if _, ok := a.seen[key]; ok {
-		return
-	}
-	a.seen[key] = struct{}{}
-	a.items = append(a.items, reference)
-}
-
-func (a *actionReferenceAccumulator) slice() []*ActionReference {
-	if a == nil {
-		return nil
-	}
-
-	return append([]*ActionReference(nil), a.items...)
-}
-
-func actionReferenceKey(reference *ActionReference) string {
-	if reference == nil {
-		return ""
-	}
-
-	return string(reference.Kind) + "|" + reference.ID + "|" + namespaceRefKey(reference.Namespace)
 }

@@ -503,11 +503,6 @@ func TestPlannerPlanAllScopesBuildsAllPlanSections(t *testing.T) {
 	require.Len(t, plan.Actions, 1)
 	require.Len(t, plan.Actions[0].Targets, 1)
 	assert.Equal(t, TargetStatusCreate, plan.Actions[0].Targets[0].Status)
-	assert.ElementsMatch(t, []string{
-		"subject_mapping|mapping-1",
-		"registered_resource|resource-1",
-		"obligation_trigger|trigger-1",
-	}, actionReferenceKindsAndIDs(plan.Actions[0].References))
 
 	require.Len(t, plan.SubjectConditionSets, 1)
 	require.Len(t, plan.SubjectConditionSets[0].Targets, 1)

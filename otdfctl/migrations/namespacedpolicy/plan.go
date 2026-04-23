@@ -12,7 +12,11 @@ var (
 	ErrNilRetrieved              = errors.New("planner retrieved state is required")
 	ErrMissingTargetNamespace    = errors.New("missing target namespace")
 	ErrUndeterminedTargetMapping = errors.New("could not determine target namespace")
-	ErrDuplicateCanonicalMatch   = errors.New("multiple existing target objects match canonical equality in the target namespace")
+
+	ErrMissingActionID                         = errors.New("action reference missing id")
+	ErrMissingSubjectConditionSetID            = errors.New("subject condition set reference missing id")
+	ErrUnresolvedActionDependency              = errors.New("action dependency not resolved in target namespace")
+	ErrUnresolvedSubjectConditionSetDependency = errors.New("subject condition set dependency not resolved in target namespace")
 )
 
 type UnresolvedReason string
@@ -63,26 +67,8 @@ type ExecutionResult struct {
 }
 
 type ActionPlan struct {
-	Source *policy.Action `json:"source"`
-	// TODO: Add analogous reference metadata for other policy object plan types
-	// if/when downstream consumers need the same provenance context beyond
-	// actions.
-	References []*ActionReference  `json:"references,omitempty"`
-	Targets    []*ActionTargetPlan `json:"targets,omitempty"`
-}
-
-type ActionReferenceKind string
-
-const (
-	ActionReferenceKindSubjectMapping     ActionReferenceKind = "subject_mapping"
-	ActionReferenceKindRegisteredResource ActionReferenceKind = "registered_resource"
-	ActionReferenceKindObligationTrigger  ActionReferenceKind = "obligation_trigger"
-)
-
-type ActionReference struct {
-	Kind      ActionReferenceKind `json:"kind"`
-	ID        string              `json:"id"`
-	Namespace *policy.Namespace   `json:"namespace,omitempty"`
+	Source  *policy.Action      `json:"source"`
+	Targets []*ActionTargetPlan `json:"targets,omitempty"`
 }
 
 type ActionTargetPlan struct {

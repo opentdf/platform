@@ -503,9 +503,13 @@ func checkPlatformHealth(
 	httpClient *http.Client,
 	options []connect.ClientOption,
 ) (healthpb.HealthCheckResponse_ServingStatus, error) {
+	checkURL, err := url.JoinPath(endpoint, "grpc.health.v1.Health", "Check")
+	if err != nil {
+		return healthpb.HealthCheckResponse_UNKNOWN, err
+	}
 	healthClient := connect.NewClient[healthpb.HealthCheckRequest, healthpb.HealthCheckResponse](
 		httpClient,
-		endpoint+"/grpc.health.v1.Health/Check",
+		checkURL,
 		options...,
 	)
 	res, err := healthClient.CallUnary(ctx, connect.NewRequest(&healthpb.HealthCheckRequest{Service: service}))

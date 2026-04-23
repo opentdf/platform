@@ -18,9 +18,14 @@ import (
 )
 
 const (
-	defaultUserPassword = "testuser123" // matches aUser step in steps_localplatform.go and sample-user in keycloak_base.template
-	ropcClientID        = "opentdf-sdk" // confidential client; direct-access-grants enabled by default on confidential clients in Keycloak
-	ropcClientSecret    = "secret"      // matches keycloak_base.template
+	// Admin client used for both the platform SDK and as the exchanger in
+	// RFC 8693 user-impersonation token exchange. keycloak_base.template
+	// grants its service account the `impersonation` role on
+	// realm-management so it may obtain user-scoped tokens.
+	exchangeClientID     = "opentdf"
+	exchangeClientSecret = "secret"
+	tokenExchangeGrant   = "urn:ietf:params:oauth:grant-type:token-exchange"
+	accessTokenType      = "urn:ietf:params:oauth:token-type:access_token"
 )
 
 // decryptResult captures whether a decrypt attempt succeeded, and if not,
@@ -33,8 +38,10 @@ type decryptResult struct {
 
 type EncryptionStepDefinitions struct{}
 
-// userTokenForStoredAs mints a user-scoped SDK via Keycloak ROPC (password grant)
-// against the public cli-client and stashes it under the given reference key.
+// userTokenForStoredAs mints a user-scoped SDK via RFC 8693 token exchange:
+// the admin client authenticates with client_credentials, then exchanges
+// that token for one representing the target user. Stashes the resulting
+// SDK under the given reference key.
 func (s *EncryptionStepDefinitions) userTokenForStoredAs(ctx context.Context, username, ref string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	localPlatformGlue, ok := (*scenarioContext.TestSuiteContext.PlatformGlue).(*LocalDevPlatformGlue)
@@ -42,15 +49,19 @@ func (s *EncryptionStepDefinitions) userTokenForStoredAs(ctx context.Context, us
 		return ctx, errors.New("failed to load local platform glue")
 	}
 
-	token, err := fetchUserAccessToken(ctx,
+	tokenURL := fmt.Sprintf("http://%s:%d/auth/realms/%s/protocol/openid-connect/token",
 		localPlatformGlue.Options.Hostname,
 		localPlatformGlue.Options.keycloakPort,
 		scenarioContext.ScenarioOptions.KeycloakRealm,
-		username,
-		defaultUserPassword,
 	)
+
+	adminToken, err := fetchAdminAccessToken(ctx, tokenURL)
 	if err != nil {
-		return ctx, fmt.Errorf("fetch user token for %q: %w", username, err)
+		return ctx, fmt.Errorf("fetch admin token for exchange: %w", err)
+	}
+	token, err := exchangeForUserToken(ctx, tokenURL, adminToken.AccessToken, username)
+	if err != nil {
+		return ctx, fmt.Errorf("exchange admin token for user %q: %w", username, err)
 	}
 
 	userSDK, err := otdf.New(
@@ -162,18 +173,36 @@ func getDecryptResult(ctx context.Context, ref string) (*decryptResult, error) {
 	return result, nil
 }
 
-// fetchUserAccessToken performs a Keycloak ROPC (password) grant against the
-// public cli-client and returns the resulting access token as an oauth2.Token.
-func fetchUserAccessToken(ctx context.Context, hostname string, kcPort int, realm, username, password string) (*oauth2.Token, error) {
-	tokenURL := fmt.Sprintf("http://%s:%d/auth/realms/%s/protocol/openid-connect/token", hostname, kcPort, realm)
+// fetchAdminAccessToken mints an admin service-account token via the
+// client_credentials grant against the exchange client.
+func fetchAdminAccessToken(ctx context.Context, tokenURL string) (*oauth2.Token, error) {
 	form := url.Values{
-		"grant_type":    {"password"},
-		"client_id":     {ropcClientID},
-		"client_secret": {ropcClientSecret},
-		"username":      {username},
-		"password":      {password},
-		"scope":         {"openid"},
+		"grant_type":    {"client_credentials"},
+		"client_id":     {exchangeClientID},
+		"client_secret": {exchangeClientSecret},
 	}
+	return postForTokenEndpoint(ctx, tokenURL, form, "client_credentials")
+}
+
+// exchangeForUserToken takes a valid admin token and asks Keycloak for a
+// user-scoped token via RFC 8693 token exchange with `requested_subject`.
+// Requires the exchange client to have the realm-management `impersonation`
+// role.
+func exchangeForUserToken(ctx context.Context, tokenURL, adminAccessToken, username string) (*oauth2.Token, error) {
+	form := url.Values{
+		"grant_type":         {tokenExchangeGrant},
+		"client_id":          {exchangeClientID},
+		"client_secret":      {exchangeClientSecret},
+		"subject_token":      {adminAccessToken},
+		"subject_token_type": {accessTokenType},
+		"requested_subject":  {username},
+	}
+	return postForTokenEndpoint(ctx, tokenURL, form, "token-exchange")
+}
+
+// postForTokenEndpoint POSTs a token-endpoint form and decodes the standard
+// access_token response.
+func postForTokenEndpoint(ctx context.Context, tokenURL string, form url.Values, kind string) (*oauth2.Token, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(form.Encode()))
 	if err != nil {
 		return nil, err
@@ -191,7 +220,7 @@ func fetchUserAccessToken(ctx context.Context, hostname string, kcPort int, real
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("token endpoint returned %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("%s: token endpoint returned %d: %s", kind, resp.StatusCode, string(body))
 	}
 	var payload struct {
 		AccessToken string `json:"access_token"`
@@ -199,10 +228,10 @@ func fetchUserAccessToken(ctx context.Context, hostname string, kcPort int, real
 		ExpiresIn   int    `json:"expires_in"`
 	}
 	if err := json.Unmarshal(body, &payload); err != nil {
-		return nil, fmt.Errorf("decode token response: %w", err)
+		return nil, fmt.Errorf("%s: decode token response: %w", kind, err)
 	}
 	if payload.AccessToken == "" {
-		return nil, errors.New("token endpoint response missing access_token")
+		return nil, fmt.Errorf("%s: token endpoint response missing access_token", kind)
 	}
 	return &oauth2.Token{
 		AccessToken: payload.AccessToken,

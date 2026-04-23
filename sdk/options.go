@@ -175,7 +175,10 @@ func WithPlatformConfiguration(platformConfiguration PlatformConfiguration) Opti
 	}
 }
 
-// WithConnectionValidation will validate connection to a healthy, running platform
+// WithConnectionValidation will validate connection to a healthy, running platform at
+// SDK construction time. For runtime readiness probes (e.g. Kubernetes liveness/readiness
+// endpoints), use SDK.HealthCheck(ctx, service) instead — it honors ctx for deadlines
+// and tracing and does not fail-fast at construction.
 func WithConnectionValidation() Option {
 	return func(c *config) {
 		c.shouldValidatePlatformConnectivity = true

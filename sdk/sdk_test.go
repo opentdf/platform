@@ -313,3 +313,26 @@ func Test_GetType_Invalid2Bytes(t *testing.T) {
 
 	assert.Equal(t, sdk.Invalid, tdfType)
 }
+
+func TestHealthStatus_String(t *testing.T) {
+	tests := []struct {
+		name   string
+		status sdk.HealthStatus
+		want   string
+	}{
+		{"unknown", sdk.HealthStatusUnknown, "UNKNOWN"},
+		{"serving", sdk.HealthStatusServing, "SERVING"},
+		{"not_serving", sdk.HealthStatusNotServing, "NOT_SERVING"},
+		{"out_of_range", sdk.HealthStatus(99), "UNKNOWN"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.status.String())
+		})
+	}
+}
+
+func TestErrHealthCheckUnsupported_Distinct(t *testing.T) {
+	assert.NotEqual(t, sdk.ErrHealthCheckUnsupported, sdk.ErrPlatformUnreachable)
+	assert.Equal(t, "health check not supported in IPC mode", sdk.ErrHealthCheckUnsupported.Error())
+}

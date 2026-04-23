@@ -11,7 +11,7 @@ require (
 	github.com/opentdf/platform/lib/fixtures v0.3.0
 	github.com/opentdf/platform/lib/identifier v0.0.2
 	github.com/opentdf/platform/protocol/go v0.26.0
-	github.com/opentdf/platform/sdk v0.15.0
+	github.com/opentdf/platform/sdk v0.16.0
 	github.com/opentdf/platform/service v0.7.2
 	github.com/spf13/pflag v1.0.10
 	github.com/testcontainers/testcontainers-go v0.42.0

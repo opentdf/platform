@@ -110,7 +110,11 @@ func deriveTargets(retrieved *Retrieved, namespaces []*policy.Namespace) (*Deriv
 		if action == nil {
 			continue
 		}
-		derived.Actions = append(derived.Actions, deriver.deriveAction(action))
+		item := deriver.deriveAction(action)
+		if item == nil {
+			continue
+		}
+		derived.Actions = append(derived.Actions, item)
 	}
 
 	for _, scs := range retrieved.Candidates.SubjectConditionSets {
@@ -201,10 +205,19 @@ func (d *targetDeriver) deriveObligationTrigger(trigger *policy.ObligationTrigge
 	return item, nil
 }
 
+// deriveAction returns nil when the action has no observed referencing
+// subject mapping, registered resource, or obligation trigger in scope — an
+// orphan action has no target namespace to migrate to and is silently skipped
+// rather than carried through as an empty-targets ResolvedAction.
 func (d *targetDeriver) deriveAction(action *policy.Action) *DerivedAction {
+	targets := d.targets(d.actionTargetsByID[action.GetId()])
+	if len(targets) == 0 {
+		return nil
+	}
+
 	return &DerivedAction{
 		Source:  action,
-		Targets: d.targets(d.actionTargetsByID[action.GetId()]),
+		Targets: targets,
 	}
 }
 

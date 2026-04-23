@@ -251,23 +251,59 @@ func TestDeriveTargetsSkipsNilObligationTriggerCandidate(t *testing.T) {
 func TestDeriveTargetsSkipsNilActionCandidate(t *testing.T) {
 	t.Parallel()
 
+	namespace := &policy.Namespace{Id: "ns-1", Fqn: "https://example.com"}
 	// A nil entry in Candidates.Actions is treated as a retrieval artifact and
-	// silently dropped rather than aborting the loop.
+	// silently dropped rather than aborting the loop. The surviving action is
+	// referenced by a subject mapping so it has an observable target namespace
+	// (otherwise deriveAction would also drop it as an orphan).
+	derived, err := deriveTargets(
+		&Retrieved{
+			Scopes: []Scope{ScopeActions, ScopeSubjectMappings},
+			Candidates: Candidates{
+				Actions: []*policy.Action{
+					nil,
+					{Id: "action-1", Name: "decrypt"},
+				},
+				SubjectMappings: []*policy.SubjectMapping{
+					{
+						Id: "mapping-1",
+						AttributeValue: testAttributeValue(
+							"https://example.com/attr/classification/value/secret",
+							namespace,
+						),
+						SubjectConditionSet: &policy.SubjectConditionSet{Id: "scs-1"},
+						Actions:             []*policy.Action{{Id: "action-1", Name: "decrypt"}},
+					},
+				},
+			},
+		},
+		[]*policy.Namespace{namespace},
+	)
+	require.NoError(t, err)
+	require.Len(t, derived.Actions, 1)
+	assert.Equal(t, "action-1", derived.Actions[0].Source.GetId())
+}
+
+func TestDeriveTargetsSkipsActionsWithNoReferencingDependency(t *testing.T) {
+	t.Parallel()
+
+	// An orphan action — one no in-scope subject mapping, registered resource,
+	// or obligation trigger refers to — has no derivable target namespace.
+	// Treat it as "nothing to migrate" and drop it at derive time rather than
+	// carrying it through the resolver as a zero-Results ResolvedAction.
 	derived, err := deriveTargets(
 		&Retrieved{
 			Scopes: []Scope{ScopeActions},
 			Candidates: Candidates{
 				Actions: []*policy.Action{
-					nil,
-					{Id: "action-1", Name: "decrypt"},
+					{Id: "action-orphan", Name: "decrypt"},
 				},
 			},
 		},
 		nil,
 	)
 	require.NoError(t, err)
-	require.Len(t, derived.Actions, 1)
-	assert.Equal(t, "action-1", derived.Actions[0].Source.GetId())
+	assert.Empty(t, derived.Actions)
 }
 
 func TestDeriveTargetsSkipsNilSubjectConditionSetCandidate(t *testing.T) {

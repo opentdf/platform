@@ -191,7 +191,7 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 		}()
 
 		// Register shutdown hook to stop the platform
-		scenarioContext.RegisterShutdownHook(func() error {
+		scenarioContext.RegisterPlatformShutdownHook(func() error {
 			logger.Debug("shutting down inline platform")
 			platformCancel()
 			return nil
@@ -233,7 +233,7 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 			return ctx, err
 		}
 
-		scenarioContext.RegisterShutdownHook(func() error {
+		scenarioContext.RegisterPlatformShutdownHook(func() error {
 			return platformDockerCompose.Down(ctx, tc.RemoveOrphans(true))
 		})
 	}
@@ -264,7 +264,7 @@ func attachPlatformServiceLogs(ctx context.Context, scenarioContext *PlatformSce
 		return
 	}
 
-	scenarioContext.RegisterShutdownHook(func() error {
+	scenarioContext.RegisterPlatformShutdownHook(func() error {
 		logCtx := context.WithoutCancel(ctx)
 		platformLogger.Info("capturing platform service logs", slog.String("service", "otdf"))
 		container, err := platformDockerCompose.ServiceContainer(logCtx, "otdf")

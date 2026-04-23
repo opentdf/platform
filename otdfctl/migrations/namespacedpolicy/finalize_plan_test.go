@@ -84,7 +84,7 @@ func TestFinalizePlanBuildsBindingsForDependentObjects(t *testing.T) {
 				NeedsCreate: true,
 			},
 		},
-	}, []*policy.Namespace{namespace})
+	})
 	require.NoError(t, err)
 
 	require.Len(t, plan.SubjectMappings, 1)
@@ -102,11 +102,6 @@ func TestFinalizePlanBuildsBindingsForDependentObjects(t *testing.T) {
 	require.Len(t, plan.ObligationTriggers, 1)
 	require.NotNil(t, plan.ObligationTriggers[0].Target)
 	assert.Equal(t, "action-1", plan.ObligationTriggers[0].Target.ActionSourceID)
-
-	require.Len(t, plan.Namespaces, 1)
-	assert.Equal(t, []string{"mapping-1"}, plan.Namespaces[0].SubjectMappings)
-	assert.Equal(t, []string{"resource-1"}, plan.Namespaces[0].RegisteredResources)
-	assert.Equal(t, []string{"trigger-1"}, plan.Namespaces[0].ObligationTriggers)
 }
 
 func TestFinalizePlanOmitsCreateOnlyBindingsForAlreadyMigratedTargets(t *testing.T) {
@@ -164,7 +159,7 @@ func TestFinalizePlanOmitsCreateOnlyBindingsForAlreadyMigratedTargets(t *testing
 				AlreadyMigrated: &policy.ObligationTrigger{Id: "trigger-target"},
 			},
 		},
-	}, []*policy.Namespace{namespace})
+	})
 	require.NoError(t, err)
 
 	require.Len(t, plan.SubjectMappings, 1)

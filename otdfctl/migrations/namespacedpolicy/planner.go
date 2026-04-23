@@ -132,7 +132,7 @@ func (p *Planner) Plan(ctx context.Context) (*Plan, error) {
 		}
 	}
 
-	return finalizePlan(resolved, namespaces)
+	return finalizePlan(resolved)
 }
 
 // Retrieve the candidate policy constructs for items within scope or dependent

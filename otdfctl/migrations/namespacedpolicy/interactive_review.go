@@ -68,6 +68,17 @@ func (r *HuhInteractiveReviewer) Review(ctx context.Context, resolved *ResolvedT
 	return nil
 }
 
+// ! reviewRegisteredResource prompts the reviewer to pick a target namespace for a
+// ! conflicted registered resource and rewrites planner state to match that choice.
+// !
+// ! In-place mutations:
+// !  - resource.Source          — replaced with the namespace-filtered clone
+// !  - resource.Namespace       — set to the chosen namespace
+// !  - resource.Unresolved      — cleared
+// !  - resource.AlreadyMigrated — cleared, then set if an existing match is found
+// !  - resource.NeedsCreate     — cleared, then set true if no existing match
+// !  - resolved.Actions         — appended to via ensureRegisteredResourceActionResolution
+// !  - namespaceCache           — populated/read by reviewNamespaceState
 func (r *HuhInteractiveReviewer) reviewRegisteredResource(
 	ctx context.Context,
 	resolved *ResolvedTargets,

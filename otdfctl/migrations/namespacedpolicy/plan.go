@@ -32,21 +32,11 @@ type Unresolved struct {
 
 type Plan struct {
 	Scopes               []Scope                    `json:"scopes"`
-	Namespaces           []*NamespacePlan           `json:"namespaces"`
 	Actions              []*ActionPlan              `json:"actions"`
 	SubjectConditionSets []*SubjectConditionSetPlan `json:"subject_condition_sets"`
 	SubjectMappings      []*SubjectMappingPlan      `json:"subject_mappings"`
 	RegisteredResources  []*RegisteredResourcePlan  `json:"registered_resources"`
 	ObligationTriggers   []*ObligationTriggerPlan   `json:"obligation_triggers"`
-}
-
-type NamespacePlan struct {
-	Namespace            *policy.Namespace `json:"namespace"`
-	Actions              []string          `json:"actions,omitempty"`
-	SubjectConditionSets []string          `json:"subject_condition_sets,omitempty"`
-	SubjectMappings      []string          `json:"subject_mappings,omitempty"`
-	RegisteredResources  []string          `json:"registered_resources,omitempty"`
-	ObligationTriggers   []string          `json:"obligation_triggers,omitempty"`
 }
 
 type TargetStatus string

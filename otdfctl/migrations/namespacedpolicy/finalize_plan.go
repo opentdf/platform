@@ -2,15 +2,13 @@ package namespacedpolicy
 
 import (
 	"errors"
-
-	"github.com/opentdf/platform/protocol/go/policy"
 )
 
 var ErrNilResolvedTargets = errors.New("planner resolved state is required")
 
 // finalizePlan converts the fully resolved graph into the current Plan shape.
 // This is the last planner stage before artifact building/execution wiring.
-func finalizePlan(resolved *ResolvedTargets, namespaces []*policy.Namespace) (*Plan, error) {
+func finalizePlan(resolved *ResolvedTargets) (*Plan, error) {
 	if resolved == nil {
 		return nil, ErrNilResolvedTargets
 	}
@@ -20,7 +18,7 @@ func finalizePlan(resolved *ResolvedTargets, namespaces []*policy.Namespace) (*P
 		return nil, err
 	}
 
-	finalizer := newPlanFinalizer(resolved, namespaces)
+	finalizer := newPlanFinalizer(resolved)
 
 	if scopes.requiresActions() {
 		for _, action := range resolved.Actions {
@@ -59,8 +57,6 @@ func finalizePlan(resolved *ResolvedTargets, namespaces []*policy.Namespace) (*P
 // preserves per-target status and dependency bindings for downstream creates.
 type planFinalizer struct {
 	resolved             *ResolvedTargets
-	namespaces           []*policy.Namespace
-	namespacePlansByID   map[string]*NamespacePlan
 	actions              []*ActionPlan
 	subjectConditionSets []*SubjectConditionSetPlan
 	subjectMappings      []*SubjectMappingPlan
@@ -68,35 +64,21 @@ type planFinalizer struct {
 	obligationTriggers   []*ObligationTriggerPlan
 }
 
-func newPlanFinalizer(resolved *ResolvedTargets, namespaces []*policy.Namespace) *planFinalizer {
+func newPlanFinalizer(resolved *ResolvedTargets) *planFinalizer {
 	return &planFinalizer{
-		resolved:           resolved,
-		namespaces:         namespaces,
-		namespacePlansByID: make(map[string]*NamespacePlan),
+		resolved: resolved,
 	}
 }
 
 func (f *planFinalizer) build() *Plan {
-	plan := &Plan{
+	return &Plan{
 		Scopes:               append([]Scope(nil), f.resolved.Scopes...),
-		Namespaces:           make([]*NamespacePlan, 0, len(f.namespacePlansByID)),
 		Actions:              append([]*ActionPlan(nil), f.actions...),
 		SubjectConditionSets: append([]*SubjectConditionSetPlan(nil), f.subjectConditionSets...),
 		SubjectMappings:      append([]*SubjectMappingPlan(nil), f.subjectMappings...),
 		RegisteredResources:  append([]*RegisteredResourcePlan(nil), f.registeredResources...),
 		ObligationTriggers:   append([]*ObligationTriggerPlan(nil), f.obligationTriggers...),
 	}
-
-	for _, namespace := range f.namespaces {
-		if namespace == nil || namespace.GetId() == "" {
-			continue
-		}
-		if namespacePlan, ok := f.namespacePlansByID[namespace.GetId()]; ok {
-			plan.Namespaces = append(plan.Namespaces, namespacePlan)
-		}
-	}
-
-	return plan
 }
 
 func (f *planFinalizer) addResolvedAction(item *ResolvedAction) {
@@ -119,8 +101,6 @@ func (f *planFinalizer) addResolvedAction(item *ResolvedAction) {
 			continue
 		}
 		actionPlan.Targets = append(actionPlan.Targets, target)
-
-		f.addNamespacePlacement(target.Namespace, ScopeActions, item.Source.GetId())
 	}
 
 	f.actions = append(f.actions, actionPlan)
@@ -142,8 +122,6 @@ func (f *planFinalizer) addResolvedSubjectConditionSet(item *ResolvedSubjectCond
 			continue
 		}
 		scsPlan.Targets = append(scsPlan.Targets, target)
-
-		f.addNamespacePlacement(target.Namespace, ScopeSubjectConditionSets, item.Source.GetId())
 	}
 
 	f.subjectConditionSets = append(f.subjectConditionSets, scsPlan)
@@ -159,7 +137,6 @@ func (f *planFinalizer) addResolvedSubjectMapping(item *ResolvedSubjectMapping) 
 	target := f.newSubjectMappingTarget(item)
 	if target != nil {
 		mappingPlan.Target = target
-		f.addNamespacePlacement(target.Namespace, ScopeSubjectMappings, item.Source.GetId())
 	}
 
 	f.subjectMappings = append(f.subjectMappings, mappingPlan)
@@ -178,7 +155,6 @@ func (f *planFinalizer) addResolvedRegisteredResource(item *ResolvedRegisteredRe
 	target := f.newRegisteredResourceTarget(item)
 	if target != nil {
 		resourcePlan.Target = target
-		f.addNamespacePlacement(target.Namespace, ScopeRegisteredResources, item.Source.GetId())
 	}
 
 	f.registeredResources = append(f.registeredResources, resourcePlan)
@@ -194,51 +170,9 @@ func (f *planFinalizer) addResolvedObligationTrigger(item *ResolvedObligationTri
 	target := f.newObligationTriggerTarget(item)
 	if target != nil {
 		triggerPlan.Target = target
-		f.addNamespacePlacement(target.Namespace, ScopeObligationTriggers, item.Source.GetId())
 	}
 
 	f.obligationTriggers = append(f.obligationTriggers, triggerPlan)
-}
-
-func (f *planFinalizer) namespacePlan(namespace *policy.Namespace) *NamespacePlan {
-	if namespace == nil || namespace.GetId() == "" {
-		return nil
-	}
-
-	namespacePlan, ok := f.namespacePlansByID[namespace.GetId()]
-	if ok {
-		return namespacePlan
-	}
-
-	namespacePlan = &NamespacePlan{
-		Namespace: namespace,
-	}
-	f.namespacePlansByID[namespace.GetId()] = namespacePlan
-	return namespacePlan
-}
-
-func (f *planFinalizer) addNamespacePlacement(namespace *policy.Namespace, scope Scope, sourceID string) {
-	if namespace == nil || namespace.GetId() == "" || sourceID == "" {
-		return
-	}
-
-	namespacePlan := f.namespacePlan(namespace)
-	if namespacePlan == nil {
-		return
-	}
-
-	switch scope {
-	case ScopeActions:
-		namespacePlan.Actions = appendUniqueString(namespacePlan.Actions, sourceID)
-	case ScopeSubjectConditionSets:
-		namespacePlan.SubjectConditionSets = appendUniqueString(namespacePlan.SubjectConditionSets, sourceID)
-	case ScopeSubjectMappings:
-		namespacePlan.SubjectMappings = appendUniqueString(namespacePlan.SubjectMappings, sourceID)
-	case ScopeRegisteredResources:
-		namespacePlan.RegisteredResources = appendUniqueString(namespacePlan.RegisteredResources, sourceID)
-	case ScopeObligationTriggers:
-		namespacePlan.ObligationTriggers = appendUniqueString(namespacePlan.ObligationTriggers, sourceID)
-	}
 }
 
 func (f *planFinalizer) newSubjectMappingTarget(item *ResolvedSubjectMapping) *SubjectMappingTargetPlan {
@@ -373,13 +307,4 @@ func newSubjectConditionSetTargetPlan(result *ResolvedSubjectConditionSetResult)
 	}
 
 	return target
-}
-
-func appendUniqueString(items []string, value string) []string {
-	for _, item := range items {
-		if item == value {
-			return items
-		}
-	}
-	return append(items, value)
 }

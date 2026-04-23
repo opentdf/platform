@@ -9,6 +9,31 @@
 # can pollute these migration assertions.
 # CI should run this tag in a separate invocation, then run the remaining suite
 # with this tag filtered out.
+#
+# Paths intentionally covered here:
+# - action-scope migration creates only namespaced action targets, including
+#   custom-action fanout across namespaces from RR and trigger anchors
+# - standard read action resolves to the canonical namespaced target where
+#   downstream migrations depend on it
+# - SCS migration handles single-namespace placement, cross-namespace fanout,
+#   and reuse of an already-existing canonical target
+# - subject-mapping migration rewrites action and SCS dependencies correctly
+# - registered-resource migration rewrites action bindings and reuses canonical
+#   targets when they already exist
+# - obligation-trigger migration rewrites action dependencies and reuses
+#   canonical targets when they already exist
+# - combined all-scope migration creates one target per supported object type
+# - every covered scope verifies idempotent reruns and that legacy source
+#   objects remain in place after migration
+#
+# Paths that are not in these e2e tests:
+# - planner-only or dry-run output, summary formatting, and status bucket
+#   assertions such as create/already_migrated/existing_standard/unresolved
+# - unresolved or interactive-review flows, especially conflicting registered
+#   resources and manual namespace selection
+# - unused legacy objects being skipped entirely by planning and execution
+# - subject mappings with multiple actions
+# - RRs with multiple action-attribute values
 
 load "${BATS_LIB_PATH}/bats-support/load.bash"
 load "${BATS_LIB_PATH}/bats-assert/load.bash"
@@ -1213,15 +1238,30 @@ teardown_file() {
   unset TRACKED_SCS_IDS TRACKED_SUBJECT_MAPPING_IDS TRACKED_OBLIGATION_TRIGGER_IDS
 }
 
-# Asserts action-scope migration only creates the required custom action
-# target, does not create unrelated namespaced objects as a side effect, and is
-# idempotent on rerun.
-@test "migrate namespaced-policy actions creates only required custom actions" {
+# Asserts action-scope migration can fan out one legacy custom action into
+# multiple namespaces when registered-resource and obligation-trigger anchors
+# reference it across those namespaces, does not create unrelated namespaced
+# objects as a side effect, and is idempotent on rerun.
+@test "migrate namespaced-policy actions fans out custom actions from RR and trigger anchors" {
   local custom_action_name="${TEST_PREFIX}-download"
-  local shared_scs='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-engineering"],"subject_external_selector_value":".org.name"}],"boolean_operator":1}]}]'
+  local shared_scs='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-shared"],"subject_external_selector_value":".org.name"}],"boolean_operator":1}]}]'
   local custom_action_labels=(--label "test_case=actions" --label "fixture=${TEST_PREFIX}-custom-action")
+  local rr_a_name="${TEST_PREFIX}-repo-a"
+  local rr_a_value="${TEST_PREFIX}-repo-a-main"
+  local rr_a_labels=(--label "test_case=actions" --label "fixture=${TEST_PREFIX}-rr-a")
+  local rr_a_value_labels=(--label "test_case=actions" --label "fixture=${TEST_PREFIX}-rr-a-value")
+  local obligation_b_name="${TEST_PREFIX}-notify-b"
+  local obligation_b_value="${TEST_PREFIX}-notify-b-default"
+  local trigger_b_client_id="${TEST_PREFIX}-client-b"
+  local trigger_b_labels=(--label "test_case=actions" --label "fixture=${TEST_PREFIX}-trigger-b")
   local custom_action_id
   local shared_scs_id
+  local read_anchor_mapping_id
+  local rr_a_id
+  local rr_a_value_id
+  local obligation_b_id
+  local obligation_b_value_id
+  local trigger_b_id
   local ns_a_state_before
   local ns_b_state_before
   local ns_a_state_after
@@ -1229,17 +1269,13 @@ teardown_file() {
 
   create_global_action custom_action_id "$custom_action_name" "${custom_action_labels[@]}"
   create_global_scs shared_scs_id "$shared_scs"
+  create_legacy_subject_mapping read_anchor_mapping_id "$ATTR_A_VAL_1_ID" "$GLOBAL_READ_ID" "$shared_scs_id"
+  create_global_registered_resource rr_a_id "$rr_a_name" "${rr_a_labels[@]}"
+  create_registered_resource_value rr_a_value_id "$rr_a_id" "$rr_a_value" --action-attribute-value "$custom_action_id;$ATTR_A_VAL_2_ID" "${rr_a_value_labels[@]}"
 
-  # These anchor subject mappings stay legacy/global. Their target namespace
-  # should be derived from the referenced attribute value during migration.
-  local ignored_mapping_id
-  create_legacy_subject_mapping ignored_mapping_id "$ATTR_A_VAL_1_ID" "$GLOBAL_READ_ID" "$shared_scs_id"
-  # Subject mappings remain the most direct action-scope anchor here even with
-  # dedicated registered-resource and obligation-trigger migration coverage
-  # below, because this test is focused on action placement rather than
-  # downstream object rewriting.
-  create_legacy_subject_mapping ignored_mapping_id "$ATTR_A_VAL_2_ID" "$custom_action_id" "$shared_scs_id"
-  create_legacy_subject_mapping ignored_mapping_id "$ATTR_B_VAL_1_ID" "$GLOBAL_READ_ID" "$shared_scs_id"
+  create_namespaced_obligation obligation_b_id "$NS_B_ID" "$obligation_b_name" --label "test_case=actions" --label "fixture=${TEST_PREFIX}-obligation-b"
+  create_obligation_value obligation_b_value_id "$obligation_b_id" "$obligation_b_value" --label "test_case=actions" --label "fixture=${TEST_PREFIX}-obligation-b-value"
+  create_legacy_obligation_trigger trigger_b_id "$ATTR_B_VAL_1_ID" "$custom_action_id" "$obligation_b_value_id" --client-id "$trigger_b_client_id" "${trigger_b_labels[@]}"
 
   ns_a_state_before=$(namespace_state_json "$NS_A_ID")
   ns_b_state_before=$(namespace_state_json "$NS_B_ID")
@@ -1251,18 +1287,25 @@ teardown_file() {
   ns_b_state_after=$(namespace_state_json "$NS_B_ID")
 
   assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 1 0 0 0 0
-  assert_namespace_state_delta "$ns_b_state_before" "$ns_b_state_after" 0 0 0 0 0
+  assert_namespace_state_delta "$ns_b_state_before" "$ns_b_state_after" 1 0 0 0 0
 
   assert_custom_action_created_in_namespace "$custom_action_name" "$custom_action_id" "$NS_A_ID"
-  assert_action_absent_in_namespace "$custom_action_name" "$NS_B_ID"
+  assert_custom_action_created_in_namespace "$custom_action_name" "$custom_action_id" "$NS_B_ID"
 
   assert_legacy_custom_action_still_exists "$custom_action_id" "$custom_action_name"
+  assert_legacy_scs_still_exists "$shared_scs_id"
+  assert_legacy_subject_mapping_still_exists "$ATTR_A_VAL_1_ID" "$read_anchor_mapping_id"
+  assert_legacy_registered_resource_still_exists "$rr_a_id" "$rr_a_value_id" "$rr_a_name" "$rr_a_value"
+  assert_legacy_obligation_trigger_still_exists "$trigger_b_id" "$NS_B_ID" "$ATTR_B_VAL_1_ID" "$custom_action_id" "$obligation_b_value_id" "$trigger_b_client_id"
 
   # Re-running the same migration should be idempotent. No namespace-scoped
   # counts should change on the second pass.
-  local custom_action_target_id
-  custom_action_target_id=$(action_id_by_name_in_namespace "$custom_action_name" "$NS_A_ID")
-  assert_not_equal "$custom_action_target_id" ""
+  local custom_action_ns_a_target_id
+  local custom_action_ns_b_target_id
+  custom_action_ns_a_target_id=$(action_id_by_name_in_namespace "$custom_action_name" "$NS_A_ID")
+  custom_action_ns_b_target_id=$(action_id_by_name_in_namespace "$custom_action_name" "$NS_B_ID")
+  assert_not_equal "$custom_action_ns_a_target_id" ""
+  assert_not_equal "$custom_action_ns_b_target_id" ""
 
   ns_a_state_before="$ns_a_state_after"
   ns_b_state_before="$ns_b_state_after"
@@ -1276,8 +1319,8 @@ teardown_file() {
   assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
   assert_namespace_state_delta "$ns_b_state_before" "$ns_b_state_after" 0 0 0 0 0
 
-  assert_action_already_migrated_in_namespace "$custom_action_name" "$NS_A_ID" "$custom_action_target_id"
-  assert_action_absent_in_namespace "$custom_action_name" "$NS_B_ID"
+  assert_action_already_migrated_in_namespace "$custom_action_name" "$NS_A_ID" "$custom_action_ns_a_target_id"
+  assert_action_already_migrated_in_namespace "$custom_action_name" "$NS_B_ID" "$custom_action_ns_b_target_id"
 }
 
 # Asserts SCS-scope migration creates missing namespaced SCS targets, reuses an
@@ -1355,23 +1398,24 @@ teardown_file() {
   assert_scs_absent_in_namespace "$single_namespace_scs_id" "$NS_B_ID"
 }
 
-# Asserts subject-mapping migration creates namespaced mappings, rewrites action
-# and SCS dependencies to the correct target IDs, preserves source metadata on
-# the migrated subject mappings, and is idempotent on rerun.
-@test "migrate namespaced-policy subject-mappings rewrites action and scs dependencies" {
+# Asserts subject-mapping migration creates namespaced mappings, rewrites both
+# custom-action and standard-action dependencies to the correct target IDs,
+# rewrites SCS dependencies, preserves source metadata on the migrated subject
+# mappings, and is idempotent on rerun.
+@test "migrate namespaced-policy subject-mappings rewrite custom and standard actions plus scs dependencies" {
   local custom_action_name="${TEST_PREFIX}-download"
   local sm_a_scs='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-sm-a"],"subject_external_selector_value":".org.name"}],"boolean_operator":1}]}]'
   local sm_b_scs='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-sm-b"],"subject_external_selector_value":".team.name"}],"boolean_operator":1}]}]'
   local custom_action_labels=(--label "test_case=subject-mappings" --label "fixture=${TEST_PREFIX}-custom-action")
   local sm_a_scs_labels=(--label "test_case=subject-mappings" --label "fixture=${TEST_PREFIX}-sm-a-scs")
   local sm_b_scs_labels=(--label "test_case=subject-mappings" --label "fixture=${TEST_PREFIX}-sm-b-scs")
-  local mapping_a_labels=(--label "test_case=subject-mappings" --label "fixture=${TEST_PREFIX}-mapping-a")
-  local mapping_b_labels=(--label "test_case=subject-mappings" --label "fixture=${TEST_PREFIX}-mapping-b")
+  local mapping_custom_labels=(--label "test_case=subject-mappings" --label "fixture=${TEST_PREFIX}-mapping-custom")
+  local mapping_standard_labels=(--label "test_case=subject-mappings" --label "fixture=${TEST_PREFIX}-mapping-standard")
   local custom_action_id
   local sm_a_scs_id
   local sm_b_scs_id
-  local mapping_a_id
-  local mapping_b_id
+  local mapping_custom_id
+  local mapping_standard_id
   local ns_a_state_before
   local ns_b_state_before
   local ns_a_state_after
@@ -1381,8 +1425,8 @@ teardown_file() {
   create_global_scs sm_a_scs_id "$sm_a_scs" "${sm_a_scs_labels[@]}"
   create_global_scs sm_b_scs_id "$sm_b_scs" "${sm_b_scs_labels[@]}"
 
-  create_legacy_subject_mapping mapping_a_id "$ATTR_A_VAL_1_ID" "$custom_action_id" "$sm_a_scs_id" "${mapping_a_labels[@]}"
-  create_legacy_subject_mapping mapping_b_id "$ATTR_B_VAL_1_ID" "$GLOBAL_READ_ID" "$sm_b_scs_id" "${mapping_b_labels[@]}"
+  create_legacy_subject_mapping mapping_custom_id "$ATTR_A_VAL_1_ID" "$custom_action_id" "$sm_a_scs_id" "${mapping_custom_labels[@]}"
+  create_legacy_subject_mapping mapping_standard_id "$ATTR_B_VAL_1_ID" "$GLOBAL_READ_ID" "$sm_b_scs_id" "${mapping_standard_labels[@]}"
 
   ns_a_state_before=$(namespace_state_json "$NS_A_ID")
   ns_b_state_before=$(namespace_state_json "$NS_B_ID")
@@ -1396,11 +1440,11 @@ teardown_file() {
   assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 1 1 1 0 0
   assert_namespace_state_delta "$ns_b_state_before" "$ns_b_state_after" 0 1 1 0 0
 
-  assert_subject_mapping_created_in_namespace "$mapping_a_id" "$NS_A_ID" "$ATTR_A_VAL_1_ID" "$custom_action_name" "$custom_action_id" "create" "$sm_a_scs_id"
-  assert_subject_mapping_created_in_namespace "$mapping_b_id" "$NS_B_ID" "$ATTR_B_VAL_1_ID" "read" "$GLOBAL_READ_ID" "existing_standard" "$sm_b_scs_id"
+  assert_subject_mapping_created_in_namespace "$mapping_custom_id" "$NS_A_ID" "$ATTR_A_VAL_1_ID" "$custom_action_name" "$custom_action_id" "create" "$sm_a_scs_id"
+  assert_subject_mapping_created_in_namespace "$mapping_standard_id" "$NS_B_ID" "$ATTR_B_VAL_1_ID" "read" "$GLOBAL_READ_ID" "existing_standard" "$sm_b_scs_id"
 
-  assert_legacy_subject_mapping_still_exists "$ATTR_A_VAL_1_ID" "$mapping_a_id"
-  assert_legacy_subject_mapping_still_exists "$ATTR_B_VAL_1_ID" "$mapping_b_id"
+  assert_legacy_subject_mapping_still_exists "$ATTR_A_VAL_1_ID" "$mapping_custom_id"
+  assert_legacy_subject_mapping_still_exists "$ATTR_B_VAL_1_ID" "$mapping_standard_id"
 
   # Re-running the same migration should be idempotent. The custom action,
   # migrated SCS targets, and migrated subject mappings should all resolve as
@@ -1408,13 +1452,13 @@ teardown_file() {
   local custom_action_target_id
   local sm_a_scs_target_id
   local sm_b_scs_target_id
-  local mapping_a_target_id
-  local mapping_b_target_id
+  local mapping_custom_target_id
+  local mapping_standard_target_id
   custom_action_target_id=$(action_id_by_name_in_namespace "$custom_action_name" "$NS_A_ID")
   sm_a_scs_target_id=$(scs_id_by_migrated_from "$NS_A_ID" "$sm_a_scs_id")
   sm_b_scs_target_id=$(scs_id_by_migrated_from "$NS_B_ID" "$sm_b_scs_id")
-  mapping_a_target_id=$(subject_mapping_id_by_migrated_from "$NS_A_ID" "$mapping_a_id")
-  mapping_b_target_id=$(subject_mapping_id_by_migrated_from "$NS_B_ID" "$mapping_b_id")
+  mapping_custom_target_id=$(subject_mapping_id_by_migrated_from "$NS_A_ID" "$mapping_custom_id")
+  mapping_standard_target_id=$(subject_mapping_id_by_migrated_from "$NS_B_ID" "$mapping_standard_id")
 
   ns_a_state_before="$ns_a_state_after"
   ns_b_state_before="$ns_b_state_after"
@@ -1432,8 +1476,8 @@ teardown_file() {
   assert_standard_action_resolved_in_namespace "read" "$NS_B_ID"
   assert_scs_already_migrated_in_namespace "$sm_a_scs_id" "$NS_A_ID" "$sm_a_scs_target_id"
   assert_scs_already_migrated_in_namespace "$sm_b_scs_id" "$NS_B_ID" "$sm_b_scs_target_id"
-  assert_subject_mapping_already_migrated_in_namespace "$mapping_a_id" "$NS_A_ID" "$mapping_a_target_id"
-  assert_subject_mapping_already_migrated_in_namespace "$mapping_b_id" "$NS_B_ID" "$mapping_b_target_id"
+  assert_subject_mapping_already_migrated_in_namespace "$mapping_custom_id" "$NS_A_ID" "$mapping_custom_target_id"
+  assert_subject_mapping_already_migrated_in_namespace "$mapping_standard_id" "$NS_B_ID" "$mapping_standard_target_id"
 }
 
 # Asserts registered-resource migration creates missing namespaced targets,

@@ -443,21 +443,40 @@ func isValidManifest(manifest string, intensity SchemaValidationIntensity) (bool
 	return true, nil
 }
 
-// Test connectability to the platform and validate a healthy status
-func validateHealthyPlatformConnection(platformEndpoint string, httpClient *http.Client, options []connect.ClientOption) error {
+// checkPlatformHealth issues a single gRPC Health v1 Check against the platform health endpoint.
+// ctx controls deadline, cancellation, and trace-context propagation. service selects scope:
+// "" = reachability, "all" = every registered readiness probe, otherwise a specific service name.
+func checkPlatformHealth(
+	ctx context.Context,
+	endpoint, service string,
+	httpClient *http.Client,
+	options []connect.ClientOption,
+) (healthpb.HealthCheckResponse_ServingStatus, error) {
 	healthClient := connect.NewClient[healthpb.HealthCheckRequest, healthpb.HealthCheckResponse](
 		httpClient,
-		platformEndpoint+"/grpc.health.v1.Health/Check",
+		endpoint+"/grpc.health.v1.Health/Check",
 		options...,
 	)
-	res, err := healthClient.CallUnary(
-		context.Background(),
-		connect.NewRequest(&healthpb.HealthCheckRequest{}),
-	)
-	if err != nil || res.Msg.GetStatus() != healthpb.HealthCheckResponse_SERVING {
+	res, err := healthClient.CallUnary(ctx, connect.NewRequest(&healthpb.HealthCheckRequest{Service: service}))
+	if err != nil {
+		return healthpb.HealthCheckResponse_UNKNOWN, err
+	}
+	return res.Msg.GetStatus(), nil
+}
+
+// validateHealthyPlatformConnection is the construction-time reachability gate used by New when
+// WithConnectionValidation is set. It uses context.Background() to preserve today's behavior.
+// Callers pass cfg.extraClientOptions (pre-auth) because the auth and audit interceptors are
+// assembled after this gate fires; the runtime SDK.HealthCheck method uses the post-interceptor
+// s.conn.Options instead.
+func validateHealthyPlatformConnection(platformEndpoint string, httpClient *http.Client, options []connect.ClientOption) error {
+	status, err := checkPlatformHealth(context.Background(), platformEndpoint, "", httpClient, options)
+	if err != nil {
 		return errors.Join(ErrPlatformUnreachable, err)
 	}
-
+	if status != healthpb.HealthCheckResponse_SERVING {
+		return errors.Join(ErrPlatformUnreachable, fmt.Errorf("platform health status %q", status))
+	}
 	return nil
 }
 

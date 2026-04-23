@@ -483,3 +483,30 @@ func TestSDK_HealthCheck_Serving_HappyPath(t *testing.T) {
 		assert.Equal(t, sdk.HealthStatusUnknown, status)
 	})
 }
+
+// TestSDK_HealthCheck_TrailingSlashEndpoint verifies that a platform endpoint
+// with a trailing slash does not produce a double-slash in the request URL,
+// which strict HTTP routers can reject.
+func TestSDK_HealthCheck_TrailingSlashEndpoint(t *testing.T) {
+	ts := newHealthTestServer(t, []string{"kas"}, nil)
+	defer ts.Close()
+
+	s, err := sdk.New(ts.URL+"/",
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	status, err := s.HealthCheck(ctx, "kas")
+	require.NoError(t, err)
+	assert.Equal(t, sdk.HealthStatusServing, status)
+}

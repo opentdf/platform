@@ -511,6 +511,7 @@ func (s *AttributesSuite) Test_ListAttributes_OrdersByCreatedAt_Succeeds() {
 func (s *AttributesSuite) Test_ListAttributes_SortByName_ASC() {
 	nsID := s.createSortTestNamespace("sort-name-asc")
 	ids := s.createSortTestAttributes(nsID, []string{"aaa-sort", "bbb-sort", "ccc-sort"})
+	defer s.deleteSortTestAttributes(ids)
 
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
 		Namespace: nsID,
@@ -528,6 +529,7 @@ func (s *AttributesSuite) Test_ListAttributes_SortByName_ASC() {
 func (s *AttributesSuite) Test_ListAttributes_SortByName_DESC() {
 	nsID := s.createSortTestNamespace("sort-name-desc")
 	ids := s.createSortTestAttributes(nsID, []string{"aaa-sortdesc", "bbb-sortdesc", "ccc-sortdesc"})
+	defer s.deleteSortTestAttributes(ids)
 
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
 		Namespace: nsID,
@@ -545,6 +547,7 @@ func (s *AttributesSuite) Test_ListAttributes_SortByName_DESC() {
 func (s *AttributesSuite) Test_ListAttributes_SortByCreatedAt_ASC() {
 	nsID := s.createSortTestNamespace("sort-created-asc")
 	ids := s.createSortTestAttributes(nsID, []string{"createdasc-attr-0", "createdasc-attr-1", "createdasc-attr-2"})
+	defer s.deleteSortTestAttributes(ids)
 
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
 		Namespace: nsID,
@@ -562,6 +565,7 @@ func (s *AttributesSuite) Test_ListAttributes_SortByCreatedAt_ASC() {
 func (s *AttributesSuite) Test_ListAttributes_SortByCreatedAt_DESC() {
 	nsID := s.createSortTestNamespace("sort-created-desc")
 	ids := s.createSortTestAttributes(nsID, []string{"createddesc-attr-0", "createddesc-attr-1", "createddesc-attr-2"})
+	defer s.deleteSortTestAttributes(ids)
 
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
 		Namespace: nsID,
@@ -579,6 +583,7 @@ func (s *AttributesSuite) Test_ListAttributes_SortByCreatedAt_DESC() {
 func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_DESC() {
 	nsID := s.createSortTestNamespace("sort-updated-desc")
 	ids := s.createSortTestAttributes(nsID, []string{"upd-sort-attr-0", "upd-sort-attr-1", "upd-sort-attr-2"})
+	defer s.deleteSortTestAttributes(ids)
 
 	// Update the first attribute so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -607,6 +612,7 @@ func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_DESC() {
 func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_ASC() {
 	nsID := s.createSortTestNamespace("sort-updated-asc")
 	ids := s.createSortTestAttributes(nsID, []string{"upd-sort-asc-attr-0", "upd-sort-asc-attr-1", "upd-sort-asc-attr-2"})
+	defer s.deleteSortTestAttributes(ids)
 
 	// Update the last attribute so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -635,6 +641,7 @@ func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_ASC() {
 func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedField_FallsBackToDefault() {
 	nsID := s.createSortTestNamespace("sort-unspecified")
 	ids := s.createSortTestAttributes(nsID, []string{"unspecified-sort-attr-0", "unspecified-sort-attr-1", "unspecified-sort-attr-2"})
+	defer s.deleteSortTestAttributes(ids)
 
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
 		Namespace: nsID,
@@ -1819,6 +1826,14 @@ func (s *AttributesSuite) createSortTestAttributes(nsID string, prefixes []strin
 		ids[i] = created.GetId()
 	}
 	return ids
+}
+
+// deleteSortTestAttributes deactivates attributes created by sort tests.
+func (s *AttributesSuite) deleteSortTestAttributes(ids []string) {
+	for _, id := range ids {
+		_, err := s.db.PolicyClient.DeactivateAttribute(s.ctx, id)
+		s.Require().NoError(err)
+	}
 }
 
 func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureDataAttribute {

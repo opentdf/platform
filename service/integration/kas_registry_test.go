@@ -879,6 +879,7 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer_ByIdNameUri_ReturnSameResult(
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_ASC() {
 	ids := s.createSortTestKeyAccessServers([]string{"sort-kas-created-asc-0", "sort-kas-created-asc-1", "sort-kas-created-asc-2"})
+	defer s.deleteSortTestKeyAccessServers(ids)
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -893,6 +894,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_ASC() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_DESC() {
 	ids := s.createSortTestKeyAccessServers([]string{"sort-kas-created-desc-0", "sort-kas-created-desc-1", "sort-kas-created-desc-2"})
+	defer s.deleteSortTestKeyAccessServers(ids)
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -907,6 +909,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_DESC() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_DESC() {
 	ids := s.createSortTestKeyAccessServers([]string{"sort-kas-updated-desc-0", "sort-kas-updated-desc-1", "sort-kas-updated-desc-2"})
+	defer s.deleteSortTestKeyAccessServers(ids)
 
 	time.Sleep(5 * time.Millisecond)
 	_, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, ids[0], &kasregistry.UpdateKeyAccessServerRequest{
@@ -931,6 +934,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_DESC() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_ASC() {
 	ids := s.createSortTestKeyAccessServers([]string{"sort-kas-updated-asc-0", "sort-kas-updated-asc-1", "sort-kas-updated-asc-2"})
+	defer s.deleteSortTestKeyAccessServers(ids)
 
 	time.Sleep(5 * time.Millisecond)
 	_, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, ids[2], &kasregistry.UpdateKeyAccessServerRequest{
@@ -955,6 +959,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_ASC() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_ASC() {
 	ids := s.createSortTestKeyAccessServers([]string{"aaa-kas-sort", "bbb-kas-sort", "ccc-kas-sort"})
+	defer s.deleteSortTestKeyAccessServers(ids)
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -969,6 +974,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_ASC() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_DESC() {
 	ids := s.createSortTestKeyAccessServers([]string{"aaa-kas-sortdesc", "bbb-kas-sortdesc", "ccc-kas-sortdesc"})
+	defer s.deleteSortTestKeyAccessServers(ids)
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -983,6 +989,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_DESC() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_ASC() {
 	ids := s.createSortTestKeyAccessServers([]string{"aaa-kas-uri", "bbb-kas-uri", "ccc-kas-uri"})
+	defer s.deleteSortTestKeyAccessServers(ids)
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -997,6 +1004,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_ASC() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_DESC() {
 	ids := s.createSortTestKeyAccessServers([]string{"aaa-kas-uridesc", "bbb-kas-uridesc", "ccc-kas-uridesc"})
+	defer s.deleteSortTestKeyAccessServers(ids)
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -1011,6 +1019,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_DESC() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUnspecified_FallsBackToDefault() {
 	ids := s.createSortTestKeyAccessServers([]string{"sort-kas-unspecified-0", "sort-kas-unspecified-1", "sort-kas-unspecified-2"})
+	defer s.deleteSortTestKeyAccessServers(ids)
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -1086,6 +1095,14 @@ func (s *KasRegistrySuite) createSortTestKeyAccessServers(prefixes []string) []s
 		ids[i] = created.GetId()
 	}
 	return ids
+}
+
+// deleteSortTestKeyAccessServers cleans up KAS entries created by sort tests.
+func (s *KasRegistrySuite) deleteSortTestKeyAccessServers(ids []string) {
+	for _, id := range ids {
+		_, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, id)
+		s.Require().NoError(err)
+	}
 }
 
 func TestKasRegistrySuite(t *testing.T) {

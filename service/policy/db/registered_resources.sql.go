@@ -651,7 +651,8 @@ ORDER BY
     CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN r.created_at END DESC,
     CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN r.updated_at END ASC,
     CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN r.updated_at END DESC,
-    r.created_at DESC
+    r.created_at DESC,
+    r.id ASC
 LIMIT $6
 OFFSET $5
 `
@@ -748,7 +749,8 @@ type listRegisteredResourcesRow struct {
 //	    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN r.created_at END DESC,
 //	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN r.updated_at END ASC,
 //	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN r.updated_at END DESC,
-//	    r.created_at DESC
+//	    r.created_at DESC,
+//	    r.id ASC
 //	LIMIT $6
 //	OFFSET $5
 func (q *Queries) listRegisteredResources(ctx context.Context, arg listRegisteredResourcesParams) ([]listRegisteredResourcesRow, error) {

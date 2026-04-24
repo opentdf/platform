@@ -208,7 +208,8 @@ ORDER BY
     CASE WHEN $2::text = 'created_at' AND $3::text = 'DESC' THEN ns.created_at END DESC,
     CASE WHEN $2::text = 'updated_at' AND $3::text = 'ASC' THEN ns.updated_at END ASC,
     CASE WHEN $2::text = 'updated_at' AND $3::text = 'DESC' THEN ns.updated_at END DESC,
-    ns.created_at DESC
+    ns.created_at DESC,
+    ns.id ASC
 LIMIT $5
 OFFSET $4
 `
@@ -253,7 +254,8 @@ type listNamespacesRow struct {
 //	    CASE WHEN $2::text = 'created_at' AND $3::text = 'DESC' THEN ns.created_at END DESC,
 //	    CASE WHEN $2::text = 'updated_at' AND $3::text = 'ASC' THEN ns.updated_at END ASC,
 //	    CASE WHEN $2::text = 'updated_at' AND $3::text = 'DESC' THEN ns.updated_at END DESC,
-//	    ns.created_at DESC
+//	    ns.created_at DESC,
+//	    ns.id ASC
 //	LIMIT $5
 //	OFFSET $4
 func (q *Queries) listNamespaces(ctx context.Context, arg listNamespacesParams) ([]listNamespacesRow, error) {

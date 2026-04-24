@@ -1099,7 +1099,8 @@ ORDER BY
     CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN kask.created_at END DESC,
     CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN kask.updated_at END ASC,
     CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN kask.updated_at END DESC,
-    kask.created_at DESC
+    kask.created_at DESC,
+    kask.id ASC
 LIMIT $6
 OFFSET $5
 `
@@ -1184,7 +1185,8 @@ type listKeysRow struct {
 //	    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN kask.created_at END DESC,
 //	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN kask.updated_at END ASC,
 //	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN kask.updated_at END DESC,
-//	    kask.created_at DESC
+//	    kask.created_at DESC,
+//	    kask.id ASC
 //	LIMIT $6
 //	OFFSET $5
 func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysRow, error) {

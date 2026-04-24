@@ -2,7 +2,7 @@ module github.com/opentdf/platform/service
 
 go 1.25.0
 
-toolchain go1.25.8
+toolchain go1.25.9
 
 require (
 	buf.build/go/protovalidate v1.0.0

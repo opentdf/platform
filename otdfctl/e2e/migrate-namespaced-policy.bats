@@ -10,9 +10,6 @@
 # CI should run this tag in a separate invocation, then run the remaining suite
 # with this tag filtered out.
 
-load "${BATS_LIB_PATH}/bats-support/load.bash"
-load "${BATS_LIB_PATH}/bats-assert/load.bash"
-
 run_otdfctl_migrate() {
   run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json migrate "$@"
 }
@@ -1064,6 +1061,8 @@ run_namespaced_policy_commit() {
 }
 
 setup() {
+  bats_load_library bats-support
+  bats_load_library bats-assert
   export TEST_PREFIX="${MIGRATION_TEST_PREFIX}-t${BATS_TEST_NUMBER}"
   export TRACKED_ACTION_IDS=""
   export TRACKED_REGISTERED_RESOURCE_IDS=""

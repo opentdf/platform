@@ -7,8 +7,8 @@ setup_file() {
 }
 
 setup() {
-  load "${BATS_LIB_PATH}/bats-support/load.bash"
-  load "${BATS_LIB_PATH}/bats-assert/load.bash"
+  bats_load_library bats-support
+  bats_load_library bats-assert
 
   run_otdfctl() {
     run bash -c "./otdfctl profile $*"

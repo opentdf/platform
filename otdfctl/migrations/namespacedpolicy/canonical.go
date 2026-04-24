@@ -13,6 +13,24 @@ type registeredResourceValueCanonical struct {
 	Value                 string   `json:"value"`
 	ActionAttributeValues []string `json:"action_attribute_values"`
 }
+type canonicalSubjectSetEntry struct {
+	ConditionGroups []canonicalConditionGroupEntry `json:"condition_groups"`
+}
+
+type canonicalConditionGroupEntry struct {
+	Conditions      []canonicalConditionEntry `json:"conditions"`
+	BooleanOperator int32                     `json:"boolean_operator"`
+}
+
+type canonicalConditionEntry struct {
+	Selector string   `json:"selector"`
+	Operator int32    `json:"operator"`
+	Values   []string `json:"values"`
+}
+
+type canonicalRequestContextEntry struct {
+	ClientID string `json:"client_id"`
+}
 
 func actionCanonicalEqual(source, target *policy.Action) bool {
 	s := canonicalActionName(source)
@@ -160,25 +178,6 @@ func canonicalObligationTriggerContext(contexts []*policy.RequestContext) string
 		return ""
 	}
 	return string(encoded)
-}
-
-type canonicalSubjectSetEntry struct {
-	ConditionGroups []canonicalConditionGroupEntry `json:"condition_groups"`
-}
-
-type canonicalConditionGroupEntry struct {
-	Conditions      []canonicalConditionEntry `json:"conditions"`
-	BooleanOperator int32                     `json:"boolean_operator"`
-}
-
-type canonicalConditionEntry struct {
-	Selector string   `json:"selector"`
-	Operator int32    `json:"operator"`
-	Values   []string `json:"values"`
-}
-
-type canonicalRequestContextEntry struct {
-	ClientID string `json:"client_id"`
 }
 
 func normalizeSubjectSet(ss *policy.SubjectSet) canonicalSubjectSetEntry {

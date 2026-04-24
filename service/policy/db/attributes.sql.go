@@ -776,7 +776,14 @@ WITH value_resource_mappings AS (
             )
         ) AS res_maps
     FROM resource_mappings rm
+    INNER JOIN attribute_values av ON av.id = rm.attribute_value_id
+    INNER JOIN attribute_definitions ad ON ad.id = av.attribute_definition_id
+    LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
     LEFT JOIN resource_mapping_groups rmg ON rm.group_id = rmg.id
+    WHERE
+        ($1::BOOLEAN IS NULL OR ad.active = $1) AND
+        ($2::uuid IS NULL OR ad.namespace_id = $2::uuid) AND
+        ($3::text IS NULL OR n.name = $3::text)
     GROUP BY rm.attribute_value_id
 )
 SELECT
@@ -876,7 +883,14 @@ type listAttributesDetailRow struct {
 //	            )
 //	        ) AS res_maps
 //	    FROM resource_mappings rm
+//	    INNER JOIN attribute_values av ON av.id = rm.attribute_value_id
+//	    INNER JOIN attribute_definitions ad ON ad.id = av.attribute_definition_id
+//	    LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 //	    LEFT JOIN resource_mapping_groups rmg ON rm.group_id = rmg.id
+//	    WHERE
+//	        ($1::BOOLEAN IS NULL OR ad.active = $1) AND
+//	        ($2::uuid IS NULL OR ad.namespace_id = $2::uuid) AND
+//	        ($3::text IS NULL OR n.name = $3::text)
 //	    GROUP BY rm.attribute_value_id
 //	)
 //	SELECT

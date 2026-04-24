@@ -21,7 +21,14 @@ WITH value_resource_mappings AS (
             )
         ) AS res_maps
     FROM resource_mappings rm
+    INNER JOIN attribute_values av ON av.id = rm.attribute_value_id
+    INNER JOIN attribute_definitions ad ON ad.id = av.attribute_definition_id
+    LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
     LEFT JOIN resource_mapping_groups rmg ON rm.group_id = rmg.id
+    WHERE
+        (sqlc.narg('active')::BOOLEAN IS NULL OR ad.active = sqlc.narg('active')) AND
+        (sqlc.narg('namespace_id')::uuid IS NULL OR ad.namespace_id = sqlc.narg('namespace_id')::uuid) AND
+        (sqlc.narg('namespace_name')::text IS NULL OR n.name = sqlc.narg('namespace_name')::text)
     GROUP BY rm.attribute_value_id
 )
 SELECT

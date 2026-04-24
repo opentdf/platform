@@ -2402,33 +2402,15 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortOmitted() {
 
 // Sort test helpers
 
-// createSortTestRegisteredResources creates 3 registered resources with 5ms gaps for distinct timestamps.
-// Returns the resource IDs in creation order.
-func (s *RegisteredResourcesSuite) createSortTestRegisteredResources(label string) []string {
-	const count = 3
-	ids := make([]string, count)
-	for i := range count {
+// createSortTestRegisteredResources creates registered resources with the given prefixes, adding 5ms gaps
+// between creations for distinct timestamps. Returns the resource IDs in creation order.
+func (s *RegisteredResourcesSuite) createSortTestRegisteredResources(prefixes []string) []string {
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
 		if i > 0 {
 			time.Sleep(5 * time.Millisecond)
 		}
-		name := fmt.Sprintf("%s-%d-%d", label, i, time.Now().UnixNano())
-		created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
-			NamespaceId: s.getNamespaceID("example.com"),
-			Name:        name,
-		})
-		s.Require().NoError(err)
-		ids[i] = created.GetId()
-	}
-	return ids
-}
-
-// createNamedSortTestRegisteredResources creates registered resources with specific name prefixes for name sort testing.
-// Returns the resource IDs in the same order as the prefixes.
-func (s *RegisteredResourcesSuite) createNamedSortTestRegisteredResources(prefixes []string) []string {
-	suffix := time.Now().UnixNano()
-	ids := make([]string, len(prefixes))
-	for i, prefix := range prefixes {
-		name := fmt.Sprintf("%s-%d", prefix, suffix)
+		name := fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
 		created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
 			NamespaceId: s.getNamespaceID("example.com"),
 			Name:        name,

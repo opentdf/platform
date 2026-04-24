@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -2338,6 +2339,33 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUpdatedAt_
 
 	// The updated resource (ids[2]) should appear last in ASC order
 	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortTieBreaker_CreatedAtWithIDFallback() {
+	suffix := time.Now().UnixNano()
+	ids := make([]string, 3)
+	for i := range 3 {
+		name := fmt.Sprintf("tiebreaker-rr-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+			NamespaceId: s.getNamespaceID("example.com"),
+			Name:        name,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	sorted := slices.Sorted(slices.Values(ids))
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, sorted[0], sorted[1], sorted[2])
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUnspecifiedField_DefaultsToCreatedAt() {

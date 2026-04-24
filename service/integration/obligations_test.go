@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -1896,6 +1897,30 @@ func (s *ObligationsSuite) Test_ListObligations_SortByUpdatedAt_ASC() {
 }
 
 // Sort by Unspecified (fallback to default)
+
+func (s *ObligationsSuite) Test_ListObligations_SortTieBreaker_CreatedAtWithIDFallback() {
+	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
+	suffix := time.Now().UnixNano()
+	ids := make([]string, 3)
+	for i := range 3 {
+		name := fmt.Sprintf("tiebreaker-obl-%d-%d", i, suffix)
+		obl := s.createObligation(namespaceID, name, nil)
+		ids[i] = obl.GetId()
+	}
+	defer s.deleteObligations(ids)
+
+	sorted := slices.Sorted(slices.Values(ids))
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, sorted[0], sorted[1], sorted[2])
+}
 
 func (s *ObligationsSuite) Test_ListObligations_SortByUnspecifiedField_DefaultsToCreatedAt() {
 	ids := s.createSortTestObligations([]string{"unspecified-field-obl-0", "unspecified-field-obl-1", "unspecified-field-obl-2"})

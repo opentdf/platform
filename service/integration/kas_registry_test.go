@@ -878,7 +878,7 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer_ByIdNameUri_ReturnSameResult(
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_ASC() {
-	ids := s.createSortTestKeyAccessServers("sort-kas-created-asc")
+	ids := s.createSortTestKeyAccessServers([]string{"sort-kas-created-asc-0", "sort-kas-created-asc-1", "sort-kas-created-asc-2"})
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -892,7 +892,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_ASC() {
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_DESC() {
-	ids := s.createSortTestKeyAccessServers("sort-kas-created-desc")
+	ids := s.createSortTestKeyAccessServers([]string{"sort-kas-created-desc-0", "sort-kas-created-desc-1", "sort-kas-created-desc-2"})
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -906,7 +906,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_DESC() {
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_DESC() {
-	ids := s.createSortTestKeyAccessServers("sort-kas-updated-desc")
+	ids := s.createSortTestKeyAccessServers([]string{"sort-kas-updated-desc-0", "sort-kas-updated-desc-1", "sort-kas-updated-desc-2"})
 
 	time.Sleep(5 * time.Millisecond)
 	_, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, ids[0], &kasregistry.UpdateKeyAccessServerRequest{
@@ -930,7 +930,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_DESC() {
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_ASC() {
-	ids := s.createSortTestKeyAccessServers("sort-kas-updated-asc")
+	ids := s.createSortTestKeyAccessServers([]string{"sort-kas-updated-asc-0", "sort-kas-updated-asc-1", "sort-kas-updated-asc-2"})
 
 	time.Sleep(5 * time.Millisecond)
 	_, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, ids[2], &kasregistry.UpdateKeyAccessServerRequest{
@@ -1010,7 +1010,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_DESC() {
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUnspecifiedField_DefaultsToCreatedAt() {
-	ids := s.createSortTestKeyAccessServers("unspecified-field-kas")
+	ids := s.createSortTestKeyAccessServers([]string{"unspecified-field-kas-0", "unspecified-field-kas-1", "unspecified-field-kas-2"})
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -1025,7 +1025,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUnspecifiedField_Defa
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUnspecifiedDirection_DefaultsToDESC() {
-	ids := s.createSortTestKeyAccessServers("unspecified-dir-kas")
+	ids := s.createSortTestKeyAccessServers([]string{"unspecified-dir-kas-0", "unspecified-dir-kas-1", "unspecified-dir-kas-2"})
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -1040,7 +1040,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUnspecifiedDirection_
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
-	ids := s.createSortTestKeyAccessServers("both-unspecified-kas")
+	ids := s.createSortTestKeyAccessServers([]string{"both-unspecified-kas-0", "both-unspecified-kas-1", "both-unspecified-kas-2"})
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -1055,7 +1055,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByBothUnspecified_Defau
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortOmitted() {
-	ids := s.createSortTestKeyAccessServers("sort-omitted-kas")
+	ids := s.createSortTestKeyAccessServers([]string{"sort-omitted-kas-0", "sort-omitted-kas-1", "sort-omitted-kas-2"})
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{})
 	s.Require().NoError(err)

@@ -33,6 +33,7 @@ func (e *Executor) executeRegisteredResources(ctx context.Context, plans []*Regi
 }
 
 func (e *Executor) executeRegisteredResourceTarget(ctx context.Context, plan *RegisteredResourcePlan, target *RegisteredResourceTargetPlan) error {
+	//nolint:exhaustive // Registered-resource execution only handles create and already-migrated explicitly; all other statuses are unsupported.
 	switch target.Status {
 	case TargetStatusAlreadyMigrated:
 		if target.TargetID() == "" {

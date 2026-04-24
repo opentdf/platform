@@ -954,7 +954,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_ASC() {
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_ASC() {
-	ids := s.createNamedSortTestKeyAccessServers([]string{"aaa-kas-sort", "bbb-kas-sort", "ccc-kas-sort"})
+	ids := s.createSortTestKeyAccessServers([]string{"aaa-kas-sort", "bbb-kas-sort", "ccc-kas-sort"})
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -968,7 +968,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_ASC() {
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_DESC() {
-	ids := s.createNamedSortTestKeyAccessServers([]string{"aaa-kas-sortdesc", "bbb-kas-sortdesc", "ccc-kas-sortdesc"})
+	ids := s.createSortTestKeyAccessServers([]string{"aaa-kas-sortdesc", "bbb-kas-sortdesc", "ccc-kas-sortdesc"})
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -982,7 +982,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_DESC() {
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_ASC() {
-	ids := s.createNamedSortTestKeyAccessServers([]string{"aaa-kas-uri", "bbb-kas-uri", "ccc-kas-uri"})
+	ids := s.createSortTestKeyAccessServers([]string{"aaa-kas-uri", "bbb-kas-uri", "ccc-kas-uri"})
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -996,7 +996,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_ASC() {
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_DESC() {
-	ids := s.createNamedSortTestKeyAccessServers([]string{"aaa-kas-uridesc", "bbb-kas-uridesc", "ccc-kas-uridesc"})
+	ids := s.createSortTestKeyAccessServers([]string{"aaa-kas-uridesc", "bbb-kas-uridesc", "ccc-kas-uridesc"})
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -1069,35 +1069,18 @@ func (s *KasRegistrySuite) validateKasRegistryKeys(kasr *policy.KeyAccessServer)
 	s.Len(expectedKasKeys, matchingKeysCount)
 }
 
-// createSortTestKeyAccessServers creates 3 KAS entries with 5ms gaps for distinct timestamps.
-// Returns the KAS IDs in creation order.
-func (s *KasRegistrySuite) createSortTestKeyAccessServers(label string) []string {
-	const count = 3
-	ids := make([]string, count)
-	for i := range count {
+// createSortTestKeyAccessServers creates KAS entries with the given prefixes, adding 5ms gaps
+// between creations for distinct timestamps. Returns the KAS IDs in creation order.
+func (s *KasRegistrySuite) createSortTestKeyAccessServers(prefixes []string) []string {
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
 		if i > 0 {
 			time.Sleep(5 * time.Millisecond)
 		}
-		suffix := fmt.Sprintf("%s-%d-%d", label, i, time.Now().UnixNano())
+		suffix := fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
 		created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
 			Uri:  fmt.Sprintf("https://%s.example.com", suffix),
 			Name: suffix,
-		})
-		s.Require().NoError(err)
-		ids[i] = created.GetId()
-	}
-	return ids
-}
-
-// createNamedSortTestKeyAccessServers creates KAS entries with specific name prefixes for deterministic name/uri sorting.
-// Returns the KAS IDs in prefix order.
-func (s *KasRegistrySuite) createNamedSortTestKeyAccessServers(prefixes []string) []string {
-	suffix := time.Now().UnixNano()
-	ids := make([]string, len(prefixes))
-	for i, prefix := range prefixes {
-		created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
-			Uri:  fmt.Sprintf("https://%s-%d.example.com", prefix, suffix),
-			Name: fmt.Sprintf("%s-%d", prefix, suffix),
 		})
 		s.Require().NoError(err)
 		ids[i] = created.GetId()

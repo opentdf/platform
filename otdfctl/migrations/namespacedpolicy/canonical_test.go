@@ -292,3 +292,341 @@ func protoCloneTrigger(trigger *policy.ObligationTrigger) *policy.ObligationTrig
 		Metadata:        trigger.GetMetadata(),
 	}
 }
+
+func TestActionCanonicalEqual(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		left  *policy.Action
+		right *policy.Action
+		want  bool
+	}{
+		{name: "both nil", left: nil, right: nil, want: false},
+		{name: "nil left, populated right", left: nil, right: &policy.Action{Name: "decrypt"}, want: false},
+		{name: "both blank names", left: &policy.Action{Name: " "}, right: &policy.Action{Name: ""}, want: false},
+		{name: "equal ignoring case and whitespace", left: &policy.Action{Name: " Decrypt "}, right: &policy.Action{Name: "DECRYPT"}, want: true},
+		{name: "different names", left: &policy.Action{Name: "decrypt"}, right: &policy.Action{Name: "read"}, want: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.want, actionCanonicalEqual(tc.left, tc.right))
+		})
+	}
+}
+
+func canonicalTestSCS(values ...string) *policy.SubjectConditionSet {
+	return &policy.SubjectConditionSet{
+		SubjectSets: []*policy.SubjectSet{
+			{ConditionGroups: []*policy.ConditionGroup{
+				{
+					Conditions: []*policy.Condition{
+						{
+							SubjectExternalSelectorValue: ".role",
+							Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+							SubjectExternalValues:        values,
+						},
+					},
+					BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+				},
+			}},
+		},
+	}
+}
+
+func TestSubjectConditionSetCanonicalEqualSkipsNilChildren(t *testing.T) {
+	t.Parallel()
+
+	clean := canonicalTestSCS("admin")
+	cleanGroup := clean.GetSubjectSets()[0].GetConditionGroups()[0]
+
+	noisyGroup := &policy.SubjectConditionSet{
+		SubjectSets: []*policy.SubjectSet{
+			{ConditionGroups: []*policy.ConditionGroup{nil, cleanGroup}},
+		},
+	}
+	noisyCondition := &policy.SubjectConditionSet{
+		SubjectSets: []*policy.SubjectSet{
+			{ConditionGroups: []*policy.ConditionGroup{
+				{
+					Conditions: []*policy.Condition{
+						nil,
+						{
+							SubjectExternalSelectorValue: ".role",
+							Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+							SubjectExternalValues:        []string{"admin"},
+						},
+					},
+					BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+				},
+			}},
+		},
+	}
+
+	tests := []struct {
+		name  string
+		left  *policy.SubjectConditionSet
+		right *policy.SubjectConditionSet
+		want  bool
+	}{
+		{name: "both nil", left: nil, right: nil, want: false},
+		{name: "nil condition group is skipped", left: noisyGroup, right: clean, want: true},
+		{name: "nil condition within a group is skipped", left: noisyCondition, right: clean, want: true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.want, subjectConditionSetCanonicalEqual(tc.left, tc.right))
+		})
+	}
+}
+
+func TestSubjectMappingCanonicalEqual(t *testing.T) {
+	t.Parallel()
+
+	scs := canonicalTestSCS("admin")
+	fqn := "https://example.com/attr/c/value/s"
+
+	equivalentLeft := &policy.SubjectMapping{
+		Id:                  "sm-left",
+		AttributeValue:      &policy.Value{Fqn: fqn},
+		Actions:             []*policy.Action{{Name: "Read"}, {Name: "WRITE"}},
+		SubjectConditionSet: scs,
+	}
+	equivalentRight := &policy.SubjectMapping{
+		Id:                  "sm-right",
+		AttributeValue:      &policy.Value{Fqn: " " + fqn + " "},
+		Actions:             []*policy.Action{{Name: "write"}, {Name: "read"}},
+		SubjectConditionSet: scs,
+	}
+
+	differentActionsLeft := &policy.SubjectMapping{
+		AttributeValue:      &policy.Value{Fqn: fqn},
+		Actions:             []*policy.Action{{Name: "read"}},
+		SubjectConditionSet: scs,
+	}
+	differentActionsRight := &policy.SubjectMapping{
+		AttributeValue:      &policy.Value{Fqn: fqn},
+		Actions:             []*policy.Action{{Name: "write"}},
+		SubjectConditionSet: scs,
+	}
+
+	missingFQN := &policy.SubjectMapping{
+		SubjectConditionSet: scs,
+		Actions:             []*policy.Action{{Name: "read"}},
+	}
+	missingSCS := &policy.SubjectMapping{
+		AttributeValue: &policy.Value{Fqn: fqn},
+		Actions:        []*policy.Action{{Name: "read"}},
+	}
+	complete := &policy.SubjectMapping{
+		AttributeValue:      &policy.Value{Fqn: fqn},
+		Actions:             []*policy.Action{{Name: "read"}},
+		SubjectConditionSet: scs,
+	}
+
+	tests := []struct {
+		name  string
+		left  *policy.SubjectMapping
+		right *policy.SubjectMapping
+		want  bool
+	}{
+		{name: "both nil", left: nil, right: nil, want: false},
+		{name: "equal ignoring id, case, whitespace, action order", left: equivalentLeft, right: equivalentRight, want: true},
+		{name: "different actions are not equal", left: differentActionsLeft, right: differentActionsRight, want: false},
+		{name: "missing attribute value fqn never equals", left: missingFQN, right: complete, want: false},
+		{name: "missing subject condition set never equals", left: missingSCS, right: complete, want: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.want, subjectMappingCanonicalEqual(tc.left, tc.right))
+		})
+	}
+}
+
+func TestObligationTriggerCanonicalEqual(t *testing.T) {
+	t.Parallel()
+
+	base := &policy.ObligationTrigger{
+		AttributeValue:  &policy.Value{Fqn: "https://example.com/attr/c/value/s"},
+		ObligationValue: &policy.ObligationValue{Fqn: "https://example.com/obligation/o/value/notify"},
+		Action:          &policy.Action{Name: "decrypt"},
+	}
+
+	equivalentLeft := protoCloneTrigger(base)
+	equivalentLeft.Id = "ot-left"
+	equivalentLeft.Action = &policy.Action{Name: "Decrypt"}
+	equivalentLeft.AttributeValue = &policy.Value{Fqn: " " + base.GetAttributeValue().GetFqn() + " "}
+
+	equivalentRight := protoCloneTrigger(base)
+	equivalentRight.Id = "ot-right"
+	equivalentRight.Action = &policy.Action{Name: "DECRYPT"}
+	equivalentRight.ObligationValue = &policy.ObligationValue{Fqn: " " + base.GetObligationValue().GetFqn() + " "}
+
+	diffActionLeft := protoCloneTrigger(base)
+	diffActionLeft.Action = &policy.Action{Name: "read"}
+	diffActionRight := protoCloneTrigger(base)
+	diffActionRight.Action = &policy.Action{Name: "write"}
+
+	missingAttr := protoCloneTrigger(base)
+	missingAttr.AttributeValue = &policy.Value{}
+
+	missingAction := protoCloneTrigger(base)
+	missingAction.Action = &policy.Action{}
+
+	missingObligation := protoCloneTrigger(base)
+	missingObligation.ObligationValue = &policy.ObligationValue{}
+
+	tests := []struct {
+		name  string
+		left  *policy.ObligationTrigger
+		right *policy.ObligationTrigger
+		want  bool
+	}{
+		{name: "both nil", left: nil, right: nil, want: false},
+		{name: "equal ignoring id, case, whitespace", left: equivalentLeft, right: equivalentRight, want: true},
+		{name: "different action names are not equal", left: diffActionLeft, right: diffActionRight, want: false},
+		{name: "missing attribute value fqn never equals", left: missingAttr, right: base, want: false},
+		{name: "missing action name never equals", left: missingAction, right: base, want: false},
+		{name: "missing obligation value fqn never equals", left: missingObligation, right: base, want: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.want, obligationTriggerCanonicalEqual(tc.left, tc.right))
+		})
+	}
+}
+
+func TestRegisteredResourceCanonicalEqual(t *testing.T) {
+	t.Parallel()
+
+	clean := testRegisteredResource(
+		"resource-clean",
+		"documents",
+		testRegisteredResourceValue(
+			"prod",
+			testActionAttributeValue(
+				"",
+				"read",
+				testAttributeValue("https://example.com/attr/c/value/p", nil),
+			),
+		),
+	)
+
+	withNilValuesAndAAVs := &policy.RegisteredResource{
+		Name: "documents",
+		Values: []*policy.RegisteredResourceValue{
+			nil,
+			{
+				Value: "prod",
+				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+					nil,
+					{
+						Action:         &policy.Action{Name: "read"},
+						AttributeValue: &policy.Value{Fqn: "https://example.com/attr/c/value/p"},
+					},
+				},
+			},
+		},
+	}
+
+	withSentinelAAV := &policy.RegisteredResource{
+		Name: "documents",
+		Values: []*policy.RegisteredResourceValue{
+			{
+				Value: "prod",
+				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+					{Action: &policy.Action{}, AttributeValue: &policy.Value{}},
+					{
+						Action:         &policy.Action{Name: "read"},
+						AttributeValue: &policy.Value{Fqn: "https://example.com/attr/c/value/p"},
+					},
+				},
+			},
+		},
+	}
+
+	differentValue := testRegisteredResource(
+		"resource-other",
+		"documents",
+		testRegisteredResourceValue(
+			"dev",
+			testActionAttributeValue(
+				"",
+				"read",
+				testAttributeValue("https://example.com/attr/c/value/p", nil),
+			),
+		),
+	)
+
+	differentName := testRegisteredResource(
+		"resource-renamed",
+		"reports",
+		testRegisteredResourceValue(
+			"prod",
+			testActionAttributeValue(
+				"",
+				"read",
+				testAttributeValue("https://example.com/attr/c/value/p", nil),
+			),
+		),
+	)
+
+	differentAttributeValue := testRegisteredResource(
+		"resource-other",
+		"documents",
+		testRegisteredResourceValue(
+			"prod",
+			testActionAttributeValue(
+				"",
+				"read",
+				testAttributeValue("https://example.com/attr/c/value/other", nil),
+			),
+		),
+	)
+
+	differentAction := testRegisteredResource(
+		"resource-other",
+		"documents",
+		testRegisteredResourceValue(
+			"prod",
+			testActionAttributeValue(
+				"",
+				"write",
+				testAttributeValue("https://example.com/attr/c/value/p", nil),
+			),
+		),
+	)
+
+	emptyName := &policy.RegisteredResource{Name: "   "}
+
+	tests := []struct {
+		name  string
+		left  *policy.RegisteredResource
+		right *policy.RegisteredResource
+		want  bool
+	}{
+		{name: "both nil", left: nil, right: nil, want: false},
+		{name: "nil value and nil AAV are skipped", left: withNilValuesAndAAVs, right: clean, want: true},
+		{name: "AAV with empty action and attribute is skipped", left: withSentinelAAV, right: clean, want: true},
+		{name: "different values are not equal", left: clean, right: differentValue, want: false},
+		{name: "different resource names are not equal", left: clean, right: differentName, want: false},
+		{name: "different AAV attribute value FQNs are not equal", left: clean, right: differentAttributeValue, want: false},
+		{name: "different AAV action names are not equal", left: clean, right: differentAction, want: false},
+		{name: "empty name never equals", left: emptyName, right: clean, want: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.want, registeredResourceCanonicalEqual(tc.left, tc.right))
+		})
+	}
+}

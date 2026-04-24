@@ -382,3 +382,72 @@ func stripANSI(value string) string {
 	tidyWhitespace := regexp.MustCompile(`\x1b\[[0-9;]*m`)
 	return tidyWhitespace.ReplaceAllString(value, "")
 }
+
+func TestRecordTargetStatus(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		status TargetStatus
+		want   migrationStatusCounts
+	}{
+		{
+			name:   "existing standard",
+			status: TargetStatusExistingStandard,
+			want:   migrationStatusCounts{existingStandard: 1},
+		},
+		{
+			name:   "already migrated",
+			status: TargetStatusAlreadyMigrated,
+			want:   migrationStatusCounts{alreadyMigrated: 1},
+		},
+		{
+			name:   "skipped",
+			status: TargetStatusSkipped,
+			want:   migrationStatusCounts{skipped: 1},
+		},
+		{
+			name:   "unresolved",
+			status: TargetStatusUnresolved,
+			want:   migrationStatusCounts{unresolved: 1},
+		},
+		{
+			name:   "create is a no-op (tracked elsewhere)",
+			status: TargetStatusCreate,
+			want:   migrationStatusCounts{},
+		},
+		{
+			name:   "unknown status is a no-op",
+			status: TargetStatus("wat"),
+			want:   migrationStatusCounts{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var counts migrationStatusCounts
+			recordTargetStatus(&counts, tc.status)
+			assert.Equal(t, tc.want, counts)
+		})
+	}
+}
+
+func TestRecordTargetStatusAccumulates(t *testing.T) {
+	t.Parallel()
+
+	// recordTargetStatus is called once per target during summary assembly, so
+	// counters must accumulate rather than overwrite prior calls.
+	var counts migrationStatusCounts
+	recordTargetStatus(&counts, TargetStatusSkipped)
+	recordTargetStatus(&counts, TargetStatusSkipped)
+	recordTargetStatus(&counts, TargetStatusAlreadyMigrated)
+	recordTargetStatus(&counts, TargetStatusUnresolved)
+
+	assert.Equal(t, migrationStatusCounts{
+		skipped:         2,
+		alreadyMigrated: 1,
+		unresolved:      1,
+	}, counts)
+}

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.0](https://github.com/opentdf/platform/compare/sdk/v0.16.0...sdk/v0.17.0) (2026-04-24)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.25.0 to 0.26.0 in /sdk ([#3380](https://github.com/opentdf/platform/issues/3380)) ([5e36f94](https://github.com/opentdf/platform/commit/5e36f943280fec86e2d9a4917c576b6731ed8419))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.26.0 to 0.27.0 in /sdk ([#3393](https://github.com/opentdf/platform/issues/3393)) ([7659957](https://github.com/opentdf/platform/commit/7659957ed9612397d7e72c6b309006224f3cf214))
+
 ## [0.16.0](https://github.com/opentdf/platform/compare/sdk/v0.15.0...sdk/v0.16.0) (2026-04-21)
 
 

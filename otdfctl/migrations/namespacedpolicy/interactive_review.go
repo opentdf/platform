@@ -68,6 +68,17 @@ func (r *HuhInteractiveReviewer) Review(ctx context.Context, resolved *ResolvedT
 	return nil
 }
 
+// reviewRegisteredResource prompts the reviewer to pick a target namespace for a
+// conflicted registered resource and rewrites planner state to match that choice.
+//
+// In-place mutations:
+//   - resource.Source          — replaced with the namespace-filtered clone
+//   - resource.Namespace       — set to the chosen namespace
+//   - resource.Unresolved      — cleared
+//   - resource.AlreadyMigrated — cleared, then set if an existing match is found
+//   - resource.NeedsCreate     — cleared, then set true if no existing match
+//   - resolved.Actions         — appended to via ensureRegisteredResourceActionResolution
+//   - namespaceCache           — populated/read by reviewNamespaceState
 func (r *HuhInteractiveReviewer) reviewRegisteredResource(
 	ctx context.Context,
 	resolved *ResolvedTargets,
@@ -117,20 +128,15 @@ func (r *HuhInteractiveReviewer) reviewRegisteredResource(
 	resource.AlreadyMigrated = nil
 	resource.NeedsCreate = false
 
-	existing, found, err := resolveExistingRegisteredResource(filtered, namespaceState.registeredResources)
-	switch {
-	case found:
+	if existing, found := resolveExistingRegisteredResource(filtered, namespaceState.registeredResources); found {
 		resource.AlreadyMigrated = existing
 		return nil
-	case err != nil:
-		return fmt.Errorf("registered resource %q in namespace %q: %w", filtered.GetId(), chosen.GetId(), err)
-	default:
-		resource.NeedsCreate = true
 	}
+	resource.NeedsCreate = true
 
 	for _, value := range filtered.GetValues() {
 		for _, aav := range value.GetActionAttributeValues() {
-			if err := ensureRegisteredResourceActionResolution(resolved, resource.Source.GetId(), chosen, aav.GetAction(), namespaceState.actionResolver); err != nil {
+			if err := ensureRegisteredResourceActionResolution(resolved, chosen, aav.GetAction(), namespaceState.actionResolver); err != nil {
 				return fmt.Errorf("registered resource %q: %w", resource.Source.GetId(), err)
 			}
 		}
@@ -368,10 +374,33 @@ func filterRegisteredResourceToNamespace(resource *policy.RegisteredResource, na
 	return cloned, nil
 }
 
-// ensureRegisteredResourceActionResolution may append or update entries in
-// resolved.Actions so the reviewed registered resource's action bindings remain
-// executable after namespace-specific filtering.
-func ensureRegisteredResourceActionResolution(resolved *ResolvedTargets, resourceID string, namespace *policy.Namespace, action *policy.Action, actionResolver *resolver) error {
+// ensureRegisteredResourceActionResolution is the interactive-path counterpart
+// to resolveRegisteredResourceDependencies: after the reviewer has picked a
+// target namespace for a conflicted registered resource and filtered its AAVs
+// to that namespace, this function guarantees every referenced action has a
+// corresponding ResolvedAction entry that the executor can bind to at create
+// time.
+//
+// For each action binding on the filtered resource, it:
+//  1. Validates the action reference (non-nil, non-empty id). Missing or empty
+//     ids are a hard error — without an id the executor cannot bind the AAV,
+//     so the plan must fail here rather than at create time.
+//  2. Finds or creates the matching ResolvedAction in resolved.Actions, keyed
+//     by source id. When creating, the input action is defensively cloned so
+//     later mutations to the plan do not alter the retriever's cached state.
+//  3. Skips if the action is already resolved for this namespace (duplicate
+//     AAV bindings on the same resource resolve once). Otherwise runs the
+//     standard resolveActionTargetFromExisting path — same semantics as the
+//     initial-pass resolver — and appends the result.
+//
+// Note: this function writes only to resolved.Actions; it does NOT populate
+// actionResolver.actionResultsByKey. That map is consumed only by the
+// initial-pass dependency helpers (resolveRegisteredResourceDependencies,
+// resolveObligationTriggerDependencies, resolveSubjectMappingDependencies)
+// which are skipped for interactively-resolved resources because their
+// Unresolved state causes resolveRegisteredResource to early-return. The
+// final plan is built from resolved.Actions, so the two paths converge there.
+func ensureRegisteredResourceActionResolution(resolved *ResolvedTargets, namespace *policy.Namespace, action *policy.Action, actionResolver *resolver) error {
 	if resolved == nil {
 		return ErrNilResolvedTargets
 	}
@@ -405,12 +434,6 @@ func ensureRegisteredResourceActionResolution(resolved *ResolvedTargets, resourc
 
 		item.Source = source
 	}
-
-	addActionReferenceIfMissing(item, &ActionReference{
-		Kind:      ActionReferenceKindRegisteredResource,
-		ID:        resourceID,
-		Namespace: namespace,
-	})
 
 	if resolvedActionResultForNamespace(item, namespace) != nil {
 		return nil
@@ -447,20 +470,6 @@ func resolvedActionResultForNamespace(action *ResolvedAction, namespace *policy.
 	}
 
 	return nil
-}
-
-func addActionReferenceIfMissing(action *ResolvedAction, reference *ActionReference) {
-	if action == nil || reference == nil {
-		return
-	}
-
-	for _, existing := range action.References {
-		if actionReferenceKey(existing) == actionReferenceKey(reference) {
-			return
-		}
-	}
-
-	action.References = append(action.References, reference)
 }
 
 func cloneAction(action *policy.Action) (*policy.Action, error) {

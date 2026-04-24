@@ -1946,7 +1946,7 @@ func (s *ObligationsSuite) Test_ListObligations_SortByBothUnspecified_DefaultsTo
 }
 
 func (s *ObligationsSuite) Test_ListObligations_SortOmitted() {
-	ids := s.createSortTestObligations("sort-omitted-obl")
+	ids := s.createSortTestObligations([]string{"sort-omitted-obl-0", "sort-omitted-obl-1", "sort-omitted-obl-2"})
 	defer s.deleteObligations(ids)
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{})

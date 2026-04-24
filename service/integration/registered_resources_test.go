@@ -2223,7 +2223,7 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_ByName_Ambiguous_R
 // Sort tests
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByName_ASC() {
-	ids := s.createNamedSortTestRegisteredResources([]string{"aaa-rrsort", "bbb-rrsort", "ccc-rrsort"})
+	ids := s.createSortTestRegisteredResources([]string{"aaa-rrsort", "bbb-rrsort", "ccc-rrsort"})
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
@@ -2239,7 +2239,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByName_ASC()
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByName_DESC() {
-	ids := s.createNamedSortTestRegisteredResources([]string{"aaa-rrsortdesc", "bbb-rrsortdesc", "ccc-rrsortdesc"})
+	ids := s.createSortTestRegisteredResources([]string{"aaa-rrsortdesc", "bbb-rrsortdesc", "ccc-rrsortdesc"})
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
@@ -2255,7 +2255,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByName_DESC(
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByCreatedAt_ASC() {
-	ids := s.createSortTestRegisteredResources("createdasc-rr")
+	ids := s.createSortTestRegisteredResources([]string{"createdasc-rr-0", "createdasc-rr-1", "createdasc-rr-2"})
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
@@ -2271,7 +2271,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByCreatedAt_
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByCreatedAt_DESC() {
-	ids := s.createSortTestRegisteredResources("createddesc-rr")
+	ids := s.createSortTestRegisteredResources([]string{"createddesc-rr-0", "createddesc-rr-1", "createddesc-rr-2"})
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
@@ -2287,7 +2287,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByCreatedAt_
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUpdatedAt_DESC() {
-	ids := s.createSortTestRegisteredResources("upd-sort-rr")
+	ids := s.createSortTestRegisteredResources([]string{"upd-sort-rr-0", "upd-sort-rr-1", "upd-sort-rr-2"})
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	// Update the first resource so its updated_at is the most recent
@@ -2314,7 +2314,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUpdatedAt_
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUpdatedAt_ASC() {
-	ids := s.createSortTestRegisteredResources("upd-sort-asc-rr")
+	ids := s.createSortTestRegisteredResources([]string{"upd-sort-asc-rr-0", "upd-sort-asc-rr-1", "upd-sort-asc-rr-2"})
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	// Update the last resource so its updated_at is the most recent
@@ -2341,7 +2341,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUpdatedAt_
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUnspecifiedField_DefaultsToCreatedAt() {
-	ids := s.createSortTestRegisteredResources("unspecified-field-rr")
+	ids := s.createSortTestRegisteredResources([]string{"unspecified-field-rr-0", "unspecified-field-rr-1", "unspecified-field-rr-2"})
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
@@ -2357,7 +2357,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUnspecifie
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUnspecifiedDirection_DefaultsToDESC() {
-	ids := s.createSortTestRegisteredResources("unspecified-dir-rr")
+	ids := s.createSortTestRegisteredResources([]string{"unspecified-dir-rr-0", "unspecified-dir-rr-1", "unspecified-dir-rr-2"})
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
@@ -2373,7 +2373,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUnspecifie
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
-	ids := s.createSortTestRegisteredResources("both-unspecified-rr")
+	ids := s.createSortTestRegisteredResources([]string{"both-unspecified-rr-0", "both-unspecified-rr-1", "both-unspecified-rr-2"})
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
@@ -2389,7 +2389,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByBothUnspec
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortOmitted() {
-	ids := s.createSortTestRegisteredResources("sort-omitted-rr")
+	ids := s.createSortTestRegisteredResources([]string{"sort-omitted-rr-0", "sort-omitted-rr-1", "sort-omitted-rr-2"})
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{})

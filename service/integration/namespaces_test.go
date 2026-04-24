@@ -271,7 +271,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_OrdersByCreatedAt_Succeeds() {
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByName_ASC() {
-	ids := s.createNamedSortTestNamespaces([]string{"aaa-sort", "bbb-sort", "ccc-sort"})
+	ids := s.createSortTestNamespaces([]string{"aaa-sort", "bbb-sort", "ccc-sort"})
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -287,7 +287,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByName_ASC() {
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByName_DESC() {
-	ids := s.createNamedSortTestNamespaces([]string{"aaa-sortdesc", "bbb-sortdesc", "ccc-sortdesc"})
+	ids := s.createSortTestNamespaces([]string{"aaa-sortdesc", "bbb-sortdesc", "ccc-sortdesc"})
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -303,7 +303,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByName_DESC() {
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_ASC() {
-	ids := s.createSortTestNamespaces("createdasc-ns")
+	ids := s.createSortTestNamespaces([]string{"createdasc-ns-0", "createdasc-ns-1", "createdasc-ns-2"})
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -319,7 +319,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_ASC() {
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_DESC() {
-	ids := s.createSortTestNamespaces("createddesc-ns")
+	ids := s.createSortTestNamespaces([]string{"createddesc-ns-0", "createddesc-ns-1", "createddesc-ns-2"})
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -335,7 +335,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_DESC() {
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_ASC() {
-	ids := s.createNamedSortTestNamespaces([]string{"aaa-fqnsort", "bbb-fqnsort", "ccc-fqnsort"})
+	ids := s.createSortTestNamespaces([]string{"aaa-fqnsort", "bbb-fqnsort", "ccc-fqnsort"})
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -351,7 +351,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_ASC() {
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_DESC() {
-	ids := s.createNamedSortTestNamespaces([]string{"aaa-fqnsortdesc", "bbb-fqnsortdesc", "ccc-fqnsortdesc"})
+	ids := s.createSortTestNamespaces([]string{"aaa-fqnsortdesc", "bbb-fqnsortdesc", "ccc-fqnsortdesc"})
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -367,7 +367,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_DESC() {
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_DESC() {
-	ids := s.createSortTestNamespaces("upd-sort-ns")
+	ids := s.createSortTestNamespaces([]string{"upd-sort-ns-0", "upd-sort-ns-1", "upd-sort-ns-2"})
 
 	// Update the first namespace so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -394,7 +394,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_DESC() {
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_ASC() {
-	ids := s.createSortTestNamespaces("upd-sort-asc-ns")
+	ids := s.createSortTestNamespaces([]string{"upd-sort-asc-ns-0", "upd-sort-asc-ns-1", "upd-sort-asc-ns-2"})
 
 	// Update the last namespace so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -421,7 +421,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_ASC() {
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedField_DefaultsToCreatedAt() {
-	ids := s.createSortTestNamespaces("unspecified-field-ns")
+	ids := s.createSortTestNamespaces([]string{"unspecified-sort-ns-0", "unspecified-sort-ns-1", "unspecified-sort-ns-2"})
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -437,7 +437,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedField_DefaultsToC
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedDirection_DefaultsToDESC() {
-	ids := s.createSortTestNamespaces("unspecified-dir-ns")
+	ids := s.createSortTestNamespaces([]string{"unspecified-dir-ns-0", "unspecified-dir-ns-1", "unspecified-dir-ns-2"})
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -453,7 +453,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedDirection_Default
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
-	ids := s.createSortTestNamespaces("both-unspecified-ns")
+	ids := s.createSortTestNamespaces([]string{"both-unspecified-ns-0", "both-unspecified-ns-1", "both-unspecified-ns-2"})
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -469,7 +469,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByBothUnspecified_DefaultsToCr
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortOmitted() {
-	ids := s.createSortTestNamespaces("sort-omitted-ns")
+	ids := s.createSortTestNamespaces([]string{"sort-omitted-ns-0", "sort-omitted-ns-1", "sort-omitted-ns-2"})
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -1404,30 +1404,15 @@ func (s *NamespacesSuite) Test_GetNamespace_ByIdAndName_ReturnSameResult() {
 	}
 }
 
-// createSortTestNamespaces creates 3 namespaces with 5ms gaps for distinct timestamps.
-// Returns the namespace IDs in creation order.
-func (s *NamespacesSuite) createSortTestNamespaces(label string) []string {
-	const count = 3
-	ids := make([]string, count)
-	for i := range count {
+// createSortTestNamespaces creates namespaces with the given prefixes, adding 5ms gaps
+// between creations for distinct timestamps. Returns the namespace IDs in creation order.
+func (s *NamespacesSuite) createSortTestNamespaces(prefixes []string) []string {
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
 		if i > 0 {
 			time.Sleep(5 * time.Millisecond)
 		}
-		name := fmt.Sprintf("%s-%d-%d.com", label, i, time.Now().UnixNano())
-		created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
-		s.Require().NoError(err)
-		ids[i] = created.GetId()
-	}
-	return ids
-}
-
-// createNamedSortTestNamespaces creates namespaces with specific name prefixes for name/fqn sort testing.
-// Returns the namespace IDs in the same order as the prefixes.
-func (s *NamespacesSuite) createNamedSortTestNamespaces(prefixes []string) []string {
-	suffix := time.Now().UnixNano()
-	ids := make([]string, len(prefixes))
-	for i, prefix := range prefixes {
-		name := fmt.Sprintf("%s-%d.com", prefix, suffix)
+		name := fmt.Sprintf("%s-%d.com", prefix, time.Now().UnixNano())
 		created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
 		s.Require().NoError(err)
 		ids[i] = created.GetId()

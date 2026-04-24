@@ -42,17 +42,20 @@ lib/ocrypto | lib/fixtures | lib/flattening | lib/identifier | protocol/go)
   echo "[INFO] skipping for leaf package"
   ;;
 sdk)
+  # NOTE: protocol/go is intentionally excluded. Upstream deps like protocol/go
+  # must be released and tagged before sdk can be released. Using local source
+  # here would mask unreleased protocol/go changes and allow tagging sdk against
+  # a version of protocol/go that hasn't been published yet.
   rm -f go.work go.work.sum &&
     go work init &&
     go work use ./sdk &&
-    go work use ./protocol/go &&
     go work use ./service &&
     go work use ./examples
   ;;
 service)
+  # NOTE: protocol/go is intentionally excluded (see sdk case comment above).
   rm -f go.work go.work.sum &&
     go work init &&
-    go work use ./protocol/go &&
     go work use ./service &&
     go work use ./examples
   ;;
@@ -65,7 +68,7 @@ otdfctl)
   rm -f go.work go.work.sum &&
     go work init &&
     go work use ./otdfctl &&
-    go work use ./protocol/go &&
+    # NOTE: protocol/go is intentionally excluded (see sdk case comment above).
     # service and examples are needed for release branch checks
     go work use ./service &&
     go work use ./examples

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log/slog"
+	"slices"
 	"testing"
 	"time"
 
@@ -2595,6 +2596,50 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByUpdatedAt_ASC() {
 
 	// The updated key (ids[2]) should appear last in ASC order
 	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SortTieBreaker_CreatedAtWithIDFallback() {
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "tiebreaker-kk-kas-" + uuid.NewString(),
+		Uri:  "https://tiebreaker-kk-kas-" + uuid.NewString() + ".opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+
+	suffix := time.Now().UnixNano()
+	ids := make([]string, 3)
+	for i := range 3 {
+		keyReq := kasregistry.CreateKeyRequest{
+			KasId:        kas.GetId(),
+			KeyId:        fmt.Sprintf("tiebreaker-kk-%d-%d", i, suffix),
+			KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+			KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+			PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+			PrivateKeyCtx: &policy.PrivateKeyCtx{
+				KeyId:      fmt.Sprintf("tiebreaker-kk-priv-%d-%d", i, suffix),
+				WrappedKey: keyCtx,
+			},
+		}
+		resp, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
+		s.Require().NoError(err)
+		ids[i] = resp.GetKasKey().GetKey().GetId()
+	}
+	defer s.deleteSortTestKasKeys(ids, kas.GetId())
+
+	sorted := slices.Sorted(slices.Values(ids))
+
+	listRsp, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{
+			KasId: kas.GetId(),
+		},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, sorted[0], sorted[1], sorted[2])
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_SortByUnspecifiedField_FallsBackToDefault() {

@@ -19,9 +19,14 @@ import (
 	"connectrpc.com/validate"
 	"github.com/go-chi/cors"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	attrconnect "github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
+	nsconnect "github.com/opentdf/platform/protocol/go/policy/namespaces/namespacesconnect"
+	smconnect "github.com/opentdf/platform/protocol/go/policy/subjectmapping/subjectmappingconnect"
+	unsafeconnect "github.com/opentdf/platform/protocol/go/policy/unsafe/unsafeconnect"
 	"github.com/opentdf/platform/sdk"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/enumnormalize"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
@@ -391,6 +396,37 @@ func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.H
 		err error
 		tc  *tls.Config
 	)
+
+	// Normalize shorthand enum names (e.g. "IN" → "SUBJECT_MAPPING_OPERATOR_ENUM_IN")
+	// in JSON request bodies before ConnectRPC deserializes them. Accepts the
+	// suffix after the enum type prefix, case-insensitive, while full canonical
+	// names continue to work unchanged. See: opentdf/platform#3338
+	connectRPC = enumnormalize.NewMiddleware(
+		[]enumnormalize.EnumFieldRule{
+			// Subject Mapping enums
+			{JSONField: "operator", Prefix: "SUBJECT_MAPPING_OPERATOR_ENUM_"},
+			{JSONField: "booleanOperator", Prefix: "CONDITION_BOOLEAN_TYPE_ENUM_"},
+			// Attribute rule type
+			{JSONField: "rule", Prefix: "ATTRIBUTE_RULE_TYPE_ENUM_"},
+			// Active state filter (list requests)
+			{JSONField: "state", Prefix: "ACTIVE_STATE_ENUM_"},
+		},
+		[]string{
+			// Subject Mapping RPCs
+			smconnect.SubjectMappingServiceCreateSubjectMappingProcedure,
+			smconnect.SubjectMappingServiceCreateSubjectConditionSetProcedure,
+			smconnect.SubjectMappingServiceUpdateSubjectConditionSetProcedure,
+			// Attribute RPCs (rule + state)
+			attrconnect.AttributesServiceCreateAttributeProcedure,
+			attrconnect.AttributesServiceUpdateAttributeProcedure,
+			attrconnect.AttributesServiceListAttributesProcedure,
+			attrconnect.AttributesServiceListAttributeValuesProcedure,
+			// Namespace RPCs (state)
+			nsconnect.NamespaceServiceListNamespacesProcedure,
+			// Unsafe RPCs (rule)
+			unsafeconnect.UnsafeServiceUnsafeUpdateAttributeProcedure,
+		},
+	)(connectRPC)
 
 	// Adds deprecation header to any grpcGateway responses.
 	var grpcGateway http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

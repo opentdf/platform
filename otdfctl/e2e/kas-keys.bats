@@ -38,6 +38,7 @@ setup_file() {
 setup() {
   bats_load_library bats-support
   bats_load_library bats-assert
+  load "otdfctl-utils.sh"
 }
 
 

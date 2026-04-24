@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var allRules = []EnumFieldRule{
+var allLookup = buildLookup([]EnumFieldRule{
 	{JSONField: "operator", Prefix: "SUBJECT_MAPPING_OPERATOR_ENUM_"},
 	{JSONField: "booleanOperator", Prefix: "CONDITION_BOOLEAN_TYPE_ENUM_"},
 	{JSONField: "rule", Prefix: "ATTRIBUTE_RULE_TYPE_ENUM_"},
 	{JSONField: "state", Prefix: "ACTIVE_STATE_ENUM_"},
-}
+})
 
 func TestNormalizeJSON_ShorthandOperators(t *testing.T) {
 	tests := []struct {
@@ -40,7 +40,7 @@ func TestNormalizeJSON_ShorthandOperators(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := NormalizeJSON([]byte(tt.input), allRules)
+			out, err := normalizeJSON([]byte(tt.input), allLookup)
 			require.NoError(t, err)
 			assert.JSONEq(t, tt.expected, string(out))
 		})
@@ -67,7 +67,7 @@ func TestNormalizeJSON_ShorthandBooleanOperators(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := NormalizeJSON([]byte(tt.input), allRules)
+			out, err := normalizeJSON([]byte(tt.input), allLookup)
 			require.NoError(t, err)
 			assert.JSONEq(t, tt.expected, string(out))
 		})
@@ -99,7 +99,7 @@ func TestNormalizeJSON_ShorthandAttributeRuleType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := NormalizeJSON([]byte(tt.input), allRules)
+			out, err := normalizeJSON([]byte(tt.input), allLookup)
 			require.NoError(t, err)
 			assert.JSONEq(t, tt.expected, string(out))
 		})
@@ -131,7 +131,7 @@ func TestNormalizeJSON_ShorthandActiveState(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := NormalizeJSON([]byte(tt.input), allRules)
+			out, err := normalizeJSON([]byte(tt.input), allLookup)
 			require.NoError(t, err)
 			assert.JSONEq(t, tt.expected, string(out))
 		})
@@ -163,7 +163,7 @@ func TestNormalizeJSON_CaseInsensitive(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := NormalizeJSON([]byte(tt.input), allRules)
+			out, err := normalizeJSON([]byte(tt.input), allLookup)
 			require.NoError(t, err)
 			assert.JSONEq(t, tt.expected, string(out))
 		})
@@ -187,7 +187,7 @@ func TestNormalizeJSON_FullCanonicalNamesPassThrough(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := NormalizeJSON([]byte(tt.input), allRules)
+			out, err := normalizeJSON([]byte(tt.input), allLookup)
 			require.NoError(t, err)
 			assert.JSONEq(t, tt.input, string(out))
 		})
@@ -196,7 +196,7 @@ func TestNormalizeJSON_FullCanonicalNamesPassThrough(t *testing.T) {
 
 func TestNormalizeJSON_NumericValuesPassThrough(t *testing.T) {
 	input := `{"operator":1,"booleanOperator":2}`
-	out, err := NormalizeJSON([]byte(input), allRules)
+	out, err := normalizeJSON([]byte(input), allLookup)
 	require.NoError(t, err)
 	assert.JSONEq(t, input, string(out))
 }
@@ -206,14 +206,14 @@ func TestNormalizeJSON_UnknownValuesGetPrefixed(t *testing.T) {
 	// protovalidate will reject them.
 	input := `{"operator":"FOOBAR"}`
 	expected := `{"operator":"SUBJECT_MAPPING_OPERATOR_ENUM_FOOBAR"}`
-	out, err := NormalizeJSON([]byte(input), allRules)
+	out, err := normalizeJSON([]byte(input), allLookup)
 	require.NoError(t, err)
 	assert.JSONEq(t, expected, string(out))
 }
 
 func TestNormalizeJSON_UnrelatedFieldsUntouched(t *testing.T) {
 	input := `{"name":"test","description":"IN","operator":"IN"}`
-	out, err := NormalizeJSON([]byte(input), allRules)
+	out, err := normalizeJSON([]byte(input), allLookup)
 	require.NoError(t, err)
 
 	var result map[string]any
@@ -270,7 +270,7 @@ func TestNormalizeJSON_DeeplyNestedStructure(t *testing.T) {
 		}
 	}`
 
-	out, err := NormalizeJSON([]byte(input), allRules)
+	out, err := normalizeJSON([]byte(input), allLookup)
 	require.NoError(t, err)
 	assert.JSONEq(t, expected, string(out))
 }
@@ -296,27 +296,27 @@ func TestNormalizeJSON_MixedShorthandAndFullNames(t *testing.T) {
 		}]
 	}`
 
-	out, err := NormalizeJSON([]byte(input), allRules)
+	out, err := normalizeJSON([]byte(input), allLookup)
 	require.NoError(t, err)
 	assert.JSONEq(t, expected, string(out))
 }
 
 func TestNormalizeJSON_EmptyBody(t *testing.T) {
-	out, err := NormalizeJSON([]byte{}, allRules)
+	out, err := normalizeJSON([]byte{}, allLookup)
 	require.NoError(t, err)
 	assert.Empty(t, out)
 }
 
 func TestNormalizeJSON_NoRules(t *testing.T) {
 	input := `{"operator":"IN"}`
-	out, err := NormalizeJSON([]byte(input), nil)
+	out, err := normalizeJSON([]byte(input), nil)
 	require.NoError(t, err)
 	assert.Equal(t, input, string(out))
 }
 
 func TestNormalizeJSON_InvalidJSON(t *testing.T) {
 	input := `not json at all`
-	out, err := NormalizeJSON([]byte(input), allRules)
+	out, err := normalizeJSON([]byte(input), allLookup)
 	require.NoError(t, err)
 	// Invalid JSON passes through unchanged
 	assert.Equal(t, input, string(out))

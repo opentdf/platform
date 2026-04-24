@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -765,6 +766,92 @@ func (s *AttributesSuite) Test_ListAttributes_FqnsIncluded() {
 			s.Equal(fmt.Sprintf("https://%s/attr/%s/value/%s", a.GetNamespace().GetName(), a.GetName(), v.GetValue()), v.GetFqn())
 		}
 	}
+}
+
+func (s *AttributesSuite) Test_ListAttributes_HydratesResourceMappings() {
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test__list_attributes_hydrates_resource_mappings",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"mapped", "unmapped"},
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(createdAttr)
+	s.Require().Len(createdAttr.GetValues(), 2)
+
+	mappedValueID := createdAttr.GetValues()[0].GetId()
+	unmappedValueID := createdAttr.GetValues()[1].GetId()
+
+	rmGrp, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, &resourcemapping.CreateResourceMappingGroupRequest{
+		NamespaceId: fixtureNamespaceID,
+		Name:        "list_attrs_rm_group",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(rmGrp)
+
+	grouped, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		GroupId:          rmGrp.GetId(),
+		AttributeValueId: mappedValueID,
+		Terms:            []string{"alpha", "beta"},
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(grouped)
+
+	ungrouped, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: mappedValueID,
+		Terms:            []string{"gamma"},
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(ungrouped)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: fixtureNamespaceID,
+		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+		Pagination: &policy.PageRequest{
+			Limit: s.db.LimitMax,
+		},
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(listRsp)
+
+	var found *policy.Attribute
+	for _, a := range listRsp.GetAttributes() {
+		if a.GetId() == createdAttr.GetId() {
+			found = a
+			break
+		}
+	}
+	s.Require().NotNil(found, "created attribute missing from list response")
+	s.Require().Len(found.GetValues(), 2)
+
+	valuesByID := map[string]*policy.Value{}
+	for _, v := range found.GetValues() {
+		valuesByID[v.GetId()] = v
+	}
+
+	mappedValue, ok := valuesByID[mappedValueID]
+	s.Require().True(ok)
+	rms := mappedValue.GetResourceMappings()
+	s.Require().Len(rms, 2)
+
+	byID := map[string]*policy.ResourceMapping{}
+	for _, rm := range rms {
+		byID[rm.GetId()] = rm
+	}
+	gotGrouped, ok := byID[grouped.GetId()]
+	s.Require().True(ok)
+	s.ElementsMatch([]string{"alpha", "beta"}, gotGrouped.GetTerms())
+	s.Require().NotNil(gotGrouped.GetGroup())
+	s.Equal(rmGrp.GetId(), gotGrouped.GetGroup().GetId())
+
+	gotUngrouped, ok := byID[ungrouped.GetId()]
+	s.Require().True(ok)
+	s.ElementsMatch([]string{"gamma"}, gotUngrouped.GetTerms())
+	s.Nil(gotUngrouped.GetGroup())
+
+	unmappedValue, ok := valuesByID[unmappedValueID]
+	s.Require().True(ok)
+	s.Empty(unmappedValue.GetResourceMappings())
 }
 
 func (s *AttributesSuite) Test_ListAttributes_IncludesAllowTraversal() {

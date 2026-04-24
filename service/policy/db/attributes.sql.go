@@ -758,6 +758,27 @@ func (q *Queries) listAttributesByDefOrValueFqns(ctx context.Context, arg listAt
 
 const listAttributesDetail = `-- name: listAttributesDetail :many
 
+WITH value_resource_mappings AS (
+    SELECT
+        rm.attribute_value_id AS id,
+        JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'id', rm.id,
+                'terms', rm.terms,
+                'group', CASE
+                            WHEN rm.group_id IS NULL THEN NULL
+                            ELSE JSON_BUILD_OBJECT(
+                                'id', rmg.id,
+                                'name', rmg.name,
+                                'namespace_id', rmg.namespace_id
+                            )
+                         END
+            )
+        ) AS res_maps
+    FROM resource_mappings rm
+    LEFT JOIN resource_mapping_groups rmg ON rm.group_id = rmg.id
+    GROUP BY rm.attribute_value_id
+)
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -772,7 +793,8 @@ SELECT
             'id', avt.id,
             'value', avt.value,
             'active', avt.active,
-            'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
+            'fqn', CONCAT(fqns.fqn, '/value/', avt.value),
+            'resource_mappings', avrm.res_maps
         ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
     ) FILTER (WHERE avt.id IS NOT NULL) AS values,
     fqns.fqn,
@@ -788,6 +810,7 @@ LEFT JOIN (
   FROM attribute_values av
   GROUP BY av.id
 ) avt ON avt.attribute_definition_id = ad.id
+LEFT JOIN value_resource_mappings avrm ON avt.id = avrm.id
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 WHERE
     ($1::BOOLEAN IS NULL OR ad.active = $1) AND
@@ -835,6 +858,27 @@ type listAttributesDetailRow struct {
 // ATTRIBUTES
 // --------------------------------------------------------------
 //
+//	WITH value_resource_mappings AS (
+//	    SELECT
+//	        rm.attribute_value_id AS id,
+//	        JSON_AGG(
+//	            JSON_BUILD_OBJECT(
+//	                'id', rm.id,
+//	                'terms', rm.terms,
+//	                'group', CASE
+//	                            WHEN rm.group_id IS NULL THEN NULL
+//	                            ELSE JSON_BUILD_OBJECT(
+//	                                'id', rmg.id,
+//	                                'name', rmg.name,
+//	                                'namespace_id', rmg.namespace_id
+//	                            )
+//	                         END
+//	            )
+//	        ) AS res_maps
+//	    FROM resource_mappings rm
+//	    LEFT JOIN resource_mapping_groups rmg ON rm.group_id = rmg.id
+//	    GROUP BY rm.attribute_value_id
+//	)
 //	SELECT
 //	    ad.id,
 //	    ad.name as attribute_name,
@@ -849,7 +893,8 @@ type listAttributesDetailRow struct {
 //	            'id', avt.id,
 //	            'value', avt.value,
 //	            'active', avt.active,
-//	            'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
+//	            'fqn', CONCAT(fqns.fqn, '/value/', avt.value),
+//	            'resource_mappings', avrm.res_maps
 //	        ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
 //	    ) FILTER (WHERE avt.id IS NOT NULL) AS values,
 //	    fqns.fqn,
@@ -865,6 +910,7 @@ type listAttributesDetailRow struct {
 //	  FROM attribute_values av
 //	  GROUP BY av.id
 //	) avt ON avt.attribute_definition_id = ad.id
+//	LEFT JOIN value_resource_mappings avrm ON avt.id = avrm.id
 //	LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 //	WHERE
 //	    ($1::BOOLEAN IS NULL OR ad.active = $1) AND

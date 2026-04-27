@@ -2661,8 +2661,6 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByUnspecifiedField_FallsBackToDe
 
 // Sort test helpers
 
-// createSortTestKasKeys creates 3 kas keys with 5ms gaps for distinct timestamps.
-// Returns the key IDs (UUIDs) in creation order and the parent KAS ID.
 // createSortTestKasKeys creates kas keys with the given prefixes, adding 5ms gaps
 // between creations for distinct timestamps. Returns the key IDs in creation order and the parent KAS ID.
 func (s *KasRegistryKeySuite) createSortTestKasKeys(prefixes []string) ([]string, string) {

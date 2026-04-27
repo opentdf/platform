@@ -100,8 +100,8 @@ enum SortRegisteredResourcesType {
 }
 
 message RegisteredResourcesSort {
-  SortRegisteredResourcesType field = 1;
-  policy.SortDirection direction = 2;
+  SortRegisteredResourcesType field = 1 [(buf.validate.field).enum.defined_only = true];
+  policy.SortDirection direction = 2 [(buf.validate.field).enum.defined_only = true];
 }
 
 message ListRegisteredResourcesRequest {

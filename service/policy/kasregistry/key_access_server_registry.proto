@@ -52,8 +52,8 @@ enum SortKeyAccessServersType {
 }
 
 message KeyAccessServersSort {
-  SortKeyAccessServersType field = 1;
-  policy.SortDirection direction = 2;
+  SortKeyAccessServersType field = 1 [(buf.validate.field).enum.defined_only = true];
+  policy.SortDirection direction = 2 [(buf.validate.field).enum.defined_only = true];
 }
 
 message ListKeyAccessServersRequest {
@@ -78,8 +78,8 @@ enum SortKasKeysType {
 }
 
 message KasKeysSort {
-  SortKasKeysType field = 1;
-  policy.SortDirection direction = 2;
+  SortKasKeysType field = 1 [(buf.validate.field).enum.defined_only = true];
+  policy.SortDirection direction = 2 [(buf.validate.field).enum.defined_only = true];
 }
 
 // TODO: optional validation below should be through a custom validator, which

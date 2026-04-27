@@ -22,8 +22,8 @@ enum SortObligationsType {
 }
 
 message ObligationsSort {
-    SortObligationsType field = 1;
-    policy.SortDirection direction = 2;
+    SortObligationsType field = 1 [(buf.validate.field).enum.defined_only = true];
+    policy.SortDirection direction = 2 [(buf.validate.field).enum.defined_only = true];
 }
 
 message GetObligationRequest {

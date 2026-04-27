@@ -71,8 +71,8 @@ enum SortAttributesType {
 }
 
 message AttributesSort {
-  SortAttributesType field = 1;
-  policy.SortDirection direction = 2;
+  SortAttributesType field = 1 [(buf.validate.field).enum.defined_only = true];
+  policy.SortDirection direction = 2 [(buf.validate.field).enum.defined_only = true];
 }
 
 message ListAttributesRequest {

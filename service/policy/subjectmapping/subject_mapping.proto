@@ -36,8 +36,8 @@ enum SortSubjectMappingsType {
 }
 
 message SubjectMappingsSort {
-  SortSubjectMappingsType field = 1;
-  policy.SortDirection direction = 2;
+  SortSubjectMappingsType field = 1 [(buf.validate.field).enum.defined_only = true];
+  policy.SortDirection direction = 2 [(buf.validate.field).enum.defined_only = true];
 }
 
 message ListSubjectMappingsRequest {
@@ -167,8 +167,8 @@ enum SortSubjectConditionSetsType {
 }
 
 message SubjectConditionSetsSort {
-  SortSubjectConditionSetsType field = 1;
-  policy.SortDirection direction = 2;
+  SortSubjectConditionSetsType field = 1 [(buf.validate.field).enum.defined_only = true];
+  policy.SortDirection direction = 2 [(buf.validate.field).enum.defined_only = true];
 }
 
 message ListSubjectConditionSetsRequest {

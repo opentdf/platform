@@ -600,7 +600,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_OrdersByCreatedAt_Succee
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByCreatedAt_ASC() {
-	ids := s.createSortTestSubjectMappings("sort-created-asc")
+	ids := s.createSortTestSubjectMappings([]string{"sort-created-asc-0", "sort-created-asc-1", "sort-created-asc-2"})
 	defer s.deleteSortTestSubjectMappings(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
@@ -616,7 +616,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByCreatedAt_ASC() {
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByCreatedAt_DESC() {
-	ids := s.createSortTestSubjectMappings("sort-created-desc")
+	ids := s.createSortTestSubjectMappings([]string{"sort-created-desc-0", "sort-created-desc-1", "sort-created-desc-2"})
 	defer s.deleteSortTestSubjectMappings(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
@@ -632,7 +632,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByCreatedAt_DESC() {
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUpdatedAt_DESC() {
-	ids := s.createSortTestSubjectMappings("sort-updated-desc")
+	ids := s.createSortTestSubjectMappings([]string{"sort-updated-desc-0", "sort-updated-desc-1", "sort-updated-desc-2"})
 	defer s.deleteSortTestSubjectMappings(ids)
 
 	// Update the first mapping so its updated_at is the most recent
@@ -659,7 +659,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUpdatedAt_DESC() {
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUpdatedAt_ASC() {
-	ids := s.createSortTestSubjectMappings("sort-updated-asc")
+	ids := s.createSortTestSubjectMappings([]string{"sort-updated-asc-0", "sort-updated-asc-1", "sort-updated-asc-2"})
 	defer s.deleteSortTestSubjectMappings(ids)
 
 	// Update the last mapping so its updated_at is the most recent
@@ -737,7 +737,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortTieBreaker_CreatedAt
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecifiedField_DefaultsToCreatedAt() {
-	ids := s.createSortTestSubjectMappings("unspecified-field-sm")
+	ids := s.createSortTestSubjectMappings([]string{"unspecified-field-sm-0", "unspecified-field-sm-1", "unspecified-field-sm-2"})
 	defer s.deleteSortTestSubjectMappings(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
@@ -753,7 +753,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecifiedField_D
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecifiedDirection_DefaultsToDESC() {
-	ids := s.createSortTestSubjectMappings("unspecified-dir-sm")
+	ids := s.createSortTestSubjectMappings([]string{"unspecified-dir-sm-0", "unspecified-dir-sm-1", "unspecified-dir-sm-2"})
 
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		Sort: []*subjectmapping.SubjectMappingsSort{
@@ -768,7 +768,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecifiedDirecti
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
-	ids := s.createSortTestSubjectMappings("both-unspecified-sm")
+	ids := s.createSortTestSubjectMappings([]string{"both-unspecified-sm-0", "both-unspecified-sm-1", "both-unspecified-sm-2"})
 
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		Sort: []*subjectmapping.SubjectMappingsSort{
@@ -783,7 +783,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByBothUnspecified_De
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortOmitted() {
-	ids := s.createSortTestSubjectMappings("sort-omitted-sm")
+	ids := s.createSortTestSubjectMappings([]string{"sort-omitted-sm-0", "sort-omitted-sm-1", "sort-omitted-sm-2"})
 
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{})
 	s.Require().NoError(err)
@@ -1480,7 +1480,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_NoNamespaceFilter_R
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_ASC() {
-	ids := s.createSortTestSubjectConditionSets("sort-scs-created-asc")
+	ids := s.createSortTestSubjectConditionSets([]string{"sort-scs-created-asc-0", "sort-scs-created-asc-1", "sort-scs-created-asc-2"})
 	defer s.deleteSortTestSubjectConditionSets(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
@@ -1496,7 +1496,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_ASC
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_DESC() {
-	ids := s.createSortTestSubjectConditionSets("sort-scs-created-desc")
+	ids := s.createSortTestSubjectConditionSets([]string{"sort-scs-created-desc-0", "sort-scs-created-desc-1", "sort-scs-created-desc-2"})
 	defer s.deleteSortTestSubjectConditionSets(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
@@ -1512,7 +1512,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_DES
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUpdatedAt_DESC() {
-	ids := s.createSortTestSubjectConditionSets("sort-scs-updated-desc")
+	ids := s.createSortTestSubjectConditionSets([]string{"sort-scs-updated-desc-0", "sort-scs-updated-desc-1", "sort-scs-updated-desc-2"})
 	defer s.deleteSortTestSubjectConditionSets(ids)
 
 	// Update the first SCS so its updated_at is the most recent
@@ -1539,7 +1539,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUpdatedAt_DES
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUpdatedAt_ASC() {
-	ids := s.createSortTestSubjectConditionSets("sort-scs-updated-asc")
+	ids := s.createSortTestSubjectConditionSets([]string{"sort-scs-updated-asc-0", "sort-scs-updated-asc-1", "sort-scs-updated-asc-2"})
 	defer s.deleteSortTestSubjectConditionSets(ids)
 
 	// Update the last SCS so its updated_at is the most recent
@@ -1609,7 +1609,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortTieBreaker_Crea
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecifiedField_DefaultsToCreatedAt() {
-	ids := s.createSortTestSubjectConditionSets("unspecified-field-scs")
+	ids := s.createSortTestSubjectConditionSets([]string{"unspecified-field-scs-0", "unspecified-field-scs-1", "unspecified-field-scs-2"})
 	defer s.deleteSortTestSubjectConditionSets(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
@@ -1625,7 +1625,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecifiedFi
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecifiedDirection_DefaultsToDESC() {
-	ids := s.createSortTestSubjectConditionSets("unspecified-dir-scs")
+	ids := s.createSortTestSubjectConditionSets([]string{"unspecified-dir-scs-0", "unspecified-dir-scs-1", "unspecified-dir-scs-2"})
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
 		Sort: []*subjectmapping.SubjectConditionSetsSort{
@@ -1640,7 +1640,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecifiedDi
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
-	ids := s.createSortTestSubjectConditionSets("both-unspecified-scs")
+	ids := s.createSortTestSubjectConditionSets([]string{"both-unspecified-scs-0", "both-unspecified-scs-1", "both-unspecified-scs-2"})
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
 		Sort: []*subjectmapping.SubjectConditionSetsSort{
@@ -1655,7 +1655,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByBothUnspecifi
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortOmitted() {
-	ids := s.createSortTestSubjectConditionSets("sort-omitted-scs")
+	ids := s.createSortTestSubjectConditionSets([]string{"sort-omitted-scs-0", "sort-omitted-scs-1", "sort-omitted-scs-2"})
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{})
 	s.Require().NoError(err)
@@ -2853,19 +2853,16 @@ func (s *SubjectMappingsSuite) newSCSInNamespace(nsID string) *policy.SubjectCon
 	return scs
 }
 
-// createSortTestSubjectMappings creates 3 subject mappings with 5ms gaps for distinct timestamps.
-// Returns the subject mapping IDs in creation order.
-func (s *SubjectMappingsSuite) createSortTestSubjectMappings(label string) []string {
+func (s *SubjectMappingsSuite) createSortTestSubjectMappings(prefixes []string) []string {
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
 	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
 
-	const count = 3
-	ids := make([]string, count)
-	for i := range count {
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
 		if i > 0 {
 			time.Sleep(5 * time.Millisecond)
 		}
-		email := fmt.Sprintf("%s-%d-%d@example.com", label, i, time.Now().UnixNano())
+		email := fmt.Sprintf("%s-%d@example.com", prefix, time.Now().UnixNano())
 		scs := &subjectmapping.SubjectConditionSetCreate{
 			SubjectSets: []*policy.SubjectSet{
 				{
@@ -2895,16 +2892,13 @@ func (s *SubjectMappingsSuite) createSortTestSubjectMappings(label string) []str
 	return ids
 }
 
-// createSortTestSubjectConditionSets creates 3 subject condition sets with 5ms gaps for distinct timestamps.
-// Returns the SCS IDs in creation order.
-func (s *SubjectMappingsSuite) createSortTestSubjectConditionSets(label string) []string {
-	const count = 3
-	ids := make([]string, count)
-	for i := range count {
+func (s *SubjectMappingsSuite) createSortTestSubjectConditionSets(prefixes []string) []string {
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
 		if i > 0 {
 			time.Sleep(5 * time.Millisecond)
 		}
-		val := fmt.Sprintf("%s-%d-%d", label, i, time.Now().UnixNano())
+		val := fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
 		created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
 			SubjectSets: []*policy.SubjectSet{
 				{

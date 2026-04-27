@@ -427,6 +427,7 @@ func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.H
 			// Unsafe RPCs (rule)
 			unsafeconnect.UnsafeServiceUnsafeUpdateAttributeProcedure,
 		},
+		0, // use default max body size
 	)(connectRPC)
 
 	// Apply extra HTTP middleware injected by downstream consumers (e.g. DSP).

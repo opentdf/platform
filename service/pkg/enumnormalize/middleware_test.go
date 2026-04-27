@@ -30,7 +30,7 @@ func (h *captureHandler) ServeHTTP(_ http.ResponseWriter, r *http.Request) {
 
 func TestMiddleware_NormalizesMatchingJSONRequest(t *testing.T) {
 	capture := &captureHandler{}
-	mw := NewMiddleware(testRules, []string{testPath})
+	mw := NewMiddleware(testRules, []string{testPath}, 0)
 	handler := mw(capture)
 
 	body := `{"booleanOperator":"AND","conditions":[{"operator":"IN"}]}`
@@ -44,7 +44,7 @@ func TestMiddleware_NormalizesMatchingJSONRequest(t *testing.T) {
 
 func TestMiddleware_ConnectJSONContentType(t *testing.T) {
 	capture := &captureHandler{}
-	mw := NewMiddleware(testRules, []string{testPath})
+	mw := NewMiddleware(testRules, []string{testPath}, 0)
 	handler := mw(capture)
 
 	body := `{"operator":"NOT_IN"}`
@@ -57,7 +57,7 @@ func TestMiddleware_ConnectJSONContentType(t *testing.T) {
 
 func TestMiddleware_NonMatchingPathPassesThrough(t *testing.T) {
 	capture := &captureHandler{}
-	mw := NewMiddleware(testRules, []string{testPath})
+	mw := NewMiddleware(testRules, []string{testPath}, 0)
 	handler := mw(capture)
 
 	body := `{"operator":"IN"}`
@@ -71,7 +71,7 @@ func TestMiddleware_NonMatchingPathPassesThrough(t *testing.T) {
 
 func TestMiddleware_NonJSONContentTypePassesThrough(t *testing.T) {
 	capture := &captureHandler{}
-	mw := NewMiddleware(testRules, []string{testPath})
+	mw := NewMiddleware(testRules, []string{testPath}, 0)
 	handler := mw(capture)
 
 	body := `{"operator":"IN"}`
@@ -84,7 +84,7 @@ func TestMiddleware_NonJSONContentTypePassesThrough(t *testing.T) {
 
 func TestMiddleware_CanonicalNamesUnchanged(t *testing.T) {
 	capture := &captureHandler{}
-	mw := NewMiddleware(testRules, []string{testPath})
+	mw := NewMiddleware(testRules, []string{testPath}, 0)
 	handler := mw(capture)
 
 	body := `{"operator":"SUBJECT_MAPPING_OPERATOR_ENUM_IN"}`
@@ -97,7 +97,7 @@ func TestMiddleware_CanonicalNamesUnchanged(t *testing.T) {
 
 func TestMiddleware_NumericEnumValuesPassThrough(t *testing.T) {
 	capture := &captureHandler{}
-	mw := NewMiddleware(testRules, []string{testPath})
+	mw := NewMiddleware(testRules, []string{testPath}, 0)
 	handler := mw(capture)
 
 	// Numeric enum values (e.g., 1 for IN, 3 for IN_CONTAINS) are valid
@@ -112,7 +112,7 @@ func TestMiddleware_NumericEnumValuesPassThrough(t *testing.T) {
 
 func TestMiddleware_ContentLengthUpdated(t *testing.T) {
 	capture := &captureHandler{}
-	mw := NewMiddleware(testRules, []string{testPath})
+	mw := NewMiddleware(testRules, []string{testPath}, 0)
 	handler := mw(capture)
 
 	body := `{"operator":"IN"}`
@@ -126,11 +126,11 @@ func TestMiddleware_ContentLengthUpdated(t *testing.T) {
 
 func TestMiddleware_OversizedBodySkipsNormalization(t *testing.T) {
 	capture := &captureHandler{}
-	mw := NewMiddleware(testRules, []string{testPath})
+	mw := NewMiddleware(testRules, []string{testPath}, 0)
 	handler := mw(capture)
 
-	// Build a body that exceeds maxBodySize (1 MB).
-	oversized := `{"operator":"` + strings.Repeat("A", maxBodySize) + `"}`
+	// Build a body that exceeds the default max body size (1 MB).
+	oversized := `{"operator":"` + strings.Repeat("A", defaultMaxBodySize) + `"}`
 	req := httptest.NewRequest(http.MethodPost, testPath, strings.NewReader(oversized))
 	req.Header.Set("Content-Type", "application/json")
 	handler.ServeHTTP(httptest.NewRecorder(), req)

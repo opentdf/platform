@@ -3,6 +3,7 @@ package enumnormalize
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"strings"
 )
 
@@ -69,6 +70,14 @@ func normalizeJSON(body []byte, rl ruleLookup) ([]byte, error) {
 	if err := decoder.Decode(&parsed); err != nil {
 		// Not valid JSON — pass through and let ConnectRPC surface the error.
 		return body, nil //nolint:nilerr // intentional: invalid JSON is not our error to report
+	}
+
+	// Ensure the entire body is a single JSON value. If there are trailing
+	// tokens (e.g. `{"a":1}{"b":2}`), return the original body so ConnectRPC
+	// can reject the malformed input rather than silently dropping the tail.
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		return body, nil
 	}
 
 	normalizeValue(parsed, rl, "")

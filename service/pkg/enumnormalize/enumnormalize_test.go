@@ -379,6 +379,15 @@ func TestNormalizeJSON_NoRules(t *testing.T) {
 	assert.Equal(t, input, string(out))
 }
 
+func TestNormalizeJSON_TrailingJSONTokensPassThrough(t *testing.T) {
+	// Multiple concatenated JSON values should pass through unchanged so
+	// ConnectRPC can reject the malformed input.
+	input := `{"operator":"IN"}{"extra":1}`
+	out, err := normalizeJSON([]byte(input), allLookup)
+	require.NoError(t, err)
+	assert.Equal(t, input, string(out))
+}
+
 func TestNormalizeJSON_InvalidJSON(t *testing.T) {
 	input := `not json at all`
 	out, err := normalizeJSON([]byte(input), allLookup)

@@ -10,9 +10,12 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/cucumber/godog"
 )
+
+const bddHTTPTimeout = 15 * time.Second
 
 type EnumShorthandStepDefinitions struct{}
 
@@ -31,7 +34,7 @@ func getAccessToken(ctx context.Context, tokenEndpoint string) (string, error) {
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: bddHTTPTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("token request failed: %w", err)
@@ -55,7 +58,7 @@ func getAccessToken(ctx context.Context, tokenEndpoint string) (string, error) {
 // postConnectRPC sends a raw JSON body to a ConnectRPC endpoint and returns the
 // HTTP status code and response body.
 func postConnectRPC(ctx context.Context, endpoint, rpcPath, token, jsonBody string) (int, string, error) {
-	client := &http.Client{}
+	client := &http.Client{Timeout: bddHTTPTimeout}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint+rpcPath, strings.NewReader(jsonBody))
 	if err != nil {

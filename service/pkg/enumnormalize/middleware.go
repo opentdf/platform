@@ -8,17 +8,20 @@ import (
 	"strings"
 )
 
-// maxBodySize is the upper bound on request bodies the middleware will read
-// into memory for normalization. Policy API request bodies are small (typically
-// under 10 KB); this cap prevents abuse while being generous enough for any
-// legitimate request. ConnectRPC enforces its own message size limits downstream.
-const maxBodySize = 1 << 20 // 1 MB
+// defaultMaxBodySize is the fallback upper bound on request bodies the
+// middleware will read into memory for normalization when no explicit limit is
+// provided. Policy API request bodies are small (typically under 10 KB).
+const defaultMaxBodySize = 1 << 20 // 1 MB
 
 // NewMiddleware returns HTTP middleware that normalises shorthand enum string
 // values in JSON request bodies for the given RPC paths. Requests that do not
 // match (wrong content-type, wrong path) are forwarded unchanged with zero
-// overhead.
-func NewMiddleware(rules []EnumFieldRule, paths []string) func(http.Handler) http.Handler {
+// overhead. maxBodyBytes sets the upper bound on request body size; pass 0 to
+// use the default (1 MB).
+func NewMiddleware(rules []EnumFieldRule, paths []string, maxBodyBytes int64) func(http.Handler) http.Handler {
+	if maxBodyBytes <= 0 {
+		maxBodyBytes = defaultMaxBodySize
+	}
 	lookup := buildRuleLookup(rules)
 
 	pathSet := make(map[string]struct{}, len(paths))
@@ -34,7 +37,7 @@ func NewMiddleware(rules []EnumFieldRule, paths []string) func(http.Handler) htt
 				return
 			}
 
-			body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBodySize))
+			body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBodyBytes))
 			if err != nil {
 				next.ServeHTTP(w, r)
 				return

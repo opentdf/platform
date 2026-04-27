@@ -880,13 +880,47 @@ func createTestAttributeWithRule(fqn, kasURL, kid string, rule policy.AttributeR
 	return value
 }
 
-func createTestAttributeWithAlgorithm(fqn, kasURL, kid string, alg policy.Algorithm, pem string) *policy.Value {
+func createTestAttributeWithAlgorithm(t *testing.T, fqn, kasURL, kid string, alg policy.Algorithm, pem string) *policy.Value {
+	t.Helper()
 	value := createTestAttribute(fqn, kasURL, kid)
-	if len(value.GetGrants()) > 0 && len(value.GetGrants()[0].GetKasKeys()) > 0 {
-		value.GetGrants()[0].GetKasKeys()[0].PublicKey.Algorithm = alg
-		value.GetGrants()[0].GetKasKeys()[0].PublicKey.Pem = pem
-	}
+	require.NotEmpty(t, value.GetGrants(), "createTestAttribute returned no grants")
+	require.NotEmpty(t, value.GetGrants()[0].GetKasKeys(), "createTestAttribute returned no kas keys")
+	value.GetGrants()[0].GetKasKeys()[0].PublicKey.Algorithm = alg
+	value.GetGrants()[0].GetKasKeys()[0].PublicKey.Pem = pem
 	return value
+}
+
+// hybridUnwrapForTest base64-decodes the wrappedKey from a manifest KAO and
+// unwraps it with the matching hybrid private key, asserting the recovered DEK
+// is non-empty. This proves the writer's `hybrid-wrapped` output is consumable
+// by the corresponding ocrypto unwrap path.
+func hybridUnwrapForTest(t *testing.T, ktype ocrypto.KeyType, privatePEM, wrappedKeyB64 string) {
+	t.Helper()
+	wrappedDER, err := ocrypto.Base64Decode([]byte(wrappedKeyB64))
+	require.NoError(t, err, "Base64Decode wrapped key")
+
+	switch ktype { //nolint:exhaustive // only handle hybrid types
+	case ocrypto.HybridXWingKey:
+		raw, err := ocrypto.XWingPrivateKeyFromPem([]byte(privatePEM))
+		require.NoError(t, err)
+		dek, err := ocrypto.XWingUnwrapDEK(raw, wrappedDER)
+		require.NoError(t, err, "XWingUnwrapDEK")
+		assert.NotEmpty(t, dek, "X-Wing recovered DEK")
+	case ocrypto.HybridSecp256r1MLKEM768Key:
+		raw, err := ocrypto.P256MLKEM768PrivateKeyFromPem([]byte(privatePEM))
+		require.NoError(t, err)
+		dek, err := ocrypto.P256MLKEM768UnwrapDEK(raw, wrappedDER)
+		require.NoError(t, err, "P256MLKEM768UnwrapDEK")
+		assert.NotEmpty(t, dek, "P-256+ML-KEM-768 recovered DEK")
+	case ocrypto.HybridSecp384r1MLKEM1024Key:
+		raw, err := ocrypto.P384MLKEM1024PrivateKeyFromPem([]byte(privatePEM))
+		require.NoError(t, err)
+		dek, err := ocrypto.P384MLKEM1024UnwrapDEK(raw, wrappedDER)
+		require.NoError(t, err, "P384MLKEM1024UnwrapDEK")
+		assert.NotEmpty(t, dek, "P-384+ML-KEM-1024 recovered DEK")
+	default:
+		t.Fatalf("unsupported hybrid key type for round-trip: %s", ktype)
+	}
 }
 
 func testHybridXWingFlow(t *testing.T) {
@@ -895,6 +929,8 @@ func testHybridXWingFlow(t *testing.T) {
 	keyPair, err := ocrypto.NewXWingKeyPair()
 	require.NoError(t, err)
 	pubPEM, err := keyPair.PublicKeyInPemFormat()
+	require.NoError(t, err)
+	privPEM, err := keyPair.PrivateKeyInPemFormat()
 	require.NoError(t, err)
 
 	writer, err := NewWriter(ctx)
@@ -905,6 +941,7 @@ func testHybridXWingFlow(t *testing.T) {
 
 	attributes := []*policy.Value{
 		createTestAttributeWithAlgorithm(
+			t,
 			"https://example.com/attr/Classification/value/Secret",
 			testKAS1, "xwing-kid",
 			policy.Algorithm_ALGORITHM_HPQT_XWING, pubPEM,
@@ -917,6 +954,9 @@ func testHybridXWingFlow(t *testing.T) {
 	keyAccess := result.Manifest.KeyAccessObjs[0]
 	assert.Equal(t, "hybrid-wrapped", keyAccess.KeyType)
 	assert.NotEmpty(t, keyAccess.WrappedKey)
+
+	validateManifestSchema(t, result.Manifest)
+	hybridUnwrapForTest(t, ocrypto.HybridXWingKey, privPEM, keyAccess.WrappedKey)
 }
 
 func testHybridP256MLKEM768Flow(t *testing.T) {
@@ -925,6 +965,8 @@ func testHybridP256MLKEM768Flow(t *testing.T) {
 	keyPair, err := ocrypto.NewP256MLKEM768KeyPair()
 	require.NoError(t, err)
 	pubPEM, err := keyPair.PublicKeyInPemFormat()
+	require.NoError(t, err)
+	privPEM, err := keyPair.PrivateKeyInPemFormat()
 	require.NoError(t, err)
 
 	writer, err := NewWriter(ctx)
@@ -935,6 +977,7 @@ func testHybridP256MLKEM768Flow(t *testing.T) {
 
 	attributes := []*policy.Value{
 		createTestAttributeWithAlgorithm(
+			t,
 			"https://example.com/attr/Classification/value/Secret",
 			testKAS1, "p256mlkem768-kid",
 			policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768, pubPEM,
@@ -947,6 +990,9 @@ func testHybridP256MLKEM768Flow(t *testing.T) {
 	keyAccess := result.Manifest.KeyAccessObjs[0]
 	assert.Equal(t, "hybrid-wrapped", keyAccess.KeyType)
 	assert.NotEmpty(t, keyAccess.WrappedKey)
+
+	validateManifestSchema(t, result.Manifest)
+	hybridUnwrapForTest(t, ocrypto.HybridSecp256r1MLKEM768Key, privPEM, keyAccess.WrappedKey)
 }
 
 func testHybridP384MLKEM1024Flow(t *testing.T) {
@@ -955,6 +1001,8 @@ func testHybridP384MLKEM1024Flow(t *testing.T) {
 	keyPair, err := ocrypto.NewP384MLKEM1024KeyPair()
 	require.NoError(t, err)
 	pubPEM, err := keyPair.PublicKeyInPemFormat()
+	require.NoError(t, err)
+	privPEM, err := keyPair.PrivateKeyInPemFormat()
 	require.NoError(t, err)
 
 	writer, err := NewWriter(ctx)
@@ -965,6 +1013,7 @@ func testHybridP384MLKEM1024Flow(t *testing.T) {
 
 	attributes := []*policy.Value{
 		createTestAttributeWithAlgorithm(
+			t,
 			"https://example.com/attr/Classification/value/Secret",
 			testKAS1, "p384mlkem1024-kid",
 			policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024, pubPEM,
@@ -977,6 +1026,9 @@ func testHybridP384MLKEM1024Flow(t *testing.T) {
 	keyAccess := result.Manifest.KeyAccessObjs[0]
 	assert.Equal(t, "hybrid-wrapped", keyAccess.KeyType)
 	assert.NotEmpty(t, keyAccess.WrappedKey)
+
+	validateManifestSchema(t, result.Manifest)
+	hybridUnwrapForTest(t, ocrypto.HybridSecp384r1MLKEM1024Key, privPEM, keyAccess.WrappedKey)
 }
 
 // validateManifestSchema validates a TDF manifest against the JSON schema

@@ -460,7 +460,7 @@ func BenchmarkHybridSubOps(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	salt := defaultXWingSalt()
+	salt := defaultTDFSalt()
 
 	// Pre-derive a wrap key for AES-GCM benchmarks
 	wrapKey, err := deriveXWingWrapKey(xwingSS, salt, nil)

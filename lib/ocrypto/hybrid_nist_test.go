@@ -95,6 +95,10 @@ func TestP256MLKEM768WrapUnwrapWrongKeyFails(t *testing.T) {
 
 	_, err = P256MLKEM768UnwrapDEK(wrongKeyPair.privateKey, wrapped)
 	require.Error(t, err)
+	// Wrong-key failure must surface through AES-GCM authentication, not a
+	// parse/size mismatch — ML-KEM uses implicit rejection so DecapsulateTo
+	// returns a pseudorandom secret rather than an error.
+	assert.ErrorContains(t, err, "AES-GCM decrypt failed")
 }
 
 func TestP384MLKEM1024WrapUnwrapWrongKeyFails(t *testing.T) {
@@ -108,6 +112,7 @@ func TestP384MLKEM1024WrapUnwrapWrongKeyFails(t *testing.T) {
 
 	_, err = P384MLKEM1024UnwrapDEK(wrongKeyPair.privateKey, wrapped)
 	require.Error(t, err)
+	assert.ErrorContains(t, err, "AES-GCM decrypt failed")
 }
 
 func TestHybridNISTWrappedKeyASN1RoundTrip(t *testing.T) {
@@ -207,7 +212,7 @@ func TestP256MLKEM768Encapsulate(t *testing.T) {
 	combinedSecret, hybridCt, err := P256MLKEM768Encapsulate(pubKeyRaw)
 	require.NoError(t, err)
 	assert.NotEmpty(t, combinedSecret)
-	assert.NotEmpty(t, hybridCt)
+	assert.Len(t, hybridCt, P256MLKEM768CiphertextSize)
 }
 
 func TestP384MLKEM1024Encapsulate(t *testing.T) {
@@ -223,7 +228,7 @@ func TestP384MLKEM1024Encapsulate(t *testing.T) {
 	combinedSecret, hybridCt, err := P384MLKEM1024Encapsulate(pubKeyRaw)
 	require.NoError(t, err)
 	assert.NotEmpty(t, combinedSecret)
-	assert.NotEmpty(t, hybridCt)
+	assert.Len(t, hybridCt, P384MLKEM1024CiphertextSize)
 }
 
 func TestIsHybridKeyTypeIncludesNewTypes(t *testing.T) {

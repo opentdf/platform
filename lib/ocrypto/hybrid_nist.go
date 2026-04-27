@@ -98,48 +98,6 @@ var p384mlkem1024Params = hybridNISTParams{
 	keyType:       HybridSecp384r1MLKEM1024Key,
 }
 
-// mlkemEncapsulate dispatches to crypto/mlkem based on the hybrid key type.
-func (p *hybridNISTParams) mlkemEncapsulate(pubKey []byte) ([]byte, []byte, error) {
-	switch p.keyType { //nolint:exhaustive // only NIST hybrid types
-	case HybridSecp256r1MLKEM768Key:
-		ek, err := mlkem.NewEncapsulationKey768(pubKey)
-		if err != nil {
-			return nil, nil, fmt.Errorf("mlkem768 encapsulation key: %w", err)
-		}
-		ss, ct := ek.Encapsulate()
-		return ss, ct, nil
-	case HybridSecp384r1MLKEM1024Key:
-		ek, err := mlkem.NewEncapsulationKey1024(pubKey)
-		if err != nil {
-			return nil, nil, fmt.Errorf("mlkem1024 encapsulation key: %w", err)
-		}
-		ss, ct := ek.Encapsulate()
-		return ss, ct, nil
-	default:
-		return nil, nil, fmt.Errorf("unsupported ML-KEM key type: %s", p.keyType)
-	}
-}
-
-// mlkemDecapsulate dispatches to crypto/mlkem based on the hybrid key type.
-func (p *hybridNISTParams) mlkemDecapsulate(seed, ciphertext []byte) ([]byte, error) {
-	switch p.keyType { //nolint:exhaustive // only NIST hybrid types
-	case HybridSecp256r1MLKEM768Key:
-		dk, err := mlkem.NewDecapsulationKey768(seed)
-		if err != nil {
-			return nil, fmt.Errorf("mlkem768 decapsulation key: %w", err)
-		}
-		return dk.Decapsulate(ciphertext)
-	case HybridSecp384r1MLKEM1024Key:
-		dk, err := mlkem.NewDecapsulationKey1024(seed)
-		if err != nil {
-			return nil, fmt.Errorf("mlkem1024 decapsulation key: %w", err)
-		}
-		return dk.Decapsulate(ciphertext)
-	default:
-		return nil, fmt.Errorf("unsupported ML-KEM key type: %s", p.keyType)
-	}
-}
-
 // HybridNISTKeyPair holds a hybrid EC + ML-KEM keypair as raw bytes.
 type HybridNISTKeyPair struct {
 	publicKey  []byte
@@ -301,7 +259,7 @@ func (e *HybridNISTEncryptor) Metadata() (map[string]string, error) {
 }
 
 func NewP256MLKEM768Decryptor(privateKey []byte) (*HybridNISTDecryptor, error) {
-	return NewSaltedP256MLKEM768Decryptor(privateKey, defaultXWingSalt(), nil)
+	return NewSaltedP256MLKEM768Decryptor(privateKey, defaultTDFSalt(), nil)
 }
 
 func NewSaltedP256MLKEM768Decryptor(privateKey, salt, info []byte) (*HybridNISTDecryptor, error) {
@@ -309,7 +267,7 @@ func NewSaltedP256MLKEM768Decryptor(privateKey, salt, info []byte) (*HybridNISTD
 }
 
 func NewP384MLKEM1024Decryptor(privateKey []byte) (*HybridNISTDecryptor, error) {
-	return NewSaltedP384MLKEM1024Decryptor(privateKey, defaultXWingSalt(), nil)
+	return NewSaltedP384MLKEM1024Decryptor(privateKey, defaultTDFSalt(), nil)
 }
 
 func NewSaltedP384MLKEM1024Decryptor(privateKey, salt, info []byte) (*HybridNISTDecryptor, error) {
@@ -334,19 +292,19 @@ func (d *HybridNISTDecryptor) Decrypt(data []byte) ([]byte, error) {
 }
 
 func P256MLKEM768WrapDEK(publicKeyRaw, dek []byte) ([]byte, error) {
-	return hybridNISTWrapDEK(&p256mlkem768Params, publicKeyRaw, dek, defaultXWingSalt(), nil)
+	return hybridNISTWrapDEK(&p256mlkem768Params, publicKeyRaw, dek, defaultTDFSalt(), nil)
 }
 
 func P256MLKEM768UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
-	return hybridNISTUnwrapDEK(&p256mlkem768Params, privateKeyRaw, wrappedDER, defaultXWingSalt(), nil)
+	return hybridNISTUnwrapDEK(&p256mlkem768Params, privateKeyRaw, wrappedDER, defaultTDFSalt(), nil)
 }
 
 func P384MLKEM1024WrapDEK(publicKeyRaw, dek []byte) ([]byte, error) {
-	return hybridNISTWrapDEK(&p384mlkem1024Params, publicKeyRaw, dek, defaultXWingSalt(), nil)
+	return hybridNISTWrapDEK(&p384mlkem1024Params, publicKeyRaw, dek, defaultTDFSalt(), nil)
 }
 
 func P384MLKEM1024UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
-	return hybridNISTUnwrapDEK(&p384mlkem1024Params, privateKeyRaw, wrappedDER, defaultXWingSalt(), nil)
+	return hybridNISTUnwrapDEK(&p384mlkem1024Params, privateKeyRaw, wrappedDER, defaultTDFSalt(), nil)
 }
 
 // hybridNISTEncapsulate performs hybrid encapsulation:
@@ -381,9 +339,22 @@ func hybridNISTEncapsulate(p *hybridNISTParams, publicKeyRaw []byte) ([]byte, []
 	ephemeralPub := ephemeral.PublicKey().Bytes()
 
 	// ML-KEM: encapsulate
-	mlkemSecret, mlkemCt, err := p.mlkemEncapsulate(mlkemPubBytes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("ML-KEM encapsulate failed: %w", err)
+	var mlkemSecret, mlkemCt []byte
+	switch p.keyType { //nolint:exhaustive // only NIST hybrid types
+	case HybridSecp256r1MLKEM768Key:
+		ek, ekErr := mlkem.NewEncapsulationKey768(mlkemPubBytes)
+		if ekErr != nil {
+			return nil, nil, fmt.Errorf("mlkem768 encapsulation key: %w", ekErr)
+		}
+		mlkemSecret, mlkemCt = ek.Encapsulate()
+	case HybridSecp384r1MLKEM1024Key:
+		ek, ekErr := mlkem.NewEncapsulationKey1024(mlkemPubBytes)
+		if ekErr != nil {
+			return nil, nil, fmt.Errorf("mlkem1024 encapsulation key: %w", ekErr)
+		}
+		mlkemSecret, mlkemCt = ek.Encapsulate()
+	default:
+		return nil, nil, fmt.Errorf("unsupported ML-KEM key type: %s", p.keyType)
 	}
 
 	// Combine secrets: ECDH || ML-KEM
@@ -485,8 +456,26 @@ func hybridNISTUnwrapDEK(p *hybridNISTParams, privateKeyRaw, wrappedDER, salt, i
 		return nil, fmt.Errorf("ECDH failed: %w", err)
 	}
 
-	// ML-KEM: decapsulate
-	mlkemSecret, err := p.mlkemDecapsulate(mlkemPrivBytes, mlkemCtBytes)
+	// ML-KEM: decapsulate. Implicit rejection (FIPS 203 §6.3) means a wrong-key
+	// ciphertext yields a pseudorandom shared secret without an error here;
+	// authentication is enforced by the AES-GCM decrypt below.
+	var mlkemSecret []byte
+	switch p.keyType { //nolint:exhaustive // only NIST hybrid types
+	case HybridSecp256r1MLKEM768Key:
+		dk, dkErr := mlkem.NewDecapsulationKey768(mlkemPrivBytes)
+		if dkErr != nil {
+			return nil, fmt.Errorf("mlkem768 decapsulation key: %w", dkErr)
+		}
+		mlkemSecret, err = dk.Decapsulate(mlkemCtBytes)
+	case HybridSecp384r1MLKEM1024Key:
+		dk, dkErr := mlkem.NewDecapsulationKey1024(mlkemPrivBytes)
+		if dkErr != nil {
+			return nil, fmt.Errorf("mlkem1024 decapsulation key: %w", dkErr)
+		}
+		mlkemSecret, err = dk.Decapsulate(mlkemCtBytes)
+	default:
+		return nil, fmt.Errorf("unsupported ML-KEM key type: %s", p.keyType)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("ML-KEM decapsulate failed: %w", err)
 	}
@@ -517,7 +506,7 @@ func hybridNISTUnwrapDEK(p *hybridNISTParams, privateKeyRaw, wrappedDER, salt, i
 
 func deriveHybridNISTWrapKey(combinedSecret, salt, info []byte) ([]byte, error) {
 	if len(salt) == 0 {
-		salt = defaultXWingSalt()
+		salt = defaultTDFSalt()
 	}
 
 	hkdfObj := hkdf.New(sha256.New, combinedSecret, salt, info)

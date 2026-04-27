@@ -119,7 +119,7 @@ func (e *XWingEncryptor) Metadata() (map[string]string, error) {
 }
 
 func NewXWingDecryptor(privateKey []byte) (*XWingDecryptor, error) {
-	return NewSaltedXWingDecryptor(privateKey, defaultXWingSalt(), nil)
+	return NewSaltedXWingDecryptor(privateKey, defaultTDFSalt(), nil)
 }
 
 func NewSaltedXWingDecryptor(privateKey, salt, info []byte) (*XWingDecryptor, error) {
@@ -139,11 +139,11 @@ func (d *XWingDecryptor) Decrypt(data []byte) ([]byte, error) {
 }
 
 func XWingWrapDEK(publicKeyRaw, dek []byte) ([]byte, error) {
-	return xwingWrapDEK(publicKeyRaw, dek, defaultXWingSalt(), nil)
+	return xwingWrapDEK(publicKeyRaw, dek, defaultTDFSalt(), nil)
 }
 
 func XWingUnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
-	return xwingUnwrapDEK(privateKeyRaw, wrappedDER, defaultXWingSalt(), nil)
+	return xwingUnwrapDEK(privateKeyRaw, wrappedDER, defaultTDFSalt(), nil)
 }
 
 // XWingEncapsulate performs the X-Wing KEM encapsulation, returning the shared
@@ -232,7 +232,7 @@ func xwingUnwrapDEK(privateKeyRaw, wrappedDER, salt, info []byte) ([]byte, error
 
 func deriveXWingWrapKey(sharedSecret, salt, info []byte) ([]byte, error) {
 	if len(salt) == 0 {
-		salt = defaultXWingSalt()
+		salt = defaultTDFSalt()
 	}
 
 	hkdfObj := hkdf.New(sha256.New, sharedSecret, salt, info)
@@ -242,22 +242,6 @@ func deriveXWingWrapKey(sharedSecret, salt, info []byte) ([]byte, error) {
 	}
 
 	return derivedKey, nil
-}
-
-func rawToPEM(blockType string, raw []byte, expectedSize int) (string, error) {
-	if len(raw) != expectedSize {
-		return "", fmt.Errorf("invalid %s size: got %d want %d", blockType, len(raw), expectedSize)
-	}
-
-	pemBytes := pem.EncodeToMemory(&pem.Block{
-		Type:  blockType,
-		Bytes: raw,
-	})
-	if pemBytes == nil {
-		return "", fmt.Errorf("failed to encode %s to PEM", blockType)
-	}
-
-	return string(pemBytes), nil
 }
 
 func decodeSizedPEMBlock(data []byte, blockType string, expectedSize int) ([]byte, error) {
@@ -273,17 +257,4 @@ func decodeSizedPEMBlock(data []byte, blockType string, expectedSize int) ([]byt
 	}
 
 	return append([]byte(nil), block.Bytes...), nil
-}
-
-func defaultXWingSalt() []byte {
-	digest := sha256.New()
-	digest.Write([]byte("TDF"))
-	return digest.Sum(nil)
-}
-
-func cloneOrNil(data []byte) []byte {
-	if len(data) == 0 {
-		return nil
-	}
-	return append([]byte(nil), data...)
 }

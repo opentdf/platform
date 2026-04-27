@@ -4,9 +4,17 @@
 
 This document describes the hybrid post-quantum key wrapping scheme used in TDF (Trusted Data Format) that combines classical elliptic curve cryptography (ECDH) with post-quantum lattice-based cryptography (ML-KEM) to protect data encryption keys (split keys).
 
-Two variants are supported:
-- **P-256 + ML-KEM-768** (NIST Security Level 3)
-- **P-384 + ML-KEM-1024** (NIST Security Level 5)
+Two variants are supported. Hybrid security is bounded by the stronger of the two underlying primitives against each adversary class, so the post-quantum strength is set by ML-KEM and the classical strength is set by ECDH.
+
+| Variant | Classical (ECDH) | Post-quantum (ML-KEM) |
+|---------|------------------|-----------------------|
+| P-256 + ML-KEM-768 | NIST Category 1 | NIST Category 3 |
+| P-384 + ML-KEM-1024 | NIST Category 3 | NIST Category 5 |
+
+References:
+- NIST PQC Call for Proposals §4.A.5 (category definitions): https://csrc.nist.gov/csrc/media/projects/post-quantum-cryptography/documents/call-for-proposals-final-dec-2016.pdf
+- FIPS 203 (ML-KEM-768 = Cat 3, ML-KEM-1024 = Cat 5): https://nvlpubs.nist.gov/nistpubs/fips/nist.fips.203.pdf
+- NIST SP 800-57 Part 1 Rev. 5 Table 2 (P-256 = 128-bit ≈ Cat 1, P-384 = 192-bit ≈ Cat 3): https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-57pt1r5.pdf
 
 Core implementation: `lib/ocrypto/hybrid_nist.go`
 
@@ -33,10 +41,12 @@ The KAS holds a combined private key, also a concatenation:
 [ EC Private Key (raw scalar) | ML-KEM Private Key ]
 ```
 
-| Variant | EC Private Key Size | ML-KEM Private Key Size | Combined Size | PEM Block Type |
-|---------|--------------------|-----------------------|---------------|----------------|
-| P-256 + ML-KEM-768 | 32 bytes | 2400 bytes | 2432 bytes | `SECP256R1 MLKEM768 PRIVATE KEY` |
-| P-384 + ML-KEM-1024 | 48 bytes | 3168 bytes | 3216 bytes | `SECP384R1 MLKEM1024 PRIVATE KEY` |
+The ML-KEM portion is stored in the 64-byte seed form (`d || z`) defined by FIPS 203 §7.1, not the expanded ~2400/3168-byte decapsulation key. The seed is what `crypto/mlkem` (Go 1.25) emits via `Bytes()` and consumes via `NewDecapsulationKey768` / `NewDecapsulationKey1024`. The constant `mlkemSeedSize = 64` in `hybrid_nist.go` and the size checks in `decodeSizedPEMBlock` enforce this layout.
+
+| Variant | EC Private Key Size | ML-KEM Seed Size | Combined Size | PEM Block Type |
+|---------|--------------------|------------------|---------------|----------------|
+| P-256 + ML-KEM-768 | 32 bytes | 64 bytes | 96 bytes | `SECP256R1 MLKEM768 PRIVATE KEY` |
+| P-384 + ML-KEM-1024 | 48 bytes | 64 bytes | 112 bytes | `SECP384R1 MLKEM1024 PRIVATE KEY` |
 
 ### How the Client Obtains the Public Key
 

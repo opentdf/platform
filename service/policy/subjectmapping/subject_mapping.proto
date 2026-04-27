@@ -56,6 +56,8 @@ message ListSubjectMappingsRequest {
   policy.PageRequest pagination = 10;
 
   // Optional - CONSTRAINT: max 1 item
+  // When sort is provided and sort.direction is UNSPECIFIED, direction defaults to ASC.
+  // When sort is omitted or sort.field is UNSPECIFIED, the service applies its default ordering.
   repeated SubjectMappingsSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 message ListSubjectMappingsResponse {
@@ -186,8 +188,8 @@ message ListSubjectConditionSetsRequest {
   // Optional
   policy.PageRequest pagination = 10;
   // Optional - CONSTRAINT: max 1 item
-  // Default ordering when omitted or when the first entry's field is UNSPECIFIED:
-  // created_at DESC, then id ASC (tie-breaker).
+  // When sort is provided and sort.direction is UNSPECIFIED, direction defaults to ASC.
+  // When sort is omitted or sort.field is UNSPECIFIED, the service applies its default ordering.
   repeated SubjectConditionSetsSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 message ListSubjectConditionSetsResponse {

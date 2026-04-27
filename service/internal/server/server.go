@@ -26,13 +26,13 @@ import (
 	"github.com/opentdf/platform/sdk"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
-	"github.com/opentdf/platform/service/internal/enumnormalize"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/opentdf/platform/service/pkg/cache"
+	"github.com/opentdf/platform/service/pkg/enumnormalize"
 	"github.com/opentdf/platform/service/tracing"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -67,8 +67,9 @@ type Config struct {
 	WellKnownConfigRegister func(namespace string, config any) error `mapstructure:"-" json:"-"`
 
 	// Programmatic interceptors injected at startup (not loaded from config)
-	ExtraConnectInterceptors []connect.Interceptor `mapstructure:"-" json:"-"`
-	ExtraIPCInterceptors     []connect.Interceptor `mapstructure:"-" json:"-"`
+	ExtraConnectInterceptors []connect.Interceptor             `mapstructure:"-" json:"-"`
+	ExtraIPCInterceptors     []connect.Interceptor             `mapstructure:"-" json:"-"`
+	ExtraHTTPMiddleware      []func(http.Handler) http.Handler `mapstructure:"-" json:"-"`
 	// Port to listen on
 	Port           int    `mapstructure:"port" json:"port" default:"8080"`
 	Host           string `mapstructure:"host,omitempty" json:"host"`
@@ -427,6 +428,11 @@ func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.H
 			unsafeconnect.UnsafeServiceUnsafeUpdateAttributeProcedure,
 		},
 	)(connectRPC)
+
+	// Apply extra HTTP middleware injected by downstream consumers (e.g. DSP).
+	for _, mw := range c.ExtraHTTPMiddleware {
+		connectRPC = mw(connectRPC)
+	}
 
 	// Adds deprecation header to any grpcGateway responses.
 	var grpcGateway http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

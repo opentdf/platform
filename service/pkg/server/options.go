@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"net/http"
 
 	"connectrpc.com/connect"
 	"github.com/casbin/casbin/v2/persist"
@@ -28,6 +29,7 @@ type StartConfig struct {
 
 	extraConnectInterceptors []connect.Interceptor
 	extraIPCInterceptors     []connect.Interceptor
+	extraHTTPMiddleware      []func(http.Handler) http.Handler
 
 	trustKeyManagerCtxs []trust.NamedKeyManagerCtxFactory
 
@@ -182,6 +184,25 @@ func WithConnectInterceptors(interceptors ...connect.Interceptor) StartOptions {
 func WithIPCInterceptors(interceptors ...connect.Interceptor) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.extraIPCInterceptors = append(c.extraIPCInterceptors, interceptors...)
+		return c
+	}
+}
+
+// WithHTTPMiddleware appends HTTP middleware that wraps the ConnectRPC handler.
+// Middleware is applied in order, with the last middleware outermost.
+// This runs at the HTTP transport layer, before ConnectRPC deserialization,
+// making it suitable for request body rewriting (e.g. enum normalization).
+//
+// Example:
+//
+//	server.Start(
+//	    server.WithHTTPMiddleware(
+//	        enumnormalize.NewMiddleware(rules, paths),
+//	    ),
+//	)
+func WithHTTPMiddleware(middleware ...func(http.Handler) http.Handler) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.extraHTTPMiddleware = append(c.extraHTTPMiddleware, middleware...)
 		return c
 	}
 }

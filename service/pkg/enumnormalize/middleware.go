@@ -19,7 +19,7 @@ const maxBodySize = 1 << 20 // 1 MB
 // match (wrong content-type, wrong path) are forwarded unchanged with zero
 // overhead.
 func NewMiddleware(rules []EnumFieldRule, paths []string) func(http.Handler) http.Handler {
-	lookup := buildLookup(rules)
+	lookup := buildRuleLookup(rules)
 
 	pathSet := make(map[string]struct{}, len(paths))
 	for _, p := range paths {

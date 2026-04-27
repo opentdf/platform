@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var allLookup = buildLookup([]EnumFieldRule{
+var allLookup = buildRuleLookup([]EnumFieldRule{
 	{JSONField: "operator", Prefix: "SUBJECT_MAPPING_OPERATOR_ENUM_"},
 	{JSONField: "booleanOperator", Prefix: "CONDITION_BOOLEAN_TYPE_ENUM_"},
 	{JSONField: "rule", Prefix: "ATTRIBUTE_RULE_TYPE_ENUM_"},
@@ -374,7 +374,7 @@ func TestNormalizeJSON_EmptyBody(t *testing.T) {
 
 func TestNormalizeJSON_NoRules(t *testing.T) {
 	input := `{"operator":"IN"}`
-	out, err := normalizeJSON([]byte(input), nil)
+	out, err := normalizeJSON([]byte(input), ruleLookup{})
 	require.NoError(t, err)
 	assert.Equal(t, input, string(out))
 }
@@ -385,4 +385,87 @@ func TestNormalizeJSON_InvalidJSON(t *testing.T) {
 	require.NoError(t, err)
 	// Invalid JSON passes through unchanged
 	assert.Equal(t, input, string(out))
+}
+
+// Parent-scoped rule tests
+
+var scopedLookup = buildRuleLookup([]EnumFieldRule{
+	// Different prefixes for the same "type" field, scoped by parent key
+	{JSONField: "type", Prefix: "CONTENT_EXTRACTOR_TYPE_", ParentField: "contentExtractors"},
+	{JSONField: "type", Prefix: "TAG_PROCESSOR_TYPE_", ParentField: "tagProcessors"},
+	// A global rule (no parent scope) for a different field
+	{JSONField: "state", Prefix: "ACTIVE_STATE_ENUM_"},
+})
+
+func TestNormalizeJSON_ParentScopedRules(t *testing.T) {
+	input := `{
+		"config": {
+			"v1": {
+				"contentExtractors": [{"type": "TIKA_CONTENT_EXTRACTION", "id": "ce1"}],
+				"tagProcessors": [{"type": "REQUIRED_TAGS", "id": "tp1"}]
+			}
+		}
+	}`
+	expected := `{
+		"config": {
+			"v1": {
+				"contentExtractors": [{"type": "CONTENT_EXTRACTOR_TYPE_TIKA_CONTENT_EXTRACTION", "id": "ce1"}],
+				"tagProcessors": [{"type": "TAG_PROCESSOR_TYPE_REQUIRED_TAGS", "id": "tp1"}]
+			}
+		}
+	}`
+
+	out, err := normalizeJSON([]byte(input), scopedLookup)
+	require.NoError(t, err)
+	assert.JSONEq(t, expected, string(out))
+}
+
+func TestNormalizeJSON_ParentScopedDoesNotMatchGlobally(t *testing.T) {
+	// "type" at top level should NOT be rewritten — it only matches under
+	// "contentExtractors" or "tagProcessors".
+	input := `{"type": "SOME_VALUE"}`
+
+	out, err := normalizeJSON([]byte(input), scopedLookup)
+	require.NoError(t, err)
+	assert.JSONEq(t, input, string(out))
+}
+
+func TestNormalizeJSON_GlobalAndScopedRulesCoexist(t *testing.T) {
+	// "state" is a global rule; "type" is parent-scoped.
+	input := `{
+		"state": "ACTIVE",
+		"contentExtractors": [{"type": "TIKA_CONTENT_EXTRACTION"}]
+	}`
+	expected := `{
+		"state": "ACTIVE_STATE_ENUM_ACTIVE",
+		"contentExtractors": [{"type": "CONTENT_EXTRACTOR_TYPE_TIKA_CONTENT_EXTRACTION"}]
+	}`
+
+	out, err := normalizeJSON([]byte(input), scopedLookup)
+	require.NoError(t, err)
+	assert.JSONEq(t, expected, string(out))
+}
+
+func TestNormalizeJSON_ParentScopedFullCanonicalPassthrough(t *testing.T) {
+	// Already-prefixed values pass through unchanged
+	input := `{
+		"contentExtractors": [{"type": "CONTENT_EXTRACTOR_TYPE_TIKA_CONTENT_EXTRACTION"}]
+	}`
+
+	out, err := normalizeJSON([]byte(input), scopedLookup)
+	require.NoError(t, err)
+	assert.JSONEq(t, input, string(out))
+}
+
+func TestNormalizeJSON_ParentScopedCaseInsensitive(t *testing.T) {
+	input := `{
+		"tagProcessors": [{"type": "required_tags"}]
+	}`
+	expected := `{
+		"tagProcessors": [{"type": "TAG_PROCESSOR_TYPE_REQUIRED_TAGS"}]
+	}`
+
+	out, err := normalizeJSON([]byte(input), scopedLookup)
+	require.NoError(t, err)
+	assert.JSONEq(t, expected, string(out))
 }

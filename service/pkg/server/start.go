@@ -154,6 +154,7 @@ func Start(f ...StartOptions) error {
 	// Programmatic Connect/IPC interceptors (not config-driven)
 	cfg.Server.ExtraConnectInterceptors = append(cfg.Server.ExtraConnectInterceptors, startConfig.extraConnectInterceptors...)
 	cfg.Server.ExtraIPCInterceptors = append(cfg.Server.ExtraIPCInterceptors, startConfig.extraIPCInterceptors...)
+	cfg.Server.ExtraHTTPMiddleware = append(cfg.Server.ExtraHTTPMiddleware, startConfig.extraHTTPMiddleware...)
 
 	// Set Default Policy
 	if startConfig.builtinPolicyOverride != "" {

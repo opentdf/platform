@@ -123,3 +123,20 @@ func TestMiddleware_ContentLengthUpdated(t *testing.T) {
 	// The normalized body is longer than the original
 	require.Greater(t, len(capture.body), len(body))
 }
+
+func TestMiddleware_OversizedBodySkipsNormalization(t *testing.T) {
+	capture := &captureHandler{}
+	mw := NewMiddleware(testRules, []string{testPath})
+	handler := mw(capture)
+
+	// Build a body that exceeds maxBodySize (1 MB).
+	oversized := `{"operator":"` + strings.Repeat("A", maxBodySize) + `"}`
+	req := httptest.NewRequest(http.MethodPost, testPath, strings.NewReader(oversized))
+	req.Header.Set("Content-Type", "application/json")
+	handler.ServeHTTP(httptest.NewRecorder(), req)
+
+	// The middleware should skip normalization on read error and forward the
+	// request. The downstream handler receives whatever MaxBytesReader yielded
+	// before the limit — NOT a normalized body.
+	assert.NotContains(t, capture.body, "SUBJECT_MAPPING_OPERATOR_ENUM_")
+}

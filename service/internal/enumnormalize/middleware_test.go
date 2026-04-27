@@ -95,6 +95,21 @@ func TestMiddleware_CanonicalNamesUnchanged(t *testing.T) {
 	assert.JSONEq(t, body, capture.body)
 }
 
+func TestMiddleware_NumericEnumValuesPassThrough(t *testing.T) {
+	capture := &captureHandler{}
+	mw := NewMiddleware(testRules, []string{testPath})
+	handler := mw(capture)
+
+	// Numeric enum values (e.g., 1 for IN, 3 for IN_CONTAINS) are valid
+	// protojson and should pass through the middleware unchanged.
+	body := `{"booleanOperator":1,"conditions":[{"operator":3}]}`
+	req := httptest.NewRequest(http.MethodPost, testPath, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	handler.ServeHTTP(httptest.NewRecorder(), req)
+
+	assert.JSONEq(t, body, capture.body)
+}
+
 func TestMiddleware_ContentLengthUpdated(t *testing.T) {
 	capture := &captureHandler{}
 	mw := NewMiddleware(testRules, []string{testPath})

@@ -195,9 +195,74 @@ func TestNormalizeJSON_FullCanonicalNamesPassThrough(t *testing.T) {
 }
 
 func TestNormalizeJSON_NumericValuesPassThrough(t *testing.T) {
-	input := `{"operator":1,"booleanOperator":2}`
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "operator 1 (IN) and booleanOperator 2 (OR)",
+			input: `{"operator":1,"booleanOperator":2}`,
+		},
+		{
+			name:  "operator 3 (IN_CONTAINS) and booleanOperator 1 (AND)",
+			input: `{"operator":3,"booleanOperator":1}`,
+		},
+		{
+			name:  "operator 2 (NOT_IN)",
+			input: `{"operator":2}`,
+		},
+		{
+			name:  "rule 1 (ALL_OF)",
+			input: `{"rule":1}`,
+		},
+		{
+			name:  "state 1 (ACTIVE)",
+			input: `{"state":1}`,
+		},
+		{
+			name:  "numeric zero (UNSPECIFIED) passes through",
+			input: `{"operator":0}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := normalizeJSON([]byte(tt.input), allLookup)
+			require.NoError(t, err)
+			assert.JSONEq(t, tt.input, string(out))
+		})
+	}
+}
+
+func TestNormalizeJSON_NumericValuesInNestedStructure(t *testing.T) {
+	// Simulates the JSON format that was previously used in documentation:
+	// numeric enum codes instead of string names.
+	input := `{
+		"subjectConditionSet": {
+			"subjectSets": [{
+				"conditionGroups": [{
+					"booleanOperator": 1,
+					"conditions": [
+						{
+							"subjectExternalSelectorValue": ".email",
+							"operator": 3,
+							"subjectExternalValues": ["@example.com"]
+						},
+						{
+							"subjectExternalSelectorValue": ".role",
+							"operator": 1,
+							"subjectExternalValues": ["admin"]
+						}
+					]
+				}]
+			}]
+		}
+	}`
+
 	out, err := normalizeJSON([]byte(input), allLookup)
 	require.NoError(t, err)
+	// Numeric values should pass through unchanged — protojson natively
+	// accepts numeric enum representations.
 	assert.JSONEq(t, input, string(out))
 }
 

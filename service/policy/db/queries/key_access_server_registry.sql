@@ -387,8 +387,15 @@ LEFT JOIN
 WHERE
     (sqlc.narg('key_algorithm')::integer IS NULL OR kask.key_algorithm = sqlc.narg('key_algorithm')::integer)
     AND (sqlc.narg('legacy')::boolean IS NULL OR kask.legacy = sqlc.narg('legacy')::boolean)
-ORDER BY kask.created_at DESC
-LIMIT @limit_ 
+ORDER BY
+    CASE WHEN @sort_field::text = 'key_id' AND @sort_direction::text = 'ASC' THEN kask.key_id END ASC,
+    CASE WHEN @sort_field::text = 'key_id' AND @sort_direction::text = 'DESC' THEN kask.key_id END DESC,
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN kask.created_at END ASC,
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN kask.created_at END DESC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN kask.updated_at END ASC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN kask.updated_at END DESC,
+    kask.created_at DESC
+LIMIT @limit_
 OFFSET @offset_;
 
 -- name: deleteKey :execrows

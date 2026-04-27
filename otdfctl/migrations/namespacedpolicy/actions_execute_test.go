@@ -46,14 +46,14 @@ func TestExecuteActions(t *testing.T) {
 								Status:    TargetStatusCreate,
 							},
 							{
-								Namespace: namespace2,
-								Status:    TargetStatusExistingStandard,
-								Existing:  &policy.Action{Id: "standard-action"},
+								Namespace:  namespace2,
+								Status:     TargetStatusExistingStandard,
+								ExistingID: "standard-action",
 							},
 							{
-								Namespace: namespace3,
-								Status:    TargetStatusAlreadyMigrated,
-								Existing:  &policy.Action{Id: "migrated-action"},
+								Namespace:  namespace3,
+								Status:     TargetStatusAlreadyMigrated,
+								ExistingID: "migrated-action",
 							},
 						},
 					},
@@ -85,7 +85,7 @@ func TestExecuteActions(t *testing.T) {
 
 				createdTarget := plan.Actions[0].Targets[0]
 				assert.Equal(t, TargetStatusCreate, createdTarget.Status)
-				assert.Nil(t, createdTarget.Existing)
+				assert.Empty(t, createdTarget.ExistingID)
 				require.NotNil(t, createdTarget.Execution)
 				assert.True(t, createdTarget.Execution.Applied)
 				assert.Equal(t, "created-action-1", createdTarget.Execution.CreatedTargetID)
@@ -105,7 +105,7 @@ func TestExecuteActions(t *testing.T) {
 			},
 		},
 		{
-			name: "returns not executable for unresolved target status",
+			name: "ignores unresolved target status",
 			plan: &Plan{
 				Scopes: []Scope{ScopeActions},
 				Actions: []*ActionPlan{
@@ -122,17 +122,10 @@ func TestExecuteActions(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			wantErr: wantError(
-				ErrPlanNotExecutable,
-				`action %q target %q is unresolved: %s`,
-				"action-1",
-				namespace1.GetFqn(),
-				"missing target namespace mapping",
-			),
 			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
 				t.Helper()
 
-				require.Error(t, err)
+				require.NoError(t, err)
 				assert.Empty(t, handler.created)
 				assert.Empty(t, executor.cachedActionTargetID("action-1", namespace1))
 			},

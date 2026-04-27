@@ -45,6 +45,53 @@ func TestRetrieverRetrieveActionsFiltersLegacyAndDedupes(t *testing.T) {
 	assert.Equal(t, []string{""}, handler.actionCalls)
 }
 
+func TestRetrieverListActionsForNamespacesDropsGlobalFallbackStandardActions(t *testing.T) {
+	t.Parallel()
+
+	namespace := &policy.Namespace{
+		Id:  "ns-1",
+		Fqn: "https://example.com",
+	}
+	handler := &plannerTestHandler{
+		actionsByNamespace: map[string]*actions.ListActionsResponse{
+			namespace.GetId(): {
+				ActionsCustom: []*policy.Action{
+					{
+						Id:        "custom-namespaced",
+						Name:      "decrypt",
+						Namespace: namespace,
+					},
+				},
+				ActionsStandard: []*policy.Action{
+					{
+						Id:   "standard-global-fallback",
+						Name: "read",
+					},
+					{
+						Id:        "standard-namespaced",
+						Name:      "read",
+						Namespace: namespace,
+					},
+				},
+				Pagination: emptyPageResponse(),
+			},
+		},
+	}
+
+	customByNamespace, standardByNamespace, err := newRetriever(handler, 25).listActionsForNamespaces(
+		t.Context(),
+		[]*policy.Namespace{namespace},
+	)
+	require.NoError(t, err)
+
+	require.Contains(t, customByNamespace, namespace.GetId())
+	assert.Equal(t, []string{"custom-namespaced"}, policyObjectIDs(customByNamespace[namespace.GetId()]))
+
+	require.Contains(t, standardByNamespace, namespace.GetId())
+	assert.Equal(t, []string{"standard-namespaced"}, policyObjectIDs(standardByNamespace[namespace.GetId()]))
+	assert.Equal(t, []string{namespace.GetId()}, handler.actionCalls)
+}
+
 func TestRetrieverListRegisteredResourcesForNamespacesDedupesNamespacesAndHydratesValues(t *testing.T) {
 	t.Parallel()
 

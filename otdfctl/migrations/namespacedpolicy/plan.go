@@ -12,7 +12,11 @@ var (
 	ErrNilRetrieved              = errors.New("planner retrieved state is required")
 	ErrMissingTargetNamespace    = errors.New("missing target namespace")
 	ErrUndeterminedTargetMapping = errors.New("could not determine target namespace")
-	ErrDuplicateCanonicalMatch   = errors.New("multiple existing target objects match canonical equality in the target namespace")
+
+	ErrMissingActionID                         = errors.New("action reference missing id")
+	ErrMissingSubjectConditionSetID            = errors.New("subject condition set reference missing id")
+	ErrUnresolvedActionDependency              = errors.New("action dependency not resolved in target namespace")
+	ErrUnresolvedSubjectConditionSetDependency = errors.New("subject condition set dependency not resolved in target namespace")
 )
 
 type UnresolvedReason string
@@ -28,23 +32,11 @@ type Unresolved struct {
 
 type Plan struct {
 	Scopes               []Scope                    `json:"scopes"`
-	Namespaces           []*NamespacePlan           `json:"namespaces"`
 	Actions              []*ActionPlan              `json:"actions"`
 	SubjectConditionSets []*SubjectConditionSetPlan `json:"subject_condition_sets"`
 	SubjectMappings      []*SubjectMappingPlan      `json:"subject_mappings"`
 	RegisteredResources  []*RegisteredResourcePlan  `json:"registered_resources"`
 	ObligationTriggers   []*ObligationTriggerPlan   `json:"obligation_triggers"`
-	Unused               *UnusedPlan                `json:"unused,omitempty"`
-	Unresolved           *UnresolvedPlan            `json:"unresolved,omitempty"`
-}
-
-type NamespacePlan struct {
-	Namespace            *policy.Namespace `json:"namespace"`
-	Actions              []string          `json:"actions,omitempty"`
-	SubjectConditionSets []string          `json:"subject_condition_sets,omitempty"`
-	SubjectMappings      []string          `json:"subject_mappings,omitempty"`
-	RegisteredResources  []string          `json:"registered_resources,omitempty"`
-	ObligationTriggers   []string          `json:"obligation_triggers,omitempty"`
 }
 
 type TargetStatus string
@@ -53,6 +45,7 @@ const (
 	TargetStatusCreate           TargetStatus = "create"
 	TargetStatusAlreadyMigrated  TargetStatus = "already_migrated"
 	TargetStatusExistingStandard TargetStatus = "existing_standard"
+	TargetStatusSkipped          TargetStatus = "skipped"
 	TargetStatusUnresolved       TargetStatus = "unresolved"
 )
 
@@ -64,34 +57,16 @@ type ExecutionResult struct {
 }
 
 type ActionPlan struct {
-	Source *policy.Action `json:"source"`
-	// TODO: Add analogous reference metadata for other policy object plan types
-	// if/when downstream consumers need the same provenance context beyond
-	// actions.
-	References []*ActionReference  `json:"references,omitempty"`
-	Targets    []*ActionTargetPlan `json:"targets,omitempty"`
-}
-
-type ActionReferenceKind string
-
-const (
-	ActionReferenceKindSubjectMapping     ActionReferenceKind = "subject_mapping"
-	ActionReferenceKindRegisteredResource ActionReferenceKind = "registered_resource"
-	ActionReferenceKindObligationTrigger  ActionReferenceKind = "obligation_trigger"
-)
-
-type ActionReference struct {
-	Kind      ActionReferenceKind `json:"kind"`
-	ID        string              `json:"id"`
-	Namespace *policy.Namespace   `json:"namespace,omitempty"`
+	Source  *policy.Action      `json:"source"`
+	Targets []*ActionTargetPlan `json:"targets,omitempty"`
 }
 
 type ActionTargetPlan struct {
-	Namespace *policy.Namespace `json:"namespace"`
-	Status    TargetStatus      `json:"status"`
-	Existing  *policy.Action    `json:"existing,omitempty"`
-	Execution *ExecutionResult  `json:"execution,omitempty"`
-	Reason    string            `json:"reason,omitempty"`
+	Namespace  *policy.Namespace `json:"namespace"`
+	Status     TargetStatus      `json:"status"`
+	ExistingID string            `json:"existing_id,omitempty"`
+	Execution  *ExecutionResult  `json:"execution,omitempty"`
+	Reason     string            `json:"reason,omitempty"`
 }
 
 type SubjectConditionSetPlan struct {
@@ -100,44 +75,41 @@ type SubjectConditionSetPlan struct {
 }
 
 type SubjectConditionSetTargetPlan struct {
-	Namespace *policy.Namespace           `json:"namespace"`
-	Status    TargetStatus                `json:"status"`
-	Existing  *policy.SubjectConditionSet `json:"existing,omitempty"`
-	Execution *ExecutionResult            `json:"execution,omitempty"`
-	Reason    string                      `json:"reason,omitempty"`
+	Namespace  *policy.Namespace `json:"namespace"`
+	Status     TargetStatus      `json:"status"`
+	ExistingID string            `json:"existing_id,omitempty"`
+	Execution  *ExecutionResult  `json:"execution,omitempty"`
+	Reason     string            `json:"reason,omitempty"`
 }
 
 type SubjectMappingPlan struct {
-	Source  *policy.SubjectMapping      `json:"source"`
-	Targets []*SubjectMappingTargetPlan `json:"targets,omitempty"`
+	Source *policy.SubjectMapping    `json:"source"`
+	Target *SubjectMappingTargetPlan `json:"target,omitempty"`
 }
 
 type SubjectMappingTargetPlan struct {
-	Namespace           *policy.Namespace           `json:"namespace"`
-	Status              TargetStatus                `json:"status"`
-	Existing            *policy.SubjectMapping      `json:"existing,omitempty"`
-	Execution           *ExecutionResult            `json:"execution,omitempty"`
-	Reason              string                      `json:"reason,omitempty"`
-	Actions             []*ActionBinding            `json:"actions,omitempty"`
-	SubjectConditionSet *SubjectConditionSetBinding `json:"subject_condition_set,omitempty"`
+	Namespace                   *policy.Namespace `json:"namespace"`
+	Status                      TargetStatus      `json:"status"`
+	ExistingID                  string            `json:"existing_id,omitempty"`
+	Execution                   *ExecutionResult  `json:"execution,omitempty"`
+	Reason                      string            `json:"reason,omitempty"`
+	ActionSourceIDs             []string          `json:"action_source_ids,omitempty"`
+	SubjectConditionSetSourceID string            `json:"subject_condition_set_source_id,omitempty"`
 }
 
 type RegisteredResourcePlan struct {
-	Source     *policy.RegisteredResource      `json:"source"`
-	Targets    []*RegisteredResourceTargetPlan `json:"targets,omitempty"`
-	Unresolved string                          `json:"unresolved,omitempty"`
+	Source     *policy.RegisteredResource    `json:"source"`
+	Target     *RegisteredResourceTargetPlan `json:"target,omitempty"`
+	Unresolved string                        `json:"unresolved,omitempty"`
 }
 
 type RegisteredResourceTargetPlan struct {
-	Namespace *policy.Namespace `json:"namespace"`
-	Status    TargetStatus      `json:"status"`
-	// For registered resources, Existing is also used on create targets to mean
-	// "reuse this parent RR and reconcile missing values under it" rather than
-	// creating a new top-level RR.
-	Existing  *policy.RegisteredResource     `json:"existing,omitempty"`
-	Execution *ExecutionResult               `json:"execution,omitempty"`
-	Reason    string                         `json:"reason,omitempty"`
-	Values    []*RegisteredResourceValuePlan `json:"values,omitempty"`
+	Namespace  *policy.Namespace              `json:"namespace"`
+	Status     TargetStatus                   `json:"status"`
+	ExistingID string                         `json:"existing_id,omitempty"`
+	Execution  *ExecutionResult               `json:"execution,omitempty"`
+	Reason     string                         `json:"reason,omitempty"`
+	Values     []*RegisteredResourceValuePlan `json:"values,omitempty"`
 }
 
 type RegisteredResourceValuePlan struct {
@@ -147,60 +119,22 @@ type RegisteredResourceValuePlan struct {
 }
 
 type RegisteredResourceActionBinding struct {
-	SourceActionID  string         `json:"source_action_id"`
-	AttributeValue  *policy.Value  `json:"attribute_value,omitempty"`
-	ActionTargetRef *ActionBinding `json:"action_target,omitempty"`
+	SourceActionID string        `json:"source_action_id"`
+	AttributeValue *policy.Value `json:"attribute_value,omitempty"`
 }
 
 type ObligationTriggerPlan struct {
-	Source  *policy.ObligationTrigger      `json:"source"`
-	Targets []*ObligationTriggerTargetPlan `json:"targets,omitempty"`
+	Source *policy.ObligationTrigger    `json:"source"`
+	Target *ObligationTriggerTargetPlan `json:"target,omitempty"`
 }
 
 type ObligationTriggerTargetPlan struct {
-	Namespace *policy.Namespace         `json:"namespace"`
-	Status    TargetStatus              `json:"status"`
-	Existing  *policy.ObligationTrigger `json:"existing,omitempty"`
-	Execution *ExecutionResult          `json:"execution,omitempty"`
-	Reason    string                    `json:"reason,omitempty"`
-	Action    *ActionBinding            `json:"action,omitempty"`
-}
-
-// TODO: Revisit this and Scs binding to see what is actually useful
-type ActionBinding struct {
-	SourceID  string            `json:"source_id"`
-	Namespace *policy.Namespace `json:"namespace,omitempty"`
-	Status    TargetStatus      `json:"status"`
-	TargetID  string            `json:"target_id,omitempty"`
-	Reason    string            `json:"reason,omitempty"`
-}
-
-type SubjectConditionSetBinding struct {
-	SourceID  string            `json:"source_id"`
-	Namespace *policy.Namespace `json:"namespace,omitempty"`
-	Status    TargetStatus      `json:"status"`
-	TargetID  string            `json:"target_id,omitempty"`
-	Reason    string            `json:"reason,omitempty"`
-}
-
-type UnusedPlan struct {
-	Actions []*UnusedAction `json:"actions,omitempty"`
-}
-
-type UnusedAction struct {
-	Source     *policy.Action     `json:"source"`
-	References []*ActionReference `json:"references,omitempty"`
-	Reason     string             `json:"reason"`
-}
-
-type UnresolvedPlan struct {
-	RegisteredResources []*RegisteredResourceIssue `json:"registered_resources,omitempty"`
-}
-
-type RegisteredResourceIssue struct {
-	Resource  *policy.RegisteredResource `json:"resource"`
-	Namespace *policy.Namespace          `json:"namespace,omitempty"`
-	Reason    string                     `json:"reason"`
+	Namespace      *policy.Namespace `json:"namespace"`
+	Status         TargetStatus      `json:"status"`
+	ExistingID     string            `json:"existing_id,omitempty"`
+	Execution      *ExecutionResult  `json:"execution,omitempty"`
+	Reason         string            `json:"reason,omitempty"`
+	ActionSourceID string            `json:"action_source_id,omitempty"`
 }
 
 func namespaceFromAttributeValue(value *policy.Value) *policy.Namespace {
@@ -252,14 +186,6 @@ func hasObject[T interface{ GetId() string }](items []T, id string) bool {
 	return false
 }
 
-func hasUnresolved(plan UnresolvedPlan) bool {
-	return len(plan.RegisteredResources) > 0
-}
-
-func hasUnused(plan UnusedPlan) bool {
-	return len(plan.Actions) > 0
-}
-
 // sameNamespace reports whether two namespace references identify the same
 // namespace. IDs are compared with whitespace trimmed; FQNs are compared
 // case-insensitively with whitespace trimmed. Two nil namespaces are
@@ -295,10 +221,7 @@ func (t *ActionTargetPlan) TargetID() string {
 	if t.Execution != nil && t.Execution.CreatedTargetID != "" {
 		return t.Execution.CreatedTargetID
 	}
-	if t.Existing == nil {
-		return ""
-	}
-	return t.Existing.GetId()
+	return t.ExistingID
 }
 
 func (t *SubjectConditionSetTargetPlan) TargetID() string {
@@ -308,10 +231,7 @@ func (t *SubjectConditionSetTargetPlan) TargetID() string {
 	if t.Execution != nil && t.Execution.CreatedTargetID != "" {
 		return t.Execution.CreatedTargetID
 	}
-	if t.Existing == nil {
-		return ""
-	}
-	return t.Existing.GetId()
+	return t.ExistingID
 }
 
 func (t *SubjectMappingTargetPlan) TargetID() string {
@@ -321,10 +241,7 @@ func (t *SubjectMappingTargetPlan) TargetID() string {
 	if t.Execution != nil && t.Execution.CreatedTargetID != "" {
 		return t.Execution.CreatedTargetID
 	}
-	if t.Existing == nil {
-		return ""
-	}
-	return t.Existing.GetId()
+	return t.ExistingID
 }
 
 func (t *RegisteredResourceTargetPlan) TargetID() string {
@@ -334,10 +251,7 @@ func (t *RegisteredResourceTargetPlan) TargetID() string {
 	if t.Execution != nil && t.Execution.CreatedTargetID != "" {
 		return t.Execution.CreatedTargetID
 	}
-	if t.Existing == nil {
-		return ""
-	}
-	return t.Existing.GetId()
+	return t.ExistingID
 }
 
 func (p *RegisteredResourceValuePlan) TargetID() string {
@@ -354,10 +268,7 @@ func (t *ObligationTriggerTargetPlan) TargetID() string {
 	if t.Execution != nil && t.Execution.CreatedTargetID != "" {
 		return t.Execution.CreatedTargetID
 	}
-	if t.Existing == nil {
-		return ""
-	}
-	return t.Existing.GetId()
+	return t.ExistingID
 }
 
 func (p *Plan) LookupActionTarget(sourceID, namespaceID string) *ActionTargetPlan {

@@ -1132,3 +1132,39 @@ func Test_ListKeyAccessServersRequest_Sort(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "sort")
 }
+
+func Test_ListKeysRequest_Sort(t *testing.T) {
+	v := getValidator()
+
+	// no sort — valid
+	req := &kasregistry.ListKeysRequest{}
+	require.NoError(t, v.Validate(req))
+
+	// one sort item — valid
+	req = &kasregistry.ListKeysRequest{
+		Sort: []*kasregistry.KasKeysSort{
+			{
+				Field:     kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+		},
+	}
+	require.NoError(t, v.Validate(req))
+
+	// two sort items — exceeds max_items = 1
+	req = &kasregistry.ListKeysRequest{
+		Sort: []*kasregistry.KasKeysSort{
+			{
+				Field:     kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+			{
+				Field:     kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID,
+				Direction: policy.SortDirection_SORT_DIRECTION_DESC,
+			},
+		},
+	}
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "sort")
+}

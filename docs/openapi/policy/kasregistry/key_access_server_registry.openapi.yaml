@@ -604,6 +604,14 @@ components:
         Describes whether this kas is managed by the organization or if they imported
          the kas information from an external party. These two modes are necessary in order
          to encrypt a tdf dek with an external parties kas public key.
+    policy.kasregistry.SortKasKeysType:
+      type: string
+      title: SortKasKeysType
+      enum:
+        - SORT_KAS_KEYS_TYPE_UNSPECIFIED
+        - SORT_KAS_KEYS_TYPE_KEY_ID
+        - SORT_KAS_KEYS_TYPE_CREATED_AT
+        - SORT_KAS_KEYS_TYPE_UPDATED_AT
     policy.kasregistry.SortKeyAccessServersType:
       type: string
       title: SortKeyAccessServersType
@@ -1486,6 +1494,17 @@ components:
       title: KasKeyIdentifier
       additionalProperties: false
       description: Nested message for specifying the active key using KAS ID and Key ID
+    policy.kasregistry.KasKeysSort:
+      type: object
+      properties:
+        field:
+          title: field
+          $ref: '#/components/schemas/policy.kasregistry.SortKasKeysType'
+        direction:
+          title: direction
+          $ref: '#/components/schemas/policy.SortDirection'
+      title: KasKeysSort
+      additionalProperties: false
     policy.kasregistry.KeyAccessServerGrants:
       type: object
       properties:
@@ -1743,6 +1762,16 @@ components:
           title: pagination
           description: Optional Pagination request for the list of keys
           $ref: '#/components/schemas/policy.PageRequest'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.KasKeysSort'
+          title: sort
+          maxItems: 1
+          description: |-
+            Optional - CONSTRAINT: max 1 item
+             Default ordering when omitted or when the first entry's field is UNSPECIFIED:
+             created_at DESC.
       title: ListKeysRequest
       additionalProperties: false
       description: List all asymmetric keys managed by a specific Key Access Server or with a given algorithm

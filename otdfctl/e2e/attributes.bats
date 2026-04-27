@@ -1,12 +1,11 @@
 #!/usr/bin/env bats
 
-load "${BATS_LIB_PATH}/bats-support/load.bash"
-load "${BATS_LIB_PATH}/bats-assert/load.bash"
-load "otdfctl-utils.sh"
-
 # Tests for attributes
 
 setup_file() {
+  bats_load_library bats-support
+  bats_load_library bats-assert
+  load "otdfctl-utils.sh"
   export WITH_CREDS='--with-client-creds-file ./creds.json'
   export HOST='--host http://localhost:8080'
 
@@ -26,6 +25,8 @@ setup_file() {
 
 # always create a randomly named attribute
 setup() {
+  bats_load_library bats-support
+  bats_load_library bats-assert
   # invoke binary with credentials
   run_otdfctl_attr() {
     run sh -c "./otdfctl $HOST $WITH_CREDS policy attributes $*"

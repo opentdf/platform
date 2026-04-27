@@ -926,3 +926,103 @@ func Test_GetRegisteredResourcesSortParams(t *testing.T) {
 		})
 	}
 }
+
+func Test_GetKasKeysSortParams(t *testing.T) {
+	tests := []struct {
+		name              string
+		sort              []*kasregistry.KasKeysSort
+		expectedField     string
+		expectedDirection string
+	}{
+		{
+			name:              "nil sort returns empty strings",
+			sort:              nil,
+			expectedField:     "",
+			expectedDirection: "",
+		},
+		{
+			name:              "empty slice returns empty strings",
+			sort:              []*kasregistry.KasKeysSort{},
+			expectedField:     "",
+			expectedDirection: "",
+		},
+		{
+			name:              "nil element returns empty strings",
+			sort:              []*kasregistry.KasKeysSort{nil},
+			expectedField:     "",
+			expectedDirection: "",
+		},
+		{
+			name: "UNSPECIFIED field returns empty strings",
+			sort: []*kasregistry.KasKeysSort{
+				{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField:     "",
+			expectedDirection: "",
+		},
+		{
+			name: "KEY_ID with ASC",
+			sort: []*kasregistry.KasKeysSort{
+				{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField:     "key_id",
+			expectedDirection: "ASC",
+		},
+		{
+			name: "KEY_ID with DESC",
+			sort: []*kasregistry.KasKeysSort{
+				{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField:     "key_id",
+			expectedDirection: "DESC",
+		},
+		{
+			name: "CREATED_AT with ASC",
+			sort: []*kasregistry.KasKeysSort{
+				{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField:     "created_at",
+			expectedDirection: "ASC",
+		},
+		{
+			name: "CREATED_AT with DESC",
+			sort: []*kasregistry.KasKeysSort{
+				{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField:     "created_at",
+			expectedDirection: "DESC",
+		},
+		{
+			name: "UPDATED_AT with ASC",
+			sort: []*kasregistry.KasKeysSort{
+				{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField:     "updated_at",
+			expectedDirection: "ASC",
+		},
+		{
+			name: "UPDATED_AT with DESC",
+			sort: []*kasregistry.KasKeysSort{
+				{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField:     "updated_at",
+			expectedDirection: "DESC",
+		},
+		{
+			name: "UNSPECIFIED direction defaults to ASC",
+			sort: []*kasregistry.KasKeysSort{
+				{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+			},
+			expectedField:     "key_id",
+			expectedDirection: "ASC",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			field, direction := GetKasKeysSortParams(tc.sort)
+			assert.Equal(t, tc.expectedField, field)
+			assert.Equal(t, tc.expectedDirection, direction)
+		})
+	}
+}

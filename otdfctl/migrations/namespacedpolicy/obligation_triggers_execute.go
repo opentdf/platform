@@ -18,14 +18,12 @@ func (e *Executor) executeObligationTriggers(ctx context.Context, plans []*Oblig
 			continue
 		}
 
-		for _, target := range triggerPlan.Targets {
-			if target == nil {
-				continue
-			}
+		if triggerPlan.Target == nil {
+			continue
+		}
 
-			if err := e.executeObligationTriggerTarget(ctx, triggerPlan, target); err != nil {
-				return err
-			}
+		if err := e.executeObligationTriggerTarget(ctx, triggerPlan, triggerPlan.Target); err != nil {
+			return err
 		}
 	}
 
@@ -40,17 +38,19 @@ func (e *Executor) executeObligationTriggerTarget(ctx context.Context, triggerPl
 			return fmt.Errorf("%w: obligation trigger %q target %q", ErrMissingMigratedTarget, triggerPlan.Source.GetId(), namespaceLabel(target.Namespace))
 		}
 		return nil
+	case TargetStatusSkipped:
+		return nil
 	case TargetStatusCreate:
 		return e.createObligationTriggerTarget(ctx, triggerPlan, target)
 	case TargetStatusUnresolved:
-		return fmt.Errorf("%w: obligation trigger %q target %q is unresolved: %s", ErrPlanNotExecutable, triggerPlan.Source.GetId(), namespaceLabel(target.Namespace), target.Reason)
+		return nil
 	default:
 		return fmt.Errorf("%w: obligation trigger %q target %q has unsupported status %q", ErrUnsupportedStatus, triggerPlan.Source.GetId(), namespaceLabel(target.Namespace), target.Status)
 	}
 }
 
 func (e *Executor) createObligationTriggerTarget(ctx context.Context, triggerPlan *ObligationTriggerPlan, target *ObligationTriggerTargetPlan) error {
-	actionID, err := e.requireActionTargetID(target.Action, target.Namespace, triggerPlan.Source.GetId())
+	actionID, err := e.requireActionTargetID(target.ActionSourceID, target.Namespace, triggerPlan.Source.GetId())
 	if err != nil {
 		return err
 	}
@@ -92,37 +92,37 @@ func (e *Executor) createObligationTriggerTarget(ctx context.Context, triggerPla
 }
 
 // TODO: Eventually make this generic when we merge sm / rr
-func (e *Executor) requireActionTargetID(binding *ActionBinding, targetNamespace *policy.Namespace, ownerID string) (string, error) {
-	if binding == nil {
-		return "", fmt.Errorf("%w: obligation trigger %q action binding is missing", ErrMissingMigratedTarget, ownerID)
+func (e *Executor) requireActionTargetID(sourceID string, targetNamespace *policy.Namespace, ownerID string) (string, error) {
+	if sourceID == "" {
+		return "", fmt.Errorf("%w: obligation trigger %q action source id is missing", ErrMissingMigratedTarget, ownerID)
 	}
 
-	actionID := e.cachedActionTargetID(binding.SourceID, targetNamespace)
+	actionID := e.cachedActionTargetID(sourceID, targetNamespace)
 	if actionID != "" {
 		return actionID, nil
 	}
 
-	return "", fmt.Errorf("%w: obligation trigger %q action %q target %q", ErrMissingMigratedTarget, ownerID, binding.SourceID, namespaceLabel(targetNamespace))
+	return "", fmt.Errorf("%w: obligation trigger %q action %q target %q", ErrMissingMigratedTarget, ownerID, sourceID, namespaceLabel(targetNamespace))
 }
 
 func valueIDOrFQN(value *policy.Value) string {
 	if value == nil {
 		return ""
 	}
-	if id := strings.TrimSpace(value.GetId()); id != "" {
-		return id
+	if fqn := strings.TrimSpace(value.GetFqn()); fqn != "" {
+		return fqn
 	}
-	return strings.TrimSpace(value.GetFqn())
+	return strings.TrimSpace(value.GetId())
 }
 
 func obligationValueIDOrFQN(value *policy.ObligationValue) string {
 	if value == nil {
 		return ""
 	}
-	if id := strings.TrimSpace(value.GetId()); id != "" {
-		return id
+	if fqn := strings.TrimSpace(value.GetFqn()); fqn != "" {
+		return fqn
 	}
-	return strings.TrimSpace(value.GetFqn())
+	return strings.TrimSpace(value.GetId())
 }
 
 func triggerClientID(contexts []*policy.RequestContext) string {

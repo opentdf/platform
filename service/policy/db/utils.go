@@ -26,6 +26,7 @@ const (
 	sortFieldUpdatedAt = "updated_at"
 	sortFieldFQN       = "fqn"
 	sortFieldURI       = "uri"
+	sortFieldKeyID     = "key_id"
 )
 
 // Gathers request pagination limit/offset or configured default
@@ -437,6 +438,33 @@ func GetAttributesSortParams(sort []*attributes.AttributesSort) (string, string)
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UPDATED_AT:
 		field = sortFieldUpdatedAt
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UNSPECIFIED:
+		return "", ""
+	default:
+		return "", ""
+	}
+
+	return field, getSortDirection(s.GetDirection())
+}
+
+// GetKasKeysSortParams maps the strongly-typed KasKeysSort enum to
+// SQL-compatible field name and direction strings.
+// Returns empty strings when sort is nil or empty (backward compatible —
+// callers fall back to default ORDER BY created_at DESC).
+func GetKasKeysSortParams(sort []*kasregistry.KasKeysSort) (string, string) {
+	if len(sort) == 0 || sort[0] == nil {
+		return "", ""
+	}
+	s := sort[0]
+
+	var field string
+	switch s.GetField() {
+	case kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID:
+		field = sortFieldKeyID
+	case kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT:
+		field = sortFieldCreatedAt
+	case kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UPDATED_AT:
+		field = sortFieldUpdatedAt
+	case kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UNSPECIFIED:
 		return "", ""
 	default:
 		return "", ""

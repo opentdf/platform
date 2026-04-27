@@ -20,14 +20,12 @@ func (e *Executor) executeRegisteredResources(ctx context.Context, plans []*Regi
 			continue
 		}
 
-		for _, target := range plan.Targets {
-			if target == nil {
-				continue
-			}
+		if plan.Target == nil {
+			continue
+		}
 
-			if err := e.executeRegisteredResourceTarget(ctx, plan, target); err != nil {
-				return err
-			}
+		if err := e.executeRegisteredResourceTarget(ctx, plan, plan.Target); err != nil {
+			return err
 		}
 	}
 
@@ -35,18 +33,19 @@ func (e *Executor) executeRegisteredResources(ctx context.Context, plans []*Regi
 }
 
 func (e *Executor) executeRegisteredResourceTarget(ctx context.Context, plan *RegisteredResourcePlan, target *RegisteredResourceTargetPlan) error {
+	//nolint:exhaustive // Registered-resource execution only handles create and already-migrated explicitly; all other statuses are unsupported.
 	switch target.Status {
 	case TargetStatusAlreadyMigrated:
 		if target.TargetID() == "" {
 			return fmt.Errorf("%w: registered resource %q target %q", ErrMissingMigratedTarget, plan.Source.GetId(), namespaceLabel(target.Namespace))
 		}
 		return nil
+	case TargetStatusSkipped:
+		return nil
 	case TargetStatusCreate:
 		return e.createRegisteredResourceTarget(ctx, plan, target)
-	case TargetStatusExistingStandard:
-		return fmt.Errorf("%w: registered resource %q target %q has unsupported status %q", ErrUnsupportedStatus, plan.Source.GetId(), namespaceLabel(target.Namespace), target.Status)
 	case TargetStatusUnresolved:
-		return fmt.Errorf("%w: registered resource %q target %q is unresolved: %s", ErrPlanNotExecutable, plan.Source.GetId(), namespaceLabel(target.Namespace), target.Reason)
+		return nil
 	default:
 		return fmt.Errorf("%w: registered resource %q target %q has unsupported status %q", ErrUnsupportedStatus, plan.Source.GetId(), namespaceLabel(target.Namespace), target.Status)
 	}
@@ -58,29 +57,23 @@ func (e *Executor) createRegisteredResourceTarget(ctx context.Context, plan *Reg
 		return fmt.Errorf("%w: registered resource %q", ErrTargetNamespaceRequired, plan.Source.GetId())
 	}
 
-	// Create the parent RR only when the plan did not already select an existing
-	// target RR to reuse for this namespace.
-	created := target.Existing
-	if created == nil {
-		var err error
-		created, err = e.handler.CreateRegisteredResource(
-			ctx,
-			namespace,
-			plan.Source.GetName(),
-			nil,
-			metadataForCreate(
-				plan.Source.GetId(),
-				metadataLabels(plan.Source.GetMetadata()),
-				e.runID,
-			),
-		)
-		if err != nil {
-			target.Execution = &ExecutionResult{
-				RunID:   e.runID,
-				Failure: err.Error(),
-			}
-			return fmt.Errorf("%w: create registered resource %q in namespace %q", err, plan.Source.GetId(), namespaceLabel(target.Namespace))
+	created, err := e.handler.CreateRegisteredResource(
+		ctx,
+		namespace,
+		plan.Source.GetName(),
+		nil,
+		metadataForCreate(
+			plan.Source.GetId(),
+			metadataLabels(plan.Source.GetMetadata()),
+			e.runID,
+		),
+	)
+	if err != nil {
+		target.Execution = &ExecutionResult{
+			RunID:   e.runID,
+			Failure: err.Error(),
 		}
+		return fmt.Errorf("%w: create registered resource %q in namespace %q", err, plan.Source.GetId(), namespaceLabel(target.Namespace))
 	}
 	if created == nil {
 		target.Execution = &ExecutionResult{

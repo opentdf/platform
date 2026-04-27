@@ -7,11 +7,12 @@ toolchain go1.25.8
 require (
 	github.com/cucumber/godog v0.15.0
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx/v5 v5.9.0
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/opentdf/platform/lib/fixtures v0.3.0
 	github.com/opentdf/platform/lib/ocrypto v0.9.0
-	github.com/opentdf/platform/protocol/go v0.15.0
-	github.com/opentdf/platform/sdk v0.5.0
+	github.com/opentdf/platform/lib/identifier v0.0.2
+	github.com/opentdf/platform/protocol/go v0.26.0
+	github.com/opentdf/platform/sdk v0.16.0
 	github.com/opentdf/platform/service v0.7.2
 	github.com/spf13/pflag v1.0.10
 	github.com/testcontainers/testcontainers-go v0.42.0
@@ -105,7 +106,7 @@ require (
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/gowebpki/jcs v1.0.1 // indirect
-	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2 // indirect
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
@@ -167,6 +168,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/opentdf/platform/lib/flattening v0.1.3 // indirect
 	github.com/opentdf/platform/lib/identifier v0.0.2 // indirect
+	github.com/opentdf/platform/lib/ocrypto v0.10.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect

@@ -1,11 +1,11 @@
 #!/usr/bin/env bats
 
 # NEEDS TO RUN AFTER encrypt-decrypt.bats
-load "${BATS_LIB_PATH}/bats-support/load.bash"
-load "${BATS_LIB_PATH}/bats-assert/load.bash"
-load "otdfctl-utils.sh"
 
 setup_file() {
+  bats_load_library bats-support
+  bats_load_library bats-assert
+  load "otdfctl-utils.sh"
   export WITH_CREDS='--with-client-creds-file ./creds.json'
   export HOST='--host http://localhost:8080'
 
@@ -22,6 +22,8 @@ setup_file() {
 }
 
 setup() {
+  bats_load_library bats-support
+  bats_load_library bats-assert
   # invoke binary with credentials for base key commands
   run_otdfctl_base_key() {
     run sh -c "./otdfctl policy kas-registry key base $HOST $WITH_CREDS $*"

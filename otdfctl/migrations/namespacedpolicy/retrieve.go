@@ -436,13 +436,13 @@ func (r *Retriever) listActionsForNamespaces(ctx context.Context, namespaces []*
 			}
 
 			for _, action := range resp.GetActionsCustom() {
-				if action.GetId() == "" || hasObject(customByNamespace[namespace.GetId()], action.GetId()) {
+				if action.GetId() == "" || !sameNamespace(action.GetNamespace(), namespace) || hasObject(customByNamespace[namespace.GetId()], action.GetId()) {
 					continue
 				}
 				customByNamespace[namespace.GetId()] = append(customByNamespace[namespace.GetId()], action)
 			}
 			for _, action := range resp.GetActionsStandard() {
-				if action.GetId() == "" || hasObject(standardByNamespace[namespace.GetId()], action.GetId()) {
+				if action.GetId() == "" || !sameNamespace(action.GetNamespace(), namespace) || hasObject(standardByNamespace[namespace.GetId()], action.GetId()) {
 					continue
 				}
 				standardByNamespace[namespace.GetId()] = append(standardByNamespace[namespace.GetId()], action)

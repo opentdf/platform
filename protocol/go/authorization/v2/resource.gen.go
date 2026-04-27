@@ -5,7 +5,11 @@ package authorizationv2
 // ForAttributeValues returns a Resource containing the given attribute value FQNs.
 // This is the most common Resource variant, used when authorizing against
 // attribute values attached to data (e.g. those on a TDF).
+// At least one FQN is required; calling with zero arguments panics.
 func ForAttributeValues(fqns ...string) *Resource {
+	if len(fqns) == 0 {
+		panic("ForAttributeValues requires at least one FQN")
+	}
 	return &Resource{
 		Resource: &Resource_AttributeValues_{
 			AttributeValues: &Resource_AttributeValues{

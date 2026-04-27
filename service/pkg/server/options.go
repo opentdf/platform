@@ -197,7 +197,7 @@ func WithIPCInterceptors(interceptors ...connect.Interceptor) StartOptions {
 //
 //	server.Start(
 //	    server.WithHTTPMiddleware(
-//	        enumnormalize.NewMiddleware(rules, paths, 0),
+//	        enumnormalize.NewMiddleware(rules, paths),
 //	    ),
 //	)
 func WithHTTPMiddleware(middleware ...func(http.Handler) http.Handler) StartOptions {

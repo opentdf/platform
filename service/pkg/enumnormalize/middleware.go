@@ -16,11 +16,12 @@ const defaultMaxBodySize = 1 << 20 // 1 MB
 // NewMiddleware returns HTTP middleware that normalises shorthand enum string
 // values in JSON request bodies for the given RPC paths. Requests that do not
 // match (wrong content-type, wrong path) are forwarded unchanged with zero
-// overhead. maxBodyBytes sets the upper bound on request body size; pass 0 to
-// use the default (1 MB).
-func NewMiddleware(rules []EnumFieldRule, paths []string, maxBodyBytes int64) func(http.Handler) http.Handler {
-	if maxBodyBytes <= 0 {
-		maxBodyBytes = defaultMaxBodySize
+// overhead. An optional maxBodyBytes sets the upper bound on request body size;
+// defaults to 1 MB if omitted or zero.
+func NewMiddleware(rules []EnumFieldRule, paths []string, maxBodyBytes ...int64) func(http.Handler) http.Handler {
+	bodyLimit := int64(defaultMaxBodySize)
+	if len(maxBodyBytes) > 0 && maxBodyBytes[0] > 0 {
+		bodyLimit = maxBodyBytes[0]
 	}
 	lookup := buildRuleLookup(rules)
 
@@ -37,7 +38,7 @@ func NewMiddleware(rules []EnumFieldRule, paths []string, maxBodyBytes int64) fu
 				return
 			}
 
-			body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBodyBytes))
+			body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, bodyLimit))
 			if err != nil {
 				next.ServeHTTP(w, r)
 				return

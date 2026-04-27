@@ -588,11 +588,9 @@ components:
         - SORT_DIRECTION_DESC
       description: |-
         Sorting direction shared across list APIs.
-         Notes:
-         - When a sort field is provided, UNSPECIFIED is treated as ASC.
-         - When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
-           the endpoint's request message defines the default ordering; see the
-           specific List* request docs.
+         When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+         the endpoint's request message defines the default ordering; see the
+         specific List* request docs.
     policy.SourceType:
       type: string
       title: SourceType
@@ -1846,8 +1844,8 @@ components:
           maxItems: 1
           description: |-
             Optional - CONSTRAINT: max 1 item
-             Default ordering when omitted or when the first entry's field is UNSPECIFIED:
-             created_at DESC, then id ASC (tie-breaker).
+             When sort is provided and sort.direction is UNSPECIFIED, direction defaults to ASC.
+             When sort is omitted or sort.field is UNSPECIFIED, the service applies its default ordering.
       title: ListObligationsRequest
       additionalProperties: false
     policy.obligations.ListObligationsResponse:

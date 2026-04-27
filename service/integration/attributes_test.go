@@ -654,6 +654,8 @@ func (s *AttributesSuite) Test_ListAttributes_SortTieBreaker_CreatedAtWithIDFall
 	}
 	defer s.deleteSortTestAttributes(ids)
 
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "attribute_definitions", ids))
+
 	sorted := slices.Sorted(slices.Values(ids))
 
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{

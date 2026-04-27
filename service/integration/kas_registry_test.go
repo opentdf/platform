@@ -1032,6 +1032,8 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortTieBreaker_CreatedAtWit
 	}
 	defer s.deleteSortTestKeyAccessServers(ids)
 
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "key_access_servers", ids))
+
 	sorted := slices.Sorted(slices.Values(ids))
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{

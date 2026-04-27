@@ -1909,6 +1909,8 @@ func (s *ObligationsSuite) Test_ListObligations_SortTieBreaker_CreatedAtWithIDFa
 	}
 	defer s.deleteObligations(ids)
 
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "obligation_definitions", ids))
+
 	sorted := slices.Sorted(slices.Values(ids))
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{

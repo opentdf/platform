@@ -2355,6 +2355,8 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortTieBreaker_C
 	}
 	defer s.deleteSortTestRegisteredResources(ids)
 
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "registered_resources", ids))
+
 	sorted := slices.Sorted(slices.Values(ids))
 
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{

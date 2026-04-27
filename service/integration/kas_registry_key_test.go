@@ -2626,6 +2626,8 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortTieBreaker_CreatedAtWithIDFallba
 	}
 	defer s.deleteSortTestKasKeys(ids, kas.GetId())
 
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "key_access_server_keys", ids))
+
 	sorted := slices.Sorted(slices.Values(ids))
 
 	listRsp, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
@@ -2664,9 +2666,14 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByUnspecifiedField_FallsBackToDe
 // createSortTestKasKeys creates kas keys with the given prefixes, adding 5ms gaps
 // between creations for distinct timestamps. Returns the key IDs in creation order and the parent KAS ID.
 func (s *KasRegistryKeySuite) createSortTestKasKeys(prefixes []string) ([]string, string) {
+	label := "kas"
+	if len(prefixes) > 0 {
+		label = prefixes[0]
+	}
+	kasUUID := uuid.NewString()
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
-		Name: prefixes[0] + "-kas-" + uuid.NewString(),
-		Uri:  "https://" + prefixes[0] + "-kas-" + uuid.NewString() + ".opentdf.io",
+		Name: label + "-kas-" + kasUUID,
+		Uri:  "https://" + label + "-kas-" + kasUUID + ".opentdf.io",
 	}
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
@@ -2677,14 +2684,15 @@ func (s *KasRegistryKeySuite) createSortTestKasKeys(prefixes []string) ([]string
 		if i > 0 {
 			time.Sleep(5 * time.Millisecond)
 		}
+		ts := time.Now().UnixNano()
 		keyReq := kasregistry.CreateKeyRequest{
 			KasId:        kas.GetId(),
-			KeyId:        fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano()),
+			KeyId:        fmt.Sprintf("%s-%d", prefix, ts),
 			KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
 			KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 			PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
 			PrivateKeyCtx: &policy.PrivateKeyCtx{
-				KeyId:      fmt.Sprintf("%s-priv-%d", prefix, time.Now().UnixNano()),
+				KeyId:      fmt.Sprintf("%s-priv-%d", prefix, ts),
 				WrappedKey: keyCtx,
 			},
 		}

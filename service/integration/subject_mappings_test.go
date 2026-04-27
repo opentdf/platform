@@ -721,6 +721,8 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortTieBreaker_CreatedAt
 	}
 	defer s.deleteSortTestSubjectMappings(ids)
 
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "subject_mappings", ids))
+
 	sorted := slices.Sorted(slices.Values(ids))
 
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
@@ -1549,6 +1551,8 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortTieBreaker_Crea
 		ids[i] = created.GetId()
 	}
 	defer s.deleteSortTestSubjectConditionSets(ids)
+
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "subject_condition_set", ids))
 
 	sorted := slices.Sorted(slices.Values(ids))
 

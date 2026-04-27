@@ -441,6 +441,8 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortTieBreaker_CreatedAtWithIDFall
 	}
 	defer s.deleteSortTestNamespaces(ids)
 
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "attribute_namespaces", ids))
+
 	sorted := slices.Sorted(slices.Values(ids))
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
@@ -452,7 +454,6 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortTieBreaker_CreatedAtWithIDFall
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	// When created_at values tie, id ASC tie-breaker ensures deterministic ordering
 	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, sorted[0], sorted[1], sorted[2])
 }
 

@@ -168,14 +168,12 @@ func (s *EnumShorthandStepDefinitions) iCreateAnAttributeViaHTTPWithShorthandRul
 		return ctx, errors.New("namespace ns1 not found in scenario context")
 	}
 
-	// Raw JSON with shorthand rule type
+	// Raw JSON with shorthand rule type — fields are at the top level per the proto definition
 	body := fmt.Sprintf(`{
-		"attribute": {
-			"namespaceId": "%s",
-			"name": "shorthand_test_attr",
-			"rule": "ANY_OF",
-			"values": ["val1", "val2"]
-		}
+		"namespaceId": "%s",
+		"name": "shorthand_test_attr",
+		"rule": "ANY_OF",
+		"values": ["val1", "val2"]
 	}`, nsID)
 
 	rpcPath := "/policy.attributes.AttributesService/CreateAttribute"

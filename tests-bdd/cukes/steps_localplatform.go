@@ -496,7 +496,58 @@ func provisionPlatformPolicy(ctx context.Context, suiteOptions *LocalDevOptions,
 		}()
 		cmd.ProvisionPolicyFixturesFromFile(ctx, cfg, fixturePath)
 	}()
-	return provisionErr
+	if provisionErr != nil {
+		return provisionErr
+	}
+
+	// Default fixture only: pin HIERARCHY rank for demo.com/attr/classification.
+	// Fixture map iteration order is non-deterministic, so the trigger that
+	// auto-populates attribute_definitions.values_order would otherwise leave
+	// rank up to chance. We control the rank here from test code rather than
+	// adding a behavior change to the fixtures provisioner.
+	if *startupOptions.policyProvisionPath == "" {
+		if err := pinDefaultClassificationHierarchy(ctx, scenarioContext); err != nil {
+			return fmt.Errorf("pin classification hierarchy: %w", err)
+		}
+	}
+	return nil
+}
+
+// pinDefaultClassificationHierarchy sets values_order on the default
+// fixture's classification attribute (high -> low: secret > confidential >
+// internal > public) so encrypt/decrypt scenarios get deterministic
+// HIERARCHY ranking.
+func pinDefaultClassificationHierarchy(ctx context.Context, scenarioContext *PlatformScenarioContext) error {
+	// Hard-coded UUIDs for the demo.com/attr/classification attribute and its
+	// values, mirroring policy_default.yaml. They are policy-DB primary keys,
+	// not credentials.
+	const (
+		classificationAttrID = "a1b2c3d4-e5f6-4a7b-8c9d-000000000020"
+		secretValueID        = "a1b2c3d4-e5f6-4a7b-8c9d-000000000024" //nolint:gosec // attribute-value id, not a credential
+		confidentialValueID  = "a1b2c3d4-e5f6-4a7b-8c9d-000000000023" //nolint:gosec // attribute-value id, not a credential
+		internalValueID      = "a1b2c3d4-e5f6-4a7b-8c9d-000000000022"
+		publicValueID        = "a1b2c3d4-e5f6-4a7b-8c9d-000000000021"
+	)
+	localPlatformGlue, ok := (*scenarioContext.TestSuiteContext.PlatformGlue).(*LocalDevPlatformGlue)
+	if !ok {
+		return errors.New("failed to load local platform glue")
+	}
+	dsn := fmt.Sprintf(
+		"postgres://postgres:changeme@%s/%s?sslmode=prefer",
+		net.JoinHostPort("localhost", strconv.Itoa(localPlatformGlue.Options.postgresPort)),
+		scenarioContext.ScenarioOptions.DatabaseName,
+	)
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	_, err = pool.Exec(ctx,
+		`UPDATE otdf_policy.attribute_definitions SET values_order = $1::uuid[] WHERE id = $2`,
+		[]string{secretValueID, confidentialValueID, internalValueID, publicValueID},
+		classificationAttrID,
+	)
+	return err
 }
 
 func createPlatformComposeConfiguration(options *LocalDevOptions) (string, error) {

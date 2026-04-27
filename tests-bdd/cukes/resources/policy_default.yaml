@@ -8,7 +8,7 @@
 #   demo.com/attr/department        rule: ANY_OF
 #     - engineering, finance, hr
 #
-#   demo.com/attr/classification    rule: HIERARCHY  (listed high -> low)
+#   demo.com/attr/classification    rule: HIERARCHY  (high -> low)
 #     - secret, confidential, internal, public
 #
 # Subject mappings key off Keycloak user attribute claims:
@@ -17,9 +17,15 @@
 # Each mapping grants the `read` action (the action KAS evaluates during
 # rewrap — see service/kas/access/accessPdp.go).
 #
-# KAS registry + attribute-value-to-key bindings are NOT in this fixture:
-# they depend on per-scenario generated key material and are provisioned
-# via the SDK in steps_localplatform.go after the platform is healthy.
+# Some sections (kas_registry, kas_registry_keys, custom_actions,
+# resource_mapping_groups, resource_mappings, registered_resources, etc.)
+# are populated with stub rows so the canonical fixtures provisioner —
+# which expects every section to have at least one entry — runs cleanly.
+# Stub rows use IDs prefixed `fX...` and are not exercised by any test.
+#
+# HIERARCHY rank for classification is pinned post-load by an UPDATE on
+# attribute_definitions.values_order in steps_localplatform.go (the
+# fixtures loader cannot guarantee deterministic insertion order).
 #
 # Schema mirrors service/internal/fixtures/policy_fixtures.yaml.
 ##
@@ -59,20 +65,21 @@ attributes:
       name: classification
       rule: HIERARCHY
       active: true
-      # Explicit HIERARCHY rank order, high -> low. The fixtures loader
-      # applies this as an UPDATE on attribute_definitions.values_order
-      # after values are provisioned, so scenarios 3-5 in
-      # encrypt-decrypt.feature get deterministic ranking regardless of
-      # map iteration order.
-      values_order:
-        - a1b2c3d4-e5f6-4a7b-8c9d-000000000024 # secret
-        - a1b2c3d4-e5f6-4a7b-8c9d-000000000023 # confidential
-        - a1b2c3d4-e5f6-4a7b-8c9d-000000000022 # internal
-        - a1b2c3d4-e5f6-4a7b-8c9d-000000000021 # public
+    # Stub attribute carrying the stub KAS grants below. Not used by any
+    # test scenario; exists solely so the loader's slice-based KAS-grant
+    # provisioners have at least one row to insert without polluting the
+    # real `department`/`classification` attributes' grant resolution.
+    demo.com/attr/_bdd_stub:
+      id: a1b2c3d4-e5f6-4a7b-8c9d-000000000030
+      namespace_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
+      name: _bdd_stub
+      rule: ANY_OF
+      active: true
 
 ##
-# Attribute values. HIERARCHY rank is pinned by values_order on the
-# classification attribute above, so the map keys here can be plain FQNs.
+# Attribute values. HIERARCHY rank is pinned post-fixture-load by
+# steps_localplatform.go (UPDATE attribute_definitions.values_order),
+# since fixture map iteration order is non-deterministic.
 ##
 attribute_values:
   metadata:
@@ -118,6 +125,13 @@ attribute_values:
       id: a1b2c3d4-e5f6-4a7b-8c9d-000000000021
       attribute_definition_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000020
       value: public
+      active: true
+
+    # Stub value under the stub attribute, holds the KAS-grant linkages.
+    demo.com/attr/_bdd_stub/value/x:
+      id: a1b2c3d4-e5f6-4a7b-8c9d-000000000031
+      attribute_definition_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000030
+      value: x
       active: true
 
 ##
@@ -284,3 +298,161 @@ subject_mapping_actions_relation:
     sm_classification_secret_read:
       subject_mapping_id: c1b2c3d4-e5f6-4a7b-8c9d-000000000024
       action_name: read
+
+##
+# ----- Stub rows for sections required by the unmodified fixtures
+# ----- provisioner. None of these are exercised by encrypt/decrypt
+# ----- scenarios; they exist only to satisfy the loader's "every
+# ----- section must have at least one row" expectation.
+##
+
+custom_actions:
+  metadata:
+    table_name: actions
+    columns:
+      - id
+      - name
+      - is_standard
+  data:
+    stub_custom_action:
+      id: f6f6f6f6-6666-4666-8666-666666666666
+      name: bdd-stub-action
+      is_standard: false
+
+resource_mapping_groups:
+  metadata:
+    table_name: resource_mapping_groups
+    columns:
+      - id
+      - namespace_id
+      - name
+  data:
+    stub_resource_mapping_group:
+      id: f4f4f4f4-4444-4444-8444-444444444444
+      namespace_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000001
+      name: bdd_stub_group
+
+resource_mappings:
+  metadata:
+    table_name: resource_mappings
+    columns:
+      - id
+      - attribute_value_id
+      - terms
+      - group_id
+  data:
+    stub_resource_mapping:
+      id: f5f5f5f5-5555-4555-8555-555555555555
+      attribute_value_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000011 # demo.com/attr/department/value/engineering
+      terms:
+        - bdd-stub-term
+      group_id: f4f4f4f4-4444-4444-8444-444444444444
+
+kas_registry:
+  metadata:
+    table_name: key_access_servers
+    columns:
+      - id
+      - uri
+      - name
+      - public_key
+  data:
+    stub_kas:
+      id: f1f1f1f1-1111-4111-8111-111111111111
+      uri: https://kas.bdd-stub.example
+      name: bdd-stub-kas
+      public_key:
+        remote: https://kas.bdd-stub.example/public_key
+
+attribute_key_access_servers:
+  # Linked to the stub `_bdd_stub` attribute, NOT department/classification,
+  # so SDK encrypt for real test attributes is not routed through the
+  # unreachable stub KAS.
+  - attribute_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000030 # demo.com/attr/_bdd_stub
+    key_access_server_id: f1f1f1f1-1111-4111-8111-111111111111
+
+attribute_value_key_access_servers:
+  - value_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000031 # demo.com/attr/_bdd_stub/value/x
+    key_access_server_id: f1f1f1f1-1111-4111-8111-111111111111
+
+provider_configs:
+  metadata:
+    table_name: provider_config
+    columns:
+      - id
+      - provider_name
+      - manager
+      - config
+  data:
+    stub_provider_config:
+      id: f2f2f2f2-2222-4222-8222-222222222222
+      provider_name: bdd-stub-provider
+      manager: opentdf.io/basic
+      config: eyJzdHViIjogInZhbHVlIn0= # {"stub": "value"}
+
+kas_registry_keys:
+  metadata:
+    table_name: key_access_server_keys
+    columns:
+      - id
+      - key_access_server_id
+      - key_algorithm
+      - key_id
+      - key_mode
+      - key_status
+      - private_key_ctx
+      - public_key_ctx
+      - provider_config_id
+  data:
+    # Borrowed verbatim from policy_fixtures.yaml's kas_key_2 (EC P-256)
+    # so the row passes the platform's JSONB validation when
+    # ListKeyAccessServers reads it back. Not exercised by tests.
+    stub_kas_key:
+      id: f3f3f3f3-3333-4333-8333-333333333333
+      key_access_server_id: f1f1f1f1-1111-4111-8111-111111111111
+      key_algorithm: 3 # ALGORITHM_EC_P256
+      key_id: bdd_stub_key
+      key_mode: 1 # KEY_MODE_LOCAL
+      key_status: 1 # KEY_STATUS_ACTIVE
+      private_key_ctx: eyAid3JhcHBlZF9rZXkiOiAiMXZ2V2pJZ2E2emM0bkhKVHEwL3RmM2hKZXU2VlpDY2o5WTVvbXZNekN2MEw5OVNxcGNpUHY5dUw1ZTQzeHVabTBYMDR3ekJ4VVdhUnJBaWJQRGN2TzFOQWJwS1ZObVNPODRyaXE4aklVeTRJRTRWeHBiTWYwL0duR1U2RjJIODhWb251K2YxMFRQeXdvVWgrU0dXTUZRZWU0eHFkaDJvQ2JlY3FiWklkK1JRR3dRUUh4dUlmOVljUW53MXJXcVMyRHhEekc5cGtleVZCTFBnaTQvZmo5SWhHVmtQQ0RaRFpZYys5MksrZ2UzT0htSlVSSWlURUI4b3BXbVNTc2Zhblc5YkJSYURWdWwxV3EyaHVrK1piVWhqeEZ6bEJWVHRuUVQ2c2R3Yzl0YlpSd0Rqa2ViVGExNVJHVkRKZFhZK1drTHZ2a2J0TVdWZHJQdlNNT2hwRndtcGNvN2g5VjRMdnRLalhvcTA9IiwgImtleV9pZCI6ICJjb25maWciIH0=
+      public_key_ctx: eyAicGVtIjogIkxTMHRMUzFDUlVkSlRpQkRSVkpVU1VaSlEwRlVSUzB0TFMwdENrMUpTVUpqUkVORFFWSmxaMEYzU1VKQlowbFZXRGRMUW14blVUaENWa3BEYldkWlp6SldTM0pyUWt3eVl6UkpkME5uV1VsTGIxcEplbW93UlVGM1NYY0tSR3BGVFUxQmIwZEJNVlZGUVhkM1JHRXlSbnBOUWpSWVJGUkpNRTFFVlhkT2FrVjVUVlJCZUUxc2IxaEVWRWt4VFVSVmQwNXFSWGxOVkVGNFRXeHZkd3BFYWtWTlRVRnZSMEV4VlVWQmQzZEVZVEpHZWsxR2EzZEZkMWxJUzI5YVNYcHFNRU5CVVZsSlMyOWFTWHBxTUVSQlVXTkVVV2RCUldRNFJGSnlhRTFFQ2xCUlUyTkpVR3hTZFZaaVdtSlZZakoxV1RoVlRFSldaVzFSZW5oblZEZHZURGRaTjFWR1NHSmtTWFZuVjBGRFVsVm5UMEl6VjJ0a1MzTTVjVXBFYUcwS1EwUkZZazh2WXl0YWMzSnpUa3RPVkUxR1JYZElVVmxFVmxJd1QwSkNXVVZHUlM5MlluVjJWVms1U2tVdk4xb3hSR0pTY25kcE1tWTNUV1JGVFVJNFJ3cEJNVlZrU1hkUldVMUNZVUZHUlM5MlluVjJWVms1U2tVdk4xb3hSR0pTY25kcE1tWTNUV1JGVFVFNFIwRXhWV1JGZDBWQ0wzZFJSazFCVFVKQlpqaDNDa05uV1VsTGIxcEplbW93UlVGM1NVUlNkMEYzVWtGSloxSnliVEJvU1VwSWFYaHlVVEpGT0VneWVtZE1SMVZMUkdsUlJYcE5aRWMwYzNGRWIySTBjVm9LZVN0clEwbElTMjVIZEUxU05GcHlia3BxSzJaM2FrSTJhelZzZVhSM1dYRnhibGxJWVU1NWNFVmlTVlUwYWpWcUNpMHRMUzB0UlU1RUlFTkZVbFJKUmtsRFFWUkZMUzB0TFMwSyIgfQ==
+      provider_config_id: f2f2f2f2-2222-4222-8222-222222222222
+
+registered_resources:
+  metadata:
+    table_name: registered_resources
+    columns:
+      - id
+      - name
+  data:
+    stub_registered_resource:
+      id: f7f7f7f7-7777-4777-8777-777777777777
+      name: bdd_stub_resource
+
+registered_resource_values:
+  metadata:
+    table_name: registered_resource_values
+    columns:
+      - id
+      - registered_resource_id
+      - value
+  data:
+    stub_registered_resource_value:
+      id: f8f8f8f8-8888-4888-8888-888888888888
+      registered_resource_id: f7f7f7f7-7777-4777-8777-777777777777
+      value: bdd_stub_value
+
+registered_resource_action_attribute_values:
+  metadata:
+    table_name: registered_resource_action_attribute_values
+    columns:
+      - id
+      - registered_resource_value_id
+      - action_id
+      - attribute_value_id
+  data:
+    stub_registered_resource_action_attribute_value:
+      id: f9f9f9f9-9999-4999-8999-999999999999
+      registered_resource_value_id: f8f8f8f8-8888-4888-8888-888888888888
+      action_name: read # standard action inserted by migration
+      attribute_value_id: a1b2c3d4-e5f6-4a7b-8c9d-000000000011 # demo.com/attr/department/value/engineering

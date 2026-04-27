@@ -2,8 +2,8 @@ package cukes
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -18,19 +18,21 @@ type EnumShorthandStepDefinitions struct{}
 
 // getAccessToken fetches a bearer token from the Keycloak token endpoint using
 // the same client credentials the BDD test SDK uses.
-func getAccessToken(tokenEndpoint string) (string, error) {
+func getAccessToken(ctx context.Context, tokenEndpoint string) (string, error) {
 	data := url.Values{
 		"grant_type":    {"client_credentials"},
 		"client_id":     {"opentdf"},
 		"client_secret": {"secret"},
 	}
 
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // test-only
-		},
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, strings.NewReader(data.Encode()))
+	if err != nil {
+		return "", fmt.Errorf("token request creation failed: %w", err)
 	}
-	resp, err := client.PostForm(tokenEndpoint, data)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("token request failed: %w", err)
 	}
@@ -52,14 +54,10 @@ func getAccessToken(tokenEndpoint string) (string, error) {
 
 // postConnectRPC sends a raw JSON body to a ConnectRPC endpoint and returns the
 // HTTP status code and response body.
-func postConnectRPC(endpoint, rpcPath, token, jsonBody string) (int, string, error) {
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // test-only
-		},
-	}
+func postConnectRPC(ctx context.Context, endpoint, rpcPath, token, jsonBody string) (int, string, error) {
+	client := &http.Client{}
 
-	req, err := http.NewRequest(http.MethodPost, endpoint+rpcPath, strings.NewReader(jsonBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint+rpcPath, strings.NewReader(jsonBody))
 	if err != nil {
 		return 0, "", err
 	}
@@ -79,21 +77,33 @@ func postConnectRPC(endpoint, rpcPath, token, jsonBody string) (int, string, err
 	return resp.StatusCode, string(body), nil
 }
 
-// iCreateASubjectConditionSetViaHTTPWithShorthandEnums sends a raw HTTP POST with
-// shorthand enum strings and verifies the platform accepts it.
-func (s *EnumShorthandStepDefinitions) iCreateASubjectConditionSetViaHTTPWithShorthandEnums(ctx context.Context) (context.Context, error) {
+// prepareAuthenticatedRequest extracts the platform endpoint and fetches a
+// bearer token for raw HTTP requests. This is the common setup shared by all
+// shorthand enum e2e step definitions.
+func prepareAuthenticatedRequest(ctx context.Context) (*PlatformScenarioContext, string, string, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	scenarioContext.ClearError()
 
 	endpoint := scenarioContext.ScenarioOptions.PlatformEndpoint
 	tokenEndpoint, err := scenarioContext.SDK.PlatformConfiguration.TokenEndpoint()
 	if err != nil {
-		return ctx, fmt.Errorf("failed to get token endpoint: %w", err)
+		return nil, "", "", fmt.Errorf("failed to get token endpoint: %w", err)
 	}
 
-	token, err := getAccessToken(tokenEndpoint)
+	token, err := getAccessToken(ctx, tokenEndpoint)
 	if err != nil {
-		return ctx, fmt.Errorf("failed to get access token: %w", err)
+		return nil, "", "", fmt.Errorf("failed to get access token: %w", err)
+	}
+
+	return scenarioContext, endpoint, token, nil
+}
+
+// iCreateASubjectConditionSetViaHTTPWithShorthandEnums sends a raw HTTP POST with
+// shorthand enum strings and verifies the platform accepts it.
+func (s *EnumShorthandStepDefinitions) iCreateASubjectConditionSetViaHTTPWithShorthandEnums(ctx context.Context) (context.Context, error) {
+	scenarioContext, endpoint, token, err := prepareAuthenticatedRequest(ctx)
+	if err != nil {
+		return ctx, err
 	}
 
 	// Raw JSON with shorthand enum values — this is what the middleware normalizes.
@@ -113,7 +123,7 @@ func (s *EnumShorthandStepDefinitions) iCreateASubjectConditionSetViaHTTPWithSho
 	}`
 
 	rpcPath := "/policy.subjectmapping.SubjectMappingService/CreateSubjectConditionSet"
-	statusCode, respBody, err := postConnectRPC(endpoint, rpcPath, token, body)
+	statusCode, respBody, err := postConnectRPC(ctx, endpoint, rpcPath, token, body)
 	if err != nil {
 		return ctx, fmt.Errorf("HTTP request failed: %w", err)
 	}
@@ -136,31 +146,26 @@ func (s *EnumShorthandStepDefinitions) iCreateASubjectConditionSetViaHTTPWithSho
 		return ctx, fmt.Errorf("response missing subjectConditionSet.id: %s", respBody)
 	}
 
-	scenarioContext.RecordObject("shorthand_scs_id", scs["id"].(string))
+	scsID, ok := scs["id"].(string)
+	if !ok {
+		return ctx, fmt.Errorf("subjectConditionSet.id is not a string: %s", respBody)
+	}
+	scenarioContext.RecordObject("shorthand_scs_id", scsID)
 	return ctx, nil
 }
 
 // iCreateAnAttributeViaHTTPWithShorthandRule sends a raw HTTP POST to create an
 // attribute using a shorthand rule type enum.
 func (s *EnumShorthandStepDefinitions) iCreateAnAttributeViaHTTPWithShorthandRule(ctx context.Context) (context.Context, error) {
-	scenarioContext := GetPlatformScenarioContext(ctx)
-	scenarioContext.ClearError()
-
-	endpoint := scenarioContext.ScenarioOptions.PlatformEndpoint
-	tokenEndpoint, err := scenarioContext.SDK.PlatformConfiguration.TokenEndpoint()
+	scenarioContext, endpoint, token, err := prepareAuthenticatedRequest(ctx)
 	if err != nil {
-		return ctx, fmt.Errorf("failed to get token endpoint: %w", err)
-	}
-
-	token, err := getAccessToken(tokenEndpoint)
-	if err != nil {
-		return ctx, fmt.Errorf("failed to get access token: %w", err)
+		return ctx, err
 	}
 
 	// Get the namespace ID that was created by the scenario setup
 	nsID, ok := scenarioContext.GetObject("ns1").(string)
 	if !ok {
-		return ctx, fmt.Errorf("namespace ns1 not found in scenario context")
+		return ctx, errors.New("namespace ns1 not found in scenario context")
 	}
 
 	// Raw JSON with shorthand rule type
@@ -174,7 +179,7 @@ func (s *EnumShorthandStepDefinitions) iCreateAnAttributeViaHTTPWithShorthandRul
 	}`, nsID)
 
 	rpcPath := "/policy.attributes.AttributesService/CreateAttribute"
-	statusCode, respBody, err := postConnectRPC(endpoint, rpcPath, token, body)
+	statusCode, respBody, err := postConnectRPC(ctx, endpoint, rpcPath, token, body)
 	if err != nil {
 		return ctx, fmt.Errorf("HTTP request failed: %w", err)
 	}
@@ -209,18 +214,9 @@ func (s *EnumShorthandStepDefinitions) iCreateAnAttributeViaHTTPWithShorthandRul
 // iCreateASubjectConditionSetViaHTTPWithMixedEnumFormats verifies that a request
 // mixing shorthand and canonical enum names works correctly.
 func (s *EnumShorthandStepDefinitions) iCreateASubjectConditionSetViaHTTPWithMixedEnumFormats(ctx context.Context) (context.Context, error) {
-	scenarioContext := GetPlatformScenarioContext(ctx)
-	scenarioContext.ClearError()
-
-	endpoint := scenarioContext.ScenarioOptions.PlatformEndpoint
-	tokenEndpoint, err := scenarioContext.SDK.PlatformConfiguration.TokenEndpoint()
+	_, endpoint, token, err := prepareAuthenticatedRequest(ctx)
 	if err != nil {
-		return ctx, fmt.Errorf("failed to get token endpoint: %w", err)
-	}
-
-	token, err := getAccessToken(tokenEndpoint)
-	if err != nil {
-		return ctx, fmt.Errorf("failed to get access token: %w", err)
+		return ctx, err
 	}
 
 	// Mix shorthand and canonical names in the same request
@@ -247,7 +243,7 @@ func (s *EnumShorthandStepDefinitions) iCreateASubjectConditionSetViaHTTPWithMix
 	}`
 
 	rpcPath := "/policy.subjectmapping.SubjectMappingService/CreateSubjectConditionSet"
-	statusCode, respBody, err := postConnectRPC(endpoint, rpcPath, token, body)
+	statusCode, respBody, err := postConnectRPC(ctx, endpoint, rpcPath, token, body)
 	if err != nil {
 		return ctx, fmt.Errorf("HTTP request failed: %w", err)
 	}

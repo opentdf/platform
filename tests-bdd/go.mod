@@ -2,7 +2,7 @@ module github.com/opentdf/platform/tests-bdd
 
 go 1.25.5
 
-toolchain go1.25.8
+toolchain go1.25.9
 
 require (
 	github.com/cucumber/godog v0.15.0

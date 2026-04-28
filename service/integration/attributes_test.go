@@ -1862,10 +1862,7 @@ func (s *AttributesSuite) createSortTestAttributes(nsID string, prefixes []strin
 
 // deleteSortTestAttributes deactivates attributes created by sort tests.
 func (s *AttributesSuite) deleteSortTestAttributes(ids []string) {
-	for _, id := range ids {
-		_, err := s.db.PolicyClient.DeactivateAttribute(s.ctx, id)
-		s.Require().NoError(err)
-	}
+	s.Require().NoError(forceDeleteRows(s.ctx, s.db, "attribute_definitions", ids))
 }
 
 func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureDataAttribute {

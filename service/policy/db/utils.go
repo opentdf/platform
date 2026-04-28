@@ -380,29 +380,28 @@ func pgtypeInt4(i int32, valid bool) pgtype.Int4 {
 	}
 }
 
-// GetSubjectMappingsSortParams maps the strongly-typed SubjectMappingsSort enum to
-// SQL-compatible field name and direction strings.
-// Returns empty strings when sort is nil or empty (backward compatible —
-// callers fall back to default ORDER BY created_at DESC).
-func GetSubjectMappingsSortParams(sort []*subjectmapping.SubjectMappingsSort) (string, string) {
-	if len(sort) == 0 || sort[0] == nil {
-		return "", ""
-	}
-	s := sort[0]
-
-	var field string
-	switch s.GetField() {
+// getSubjectMappingsSortField maps the field enum to a SQL column name.
+// UNSPECIFIED returns empty so SQL can apply its per-query default.
+func getSubjectMappingsSortField(field subjectmapping.SortSubjectMappingsType) string {
+	switch field {
 	case subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT:
-		field = sortFieldCreatedAt
+		return sortFieldCreatedAt
 	case subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT:
-		field = sortFieldUpdatedAt
+		return sortFieldUpdatedAt
 	case subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED:
-		return "", ""
+		fallthrough
 	default:
+		return ""
+	}
+}
+
+// GetSubjectMappingsSortParams resolves sort field and direction independently,
+// returning SQL-compatible strings. Empty strings delegate defaults to SQL.
+func GetSubjectMappingsSortParams(sort []*subjectmapping.SubjectMappingsSort) (string, string) {
+	if len(sort) == 0 {
 		return "", ""
 	}
-
-	return field, getSortDirection(s.GetDirection())
+	return getSubjectMappingsSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
 }
 
 func UUIDToString(uuid pgtype.UUID) string {
@@ -419,85 +418,82 @@ func UUIDToString(uuid pgtype.UUID) string {
 	)
 }
 
-// GetAttributesSortParams maps the strongly-typed AttributesSort enum to
-// SQL-compatible field name and direction strings.
-// Returns empty strings when sort is nil or empty (backward compatible —
-// callers fall back to default ORDER BY created_at DESC).
-func GetAttributesSortParams(sort []*attributes.AttributesSort) (string, string) {
-	if len(sort) == 0 || sort[0] == nil {
-		return "", ""
-	}
-	s := sort[0]
-
-	var field string
-	switch s.GetField() {
+// getAttributesSortField maps the field enum to a SQL column name.
+// UNSPECIFIED returns empty so SQL can apply its per-query default.
+func getAttributesSortField(field attributes.SortAttributesType) string {
+	switch field {
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME:
-		field = sortFieldName
+		return sortFieldName
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT:
-		field = sortFieldCreatedAt
+		return sortFieldCreatedAt
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UPDATED_AT:
-		field = sortFieldUpdatedAt
+		return sortFieldUpdatedAt
 	case attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UNSPECIFIED:
-		return "", ""
+		fallthrough
 	default:
-		return "", ""
+		return ""
 	}
-
-	return field, getSortDirection(s.GetDirection())
 }
 
-// GetKasKeysSortParams maps the strongly-typed KasKeysSort enum to
-// SQL-compatible field name and direction strings.
-// Returns empty strings when sort is nil or empty (backward compatible —
-// callers fall back to default ORDER BY created_at DESC).
-func GetKasKeysSortParams(sort []*kasregistry.KasKeysSort) (string, string) {
-	if len(sort) == 0 || sort[0] == nil {
+// GetAttributesSortParams resolves sort field and direction independently,
+// returning SQL-compatible strings. Empty strings delegate defaults to SQL.
+func GetAttributesSortParams(sort []*attributes.AttributesSort) (string, string) {
+	if len(sort) == 0 {
 		return "", ""
 	}
-	s := sort[0]
+	return getAttributesSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
+}
 
-	var field string
-	switch s.GetField() {
+// getKasKeysSortField maps the field enum to a SQL column name.
+// UNSPECIFIED returns empty so SQL can apply its per-query default.
+func getKasKeysSortField(field kasregistry.SortKasKeysType) string {
+	switch field {
 	case kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID:
-		field = sortFieldKeyID
+		return sortFieldKeyID
 	case kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT:
-		field = sortFieldCreatedAt
+		return sortFieldCreatedAt
 	case kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UPDATED_AT:
-		field = sortFieldUpdatedAt
+		return sortFieldUpdatedAt
 	case kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UNSPECIFIED:
-		return "", ""
+		fallthrough
 	default:
-		return "", ""
+		return ""
 	}
-
-	return field, getSortDirection(s.GetDirection())
 }
 
-// GetKeyAccessServersSortParams maps the strongly-typed KeyAccessServersSort enum to
-// SQL-compatible field name and direction strings.
-// Returns empty strings when sort is nil or empty (backward compatible —
-// callers fall back to default ORDER BY created_at DESC).
-func GetKeyAccessServersSortParams(sort []*kasregistry.KeyAccessServersSort) (string, string) {
-	if len(sort) == 0 || sort[0] == nil {
+// GetKasKeysSortParams resolves sort field and direction independently,
+// returning SQL-compatible strings. Empty strings delegate defaults to SQL.
+func GetKasKeysSortParams(sort []*kasregistry.KasKeysSort) (string, string) {
+	if len(sort) == 0 {
 		return "", ""
 	}
-	s := sort[0]
+	return getKasKeysSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
+}
 
-	var field string
-	switch s.GetField() {
+// getKeyAccessServersSortField maps the field enum to a SQL column name.
+// UNSPECIFIED returns empty so SQL can apply its per-query default.
+func getKeyAccessServersSortField(field kasregistry.SortKeyAccessServersType) string {
+	switch field {
 	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_NAME:
-		field = sortFieldName
+		return sortFieldName
 	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_URI:
-		field = sortFieldURI
+		return sortFieldURI
 	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT:
-		field = sortFieldCreatedAt
+		return sortFieldCreatedAt
 	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UPDATED_AT:
-		field = sortFieldUpdatedAt
+		return sortFieldUpdatedAt
 	case kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UNSPECIFIED:
-		return "", ""
+		fallthrough
 	default:
+		return ""
+	}
+}
+
+// GetKeyAccessServersSortParams resolves sort field and direction independently,
+// returning SQL-compatible strings. Empty strings delegate defaults to SQL.
+func GetKeyAccessServersSortParams(sort []*kasregistry.KeyAccessServersSort) (string, string) {
+	if len(sort) == 0 {
 		return "", ""
 	}
-
-	return field, getSortDirection(s.GetDirection())
+	return getKeyAccessServersSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
 }

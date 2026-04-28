@@ -84,85 +84,82 @@ func GetNamespacesSortParams(sort []*namespaces.NamespacesSort) (string, string)
 	return getNamespacesSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
 }
 
-// GetSubjectConditionSetsSortParams maps the strongly-typed SubjectConditionSetsSort enum to
-// SQL-compatible field name and direction strings.
-// Returns empty strings when sort is nil or empty (backward compatible —
-// callers fall back to default ORDER BY created_at DESC).
-func GetSubjectConditionSetsSortParams(sort []*subjectmapping.SubjectConditionSetsSort) (string, string) {
-	if len(sort) == 0 || sort[0] == nil {
-		return "", ""
-	}
-	s := sort[0]
-
-	var field string
-	switch s.GetField() {
+// getSubjectConditionSetsSortField maps the field enum to a SQL column name.
+// UNSPECIFIED returns empty so SQL can apply its per-query default.
+func getSubjectConditionSetsSortField(field subjectmapping.SortSubjectConditionSetsType) string {
+	switch field {
 	case subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT:
-		field = sortFieldCreatedAt
+		return sortFieldCreatedAt
 	case subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT:
-		field = sortFieldUpdatedAt
+		return sortFieldUpdatedAt
 	case subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED:
-		return "", ""
+		fallthrough
 	default:
-		return "", ""
+		return ""
 	}
-
-	return field, getSortDirection(s.GetDirection())
 }
 
-// GetObligationsSortParams maps the strongly-typed ObligationsSort enum to
-// SQL-compatible field name and direction strings.
-// Returns empty strings when sort is nil or empty (backward compatible —
-// callers fall back to default ORDER BY created_at DESC).
-func GetObligationsSortParams(sort []*obligations.ObligationsSort) (string, string) {
-	if len(sort) == 0 || sort[0] == nil {
+// GetSubjectConditionSetsSortParams resolves sort field and direction independently,
+// returning SQL-compatible strings. Empty strings delegate defaults to SQL.
+func GetSubjectConditionSetsSortParams(sort []*subjectmapping.SubjectConditionSetsSort) (string, string) {
+	if len(sort) == 0 {
 		return "", ""
 	}
-	s := sort[0]
+	return getSubjectConditionSetsSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
+}
 
-	var field string
-	switch s.GetField() {
+// getObligationsSortField maps the field enum to a SQL column name.
+// UNSPECIFIED returns empty so SQL can apply its per-query default.
+func getObligationsSortField(field obligations.SortObligationsType) string {
+	switch field {
 	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_NAME:
-		field = sortFieldName
+		return sortFieldName
 	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_FQN:
-		field = sortFieldFQN
+		return sortFieldFQN
 	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT:
-		field = sortFieldCreatedAt
+		return sortFieldCreatedAt
 	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UPDATED_AT:
-		field = sortFieldUpdatedAt
+		return sortFieldUpdatedAt
 	case obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UNSPECIFIED:
-		return "", ""
+		fallthrough
 	default:
-		return "", ""
+		return ""
 	}
-
-	return field, getSortDirection(s.GetDirection())
 }
 
-// GetRegisteredResourcesSortParams maps the strongly-typed RegisteredResourcesSort enum to
-// SQL-compatible field name and direction strings.
-// Returns empty strings when sort is nil or empty (backward compatible —
-// callers fall back to default ORDER BY created_at DESC).
-func GetRegisteredResourcesSortParams(sort []*registeredresources.RegisteredResourcesSort) (string, string) {
-	if len(sort) == 0 || sort[0] == nil {
+// GetObligationsSortParams resolves sort field and direction independently,
+// returning SQL-compatible strings. Empty strings delegate defaults to SQL.
+func GetObligationsSortParams(sort []*obligations.ObligationsSort) (string, string) {
+	if len(sort) == 0 {
 		return "", ""
 	}
-	s := sort[0]
+	return getObligationsSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
+}
 
-	var field string
-	switch s.GetField() {
+// getRegisteredResourcesSortField maps the field enum to a SQL column name.
+// UNSPECIFIED returns empty so SQL can apply its per-query default.
+func getRegisteredResourcesSortField(field registeredresources.SortRegisteredResourcesType) string {
+	switch field {
 	case registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_NAME:
-		field = sortFieldName
+		return sortFieldName
 	case registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT:
-		field = sortFieldCreatedAt
+		return sortFieldCreatedAt
 	case registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UPDATED_AT:
-		field = sortFieldUpdatedAt
+		return sortFieldUpdatedAt
 	case registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UNSPECIFIED:
-		return "", ""
+		fallthrough
 	default:
+		return ""
+	}
+}
+
+// GetRegisteredResourcesSortParams resolves sort field and direction independently,
+// returning SQL-compatible strings. Empty strings delegate defaults to SQL.
+func GetRegisteredResourcesSortParams(sort []*registeredresources.RegisteredResourcesSort) (string, string) {
+	if len(sort) == 0 {
 		return "", ""
 	}
-
-	return field, getSortDirection(s.GetDirection())
+	return getRegisteredResourcesSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
 }
 
 // Returns next page's offset if has not yet reached total, or else returns 0

@@ -41,44 +41,47 @@ func getListLimit(limit int32, fallback int32) int32 {
 	return fallback
 }
 
+// getSortDirection maps the direction enum to a SQL string.
+// UNSPECIFIED returns empty so SQL can apply its per-query default.
 func getSortDirection(direction policy.SortDirection) string {
 	switch direction {
 	case policy.SortDirection_SORT_DIRECTION_DESC:
 		return "DESC"
-	case policy.SortDirection_SORT_DIRECTION_UNSPECIFIED, policy.SortDirection_SORT_DIRECTION_ASC:
+	case policy.SortDirection_SORT_DIRECTION_ASC:
 		return "ASC"
+	case policy.SortDirection_SORT_DIRECTION_UNSPECIFIED:
+		fallthrough
 	default:
 		return ""
 	}
 }
 
-// GetNamespacesSortParams maps the strongly-typed NamespacesSort enum to
-// SQL-compatible field name and direction strings.
-// Returns empty strings when sort is nil or empty (backward compatible —
-// callers fall back to default ORDER BY created_at DESC).
-func GetNamespacesSortParams(sort []*namespaces.NamespacesSort) (string, string) {
-	if len(sort) == 0 || sort[0] == nil {
-		return "", ""
-	}
-	s := sort[0]
-
-	var field string
-	switch s.GetField() {
+// getNamespacesSortField maps the field enum to a SQL column name.
+// UNSPECIFIED returns empty so SQL can apply its per-query default.
+func getNamespacesSortField(field namespaces.SortNamespacesType) string {
+	switch field {
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME:
-		field = sortFieldName
+		return sortFieldName
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN:
-		field = sortFieldFQN
+		return sortFieldFQN
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT:
-		field = sortFieldCreatedAt
+		return sortFieldCreatedAt
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UPDATED_AT:
-		field = sortFieldUpdatedAt
+		return sortFieldUpdatedAt
 	case namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UNSPECIFIED:
-		return "", ""
+		fallthrough
 	default:
+		return ""
+	}
+}
+
+// GetNamespacesSortParams resolves sort field and direction independently,
+// returning SQL-compatible strings. Empty strings delegate defaults to SQL.
+func GetNamespacesSortParams(sort []*namespaces.NamespacesSort) (string, string) {
+	if len(sort) == 0 {
 		return "", ""
 	}
-
-	return field, getSortDirection(s.GetDirection())
+	return getNamespacesSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
 }
 
 // GetSubjectConditionSetsSortParams maps the strongly-typed SubjectConditionSetsSort enum to

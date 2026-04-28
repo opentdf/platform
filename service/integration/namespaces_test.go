@@ -1459,10 +1459,7 @@ func (s *NamespacesSuite) createSortTestNamespaces(prefixes []string) []string {
 
 // deleteSortTestNamespaces deactivates namespaces created by sort tests.
 func (s *NamespacesSuite) deleteSortTestNamespaces(ids []string) {
-	for _, id := range ids {
-		_, err := s.db.PolicyClient.DeactivateNamespace(s.ctx, id)
-		s.Require().NoError(err)
-	}
+	s.Require().NoError(forceDeleteRows(s.ctx, s.db, "attribute_namespaces", ids))
 }
 
 func (s *NamespacesSuite) getActiveNamespaceFixtures() []fixtures.FixtureDataNamespace {

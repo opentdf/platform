@@ -579,7 +579,15 @@ func (q *Queries) listRegisteredResourceValues(ctx context.Context, arg listRegi
 }
 
 const listRegisteredResources = `-- name: listRegisteredResources :many
-WITH counted AS (
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
+        CASE
+            WHEN $5::text = '' AND $6::text = '' THEN 'DESC'
+            ELSE COALESCE(NULLIF($6::text, ''), 'ASC')
+        END AS resolved_direction
+),
+counted AS (
     SELECT COUNT(r.id) AS total
     FROM registered_resources r
     LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
@@ -612,6 +620,7 @@ FROM registered_resources r
 LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 CROSS JOIN counted
+CROSS JOIN params p
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 LEFT JOIN LATERAL (
     SELECT JSON_AGG(
@@ -645,24 +654,24 @@ WHERE
     ($2::text IS NULL OR ns_fqns.fqn = $2::text)
 GROUP BY r.id, n.id, ns_fqns.fqn, counted.total
 ORDER BY
-    CASE WHEN $3::text = 'name' AND $4::text = 'ASC' THEN r.name END ASC,
-    CASE WHEN $3::text = 'name' AND $4::text = 'DESC' THEN r.name END DESC,
-    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN r.created_at END ASC,
-    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN r.created_at END DESC,
-    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN r.updated_at END ASC,
-    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN r.updated_at END DESC,
-    r.created_at DESC
-LIMIT $6
-OFFSET $5
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN r.name END ASC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN r.name END DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN r.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN r.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN r.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN r.updated_at END DESC,
+    r.id ASC
+LIMIT $4
+OFFSET $3
 `
 
 type listRegisteredResourcesParams struct {
 	NamespaceID   pgtype.UUID `json:"namespace_id"`
 	NamespaceFqn  pgtype.Text `json:"namespace_fqn"`
-	SortField     string      `json:"sort_field"`
-	SortDirection string      `json:"sort_direction"`
 	Offset        int32       `json:"offset_"`
 	Limit         int32       `json:"limit_"`
+	SortField     string      `json:"sort_field"`
+	SortDirection string      `json:"sort_direction"`
 }
 
 type listRegisteredResourcesRow struct {
@@ -676,7 +685,15 @@ type listRegisteredResourcesRow struct {
 
 // Build a JSON array of action/attribute pairs for each resource value
 //
-//	WITH counted AS (
+//	WITH params AS (
+//	    SELECT
+//	        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
+//	        CASE
+//	            WHEN $5::text = '' AND $6::text = '' THEN 'DESC'
+//	            ELSE COALESCE(NULLIF($6::text, ''), 'ASC')
+//	        END AS resolved_direction
+//	),
+//	counted AS (
 //	    SELECT COUNT(r.id) AS total
 //	    FROM registered_resources r
 //	    LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
@@ -709,6 +726,7 @@ type listRegisteredResourcesRow struct {
 //	LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
 //	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 //	CROSS JOIN counted
+//	CROSS JOIN params p
 //	LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 //	LEFT JOIN LATERAL (
 //	    SELECT JSON_AGG(
@@ -742,23 +760,23 @@ type listRegisteredResourcesRow struct {
 //	    ($2::text IS NULL OR ns_fqns.fqn = $2::text)
 //	GROUP BY r.id, n.id, ns_fqns.fqn, counted.total
 //	ORDER BY
-//	    CASE WHEN $3::text = 'name' AND $4::text = 'ASC' THEN r.name END ASC,
-//	    CASE WHEN $3::text = 'name' AND $4::text = 'DESC' THEN r.name END DESC,
-//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN r.created_at END ASC,
-//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN r.created_at END DESC,
-//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN r.updated_at END ASC,
-//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN r.updated_at END DESC,
-//	    r.created_at DESC
-//	LIMIT $6
-//	OFFSET $5
+//	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN r.name END ASC,
+//	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN r.name END DESC,
+//	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN r.created_at END ASC,
+//	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN r.created_at END DESC,
+//	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN r.updated_at END ASC,
+//	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN r.updated_at END DESC,
+//	    r.id ASC
+//	LIMIT $4
+//	OFFSET $3
 func (q *Queries) listRegisteredResources(ctx context.Context, arg listRegisteredResourcesParams) ([]listRegisteredResourcesRow, error) {
 	rows, err := q.db.Query(ctx, listRegisteredResources,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
-		arg.SortField,
-		arg.SortDirection,
 		arg.Offset,
 		arg.Limit,
+		arg.SortField,
+		arg.SortDirection,
 	)
 	if err != nil {
 		return nil, err

@@ -68,7 +68,15 @@ ORDER BY r.namespace_id NULLS FIRST
 LIMIT 1;
 
 -- name: listRegisteredResources :many
-WITH counted AS (
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
+        CASE
+            WHEN @sort_field::text = '' AND @sort_direction::text = '' THEN 'DESC'
+            ELSE COALESCE(NULLIF(@sort_direction::text, ''), 'ASC')
+        END AS resolved_direction
+),
+counted AS (
     SELECT COUNT(r.id) AS total
     FROM registered_resources r
     LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
@@ -101,6 +109,7 @@ FROM registered_resources r
 LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 CROSS JOIN counted
+CROSS JOIN params p
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 -- Build a JSON array of action/attribute pairs for each resource value
 LEFT JOIN LATERAL (
@@ -135,13 +144,13 @@ WHERE
     (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text)
 GROUP BY r.id, n.id, ns_fqns.fqn, counted.total
 ORDER BY
-    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'ASC' THEN r.name END ASC,
-    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'DESC' THEN r.name END DESC,
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN r.created_at END ASC,
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN r.created_at END DESC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN r.updated_at END ASC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN r.updated_at END DESC,
-    r.created_at DESC
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN r.name END ASC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN r.name END DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN r.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN r.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN r.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN r.updated_at END DESC,
+    r.id ASC
 LIMIT @limit_
 OFFSET @offset_;
 

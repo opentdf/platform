@@ -49,8 +49,8 @@ github.com/lestrrat-go/option v1.0.1 h1:oAzP2fvZGQKWkvHa1/SAcFolBEca1oN+mQ7eooNB
 github.com/lestrrat-go/option v1.0.1/go.mod h1:5ZHFbivi4xwXxhxY9XHDe2FHo6/Z7WWmtT7T5nBBp3I=
 github.com/opentdf/platform/lib/ocrypto v0.10.0 h1:7dn/z/1qH3p+gWCrfOoU7hj9XF/p5N+b2JBJuWF9aK0=
 github.com/opentdf/platform/lib/ocrypto v0.10.0/go.mod h1:WASkoHreqgTFImB/gJW42VTdpi9AkgkmaW19y/fU+Ew=
-github.com/opentdf/platform/protocol/go v0.27.0 h1:ihXpwKKKy9yNRnuT9xbOJZ8qwNGVk6yAy/aH+Eo0kgw=
-github.com/opentdf/platform/protocol/go v0.27.0/go.mod h1:ufSzLVpcGv368L++kni7fzbN4ugtxmstcifmwI/o4T0=
+github.com/opentdf/platform/protocol/go v0.28.0 h1:/psz0c9Yi+3yXgCWKgDjzpW4p6Dlhyj2H5wmGvohU1U=
+github.com/opentdf/platform/protocol/go v0.28.0/go.mod h1:aiEmtYytvQtbiexZGAKYMe2mYTBPZqbNSh+OXmtrtkA=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=

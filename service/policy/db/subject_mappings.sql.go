@@ -570,7 +570,8 @@ GROUP BY
     sm_ns.id, sm_ns.name, sm_ns_fqns.fqn,
     av.id, av.value, av.active,
     fqns.fqn,
-    counted.total
+    counted.total,
+    p.resolved_field, p.resolved_direction
 ORDER BY
     CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN sm.created_at END ASC,
     CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN sm.created_at END DESC,
@@ -697,7 +698,8 @@ type listSubjectMappingsRow struct {
 //	    sm_ns.id, sm_ns.name, sm_ns_fqns.fqn,
 //	    av.id, av.value, av.active,
 //	    fqns.fqn,
-//	    counted.total
+//	    counted.total,
+//	    p.resolved_field, p.resolved_direction
 //	ORDER BY
 //	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN sm.created_at END ASC,
 //	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN sm.created_at END DESC,

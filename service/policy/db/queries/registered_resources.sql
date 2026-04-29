@@ -142,7 +142,7 @@ LEFT JOIN LATERAL (
 WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL OR r.namespace_id = sqlc.narg('namespace_id')::uuid) AND
     (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text)
-GROUP BY r.id, n.id, ns_fqns.fqn, counted.total
+GROUP BY r.id, n.id, ns_fqns.fqn, counted.total, p.resolved_field, p.resolved_direction
 ORDER BY
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN r.name END ASC,
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN r.name END DESC,

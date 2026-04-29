@@ -802,7 +802,7 @@ WHERE
     ($1::BOOLEAN IS NULL OR ad.active = $1) AND
     ($2::uuid IS NULL OR ad.namespace_id = $2::uuid) AND
     ($3::text IS NULL OR n.name = $3::text)
-GROUP BY ad.id, n.name, fqns.fqn
+GROUP BY ad.id, n.name, fqns.fqn, p.resolved_field, p.resolved_direction
 ORDER BY
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ad.name END ASC,
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN ad.name END DESC,
@@ -887,7 +887,7 @@ type listAttributesDetailRow struct {
 //	    ($1::BOOLEAN IS NULL OR ad.active = $1) AND
 //	    ($2::uuid IS NULL OR ad.namespace_id = $2::uuid) AND
 //	    ($3::text IS NULL OR n.name = $3::text)
-//	GROUP BY ad.id, n.name, fqns.fqn
+//	GROUP BY ad.id, n.name, fqns.fqn, p.resolved_field, p.resolved_direction
 //	ORDER BY
 //	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ad.name END ASC,
 //	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN ad.name END DESC,
@@ -961,7 +961,7 @@ FROM attribute_definitions ad
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 CROSS JOIN params p
 WHERE ad.namespace_id = $1
-GROUP BY ad.id, n.name
+GROUP BY ad.id, n.name, p.resolved_field, p.resolved_direction
 ORDER BY
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ad.name END ASC,
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN ad.name END DESC,
@@ -1018,7 +1018,7 @@ type listAttributesSummaryRow struct {
 //	LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 //	CROSS JOIN params p
 //	WHERE ad.namespace_id = $1
-//	GROUP BY ad.id, n.name
+//	GROUP BY ad.id, n.name, p.resolved_field, p.resolved_direction
 //	ORDER BY
 //	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ad.name END ASC,
 //	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN ad.name END DESC,

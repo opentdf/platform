@@ -1654,7 +1654,7 @@ LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 WHERE
     ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
     ($2::text IS NULL OR fqns.fqn = $2::text)
-GROUP BY od.id, n.id, fqns.fqn, counted.total
+GROUP BY od.id, n.id, fqns.fqn, counted.total, p.resolved_field, p.resolved_direction
 ORDER BY
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN od.name END ASC,
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN od.name END DESC,
@@ -1766,7 +1766,7 @@ type listObligationsRow struct {
 //	WHERE
 //	    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
 //	    ($2::text IS NULL OR fqns.fqn = $2::text)
-//	GROUP BY od.id, n.id, fqns.fqn, counted.total
+//	GROUP BY od.id, n.id, fqns.fqn, counted.total, p.resolved_field, p.resolved_direction
 //	ORDER BY
 //	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN od.name END ASC,
 //	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN od.name END DESC,

@@ -652,7 +652,7 @@ LEFT JOIN LATERAL (
 WHERE
     ($1::uuid IS NULL OR r.namespace_id = $1::uuid) AND
     ($2::text IS NULL OR ns_fqns.fqn = $2::text)
-GROUP BY r.id, n.id, ns_fqns.fqn, counted.total
+GROUP BY r.id, n.id, ns_fqns.fqn, counted.total, p.resolved_field, p.resolved_direction
 ORDER BY
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN r.name END ASC,
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN r.name END DESC,
@@ -758,7 +758,7 @@ type listRegisteredResourcesRow struct {
 //	WHERE
 //	    ($1::uuid IS NULL OR r.namespace_id = $1::uuid) AND
 //	    ($2::text IS NULL OR ns_fqns.fqn = $2::text)
-//	GROUP BY r.id, n.id, ns_fqns.fqn, counted.total
+//	GROUP BY r.id, n.id, ns_fqns.fqn, counted.total, p.resolved_field, p.resolved_direction
 //	ORDER BY
 //	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN r.name END ASC,
 //	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN r.name END DESC,

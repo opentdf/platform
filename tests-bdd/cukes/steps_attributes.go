@@ -56,7 +56,7 @@ func (s *AttributesStepDefinitions) createAttributeRequestFromTable(scenarioCont
 						return nil, errors.New("unable to extract namespace ID")
 					}
 					createAttributeRequest.NamespaceId = id
-				case "name":
+				case nameKey:
 					createAttributeRequest.Name = cell.Value
 				case "rule":
 					switch cell.Value {

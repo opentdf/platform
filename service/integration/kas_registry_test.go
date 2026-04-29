@@ -1020,7 +1020,8 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUnspecified_FallsBack
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
+	// Field defaults to created_at, direction ASC is preserved
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *KasRegistrySuite) getKasRegistryFixtures() []fixtures.FixtureDataKasRegistry {

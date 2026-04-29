@@ -691,8 +691,8 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecified_FallsB
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	// Falls back to default created_at DESC ordering
-	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[2], ids[1], ids[0])
+	// Field defaults to created_at, direction ASC is preserved
+	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Limit_Succeeds() {
@@ -1474,8 +1474,8 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecified_F
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	// Falls back to default created_at DESC ordering
-	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[2], ids[1], ids[0])
+	// Field defaults to created_at, direction ASC is preserved
+	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet() {

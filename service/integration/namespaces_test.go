@@ -432,8 +432,8 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedField_FallsBackTo
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	// Falls back to default created_at DESC ordering
-	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
+	// Field defaults to created_at, direction ASC is preserved
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_Limit_Succeeds() {

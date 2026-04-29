@@ -2610,8 +2610,8 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByUnspecifiedField_FallsBackToDe
 	s.Require().NoError(err)
 	s.NotNil(list)
 
-	// Falls back to default created_at DESC ordering
-	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[2], ids[1], ids[0])
+	// Field defaults to created_at, direction ASC is preserved
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[1], ids[2])
 }
 
 // Sort test helpers

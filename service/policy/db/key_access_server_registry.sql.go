@@ -636,7 +636,15 @@ func (q *Queries) listKeyAccessServerGrants(ctx context.Context, arg listKeyAcce
 }
 
 const listKeyAccessServers = `-- name: listKeyAccessServers :many
-WITH counted AS (
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF($3::text, ''), 'created_at') AS resolved_field,
+        CASE
+            WHEN $3::text = '' AND $4::text = '' THEN 'DESC'
+            ELSE COALESCE(NULLIF($4::text, ''), 'ASC')
+        END AS resolved_direction
+),
+counted AS (
     SELECT COUNT(kas.id) AS total
     FROM key_access_servers AS kas
 )
@@ -650,6 +658,7 @@ SELECT kas.id,
     counted.total
 FROM key_access_servers AS kas
 CROSS JOIN counted
+CROSS JOIN params p
 LEFT JOIN (
         SELECT
             kask.key_access_server_id,
@@ -669,25 +678,24 @@ LEFT JOIN (
         GROUP BY kask.key_access_server_id
     ) kask_keys ON kas.id = kask_keys.key_access_server_id
 ORDER BY
-    CASE WHEN $1::text = 'name' AND $2::text = 'ASC' THEN kas.name END ASC,
-    CASE WHEN $1::text = 'name' AND $2::text = 'DESC' THEN kas.name END DESC,
-    CASE WHEN $1::text = 'uri' AND $2::text = 'ASC' THEN kas.uri END ASC,
-    CASE WHEN $1::text = 'uri' AND $2::text = 'DESC' THEN kas.uri END DESC,
-    CASE WHEN $1::text = 'created_at' AND $2::text = 'ASC' THEN kas.created_at END ASC,
-    CASE WHEN $1::text = 'created_at' AND $2::text = 'DESC' THEN kas.created_at END DESC,
-    CASE WHEN $1::text = 'updated_at' AND $2::text = 'ASC' THEN kas.updated_at END ASC,
-    CASE WHEN $1::text = 'updated_at' AND $2::text = 'DESC' THEN kas.updated_at END DESC,
-    kas.created_at DESC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN kas.name END ASC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN kas.name END DESC,
+    CASE WHEN p.resolved_field = 'uri' AND p.resolved_direction = 'ASC' THEN kas.uri END ASC,
+    CASE WHEN p.resolved_field = 'uri' AND p.resolved_direction = 'DESC' THEN kas.uri END DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN kas.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN kas.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN kas.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN kas.updated_at END DESC,
     kas.id ASC
-LIMIT $4
-OFFSET $3
+LIMIT $2
+OFFSET $1
 `
 
 type listKeyAccessServersParams struct {
-	SortField     string `json:"sort_field"`
-	SortDirection string `json:"sort_direction"`
 	Offset        int32  `json:"offset_"`
 	Limit         int32  `json:"limit_"`
+	SortField     string `json:"sort_field"`
+	SortDirection string `json:"sort_direction"`
 }
 
 type listKeyAccessServersRow struct {
@@ -703,7 +711,15 @@ type listKeyAccessServersRow struct {
 
 // listKeyAccessServers
 //
-//	WITH counted AS (
+//	WITH params AS (
+//	    SELECT
+//	        COALESCE(NULLIF($3::text, ''), 'created_at') AS resolved_field,
+//	        CASE
+//	            WHEN $3::text = '' AND $4::text = '' THEN 'DESC'
+//	            ELSE COALESCE(NULLIF($4::text, ''), 'ASC')
+//	        END AS resolved_direction
+//	),
+//	counted AS (
 //	    SELECT COUNT(kas.id) AS total
 //	    FROM key_access_servers AS kas
 //	)
@@ -717,6 +733,7 @@ type listKeyAccessServersRow struct {
 //	    counted.total
 //	FROM key_access_servers AS kas
 //	CROSS JOIN counted
+//	CROSS JOIN params p
 //	LEFT JOIN (
 //	        SELECT
 //	            kask.key_access_server_id,
@@ -736,24 +753,23 @@ type listKeyAccessServersRow struct {
 //	        GROUP BY kask.key_access_server_id
 //	    ) kask_keys ON kas.id = kask_keys.key_access_server_id
 //	ORDER BY
-//	    CASE WHEN $1::text = 'name' AND $2::text = 'ASC' THEN kas.name END ASC,
-//	    CASE WHEN $1::text = 'name' AND $2::text = 'DESC' THEN kas.name END DESC,
-//	    CASE WHEN $1::text = 'uri' AND $2::text = 'ASC' THEN kas.uri END ASC,
-//	    CASE WHEN $1::text = 'uri' AND $2::text = 'DESC' THEN kas.uri END DESC,
-//	    CASE WHEN $1::text = 'created_at' AND $2::text = 'ASC' THEN kas.created_at END ASC,
-//	    CASE WHEN $1::text = 'created_at' AND $2::text = 'DESC' THEN kas.created_at END DESC,
-//	    CASE WHEN $1::text = 'updated_at' AND $2::text = 'ASC' THEN kas.updated_at END ASC,
-//	    CASE WHEN $1::text = 'updated_at' AND $2::text = 'DESC' THEN kas.updated_at END DESC,
-//	    kas.created_at DESC,
+//	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN kas.name END ASC,
+//	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN kas.name END DESC,
+//	    CASE WHEN p.resolved_field = 'uri' AND p.resolved_direction = 'ASC' THEN kas.uri END ASC,
+//	    CASE WHEN p.resolved_field = 'uri' AND p.resolved_direction = 'DESC' THEN kas.uri END DESC,
+//	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN kas.created_at END ASC,
+//	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN kas.created_at END DESC,
+//	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN kas.updated_at END ASC,
+//	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN kas.updated_at END DESC,
 //	    kas.id ASC
-//	LIMIT $4
-//	OFFSET $3
+//	LIMIT $2
+//	OFFSET $1
 func (q *Queries) listKeyAccessServers(ctx context.Context, arg listKeyAccessServersParams) ([]listKeyAccessServersRow, error) {
 	rows, err := q.db.Query(ctx, listKeyAccessServers,
-		arg.SortField,
-		arg.SortDirection,
 		arg.Offset,
 		arg.Limit,
+		arg.SortField,
+		arg.SortDirection,
 	)
 	if err != nil {
 		return nil, err
@@ -1052,7 +1068,15 @@ func (q *Queries) listKeyMappings(ctx context.Context, arg listKeyMappingsParams
 }
 
 const listKeys = `-- name: listKeys :many
-WITH listed AS (
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
+        CASE
+            WHEN $5::text = '' AND $6::text = '' THEN 'DESC'
+            ELSE COALESCE(NULLIF($6::text, ''), 'ASC')
+        END AS resolved_direction
+),
+listed AS (
     SELECT
         kas.id AS kas_id,
         kas.uri AS kas_uri
@@ -1087,30 +1111,31 @@ SELECT
 FROM key_access_server_keys AS kask
 INNER JOIN
     listed ON kask.key_access_server_id = listed.kas_id
-LEFT JOIN 
+CROSS JOIN params p
+LEFT JOIN
     provider_config as pc ON kask.provider_config_id = pc.id
 WHERE
     ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
     AND ($2::boolean IS NULL OR kask.legacy = $2::boolean)
 ORDER BY
-    CASE WHEN $3::text = 'key_id' AND $4::text = 'ASC' THEN kask.key_id END ASC,
-    CASE WHEN $3::text = 'key_id' AND $4::text = 'DESC' THEN kask.key_id END DESC,
-    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN kask.created_at END ASC,
-    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN kask.created_at END DESC,
-    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN kask.updated_at END ASC,
-    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN kask.updated_at END DESC,
-    kask.created_at DESC
-LIMIT $6
-OFFSET $5
+    CASE WHEN p.resolved_field = 'key_id' AND p.resolved_direction = 'ASC' THEN kask.key_id END ASC,
+    CASE WHEN p.resolved_field = 'key_id' AND p.resolved_direction = 'DESC' THEN kask.key_id END DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN kask.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN kask.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN kask.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN kask.updated_at END DESC,
+    kask.id ASC
+LIMIT $4
+OFFSET $3
 `
 
 type listKeysParams struct {
 	KeyAlgorithm  pgtype.Int4 `json:"key_algorithm"`
 	Legacy        pgtype.Bool `json:"legacy"`
-	SortField     string      `json:"sort_field"`
-	SortDirection string      `json:"sort_direction"`
 	Offset        int32       `json:"offset_"`
 	Limit         int32       `json:"limit_"`
+	SortField     string      `json:"sort_field"`
+	SortDirection string      `json:"sort_direction"`
 	KasID         pgtype.UUID `json:"kas_id"`
 	KasName       pgtype.Text `json:"kas_name"`
 	KasUri        pgtype.Text `json:"kas_uri"`
@@ -1137,7 +1162,15 @@ type listKeysRow struct {
 
 // listKeys
 //
-//	WITH listed AS (
+//	WITH params AS (
+//	    SELECT
+//	        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
+//	        CASE
+//	            WHEN $5::text = '' AND $6::text = '' THEN 'DESC'
+//	            ELSE COALESCE(NULLIF($6::text, ''), 'ASC')
+//	        END AS resolved_direction
+//	),
+//	listed AS (
 //	    SELECT
 //	        kas.id AS kas_id,
 //	        kas.uri AS kas_uri
@@ -1172,29 +1205,30 @@ type listKeysRow struct {
 //	FROM key_access_server_keys AS kask
 //	INNER JOIN
 //	    listed ON kask.key_access_server_id = listed.kas_id
+//	CROSS JOIN params p
 //	LEFT JOIN
 //	    provider_config as pc ON kask.provider_config_id = pc.id
 //	WHERE
 //	    ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
 //	    AND ($2::boolean IS NULL OR kask.legacy = $2::boolean)
 //	ORDER BY
-//	    CASE WHEN $3::text = 'key_id' AND $4::text = 'ASC' THEN kask.key_id END ASC,
-//	    CASE WHEN $3::text = 'key_id' AND $4::text = 'DESC' THEN kask.key_id END DESC,
-//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN kask.created_at END ASC,
-//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN kask.created_at END DESC,
-//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN kask.updated_at END ASC,
-//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN kask.updated_at END DESC,
-//	    kask.created_at DESC
-//	LIMIT $6
-//	OFFSET $5
+//	    CASE WHEN p.resolved_field = 'key_id' AND p.resolved_direction = 'ASC' THEN kask.key_id END ASC,
+//	    CASE WHEN p.resolved_field = 'key_id' AND p.resolved_direction = 'DESC' THEN kask.key_id END DESC,
+//	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN kask.created_at END ASC,
+//	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN kask.created_at END DESC,
+//	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN kask.updated_at END ASC,
+//	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN kask.updated_at END DESC,
+//	    kask.id ASC
+//	LIMIT $4
+//	OFFSET $3
 func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysRow, error) {
 	rows, err := q.db.Query(ctx, listKeys,
 		arg.KeyAlgorithm,
 		arg.Legacy,
-		arg.SortField,
-		arg.SortDirection,
 		arg.Offset,
 		arg.Limit,
+		arg.SortField,
+		arg.SortDirection,
 		arg.KasID,
 		arg.KasName,
 		arg.KasUri,

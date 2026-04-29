@@ -60,8 +60,10 @@ message ListKeyAccessServersRequest {
   // Optional
   policy.PageRequest pagination = 10;
   // Optional - CONSTRAINT: max 1 item
-  // When sort is provided and sort.direction is UNSPECIFIED, direction defaults to ASC.
-  // When sort is omitted or sort.field is UNSPECIFIED, the service applies its default ordering.
+  // Sort defaults:
+  //   - direction UNSPECIFIED defaults to ASC for the specified field
+  //   - field UNSPECIFIED defaults to created_at with the specified direction
+  //   - both UNSPECIFIED or sort omitted defaults to created_at DESC
   repeated KeyAccessServersSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 message ListKeyAccessServersResponse {
@@ -495,8 +497,10 @@ message ListKeysRequest {
   policy.PageRequest pagination = 10; // Pagination request for the list of keys
 
   // Optional - CONSTRAINT: max 1 item
-  // When sort is provided and sort.direction is UNSPECIFIED, direction defaults to ASC.
-  // When sort is omitted or sort.field is UNSPECIFIED, the service applies its default ordering.
+  // Sort defaults:
+  //   - direction UNSPECIFIED defaults to ASC for the specified field
+  //   - field UNSPECIFIED defaults to created_at with the specified direction
+  //   - both UNSPECIFIED or sort omitted defaults to created_at DESC
   repeated KasKeysSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 

@@ -907,15 +907,25 @@ func Test_GetRegisteredResourcesSortParams(t *testing.T) {
 			expectedDir:   "",
 		},
 		{
-			name:          "nil element returns empty strings",
-			sort:          []*registeredresources.RegisteredResourcesSort{nil},
-			expectedField: "",
-			expectedDir:   "",
-		},
-		{
-			name: "UNSPECIFIED returns empty strings",
+			name: "UNSPECIFIED field with ASC preserves direction",
 			sort: []*registeredresources.RegisteredResourcesSort{
 				{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "UNSPECIFIED field with DESC preserves direction",
+			sort: []*registeredresources.RegisteredResourcesSort{
+				{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "",
+			expectedDir:   "DESC",
+		},
+		{
+			name: "both UNSPECIFIED returns empty strings",
+			sort: []*registeredresources.RegisteredResourcesSort{
+				{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
 			},
 			expectedField: "",
 			expectedDir:   "",
@@ -937,12 +947,12 @@ func Test_GetRegisteredResourcesSortParams(t *testing.T) {
 			expectedDir:   "DESC",
 		},
 		{
-			name: "NAME with unspecified direction defaults to ASC",
+			name: "NAME with unspecified direction returns empty direction",
 			sort: []*registeredresources.RegisteredResourcesSort{
 				{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_NAME},
 			},
 			expectedField: "name",
-			expectedDir:   "ASC",
+			expectedDir:   "",
 		},
 		{
 			name: "CREATED_AT with ASC",

@@ -454,7 +454,6 @@ func (x *EntityChain) GetEntities() []*Entity {
 // Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)
 // and Alice (represented by entity chain ec2) have TRANSMIT authorization for
 // 2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
-//
 // {
 // "actions": [
 // {
@@ -561,13 +560,11 @@ func (x *DecisionRequest) GetResourceAttributes() []*ResourceAttribute {
 // Example response for a Decision Request -  Do Bob (represented by entity chain ec1)
 // and Alice (represented by entity chain ec2) have TRANSMIT authorization for
 // 2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
-//
 // Results:
 // - bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has a watermark obligation
 // - bob has denied authorization to transmit a for a resource defined by attr-set-2 attributes
 // - alice has permitted authorization to transmit for a resource defined by attr-set-1 attributes
 // - alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes
-//
 // {
 // "entityChainId":  "ec1",
 // "resourceAttributesId":  "attr-set-1",
@@ -765,9 +762,7 @@ func (x *GetDecisionsResponse) GetDecisionResponses() []*DecisionResponse {
 }
 
 // Request to get entitlements for one or more entities for an optional attribute scope
-//
 // Example: Get entitlements for bob and alice (both represented using an email address
-//
 // {
 // "entities": [
 // {
@@ -964,7 +959,6 @@ func (x *ResourceAttribute) GetAttributeValueFqns() []string {
 }
 
 // Example Response for a request of : Get entitlements for bob and alice (both represented using an email address
-//
 // {
 // "entitlements":  [
 // {
@@ -1035,7 +1029,6 @@ func (x *GetEntitlementsResponse) GetEntitlements() []*EntityEntitlements {
 // Example Request Get Decisions by Token to answer the question -  Do Bob and client1 (represented by token tok1)
 // and Alice and client2 (represented by token tok2) have TRANSMIT authorization for
 // 2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
-//
 // {
 // "actions": [
 // {

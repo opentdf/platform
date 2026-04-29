@@ -1645,8 +1645,10 @@ components:
           maxItems: 1
           description: |-
             Optional - CONSTRAINT: max 1 item
-             When sort is provided and sort.direction is UNSPECIFIED, direction defaults to ASC.
-             When sort is omitted or sort.field is UNSPECIFIED, the service applies its default ordering.
+             Sort defaults:
+               - direction UNSPECIFIED defaults to ASC for the specified field
+               - field UNSPECIFIED defaults to created_at with the specified direction
+               - both UNSPECIFIED or sort omitted defaults to created_at DESC
       title: ListKeyAccessServersRequest
       additionalProperties: false
     policy.kasregistry.ListKeyAccessServersResponse:
@@ -1762,8 +1764,10 @@ components:
           maxItems: 1
           description: |-
             Optional - CONSTRAINT: max 1 item
-             When sort is provided and sort.direction is UNSPECIFIED, direction defaults to ASC.
-             When sort is omitted or sort.field is UNSPECIFIED, the service applies its default ordering.
+             Sort defaults:
+               - direction UNSPECIFIED defaults to ASC for the specified field
+               - field UNSPECIFIED defaults to created_at with the specified direction
+               - both UNSPECIFIED or sort omitted defaults to created_at DESC
       title: ListKeysRequest
       additionalProperties: false
       description: List all asymmetric keys managed by a specific Key Access Server or with a given algorithm

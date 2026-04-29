@@ -402,8 +402,10 @@ type ListNamespacesRequest struct {
 	// Optional
 	Pagination *policy.PageRequest `protobuf:"bytes,10,opt,name=pagination,proto3" json:"pagination,omitempty"`
 	// Optional - CONSTRAINT: max 1 item
-	// When sort is provided and sort.direction is UNSPECIFIED, direction defaults to ASC.
-	// When sort is omitted or sort.field is UNSPECIFIED, the service applies its default ordering.
+	// Sort defaults:
+	//   - direction UNSPECIFIED defaults to ASC for the specified field
+	//   - field UNSPECIFIED defaults to created_at with the specified direction
+	//   - both UNSPECIFIED or sort omitted defaults to created_at DESC
 	Sort []*NamespacesSort `protobuf:"bytes,11,rep,name=sort,proto3" json:"sort,omitempty"`
 }
 

@@ -213,15 +213,25 @@ func Test_GetSubjectMappingsSortParams(t *testing.T) {
 			expectedDir:   "",
 		},
 		{
-			name:          "nil element returns empty strings",
-			sort:          []*subjectmapping.SubjectMappingsSort{nil},
-			expectedField: "",
-			expectedDir:   "",
-		},
-		{
-			name: "UNSPECIFIED returns empty strings",
+			name: "UNSPECIFIED field with ASC preserves direction",
 			sort: []*subjectmapping.SubjectMappingsSort{
 				{Field: subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "UNSPECIFIED field with DESC preserves direction",
+			sort: []*subjectmapping.SubjectMappingsSort{
+				{Field: subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "",
+			expectedDir:   "DESC",
+		},
+		{
+			name: "both UNSPECIFIED returns empty strings",
+			sort: []*subjectmapping.SubjectMappingsSort{
+				{Field: subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
 			},
 			expectedField: "",
 			expectedDir:   "",
@@ -243,12 +253,12 @@ func Test_GetSubjectMappingsSortParams(t *testing.T) {
 			expectedDir:   "DESC",
 		},
 		{
-			name: "CREATED_AT with unspecified direction defaults to ASC",
+			name: "CREATED_AT with unspecified direction returns empty direction",
 			sort: []*subjectmapping.SubjectMappingsSort{
 				{Field: subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT},
 			},
 			expectedField: "created_at",
-			expectedDir:   "ASC",
+			expectedDir:   "",
 		},
 		{
 			name: "UPDATED_AT with ASC",

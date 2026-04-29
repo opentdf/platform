@@ -2,10 +2,15 @@ package sdk_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
+	"time"
 
+	"connectrpc.com/grpchealth"
 	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping/resourcemappingconnect"
@@ -312,4 +317,199 @@ func Test_GetType_Invalid2Bytes(t *testing.T) {
 	tdfType := sdk.GetTdfType(in)
 
 	assert.Equal(t, sdk.Invalid, tdfType)
+}
+
+func TestErrHealthCheckUnsupported_Distinct(t *testing.T) {
+	assert.NotEqual(t, sdk.ErrHealthCheckUnsupported, sdk.ErrPlatformUnreachable)
+	assert.Equal(t, "health check not supported in IPC mode", sdk.ErrHealthCheckUnsupported.Error())
+}
+
+// newHealthTestServer starts an httptest.Server serving grpc.health.v1.Health with the
+// configured status for the empty service name (the SDK's reachability probe).
+func newHealthTestServer(t *testing.T, status grpchealth.Status) *httptest.Server {
+	t.Helper()
+	checker := grpchealth.NewStaticChecker()
+	checker.SetStatus("", status)
+	mux := http.NewServeMux()
+	path, handler := grpchealth.NewHandler(checker)
+	mux.Handle(path, handler)
+	return httptest.NewServer(mux)
+}
+
+func TestSDK_IsHealthy_IPCMode_ReturnsErrHealthCheckUnsupported(t *testing.T) {
+	// IPC mode requires a coreConn; provide a dummy one to satisfy sdk.New.
+	dummyConn := &sdk.ConnectRPCConnection{
+		Endpoint: "http://localhost:0",
+		Client:   http.DefaultClient,
+	}
+	s, err := sdk.New("",
+		sdk.WithIPC(),
+		sdk.WithCustomCoreConnection(dummyConn),
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	healthy, err := s.IsHealthy(context.Background())
+	assert.False(t, healthy)
+	require.ErrorIs(t, err, sdk.ErrHealthCheckUnsupported)
+}
+
+func TestSDK_IsHealthy_Unreachable_ReturnsErrPlatformUnreachable(t *testing.T) {
+	s, err := sdk.New(badPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	healthy, err := s.IsHealthy(ctx)
+	elapsed := time.Since(start)
+
+	assert.False(t, healthy)
+	require.ErrorIs(t, err, sdk.ErrPlatformUnreachable)
+	assert.Less(t, elapsed, 2*time.Second, "health check should return promptly against a closed port, not wait for the ctx deadline")
+}
+
+func TestSDK_IsHealthy_ContextCanceled_ReturnsQuickly(t *testing.T) {
+	s, err := sdk.New(badPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // canceled before the call
+
+	start := time.Now()
+	healthy, err := s.IsHealthy(ctx)
+	elapsed := time.Since(start)
+
+	assert.False(t, healthy)
+	require.Error(t, err)
+	require.ErrorIs(t, err, sdk.ErrPlatformUnreachable)
+	require.ErrorIs(t, err, context.Canceled)
+	assert.Less(t, elapsed, 500*time.Millisecond, "pre-canceled ctx should short-circuit")
+}
+
+func TestSDK_IsHealthy_Serving(t *testing.T) {
+	ts := newHealthTestServer(t, grpchealth.StatusServing)
+	defer ts.Close()
+
+	s, err := sdk.New(ts.URL,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	healthy, err := s.IsHealthy(ctx)
+	require.NoError(t, err)
+	assert.True(t, healthy)
+}
+
+func TestSDK_IsHealthy_NotServing(t *testing.T) {
+	ts := newHealthTestServer(t, grpchealth.StatusNotServing)
+	defer ts.Close()
+
+	s, err := sdk.New(ts.URL,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	healthy, err := s.IsHealthy(ctx)
+	require.NoError(t, err)
+	assert.False(t, healthy)
+}
+
+// TestSDK_IsHealthy_Unknown locks the contract that an UNKNOWN status from a reachable
+// platform returns (false, nil) — distinct from transport errors which wrap ErrPlatformUnreachable.
+func TestSDK_IsHealthy_Unknown(t *testing.T) {
+	ts := newHealthTestServer(t, grpchealth.StatusUnknown)
+	defer ts.Close()
+
+	s, err := sdk.New(ts.URL,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	healthy, err := s.IsHealthy(ctx)
+	require.NoError(t, err)
+	assert.False(t, healthy)
+}
+
+// TestSDK_IsHealthy_TrailingSlashEndpoint verifies that a platform endpoint
+// with a trailing slash does not produce a double-slash in the request URL,
+// which strict HTTP routers can reject.
+func TestSDK_IsHealthy_TrailingSlashEndpoint(t *testing.T) {
+	ts := newHealthTestServer(t, grpchealth.StatusServing)
+	defer ts.Close()
+
+	s, err := sdk.New(ts.URL+"/",
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	healthy, err := s.IsHealthy(ctx)
+	require.NoError(t, err)
+	assert.True(t, healthy)
 }

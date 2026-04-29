@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -106,6 +107,45 @@ func TestECRewrapKeyGenerate(t *testing.T) {
 	if string(kasSymmetricKey) != string(sdkSymmetricKey) {
 		t.Fatalf("symmetric keys on both kas and sdk should be same kas:%s sdk:%s",
 			string(kasSymmetricKey), string(sdkSymmetricKey))
+	}
+}
+
+func TestUncompressECPubKey_CurvePreservation(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		mode ECCMode
+	}{
+		{"P-256", ECCModeSecp256r1},
+		{"P-384", ECCModeSecp384r1},
+		{"P-521", ECCModeSecp521r1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			keyPair, err := NewECKeyPair(tc.mode)
+			require.NoError(t, err)
+
+			curve, err := GetECCurveFromECCMode(tc.mode)
+			require.NoError(t, err)
+
+			original := keyPair.PrivateKey.PublicKey
+
+			compressed, err := CompressedECPublicKey(tc.mode, original)
+			require.NoError(t, err)
+
+			uncompressed, err := UncompressECPubKey(curve, compressed)
+			require.NoError(t, err)
+
+			// The returned key's curve must match the input curve
+			assert.Equal(t, curve.Params().Name, uncompressed.Curve.Params().Name,
+				"UncompressECPubKey returned wrong curve")
+
+			// Coordinates must survive the round-trip
+			assert.Equal(t, original.X, uncompressed.X, "X coordinate mismatch")
+			assert.Equal(t, original.Y, uncompressed.Y, "Y coordinate mismatch")
+
+			// The key must be usable for ECDH (validates point is on the declared curve)
+			_, err = uncompressed.ECDH()
+			assert.NoError(t, err, "ECDH conversion should succeed for a valid key on the correct curve")
+		})
 	}
 }
 

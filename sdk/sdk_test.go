@@ -325,13 +325,11 @@ func TestErrHealthCheckUnsupported_Distinct(t *testing.T) {
 }
 
 // newHealthTestServer starts an httptest.Server serving grpc.health.v1.Health with the
-// configured serving status for the empty service name (the SDK's reachability probe).
-func newHealthTestServer(t *testing.T, serving bool) *httptest.Server {
+// configured status for the empty service name (the SDK's reachability probe).
+func newHealthTestServer(t *testing.T, status grpchealth.Status) *httptest.Server {
 	t.Helper()
 	checker := grpchealth.NewStaticChecker()
-	if !serving {
-		checker.SetStatus("", grpchealth.StatusNotServing)
-	}
+	checker.SetStatus("", status)
 	mux := http.NewServeMux()
 	path, handler := grpchealth.NewHandler(checker)
 	mux.Handle(path, handler)
@@ -416,7 +414,7 @@ func TestSDK_IsHealthy_ContextCanceled_ReturnsQuickly(t *testing.T) {
 }
 
 func TestSDK_IsHealthy_Serving(t *testing.T) {
-	ts := newHealthTestServer(t, true)
+	ts := newHealthTestServer(t, grpchealth.StatusServing)
 	defer ts.Close()
 
 	s, err := sdk.New(ts.URL,
@@ -440,7 +438,33 @@ func TestSDK_IsHealthy_Serving(t *testing.T) {
 }
 
 func TestSDK_IsHealthy_NotServing(t *testing.T) {
-	ts := newHealthTestServer(t, false)
+	ts := newHealthTestServer(t, grpchealth.StatusNotServing)
+	defer ts.Close()
+
+	s, err := sdk.New(ts.URL,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	healthy, err := s.IsHealthy(ctx)
+	require.NoError(t, err)
+	assert.False(t, healthy)
+}
+
+// TestSDK_IsHealthy_Unknown locks the contract that an UNKNOWN status from a reachable
+// platform returns (false, nil) — distinct from transport errors which wrap ErrPlatformUnreachable.
+func TestSDK_IsHealthy_Unknown(t *testing.T) {
+	ts := newHealthTestServer(t, grpchealth.StatusUnknown)
 	defer ts.Close()
 
 	s, err := sdk.New(ts.URL,
@@ -467,7 +491,7 @@ func TestSDK_IsHealthy_NotServing(t *testing.T) {
 // with a trailing slash does not produce a double-slash in the request URL,
 // which strict HTTP routers can reject.
 func TestSDK_IsHealthy_TrailingSlashEndpoint(t *testing.T) {
-	ts := newHealthTestServer(t, true)
+	ts := newHealthTestServer(t, grpchealth.StatusServing)
 	defer ts.Close()
 
 	s, err := sdk.New(ts.URL+"/",

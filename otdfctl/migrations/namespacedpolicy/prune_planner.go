@@ -619,6 +619,13 @@ func matchedSubjectConditionSetTargets(source *policy.SubjectConditionSet, targe
 	return targets, foundCanonical, labelsMatch, nil
 }
 
+// For actions and subject condition sets, prune runs after legacy policy graph
+// objects are expected to be gone, so the planner can no longer reliably infer
+// which target namespace a source object was intended to migrate into. In that
+// state, a canonical match is only operator context. Delete requires that no
+// legacy object is still using the source and that at least one canonical match
+// carries the expected migrated_from label; additional canonical matches may
+// still appear in the returned targets without that label.
 func pruneStatusForCanonicalTargets(used, foundCanonical, labelsMatch bool, targets []TargetRef) (PruneStatus, PruneStatusReason, []TargetRef) {
 	if used {
 		return PruneStatusBlocked, newPruneReason(PruneStatusReasonTypeInUse, pruneStatusReasonMessageInUse), targets

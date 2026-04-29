@@ -663,15 +663,25 @@ func Test_GetObligationsSortParams(t *testing.T) {
 			expectedDir:   "",
 		},
 		{
-			name:          "nil element returns empty strings",
-			sort:          []*obligations.ObligationsSort{nil},
-			expectedField: "",
-			expectedDir:   "",
-		},
-		{
-			name: "UNSPECIFIED returns empty strings",
+			name: "UNSPECIFIED field with ASC preserves direction",
 			sort: []*obligations.ObligationsSort{
 				{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "UNSPECIFIED field with DESC preserves direction",
+			sort: []*obligations.ObligationsSort{
+				{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "",
+			expectedDir:   "DESC",
+		},
+		{
+			name: "both UNSPECIFIED returns empty strings",
+			sort: []*obligations.ObligationsSort{
+				{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
 			},
 			expectedField: "",
 			expectedDir:   "",
@@ -709,12 +719,12 @@ func Test_GetObligationsSortParams(t *testing.T) {
 			expectedDir:   "DESC",
 		},
 		{
-			name: "FQN with unspecified direction defaults to ASC",
+			name: "FQN with unspecified direction returns empty direction",
 			sort: []*obligations.ObligationsSort{
 				{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_FQN},
 			},
 			expectedField: "fqn",
-			expectedDir:   "ASC",
+			expectedDir:   "",
 		},
 		{
 			name: "CREATED_AT with ASC",

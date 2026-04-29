@@ -28,6 +28,11 @@ func BenchmarkKeyGeneration(b *testing.B) {
 			_, errSink = NewECKeyPair(ECCModeSecp256r1)
 		}
 	})
+	b.Run("EC-P384", func(b *testing.B) {
+		for b.Loop() {
+			_, errSink = NewECKeyPair(ECCModeSecp384r1)
+		}
+	})
 	b.Run("XWing", func(b *testing.B) {
 		for b.Loop() {
 			_, errSink = NewXWingKeyPair()
@@ -75,6 +80,16 @@ func BenchmarkWrapDEK(b *testing.B) {
 		b.Fatal(err)
 	}
 	ecKASPubPEM, err := ecKP.PublicKeyInPemFormat()
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	// EC P-384: setup KAS public key PEM
+	ec384KP, err := NewECKeyPair(ECCModeSecp384r1)
+	if err != nil {
+		b.Fatal(err)
+	}
+	ec384KASPubPEM, err := ec384KP.PublicKeyInPemFormat()
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -133,6 +148,33 @@ func BenchmarkWrapDEK(b *testing.B) {
 				b.Fatal(err)
 			}
 			ecdhKey, err := ComputeECDHKey([]byte(ephPrivPEM), []byte(ecKASPubPEM))
+			if err != nil {
+				b.Fatal(err)
+			}
+			sessionKey, err := CalculateHKDF(salt, ecdhKey)
+			if err != nil {
+				b.Fatal(err)
+			}
+			gcm, err := NewAESGcm(sessionKey)
+			if err != nil {
+				b.Fatal(err)
+			}
+			sinkBytes, errSink = gcm.Encrypt(testDEK)
+		}
+		b.ReportMetric(float64(len(sinkBytes)), "wrapped-bytes")
+	})
+
+	b.Run("EC-P384", func(b *testing.B) {
+		for b.Loop() {
+			ephKP, err := NewECKeyPair(ECCModeSecp384r1)
+			if err != nil {
+				b.Fatal(err)
+			}
+			ephPrivPEM, err := ephKP.PrivateKeyInPemFormat()
+			if err != nil {
+				b.Fatal(err)
+			}
+			ecdhKey, err := ComputeECDHKey([]byte(ephPrivPEM), []byte(ec384KASPubPEM))
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -335,6 +377,60 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 		b.Fatal(err)
 	}
 
+	// EC P-384: same flow as P-256, just on a different curve
+	ec384KASKP, err := NewECKeyPair(ECCModeSecp384r1)
+	if err != nil {
+		b.Fatal(err)
+	}
+	ec384KASPubPEM, err := ec384KASKP.PublicKeyInPemFormat()
+	if err != nil {
+		b.Fatal(err)
+	}
+	ec384KASPrivPEM, err := ec384KASKP.PrivateKeyInPemFormat()
+	if err != nil {
+		b.Fatal(err)
+	}
+	ec384EphKP, err := NewECKeyPair(ECCModeSecp384r1)
+	if err != nil {
+		b.Fatal(err)
+	}
+	ec384EphPrivPEM, err := ec384EphKP.PrivateKeyInPemFormat()
+	if err != nil {
+		b.Fatal(err)
+	}
+	ec384EphPubPEM, err := ec384EphKP.PublicKeyInPemFormat()
+	if err != nil {
+		b.Fatal(err)
+	}
+	ec384DhKey, err := ComputeECDHKey([]byte(ec384EphPrivPEM), []byte(ec384KASPubPEM))
+	if err != nil {
+		b.Fatal(err)
+	}
+	ec384SessionKey, err := CalculateHKDF(salt, ec384DhKey)
+	if err != nil {
+		b.Fatal(err)
+	}
+	ec384GCM, err := NewAESGcm(ec384SessionKey)
+	if err != nil {
+		b.Fatal(err)
+	}
+	ec384Wrapped, err := ec384GCM.Encrypt(testDEK)
+	if err != nil {
+		b.Fatal(err)
+	}
+	ec384EphPubECDH, err := ECPubKeyFromPem([]byte(ec384EphPubPEM))
+	if err != nil {
+		b.Fatal(err)
+	}
+	ec384EphDER, err := x509.MarshalPKIXPublicKey(ec384EphPubECDH)
+	if err != nil {
+		b.Fatal(err)
+	}
+	ec384KASPrivKey, err := ECPrivateKeyFromPem([]byte(ec384KASPrivPEM))
+	if err != nil {
+		b.Fatal(err)
+	}
+
 	// X-Wing: KAS parses PEM each call, then calls UnwrapDEK
 	xwingKP, err := NewXWingKeyPair()
 	if err != nil {
@@ -392,6 +488,16 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 				b.Fatal(err)
 			}
 			sinkBytes, errSink = dec.DecryptWithEphemeralKey(ecWrapped, ecEphDER)
+		}
+	})
+
+	b.Run("EC-P384", func(b *testing.B) {
+		for b.Loop() {
+			dec, err := NewSaltedECDecryptor(ec384KASPrivKey, salt, nil)
+			if err != nil {
+				b.Fatal(err)
+			}
+			sinkBytes, errSink = dec.DecryptWithEphemeralKey(ec384Wrapped, ec384EphDER)
 		}
 	})
 
@@ -614,6 +720,31 @@ func TestWrappedKeySizeComparison(t *testing.T) {
 		wrappedLen: len(ecWrapped),
 		pubKeyLen:  len(ecPubPEM),
 		notes:      fmt.Sprintf("+ ephemeral key (%d bytes)", len(ecEphemeral)),
+	})
+
+	// EC P-384
+	ec384KP, err := NewECKeyPair(ECCModeSecp384r1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ec384PubPEM, err := ec384KP.PublicKeyInPemFormat()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ec384Enc, err := FromPublicPEM(ec384PubPEM)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ec384Wrapped, err := ec384Enc.Encrypt(testDEK)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ec384Ephemeral := ec384Enc.EphemeralKey()
+	results = append(results, sizeResult{
+		scheme:     "EC P-384",
+		wrappedLen: len(ec384Wrapped),
+		pubKeyLen:  len(ec384PubPEM),
+		notes:      fmt.Sprintf("+ ephemeral key (%d bytes)", len(ec384Ephemeral)),
 	})
 
 	// X-Wing

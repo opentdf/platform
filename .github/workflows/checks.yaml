@@ -167,14 +167,14 @@ jobs:
           } >> "$GITHUB_OUTPUT"
       - name: post govulncheck comment
         if: steps.download.outcome == 'success'
-        uses: marocchino/sticky-pull-request-comment@70d2764d1a7d5d9560b100cbea0077fc8f633987 # v3.0.2
+        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
           header: govulncheck-results
           recreate: true
           message: ${{ steps.comment-body.outputs.body }}
       - name: delete govulncheck comment
         if: steps.download.outcome != 'success'
-        uses: marocchino/sticky-pull-request-comment@70d2764d1a7d5d9560b100cbea0077fc8f633987 # v3.0.2
+        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
           header: govulncheck-results
           delete: true

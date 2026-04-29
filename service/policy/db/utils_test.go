@@ -119,15 +119,25 @@ func Test_GetNamespacesSortParams(t *testing.T) {
 			expectedDir:   "",
 		},
 		{
-			name:          "nil element returns empty strings",
-			sort:          []*namespaces.NamespacesSort{nil},
-			expectedField: "",
-			expectedDir:   "",
-		},
-		{
-			name: "UNSPECIFIED returns empty strings",
+			name: "UNSPECIFIED field with ASC preserves direction",
 			sort: []*namespaces.NamespacesSort{
 				{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField: "",
+			expectedDir:   "ASC",
+		},
+		{
+			name: "UNSPECIFIED field with DESC preserves direction",
+			sort: []*namespaces.NamespacesSort{
+				{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField: "",
+			expectedDir:   "DESC",
+		},
+		{
+			name: "both UNSPECIFIED returns empty strings",
+			sort: []*namespaces.NamespacesSort{
+				{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
 			},
 			expectedField: "",
 			expectedDir:   "",
@@ -149,12 +159,12 @@ func Test_GetNamespacesSortParams(t *testing.T) {
 			expectedDir:   "DESC",
 		},
 		{
-			name: "FQN with unspecified direction defaults to ASC",
+			name: "FQN with unspecified direction returns empty direction",
 			sort: []*namespaces.NamespacesSort{
 				{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN},
 			},
 			expectedField: "fqn",
-			expectedDir:   "ASC",
+			expectedDir:   "",
 		},
 		{
 			name: "CREATED_AT with ASC",

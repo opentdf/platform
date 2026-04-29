@@ -197,6 +197,19 @@ func (c *PlatformScenarioContext) RegisterShutdownHook(hook func() error) {
 	c.ShutdownHooks = append(c.ShutdownHooks, hook)
 }
 
+// RegisterPlatformShutdownHook registers a hook that tears down or captures
+// output from platform-lifecycle resources (compose stacks, inline servers,
+// log capture). In stateless mode the platform is shared across scenarios, so
+// these hooks must run once at suite teardown rather than after every
+// scenario. Non-stateless features retain per-scenario teardown.
+func (c *PlatformScenarioContext) RegisterPlatformShutdownHook(hook func() error) {
+	if c.Stateless {
+		c.TestSuiteContext.ShutdownFunctions = append(c.TestSuiteContext.ShutdownFunctions, hook)
+		return
+	}
+	c.ShutdownHooks = append(c.ShutdownHooks, hook)
+}
+
 func (c *PlatformScenarioContext) ClearError() {
 	c.err = nil
 }

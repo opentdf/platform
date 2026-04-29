@@ -4,18 +4,23 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"os"
+	"sort"
 
+	"github.com/jackc/pgx/v5"
 	policypb "github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/policy"
 	"gopkg.in/yaml.v2"
 )
 
-var (
-	fixtureFilename = "policy_fixtures.yaml"
-	fixtureData     FixtureData
-)
+// fixtureData is the package-global parsed fixture payload that every
+// provisioner reads from. It is (re)populated by LoadFixtureData, which
+// resets it before unmarshalling so consecutive calls in the same
+// process do not leak data from a previous fixture into sections that a
+// later fixture omits.
+var fixtureData FixtureData
 
 type FixtureMetadata struct {
 	TableName string   `yaml:"table_name"`
@@ -34,6 +39,12 @@ type FixtureDataAttribute struct {
 	Name        string `yaml:"name"`
 	Rule        string `yaml:"rule"`
 	Active      bool   `yaml:"active"`
+	// ValuesOrder, when non-empty, explicitly pins the
+	// attribute_definitions.values_order column to this list of
+	// attribute-value IDs after provisioning. Required for HIERARCHY
+	// attributes whose ranking must be deterministic regardless of the
+	// order fixture value rows happen to be inserted.
+	ValuesOrder []string `yaml:"values_order,omitempty"`
 }
 
 type FixtureDataAttributeKeyAccessServer struct {
@@ -240,10 +251,16 @@ type FixtureData struct {
 }
 
 func LoadFixtureData(file string) {
+	// Reset the package-global before unmarshalling so a partial fixture
+	// loaded after a full one does not inherit data from the previous load
+	// (see provision()'s len(v) == 0 guard, which relies on omitted
+	// sections being empty).
+	fixtureData = FixtureData{}
+
 	c, err := os.ReadFile(file)
 	if err != nil {
 		slog.Error("could not read",
-			slog.String("fixture_file_name", fixtureFilename),
+			slog.String("fixture_file_name", file),
 			slog.Any("error", err),
 		)
 		panic(err)
@@ -251,12 +268,15 @@ func LoadFixtureData(file string) {
 
 	if err := yaml.Unmarshal(c, &fixtureData); err != nil {
 		slog.Error("could not unmarshal",
-			slog.String("fixture_file_name", fixtureFilename),
+			slog.String("fixture_file_name", file),
 			slog.Any("error", err),
 		)
 		panic(err)
 	}
-	slog.Info("fully loaded fixtures", slog.Any("fixture_data", fixtureData))
+	slog.Info("fully loaded fixtures",
+		slog.String("fixture_file_name", file),
+		slog.Any("fixture_data", fixtureData),
+	)
 }
 
 type Fixtures struct {
@@ -439,6 +459,8 @@ func (f *Fixtures) Provision(ctx context.Context) {
 	a := f.provisionAttribute(ctx)
 	slog.Info("📦 provisioning attribute value data")
 	aV := f.provisionAttributeValues(ctx)
+	slog.Info("📦 applying explicit attribute values_order for HIERARCHY attributes")
+	f.applyAttributeValuesOrder(ctx)
 	slog.Info("📦 provisioning subject condition set data")
 	sc := f.provisionSubjectConditionSet(ctx)
 	slog.Info("📦 provisioning subject mapping data")
@@ -530,8 +552,22 @@ func (f *Fixtures) provisionAttribute(ctx context.Context) int64 {
 }
 
 func (f *Fixtures) provisionAttributeValues(ctx context.Context) int64 {
-	values := make([][]any, 0, len(fixtureData.AttributeValues.Data))
-	for _, d := range fixtureData.AttributeValues.Data {
+	// Go map range order is randomized per-process, which would make
+	// hierarchy-dependent tests flaky (the trigger that populates
+	// attribute_definitions.values_order appends in insertion order).
+	// Iterate in a stable key-sorted order so that fixtures which do not
+	// set an explicit values_order on the attribute still get reproducible
+	// rank. For HIERARCHY attributes that need a specific rank, prefer
+	// setting FixtureDataAttribute.ValuesOrder (applied after this step).
+	keys := make([]string, 0, len(fixtureData.AttributeValues.Data))
+	for k := range fixtureData.AttributeValues.Data {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	values := make([][]any, 0, len(keys))
+	for _, k := range keys {
+		d := fixtureData.AttributeValues.Data[k]
 		values = append(values, []any{
 			d.ID,
 			d.AttributeDefinitionID,
@@ -540,6 +576,38 @@ func (f *Fixtures) provisionAttributeValues(ctx context.Context) int64 {
 		})
 	}
 	return f.provision(ctx, fixtureData.AttributeValues.Metadata.TableName, fixtureData.AttributeValues.Metadata.Columns, values)
+}
+
+// applyAttributeValuesOrder overrides attribute_definitions.values_order
+// for any attribute definition whose fixture specifies an explicit
+// ValuesOrder. This must run after provisionAttributeValues because the
+// insert trigger (update_definition_add_values_order) populates
+// values_order automatically; the UPDATE below replaces that auto-populated
+// value with the order the fixture author explicitly requested.
+//
+//nolint:sloglint // preserve emoji usage
+func (f *Fixtures) applyAttributeValuesOrder(ctx context.Context) {
+	keys := make([]string, 0, len(fixtureData.Attributes.Data))
+	for k := range fixtureData.Attributes.Data {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	table := pgx.Identifier{f.db.Schema, "attribute_definitions"}.Sanitize()
+	for _, k := range keys {
+		d := fixtureData.Attributes.Data[k]
+		if len(d.ValuesOrder) == 0 {
+			continue
+		}
+		sql := fmt.Sprintf("UPDATE %s SET values_order = $1 WHERE id = $2", table)
+		if _, err := f.db.Client.Pgx.Exec(ctx, sql, d.ValuesOrder, d.ID); err != nil {
+			slog.Error("⛔️ 📦 failed to apply values_order override",
+				slog.String("attribute_id", d.ID),
+				slog.Any("err", err),
+			)
+			panic("failed to apply values_order override")
+		}
+	}
 }
 
 //nolint:sloglint // preserve emoji usage
@@ -771,17 +839,23 @@ func (f *Fixtures) provisionRegisteredResourceActionAttributeValues(ctx context.
 
 //nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provision(ctx context.Context, t string, c []string, v [][]any) int64 {
+	// A fixture file may omit a section entirely (e.g., a minimal BDD fixture
+	// that only populates namespaces/attributes/subject_mappings). Treat that
+	// as "nothing to do" rather than a fatal error.
+	if len(v) == 0 {
+		return 0
+	}
 	rows, err := f.db.ExecInsert(ctx, t, c, v...)
 	if err != nil {
-		slog.Error("⛔️ 📦 issue with insert into table - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Any("err", err))
+		slog.Error("⛔️ 📦 issue with insert into table - check the fixture YAML for issues", slog.String("table", t), slog.Any("err", err))
 		panic("issue with insert into table")
 	}
 	if rows == 0 {
-		slog.Error("⛔️ 📦 no rows provisioned - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Int("expected", len(v)))
+		slog.Error("⛔️ 📦 no rows provisioned - check the fixture YAML for issues", slog.String("table", t), slog.Int("expected", len(v)))
 		panic("no rows provisioned")
 	}
 	if rows != int64(len(v)) {
-		slog.Error("⛔️ 📦 incorrect number of rows provisioned - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Int("expected", len(v)), slog.Int64("actual", rows))
+		slog.Error("⛔️ 📦 incorrect number of rows provisioned - check the fixture YAML for issues", slog.String("table", t), slog.Int("expected", len(v)), slog.Int64("actual", rows))
 		panic("incorrect number of rows provisioned")
 	}
 	return rows

@@ -1017,15 +1017,25 @@ func Test_GetKasKeysSortParams(t *testing.T) {
 			expectedDirection: "",
 		},
 		{
-			name:              "nil element returns empty strings",
-			sort:              []*kasregistry.KasKeysSort{nil},
-			expectedField:     "",
-			expectedDirection: "",
-		},
-		{
-			name: "UNSPECIFIED field returns empty strings",
+			name: "UNSPECIFIED field with ASC preserves direction",
 			sort: []*kasregistry.KasKeysSort{
 				{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField:     "",
+			expectedDirection: "ASC",
+		},
+		{
+			name: "UNSPECIFIED field with DESC preserves direction",
+			sort: []*kasregistry.KasKeysSort{
+				{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField:     "",
+			expectedDirection: "DESC",
+		},
+		{
+			name: "both UNSPECIFIED returns empty strings",
+			sort: []*kasregistry.KasKeysSort{
+				{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
 			},
 			expectedField:     "",
 			expectedDirection: "",
@@ -1079,12 +1089,12 @@ func Test_GetKasKeysSortParams(t *testing.T) {
 			expectedDirection: "DESC",
 		},
 		{
-			name: "UNSPECIFIED direction defaults to ASC",
+			name: "UNSPECIFIED direction returns empty direction",
 			sort: []*kasregistry.KasKeysSort{
 				{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
 			},
 			expectedField:     "key_id",
-			expectedDirection: "ASC",
+			expectedDirection: "",
 		},
 	}
 

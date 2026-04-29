@@ -14,7 +14,9 @@ type PruneStatusReasonType string
 
 const (
 	PruneStatusReasonTypeMigratedTargetNotFound           PruneStatusReasonType = "MigratedTargetNotFound"
-	PruneStatusReasonTypeMigrationLabelsNotFound          PruneStatusReasonType = "MigrationLabelsNotFound"
+	PruneStatusReasonTypeNoMatchingLabelsFound            PruneStatusReasonType = "NoMatchingLabelsFound"
+	PruneStatusReasonTypeMismatchedMigrationLabel         PruneStatusReasonType = "MismatchedMigrationLabel"
+	PruneStatusReasonTypeMissingMigrationLabel            PruneStatusReasonType = "MissingMigrationLabel"
 	PruneStatusReasonTypeInUse                            PruneStatusReasonType = "InUse"
 	PruneStatusReasonTypeNeedsMigration                   PruneStatusReasonType = "NeedsMigration"
 	PruneStatusReasonTypeRegisteredResourceSourceMismatch PruneStatusReasonType = "RegisteredResourceSourceMismatch"

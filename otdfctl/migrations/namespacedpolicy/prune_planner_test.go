@@ -227,7 +227,7 @@ func TestPrunePlannerPlanDeletesUnusedActionWhenCanonicalMigratedTargetExists(t 
 	assert.True(t, plan.Actions[0].Reason.IsZero())
 }
 
-func TestPrunePlannerPlanMarksUnusedActionWithMissingMigrationLabelAsUnresolved(t *testing.T) {
+func TestPrunePlannerPlanMarksUnusedActionWithNoMatchingMigrationLabelsAsUnresolved(t *testing.T) {
 	t.Parallel()
 
 	targetNamespace := &policy.Namespace{Id: "ns-1", Fqn: "https://example.com"}
@@ -263,8 +263,8 @@ func TestPrunePlannerPlanMarksUnusedActionWithMissingMigrationLabelAsUnresolved(
 	require.Len(t, plan.Actions, 1)
 	assert.Equal(t, PruneStatusUnresolved, plan.Actions[0].Status)
 	assertPruneMigratedTargets(t, plan.Actions[0].MigratedTargets, targetNamespace, targetAction.GetId())
-	assert.Equal(t, PruneStatusReasonTypeMigrationLabelsNotFound, plan.Actions[0].Reason.Type)
-	assert.Equal(t, pruneStatusReasonMessageMigrationLabelNotFound, plan.Actions[0].Reason.Message)
+	assert.Equal(t, PruneStatusReasonTypeNoMatchingLabelsFound, plan.Actions[0].Reason.Type)
+	assert.Equal(t, pruneStatusReasonMessageNoMatchingLabelsFound, plan.Actions[0].Reason.Message)
 }
 
 func TestPrunePlannerPlanBlocksUnusedActionWhenMigratedTargetIsNotFound(t *testing.T) {
@@ -465,7 +465,7 @@ func TestPrunePlannerPlanDeletesUnusedSubjectConditionSetWhenCanonicalMigratedTa
 	assert.True(t, plan.SubjectConditionSets[0].Reason.IsZero())
 }
 
-func TestPrunePlannerPlanMarksUnusedSubjectConditionSetWithMissingMigrationLabelAsUnresolved(t *testing.T) {
+func TestPrunePlannerPlanMarksUnusedSubjectConditionSetWithNoMatchingMigrationLabelsAsUnresolved(t *testing.T) {
 	t.Parallel()
 
 	targetNamespace := &policy.Namespace{Id: "ns-1", Fqn: "https://example.com"}
@@ -501,8 +501,8 @@ func TestPrunePlannerPlanMarksUnusedSubjectConditionSetWithMissingMigrationLabel
 	require.Len(t, plan.SubjectConditionSets, 1)
 	assert.Equal(t, PruneStatusUnresolved, plan.SubjectConditionSets[0].Status)
 	assertPruneMigratedTargets(t, plan.SubjectConditionSets[0].MigratedTargets, targetNamespace, targetSCS.GetId())
-	assert.Equal(t, PruneStatusReasonTypeMigrationLabelsNotFound, plan.SubjectConditionSets[0].Reason.Type)
-	assert.Equal(t, pruneStatusReasonMessageMigrationLabelNotFound, plan.SubjectConditionSets[0].Reason.Message)
+	assert.Equal(t, PruneStatusReasonTypeNoMatchingLabelsFound, plan.SubjectConditionSets[0].Reason.Type)
+	assert.Equal(t, pruneStatusReasonMessageNoMatchingLabelsFound, plan.SubjectConditionSets[0].Reason.Message)
 }
 
 func TestPrunePlannerPlanBlocksUnusedSubjectConditionSetWhenMigratedTargetIsNotFound(t *testing.T) {
@@ -679,8 +679,8 @@ func TestPrunePlannerPlanClassifiesMissingMigrationLabelAsUnresolved(t *testing.
 	require.Len(t, plan.SubjectMappings, 1)
 	assert.Equal(t, PruneStatusUnresolved, plan.SubjectMappings[0].Status)
 	assertPruneMigratedTarget(t, plan.SubjectMappings[0].MigratedTarget, targetNamespace, targetMapping.GetId())
-	assert.Equal(t, PruneStatusReasonTypeMigrationLabelsNotFound, plan.SubjectMappings[0].Reason.Type)
-	assert.Equal(t, pruneStatusReasonMessageMigrationLabelNotFound, plan.SubjectMappings[0].Reason.Message)
+	assert.Equal(t, PruneStatusReasonTypeMissingMigrationLabel, plan.SubjectMappings[0].Reason.Type)
+	assert.Equal(t, pruneStatusReasonMessageMissingMigrationLabel, plan.SubjectMappings[0].Reason.Message)
 }
 
 func TestPrunePlannerPlanFailsWhenMigratedTargetIDIsEmpty(t *testing.T) {
@@ -705,6 +705,37 @@ func TestPrunePlannerPlanFailsWhenMigratedTargetIDIsEmpty(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrInvalidPruneResolvedTarget)
 	assert.Contains(t, err.Error(), `subject mapping "mapping-1"`)
+}
+
+func TestPrunePlannerPlanClassifiesMismatchedMigrationLabelAsUnresolved(t *testing.T) {
+	t.Parallel()
+
+	targetNamespace := &policy.Namespace{Id: "ns-1", Fqn: "https://example.com"}
+	legacyMapping := &policy.SubjectMapping{Id: "mapping-1"}
+	resolved := &ResolvedTargets{
+		SubjectMappings: []*ResolvedSubjectMapping{
+			{
+				Source:    legacyMapping,
+				Namespace: targetNamespace,
+				AlreadyMigrated: &policy.SubjectMapping{
+					Id: "target-mapping-1",
+					Metadata: &common.Metadata{
+						Labels: map[string]string{
+							migrationLabelMigratedFrom: "different-source-id",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	plan, err := buildPrunePlanFromResolved(scopesFromSlice([]Scope{ScopeSubjectMappings}), resolved, nil)
+
+	require.NoError(t, err)
+	require.Len(t, plan.SubjectMappings, 1)
+	assert.Equal(t, PruneStatusUnresolved, plan.SubjectMappings[0].Status)
+	assert.Equal(t, PruneStatusReasonTypeMismatchedMigrationLabel, plan.SubjectMappings[0].Reason.Type)
+	assert.Equal(t, pruneStatusReasonMessageMismatchedMigrationLabel, plan.SubjectMappings[0].Reason.Message)
 }
 
 // Scope: registered resources.
@@ -1116,8 +1147,8 @@ func TestPrunePlannerPlanMarksObligationTriggerWithMissingMigrationLabelAsUnreso
 	require.Len(t, plan.ObligationTriggers, 1)
 	assert.Equal(t, PruneStatusUnresolved, plan.ObligationTriggers[0].Status)
 	assertPruneMigratedTarget(t, plan.ObligationTriggers[0].MigratedTarget, targetNamespace, targetTrigger.GetId())
-	assert.Equal(t, PruneStatusReasonTypeMigrationLabelsNotFound, plan.ObligationTriggers[0].Reason.Type)
-	assert.Equal(t, pruneStatusReasonMessageMigrationLabelNotFound, plan.ObligationTriggers[0].Reason.Message)
+	assert.Equal(t, PruneStatusReasonTypeMissingMigrationLabel, plan.ObligationTriggers[0].Reason.Type)
+	assert.Equal(t, pruneStatusReasonMessageMissingMigrationLabel, plan.ObligationTriggers[0].Reason.Message)
 }
 
 func migratedMetadata(sourceID string) *common.Metadata {

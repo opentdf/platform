@@ -13,7 +13,9 @@ import (
 const (
 	pruneStatusReasonMessageMigratedTargetNotFound              = "migrated target not found"
 	pruneStatusReasonMessageInUse                               = "in-use"
-	pruneStatusReasonMessageMigrationLabelNotFound              = "migrated target missing migration label"
+	pruneStatusReasonMessageNoMatchingLabelsFound               = "no canonical migrated target had a matching migration label"
+	pruneStatusReasonMessageMismatchedMigrationLabel            = "migrated target has mismatched migration label"
+	pruneStatusReasonMessageMissingMigrationLabel               = "migrated target missing migration label"
 	pruneStatusReasonMessageNeedsMigration                      = "needs-migration"
 	pruneStatusReasonMessageRegisteredResourceSourceMismatchFmt = "source registered resource contains values outside resolved migration view for target namespace %q; manual review required before source deletion"
 )
@@ -638,17 +640,22 @@ func pruneStatusForCanonicalTargets(used, foundCanonical, labelsMatch bool, targ
 		return PruneStatusBlocked, newPruneReason(PruneStatusReasonTypeMigratedTargetNotFound, pruneStatusReasonMessageMigratedTargetNotFound), nil
 	}
 	if !labelsMatch {
-		return PruneStatusUnresolved, newPruneReason(PruneStatusReasonTypeMigrationLabelsNotFound, pruneStatusReasonMessageMigrationLabelNotFound), targets
+		return PruneStatusUnresolved, newPruneReason(PruneStatusReasonTypeNoMatchingLabelsFound, pruneStatusReasonMessageNoMatchingLabelsFound), targets
 	}
 	return PruneStatusDelete, PruneStatusReason{}, targets
 }
 
+// target is expected to already be canonically equal to the source object.
+// For subject mappings and obligation triggers, that canonical check happens in
+// the resolver before AlreadyMigrated is set. For registered resources, prune
+// verifies canonical equality against the authoritative full source in
+// registeredResources before calling this helper.
 func pruneStatusForMigratedObject(target pruneObject, sourceID string) (PruneStatus, PruneStatusReason, error) {
 	if target.GetId() == "" {
 		return "", PruneStatusReason{}, fmt.Errorf("%w: migrated target for source %q has empty id", ErrInvalidPruneResolvedTarget, sourceID)
 	}
 	if migratedFromID(target) != sourceID {
-		return PruneStatusUnresolved, newPruneReason(PruneStatusReasonTypeMigrationLabelsNotFound, pruneStatusReasonMessageMigrationLabelNotFound), nil
+		return PruneStatusUnresolved, pruneStatusReasonForMigrationLabel(target), nil
 	}
 	return PruneStatusDelete, PruneStatusReason{}, nil
 }
@@ -704,4 +711,11 @@ func newPruneReason(reasonType PruneStatusReasonType, message string) PruneStatu
 
 func newPruneReasonf(reasonType PruneStatusReasonType, format string, args ...any) PruneStatusReason {
 	return newPruneReason(reasonType, fmt.Sprintf(format, args...))
+}
+
+func pruneStatusReasonForMigrationLabel(target pruneObject) PruneStatusReason {
+	if migratedFromID(target) == "" {
+		return newPruneReason(PruneStatusReasonTypeMissingMigrationLabel, pruneStatusReasonMessageMissingMigrationLabel)
+	}
+	return newPruneReason(PruneStatusReasonTypeMismatchedMigrationLabel, pruneStatusReasonMessageMismatchedMigrationLabel)
 }

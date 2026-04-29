@@ -118,7 +118,15 @@ WHERE
 GROUP BY od.id, n.id, fqns.fqn;
 
 -- name: listObligations :many
-WITH counted AS (
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
+        CASE
+            WHEN @sort_field::text = '' AND @sort_direction::text = '' THEN 'DESC'
+            ELSE COALESCE(NULLIF(@sort_direction::text, ''), 'ASC')
+        END AS resolved_direction
+),
+counted AS (
     SELECT COUNT(od.id) AS total
     FROM obligation_definitions od
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
@@ -181,6 +189,7 @@ FROM obligation_definitions od
 JOIN attribute_namespaces n on od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 CROSS JOIN counted
+CROSS JOIN params p
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 WHERE
@@ -188,15 +197,15 @@ WHERE
     (sqlc.narg('namespace_fqn')::text IS NULL OR fqns.fqn = sqlc.narg('namespace_fqn')::text)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
 ORDER BY
-    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'ASC' THEN od.name END ASC,
-    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'DESC' THEN od.name END DESC,
-    CASE WHEN @sort_field::text = 'fqn' AND @sort_direction::text = 'ASC' THEN fqns.fqn || LOWER(od.name) END ASC,
-    CASE WHEN @sort_field::text = 'fqn' AND @sort_direction::text = 'DESC' THEN fqns.fqn || LOWER(od.name) END DESC,
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN od.created_at END ASC,
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN od.created_at END DESC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN od.updated_at END ASC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN od.updated_at END DESC,
-    od.created_at DESC
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN od.name END ASC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN od.name END DESC,
+    CASE WHEN p.resolved_field = 'fqn' AND p.resolved_direction = 'ASC' THEN fqns.fqn || LOWER(od.name) END ASC,
+    CASE WHEN p.resolved_field = 'fqn' AND p.resolved_direction = 'DESC' THEN fqns.fqn || LOWER(od.name) END DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN od.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN od.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN od.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN od.updated_at END DESC,
+    od.id ASC
 LIMIT @limit_
 OFFSET @offset_;
 

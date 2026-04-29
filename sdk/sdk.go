@@ -35,7 +35,7 @@ const (
 	ErrGrpcDialFailed      = Error("failed to dial grpc endpoint")
 	ErrShutdownFailed      = Error("failed to shutdown sdk")
 	ErrPlatformUnreachable = Error("platform unreachable or not responding")
-	// ErrHealthCheckUnsupported is returned by SDK.HealthCheck when the SDK is configured
+	// ErrHealthCheckUnsupported is returned by SDK.IsHealthy when the SDK is configured
 	// in IPC mode, which does not support the gRPC Health protocol.
 	ErrHealthCheckUnsupported        = Error("health check not supported in IPC mode")
 	ErrPlatformConfigFailed          = Error("failed to retrieve platform configuration")
@@ -59,33 +59,6 @@ type Error string
 
 func (c Error) Error() string {
 	return string(c)
-}
-
-// HealthStatus is the serving status reported by the platform's gRPC Health v1 endpoint.
-// It mirrors google.golang.org/grpc/health/grpc_health_v1.HealthCheckResponse_ServingStatus
-// so callers do not need to import the grpc health protobuf to branch on results.
-type HealthStatus int
-
-const (
-	// HealthStatusUnknown means the platform could not determine status, or the requested
-	// service is not registered on this deployment.
-	HealthStatusUnknown HealthStatus = iota
-	// HealthStatusServing means the requested scope reports SERVING.
-	HealthStatusServing
-	// HealthStatusNotServing means the requested scope was reached but reports NOT_SERVING.
-	HealthStatusNotServing
-)
-
-// String returns the uppercase name of the status. Unknown or out-of-range values render as "UNKNOWN".
-func (s HealthStatus) String() string {
-	switch s { //nolint:exhaustive // default intentionally covers HealthStatusUnknown and any future out-of-range values
-	case HealthStatusServing:
-		return "SERVING"
-	case HealthStatusNotServing:
-		return "NOT_SERVING"
-	default:
-		return "UNKNOWN"
-	}
 }
 
 // getLogger returns the package-level logger, defaulting to slog.Default() if not set to
@@ -340,55 +313,24 @@ func (s SDK) Conn() *ConnectRPCConnection {
 	return s.conn
 }
 
-// HealthCheck queries the platform's gRPC Health v1 endpoint (grpc.health.v1.Health/Check)
-// and returns the reported serving status.
+// IsHealthy reports whether the platform's gRPC Health v1 endpoint is reachable and SERVING.
+// The check honors ctx for deadline and cancellation; OTEL tracing works automatically when
+// otelconnect.NewInterceptor is registered via WithExtraClientOptions at SDK construction.
 //
-// The service argument selects the check scope:
-//
-//   - ""     — reachability check. Returns SERVING if the health handler responds. Does
-//     not exercise any registered readiness probe.
-//   - "all"  — runs every readiness check the platform has registered. Returns
-//     NOT_SERVING if any registered service reports an error.
-//   - other  — runs only the named service's readiness check (e.g. "kas", "authorization").
-//     Returns HealthStatusUnknown if the service is not registered on this deployment.
-//
-// The call honors ctx for deadline, cancellation, and trace-context propagation. Callers are
-// expected to manage timeouts via context.WithTimeout and to drive probe cadence / retry themselves.
-//
-// OTEL tracing works automatically when the caller has registered otelconnect.NewInterceptor()
-// via sdk.WithExtraClientOptions at SDK construction time. The SDK does not emit spans of its own.
-//
-// Returns (HealthStatusServing, nil) on SERVING; (HealthStatusNotServing, nil) on NOT_SERVING;
-// (HealthStatusUnknown, nil) on UNKNOWN / SERVICE_UNKNOWN; (HealthStatusUnknown, err wrapping
-// ErrPlatformUnreachable) on any transport failure including ctx errors; and
-// (HealthStatusUnknown, ErrHealthCheckUnsupported) when the SDK is in IPC mode.
-func (s SDK) HealthCheck(ctx context.Context, service string) (HealthStatus, error) {
+// Returns:
+//   - (true, nil) when the platform reports SERVING.
+//   - (false, nil) when the platform is reachable but reports NOT_SERVING or UNKNOWN.
+//   - (false, ErrHealthCheckUnsupported) when the SDK is configured in IPC mode.
+//   - (false, error) wrapping ErrPlatformUnreachable on transport failure or ctx errors.
+func (s SDK) IsHealthy(ctx context.Context) (bool, error) {
 	if s.ipc || s.conn == nil {
-		return HealthStatusUnknown, ErrHealthCheckUnsupported
+		return false, ErrHealthCheckUnsupported
 	}
-	status, err := checkPlatformHealth(ctx, s.conn.Endpoint, service, s.conn.Client, s.conn.Options)
+	healthy, err := checkPlatformHealth(ctx, s.conn.Endpoint, s.conn.Client, s.conn.Options)
 	if err != nil {
-		// Unregistered services can surface in two ways depending on the server
-		// implementation. The OpenTDF platform's handler reports them via proto
-		// HealthCheckResponse_UNKNOWN, which falls through to the switch default
-		// below. Generic grpchealth servers (e.g. grpchealth.NewStaticChecker,
-		// which the SDK tests use) surface them as a Connect not_found error.
-		// Both paths map to HealthStatusUnknown with no transport-error wrapper.
-		var connErr *connect.Error
-		if errors.As(err, &connErr) && connErr.Code() == connect.CodeNotFound {
-			return HealthStatusUnknown, nil
-		}
-		return HealthStatusUnknown, errors.Join(ErrPlatformUnreachable, err)
+		return false, errors.Join(ErrPlatformUnreachable, err)
 	}
-	switch status { //nolint:exhaustive // default intentionally covers UNKNOWN and SERVICE_UNKNOWN
-	case healthpb.HealthCheckResponse_SERVING:
-		return HealthStatusServing, nil
-	case healthpb.HealthCheckResponse_NOT_SERVING:
-		return HealthStatusNotServing, nil
-	default:
-		// UNKNOWN and SERVICE_UNKNOWN both map to HealthStatusUnknown.
-		return HealthStatusUnknown, nil
-	}
+	return healthy, nil
 }
 
 type TdfType string
@@ -494,43 +436,41 @@ func isValidManifest(manifest string, intensity SchemaValidationIntensity) (bool
 	return true, nil
 }
 
-// checkPlatformHealth issues a single gRPC Health v1 Check against the platform health endpoint.
-// ctx controls deadline, cancellation, and trace-context propagation. service selects scope:
-// "" = reachability, "all" = every registered readiness probe, otherwise a specific service name.
+// checkPlatformHealth issues a single gRPC Health v1 Check against the platform endpoint and
+// reports whether the response is SERVING. ctx controls deadline, cancellation, and trace-context.
 func checkPlatformHealth(
 	ctx context.Context,
-	endpoint, service string,
+	endpoint string,
 	httpClient *http.Client,
 	options []connect.ClientOption,
-) (healthpb.HealthCheckResponse_ServingStatus, error) {
+) (bool, error) {
 	checkURL, err := url.JoinPath(endpoint, "grpc.health.v1.Health", "Check")
 	if err != nil {
-		return healthpb.HealthCheckResponse_UNKNOWN, err
+		return false, err
 	}
 	healthClient := connect.NewClient[healthpb.HealthCheckRequest, healthpb.HealthCheckResponse](
 		httpClient,
 		checkURL,
 		options...,
 	)
-	res, err := healthClient.CallUnary(ctx, connect.NewRequest(&healthpb.HealthCheckRequest{Service: service}))
+	res, err := healthClient.CallUnary(ctx, connect.NewRequest(&healthpb.HealthCheckRequest{}))
 	if err != nil {
-		return healthpb.HealthCheckResponse_UNKNOWN, err
+		return false, err
 	}
-	return res.Msg.GetStatus(), nil
+	return res.Msg.GetStatus() == healthpb.HealthCheckResponse_SERVING, nil
 }
 
 // validateHealthyPlatformConnection is the construction-time reachability gate used by New when
-// WithConnectionValidation is set. It uses context.Background() to preserve today's behavior.
-// Callers pass cfg.extraClientOptions (pre-auth) because the auth and audit interceptors are
-// assembled after this gate fires; the runtime SDK.HealthCheck method uses the post-interceptor
-// s.conn.Options instead.
+// WithConnectionValidation is set. Callers pass cfg.extraClientOptions (pre-auth) because the
+// auth and audit interceptors are assembled after this gate fires; the runtime SDK.IsHealthy
+// method uses the post-interceptor s.conn.Options instead.
 func validateHealthyPlatformConnection(platformEndpoint string, httpClient *http.Client, options []connect.ClientOption) error {
-	status, err := checkPlatformHealth(context.Background(), platformEndpoint, "", httpClient, options)
+	healthy, err := checkPlatformHealth(context.Background(), platformEndpoint, httpClient, options)
 	if err != nil {
 		return errors.Join(ErrPlatformUnreachable, err)
 	}
-	if status != healthpb.HealthCheckResponse_SERVING {
-		return errors.Join(ErrPlatformUnreachable, fmt.Errorf("platform health status %q", status))
+	if !healthy {
+		return ErrPlatformUnreachable
 	}
 	return nil
 }

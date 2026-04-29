@@ -319,42 +319,18 @@ func Test_GetType_Invalid2Bytes(t *testing.T) {
 	assert.Equal(t, sdk.Invalid, tdfType)
 }
 
-func TestHealthStatus_String(t *testing.T) {
-	tests := []struct {
-		name   string
-		status sdk.HealthStatus
-		want   string
-	}{
-		{"unknown", sdk.HealthStatusUnknown, "UNKNOWN"},
-		{"serving", sdk.HealthStatusServing, "SERVING"},
-		{"not_serving", sdk.HealthStatusNotServing, "NOT_SERVING"},
-		{"out_of_range", sdk.HealthStatus(99), "UNKNOWN"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.status.String())
-		})
-	}
-}
-
 func TestErrHealthCheckUnsupported_Distinct(t *testing.T) {
 	assert.NotEqual(t, sdk.ErrHealthCheckUnsupported, sdk.ErrPlatformUnreachable)
 	assert.Equal(t, "health check not supported in IPC mode", sdk.ErrHealthCheckUnsupported.Error())
 }
 
-// newHealthTestServer starts an httptest.Server serving grpc.health.v1.Health.
-// serving is the set of service names that should report SERVING; notServing is the set
-// that should report NOT_SERVING. Any service name not in either set causes
-// grpchealth.StaticChecker to return a Connect not_found error, which SDK.HealthCheck
-// maps to HealthStatusUnknown.
-// The empty service name ("") reports SERVING regardless (StaticChecker default).
-func newHealthTestServer(t *testing.T, serving, notServing []string) *httptest.Server {
+// newHealthTestServer starts an httptest.Server serving grpc.health.v1.Health with the
+// configured serving status for the empty service name (the SDK's reachability probe).
+func newHealthTestServer(t *testing.T, serving bool) *httptest.Server {
 	t.Helper()
-	all := append([]string{}, serving...)
-	all = append(all, notServing...)
-	checker := grpchealth.NewStaticChecker(all...)
-	for _, svc := range notServing {
-		checker.SetStatus(svc, grpchealth.StatusNotServing)
+	checker := grpchealth.NewStaticChecker()
+	if !serving {
+		checker.SetStatus("", grpchealth.StatusNotServing)
 	}
 	mux := http.NewServeMux()
 	path, handler := grpchealth.NewHandler(checker)
@@ -362,7 +338,7 @@ func newHealthTestServer(t *testing.T, serving, notServing []string) *httptest.S
 	return httptest.NewServer(mux)
 }
 
-func TestSDK_HealthCheck_IPCMode_ReturnsErrHealthCheckUnsupported(t *testing.T) {
+func TestSDK_IsHealthy_IPCMode_ReturnsErrHealthCheckUnsupported(t *testing.T) {
 	// IPC mode requires a coreConn; provide a dummy one to satisfy sdk.New.
 	dummyConn := &sdk.ConnectRPCConnection{
 		Endpoint: "http://localhost:0",
@@ -382,13 +358,12 @@ func TestSDK_HealthCheck_IPCMode_ReturnsErrHealthCheckUnsupported(t *testing.T) 
 	require.NoError(t, err)
 	require.NotNil(t, s)
 
-	ctx := context.Background()
-	status, err := s.HealthCheck(ctx, "")
-	assert.Equal(t, sdk.HealthStatusUnknown, status)
+	healthy, err := s.IsHealthy(context.Background())
+	assert.False(t, healthy)
 	require.ErrorIs(t, err, sdk.ErrHealthCheckUnsupported)
 }
 
-func TestSDK_HealthCheck_Unreachable_ReturnsErrPlatformUnreachable(t *testing.T) {
+func TestSDK_IsHealthy_Unreachable_ReturnsErrPlatformUnreachable(t *testing.T) {
 	s, err := sdk.New(badPlatformEndpoint,
 		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
 			"idp": map[string]interface{}{
@@ -405,15 +380,15 @@ func TestSDK_HealthCheck_Unreachable_ReturnsErrPlatformUnreachable(t *testing.T)
 	defer cancel()
 
 	start := time.Now()
-	status, err := s.HealthCheck(ctx, "")
+	healthy, err := s.IsHealthy(ctx)
 	elapsed := time.Since(start)
 
-	assert.Equal(t, sdk.HealthStatusUnknown, status)
+	assert.False(t, healthy)
 	require.ErrorIs(t, err, sdk.ErrPlatformUnreachable)
 	assert.Less(t, elapsed, 2*time.Second, "health check should return promptly against a closed port, not wait for the ctx deadline")
 }
 
-func TestSDK_HealthCheck_ContextCanceled_ReturnsQuickly(t *testing.T) {
+func TestSDK_IsHealthy_ContextCanceled_ReturnsQuickly(t *testing.T) {
 	s, err := sdk.New(badPlatformEndpoint,
 		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
 			"idp": map[string]interface{}{
@@ -430,18 +405,18 @@ func TestSDK_HealthCheck_ContextCanceled_ReturnsQuickly(t *testing.T) {
 	cancel() // canceled before the call
 
 	start := time.Now()
-	status, err := s.HealthCheck(ctx, "")
+	healthy, err := s.IsHealthy(ctx)
 	elapsed := time.Since(start)
 
-	assert.Equal(t, sdk.HealthStatusUnknown, status)
+	assert.False(t, healthy)
 	require.Error(t, err)
 	require.ErrorIs(t, err, sdk.ErrPlatformUnreachable)
 	require.ErrorIs(t, err, context.Canceled)
 	assert.Less(t, elapsed, 500*time.Millisecond, "pre-canceled ctx should short-circuit")
 }
 
-func TestSDK_HealthCheck_Serving_HappyPath(t *testing.T) {
-	ts := newHealthTestServer(t, []string{"kas"}, []string{"broken"})
+func TestSDK_IsHealthy_Serving(t *testing.T) {
+	ts := newHealthTestServer(t, true)
 	defer ts.Close()
 
 	s, err := sdk.New(ts.URL,
@@ -459,36 +434,40 @@ func TestSDK_HealthCheck_Serving_HappyPath(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	t.Run("empty service returns SERVING", func(t *testing.T) {
-		status, err := s.HealthCheck(ctx, "")
-		require.NoError(t, err)
-		assert.Equal(t, sdk.HealthStatusServing, status)
-	})
-
-	t.Run("named serving service returns SERVING", func(t *testing.T) {
-		status, err := s.HealthCheck(ctx, "kas")
-		require.NoError(t, err)
-		assert.Equal(t, sdk.HealthStatusServing, status)
-	})
-
-	t.Run("named not-serving service returns NOT_SERVING", func(t *testing.T) {
-		status, err := s.HealthCheck(ctx, "broken")
-		require.NoError(t, err)
-		assert.Equal(t, sdk.HealthStatusNotServing, status)
-	})
-
-	t.Run("unknown service returns UNKNOWN", func(t *testing.T) {
-		status, err := s.HealthCheck(ctx, "does-not-exist")
-		require.NoError(t, err)
-		assert.Equal(t, sdk.HealthStatusUnknown, status)
-	})
+	healthy, err := s.IsHealthy(ctx)
+	require.NoError(t, err)
+	assert.True(t, healthy)
 }
 
-// TestSDK_HealthCheck_TrailingSlashEndpoint verifies that a platform endpoint
+func TestSDK_IsHealthy_NotServing(t *testing.T) {
+	ts := newHealthTestServer(t, false)
+	defer ts.Close()
+
+	s, err := sdk.New(ts.URL,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	healthy, err := s.IsHealthy(ctx)
+	require.NoError(t, err)
+	assert.False(t, healthy)
+}
+
+// TestSDK_IsHealthy_TrailingSlashEndpoint verifies that a platform endpoint
 // with a trailing slash does not produce a double-slash in the request URL,
 // which strict HTTP routers can reject.
-func TestSDK_HealthCheck_TrailingSlashEndpoint(t *testing.T) {
-	ts := newHealthTestServer(t, []string{"kas"}, nil)
+func TestSDK_IsHealthy_TrailingSlashEndpoint(t *testing.T) {
+	ts := newHealthTestServer(t, true)
 	defer ts.Close()
 
 	s, err := sdk.New(ts.URL+"/",
@@ -506,7 +485,7 @@ func TestSDK_HealthCheck_TrailingSlashEndpoint(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	status, err := s.HealthCheck(ctx, "kas")
+	healthy, err := s.IsHealthy(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, sdk.HealthStatusServing, status)
+	assert.True(t, healthy)
 }

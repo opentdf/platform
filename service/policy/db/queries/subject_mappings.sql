@@ -3,6 +3,14 @@
 ----------------------------------------------------------------
 
 -- name: listSubjectConditionSets :many
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
+        CASE
+            WHEN @sort_field::text = '' AND @sort_direction::text = '' THEN 'DESC'
+            ELSE COALESCE(NULLIF(@sort_direction::text, ''), 'ASC')
+        END AS resolved_direction
+)
 SELECT
     scs.id,
     scs.condition,
@@ -15,16 +23,16 @@ SELECT
 FROM subject_condition_set scs
 LEFT JOIN attribute_namespaces n ON n.id = scs.namespace_id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+CROSS JOIN params p
 WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL)
     OR scs.namespace_id = sqlc.narg('namespace_id')::uuid
     OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text
 ORDER BY
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN scs.created_at END ASC,
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN scs.created_at END DESC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN scs.updated_at END ASC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN scs.updated_at END DESC,
-    scs.created_at DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN scs.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN scs.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN scs.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN scs.updated_at END DESC,
     scs.id ASC
 LIMIT @limit_
 OFFSET @offset_;
@@ -72,7 +80,15 @@ RETURNING id;
 ----------------------------------------------------------------
 
 -- name: listSubjectMappings :many
-WITH subject_actions AS (
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
+        CASE
+            WHEN @sort_field::text = '' AND @sort_direction::text = '' THEN 'DESC'
+            ELSE COALESCE(NULLIF(@sort_direction::text, ''), 'ASC')
+        END AS resolved_direction
+),
+subject_actions AS (
     SELECT
         sma.subject_mapping_id,
         COALESCE(
@@ -133,6 +149,7 @@ SELECT
     counted.total
 FROM subject_mappings sm
 CROSS JOIN counted
+CROSS JOIN params p
 LEFT JOIN subject_actions sa ON sm.id = sa.subject_mapping_id
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
@@ -157,11 +174,10 @@ GROUP BY
     fqns.fqn,
     counted.total
 ORDER BY
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN sm.created_at END ASC,
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN sm.created_at END DESC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN sm.updated_at END ASC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN sm.updated_at END DESC,
-    sm.created_at DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN sm.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN sm.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN sm.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN sm.updated_at END DESC,
     sm.id ASC
 LIMIT @limit_
 OFFSET @offset_;

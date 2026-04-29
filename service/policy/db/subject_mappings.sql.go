@@ -354,6 +354,14 @@ func (q *Queries) getSubjectMapping(ctx context.Context, id string) (getSubjectM
 
 const listSubjectConditionSets = `-- name: listSubjectConditionSets :many
 
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
+        CASE
+            WHEN $5::text = '' AND $6::text = '' THEN 'DESC'
+            ELSE COALESCE(NULLIF($6::text, ''), 'ASC')
+        END AS resolved_direction
+)
 SELECT
     scs.id,
     scs.condition,
@@ -366,28 +374,28 @@ SELECT
 FROM subject_condition_set scs
 LEFT JOIN attribute_namespaces n ON n.id = scs.namespace_id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+CROSS JOIN params p
 WHERE
     ($1::uuid IS NULL AND $2::text IS NULL)
     OR scs.namespace_id = $1::uuid
     OR ns_fqns.fqn = $2::text
 ORDER BY
-    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN scs.created_at END ASC,
-    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN scs.created_at END DESC,
-    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN scs.updated_at END ASC,
-    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN scs.updated_at END DESC,
-    scs.created_at DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN scs.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN scs.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN scs.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN scs.updated_at END DESC,
     scs.id ASC
-LIMIT $6
-OFFSET $5
+LIMIT $4
+OFFSET $3
 `
 
 type listSubjectConditionSetsParams struct {
 	NamespaceID   pgtype.UUID `json:"namespace_id"`
 	NamespaceFqn  pgtype.Text `json:"namespace_fqn"`
-	SortField     string      `json:"sort_field"`
-	SortDirection string      `json:"sort_direction"`
 	Offset        int32       `json:"offset_"`
 	Limit         int32       `json:"limit_"`
+	SortField     string      `json:"sort_field"`
+	SortDirection string      `json:"sort_direction"`
 }
 
 type listSubjectConditionSetsRow struct {
@@ -402,6 +410,14 @@ type listSubjectConditionSetsRow struct {
 // SUBJECT CONDITION SETS
 // --------------------------------------------------------------
 //
+//	WITH params AS (
+//	    SELECT
+//	        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
+//	        CASE
+//	            WHEN $5::text = '' AND $6::text = '' THEN 'DESC'
+//	            ELSE COALESCE(NULLIF($6::text, ''), 'ASC')
+//	        END AS resolved_direction
+//	)
 //	SELECT
 //	    scs.id,
 //	    scs.condition,
@@ -414,27 +430,27 @@ type listSubjectConditionSetsRow struct {
 //	FROM subject_condition_set scs
 //	LEFT JOIN attribute_namespaces n ON n.id = scs.namespace_id
 //	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+//	CROSS JOIN params p
 //	WHERE
 //	    ($1::uuid IS NULL AND $2::text IS NULL)
 //	    OR scs.namespace_id = $1::uuid
 //	    OR ns_fqns.fqn = $2::text
 //	ORDER BY
-//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN scs.created_at END ASC,
-//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN scs.created_at END DESC,
-//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN scs.updated_at END ASC,
-//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN scs.updated_at END DESC,
-//	    scs.created_at DESC,
+//	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN scs.created_at END ASC,
+//	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN scs.created_at END DESC,
+//	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN scs.updated_at END ASC,
+//	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN scs.updated_at END DESC,
 //	    scs.id ASC
-//	LIMIT $6
-//	OFFSET $5
+//	LIMIT $4
+//	OFFSET $3
 func (q *Queries) listSubjectConditionSets(ctx context.Context, arg listSubjectConditionSetsParams) ([]listSubjectConditionSetsRow, error) {
 	rows, err := q.db.Query(ctx, listSubjectConditionSets,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
-		arg.SortField,
-		arg.SortDirection,
 		arg.Offset,
 		arg.Limit,
+		arg.SortField,
+		arg.SortDirection,
 	)
 	if err != nil {
 		return nil, err
@@ -462,7 +478,15 @@ func (q *Queries) listSubjectConditionSets(ctx context.Context, arg listSubjectC
 
 const listSubjectMappings = `-- name: listSubjectMappings :many
 
-WITH subject_actions AS (
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
+        CASE
+            WHEN $5::text = '' AND $6::text = '' THEN 'DESC'
+            ELSE COALESCE(NULLIF($6::text, ''), 'ASC')
+        END AS resolved_direction
+),
+subject_actions AS (
     SELECT
         sma.subject_mapping_id,
         COALESCE(
@@ -523,6 +547,7 @@ SELECT
     counted.total
 FROM subject_mappings sm
 CROSS JOIN counted
+CROSS JOIN params p
 LEFT JOIN subject_actions sa ON sm.id = sa.subject_mapping_id
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
@@ -547,23 +572,22 @@ GROUP BY
     fqns.fqn,
     counted.total
 ORDER BY
-    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN sm.created_at END ASC,
-    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN sm.created_at END DESC,
-    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN sm.updated_at END ASC,
-    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN sm.updated_at END DESC,
-    sm.created_at DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN sm.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN sm.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN sm.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN sm.updated_at END DESC,
     sm.id ASC
-LIMIT $6
-OFFSET $5
+LIMIT $4
+OFFSET $3
 `
 
 type listSubjectMappingsParams struct {
 	NamespaceID   pgtype.UUID `json:"namespace_id"`
 	NamespaceFqn  pgtype.Text `json:"namespace_fqn"`
-	SortField     string      `json:"sort_field"`
-	SortDirection string      `json:"sort_direction"`
 	Offset        int32       `json:"offset_"`
 	Limit         int32       `json:"limit_"`
+	SortField     string      `json:"sort_field"`
+	SortDirection string      `json:"sort_direction"`
 }
 
 type listSubjectMappingsRow struct {
@@ -581,7 +605,15 @@ type listSubjectMappingsRow struct {
 // SUBJECT MAPPINGS
 // --------------------------------------------------------------
 //
-//	WITH subject_actions AS (
+//	WITH params AS (
+//	    SELECT
+//	        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
+//	        CASE
+//	            WHEN $5::text = '' AND $6::text = '' THEN 'DESC'
+//	            ELSE COALESCE(NULLIF($6::text, ''), 'ASC')
+//	        END AS resolved_direction
+//	),
+//	subject_actions AS (
 //	    SELECT
 //	        sma.subject_mapping_id,
 //	        COALESCE(
@@ -642,6 +674,7 @@ type listSubjectMappingsRow struct {
 //	    counted.total
 //	FROM subject_mappings sm
 //	CROSS JOIN counted
+//	CROSS JOIN params p
 //	LEFT JOIN subject_actions sa ON sm.id = sa.subject_mapping_id
 //	LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
 //	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
@@ -666,22 +699,21 @@ type listSubjectMappingsRow struct {
 //	    fqns.fqn,
 //	    counted.total
 //	ORDER BY
-//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN sm.created_at END ASC,
-//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN sm.created_at END DESC,
-//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN sm.updated_at END ASC,
-//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN sm.updated_at END DESC,
-//	    sm.created_at DESC,
+//	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN sm.created_at END ASC,
+//	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN sm.created_at END DESC,
+//	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN sm.updated_at END ASC,
+//	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN sm.updated_at END DESC,
 //	    sm.id ASC
-//	LIMIT $6
-//	OFFSET $5
+//	LIMIT $4
+//	OFFSET $3
 func (q *Queries) listSubjectMappings(ctx context.Context, arg listSubjectMappingsParams) ([]listSubjectMappingsRow, error) {
 	rows, err := q.db.Query(ctx, listSubjectMappings,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
-		arg.SortField,
-		arg.SortDirection,
 		arg.Offset,
 		arg.Limit,
+		arg.SortField,
+		arg.SortDirection,
 	)
 	if err != nil {
 		return nil, err

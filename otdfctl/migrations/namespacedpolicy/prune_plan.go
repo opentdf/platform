@@ -1,6 +1,11 @@
 package namespacedpolicy
 
-import "github.com/opentdf/platform/protocol/go/policy"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/opentdf/platform/protocol/go/policy"
+)
 
 type PruneStatus string
 
@@ -20,11 +25,20 @@ const (
 	PruneStatusReasonTypeInUse                            PruneStatusReasonType = "InUse"
 	PruneStatusReasonTypeNeedsMigration                   PruneStatusReasonType = "NeedsMigration"
 	PruneStatusReasonTypeRegisteredResourceSourceMismatch PruneStatusReasonType = "RegisteredResourceSourceMismatch"
+
+	pruneStatusReasonMessageMigratedTargetNotFound              = "no migrated target was found for this source"
+	pruneStatusReasonMessageInUse                               = "source object is still referenced by legacy policy"
+	pruneStatusReasonMessageNoMatchingLabelsFound               = "canonical migrated targets were found, but none carry migrated_from for this source"
+	pruneStatusReasonMessageMismatchedMigrationLabel            = "migrated target carries migrated_from metadata for a different source"
+	pruneStatusReasonMessageMissingMigrationLabel               = "migrated target is missing migrated_from metadata for this source"
+	pruneStatusReasonMessageNeedsMigration                      = "source object does not have a migrated target yet"
+	pruneStatusReasonMessageRegisteredResourceSourceMismatchFmt = "resolved registered resource view does not match the full source object for target namespace %q; source contains values outside the resolved migration view"
 )
 
 type PruneStatusReason struct {
 	Type    PruneStatusReasonType `json:"type"`
 	Message string                `json:"message"`
+	fmt.Stringer
 }
 
 // TargetRef identifies the migrated target object that the planner
@@ -42,8 +56,29 @@ func (t TargetRef) IsZero() bool {
 	return len(t.ID) == 0 && len(t.NamespaceID) == 0 && len(t.NamespaceFQN) == 0
 }
 
+func (t TargetRef) String() string {
+	namespace := strings.TrimSpace(t.NamespaceFQN)
+	if namespace == "" {
+		namespace = strings.TrimSpace(t.NamespaceID)
+	}
+	return appendDetails("id="+strconvQuote(strings.TrimSpace(t.ID)), "namespace="+strconvQuote(namespace))
+}
+
 func (r PruneStatusReason) IsZero() bool {
 	return len(r.Type) == 0 && len(r.Message) == 0
+}
+
+func (r PruneStatusReason) String() string {
+	if r.IsZero() {
+		return noneLabel
+	}
+	if strings.TrimSpace(r.Message) == "" {
+		return string(r.Type)
+	}
+	if r.Type == "" {
+		return r.Message
+	}
+	return fmt.Sprintf("%s: %s", r.Type, r.Message)
 }
 
 type PrunePlan struct {
@@ -55,6 +90,14 @@ type PrunePlan struct {
 	ObligationTriggers   []*PruneObligationTriggerPlan   `json:"obligation_triggers"`
 }
 
+type prunePlanItem interface {
+	hasSource() bool
+	status() PruneStatus
+	setStatus(PruneStatus)
+	reason() PruneStatusReason
+	setReason(PruneStatusReason)
+}
+
 // PruneActionPlan records the source action being considered for deletion and
 // any migrated target actions that still reference or replace it.
 type PruneActionPlan struct {
@@ -62,6 +105,36 @@ type PruneActionPlan struct {
 	Status          PruneStatus       `json:"status"`
 	MigratedTargets []TargetRef       `json:"migrated_targets,omitempty"`
 	Reason          PruneStatusReason `json:"reason,omitzero"`
+}
+
+func (p *PruneActionPlan) hasSource() bool {
+	return p != nil && p.Source != nil
+}
+
+func (p *PruneActionPlan) status() PruneStatus {
+	if p == nil {
+		return ""
+	}
+	return p.Status
+}
+
+func (p *PruneActionPlan) setStatus(status PruneStatus) {
+	if p != nil {
+		p.Status = status
+	}
+}
+
+func (p *PruneActionPlan) reason() PruneStatusReason {
+	if p == nil {
+		return PruneStatusReason{}
+	}
+	return p.Reason
+}
+
+func (p *PruneActionPlan) setReason(reason PruneStatusReason) {
+	if p != nil {
+		p.Reason = reason
+	}
 }
 
 // PruneSubjectConditionSetPlan records the source SCS being considered for
@@ -74,6 +147,36 @@ type PruneSubjectConditionSetPlan struct {
 	Reason          PruneStatusReason           `json:"reason,omitzero"`
 }
 
+func (p *PruneSubjectConditionSetPlan) hasSource() bool {
+	return p != nil && p.Source != nil
+}
+
+func (p *PruneSubjectConditionSetPlan) status() PruneStatus {
+	if p == nil {
+		return ""
+	}
+	return p.Status
+}
+
+func (p *PruneSubjectConditionSetPlan) setStatus(status PruneStatus) {
+	if p != nil {
+		p.Status = status
+	}
+}
+
+func (p *PruneSubjectConditionSetPlan) reason() PruneStatusReason {
+	if p == nil {
+		return PruneStatusReason{}
+	}
+	return p.Reason
+}
+
+func (p *PruneSubjectConditionSetPlan) setReason(reason PruneStatusReason) {
+	if p != nil {
+		p.Reason = reason
+	}
+}
+
 // PruneSubjectMappingPlan records the source subject mapping being considered
 // for deletion and the single migrated target subject mapping matched to it by
 // migration metadata.
@@ -82,6 +185,36 @@ type PruneSubjectMappingPlan struct {
 	Status         PruneStatus            `json:"status"`
 	MigratedTarget TargetRef              `json:"migrated_target,omitzero"`
 	Reason         PruneStatusReason      `json:"reason,omitzero"`
+}
+
+func (p *PruneSubjectMappingPlan) hasSource() bool {
+	return p != nil && p.Source != nil
+}
+
+func (p *PruneSubjectMappingPlan) status() PruneStatus {
+	if p == nil {
+		return ""
+	}
+	return p.Status
+}
+
+func (p *PruneSubjectMappingPlan) setStatus(status PruneStatus) {
+	if p != nil {
+		p.Status = status
+	}
+}
+
+func (p *PruneSubjectMappingPlan) reason() PruneStatusReason {
+	if p == nil {
+		return PruneStatusReason{}
+	}
+	return p.Reason
+}
+
+func (p *PruneSubjectMappingPlan) setReason(reason PruneStatusReason) {
+	if p != nil {
+		p.Reason = reason
+	}
 }
 
 // PruneRegisteredResourcePlan records the resolved RR source being considered
@@ -97,6 +230,36 @@ type PruneRegisteredResourcePlan struct {
 	Reason         PruneStatusReason          `json:"reason,omitzero"`
 }
 
+func (p *PruneRegisteredResourcePlan) hasSource() bool {
+	return p != nil && p.Source != nil
+}
+
+func (p *PruneRegisteredResourcePlan) status() PruneStatus {
+	if p == nil {
+		return ""
+	}
+	return p.Status
+}
+
+func (p *PruneRegisteredResourcePlan) setStatus(status PruneStatus) {
+	if p != nil {
+		p.Status = status
+	}
+}
+
+func (p *PruneRegisteredResourcePlan) reason() PruneStatusReason {
+	if p == nil {
+		return PruneStatusReason{}
+	}
+	return p.Reason
+}
+
+func (p *PruneRegisteredResourcePlan) setReason(reason PruneStatusReason) {
+	if p != nil {
+		p.Reason = reason
+	}
+}
+
 // PruneObligationTriggerPlan records the source obligation trigger being
 // considered for deletion and the single migrated target obligation trigger
 // matched to it by migration metadata.
@@ -105,4 +268,34 @@ type PruneObligationTriggerPlan struct {
 	Status         PruneStatus               `json:"status"`
 	MigratedTarget TargetRef                 `json:"migrated_target,omitzero"`
 	Reason         PruneStatusReason         `json:"reason,omitzero"`
+}
+
+func (p *PruneObligationTriggerPlan) hasSource() bool {
+	return p != nil && p.Source != nil
+}
+
+func (p *PruneObligationTriggerPlan) status() PruneStatus {
+	if p == nil {
+		return ""
+	}
+	return p.Status
+}
+
+func (p *PruneObligationTriggerPlan) setStatus(status PruneStatus) {
+	if p != nil {
+		p.Status = status
+	}
+}
+
+func (p *PruneObligationTriggerPlan) reason() PruneStatusReason {
+	if p == nil {
+		return PruneStatusReason{}
+	}
+	return p.Reason
+}
+
+func (p *PruneObligationTriggerPlan) setReason(reason PruneStatusReason) {
+	if p != nil {
+		p.Reason = reason
+	}
 }

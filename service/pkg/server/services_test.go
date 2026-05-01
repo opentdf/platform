@@ -221,8 +221,7 @@ func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expec
 }
 
 func (suite *ServiceTestSuite) TestBuildNamespaceLoggerRejectsInvalidOverrideLevel() {
-	baseLogger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
-	suite.Require().NoError(err)
+	baseLogger := logger.CreateTestLogger()
 
 	cfg := &config.Config{
 		Logger: logger.Config{Output: "stdout", Level: "info", Type: "json"},

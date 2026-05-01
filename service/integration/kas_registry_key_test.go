@@ -2598,7 +2598,7 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByUpdatedAt_ASC() {
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_SortByUnspecifiedField_DefaultsToCreatedAt() {
-	ids, kasID := s.createSortTestKasKeys("unspecified-field-kk")
+	ids, kasID := s.createSortTestKasKeys("unsf-kk")
 	defer s.deleteSortTestKasKeys(ids, kasID)
 
 	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
@@ -2615,7 +2615,7 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByUnspecifiedField_DefaultsToCre
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_SortByUnspecifiedDirection_DefaultsToDESC() {
-	ids, kasID := s.createSortTestKasKeys("unspecified-dir-kk")
+	ids, kasID := s.createSortTestKasKeys("unsd-kk")
 	defer s.deleteSortTestKasKeys(ids, kasID)
 
 	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
@@ -2632,7 +2632,7 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByUnspecifiedDirection_DefaultsT
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
-	ids, kasID := s.createSortTestKasKeys("both-unspecified-kk")
+	ids, kasID := s.createSortTestKasKeys("unsb-kk")
 	defer s.deleteSortTestKasKeys(ids, kasID)
 
 	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{

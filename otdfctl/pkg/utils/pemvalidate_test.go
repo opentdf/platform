@@ -9,6 +9,7 @@ import (
 	"encoding/pem"
 	"testing"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/stretchr/testify/require"
 )
@@ -117,4 +118,46 @@ func TestValidatePublicKeyPEM_UnsupportedAlgorithm(t *testing.T) {
 	err = ValidatePublicKeyPEM(pemBytes, policy.Algorithm_ALGORITHM_UNSPECIFIED)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unsupported or unspecified algorithm")
+}
+
+func TestValidatePublicKeyPEM_HybridXWing_OK(t *testing.T) {
+	kp, err := ocrypto.NewKeyPair(ocrypto.HybridXWingKey)
+	require.NoError(t, err)
+	pubPem, err := kp.PublicKeyInPemFormat()
+	require.NoError(t, err)
+
+	err = ValidatePublicKeyPEM([]byte(pubPem), policy.Algorithm_ALGORITHM_HPQT_XWING)
+	require.NoError(t, err)
+}
+
+func TestValidatePublicKeyPEM_HybridP256MLKEM768_OK(t *testing.T) {
+	kp, err := ocrypto.NewKeyPair(ocrypto.HybridSecp256r1MLKEM768Key)
+	require.NoError(t, err)
+	pubPem, err := kp.PublicKeyInPemFormat()
+	require.NoError(t, err)
+
+	err = ValidatePublicKeyPEM([]byte(pubPem), policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768)
+	require.NoError(t, err)
+}
+
+func TestValidatePublicKeyPEM_HybridP384MLKEM1024_OK(t *testing.T) {
+	kp, err := ocrypto.NewKeyPair(ocrypto.HybridSecp384r1MLKEM1024Key)
+	require.NoError(t, err)
+	pubPem, err := kp.PublicKeyInPemFormat()
+	require.NoError(t, err)
+
+	err = ValidatePublicKeyPEM([]byte(pubPem), policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024)
+	require.NoError(t, err)
+}
+
+func TestValidatePublicKeyPEM_HybridMismatch(t *testing.T) {
+	// Generate an X-Wing key but validate against a different hybrid algorithm
+	kp, err := ocrypto.NewKeyPair(ocrypto.HybridXWingKey)
+	require.NoError(t, err)
+	pubPem, err := kp.PublicKeyInPemFormat()
+	require.NoError(t, err)
+
+	err = ValidatePublicKeyPEM([]byte(pubPem), policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "algorithm mismatch")
 }

@@ -50,6 +50,9 @@ openssl rsa -in "$opt_output/kas-private.pem" -pubout -out "$opt_output/kas-cert
 openssl ecparam -name prime256v1 >ecparams.tmp
 openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout "$opt_output/kas-ec-private.pem" -out "$opt_output/kas-ec-cert.pem" -days 365
 
+# Generate hybrid post-quantum key pairs (X-Wing, P256+ML-KEM-768, P384+ML-KEM-1024)
+go run ./service/cmd/keygen -output "$opt_output"
+
 mkdir -p keys
 openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=ca" -keyout keys/keycloak-ca-private.pem -out keys/keycloak-ca.pem -days 365
 printf "subjectAltName=DNS:localhost,IP:127.0.0.1" >keys/sanX509.conf

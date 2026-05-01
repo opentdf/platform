@@ -77,3 +77,6 @@ otdfctl policy kas-registry key import --key-id "imported-key" --algorithm "rsa:
     | `ec:secp256r1` |
     | `ec:secp384r1` |
     | `ec:secp521r1` |
+    | `hpqt:xwing` |
+    | `hpqt:secp256r1-mlkem768` |
+    | `hpqt:secp384r1-mlkem1024` |

@@ -1535,7 +1535,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByBothUnspecifi
 	s.NotNil(listRsp)
 
 	// Both default: created_at DESC
-	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[2], ids[1], ids[2])
+	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet() {

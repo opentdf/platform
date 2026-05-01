@@ -409,16 +409,16 @@ func TestAuditJWTClaimMappingsUseMetadataFallback(t *testing.T) {
 	assert.Equal(t, "jwt-user", requester["sub"])
 }
 
-func TestAuditLegacyAuditedEntityJWTClaimsApplyToPolicyAudit(t *testing.T) {
+func TestAuditJWTClaimMappingsCanWriteToEntityMetadata(t *testing.T) {
 	token, rawToken := createTestJWTForAudit(t)
 	ctx := ctxAuth.ContextWithAuthNInfo(createTestContext(t), nil, token, rawToken)
 
 	logEntry, _ := doWithLoggerContext(ctx, t, func(ctx context.Context, l *Logger) {
 		l.ApplyConfig(Config{
-			AuditedEntityJWTClaims: []string{
-				"sub",
-				"realm_access.roles",
-				"email_verified",
+			JWTClaimMappings: []JWTClaimMapping{
+				{Claim: "sub", Path: "eventMetaData.entityMetadata.sub"},
+				{Claim: "realm_access.roles", Path: "eventMetaData.entityMetadata.roles"},
+				{Claim: "email_verified", Path: "eventMetaData.entityMetadata.emailVerified"},
 			},
 		})
 		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
@@ -430,8 +430,8 @@ func TestAuditLegacyAuditedEntityJWTClaimsApplyToPolicyAudit(t *testing.T) {
 	entityMetadata, ok := eventMetaData["entityMetadata"].(map[string]any)
 	require.True(t, ok)
 	assert.Equal(t, "jwt-user", entityMetadata["sub"])
-	assert.Equal(t, `["admin","user"]`, entityMetadata["realm_access.roles"])
-	assert.Equal(t, "true", entityMetadata["email_verified"])
+	assert.Equal(t, []any{"admin", "user"}, entityMetadata["roles"])
+	assert.Equal(t, true, entityMetadata["emailVerified"])
 }
 
 func TestDeferredRewrapSuccess(t *testing.T) {

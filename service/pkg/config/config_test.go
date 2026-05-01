@@ -390,9 +390,6 @@ server:
 logger:
   level: warn
 audit:
-  audited_entity_jwt_claims:
-    - sub
-    - realm_access.roles
   jwt_claim_mappings:
     - claim: email_verified
       path: eventMetaData.requester.emailVerified
@@ -401,7 +398,6 @@ audit:
 				// Values from file
 				assert.Equal(t, 9090, cfg.Server.Port)
 				assert.Equal(t, "warn", cfg.Logger.Level)
-				assert.Equal(t, []string{"sub", "realm_access.roles"}, cfg.Audit.AuditedEntityJWTClaims)
 				assert.Equal(t, []auditcfg.JWTClaimMapping{
 					{Claim: "email_verified", Path: "eventMetaData.requester.emailVerified"},
 				}, cfg.Audit.JWTClaimMappings)

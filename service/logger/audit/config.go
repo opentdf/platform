@@ -10,9 +10,6 @@ type JWTClaimMapping struct {
 
 // Config contains platform-wide audit configuration.
 type Config struct {
-	// AuditedEntityJWTClaims is a legacy shorthand that writes stringified claim
-	// values to `eventMetaData.entityMetadata.<claim>`.
-	AuditedEntityJWTClaims []string `mapstructure:"audited_entity_jwt_claims" json:"audited_entity_jwt_claims"`
 	// JWTClaimMappings writes JWT claims to configured destinations in the audit
 	// log output, preserving the original JSON value types where possible.
 	JWTClaimMappings []JWTClaimMapping `mapstructure:"jwt_claim_mappings" json:"jwt_claim_mappings"`

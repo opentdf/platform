@@ -10,9 +10,6 @@ audit:
   #     path: eventMetaData.requester.sub
   #   - claim: realm_access.roles
   #     path: eventMetaData.requester.roles
-  # Legacy shorthand: writes stringified values to eventMetaData.entityMetadata.<claim>.
-  # audited_entity_jwt_claims:
-  #   - sub
 # DB and Server configurations are defaulted for local development
 db:
   host: opentdfdb

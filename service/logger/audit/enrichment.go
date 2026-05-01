@@ -2,8 +2,6 @@ package audit
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
 	"reflect"
 
@@ -28,7 +26,7 @@ func (a *Logger) buildLogEntry(ctx context.Context, event *EventObject) map[stri
 }
 
 func (a *Logger) applyJWTClaimEnrichment(ctx context.Context, entry map[string]any) {
-	if len(a.config.AuditedEntityJWTClaims) == 0 && len(a.config.JWTClaimMappings) == 0 {
+	if len(a.config.JWTClaimMappings) == 0 {
 		return
 	}
 
@@ -43,33 +41,7 @@ func (a *Logger) applyJWTClaimEnrichment(ctx context.Context, entry map[string]a
 		return
 	}
 
-	a.applyLegacyAuditedEntityClaims(ctx, entry, claimsMap)
 	a.applyMappedJWTClaims(ctx, entry, claimsMap)
-}
-
-func (a *Logger) applyLegacyAuditedEntityClaims(ctx context.Context, entry map[string]any, claimsMap map[string]any) {
-	if len(a.config.AuditedEntityJWTClaims) == 0 {
-		return
-	}
-
-	entityMetadata, err := getOrCreateMapAtPath(entry, "eventMetaData.entityMetadata")
-	if err != nil {
-		a.logger.ErrorContext(ctx, "failed to create legacy audit entity metadata destination", slog.Any("error", err))
-		return
-	}
-
-	for _, claim := range a.config.AuditedEntityJWTClaims {
-		if claim == "" {
-			continue
-		}
-
-		value := internaldotnotation.Get(claimsMap, claim)
-		if value == nil {
-			continue
-		}
-
-		entityMetadata[claim] = stringifyJWTClaimValue(value)
-	}
 }
 
 func (a *Logger) applyMappedJWTClaims(ctx context.Context, entry map[string]any, claimsMap map[string]any) {
@@ -100,30 +72,6 @@ func (a *Logger) applyMappedJWTClaims(ctx context.Context, entry map[string]any,
 			)
 		}
 	}
-}
-
-func getOrCreateMapAtPath(root map[string]any, path string) (map[string]any, error) {
-	if path == "" {
-		return root, nil
-	}
-
-	current := internaldotnotation.Get(root, path)
-	if current == nil {
-		if err := internaldotnotation.Set(root, path, map[string]any{}); err != nil {
-			return nil, err
-		}
-		current = internaldotnotation.Get(root, path)
-	}
-
-	converted, ok := normalizeAuditValue(current).(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("path [%s] does not resolve to an object", path)
-	}
-
-	if err := internaldotnotation.Set(root, path, converted); err != nil {
-		return nil, err
-	}
-	return converted, nil
 }
 
 func normalizeAuditValue(value any) any {
@@ -177,19 +125,5 @@ func normalizeAuditValue(value any) any {
 		return normalized
 	default:
 		return value
-	}
-}
-
-func stringifyJWTClaimValue(value any) string {
-	switch typed := value.(type) {
-	case string:
-		return typed
-	default:
-		normalized := normalizeAuditValue(typed)
-		encoded, err := json.Marshal(normalized)
-		if err != nil {
-			return fmt.Sprintf("%v", normalized)
-		}
-		return string(encoded)
 	}
 }

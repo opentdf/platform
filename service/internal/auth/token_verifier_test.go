@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
@@ -98,7 +97,7 @@ func (f *tokenVerifierFixture) signToken(t *testing.T, issuer, audience string, 
 func TestNewTokenVerifier_UsesDiscoveredIssuer(t *testing.T) {
 	fixture := newTokenVerifierFixture(t)
 
-	verifier, err := NewTokenVerifier(context.Background(), AuthNConfig{
+	verifier, err := NewTokenVerifier(t.Context(), AuthNConfig{
 		Issuer:       fixture.server.URL + "/alias",
 		Audience:     "test-audience",
 		CacheRefresh: "15m",
@@ -109,7 +108,7 @@ func TestNewTokenVerifier_UsesDiscoveredIssuer(t *testing.T) {
 	assert.Equal(t, fixture.server.URL, verifier.oidcConfiguration.Issuer)
 
 	token := fixture.signToken(t, fixture.server.URL, "test-audience", fixture.privateKey)
-	verifiedToken, err := verifier.VerifyAccessToken(context.Background(), token)
+	verifiedToken, err := verifier.VerifyAccessToken(t.Context(), token)
 	require.NoError(t, err)
 	assert.Equal(t, "user-123", verifiedToken.Subject())
 }
@@ -117,7 +116,7 @@ func TestNewTokenVerifier_UsesDiscoveredIssuer(t *testing.T) {
 func TestTokenVerifier_VerifyAccessToken(t *testing.T) {
 	fixture := newTokenVerifierFixture(t)
 
-	verifier, err := NewTokenVerifier(context.Background(), AuthNConfig{
+	verifier, err := NewTokenVerifier(t.Context(), AuthNConfig{
 		Issuer:       fixture.server.URL,
 		Audience:     "test-audience",
 		CacheRefresh: "15m",
@@ -128,7 +127,7 @@ func TestTokenVerifier_VerifyAccessToken(t *testing.T) {
 	t.Run("valid token", func(t *testing.T) {
 		token := fixture.signToken(t, fixture.server.URL, "test-audience", fixture.privateKey)
 
-		verifiedToken, err := verifier.VerifyAccessToken(context.Background(), token)
+		verifiedToken, err := verifier.VerifyAccessToken(t.Context(), token)
 		require.NoError(t, err)
 		assert.Equal(t, "user-123", verifiedToken.Subject())
 	})
@@ -136,7 +135,7 @@ func TestTokenVerifier_VerifyAccessToken(t *testing.T) {
 	t.Run("invalid audience", func(t *testing.T) {
 		token := fixture.signToken(t, fixture.server.URL, "wrong-audience", fixture.privateKey)
 
-		_, err := verifier.VerifyAccessToken(context.Background(), token)
+		_, err := verifier.VerifyAccessToken(t.Context(), token)
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "\"aud\"")
 	})
@@ -147,7 +146,16 @@ func TestTokenVerifier_VerifyAccessToken(t *testing.T) {
 
 		token := fixture.signToken(t, fixture.server.URL, "test-audience", otherKey)
 
-		_, err = verifier.VerifyAccessToken(context.Background(), token)
+		_, err = verifier.VerifyAccessToken(t.Context(), token)
 		require.Error(t, err)
 	})
+}
+
+func TestTokenVerifier_NilHandling(t *testing.T) {
+	authn := &Authentication{}
+	assert.Nil(t, authn.AccessTokenVerifier())
+
+	var verifier *TokenVerifier
+	_, err := verifier.VerifyAccessToken(t.Context(), "token")
+	require.ErrorIs(t, err, errNilTokenVerifier)
 }

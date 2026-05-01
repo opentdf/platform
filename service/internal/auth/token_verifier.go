@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -10,6 +11,8 @@ import (
 
 	"github.com/opentdf/platform/service/logger"
 )
+
+var errNilTokenVerifier = errors.New("access token verifier is not configured")
 
 // AccessTokenVerifier validates raw access tokens.
 type AccessTokenVerifier interface {
@@ -72,7 +75,7 @@ func NewTokenVerifier(ctx context.Context, cfg AuthNConfig, log *logger.Logger) 
 
 // AccessTokenVerifier returns the authenticator's shared access-token verifier.
 func (a *Authentication) AccessTokenVerifier() AccessTokenVerifier {
-	if a == nil {
+	if a == nil || a.tokenVerifier == nil {
 		return nil
 	}
 
@@ -80,7 +83,11 @@ func (a *Authentication) AccessTokenVerifier() AccessTokenVerifier {
 }
 
 // VerifyAccessToken validates the provided raw JWT and returns the parsed token on success.
-func (v *TokenVerifier) VerifyAccessToken(_ context.Context, tokenRaw string) (jwt.Token, error) {
+func (v *TokenVerifier) VerifyAccessToken(ctx context.Context, tokenRaw string) (jwt.Token, error) {
+	if v == nil {
+		return nil, errNilTokenVerifier
+	}
+
 	token, err := jwt.Parse([]byte(tokenRaw),
 		jwt.WithKeySet(v.cachedKeySet),
 		jwt.WithValidate(true),
@@ -89,7 +96,7 @@ func (v *TokenVerifier) VerifyAccessToken(_ context.Context, tokenRaw string) (j
 		jwt.WithAcceptableSkew(v.oidcConfiguration.TokenSkew),
 	)
 	if err != nil {
-		v.log.Warn("failed to validate auth token", slog.Any("err", err))
+		v.log.WarnContext(ctx, "failed to validate auth token", slog.Any("err", err))
 		return nil, err
 	}
 

@@ -22,7 +22,8 @@ ORDER BY
     CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN ns.created_at END DESC,
     CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN ns.updated_at END ASC,
     CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN ns.updated_at END DESC,
-    ns.created_at DESC
+    ns.created_at DESC,
+    ns.id ASC
 LIMIT @limit_
 OFFSET @offset_;
 

@@ -394,7 +394,8 @@ ORDER BY
     CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN kask.created_at END DESC,
     CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN kask.updated_at END ASC,
     CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN kask.updated_at END DESC,
-    kask.created_at DESC
+    kask.created_at DESC,
+    kask.id ASC
 LIMIT @limit_
 OFFSET @offset_;
 

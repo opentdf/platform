@@ -19,8 +19,6 @@ audit:
   #     path: eventMetaData.requester.sub
   #   - claim: realm_access.roles
   #     path: eventMetaData.requester.roles
-services:
-  kas:
 # DB and Server configurations are defaulted for local development
 # db:
 #   host: localhost

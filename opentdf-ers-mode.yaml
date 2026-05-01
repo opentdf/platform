@@ -14,7 +14,6 @@ audit:
   #   - claim: realm_access.roles
   #     path: eventMetaData.requester.roles
 services:
-  kas:
   entityresolution:
     log_level: info
     url: http://localhost:8888/auth

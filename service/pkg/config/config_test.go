@@ -407,6 +407,27 @@ audit:
 			},
 		},
 		{
+			name: "top level audit mapping paths pass validation",
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				file, err := NewConfigFileLoader(configKey, configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				return []Loader{file, defaults}
+			},
+			fileContent: `
+audit:
+  jwt_claim_mappings:
+    - claim: email_verified
+      path: banana.requester.emailVerified
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				assert.Equal(t, []auditcfg.JWTClaimMapping{
+					{Claim: "email_verified", Path: "banana.requester.emailVerified"},
+				}, cfg.Audit.JWTClaimMappings)
+			},
+		},
+		{
 			name: "file with extras and defaults",
 			setupLoaders: func(t *testing.T, configFile string) []Loader {
 				file, err := NewConfigFileLoader(configKey, configFile)

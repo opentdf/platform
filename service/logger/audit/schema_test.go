@@ -17,6 +17,11 @@ func TestValidateClaimDestinationPath(t *testing.T) {
 		require.NoError(t, validateClaimDestinationPath("original.request.headers.user"))
 	})
 
+	t.Run("allows top level additions", func(t *testing.T) {
+		require.NoError(t, validateClaimDestinationPath("banana"))
+		require.NoError(t, validateClaimDestinationPath("banana.requester.sub"))
+	})
+
 	t.Run("rejects reserved paths", func(t *testing.T) {
 		err := validateClaimDestinationPath("requestID")
 		require.ErrorIs(t, err, errReservedAuditPath)
@@ -33,8 +38,13 @@ func TestValidateClaimDestinationPath(t *testing.T) {
 		require.ErrorIs(t, err, errAuditContainerPath)
 	})
 
-	t.Run("rejects unknown top level paths", func(t *testing.T) {
-		err := validateClaimDestinationPath("requester.sub")
+	t.Run("rejects unknown nested paths below closed containers", func(t *testing.T) {
+		err := validateClaimDestinationPath("object.extra.foo")
+		require.ErrorIs(t, err, errUnknownAuditPath)
+	})
+
+	t.Run("rejects leading dot paths", func(t *testing.T) {
+		err := validateClaimDestinationPath(".banana")
 		require.ErrorIs(t, err, errUnknownAuditPath)
 	})
 }

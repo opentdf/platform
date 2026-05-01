@@ -42,7 +42,8 @@ func buildAuditPathSchema(rootType reflect.Type) (*auditPathSchema, error) {
 	}
 
 	root := &auditPathSchema{
-		children: make(map[string]*auditPathSchema),
+		children:   make(map[string]*auditPathSchema),
+		extensible: true,
 	}
 	if err := addAuditSchemaFields(root, rootType); err != nil {
 		return nil, err

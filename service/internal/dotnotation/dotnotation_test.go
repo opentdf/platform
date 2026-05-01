@@ -70,4 +70,43 @@ func TestSet(t *testing.T) {
 			t.Fatal("expected collision error")
 		}
 	})
+
+	t.Run("fails on nil root map", func(t *testing.T) {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				t.Fatalf("Set should not panic, got %v", recovered)
+			}
+		}()
+
+		if err := Set(nil, "a.b", "value"); err == nil {
+			t.Fatal("expected error for nil root map")
+		}
+	})
+
+	t.Run("fails on malformed paths", func(t *testing.T) {
+		for _, path := range []string{"a..b", ".a", "a."} {
+			t.Run(path, func(t *testing.T) {
+				defer func() {
+					if recovered := recover(); recovered != nil {
+						t.Fatalf("Set should not panic, got %v", recovered)
+					}
+				}()
+
+				input := make(map[string]any)
+				if err := Set(input, path, "value"); err == nil {
+					t.Fatal("expected malformed path error")
+				}
+
+				if got := Get(input, "a"); got != nil {
+					t.Fatalf("expected no root value for a, got %v", got)
+				}
+				if got := Get(input, "a."); got != nil {
+					t.Fatalf("expected no nested invalid value, got %v", got)
+				}
+				if _, exists := input[""]; exists {
+					t.Fatal("expected no empty-string root key")
+				}
+			})
+		}
+	})
 }

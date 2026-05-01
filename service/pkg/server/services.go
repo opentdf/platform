@@ -290,15 +290,15 @@ func buildNamespaceLogger(baseLogger *logging.Logger, cfg *config.Config, ns, le
 	newLoggerConfig := cfg.Logger
 	newLoggerConfig.Level = level
 
-	if namespaceLogger, loggerErr := logging.NewLogger(newLoggerConfig); loggerErr == nil {
-		if err := namespaceLogger.Audit.ApplyConfig(cfg.Audit); err != nil {
-			return nil, fmt.Errorf("could not apply audit config for namespace %s: %w", ns, err)
-		}
-		return namespaceLogger.With("namespace", ns), nil
+	namespaceLogger, loggerErr := logging.NewLogger(newLoggerConfig)
+	if loggerErr != nil {
+		return nil, fmt.Errorf("invalid namespace logger config for %s: %w", ns, loggerErr)
 	}
 
-	// Keep the existing logger if the override could not be created.
-	return baseLogger, nil
+	if err := namespaceLogger.Audit.ApplyConfig(cfg.Audit); err != nil {
+		return nil, fmt.Errorf("could not apply audit config for namespace %s: %w", ns, err)
+	}
+	return namespaceLogger.With("namespace", ns), nil
 }
 
 // newServiceDBClient creates a new database client for the specified namespace.

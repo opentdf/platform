@@ -465,7 +465,7 @@ func rehydrateIPCAuthContext(ctx context.Context, l *logger.Logger) (context.Con
 		return ctx, fmt.Errorf("rehydrate IPC access token from metadata: %w", err)
 	}
 
-	return ctxAuth.ContextWithAuthNInfo(ctx, nil, parsed, rawToken), nil
+	return ctxAuth.ContextWithAuthNInfo(ctx, ctxAuth.GetJWKFromContext(ctx, l), parsed, rawToken), nil
 }
 
 func rawAccessTokenFromIncomingMetadata(md metadata.MD) string {

@@ -29,11 +29,19 @@ func Get(m map[string]any, key string) any {
 // Set stores a value in a nested map using dot notation keys, creating
 // intermediate maps as needed.
 func Set(m map[string]any, key string, value any) error {
+	if m == nil {
+		return errors.New("nil root map")
+	}
 	if key == "" {
 		return errors.New("empty path")
 	}
 
 	keys := strings.Split(key, ".")
+	for _, segment := range keys {
+		if segment == "" {
+			return fmt.Errorf("invalid path %q: empty segment", key)
+		}
+	}
 	current := m
 	for i, k := range keys[:len(keys)-1] {
 		next, exists := current[k]

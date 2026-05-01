@@ -353,3 +353,25 @@ func TestIPCUnaryServerInterceptor_Integration(t *testing.T) {
 		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
 }
+
+func TestRehydrateIPCAuthContextPreservesExistingJWK(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+	mockJWT, err := jwt.NewBuilder().Subject("rehydrated-user").Build()
+	require.NoError(t, err)
+	rawToken, err := jwt.Sign(mockJWT, jwt.WithInsecureNoSignature())
+	require.NoError(t, err)
+	mockJWK, err := jwk.FromRaw([]byte("existing-jwk"))
+	require.NoError(t, err)
+
+	ctx := metadata.NewIncomingContext(t.Context(), metadata.Pairs(ctxAuth.AccessTokenKey, string(rawToken)))
+	ctx = ctxAuth.ContextWithAuthNInfo(ctx, mockJWK, nil, "")
+
+	rehydratedCtx, err := rehydrateIPCAuthContext(ctx, testLogger)
+	require.NoError(t, err)
+	require.Same(t, mockJWK, ctxAuth.GetJWKFromContext(rehydratedCtx, testLogger))
+
+	retrievedJWT := ctxAuth.GetAccessTokenFromContext(rehydratedCtx, testLogger)
+	require.NotNil(t, retrievedJWT)
+	assert.Equal(t, "rehydrated-user", retrievedJWT.Subject())
+	assert.Equal(t, string(rawToken), ctxAuth.GetRawAccessTokenFromContext(rehydratedCtx, testLogger))
+}

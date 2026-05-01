@@ -220,6 +220,20 @@ func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expec
 	suite.Equal(serviceregistry.ModeERS.String(), ers.Mode)
 }
 
+func (suite *ServiceTestSuite) TestBuildNamespaceLoggerRejectsInvalidOverrideLevel() {
+	baseLogger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
+	suite.Require().NoError(err)
+
+	cfg := &config.Config{
+		Logger: logger.Config{Output: "stdout", Level: "info", Type: "json"},
+	}
+
+	namespaceLogger, err := buildNamespaceLogger(baseLogger, cfg, "policy", "not-a-level")
+	suite.Require().Error(err)
+	suite.Nil(namespaceLogger)
+	suite.ErrorContains(err, "invalid namespace logger config for policy")
+}
+
 func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 	ctx := context.Background()
 

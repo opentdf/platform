@@ -26,6 +26,7 @@ type auditFieldOptions struct {
 
 type auditPathSchema struct {
 	children   map[string]*auditPathSchema
+	isLeaf     bool
 	reserved   bool
 	extensible bool
 }
@@ -71,6 +72,7 @@ func addAuditSchemaFields(parent *auditPathSchema, structType reflect.Type) erro
 
 		child := &auditPathSchema{
 			children:   make(map[string]*auditPathSchema),
+			isLeaf:     isWritableAuditLeaf(indirectType(field.Type)),
 			reserved:   opts.reserved,
 			extensible: opts.extensible,
 		}
@@ -156,6 +158,11 @@ func indirectType(t reflect.Type) reflect.Type {
 	return t
 }
 
+func isWritableAuditLeaf(t reflect.Type) bool {
+	kind := indirectType(t).Kind()
+	return kind != reflect.Struct && kind != reflect.Map
+}
+
 func validateClaimDestinationPath(path string) error {
 	if path == "" {
 		return fmt.Errorf("%w: empty path", ErrUnknownAuditPath)
@@ -181,7 +188,7 @@ func validateClaimDestinationPath(path string) error {
 			switch {
 			case child.reserved:
 				return fmt.Errorf("%w: %s", ErrReservedAuditPath, path)
-			case child.extensible || len(child.children) > 0:
+			case child.extensible || !child.isLeaf:
 				return fmt.Errorf("%w: %s", ErrAuditContainerPath, path)
 			default:
 				return nil

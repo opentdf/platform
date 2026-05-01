@@ -497,6 +497,35 @@ func TestAuditApplyConfigRejectsReservedPaths(t *testing.T) {
 	})
 }
 
+func TestAuditApplyConfigClonesMappings(t *testing.T) {
+	l, _ := createTestLogger()
+	cfg := Config{
+		JWTClaimMappings: []JWTClaimMapping{
+			{Claim: "sub", Path: "eventMetaData.requester.sub"},
+		},
+	}
+
+	require.NoError(t, l.ApplyConfig(cfg))
+
+	cfg.JWTClaimMappings[0].Path = "eventMetaData.requester.changed"
+
+	require.Equal(t, "eventMetaData.requester.sub", l.config.JWTClaimMappings[0].Path)
+}
+
+func TestAuditLoggerWithClonesMappings(t *testing.T) {
+	l, _ := createTestLogger()
+	require.NoError(t, l.ApplyConfig(Config{
+		JWTClaimMappings: []JWTClaimMapping{
+			{Claim: "sub", Path: "eventMetaData.requester.sub"},
+		},
+	}))
+
+	child := l.With("namespace", "policy")
+	l.config.JWTClaimMappings[0].Path = "eventMetaData.requester.changed"
+
+	require.Equal(t, "eventMetaData.requester.sub", child.config.JWTClaimMappings[0].Path)
+}
+
 func assertReservedAuditPathRejected(t *testing.T, path string) {
 	t.Helper()
 

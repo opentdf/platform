@@ -62,12 +62,18 @@ func CreateAuditLogger(logger slog.Logger) *Logger {
 	}
 }
 
+func cloneConfig(cfg Config) Config {
+	cloned := cfg
+	cloned.JWTClaimMappings = append([]JWTClaimMapping(nil), cfg.JWTClaimMappings...)
+	return cloned
+}
+
 // ApplyConfig validates and stores the latest audit enrichment configuration.
 func (a *Logger) ApplyConfig(cfg Config) error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
-	a.config = cfg
+	a.config = cloneConfig(cfg)
 	return nil
 }
 
@@ -75,7 +81,7 @@ func (a *Logger) With(key string, value string) *Logger {
 	return &Logger{
 		//nolint:sloglint // custom logger should support key/value pairs in With attributes
 		logger: a.logger.With(key, value),
-		config: a.config,
+		config: cloneConfig(a.config),
 	}
 }
 

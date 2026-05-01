@@ -39,7 +39,6 @@ const (
 type PruneStatusReason struct {
 	Type    PruneStatusReasonType `json:"type"`
 	Message string                `json:"message"`
-	fmt.Stringer
 }
 
 // TargetRef identifies the migrated target object that the planner

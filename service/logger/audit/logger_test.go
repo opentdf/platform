@@ -94,11 +94,11 @@ func extractLogEntry(t *testing.T, logBuffer *bytes.Buffer) (logEntryStructure, 
 	return entry, entryTime
 }
 
-func doWithLogger(t *testing.T, testFunc func(ctx context.Context, l *Logger)) (ls logEntryStructure, lt time.Time) { //nolint:nonamedreturns // Required to rewrite on panics, right?
-	return doWithLoggerContext(createTestContext(t), t, testFunc)
-}
-
-func doWithLoggerContext(ctx context.Context, t *testing.T, testFunc func(ctx context.Context, l *Logger)) (ls logEntryStructure, lt time.Time) { //nolint:nonamedreturns // Required to rewrite on panics, right?
+func doWithLogger(t *testing.T, contextSetup func(context.Context) context.Context, testFunc func(ctx context.Context, l *Logger)) (ls logEntryStructure, lt time.Time) { //nolint:nonamedreturns // Named returns let the deferred recover path populate the extracted audit log.
+	ctx := createTestContext(t)
+	if contextSetup != nil {
+		ctx = contextSetup(ctx)
+	}
 	l, buf := createTestLogger()
 	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
 	require.True(t, ok, "audit transaction missing from context")
@@ -146,7 +146,7 @@ func decodeAuditPayload(t *testing.T, payload json.RawMessage) map[string]any {
 }
 
 func TestAuditRewrapSuccess(t *testing.T) {
-	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
 		l.RewrapSuccess(ctx, rewrapParams)
 	})
 
@@ -205,7 +205,7 @@ func TestAuditRewrapSuccess(t *testing.T) {
 }
 
 func TestAuditRewrapFailure(t *testing.T) {
-	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
 		l.RewrapFailure(ctx, rewrapParams)
 	})
 
@@ -264,7 +264,7 @@ func TestAuditRewrapFailure(t *testing.T) {
 }
 
 func TestPolicyCRUDSuccess(t *testing.T) {
-	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
 		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
 	})
 
@@ -314,7 +314,7 @@ func TestPolicyCRUDSuccess(t *testing.T) {
 }
 
 func TestPolicyCrudFailure(t *testing.T) {
-	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
 		l.PolicyCRUDFailure(ctx, policyCRUDParams)
 	})
 
@@ -365,9 +365,10 @@ func TestPolicyCrudFailure(t *testing.T) {
 
 func TestAuditJWTClaimMappingsApplyToPolicyAudit(t *testing.T) {
 	token, rawToken := createTestJWTForAudit(t)
-	ctx := ctxAuth.ContextWithAuthNInfo(createTestContext(t), nil, token, rawToken)
 
-	logEntry, _ := doWithLoggerContext(ctx, t, func(ctx context.Context, l *Logger) {
+	logEntry, _ := doWithLogger(t, func(ctx context.Context) context.Context {
+		return ctxAuth.ContextWithAuthNInfo(ctx, nil, token, rawToken)
+	}, func(ctx context.Context, l *Logger) {
 		require.NoError(t, l.ApplyConfig(Config{
 			JWTClaimMappings: []JWTClaimMapping{
 				{Claim: "sub", Path: "eventMetaData.requester.sub"},
@@ -390,11 +391,14 @@ func TestAuditJWTClaimMappingsApplyToPolicyAudit(t *testing.T) {
 
 func TestAuditJWTClaimMappingsUseRehydratedAuthContext(t *testing.T) {
 	_, rawToken := createTestJWTForAudit(t)
-	ctx := metadata.NewIncomingContext(createTestContext(t), metadata.Pairs(ctxAuth.AccessTokenKey, rawToken))
-	ctx, err := ctxAuth.RehydrateAccessTokenFromIncomingMetadata(ctx, nil)
-	require.NoError(t, err)
 
-	logEntry, _ := doWithLoggerContext(ctx, t, func(ctx context.Context, l *Logger) {
+	logEntry, _ := doWithLogger(t, func(ctx context.Context) context.Context {
+		ctx = metadata.NewIncomingContext(ctx, metadata.Pairs(ctxAuth.AccessTokenKey, rawToken))
+		var err error
+		ctx, err = ctxAuth.RehydrateAccessTokenFromIncomingMetadata(ctx, nil)
+		require.NoError(t, err)
+		return ctx
+	}, func(ctx context.Context, l *Logger) {
 		require.NoError(t, l.ApplyConfig(Config{
 			JWTClaimMappings: []JWTClaimMapping{
 				{Claim: "sub", Path: "eventMetaData.requester.sub"},
@@ -413,9 +417,10 @@ func TestAuditJWTClaimMappingsUseRehydratedAuthContext(t *testing.T) {
 
 func TestAuditJWTClaimMappingsCanWriteToEntityMetadata(t *testing.T) {
 	token, rawToken := createTestJWTForAudit(t)
-	ctx := ctxAuth.ContextWithAuthNInfo(createTestContext(t), nil, token, rawToken)
 
-	logEntry, _ := doWithLoggerContext(ctx, t, func(ctx context.Context, l *Logger) {
+	logEntry, _ := doWithLogger(t, func(ctx context.Context) context.Context {
+		return ctxAuth.ContextWithAuthNInfo(ctx, nil, token, rawToken)
+	}, func(ctx context.Context, l *Logger) {
 		require.NoError(t, l.ApplyConfig(Config{
 			JWTClaimMappings: []JWTClaimMapping{
 				{Claim: "sub", Path: "eventMetaData.entityMetadata.sub"},
@@ -438,9 +443,10 @@ func TestAuditJWTClaimMappingsCanWriteToEntityMetadata(t *testing.T) {
 
 func TestAuditJWTClaimMappingsCoverNamedAndUnnamedPaths(t *testing.T) {
 	token, rawToken := createTestJWTForAudit(t)
-	ctx := ctxAuth.ContextWithAuthNInfo(createTestContext(t), nil, token, rawToken)
 
-	logEntry, _ := doWithLoggerContext(ctx, t, func(ctx context.Context, l *Logger) {
+	logEntry, _ := doWithLogger(t, func(ctx context.Context) context.Context {
+		return ctxAuth.ContextWithAuthNInfo(ctx, nil, token, rawToken)
+	}, func(ctx context.Context, l *Logger) {
 		require.NoError(t, l.ApplyConfig(Config{
 			JWTClaimMappings: []JWTClaimMapping{
 				{Claim: "sub", Path: "object.name"},
@@ -482,9 +488,10 @@ func TestAuditJWTClaimMappingsCoverNamedAndUnnamedPaths(t *testing.T) {
 
 func TestAuditJWTClaimMappingsLeaveReservedFieldsUntouched(t *testing.T) {
 	token, rawToken := createTestJWTForAudit(t)
-	ctx := ctxAuth.ContextWithAuthNInfo(createTestContext(t), nil, token, rawToken)
 
-	logEntry, _ := doWithLoggerContext(ctx, t, func(ctx context.Context, l *Logger) {
+	logEntry, _ := doWithLogger(t, func(ctx context.Context) context.Context {
+		return ctxAuth.ContextWithAuthNInfo(ctx, nil, token, rawToken)
+	}, func(ctx context.Context, l *Logger) {
 		require.NoError(t, l.ApplyConfig(Config{
 			JWTClaimMappings: []JWTClaimMapping{
 				{Claim: "sub", Path: "eventMetaData.requester.sub"},
@@ -518,7 +525,7 @@ func TestAuditApplyConfigRejectsReservedPaths(t *testing.T) {
 }
 
 func TestDeferredRewrapSuccess(t *testing.T) {
-	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
 		l.RewrapSuccess(ctx, rewrapParams)
 	})
 
@@ -577,7 +584,7 @@ func TestDeferredRewrapSuccess(t *testing.T) {
 }
 
 func TestDeferredRewrapCancelled(t *testing.T) {
-	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
 		l.RewrapSuccess(ctx, rewrapParams)
 		panic(errors.New("operation failed"))
 	})
@@ -639,7 +646,7 @@ func TestDeferredRewrapCancelled(t *testing.T) {
 }
 
 func TestDeferredPolicyCRUDSuccess(t *testing.T) {
-	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
 		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
 	})
 
@@ -702,7 +709,7 @@ func TestGetDecision(t *testing.T) {
 		FQNs:                []string{"test-fqn"},
 	}
 
-	logEntry, logEntryTime := doWithLogger(t, func(ctx context.Context, l *Logger) {
+	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
 		l.GetDecision(ctx, params)
 	})
 	expectedAuditLog := fmt.Sprintf(

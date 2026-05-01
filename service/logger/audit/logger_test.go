@@ -434,6 +434,50 @@ func TestAuditJWTClaimMappingsCanWriteToEntityMetadata(t *testing.T) {
 	assert.Equal(t, true, entityMetadata["emailVerified"])
 }
 
+func TestAuditJWTClaimMappingsCoverNamedAndUnnamedPaths(t *testing.T) {
+	token, rawToken := createTestJWTForAudit(t)
+	ctx := ctxAuth.ContextWithAuthNInfo(createTestContext(t), nil, token, rawToken)
+
+	logEntry, _ := doWithLoggerContext(ctx, t, func(ctx context.Context, l *Logger) {
+		require.NoError(t, l.ApplyConfig(Config{
+			JWTClaimMappings: []JWTClaimMapping{
+				{Claim: "sub", Path: "object.name"},
+				{Claim: "realm_access.roles", Path: "actor.attributes"},
+				{Claim: "sub", Path: "original.request.jwt.sub"},
+				{Claim: "sub", Path: "banana"},
+				{Claim: "email_verified", Path: "kiwi.requester.emailVerified"},
+			},
+		}))
+		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
+	})
+
+	payload := decodeAuditPayload(t, logEntry.Audit)
+
+	object, ok := payload["object"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "jwt-user", object["name"])
+
+	actor, ok := payload["actor"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, []any{"admin", "user"}, actor["attributes"])
+
+	original, ok := payload["original"].(map[string]any)
+	require.True(t, ok)
+	request, ok := original["request"].(map[string]any)
+	require.True(t, ok)
+	jwt, ok := request["jwt"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "jwt-user", jwt["sub"])
+
+	assert.Equal(t, "jwt-user", payload["banana"])
+
+	kiwi, ok := payload["kiwi"].(map[string]any)
+	require.True(t, ok)
+	requester, ok := kiwi["requester"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, true, requester["emailVerified"])
+}
+
 func TestAuditJWTClaimMappingsLeaveReservedFieldsUntouched(t *testing.T) {
 	token, rawToken := createTestJWTForAudit(t)
 	ctx := ctxAuth.ContextWithAuthNInfo(createTestContext(t), nil, token, rawToken)

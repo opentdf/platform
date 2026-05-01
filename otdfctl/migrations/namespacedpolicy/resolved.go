@@ -3,7 +3,6 @@ package namespacedpolicy
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/opentdf/platform/protocol/go/policy"
 )
@@ -161,7 +160,7 @@ func (r *resolver) resolveActionTargetFromExisting(source *policy.Action, namesp
 	}
 
 	result := &ResolvedActionResult{Namespace: namespace}
-	if r.isStandardAction(source) {
+	if isStandardAction(source) {
 		return r.resolveStandardActionTarget(source, namespace)
 	}
 
@@ -181,19 +180,6 @@ func (r *resolver) resolveStandardActionTarget(source *policy.Action, namespace 
 		}
 	}
 	return nil, errors.New("matching standard action not found in target namespace")
-}
-
-func (r *resolver) isStandardAction(action *policy.Action) bool {
-	if action.GetStandard() != policy.Action_STANDARD_ACTION_UNSPECIFIED {
-		return true
-	}
-
-	switch strings.ToLower(strings.TrimSpace(action.GetName())) {
-	case "create", "read", "update", "delete":
-		return true
-	default:
-		return false
-	}
 }
 
 func (r *resolver) resolveSubjectConditionSets() ([]*ResolvedSubjectConditionSet, error) {

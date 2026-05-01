@@ -639,10 +639,7 @@ const listKeyAccessServers = `-- name: listKeyAccessServers :many
 WITH params AS (
     SELECT
         COALESCE(NULLIF($3::text, ''), 'created_at') AS resolved_field,
-        CASE
-            WHEN $3::text = '' AND $4::text = '' THEN 'DESC'
-            ELSE COALESCE(NULLIF($4::text, ''), 'ASC')
-        END AS resolved_direction
+        COALESCE(NULLIF($4::text, ''), 'DESC') AS resolved_direction
 ),
 counted AS (
     SELECT COUNT(kas.id) AS total
@@ -714,10 +711,7 @@ type listKeyAccessServersRow struct {
 //	WITH params AS (
 //	    SELECT
 //	        COALESCE(NULLIF($3::text, ''), 'created_at') AS resolved_field,
-//	        CASE
-//	            WHEN $3::text = '' AND $4::text = '' THEN 'DESC'
-//	            ELSE COALESCE(NULLIF($4::text, ''), 'ASC')
-//	        END AS resolved_direction
+//	        COALESCE(NULLIF($4::text, ''), 'DESC') AS resolved_direction
 //	),
 //	counted AS (
 //	    SELECT COUNT(kas.id) AS total
@@ -1071,10 +1065,7 @@ const listKeys = `-- name: listKeys :many
 WITH params AS (
     SELECT
         COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-        CASE
-            WHEN $5::text = '' AND $6::text = '' THEN 'DESC'
-            ELSE COALESCE(NULLIF($6::text, ''), 'ASC')
-        END AS resolved_direction
+        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
 ),
 listed AS (
     SELECT
@@ -1165,10 +1156,7 @@ type listKeysRow struct {
 //	WITH params AS (
 //	    SELECT
 //	        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-//	        CASE
-//	            WHEN $5::text = '' AND $6::text = '' THEN 'DESC'
-//	            ELSE COALESCE(NULLIF($6::text, ''), 'ASC')
-//	        END AS resolved_direction
+//	        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
 //	),
 //	listed AS (
 //	    SELECT

@@ -761,10 +761,7 @@ const listAttributesDetail = `-- name: listAttributesDetail :many
 WITH params AS (
     SELECT
         COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
-        CASE
-            WHEN $6::text = '' AND $7::text = '' THEN 'DESC'
-            ELSE COALESCE(NULLIF($7::text, ''), 'ASC')
-        END AS resolved_direction
+        COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
 )
 SELECT
     ad.id,
@@ -846,10 +843,7 @@ type listAttributesDetailRow struct {
 //	WITH params AS (
 //	    SELECT
 //	        COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
-//	        CASE
-//	            WHEN $6::text = '' AND $7::text = '' THEN 'DESC'
-//	            ELSE COALESCE(NULLIF($7::text, ''), 'ASC')
-//	        END AS resolved_direction
+//	        COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
 //	)
 //	SELECT
 //	    ad.id,
@@ -942,10 +936,7 @@ const listAttributesSummary = `-- name: listAttributesSummary :many
 WITH params AS (
     SELECT
         COALESCE(NULLIF($4::text, ''), 'created_at') AS resolved_field,
-        CASE
-            WHEN $4::text = '' AND $5::text = '' THEN 'DESC'
-            ELSE COALESCE(NULLIF($5::text, ''), 'ASC')
-        END AS resolved_direction
+        COALESCE(NULLIF($5::text, ''), 'DESC') AS resolved_direction
 )
 SELECT
     ad.id,
@@ -999,10 +990,7 @@ type listAttributesSummaryRow struct {
 //	WITH params AS (
 //	    SELECT
 //	        COALESCE(NULLIF($4::text, ''), 'created_at') AS resolved_field,
-//	        CASE
-//	            WHEN $4::text = '' AND $5::text = '' THEN 'DESC'
-//	            ELSE COALESCE(NULLIF($5::text, ''), 'ASC')
-//	        END AS resolved_direction
+//	        COALESCE(NULLIF($5::text, ''), 'DESC') AS resolved_direction
 //	)
 //	SELECT
 //	    ad.id,

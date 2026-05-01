@@ -192,10 +192,7 @@ const listNamespaces = `-- name: listNamespaces :many
 WITH params AS (
     SELECT
         COALESCE(NULLIF($4::text, ''), 'created_at') AS resolved_field,
-        CASE
-            WHEN $4::text = '' AND $5::text = '' THEN 'DESC'
-            ELSE COALESCE(NULLIF($5::text, ''), 'ASC')
-        END AS resolved_direction
+        COALESCE(NULLIF($5::text, ''), 'DESC') AS resolved_direction
 )
 SELECT
     COUNT(*) OVER() AS total,
@@ -246,10 +243,7 @@ type listNamespacesRow struct {
 //	WITH params AS (
 //	    SELECT
 //	        COALESCE(NULLIF($4::text, ''), 'created_at') AS resolved_field,
-//	        CASE
-//	            WHEN $4::text = '' AND $5::text = '' THEN 'DESC'
-//	            ELSE COALESCE(NULLIF($5::text, ''), 'ASC')
-//	        END AS resolved_direction
+//	        COALESCE(NULLIF($5::text, ''), 'DESC') AS resolved_direction
 //	)
 //	SELECT
 //	    COUNT(*) OVER() AS total,

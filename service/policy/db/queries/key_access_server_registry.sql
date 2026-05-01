@@ -71,10 +71,7 @@ OFFSET @offset_;
 WITH params AS (
     SELECT
         COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
-        CASE
-            WHEN @sort_field::text = '' AND @sort_direction::text = '' THEN 'DESC'
-            ELSE COALESCE(NULLIF(@sort_direction::text, ''), 'ASC')
-        END AS resolved_direction
+        COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
 ),
 counted AS (
     SELECT COUNT(kas.id) AS total
@@ -358,10 +355,7 @@ SELECT EXISTS (
 WITH params AS (
     SELECT
         COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
-        CASE
-            WHEN @sort_field::text = '' AND @sort_direction::text = '' THEN 'DESC'
-            ELSE COALESCE(NULLIF(@sort_direction::text, ''), 'ASC')
-        END AS resolved_direction
+        COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
 ),
 listed AS (
     SELECT

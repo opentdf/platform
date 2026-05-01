@@ -1580,10 +1580,7 @@ const listObligations = `-- name: listObligations :many
 WITH params AS (
     SELECT
         COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-        CASE
-            WHEN $5::text = '' AND $6::text = '' THEN 'DESC'
-            ELSE COALESCE(NULLIF($6::text, ''), 'ASC')
-        END AS resolved_direction
+        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
 ),
 counted AS (
     SELECT COUNT(od.id) AS total
@@ -1692,10 +1689,7 @@ type listObligationsRow struct {
 //	WITH params AS (
 //	    SELECT
 //	        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-//	        CASE
-//	            WHEN $5::text = '' AND $6::text = '' THEN 'DESC'
-//	            ELSE COALESCE(NULLIF($6::text, ''), 'ASC')
-//	        END AS resolved_direction
+//	        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
 //	),
 //	counted AS (
 //	    SELECT COUNT(od.id) AS total

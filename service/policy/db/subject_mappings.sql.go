@@ -357,10 +357,7 @@ const listSubjectConditionSets = `-- name: listSubjectConditionSets :many
 WITH params AS (
     SELECT
         COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-        CASE
-            WHEN $5::text = '' AND $6::text = '' THEN 'DESC'
-            ELSE COALESCE(NULLIF($6::text, ''), 'ASC')
-        END AS resolved_direction
+        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
 )
 SELECT
     scs.id,
@@ -413,10 +410,7 @@ type listSubjectConditionSetsRow struct {
 //	WITH params AS (
 //	    SELECT
 //	        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-//	        CASE
-//	            WHEN $5::text = '' AND $6::text = '' THEN 'DESC'
-//	            ELSE COALESCE(NULLIF($6::text, ''), 'ASC')
-//	        END AS resolved_direction
+//	        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
 //	)
 //	SELECT
 //	    scs.id,
@@ -481,10 +475,7 @@ const listSubjectMappings = `-- name: listSubjectMappings :many
 WITH params AS (
     SELECT
         COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-        CASE
-            WHEN $5::text = '' AND $6::text = '' THEN 'DESC'
-            ELSE COALESCE(NULLIF($6::text, ''), 'ASC')
-        END AS resolved_direction
+        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
 ),
 subject_actions AS (
     SELECT
@@ -609,10 +600,7 @@ type listSubjectMappingsRow struct {
 //	WITH params AS (
 //	    SELECT
 //	        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-//	        CASE
-//	            WHEN $5::text = '' AND $6::text = '' THEN 'DESC'
-//	            ELSE COALESCE(NULLIF($6::text, ''), 'ASC')
-//	        END AS resolved_direction
+//	        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
 //	),
 //	subject_actions AS (
 //	    SELECT

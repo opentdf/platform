@@ -112,6 +112,9 @@ func Start(f ...StartOptions) error {
 	if err != nil {
 		return fmt.Errorf("could not start logger: %w", err)
 	}
+	if err := logger.Audit.ApplyConfig(cfg.Audit); err != nil {
+		return fmt.Errorf("could not apply audit config: %w", err)
+	}
 
 	// Set default for places we can't pass the logger
 	slog.SetDefault(logger.Logger)

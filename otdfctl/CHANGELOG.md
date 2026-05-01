@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.32.0](https://github.com/opentdf/platform/compare/otdfctl/v0.31.0...otdfctl/v0.32.0) (2026-05-01)
+
+
+### Features
+
+* **cli:** Add better unit testing. ([#3378](https://github.com/opentdf/platform/issues/3378)) ([3ad33dc](https://github.com/opentdf/platform/commit/3ad33dc8adde0d110a64978f61358f728e6cbe0d))
+* **cli:** Add interactive review for prune plans ([#3421](https://github.com/opentdf/platform/issues/3421)) ([c11680b](https://github.com/opentdf/platform/commit/c11680b8d5718a2b119bb079f26e72ba064af065))
+* **cli:** Add prune planner. ([#3411](https://github.com/opentdf/platform/issues/3411)) ([3e294e6](https://github.com/opentdf/platform/commit/3e294e63cac669830ec3159cce788f1692c3b27e))
+* **cli:** Print report on failure ([#3365](https://github.com/opentdf/platform/issues/3365)) ([05a4473](https://github.com/opentdf/platform/commit/05a4473cf291e0837f215398b4212244bcfb2210))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/sdk from 0.16.0 to 0.17.0 in /otdfctl ([#3397](https://github.com/opentdf/platform/issues/3397)) ([bb9fcd6](https://github.com/opentdf/platform/commit/bb9fcd6e99745d1d960b1a56ce91bc977b87e7ba))
+* **deps:** bump go.opentelemetry.io/otel from 1.40.0 to 1.41.0 in /otdfctl ([#3400](https://github.com/opentdf/platform/issues/3400)) ([5631c37](https://github.com/opentdf/platform/commit/5631c3709ef5cd8ecb771a4842a76bd4e248b9dd))
+
 ## [0.31.0](https://github.com/opentdf/platform/compare/otdfctl/v0.30.0...otdfctl/v0.31.0) (2026-04-22)
 
 

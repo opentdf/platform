@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.10.0...lib/ocrypto/v0.11.0) (2026-05-01)
+
+
+### Bug Fixes
+
+* **ci:** Upgrade toolchain version to 1.25.8 ([#3116](https://github.com/opentdf/platform/issues/3116)) ([e1b7882](https://github.com/opentdf/platform/commit/e1b78822c0380a106e6eec05af78dc1fc9e5701f))
+* **deps:** bump the external group across 3 directories with 2 updates ([#3153](https://github.com/opentdf/platform/issues/3153)) ([c832d89](https://github.com/opentdf/platform/commit/c832d89f0a61abbdf0969184437e172789466f5c))
+
 ## [0.10.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.9.0...lib/ocrypto/v0.10.0) (2026-02-13)
 
 

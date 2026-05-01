@@ -41,6 +41,39 @@ func (e EventObject) LogValue() slog.Value {
 		slog.String("timestamp", e.Timestamp))
 }
 
+func (e EventObject) logMap() map[string]any {
+	return map[string]any{
+		"object": map[string]any{
+			"type": e.Object.Type.String(),
+			"id":   e.Object.ID,
+			"name": e.Object.Name,
+			"attributes": map[string]any{
+				"assertions":  e.Object.Attributes.Assertions,
+				"attrs":       e.Object.Attributes.Attrs,
+				"permissions": e.Object.Attributes.Permissions,
+			},
+		},
+		"action": map[string]any{
+			"type":   e.Action.Type.String(),
+			"result": e.Action.Result.String(),
+		},
+		"actor": map[string]any{
+			"id":         e.Actor.ID,
+			"attributes": e.Actor.Attributes,
+		},
+		"eventMetaData": normalizeAuditValue(e.EventMetaData),
+		"clientInfo": map[string]any{
+			"userAgent": e.ClientInfo.UserAgent,
+			"platform":  e.ClientInfo.Platform,
+			"requestIP": e.ClientInfo.RequestIP,
+		},
+		"original":  normalizeAuditValue(e.Original),
+		"updated":   normalizeAuditValue(e.Updated),
+		"requestID": e.RequestID.String(),
+		"timestamp": e.Timestamp,
+	}
+}
+
 // event.object
 type auditEventObject struct {
 	Type       ObjectType            `json:"type"`

@@ -3,10 +3,10 @@ package auth
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/service/logger"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -30,6 +30,10 @@ type authContext struct {
 	rawToken    string
 }
 
+type contextErrorLogger interface {
+	ErrorContext(context.Context, string, ...any)
+}
+
 func ContextWithAuthNInfo(ctx context.Context, key jwk.Key, accessToken jwt.Token, raw string) context.Context {
 	return context.WithValue(ctx, authnContextKey, &authContext{
 		key,
@@ -38,7 +42,7 @@ func ContextWithAuthNInfo(ctx context.Context, key jwk.Key, accessToken jwt.Toke
 	})
 }
 
-func getContextDetails(ctx context.Context, l *logger.Logger) *authContext {
+func getContextDetails(ctx context.Context, l contextErrorLogger) *authContext {
 	key := ctx.Value(authnContextKey)
 	if key == nil {
 		return nil
@@ -47,29 +51,56 @@ func getContextDetails(ctx context.Context, l *logger.Logger) *authContext {
 		return c
 	}
 
-	// We should probably return an error here?
-	l.ErrorContext(ctx, "invalid authContext")
+	if l != nil {
+		l.ErrorContext(ctx, "invalid authContext")
+	}
 	return nil
 }
 
-func GetJWKFromContext(ctx context.Context, l *logger.Logger) jwk.Key {
+func GetJWKFromContext(ctx context.Context, l contextErrorLogger) jwk.Key {
 	if c := getContextDetails(ctx, l); c != nil {
 		return c.key
 	}
 	return nil
 }
 
-func GetAccessTokenFromContext(ctx context.Context, l *logger.Logger) jwt.Token {
+func GetAccessTokenFromContext(ctx context.Context, l contextErrorLogger) jwt.Token {
 	if c := getContextDetails(ctx, l); c != nil {
-		return c.accessToken
+		if c.accessToken != nil {
+			return c.accessToken
+		}
 	}
-	return nil
+
+	rawToken := GetRawAccessTokenFromContext(ctx, l)
+	if rawToken == "" {
+		return nil
+	}
+
+	parsed, err := jwt.Parse([]byte(rawToken), jwt.WithVerify(false), jwt.WithValidate(false))
+	if err != nil {
+		if l != nil {
+			l.ErrorContext(ctx, "failed to parse access token from context", "error", err)
+		}
+		return nil
+	}
+
+	return parsed
 }
 
-func GetRawAccessTokenFromContext(ctx context.Context, l *logger.Logger) string {
+func GetRawAccessTokenFromContext(ctx context.Context, l contextErrorLogger) string {
 	if c := getContextDetails(ctx, l); c != nil {
-		return c.rawToken
+		if c.rawToken != "" {
+			return c.rawToken
+		}
 	}
+
+	if rawToken := getRawAccessTokenFromMetadata(ctx, true); rawToken != "" {
+		return rawToken
+	}
+	if rawToken := getRawAccessTokenFromMetadata(ctx, false); rawToken != "" {
+		return rawToken
+	}
+
 	return ""
 }
 
@@ -77,7 +108,7 @@ func GetRawAccessTokenFromContext(ctx context.Context, l *logger.Logger) string 
 //
 // Adding the authn info to gRPC metadata propagates it across services rather than strictly
 // in-process within Go alone
-func EnrichIncomingContextMetadataWithAuthn(ctx context.Context, l *logger.Logger, clientID string) context.Context {
+func EnrichIncomingContextMetadataWithAuthn(ctx context.Context, l contextErrorLogger, clientID string) context.Context {
 	rawToken := GetRawAccessTokenFromContext(ctx, l)
 
 	md, ok := metadata.FromIncomingContext(ctx)
@@ -95,6 +126,45 @@ func EnrichIncomingContextMetadataWithAuthn(ctx context.Context, l *logger.Logge
 	}
 
 	return metadata.NewIncomingContext(ctx, md)
+}
+
+func getRawAccessTokenFromMetadata(ctx context.Context, incoming bool) string {
+	var (
+		md metadata.MD
+		ok bool
+	)
+	if incoming {
+		md, ok = metadata.FromIncomingContext(ctx)
+	} else {
+		md, ok = metadata.FromOutgoingContext(ctx)
+	}
+	if !ok {
+		return ""
+	}
+
+	if accessTokens := md.Get(AccessTokenKey); len(accessTokens) > 0 && accessTokens[0] != "" {
+		return accessTokens[0]
+	}
+
+	authHeaders := md.Get("authorization")
+	if len(authHeaders) == 0 {
+		authHeaders = md.Get("Authorization")
+	}
+	if len(authHeaders) > 0 {
+		return trimAuthorizationHeader(authHeaders[0])
+	}
+	return ""
+}
+
+func trimAuthorizationHeader(header string) string {
+	switch {
+	case strings.HasPrefix(header, "Bearer "):
+		return strings.TrimPrefix(header, "Bearer ")
+	case strings.HasPrefix(header, "DPoP "):
+		return strings.TrimPrefix(header, "DPoP ")
+	default:
+		return header
+	}
 }
 
 // GetClientIDFromContext retrieves the client ID from the metadata in the context

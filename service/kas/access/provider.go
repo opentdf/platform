@@ -54,8 +54,6 @@ type KASConfig struct {
 	ECTDFEnabled     bool    `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
 	Preview          Preview `mapstructure:"preview" json:"preview"`
 	RegisteredKASURI string  `mapstructure:"registered_kas_uri" json:"registered_kas_uri"`
-	// AuditedEntityJWTClaims controls which JWT claims are extracted into entity metadata.
-	AuditedEntityJWTClaims []string `mapstructure:"audited_entity_jwt_claims" json:"audited_entity_jwt_claims"`
 }
 
 type Preview struct {
@@ -145,7 +143,7 @@ func (kasCfg KASConfig) String() string {
 	}
 
 	return fmt.Sprintf(
-		"KASConfig{Keyring:%v, ECCertID:%q, RSACertID:%q, RootKey:%s, KeyCacheExpiration:%s, ECTDFEnabled:%t, Preview:%+v, RegisteredKASURI:%q, AuditedEntityJWTClaims:%v}",
+		"KASConfig{Keyring:%v, ECCertID:%q, RSACertID:%q, RootKey:%s, KeyCacheExpiration:%s, ECTDFEnabled:%t, Preview:%+v, RegisteredKASURI:%q}",
 		kasCfg.Keyring,
 		kasCfg.ECCertID,
 		kasCfg.RSACertID,
@@ -154,7 +152,6 @@ func (kasCfg KASConfig) String() string {
 		kasCfg.ECTDFEnabled,
 		kasCfg.Preview,
 		kasCfg.RegisteredKASURI,
-		kasCfg.AuditedEntityJWTClaims,
 	)
 }
 
@@ -173,7 +170,6 @@ func (kasCfg KASConfig) LogValue() slog.Value {
 		slog.Bool("ec_tdf_enabled", kasCfg.ECTDFEnabled),
 		slog.Any("preview", kasCfg.Preview),
 		slog.String("registered_kas_uri", kasCfg.RegisteredKASURI),
-		slog.Any("audited_entity_jwt_claims", kasCfg.AuditedEntityJWTClaims),
 	)
 }
 

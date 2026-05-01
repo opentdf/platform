@@ -2,7 +2,6 @@ package access
 
 import (
 	"context"
-	"io"
 	"log/slog"
 	"testing"
 
@@ -12,7 +11,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 type fakeAuthorizationV2 struct {
@@ -20,7 +19,7 @@ type fakeAuthorizationV2 struct {
 	decisionMultiReq *authzV2.GetDecisionMultiResourceRequest
 }
 
-func (f *fakeAuthorizationV2) GetDecision(ctx context.Context, req *authzV2.GetDecisionRequest) (*authzV2.GetDecisionResponse, error) {
+func (f *fakeAuthorizationV2) GetDecision(_ context.Context, req *authzV2.GetDecisionRequest) (*authzV2.GetDecisionResponse, error) {
 	f.decisionReq = req
 	return &authzV2.GetDecisionResponse{
 		Decision: &authzV2.ResourceDecision{
@@ -30,7 +29,7 @@ func (f *fakeAuthorizationV2) GetDecision(ctx context.Context, req *authzV2.GetD
 	}, nil
 }
 
-func (f *fakeAuthorizationV2) GetDecisionMultiResource(ctx context.Context, req *authzV2.GetDecisionMultiResourceRequest) (*authzV2.GetDecisionMultiResourceResponse, error) {
+func (f *fakeAuthorizationV2) GetDecisionMultiResource(_ context.Context, req *authzV2.GetDecisionMultiResourceRequest) (*authzV2.GetDecisionMultiResourceResponse, error) {
 	f.decisionMultiReq = req
 	decisions := make([]*authzV2.ResourceDecision, 0, len(req.GetResources()))
 	for _, resource := range req.GetResources() {
@@ -42,11 +41,11 @@ func (f *fakeAuthorizationV2) GetDecisionMultiResource(ctx context.Context, req 
 	return &authzV2.GetDecisionMultiResourceResponse{ResourceDecisions: decisions}, nil
 }
 
-func (f *fakeAuthorizationV2) GetDecisionBulk(ctx context.Context, req *authzV2.GetDecisionBulkRequest) (*authzV2.GetDecisionBulkResponse, error) {
+func (f *fakeAuthorizationV2) GetDecisionBulk(_ context.Context, _ *authzV2.GetDecisionBulkRequest) (*authzV2.GetDecisionBulkResponse, error) {
 	return &authzV2.GetDecisionBulkResponse{}, nil
 }
 
-func (f *fakeAuthorizationV2) GetEntitlements(ctx context.Context, req *authzV2.GetEntitlementsRequest) (*authzV2.GetEntitlementsResponse, error) {
+func (f *fakeAuthorizationV2) GetEntitlements(_ context.Context, _ *authzV2.GetEntitlementsRequest) (*authzV2.GetEntitlementsResponse, error) {
 	return &authzV2.GetEntitlementsResponse{}, nil
 }
 
@@ -54,8 +53,8 @@ func TestCanAccessPopulatesResourceMetadata(t *testing.T) {
 	fakeAuthz := &fakeAuthorizationV2{}
 	sdk := &otdf.SDK{AuthorizationV2: fakeAuthz}
 
-	baseLogger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	auditLogger := audit.CreateAuditLogger(*slog.New(slog.NewJSONHandler(io.Discard, &slog.HandlerOptions{Level: audit.LevelAudit})))
+	baseLogger := slog.New(slog.DiscardHandler)
+	auditLogger := audit.CreateAuditLogger(*slog.New(slog.DiscardHandler))
 	testLogger := &logger.Logger{Logger: baseLogger, Audit: auditLogger}
 
 	policy := &Policy{
@@ -78,7 +77,7 @@ func TestCanAccessPopulatesResourceMetadata(t *testing.T) {
 	provider := &Provider{
 		SDK:    sdk,
 		Logger: testLogger,
-		Tracer: trace.NewNoopTracerProvider().Tracer("test"),
+		Tracer: noop.NewTracerProvider().Tracer("test"),
 	}
 
 	_, err := provider.canAccess(
@@ -100,8 +99,8 @@ func TestCanAccessPopulatesResourceMetadataForMultiResource(t *testing.T) {
 	fakeAuthz := &fakeAuthorizationV2{}
 	sdk := &otdf.SDK{AuthorizationV2: fakeAuthz}
 
-	baseLogger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	auditLogger := audit.CreateAuditLogger(*slog.New(slog.NewJSONHandler(io.Discard, &slog.HandlerOptions{Level: audit.LevelAudit})))
+	baseLogger := slog.New(slog.DiscardHandler)
+	auditLogger := audit.CreateAuditLogger(*slog.New(slog.DiscardHandler))
 	testLogger := &logger.Logger{Logger: baseLogger, Audit: auditLogger}
 
 	policyOne := &Policy{
@@ -127,7 +126,7 @@ func TestCanAccessPopulatesResourceMetadataForMultiResource(t *testing.T) {
 	provider := &Provider{
 		SDK:    sdk,
 		Logger: testLogger,
-		Tracer: trace.NewNoopTracerProvider().Tracer("test"),
+		Tracer: noop.NewTracerProvider().Tracer("test"),
 	}
 
 	_, err := provider.canAccess(

@@ -885,7 +885,7 @@ func TestPrunePlannerPlanMarksFilteredRegisteredResourceSourceAsUnresolved(t *te
 	assert.Equal(t, PruneStatusUnresolved, plan.RegisteredResources[0].Status)
 	assertPruneMigratedTarget(t, plan.RegisteredResources[0].MigratedTarget, leftNamespace, targetResource.GetId())
 	assert.Equal(t, PruneStatusReasonTypeRegisteredResourceSourceMismatch, plan.RegisteredResources[0].Reason.Type)
-	assert.Contains(t, plan.RegisteredResources[0].Reason.Message, "manual review required before source deletion")
+	assert.Contains(t, plan.RegisteredResources[0].Reason.Message, "resolved registered resource view does not match the full source object")
 	assert.Contains(t, plan.RegisteredResources[0].Reason.Message, leftNamespace.GetFqn())
 	require.Len(t, plan.RegisteredResources[0].Source.GetValues(), 1)
 	require.Len(t, plan.RegisteredResources[0].FullSource.GetValues(), 2)

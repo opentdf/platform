@@ -10,16 +10,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
-const (
-	pruneStatusReasonMessageMigratedTargetNotFound              = "migrated target not found"
-	pruneStatusReasonMessageInUse                               = "in-use"
-	pruneStatusReasonMessageNoMatchingLabelsFound               = "no canonical migrated target had a matching migration label"
-	pruneStatusReasonMessageMismatchedMigrationLabel            = "migrated target has mismatched migration label"
-	pruneStatusReasonMessageMissingMigrationLabel               = "migrated target missing migration label"
-	pruneStatusReasonMessageNeedsMigration                      = "needs-migration"
-	pruneStatusReasonMessageRegisteredResourceSourceMismatchFmt = "source registered resource contains values outside resolved migration view for target namespace %q; manual review required before source deletion"
-)
-
 var (
 	ErrMultiplePruneScopes        = errors.New("prune planner accepts exactly one scope")
 	ErrInvalidPruneResolvedTarget = errors.New("invalid prune resolved target")

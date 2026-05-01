@@ -11,9 +11,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/authorization"
+	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/metadata"
 )
 
 // Params
@@ -92,20 +95,23 @@ func extractLogEntry(t *testing.T, logBuffer *bytes.Buffer) (logEntryStructure, 
 }
 
 func doWithLogger(t *testing.T, testFunc func(ctx context.Context, l *Logger)) (ls logEntryStructure, lt time.Time) { //nolint:nonamedreturns // Required to rewrite on panics, right?
+	return doWithLoggerContext(createTestContext(t), t, testFunc)
+}
+
+func doWithLoggerContext(ctx context.Context, t *testing.T, testFunc func(ctx context.Context, l *Logger)) (ls logEntryStructure, lt time.Time) { //nolint:nonamedreturns // Required to rewrite on panics, right?
 	l, buf := createTestLogger()
-	ctx := createTestContext(t)
 	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
 	require.True(t, ok, "audit transaction missing from context")
 
 	defer func() {
 		if r := recover(); r != nil {
 			if err, okerr := r.(error); okerr {
-				tx.logClose(ctx, l.logger, false, err)
+				tx.logClose(ctx, l, false, err)
 			} else {
-				tx.logClose(ctx, l.logger, false, nil)
+				tx.logClose(ctx, l, false, nil)
 			}
 		} else {
-			tx.logClose(ctx, l.logger, true, nil)
+			tx.logClose(ctx, l, true, nil)
 		}
 		ls, lt = extractLogEntry(t, buf)
 	}()
@@ -113,6 +119,30 @@ func doWithLogger(t *testing.T, testFunc func(ctx context.Context, l *Logger)) (
 	testFunc(ctx, l)
 
 	return ls, lt
+}
+
+func createTestJWTForAudit(t *testing.T) (jwt.Token, string) {
+	t.Helper()
+
+	token, err := jwt.NewBuilder().
+		Subject("jwt-user").
+		Claim("realm_access", map[string]any{"roles": []string{"admin", "user"}}).
+		Claim("email_verified", true).
+		Build()
+	require.NoError(t, err)
+
+	rawToken, err := jwt.Sign(token, jwt.WithInsecureNoSignature())
+	require.NoError(t, err)
+
+	return token, string(rawToken)
+}
+
+func decodeAuditPayload(t *testing.T, payload json.RawMessage) map[string]any {
+	t.Helper()
+
+	var decoded map[string]any
+	require.NoError(t, json.Unmarshal(payload, &decoded))
+	return decoded
 }
 
 func TestAuditRewrapSuccess(t *testing.T) {
@@ -331,6 +361,77 @@ func TestPolicyCrudFailure(t *testing.T) {
 
 	loggedMessage := string(logEntry.Audit)
 	assert.JSONEq(t, expectedAuditLog, loggedMessage)
+}
+
+func TestAuditJWTClaimMappingsApplyToPolicyAudit(t *testing.T) {
+	token, rawToken := createTestJWTForAudit(t)
+	ctx := ctxAuth.ContextWithAuthNInfo(createTestContext(t), nil, token, rawToken)
+
+	logEntry, _ := doWithLoggerContext(ctx, t, func(ctx context.Context, l *Logger) {
+		l.ApplyConfig(Config{
+			JWTClaimMappings: []JWTClaimMapping{
+				{Claim: "sub", Path: "eventMetaData.requester.sub"},
+				{Claim: "realm_access.roles", Path: "eventMetaData.requester.roles"},
+				{Claim: "email_verified", Path: "eventMetaData.requester.emailVerified"},
+			},
+		})
+		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
+	})
+
+	payload := decodeAuditPayload(t, logEntry.Audit)
+	eventMetaData, ok := payload["eventMetaData"].(map[string]any)
+	require.True(t, ok)
+	requester, ok := eventMetaData["requester"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "jwt-user", requester["sub"])
+	assert.Equal(t, []any{"admin", "user"}, requester["roles"])
+	assert.Equal(t, true, requester["emailVerified"])
+}
+
+func TestAuditJWTClaimMappingsUseMetadataFallback(t *testing.T) {
+	_, rawToken := createTestJWTForAudit(t)
+	ctx := metadata.NewIncomingContext(createTestContext(t), metadata.Pairs(ctxAuth.AccessTokenKey, rawToken))
+
+	logEntry, _ := doWithLoggerContext(ctx, t, func(ctx context.Context, l *Logger) {
+		l.ApplyConfig(Config{
+			JWTClaimMappings: []JWTClaimMapping{
+				{Claim: "sub", Path: "eventMetaData.requester.sub"},
+			},
+		})
+		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
+	})
+
+	payload := decodeAuditPayload(t, logEntry.Audit)
+	eventMetaData, ok := payload["eventMetaData"].(map[string]any)
+	require.True(t, ok)
+	requester, ok := eventMetaData["requester"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "jwt-user", requester["sub"])
+}
+
+func TestAuditLegacyAuditedEntityJWTClaimsApplyToPolicyAudit(t *testing.T) {
+	token, rawToken := createTestJWTForAudit(t)
+	ctx := ctxAuth.ContextWithAuthNInfo(createTestContext(t), nil, token, rawToken)
+
+	logEntry, _ := doWithLoggerContext(ctx, t, func(ctx context.Context, l *Logger) {
+		l.ApplyConfig(Config{
+			AuditedEntityJWTClaims: []string{
+				"sub",
+				"realm_access.roles",
+				"email_verified",
+			},
+		})
+		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
+	})
+
+	payload := decodeAuditPayload(t, logEntry.Audit)
+	eventMetaData, ok := payload["eventMetaData"].(map[string]any)
+	require.True(t, ok)
+	entityMetadata, ok := eventMetaData["entityMetadata"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "jwt-user", entityMetadata["sub"])
+	assert.Equal(t, `["admin","user"]`, entityMetadata["realm_access.roles"])
+	assert.Equal(t, "true", entityMetadata["email_verified"])
 }
 
 func TestDeferredRewrapSuccess(t *testing.T) {

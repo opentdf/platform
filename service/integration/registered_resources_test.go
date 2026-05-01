@@ -2340,8 +2340,8 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUpdatedAt_
 	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[0], ids[1], ids[2])
 }
 
-func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUnspecifiedField_FallsBackToDefault() {
-	ids := s.createSortTestRegisteredResources("unspecified-sort-rr")
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	ids := s.createSortTestRegisteredResources("unspecified-field-rr")
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
@@ -2352,8 +2352,40 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUnspecifie
 	s.Require().NoError(err)
 	s.NotNil(list)
 
-	// Field defaults to created_at, direction ASC is preserved
+	// Field defaults to created_at, explicit ASC is preserved
 	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUnspecifiedDirection_DefaultsToDESC() {
+	ids := s.createSortTestRegisteredResources("unspecified-dir-rr")
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	ids := s.createSortTestRegisteredResources("both-unspecified-rr")
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[2], ids[1], ids[0])
 }
 
 // Sort test helpers

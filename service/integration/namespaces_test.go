@@ -420,8 +420,8 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_ASC() {
 	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
 }
 
-func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedField_FallsBackToDefault() {
-	ids := s.createSortTestNamespaces("unspecified-sort-ns")
+func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	ids := s.createSortTestNamespaces("unspecified-field-ns")
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -432,8 +432,40 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedField_FallsBackTo
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	// Field defaults to created_at, direction ASC is preserved
+	// Field defaults to created_at, explicit ASC is preserved
 	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedDirection_DefaultsToDESC() {
+	ids := s.createSortTestNamespaces("unspecified-dir-ns")
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	ids := s.createSortTestNamespaces("both-unspecified-ns")
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_Limit_Succeeds() {

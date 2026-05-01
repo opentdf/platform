@@ -632,9 +632,9 @@ func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_ASC() {
 	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[1], ids[2])
 }
 
-func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedField_FallsBackToDefault() {
-	nsID := s.createSortTestNamespace("sort-unspecified")
-	ids := s.createSortTestAttributes(nsID, "unspecified-sort-attr", 3)
+func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	nsID := s.createSortTestNamespace("sort-unspecified-field")
+	ids := s.createSortTestAttributes(nsID, "unspecified-field-attr", 3)
 
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
 		Namespace: nsID,
@@ -645,8 +645,42 @@ func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedField_FallsBackTo
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	// Field defaults to created_at, direction ASC is preserved
+	// Field defaults to created_at, explicit ASC is preserved
 	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedDirection_DefaultsToDESC() {
+	nsID := s.createSortTestNamespace("sort-unspecified-dir")
+	ids := s.createSortTestAttributes(nsID, "unspecified-dir-attr", 3)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	nsID := s.createSortTestNamespace("sort-both-unspecified")
+	ids := s.createSortTestAttributes(nsID, "both-unspecified-attr", 3)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *AttributesSuite) Test_ListAttributes_Limit_Succeeds() {

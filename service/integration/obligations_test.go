@@ -1897,8 +1897,8 @@ func (s *ObligationsSuite) Test_ListObligations_SortByUpdatedAt_ASC() {
 
 // Sort by Unspecified (fallback to default)
 
-func (s *ObligationsSuite) Test_ListObligations_SortByUnspecifiedField_FallsBackToDefault() {
-	ids := s.createSortTestObligations("unspecified-sort-obl")
+func (s *ObligationsSuite) Test_ListObligations_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	ids := s.createSortTestObligations("unspecified-field-obl")
 	defer s.deleteObligations(ids)
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
@@ -1909,8 +1909,40 @@ func (s *ObligationsSuite) Test_ListObligations_SortByUnspecifiedField_FallsBack
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	// Field defaults to created_at, direction ASC is preserved
+	// Field defaults to created_at, explicit ASC is preserved
 	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortByUnspecifiedDirection_DefaultsToDESC() {
+	ids := s.createSortTestObligations("unspecified-dir-obl")
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	ids := s.createSortTestObligations("both-unspecified-obl")
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[2], ids[1], ids[0])
 }
 
 // Helper functions for common operations

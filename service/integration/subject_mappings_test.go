@@ -680,8 +680,8 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUpdatedAt_ASC() {
 	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[0], ids[1], ids[2])
 }
 
-func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecified_FallsBackToDefault() {
-	ids := s.createSortTestSubjectMappings("sort-unspecified")
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	ids := s.createSortTestSubjectMappings("unspecified-field-sm")
 
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		Sort: []*subjectmapping.SubjectMappingsSort{
@@ -691,8 +691,38 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecified_FallsB
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	// Field defaults to created_at, direction ASC is preserved
+	// Field defaults to created_at, explicit ASC is preserved
 	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecifiedDirection_DefaultsToDESC() {
+	ids := s.createSortTestSubjectMappings("unspecified-dir-sm")
+
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		Sort: []*subjectmapping.SubjectMappingsSort{
+			{Field: subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	ids := s.createSortTestSubjectMappings("both-unspecified-sm")
+
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		Sort: []*subjectmapping.SubjectMappingsSort{
+			{Field: subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Limit_Succeeds() {
@@ -1463,8 +1493,8 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUpdatedAt_ASC
 	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[0], ids[1], ids[2])
 }
 
-func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecified_FallsBackToDefault() {
-	ids := s.createSortTestSubjectConditionSets("sort-scs-unspecified")
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	ids := s.createSortTestSubjectConditionSets("unspecified-field-scs")
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
 		Sort: []*subjectmapping.SubjectConditionSetsSort{
@@ -1474,8 +1504,38 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecified_F
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	// Field defaults to created_at, direction ASC is preserved
+	// Field defaults to created_at, explicit ASC is preserved
 	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecifiedDirection_DefaultsToDESC() {
+	ids := s.createSortTestSubjectConditionSets("unspecified-dir-scs")
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Sort: []*subjectmapping.SubjectConditionSetsSort{
+			{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	ids := s.createSortTestSubjectConditionSets("both-unspecified-scs")
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Sort: []*subjectmapping.SubjectConditionSetsSort{
+			{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[2], ids[1], ids[2])
 }
 
 func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet() {

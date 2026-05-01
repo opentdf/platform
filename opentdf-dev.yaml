@@ -2,6 +2,17 @@ logger:
   level: debug
   type: text
   output: stderr
+audit:
+  # Optional JWT claim mappings for audit enrichment.
+  # Paths use dot notation over the emitted audit log shape.
+  # jwt_claim_mappings:
+  #   - claim: sub
+  #     path: eventMetaData.requester.sub
+  #   - claim: realm_access.roles
+  #     path: eventMetaData.requester.roles
+  # Legacy shorthand: writes stringified values to eventMetaData.entityMetadata.<claim>.
+  # audited_entity_jwt_claims:
+  #   - sub
 # DB and Server configurations are defaulted for local development
 # db:
 #   host: localhost

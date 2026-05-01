@@ -542,7 +542,7 @@ func newConnectRPC(c Config, authInt connect.Interceptor, ints []connect.Interce
 	// Add protovalidate interceptor
 	validationInterceptor := validate.NewInterceptor()
 
-	interceptors = append(interceptors, connect.WithInterceptors(validationInterceptor, audit.ContextServerInterceptor(logger.Logger)))
+	interceptors = append(interceptors, connect.WithInterceptors(validationInterceptor, audit.ContextServerInterceptor(logger.Audit)))
 
 	// Add any additional interceptors provided programmatically AFTER the default ones, so they have access needed context
 	if len(ints) > 0 {

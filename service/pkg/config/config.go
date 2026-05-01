@@ -10,6 +10,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	auditcfg "github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/spf13/viper"
 )
@@ -76,6 +77,9 @@ type Config struct {
 	// Logger represents the configuration settings for the logger.
 	Logger logger.Config `mapstructure:"logger" json:"logger"`
 
+	// Audit represents the configuration settings for audit enrichment.
+	Audit auditcfg.Config `mapstructure:"audit" json:"audit"`
+
 	// Mode specifies which services to run.
 	// By default, it runs all services.
 	Mode []string `mapstructure:"mode" json:"mode" default:"[\"all\"]"`
@@ -136,6 +140,7 @@ var (
 func (c *Config) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.Bool("dev_mode", c.DevMode),
+		slog.Any("audit", c.Audit),
 		slog.Any("db", c.DB),
 		slog.Any("logger", c.Logger),
 		slog.Any("mode", c.Mode),

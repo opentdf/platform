@@ -60,6 +60,7 @@ type Reader struct {
 	connectOptions      []connect.ClientOption
 	manifest            Manifest
 	unencryptedMetadata []byte
+	resourceMetadata    resourceMetadata
 	tdfReader           zipstream.TDFReader
 	cursor              int64
 	aesGcm              ocrypto.AesGcm
@@ -180,6 +181,13 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	if err != nil {
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
 	}
+
+	resourceMetadata := buildResourceMetadata(tdfConfig, inputSize)
+	mergedMetadata, err := mergeEncryptedMetadata(tdfConfig.metaData, resourceMetadata)
+	if err != nil {
+		return nil, fmt.Errorf("merge encrypted metadata failed: %w", err)
+	}
+	tdfConfig.metaData = mergedMetadata
 
 	err = tdfConfig.initKAOTemplate(ctx, s)
 	if err != nil {
@@ -1211,10 +1219,11 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.Unsigned
 		kaoReq := &kas.UnsignedRewrapRequest_WithKeyAccessObject{
 			KeyAccessObjectId: kaoID,
 			KeyAccessObject: &kas.KeyAccess{
-				KeyType:  kao.KeyType,
-				KasUrl:   kao.KasURL,
-				Kid:      kao.KID,
-				Protocol: kao.Protocol,
+				EncryptedMetadata: kao.EncryptedMetadata,
+				KeyType:           kao.KeyType,
+				KasUrl:            kao.KasURL,
+				Kid:               kao.KID,
+				Protocol:          kao.Protocol,
 				PolicyBinding: &kas.PolicyBinding{
 					Hash:      hash,
 					Algorithm: alg,
@@ -1445,7 +1454,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		}
 
 		// if allowed then unwrap
-		policyRes, err := kasClient.unwrap(ctx, req)
+		policyRes, err := kasClient.unwrap(ctx, resourceMetadataByPolicy{"policy": r.resourceMetadata}, req)
 		if err != nil {
 			reqFail(err, req)
 		} else {

@@ -171,6 +171,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				newSvcLogger, err := logging.NewLogger(newLoggerConfig)
 				// only assign if logger successfully created
 				if err == nil {
+					newSvcLogger.Audit.ApplyConfig(cfg.Audit)
 					svcLogger = newSvcLogger.With("namespace", ns)
 				}
 			}

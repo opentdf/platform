@@ -1,6 +1,7 @@
 package access
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/ecdsa"
@@ -68,9 +69,7 @@ type RequestBody struct {
 }
 
 type entityInfo struct {
-	EntityID string `json:"sub"`
-	ClientID string `json:"clientId"`
-	Token    string `json:"-"`
+	Token string `json:"-"`
 }
 
 type kaoResult struct {
@@ -82,6 +81,7 @@ type kaoResult struct {
 	// Optional: Present for EC wrapped responses
 	EphemeralPublicKey  []byte
 	RequiredObligations []string
+	DecryptedMetadata   map[string]any
 }
 
 // From policy ID to KAO ID to result
@@ -92,7 +92,9 @@ type ObligationCtx struct {
 }
 
 type AdditionalRewrapContext struct {
-	Obligations ObligationCtx `json:"obligations"`
+	Obligations      ObligationCtx             `json:"obligations"`
+	Resource         map[string]any            `json:"resourceMetadata,omitempty"`
+	ResourceByPolicy map[string]map[string]any `json:"resourceMetadataByPolicy,omitempty"`
 }
 
 const (
@@ -478,17 +480,6 @@ func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, err
 		return nil, err401("missing access token")
 	}
 
-	sub, found := token.Get("sub")
-	if found {
-		var subAssert bool
-		info.EntityID, subAssert = sub.(string)
-		if !subAssert {
-			logger.WarnContext(ctx, "sub not a string")
-		}
-	} else {
-		logger.WarnContext(ctx, "missing sub")
-	}
-
 	info.Token = ctxAuth.GetRawAccessTokenFromContext(ctx, logger)
 
 	return info, nil
@@ -816,9 +807,19 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			continue
 		}
 
+		decryptedMetadata, metaErr := decryptKAOEncryptedMetadata(dek, kao.GetKeyAccessObject().GetEncryptedMetadata())
+		if metaErr != nil {
+			p.Logger.WarnContext(ctx, "failed to decrypt encrypted metadata", slog.Any("error", metaErr))
+			decryptedMetadata = nil
+		}
+		if len(decryptedMetadata) == 0 {
+			decryptedMetadata = nil
+		}
+
 		results[kao.GetKeyAccessObjectId()] = kaoResult{
-			ID:  kao.GetKeyAccessObjectId(),
-			DEK: dek,
+			ID:                kao.GetKeyAccessObjectId(),
+			DEK:               dek,
+			DecryptedMetadata: decryptedMetadata,
 		}
 
 		anyValidKAOs = true
@@ -900,7 +901,8 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		Jwt:         entityInfo.Token,
 	}
 
-	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies, additionalRewrapContext.Obligations.FulfillableFQNs)
+	resourceMetadataByPolicy := buildResourceMetadataByPolicy(policyReqs, results)
+	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies, resourceMetadataByPolicy, additionalRewrapContext.Obligations.FulfillableFQNs)
 	if accessErr != nil {
 		p.Logger.DebugContext(ctx,
 			"tdf3rewrap: cannot access policy",
@@ -971,6 +973,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				Algorithm:     req.GetAlgorithm(),
 				PolicyBinding: policyBinding,
 				KeyID:         kao.GetKeyAccessObject().GetKid(),
+				Metadata:      kaoRes.DecryptedMetadata,
 			}
 
 			if !access {
@@ -1048,13 +1051,156 @@ func createKAOMetadata(obligations []string) map[string]*structpb.Value {
 	return metadata
 }
 
+type encryptedMetadataPayload struct {
+	Cipher string `json:"ciphertext"`
+	Iv     string `json:"iv"`
+}
+
+const encryptedMetadataGCMAuthTagSize = 16
+
+// TODO: should we always log all decrypted metadata to audit, or just pull off
+// the known keys like filename/bytesize and log them specifically
+func decryptKAOEncryptedMetadata(dek ocrypto.ProtectedKey, encryptedMetadata string) (map[string]any, error) {
+	if dek == nil || encryptedMetadata == "" {
+		return map[string]any{}, nil
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(encryptedMetadata)
+	if err != nil {
+		return nil, fmt.Errorf("decode encrypted metadata: %w", err)
+	}
+
+	var payload encryptedMetadataPayload
+	if err := json.Unmarshal(decoded, &payload); err != nil {
+		return nil, fmt.Errorf("unmarshal encrypted metadata: %w", err)
+	}
+
+	iv, err := base64.StdEncoding.DecodeString(payload.Iv)
+	if err != nil {
+		return nil, fmt.Errorf("decode encrypted metadata iv: %w", err)
+	}
+
+	cipherBytes, err := base64.StdEncoding.DecodeString(payload.Cipher)
+	if err != nil {
+		return nil, fmt.Errorf("decode encrypted metadata cipher: %w", err)
+	}
+
+	cipherBody := cipherBytes
+	if len(cipherBytes) > ocrypto.GcmStandardNonceSize && bytes.HasPrefix(cipherBytes, iv) {
+		cipherBody = cipherBytes[ocrypto.GcmStandardNonceSize:]
+	}
+
+	plaintext, err := dek.DecryptAESGCM(iv, cipherBody, encryptedMetadataGCMAuthTagSize)
+	if err != nil {
+		return nil, fmt.Errorf("decrypt encrypted metadata: %w", err)
+	}
+
+	var metadata map[string]any
+	if err := json.Unmarshal(plaintext, &metadata); err == nil {
+		return metadata, nil
+	}
+
+	return map[string]any{"value": string(plaintext)}, nil
+}
+
+func buildResourceMetadataByPolicy(policyReqs map[*Policy]*kaspb.UnsignedRewrapRequest_WithPolicyRequest, results policyKAOResults) map[*Policy]map[string]string {
+	if len(policyReqs) == 0 || len(results) == 0 {
+		return nil
+	}
+
+	resourceMetadataByPolicy := make(map[*Policy]map[string]string)
+	for policy, req := range policyReqs {
+		if policy == nil || req == nil || req.GetPolicy() == nil {
+			continue
+		}
+		kaoResults := results[req.GetPolicy().GetId()]
+		resourceMetadata := resourceMetadataFromKAOResults(kaoResults)
+		if len(resourceMetadata) == 0 {
+			continue
+		}
+		resourceMetadataByPolicy[policy] = resourceMetadata
+	}
+	if len(resourceMetadataByPolicy) == 0 {
+		return nil
+	}
+	return resourceMetadataByPolicy
+}
+
+func resourceMetadataFromKAOResults(kaoResults map[string]kaoResult) map[string]string {
+	if len(kaoResults) == 0 {
+		return nil
+	}
+
+	kaoIDs := make([]string, 0, len(kaoResults))
+	for kaoID := range kaoResults {
+		kaoIDs = append(kaoIDs, kaoID)
+	}
+	sort.Strings(kaoIDs)
+
+	merged := make(map[string]any)
+	for _, kaoID := range kaoIDs {
+		metadata := extractResourceMetadata(kaoResults[kaoID].DecryptedMetadata)
+		if len(metadata) == 0 {
+			continue
+		}
+		for key, value := range metadata {
+			merged[key] = value
+		}
+	}
+
+	return stringifyResourceMetadata(merged)
+}
+
+func extractResourceMetadata(metadata map[string]any) map[string]any {
+	if len(metadata) == 0 {
+		return nil
+	}
+	if resourceMetadata, ok := metadata["resourceMetadata"]; ok {
+		resourceMetadataMap, resourceMetadataOK := resourceMetadata.(map[string]any)
+		if !resourceMetadataOK {
+			return nil
+		}
+		return resourceMetadataMap
+	}
+	return metadata
+}
+
+func stringifyResourceMetadata(metadata map[string]any) map[string]string {
+	if len(metadata) == 0 {
+		return nil
+	}
+
+	stringMetadata := make(map[string]string, len(metadata))
+	for key, value := range metadata {
+		if value == nil {
+			continue
+		}
+		switch typed := value.(type) {
+		case string:
+			stringMetadata[key] = typed
+		default:
+			encoded, err := json.Marshal(typed)
+			if err != nil {
+				stringMetadata[key] = fmt.Sprint(typed)
+				continue
+			}
+			stringMetadata[key] = string(encoded)
+		}
+	}
+
+	if len(stringMetadata) == 0 {
+		return nil
+	}
+	return stringMetadata
+}
+
 // Retrieve additional request context needed for rewrap processing
 // Header is json encoded AdditionalRewrapContext struct
 /*
 Example:
 
 {
-	"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark","https://demo.com/obl/test/value/geofence"]}
+	"obligations": {"fulfillableFQNs": ["https://demo.com/obl/test/value/watermark","https://demo.com/obl/test/value/geofence"]},
 }
 
 */

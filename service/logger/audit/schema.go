@@ -98,10 +98,8 @@ func parseAuditFieldOptions(field reflect.StructField) (auditFieldOptions, bool)
 		return auditFieldOptions{}, false
 	}
 
-	name, reserved, extensible := parseAuditTag(tag)
-	if name == "" {
-		name = parseJSONFieldName(field)
-	}
+	reserved, extensible := parseAuditTag(tag)
+	name := parseJSONFieldName(field)
 	if name == "" {
 		return auditFieldOptions{}, false
 	}
@@ -113,26 +111,17 @@ func parseAuditFieldOptions(field reflect.StructField) (auditFieldOptions, bool)
 	}, true
 }
 
-func parseAuditTag(tag string) (string, bool, bool) {
-	if tag == "" {
-		return "", false, false
+func parseAuditTag(tag string) (bool, bool) {
+	switch tag {
+	case "":
+		return false, false
+	case "reserved":
+		return true, false
+	case "extensible":
+		return false, true
+	default:
+		return false, false
 	}
-
-	parts := strings.Split(tag, ",")
-	name := parts[0]
-	var (
-		reserved   bool
-		extensible bool
-	)
-	for _, option := range parts[1:] {
-		switch option {
-		case "reserved":
-			reserved = true
-		case "extensible":
-			extensible = true
-		}
-	}
-	return name, reserved, extensible
 }
 
 func parseJSONFieldName(field reflect.StructField) string {

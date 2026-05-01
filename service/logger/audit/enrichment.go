@@ -2,6 +2,8 @@ package audit
 
 import (
 	"context"
+	"encoding"
+	"encoding/json"
 	"log/slog"
 	"reflect"
 
@@ -10,7 +12,7 @@ import (
 )
 
 func (a *Logger) buildLogEntry(ctx context.Context, event *EventObject) map[string]any {
-	entry := event.logMap()
+	entry := event.emittedPayloadMap()
 	a.applyJWTClaimEnrichment(ctx, entry)
 	return entry
 }
@@ -80,9 +82,49 @@ func normalizeAuditValue(value any) any {
 		return normalized
 	}
 
+	if marshaler, ok := value.(json.Marshaler); ok {
+		encoded, err := marshaler.MarshalJSON()
+		if err == nil {
+			var decoded any
+			if err := json.Unmarshal(encoded, &decoded); err == nil {
+				return decoded
+			}
+		}
+	}
+
+	if marshaler, ok := value.(encoding.TextMarshaler); ok {
+		encoded, err := marshaler.MarshalText()
+		if err == nil {
+			return string(encoded)
+		}
+	}
+
 	rv := reflect.ValueOf(value)
+	if !rv.IsValid() {
+		return nil
+	}
 	//nolint:exhaustive // only composite kinds need normalization; scalars can pass through unchanged
 	switch rv.Kind() {
+	case reflect.Pointer:
+		if rv.IsNil() {
+			return nil
+		}
+		return normalizeAuditValue(rv.Elem().Interface())
+	case reflect.Struct:
+		structType := rv.Type()
+		normalized := make(map[string]any, structType.NumField())
+		for i := 0; i < structType.NumField(); i++ {
+			field := structType.Field(i)
+			if !field.IsExported() {
+				continue
+			}
+			opts, ok := parseAuditFieldOptions(field)
+			if !ok {
+				continue
+			}
+			normalized[opts.name] = normalizeAuditValue(rv.Field(i).Interface())
+		}
+		return normalized
 	case reflect.Map:
 		if rv.IsNil() {
 			return nil

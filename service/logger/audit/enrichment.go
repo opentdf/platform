@@ -9,16 +9,6 @@ import (
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 )
 
-var reservedClaimDestinationPaths = map[string]struct{}{
-	"requestID":           {},
-	"timestamp":           {},
-	"action.type":         {},
-	"action.result":       {},
-	"object.type":         {},
-	"actor.id":            {},
-	"clientInfo.platform": {},
-}
-
 func (a *Logger) buildLogEntry(ctx context.Context, event *EventObject) map[string]any {
 	entry := event.logMap()
 	a.applyJWTClaimEnrichment(ctx, entry)
@@ -47,14 +37,6 @@ func (a *Logger) applyJWTClaimEnrichment(ctx context.Context, entry map[string]a
 func (a *Logger) applyMappedJWTClaims(ctx context.Context, entry map[string]any, claimsMap map[string]any) {
 	for _, mapping := range a.config.JWTClaimMappings {
 		if mapping.Claim == "" || mapping.Path == "" {
-			continue
-		}
-		if _, reserved := reservedClaimDestinationPaths[mapping.Path]; reserved {
-			a.logger.ErrorContext(ctx,
-				"refusing to write JWT claim to reserved audit path",
-				slog.String("claim", mapping.Claim),
-				slog.String("path", mapping.Path),
-			)
 			continue
 		}
 

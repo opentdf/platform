@@ -357,6 +357,7 @@ func TestLoad_Precedence(t *testing.T) {
 		setupLoaders func(t *testing.T, configFile string) []Loader
 		envVars      map[string]string
 		err          error
+		errContains  string
 		fileContent  string
 		asserts      func(t *testing.T, cfg *Config)
 	}{
@@ -433,6 +434,24 @@ special_key:
 				// Value from defaults
 				assert.Equal(t, []string{"all"}, cfg.Mode)
 			},
+		},
+		{
+			name: "invalid audit mapping path fails validation",
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				file, err := NewConfigFileLoader(configKey, configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				return []Loader{file, defaults}
+			},
+			err:         ErrUnmarshallingConfig,
+			errContains: "reserved audit path",
+			fileContent: `
+audit:
+  jwt_claim_mappings:
+    - claim: sub
+      path: requestID
+`,
 		},
 		{
 			name: "env overrides file and defaults except client_id",
@@ -670,6 +689,11 @@ logger:
 			// Assertions
 			if tc.err != nil {
 				require.Error(t, err)
+				require.ErrorIs(t, err, tc.err)
+				if tc.errContains != "" {
+					require.ErrorContains(t, err, tc.errContains)
+				}
+				require.Nil(t, cfg)
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, cfg)

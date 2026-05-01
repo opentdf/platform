@@ -299,6 +299,9 @@ func (c *Config) Reload(ctx context.Context) error {
 	if err := validator.New().Struct(c); err != nil {
 		return errors.Join(err, ErrUnmarshallingConfig)
 	}
+	if err := c.Audit.Validate(); err != nil {
+		return errors.Join(err, ErrUnmarshallingConfig)
+	}
 
 	if skew := c.Security.ClockSkew(); skew > DefaultUnsafeClockSkew {
 		slog.WarnContext(ctx,

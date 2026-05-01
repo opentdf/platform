@@ -16,16 +16,16 @@ type auditEventMetadata map[string]any
 
 // event
 type EventObject struct {
-	Object        auditEventObject   `json:"object"`
-	Action        eventAction        `json:"action"`
-	Actor         auditEventActor    `json:"actor"`
-	EventMetaData auditEventMetadata `json:"eventMetaData"`
-	ClientInfo    eventClientInfo    `json:"clientInfo"`
+	Object        auditEventObject   `json:"object" audit:"object"`
+	Action        eventAction        `json:"action" audit:"action"`
+	Actor         auditEventActor    `json:"actor" audit:"actor"`
+	EventMetaData auditEventMetadata `json:"eventMetaData" audit:"eventMetaData,extensible"`
+	ClientInfo    eventClientInfo    `json:"clientInfo" audit:"clientInfo"`
 
-	Original  map[string]any `json:"original,omitempty"`
-	Updated   map[string]any `json:"updated,omitempty"`
-	RequestID uuid.UUID      `json:"requestId"`
-	Timestamp string         `json:"timestamp"`
+	Original  map[string]any `json:"original,omitempty" audit:"original,extensible"`
+	Updated   map[string]any `json:"updated,omitempty" audit:"updated,extensible"`
+	RequestID uuid.UUID      `json:"requestId" audit:"requestID,reserved"`
+	Timestamp string         `json:"timestamp" audit:"timestamp,reserved"`
 }
 
 func (e EventObject) LogValue() slog.Value {
@@ -76,10 +76,10 @@ func (e EventObject) logMap() map[string]any {
 
 // event.object
 type auditEventObject struct {
-	Type       ObjectType            `json:"type"`
-	ID         string                `json:"id"`
-	Name       string                `json:"name,omitempty"`
-	Attributes eventObjectAttributes `json:"attributes,omitempty"`
+	Type       ObjectType            `json:"type" audit:"type,reserved"`
+	ID         string                `json:"id" audit:"id"`
+	Name       string                `json:"name,omitempty" audit:"name"`
+	Attributes eventObjectAttributes `json:"attributes,omitempty" audit:"attributes"`
 }
 
 func (e auditEventObject) LogValue() slog.Value {
@@ -106,8 +106,8 @@ func (e eventObjectAttributes) LogValue() slog.Value {
 
 // event.action
 type eventAction struct {
-	Type   ActionType   `json:"type"`
-	Result ActionResult `json:"result"`
+	Type   ActionType   `json:"type" audit:"type,reserved"`
+	Result ActionResult `json:"result" audit:"result,reserved"`
 }
 
 func (e eventAction) LogValue() slog.Value {
@@ -118,8 +118,8 @@ func (e eventAction) LogValue() slog.Value {
 
 // event.actor
 type auditEventActor struct {
-	ID         string `json:"id"`
-	Attributes []any  `json:"attributes"`
+	ID         string `json:"id" audit:"id,reserved"`
+	Attributes []any  `json:"attributes" audit:"attributes"`
 }
 
 func (e auditEventActor) LogValue() slog.Value {
@@ -130,9 +130,9 @@ func (e auditEventActor) LogValue() slog.Value {
 
 // event.clientInfo
 type eventClientInfo struct {
-	UserAgent string `json:"userAgent"`
-	Platform  string `json:"platform"`
-	RequestIP string `json:"requestIp"`
+	UserAgent string `json:"userAgent" audit:"userAgent"`
+	Platform  string `json:"platform" audit:"platform,reserved"`
+	RequestIP string `json:"requestIp" audit:"requestIP"`
 }
 
 func (e eventClientInfo) LogValue() slog.Value {

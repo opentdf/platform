@@ -62,9 +62,13 @@ func CreateAuditLogger(logger slog.Logger) *Logger {
 	}
 }
 
-// ApplyConfig stores the latest audit enrichment configuration.
-func (a *Logger) ApplyConfig(cfg Config) {
+// ApplyConfig validates and stores the latest audit enrichment configuration.
+func (a *Logger) ApplyConfig(cfg Config) error {
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
 	a.config = cfg
+	return nil
 }
 
 func (a *Logger) With(key string, value string) *Logger {

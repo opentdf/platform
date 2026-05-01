@@ -368,13 +368,13 @@ func TestAuditJWTClaimMappingsApplyToPolicyAudit(t *testing.T) {
 	ctx := ctxAuth.ContextWithAuthNInfo(createTestContext(t), nil, token, rawToken)
 
 	logEntry, _ := doWithLoggerContext(ctx, t, func(ctx context.Context, l *Logger) {
-		l.ApplyConfig(Config{
+		require.NoError(t, l.ApplyConfig(Config{
 			JWTClaimMappings: []JWTClaimMapping{
 				{Claim: "sub", Path: "eventMetaData.requester.sub"},
 				{Claim: "realm_access.roles", Path: "eventMetaData.requester.roles"},
 				{Claim: "email_verified", Path: "eventMetaData.requester.emailVerified"},
 			},
-		})
+		}))
 		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
 	})
 
@@ -393,11 +393,11 @@ func TestAuditJWTClaimMappingsUseMetadataFallback(t *testing.T) {
 	ctx := metadata.NewIncomingContext(createTestContext(t), metadata.Pairs(ctxAuth.AccessTokenKey, rawToken))
 
 	logEntry, _ := doWithLoggerContext(ctx, t, func(ctx context.Context, l *Logger) {
-		l.ApplyConfig(Config{
+		require.NoError(t, l.ApplyConfig(Config{
 			JWTClaimMappings: []JWTClaimMapping{
 				{Claim: "sub", Path: "eventMetaData.requester.sub"},
 			},
-		})
+		}))
 		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
 	})
 
@@ -414,13 +414,13 @@ func TestAuditJWTClaimMappingsCanWriteToEntityMetadata(t *testing.T) {
 	ctx := ctxAuth.ContextWithAuthNInfo(createTestContext(t), nil, token, rawToken)
 
 	logEntry, _ := doWithLoggerContext(ctx, t, func(ctx context.Context, l *Logger) {
-		l.ApplyConfig(Config{
+		require.NoError(t, l.ApplyConfig(Config{
 			JWTClaimMappings: []JWTClaimMapping{
 				{Claim: "sub", Path: "eventMetaData.entityMetadata.sub"},
 				{Claim: "realm_access.roles", Path: "eventMetaData.entityMetadata.roles"},
 				{Claim: "email_verified", Path: "eventMetaData.entityMetadata.emailVerified"},
 			},
-		})
+		}))
 		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
 	})
 
@@ -432,6 +432,43 @@ func TestAuditJWTClaimMappingsCanWriteToEntityMetadata(t *testing.T) {
 	assert.Equal(t, "jwt-user", entityMetadata["sub"])
 	assert.Equal(t, []any{"admin", "user"}, entityMetadata["roles"])
 	assert.Equal(t, true, entityMetadata["emailVerified"])
+}
+
+func TestAuditJWTClaimMappingsLeaveReservedFieldsUntouched(t *testing.T) {
+	token, rawToken := createTestJWTForAudit(t)
+	ctx := ctxAuth.ContextWithAuthNInfo(createTestContext(t), nil, token, rawToken)
+
+	logEntry, _ := doWithLoggerContext(ctx, t, func(ctx context.Context, l *Logger) {
+		require.NoError(t, l.ApplyConfig(Config{
+			JWTClaimMappings: []JWTClaimMapping{
+				{Claim: "sub", Path: "eventMetaData.requester.sub"},
+			},
+		}))
+		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
+	})
+
+	payload := decodeAuditPayload(t, logEntry.Audit)
+	assert.Equal(t, TestRequestID.String(), payload["requestID"])
+
+	eventMetaData, ok := payload["eventMetaData"].(map[string]any)
+	require.True(t, ok)
+	requester, ok := eventMetaData["requester"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "jwt-user", requester["sub"])
+}
+
+func TestAuditApplyConfigRejectsReservedPaths(t *testing.T) {
+	l, _ := createTestLogger()
+
+	err := l.ApplyConfig(Config{
+		JWTClaimMappings: []JWTClaimMapping{
+			{Claim: "sub", Path: "requestID"},
+		},
+	})
+
+	require.Error(t, err)
+	require.ErrorContains(t, err, "jwt_claim_mappings[0].path")
+	require.ErrorContains(t, err, "reserved audit path")
 }
 
 func TestDeferredRewrapSuccess(t *testing.T) {

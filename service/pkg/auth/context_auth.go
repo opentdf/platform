@@ -3,8 +3,6 @@ package auth
 import (
 	"context"
 	"errors"
-	"fmt"
-	"strings"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -85,33 +83,11 @@ func GetRawAccessTokenFromContext(ctx context.Context, l optionalErrorLogger) st
 	return ""
 }
 
-// RehydrateAccessTokenFromIncomingMetadata reconstructs auth context from incoming metadata
-// so downstream code can use the normal accessors without transport-specific fallbacks.
-func RehydrateAccessTokenFromIncomingMetadata(ctx context.Context, l optionalErrorLogger) (context.Context, error) {
-	if c := getContextDetails(ctx, l); c != nil && c.accessToken != nil && c.rawToken != "" {
-		return ctx, nil
-	}
-
-	rawToken := getRawAccessTokenFromMetadata(ctx, true)
-	if rawToken == "" {
-		return ctx, nil
-	}
-
-	parsed, err := jwt.Parse([]byte(rawToken), jwt.WithVerify(false), jwt.WithValidate(false))
-	if err != nil {
-		if l != nil {
-			l.ErrorContext(ctx, "failed to rehydrate access token from incoming metadata", "error", err)
-		}
-		return ctx, fmt.Errorf("rehydrate access token from incoming metadata: %w", err)
-	}
-
-	return ContextWithAuthNInfo(ctx, nil, parsed, rawToken), nil
-}
-
 // EnrichIncomingContextMetadataWithAuthn adds the access token and client ID to incoming context metadata
 //
-// Adding the authn info to gRPC metadata propagates it across services rather than strictly
-// in-process within Go alone
+// This transports an already-authenticated token across internal hops. It does not
+// validate the token again; the ConnectUnaryServerInterceptor auth middleware does that
+// before ContextWithAuthNInfo is created.
 func EnrichIncomingContextMetadataWithAuthn(ctx context.Context, l optionalErrorLogger, clientID string) context.Context {
 	rawToken := GetRawAccessTokenFromContext(ctx, l)
 
@@ -130,45 +106,6 @@ func EnrichIncomingContextMetadataWithAuthn(ctx context.Context, l optionalError
 	}
 
 	return metadata.NewIncomingContext(ctx, md)
-}
-
-func getRawAccessTokenFromMetadata(ctx context.Context, incoming bool) string {
-	var (
-		md metadata.MD
-		ok bool
-	)
-	if incoming {
-		md, ok = metadata.FromIncomingContext(ctx)
-	} else {
-		md, ok = metadata.FromOutgoingContext(ctx)
-	}
-	if !ok {
-		return ""
-	}
-
-	if accessTokens := md.Get(AccessTokenKey); len(accessTokens) > 0 && accessTokens[0] != "" {
-		return accessTokens[0]
-	}
-
-	authHeaders := md.Get("authorization")
-	if len(authHeaders) == 0 {
-		authHeaders = md.Get("Authorization")
-	}
-	if len(authHeaders) > 0 {
-		return trimAuthorizationHeader(authHeaders[0])
-	}
-	return ""
-}
-
-func trimAuthorizationHeader(header string) string {
-	switch {
-	case strings.HasPrefix(header, "Bearer "):
-		return strings.TrimPrefix(header, "Bearer ")
-	case strings.HasPrefix(header, "DPoP "):
-		return strings.TrimPrefix(header, "DPoP ")
-	default:
-		return header
-	}
 }
 
 // GetClientIDFromContext retrieves the client ID from the metadata in the context

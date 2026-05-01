@@ -16,7 +16,6 @@ import (
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/metadata"
 )
 
 // Params
@@ -389,32 +388,6 @@ func TestAuditJWTClaimMappingsApplyToPolicyAudit(t *testing.T) {
 	assert.Equal(t, true, requester["emailVerified"])
 }
 
-func TestAuditJWTClaimMappingsUseRehydratedAuthContext(t *testing.T) {
-	_, rawToken := createTestJWTForAudit(t)
-
-	logEntry, _ := doWithLogger(t, func(ctx context.Context) context.Context {
-		ctx = metadata.NewIncomingContext(ctx, metadata.Pairs(ctxAuth.AccessTokenKey, rawToken))
-		var err error
-		ctx, err = ctxAuth.RehydrateAccessTokenFromIncomingMetadata(ctx, nil)
-		require.NoError(t, err)
-		return ctx
-	}, func(ctx context.Context, l *Logger) {
-		require.NoError(t, l.ApplyConfig(Config{
-			JWTClaimMappings: []JWTClaimMapping{
-				{Claim: "sub", Path: "eventMetaData.requester.sub"},
-			},
-		}))
-		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
-	})
-
-	payload := decodeAuditPayload(t, logEntry.Audit)
-	eventMetaData, ok := payload["eventMetaData"].(map[string]any)
-	require.True(t, ok)
-	requester, ok := eventMetaData["requester"].(map[string]any)
-	require.True(t, ok)
-	assert.Equal(t, "jwt-user", requester["sub"])
-}
-
 func TestAuditJWTClaimMappingsCanWriteToEntityMetadata(t *testing.T) {
 	token, rawToken := createTestJWTForAudit(t)
 
@@ -511,11 +484,26 @@ func TestAuditJWTClaimMappingsLeaveReservedFieldsUntouched(t *testing.T) {
 }
 
 func TestAuditApplyConfigRejectsReservedPaths(t *testing.T) {
-	l, _ := createTestLogger()
+	t.Run("requestID", func(t *testing.T) {
+		assertReservedAuditPathRejected(t, "requestID")
+	})
 
+	t.Run("clientInfo.userAgent", func(t *testing.T) {
+		assertReservedAuditPathRejected(t, "clientInfo.userAgent")
+	})
+
+	t.Run("clientInfo.requestIP", func(t *testing.T) {
+		assertReservedAuditPathRejected(t, "clientInfo.requestIP")
+	})
+}
+
+func assertReservedAuditPathRejected(t *testing.T, path string) {
+	t.Helper()
+
+	l, _ := createTestLogger()
 	err := l.ApplyConfig(Config{
 		JWTClaimMappings: []JWTClaimMapping{
-			{Claim: "sub", Path: "requestID"},
+			{Claim: "sub", Path: path},
 		},
 	})
 

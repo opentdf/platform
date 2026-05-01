@@ -130,9 +130,9 @@ func (e auditEventActor) LogValue() slog.Value {
 
 // event.clientInfo
 type eventClientInfo struct {
-	UserAgent string `json:"userAgent" audit:"userAgent"`
+	UserAgent string `json:"userAgent" audit:"userAgent,reserved"`
 	Platform  string `json:"platform" audit:"platform,reserved"`
-	RequestIP string `json:"requestIp" audit:"requestIP"`
+	RequestIP string `json:"requestIp" audit:"requestIP,reserved"`
 }
 
 func (e eventClientInfo) LogValue() slog.Value {

@@ -438,10 +438,55 @@ func IPCMetadataClientInterceptor(log *logger.Logger) connect.UnaryInterceptorFu
 	})
 }
 
+// rehydrateIPCAuthContext reconstructs pkg/auth context from propagated IPC metadata.
+// It only transports an already-authenticated token across an internal hop; it does not
+// validate the token again. Network-facing requests must continue to rely on the
+// ConnectUnaryServerInterceptor auth middleware for validation.
+func rehydrateIPCAuthContext(ctx context.Context, l *logger.Logger) (context.Context, error) {
+	if ctxAuth.GetAccessTokenFromContext(ctx, l) != nil && ctxAuth.GetRawAccessTokenFromContext(ctx, l) != "" {
+		return ctx, nil
+	}
+
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return ctx, nil
+	}
+
+	rawToken := rawAccessTokenFromIncomingMetadata(md)
+	if rawToken == "" {
+		return ctx, nil
+	}
+
+	parsed, err := jwt.Parse([]byte(rawToken), jwt.WithVerify(false), jwt.WithValidate(false))
+	if err != nil {
+		if l != nil {
+			l.ErrorContext(ctx, "failed to rehydrate IPC access token from metadata", slog.Any("error", err))
+		}
+		return ctx, fmt.Errorf("rehydrate IPC access token from metadata: %w", err)
+	}
+
+	return ctxAuth.ContextWithAuthNInfo(ctx, nil, parsed, rawToken), nil
+}
+
+func rawAccessTokenFromIncomingMetadata(md metadata.MD) string {
+	if accessTokens := md.Get(ctxAuth.AccessTokenKey); len(accessTokens) > 0 && accessTokens[0] != "" {
+		return accessTokens[0]
+	}
+
+	authHeaders := md.Get("authorization")
+	if len(authHeaders) == 0 {
+		authHeaders = md.Get("Authorization")
+	}
+	if len(authHeaders) == 0 || authHeaders[0] == "" {
+		return ""
+	}
+	return strings.TrimPrefix(strings.TrimPrefix(authHeaders[0], "Bearer "), "DPoP ")
+}
+
 // IPCUnaryServerInterceptor is a grpc interceptor that:
 // 1. translates known IPC Connect request headers back to incoming metadata
 // 2. reauthorizes routes that are configured for IPC reauth
-// 3. rehydrates auth context from propagated incoming metadata
+// 3. rehydrates auth context from propagated incoming metadata without revalidating it
 func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(
@@ -467,7 +512,7 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 			if err != nil {
 				return nil, err
 			}
-			nextCtx, err = ctxAuth.RehydrateAccessTokenFromIncomingMetadata(nextCtx, a.logger)
+			nextCtx, err = rehydrateIPCAuthContext(nextCtx, a.logger)
 			if err != nil {
 				return nil, connect.NewError(connect.CodeInternal, errors.New("failed to rehydrate IPC authentication context"))
 			}

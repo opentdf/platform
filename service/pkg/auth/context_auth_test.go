@@ -92,65 +92,6 @@ func TestGetAccessTokenFromContextDoesNotFallbackToMetadata(t *testing.T) {
 	assert.Nil(t, retrievedJWT)
 }
 
-func TestRehydrateAccessTokenFromIncomingMetadata(t *testing.T) {
-	t.Run("rehydrates from access token metadata", func(t *testing.T) {
-		mockJWT, err := jwt.NewBuilder().
-			Subject("metadata-user").
-			Claim("roles", []string{"admin"}).
-			Build()
-		require.NoError(t, err)
-
-		rawToken, err := jwt.Sign(mockJWT, jwt.WithInsecureNoSignature())
-		require.NoError(t, err)
-
-		ctx := metadata.NewIncomingContext(t.Context(), metadata.Pairs(AccessTokenKey, string(rawToken)))
-		rehydratedCtx, err := RehydrateAccessTokenFromIncomingMetadata(ctx, nil)
-		require.NoError(t, err)
-
-		retrievedJWT := GetAccessTokenFromContext(rehydratedCtx, nil)
-		require.NotNil(t, retrievedJWT)
-		assert.Equal(t, "metadata-user", retrievedJWT.Subject())
-		assert.Equal(t, string(rawToken), GetRawAccessTokenFromContext(rehydratedCtx, nil))
-	})
-
-	t.Run("uses authorization metadata", func(t *testing.T) {
-		mockJWT, err := jwt.NewBuilder().Subject("authorization-user").Build()
-		require.NoError(t, err)
-
-		rawToken, err := jwt.Sign(mockJWT, jwt.WithInsecureNoSignature())
-		require.NoError(t, err)
-
-		ctx := metadata.NewIncomingContext(t.Context(), metadata.Pairs("Authorization", "Bearer "+string(rawToken)))
-		rehydratedCtx, err := RehydrateAccessTokenFromIncomingMetadata(ctx, nil)
-		require.NoError(t, err)
-
-		retrievedJWT := GetAccessTokenFromContext(rehydratedCtx, nil)
-		require.NotNil(t, retrievedJWT)
-		assert.Equal(t, "authorization-user", retrievedJWT.Subject())
-	})
-
-	t.Run("returns unchanged context when auth context already exists", func(t *testing.T) {
-		existingJWT, err := jwt.NewBuilder().Subject("existing-user").Build()
-		require.NoError(t, err)
-
-		ctx := ContextWithAuthNInfo(t.Context(), nil, existingJWT, "existing-raw-token")
-		ctx = metadata.NewIncomingContext(ctx, metadata.Pairs(AccessTokenKey, "different-token"))
-		rehydratedCtx, err := RehydrateAccessTokenFromIncomingMetadata(ctx, nil)
-		require.NoError(t, err)
-
-		retrievedJWT := GetAccessTokenFromContext(rehydratedCtx, nil)
-		require.NotNil(t, retrievedJWT)
-		assert.Equal(t, "existing-user", retrievedJWT.Subject())
-		assert.Equal(t, "existing-raw-token", GetRawAccessTokenFromContext(rehydratedCtx, nil))
-	})
-
-	t.Run("returns error on invalid token metadata", func(t *testing.T) {
-		ctx := metadata.NewIncomingContext(t.Context(), metadata.Pairs(AccessTokenKey, "not-a-jwt"))
-		_, err := RehydrateAccessTokenFromIncomingMetadata(ctx, nil)
-		require.Error(t, err)
-	})
-}
-
 func TestGetContextDetailsInvalidType(t *testing.T) {
 	// Create a context with an invalid type
 	ctx := context.WithValue(t.Context(), authnContextKey, "invalidType")

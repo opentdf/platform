@@ -9,7 +9,6 @@ import (
 func TestValidateClaimDestinationPath(t *testing.T) {
 	t.Run("allows writable leaf paths", func(t *testing.T) {
 		require.NoError(t, validateClaimDestinationPath("object.id"))
-		require.NoError(t, validateClaimDestinationPath("clientInfo.requestIP"))
 	})
 
 	t.Run("allows nested paths below extensible maps", func(t *testing.T) {
@@ -27,6 +26,12 @@ func TestValidateClaimDestinationPath(t *testing.T) {
 		require.ErrorIs(t, err, ErrReservedAuditPath)
 
 		err = validateClaimDestinationPath("action.result")
+		require.ErrorIs(t, err, ErrReservedAuditPath)
+
+		err = validateClaimDestinationPath("clientInfo.userAgent")
+		require.ErrorIs(t, err, ErrReservedAuditPath)
+
+		err = validateClaimDestinationPath("clientInfo.requestIP")
 		require.ErrorIs(t, err, ErrReservedAuditPath)
 	})
 

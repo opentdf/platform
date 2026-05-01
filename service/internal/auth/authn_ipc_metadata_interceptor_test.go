@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -184,6 +185,10 @@ func (m *mockAnyRequest) Any() any {
 
 func TestIPCUnaryServerInterceptor(t *testing.T) {
 	testLogger := logger.CreateTestLogger()
+	validJWT, err := jwt.NewBuilder().Subject("ipc-user").Build()
+	require.NoError(t, err)
+	validRawToken, err := jwt.Sign(validJWT, jwt.WithInsecureNoSignature())
+	require.NoError(t, err)
 
 	// Create a minimal authentication instance
 	auth := &Authentication{
@@ -201,7 +206,7 @@ func TestIPCUnaryServerInterceptor(t *testing.T) {
 			setupRequest: func() connect.AnyRequest {
 				req := connect.NewRequest(&kas.PublicKeyRequest{})
 				req.Header().Set(canonicalIPCHeaderClientID, "test-client-from-header")
-				req.Header().Set(canonicalIPCHeaderAccessToken, "test-token-from-header")
+				req.Header().Set(canonicalIPCHeaderAccessToken, string(validRawToken))
 				return &mockAnyRequest{
 					Request:  req,
 					isClient: false,
@@ -225,7 +230,7 @@ func TestIPCUnaryServerInterceptor(t *testing.T) {
 			setupRequest: func() connect.AnyRequest {
 				req := connect.NewRequest(&kas.PublicKeyRequest{})
 				req.Header().Set(canonicalIPCHeaderClientID, "merged-client-id")
-				req.Header().Set(canonicalIPCHeaderAccessToken, "merged-token")
+				req.Header().Set(canonicalIPCHeaderAccessToken, string(validRawToken))
 				return &mockAnyRequest{
 					Request:  req,
 					isClient: false,
@@ -251,8 +256,13 @@ func TestIPCUnaryServerInterceptor(t *testing.T) {
 					for _, key := range tt.expectedIncomingMDKeys {
 						assert.NotEmpty(t, md.Get(key), "metadata key %s should exist", key)
 					}
+					retrievedJWT := ctxAuth.GetAccessTokenFromContext(postInterceptorCtx, testLogger)
+					require.NotNil(t, retrievedJWT)
+					assert.Equal(t, "ipc-user", retrievedJWT.Subject())
+					assert.Equal(t, string(validRawToken), ctxAuth.GetRawAccessTokenFromContext(postInterceptorCtx, testLogger))
 				} else {
 					assert.Zero(t, md.Len())
+					assert.Nil(t, ctxAuth.GetAccessTokenFromContext(postInterceptorCtx, testLogger))
 				}
 				return connect.NewResponse(&kas.PublicKeyResponse{}), nil
 			}
@@ -267,19 +277,22 @@ func TestIPCUnaryServerInterceptor(t *testing.T) {
 
 func TestIPCUnaryServerInterceptor_Integration(t *testing.T) {
 	testLogger := logger.CreateTestLogger()
+	mockJWT, err := jwt.NewBuilder().Subject("integration-user").Build()
+	require.NoError(t, err)
+	rawToken, err := jwt.Sign(mockJWT, jwt.WithInsecureNoSignature())
+	require.NoError(t, err)
 
 	auth := &Authentication{
 		logger:          testLogger,
 		ipcReauthRoutes: []string{},
 	}
 
-	t.Run("clientID and access token from headers available in context metadata", func(t *testing.T) {
+	t.Run("clientID and access token from headers available in context metadata and auth context", func(t *testing.T) {
 		clientID := "integration-client-id"
-		accessToken := "integration-access-token"
 
 		req := connect.NewRequest(&kas.PublicKeyRequest{})
 		req.Header().Set(canonicalIPCHeaderClientID, clientID)
-		req.Header().Set(canonicalIPCHeaderAccessToken, accessToken)
+		req.Header().Set(canonicalIPCHeaderAccessToken, string(rawToken))
 
 		wrappedReq := &mockAnyRequest{
 			Request:  req,
@@ -290,7 +303,7 @@ func TestIPCUnaryServerInterceptor_Integration(t *testing.T) {
 
 		ctx := t.Context()
 
-		var receivedClientID, receivedAccessToken string
+		var receivedClientID, receivedAccessToken, receivedSubject string
 		mockNext := func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
 			md, ok := metadata.FromIncomingContext(ctx)
 			require.True(t, ok)
@@ -302,6 +315,9 @@ func TestIPCUnaryServerInterceptor_Integration(t *testing.T) {
 			if len(accessTokens) > 0 {
 				receivedAccessToken = accessTokens[0]
 			}
+			retrievedJWT := ctxAuth.GetAccessTokenFromContext(ctx, testLogger)
+			require.NotNil(t, retrievedJWT)
+			receivedSubject = retrievedJWT.Subject()
 			return connect.NewResponse(&kas.PublicKeyResponse{}), nil
 		}
 
@@ -310,6 +326,30 @@ func TestIPCUnaryServerInterceptor_Integration(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, clientID, receivedClientID)
-		assert.Equal(t, accessToken, receivedAccessToken)
+		assert.Equal(t, string(rawToken), receivedAccessToken)
+		assert.Equal(t, "integration-user", receivedSubject)
+	})
+
+	t.Run("invalid access token header fails rehydration", func(t *testing.T) {
+		req := connect.NewRequest(&kas.PublicKeyRequest{})
+		req.Header().Set(canonicalIPCHeaderAccessToken, "not-a-jwt")
+
+		wrappedReq := &mockAnyRequest{
+			Request:  req,
+			isClient: false,
+		}
+
+		interceptor := auth.IPCUnaryServerInterceptor()
+		interceptorFunc := interceptor(func(context.Context, connect.AnyRequest) (connect.AnyResponse, error) {
+			t.Fatal("next handler should not be called on invalid token")
+			return nil, errors.New("unreachable")
+		})
+
+		_, err := interceptorFunc(t.Context(), wrappedReq)
+		require.Error(t, err)
+
+		var connectErr *connect.Error
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodeInternal, connectErr.Code())
 	})
 }

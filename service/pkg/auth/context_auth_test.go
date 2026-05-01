@@ -63,21 +63,21 @@ func TestGetRawAccessTokenFromContext(t *testing.T) {
 	assert.Equal(t, rawToken, retrievedRawToken, "Retrieved raw token should match the mock raw token")
 }
 
-func TestGetRawAccessTokenFromContextFallsBackToMetadata(t *testing.T) {
+func TestGetRawAccessTokenFromContextDoesNotFallbackToMetadata(t *testing.T) {
 	t.Run("incoming access token metadata", func(t *testing.T) {
 		ctx := metadata.NewIncomingContext(t.Context(), metadata.Pairs(AccessTokenKey, "incoming-token"))
 		retrievedRawToken := GetRawAccessTokenFromContext(ctx, nil)
-		assert.Equal(t, "incoming-token", retrievedRawToken)
+		assert.Empty(t, retrievedRawToken)
 	})
 
 	t.Run("outgoing authorization metadata", func(t *testing.T) {
 		ctx := metadata.NewOutgoingContext(t.Context(), metadata.Pairs("Authorization", "Bearer outgoing-token"))
 		retrievedRawToken := GetRawAccessTokenFromContext(ctx, nil)
-		assert.Equal(t, "outgoing-token", retrievedRawToken)
+		assert.Empty(t, retrievedRawToken)
 	})
 }
 
-func TestGetAccessTokenFromContextFallsBackToMetadata(t *testing.T) {
+func TestGetAccessTokenFromContextDoesNotFallbackToMetadata(t *testing.T) {
 	mockJWT, err := jwt.NewBuilder().
 		Subject("metadata-user").
 		Claim("roles", []string{"admin"}).
@@ -89,8 +89,66 @@ func TestGetAccessTokenFromContextFallsBackToMetadata(t *testing.T) {
 
 	ctx := metadata.NewIncomingContext(t.Context(), metadata.Pairs(AccessTokenKey, string(rawToken)))
 	retrievedJWT := GetAccessTokenFromContext(ctx, nil)
-	require.NotNil(t, retrievedJWT)
-	assert.Equal(t, "metadata-user", retrievedJWT.Subject())
+	assert.Nil(t, retrievedJWT)
+}
+
+func TestRehydrateAccessTokenFromIncomingMetadata(t *testing.T) {
+	t.Run("rehydrates from access token metadata", func(t *testing.T) {
+		mockJWT, err := jwt.NewBuilder().
+			Subject("metadata-user").
+			Claim("roles", []string{"admin"}).
+			Build()
+		require.NoError(t, err)
+
+		rawToken, err := jwt.Sign(mockJWT, jwt.WithInsecureNoSignature())
+		require.NoError(t, err)
+
+		ctx := metadata.NewIncomingContext(t.Context(), metadata.Pairs(AccessTokenKey, string(rawToken)))
+		rehydratedCtx, err := RehydrateAccessTokenFromIncomingMetadata(ctx, nil)
+		require.NoError(t, err)
+
+		retrievedJWT := GetAccessTokenFromContext(rehydratedCtx, nil)
+		require.NotNil(t, retrievedJWT)
+		assert.Equal(t, "metadata-user", retrievedJWT.Subject())
+		assert.Equal(t, string(rawToken), GetRawAccessTokenFromContext(rehydratedCtx, nil))
+	})
+
+	t.Run("uses authorization metadata", func(t *testing.T) {
+		mockJWT, err := jwt.NewBuilder().Subject("authorization-user").Build()
+		require.NoError(t, err)
+
+		rawToken, err := jwt.Sign(mockJWT, jwt.WithInsecureNoSignature())
+		require.NoError(t, err)
+
+		ctx := metadata.NewIncomingContext(t.Context(), metadata.Pairs("Authorization", "Bearer "+string(rawToken)))
+		rehydratedCtx, err := RehydrateAccessTokenFromIncomingMetadata(ctx, nil)
+		require.NoError(t, err)
+
+		retrievedJWT := GetAccessTokenFromContext(rehydratedCtx, nil)
+		require.NotNil(t, retrievedJWT)
+		assert.Equal(t, "authorization-user", retrievedJWT.Subject())
+	})
+
+	t.Run("returns unchanged context when auth context already exists", func(t *testing.T) {
+		existingJWT, err := jwt.NewBuilder().Subject("existing-user").Build()
+		require.NoError(t, err)
+
+		ctx := ContextWithAuthNInfo(t.Context(), nil, existingJWT, "existing-raw-token")
+		ctx = metadata.NewIncomingContext(ctx, metadata.Pairs(AccessTokenKey, "different-token"))
+		rehydratedCtx, err := RehydrateAccessTokenFromIncomingMetadata(ctx, nil)
+		require.NoError(t, err)
+
+		retrievedJWT := GetAccessTokenFromContext(rehydratedCtx, nil)
+		require.NotNil(t, retrievedJWT)
+		assert.Equal(t, "existing-user", retrievedJWT.Subject())
+		assert.Equal(t, "existing-raw-token", GetRawAccessTokenFromContext(rehydratedCtx, nil))
+	})
+
+	t.Run("returns error on invalid token metadata", func(t *testing.T) {
+		ctx := metadata.NewIncomingContext(t.Context(), metadata.Pairs(AccessTokenKey, "not-a-jwt"))
+		_, err := RehydrateAccessTokenFromIncomingMetadata(ctx, nil)
+		require.Error(t, err)
+	})
 }
 
 func TestGetContextDetailsInvalidType(t *testing.T) {

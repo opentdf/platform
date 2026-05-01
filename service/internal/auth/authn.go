@@ -442,6 +442,7 @@ func IPCMetadataClientInterceptor(log *logger.Logger) connect.UnaryInterceptorFu
 // 1. verifies the token in the metadata
 // 2. reauthorizes the token if the route is in the list
 // 3. translates known IPC Connect request headers back to context metadata for downstream consumers
+// 4. rehydrates auth context from incoming metadata for non-reauth IPC routes
 func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(
@@ -466,6 +467,10 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 			nextCtx, err := a.ipcReauthCheck(ctx, req.Spec().Procedure, req.Header())
 			if err != nil {
 				return nil, err
+			}
+			nextCtx, err = ctxAuth.RehydrateAccessTokenFromIncomingMetadata(nextCtx, a.logger)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInternal, errors.New("failed to rehydrate IPC authentication context"))
 			}
 			return next(nextCtx, req)
 		})

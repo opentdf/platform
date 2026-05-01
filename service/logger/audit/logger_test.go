@@ -388,9 +388,11 @@ func TestAuditJWTClaimMappingsApplyToPolicyAudit(t *testing.T) {
 	assert.Equal(t, true, requester["emailVerified"])
 }
 
-func TestAuditJWTClaimMappingsUseMetadataFallback(t *testing.T) {
+func TestAuditJWTClaimMappingsUseRehydratedAuthContext(t *testing.T) {
 	_, rawToken := createTestJWTForAudit(t)
 	ctx := metadata.NewIncomingContext(createTestContext(t), metadata.Pairs(ctxAuth.AccessTokenKey, rawToken))
+	ctx, err := ctxAuth.RehydrateAccessTokenFromIncomingMetadata(ctx, nil)
+	require.NoError(t, err)
 
 	logEntry, _ := doWithLoggerContext(ctx, t, func(ctx context.Context, l *Logger) {
 		require.NoError(t, l.ApplyConfig(Config{

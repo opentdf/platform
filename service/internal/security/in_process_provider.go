@@ -322,7 +322,7 @@ func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDet
 }
 
 // GenerateECSessionKey generates a session key for ECDH-based response encryption.
-func (a *InProcessProvider) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
+func (a *InProcessProvider) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (ocrypto.Encapsulator, error) {
 	pke, err := ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, TDFSalt(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("session key generation failed to create public key encryptor: %w", err)

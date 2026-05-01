@@ -1,4 +1,6 @@
-go 1.25.0
+go 1.25.5
+
+toolchain go1.25.9
 
 use (
 	./examples
@@ -6,6 +8,7 @@ use (
 	./lib/flattening
 	./lib/identifier
 	./lib/ocrypto
+	./otdfctl
 	./protocol/go
 	./sdk
 	./service

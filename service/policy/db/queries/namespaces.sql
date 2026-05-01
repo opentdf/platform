@@ -13,7 +13,16 @@ SELECT
 FROM attribute_namespaces ns
 LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
 WHERE (sqlc.narg('active')::BOOLEAN IS NULL OR ns.active = sqlc.narg('active')::BOOLEAN)
-ORDER BY ns.created_at DESC
+ORDER BY
+    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'ASC' THEN ns.name END ASC,
+    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'DESC' THEN ns.name END DESC,
+    CASE WHEN @sort_field::text = 'fqn' AND @sort_direction::text = 'ASC' THEN fqns.fqn END ASC,
+    CASE WHEN @sort_field::text = 'fqn' AND @sort_direction::text = 'DESC' THEN fqns.fqn END DESC,
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN ns.created_at END ASC,
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN ns.created_at END DESC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN ns.updated_at END ASC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN ns.updated_at END DESC,
+    ns.created_at DESC
 LIMIT @limit_
 OFFSET @offset_;
 

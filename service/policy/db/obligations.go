@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -20,6 +21,32 @@ func setOblValFQNs(values []*policy.ObligationValue, nsFQN, name string) []*poli
 		values[i] = v
 	}
 	return values
+}
+
+func hydrateObligationTrigger(triggerJSON, metadataJSON []byte) (*policy.ObligationTrigger, error) {
+	trigger, err := unmarshalObligationTrigger(triggerJSON)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal obligation trigger: %w", err)
+	}
+
+	metadata := &common.Metadata{}
+	if err := unmarshalMetadata(metadataJSON, metadata); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal obligation trigger metadata: %w", err)
+	}
+
+	if returnedOblVal := trigger.GetObligationValue(); returnedOblVal != nil {
+		if obligation := returnedOblVal.GetObligation(); obligation != nil && obligation.GetNamespace() != nil {
+			returnedOblVal.Fqn = identifier.BuildOblValFQN(
+				obligation.GetNamespace().GetFqn(),
+				obligation.GetName(),
+				returnedOblVal.GetValue(),
+			)
+		}
+	}
+
+	trigger.Metadata = metadata
+
+	return trigger, nil
 }
 
 ///
@@ -199,6 +226,8 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 	parsedID := pgtypeUUID(namespaceID)
 	idIsValid := parsedID.Valid
 
+	sortField, sortDirection := GetObligationsSortParams(r.GetSort())
+
 	if useID && !idIsValid {
 		return nil, nil, db.ErrUUIDInvalid
 	}
@@ -211,10 +240,12 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 	}
 
 	rows, err := c.queries.listObligations(ctx, listObligationsParams{
-		NamespaceID:  parsedID,
-		NamespaceFqn: pgtypeText(r.GetNamespaceFqn()),
-		Limit:        limit,
-		Offset:       offset,
+		NamespaceID:   parsedID,
+		NamespaceFqn:  pgtypeText(r.GetNamespaceFqn()),
+		Limit:         limit,
+		Offset:        offset,
+		SortField:     sortField,
+		SortDirection: sortDirection,
 	})
 	if err != nil {
 		return nil, nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -642,6 +673,16 @@ func (c PolicyDBClient) DeleteObligationValue(ctx context.Context, r *obligation
 // ! Obligation Triggers
 // ********************************************
 
+func (c PolicyDBClient) GetObligationTrigger(ctx context.Context, r *obligations.GetObligationTriggerRequest) (*policy.ObligationTrigger, error) {
+	id := r.GetId()
+	row, err := c.queries.getObligationTrigger(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return hydrateObligationTrigger(row.Trigger, row.Metadata)
+}
+
 func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligations.AddObligationTriggerRequest) (*policy.ObligationTrigger, error) {
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
@@ -664,11 +705,19 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 	if err != nil {
 		return nil, fmt.Errorf("failed to get obligation value: %w", err)
 	}
+	actionID, err := c.resolveObligationTriggerActionID(ctx, r.GetAction(), oblVal.GetObligation().GetNamespace().GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.validateObligationNamespaceConsistency(ctx, oblVal.GetObligation().GetNamespace().GetId(), r.GetAttributeValue(), actionID)
+	if err != nil {
+		return nil, err
+	}
 
 	params := createObligationTriggerParams{
 		ObligationValueID: pgtypeUUID(oblVal.GetId()),
-		ActionName:        pgtypeText(r.GetAction().GetName()),
-		ActionID:          pgtypeUUID(r.GetAction().GetId()),
+		ActionID:          pgtypeUUID(actionID),
 		AttributeValueID:  pgtypeUUID(r.GetAttributeValue().GetId()),
 		AttributeValueFqn: pgtypeText(r.GetAttributeValue().GetFqn()),
 		ClientID:          pgtypeText(r.GetContext().GetPep().GetClientId()),
@@ -683,23 +732,86 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 		return nil, wrappedErr
 	}
 
-	metadata := &common.Metadata{}
-	if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
-		return nil, err
+	return hydrateObligationTrigger(row.Trigger, row.Metadata)
+}
+
+func (c PolicyDBClient) resolveObligationTriggerActionID(ctx context.Context, action *common.IdNameIdentifier, obligationNamespaceID string) (string, error) {
+	actionID := action.GetId()
+	if actionID != "" {
+		return actionID, nil
 	}
 
-	trigger, err := unmarshalObligationTrigger(row.Trigger)
+	actionName := strings.ToLower(action.GetName())
+	if actionName == "" {
+		// this shouldnt happen due to proto validation, but just in case
+		return "", errors.Join(
+			db.ErrMissingValue,
+			errors.New("action identifier must include either id or name"),
+		)
+	}
+
+	createdOrListedActions, err := c.queries.createOrListActionsByNameInNamespace(ctx, createOrListActionsByNameInNamespaceParams{
+		ActionNames: []string{actionName},
+		NamespaceID: obligationNamespaceID,
+	})
 	if err != nil {
-		return nil, err
+		return "", db.WrapIfKnownInvalidQueryErr(
+			errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", actionName, err)),
+		)
+	}
+	if len(createdOrListedActions) == 0 {
+		return "", db.WrapIfKnownInvalidQueryErr(
+			errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]", actionName)),
+		)
 	}
 
-	if returnedOblVal := trigger.GetObligationValue(); returnedOblVal != nil {
-		returnedOblVal.Fqn = oblVal.GetFqn()
+	return createdOrListedActions[0].ID, nil
+}
+
+// validateObligationNamespaceConsistency ensures that action and attribute value
+// belongs to the same namespace as the obligation trigger being created.
+func (c PolicyDBClient) validateObligationNamespaceConsistency(
+	ctx context.Context,
+	targetNsID string,
+	attributeValue *common.IdFqnIdentifier,
+	actionID string,
+) error {
+	var attributeValueIdentifier any
+	if attributeValue.GetId() != "" {
+		attributeValueIdentifier = &attributes.GetAttributeValueRequest_ValueId{ValueId: attributeValue.GetId()}
+	} else {
+		attributeValueIdentifier = &attributes.GetAttributeValueRequest_Fqn{Fqn: attributeValue.GetFqn()}
 	}
 
-	trigger.Metadata = metadata
+	av, err := c.GetAttributeValue(ctx, attributeValueIdentifier)
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	attr, err := c.GetAttribute(ctx, av.GetAttribute().GetId())
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if attr.GetNamespace().GetId() != targetNsID {
+		return errors.Join(db.ErrNamespaceMismatch,
+			fmt.Errorf("attribute value namespace [%s] does not match the specified obligation trigger namespace [%s]", attr.GetNamespace().GetId(), targetNsID))
+	}
 
-	return trigger, nil
+	// All actions must be in the same namespace
+	actionRows, err := c.queries.getActionsByIDs(ctx, []string{actionID})
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if len(actionRows) == 0 {
+		return errors.Join(db.ErrNotFound, fmt.Errorf("action [%s] was not found", actionID))
+	}
+	a := actionRows[0]
+	actionNsID := UUIDToString(a.NamespaceID)
+	if actionNsID != targetNsID {
+		return errors.Join(db.ErrNamespaceMismatch,
+			fmt.Errorf("action [%s] namespace [%s] does not match the specified obligation namespace [%s]", a.ID, actionNsID, targetNsID))
+	}
+
+	return nil
 }
 
 func (c PolicyDBClient) DeleteObligationTrigger(ctx context.Context, r *obligations.RemoveObligationTriggerRequest) (*policy.ObligationTrigger, error) {
@@ -736,20 +848,11 @@ func (c PolicyDBClient) ListObligationTriggers(ctx context.Context, r *obligatio
 
 	var result []*policy.ObligationTrigger
 	for _, row := range rows {
-		metadata := &common.Metadata{}
-		if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
-			return nil, nil, err
-		}
-
-		obligationTrigger, err := unmarshalObligationTrigger(row.Trigger)
+		obligationTrigger, err := hydrateObligationTrigger(row.Trigger, row.Metadata)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		if returnedOblVal := obligationTrigger.GetObligationValue(); returnedOblVal != nil {
-			returnedOblVal.Fqn = identifier.BuildOblValFQN(returnedOblVal.GetObligation().GetNamespace().GetFqn(), returnedOblVal.GetObligation().GetName(), returnedOblVal.GetValue())
-		}
-		obligationTrigger.Metadata = metadata
 		result = append(result, obligationTrigger)
 	}
 

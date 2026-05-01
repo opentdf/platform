@@ -20,6 +20,62 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Sorting direction shared across list APIs.
+// Notes:
+//   - When a sort field is provided, UNSPECIFIED is treated as ASC.
+//   - When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+//     the endpoint's request message defines the default ordering; see the
+//     specific List* request docs.
+type SortDirection int32
+
+const (
+	// Treated as ASC when a sort field is provided.
+	SortDirection_SORT_DIRECTION_UNSPECIFIED SortDirection = 0 // defaults to ASC
+	SortDirection_SORT_DIRECTION_ASC         SortDirection = 1
+	SortDirection_SORT_DIRECTION_DESC        SortDirection = 2
+)
+
+// Enum value maps for SortDirection.
+var (
+	SortDirection_name = map[int32]string{
+		0: "SORT_DIRECTION_UNSPECIFIED",
+		1: "SORT_DIRECTION_ASC",
+		2: "SORT_DIRECTION_DESC",
+	}
+	SortDirection_value = map[string]int32{
+		"SORT_DIRECTION_UNSPECIFIED": 0,
+		"SORT_DIRECTION_ASC":         1,
+		"SORT_DIRECTION_DESC":        2,
+	}
+)
+
+func (x SortDirection) Enum() *SortDirection {
+	p := new(SortDirection)
+	*p = x
+	return p
+}
+
+func (x SortDirection) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SortDirection) Descriptor() protoreflect.EnumDescriptor {
+	return file_policy_selectors_proto_enumTypes[0].Descriptor()
+}
+
+func (SortDirection) Type() protoreflect.EnumType {
+	return &file_policy_selectors_proto_enumTypes[0]
+}
+
+func (x SortDirection) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SortDirection.Descriptor instead.
+func (SortDirection) EnumDescriptor() ([]byte, []int) {
+	return file_policy_selectors_proto_rawDescGZIP(), []int{0}
+}
+
 // Deprecated: never utilized
 type AttributeNamespaceSelector struct {
 	state         protoimpl.MessageState
@@ -750,16 +806,22 @@ var file_policy_selectors_proto_rawDesc = []byte{
 	0x0a, 0x0b, 0x6e, 0x65, 0x78, 0x74, 0x5f, 0x6f, 0x66, 0x66, 0x73, 0x65, 0x74, 0x18, 0x02, 0x20,
 	0x01, 0x28, 0x05, 0x52, 0x0a, 0x6e, 0x65, 0x78, 0x74, 0x4f, 0x66, 0x66, 0x73, 0x65, 0x74, 0x12,
 	0x14, 0x0a, 0x05, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x18, 0x03, 0x20, 0x01, 0x28, 0x05, 0x52, 0x05,
-	0x74, 0x6f, 0x74, 0x61, 0x6c, 0x42, 0x84, 0x01, 0x0a, 0x0a, 0x63, 0x6f, 0x6d, 0x2e, 0x70, 0x6f,
-	0x6c, 0x69, 0x63, 0x79, 0x42, 0x0e, 0x53, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x73, 0x50,
-	0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2e, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
-	0x6f, 0x6d, 0x2f, 0x6f, 0x70, 0x65, 0x6e, 0x74, 0x64, 0x66, 0x2f, 0x70, 0x6c, 0x61, 0x74, 0x66,
-	0x6f, 0x72, 0x6d, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f, 0x6c, 0x2f, 0x67, 0x6f, 0x2f,
-	0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0xa2, 0x02, 0x03, 0x50, 0x58, 0x58, 0xaa, 0x02, 0x06, 0x50,
-	0x6f, 0x6c, 0x69, 0x63, 0x79, 0xca, 0x02, 0x06, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0xe2, 0x02,
-	0x12, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64,
-	0x61, 0x74, 0x61, 0xea, 0x02, 0x06, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x62, 0x06, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x33,
+	0x74, 0x6f, 0x74, 0x61, 0x6c, 0x2a, 0x60, 0x0a, 0x0d, 0x53, 0x6f, 0x72, 0x74, 0x44, 0x69, 0x72,
+	0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x1e, 0x0a, 0x1a, 0x53, 0x4f, 0x52, 0x54, 0x5f, 0x44,
+	0x49, 0x52, 0x45, 0x43, 0x54, 0x49, 0x4f, 0x4e, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49,
+	0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x16, 0x0a, 0x12, 0x53, 0x4f, 0x52, 0x54, 0x5f, 0x44,
+	0x49, 0x52, 0x45, 0x43, 0x54, 0x49, 0x4f, 0x4e, 0x5f, 0x41, 0x53, 0x43, 0x10, 0x01, 0x12, 0x17,
+	0x0a, 0x13, 0x53, 0x4f, 0x52, 0x54, 0x5f, 0x44, 0x49, 0x52, 0x45, 0x43, 0x54, 0x49, 0x4f, 0x4e,
+	0x5f, 0x44, 0x45, 0x53, 0x43, 0x10, 0x02, 0x42, 0x84, 0x01, 0x0a, 0x0a, 0x63, 0x6f, 0x6d, 0x2e,
+	0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x42, 0x0e, 0x53, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72,
+	0x73, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2e, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62,
+	0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x6f, 0x70, 0x65, 0x6e, 0x74, 0x64, 0x66, 0x2f, 0x70, 0x6c, 0x61,
+	0x74, 0x66, 0x6f, 0x72, 0x6d, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f, 0x6c, 0x2f, 0x67,
+	0x6f, 0x2f, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0xa2, 0x02, 0x03, 0x50, 0x58, 0x58, 0xaa, 0x02,
+	0x06, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0xca, 0x02, 0x06, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79,
+	0xe2, 0x02, 0x12, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74,
+	0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x06, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x62, 0x06,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -774,27 +836,29 @@ func file_policy_selectors_proto_rawDescGZIP() []byte {
 	return file_policy_selectors_proto_rawDescData
 }
 
+var file_policy_selectors_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_policy_selectors_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_policy_selectors_proto_goTypes = []interface{}{
-	(*AttributeNamespaceSelector)(nil),                                 // 0: policy.AttributeNamespaceSelector
-	(*AttributeDefinitionSelector)(nil),                                // 1: policy.AttributeDefinitionSelector
-	(*AttributeValueSelector)(nil),                                     // 2: policy.AttributeValueSelector
-	(*PageRequest)(nil),                                                // 3: policy.PageRequest
-	(*PageResponse)(nil),                                               // 4: policy.PageResponse
-	(*AttributeNamespaceSelector_AttributeSelector)(nil),               // 5: policy.AttributeNamespaceSelector.AttributeSelector
-	(*AttributeNamespaceSelector_AttributeSelector_ValueSelector)(nil), // 6: policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector
-	(*AttributeDefinitionSelector_NamespaceSelector)(nil),              // 7: policy.AttributeDefinitionSelector.NamespaceSelector
-	(*AttributeDefinitionSelector_ValueSelector)(nil),                  // 8: policy.AttributeDefinitionSelector.ValueSelector
-	(*AttributeValueSelector_AttributeSelector)(nil),                   // 9: policy.AttributeValueSelector.AttributeSelector
-	(*AttributeValueSelector_AttributeSelector_NamespaceSelector)(nil), // 10: policy.AttributeValueSelector.AttributeSelector.NamespaceSelector
+	(SortDirection)(0),                                                 // 0: policy.SortDirection
+	(*AttributeNamespaceSelector)(nil),                                 // 1: policy.AttributeNamespaceSelector
+	(*AttributeDefinitionSelector)(nil),                                // 2: policy.AttributeDefinitionSelector
+	(*AttributeValueSelector)(nil),                                     // 3: policy.AttributeValueSelector
+	(*PageRequest)(nil),                                                // 4: policy.PageRequest
+	(*PageResponse)(nil),                                               // 5: policy.PageResponse
+	(*AttributeNamespaceSelector_AttributeSelector)(nil),               // 6: policy.AttributeNamespaceSelector.AttributeSelector
+	(*AttributeNamespaceSelector_AttributeSelector_ValueSelector)(nil), // 7: policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector
+	(*AttributeDefinitionSelector_NamespaceSelector)(nil),              // 8: policy.AttributeDefinitionSelector.NamespaceSelector
+	(*AttributeDefinitionSelector_ValueSelector)(nil),                  // 9: policy.AttributeDefinitionSelector.ValueSelector
+	(*AttributeValueSelector_AttributeSelector)(nil),                   // 10: policy.AttributeValueSelector.AttributeSelector
+	(*AttributeValueSelector_AttributeSelector_NamespaceSelector)(nil), // 11: policy.AttributeValueSelector.AttributeSelector.NamespaceSelector
 }
 var file_policy_selectors_proto_depIdxs = []int32{
-	5,  // 0: policy.AttributeNamespaceSelector.with_attributes:type_name -> policy.AttributeNamespaceSelector.AttributeSelector
-	7,  // 1: policy.AttributeDefinitionSelector.with_namespace:type_name -> policy.AttributeDefinitionSelector.NamespaceSelector
-	8,  // 2: policy.AttributeDefinitionSelector.with_values:type_name -> policy.AttributeDefinitionSelector.ValueSelector
-	9,  // 3: policy.AttributeValueSelector.with_attribute:type_name -> policy.AttributeValueSelector.AttributeSelector
-	6,  // 4: policy.AttributeNamespaceSelector.AttributeSelector.with_values:type_name -> policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector
-	10, // 5: policy.AttributeValueSelector.AttributeSelector.with_namespace:type_name -> policy.AttributeValueSelector.AttributeSelector.NamespaceSelector
+	6,  // 0: policy.AttributeNamespaceSelector.with_attributes:type_name -> policy.AttributeNamespaceSelector.AttributeSelector
+	8,  // 1: policy.AttributeDefinitionSelector.with_namespace:type_name -> policy.AttributeDefinitionSelector.NamespaceSelector
+	9,  // 2: policy.AttributeDefinitionSelector.with_values:type_name -> policy.AttributeDefinitionSelector.ValueSelector
+	10, // 3: policy.AttributeValueSelector.with_attribute:type_name -> policy.AttributeValueSelector.AttributeSelector
+	7,  // 4: policy.AttributeNamespaceSelector.AttributeSelector.with_values:type_name -> policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector
+	11, // 5: policy.AttributeValueSelector.AttributeSelector.with_namespace:type_name -> policy.AttributeValueSelector.AttributeSelector.NamespaceSelector
 	6,  // [6:6] is the sub-list for method output_type
 	6,  // [6:6] is the sub-list for method input_type
 	6,  // [6:6] is the sub-list for extension type_name
@@ -946,13 +1010,14 @@ func file_policy_selectors_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_policy_selectors_proto_rawDesc,
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_policy_selectors_proto_goTypes,
 		DependencyIndexes: file_policy_selectors_proto_depIdxs,
+		EnumInfos:         file_policy_selectors_proto_enumTypes,
 		MessageInfos:      file_policy_selectors_proto_msgTypes,
 	}.Build()
 	File_policy_selectors_proto = out.File

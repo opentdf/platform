@@ -480,7 +480,7 @@ type KASKeyFetcher interface {
 
 func (s SDK) getPublicKey(ctx context.Context, kasurl, algorithm, kidToFind string) (*KASInfo, error) {
 	if s.kasKeyCache != nil {
-		if cachedValue := s.kasKeyCache.get(kasurl, algorithm, kidToFind); nil != cachedValue {
+		if cachedValue := s.get(kasurl, algorithm, kidToFind); nil != cachedValue {
 			return cachedValue, nil
 		}
 	}
@@ -514,7 +514,7 @@ func (s SDK) getPublicKey(ctx context.Context, kasurl, algorithm, kidToFind stri
 		PublicKey: resp.Msg.GetPublicKey(),
 	}
 	if s.kasKeyCache != nil {
-		s.kasKeyCache.store(ki)
+		s.store(ki)
 	}
 	return &ki, nil
 }

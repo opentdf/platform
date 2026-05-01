@@ -218,6 +218,10 @@ func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackEr
 		l.ErrorContext(ctx, ErrorTextInactiveAttributeValue, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextInactiveAttributeValue))
 	}
+	if errors.Is(err, ErrNamespaceMismatch) {
+		l.ErrorContext(ctx, ErrorTextNamespaceMismatch, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextNamespaceMismatch))
+	}
 
 	l.ErrorContext(ctx, "request error", append(logs, slog.Any("error", err))...)
 	return connect.NewError(connect.CodeInternal, errors.New(fallbackErr))

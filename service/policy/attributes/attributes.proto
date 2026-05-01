@@ -63,6 +63,18 @@ message ValueKey {
    Attribute Service Definitions
 */
 
+enum SortAttributesType {
+  SORT_ATTRIBUTES_TYPE_UNSPECIFIED = 0;
+  SORT_ATTRIBUTES_TYPE_NAME = 1;
+  SORT_ATTRIBUTES_TYPE_CREATED_AT = 2;
+  SORT_ATTRIBUTES_TYPE_UPDATED_AT = 3;
+}
+
+message AttributesSort {
+  SortAttributesType field = 1;
+  policy.SortDirection direction = 2;
+}
+
 message ListAttributesRequest {
   // Optional
   // ACTIVE by default when not specified
@@ -73,6 +85,8 @@ message ListAttributesRequest {
 
   // Optional
   policy.PageRequest pagination = 10;
+  // Optional - CONSTRAINT: max 1 item
+  repeated AttributesSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 message ListAttributesResponse {
   repeated policy.Attribute attributes = 1;
@@ -412,7 +426,10 @@ service AttributesService {
   rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // Deprecated
+  // Use GetAttribute
   rpc ListAttributeValues(ListAttributeValuesRequest) returns (ListAttributeValuesResponse) {
+    option deprecated = true;
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 

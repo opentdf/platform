@@ -24,7 +24,7 @@ message CreateRegisteredResourceRequest {
     }
   ];
 
-  // Optional 
+  // Optional
   // Registered Resource Values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
   // The stored value will be normalized to lower case.
   repeated string values = 2 [
@@ -32,12 +32,22 @@ message CreateRegisteredResourceRequest {
       min_items: 0,
       unique: true,
       items: {
-        string: 
+        string:
           {
             max_len: 253,
             pattern: "^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$"
           }
       },
+    }
+  ];
+
+  // Optional (yet to be enforced)
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+  string namespace_id = 3 [(buf.validate.field).string.uuid = true];
+  string namespace_fqn = 4 [
+    (buf.validate.field).string = {
+      min_len : 1
+      uri : true
     }
   ];
 
@@ -67,14 +77,52 @@ message GetRegisteredResourceRequest {
       }
     ];
   }
+
+  // Optional - namespace context for name-based lookups (since names are not globally unique for namespaced RRs)
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+  string namespace_fqn = 3 [
+    (buf.validate.field).string = {
+      min_len : 1
+      uri : true
+    }
+  ];
+  string namespace_id = 4 [(buf.validate.field).string.uuid = true];
 }
 message GetRegisteredResourceResponse {
   policy.RegisteredResource resource = 1;
 }
 
+enum SortRegisteredResourcesType {
+  SORT_REGISTERED_RESOURCES_TYPE_UNSPECIFIED = 0;
+  SORT_REGISTERED_RESOURCES_TYPE_NAME = 1;
+  SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT = 2;
+  SORT_REGISTERED_RESOURCES_TYPE_UPDATED_AT = 3;
+}
+
+message RegisteredResourcesSort {
+  SortRegisteredResourcesType field = 1;
+  policy.SortDirection direction = 2;
+}
+
 message ListRegisteredResourcesRequest {
   // Optional
+  // Namespace ID or FQN
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+  string namespace_id = 1 [(buf.validate.field).string.uuid = true];
+  string namespace_fqn = 2 [
+    (buf.validate.field).string = {
+      min_len : 1
+      uri : true
+    }
+  ];
+
+  // Optional
   policy.PageRequest pagination = 10;
+
+  // Optional - CONSTRAINT: max 1 item
+  // Default ordering when omitted or when the first entry's field is UNSPECIFIED:
+  // created_at DESC.
+  repeated RegisteredResourcesSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 message ListRegisteredResourcesResponse {
   repeated policy.RegisteredResource resources = 1;

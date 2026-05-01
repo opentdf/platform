@@ -1,0 +1,486 @@
+package namespacedpolicy
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/opentdf/platform/protocol/go/policy"
+	"google.golang.org/protobuf/proto"
+)
+
+const (
+	interactiveReviewAbortOption              = "__abort_interactive_review__"
+	minimumRegisteredResourceReviewNamespaces = 2
+)
+
+var ErrNilInteractiveReviewHandler = errors.New("interactive review handler is required")
+
+// InteractiveReviewer owns planner-time interactive review. It mutates
+// resolved planner state before finalization when interactive review is enabled.
+type InteractiveReviewer interface {
+	Review(context.Context, *ResolvedTargets, []*policy.Namespace) error
+}
+
+// HuhInteractiveReviewer is the planner-owned interactive review entrypoint for
+// `migrate namespaced-policy --interactive`.
+//
+// The only actionable planner-time review currently supported is resolving
+// registered resources whose action-attribute-values span multiple namespaces.
+type HuhInteractiveReviewer struct {
+	handler  PolicyClient
+	prompter InteractivePrompter
+	pageSize int32
+}
+
+func NewHuhInteractiveReviewer(handler PolicyClient, prompter InteractivePrompter) *HuhInteractiveReviewer {
+	return &HuhInteractiveReviewer{
+		handler:  handler,
+		prompter: prompter,
+		pageSize: defaultPlannerPageSize,
+	}
+}
+
+func (r *HuhInteractiveReviewer) Review(ctx context.Context, resolved *ResolvedTargets, namespaces []*policy.Namespace) error {
+	if resolved == nil {
+		return nil
+	}
+
+	var retriever *Retriever
+	namespaceCache := make(map[string]*interactiveReviewNamespaceState)
+	for _, resource := range resolved.RegisteredResources {
+		if !isConflictingRegisteredResource(resource) {
+			continue
+		}
+		if retriever == nil {
+			var err error
+			retriever, err = r.retriever()
+			if err != nil {
+				return err
+			}
+		}
+		if err := r.reviewRegisteredResource(ctx, resolved, resource, namespaces, retriever, namespaceCache); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// reviewRegisteredResource prompts the reviewer to pick a target namespace for a
+// conflicted registered resource and rewrites planner state to match that choice.
+//
+// In-place mutations:
+//   - resource.Source          — replaced with the namespace-filtered clone
+//   - resource.Namespace       — set to the chosen namespace
+//   - resource.Unresolved      — cleared
+//   - resource.AlreadyMigrated — cleared, then set if an existing match is found
+//   - resource.NeedsCreate     — cleared, then set true if no existing match
+//   - resolved.Actions         — appended to via ensureRegisteredResourceActionResolution
+//   - namespaceCache           — populated/read by reviewNamespaceState
+func (r *HuhInteractiveReviewer) reviewRegisteredResource(
+	ctx context.Context,
+	resolved *ResolvedTargets,
+	resource *ResolvedRegisteredResource,
+	namespaces []*policy.Namespace,
+	retriever *Retriever,
+	namespaceCache map[string]*interactiveReviewNamespaceState,
+) error {
+	if resource == nil || resource.Source == nil {
+		return nil
+	}
+
+	candidates, err := registeredResourceCandidateNamespaces(resource.Source, namespaces)
+	if err != nil {
+		return fmt.Errorf("registered resource %q: %w", resource.Source.GetId(), err)
+	}
+
+	selected, err := r.resolvePrompter().Select(ctx, registeredResourceConflictPrompt(resource.Source, candidates))
+	if err != nil {
+		return err
+	}
+	// registeredResourceConflictPrompt appends interactiveReviewAbortOption to SelectPrompt.Options,
+	// but selectedNamespace only searches candidates, so this short-circuit must remain in place.
+	if selected == interactiveReviewAbortOption {
+		return ErrInteractiveReviewAborted
+	}
+
+	chosen := selectedNamespace(candidates, selected)
+	if chosen == nil {
+		return fmt.Errorf("registered resource %q: invalid namespace choice %q", resource.Source.GetId(), selected)
+	}
+
+	filtered, err := filterRegisteredResourceToNamespace(resource.Source, chosen)
+	if err != nil {
+		return fmt.Errorf("registered resource %q: %w", resource.Source.GetId(), err)
+	}
+
+	namespaceState, err := reviewNamespaceState(ctx, retriever, chosen, namespaceCache)
+	if err != nil {
+		return fmt.Errorf("registered resource %q: %w", resource.Source.GetId(), err)
+	}
+
+	resource.Source = filtered
+	resource.Namespace = chosen
+	// Reset planner state before re-resolving against registeredResources[chosen.GetId()] so AlreadyMigrated/NeedsCreate matches resolver.resolveRegisteredResource semantics for the chosen namespace.
+	resource.Unresolved = nil
+	resource.AlreadyMigrated = nil
+	resource.NeedsCreate = false
+
+	if existing, found := resolveExistingRegisteredResource(filtered, namespaceState.registeredResources); found {
+		resource.AlreadyMigrated = existing
+		return nil
+	}
+	resource.NeedsCreate = true
+
+	for _, value := range filtered.GetValues() {
+		for _, aav := range value.GetActionAttributeValues() {
+			if err := ensureRegisteredResourceActionResolution(resolved, chosen, aav.GetAction(), namespaceState.actionResolver); err != nil {
+				return fmt.Errorf("registered resource %q: %w", resource.Source.GetId(), err)
+			}
+		}
+	}
+
+	return nil
+}
+
+type interactiveReviewNamespaceState struct {
+	actionResolver      *resolver
+	registeredResources []*policy.RegisteredResource
+}
+
+func reviewNamespaceState(
+	ctx context.Context,
+	retriever *Retriever,
+	chosen *policy.Namespace,
+	namespaceCache map[string]*interactiveReviewNamespaceState,
+) (*interactiveReviewNamespaceState, error) {
+	if chosen == nil {
+		return nil, fmt.Errorf("%w: empty namespace reference", ErrUndeterminedTargetMapping)
+	}
+	if retriever == nil {
+		return nil, ErrNilInteractiveReviewHandler
+	}
+
+	key := chosen.GetId()
+	if state, ok := namespaceCache[key]; ok {
+		return state, nil
+	}
+
+	customActions, standardActions, err := retriever.listActionsForNamespaces(ctx, []*policy.Namespace{chosen})
+	if err != nil {
+		return nil, err
+	}
+
+	registeredResources, err := retriever.listRegisteredResourcesForNamespaces(ctx, []*policy.Namespace{chosen})
+	if err != nil {
+		return nil, err
+	}
+
+	state := &interactiveReviewNamespaceState{
+		actionResolver: &resolver{
+			existing: &ExistingTargets{
+				CustomActions:   customActions,
+				StandardActions: standardActions,
+			},
+			actionResultsByKey: make(map[string]*ResolvedActionResult),
+			scsResultsByKey:    make(map[string]*ResolvedSubjectConditionSetResult),
+		},
+		registeredResources: registeredResources[chosen.GetId()],
+	}
+	namespaceCache[key] = state
+	return state, nil
+}
+
+func (r *HuhInteractiveReviewer) resolvePrompter() InteractivePrompter {
+	if r != nil && r.prompter != nil {
+		return r.prompter
+	}
+
+	return &HuhPrompter{}
+}
+
+func (r *HuhInteractiveReviewer) retriever() (*Retriever, error) {
+	if r == nil || r.handler == nil {
+		return nil, ErrNilInteractiveReviewHandler
+	}
+
+	pageSize := r.pageSize
+	if pageSize <= 0 {
+		pageSize = defaultPlannerPageSize
+	}
+
+	return newRetriever(r.handler, pageSize), nil
+}
+
+func isConflictingRegisteredResource(resource *ResolvedRegisteredResource) bool {
+	if resource == nil || resource.Unresolved == nil {
+		return false
+	}
+
+	return resource.Unresolved.Reason == UnresolvedReasonRegisteredResourceConflictingNamespaces
+}
+
+func registeredResourceCandidateNamespaces(resource *policy.RegisteredResource, namespaces []*policy.Namespace) ([]*policy.Namespace, error) {
+	if resource == nil {
+		return nil, fmt.Errorf("%w: registered resource is empty", ErrUndeterminedTargetMapping)
+	}
+
+	deriver := newTargetDeriver(namespaces)
+	ordered := newNamespaceAccumulator()
+
+	for _, value := range resource.GetValues() {
+		for _, aav := range value.GetActionAttributeValues() {
+			namespace, err := deriver.resolveNamespace(namespaceFromAttributeValue(aav.GetAttributeValue()))
+			if err != nil {
+				return nil, err
+			}
+			ordered.add(namespace)
+		}
+	}
+
+	candidates := ordered.slice()
+	if len(candidates) < minimumRegisteredResourceReviewNamespaces {
+		return nil, fmt.Errorf("%w: registered resource review requires multiple candidate namespaces", ErrUndeterminedTargetMapping)
+	}
+
+	return candidates, nil
+}
+
+func registeredResourceConflictPrompt(resource *policy.RegisteredResource, namespaces []*policy.Namespace) SelectPrompt {
+	description := []string{
+		fmt.Sprintf("Registered resource: %s (%s)", strings.TrimSpace(resource.GetName()), resource.GetId()),
+		"Choose one target namespace for this registered resource.",
+		"Bindings for other namespaces will be removed from the reviewed RR.",
+	}
+	description = append(description, registeredResourceConflictLines(resource)...)
+
+	options := make([]PromptOption, 0, len(namespaces)+1)
+	for _, namespace := range namespaces {
+		options = append(options, PromptOption{
+			Label:       namespaceLabel(namespace),
+			Value:       namespaceSelectionValue(namespace),
+			Description: "migrate to this namespace",
+		})
+	}
+	options = append(options, PromptOption{
+		Label:       "Abort run",
+		Value:       interactiveReviewAbortOption,
+		Description: "stop planning without changing this RR",
+	})
+
+	return SelectPrompt{
+		Title:       fmt.Sprintf("Registered resource (name: %s, id: %s) spans multiple target namespaces.", resource.GetName(), resource.GetId()),
+		Description: description,
+		Options:     options,
+	}
+}
+
+func registeredResourceConflictLines(resource *policy.RegisteredResource) []string {
+	lines := make([]string, 0)
+	for _, value := range resource.GetValues() {
+		if value == nil {
+			continue
+		}
+		if len(value.GetActionAttributeValues()) == 0 {
+			lines = append(lines, fmt.Sprintf("Value %q has no action bindings.", value.GetValue()))
+			continue
+		}
+		for _, aav := range value.GetActionAttributeValues() {
+			if aav == nil {
+				continue
+			}
+			lines = append(lines, fmt.Sprintf(
+				"Value %q: action %q -> %s",
+				value.GetValue(),
+				actionLabel(aav.GetAction()),
+				namespaceLabel(namespaceFromAttributeValue(aav.GetAttributeValue())),
+			))
+		}
+	}
+
+	return lines
+}
+
+func actionLabel(action *policy.Action) string {
+	if action == nil {
+		return unknownLabel
+	}
+	if name := strings.TrimSpace(action.GetName()); name != "" {
+		return name
+	}
+	if id := strings.TrimSpace(action.GetId()); id != "" {
+		return id
+	}
+	return unknownLabel
+}
+
+func namespaceSelectionValue(namespace *policy.Namespace) string {
+	return namespaceRefKey(namespace)
+}
+
+func selectedNamespace(candidates []*policy.Namespace, value string) *policy.Namespace {
+	for _, namespace := range candidates {
+		if namespaceSelectionValue(namespace) == value {
+			return namespace
+		}
+	}
+
+	return nil
+}
+
+func filterRegisteredResourceToNamespace(resource *policy.RegisteredResource, namespace *policy.Namespace) (*policy.RegisteredResource, error) {
+	if resource == nil {
+		return nil, fmt.Errorf("%w: registered resource is empty", ErrUndeterminedTargetMapping)
+	}
+	if namespace == nil {
+		return nil, fmt.Errorf("%w: empty namespace reference", ErrUndeterminedTargetMapping)
+	}
+
+	cloned, ok := proto.Clone(resource).(*policy.RegisteredResource)
+	if !ok {
+		return nil, errors.New("could not clone registered resource")
+	}
+
+	clonedValues := cloned.GetValues()
+	cloned.Values = make([]*policy.RegisteredResourceValue, 0, len(clonedValues))
+	for _, value := range clonedValues {
+		if value == nil {
+			continue
+		}
+
+		if len(value.GetActionAttributeValues()) == 0 {
+			cloned.Values = append(cloned.Values, value)
+			continue
+		}
+
+		filteredAAVs := make([]*policy.RegisteredResourceValue_ActionAttributeValue, 0, len(value.GetActionAttributeValues()))
+		for _, aav := range value.GetActionAttributeValues() {
+			if aav == nil || !sameNamespace(namespaceFromAttributeValue(aav.GetAttributeValue()), namespace) {
+				continue
+			}
+			filteredAAVs = append(filteredAAVs, aav)
+		}
+
+		if len(filteredAAVs) == 0 {
+			continue
+		}
+
+		value.ActionAttributeValues = filteredAAVs
+		cloned.Values = append(cloned.Values, value)
+	}
+
+	return cloned, nil
+}
+
+// ensureRegisteredResourceActionResolution is the interactive-path counterpart
+// to resolveRegisteredResourceDependencies: after the reviewer has picked a
+// target namespace for a conflicted registered resource and filtered its AAVs
+// to that namespace, this function guarantees every referenced action has a
+// corresponding ResolvedAction entry that the executor can bind to at create
+// time.
+//
+// For each action binding on the filtered resource, it:
+//  1. Validates the action reference (non-nil, non-empty id). Missing or empty
+//     ids are a hard error — without an id the executor cannot bind the AAV,
+//     so the plan must fail here rather than at create time.
+//  2. Finds or creates the matching ResolvedAction in resolved.Actions, keyed
+//     by source id. When creating, the input action is defensively cloned so
+//     later mutations to the plan do not alter the retriever's cached state.
+//  3. Skips if the action is already resolved for this namespace (duplicate
+//     AAV bindings on the same resource resolve once). Otherwise runs the
+//     standard resolveActionTargetFromExisting path — same semantics as the
+//     initial-pass resolver — and appends the result.
+//
+// Note: this function writes only to resolved.Actions; it does NOT populate
+// actionResolver.actionResultsByKey. That map is consumed only by the
+// initial-pass dependency helpers (resolveRegisteredResourceDependencies,
+// resolveObligationTriggerDependencies, resolveSubjectMappingDependencies)
+// which are skipped for interactively-resolved resources because their
+// Unresolved state causes resolveRegisteredResource to early-return. The
+// final plan is built from resolved.Actions, so the two paths converge there.
+func ensureRegisteredResourceActionResolution(resolved *ResolvedTargets, namespace *policy.Namespace, action *policy.Action, actionResolver *resolver) error {
+	if resolved == nil {
+		return ErrNilResolvedTargets
+	}
+	if namespace == nil {
+		return fmt.Errorf("%w: empty namespace reference", ErrUndeterminedTargetMapping)
+	}
+	if action == nil || strings.TrimSpace(action.GetId()) == "" {
+		return errors.New("registered resource binding action is missing")
+	}
+	if actionResolver == nil {
+		return errors.New("action resolver required for plan resolution")
+	}
+
+	item := resolvedActionByID(resolved.Actions, action.GetId())
+	if item == nil {
+		source, err := cloneAction(action)
+		if err != nil {
+			return err
+		}
+
+		item = &ResolvedAction{
+			Source:  source,
+			Results: make([]*ResolvedActionResult, 0, 1),
+		}
+		resolved.Actions = append(resolved.Actions, item)
+	} else if item.Source == nil {
+		source, err := cloneAction(action)
+		if err != nil {
+			return err
+		}
+
+		item.Source = source
+	}
+
+	if resolvedActionResultForNamespace(item, namespace) != nil {
+		return nil
+	}
+
+	result, err := actionResolver.resolveActionTargetFromExisting(item.Source, namespace)
+	if err != nil {
+		return fmt.Errorf("action %q in namespace %q: %w", item.Source.GetId(), namespace.GetId(), err)
+	}
+
+	item.Results = append(item.Results, result)
+	return nil
+}
+
+func resolvedActionByID(actions []*ResolvedAction, sourceID string) *ResolvedAction {
+	for _, action := range actions {
+		if action != nil && action.Source != nil && action.Source.GetId() == sourceID {
+			return action
+		}
+	}
+
+	return nil
+}
+
+func resolvedActionResultForNamespace(action *ResolvedAction, namespace *policy.Namespace) *ResolvedActionResult {
+	if action == nil || namespace == nil {
+		return nil
+	}
+
+	for _, result := range action.Results {
+		if result != nil && sameNamespace(result.Namespace, namespace) {
+			return result
+		}
+	}
+
+	return nil
+}
+
+func cloneAction(action *policy.Action) (*policy.Action, error) {
+	if action == nil {
+		return nil, errors.New("action is nil")
+	}
+
+	cloned, ok := proto.Clone(action).(*policy.Action)
+	if !ok {
+		return nil, fmt.Errorf("clone action %q: unexpected proto clone type", action.GetId())
+	}
+
+	return cloned, nil
+}

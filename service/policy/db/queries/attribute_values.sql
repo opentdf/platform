@@ -2,25 +2,6 @@
 -- ATTRIBUTE VALUES
 ----------------------------------------------------------------
 
--- name: listAttributeValues :many
-SELECT
-    COUNT(*) OVER() AS total,
-    av.id,
-    av.value,
-    av.active,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
-    av.attribute_definition_id,
-    fqns.fqn
-FROM attribute_values av
-LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-WHERE (
-    (sqlc.narg('active')::BOOLEAN IS NULL OR av.active = sqlc.narg('active')) AND
-    (sqlc.narg('attribute_definition_id')::uuid IS NULL OR av.attribute_definition_id = sqlc.narg('attribute_definition_id')::uuid) 
-)
-ORDER BY av.created_at DESC
-LIMIT @limit_ 
-OFFSET @offset_; 
-
 -- name: getAttributeValue :one
 WITH obligation_triggers_agg AS (
     SELECT
@@ -176,3 +157,9 @@ UPDATE attribute_value_public_key_map
 SET key_access_server_key_id = sqlc.arg('new_key_id')::uuid
 WHERE (key_access_server_key_id = sqlc.arg('old_key_id')::uuid)
 RETURNING value_id;
+
+-- name: getAttributeValueNamespaceIDs :many
+SELECT av.id AS attribute_value_id, ad.namespace_id
+FROM attribute_values av
+JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+WHERE av.id = ANY(sqlc.arg('ids')::uuid[]);

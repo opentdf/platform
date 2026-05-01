@@ -394,7 +394,7 @@ type PolicyBinding struct {
 
 func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) kaspb.UnsignedRewrapRequest_WithKeyAccessObject {
 	policyBytes := fauxPolicyBytes(t)
-	asym, err := ocrypto.NewAsymEncryption(rsaPublicAlt)
+	asym, err := ocrypto.FromPublicPEM(rsaPublicAlt)
 	require.NoError(t, err, "rewrap: NewAsymEncryption failed")
 	wrappedKey, err := asym.Encrypt([]byte(plainKey))
 	require.NoError(t, err, "rewrap: encryptWithPublicKey failed")

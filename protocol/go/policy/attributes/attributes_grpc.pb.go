@@ -48,6 +48,9 @@ type AttributesServiceClient interface {
 	// Attribute RPCs
 	// ---------------------------------------
 	ListAttributes(ctx context.Context, in *ListAttributesRequest, opts ...grpc.CallOption) (*ListAttributesResponse, error)
+	// Deprecated: Do not use.
+	// Deprecated
+	// Use GetAttribute
 	ListAttributeValues(ctx context.Context, in *ListAttributeValuesRequest, opts ...grpc.CallOption) (*ListAttributeValuesResponse, error)
 	GetAttribute(ctx context.Context, in *GetAttributeRequest, opts ...grpc.CallOption) (*GetAttributeResponse, error)
 	GetAttributeValuesByFqns(ctx context.Context, in *GetAttributeValuesByFqnsRequest, opts ...grpc.CallOption) (*GetAttributeValuesByFqnsResponse, error)
@@ -96,6 +99,7 @@ func (c *attributesServiceClient) ListAttributes(ctx context.Context, in *ListAt
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *attributesServiceClient) ListAttributeValues(ctx context.Context, in *ListAttributeValuesRequest, opts ...grpc.CallOption) (*ListAttributeValuesResponse, error) {
 	out := new(ListAttributeValuesResponse)
 	err := c.cc.Invoke(ctx, AttributesService_ListAttributeValues_FullMethodName, in, out, opts...)
@@ -270,6 +274,9 @@ type AttributesServiceServer interface {
 	// Attribute RPCs
 	// ---------------------------------------
 	ListAttributes(context.Context, *ListAttributesRequest) (*ListAttributesResponse, error)
+	// Deprecated: Do not use.
+	// Deprecated
+	// Use GetAttribute
 	ListAttributeValues(context.Context, *ListAttributeValuesRequest) (*ListAttributeValuesResponse, error)
 	GetAttribute(context.Context, *GetAttributeRequest) (*GetAttributeResponse, error)
 	GetAttributeValuesByFqns(context.Context, *GetAttributeValuesByFqnsRequest) (*GetAttributeValuesByFqnsResponse, error)

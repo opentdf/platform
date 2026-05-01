@@ -668,14 +668,26 @@ LEFT JOIN (
         INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY kask.key_access_server_id
     ) kask_keys ON kas.id = kask_keys.key_access_server_id
-ORDER BY kas.created_at DESC
-LIMIT $2 
-OFFSET $1
+ORDER BY
+    CASE WHEN $1::text = 'name' AND $2::text = 'ASC' THEN kas.name END ASC,
+    CASE WHEN $1::text = 'name' AND $2::text = 'DESC' THEN kas.name END DESC,
+    CASE WHEN $1::text = 'uri' AND $2::text = 'ASC' THEN kas.uri END ASC,
+    CASE WHEN $1::text = 'uri' AND $2::text = 'DESC' THEN kas.uri END DESC,
+    CASE WHEN $1::text = 'created_at' AND $2::text = 'ASC' THEN kas.created_at END ASC,
+    CASE WHEN $1::text = 'created_at' AND $2::text = 'DESC' THEN kas.created_at END DESC,
+    CASE WHEN $1::text = 'updated_at' AND $2::text = 'ASC' THEN kas.updated_at END ASC,
+    CASE WHEN $1::text = 'updated_at' AND $2::text = 'DESC' THEN kas.updated_at END DESC,
+    kas.created_at DESC,
+    kas.id ASC
+LIMIT $4
+OFFSET $3
 `
 
 type listKeyAccessServersParams struct {
-	Offset int32 `json:"offset_"`
-	Limit  int32 `json:"limit_"`
+	SortField     string `json:"sort_field"`
+	SortDirection string `json:"sort_direction"`
+	Offset        int32  `json:"offset_"`
+	Limit         int32  `json:"limit_"`
 }
 
 type listKeyAccessServersRow struct {
@@ -723,11 +735,26 @@ type listKeyAccessServersRow struct {
 //	        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
 //	        GROUP BY kask.key_access_server_id
 //	    ) kask_keys ON kas.id = kask_keys.key_access_server_id
-//	ORDER BY kas.created_at DESC
-//	LIMIT $2
-//	OFFSET $1
+//	ORDER BY
+//	    CASE WHEN $1::text = 'name' AND $2::text = 'ASC' THEN kas.name END ASC,
+//	    CASE WHEN $1::text = 'name' AND $2::text = 'DESC' THEN kas.name END DESC,
+//	    CASE WHEN $1::text = 'uri' AND $2::text = 'ASC' THEN kas.uri END ASC,
+//	    CASE WHEN $1::text = 'uri' AND $2::text = 'DESC' THEN kas.uri END DESC,
+//	    CASE WHEN $1::text = 'created_at' AND $2::text = 'ASC' THEN kas.created_at END ASC,
+//	    CASE WHEN $1::text = 'created_at' AND $2::text = 'DESC' THEN kas.created_at END DESC,
+//	    CASE WHEN $1::text = 'updated_at' AND $2::text = 'ASC' THEN kas.updated_at END ASC,
+//	    CASE WHEN $1::text = 'updated_at' AND $2::text = 'DESC' THEN kas.updated_at END DESC,
+//	    kas.created_at DESC,
+//	    kas.id ASC
+//	LIMIT $4
+//	OFFSET $3
 func (q *Queries) listKeyAccessServers(ctx context.Context, arg listKeyAccessServersParams) ([]listKeyAccessServersRow, error) {
-	rows, err := q.db.Query(ctx, listKeyAccessServers, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, listKeyAccessServers,
+		arg.SortField,
+		arg.SortDirection,
+		arg.Offset,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -1030,9 +1057,9 @@ WITH listed AS (
         kas.id AS kas_id,
         kas.uri AS kas_uri
     FROM key_access_servers AS kas
-    WHERE ($5::uuid IS NULL OR kas.id = $5::uuid)
-            AND ($6::text IS NULL OR kas.name = $6::text)
-            AND ($7::text IS NULL OR kas.uri = $7::text)
+    WHERE ($7::uuid IS NULL OR kas.id = $7::uuid)
+            AND ($8::text IS NULL OR kas.name = $8::text)
+            AND ($9::text IS NULL OR kas.uri = $9::text)
 )
 SELECT 
   COUNT(*) OVER () AS total,
@@ -1065,19 +1092,28 @@ LEFT JOIN
 WHERE
     ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
     AND ($2::boolean IS NULL OR kask.legacy = $2::boolean)
-ORDER BY kask.created_at DESC
-LIMIT $4 
-OFFSET $3
+ORDER BY
+    CASE WHEN $3::text = 'key_id' AND $4::text = 'ASC' THEN kask.key_id END ASC,
+    CASE WHEN $3::text = 'key_id' AND $4::text = 'DESC' THEN kask.key_id END DESC,
+    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN kask.created_at END ASC,
+    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN kask.created_at END DESC,
+    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN kask.updated_at END ASC,
+    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN kask.updated_at END DESC,
+    kask.created_at DESC
+LIMIT $6
+OFFSET $5
 `
 
 type listKeysParams struct {
-	KeyAlgorithm pgtype.Int4 `json:"key_algorithm"`
-	Legacy       pgtype.Bool `json:"legacy"`
-	Offset       int32       `json:"offset_"`
-	Limit        int32       `json:"limit_"`
-	KasID        pgtype.UUID `json:"kas_id"`
-	KasName      pgtype.Text `json:"kas_name"`
-	KasUri       pgtype.Text `json:"kas_uri"`
+	KeyAlgorithm  pgtype.Int4 `json:"key_algorithm"`
+	Legacy        pgtype.Bool `json:"legacy"`
+	SortField     string      `json:"sort_field"`
+	SortDirection string      `json:"sort_direction"`
+	Offset        int32       `json:"offset_"`
+	Limit         int32       `json:"limit_"`
+	KasID         pgtype.UUID `json:"kas_id"`
+	KasName       pgtype.Text `json:"kas_name"`
+	KasUri        pgtype.Text `json:"kas_uri"`
 }
 
 type listKeysRow struct {
@@ -1106,9 +1142,9 @@ type listKeysRow struct {
 //	        kas.id AS kas_id,
 //	        kas.uri AS kas_uri
 //	    FROM key_access_servers AS kas
-//	    WHERE ($5::uuid IS NULL OR kas.id = $5::uuid)
-//	            AND ($6::text IS NULL OR kas.name = $6::text)
-//	            AND ($7::text IS NULL OR kas.uri = $7::text)
+//	    WHERE ($7::uuid IS NULL OR kas.id = $7::uuid)
+//	            AND ($8::text IS NULL OR kas.name = $8::text)
+//	            AND ($9::text IS NULL OR kas.uri = $9::text)
 //	)
 //	SELECT
 //	  COUNT(*) OVER () AS total,
@@ -1141,13 +1177,22 @@ type listKeysRow struct {
 //	WHERE
 //	    ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
 //	    AND ($2::boolean IS NULL OR kask.legacy = $2::boolean)
-//	ORDER BY kask.created_at DESC
-//	LIMIT $4
-//	OFFSET $3
+//	ORDER BY
+//	    CASE WHEN $3::text = 'key_id' AND $4::text = 'ASC' THEN kask.key_id END ASC,
+//	    CASE WHEN $3::text = 'key_id' AND $4::text = 'DESC' THEN kask.key_id END DESC,
+//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN kask.created_at END ASC,
+//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN kask.created_at END DESC,
+//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN kask.updated_at END ASC,
+//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN kask.updated_at END DESC,
+//	    kask.created_at DESC
+//	LIMIT $6
+//	OFFSET $5
 func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysRow, error) {
 	rows, err := q.db.Query(ctx, listKeys,
 		arg.KeyAlgorithm,
 		arg.Legacy,
+		arg.SortField,
+		arg.SortDirection,
 		arg.Offset,
 		arg.Limit,
 		arg.KasID,

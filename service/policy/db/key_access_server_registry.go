@@ -42,9 +42,13 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 		return nil, db.ErrListLimitTooLarge
 	}
 
+	sortField, sortDirection := GetKeyAccessServersSortParams(r.GetSort())
+
 	list, err := c.queries.listKeyAccessServers(ctx, listKeyAccessServersParams{
-		Offset: offset,
-		Limit:  limit,
+		Offset:        offset,
+		Limit:         limit,
+		SortField:     sortField,
+		SortDirection: sortDirection,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -76,7 +80,7 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 
 		keyAccessServer.Id = kas.ID
 		keyAccessServer.Uri = kas.Uri
-		keyAccessServer.PublicKey = publicKey
+		keyAccessServer.PublicKey = publicKey //nolint:staticcheck // Legacy single-key field maintained for compatibility.
 		keyAccessServer.Name = kas.KasName.String
 		keyAccessServer.Metadata = metadata
 		keyAccessServer.KasKeys = keys
@@ -294,7 +298,7 @@ func (c PolicyDBClient) DeleteKeyAccessServer(ctx context.Context, id string) (*
 	}, nil
 }
 
-func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) {
+func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) { //nolint:staticcheck // Compatibility path for deprecated RPC.
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 	maxLimit := c.listCfg.limitMax
 	if maxLimit > 0 && limit > maxLimit {
@@ -350,7 +354,7 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 		total = int32(listRows[0].Total)
 		nextOffset = getNextOffset(offset, limit, total)
 	}
-	return &kasregistry.ListKeyAccessServerGrantsResponse{
+	return &kasregistry.ListKeyAccessServerGrantsResponse{ //nolint:staticcheck // Compatibility path for deprecated RPC.
 		Grants: grants,
 		Pagination: &policy.PageResponse{
 			CurrentOffset: params.Offset,
@@ -604,14 +608,18 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		legacy = pgtypeBool(r.GetLegacy())
 	}
 
+	sortField, sortDirection := GetKasKeysSortParams(r.GetSort())
+
 	params := listKeysParams{
-		Legacy:       legacy,
-		KeyAlgorithm: algo,
-		KasID:        kasID,
-		KasUri:       kasURI,
-		KasName:      kasName,
-		Offset:       offset,
-		Limit:        limit,
+		Legacy:        legacy,
+		KeyAlgorithm:  algo,
+		KasID:         kasID,
+		KasUri:        kasURI,
+		KasName:       kasName,
+		Offset:        offset,
+		Limit:         limit,
+		SortField:     sortField,
+		SortDirection: sortDirection,
 	}
 
 	listRows, err := c.queries.listKeys(ctx, params)

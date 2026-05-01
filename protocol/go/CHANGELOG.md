@@ -1,5 +1,135 @@
 # Changelog
 
+## [0.28.0](https://github.com/opentdf/platform/compare/protocol/go/v0.27.0...protocol/go/v0.28.0) (2026-04-28)
+
+
+### Features
+
+* **sdk:** add shorthand enum constants for policy types ([#3408](https://github.com/opentdf/platform/issues/3408)) ([c6f18cb](https://github.com/opentdf/platform/commit/c6f18cbcacc7fa285d834f504a6ce43b7363295d))
+
+## [0.27.0](https://github.com/opentdf/platform/compare/protocol/go/v0.26.0...protocol/go/v0.27.0) (2026-04-23)
+
+
+### Features
+
+* **policy:** add sort support to listkaskeys ([#3344](https://github.com/opentdf/platform/issues/3344)) ([de1fe92](https://github.com/opentdf/platform/commit/de1fe926e306a15ff50fa0042b4fee988b3be1e6))
+
+## [0.26.0](https://github.com/opentdf/platform/compare/protocol/go/v0.25.0...protocol/go/v0.26.0) (2026-04-22)
+
+
+### Features
+
+* **sdk:** add ergonomic Resource constructors for authorization ([#3337](https://github.com/opentdf/platform/issues/3337)) ([4a786ca](https://github.com/opentdf/platform/commit/4a786cab530a9518086f8114f819442efad09b78))
+
+
+### Bug Fixes
+
+* **sdk:** require at least one FQN in ForAttributeValues ([#3355](https://github.com/opentdf/platform/issues/3355)) ([2529e11](https://github.com/opentdf/platform/commit/2529e117c5a0c60839fc2d50db6f69358034c700))
+
+## [0.25.0](https://github.com/opentdf/platform/compare/protocol/go/v0.24.0...protocol/go/v0.25.0) (2026-04-20)
+
+
+### Features
+
+* **policy:** Add sort support listregisteredresources api ([#3312](https://github.com/opentdf/platform/issues/3312)) ([91a3ff3](https://github.com/opentdf/platform/commit/91a3ff3686512353669e35e4884fde807d73d9b0))
+
+## [0.24.0](https://github.com/opentdf/platform/compare/protocol/go/v0.23.0...protocol/go/v0.24.0) (2026-04-17)
+
+
+### Features
+
+* **policy:** add GetObligationTrigger RPC ([#3318](https://github.com/opentdf/platform/issues/3318)) ([d68e39d](https://github.com/opentdf/platform/commit/d68e39d950d94dcbb98a2f16982ea57f28d9c550))
+* **policy:** add sort ListSubjectMappings API ([#3255](https://github.com/opentdf/platform/issues/3255)) ([9d5d757](https://github.com/opentdf/platform/commit/9d5d7570e22c6227409b01292f03c0d0624c1ce7))
+* **policy:** add sort support to ListKeyAccessServer ([#3287](https://github.com/opentdf/platform/issues/3287)) ([7fae2d7](https://github.com/opentdf/platform/commit/7fae2d701f3967b5ea743d4dc5ce0d41eb4d5413))
+* **policy:** add sort support to listobligations api ([#3300](https://github.com/opentdf/platform/issues/3300)) ([9221cac](https://github.com/opentdf/platform/commit/9221cac2f0a0c82847f0e7973b044f78a30450d8))
+* **policy:** add sort support to ListSubjectConditionSets API ([#3272](https://github.com/opentdf/platform/issues/3272)) ([9010f12](https://github.com/opentdf/platform/commit/9010f125eef244be2ac34906c59e68319d3b8f95))
+
+## [0.23.0](https://github.com/opentdf/platform/compare/protocol/go/v0.22.0...protocol/go/v0.23.0) (2026-04-07)
+
+
+### Features
+
+* **policy:** add sort support to ListAttributes API  ([#3223](https://github.com/opentdf/platform/issues/3223)) ([ec3312f](https://github.com/opentdf/platform/commit/ec3312f622dec7ed18ffa6033c86b248b47a420a))
+* **sdk:** source-file codegen for EntityIdentifier helpers  ([#3232](https://github.com/opentdf/platform/issues/3232)) ([ee8177c](https://github.com/opentdf/platform/commit/ee8177c98bda4e7483fa26be736fe4965c00bf46))
+
+## [0.22.0](https://github.com/opentdf/platform/compare/protocol/go/v0.21.0...protocol/go/v0.22.0) (2026-04-01)
+
+
+### Features
+
+* **policy:** Add sort support to ListNamespaces API ([#3192](https://github.com/opentdf/platform/issues/3192)) ([aac86cd](https://github.com/opentdf/platform/commit/aac86cdfbfc422149b62f85bbd752260b3a3dcd0))
+* **policy:** add SortField proto and update PageRequest for sort support   ([#3187](https://github.com/opentdf/platform/issues/3187)) ([6cf1862](https://github.com/opentdf/platform/commit/6cf1862438c7e62fa676aa74160cfa533a1f6315))
+
+## [0.21.0](https://github.com/opentdf/platform/compare/protocol/go/v0.20.0...protocol/go/v0.21.0) (2026-03-26)
+
+
+### Features
+
+* **policy:** optional namespace for RRs ([#3165](https://github.com/opentdf/platform/issues/3165)) ([8948018](https://github.com/opentdf/platform/commit/89480186006085d2f59ebaeca6be6582db0e67d9))
+
+
+### Bug Fixes
+
+* **deps:** bump google.golang.org/grpc from 1.67.1 to 1.79.3 in /protocol/go ([#3173](https://github.com/opentdf/platform/issues/3173)) ([447ece6](https://github.com/opentdf/platform/commit/447ece6d458ecf88c9ca1149d05cce2552a0f883))
+
+## [0.20.0](https://github.com/opentdf/platform/compare/protocol/go/v0.19.0...protocol/go/v0.20.0) (2026-03-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** Namespace subject mappings and subject condition sets. ([#3143](https://github.com/opentdf/platform/issues/3143))
+* **policy:** Optional namespace on actions protos, NamespacedPolicy feature flag ([#3155](https://github.com/opentdf/platform/issues/3155))
+
+### Features
+
+* **policy:** Namespace subject mappings and subject condition sets. ([#3143](https://github.com/opentdf/platform/issues/3143)) ([3006780](https://github.com/opentdf/platform/commit/3006780fea56f85b36223c134ae63a8afe109908))
+
+
+### Bug Fixes
+
+* **policy:** Optional namespace on actions protos, NamespacedPolicy feature flag ([#3155](https://github.com/opentdf/platform/issues/3155)) ([c20f039](https://github.com/opentdf/platform/commit/c20f039c6dc72bb7627075cf3cb330a6f03f2fec))
+
+## [0.19.0](https://github.com/opentdf/platform/compare/protocol/go/v0.18.0...protocol/go/v0.19.0) (2026-03-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** only require namespace on GetAction if no id provided ([#3144](https://github.com/opentdf/platform/issues/3144))
+
+### Bug Fixes
+
+* **policy:** only require namespace on GetAction if no id provided ([#3144](https://github.com/opentdf/platform/issues/3144)) ([10d0c0f](https://github.com/opentdf/platform/commit/10d0c0f88cd7eff3620011bd75b6c2389aa4dfb8))
+
+## [0.18.0](https://github.com/opentdf/platform/compare/protocol/go/v0.17.0...protocol/go/v0.18.0) (2026-03-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** add namespace field to Actions proto ([#3130](https://github.com/opentdf/platform/issues/3130))
+* **policy:** namespace Registered Resources ([#3111](https://github.com/opentdf/platform/issues/3111))
+
+### Features
+
+* **policy:** add namespace field to Actions proto ([#3130](https://github.com/opentdf/platform/issues/3130)) ([bedc9b3](https://github.com/opentdf/platform/commit/bedc9b35366104460c5fa5965819578232a3cb01))
+* **policy:** namespace Registered Resources ([#3111](https://github.com/opentdf/platform/issues/3111)) ([6db1883](https://github.com/opentdf/platform/commit/6db188380d3c44f578b6170f123cb9cb1597f4d8))
+
+
+### Bug Fixes
+
+* **ci:** Upgrade toolchain version to 1.25.8 ([#3116](https://github.com/opentdf/platform/issues/3116)) ([e1b7882](https://github.com/opentdf/platform/commit/e1b78822c0380a106e6eec05af78dc1fc9e5701f))
+* **policy:** deprecate ListAttributeValues in favor of existing GetAttribute ([#3108](https://github.com/opentdf/platform/issues/3108)) ([7e17c2d](https://github.com/opentdf/platform/commit/7e17c2d5ade62fb3b13265d17d663f928ced2df5))
+
+## [0.17.0](https://github.com/opentdf/platform/compare/protocol/go/v0.16.0...protocol/go/v0.17.0) (2026-03-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** add namespace field to RegisteredResource proto ([#3110](https://github.com/opentdf/platform/issues/3110))
+
+### Features
+
+* **policy:** add namespace field to RegisteredResource proto ([#3110](https://github.com/opentdf/platform/issues/3110)) ([04fd85d](https://github.com/opentdf/platform/commit/04fd85d4b69b320f4dad9d21905864fba6708956))
+
 ## [0.16.0](https://github.com/opentdf/platform/compare/protocol/go/v0.15.0...protocol/go/v0.16.0) (2026-02-17)
 
 

@@ -45,7 +45,7 @@ func validateGetDecision(entityRepresentation *entityresolutionV2.EntityRepresen
 //   - registeredResourceValueFQN: must be a valid registered resource value FQN
 //   - action: must not be nil
 //   - resources: must not be nil and must contain at least one resource
-func validateGetDecisionRegisteredResource(registeredResourceValueFQN string, action *policy.Action, resources []*authzV2.Resource) error {
+func validateGetDecisionRegisteredResource(registeredResourceValueFQN string, action *policy.Action, resources []*authzV2.Resource, namespacedPolicy bool) error {
 	if _, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN); err != nil {
 		return err
 	}
@@ -58,6 +58,15 @@ func validateGetDecisionRegisteredResource(registeredResourceValueFQN string, ac
 	for _, resource := range resources {
 		if resource == nil {
 			return fmt.Errorf("resource is nil: %w", ErrInvalidResource)
+		}
+	}
+	if namespacedPolicy {
+		parsed, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN)
+		if err != nil {
+			return fmt.Errorf("invalid registered resource value FQN [%s]: %w", registeredResourceValueFQN, ErrInvalidResource)
+		}
+		if parsed.Namespace == "" {
+			return fmt.Errorf("registered resource value FQN must be namespaced in strict mode [%s]: %w", registeredResourceValueFQN, ErrInvalidResource)
 		}
 	}
 	return nil
@@ -93,17 +102,16 @@ func validateSubjectMapping(subjectMapping *policy.SubjectMapping) error {
 //
 //   - must not be nil
 //   - must have a non-empty FQN
-//   - must have non-empty values
-//   - must have non-empty values FQNs
+//   - if values are present, they must have non-empty values FQNs
+//
+// Attribute definitions may legitimately exist before any values have been created
+// for them, so an empty values list is allowed here.
 func validateAttribute(attribute *policy.Attribute) error {
 	if attribute == nil {
 		return fmt.Errorf("attribute is nil: %w", ErrInvalidAttributeDefinition)
 	}
 	if attribute.GetFqn() == "" {
 		return fmt.Errorf("attribute FQN is empty: %w", ErrInvalidAttributeDefinition)
-	}
-	if len(attribute.GetValues()) == 0 {
-		return fmt.Errorf("attribute values are empty: %w", ErrInvalidAttributeDefinition)
 	}
 	for _, value := range attribute.GetValues() {
 		if value == nil {
@@ -176,6 +184,7 @@ func validateGetResourceDecision(
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resource *authzV2.Resource,
+	namespacedPolicy bool,
 ) error {
 	if entitlements == nil {
 		return fmt.Errorf("entitled FQNs to actions are nil: %w", ErrInvalidEntitledFQNsToActions)
@@ -185,6 +194,19 @@ func validateGetResourceDecision(
 	}
 	if resource.GetResource() == nil {
 		return fmt.Errorf("resource is nil: %w", ErrInvalidResource)
+	}
+	if namespacedPolicy { //nolint:nestif // validation reads clearer inline
+		if _, ok := resource.GetResource().(*authzV2.Resource_RegisteredResourceValueFqn); ok {
+			registeredResourceValueFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
+			// If namespaced policies are enabled, enforce that the registered resource value FQN is namespaced.
+			parsed, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN)
+			if err != nil {
+				return fmt.Errorf("invalid registered resource value FQN [%s]: %w", registeredResourceValueFQN, ErrInvalidResource)
+			}
+			if parsed.Namespace == "" {
+				return fmt.Errorf("registered resource value FQN must be namespaced in strict mode [%s]: %w", registeredResourceValueFQN, ErrInvalidResource)
+			}
+		}
 	}
 	return nil
 }

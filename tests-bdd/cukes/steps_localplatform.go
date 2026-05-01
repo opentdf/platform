@@ -140,7 +140,7 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 	if !exists {
 		version = platformImageEnvironmentLocalImage
 	}
-	platformConfigPath, err := createPlatformConfiguration(localPlatformOptions, scenarioContext.ScenarioOptions, version == debugVersion)
+	platformConfigPath, err := createPlatformConfiguration(localPlatformOptions, scenarioContext.ScenarioOptions, version == debugVersion, options.platformProvisionPath)
 	if err != nil {
 		return ctx, err
 	}
@@ -196,6 +196,8 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 			return ctx, err
 		}
 
+		attachPlatformServiceLogs(ctx, scenarioContext, platformDockerCompose)
+
 		// Wait for platform to be ready
 		logger.Debug("waiting for platform to start")
 		if err := waitForPlatform(platformEndpoint); err != nil {
@@ -225,6 +227,25 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 		slog.String("endpoint", te))
 
 	return ctx, nil
+}
+
+func attachPlatformServiceLogs(ctx context.Context, scenarioContext *PlatformScenarioContext, platformDockerCompose tc.ComposeStack) {
+	platformLogger := scenarioContext.TestSuiteContext.PlatformLogger
+	if platformLogger == nil {
+		return
+	}
+
+	scenarioContext.RegisterShutdownHook(func() error {
+		logCtx := context.WithoutCancel(ctx)
+		platformLogger.Info("capturing platform service logs", slog.String("service", "otdf"))
+		container, err := platformDockerCompose.ServiceContainer(logCtx, "otdf")
+		if err != nil {
+			platformLogger.Warn("failed to get platform service container for log capture", slog.String("error", err.Error()))
+			return nil
+		}
+		LogComposeService(logCtx, container, platformLogger, "otdf")
+		return nil
+	})
 }
 
 func (s *LocalPlatformStepDefinitions) aEmptyLocalPlatform(ctx context.Context) (context.Context, error) {
@@ -376,7 +397,7 @@ func createPlatformComposeConfiguration(options *LocalDevOptions) (string, error
 }
 
 // createPlatformConfiguration generates a platform configuration from a go text template for platform option settings
-func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *LocalDevScenarioOptions, devMode bool) (string, error) {
+func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *LocalDevScenarioOptions, devMode bool, platformTemplatePath *string) (string, error) {
 	tempFileName := path.Join(options.CukesDir, "opentdf.yaml")
 	platformKeysDir := options.KeysDir
 	pgHost := "localhost"
@@ -384,7 +405,15 @@ func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *Loca
 		platformKeysDir = containerKeyPath
 		pgHost = options.Hostname
 	}
-	t := template.Must(template.New("platform").Parse(platformTemplate))
+	templateSource := platformTemplate
+	if platformTemplatePath != nil && *platformTemplatePath != "" {
+		templateBytes, err := os.ReadFile(*platformTemplatePath)
+		if err != nil {
+			return tempFileName, err
+		}
+		templateSource = string(templateBytes)
+	}
+	t := template.Must(template.New("platform").Parse(templateSource))
 	var strBuffer bytes.Buffer
 	if err := t.Execute(&strBuffer, map[string]any{
 		"hostname":        options.Hostname,

@@ -2,11 +2,11 @@ module github.com/opentdf/platform/lib/ocrypto
 
 go 1.25.0
 
-toolchain go1.25.7
+toolchain go1.25.9
 
 require (
-	github.com/stretchr/testify v1.10.0
-	golang.org/x/crypto v0.45.0
+	github.com/stretchr/testify v1.11.1
+	golang.org/x/crypto v0.49.0
 )
 
 require (

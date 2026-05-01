@@ -19,8 +19,6 @@ import (
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -141,15 +139,11 @@ func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[aut
 	ctx, span := as.Start(ctx, "GetEntitlements")
 	defer span.End()
 
-	// Extract trace context from the incoming request
-	propagator := otel.GetTextMapPropagator()
-	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
-
 	entityIdentifier := req.Msg.GetEntityIdentifier()
 	withComprehensiveHierarchy := req.Msg.GetWithComprehensiveHierarchy()
 
 	// When authorization service can consume cached policy, switch to the other PDP (process based on policy passed in)
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements)
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToGetEntitlements, ErrFailedToInitPDP, err))
 	}
@@ -172,11 +166,7 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	ctx, span := as.Start(ctx, "GetDecision")
 	defer span.End()
 
-	// Extract trace context from the incoming request
-	propagator := otel.GetTextMapPropagator()
-	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
-
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements)
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToInitPDP, err))
 	}
@@ -222,11 +212,7 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 	ctx, span := as.Start(ctx, "GetDecisionMultiResource")
 	defer span.End()
 
-	// Extract trace context from the incoming request
-	propagator := otel.GetTextMapPropagator()
-	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
-
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements)
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToInitPDP, err))
 	}
@@ -275,11 +261,7 @@ func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[aut
 	ctx, span := as.Start(ctx, "GetDecisionBulk")
 	defer span.End()
 
-	// Extract trace context from the incoming request
-	propagator := otel.GetTextMapPropagator()
-	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
-
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements)
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToInitPDP, err))
 	}

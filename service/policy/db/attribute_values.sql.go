@@ -74,6 +74,7 @@ func (q *Queries) deleteAttributeValue(ctx context.Context, id string) (int64, e
 }
 
 const getAttributeValue = `-- name: getAttributeValue :one
+
 WITH obligation_triggers_agg AS (
     SELECT
         ot.obligation_value_id,
@@ -211,7 +212,9 @@ type getAttributeValueRow struct {
 	Obligations           []byte      `json:"obligations"`
 }
 
-// getAttributeValue
+// --------------------------------------------------------------
+// ATTRIBUTE VALUES
+// --------------------------------------------------------------
 //
 //	WITH obligation_triggers_agg AS (
 //	    SELECT
@@ -348,88 +351,34 @@ func (q *Queries) getAttributeValue(ctx context.Context, arg getAttributeValuePa
 	return i, err
 }
 
-const listAttributeValues = `-- name: listAttributeValues :many
-
-SELECT
-    COUNT(*) OVER() AS total,
-    av.id,
-    av.value,
-    av.active,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
-    av.attribute_definition_id,
-    fqns.fqn
+const getAttributeValueNamespaceIDs = `-- name: getAttributeValueNamespaceIDs :many
+SELECT av.id AS attribute_value_id, ad.namespace_id
 FROM attribute_values av
-LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-WHERE (
-    ($1::BOOLEAN IS NULL OR av.active = $1) AND
-    ($2::uuid IS NULL OR av.attribute_definition_id = $2::uuid) 
-)
-ORDER BY av.created_at DESC
-LIMIT $4 
-OFFSET $3
+JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+WHERE av.id = ANY($1::uuid[])
 `
 
-type listAttributeValuesParams struct {
-	Active                pgtype.Bool `json:"active"`
-	AttributeDefinitionID pgtype.UUID `json:"attribute_definition_id"`
-	Offset                int32       `json:"offset_"`
-	Limit                 int32       `json:"limit_"`
+type getAttributeValueNamespaceIDsRow struct {
+	AttributeValueID string `json:"attribute_value_id"`
+	NamespaceID      string `json:"namespace_id"`
 }
 
-type listAttributeValuesRow struct {
-	Total                 int64       `json:"total"`
-	ID                    string      `json:"id"`
-	Value                 string      `json:"value"`
-	Active                bool        `json:"active"`
-	Metadata              []byte      `json:"metadata"`
-	AttributeDefinitionID string      `json:"attribute_definition_id"`
-	Fqn                   pgtype.Text `json:"fqn"`
-}
-
-// --------------------------------------------------------------
-// ATTRIBUTE VALUES
-// --------------------------------------------------------------
+// getAttributeValueNamespaceIDs
 //
-//	SELECT
-//	    COUNT(*) OVER() AS total,
-//	    av.id,
-//	    av.value,
-//	    av.active,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
-//	    av.attribute_definition_id,
-//	    fqns.fqn
+//	SELECT av.id AS attribute_value_id, ad.namespace_id
 //	FROM attribute_values av
-//	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-//	WHERE (
-//	    ($1::BOOLEAN IS NULL OR av.active = $1) AND
-//	    ($2::uuid IS NULL OR av.attribute_definition_id = $2::uuid)
-//	)
-//	ORDER BY av.created_at DESC
-//	LIMIT $4
-//	OFFSET $3
-func (q *Queries) listAttributeValues(ctx context.Context, arg listAttributeValuesParams) ([]listAttributeValuesRow, error) {
-	rows, err := q.db.Query(ctx, listAttributeValues,
-		arg.Active,
-		arg.AttributeDefinitionID,
-		arg.Offset,
-		arg.Limit,
-	)
+//	JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+//	WHERE av.id = ANY($1::uuid[])
+func (q *Queries) getAttributeValueNamespaceIDs(ctx context.Context, ids []string) ([]getAttributeValueNamespaceIDsRow, error) {
+	rows, err := q.db.Query(ctx, getAttributeValueNamespaceIDs, ids)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []listAttributeValuesRow
+	var items []getAttributeValueNamespaceIDsRow
 	for rows.Next() {
-		var i listAttributeValuesRow
-		if err := rows.Scan(
-			&i.Total,
-			&i.ID,
-			&i.Value,
-			&i.Active,
-			&i.Metadata,
-			&i.AttributeDefinitionID,
-			&i.Fqn,
-		); err != nil {
+		var i getAttributeValueNamespaceIDsRow
+		if err := rows.Scan(&i.AttributeValueID, &i.NamespaceID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

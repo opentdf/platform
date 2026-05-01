@@ -19,7 +19,7 @@ SELECT
             'active', avt.active,
             'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
         ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
-    ) AS values,
+    ) FILTER (WHERE avt.id IS NOT NULL) AS values,
     fqns.fqn,
     COUNT(*) OVER() AS total
 FROM attribute_definitions ad
@@ -39,9 +39,17 @@ WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL OR ad.namespace_id = sqlc.narg('namespace_id')::uuid) AND 
     (sqlc.narg('namespace_name')::text IS NULL OR n.name = sqlc.narg('namespace_name')::text) 
 GROUP BY ad.id, n.name, fqns.fqn
-ORDER BY ad.created_at DESC
-LIMIT @limit_ 
-OFFSET @offset_; 
+ORDER BY
+    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'ASC' THEN ad.name END ASC,
+    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'DESC' THEN ad.name END DESC,
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN ad.created_at END ASC,
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN ad.created_at END DESC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN ad.updated_at END ASC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN ad.updated_at END DESC,
+    ad.created_at DESC,
+    ad.id ASC
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: listAttributesSummary :many
 SELECT
@@ -58,9 +66,17 @@ FROM attribute_definitions ad
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
 WHERE ad.namespace_id = $1
 GROUP BY ad.id, n.name
-ORDER BY ad.created_at DESC
-LIMIT @limit_ 
-OFFSET @offset_; 
+ORDER BY
+    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'ASC' THEN ad.name END ASC,
+    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'DESC' THEN ad.name END DESC,
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN ad.created_at END ASC,
+    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN ad.created_at END DESC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN ad.updated_at END ASC,
+    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN ad.updated_at END DESC,
+    ad.created_at DESC,
+    ad.id ASC
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: listAttributesByDefOrValueFqns :many
 -- get the attribute definition for the provided value or definition fqn
@@ -307,7 +323,7 @@ SELECT
             'active', avt.active,
             'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
         ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
-    ) AS values,
+    ) FILTER (WHERE avt.id IS NOT NULL) AS values,
     JSONB_AGG(
         DISTINCT JSONB_BUILD_OBJECT(
             'id', kas.id,

@@ -13,7 +13,8 @@ import (
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/v1/ast"
+	"github.com/open-policy-agent/opa/v1/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
 	"github.com/opentdf/platform/protocol/go/common"
@@ -32,8 +33,6 @@ import (
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -153,10 +152,6 @@ func (as AuthorizationService) IsReady(ctx context.Context) error {
 }
 
 func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *connect.Request[authorization.GetDecisionsByTokenRequest]) (*connect.Response[authorization.GetDecisionsByTokenResponse], error) {
-	// Extract trace context from the incoming request
-	propagator := otel.GetTextMapPropagator()
-	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
-
 	ctx, span := as.Start(ctx, "GetDecisionsByToken")
 	defer span.End()
 
@@ -502,6 +497,7 @@ func (as *AuthorizationService) loadRegoAndBuiltins(cfg *Config) error {
 	as.eval, err = rego.New(
 		rego.Query(cfg.Rego.Query),
 		rego.Module("entitlements.rego", string(entitlementRego)),
+		rego.SetRegoVersion(ast.RegoV0),
 		rego.StrictBuiltinErrors(true),
 	).PrepareForEval(context.Background())
 	if err != nil {

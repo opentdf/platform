@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"testing"
@@ -27,6 +28,7 @@ const (
 	obligationName     = "test-obligation"
 	obligationValue    = "test-obligation-value"
 	clientID           = "test-client-id"
+	secondClientID     = "test-client-id-2"
 )
 
 type ObligationTriggersSuite struct {
@@ -89,7 +91,8 @@ func (s *ObligationTriggersSuite) SetupSuite() {
 
 	// Create an action
 	s.action, err = s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
-		Name: actionName,
+		Name:        actionName,
+		NamespaceId: s.namespace.GetId(),
 	})
 	s.Require().NoError(err)
 
@@ -128,16 +131,26 @@ func (s *ObligationTriggersSuite) TearDownSuite() {
 
 func (s *ObligationTriggersSuite) TearDownTest() {
 	for _, triggerID := range s.triggerIDsToClean {
+		if triggerID == "" {
+			continue
+		}
 		_, err := s.db.PolicyClient.DeleteObligationTrigger(s.ctx, &obligations.RemoveObligationTriggerRequest{
 			Id: triggerID,
 		})
-		s.Require().NoError(err)
+		if err != nil && !errors.Is(err, db.ErrNotFound) {
+			s.Require().NoError(err)
+		}
 	}
 	for _, obligationValueID := range s.obligationValueIDsToClean {
+		if obligationValueID == "" {
+			continue
+		}
 		_, err := s.db.PolicyClient.DeleteObligationValue(s.ctx, &obligations.DeleteObligationValueRequest{
 			Id: obligationValueID,
 		})
-		s.Require().NoError(err)
+		if err != nil && !errors.Is(err, db.ErrNotFound) {
+			s.Require().NoError(err)
+		}
 	}
 	s.triggerIDsToClean = nil
 	s.obligationValueIDsToClean = nil
@@ -171,6 +184,54 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithIDs_Success()
 	s.Require().Equal("test", trigger.GetMetadata().GetLabels()["source"])
 }
 
+func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_SameTupleDifferentClients_Success() {
+	req := &obligations.AddObligationTriggerRequest{
+		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
+		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
+		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
+		Context: &policy.RequestContext{
+			Pep: &policy.PolicyEnforcementPoint{
+				ClientId: clientID,
+			},
+		},
+	}
+
+	firstTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, req)
+	s.Require().NoError(err)
+	s.triggerIDsToClean = append(s.triggerIDsToClean, firstTrigger.GetId())
+	s.validateTriggerWithDefaults(firstTrigger, true)
+
+	req.Context.Pep.ClientId = secondClientID
+	secondTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, req)
+	s.Require().NoError(err)
+	s.triggerIDsToClean = append(s.triggerIDsToClean, secondTrigger.GetId())
+	s.Require().NotEqual(firstTrigger.GetId(), secondTrigger.GetId())
+	s.Require().Len(secondTrigger.GetContext(), 1)
+	s.Require().Equal(secondClientID, secondTrigger.GetContext()[0].GetPep().GetClientId())
+}
+
+func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_SameTupleSameClient_Fails() {
+	req := &obligations.AddObligationTriggerRequest{
+		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
+		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
+		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
+		Context: &policy.RequestContext{
+			Pep: &policy.PolicyEnforcementPoint{
+				ClientId: clientID,
+			},
+		},
+	}
+
+	firstTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, req)
+	s.Require().NoError(err)
+	s.triggerIDsToClean = append(s.triggerIDsToClean, firstTrigger.GetId())
+
+	duplicateTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, req)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
+	s.Nil(duplicateTrigger)
+}
+
 func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_NoCtx_Success() {
 	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
 		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
@@ -200,6 +261,41 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithNameFQN_Succe
 	s.Require().NoError(err)
 	s.validateTriggerWithDefaults(trigger, true)
 	s.Require().Equal("test", trigger.GetMetadata().GetLabels()["source"])
+}
+
+func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithStandardActionName_PrefersNamespaceScopedAction() {
+	globalRead := s.f.GetStandardAction("read")
+
+	listed, err := s.db.PolicyClient.ListActions(s.ctx, &actions.ListActionsRequest{NamespaceId: s.namespace.GetId()})
+	s.Require().NoError(err)
+
+	namespaceReadID := ""
+	for _, act := range listed.GetActionsStandard() {
+		if act.GetName() == "read" && act.GetId() != globalRead.GetId() && act.GetNamespace().GetId() == s.namespace.GetId() {
+			namespaceReadID = act.GetId()
+			break
+		}
+	}
+	s.Require().NotEmpty(namespaceReadID, "expected a namespace-scoped standard read action")
+
+	uniqueValue := fmt.Sprintf("trigger-read-action-%d", time.Now().UnixNano())
+	ov, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationId: s.obligation.GetId(),
+		Value:        uniqueValue,
+	})
+	s.Require().NoError(err)
+	s.obligationValueIDsToClean = append(s.obligationValueIDsToClean, ov.GetId())
+
+	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
+		ObligationValue: &common.IdFqnIdentifier{Id: ov.GetId()},
+		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
+		Action:          &common.IdNameIdentifier{Name: "read"},
+	})
+	s.Require().NoError(err)
+	s.triggerIDsToClean = append(s.triggerIDsToClean, trigger.GetId())
+
+	s.Equal(namespaceReadID, trigger.GetAction().GetId())
+	s.Equal("read", trigger.GetAction().GetName())
 }
 
 func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ObligationValueNotFound_Fails() {
@@ -232,7 +328,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_AttributeValueNot
 		},
 	})
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNotNullViolation)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(trigger)
 }
 
@@ -249,7 +345,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ActionNotFound_Fa
 		},
 	})
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrInvalidOblTriParam)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(trigger)
 }
 
@@ -291,8 +387,62 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_AttributeValueDif
 		},
 	})
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrInvalidOblTriParam)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
 	s.Nil(trigger)
+}
+
+func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ActionIDDifferentNamespace_Fails() {
+	differentNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "different-action-ns",
+	})
+	s.Require().NoError(err)
+	defer func() {
+		_, deleteErr := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, differentNamespace, differentNamespace.GetFqn())
+		s.Require().NoError(deleteErr)
+	}()
+
+	differentAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "action-different-ns",
+		NamespaceId: differentNamespace.GetId(),
+	})
+	s.Require().NoError(err)
+
+	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
+		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
+		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
+		Action:          &common.IdNameIdentifier{Id: differentAction.GetId()},
+		Context: &policy.RequestContext{
+			Pep: &policy.PolicyEnforcementPoint{
+				ClientId: clientID,
+			},
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
+	s.Nil(trigger)
+}
+
+func (s *ObligationTriggersSuite) Test_GetObligationTrigger_Success() {
+	trigger := s.createGenericTrigger()
+	s.triggerIDsToClean = append(s.triggerIDsToClean, trigger.GetId())
+
+	retrievedTrigger, err := s.db.PolicyClient.GetObligationTrigger(s.ctx, &obligations.GetObligationTriggerRequest{
+		Id: trigger.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(retrievedTrigger)
+	s.Require().Equal(trigger.GetId(), retrievedTrigger.GetId())
+	s.validateTrigger(retrievedTrigger, trigger.GetObligationValue(), trigger.GetAttributeValue(), trigger.GetAction(), true)
+	s.Require().NotNil(retrievedTrigger.GetMetadata())
+}
+
+func (s *ObligationTriggersSuite) Test_GetObligationTrigger_NotFound_Fails() {
+	randomID := uuid.NewString()
+	_, err := s.db.PolicyClient.GetObligationTrigger(s.ctx, &obligations.GetObligationTriggerRequest{
+		Id: randomID,
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *ObligationTriggersSuite) Test_DeleteObligationTrigger_Success() {
@@ -342,7 +492,7 @@ func (s *ObligationTriggersSuite) Test_ListObligationTriggers_OrdersByCreatedAt_
 	s.Require().NoError(err)
 	s.NotNil(triggers)
 
-	assertIDsInDescendingOrder(s.T(), triggers, func(t *policy.ObligationTrigger) string { return t.GetId() }, third.GetId(), second.GetId(), first.GetId())
+	assertIDsInOrder(s.T(), triggers, func(t *policy.ObligationTrigger) string { return t.GetId() }, third.GetId(), second.GetId(), first.GetId())
 }
 
 func (s *ObligationTriggersSuite) Test_ListObligationTriggers_NoTriggersWithNamespaceId_Success() {
@@ -640,15 +790,23 @@ func (s *ObligationTriggersSuite) appendObligationValuesToClean(createdTriggers 
 }
 
 func (s *ObligationTriggersSuite) createDifferentNamespaceWithTrigger(namespaceName string) *DifferentNamespaceEntities {
+	uniqueNamespaceName := fmt.Sprintf("%s-%d", namespaceName, time.Now().UnixNano())
+
 	// Create a different namespace
 	differentNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
-		Name: namespaceName,
+		Name: uniqueNamespaceName,
+	})
+	s.Require().NoError(err)
+
+	differentAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "different-action-" + uniqueNamespaceName,
+		NamespaceId: differentNamespace.GetId(),
 	})
 	s.Require().NoError(err)
 
 	// Create obligation in different namespace
 	differentObligation, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
-		Name:        "different-obligation-" + namespaceName,
+		Name:        "different-obligation-" + uniqueNamespaceName,
 		NamespaceId: differentNamespace.GetId(),
 	})
 	s.Require().NoError(err)
@@ -656,13 +814,13 @@ func (s *ObligationTriggersSuite) createDifferentNamespaceWithTrigger(namespaceN
 	// Create obligation value in different namespace
 	differentObligationValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
 		ObligationId: differentObligation.GetId(),
-		Value:        "different-obligation-value-" + namespaceName,
+		Value:        "different-obligation-value-" + uniqueNamespaceName,
 	})
 	s.Require().NoError(err)
 
 	// Create attribute in different namespace
 	differentAttribute, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		Name:        "different-attribute-" + namespaceName,
+		Name:        "different-attribute-" + uniqueNamespaceName,
 		NamespaceId: differentNamespace.GetId(),
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	})
@@ -670,7 +828,7 @@ func (s *ObligationTriggersSuite) createDifferentNamespaceWithTrigger(namespaceN
 
 	// Create attribute value in different namespace
 	differentAttributeValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, differentAttribute.GetId(), &attributes.CreateAttributeValueRequest{
-		Value:       "different-value-" + namespaceName,
+		Value:       "different-value-" + uniqueNamespaceName,
 		AttributeId: differentAttribute.GetId(),
 	})
 	s.Require().NoError(err)
@@ -679,7 +837,7 @@ func (s *ObligationTriggersSuite) createDifferentNamespaceWithTrigger(namespaceN
 	differentTrigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
 		ObligationValue: &common.IdFqnIdentifier{Id: differentObligationValue.GetId()},
 		AttributeValue:  &common.IdFqnIdentifier{Id: differentAttributeValue.GetId()},
-		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
+		Action:          &common.IdNameIdentifier{Id: differentAction.GetId()},
 		Context: &policy.RequestContext{
 			Pep: &policy.PolicyEnforcementPoint{
 				ClientId: clientID,

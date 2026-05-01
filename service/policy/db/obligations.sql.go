@@ -1577,7 +1577,12 @@ func (q *Queries) listObligationTriggers(ctx context.Context, arg listObligation
 }
 
 const listObligations = `-- name: listObligations :many
-WITH counted AS (
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
+),
+counted AS (
     SELECT COUNT(od.id) AS total
     FROM obligation_definitions od
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
@@ -1640,33 +1645,34 @@ FROM obligation_definitions od
 JOIN attribute_namespaces n on od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 CROSS JOIN counted
+CROSS JOIN params p
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 WHERE
     ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
     ($2::text IS NULL OR fqns.fqn = $2::text)
-GROUP BY od.id, n.id, fqns.fqn, counted.total
+GROUP BY od.id, n.id, fqns.fqn, counted.total, p.resolved_field, p.resolved_direction
 ORDER BY
-    CASE WHEN $3::text = 'name' AND $4::text = 'ASC' THEN od.name END ASC,
-    CASE WHEN $3::text = 'name' AND $4::text = 'DESC' THEN od.name END DESC,
-    CASE WHEN $3::text = 'fqn' AND $4::text = 'ASC' THEN fqns.fqn || LOWER(od.name) END ASC,
-    CASE WHEN $3::text = 'fqn' AND $4::text = 'DESC' THEN fqns.fqn || LOWER(od.name) END DESC,
-    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN od.created_at END ASC,
-    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN od.created_at END DESC,
-    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN od.updated_at END ASC,
-    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN od.updated_at END DESC,
-    od.created_at DESC
-LIMIT $6
-OFFSET $5
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN od.name END ASC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN od.name END DESC,
+    CASE WHEN p.resolved_field = 'fqn' AND p.resolved_direction = 'ASC' THEN fqns.fqn || LOWER(od.name) END ASC,
+    CASE WHEN p.resolved_field = 'fqn' AND p.resolved_direction = 'DESC' THEN fqns.fqn || LOWER(od.name) END DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN od.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN od.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN od.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN od.updated_at END DESC,
+    od.id ASC
+LIMIT $4
+OFFSET $3
 `
 
 type listObligationsParams struct {
 	NamespaceID   pgtype.UUID `json:"namespace_id"`
 	NamespaceFqn  pgtype.Text `json:"namespace_fqn"`
-	SortField     string      `json:"sort_field"`
-	SortDirection string      `json:"sort_direction"`
 	Offset        int32       `json:"offset_"`
 	Limit         int32       `json:"limit_"`
+	SortField     string      `json:"sort_field"`
+	SortDirection string      `json:"sort_direction"`
 }
 
 type listObligationsRow struct {
@@ -1680,7 +1686,12 @@ type listObligationsRow struct {
 
 // listObligations
 //
-//	WITH counted AS (
+//	WITH params AS (
+//	    SELECT
+//	        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
+//	        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
+//	),
+//	counted AS (
 //	    SELECT COUNT(od.id) AS total
 //	    FROM obligation_definitions od
 //	    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
@@ -1743,32 +1754,33 @@ type listObligationsRow struct {
 //	JOIN attribute_namespaces n on od.namespace_id = n.id
 //	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	CROSS JOIN counted
+//	CROSS JOIN params p
 //	LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 //	LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 //	WHERE
 //	    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
 //	    ($2::text IS NULL OR fqns.fqn = $2::text)
-//	GROUP BY od.id, n.id, fqns.fqn, counted.total
+//	GROUP BY od.id, n.id, fqns.fqn, counted.total, p.resolved_field, p.resolved_direction
 //	ORDER BY
-//	    CASE WHEN $3::text = 'name' AND $4::text = 'ASC' THEN od.name END ASC,
-//	    CASE WHEN $3::text = 'name' AND $4::text = 'DESC' THEN od.name END DESC,
-//	    CASE WHEN $3::text = 'fqn' AND $4::text = 'ASC' THEN fqns.fqn || LOWER(od.name) END ASC,
-//	    CASE WHEN $3::text = 'fqn' AND $4::text = 'DESC' THEN fqns.fqn || LOWER(od.name) END DESC,
-//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'ASC' THEN od.created_at END ASC,
-//	    CASE WHEN $3::text = 'created_at' AND $4::text = 'DESC' THEN od.created_at END DESC,
-//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'ASC' THEN od.updated_at END ASC,
-//	    CASE WHEN $3::text = 'updated_at' AND $4::text = 'DESC' THEN od.updated_at END DESC,
-//	    od.created_at DESC
-//	LIMIT $6
-//	OFFSET $5
+//	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN od.name END ASC,
+//	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN od.name END DESC,
+//	    CASE WHEN p.resolved_field = 'fqn' AND p.resolved_direction = 'ASC' THEN fqns.fqn || LOWER(od.name) END ASC,
+//	    CASE WHEN p.resolved_field = 'fqn' AND p.resolved_direction = 'DESC' THEN fqns.fqn || LOWER(od.name) END DESC,
+//	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN od.created_at END ASC,
+//	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN od.created_at END DESC,
+//	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN od.updated_at END ASC,
+//	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN od.updated_at END DESC,
+//	    od.id ASC
+//	LIMIT $4
+//	OFFSET $3
 func (q *Queries) listObligations(ctx context.Context, arg listObligationsParams) ([]listObligationsRow, error) {
 	rows, err := q.db.Query(ctx, listObligations,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
-		arg.SortField,
-		arg.SortDirection,
 		arg.Offset,
 		arg.Limit,
+		arg.SortField,
+		arg.SortDirection,
 	)
 	if err != nil {
 		return nil, err

@@ -53,14 +53,11 @@ message AttributeValueSelector {
 }
 
 // Sorting direction shared across list APIs.
-// Notes:
-// - When a sort field is provided, UNSPECIFIED is treated as ASC.
-// - When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
-//   the endpoint's request message defines the default ordering; see the
-//   specific List* request docs.
+// When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+// the endpoint's request message defines the default ordering; see the
+// specific List* request docs.
 enum SortDirection {
-  // Treated as ASC when a sort field is provided.
-  SORT_DIRECTION_UNSPECIFIED = 0; // defaults to ASC
+  SORT_DIRECTION_UNSPECIFIED = 0;
   SORT_DIRECTION_ASC = 1;
   SORT_DIRECTION_DESC = 2;
 }

@@ -87,8 +87,8 @@ enum SortNamespacesType {
 }
 
 message NamespacesSort {
-  SortNamespacesType field = 1;
-  policy.SortDirection direction = 2;
+  SortNamespacesType field = 1 [(buf.validate.field).enum.defined_only = true];
+  policy.SortDirection direction = 2 [(buf.validate.field).enum.defined_only = true];
 }
 
 message ListNamespacesRequest {
@@ -99,7 +99,11 @@ message ListNamespacesRequest {
   // Optional
   policy.PageRequest pagination = 10;
 
-  // Optional
+  // Optional - CONSTRAINT: max 1 item
+  // Sort defaults:
+  //   - direction UNSPECIFIED defaults to DESC for the specified field
+  //   - field UNSPECIFIED defaults to created_at with the specified direction
+  //   - both UNSPECIFIED or sort omitted defaults to created_at DESC
   repeated NamespacesSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 message ListNamespacesResponse {

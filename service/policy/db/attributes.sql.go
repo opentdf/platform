@@ -758,6 +758,11 @@ func (q *Queries) listAttributesByDefOrValueFqns(ctx context.Context, arg listAt
 
 const listAttributesDetail = `-- name: listAttributesDetail :many
 
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
+)
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -789,32 +794,32 @@ LEFT JOIN (
   GROUP BY av.id
 ) avt ON avt.attribute_definition_id = ad.id
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
+CROSS JOIN params p
 WHERE
     ($1::BOOLEAN IS NULL OR ad.active = $1) AND
-    ($2::uuid IS NULL OR ad.namespace_id = $2::uuid) AND 
-    ($3::text IS NULL OR n.name = $3::text) 
-GROUP BY ad.id, n.name, fqns.fqn
+    ($2::uuid IS NULL OR ad.namespace_id = $2::uuid) AND
+    ($3::text IS NULL OR n.name = $3::text)
+GROUP BY ad.id, n.name, fqns.fqn, p.resolved_field, p.resolved_direction
 ORDER BY
-    CASE WHEN $4::text = 'name' AND $5::text = 'ASC' THEN ad.name END ASC,
-    CASE WHEN $4::text = 'name' AND $5::text = 'DESC' THEN ad.name END DESC,
-    CASE WHEN $4::text = 'created_at' AND $5::text = 'ASC' THEN ad.created_at END ASC,
-    CASE WHEN $4::text = 'created_at' AND $5::text = 'DESC' THEN ad.created_at END DESC,
-    CASE WHEN $4::text = 'updated_at' AND $5::text = 'ASC' THEN ad.updated_at END ASC,
-    CASE WHEN $4::text = 'updated_at' AND $5::text = 'DESC' THEN ad.updated_at END DESC,
-    ad.created_at DESC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ad.name END ASC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN ad.name END DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN ad.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN ad.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN ad.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN ad.updated_at END DESC,
     ad.id ASC
-LIMIT $7
-OFFSET $6
+LIMIT $5
+OFFSET $4
 `
 
 type listAttributesDetailParams struct {
 	Active        pgtype.Bool `json:"active"`
 	NamespaceID   pgtype.UUID `json:"namespace_id"`
 	NamespaceName pgtype.Text `json:"namespace_name"`
-	SortField     string      `json:"sort_field"`
-	SortDirection string      `json:"sort_direction"`
 	Offset        int32       `json:"offset_"`
 	Limit         int32       `json:"limit_"`
+	SortField     string      `json:"sort_field"`
+	SortDirection string      `json:"sort_direction"`
 }
 
 type listAttributesDetailRow struct {
@@ -835,6 +840,11 @@ type listAttributesDetailRow struct {
 // ATTRIBUTES
 // --------------------------------------------------------------
 //
+//	WITH params AS (
+//	    SELECT
+//	        COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
+//	        COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
+//	)
 //	SELECT
 //	    ad.id,
 //	    ad.name as attribute_name,
@@ -866,31 +876,31 @@ type listAttributesDetailRow struct {
 //	  GROUP BY av.id
 //	) avt ON avt.attribute_definition_id = ad.id
 //	LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
+//	CROSS JOIN params p
 //	WHERE
 //	    ($1::BOOLEAN IS NULL OR ad.active = $1) AND
 //	    ($2::uuid IS NULL OR ad.namespace_id = $2::uuid) AND
 //	    ($3::text IS NULL OR n.name = $3::text)
-//	GROUP BY ad.id, n.name, fqns.fqn
+//	GROUP BY ad.id, n.name, fqns.fqn, p.resolved_field, p.resolved_direction
 //	ORDER BY
-//	    CASE WHEN $4::text = 'name' AND $5::text = 'ASC' THEN ad.name END ASC,
-//	    CASE WHEN $4::text = 'name' AND $5::text = 'DESC' THEN ad.name END DESC,
-//	    CASE WHEN $4::text = 'created_at' AND $5::text = 'ASC' THEN ad.created_at END ASC,
-//	    CASE WHEN $4::text = 'created_at' AND $5::text = 'DESC' THEN ad.created_at END DESC,
-//	    CASE WHEN $4::text = 'updated_at' AND $5::text = 'ASC' THEN ad.updated_at END ASC,
-//	    CASE WHEN $4::text = 'updated_at' AND $5::text = 'DESC' THEN ad.updated_at END DESC,
-//	    ad.created_at DESC,
+//	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ad.name END ASC,
+//	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN ad.name END DESC,
+//	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN ad.created_at END ASC,
+//	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN ad.created_at END DESC,
+//	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN ad.updated_at END ASC,
+//	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN ad.updated_at END DESC,
 //	    ad.id ASC
-//	LIMIT $7
-//	OFFSET $6
+//	LIMIT $5
+//	OFFSET $4
 func (q *Queries) listAttributesDetail(ctx context.Context, arg listAttributesDetailParams) ([]listAttributesDetailRow, error) {
 	rows, err := q.db.Query(ctx, listAttributesDetail,
 		arg.Active,
 		arg.NamespaceID,
 		arg.NamespaceName,
-		arg.SortField,
-		arg.SortDirection,
 		arg.Offset,
 		arg.Limit,
+		arg.SortField,
+		arg.SortDirection,
 	)
 	if err != nil {
 		return nil, err
@@ -923,6 +933,11 @@ func (q *Queries) listAttributesDetail(ctx context.Context, arg listAttributesDe
 }
 
 const listAttributesSummary = `-- name: listAttributesSummary :many
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF($4::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF($5::text, ''), 'DESC') AS resolved_direction
+)
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -935,27 +950,27 @@ SELECT
     COUNT(*) OVER() AS total
 FROM attribute_definitions ad
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
+CROSS JOIN params p
 WHERE ad.namespace_id = $1
-GROUP BY ad.id, n.name
+GROUP BY ad.id, n.name, p.resolved_field, p.resolved_direction
 ORDER BY
-    CASE WHEN $2::text = 'name' AND $3::text = 'ASC' THEN ad.name END ASC,
-    CASE WHEN $2::text = 'name' AND $3::text = 'DESC' THEN ad.name END DESC,
-    CASE WHEN $2::text = 'created_at' AND $3::text = 'ASC' THEN ad.created_at END ASC,
-    CASE WHEN $2::text = 'created_at' AND $3::text = 'DESC' THEN ad.created_at END DESC,
-    CASE WHEN $2::text = 'updated_at' AND $3::text = 'ASC' THEN ad.updated_at END ASC,
-    CASE WHEN $2::text = 'updated_at' AND $3::text = 'DESC' THEN ad.updated_at END DESC,
-    ad.created_at DESC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ad.name END ASC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN ad.name END DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN ad.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN ad.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN ad.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN ad.updated_at END DESC,
     ad.id ASC
-LIMIT $5
-OFFSET $4
+LIMIT $3
+OFFSET $2
 `
 
 type listAttributesSummaryParams struct {
 	NamespaceID   string `json:"namespace_id"`
-	SortField     string `json:"sort_field"`
-	SortDirection string `json:"sort_direction"`
 	Offset        int32  `json:"offset_"`
 	Limit         int32  `json:"limit_"`
+	SortField     string `json:"sort_field"`
+	SortDirection string `json:"sort_direction"`
 }
 
 type listAttributesSummaryRow struct {
@@ -972,6 +987,11 @@ type listAttributesSummaryRow struct {
 
 // listAttributesSummary
 //
+//	WITH params AS (
+//	    SELECT
+//	        COALESCE(NULLIF($4::text, ''), 'created_at') AS resolved_field,
+//	        COALESCE(NULLIF($5::text, ''), 'DESC') AS resolved_direction
+//	)
 //	SELECT
 //	    ad.id,
 //	    ad.name as attribute_name,
@@ -984,26 +1004,26 @@ type listAttributesSummaryRow struct {
 //	    COUNT(*) OVER() AS total
 //	FROM attribute_definitions ad
 //	LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
+//	CROSS JOIN params p
 //	WHERE ad.namespace_id = $1
-//	GROUP BY ad.id, n.name
+//	GROUP BY ad.id, n.name, p.resolved_field, p.resolved_direction
 //	ORDER BY
-//	    CASE WHEN $2::text = 'name' AND $3::text = 'ASC' THEN ad.name END ASC,
-//	    CASE WHEN $2::text = 'name' AND $3::text = 'DESC' THEN ad.name END DESC,
-//	    CASE WHEN $2::text = 'created_at' AND $3::text = 'ASC' THEN ad.created_at END ASC,
-//	    CASE WHEN $2::text = 'created_at' AND $3::text = 'DESC' THEN ad.created_at END DESC,
-//	    CASE WHEN $2::text = 'updated_at' AND $3::text = 'ASC' THEN ad.updated_at END ASC,
-//	    CASE WHEN $2::text = 'updated_at' AND $3::text = 'DESC' THEN ad.updated_at END DESC,
-//	    ad.created_at DESC,
+//	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ad.name END ASC,
+//	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN ad.name END DESC,
+//	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN ad.created_at END ASC,
+//	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN ad.created_at END DESC,
+//	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN ad.updated_at END ASC,
+//	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN ad.updated_at END DESC,
 //	    ad.id ASC
-//	LIMIT $5
-//	OFFSET $4
+//	LIMIT $3
+//	OFFSET $2
 func (q *Queries) listAttributesSummary(ctx context.Context, arg listAttributesSummaryParams) ([]listAttributesSummaryRow, error) {
 	rows, err := q.db.Query(ctx, listAttributesSummary,
 		arg.NamespaceID,
-		arg.SortField,
-		arg.SortDirection,
 		arg.Offset,
 		arg.Limit,
+		arg.SortField,
+		arg.SortDirection,
 	)
 	if err != nil {
 		return nil, err

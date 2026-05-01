@@ -2597,8 +2597,8 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByUpdatedAt_ASC() {
 	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[1], ids[2])
 }
 
-func (s *KasRegistryKeySuite) Test_ListKeys_SortByUnspecifiedField_FallsBackToDefault() {
-	ids, kasID := s.createSortTestKasKeys("unsrt-kk")
+func (s *KasRegistryKeySuite) Test_ListKeys_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	ids, kasID := s.createSortTestKasKeys("unsf-kk")
 	defer s.deleteSortTestKasKeys(ids, kasID)
 
 	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
@@ -2610,7 +2610,41 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByUnspecifiedField_FallsBackToDe
 	s.Require().NoError(err)
 	s.NotNil(list)
 
-	// Falls back to default created_at DESC ordering
+	// Field defaults to created_at, explicit ASC is preserved
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SortByUnspecifiedDirection_DefaultsToDESC() {
+	ids, kasID := s.createSortTestKasKeys("unsd-kk")
+	defer s.deleteSortTestKasKeys(ids, kasID)
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	ids, kasID := s.createSortTestKasKeys("unsb-kk")
+	defer s.deleteSortTestKasKeys(ids, kasID)
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// Both default: created_at DESC
 	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[2], ids[1], ids[0])
 }
 

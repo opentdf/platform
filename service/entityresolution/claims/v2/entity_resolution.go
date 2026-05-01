@@ -7,10 +7,10 @@ import (
 	"strconv"
 
 	"connectrpc.com/connect"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	ent "github.com/opentdf/platform/service/entity"
-	"github.com/opentdf/platform/service/entityresolution/internal/tokenvalidation"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -22,18 +22,13 @@ import (
 
 type EntityResolutionServiceV2 struct {
 	entityresolutionV2.UnimplementedEntityResolutionServiceServer
-	logger        *logger.Logger
-	tokenVerifier tokenvalidation.Verifier
+	logger *logger.Logger
 	trace.Tracer
 }
 
 func RegisterClaimsERS(_ config.ServiceConfig, logger *logger.Logger) (EntityResolutionServiceV2, serviceregistry.HandlerServer) {
 	claimsSVC := EntityResolutionServiceV2{logger: logger}
 	return claimsSVC, nil
-}
-
-func (s *EntityResolutionServiceV2) SetTokenVerifier(verifier tokenvalidation.Verifier) {
-	s.tokenVerifier = verifier
 }
 
 func (s EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
@@ -45,28 +40,20 @@ func (s EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Cont
 	ctx, span := s.Start(ctx, "CreateEntityChainsFromTokens")
 	defer span.End()
 
-	resp, err := CreateEntityChainsFromTokens(ctx, req.Msg, s.logger, s.tokenVerifier)
-	if err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(&resp), nil
+	resp, err := CreateEntityChainsFromTokens(ctx, req.Msg, s.logger)
+	return connect.NewResponse(&resp), err
 }
 
 func CreateEntityChainsFromTokens(
-	ctx context.Context,
+	_ context.Context,
 	req *entityresolutionV2.CreateEntityChainsFromTokensRequest,
 	_ *logger.Logger,
-	verifier tokenvalidation.Verifier,
 ) (entityresolutionV2.CreateEntityChainsFromTokensResponse, error) {
 	entityChains := []*entity.EntityChain{}
 	// for each token in the tokens form an entity chain
 	for _, tok := range req.GetTokens() {
-		entities, err := getEntitiesFromToken(ctx, tok.GetJwt(), verifier)
+		entities, err := getEntitiesFromToken(tok.GetJwt())
 		if err != nil {
-			code := tokenvalidation.ConnectCode(err)
-			if code != connect.CodeUnknown {
-				return entityresolutionV2.CreateEntityChainsFromTokensResponse{}, connect.NewError(code, err)
-			}
 			return entityresolutionV2.CreateEntityChainsFromTokensResponse{}, err
 		}
 		entityChains = append(entityChains, &entity.EntityChain{EphemeralId: tok.GetEphemeralId(), Entities: entities})
@@ -116,13 +103,33 @@ func EntityResolution(_ context.Context,
 	return entityresolutionV2.ResolveEntitiesResponse{EntityRepresentations: resolvedEntities}, nil
 }
 
-func getEntitiesFromToken(ctx context.Context, jwtString string, verifier tokenvalidation.Verifier) ([]*entity.Entity, error) {
-	token, err := tokenvalidation.Verify(ctx, verifier, jwtString)
+func getEntitiesFromToken(jwtString string) ([]*entity.Entity, error) {
+	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error parsing jwt: %w", err)
 	}
 
-	claims := tokenvalidation.ClaimsStructMap(token)
+	claims := token.PrivateClaims()
+	// PrivateClaims() excludes standard registered JWT claims (sub, iss, aud, etc.)
+	// because the jwx library stores them as typed fields. Add them back so selectors
+	// like .sub work in subject mapping conditions.
+	if sub := token.Subject(); sub != "" {
+		claims["sub"] = sub
+	}
+	if iss := token.Issuer(); iss != "" {
+		claims["iss"] = iss
+	}
+	if jti := token.JwtID(); jti != "" {
+		claims["jti"] = jti
+	}
+	if aud := token.Audience(); len(aud) > 0 {
+		// Convert []string to []interface{} for structpb compatibility
+		audSlice := make([]interface{}, len(aud))
+		for i, a := range aud {
+			audSlice[i] = a
+		}
+		claims["aud"] = audSlice
+	}
 	entities := []*entity.Entity{}
 
 	// Convert map[string]interface{} to *structpb.Struct

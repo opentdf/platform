@@ -7,8 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -20,15 +18,11 @@ import (
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	claimsv2 "github.com/opentdf/platform/service/entityresolution/claims/v2"
 	"github.com/opentdf/platform/service/entityresolution/integration/internal"
-	"github.com/opentdf/platform/service/entityresolution/internal/tokenvalidation"
-	authn "github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/logger"
 	"go.opentelemetry.io/otel/trace/noop"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
-
-const claimsTestAudience = "test-audience"
 
 // TestClaimsEntityResolutionV2 runs Claims-specific tests focused on JWT and claims processing
 // Note: Claims implementation doesn't perform typical entity resolution - it processes claims directly
@@ -242,9 +236,14 @@ func TestClaimsJWTProcessing(t *testing.T) {
 			},
 		}
 
-		_, err := adapter.testCreateEntityChainsFromTokens(ctx, implementation, tokens)
-		if err == nil {
-			t.Fatal("Expected error for expired JWT token, got none")
+		// Claims implementation parses without validation, so this should still work
+		resp, err := adapter.testCreateEntityChainsFromTokens(ctx, implementation, tokens)
+		if err != nil {
+			t.Fatalf("Unexpected error with expired token: %v", err)
+		}
+
+		if len(resp.GetEntityChains()) != 1 {
+			t.Errorf("Expected 1 entity chain, got %d", len(resp.GetEntityChains()))
 		}
 	})
 
@@ -305,7 +304,6 @@ type ClaimsTestAdapter struct {
 	privateKey *rsa.PrivateKey
 	publicKey  *rsa.PublicKey
 	keyID      string
-	oidcServer *httptest.Server
 }
 
 // NewClaimsTestAdapter creates a new Claims test adapter
@@ -331,51 +329,13 @@ func (a *ClaimsTestAdapter) SetupTestData(_ context.Context, _ *internal.Contrac
 	a.privateKey = privateKey
 	a.publicKey = &privateKey.PublicKey
 
-	publicKeyJWK, err := jwk.FromRaw(a.publicKey)
-	if err != nil {
-		return fmt.Errorf("failed to convert RSA public key to JWK: %w", err)
-	}
-	_ = publicKeyJWK.Set(jwk.KeyIDKey, a.keyID)
-	_ = publicKeyJWK.Set(jwk.AlgorithmKey, jwa.RS256)
-
-	keySet := jwk.NewSet()
-	if err := keySet.AddKey(publicKeyJWK); err != nil {
-		return fmt.Errorf("failed to add public key to JWK set: %w", err)
-	}
-
-	a.oidcServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/.well-known/openid-configuration":
-			_, err := fmt.Fprintf(w, `{"issuer":"%s","jwks_uri":"%s/jwks"}`, a.oidcServer.URL, a.oidcServer.URL)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		case "/jwks":
-			if err := json.NewEncoder(w).Encode(keySet); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		default:
-			http.NotFound(w, r)
-		}
-	}))
-
 	return nil
 }
 
-// CreateERSService creates and returns a configured Claims ERS service.
-func (a *ClaimsTestAdapter) CreateERSService(ctx context.Context) (internal.ERSImplementation, error) {
+// CreateERSService creates and returns a configured Claims ERS service
+func (a *ClaimsTestAdapter) CreateERSService(_ context.Context) (internal.ERSImplementation, error) {
 	testLogger := logger.CreateTestLogger()
 	service, _ := claimsv2.RegisterClaimsERS(nil, testLogger)
-	verifier, err := tokenvalidation.NewPlatformVerifier(ctx, authn.AuthNConfig{
-		Issuer:       a.oidcServer.URL,
-		Audience:     claimsTestAudience,
-		CacheRefresh: "15m",
-		TokenSkew:    time.Minute,
-	}, testLogger)
-	if err != nil {
-		return nil, err
-	}
-	service.SetTokenVerifier(verifier)
 
 	// Set a no-op tracer for testing to prevent nil pointer dereference
 	service.Tracer = noop.NewTracerProvider().Tracer("test-claims-v2")
@@ -389,10 +349,6 @@ func (a *ClaimsTestAdapter) TeardownTestData(_ context.Context) error {
 	// Clear keys
 	a.privateKey = nil
 	a.publicKey = nil
-	if a.oidcServer != nil {
-		a.oidcServer.Close()
-		a.oidcServer = nil
-	}
 	return nil
 }
 
@@ -404,17 +360,16 @@ func (a *ClaimsTestAdapter) createTestJWT(clientID, username, email string, addi
 	}
 
 	now := time.Now()
-	issuer := a.testIssuer()
 
 	// Create JWT token
 	token := jwt.New()
 
 	// Standard claims
 	_ = token.Set(jwt.SubjectKey, username)
-	_ = token.Set(jwt.AudienceKey, claimsTestAudience)
+	_ = token.Set(jwt.AudienceKey, clientID)
 	_ = token.Set(jwt.IssuedAtKey, now)
 	_ = token.Set(jwt.ExpirationKey, now.Add(time.Hour))
-	_ = token.Set(jwt.IssuerKey, issuer)
+	_ = token.Set(jwt.IssuerKey, "test-issuer")
 
 	// Custom claims
 	_ = token.Set("azp", clientID)
@@ -447,14 +402,13 @@ func (a *ClaimsTestAdapter) createTestJWT(clientID, username, email string, addi
 // createUnsignedTestJWT creates an unsigned JWT token for testing (fallback)
 func (a *ClaimsTestAdapter) createUnsignedTestJWT(clientID, username, email string, additionalClaims map[string]interface{}) string {
 	now := time.Now()
-	issuer := a.testIssuer()
 
 	claims := map[string]interface{}{
 		"sub":                username,
-		"aud":                claimsTestAudience,
+		"aud":                clientID,
 		"iat":                now.Unix(),
 		"exp":                now.Add(time.Hour).Unix(),
-		"iss":                issuer,
+		"iss":                "test-issuer",
 		"azp":                clientID,
 		"preferred_username": username,
 		"email":              email,
@@ -483,40 +437,14 @@ func (a *ClaimsTestAdapter) createUnsignedTestJWT(clientID, username, email stri
 
 // createExpiredTestJWT creates an expired JWT token for testing
 func (a *ClaimsTestAdapter) createExpiredTestJWT(clientID, username, email string) string {
-	issuer := a.testIssuer()
-
-	if a.privateKey != nil {
-		token := jwt.New()
-		expiredAt := time.Now().Add(-1 * time.Hour)
-		issuedAt := expiredAt.Add(-1 * time.Hour)
-
-		_ = token.Set(jwt.SubjectKey, username)
-		_ = token.Set(jwt.AudienceKey, claimsTestAudience)
-		_ = token.Set(jwt.IssuedAtKey, issuedAt)
-		_ = token.Set(jwt.ExpirationKey, expiredAt)
-		_ = token.Set(jwt.IssuerKey, issuer)
-		_ = token.Set("azp", clientID)
-		_ = token.Set("preferred_username", username)
-		_ = token.Set("email", email)
-
-		key, err := jwk.FromRaw(a.privateKey)
-		if err == nil {
-			_ = key.Set(jwk.KeyIDKey, a.keyID)
-			_ = key.Set(jwk.AlgorithmKey, jwa.RS256)
-			if tokenBytes, signErr := jwt.Sign(token, jwt.WithKey(jwa.RS256, key)); signErr == nil {
-				return string(tokenBytes)
-			}
-		}
-	}
-
 	pastTime := time.Now().Add(-2 * time.Hour)
 
 	claims := map[string]interface{}{
 		"sub":                username,
-		"aud":                claimsTestAudience,
+		"aud":                clientID,
 		"iat":                pastTime.Unix(),
 		"exp":                pastTime.Add(time.Hour).Unix(), // Expired 1 hour ago
-		"iss":                issuer,
+		"iss":                "test-issuer",
 		"azp":                clientID,
 		"preferred_username": username,
 		"email":              email,
@@ -534,13 +462,6 @@ func (a *ClaimsTestAdapter) createExpiredTestJWT(clientID, username, email strin
 	payloadB64 := encodeBase64URL(payloadBytes)
 
 	return fmt.Sprintf("%s.%s.", headerB64, payloadB64)
-}
-
-func (a *ClaimsTestAdapter) testIssuer() string {
-	if a.oidcServer != nil {
-		return a.oidcServer.URL
-	}
-	return "test-issuer"
 }
 
 // testCreateEntityChainsFromTokens is a helper for testing token processing

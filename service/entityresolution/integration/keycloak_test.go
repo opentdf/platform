@@ -13,7 +13,6 @@ import (
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/opentdf/platform/service/entityresolution/integration/internal"
-	ertestutil "github.com/opentdf/platform/service/entityresolution/internal/testutil"
 	keycloakv2 "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
@@ -152,7 +151,6 @@ func (a *KeycloakTestAdapter) CreateERSService(_ context.Context) (internal.ERSI
 	var testCache *cache.Cache
 
 	service, _ := keycloakv2.RegisterKeycloakERS(keycloakConfig, testLogger, testCache)
-	service.SetTokenVerifier(ertestutil.NewInsecureTokenVerifier())
 
 	// Set a no-op tracer for testing to prevent nil pointer dereference
 	service.Tracer = noop.NewTracerProvider().Tracer("test-keycloak-v2")

@@ -18,10 +18,10 @@ import (
 	"github.com/creasty/defaults"
 	"github.com/go-viper/mapstructure/v2"
 
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/service/entity"
-	"github.com/opentdf/platform/service/entityresolution/internal/tokenvalidation"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -47,9 +47,8 @@ const serviceAccountUsernamePrefix = "service-account-"
 
 type KeycloakEntityResolutionService struct { //nolint:revive // Too late! Already exported
 	entityresolution.UnimplementedEntityResolutionServiceServer
-	idpConfig     KeycloakConfig
-	logger        *logger.Logger
-	tokenVerifier tokenvalidation.Verifier
+	idpConfig KeycloakConfig
+	logger    *logger.Logger
 	trace.Tracer
 	connector   *KeyCloakConnector
 	connectorMu sync.Mutex
@@ -84,10 +83,6 @@ func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger, svc
 	return keycloakSVC, nil
 }
 
-func (s *KeycloakEntityResolutionService) SetTokenVerifier(verifier tokenvalidation.Verifier) {
-	s.tokenVerifier = verifier
-}
-
 func (s *KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, req *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
 	ctx, span := s.Start(ctx, "ResolveEntities")
 	defer span.End()
@@ -111,12 +106,9 @@ func (s *KeycloakEntityResolutionService) CreateEntityChainFromJwt(ctx context.C
 		s.logger.ErrorContext(ctx, "error getting keycloak connector", slog.String("error", err.Error()))
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("%w: %w", ErrCreationFailed, err))
 	}
-	resp, err := CreateEntityChainFromJwt(ctx, req.Msg, s.idpConfig, connector, s.logger, s.tokenVerifier)
-	if err != nil {
-		return nil, err
-	}
+	resp, err := CreateEntityChainFromJwt(ctx, req.Msg, s.idpConfig, connector, s.logger)
 
-	return connect.NewResponse(&resp), nil
+	return connect.NewResponse(&resp), err
 }
 
 func (c KeycloakConfig) LogValue() slog.Value {
@@ -153,17 +145,12 @@ func CreateEntityChainFromJwt(
 	kcConfig KeycloakConfig,
 	connector *KeyCloakConnector,
 	logger *logger.Logger,
-	verifier tokenvalidation.Verifier,
 ) (entityresolution.CreateEntityChainFromJwtResponse, error) {
 	entityChains := []*authorization.EntityChain{}
 	// for each token in the tokens form an entity chain
 	for _, tok := range req.GetTokens() {
-		entities, err := getEntitiesFromToken(ctx, kcConfig, tok.GetJwt(), connector, logger, verifier)
+		entities, err := getEntitiesFromToken(ctx, kcConfig, tok.GetJwt(), connector, logger)
 		if err != nil {
-			code := tokenvalidation.ConnectCode(err)
-			if code != connect.CodeUnknown {
-				return entityresolution.CreateEntityChainFromJwtResponse{}, connect.NewError(code, err)
-			}
 			return entityresolution.CreateEntityChainFromJwtResponse{}, err
 		}
 		entityChains = append(entityChains, &authorization.EntityChain{Id: tok.GetId(), Entities: entities})
@@ -398,10 +385,10 @@ func expandGroup(ctx context.Context, groupID string, kcConnector *KeyCloakConne
 	return entityRepresentations, nil
 }
 
-func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtString string, connector *KeyCloakConnector, logger *logger.Logger, verifier tokenvalidation.Verifier) ([]*authorization.Entity, error) {
-	token, err := tokenvalidation.Verify(ctx, verifier, jwtString)
+func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtString string, connector *KeyCloakConnector, logger *logger.Logger) ([]*authorization.Entity, error) {
+	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
 	if err != nil {
-		return nil, err
+		return nil, errors.New("error parsing jwt " + err.Error())
 	}
 	claims, err := token.AsMap(context.Background()) ///nolint:contextcheck // Do not want to include keys from context in map
 	if err != nil {

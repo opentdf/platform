@@ -8,9 +8,9 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-viper/mapstructure/v2"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
-	"github.com/opentdf/platform/service/entityresolution/internal/tokenvalidation"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -22,9 +22,8 @@ import (
 // ERS implements the EntityResolutionServiceHandler for multi-strategy resolution
 type ERS struct {
 	entityresolution.UnimplementedEntityResolutionServiceServer
-	service       *Service
-	logger        *logger.Logger
-	tokenVerifier tokenvalidation.Verifier
+	service *Service
+	logger  *logger.Logger
 	trace.Tracer
 }
 
@@ -39,10 +38,6 @@ func NewERS(ctx context.Context, config types.MultiStrategyConfig, logger *logge
 		service: service,
 		logger:  logger,
 	}, nil
-}
-
-func (ers *ERS) SetTokenVerifier(verifier tokenvalidation.Verifier) {
-	ers.tokenVerifier = verifier
 }
 
 // ResolveEntities implements the EntityResolutionServiceHandler interface
@@ -160,11 +155,7 @@ func (ers *ERS) CreateEntityChainFromJwt(
 			ers.logger.ErrorContext(ctx, "failed to create entity chain from token - FAILING REQUEST for security",
 				slog.String("token_id", token.GetId()),
 				slog.String("error", err.Error()))
-			code := tokenvalidation.ConnectCode(err)
-			if code == connect.CodeUnknown {
-				code = connect.CodeInternal
-			}
-			return nil, connect.NewError(code,
+			return nil, connect.NewError(connect.CodeInternal,
 				fmt.Errorf("failed to create entity chain for token %s: %w", token.GetId(), err))
 		}
 
@@ -386,9 +377,11 @@ func (ers *ERS) createEntityFromResult(ctx context.Context, result *types.Entity
 
 // Helper functions
 func (ers *ERS) parseJWTClaims(ctx context.Context, jwtString string) (types.JWTClaims, error) {
-	token, err := tokenvalidation.Verify(ctx, ers.tokenVerifier, jwtString)
+	// For now, use a simple JWT parser (in production, this should validate signatures)
+	// This is similar to how Keycloak ERS parses JWTs
+	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse JWT: %w", err)
 	}
 
 	claims, err := token.AsMap(ctx)

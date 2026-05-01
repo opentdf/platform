@@ -15,7 +15,6 @@ import (
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
-	ertestutil "github.com/opentdf/platform/service/entityresolution/internal/testutil"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -349,7 +348,7 @@ func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: clientCredentialsJwt}}
 
-	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), ertestutil.NewInsecureTokenVerifier())
+	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -373,7 +372,7 @@ func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: passwordPubClientJwt}}
 
-	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), ertestutil.NewInsecureTokenVerifier())
+	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -397,7 +396,7 @@ func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: passwordPrivClientJwt}}
 
-	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), ertestutil.NewInsecureTokenVerifier())
+	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -421,7 +420,7 @@ func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: authPubClientJwt}}
 
-	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), ertestutil.NewInsecureTokenVerifier())
+	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -445,7 +444,7 @@ func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: authPrivClientJwt}}
 
-	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), ertestutil.NewInsecureTokenVerifier())
+	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -469,7 +468,7 @@ func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: implicitPubClientJwt}}
 
-	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), ertestutil.NewInsecureTokenVerifier())
+	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -493,7 +492,7 @@ func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: implicitPrivClientJwt}}
 
-	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), ertestutil.NewInsecureTokenVerifier())
+	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -520,7 +519,7 @@ func Test_JwtClientAndClientTokenExchange(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: tokenExchangeJwt}}
 
-	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), ertestutil.NewInsecureTokenVerifier())
+	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -547,7 +546,7 @@ func Test_JwtMultiple(t *testing.T) {
 
 	validBody := []*authorization.Token{{Jwt: tokenExchangeJwt, Id: "tok1"}, {Jwt: authPrivClientJwt, Id: "tok2"}}
 
-	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), ertestutil.NewInsecureTokenVerifier())
+	resp, reserr := CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 

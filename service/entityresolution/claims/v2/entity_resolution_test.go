@@ -6,7 +6,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	claims "github.com/opentdf/platform/service/entityresolution/claims/v2"
-	ertestutil "github.com/opentdf/platform/service/entityresolution/internal/testutil"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -97,7 +96,7 @@ func Test_ClaimsResolveEntity(t *testing.T) {
 func Test_JWTToEntityChainClaims(t *testing.T) {
 	validBody := []*entity.Token{{Jwt: samplejwt}}
 
-	resp, reserr := claims.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, logger.CreateTestLogger(), ertestutil.NewInsecureTokenVerifier())
+	resp, reserr := claims.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 

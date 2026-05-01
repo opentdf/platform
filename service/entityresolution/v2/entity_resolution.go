@@ -65,26 +65,18 @@ func NewRegistration() *serviceregistry.Service[entityresolutionv2connect.Entity
 					}
 				}
 
-				verifier := srp.AccessTokenVerifier
-				if verifier == nil {
-					srp.Logger.Warn("ERS token validation is not configured; token-based entity chain requests will be rejected")
-				}
-
 				switch inputConfig.Mode {
 				case ClaimsMode:
 					claimsSVC, claimsHandler := claims.RegisterClaimsERS(srp.Config, srp.Logger)
-					claimsSVC.SetTokenVerifier(verifier)
 					claimsSVC.Tracer = srp.Tracer
 					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
 				case MultiStrategyMode:
 					multiSVC, multiHandler := multistrategyv2.RegisterMultiStrategyERSV2(srp.Config, srp.Logger)
-					multiSVC.SetTokenVerifier(verifier)
 					multiSVC.Tracer = srp.Tracer
 					return EntityResolution{EntityResolutionServiceHandler: multiSVC}, multiHandler
 				default:
 					// Default to Keycloak ERS with cache support
 					kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger, ersCache)
-					kcSVC.SetTokenVerifier(verifier)
 					kcSVC.Tracer = srp.Tracer
 					return EntityResolution{EntityResolutionServiceHandler: kcSVC, Tracer: srp.Tracer}, kcHandler
 				}

@@ -181,7 +181,7 @@ func (p *PrunePlanner) planActions(ctx context.Context) (*PrunePlan, error) {
 	}
 
 	for _, source := range sourceActions {
-		if source == nil || source.GetId() == "" {
+		if source.GetId() == "" {
 			continue
 		}
 

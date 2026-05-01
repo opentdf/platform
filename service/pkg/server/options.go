@@ -83,8 +83,8 @@ func WithPublicRoutes(routes []string) StartOptions {
 	}
 }
 
-// WithIPCReauthRoutes option sets the IPC reauthorization routes for the server.
-// It enables the server to reauthorize IPC routes and embed the token on the context.
+// WithIPCReauthRoutes sets the IPC routes that should be fully reauthorized
+// instead of only rehydrating auth context from propagated metadata.
 func WithIPCReauthRoutes(routes []string) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.IPCReauthRoutes = routes

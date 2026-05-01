@@ -439,10 +439,9 @@ func IPCMetadataClientInterceptor(log *logger.Logger) connect.UnaryInterceptorFu
 }
 
 // IPCUnaryServerInterceptor is a grpc interceptor that:
-// 1. verifies the token in the metadata
-// 2. reauthorizes the token if the route is in the list
-// 3. translates known IPC Connect request headers back to context metadata for downstream consumers
-// 4. rehydrates auth context from incoming metadata for non-reauth IPC routes
+// 1. translates known IPC Connect request headers back to incoming metadata
+// 2. reauthorizes routes that are configured for IPC reauth
+// 3. rehydrates auth context from propagated incoming metadata
 func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(

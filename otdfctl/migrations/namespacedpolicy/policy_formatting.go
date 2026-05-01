@@ -4,8 +4,30 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/opentdf/platform/otdfctl/migrations"
 	"github.com/opentdf/platform/protocol/go/policy"
 )
+
+const (
+	actionKind              = "action"
+	subjectConditionSetKind = "subject condition set"
+	subjectMappingKind      = "subject mapping"
+	registeredResourceKind  = "registered resource"
+	obligationTriggerKind   = "obligation trigger"
+)
+
+func actionLabel(action *policy.Action) string {
+	if action == nil {
+		return unknownLabel
+	}
+	if name := strings.TrimSpace(action.GetName()); name != "" {
+		return name
+	}
+	if id := strings.TrimSpace(action.GetId()); id != "" {
+		return id
+	}
+	return unknownLabel
+}
 
 func plainPolicyActionNamesSummary(actions []*policy.Action) string {
 	names := make([]string, 0, len(actions))
@@ -27,10 +49,37 @@ func plainPolicyActionNamesSummary(actions []*policy.Action) string {
 	return plainListSummary(names)
 }
 
+func styledPolicyActionNamesSummary(styles *migrations.DisplayStyles, actions []*policy.Action) string {
+	names := make([]string, 0, len(actions))
+	seen := make(map[string]struct{}, len(actions))
+	for _, action := range actions {
+		if action == nil {
+			continue
+		}
+		name := actionLabel(action)
+		if strings.TrimSpace(name) == "" || name == unknownLabel {
+			continue
+		}
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		seen[name] = struct{}{}
+		names = append(names, styles.Name().Render(strconvQuote(name)))
+	}
+	return strings.Join(names, ", ")
+}
+
 func plainRegisteredResourceSourceSummary(resource *policy.RegisteredResource) string {
 	return appendDetails(
 		"values="+plainRegisteredResourceValuesSummary(resource),
 		"action_bindings="+plainRegisteredResourceActionAttributeValuesSummary(resource),
+	)
+}
+
+func styledRegisteredResourceSourceSummary(styles *migrations.DisplayStyles, resource *policy.RegisteredResource) string {
+	return appendDetails(
+		"values="+styledRegisteredResourceValuesSummary(styles, resource),
+		"action_bindings="+styledRegisteredResourceActionAttributeValuesSummary(styles, resource),
 	)
 }
 
@@ -49,6 +98,16 @@ func appendDetails(line string, details ...string) string {
 
 func strconvQuote(value string) string {
 	return fmt.Sprintf("%q", value)
+}
+
+func valueFQN(value *policy.Value) string {
+	if value == nil {
+		return ""
+	}
+	if value.GetFqn() != "" {
+		return value.GetFqn()
+	}
+	return value.GetId()
 }
 
 func plainRegisteredResourceValuesSummary(resource *policy.RegisteredResource) string {
@@ -74,6 +133,29 @@ func plainRegisteredResourceValuesSummary(resource *policy.RegisteredResource) s
 	return plainListSummary(values)
 }
 
+func styledRegisteredResourceValuesSummary(styles *migrations.DisplayStyles, resource *policy.RegisteredResource) string {
+	values := make([]string, 0, len(resource.GetValues()))
+	seen := make(map[string]struct{}, len(resource.GetValues()))
+	for _, value := range resource.GetValues() {
+		if value == nil {
+			continue
+		}
+		label := strings.TrimSpace(value.GetValue())
+		if label == "" {
+			label = strings.TrimSpace(value.GetId())
+		}
+		if label == "" {
+			continue
+		}
+		if _, ok := seen[label]; ok {
+			continue
+		}
+		seen[label] = struct{}{}
+		values = append(values, styles.Name().Render(strconvQuote(label)))
+	}
+	return strings.Join(values, ", ")
+}
+
 func plainRegisteredResourceActionAttributeValuesSummary(resource *policy.RegisteredResource) string {
 	bindings := make([]string, 0)
 	seen := make(map[string]struct{})
@@ -94,6 +176,32 @@ func plainRegisteredResourceActionAttributeValuesSummary(resource *policy.Regist
 		}
 	}
 	return plainListSummary(bindings)
+}
+
+func styledRegisteredResourceActionAttributeValuesSummary(styles *migrations.DisplayStyles, resource *policy.RegisteredResource) string {
+	bindings := make([]string, 0)
+	seen := make(map[string]struct{})
+	for _, value := range resource.GetValues() {
+		if value == nil {
+			continue
+		}
+		for _, binding := range value.GetActionAttributeValues() {
+			if binding == nil {
+				continue
+			}
+			label := fmt.Sprintf(
+				"%s -> %s",
+				styles.Name().Render(strconvQuote(actionLabel(binding.GetAction()))),
+				styles.Namespace().Render(valueFQN(binding.GetAttributeValue())),
+			)
+			if _, ok := seen[label]; ok {
+				continue
+			}
+			seen[label] = struct{}{}
+			bindings = append(bindings, label)
+		}
+	}
+	return strings.Join(bindings, ", ")
 }
 
 func obligationLabel(obligation *policy.Obligation) string {
@@ -124,7 +232,7 @@ func plainRequestContextsSummary(contexts []*policy.RequestContext) string {
 			continue
 		}
 		seen[clientID] = struct{}{}
-		clientIDs = append(clientIDs, "client_id="+strconvQuote(clientID))
+		clientIDs = append(clientIDs, "client_id: "+strconvQuote(clientID))
 	}
 	return plainListSummary(clientIDs)
 }

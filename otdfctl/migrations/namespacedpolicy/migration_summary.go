@@ -9,30 +9,9 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
-type migrationStatusCounts struct {
-	created          int
-	toCreate         int
-	existingStandard int
-	alreadyMigrated  int
-	skipped          int
-	failed           int
-	unresolved       int
-}
-
-type migrationConstructSummary struct {
-	label      string
-	include    bool
-	counts     migrationStatusCounts
-	created    []string
-	toCreate   []string
-	failed     []string
-	skipped    []string
-	unresolved []string
-}
-
-type targetSummaryLines struct {
-	created    string
-	toCreate   string
+type summaryLines struct {
+	applied    string
+	pending    string
 	failed     string
 	skipped    string
 	unresolved string
@@ -40,18 +19,11 @@ type targetSummaryLines struct {
 
 const unexpectedNilTargetReasonFormat = "received unexpected nil target for %s"
 
-type createExecutionState string
-
 const (
-	actionKind              = "action"
-	subjectConditionSetKind = "subject condition set"
-	subjectMappingKind      = "subject mapping"
-	registeredResourceKind  = "registered resource"
-	obligationTriggerKind   = "obligation trigger"
-
-	createExecutionStateCreated createExecutionState = "created"
-	createExecutionStatePending createExecutionState = "pending"
-	createExecutionStateFailed  createExecutionState = "failed"
+	migrationAppliedCountLabel   = "created"
+	migrationPendingCountLabel   = "to_create"
+	migrationAppliedSectionLabel = "Created"
+	migrationPendingSectionLabel = "Will Create"
 )
 
 func RenderNamespacedPolicySummary(plan *Plan, commit bool) string {
@@ -62,104 +34,46 @@ func RenderNamespacedPolicySummaryWithResult(plan *Plan, commit bool, result str
 	return renderNamespacedPolicySummary(plan, commit, result)
 }
 
-func renderNamespacedPolicySummary(plan *Plan, commit bool, result string) string {
-	styles := migrations.NewDisplayStyles()
-	summaries := []migrationConstructSummary{
-		summarizeActions(plan, commit, styles),
-		summarizeSubjectConditionSets(plan, commit, styles),
-		summarizeSubjectMappings(plan, commit, styles),
-		summarizeRegisteredResources(plan, commit, styles),
-		summarizeObligationTriggers(plan, commit, styles),
+func planScopes(plan *Plan) []Scope {
+	if plan == nil {
+		return nil
 	}
-
-	var b strings.Builder
-	if commit {
-		b.WriteString(styles.Title().Render("Namespaced Policy Migration Committed"))
-	} else {
-		b.WriteString(styles.Title().Render("Namespaced Policy Migration Plan"))
-	}
-	b.WriteByte('\n')
-	b.WriteString(styles.Separator().Render(styles.SeparatorText()))
-	b.WriteByte('\n')
-	fmt.Fprintf(&b, "%s %s\n", styles.Info().Render("Scopes:"), styles.Info().Render(joinScopeLabels(plan.Scopes)))
-	fmt.Fprintf(&b, "%s %t\n", styles.Info().Render("Commit:"), commit)
-	b.WriteString(styles.Info().Render("Result: " + strings.TrimSpace(result)))
-	b.WriteByte('\n')
-
-	for _, summary := range summaries {
-		if !summary.include {
-			continue
-		}
-		b.WriteByte('\n')
-		b.WriteString(styles.Title().Render(summary.label))
-		b.WriteByte('\n')
-		b.WriteString(styles.Separator().Render(styles.SeparatorText()))
-		b.WriteByte('\n')
-		fmt.Fprintf(&b, "%s %s\n", styles.Info().Render("Counts:"), formatSummaryCounts(summary.counts, commit))
-
-		if len(summary.created) > 0 {
-			b.WriteByte('\n')
-			b.WriteString(styles.Action().Render("Created"))
-			b.WriteByte('\n')
-			for _, line := range summary.created {
-				b.WriteString("  - ")
-				b.WriteString(line)
-				b.WriteByte('\n')
-			}
-		}
-
-		if len(summary.toCreate) > 0 {
-			b.WriteByte('\n')
-			b.WriteString(styles.Action().Render("Will Create"))
-			b.WriteByte('\n')
-			for _, line := range summary.toCreate {
-				b.WriteString("  - ")
-				b.WriteString(line)
-				b.WriteByte('\n')
-			}
-		}
-
-		if len(summary.failed) > 0 {
-			b.WriteByte('\n')
-			b.WriteString(styles.Warning().Render("Failed"))
-			b.WriteByte('\n')
-			for _, line := range summary.failed {
-				b.WriteString("  - ")
-				b.WriteString(line)
-				b.WriteByte('\n')
-			}
-		}
-
-		if len(summary.skipped) > 0 {
-			b.WriteByte('\n')
-			b.WriteString(styles.Warning().Render("Skipped"))
-			b.WriteByte('\n')
-			for _, line := range summary.skipped {
-				b.WriteString("  - ")
-				b.WriteString(line)
-				b.WriteByte('\n')
-			}
-		}
-
-		if len(summary.unresolved) > 0 {
-			b.WriteByte('\n')
-			b.WriteString(styles.Warning().Render("Unresolved"))
-			b.WriteByte('\n')
-			for _, line := range summary.unresolved {
-				b.WriteString("  - ")
-				b.WriteString(line)
-				b.WriteByte('\n')
-			}
-		}
-	}
-
-	return strings.TrimRight(b.String(), "\n")
+	return plan.Scopes
 }
 
-func summarizeActions(plan *Plan, commit bool, styles *migrations.DisplayStyles) migrationConstructSummary {
-	summary := migrationConstructSummary{
+func renderNamespacedPolicySummary(plan *Plan, commit bool, result string) string {
+	styles := migrations.NewDisplayStyles()
+	return renderSummaryDocument(styles, summaryDocument{
+		plannedTitle:   "Namespaced Policy Migration Plan",
+		committedTitle: "Namespaced Policy Migration Committed",
+		operation:      summaryOperationMigration,
+		scopes:         planScopes(plan),
+		commit:         commit,
+		result:         result,
+		summaries: []constructSummary{
+			summarizeActions(plan, commit, styles),
+			summarizeSubjectConditionSets(plan, commit, styles),
+			summarizeSubjectMappings(plan, commit, styles),
+			summarizeRegisteredResources(plan, commit, styles),
+			summarizeObligationTriggers(plan, commit, styles),
+		},
+	})
+}
+
+func appendMigrationSummaryCountParts(parts []string, counts summaryCounts) []string {
+	return append(parts,
+		fmt.Sprintf("existing_standard=%d", counts.existingStandard),
+		fmt.Sprintf("already_migrated=%d", counts.alreadyMigrated),
+	)
+}
+
+func summarizeActions(plan *Plan, commit bool, styles *migrations.DisplayStyles) constructSummary {
+	summary := constructSummary{
 		label:   "Actions",
-		include: includesScope(plan, ScopeActions),
+		include: includesScope(planScopes(plan), ScopeActions),
+	}
+	if plan == nil {
+		return summary
 	}
 
 	for _, action := range plan.Actions {
@@ -171,9 +85,9 @@ func summarizeActions(plan *Plan, commit bool, styles *migrations.DisplayStyles)
 				appendTargetlessUnresolved(&summary, styles, actionKind, action.Source.GetName(), unexpectedNilTargetReason(actionKind))
 				continue
 			}
-			appendTargetStatusSummary(&summary, target.Status, classifyCreateExecution(commit, target.Execution), targetSummaryLines{
-				created:    formatCreatedLine(styles, actionKind, action.Source.GetName(), target.Namespace, target.TargetID(), true),
-				toCreate:   formatCreatedLine(styles, actionKind, action.Source.GetName(), target.Namespace, target.TargetID(), false),
+			appendTargetStatusSummary(&summary, target.Status, classifyCreateExecution(commit, target.Execution), summaryLines{
+				applied:    formatCreatedLine(styles, actionKind, action.Source.GetName(), target.Namespace, target.TargetID(), true),
+				pending:    formatCreatedLine(styles, actionKind, action.Source.GetName(), target.Namespace, target.TargetID(), false),
 				failed:     formatFailedLine(styles, actionKind, action.Source.GetName(), target.Namespace, executionFailure(target.Execution)),
 				skipped:    formatSkippedLine(styles, actionKind, action.Source.GetName(), target.Namespace, target.Reason),
 				unresolved: formatUnresolvedLine(styles, actionKind, action.Source.GetName(), target.Namespace, target.Reason),
@@ -184,10 +98,13 @@ func summarizeActions(plan *Plan, commit bool, styles *migrations.DisplayStyles)
 	return summary
 }
 
-func summarizeSubjectConditionSets(plan *Plan, commit bool, styles *migrations.DisplayStyles) migrationConstructSummary {
-	summary := migrationConstructSummary{
+func summarizeSubjectConditionSets(plan *Plan, commit bool, styles *migrations.DisplayStyles) constructSummary {
+	summary := constructSummary{
 		label:   "Subject Condition Sets",
-		include: includesScope(plan, ScopeSubjectConditionSets),
+		include: includesScope(planScopes(plan), ScopeSubjectConditionSets),
+	}
+	if plan == nil {
+		return summary
 	}
 
 	for _, scs := range plan.SubjectConditionSets {
@@ -199,9 +116,9 @@ func summarizeSubjectConditionSets(plan *Plan, commit bool, styles *migrations.D
 				appendTargetlessUnresolved(&summary, styles, subjectConditionSetKind, scs.Source.GetId(), unexpectedNilTargetReason(subjectConditionSetKind))
 				continue
 			}
-			appendTargetStatusSummary(&summary, target.Status, classifyCreateExecution(commit, target.Execution), targetSummaryLines{
-				created:    formatSubjectConditionSetCreatedLine(styles, scs, target, true),
-				toCreate:   formatSubjectConditionSetCreatedLine(styles, scs, target, false),
+			appendTargetStatusSummary(&summary, target.Status, classifyCreateExecution(commit, target.Execution), summaryLines{
+				applied:    formatSubjectConditionSetCreatedLine(styles, scs, target, true),
+				pending:    formatSubjectConditionSetCreatedLine(styles, scs, target, false),
 				failed:     formatFailedLine(styles, subjectConditionSetKind, scs.Source.GetId(), target.Namespace, executionFailure(target.Execution)),
 				skipped:    formatSkippedLine(styles, subjectConditionSetKind, scs.Source.GetId(), target.Namespace, target.Reason),
 				unresolved: formatUnresolvedLine(styles, subjectConditionSetKind, scs.Source.GetId(), target.Namespace, target.Reason),
@@ -212,10 +129,13 @@ func summarizeSubjectConditionSets(plan *Plan, commit bool, styles *migrations.D
 	return summary
 }
 
-func summarizeSubjectMappings(plan *Plan, commit bool, styles *migrations.DisplayStyles) migrationConstructSummary {
-	summary := migrationConstructSummary{
+func summarizeSubjectMappings(plan *Plan, commit bool, styles *migrations.DisplayStyles) constructSummary {
+	summary := constructSummary{
 		label:   "Subject Mappings",
-		include: includesScope(plan, ScopeSubjectMappings),
+		include: includesScope(planScopes(plan), ScopeSubjectMappings),
+	}
+	if plan == nil {
+		return summary
 	}
 
 	for _, mapping := range plan.SubjectMappings {
@@ -227,9 +147,9 @@ func summarizeSubjectMappings(plan *Plan, commit bool, styles *migrations.Displa
 			continue
 		}
 
-		appendTargetStatusSummary(&summary, mapping.Target.Status, classifyCreateExecution(commit, mapping.Target.Execution), targetSummaryLines{
-			created:    formatSubjectMappingCreatedLine(styles, plan, mapping, true),
-			toCreate:   formatSubjectMappingCreatedLine(styles, plan, mapping, false),
+		appendTargetStatusSummary(&summary, mapping.Target.Status, classifyCreateExecution(commit, mapping.Target.Execution), summaryLines{
+			applied:    formatSubjectMappingCreatedLine(styles, plan, mapping, true),
+			pending:    formatSubjectMappingCreatedLine(styles, plan, mapping, false),
 			failed:     formatFailedLine(styles, subjectMappingKind, mapping.Source.GetId(), mapping.Target.Namespace, executionFailure(mapping.Target.Execution)),
 			skipped:    formatSkippedLine(styles, subjectMappingKind, mapping.Source.GetId(), mapping.Target.Namespace, mapping.Target.Reason),
 			unresolved: formatUnresolvedLine(styles, subjectMappingKind, mapping.Source.GetId(), mapping.Target.Namespace, mapping.Target.Reason),
@@ -239,10 +159,13 @@ func summarizeSubjectMappings(plan *Plan, commit bool, styles *migrations.Displa
 	return summary
 }
 
-func summarizeRegisteredResources(plan *Plan, commit bool, styles *migrations.DisplayStyles) migrationConstructSummary {
-	summary := migrationConstructSummary{
+func summarizeRegisteredResources(plan *Plan, commit bool, styles *migrations.DisplayStyles) constructSummary {
+	summary := constructSummary{
 		label:   "Registered Resources",
-		include: includesScope(plan, ScopeRegisteredResources),
+		include: includesScope(planScopes(plan), ScopeRegisteredResources),
+	}
+	if plan == nil {
+		return summary
 	}
 
 	for _, resource := range plan.RegisteredResources {
@@ -254,14 +177,14 @@ func summarizeRegisteredResources(plan *Plan, commit bool, styles *migrations.Di
 			continue
 		}
 
-		state := createExecutionStatePending
+		state := operationExecutionStatePending
 		failure := ""
 		if resource.Target.Status == TargetStatusCreate {
 			state, failure = classifyRegisteredResourceExecution(commit, resource.Target)
 		}
-		appendTargetStatusSummary(&summary, resource.Target.Status, state, targetSummaryLines{
-			created:    formatRegisteredResourceCreatedLine(styles, plan, resource, true),
-			toCreate:   formatRegisteredResourceCreatedLine(styles, plan, resource, false),
+		appendTargetStatusSummary(&summary, resource.Target.Status, state, summaryLines{
+			applied:    formatRegisteredResourceCreatedLine(styles, plan, resource, true),
+			pending:    formatRegisteredResourceCreatedLine(styles, plan, resource, false),
 			failed:     formatRegisteredResourceFailedLine(styles, resource, failure),
 			skipped:    formatSkippedLine(styles, registeredResourceKind, resource.Source.GetName(), resource.Target.Namespace, resource.Target.Reason),
 			unresolved: formatUnresolvedLine(styles, registeredResourceKind, resource.Source.GetName(), resource.Target.Namespace, registeredResourceUnresolvedReason(resource)),
@@ -271,10 +194,13 @@ func summarizeRegisteredResources(plan *Plan, commit bool, styles *migrations.Di
 	return summary
 }
 
-func summarizeObligationTriggers(plan *Plan, commit bool, styles *migrations.DisplayStyles) migrationConstructSummary {
-	summary := migrationConstructSummary{
+func summarizeObligationTriggers(plan *Plan, commit bool, styles *migrations.DisplayStyles) constructSummary {
+	summary := constructSummary{
 		label:   "Obligation Triggers",
-		include: includesScope(plan, ScopeObligationTriggers),
+		include: includesScope(planScopes(plan), ScopeObligationTriggers),
+	}
+	if plan == nil {
+		return summary
 	}
 
 	for _, trigger := range plan.ObligationTriggers {
@@ -286,9 +212,9 @@ func summarizeObligationTriggers(plan *Plan, commit bool, styles *migrations.Dis
 			continue
 		}
 
-		appendTargetStatusSummary(&summary, trigger.Target.Status, classifyCreateExecution(commit, trigger.Target.Execution), targetSummaryLines{
-			created:    formatObligationTriggerCreatedLine(styles, plan, trigger, true),
-			toCreate:   formatObligationTriggerCreatedLine(styles, plan, trigger, false),
+		appendTargetStatusSummary(&summary, trigger.Target.Status, classifyCreateExecution(commit, trigger.Target.Execution), summaryLines{
+			applied:    formatObligationTriggerCreatedLine(styles, plan, trigger, true),
+			pending:    formatObligationTriggerCreatedLine(styles, plan, trigger, false),
 			failed:     formatFailedLine(styles, obligationTriggerKind, trigger.Source.GetId(), trigger.Target.Namespace, executionFailure(trigger.Target.Execution)),
 			skipped:    formatSkippedLine(styles, obligationTriggerKind, trigger.Source.GetId(), trigger.Target.Namespace, trigger.Target.Reason),
 			unresolved: formatUnresolvedLine(styles, obligationTriggerKind, trigger.Source.GetId(), trigger.Target.Namespace, trigger.Target.Reason),
@@ -298,7 +224,7 @@ func summarizeObligationTriggers(plan *Plan, commit bool, styles *migrations.Dis
 	return summary
 }
 
-func recordTargetStatus(counts *migrationStatusCounts, status TargetStatus) {
+func recordConstructTargetStatus(counts *summaryCounts, status TargetStatus) {
 	if status == TargetStatusExistingStandard {
 		counts.existingStandard++
 		return
@@ -316,93 +242,42 @@ func recordTargetStatus(counts *migrationStatusCounts, status TargetStatus) {
 	}
 }
 
-func appendTargetStatusSummary(summary *migrationConstructSummary, status TargetStatus, createState createExecutionState, lines targetSummaryLines) {
+func appendTargetStatusSummary(summary *constructSummary, status TargetStatus, createState operationExecutionState, lines summaryLines) {
 	switch status {
 	case TargetStatusCreate:
 		switch createState {
-		case createExecutionStateCreated:
-			summary.counts.created++
-			summary.created = append(summary.created, lines.created)
-		case createExecutionStateFailed:
+		case operationExecutionStateApplied:
+			summary.counts.applied++
+			summary.applied = append(summary.applied, lines.applied)
+		case operationExecutionStateFailed:
 			summary.counts.failed++
 			summary.failed = append(summary.failed, lines.failed)
-		case createExecutionStatePending:
-			summary.counts.toCreate++
-			summary.toCreate = append(summary.toCreate, lines.toCreate)
+		case operationExecutionStatePending:
+			summary.counts.pending++
+			summary.pending = append(summary.pending, lines.pending)
 		}
 	case TargetStatusExistingStandard, TargetStatusAlreadyMigrated:
-		recordTargetStatus(&summary.counts, status)
+		recordConstructTargetStatus(&summary.counts, status)
 	case TargetStatusSkipped:
-		recordTargetStatus(&summary.counts, status)
+		recordConstructTargetStatus(&summary.counts, status)
 		summary.skipped = append(summary.skipped, lines.skipped)
 	case TargetStatusUnresolved:
-		recordTargetStatus(&summary.counts, status)
+		recordConstructTargetStatus(&summary.counts, status)
 		summary.unresolved = append(summary.unresolved, lines.unresolved)
 	}
 }
 
-func includesScope(plan *Plan, scope Scope) bool {
-	if plan == nil {
-		return false
-	}
-	for _, candidate := range plan.Scopes {
-		if candidate == scope {
-			return true
-		}
-	}
-	return false
-}
-
-func joinScopeLabels(scopes []Scope) string {
-	if len(scopes) == 0 {
-		return "(none)"
-	}
-
-	labels := make([]string, 0, len(scopes))
-	for _, scope := range scopes {
-		labels = append(labels, string(scope))
-	}
-
-	return strings.Join(labels, ", ")
-}
-
-func formatSummaryCounts(counts migrationStatusCounts, commit bool) string {
-	var parts []string
-	if commit {
-		parts = append(parts, fmt.Sprintf("created=%d", counts.created))
-	}
-	if !commit || counts.toCreate > 0 {
-		parts = append(parts, fmt.Sprintf("to_create=%d", counts.toCreate))
-	}
-
-	parts = append(parts,
-		fmt.Sprintf("existing_standard=%d", counts.existingStandard),
-		fmt.Sprintf("already_migrated=%d", counts.alreadyMigrated),
-		fmt.Sprintf("skipped=%d", counts.skipped),
-		fmt.Sprintf("failed=%d", counts.failed),
-		fmt.Sprintf("unresolved=%d", counts.unresolved),
-	)
-	return strings.Join(parts, " ")
-}
-
-func classifyCreateExecution(commit bool, execution *ExecutionResult) createExecutionState {
+func classifyCreateExecution(commit bool, execution *ExecutionResult) operationExecutionState {
 	if !commit || execution == nil {
-		return createExecutionStatePending
+		return operationExecutionStatePending
 	}
 	if strings.TrimSpace(execution.Failure) != "" {
-		return createExecutionStateFailed
+		return operationExecutionStateFailed
 	}
 	if execution.Applied || strings.TrimSpace(execution.CreatedTargetID) != "" {
-		return createExecutionStateCreated
+		return operationExecutionStateApplied
 	}
-	return createExecutionStatePending
-}
-
-func executionFailure(execution *ExecutionResult) string {
-	if execution == nil {
-		return ""
-	}
-	return execution.Failure
+	return operationExecutionStatePending
 }
 
 func formatCreatedLine(styles *migrations.DisplayStyles, kind, label string, namespace *policy.Namespace, targetID string, commit bool) string {
@@ -521,15 +396,15 @@ func registeredResourceUnresolvedReason(resource *RegisteredResourcePlan) string
 	return resource.Unresolved
 }
 
-func classifyRegisteredResourceExecution(commit bool, target *RegisteredResourceTargetPlan) (createExecutionState, string) {
+func classifyRegisteredResourceExecution(commit bool, target *RegisteredResourceTargetPlan) (operationExecutionState, string) {
 	if !commit {
-		return createExecutionStatePending, ""
+		return operationExecutionStatePending, ""
 	}
 	if target.Execution != nil && strings.TrimSpace(target.Execution.Failure) != "" {
-		return createExecutionStateFailed, target.Execution.Failure
+		return operationExecutionStateFailed, target.Execution.Failure
 	}
 	if target.Execution == nil || (!target.Execution.Applied && strings.TrimSpace(target.Execution.CreatedTargetID) == "") {
-		return createExecutionStatePending, ""
+		return operationExecutionStatePending, ""
 	}
 
 	pendingValues := false
@@ -538,34 +413,24 @@ func classifyRegisteredResourceExecution(commit bool, target *RegisteredResource
 			continue
 		}
 		if valuePlan.Execution != nil && strings.TrimSpace(valuePlan.Execution.Failure) != "" {
-			return createExecutionStateFailed, valuePlan.Execution.Failure
+			return operationExecutionStateFailed, valuePlan.Execution.Failure
 		}
 		if valuePlan.Execution == nil || (!valuePlan.Execution.Applied && strings.TrimSpace(valuePlan.Execution.CreatedTargetID) == "") {
 			pendingValues = true
 		}
 	}
 	if pendingValues {
-		return createExecutionStatePending, ""
+		return operationExecutionStatePending, ""
 	}
-	return createExecutionStateCreated, ""
+	return operationExecutionStateApplied, ""
 }
 
-func appendTargetlessUnresolved(summary *migrationConstructSummary, styles *migrations.DisplayStyles, kind, label, reason string) {
+func appendTargetlessUnresolved(summary *constructSummary, styles *migrations.DisplayStyles, kind, label, reason string) {
 	if summary == nil {
 		return
 	}
 	summary.counts.unresolved++
 	summary.unresolved = append(summary.unresolved, formatUnresolvedLineWithoutNamespace(styles, kind, label, reason))
-}
-
-func valueFQN(value *policy.Value) string {
-	if value == nil {
-		return ""
-	}
-	if value.GetFqn() != "" {
-		return value.GetFqn()
-	}
-	return value.GetId()
 }
 
 func registeredResourceValueFQNsSummary(styles *migrations.DisplayStyles, resource *RegisteredResourcePlan) string {

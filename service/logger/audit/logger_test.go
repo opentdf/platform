@@ -520,8 +520,8 @@ func TestAuditApplyConfigRejectsReservedPaths(t *testing.T) {
 	})
 
 	require.Error(t, err)
+	require.ErrorIs(t, err, ErrReservedAuditPath)
 	require.ErrorContains(t, err, "jwt_claim_mappings[0].path")
-	require.ErrorContains(t, err, "reserved audit path")
 }
 
 func TestDeferredRewrapSuccess(t *testing.T) {

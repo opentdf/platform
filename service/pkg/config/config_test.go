@@ -357,6 +357,7 @@ func TestLoad_Precedence(t *testing.T) {
 		setupLoaders func(t *testing.T, configFile string) []Loader
 		envVars      map[string]string
 		err          error
+		causeErr     error
 		errContains  string
 		fileContent  string
 		asserts      func(t *testing.T, cfg *Config)
@@ -465,8 +466,8 @@ special_key:
 				require.NoError(t, err)
 				return []Loader{file, defaults}
 			},
-			err:         ErrUnmarshallingConfig,
-			errContains: "reserved audit path",
+			err:      ErrUnmarshallingConfig,
+			causeErr: auditcfg.ErrReservedAuditPath,
 			fileContent: `
 audit:
   jwt_claim_mappings:
@@ -711,6 +712,9 @@ logger:
 			if tc.err != nil {
 				require.Error(t, err)
 				require.ErrorIs(t, err, tc.err)
+				if tc.causeErr != nil {
+					require.ErrorIs(t, err, tc.causeErr)
+				}
 				if tc.errContains != "" {
 					require.ErrorContains(t, err, tc.errContains)
 				}

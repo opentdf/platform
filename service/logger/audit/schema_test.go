@@ -24,27 +24,27 @@ func TestValidateClaimDestinationPath(t *testing.T) {
 
 	t.Run("rejects reserved paths", func(t *testing.T) {
 		err := validateClaimDestinationPath("requestID")
-		require.ErrorIs(t, err, errReservedAuditPath)
+		require.ErrorIs(t, err, ErrReservedAuditPath)
 
 		err = validateClaimDestinationPath("action.result")
-		require.ErrorIs(t, err, errReservedAuditPath)
+		require.ErrorIs(t, err, ErrReservedAuditPath)
 	})
 
 	t.Run("rejects container paths", func(t *testing.T) {
 		err := validateClaimDestinationPath("eventMetaData")
-		require.ErrorIs(t, err, errAuditContainerPath)
+		require.ErrorIs(t, err, ErrAuditContainerPath)
 
 		err = validateClaimDestinationPath("object")
-		require.ErrorIs(t, err, errAuditContainerPath)
+		require.ErrorIs(t, err, ErrAuditContainerPath)
 	})
 
 	t.Run("rejects unknown nested paths below closed containers", func(t *testing.T) {
 		err := validateClaimDestinationPath("object.extra.foo")
-		require.ErrorIs(t, err, errUnknownAuditPath)
+		require.ErrorIs(t, err, ErrUnknownAuditPath)
 	})
 
 	t.Run("rejects leading dot paths", func(t *testing.T) {
 		err := validateClaimDestinationPath(".banana")
-		require.ErrorIs(t, err, errUnknownAuditPath)
+		require.ErrorIs(t, err, ErrUnknownAuditPath)
 	})
 }

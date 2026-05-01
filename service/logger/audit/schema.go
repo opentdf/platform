@@ -8,9 +8,12 @@ import (
 )
 
 var (
-	errReservedAuditPath  = errors.New("reserved audit path")
-	errUnknownAuditPath   = errors.New("unknown audit path")
-	errAuditContainerPath = errors.New("audit path resolves to a container")
+	// ErrReservedAuditPath indicates a claim destination targets a protected audit field.
+	ErrReservedAuditPath = errors.New("reserved audit path")
+	// ErrUnknownAuditPath indicates a claim destination traverses an unknown closed-schema path.
+	ErrUnknownAuditPath = errors.New("unknown audit path")
+	// ErrAuditContainerPath indicates a claim destination resolves to a container instead of a writable leaf.
+	ErrAuditContainerPath = errors.New("audit path resolves to a container")
 
 	auditClaimDestinationSchema = mustBuildAuditPathSchema(reflect.TypeOf(EventObject{}))
 )
@@ -155,14 +158,14 @@ func indirectType(t reflect.Type) reflect.Type {
 
 func validateClaimDestinationPath(path string) error {
 	if path == "" {
-		return fmt.Errorf("%w: empty path", errUnknownAuditPath)
+		return fmt.Errorf("%w: empty path", ErrUnknownAuditPath)
 	}
 
 	segments := strings.Split(path, ".")
 	current := auditClaimDestinationSchema
 	for idx, segment := range segments {
 		if segment == "" {
-			return fmt.Errorf("%w: %s", errUnknownAuditPath, path)
+			return fmt.Errorf("%w: %s", ErrUnknownAuditPath, path)
 		}
 
 		child, ok := current.children[segment]
@@ -170,16 +173,16 @@ func validateClaimDestinationPath(path string) error {
 			if current.extensible {
 				return nil
 			}
-			return fmt.Errorf("%w: %s", errUnknownAuditPath, path)
+			return fmt.Errorf("%w: %s", ErrUnknownAuditPath, path)
 		}
 
 		isLast := idx == len(segments)-1
 		if isLast {
 			switch {
 			case child.reserved:
-				return fmt.Errorf("%w: %s", errReservedAuditPath, path)
+				return fmt.Errorf("%w: %s", ErrReservedAuditPath, path)
 			case child.extensible || len(child.children) > 0:
-				return fmt.Errorf("%w: %s", errAuditContainerPath, path)
+				return fmt.Errorf("%w: %s", ErrAuditContainerPath, path)
 			default:
 				return nil
 			}

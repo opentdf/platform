@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"reflect"
 
-	internaldotnotation "github.com/opentdf/platform/service/internal/dotnotation"
+	dotnotation "github.com/opentdf/platform/service/internal/dotnotation"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 )
 
@@ -40,12 +40,12 @@ func (a *Logger) applyMappedJWTClaims(ctx context.Context, entry map[string]any,
 			continue
 		}
 
-		value := internaldotnotation.Get(claimsMap, mapping.Claim)
+		value := dotnotation.Get(claimsMap, mapping.Claim)
 		if value == nil {
 			continue
 		}
 
-		if err := internaldotnotation.Set(entry, mapping.Path, normalizeAuditValue(value)); err != nil {
+		if err := dotnotation.Set(entry, mapping.Path, normalizeAuditValue(value)); err != nil {
 			a.logger.ErrorContext(ctx,
 				"failed to apply JWT claim mapping to audit log",
 				slog.String("claim", mapping.Claim),

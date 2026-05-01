@@ -379,7 +379,7 @@ type ListAttributesRequest struct {
 	Pagination *policy.PageRequest `protobuf:"bytes,10,opt,name=pagination,proto3" json:"pagination,omitempty"`
 	// Optional - CONSTRAINT: max 1 item
 	// Sort defaults:
-	//   - direction UNSPECIFIED defaults to ASC for the specified field
+	//   - direction UNSPECIFIED defaults to DESC for the specified field
 	//   - field UNSPECIFIED defaults to created_at with the specified direction
 	//   - both UNSPECIFIED or sort omitted defaults to created_at DESC
 	Sort []*AttributesSort `protobuf:"bytes,11,rep,name=sort,proto3" json:"sort,omitempty"`

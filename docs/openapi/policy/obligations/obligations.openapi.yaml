@@ -1845,7 +1845,7 @@ components:
           description: |-
             Optional - CONSTRAINT: max 1 item
              Sort defaults:
-               - direction UNSPECIFIED defaults to ASC for the specified field
+               - direction UNSPECIFIED defaults to DESC for the specified field
                - field UNSPECIFIED defaults to created_at with the specified direction
                - both UNSPECIFIED or sort omitted defaults to created_at DESC
       title: ListObligationsRequest

@@ -118,8 +118,8 @@ func normalizeAuditValue(value any) any {
 			if !field.IsExported() {
 				continue
 			}
-			opts, ok, _ := parseAuditFieldOptions(field)
-			if !ok {
+			opts, _ := parseAuditFieldOptions(field)
+			if opts.name == "" {
 				continue
 			}
 			normalized[opts.name] = normalizeAuditValue(rv.Field(i).Interface())

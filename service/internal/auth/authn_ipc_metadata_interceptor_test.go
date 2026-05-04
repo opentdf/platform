@@ -350,7 +350,7 @@ func TestIPCUnaryServerInterceptor_Integration(t *testing.T) {
 
 		var connectErr *connect.Error
 		require.ErrorAs(t, err, &connectErr)
-		assert.Equal(t, connect.CodeInternal, connectErr.Code())
+		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 }
 

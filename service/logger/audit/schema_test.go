@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -56,4 +57,13 @@ func TestValidateClaimDestinationPath(t *testing.T) {
 		err := validateClaimDestinationPath(".banana")
 		require.ErrorIs(t, err, ErrUnknownAuditPath)
 	})
+}
+
+func TestBuildAuditPathSchemaRejectsUnknownTags(t *testing.T) {
+	type badStruct struct {
+		Field string `json:"field" audit:"resreved"`
+	}
+	_, err := buildAuditPathSchema(reflect.TypeOf(badStruct{}))
+	require.Error(t, err)
+	require.ErrorContains(t, err, "unknown audit tag")
 }

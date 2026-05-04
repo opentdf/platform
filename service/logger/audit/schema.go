@@ -62,7 +62,10 @@ func addAuditSchemaFields(parent *auditPathSchema, structType reflect.Type) erro
 			continue
 		}
 
-		opts, ok := parseAuditFieldOptions(field)
+		opts, ok, err := parseAuditFieldOptions(field)
+		if err != nil {
+			return err
+		}
 		if !ok {
 			continue
 		}
@@ -92,35 +95,38 @@ func addAuditSchemaFields(parent *auditPathSchema, structType reflect.Type) erro
 	return nil
 }
 
-func parseAuditFieldOptions(field reflect.StructField) (auditFieldOptions, bool) {
+func parseAuditFieldOptions(field reflect.StructField) (auditFieldOptions, bool, error) {
 	tag := field.Tag.Get("audit")
 	if tag == "-" {
-		return auditFieldOptions{}, false
+		return auditFieldOptions{}, false, nil
 	}
 
-	reserved, extensible := parseAuditTag(tag)
+	reserved, extensible, err := parseAuditTag(tag)
+	if err != nil {
+		return auditFieldOptions{}, false, fmt.Errorf("field %s: %w", field.Name, err)
+	}
 	name := parseJSONFieldName(field)
 	if name == "" {
-		return auditFieldOptions{}, false
+		return auditFieldOptions{}, false, nil
 	}
 
 	return auditFieldOptions{
 		name:       name,
 		reserved:   reserved,
 		extensible: extensible,
-	}, true
+	}, true, nil
 }
 
-func parseAuditTag(tag string) (bool, bool) {
+func parseAuditTag(tag string) (bool, bool, error) {
 	switch tag {
 	case "":
-		return false, false
+		return false, false, nil
 	case "reserved":
-		return true, false
+		return true, false, nil
 	case "extensible":
-		return false, true
+		return false, true, nil
 	default:
-		return false, false
+		return false, false, fmt.Errorf("unknown audit tag %q", tag)
 	}
 }
 

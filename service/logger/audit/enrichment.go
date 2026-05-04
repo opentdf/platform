@@ -118,7 +118,7 @@ func normalizeAuditValue(value any) any {
 			if !field.IsExported() {
 				continue
 			}
-			opts, ok := parseAuditFieldOptions(field)
+			opts, ok, _ := parseAuditFieldOptions(field)
 			if !ok {
 				continue
 			}

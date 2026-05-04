@@ -514,7 +514,7 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 			}
 			nextCtx, err = rehydrateIPCAuthContext(nextCtx, a.logger)
 			if err != nil {
-				return nil, connect.NewError(connect.CodeInternal, errors.New("failed to rehydrate IPC authentication context"))
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid IPC authentication context"))
 			}
 			return next(nextCtx, req)
 		})

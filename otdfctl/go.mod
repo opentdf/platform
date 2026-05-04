@@ -2,7 +2,7 @@ module github.com/opentdf/platform/otdfctl
 
 go 1.25.0
 
-toolchain go1.25.8
+toolchain go1.25.9
 
 require (
 	github.com/adrg/frontmatter v0.2.0
@@ -20,8 +20,8 @@ require (
 	github.com/opentdf/platform/lib/flattening v0.1.3
 	github.com/opentdf/platform/lib/identifier v0.3.0
 	github.com/opentdf/platform/lib/ocrypto v0.10.0
-	github.com/opentdf/platform/protocol/go v0.25.0
-	github.com/opentdf/platform/sdk v0.16.0
+	github.com/opentdf/platform/protocol/go v0.27.0
+	github.com/opentdf/platform/sdk v0.17.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	github.com/zitadel/oidc/v3 v3.45.1
@@ -99,9 +99,9 @@ require (
 	github.com/zitadel/logging v0.6.2 // indirect
 	github.com/zitadel/schema v1.3.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/otel v1.40.0 // indirect
-	go.opentelemetry.io/otel/metric v1.40.0 // indirect
-	go.opentelemetry.io/otel/trace v1.40.0 // indirect
+	go.opentelemetry.io/otel v1.41.0 // indirect
+	go.opentelemetry.io/otel/metric v1.41.0 // indirect
+	go.opentelemetry.io/otel/trace v1.41.0 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6 // indirect
 	golang.org/x/net v0.51.0 // indirect

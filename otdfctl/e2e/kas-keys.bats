@@ -1,9 +1,5 @@
 #!/usr/bin/env bats
 
-load "${BATS_LIB_PATH}/bats-support/load.bash"
-load "${BATS_LIB_PATH}/bats-assert/load.bash"
-load "otdfctl-utils.sh"
-
 run_otdfctl_kas_registry_create() {
   run sh -c "./otdfctl policy kas-registry create $HOST $WITH_CREDS $*"
 }
@@ -13,6 +9,9 @@ run_otdfctl_provider_create() {
 }
 
 setup_file() {
+  bats_load_library bats-support
+  bats_load_library bats-assert
+  load "otdfctl-utils.sh"
   export WITH_CREDS='--with-client-creds-file ./creds.json'
   export HOST='--host http://localhost:8080'
   # This command is not a 'kas-registry key' subcommand, so it won't use run_otdfctl_key
@@ -37,8 +36,9 @@ setup_file() {
 }
 
 setup() {
-  # No setup specific to individual tests needed here currently
-  : # No-op
+  bats_load_library bats-support
+  bats_load_library bats-assert
+  load "otdfctl-utils.sh"
 }
 
 

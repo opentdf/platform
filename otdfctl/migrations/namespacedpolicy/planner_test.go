@@ -503,11 +503,6 @@ func TestPlannerPlanAllScopesBuildsAllPlanSections(t *testing.T) {
 	require.Len(t, plan.Actions, 1)
 	require.Len(t, plan.Actions[0].Targets, 1)
 	assert.Equal(t, TargetStatusCreate, plan.Actions[0].Targets[0].Status)
-	assert.ElementsMatch(t, []string{
-		"subject_mapping|mapping-1",
-		"registered_resource|resource-1",
-		"obligation_trigger|trigger-1",
-	}, actionReferenceKindsAndIDs(plan.Actions[0].References))
 
 	require.Len(t, plan.SubjectConditionSets, 1)
 	require.Len(t, plan.SubjectConditionSets[0].Targets, 1)
@@ -529,18 +524,170 @@ func TestPlannerPlanAllScopesBuildsAllPlanSections(t *testing.T) {
 	require.NotNil(t, plan.ObligationTriggers[0].Target)
 	assert.Equal(t, legacyAction.GetId(), plan.ObligationTriggers[0].Target.ActionSourceID)
 
-	require.Len(t, plan.Namespaces, 1)
-	assert.Equal(t, []string{legacyAction.GetId()}, plan.Namespaces[0].Actions)
-	assert.Equal(t, []string{legacySCS.GetId()}, plan.Namespaces[0].SubjectConditionSets)
-	assert.Equal(t, []string{legacyMapping.GetId()}, plan.Namespaces[0].SubjectMappings)
-	assert.Equal(t, []string{legacyResource.GetId()}, plan.Namespaces[0].RegisteredResources)
-	assert.Equal(t, []string{legacyTrigger.GetId()}, plan.Namespaces[0].ObligationTriggers)
-
 	assert.Equal(t, []string{"", targetNamespace.GetId()}, handler.actionCalls)
 	assert.Equal(t, []string{"", targetNamespace.GetId()}, handler.subjectConditionSetCalls)
 	assert.Equal(t, []string{"", targetNamespace.GetId()}, handler.subjectMappingCalls)
 	assert.Equal(t, []string{"", targetNamespace.GetId()}, handler.registeredResourceCalls)
 	assert.Equal(t, []string{"", targetNamespace.GetId()}, handler.obligationTriggerCalls)
+}
+
+func TestPlannerPlanCarriesMultiActionMappingsAndMultiBindingRegisteredResources(t *testing.T) {
+	t.Parallel()
+
+	targetNamespace := &policy.Namespace{
+		Id:  "ns-1",
+		Fqn: "https://example.com",
+	}
+	legacyCustomAction := &policy.Action{
+		Id:   "action-custom",
+		Name: "decrypt",
+	}
+	legacyReadAction := &policy.Action{
+		Id:   "action-read",
+		Name: "read",
+	}
+	targetReadAction := &policy.Action{
+		Id:        "action-read-target",
+		Name:      "read",
+		Namespace: targetNamespace,
+	}
+	legacySCS := &policy.SubjectConditionSet{
+		Id: "scs-1",
+	}
+	legacyMapping := &policy.SubjectMapping{
+		Id: "mapping-1",
+		AttributeValue: testAttributeValue(
+			"https://example.com/attr/classification/value/secret",
+			targetNamespace,
+		),
+		SubjectConditionSet: &policy.SubjectConditionSet{
+			Id: legacySCS.GetId(),
+		},
+		Actions: []*policy.Action{
+			{
+				Id:   legacyCustomAction.GetId(),
+				Name: legacyCustomAction.GetName(),
+			},
+			{
+				Id:   legacyReadAction.GetId(),
+				Name: legacyReadAction.GetName(),
+			},
+		},
+	}
+	legacyResource := testRegisteredResource(
+		"resource-1",
+		"documents",
+		testRegisteredResourceValue(
+			"prod",
+			testActionAttributeValue(
+				legacyCustomAction.GetId(),
+				legacyCustomAction.GetName(),
+				testAttributeValue("https://example.com/attr/classification/value/secret", targetNamespace),
+			),
+			testActionAttributeValue(
+				legacyReadAction.GetId(),
+				legacyReadAction.GetName(),
+				testAttributeValue("https://example.com/attr/classification/value/restricted", targetNamespace),
+			),
+		),
+	)
+
+	handler := &plannerTestHandler{
+		actionsByNamespace: map[string]*actions.ListActionsResponse{
+			"": {
+				ActionsStandard: []*policy.Action{legacyReadAction},
+				ActionsCustom:   []*policy.Action{legacyCustomAction},
+				Pagination:      emptyPageResponse(),
+			},
+			targetNamespace.GetId(): {
+				ActionsStandard: []*policy.Action{targetReadAction},
+				Pagination:      emptyPageResponse(),
+			},
+		},
+		subjectConditionSetsByNamespace: map[string]*subjectmapping.ListSubjectConditionSetsResponse{
+			"": {
+				SubjectConditionSets: []*policy.SubjectConditionSet{legacySCS},
+				Pagination:           emptyPageResponse(),
+			},
+			targetNamespace.GetId(): {
+				Pagination: emptyPageResponse(),
+			},
+		},
+		subjectMappingsByNamespace: map[string]*subjectmapping.ListSubjectMappingsResponse{
+			"": {
+				SubjectMappings: []*policy.SubjectMapping{legacyMapping},
+				Pagination:      emptyPageResponse(),
+			},
+			targetNamespace.GetId(): {
+				Pagination: emptyPageResponse(),
+			},
+		},
+		registeredResourcesByNamespace: map[string]*registeredresources.ListRegisteredResourcesResponse{
+			"": {
+				Resources:  []*policy.RegisteredResource{legacyResource},
+				Pagination: emptyPageResponse(),
+			},
+			targetNamespace.GetId(): {
+				Pagination: emptyPageResponse(),
+			},
+		},
+		namespacesResponse: &namespaces.ListNamespacesResponse{
+			Namespaces: []*policy.Namespace{targetNamespace},
+			Pagination: emptyPageResponse(),
+		},
+	}
+
+	planner, err := NewPlanner(handler, "subject-mappings,registered-resources")
+	require.NoError(t, err)
+
+	plan, err := planner.Plan(t.Context())
+	require.NoError(t, err)
+
+	assert.Equal(t, []Scope{
+		ScopeActions,
+		ScopeSubjectConditionSets,
+		ScopeSubjectMappings,
+		ScopeRegisteredResources,
+	}, plan.Scopes)
+
+	require.Len(t, plan.Actions, 2)
+	assert.ElementsMatch(t, []string{legacyCustomAction.GetId(), legacyReadAction.GetId()}, actionSourceIDs(plan.Actions))
+
+	actionTargetsBySourceID := make(map[string]*ActionTargetPlan, len(plan.Actions))
+	for _, actionPlan := range plan.Actions {
+		require.NotNil(t, actionPlan)
+		require.NotNil(t, actionPlan.Source)
+		require.Len(t, actionPlan.Targets, 1)
+		actionTargetsBySourceID[actionPlan.Source.GetId()] = actionPlan.Targets[0]
+	}
+
+	require.Contains(t, actionTargetsBySourceID, legacyCustomAction.GetId())
+	assert.Equal(t, TargetStatusCreate, actionTargetsBySourceID[legacyCustomAction.GetId()].Status)
+	assert.True(t, sameNamespace(targetNamespace, actionTargetsBySourceID[legacyCustomAction.GetId()].Namespace))
+
+	require.Contains(t, actionTargetsBySourceID, legacyReadAction.GetId())
+	assert.Equal(t, TargetStatusExistingStandard, actionTargetsBySourceID[legacyReadAction.GetId()].Status)
+	assert.Equal(t, targetReadAction.GetId(), actionTargetsBySourceID[legacyReadAction.GetId()].ExistingID)
+	assert.True(t, sameNamespace(targetNamespace, actionTargetsBySourceID[legacyReadAction.GetId()].Namespace))
+
+	require.Len(t, plan.SubjectConditionSets, 1)
+	require.Len(t, plan.SubjectMappings, 1)
+	require.NotNil(t, plan.SubjectMappings[0].Target)
+	assert.Equal(t, TargetStatusCreate, plan.SubjectMappings[0].Target.Status)
+	assert.ElementsMatch(t, []string{legacyCustomAction.GetId(), legacyReadAction.GetId()}, plan.SubjectMappings[0].Target.ActionSourceIDs)
+	assert.Equal(t, legacySCS.GetId(), plan.SubjectMappings[0].Target.SubjectConditionSetSourceID)
+
+	require.Len(t, plan.RegisteredResources, 1)
+	require.NotNil(t, plan.RegisteredResources[0].Target)
+	require.Len(t, plan.RegisteredResources[0].Target.Values, 1)
+	require.Len(t, plan.RegisteredResources[0].Target.Values[0].ActionBindings, 2)
+
+	var resourceBindingSourceIDs []string
+	for _, binding := range plan.RegisteredResources[0].Target.Values[0].ActionBindings {
+		require.NotNil(t, binding)
+		resourceBindingSourceIDs = append(resourceBindingSourceIDs, binding.SourceActionID)
+	}
+	assert.ElementsMatch(t, []string{legacyCustomAction.GetId(), legacyReadAction.GetId()}, resourceBindingSourceIDs)
 }
 
 func TestPlannerPlanInvokesInteractiveReviewerWhenConfigured(t *testing.T) {

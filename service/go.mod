@@ -2,7 +2,7 @@ module github.com/opentdf/platform/service
 
 go 1.25.0
 
-toolchain go1.25.8
+toolchain go1.25.9
 
 require (
 	buf.build/go/protovalidate v1.0.0
@@ -35,8 +35,8 @@ require (
 	github.com/opentdf/platform/lib/flattening v0.1.3
 	github.com/opentdf/platform/lib/identifier v0.4.0
 	github.com/opentdf/platform/lib/ocrypto v0.10.0
-	github.com/opentdf/platform/protocol/go v0.26.0
-	github.com/opentdf/platform/sdk v0.16.0
+	github.com/opentdf/platform/protocol/go v0.28.0
+	github.com/opentdf/platform/sdk v0.17.0
 	github.com/pressly/goose/v3 v3.24.3
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
@@ -66,7 +66,7 @@ require (
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.9-20250912141014-52f32327d4b0.1 // indirect
 	cel.dev/expr v0.25.1 // indirect
-	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
+	github.com/Azure/go-ntlmssp v0.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect

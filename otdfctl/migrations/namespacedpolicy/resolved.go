@@ -3,7 +3,6 @@ package namespacedpolicy
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/opentdf/platform/protocol/go/policy"
 )
@@ -18,9 +17,8 @@ type ResolvedTargets struct {
 }
 
 type ResolvedAction struct {
-	Source     *policy.Action
-	References []*ActionReference
-	Results    []*ResolvedActionResult
+	Source  *policy.Action
+	Results []*ResolvedActionResult
 }
 
 type ResolvedActionResult struct {
@@ -141,9 +139,8 @@ func (r *resolver) resolveAction(derived *DerivedAction) (*ResolvedAction, error
 	}
 
 	item := &ResolvedAction{
-		Source:     derived.Source,
-		References: append([]*ActionReference(nil), derived.References...),
-		Results:    make([]*ResolvedActionResult, 0, len(derived.Targets)),
+		Source:  derived.Source,
+		Results: make([]*ResolvedActionResult, 0, len(derived.Targets)),
 	}
 	for _, namespace := range derived.Targets {
 		result, err := r.resolveActionTargetFromExisting(derived.Source, namespace)
@@ -163,17 +160,13 @@ func (r *resolver) resolveActionTargetFromExisting(source *policy.Action, namesp
 	}
 
 	result := &ResolvedActionResult{Namespace: namespace}
-	if r.isStandardAction(source) {
+	if isStandardAction(source) {
 		return r.resolveStandardActionTarget(source, namespace)
 	}
 
-	existing, found, err := resolveExistingAction(source, r.existing.CustomActions[namespace.GetId()])
-	switch {
-	case found:
+	if existing, found := resolveExistingAction(source, r.existing.CustomActions[namespace.GetId()]); found {
 		result.AlreadyMigrated = existing
 		return result, nil
-	case err != nil:
-		return nil, err
 	}
 
 	result.NeedsCreate = true
@@ -181,39 +174,12 @@ func (r *resolver) resolveActionTargetFromExisting(source *policy.Action, namesp
 }
 
 func (r *resolver) resolveStandardActionTarget(source *policy.Action, namespace *policy.Namespace) (*ResolvedActionResult, error) {
-	result := &ResolvedActionResult{Namespace: namespace}
-
-	matches := make([]*policy.Action, 0, 1)
 	for _, action := range r.existing.StandardActions[namespace.GetId()] {
-		if !actionCanonicalEqual(source, action) {
-			continue
+		if actionCanonicalEqual(source, action) {
+			return &ResolvedActionResult{Namespace: namespace, ExistingStandard: action}, nil
 		}
-		matches = append(matches, action)
 	}
-
-	switch len(matches) {
-	case 1:
-		result.ExistingStandard = matches[0]
-	case 0:
-		return nil, errors.New("matching standard action not found in target namespace")
-	default:
-		return nil, errors.New("multiple standard actions match in target namespace")
-	}
-
-	return result, nil
-}
-
-func (r *resolver) isStandardAction(action *policy.Action) bool {
-	if action.GetStandard() != policy.Action_STANDARD_ACTION_UNSPECIFIED {
-		return true
-	}
-
-	switch strings.ToLower(strings.TrimSpace(action.GetName())) {
-	case "create", "read", "update", "delete":
-		return true
-	default:
-		return false
-	}
+	return nil, errors.New("matching standard action not found in target namespace")
 }
 
 func (r *resolver) resolveSubjectConditionSets() ([]*ResolvedSubjectConditionSet, error) {
@@ -258,13 +224,9 @@ func (r *resolver) resolveSubjectConditionSetTargetFromExisting(source *policy.S
 		return nil, fmt.Errorf("%w: empty namespace reference", ErrUndeterminedTargetMapping)
 	}
 	result := &ResolvedSubjectConditionSetResult{Namespace: namespace}
-	existing, found, err := resolveExistingSubjectConditionSet(source, r.existing.SubjectConditionSets[namespace.GetId()])
-	switch {
-	case found:
+	if existing, found := resolveExistingSubjectConditionSet(source, r.existing.SubjectConditionSets[namespace.GetId()]); found {
 		result.AlreadyMigrated = existing
-	case err != nil:
-		return nil, err
-	default:
+	} else {
 		result.NeedsCreate = true
 	}
 
@@ -307,13 +269,9 @@ func (r *resolver) resolveSubjectMapping(derived *DerivedSubjectMapping) (*Resol
 		return nil, fmt.Errorf("subject mapping %q in namespace %q: %w", item.Source.GetId(), item.Namespace.GetId(), err)
 	}
 
-	existing, found, err := resolveExistingSubjectMapping(item.Source, r.existing.SubjectMappings[item.Namespace.GetId()])
-	switch {
-	case found:
+	if existing, found := resolveExistingSubjectMapping(item.Source, r.existing.SubjectMappings[item.Namespace.GetId()]); found {
 		item.AlreadyMigrated = existing
-	case err != nil:
-		return nil, fmt.Errorf("subject mapping %q in namespace %q: %w", item.Source.GetId(), item.Namespace.GetId(), err)
-	default:
+	} else {
 		item.NeedsCreate = true
 	}
 
@@ -355,13 +313,12 @@ func (r *resolver) resolveRegisteredResource(derived *DerivedRegisteredResource)
 	if item.Namespace == nil {
 		return nil, fmt.Errorf("%w: empty namespace reference", ErrUndeterminedTargetMapping)
 	}
-	existing, found, err := resolveExistingRegisteredResource(item.Source, r.existing.RegisteredResources[item.Namespace.GetId()])
-	switch {
-	case found:
-		item.AlreadyMigrated = existing
-	case err != nil:
+	if err := r.resolveRegisteredResourceDependencies(item.Source, item.Namespace); err != nil {
 		return nil, fmt.Errorf("registered resource %q in namespace %q: %w", item.Source.GetId(), item.Namespace.GetId(), err)
-	default:
+	}
+	if existing, found := resolveExistingRegisteredResource(item.Source, r.existing.RegisteredResources[item.Namespace.GetId()]); found {
+		item.AlreadyMigrated = existing
+	} else {
 		item.NeedsCreate = true
 	}
 
@@ -396,13 +353,12 @@ func (r *resolver) resolveObligationTrigger(derived *DerivedObligationTrigger) (
 		Source:    derived.Source,
 		Namespace: derived.Target,
 	}
-	existing, found, err := resolveExistingObligationTrigger(item.Source, r.existing.ObligationTriggers[item.Namespace.GetId()])
-	switch {
-	case found:
-		item.AlreadyMigrated = existing
-	case err != nil:
+	if err := r.resolveObligationTriggerDependencies(item.Source, item.Namespace); err != nil {
 		return nil, fmt.Errorf("obligation trigger %q in namespace %q: %w", item.Source.GetId(), item.Namespace.GetId(), err)
-	default:
+	}
+	if existing, found := resolveExistingObligationTrigger(item.Source, r.existing.ObligationTriggers[item.Namespace.GetId()]); found {
+		item.AlreadyMigrated = existing
+	} else {
 		item.NeedsCreate = true
 	}
 
@@ -427,116 +383,93 @@ func (r *resolver) resolveSubjectMappingDependencies(mapping *policy.SubjectMapp
 	for _, action := range mapping.GetActions() {
 		actionID := action.GetId()
 		if actionID == "" {
-			return errors.New("subject mapping references an action without an id")
+			return ErrMissingActionID
 		}
-
-		result := r.actionResultsByKey[resolvedResultKey(actionID, namespace.GetId())]
-		if result == nil {
-			return fmt.Errorf("subject mapping dependency action %q is not resolved in namespace %q", actionID, namespace.GetId())
+		if r.actionResultsByKey[resolvedResultKey(actionID, namespace.GetId())] == nil {
+			return fmt.Errorf("%w: action %q", ErrUnresolvedActionDependency, actionID)
 		}
 	}
 
 	scsID := mapping.GetSubjectConditionSet().GetId()
 	if scsID == "" {
-		return errors.New("subject mapping references a subject condition set without an id")
+		return ErrMissingSubjectConditionSetID
 	}
-
-	result := r.scsResultsByKey[resolvedResultKey(scsID, namespace.GetId())]
-	if result == nil {
-		return fmt.Errorf("subject mapping dependency subject condition set %q is not resolved in namespace %q", scsID, namespace.GetId())
+	if r.scsResultsByKey[resolvedResultKey(scsID, namespace.GetId())] == nil {
+		return fmt.Errorf("%w: subject condition set %q", ErrUnresolvedSubjectConditionSetDependency, scsID)
 	}
 
 	return nil
 }
 
-func resolveExistingAction(source *policy.Action, existing []*policy.Action) (*policy.Action, bool, error) {
-	matches := make([]*policy.Action, 0, 1)
+func (r *resolver) resolveRegisteredResourceDependencies(resource *policy.RegisteredResource, namespace *policy.Namespace) error {
+	for _, value := range resource.GetValues() {
+		for _, aav := range value.GetActionAttributeValues() {
+			actionID := aav.GetAction().GetId()
+			if actionID == "" {
+				return ErrMissingActionID
+			}
+			if r.actionResultsByKey[resolvedResultKey(actionID, namespace.GetId())] == nil {
+				return fmt.Errorf("%w: action %q", ErrUnresolvedActionDependency, actionID)
+			}
+		}
+	}
+	return nil
+}
+
+func (r *resolver) resolveObligationTriggerDependencies(trigger *policy.ObligationTrigger, namespace *policy.Namespace) error {
+	actionID := trigger.GetAction().GetId()
+	if actionID == "" {
+		return ErrMissingActionID
+	}
+	if r.actionResultsByKey[resolvedResultKey(actionID, namespace.GetId())] == nil {
+		return fmt.Errorf("%w: action %q", ErrUnresolvedActionDependency, actionID)
+	}
+	return nil
+}
+
+func resolveExistingAction(source *policy.Action, existing []*policy.Action) (*policy.Action, bool) {
 	for _, action := range existing {
 		if actionCanonicalEqual(source, action) {
-			matches = append(matches, action)
+			return action, true
 		}
 	}
-
-	switch len(matches) {
-	case 1:
-		return matches[0], true, nil
-	case 0:
-		return nil, false, nil
-	default:
-		return nil, false, ErrDuplicateCanonicalMatch
-	}
+	return nil, false
 }
 
-func resolveExistingSubjectConditionSet(source *policy.SubjectConditionSet, existing []*policy.SubjectConditionSet) (*policy.SubjectConditionSet, bool, error) {
-	matches := make([]*policy.SubjectConditionSet, 0, 1)
+func resolveExistingSubjectConditionSet(source *policy.SubjectConditionSet, existing []*policy.SubjectConditionSet) (*policy.SubjectConditionSet, bool) {
 	for _, scs := range existing {
 		if subjectConditionSetCanonicalEqual(source, scs) {
-			matches = append(matches, scs)
+			return scs, true
 		}
 	}
-
-	switch len(matches) {
-	case 1:
-		return matches[0], true, nil
-	case 0:
-		return nil, false, nil
-	default:
-		return nil, false, ErrDuplicateCanonicalMatch
-	}
+	return nil, false
 }
 
-func resolveExistingSubjectMapping(source *policy.SubjectMapping, existing []*policy.SubjectMapping) (*policy.SubjectMapping, bool, error) {
-	matches := make([]*policy.SubjectMapping, 0, 1)
+func resolveExistingSubjectMapping(source *policy.SubjectMapping, existing []*policy.SubjectMapping) (*policy.SubjectMapping, bool) {
 	for _, mapping := range existing {
 		if subjectMappingCanonicalEqual(source, mapping) {
-			matches = append(matches, mapping)
+			return mapping, true
 		}
 	}
-
-	switch len(matches) {
-	case 1:
-		return matches[0], true, nil
-	case 0:
-		return nil, false, nil
-	default:
-		return nil, false, ErrDuplicateCanonicalMatch
-	}
+	return nil, false
 }
 
-func resolveExistingRegisteredResource(source *policy.RegisteredResource, existing []*policy.RegisteredResource) (*policy.RegisteredResource, bool, error) {
-	matches := make([]*policy.RegisteredResource, 0, 1)
+func resolveExistingRegisteredResource(source *policy.RegisteredResource, existing []*policy.RegisteredResource) (*policy.RegisteredResource, bool) {
 	for _, resource := range existing {
 		if registeredResourceCanonicalEqual(source, resource) {
-			matches = append(matches, resource)
+			return resource, true
 		}
 	}
-
-	switch len(matches) {
-	case 1:
-		return matches[0], true, nil
-	case 0:
-		return nil, false, nil
-	default:
-		return nil, false, ErrDuplicateCanonicalMatch
-	}
+	return nil, false
 }
 
-func resolveExistingObligationTrigger(source *policy.ObligationTrigger, existing []*policy.ObligationTrigger) (*policy.ObligationTrigger, bool, error) {
-	matches := make([]*policy.ObligationTrigger, 0, 1)
+func resolveExistingObligationTrigger(source *policy.ObligationTrigger, existing []*policy.ObligationTrigger) (*policy.ObligationTrigger, bool) {
 	for _, trigger := range existing {
 		if obligationTriggerCanonicalEqual(source, trigger) {
-			matches = append(matches, trigger)
+			return trigger, true
 		}
 	}
-
-	switch len(matches) {
-	case 1:
-		return matches[0], true, nil
-	case 0:
-		return nil, false, nil
-	default:
-		return nil, false, ErrDuplicateCanonicalMatch
-	}
+	return nil, false
 }
 
 func resolvedResultKey(sourceID, namespaceID string) string {

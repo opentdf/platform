@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.28.0](https://github.com/opentdf/platform/compare/protocol/go/v0.27.0...protocol/go/v0.28.0) (2026-04-28)
+
+
+### Features
+
+* **sdk:** add shorthand enum constants for policy types ([#3408](https://github.com/opentdf/platform/issues/3408)) ([c6f18cb](https://github.com/opentdf/platform/commit/c6f18cbcacc7fa285d834f504a6ce43b7363295d))
+
+## [0.27.0](https://github.com/opentdf/platform/compare/protocol/go/v0.26.0...protocol/go/v0.27.0) (2026-04-23)
+
+
+### Features
+
+* **policy:** add sort support to listkaskeys ([#3344](https://github.com/opentdf/platform/issues/3344)) ([de1fe92](https://github.com/opentdf/platform/commit/de1fe926e306a15ff50fa0042b4fee988b3be1e6))
+
 ## [0.26.0](https://github.com/opentdf/platform/compare/protocol/go/v0.25.0...protocol/go/v0.26.0) (2026-04-22)
 
 

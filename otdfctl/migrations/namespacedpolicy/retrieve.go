@@ -383,16 +383,6 @@ func (r *Retriever) retrieveObligationTriggers(ctx context.Context, legacyAction
 	return candidates, nil
 }
 
-func objectIDSet[T interface{ GetId() string }](items []T) map[string]struct{} {
-	ids := make(map[string]struct{}, len(items))
-	for _, item := range items {
-		if id := item.GetId(); id != "" {
-			ids[id] = struct{}{}
-		}
-	}
-	return ids
-}
-
 func actionIDsByNamespace(namespaces []*policy.Namespace, customByNamespace, standardByNamespace map[string][]*policy.Action) map[string]map[string]struct{} {
 	idsByNamespace := make(map[string]map[string]struct{}, len(namespaces))
 	for _, namespace := range dedupeTargetNamespaces(namespaces) {

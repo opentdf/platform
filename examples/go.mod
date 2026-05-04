@@ -2,13 +2,13 @@ module github.com/opentdf/platform/examples
 
 go 1.25.0
 
-toolchain go1.25.8
+toolchain go1.25.9
 
 require (
 	connectrpc.com/connect v1.19.1
 	github.com/opentdf/platform/lib/ocrypto v0.10.0
-	github.com/opentdf/platform/protocol/go v0.16.0
-	github.com/opentdf/platform/sdk v0.12.0
+	github.com/opentdf/platform/protocol/go v0.28.0
+	github.com/opentdf/platform/sdk v0.17.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.79.3

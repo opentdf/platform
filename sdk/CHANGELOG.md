@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.18.0](https://github.com/opentdf/platform/compare/sdk/v0.17.0...sdk/v0.18.0) (2026-04-29)
+
+
+### Features
+
+* **sdk:** IsHealthy(ctx) public reachability probe ([#3412](https://github.com/opentdf/platform/issues/3412)) ([3e2cf98](https://github.com/opentdf/platform/commit/3e2cf981eded81dafaaf30af642592401caa16f3))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.27.0 to 0.28.0 in /sdk ([#3415](https://github.com/opentdf/platform/issues/3415)) ([701bd9f](https://github.com/opentdf/platform/commit/701bd9f32fca5d9508331ee19966180e4c54d0e7))
+* **deps:** bump go.opentelemetry.io/otel from 1.40.0 to 1.41.0 in /sdk ([#3399](https://github.com/opentdf/platform/issues/3399)) ([d98418b](https://github.com/opentdf/platform/commit/d98418beb9e42819ba0e8376f43771f2ca7855af))
+
+## [0.17.0](https://github.com/opentdf/platform/compare/sdk/v0.16.0...sdk/v0.17.0) (2026-04-24)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.25.0 to 0.26.0 in /sdk ([#3380](https://github.com/opentdf/platform/issues/3380)) ([5e36f94](https://github.com/opentdf/platform/commit/5e36f943280fec86e2d9a4917c576b6731ed8419))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.26.0 to 0.27.0 in /sdk ([#3393](https://github.com/opentdf/platform/issues/3393)) ([7659957](https://github.com/opentdf/platform/commit/7659957ed9612397d7e72c6b309006224f3cf214))
+
 ## [0.16.0](https://github.com/opentdf/platform/compare/sdk/v0.15.0...sdk/v0.16.0) (2026-04-21)
 
 

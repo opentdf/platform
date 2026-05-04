@@ -1,11 +1,11 @@
 #!/usr/bin/env bats
 
 # Tests for namespaces
-load "${BATS_LIB_PATH}/bats-support/load.bash"
-load "${BATS_LIB_PATH}/bats-assert/load.bash"
-load "otdfctl-utils.sh"
 
 setup_file() {
+  bats_load_library bats-support
+  bats_load_library bats-assert
+  load "otdfctl-utils.sh"
   export WITH_CREDS='--with-client-creds-file ./creds.json'
   export HOST='--host http://localhost:8080'
 
@@ -26,6 +26,8 @@ setup_file() {
 }
 
 setup() {
+  bats_load_library bats-support
+  bats_load_library bats-assert
   # invoke binary with credentials under 'policy attributes namespaces'
   run_otdfctl_ns() {
     run sh -c "./otdfctl $HOST $WITH_CREDS policy attributes namespaces $*"

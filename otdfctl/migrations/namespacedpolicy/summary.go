@@ -558,19 +558,6 @@ func appendTargetlessUnresolved(summary *migrationConstructSummary, styles *migr
 	summary.unresolved = append(summary.unresolved, formatUnresolvedLineWithoutNamespace(styles, kind, label, reason))
 }
 
-func appendDetails(line string, details ...string) string {
-	filtered := make([]string, 0, len(details))
-	for _, detail := range details {
-		if strings.TrimSpace(detail) != "" {
-			filtered = append(filtered, detail)
-		}
-	}
-	if len(filtered) == 0 {
-		return line
-	}
-	return fmt.Sprintf("%s (%s)", line, strings.Join(filtered, ", "))
-}
-
 func valueFQN(value *policy.Value) string {
 	if value == nil {
 		return ""
@@ -726,8 +713,4 @@ func namespaceDisplay(namespace *policy.Namespace) string {
 		return id
 	}
 	return "(unknown namespace)"
-}
-
-func strconvQuote(value string) string {
-	return fmt.Sprintf("%q", value)
 }

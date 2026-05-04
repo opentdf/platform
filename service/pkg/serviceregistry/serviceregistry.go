@@ -14,6 +14,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/sdk"
+	authn "github.com/opentdf/platform/service/internal/auth"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 
@@ -47,6 +48,8 @@ type RegistrationParams struct {
 	// Logger is the logger that can be used to log messages. This logger is scoped to the service
 	Logger *logger.Logger
 	trace.Tracer
+	// AccessTokenVerifier validates request tokens using the platform's shared auth configuration.
+	AccessTokenVerifier authn.AccessTokenVerifier
 
 	// NewCacheClient is a function that can be used to create a new cache instance for the service
 	NewCacheClient func(cache.Options) (*cache.Cache, error)

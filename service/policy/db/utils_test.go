@@ -223,6 +223,7 @@ func Test_GetSubjectMappingsSortParams(t *testing.T) {
 			sort:          []*subjectmapping.SubjectMappingsSort{nil},
 			expectedField: "",
 			expectedDir:   "",
+		},
 		{
 			name: "UNSPECIFIED field with ASC preserves direction",
 			sort: []*subjectmapping.SubjectMappingsSort{

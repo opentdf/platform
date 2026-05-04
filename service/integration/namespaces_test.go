@@ -468,6 +468,19 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByBothUnspecified_DefaultsToCr
 	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
 }
 
+func (s *NamespacesSuite) Test_ListNamespaces_SortOmitted() {
+	ids := s.createSortTestNamespaces("sort-omitted-ns")
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// No sort provided: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
+}
+
 func (s *NamespacesSuite) Test_ListNamespaces_Limit_Succeeds() {
 	var limit int32 = 2
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{

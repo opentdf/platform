@@ -725,6 +725,17 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByBothUnspecified_De
 	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[2], ids[1], ids[0])
 }
 
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortOmitted() {
+	ids := s.createSortTestSubjectMappings("sort-omitted-sm")
+
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// No sort provided: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[2], ids[1], ids[0])
+}
+
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_Limit_Succeeds() {
 	var limit int32 = 3
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{
@@ -1535,6 +1546,17 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByBothUnspecifi
 	s.NotNil(listRsp)
 
 	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortOmitted() {
+	ids := s.createSortTestSubjectConditionSets("sort-omitted-scs")
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// No sort provided: created_at DESC
 	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[2], ids[1], ids[0])
 }
 

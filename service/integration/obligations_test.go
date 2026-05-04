@@ -1945,6 +1945,18 @@ func (s *ObligationsSuite) Test_ListObligations_SortByBothUnspecified_DefaultsTo
 	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[2], ids[1], ids[0])
 }
 
+func (s *ObligationsSuite) Test_ListObligations_SortOmitted() {
+	ids := s.createSortTestObligations("sort-omitted-obl")
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// No sort provided: created_at DESC
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[2], ids[1], ids[0])
+}
+
 // Helper functions for common operations
 
 func (s *ObligationsSuite) getNamespaceData(nsName string) (string, string, fixtures.FixtureDataNamespace) {

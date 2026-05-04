@@ -2388,6 +2388,18 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByBothUnspec
 	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[2], ids[1], ids[0])
 }
 
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortOmitted() {
+	ids := s.createSortTestRegisteredResources("sort-omitted-rr")
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// No sort provided: created_at DESC
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[2], ids[1], ids[0])
+}
+
 // Sort test helpers
 
 // createSortTestRegisteredResources creates 3 registered resources with 5ms gaps for distinct timestamps.

@@ -2648,6 +2648,20 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByBothUnspecified_DefaultsToCrea
 	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[2], ids[1], ids[0])
 }
 
+func (s *KasRegistryKeySuite) Test_ListKeys_SortOmitted() {
+	ids, kasID := s.createSortTestKasKeys("omit-kk")
+	defer s.deleteSortTestKasKeys(ids, kasID)
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// No sort provided: created_at DESC
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[2], ids[1], ids[0])
+}
+
 // Sort test helpers
 
 // createSortTestKasKeys creates 3 kas keys with 5ms gaps for distinct timestamps.

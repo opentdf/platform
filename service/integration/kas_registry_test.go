@@ -1054,6 +1054,17 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByBothUnspecified_Defau
 	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
 }
 
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortOmitted() {
+	ids := s.createSortTestKeyAccessServers("sort-omitted-kas")
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// No sort provided: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
+}
+
 func (s *KasRegistrySuite) getKasRegistryFixtures() []fixtures.FixtureDataKasRegistry {
 	return []fixtures.FixtureDataKasRegistry{
 		s.f.GetKasRegistryKey("key_access_server_1"),

@@ -683,6 +683,20 @@ func (s *AttributesSuite) Test_ListAttributes_SortByBothUnspecified_DefaultsToCr
 	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
 }
 
+func (s *AttributesSuite) Test_ListAttributes_SortOmitted() {
+	nsID := s.createSortTestNamespace("sort-omitted")
+	ids := s.createSortTestAttributes(nsID, "omitted-sort-attr", 3)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// No sort provided: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
+}
+
 func (s *AttributesSuite) Test_ListAttributes_Limit_Succeeds() {
 	var limit int32 = 2
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{

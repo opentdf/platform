@@ -14,6 +14,8 @@ var (
 	ErrUnknownAuditPath = errors.New("unknown audit path")
 	// ErrAuditContainerPath indicates a claim destination resolves to a container instead of a writable leaf.
 	ErrAuditContainerPath = errors.New("audit path resolves to a container")
+	// ErrOverlappingAuditPaths indicates two claim destinations conflict because one is a prefix of the other.
+	ErrOverlappingAuditPaths = errors.New("overlapping audit paths")
 
 	auditClaimDestinationSchema = mustBuildAuditPathSchema(reflect.TypeOf(EventObject{}))
 )

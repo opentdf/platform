@@ -59,6 +59,40 @@ func TestValidateClaimDestinationPath(t *testing.T) {
 	})
 }
 
+func TestValidateNoOverlappingPaths(t *testing.T) {
+	t.Run("allows sibling paths", func(t *testing.T) {
+		err := validateNoOverlappingPaths([]JWTClaimMapping{
+			{Claim: "sub", Path: "banana.kiwi"},
+			{Claim: "email", Path: "banana.mango"},
+		})
+		require.NoError(t, err)
+	})
+
+	t.Run("rejects short prefix of long", func(t *testing.T) {
+		err := validateNoOverlappingPaths([]JWTClaimMapping{
+			{Claim: "sub", Path: "banana"},
+			{Claim: "email", Path: "banana.kiwi.mango"},
+		})
+		require.ErrorIs(t, err, ErrOverlappingAuditPaths)
+	})
+
+	t.Run("rejects long prefix of short", func(t *testing.T) {
+		err := validateNoOverlappingPaths([]JWTClaimMapping{
+			{Claim: "email", Path: "banana.kiwi.mango"},
+			{Claim: "sub", Path: "banana"},
+		})
+		require.ErrorIs(t, err, ErrOverlappingAuditPaths)
+	})
+
+	t.Run("allows identical depth different leaves", func(t *testing.T) {
+		err := validateNoOverlappingPaths([]JWTClaimMapping{
+			{Claim: "sub", Path: "eventMetaData.requester.sub"},
+			{Claim: "email", Path: "eventMetaData.requester.email"},
+		})
+		require.NoError(t, err)
+	})
+}
+
 func TestBuildAuditPathSchemaRejectsUnknownTags(t *testing.T) {
 	type badStruct struct {
 		Field string `json:"field" audit:"resreved"`

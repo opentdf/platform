@@ -1,6 +1,9 @@
 package audit
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // JWTClaimMapping maps a JWT claim to a destination in the emitted audit log.
 // The destination path uses dot notation over the audit log output shape, e.g.
@@ -29,5 +32,36 @@ func (c Config) Validate() error {
 			return fmt.Errorf("jwt_claim_mappings[%d].path: %w", idx, err)
 		}
 	}
+	if err := validateNoOverlappingPaths(c.JWTClaimMappings); err != nil {
+		return err
+	}
 	return nil
+}
+
+func validateNoOverlappingPaths(mappings []JWTClaimMapping) error {
+	for i, a := range mappings {
+		aParts := strings.Split(a.Path, ".")
+		for j, b := range mappings {
+			if i == j {
+				continue
+			}
+			bParts := strings.Split(b.Path, ".")
+			if isPathPrefix(aParts, bParts) {
+				return fmt.Errorf("%w: %q is a prefix of %q", ErrOverlappingAuditPaths, a.Path, b.Path)
+			}
+		}
+	}
+	return nil
+}
+
+func isPathPrefix(short, long []string) bool {
+	if len(short) >= len(long) {
+		return false
+	}
+	for i, s := range short {
+		if s != long[i] {
+			return false
+		}
+	}
+	return true
 }

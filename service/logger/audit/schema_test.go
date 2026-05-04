@@ -53,8 +53,26 @@ func TestValidateClaimDestinationPath(t *testing.T) {
 		require.ErrorIs(t, err, ErrUnknownAuditPath)
 	})
 
-	t.Run("rejects leading dot paths", func(t *testing.T) {
-		err := validateClaimDestinationPath(".banana")
+	t.Run("rejects malformed dot paths", func(t *testing.T) {
+		for _, path := range []string{
+			".banana",        // leading dot
+			"banana.",        // trailing dot
+			"banana..mango",  // consecutive dots
+			".",              // single dot
+			"..",             // double dot
+			"a.b..c.d",       // mid-path empty segment
+			".a.b",           // leading dot with valid tail
+			"eventMetaData.", // trailing dot after known node
+		} {
+			t.Run(path, func(t *testing.T) {
+				err := validateClaimDestinationPath(path)
+				require.ErrorIs(t, err, ErrUnknownAuditPath)
+			})
+		}
+	})
+
+	t.Run("rejects empty path", func(t *testing.T) {
+		err := validateClaimDestinationPath("")
 		require.ErrorIs(t, err, ErrUnknownAuditPath)
 	})
 }

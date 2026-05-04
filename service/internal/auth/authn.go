@@ -474,9 +474,6 @@ func rawAccessTokenFromIncomingMetadata(md metadata.MD) string {
 	}
 
 	authHeaders := md.Get("authorization")
-	if len(authHeaders) == 0 {
-		authHeaders = md.Get("Authorization")
-	}
 	if len(authHeaders) == 0 || authHeaders[0] == "" {
 		return ""
 	}

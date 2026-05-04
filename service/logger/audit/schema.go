@@ -166,12 +166,14 @@ func validateClaimDestinationPath(path string) error {
 	}
 
 	segments := strings.Split(path, ".")
-	current := auditClaimDestinationSchema
-	for idx, segment := range segments {
+	for _, segment := range segments {
 		if segment == "" {
 			return fmt.Errorf("%w: %s", ErrUnknownAuditPath, path)
 		}
+	}
 
+	current := auditClaimDestinationSchema
+	for idx, segment := range segments {
 		child, ok := current.children[segment]
 		if !ok {
 			if current.extensible {

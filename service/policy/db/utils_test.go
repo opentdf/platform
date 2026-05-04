@@ -119,6 +119,12 @@ func Test_GetNamespacesSortParams(t *testing.T) {
 			expectedDir:   "",
 		},
 		{
+			name:          "nil element returns empty strings",
+			sort:          []*namespaces.NamespacesSort{nil},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
 			name: "UNSPECIFIED field with ASC preserves direction",
 			sort: []*namespaces.NamespacesSort{
 				{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
@@ -212,6 +218,11 @@ func Test_GetSubjectMappingsSortParams(t *testing.T) {
 			expectedField: "",
 			expectedDir:   "",
 		},
+		{
+			name:          "nil element returns empty strings",
+			sort:          []*subjectmapping.SubjectMappingsSort{nil},
+			expectedField: "",
+			expectedDir:   "",
 		{
 			name: "UNSPECIFIED field with ASC preserves direction",
 			sort: []*subjectmapping.SubjectMappingsSort{
@@ -475,6 +486,12 @@ func Test_GetAttributesSortParams(t *testing.T) {
 			expectedDir:   "",
 		},
 		{
+			name:          "nil element returns empty strings",
+			sort:          []*attributes.AttributesSort{nil},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
 			name: "UNSPECIFIED field with ASC preserves direction",
 			sort: []*attributes.AttributesSort{
 				{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
@@ -569,6 +586,12 @@ func Test_GetSubjectConditionSetsSortParams(t *testing.T) {
 			expectedDir:   "",
 		},
 		{
+			name:          "nil element returns empty strings",
+			sort:          []*subjectmapping.SubjectConditionSetsSort{nil},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
 			name: "UNSPECIFIED field with ASC preserves direction",
 			sort: []*subjectmapping.SubjectConditionSetsSort{
 				{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
@@ -659,6 +682,12 @@ func Test_GetObligationsSortParams(t *testing.T) {
 		{
 			name:          "empty slice returns empty strings",
 			sort:          []*obligations.ObligationsSort{},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
+			name:          "nil element returns empty strings",
+			sort:          []*obligations.ObligationsSort{nil},
 			expectedField: "",
 			expectedDir:   "",
 		},
@@ -789,6 +818,12 @@ func Test_GetKeyAccessServersSortParams(t *testing.T) {
 			expectedDirection: "",
 		},
 		{
+			name:              "nil element returns empty strings",
+			sort:              []*kasregistry.KeyAccessServersSort{nil},
+			expectedField:     "",
+			expectedDirection: "",
+		},
+		{
 			name: "UNSPECIFIED field with ASC preserves direction",
 			sort: []*kasregistry.KeyAccessServersSort{
 				{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
@@ -907,6 +942,12 @@ func Test_GetRegisteredResourcesSortParams(t *testing.T) {
 			expectedDir:   "",
 		},
 		{
+			name:          "nil element returns empty strings",
+			sort:          []*registeredresources.RegisteredResourcesSort{nil},
+			expectedField: "",
+			expectedDir:   "",
+		},
+		{
 			name: "UNSPECIFIED field with ASC preserves direction",
 			sort: []*registeredresources.RegisteredResourcesSort{
 				{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
@@ -1013,6 +1054,12 @@ func Test_GetKasKeysSortParams(t *testing.T) {
 		{
 			name:              "empty slice returns empty strings",
 			sort:              []*kasregistry.KasKeysSort{},
+			expectedField:     "",
+			expectedDirection: "",
+		},
+		{
+			name:              "nil element returns empty strings",
+			sort:              []*kasregistry.KasKeysSort{nil},
 			expectedField:     "",
 			expectedDirection: "",
 		},

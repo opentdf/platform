@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -1724,7 +1725,7 @@ func (s *ObligationsSuite) Test_GetObligation_ByIdAndFqn_ReturnSameResult() {
 // Sort by Name
 
 func (s *ObligationsSuite) Test_ListObligations_SortByName_ASC() {
-	ids := s.createNamedSortTestObligations([]string{"aaa-sort", "bbb-sort", "ccc-sort"})
+	ids := s.createSortTestObligations([]string{"aaa-sort", "bbb-sort", "ccc-sort"})
 	defer s.deleteObligations(ids)
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
@@ -1740,7 +1741,7 @@ func (s *ObligationsSuite) Test_ListObligations_SortByName_ASC() {
 }
 
 func (s *ObligationsSuite) Test_ListObligations_SortByName_DESC() {
-	ids := s.createNamedSortTestObligations([]string{"aaa-sortdesc", "bbb-sortdesc", "ccc-sortdesc"})
+	ids := s.createSortTestObligations([]string{"aaa-sortdesc", "bbb-sortdesc", "ccc-sortdesc"})
 	defer s.deleteObligations(ids)
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
@@ -1808,7 +1809,7 @@ func (s *ObligationsSuite) Test_ListObligations_SortByFqn_DESC() {
 // Sort by CreatedAt
 
 func (s *ObligationsSuite) Test_ListObligations_SortByCreatedAt_ASC() {
-	ids := s.createSortTestObligations("createdasc-obl")
+	ids := s.createSortTestObligations([]string{"createdasc-obl-0", "createdasc-obl-1", "createdasc-obl-2"})
 	defer s.deleteObligations(ids)
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
@@ -1824,7 +1825,7 @@ func (s *ObligationsSuite) Test_ListObligations_SortByCreatedAt_ASC() {
 }
 
 func (s *ObligationsSuite) Test_ListObligations_SortByCreatedAt_DESC() {
-	ids := s.createSortTestObligations("createddesc-obl")
+	ids := s.createSortTestObligations([]string{"createddesc-obl-0", "createddesc-obl-1", "createddesc-obl-2"})
 	defer s.deleteObligations(ids)
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
@@ -1842,7 +1843,7 @@ func (s *ObligationsSuite) Test_ListObligations_SortByCreatedAt_DESC() {
 // Sort by UpdatedAt
 
 func (s *ObligationsSuite) Test_ListObligations_SortByUpdatedAt_DESC() {
-	ids := s.createSortTestObligations("upd-sort-obl")
+	ids := s.createSortTestObligations([]string{"upd-sort-obl-0", "upd-sort-obl-1", "upd-sort-obl-2"})
 	defer s.deleteObligations(ids)
 
 	// Update the first obligation so its updated_at is the most recent
@@ -1869,7 +1870,7 @@ func (s *ObligationsSuite) Test_ListObligations_SortByUpdatedAt_DESC() {
 }
 
 func (s *ObligationsSuite) Test_ListObligations_SortByUpdatedAt_ASC() {
-	ids := s.createSortTestObligations("upd-sort-asc-obl")
+	ids := s.createSortTestObligations([]string{"upd-sort-asc-obl-0", "upd-sort-asc-obl-1", "upd-sort-asc-obl-2"})
 	defer s.deleteObligations(ids)
 
 	// Update the last obligation so its updated_at is the most recent
@@ -1897,8 +1898,34 @@ func (s *ObligationsSuite) Test_ListObligations_SortByUpdatedAt_ASC() {
 
 // Sort by Unspecified (fallback to default)
 
+func (s *ObligationsSuite) Test_ListObligations_SortTieBreaker_CreatedAtWithIDFallback() {
+	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
+	suffix := time.Now().UnixNano()
+	ids := make([]string, 3)
+	for i := range 3 {
+		name := fmt.Sprintf("tiebreaker-obl-%d-%d", i, suffix)
+		obl := s.createObligation(namespaceID, name, nil)
+		ids[i] = obl.GetId()
+	}
+	defer s.deleteObligations(ids)
+
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "obligation_definitions", ids))
+
+	sorted := slices.Sorted(slices.Values(ids))
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, sorted[0], sorted[1], sorted[2])
+}
+
 func (s *ObligationsSuite) Test_ListObligations_SortByUnspecifiedField_DefaultsToCreatedAt() {
-	ids := s.createSortTestObligations("unspecified-field-obl")
+	ids := s.createSortTestObligations([]string{"unspecified-field-obl-0", "unspecified-field-obl-1", "unspecified-field-obl-2"})
 	defer s.deleteObligations(ids)
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
@@ -1914,7 +1941,7 @@ func (s *ObligationsSuite) Test_ListObligations_SortByUnspecifiedField_DefaultsT
 }
 
 func (s *ObligationsSuite) Test_ListObligations_SortByUnspecifiedDirection_DefaultsToDESC() {
-	ids := s.createSortTestObligations("unspecified-dir-obl")
+	ids := s.createSortTestObligations([]string{"unspecified-dir-obl-0", "unspecified-dir-obl-1", "unspecified-dir-obl-2"})
 	defer s.deleteObligations(ids)
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
@@ -1930,7 +1957,7 @@ func (s *ObligationsSuite) Test_ListObligations_SortByUnspecifiedDirection_Defau
 }
 
 func (s *ObligationsSuite) Test_ListObligations_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
-	ids := s.createSortTestObligations("both-unspecified-obl")
+	ids := s.createSortTestObligations([]string{"both-unspecified-obl-0", "both-unspecified-obl-1", "both-unspecified-obl-2"})
 	defer s.deleteObligations(ids)
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
@@ -1946,7 +1973,7 @@ func (s *ObligationsSuite) Test_ListObligations_SortByBothUnspecified_DefaultsTo
 }
 
 func (s *ObligationsSuite) Test_ListObligations_SortOmitted() {
-	ids := s.createSortTestObligations("sort-omitted-obl")
+	ids := s.createSortTestObligations([]string{"sort-omitted-obl-0", "sort-omitted-obl-1", "sort-omitted-obl-2"})
 	defer s.deleteObligations(ids)
 
 	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{})
@@ -2204,31 +2231,16 @@ func (s *ObligationsSuite) assertObligationValuesSpecificTriggers(obl *policy.Ob
 
 // Sort test helpers
 
-// createSortTestObligations creates 3 obligations with 5ms gaps for distinct timestamps.
-// Returns the obligation IDs in creation order.
-func (s *ObligationsSuite) createSortTestObligations(label string) []string {
+// createSortTestObligations creates obligations with the given prefixes, adding 5ms gaps
+// between creations for distinct timestamps. Returns the obligation IDs in creation order.
+func (s *ObligationsSuite) createSortTestObligations(prefixes []string) []string {
 	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
-	const count = 3
-	ids := make([]string, count)
-	for i := range count {
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
 		if i > 0 {
 			time.Sleep(5 * time.Millisecond)
 		}
-		name := fmt.Sprintf("%s-%d-%d", label, i, time.Now().UnixNano())
-		obl := s.createObligation(namespaceID, name, nil)
-		ids[i] = obl.GetId()
-	}
-	return ids
-}
-
-// createNamedSortTestObligations creates obligations with specific name prefixes for name/FQN sort testing.
-// Returns the obligation IDs in the same order as the prefixes.
-func (s *ObligationsSuite) createNamedSortTestObligations(prefixes []string) []string {
-	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
-	suffix := time.Now().UnixNano()
-	ids := make([]string, len(prefixes))
-	for i, prefix := range prefixes {
-		name := fmt.Sprintf("%s-%d", prefix, suffix)
+		name := fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
 		obl := s.createObligation(namespaceID, name, nil)
 		ids[i] = obl.GetId()
 	}

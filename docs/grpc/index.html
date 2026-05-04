@@ -909,6 +909,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.attributes.AttributeValueObligationTriggerRequest"><span class="badge">M</span>AttributeValueObligationTriggerRequest</a>
+                </li>
+              
+                <li>
                   <a href="#policy.attributes.AttributesSort"><span class="badge">M</span>AttributesSort</a>
                 </li>
               
@@ -8201,6 +8205,44 @@ Custom actions only: replaces the existing action name </p></td>
 
         
       
+        <h3 id="policy.attributes.AttributeValueObligationTriggerRequest">AttributeValueObligationTriggerRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>obligation_value</td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
+                  <td></td>
+                  <td><p>Required. Existing obligation value to associate with the newly created attribute value. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action</td>
+                  <td><a href="#common.IdNameIdentifier">common.IdNameIdentifier</a></td>
+                  <td></td>
+                  <td><p>Required. Action that, together with the newly created attribute value, triggers the obligation value. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>context</td>
+                  <td><a href="#policy.RequestContext">policy.RequestContext</a></td>
+                  <td></td>
+                  <td><p>Optional. Request context for the obligation trigger. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.attributes.AttributesSort">AttributesSort</h3>
         <p></p>
 
@@ -8344,6 +8386,14 @@ but will not be able to be decrypted until such attribute values exist. </p></td
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>obligation_triggers</td>
+                  <td><a href="#policy.attributes.AttributeValueObligationTriggerRequest">AttributeValueObligationTriggerRequest</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional
+Existing obligation values to trigger for the newly created attribute value. </p></td>
                 </tr>
               
                 <tr>

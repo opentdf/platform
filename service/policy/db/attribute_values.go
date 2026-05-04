@@ -7,15 +7,35 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID string, r *attributes.CreateAttributeValueRequest) (*policy.Value, error) {
+	if _, ok := c.queries.db.(pgx.Tx); !ok {
+		var createdValue *policy.Value
+		err := c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
+			var err error
+			createdValue, err = txClient.CreateAttributeValue(ctx, attributeID, r)
+			return err
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return createdValue, nil
+	}
+
+	return c.createAttributeValue(ctx, attributeID, r)
+}
+
+func (c PolicyDBClient) createAttributeValue(ctx context.Context, attributeID string, r *attributes.CreateAttributeValueRequest) (*policy.Value, error) {
 	value := strings.ToLower(r.GetValue())
 
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
@@ -36,6 +56,18 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 	_, err = c.queries.upsertAttributeValueFqn(ctx, createdID)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	for _, trigger := range r.GetObligationTriggers() {
+		_, err = c.CreateObligationTrigger(ctx, &obligations.AddObligationTriggerRequest{
+			ObligationValue: trigger.GetObligationValue(),
+			Action:          trigger.GetAction(),
+			AttributeValue:  &common.IdFqnIdentifier{Id: createdID},
+			Context:         trigger.GetContext(),
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return c.GetAttributeValue(ctx, createdID)

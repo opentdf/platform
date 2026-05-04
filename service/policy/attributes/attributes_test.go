@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"buf.build/go/protovalidate"
+	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/stretchr/testify/require"
@@ -368,6 +369,124 @@ func TestCreateAttributeValue_Valid_Succeeds(t *testing.T) {
 	err := v.Validate(req)
 
 	require.NoError(t, err)
+}
+
+func TestCreateAttributeValue_WithObligationTriggers_Request(t *testing.T) {
+	validFQN := "https://example.com/obl/test/value/value1"
+	validRequestContext := &policy.RequestContext{
+		Pep: &policy.PolicyEnforcementPoint{
+			ClientId: "client-id",
+		},
+	}
+
+	testCases := []struct {
+		name         string
+		req          *attributes.CreateAttributeValueRequest
+		expectError  bool
+		errorMessage string
+	}{
+		{
+			name: "valid with obligation trigger ids",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
+					{
+						ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
+						Action:          &common.IdNameIdentifier{Id: validUUID},
+						Context:         validRequestContext,
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "valid with obligation trigger fqn and action name",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
+					{
+						ObligationValue: &common.IdFqnIdentifier{Fqn: validFQN},
+						Action:          &common.IdNameIdentifier{Name: "read"},
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid trigger with invalid obligation value id",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
+					{
+						ObligationValue: &common.IdFqnIdentifier{Id: "invalid-uuid"},
+						Action:          &common.IdNameIdentifier{Id: validUUID},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "obligation_value.id",
+		},
+		{
+			name: "invalid trigger with missing obligation value",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
+					{
+						Action: &common.IdNameIdentifier{Id: validUUID},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "obligation_value",
+		},
+		{
+			name: "invalid trigger with invalid action id",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
+					{
+						ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
+						Action:          &common.IdNameIdentifier{Id: "invalid-uuid"},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "action.id",
+		},
+		{
+			name: "invalid trigger with missing action",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
+					{
+						ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "action",
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errorMessage)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestCreateAttributeValue_ValueTooLong_Fails(t *testing.T) {

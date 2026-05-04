@@ -258,7 +258,7 @@ message AttributeValueObligationTriggerRequest {
   // Required. Action that, together with the newly created attribute value, triggers the obligation value.
   common.IdNameIdentifier action = 2 [(buf.validate.field).required = true];
   // Optional. Request context for the obligation trigger.
-  policy.RequestContext context = 3;
+  policy.RequestContext context = 11;
 }
 
 message CreateAttributeValueRequest {
@@ -281,7 +281,7 @@ message CreateAttributeValueRequest {
 
   // Optional
   // Existing obligation values to trigger for the newly created attribute value.
-  repeated AttributeValueObligationTriggerRequest obligation_triggers = 4;
+  repeated AttributeValueObligationTriggerRequest obligation_triggers = 11;
 
   // Optional
   // Common metadata

@@ -691,6 +691,7 @@ func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedField_DefaultsToC
 func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedDirection_DefaultsToDESC() {
 	nsID := s.createSortTestNamespace("sort-unspecified-dir")
 	ids := s.createSortTestAttributes(nsID, []string{"unspecified-dir-attr-0", "unspecified-dir-attr-1", "unspecified-dir-attr-2"})
+	defer s.deleteSortTestAttributes(ids)
 
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
 		Namespace: nsID,
@@ -708,6 +709,7 @@ func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedDirection_Default
 func (s *AttributesSuite) Test_ListAttributes_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
 	nsID := s.createSortTestNamespace("sort-both-unspecified")
 	ids := s.createSortTestAttributes(nsID, []string{"both-unspecified-attr-0", "both-unspecified-attr-1", "both-unspecified-attr-2"})
+	defer s.deleteSortTestAttributes(ids)
 
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
 		Namespace: nsID,
@@ -725,6 +727,7 @@ func (s *AttributesSuite) Test_ListAttributes_SortByBothUnspecified_DefaultsToCr
 func (s *AttributesSuite) Test_ListAttributes_SortOmitted() {
 	nsID := s.createSortTestNamespace("sort-omitted")
 	ids := s.createSortTestAttributes(nsID, []string{"omitted-sort-attr-0", "omitted-sort-attr-1", "omitted-sort-attr-2"})
+	defer s.deleteSortTestAttributes(ids)
 
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
 		Namespace: nsID,

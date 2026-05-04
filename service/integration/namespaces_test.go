@@ -475,6 +475,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedField_DefaultsToC
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedDirection_DefaultsToDESC() {
 	ids := s.createSortTestNamespaces([]string{"unspecified-dir-ns-0", "unspecified-dir-ns-1", "unspecified-dir-ns-2"})
+	defer s.deleteSortTestNamespaces(ids)
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -491,6 +492,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedDirection_Default
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
 	ids := s.createSortTestNamespaces([]string{"both-unspecified-ns-0", "both-unspecified-ns-1", "both-unspecified-ns-2"})
+	defer s.deleteSortTestNamespaces(ids)
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -507,6 +509,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByBothUnspecified_DefaultsToCr
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortOmitted() {
 	ids := s.createSortTestNamespaces([]string{"sort-omitted-ns-0", "sort-omitted-ns-1", "sort-omitted-ns-2"})
+	defer s.deleteSortTestNamespaces(ids)
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,

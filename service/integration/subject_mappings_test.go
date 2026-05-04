@@ -754,6 +754,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecifiedField_D
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecifiedDirection_DefaultsToDESC() {
 	ids := s.createSortTestSubjectMappings([]string{"unspecified-dir-sm-0", "unspecified-dir-sm-1", "unspecified-dir-sm-2"})
+	defer s.deleteSortTestSubjectMappings(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		Sort: []*subjectmapping.SubjectMappingsSort{
@@ -769,6 +770,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecifiedDirecti
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
 	ids := s.createSortTestSubjectMappings([]string{"both-unspecified-sm-0", "both-unspecified-sm-1", "both-unspecified-sm-2"})
+	defer s.deleteSortTestSubjectMappings(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		Sort: []*subjectmapping.SubjectMappingsSort{
@@ -784,6 +786,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByBothUnspecified_De
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortOmitted() {
 	ids := s.createSortTestSubjectMappings([]string{"sort-omitted-sm-0", "sort-omitted-sm-1", "sort-omitted-sm-2"})
+	defer s.deleteSortTestSubjectMappings(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{})
 	s.Require().NoError(err)
@@ -1626,6 +1629,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecifiedFi
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecifiedDirection_DefaultsToDESC() {
 	ids := s.createSortTestSubjectConditionSets([]string{"unspecified-dir-scs-0", "unspecified-dir-scs-1", "unspecified-dir-scs-2"})
+	defer s.deleteSortTestSubjectConditionSets(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
 		Sort: []*subjectmapping.SubjectConditionSetsSort{
@@ -1641,6 +1645,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecifiedDi
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
 	ids := s.createSortTestSubjectConditionSets([]string{"both-unspecified-scs-0", "both-unspecified-scs-1", "both-unspecified-scs-2"})
+	defer s.deleteSortTestSubjectConditionSets(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
 		Sort: []*subjectmapping.SubjectConditionSetsSort{
@@ -1656,6 +1661,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByBothUnspecifi
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortOmitted() {
 	ids := s.createSortTestSubjectConditionSets([]string{"sort-omitted-scs-0", "sort-omitted-scs-1", "sort-omitted-scs-2"})
+	defer s.deleteSortTestSubjectConditionSets(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{})
 	s.Require().NoError(err)

@@ -109,6 +109,14 @@ func TestValidateNoOverlappingPaths(t *testing.T) {
 		})
 		require.NoError(t, err)
 	})
+
+	t.Run("rejects duplicate destination paths", func(t *testing.T) {
+		err := validateNoOverlappingPaths([]JWTClaimMapping{
+			{Claim: "sub", Path: "eventMetaData.requester.sub"},
+			{Claim: "email", Path: "eventMetaData.requester.sub"},
+		})
+		require.ErrorIs(t, err, ErrOverlappingAuditPaths)
+	})
 }
 
 func TestBuildAuditPathSchemaRejectsUnknownTags(t *testing.T) {

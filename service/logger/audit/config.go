@@ -42,12 +42,18 @@ func validateNoOverlappingPaths(mappings []JWTClaimMapping) error {
 	for i, a := range mappings {
 		aParts := strings.Split(a.Path, ".")
 		for j, b := range mappings {
-			if i == j {
+			if i >= j {
 				continue
+			}
+			if a.Path == b.Path {
+				return fmt.Errorf("%w: duplicate path %q", ErrOverlappingAuditPaths, a.Path)
 			}
 			bParts := strings.Split(b.Path, ".")
 			if isPathPrefix(aParts, bParts) {
 				return fmt.Errorf("%w: %q is a prefix of %q", ErrOverlappingAuditPaths, a.Path, b.Path)
+			}
+			if isPathPrefix(bParts, aParts) {
+				return fmt.Errorf("%w: %q is a prefix of %q", ErrOverlappingAuditPaths, b.Path, a.Path)
 			}
 		}
 	}

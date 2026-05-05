@@ -259,6 +259,8 @@ message AttributeValueObligationTriggerRequest {
   common.IdNameIdentifier action = 2 [(buf.validate.field).required = true];
   // Optional. Request context for the obligation trigger.
   policy.RequestContext context = 11;
+  // Optional. Common metadata for the obligation trigger.
+  common.MetadataMutable metadata = 100;
 }
 
 message CreateAttributeValueRequest {

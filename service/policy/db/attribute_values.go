@@ -45,6 +45,7 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 			Action:          trigger.GetAction(),
 			AttributeValue:  &common.IdFqnIdentifier{Id: createdID},
 			Context:         trigger.GetContext(),
+			Metadata:        trigger.GetMetadata(),
 		})
 		if err != nil {
 			return nil, err

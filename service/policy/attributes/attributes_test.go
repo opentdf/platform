@@ -395,6 +395,9 @@ func TestCreateAttributeValue_WithObligationTriggers_Request(t *testing.T) {
 						ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
 						Action:          &common.IdNameIdentifier{Id: validUUID},
 						Context:         validRequestContext,
+						Metadata: &common.MetadataMutable{
+							Labels: map[string]string{"source": "inline"},
+						},
 					},
 				},
 			},

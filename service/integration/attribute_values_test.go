@@ -1102,6 +1102,9 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_
 			{
 				ObligationValue: &common.IdFqnIdentifier{Id: obl1Val1.GetId()},
 				Action:          &common.IdNameIdentifier{Id: readAction.GetId()},
+				Metadata: &common.MetadataMutable{
+					Labels: map[string]string{"source": "inline-trigger-1"},
+				},
 				Context: &policy.RequestContext{
 					Pep: &policy.PolicyEnforcementPoint{
 						ClientId: "test-client-1",
@@ -1148,6 +1151,13 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_
 
 	s.assertObligationValueHasSingleTrigger(retrievedObl1Values[obl1Val1.GetId()], obl1Val1, readAction, createdValue, "test-client-1")
 	s.assertObligationValueHasSingleTrigger(retrievedObl1Values[obl1Val2.GetId()], obl1Val2, updateAction, createdValue, "test-client-2")
+
+	triggerWithMetadata, err := s.db.PolicyClient.GetObligationTrigger(s.ctx, &obligations.GetObligationTriggerRequest{
+		Id: retrievedObl1Values[obl1Val1.GetId()].GetTriggers()[0].GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(triggerWithMetadata.GetMetadata())
+	s.Equal("inline-trigger-1", triggerWithMetadata.GetMetadata().GetLabels()["source"])
 
 	retrievedObl2, found := obligationsByID[obl2.GetId()]
 	s.Require().True(found)

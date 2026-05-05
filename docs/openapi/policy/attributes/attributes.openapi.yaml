@@ -1757,6 +1757,10 @@ components:
           title: context
           description: Optional. Request context for the obligation trigger.
           $ref: '#/components/schemas/policy.RequestContext'
+        metadata:
+          title: metadata
+          description: Optional. Common metadata for the obligation trigger.
+          $ref: '#/components/schemas/common.MetadataMutable'
       title: AttributeValueObligationTriggerRequest
       required:
         - obligationValue

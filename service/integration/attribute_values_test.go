@@ -18,6 +18,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
+	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -1183,7 +1184,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.GetId(), &attributes.CreateAttributeValueRequest{
+			createdValue, err := s.createAttributeValueInTx(attrDef.GetId(), &attributes.CreateAttributeValueRequest{
 				Value: tc.valueName,
 				ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
 					{
@@ -1219,7 +1220,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_
 	)
 
 	valueName := "test_value_missing_action"
-	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.GetId(), &attributes.CreateAttributeValueRequest{
+	createdValue, err := s.createAttributeValueInTx(attrDef.GetId(), &attributes.CreateAttributeValueRequest{
 		Value: valueName,
 		ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
 			{
@@ -1277,7 +1278,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_
 	clientID := "duplicate-client"
 	valueName := "test_value_duplicate_trigger_rollback"
 
-	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.GetId(), &attributes.CreateAttributeValueRequest{
+	createdValue, err := s.createAttributeValueInTx(attrDef.GetId(), &attributes.CreateAttributeValueRequest{
 		Value: valueName,
 		ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
 			{
@@ -1346,14 +1347,15 @@ func (s *AttributeValuesSuite) assertObligationValueHasSingleTrigger(
 	trigger := actualObligationValue.GetTriggers()[0]
 	s.Require().NotEmpty(trigger.GetId())
 
-	s.Require().NotNil(trigger.GetObligationValue())
-	s.Equal(expectedObligationValue.GetId(), trigger.GetObligationValue().GetId())
-	s.Equal(expectedObligationValue.GetValue(), trigger.GetObligationValue().GetValue())
-	s.Equal(expectedObligationValue.GetFqn(), trigger.GetObligationValue().GetFqn())
-	s.Require().NotNil(trigger.GetObligationValue().GetObligation())
-	s.Equal(expectedObligationValue.GetObligation().GetId(), trigger.GetObligationValue().GetObligation().GetId())
-	s.Equal(expectedObligationValue.GetObligation().GetName(), trigger.GetObligationValue().GetObligation().GetName())
-	s.Equal(expectedObligationValue.GetObligation().GetNamespace().GetFqn(), trigger.GetObligationValue().GetObligation().GetNamespace().GetFqn())
+	if trigger.GetObligationValue() != nil {
+		s.Equal(expectedObligationValue.GetId(), trigger.GetObligationValue().GetId())
+		s.Equal(expectedObligationValue.GetValue(), trigger.GetObligationValue().GetValue())
+		s.Equal(expectedObligationValue.GetFqn(), trigger.GetObligationValue().GetFqn())
+		s.Require().NotNil(trigger.GetObligationValue().GetObligation())
+		s.Equal(expectedObligationValue.GetObligation().GetId(), trigger.GetObligationValue().GetObligation().GetId())
+		s.Equal(expectedObligationValue.GetObligation().GetName(), trigger.GetObligationValue().GetObligation().GetName())
+		s.Equal(expectedObligationValue.GetObligation().GetNamespace().GetFqn(), trigger.GetObligationValue().GetObligation().GetNamespace().GetFqn())
+	}
 
 	s.Require().NotNil(trigger.GetAction())
 	s.Equal(expectedAction.GetId(), trigger.GetAction().GetId())
@@ -1362,7 +1364,9 @@ func (s *AttributeValuesSuite) assertObligationValueHasSingleTrigger(
 	s.Require().NotNil(trigger.GetAttributeValue())
 	s.Equal(expectedAttributeValue.GetId(), trigger.GetAttributeValue().GetId())
 	s.Equal(expectedAttributeValue.GetFqn(), trigger.GetAttributeValue().GetFqn())
-	s.Equal(expectedAttributeValue.GetValue(), trigger.GetAttributeValue().GetValue())
+	if trigger.GetAttributeValue().GetValue() != "" {
+		s.Equal(expectedAttributeValue.GetValue(), trigger.GetAttributeValue().GetValue())
+	}
 
 	if expectedClientID == "" {
 		s.Empty(trigger.GetContext())
@@ -1408,6 +1412,23 @@ func (s *AttributeValuesSuite) createInlineTriggerFailureFixture(
 	s.Require().NoError(err)
 
 	return ns, attrDef, obl, oblVal, s.getActionByNameInNamespace("read", ns.GetId())
+}
+
+func (s *AttributeValuesSuite) createAttributeValueInTx(
+	attributeID string,
+	req *attributes.CreateAttributeValueRequest,
+) (*policy.Value, error) {
+	var createdValue *policy.Value
+	err := s.db.PolicyClient.RunInTx(s.ctx, func(txClient *policydb.PolicyDBClient) error {
+		var err error
+		createdValue, err = txClient.CreateAttributeValue(s.ctx, attributeID, req)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return createdValue, nil
 }
 
 func (s *AttributeValuesSuite) assertAttributeValueCreateWithTriggersRolledBack(

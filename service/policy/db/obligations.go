@@ -684,20 +684,11 @@ func (c PolicyDBClient) GetObligationTrigger(ctx context.Context, r *obligations
 }
 
 func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligations.AddObligationTriggerRequest) (*policy.ObligationTrigger, error) {
-	return c.createObligationTrigger(ctx, r, "")
-}
-
-func (c PolicyDBClient) createObligationTrigger(
-	ctx context.Context,
-	r *obligations.AddObligationTriggerRequest,
-	attributeNamespaceID string,
-) (*policy.ObligationTrigger, error) {
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
 
-	// Get obligation
 	var oblValReq *obligations.GetObligationValueRequest
 	if r.GetObligationValue().GetId() != "" {
 		oblValReq = &obligations.GetObligationValueRequest{
@@ -718,7 +709,7 @@ func (c PolicyDBClient) createObligationTrigger(
 		return nil, err
 	}
 
-	err = c.validateObligationNamespaceConsistency(ctx, oblVal.GetObligation().GetNamespace().GetId(), r.GetAttributeValue(), actionID, attributeNamespaceID)
+	err = c.validateObligationNamespaceConsistency(ctx, oblVal.GetObligation().GetNamespace().GetId(), r.GetAttributeValue(), actionID)
 	if err != nil {
 		return nil, err
 	}
@@ -783,30 +774,25 @@ func (c PolicyDBClient) validateObligationNamespaceConsistency(
 	targetNsID string,
 	attributeValue *common.IdFqnIdentifier,
 	actionID string,
-	attributeNamespaceID string,
 ) error {
-	if attributeNamespaceID == "" {
-		var attributeValueIdentifier any
-		if attributeValue.GetId() != "" {
-			attributeValueIdentifier = &attributes.GetAttributeValueRequest_ValueId{ValueId: attributeValue.GetId()}
-		} else {
-			attributeValueIdentifier = &attributes.GetAttributeValueRequest_Fqn{Fqn: attributeValue.GetFqn()}
-		}
-
-		av, err := c.GetAttributeValue(ctx, attributeValueIdentifier)
-		if err != nil {
-			return db.WrapIfKnownInvalidQueryErr(err)
-		}
-		attr, err := c.GetAttribute(ctx, av.GetAttribute().GetId())
-		if err != nil {
-			return db.WrapIfKnownInvalidQueryErr(err)
-		}
-		attributeNamespaceID = attr.GetNamespace().GetId()
+	var attributeValueIdentifier any
+	if attributeValue.GetId() != "" {
+		attributeValueIdentifier = &attributes.GetAttributeValueRequest_ValueId{ValueId: attributeValue.GetId()}
+	} else {
+		attributeValueIdentifier = &attributes.GetAttributeValueRequest_Fqn{Fqn: attributeValue.GetFqn()}
 	}
 
-	if attributeNamespaceID != targetNsID {
+	av, err := c.GetAttributeValue(ctx, attributeValueIdentifier)
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	attr, err := c.GetAttribute(ctx, av.GetAttribute().GetId())
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if attr.GetNamespace().GetId() != targetNsID {
 		return errors.Join(db.ErrNamespaceMismatch,
-			fmt.Errorf("attribute value namespace [%s] does not match the specified obligation trigger namespace [%s]", attributeNamespaceID, targetNsID))
+			fmt.Errorf("attribute value namespace [%s] does not match the specified obligation trigger namespace [%s]", attr.GetNamespace().GetId(), targetNsID))
 	}
 
 	// All actions must be in the same namespace

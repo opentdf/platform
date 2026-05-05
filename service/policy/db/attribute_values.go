@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -18,24 +17,6 @@ import (
 )
 
 func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID string, r *attributes.CreateAttributeValueRequest) (*policy.Value, error) {
-	if _, ok := c.queries.db.(pgx.Tx); !ok {
-		var createdValue *policy.Value
-		err := c.RunInTx(ctx, func(txClient *PolicyDBClient) error {
-			var err error
-			createdValue, err = txClient.CreateAttributeValue(ctx, attributeID, r)
-			return err
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		return createdValue, nil
-	}
-
-	return c.createAttributeValue(ctx, attributeID, r)
-}
-
-func (c PolicyDBClient) createAttributeValue(ctx context.Context, attributeID string, r *attributes.CreateAttributeValueRequest) (*policy.Value, error) {
 	value := strings.ToLower(r.GetValue())
 
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
@@ -58,22 +39,13 @@ func (c PolicyDBClient) createAttributeValue(ctx context.Context, attributeID st
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	attributeNamespaceID := ""
-	if len(r.GetObligationTriggers()) > 0 {
-		attr, err := c.GetAttribute(ctx, attributeID)
-		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
-		}
-		attributeNamespaceID = attr.GetNamespace().GetId()
-	}
-
 	for _, trigger := range r.GetObligationTriggers() {
-		_, err = c.createObligationTrigger(ctx, &obligations.AddObligationTriggerRequest{
+		_, err = c.CreateObligationTrigger(ctx, &obligations.AddObligationTriggerRequest{
 			ObligationValue: trigger.GetObligationValue(),
 			Action:          trigger.GetAction(),
 			AttributeValue:  &common.IdFqnIdentifier{Id: createdID},
 			Context:         trigger.GetContext(),
-		}, attributeNamespaceID)
+		})
 		if err != nil {
 			return nil, err
 		}

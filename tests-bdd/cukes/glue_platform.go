@@ -35,6 +35,11 @@ type PlatformTestSuiteContext struct {
 	ComposeLogger     *slog.Logger
 	PlatformLogger    *slog.Logger
 	HasFailures       bool // Track if any test failures occurred
+
+	// defaultPolicyDBs tracks databases where provisionDefaultPolicy has
+	// already run, keyed by DatabaseName. Prevents duplicate provisioning
+	// and lets stateless-reuse scenarios detect missing policy.
+	defaultPolicyDBs map[string]bool
 }
 type DockerComposeLogger struct {
 	Logger *slog.Logger
@@ -73,10 +78,11 @@ func (d *DockerComposeLogger) Printf(format string, v ...interface{}) {
 
 func CreatePlatformCukesContext(logger *slog.Logger, composeLogger *slog.Logger, platformLogger *slog.Logger) *PlatformTestSuiteContext {
 	return &PlatformTestSuiteContext{
-		FeatureTracker: make(map[string]*PlatformScenarioContext),
-		Logger:         logger,
-		ComposeLogger:  composeLogger,
-		PlatformLogger: platformLogger,
+		FeatureTracker:   make(map[string]*PlatformScenarioContext),
+		Logger:           logger,
+		ComposeLogger:    composeLogger,
+		PlatformLogger:   platformLogger,
+		defaultPolicyDBs: make(map[string]bool),
 	}
 }
 

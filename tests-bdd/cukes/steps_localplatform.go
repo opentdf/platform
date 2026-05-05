@@ -130,6 +130,13 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 			}
 			scenarioContext.SDK = platformSDK
 		}
+		dbName := scenarioContext.ScenarioOptions.DatabaseName
+		if options.provisionDefaultPolicy && !scenarioContext.TestSuiteContext.defaultPolicyDBs[dbName] {
+			if err := provisionDefaultPolicy(ctx, scenarioContext.SDK); err != nil {
+				return ctx, fmt.Errorf("provision default policy: %w", err)
+			}
+			scenarioContext.TestSuiteContext.defaultPolicyDBs[dbName] = true
+		}
 		return ctx, nil
 	}
 	localPlatformGlue, ok := (*scenarioContext.TestSuiteContext.PlatformGlue).(*LocalDevPlatformGlue)
@@ -226,7 +233,7 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 		}
 
 		scenarioContext.RegisterPlatformShutdownHook(func() error {
-			return platformDockerCompose.Down(ctx, tc.RemoveOrphans(true))
+			return platformDockerCompose.Down(context.WithoutCancel(ctx), tc.RemoveOrphans(true))
 		})
 	}
 
@@ -251,6 +258,7 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 		if err := provisionDefaultPolicy(ctx, platformSDK); err != nil {
 			return ctx, fmt.Errorf("provision default policy: %w", err)
 		}
+		scenarioContext.TestSuiteContext.defaultPolicyDBs[scenarioContext.ScenarioOptions.DatabaseName] = true
 	}
 
 	return ctx, nil

@@ -21,11 +21,12 @@ import (
 	"github.com/cucumber/godog"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/opentdf/platform/lib/fixtures"
+	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/cmd"
-	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/pkg/config"
-	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/server"
 	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 	"gopkg.in/yaml.v2"
@@ -37,13 +38,6 @@ const (
 	platformImageEnvironment           = "PLATFORM_IMAGE"
 	platformImageEnvironmentLocalImage = "platform-cukes:latest"
 	userContextKey                     = "platform_users"
-
-	// Policy-fixture DB pool defaults (mirror service/pkg/db.Config struct-tag defaults).
-	policyDBConnectTimeoutSeconds    = 15
-	policyDBMaxConns                 = 4
-	policyDBMaxConnLifetimeSeconds   = 3600
-	policyDBMaxConnIdleSeconds       = 1800
-	policyDBHealthCheckPeriodSeconds = 60
 )
 
 //go:embed resources/platform.template
@@ -60,13 +54,9 @@ type LocalPlatformStepDefinitions struct {
 }
 
 type platformStartOptions struct {
-	platformProvisionPath *string
-	kcProvisionPath       *template.Template
-	// policyProvisionPath controls policy fixture provisioning:
-	//   nil        -> no policy is provisioned (default; mirrors `an empty local platform`)
-	//   empty ""   -> load tests-bdd/cukes/resources/policy_default.yaml
-	//   non-empty  -> load the given path; absolute, or relative to ProjectDir.
-	policyProvisionPath *string
+	platformProvisionPath  *string
+	kcProvisionPath        *template.Template
+	provisionDefaultPolicy bool
 }
 
 func (s *LocalPlatformStepDefinitions) aUser(ctx context.Context, username string, email string, attributes *godog.Table) (context.Context, error) {
@@ -167,11 +157,6 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 		return ctx, err
 	}
 
-	if options.policyProvisionPath != nil {
-		if err := provisionPlatformPolicy(ctx, localPlatformOptions, scenarioContext, options); err != nil {
-			return ctx, err
-		}
-	}
 	version, exists := os.LookupEnv(platformImageEnvironment)
 	if !exists {
 		version = platformImageEnvironmentLocalImage
@@ -262,6 +247,12 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 		slog.String("realm", scenarioContext.ScenarioOptions.KeycloakRealm),
 		slog.String("endpoint", te))
 
+	if options.provisionDefaultPolicy {
+		if err := provisionDefaultPolicy(ctx, platformSDK); err != nil {
+			return ctx, fmt.Errorf("provision default policy: %w", err)
+		}
+	}
+
 	return ctx, nil
 }
 
@@ -291,31 +282,11 @@ func (s *LocalPlatformStepDefinitions) aEmptyLocalPlatform(ctx context.Context) 
 
 func (s *LocalPlatformStepDefinitions) aDefaultLocalPlatform(ctx context.Context) (context.Context, error) {
 	kt := template.Must(template.New("kc").Parse(keycloakBaseTemplate))
-	defaultPolicyPath := ""
 	return s.commonLocalPlatform(ctx, &platformStartOptions{
-		kcProvisionPath:     kt,
-		policyProvisionPath: &defaultPolicyPath,
+		kcProvisionPath:        kt,
+		provisionDefaultPolicy: true,
 	})
 }
-
-func (s *LocalPlatformStepDefinitions) aLocalPlatformWithPolicy(ctx context.Context, policyPath string) (context.Context, error) {
-	kt := template.Must(template.New("kc").Parse(keycloakBaseTemplate))
-	return s.commonLocalPlatform(ctx, &platformStartOptions{
-		kcProvisionPath:     kt,
-		policyProvisionPath: &policyPath,
-	})
-}
-
-// func (s *LocalPlatformStepDefinitions) aDefaultLocalPlatform(ctx context.Context) (context.Context, error) {
-// 	kt := template.Must(template.New("kc").Parse(keycloakFederalTemplate))
-// 	scenarioContext := GetPlatformScenarioContext(ctx)
-// 	localPlatformGlue, ok := (*scenarioContext.TestSuiteContext.PlatformGlue).(*LocalDevPlatformGlue)
-// 	if !ok {
-// 		return ctx, errors.New("no local platform glue found")
-// 	}
-// 	platformProvisionPath := path.Join(localPlatformGlue.Options.ProjectDir, "samples", "defaults", "federal.yaml")
-// 	return s.commonLocalPlatform(ctx, &platformStartOptions{platformProvisionPath: &platformProvisionPath, kcProvisionPath: kt})
-// }
 
 func (s *LocalPlatformStepDefinitions) aLocalPlatformWithTemplates(ctx context.Context, platformTemplate string, kcTemplate string) (context.Context, error) {
 	kcTemplateBytes, err := os.ReadFile(kcTemplate)
@@ -436,123 +407,78 @@ func provisionKeycloak(ctx context.Context, suiteOptions *LocalDevOptions, scena
 	}, kcData)
 }
 
-// provisionPlatformPolicy loads a policy fixture YAML into the scenario's
-// policy schema. The path in startupOptions.policyProvisionPath is resolved
-// as follows: empty string -> tests-bdd/cukes/resources/policy_default.yaml;
-// absolute path -> used verbatim; relative path -> resolved under ProjectDir.
-//
-// NOTE: fixtures.LoadFixtureData (in service/internal/fixtures, wrapped by
-// cmd.ProvisionPolicyFixturesFromFile) mutates package-global state. BDD
-// scenarios currently run serially; any future move to parallel scenarios
-// must serialize calls to this function.
-func provisionPlatformPolicy(ctx context.Context, suiteOptions *LocalDevOptions, scenarioContext *PlatformScenarioContext,
-	startupOptions *platformStartOptions,
-) error {
-	scenarioLogger := scenarioContext.TestSuiteContext.Logger
-	scenarioLogger.Info("provision platform policy")
+func provisionDefaultPolicy(ctx context.Context, sdk *otdf.SDK) error {
+	nsResp, err := sdk.Namespaces.CreateNamespace(ctx, &namespaces.CreateNamespaceRequest{
+		Name: "demo.com",
+	})
+	if err != nil {
+		return fmt.Errorf("create namespace: %w", err)
+	}
+	nsID := nsResp.GetNamespace().GetId()
 
-	fixturePath := *startupOptions.policyProvisionPath
-	switch {
-	case fixturePath == "":
-		fixturePath = path.Join(suiteOptions.ProjectDir, "tests-bdd", "cukes", "resources", "policy_default.yaml")
-	case !path.IsAbs(fixturePath):
-		fixturePath = path.Join(suiteOptions.ProjectDir, fixturePath)
+	deptResp, err := sdk.Attributes.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: nsID,
+		Name:        "department",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"engineering", "finance", "hr"},
+	})
+	if err != nil {
+		return fmt.Errorf("create department attribute: %w", err)
 	}
 
-	cfg := &config.Config{
-		DB: db.Config{
-			Host:           "localhost",
-			Port:           suiteOptions.postgresPort,
-			Database:       scenarioContext.ScenarioOptions.DatabaseName,
-			User:           "postgres",
-			Password:       "changeme",
-			SSLMode:        "prefer",
-			Schema:         "otdf",
-			ConnectTimeout: policyDBConnectTimeoutSeconds,
-			Pool: db.PoolConfig{
-				MaxConns:          policyDBMaxConns,
-				MaxConnLifetime:   policyDBMaxConnLifetimeSeconds,
-				MaxConnIdleTime:   policyDBMaxConnIdleSeconds,
-				HealthCheckPeriod: policyDBHealthCheckPeriodSeconds,
+	classResp, err := sdk.Attributes.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: nsID,
+		Name:        "classification",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		Values:      []string{"secret", "confidential", "internal", "public"},
+	})
+	if err != nil {
+		return fmt.Errorf("create classification attribute: %w", err)
+	}
+
+	type valueMapping struct {
+		selector string
+		match    string
+		valueID  string
+	}
+	var mappings []valueMapping
+	for _, v := range deptResp.GetAttribute().GetValues() {
+		mappings = append(mappings, valueMapping{
+			selector: ".attributes.department[]",
+			match:    v.GetValue(),
+			valueID:  v.GetId(),
+		})
+	}
+	for _, v := range classResp.GetAttribute().GetValues() {
+		mappings = append(mappings, valueMapping{
+			selector: ".attributes.classification[]",
+			match:    v.GetValue(),
+			valueID:  v.GetId(),
+		})
+	}
+
+	for _, m := range mappings {
+		_, err := sdk.SubjectMapping.CreateSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
+			AttributeValueId: m.valueID,
+			Actions:          []*policy.Action{{Name: "read"}},
+			NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
+				SubjectSets: []*policy.SubjectSet{{
+					ConditionGroups: []*policy.ConditionGroup{{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{{
+							SubjectExternalSelectorValue: m.selector,
+							Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+							SubjectExternalValues:        []string{m.match},
+						}},
+					}},
+				}},
 			},
-			RunMigrations:    true,
-			VerifyConnection: true,
-		},
-		Logger: logger.Config{
-			Level:  "info",
-			Output: "stdout",
-			Type:   "text",
-		},
-	}
-
-	// Recover from fixture panics so we return a readable error instead of
-	// aborting the entire test process on a malformed fixture.
-	var provisionErr error
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				provisionErr = fmt.Errorf("policy fixture provisioning panicked: %v", r)
-			}
-		}()
-		cmd.ProvisionPolicyFixturesFromFile(ctx, cfg, fixturePath)
-	}()
-	if provisionErr != nil {
-		return provisionErr
-	}
-
-	// Default fixture only: pin HIERARCHY rank for demo.com/attr/classification.
-	// Fixture map iteration order is non-deterministic, so the trigger that
-	// auto-populates attribute_definitions.values_order would otherwise leave
-	// rank up to chance. We control the rank here from test code rather than
-	// adding a behavior change to the fixtures provisioner.
-	if *startupOptions.policyProvisionPath == "" {
-		if err := pinDefaultClassificationHierarchy(ctx, scenarioContext); err != nil {
-			return fmt.Errorf("pin classification hierarchy: %w", err)
+		})
+		if err != nil {
+			return fmt.Errorf("create subject mapping for %s: %w", m.match, err)
 		}
 	}
-	return nil
-}
 
-// pinDefaultClassificationHierarchy sets values_order on the default
-// fixture's classification attribute (high -> low: secret > confidential >
-// internal > public) so encrypt/decrypt scenarios get deterministic
-// HIERARCHY ranking.
-func pinDefaultClassificationHierarchy(ctx context.Context, scenarioContext *PlatformScenarioContext) error {
-	// Hard-coded UUIDs for the demo.com/attr/classification attribute and its
-	// values, mirroring policy_default.yaml. They are policy-DB primary keys,
-	// not credentials.
-	const (
-		classificationAttrID = "a1b2c3d4-e5f6-4a7b-8c9d-000000000020"
-		secretValueID        = "a1b2c3d4-e5f6-4a7b-8c9d-000000000024" //nolint:gosec // attribute-value id, not a credential
-		confidentialValueID  = "a1b2c3d4-e5f6-4a7b-8c9d-000000000023" //nolint:gosec // attribute-value id, not a credential
-		internalValueID      = "a1b2c3d4-e5f6-4a7b-8c9d-000000000022"
-		publicValueID        = "a1b2c3d4-e5f6-4a7b-8c9d-000000000021"
-	)
-	localPlatformGlue, ok := (*scenarioContext.TestSuiteContext.PlatformGlue).(*LocalDevPlatformGlue)
-	if !ok {
-		return errors.New("failed to load local platform glue")
-	}
-	dsn := fmt.Sprintf(
-		"postgres://postgres:changeme@%s/%s?sslmode=prefer",
-		net.JoinHostPort("localhost", strconv.Itoa(localPlatformGlue.Options.postgresPort)),
-		scenarioContext.ScenarioOptions.DatabaseName,
-	)
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		return err
-	}
-	defer pool.Close()
-	tag, err := pool.Exec(ctx,
-		`UPDATE otdf_policy.attribute_definitions SET values_order = $1::uuid[] WHERE id = $2`,
-		[]string{secretValueID, confidentialValueID, internalValueID, publicValueID},
-		classificationAttrID,
-	)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("values_order UPDATE affected 0 rows: classification attribute %s not found in policy fixture", classificationAttrID)
-	}
 	return nil
 }
 
@@ -614,7 +540,6 @@ func RegisterLocalPlatformStepDefinitions(ctx *godog.ScenarioContext, x *Platfor
 	}
 	ctx.Step(`^an empty local platform$`, platformStepDefinitions.aEmptyLocalPlatform)
 	ctx.Step(`^a default local platform$`, platformStepDefinitions.aDefaultLocalPlatform)
-	ctx.Step(`^a local platform with policy "([^"]*)"$`, platformStepDefinitions.aLocalPlatformWithPolicy)
 	ctx.Step(`^a user exists with username "([^"]*)" and email "([^"]*)" and the following attributes:$`, platformStepDefinitions.aUser)
 	ctx.Step(`^a local platform with platform template "([^"]*)" and keycloak template "([^"]*)"$`, platformStepDefinitions.aLocalPlatformWithTemplates)
 }

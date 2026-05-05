@@ -25,14 +25,19 @@ type tokenVerifierFixture struct {
 }
 
 func newTokenVerifierFixture(t *testing.T) *tokenVerifierFixture {
-	return newTokenVerifierFixtureWithPublicKeyAlgorithm(t, true)
+	privateKey, publicKeyJWK := newTokenVerifierKeyPair(t)
+	require.NoError(t, publicKeyJWK.Set(jwk.AlgorithmKey, jwa.RS256))
+
+	return newTokenVerifierFixtureWithPublicKey(t, privateKey, publicKeyJWK)
 }
 
 func newTokenVerifierFixtureWithoutPublicKeyAlgorithm(t *testing.T) *tokenVerifierFixture {
-	return newTokenVerifierFixtureWithPublicKeyAlgorithm(t, false)
+	privateKey, publicKeyJWK := newTokenVerifierKeyPair(t)
+
+	return newTokenVerifierFixtureWithPublicKey(t, privateKey, publicKeyJWK)
 }
 
-func newTokenVerifierFixtureWithPublicKeyAlgorithm(t *testing.T, includeAlgorithm bool) *tokenVerifierFixture {
+func newTokenVerifierKeyPair(t *testing.T) (*rsa.PrivateKey, jwk.Key) {
 	t.Helper()
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -41,9 +46,12 @@ func newTokenVerifierFixtureWithPublicKeyAlgorithm(t *testing.T, includeAlgorith
 	publicKeyJWK, err := jwk.FromRaw(privateKey.PublicKey)
 	require.NoError(t, err)
 	require.NoError(t, publicKeyJWK.Set(jws.KeyIDKey, "test-key"))
-	if includeAlgorithm {
-		require.NoError(t, publicKeyJWK.Set(jwk.AlgorithmKey, jwa.RS256))
-	}
+
+	return privateKey, publicKeyJWK
+}
+
+func newTokenVerifierFixtureWithPublicKey(t *testing.T, privateKey *rsa.PrivateKey, publicKeyJWK jwk.Key) *tokenVerifierFixture {
+	t.Helper()
 
 	keySet := jwk.NewSet()
 	require.NoError(t, keySet.AddKey(publicKeyJWK))

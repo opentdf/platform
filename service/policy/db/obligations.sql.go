@@ -148,9 +148,8 @@ func (q *Queries) createObligation(ctx context.Context, arg createObligationPara
 
 const createObligationTrigger = `-- name: createObligationTrigger :one
 WITH ov_id AS (
-    SELECT ov.id, od.namespace_id
+    SELECT ov.id
     FROM obligation_values_standard ov
-    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
     WHERE $1::uuid IS NOT NULL AND ov.id = $1::uuid
 ),
 a_id AS (
@@ -161,13 +160,11 @@ a_id AS (
 av_id AS (
     SELECT av.id
     FROM attribute_values av
-    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
     LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
     WHERE
         (($3::uuid IS NOT NULL AND av.id = $3::uuid)
         OR
         ($4::text IS NOT NULL AND fqns.fqn = $4::text))
-        AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
 ),
 inserted AS (
     INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata, client_id)
@@ -247,12 +244,12 @@ type createObligationTriggerRow struct {
 	Trigger  []byte `json:"trigger"`
 }
 
-// Gets the attribute value, but also ensures that the attribute value belongs to the same namespace as the obligation, to which the obligation value belongs
+// Attribute value lookup is intentionally namespace-agnostic here; the caller
+// validates that the action and attribute value share the trigger's source namespace.
 //
 //	WITH ov_id AS (
-//	    SELECT ov.id, od.namespace_id
+//	    SELECT ov.id
 //	    FROM obligation_values_standard ov
-//	    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
 //	    WHERE $1::uuid IS NOT NULL AND ov.id = $1::uuid
 //	),
 //	a_id AS (
@@ -263,13 +260,11 @@ type createObligationTriggerRow struct {
 //	av_id AS (
 //	    SELECT av.id
 //	    FROM attribute_values av
-//	    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
 //	    LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
 //	    WHERE
 //	        (($3::uuid IS NOT NULL AND av.id = $3::uuid)
 //	        OR
 //	        ($4::text IS NOT NULL AND fqns.fqn = $4::text))
-//	        AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
 //	),
 //	inserted AS (
 //	    INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata, client_id)
@@ -1467,10 +1462,13 @@ JOIN attribute_namespaces n ON od.namespace_id = n.id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 JOIN actions a ON ot.action_id = a.id
 JOIN attribute_values av ON ot.attribute_value_id = av.id
+JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
+LEFT JOIN attribute_fqns trigger_ns_fqns ON trigger_ns_fqns.namespace_id = trigger_ns.id AND trigger_ns_fqns.attribute_id IS NULL AND trigger_ns_fqns.value_id IS NULL
 LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 WHERE
-    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
-    ($2::text IS NULL OR ns_fqns.fqn = $2::text)
+    ($1::uuid IS NULL OR trigger_ns.id = $1::uuid) AND
+    ($2::text IS NULL OR trigger_ns_fqns.fqn = $2::text)
 ORDER BY ot.created_at DESC
 LIMIT $4
 OFFSET $3
@@ -1544,10 +1542,13 @@ type listObligationTriggersRow struct {
 //	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 //	JOIN actions a ON ot.action_id = a.id
 //	JOIN attribute_values av ON ot.attribute_value_id = av.id
+//	JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+//	JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
+//	LEFT JOIN attribute_fqns trigger_ns_fqns ON trigger_ns_fqns.namespace_id = trigger_ns.id AND trigger_ns_fqns.attribute_id IS NULL AND trigger_ns_fqns.value_id IS NULL
 //	LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 //	WHERE
-//	    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
-//	    ($2::text IS NULL OR ns_fqns.fqn = $2::text)
+//	    ($1::uuid IS NULL OR trigger_ns.id = $1::uuid) AND
+//	    ($2::text IS NULL OR trigger_ns_fqns.fqn = $2::text)
 //	ORDER BY ot.created_at DESC
 //	LIMIT $4
 //	OFFSET $3

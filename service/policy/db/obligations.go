@@ -704,12 +704,17 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 	if err != nil {
 		return nil, fmt.Errorf("failed to get obligation value: %w", err)
 	}
-	actionID, err := c.resolveObligationTriggerActionID(ctx, r.GetAction(), oblVal.GetObligation().GetNamespace().GetId())
+	triggerNamespaceID, err := c.getAttributeValueNamespaceID(ctx, r.GetAttributeValue())
 	if err != nil {
 		return nil, err
 	}
 
-	err = c.validateObligationNamespaceConsistency(ctx, oblVal.GetObligation().GetNamespace().GetId(), r.GetAttributeValue(), actionID)
+	actionID, err := c.resolveObligationTriggerActionID(ctx, r.GetAction(), triggerNamespaceID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.validateObligationTriggerSourceNamespace(ctx, triggerNamespaceID, actionID)
 	if err != nil {
 		return nil, err
 	}
@@ -734,7 +739,7 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 	return hydrateObligationTrigger(row.Trigger, row.Metadata)
 }
 
-func (c PolicyDBClient) resolveObligationTriggerActionID(ctx context.Context, action *common.IdNameIdentifier, obligationNamespaceID string) (string, error) {
+func (c PolicyDBClient) resolveObligationTriggerActionID(ctx context.Context, action *common.IdNameIdentifier, actionNamespaceID string) (string, error) {
 	actionID := action.GetId()
 	if actionID != "" {
 		return actionID, nil
@@ -751,7 +756,7 @@ func (c PolicyDBClient) resolveObligationTriggerActionID(ctx context.Context, ac
 
 	createdOrListedActions, err := c.queries.createOrListActionsByNameInNamespace(ctx, createOrListActionsByNameInNamespaceParams{
 		ActionNames: []string{actionName},
-		NamespaceID: obligationNamespaceID,
+		NamespaceID: actionNamespaceID,
 	})
 	if err != nil {
 		return "", db.WrapIfKnownInvalidQueryErr(
@@ -767,14 +772,7 @@ func (c PolicyDBClient) resolveObligationTriggerActionID(ctx context.Context, ac
 	return createdOrListedActions[0].ID, nil
 }
 
-// validateObligationNamespaceConsistency ensures that action and attribute value
-// belongs to the same namespace as the obligation trigger being created.
-func (c PolicyDBClient) validateObligationNamespaceConsistency(
-	ctx context.Context,
-	targetNsID string,
-	attributeValue *common.IdFqnIdentifier,
-	actionID string,
-) error {
+func (c PolicyDBClient) getAttributeValueNamespaceID(ctx context.Context, attributeValue *common.IdFqnIdentifier) (string, error) {
 	var attributeValueIdentifier any
 	if attributeValue.GetId() != "" {
 		attributeValueIdentifier = &attributes.GetAttributeValueRequest_ValueId{ValueId: attributeValue.GetId()}
@@ -784,18 +782,23 @@ func (c PolicyDBClient) validateObligationNamespaceConsistency(
 
 	av, err := c.GetAttributeValue(ctx, attributeValueIdentifier)
 	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
+		return "", db.WrapIfKnownInvalidQueryErr(err)
 	}
 	attr, err := c.GetAttribute(ctx, av.GetAttribute().GetId())
 	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
-	}
-	if attr.GetNamespace().GetId() != targetNsID {
-		return errors.Join(db.ErrNamespaceMismatch,
-			fmt.Errorf("attribute value namespace [%s] does not match the specified obligation trigger namespace [%s]", attr.GetNamespace().GetId(), targetNsID))
+		return "", db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	// All actions must be in the same namespace
+	return attr.GetNamespace().GetId(), nil
+}
+
+// validateObligationTriggerSourceNamespace ensures that the action belongs to the
+// same namespace as the attribute value that anchors the trigger.
+func (c PolicyDBClient) validateObligationTriggerSourceNamespace(
+	ctx context.Context,
+	triggerNamespaceID string,
+	actionID string,
+) error {
 	actionRows, err := c.queries.getActionsByIDs(ctx, []string{actionID})
 	if err != nil {
 		return db.WrapIfKnownInvalidQueryErr(err)
@@ -805,9 +808,9 @@ func (c PolicyDBClient) validateObligationNamespaceConsistency(
 	}
 	a := actionRows[0]
 	actionNsID := UUIDToString(a.NamespaceID)
-	if actionNsID != targetNsID {
+	if actionNsID != triggerNamespaceID {
 		return errors.Join(db.ErrNamespaceMismatch,
-			fmt.Errorf("action [%s] namespace [%s] does not match the specified obligation namespace [%s]", a.ID, actionNsID, targetNsID))
+			fmt.Errorf("action [%s] namespace [%s] does not match the attribute value namespace [%s]", a.ID, actionNsID, triggerNamespaceID))
 	}
 
 	return nil

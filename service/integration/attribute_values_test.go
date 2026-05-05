@@ -1155,6 +1155,157 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_
 	s.assertObligationValueHasSingleTrigger(retrievedObl2.GetValues()[0], obl2Val1, readAction, createdValue, "")
 }
 
+func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_CrossNamespaceObligationValue_Succeeds() {
+	sourceNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-inline-cross-namespace-trigger-source.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(sourceNamespace)
+	s.namespaces = append(s.namespaces, sourceNamespace)
+
+	attrDef, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test-inline-cross-namespace-trigger-attr",
+		NamespaceId: sourceNamespace.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.NotNil(attrDef)
+
+	targetNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-inline-cross-namespace-trigger-target.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(targetNamespace)
+	s.namespaces = append(s.namespaces, targetNamespace)
+
+	targetObligation, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceId: targetNamespace.GetId(),
+		Name:        "test_inline_cross_namespace_obligation",
+	})
+	s.Require().NoError(err)
+	s.obligations = append(s.obligations, targetObligation)
+
+	targetObligationValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationId: targetObligation.GetId(),
+		Value:        "inline_cross_namespace_obligation_value",
+	})
+	s.Require().NoError(err)
+
+	customAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "inline-cross-namespace-trigger-action",
+		NamespaceId: sourceNamespace.GetId(),
+	})
+	s.Require().NoError(err)
+
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "test_value_with_cross_namespace_inline_trigger",
+		ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
+			{
+				ObligationValue: &common.IdFqnIdentifier{Fqn: targetObligationValue.GetFqn()},
+				Action:          &common.IdNameIdentifier{Name: customAction.GetName()},
+				Context: &policy.RequestContext{
+					Pep: &policy.PolicyEnforcementPoint{
+						ClientId: "cross-namespace-inline-client",
+					},
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(createdValue)
+	s.Require().Len(createdValue.GetObligations(), 1)
+
+	retrievedValue, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
+	s.Require().NoError(err)
+	s.NotNil(retrievedValue)
+	s.Require().Len(retrievedValue.GetObligations(), 1)
+
+	retrievedObligation := retrievedValue.GetObligations()[0]
+	s.Equal(targetObligation.GetId(), retrievedObligation.GetId())
+	s.Equal(targetObligation.GetName(), retrievedObligation.GetName())
+	s.Require().NotNil(retrievedObligation.GetNamespace())
+	s.Equal(targetNamespace.GetFqn(), retrievedObligation.GetNamespace().GetFqn())
+	s.Require().Len(retrievedObligation.GetValues(), 1)
+
+	s.assertObligationValueHasSingleTrigger(
+		retrievedObligation.GetValues()[0],
+		targetObligationValue,
+		customAction,
+		createdValue,
+		"cross-namespace-inline-client",
+	)
+}
+
+func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_CrossNamespaceWrongAction_RollsBack() {
+	sourceNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-inline-cross-namespace-trigger-rollback-source.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(sourceNamespace)
+	s.namespaces = append(s.namespaces, sourceNamespace)
+
+	attrDef, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test-inline-cross-namespace-trigger-rollback-attr",
+		NamespaceId: sourceNamespace.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.NotNil(attrDef)
+
+	targetNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-inline-cross-namespace-trigger-rollback-target.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(targetNamespace)
+	s.namespaces = append(s.namespaces, targetNamespace)
+
+	targetObligation, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceId: targetNamespace.GetId(),
+		Name:        "test_inline_cross_namespace_rollback_obligation",
+	})
+	s.Require().NoError(err)
+	s.obligations = append(s.obligations, targetObligation)
+
+	targetObligationValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationId: targetObligation.GetId(),
+		Value:        "inline_cross_namespace_rollback_obligation_value",
+	})
+	s.Require().NoError(err)
+
+	sourceRead := s.getActionByNameInNamespace("read", sourceNamespace.GetId())
+
+	targetAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "inline-cross-namespace-wrong-trigger-action",
+		NamespaceId: targetNamespace.GetId(),
+	})
+	s.Require().NoError(err)
+
+	valueName := "test_value_with_cross_namespace_inline_trigger_rollback"
+	createdValue, err := s.createAttributeValueInTx(attrDef.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: valueName,
+		ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
+			{
+				ObligationValue: &common.IdFqnIdentifier{Id: targetObligationValue.GetId()},
+				Action:          &common.IdNameIdentifier{Id: sourceRead.GetId()},
+				Context: &policy.RequestContext{
+					Pep: &policy.PolicyEnforcementPoint{
+						ClientId: "cross-namespace-inline-rollback-valid",
+					},
+				},
+			},
+			{
+				ObligationValue: &common.IdFqnIdentifier{Fqn: targetObligationValue.GetFqn()},
+				Action:          &common.IdNameIdentifier{Id: targetAction.GetId()},
+			},
+		},
+	})
+	s.Require().Error(err)
+	s.Nil(createdValue)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
+
+	s.assertAttributeValueCreateWithTriggersRolledBack(attrDef, valueName, targetObligationValue)
+}
+
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_ObligationValueNotFound_RollsBack() {
 	ns, attrDef, obl, oblVal, readAction := s.createInlineTriggerFailureFixture(
 		"test-inline-obligation-trigger-missing-obligation.com",

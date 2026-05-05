@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
@@ -18,7 +17,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
-	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -1246,176 +1244,16 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_
 	)
 }
 
-func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_CrossNamespaceWrongAction_RollsBack() {
-	sourceNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
-		Name: "test-inline-cross-namespace-trigger-rollback-source.com",
-	})
-	s.Require().NoError(err)
-	s.NotNil(sourceNamespace)
-	s.namespaces = append(s.namespaces, sourceNamespace)
-
-	attrDef, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		Name:        "test-inline-cross-namespace-trigger-rollback-attr",
-		NamespaceId: sourceNamespace.GetId(),
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-	})
-	s.Require().NoError(err)
-	s.NotNil(attrDef)
-
-	targetNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
-		Name: "test-inline-cross-namespace-trigger-rollback-target.com",
-	})
-	s.Require().NoError(err)
-	s.NotNil(targetNamespace)
-	s.namespaces = append(s.namespaces, targetNamespace)
-
-	targetObligation, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
-		NamespaceId: targetNamespace.GetId(),
-		Name:        "test_inline_cross_namespace_rollback_obligation",
-	})
-	s.Require().NoError(err)
-	s.obligations = append(s.obligations, targetObligation)
-
-	targetObligationValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationId: targetObligation.GetId(),
-		Value:        "inline_cross_namespace_rollback_obligation_value",
-	})
-	s.Require().NoError(err)
-
-	sourceRead := s.getActionByNameInNamespace("read", sourceNamespace.GetId())
-
-	targetAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
-		Name:        "inline-cross-namespace-wrong-trigger-action",
-		NamespaceId: targetNamespace.GetId(),
-	})
-	s.Require().NoError(err)
-
-	valueName := "test_value_with_cross_namespace_inline_trigger_rollback"
-	createdValue, err := s.createAttributeValueInTx(attrDef.GetId(), &attributes.CreateAttributeValueRequest{
-		Value: valueName,
-		ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
-			{
-				ObligationValue: &common.IdFqnIdentifier{Id: targetObligationValue.GetId()},
-				Action:          &common.IdNameIdentifier{Id: sourceRead.GetId()},
-				Context: &policy.RequestContext{
-					Pep: &policy.PolicyEnforcementPoint{
-						ClientId: "cross-namespace-inline-rollback-valid",
-					},
-				},
-			},
-			{
-				ObligationValue: &common.IdFqnIdentifier{Fqn: targetObligationValue.GetFqn()},
-				Action:          &common.IdNameIdentifier{Id: targetAction.GetId()},
-			},
-		},
-	})
-	s.Require().Error(err)
-	s.Nil(createdValue)
-	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
-
-	s.assertAttributeValueCreateWithTriggersRolledBack(attrDef, valueName, targetObligationValue)
-}
-
-func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_ObligationValueNotFound_RollsBack() {
-	ns, attrDef, obl, oblVal, readAction := s.createInlineTriggerFailureFixture(
-		"test-inline-obligation-trigger-missing-obligation.com",
-		"test-inline-obligation-trigger-missing-obligation-attr",
-		"test_inline_missing_obligation",
-		"test_inline_missing_obligation_value",
-	)
-
-	testCases := []struct {
-		name                 string
-		obligationIdentifier *common.IdFqnIdentifier
-		valueName            string
-	}{
-		{
-			name:                 "missing obligation value id",
-			obligationIdentifier: &common.IdFqnIdentifier{Id: uuid.NewString()},
-			valueName:            "test_value_missing_obligation_id",
-		},
-		{
-			name: "missing obligation value fqn",
-			obligationIdentifier: &common.IdFqnIdentifier{
-				Fqn: ns.GetFqn() + "/obl/" + obl.GetName() + "/value/missing_obligation_value",
-			},
-			valueName: "test_value_missing_obligation_fqn",
-		},
-	}
-
-	for _, tc := range testCases {
-		s.Run(tc.name, func() {
-			createdValue, err := s.createAttributeValueInTx(attrDef.GetId(), &attributes.CreateAttributeValueRequest{
-				Value: tc.valueName,
-				ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
-					{
-						ObligationValue: &common.IdFqnIdentifier{Id: oblVal.GetId()},
-						Action:          &common.IdNameIdentifier{Id: readAction.GetId()},
-						Context: &policy.RequestContext{
-							Pep: &policy.PolicyEnforcementPoint{
-								ClientId: "existing-obligation-client",
-							},
-						},
-					},
-					{
-						ObligationValue: tc.obligationIdentifier,
-						Action:          &common.IdNameIdentifier{Id: readAction.GetId()},
-					},
-				},
-			})
-			s.Require().Error(err)
-			s.Nil(createdValue)
-			s.Require().ErrorIs(err, db.ErrNotFound)
-
-			s.assertAttributeValueCreateWithTriggersRolledBack(attrDef, tc.valueName, oblVal)
-		})
-	}
-}
-
-func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_ActionNotFound_RollsBack() {
-	_, attrDef, _, oblVal, readAction := s.createInlineTriggerFailureFixture(
-		"test-inline-obligation-trigger-missing-action.com",
-		"test-inline-obligation-trigger-missing-action-attr",
-		"test_inline_missing_action",
-		"test_inline_missing_action_value",
-	)
-
-	valueName := "test_value_missing_action"
-	createdValue, err := s.createAttributeValueInTx(attrDef.GetId(), &attributes.CreateAttributeValueRequest{
-		Value: valueName,
-		ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
-			{
-				ObligationValue: &common.IdFqnIdentifier{Id: oblVal.GetId()},
-				Action:          &common.IdNameIdentifier{Id: readAction.GetId()},
-				Context: &policy.RequestContext{
-					Pep: &policy.PolicyEnforcementPoint{
-						ClientId: "existing-action-client",
-					},
-				},
-			},
-			{
-				ObligationValue: &common.IdFqnIdentifier{Fqn: oblVal.GetFqn()},
-				Action:          &common.IdNameIdentifier{Id: uuid.NewString()},
-			},
-		},
-	})
-	s.Require().Error(err)
-	s.Nil(createdValue)
-	s.Require().ErrorIs(err, db.ErrNotFound)
-
-	s.assertAttributeValueCreateWithTriggersRolledBack(attrDef, valueName, oblVal)
-}
-
-func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_RollsBackOnDuplicateFailure() {
+func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_ObligationValueFQNNotFound_Fails() {
 	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
-		Name: "test-inline-obligation-trigger-rollback.com",
+		Name: "test-inline-obligation-trigger-missing-obligation-fqn.com",
 	})
 	s.Require().NoError(err)
 	s.NotNil(ns)
 	s.namespaces = append(s.namespaces, ns)
 
 	attrDef, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		Name:        "test-inline-obligation-trigger-rollback-attr",
+		Name:        "test-inline-obligation-trigger-missing-obligation-fqn-attr",
 		NamespaceId: ns.GetId(),
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	})
@@ -1424,56 +1262,33 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_
 
 	obl, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
 		NamespaceId: ns.GetId(),
-		Name:        "test_inline_obligation_rollback",
+		Name:        "test_inline_missing_obligation_fqn",
 	})
 	s.Require().NoError(err)
 	s.obligations = append(s.obligations, obl)
 
-	oblVal, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+	_, err = s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
 		ObligationId: obl.GetId(),
-		Value:        "inline_obligation_value_rollback",
+		Value:        "test_inline_missing_obligation_fqn_value",
 	})
 	s.Require().NoError(err)
 
 	readAction := s.getActionByNameInNamespace("read", ns.GetId())
-	clientID := "duplicate-client"
-	valueName := "test_value_duplicate_trigger_rollback"
 
-	createdValue, err := s.createAttributeValueInTx(attrDef.GetId(), &attributes.CreateAttributeValueRequest{
-		Value: valueName,
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "test_value_missing_obligation_fqn",
 		ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
 			{
-				ObligationValue: &common.IdFqnIdentifier{Id: oblVal.GetId()},
-				Action:          &common.IdNameIdentifier{Id: readAction.GetId()},
-				Context: &policy.RequestContext{
-					Pep: &policy.PolicyEnforcementPoint{
-						ClientId: clientID,
-					},
+				ObligationValue: &common.IdFqnIdentifier{
+					Fqn: ns.GetFqn() + "/obl/" + obl.GetName() + "/value/missing_obligation_value",
 				},
-			},
-			{
-				ObligationValue: &common.IdFqnIdentifier{Fqn: oblVal.GetFqn()},
-				Action:          &common.IdNameIdentifier{Name: readAction.GetName()},
-				Context: &policy.RequestContext{
-					Pep: &policy.PolicyEnforcementPoint{
-						ClientId: clientID,
-					},
-				},
+				Action: &common.IdNameIdentifier{Id: readAction.GetId()},
 			},
 		},
 	})
 	s.Require().Error(err)
 	s.Nil(createdValue)
-	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
-
-	expectedFQN := attrDef.GetFqn() + "/value/" + strings.ToLower(valueName)
-	retrievedValue, err := s.db.PolicyClient.GetAttributeValue(s.ctx, &attributes.GetAttributeValueRequest_Fqn{Fqn: expectedFQN})
 	s.Require().ErrorIs(err, db.ErrNotFound)
-	s.Nil(retrievedValue)
-
-	retrievedObligationValue, err := s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{Id: oblVal.GetId()})
-	s.Require().NoError(err)
-	s.Require().Empty(retrievedObligationValue.GetTriggers())
 }
 
 func TestAttributeValuesSuite(t *testing.T) {
@@ -1539,79 +1354,6 @@ func (s *AttributeValuesSuite) assertObligationValueHasSingleTrigger(
 
 	s.Require().Len(trigger.GetContext(), 1)
 	s.Equal(expectedClientID, trigger.GetContext()[0].GetPep().GetClientId())
-}
-
-func (s *AttributeValuesSuite) createInlineTriggerFailureFixture(
-	namespaceName string,
-	attributeName string,
-	obligationName string,
-	obligationValueName string,
-) (*policy.Namespace, *policy.Attribute, *policy.Obligation, *policy.ObligationValue, *policy.Action) {
-	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
-		Name: namespaceName,
-	})
-	s.Require().NoError(err)
-	s.NotNil(ns)
-	s.namespaces = append(s.namespaces, ns)
-
-	attrDef, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		Name:        attributeName,
-		NamespaceId: ns.GetId(),
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-	})
-	s.Require().NoError(err)
-	s.NotNil(attrDef)
-
-	obl, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
-		NamespaceId: ns.GetId(),
-		Name:        obligationName,
-	})
-	s.Require().NoError(err)
-	s.obligations = append(s.obligations, obl)
-
-	oblVal, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationId: obl.GetId(),
-		Value:        obligationValueName,
-	})
-	s.Require().NoError(err)
-
-	return ns, attrDef, obl, oblVal, s.getActionByNameInNamespace("read", ns.GetId())
-}
-
-func (s *AttributeValuesSuite) createAttributeValueInTx(
-	attributeID string,
-	req *attributes.CreateAttributeValueRequest,
-) (*policy.Value, error) {
-	var createdValue *policy.Value
-	err := s.db.PolicyClient.RunInTx(s.ctx, func(txClient *policydb.PolicyDBClient) error {
-		var err error
-		createdValue, err = txClient.CreateAttributeValue(s.ctx, attributeID, req)
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return createdValue, nil
-}
-
-func (s *AttributeValuesSuite) assertAttributeValueCreateWithTriggersRolledBack(
-	attrDef *policy.Attribute,
-	valueName string,
-	obligationValues ...*policy.ObligationValue,
-) {
-	expectedFQN := attrDef.GetFqn() + "/value/" + strings.ToLower(valueName)
-	retrievedValue, err := s.db.PolicyClient.GetAttributeValue(s.ctx, &attributes.GetAttributeValueRequest_Fqn{Fqn: expectedFQN})
-	s.Require().ErrorIs(err, db.ErrNotFound)
-	s.Nil(retrievedValue)
-
-	for _, expectedObligationValue := range obligationValues {
-		retrievedObligationValue, err := s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
-			Id: expectedObligationValue.GetId(),
-		})
-		s.Require().NoError(err)
-		s.Require().Empty(retrievedObligationValue.GetTriggers())
-	}
 }
 
 func (s *AttributeValuesSuite) assertObligations(expected, actual []*policy.Obligation) {

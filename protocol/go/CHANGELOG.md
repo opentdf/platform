@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.0](https://github.com/opentdf/platform/compare/protocol/go/v0.28.0...protocol/go/v0.29.0) (2026-05-05)
+
+
+### Features
+
+* **policy:** support inline obligation triggers on attribute value create ([#3432](https://github.com/opentdf/platform/issues/3432)) ([876f512](https://github.com/opentdf/platform/commit/876f512f9ff944cebd3b6d65c7937446a74ace87))
+
 ## [0.28.0](https://github.com/opentdf/platform/compare/protocol/go/v0.27.0...protocol/go/v0.28.0) (2026-04-28)
 
 

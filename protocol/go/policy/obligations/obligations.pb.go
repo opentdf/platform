@@ -1535,6 +1535,9 @@ func (x *GetObligationTriggerResponse) GetTrigger() *policy.ObligationTrigger {
 	return nil
 }
 
+// Obligation Triggers are owned by the namespace that owns the action and attribute value, which must
+// be the same. In this way, a trigger can intentionally cross namespace boundaries: associating
+// obligation values of a different namespace than the one that owns the action being taken or the attribute value.
 type AddObligationTriggerRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

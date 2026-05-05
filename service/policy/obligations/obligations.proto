@@ -302,6 +302,9 @@ message GetObligationTriggerResponse {
     policy.ObligationTrigger trigger = 1;
 }
 
+// Obligation Triggers are owned by the namespace that owns the action and attribute value, which must
+// be the same. In this way, a trigger can intentionally cross namespace boundaries: associating
+// obligation values of a different namespace than the one that owns the action being taken or the attribute value.
 message AddObligationTriggerRequest {
     // Required
     common.IdFqnIdentifier obligation_value = 1 [(buf.validate.field).required = true];

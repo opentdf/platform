@@ -1521,6 +1521,9 @@ func (s *AttributeValuesSuite) assertObligationValueHasSingleTrigger(
 	s.Require().NotNil(trigger.GetAction())
 	s.Equal(expectedAction.GetId(), trigger.GetAction().GetId())
 	s.Equal(expectedAction.GetName(), trigger.GetAction().GetName())
+	s.Require().NotNil(trigger.GetNamespace())
+	s.NotEmpty(trigger.GetNamespace().GetId())
+	s.Equal(strings.Split(expectedAttributeValue.GetFqn(), "/attr/")[0], trigger.GetNamespace().GetFqn())
 
 	s.Require().NotNil(trigger.GetAttributeValue())
 	s.Equal(expectedAttributeValue.GetId(), trigger.GetAttributeValue().GetId())

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -904,6 +905,11 @@ func (s *ObligationTriggersSuite) validateTrigger(actual *policy.ObligationTrigg
 	// Validate action
 	s.Require().Equal(expectedAction.GetId(), actual.GetAction().GetId())
 	s.Require().Equal(expectedAction.GetName(), actual.GetAction().GetName())
+
+	// Validate top-level trigger namespace
+	s.Require().NotNil(actual.GetNamespace())
+	s.Require().NotEmpty(actual.GetNamespace().GetId())
+	s.Require().Equal(strings.Split(expectedAttributeValue.GetFqn(), "/attr/")[0], actual.GetNamespace().GetFqn())
 
 	// Validate context
 	if shouldHaveCtx {

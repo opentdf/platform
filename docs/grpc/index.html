@@ -3160,6 +3160,13 @@ enable federation </p></td>
                 </tr>
               
                 <tr>
+                  <td>namespace</td>
+                  <td><a href="#policy.Namespace">Namespace</a></td>
+                  <td></td>
+                  <td><p>The source namespace for this trigger, derived from the attribute value and action. </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -13115,7 +13122,7 @@ Namespace &lt;&gt; Key RPCs
 
       
         <h3 id="policy.obligations.AddObligationTriggerRequest">AddObligationTriggerRequest</h3>
-        <p></p>
+        <p>Obligation Triggers are owned by the namespace that owns the action and attribute value, which must</p><p>be the same. In this way, a trigger can intentionally cross namespace boundaries: associating</p><p>obligation values of a different namespace than the one that owns the action being taken or the attribute value.</p>
 
         
           <table class="field-table">

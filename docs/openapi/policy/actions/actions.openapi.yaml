@@ -720,6 +720,10 @@ components:
           items:
             $ref: '#/components/schemas/policy.RequestContext'
           title: context
+        namespace:
+          title: namespace
+          description: The source namespace for this trigger, derived from the attribute value and action.
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'

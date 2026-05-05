@@ -29,6 +29,19 @@ const (
 	EC521Key   KeyType = "ec:secp521r1"
 )
 
+// ParseKeyType validates a string as a known KeyType, returning an error for
+// unrecognized values.
+func ParseKeyType(alg string) (KeyType, error) {
+	switch KeyType(alg) {
+	case RSA2048Key, RSA4096Key,
+		EC256Key, EC384Key, EC521Key,
+		HybridXWingKey, HybridSecp256r1MLKEM768Key, HybridSecp384r1MLKEM1024Key:
+		return KeyType(alg), nil
+	default:
+		return "", fmt.Errorf("unrecognized key type: %s", alg)
+	}
+}
+
 const (
 	ECCModeSecp256r1 ECCMode = 0
 	ECCModeSecp384r1 ECCMode = 1
@@ -64,6 +77,8 @@ func NewKeyPair(kt KeyType) (KeyPair, error) {
 			return nil, err
 		}
 		return NewECKeyPair(mode)
+	case HybridSecp256r1MLKEM768Key, HybridSecp384r1MLKEM1024Key, HybridXWingKey:
+		return NewHybridKeyPair(kt)
 	default:
 		return nil, fmt.Errorf("unsupported key type: %v", kt)
 	}

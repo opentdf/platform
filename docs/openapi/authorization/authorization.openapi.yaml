@@ -343,6 +343,9 @@ components:
         - ALGORITHM_EC_P256
         - ALGORITHM_EC_P384
         - ALGORITHM_EC_P521
+        - ALGORITHM_HPQT_XWING
+        - ALGORITHM_HPQT_SECP256R1_MLKEM768
+        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
       description: Supported key algorithms.
     policy.KasPublicKeyAlgEnum:
       type: string
@@ -354,6 +357,9 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
     policy.SourceType:
       type: string
       title: SourceType
@@ -389,6 +395,7 @@ components:
         Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)
         and Alice (represented by entity chain ec2) have TRANSMIT authorization for
         2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+
         {
         "actions": [
         {
@@ -460,11 +467,13 @@ components:
         Example response for a Decision Request -  Do Bob (represented by entity chain ec1)
         and Alice (represented by entity chain ec2) have TRANSMIT authorization for
         2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+
         Results:
         - bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has a watermark obligation
         - bob has denied authorization to transmit a for a resource defined by attr-set-2 attributes
         - alice has permitted authorization to transmit for a resource defined by attr-set-1 attributes
         - alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes
+
         {
         "entityChainId":  "ec1",
         "resourceAttributesId":  "attr-set-1",
@@ -652,7 +661,9 @@ components:
       additionalProperties: false
       description: |-
         Request to get entitlements for one or more entities for an optional attribute scope
+
         Example: Get entitlements for bob and alice (both represented using an email address
+
         {
         "entities": [
         {
@@ -683,6 +694,7 @@ components:
       additionalProperties: false
       description: |-
         Example Response for a request of : Get entitlements for bob and alice (both represented using an email address
+
         {
         "entitlements":  [
         {
@@ -754,6 +766,7 @@ components:
         Example Request Get Decisions by Token to answer the question -  Do Bob and client1 (represented by token tok1)
         and Alice and client2 (represented by token tok2) have TRANSMIT authorization for
         2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+
         {
         "actions": [
         {

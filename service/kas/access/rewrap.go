@@ -746,6 +746,20 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				failedKAORewrap(results, kao, err400("bad request"))
 				continue
 			}
+		case "hybrid-wrapped":
+			if !p.HybridTDFEnabled && !p.Preview.HybridTDFEnabled {
+				p.Logger.WarnContext(ctx, "hybrid-wrapped not enabled")
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
+			}
+
+			kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
+			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), nil)
+			if err != nil {
+				p.Logger.WarnContext(ctx, "failed to decrypt hybrid key", slog.Any("error", err))
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
+			}
 		case "wrapped":
 			var kidsToCheck []trust.KeyIdentifier
 			if kao.GetKeyAccessObject().GetKid() != "" {

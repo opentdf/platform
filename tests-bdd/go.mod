@@ -10,6 +10,7 @@ require (
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/opentdf/platform/lib/fixtures v0.3.0
 	github.com/opentdf/platform/lib/identifier v0.0.2
+	github.com/opentdf/platform/lib/ocrypto v0.10.0
 	github.com/opentdf/platform/protocol/go v0.27.0
 	github.com/opentdf/platform/sdk v0.17.0
 	github.com/opentdf/platform/service v0.7.2
@@ -166,7 +167,6 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/opentdf/platform/lib/flattening v0.1.3 // indirect
-	github.com/opentdf/platform/lib/ocrypto v0.10.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect

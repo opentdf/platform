@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	"github.com/opentdf/platform/service/logger"
@@ -89,7 +90,7 @@ func (v *TokenVerifier) VerifyAccessToken(ctx context.Context, tokenRaw string) 
 	}
 
 	token, err := jwt.Parse([]byte(tokenRaw),
-		jwt.WithKeySet(v.cachedKeySet),
+		jwt.WithKeySet(v.cachedKeySet, jws.WithInferAlgorithmFromKey(true)),
 		jwt.WithValidate(true),
 		jwt.WithIssuer(v.oidcConfiguration.Issuer),
 		jwt.WithAudience(v.oidcConfiguration.Audience),

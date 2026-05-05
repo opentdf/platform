@@ -25,6 +25,10 @@ type tokenVerifierFixture struct {
 }
 
 func newTokenVerifierFixture(t *testing.T) *tokenVerifierFixture {
+	return newTokenVerifierFixtureWithOptions(t, true)
+}
+
+func newTokenVerifierFixtureWithOptions(t *testing.T, includeAlgorithm bool) *tokenVerifierFixture {
 	t.Helper()
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -33,7 +37,9 @@ func newTokenVerifierFixture(t *testing.T) *tokenVerifierFixture {
 	publicKeyJWK, err := jwk.FromRaw(privateKey.PublicKey)
 	require.NoError(t, err)
 	require.NoError(t, publicKeyJWK.Set(jws.KeyIDKey, "test-key"))
-	require.NoError(t, publicKeyJWK.Set(jwk.AlgorithmKey, jwa.RS256))
+	if includeAlgorithm {
+		require.NoError(t, publicKeyJWK.Set(jwk.AlgorithmKey, jwa.RS256))
+	}
 
 	keySet := jwk.NewSet()
 	require.NoError(t, keySet.AddKey(publicKeyJWK))
@@ -148,6 +154,24 @@ func TestTokenVerifier_VerifyAccessToken(t *testing.T) {
 
 		_, err = verifier.VerifyAccessToken(t.Context(), token)
 		require.Error(t, err)
+	})
+
+	t.Run("valid token with JWKS key missing alg", func(t *testing.T) {
+		missingAlgFixture := newTokenVerifierFixtureWithOptions(t, false)
+
+		missingAlgVerifier, err := NewTokenVerifier(t.Context(), AuthNConfig{
+			Issuer:       missingAlgFixture.server.URL,
+			Audience:     "test-audience",
+			CacheRefresh: "15m",
+			TokenSkew:    time.Minute,
+		}, logger.CreateTestLogger())
+		require.NoError(t, err)
+
+		token := missingAlgFixture.signToken(t, missingAlgFixture.server.URL, "test-audience", missingAlgFixture.privateKey)
+
+		verifiedToken, err := missingAlgVerifier.VerifyAccessToken(t.Context(), token)
+		require.NoError(t, err)
+		assert.Equal(t, "user-123", verifiedToken.Subject())
 	})
 }
 

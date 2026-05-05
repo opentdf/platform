@@ -20,7 +20,7 @@ WITH obligation_triggers_agg AS (
                 'namespace', JSONB_BUILD_OBJECT(
                     'id', trigger_ns.id,
                     'name', trigger_ns.name,
-                    'fqn', COALESCE(trigger_ns_fqns.fqn, '')
+                    'fqn', CONCAT('https://', trigger_ns.name)
                 ),
                 'context', CASE
                     WHEN ot.client_id IS NOT NULL THEN JSONB_BUILD_ARRAY(
@@ -39,7 +39,6 @@ WITH obligation_triggers_agg AS (
     JOIN attribute_values av ON ot.attribute_value_id = av.id
     JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
     JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
-    LEFT JOIN attribute_fqns trigger_ns_fqns ON trigger_ns_fqns.namespace_id = trigger_ns.id AND trigger_ns_fqns.attribute_id IS NULL AND trigger_ns_fqns.value_id IS NULL
     LEFT JOIN attribute_fqns av_fqns ON av.id = av_fqns.value_id
     GROUP BY ot.obligation_value_id
 ),

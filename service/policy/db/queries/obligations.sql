@@ -566,7 +566,7 @@ SELECT
             'namespace', JSON_BUILD_OBJECT(
                 'id', trigger_ns.id,
                 'name', trigger_ns.name,
-                'fqn', COALESCE(trigger_ns_fqns.fqn, '')
+                'fqn', CONCAT('https://', trigger_ns.name)
             ),
             'context', CASE
                 WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
@@ -596,7 +596,6 @@ JOIN actions a ON ot.action_id = a.id
 JOIN attribute_values av ON ot.attribute_value_id = av.id
 JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
 JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
-LEFT JOIN attribute_fqns trigger_ns_fqns ON trigger_ns_fqns.namespace_id = trigger_ns.id AND trigger_ns_fqns.attribute_id IS NULL AND trigger_ns_fqns.value_id IS NULL
 LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 WHERE ot.id = $1;
 
@@ -668,7 +667,7 @@ SELECT
             'namespace', JSON_BUILD_OBJECT(
                 'id', trigger_ns.id,
                 'name', trigger_ns.name,
-                'fqn', COALESCE(trigger_ns_fqns.fqn, '')
+                'fqn', CONCAT('https://', trigger_ns.name)
             ),
             'context', CASE
                 WHEN i.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
@@ -690,7 +689,6 @@ JOIN actions a ON i.action_id = a.id
 JOIN attribute_values av ON i.attribute_value_id = av.id
 JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
 JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
-LEFT JOIN attribute_fqns trigger_ns_fqns ON trigger_ns_fqns.namespace_id = trigger_ns.id AND trigger_ns_fqns.attribute_id IS NULL AND trigger_ns_fqns.value_id IS NULL
 LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id;
 
 -- name: deleteAllObligationTriggersForValue :execrows
@@ -733,7 +731,7 @@ SELECT
             'namespace', JSON_BUILD_OBJECT(
                 'id', trigger_ns.id,
                 'name', trigger_ns.name,
-                'fqn', COALESCE(trigger_ns_fqns.fqn, '')
+                'fqn', CONCAT('https://', trigger_ns.name)
             ),
             'context', CASE
                 WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(

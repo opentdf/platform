@@ -542,12 +542,18 @@ func pinDefaultClassificationHierarchy(ctx context.Context, scenarioContext *Pla
 		return err
 	}
 	defer pool.Close()
-	_, err = pool.Exec(ctx,
+	tag, err := pool.Exec(ctx,
 		`UPDATE otdf_policy.attribute_definitions SET values_order = $1::uuid[] WHERE id = $2`,
 		[]string{secretValueID, confidentialValueID, internalValueID, publicValueID},
 		classificationAttrID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("values_order UPDATE affected 0 rows: classification attribute %s not found in policy fixture", classificationAttrID)
+	}
+	return nil
 }
 
 func createPlatformComposeConfiguration(options *LocalDevOptions) (string, error) {

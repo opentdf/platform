@@ -58,13 +58,22 @@ func (c PolicyDBClient) createAttributeValue(ctx context.Context, attributeID st
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	attributeNamespaceID := ""
+	if len(r.GetObligationTriggers()) > 0 {
+		attr, err := c.GetAttribute(ctx, attributeID)
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		attributeNamespaceID = attr.GetNamespace().GetId()
+	}
+
 	for _, trigger := range r.GetObligationTriggers() {
-		_, err = c.CreateObligationTrigger(ctx, &obligations.AddObligationTriggerRequest{
+		_, err = c.createObligationTrigger(ctx, &obligations.AddObligationTriggerRequest{
 			ObligationValue: trigger.GetObligationValue(),
 			Action:          trigger.GetAction(),
 			AttributeValue:  &common.IdFqnIdentifier{Id: createdID},
 			Context:         trigger.GetContext(),
-		})
+		}, attributeNamespaceID)
 		if err != nil {
 			return nil, err
 		}

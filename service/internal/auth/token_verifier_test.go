@@ -25,10 +25,14 @@ type tokenVerifierFixture struct {
 }
 
 func newTokenVerifierFixture(t *testing.T) *tokenVerifierFixture {
-	return newTokenVerifierFixtureWithOptions(t, true)
+	return newTokenVerifierFixtureWithPublicKeyAlgorithm(t, true)
 }
 
-func newTokenVerifierFixtureWithOptions(t *testing.T, includeAlgorithm bool) *tokenVerifierFixture {
+func newTokenVerifierFixtureWithoutPublicKeyAlgorithm(t *testing.T) *tokenVerifierFixture {
+	return newTokenVerifierFixtureWithPublicKeyAlgorithm(t, false)
+}
+
+func newTokenVerifierFixtureWithPublicKeyAlgorithm(t *testing.T, includeAlgorithm bool) *tokenVerifierFixture {
 	t.Helper()
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -157,7 +161,7 @@ func TestTokenVerifier_VerifyAccessToken(t *testing.T) {
 	})
 
 	t.Run("valid token with JWKS key missing alg", func(t *testing.T) {
-		missingAlgFixture := newTokenVerifierFixtureWithOptions(t, false)
+		missingAlgFixture := newTokenVerifierFixtureWithoutPublicKeyAlgorithm(t)
 
 		missingAlgVerifier, err := NewTokenVerifier(t.Context(), AuthNConfig{
 			Issuer:       missingAlgFixture.server.URL,

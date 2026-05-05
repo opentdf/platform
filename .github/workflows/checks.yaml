@@ -113,7 +113,7 @@ jobs:
       - name: verify sqlc generate
         if: matrix.directory == 'service'
         run: |
-          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.0
           make policy-sql-gen
       - name: check go fmt and go mod tidy
         run: |-
@@ -595,7 +595,7 @@ jobs:
       - uses: bufbuild/buf-setup-action@a47c93e0b1648d5651a065437926377d060baa99 # v1.50.0
         with:
           github_token: ${{ github.token }}
-          version: "1.56.0"
+          version: "1.68.2"
       - uses: bufbuild/buf-lint-action@06f9dd823d873146471cfaaf108a993fe00e5325 # v1.1.1
         with:
           input: service

@@ -532,6 +532,9 @@ message ObligationTrigger {
 
   repeated RequestContext context = 5;
 
+  // The source namespace for this trigger, derived from the attribute value and action.
+  Namespace namespace = 11;
+
   common.Metadata metadata = 100;
 }
 

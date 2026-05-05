@@ -148,9 +148,8 @@ func (q *Queries) createObligation(ctx context.Context, arg createObligationPara
 
 const createObligationTrigger = `-- name: createObligationTrigger :one
 WITH ov_id AS (
-    SELECT ov.id, od.namespace_id
+    SELECT ov.id
     FROM obligation_values_standard ov
-    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
     WHERE $1::uuid IS NOT NULL AND ov.id = $1::uuid
 ),
 a_id AS (
@@ -161,13 +160,11 @@ a_id AS (
 av_id AS (
     SELECT av.id
     FROM attribute_values av
-    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
     LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
     WHERE
         (($3::uuid IS NOT NULL AND av.id = $3::uuid)
         OR
         ($4::text IS NOT NULL AND fqns.fqn = $4::text))
-        AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
 ),
 inserted AS (
     INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata, client_id)
@@ -212,6 +209,11 @@ SELECT
                 'value', av.value,
                 'fqn', COALESCE(av_fqns.fqn, '')
             ),
+            'namespace', JSON_BUILD_OBJECT(
+                'id', trigger_ns.id,
+                'name', trigger_ns.name,
+                'fqn', CONCAT('https://', trigger_ns.name)
+            ),
             'context', CASE
                 WHEN i.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
                     JSON_BUILD_OBJECT(
@@ -230,6 +232,8 @@ JOIN attribute_namespaces n ON od.namespace_id = n.id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 JOIN actions a ON i.action_id = a.id
 JOIN attribute_values av ON i.attribute_value_id = av.id
+JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
 LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 `
 
@@ -247,12 +251,12 @@ type createObligationTriggerRow struct {
 	Trigger  []byte `json:"trigger"`
 }
 
-// Gets the attribute value, but also ensures that the attribute value belongs to the same namespace as the obligation, to which the obligation value belongs
+// Attribute value lookup is intentionally namespace-agnostic here; the caller
+// validates that the action and attribute value share the trigger's source namespace.
 //
 //	WITH ov_id AS (
-//	    SELECT ov.id, od.namespace_id
+//	    SELECT ov.id
 //	    FROM obligation_values_standard ov
-//	    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
 //	    WHERE $1::uuid IS NOT NULL AND ov.id = $1::uuid
 //	),
 //	a_id AS (
@@ -263,13 +267,11 @@ type createObligationTriggerRow struct {
 //	av_id AS (
 //	    SELECT av.id
 //	    FROM attribute_values av
-//	    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
 //	    LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
 //	    WHERE
 //	        (($3::uuid IS NOT NULL AND av.id = $3::uuid)
 //	        OR
 //	        ($4::text IS NOT NULL AND fqns.fqn = $4::text))
-//	        AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
 //	),
 //	inserted AS (
 //	    INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata, client_id)
@@ -314,6 +316,11 @@ type createObligationTriggerRow struct {
 //	                'value', av.value,
 //	                'fqn', COALESCE(av_fqns.fqn, '')
 //	            ),
+//	            'namespace', JSON_BUILD_OBJECT(
+//	                'id', trigger_ns.id,
+//	                'name', trigger_ns.name,
+//	                'fqn', CONCAT('https://', trigger_ns.name)
+//	            ),
 //	            'context', CASE
 //	                WHEN i.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
 //	                    JSON_BUILD_OBJECT(
@@ -332,6 +339,8 @@ type createObligationTriggerRow struct {
 //	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 //	JOIN actions a ON i.action_id = a.id
 //	JOIN attribute_values av ON i.attribute_value_id = av.id
+//	JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+//	JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
 //	LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 func (q *Queries) createObligationTrigger(ctx context.Context, arg createObligationTriggerParams) (createObligationTriggerRow, error) {
 	row := q.db.QueryRow(ctx, createObligationTrigger,
@@ -631,6 +640,11 @@ WITH obligation_triggers_agg AS (
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
                 ),
+                'namespace', JSON_BUILD_OBJECT(
+                    'id', trigger_ns.id,
+                    'name', trigger_ns.name,
+                    'fqn', CONCAT('https://', trigger_ns.name)
+                ),
                 'context', CASE
                     WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
                         JSON_BUILD_OBJECT(
@@ -646,6 +660,8 @@ WITH obligation_triggers_agg AS (
     FROM obligation_triggers ot
     JOIN actions a ON ot.action_id = a.id
     JOIN attribute_values av ON ot.attribute_value_id = av.id
+    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+    JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
     LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
     GROUP BY ot.obligation_value_id
 )
@@ -714,6 +730,11 @@ type getObligationRow struct {
 //	                    'value', av.value,
 //	                    'fqn', COALESCE(av_fqns.fqn, '')
 //	                ),
+//	                'namespace', JSON_BUILD_OBJECT(
+//	                    'id', trigger_ns.id,
+//	                    'name', trigger_ns.name,
+//	                    'fqn', CONCAT('https://', trigger_ns.name)
+//	                ),
 //	                'context', CASE
 //	                    WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
 //	                        JSON_BUILD_OBJECT(
@@ -729,6 +750,8 @@ type getObligationRow struct {
 //	    FROM obligation_triggers ot
 //	    JOIN actions a ON ot.action_id = a.id
 //	    JOIN attribute_values av ON ot.attribute_value_id = av.id
+//	    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+//	    JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
 //	    LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 //	    GROUP BY ot.obligation_value_id
 //	)
@@ -805,6 +828,11 @@ SELECT
                 'value', av.value,
                 'fqn', COALESCE(av_fqns.fqn, '')
             ),
+            'namespace', JSON_BUILD_OBJECT(
+                'id', trigger_ns.id,
+                'name', trigger_ns.name,
+                'fqn', CONCAT('https://', trigger_ns.name)
+            ),
             'context', CASE
                 WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
                     JSON_BUILD_OBJECT(
@@ -831,6 +859,8 @@ JOIN attribute_namespaces n ON od.namespace_id = n.id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 JOIN actions a ON ot.action_id = a.id
 JOIN attribute_values av ON ot.attribute_value_id = av.id
+JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
 LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 WHERE ot.id = $1
 `
@@ -870,6 +900,11 @@ type getObligationTriggerRow struct {
 //	                'value', av.value,
 //	                'fqn', COALESCE(av_fqns.fqn, '')
 //	            ),
+//	            'namespace', JSON_BUILD_OBJECT(
+//	                'id', trigger_ns.id,
+//	                'name', trigger_ns.name,
+//	                'fqn', CONCAT('https://', trigger_ns.name)
+//	            ),
 //	            'context', CASE
 //	                WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
 //	                    JSON_BUILD_OBJECT(
@@ -896,6 +931,8 @@ type getObligationTriggerRow struct {
 //	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 //	JOIN actions a ON ot.action_id = a.id
 //	JOIN attribute_values av ON ot.attribute_value_id = av.id
+//	JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+//	JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
 //	LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 //	WHERE ot.id = $1
 func (q *Queries) getObligationTrigger(ctx context.Context, id string) (getObligationTriggerRow, error) {
@@ -921,6 +958,11 @@ WITH obligation_triggers_agg AS (
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
                 ),
+                'namespace', JSON_BUILD_OBJECT(
+                    'id', trigger_ns.id,
+                    'name', trigger_ns.name,
+                    'fqn', CONCAT('https://', trigger_ns.name)
+                ),
                 'context', CASE
                     WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
                         JSON_BUILD_OBJECT(
@@ -936,6 +978,8 @@ WITH obligation_triggers_agg AS (
     FROM obligation_triggers ot
     JOIN actions a ON ot.action_id = a.id
     JOIN attribute_values av ON ot.attribute_value_id = av.id
+    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+    JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
     LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
     GROUP BY ot.obligation_value_id
 )
@@ -1002,6 +1046,11 @@ type getObligationValueRow struct {
 //	                    'value', av.value,
 //	                    'fqn', COALESCE(av_fqns.fqn, '')
 //	                ),
+//	                'namespace', JSON_BUILD_OBJECT(
+//	                    'id', trigger_ns.id,
+//	                    'name', trigger_ns.name,
+//	                    'fqn', CONCAT('https://', trigger_ns.name)
+//	                ),
 //	                'context', CASE
 //	                    WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
 //	                        JSON_BUILD_OBJECT(
@@ -1017,6 +1066,8 @@ type getObligationValueRow struct {
 //	    FROM obligation_triggers ot
 //	    JOIN actions a ON ot.action_id = a.id
 //	    JOIN attribute_values av ON ot.attribute_value_id = av.id
+//	    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+//	    JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
 //	    LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 //	    GROUP BY ot.obligation_value_id
 //	)
@@ -1083,6 +1134,11 @@ WITH obligation_triggers_agg AS (
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
                 ),
+                'namespace', JSON_BUILD_OBJECT(
+                    'id', trigger_ns.id,
+                    'name', trigger_ns.name,
+                    'fqn', CONCAT('https://', trigger_ns.name)
+                ),
                 'context', CASE
                     WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
                         JSON_BUILD_OBJECT(
@@ -1098,6 +1154,8 @@ WITH obligation_triggers_agg AS (
     FROM obligation_triggers ot
     JOIN actions a ON ot.action_id = a.id
     JOIN attribute_values av ON ot.attribute_value_id = av.id
+    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+    JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
     LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
     GROUP BY ot.obligation_value_id
 )
@@ -1162,6 +1220,11 @@ type getObligationValuesByFQNsRow struct {
 //	                    'value', av.value,
 //	                    'fqn', COALESCE(av_fqns.fqn, '')
 //	                ),
+//	                'namespace', JSON_BUILD_OBJECT(
+//	                    'id', trigger_ns.id,
+//	                    'name', trigger_ns.name,
+//	                    'fqn', CONCAT('https://', trigger_ns.name)
+//	                ),
 //	                'context', CASE
 //	                    WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
 //	                        JSON_BUILD_OBJECT(
@@ -1177,6 +1240,8 @@ type getObligationValuesByFQNsRow struct {
 //	    FROM obligation_triggers ot
 //	    JOIN actions a ON ot.action_id = a.id
 //	    JOIN attribute_values av ON ot.attribute_value_id = av.id
+//	    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+//	    JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
 //	    LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 //	    GROUP BY ot.obligation_value_id
 //	)
@@ -1250,6 +1315,11 @@ WITH obligation_triggers_agg AS (
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
                 ),
+                'namespace', JSON_BUILD_OBJECT(
+                    'id', trigger_ns.id,
+                    'name', trigger_ns.name,
+                    'fqn', CONCAT('https://', trigger_ns.name)
+                ),
                 'context', CASE
                     WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
                         JSON_BUILD_OBJECT(
@@ -1265,6 +1335,8 @@ WITH obligation_triggers_agg AS (
     FROM obligation_triggers ot
     JOIN actions a ON ot.action_id = a.id
     JOIN attribute_values av ON ot.attribute_value_id = av.id
+    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+    JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
     LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
     GROUP BY ot.obligation_value_id
 )
@@ -1335,6 +1407,11 @@ type getObligationsByFQNsRow struct {
 //	                    'value', av.value,
 //	                    'fqn', COALESCE(av_fqns.fqn, '')
 //	                ),
+//	                'namespace', JSON_BUILD_OBJECT(
+//	                    'id', trigger_ns.id,
+//	                    'name', trigger_ns.name,
+//	                    'fqn', CONCAT('https://', trigger_ns.name)
+//	                ),
 //	                'context', CASE
 //	                    WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
 //	                        JSON_BUILD_OBJECT(
@@ -1350,6 +1427,8 @@ type getObligationsByFQNsRow struct {
 //	    FROM obligation_triggers ot
 //	    JOIN actions a ON ot.action_id = a.id
 //	    JOIN attribute_values av ON ot.attribute_value_id = av.id
+//	    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+//	    JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
 //	    LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 //	    GROUP BY ot.obligation_value_id
 //	)
@@ -1441,6 +1520,11 @@ SELECT
                 'value', av.value,
                 'fqn', COALESCE(av_fqns.fqn, '')
             ),
+            'namespace', JSON_BUILD_OBJECT(
+                'id', trigger_ns.id,
+                'name', trigger_ns.name,
+                'fqn', CONCAT('https://', trigger_ns.name)
+            ),
             'context', CASE
                 WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
                     JSON_BUILD_OBJECT(
@@ -1468,10 +1552,13 @@ JOIN attribute_namespaces n ON od.namespace_id = n.id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 JOIN actions a ON ot.action_id = a.id
 JOIN attribute_values av ON ot.attribute_value_id = av.id
+JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
+LEFT JOIN attribute_fqns trigger_ns_fqns ON trigger_ns_fqns.namespace_id = trigger_ns.id AND trigger_ns_fqns.attribute_id IS NULL AND trigger_ns_fqns.value_id IS NULL
 LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 WHERE
-    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
-    ($2::text IS NULL OR ns_fqns.fqn = $2::text)
+    ($1::uuid IS NULL OR trigger_ns.id = $1::uuid) AND
+    ($2::text IS NULL OR trigger_ns_fqns.fqn = $2::text)
 ORDER BY ot.created_at DESC
 LIMIT $4
 OFFSET $3
@@ -1518,6 +1605,11 @@ type listObligationTriggersRow struct {
 //	                'value', av.value,
 //	                'fqn', COALESCE(av_fqns.fqn, '')
 //	            ),
+//	            'namespace', JSON_BUILD_OBJECT(
+//	                'id', trigger_ns.id,
+//	                'name', trigger_ns.name,
+//	                'fqn', CONCAT('https://', trigger_ns.name)
+//	            ),
 //	            'context', CASE
 //	                WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
 //	                    JSON_BUILD_OBJECT(
@@ -1545,10 +1637,13 @@ type listObligationTriggersRow struct {
 //	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 //	JOIN actions a ON ot.action_id = a.id
 //	JOIN attribute_values av ON ot.attribute_value_id = av.id
+//	JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+//	JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
+//	LEFT JOIN attribute_fqns trigger_ns_fqns ON trigger_ns_fqns.namespace_id = trigger_ns.id AND trigger_ns_fqns.attribute_id IS NULL AND trigger_ns_fqns.value_id IS NULL
 //	LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 //	WHERE
-//	    ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
-//	    ($2::text IS NULL OR ns_fqns.fqn = $2::text)
+//	    ($1::uuid IS NULL OR trigger_ns.id = $1::uuid) AND
+//	    ($2::text IS NULL OR trigger_ns_fqns.fqn = $2::text)
 //	ORDER BY ot.created_at DESC
 //	LIMIT $4
 //	OFFSET $3
@@ -1607,6 +1702,11 @@ obligation_triggers_agg AS (
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
                 ),
+                'namespace', JSON_BUILD_OBJECT(
+                    'id', trigger_ns.id,
+                    'name', trigger_ns.name,
+                    'fqn', CONCAT('https://', trigger_ns.name)
+                ),
                 'context', CASE
                     WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
                         JSON_BUILD_OBJECT(
@@ -1622,6 +1722,8 @@ obligation_triggers_agg AS (
     FROM obligation_triggers ot
     JOIN actions a ON ot.action_id = a.id
     JOIN attribute_values av ON ot.attribute_value_id = av.id
+    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+    JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
     LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
     GROUP BY ot.obligation_value_id
 )
@@ -1716,6 +1818,11 @@ type listObligationsRow struct {
 //	                    'value', av.value,
 //	                    'fqn', COALESCE(av_fqns.fqn, '')
 //	                ),
+//	                'namespace', JSON_BUILD_OBJECT(
+//	                    'id', trigger_ns.id,
+//	                    'name', trigger_ns.name,
+//	                    'fqn', CONCAT('https://', trigger_ns.name)
+//	                ),
 //	                'context', CASE
 //	                    WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
 //	                        JSON_BUILD_OBJECT(
@@ -1731,6 +1838,8 @@ type listObligationsRow struct {
 //	    FROM obligation_triggers ot
 //	    JOIN actions a ON ot.action_id = a.id
 //	    JOIN attribute_values av ON ot.attribute_value_id = av.id
+//	    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+//	    JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
 //	    LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 //	    GROUP BY ot.obligation_value_id
 //	)

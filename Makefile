@@ -19,7 +19,6 @@ all: toolcheck clean build lint license test
 toolcheck:
 	@echo "Checking for required tools..."
 	@$(MAKE) --no-print-directory buf-check
-	@$(MAKE) --no-print-directory sqlc-check
 	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0'" && exit 1)
 	@which protoc-gen-doc > /dev/null || (echo "protoc-gen-doc not found, run 'go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1'" && exit 1)
 	@which protoc-gen-connect-openapi > /dev/null || (echo "protoc-gen-connect-openapi not found, run 'go install github.com/sudorandom/protoc-gen-connect-openapi@v0.18.0'" && exit 1)

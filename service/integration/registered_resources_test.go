@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -2223,7 +2224,7 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_ByName_Ambiguous_R
 // Sort tests
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByName_ASC() {
-	ids := s.createNamedSortTestRegisteredResources([]string{"aaa-rrsort", "bbb-rrsort", "ccc-rrsort"})
+	ids := s.createSortTestRegisteredResources([]string{"aaa-rrsort", "bbb-rrsort", "ccc-rrsort"})
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
@@ -2239,7 +2240,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByName_ASC()
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByName_DESC() {
-	ids := s.createNamedSortTestRegisteredResources([]string{"aaa-rrsortdesc", "bbb-rrsortdesc", "ccc-rrsortdesc"})
+	ids := s.createSortTestRegisteredResources([]string{"aaa-rrsortdesc", "bbb-rrsortdesc", "ccc-rrsortdesc"})
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
@@ -2255,7 +2256,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByName_DESC(
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByCreatedAt_ASC() {
-	ids := s.createSortTestRegisteredResources("createdasc-rr")
+	ids := s.createSortTestRegisteredResources([]string{"createdasc-rr-0", "createdasc-rr-1", "createdasc-rr-2"})
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
@@ -2271,7 +2272,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByCreatedAt_
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByCreatedAt_DESC() {
-	ids := s.createSortTestRegisteredResources("createddesc-rr")
+	ids := s.createSortTestRegisteredResources([]string{"createddesc-rr-0", "createddesc-rr-1", "createddesc-rr-2"})
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
@@ -2287,7 +2288,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByCreatedAt_
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUpdatedAt_DESC() {
-	ids := s.createSortTestRegisteredResources("upd-sort-rr")
+	ids := s.createSortTestRegisteredResources([]string{"upd-sort-rr-0", "upd-sort-rr-1", "upd-sort-rr-2"})
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	// Update the first resource so its updated_at is the most recent
@@ -2314,7 +2315,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUpdatedAt_
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUpdatedAt_ASC() {
-	ids := s.createSortTestRegisteredResources("upd-sort-asc-rr")
+	ids := s.createSortTestRegisteredResources([]string{"upd-sort-asc-rr-0", "upd-sort-asc-rr-1", "upd-sort-asc-rr-2"})
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	// Update the last resource so its updated_at is the most recent
@@ -2340,8 +2341,37 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUpdatedAt_
 	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[0], ids[1], ids[2])
 }
 
-func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUnspecifiedField_FallsBackToDefault() {
-	ids := s.createSortTestRegisteredResources("unspecified-sort-rr")
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortTieBreaker_CreatedAtWithIDFallback() {
+	suffix := time.Now().UnixNano()
+	ids := make([]string, 3)
+	for i := range 3 {
+		name := fmt.Sprintf("tiebreaker-rr-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+			NamespaceId: s.getNamespaceID("example.com"),
+			Name:        name,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "registered_resources", ids))
+
+	sorted := slices.Sorted(slices.Values(ids))
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, sorted[0], sorted[1], sorted[2])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	ids := s.createSortTestRegisteredResources([]string{"unspecified-field-rr-0", "unspecified-field-rr-1", "unspecified-field-rr-2"})
 	defer s.deleteSortTestRegisteredResources(ids)
 
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
@@ -2352,39 +2382,65 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUnspecifie
 	s.Require().NoError(err)
 	s.NotNil(list)
 
-	// Falls back to default created_at DESC ordering
+	// Field defaults to created_at, explicit ASC is preserved
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUnspecifiedDirection_DefaultsToDESC() {
+	ids := s.createSortTestRegisteredResources([]string{"unspecified-dir-rr-0", "unspecified-dir-rr-1", "unspecified-dir-rr-2"})
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	ids := s.createSortTestRegisteredResources([]string{"both-unspecified-rr-0", "both-unspecified-rr-1", "both-unspecified-rr-2"})
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortOmitted() {
+	ids := s.createSortTestRegisteredResources([]string{"sort-omitted-rr-0", "sort-omitted-rr-1", "sort-omitted-rr-2"})
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// No sort provided: created_at DESC
 	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[2], ids[1], ids[0])
 }
 
 // Sort test helpers
 
-// createSortTestRegisteredResources creates 3 registered resources with 5ms gaps for distinct timestamps.
-// Returns the resource IDs in creation order.
-func (s *RegisteredResourcesSuite) createSortTestRegisteredResources(label string) []string {
-	const count = 3
-	ids := make([]string, count)
-	for i := range count {
+// createSortTestRegisteredResources creates registered resources with the given prefixes, adding 5ms gaps
+// between creations for distinct timestamps. Returns the resource IDs in creation order.
+func (s *RegisteredResourcesSuite) createSortTestRegisteredResources(prefixes []string) []string {
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
 		if i > 0 {
 			time.Sleep(5 * time.Millisecond)
 		}
-		name := fmt.Sprintf("%s-%d-%d", label, i, time.Now().UnixNano())
-		created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
-			NamespaceId: s.getNamespaceID("example.com"),
-			Name:        name,
-		})
-		s.Require().NoError(err)
-		ids[i] = created.GetId()
-	}
-	return ids
-}
-
-// createNamedSortTestRegisteredResources creates registered resources with specific name prefixes for name sort testing.
-// Returns the resource IDs in the same order as the prefixes.
-func (s *RegisteredResourcesSuite) createNamedSortTestRegisteredResources(prefixes []string) []string {
-	suffix := time.Now().UnixNano()
-	ids := make([]string, len(prefixes))
-	for i, prefix := range prefixes {
-		name := fmt.Sprintf("%s-%d", prefix, suffix)
+		name := fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
 		created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
 			NamespaceId: s.getNamespaceID("example.com"),
 			Name:        name,

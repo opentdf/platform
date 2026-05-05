@@ -100,8 +100,8 @@ enum SortRegisteredResourcesType {
 }
 
 message RegisteredResourcesSort {
-  SortRegisteredResourcesType field = 1;
-  policy.SortDirection direction = 2;
+  SortRegisteredResourcesType field = 1 [(buf.validate.field).enum.defined_only = true];
+  policy.SortDirection direction = 2 [(buf.validate.field).enum.defined_only = true];
 }
 
 message ListRegisteredResourcesRequest {
@@ -120,8 +120,10 @@ message ListRegisteredResourcesRequest {
   policy.PageRequest pagination = 10;
 
   // Optional - CONSTRAINT: max 1 item
-  // Default ordering when omitted or when the first entry's field is UNSPECIFIED:
-  // created_at DESC.
+  // Sort defaults:
+  //   - direction UNSPECIFIED defaults to DESC for the specified field
+  //   - field UNSPECIFIED defaults to created_at with the specified direction
+  //   - both UNSPECIFIED or sort omitted defaults to created_at DESC
   repeated RegisteredResourcesSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 message ListRegisteredResourcesResponse {

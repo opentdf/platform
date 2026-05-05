@@ -6,13 +6,14 @@ toolchain go1.25.9
 
 require (
 	connectrpc.com/connect v1.19.1
+	connectrpc.com/grpchealth v1.4.0
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/google/uuid v1.6.0
 	github.com/gowebpki/jcs v1.0.1
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/lestrrat-go/jwx/v2 v2.1.6
 	github.com/opentdf/platform/lib/ocrypto v0.10.0
-	github.com/opentdf/platform/protocol/go v0.27.0
+	github.com/opentdf/platform/protocol/go v0.28.0
 	github.com/stretchr/testify v1.11.1
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/oauth2 v0.34.0

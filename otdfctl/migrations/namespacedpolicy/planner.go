@@ -101,6 +101,15 @@ func WithInteractiveReviewer(reviewer InteractiveReviewer) Option {
 }
 
 func (p *Planner) Plan(ctx context.Context) (*Plan, error) {
+	resolved, err := p.resolve(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return finalizePlan(resolved)
+}
+
+func (p *Planner) resolve(ctx context.Context) (*ResolvedTargets, error) {
 	retrieved, err := p.retrieve(ctx)
 	if err != nil {
 		return nil, err
@@ -132,7 +141,7 @@ func (p *Planner) Plan(ctx context.Context) (*Plan, error) {
 		}
 	}
 
-	return finalizePlan(resolved)
+	return resolved, nil
 }
 
 // Retrieve the candidate policy constructs for items within scope or dependent

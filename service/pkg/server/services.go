@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/service/entityresolution"
 	entityresolutionV2 "github.com/opentdf/platform/service/entityresolution/v2"
 	"github.com/opentdf/platform/service/health"
+	authn "github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/kas"
 	logging "github.com/opentdf/platform/service/logger"
@@ -206,6 +207,11 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				return cacheClient, nil
 			}
 
+			var accessTokenVerifier authn.AccessTokenVerifier
+			if otdf != nil && otdf.AuthN != nil {
+				accessTokenVerifier = otdf.AuthN.AccessTokenVerifier()
+			}
+
 			err = svc.Start(ctx, serviceregistry.RegistrationParams{
 				Config:                 cfg.Services[svc.GetNamespace()],
 				Security:               &cfg.Security,
@@ -216,6 +222,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				RegisterReadinessCheck: health.RegisterReadinessCheck,
 				OTDF:                   otdf, // TODO: REMOVE THIS
 				Tracer:                 tracer,
+				AccessTokenVerifier:    accessTokenVerifier,
 				NewCacheClient:         createCacheClient,
 				KeyManagerCtxFactories: keyManagerCtxFactories,
 			})

@@ -379,11 +379,9 @@ components:
         - SORT_DIRECTION_DESC
       description: |-
         Sorting direction shared across list APIs.
-         Notes:
-         - When a sort field is provided, UNSPECIFIED is treated as ASC.
-         - When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
-           the endpoint's request message defines the default ordering; see the
-           specific List* request docs.
+         When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+         the endpoint's request message defines the default ordering; see the
+         specific List* request docs.
     policy.SourceType:
       type: string
       title: SourceType
@@ -936,7 +934,12 @@ components:
             $ref: '#/components/schemas/policy.namespaces.NamespacesSort'
           title: sort
           maxItems: 1
-          description: Optional
+          description: |-
+            Optional - CONSTRAINT: max 1 item
+             Sort defaults:
+               - direction UNSPECIFIED defaults to DESC for the specified field
+               - field UNSPECIFIED defaults to created_at with the specified direction
+               - both UNSPECIFIED or sort omitted defaults to created_at DESC
       title: ListNamespacesRequest
       additionalProperties: false
     policy.namespaces.ListNamespacesResponse:

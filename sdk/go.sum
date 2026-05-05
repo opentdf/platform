@@ -2,6 +2,8 @@ buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-2025060316535
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250603165357-b52ab10f4468.1/go.mod h1:avRlCjnFzl98VPaeCtJ24RrV/wwHFzB8sWXhj26+n/U=
 connectrpc.com/connect v1.19.1 h1:R5M57z05+90EfEvCY1b7hBxDVOUl45PrtXtAV2fOC14=
 connectrpc.com/connect v1.19.1/go.mod h1:tN20fjdGlewnSFeZxLKb0xwIZ6ozc3OQs2hTXy4du9w=
+connectrpc.com/grpchealth v1.4.0 h1:MJC96JLelARPgZTiRF9KRfY/2N9OcoQvF2EWX07v2IE=
+connectrpc.com/grpchealth v1.4.0/go.mod h1:WhW6m1EzTmq3Ky1FE8EfkIpSDc6TfUx2M2KqZO3ts/Q=
 github.com/Masterminds/semver/v3 v3.4.0 h1:Zog+i5UMtVoCU8oKka5P7i9q9HgrJeGzI9SA1Xbatp0=
 github.com/Masterminds/semver/v3 v3.4.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
@@ -47,8 +49,8 @@ github.com/lestrrat-go/option v1.0.1 h1:oAzP2fvZGQKWkvHa1/SAcFolBEca1oN+mQ7eooNB
 github.com/lestrrat-go/option v1.0.1/go.mod h1:5ZHFbivi4xwXxhxY9XHDe2FHo6/Z7WWmtT7T5nBBp3I=
 github.com/opentdf/platform/lib/ocrypto v0.10.0 h1:7dn/z/1qH3p+gWCrfOoU7hj9XF/p5N+b2JBJuWF9aK0=
 github.com/opentdf/platform/lib/ocrypto v0.10.0/go.mod h1:WASkoHreqgTFImB/gJW42VTdpi9AkgkmaW19y/fU+Ew=
-github.com/opentdf/platform/protocol/go v0.27.0 h1:ihXpwKKKy9yNRnuT9xbOJZ8qwNGVk6yAy/aH+Eo0kgw=
-github.com/opentdf/platform/protocol/go v0.27.0/go.mod h1:ufSzLVpcGv368L++kni7fzbN4ugtxmstcifmwI/o4T0=
+github.com/opentdf/platform/protocol/go v0.28.0 h1:/psz0c9Yi+3yXgCWKgDjzpW4p6Dlhyj2H5wmGvohU1U=
+github.com/opentdf/platform/protocol/go v0.28.0/go.mod h1:aiEmtYytvQtbiexZGAKYMe2mYTBPZqbNSh+OXmtrtkA=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=

@@ -1,11 +1,12 @@
 # make
 # To run all lint checks: `LINT_OPTIONS= make lint`
 
-.PHONY: all build clean connect-wrapper-generate docker-build fix fmt go-lint license lint otdfctl/otdfctl proto-generate proto-helper-generate proto-lint sdk/sdk test tidy toolcheck
+.PHONY: all buf-check build clean connect-wrapper-generate docker-build fix fmt go-lint license lint otdfctl/otdfctl policy-sql-gen proto-generate proto-helper-generate proto-lint sdk/sdk sqlc-check test tidy toolcheck
 
 MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples otdfctl tests-bdd
 HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples otdfctl tests-bdd
-REQUIRED_BUF_VERSION=1.5git 6.0
+REQUIRED_BUF_VERSION=1.68.2
+REQUIRED_SQLC_VERSION=1.31.0
 
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -17,13 +18,7 @@ all: toolcheck clean build lint license test
 
 toolcheck:
 	@echo "Checking for required tools..."
-	@which buf > /dev/null || (echo "buf not found, please install it from https://docs.buf.build/installation" && exit 1)
-	@BUF_VERSION=$$(buf --version | head -n 1 | awk '{print $$1}'); \
-	if [ "$$(printf '%s\n' '$(REQUIRED_BUF_VERSION)' "$$BUF_VERSION" | sort -V | head -n 1)" != "$(REQUIRED_BUF_VERSION)" ]; then \
-		echo "Error: buf version $(REQUIRED_BUF_VERSION) or later is required, but found $$BUF_VERSION."; \
-		echo "Please upgrade buf. See https://docs.buf.build/installation for instructions."; \
-		exit 1; \
-	fi
+	@$(MAKE) --no-print-directory buf-check
 	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0'" && exit 1)
 	@which protoc-gen-doc > /dev/null || (echo "protoc-gen-doc not found, run 'go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1'" && exit 1)
 	@which protoc-gen-connect-openapi > /dev/null || (echo "protoc-gen-connect-openapi not found, run 'go install github.com/sudorandom/protoc-gen-connect-openapi@v0.18.0'" && exit 1)
@@ -33,6 +28,24 @@ toolcheck:
 		(echo "golangci-lint version must be v$$required_golangci_lint_version or later [found: $$current_version]" && exit 1)
 	@which goimports >/dev/null || (echo "goimports not found, run 'go install golang.org/x/tools/cmd/goimports@latest'")
 	@govulncheck -version >/dev/null || (echo "govulncheck not found, run 'go install golang.org/x/vuln/cmd/govulncheck@latest'")
+
+buf-check:
+	@which buf > /dev/null || (echo "buf not found, please install it from https://docs.buf.build/installation" && exit 1)
+	@BUF_VERSION=$$(buf --version | head -n 1 | awk '{print $$1}' | sed 's/^v//'); \
+	if [ "$$(printf '%s\n' '$(REQUIRED_BUF_VERSION)' "$$BUF_VERSION" | sort -V | head -n 1)" != "$(REQUIRED_BUF_VERSION)" ]; then \
+		echo "Error: buf version $(REQUIRED_BUF_VERSION) or later is required, but found $$BUF_VERSION."; \
+		echo "Please upgrade buf. See https://docs.buf.build/installation for instructions."; \
+		exit 1; \
+	fi
+
+sqlc-check:
+	@which sqlc > /dev/null || { echo "sqlc not found, please install it: https://docs.sqlc.dev/en/stable/overview/install.html"; exit 1; }
+	@SQLC_VERSION=$$(sqlc version | head -n 1 | grep -Eo 'v?[0-9]+\.[0-9]+\.[0-9]+' | sed 's/^v//'); \
+	if [ "$$(printf '%s\n' '$(REQUIRED_SQLC_VERSION)' "$$SQLC_VERSION" | sort -V | head -n 1)" != "$(REQUIRED_SQLC_VERSION)" ]; then \
+		echo "Error: sqlc version $(REQUIRED_SQLC_VERSION) or later is required, but found $$SQLC_VERSION."; \
+		echo "Please upgrade sqlc. See https://docs.sqlc.dev/en/stable/overview/install.html for instructions."; \
+		exit 1; \
+	fi
 
 fix: tidy fmt
 
@@ -93,8 +106,7 @@ connect-wrapper-generate:
 proto-helper-generate:
 	cd protocol/codegen && go run .
 
-policy-sql-gen:
-	@which sqlc > /dev/null || { echo "sqlc not found, please install it: https://docs.sqlc.dev/en/stable/overview/install.html"; exit 1; }
+policy-sql-gen: sqlc-check
 	sqlc generate -f service/policy/db/sqlc.yaml
 
 policy-erd-gen:

@@ -7539,7 +7539,7 @@ Empty when none remain after current page </p></td>
 
       
         <h3 id="policy.SortDirection">SortDirection</h3>
-        <p>Sorting direction shared across list APIs.</p><p>Notes:</p><p>- When a sort field is provided, UNSPECIFIED is treated as ASC.</p><p>- When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,</p><p>the endpoint's request message defines the default ordering; see the</p><p>specific List* request docs.</p>
+        <p>Sorting direction shared across list APIs.</p><p>When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,</p><p>the endpoint's request message defines the default ordering; see the</p><p>specific List* request docs.</p>
         <table class="enum-table">
           <thead>
             <tr><td>Name</td><td>Number</td><td>Description</td></tr>
@@ -7549,9 +7549,7 @@ Empty when none remain after current page </p></td>
               <tr>
                 <td>SORT_DIRECTION_UNSPECIFIED</td>
                 <td>0</td>
-                <td><p>Treated as ASC when a sort field is provided.
-
-defaults to ASC</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
@@ -8903,7 +8901,11 @@ Namespace ID or name </p></td>
                   <td>sort</td>
                   <td><a href="#policy.attributes.AttributesSort">AttributesSort</a></td>
                   <td>repeated</td>
-                  <td><p>Optional - CONSTRAINT: max 1 item </p></td>
+                  <td><p>Optional - CONSTRAINT: max 1 item
+Sort defaults:
+  - direction UNSPECIFIED defaults to DESC for the specified field
+  - field UNSPECIFIED defaults to created_at with the specified direction
+  - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
             </tbody>
@@ -10654,8 +10656,10 @@ objects are returned. </p></td>
                   <td><a href="#policy.kasregistry.KeyAccessServersSort">KeyAccessServersSort</a></td>
                   <td>repeated</td>
                   <td><p>Optional - CONSTRAINT: max 1 item
-Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
-created_at DESC, then id ASC (tie-breaker). </p></td>
+Sort defaults:
+  - direction UNSPECIFIED defaults to DESC for the specified field
+  - field UNSPECIFIED defaults to created_at with the specified direction
+  - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
             </tbody>
@@ -10826,8 +10830,10 @@ Pagination request for the list of keys </p></td>
                   <td><a href="#policy.kasregistry.KasKeysSort">KasKeysSort</a></td>
                   <td>repeated</td>
                   <td><p>Optional - CONSTRAINT: max 1 item
-Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
-created_at DESC. </p></td>
+Sort defaults:
+  - direction UNSPECIFIED defaults to DESC for the specified field
+  - field UNSPECIFIED defaults to created_at with the specified direction
+  - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
             </tbody>
@@ -12607,7 +12613,11 @@ ACTIVE by default when not specified </p></td>
                   <td>sort</td>
                   <td><a href="#policy.namespaces.NamespacesSort">NamespacesSort</a></td>
                   <td>repeated</td>
-                  <td><p>Optional </p></td>
+                  <td><p>Optional - CONSTRAINT: max 1 item
+Sort defaults:
+  - direction UNSPECIFIED defaults to DESC for the specified field
+  - field UNSPECIFIED defaults to created_at with the specified direction
+  - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
             </tbody>
@@ -13847,8 +13857,10 @@ Common metadata </p></td>
                   <td><a href="#policy.obligations.ObligationsSort">ObligationsSort</a></td>
                   <td>repeated</td>
                   <td><p>Optional - CONSTRAINT: max 1 item
-Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
-created_at DESC, then id ASC (tie-breaker). </p></td>
+Sort defaults:
+  - direction UNSPECIFIED defaults to DESC for the specified field
+  - field UNSPECIFIED defaults to created_at with the specified direction
+  - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
             </tbody>
@@ -14969,8 +14981,10 @@ Common metadata </p></td>
                   <td><a href="#policy.registeredresources.RegisteredResourcesSort">RegisteredResourcesSort</a></td>
                   <td>repeated</td>
                   <td><p>Optional - CONSTRAINT: max 1 item
-Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
-created_at DESC. </p></td>
+Sort defaults:
+  - direction UNSPECIFIED defaults to DESC for the specified field
+  - field UNSPECIFIED defaults to created_at with the specified direction
+  - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
             </tbody>
@@ -16612,8 +16626,10 @@ Namespace ID or FQN for the subject mapping </p></td>
                   <td><a href="#policy.subjectmapping.SubjectConditionSetsSort">SubjectConditionSetsSort</a></td>
                   <td>repeated</td>
                   <td><p>Optional - CONSTRAINT: max 1 item
-Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
-created_at DESC, then id ASC (tie-breaker). </p></td>
+Sort defaults:
+  - direction UNSPECIFIED defaults to DESC for the specified field
+  - field UNSPECIFIED defaults to created_at with the specified direction
+  - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
             </tbody>
@@ -16689,7 +16705,11 @@ created_at DESC, then id ASC (tie-breaker). </p></td>
                   <td>sort</td>
                   <td><a href="#policy.subjectmapping.SubjectMappingsSort">SubjectMappingsSort</a></td>
                   <td>repeated</td>
-                  <td><p>Optional - CONSTRAINT: max 1 item </p></td>
+                  <td><p>Optional - CONSTRAINT: max 1 item
+Sort defaults:
+  - direction UNSPECIFIED defaults to DESC for the specified field
+  - field UNSPECIFIED defaults to created_at with the specified direction
+  - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
             </tbody>

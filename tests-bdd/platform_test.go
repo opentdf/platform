@@ -110,6 +110,7 @@ func runTests() int {
 			cukes.RegisterSubjectMappingsStepsDefinitions(ctx)
 			cukes.RegisterRegisteredResourcesStepDefinitions(ctx)
 			cukes.RegisterObligationsStepDefinitions(ctx, platformCukesContext)
+			cukes.RegisterEncryptionStepDefinitions(ctx)
 			platformCukesContext.InitializeScenario(ctx)
 		},
 		Options: &opts,

@@ -33,6 +33,9 @@ func newTokenVerifierFixture(t *testing.T) *tokenVerifierFixture {
 
 func newTokenVerifierFixtureWithoutPublicKeyAlgorithm(t *testing.T) *tokenVerifierFixture {
 	privateKey, publicKeyJWK := newTokenVerifierKeyPair(t)
+	require.NoError(t, publicKeyJWK.Remove(jwk.AlgorithmKey))
+	_, hasAlgorithm := publicKeyJWK.Get(jwk.AlgorithmKey)
+	require.False(t, hasAlgorithm)
 
 	return newTokenVerifierFixtureWithPublicKey(t, privateKey, publicKeyJWK)
 }

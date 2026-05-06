@@ -5,9 +5,9 @@ go 1.25.0
 toolchain go1.25.9
 
 require (
-	connectrpc.com/connect v1.19.1
+	connectrpc.com/connect v1.19.2
 	connectrpc.com/grpchealth v1.4.0
-	github.com/Masterminds/semver/v3 v3.4.0
+	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/google/uuid v1.6.0
 	github.com/gowebpki/jcs v1.0.1
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
@@ -16,11 +16,11 @@ require (
 	github.com/opentdf/platform/protocol/go v0.29.0
 	github.com/stretchr/testify v1.11.1
 	github.com/xeipuuv/gojsonschema v1.2.0
-	golang.org/x/oauth2 v0.34.0
-	golang.org/x/text v0.34.0
-	golang.org/x/tools v0.41.0
-	google.golang.org/grpc v1.79.3
-	google.golang.org/protobuf v1.36.10
+	golang.org/x/oauth2 v0.36.0
+	golang.org/x/text v0.36.0
+	golang.org/x/tools v0.43.0
+	google.golang.org/grpc v1.81.0
+	google.golang.org/protobuf v1.36.11
 )
 
 require (
@@ -29,6 +29,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.4 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
 	github.com/lestrrat-go/httprc v1.0.6 // indirect
@@ -39,14 +40,12 @@ require (
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
-	go.opentelemetry.io/otel v1.41.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.40.0 // indirect
-	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/mod v0.32.0 // indirect
-	golang.org/x/net v0.51.0 // indirect
-	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
+	golang.org/x/crypto v0.49.0 // indirect
+	golang.org/x/mod v0.34.0 // indirect
+	golang.org/x/net v0.52.0 // indirect
+	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260226221140-a57be14db171 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260226221140-a57be14db171 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

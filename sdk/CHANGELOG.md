@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/opentdf/platform/compare/sdk/v0.18.0...sdk/v0.19.0) (2026-05-06)
+
+
+### Bug Fixes
+
+* **deps:** bump the external group across 1 directory with 7 updates ([#3422](https://github.com/opentdf/platform/issues/3422)) ([be0da08](https://github.com/opentdf/platform/commit/be0da0833863d432cf844858f20a0912c2802e51))
+
 ## [0.18.0](https://github.com/opentdf/platform/compare/sdk/v0.17.0...sdk/v0.18.0) (2026-04-29)
 
 

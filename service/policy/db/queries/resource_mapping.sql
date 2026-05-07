@@ -52,17 +52,14 @@ SELECT
     JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
     m.terms,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
-    JSON_STRIP_NULLS(
+    NULLIF(JSON_STRIP_NULLS(
         JSON_BUILD_OBJECT(
             'id', rmg.id,
             'name', rmg.name,
             'namespace_id', rmg.namespace_id,
-            'fqn', CASE
-                WHEN rmg.id IS NULL THEN NULL
-                ELSE CONCAT('https://', rmg_ns.name, '/resm/', rmg.name)::TEXT
-            END
+            'fqn', CONCAT('https://', rmg_ns.name, '/resm/', rmg.name)::TEXT
         )
-    ) AS group,
+    )::TEXT, '{}')::JSON AS group,
     COUNT(*) OVER() AS total
 FROM resource_mappings m
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
@@ -113,17 +110,14 @@ SELECT
     JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
     m.terms,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
-    JSON_STRIP_NULLS(
+    NULLIF(JSON_STRIP_NULLS(
         JSON_BUILD_OBJECT(
             'id', rmg.id,
             'name', rmg.name,
             'namespace_id', rmg.namespace_id,
-            'fqn', CASE
-                WHEN rmg.id IS NULL THEN NULL
-                ELSE CONCAT('https://', rmg_ns.name, '/resm/', rmg.name)::TEXT
-            END
+            'fqn', CONCAT('https://', rmg_ns.name, '/resm/', rmg.name)::TEXT
         )
-    ) AS group
+    )::TEXT, '{}')::JSON AS group
 FROM resource_mappings m 
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id

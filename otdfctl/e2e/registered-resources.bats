@@ -276,6 +276,24 @@ teardown_file() {
   run_otdfctl_reg_res_values delete --id $created_id_with_action_attr_vals --force
 }
 
+@test "Create a registered resource value includes FQN in JSON output" {
+  value="test_create_rr_val_fqn"
+  expected_fqn="https://$NS_NAME/reg_res/$RR_NAME/value/$value"
+
+  run_otdfctl_reg_res_values create --resource "$RR_ID" --value "$value" --json
+    assert_success
+    created_id=$(echo "$output" | jq -r '.id')
+    assert_equal "$(echo "$output" | jq -r '.value')" "$value"
+    assert_equal "$(echo "$output" | jq -r '.fqn')" "$expected_fqn"
+
+  run_otdfctl_reg_res_values get --id "$created_id" --json
+    assert_success
+    assert_equal "$(echo "$output" | jq -r '.id')" "$created_id"
+    assert_equal "$(echo "$output" | jq -r '.fqn')" "$expected_fqn"
+
+  run_otdfctl_reg_res_values delete --id "$created_id" --force
+}
+
 @test "Create a registered resource value - Bad" {
   # bad resource value names
   run_otdfctl_reg_res_values create --resource "$RR_ID" --value ends_underscored_
@@ -326,16 +344,18 @@ teardown_file() {
     assert_success
     [ "$(echo "$output" | jq -r '.id')" = "$created_id" ]
     [ "$(echo "$output" | jq -r '.value')" = "test_get_rr_val" ]
+    [ "$(echo "$output" | jq -r '.fqn')" = "https://$NS_NAME/reg_res/$RR_NAME/value/test_get_rr_val" ]
     [ "$(echo "$output" | jq -r '.action_attribute_values[0].action.id')" = "$READ_ACTION_ID" ]
     [ "$(echo "$output" | jq -r '.action_attribute_values[0].action.name')" = "$READ_ACTION_NAME" ]
     [ "$(echo "$output" | jq -r '.action_attribute_values[0].attribute_value.id')" = "$ATTR_VAL_1_ID" ]
     [ "$(echo "$output" | jq -r '.action_attribute_values[0].attribute_value.fqn')" = "$ATTR_VAL_1_FQN" ]
 
   # get by fqn
-  run_otdfctl_reg_res_values get --fqn "https://reg_res/$RR_NAME/value/test_get_rr_val" --json
+  run_otdfctl_reg_res_values get --fqn "https://$NS_NAME/reg_res/$RR_NAME/value/test_get_rr_val" --json
     assert_success
     [ "$(echo "$output" | jq -r '.id')" = "$created_id" ]
     [ "$(echo "$output" | jq -r '.value')" = "test_get_rr_val" ]
+    [ "$(echo "$output" | jq -r '.fqn')" = "https://$NS_NAME/reg_res/$RR_NAME/value/test_get_rr_val" ]
     [ "$(echo "$output" | jq -r '.action_attribute_values[0].action.id')" = "$READ_ACTION_ID" ]
     [ "$(echo "$output" | jq -r '.action_attribute_values[0].action.name')" = "$READ_ACTION_NAME" ]
     [ "$(echo "$output" | jq -r '.action_attribute_values[0].attribute_value.id')" = "$ATTR_VAL_1_ID" ]

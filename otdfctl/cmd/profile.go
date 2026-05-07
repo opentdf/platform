@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 
 	osprofiles "github.com/jrschumacher/go-osprofiles"
@@ -160,10 +161,6 @@ var profileGetCmd = &cobra.Command{
 		}
 
 		isDefault := profileStore.IsDefault()
-		isDefaultString := "false"
-		if isDefault {
-			isDefaultString = "true"
-		}
 
 		var auth string
 		authType := ""
@@ -179,7 +176,7 @@ var profileGetCmd = &cobra.Command{
 		t := cli.NewTabular(
 			[]string{"Profile", profileStore.Name()},
 			[]string{"Endpoint", profileStore.GetEndpoint()},
-			[]string{"Is default", isDefaultString},
+			[]string{"Is default", strconv.FormatBool(isDefault)},
 			[]string{"Output format", profileStore.GetOutputFormat()},
 			[]string{"Auth type", auth},
 		)

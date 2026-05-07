@@ -774,6 +774,9 @@ components:
           items:
             $ref: '#/components/schemas/policy.RegisteredResourceValue.ActionAttributeValue'
           title: action_attribute_values
+        fqn:
+          type: string
+          title: fqn
         metadata:
           title: metadata
           description: Common metadata

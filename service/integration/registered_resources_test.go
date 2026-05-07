@@ -1428,6 +1428,7 @@ func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResourceValue_Succeeds()
 	deleted, err := s.db.PolicyClient.DeleteRegisteredResourceValue(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.Require().Equal(created.GetId(), deleted.GetId())
+	s.Equal(created.GetFqn(), deleted.GetFqn())
 
 	// verify resource value deleted
 
@@ -1727,17 +1728,26 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_NamespacedFQN
 
 	// Get by namespaced FQN
 	fqn := fmt.Sprintf("https://example.com/reg_res/%s/value/%s", name, valueName)
-	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+	gotByFQN, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
 		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Fqn{
 			Fqn: fqn,
 		},
 	})
 	s.Require().NoError(err)
-	s.NotNil(got)
-	s.Equal(valueName, got.GetValue())
-	s.NotNil(got.GetResource())
-	s.NotNil(got.GetResource().GetNamespace())
-	s.Equal(nsID, got.GetResource().GetNamespace().GetId())
+	s.NotNil(gotByFQN)
+	s.Equal(valueName, gotByFQN.GetValue())
+	s.Equal(fqn, gotByFQN.GetFqn())
+	s.NotNil(gotByFQN.GetResource())
+	s.NotNil(gotByFQN.GetResource().GetNamespace())
+	s.Equal(nsID, gotByFQN.GetResource().GetNamespace().GetId())
+
+	gotByID, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: gotByFQN.GetId(),
+		},
+	})
+	s.Require().NoError(err)
+	s.Equal(gotByFQN.GetFqn(), gotByID.GetFqn())
 }
 
 func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValuesByFQNs_NamespacedFormat_Succeeds() {
@@ -1766,6 +1776,8 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValuesByFQNs_Namesp
 	s.NotNil(fqnMap[fqn2])
 	s.Equal(val1, fqnMap[fqn1].GetValue())
 	s.Equal(val2, fqnMap[fqn2].GetValue())
+	s.Equal(fqn1, fqnMap[fqn1].GetFqn())
+	s.Equal(fqn2, fqnMap[fqn2].GetFqn())
 }
 
 func (s *RegisteredResourcesSuite) Test_RegisteredResource_NamespaceInResponses_Succeeds() {
@@ -1822,6 +1834,7 @@ func (s *RegisteredResourcesSuite) Test_RegisteredResource_NamespaceInResponses_
 	s.NotNil(valResp.GetResource())
 	s.NotNil(valResp.GetResource().GetNamespace())
 	s.Equal(nsID, valResp.GetResource().GetNamespace().GetId())
+	s.Equal("https://example.com/reg_res/test_ns_in_responses/value/resp-val", valResp.GetFqn())
 }
 
 func (s *RegisteredResourcesSuite) Test_LegacyRegisteredResources_NoNamespace_StillAccessible() {

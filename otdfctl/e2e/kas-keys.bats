@@ -572,7 +572,8 @@ format_kas_name_as_uri() {
 @test "kas-keys: update key (missing id)" {
   run_otdfctl_key update --json
   assert_failure
-  assert_output --partial "ERROR    Flag '--id' is required"
+  assert_equal "$(echo "$output" | jq -r .status)" "ERROR"
+  assert_equal "$(echo "$output" | jq -r .message)" "Flag '--id' is required"
 }
 
 # LIST Tests

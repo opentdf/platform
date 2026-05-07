@@ -101,12 +101,24 @@ SELECT
     JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
     m.terms,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
-    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
+    JSON_STRIP_NULLS(
+        JSON_BUILD_OBJECT(
+            'id', rmg.id,
+            'name', rmg.name,
+            'namespace_id', rmg.namespace_id,
+            'fqn', CASE
+                WHEN rmg.id IS NULL THEN NULL
+                ELSE CONCAT('https://', rmg_ns.name, '/resm/', rmg.name)::TEXT
+            END
+        )
+    ) AS group
 FROM resource_mappings m 
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
+LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
+LEFT JOIN attribute_namespaces rmg_ns ON rmg.namespace_id = rmg_ns.id
 WHERE m.id = $1
-GROUP BY av.id, m.id, fqns.fqn
+GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, rmg_ns.name
 `
 
 type getResourceMappingRow struct {
@@ -114,7 +126,7 @@ type getResourceMappingRow struct {
 	AttributeValue []byte   `json:"attribute_value"`
 	Terms          []string `json:"terms"`
 	Metadata       []byte   `json:"metadata"`
-	GroupID        string   `json:"group_id"`
+	Group          []byte   `json:"group"`
 }
 
 // getResourceMapping
@@ -124,12 +136,24 @@ type getResourceMappingRow struct {
 //	    JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
 //	    m.terms,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
-//	    COALESCE(m.group_id::TEXT, '')::TEXT as group_id
+//	    JSON_STRIP_NULLS(
+//	        JSON_BUILD_OBJECT(
+//	            'id', rmg.id,
+//	            'name', rmg.name,
+//	            'namespace_id', rmg.namespace_id,
+//	            'fqn', CASE
+//	                WHEN rmg.id IS NULL THEN NULL
+//	                ELSE CONCAT('https://', rmg_ns.name, '/resm/', rmg.name)::TEXT
+//	            END
+//	        )
+//	    ) AS group
 //	FROM resource_mappings m
 //	LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 //	LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
+//	LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
+//	LEFT JOIN attribute_namespaces rmg_ns ON rmg.namespace_id = rmg_ns.id
 //	WHERE m.id = $1
-//	GROUP BY av.id, m.id, fqns.fqn
+//	GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, rmg_ns.name
 func (q *Queries) getResourceMapping(ctx context.Context, id string) (getResourceMappingRow, error) {
 	row := q.db.QueryRow(ctx, getResourceMapping, id)
 	var i getResourceMappingRow
@@ -138,7 +162,7 @@ func (q *Queries) getResourceMapping(ctx context.Context, id string) (getResourc
 		&i.AttributeValue,
 		&i.Terms,
 		&i.Metadata,
-		&i.GroupID,
+		&i.Group,
 	)
 	return i, err
 }

@@ -597,6 +597,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithGroupIdSucceeds() 
 	s.Require().NoError(err)
 	s.NotNil(createdMapping)
 	s.Equal(rmGroup.ID, createdMapping.GetGroup().GetId())
+	s.Equal(s.resourceMappingGroupFqn(rmGroup), createdMapping.GetGroup().GetFqn())
 }
 
 func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithUnknownGroupIdFails() {
@@ -1235,6 +1236,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	newLabel := "new label"
 
 	rmGroup := s.getResourceMappingGroupFixtures()[0]
+	expectedGroupFqn := s.resourceMappingGroupFqn(rmGroup)
 
 	labels := map[string]string{
 		"fixed":  fixedLabel,
@@ -1264,11 +1266,13 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(createdMapping)
+	s.Equal(expectedGroupFqn, createdMapping.GetGroup().GetFqn())
 
 	updateWithoutChange, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, createdMapping.GetId(), &resourcemapping.UpdateResourceMappingRequest{})
 	s.Require().NoError(err)
 	s.NotNil(updateWithoutChange)
 	s.Equal(createdMapping.GetId(), updateWithoutChange.GetId())
+	s.Equal(expectedGroupFqn, updateWithoutChange.GetGroup().GetFqn())
 
 	// update the created with new metadata and terms
 	updateWithChange, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, createdMapping.GetId(), &resourcemapping.UpdateResourceMappingRequest{
@@ -1287,6 +1291,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	s.Equal(updateTerms, updateWithChange.GetTerms())
 	s.Equal(expectedLabels, updateWithChange.GetMetadata().GetLabels())
 	s.Equal(createdMapping.GetGroup().GetId(), updateWithChange.GetGroup().GetId())
+	s.Equal(expectedGroupFqn, updateWithChange.GetGroup().GetFqn())
 
 	// get after update to verify db reflects changes made
 	got, err := s.db.PolicyClient.GetResourceMapping(s.ctx, createdMapping.GetId())
@@ -1303,6 +1308,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	s.False(updatedAt.AsTime().IsZero())
 	s.True(updatedAt.AsTime().After(createdAt.AsTime()))
 	s.Equal(rmGroup.ID, got.GetGroup().GetId())
+	s.Equal(expectedGroupFqn, got.GetGroup().GetFqn())
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownIdFails() {

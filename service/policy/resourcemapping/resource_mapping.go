@@ -328,9 +328,7 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 	auditParams.Updated = updatedRM
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	rsp.ResourceMapping = &policy.ResourceMapping{
-		Id: resourceMappingID,
-	}
+	rsp.ResourceMapping = updatedRM
 
 	return connect.NewResponse(rsp), nil
 }

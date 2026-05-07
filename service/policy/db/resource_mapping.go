@@ -182,9 +182,8 @@ func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemap
 
 	for i, rm := range list {
 		var (
-			metadata             = new(common.Metadata)
-			attributeValue       = new(policy.Value)
-			resourceMappingGroup = new(policy.ResourceMappingGroup)
+			metadata       = new(common.Metadata)
+			attributeValue = new(policy.Value)
 		)
 
 		if err = unmarshalMetadata(rm.Metadata, metadata); err != nil {
@@ -195,11 +194,12 @@ func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemap
 			return nil, err
 		}
 
-		if err = unmarshalResourceMappingGroup(rm.Group, resourceMappingGroup); err != nil {
-			return nil, err
-		}
-		if resourceMappingGroup.GetId() == "" {
-			resourceMappingGroup = nil
+		var resourceMappingGroup *policy.ResourceMappingGroup
+		if rm.Group != nil {
+			resourceMappingGroup = new(policy.ResourceMappingGroup)
+			if err = unmarshalResourceMappingGroup(rm.Group, resourceMappingGroup); err != nil {
+				return nil, err
+			}
 		}
 
 		mapping := &policy.ResourceMapping{
@@ -305,9 +305,8 @@ func (c PolicyDBClient) GetResourceMapping(ctx context.Context, id string) (*pol
 	}
 
 	var (
-		metadata             = new(common.Metadata)
-		attributeValue       = new(policy.Value)
-		resourceMappingGroup = new(policy.ResourceMappingGroup)
+		metadata       = new(common.Metadata)
+		attributeValue = new(policy.Value)
 	)
 
 	if err = unmarshalMetadata(rm.Metadata, metadata); err != nil {
@@ -318,11 +317,12 @@ func (c PolicyDBClient) GetResourceMapping(ctx context.Context, id string) (*pol
 		return nil, err
 	}
 
-	if err = unmarshalResourceMappingGroup(rm.Group, resourceMappingGroup); err != nil {
-		return nil, err
-	}
-	if resourceMappingGroup.GetId() == "" {
-		resourceMappingGroup = nil
+	var resourceMappingGroup *policy.ResourceMappingGroup
+	if rm.Group != nil {
+		resourceMappingGroup = new(policy.ResourceMappingGroup)
+		if err = unmarshalResourceMappingGroup(rm.Group, resourceMappingGroup); err != nil {
+			return nil, err
+		}
 	}
 
 	policyRM := &policy.ResourceMapping{

@@ -124,7 +124,10 @@ var profileListCmd = &cobra.Command{
 		var sb strings.Builder
 		fmt.Fprintf(&sb, "Listing profiles from %s\n", driverType)
 
-		out := profileListOutput{Store: string(driverType)}
+		out := profileListOutput{
+			Store:    string(driverType),
+			Profiles: []profileSummary{},
+		}
 		for _, p := range osprofiles.ListProfiles(profiler) {
 			isDefault := p == defaultProfile
 			out.Profiles = append(out.Profiles, profileSummary{

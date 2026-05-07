@@ -90,7 +90,7 @@ func hydrateNamespaceFromInterface(nsRaw interface{}) (*policy.Namespace, error)
 func registeredResourceValueFQN(namespace *policy.Namespace, resourceName, value string) string {
 	namespaceName := ""
 	if namespace != nil {
-		namespaceName = strings.TrimPrefix(namespace.GetFqn(), "https://")
+		namespaceName = namespace.GetName()
 	}
 	return (&identifier.FullyQualifiedRegisteredResourceValue{
 		Namespace: namespaceName,

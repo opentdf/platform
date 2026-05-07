@@ -139,6 +139,37 @@ teardown() {
   refute_output --partial "$target_profile_keyring"
 }
 
+@test "profile list supports json output" {
+  profile1="${PROFILE_TEST_PREFIX}-list-json-1"
+  profile2="${PROFILE_TEST_PREFIX}-list-json-2"
+
+  run_otdfctl create "$profile1" http://localhost:8080
+  assert_success
+
+  run_otdfctl create "$profile2" http://localhost:8080 --set-default
+  assert_success
+
+  run bash -c "set -o pipefail; ./otdfctl profile list --json | jq -e --arg profile1 '$profile1' --arg profile2 '$profile2' '.store == \"filesystem\" and any(.profiles[]; .name == \$profile1 and .is_default == false) and any(.profiles[]; .name == \$profile2 and .is_default == true)'"
+  assert_success
+}
+
+@test "profile get supports json output" {
+  profile="${PROFILE_TEST_PREFIX}-get-json"
+
+  run_otdfctl create "$profile" http://localhost:8080 --set-default --output-format json
+  assert_success
+
+  run bash -c "set -o pipefail; ./otdfctl profile get '$profile' --json | jq -e --arg profile '$profile' '.profile == \$profile and .endpoint == \"http://localhost:8080\" and .is_default == true and .output_format == \"json\"'"
+  assert_success
+}
+
+@test "profile errors support json output" {
+  profile="${PROFILE_TEST_PREFIX}-missing-json"
+
+  run bash -c "output=\$(./otdfctl profile get '$profile' --json 2>&1 >/dev/null); status=\$?; test \$status -ne 0 && jq -e --arg profile '$profile' '.status == \"ERROR\" and (.message | contains(\$profile))' <<< \"\$output\""
+  assert_success
+}
+
 @test "profile set-default updates default profile" {
   base="${PROFILE_TEST_PREFIX}-set-default"
   profile1="${base}-1"

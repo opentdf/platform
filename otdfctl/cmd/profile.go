@@ -134,7 +134,7 @@ var profileListCmd = &cobra.Command{
 				Name:      p,
 				IsDefault: isDefault,
 			})
-			if p == defaultProfile {
+			if isDefault {
 				fmt.Fprintf(&sb, "* %s\n", p)
 				continue
 			}
@@ -161,7 +161,7 @@ var profileGetCmd = &cobra.Command{
 
 		isDefault := profileStore.IsDefault()
 		isDefaultString := "false"
-		if profileStore.IsDefault() {
+		if isDefault {
 			isDefaultString = "true"
 		}
 

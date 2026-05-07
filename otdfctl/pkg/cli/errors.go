@@ -58,10 +58,14 @@ func (c *Cli) ExitWithSuccess(msg string) {
 }
 
 func (c *Cli) ExitWithMessage(msg string, code int) {
+	w := os.Stdout
+	if code != ExitCodeSuccess {
+		w = os.Stderr
+	}
 	if c.printer.json {
-		c.printJSON(MessageJSON(statusForExitCode(code), strings.TrimSpace(msg)), os.Stdout)
+		c.printJSON(MessageJSON(statusForExitCode(code), strings.TrimSpace(msg)), w)
 	} else {
-		c.println(os.Stdout, msg)
+		c.println(w, msg)
 	}
 	os.Exit(code)
 }

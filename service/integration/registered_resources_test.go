@@ -877,6 +877,7 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithInvali
 // Get
 
 func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_Valid_Succeeds() {
+	// Fixture registered resources are legacy rows without namespace_id, so the FQN case uses the legacy https://reg_res/... format.
 	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
 	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 
@@ -972,6 +973,7 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_Invalid_Fails
 // Get By FQNs
 
 func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQNs_Valid_Succeeds() {
+	// Fixture registered resources are legacy rows without namespace_id, so these FQNs use the legacy https://reg_res/... format.
 	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
 	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 	existingResValue2 := s.f.GetRegisteredResourceValueKey("res_with_values__value2")
@@ -1002,6 +1004,7 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQNs_Valid_S
 }
 
 func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQNs_SomeInvalid_Fails() {
+	// Fixture registered resources are legacy rows without namespace_id, so the valid FQN uses the legacy https://reg_res/... format.
 	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
 	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 	fqns := []string{
@@ -1176,6 +1179,7 @@ func (s *AttributesSuite) Test_ListRegisteredResourceValues_Offset_Succeeds() {
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_ByResourceID_Succeeds() {
+	// Fixture registered resources are legacy rows without namespace_id, so listed values should expose legacy https://reg_res/... FQNs.
 	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
 	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 	existingResValue2 := s.f.GetRegisteredResourceValueKey("res_with_values__value2")
@@ -1879,6 +1883,7 @@ func (s *RegisteredResourcesSuite) Test_LegacyRegisteredResources_NoNamespace_St
 	s.Require().NoError(err)
 	s.NotNil(gotValue)
 	s.Nil(gotValue.GetResource().GetNamespace())
+	// Legacy values preserve the pre-namespace FQN shape.
 	s.Equal(fmt.Sprintf("https://reg_res/%s/value/%s", existingResWithValues.Name, existingResValue.Value), gotValue.GetFqn())
 }
 

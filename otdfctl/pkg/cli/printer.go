@@ -18,7 +18,7 @@ type Printer struct {
 	debug   bool
 }
 
-func newPrinter(cli *Cli) *Printer {
+func newPrinter(json bool) *Printer {
 	p := &Printer{
 		enabled: true,
 		json:    false,
@@ -26,8 +26,8 @@ func newPrinter(cli *Cli) *Printer {
 	}
 
 	// if json output is enabled, disable the printer
-	printJSON := cli.Flags.GetOptionalBool("json")
-	p.setJSON(printJSON)
+	defaultJSONOutput.Store(json)
+	p.setJSON(json)
 
 	return p
 }
@@ -35,7 +35,6 @@ func newPrinter(cli *Cli) *Printer {
 func (p *Printer) setJSON(json bool) {
 	p.json = json
 	p.enabled = !json
-	defaultJSONOutput.Store(json)
 }
 
 // PrintJSON prints the given value as json

@@ -670,6 +670,7 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_Succeeds()
 	created, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(created)
+	s.Equal("https://example.com/reg_res/test_create_res_value/value/value", created.GetFqn())
 }
 
 func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_NormalizedName_Succeeds() {
@@ -1188,10 +1189,15 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_ByResourceI
 	s.Len(list.GetValues(), 2)
 
 	foundCount := 0
+	expectedFQNs := map[string]string{
+		existingResValue1.ID: fmt.Sprintf("https://reg_res/%s/value/%s", existingRes.Name, existingResValue1.Value),
+		existingResValue2.ID: fmt.Sprintf("https://reg_res/%s/value/%s", existingRes.Name, existingResValue2.Value),
+	}
 
 	for _, r := range list.GetValues() {
 		if r.GetId() == existingResValue1.ID || r.GetId() == existingResValue2.ID {
 			foundCount++
+			s.Equal(expectedFQNs[r.GetId()], r.GetFqn())
 		}
 	}
 
@@ -1246,6 +1252,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	})
 	s.Require().NoError(err)
 	s.NotNil(created)
+	s.Equal("https://example.com/reg_res/test_update_res_value/value/value", created.GetFqn())
 
 	// update with no changes
 	updated, err := s.db.PolicyClient.UpdateRegisteredResourceValue(s.ctx, &registeredresources.UpdateRegisteredResourceValueRequest{
@@ -1253,6 +1260,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	})
 	s.Require().NoError(err)
 	s.NotNil(updated)
+	s.Equal(created.GetFqn(), updated.GetFqn())
 
 	// verify resource value not updated
 	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
@@ -1263,6 +1271,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	s.Require().NoError(err)
 	s.Require().NotNil(got)
 	s.Equal(created.GetValue(), got.GetValue())
+	s.Equal(created.GetFqn(), got.GetFqn())
 	s.Equal(labels, got.GetMetadata().GetLabels())
 	s.Require().Len(got.GetActionAttributeValues(), 1)
 
@@ -1295,6 +1304,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	})
 	s.Require().NoError(err)
 	s.NotNil(updated)
+	s.Equal("https://example.com/reg_res/test_update_res_value/value/updated_value", updated.GetFqn())
 
 	// verify resource updated
 	got, err = s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
@@ -1305,6 +1315,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal("updated_value", got.GetValue())
+	s.Equal(updated.GetFqn(), got.GetFqn())
 	s.Equal(expectedLabels, got.GetMetadata().GetLabels())
 	metadata := got.GetMetadata()
 	createdAt := metadata.GetCreatedAt()
@@ -1798,6 +1809,8 @@ func (s *RegisteredResourcesSuite) Test_RegisteredResource_NamespaceInResponses_
 	s.Equal(nsID, res.GetNamespace().GetId())
 	s.Equal("example.com", res.GetNamespace().GetName())
 	s.Equal(nsFQN, res.GetNamespace().GetFqn())
+	s.Require().Len(res.GetValues(), 1)
+	s.Equal("https://example.com/reg_res/test_ns_in_responses/value/resp-val", res.GetValues()[0].GetFqn())
 
 	// Verify namespace in Get response
 	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
@@ -1808,6 +1821,8 @@ func (s *RegisteredResourcesSuite) Test_RegisteredResource_NamespaceInResponses_
 	s.Require().NoError(err)
 	s.NotNil(got.GetNamespace())
 	s.Equal(nsID, got.GetNamespace().GetId())
+	s.Require().Len(got.GetValues(), 1)
+	s.Equal(res.GetValues()[0].GetFqn(), got.GetValues()[0].GetFqn())
 
 	// Verify namespace in List response
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
@@ -1820,6 +1835,8 @@ func (s *RegisteredResourcesSuite) Test_RegisteredResource_NamespaceInResponses_
 			found = true
 			s.NotNil(r.GetNamespace())
 			s.Equal(nsID, r.GetNamespace().GetId())
+			s.Require().Len(r.GetValues(), 1)
+			s.Equal(res.GetValues()[0].GetFqn(), r.GetValues()[0].GetFqn())
 		}
 	}
 	s.True(found)
@@ -1840,6 +1857,8 @@ func (s *RegisteredResourcesSuite) Test_RegisteredResource_NamespaceInResponses_
 func (s *RegisteredResourcesSuite) Test_LegacyRegisteredResources_NoNamespace_StillAccessible() {
 	// Fixture resources are legacy (no namespace) - verify they're still accessible
 	existingRes := s.f.GetRegisteredResourceKey("res_only")
+	existingResWithValues := s.f.GetRegisteredResourceKey("res_with_values")
+	existingResValue := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 
 	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
 		Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
@@ -1851,6 +1870,16 @@ func (s *RegisteredResourcesSuite) Test_LegacyRegisteredResources_NoNamespace_St
 	s.Equal(existingRes.Name, got.GetName())
 	// Legacy resources have nil namespace
 	s.Nil(got.GetNamespace())
+
+	gotValue, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: existingResValue.ID,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(gotValue)
+	s.Nil(gotValue.GetResource().GetNamespace())
+	s.Equal(fmt.Sprintf("https://reg_res/%s/value/%s", existingResWithValues.Name, existingResValue.Value), gotValue.GetFqn())
 }
 
 func (s *RegisteredResourcesSuite) Test_SameNamespaceEnforcement_DifferentNamespace_Fails() {

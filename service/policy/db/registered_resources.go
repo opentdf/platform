@@ -89,6 +89,7 @@ func hydrateNamespaceFromInterface(nsRaw interface{}) (*policy.Namespace, error)
 
 func registeredResourceValueFQN(namespace *policy.Namespace, resourceName, value string) string {
 	if namespace == nil {
+		// Legacy registered resources do not have a namespace; identifier.FQN preserves that as https://reg_res/<name>/value/<value>.
 		return (&identifier.FullyQualifiedRegisteredResourceValue{
 			Name:  resourceName,
 			Value: value,

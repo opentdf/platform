@@ -147,7 +147,7 @@ const getResourceMappingGroup = `-- name: getResourceMappingGroup :one
 SELECT rmg.id,
     rmg.namespace_id,
     rmg.name,
-    LOWER(CONCAT('https://', ns.name, '/resm/', rmg.name)) AS fqn,
+    CONCAT('https://', ns.name, '/resm/', rmg.name)::TEXT AS fqn,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', rmg.metadata -> 'labels', 'created_at', rmg.created_at, 'updated_at', rmg.updated_at)) as metadata
 FROM resource_mapping_groups rmg
 JOIN attribute_namespaces ns ON rmg.namespace_id = ns.id
@@ -167,7 +167,7 @@ type getResourceMappingGroupRow struct {
 //	SELECT rmg.id,
 //	    rmg.namespace_id,
 //	    rmg.name,
-//	    LOWER(CONCAT('https://', ns.name, '/resm/', rmg.name)) AS fqn,
+//	    CONCAT('https://', ns.name, '/resm/', rmg.name)::TEXT AS fqn,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', rmg.metadata -> 'labels', 'created_at', rmg.created_at, 'updated_at', rmg.updated_at)) as metadata
 //	FROM resource_mapping_groups rmg
 //	JOIN attribute_namespaces ns ON rmg.namespace_id = ns.id
@@ -190,7 +190,7 @@ const listResourceMappingGroups = `-- name: listResourceMappingGroups :many
 SELECT rmg.id,
     rmg.namespace_id,
     rmg.name,
-    LOWER(CONCAT('https://', ns.name, '/resm/', rmg.name)) AS fqn,
+    CONCAT('https://', ns.name, '/resm/', rmg.name)::TEXT AS fqn,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', rmg.metadata -> 'labels', 'created_at', rmg.created_at, 'updated_at', rmg.updated_at)) as metadata,
     COUNT(*) OVER() AS total
 FROM resource_mapping_groups rmg
@@ -223,7 +223,7 @@ type listResourceMappingGroupsRow struct {
 //	SELECT rmg.id,
 //	    rmg.namespace_id,
 //	    rmg.name,
-//	    LOWER(CONCAT('https://', ns.name, '/resm/', rmg.name)) AS fqn,
+//	    CONCAT('https://', ns.name, '/resm/', rmg.name)::TEXT AS fqn,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', rmg.metadata -> 'labels', 'created_at', rmg.created_at, 'updated_at', rmg.updated_at)) as metadata,
 //	    COUNT(*) OVER() AS total
 //	FROM resource_mapping_groups rmg
@@ -273,7 +273,7 @@ SELECT
             'namespace_id', rmg.namespace_id,
             'fqn', CASE
                 WHEN rmg.id IS NULL THEN NULL
-                ELSE LOWER(CONCAT('https://', rmg_ns.name, '/resm/', rmg.name))
+                ELSE CONCAT('https://', rmg_ns.name, '/resm/', rmg.name)::TEXT
             END
         )
     ) AS group,
@@ -321,7 +321,7 @@ type listResourceMappingsRow struct {
 //	            'namespace_id', rmg.namespace_id,
 //	            'fqn', CASE
 //	                WHEN rmg.id IS NULL THEN NULL
-//	                ELSE LOWER(CONCAT('https://', rmg_ns.name, '/resm/', rmg.name))
+//	                ELSE CONCAT('https://', rmg_ns.name, '/resm/', rmg.name)::TEXT
 //	            END
 //	        )
 //	    ) AS group,
@@ -371,7 +371,7 @@ WITH groups_cte AS (
             'id', g.id,
             'namespace_id', g.namespace_id,
             'name', g.name,
-            'fqn', LOWER(CONCAT('https://', ns.name, '/resm/', g.name)),
+            'fqn', CONCAT('https://', ns.name, '/resm/', g.name)::TEXT,
             'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
                 'labels', g.metadata -> 'labels',
                 'created_at', g.created_at,
@@ -417,7 +417,7 @@ type listResourceMappingsByFullyQualifiedGroupRow struct {
 //	            'id', g.id,
 //	            'namespace_id', g.namespace_id,
 //	            'name', g.name,
-//	            'fqn', LOWER(CONCAT('https://', ns.name, '/resm/', g.name)),
+//	            'fqn', CONCAT('https://', ns.name, '/resm/', g.name)::TEXT,
 //	            'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
 //	                'labels', g.metadata -> 'labels',
 //	                'created_at', g.created_at,

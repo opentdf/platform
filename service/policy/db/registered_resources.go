@@ -88,12 +88,15 @@ func hydrateNamespaceFromInterface(nsRaw interface{}) (*policy.Namespace, error)
 }
 
 func registeredResourceValueFQN(namespace *policy.Namespace, resourceName, value string) string {
-	namespaceName := ""
-	if namespace != nil {
-		namespaceName = namespace.GetName()
+	if namespace == nil {
+		return (&identifier.FullyQualifiedRegisteredResourceValue{
+			Name:  resourceName,
+			Value: value,
+		}).FQN()
 	}
+
 	return (&identifier.FullyQualifiedRegisteredResourceValue{
-		Namespace: namespaceName,
+		Namespace: namespace.GetName(),
 		Name:      resourceName,
 		Value:     value,
 	}).FQN()

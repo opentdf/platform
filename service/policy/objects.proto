@@ -297,6 +297,9 @@ message ResourceMappingGroup {
   // per namespace
   string name = 3 [(buf.validate.field).required = true];
 
+  // the fully qualified name of the resource mapping group
+  string fqn = 4;
+
   // Common metadata
   common.Metadata metadata = 100;
 }

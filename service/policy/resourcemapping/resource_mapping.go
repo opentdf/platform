@@ -108,17 +108,25 @@ func (s ResourceMappingService) CreateResourceMappingGroup(ctx context.Context, 
 		ObjectType: audit.ObjectTypeResourceMappingGroup,
 	}
 
-	rmGroup, err := s.dbClient.CreateResourceMappingGroup(ctx, req.Msg)
+	var rmGroup *policy.ResourceMappingGroup
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		var err error
+		rmGroup, err = txClient.CreateResourceMappingGroup(ctx, req.Msg)
+		if err != nil {
+			return err
+		}
+
+		auditParams.ObjectID = rmGroup.GetId()
+		auditParams.Original = rmGroup
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.ResourceMappingGroup = rmGroup
+		return nil
+	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("resourceMappingGroup", req.Msg.String()))
 	}
-
-	auditParams.ObjectID = rmGroup.GetId()
-	auditParams.Original = rmGroup
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.ResourceMappingGroup = rmGroup
 
 	return connect.NewResponse(rsp), nil
 }
@@ -134,25 +142,27 @@ func (s ResourceMappingService) UpdateResourceMappingGroup(ctx context.Context, 
 		ObjectID:   id,
 	}
 
-	originalRmGroup, err := s.dbClient.GetResourceMappingGroup(ctx, id)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
-	}
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		originalRmGroup, err := txClient.GetResourceMappingGroup(ctx, id)
+		if err != nil {
+			return err
+		}
 
-	updatedRmGroup, err := s.dbClient.UpdateResourceMappingGroup(ctx, id, req.Msg)
+		updatedRmGroup, err := txClient.UpdateResourceMappingGroup(ctx, id, req.Msg)
+		if err != nil {
+			return err
+		}
+
+		auditParams.Original = originalRmGroup
+		auditParams.Updated = updatedRmGroup
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.ResourceMappingGroup = updatedRmGroup
+		return nil
+	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id))
-	}
-
-	auditParams.Original = originalRmGroup
-	auditParams.Updated = updatedRmGroup
-
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.ResourceMappingGroup = &policy.ResourceMappingGroup{
-		Id: id,
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -169,16 +179,22 @@ func (s ResourceMappingService) DeleteResourceMappingGroup(ctx context.Context, 
 		ObjectID:   id,
 	}
 
-	_, err := s.dbClient.DeleteResourceMappingGroup(ctx, id)
+	var deletedRmGroup *policy.ResourceMappingGroup
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		var err error
+		deletedRmGroup, err = txClient.DeleteResourceMappingGroup(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.ResourceMappingGroup = deletedRmGroup
+		return nil
+	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", id))
-	}
-
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.ResourceMappingGroup = &policy.ResourceMappingGroup{
-		Id: id,
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -241,17 +257,25 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 		ObjectType: audit.ObjectTypeResourceMapping,
 	}
 
-	rm, err := s.dbClient.CreateResourceMapping(ctx, req.Msg)
+	var rm *policy.ResourceMapping
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		var err error
+		rm, err = txClient.CreateResourceMapping(ctx, req.Msg)
+		if err != nil {
+			return err
+		}
+
+		auditParams.ObjectID = rm.GetId()
+		auditParams.Original = rm
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.ResourceMapping = rm
+		return nil
+	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("resourceMapping", req.Msg.String()))
 	}
-
-	auditParams.ObjectID = rm.GetId()
-	auditParams.Original = rm
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.ResourceMapping = rm
 
 	return connect.NewResponse(rsp), nil
 }
@@ -269,27 +293,32 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 		ObjectID:   resourceMappingID,
 	}
 
-	originalRM, err := s.dbClient.GetResourceMapping(ctx, resourceMappingID)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed)
-	}
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		originalRM, err := txClient.GetResourceMapping(ctx, resourceMappingID)
+		if err != nil {
+			return err
+		}
 
-	updatedRM, err := s.dbClient.UpdateResourceMapping(ctx, resourceMappingID, req.Msg)
+		updatedRM, err := txClient.UpdateResourceMapping(ctx, resourceMappingID, req.Msg)
+		if err != nil {
+			return err
+		}
+
+		auditParams.Original = originalRM
+		auditParams.Updated = updatedRM
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.ResourceMapping = &policy.ResourceMapping{
+			Id: resourceMappingID,
+		}
+		return nil
+	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed,
 			slog.String("id", req.Msg.GetId()),
 			slog.String("resourceMapping", req.Msg.String()),
 		)
-	}
-
-	auditParams.Original = originalRM
-	auditParams.Updated = updatedRM
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.ResourceMapping = &policy.ResourceMapping{
-		Id: resourceMappingID,
 	}
 
 	return connect.NewResponse(rsp), nil

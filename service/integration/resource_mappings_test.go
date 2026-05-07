@@ -648,6 +648,14 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds(
 		testGroups[testGroup.ID] = testGroup
 	}
 
+	ungroupedValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	ungroupedMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: ungroupedValue.ID,
+		Terms:            []string{"ungrouped-list-term"},
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(ungroupedMapping)
+
 	listRsp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, &resourcemapping.ListResourceMappingsRequest{})
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
@@ -657,8 +665,15 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds(
 
 	testMappingCount := len(testMappings)
 	foundCount := 0
+	foundUngroupedMapping := false
 
 	for _, mapping := range list {
+		if mapping.GetId() == ungroupedMapping.GetId() {
+			foundUngroupedMapping = true
+			s.Nil(mapping.GetGroup())
+			continue
+		}
+
 		testMapping, ok := testMappings[mapping.GetId()]
 		if !ok {
 			// only validating presence of all fixtures within the list response
@@ -668,8 +683,10 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds(
 
 		s.Equal(testMapping.Terms, mapping.GetTerms())
 		s.Equal(testMapping.GroupID, mapping.GetGroup().GetId())
-		s.Equal(testGroups[mapping.GetGroup().GetId()].Name, mapping.GetGroup().GetName())
-		s.Equal(testGroups[mapping.GetGroup().GetId()].NamespaceID, mapping.GetGroup().GetNamespaceId())
+		testGroup := testGroups[mapping.GetGroup().GetId()]
+		s.Equal(testGroup.Name, mapping.GetGroup().GetName())
+		s.Equal(testGroup.NamespaceID, mapping.GetGroup().GetNamespaceId())
+		s.Equal(s.resourceMappingGroupFqn(testGroup), mapping.GetGroup().GetFqn())
 		metadata := mapping.GetMetadata()
 		createdAt := metadata.GetCreatedAt()
 		updatedAt := metadata.GetUpdatedAt()
@@ -685,6 +702,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds(
 	}
 
 	s.Equal(testMappingCount, foundCount)
+	s.True(foundUngroupedMapping, "expected to find ungrouped mapping %s", ungroupedMapping.GetId())
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappings_OrdersByCreatedAt_Succeeds() {

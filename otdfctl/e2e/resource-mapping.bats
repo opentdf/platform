@@ -106,8 +106,8 @@ teardown_file() {
     # replace the terms
     run_otdfctl_rm update --id "$NEW_RM_ID" --terms replaced,new 
         assert_success
-        refute_output --partial "test"
-        refute_output --partial "found"
+        refute_line --regexp "Terms.*test"
+        refute_line --regexp "Terms.*found"
         assert_output --partial "replaced"
         assert_output --partial "new"
         assert_output --partial "$RM_VAL2_ID"
@@ -115,8 +115,8 @@ teardown_file() {
     # reassign the attribute value being mapped
     run_otdfctl_rm update --id "$NEW_RM_ID" --attribute-value-id "$RM_VAL1_ID"
         assert_success
-        refute_output --partial "test"
-        refute_output --partial "found"
+        refute_line --regexp "Terms.*test"
+        refute_line --regexp "Terms.*found"
         assert_output --partial "replaced"
         assert_output --partial "new"
         refute_output --partial "$RM_VAL2_ID"

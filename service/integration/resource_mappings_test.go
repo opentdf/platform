@@ -345,10 +345,10 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingGroup() {
 	rmGroup, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(rmGroup)
-	expectedFQN := identifier.FullyQualifiedResourceMappingGroup{
+	expectedFQN := (&identifier.FullyQualifiedResourceMappingGroup{
 		Namespace: exampleCom.Name,
 		GroupName: groupName,
-	}
+	}).FQN()
 	s.Equal(expectedFQN, rmGroup.GetFqn())
 }
 

@@ -336,14 +336,20 @@ func (s *ResourceMappingsSuite) Test_GetResourceMappingGroupWithUnknownIdFails()
 }
 
 func (s *ResourceMappingsSuite) Test_CreateResourceMappingGroup() {
+	exampleCom := s.getExampleDotComNamespace()
+	groupName := "example.com_ns_new_group"
 	req := &resourcemapping.CreateResourceMappingGroupRequest{
-		NamespaceId: s.getExampleDotComNamespace().ID,
-		Name:        "example.com_ns_new_group",
+		NamespaceId: exampleCom.ID,
+		Name:        groupName,
 	}
 	rmGroup, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(rmGroup)
-	s.Equal("https://example.com/resm/example.com_ns_new_group", rmGroup.GetFqn())
+	expectedFQN := identifier.FullyQualifiedResourceMappingGroup{
+		Namespace: exampleCom.Name,
+		GroupName: groupName,
+	}
+	s.Equal(expectedFQN, rmGroup.GetFqn())
 }
 
 func (s *ResourceMappingsSuite) Test_CreateResourceMappingGroupWithUnknownNamespaceIdFails() {
@@ -401,9 +407,11 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingGroup() {
 	s.Require().NoError(err)
 	s.NotNil(createdGroup)
 
+	updateName := "example.com_ns_group_updated"
+	scenarioCom := s.getScenarioDotComNamespace()
 	updateReq := &resourcemapping.UpdateResourceMappingGroupRequest{
-		NamespaceId: s.getScenarioDotComNamespace().ID,
-		Name:        "example.com_ns_group_updated",
+		NamespaceId: scenarioCom.ID,
+		Name:        updateName,
 		Metadata: &common.MetadataMutable{
 			Labels: updateLabels,
 		},
@@ -413,7 +421,11 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingGroup() {
 	s.Require().NoError(err)
 	s.NotNil(updatedGroup)
 	s.Equal(createdGroup.GetId(), updatedGroup.GetId())
-	s.Equal("https://scenario.com/resm/example.com_ns_group_updated", updatedGroup.GetFqn())
+	expectedFQN := (&identifier.FullyQualifiedResourceMappingGroup{
+		Namespace: scenarioCom.Name,
+		GroupName: updateName,
+	}).FQN()
+	s.Equal(expectedFQN, updatedGroup.GetFqn())
 
 	gotGroup, err := s.db.PolicyClient.GetResourceMappingGroup(s.ctx, createdGroup.GetId())
 	s.Require().NoError(err)
@@ -452,17 +464,19 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingGroupWithUnknownIdFail
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMappingGroupWithNamespaceIdOnlySucceeds() {
+	groupName := "example.com_ns_group_created_nsidonly"
 	req := &resourcemapping.CreateResourceMappingGroupRequest{
 		NamespaceId: s.getExampleDotComNamespace().ID,
-		Name:        "example.com_ns_group_created_nsidonly",
+		Name:        groupName,
 	}
 	rmGroup, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(rmGroup)
 
+	scenarioCom := s.getScenarioDotComNamespace()
 	updateReq := &resourcemapping.UpdateResourceMappingGroupRequest{
 		Id:          rmGroup.GetId(),
-		NamespaceId: s.getScenarioDotComNamespace().ID,
+		NamespaceId: scenarioCom.ID,
 	}
 	updatedRmGroup, err := s.db.PolicyClient.UpdateResourceMappingGroup(s.ctx, rmGroup.GetId(), updateReq)
 	s.Require().NoError(err)
@@ -474,22 +488,28 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingGroupWithNamespaceIdOn
 	s.NotNil(gotUpdatedRmGroup)
 	s.Equal(updateReq.GetNamespaceId(), gotUpdatedRmGroup.GetNamespaceId())
 	s.Equal(req.GetName(), gotUpdatedRmGroup.GetName())
-	s.Equal("https://scenario.com/resm/example.com_ns_group_created_nsidonly", updatedRmGroup.GetFqn())
+	expectedFQN := (&identifier.FullyQualifiedResourceMappingGroup{
+		Namespace: scenarioCom.Name,
+		GroupName: groupName,
+	}).FQN()
+	s.Equal(expectedFQN, updatedRmGroup.GetFqn())
 	s.Equal(updatedRmGroup.GetFqn(), gotUpdatedRmGroup.GetFqn())
 }
 
 func (s *ResourceMappingsSuite) Test_UpdateResourceMappingGroupWithNameOnlySucceeds() {
+	exampleCom := s.getExampleDotComNamespace()
 	req := &resourcemapping.CreateResourceMappingGroupRequest{
-		NamespaceId: s.getExampleDotComNamespace().ID,
+		NamespaceId: exampleCom.ID,
 		Name:        "example.com_ns_group_created_nameonly",
 	}
 	rmGroup, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(rmGroup)
 
+	updatedName := "example.com_ns_group_created_nameonly_updated"
 	updateReq := &resourcemapping.UpdateResourceMappingGroupRequest{
 		Id:   rmGroup.GetId(),
-		Name: "example.com_ns_group_created_nameonly_updated",
+		Name: updatedName,
 	}
 	updatedRmGroup, err := s.db.PolicyClient.UpdateResourceMappingGroup(s.ctx, rmGroup.GetId(), updateReq)
 	s.Require().NoError(err)
@@ -501,7 +521,11 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingGroupWithNameOnlySucce
 	s.NotNil(gotUpdatedRmGroup)
 	s.Equal(req.GetNamespaceId(), gotUpdatedRmGroup.GetNamespaceId())
 	s.Equal(updateReq.GetName(), gotUpdatedRmGroup.GetName())
-	s.Equal("https://example.com/resm/example.com_ns_group_created_nameonly_updated", updatedRmGroup.GetFqn())
+	expectedFQN := (&identifier.FullyQualifiedResourceMappingGroup{
+		Namespace: exampleCom.Name,
+		GroupName: updatedName,
+	}).FQN()
+	s.Equal(expectedFQN, updatedRmGroup.GetFqn())
 	s.Equal(updatedRmGroup.GetFqn(), gotUpdatedRmGroup.GetFqn())
 }
 

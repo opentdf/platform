@@ -38,10 +38,7 @@ func New(cmd *cobra.Command, args []string, options ...cliVariadicOption) *Cli {
 	// Temp wrapper for FlagHelper until we can remove it
 	cli.FlagHelper = cli.Flags
 
-	cli.printer = newPrinter(cli)
-	if opts.printerJSON {
-		cli.printer.setJSON(true)
-	}
+	cli.printer = newPrinter(opts.printerJSON || cli.Flags.GetOptionalBool("json"))
 
 	return cli
 }

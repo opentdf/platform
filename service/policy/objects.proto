@@ -481,6 +481,8 @@ message RegisteredResourceValue {
 
   repeated ActionAttributeValue action_attribute_values = 4;
 
+  string fqn = 5;
+
   // Common metadata
   common.Metadata metadata = 100;
 }

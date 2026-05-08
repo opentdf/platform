@@ -139,6 +139,46 @@ teardown() {
   refute_output --partial "$target_profile_keyring"
 }
 
+@test "profile list supports json output" {
+  profile1="${PROFILE_TEST_PREFIX}-list-json-1"
+  profile2="${PROFILE_TEST_PREFIX}-list-json-2"
+
+  run_otdfctl create "$profile1" http://localhost:8080
+  assert_success
+
+  run_otdfctl create "$profile2" http://localhost:8080 --set-default
+  assert_success
+
+  run_otdfctl list --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r .store)" "filesystem"
+  echo "$output" | jq -e --arg profile1 "$profile1" --arg profile2 "$profile2" \
+    'any(.profiles[]; .name == $profile1 and .is_default == false) and any(.profiles[]; .name == $profile2 and .is_default == true)'
+}
+
+@test "profile get supports json output" {
+  profile="${PROFILE_TEST_PREFIX}-get-json"
+
+  run_otdfctl create "$profile" http://localhost:8080 --set-default --output-format json
+  assert_success
+
+  run_otdfctl get "$profile" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r .profile)" "$profile"
+  assert_equal "$(echo "$output" | jq -r .endpoint)" "http://localhost:8080"
+  assert_equal "$(echo "$output" | jq -r .is_default)" "true"
+  assert_equal "$(echo "$output" | jq -r .output_format)" "json"
+}
+
+@test "profile errors support json output" {
+  profile="${PROFILE_TEST_PREFIX}-missing-json"
+
+  run_otdfctl get "$profile" --json
+  assert_failure
+  assert_equal "$(echo "$output" | jq -r .status)" "ERROR"
+  echo "$output" | jq -e --arg profile "$profile" '.message | contains($profile)'
+}
+
 @test "profile set-default updates default profile" {
   base="${PROFILE_TEST_PREFIX}-set-default"
   profile1="${base}-1"

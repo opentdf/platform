@@ -56,7 +56,7 @@ This command replaces an existing key with a new one while maintaining reference
 Rotate an existing key to a new key in local mode, where the KAS generates the key pair and the private key is wrapped by the provided `wrappingKey`:
 
 ```shell
-otdfctl policy kas-registry key rotate --key "old-key-id" --kas "https://kas.example.com/kas" --key-id "new-key-v2" --algorithm "rsa:2048" --mode "local" --wrapping-key-id "virtru-stored-key" --wrapping-key "YWVzIGtleQ=="
+otdfctl policy kas-registry key rotate --key "old-key-id" --kas "https://kas.example.com/kas" --key-id "new-key-v2" --algorithm "rsa:2048" --mode "local" --wrapping-key-id "virtru-stored-key" --wrapping-key "a8c4824daafcfa38ed0d13002e92b08720e6c4fcee67d52e954c1a6e045907d1"
 ```
 
 ### Rotate a key in `provider` mode

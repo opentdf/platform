@@ -64,7 +64,7 @@ Body.
 	assert.Nil(t, nameFlag.Annotations)
 }
 
-func TestMarkSensitiveFlagsSkipsUnregistered(t *testing.T) {
+func TestMarkSensitiveFlagsPanicsOnUnregistered(t *testing.T) {
 	doc := &Doc{
 		Command: cobra.Command{Use: "test"},
 		DocFlags: []DocFlag{
@@ -72,8 +72,7 @@ func TestMarkSensitiveFlagsSkipsUnregistered(t *testing.T) {
 		},
 	}
 
-	// Should not panic even though the flag is not registered
-	assert.NotPanics(t, func() {
+	assert.Panics(t, func() {
 		doc.MarkSensitiveFlags()
 	})
 }

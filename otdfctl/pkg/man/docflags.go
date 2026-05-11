@@ -42,7 +42,9 @@ func (f DocFlag) DefaultAsBool() bool {
 func (d *Doc) MarkSensitiveFlags() {
 	for _, df := range d.DocFlags {
 		if df.Sensitive {
-			_ = d.Flags().SetAnnotation(df.Name, SensitiveAnnotationKey, []string{"true"})
+			if err := d.Flags().SetAnnotation(df.Name, SensitiveAnnotationKey, []string{"true"}); err != nil {
+				panic(fmt.Sprintf("failed to mark flag %q as sensitive for command %q: %v", df.Name, d.Use, err))
+			}
 		}
 	}
 }

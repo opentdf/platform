@@ -1692,6 +1692,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.registeredresources.GetRegisteredResourcesRequest"><span class="badge">M</span>GetRegisteredResourcesRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.registeredresources.GetRegisteredResourcesResponse"><span class="badge">M</span>GetRegisteredResourcesResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.registeredresources.ListRegisteredResourceValuesRequest"><span class="badge">M</span>ListRegisteredResourceValuesRequest</a>
                 </li>
               
@@ -14925,6 +14933,55 @@ Common metadata </p></td>
 
         
       
+        <h3 id="policy.registeredresources.GetRegisteredResourcesRequest">GetRegisteredResourcesRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>identifiers</td>
+                  <td><a href="#policy.registeredresources.GetRegisteredResourceRequest">GetRegisteredResourceRequest</a></td>
+                  <td>repeated</td>
+                  <td><p>Required
+List of identifiers to look up; each supports the same oneof (id or name) and optional namespace context as GetRegisteredResourceRequest </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.registeredresources.GetRegisteredResourcesResponse">GetRegisteredResourcesResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>resources</td>
+                  <td><a href="#policy.RegisteredResource">policy.RegisteredResource</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.registeredresources.ListRegisteredResourceValuesRequest">ListRegisteredResourceValuesRequest</h3>
         <p></p>
 
@@ -15306,6 +15363,13 @@ Common metadata </p></td>
                 <td>GetRegisteredResource</td>
                 <td><a href="#policy.registeredresources.GetRegisteredResourceRequest">GetRegisteredResourceRequest</a></td>
                 <td><a href="#policy.registeredresources.GetRegisteredResourceResponse">GetRegisteredResourceResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetRegisteredResources</td>
+                <td><a href="#policy.registeredresources.GetRegisteredResourcesRequest">GetRegisteredResourcesRequest</a></td>
+                <td><a href="#policy.registeredresources.GetRegisteredResourcesResponse">GetRegisteredResourcesResponse</a></td>
                 <td><p></p></td>
               </tr>
             

@@ -72,6 +72,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.registeredresources.GetRegisteredResourceResponse'
+  /policy.registeredresources.RegisteredResourcesService/GetRegisteredResources:
+    post:
+      tags:
+        - policy.registeredresources.RegisteredResourcesService
+      summary: GetRegisteredResources
+      operationId: policy.registeredresources.RegisteredResourcesService.GetRegisteredResources
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.registeredresources.GetRegisteredResourcesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.registeredresources.GetRegisteredResourcesResponse'
   /policy.registeredresources.RegisteredResourcesService/ListRegisteredResources:
     post:
       tags:
@@ -1657,6 +1692,31 @@ components:
           title: value
           $ref: '#/components/schemas/policy.RegisteredResourceValue'
       title: FqnValueMapEntry
+      additionalProperties: false
+    policy.registeredresources.GetRegisteredResourcesRequest:
+      type: object
+      properties:
+        identifiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.registeredresources.GetRegisteredResourceRequest'
+          title: identifiers
+          maxItems: 250
+          minItems: 1
+          description: |-
+            Required
+             List of identifiers to look up; each supports the same oneof (id or name) and optional namespace context as GetRegisteredResourceRequest
+      title: GetRegisteredResourcesRequest
+      additionalProperties: false
+    policy.registeredresources.GetRegisteredResourcesResponse:
+      type: object
+      properties:
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.RegisteredResource'
+          title: resources
+      title: GetRegisteredResourcesResponse
       additionalProperties: false
     policy.registeredresources.ListRegisteredResourceValuesRequest:
       type: object

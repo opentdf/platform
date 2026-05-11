@@ -40,6 +40,9 @@ const (
 	// RegisteredResourcesServiceGetRegisteredResourceProcedure is the fully-qualified name of the
 	// RegisteredResourcesService's GetRegisteredResource RPC.
 	RegisteredResourcesServiceGetRegisteredResourceProcedure = "/policy.registeredresources.RegisteredResourcesService/GetRegisteredResource"
+	// RegisteredResourcesServiceGetRegisteredResourcesProcedure is the fully-qualified name of the
+	// RegisteredResourcesService's GetRegisteredResources RPC.
+	RegisteredResourcesServiceGetRegisteredResourcesProcedure = "/policy.registeredresources.RegisteredResourcesService/GetRegisteredResources"
 	// RegisteredResourcesServiceListRegisteredResourcesProcedure is the fully-qualified name of the
 	// RegisteredResourcesService's ListRegisteredResources RPC.
 	RegisteredResourcesServiceListRegisteredResourcesProcedure = "/policy.registeredresources.RegisteredResourcesService/ListRegisteredResources"
@@ -74,6 +77,7 @@ const (
 type RegisteredResourcesServiceClient interface {
 	CreateRegisteredResource(context.Context, *connect.Request[registeredresources.CreateRegisteredResourceRequest]) (*connect.Response[registeredresources.CreateRegisteredResourceResponse], error)
 	GetRegisteredResource(context.Context, *connect.Request[registeredresources.GetRegisteredResourceRequest]) (*connect.Response[registeredresources.GetRegisteredResourceResponse], error)
+	GetRegisteredResources(context.Context, *connect.Request[registeredresources.GetRegisteredResourcesRequest]) (*connect.Response[registeredresources.GetRegisteredResourcesResponse], error)
 	ListRegisteredResources(context.Context, *connect.Request[registeredresources.ListRegisteredResourcesRequest]) (*connect.Response[registeredresources.ListRegisteredResourcesResponse], error)
 	UpdateRegisteredResource(context.Context, *connect.Request[registeredresources.UpdateRegisteredResourceRequest]) (*connect.Response[registeredresources.UpdateRegisteredResourceResponse], error)
 	DeleteRegisteredResource(context.Context, *connect.Request[registeredresources.DeleteRegisteredResourceRequest]) (*connect.Response[registeredresources.DeleteRegisteredResourceResponse], error)
@@ -107,6 +111,12 @@ func NewRegisteredResourcesServiceClient(httpClient connect.HTTPClient, baseURL 
 			httpClient,
 			baseURL+RegisteredResourcesServiceGetRegisteredResourceProcedure,
 			connect.WithSchema(registeredResourcesServiceMethods.ByName("GetRegisteredResource")),
+			connect.WithClientOptions(opts...),
+		),
+		getRegisteredResources: connect.NewClient[registeredresources.GetRegisteredResourcesRequest, registeredresources.GetRegisteredResourcesResponse](
+			httpClient,
+			baseURL+RegisteredResourcesServiceGetRegisteredResourcesProcedure,
+			connect.WithSchema(registeredResourcesServiceMethods.ByName("GetRegisteredResources")),
 			connect.WithClientOptions(opts...),
 		),
 		listRegisteredResources: connect.NewClient[registeredresources.ListRegisteredResourcesRequest, registeredresources.ListRegisteredResourcesResponse](
@@ -170,6 +180,7 @@ func NewRegisteredResourcesServiceClient(httpClient connect.HTTPClient, baseURL 
 type registeredResourcesServiceClient struct {
 	createRegisteredResource          *connect.Client[registeredresources.CreateRegisteredResourceRequest, registeredresources.CreateRegisteredResourceResponse]
 	getRegisteredResource             *connect.Client[registeredresources.GetRegisteredResourceRequest, registeredresources.GetRegisteredResourceResponse]
+	getRegisteredResources            *connect.Client[registeredresources.GetRegisteredResourcesRequest, registeredresources.GetRegisteredResourcesResponse]
 	listRegisteredResources           *connect.Client[registeredresources.ListRegisteredResourcesRequest, registeredresources.ListRegisteredResourcesResponse]
 	updateRegisteredResource          *connect.Client[registeredresources.UpdateRegisteredResourceRequest, registeredresources.UpdateRegisteredResourceResponse]
 	deleteRegisteredResource          *connect.Client[registeredresources.DeleteRegisteredResourceRequest, registeredresources.DeleteRegisteredResourceResponse]
@@ -191,6 +202,12 @@ func (c *registeredResourcesServiceClient) CreateRegisteredResource(ctx context.
 // policy.registeredresources.RegisteredResourcesService.GetRegisteredResource.
 func (c *registeredResourcesServiceClient) GetRegisteredResource(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourceRequest]) (*connect.Response[registeredresources.GetRegisteredResourceResponse], error) {
 	return c.getRegisteredResource.CallUnary(ctx, req)
+}
+
+// GetRegisteredResources calls
+// policy.registeredresources.RegisteredResourcesService.GetRegisteredResources.
+func (c *registeredResourcesServiceClient) GetRegisteredResources(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourcesRequest]) (*connect.Response[registeredresources.GetRegisteredResourcesResponse], error) {
+	return c.getRegisteredResources.CallUnary(ctx, req)
 }
 
 // ListRegisteredResources calls
@@ -252,6 +269,7 @@ func (c *registeredResourcesServiceClient) DeleteRegisteredResourceValue(ctx con
 type RegisteredResourcesServiceHandler interface {
 	CreateRegisteredResource(context.Context, *connect.Request[registeredresources.CreateRegisteredResourceRequest]) (*connect.Response[registeredresources.CreateRegisteredResourceResponse], error)
 	GetRegisteredResource(context.Context, *connect.Request[registeredresources.GetRegisteredResourceRequest]) (*connect.Response[registeredresources.GetRegisteredResourceResponse], error)
+	GetRegisteredResources(context.Context, *connect.Request[registeredresources.GetRegisteredResourcesRequest]) (*connect.Response[registeredresources.GetRegisteredResourcesResponse], error)
 	ListRegisteredResources(context.Context, *connect.Request[registeredresources.ListRegisteredResourcesRequest]) (*connect.Response[registeredresources.ListRegisteredResourcesResponse], error)
 	UpdateRegisteredResource(context.Context, *connect.Request[registeredresources.UpdateRegisteredResourceRequest]) (*connect.Response[registeredresources.UpdateRegisteredResourceResponse], error)
 	DeleteRegisteredResource(context.Context, *connect.Request[registeredresources.DeleteRegisteredResourceRequest]) (*connect.Response[registeredresources.DeleteRegisteredResourceResponse], error)
@@ -280,6 +298,12 @@ func NewRegisteredResourcesServiceHandler(svc RegisteredResourcesServiceHandler,
 		RegisteredResourcesServiceGetRegisteredResourceProcedure,
 		svc.GetRegisteredResource,
 		connect.WithSchema(registeredResourcesServiceMethods.ByName("GetRegisteredResource")),
+		connect.WithHandlerOptions(opts...),
+	)
+	registeredResourcesServiceGetRegisteredResourcesHandler := connect.NewUnaryHandler(
+		RegisteredResourcesServiceGetRegisteredResourcesProcedure,
+		svc.GetRegisteredResources,
+		connect.WithSchema(registeredResourcesServiceMethods.ByName("GetRegisteredResources")),
 		connect.WithHandlerOptions(opts...),
 	)
 	registeredResourcesServiceListRegisteredResourcesHandler := connect.NewUnaryHandler(
@@ -342,6 +366,8 @@ func NewRegisteredResourcesServiceHandler(svc RegisteredResourcesServiceHandler,
 			registeredResourcesServiceCreateRegisteredResourceHandler.ServeHTTP(w, r)
 		case RegisteredResourcesServiceGetRegisteredResourceProcedure:
 			registeredResourcesServiceGetRegisteredResourceHandler.ServeHTTP(w, r)
+		case RegisteredResourcesServiceGetRegisteredResourcesProcedure:
+			registeredResourcesServiceGetRegisteredResourcesHandler.ServeHTTP(w, r)
 		case RegisteredResourcesServiceListRegisteredResourcesProcedure:
 			registeredResourcesServiceListRegisteredResourcesHandler.ServeHTTP(w, r)
 		case RegisteredResourcesServiceUpdateRegisteredResourceProcedure:
@@ -375,6 +401,10 @@ func (UnimplementedRegisteredResourcesServiceHandler) CreateRegisteredResource(c
 
 func (UnimplementedRegisteredResourcesServiceHandler) GetRegisteredResource(context.Context, *connect.Request[registeredresources.GetRegisteredResourceRequest]) (*connect.Response[registeredresources.GetRegisteredResourceResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.registeredresources.RegisteredResourcesService.GetRegisteredResource is not implemented"))
+}
+
+func (UnimplementedRegisteredResourcesServiceHandler) GetRegisteredResources(context.Context, *connect.Request[registeredresources.GetRegisteredResourcesRequest]) (*connect.Response[registeredresources.GetRegisteredResourcesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.registeredresources.RegisteredResourcesService.GetRegisteredResources is not implemented"))
 }
 
 func (UnimplementedRegisteredResourcesServiceHandler) ListRegisteredResources(context.Context, *connect.Request[registeredresources.ListRegisteredResourcesRequest]) (*connect.Response[registeredresources.ListRegisteredResourcesResponse], error) {

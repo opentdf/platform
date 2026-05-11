@@ -1575,6 +1575,7 @@ func (x *SubjectConditionSet) GetMetadata() *common.Metadata {
 // authoritative source such as an IDP (Identity Provider) or User Store.
 // Examples include such ADFS/LDAP, OKTA, etc. For now, a valid property must
 // contain both a selector expression & a resulting value.
+//
 // The external_selector_value is a specifier to select a value from a flattened
 // external representation of an Entity (such as from idP/LDAP), and the
 // external_value is the value selected by the external_selector_value on that

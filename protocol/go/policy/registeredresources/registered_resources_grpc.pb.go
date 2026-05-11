@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion7
 const (
 	RegisteredResourcesService_CreateRegisteredResource_FullMethodName          = "/policy.registeredresources.RegisteredResourcesService/CreateRegisteredResource"
 	RegisteredResourcesService_GetRegisteredResource_FullMethodName             = "/policy.registeredresources.RegisteredResourcesService/GetRegisteredResource"
+	RegisteredResourcesService_GetRegisteredResources_FullMethodName            = "/policy.registeredresources.RegisteredResourcesService/GetRegisteredResources"
 	RegisteredResourcesService_ListRegisteredResources_FullMethodName           = "/policy.registeredresources.RegisteredResourcesService/ListRegisteredResources"
 	RegisteredResourcesService_UpdateRegisteredResource_FullMethodName          = "/policy.registeredresources.RegisteredResourcesService/UpdateRegisteredResource"
 	RegisteredResourcesService_DeleteRegisteredResource_FullMethodName          = "/policy.registeredresources.RegisteredResourcesService/DeleteRegisteredResource"
@@ -38,6 +39,7 @@ const (
 type RegisteredResourcesServiceClient interface {
 	CreateRegisteredResource(ctx context.Context, in *CreateRegisteredResourceRequest, opts ...grpc.CallOption) (*CreateRegisteredResourceResponse, error)
 	GetRegisteredResource(ctx context.Context, in *GetRegisteredResourceRequest, opts ...grpc.CallOption) (*GetRegisteredResourceResponse, error)
+	GetRegisteredResources(ctx context.Context, in *GetRegisteredResourcesRequest, opts ...grpc.CallOption) (*GetRegisteredResourcesResponse, error)
 	ListRegisteredResources(ctx context.Context, in *ListRegisteredResourcesRequest, opts ...grpc.CallOption) (*ListRegisteredResourcesResponse, error)
 	UpdateRegisteredResource(ctx context.Context, in *UpdateRegisteredResourceRequest, opts ...grpc.CallOption) (*UpdateRegisteredResourceResponse, error)
 	DeleteRegisteredResource(ctx context.Context, in *DeleteRegisteredResourceRequest, opts ...grpc.CallOption) (*DeleteRegisteredResourceResponse, error)
@@ -69,6 +71,15 @@ func (c *registeredResourcesServiceClient) CreateRegisteredResource(ctx context.
 func (c *registeredResourcesServiceClient) GetRegisteredResource(ctx context.Context, in *GetRegisteredResourceRequest, opts ...grpc.CallOption) (*GetRegisteredResourceResponse, error) {
 	out := new(GetRegisteredResourceResponse)
 	err := c.cc.Invoke(ctx, RegisteredResourcesService_GetRegisteredResource_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *registeredResourcesServiceClient) GetRegisteredResources(ctx context.Context, in *GetRegisteredResourcesRequest, opts ...grpc.CallOption) (*GetRegisteredResourcesResponse, error) {
+	out := new(GetRegisteredResourcesResponse)
+	err := c.cc.Invoke(ctx, RegisteredResourcesService_GetRegisteredResources_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -162,6 +173,7 @@ func (c *registeredResourcesServiceClient) DeleteRegisteredResourceValue(ctx con
 type RegisteredResourcesServiceServer interface {
 	CreateRegisteredResource(context.Context, *CreateRegisteredResourceRequest) (*CreateRegisteredResourceResponse, error)
 	GetRegisteredResource(context.Context, *GetRegisteredResourceRequest) (*GetRegisteredResourceResponse, error)
+	GetRegisteredResources(context.Context, *GetRegisteredResourcesRequest) (*GetRegisteredResourcesResponse, error)
 	ListRegisteredResources(context.Context, *ListRegisteredResourcesRequest) (*ListRegisteredResourcesResponse, error)
 	UpdateRegisteredResource(context.Context, *UpdateRegisteredResourceRequest) (*UpdateRegisteredResourceResponse, error)
 	DeleteRegisteredResource(context.Context, *DeleteRegisteredResourceRequest) (*DeleteRegisteredResourceResponse, error)
@@ -183,6 +195,9 @@ func (UnimplementedRegisteredResourcesServiceServer) CreateRegisteredResource(co
 }
 func (UnimplementedRegisteredResourcesServiceServer) GetRegisteredResource(context.Context, *GetRegisteredResourceRequest) (*GetRegisteredResourceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRegisteredResource not implemented")
+}
+func (UnimplementedRegisteredResourcesServiceServer) GetRegisteredResources(context.Context, *GetRegisteredResourcesRequest) (*GetRegisteredResourcesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRegisteredResources not implemented")
 }
 func (UnimplementedRegisteredResourcesServiceServer) ListRegisteredResources(context.Context, *ListRegisteredResourcesRequest) (*ListRegisteredResourcesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListRegisteredResources not implemented")
@@ -257,6 +272,24 @@ func _RegisteredResourcesService_GetRegisteredResource_Handler(srv interface{}, 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RegisteredResourcesServiceServer).GetRegisteredResource(ctx, req.(*GetRegisteredResourceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RegisteredResourcesService_GetRegisteredResources_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRegisteredResourcesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RegisteredResourcesServiceServer).GetRegisteredResources(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RegisteredResourcesService_GetRegisteredResources_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RegisteredResourcesServiceServer).GetRegisteredResources(ctx, req.(*GetRegisteredResourcesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -437,6 +470,10 @@ var RegisteredResourcesService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetRegisteredResource",
 			Handler:    _RegisteredResourcesService_GetRegisteredResource_Handler,
+		},
+		{
+			MethodName: "GetRegisteredResources",
+			Handler:    _RegisteredResourcesService_GetRegisteredResources_Handler,
 		},
 		{
 			MethodName: "ListRegisteredResources",

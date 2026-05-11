@@ -92,6 +92,20 @@ message GetRegisteredResourceResponse {
   policy.RegisteredResource resource = 1;
 }
 
+message GetRegisteredResourcesRequest {
+  // Required
+  // List of identifiers to look up; each supports the same oneof (id or name) and optional namespace context as GetRegisteredResourceRequest
+  repeated GetRegisteredResourceRequest identifiers = 1 [
+    (buf.validate.field).repeated = {
+      min_items: 1,
+      max_items: 250
+    }
+  ];
+}
+message GetRegisteredResourcesResponse {
+  repeated policy.RegisteredResource resources = 1;
+}
+
 enum SortRegisteredResourcesType {
   SORT_REGISTERED_RESOURCES_TYPE_UNSPECIFIED = 0;
   SORT_REGISTERED_RESOURCES_TYPE_NAME = 1;
@@ -347,6 +361,9 @@ service RegisteredResourcesService {
   }
 
   rpc GetRegisteredResource(GetRegisteredResourceRequest) returns (GetRegisteredResourceResponse) {
+  }
+
+  rpc GetRegisteredResources(GetRegisteredResourcesRequest) returns (GetRegisteredResourcesResponse) {
   }
 
   rpc ListRegisteredResources(ListRegisteredResourcesRequest) returns (ListRegisteredResourcesResponse) {

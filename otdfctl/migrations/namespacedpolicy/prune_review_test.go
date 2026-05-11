@@ -41,10 +41,9 @@ func TestReviewPrunePlanMarksUnresolvedActionForDeletion(t *testing.T) {
 	require.NotNil(t, prompter.lastSelectPrompt)
 	assert.Equal(t, `Delete unresolved action "archive"?`, prompter.lastSelectPrompt.Title)
 	assert.Equal(t, []string{
-		"Source ID: action-1",
-		"Action: archive",
-		`Migrated targets: id="target-action-1" (namespace="https://example.com")`,
-		"Reason: NoMatchingLabelsFound: canonical migrated targets were found, but none carry migrated_from for this source",
+		"source_id=action-1",
+		`found_migrated_targets=[id: "target-action-1" namespace: "https://example.com"]`,
+		"reason=NoMatchingLabelsFound: canonical migrated targets were found, but none carry migrated_from for this source",
 	}, prompter.lastSelectPrompt.Description)
 	require.Len(t, prompter.lastSelectPrompt.Options, 3)
 	assert.Equal(t, PruneStatusDelete, plan.Actions[0].Status)
@@ -115,9 +114,9 @@ func TestReviewPrunePlanSubjectConditionSetPromptIncludesTargetsAndReason(t *tes
 	require.NotNil(t, prompter.lastSelectPrompt)
 	assert.Equal(t, `Delete unresolved subject condition set "scs-1"?`, prompter.lastSelectPrompt.Title)
 	assert.Equal(t, []string{
-		"Source ID: scs-1",
-		`Migrated targets: id="target-scs-1" (namespace="https://example.com")`,
-		"Reason: NoMatchingLabelsFound: canonical migrated targets were found, but none carry migrated_from for this source",
+		"subject_sets=0",
+		`found_migrated_targets=[id: "target-scs-1" namespace: "https://example.com"]`,
+		"reason=NoMatchingLabelsFound: canonical migrated targets were found, but none carry migrated_from for this source",
 	}, prompter.lastSelectPrompt.Description)
 }
 
@@ -156,12 +155,11 @@ func TestReviewPrunePlanSubjectMappingPromptIncludesActionNames(t *testing.T) {
 	require.NotNil(t, prompter.lastSelectPrompt)
 	assert.Equal(t, `Delete unresolved subject mapping "mapping-1"?`, prompter.lastSelectPrompt.Title)
 	assert.Equal(t, []string{
-		"Source ID: mapping-1",
-		"Attribute value: https://example.com/attr/classification/value/secret",
-		"Subject condition set source: scs-1",
-		`Actions: "archive", "export"`,
-		`Migrated target: id="target-mapping-1" (namespace="https://example.com")`,
-		"Reason: MissingMigrationLabel: migrated target is missing migrated_from metadata for this source",
+		"attribute_value=https://example.com/attr/classification/value/secret",
+		`actions="archive", "export"`,
+		"scs_source=scs-1",
+		`found_migrated_target=id: "target-mapping-1" namespace: "https://example.com"`,
+		"reason=MissingMigrationLabel: migrated target is missing migrated_from metadata for this source",
 	}, prompter.lastSelectPrompt.Description)
 }
 
@@ -206,12 +204,11 @@ func TestReviewPrunePlanRegisteredResourceMismatchPromptShowsFilteredAndFullSour
 	require.NotNil(t, prompter.lastSelectPrompt)
 	assert.Equal(t, `Delete unresolved registered resource "dataset"?`, prompter.lastSelectPrompt.Title)
 	assert.Equal(t, []string{
-		"Source ID: resource-1",
-		"Resource: dataset",
-		`Migrated target: id="target-resource-1" (namespace="https://example.com")`,
-		`Filtered source: values="prod" (action_bindings="read" -> https://example.com/attr/classification/value/secret)`,
-		`Full source: values="prod", "dev" (action_bindings="read" -> https://example.com/attr/classification/value/secret, "write" -> https://example.com/attr/classification/value/secret)`,
-		`Reason: RegisteredResourceSourceMismatch: resolved registered resource view does not match the full source object for target namespace "https://example.com"; source contains values outside the resolved migration view`,
+		"source_id=resource-1",
+		`source=values="prod" (action_bindings="read" -> https://example.com/attr/classification/value/secret)`,
+		`found_migrated_target=id: "target-resource-1" namespace: "https://example.com"`,
+		`full_source=values="prod", "dev" (action_bindings="read" -> https://example.com/attr/classification/value/secret, "write" -> https://example.com/attr/classification/value/secret)`,
+		`reason=RegisteredResourceSourceMismatch: resolved registered resource view does not match the full source object for target namespace "https://example.com"; source contains values outside the resolved migration view`,
 	}, prompter.lastSelectPrompt.Description)
 }
 
@@ -257,14 +254,12 @@ func TestReviewPrunePlanObligationTriggerPromptIncludesTriggerContext(t *testing
 	require.NotNil(t, prompter.lastSelectPrompt)
 	assert.Equal(t, `Delete unresolved obligation trigger "trigger-1"?`, prompter.lastSelectPrompt.Title)
 	assert.Equal(t, []string{
-		"Source ID: trigger-1",
-		"Attribute value: https://example.com/attr/classification/value/secret",
-		"Action: read",
-		"Obligation: https://example.com/obl/watermark",
-		"Obligation value: https://example.com/obl/watermark/value/footer",
-		`Context: client_id="tdf-client"`,
-		`Migrated target: id="target-trigger-1" (namespace="https://example.com")`,
-		"Reason: MissingMigrationLabel: migrated target is missing migrated_from metadata for this source",
+		"attribute_value=https://example.com/attr/classification/value/secret",
+		`action="read"`,
+		"obligation_value=https://example.com/obl/watermark/value/footer",
+		`context=client_id: "tdf-client"`,
+		`found_migrated_target=id: "target-trigger-1" namespace: "https://example.com"`,
+		"reason=MissingMigrationLabel: migrated target is missing migrated_from metadata for this source",
 	}, prompter.lastSelectPrompt.Description)
 }
 

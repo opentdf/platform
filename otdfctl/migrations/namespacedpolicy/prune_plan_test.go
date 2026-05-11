@@ -14,13 +14,13 @@ func TestTargetRefString(t *testing.T) {
 		target TargetRef
 		want   string
 	}{
-		{name: "empty", target: TargetRef{}, want: `id="" (namespace="")`},
+		{name: "empty", target: TargetRef{}, want: noneLabel},
 		{
 			name: "id only",
 			target: TargetRef{
 				ID: "target-1",
 			},
-			want: `id="target-1" (namespace="")`,
+			want: `id: "target-1"`,
 		},
 		{
 			name: "id with namespace id",
@@ -28,7 +28,7 @@ func TestTargetRefString(t *testing.T) {
 				ID:          "target-1",
 				NamespaceID: "namespace-1",
 			},
-			want: `id="target-1" (namespace="namespace-1")`,
+			want: `id: "target-1" namespace: "namespace-1"`,
 		},
 		{
 			name: "id with namespace fqn",
@@ -37,14 +37,14 @@ func TestTargetRefString(t *testing.T) {
 				NamespaceID:  "namespace-1",
 				NamespaceFQN: "https://example.com",
 			},
-			want: `id="target-1" (namespace="https://example.com")`,
+			want: `id: "target-1" namespace: "https://example.com"`,
 		},
 		{
 			name: "namespace without id",
 			target: TargetRef{
 				NamespaceFQN: "https://example.com",
 			},
-			want: `id="" (namespace="https://example.com")`,
+			want: `namespace: "https://example.com"`,
 		},
 	}
 

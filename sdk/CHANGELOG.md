@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/opentdf/platform/compare/sdk/v0.19.0...sdk/v0.20.0) (2026-05-11)
+
+
+### Bug Fixes
+
+* **deps:** bump module protocol/go to v0.30.0 throughout ([#3459](https://github.com/opentdf/platform/issues/3459)) ([8eaa502](https://github.com/opentdf/platform/commit/8eaa502b0f949ddbe18a5a1dac0931b92eec2351))
+
 ## [0.19.0](https://github.com/opentdf/platform/compare/sdk/v0.18.0...sdk/v0.19.0) (2026-05-06)
 
 

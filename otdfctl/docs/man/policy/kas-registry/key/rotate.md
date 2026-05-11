@@ -30,8 +30,10 @@ command:
       description: Identifier related to the wrapping key. Its meaning depends on the `mode`. For `local` mode, it's a descriptive ID for the `wrappingKey` you provide. For `provider` or `remote` mode, it's the ID of the key within the external provider/system used for wrapping.
     - name: wrapping-key
       shorthand: w
+      sensitive: true
       description: The symmetric key material (AES cipher, base64 encoded) used to wrap the generated private key. Primarily used when `mode` is `local`.
     - name: private-key-pem
+      sensitive: true
       description: The private key PEM (encrypted by an AES 32-byte key, then base64 encoded). Used when importing an existing key pair, typically with `provider` mode.
     - name: provider-config-id
       shorthand: p

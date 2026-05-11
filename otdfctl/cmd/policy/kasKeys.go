@@ -876,6 +876,7 @@ func initKASKeysCommands() {
 		createDoc.GetDocFlag("private-key-pem").Default,
 		createDoc.GetDocFlag("private-key-pem").Description,
 	)
+	createDoc.MarkSensitiveFlags()
 	injectLabelFlags(&createDoc.Command, false)
 
 	// Get Kas Key
@@ -994,6 +995,7 @@ func initKASKeysCommands() {
 		rotateDoc.GetDocFlag("private-key-pem").Default,
 		rotateDoc.GetDocFlag("private-key-pem").Description,
 	)
+	rotateDoc.MarkSensitiveFlags()
 	injectLabelFlags(&rotateDoc.Command, true)
 
 	// Import Kas Key
@@ -1048,6 +1050,7 @@ func initKASKeysCommands() {
 		importDoc.GetDocFlag("legacy").Default,
 		importDoc.GetDocFlag("legacy").Description,
 	)
+	importDoc.MarkSensitiveFlags()
 	injectLabelFlags(&importDoc.Command, false)
 
 	mappingsDoc := man.Docs.GetCommand("policy/kas-registry/key/list-mappings",

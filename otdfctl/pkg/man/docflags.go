@@ -6,12 +6,18 @@ import (
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
 )
 
+// SensitiveAnnotationKey is the pflag annotation key used to mark flags whose
+// values contain secrets (cryptographic keys, tokens, etc.) and must not appear
+// in logs or process listings.
+const SensitiveAnnotationKey = "sensitive"
+
 type DocFlag struct {
 	Name        string   `yaml:"name"`
 	Description string   `yaml:"description"`
 	Shorthand   string   `yaml:"shorthand"`
 	Default     string   `yaml:"default"`
 	Enum        []string `yaml:"enum"`
+	Sensitive   bool     `yaml:"sensitive"`
 }
 
 func (d *Doc) GetDocFlag(name string) DocFlag {
@@ -28,4 +34,15 @@ func (d *Doc) GetDocFlag(name string) DocFlag {
 
 func (f DocFlag) DefaultAsBool() bool {
 	return f.Default == "true"
+}
+
+// MarkSensitiveFlags sets pflag annotations on all flags in the command's
+// FlagSet that are marked sensitive in the doc metadata. Call after all
+// flags have been registered.
+func (d *Doc) MarkSensitiveFlags() {
+	for _, df := range d.DocFlags {
+		if df.Sensitive {
+			_ = d.Flags().SetAnnotation(df.Name, SensitiveAnnotationKey, []string{"true"})
+		}
+	}
 }

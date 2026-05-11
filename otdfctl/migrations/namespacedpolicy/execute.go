@@ -23,6 +23,7 @@ var (
 	ErrMissingSubjectConditionSetTarget = errors.New("missing subject condition set target")
 	ErrTargetNamespaceRequired          = errors.New("target namespace is required")
 	ErrMissingCreatedTargetID           = errors.New("missing created target id")
+	ErrMissingPruneSourceID             = errors.New("missing prune source id")
 	ErrUnsupportedStatus                = errors.New("unsupported status")
 )
 
@@ -40,6 +41,12 @@ type ExecutorHandler interface {
 	CreateRegisteredResource(ctx context.Context, namespace string, name string, values []string, metadata *common.MetadataMutable) (*policy.RegisteredResource, error)
 	CreateRegisteredResourceValue(ctx context.Context, resourceID string, value string, actionAttributeValues []*registeredresources.ActionAttributeValue, metadata *common.MetadataMutable) (*policy.RegisteredResourceValue, error)
 	GetRegisteredResource(ctx context.Context, id, name, namespace string) (*policy.RegisteredResource, error)
+	DeleteAction(ctx context.Context, id string) error
+	DeleteSubjectConditionSet(ctx context.Context, id string) error
+	DeleteSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error)
+	DeleteRegisteredResource(ctx context.Context, id string) error
+	DeleteRegisteredResourceValue(ctx context.Context, id string) error
+	DeleteObligationTrigger(ctx context.Context, id string) (*policy.ObligationTrigger, error)
 }
 
 type Executor struct {

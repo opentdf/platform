@@ -31,7 +31,7 @@ command:
     - name: wrapping-key
       shorthand: w
       sensitive: true
-      description: The symmetric key material (AES cipher, base64 encoded) used to wrap the generated private key. Primarily used when `mode` is `local`.
+      description: The symmetric key material (AES cipher, hex encoded) used to wrap the generated private key. Primarily used when `mode` is `local`.
     - name: private-key-pem
       sensitive: true
       description: The private key PEM (encrypted by an AES 32-byte key, then base64 encoded). Used when importing an existing key pair, typically with `provider` mode.

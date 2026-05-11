@@ -137,10 +137,6 @@ func (s *RegisteredResourcesService) GetRegisteredResource(ctx context.Context, 
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *RegisteredResourcesService) GetRegisteredResources(_ context.Context, _ *connect.Request[registeredresources.GetRegisteredResourcesRequest]) (*connect.Response[registeredresources.GetRegisteredResourcesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetRegisteredResources not yet implemented"))
-}
-
 func (s *RegisteredResourcesService) ListRegisteredResources(ctx context.Context, req *connect.Request[registeredresources.ListRegisteredResourcesRequest]) (*connect.Response[registeredresources.ListRegisteredResourcesResponse], error) {
 	s.logger.DebugContext(ctx, "listing registered resources")
 

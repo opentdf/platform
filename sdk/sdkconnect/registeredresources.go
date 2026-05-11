@@ -19,7 +19,6 @@ func NewRegisteredResourcesServiceClientConnectWrapper(httpClient connect.HTTPCl
 type RegisteredResourcesServiceClient interface {
 	CreateRegisteredResource(ctx context.Context, req *registeredresources.CreateRegisteredResourceRequest) (*registeredresources.CreateRegisteredResourceResponse, error)
 	GetRegisteredResource(ctx context.Context, req *registeredresources.GetRegisteredResourceRequest) (*registeredresources.GetRegisteredResourceResponse, error)
-	GetRegisteredResources(ctx context.Context, req *registeredresources.GetRegisteredResourcesRequest) (*registeredresources.GetRegisteredResourcesResponse, error)
 	ListRegisteredResources(ctx context.Context, req *registeredresources.ListRegisteredResourcesRequest) (*registeredresources.ListRegisteredResourcesResponse, error)
 	UpdateRegisteredResource(ctx context.Context, req *registeredresources.UpdateRegisteredResourceRequest) (*registeredresources.UpdateRegisteredResourceResponse, error)
 	DeleteRegisteredResource(ctx context.Context, req *registeredresources.DeleteRegisteredResourceRequest) (*registeredresources.DeleteRegisteredResourceResponse, error)
@@ -43,15 +42,6 @@ func (w *RegisteredResourcesServiceClientConnectWrapper) CreateRegisteredResourc
 func (w *RegisteredResourcesServiceClientConnectWrapper) GetRegisteredResource(ctx context.Context, req *registeredresources.GetRegisteredResourceRequest) (*registeredresources.GetRegisteredResourceResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.RegisteredResourcesServiceClient.GetRegisteredResource(ctx, connect.NewRequest(req))
-	if res == nil {
-		return nil, err
-	}
-	return res.Msg, err
-}
-
-func (w *RegisteredResourcesServiceClientConnectWrapper) GetRegisteredResources(ctx context.Context, req *registeredresources.GetRegisteredResourcesRequest) (*registeredresources.GetRegisteredResourcesResponse, error) {
-	// Wrap Connect RPC client request
-	res, err := w.RegisteredResourcesServiceClient.GetRegisteredResources(ctx, connect.NewRequest(req))
 	if res == nil {
 		return nil, err
 	}

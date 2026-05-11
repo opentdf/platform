@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"errors"
-	"os"
 
 	otdfctl "github.com/opentdf/platform/otdfctl/cmd/common"
 	namespacedpolicy "github.com/opentdf/platform/otdfctl/migrations/namespacedpolicy"
@@ -61,7 +60,7 @@ func migrateNamespacedPolicy(cmd *cobra.Command, args []string) {
 		executeNamespacedPolicyCommit(cmd, h, plan, interactive, prompter)
 	}
 
-	if _, err := os.Stdout.WriteString(namespacedpolicy.RenderNamespacedPolicySummary(plan, commit) + "\n"); err != nil {
+	if _, err := cmd.OutOrStdout().Write([]byte(namespacedpolicy.RenderNamespacedPolicySummary(plan, commit) + "\n")); err != nil {
 		cli.ExitWithError("could not write namespaced-policy summary", err)
 	}
 }
@@ -82,7 +81,7 @@ func confirmNamespacedPolicyCommit(cmd *cobra.Command, plan *namespacedpolicy.Pl
 func executeNamespacedPolicyCommit(cmd *cobra.Command, h namespacedpolicy.ExecutorHandler, plan *namespacedpolicy.Plan, interactive bool, prompter namespacedpolicy.InteractivePrompter) {
 	if err := confirmNamespacedPolicyCommit(cmd, plan, interactive, prompter); err != nil {
 		if errors.Is(err, namespacedpolicy.ErrNamespacedPolicyBackupNotConfirmed) || errors.Is(err, namespacedpolicy.ErrInteractiveReviewAborted) {
-			writeNamespacedPolicySummary(plan, false, "aborted")
+			writeNamespacedPolicySummary(cmd, plan, false, "aborted")
 		}
 		cli.ExitWithError("could not review namespaced-policy commit", err)
 	}
@@ -93,13 +92,13 @@ func executeNamespacedPolicyCommit(cmd *cobra.Command, h namespacedpolicy.Execut
 	}
 
 	if err := executor.Execute(cmd.Context(), plan); err != nil {
-		writeNamespacedPolicySummary(plan, true, "failure")
+		writeNamespacedPolicySummary(cmd, plan, true, "failure")
 		cli.ExitWithError("could not execute namespaced-policy commit", err)
 	}
 }
 
-func writeNamespacedPolicySummary(plan *namespacedpolicy.Plan, commit bool, result string) {
-	if _, err := os.Stdout.WriteString(namespacedpolicy.RenderNamespacedPolicySummaryWithResult(plan, commit, result) + "\n"); err != nil {
+func writeNamespacedPolicySummary(cmd *cobra.Command, plan *namespacedpolicy.Plan, commit bool, result string) {
+	if _, err := cmd.OutOrStdout().Write([]byte(namespacedpolicy.RenderNamespacedPolicySummaryWithResult(plan, commit, result) + "\n")); err != nil {
 		cli.ExitWithError("could not write namespaced-policy summary", err)
 	}
 }

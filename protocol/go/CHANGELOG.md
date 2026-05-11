@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.30.0](https://github.com/opentdf/platform/compare/protocol/go/v0.29.0...protocol/go/v0.30.0) (2026-05-11)
+
+
+### Features
+
+* **policy:** Add FQN to RegisteredResourceValues ([#3446](https://github.com/opentdf/platform/issues/3446)) ([3199583](https://github.com/opentdf/platform/commit/3199583c4a6454ac7eabe1260a142e5c5ff067ad))
+* **policy:** Add resource mapping group FQNs ([#3447](https://github.com/opentdf/platform/issues/3447)) ([6a0b3c6](https://github.com/opentdf/platform/commit/6a0b3c63795cf79b4d87d561464101c7cd2cf351))
+
 ## [0.29.0](https://github.com/opentdf/platform/compare/protocol/go/v0.28.0...protocol/go/v0.29.0) (2026-05-05)
 
 

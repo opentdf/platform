@@ -22,6 +22,7 @@
 7. [Backward Compatibility](#7-backward-compatibility)
 8. [Security Considerations](#8-security-considerations)
 9. [Normative References](#9-normative-references)
+10. [Conformance and Test Vectors](#10-conformance-and-test-vectors)
 
 ---
 
@@ -108,6 +109,38 @@ ML-KEM-768 key encapsulation mechanism:
 }
 ```
 
+The following diagram summarises the KAO field anatomy. Solid green boxes are
+REQUIRED in v4.4.0; amber boxes are CONDITIONAL on the resolved algorithm or
+the use of key splitting; blue boxes are OPTIONAL; grey dashed boxes are
+DEPRECATED v4.3.0 aliases retained for backward-compatible reading.
+
+```mermaid
+graph LR
+  subgraph KAO[Key Access Object]
+    direction TB
+    ALG["alg"]
+    KAS["kas"]
+    KID["kid"]
+    SID["sid"]
+    PK["protectedKey"]
+    EK["ephemeralKey"]
+    PB["policyBinding"]
+    EM["encryptedMetadata"]
+    TYPE["type"]
+    URL["url"]
+    WK["wrappedKey"]
+    EPK["ephemeralPublicKey"]
+  end
+  classDef required fill:#dff5dd,stroke:#1a7f37,color:#1a4225
+  classDef conditional fill:#fff5dd,stroke:#9a6700,color:#4d3500
+  classDef optional fill:#e8eef9,stroke:#0969da,color:#0a3069
+  classDef deprecated fill:#f6f8fa,stroke:#6e7781,color:#57606a,stroke-dasharray:4 2
+  class ALG,KAS,KID,PK,PB required
+  class EK,SID conditional
+  class EM optional
+  class TYPE,URL,WK,EPK deprecated
+```
+
 ### 2.2 Field Definitions
 
 #### `alg` (string, REQUIRED)
@@ -122,6 +155,8 @@ Valid values include: `RSA-OAEP`, `RSA-OAEP-256`, `ECDH-HKDF`, `ML-KEM-768`,
 Implementations MUST include this field when creating new KAOs. Implementations
 MUST reject KAOs whose `alg` value is not recognized (see SI-6 in BaseTDF-SEC).
 
+*Conformance:* [KAO-C-001], [KAO-C-010].
+
 #### `type` (string, DEPRECATED)
 
 Legacy key type field from BaseTDF v4.3.0. Accepted values: `"wrapped"`,
@@ -131,6 +166,8 @@ When both `alg` and `type` are present, `alg` takes precedence. When only `type`
 is present (legacy KAOs), the algorithm is inferred per the backward
 compatibility mapping in Section 7. Implementations SHOULD NOT produce
 conflicting `type` and `alg` values.
+
+*Conformance:* [KAO-C-020], [KAO-C-300], [KAO-C-301].
 
 #### `kas` (string, REQUIRED)
 
@@ -144,12 +181,16 @@ Example: `"https://kas.example.com"`
 This field is the v4.4.0 canonical name for the KAS URL. See `url` below for
 the deprecated alias.
 
+*Conformance:* [KAO-C-003], [KAO-C-012], [KAO-C-021].
+
 #### `url` (string, DEPRECATED)
 
 Legacy name for the `kas` field. When reading a KAO, implementations MUST treat
 `url` as equivalent to `kas`. When both are present, `kas` takes precedence.
 When writing new KAOs, implementations SHOULD use `kas` and MAY additionally
 include `url` for backward compatibility with older readers.
+
+*Conformance:* [KAO-C-021], [KAO-C-302].
 
 #### `kid` (string, REQUIRED)
 
@@ -160,6 +201,8 @@ Implementations MUST include `kid` when creating new KAOs. KAS implementations
 MUST support KAOs that omit `kid` for backward compatibility with legacy TDFs,
 but SHOULD log a warning when processing such KAOs (see BaseTDF-SEC
 Section 4.4).
+
+*Conformance:* [KAO-C-006].
 
 #### `sid` (string, REQUIRED)
 
@@ -188,6 +231,9 @@ structure of this field depend on the algorithm identified by `alg`:
 - For hybrid algorithms (`X-ECDH-ML-KEM-768`): the AES-256-GCM ciphertext of
   the DEK share encrypted under the combined derived key.
 
+*Conformance:* [KAO-C-004], [KAO-C-022], [KAO-C-100], [KAO-C-101], [KAO-C-122],
+[KAO-C-142], [KAO-C-163].
+
 #### `wrappedKey` (string, DEPRECATED)
 
 Legacy name for the `protectedKey` field. When reading a KAO, implementations
@@ -214,6 +260,9 @@ The contents depend on the algorithm:
 Legacy KAOs use the JSON field name `ephemeralPublicKey` instead of
 `ephemeralKey`. Implementations MUST accept both field names when reading.
 
+*Conformance:* [KAO-C-023], [KAO-C-030], [KAO-C-031], [KAO-C-120], [KAO-C-140],
+[KAO-C-160].
+
 #### `policyBinding` (object, REQUIRED)
 
 Policy binding verification data. This object cryptographically binds the KAO to
@@ -234,6 +283,8 @@ verification procedure.
 
 Legacy KAOs MAY represent the policy binding as a bare string (the hash value
 alone) instead of an object. See Section 7 for handling legacy formats.
+
+*Conformance:* [KAO-C-005], [KAO-C-014], [KAO-C-202], [KAO-C-220], [KAO-C-221].
 
 #### `encryptedMetadata` (string, OPTIONAL)
 
@@ -289,6 +340,25 @@ of shares gains zero information about the DEK. This is information-theoretic
 security, not computational security -- it holds regardless of the adversary's
 computational power.
 
+```mermaid
+flowchart LR
+  DEK([DEK<br/>32 bytes]) --> Split{Split into n shares}
+  Split --> S0[share_0<br/>CSPRNG]
+  Split --> S1[share_1<br/>CSPRNG]
+  Split --> Sdots[...]
+  Split --> Sn[share_n-1<br/>= DEK XOR share_0 XOR ... XOR share_n-2]
+  S0 --> Wrap0[KAO_0<br/>protectedKey wraps share_0]
+  S1 --> Wrap1[KAO_1<br/>protectedKey wraps share_1]
+  Sn --> Wrapn[KAO_n-1<br/>protectedKey wraps share_n-1]
+  Wrap0 --> Recover[Recover all n shares<br/>via KAS rewrap]
+  Wrap1 --> Recover
+  Wrapn --> Recover
+  Recover --> XOR[XOR shares together]
+  XOR --> DEKout([Reconstructed DEK])
+```
+
+*Conformance:* [KAO-C-275], [KAO-C-276], [KAO-C-277].
+
 ### 3.3 Split Assignment from Policy Attribute Rules
 
 The mapping from policy attribute rules to key splits determines which KAS
@@ -324,6 +394,8 @@ Implementations MAY use any scheme that guarantees uniqueness, including:
 
 When a TDF has only a single KAO (no splitting), the `sid` field MAY be empty
 or omitted.
+
+*Conformance:* [KAO-C-007], [KAO-C-275].
 
 ### 3.5 Same-KAS Split Warning
 
@@ -423,7 +495,14 @@ then protects the DEK share.
 | `ephemeralKey` | Ephemeral EC public key in PEM format |
 
 **Implementation note**: The HKDF salt is `SHA256("TDF")` -- the SHA-256 hash
-of the three ASCII bytes `0x54 0x44 0x46`. This is a fixed 32-byte value.
+of the three ASCII bytes `0x54 0x44 0x46`. This is a fixed 32-byte value:
+
+```
+aa17cf44 585fe15f d634c27b 9512d842
+b42af1ba c6178d92 161edb4e 2abf8197
+```
+
+This value is exercised by test vector `kat-ecdh-hkdf-salt-001`.
 
 **Legacy compatibility**: The v4.3.0 implementation uses XOR wrapping
 (`derived_key XOR DEK_share`) in step 4 instead of AES-256-GCM. Implementations
@@ -577,7 +656,14 @@ post-quantum component remains unbroken.
 
 **Requirements**:
 
-- The HKDF salt MUST be `SHA256("BaseTDF-Hybrid")` -- a fixed 32-byte value.
+- The HKDF salt MUST be `SHA256("BaseTDF-Hybrid")` -- a fixed 32-byte value:
+
+  ```
+  fc02422b 11d4c85f 4ab829a8 7ee25199
+  fae79fa7 95c7106d 1867a558 99582d63
+  ```
+
+  This value is exercised by test vector `kat-hybrid-hkdf-001`.
 - The HKDF info string MUST be `"BaseTDF-Hybrid-Key"`.
 - The concatenation order of shared secrets MUST be `ss_classical || ss_pqc`.
 - The classical component MUST use the P-256 curve.
@@ -654,10 +740,16 @@ verification procedure is:
    where `canonical_policy` is the base64-encoded policy string from the
    rewrap request.
 2. Decode the `policyBinding.hash` value from the KAO using Base64.
-3. Compare the computed digest with the decoded hash using constant-time
-   comparison (e.g., `hmac.Equal` in Go, `crypto.timingSafeEqual` in Node.js).
+3. Compare the computed digest with the decoded hash using a constant-time
+   comparison primitive. Reference implementations:
+   `hmac.compare_digest` ([Python](https://docs.python.org/3/library/hmac.html#hmac.compare_digest)),
+   `subtle.ConstantTimeCompare` ([Go](https://pkg.go.dev/crypto/subtle#ConstantTimeCompare)),
+   `crypto.timingSafeEqual` ([Node.js](https://nodejs.org/api/crypto.html#cryptotimingsafeequala-b)),
+   `OPENSSL_memcmp_eq` (OpenSSL/BoringSSL).
 4. If the comparison fails, the KAS MUST reject the KAO and MUST NOT return
    any key material derived from the corresponding DEK share.
+
+*Conformance:* [KAO-C-200], [KAO-C-201], [KAO-C-205], [KAO-C-206].
 
 ### 5.4 Algorithm Requirements
 
@@ -696,6 +788,13 @@ KAS implementations MUST support both formats when reading KAOs:
 
 When writing new v4.4.0 KAOs, implementations MUST use direct Base64 encoding
 (not hex-then-base64) and MUST use the object form with an explicit `alg` field.
+
+The hex-detection rule above is exercised by test vectors `legacy-binding-hex-001`
+(object form with hex-then-base64 inner encoding) and `legacy-binding-hex-002`
+(bare-string form with hex-then-base64 inner encoding). The bare-string form
+without hex inner encoding is exercised by `legacy-binding-bare-string-001`.
+
+*Conformance:* [KAO-C-203], [KAO-C-204], [KAO-C-220], [KAO-C-221].
 
 ---
 
@@ -887,6 +986,7 @@ different policy and potentially different DEK shares.
 
 [BaseTDF-SEC]: basetdf-sec.md
 [BaseTDF-ALG]: basetdf-alg.md
+[BaseTDF-KAO-CONF]: basetdf-kao-conformance.md
 [FIPS203]: https://doi.org/10.6028/NIST.FIPS.203
 [SP800-38D]: https://doi.org/10.6028/NIST.SP.800-38D
 [SP800-56A]: https://doi.org/10.6028/NIST.SP.800-56Ar3
@@ -896,3 +996,65 @@ different policy and potentially different DEK shares.
 [RFC5869]: https://www.rfc-editor.org/rfc/rfc5869
 [RFC8017]: https://www.rfc-editor.org/rfc/rfc8017
 [RFC8174]: https://www.rfc-editor.org/rfc/rfc8174
+
+[KAO-C-001]: basetdf-kao-conformance.md#41-required-field-presence
+[KAO-C-002]: basetdf-kao-conformance.md#41-required-field-presence
+[KAO-C-003]: basetdf-kao-conformance.md#41-required-field-presence
+[KAO-C-004]: basetdf-kao-conformance.md#41-required-field-presence
+[KAO-C-005]: basetdf-kao-conformance.md#41-required-field-presence
+[KAO-C-006]: basetdf-kao-conformance.md#41-required-field-presence
+[KAO-C-007]: basetdf-kao-conformance.md#41-required-field-presence
+[KAO-C-010]: basetdf-kao-conformance.md#42-type-and-value-constraints
+[KAO-C-012]: basetdf-kao-conformance.md#42-type-and-value-constraints
+[KAO-C-014]: basetdf-kao-conformance.md#42-type-and-value-constraints
+[KAO-C-020]: basetdf-kao-conformance.md#43-alias-precedence
+[KAO-C-021]: basetdf-kao-conformance.md#43-alias-precedence
+[KAO-C-022]: basetdf-kao-conformance.md#43-alias-precedence
+[KAO-C-023]: basetdf-kao-conformance.md#43-alias-precedence
+[KAO-C-030]: basetdf-kao-conformance.md#44-conditional-fields
+[KAO-C-031]: basetdf-kao-conformance.md#44-conditional-fields
+[KAO-C-100]: basetdf-kao-conformance.md#51-rsa-oaep-and-rsa-oaep-256-kao-c-100119
+[KAO-C-101]: basetdf-kao-conformance.md#51-rsa-oaep-and-rsa-oaep-256-kao-c-100119
+[KAO-C-120]: basetdf-kao-conformance.md#52-ecdh-hkdf-kao-c-120139
+[KAO-C-122]: basetdf-kao-conformance.md#52-ecdh-hkdf-kao-c-120139
+[KAO-C-140]: basetdf-kao-conformance.md#53-ml-kem-768-and-ml-kem-1024-kao-c-140159
+[KAO-C-142]: basetdf-kao-conformance.md#53-ml-kem-768-and-ml-kem-1024-kao-c-140159
+[KAO-C-160]: basetdf-kao-conformance.md#54-x-ecdh-ml-kem-768-hybrid-kao-c-160179
+[KAO-C-163]: basetdf-kao-conformance.md#54-x-ecdh-ml-kem-768-hybrid-kao-c-160179
+[KAO-C-200]: basetdf-kao-conformance.md#6-policy-binding-assertions-kao-c-200249
+[KAO-C-201]: basetdf-kao-conformance.md#6-policy-binding-assertions-kao-c-200249
+[KAO-C-202]: basetdf-kao-conformance.md#6-policy-binding-assertions-kao-c-200249
+[KAO-C-203]: basetdf-kao-conformance.md#6-policy-binding-assertions-kao-c-200249
+[KAO-C-204]: basetdf-kao-conformance.md#6-policy-binding-assertions-kao-c-200249
+[KAO-C-205]: basetdf-kao-conformance.md#6-policy-binding-assertions-kao-c-200249
+[KAO-C-206]: basetdf-kao-conformance.md#6-policy-binding-assertions-kao-c-200249
+[KAO-C-220]: basetdf-kao-conformance.md#6-policy-binding-assertions-kao-c-200249
+[KAO-C-221]: basetdf-kao-conformance.md#6-policy-binding-assertions-kao-c-200249
+[KAO-C-275]: basetdf-kao-conformance.md#8-key-splitting-assertions-kao-c-275299
+[KAO-C-276]: basetdf-kao-conformance.md#8-key-splitting-assertions-kao-c-275299
+[KAO-C-277]: basetdf-kao-conformance.md#8-key-splitting-assertions-kao-c-275299
+[KAO-C-300]: basetdf-kao-conformance.md#9-backward-compatibility-assertions-kao-c-300349
+[KAO-C-301]: basetdf-kao-conformance.md#9-backward-compatibility-assertions-kao-c-300349
+[KAO-C-302]: basetdf-kao-conformance.md#9-backward-compatibility-assertions-kao-c-300349
+
+---
+
+## 10. Conformance and Test Vectors
+
+This document defines the KAO format and its operations in prose. For
+test-harness derivation, three companion artifacts are normative:
+
+| Artifact | Path | Purpose |
+|---|---|---|
+| **Conformance assertions** | [BaseTDF-KAO-CONF][BaseTDF-KAO-CONF] | Stable `KAO-C-NNN` identifiers and the canonical error taxonomy. Each MUST/SHOULD in this document is restated as one or more conformance assertions. |
+| **Machine-readable test vectors** | [`spec/testvectors/kao/`][TestVectors] | Language-neutral JSON vectors covering positive, negative, legacy, and known-answer cases. Every vector cites at least one conformance assertion. |
+| **Reference Python validator** | [`spec/tools/python/`][PythonTool] | Loads the JSON Schema and the test vectors; pytest acts as the reference conformance gate. |
+| **Interactive explorer** | [`spec/tools/explorer/`][ExplorerTool] | Astro static site for browsing the KAO format, walking through each algorithm, and validating KAOs in the browser. |
+
+Implementers writing new producers, consumers, or test harnesses SHOULD start
+from BaseTDF-KAO-CONF, run the test vectors against their implementation, and
+report results citing the `KAO-C-NNN` identifiers.
+
+[TestVectors]: ../testvectors/kao/
+[PythonTool]: ../tools/python/
+[ExplorerTool]: ../tools/explorer/

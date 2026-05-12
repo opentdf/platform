@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .field-required {
+    @apply bg-emerald-50 border-emerald-500 text-emerald-900;
+  }
+  .field-conditional {
+    @apply bg-amber-50 border-amber-500 text-amber-900;
+  }
+  .field-optional {
+    @apply bg-sky-50 border-sky-500 text-sky-900;
+  }
+  .field-deprecated {
+    @apply bg-slate-50 border-slate-400 text-slate-500 border-dashed;
+  }
+}

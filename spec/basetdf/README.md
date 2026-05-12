@@ -15,6 +15,7 @@ container format can each evolve independently.
 | **Policy** | BaseTDF-POL | Policy & Attribute-Based Access Control | [basetdf-pol.md](basetdf-pol.md) |
 | **Policy** | BaseTDF-KAS | Key Access Service Protocol | [basetdf-kas.md](basetdf-kas.md) |
 | **Operations** | BaseTDF-KAO | Key Access Object | [basetdf-kao.md](basetdf-kao.md) |
+| **Operations** | BaseTDF-KAO-CONF | KAO Conformance & Error Taxonomy | [basetdf-kao-conformance.md](basetdf-kao-conformance.md) |
 | **Operations** | BaseTDF-INT | Integrity Verification | [basetdf-int.md](basetdf-int.md) |
 | **Operations** | BaseTDF-ASN | Assertions | [basetdf-asn.md](basetdf-asn.md) |
 | **Application** | BaseTDF-CORE | Container Format & Manifest | [basetdf-core.md](basetdf-core.md) |
@@ -60,11 +61,13 @@ any document, you should first be familiar with the documents it depends on.
 3. **BaseTDF-POL** — Policy structure and ABAC evaluation. Defines what is being
    protected and the access rules.
 4. **BaseTDF-KAO** — How encryption keys are protected, split, and bound to policy.
-5. **BaseTDF-INT** — Payload integrity verification (segments, hashes, root signature).
-6. **BaseTDF-ASN** — Optional verifiable assertions bound to TDFs.
-7. **BaseTDF-KAS** — Wire protocol for the Key Access Service.
-8. **BaseTDF-CORE** — Container format tying everything together.
-9. **BaseTDF-EX** — Worked examples and test vectors for implementers.
+5. **BaseTDF-KAO-CONF** — Read this alongside BaseTDF-KAO when writing a producer,
+   consumer, or test harness; provides stable assertion IDs and error codes.
+6. **BaseTDF-INT** — Payload integrity verification (segments, hashes, root signature).
+7. **BaseTDF-ASN** — Optional verifiable assertions bound to TDFs.
+8. **BaseTDF-KAS** — Wire protocol for the Key Access Service.
+9. **BaseTDF-CORE** — Container format tying everything together.
+10. **BaseTDF-EX** — Worked examples and test vectors for implementers.
 
 ## Version History
 

@@ -18,6 +18,7 @@ focused documents inspired by the JOSE RFC factoring.
 | [BaseTDF-ALG](basetdf/basetdf-alg.md) | Algorithm registry (AES-GCM, RSA-OAEP, ECDH, ML-KEM, ML-DSA) |
 | [BaseTDF-CORE](basetdf/basetdf-core.md) | Container format and manifest schema |
 | [BaseTDF-KAO](basetdf/basetdf-kao.md) | Key Access Object — key protection and splitting |
+| [BaseTDF-KAO-CONF](basetdf/basetdf-kao-conformance.md) | KAO conformance assertions and error taxonomy |
 | [BaseTDF-INT](basetdf/basetdf-int.md) | Integrity verification — segments and signatures |
 | [BaseTDF-POL](basetdf/basetdf-pol.md) | Policy and attribute-based access control |
 | [BaseTDF-KAS](basetdf/basetdf-kas.md) | Key Access Service protocol |
@@ -29,6 +30,16 @@ focused documents inspired by the JOSE RFC factoring.
 - [`schema/BaseTDF/manifest.schema.json`](schema/BaseTDF/manifest.schema.json)
 - [`schema/BaseTDF/kao.schema.json`](schema/BaseTDF/kao.schema.json)
 - [`schema/BaseTDF/policy.schema.json`](schema/BaseTDF/policy.schema.json)
+
+### Conformance
+
+- [`testvectors/kao/`](testvectors/kao/) — Machine-readable KAO test vectors
+- [`testvectors/kao/vector.schema.json`](testvectors/kao/vector.schema.json) — Test-vector format
+
+### Tooling
+
+- [`tools/python/`](tools/python/) — Reference Python validator (also runs the test vectors as the conformance gate)
+- [`tools/explorer/`](tools/explorer/) — Astro interactive explorer for the KAO format
 
 ## Previous Versions
 

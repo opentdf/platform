@@ -114,6 +114,7 @@ func verifyPruneActionsExecuted(t *testing.T, plan *PrunePlan) {
 	assert.True(t, plan.Actions[0].Execution.Applied)
 	assert.True(t, plan.Actions[1].Execution.Applied)
 	assert.Nil(t, plan.Actions[2].Execution)
+	assert.Nil(t, plan.Actions[3].Execution)
 }
 
 func verifyPruneSubjectConditionSetsExecuted(t *testing.T, plan *PrunePlan) {
@@ -122,6 +123,7 @@ func verifyPruneSubjectConditionSetsExecuted(t *testing.T, plan *PrunePlan) {
 	assert.True(t, plan.SubjectConditionSets[0].Execution.Applied)
 	assert.True(t, plan.SubjectConditionSets[1].Execution.Applied)
 	assert.Nil(t, plan.SubjectConditionSets[2].Execution)
+	assert.Nil(t, plan.SubjectConditionSets[3].Execution)
 }
 
 func verifyPruneSubjectMappingsExecuted(t *testing.T, plan *PrunePlan) {
@@ -129,6 +131,7 @@ func verifyPruneSubjectMappingsExecuted(t *testing.T, plan *PrunePlan) {
 
 	assert.True(t, plan.SubjectMappings[0].Execution.Applied)
 	assert.True(t, plan.SubjectMappings[1].Execution.Applied)
+	assert.Nil(t, plan.SubjectMappings[2].Execution)
 }
 
 func verifyPruneRegisteredResourcesExecuted(t *testing.T, plan *PrunePlan) {
@@ -136,6 +139,7 @@ func verifyPruneRegisteredResourcesExecuted(t *testing.T, plan *PrunePlan) {
 
 	assert.True(t, plan.RegisteredResources[0].Execution.Applied)
 	assert.True(t, plan.RegisteredResources[1].Execution.Applied)
+	assert.Nil(t, plan.RegisteredResources[2].Execution)
 }
 
 func verifyPruneObligationTriggersExecuted(t *testing.T, plan *PrunePlan) {
@@ -143,6 +147,7 @@ func verifyPruneObligationTriggersExecuted(t *testing.T, plan *PrunePlan) {
 
 	assert.True(t, plan.ObligationTriggers[0].Execution.Applied)
 	assert.True(t, plan.ObligationTriggers[1].Execution.Applied)
+	assert.Nil(t, plan.ObligationTriggers[2].Execution)
 }
 
 func mixedPrunePlan(scope Scope) *PrunePlan {
@@ -152,15 +157,18 @@ func mixedPrunePlan(scope Scope) *PrunePlan {
 			{Source: &policy.Action{Id: "action-delete-1"}, Status: PruneStatusDelete},
 			{Source: &policy.Action{Id: "action-delete-2"}, Status: PruneStatusDelete},
 			{Source: &policy.Action{Id: "action-blocked"}, Status: PruneStatusBlocked},
+			{Source: &policy.Action{Id: "action-skipped"}, Status: PruneStatusSkipped},
 		},
 		SubjectConditionSets: []*PruneSubjectConditionSetPlan{
 			{Source: &policy.SubjectConditionSet{Id: "scs-delete-1"}, Status: PruneStatusDelete},
 			{Source: &policy.SubjectConditionSet{Id: "scs-delete-2"}, Status: PruneStatusDelete},
 			{Source: &policy.SubjectConditionSet{Id: "scs-unresolved"}, Status: PruneStatusUnresolved},
+			{Source: &policy.SubjectConditionSet{Id: "scs-skipped"}, Status: PruneStatusSkipped},
 		},
 		SubjectMappings: []*PruneSubjectMappingPlan{
 			{Source: &policy.SubjectMapping{Id: "mapping-delete-1"}, Status: PruneStatusDelete},
 			{Source: &policy.SubjectMapping{Id: "mapping-delete-2"}, Status: PruneStatusDelete},
+			{Source: &policy.SubjectMapping{Id: "mapping-skipped"}, Status: PruneStatusSkipped},
 		},
 		RegisteredResources: []*PruneRegisteredResourcePlan{
 			{
@@ -185,10 +193,15 @@ func mixedPrunePlan(scope Scope) *PrunePlan {
 				},
 				Status: PruneStatusDelete,
 			},
+			{
+				Source: &policy.RegisteredResource{Id: "resource-skipped"},
+				Status: PruneStatusSkipped,
+			},
 		},
 		ObligationTriggers: []*PruneObligationTriggerPlan{
 			{Source: &policy.ObligationTrigger{Id: "trigger-delete-1"}, Status: PruneStatusDelete},
 			{Source: &policy.ObligationTrigger{Id: "trigger-delete-2"}, Status: PruneStatusDelete},
+			{Source: &policy.ObligationTrigger{Id: "trigger-skipped"}, Status: PruneStatusSkipped},
 		},
 	}
 }

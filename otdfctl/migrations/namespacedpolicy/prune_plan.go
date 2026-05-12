@@ -13,6 +13,7 @@ const (
 	PruneStatusDelete            PruneStatus = "delete"
 	PruneStatusBlocked           PruneStatus = "blocked"
 	PruneStatusUnresolved        PruneStatus = "unresolved"
+	PruneStatusSkipped           PruneStatus = "skipped"
 	targetRefSummaryPartCapacity             = 2
 )
 
@@ -26,6 +27,7 @@ const (
 	PruneStatusReasonTypeInUse                            PruneStatusReasonType = "InUse"
 	PruneStatusReasonTypeNeedsMigration                   PruneStatusReasonType = "NeedsMigration"
 	PruneStatusReasonTypeRegisteredResourceSourceMismatch PruneStatusReasonType = "RegisteredResourceSourceMismatch"
+	PruneStatusReasonTypeSkippedByUser                    PruneStatusReasonType = "SkippedByUser"
 
 	pruneStatusReasonMessageMigratedTargetNotFound              = "no migrated target was found for this source"
 	pruneStatusReasonMessageInUse                               = "source object is still referenced by legacy policy"

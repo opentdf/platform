@@ -283,6 +283,9 @@ func DoTokenExchange(ctx context.Context, client *http.Client, tokenEndpoint str
 }
 
 func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, tokenExchange TokenExchangeInfo, privateJWK *jwk.Key) (*http.Request, error) {
+	if tokenExchange.SubjectToken == "" {
+		return nil, fmt.Errorf("subject_token is required for token exchange")
+	}
 	subjectTokenType := tokenExchange.SubjectTokenType
 	if subjectTokenType == "" {
 		subjectTokenType = defaultSubjectTokenType

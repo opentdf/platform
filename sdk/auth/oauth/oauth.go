@@ -3,6 +3,7 @@ package oauth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -20,9 +21,10 @@ import (
 )
 
 const (
-	tokenExpirationBuffer    = 10 * time.Second
-	defaultSubjectTokenType  = "urn:ietf:params:oauth:token-type:access_token"
+	tokenExpirationBuffer = 10 * time.Second
 )
+
+const defaultSubjectTokenType = "urn:ietf:params:oauth:token-type:access_token" //nolint:gosec // OAuth token type URN, not a credential
 
 type CertExchangeInfo struct {
 	HTTPClient *http.Client
@@ -284,7 +286,7 @@ func DoTokenExchange(ctx context.Context, client *http.Client, tokenEndpoint str
 
 func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, tokenExchange TokenExchangeInfo, privateJWK *jwk.Key) (*http.Request, error) {
 	if tokenExchange.SubjectToken == "" {
-		return nil, fmt.Errorf("subject_token is required for token exchange")
+		return nil, errors.New("subject_token is required for token exchange")
 	}
 	subjectTokenType := tokenExchange.SubjectTokenType
 	if subjectTokenType == "" {
@@ -294,7 +296,7 @@ func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce strin
 		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
 		"subject_token":        {tokenExchange.SubjectToken},
 		"subject_token_type":   {subjectTokenType},
-		"requested_token_type": {"urn:ietf:params:oauth:token-type:access_token"},
+		"requested_token_type": {defaultSubjectTokenType},
 	}
 
 	for _, a := range tokenExchange.Audience {

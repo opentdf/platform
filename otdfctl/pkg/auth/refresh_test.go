@@ -263,3 +263,31 @@ func TestRefreshAccessTokenTLSNoVerify(t *testing.T) {
 	creds := profile.GetAuthCredentials()
 	assert.Equal(t, "tls-token", creds.AccessToken.AccessToken)
 }
+
+func TestGetTokenEndpointFuncSwappable(t *testing.T) {
+	origFunc := getTokenEndpointFunc
+	defer func() { getTokenEndpointFunc = origFunc }()
+
+	called := false
+	getTokenEndpointFunc = func(endpoint string, tlsNoVerify bool) (string, error) {
+		called = true
+		assert.Equal(t, "https://example.com:443", endpoint)
+		assert.False(t, tlsNoVerify)
+		return "https://idp.example.com/token", nil
+	}
+
+	profile := newTestProfile(t, profiles.AuthTypeAccessToken, "tok", "refresh", time.Now().Add(-time.Hour).Unix())
+	_ = RefreshAccessToken(context.Background(), profile)
+	assert.True(t, called, "getTokenEndpointFunc should have been called")
+}
+
+func TestGetTokenEndpointBadEndpoint(t *testing.T) {
+	_, err := getTokenEndpoint("https://localhost:1", false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get platform configuration")
+}
+
+func TestGetTokenEndpointEmptyEndpoint(t *testing.T) {
+	_, err := getTokenEndpoint("", false)
+	require.Error(t, err)
+}

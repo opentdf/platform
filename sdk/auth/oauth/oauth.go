@@ -34,8 +34,11 @@ type ClientCredentials struct {
 }
 
 type TokenExchangeInfo struct {
-	SubjectToken string
-	Audience     []string
+	SubjectToken     string
+	// SubjectTokenType declares the type of SubjectToken per RFC 8693 §2.1.
+	// Defaults to urn:ietf:params:oauth:token-type:access_token when empty.
+	SubjectTokenType string
+	Audience         []string
 }
 
 type Token struct {
@@ -279,9 +282,14 @@ func DoTokenExchange(ctx context.Context, client *http.Client, tokenEndpoint str
 }
 
 func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, tokenExchange TokenExchangeInfo, privateJWK *jwk.Key) (*http.Request, error) {
+	subjectTokenType := tokenExchange.SubjectTokenType
+	if subjectTokenType == "" {
+		subjectTokenType = "urn:ietf:params:oauth:token-type:access_token"
+	}
 	data := url.Values{
 		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
 		"subject_token":        {tokenExchange.SubjectToken},
+		"subject_token_type":   {subjectTokenType},
 		"requested_token_type": {"urn:ietf:params:oauth:token-type:access_token"},
 	}
 

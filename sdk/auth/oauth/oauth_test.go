@@ -92,13 +92,12 @@ func TestGetTokenExchangeRequest_SubjectTokenType(t *testing.T) {
 		return form
 	}
 
-	const accessTokenURN = "urn:ietf:params:oauth:token-type:access_token"
 	const idTokenURN = "urn:ietf:params:oauth:token-type:id_token"
 
 	t.Run("defaults to access_token when SubjectTokenType is empty", func(t *testing.T) {
 		form := parseForm(t, TokenExchangeInfo{SubjectToken: "tok"})
-		if got := form.Get("subject_token_type"); got != accessTokenURN {
-			t.Errorf("subject_token_type = %q, want %q", got, accessTokenURN)
+		if got := form.Get("subject_token_type"); got != defaultSubjectTokenType {
+			t.Errorf("subject_token_type = %q, want %q", got, defaultSubjectTokenType)
 		}
 	})
 

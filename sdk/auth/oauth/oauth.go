@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	tokenExpirationBuffer = 10 * time.Second
+	tokenExpirationBuffer    = 10 * time.Second
+	defaultSubjectTokenType  = "urn:ietf:params:oauth:token-type:access_token"
 )
 
 type CertExchangeInfo struct {
@@ -34,7 +35,7 @@ type ClientCredentials struct {
 }
 
 type TokenExchangeInfo struct {
-	SubjectToken     string
+	SubjectToken string
 	// SubjectTokenType declares the type of SubjectToken per RFC 8693 §2.1.
 	// Defaults to urn:ietf:params:oauth:token-type:access_token when empty.
 	SubjectTokenType string
@@ -284,7 +285,7 @@ func DoTokenExchange(ctx context.Context, client *http.Client, tokenEndpoint str
 func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, tokenExchange TokenExchangeInfo, privateJWK *jwk.Key) (*http.Request, error) {
 	subjectTokenType := tokenExchange.SubjectTokenType
 	if subjectTokenType == "" {
-		subjectTokenType = "urn:ietf:params:oauth:token-type:access_token"
+		subjectTokenType = defaultSubjectTokenType
 	}
 	data := url.Values{
 		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},

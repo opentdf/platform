@@ -245,7 +245,7 @@ func ProcessDoc(doc string) (*Doc, error) {
 
 	d := Doc{
 		cobra.Command{
-			Use:     c.Name,
+			Use:     buildUseString(c.Name, c.Args, c.ArbitraryArgs),
 			Args:    args,
 			Hidden:  c.Hidden,
 			Aliases: c.Aliases,
@@ -257,4 +257,16 @@ func ProcessDoc(doc string) (*Doc, error) {
 	}
 
 	return &d, nil
+}
+
+func buildUseString(name string, args, arbitraryArgs []string) string {
+	parts := make([]string, 0, 1+len(args)+len(arbitraryArgs))
+	parts = append(parts, name)
+	for _, a := range args {
+		parts = append(parts, "<"+a+">")
+	}
+	for _, a := range arbitraryArgs {
+		parts = append(parts, "["+a+"]")
+	}
+	return strings.Join(parts, " ")
 }

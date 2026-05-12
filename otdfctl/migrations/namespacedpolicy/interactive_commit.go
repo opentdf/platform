@@ -26,17 +26,21 @@ const (
 	backupAbortDetail   = "Choose abort if you have not created a backup yet."
 	backupConfirmLabel  = "Yes, continue"
 	backupCancelLabel   = "Abort"
-	sourceIDText        = "Source ID: "
-	actionText          = "Action: "
-	actionsText         = "Actions: "
-	resourceText        = "Resource: "
-	targetNamespaceText = "Target namespace: "
-	attributeValueText  = "Attribute value: "
-	obligationValueText = "Obligation value: "
-	valuesText          = "Values: "
-	actionBindingsText  = "Action bindings: "
-	subjectSetsTextFmt  = "Subject sets: %d"
-	scsSourceText       = "Subject condition set source: "
+
+	//nolint:gosec // user-facing backup prompt text, not credentials
+	pruneBackupWarningTitle  = "WARNING: This operation will prune migrated namespaced policy and permanently delete legacy policy objects."
+	pruneBackupConfirmDetail = "Commit mode will delete legacy/global policy objects from the target system."
+	sourceIDText             = "Source ID: "
+	actionText               = "Action: "
+	actionsText              = "Actions: "
+	resourceText             = "Resource: "
+	targetNamespaceText      = "Target namespace: "
+	attributeValueText       = "Attribute value: "
+	obligationValueText      = "Obligation value: "
+	valuesText               = "Values: "
+	actionBindingsText       = "Action bindings: "
+	subjectSetsTextFmt       = "Subject sets: %d"
+	scsSourceText            = "Subject condition set source: "
 
 	createActionDescription         = "This will create a new namespaced action."
 	createSubjectConditionSetDesc   = "This will create a new namespaced subject condition set."
@@ -55,18 +59,26 @@ const (
 var ErrNamespacedPolicyBackupNotConfirmed = errors.New("user did not confirm backup")
 
 func ConfirmNamespacedPolicyBackup(ctx context.Context, prompter InteractivePrompter) error {
+	return confirmNamespacedPolicyBackup(ctx, prompter, backupWarningTitle, backupConfirmDetail)
+}
+
+func ConfirmNamespacedPolicyPruneBackup(ctx context.Context, prompter InteractivePrompter) error {
+	return confirmNamespacedPolicyBackup(ctx, prompter, pruneBackupWarningTitle, pruneBackupConfirmDetail)
+}
+
+func confirmNamespacedPolicyBackup(ctx context.Context, prompter InteractivePrompter, warningTitle, confirmDetail string) error {
 	if prompter == nil {
 		prompter = &HuhPrompter{}
 	}
 
 	styles := migrations.NewDisplayStyles()
-	fmt.Println(styles.Warning().Render(backupWarningTitle))
+	fmt.Println(styles.Warning().Render(warningTitle))
 	fmt.Println(styles.Warning().Render(backupWarningBody))
 
 	err := prompter.Confirm(ctx, ConfirmPrompt{
 		Title: backupConfirmTitle,
 		Description: []string{
-			backupConfirmDetail,
+			confirmDetail,
 			backupAbortDetail,
 		},
 		ConfirmLabel: backupConfirmLabel,

@@ -112,11 +112,13 @@ type PrunePlan struct {
 
 type prunePlanItem interface {
 	hasSource() bool
+	sourceID() string
 	status() PruneStatus
 	setStatus(PruneStatus)
 	reason() PruneStatusReason
 	setReason(PruneStatusReason)
 	execution() *ExecutionResult
+	setExecution(*ExecutionResult)
 }
 
 // PruneActionPlan records the source action being considered for deletion and
@@ -127,6 +129,13 @@ type PruneActionPlan struct {
 	MigratedTargets []TargetRef       `json:"migrated_targets,omitempty"`
 	Reason          PruneStatusReason `json:"reason,omitzero"`
 	Execution       *ExecutionResult  `json:"execution,omitempty"` // The CreatedTargetID is not used for the PrunePlans.
+}
+
+func (p *PruneActionPlan) sourceID() string {
+	if !p.hasSource() {
+		return ""
+	}
+	return p.Source.GetId()
 }
 
 func (p *PruneActionPlan) hasSource() bool {
@@ -166,6 +175,12 @@ func (p *PruneActionPlan) execution() *ExecutionResult {
 	return p.Execution
 }
 
+func (p *PruneActionPlan) setExecution(execution *ExecutionResult) {
+	if p != nil {
+		p.Execution = execution
+	}
+}
+
 // PruneSubjectConditionSetPlan records the source SCS being considered for
 // deletion and any migrated target subject condition sets that still reference
 // or replace it.
@@ -175,6 +190,13 @@ type PruneSubjectConditionSetPlan struct {
 	MigratedTargets []TargetRef                 `json:"migrated_targets,omitempty"`
 	Reason          PruneStatusReason           `json:"reason,omitzero"`
 	Execution       *ExecutionResult            `json:"execution,omitempty"`
+}
+
+func (p *PruneSubjectConditionSetPlan) sourceID() string {
+	if !p.hasSource() {
+		return ""
+	}
+	return p.Source.GetId()
 }
 
 func (p *PruneSubjectConditionSetPlan) hasSource() bool {
@@ -214,6 +236,12 @@ func (p *PruneSubjectConditionSetPlan) execution() *ExecutionResult {
 	return p.Execution
 }
 
+func (p *PruneSubjectConditionSetPlan) setExecution(execution *ExecutionResult) {
+	if p != nil {
+		p.Execution = execution
+	}
+}
+
 // PruneSubjectMappingPlan records the source subject mapping being considered
 // for deletion and the single migrated target subject mapping matched to it by
 // migration metadata.
@@ -223,6 +251,13 @@ type PruneSubjectMappingPlan struct {
 	MigratedTarget TargetRef              `json:"migrated_target,omitzero"`
 	Reason         PruneStatusReason      `json:"reason,omitzero"`
 	Execution      *ExecutionResult       `json:"execution,omitempty"`
+}
+
+func (p *PruneSubjectMappingPlan) sourceID() string {
+	if !p.hasSource() {
+		return ""
+	}
+	return p.Source.GetId()
 }
 
 func (p *PruneSubjectMappingPlan) hasSource() bool {
@@ -262,6 +297,12 @@ func (p *PruneSubjectMappingPlan) execution() *ExecutionResult {
 	return p.Execution
 }
 
+func (p *PruneSubjectMappingPlan) setExecution(execution *ExecutionResult) {
+	if p != nil {
+		p.Execution = execution
+	}
+}
+
 // PruneRegisteredResourcePlan records the resolved RR source being considered
 // for deletion and the single migrated target RR matched to it by migration
 // metadata.
@@ -274,6 +315,13 @@ type PruneRegisteredResourcePlan struct {
 	MigratedTarget TargetRef                  `json:"migrated_target,omitzero"`
 	Reason         PruneStatusReason          `json:"reason,omitzero"`
 	Execution      *ExecutionResult           `json:"execution,omitempty"`
+}
+
+func (p *PruneRegisteredResourcePlan) sourceID() string {
+	if !p.hasSource() {
+		return ""
+	}
+	return p.Source.GetId()
 }
 
 func (p *PruneRegisteredResourcePlan) hasSource() bool {
@@ -313,6 +361,12 @@ func (p *PruneRegisteredResourcePlan) execution() *ExecutionResult {
 	return p.Execution
 }
 
+func (p *PruneRegisteredResourcePlan) setExecution(execution *ExecutionResult) {
+	if p != nil {
+		p.Execution = execution
+	}
+}
+
 // PruneObligationTriggerPlan records the source obligation trigger being
 // considered for deletion and the single migrated target obligation trigger
 // matched to it by migration metadata.
@@ -322,6 +376,13 @@ type PruneObligationTriggerPlan struct {
 	MigratedTarget TargetRef                 `json:"migrated_target,omitzero"`
 	Reason         PruneStatusReason         `json:"reason,omitzero"`
 	Execution      *ExecutionResult          `json:"execution,omitempty"`
+}
+
+func (p *PruneObligationTriggerPlan) sourceID() string {
+	if !p.hasSource() {
+		return ""
+	}
+	return p.Source.GetId()
 }
 
 func (p *PruneObligationTriggerPlan) hasSource() bool {
@@ -359,4 +420,10 @@ func (p *PruneObligationTriggerPlan) execution() *ExecutionResult {
 		return nil
 	}
 	return p.Execution
+}
+
+func (p *PruneObligationTriggerPlan) setExecution(execution *ExecutionResult) {
+	if p != nil {
+		p.Execution = execution
+	}
 }

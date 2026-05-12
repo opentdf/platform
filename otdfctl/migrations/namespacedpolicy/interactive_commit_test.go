@@ -28,6 +28,37 @@ func TestConfirmNamespacedPolicyBackupMapsAbortToBackupError(t *testing.T) {
 	assert.Equal(t, backupCancelLabel, prompter.lastConfirmPrompt.CancelLabel)
 }
 
+func TestConfirmNamespacedPolicyPruneBackupUsesPrunePrompt(t *testing.T) {
+	t.Parallel()
+
+	prompter := &testInteractivePrompter{}
+
+	err := ConfirmNamespacedPolicyPruneBackup(t.Context(), prompter)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, prompter.confirmCalls)
+	require.NotNil(t, prompter.lastConfirmPrompt)
+	assert.Equal(t, backupConfirmTitle, prompter.lastConfirmPrompt.Title)
+	assert.Equal(t, []string{pruneBackupConfirmDetail, backupAbortDetail}, prompter.lastConfirmPrompt.Description)
+	assert.Equal(t, backupConfirmLabel, prompter.lastConfirmPrompt.ConfirmLabel)
+	assert.Equal(t, backupCancelLabel, prompter.lastConfirmPrompt.CancelLabel)
+}
+
+func TestConfirmNamespacedPolicyPruneBackupMapsAbortToBackupError(t *testing.T) {
+	t.Parallel()
+
+	prompter := &testInteractivePrompter{
+		confirmErr: ErrInteractiveReviewAborted,
+	}
+
+	err := ConfirmNamespacedPolicyPruneBackup(t.Context(), prompter)
+	require.ErrorIs(t, err, ErrNamespacedPolicyBackupNotConfirmed)
+
+	require.Equal(t, 1, prompter.confirmCalls)
+	require.NotNil(t, prompter.lastConfirmPrompt)
+	assert.Equal(t, []string{pruneBackupConfirmDetail, backupAbortDetail}, prompter.lastConfirmPrompt.Description)
+}
+
 func TestReviewNamespacedPolicyInteractiveCommitSkipsDependentsOfSkippedAction(t *testing.T) {
 	t.Parallel()
 

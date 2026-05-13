@@ -14,8 +14,8 @@ import (
 
 const (
 	DefaultPublicClientID = "cli-client"
-	// expiryBuffer is subtracted from the token expiry to account for subprocess
-	// startup and network latency between the expiry check and the actual API call.
+	// expiryBuffer is added to the current time to account for token expiry occurring during
+	// subprocess startup and network latency between the expiry check and the actual API call.
 	expiryBuffer = 30 * time.Second
 )
 
@@ -116,6 +116,8 @@ func IsTokenExpired(profile *profiles.OtdfctlProfileStore) bool {
 		return false
 	}
 	expiry := time.Unix(creds.AccessToken.Expiration, 0)
+	// We are checking if the current time plus the buffer is after the true token expiry time.
+	// If it is, we refresh the token. The purpose of the buffer is to avoid expiry between calls.
 	return time.Now().Add(expiryBuffer).After(expiry)
 }
 

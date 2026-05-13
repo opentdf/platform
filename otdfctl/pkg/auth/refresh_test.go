@@ -56,6 +56,12 @@ func TestIsTokenExpired(t *testing.T) {
 			want:     false,
 		},
 		{
+			name:     "token within expiry buffer",
+			authType: profiles.AuthTypeAccessToken,
+			exp:      time.Now().Add(10 * time.Second).Unix(),
+			want:     true,
+		},
+		{
 			name:     "non-access-token auth type",
 			authType: profiles.AuthTypeClientCredentials,
 			exp:      time.Now().Add(-time.Hour).Unix(),
@@ -149,6 +155,33 @@ func TestRefreshAccessTokenSuccess(t *testing.T) {
 	assert.Equal(t, "new-refresh-token", creds.AccessToken.RefreshToken)
 	assert.Greater(t, creds.AccessToken.Expiration, time.Now().Unix(),
 		"expiration should be updated to a future timestamp")
+}
+
+func TestRefreshAccessTokenZeroExpiry(t *testing.T) {
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		err := json.NewEncoder(w).Encode(map[string]any{
+			"access_token":  "new-token",
+			"refresh_token": "new-refresh",
+			"token_type":    "Bearer",
+		})
+		assert.NoError(t, err)
+	}))
+	defer tokenServer.Close()
+
+	origFunc := getTokenEndpointFunc
+	getTokenEndpointFunc = func(string, bool) (string, error) {
+		return tokenServer.URL, nil
+	}
+	defer func() { getTokenEndpointFunc = origFunc }()
+
+	profile := newTestProfile(t, profiles.AuthTypeAccessToken, "old", "refresh", time.Now().Add(-time.Hour).Unix())
+	err := RefreshAccessToken(context.Background(), profile)
+	require.NoError(t, err)
+
+	creds := profile.GetAuthCredentials()
+	assert.Greater(t, creds.AccessToken.Expiration, time.Now().Unix(),
+		"zero expiry should default to ~1 hour from now")
 }
 
 func TestRefreshAccessTokenEndpointError(t *testing.T) {

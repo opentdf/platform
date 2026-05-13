@@ -65,7 +65,7 @@ func confirmablePruneDeleteItem[T pruneReviewItem](item T) bool {
 
 func markPruneItemSkipped[T pruneReviewItem](item T) {
 	item.setStatus(PruneStatusSkipped)
-	item.setReason(newPruneReason(PruneStatusReasonTypeSkippedByUser, skippedByUserReason))
+	item.setReason(newPruneReason(PruneStatusReasonTypeSkippedByUser, pruneStatusReasonMessageSkippedByUser))
 }
 
 func applyPruneDeleteConfirmationDecision(ctx context.Context, prompter InteractivePrompter, prompt SelectPrompt, markSkipped func()) error {

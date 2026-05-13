@@ -35,6 +35,7 @@ const (
 	pruneStatusReasonMessageMismatchedMigrationLabel            = "migrated target carries migrated_from metadata for a different source"
 	pruneStatusReasonMessageMissingMigrationLabel               = "migrated target is missing migrated_from metadata for this source"
 	pruneStatusReasonMessageNeedsMigration                      = "source object does not have a migrated target yet"
+	pruneStatusReasonMessageSkippedByUser                       = "skipped by user"
 	pruneStatusReasonMessageRegisteredResourceSourceMismatchFmt = "resolved registered resource view does not match the full source object for target namespace %q; source contains values outside the resolved migration view"
 )
 

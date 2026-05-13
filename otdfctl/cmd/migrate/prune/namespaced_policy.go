@@ -71,7 +71,12 @@ func pruneNamespacedPolicy(cmd *cobra.Command, args []string) {
 
 func executeNamespacedPolicyPruneCommit(cmd *cobra.Command, h namespacedpolicy.ExecutorHandler, plan *namespacedpolicy.PrunePlan, interactive bool, prompter namespacedpolicy.InteractivePrompter) {
 	if interactive {
-		reviewNamespacedPolicyPruneInteractiveCommit(cmd, plan, prompter)
+		if err := reviewNamespacedPolicyPruneInteractiveCommit(cmd, plan, prompter); err != nil {
+			if namespacedPolicyPruneCommitAborted(err) {
+				writeNamespacedPolicyPruneSummary(cmd, plan, false, namespacedpolicy.PruneSummaryResultAborted)
+			}
+			cli.ExitWithError("could not review namespaced-policy prune commit", err)
+		}
 	}
 
 	executor, err := namespacedpolicy.NewExecutor(h)
@@ -85,20 +90,21 @@ func executeNamespacedPolicyPruneCommit(cmd *cobra.Command, h namespacedpolicy.E
 	}
 }
 
-func reviewNamespacedPolicyPruneInteractiveCommit(cmd *cobra.Command, plan *namespacedpolicy.PrunePlan, prompter namespacedpolicy.InteractivePrompter) {
+func reviewNamespacedPolicyPruneInteractiveCommit(cmd *cobra.Command, plan *namespacedpolicy.PrunePlan, prompter namespacedpolicy.InteractivePrompter) error {
 	if err := namespacedpolicy.ConfirmNamespacedPolicyPruneBackup(cmd.Context(), prompter); err != nil {
-		if errors.Is(err, namespacedpolicy.ErrNamespacedPolicyBackupNotConfirmed) {
-			writeNamespacedPolicyPruneSummary(cmd, plan, false, namespacedpolicy.PruneSummaryResultAborted)
-		}
-		cli.ExitWithError("could not confirm namespaced-policy prune backup", err)
+		return err
 	}
 
 	if err := namespacedpolicy.ConfirmPrunePlanDeletes(cmd.Context(), plan, prompter); err != nil {
-		if errors.Is(err, namespacedpolicy.ErrInteractiveReviewAborted) {
-			writeNamespacedPolicyPruneSummary(cmd, plan, false, namespacedpolicy.PruneSummaryResultAborted)
-		}
-		cli.ExitWithError("could not review namespaced-policy prune commit", err)
+		return err
 	}
+
+	return nil
+}
+
+func namespacedPolicyPruneCommitAborted(err error) bool {
+	return errors.Is(err, namespacedpolicy.ErrNamespacedPolicyBackupNotConfirmed) ||
+		errors.Is(err, namespacedpolicy.ErrInteractiveReviewAborted)
 }
 
 func writeNamespacedPolicyPruneSummary(cmd *cobra.Command, plan *namespacedpolicy.PrunePlan, executed bool, result namespacedpolicy.PruneSummaryResult) {

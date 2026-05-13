@@ -65,7 +65,7 @@ func TestConfirmPrunePlanDeletesSkipsDeleteItems(t *testing.T) {
 	require.Equal(t, 2, prompter.selectCalls)
 	assert.Equal(t, PruneStatusSkipped, plan.Actions[0].Status)
 	assert.Equal(t, PruneStatusReasonTypeSkippedByUser, plan.Actions[0].Reason.Type)
-	assert.Equal(t, skippedByUserReason, plan.Actions[0].Reason.Message)
+	assert.Equal(t, pruneStatusReasonMessageSkippedByUser, plan.Actions[0].Reason.Message)
 	assert.Equal(t, PruneStatusDelete, plan.Actions[1].Status)
 }
 

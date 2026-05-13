@@ -110,7 +110,7 @@ func TestRenderNamespacedPolicyPruneSummaryCommitShowsSkippedDeletes(t *testing.
 				Status: PruneStatusSkipped,
 				Reason: newPruneReason(
 					PruneStatusReasonTypeSkippedByUser,
-					skippedByUserReason,
+					pruneStatusReasonMessageSkippedByUser,
 				),
 			},
 		},

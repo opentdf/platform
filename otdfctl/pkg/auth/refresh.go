@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -21,10 +22,14 @@ var getTokenEndpointFunc = getTokenEndpoint
 // RefreshAccessToken refreshes the access token using the stored refresh token
 // and updates the profile with the new tokens.
 func RefreshAccessToken(ctx context.Context, profile *profiles.OtdfctlProfileStore) error {
+	if profile == nil {
+		return errors.New("profile is required")
+	}
+
 	creds := profile.GetAuthCredentials()
 
 	if creds.AuthType != profiles.AuthTypeAccessToken {
-		return fmt.Errorf("cannot refresh token: auth type is %s, not access-token", creds.AuthType)
+		return fmt.Errorf("%w: auth type is %s, not access-token", ErrInvalidAuthType, creds.AuthType)
 	}
 
 	if creds.AccessToken.RefreshToken == "" {
@@ -57,9 +62,7 @@ func RefreshAccessToken(ctx context.Context, profile *profiles.OtdfctlProfileSto
 	}
 
 	oldToken := &oauth2.Token{
-		AccessToken:  creds.AccessToken.AccessToken,
 		RefreshToken: creds.AccessToken.RefreshToken,
-		Expiry:       time.Unix(creds.AccessToken.Expiration, 0),
 	}
 
 	if tlsNoVerify {
@@ -94,7 +97,11 @@ func RefreshAccessToken(ctx context.Context, profile *profiles.OtdfctlProfileSto
 }
 
 // IsTokenExpired checks if the access token in the profile is expired.
+// Returns false for non-access-token auth types since refresh only applies there.
 func IsTokenExpired(profile *profiles.OtdfctlProfileStore) bool {
+	if profile == nil {
+		return true
+	}
 	creds := profile.GetAuthCredentials()
 	if creds.AuthType != profiles.AuthTypeAccessToken {
 		return false
@@ -105,6 +112,9 @@ func IsTokenExpired(profile *profiles.OtdfctlProfileStore) bool {
 
 // HasRefreshToken checks if the profile has a refresh token.
 func HasRefreshToken(profile *profiles.OtdfctlProfileStore) bool {
+	if profile == nil {
+		return false
+	}
 	creds := profile.GetAuthCredentials()
 	return creds.AuthType == profiles.AuthTypeAccessToken && creds.AccessToken.RefreshToken != ""
 }

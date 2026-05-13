@@ -67,6 +67,25 @@ Authenticate via client credentials flow.
 	assert.Equal(t, "client-credentials <client-id> [client-secret]", doc.Use)
 }
 
+func TestProcessDocWithBothArgTypesValidator(t *testing.T) {
+	doc, err := ProcessDoc(`---
+title: Authenticate with client credentials
+command:
+  name: client-credentials
+  arguments:
+    - client-id
+  arbitraryArgs:
+    - client-secret
+---
+
+Authenticate via client credentials flow.
+`)
+	require.NoError(t, err)
+	require.NoError(t, doc.Args(&doc.Command, []string{"id"}))
+	require.NoError(t, doc.Args(&doc.Command, []string{"id", "secret"}))
+	require.Error(t, doc.Args(&doc.Command, []string{}))
+}
+
 func TestBuildUseString(t *testing.T) {
 	tests := []struct {
 		name          string

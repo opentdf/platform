@@ -111,7 +111,7 @@ func TestHasRefreshToken(t *testing.T) {
 func TestRefreshAccessTokenWrongAuthType(t *testing.T) {
 	profile := newTestProfile(t, profiles.AuthTypeClientCredentials, "tok", "refresh", time.Now().Add(time.Hour).Unix())
 	err := RefreshAccessToken(context.Background(), profile)
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidAuthType)
 }
 
 func TestRefreshAccessTokenNoRefreshToken(t *testing.T) {
@@ -123,12 +123,13 @@ func TestRefreshAccessTokenNoRefreshToken(t *testing.T) {
 func TestRefreshAccessTokenSuccess(t *testing.T) {
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		err := json.NewEncoder(w).Encode(map[string]any{
 			"access_token":  "new-access-token",
 			"refresh_token": "new-refresh-token",
 			"token_type":    "Bearer",
 			"expires_in":    3600,
 		})
+		assert.NoError(t, err)
 	}))
 	defer tokenServer.Close()
 
@@ -146,6 +147,8 @@ func TestRefreshAccessTokenSuccess(t *testing.T) {
 	creds := profile.GetAuthCredentials()
 	assert.Equal(t, "new-access-token", creds.AccessToken.AccessToken)
 	assert.Equal(t, "new-refresh-token", creds.AccessToken.RefreshToken)
+	assert.Greater(t, creds.AccessToken.Expiration, time.Now().Unix(),
+		"expiration should be updated to a future timestamp")
 }
 
 func TestRefreshAccessTokenEndpointError(t *testing.T) {
@@ -157,13 +160,14 @@ func TestRefreshAccessTokenEndpointError(t *testing.T) {
 
 	profile := newTestProfile(t, profiles.AuthTypeAccessToken, "tok", "refresh", time.Now().Add(-time.Hour).Unix())
 	err := RefreshAccessToken(context.Background(), profile)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "failed to get token endpoint")
 }
 
 func TestRefreshAccessTokenRefreshFails(t *testing.T) {
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "invalid_grant"})
+		err := json.NewEncoder(w).Encode(map[string]string{"error": "invalid_grant"})
+		assert.NoError(t, err)
 	}))
 	defer tokenServer.Close()
 
@@ -182,12 +186,13 @@ func TestRefreshAccessTokenRefreshFails(t *testing.T) {
 func TestRefreshAccessTokenEmptyClientID(t *testing.T) {
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		err := json.NewEncoder(w).Encode(map[string]any{
 			"access_token":  "new-token",
 			"refresh_token": "new-refresh",
 			"token_type":    "Bearer",
 			"expires_in":    3600,
 		})
+		assert.NoError(t, err)
 	}))
 	defer tokenServer.Close()
 
@@ -224,12 +229,13 @@ func TestRefreshAccessTokenEmptyClientID(t *testing.T) {
 func TestRefreshAccessTokenTLSNoVerify(t *testing.T) {
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		err := json.NewEncoder(w).Encode(map[string]any{
 			"access_token":  "tls-token",
 			"refresh_token": "tls-refresh",
 			"token_type":    "Bearer",
 			"expires_in":    3600,
 		})
+		assert.NoError(t, err)
 	}))
 	defer tokenServer.Close()
 
@@ -290,4 +296,17 @@ func TestGetTokenEndpointBadEndpoint(t *testing.T) {
 func TestGetTokenEndpointEmptyEndpoint(t *testing.T) {
 	_, err := getTokenEndpoint("", false)
 	require.Error(t, err)
+}
+
+func TestRefreshAccessTokenNilProfile(t *testing.T) {
+	err := RefreshAccessToken(context.Background(), nil)
+	require.Error(t, err)
+}
+
+func TestIsTokenExpiredNilProfile(t *testing.T) {
+	assert.True(t, IsTokenExpired(nil))
+}
+
+func TestHasRefreshTokenNilProfile(t *testing.T) {
+	assert.False(t, HasRefreshToken(nil))
 }

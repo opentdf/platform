@@ -51,11 +51,8 @@ func ReviewPrunePlan(ctx context.Context, plan *PrunePlan, prompter InteractiveP
 	if err := reviewUnresolvedPruneItems(ctx, prompter, plan.RegisteredResources); err != nil {
 		return err
 	}
-	if err := reviewUnresolvedPruneItems(ctx, prompter, plan.ObligationTriggers); err != nil {
-		return err
-	}
 
-	return nil
+	return reviewUnresolvedPruneItems(ctx, prompter, plan.ObligationTriggers)
 }
 
 func reviewUnresolvedPruneItems[T pruneReviewItem](
@@ -76,11 +73,11 @@ func reviewUnresolvedPruneItems[T pruneReviewItem](
 	return nil
 }
 
-func reviewablePruneItem[T pruneReviewItem](item T) bool {
+func reviewablePruneItem(item pruneReviewItem) bool {
 	return item.hasSource() && item.status() == PruneStatusUnresolved
 }
 
-func markPruneItemDelete[T pruneReviewItem](item T) {
+func markPruneItemDelete(item pruneReviewItem) {
 	item.setStatus(PruneStatusDelete)
 	item.setReason(PruneStatusReason{})
 }

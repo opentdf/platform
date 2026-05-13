@@ -34,11 +34,8 @@ func ConfirmPrunePlanDeletes(ctx context.Context, plan *PrunePlan, prompter Inte
 	if err := confirmDeletePruneItems(ctx, prompter, plan.RegisteredResources); err != nil {
 		return err
 	}
-	if err := confirmDeletePruneItems(ctx, prompter, plan.ObligationTriggers); err != nil {
-		return err
-	}
 
-	return nil
+	return confirmDeletePruneItems(ctx, prompter, plan.ObligationTriggers)
 }
 
 func confirmDeletePruneItems[T pruneReviewItem](
@@ -59,11 +56,11 @@ func confirmDeletePruneItems[T pruneReviewItem](
 	return nil
 }
 
-func confirmablePruneDeleteItem[T pruneReviewItem](item T) bool {
+func confirmablePruneDeleteItem(item pruneReviewItem) bool {
 	return item.hasSource() && item.status() == PruneStatusDelete
 }
 
-func markPruneItemSkipped[T pruneReviewItem](item T) {
+func markPruneItemSkipped(item pruneReviewItem) {
 	item.setStatus(PruneStatusSkipped)
 	item.setReason(newPruneReason(PruneStatusReasonTypeSkippedByUser, pruneStatusReasonMessageSkippedByUser))
 }

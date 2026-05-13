@@ -95,11 +95,7 @@ func reviewNamespacedPolicyPruneInteractiveCommit(cmd *cobra.Command, plan *name
 		return err
 	}
 
-	if err := namespacedpolicy.ConfirmPrunePlanDeletes(cmd.Context(), plan, prompter); err != nil {
-		return err
-	}
-
-	return nil
+	return namespacedpolicy.ConfirmPrunePlanDeletes(cmd.Context(), plan, prompter)
 }
 
 func namespacedPolicyPruneCommitAborted(err error) bool {

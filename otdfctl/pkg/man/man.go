@@ -236,10 +236,12 @@ func ProcessDoc(doc string) (*Doc, error) {
 	long := "# " + matter.Title + "\n\n" + strings.TrimSpace(string(rest))
 
 	var args cobra.PositionalArgs
-	if len(c.Args) > 0 {
+	switch {
+	case len(c.Args) > 0 && len(c.ArbitraryArgs) > 0:
+		args = cobra.MinimumNArgs(len(c.Args))
+	case len(c.Args) > 0:
 		args = cobra.ExactArgs(len(c.Args))
-	}
-	if len(c.ArbitraryArgs) > 0 {
+	case len(c.ArbitraryArgs) > 0:
 		args = cobra.ArbitraryArgs
 	}
 

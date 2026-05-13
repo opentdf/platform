@@ -14,6 +14,9 @@ import (
 
 const (
 	DefaultPublicClientID = "cli-client"
+	// expiryBuffer is subtracted from the token expiry to account for subprocess
+	// startup and network latency between the expiry check and the actual API call.
+	expiryBuffer = 30 * time.Second
 )
 
 // Function variable for the token endpoint lookup — swappable in tests.
@@ -78,13 +81,19 @@ func RefreshAccessToken(ctx context.Context, profile *profiles.OtdfctlProfileSto
 
 	slog.Debug("successfully refreshed access token")
 
+	expiration := newToken.Expiry.Unix()
+	if newToken.Expiry.IsZero() {
+		expiration = time.Now().Add(time.Hour).Unix()
+		slog.Warn("token response missing expires_in, assuming 1 hour")
+	}
+
 	newCreds := profiles.AuthCredentials{
 		AuthType: profiles.AuthTypeAccessToken,
 		AccessToken: profiles.AuthCredentialsAccessToken{
 			ClientID:     clientID,
 			AccessToken:  newToken.AccessToken,
 			RefreshToken: newToken.RefreshToken,
-			Expiration:   newToken.Expiry.Unix(),
+			Expiration:   expiration,
 		},
 	}
 
@@ -107,7 +116,7 @@ func IsTokenExpired(profile *profiles.OtdfctlProfileStore) bool {
 		return false
 	}
 	expiry := time.Unix(creds.AccessToken.Expiration, 0)
-	return time.Now().After(expiry)
+	return time.Now().Add(expiryBuffer).After(expiry)
 }
 
 // HasRefreshToken checks if the profile has a refresh token.

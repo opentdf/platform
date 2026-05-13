@@ -216,7 +216,9 @@ LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 LEFT JOIN LATERAL (
-    SELECT JSON_AGG(
+    -- COALESCE so a value with no mappings yields '[]' rather than SQL NULL,
+    -- giving consumers a consistent JSON array shape for action_attribute_values.
+    SELECT COALESCE(JSON_AGG(
         JSON_BUILD_OBJECT(
             'action', JSON_BUILD_OBJECT(
                 'id', a.id,
@@ -231,7 +233,7 @@ LEFT JOIN LATERAL (
                 'fqn', fqns.fqn
             )
         )
-    ) AS values
+    ), '[]'::json) AS values
     -- Join to get all action-attribute relationships for this resource value
     FROM registered_resource_action_attribute_values rav
     LEFT JOIN actions a on rav.action_id = a.id
@@ -293,7 +295,9 @@ type getRegisteredResourceRow struct {
 //	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 //	LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 //	LEFT JOIN LATERAL (
-//	    SELECT JSON_AGG(
+//	    -- COALESCE so a value with no mappings yields '[]' rather than SQL NULL,
+//	    -- giving consumers a consistent JSON array shape for action_attribute_values.
+//	    SELECT COALESCE(JSON_AGG(
 //	        JSON_BUILD_OBJECT(
 //	            'action', JSON_BUILD_OBJECT(
 //	                'id', a.id,
@@ -308,7 +312,7 @@ type getRegisteredResourceRow struct {
 //	                'fqn', fqns.fqn
 //	            )
 //	        )
-//	    ) AS values
+//	    ), '[]'::json) AS values
 //	    -- Join to get all action-attribute relationships for this resource value
 //	    FROM registered_resource_action_attribute_values rav
 //	    LEFT JOIN actions a on rav.action_id = a.id
@@ -677,7 +681,9 @@ CROSS JOIN counted
 CROSS JOIN params p
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 LEFT JOIN LATERAL (
-    SELECT JSON_AGG(
+    -- COALESCE so a value with no mappings yields '[]' rather than SQL NULL,
+    -- giving consumers a consistent JSON array shape for action_attribute_values.
+    SELECT COALESCE(JSON_AGG(
         JSON_BUILD_OBJECT(
             'action', JSON_BUILD_OBJECT(
                 'id', a.id,
@@ -692,7 +698,7 @@ LEFT JOIN LATERAL (
                 'fqn', fqns.fqn
             )
         )
-    ) AS values
+    ), '[]'::json) AS values
     -- Join to get all action-attribute relationships for this resource value
     FROM registered_resource_action_attribute_values rav
     LEFT JOIN actions a on rav.action_id = a.id
@@ -780,7 +786,9 @@ type listRegisteredResourcesRow struct {
 //	CROSS JOIN params p
 //	LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 //	LEFT JOIN LATERAL (
-//	    SELECT JSON_AGG(
+//	    -- COALESCE so a value with no mappings yields '[]' rather than SQL NULL,
+//	    -- giving consumers a consistent JSON array shape for action_attribute_values.
+//	    SELECT COALESCE(JSON_AGG(
 //	        JSON_BUILD_OBJECT(
 //	            'action', JSON_BUILD_OBJECT(
 //	                'id', a.id,
@@ -795,7 +803,7 @@ type listRegisteredResourcesRow struct {
 //	                'fqn', fqns.fqn
 //	            )
 //	        )
-//	    ) AS values
+//	    ), '[]'::json) AS values
 //	    -- Join to get all action-attribute relationships for this resource value
 //	    FROM registered_resource_action_attribute_values rav
 //	    LEFT JOIN actions a on rav.action_id = a.id

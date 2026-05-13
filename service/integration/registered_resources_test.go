@@ -341,39 +341,33 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_RegResValuesCont
 	s.NotNil(list)
 
 	foundRegRes := false
-	foundVal1 := false
-	foundVal2 := false
+	var foundVal1, foundVal2 bool
 	for _, r := range list.GetResources() {
-		if r.GetId() == regResID {
-			s.Equal("test_list_reg_res_with_action_attr_values", r.GetName())
-			values := r.GetValues()
-			s.Require().Len(values, 2)
-			foundRegRes = true
+		if r.GetId() != regResID {
+			continue
+		}
+		s.Equal("test_list_reg_res_with_action_attr_values", r.GetName())
+		values := r.GetValues()
+		s.Require().Len(values, 2)
+		foundRegRes = true
 
-			// Check if action attribute values are present in the values
-			for _, v := range values {
-				if v.GetId() == val1.GetId() {
-					foundVal1 = true
-					actionAttrValues := v.GetActionAttributeValues()
-					s.Require().NotEmpty(actionAttrValues)
-					for _, aav := range actionAttrValues {
-						s.NotNil(aav.GetAction())
-						s.NotNil(aav.GetAttributeValue())
-						s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
-						s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
-					}
-				}
-				if v.GetId() == val2.GetId() {
-					foundVal2 = true
-					actionAttrValues := v.GetActionAttributeValues()
-					s.Require().NotEmpty(actionAttrValues)
-					for _, aav := range actionAttrValues {
-						s.NotNil(aav.GetAction())
-						s.NotNil(aav.GetAttributeValue())
-						s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
-						s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
-					}
-				}
+		for _, v := range values {
+			switch v.GetId() {
+			case val1.GetId():
+				foundVal1 = true
+			case val2.GetId():
+				foundVal2 = true
+			default:
+				s.FailNow("unexpected value found", "value id: %s", v.GetId())
+			}
+
+			actionAttrValues := v.GetActionAttributeValues()
+			s.Require().NotEmpty(actionAttrValues)
+			for _, aav := range actionAttrValues {
+				s.NotNil(aav.GetAction())
+				s.NotNil(aav.GetAttributeValue())
+				s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
+				s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
 			}
 		}
 	}
@@ -439,30 +433,24 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_RegResValuesContai
 	values := got.GetValues()
 	s.Require().Len(values, 2)
 
-	foundVal1 := false
-	foundVal2 := false
+	var foundVal1, foundVal2 bool
 	for _, v := range values {
-		if v.GetId() == val1.GetId() {
+		switch v.GetId() {
+		case val1.GetId():
 			foundVal1 = true
-			actionAttrValues := v.GetActionAttributeValues()
-			s.Require().NotEmpty(actionAttrValues)
-			for _, aav := range actionAttrValues {
-				s.NotNil(aav.GetAction())
-				s.NotNil(aav.GetAttributeValue())
-				s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
-				s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
-			}
-		}
-		if v.GetId() == val2.GetId() {
+		case val2.GetId():
 			foundVal2 = true
-			actionAttrValues := v.GetActionAttributeValues()
-			s.Require().NotEmpty(actionAttrValues)
-			for _, aav := range actionAttrValues {
-				s.NotNil(aav.GetAction())
-				s.NotNil(aav.GetAttributeValue())
-				s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
-				s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
-			}
+		default:
+			s.FailNow("unexpected value found", "value id: %s", v.GetId())
+		}
+
+		actionAttrValues := v.GetActionAttributeValues()
+		s.Require().NotEmpty(actionAttrValues)
+		for _, aav := range actionAttrValues {
+			s.NotNil(aav.GetAction())
+			s.NotNil(aav.GetAttributeValue())
+			s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
+			s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
 		}
 	}
 	s.True(foundVal1, "Value 1 not found in registered resource values")

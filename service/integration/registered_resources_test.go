@@ -341,43 +341,126 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_RegResValuesCont
 	s.NotNil(list)
 
 	foundRegRes := false
-	foundVal1 := false
-	foundVal2 := false
+	var foundVal1, foundVal2 bool
 	for _, r := range list.GetResources() {
-		if r.GetId() == regResID {
-			s.Equal("test_list_reg_res_with_action_attr_values", r.GetName())
-			values := r.GetValues()
-			s.Require().Len(values, 2)
-			foundRegRes = true
+		if r.GetId() != regResID {
+			continue
+		}
+		s.Equal("test_list_reg_res_with_action_attr_values", r.GetName())
+		values := r.GetValues()
+		s.Require().Len(values, 2)
+		foundRegRes = true
 
-			// Check if action attribute values are present in the values
-			for _, v := range values {
-				if v.GetId() == val1.GetId() {
-					foundVal1 = true
-					actionAttrValues := v.GetActionAttributeValues()
-					s.Require().NotEmpty(actionAttrValues)
-					for _, aav := range actionAttrValues {
-						s.NotNil(aav.GetAction())
-						s.NotNil(aav.GetAttributeValue())
-						s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
-						s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
-					}
-				}
-				if v.GetId() == val2.GetId() {
-					foundVal2 = true
-					actionAttrValues := v.GetActionAttributeValues()
-					s.Require().NotEmpty(actionAttrValues)
-					for _, aav := range actionAttrValues {
-						s.NotNil(aav.GetAction())
-						s.NotNil(aav.GetAttributeValue())
-						s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
-						s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
-					}
-				}
+		for _, v := range values {
+			actionAttrValues := v.GetActionAttributeValues()
+			s.Require().Len(actionAttrValues, 1)
+			aav := actionAttrValues[0]
+			s.Require().NotNil(aav.GetAction())
+			s.Require().NotNil(aav.GetAttributeValue())
+			s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
+			s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
+			s.Equal("https://example.com", aav.GetAction().GetNamespace().GetFqn())
+
+			switch v.GetId() {
+			case val1.GetId():
+				foundVal1 = true
+				s.Equal(actions.ActionNameCreate, aav.GetAction().GetName())
+				s.Equal("https://example.com/attr/attr1/value/value1", aav.GetAttributeValue().GetFqn())
+			case val2.GetId():
+				foundVal2 = true
+				s.Equal(actions.ActionNameUpdate, aav.GetAction().GetName())
+				s.Equal("https://example.com/attr/attr2/value/value2", aav.GetAttributeValue().GetFqn())
+			default:
+				s.FailNow("unexpected value found", "value id: %s", v.GetId())
 			}
 		}
 	}
 	s.True(foundRegRes, "Registered resource not found in list")
+	s.True(foundVal1, "Value 1 not found in registered resource values")
+	s.True(foundVal2, "Value 2 not found in registered resource values")
+}
+
+func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_RegResValuesContainActionAttributeValues() {
+	// Create a registered resource with values that have action attribute values
+	newRegRes, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: s.getNamespaceID("example.com"),
+		Name:        "test_get_reg_res_with_action_attr_values",
+	})
+	s.Require().NoError(err)
+	s.NotNil(newRegRes)
+	regResID := newRegRes.GetId()
+
+	val1, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: regResID,
+		Value:      "test_value_1",
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: actions.ActionNameCreate,
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(val1)
+
+	val2, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: regResID,
+		Value:      "test_value_2",
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: actions.ActionNameUpdate,
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr2/value/value2",
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(val2)
+
+	// Get the registered resource and check if values contain action attribute values
+	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+			Id: regResID,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal("test_get_reg_res_with_action_attr_values", got.GetName())
+
+	values := got.GetValues()
+	s.Require().Len(values, 2)
+
+	var foundVal1, foundVal2 bool
+	for _, v := range values {
+		actionAttrValues := v.GetActionAttributeValues()
+		s.Require().Len(actionAttrValues, 1)
+		aav := actionAttrValues[0]
+		s.Require().NotNil(aav.GetAction())
+		s.Require().NotNil(aav.GetAttributeValue())
+		s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
+		s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
+		s.Equal("https://example.com", aav.GetAction().GetNamespace().GetFqn())
+
+		switch v.GetId() {
+		case val1.GetId():
+			foundVal1 = true
+			s.Equal(actions.ActionNameCreate, aav.GetAction().GetName())
+			s.Equal("https://example.com/attr/attr1/value/value1", aav.GetAttributeValue().GetFqn())
+		case val2.GetId():
+			foundVal2 = true
+			s.Equal(actions.ActionNameUpdate, aav.GetAction().GetName())
+			s.Equal("https://example.com/attr/attr2/value/value2", aav.GetAttributeValue().GetFqn())
+		default:
+			s.FailNow("unexpected value found", "value id: %s", v.GetId())
+		}
+	}
 	s.True(foundVal1, "Value 1 not found in registered resource values")
 	s.True(foundVal2, "Value 2 not found in registered resource values")
 }

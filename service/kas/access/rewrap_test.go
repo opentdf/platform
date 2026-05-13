@@ -687,6 +687,18 @@ func Test_GetEntityInfo_When_Authorization_MD_Invalid_Expect_Error(t *testing.T)
 	require.Contains(t, err.Error(), "missing")
 }
 
+func Test_GetEntityInfo_ReturnsRawToken(t *testing.T) {
+	ctx := t.Context()
+	token := mockJWT(t)
+	rawToken := string(jwtStandard(t))
+
+	ctx = ctxAuth.ContextWithAuthNInfo(ctx, nil, token, rawToken)
+
+	info, err := getEntityInfo(ctx, logger.CreateTestLogger())
+	require.NoError(t, err)
+	require.Equal(t, rawToken, info.Token)
+}
+
 func TestGetAdditionalRewrapContext(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -747,6 +759,24 @@ func TestGetAdditionalRewrapContext(t *testing.T) {
 			expectedResult: &AdditionalRewrapContext{
 				Obligations: ObligationCtx{
 					FulfillableFQNs: []string{"https://demo.com/obl/test/value/watermark", "https://demo.com/obl/test/value/geofence"},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "resource metadata by policy",
+			header: http.Header{
+				additionalRewrapContextHeader: []string{base64.StdEncoding.EncodeToString([]byte(`{"resourceMetadataByPolicy": {"policy-1": {"file_name": "sample.txt", "byte_size": 123}}}`))},
+			},
+			expectedResult: &AdditionalRewrapContext{
+				Obligations: ObligationCtx{
+					FulfillableFQNs: []string{},
+				},
+				ResourceByPolicy: map[string]map[string]any{
+					"policy-1": {
+						"file_name": "sample.txt",
+						"byte_size": float64(123),
+					},
 				},
 			},
 			expectedError: nil,

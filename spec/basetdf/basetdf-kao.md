@@ -469,8 +469,9 @@ then protects the DEK share.
      info = "",
      len  = 32
    )
-4. protectedKey = Base64(AES-256-GCM(derived_key, DEK_share))
-5. ephemeralKey = PEM(ephemeral_ec.pk)
+4. IV = generate_random_bytes(12)
+5. protectedKey = Base64(IV || AES-256-GCM(derived_key, IV, DEK_share))
+6. ephemeralKey = PEM(ephemeral_ec.pk)
 ```
 
 **Decryption** (KAS rewrap):
@@ -483,7 +484,10 @@ then protects the DEK share.
      info = "",
      len  = 32
    )
-3. DEK_share = AES-256-GCM-Decrypt(derived_key, Base64Decode(protectedKey))
+3. raw = Base64Decode(protectedKey)
+4. IV = raw[0..12]
+5. ciphertext_with_tag = raw[12..]
+6. DEK_share = AES-256-GCM-Decrypt(derived_key, IV, ciphertext_with_tag)
 ```
 
 **KAO fields**:
@@ -541,8 +545,9 @@ is then used to derive a symmetric key protecting the DEK share.
      info = "BaseTDF-KEM",
      len  = 32
    )
-3. protectedKey = Base64(AES-256-GCM(derived_key, DEK_share))
-4. ephemeralKey = Base64(ct)
+3. IV = generate_random_bytes(12)
+4. protectedKey = Base64(IV || AES-256-GCM(derived_key, IV, DEK_share))
+5. ephemeralKey = Base64(ct)
 ```
 
 **Decryption** (KAS rewrap):
@@ -555,7 +560,10 @@ is then used to derive a symmetric key protecting the DEK share.
      info = "BaseTDF-KEM",
      len  = 32
    )
-3. DEK_share = AES-256-GCM-Decrypt(derived_key, Base64Decode(protectedKey))
+3. raw = Base64Decode(protectedKey)
+4. IV = raw[0..12]
+5. ciphertext_with_tag = raw[12..]
+6. DEK_share = AES-256-GCM-Decrypt(derived_key, IV, ciphertext_with_tag)
 ```
 
 **KAO fields**:
@@ -614,10 +622,11 @@ post-quantum component remains unbroken.
    )
 
 // Protect the DEK share
-5. protectedKey = Base64(AES-256-GCM(combined_ss, DEK_share))
+5. IV = generate_random_bytes(12)
+6. protectedKey = Base64(IV || AES-256-GCM(combined_ss, IV, DEK_share))
 
 // Encode ephemeral material
-6. ephemeralKey = Base64(ephemeral_ec.pk_uncompressed || ct_pqc)
+7. ephemeralKey = Base64(ephemeral_ec.pk_uncompressed || ct_pqc)
 ```
 
 **Decryption** (KAS rewrap):
@@ -643,7 +652,10 @@ post-quantum component remains unbroken.
    )
 
 // Recover the DEK share
-7. DEK_share = AES-256-GCM-Decrypt(combined_ss, Base64Decode(protectedKey))
+7. raw = Base64Decode(protectedKey)
+8. IV = raw[0..12]
+9. ciphertext_with_tag = raw[12..]
+10. DEK_share = AES-256-GCM-Decrypt(combined_ss, IV, ciphertext_with_tag)
 ```
 
 **KAO fields**:

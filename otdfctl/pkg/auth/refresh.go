@@ -19,12 +19,18 @@ const (
 	expiryBuffer = 30 * time.Second
 )
 
-// Function variable for the token endpoint lookup — swappable in tests.
-var getTokenEndpointFunc = getTokenEndpoint
+// tokenEndpointResolver looks up the OAuth2 token endpoint for a given
+// platform endpoint. Production code uses getTokenEndpoint; tests inject
+// a stub to avoid real gRPC calls.
+type tokenEndpointResolver func(endpoint string, tlsNoVerify bool) (string, error)
 
 // RefreshAccessToken refreshes the access token using the stored refresh token
 // and updates the profile with the new tokens.
 func RefreshAccessToken(ctx context.Context, profile *profiles.OtdfctlProfileStore) error {
+	return refreshAccessToken(ctx, profile, getTokenEndpoint)
+}
+
+func refreshAccessToken(ctx context.Context, profile *profiles.OtdfctlProfileStore, resolveEndpoint tokenEndpointResolver) error {
 	if profile == nil {
 		return errors.New("profile is required")
 	}
@@ -47,7 +53,7 @@ func RefreshAccessToken(ctx context.Context, profile *profiles.OtdfctlProfileSto
 		return fmt.Errorf("failed to normalize endpoint: %w", err)
 	}
 
-	tokenEndpoint, err := getTokenEndpointFunc(normalized.String(), tlsNoVerify)
+	tokenEndpoint, err := resolveEndpoint(normalized.String(), tlsNoVerify)
 	if err != nil {
 		return fmt.Errorf("failed to get token endpoint: %w", err)
 	}

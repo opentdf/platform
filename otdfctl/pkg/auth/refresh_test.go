@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -116,13 +115,13 @@ func TestHasRefreshToken(t *testing.T) {
 
 func TestRefreshAccessTokenWrongAuthType(t *testing.T) {
 	profile := newTestProfile(t, profiles.AuthTypeClientCredentials, "tok", "refresh", time.Now().Add(time.Hour).Unix())
-	err := RefreshAccessToken(context.Background(), profile)
+	err := RefreshAccessToken(t.Context(), profile)
 	require.ErrorIs(t, err, ErrInvalidAuthType)
 }
 
 func TestRefreshAccessTokenNoRefreshToken(t *testing.T) {
 	profile := newTestProfile(t, profiles.AuthTypeAccessToken, "tok", "", time.Now().Add(-time.Hour).Unix())
-	err := RefreshAccessToken(context.Background(), profile)
+	err := RefreshAccessToken(t.Context(), profile)
 	require.ErrorIs(t, err, ErrNoRefreshToken)
 }
 
@@ -139,15 +138,13 @@ func TestRefreshAccessTokenSuccess(t *testing.T) {
 	}))
 	defer tokenServer.Close()
 
-	origFunc := getTokenEndpointFunc
-	getTokenEndpointFunc = func(string, bool) (string, error) {
+	resolver := func(string, bool) (string, error) {
 		return tokenServer.URL, nil
 	}
-	defer func() { getTokenEndpointFunc = origFunc }()
 
 	profile := newTestProfile(t, profiles.AuthTypeAccessToken, "old-token", "old-refresh", time.Now().Add(-time.Hour).Unix())
 
-	err := RefreshAccessToken(context.Background(), profile)
+	err := refreshAccessToken(t.Context(), profile, resolver)
 	require.NoError(t, err)
 
 	creds := profile.GetAuthCredentials()
@@ -169,14 +166,12 @@ func TestRefreshAccessTokenZeroExpiry(t *testing.T) {
 	}))
 	defer tokenServer.Close()
 
-	origFunc := getTokenEndpointFunc
-	getTokenEndpointFunc = func(string, bool) (string, error) {
+	resolver := func(string, bool) (string, error) {
 		return tokenServer.URL, nil
 	}
-	defer func() { getTokenEndpointFunc = origFunc }()
 
 	profile := newTestProfile(t, profiles.AuthTypeAccessToken, "old", "refresh", time.Now().Add(-time.Hour).Unix())
-	err := RefreshAccessToken(context.Background(), profile)
+	err := refreshAccessToken(t.Context(), profile, resolver)
 	require.NoError(t, err)
 
 	creds := profile.GetAuthCredentials()
@@ -185,14 +180,12 @@ func TestRefreshAccessTokenZeroExpiry(t *testing.T) {
 }
 
 func TestRefreshAccessTokenEndpointError(t *testing.T) {
-	origFunc := getTokenEndpointFunc
-	getTokenEndpointFunc = func(string, bool) (string, error) {
+	resolver := func(string, bool) (string, error) {
 		return "", errors.New("gRPC connection failed")
 	}
-	defer func() { getTokenEndpointFunc = origFunc }()
 
 	profile := newTestProfile(t, profiles.AuthTypeAccessToken, "tok", "refresh", time.Now().Add(-time.Hour).Unix())
-	err := RefreshAccessToken(context.Background(), profile)
+	err := refreshAccessToken(t.Context(), profile, resolver)
 	require.ErrorContains(t, err, "failed to get token endpoint")
 }
 
@@ -204,14 +197,12 @@ func TestRefreshAccessTokenRefreshFails(t *testing.T) {
 	}))
 	defer tokenServer.Close()
 
-	origFunc := getTokenEndpointFunc
-	getTokenEndpointFunc = func(string, bool) (string, error) {
+	resolver := func(string, bool) (string, error) {
 		return tokenServer.URL, nil
 	}
-	defer func() { getTokenEndpointFunc = origFunc }()
 
 	profile := newTestProfile(t, profiles.AuthTypeAccessToken, "tok", "refresh", time.Now().Add(-time.Hour).Unix())
-	err := RefreshAccessToken(context.Background(), profile)
+	err := refreshAccessToken(t.Context(), profile, resolver)
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrRefreshFailed)
 }
@@ -229,11 +220,9 @@ func TestRefreshAccessTokenEmptyClientID(t *testing.T) {
 	}))
 	defer tokenServer.Close()
 
-	origFunc := getTokenEndpointFunc
-	getTokenEndpointFunc = func(string, bool) (string, error) {
+	resolver := func(string, bool) (string, error) {
 		return tokenServer.URL, nil
 	}
-	defer func() { getTokenEndpointFunc = origFunc }()
 
 	cfg := &profiles.ProfileConfig{
 		Name:     "test",
@@ -252,7 +241,7 @@ func TestRefreshAccessTokenEmptyClientID(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = RefreshAccessToken(context.Background(), profile)
+	err = refreshAccessToken(t.Context(), profile, resolver)
 	require.NoError(t, err)
 
 	creds := profile.GetAuthCredentials()
@@ -272,11 +261,9 @@ func TestRefreshAccessTokenTLSNoVerify(t *testing.T) {
 	}))
 	defer tokenServer.Close()
 
-	origFunc := getTokenEndpointFunc
-	getTokenEndpointFunc = func(string, bool) (string, error) {
+	resolver := func(string, bool) (string, error) {
 		return tokenServer.URL, nil
 	}
-	defer func() { getTokenEndpointFunc = origFunc }()
 
 	cfg := &profiles.ProfileConfig{
 		Name:        "test",
@@ -296,28 +283,11 @@ func TestRefreshAccessTokenTLSNoVerify(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = RefreshAccessToken(context.Background(), profile)
+	err = refreshAccessToken(t.Context(), profile, resolver)
 	require.NoError(t, err)
 
 	creds := profile.GetAuthCredentials()
 	assert.Equal(t, "tls-token", creds.AccessToken.AccessToken)
-}
-
-func TestGetTokenEndpointFuncSwappable(t *testing.T) {
-	origFunc := getTokenEndpointFunc
-	defer func() { getTokenEndpointFunc = origFunc }()
-
-	called := false
-	getTokenEndpointFunc = func(endpoint string, tlsNoVerify bool) (string, error) {
-		called = true
-		assert.Equal(t, "https://example.com:443", endpoint)
-		assert.False(t, tlsNoVerify)
-		return "https://idp.example.com/token", nil
-	}
-
-	profile := newTestProfile(t, profiles.AuthTypeAccessToken, "tok", "refresh", time.Now().Add(-time.Hour).Unix())
-	_ = RefreshAccessToken(context.Background(), profile)
-	assert.True(t, called, "getTokenEndpointFunc should have been called")
 }
 
 func TestGetTokenEndpointBadEndpoint(t *testing.T) {
@@ -332,7 +302,7 @@ func TestGetTokenEndpointEmptyEndpoint(t *testing.T) {
 }
 
 func TestRefreshAccessTokenNilProfile(t *testing.T) {
-	err := RefreshAccessToken(context.Background(), nil)
+	err := RefreshAccessToken(t.Context(), nil)
 	require.Error(t, err)
 }
 

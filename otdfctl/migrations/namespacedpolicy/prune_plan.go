@@ -13,6 +13,7 @@ const (
 	PruneStatusDelete            PruneStatus = "delete"
 	PruneStatusBlocked           PruneStatus = "blocked"
 	PruneStatusUnresolved        PruneStatus = "unresolved"
+	PruneStatusSkipped           PruneStatus = "skipped"
 	targetRefSummaryPartCapacity             = 2
 )
 
@@ -26,6 +27,7 @@ const (
 	PruneStatusReasonTypeInUse                            PruneStatusReasonType = "InUse"
 	PruneStatusReasonTypeNeedsMigration                   PruneStatusReasonType = "NeedsMigration"
 	PruneStatusReasonTypeRegisteredResourceSourceMismatch PruneStatusReasonType = "RegisteredResourceSourceMismatch"
+	PruneStatusReasonTypeSkippedByUser                    PruneStatusReasonType = "SkippedByUser"
 
 	pruneStatusReasonMessageMigratedTargetNotFound              = "no migrated target was found for this source"
 	pruneStatusReasonMessageInUse                               = "source object is still referenced by legacy policy"
@@ -33,6 +35,7 @@ const (
 	pruneStatusReasonMessageMismatchedMigrationLabel            = "migrated target carries migrated_from metadata for a different source"
 	pruneStatusReasonMessageMissingMigrationLabel               = "migrated target is missing migrated_from metadata for this source"
 	pruneStatusReasonMessageNeedsMigration                      = "source object does not have a migrated target yet"
+	pruneStatusReasonMessageSkippedByUser                       = "skipped by user"
 	pruneStatusReasonMessageRegisteredResourceSourceMismatchFmt = "resolved registered resource view does not match the full source object for target namespace %q; source contains values outside the resolved migration view"
 )
 

@@ -47,7 +47,7 @@ func TestRenderNamespacedPolicyPruneSummaryDryRunShowsWillDelete(t *testing.T) {
 		},
 	}
 
-	summary := stripANSI(RenderNamespacedPolicyPruneSummary(plan, false))
+	summary := stripANSI(RenderNamespacedPolicyPruneSummary(plan, false, PruneSummaryResultSuccess))
 
 	assert.Contains(t, summary, "Namespaced Policy Prune Plan")
 	assert.Contains(t, summary, "Scopes: actions")
@@ -86,7 +86,7 @@ func TestRenderNamespacedPolicyPruneSummaryCommitSeparatesDeletedPendingAndFaile
 		},
 	}
 
-	summary := stripANSI(RenderNamespacedPolicyPruneSummaryWithResult(plan, true, "failure"))
+	summary := stripANSI(RenderNamespacedPolicyPruneSummary(plan, true, PruneSummaryResultFailure))
 
 	assert.Contains(t, summary, "Namespaced Policy Prune Committed")
 	assert.Contains(t, summary, "Result: failure")
@@ -97,6 +97,32 @@ func TestRenderNamespacedPolicyPruneSummaryCommitSeparatesDeletedPendingAndFaile
 	assert.Contains(t, summary, `action "preview" (source_id=action-pending, found_migrated_targets=(none))`)
 	assert.Contains(t, summary, "Failed")
 	assert.Contains(t, summary, `action "share" (source_id=action-failed, found_migrated_targets=(none)): execution_failure=boom`)
+}
+
+func TestRenderNamespacedPolicyPruneSummaryCommitShowsSkippedDeletes(t *testing.T) {
+	t.Parallel()
+
+	plan := &PrunePlan{
+		Scopes: []Scope{ScopeActions},
+		Actions: []*PruneActionPlan{
+			{
+				Source: &policy.Action{Id: "action-skipped", Name: "archive"},
+				Status: PruneStatusSkipped,
+				Reason: newPruneReason(
+					PruneStatusReasonTypeSkippedByUser,
+					pruneStatusReasonMessageSkippedByUser,
+				),
+			},
+		},
+	}
+
+	summary := stripANSI(RenderNamespacedPolicyPruneSummary(plan, true, PruneSummaryResultSuccess))
+
+	assert.Contains(t, summary, "Counts: deleted=0 skipped=1 blocked=0 failed=0 unresolved=0")
+	assert.Contains(t, summary, "Skipped")
+	assert.Contains(t, summary, `action "archive" (source_id=action-skipped, found_migrated_targets=(none)): reason=SkippedByUser: skipped by user`)
+	assert.NotContains(t, summary, "Will Delete")
+	assert.NotContains(t, summary, "\nDeleted\n")
 }
 
 func TestRenderNamespacedPolicyPruneSummaryActionsCoversEveryStatus(t *testing.T) {
@@ -132,7 +158,7 @@ func TestRenderNamespacedPolicyPruneSummaryActionsCoversEveryStatus(t *testing.T
 		},
 	}
 
-	summary := stripANSI(RenderNamespacedPolicyPruneSummaryWithResult(plan, true, "failure"))
+	summary := stripANSI(RenderNamespacedPolicyPruneSummary(plan, true, PruneSummaryResultFailure))
 
 	assertPruneSummaryCoversEveryStatus(t, summary, "Actions", pruneSummaryStatusLines{
 		deleted:    `action "archive" (source_id=action-deleted, found_migrated_targets=(none))`,
@@ -176,7 +202,7 @@ func TestRenderNamespacedPolicyPruneSummarySubjectConditionSetsCoversEveryStatus
 		},
 	}
 
-	summary := stripANSI(RenderNamespacedPolicyPruneSummaryWithResult(plan, true, "failure"))
+	summary := stripANSI(RenderNamespacedPolicyPruneSummary(plan, true, PruneSummaryResultFailure))
 
 	assertPruneSummaryCoversEveryStatus(t, summary, "Subject Condition Sets", pruneSummaryStatusLines{
 		deleted:    `subject condition set "scs-deleted" (subject_sets=1, found_migrated_targets=(none))`,
@@ -225,7 +251,7 @@ func TestRenderNamespacedPolicyPruneSummarySubjectMappingsCoversEveryStatus(t *t
 		},
 	}
 
-	summary := stripANSI(RenderNamespacedPolicyPruneSummaryWithResult(plan, true, "failure"))
+	summary := stripANSI(RenderNamespacedPolicyPruneSummary(plan, true, PruneSummaryResultFailure))
 
 	assertPruneSummaryCoversEveryStatus(t, summary, "Subject Mappings", pruneSummaryStatusLines{
 		deleted:    `subject mapping "mapping-deleted" (attribute_value=https://example.com/attr/classification/value/secret, actions="read", scs_source=scs-source, found_migrated_target=id: "target-mapping-deleted" namespace: "https://example.com")`,
@@ -274,7 +300,7 @@ func TestRenderNamespacedPolicyPruneSummaryRegisteredResourcesCoversEveryStatus(
 		},
 	}
 
-	summary := stripANSI(RenderNamespacedPolicyPruneSummaryWithResult(plan, true, "failure"))
+	summary := stripANSI(RenderNamespacedPolicyPruneSummary(plan, true, PruneSummaryResultFailure))
 
 	assertPruneSummaryCoversEveryStatus(t, summary, "Registered Resources", pruneSummaryStatusLines{
 		deleted:    `registered resource "dataset-deleted" (source_id=resource-deleted, source=values="prod" (action_bindings="read" -> https://example.com/attr/classification/value/secret), found_migrated_target=id: "target-resource-deleted" namespace: "https://example.com")`,
@@ -311,7 +337,7 @@ func TestRenderNamespacedPolicyPruneSummaryRegisteredResourceMismatchShowsSource
 		},
 	}
 
-	summary := stripANSI(RenderNamespacedPolicyPruneSummary(plan, false))
+	summary := stripANSI(RenderNamespacedPolicyPruneSummary(plan, false, PruneSummaryResultSuccess))
 
 	assert.Contains(t, summary, `registered resource "dataset" (source_id=resource-1, source=values="prod" (action_bindings="read" -> https://example.com/attr/classification/value/secret), found_migrated_target=id: "target-resource-1" namespace: "https://example.com"): reason=RegisteredResourceSourceMismatch: source mismatch`)
 	assert.NotContains(t, summary, "filtered_source=")
@@ -357,7 +383,7 @@ func TestRenderNamespacedPolicyPruneSummaryObligationTriggersCoversEveryStatus(t
 		},
 	}
 
-	summary := stripANSI(RenderNamespacedPolicyPruneSummaryWithResult(plan, true, "failure"))
+	summary := stripANSI(RenderNamespacedPolicyPruneSummary(plan, true, PruneSummaryResultFailure))
 
 	assertPruneSummaryCoversEveryStatus(t, summary, "Obligation Triggers", pruneSummaryStatusLines{
 		deleted:    `obligation trigger "trigger-deleted" (attribute_value=https://example.com/attr/classification/value/secret, action="read", obligation_value=https://example.com/obligation/log/value/default, context=client_id: "tdf-client", found_migrated_target=id: "target-trigger-deleted" namespace: "https://example.com")`,

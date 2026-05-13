@@ -19,13 +19,18 @@ const (
 	prunePendingSectionLabel = "Will Delete"
 )
 
-func RenderNamespacedPolicyPruneSummary(plan *PrunePlan, commit bool) string {
-	return renderNamespacedPolicyPruneSummary(plan, commit, "success")
-}
+// PruneSummaryResult identifies the overall prune command outcome shown in the
+// rendered summary.
+type PruneSummaryResult string
 
-func RenderNamespacedPolicyPruneSummaryWithResult(plan *PrunePlan, commit bool, result string) string {
-	return renderNamespacedPolicyPruneSummary(plan, commit, result)
-}
+const (
+	// PruneSummaryResultSuccess indicates the prune command completed without error.
+	PruneSummaryResultSuccess PruneSummaryResult = "success"
+	// PruneSummaryResultFailure indicates prune commit execution failed.
+	PruneSummaryResultFailure PruneSummaryResult = "failure"
+	// PruneSummaryResultAborted indicates the user aborted an interactive prune flow.
+	PruneSummaryResultAborted PruneSummaryResult = "aborted"
+)
 
 func prunePlanScopes(plan *PrunePlan) []Scope {
 	if plan == nil {
@@ -34,21 +39,21 @@ func prunePlanScopes(plan *PrunePlan) []Scope {
 	return plan.Scopes
 }
 
-func renderNamespacedPolicyPruneSummary(plan *PrunePlan, commit bool, result string) string {
+func RenderNamespacedPolicyPruneSummary(plan *PrunePlan, executed bool, result PruneSummaryResult) string {
 	styles := migrations.NewDisplayStyles()
 	return renderSummaryDocument(styles, summaryDocument{
 		plannedTitle:   "Namespaced Policy Prune Plan",
 		committedTitle: "Namespaced Policy Prune Committed",
 		operation:      summaryOperationPrune,
 		scopes:         prunePlanScopes(plan),
-		commit:         commit,
-		result:         result,
+		commit:         executed,
+		result:         string(result),
 		summaries: []constructSummary{
-			summarizePruneActions(plan, commit, styles),
-			summarizePruneSubjectConditionSets(plan, commit, styles),
-			summarizePruneSubjectMappings(plan, commit, styles),
-			summarizePruneRegisteredResources(plan, commit, styles),
-			summarizePruneObligationTriggers(plan, commit, styles),
+			summarizePruneActions(plan, executed, styles),
+			summarizePruneSubjectConditionSets(plan, executed, styles),
+			summarizePruneSubjectMappings(plan, executed, styles),
+			summarizePruneRegisteredResources(plan, executed, styles),
+			summarizePruneObligationTriggers(plan, executed, styles),
 		},
 	})
 }
@@ -57,7 +62,7 @@ func appendPruneSummaryCountParts(parts []string, counts summaryCounts) []string
 	return append(parts, fmt.Sprintf("blocked=%d", counts.blocked))
 }
 
-func summarizePruneActions(plan *PrunePlan, commit bool, styles *migrations.DisplayStyles) constructSummary {
+func summarizePruneActions(plan *PrunePlan, executed bool, styles *migrations.DisplayStyles) constructSummary {
 	summary := constructSummary{
 		label:   "Actions",
 		include: includesScope(prunePlanScopes(plan), ScopeActions),
@@ -69,12 +74,12 @@ func summarizePruneActions(plan *PrunePlan, commit bool, styles *migrations.Disp
 		if action == nil || action.Source == nil {
 			continue
 		}
-		appendPruneStatusSummary(&summary, action, commit, styles)
+		appendPruneStatusSummary(&summary, action, executed, styles)
 	}
 	return summary
 }
 
-func summarizePruneSubjectConditionSets(plan *PrunePlan, commit bool, styles *migrations.DisplayStyles) constructSummary {
+func summarizePruneSubjectConditionSets(plan *PrunePlan, executed bool, styles *migrations.DisplayStyles) constructSummary {
 	summary := constructSummary{
 		label:   "Subject Condition Sets",
 		include: includesScope(prunePlanScopes(plan), ScopeSubjectConditionSets),
@@ -86,12 +91,12 @@ func summarizePruneSubjectConditionSets(plan *PrunePlan, commit bool, styles *mi
 		if scs == nil || scs.Source == nil {
 			continue
 		}
-		appendPruneStatusSummary(&summary, scs, commit, styles)
+		appendPruneStatusSummary(&summary, scs, executed, styles)
 	}
 	return summary
 }
 
-func summarizePruneSubjectMappings(plan *PrunePlan, commit bool, styles *migrations.DisplayStyles) constructSummary {
+func summarizePruneSubjectMappings(plan *PrunePlan, executed bool, styles *migrations.DisplayStyles) constructSummary {
 	summary := constructSummary{
 		label:   "Subject Mappings",
 		include: includesScope(prunePlanScopes(plan), ScopeSubjectMappings),
@@ -103,12 +108,12 @@ func summarizePruneSubjectMappings(plan *PrunePlan, commit bool, styles *migrati
 		if mapping == nil || mapping.Source == nil {
 			continue
 		}
-		appendPruneStatusSummary(&summary, mapping, commit, styles)
+		appendPruneStatusSummary(&summary, mapping, executed, styles)
 	}
 	return summary
 }
 
-func summarizePruneRegisteredResources(plan *PrunePlan, commit bool, styles *migrations.DisplayStyles) constructSummary {
+func summarizePruneRegisteredResources(plan *PrunePlan, executed bool, styles *migrations.DisplayStyles) constructSummary {
 	summary := constructSummary{
 		label:   "Registered Resources",
 		include: includesScope(prunePlanScopes(plan), ScopeRegisteredResources),
@@ -120,12 +125,12 @@ func summarizePruneRegisteredResources(plan *PrunePlan, commit bool, styles *mig
 		if resource == nil || resource.Source == nil {
 			continue
 		}
-		appendPruneStatusSummary(&summary, resource, commit, styles)
+		appendPruneStatusSummary(&summary, resource, executed, styles)
 	}
 	return summary
 }
 
-func summarizePruneObligationTriggers(plan *PrunePlan, commit bool, styles *migrations.DisplayStyles) constructSummary {
+func summarizePruneObligationTriggers(plan *PrunePlan, executed bool, styles *migrations.DisplayStyles) constructSummary {
 	summary := constructSummary{
 		label:   "Obligation Triggers",
 		include: includesScope(prunePlanScopes(plan), ScopeObligationTriggers),
@@ -137,15 +142,15 @@ func summarizePruneObligationTriggers(plan *PrunePlan, commit bool, styles *migr
 		if trigger == nil || trigger.Source == nil {
 			continue
 		}
-		appendPruneStatusSummary(&summary, trigger, commit, styles)
+		appendPruneStatusSummary(&summary, trigger, executed, styles)
 	}
 	return summary
 }
 
-func appendPruneStatusSummary[T pruneSummaryItem](summary *constructSummary, item T, commit bool, styles *migrations.DisplayStyles) {
+func appendPruneStatusSummary[T pruneSummaryItem](summary *constructSummary, item T, executed bool, styles *migrations.DisplayStyles) {
 	switch item.status() {
 	case PruneStatusDelete:
-		switch classifyPruneExecution(commit, item.execution()) {
+		switch classifyPruneExecution(executed, item.execution()) {
 		case operationExecutionStateApplied:
 			summary.counts.applied++
 			summary.applied = append(summary.applied, item.summaryLine(styles))
@@ -162,11 +167,14 @@ func appendPruneStatusSummary[T pruneSummaryItem](summary *constructSummary, ite
 	case PruneStatusUnresolved:
 		summary.counts.unresolved++
 		summary.unresolved = append(summary.unresolved, item.summaryLine(styles))
+	case PruneStatusSkipped:
+		summary.counts.skipped++
+		summary.skipped = append(summary.skipped, item.summaryLine(styles))
 	}
 }
 
-func classifyPruneExecution(commit bool, execution *ExecutionResult) operationExecutionState {
-	if !commit || execution == nil {
+func classifyPruneExecution(executed bool, execution *ExecutionResult) operationExecutionState {
+	if !executed || execution == nil {
 		return operationExecutionStatePending
 	}
 	if len(strings.TrimSpace(execution.Failure)) != 0 {

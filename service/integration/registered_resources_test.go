@@ -352,22 +352,26 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_RegResValuesCont
 		foundRegRes = true
 
 		for _, v := range values {
+			actionAttrValues := v.GetActionAttributeValues()
+			s.Require().Len(actionAttrValues, 1)
+			aav := actionAttrValues[0]
+			s.Require().NotNil(aav.GetAction())
+			s.Require().NotNil(aav.GetAttributeValue())
+			s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
+			s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
+			s.Equal("https://example.com", aav.GetAction().GetNamespace().GetFqn())
+
 			switch v.GetId() {
 			case val1.GetId():
 				foundVal1 = true
+				s.Equal(actions.ActionNameCreate, aav.GetAction().GetName())
+				s.Equal("https://example.com/attr/attr1/value/value1", aav.GetAttributeValue().GetFqn())
 			case val2.GetId():
 				foundVal2 = true
+				s.Equal(actions.ActionNameUpdate, aav.GetAction().GetName())
+				s.Equal("https://example.com/attr/attr2/value/value2", aav.GetAttributeValue().GetFqn())
 			default:
 				s.FailNow("unexpected value found", "value id: %s", v.GetId())
-			}
-
-			actionAttrValues := v.GetActionAttributeValues()
-			s.Require().NotEmpty(actionAttrValues)
-			for _, aav := range actionAttrValues {
-				s.NotNil(aav.GetAction())
-				s.NotNil(aav.GetAttributeValue())
-				s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
-				s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
 			}
 		}
 	}
@@ -435,22 +439,26 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_RegResValuesContai
 
 	var foundVal1, foundVal2 bool
 	for _, v := range values {
+		actionAttrValues := v.GetActionAttributeValues()
+		s.Require().Len(actionAttrValues, 1)
+		aav := actionAttrValues[0]
+		s.Require().NotNil(aav.GetAction())
+		s.Require().NotNil(aav.GetAttributeValue())
+		s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
+		s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
+		s.Equal("https://example.com", aav.GetAction().GetNamespace().GetFqn())
+
 		switch v.GetId() {
 		case val1.GetId():
 			foundVal1 = true
+			s.Equal(actions.ActionNameCreate, aav.GetAction().GetName())
+			s.Equal("https://example.com/attr/attr1/value/value1", aav.GetAttributeValue().GetFqn())
 		case val2.GetId():
 			foundVal2 = true
+			s.Equal(actions.ActionNameUpdate, aav.GetAction().GetName())
+			s.Equal("https://example.com/attr/attr2/value/value2", aav.GetAttributeValue().GetFqn())
 		default:
 			s.FailNow("unexpected value found", "value id: %s", v.GetId())
-		}
-
-		actionAttrValues := v.GetActionAttributeValues()
-		s.Require().NotEmpty(actionAttrValues)
-		for _, aav := range actionAttrValues {
-			s.NotNil(aav.GetAction())
-			s.NotNil(aav.GetAttributeValue())
-			s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
-			s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
 		}
 	}
 	s.True(foundVal1, "Value 1 not found in registered resource values")

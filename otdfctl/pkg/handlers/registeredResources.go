@@ -52,7 +52,7 @@ func (h Handler) GetRegisteredResource(ctx context.Context, id, name, namespace 
 	return resp.GetResource(), nil
 }
 
-func (h Handler) ListRegisteredResources(ctx context.Context, limit, offset int32, namespace string) (*registeredresources.ListRegisteredResourcesResponse, error) {
+func (h Handler) ListRegisteredResources(ctx context.Context, limit, offset int32, namespace string, sort SortOption) (*registeredresources.ListRegisteredResourcesResponse, error) {
 	req := &registeredresources.ListRegisteredResourcesRequest{
 		Pagination: &policy.PageRequest{
 			Limit:  limit,
@@ -61,6 +61,22 @@ func (h Handler) ListRegisteredResources(ctx context.Context, limit, offset int3
 	}
 	if namespace != "" {
 		req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
+	}
+	if !sort.IsZero() {
+		var field registeredresources.SortRegisteredResourcesType
+		if sort.Field != "" {
+			var ok bool
+			allowedFields := map[string]registeredresources.SortRegisteredResourcesType{
+				"name":       registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_NAME,
+				"created_at": registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT,
+				"updated_at": registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UPDATED_AT,
+			}
+			field, ok = allowedFields[sort.Field]
+			if !ok {
+				return nil, invalidSortFieldError("registered resources", sort.Field, allowedFields)
+			}
+		}
+		req.Sort = []*registeredresources.RegisteredResourcesSort{{Field: field, Direction: sort.Direction}}
 	}
 	return h.sdk.RegisteredResources.ListRegisteredResources(ctx, req)
 }

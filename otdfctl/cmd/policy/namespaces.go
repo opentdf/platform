@@ -45,8 +45,9 @@ func listAttributeNamespaces(cmd *cobra.Command, args []string) {
 	state := cli.GetState(cmd)
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
+	sort := getSortOption(c)
 
-	resp, err := h.ListNamespaces(cmd.Context(), state, limit, offset)
+	resp, err := h.ListNamespaces(cmd.Context(), state, limit, offset, sort)
 	if err != nil {
 		cli.ExitWithError("Failed to list namespaces", err)
 	}
@@ -365,6 +366,12 @@ func buildNamespacesCommandTree() *cobra.Command {
 		listDoc.GetDocFlag("offset").Shorthand,
 		defaultListFlagOffset,
 		listDoc.GetDocFlag("offset").Description,
+	)
+	listCmd.Flags().StringP(
+		listDoc.GetDocFlag("sort").Name,
+		listDoc.GetDocFlag("sort").Shorthand,
+		listDoc.GetDocFlag("sort").Default,
+		listDoc.GetDocFlag("sort").Description,
 	)
 
 	createDoc := man.Docs.GetDoc("policy/namespaces/create")

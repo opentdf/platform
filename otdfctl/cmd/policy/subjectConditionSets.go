@@ -150,8 +150,9 @@ func listSubjectConditionSets(cmd *cobra.Command, args []string) {
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
 	namespace := c.Flags.GetOptionalString("namespace")
+	sort := getSortOption(c)
 
-	resp, err := h.ListSubjectConditionSets(cmd.Context(), limit, offset, namespace)
+	resp, err := h.ListSubjectConditionSets(cmd.Context(), limit, offset, namespace, sort)
 	if err != nil {
 		cli.ExitWithError("Error listing subject condition sets", err)
 	}
@@ -360,6 +361,7 @@ func initSubjectConditionSetsCommands() {
 		man.WithRun(listSubjectConditionSets),
 	)
 	injectListPaginationFlags(listDoc)
+	injectListSortFlag(listDoc)
 	listDoc.Flags().StringP(
 		listDoc.GetDocFlag("namespace").Name,
 		listDoc.GetDocFlag("namespace").Shorthand,

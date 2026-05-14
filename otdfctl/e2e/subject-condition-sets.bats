@@ -138,6 +138,47 @@ teardown_file() {
     assert_output --partial "$CREATED_ID"
 }
 
+@test "List SCS supports sort fields and partial sort syntax" {
+  scs_a_id=$(./otdfctl $HOST $WITH_CREDS policy scs create --subject-sets "$SCS_1" --namespace "$NS_ID" --json | jq -r '.id')
+  sleep 1
+  scs_b_id=$(./otdfctl $HOST $WITH_CREDS policy scs create --subject-sets "$SCS_2" --namespace "$NS_ID" --json | jq -r '.id')
+  sleep 1
+  scs_c_id=$(./otdfctl $HOST $WITH_CREDS policy scs create --subject-sets "$SCS_3" --namespace "$NS_ID" --json | jq -r '.id')
+
+  run_otdfctl_scs list --namespace "$NS_ID" --sort :asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$scs_a_id" --arg b "$scs_b_id" --arg c "$scs_c_id" '[.subject_condition_sets[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$scs_a_id,$scs_b_id,$scs_c_id"
+
+  run_otdfctl_scs list --namespace "$NS_ID" --sort created_at:desc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$scs_a_id" --arg b "$scs_b_id" --arg c "$scs_c_id" '[.subject_condition_sets[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$scs_c_id,$scs_b_id,$scs_a_id"
+
+  run ./otdfctl $HOST $WITH_CREDS policy scs update --id "$scs_a_id" --subject-sets "$SCS_1" --label sort=a --json
+  assert_success
+  sleep 1
+  run ./otdfctl $HOST $WITH_CREDS policy scs update --id "$scs_b_id" --subject-sets "$SCS_2" --label sort=b --json
+  assert_success
+  sleep 1
+  run ./otdfctl $HOST $WITH_CREDS policy scs update --id "$scs_c_id" --subject-sets "$SCS_3" --label sort=c --json
+  assert_success
+
+  run_otdfctl_scs list --namespace "$NS_ID" --sort updated_at:asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$scs_a_id" --arg b "$scs_b_id" --arg c "$scs_c_id" '[.subject_condition_sets[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$scs_a_id,$scs_b_id,$scs_c_id"
+
+  run_otdfctl_scs list --namespace "$NS_ID" --sort created_at: --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$scs_a_id" --arg b "$scs_b_id" --arg c "$scs_c_id" '[.subject_condition_sets[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$scs_c_id,$scs_b_id,$scs_a_id"
+
+  run_otdfctl_scs list --namespace "$NS_ID" --sort :asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$scs_a_id" --arg b "$scs_b_id" --arg c "$scs_c_id" '[.subject_condition_sets[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$scs_a_id,$scs_b_id,$scs_c_id"
+
+  run_delete_scs "$scs_a_id"
+  run_delete_scs "$scs_b_id"
+  run_delete_scs "$scs_c_id"
+}
+
 @test "Create a SCS with namespace id" {
   run ./otdfctl $HOST $WITH_CREDS policy scs create --subject-sets "$SCS_2" --namespace "$NS_ID"
   assert_output --partial "Id"

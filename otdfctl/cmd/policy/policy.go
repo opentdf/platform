@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
+	"github.com/opentdf/platform/otdfctl/pkg/handlers"
 	"github.com/opentdf/platform/otdfctl/pkg/man"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/spf13/cobra"
@@ -83,6 +84,19 @@ func injectListPaginationFlags(listDoc *man.Doc) {
 		defaultListFlagOffset,
 		listDoc.GetDocFlag("offset").Description,
 	)
+}
+
+func injectListSortFlag(listDoc *man.Doc) {
+	sortFlag := listDoc.GetDocFlag("sort")
+	listDoc.Flags().StringP(sortFlag.Name, sortFlag.Shorthand, sortFlag.Default, sortFlag.Description)
+}
+
+func getSortOption(c *cli.Cli) handlers.SortOption {
+	sort, err := handlers.ParseSortOption(c.Flags.GetOptionalString("sort"))
+	if err != nil {
+		cli.ExitWithError("Invalid sort", err)
+	}
+	return sort
 }
 
 func InitCommands() {

@@ -67,8 +67,9 @@ func policyListSubjectMappings(cmd *cobra.Command, args []string) {
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
 	namespace := c.Flags.GetOptionalString("namespace")
+	sort := getSortOption(c)
 
-	resp, err := h.ListSubjectMappings(cmd.Context(), limit, offset, namespace)
+	resp, err := h.ListSubjectMappings(cmd.Context(), limit, offset, namespace, sort)
 	if err != nil {
 		cli.ExitWithError("Failed to get subject mappings", err)
 	}
@@ -340,6 +341,7 @@ func initSubjectMappingsCommands() {
 		man.WithRun(policyListSubjectMappings),
 	)
 	injectListPaginationFlags(listDoc)
+	injectListSortFlag(listDoc)
 	listDoc.Flags().StringP(
 		listDoc.GetDocFlag("namespace").Name,
 		listDoc.GetDocFlag("namespace").Shorthand,

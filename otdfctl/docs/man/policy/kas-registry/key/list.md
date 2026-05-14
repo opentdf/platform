@@ -21,11 +21,40 @@ command:
     - name: legacy
       description: Filter keys by legacy status.
       required: false
+    - name: sort
+      description: Sort list results with field:direction syntax. Either field or direction may be omitted
 ---
 
 This command lists keys registered within a specified Key Access Server (KAS). You must specify the KAS using its ID, URI, or Name.
 
 The list can be filtered by key algorithm. Pagination is supported using `limit` and `offset` flags to manage the number of results returned.
+
+## Sort Options
+
+Use `--sort <field>:<direction>`. Either side may be omitted, for example `key_id:` or `:asc`.
+
+| Direction | Description | Default |
+| --- | --- | --- |
+| `asc` | Ascending order | No |
+| `desc` | Descending order | Yes |
+
+| Field | Description | Default |
+| --- | --- | --- |
+| `key_id` | Key ID | No |
+| `created_at` | Creation timestamp | Yes |
+| `updated_at` | Last update timestamp | No |
+
+Omit direction and let the server choose the default direction:
+
+```shell
+otdfctl policy kas-registry key list --kas "https://kas.example.com/kas" --sort key_id:
+```
+
+Omit field and let the server choose the default field:
+
+```shell
+otdfctl policy kas-registry key list --kas "https://kas.example.com/kas" --sort :asc
+```
 
 ## Examples
 
@@ -57,4 +86,10 @@ Exclude legacy keys
 
 ```shell
 otdfctl policy kas-registry key list --legacy false
+```
+
+Sort keys by key ID descending:
+
+```shell
+otdfctl policy kas-registry key list --kas "https://kas.example.com/kas" --sort key_id:desc
 ```

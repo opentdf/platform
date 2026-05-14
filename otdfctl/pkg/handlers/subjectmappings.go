@@ -24,7 +24,7 @@ func (h Handler) GetSubjectMapping(ctx context.Context, id string) (*policy.Subj
 	return resp.GetSubjectMapping(), err
 }
 
-func (h Handler) ListSubjectMappings(ctx context.Context, limit, offset int32, namespace string) (*subjectmapping.ListSubjectMappingsResponse, error) {
+func (h Handler) ListSubjectMappings(ctx context.Context, limit, offset int32, namespace string, sort SortOption) (*subjectmapping.ListSubjectMappingsResponse, error) {
 	req := &subjectmapping.ListSubjectMappingsRequest{
 		Pagination: &policy.PageRequest{
 			Limit:  limit,
@@ -32,6 +32,21 @@ func (h Handler) ListSubjectMappings(ctx context.Context, limit, offset int32, n
 		},
 	}
 	req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
+	if !sort.IsZero() {
+		var field subjectmapping.SortSubjectMappingsType
+		if sort.Field != "" {
+			var ok bool
+			allowedFields := map[string]subjectmapping.SortSubjectMappingsType{
+				"created_at": subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT,
+				"updated_at": subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT,
+			}
+			field, ok = allowedFields[sort.Field]
+			if !ok {
+				return nil, invalidSortFieldError("subject mappings", sort.Field, allowedFields)
+			}
+		}
+		req.Sort = []*subjectmapping.SubjectMappingsSort{{Field: field, Direction: sort.Direction}}
+	}
 	return h.sdk.SubjectMapping.ListSubjectMappings(ctx, req)
 }
 

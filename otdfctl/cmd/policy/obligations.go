@@ -99,8 +99,9 @@ func policyListObligations(cmd *cobra.Command, args []string) {
 	namespace := c.Flags.GetOptionalString("namespace")
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
+	sort := getSortOption(c)
 
-	resp, err := h.ListObligations(cmd.Context(), limit, offset, namespace)
+	resp, err := h.ListObligations(cmd.Context(), limit, offset, namespace, sort)
 	if err != nil {
 		cli.ExitWithError("Failed to list obligations", err)
 	}
@@ -525,6 +526,7 @@ func initObligationsCommands() {
 		listDoc.GetDocFlag("namespace").Description,
 	)
 	injectListPaginationFlags(listDoc)
+	injectListSortFlag(listDoc)
 
 	createDoc := man.Docs.GetCommand("policy/obligations/create",
 		man.WithRun(policyCreateObligation),

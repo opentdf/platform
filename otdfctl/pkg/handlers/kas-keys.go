@@ -91,6 +91,7 @@ func (h Handler) ListKasKeys(
 	algorithm policy.Algorithm,
 	identifier KasIdentifier,
 	legacy *bool,
+	sort SortOption,
 ) (*kasregistry.ListKeysResponse, error) {
 	req := kasregistry.ListKeysRequest{
 		Pagination: &policy.PageRequest{
@@ -115,6 +116,22 @@ func (h Handler) ListKasKeys(
 		}
 	}
 	req.Legacy = legacy
+	if !sort.IsZero() {
+		var field kasregistry.SortKasKeysType
+		if sort.Field != "" {
+			var ok bool
+			allowedFields := map[string]kasregistry.SortKasKeysType{
+				"key_id":     kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID,
+				"created_at": kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT,
+				"updated_at": kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UPDATED_AT,
+			}
+			field, ok = allowedFields[sort.Field]
+			if !ok {
+				return nil, invalidSortFieldError("KAS keys", sort.Field, allowedFields)
+			}
+		}
+		req.Sort = []*kasregistry.KasKeysSort{{Field: field, Direction: sort.Direction}}
+	}
 
 	return h.sdk.KeyAccessServerRegistry.ListKeys(ctx, &req)
 }

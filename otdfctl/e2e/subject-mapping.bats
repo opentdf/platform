@@ -170,6 +170,51 @@ teardown_file() {
     [[ "$total" -ge 1 ]]
 }
 
+@test "List subject mappings supports sort fields and partial sort syntax" {
+    sort_attr=$(./otdfctl $HOST $WITH_CREDS policy attributes create --namespace "$NS_ID" --name "sort_sm_${BATS_TEST_NUMBER}_$RANDOM" --rule ANY_OF -v "sort_sm_a" -v "sort_sm_b" -v "sort_sm_c" --json)
+    sort_val_a_id=$(echo "$sort_attr" | jq -r '.values[0].id')
+    sort_val_b_id=$(echo "$sort_attr" | jq -r '.values[1].id')
+    sort_val_c_id=$(echo "$sort_attr" | jq -r '.values[2].id')
+    sm_a_id=$(./otdfctl $HOST $WITH_CREDS policy sm create --namespace "$NS_ID" -a "$sort_val_a_id" --action "$ACTION_READ_NAME" --subject-condition-set-new "$SCS_1" --json | jq -r '.id')
+    sleep 1
+    sm_b_id=$(./otdfctl $HOST $WITH_CREDS policy sm create --namespace "$NS_ID" -a "$sort_val_b_id" --action "$ACTION_READ_NAME" --subject-condition-set-new "$SCS_1" --json | jq -r '.id')
+    sleep 1
+    sm_c_id=$(./otdfctl $HOST $WITH_CREDS policy sm create --namespace "$NS_ID" -a "$sort_val_c_id" --action "$ACTION_READ_NAME" --subject-condition-set-new "$SCS_1" --json | jq -r '.id')
+
+    run_otdfctl_sm list --namespace "$NS_ID" --sort created_at:asc --limit 500 --json
+    assert_success
+    assert_equal "$(echo "$output" | jq -r --arg a "$sm_a_id" --arg b "$sm_b_id" --arg c "$sm_c_id" '[.subject_mappings[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$sm_a_id,$sm_b_id,$sm_c_id"
+
+    run_otdfctl_sm list --namespace "$NS_ID" --sort created_at:desc --limit 500 --json
+    assert_success
+    assert_equal "$(echo "$output" | jq -r --arg a "$sm_a_id" --arg b "$sm_b_id" --arg c "$sm_c_id" '[.subject_mappings[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$sm_c_id,$sm_b_id,$sm_a_id"
+
+    run_otdfctl_sm update --id "$sm_a_id" --label sort=a --json
+    assert_success
+    sleep 1
+    run_otdfctl_sm update --id "$sm_b_id" --label sort=b --json
+    assert_success
+    sleep 1
+    run_otdfctl_sm update --id "$sm_c_id" --label sort=c --json
+    assert_success
+
+    run_otdfctl_sm list --namespace "$NS_ID" --sort updated_at:asc --limit 500 --json
+    assert_success
+    assert_equal "$(echo "$output" | jq -r --arg a "$sm_a_id" --arg b "$sm_b_id" --arg c "$sm_c_id" '[.subject_mappings[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$sm_a_id,$sm_b_id,$sm_c_id"
+
+    run_otdfctl_sm list --namespace "$NS_ID" --sort created_at: --limit 500 --json
+    assert_success
+    assert_equal "$(echo "$output" | jq -r --arg a "$sm_a_id" --arg b "$sm_b_id" --arg c "$sm_c_id" '[.subject_mappings[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$sm_c_id,$sm_b_id,$sm_a_id"
+
+    run_otdfctl_sm list --namespace "$NS_ID" --sort :asc --limit 500 --json
+    assert_success
+    assert_equal "$(echo "$output" | jq -r --arg a "$sm_a_id" --arg b "$sm_b_id" --arg c "$sm_c_id" '[.subject_mappings[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$sm_a_id,$sm_b_id,$sm_c_id"
+
+    run_otdfctl_sm delete --id "$sm_a_id" --force
+    run_otdfctl_sm delete --id "$sm_b_id" --force
+    run_otdfctl_sm delete --id "$sm_c_id" --force
+}
+
 @test "Create subject mapping with namespace ID" {
     run ./otdfctl $HOST $WITH_CREDS policy subject-mappings create -a "$SM_VAL2_ID" --action "$ACTION_READ_NAME" --subject-condition-set-new "$SCS_2" --namespace "$NS_ID" --json
     assert_success

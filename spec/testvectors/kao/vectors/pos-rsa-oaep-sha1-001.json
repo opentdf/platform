@@ -1,0 +1,46 @@
+{
+  "id": "pos-rsa-oaep-sha1-001",
+  "description": "Round-trip wrap/unwrap with RSA-OAEP using the rsa-4096-test test key.",
+  "conformance": [
+    "KAO-C-001",
+    "KAO-C-006",
+    "KAO-C-100",
+    "KAO-C-202"
+  ],
+  "category": "positive",
+  "algorithm": "RSA-OAEP",
+  "manifestSchemaVersion": "4.4.0",
+  "inputs": {
+    "kao": {
+      "alg": "RSA-OAEP",
+      "kas": "https://kas.example.com",
+      "kid": "rsa-4096-test",
+      "sid": "s-0",
+      "protectedKey": "BgKAsoPzeFmkyxzGGqWVEbc1a2eYWZ8cBhekfo9wJgFT7jLjzArLkDrikbUixT5Ud1vtj+7BloTJ7RPeLSEYQh5IBA65gJ20yAh6Fs8q16pkbcjn0TNTEl1lqo36UN94bUefdchCP8UcmYyfmpmS1UA2sqSFFkON9f11uoCNmWaqXTz5ESaW5vfyrxB1EhIQLOHLPv8azh62P8mi7Y/WPewmuEJ6DvVS+fUyjd//JK3/KLZ09vdOXTQtPTgsIwEo68kr4Qns2LCVgSZdO6X1DDa45quXODX7D6s2J4/E/81vVCt9JWugQzUrT4O2tWZm0kqPBhpY7VDNCUQ7gI78GzZtNmjqLOWBKxEwxA40RVKZ7TMPNC7WS/bYVmVpPZzSrn3wCLYdzT4pD6THRnSR5vR38Qs3mkNfVuXp2xqd2/BFZMI6lROzCqwh6ShBPW+SQOsRwirfIh3SD53QezQwyinTFuTzg6d+LgBHugcAEhi3qeG6Y0rBHCokQ8UBq8Snh7bC6SO3CSdbAR2ZFvlXq+gHmLVDDj/444a3bbF3xJEPVDYkffOtO74uLWu09hyMNptLZAqAtIh7K7rEB0Xy1M36V9LmYH05naHHGGpRoPa/57aMKqDAfVbC4AJtWGQbfRBgHJeWdP2Y3Vddw3PYEO6e30GgHoVmulZ/wTPDxUk=",
+      "policyBinding": {
+        "alg": "HS256",
+        "hash": "pTejsj6nAGsYTpJuLYsAertyrCY6GWVdDVQNG6D1O7A="
+      }
+    },
+    "policy": "eyJ1dWlkIjoiMTIzNDU2NzgtMTIzNC00MzIxLTk4NzYtMTIzNDU2Nzg5YWJjIiwiYm9keSI6eyJkYXRhQXR0cmlidXRlcyI6W3siYXR0cmlidXRlIjoiaHR0cHM6Ly9leGFtcGxlLmNvbS9hdHRyL0NsYXNzaWZpY2F0aW9uL3ZhbHVlL1B1YmxpYyJ9XSwiZGlzc2VtIjpbXX19",
+    "keys": {
+      "kas": "keys/rsa-4096-test.priv.pem"
+    }
+  },
+  "expected": {
+    "outcome": "accept",
+    "policyBindingValid": true,
+    "recoveredDek": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "normalizedKao": {
+      "alg": "RSA-OAEP",
+      "kas": "https://kas.example.com",
+      "kid": "rsa-4096-test",
+      "sid": "s-0",
+      "protectedKey": "BgKAsoPzeFmkyxzGGqWVEbc1a2eYWZ8cBhekfo9wJgFT7jLjzArLkDrikbUixT5Ud1vtj+7BloTJ7RPeLSEYQh5IBA65gJ20yAh6Fs8q16pkbcjn0TNTEl1lqo36UN94bUefdchCP8UcmYyfmpmS1UA2sqSFFkON9f11uoCNmWaqXTz5ESaW5vfyrxB1EhIQLOHLPv8azh62P8mi7Y/WPewmuEJ6DvVS+fUyjd//JK3/KLZ09vdOXTQtPTgsIwEo68kr4Qns2LCVgSZdO6X1DDa45quXODX7D6s2J4/E/81vVCt9JWugQzUrT4O2tWZm0kqPBhpY7VDNCUQ7gI78GzZtNmjqLOWBKxEwxA40RVKZ7TMPNC7WS/bYVmVpPZzSrn3wCLYdzT4pD6THRnSR5vR38Qs3mkNfVuXp2xqd2/BFZMI6lROzCqwh6ShBPW+SQOsRwirfIh3SD53QezQwyinTFuTzg6d+LgBHugcAEhi3qeG6Y0rBHCokQ8UBq8Snh7bC6SO3CSdbAR2ZFvlXq+gHmLVDDj/444a3bbF3xJEPVDYkffOtO74uLWu09hyMNptLZAqAtIh7K7rEB0Xy1M36V9LmYH05naHHGGpRoPa/57aMKqDAfVbC4AJtWGQbfRBgHJeWdP2Y3Vddw3PYEO6e30GgHoVmulZ/wTPDxUk=",
+      "policyBinding": {
+        "alg": "HS256",
+        "hash": "pTejsj6nAGsYTpJuLYsAertyrCY6GWVdDVQNG6D1O7A="
+      }
+    }
+  }
+}

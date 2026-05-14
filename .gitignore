@@ -91,3 +91,21 @@ otdfctl/*.tdf
 # Ignore go.cache
 otdfctl/.gocache
 # =========================
+
+# Spec tooling (spec/tools/)
+spec/tools/python/.venv/
+spec/tools/python/dist/
+spec/tools/python/build/
+spec/tools/python/.pytest_cache/
+spec/tools/python/.ruff_cache/
+spec/tools/python/.mypy_cache/
+spec/tools/python/**/__pycache__/
+spec/tools/python/**/*.egg-info/
+spec/tools/explorer/node_modules/
+spec/tools/explorer/dist/
+spec/tools/explorer/.astro/
+
+# Negate the repo-wide `keys/` ignore for our deliberate non-production
+# test fixtures (see spec/testvectors/kao/PROVENANCE.md).
+!spec/testvectors/kao/keys/
+!spec/testvectors/kao/keys/**

@@ -100,6 +100,14 @@ type IService interface {
 	RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error
 }
 
+type ExternalConnectRPCService interface {
+	RegisterExternalConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
+}
+
+type IPCConnectRPCService interface {
+	RegisterIPCConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
+}
+
 // Service is a struct that holds the registration information for a service as well as the state
 // of the service within the instance of the platform.
 type Service[S any] struct {
@@ -130,6 +138,12 @@ type ServiceOptions[S any] struct {
 	httpHandlerFunc HandlerServer
 	// ConnectRPCServiceHandler is the function that will be called to register the service with the
 	ConnectRPCFunc func(S, ...connect.HandlerOption) (string, http.Handler)
+	// ExternalConnectRPCFunc is the optional function used to register externally reachable Connect RPC handlers.
+	// If unset, ConnectRPCFunc is used to preserve existing service behavior.
+	ExternalConnectRPCFunc func(S, ...connect.HandlerOption) (string, http.Handler)
+	// IPCConnectRPCFunc is the optional function used to register in-process Connect RPC handlers.
+	// If unset, ConnectRPCFunc is used to preserve existing service behavior.
+	IPCConnectRPCFunc func(S, ...connect.HandlerOption) (string, http.Handler)
 	// Deprecated: Registers a gRPC service with the gRPC gateway
 	GRPCGatewayFunc func(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error
 	// DB is optional and used to register the service with a database
@@ -207,11 +221,34 @@ func (s Service[S]) RegisterConfigUpdateHook(ctx context.Context, hookAppender f
 }
 
 func (s Service[S]) RegisterConnectRPCServiceHandler(_ context.Context, connectRPC *server.ConnectRPC) error {
-	if s.ConnectRPCFunc == nil {
+	return s.registerConnectRPCServiceHandler(connectRPC, s.ConnectRPCFunc)
+}
+
+func (s Service[S]) RegisterExternalConnectRPCServiceHandler(_ context.Context, connectRPC *server.ConnectRPC) error {
+	connectRPCFunc := s.ExternalConnectRPCFunc
+	if connectRPCFunc == nil {
+		connectRPCFunc = s.ConnectRPCFunc
+	}
+	return s.registerConnectRPCServiceHandler(connectRPC, connectRPCFunc)
+}
+
+func (s Service[S]) RegisterIPCConnectRPCServiceHandler(_ context.Context, connectRPC *server.ConnectRPC) error {
+	connectRPCFunc := s.IPCConnectRPCFunc
+	if connectRPCFunc == nil {
+		connectRPCFunc = s.ConnectRPCFunc
+	}
+	return s.registerConnectRPCServiceHandler(connectRPC, connectRPCFunc)
+}
+
+func (s Service[S]) registerConnectRPCServiceHandler(
+	connectRPC *server.ConnectRPC,
+	connectRPCFunc func(S, ...connect.HandlerOption) (string, http.Handler),
+) error {
+	if connectRPCFunc == nil {
 		return errors.New("service did not register a handler")
 	}
 	connectRPC.ServiceReflection = append(connectRPC.ServiceReflection, s.GetServiceDesc().ServiceName)
-	path, handler := s.ConnectRPCFunc(s.impl, connectRPC.Interceptors...)
+	path, handler := connectRPCFunc(s.impl, connectRPC.Interceptors...)
 	connectRPC.Mux.Handle(path, handler)
 	return nil
 }

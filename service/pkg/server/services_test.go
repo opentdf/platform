@@ -607,6 +607,14 @@ func (m *mockOrderTrackingService) RegisterConnectRPCServiceHandler(context.Cont
 	return nil
 }
 
+func (m *mockOrderTrackingService) RegisterExternalConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error {
+	return nil
+}
+
+func (m *mockOrderTrackingService) RegisterIPCConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error {
+	return nil
+}
+
 func (m *mockOrderTrackingService) RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, *grpc.ClientConn) error {
 	return nil
 }

@@ -235,12 +235,12 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 			}
 
 			// Register Connect RPC Services
-			if err := svc.RegisterConnectRPCServiceHandler(ctx, otdf.ConnectRPC); err != nil {
+			if err := registerExternalConnectRPCServiceHandler(ctx, svc, otdf.ConnectRPC); err != nil {
 				logger.Info("service did not register a connect-rpc handler", slog.String("namespace", ns))
 			}
 
 			// Register In Process Connect RPC Services
-			if err := svc.RegisterConnectRPCServiceHandler(ctx, otdf.ConnectRPCInProcess.ConnectRPC); err != nil {
+			if err := registerIPCConnectRPCServiceHandler(ctx, svc, otdf.ConnectRPCInProcess.ConnectRPC); err != nil {
 				logger.Info("service did not register a connect-rpc handler", slog.String("namespace", ns))
 			}
 
@@ -280,6 +280,28 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 		gatewayCleanup = func() {}
 	}
 	return gatewayCleanup, nil
+}
+
+func registerExternalConnectRPCServiceHandler(
+	ctx context.Context,
+	svc serviceregistry.IService,
+	connectRPC *server.ConnectRPC,
+) error {
+	if externalSvc, ok := svc.(serviceregistry.ExternalConnectRPCService); ok {
+		return externalSvc.RegisterExternalConnectRPCServiceHandler(ctx, connectRPC)
+	}
+	return svc.RegisterConnectRPCServiceHandler(ctx, connectRPC)
+}
+
+func registerIPCConnectRPCServiceHandler(
+	ctx context.Context,
+	svc serviceregistry.IService,
+	connectRPC *server.ConnectRPC,
+) error {
+	if ipcSvc, ok := svc.(serviceregistry.IPCConnectRPCService); ok {
+		return ipcSvc.RegisterIPCConnectRPCServiceHandler(ctx, connectRPC)
+	}
+	return svc.RegisterConnectRPCServiceHandler(ctx, connectRPC)
 }
 
 func extractServiceLoggerConfig(cfg config.ServiceConfig) (string, error) {

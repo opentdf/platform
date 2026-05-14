@@ -158,3 +158,16 @@ func extractEntityChain(t *testing.T, eid *authorizationv2proto.EntityIdentifier
 	}
 	return ec.EntityChain
 }
+
+func TestForRegisteredResource(t *testing.T) {
+	fqn := "https://example.com/registered_resources/document/value/q3-financials"
+	eid := ForRegisteredResource(fqn)
+
+	rr, ok := eid.GetIdentifier().(*authorizationv2proto.EntityIdentifier_RegisteredResourceValueFqn)
+	if !ok {
+		t.Fatal("expected RegisteredResourceValueFqn identifier")
+	}
+	if got := rr.RegisteredResourceValueFqn; got != fqn {
+		t.Errorf("fqn = %q, want %q", got, fqn)
+	}
+}

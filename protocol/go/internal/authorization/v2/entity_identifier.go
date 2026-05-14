@@ -52,6 +52,20 @@ func ForUserName(username string) *authorizationv2.EntityIdentifier {
 	})
 }
 
+// ForRegisteredResource returns an EntityIdentifier that resolves the entity from a
+// registered resource value FQN. The resource itself acts as a single entity for
+// authorization and entitlement decisioning.
+//
+// fqn must be a fully-qualified resource value URL (e.g.
+// "https://example.com/registered_resources/foo/value/bar").
+func ForRegisteredResource(fqn string) *authorizationv2.EntityIdentifier {
+	return &authorizationv2.EntityIdentifier{
+		Identifier: &authorizationv2.EntityIdentifier_RegisteredResourceValueFqn{
+			RegisteredResourceValueFqn: fqn,
+		},
+	}
+}
+
 func entityIdentifierFromEntity(e *entity.Entity) *authorizationv2.EntityIdentifier {
 	return &authorizationv2.EntityIdentifier{
 		Identifier: &authorizationv2.EntityIdentifier_EntityChain{

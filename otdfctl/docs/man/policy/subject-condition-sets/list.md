@@ -50,9 +50,9 @@ otdfctl policy subject-condition-sets list --sort :asc
 ## Example
 
 ```shell
-otdfctl policy subject-condition-set list
+otdfctl policy subject-condition-sets list
 
-otdfctl policy subject-condition-set list --namespace "https://example.com"
+otdfctl policy subject-condition-sets list --namespace https://example.com
 ```
 
 Sort subject condition sets by creation time ascending:

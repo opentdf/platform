@@ -231,6 +231,7 @@ type OpenTDFServer struct {
 	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
 	CacheManager        *cache.Manager
+	connectRPCGateway   *inProcessServer
 
 	// To Deprecate: Use the TrustKeyIndex and TrustKeyManager instead
 	CryptoProvider *security.StandardCrypto
@@ -339,6 +340,13 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 			maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
 			maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
 			ConnectRPC:         connectRPCIpc,
+		},
+		connectRPCGateway: &inProcessServer{
+			logger:             logger.With("gateway_server", "true"),
+			srv:                memhttp.New(connectRPC.Mux),
+			maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
+			maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
+			ConnectRPC:         connectRPC,
 		},
 		logger:         logger,
 		PublicHostname: config.PublicHostname,
@@ -597,8 +605,16 @@ func (s OpenTDFServer) Stop() {
 		s.logger.Error("failed to shutdown in process connect-rpc server", slog.String("error", err.Error()))
 		return
 	}
+	if err := s.connectRPCGateway.srv.Shutdown(ctx); err != nil {
+		s.logger.Error("failed to shutdown grpc gateway connect-rpc server", slog.String("error", err.Error()))
+		return
+	}
 
 	s.logger.Info("shutdown complete")
+}
+
+func (s OpenTDFServer) GRPCGatewayConn() *grpc.ClientConn {
+	return s.connectRPCGateway.GrpcConn()
 }
 
 func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {

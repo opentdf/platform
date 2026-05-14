@@ -3,16 +3,20 @@ package server
 import (
 	"context"
 	"embed"
+	"errors"
 	"net/http"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type spyTestService struct {
@@ -686,6 +690,83 @@ func (suite *ServiceTestSuite) TestStartServices_StartsInRegistrationOrder() {
 
 	// call close function
 	registry.Shutdown()
+}
+
+func (suite *ServiceTestSuite) TestStartServices_GRPCGatewayUsesExternalConnectRPCHandler() {
+	ctx := context.Background()
+	registry := serviceregistry.NewServiceRegistry()
+	gatewayUsedExternalHandler := false
+	var gatewayErr error
+
+	const procedure = "/test.Gateway/Call"
+	externalHandler := func(struct{}, ...connect.HandlerOption) (string, http.Handler) {
+		return procedure, connect.NewUnaryHandler(
+			procedure,
+			func(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error) {
+				return connect.NewResponse(&emptypb.Empty{}), nil
+			},
+		)
+	}
+	ipcHandler := func(struct{}, ...connect.HandlerOption) (string, http.Handler) {
+		return procedure, connect.NewUnaryHandler(
+			procedure,
+			func(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error) {
+				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("ipc handler reached"))
+			},
+		)
+	}
+
+	svc := &serviceregistry.Service[struct{}]{
+		ServiceOptions: serviceregistry.ServiceOptions[struct{}]{
+			Namespace: "gateway-test",
+			ServiceDesc: &grpc.ServiceDesc{
+				ServiceName: "test.Gateway",
+			},
+			RegisterFunc: func(serviceregistry.RegistrationParams) (struct{}, serviceregistry.HandlerServer) {
+				return struct{}{}, nil
+			},
+			ExternalConnectRPCFunc: externalHandler,
+			IPCConnectRPCFunc:      ipcHandler,
+			GRPCGatewayFunc: func(ctx context.Context, _ *runtime.ServeMux, conn *grpc.ClientConn) error {
+				err := conn.Invoke(ctx, procedure, &emptypb.Empty{}, &emptypb.Empty{})
+				gatewayErr = err
+				gatewayUsedExternalHandler = err == nil
+				return err
+			},
+		},
+	}
+	suite.Require().NoError(registry.RegisterService(svc, "test"))
+
+	otdf, err := server.NewOpenTDFServer(server.Config{
+		GRPC: server.GRPCConfig{
+			MaxCallRecvMsgSizeBytes: 4194304,
+			MaxCallSendMsgSizeBytes: 4194304,
+		},
+		WellKnownConfigRegister: func(string, any) error {
+			return nil
+		},
+	}, logger.CreateTestLogger(), &cache.Manager{})
+	suite.Require().NoError(err)
+	defer otdf.Stop()
+
+	newLogger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
+	suite.Require().NoError(err)
+	cleanup, err := startServices(ctx, startServicesParams{
+		cfg: &config.Config{
+			Mode: []string{"test"},
+			Services: map[string]config.ServiceConfig{
+				"gateway-test": {},
+			},
+		},
+		otdf:   otdf,
+		logger: newLogger,
+		reg:    registry,
+	})
+	suite.Require().NoError(err)
+	defer cleanup()
+
+	suite.Require().NoError(gatewayErr)
+	suite.Require().True(gatewayUsedExternalHandler, "gRPC gateway should call the external ConnectRPC handler")
 }
 
 // Test_Extra_Services_With_Mode_Negation validates that extra services (both extra core services

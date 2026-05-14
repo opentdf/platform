@@ -244,9 +244,9 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				logger.Info("service did not register a connect-rpc handler", slog.String("namespace", ns))
 			}
 
-			// Register GRPC Gateway Handler using the in-process connect rpc
-			grpcConn := otdf.ConnectRPCInProcess.GrpcConn()
-			err := svc.RegisterGRPCGatewayHandler(ctx, otdf.GRPCGatewayMux, otdf.ConnectRPCInProcess.GrpcConn())
+			// Register GRPC Gateway Handler using the external connect rpc
+			grpcConn := otdf.GRPCGatewayConn()
+			err := svc.RegisterGRPCGatewayHandler(ctx, otdf.GRPCGatewayMux, grpcConn)
 			if err != nil {
 				logger.Info("service did not register a grpc gateway handler", slog.String("namespace", ns))
 			} else if gatewayCleanup == nil {

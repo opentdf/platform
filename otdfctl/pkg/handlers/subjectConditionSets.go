@@ -28,17 +28,13 @@ func (h Handler) ListSubjectConditionSets(ctx context.Context, limit, offset int
 	}
 	req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
 	if !sort.IsZero() {
-		var field subjectmapping.SortSubjectConditionSetsType
-		if sort.Field != "" {
-			var ok bool
-			allowedFields := map[string]subjectmapping.SortSubjectConditionSetsType{
-				"created_at": subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT,
-				"updated_at": subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT,
-			}
-			field, ok = allowedFields[sort.Field]
-			if !ok {
-				return nil, invalidSortFieldError("subject condition sets", sort.Field, allowedFields)
-			}
+		allowedFields := map[string]subjectmapping.SortSubjectConditionSetsType{
+			"created_at": subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT,
+			"updated_at": subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT,
+		}
+		field, err := sortField("subject condition sets", sort, allowedFields)
+		if err != nil {
+			return nil, err
 		}
 		req.Sort = []*subjectmapping.SubjectConditionSetsSort{{Field: field, Direction: sort.Direction}}
 	}

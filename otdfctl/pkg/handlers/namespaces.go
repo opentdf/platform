@@ -47,19 +47,15 @@ func (h Handler) ListNamespaces(ctx context.Context, state common.ActiveStateEnu
 		},
 	}
 	if !sort.IsZero() {
-		var field namespaces.SortNamespacesType
-		if sort.Field != "" {
-			var ok bool
-			allowedFields := map[string]namespaces.SortNamespacesType{
-				"name":       namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME,
-				"fqn":        namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN,
-				"created_at": namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT,
-				"updated_at": namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UPDATED_AT,
-			}
-			field, ok = allowedFields[sort.Field]
-			if !ok {
-				return nil, invalidSortFieldError("namespaces", sort.Field, allowedFields)
-			}
+		allowedFields := map[string]namespaces.SortNamespacesType{
+			"name":       namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME,
+			"fqn":        namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN,
+			"created_at": namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT,
+			"updated_at": namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UPDATED_AT,
+		}
+		field, err := sortField("namespaces", sort, allowedFields)
+		if err != nil {
+			return nil, err
 		}
 		req.Sort = []*namespaces.NamespacesSort{{Field: field, Direction: sort.Direction}}
 	}

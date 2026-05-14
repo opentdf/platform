@@ -22,20 +22,9 @@ const (
 
 var (
 	ErrInvalidSortFormat    = errors.New("sort must use field:direction; field or direction may be omitted")
-	ErrInvalidSortDirection = errors.New("sort direction must be asc or desc")
+	ErrInvalidSortDirection = errors.New("invalid sort direction")
+	ErrInvalidSortField     = errors.New("invalid sort field")
 )
-
-type InvalidSortDirectionError struct {
-	Direction string
-}
-
-func (e InvalidSortDirectionError) Error() string {
-	return fmt.Sprintf("%s: %q", ErrInvalidSortDirection, e.Direction)
-}
-
-func (e InvalidSortDirectionError) Unwrap() error {
-	return ErrInvalidSortDirection
-}
 
 func ParseSortOption(value string) (SortOption, error) {
 	value = strings.TrimSpace(value)
@@ -74,12 +63,29 @@ func parseSortDirection(value string) (policy.SortDirection, error) {
 	case sortDirectionDesc:
 		return policy.SortDirection_SORT_DIRECTION_DESC, nil
 	default:
-		return policy.SortDirection_SORT_DIRECTION_UNSPECIFIED, InvalidSortDirectionError{Direction: value}
+		return policy.SortDirection_SORT_DIRECTION_UNSPECIFIED, errors.Join(
+			ErrInvalidSortDirection,
+			fmt.Errorf("%q must be asc or desc", value),
+		)
 	}
 }
 
 func (s SortOption) IsZero() bool {
 	return s.Field == "" && s.Direction == policy.SortDirection_SORT_DIRECTION_UNSPECIFIED
+}
+
+func sortField[T any](resource string, option SortOption, allowed map[string]T) (T, error) {
+	var zero T
+	if option.Field == "" {
+		return zero, nil
+	}
+
+	field, ok := allowed[option.Field]
+	if !ok {
+		return zero, invalidSortFieldError(resource, option.Field, allowed)
+	}
+
+	return field, nil
 }
 
 func invalidSortFieldError[T any](resource, field string, allowed map[string]T) error {
@@ -88,5 +94,8 @@ func invalidSortFieldError[T any](resource, field string, allowed map[string]T) 
 		fields = append(fields, f)
 	}
 	sort.Strings(fields)
-	return fmt.Errorf("invalid sort field %q for %s; valid fields: %s", field, resource, strings.Join(fields, ", "))
+	return errors.Join(
+		ErrInvalidSortField,
+		fmt.Errorf("%q is not a valid sort field for %s; valid fields: %s", field, resource, strings.Join(fields, ", ")),
+	)
 }

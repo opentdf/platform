@@ -63,18 +63,14 @@ func (h Handler) ListAttributes(ctx context.Context, state common.ActiveStateEnu
 		},
 	}
 	if !sort.IsZero() {
-		var field attributes.SortAttributesType
-		if sort.Field != "" {
-			var ok bool
-			allowedFields := map[string]attributes.SortAttributesType{
-				"name":       attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME,
-				"created_at": attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT,
-				"updated_at": attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UPDATED_AT,
-			}
-			field, ok = allowedFields[sort.Field]
-			if !ok {
-				return nil, invalidSortFieldError("attributes", sort.Field, allowedFields)
-			}
+		allowedFields := map[string]attributes.SortAttributesType{
+			"name":       attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME,
+			"created_at": attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT,
+			"updated_at": attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UPDATED_AT,
+		}
+		field, err := sortField("attributes", sort, allowedFields)
+		if err != nil {
+			return nil, err
 		}
 		req.Sort = []*attributes.AttributesSort{{Field: field, Direction: sort.Direction}}
 	}

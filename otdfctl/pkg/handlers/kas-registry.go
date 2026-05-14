@@ -50,19 +50,15 @@ func (h Handler) ListKasRegistryEntries(ctx context.Context, limit, offset int32
 		},
 	}
 	if !sort.IsZero() {
-		var field kasregistry.SortKeyAccessServersType
-		if sort.Field != "" {
-			var ok bool
-			allowedFields := map[string]kasregistry.SortKeyAccessServersType{
-				"name":       kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_NAME,
-				"uri":        kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_URI,
-				"created_at": kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT,
-				"updated_at": kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UPDATED_AT,
-			}
-			field, ok = allowedFields[sort.Field]
-			if !ok {
-				return nil, invalidSortFieldError("KAS registry entries", sort.Field, allowedFields)
-			}
+		allowedFields := map[string]kasregistry.SortKeyAccessServersType{
+			"name":       kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_NAME,
+			"uri":        kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_URI,
+			"created_at": kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT,
+			"updated_at": kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UPDATED_AT,
+		}
+		field, err := sortField("KAS registry entries", sort, allowedFields)
+		if err != nil {
+			return nil, err
 		}
 		req.Sort = []*kasregistry.KeyAccessServersSort{{Field: field, Direction: sort.Direction}}
 	}

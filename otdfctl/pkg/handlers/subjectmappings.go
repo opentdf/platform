@@ -33,17 +33,13 @@ func (h Handler) ListSubjectMappings(ctx context.Context, limit, offset int32, n
 	}
 	req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
 	if !sort.IsZero() {
-		var field subjectmapping.SortSubjectMappingsType
-		if sort.Field != "" {
-			var ok bool
-			allowedFields := map[string]subjectmapping.SortSubjectMappingsType{
-				"created_at": subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT,
-				"updated_at": subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT,
-			}
-			field, ok = allowedFields[sort.Field]
-			if !ok {
-				return nil, invalidSortFieldError("subject mappings", sort.Field, allowedFields)
-			}
+		allowedFields := map[string]subjectmapping.SortSubjectMappingsType{
+			"created_at": subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT,
+			"updated_at": subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT,
+		}
+		field, err := sortField("subject mappings", sort, allowedFields)
+		if err != nil {
+			return nil, err
 		}
 		req.Sort = []*subjectmapping.SubjectMappingsSort{{Field: field, Direction: sort.Direction}}
 	}

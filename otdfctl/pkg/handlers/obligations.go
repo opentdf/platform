@@ -74,19 +74,15 @@ func (h Handler) ListObligations(ctx context.Context, limit, offset int32, names
 		req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
 	}
 	if !sort.IsZero() {
-		var field obligations.SortObligationsType
-		if sort.Field != "" {
-			var ok bool
-			allowedFields := map[string]obligations.SortObligationsType{
-				"name":       obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_NAME,
-				"fqn":        obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_FQN,
-				"created_at": obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT,
-				"updated_at": obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UPDATED_AT,
-			}
-			field, ok = allowedFields[sort.Field]
-			if !ok {
-				return nil, invalidSortFieldError("obligations", sort.Field, allowedFields)
-			}
+		allowedFields := map[string]obligations.SortObligationsType{
+			"name":       obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_NAME,
+			"fqn":        obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_FQN,
+			"created_at": obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT,
+			"updated_at": obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UPDATED_AT,
+		}
+		field, err := sortField("obligations", sort, allowedFields)
+		if err != nil {
+			return nil, err
 		}
 		req.Sort = []*obligations.ObligationsSort{{Field: field, Direction: sort.Direction}}
 	}

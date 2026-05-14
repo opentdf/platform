@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -85,15 +84,37 @@ func TestParseSortOption(t *testing.T) {
 			if tt.wantError != nil {
 				require.Error(t, err)
 				require.ErrorIs(t, err, tt.wantError)
-				if errors.Is(tt.wantError, ErrInvalidSortDirection) {
-					var directionErr InvalidSortDirectionError
-					require.ErrorAs(t, err, &directionErr)
-					assert.Equal(t, "up", directionErr.Direction)
-				}
 				return
 			}
 			require.NoError(t, err)
 			assert.Equal(t, tt.expected, actual)
 		})
 	}
+}
+
+func TestSortField(t *testing.T) {
+	allowed := map[string]int{
+		"name":       1,
+		"created_at": 2,
+	}
+
+	t.Run("omitted field returns zero value", func(t *testing.T) {
+		field, err := sortField("test resources", SortOption{}, allowed)
+		require.NoError(t, err)
+		assert.Equal(t, 0, field)
+	})
+
+	t.Run("known field returns mapped value", func(t *testing.T) {
+		field, err := sortField("test resources", SortOption{Field: "name"}, allowed)
+		require.NoError(t, err)
+		assert.Equal(t, 1, field)
+	})
+
+	t.Run("unknown field returns valid fields", func(t *testing.T) {
+		field, err := sortField("test resources", SortOption{Field: "updated_at"}, allowed)
+		require.Error(t, err)
+		assert.Equal(t, 0, field)
+		require.ErrorIs(t, err, ErrInvalidSortField)
+		assert.EqualError(t, err, "invalid sort field\n\"updated_at\" is not a valid sort field for test resources; valid fields: created_at, name")
+	})
 }

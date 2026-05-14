@@ -6,7 +6,6 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/service/logger"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -30,6 +29,12 @@ type authContext struct {
 	rawToken    string
 }
 
+// optionalErrorLogger keeps pkg/auth decoupled from the concrete logger package
+// and helps avoid an import cycle.
+type optionalErrorLogger interface {
+	ErrorContext(context.Context, string, ...any)
+}
+
 func ContextWithAuthNInfo(ctx context.Context, key jwk.Key, accessToken jwt.Token, raw string) context.Context {
 	return context.WithValue(ctx, authnContextKey, &authContext{
 		key,
@@ -38,7 +43,7 @@ func ContextWithAuthNInfo(ctx context.Context, key jwk.Key, accessToken jwt.Toke
 	})
 }
 
-func getContextDetails(ctx context.Context, l *logger.Logger) *authContext {
+func getContextDetails(ctx context.Context, l optionalErrorLogger) *authContext {
 	key := ctx.Value(authnContextKey)
 	if key == nil {
 		return nil
@@ -47,37 +52,43 @@ func getContextDetails(ctx context.Context, l *logger.Logger) *authContext {
 		return c
 	}
 
-	// We should probably return an error here?
-	l.ErrorContext(ctx, "invalid authContext")
+	if l != nil {
+		l.ErrorContext(ctx, "invalid authContext")
+	}
 	return nil
 }
 
-func GetJWKFromContext(ctx context.Context, l *logger.Logger) jwk.Key {
+func GetJWKFromContext(ctx context.Context, l optionalErrorLogger) jwk.Key {
 	if c := getContextDetails(ctx, l); c != nil {
 		return c.key
 	}
 	return nil
 }
 
-func GetAccessTokenFromContext(ctx context.Context, l *logger.Logger) jwt.Token {
+func GetAccessTokenFromContext(ctx context.Context, l optionalErrorLogger) jwt.Token {
 	if c := getContextDetails(ctx, l); c != nil {
-		return c.accessToken
+		if c.accessToken != nil {
+			return c.accessToken
+		}
 	}
 	return nil
 }
 
-func GetRawAccessTokenFromContext(ctx context.Context, l *logger.Logger) string {
+func GetRawAccessTokenFromContext(ctx context.Context, l optionalErrorLogger) string {
 	if c := getContextDetails(ctx, l); c != nil {
-		return c.rawToken
+		if c.rawToken != "" {
+			return c.rawToken
+		}
 	}
 	return ""
 }
 
 // EnrichIncomingContextMetadataWithAuthn adds the access token and client ID to incoming context metadata
 //
-// Adding the authn info to gRPC metadata propagates it across services rather than strictly
-// in-process within Go alone
-func EnrichIncomingContextMetadataWithAuthn(ctx context.Context, l *logger.Logger, clientID string) context.Context {
+// This transports an already-authenticated token across internal hops. It does not
+// validate the token again; the ConnectUnaryServerInterceptor auth middleware does that
+// before ContextWithAuthNInfo is created.
+func EnrichIncomingContextMetadataWithAuthn(ctx context.Context, l optionalErrorLogger, clientID string) context.Context {
 	rawToken := GetRawAccessTokenFromContext(ctx, l)
 
 	md, ok := metadata.FromIncomingContext(ctx)

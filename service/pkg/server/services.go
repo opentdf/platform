@@ -165,15 +165,9 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 
 		// If ns has log_level in config, create new logger with that level
 		if err == nil {
-			if extractedLogLevel != cfg.Logger.Level {
-				slog.Debug("configuring logger")
-				newLoggerConfig := cfg.Logger
-				newLoggerConfig.Level = extractedLogLevel
-				newSvcLogger, err := logging.NewLogger(newLoggerConfig)
-				// only assign if logger successfully created
-				if err == nil {
-					svcLogger = newSvcLogger.With("namespace", ns)
-				}
+			svcLogger, err = buildNamespaceLogger(svcLogger, cfg, ns, extractedLogLevel)
+			if err != nil {
+				return func() {}, err
 			}
 		}
 
@@ -292,6 +286,26 @@ func extractServiceLoggerConfig(cfg config.ServiceConfig) (string, error) {
 		return svcLoggerConfig.LogLevel, nil
 	}
 	return "", fmt.Errorf("could not decode service log level: %w", err)
+}
+
+func buildNamespaceLogger(baseLogger *logging.Logger, cfg *config.Config, ns, level string) (*logging.Logger, error) {
+	if level == cfg.Logger.Level {
+		return baseLogger, nil
+	}
+
+	slog.Debug("configuring logger")
+	newLoggerConfig := cfg.Logger
+	newLoggerConfig.Level = level
+
+	namespaceLogger, loggerErr := logging.NewLogger(newLoggerConfig)
+	if loggerErr != nil {
+		return nil, fmt.Errorf("invalid namespace logger config for %s: %w", ns, loggerErr)
+	}
+
+	if err := namespaceLogger.Audit.ApplyConfig(cfg.Audit); err != nil {
+		return nil, fmt.Errorf("could not apply audit config for namespace %s: %w", ns, err)
+	}
+	return namespaceLogger.With("namespace", ns), nil
 }
 
 // newServiceDBClient creates a new database client for the specified namespace.

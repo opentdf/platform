@@ -6,7 +6,6 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/metadata"
@@ -38,7 +37,7 @@ func TestGetJWKFromContext(t *testing.T) {
 	ctx := ContextWithAuthNInfo(t.Context(), mockJWK, nil, "")
 
 	// Retrieve the JWK and assert
-	retrievedJWK := GetJWKFromContext(ctx, logger.CreateTestLogger())
+	retrievedJWK := GetJWKFromContext(ctx, nil)
 	assert.NotNil(t, retrievedJWK, "JWK should not be nil")
 	assert.Equal(t, mockJWK, retrievedJWK, "Retrieved JWK should match the mock JWK")
 }
@@ -49,7 +48,7 @@ func TestGetAccessTokenFromContext(t *testing.T) {
 	ctx := ContextWithAuthNInfo(t.Context(), nil, mockJWT, "")
 
 	// Retrieve the JWT and assert
-	retrievedJWT := GetAccessTokenFromContext(ctx, logger.CreateTestLogger())
+	retrievedJWT := GetAccessTokenFromContext(ctx, nil)
 	assert.NotNil(t, retrievedJWT, "Access token should not be nil")
 	assert.Equal(t, mockJWT, retrievedJWT, "Retrieved JWT should match the mock JWT")
 }
@@ -60,8 +59,37 @@ func TestGetRawAccessTokenFromContext(t *testing.T) {
 	ctx := ContextWithAuthNInfo(t.Context(), nil, nil, rawToken)
 
 	// Retrieve the raw token and assert
-	retrievedRawToken := GetRawAccessTokenFromContext(ctx, logger.CreateTestLogger())
+	retrievedRawToken := GetRawAccessTokenFromContext(ctx, nil)
 	assert.Equal(t, rawToken, retrievedRawToken, "Retrieved raw token should match the mock raw token")
+}
+
+func TestGetRawAccessTokenFromContextDoesNotFallbackToMetadata(t *testing.T) {
+	t.Run("incoming access token metadata", func(t *testing.T) {
+		ctx := metadata.NewIncomingContext(t.Context(), metadata.Pairs(AccessTokenKey, "incoming-token"))
+		retrievedRawToken := GetRawAccessTokenFromContext(ctx, nil)
+		assert.Empty(t, retrievedRawToken)
+	})
+
+	t.Run("outgoing authorization metadata", func(t *testing.T) {
+		ctx := metadata.NewOutgoingContext(t.Context(), metadata.Pairs("Authorization", "Bearer outgoing-token"))
+		retrievedRawToken := GetRawAccessTokenFromContext(ctx, nil)
+		assert.Empty(t, retrievedRawToken)
+	})
+}
+
+func TestGetAccessTokenFromContextDoesNotFallbackToMetadata(t *testing.T) {
+	mockJWT, err := jwt.NewBuilder().
+		Subject("metadata-user").
+		Claim("roles", []string{"admin"}).
+		Build()
+	require.NoError(t, err)
+
+	rawToken, err := jwt.Sign(mockJWT, jwt.WithInsecureNoSignature())
+	require.NoError(t, err)
+
+	ctx := metadata.NewIncomingContext(t.Context(), metadata.Pairs(AccessTokenKey, string(rawToken)))
+	retrievedJWT := GetAccessTokenFromContext(ctx, nil)
+	assert.Nil(t, retrievedJWT)
 }
 
 func TestGetContextDetailsInvalidType(t *testing.T) {
@@ -69,17 +97,15 @@ func TestGetContextDetailsInvalidType(t *testing.T) {
 	ctx := context.WithValue(t.Context(), authnContextKey, "invalidType")
 
 	// Assert that GetJWKFromContext handles the invalid type correctly
-	retrievedJWK := GetJWKFromContext(ctx, logger.CreateTestLogger())
+	retrievedJWK := GetJWKFromContext(ctx, nil)
 	assert.Nil(t, retrievedJWK, "JWK should be nil when context value is invalid")
 }
 
 func TestEnrichIncomingContextMetadataWithAuthn(t *testing.T) {
 	mockClientID := "test-client-id"
-	l := logger.CreateTestLogger()
-
 	t.Run("should add access token and client id to metadata", func(t *testing.T) {
 		ctx := ContextWithAuthNInfo(t.Context(), nil, nil, "raw-token-string")
-		enrichedCtx := EnrichIncomingContextMetadataWithAuthn(ctx, l, mockClientID)
+		enrichedCtx := EnrichIncomingContextMetadataWithAuthn(ctx, nil, mockClientID)
 
 		md, ok := metadata.FromIncomingContext(enrichedCtx)
 		require.True(t, ok)
@@ -95,7 +121,7 @@ func TestEnrichIncomingContextMetadataWithAuthn(t *testing.T) {
 
 	t.Run("should not set client id if empty", func(t *testing.T) {
 		ctx := ContextWithAuthNInfo(t.Context(), nil, nil, "raw-token-string")
-		enrichedCtx := EnrichIncomingContextMetadataWithAuthn(ctx, l, "")
+		enrichedCtx := EnrichIncomingContextMetadataWithAuthn(ctx, nil, "")
 
 		md, ok := metadata.FromIncomingContext(enrichedCtx)
 		require.True(t, ok)
@@ -108,7 +134,7 @@ func TestEnrichIncomingContextMetadataWithAuthn(t *testing.T) {
 		originalMD := metadata.New(map[string]string{"original-key": "original-value"})
 		ctx := metadata.NewIncomingContext(t.Context(), originalMD)
 		ctx = ContextWithAuthNInfo(ctx, nil, nil, "raw-token-string")
-		enrichedCtx := EnrichIncomingContextMetadataWithAuthn(ctx, l, mockClientID)
+		enrichedCtx := EnrichIncomingContextMetadataWithAuthn(ctx, nil, mockClientID)
 
 		md, ok := metadata.FromIncomingContext(enrichedCtx)
 		require.True(t, ok)

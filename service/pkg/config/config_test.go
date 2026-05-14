@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	auditcfg "github.com/opentdf/platform/service/logger/audit"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -356,6 +357,8 @@ func TestLoad_Precedence(t *testing.T) {
 		setupLoaders func(t *testing.T, configFile string) []Loader
 		envVars      map[string]string
 		err          error
+		causeErr     error
+		errContains  string
 		fileContent  string
 		asserts      func(t *testing.T, cfg *Config)
 	}{
@@ -388,13 +391,41 @@ server:
   port: 9090
 logger:
   level: warn
+audit:
+  jwt_claim_mappings:
+    - claim: email_verified
+      path: eventMetaData.requester.emailVerified
 `,
 			asserts: func(t *testing.T, cfg *Config) {
 				// Values from file
 				assert.Equal(t, 9090, cfg.Server.Port)
 				assert.Equal(t, "warn", cfg.Logger.Level)
+				assert.Equal(t, []auditcfg.JWTClaimMapping{
+					{Claim: "email_verified", Path: "eventMetaData.requester.emailVerified"},
+				}, cfg.Audit.JWTClaimMappings)
 				// Value from defaults
 				assert.Equal(t, []string{"all"}, cfg.Mode)
+			},
+		},
+		{
+			name: "top level audit mapping paths pass validation",
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				file, err := NewConfigFileLoader(configKey, configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				return []Loader{file, defaults}
+			},
+			fileContent: `
+audit:
+  jwt_claim_mappings:
+    - claim: email_verified
+      path: banana.requester.emailVerified
+`,
+			asserts: func(t *testing.T, cfg *Config) {
+				assert.Equal(t, []auditcfg.JWTClaimMapping{
+					{Claim: "email_verified", Path: "banana.requester.emailVerified"},
+				}, cfg.Audit.JWTClaimMappings)
 			},
 		},
 		{
@@ -425,6 +456,24 @@ special_key:
 				// Value from defaults
 				assert.Equal(t, []string{"all"}, cfg.Mode)
 			},
+		},
+		{
+			name: "invalid audit mapping path fails validation",
+			setupLoaders: func(t *testing.T, configFile string) []Loader {
+				file, err := NewConfigFileLoader(configKey, configFile)
+				require.NoError(t, err)
+				defaults, err := NewDefaultSettingsLoader()
+				require.NoError(t, err)
+				return []Loader{file, defaults}
+			},
+			err:      ErrUnmarshallingConfig,
+			causeErr: auditcfg.ErrReservedAuditPath,
+			fileContent: `
+audit:
+  jwt_claim_mappings:
+    - claim: sub
+      path: requestID
+`,
 		},
 		{
 			name: "env overrides file and defaults except client_id",
@@ -662,6 +711,14 @@ logger:
 			// Assertions
 			if tc.err != nil {
 				require.Error(t, err)
+				require.ErrorIs(t, err, tc.err)
+				if tc.causeErr != nil {
+					require.ErrorIs(t, err, tc.causeErr)
+				}
+				if tc.errContains != "" {
+					require.ErrorContains(t, err, tc.errContains)
+				}
+				require.Nil(t, cfg)
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, cfg)

@@ -236,12 +236,12 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 
 			// Register Connect RPC Services
 			if err := registerExternalConnectRPCServiceHandler(ctx, svc, otdf.ConnectRPC); err != nil {
-				logger.Info("service did not register a connect-rpc handler", slog.String("namespace", ns))
+				logger.Info("service did not register an external connect-rpc handler", slog.String("namespace", ns))
 			}
 
 			// Register In Process Connect RPC Services
 			if err := registerIPCConnectRPCServiceHandler(ctx, svc, otdf.ConnectRPCInProcess.ConnectRPC); err != nil {
-				logger.Info("service did not register a connect-rpc handler", slog.String("namespace", ns))
+				logger.Info("service did not register an IPC connect-rpc handler", slog.String("namespace", ns))
 			}
 
 			// Register GRPC Gateway Handler using the external connect rpc

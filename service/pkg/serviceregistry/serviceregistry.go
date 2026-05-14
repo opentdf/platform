@@ -139,10 +139,10 @@ type ServiceOptions[S any] struct {
 	// ConnectRPCServiceHandler is the function that will be called to register the service with the
 	ConnectRPCFunc func(S, ...connect.HandlerOption) (string, http.Handler)
 	// ExternalConnectRPCFunc is the optional function used to register externally reachable Connect RPC handlers.
-	// If unset, ConnectRPCFunc is used to preserve existing service behavior.
+	// If set, IPCConnectRPCFunc must also be set.
 	ExternalConnectRPCFunc func(S, ...connect.HandlerOption) (string, http.Handler)
 	// IPCConnectRPCFunc is the optional function used to register in-process Connect RPC handlers.
-	// If unset, ConnectRPCFunc is used to preserve existing service behavior.
+	// If set, ExternalConnectRPCFunc must also be set.
 	IPCConnectRPCFunc func(S, ...connect.HandlerOption) (string, http.Handler)
 	// Deprecated: Registers a gRPC service with the gRPC gateway
 	GRPCGatewayFunc func(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error
@@ -187,6 +187,9 @@ func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) error
 	if s.Started {
 		return errors.New("service already started")
 	}
+	if err := s.validateConnectRPCServiceHandlers(); err != nil {
+		return err
+	}
 
 	if s.DB.Required && !params.DBClient.RanMigrations() && params.DBClient.MigrationsEnabled() {
 		appliedMigrations, err := params.DBClient.RunMigrations(ctx, s.DB.Migrations)
@@ -221,10 +224,16 @@ func (s Service[S]) RegisterConfigUpdateHook(ctx context.Context, hookAppender f
 }
 
 func (s Service[S]) RegisterConnectRPCServiceHandler(_ context.Context, connectRPC *server.ConnectRPC) error {
+	if err := s.validateConnectRPCServiceHandlers(); err != nil {
+		return err
+	}
 	return s.registerConnectRPCServiceHandler(connectRPC, s.ConnectRPCFunc)
 }
 
 func (s Service[S]) RegisterExternalConnectRPCServiceHandler(_ context.Context, connectRPC *server.ConnectRPC) error {
+	if err := s.validateConnectRPCServiceHandlers(); err != nil {
+		return err
+	}
 	connectRPCFunc := s.ExternalConnectRPCFunc
 	if connectRPCFunc == nil {
 		connectRPCFunc = s.ConnectRPCFunc
@@ -233,11 +242,23 @@ func (s Service[S]) RegisterExternalConnectRPCServiceHandler(_ context.Context, 
 }
 
 func (s Service[S]) RegisterIPCConnectRPCServiceHandler(_ context.Context, connectRPC *server.ConnectRPC) error {
+	if err := s.validateConnectRPCServiceHandlers(); err != nil {
+		return err
+	}
 	connectRPCFunc := s.IPCConnectRPCFunc
 	if connectRPCFunc == nil {
 		connectRPCFunc = s.ConnectRPCFunc
 	}
 	return s.registerConnectRPCServiceHandler(connectRPC, connectRPCFunc)
+}
+
+func (s Service[S]) validateConnectRPCServiceHandlers() error {
+	hasExternalConnectRPCFunc := s.ExternalConnectRPCFunc != nil
+	hasIPCConnectRPCFunc := s.IPCConnectRPCFunc != nil
+	if hasExternalConnectRPCFunc != hasIPCConnectRPCFunc {
+		return errors.New("external and IPC ConnectRPC handlers must be configured together")
+	}
+	return nil
 }
 
 func (s Service[S]) registerConnectRPCServiceHandler(

@@ -36,10 +36,7 @@ func TestConnectRPCSplitUsesExplicitExternalAndIPCHandlers(t *testing.T) {
 
 	var calls []string
 	service := newConnectRPCTestService(
-		func(string, ...connect.HandlerOption) (string, http.Handler) {
-			calls = append(calls, "default")
-			return "/test.Default/Call", http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})
-		},
+		nil,
 		func(impl string, _ ...connect.HandlerOption) (string, http.Handler) {
 			calls = append(calls, "external:"+impl)
 			return "/test.External/Call", http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})
@@ -55,6 +52,42 @@ func TestConnectRPCSplitUsesExplicitExternalAndIPCHandlers(t *testing.T) {
 	require.NoError(t, service.RegisterIPCConnectRPCServiceHandler(context.Background(), newTestConnectRPC()))
 
 	require.Equal(t, []string{"external:impl", "ipc:impl"}, calls)
+}
+
+func TestConnectRPCSplitRejectsOnlyExternalHandler(t *testing.T) {
+	t.Parallel()
+
+	service := newConnectRPCTestService(
+		nil,
+		func(string, ...connect.HandlerOption) (string, http.Handler) {
+			return "/test.External/Call", http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})
+		},
+		nil,
+	)
+
+	require.ErrorContains(
+		t,
+		service.Start(context.Background(), RegistrationParams{}),
+		"external and IPC ConnectRPC handlers must be configured together",
+	)
+}
+
+func TestConnectRPCSplitRejectsOnlyIPCHandler(t *testing.T) {
+	t.Parallel()
+
+	service := newConnectRPCTestService(
+		nil,
+		nil,
+		func(string, ...connect.HandlerOption) (string, http.Handler) {
+			return "/test.IPC/Call", http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})
+		},
+	)
+
+	require.ErrorContains(
+		t,
+		service.Start(context.Background(), RegistrationParams{}),
+		"external and IPC ConnectRPC handlers must be configured together",
+	)
 }
 
 func newConnectRPCTestService(

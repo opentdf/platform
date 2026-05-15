@@ -15,7 +15,9 @@ command:
       shorthand: n
       description: Namespace ID or FQN by which to filter results
     - name: sort
-      description: Sort list results with field:direction syntax. Either field or direction may be omitted
+      description: Sort list results by field
+    - name: order
+      description: Sort order direction. Accepted values are asc and desc
 ---
 
 List obligations definitions (optionally by namespace).
@@ -24,7 +26,7 @@ For more information about obligations, see the `obligations` subcommand.
 
 ## Sort Options
 
-Use `--sort <field>:<direction>`. Either side may be omitted, for example `name:` or `:asc`.
+Use `--sort <field>` with optional `--order <direction>`. Either flag may be omitted.
 
 | Direction | Description | Default |
 | --- | --- | --- |
@@ -41,13 +43,13 @@ Use `--sort <field>:<direction>`. Either side may be omitted, for example `name:
 Omit direction and let the server choose the default direction:
 
 ```shell
-otdfctl policy obligations list --sort name:
+otdfctl policy obligations list --sort name
 ```
 
 Omit field and let the server choose the default field:
 
 ```shell
-otdfctl policy obligations list --sort :asc
+otdfctl policy obligations list --order asc
 ```
 
 ## Example
@@ -59,5 +61,5 @@ otdfctl policy obligations list --limit 10 --offset 0
 Sort obligations by name ascending:
 
 ```shell
-otdfctl policy obligations list --sort name:asc
+otdfctl policy obligations list --sort name --order asc
 ```

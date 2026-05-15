@@ -163,52 +163,48 @@ teardown() {
     [[ $total -ge 1 ]]
 }
 
-@test "list registered KASes supports sort fields and partial sort syntax" {
+@test "list registered KASes supports sort and order flags" {
     export CREATED=""
     sort_prefix="sort-kas-$BATS_TEST_NUMBER-$RANDOM"
     kas_a=$(./otdfctl $HOST $WITH_CREDS policy kas-registry create --name "$sort_prefix-alpha" --uri "https://$sort_prefix-alpha.example.com" --json)
-    sleep 1
     kas_b=$(./otdfctl $HOST $WITH_CREDS policy kas-registry create --name "$sort_prefix-bravo" --uri "https://$sort_prefix-bravo.example.com" --json)
-    sleep 1
     kas_c=$(./otdfctl $HOST $WITH_CREDS policy kas-registry create --name "$sort_prefix-charlie" --uri "https://$sort_prefix-charlie.example.com" --json)
     kas_a_id=$(echo "$kas_a" | jq -r '.id')
     kas_b_id=$(echo "$kas_b" | jq -r '.id')
     kas_c_id=$(echo "$kas_c" | jq -r '.id')
 
-    run_otdfctl_kasr list --sort name:asc --limit 500 --json
+    run_otdfctl_kasr list --sort name --order asc --limit 500 --json
     assert_success
     assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.key_access_servers[] | select((.name // "") | startswith($prefix)) | .id] | join(",")')" "$kas_a_id,$kas_b_id,$kas_c_id"
 
-    run_otdfctl_kasr list --sort name:desc --limit 500 --json
+    run_otdfctl_kasr list --sort name --order desc --limit 500 --json
     assert_success
     assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.key_access_servers[] | select((.name // "") | startswith($prefix)) | .id] | join(",")')" "$kas_c_id,$kas_b_id,$kas_a_id"
 
-    run_otdfctl_kasr list --sort uri:asc --limit 500 --json
+    run_otdfctl_kasr list --sort uri --order asc --limit 500 --json
     assert_success
     assert_equal "$(echo "$output" | jq -r --arg prefix "https://$sort_prefix" '[.key_access_servers[] | select(.uri | startswith($prefix)) | .id] | join(",")')" "$kas_a_id,$kas_b_id,$kas_c_id"
 
-    run_otdfctl_kasr list --sort created_at:asc --limit 500 --json
+    run_otdfctl_kasr list --sort created_at --order asc --limit 500 --json
     assert_success
     assert_equal "$(echo "$output" | jq -r --arg a "$kas_a_id" --arg b "$kas_b_id" --arg c "$kas_c_id" '[.key_access_servers[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$kas_a_id,$kas_b_id,$kas_c_id"
 
     run_otdfctl_kasr update --id "$kas_a_id" --label sort=a --json
     assert_success
-    sleep 1
     run_otdfctl_kasr update --id "$kas_b_id" --label sort=b --json
     assert_success
-    sleep 1
     run_otdfctl_kasr update --id "$kas_c_id" --label sort=c --json
     assert_success
 
-    run_otdfctl_kasr list --sort updated_at:asc --limit 500 --json
+    run_otdfctl_kasr list --sort updated_at --order asc --limit 500 --json
     assert_success
     assert_equal "$(echo "$output" | jq -r --arg a "$kas_a_id" --arg b "$kas_b_id" --arg c "$kas_c_id" '[.key_access_servers[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$kas_a_id,$kas_b_id,$kas_c_id"
 
-    run_otdfctl_kasr list --sort name: --limit 500 --json
+    run_otdfctl_kasr list --sort name --limit 500 --json
     assert_success
     assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.key_access_servers[] | select((.name // "") | startswith($prefix)) | .id] | join(",")')" "$kas_c_id,$kas_b_id,$kas_a_id"
 
-    run_otdfctl_kasr list --sort :asc --limit 500 --json
+    run_otdfctl_kasr list --order asc --limit 500 --json
     assert_success
     assert_equal "$(echo "$output" | jq -r --arg a "$kas_a_id" --arg b "$kas_b_id" --arg c "$kas_c_id" '[.key_access_servers[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$kas_a_id,$kas_b_id,$kas_c_id"
 

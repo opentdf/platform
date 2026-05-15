@@ -493,7 +493,7 @@ func initRegisteredResourcesCommands() {
 		listDoc.GetDocFlag("namespace").Description,
 	)
 	injectListPaginationFlags(listDoc)
-	injectListSortFlag(listDoc)
+	injectListSortFlags(listDoc)
 
 	createDoc := man.Docs.GetCommand("policy/registered-resources/create",
 		man.WithRun(policyCreateRegisteredResource),

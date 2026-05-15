@@ -412,7 +412,7 @@ func initAttributesCommands() {
 		listDoc.GetDocFlag("state").Description,
 	)
 	injectListPaginationFlags(listDoc)
-	injectListSortFlag(listDoc)
+	injectListSortFlags(listDoc)
 
 	// Update an attribute
 	updateDoc := man.Docs.GetCommand("policy/attributes/update",

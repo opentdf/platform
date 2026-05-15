@@ -122,51 +122,47 @@ teardown_file() {
   assert_line --regexp "Current Offset.*0"
 }
 
-@test "List namespaces supports sort fields and partial sort syntax" {
+@test "List namespaces supports sort and order flags" {
   sort_prefix="sort-ns-$BATS_TEST_NUMBER-$RANDOM"
   ns_a_name="$sort_prefix-alpha.test"
   ns_b_name="$sort_prefix-bravo.test"
   ns_c_name="$sort_prefix-charlie.test"
   ns_a_id=$(./otdfctl $HOST $WITH_CREDS policy namespaces create --name "$ns_a_name" --json | jq -r '.id')
-  sleep 1
   ns_b_id=$(./otdfctl $HOST $WITH_CREDS policy namespaces create --name "$ns_b_name" --json | jq -r '.id')
-  sleep 1
   ns_c_id=$(./otdfctl $HOST $WITH_CREDS policy namespaces create --name "$ns_c_name" --json | jq -r '.id')
 
-  run_otdfctl_nsd list --sort name:asc --limit 500 --json
+  run_otdfctl_nsd list --sort name --order asc --limit 500 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.namespaces[] | select(.name | startswith($prefix)) | .name] | join(",")')" "$ns_a_name,$ns_b_name,$ns_c_name"
 
-  run_otdfctl_nsd list --sort name:desc --limit 500 --json
+  run_otdfctl_nsd list --sort name --order desc --limit 500 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.namespaces[] | select(.name | startswith($prefix)) | .name] | join(",")')" "$ns_c_name,$ns_b_name,$ns_a_name"
 
-  run_otdfctl_nsd list --sort fqn:asc --limit 500 --json
+  run_otdfctl_nsd list --sort fqn --order asc --limit 500 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r --arg prefix "https://$sort_prefix" '[.namespaces[] | select(.fqn | startswith($prefix)) | .id] | join(",")')" "$ns_a_id,$ns_b_id,$ns_c_id"
 
-  run_otdfctl_nsd list --sort created_at:asc --limit 500 --json
+  run_otdfctl_nsd list --sort created_at --order asc --limit 500 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r --arg a "$ns_a_id" --arg b "$ns_b_id" --arg c "$ns_c_id" '[.namespaces[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$ns_a_id,$ns_b_id,$ns_c_id"
 
   run_otdfctl_nsd update --id "$ns_a_id" --label sort=a --json
   assert_success
-  sleep 1
   run_otdfctl_nsd update --id "$ns_b_id" --label sort=b --json
   assert_success
-  sleep 1
   run_otdfctl_nsd update --id "$ns_c_id" --label sort=c --json
   assert_success
 
-  run_otdfctl_nsd list --sort updated_at:asc --limit 500 --json
+  run_otdfctl_nsd list --sort updated_at --order asc --limit 500 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r --arg a "$ns_a_id" --arg b "$ns_b_id" --arg c "$ns_c_id" '[.namespaces[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$ns_a_id,$ns_b_id,$ns_c_id"
 
-  run_otdfctl_nsd list --sort name: --limit 500 --json
+  run_otdfctl_nsd list --sort name --limit 500 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.namespaces[] | select(.name | startswith($prefix)) | .id] | join(",")')" "$ns_c_id,$ns_b_id,$ns_a_id"
 
-  run_otdfctl_nsd list --sort :asc --limit 500 --json
+  run_otdfctl_nsd list --order asc --limit 500 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r --arg a "$ns_a_id" --arg b "$ns_b_id" --arg c "$ns_c_id" '[.namespaces[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$ns_a_id,$ns_b_id,$ns_c_id"
 

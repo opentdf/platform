@@ -227,7 +227,7 @@ func initKASRegistryCommands() {
 		man.WithRun(listKeyAccessRegistries),
 	)
 	injectListPaginationFlags(listDoc)
-	injectListSortFlag(listDoc)
+	injectListSortFlags(listDoc)
 
 	createDoc := man.Docs.GetCommand("policy/kas-registry/create",
 		man.WithRun(createKeyAccessRegistry),

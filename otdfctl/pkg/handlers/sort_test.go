@@ -8,20 +8,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParseSortOption(t *testing.T) {
+func TestNewSortOption(t *testing.T) {
 	tests := []struct {
 		name      string
-		input     string
+		field     string
+		order     string
 		expected  SortOption
 		wantError error
 	}{
 		{
-			name:  "empty",
-			input: "",
+			name: "empty",
 		},
 		{
 			name:  "field only",
-			input: "name:",
+			field: "name",
 			expected: SortOption{
 				Field:     "name",
 				Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED,
@@ -29,7 +29,8 @@ func TestParseSortOption(t *testing.T) {
 		},
 		{
 			name:  "ascending",
-			input: "created_at:asc",
+			field: "created_at",
+			order: "asc",
 			expected: SortOption{
 				Field:     "created_at",
 				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
@@ -37,7 +38,8 @@ func TestParseSortOption(t *testing.T) {
 		},
 		{
 			name:  "descending with whitespace",
-			input: " updated_at : DESC ",
+			field: " updated_at ",
+			order: " DESC ",
 			expected: SortOption{
 				Field:     "updated_at",
 				Direction: policy.SortDirection_SORT_DIRECTION_DESC,
@@ -45,42 +47,23 @@ func TestParseSortOption(t *testing.T) {
 		},
 		{
 			name:  "direction only",
-			input: ":desc",
+			order: "desc",
 			expected: SortOption{
 				Field:     "",
 				Direction: policy.SortDirection_SORT_DIRECTION_DESC,
 			},
 		},
 		{
-			name:      "field without colon",
-			input:     "name",
-			wantError: ErrInvalidSortFormat,
-		},
-		{
-			name:      "direction without colon",
-			input:     "desc",
-			wantError: ErrInvalidSortFormat,
-		},
-		{
-			name:      "empty field and direction",
-			input:     ":",
-			wantError: ErrInvalidSortFormat,
-		},
-		{
-			name:      "too many parts",
-			input:     "name:asc:extra",
-			wantError: ErrInvalidSortFormat,
-		},
-		{
 			name:      "invalid direction",
-			input:     "name:up",
+			field:     "name",
+			order:     "up",
 			wantError: ErrInvalidSortDirection,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual, err := ParseSortOption(tt.input)
+			actual, err := NewSortOption(tt.field, tt.order)
 			if tt.wantError != nil {
 				require.Error(t, err)
 				require.ErrorIs(t, err, tt.wantError)

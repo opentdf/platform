@@ -427,51 +427,47 @@ teardown_file() {
   run_otdfctl_obl delete --id $obl2_id --force
 }
 
-@test "List obligations supports sort fields and partial sort syntax" {
+@test "List obligations supports sort and order flags" {
   sort_prefix="sort_obl_${BATS_TEST_NUMBER}_$RANDOM"
   run_otdfctl_obl create --name "${sort_prefix}_alpha" --namespace "$NS_ID" --json
   obl_a_id="$(echo "$output" | jq -r '.id')"
-  sleep 1
   run_otdfctl_obl create --name "${sort_prefix}_bravo" --namespace "$NS_ID" --json
   obl_b_id="$(echo "$output" | jq -r '.id')"
-  sleep 1
   run_otdfctl_obl create --name "${sort_prefix}_charlie" --namespace "$NS_ID" --json
   obl_c_id="$(echo "$output" | jq -r '.id')"
 
-  run_otdfctl_obl list --namespace "$NS_ID" --sort name:asc --limit 500 --json
+  run_otdfctl_obl list --namespace "$NS_ID" --sort name --order asc --limit 500 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.obligations[] | select(.name | startswith($prefix)) | .id] | join(",")')" "$obl_a_id,$obl_b_id,$obl_c_id"
 
-  run_otdfctl_obl list --namespace "$NS_ID" --sort name:desc --limit 500 --json
+  run_otdfctl_obl list --namespace "$NS_ID" --sort name --order desc --limit 500 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.obligations[] | select(.name | startswith($prefix)) | .id] | join(",")')" "$obl_c_id,$obl_b_id,$obl_a_id"
 
-  run_otdfctl_obl list --namespace "$NS_ID" --sort fqn:asc --limit 500 --json
+  run_otdfctl_obl list --namespace "$NS_ID" --sort fqn --order asc --limit 500 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r --arg prefix "https://$NS_NAME/obl/$sort_prefix" '[.obligations[] | select(.fqn | startswith($prefix)) | .id] | join(",")')" "$obl_a_id,$obl_b_id,$obl_c_id"
 
-  run_otdfctl_obl list --namespace "$NS_ID" --sort created_at:asc --limit 500 --json
+  run_otdfctl_obl list --namespace "$NS_ID" --sort created_at --order asc --limit 500 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r --arg a "$obl_a_id" --arg b "$obl_b_id" --arg c "$obl_c_id" '[.obligations[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$obl_a_id,$obl_b_id,$obl_c_id"
 
   run_otdfctl_obl update --id "$obl_a_id" --label sort=a --json
   assert_success
-  sleep 1
   run_otdfctl_obl update --id "$obl_b_id" --label sort=b --json
   assert_success
-  sleep 1
   run_otdfctl_obl update --id "$obl_c_id" --label sort=c --json
   assert_success
 
-  run_otdfctl_obl list --namespace "$NS_ID" --sort updated_at:asc --limit 500 --json
+  run_otdfctl_obl list --namespace "$NS_ID" --sort updated_at --order asc --limit 500 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r --arg a "$obl_a_id" --arg b "$obl_b_id" --arg c "$obl_c_id" '[.obligations[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$obl_a_id,$obl_b_id,$obl_c_id"
 
-  run_otdfctl_obl list --namespace "$NS_ID" --sort name: --limit 500 --json
+  run_otdfctl_obl list --namespace "$NS_ID" --sort name --limit 500 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.obligations[] | select(.name | startswith($prefix)) | .id] | join(",")')" "$obl_c_id,$obl_b_id,$obl_a_id"
 
-  run_otdfctl_obl list --namespace "$NS_ID" --sort :asc --limit 500 --json
+  run_otdfctl_obl list --namespace "$NS_ID" --order asc --limit 500 --json
   assert_success
   assert_equal "$(echo "$output" | jq -r --arg a "$obl_a_id" --arg b "$obl_b_id" --arg c "$obl_c_id" '[.obligations[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$obl_a_id,$obl_b_id,$obl_c_id"
 

@@ -931,7 +931,7 @@ func initKASKeysCommands() {
 		listDoc.GetDocFlag("legacy").Description,
 	)
 	injectListPaginationFlags(listDoc)
-	injectListSortFlag(listDoc)
+	injectListSortFlags(listDoc)
 
 	// Rotate Kas Key
 	rotateDoc := man.Docs.GetCommand("policy/kas-registry/key/rotate",

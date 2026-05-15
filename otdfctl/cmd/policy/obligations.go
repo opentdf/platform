@@ -526,7 +526,7 @@ func initObligationsCommands() {
 		listDoc.GetDocFlag("namespace").Description,
 	)
 	injectListPaginationFlags(listDoc)
-	injectListSortFlag(listDoc)
+	injectListSortFlags(listDoc)
 
 	createDoc := man.Docs.GetCommand("policy/obligations/create",
 		man.WithRun(policyCreateObligation),

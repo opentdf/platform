@@ -86,15 +86,18 @@ func injectListPaginationFlags(listDoc *man.Doc) {
 	)
 }
 
-func injectListSortFlag(listDoc *man.Doc) {
+func injectListSortFlags(listDoc *man.Doc) {
 	sortFlag := listDoc.GetDocFlag("sort")
-	listDoc.Flags().StringP(sortFlag.Name, sortFlag.Shorthand, sortFlag.Default, sortFlag.Description)
+	listDoc.Flags().String(sortFlag.Name, sortFlag.Default, sortFlag.Description)
+
+	orderFlag := listDoc.GetDocFlag("order")
+	listDoc.Flags().String(orderFlag.Name, orderFlag.Default, orderFlag.Description)
 }
 
 func getSortOption(c *cli.Cli) handlers.SortOption {
-	sort, err := handlers.ParseSortOption(c.Flags.GetOptionalString("sort"))
+	sort, err := handlers.NewSortOption(c.Flags.GetOptionalString("sort"), c.Flags.GetOptionalString("order"))
 	if err != nil {
-		cli.ExitWithError("Invalid sort", err)
+		cli.ExitWithError("Invalid sort order", err)
 	}
 	return sort
 }

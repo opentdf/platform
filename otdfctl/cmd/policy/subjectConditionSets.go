@@ -361,7 +361,7 @@ func initSubjectConditionSetsCommands() {
 		man.WithRun(listSubjectConditionSets),
 	)
 	injectListPaginationFlags(listDoc)
-	injectListSortFlag(listDoc)
+	injectListSortFlags(listDoc)
 	listDoc.Flags().StringP(
 		listDoc.GetDocFlag("namespace").Name,
 		listDoc.GetDocFlag("namespace").Shorthand,

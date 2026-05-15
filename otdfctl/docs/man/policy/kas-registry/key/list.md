@@ -22,7 +22,9 @@ command:
       description: Filter keys by legacy status.
       required: false
     - name: sort
-      description: Sort list results with field:direction syntax. Either field or direction may be omitted
+      description: Sort list results by field
+    - name: order
+      description: Sort order direction. Accepted values are asc and desc
 ---
 
 This command lists keys registered within a specified Key Access Server (KAS). You must specify the KAS using its ID, URI, or Name.
@@ -31,7 +33,7 @@ The list can be filtered by key algorithm. Pagination is supported using `limit`
 
 ## Sort Options
 
-Use `--sort <field>:<direction>`. Either side may be omitted, for example `key_id:` or `:asc`.
+Use `--sort <field>` with optional `--order <direction>`. Either flag may be omitted.
 
 | Direction | Description | Default |
 | --- | --- | --- |
@@ -47,13 +49,13 @@ Use `--sort <field>:<direction>`. Either side may be omitted, for example `key_i
 Omit direction and let the server choose the default direction:
 
 ```shell
-otdfctl policy kas-registry key list --kas "https://kas.example.com/kas" --sort key_id:
+otdfctl policy kas-registry key list --kas "https://kas.example.com/kas" --sort key_id
 ```
 
 Omit field and let the server choose the default field:
 
 ```shell
-otdfctl policy kas-registry key list --kas "https://kas.example.com/kas" --sort :asc
+otdfctl policy kas-registry key list --kas "https://kas.example.com/kas" --order asc
 ```
 
 ## Examples
@@ -91,5 +93,5 @@ otdfctl policy kas-registry key list --legacy false
 Sort keys by key ID descending:
 
 ```shell
-otdfctl policy kas-registry key list --kas "https://kas.example.com/kas" --sort key_id:desc
+otdfctl policy kas-registry key list --kas "https://kas.example.com/kas" --sort key_id --order desc
 ```

@@ -17,33 +17,16 @@ type SortOption struct {
 const (
 	sortDirectionAsc  = "asc"
 	sortDirectionDesc = "desc"
-	sortSeparator     = ":"
 )
 
 var (
-	ErrInvalidSortFormat    = errors.New("sort must use field:direction; field or direction may be omitted")
 	ErrInvalidSortDirection = errors.New("invalid sort direction")
 	ErrInvalidSortField     = errors.New("invalid sort field")
 )
 
-func ParseSortOption(value string) (SortOption, error) {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return SortOption{}, nil
-	}
-
-	fieldPart, directionPart, ok := strings.Cut(value, sortSeparator)
-	if !ok || strings.Contains(directionPart, sortSeparator) {
-		return SortOption{}, ErrInvalidSortFormat
-	}
-
-	field := strings.ToLower(strings.TrimSpace(fieldPart))
-	directionValue := strings.ToLower(strings.TrimSpace(directionPart))
-	if field == "" && directionValue == "" {
-		return SortOption{}, ErrInvalidSortFormat
-	}
-
-	direction, err := parseSortDirection(directionValue)
+func NewSortOption(field, order string) (SortOption, error) {
+	field = strings.ToLower(strings.TrimSpace(field))
+	direction, err := ParseSortOrder(order)
 	if err != nil {
 		return SortOption{}, err
 	}
@@ -54,10 +37,13 @@ func ParseSortOption(value string) (SortOption, error) {
 	}, nil
 }
 
-func parseSortDirection(value string) (policy.SortDirection, error) {
-	switch value {
-	case "":
+func ParseSortOrder(value string) (policy.SortDirection, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
 		return policy.SortDirection_SORT_DIRECTION_UNSPECIFIED, nil
+	}
+
+	switch strings.ToLower(value) {
 	case sortDirectionAsc:
 		return policy.SortDirection_SORT_DIRECTION_ASC, nil
 	case sortDirectionDesc:

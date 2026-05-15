@@ -296,7 +296,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 
 			// Interceptor Logic
 			// Allow health checks and other public routes to pass through
-			if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) { //nolint:contextcheck // There is no way to pass a context here
+			if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) {
 				return next(ctx, req)
 			}
 

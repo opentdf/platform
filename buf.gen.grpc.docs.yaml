@@ -4,8 +4,6 @@ managed:
   disable:
     - file_option: go_package
       module: buf.build/bufbuild/protovalidate
-    - file_option: go_package
-      module: buf.build/googleapis/googleapis
   override:
     - file_option: go_package_prefix
       value: github.com/opentdf/platform/protocol/go

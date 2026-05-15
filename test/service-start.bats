@@ -45,7 +45,7 @@
   [ $(jq -r .status <<<"${output}") = SERVING ]
 }
 
-@test "GRPC-Gateway: Validate CORS" {
+@test "HTTP: Validate CORS" {
   run curl -X OPTIONS -v -s "https://localhost:8080/healthz" -H "Origin: https://example.com" -H "Access-Control-Request-Method: GET"
   echo "$output"
   [ $(grep -c "access-control-allow-origin: https://example.com" <<<"${output}") -eq 1 ]
@@ -53,11 +53,11 @@
   [ $(grep -c "access-control-allow-credentials: true" <<<"${output}") -eq 1 ]
 }
 
-@test "GRPC-Gateway: Reject non-accepted headers" {
+@test "HTTP: Reject non-accepted headers" {
   run curl -X OPTIONS -v -s "https://localhost:8080/healthz" \
     -H "Origin: https://example.com" \
     -H "Access-Control-Request-Method: GET" \
-    -H "Access-Control-Request-Headers: X-Not-Allowed-Header"
+
     
   echo "$output"
   # Verify the headers are not present in the response

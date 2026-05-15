@@ -215,16 +215,18 @@ func TestWithAdditionalAuditTypeRegistrations(t *testing.T) {
 func TestWithAdditionalAuditTypeRegistrationsDetectsConflicts(t *testing.T) {
 	var cfg StartConfig
 
-	cfg = WithAdditionalAuditTypeRegistrations(audit.TypeRegistrations{
-		ObjectTypes: map[audit.ObjectType]string{
-			audit.ObjectType(testAuditTypeBase): "custom_object_1",
-		},
-	})(cfg)
+	firstObjectTypes := make(map[audit.ObjectType]string)
+	firstObjectTypes[audit.ObjectType(testAuditTypeBase)] = "custom_object_1"
 
 	cfg = WithAdditionalAuditTypeRegistrations(audit.TypeRegistrations{
-		ObjectTypes: map[audit.ObjectType]string{
-			audit.ObjectType(testAuditTypeBase): "custom_object_conflict",
-		},
+		ObjectTypes: firstObjectTypes,
+	})(cfg)
+
+	secondObjectTypes := make(map[audit.ObjectType]string)
+	secondObjectTypes[audit.ObjectType(testAuditTypeBase)] = "custom_object_conflict"
+
+	cfg = WithAdditionalAuditTypeRegistrations(audit.TypeRegistrations{
+		ObjectTypes: secondObjectTypes,
 	})(cfg)
 
 	require.Len(t, cfg.auditTypeRegistrationConflicts, 1)

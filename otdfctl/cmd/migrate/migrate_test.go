@@ -126,6 +126,13 @@ func TestAddCommandsRequiresInitialization(t *testing.T) {
 	require.ErrorIs(t, err, ErrMigrateCommandsNotInitialized)
 }
 
+func TestAddCommandsRejectsNilParent(t *testing.T) {
+	useMigrateCommand(t, nil)
+
+	err := AddCommands(&cobra.Command{Use: "tenant-policy"})
+	require.ErrorIs(t, err, ErrNilParentCommand)
+}
+
 func useMigrateCommand(t *testing.T, command *cobra.Command, isInitialized ...bool) {
 	t.Helper()
 

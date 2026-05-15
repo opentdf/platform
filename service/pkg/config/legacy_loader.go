@@ -75,7 +75,7 @@ func (l *LegacyLoader) Load(cfg Config) error {
 }
 
 // Watch starts watching the config file for configuration changes
-func (l *LegacyLoader) Watch(ctx context.Context, _ *Config, onChange func(context.Context) error, _ []NamespaceInfo) error {
+func (l *LegacyLoader) Watch(ctx context.Context, _ *Config, onChange func(context.Context) error) error {
 	l.viper.WatchConfig()
 
 	// If config changes, trigger the main config reload function

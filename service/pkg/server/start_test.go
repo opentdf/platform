@@ -15,7 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
@@ -135,17 +134,13 @@ func mockKeycloakServer() *httptest.Server {
 }
 
 func mockOpenTDFServer() (*server.OpenTDFServer, error) {
-	discoveryEndpoint := mockKeycloakServer()
 	// Create new opentdf server
 	return server.NewOpenTDFServer(server.Config{
 		WellKnownConfigRegister: func(_ string, _ any) error {
 			return nil
 		},
 		Auth: auth.Config{
-			AuthNConfig: auth.AuthNConfig{
-				Issuer:   discoveryEndpoint.URL,
-				Audience: "test",
-			},
+			Enabled:      false,
 			PublicRoutes: []string{"/testpath/*"},
 		},
 		Port: 43481,
@@ -278,7 +273,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			name:         "And_Mode_Core",
 			mode:         []string{"core"},
 			status:       http.StatusNotFound,
-			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+			responseBody: "404 page not found\n",
 		},
 		{
 			name:         "And_Mode_Core_Plus_Test",
@@ -296,7 +291,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			name:         "And_Mode_Kas",
 			mode:         []string{"kas"},
 			status:       http.StatusNotFound,
-			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+			responseBody: "404 page not found\n",
 		},
 		{
 			name:         "And_Mode_Kas_Plus_Test",
@@ -308,7 +303,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			name:         "And_Mode_EntityResolution",
 			mode:         []string{"entityresolution"},
 			status:       http.StatusNotFound,
-			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+			responseBody: "404 page not found\n",
 		},
 		{
 			name:         "And_Mode_EntityResolution_Plus_Test",
@@ -320,7 +315,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			name:         "And_Mode_Unknown",
 			mode:         []string{"unknown"},
 			status:       http.StatusNotFound,
-			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+			responseBody: "404 page not found\n",
 		},
 		{
 			name:         "And_Mode_Unknown_Plus_Test",
@@ -343,8 +338,11 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			ts := TestService{}
 			registerTestService, _ := mockTestServiceRegistry(mockTestServiceOptions{
 				serviceObject: ts,
-				serviceHandler: func(_ context.Context, mux *runtime.ServeMux) error {
-					return mux.HandlePath(http.MethodGet, "/healthz", ts.TestHandler)
+				serviceHandler: func(_ context.Context, mux *http.ServeMux) error {
+					mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+						ts.TestHandler(w, r, nil)
+					})
+					return nil
 				},
 			})
 
@@ -353,7 +351,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			require.NoError(t, err)
 
 			// Start services with test service
-			cleanup, err := startServices(context.Background(), startServicesParams{
+			err = startServices(context.Background(), startServicesParams{
 				cfg: &config.Config{
 					Mode: tc.mode,
 					Services: map[string]config.ServiceConfig{
@@ -368,7 +366,6 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 				cacheManager:           &cache.Manager{},
 			})
 			require.NoError(t, err)
-			defer cleanup()
 
 			require.NoError(t, s.Start())
 			defer s.Stop()

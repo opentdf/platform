@@ -130,11 +130,9 @@ type startServicesParams struct {
 
 // startServices iterates through the registered namespaces and starts the services
 // based on the configuration and namespace mode. It creates a new service logger
-// and a database client if required. It registers the services with the gRPC server,
-// in-process gRPC server, and gRPC gateway. Finally, it logs the status of each service.
-func startServices(ctx context.Context, params startServicesParams) (func(), error) {
-	var gatewayCleanup func()
-
+// and a database client if required. It registers the services with the external
+// and in-process Connect RPC servers plus any extra HTTP handlers.
+func startServices(ctx context.Context, params startServicesParams) error {
 	cfg := params.cfg
 	otdf := params.otdf
 	client := params.client
@@ -187,7 +185,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				var err error
 				svcDBClient, err = newServiceDBClient(ctx, cfg.Logger, cfg.DB, tracer, ns, svc.DBMigrations())
 				if err != nil {
-					return func() {}, err
+					return err
 				}
 			}
 			if svc.GetVersion() != "" {
@@ -227,11 +225,11 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				KeyManagerCtxFactories: keyManagerCtxFactories,
 			})
 			if err != nil {
-				return func() {}, err
+				return err
 			}
 
 			if err := svc.RegisterConfigUpdateHook(ctx, cfg.AddOnConfigChangeHook); err != nil {
-				return func() {}, fmt.Errorf("failed to register config update hook: %w", err)
+				return fmt.Errorf("failed to register config update hook: %w", err)
 			}
 
 			// Register Connect RPC Services
@@ -244,23 +242,8 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				logger.Info("service did not register a connect-rpc handler", slog.String("namespace", ns))
 			}
 
-			// Register GRPC Gateway Handler using the in-process connect rpc
-			grpcConn := otdf.ConnectRPCInProcess.GrpcConn()
-			err := svc.RegisterGRPCGatewayHandler(ctx, otdf.GRPCGatewayMux, otdf.ConnectRPCInProcess.GrpcConn())
-			if err != nil {
-				logger.Info("service did not register a grpc gateway handler", slog.String("namespace", ns))
-			} else if gatewayCleanup == nil {
-				gatewayCleanup = func() {
-					slog.Debug("executing cleanup")
-					if grpcConn != nil {
-						grpcConn.Close()
-					}
-					slog.Info("cleanup complete")
-				}
-			}
-
 			// Register Extra Handlers
-			if err := svc.RegisterHTTPHandlers(ctx, otdf.GRPCGatewayMux); err != nil {
+			if err := svc.RegisterHTTPHandlers(ctx, otdf.HTTPMux); err != nil {
 				logger.Info("service did not register extra http handlers", slog.String("namespace", ns))
 			}
 
@@ -270,16 +253,13 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				slog.String("service", svc.GetServiceDesc().ServiceName),
 				slog.Group("database",
 					slog.Any("required", svcDBClient != nil),
-					slog.Any("migrationStatus", determineStatusOfMigration(svcDBClient)),
+					slog.Any("migration_status", determineStatusOfMigration(svcDBClient)),
 				),
 			)
 		}
 	}
 
-	if gatewayCleanup == nil {
-		gatewayCleanup = func() {}
-	}
-	return gatewayCleanup, nil
+	return nil
 }
 
 func extractServiceLoggerConfig(cfg config.ServiceConfig) (string, error) {

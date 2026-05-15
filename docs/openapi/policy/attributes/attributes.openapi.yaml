@@ -115,30 +115,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.GetAttributeResponse'
-  /attributes/*/fqn:
-    get:
+  /policy.attributes.AttributesService/GetAttributeValuesByFqns:
+    post:
       tags:
         - policy.attributes.AttributesService
       summary: GetAttributeValuesByFqns
       operationId: policy.attributes.AttributesService.GetAttributeValuesByFqns
       parameters:
-        - name: fqns
-          in: query
-          description: |-
-            Required
-             Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: array
-            items:
-              type: string
-              maxItems: 250
-              minItems: 1
-            title: fqns
-            maxItems: 250
-            minItems: 1
-            description: |-
-              Required
-               Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.GetAttributeValuesByFqnsRequest'
+        required: true
       responses:
         default:
           description: Error

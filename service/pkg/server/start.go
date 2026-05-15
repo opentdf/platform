@@ -283,7 +283,7 @@ func Start(f ...StartOptions) error {
 	defer client.Close()
 
 	logger.Info("starting services")
-	gatewayCleanup, err := startServices(ctx, startServicesParams{
+	err = startServices(ctx, startServicesParams{
 		cfg:                    cfg,
 		otdf:                   otdf,
 		client:                 client,
@@ -296,7 +296,6 @@ func Start(f ...StartOptions) error {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)
 	}
-	defer gatewayCleanup()
 
 	// Start watching the configuration for changes with registered config change service hooks
 	var watchInfo []config.NamespaceInfo

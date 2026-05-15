@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package authorization;
 
-import "google/api/annotations.proto";
 import "google/protobuf/any.proto";
 
 import "policy/objects.proto";
@@ -287,19 +286,7 @@ message GetDecisionsByTokenResponse {
 }
 
 service AuthorizationService {
-  rpc GetDecisions(GetDecisionsRequest) returns (GetDecisionsResponse) {
-    option (google.api.http) = {
-      post: "/v1/authorization"
-      body: "*"
-    };
-  }
-  rpc GetDecisionsByToken(GetDecisionsByTokenRequest) returns (GetDecisionsByTokenResponse) {
-    option (google.api.http) = {post: "/v1/token/authorization"};
-  }
-  rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {
-    option (google.api.http) = {
-      post: "/v1/entitlements"
-      body: "*"
-    };
-  }
+  rpc GetDecisions(GetDecisionsRequest) returns (GetDecisionsResponse) {}
+  rpc GetDecisionsByToken(GetDecisionsByTokenRequest) returns (GetDecisionsByTokenResponse) {}
+  rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {}
 }

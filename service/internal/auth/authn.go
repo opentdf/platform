@@ -243,7 +243,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		}
 		roleReq := authz.RoleRequest{
 			Issuer:   a.oidcConfiguration.Issuer,
-			Resource: r.URL.Path,
+			Resource: strings.TrimPrefix(r.URL.Path, "/"),
 			Action:   action,
 		}
 		if allow, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil {

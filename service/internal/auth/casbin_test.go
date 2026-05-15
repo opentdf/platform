@@ -126,18 +126,6 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		{
 			allowed:  true,
 			roles:    admin,
-			resource: "/attributes/do/something",
-			action:   "read",
-		},
-		{
-			allowed:  true,
-			roles:    admin,
-			resource: "/attributes/do/something",
-			action:   "write",
-		},
-		{
-			allowed:  true,
-			roles:    admin,
 			resource: "non-existent",
 			action:   "read",
 		},
@@ -156,28 +144,10 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 			action:   "write",
 		},
 		{
-			allowed:  true,
-			roles:    standard,
-			resource: "/attributes",
-			action:   "read",
-		},
-		{
-			allowed:  false,
-			roles:    standard,
-			resource: "/attributes",
-			action:   "write",
-		},
-		{
 			allowed:  false,
 			roles:    standard,
 			resource: "non-existent",
 			action:   "read",
-		},
-		{
-			allowed:  true,
-			roles:    standard,
-			resource: "/kas/v2/rewrap",
-			action:   "write",
 		},
 		{
 			allowed:  true,
@@ -203,18 +173,6 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 			allowed:  false,
 			roles:    unknown,
 			resource: "policy.attributes.DoSomething",
-			action:   "write",
-		},
-		{
-			allowed:  false,
-			roles:    unknown,
-			resource: "/attributes",
-			action:   "read",
-		},
-		{
-			allowed:  false,
-			roles:    unknown,
-			resource: "/attributes",
 			action:   "write",
 		},
 		{

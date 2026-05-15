@@ -636,7 +636,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	})))
 	defer server.Close()
 
-	req, err := http.NewRequest(http.MethodGet, server.URL+"/attributes", nil)
+	req, err := http.NewRequest(http.MethodGet, server.URL+"/policy.attributes.AttributesService/ListAttributes", nil)
 
 	addingInterceptor := sdkauth.NewTokenAddingInterceptorWithClient(&FakeTokenSource{
 		key:         dpopKey,
@@ -646,7 +646,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 	}))
 	s.Require().NoError(err)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", signedTok))
-	dpopTok, err := addingInterceptor.GetDPoPToken(server.URL+"/attributes", "GET", string(signedTok))
+	dpopTok, err := addingInterceptor.GetDPoPToken(server.URL+"/policy.attributes.AttributesService/ListAttributes", "GET", string(signedTok))
 	s.Require().NoError(err)
 	req.Header.Set("DPoP", dpopTok)
 

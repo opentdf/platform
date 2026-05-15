@@ -35,8 +35,8 @@ type StartConfig struct {
 	configLoaders         []config.Loader
 	configLoaderOrder     []string
 
-	extraConnectInterceptors []connect.Interceptor
-	extraIPCInterceptors     []connect.Interceptor
+	extraConnectInterceptors     []connect.Interceptor
+	extraIPCInterceptors         []connect.Interceptor
 	externalInterceptorFactories []InterceptorFactory
 
 	trustKeyManagerCtxs []trust.NamedKeyManagerCtxFactory

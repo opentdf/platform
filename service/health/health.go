@@ -10,7 +10,6 @@ import (
 
 	"connectrpc.com/connect"
 	"connectrpc.com/grpchealth"
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -36,9 +35,14 @@ func NewRegistration() *serviceregistry.Service[grpchealth.Checker] {
 					srp.Logger.Error("failed to set well-known config", slog.String("error", err.Error()))
 				}
 				hs := HealthService{logger: srp.Logger}
-				return hs, func(_ context.Context, mux *runtime.ServeMux) error {
-					err := mux.HandlePath(http.MethodGet, "/healthz", func(w http.ResponseWriter, r *http.Request, _ map[string]string) { //nolint:contextcheck // check is not relevant here
-						resp, err := hs.Check(context.Background(), &grpchealth.CheckRequest{
+				return hs, func(_ context.Context, mux *http.ServeMux) error {
+					mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+						if r.Method != http.MethodGet {
+							http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+							return
+						}
+
+						resp, err := hs.Check(r.Context(), &grpchealth.CheckRequest{
 							Service: r.URL.Query().Get("service"),
 						})
 						if err != nil {
@@ -59,10 +63,6 @@ func NewRegistration() *serviceregistry.Service[grpchealth.Checker] {
 							srp.Logger.Error("failed to encode health status", slog.String("error", err.Error()))
 						}
 					})
-					if err != nil {
-						panic(errors.Join(errors.New("failed to register healthz endpoint"), err))
-					}
-
 					return nil
 				}
 			},

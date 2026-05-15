@@ -39,11 +39,10 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 	onConfigUpdate := OnConfigUpdate(p)
 	return &serviceregistry.Service[kasconnect.AccessServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[kasconnect.AccessServiceHandler]{
-			Namespace:       "kas",
-			ServiceDesc:     &kaspb.AccessService_ServiceDesc,
-			ConnectRPCFunc:  kasconnect.NewAccessServiceHandler,
-			GRPCGatewayFunc: kaspb.RegisterAccessServiceHandler,
-			OnConfigUpdate:  onConfigUpdate,
+			Namespace:      "kas",
+			ServiceDesc:    &kaspb.AccessService_ServiceDesc,
+			ConnectRPCFunc: kasconnect.NewAccessServiceHandler,
+			OnConfigUpdate: onConfigUpdate,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasconnect.AccessServiceHandler, serviceregistry.HandlerServer) {
 				var kasCfg access.KASConfig
 				if err := mapstructure.Decode(srp.Config, &kasCfg); err != nil {

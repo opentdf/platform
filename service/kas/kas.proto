@@ -2,21 +2,8 @@ syntax = "proto3";
 
 package kas;
 
-import "google/api/annotations.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/wrappers.proto";
-import "protoc-gen-openapiv2/options/annotations.proto";
-
-option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
-  info: {
-    title: "OpenTDF Key Access Service";
-    version: "1.5.0";
-    license: {
-      name: "BSD 3-Clause Clear";
-      url: "https://github.com/opentdf/backend/blob/master/LICENSE";
-    };
-  };
-};
 
 message InfoRequest {
   // Intentionally empty. May include features later.
@@ -181,9 +168,9 @@ message UnsignedRewrapRequest {
   string algorithm = 5 [deprecated = true];
 }
 message PublicKeyRequest {
-  string algorithm = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "algorithm type rsa:<keysize> or ec:<curvename>"}];
-  string fmt = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "response format"}];
-  string v = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "request version"}];
+  string algorithm = 1;
+  string fmt = 2;
+  string v = 3;
 }
 
 message PublicKeyResponse {
@@ -275,11 +262,6 @@ message RewrapResponse {
 // Get app info from the root path
 service AccessService {
   rpc PublicKey(PublicKeyRequest) returns (PublicKeyResponse) {
-    option (google.api.http) = {get: "/kas/v2/kas_public_key"};
-
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      responses: {key: "200"}
-    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
@@ -289,23 +271,9 @@ service AccessService {
   //
   // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
   rpc LegacyPublicKey(LegacyPublicKeyRequest) returns (google.protobuf.StringValue) {
-    option (google.api.http) = {get: "/kas/kas_public_key"};
-
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      responses: {key: "200"}
-    };
     option idempotency_level = NO_SIDE_EFFECTS;
     option deprecated = true;
   }
 
-  rpc Rewrap(RewrapRequest) returns (RewrapResponse) {
-    option (google.api.http) = {
-      post: "/kas/v2/rewrap"
-      body: "*";
-    };
-
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      responses: {key: "200"}
-    };
-  }
+  rpc Rewrap(RewrapRequest) returns (RewrapResponse) {}
 }

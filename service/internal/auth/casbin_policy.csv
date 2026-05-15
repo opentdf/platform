@@ -33,10 +33,7 @@ p,	role:standard,		/attributes*,														read,			allow
 p,	role:standard,		/namespaces*,														read,			allow
 p,	role:standard,		/subject-mappings*,											read,			allow
 p,	role:standard,		/resource-mappings*,										read,			allow
-p,	role:standard,		/key-access-servers*,										read,			allow
 p,	role:standard,		/kas/v2/rewrap,													write,		allow
-p,  role:standard,      /v1/authorization,                                                              write,          allow
-p,  role:standard,      /v1/token/authorization,                                                        write,          allow
 
 # Public routes
 ## gRPC routes

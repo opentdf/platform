@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -25,7 +24,7 @@ type mockTestServiceOptions struct {
 	serviceName        string
 	serviceHandlerType any
 	serviceObject      any
-	serviceHandler     func(ctx context.Context, mux *runtime.ServeMux) error
+	serviceHandler     func(ctx context.Context, mux *http.ServeMux) error
 	dbRegister         serviceregistry.DBRegister
 }
 
@@ -41,7 +40,7 @@ func mockTestServiceRegistry(opts mockTestServiceOptions) (serviceregistry.IServ
 		namespace:          "test",
 		serviceName:        "TestService",
 		serviceHandlerType: (*interface{})(nil),
-		serviceHandler: func(_ context.Context, _ *runtime.ServeMux) error {
+		serviceHandler: func(_ context.Context, _ *http.ServeMux) error {
 			return nil
 		},
 	}
@@ -74,7 +73,7 @@ func mockTestServiceRegistry(opts mockTestServiceOptions) (serviceregistry.IServ
 				if ts, ok = opts.serviceObject.(TestService); !ok {
 					panic("serviceObject is not a TestService")
 				}
-				return ts, func(ctx context.Context, mux *runtime.ServeMux) error {
+				return ts, func(ctx context.Context, mux *http.ServeMux) error {
 					spy.wasCalled = true
 					spy.callParams = append(spy.callParams, srp, ctx, mux, ts)
 					return serviceHandler(ctx, mux)
@@ -607,11 +606,7 @@ func (m *mockOrderTrackingService) RegisterConnectRPCServiceHandler(context.Cont
 	return nil
 }
 
-func (m *mockOrderTrackingService) RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, *grpc.ClientConn) error {
-	return nil
-}
-
-func (m *mockOrderTrackingService) RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error {
+func (m *mockOrderTrackingService) RegisterHTTPHandlers(context.Context, *http.ServeMux) error {
 	return nil
 }
 
@@ -828,8 +823,12 @@ func (suite *ServiceTestSuite) Test_Extra_Services_With_Mode_Negation() {
 					namespace:     tc.extraCoreNamespace,
 					serviceName:   "ExtraCoreService",
 					serviceObject: TestService{},
-					serviceHandler: func(_ context.Context, mux *runtime.ServeMux) error {
-						return mux.HandlePath(http.MethodGet, "/extracore/status", TestService{}.TestHandler)
+					serviceHandler: func(_ context.Context, mux *http.ServeMux) error {
+						ts := TestService{}
+						mux.HandleFunc("/extracore/status", func(w http.ResponseWriter, r *http.Request) {
+							ts.TestHandler(w, r, nil)
+						})
+						return nil
 					},
 				})
 				extraCoreServices = append(extraCoreServices, extraCoreService)
@@ -842,8 +841,12 @@ func (suite *ServiceTestSuite) Test_Extra_Services_With_Mode_Negation() {
 					namespace:     tc.extraServiceNamespace,
 					serviceName:   "ExtraService",
 					serviceObject: TestService{},
-					serviceHandler: func(_ context.Context, mux *runtime.ServeMux) error {
-						return mux.HandlePath(http.MethodGet, "/extraservice/status", TestService{}.TestHandler)
+					serviceHandler: func(_ context.Context, mux *http.ServeMux) error {
+						ts := TestService{}
+						mux.HandleFunc("/extraservice/status", func(w http.ResponseWriter, r *http.Request) {
+							ts.TestHandler(w, r, nil)
+						})
+						return nil
 					},
 				})
 				extraServices = append(extraServices, extraService)

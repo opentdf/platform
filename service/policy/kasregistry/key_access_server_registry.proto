@@ -4,7 +4,6 @@ package policy.kasregistry;
 
 import "buf/validate/validate.proto";
 import "common/common.proto";
-import "google/api/annotations.proto";
 import "policy/objects.proto";
 import "policy/selectors.proto";
 
@@ -691,7 +690,6 @@ message ListKeyMappingsResponse {
 
 service KeyAccessServerRegistryService {
   rpc ListKeyAccessServers(ListKeyAccessServersRequest) returns (ListKeyAccessServersResponse) {
-    option (google.api.http) = {get: "/key-access-servers"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 

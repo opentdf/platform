@@ -84,11 +84,10 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 
 	return &serviceregistry.Service[authorizationconnect.AuthorizationServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[authorizationconnect.AuthorizationServiceHandler]{
-			Namespace:       "authorization",
-			ServiceDesc:     &authorization.AuthorizationService_ServiceDesc,
-			ConnectRPCFunc:  authorizationconnect.NewAuthorizationServiceHandler,
-			GRPCGatewayFunc: authorization.RegisterAuthorizationServiceHandler,
-			OnConfigUpdate:  onUpdateConfig,
+			Namespace:      "authorization",
+			ServiceDesc:    &authorization.AuthorizationService_ServiceDesc,
+			ConnectRPCFunc: authorizationconnect.NewAuthorizationServiceHandler,
+			OnConfigUpdate: onUpdateConfig,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authorizationconnect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
 				authZCfg := new(Config)
 

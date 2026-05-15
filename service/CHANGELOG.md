@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.16.0](https://github.com/opentdf/platform/compare/service/v0.15.0...service/v0.16.0) (2026-05-15)
+
+
+### Features
+
+* **policy:** Add FQN to RegisteredResourceValues ([#3446](https://github.com/opentdf/platform/issues/3446)) ([3199583](https://github.com/opentdf/platform/commit/3199583c4a6454ac7eabe1260a142e5c5ff067ad))
+* **policy:** Add resource mapping group FQNs ([#3447](https://github.com/opentdf/platform/issues/3447)) ([6a0b3c6](https://github.com/opentdf/platform/commit/6a0b3c63795cf79b4d87d561464101c7cd2cf351))
+
+
+### Bug Fixes
+
+* **deps:** bump module protocol/go to v0.30.0 throughout ([#3459](https://github.com/opentdf/platform/issues/3459)) ([8eaa502](https://github.com/opentdf/platform/commit/8eaa502b0f949ddbe18a5a1dac0931b92eec2351))
+* **policy:** include action_attribute_values in GetRegisteredResource response ([#3472](https://github.com/opentdf/platform/issues/3472)) ([29eff55](https://github.com/opentdf/platform/commit/29eff55c5470e948088d768274a03da06e092a6e))
+
 ## [0.15.0](https://github.com/opentdf/platform/compare/service/v0.14.0...service/v0.15.0) (2026-05-06)
 
 

@@ -54,14 +54,27 @@ func (h Handler) GetAttribute(ctx context.Context, identifier string) (*policy.A
 	return resp.GetAttribute(), nil
 }
 
-func (h Handler) ListAttributes(ctx context.Context, state common.ActiveStateEnum, limit, offset int32) (*attributes.ListAttributesResponse, error) {
-	return h.sdk.Attributes.ListAttributes(ctx, &attributes.ListAttributesRequest{
+func (h Handler) ListAttributes(ctx context.Context, state common.ActiveStateEnum, limit, offset int32, sort SortOption) (*attributes.ListAttributesResponse, error) {
+	req := &attributes.ListAttributesRequest{
 		State: state,
 		Pagination: &policy.PageRequest{
 			Limit:  limit,
 			Offset: offset,
 		},
-	})
+	}
+	if !sort.IsZero() {
+		allowedFields := map[string]attributes.SortAttributesType{
+			"name":       attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME,
+			"created_at": attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT,
+			"updated_at": attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UPDATED_AT,
+		}
+		field, err := sortField("attributes", sort, allowedFields)
+		if err != nil {
+			return nil, err
+		}
+		req.Sort = []*attributes.AttributesSort{{Field: field, Direction: sort.Direction}}
+	}
+	return h.sdk.Attributes.ListAttributes(ctx, req)
 }
 
 // Creates and returns the created attribute

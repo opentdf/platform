@@ -40,7 +40,7 @@ func InitAttributeList(ctx context.Context, id string, h handlers.Handler) (tea.
 		limit  int32 = 100
 		offset int32 = 0
 	)
-	res, _ := h.ListAttributes(ctx, common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY, limit, offset)
+	res, _ := h.ListAttributes(ctx, common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY, limit, offset, handlers.SortOption{})
 	var attrs []list.Item
 	selectIdx := 0
 	for i, attr := range res.GetAttributes() {

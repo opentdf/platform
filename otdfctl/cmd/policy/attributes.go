@@ -90,8 +90,9 @@ func listAttributes(cmd *cobra.Command, args []string) {
 	state := cli.GetState(cmd)
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
+	sort := getSortOption(c)
 
-	resp, err := h.ListAttributes(cmd.Context(), state, limit, offset)
+	resp, err := h.ListAttributes(cmd.Context(), state, limit, offset, sort)
 	if err != nil {
 		cli.ExitWithError("Failed to list attributes", err)
 	}
@@ -411,6 +412,7 @@ func initAttributesCommands() {
 		listDoc.GetDocFlag("state").Description,
 	)
 	injectListPaginationFlags(listDoc)
+	injectListSortFlags(listDoc)
 
 	// Update an attribute
 	updateDoc := man.Docs.GetCommand("policy/attributes/update",

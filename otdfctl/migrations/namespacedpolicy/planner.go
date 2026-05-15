@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/opentdf/platform/otdfctl/pkg/handlers"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
@@ -19,12 +20,12 @@ var ErrNilPlannerHandler = errors.New("planner handler is required")
 
 type PolicyClient interface {
 	ListActions(ctx context.Context, limit, offset int32, namespace string) (*actions.ListActionsResponse, error)
-	ListSubjectConditionSets(ctx context.Context, limit, offset int32, namespace string) (*subjectmapping.ListSubjectConditionSetsResponse, error)
-	ListSubjectMappings(ctx context.Context, limit, offset int32, namespace string) (*subjectmapping.ListSubjectMappingsResponse, error)
-	ListRegisteredResources(ctx context.Context, limit, offset int32, namespace string) (*registeredresources.ListRegisteredResourcesResponse, error)
+	ListSubjectConditionSets(ctx context.Context, limit, offset int32, namespace string, sort handlers.SortOption) (*subjectmapping.ListSubjectConditionSetsResponse, error)
+	ListSubjectMappings(ctx context.Context, limit, offset int32, namespace string, sort handlers.SortOption) (*subjectmapping.ListSubjectMappingsResponse, error)
+	ListRegisteredResources(ctx context.Context, limit, offset int32, namespace string, sort handlers.SortOption) (*registeredresources.ListRegisteredResourcesResponse, error)
 	ListRegisteredResourceValues(ctx context.Context, resourceID string, limit, offset int32) (*registeredresources.ListRegisteredResourceValuesResponse, error)
 	ListObligationTriggers(ctx context.Context, namespace string, limit, offset int32) (*obligations.ListObligationTriggersResponse, error)
-	ListNamespaces(ctx context.Context, state common.ActiveStateEnum, limit, offset int32) (*namespaces.ListNamespacesResponse, error)
+	ListNamespaces(ctx context.Context, state common.ActiveStateEnum, limit, offset int32, sort handlers.SortOption) (*namespaces.ListNamespacesResponse, error)
 }
 
 type Planner struct {

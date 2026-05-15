@@ -618,6 +618,52 @@ format_kas_name_as_uri() {
   assert_not_equal "$(echo "$output" | jq -r --arg id "${key2_system_id}" '.kas_keys[] | select(.key.id == $id) | .key.metadata.updated_at')" "null"
 }
 
+@test "kas-keys: list keys supports sort and order flags" {
+  sort_prefix="sort-key-$BATS_TEST_NUMBER-$RANDOM"
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${sort_prefix}-alpha" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64_RSA}" --json
+  assert_success
+  key_a_id=$(echo "$output" | jq -r .key.id)
+
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${sort_prefix}-bravo" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64_RSA}" --json
+  assert_success
+  key_b_id=$(echo "$output" | jq -r .key.id)
+
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${sort_prefix}-charlie" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64_RSA}" --json
+  assert_success
+  key_c_id=$(echo "$output" | jq -r .key.id)
+
+  run_otdfctl_key list --kas "${KAS_REGISTRY_ID}" --sort key_id --order desc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.kas_keys[] | select(.key.key_id | startswith($prefix)) | .key.id] | join(",")')" "$key_c_id,$key_b_id,$key_a_id"
+
+  run_otdfctl_key list --kas "${KAS_REGISTRY_ID}" --sort key_id --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.kas_keys[] | select(.key.key_id | startswith($prefix)) | .key.id] | join(",")')" "$key_a_id,$key_b_id,$key_c_id"
+
+  run_otdfctl_key list --kas "${KAS_REGISTRY_ID}" --sort created_at --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$key_a_id" --arg b "$key_b_id" --arg c "$key_c_id" '[.kas_keys[] | select(.key.id == $a or .key.id == $b or .key.id == $c) | .key.id] | join(",")')" "$key_a_id,$key_b_id,$key_c_id"
+
+  run_otdfctl_key update --id "$key_a_id" --label sort=a --json
+  assert_success
+  run_otdfctl_key update --id "$key_b_id" --label sort=b --json
+  assert_success
+  run_otdfctl_key update --id "$key_c_id" --label sort=c --json
+  assert_success
+
+  run_otdfctl_key list --kas "${KAS_REGISTRY_ID}" --sort updated_at --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$key_a_id" --arg b "$key_b_id" --arg c "$key_c_id" '[.kas_keys[] | select(.key.id == $a or .key.id == $b or .key.id == $c) | .key.id] | join(",")')" "$key_a_id,$key_b_id,$key_c_id"
+
+  run_otdfctl_key list --kas "${KAS_REGISTRY_ID}" --sort key_id --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.kas_keys[] | select(.key.key_id | startswith($prefix)) | .key.id] | join(",")')" "$key_c_id,$key_b_id,$key_a_id"
+
+  run_otdfctl_key list --kas "${KAS_REGISTRY_ID}" --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$key_a_id" --arg b "$key_b_id" --arg c "$key_c_id" '[.kas_keys[] | select(.key.id == $a or .key.id == $b or .key.id == $c) | .key.id] | join(",")')" "$key_a_id,$key_b_id,$key_c_id"
+}
+
 @test "kas-keys: list keys (pagination with limit and offset)" {
   KAS_NAME_LIST=$(generate_kas_name)
   KAS_URI_LIST=$(format_kas_name_as_uri "${KAS_NAME_LIST}")

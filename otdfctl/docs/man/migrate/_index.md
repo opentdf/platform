@@ -5,7 +5,7 @@ command:
   name: migrate
   aliases:
     - migration
-  description: Migrate policy resources
+  description: Run migration workflows for platform resources
   flags:
     - name: commit
       shorthand: c
@@ -17,20 +17,10 @@ command:
       default: false
 ---
 
-`migrate` groups commands used to migrate policy resources and related state.
+`migrate` groups commands used to move existing platform data or configuration from
+an older model to a newer model. Migration commands can be used to preview planned
+changes, apply compatible updates, and clean up data that is no longer needed after
+a migration.
 
-The end-to-end workflow is not implemented yet, but the command surface is in place.
-
-Available subcommands currently include `namespaced-policy` for migration planning and execution, and `prune` for cleanup flows.
-
-The parent `migrate` command owns the shared `--commit` and `--interactive` flags.
-
-`migrate prune` is separate from the existing destructive `otdfctl policy subject-condition-sets prune` command.
-
-## Planned examples
-
-```shell
-otdfctl migrate namespaced-policy --scope=registered-resources --output=policy-migration.json
-otdfctl migrate prune namespaced-policy --scope=registered-resources
-otdfctl migrate namespaced-policy --scope=actions,subject-mappings,registered-resources --output=policy-migration.json --commit
-```
+The parent `migrate` command owns shared flags used by migration subcommands that
+support applying changes or interactive review.

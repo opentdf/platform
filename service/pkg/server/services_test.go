@@ -259,7 +259,7 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 	newLogger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
 	suite.Require().NoError(err)
 
-	cleanup, err := startServices(ctx, startServicesParams{
+	err = startServices(ctx, startServicesParams{
 		cfg: &config.Config{
 			Mode:   []string{"test"},
 			Logger: logger.Config{Output: "stdout", Level: "info", Type: "json"},
@@ -282,9 +282,6 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 		logger: newLogger,
 		reg:    registry,
 	})
-
-	// call cleanup function
-	defer cleanup()
 
 	suite.Require().NoError(err)
 	// require.NotNil(t, cF)
@@ -645,7 +642,7 @@ func (suite *ServiceTestSuite) TestStartServices_StartsInRegistrationOrder() {
 
 	newLogger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
 	suite.Require().NoError(err)
-	cleanup, err := startServices(ctx, startServicesParams{
+	err = startServices(ctx, startServicesParams{
 		cfg: &config.Config{
 			Mode: []string{"test"}, // Enable the mode for our test services
 			Services: map[string]config.ServiceConfig{
@@ -659,7 +656,6 @@ func (suite *ServiceTestSuite) TestStartServices_StartsInRegistrationOrder() {
 		reg:    registry,
 	})
 	suite.Require().NoError(err)
-	defer cleanup()
 
 	// The startServices function iterates through namespaces in the order they were first registered,
 	// and then through the services within that namespace in their registration order.

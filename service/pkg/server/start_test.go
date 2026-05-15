@@ -351,7 +351,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			require.NoError(t, err)
 
 			// Start services with test service
-			cleanup, err := startServices(context.Background(), startServicesParams{
+			err = startServices(context.Background(), startServicesParams{
 				cfg: &config.Config{
 					Mode: tc.mode,
 					Services: map[string]config.ServiceConfig{
@@ -366,7 +366,6 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 				cacheManager:           &cache.Manager{},
 			})
 			require.NoError(t, err)
-			defer cleanup()
 
 			require.NoError(t, s.Start())
 			defer s.Stop()

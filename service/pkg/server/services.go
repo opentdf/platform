@@ -132,7 +132,7 @@ type startServicesParams struct {
 // based on the configuration and namespace mode. It creates a new service logger
 // and a database client if required. It registers the services with the external
 // and in-process Connect RPC servers plus any extra HTTP handlers.
-func startServices(ctx context.Context, params startServicesParams) (func(), error) {
+func startServices(ctx context.Context, params startServicesParams) error {
 	cfg := params.cfg
 	otdf := params.otdf
 	client := params.client
@@ -185,7 +185,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				var err error
 				svcDBClient, err = newServiceDBClient(ctx, cfg.Logger, cfg.DB, tracer, ns, svc.DBMigrations())
 				if err != nil {
-					return func() {}, err
+					return err
 				}
 			}
 			if svc.GetVersion() != "" {
@@ -225,11 +225,11 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				KeyManagerCtxFactories: keyManagerCtxFactories,
 			})
 			if err != nil {
-				return func() {}, err
+				return err
 			}
 
 			if err := svc.RegisterConfigUpdateHook(ctx, cfg.AddOnConfigChangeHook); err != nil {
-				return func() {}, fmt.Errorf("failed to register config update hook: %w", err)
+				return fmt.Errorf("failed to register config update hook: %w", err)
 			}
 
 			// Register Connect RPC Services
@@ -259,7 +259,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 		}
 	}
 
-	return func() {}, nil
+	return nil
 }
 
 func extractServiceLoggerConfig(cfg config.ServiceConfig) (string, error) {

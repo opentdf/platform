@@ -11,14 +11,33 @@ func resetAuditTypeRegistrationState(t *testing.T) {
 	t.Helper()
 
 	auditTypeRegistryMu.Lock()
+	// Remove any previously registered test types.
+	for k := range objectTypeNames {
+		if k >= testRegistrationBase {
+			delete(objectTypeNames, k)
+		}
+	}
+	for k := range actionTypeNames {
+		if k >= testRegistrationBase {
+			delete(actionTypeNames, k)
+		}
+	}
+	for k := range actionResultNames {
+		if k >= testRegistrationBase {
+			delete(actionResultNames, k)
+		}
+	}
 	typeRegistrationSealed = false
 	auditTypeRegistryMu.Unlock()
 }
 
+const testRegistrationBase = 10000
+
 func TestRegisterObjectType(t *testing.T) {
 	resetAuditTypeRegistrationState(t)
+	t.Cleanup(func() { resetAuditTypeRegistrationState(t) })
 
-	const customObjectType ObjectType = 10001
+	const customObjectType ObjectType = testRegistrationBase + 1
 	const customName = "custom_object_type"
 
 	err := RegisterObjectType(customObjectType, customName)
@@ -28,8 +47,9 @@ func TestRegisterObjectType(t *testing.T) {
 
 func TestRegisterActionType(t *testing.T) {
 	resetAuditTypeRegistrationState(t)
+	t.Cleanup(func() { resetAuditTypeRegistrationState(t) })
 
-	const customActionType ActionType = 10002
+	const customActionType ActionType = testRegistrationBase + 2
 	const customName = "custom_action_type"
 
 	err := RegisterActionType(customActionType, customName)
@@ -39,8 +59,9 @@ func TestRegisterActionType(t *testing.T) {
 
 func TestRegisterActionResult(t *testing.T) {
 	resetAuditTypeRegistrationState(t)
+	t.Cleanup(func() { resetAuditTypeRegistrationState(t) })
 
-	const customActionResult ActionResult = 10003
+	const customActionResult ActionResult = testRegistrationBase + 3
 	const customName = "custom_action_result"
 
 	err := RegisterActionResult(customActionResult, customName)
@@ -48,13 +69,27 @@ func TestRegisterActionResult(t *testing.T) {
 	assert.Equal(t, customName, customActionResult.String())
 }
 
+func TestRegisterTypeRejectsEmptyName(t *testing.T) {
+	resetAuditTypeRegistrationState(t)
+	t.Cleanup(func() { resetAuditTypeRegistrationState(t) })
+
+	errObject := RegisterObjectType(ObjectType(testRegistrationBase+20), "")
+	errAction := RegisterActionType(ActionType(testRegistrationBase+21), "")
+	errResult := RegisterActionResult(ActionResult(testRegistrationBase+22), "")
+
+	require.ErrorIs(t, errObject, ErrInvalidAuditTypeName)
+	require.ErrorIs(t, errAction, ErrInvalidAuditTypeName)
+	require.ErrorIs(t, errResult, ErrInvalidAuditTypeName)
+}
+
 func TestApplyTypeRegistrations(t *testing.T) {
 	resetAuditTypeRegistrationState(t)
+	t.Cleanup(func() { resetAuditTypeRegistrationState(t) })
 
 	const (
-		customObjectType   ObjectType   = 10004
-		customActionType   ActionType   = 10005
-		customActionResult ActionResult = 10006
+		customObjectType   ObjectType   = testRegistrationBase + 4
+		customActionType   ActionType   = testRegistrationBase + 5
+		customActionResult ActionResult = testRegistrationBase + 6
 	)
 
 	objectTypes := make(map[ObjectType]string)
@@ -80,12 +115,13 @@ func TestApplyTypeRegistrations(t *testing.T) {
 
 func TestRegisterTypeBlockedAfterSeal(t *testing.T) {
 	resetAuditTypeRegistrationState(t)
+	t.Cleanup(func() { resetAuditTypeRegistrationState(t) })
 
 	SealTypeRegistrations()
 
-	errObject := RegisterObjectType(ObjectType(10010), "blocked_object")
-	errAction := RegisterActionType(ActionType(10011), "blocked_action")
-	errResult := RegisterActionResult(ActionResult(10012), "blocked_result")
+	errObject := RegisterObjectType(ObjectType(testRegistrationBase+10), "blocked_object")
+	errAction := RegisterActionType(ActionType(testRegistrationBase+11), "blocked_action")
+	errResult := RegisterActionResult(ActionResult(testRegistrationBase+12), "blocked_result")
 
 	require.ErrorIs(t, errObject, ErrAuditTypeRegistrationSealed)
 	require.ErrorIs(t, errAction, ErrAuditTypeRegistrationSealed)
@@ -94,11 +130,12 @@ func TestRegisterTypeBlockedAfterSeal(t *testing.T) {
 
 func TestApplyTypeRegistrationsBlockedAfterSeal(t *testing.T) {
 	resetAuditTypeRegistrationState(t)
+	t.Cleanup(func() { resetAuditTypeRegistrationState(t) })
 
 	SealTypeRegistrations()
 
 	blockedObjectTypes := make(map[ObjectType]string)
-	blockedObjectTypes[ObjectType(10013)] = "blocked_object"
+	blockedObjectTypes[ObjectType(testRegistrationBase+13)] = "blocked_object"
 
 	err := ApplyTypeRegistrations(TypeRegistrations{
 		ObjectTypes: blockedObjectTypes,

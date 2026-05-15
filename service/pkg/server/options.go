@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/casbin/casbin/v2/persist"
@@ -40,7 +42,27 @@ type StartConfig struct {
 	additionalCORSMethods        []string
 	additionalCORSExposedHeaders []string
 
-	auditTypeRegistrations audit.TypeRegistrations
+	auditTypeRegistrations         audit.TypeRegistrations
+	auditTypeRegistrationConflicts []auditTypeRegistrationConflict
+}
+
+type auditTypeRegistrationConflict struct {
+	Category     string
+	Key          int
+	ExistingName string
+	NewName      string
+}
+
+func formatAuditTypeRegistrationConflicts(conflicts []auditTypeRegistrationConflict) string {
+	if len(conflicts) == 0 {
+		return ""
+	}
+
+	entries := make([]string, 0, len(conflicts))
+	for _, conflict := range conflicts {
+		entries = append(entries, fmt.Sprintf("%s %d: %q vs %q", conflict.Category, conflict.Key, conflict.ExistingName, conflict.NewName))
+	}
+	return strings.Join(entries, "; ")
 }
 
 // Deprecated: Use WithConfigKey
@@ -269,6 +291,7 @@ func WithAdditionalCORSExposedHeaders(headers ...string) StartOptions {
 func WithAdditionalAuditTypeRegistrations(registrations audit.TypeRegistrations) StartOptions {
 	return func(c StartConfig) StartConfig {
 		mergedRegistrations := audit.TypeRegistrations{}
+		conflicts := c.auditTypeRegistrationConflicts
 
 		if len(c.auditTypeRegistrations.ObjectTypes) > 0 || len(registrations.ObjectTypes) > 0 {
 			mergedRegistrations.ObjectTypes = make(map[audit.ObjectType]string)
@@ -276,6 +299,17 @@ func WithAdditionalAuditTypeRegistrations(registrations audit.TypeRegistrations)
 				mergedRegistrations.ObjectTypes[objectType] = name
 			}
 			for objectType, name := range registrations.ObjectTypes {
+				if existingName, ok := mergedRegistrations.ObjectTypes[objectType]; ok {
+					if existingName != name {
+						conflicts = append(conflicts, auditTypeRegistrationConflict{
+							Category:     "object_type",
+							Key:          int(objectType),
+							ExistingName: existingName,
+							NewName:      name,
+						})
+					}
+					continue
+				}
 				mergedRegistrations.ObjectTypes[objectType] = name
 			}
 		}
@@ -286,6 +320,17 @@ func WithAdditionalAuditTypeRegistrations(registrations audit.TypeRegistrations)
 				mergedRegistrations.ActionTypes[actionType] = name
 			}
 			for actionType, name := range registrations.ActionTypes {
+				if existingName, ok := mergedRegistrations.ActionTypes[actionType]; ok {
+					if existingName != name {
+						conflicts = append(conflicts, auditTypeRegistrationConflict{
+							Category:     "action_type",
+							Key:          int(actionType),
+							ExistingName: existingName,
+							NewName:      name,
+						})
+					}
+					continue
+				}
 				mergedRegistrations.ActionTypes[actionType] = name
 			}
 		}
@@ -296,11 +341,23 @@ func WithAdditionalAuditTypeRegistrations(registrations audit.TypeRegistrations)
 				mergedRegistrations.ActionResults[actionResult] = name
 			}
 			for actionResult, name := range registrations.ActionResults {
+				if existingName, ok := mergedRegistrations.ActionResults[actionResult]; ok {
+					if existingName != name {
+						conflicts = append(conflicts, auditTypeRegistrationConflict{
+							Category:     "action_result",
+							Key:          int(actionResult),
+							ExistingName: existingName,
+							NewName:      name,
+						})
+					}
+					continue
+				}
 				mergedRegistrations.ActionResults[actionResult] = name
 			}
 		}
 
 		c.auditTypeRegistrations = mergedRegistrations
+		c.auditTypeRegistrationConflicts = conflicts
 		return c
 	}
 }

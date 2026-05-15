@@ -7,7 +7,10 @@ import (
 	"sync"
 )
 
-var ErrAuditTypeRegistrationSealed = errors.New("audit type registrations are sealed")
+var (
+	ErrAuditTypeRegistrationSealed = errors.New("audit type registrations are sealed")
+	ErrInvalidAuditTypeName        = errors.New("audit type name must not be empty")
+)
 
 type ObjectType int
 
@@ -87,6 +90,9 @@ func (ot ObjectType) MarshalJSON() ([]byte, error) {
 }
 
 func RegisterObjectType(ot ObjectType, name string) error {
+	if name == "" {
+		return ErrInvalidAuditTypeName
+	}
 	auditTypeRegistryMu.Lock()
 	defer auditTypeRegistryMu.Unlock()
 	if typeRegistrationSealed {
@@ -131,6 +137,9 @@ func (at ActionType) MarshalJSON() ([]byte, error) {
 }
 
 func RegisterActionType(at ActionType, name string) error {
+	if name == "" {
+		return ErrInvalidAuditTypeName
+	}
 	auditTypeRegistryMu.Lock()
 	defer auditTypeRegistryMu.Unlock()
 	if typeRegistrationSealed {
@@ -179,6 +188,9 @@ func (ar ActionResult) MarshalJSON() ([]byte, error) {
 }
 
 func RegisterActionResult(ar ActionResult, name string) error {
+	if name == "" {
+		return ErrInvalidAuditTypeName
+	}
 	auditTypeRegistryMu.Lock()
 	defer auditTypeRegistryMu.Unlock()
 	if typeRegistrationSealed {

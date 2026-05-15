@@ -127,6 +127,10 @@ func Start(f ...StartOptions) error {
 
 	logger.Trace("config loaded", slog.Any("config", cfg.LogValue()))
 
+	if len(startConfig.auditTypeRegistrationConflicts) > 0 {
+		return fmt.Errorf("conflicting audit type registrations: %s", formatAuditTypeRegistrationConflicts(startConfig.auditTypeRegistrationConflicts))
+	}
+
 	if err := audit.ApplyTypeRegistrations(startConfig.auditTypeRegistrations); err != nil {
 		return fmt.Errorf("failed applying additional audit type registrations: %w", err)
 	}

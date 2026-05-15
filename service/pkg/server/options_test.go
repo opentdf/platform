@@ -73,8 +73,8 @@ func TestWithConnectInterceptors(t *testing.T) {
 	}
 }
 
-func TestWithExternalConnectInterceptorFactories(t *testing.T) {
-	factory := func(ExternalConnectInterceptorContext) (connect.Interceptor, error) {
+func TestWithExternalInterceptorFactories(t *testing.T) {
+	factory := func(InterceptorParams) (connect.Interceptor, error) {
 		return noopInterceptor(), nil
 	}
 
@@ -86,29 +86,29 @@ func TestWithExternalConnectInterceptorFactories(t *testing.T) {
 		{
 			name: "single factory is appended",
 			apply: func(c *StartConfig) {
-				*c = WithExternalConnectInterceptorFactories(factory)(*c)
+				*c = WithExternalInterceptorFactories(factory)(*c)
 			},
 			wantCount: 1,
 		},
 		{
 			name: "multiple factories are appended in order",
 			apply: func(c *StartConfig) {
-				*c = WithExternalConnectInterceptorFactories(factory, factory, factory)(*c)
+				*c = WithExternalInterceptorFactories(factory, factory, factory)(*c)
 			},
 			wantCount: 3,
 		},
 		{
 			name: "calling twice accumulates factories",
 			apply: func(c *StartConfig) {
-				*c = WithExternalConnectInterceptorFactories(factory)(*c)
-				*c = WithExternalConnectInterceptorFactories(factory, factory)(*c)
+				*c = WithExternalInterceptorFactories(factory)(*c)
+				*c = WithExternalInterceptorFactories(factory, factory)(*c)
 			},
 			wantCount: 3,
 		},
 		{
 			name: "empty call leaves slice nil",
 			apply: func(c *StartConfig) {
-				*c = WithExternalConnectInterceptorFactories()(*c)
+				*c = WithExternalInterceptorFactories()(*c)
 			},
 			wantCount: 0,
 		},
@@ -120,9 +120,9 @@ func TestWithExternalConnectInterceptorFactories(t *testing.T) {
 			tt.apply(&cfg)
 
 			if tt.wantCount == 0 {
-				assert.Nil(t, cfg.externalConnectFactories)
+				assert.Nil(t, cfg.externalInterceptorFactories)
 			} else {
-				require.Len(t, cfg.externalConnectFactories, tt.wantCount)
+				require.Len(t, cfg.externalInterceptorFactories, tt.wantCount)
 			}
 			assert.Nil(t, cfg.extraConnectInterceptors)
 			assert.Nil(t, cfg.extraIPCInterceptors)

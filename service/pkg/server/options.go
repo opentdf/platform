@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/casbin/casbin/v2/persist"
 	"github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -14,11 +15,12 @@ import (
 
 type StartOptions func(StartConfig) StartConfig
 
-type ExternalConnectInterceptorContext struct {
-	SDK *sdk.SDK
+type InterceptorParams struct {
+	SDK    *sdk.SDK
+	Logger *logger.Logger
 }
 
-type ExternalConnectInterceptorFactory func(ExternalConnectInterceptorContext) (connect.Interceptor, error)
+type InterceptorFactory func(InterceptorParams) (connect.Interceptor, error)
 
 type StartConfig struct {
 	ConfigKey             string
@@ -35,7 +37,7 @@ type StartConfig struct {
 
 	extraConnectInterceptors []connect.Interceptor
 	extraIPCInterceptors     []connect.Interceptor
-	externalConnectFactories []ExternalConnectInterceptorFactory
+	externalInterceptorFactories []InterceptorFactory
 
 	trustKeyManagerCtxs []trust.NamedKeyManagerCtxFactory
 
@@ -186,13 +188,13 @@ func WithConnectInterceptors(interceptors ...connect.Interceptor) StartOptions {
 	}
 }
 
-// WithExternalConnectInterceptorFactories appends factories for external
+// WithExternalInterceptorFactories appends factories for external
 // Connect interceptors that need access to startup-created clients, such as the
 // IPC SDK connection. Factories are evaluated after the SDK is created and
 // before externally reachable service handlers are registered.
-func WithExternalConnectInterceptorFactories(factories ...ExternalConnectInterceptorFactory) StartOptions {
+func WithExternalInterceptorFactories(factories ...InterceptorFactory) StartOptions {
 	return func(c StartConfig) StartConfig {
-		c.externalConnectFactories = append(c.externalConnectFactories, factories...)
+		c.externalInterceptorFactories = append(c.externalInterceptorFactories, factories...)
 		return c
 	}
 }

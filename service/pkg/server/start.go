@@ -282,10 +282,11 @@ func Start(f ...StartOptions) error {
 
 	defer client.Close()
 
-	if len(startConfig.externalConnectFactories) > 0 {
-		for _, factory := range startConfig.externalConnectFactories {
-			interceptor, err := factory(ExternalConnectInterceptorContext{
-				SDK: client,
+	if len(startConfig.externalInterceptorFactories) > 0 {
+		for _, factory := range startConfig.externalInterceptorFactories {
+			interceptor, err := factory(InterceptorParams{
+				SDK:    client,
+				Logger: logger,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to create external connect interceptor: %w", err)

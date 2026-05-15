@@ -73,6 +73,63 @@ func TestWithConnectInterceptors(t *testing.T) {
 	}
 }
 
+func TestWithExternalInterceptorFactories(t *testing.T) {
+	factory := func(InterceptorParams) (connect.Interceptor, error) {
+		return noopInterceptor(), nil
+	}
+
+	tests := []struct {
+		name      string
+		apply     func(*StartConfig)
+		wantCount int
+	}{
+		{
+			name: "single factory is appended",
+			apply: func(c *StartConfig) {
+				*c = WithExternalInterceptorFactories(factory)(*c)
+			},
+			wantCount: 1,
+		},
+		{
+			name: "multiple factories are appended in order",
+			apply: func(c *StartConfig) {
+				*c = WithExternalInterceptorFactories(factory, factory, factory)(*c)
+			},
+			wantCount: 3,
+		},
+		{
+			name: "calling twice accumulates factories",
+			apply: func(c *StartConfig) {
+				*c = WithExternalInterceptorFactories(factory)(*c)
+				*c = WithExternalInterceptorFactories(factory, factory)(*c)
+			},
+			wantCount: 3,
+		},
+		{
+			name: "empty call leaves slice nil",
+			apply: func(c *StartConfig) {
+				*c = WithExternalInterceptorFactories()(*c)
+			},
+			wantCount: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg StartConfig
+			tt.apply(&cfg)
+
+			if tt.wantCount == 0 {
+				assert.Nil(t, cfg.externalInterceptorFactories)
+			} else {
+				require.Len(t, cfg.externalInterceptorFactories, tt.wantCount)
+			}
+			assert.Nil(t, cfg.extraConnectInterceptors)
+			assert.Nil(t, cfg.extraIPCInterceptors)
+		})
+	}
+}
+
 func TestWithIPCInterceptors(t *testing.T) {
 	tests := []struct {
 		name      string

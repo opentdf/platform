@@ -282,6 +282,21 @@ func Start(f ...StartOptions) error {
 
 	defer client.Close()
 
+	if len(startConfig.externalInterceptorFactories) > 0 {
+		for _, factory := range startConfig.externalInterceptorFactories {
+			interceptor, err := factory(InterceptorParams{
+				SDK:    client,
+				Logger: logger,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to create external connect interceptor: %w", err)
+			}
+			if interceptor != nil {
+				otdf.ConnectRPC.Interceptors = append(otdf.ConnectRPC.Interceptors, connect.WithInterceptors(interceptor))
+			}
+		}
+	}
+
 	logger.Info("starting services")
 	gatewayCleanup, err := startServices(ctx, startServicesParams{
 		cfg:                    cfg,

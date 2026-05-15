@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/opentdf/platform/compare/sdk/v0.20.0...sdk/v0.21.0) (2026-05-15)
+
+
+### Bug Fixes
+
+* **sdk:** DSPX-3464 Adds subject_token_type to RFC 8693 token exchanges ([#3465](https://github.com/opentdf/platform/issues/3465)) ([ed9b0fc](https://github.com/opentdf/platform/commit/ed9b0fca6ca9a733e2904c1905f7c31a9ebdb64d))
+
 ## [0.20.0](https://github.com/opentdf/platform/compare/sdk/v0.19.0...sdk/v0.20.0) (2026-05-11)
 
 

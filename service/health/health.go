@@ -36,12 +36,7 @@ func NewRegistration() *serviceregistry.Service[grpchealth.Checker] {
 				}
 				hs := HealthService{logger: srp.Logger}
 				return hs, func(_ context.Context, mux *http.ServeMux) error {
-					mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-						if r.Method != http.MethodGet {
-							http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-							return
-						}
-
+					mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 						resp, err := hs.Check(r.Context(), &grpchealth.CheckRequest{
 							Service: r.URL.Query().Get("service"),
 						})

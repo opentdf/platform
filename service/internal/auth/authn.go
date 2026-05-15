@@ -36,6 +36,7 @@ var (
 	allowedPublicEndpoints = [...]string{
 		// Well Known Configuration Endpoints
 		"/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration",
+		"/.well-known/opentdf-configuration",
 		// KAS Public Key Endpoints
 		"/kas.AccessService/PublicKey",
 		"/kas.AccessService/LegacyPublicKey",

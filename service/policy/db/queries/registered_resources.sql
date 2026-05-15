@@ -50,13 +50,45 @@ SELECT
     JSON_AGG(
         JSON_BUILD_OBJECT(
             'id', v.id,
-            'value', v.value
+            'value', v.value,
+            'action_attribute_values', action_attrs.values
         )
     ) FILTER (WHERE v.id IS NOT NULL) as values
 FROM registered_resources r
 LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
+-- Build a JSON array of action/attribute pairs for each resource value
+LEFT JOIN LATERAL (
+    -- COALESCE so a value with no mappings yields '[]' rather than SQL NULL,
+    -- giving consumers a consistent JSON array shape for action_attribute_values.
+    SELECT COALESCE(JSON_AGG(
+        JSON_BUILD_OBJECT(
+            'action', JSON_BUILD_OBJECT(
+                'id', a.id,
+                'name', a.name,
+                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                    -- Namespace FQN is deterministic from the name, so build it inline
+                    -- instead of joining attribute_fqns for it.
+                    ELSE JSON_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', CONCAT('https://', ans.name))
+                END
+            ),
+            'attribute_value', JSON_BUILD_OBJECT(
+                'id', av.id,
+                'value', av.value,
+                'fqn', fqns.fqn
+            )
+        )
+    ), '[]'::json) AS values
+    -- Join to get all action-attribute relationships for this resource value
+    FROM registered_resource_action_attribute_values rav
+    LEFT JOIN actions a on rav.action_id = a.id
+    LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
+    LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
+    LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
+    -- Correlate to the outer query's resource value
+    WHERE rav.registered_resource_value_id = v.id
+) action_attrs ON true  -- required syntax for LATERAL joins
 WHERE
     (sqlc.narg('id')::uuid IS NULL OR r.id = sqlc.narg('id')::uuid) AND
     (sqlc.narg('name')::text IS NULL OR r.name = sqlc.narg('name')::text) AND
@@ -68,7 +100,12 @@ ORDER BY r.namespace_id NULLS FIRST
 LIMIT 1;
 
 -- name: listRegisteredResources :many
-WITH counted AS (
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
+),
+counted AS (
     SELECT COUNT(r.id) AS total
     FROM registered_resources r
     LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
@@ -101,14 +138,22 @@ FROM registered_resources r
 LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 CROSS JOIN counted
+CROSS JOIN params p
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 -- Build a JSON array of action/attribute pairs for each resource value
 LEFT JOIN LATERAL (
-    SELECT JSON_AGG(
+    -- COALESCE so a value with no mappings yields '[]' rather than SQL NULL,
+    -- giving consumers a consistent JSON array shape for action_attribute_values.
+    SELECT COALESCE(JSON_AGG(
         JSON_BUILD_OBJECT(
             'action', JSON_BUILD_OBJECT(
                 'id', a.id,
-                'name', a.name
+                'name', a.name,
+                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                    -- Namespace FQN is deterministic from the name, so build it inline
+                    -- instead of joining attribute_fqns for it.
+                    ELSE JSON_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', CONCAT('https://', ans.name))
+                END
             ),
             'attribute_value', JSON_BUILD_OBJECT(
                 'id', av.id,
@@ -116,10 +161,11 @@ LEFT JOIN LATERAL (
                 'fqn', fqns.fqn
             )
         )
-    ) AS values
+    ), '[]'::json) AS values
     -- Join to get all action-attribute relationships for this resource value
     FROM registered_resource_action_attribute_values rav
     LEFT JOIN actions a on rav.action_id = a.id
+    LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
     LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
     LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
     -- Correlate to the outer query's resource value
@@ -128,8 +174,15 @@ LEFT JOIN LATERAL (
 WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL OR r.namespace_id = sqlc.narg('namespace_id')::uuid) AND
     (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text)
-GROUP BY r.id, n.id, ns_fqns.fqn, counted.total
-ORDER BY r.created_at DESC
+GROUP BY r.id, n.id, ns_fqns.fqn, counted.total, p.resolved_field, p.resolved_direction
+ORDER BY
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN r.name END ASC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN r.name END DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN r.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN r.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN r.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN r.updated_at END DESC,
+    r.id ASC
 LIMIT @limit_
 OFFSET @offset_;
 

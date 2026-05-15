@@ -297,6 +297,9 @@ message ResourceMappingGroup {
   // per namespace
   string name = 3 [(buf.validate.field).required = true];
 
+  // the fully qualified name of the resource mapping group
+  string fqn = 4;
+
   // Common metadata
   common.Metadata metadata = 100;
 }
@@ -478,6 +481,8 @@ message RegisteredResourceValue {
 
   repeated ActionAttributeValue action_attribute_values = 4;
 
+  string fqn = 5;
+
   // Common metadata
   common.Metadata metadata = 100;
 }
@@ -531,6 +536,9 @@ message ObligationTrigger {
   Value attribute_value = 4;
 
   repeated RequestContext context = 5;
+
+  // The source namespace for this trigger, derived from the attribute value and action.
+  Namespace namespace = 11;
 
   common.Metadata metadata = 100;
 }

@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"slices"
 	"strings"
@@ -84,8 +85,8 @@ const (
 // Authentication holds a jwks cache and information about the openid configuration
 type Authentication struct {
 	enforceDPoP bool
-	// keySet holds a cached key set
-	cachedKeySet jwk.Set
+	// tokenVerifier validates access tokens against the configured IdP.
+	tokenVerifier *TokenVerifier
 	// openidConfigurations holds the openid configuration for the issuer
 	oidcConfiguration AuthNConfig
 	// Casbin enforcer
@@ -108,41 +109,11 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		logger:      logger,
 	}
 
-	// validate the configuration
-	if err := cfg.validateAuthNConfig(a.logger); err != nil {
-		return nil, err
-	}
-
-	cache := jwk.NewCache(ctx)
-
-	// Build new cache
-	// Discover OIDC Configuration
-	oidcConfig, err := DiscoverOIDCConfiguration(ctx, cfg.Issuer, a.logger)
+	tokenVerifier, oidcConfig, err := newTokenVerifier(ctx, cfg.AuthNConfig, a.logger)
 	if err != nil {
 		return nil, err
 	}
-
-	// If the issuer is different from the one in the configuration, update the configuration
-	// This could happen if we are hitting an internal endpoint. Example we might point to https://keycloak.opentdf.svc/realms/opentdf
-	// but the external facing issuer is https://keycloak.opentdf.local/realms/opentdf
-	if oidcConfig.Issuer != cfg.Issuer {
-		cfg.Issuer = oidcConfig.Issuer
-	}
-
-	cacheInterval, err := time.ParseDuration(cfg.CacheRefresh)
-	if err != nil {
-		logger.ErrorContext(ctx,
-			"invalid cache_refresh_interval",
-			slog.String("cache_refresh_interval", cfg.CacheRefresh),
-			slog.Any("err", err),
-		)
-		cacheInterval = refreshInterval
-	}
-
-	// Register the jwks_uri with the cache
-	if err := cache.Register(oidcConfig.JwksURI, jwk.WithMinRefreshInterval(cacheInterval)); err != nil {
-		return nil, err
-	}
+	a.tokenVerifier = tokenVerifier
 
 	roleProvider, err := resolveRoleProvider(ctx, cfg, logger)
 	if err != nil {
@@ -157,15 +128,6 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)
 	}
 
-	// Need to refresh the cache to verify jwks is available
-	_, err = cache.Refresh(ctx, oidcConfig.JwksURI)
-	if err != nil {
-		return nil, err
-	}
-
-	// Set the cache
-	a.cachedKeySet = jwk.NewCachedSet(cache, oidcConfig.JwksURI)
-
 	// Combine public routes
 	a.publicRoutes = append(a.publicRoutes, cfg.PublicRoutes...)
 	a.publicRoutes = append(a.publicRoutes, allowedPublicEndpoints[:]...)
@@ -173,10 +135,10 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	// Combine IPC reauthorization routes
 	a.ipcReauthRoutes = append(ipcReauthRoutes[:], cfg.IPCReauthRoutes...)
 
-	a.oidcConfiguration = cfg.AuthNConfig
+	a.oidcConfiguration = tokenVerifier.oidcConfiguration
 
 	// Try an register oidc issuer to wellknown service but don't return an error if it fails
-	if err := wellknownRegistration("platform_issuer", cfg.Issuer); err != nil {
+	if err := wellknownRegistration("platform_issuer", a.oidcConfiguration.Issuer); err != nil {
 		logger.Warn("failed to register platform issuer", slog.Any("error", err))
 	}
 
@@ -349,7 +311,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 
 			// parse the rpc method
 			p := strings.Split(req.Spec().Procedure, "/")
-			resource := p[1] + "/" + p[2]
+			resource := path.Join(p[1], p[2])
 			action := getAction(p[2])
 
 			token, ctxWithJWK, err := a.checkToken(
@@ -507,16 +469,12 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 		return nil, nil, errors.New("not of type bearer or dpop")
 	}
 
-	// Now we verify the token signature
-	accessToken, err := jwt.Parse([]byte(tokenRaw),
-		jwt.WithKeySet(a.cachedKeySet),
-		jwt.WithValidate(true),
-		jwt.WithIssuer(a.oidcConfiguration.Issuer),
-		jwt.WithAudience(a.oidcConfiguration.Audience),
-		jwt.WithAcceptableSkew(a.oidcConfiguration.TokenSkew),
-	)
+	if a.tokenVerifier == nil {
+		return nil, nil, errors.New("access token verifier is not configured")
+	}
+
+	accessToken, err := a.tokenVerifier.VerifyAccessToken(ctx, tokenRaw)
 	if err != nil {
-		a.logger.Warn("failed to validate auth token", slog.Any("err", err))
 		return nil, nil, err
 	}
 

@@ -639,6 +639,10 @@ components:
           items:
             $ref: '#/components/schemas/policy.RequestContext'
           title: context
+        namespace:
+          title: namespace
+          description: The source namespace for this trigger, derived from the attribute value and action.
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -770,6 +774,9 @@ components:
           items:
             $ref: '#/components/schemas/policy.RegisteredResourceValue.ActionAttributeValue'
           title: action_attribute_values
+        fqn:
+          type: string
+          title: fqn
         metadata:
           title: metadata
           description: Common metadata
@@ -848,6 +855,10 @@ components:
           description: |-
             the common name for the group of resource mappings, which must be unique
              per namespace
+        fqn:
+          type: string
+          title: fqn
+          description: the fully qualified name of the resource mapping group
         metadata:
           title: metadata
           description: Common metadata
@@ -976,7 +987,6 @@ components:
         authoritative source such as an IDP (Identity Provider) or User Store.
         Examples include such ADFS/LDAP, OKTA, etc. For now, a valid property must
         contain both a selector expression & a resulting value.
-
         The external_selector_value is a specifier to select a value from a flattened
         external representation of an Entity (such as from idP/LDAP), and the
         external_value is the value selected by the external_selector_value on that

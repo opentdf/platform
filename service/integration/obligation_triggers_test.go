@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -298,6 +299,85 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithStandardActio
 	s.Equal("read", trigger.GetAction().GetName())
 }
 
+func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ObligationValueDifferentNamespace_Succeeds() {
+	targetNamespace, _, targetObligationValue := s.createCrossNamespaceObligationValue("different-obligation-ns")
+
+	customActionName := fmt.Sprintf("cross-namespace-trigger-action-%d", time.Now().UnixNano())
+	sourceAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        customActionName,
+		NamespaceId: s.namespace.GetId(),
+	})
+	s.Require().NoError(err)
+
+	var triggerID string
+	defer func() {
+		if triggerID != "" {
+			_, err := s.db.PolicyClient.DeleteObligationTrigger(s.ctx, &obligations.RemoveObligationTriggerRequest{
+				Id: triggerID,
+			})
+			if err != nil && !errors.Is(err, db.ErrNotFound) {
+				s.Require().NoError(err)
+			}
+		}
+
+		_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, targetNamespace, targetNamespace.GetFqn())
+		s.Require().NoError(err)
+	}()
+
+	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
+		ObligationValue: &common.IdFqnIdentifier{Id: targetObligationValue.GetId()},
+		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
+		Action:          &common.IdNameIdentifier{Name: sourceAction.GetName()},
+		Context: &policy.RequestContext{
+			Pep: &policy.PolicyEnforcementPoint{
+				ClientId: clientID,
+			},
+		},
+	})
+	s.Require().NoError(err)
+	triggerID = trigger.GetId()
+
+	s.validateTrigger(trigger, targetObligationValue, s.attributeValue, sourceAction, true)
+}
+
+func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_CrossNamespaceActionName_UsesSourceNamespaceAction() {
+	targetNamespace, _, targetObligationValue := s.createCrossNamespaceObligationValue("cross-namespace-action-resolution")
+
+	sourceRead := s.getActionByNameInNamespace("read", s.namespace.GetId())
+	targetRead := s.getActionByNameInNamespace("read", targetNamespace.GetId())
+	s.Require().NotEqual(sourceRead.GetId(), targetRead.GetId())
+
+	var triggerID string
+	defer func() {
+		if triggerID != "" {
+			_, err := s.db.PolicyClient.DeleteObligationTrigger(s.ctx, &obligations.RemoveObligationTriggerRequest{
+				Id: triggerID,
+			})
+			if err != nil && !errors.Is(err, db.ErrNotFound) {
+				s.Require().NoError(err)
+			}
+		}
+
+		_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, targetNamespace, targetNamespace.GetFqn())
+		s.Require().NoError(err)
+	}()
+
+	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
+		ObligationValue: &common.IdFqnIdentifier{Fqn: targetObligationValue.GetFqn()},
+		AttributeValue:  &common.IdFqnIdentifier{Fqn: s.attributeValue.GetFqn()},
+		Action:          &common.IdNameIdentifier{Name: "read"},
+		Context: &policy.RequestContext{
+			Pep: &policy.PolicyEnforcementPoint{
+				ClientId: clientID,
+			},
+		},
+	})
+	s.Require().NoError(err)
+	triggerID = trigger.GetId()
+
+	s.validateTrigger(trigger, targetObligationValue, s.attributeValue, sourceRead, true)
+}
+
 func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ObligationValueNotFound_Fails() {
 	randomID := uuid.NewString()
 	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
@@ -422,6 +502,29 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ActionIDDifferent
 	s.Nil(trigger)
 }
 
+func (s *ObligationTriggersSuite) Test_GetObligationTrigger_Success() {
+	trigger := s.createGenericTrigger()
+	s.triggerIDsToClean = append(s.triggerIDsToClean, trigger.GetId())
+
+	retrievedTrigger, err := s.db.PolicyClient.GetObligationTrigger(s.ctx, &obligations.GetObligationTriggerRequest{
+		Id: trigger.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(retrievedTrigger)
+	s.Require().Equal(trigger.GetId(), retrievedTrigger.GetId())
+	s.validateTrigger(retrievedTrigger, trigger.GetObligationValue(), trigger.GetAttributeValue(), trigger.GetAction(), true)
+	s.Require().NotNil(retrievedTrigger.GetMetadata())
+}
+
+func (s *ObligationTriggersSuite) Test_GetObligationTrigger_NotFound_Fails() {
+	randomID := uuid.NewString()
+	_, err := s.db.PolicyClient.GetObligationTrigger(s.ctx, &obligations.GetObligationTriggerRequest{
+		Id: randomID,
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
 func (s *ObligationTriggersSuite) Test_DeleteObligationTrigger_Success() {
 	trigger := s.createGenericTrigger()
 	deletedTrigger, err := s.db.PolicyClient.DeleteObligationTrigger(s.ctx, &obligations.RemoveObligationTriggerRequest{
@@ -469,7 +572,7 @@ func (s *ObligationTriggersSuite) Test_ListObligationTriggers_OrdersByCreatedAt_
 	s.Require().NoError(err)
 	s.NotNil(triggers)
 
-	assertIDsInDescendingOrder(s.T(), triggers, func(t *policy.ObligationTrigger) string { return t.GetId() }, third.GetId(), second.GetId(), first.GetId())
+	assertIDsInOrder(s.T(), triggers, func(t *policy.ObligationTrigger) string { return t.GetId() }, third.GetId(), second.GetId(), first.GetId())
 }
 
 func (s *ObligationTriggersSuite) Test_ListObligationTriggers_NoTriggersWithNamespaceId_Success() {
@@ -533,7 +636,6 @@ func (s *ObligationTriggersSuite) Test_ListObligationTriggers_MultipleTriggersWi
 
 	foundTriggers := make(map[string]bool)
 	for _, t := range triggers {
-		s.Require().Equal(s.namespace.GetId(), t.GetObligationValue().GetObligation().GetNamespace().GetId())
 		createdTrigger, ok := createdTriggersMap[t.GetId()]
 		s.Require().True(ok)
 		s.validateTrigger(t, createdTrigger.GetObligationValue(), createdTrigger.GetAttributeValue(), createdTrigger.GetAction(), true)
@@ -560,7 +662,6 @@ func (s *ObligationTriggersSuite) Test_ListObligationTriggers_MultipleTriggersWi
 
 	foundTriggers := make(map[string]bool)
 	for _, t := range triggers {
-		s.Require().Equal(s.namespace.GetFqn(), t.GetObligationValue().GetObligation().GetNamespace().GetFqn())
 		createdTrigger, ok := createdTriggersMap[t.GetId()]
 		s.Require().True(ok)
 		s.validateTrigger(t, createdTrigger.GetObligationValue(), createdTrigger.GetAttributeValue(), createdTrigger.GetAction(), true)
@@ -621,8 +722,76 @@ func (s *ObligationTriggersSuite) Test_ListObligationTriggers_WithNamespaceAndPa
 	s.Require().NoError(err)
 	s.Require().Len(triggers, 1)
 	s.validatePageResponses(pageRes, 1, 0, 0)
-	s.Require().Equal(s.namespace.GetId(), triggers[0].GetObligationValue().GetObligation().GetNamespace().GetId())
 	s.validateTriggerWithDefaults(triggers[0], true)
+}
+
+func (s *ObligationTriggersSuite) Test_ListObligationTriggers_CrossNamespaceObligationUsesSourceNamespaceFilter_Success() {
+	targetNamespace, _, targetObligationValue := s.createCrossNamespaceObligationValue("cross-namespace-list-test")
+
+	customActionName := fmt.Sprintf("cross-namespace-list-action-%d", time.Now().UnixNano())
+	sourceAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        customActionName,
+		NamespaceId: s.namespace.GetId(),
+	})
+	s.Require().NoError(err)
+
+	var triggerID string
+	defer func() {
+		if triggerID != "" {
+			_, err := s.db.PolicyClient.DeleteObligationTrigger(s.ctx, &obligations.RemoveObligationTriggerRequest{
+				Id: triggerID,
+			})
+			if err != nil && !errors.Is(err, db.ErrNotFound) {
+				s.Require().NoError(err)
+			}
+		}
+
+		_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, targetNamespace, targetNamespace.GetFqn())
+		s.Require().NoError(err)
+	}()
+
+	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
+		ObligationValue: &common.IdFqnIdentifier{Fqn: targetObligationValue.GetFqn()},
+		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
+		Action:          &common.IdNameIdentifier{Name: sourceAction.GetName()},
+		Context: &policy.RequestContext{
+			Pep: &policy.PolicyEnforcementPoint{
+				ClientId: clientID,
+			},
+		},
+	})
+	s.Require().NoError(err)
+	triggerID = trigger.GetId()
+
+	sourceNamespaceTriggers, sourcePage, err := s.db.PolicyClient.ListObligationTriggers(s.ctx, &obligations.ListObligationTriggersRequest{
+		NamespaceId: s.namespace.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().Len(sourceNamespaceTriggers, 1)
+	s.validatePageResponses(sourcePage, 1, 0, 0)
+	s.validateTrigger(sourceNamespaceTriggers[0], targetObligationValue, s.attributeValue, sourceAction, true)
+
+	sourceNamespaceFqnTriggers, sourceFqnPage, err := s.db.PolicyClient.ListObligationTriggers(s.ctx, &obligations.ListObligationTriggersRequest{
+		NamespaceFqn: s.namespace.GetFqn(),
+	})
+	s.Require().NoError(err)
+	s.Require().Len(sourceNamespaceFqnTriggers, 1)
+	s.validatePageResponses(sourceFqnPage, 1, 0, 0)
+	s.validateTrigger(sourceNamespaceFqnTriggers[0], targetObligationValue, s.attributeValue, sourceAction, true)
+
+	targetNamespaceTriggers, targetPage, err := s.db.PolicyClient.ListObligationTriggers(s.ctx, &obligations.ListObligationTriggersRequest{
+		NamespaceId: targetNamespace.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().Empty(targetNamespaceTriggers)
+	s.validatePageResponses(targetPage, 0, 0, 0)
+
+	targetNamespaceFqnTriggers, targetFqnPage, err := s.db.PolicyClient.ListObligationTriggers(s.ctx, &obligations.ListObligationTriggersRequest{
+		NamespaceFqn: targetNamespace.GetFqn(),
+	})
+	s.Require().NoError(err)
+	s.Require().Empty(targetNamespaceFqnTriggers)
+	s.validatePageResponses(targetFqnPage, 0, 0, 0)
 }
 
 func (s *ObligationTriggersSuite) Test_ListObligationTriggers_LimitToLarge() {
@@ -737,6 +906,11 @@ func (s *ObligationTriggersSuite) validateTrigger(actual *policy.ObligationTrigg
 	s.Require().Equal(expectedAction.GetId(), actual.GetAction().GetId())
 	s.Require().Equal(expectedAction.GetName(), actual.GetAction().GetName())
 
+	// Validate top-level trigger namespace
+	s.Require().NotNil(actual.GetNamespace())
+	s.Require().NotEmpty(actual.GetNamespace().GetId())
+	s.Require().Equal(strings.Split(expectedAttributeValue.GetFqn(), "/attr/")[0], actual.GetNamespace().GetFqn())
+
 	// Validate context
 	if shouldHaveCtx {
 		s.Require().NotNil(actual.GetContext())
@@ -758,6 +932,15 @@ func (s *ObligationTriggersSuite) validatePageResponses(pageResult *policy.PageR
 // validateTriggerWithDefaults validates a trigger against the suite's default values for backward compatibility
 func (s *ObligationTriggersSuite) validateTriggerWithDefaults(trigger *policy.ObligationTrigger, shouldHaveCtx bool) {
 	s.validateTrigger(trigger, s.obligationValue, s.attributeValue, s.action, shouldHaveCtx)
+}
+
+func (s *ObligationTriggersSuite) getActionByNameInNamespace(name string, namespaceID string) *policy.Action {
+	action, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
+		Identifier:  &actions.GetActionRequest_Name{Name: name},
+		NamespaceId: namespaceID,
+	})
+	s.Require().NoError(err)
+	return action
 }
 
 func (s *ObligationTriggersSuite) appendObligationValuesToClean(createdTriggers map[string]*policy.ObligationTrigger) {
@@ -841,4 +1024,27 @@ func (s *ObligationTriggersSuite) createDifferentNamespaceWithTrigger(namespaceN
 			s.Require().NoError(err)
 		},
 	}
+}
+
+func (s *ObligationTriggersSuite) createCrossNamespaceObligationValue(namespaceName string) (*policy.Namespace, *policy.Obligation, *policy.ObligationValue) {
+	uniqueNamespaceName := fmt.Sprintf("%s-%d", namespaceName, time.Now().UnixNano())
+
+	targetNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: uniqueNamespaceName,
+	})
+	s.Require().NoError(err)
+
+	targetObligation, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		Name:        "cross-namespace-obligation-" + uniqueNamespaceName,
+		NamespaceId: targetNamespace.GetId(),
+	})
+	s.Require().NoError(err)
+
+	targetObligationValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationId: targetObligation.GetId(),
+		Value:        "cross-namespace-obligation-value-" + uniqueNamespaceName,
+	})
+	s.Require().NoError(err)
+
+	return targetNamespace, targetObligation, targetObligationValue
 }

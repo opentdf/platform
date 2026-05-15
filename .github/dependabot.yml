@@ -7,7 +7,9 @@ version: 2
 updates:
   # Dependabot for CI
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - "/"
+      - "/otdfctl/e2e"
     schedule:
       interval: monthly
     commit-message:
@@ -59,6 +61,17 @@ updates:
 
   - package-ecosystem: gomod
     directory: "/service"
+    commit-message:
+      prefix: "fix(deps)"
+    groups:
+      external:
+        exclude-patterns:
+          - "github.com/opentdf/*"
+    schedule:
+      interval: daily
+
+  - package-ecosystem: gomod
+    directory: "/otdfctl"
     commit-message:
       prefix: "fix(deps)"
     groups:

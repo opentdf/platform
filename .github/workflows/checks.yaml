@@ -18,7 +18,15 @@ on:
       - main
     types:
       - checks_requested
+  schedule:
+    - cron: '25 5 * * *' # 5:25am UTC = 12:25am EST / 8:25am EEST
   workflow_call:
+  workflow_dispatch:
+    inputs:
+      testrail-run-name-for-cli-test:
+        description: 'Name for the TestRail test run'
+        required: false
+        default: ''
 
 permissions: {}
 
@@ -33,6 +41,7 @@ jobs:
       matrix:
         directory:
           - examples
+          - otdfctl
           - sdk
           - service
           - lib/ocrypto
@@ -41,7 +50,7 @@ jobs:
           - lib/identifier
           - tests-bdd
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -51,6 +60,7 @@ jobs:
           check-latest: false
           cache-dependency-path: |
             examples/go.sum
+            otdfctl/go.sum
             protocol/go/go.sum
             sdk/go.sum
             service/go.sum
@@ -69,13 +79,26 @@ jobs:
       - run: go work use .
         if: env.IS_RELEASE_BRANCH == 'true'
         working-directory: ${{ matrix.directory }}
-      - name: govluncheck
+      - name: govulncheck
+        id: govulncheck
+        continue-on-error: true
         uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
         with:
-          go-version-input: "1.25.7"
+          go-version-input: "1.25.9"
           work-dir: ${{ matrix.directory }}
+      - if: steps.govulncheck.outcome == 'failure'
+        run: echo "$MODULE_DIR" > "/tmp/govulncheck-failure-${JOB_INDEX}.txt"
+        env:
+          MODULE_DIR: ${{ matrix.directory }}
+          JOB_INDEX: ${{ strategy.job-index }}
+      - if: steps.govulncheck.outcome == 'failure'
+        uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4.3.4
+        with:
+          name: govulncheck-failure-${{ strategy.job-index }}
+          path: /tmp/govulncheck-failure-${{ strategy.job-index }}.txt
+          retention-days: 1
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 # v8.0.0
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
         with:
           version: v2.8.0
           working-directory: ${{ matrix.directory }}
@@ -87,11 +110,14 @@ jobs:
         working-directory: ${{ matrix.directory }}
       - if: matrix.directory == 'service'
         run: go test ./service/integration -race -failfast
+      - name: setup sqlc
+        if: matrix.directory == 'service'
+        uses: sqlc-dev/setup-sqlc@bac53b7fb28c039a6c7f5736fd1e89744021bdd6 # v5.0.0
+        with:
+          sqlc-version: '1.31.0'
       - name: verify sqlc generate
         if: matrix.directory == 'service'
-        run: |
-          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
-          make policy-sql-gen
+        run: make policy-sql-gen
       - name: check go fmt and go mod tidy
         run: |-
           go mod tidy
@@ -104,6 +130,58 @@ jobs:
         run: git diff-files --quiet --ignore-submodules
         if: env.IS_RELEASE_BRANCH == 'false'
 
+  comment-govulncheck:
+    if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork && !cancelled()
+    permissions:
+      contents: read
+      pull-requests: write
+    needs: go
+    runs-on: ubuntu-22.04
+    steps:
+      - name: download govulncheck failures
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          pattern: govulncheck-failure-*
+          path: govulncheck-failures
+          merge-multiple: true
+      - name: build comment body
+        id: comment-body
+        if: steps.download.outcome == 'success'
+        env:
+          RUN_ID: ${{ github.run_id }}
+          SERVER_URL: ${{ github.server_url }}
+          REPO: ${{ github.repository }}
+        run: |
+          modules=$(find govulncheck-failures -name '*.txt' | sort | while IFS= read -r f; do echo "- \`$(cat "$f")\`"; done)
+          run_url="${SERVER_URL}/${REPO}/actions/runs/${RUN_ID}"
+          body="## :warning: Govulncheck found vulnerabilities :warning:
+
+          The following modules have known vulnerabilities:
+
+          ${modules}
+
+          See the [workflow run](${run_url}) for details."
+          {
+            echo "body<<EOF"
+            echo "$body"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: post govulncheck comment
+        if: steps.download.outcome == 'success'
+        uses: marocchino/sticky-pull-request-comment@70d2764d1a7d5d9560b100cbea0077fc8f633987 # v3.0.2
+        with:
+          header: govulncheck-results
+          recreate: true
+          message: ${{ steps.comment-body.outputs.body }}
+      - name: delete govulncheck comment
+        if: steps.download.outcome != 'success'
+        uses: marocchino/sticky-pull-request-comment@70d2764d1a7d5d9560b100cbea0077fc8f633987 # v3.0.2
+        with:
+          header: govulncheck-results
+          delete: true
+
   integration:
     permissions:
       contents: read
@@ -112,7 +190,7 @@ jobs:
     env:
       TLS_ENABLED: "true"
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
@@ -191,7 +269,7 @@ jobs:
     env:
       TLS_ENABLED: "true"
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
@@ -344,7 +422,7 @@ jobs:
     needs: benchmark
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
@@ -371,7 +449,7 @@ jobs:
     outputs:
       proto: ${{ steps.check.outputs.proto }}
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -380,7 +458,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
-            if git diff --name-only "$BASE_SHA" HEAD | grep -q '\.proto$'; then
+            if git diff --name-only "$BASE_SHA" HEAD | grep -qE '\.proto$|^Makefile$|^buf\.|^protocol/codegen/|^protocol/go/internal/|^sdk/codegen/'; then
               echo "proto=true" >> "$GITHUB_OUTPUT"
             else
               echo "proto=false" >> "$GITHUB_OUTPUT"
@@ -396,7 +474,7 @@ jobs:
     name: image build
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
       - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
@@ -440,7 +518,7 @@ jobs:
           sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
 
       - name: "Checkout"
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
@@ -469,6 +547,8 @@ jobs:
           cat cukes_platform_compose.log
           echo "********** Docker logs **********"
           docker ps -aq | xargs -L 1 docker logs
+          echo "********** Cukes Platform Service log **********"
+          cat cukes_platform_service.log
       - uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4.3.4
         if: ${{ !cancelled() }}
         with:
@@ -478,23 +558,28 @@ jobs:
             cukes_platform_report.log
           retention-days: 1
 
-  # test latest otdfctl CLI 'main' against platform PR branch
+  # test otdfctl CLI e2e against platform PR branch
   otdfctl-test:
     permissions:
       contents: read
     name: otdfctl e2e tests
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - name: Install GNU parallel
         run: |
           sudo apt update
           sudo apt install -y parallel
-      - uses: opentdf/platform/test/start-up-with-containers@main
+      - uses: ./test/start-up-with-containers
         with:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: opentdf/otdfctl/e2e@main
+          provision-policy-fixtures: "false"
+      - uses: ./otdfctl/e2e
         with:
-          otdfctl-ref: "main"
+          testrail-run-name-for-cli-test: ${{ inputs.testrail-run-name-for-cli-test }}
         env:
           TESTRAIL_USER: ${{ secrets.TESTRAIL_USER }}
           TESTRAIL_PASS: ${{ secrets.TESTRAIL_PASS }}
@@ -507,13 +592,13 @@ jobs:
     name: Protocol Buffer Lint and Gencode Up-to-date check
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
       - uses: bufbuild/buf-setup-action@a47c93e0b1648d5651a065437926377d060baa99 # v1.50.0
         with:
           github_token: ${{ github.token }}
-          version: "1.56.0"
+          version: "1.68.2"
       - uses: bufbuild/buf-lint-action@06f9dd823d873146471cfaaf108a993fe00e5325 # v1.1.1
         with:
           input: service
@@ -576,7 +661,7 @@ jobs:
     name: license check
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0

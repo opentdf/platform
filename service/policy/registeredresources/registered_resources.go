@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources/registeredresourcesconnect"
 	"github.com/opentdf/platform/service/logger"
@@ -347,7 +348,12 @@ func (s *RegisteredResourcesService) DeleteRegisteredResourceValue(ctx context.C
 
 	s.logger.DebugContext(ctx, "deleting registered resource value", slog.String("id", valueID))
 
-	deleted, err := s.dbClient.DeleteRegisteredResourceValue(ctx, valueID)
+	var deleted *policy.RegisteredResourceValue
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		var err error
+		deleted, err = txClient.DeleteRegisteredResourceValue(ctx, valueID)
+		return err
+	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("registered resource value", req.Msg.String()))

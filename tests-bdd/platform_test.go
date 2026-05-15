@@ -76,10 +76,27 @@ func runTests() int {
 			Level: slog.LevelDebug,
 		},
 	))
-	slog.SetDefault(logger)
+
+	platformLogOption, ok := os.LookupEnv("PLATFORM_LOG_HANDLER")
+	var platformIoWriter io.Writer
+	if ok && strings.ToLower(platformLogOption) == "console" {
+		platformIoWriter = os.Stdout
+	} else {
+		platformLogFile, err := os.Create(path.Join(projectDir, "cukes_platform_service.log"))
+		if err != nil {
+			logger.Error("failed to create platform service log file", slog.String("error", err.Error()))
+			return 1
+		}
+		platformIoWriter = platformLogFile
+	}
+	platformLogger := slog.New(slog.NewTextHandler(platformIoWriter,
+		&slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		},
+	))
 
 	opts.Paths = pflag.Args()
-	platformCukesContext := cukes.CreatePlatformCukesContext(logger, composeLogger)
+	platformCukesContext := cukes.CreatePlatformCukesContext(logger, composeLogger, platformLogger)
 	opts.DefaultContext = cukes.NewPlatformCukesContext(*platformCukesContext)
 	status := godog.TestSuite{
 		Name:                 "platform",
@@ -91,7 +108,9 @@ func runTests() int {
 			cukes.RegisterSmokeStepDefinitions(ctx, platformCukesContext)
 			cukes.RegisterAuthorizationStepDefinitions(ctx)
 			cukes.RegisterSubjectMappingsStepsDefinitions(ctx)
+			cukes.RegisterRegisteredResourcesStepDefinitions(ctx)
 			cukes.RegisterObligationsStepDefinitions(ctx, platformCukesContext)
+			cukes.RegisterEncryptionStepDefinitions(ctx)
 			platformCukesContext.InitializeScenario(ctx)
 		},
 		Options: &opts,

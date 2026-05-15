@@ -33,7 +33,13 @@ type PlatformTestSuiteContext struct {
 	FeatureTracker    map[string]*PlatformScenarioContext
 	Logger            *slog.Logger
 	ComposeLogger     *slog.Logger
+	PlatformLogger    *slog.Logger
 	HasFailures       bool // Track if any test failures occurred
+
+	// defaultPolicyDBs tracks databases where provisionDefaultPolicy has
+	// already run, keyed by DatabaseName. Prevents duplicate provisioning
+	// and lets stateless-reuse scenarios detect missing policy.
+	defaultPolicyDBs map[string]bool
 }
 type DockerComposeLogger struct {
 	Logger *slog.Logger
@@ -70,11 +76,13 @@ func (d *DockerComposeLogger) Printf(format string, v ...interface{}) {
 	d.Logger.Info("docker compose log", slog.String("message", fmt.Sprintf(format, v...)))
 }
 
-func CreatePlatformCukesContext(logger *slog.Logger, composeLogger *slog.Logger) *PlatformTestSuiteContext {
+func CreatePlatformCukesContext(logger *slog.Logger, composeLogger *slog.Logger, platformLogger *slog.Logger) *PlatformTestSuiteContext {
 	return &PlatformTestSuiteContext{
-		FeatureTracker: make(map[string]*PlatformScenarioContext),
-		Logger:         logger,
-		ComposeLogger:  composeLogger,
+		FeatureTracker:   make(map[string]*PlatformScenarioContext),
+		Logger:           logger,
+		ComposeLogger:    composeLogger,
+		PlatformLogger:   platformLogger,
+		defaultPolicyDBs: make(map[string]bool),
 	}
 }
 
@@ -192,6 +200,19 @@ type PlatformScenarioContext struct {
 }
 
 func (c *PlatformScenarioContext) RegisterShutdownHook(hook func() error) {
+	c.ShutdownHooks = append(c.ShutdownHooks, hook)
+}
+
+// RegisterPlatformShutdownHook registers a hook that tears down or captures
+// output from platform-lifecycle resources (compose stacks, inline servers,
+// log capture). In stateless mode the platform is shared across scenarios, so
+// these hooks must run once at suite teardown rather than after every
+// scenario. Non-stateless features retain per-scenario teardown.
+func (c *PlatformScenarioContext) RegisterPlatformShutdownHook(hook func() error) {
+	if c.Stateless {
+		c.TestSuiteContext.ShutdownFunctions = append(c.TestSuiteContext.ShutdownFunctions, hook)
+		return
+	}
 	c.ShutdownHooks = append(c.ShutdownHooks, hook)
 }
 

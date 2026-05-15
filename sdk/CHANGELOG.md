@@ -1,5 +1,63 @@
 # Changelog
 
+## [0.20.0](https://github.com/opentdf/platform/compare/sdk/v0.19.0...sdk/v0.20.0) (2026-05-11)
+
+
+### Bug Fixes
+
+* **deps:** bump module protocol/go to v0.30.0 throughout ([#3459](https://github.com/opentdf/platform/issues/3459)) ([8eaa502](https://github.com/opentdf/platform/commit/8eaa502b0f949ddbe18a5a1dac0931b92eec2351))
+
+## [0.19.0](https://github.com/opentdf/platform/compare/sdk/v0.18.0...sdk/v0.19.0) (2026-05-06)
+
+
+### Bug Fixes
+
+* **deps:** bump the external group across 1 directory with 7 updates ([#3422](https://github.com/opentdf/platform/issues/3422)) ([be0da08](https://github.com/opentdf/platform/commit/be0da0833863d432cf844858f20a0912c2802e51))
+
+## [0.18.0](https://github.com/opentdf/platform/compare/sdk/v0.17.0...sdk/v0.18.0) (2026-04-29)
+
+
+### Features
+
+* **sdk:** IsHealthy(ctx) public reachability probe ([#3412](https://github.com/opentdf/platform/issues/3412)) ([3e2cf98](https://github.com/opentdf/platform/commit/3e2cf981eded81dafaaf30af642592401caa16f3))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.27.0 to 0.28.0 in /sdk ([#3415](https://github.com/opentdf/platform/issues/3415)) ([701bd9f](https://github.com/opentdf/platform/commit/701bd9f32fca5d9508331ee19966180e4c54d0e7))
+* **deps:** bump go.opentelemetry.io/otel from 1.40.0 to 1.41.0 in /sdk ([#3399](https://github.com/opentdf/platform/issues/3399)) ([d98418b](https://github.com/opentdf/platform/commit/d98418beb9e42819ba0e8376f43771f2ca7855af))
+
+## [0.17.0](https://github.com/opentdf/platform/compare/sdk/v0.16.0...sdk/v0.17.0) (2026-04-24)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.25.0 to 0.26.0 in /sdk ([#3380](https://github.com/opentdf/platform/issues/3380)) ([5e36f94](https://github.com/opentdf/platform/commit/5e36f943280fec86e2d9a4917c576b6731ed8419))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.26.0 to 0.27.0 in /sdk ([#3393](https://github.com/opentdf/platform/issues/3393)) ([7659957](https://github.com/opentdf/platform/commit/7659957ed9612397d7e72c6b309006224f3cf214))
+
+## [0.16.0](https://github.com/opentdf/platform/compare/sdk/v0.15.0...sdk/v0.16.0) (2026-04-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **sdk:** reclassify KAS 400 errors — distinguish tamper from misconfiguration ([#3166](https://github.com/opentdf/platform/issues/3166))
+
+### Features
+
+* **policy:** add GetObligationTrigger RPC ([#3318](https://github.com/opentdf/platform/issues/3318)) ([d68e39d](https://github.com/opentdf/platform/commit/d68e39d950d94dcbb98a2f16982ea57f28d9c550))
+
+
+### Bug Fixes
+
+* **core:** do not concat slashes directly in url/file paths ([#3290](https://github.com/opentdf/platform/issues/3290)) ([114c2a7](https://github.com/opentdf/platform/commit/114c2a7523235d68ee1afeb8883d478541e11834))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.20.0 to 0.21.0 in /sdk ([#3219](https://github.com/opentdf/platform/issues/3219)) ([c7fde71](https://github.com/opentdf/platform/commit/c7fde7115ab43b1dbab1930c385c31faf2d2b758))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.21.0 to 0.22.0 in /sdk ([#3246](https://github.com/opentdf/platform/issues/3246)) ([67c152c](https://github.com/opentdf/platform/commit/67c152c5805e6c87b3c8751a503267247d4c22e6))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.22.0 to 0.23.0 in /sdk ([#3270](https://github.com/opentdf/platform/issues/3270)) ([68ee42a](https://github.com/opentdf/platform/commit/68ee42ad7646b6ed44f0fc7d93ec3f733eb570b8))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.23.0 to 0.24.0 in /sdk ([#3319](https://github.com/opentdf/platform/issues/3319)) ([0f8db5e](https://github.com/opentdf/platform/commit/0f8db5e47b8bbe276e0de14a46f9fa234213e332))
+* **deps:** bump google.golang.org/grpc from 1.77.0 to 1.79.3 in /sdk ([#3174](https://github.com/opentdf/platform/issues/3174)) ([be8b154](https://github.com/opentdf/platform/commit/be8b15493d42eeaa3d8d8e9a0c4ec7065a0b36f7))
+* **sdk:** normalize issuer URL before OIDC discovery ([#3261](https://github.com/opentdf/platform/issues/3261)) ([61f98c9](https://github.com/opentdf/platform/commit/61f98c94deb9a1b88e62436b6598735479db6e63))
+* **sdk:** reclassify KAS 400 errors — distinguish tamper from misconfiguration ([#3166](https://github.com/opentdf/platform/issues/3166)) ([f04a385](https://github.com/opentdf/platform/commit/f04a3856f004f68df0bcf7e355867971c8df7fdc))
+
 ## [0.15.0](https://github.com/opentdf/platform/compare/sdk/v0.14.0...sdk/v0.15.0) (2026-03-23)
 
 

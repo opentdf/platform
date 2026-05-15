@@ -119,7 +119,7 @@ func (s *ActionsSuite) Test_ListActions_OrdersByCreatedAt_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(list)
 
-	assertIDsInDescendingOrder(s.T(), list.GetActionsCustom(), func(a *policy.Action) string { return a.GetId() }, thirdID, secondID, firstID)
+	assertIDsInOrder(s.T(), list.GetActionsCustom(), func(a *policy.Action) string { return a.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *ActionsSuite) Test_ListActions_Pagination_Succeeds() {

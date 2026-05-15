@@ -35,6 +35,16 @@ paths:
             description: |-
               Optional
                Defaulted if not provided
+        - name: sort.field
+          in: query
+          schema:
+            title: field
+            $ref: '#/components/schemas/policy.kasregistry.SortKeyAccessServersType'
+        - name: sort.direction
+          in: query
+          schema:
+            title: direction
+            $ref: '#/components/schemas/policy.SortDirection'
       responses:
         default:
           description: Error
@@ -563,6 +573,18 @@ components:
         - KEY_STATUS_ACTIVE
         - KEY_STATUS_ROTATED
       description: The status of the key
+    policy.SortDirection:
+      type: string
+      title: SortDirection
+      enum:
+        - SORT_DIRECTION_UNSPECIFIED
+        - SORT_DIRECTION_ASC
+        - SORT_DIRECTION_DESC
+      description: |-
+        Sorting direction shared across list APIs.
+         When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+         the endpoint's request message defines the default ordering; see the
+         specific List* request docs.
     policy.SourceType:
       type: string
       title: SourceType
@@ -574,6 +596,23 @@ components:
         Describes whether this kas is managed by the organization or if they imported
          the kas information from an external party. These two modes are necessary in order
          to encrypt a tdf dek with an external parties kas public key.
+    policy.kasregistry.SortKasKeysType:
+      type: string
+      title: SortKasKeysType
+      enum:
+        - SORT_KAS_KEYS_TYPE_UNSPECIFIED
+        - SORT_KAS_KEYS_TYPE_KEY_ID
+        - SORT_KAS_KEYS_TYPE_CREATED_AT
+        - SORT_KAS_KEYS_TYPE_UPDATED_AT
+    policy.kasregistry.SortKeyAccessServersType:
+      type: string
+      title: SortKeyAccessServersType
+      enum:
+        - SORT_KEY_ACCESS_SERVERS_TYPE_UNSPECIFIED
+        - SORT_KEY_ACCESS_SERVERS_TYPE_NAME
+        - SORT_KEY_ACCESS_SERVERS_TYPE_URI
+        - SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT
+        - SORT_KEY_ACCESS_SERVERS_TYPE_UPDATED_AT
     common.Metadata:
       type: object
       properties:
@@ -1447,6 +1486,17 @@ components:
       title: KasKeyIdentifier
       additionalProperties: false
       description: Nested message for specifying the active key using KAS ID and Key ID
+    policy.kasregistry.KasKeysSort:
+      type: object
+      properties:
+        field:
+          title: field
+          $ref: '#/components/schemas/policy.kasregistry.SortKasKeysType'
+        direction:
+          title: direction
+          $ref: '#/components/schemas/policy.SortDirection'
+      title: KasKeysSort
+      additionalProperties: false
     policy.kasregistry.KeyAccessServerGrants:
       type: object
       properties:
@@ -1471,6 +1521,17 @@ components:
       title: KeyAccessServerGrants
       additionalProperties: false
       description: Deprecated
+    policy.kasregistry.KeyAccessServersSort:
+      type: object
+      properties:
+        field:
+          title: field
+          $ref: '#/components/schemas/policy.kasregistry.SortKeyAccessServersType'
+        direction:
+          title: direction
+          $ref: '#/components/schemas/policy.SortDirection'
+      title: KeyAccessServersSort
+      additionalProperties: false
     policy.kasregistry.KeyMapping:
       type: object
       properties:
@@ -1576,6 +1637,18 @@ components:
           title: pagination
           description: Optional
           $ref: '#/components/schemas/policy.PageRequest'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.KeyAccessServersSort'
+          title: sort
+          maxItems: 1
+          description: |-
+            Optional - CONSTRAINT: max 1 item
+             Sort defaults:
+               - direction UNSPECIFIED defaults to DESC for the specified field
+               - field UNSPECIFIED defaults to created_at with the specified direction
+               - both UNSPECIFIED or sort omitted defaults to created_at DESC
       title: ListKeyAccessServersRequest
       additionalProperties: false
     policy.kasregistry.ListKeyAccessServersResponse:
@@ -1683,6 +1756,18 @@ components:
           title: pagination
           description: Optional Pagination request for the list of keys
           $ref: '#/components/schemas/policy.PageRequest'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.KasKeysSort'
+          title: sort
+          maxItems: 1
+          description: |-
+            Optional - CONSTRAINT: max 1 item
+             Sort defaults:
+               - direction UNSPECIFIED defaults to DESC for the specified field
+               - field UNSPECIFIED defaults to created_at with the specified direction
+               - both UNSPECIFIED or sort omitted defaults to created_at DESC
       title: ListKeysRequest
       additionalProperties: false
       description: List all asymmetric keys managed by a specific Key Access Server or with a given algorithm

@@ -21,6 +21,10 @@ import (
 	"github.com/cucumber/godog"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/opentdf/platform/lib/fixtures"
+	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/cmd"
 	"github.com/opentdf/platform/service/pkg/server"
@@ -50,8 +54,9 @@ type LocalPlatformStepDefinitions struct {
 }
 
 type platformStartOptions struct {
-	platformProvisionPath *string
-	kcProvisionPath       *template.Template
+	platformProvisionPath  *string
+	kcProvisionPath        *template.Template
+	provisionDefaultPolicy bool
 }
 
 func (s *LocalPlatformStepDefinitions) aUser(ctx context.Context, username string, email string, attributes *godog.Table) (context.Context, error) {
@@ -110,6 +115,28 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	logger := scenarioContext.TestSuiteContext.Logger
 	if !scenarioContext.FirstScenario && scenarioContext.Stateless {
+		// Platform is already up (shared across @stateless scenarios), but
+		// each godog scenario gets its own PlatformScenarioContext with a
+		// nil SDK. Re-attach the SDK to the shared endpoint so step
+		// definitions (and the Background) keep working.
+		if scenarioContext.SDK == nil {
+			platformSDK, err := otdf.New(
+				scenarioContext.ScenarioOptions.PlatformEndpoint,
+				otdf.WithInsecureSkipVerifyConn(),
+				otdf.WithClientCredentials("opentdf", "secret", nil),
+			)
+			if err != nil {
+				return ctx, err
+			}
+			scenarioContext.SDK = platformSDK
+		}
+		dbName := scenarioContext.ScenarioOptions.DatabaseName
+		if options.provisionDefaultPolicy && !scenarioContext.TestSuiteContext.defaultPolicyDBs[dbName] {
+			if err := provisionDefaultPolicy(ctx, scenarioContext.SDK); err != nil {
+				return ctx, fmt.Errorf("provision default policy: %w", err)
+			}
+			scenarioContext.TestSuiteContext.defaultPolicyDBs[dbName] = true
+		}
 		return ctx, nil
 	}
 	localPlatformGlue, ok := (*scenarioContext.TestSuiteContext.PlatformGlue).(*LocalDevPlatformGlue)
@@ -136,11 +163,12 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 	if err := provisionKeycloak(ctx, localPlatformOptions, scenarioContext, options); err != nil {
 		return ctx, err
 	}
+
 	version, exists := os.LookupEnv(platformImageEnvironment)
 	if !exists {
 		version = platformImageEnvironmentLocalImage
 	}
-	platformConfigPath, err := createPlatformConfiguration(localPlatformOptions, scenarioContext.ScenarioOptions, version == debugVersion)
+	platformConfigPath, err := createPlatformConfiguration(localPlatformOptions, scenarioContext.ScenarioOptions, version == debugVersion, options.platformProvisionPath)
 	if err != nil {
 		return ctx, err
 	}
@@ -162,7 +190,7 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 		}()
 
 		// Register shutdown hook to stop the platform
-		scenarioContext.RegisterShutdownHook(func() error {
+		scenarioContext.RegisterPlatformShutdownHook(func() error {
 			logger.Debug("shutting down inline platform")
 			platformCancel()
 			return nil
@@ -196,14 +224,16 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 			return ctx, err
 		}
 
+		attachPlatformServiceLogs(ctx, scenarioContext, platformDockerCompose)
+
 		// Wait for platform to be ready
 		logger.Debug("waiting for platform to start")
 		if err := waitForPlatform(platformEndpoint); err != nil {
 			return ctx, err
 		}
 
-		scenarioContext.RegisterShutdownHook(func() error {
-			return platformDockerCompose.Down(ctx, tc.RemoveOrphans(true))
+		scenarioContext.RegisterPlatformShutdownHook(func() error {
+			return platformDockerCompose.Down(context.WithoutCancel(ctx), tc.RemoveOrphans(true))
 		})
 	}
 
@@ -224,7 +254,33 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 		slog.String("realm", scenarioContext.ScenarioOptions.KeycloakRealm),
 		slog.String("endpoint", te))
 
+	if options.provisionDefaultPolicy {
+		if err := provisionDefaultPolicy(ctx, platformSDK); err != nil {
+			return ctx, fmt.Errorf("provision default policy: %w", err)
+		}
+		scenarioContext.TestSuiteContext.defaultPolicyDBs[scenarioContext.ScenarioOptions.DatabaseName] = true
+	}
+
 	return ctx, nil
+}
+
+func attachPlatformServiceLogs(ctx context.Context, scenarioContext *PlatformScenarioContext, platformDockerCompose tc.ComposeStack) {
+	platformLogger := scenarioContext.TestSuiteContext.PlatformLogger
+	if platformLogger == nil {
+		return
+	}
+
+	scenarioContext.RegisterPlatformShutdownHook(func() error {
+		logCtx := context.WithoutCancel(ctx)
+		platformLogger.Info("capturing platform service logs", slog.String("service", "otdf"))
+		container, err := platformDockerCompose.ServiceContainer(logCtx, "otdf")
+		if err != nil {
+			platformLogger.Warn("failed to get platform service container for log capture", slog.String("error", err.Error()))
+			return nil
+		}
+		LogComposeService(logCtx, container, platformLogger, "otdf")
+		return nil
+	})
 }
 
 func (s *LocalPlatformStepDefinitions) aEmptyLocalPlatform(ctx context.Context) (context.Context, error) {
@@ -232,16 +288,13 @@ func (s *LocalPlatformStepDefinitions) aEmptyLocalPlatform(ctx context.Context) 
 	return s.commonLocalPlatform(ctx, &platformStartOptions{kcProvisionPath: kt})
 }
 
-// func (s *LocalPlatformStepDefinitions) aDefaultLocalPlatform(ctx context.Context) (context.Context, error) {
-// 	kt := template.Must(template.New("kc").Parse(keycloakFederalTemplate))
-// 	scenarioContext := GetPlatformScenarioContext(ctx)
-// 	localPlatformGlue, ok := (*scenarioContext.TestSuiteContext.PlatformGlue).(*LocalDevPlatformGlue)
-// 	if !ok {
-// 		return ctx, errors.New("no local platform glue found")
-// 	}
-// 	platformProvisionPath := path.Join(localPlatformGlue.Options.ProjectDir, "samples", "defaults", "federal.yaml")
-// 	return s.commonLocalPlatform(ctx, &platformStartOptions{platformProvisionPath: &platformProvisionPath, kcProvisionPath: kt})
-// }
+func (s *LocalPlatformStepDefinitions) aDefaultLocalPlatform(ctx context.Context) (context.Context, error) {
+	kt := template.Must(template.New("kc").Parse(keycloakBaseTemplate))
+	return s.commonLocalPlatform(ctx, &platformStartOptions{
+		kcProvisionPath:        kt,
+		provisionDefaultPolicy: true,
+	})
+}
 
 func (s *LocalPlatformStepDefinitions) aLocalPlatformWithTemplates(ctx context.Context, platformTemplate string, kcTemplate string) (context.Context, error) {
 	kcTemplateBytes, err := os.ReadFile(kcTemplate)
@@ -362,6 +415,81 @@ func provisionKeycloak(ctx context.Context, suiteOptions *LocalDevOptions, scena
 	}, kcData)
 }
 
+func provisionDefaultPolicy(ctx context.Context, sdk *otdf.SDK) error {
+	nsResp, err := sdk.Namespaces.CreateNamespace(ctx, &namespaces.CreateNamespaceRequest{
+		Name: "demo.com",
+	})
+	if err != nil {
+		return fmt.Errorf("create namespace: %w", err)
+	}
+	nsID := nsResp.GetNamespace().GetId()
+
+	deptResp, err := sdk.Attributes.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: nsID,
+		Name:        "department",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"engineering", "finance", "hr"},
+	})
+	if err != nil {
+		return fmt.Errorf("create department attribute: %w", err)
+	}
+
+	classResp, err := sdk.Attributes.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: nsID,
+		Name:        "classification",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		Values:      []string{"secret", "confidential", "internal", "public"},
+	})
+	if err != nil {
+		return fmt.Errorf("create classification attribute: %w", err)
+	}
+
+	type valueMapping struct {
+		selector string
+		match    string
+		valueID  string
+	}
+	var mappings []valueMapping
+	for _, v := range deptResp.GetAttribute().GetValues() {
+		mappings = append(mappings, valueMapping{
+			selector: ".attributes.department[]",
+			match:    v.GetValue(),
+			valueID:  v.GetId(),
+		})
+	}
+	for _, v := range classResp.GetAttribute().GetValues() {
+		mappings = append(mappings, valueMapping{
+			selector: ".attributes.classification[]",
+			match:    v.GetValue(),
+			valueID:  v.GetId(),
+		})
+	}
+
+	for _, m := range mappings {
+		_, err := sdk.SubjectMapping.CreateSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
+			AttributeValueId: m.valueID,
+			Actions:          []*policy.Action{{Name: "read"}},
+			NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
+				SubjectSets: []*policy.SubjectSet{{
+					ConditionGroups: []*policy.ConditionGroup{{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{{
+							SubjectExternalSelectorValue: m.selector,
+							Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+							SubjectExternalValues:        []string{m.match},
+						}},
+					}},
+				}},
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("create subject mapping for %s: %w", m.match, err)
+		}
+	}
+
+	return nil
+}
+
 func createPlatformComposeConfiguration(options *LocalDevOptions) (string, error) {
 	tmpFile, err := os.CreateTemp(options.CukesDir, "docker_compose.yaml")
 	if err != nil {
@@ -376,7 +504,7 @@ func createPlatformComposeConfiguration(options *LocalDevOptions) (string, error
 }
 
 // createPlatformConfiguration generates a platform configuration from a go text template for platform option settings
-func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *LocalDevScenarioOptions, devMode bool) (string, error) {
+func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *LocalDevScenarioOptions, devMode bool, platformTemplatePath *string) (string, error) {
 	tempFileName := path.Join(options.CukesDir, "opentdf.yaml")
 	platformKeysDir := options.KeysDir
 	pgHost := "localhost"
@@ -384,7 +512,15 @@ func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *Loca
 		platformKeysDir = containerKeyPath
 		pgHost = options.Hostname
 	}
-	t := template.Must(template.New("platform").Parse(platformTemplate))
+	templateSource := platformTemplate
+	if platformTemplatePath != nil && *platformTemplatePath != "" {
+		templateBytes, err := os.ReadFile(*platformTemplatePath)
+		if err != nil {
+			return tempFileName, err
+		}
+		templateSource = string(templateBytes)
+	}
+	t := template.Must(template.New("platform").Parse(templateSource))
 	var strBuffer bytes.Buffer
 	if err := t.Execute(&strBuffer, map[string]any{
 		"hostname":        options.Hostname,
@@ -411,6 +547,7 @@ func RegisterLocalPlatformStepDefinitions(ctx *godog.ScenarioContext, x *Platfor
 		PlatformCukesContext: x,
 	}
 	ctx.Step(`^an empty local platform$`, platformStepDefinitions.aEmptyLocalPlatform)
+	ctx.Step(`^a default local platform$`, platformStepDefinitions.aDefaultLocalPlatform)
 	ctx.Step(`^a user exists with username "([^"]*)" and email "([^"]*)" and the following attributes:$`, platformStepDefinitions.aUser)
 	ctx.Step(`^a local platform with platform template "([^"]*)" and keycloak template "([^"]*)"$`, platformStepDefinitions.aLocalPlatformWithTemplates)
 }

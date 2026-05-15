@@ -750,6 +750,18 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+    policy.SortDirection:
+      type: string
+      title: SortDirection
+      enum:
+        - SORT_DIRECTION_UNSPECIFIED
+        - SORT_DIRECTION_ASC
+        - SORT_DIRECTION_DESC
+      description: |-
+        Sorting direction shared across list APIs.
+         When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+         the endpoint's request message defines the default ordering; see the
+         specific List* request docs.
     policy.SourceType:
       type: string
       title: SourceType
@@ -769,6 +781,48 @@ components:
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
+    policy.attributes.SortAttributesType:
+      type: string
+      title: SortAttributesType
+      enum:
+        - SORT_ATTRIBUTES_TYPE_UNSPECIFIED
+        - SORT_ATTRIBUTES_TYPE_NAME
+        - SORT_ATTRIBUTES_TYPE_CREATED_AT
+        - SORT_ATTRIBUTES_TYPE_UPDATED_AT
+    common.IdFqnIdentifier:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
+      title: IdFqnIdentifier
+      additionalProperties: false
+    common.IdNameIdentifier:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+        name:
+          type: string
+          title: name
+          maxLength: 253
+          minLength: 1
+          description: |+
+            Name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.:
+            ```
+            this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
+            ```
+
+      title: IdNameIdentifier
+      additionalProperties: false
     common.Metadata:
       type: object
       properties:
@@ -1241,6 +1295,10 @@ components:
           items:
             $ref: '#/components/schemas/policy.RequestContext'
           title: context
+        namespace:
+          title: namespace
+          description: The source namespace for this trigger, derived from the attribute value and action.
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -1404,6 +1462,10 @@ components:
           description: |-
             the common name for the group of resource mappings, which must be unique
              per namespace
+        fqn:
+          type: string
+          title: fqn
+          description: the fully qualified name of the resource mapping group
         metadata:
           title: metadata
           description: Common metadata
@@ -1688,6 +1750,41 @@ components:
       title: AttributeKeyAccessServer
       additionalProperties: false
       description: Deprecated
+    policy.attributes.AttributeValueObligationTriggerRequest:
+      type: object
+      properties:
+        obligationValue:
+          title: obligation_value
+          description: Required. Existing obligation value to associate with the newly created attribute value.
+          $ref: '#/components/schemas/common.IdFqnIdentifier'
+        action:
+          title: action
+          description: Required. Action that, together with the newly created attribute value, triggers the obligation value.
+          $ref: '#/components/schemas/common.IdNameIdentifier'
+        context:
+          title: context
+          description: Optional. Request context for the obligation trigger.
+          $ref: '#/components/schemas/policy.RequestContext'
+        metadata:
+          title: metadata
+          description: Optional. Common metadata for the obligation trigger.
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: AttributeValueObligationTriggerRequest
+      required:
+        - obligationValue
+        - action
+      additionalProperties: false
+    policy.attributes.AttributesSort:
+      type: object
+      properties:
+        field:
+          title: field
+          $ref: '#/components/schemas/policy.attributes.SortAttributesType'
+        direction:
+          title: direction
+          $ref: '#/components/schemas/policy.SortDirection'
+      title: AttributesSort
+      additionalProperties: false
     policy.attributes.CreateAttributeRequest:
       type: object
       properties:
@@ -1770,6 +1867,14 @@ components:
             this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
             ```
 
+        obligationTriggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.attributes.AttributeValueObligationTriggerRequest'
+          title: obligation_triggers
+          description: |-
+            Optional
+             Existing obligation values to trigger for the newly created attribute value.
         metadata:
           title: metadata
           description: |-
@@ -2028,6 +2133,18 @@ components:
           title: pagination
           description: Optional
           $ref: '#/components/schemas/policy.PageRequest'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.attributes.AttributesSort'
+          title: sort
+          maxItems: 1
+          description: |-
+            Optional - CONSTRAINT: max 1 item
+             Sort defaults:
+               - direction UNSPECIFIED defaults to DESC for the specified field
+               - field UNSPECIFIED defaults to created_at with the specified direction
+               - both UNSPECIFIED or sort omitted defaults to created_at DESC
       title: ListAttributesRequest
       additionalProperties: false
     policy.attributes.ListAttributesResponse:

@@ -387,6 +387,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.DeleteObligationValueResponse'
+  /policy.obligations.Service/GetObligationTrigger:
+    post:
+      tags:
+        - policy.obligations.Service
+      summary: GetObligationTrigger
+      operationId: policy.obligations.Service.GetObligationTrigger
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.obligations.GetObligationTriggerRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.obligations.GetObligationTriggerResponse'
   /policy.obligations.Service/AddObligationTrigger:
     post:
       tags:
@@ -544,6 +579,18 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+    policy.SortDirection:
+      type: string
+      title: SortDirection
+      enum:
+        - SORT_DIRECTION_UNSPECIFIED
+        - SORT_DIRECTION_ASC
+        - SORT_DIRECTION_DESC
+      description: |-
+        Sorting direction shared across list APIs.
+         When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+         the endpoint's request message defines the default ordering; see the
+         specific List* request docs.
     policy.SourceType:
       type: string
       title: SourceType
@@ -563,6 +610,15 @@ components:
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
+    policy.obligations.SortObligationsType:
+      type: string
+      title: SortObligationsType
+      enum:
+        - SORT_OBLIGATIONS_TYPE_UNSPECIFIED
+        - SORT_OBLIGATIONS_TYPE_NAME
+        - SORT_OBLIGATIONS_TYPE_FQN
+        - SORT_OBLIGATIONS_TYPE_CREATED_AT
+        - SORT_OBLIGATIONS_TYPE_UPDATED_AT
     common.IdFqnIdentifier:
       type: object
       properties:
@@ -1069,6 +1125,10 @@ components:
           items:
             $ref: '#/components/schemas/policy.RequestContext'
           title: context
+        namespace:
+          title: namespace
+          description: The source namespace for this trigger, derived from the attribute value and action.
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -1232,6 +1292,10 @@ components:
           description: |-
             the common name for the group of resource mappings, which must be unique
              per namespace
+        fqn:
+          type: string
+          title: fqn
+          description: the fully qualified name of the resource mapping group
         metadata:
           title: metadata
           description: Common metadata
@@ -1439,7 +1503,10 @@ components:
         - action
         - attributeValue
       additionalProperties: false
-      description: Triggers
+      description: |-
+        Obligation Triggers are owned by the namespace that owns the action and attribute value, which must
+         be the same. In this way, a trigger can intentionally cross namespace boundaries: associating
+         obligation values of a different namespace than the one that owns the action being taken or the attribute value.
     policy.obligations.AddObligationTriggerResponse:
       type: object
       properties:
@@ -1604,7 +1671,6 @@ components:
           format: uri
       title: GetObligationRequest
       additionalProperties: false
-      description: Definitions
     policy.obligations.GetObligationResponse:
       type: object
       properties:
@@ -1612,6 +1678,25 @@ components:
           title: obligation
           $ref: '#/components/schemas/policy.Obligation'
       title: GetObligationResponse
+      additionalProperties: false
+    policy.obligations.GetObligationTriggerRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Required
+      title: GetObligationTriggerRequest
+      additionalProperties: false
+      description: Triggers
+    policy.obligations.GetObligationTriggerResponse:
+      type: object
+      properties:
+        trigger:
+          title: trigger
+          $ref: '#/components/schemas/policy.ObligationTrigger'
+      title: GetObligationTriggerResponse
       additionalProperties: false
     policy.obligations.GetObligationValueRequest:
       type: object
@@ -1763,6 +1848,18 @@ components:
           title: pagination
           description: Optional
           $ref: '#/components/schemas/policy.PageRequest'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.obligations.ObligationsSort'
+          title: sort
+          maxItems: 1
+          description: |-
+            Optional - CONSTRAINT: max 1 item
+             Sort defaults:
+               - direction UNSPECIFIED defaults to DESC for the specified field
+               - field UNSPECIFIED defaults to created_at with the specified direction
+               - both UNSPECIFIED or sort omitted defaults to created_at DESC
       title: ListObligationsRequest
       additionalProperties: false
     policy.obligations.ListObligationsResponse:
@@ -1777,6 +1874,17 @@ components:
           title: pagination
           $ref: '#/components/schemas/policy.PageResponse'
       title: ListObligationsResponse
+      additionalProperties: false
+    policy.obligations.ObligationsSort:
+      type: object
+      properties:
+        field:
+          title: field
+          $ref: '#/components/schemas/policy.obligations.SortObligationsType'
+        direction:
+          title: direction
+          $ref: '#/components/schemas/policy.SortDirection'
+      title: ObligationsSort
       additionalProperties: false
     policy.obligations.RemoveObligationTriggerRequest:
       type: object

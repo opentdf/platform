@@ -20,10 +20,14 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Sorting direction shared across list APIs.
+// When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+// the endpoint's request message defines the default ordering; see the
+// specific List* request docs.
 type SortDirection int32
 
 const (
-	SortDirection_SORT_DIRECTION_UNSPECIFIED SortDirection = 0 // defaults to ASC
+	SortDirection_SORT_DIRECTION_UNSPECIFIED SortDirection = 0
 	SortDirection_SORT_DIRECTION_ASC         SortDirection = 1
 	SortDirection_SORT_DIRECTION_DESC        SortDirection = 2
 )

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -287,7 +288,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_OrdersByCreatedA
 	s.Require().NoError(err)
 	s.NotNil(list)
 
-	assertIDsInDescendingOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, thirdID, secondID, firstID)
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_RegResValuesContainActionAttributeValues() {
@@ -340,39 +341,126 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_RegResValuesCont
 	s.NotNil(list)
 
 	foundRegRes := false
-	foundVal1 := false
-	foundVal2 := false
+	var foundVal1, foundVal2 bool
 	for _, r := range list.GetResources() {
-		if r.GetId() == regResID {
-			s.Equal("test_list_reg_res_with_action_attr_values", r.GetName())
-			values := r.GetValues()
-			s.Require().Len(values, 2)
-			foundRegRes = true
+		if r.GetId() != regResID {
+			continue
+		}
+		s.Equal("test_list_reg_res_with_action_attr_values", r.GetName())
+		values := r.GetValues()
+		s.Require().Len(values, 2)
+		foundRegRes = true
 
-			// Check if action attribute values are present in the values
-			for _, v := range values {
-				if v.GetId() == val1.GetId() {
-					foundVal1 = true
-					actionAttrValues := v.GetActionAttributeValues()
-					s.Require().NotEmpty(actionAttrValues)
-					for _, aav := range actionAttrValues {
-						s.NotNil(aav.GetAction())
-						s.NotNil(aav.GetAttributeValue())
-					}
-				}
-				if v.GetId() == val2.GetId() {
-					foundVal2 = true
-					actionAttrValues := v.GetActionAttributeValues()
-					s.Require().NotEmpty(actionAttrValues)
-					for _, aav := range actionAttrValues {
-						s.NotNil(aav.GetAction())
-						s.NotNil(aav.GetAttributeValue())
-					}
-				}
+		for _, v := range values {
+			actionAttrValues := v.GetActionAttributeValues()
+			s.Require().Len(actionAttrValues, 1)
+			aav := actionAttrValues[0]
+			s.Require().NotNil(aav.GetAction())
+			s.Require().NotNil(aav.GetAttributeValue())
+			s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
+			s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
+			s.Equal("https://example.com", aav.GetAction().GetNamespace().GetFqn())
+
+			switch v.GetId() {
+			case val1.GetId():
+				foundVal1 = true
+				s.Equal(actions.ActionNameCreate, aav.GetAction().GetName())
+				s.Equal("https://example.com/attr/attr1/value/value1", aav.GetAttributeValue().GetFqn())
+			case val2.GetId():
+				foundVal2 = true
+				s.Equal(actions.ActionNameUpdate, aav.GetAction().GetName())
+				s.Equal("https://example.com/attr/attr2/value/value2", aav.GetAttributeValue().GetFqn())
+			default:
+				s.FailNow("unexpected value found", "value id: %s", v.GetId())
 			}
 		}
 	}
 	s.True(foundRegRes, "Registered resource not found in list")
+	s.True(foundVal1, "Value 1 not found in registered resource values")
+	s.True(foundVal2, "Value 2 not found in registered resource values")
+}
+
+func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_RegResValuesContainActionAttributeValues() {
+	// Create a registered resource with values that have action attribute values
+	newRegRes, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: s.getNamespaceID("example.com"),
+		Name:        "test_get_reg_res_with_action_attr_values",
+	})
+	s.Require().NoError(err)
+	s.NotNil(newRegRes)
+	regResID := newRegRes.GetId()
+
+	val1, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: regResID,
+		Value:      "test_value_1",
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: actions.ActionNameCreate,
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(val1)
+
+	val2, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: regResID,
+		Value:      "test_value_2",
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: actions.ActionNameUpdate,
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr2/value/value2",
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(val2)
+
+	// Get the registered resource and check if values contain action attribute values
+	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+			Id: regResID,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal("test_get_reg_res_with_action_attr_values", got.GetName())
+
+	values := got.GetValues()
+	s.Require().Len(values, 2)
+
+	var foundVal1, foundVal2 bool
+	for _, v := range values {
+		actionAttrValues := v.GetActionAttributeValues()
+		s.Require().Len(actionAttrValues, 1)
+		aav := actionAttrValues[0]
+		s.Require().NotNil(aav.GetAction())
+		s.Require().NotNil(aav.GetAttributeValue())
+		s.NotNil(aav.GetAction().GetNamespace(), "action namespace should be populated for namespaced RR")
+		s.Equal("example.com", aav.GetAction().GetNamespace().GetName())
+		s.Equal("https://example.com", aav.GetAction().GetNamespace().GetFqn())
+
+		switch v.GetId() {
+		case val1.GetId():
+			foundVal1 = true
+			s.Equal(actions.ActionNameCreate, aav.GetAction().GetName())
+			s.Equal("https://example.com/attr/attr1/value/value1", aav.GetAttributeValue().GetFqn())
+		case val2.GetId():
+			foundVal2 = true
+			s.Equal(actions.ActionNameUpdate, aav.GetAction().GetName())
+			s.Equal("https://example.com/attr/attr2/value/value2", aav.GetAttributeValue().GetFqn())
+		default:
+			s.FailNow("unexpected value found", "value id: %s", v.GetId())
+		}
+	}
 	s.True(foundVal1, "Value 1 not found in registered resource values")
 	s.True(foundVal2, "Value 2 not found in registered resource values")
 }
@@ -665,6 +753,7 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_Succeeds()
 	created, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, req)
 	s.Require().NoError(err)
 	s.NotNil(created)
+	s.Equal("https://example.com/reg_res/test_create_res_value/value/value", created.GetFqn())
 }
 
 func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_NormalizedName_Succeeds() {
@@ -871,6 +960,7 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithInvali
 // Get
 
 func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_Valid_Succeeds() {
+	// Fixture registered resources are legacy rows without namespace_id, so the FQN case uses the legacy https://reg_res/... format.
 	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
 	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 
@@ -966,6 +1056,7 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_Invalid_Fails
 // Get By FQNs
 
 func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQNs_Valid_Succeeds() {
+	// Fixture registered resources are legacy rows without namespace_id, so these FQNs use the legacy https://reg_res/... format.
 	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
 	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 	existingResValue2 := s.f.GetRegisteredResourceValueKey("res_with_values__value2")
@@ -996,6 +1087,7 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQNs_Valid_S
 }
 
 func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQNs_SomeInvalid_Fails() {
+	// Fixture registered resources are legacy rows without namespace_id, so the valid FQN uses the legacy https://reg_res/... format.
 	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
 	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 	fqns := []string{
@@ -1097,7 +1189,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_OrdersByCre
 	s.Require().NoError(err)
 	s.NotNil(list)
 
-	assertIDsInDescendingOrder(s.T(), list.GetValues(), func(v *policy.RegisteredResourceValue) string { return v.GetId() }, thirdID, secondID, firstID)
+	assertIDsInOrder(s.T(), list.GetValues(), func(v *policy.RegisteredResourceValue) string { return v.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_Limit_Succeeds() {
@@ -1170,6 +1262,7 @@ func (s *AttributesSuite) Test_ListRegisteredResourceValues_Offset_Succeeds() {
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_ByResourceID_Succeeds() {
+	// Fixture registered resources are legacy rows without namespace_id, so listed values should expose legacy https://reg_res/... FQNs.
 	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
 	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 	existingResValue2 := s.f.GetRegisteredResourceValueKey("res_with_values__value2")
@@ -1183,10 +1276,15 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_ByResourceI
 	s.Len(list.GetValues(), 2)
 
 	foundCount := 0
+	expectedFQNs := map[string]string{
+		existingResValue1.ID: fmt.Sprintf("https://reg_res/%s/value/%s", existingRes.Name, existingResValue1.Value),
+		existingResValue2.ID: fmt.Sprintf("https://reg_res/%s/value/%s", existingRes.Name, existingResValue2.Value),
+	}
 
 	for _, r := range list.GetValues() {
 		if r.GetId() == existingResValue1.ID || r.GetId() == existingResValue2.ID {
 			foundCount++
+			s.Equal(expectedFQNs[r.GetId()], r.GetFqn())
 		}
 	}
 
@@ -1241,6 +1339,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	})
 	s.Require().NoError(err)
 	s.NotNil(created)
+	s.Equal("https://example.com/reg_res/test_update_res_value/value/value", created.GetFqn())
 
 	// update with no changes
 	updated, err := s.db.PolicyClient.UpdateRegisteredResourceValue(s.ctx, &registeredresources.UpdateRegisteredResourceValueRequest{
@@ -1248,6 +1347,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	})
 	s.Require().NoError(err)
 	s.NotNil(updated)
+	s.Equal(created.GetFqn(), updated.GetFqn())
 
 	// verify resource value not updated
 	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
@@ -1258,6 +1358,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	s.Require().NoError(err)
 	s.Require().NotNil(got)
 	s.Equal(created.GetValue(), got.GetValue())
+	s.Equal(created.GetFqn(), got.GetFqn())
 	s.Equal(labels, got.GetMetadata().GetLabels())
 	s.Require().Len(got.GetActionAttributeValues(), 1)
 
@@ -1290,6 +1391,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	})
 	s.Require().NoError(err)
 	s.NotNil(updated)
+	s.Equal("https://example.com/reg_res/test_update_res_value/value/updated_value", updated.GetFqn())
 
 	// verify resource updated
 	got, err = s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
@@ -1300,6 +1402,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal("updated_value", got.GetValue())
+	s.Equal(updated.GetFqn(), got.GetFqn())
 	s.Equal(expectedLabels, got.GetMetadata().GetLabels())
 	metadata := got.GetMetadata()
 	createdAt := metadata.GetCreatedAt()
@@ -1423,6 +1526,7 @@ func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResourceValue_Succeeds()
 	deleted, err := s.db.PolicyClient.DeleteRegisteredResourceValue(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.Require().Equal(created.GetId(), deleted.GetId())
+	s.Equal(created.GetFqn(), deleted.GetFqn())
 
 	// verify resource value deleted
 
@@ -1722,17 +1826,26 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_NamespacedFQN
 
 	// Get by namespaced FQN
 	fqn := fmt.Sprintf("https://example.com/reg_res/%s/value/%s", name, valueName)
-	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+	gotByFQN, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
 		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Fqn{
 			Fqn: fqn,
 		},
 	})
 	s.Require().NoError(err)
-	s.NotNil(got)
-	s.Equal(valueName, got.GetValue())
-	s.NotNil(got.GetResource())
-	s.NotNil(got.GetResource().GetNamespace())
-	s.Equal(nsID, got.GetResource().GetNamespace().GetId())
+	s.NotNil(gotByFQN)
+	s.Equal(valueName, gotByFQN.GetValue())
+	s.Equal(fqn, gotByFQN.GetFqn())
+	s.NotNil(gotByFQN.GetResource())
+	s.NotNil(gotByFQN.GetResource().GetNamespace())
+	s.Equal(nsID, gotByFQN.GetResource().GetNamespace().GetId())
+
+	gotByID, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: gotByFQN.GetId(),
+		},
+	})
+	s.Require().NoError(err)
+	s.Equal(gotByFQN.GetFqn(), gotByID.GetFqn())
 }
 
 func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValuesByFQNs_NamespacedFormat_Succeeds() {
@@ -1761,6 +1874,8 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValuesByFQNs_Namesp
 	s.NotNil(fqnMap[fqn2])
 	s.Equal(val1, fqnMap[fqn1].GetValue())
 	s.Equal(val2, fqnMap[fqn2].GetValue())
+	s.Equal(fqn1, fqnMap[fqn1].GetFqn())
+	s.Equal(fqn2, fqnMap[fqn2].GetFqn())
 }
 
 func (s *RegisteredResourcesSuite) Test_RegisteredResource_NamespaceInResponses_Succeeds() {
@@ -1781,6 +1896,8 @@ func (s *RegisteredResourcesSuite) Test_RegisteredResource_NamespaceInResponses_
 	s.Equal(nsID, res.GetNamespace().GetId())
 	s.Equal("example.com", res.GetNamespace().GetName())
 	s.Equal(nsFQN, res.GetNamespace().GetFqn())
+	s.Require().Len(res.GetValues(), 1)
+	s.Equal("https://example.com/reg_res/test_ns_in_responses/value/resp-val", res.GetValues()[0].GetFqn())
 
 	// Verify namespace in Get response
 	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
@@ -1791,6 +1908,8 @@ func (s *RegisteredResourcesSuite) Test_RegisteredResource_NamespaceInResponses_
 	s.Require().NoError(err)
 	s.NotNil(got.GetNamespace())
 	s.Equal(nsID, got.GetNamespace().GetId())
+	s.Require().Len(got.GetValues(), 1)
+	s.Equal(res.GetValues()[0].GetFqn(), got.GetValues()[0].GetFqn())
 
 	// Verify namespace in List response
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
@@ -1803,6 +1922,8 @@ func (s *RegisteredResourcesSuite) Test_RegisteredResource_NamespaceInResponses_
 			found = true
 			s.NotNil(r.GetNamespace())
 			s.Equal(nsID, r.GetNamespace().GetId())
+			s.Require().Len(r.GetValues(), 1)
+			s.Equal(res.GetValues()[0].GetFqn(), r.GetValues()[0].GetFqn())
 		}
 	}
 	s.True(found)
@@ -1817,11 +1938,14 @@ func (s *RegisteredResourcesSuite) Test_RegisteredResource_NamespaceInResponses_
 	s.NotNil(valResp.GetResource())
 	s.NotNil(valResp.GetResource().GetNamespace())
 	s.Equal(nsID, valResp.GetResource().GetNamespace().GetId())
+	s.Equal("https://example.com/reg_res/test_ns_in_responses/value/resp-val", valResp.GetFqn())
 }
 
 func (s *RegisteredResourcesSuite) Test_LegacyRegisteredResources_NoNamespace_StillAccessible() {
 	// Fixture resources are legacy (no namespace) - verify they're still accessible
 	existingRes := s.f.GetRegisteredResourceKey("res_only")
+	existingResWithValues := s.f.GetRegisteredResourceKey("res_with_values")
+	existingResValue := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 
 	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
 		Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
@@ -1833,6 +1957,17 @@ func (s *RegisteredResourcesSuite) Test_LegacyRegisteredResources_NoNamespace_St
 	s.Equal(existingRes.Name, got.GetName())
 	// Legacy resources have nil namespace
 	s.Nil(got.GetNamespace())
+
+	gotValue, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: existingResValue.ID,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(gotValue)
+	s.Nil(gotValue.GetResource().GetNamespace())
+	// Legacy values preserve the pre-namespace FQN shape.
+	s.Equal(fmt.Sprintf("https://reg_res/%s/value/%s", existingResWithValues.Name, existingResValue.Value), gotValue.GetFqn())
 }
 
 func (s *RegisteredResourcesSuite) Test_SameNamespaceEnforcement_DifferentNamespace_Fails() {
@@ -2215,6 +2350,244 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_ByName_Ambiguous_R
 // ┌─────────────────────────────────────────────────────────────────────────────┐
 // │ end namespace-optional tests                                                │
 // └─────────────────────────────────────────────────────────────────────────────┘
+
+// Sort tests
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByName_ASC() {
+	ids := s.createSortTestRegisteredResources([]string{"aaa-rrsort", "bbb-rrsort", "ccc-rrsort"})
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// aaa < bbb < ccc in ASC order
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByName_DESC() {
+	ids := s.createSortTestRegisteredResources([]string{"aaa-rrsortdesc", "bbb-rrsortdesc", "ccc-rrsortdesc"})
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// ccc > bbb > aaa in DESC order
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByCreatedAt_ASC() {
+	ids := s.createSortTestRegisteredResources([]string{"createdasc-rr-0", "createdasc-rr-1", "createdasc-rr-2"})
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// oldest first in ASC order
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByCreatedAt_DESC() {
+	ids := s.createSortTestRegisteredResources([]string{"createddesc-rr-0", "createddesc-rr-1", "createddesc-rr-2"})
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// newest first in DESC order
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUpdatedAt_DESC() {
+	ids := s.createSortTestRegisteredResources([]string{"upd-sort-rr-0", "upd-sort-rr-1", "upd-sort-rr-2"})
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	// Update the first resource so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateRegisteredResource(s.ctx, &registeredresources.UpdateRegisteredResourceRequest{
+		Id: ids[0],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// The updated resource (ids[0]) should appear before the others
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[0], ids[2], ids[1])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUpdatedAt_ASC() {
+	ids := s.createSortTestRegisteredResources([]string{"upd-sort-asc-rr-0", "upd-sort-asc-rr-1", "upd-sort-asc-rr-2"})
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	// Update the last resource so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateRegisteredResource(s.ctx, &registeredresources.UpdateRegisteredResourceRequest{
+		Id: ids[2],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// The updated resource (ids[2]) should appear last in ASC order
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortTieBreaker_CreatedAtWithIDFallback() {
+	suffix := time.Now().UnixNano()
+	ids := make([]string, 3)
+	for i := range 3 {
+		name := fmt.Sprintf("tiebreaker-rr-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+			NamespaceId: s.getNamespaceID("example.com"),
+			Name:        name,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "registered_resources", ids))
+
+	sorted := slices.Sorted(slices.Values(ids))
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, sorted[0], sorted[1], sorted[2])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	ids := s.createSortTestRegisteredResources([]string{"unspecified-field-rr-0", "unspecified-field-rr-1", "unspecified-field-rr-2"})
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// Field defaults to created_at, explicit ASC is preserved
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByUnspecifiedDirection_DefaultsToDESC() {
+	ids := s.createSortTestRegisteredResources([]string{"unspecified-dir-rr-0", "unspecified-dir-rr-1", "unspecified-dir-rr-2"})
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	ids := s.createSortTestRegisteredResources([]string{"both-unspecified-rr-0", "both-unspecified-rr-1", "both-unspecified-rr-2"})
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{Field: registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SortOmitted() {
+	ids := s.createSortTestRegisteredResources([]string{"sort-omitted-rr-0", "sort-omitted-rr-1", "sort-omitted-rr-2"})
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// No sort provided: created_at DESC
+	assertIDsInOrder(s.T(), list.GetResources(), func(r *policy.RegisteredResource) string { return r.GetId() }, ids[2], ids[1], ids[0])
+}
+
+// Sort test helpers
+
+// createSortTestRegisteredResources creates registered resources with the given prefixes, adding 5ms gaps
+// between creations for distinct timestamps. Returns the resource IDs in creation order.
+func (s *RegisteredResourcesSuite) createSortTestRegisteredResources(prefixes []string) []string {
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
+		if i > 0 {
+			time.Sleep(5 * time.Millisecond)
+		}
+		name := fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
+		created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+			NamespaceId: s.getNamespaceID("example.com"),
+			Name:        name,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	return ids
+}
+
+// deleteSortTestRegisteredResources cleans up registered resources created by sort tests.
+func (s *RegisteredResourcesSuite) deleteSortTestRegisteredResources(ids []string) {
+	for _, id := range ids {
+		_, err := s.db.PolicyClient.DeleteRegisteredResource(s.ctx, id)
+		s.Require().NoError(err)
+	}
+}
 
 func (s *RegisteredResourcesSuite) getNamespaceID(key string) string {
 	ns := s.f.GetNamespaceKey(key)

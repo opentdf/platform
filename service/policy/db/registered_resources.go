@@ -87,6 +87,28 @@ func hydrateNamespaceFromInterface(nsRaw interface{}) (*policy.Namespace, error)
 	return ns, nil
 }
 
+func registeredResourceValueFQN(namespace *policy.Namespace, resourceName, value string) string {
+	if namespace == nil {
+		// Legacy registered resources do not have a namespace; identifier.FQN preserves that as https://reg_res/<name>/value/<value>.
+		return (&identifier.FullyQualifiedRegisteredResourceValue{
+			Name:  resourceName,
+			Value: value,
+		}).FQN()
+	}
+
+	return (&identifier.FullyQualifiedRegisteredResourceValue{
+		Namespace: namespace.GetName(),
+		Name:      resourceName,
+		Value:     value,
+	}).FQN()
+}
+
+func hydrateRegisteredResourceValueFQNs(values []*policy.RegisteredResourceValue, namespace *policy.Namespace, resourceName string) {
+	for _, value := range values {
+		value.Fqn = registeredResourceValueFQN(namespace, resourceName, value.GetValue())
+	}
+}
+
 ///
 /// Registered Resources
 ///
@@ -181,6 +203,7 @@ func (c PolicyDBClient) GetRegisteredResource(ctx context.Context, r *registered
 	if err = unmarshalRegisteredResourceValuesProto(rr.Values, &values); err != nil {
 		return nil, err
 	}
+	hydrateRegisteredResourceValueFQNs(values, namespace, rr.Name)
 
 	return &policy.RegisteredResource{
 		Id:        rr.ID,
@@ -206,11 +229,15 @@ func (c PolicyDBClient) ListRegisteredResources(ctx context.Context, r *register
 		return nil, db.ErrListLimitTooLarge
 	}
 
+	sortField, sortDirection := GetRegisteredResourcesSortParams(r.GetSort())
+
 	list, err := c.queries.listRegisteredResources(ctx, listRegisteredResourcesParams{
-		NamespaceID:  parsedID,
-		NamespaceFqn: pgtypeText(r.GetNamespaceFqn()),
-		Limit:        limit,
-		Offset:       offset,
+		NamespaceID:   parsedID,
+		NamespaceFqn:  pgtypeText(r.GetNamespaceFqn()),
+		Limit:         limit,
+		Offset:        offset,
+		SortField:     sortField,
+		SortDirection: sortDirection,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -233,6 +260,7 @@ func (c PolicyDBClient) ListRegisteredResources(ctx context.Context, r *register
 		if err = unmarshalRegisteredResourceValuesProto(r.Values, &values); err != nil {
 			return nil, err
 		}
+		hydrateRegisteredResourceValueFQNs(values, namespace, r.Name)
 
 		rrList[i] = &policy.RegisteredResource{
 			Id:        r.ID,
@@ -389,6 +417,7 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 	return &policy.RegisteredResourceValue{
 		Id:       rv.ID,
 		Value:    rv.Value,
+		Fqn:      registeredResourceValueFQN(namespace, rv.ResourceName, rv.Value),
 		Metadata: metadata,
 		Resource: &policy.RegisteredResource{
 			Id:        rv.RegisteredResourceID,
@@ -471,6 +500,7 @@ func (c PolicyDBClient) ListRegisteredResourceValues(ctx context.Context, r *reg
 		rvList[i] = &policy.RegisteredResourceValue{
 			Id:       r.ID,
 			Value:    r.Value,
+			Fqn:      registeredResourceValueFQN(namespace, r.ResourceName, r.Value),
 			Metadata: metadata,
 			Resource: &policy.RegisteredResource{
 				Id:        r.RegisteredResourceID,
@@ -550,6 +580,15 @@ func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *re
 }
 
 func (c PolicyDBClient) DeleteRegisteredResourceValue(ctx context.Context, id string) (*policy.RegisteredResourceValue, error) {
+	deleted, err := c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: id,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	count, err := c.queries.deleteRegisteredResourceValue(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -558,9 +597,7 @@ func (c PolicyDBClient) DeleteRegisteredResourceValue(ctx context.Context, id st
 		return nil, db.ErrNotFound
 	}
 
-	return &policy.RegisteredResourceValue{
-		Id: id,
-	}, nil
+	return deleted, nil
 }
 
 ///

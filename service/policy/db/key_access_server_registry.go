@@ -42,9 +42,13 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 		return nil, db.ErrListLimitTooLarge
 	}
 
+	sortField, sortDirection := GetKeyAccessServersSortParams(r.GetSort())
+
 	list, err := c.queries.listKeyAccessServers(ctx, listKeyAccessServersParams{
-		Offset: offset,
-		Limit:  limit,
+		Offset:        offset,
+		Limit:         limit,
+		SortField:     sortField,
+		SortDirection: sortDirection,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -604,14 +608,18 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		legacy = pgtypeBool(r.GetLegacy())
 	}
 
+	sortField, sortDirection := GetKasKeysSortParams(r.GetSort())
+
 	params := listKeysParams{
-		Legacy:       legacy,
-		KeyAlgorithm: algo,
-		KasID:        kasID,
-		KasUri:       kasURI,
-		KasName:      kasName,
-		Offset:       offset,
-		Limit:        limit,
+		Legacy:        legacy,
+		KeyAlgorithm:  algo,
+		KasID:         kasID,
+		KasUri:        kasURI,
+		KasName:       kasName,
+		Offset:        offset,
+		Limit:         limit,
+		SortField:     sortField,
+		SortDirection: sortDirection,
 	}
 
 	listRows, err := c.queries.listKeys(ctx, params)

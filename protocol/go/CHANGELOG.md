@@ -1,5 +1,72 @@
 # Changelog
 
+## [0.30.0](https://github.com/opentdf/platform/compare/protocol/go/v0.29.0...protocol/go/v0.30.0) (2026-05-11)
+
+
+### Features
+
+* **policy:** Add FQN to RegisteredResourceValues ([#3446](https://github.com/opentdf/platform/issues/3446)) ([3199583](https://github.com/opentdf/platform/commit/3199583c4a6454ac7eabe1260a142e5c5ff067ad))
+* **policy:** Add resource mapping group FQNs ([#3447](https://github.com/opentdf/platform/issues/3447)) ([6a0b3c6](https://github.com/opentdf/platform/commit/6a0b3c63795cf79b4d87d561464101c7cd2cf351))
+
+## [0.29.0](https://github.com/opentdf/platform/compare/protocol/go/v0.28.0...protocol/go/v0.29.0) (2026-05-05)
+
+
+### Features
+
+* **policy:** support inline obligation triggers on attribute value create ([#3432](https://github.com/opentdf/platform/issues/3432)) ([876f512](https://github.com/opentdf/platform/commit/876f512f9ff944cebd3b6d65c7937446a74ace87))
+
+## [0.28.0](https://github.com/opentdf/platform/compare/protocol/go/v0.27.0...protocol/go/v0.28.0) (2026-04-28)
+
+
+### Features
+
+* **sdk:** add shorthand enum constants for policy types ([#3408](https://github.com/opentdf/platform/issues/3408)) ([c6f18cb](https://github.com/opentdf/platform/commit/c6f18cbcacc7fa285d834f504a6ce43b7363295d))
+
+## [0.27.0](https://github.com/opentdf/platform/compare/protocol/go/v0.26.0...protocol/go/v0.27.0) (2026-04-23)
+
+
+### Features
+
+* **policy:** add sort support to listkaskeys ([#3344](https://github.com/opentdf/platform/issues/3344)) ([de1fe92](https://github.com/opentdf/platform/commit/de1fe926e306a15ff50fa0042b4fee988b3be1e6))
+
+## [0.26.0](https://github.com/opentdf/platform/compare/protocol/go/v0.25.0...protocol/go/v0.26.0) (2026-04-22)
+
+
+### Features
+
+* **sdk:** add ergonomic Resource constructors for authorization ([#3337](https://github.com/opentdf/platform/issues/3337)) ([4a786ca](https://github.com/opentdf/platform/commit/4a786cab530a9518086f8114f819442efad09b78))
+
+
+### Bug Fixes
+
+* **sdk:** require at least one FQN in ForAttributeValues ([#3355](https://github.com/opentdf/platform/issues/3355)) ([2529e11](https://github.com/opentdf/platform/commit/2529e117c5a0c60839fc2d50db6f69358034c700))
+
+## [0.25.0](https://github.com/opentdf/platform/compare/protocol/go/v0.24.0...protocol/go/v0.25.0) (2026-04-20)
+
+
+### Features
+
+* **policy:** Add sort support listregisteredresources api ([#3312](https://github.com/opentdf/platform/issues/3312)) ([91a3ff3](https://github.com/opentdf/platform/commit/91a3ff3686512353669e35e4884fde807d73d9b0))
+
+## [0.24.0](https://github.com/opentdf/platform/compare/protocol/go/v0.23.0...protocol/go/v0.24.0) (2026-04-17)
+
+
+### Features
+
+* **policy:** add GetObligationTrigger RPC ([#3318](https://github.com/opentdf/platform/issues/3318)) ([d68e39d](https://github.com/opentdf/platform/commit/d68e39d950d94dcbb98a2f16982ea57f28d9c550))
+* **policy:** add sort ListSubjectMappings API ([#3255](https://github.com/opentdf/platform/issues/3255)) ([9d5d757](https://github.com/opentdf/platform/commit/9d5d7570e22c6227409b01292f03c0d0624c1ce7))
+* **policy:** add sort support to ListKeyAccessServer ([#3287](https://github.com/opentdf/platform/issues/3287)) ([7fae2d7](https://github.com/opentdf/platform/commit/7fae2d701f3967b5ea743d4dc5ce0d41eb4d5413))
+* **policy:** add sort support to listobligations api ([#3300](https://github.com/opentdf/platform/issues/3300)) ([9221cac](https://github.com/opentdf/platform/commit/9221cac2f0a0c82847f0e7973b044f78a30450d8))
+* **policy:** add sort support to ListSubjectConditionSets API ([#3272](https://github.com/opentdf/platform/issues/3272)) ([9010f12](https://github.com/opentdf/platform/commit/9010f125eef244be2ac34906c59e68319d3b8f95))
+
+## [0.23.0](https://github.com/opentdf/platform/compare/protocol/go/v0.22.0...protocol/go/v0.23.0) (2026-04-07)
+
+
+### Features
+
+* **policy:** add sort support to ListAttributes API  ([#3223](https://github.com/opentdf/platform/issues/3223)) ([ec3312f](https://github.com/opentdf/platform/commit/ec3312f622dec7ed18ffa6033c86b248b47a420a))
+* **sdk:** source-file codegen for EntityIdentifier helpers  ([#3232](https://github.com/opentdf/platform/issues/3232)) ([ee8177c](https://github.com/opentdf/platform/commit/ee8177c98bda4e7483fa26be736fe4965c00bf46))
+
 ## [0.22.0](https://github.com/opentdf/platform/compare/protocol/go/v0.21.0...protocol/go/v0.22.0) (2026-04-01)
 
 

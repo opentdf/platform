@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -522,7 +523,7 @@ func (s *ObligationsSuite) Test_ListObligations_OrdersByCreatedAt_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(oblList)
 
-	assertIDsInDescendingOrder(s.T(), oblList, func(obl *policy.Obligation) string { return obl.GetId() }, third.GetId(), second.GetId(), first.GetId())
+	assertIDsInOrder(s.T(), oblList, func(obl *policy.Obligation) string { return obl.GetId() }, third.GetId(), second.GetId(), first.GetId())
 }
 
 func (s *ObligationsSuite) Test_ListObligations_Fails() {
@@ -1721,6 +1722,268 @@ func (s *ObligationsSuite) Test_GetObligation_ByIdAndFqn_ReturnSameResult() {
 	s.True(proto.Equal(oblByID, oblByFQN))
 }
 
+// Sort by Name
+
+func (s *ObligationsSuite) Test_ListObligations_SortByName_ASC() {
+	ids := s.createSortTestObligations([]string{"aaa-sort", "bbb-sort", "ccc-sort"})
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// aaa < bbb < ccc in ASC order
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortByName_DESC() {
+	ids := s.createSortTestObligations([]string{"aaa-sortdesc", "bbb-sortdesc", "ccc-sortdesc"})
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// ccc > bbb > aaa in DESC order
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[2], ids[1], ids[0])
+}
+
+// Sort by FQN
+
+func (s *ObligationsSuite) Test_ListObligations_SortByFqn_ASC() {
+	// Create obligations across two namespaces to prove FQN sort uses the full
+	// constructed FQN (namespace_fqn/obl/name), not just the name.
+	// "example.com" < "example.net" lexicographically, so even zzz in example.com
+	// sorts before aaa in example.net. Within example.com, name breaks the tie.
+	comID, _, _ := s.getNamespaceData(nsExampleCom)
+	netID, _, _ := s.getNamespaceData(nsExampleNet)
+	suffix := fmt.Sprintf("fqnasc-%d", time.Now().UnixNano())
+
+	oblComAAA := s.createObligation(comID, "aaa-"+suffix, nil)
+	oblComZZZ := s.createObligation(comID, "zzz-"+suffix, nil)
+	oblNetAAA := s.createObligation(netID, "aaa-"+suffix, nil)
+	defer s.deleteObligations([]string{oblComAAA.GetId(), oblComZZZ.GetId(), oblNetAAA.GetId()})
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_FQN, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// example.com/obl/aaa < example.com/obl/zzz < example.net/obl/aaa
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, oblComAAA.GetId(), oblComZZZ.GetId(), oblNetAAA.GetId())
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortByFqn_DESC() {
+	comID, _, _ := s.getNamespaceData(nsExampleCom)
+	netID, _, _ := s.getNamespaceData(nsExampleNet)
+	suffix := fmt.Sprintf("fqndesc-%d", time.Now().UnixNano())
+
+	oblComAAA := s.createObligation(comID, "aaa-"+suffix, nil)
+	oblComZZZ := s.createObligation(comID, "zzz-"+suffix, nil)
+	oblNetAAA := s.createObligation(netID, "aaa-"+suffix, nil)
+	defer s.deleteObligations([]string{oblComAAA.GetId(), oblComZZZ.GetId(), oblNetAAA.GetId()})
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_FQN, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// example.net/obl/aaa > example.com/obl/zzz > example.com/obl/aaa
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, oblNetAAA.GetId(), oblComZZZ.GetId(), oblComAAA.GetId())
+}
+
+// Sort by CreatedAt
+
+func (s *ObligationsSuite) Test_ListObligations_SortByCreatedAt_ASC() {
+	ids := s.createSortTestObligations([]string{"createdasc-obl-0", "createdasc-obl-1", "createdasc-obl-2"})
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// oldest first in ASC order
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortByCreatedAt_DESC() {
+	ids := s.createSortTestObligations([]string{"createddesc-obl-0", "createddesc-obl-1", "createddesc-obl-2"})
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// newest first in DESC order
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[2], ids[1], ids[0])
+}
+
+// Sort by UpdatedAt
+
+func (s *ObligationsSuite) Test_ListObligations_SortByUpdatedAt_DESC() {
+	ids := s.createSortTestObligations([]string{"upd-sort-obl-0", "upd-sort-obl-1", "upd-sort-obl-2"})
+	defer s.deleteObligations(ids)
+
+	// Update the first obligation so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateObligation(s.ctx, &obligations.UpdateObligationRequest{
+		Id: ids[0],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// The updated obligation (ids[0]) should appear before the others
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[0], ids[2], ids[1])
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortByUpdatedAt_ASC() {
+	ids := s.createSortTestObligations([]string{"upd-sort-asc-obl-0", "upd-sort-asc-obl-1", "upd-sort-asc-obl-2"})
+	defer s.deleteObligations(ids)
+
+	// Update the last obligation so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateObligation(s.ctx, &obligations.UpdateObligationRequest{
+		Id: ids[2],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// The updated obligation (ids[2]) should appear last in ASC order
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[0], ids[1], ids[2])
+}
+
+// Sort by Unspecified (fallback to default)
+
+func (s *ObligationsSuite) Test_ListObligations_SortTieBreaker_CreatedAtWithIDFallback() {
+	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
+	suffix := time.Now().UnixNano()
+	ids := make([]string, 3)
+	for i := range 3 {
+		name := fmt.Sprintf("tiebreaker-obl-%d-%d", i, suffix)
+		obl := s.createObligation(namespaceID, name, nil)
+		ids[i] = obl.GetId()
+	}
+	defer s.deleteObligations(ids)
+
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "obligation_definitions", ids))
+
+	sorted := slices.Sorted(slices.Values(ids))
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, sorted[0], sorted[1], sorted[2])
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	ids := s.createSortTestObligations([]string{"unspecified-field-obl-0", "unspecified-field-obl-1", "unspecified-field-obl-2"})
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Field defaults to created_at, explicit ASC is preserved
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortByUnspecifiedDirection_DefaultsToDESC() {
+	ids := s.createSortTestObligations([]string{"unspecified-dir-obl-0", "unspecified-dir-obl-1", "unspecified-dir-obl-2"})
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	ids := s.createSortTestObligations([]string{"both-unspecified-obl-0", "both-unspecified-obl-1", "both-unspecified-obl-2"})
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortOmitted() {
+	ids := s.createSortTestObligations([]string{"sort-omitted-obl-0", "sort-omitted-obl-1", "sort-omitted-obl-2"})
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// No sort provided: created_at DESC
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[2], ids[1], ids[0])
+}
+
 // Helper functions for common operations
 
 func (s *ObligationsSuite) getNamespaceData(nsName string) (string, string, fixtures.FixtureDataNamespace) {
@@ -1964,4 +2227,22 @@ func (s *ObligationsSuite) assertObligationValuesSpecificTriggers(obl *policy.Ob
 			}
 		}
 	}
+}
+
+// Sort test helpers
+
+// createSortTestObligations creates obligations with the given prefixes, adding 5ms gaps
+// between creations for distinct timestamps. Returns the obligation IDs in creation order.
+func (s *ObligationsSuite) createSortTestObligations(prefixes []string) []string {
+	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
+		if i > 0 {
+			time.Sleep(5 * time.Millisecond)
+		}
+		name := fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
+		obl := s.createObligation(namespaceID, name, nil)
+		ids[i] = obl.GetId()
+	}
+	return ids
 }

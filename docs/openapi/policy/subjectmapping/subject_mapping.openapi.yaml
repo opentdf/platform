@@ -475,6 +475,18 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+    policy.SortDirection:
+      type: string
+      title: SortDirection
+      enum:
+        - SORT_DIRECTION_UNSPECIFIED
+        - SORT_DIRECTION_ASC
+        - SORT_DIRECTION_DESC
+      description: |-
+        Sorting direction shared across list APIs.
+         When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+         the endpoint's request message defines the default ordering; see the
+         specific List* request docs.
     policy.SourceType:
       type: string
       title: SourceType
@@ -494,6 +506,20 @@ components:
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
+    policy.subjectmapping.SortSubjectConditionSetsType:
+      type: string
+      title: SortSubjectConditionSetsType
+      enum:
+        - SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED
+        - SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT
+        - SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT
+    policy.subjectmapping.SortSubjectMappingsType:
+      type: string
+      title: SortSubjectMappingsType
+      enum:
+        - SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED
+        - SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT
+        - SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT
     common.Metadata:
       type: object
       properties:
@@ -966,6 +992,10 @@ components:
           items:
             $ref: '#/components/schemas/policy.RequestContext'
           title: context
+        namespace:
+          title: namespace
+          description: The source namespace for this trigger, derived from the attribute value and action.
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -1129,6 +1159,10 @@ components:
           description: |-
             the common name for the group of resource mappings, which must be unique
              per namespace
+        fqn:
+          type: string
+          title: fqn
+          description: the fully qualified name of the resource mapping group
         metadata:
           title: metadata
           description: Common metadata
@@ -1257,7 +1291,6 @@ components:
         authoritative source such as an IDP (Identity Provider) or User Store.
         Examples include such ADFS/LDAP, OKTA, etc. For now, a valid property must
         contain both a selector expression & a resulting value.
-
         The external_selector_value is a specifier to select a value from a flattened
         external representation of an Entity (such as from idP/LDAP), and the
         external_value is the value selected by the external_selector_value on that
@@ -1532,6 +1565,18 @@ components:
           title: pagination
           description: Optional
           $ref: '#/components/schemas/policy.PageRequest'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.subjectmapping.SubjectConditionSetsSort'
+          title: sort
+          maxItems: 1
+          description: |-
+            Optional - CONSTRAINT: max 1 item
+             Sort defaults:
+               - direction UNSPECIFIED defaults to DESC for the specified field
+               - field UNSPECIFIED defaults to created_at with the specified direction
+               - both UNSPECIFIED or sort omitted defaults to created_at DESC
       title: ListSubjectConditionSetsRequest
       additionalProperties: false
     policy.subjectmapping.ListSubjectConditionSetsResponse:
@@ -1563,6 +1608,18 @@ components:
           title: pagination
           description: Optional
           $ref: '#/components/schemas/policy.PageRequest'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.subjectmapping.SubjectMappingsSort'
+          title: sort
+          maxItems: 1
+          description: |-
+            Optional - CONSTRAINT: max 1 item
+             Sort defaults:
+               - direction UNSPECIFIED defaults to DESC for the specified field
+               - field UNSPECIFIED defaults to created_at with the specified direction
+               - both UNSPECIFIED or sort omitted defaults to created_at DESC
       title: ListSubjectMappingsRequest
       additionalProperties: false
     policy.subjectmapping.ListSubjectMappingsResponse:
@@ -1619,6 +1676,28 @@ components:
              Common metadata
           $ref: '#/components/schemas/common.MetadataMutable'
       title: SubjectConditionSetCreate
+      additionalProperties: false
+    policy.subjectmapping.SubjectConditionSetsSort:
+      type: object
+      properties:
+        field:
+          title: field
+          $ref: '#/components/schemas/policy.subjectmapping.SortSubjectConditionSetsType'
+        direction:
+          title: direction
+          $ref: '#/components/schemas/policy.SortDirection'
+      title: SubjectConditionSetsSort
+      additionalProperties: false
+    policy.subjectmapping.SubjectMappingsSort:
+      type: object
+      properties:
+        field:
+          title: field
+          $ref: '#/components/schemas/policy.subjectmapping.SortSubjectMappingsType'
+        direction:
+          title: direction
+          $ref: '#/components/schemas/policy.SortDirection'
+      title: SubjectMappingsSort
       additionalProperties: false
     policy.subjectmapping.UpdateSubjectConditionSetRequest:
       type: object

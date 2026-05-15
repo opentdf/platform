@@ -52,7 +52,7 @@ func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.We
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (wellknownconfigurationconnect.WellKnownServiceHandler, serviceregistry.HandlerServer) {
 				wk := &WellKnownService{logger: srp.Logger}
 				return wk, func(_ context.Context, mux *http.ServeMux) error {
-					mux.HandleFunc("GET /.well-known/opentdf-configuration", func(w http.ResponseWriter, r *http.Request) {
+					mux.HandleFunc("GET /.well-known/opentdf-configuration", func(w http.ResponseWriter, _ *http.Request) {
 						rwMutex.RLock()
 						cfg, err := structpb.NewStruct(wellKnownConfiguration)
 						rwMutex.RUnlock()

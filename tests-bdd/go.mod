@@ -8,7 +8,7 @@ require (
 	github.com/cucumber/godog v0.15.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
-	github.com/opentdf/platform/lib/fixtures v0.3.0
+	github.com/opentdf/platform/lib/fixtures v0.5.0
 	github.com/opentdf/platform/lib/identifier v0.0.2
 	github.com/opentdf/platform/protocol/go v0.30.0
 	github.com/opentdf/platform/sdk v0.17.0

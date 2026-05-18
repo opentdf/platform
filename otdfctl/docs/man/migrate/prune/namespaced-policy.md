@@ -20,7 +20,7 @@ The command prints a human-readable prune summary to stdout. Dry runs show the p
 
 `namespaced-policy` rebuilds the live dependency graph, inspects migration labels, and deletes only legacy objects it can prove are safe to remove for the selected scope.
 
-The parent `migrate` command provides the shared `--commit` flag used to apply deletions.
+The parent `migrate` command provides the shared `--commit` and `--interactive` flags. `--interactive` lets you review the prune plan before execution, and when paired with `--commit` it also asks for backup confirmation and per-delete confirmation before any deletion is applied.
 
 ## Pre-requisites
 

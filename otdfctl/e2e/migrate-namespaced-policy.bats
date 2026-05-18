@@ -173,31 +173,37 @@ remove_tracked_id() {
 untrack_action_id() {
   local action_id="$1"
   TRACKED_ACTION_IDS="$(remove_tracked_id "$action_id" "$TRACKED_ACTION_IDS")"
+  [ -z "$TRACKED_ACTION_IDS" ] || TRACKED_ACTION_IDS="${TRACKED_ACTION_IDS}"$'\n'
 }
 
 untrack_registered_resource_id() {
   local resource_id="$1"
   TRACKED_REGISTERED_RESOURCE_IDS="$(remove_tracked_id "$resource_id" "$TRACKED_REGISTERED_RESOURCE_IDS")"
+  [ -z "$TRACKED_REGISTERED_RESOURCE_IDS" ] || TRACKED_REGISTERED_RESOURCE_IDS="${TRACKED_REGISTERED_RESOURCE_IDS}"$'\n'
 }
 
 untrack_registered_resource_value_id() {
   local resource_value_id="$1"
   TRACKED_REGISTERED_RESOURCE_VALUE_IDS="$(remove_tracked_id "$resource_value_id" "$TRACKED_REGISTERED_RESOURCE_VALUE_IDS")"
+  [ -z "$TRACKED_REGISTERED_RESOURCE_VALUE_IDS" ] || TRACKED_REGISTERED_RESOURCE_VALUE_IDS="${TRACKED_REGISTERED_RESOURCE_VALUE_IDS}"$'\n'
 }
 
 untrack_scs_id() {
   local scs_id="$1"
   TRACKED_SCS_IDS="$(remove_tracked_id "$scs_id" "$TRACKED_SCS_IDS")"
+  [ -z "$TRACKED_SCS_IDS" ] || TRACKED_SCS_IDS="${TRACKED_SCS_IDS}"$'\n'
 }
 
 untrack_subject_mapping_id() {
   local subject_mapping_id="$1"
   TRACKED_SUBJECT_MAPPING_IDS="$(remove_tracked_id "$subject_mapping_id" "$TRACKED_SUBJECT_MAPPING_IDS")"
+  [ -z "$TRACKED_SUBJECT_MAPPING_IDS" ] || TRACKED_SUBJECT_MAPPING_IDS="${TRACKED_SUBJECT_MAPPING_IDS}"$'\n'
 }
 
 untrack_obligation_trigger_id() {
   local obligation_trigger_id="$1"
   TRACKED_OBLIGATION_TRIGGER_IDS="$(remove_tracked_id "$obligation_trigger_id" "$TRACKED_OBLIGATION_TRIGGER_IDS")"
+  [ -z "$TRACKED_OBLIGATION_TRIGGER_IDS" ] || TRACKED_OBLIGATION_TRIGGER_IDS="${TRACKED_OBLIGATION_TRIGGER_IDS}"$'\n'
 }
 
 create_action() {
@@ -1990,7 +1996,9 @@ teardown_file() {
   local obligation_value_id
   local trigger_id
   local ns_a_state_before
+  local ns_b_state_before
   local ns_a_state_after
+  local ns_b_state_after
 
   create_global_action custom_action_id "$custom_action_name" --label "test_case=all-scopes" --label "fixture=${TEST_PREFIX}-custom-action"
   create_global_scs scs_id "$all_scopes_scs" --label "test_case=all-scopes" --label "fixture=${TEST_PREFIX}-scs"
@@ -2225,10 +2233,10 @@ teardown_file() {
   ns_a_state_after=$(namespace_state_json "$NS_A_ID")
   assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
 
-  untrack_action_id "$delete_a_id"
-  untrack_action_id "$delete_b_id"
   assert_legacy_custom_action_pruned "$delete_a_id"
   assert_legacy_custom_action_pruned "$delete_b_id"
+  untrack_action_id "$delete_a_id"
+  untrack_action_id "$delete_b_id"
   assert_action_already_migrated_in_namespace "$delete_a_name" "$NS_A_ID" "$delete_a_target_id"
   assert_action_already_migrated_in_namespace "$delete_b_name" "$NS_A_ID" "$delete_b_target_id"
   assert_legacy_custom_action_still_exists "$used_by_mapping_id" "$used_by_mapping_name"
@@ -2302,10 +2310,10 @@ teardown_file() {
   ns_a_state_after=$(namespace_state_json "$NS_A_ID")
   assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
 
-  untrack_scs_id "$delete_a_id"
-  untrack_scs_id "$delete_b_id"
   assert_legacy_scs_pruned "$delete_a_id"
   assert_legacy_scs_pruned "$delete_b_id"
+  untrack_scs_id "$delete_a_id"
+  untrack_scs_id "$delete_b_id"
   assert_scs_target_still_exists "$delete_a_target_id" "$NS_A_ID" "$delete_a_id"
   assert_scs_target_still_exists "$delete_b_target_id" "$NS_A_ID" "$delete_b_id"
   assert_legacy_scs_still_exists "$used_id"
@@ -2409,10 +2417,10 @@ teardown_file() {
   ns_a_state_after=$(namespace_state_json "$NS_A_ID")
   assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
 
-  untrack_subject_mapping_id "$delete_a_mapping_id"
-  untrack_subject_mapping_id "$delete_b_mapping_id"
   assert_legacy_subject_mapping_pruned "$delete_a_mapping_id"
   assert_legacy_subject_mapping_pruned "$delete_b_mapping_id"
+  untrack_subject_mapping_id "$delete_a_mapping_id"
+  untrack_subject_mapping_id "$delete_b_mapping_id"
   assert_subject_mapping_target_still_exists "$delete_a_mapping_target_id" "$NS_A_ID" "$delete_a_mapping_id"
   assert_subject_mapping_target_still_exists "$delete_b_mapping_target_id" "$NS_A_ID" "$delete_b_mapping_id"
   assert_legacy_subject_mapping_still_exists "$ATTR_A_VAL_1_ID" "$not_migrated_global_mapping_id"
@@ -2543,12 +2551,12 @@ teardown_file() {
   ns_a_state_after=$(namespace_state_json "$NS_A_ID")
   assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
 
+  assert_legacy_registered_resource_pruned "$delete_a_rr_id" "$delete_a_value_id"
+  assert_legacy_registered_resource_pruned "$delete_b_rr_id" "$delete_b_value_id"
   untrack_registered_resource_id "$delete_a_rr_id"
   untrack_registered_resource_id "$delete_b_rr_id"
   untrack_registered_resource_value_id "$delete_a_value_id"
   untrack_registered_resource_value_id "$delete_b_value_id"
-  assert_legacy_registered_resource_pruned "$delete_a_rr_id" "$delete_a_value_id"
-  assert_legacy_registered_resource_pruned "$delete_b_rr_id" "$delete_b_value_id"
   assert_registered_resource_target_still_exists "$delete_a_rr_target_id" "$delete_a_value_target_id" "$NS_A_ID" "$delete_a_rr_id" "$delete_a_value_id"
   assert_registered_resource_target_still_exists "$delete_b_rr_target_id" "$delete_b_value_target_id" "$NS_A_ID" "$delete_b_rr_id" "$delete_b_value_id"
   assert_legacy_registered_resource_still_exists "$not_migrated_global_rr_id" "$not_migrated_global_value_id" "${TEST_PREFIX}-prune-rr-not-migrated" "${TEST_PREFIX}-not-migrated-value"
@@ -2649,10 +2657,10 @@ teardown_file() {
   ns_a_state_after=$(namespace_state_json "$NS_A_ID")
   assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 -2 # Obligation triggers are already namespaced, they just need to be deleted/recreated; that's why there should be 2 less after prune.
 
-  untrack_obligation_trigger_id "$delete_a_trigger_id"
-  untrack_obligation_trigger_id "$delete_b_trigger_id"
   assert_legacy_obligation_trigger_pruned "$delete_a_trigger_id" "$NS_A_ID"
   assert_legacy_obligation_trigger_pruned "$delete_b_trigger_id" "$NS_A_ID"
+  untrack_obligation_trigger_id "$delete_a_trigger_id"
+  untrack_obligation_trigger_id "$delete_b_trigger_id"
   assert_obligation_trigger_target_still_exists "$delete_a_trigger_target_id" "$NS_A_ID" "$delete_a_trigger_id"
   assert_obligation_trigger_target_still_exists "$delete_b_trigger_target_id" "$NS_A_ID" "$delete_b_trigger_id"
   assert_legacy_obligation_trigger_still_exists "$not_migrated_source_trigger_id" "$NS_A_ID" "$ATTR_A_VAL_1_ID" "$not_migrated_global_action_id" "$not_migrated_source_value_id" "${TEST_PREFIX}-not-migrated-client"

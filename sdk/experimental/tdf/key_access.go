@@ -169,6 +169,10 @@ func wrapKeyWithPublicKey(symKey []byte, pubKeyInfo keysplit.KASPublicKey) (stri
 		// Handle EC key wrapping
 		return wrapKeyWithEC(ktype, pubKeyInfo.PEM, symKey)
 	}
+	if ocrypto.IsMLKEMKeyType(ktype) {
+		wrapped, err := wrapKeyWithMLKEM(pubKeyInfo.PEM, symKey)
+		return wrapped, "wrapped", "", err
+	}
 	// Handle RSA key wrapping
 	wrapped, err := wrapKeyWithRSA(pubKeyInfo.PEM, symKey)
 	return wrapped, "wrapped", "", err
@@ -244,4 +248,33 @@ func wrapKeyWithRSA(kasPublicKeyPEM string, symKey []byte) (string, error) {
 	}
 
 	return string(ocrypto.Base64Encode(encryptedKey)), nil
+}
+
+// wrapKeyWithMLKEM encapsulates a symmetric key using ML-KEM-768.
+// Wire format: base64(ml_kem_ciphertext [1088 bytes] || aes_gcm_wrapped_dek)
+// The ephemeralPublicKey field is not set for this key type.
+func wrapKeyWithMLKEM(kasPublicKeyPEM string, symKey []byte) (string, error) {
+	encKey, err := ocrypto.MLKEMPublicKeyFromPEM([]byte(kasPublicKeyPEM))
+	if err != nil {
+		return "", fmt.Errorf("failed to parse ML-KEM-768 public key: %w", err)
+	}
+
+	// Encapsulate: sharedKey is used to wrap the DEK; ciphertext goes on the wire.
+	sharedKey, ciphertext := encKey.Encapsulate()
+
+	gcm, err := ocrypto.NewAESGcm(sharedKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to create AES-GCM for ML-KEM DEK wrap: %w", err)
+	}
+
+	wrappedDEK, err := gcm.Encrypt(symKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to AES-GCM wrap DEK: %w", err)
+	}
+
+	payload := make([]byte, 0, len(ciphertext)+len(wrappedDEK))
+	payload = append(payload, ciphertext...)
+	payload = append(payload, wrappedDEK...)
+
+	return string(ocrypto.Base64Encode(payload)), nil
 }

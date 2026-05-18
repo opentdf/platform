@@ -3,8 +3,10 @@
 package tdf
 
 import (
+	"crypto/mlkem"
 	"crypto/rand"
 	"encoding/json"
+	"encoding/pem"
 	"strings"
 	"testing"
 
@@ -471,5 +473,65 @@ func TestTdfSalt(t *testing.T) {
 		assert.Equal(t, salt1, salt2, "tdfSalt should produce consistent output")
 		assert.Len(t, salt1, 32, "Salt should be 32 bytes (SHA256 output)")
 		assert.NotEmpty(t, salt1, "Salt should not be empty")
+	})
+}
+
+// mlkem768TestPublicKeyPEM generates a fresh ML-KEM-768 key pair and returns
+// the public key as a PEM block with type "ML-KEM-768 PUBLIC KEY".
+func mlkem768TestPublicKeyPEM(t *testing.T) (string, *mlkem.DecapsulationKey768) {
+	t.Helper()
+	dk, err := mlkem.GenerateKey768()
+	require.NoError(t, err)
+	pubKeyBytes := dk.EncapsulationKey().Bytes()
+	block := &pem.Block{Type: "ML-KEM-768 PUBLIC KEY", Bytes: pubKeyBytes}
+	return string(pem.EncodeToMemory(block)), dk
+}
+
+func TestWrapKeyWithMLKEM(t *testing.T) {
+	t.Run("wraps key and produces correct wire format", func(t *testing.T) {
+		pubKeyPEM, dk := mlkem768TestPublicKeyPEM(t)
+
+		symKey := make([]byte, 32)
+		_, err := rand.Read(symKey)
+		require.NoError(t, err)
+
+		wrappedB64, err := wrapKeyWithMLKEM(pubKeyPEM, symKey)
+		require.NoError(t, err)
+		assert.NotEmpty(t, wrappedB64)
+
+		payload, err := ocrypto.Base64Decode([]byte(wrappedB64))
+		require.NoError(t, err)
+		assert.Greater(t, len(payload), ocrypto.MLKem768CiphertextSize, "payload must include ciphertext + wrapped DEK")
+
+		ciphertext := payload[:ocrypto.MLKem768CiphertextSize]
+		wrappedDEK := payload[ocrypto.MLKem768CiphertextSize:]
+
+		sharedKey, err := dk.Decapsulate(ciphertext)
+		require.NoError(t, err)
+
+		gcm, err := ocrypto.NewAESGcm(sharedKey)
+		require.NoError(t, err)
+
+		recoveredDEK, err := gcm.Decrypt(wrappedDEK)
+		require.NoError(t, err)
+		assert.Equal(t, symKey, recoveredDEK, "recovered DEK must match original")
+	})
+
+	t.Run("buildKeyAccessObjects uses wrapped key type with no ephemeral key", func(t *testing.T) {
+		pubKeyPEM, _ := mlkem768TestPublicKeyPEM(t)
+		splitResult := createTestSplitResult(testKAS1URL, pubKeyPEM, "mlkem:768")
+
+		keyAccessList, err := buildKeyAccessObjects(splitResult, []byte(testPolicyJSON), "")
+		require.NoError(t, err)
+		require.Len(t, keyAccessList, 1)
+
+		ka := keyAccessList[0]
+		assert.Equal(t, "wrapped", ka.KeyType, "ML-KEM KAO must use 'wrapped' key type")
+		assert.Empty(t, ka.EphemeralPublicKey, "ML-KEM KAO must not set ephemeralPublicKey")
+		assert.NotEmpty(t, ka.WrappedKey)
+
+		payload, err := ocrypto.Base64Decode([]byte(ka.WrappedKey))
+		require.NoError(t, err)
+		assert.Greater(t, len(payload), ocrypto.MLKem768CiphertextSize)
 	})
 }

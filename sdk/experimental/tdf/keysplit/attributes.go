@@ -11,6 +11,13 @@ import (
 
 const unknownAlgorithm = "unknown"
 
+// These mirror enum values that the platform-proto cell adds to objects.proto.
+// Replace with generated named constants once those proto changes are merged.
+const (
+	kasPublicKeyAlgEnumMLKem768 policy.KasPublicKeyAlgEnum = 13
+	algorithmMLKem768           policy.Algorithm           = 6
+)
+
 // resolveAttributeGrants follows the hierarchy: value → definition → namespace
 // Returns the most specific grants available for the given attribute value
 func resolveAttributeGrants(value *policy.Value) (*AttributeGrant, error) {
@@ -199,6 +206,8 @@ func formatAlgorithm(alg policy.Algorithm) string {
 		return "rsa:2048"
 	case policy.Algorithm_ALGORITHM_RSA_4096:
 		return "rsa:4096"
+	case algorithmMLKem768:
+		return "mlkem:768"
 	default:
 		return unknownAlgorithm
 	}
@@ -217,6 +226,8 @@ func convertAlgEnum2Simple(a policy.KasPublicKeyAlgEnum) policy.Algorithm {
 		return policy.Algorithm_ALGORITHM_RSA_2048
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
 		return policy.Algorithm_ALGORITHM_RSA_4096
+	case kasPublicKeyAlgEnumMLKem768:
+		return algorithmMLKem768
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED
 	default:

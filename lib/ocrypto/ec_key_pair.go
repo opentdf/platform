@@ -22,11 +22,12 @@ type ECCMode uint8
 type KeyType string
 
 const (
-	RSA2048Key KeyType = "rsa:2048"
-	RSA4096Key KeyType = "rsa:4096"
-	EC256Key   KeyType = "ec:secp256r1"
-	EC384Key   KeyType = "ec:secp384r1"
-	EC521Key   KeyType = "ec:secp521r1"
+	RSA2048Key  KeyType = "rsa:2048"
+	RSA4096Key  KeyType = "rsa:4096"
+	EC256Key    KeyType = "ec:secp256r1"
+	EC384Key    KeyType = "ec:secp384r1"
+	EC521Key    KeyType = "ec:secp521r1"
+	MLKem768Key KeyType = "mlkem:768"
 )
 
 const (
@@ -89,6 +90,10 @@ func IsRSAKeyType(kt KeyType) bool {
 	default:
 		return false
 	}
+}
+
+func IsMLKEMKeyType(kt KeyType) bool {
+	return kt == MLKem768Key
 }
 
 // GetECCurveFromECCMode return elliptic curve from ecc mode

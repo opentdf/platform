@@ -249,7 +249,7 @@ func TestRefreshAccessTokenEmptyClientID(t *testing.T) {
 }
 
 func TestRefreshAccessTokenTLSNoVerify(t *testing.T) {
-	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	tokenServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(map[string]any{
 			"access_token":  "tls-token",

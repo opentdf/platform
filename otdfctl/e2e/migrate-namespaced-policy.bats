@@ -1330,6 +1330,25 @@ assert_obligation_trigger_target_still_exists() {
   assert_equal "$(echo "$target_trigger_json" | jq -r '.metadata.labels.migrated_from')" "$source_trigger_id"
 }
 
+assert_obligation_trigger_unlabeled_target_still_exists() {
+  local target_trigger_id="$1"
+  local namespace_id="$2"
+  local attribute_value_id="$3"
+  local action_id="$4"
+  local obligation_value_id="$5"
+  local client_id="$6"
+
+  local target_trigger_json
+  target_trigger_json=$(obligation_trigger_json_by_id "$target_trigger_id" "$namespace_id")
+
+  assert_equal "$(echo "$target_trigger_json" | jq -r '.id // empty')" "$target_trigger_id"
+  assert_equal "$(echo "$target_trigger_json" | jq -r '.attribute_value.id')" "$attribute_value_id"
+  assert_equal "$(echo "$target_trigger_json" | jq -r '.action.id')" "$action_id"
+  assert_equal "$(echo "$target_trigger_json" | jq -r '.obligation_value.id')" "$obligation_value_id"
+  assert_equal "$(echo "$target_trigger_json" | jq -r '.context[0].pep.client_id')" "$client_id"
+  assert_equal "$(echo "$target_trigger_json" | jq -r '.metadata.labels.migrated_from // empty')" ""
+}
+
 assert_scs_already_migrated_in_namespace() {
   local source_scs_id="$1"
   local namespace_id="$2"
@@ -2194,9 +2213,6 @@ teardown_file() {
   local not_migrated_id
   local delete_a_target_id
   local delete_b_target_id
-  local used_by_mapping_target_id
-  local used_by_rr_target_id
-  local used_by_trigger_target_id
   local shared_scs_id
   local mapping_id
   local rr_id
@@ -2665,6 +2681,7 @@ teardown_file() {
   assert_obligation_trigger_target_still_exists "$delete_b_trigger_target_id" "$NS_A_ID" "$delete_b_trigger_id"
   assert_legacy_obligation_trigger_still_exists "$not_migrated_source_trigger_id" "$NS_A_ID" "$ATTR_A_VAL_1_ID" "$not_migrated_global_action_id" "$not_migrated_source_value_id" "${TEST_PREFIX}-not-migrated-client"
   assert_legacy_obligation_trigger_still_exists "$unlabeled_source_trigger_id" "$NS_A_ID" "$ATTR_A_VAL_2_ID" "$unlabeled_global_action_id" "$unlabeled_source_value_id" "${TEST_PREFIX}-unlabeled-target-client"
+  assert_obligation_trigger_unlabeled_target_still_exists "$unlabeled_trigger_target_id" "$NS_A_ID" "$ATTR_A_VAL_2_ID" "$unlabeled_action_target_id" "$unlabeled_source_value_id" "${TEST_PREFIX}-unlabeled-target-client"
 
   ns_a_state_before="$ns_a_state_after"
 
@@ -2680,4 +2697,5 @@ teardown_file() {
   assert_obligation_trigger_target_still_exists "$delete_b_trigger_target_id" "$NS_A_ID" "$delete_b_trigger_id"
   assert_legacy_obligation_trigger_still_exists "$not_migrated_source_trigger_id" "$NS_A_ID" "$ATTR_A_VAL_1_ID" "$not_migrated_global_action_id" "$not_migrated_source_value_id" "${TEST_PREFIX}-not-migrated-client"
   assert_legacy_obligation_trigger_still_exists "$unlabeled_source_trigger_id" "$NS_A_ID" "$ATTR_A_VAL_2_ID" "$unlabeled_global_action_id" "$unlabeled_source_value_id" "${TEST_PREFIX}-unlabeled-target-client"
+  assert_obligation_trigger_unlabeled_target_still_exists "$unlabeled_trigger_target_id" "$NS_A_ID" "$ATTR_A_VAL_2_ID" "$unlabeled_action_target_id" "$unlabeled_source_value_id" "${TEST_PREFIX}-unlabeled-target-client"
 }
